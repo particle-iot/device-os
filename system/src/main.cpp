@@ -39,6 +39,7 @@
 #include "system_user.h"
 #include "system_update.h"
 #include "core_hal.h"
+#include "delay_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
 #include "usb_hal.h"
@@ -88,6 +89,21 @@ static volatile uint32_t TimingLED;
 static volatile uint32_t TimingIWDGReload;
 
 /**
+ * When non-zero, causes the system to play out a count on the LED.
+ * For even values, the system displays a bright color for a short period,
+ * while for odd values the system displays a dim color for a longer period.
+ * The value is then decremented and the process repeated until 0.
+ */
+static volatile uint8_t SYSTEM_LED_COUNT;
+/**
+ * the previous override state before system override kicked in.
+ * This is temporary until a more flexible LED management framework is
+ * put in place.
+ */
+static volatile uint8_t SYSTEM_LED_WAS_OVERRIDDEN;
+
+
+/**
  * KNowing the current listen mode isn't sufficient to determine the correct action (since that may or may not have changed)
  * we need also to know the listen mode at the time the button was pressed.
  */
@@ -111,6 +127,26 @@ static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
 static uint32_t prev_release_time = 0;
 static uint8_t clicks = 0;
 
+void system_prepare_display_bars()
+{
+	SYSTEM_LED_WAS_OVERRIDDEN = LED_RGB_IsOverRidden();
+	LED_Signaling_Stop();
+	SYSTEM_LED_COUNT = 255;
+	TimingLED = 0;	// todo - should use a mutex around these shared vars
+}
+
+void system_display_bars(int bars)
+{
+    if (bars>=0)
+    {
+		SYSTEM_LED_COUNT = ((bars<<1)+2) | 128;
+    }
+    else
+    {
+    		SYSTEM_LED_COUNT = 1;
+    }
+}
+
 /* single click handler displays RSSI value on system LED */
 void system_handle_single_click()
 {
@@ -124,9 +160,7 @@ void system_handle_single_click()
      */
     if (SYSTEM_HANDLE_SINGLE_CLICK) {
         SYSTEM_HANDLE_SINGLE_CLICK = false;
-        volatile system_tick_t startTime = SYSTEM_TICK_COUNTER;
-        RGB.control(true);
-        RGB.color(0,10,0);
+        system_prepare_display_bars();
         int rssi = 0;
         int bars = 0;
 #if Wiring_WiFi == 1
@@ -144,22 +178,7 @@ void system_handle_single_click()
         }
         DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
 
-        /* flash sequence */
-        /* TODO - REFACTOR Flash Sequence to be non-blocking via HAL_SysTick_Handler() */
-
-        // Attempts to normalize beginning dim green time to 1 second
-        while ( (SYSTEM_TICK_COUNTER - startTime) < (SYSTEM_US_TICKS*1000UL*1000UL) );
-
-        if (bars > 0) {
-            for (int x=0; x<bars; x++) {
-                RGB.color(0,255,0);
-                delay(40);
-                RGB.color(0,10,0);
-                delay(250);
-            }
-        }
-        delay(750);
-        RGB.control(false);
+        system_display_bars(bars);
     }
 }
 
@@ -310,6 +329,11 @@ void system_power_management_update()
 }
 #endif
 
+inline bool system_led_override()
+{
+	return SYSTEM_LED_COUNT;
+}
+
 /*******************************************************************************
  * Function Name  : HAL_SysTick_Handler
  * Description    : Decrements the various Timing variables related to SysTick.
@@ -320,7 +344,7 @@ void system_power_management_update()
  *******************************/
 extern "C" void HAL_SysTick_Handler(void)
 {
-    if (LED_RGB_IsOverRidden())
+    if (LED_RGB_IsOverRidden() && !system_led_override())
     {
 #ifndef SPARK_NO_CLOUD
         if (LED_Spark_Signal != 0)
@@ -341,6 +365,49 @@ extern "C" void HAL_SysTick_Handler(void)
     {
         LED_SetRGBColor(RGB_COLOR_GREY);
         LED_On(LED_RGB);
+    }
+    else if (SYSTEM_LED_COUNT)
+    {
+		SPARK_LED_FADE = 0;
+		if (SYSTEM_LED_COUNT==255)
+		{
+			// hold the LED on this color until the actual number of bars is set
+  			LED_SetRGBColor(0<<16 | 10<<8 | 0);
+    	        LED_On(LED_RGB);
+    			TimingLED = 100;
+		}
+		else if (SYSTEM_LED_COUNT & 128)
+		{
+			LED_SetRGBColor(0<<16 | 10<<8 | 0);
+			LED_On(LED_RGB);
+			TimingLED = 1000;
+			SYSTEM_LED_COUNT &= ~128;
+		}
+		else
+		{
+			--SYSTEM_LED_COUNT;
+			if (SYSTEM_LED_COUNT==0)
+			{
+				if (SYSTEM_LED_WAS_OVERRIDDEN)
+				{
+					SYSTEM_LED_WAS_OVERRIDDEN = 0;
+					LED_Signaling_Start();
+					LED_On(LED_RGB);
+				}
+			}
+			else if (!(SYSTEM_LED_COUNT&1))
+			{
+				LED_SetRGBColor(0<<16 | 255<<8 | 0);
+				LED_On(LED_RGB);
+				TimingLED = 40;
+			}
+			else
+			{
+				LED_SetRGBColor(0<<16 | 10<<8 | 0);
+				LED_On(LED_RGB);
+				TimingLED = SYSTEM_LED_COUNT==1 ? 750 : 350;
+			}
+		}
     }
     else if(SPARK_LED_FADE && (!SPARK_CLOUD_CONNECTED || system_cloud_active()))
     {
@@ -460,9 +527,6 @@ void app_loop(bool threaded)
 #endif
 #if Wiring_Cellular == 1
                 system_power_management_update();
-#endif
-#if Wiring_SetupButtonUX
-                system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
 #endif
             }
         }

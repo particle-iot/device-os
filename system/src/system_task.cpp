@@ -16,6 +16,7 @@
  ******************************************************************************
  */
 
+#include "spark_wiring_platform.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_usbserial.h"
 #include "system_task.h"
@@ -300,6 +301,11 @@ void manage_cloud_connection(bool force_events)
 }
 #endif
 
+
+#if Wiring_SetupButtonUX
+extern void		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+#endif
+
 void Spark_Idle_Events(bool force_events/*=false*/)
 {
     HAL_Notify_WDT();
@@ -308,6 +314,11 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     spark_loop_total_millis = 0;
 
     if (!SYSTEM_POWEROFF) {
+
+#if Wiring_SetupButtonUX
+		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+#endif
+
         manage_serial_flasher();
 
         manage_network_connection();
