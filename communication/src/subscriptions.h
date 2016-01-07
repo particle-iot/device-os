@@ -62,7 +62,7 @@ public:
 	{
 		const unsigned len = message.length();
 		uint8_t* queue = message.buf();
-		if (CoAP::type(queue)==CoAPType::CON)
+		if (CoAP::type(queue)==CoAPType::CON && channel.is_unreliable())
 		{
 			Message response;
 			if (channel.response(message, response, 5)==NO_ERROR)
