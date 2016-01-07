@@ -27,6 +27,7 @@
 #include "system_cloud_internal.h"
 #include "system_network.h"
 #include "system_threading.h"
+#include "system_rgbled.h"
 
 
 enum eWanTimings
@@ -143,8 +144,9 @@ protected:
         WLAN_SERIAL_CONFIG_DONE = 0;
 
         cloud_disconnect();
+        RGBLEDState led_state;
+        led_state.save();
         SPARK_LED_FADE = 0;
-        bool signaling = LED_RGB_IsOverRidden();
         LED_SetRGBColor(RGB_COLOR_BLUE);
         LED_Signaling_Stop();
         LED_On(LED_RGB);
@@ -200,8 +202,7 @@ protected:
         }
 
         LED_On(LED_RGB);
-        if (signaling)
-            LED_Signaling_Start();
+        led_state.restore();
 
         WLAN_LISTEN_ON_FAILED_CONNECT = started && on_stop_listening();
 

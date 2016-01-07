@@ -34,6 +34,13 @@ void LED_SetSignalingColor(uint32_t RGB_Color)
     lastSignalColor = RGB_Color;
 }
 
+uint32_t LED_GetColor(uint32_t index, void* reserved)
+{
+	if (index==0)
+		return lastRGBColor;
+	return lastSignalColor;
+}
+
 void LED_Signaling_Start(void)
 {
     LED_RGB_OVERRIDE = 1;
