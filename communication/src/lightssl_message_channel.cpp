@@ -21,12 +21,13 @@ namespace protocol
 	}
 
 	void LightSSLMessageChannel::init(const uint8_t* core_private, const uint8_t* server_public,
-			const uint8_t* device_id, Callbacks& callbacks)
+			const uint8_t* device_id, Callbacks& callbacks, message_id_t* counter)
 	{
 		memcpy(this->core_private_key, core_private, sizeof(core_private_key));
 		memcpy(this->server_public_key, server_public, sizeof(server_public_key));
 		memcpy(this->device_id, device_id, sizeof(this->device_id));
 		this->callbacks = callbacks;
+		this->counter = counter;
 	}
 
 	/**
@@ -114,7 +115,8 @@ namespace protocol
 		memcpy(iv_send, credentials + 16, 16);
 		memcpy(iv_receive, credentials + 16, 16);
 		memcpy(salt, credentials + 32, 8);
-
+		if (counter)
+			*counter = *(message_id_t*)salt;
 		if (callbacks.handle_seed)
 			callbacks.handle_seed(credentials + 32, 8);
 
