@@ -107,7 +107,7 @@ uint32_t fake_millis()
 	return 0;
 }
 
-void event_ack(bool confirmable)
+void event_ack(bool confirmable, bool unreliable)
 {
 	ProtocolBuilder builder;
 	builder.callbacks.millis = &fake_millis;
@@ -122,6 +122,10 @@ void event_ack(bool confirmable)
 	size_t msglen = Messages::event(event_buf, 0x1234, "e", "", 60, EventType::PUBLIC, confirmable);
 	event.set_length(msglen);
 	event.decode_id();	// need this in the test since it's not done by our mock MessageChannel
+
+	// if the message is confirmable, then is_unreliable is called.
+	if (confirmable)
+		When(Method(channel,is_unreliable)).Return(unreliable);
 
 	auto receive_event = [&event, msglen](Message& msg) {
 		msg = event;
@@ -140,7 +144,7 @@ void event_ack(bool confirmable)
 		return NO_ERROR;
 	};
 
-	if (confirmable)
+	if (confirmable && unreliable)
 	{
 		When(Method(channel,response)).Do(provide_response);
 
@@ -159,17 +163,22 @@ void event_ack(bool confirmable)
 	bool success = p.event_loop();
 	REQUIRE(success);
 
-	if (confirmable)
+	if (confirmable && unreliable)
 		Verify(Method(channel,send));
 }
 
-SCENARIO("confirmable events are acknowledged")
+SCENARIO("confirmable events are not acknowledged over a reliable transport")
 {
-	event_ack(true);
+	event_ack(true, false);
+}
+
+SCENARIO("confirmable events are acknowledged over an unreliable transport")
+{
+	event_ack(true, true);
 }
 
 SCENARIO("non-confirmable events are not acknowledged")
 {
-	event_ack(false);
+	event_ack(false, false);
 }
 
