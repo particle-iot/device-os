@@ -65,7 +65,7 @@ void HAL_WLAN_notify_simple_config_done()
     network.notify_listening_complete();
 }
 
-void HAL_WLAN_notify_connected()
+void HAL_NET_notify_connected()
 {
     network.notify_connected();
 }

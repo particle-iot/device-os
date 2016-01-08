@@ -167,7 +167,7 @@ wlan_result_t wlan_connect_finalize()
     // enable connection from stored profiles
     wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
     if (!result) {
-        HAL_WLAN_notify_connected();
+        HAL_NET_notify_connected();
         wiced_ip_setting_t settings;
         wiced_ip_address_t dns;
 
@@ -229,7 +229,7 @@ wlan_result_t wlan_activate()
 {
     wlan_result_t result = wiced_wlan_connectivity_init();
     if (!result)
-        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
+        wiced_network_register_link_callback(HAL_NET_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
     wlan_refresh_antenna();
     return result;
 }

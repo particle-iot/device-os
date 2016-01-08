@@ -11,7 +11,7 @@ uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInuS);
 /**
  * Notification that the wifi network has been connected to.
  */
-void HAL_WLAN_notify_connected();
+void HAL_NET_notify_connected();
 void HAL_WLAN_notify_disconnected();
 
 /**

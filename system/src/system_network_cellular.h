@@ -62,7 +62,7 @@ protected:
         result = cellular_gprs_attach(savedCreds, NULL);
         if (result) return;
 
-        HAL_WLAN_notify_connected();
+        HAL_NET_notify_connected();
         HAL_WLAN_notify_dhcp(true);
     }
 
