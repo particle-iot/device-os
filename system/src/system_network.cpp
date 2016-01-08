@@ -142,7 +142,12 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
  */
 void network_listen(network_handle_t network, uint32_t flags, void*)
 {
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).listen(flags & NETWORK_LISTEN_EXIT));
+    const bool stop = flags & NETWORK_LISTEN_EXIT;
+    if (!SYSTEM_THREAD_CURRENT() && stop) {
+        // Break current listening loop to ensure that system thread can process asynchronous calls
+        nif(network).break_listen_loop();
+    }
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).listen(stop));
 }
 
 bool network_listening(network_handle_t network, uint32_t, void*)
