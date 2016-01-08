@@ -79,7 +79,7 @@ const static_ip_config_t* wlan_fetch_saved_ip_config()
     return (const static_ip_config_t*)dct_read_app_data(DCT_IP_CONFIG_OFFSET);
 }
 
-uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
 {
     wiced_watchdog_kick();
     return 0;

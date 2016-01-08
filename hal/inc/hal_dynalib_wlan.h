@@ -60,7 +60,7 @@ DYNALIB_FN(hal_wlan,wlan_set_error_count)
 DYNALIB_FN(hal_wlan,wlan_fetch_ipconfig)
 DYNALIB_FN(hal_wlan,wlan_setup)
 
-DYNALIB_FN(hal_wlan,HAL_WLAN_SetNetWatchDog)
+DYNALIB_FN(hal_wlan,HAL_NET_SetNetWatchDog)
 DYNALIB_FN(hal_wlan,inet_gethostbyname)
 DYNALIB_FN(hal_wlan,inet_ping)
 DYNALIB_FN(hal_wlan,wlan_select_antenna)

@@ -25,7 +25,7 @@
 
 #include "wlan_hal.h"
 
-uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
 {
     return 0;
 }

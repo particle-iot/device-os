@@ -61,7 +61,7 @@ uint32_t lastEvent = 0;
 #define ERROR_COUNT_FILE_OFFSET		3
 
 
-uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
 {
     uint32_t rv = cc3000__event_timeout_ms;
     cc3000__event_timeout_ms = timeOutInMS;
@@ -141,7 +141,7 @@ void Set_NetApp_Timeout(void)
     unsigned long aucARP = 3600;
     unsigned long aucKeepalive = 10;
     unsigned long aucInactivity = DEFAULT_SEC_INACTIVITY;
-    HAL_WLAN_SetNetWatchDog(S2M(DEFAULT_SEC_NETOPS)+ (DEFAULT_SEC_INACTIVITY ? 250 : 0) );
+    HAL_NET_SetNetWatchDog(S2M(DEFAULT_SEC_NETOPS)+ (DEFAULT_SEC_INACTIVITY ? 250 : 0) );
     netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity);
 }
 

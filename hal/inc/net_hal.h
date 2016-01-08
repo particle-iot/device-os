@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS);
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInuS);
 
 /**
  * Notification that the wifi network has been connected to.
