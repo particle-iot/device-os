@@ -30,6 +30,28 @@
 
 #define NONE CHANNEL_NONE
 
+/* Pins by Source
+ *
+ * GPIO_PinSource0: A7 (WKP), P1S0, P1S2, B2, B4
+ * GPIO_PinSource1: D5, RGBR, P1S1, P1S5, B3, B5
+ * GPIO_PinSource2: A2, RGBG, C0, PWR_UC
+ * GPIO_PinSource3: D4, A1, RGBB
+ * GPIO_PinSource4: D3, A6 (DAC/DAC1), P1S3, RESET_UC
+ * GPIO_PinSource5: D2, A0, A3 (DAC2)
+ * GPIO_PinSource6: D1, A4, B1
+ * GPIO_PinSource7: D0, A5, SETUP_BUTTON
+ * GPIO_PinSource8: B0, C5, PM_SCL_UC
+ * GPIO_PinSource9: TX, C4, PM_SDA_UC
+ * GPIO_PinSource10: RX, C3, TXD_UC
+ * GPIO_PinSource11: C2, RXD_UC
+ * GPIO_PinSource12: C1, RI_UC
+ * GPIO_PinSource13: D7, P1S4, CTS_UC, LOW_BAT_UC
+ * GPIO_PinSource14: D6, RTS_UC
+ * GPIO_PinSource15: D5, LVLOE_UC
+ */
+
+
+
 /* Private typedef -----------------------------------------------------------*/
 
 STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
