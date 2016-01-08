@@ -370,7 +370,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
             sock_handle_t socket = -1;
             STREAM_TO_UINT32(data,0,socket);
             set_socket_active_status(socket, SOCKET_STATUS_INACTIVE);
-            HAL_WLAN_notify_socket_closed(socket);
+            HAL_NET_notify_socket_closed(socket);
             break;
         }
     }

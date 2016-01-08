@@ -956,7 +956,7 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     return 0;
 }
 
-void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
     if (sparkSocket==socket)
     {
@@ -989,7 +989,7 @@ inline uint8_t cloudSocketClosed()
 
 #else
 
-void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
 }
 

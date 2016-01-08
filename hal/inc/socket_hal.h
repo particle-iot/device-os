@@ -155,7 +155,7 @@ enum hal_socket_type
 /**
  * Notification that an open socket has been closed.
  */
-void HAL_WLAN_notify_socket_closed(sock_handle_t socket);
+void HAL_NET_notify_socket_closed(sock_handle_t socket);
 
 
 #endif
