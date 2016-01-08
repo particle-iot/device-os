@@ -193,7 +193,7 @@ wlan_result_t wlan_connect_finalize()
         wiced_network_down(WICED_STA_INTERFACE);
     }
     // DHCP happens synchronously
-    HAL_WLAN_notify_dhcp(!result);
+    HAL_NET_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
     return result;
 }

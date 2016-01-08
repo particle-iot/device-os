@@ -80,7 +80,7 @@ void HAL_WLAN_notify_can_shutdown()
     network.notify_can_shutdown();
 }
 
-void HAL_WLAN_notify_dhcp(bool dhcp)
+void HAL_NET_notify_dhcp(bool dhcp)
 {
     network.notify_dhcp(dhcp);
 }

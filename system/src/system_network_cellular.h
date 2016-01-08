@@ -63,7 +63,7 @@ protected:
         if (result) return;
 
         HAL_NET_notify_connected();
-        HAL_WLAN_notify_dhcp(true);
+        HAL_NET_notify_dhcp(true);
     }
 
     void fetch_ipconfig(WLanConfig* target) override {

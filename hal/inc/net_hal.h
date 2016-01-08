@@ -18,7 +18,7 @@ void HAL_NET_notify_disconnected();
  * Notification that an IP address has been received via DHCP.
  * todo - what with the case of static IP config?
  */
-void HAL_WLAN_notify_dhcp(bool dhcp);
+void HAL_NET_notify_dhcp(bool dhcp);
 
 void HAL_WLAN_notify_can_shutdown();
 

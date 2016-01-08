@@ -81,7 +81,7 @@ wlan_result_t wlan_connect_finalize()
     HAL_Delay_Milliseconds(1000);
     HAL_NET_notify_connected();
     INFO("Virtual WLAN connected");
-    HAL_WLAN_notify_dhcp(true);
+    HAL_NET_notify_dhcp(true);
     return 0;
 }
 

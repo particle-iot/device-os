@@ -353,7 +353,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
         break;
 
     case HCI_EVNT_WLAN_UNSOL_DHCP:
-        HAL_WLAN_notify_dhcp(*(data + 20) == 0);
+        HAL_NET_notify_dhcp(*(data + 20) == 0);
         break;
 
     case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
