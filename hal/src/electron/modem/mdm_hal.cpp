@@ -296,9 +296,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                 // GSM/UMTS Specific -------------------------------------------
                 // +UUPSDD: <profile_id>
-                if (sscanf(cmd, "UUPSDD: %c", s) == 1) {
+                if (sscanf(cmd, "UUPSDD: %s", s) == 1) {
                     DEBUG_D("UUPSDD: %s matched\r\n", PROFILE);
-                    if ( strcmp(s, PROFILE) != -1 ) {
+                    if ( !strcmp(s, PROFILE) ) {
                         _ip = NOIP;
                         _attached = false;
                         DEBUG("PDP context deactivated remotely!\r\n");
