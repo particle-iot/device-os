@@ -70,7 +70,7 @@ void HAL_NET_notify_connected()
     network.notify_connected();
 }
 
-void HAL_WLAN_notify_disconnected()
+void HAL_NET_notify_disconnected()
 {
     network.notify_disconnected();
 }

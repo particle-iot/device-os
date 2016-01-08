@@ -349,7 +349,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
         break;
 
     case HCI_EVNT_WLAN_UNSOL_DISCONNECT:
-        HAL_WLAN_notify_disconnected();
+        HAL_NET_notify_disconnected();
         break;
 
     case HCI_EVNT_WLAN_UNSOL_DHCP:

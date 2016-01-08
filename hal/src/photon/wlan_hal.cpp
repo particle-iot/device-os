@@ -229,7 +229,7 @@ wlan_result_t wlan_activate()
 {
     wlan_result_t result = wiced_wlan_connectivity_init();
     if (!result)
-        wiced_network_register_link_callback(HAL_NET_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
+        wiced_network_register_link_callback(HAL_NET_notify_connected, HAL_NET_notify_disconnected, WICED_STA_INTERFACE);
     wlan_refresh_antenna();
     return result;
 }
@@ -244,7 +244,7 @@ wlan_result_t wlan_disconnect_now()
     socket_close_all();
     wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
-    HAL_WLAN_notify_disconnected();
+    HAL_NET_notify_disconnected();
     return result;
 }
 
