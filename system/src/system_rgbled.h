@@ -45,6 +45,7 @@ public:
 		{
 			LED_SetSignalingColor(color);
 			LED_Signaling_Start();
+			LED_On(LED_RGB);
 		}
 		else
 		{
