@@ -423,10 +423,11 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     return INVALID_STATE;
 
-  if (!message.length())
+  if (message.send_direct())
   {
-	  this->send(nullptr, 0);
-	  return NO_ERROR;
+	  // send unencrypted
+	  int bytes = this->send(message.buf(), message.length());
+	  return bytes < 0 ? IO_ERROR : NO_ERROR;
   }
 
 #ifdef DEBUG_BUILD

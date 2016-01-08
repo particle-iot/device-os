@@ -77,6 +77,7 @@ public:
 	static size_t content(uint8_t* buf, uint16_t message_id, uint8_t token);
 
 	static size_t ping(uint8_t* buf, uint16_t message_id);
+	static size_t keep_alive(uint8_t* buf);
 
 	static size_t presence_announcement(unsigned char *buf, const char *id);
 

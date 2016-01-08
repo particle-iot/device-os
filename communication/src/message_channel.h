@@ -78,6 +78,8 @@ public:
     bool has_id() { return id>=0; }
     message_id_t get_id() { return message_id_t(id); }
 
+    bool send_direct() { return length()<4; }
+
     CoAPType::Enum get_type() const
     {
     		return length() ? CoAP::type(buf()): CoAPType::ERROR;

@@ -177,7 +177,10 @@ protected:
 		Message message;
 		channel.create(message);
 		size_t len = 0;
-		if (!(flags & PING_AS_EMPTY_MESSAGE)) {
+		if (flags & PING_AS_EMPTY_MESSAGE) {
+			len = Messages::keep_alive(message.buf());
+		}
+		else {
 			len = Messages::ping(message.buf(), 0);
 		}
 		last_message_millis = callbacks.millis();

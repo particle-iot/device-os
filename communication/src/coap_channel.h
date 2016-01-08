@@ -58,20 +58,23 @@ public:
 
 	ProtocolError send(Message& msg) override
 	{
-		message_id_t id;
-		if (msg.has_id())
+		if (msg.length()>=4)
 		{
-			id = msg.get_id();
-		}
-		else
-		{
-			id = next_message_id();
-		}
+			message_id_t id;
+			if (msg.has_id())
+			{
+				id = msg.get_id();
+			}
+			else
+			{
+				id = next_message_id();
+			}
 
-		uint8_t* buf = msg.buf();
-		buf[2] = id >> 8;
-		buf[3] = id & 0xFF;
-		msg.decode_id();
+			uint8_t* buf = msg.buf();
+			buf[2] = id >> 8;
+			buf[3] = id & 0xFF;
+			msg.decode_id();
+		}
 		return base::send(msg);
 	}
 };
@@ -581,6 +584,9 @@ public:
 	 */
 	ProtocolError send(Message& msg) override
 	{
+		if (msg.send_direct())
+			return delegateChannel.send(msg);
+
 		if (msg.is_request() && msg.get_confirm_received())
 			return client.send_synchronous(msg, delegateChannel, millis);
 
