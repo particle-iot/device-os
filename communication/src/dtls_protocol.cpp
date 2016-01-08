@@ -8,7 +8,7 @@ void DTLSProtocol::init(const char *id,
 		  const SparkCallbacks &callbacks,
 		  const SparkDescriptor &descriptor)
 {
-	set_protocol_flags(PING_AS_EMPTY_MESSAGE);
+	set_protocol_flags(0);
 	memcpy(device_id, id, sizeof(device_id));
 	// send pings once per hour
 	initialize_ping(23*60*1000,30000);
