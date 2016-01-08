@@ -1505,6 +1505,8 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
 int MDMParser::socketReadable(int socket)
 {
     int pending = MDM_SOCKET_ERROR;
+    if (_cancel_all_operations)
+    		return MDM_SOCKET_ERROR;
     LOCK();
     if (ISSOCKET(socket) && _sockets[socket].connected) {
     		//DEBUG_D("socketReadable(%d)\r\n", socket);

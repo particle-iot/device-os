@@ -450,9 +450,7 @@ extern "C" void HAL_SysTick_Handler(void)
     // determine if the button press needs to change the state (and hasn't done so already))
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
-        if (network.connecting()) {
-            network.connect_cancel(true, true);
-        }
+        network.connect_cancel(true, true);
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.

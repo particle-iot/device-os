@@ -223,7 +223,9 @@ void establish_cloud_connection()
         {
             WARN("Cloud socket connection failed: %d", connect_result);
             SPARK_CLOUD_SOCKETED = 0;
-            if (SPARK_WLAN_RESET)
+            // if the user put the networkin listening mode via the button,
+            // the cloud connect may have been cancelled.
+            if (SPARK_WLAN_RESET || network.listening())
                 return;
 
             cloud_connection_failed();
@@ -254,22 +256,25 @@ void handle_cloud_connection(bool force_events)
         		int err = cloud_handshake();
             if (err)
             {
-                cloud_connection_failed();
-                uint32_t color = RGB_COLOR_RED;
-                if (particle::protocol::DECRYPTION_ERROR==err)
-                		color = RGB_COLOR_ORANGE;
-                else if (particle::protocol::AUTHENTICATION_ERROR==err)
-                		color = RGB_COLOR_MAGENTA;
-                WARN("Cloud handshake failed, code=%d", err);
-                LED_SetRGBColor(color);
-                LED_On(LED_RGB);
-                // delay a little to be sure the user sees the LED color, since
-                // the socket may quickly disconnect and the connection retried, turning
-                // the LED back to cyan
-                system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-                // allow time for the LED to be flashed
-                while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
-                cloud_disconnect();
+            		if (!SPARK_WLAN_RESET && !network.listening())
+            		{
+					cloud_connection_failed();
+					uint32_t color = RGB_COLOR_RED;
+					if (particle::protocol::DECRYPTION_ERROR==err)
+							color = RGB_COLOR_ORANGE;
+					else if (particle::protocol::AUTHENTICATION_ERROR==err)
+							color = RGB_COLOR_MAGENTA;
+					WARN("Cloud handshake failed, code=%d", err);
+					LED_SetRGBColor(color);
+					LED_On(LED_RGB);
+					// delay a little to be sure the user sees the LED color, since
+					// the socket may quickly disconnect and the connection retried, turning
+					// the LED back to cyan
+					system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+					// allow time for the LED to be flashed
+					while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
+            		}
+				cloud_disconnect();
             }
             else
             {
