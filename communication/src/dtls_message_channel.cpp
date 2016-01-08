@@ -236,7 +236,11 @@ inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 
 inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
 {
-	return callbacks.receive(data, len, callbacks.tx_context);
+	int size = callbacks.receive(data, len, callbacks.tx_context);
+	// ignore 0 and 1 byte UDP packets which are used to keep alive the connection.
+	if (size>=0 && size <=1)
+		size = 0;
+	return size;
 }
 
 int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len ) {

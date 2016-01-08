@@ -172,12 +172,12 @@ protected:
 	/**
 	 * Send a Ping message over the channel.
 	 */
-	ProtocolError ping()
+	ProtocolError ping(bool forceCoAP=false)
 	{
 		Message message;
 		channel.create(message);
 		size_t len = 0;
-		if (flags & PING_AS_EMPTY_MESSAGE) {
+		if (!forceCoAP && (flags & PING_AS_EMPTY_MESSAGE)) {
 			len = Messages::keep_alive(message.buf());
 		}
 		else {

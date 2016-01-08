@@ -211,7 +211,7 @@ int Protocol::begin()
 	// resumed an existing session and don't need the hello
 	if (session_resumed && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
-		ping();
+		ping(true);
 		DEBUG("resumed session - not sending hello message");
 		return error;
 	}
