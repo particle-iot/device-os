@@ -13,7 +13,7 @@ cd $testDir/unit || die "Hey where's the ./unit directory?"
 
 target_file=obj/runner
 
-make all > build.log || die "Problem building unit tests"
+make all > build.log || die "Problem building unit tests. Please see build.log"
 
 [ -f "$target_file" ] || die "Couldn't find the unit test executable"
 

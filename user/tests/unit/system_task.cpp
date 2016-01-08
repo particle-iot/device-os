@@ -62,9 +62,14 @@ SCENARIO("System version info is retrieved", "[system,version]") {
 
     REQUIRE(info.versionNumber==SYSTEM_VERSION);
 
+
     char expected[20];
-    sprintf(expected, "%d.%d.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1));
-    REQUIRE(strcmp(expected,info.versionString)==0);
+    if (SYSTEM_VERSION & 0xFF)
+    		sprintf(expected, "%d.%d.%d-rc.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0));
+    else
+    		sprintf(expected, "%d.%d.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1));
+
+	REQUIRE(strcmp(expected,info.versionString)==0);
 
     REQUIRE(System.versionNumber()==info.versionNumber);
 
