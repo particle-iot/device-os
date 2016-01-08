@@ -75,7 +75,7 @@ void HAL_NET_notify_disconnected()
     network.notify_disconnected();
 }
 
-void HAL_WLAN_notify_can_shutdown()
+void HAL_NET_notify_can_shutdown()
 {
     network.notify_can_shutdown();
 }

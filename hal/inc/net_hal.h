@@ -20,7 +20,7 @@ void HAL_NET_notify_disconnected();
  */
 void HAL_NET_notify_dhcp(bool dhcp);
 
-void HAL_WLAN_notify_can_shutdown();
+void HAL_NET_notify_can_shutdown();
 
 
 #ifdef __cplusplus

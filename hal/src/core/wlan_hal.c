@@ -357,7 +357,7 @@ void WLAN_Async_Callback(long lEventType, char *data, unsigned char length)
         break;
 
     case HCI_EVENT_CC3000_CAN_SHUT_DOWN:
-        HAL_WLAN_notify_can_shutdown();
+        HAL_NET_notify_can_shutdown();
         break;
 
     case HCI_EVNT_WLAN_ASYNC_PING_REPORT:
