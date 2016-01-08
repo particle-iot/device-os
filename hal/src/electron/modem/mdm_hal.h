@@ -509,6 +509,7 @@ protected:
     bool _pwr;
     bool _activated;
     bool _attached;
+    bool _attached_urc;
     volatile bool _cancel_all_operations;
 #ifdef MDM_DEBUG
     int _debugLevel;
