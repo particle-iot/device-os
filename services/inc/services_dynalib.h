@@ -47,6 +47,7 @@ DYNALIB_FN(services, jsmn_parse)
 DYNALIB_FN(services, log_print_)
 DYNALIB_FN(services,LED_RGB_SetChangeHandler)
 DYNALIB_FN(services, log_print_direct_)
+DYNALIB_FN(services, LED_GetColor)
 DYNALIB_END(services)
 
 

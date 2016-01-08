@@ -51,6 +51,7 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_cellularsignal.h"
+#include "system_rgbled.h"
 
 using namespace spark;
 
@@ -95,13 +96,8 @@ static volatile uint32_t TimingIWDGReload;
  * The value is then decremented and the process repeated until 0.
  */
 static volatile uint8_t SYSTEM_LED_COUNT;
-/**
- * the previous override state before system override kicked in.
- * This is temporary until a more flexible LED management framework is
- * put in place.
- */
-static volatile uint8_t SYSTEM_LED_WAS_OVERRIDDEN;
 
+RGBLEDState led_state;
 
 /**
  * KNowing the current listen mode isn't sufficient to determine the correct action (since that may or may not have changed)
@@ -129,7 +125,7 @@ static uint8_t clicks = 0;
 
 void system_prepare_display_bars()
 {
-	SYSTEM_LED_WAS_OVERRIDDEN = LED_RGB_IsOverRidden();
+	led_state.save();
 	LED_Signaling_Stop();
 	SYSTEM_LED_COUNT = 255;
 	TimingLED = 0;	// todo - should use a mutex around these shared vars
@@ -388,12 +384,7 @@ extern "C" void HAL_SysTick_Handler(void)
 			--SYSTEM_LED_COUNT;
 			if (SYSTEM_LED_COUNT==0)
 			{
-				if (SYSTEM_LED_WAS_OVERRIDDEN)
-				{
-					SYSTEM_LED_WAS_OVERRIDDEN = 0;
-					LED_Signaling_Start();
-					LED_On(LED_RGB);
-				}
+				led_state.restore();
 			}
 			else if (!(SYSTEM_LED_COUNT&1))
 			{
