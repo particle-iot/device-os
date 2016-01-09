@@ -219,8 +219,8 @@ int Protocol::begin()
 		return error;
 	}
 
-	// resumed an existing session and don't need the hello
-	if (flags & SKIP_SESSION_RESUME_HELLO)
+	// hello not needed because it's already been sent and the server maintains device state
+	if (channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
 		ping(true);
 		DEBUG("resumed session - not sending hello message");
