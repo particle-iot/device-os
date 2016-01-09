@@ -473,7 +473,7 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 	case REFRESH_SESSION:
 		sessionPersist.clear(callbacks.save);
 		mbedtls_ssl_session_reset(&ssl_context);
-		establish();
+		return establish();
 		break;
 	}
 	return NO_ERROR;
