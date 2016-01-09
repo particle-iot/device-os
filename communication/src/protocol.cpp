@@ -132,6 +132,17 @@ ProtocolError Protocol::handle_received_message(Message& message,
 
 ProtocolError Protocol::handle_key_change(Message& message)
 {
+	uint8_t* buf = message.buf();
+	ProtocolError result = NO_ERROR;
+	if (CoAP::type(buf)==CoAPType::CON)
+	{
+		Message response;
+		channel.response(message, response, 5);
+		size_t sz = Messages::empty_ack(response.buf(), 0, 0);
+		response.set_length(sz);
+		result = channel.send(response);
+	}
+
 	// 4 bytes coAP header, 2 bytes message type option
 	// token length, and skip 1 byte for the parameter option header.
 	if (message.length()>7)
@@ -140,10 +151,10 @@ ProtocolError Protocol::handle_key_change(Message& message)
 		uint8_t option_idx = 7 + (buf[0] & 0xF);
 		if (buf[option_idx]==1)
 		{
-			return channel.command(MessageChannel::REFRESH_SESSION);
+			result = channel.command(MessageChannel::REFRESH_SESSION);
 		}
 	}
-	return NO_ERROR;
+	return result;
 }
 
 
