@@ -220,7 +220,7 @@ int Protocol::begin()
 	}
 
 	// hello not needed because it's already been sent and the server maintains device state
-	if (channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
+	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
 		ping(true);
 		DEBUG("resumed session - not sending hello message");
