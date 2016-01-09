@@ -137,7 +137,7 @@ ProtocolError Protocol::handle_key_change(Message& message)
 	if (message.length()>7)
 	{
 		uint8_t* buf = message.buf();
-		uint8_t option_idx = 8 + (buf[0] & 0xF);
+		uint8_t option_idx = 7 + (buf[0] & 0xF);
 		if (buf[option_idx]==1)
 		{
 			return channel.command(MessageChannel::REFRESH_SESSION);
