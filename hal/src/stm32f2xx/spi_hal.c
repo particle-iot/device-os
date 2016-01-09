@@ -51,7 +51,9 @@ typedef struct STM32_SPI_Info {
     DMA_Stream_TypeDef* SPI_RX_DMA_Stream;
 
     uint8_t SPI_TX_DMA_Stream_IRQn;
+    uint8_t SPI_RX_DMA_Stream_IRQn;
     uint32_t SPI_TX_DMA_Stream_TC_Event;
+    uint32_t SPI_RX_DMA_Stream_TC_Event;
 
     uint8_t SPI_SCK_Pin;
     uint8_t SPI_MISO_Pin;
@@ -81,12 +83,12 @@ typedef struct SPI_State
 const STM32_SPI_Info spiMap[TOTAL_SPI] =
 {
         { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, &RCC->AHB1ENR, RCC_AHB1Periph_DMA2, DMA_Channel_3,
-          DMA2_Stream5, DMA2_Stream2, DMA2_Stream5_IRQn, DMA_IT_TCIF5, SCK, MISO, MOSI, SS, GPIO_AF_SPI1 },
+          DMA2_Stream5, DMA2_Stream2, DMA2_Stream5_IRQn, DMA2_Stream2_IRQn, DMA_IT_TCIF5, DMA_IT_TCIF2, SCK, MISO, MOSI, SS, GPIO_AF_SPI1 },
         { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
-          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, D4, D3, D2, D5, GPIO_AF_SPI3  }
+          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA1_Stream2_IRQn, DMA_IT_TCIF7, DMA_IT_TCIF2, D4, D3, D2, D5, GPIO_AF_SPI3  }
 #if PLATFORM_ID == 10 // Electron
         ,{ SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
-          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA_IT_TCIF7, C3, C2, C1, C0, GPIO_AF_SPI3  }
+          DMA1_Stream7, DMA1_Stream2, DMA1_Stream7_IRQn, DMA1_Stream2_IRQn, DMA_IT_TCIF7, DMA_IT_TCIF2, C3, C2, C1, C0, GPIO_AF_SPI3  }
 #endif
 };
 
@@ -166,8 +168,16 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
 
     /* Enable SPI TX DMA Stream Interrupt */
     DMA_ITConfig(spiMap[spi].SPI_TX_DMA_Stream, DMA_IT_TC, ENABLE);
+    /* Enable SPI RX DMA Stream Interrupt */
+    DMA_ITConfig(spiMap[spi].SPI_RX_DMA_Stream, DMA_IT_TC, ENABLE);
 
     NVIC_InitStructure.NVIC_IRQChannel = spiMap[spi].SPI_TX_DMA_Stream_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = spiMap[spi].SPI_RX_DMA_Stream_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -189,6 +199,16 @@ static void HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
         DMA_ClearITPendingBit(spiMap[spi].SPI_TX_DMA_Stream, spiMap[spi].SPI_TX_DMA_Stream_TC_Event);
         SPI_I2S_DMACmd(spiMap[spi].SPI_Peripheral, SPI_I2S_DMAReq_Tx, DISABLE);
         DMA_Cmd(spiMap[spi].SPI_TX_DMA_Stream, DISABLE);
+    }
+}
+
+static void HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
+{
+    if (DMA_GetITStatus(spiMap[spi].SPI_RX_DMA_Stream, spiMap[spi].SPI_RX_DMA_Stream_TC_Event) == SET)
+    {
+        DMA_ClearITPendingBit(spiMap[spi].SPI_RX_DMA_Stream, spiMap[spi].SPI_RX_DMA_Stream_TC_Event);
+        SPI_I2S_DMACmd(spiMap[spi].SPI_Peripheral, SPI_I2S_DMAReq_Rx, DISABLE);
+        DMA_Cmd(spiMap[spi].SPI_RX_DMA_Stream, DISABLE);
 
         HAL_SPI_DMA_UserCallback callback = spiState[spi].SPI_DMA_UserCallback;
         if (callback) {
@@ -197,6 +217,7 @@ static void HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
         }
     }
 }
+
 
 void HAL_SPI_Init(HAL_SPI_Interface spi)
 {
@@ -392,6 +413,27 @@ void DMA1_Stream7_irq(void)
 void DMA2_Stream5_irq(void)
 {
     HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE1);
+}
+
+/**
+ * @brief  This function handles DMA1 Stream 2 interrupt request.
+ * @param  None
+ * @retval None
+ */
+void DMA1_Stream2_irq(void)
+{
+    //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
+    HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+}
+
+/**
+ * @brief  This function handles DMA2 Stream 2 interrupt request.
+ * @param  None
+ * @retval None
+ */
+void DMA2_Stream2_irq_override(void)
+{
+    HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE1);
 }
 
 void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
