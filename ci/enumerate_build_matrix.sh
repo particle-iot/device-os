@@ -23,8 +23,8 @@ NO_COLOR="\033[0m"
 DEBUG_BUILD=( y n )
 PLATFORM=( core photon P1 electron )
 SPARK_CLOUD=( y n )
-# TODO: Once FIRM-161 is fixed, change APP to this: APP=( "" tinker blank product_id_and_version )
-APP=( "" tinker blank )
+# TODO: Once FIRM-161 is fixed, change APP to this: APP=( "" tinker product_id_and_version )
+APP=( "" tinker )
 TEST=( wiring/api wiring/no_fixture )
 
 MODULAR_PLATFORM=( photon P1 )
