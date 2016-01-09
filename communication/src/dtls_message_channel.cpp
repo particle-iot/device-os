@@ -287,6 +287,7 @@ void DTLSMessageChannel::dispose()
 ProtocolError DTLSMessageChannel::setup_context()
 {
 	int ret;
+	mbedtls_ssl_free(&ssl_context);
 	ret = mbedtls_ssl_setup(&ssl_context, &conf);
 	EXIT_ERROR(ret, "unable to setup SSL context");
 
