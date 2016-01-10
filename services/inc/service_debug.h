@@ -85,7 +85,7 @@ void log_print_(int level, int line, const char *func, const char *file, const c
 void log_direct_(const char* s);
 
 /* log print with (formatting arguments) without any extra info or \r\n */
-void log_print_direct_(const char *msg, ...);
+void log_print_direct_(int level, void* reserved, const char *msg, ...);
 
 /**
  * The debug output function.
@@ -120,7 +120,7 @@ extern void HAL_Delay_Microseconds(uint32_t delay);
 #define WARN(fmt, ...)   do { if ( __LOG_LEVEL_TEST(WARN_LEVEL) )  {log_print_(WARN_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define ERROR(fmt, ...)  do { if ( __LOG_LEVEL_TEST(ERROR_LEVEL) ) {log_print_(ERROR_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
 #define PANIC(code,fmt, ...)  do { if ( __LOG_LEVEL_TEST(PANIC_LEVEL) ) {log_print_(PANIC_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);} panic_(code, NULL, HAL_Delay_Microseconds);}while(0)
-#define DEBUG_D(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_direct_(fmt,##__VA_ARGS__);}}while(0)
+#define DEBUG_D(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_direct_(LOG_LEVEL, nullptr, fmt,##__VA_ARGS__);}}while(0)
 #endif
 #define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure "#predicate);} while(0);
 
