@@ -409,15 +409,17 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	message.set_length(ret);
 	if (ret>0) {
 #ifdef DEBUG_BUILD
-      DEBUG("message length %d", message.length());
-      for (size_t i=0; i<message.length(); i++)
-      {
-    	  	  char buf[3];
-    	  	  char c = message.buf()[i];
-    	  	  sprintf(buf, "%02x", c);
-    	  	  log_direct_(buf);
-      }
-      log_direct_("\n");
+		if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
+		  DEBUG("message length %d", message.length());
+		  for (size_t i=0; i<message.length(); i++)
+		  {
+				  char buf[3];
+				  char c = message.buf()[i];
+				  sprintf(buf, "%02x", c);
+				  log_direct_(buf);
+		  }
+		  log_direct_("\n");
+		}
 #endif
 	}
 	return NO_ERROR;

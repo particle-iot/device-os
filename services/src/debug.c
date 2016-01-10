@@ -83,3 +83,10 @@ void log_direct_(const char* s) {
 	debug_output_(s);
 }
 
+int log_level_active(LoggerOutputLevel level, void* reserved)
+{
+	return (level>=log_level_at_run_time && debug_output_);
+}
+
+
+

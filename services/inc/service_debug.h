@@ -99,6 +99,10 @@ typedef void (*debug_output_fn)(const char *);
  */
 void set_logger_output(debug_output_fn output, LoggerOutputLevel level);
 
+#define LOG_LEVEL_ACTIVE(level) (log_level_active(level, NULL))
+
+int log_level_active(LoggerOutputLevel level, void* reserved);
+
 extern void HAL_Delay_Microseconds(uint32_t delay);
 
 // Short Cuts
