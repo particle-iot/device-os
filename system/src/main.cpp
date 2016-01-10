@@ -302,10 +302,10 @@ void system_power_management_update()
         if (LOWBATT) {
             fuel.clearAlert(); // Clear the Low Battery Alert flag if set
         }
-        if (LOG_LEVEL_ACTIVE(INFO_LEVEL)) {
-        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
-        }
-#ifdef DEBUG_BUILD
+//        if (LOG_LEVEL_ACTIVE(INFO_LEVEL)) {
+//        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
+//        }
+#if defined(DEBUG_BUILD) && 0
         if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
 			uint8_t stat = power.getSystemStatus();
 			uint8_t fault = power.getFault();

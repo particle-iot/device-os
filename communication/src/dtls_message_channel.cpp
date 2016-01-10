@@ -408,7 +408,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	}
 	message.set_length(ret);
 	if (ret>0) {
-#ifdef DEBUG_BUILD
+#if defined(DEBUG_BUILD) && 0
 		if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
 		  DEBUG("message length %d", message.length());
 		  for (size_t i=0; i<message.length(); i++)
