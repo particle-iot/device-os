@@ -37,9 +37,9 @@ extern "C" {
 #define SYSTEM_VERSION_v046  0x00040600
 #define SYSTEM_VERSION_v047  0x00040700
 #define SYSTEM_VERSION_v048  0x00040800		// photon RTM Dec 2015
-#define SYSTEM_VERSION_v048RC5  0x00040805	// electron RTM Jan 2016
+#define SYSTEM_VERSION_v048RC6  0x00040806	// electron RTM Jan 2016
 
-#define SYSTEM_VERSION  SYSTEM_VERSION_v048RC5
+#define SYSTEM_VERSION  SYSTEM_VERSION_v048RC6
 
 #define SYSTEM_VERSION_040
 #define SYSTEM_VERSION_041
@@ -50,7 +50,7 @@ extern "C" {
 #define SYSTEM_VERSION_046
 #define SYSTEM_VERSION_047
 #define SYSTEM_VERSION_048
-#define SYSTEM_VERSION_048RC5
+#define SYSTEM_VERSION_048RC6
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
