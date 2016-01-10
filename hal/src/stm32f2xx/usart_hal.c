@@ -384,11 +384,11 @@ static void HAL_USART_Handler(HAL_USART_Serial serial)
 		}
 	}
 
-    	if (USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_ORE) != RESET)
-    	{
-    		// If Overrun flag is still set, clear it
-        	(void)USART_ReceiveData(usartMap[serial]->usart_peripheral);
-    	}
+//    	if (USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_ORE) != RESET)
+//    	{
+//    		// If Overrun flag is still set, clear it
+//        	(void)USART_ReceiveData(usartMap[serial]->usart_peripheral);
+//    	}
 
 }
 
