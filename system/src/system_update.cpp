@@ -242,7 +242,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
     }
 #endif
 #if (PLATFORM_ID==88) && defined (RESET_AVRDUDE_FLASHER_SERIAL_SPEED)
-    if((bitrate == RESET_AVRDUDE_FLASHER_SERIAL_SPEED) && (HAL_Timer_Get_Milli_Seconds() > 5000) ) // Delay to skip the plug-in trigged interrupt
+    if((bitrate == RESET_AVRDUDE_FLASHER_SERIAL_SPEED) && (HAL_Timer_Get_Milli_Seconds() > 10000) ) // Delay to skip the plug-in trigged interrupt
     {
         EXTRA_SYSTEM_FLAG(arduino_upload) = 0xAABB;
         Save_ExtraSystemFlags();
