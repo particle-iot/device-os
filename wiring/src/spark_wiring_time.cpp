@@ -243,9 +243,9 @@ int TimeClass::year(time_t t)
 }
 
 /* return the current time as seconds since Jan 1 1970 */
-time_t TimeClass::now()
+time_t TimeClass::now(bool withZone)
 {
-	return HAL_RTC_Get_UnixTime();
+	return HAL_RTC_Get_UnixTime() + (withZone ? time_zone_cache : 0);
 }
 
 /* set the time zone (+/-) offset from GMT */
