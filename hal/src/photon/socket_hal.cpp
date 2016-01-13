@@ -994,7 +994,7 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
         }
         else if (is_client(socket)) {
             tcp_server_client_t* server_client = client(socket);
-            result = server_client->write(buffer, len);
+            wiced_result = static_cast<wiced_result_t>(server_client->write(buffer, len));
         }
         if (!wiced_result)
             DEBUG("Write %d bytes to socket %d result=%d", (int)len, (int)sd, wiced_result);
