@@ -50,7 +50,7 @@ USER_MEM=$(OUT)/user-part.bin
 USER_DIR=$(FIRMWARE)/modules/$(PLATFORM_NAME)/user-part
 
 PRODUCT_ID?=$(PLATFORM_ID)
-
+MAKE_ARGS += -s
 CRC=crc32
 XXD=xxd
 OPTS=
@@ -67,7 +67,7 @@ clean:
 bootloader:
 	@echo building bootloader to $(BOOTLOADER_MEM)
 	-rm $(BOOTLOADER_MEM)
-	$(MAKE) -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) COMPILE_LTO=n all
+	$(MAKE) $(MAKE_ARGS) -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) COMPILE_LTO=n all
 	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377"  > $(BOOTLOADER_MEM)
 	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
 
@@ -85,7 +85,7 @@ dct:
 user: 
 	@echo building factory default modular user app to $(USER_MEM)
 	-rm $(USER_MEM)
-	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) DEBUG_BUILD=y all
+	$(MAKE) $(MAKE_ARGS) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) DEBUG_BUILD=y all
 	dd if=/dev/zero ibs=1 count=128k | tr "\000" "\377" > $(USER_MEM)
 	dd if=$(USER_BIN) of=$(USER_MEM) conv=notrunc
 	
@@ -93,7 +93,7 @@ system-full:
 	# The system module is composed of part1 and part2 concatenated together
 	@echo building full modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
-	$(MAKE) -C $(MODULAR_DIR) COMPILE_LTO=n PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) DEBUG_BUILD=y PRODUCT_ID=$(PRODUCT_ID) all
+	$(MAKE) $(MAKE_ARGS) -C $(MODULAR_DIR) COMPILE_LTO=n PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) DEBUG_BUILD=y PRODUCT_ID=$(PRODUCT_ID) all
 	dd if=/dev/zero ibs=1 count=384k | tr "\000" "\377" > $(SYSTEM_MEM)
 	dd if=$(SYSTEM_PART1_BIN) bs=1k of=$(SYSTEM_MEM) conv=notrunc
 	dd if=$(SYSTEM_PART2_BIN) bs=1k of=$(SYSTEM_MEM) seek=128 conv=notrunc

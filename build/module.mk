@@ -37,10 +37,12 @@ endif
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(RUSTSRC:.rs=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o)))
 
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(RUSTSRC:.rs=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
 
 
@@ -218,6 +220,15 @@ $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CC) $(ASFLAGS) -c -o $@ $<
 	$(call echo,)
+
+# rust compiler to build .o from .rs in $(BUILD_DIR)
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.rs
+	$(call echo,'Building file: $<')
+	$(call echo,'Invoking: Rust Compiler')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(RUSTC) $(RUSTFLAGS) --emit obj -o $@ $<
+	$(call echo,)
+
 
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
