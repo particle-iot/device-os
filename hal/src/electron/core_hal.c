@@ -133,7 +133,7 @@ IDX[x] = added IRQ handler
 71 [x] TIM7_IRQHandler                   // TIM7
 72 [ ] DMA2_Stream0_IRQHandler           // DMA2 Stream 0
 73 [ ] DMA2_Stream1_IRQHandler           // DMA2 Stream 1
-74 [ ] DMA2_Stream2_IRQHandler           // DMA2 Stream 2
+74 [x] DMA2_Stream2_IRQHandler           // DMA2 Stream 2
 75 [ ] DMA2_Stream3_IRQHandler           // DMA2 Stream 3
 76 [ ] DMA2_Stream4_IRQHandler           // DMA2 Stream 4
 77 [ ] ETH_IRQHandler                    // Ethernet
@@ -200,6 +200,7 @@ const unsigned UART4_IRQHandler_Idx                 = 68;
 const unsigned UART5_IRQHandler_Idx                 = 69;
 const unsigned TIM6_DAC_IRQHandler_Idx              = 70;
 const unsigned TIM7_IRQHandler_Idx                  = 71;
+const unsigned DMA2_Stream2_IRQHandler_Idx          = 74;
 const unsigned CAN2_TX_IRQHandler_Idx               = 79;
 const unsigned CAN2_RX0_IRQHandler_Idx              = 80;
 const unsigned CAN2_RX1_IRQHandler_Idx              = 81;
@@ -272,6 +273,7 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[UART4_IRQHandler_Idx]              = (uint32_t)HAL_USART4_Handler;
     isrs[UART5_IRQHandler_Idx]              = (uint32_t)HAL_USART5_Handler;
     isrs[TIM6_DAC_IRQHandler_Idx]           = (uint32_t)TIM6_DAC_irq;
+    isrs[DMA2_Stream2_IRQHandler_Idx]       = (uint32_t)DMA2_Stream2_irq_override;
     isrs[TIM7_IRQHandler_Idx]               = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
     isrs[CAN2_TX_IRQHandler_Idx]            = (uint32_t)CAN2_TX_irq;
     isrs[CAN2_RX0_IRQHandler_Idx]           = (uint32_t)CAN2_RX0_irq;
@@ -613,7 +615,7 @@ void SDIO_IRQHandler(void)          {__ASM("bkpt 0");}
 void SPI3_IRQHandler(void)          {__ASM("bkpt 0");}
 void DMA2_Stream0_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream1_IRQHandler(void)  {__ASM("bkpt 0");}
-void DMA2_Stream2_IRQHandler(void)  {__ASM("bkpt 0");}
+//void DMA2_Stream2_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream3_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA2_Stream4_IRQHandler(void)  {__ASM("bkpt 0");}
 void ETH_IRQHandler(void)           {__ASM("bkpt 0");}
