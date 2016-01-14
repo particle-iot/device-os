@@ -248,6 +248,11 @@ time_t TimeClass::now()
 	return HAL_RTC_Get_UnixTime();
 }
 
+time_t TimeClass::local()
+{
+	return HAL_RTC_Get_UnixTime()+time_zone_cache;
+}
+
 /* set the time zone (+/-) offset from GMT */
 void TimeClass::zone(float GMT_Offset)
 {
@@ -256,6 +261,11 @@ void TimeClass::zone(float GMT_Offset)
 		return;
 	}
 	time_zone_cache = GMT_Offset * 3600;
+}
+
+float TimeClass::zone()
+{
+	return time_zone_cache / 3600.0;
 }
 
 /* set the given time as unix/rtc time */

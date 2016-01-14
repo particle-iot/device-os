@@ -37,6 +37,23 @@ test(TIME_NowReturnsCorrectUnixTime) {
     assertEqual(current_time, last_time + 1);//RTC interrupt fires successfully
 }
 
+test(TIME_LocalReturnsUnixTimePlusTimezone) {
+    // when
+	Time.zone(-5);
+	// todo - ideally need to disable interrupts or we may get the 1 second switch between invoking
+	// Time.now() and Time.local();
+    time_t last_time = Time.now();
+    // then
+    time_t local_time = Time.local();
+    assertEqual(local_time, last_time - (5*3600));
+}
+
+
+test(TIME_zoneIsReturned) {
+	Time.zone(-10);
+	assertEqual(Time.zone(), -10);
+}
+
 test(TIME_SetTimeResultsInCorrectUnixTimeUpdate) {
     // when
     time_t current_time = Time.now();
