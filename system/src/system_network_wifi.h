@@ -94,11 +94,6 @@ protected:
     {
         wlan_connect_init();
 
-        if (wlan_reset_credentials_store_required())
-        {
-            wlan_reset_credentials_store();
-        }
-
         Set_NetApp_Timeout();
     }
 
@@ -174,6 +169,11 @@ public:
     void setup() override
     {
         wlan_setup();
+
+        if (wlan_reset_credentials_store_required())
+        {
+            wlan_reset_credentials_store();
+        }
     }
 
     void fetch_ipconfig(WLanConfig* target) override

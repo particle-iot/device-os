@@ -112,7 +112,9 @@ wlan_result_t wlan_deactivate() {
 
 bool wlan_reset_credentials_store_required()
 {
-    return (NVMEM_SPARK_Reset_SysFlag == 0x0001 || nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) != NVMEM_SPARK_FILE_SIZE);
+	wlan_start(0);	// needed for nvmem_read
+	bool has_nvmem = nvmem_read(NVMEM_SPARK_FILE_ID, NVMEM_SPARK_FILE_SIZE, 0, NVMEM_Spark_File_Data) == NVMEM_SPARK_FILE_SIZE;
+    return (NVMEM_SPARK_Reset_SysFlag == 0x0001 || !has_nvmem);
 }
 
 wlan_result_t wlan_reset_credentials_store()
