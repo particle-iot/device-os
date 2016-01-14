@@ -86,7 +86,7 @@ namespace spark {
         return apScan.start();
     }
 
-    int WiFiClass::listCredentials(WiFiAccessPoint* results, size_t result_count) {
+    int WiFiClass::getCredentials(WiFiAccessPoint* results, size_t result_count) {
         APList apList(results, result_count);
         return apList.start();
     }
