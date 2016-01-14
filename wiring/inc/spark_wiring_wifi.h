@@ -213,6 +213,8 @@ public:
     int scan(void (*handler)(WiFiAccessPoint* ap, T* instance), T* instance) {
         return scan((wlan_scan_result_t)handler, (void*)instance);
     }
+
+    int getCredentials(WiFiAccessPoint* results, size_t result_count);
 };
 
 extern WiFiClass WiFi;

@@ -300,6 +300,15 @@ WLanSecurityType toSecurityType(wiced_security_t sec)
     return WLAN_SEC_NOT_SET;
 }
 
+WLanSecurityCipher toCipherType(wiced_security_t sec)
+{
+    if (sec & AES_ENABLED)
+        return WLAN_CIPHER_AES;
+    if (sec & TKIP_ENABLED)
+        return WLAN_CIPHER_TKIP;
+    return WLAN_CIPHER_NOT_SET;
+}
+
 /*
  * Callback function to handle scan results
  */
@@ -325,6 +334,7 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
             data.ssidLength = record->SSID.length;
             data.ssid[data.ssidLength] = 0;
             data.security = toSecurityType(record->security);
+            data.cipher = toCipherType(record->security);
             data.rssi = record->signal_strength;
             data.channel = record->channel;
             data.maxDataRate = record->max_data_rate;
@@ -630,4 +640,49 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie)
     info.callback_data = cookie;
     int result =  sniff_security(&info);
     return result < 0 ? result : info.count;
+}
+
+/**
+ * Lists all WLAN credentials currently stored on the device
+ */
+int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
+{
+    int count = 0;
+    platform_dct_wifi_config_t* wifi_config = NULL;
+    wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
+    if (!result) {
+        // the storage may not have been initialized, so device_configured will be 0xFF
+        initialize_dct(wifi_config);
+
+        // iterate through each stored ap
+        for(int i = 0; i < CONFIG_AP_LIST_SIZE; i++) {
+            const wiced_config_ap_entry_t &ap = wifi_config->stored_ap_list[i];
+
+            if(!is_ap_config_set(ap)) {
+                continue;
+            }
+            count++;
+
+            if(!callback) {
+                continue;
+            }
+
+            const wiced_ap_info_t *record = &ap.details;
+
+            WiFiAccessPoint data;
+            memcpy(data.ssid, record->SSID.value, record->SSID.length);
+            memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
+            data.ssidLength = record->SSID.length;
+            data.ssid[data.ssidLength] = 0;
+            data.security = toSecurityType(record->security);
+            data.cipher = toCipherType(record->security);
+            data.rssi = record->signal_strength;
+            data.channel = record->channel;
+            data.maxDataRate = record->max_data_rate;
+
+            callback(&data, callback_data);
+        }
+        wiced_dct_read_unlock(wifi_config, WICED_FALSE);
+    }
+    return result < 0 ? result : count;
 }
