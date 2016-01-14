@@ -404,6 +404,11 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
     return wiced_security_t(result);
 }
 
+bool equals_ssid(const char* ssid, wiced_ssid_t& current)
+{
+	return (strlen(ssid)==current.length) && !memcmp(ssid, current.value, current.length);
+}
+
 static bool wifi_creds_changed;
 wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password,
     uint16_t passwordLen, wiced_security_t security, unsigned channel)
@@ -414,11 +419,23 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
         // the storage may not have been initialized, so device_configured will be 0xFF
         initialize_dct(wifi_config);
 
-        // shuffle all slots along
-        memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+        int replace = -1;
 
-        const int empty = 0;
-        wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[empty];
+        // find a slot with the same ssid
+        for (unsigned i=0; i<CONFIG_AP_LIST_SIZE; i++) {
+        		if (equals_ssid(ssid, wifi_config->stored_ap_list[i].details.SSID)) {
+        			replace = i;
+        			break;
+        		}
+        }
+
+        if (replace < 0)
+        	{
+			// shuffle all slots along
+			memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+			replace = 0;
+        	}
+        wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[replace];
         memset(&entry, 0, sizeof(entry));
         passwordLen = std::min(passwordLen, uint16_t(64));
         ssidLen = std::min(ssidLen, uint16_t(32));
