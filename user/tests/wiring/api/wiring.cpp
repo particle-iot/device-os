@@ -17,6 +17,11 @@ test(api_wiring_pinMode) {
     (void)mode;
 }
 
+test(api_wiring_analogWrite) {
+  API_COMPILE(analogWrite(D0, 50));
+  API_COMPILE(analogWrite(D0, 50, 10000));
+}
+
 test(api_wiring_wire_setSpeed)
 {
     API_COMPILE(Wire.setSpeed(CLOCK_SPEED_100KHZ));

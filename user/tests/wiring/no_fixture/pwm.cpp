@@ -48,7 +48,7 @@ test(PWM_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
     pinMode(pin, OUTPUT);//D5 is not a Timer channel
     analogWrite(pin, 100);
     // then
-    //analogWrite works on fixed PWM frequency of 500Hz
+    //analogWrite has a default PWM frequency of 500Hz
     assertNotEqual(HAL_PWM_Get_Frequency(pin), TIM_PWM_FREQ);
     //To Do : Add test for remaining pins if required
 }
@@ -68,7 +68,7 @@ test(PWM_AnalogWriteOnPinResultsInCorrectFrequency) {
     pinMode(pin, OUTPUT);
     analogWrite(pin, 150);
     // then
-    //analogWrite works on fixed PWM frequency of 500Hz
+    //analogWrite has a default PWM frequency of 500Hz
     assertEqual(HAL_PWM_Get_Frequency(pin), TIM_PWM_FREQ);
     //To Do : Add test for remaining pins if required
 }
@@ -82,14 +82,33 @@ test(PWM_AnalogWriteOnPinResultsInCorrectAnalogValue) {
     //To Do : Add test for remaining pins if required
 }
 
-test(PWM_FastAnalogWriteOnPinResultsInCorrectAnalogValue) {
+test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
+    // when
+    pinMode(pin, OUTPUT);
+    analogWrite(pin, 150, 10000);
+    // then
+    assertEqual(HAL_PWM_Get_Frequency(pin), 10000);
+    //To Do : Add test for remaining pins if required
+}
+
+test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
+    // when
+    pinMode(pin, OUTPUT);
+    analogWrite(pin, 200, 10000);
+    // then
+    assertEqual(HAL_PWM_Get_AnalogValue(pin), 200);
+    //To Do : Add test for remaining pins if required
+}
+
+
+test(PWM_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     pin_t pin = D0; // pin under test
     // when
     pinMode(pin, OUTPUT);
 
     uint32_t avgPulseHigh = 0;
     for(int i=0;i<100;i++) {
-    	analogWrite(pin, 25); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
+        analogWrite(pin, 25); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
     avgPulseHigh /= 100;
@@ -99,5 +118,43 @@ test(PWM_FastAnalogWriteOnPinResultsInCorrectAnalogValue) {
     // avgPulseHigh should equal 200 +/- 50
     assertMoreOrEqual(avgPulseHigh, 150);
     assertLessOrEqual(avgPulseHigh, 250);
+}
+
+test(PWM_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
+    pin_t pin = D0; // pin under test
+    // when
+    pinMode(pin, OUTPUT);
+
+    uint32_t avgPulseHigh = 0;
+    for(int i=0;i<5;i++) {
+        analogWrite(pin, 25, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
+        avgPulseHigh += pulseIn(pin, HIGH);
+    }
+    avgPulseHigh /= 5;
+    analogWrite(pin, 0, 10);
+
+    // then
+    // avgPulseHigh should equal 10000 +/- 50
+    assertMoreOrEqual(avgPulseHigh, 9050);
+    assertLessOrEqual(avgPulseHigh, 10050);
+}
+
+test(PWM_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
+    pin_t pin = D0; // pin under test
+    // when
+    pinMode(pin, OUTPUT);
+
+    uint32_t avgPulseHigh = 0;
+    for(int i=0;i<1000;i++) {
+        analogWrite(pin, 25, 10000); // 10% Duty Cycle at 10Hz = 10us HIGH, 90us LOW.
+        avgPulseHigh += pulseIn(pin, HIGH);
+    }
+    avgPulseHigh /= 1000;
+    analogWrite(pin, 0, 10);
+
+    // then
+    // avgPulseHigh should equal 10 +/- 5
+    assertMoreOrEqual(avgPulseHigh, 5);
+    assertLessOrEqual(avgPulseHigh, 15);
 }
 
