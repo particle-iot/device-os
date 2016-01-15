@@ -1,7 +1,7 @@
 if [ $1 -eq 6 ] || [ $1 -eq 8 ]; then
 	VERSION="0.4.8-rc.2"
 else if [ $1 -eq 10 ]; then
-	VERSION="0.4.8-rc.2"
+	VERSION="0.4.8-rc.6"
 	fi
 fi
 

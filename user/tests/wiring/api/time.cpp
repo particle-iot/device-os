@@ -15,3 +15,15 @@ test(time_format)
     API_COMPILE(Time.format(1234, "abcd"))
 
 }
+
+test(time_zone)
+{
+	float zone;
+	time_t time;
+	API_COMPILE(Time.zone(1.0f));
+	API_COMPILE(Time.zone(-5));
+	API_COMPILE(zone=Time.zone());
+	API_COMPILE(time=Time.now());
+	API_COMPILE(time=Time.local());
+}
+

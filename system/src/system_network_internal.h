@@ -26,12 +26,13 @@
 #include "system_event.h"
 #include "system_cloud_internal.h"
 #include "system_network.h"
-#include "platforms.h"
+#include "system_threading.h"
+#include "system_rgbled.h"
 
+#include "platforms.h"
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
 #include "ble_provision.h"
 #endif
-
 
 enum eWanTimings
 {
@@ -147,8 +148,9 @@ protected:
         WLAN_SERIAL_CONFIG_DONE = 0;
 
         cloud_disconnect();
+        RGBLEDState led_state;
+        led_state.save();
         SPARK_LED_FADE = 0;
-        bool signaling = LED_RGB_IsOverRidden();
         LED_SetRGBColor(RGB_COLOR_BLUE);
         LED_Signaling_Stop();
         LED_On(LED_RGB);
@@ -200,14 +202,20 @@ protected:
                 }
                 console.loop();
             }
+			
+#if PLATFORM_THREADING
+            if (!APPLICATION_THREAD_CURRENT()) {
+                SystemThread.process();
+            }
+#endif
+
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
             ble_provision_loop();
 #endif
         }
 
         LED_On(LED_RGB);
-        if (signaling)
-            LED_Signaling_Start();
+        led_state.restore();
 
         WLAN_LISTEN_ON_FAILED_CONNECT = started && on_stop_listening();
 
@@ -382,6 +390,7 @@ public:
             WLAN_DHCP = 0;
             WLAN_CONNECTED = 0;
             WLAN_CONNECTING = 0;
+            WLAN_SERIAL_CONFIG_DONE = 1;
             SPARK_LED_FADE = 1;
             LED_SetRGBColor(RGB_COLOR_WHITE);
             LED_On(LED_RGB);

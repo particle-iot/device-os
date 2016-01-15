@@ -146,7 +146,7 @@ void HAL_Core_Enter_Bootloader(void)
     MSG("Enter bootloader not implemented.");
 }
 
-void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode)
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
     MSG("Stop mode not implemented.");
 }

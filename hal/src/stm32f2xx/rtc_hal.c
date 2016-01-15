@@ -210,8 +210,6 @@ void HAL_RTC_Set_UnixTime(time_t value)
         setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
 }
 
-
-
 void HAL_RTC_Set_UnixAlarm(time_t value)
 {
 	RTC_AlarmTypeDef RTC_AlarmStructure;
@@ -242,6 +240,14 @@ void HAL_RTC_Set_UnixAlarm(time_t value)
 
 	/* Clear RTC Alarm Flag */
 	RTC_ClearFlag(RTC_FLAG_ALRAF);
+}
+
+void HAL_RTC_Cancel_UnixAlarm(void) {
+    RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
+    RTC_ClearFlag(RTC_FLAG_ALRAF);
+    RTC_WaitForSynchro();
+    RTC_ClearITPendingBit(RTC_IT_ALRA);
+    EXTI_ClearITPendingBit(EXTI_Line17);
 }
 
 void RTC_Alarm_irq(void)

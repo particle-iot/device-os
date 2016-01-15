@@ -30,10 +30,11 @@ protected:
 
     virtual void on_finalize_listening(bool complete) override { /* n/a */ }
 
-    virtual void on_start_listening() override { /* n/a */ }
+    virtual void on_start_listening() override {
+        cellular_cancel(false, true, NULL);  // resume
+    }
 
     virtual bool on_stop_listening() override {
-        cellular_cancel(false, true, NULL);  // resume
         /* in case we interrupted during connecting(), force system to stop WLAN_CONNECTING */
         if (ManagedNetworkInterface::connecting()) ManagedNetworkInterface::disconnect();
         CLR_WLAN_WD(); // keep system from power cycling modem in manage_network_connection()
@@ -61,8 +62,8 @@ protected:
         result = cellular_gprs_attach(savedCreds, NULL);
         if (result) return;
 
-        HAL_WLAN_notify_connected();
-        HAL_WLAN_notify_dhcp(true);
+        HAL_NET_notify_connected();
+        HAL_NET_notify_dhcp(true);
     }
 
     void fetch_ipconfig(WLanConfig* target) override {

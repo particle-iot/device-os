@@ -59,7 +59,7 @@ public:
 		channelCallbacks.handle_seed = handle_seed;
 		channelCallbacks.receive = callbacks.receive;
 		channelCallbacks.send = callbacks.send;
-		channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks);
+		channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks, &channel.next_id_ref());
         Protocol::init(callbacks, descriptor);
         initialize_ping(15000,10000);
 	}

@@ -161,4 +161,17 @@ test(api_wifi_ipconfig)
     (void)address;
 }
 
+test(api_wifi_get_credentials)
+{
+    WiFiAccessPoint ap[10];
+    int found = WiFi.getCredentials(ap, 10);
+    for (int i=0; i<found; i++) {
+        Serial.print("ssid: ");
+        Serial.println(ap[i].ssid);
+        Serial.println(ap[i].security);
+        Serial.println(ap[i].channel);
+        Serial.println(ap[i].rssi);
+    }
+}
+
 #endif

@@ -381,9 +381,9 @@ int os_mutex_recursive_unlock(os_mutex_recursive_t mutex)
 void os_thread_scheduling(bool enabled, void* reserved)
 {
     if (enabled)
-        taskEXIT_CRITICAL();
+        xTaskResumeAll();
     else
-        taskENTER_CRITICAL();
+        vTaskSuspendAll();
 }
 
 int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initial)

@@ -39,6 +39,7 @@
 #include "system_user.h"
 #include "system_update.h"
 #include "core_hal.h"
+#include "delay_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
 #include "usb_hal.h"
@@ -50,6 +51,7 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_cellularsignal.h"
+#include "system_rgbled.h"
 
 using namespace spark;
 
@@ -88,6 +90,16 @@ static volatile uint32_t TimingLED;
 static volatile uint32_t TimingIWDGReload;
 
 /**
+ * When non-zero, causes the system to play out a count on the LED.
+ * For even values, the system displays a bright color for a short period,
+ * while for odd values the system displays a dim color for a longer period.
+ * The value is then decremented and the process repeated until 0.
+ */
+static volatile uint8_t SYSTEM_LED_COUNT;
+
+RGBLEDState led_state;
+
+/**
  * KNowing the current listen mode isn't sufficient to determine the correct action (since that may or may not have changed)
  * we need also to know the listen mode at the time the button was pressed.
  */
@@ -111,6 +123,26 @@ static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
 static uint32_t prev_release_time = 0;
 static uint8_t clicks = 0;
 
+void system_prepare_display_bars()
+{
+	led_state.save();
+	LED_Signaling_Stop();
+	SYSTEM_LED_COUNT = 255;
+	TimingLED = 0;	// todo - should use a mutex around these shared vars
+}
+
+void system_display_bars(int bars)
+{
+    if (bars>=0)
+    {
+		SYSTEM_LED_COUNT = ((bars<<1)+2) | 128;
+    }
+    else
+    {
+    		SYSTEM_LED_COUNT = 1;
+    }
+}
+
 /* single click handler displays RSSI value on system LED */
 void system_handle_single_click()
 {
@@ -124,9 +156,7 @@ void system_handle_single_click()
      */
     if (SYSTEM_HANDLE_SINGLE_CLICK) {
         SYSTEM_HANDLE_SINGLE_CLICK = false;
-        volatile system_tick_t startTime = SYSTEM_TICK_COUNTER;
-        RGB.control(true);
-        RGB.color(0,10,0);
+        system_prepare_display_bars();
         int rssi = 0;
         int bars = 0;
 #if Wiring_WiFi == 1
@@ -144,22 +174,7 @@ void system_handle_single_click()
         }
         DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
 
-        /* flash sequence */
-        /* TODO - REFACTOR Flash Sequence to be non-blocking via HAL_SysTick_Handler() */
-
-        // Attempts to normalize beginning dim green time to 1 second
-        while ( (SYSTEM_TICK_COUNTER - startTime) < (SYSTEM_US_TICKS*1000UL*1000UL) );
-
-        if (bars > 0) {
-            for (int x=0; x<bars; x++) {
-                RGB.color(0,255,0);
-                delay(40);
-                RGB.color(0,10,0);
-                delay(250);
-            }
-        }
-        delay(750);
-        RGB.control(false);
+        system_display_bars(bars);
     }
 }
 
@@ -287,28 +302,37 @@ void system_power_management_update()
         if (LOWBATT) {
             fuel.clearAlert(); // Clear the Low Battery Alert flag if set
         }
-        INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
-#ifdef DEBUG_BUILD
-        uint8_t stat = power.getSystemStatus();
-        uint8_t fault = power.getFault();
-        uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
-        uint8_t chrg_stat = (stat >> 4) & 0x03; // 0 – Not Charging, 1 – Pre-charge (<VBATLOWV), 2 – Fast Charging, 3 – Charge Termination Done
-        bool dpm_stat = stat & 0x08;   // 0 – Not DPM, 1 – VINDPM or IINDPM
-        bool pg_stat = stat & 0x04;    // 0 – Not Power Good, 1 – Power Good
-        bool therm_stat = stat & 0x02; // 0 – Normal, 1 – In Thermal Regulation
-        bool vsys_stat = stat & 0x01;  // 0 – Not in VSYSMIN regulation (BAT > VSYSMIN), 1 – In VSYSMIN regulation (BAT < VSYSMIN)
-        bool wd_fault = fault & 0x80;  // 0 – Normal, 1- Watchdog timer expiration
-        uint8_t chrg_fault = (fault >> 4) & 0x03; // 0 – Normal, 1 – Input fault (VBUS OVP or VBAT < VBUS < 3.8 V),
-                                                  // 2 - Thermal shutdown, 3 – Charge Safety Timer Expiration
-        bool bat_fault = fault & 0x08;    // 0 – Normal, 1 – BATOVP
-        uint8_t ntc_fault = fault & 0x07; // 0 – Normal, 5 – Cold, 6 – Hot
-        DEBUG_D("[ PMIC STAT ] VBUS:%d CHRG:%d DPM:%d PG:%d THERM:%d VSYS:%d\r\n", vbus_stat, chrg_stat, dpm_stat, pg_stat, therm_stat, vsys_stat);
-        DEBUG_D("[ PMIC FAULT ] WATCHDOG:%d CHRG:%d BAT:%d NTC:%d\r\n", wd_fault, chrg_fault, bat_fault, ntc_fault);
-        delay(50);
+//        if (LOG_LEVEL_ACTIVE(INFO_LEVEL)) {
+//        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
+//        }
+#if defined(DEBUG_BUILD) && 0
+        if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
+			uint8_t stat = power.getSystemStatus();
+			uint8_t fault = power.getFault();
+			uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
+			uint8_t chrg_stat = (stat >> 4) & 0x03; // 0 – Not Charging, 1 – Pre-charge (<VBATLOWV), 2 – Fast Charging, 3 – Charge Termination Done
+			bool dpm_stat = stat & 0x08;   // 0 – Not DPM, 1 – VINDPM or IINDPM
+			bool pg_stat = stat & 0x04;    // 0 – Not Power Good, 1 – Power Good
+			bool therm_stat = stat & 0x02; // 0 – Normal, 1 – In Thermal Regulation
+			bool vsys_stat = stat & 0x01;  // 0 – Not in VSYSMIN regulation (BAT > VSYSMIN), 1 – In VSYSMIN regulation (BAT < VSYSMIN)
+			bool wd_fault = fault & 0x80;  // 0 – Normal, 1- Watchdog timer expiration
+			uint8_t chrg_fault = (fault >> 4) & 0x03; // 0 – Normal, 1 – Input fault (VBUS OVP or VBAT < VBUS < 3.8 V),
+													  // 2 - Thermal shutdown, 3 – Charge Safety Timer Expiration
+			bool bat_fault = fault & 0x08;    // 0 – Normal, 1 – BATOVP
+			uint8_t ntc_fault = fault & 0x07; // 0 – Normal, 5 – Cold, 6 – Hot
+			DEBUG_D("[ PMIC STAT ] VBUS:%d CHRG:%d DPM:%d PG:%d THERM:%d VSYS:%d\r\n", vbus_stat, chrg_stat, dpm_stat, pg_stat, therm_stat, vsys_stat);
+			DEBUG_D("[ PMIC FAULT ] WATCHDOG:%d CHRG:%d BAT:%d NTC:%d\r\n", wd_fault, chrg_fault, bat_fault, ntc_fault);
+			delay(50);
+        }
 #endif
     }
 }
 #endif
+
+inline bool system_led_override()
+{
+	return SYSTEM_LED_COUNT;
+}
 
 /*******************************************************************************
  * Function Name  : HAL_SysTick_Handler
@@ -320,7 +344,7 @@ void system_power_management_update()
  *******************************/
 extern "C" void HAL_SysTick_Handler(void)
 {
-    if (LED_RGB_IsOverRidden())
+    if (LED_RGB_IsOverRidden() && !system_led_override())
     {
 #ifndef SPARK_NO_CLOUD
         if (LED_Spark_Signal != 0)
@@ -341,6 +365,44 @@ extern "C" void HAL_SysTick_Handler(void)
     {
         LED_SetRGBColor(RGB_COLOR_GREY);
         LED_On(LED_RGB);
+    }
+    else if (SYSTEM_LED_COUNT)
+    {
+		SPARK_LED_FADE = 0;
+		if (SYSTEM_LED_COUNT==255)
+		{
+			// hold the LED on this color until the actual number of bars is set
+  			LED_SetRGBColor(0<<16 | 10<<8 | 0);
+    	        LED_On(LED_RGB);
+    			TimingLED = 100;
+		}
+		else if (SYSTEM_LED_COUNT & 128)
+		{
+			LED_SetRGBColor(0<<16 | 10<<8 | 0);
+			LED_On(LED_RGB);
+			TimingLED = 1000;
+			SYSTEM_LED_COUNT &= ~128;
+		}
+		else
+		{
+			--SYSTEM_LED_COUNT;
+			if (SYSTEM_LED_COUNT==0)
+			{
+				led_state.restore();
+			}
+			else if (!(SYSTEM_LED_COUNT&1))
+			{
+				LED_SetRGBColor(0<<16 | 255<<8 | 0);
+				LED_On(LED_RGB);
+				TimingLED = 40;
+			}
+			else
+			{
+				LED_SetRGBColor(0<<16 | 10<<8 | 0);
+				LED_On(LED_RGB);
+				TimingLED = SYSTEM_LED_COUNT==1 ? 750 : 350;
+			}
+		}
     }
     else if(SPARK_LED_FADE && (!SPARK_CLOUD_CONNECTED || system_cloud_active()))
     {
@@ -383,9 +445,7 @@ extern "C" void HAL_SysTick_Handler(void)
     // determine if the button press needs to change the state (and hasn't done so already))
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
-        if (network.connecting()) {
-            network.connect_cancel(true, true);
-        }
+        network.connect_cancel(true, true);
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
@@ -460,9 +520,6 @@ void app_loop(bool threaded)
 #endif
 #if Wiring_Cellular == 1
                 system_power_management_update();
-#endif
-#if Wiring_SetupButtonUX
-                system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
 #endif
             }
         }

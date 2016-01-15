@@ -199,7 +199,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 						}
 					}
 					if (next_missed > missed_chunk_index)
-						send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
+						send_missing_chunks(channel, MISSED_CHUNKS_TO_SEND);
 				}
 			}
 			chunk_index++;
@@ -258,17 +258,20 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
 	{
 		updating = 2;       // flag that we are sending missing chunks.
 		DEBUG("update done - missing chunks starting at %d", index);
-		error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
+		error = send_missing_chunks(channel, MISSED_CHUNKS_TO_SEND);
 		last_chunk_millis = callbacks->millis();
 	}
 	return error;
 }
 
-ProtocolError ChunkedTransfer::send_missing_chunks(Message& message, MessageChannel& channel,
+ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel,
 		size_t count)
 {
 	size_t sent = 0;
 	chunk_index_t idx = 0;
+	Message message;
+	channel.create(message, 7+(count*2));
+
 	uint8_t* buf = message.buf();
 	buf[0] = 0x40; // confirmable, no token
 	buf[1] = 0x01; // code 0.01 GET
@@ -314,7 +317,7 @@ ProtocolError ChunkedTransfer::idle(MessageChannel& channel)
 			ProtocolError error = channel.create(message,
 					MISSED_CHUNKS_TO_SEND * sizeof(chunk_index_t) + 7);
 			if (!error)
-				error = send_missing_chunks(message, channel, MISSED_CHUNKS_TO_SEND);
+				error = send_missing_chunks(channel, MISSED_CHUNKS_TO_SEND);
 			if (error)
 				return error;
 		}

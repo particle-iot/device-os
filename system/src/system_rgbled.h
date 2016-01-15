@@ -1,12 +1,6 @@
 /**
  ******************************************************************************
- * @file    rtc_hal.c
- * @author  Satish Nair, Brett Walach
- * @version V1.0.0
- * @date    12-Sept-2014
- * @brief
- ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,27 +17,42 @@
  ******************************************************************************
  */
 
-/* Includes ------------------------------------------------------------------*/
-#include "rtc_hal.h"
+#pragma once
 
-time_t HAL_RTC_Get_UnixTime(void)
+#include "system_task.h"
+#include "rgbled.h"
+
+// This is temporary until we can get scoped LED management in place.
+class RGBLEDState
 {
-    return 0;
-}
+	volatile uint8_t fade;
+	volatile uint8_t override;
+	volatile uint32_t color;
 
-void HAL_RTC_Set_Alarm(uint32_t value)
-{
-}
+public:
 
-void HAL_RTC_Set_UnixAlarm(time_t value)
-{
+	void save()
+	{
+		fade = SPARK_LED_FADE;
+		override = LED_RGB_IsOverRidden();
+		color = LED_GetColor(override ? 1 : 0, NULL);
+	}
 
-}
+	void restore()
+	{
+		SPARK_LED_FADE = fade;
+		if (override)
+		{
+			LED_SetSignalingColor(color);
+			LED_Signaling_Start();
+			LED_On(LED_RGB);
+		}
+		else
+		{
+			LED_SetRGBColor(color);
+			LED_Signaling_Stop();
+		}
+	}
 
-void HAL_RTC_Cancel_UnixAlarm(void)
-{
-}
+};
 
-void HAL_RTC_Set_UnixTime(time_t value)
-{
-}

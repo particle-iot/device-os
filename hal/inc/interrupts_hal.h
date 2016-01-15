@@ -60,6 +60,9 @@ void HAL_Interrupts_Detach(uint16_t pin);
 void HAL_Interrupts_Enable_All(void);
 void HAL_Interrupts_Disable_All(void);
 
+void HAL_Interrupts_Suspend(void);
+void HAL_Interrupts_Restore(void);
+
 void HAL_Interrupts_Trigger(uint16_t pin, void* reserved);
 
 

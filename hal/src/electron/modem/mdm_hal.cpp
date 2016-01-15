@@ -34,6 +34,7 @@
 #include "service_debug.h"
 #include "concurrent_hal.h"
 #include <mutex>
+#include "net_hal.h"
 
 std::recursive_mutex mdm_mutex;
 
@@ -59,6 +60,23 @@ std::recursive_mutex mdm_mutex;
 #define LOCK()		std::lock_guard<std::recursive_mutex> __mdm_guard(mdm_mutex);
 //! helper to make sure that lock unlock pair is always balanced
 #define UNLOCK()
+
+static volatile uint32_t gprs_timeout_start;
+static volatile uint32_t gprs_timeout_duration;
+
+inline void ARM_GPRS_TIMEOUT(uint32_t dur) {
+    gprs_timeout_start = HAL_Timer_Get_Milli_Seconds();
+    gprs_timeout_duration = dur;
+    DEBUG("GPRS WD Set %d",(dur));
+}
+inline bool IS_GPRS_TIMEOUT() {
+    return gprs_timeout_duration && ((HAL_Timer_Get_Milli_Seconds()-gprs_timeout_start)>gprs_timeout_duration);
+}
+
+inline void CLR_GPRS_TIMEOUT() {
+    gprs_timeout_duration = 0;
+    DEBUG("GPRS WD Cleared, was %d", gprs_timeout_duration);
+}
 
 #ifdef MDM_DEBUG
  #if 0 // colored terminal output using ANSI escape sequences
@@ -149,6 +167,8 @@ MDMParser::MDMParser(void)
     _pwr       = false;
     _activated = false;
     _attached  = false;
+    _attached_urc = false; // updated by GPRS detached/attached URC,
+                           // used to notify system of prolonged GPRS detach.
     _cancel_all_operations = false;
     memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
@@ -197,6 +217,16 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 {
     if (_cancel_all_operations) return WAIT;
 
+    // If we went from a GPRS attached state to detached via URC,
+    // a WDT was set and now expired. Notify system of disconnect.
+    if (IS_GPRS_TIMEOUT()) {
+        _ip = NOIP;
+        _attached = false;
+        CLR_GPRS_TIMEOUT();
+        // HAL_NET_notify_dhcp(false);
+        HAL_NET_notify_disconnected();
+    }
+
     char buf[MAX_SIZE + 64 /* add some more space for framing */];
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     do {
@@ -232,6 +262,15 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 // +CNMI: <mem>,<index>
                 if (sscanf(cmd, "CMTI: \"%*[^\"]\",%d", &a) == 1) {
                     DEBUG_D("New SMS at index %d\r\n", a);
+                }
+                else if ((sscanf(cmd, "CIEV: 9,%d", &a) == 1)) {
+                    DEBUG_D("CIEV matched: 9,%d\r\n", a);
+                    // Wait until the system is attached before attempting to act on GPRS detach
+                    if (_attached) {
+                        _attached_urc = (a==2)?1:0;
+                        if (!_attached_urc) ARM_GPRS_TIMEOUT(15*1000); // If detached, set WDT
+                        else CLR_GPRS_TIMEOUT(); // else if re-attached clear WDT.
+                    }
                 // Socket Specific Command ---------------------------------
                 // +UUSORD: <socket>,<length>
                 } else if ((sscanf(cmd, "UUSORD: %d,%d", &a, &b) == 2)) {
@@ -257,10 +296,15 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                 // GSM/UMTS Specific -------------------------------------------
                 // +UUPSDD: <profile_id>
-                if (sscanf(cmd, "UUPSDD: %d",&a) == 1) {
-                    if (*PROFILE == a) {
+                if (sscanf(cmd, "UUPSDD: %s", s) == 1) {
+                    DEBUG_D("UUPSDD: %s matched\r\n", PROFILE);
+                    if ( !strcmp(s, PROFILE) ) {
                         _ip = NOIP;
                         _attached = false;
+                        DEBUG("PDP context deactivated remotely!\r\n");
+                        // PDP context was remotely deactivated via URC,
+                        // Notify system of disconnect.
+                        HAL_NET_notify_dhcp(false);
                     }
                 } else {
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG
@@ -315,7 +359,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
         HAL_Delay_Milliseconds(10);
     }
     while (!TIMEOUT(start, timeout_ms) && !_cancel_all_operations);
-    //_cancel_all_operations = false; // ensure we don't block future commands.
+
     return WAIT;
 }
 
@@ -1505,6 +1549,8 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
 int MDMParser::socketReadable(int socket)
 {
     int pending = MDM_SOCKET_ERROR;
+    if (_cancel_all_operations)
+    		return MDM_SOCKET_ERROR;
     LOCK();
     if (ISSOCKET(socket) && _sockets[socket].connected) {
     		//DEBUG_D("socketReadable(%d)\r\n", socket);

@@ -78,6 +78,8 @@ public:
     bool has_id() { return id>=0; }
     message_id_t get_id() { return message_id_t(id); }
 
+    bool send_direct() { return length()<4; }
+
     CoAPType::Enum get_type() const
     {
     		return length() ? CoAP::type(buf()): CoAPType::ERROR;
@@ -125,6 +127,16 @@ public:
 	{
 		return msg.length()==this->length() &&
 				memcmp(msg.buf(), this->buf(),this->length())==0;
+	}
+
+	Message& operator=(const Message& msg)
+	{
+		this->buffer = msg.buffer;
+		this->buffer_length = msg.buffer_length;
+		this->message_length = msg.message_length;
+		this->id = msg.id;
+		this->confirm_received = msg.confirm_received;
+		return *this;
 	}
 
 };

@@ -28,7 +28,7 @@ void set_logger_output(debug_output_fn output, LoggerOutputLevel level)
 
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...)
 {
-    if (level<log_level_at_run_time)
+    if (level<log_level_at_run_time || !debug_output_)
         return;
 
     char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
@@ -45,44 +45,48 @@ void log_print_(int level, int line, const char *func, const char *file, const c
     va_start(args, msg);
     file = file ? strrchr(file,'/') + 1 : "";
     int trunc = snprintf(_buffer, arraySize(_buffer), "%010u:%s: %s %s(%d):", (unsigned)HAL_Timer_Get_Milli_Seconds(), levels[level/10], func, file, line);
-    if (debug_output_)
-    {
-        debug_output_(_buffer);
-        if (trunc > arraySize(_buffer))
-        {
-            debug_output_("...");
-        }
-    }
+	debug_output_(_buffer);
+	if (trunc > arraySize(_buffer))
+	{
+		debug_output_("...");
+	}
     trunc = vsnprintf(_buffer,arraySize(_buffer), msg, args);
-    if (debug_output_)
-    {
-        debug_output_(_buffer);
-        if (trunc > arraySize(_buffer))
-        {
-            debug_output_("...");
-        }
-        debug_output_("\r\n");
-    }
+	debug_output_(_buffer);
+	if (trunc > arraySize(_buffer))
+	{
+		debug_output_("...");
+	}
+	debug_output_("\r\n");
 }
 
-void log_print_direct_(const char *msg, ...)
+void log_print_direct_(int level, void* reserved, const char *msg, ...)
 {
+    if (level<log_level_at_run_time || !debug_output_)
+        return;
+
     char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
     va_list args;
     va_start(args, msg);
     int trunc = vsnprintf(_buffer, arraySize(_buffer), msg, args);
-    if (debug_output_)
-    {
-        debug_output_(_buffer);
-        if (trunc > arraySize(_buffer))
-        {
-            debug_output_("...");
-        }
-    }
+	debug_output_(_buffer);
+	if (trunc > arraySize(_buffer))
+	{
+		debug_output_("...");
+	}
 }
 
 void log_direct_(const char* s) {
-    if (debug_output_)
-        debug_output_(s);
+
+    if (LOG_LEVEL<log_level_at_run_time || !debug_output_)
+        return;
+
+	debug_output_(s);
 }
+
+int log_level_active(LoggerOutputLevel level, void* reserved)
+{
+	return (level>=log_level_at_run_time && debug_output_);
+}
+
+
 

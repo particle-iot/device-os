@@ -236,7 +236,11 @@ inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 
 inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
 {
-	return callbacks.receive(data, len, callbacks.tx_context);
+	int size = callbacks.receive(data, len, callbacks.tx_context);
+	// ignore 0 and 1 byte UDP packets which are used to keep alive the connection.
+	if (size>=0 && size <=1)
+		size = 0;
+	return size;
 }
 
 int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len ) {
@@ -283,6 +287,7 @@ void DTLSMessageChannel::dispose()
 ProtocolError DTLSMessageChannel::setup_context()
 {
 	int ret;
+	mbedtls_ssl_free(&ssl_context);
 	ret = mbedtls_ssl_setup(&ssl_context, &conf);
 	EXIT_ERROR(ret, "unable to setup SSL context");
 
@@ -403,16 +408,18 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	}
 	message.set_length(ret);
 	if (ret>0) {
-#ifdef DEBUG_BUILD
-      DEBUG("message length %d", message.length());
-      for (size_t i=0; i<message.length(); i++)
-      {
-    	  	  char buf[3];
-    	  	  char c = message.buf()[i];
-    	  	  sprintf(buf, "%02x", c);
-    	  	  log_direct_(buf);
-      }
-      log_direct_("\n");
+#if defined(DEBUG_BUILD) && 0
+		if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
+		  DEBUG("message length %d", message.length());
+		  for (size_t i=0; i<message.length(); i++)
+		  {
+				  char buf[3];
+				  char c = message.buf()[i];
+				  sprintf(buf, "%02x", c);
+				  log_direct_(buf);
+		  }
+		  log_direct_("\n");
+		}
 #endif
 	}
 	return NO_ERROR;
@@ -422,6 +429,13 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 {
   if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     return INVALID_STATE;
+
+  if (message.send_direct())
+  {
+	  // send unencrypted
+	  int bytes = this->send(message.buf(), message.length());
+	  return bytes < 0 ? IO_ERROR : NO_ERROR;
+  }
 
 #ifdef DEBUG_BUILD
       DEBUG("message length %d", message.length());
@@ -462,8 +476,7 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 	case REFRESH_SESSION:
 		sessionPersist.clear(callbacks.save);
 		mbedtls_ssl_session_reset(&ssl_context);
-		establish();
-		break;
+		return IO_ERROR; //force re-establish
 	}
 	return NO_ERROR;
 }

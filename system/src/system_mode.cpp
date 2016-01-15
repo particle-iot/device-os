@@ -41,6 +41,7 @@ void set_system_mode(System_Mode_TypeDef mode)
     current_mode = mode;
     switch (mode)
     {
+    		case DEFAULT:   // DEFULT can't happen in practice since it's cleared above. just keeps gcc happy.
         case SAFE_MODE:
         case AUTOMATIC:
             SPARK_CLOUD_CONNECT = 1;

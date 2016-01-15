@@ -102,7 +102,7 @@ bool cellular_sim_ready(void* reserved)
 }
 
 // Todo rename me, and allow the different connect, disconnect etc. timeouts be set by the HAL
-uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInuS)
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInuS)
 {
     return 0;
 }

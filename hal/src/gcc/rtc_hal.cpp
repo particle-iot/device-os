@@ -35,6 +35,6 @@ void HAL_RTC_Set_UnixAlarm(time_t value)
 {
 }
 
-
-
-
+void HAL_RTC_Cancel_UnixAlarm(void)
+{
+}

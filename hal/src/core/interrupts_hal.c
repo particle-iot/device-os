@@ -197,6 +197,16 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 }
 
+void HAL_Interrupts_Suspend(void)
+{
+  // Untested/Unsupported
+}
+
+void HAL_Interrupts_Restore(void)
+{
+  // Untested/Unsupported
+}
+
 /*******************************************************************************
  * Function Name  : HAL_EXTI_Handler (Declared as weak in stm32_it.cpp)
  * Description    : This function is called by any of the interrupt handlers. It

@@ -74,7 +74,7 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
-    INCLUDE backup_ram.ld
+    INCLUDE backup_ram_user.ld
 
     .data : /* Contains the non-zero initialised global variables */
     {

@@ -32,6 +32,7 @@ extern "C" {
 
 #if PLATFORM_ID==10
 #define HAL_PLATFORM_CELLULAR 1
+#define PANIC_BUT_KEEP_CALM 1
 #endif
 
 #if PLATFORM_ID==10 || PLATFORM_ID==3

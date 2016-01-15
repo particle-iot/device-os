@@ -132,6 +132,7 @@ public:
 
 	void clear(save_fn_t saver)
 	{
+		persistent = 1;	// ensure it is saved
 		invalidate();
 		save_this_with(saver);
 		persistent = 0;	// do not make any subsequent saves until the context is marked as persistent.

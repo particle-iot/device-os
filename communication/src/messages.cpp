@@ -235,6 +235,13 @@ size_t Messages::content(uint8_t* buf, uint16_t message_id, uint8_t token)
 	return 6;
 }
 
+
+size_t Messages::keep_alive(uint8_t* buf)
+{
+	buf[0] = 0;
+	return 1;
+}
+
 size_t Messages::ping(uint8_t* buf, uint16_t message_id)
 {
 	buf[0] = 0x40; // Confirmable, no token

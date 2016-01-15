@@ -79,7 +79,7 @@ const static_ip_config_t* wlan_fetch_saved_ip_config()
     return (const static_ip_config_t*)dct_read_app_data(DCT_IP_CONFIG_OFFSET);
 }
 
-uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
 {
     wiced_watchdog_kick();
     return 0;
@@ -167,7 +167,7 @@ wlan_result_t wlan_connect_finalize()
     // enable connection from stored profiles
     wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
     if (!result) {
-        HAL_WLAN_notify_connected();
+        HAL_NET_notify_connected();
         wiced_ip_setting_t settings;
         wiced_ip_address_t dns;
 
@@ -193,7 +193,7 @@ wlan_result_t wlan_connect_finalize()
         wiced_network_down(WICED_STA_INTERFACE);
     }
     // DHCP happens synchronously
-    HAL_WLAN_notify_dhcp(!result);
+    HAL_NET_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
     return result;
 }
@@ -229,7 +229,7 @@ wlan_result_t wlan_activate()
 {
     wlan_result_t result = wiced_wlan_connectivity_init();
     if (!result)
-        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
+        wiced_network_register_link_callback(HAL_NET_notify_connected, HAL_NET_notify_disconnected, WICED_STA_INTERFACE);
     wlan_refresh_antenna();
     return result;
 }
@@ -244,7 +244,7 @@ wlan_result_t wlan_disconnect_now()
     socket_close_all();
     wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
-    HAL_WLAN_notify_disconnected();
+    HAL_NET_notify_disconnected();
     return result;
 }
 
@@ -300,6 +300,15 @@ WLanSecurityType toSecurityType(wiced_security_t sec)
     return WLAN_SEC_NOT_SET;
 }
 
+WLanSecurityCipher toCipherType(wiced_security_t sec)
+{
+    if (sec & AES_ENABLED)
+        return WLAN_CIPHER_AES;
+    if (sec & TKIP_ENABLED)
+        return WLAN_CIPHER_TKIP;
+    return WLAN_CIPHER_NOT_SET;
+}
+
 /*
  * Callback function to handle scan results
  */
@@ -325,6 +334,7 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
             data.ssidLength = record->SSID.length;
             data.ssid[data.ssidLength] = 0;
             data.security = toSecurityType(record->security);
+            data.cipher = toCipherType(record->security);
             data.rssi = record->signal_strength;
             data.channel = record->channel;
             data.maxDataRate = record->max_data_rate;
@@ -394,6 +404,11 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
     return wiced_security_t(result);
 }
 
+bool equals_ssid(const char* ssid, wiced_ssid_t& current)
+{
+	return (strlen(ssid)==current.length) && !memcmp(ssid, current.value, current.length);
+}
+
 static bool wifi_creds_changed;
 wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, const char *password,
     uint16_t passwordLen, wiced_security_t security, unsigned channel)
@@ -404,11 +419,23 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
         // the storage may not have been initialized, so device_configured will be 0xFF
         initialize_dct(wifi_config);
 
-        // shuffle all slots along
-        memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+        int replace = -1;
 
-        const int empty = 0;
-        wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[empty];
+        // find a slot with the same ssid
+        for (unsigned i=0; i<CONFIG_AP_LIST_SIZE; i++) {
+        		if (equals_ssid(ssid, wifi_config->stored_ap_list[i].details.SSID)) {
+        			replace = i;
+        			break;
+        		}
+        }
+
+        if (replace < 0)
+        	{
+			// shuffle all slots along
+			memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+			replace = 0;
+        	}
+        wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[replace];
         memset(&entry, 0, sizeof(entry));
         passwordLen = std::min(passwordLen, uint16_t(64));
         ssidLen = std::min(ssidLen, uint16_t(32));
@@ -630,4 +657,49 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie)
     info.callback_data = cookie;
     int result =  sniff_security(&info);
     return result < 0 ? result : info.count;
+}
+
+/**
+ * Lists all WLAN credentials currently stored on the device
+ */
+int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
+{
+    int count = 0;
+    platform_dct_wifi_config_t* wifi_config = NULL;
+    wiced_result_t result = wiced_dct_read_lock( (void**) &wifi_config, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
+    if (!result) {
+        // the storage may not have been initialized, so device_configured will be 0xFF
+        initialize_dct(wifi_config);
+
+        // iterate through each stored ap
+        for(int i = 0; i < CONFIG_AP_LIST_SIZE; i++) {
+            const wiced_config_ap_entry_t &ap = wifi_config->stored_ap_list[i];
+
+            if(!is_ap_config_set(ap)) {
+                continue;
+            }
+            count++;
+
+            if(!callback) {
+                continue;
+            }
+
+            const wiced_ap_info_t *record = &ap.details;
+
+            WiFiAccessPoint data;
+            memcpy(data.ssid, record->SSID.value, record->SSID.length);
+            memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
+            data.ssidLength = record->SSID.length;
+            data.ssid[data.ssidLength] = 0;
+            data.security = toSecurityType(record->security);
+            data.cipher = toCipherType(record->security);
+            data.rssi = record->signal_strength;
+            data.channel = record->channel;
+            data.maxDataRate = record->max_data_rate;
+
+            callback(&data, callback_data);
+        }
+        wiced_dct_read_unlock(wifi_config, WICED_FALSE);
+    }
+    return result < 0 ? result : count;
 }

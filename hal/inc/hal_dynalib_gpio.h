@@ -66,6 +66,10 @@ DYNALIB_FN(hal_gpio, HAL_Get_System_Interrupt_Handler)
 DYNALIB_FN(hal_gpio, HAL_System_Interrupt_Trigger)
 
 DYNALIB_FN(hal_gpio, HAL_Pulse_In)
+DYNALIB_FN(hal_gpio, HAL_Interrupts_Suspend)
+DYNALIB_FN(hal_gpio, HAL_Interrupts_Restore)
+
+DYNALIB_FN(hal_gpio, HAL_PWM_Write_With_Frequency)
 DYNALIB_END(hal_gpio)
 
 #endif	/* HAL_DYNALIB_GPIO_H */

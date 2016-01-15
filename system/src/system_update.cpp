@@ -354,8 +354,8 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
             hal_update_complete_t result = HAL_FLASH_End(NULL);
             system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
 
-
-            if (result==HAL_UPDATE_APPLIED_PENDING_RESTART)
+            // always restart for now
+            if (true || result==HAL_UPDATE_APPLIED_PENDING_RESTART)
             {
                 system_pending_shutdown();
             }

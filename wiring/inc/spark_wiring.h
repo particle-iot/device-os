@@ -71,7 +71,6 @@ PinMode getPinMode(uint16_t pin);
 bool pinAvailable(uint16_t pin);
 void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
-void analogWrite(uint16_t pin, uint16_t value);
 
 
 long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
@@ -86,5 +85,8 @@ uint32_t pulseIn(pin_t pin, uint16_t value);
 #ifdef __cplusplus
 }
 #endif
+
+void analogWrite(uint16_t pin, uint16_t value);
+void analogWrite(uint16_t pin, uint16_t value, uint16_t pwm_frequency);
 
 #endif /* SPARK_WIRING_H_ */

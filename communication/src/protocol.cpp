@@ -84,7 +84,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return chunkedTransfer.handle_update_done(token, message, channel);
 
 	case CoAPMessageType::EVENT:
-		return subscriptions.handle_event(message, descriptor.call_event_handler);
+		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
 
 	case CoAPMessageType::KEY_CHANGE:
 		return handle_key_change(message);
@@ -132,18 +132,29 @@ ProtocolError Protocol::handle_received_message(Message& message,
 
 ProtocolError Protocol::handle_key_change(Message& message)
 {
+	uint8_t* buf = message.buf();
+	ProtocolError result = NO_ERROR;
+	if (CoAP::type(buf)==CoAPType::CON)
+	{
+		Message response;
+		channel.response(message, response, 5);
+		size_t sz = Messages::empty_ack(response.buf(), 0, 0);
+		response.set_length(sz);
+		result = channel.send(response);
+	}
+
 	// 4 bytes coAP header, 2 bytes message type option
 	// token length, and skip 1 byte for the parameter option header.
 	if (message.length()>7)
 	{
 		uint8_t* buf = message.buf();
-		uint8_t option_idx = 8 + (buf[0] & 0xF);
+		uint8_t option_idx = 7 + (buf[0] & 0xF);
 		if (buf[option_idx]==1)
 		{
-			return channel.command(MessageChannel::REFRESH_SESSION);
+			result = channel.command(MessageChannel::REFRESH_SESSION);
 		}
 	}
-	return NO_ERROR;
+	return result;
 }
 
 
@@ -208,10 +219,10 @@ int Protocol::begin()
 		return error;
 	}
 
-	// resumed an existing session and don't need the hello
-	if (session_resumed && (flags & SKIP_SESSION_RESUME_HELLO))
+	// hello not needed because it's already been sent and the server maintains device state
+	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
-		ping();
+		ping(true);
 		DEBUG("resumed session - not sending hello message");
 		return error;
 	}

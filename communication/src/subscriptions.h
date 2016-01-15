@@ -57,10 +57,24 @@ public:
 	ProtocolError handle_event(Message& message,
 			void (*call_event_handler)(uint16_t size,
 					FilteringEventHandler* handler, const char* event,
-					const char* data, void* reserved))
+					const char* data, void* reserved),
+					MessageChannel& channel)
 	{
 		const unsigned len = message.length();
 		uint8_t* queue = message.buf();
+		if (CoAP::type(queue)==CoAPType::CON && channel.is_unreliable())
+		{
+			Message response;
+			if (channel.response(message, response, 5)==NO_ERROR)
+			{
+				size_t len = Messages::empty_ack(response.buf(), 0, 0);
+				response.set_length(len);
+				response.set_id(message.get_id());
+				ProtocolError error = channel.send(response);
+				if (error)
+					return error;
+			}
+		}
 
 		// end of CoAP message
 		unsigned char *end = queue + len;

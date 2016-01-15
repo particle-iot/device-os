@@ -674,11 +674,11 @@ int Internet_Test(void)
     testSocketAddr.sa_data[4] = 8;
     testSocketAddr.sa_data[5] = 8;
 
-    uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+    uint32_t ot = HAL_NET_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
     DEBUG("Connect Attempt");
     testResult = socket_connect(testSocket, &testSocketAddr, sizeof (testSocketAddr));
     DEBUG("socket_connect()=%s", (testResult ? "fail":"success"));
-    HAL_WLAN_SetNetWatchDog(ot);
+    HAL_NET_SetNetWatchDog(ot);
 
 #if defined(SEND_ON_CLOSE)
     DEBUG("Send Attempt");
@@ -876,14 +876,14 @@ int Spark_Connect()
         else
 #endif
         {
-			uint32_t ot = HAL_WLAN_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+			uint32_t ot = HAL_NET_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
 			rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
 			if (rv)
 				ERROR("connection failed to %d.%d.%d.%d:%d, code=%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port, rv);
 			else
 				INFO("connected to cloud %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
 
-			HAL_WLAN_SetNetWatchDog(ot);
+			HAL_NET_SetNetWatchDog(ot);
         }
     }
     if (rv)     // error - prevent socket leaks
@@ -956,7 +956,7 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     return 0;
 }
 
-void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
     if (sparkSocket==socket)
     {
@@ -989,7 +989,7 @@ inline uint8_t cloudSocketClosed()
 
 #else
 
-void HAL_WLAN_notify_socket_closed(sock_handle_t socket)
+void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
 }
 
