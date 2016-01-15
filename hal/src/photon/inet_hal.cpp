@@ -32,7 +32,7 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
     address.version = WICED_IPV4;
     wiced_result_t result = wiced_hostname_lookup (hostname, &address, 5000);
     if (result == WICED_SUCCESS) {
-        out_ip_addr->ipv4 = GET_IPV4_ADDRESS(address);
+    		HAL_IPV4_SET(out_ip_addr, GET_IPV4_ADDRESS(address));
     }
     return -result;
 }

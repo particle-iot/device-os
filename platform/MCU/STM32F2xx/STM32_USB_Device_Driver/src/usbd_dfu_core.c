@@ -567,7 +567,7 @@ static uint8_t  EP0_TxSent (void  *pdev)
         Pointer += MAL_Buffer[2] << 8;
         Pointer += MAL_Buffer[3] << 16;
         Pointer += MAL_Buffer[4] << 24;
-        MAL_Erase(Pointer);
+        MAL_Erase(usbd_dfu_AltSet, Pointer);
       }
       else
       {
@@ -587,7 +587,7 @@ static uint8_t  EP0_TxSent (void  *pdev)
       Addr = ((wBlockNum - 2) * XFERSIZE) + Pointer;
 
       /* Preform the write operation */
-      MAL_Write(Addr, wlength);
+      MAL_Write(usbd_dfu_AltSet, Addr, wlength);
     }
     /* Reset the global lenght and block number */
     wlength = 0;
@@ -770,7 +770,7 @@ static void DFU_Req_UPLOAD(void *pdev, USB_SETUP_REQ *req)
         Addr = ((wBlockNum - 2) * XFERSIZE) + Pointer;  /* Change is Accelerated*/
 
         /* Return the physical address where data are stored */
-        Phy_Addr = MAL_Read(Addr, wlength);
+        Phy_Addr = MAL_Read(usbd_dfu_AltSet, Addr, wlength);
 
         /* Send the status data over EP0 */
         USBD_CtlSendData (pdev,
@@ -826,11 +826,11 @@ static void DFU_Req_GETSTATUS(void *pdev)
       DeviceStatus[4] = DeviceState;
       if ((wBlockNum == 0) && (MAL_Buffer[0] == CMD_ERASE))
       {
-        MAL_GetStatus(Pointer, 0, DeviceStatus);
+        MAL_GetStatus(usbd_dfu_AltSet, Pointer, 0, DeviceStatus);
       }
       else
       {
-        MAL_GetStatus(Pointer, 1, DeviceStatus);
+        MAL_GetStatus(usbd_dfu_AltSet, Pointer, 1, DeviceStatus);
       }
     }
     else  /* (wlength==0)*/
