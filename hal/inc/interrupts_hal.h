@@ -52,6 +52,7 @@ typedef struct HAL_InterruptCallback {
 } HAL_InterruptCallback;
 
 typedef struct HAL_InterruptExtraConfiguration {
+  uint8_t size;
   uint8_t IRQChannelPreemptionPriority;
   uint8_t IRQChannelSubPriority;
 } HAL_InterruptExtraConfiguration;
