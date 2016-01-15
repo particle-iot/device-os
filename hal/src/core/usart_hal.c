@@ -218,6 +218,11 @@ void HAL_USART_End(HAL_USART_Serial serial)
   usartMap[serial]->usart_transmitting = false;
 }
 
+int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
+{
+  return (unsigned int)(SERIAL_BUFFER_SIZE + usartMap[serial]->usart_tx_buffer->head - usartMap[serial]->usart_tx_buffer->tail) % SERIAL_BUFFER_SIZE;
+}
+
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
 {
   // interrupts are off and data in queue;

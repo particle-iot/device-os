@@ -46,10 +46,17 @@ public:
 
 	virtual size_t write(uint8_t byte);
 	virtual int read();
+	virtual int availableForWrite(void);
 	virtual int available();
 	virtual void flush();
 
+	virtual void blockOnOverrun(bool);
+
+
 	using Print::write;
+
+private:
+	bool _blocking;
 };
 
 extern USBSerial Serial;

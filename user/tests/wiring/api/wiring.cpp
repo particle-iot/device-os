@@ -55,6 +55,16 @@ test(api_wiring_usartserial) {
     API_COMPILE(Serial1.halfduplex(true));
     API_COMPILE(Serial1.halfduplex(false));
 
+    API_COMPILE(Serial1.blockOnOverrun(false));
+    API_COMPILE(Serial1.blockOnOverrun(true));
+
+    API_COMPILE(Serial1.availableForWrite());
+}
+
+test(api_wiring_usbserial) {
+    API_COMPILE(Serial.blockOnOverrun(false));
+    API_COMPILE(Serial.blockOnOverrun(true));
+    API_COMPILE(Serial.availableForWrite());
 }
 
 void TIM3_callback()
