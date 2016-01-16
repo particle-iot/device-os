@@ -66,6 +66,7 @@
 #include "usbd_desc.h"
 #include "usbd_req.h"
 #include "usb_bsp.h"
+#include "usbd_dfu_mal.h"
 
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -570,7 +571,14 @@ static uint8_t  EP0_TxSent (void  *pdev)
         Pointer += MAL_Buffer[2] << 8;
         Pointer += MAL_Buffer[3] << 16;
         Pointer += MAL_Buffer[4] << 24;
-        MAL_Erase(usbd_dfu_AltSet, Pointer);
+
+        uint16_t status = MAL_Erase(usbd_dfu_AltSet, Pointer);
+        if (status != MAL_OK) {
+          /* Call the error management function (command will be nacked) */
+          req.bmRequest = 0;
+          req.wLength = 1;
+          USBD_CtlError (pdev, &req);
+        }
       }
       else
       {
@@ -608,7 +616,13 @@ static uint8_t  EP0_TxSent (void  *pdev)
 #endif
 
       /* Preform the write operation */
-      MAL_Write(usbd_dfu_AltSet, Addr, wlength);
+      uint16_t status = MAL_Write(usbd_dfu_AltSet, Addr, wlength);
+      if (status != MAL_OK) {
+        /* Call the error management function (command will be nacked) */
+        req.bmRequest = 0;
+        req.wLength = 1;
+        USBD_CtlError (pdev, &req);
+      }
     }
     /* Reset the global lenght and block number */
     wlength = 0;

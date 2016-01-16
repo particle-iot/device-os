@@ -26,6 +26,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
 
+#pragma GCC optimize ("O1")
+
 /* SST25 SPI Flash supported commands */
 #define sFLASH_CMD_RDSR                 0x05        /* Read Status Register */
 #define sFLASH_CMD_WRSR                 0x01        /* Write Status Register */
@@ -187,7 +189,7 @@ static void sFLASH_WritePage(const uint8_t* pBuffer, uint32_t WriteAddr, uint32_
  */
 void sFLASH_WriteBuffer(const uint8_t* pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite)
 {
-    uint8_t NumOfPage = 0, NumOfSingle = 0, Addr = 0, count = 0, temp = 0;
+    uint16_t NumOfPage = 0, NumOfSingle = 0, Addr = 0, count = 0, temp = 0;
 
     Addr = WriteAddr % sFLASH_PROGRAM_PAGESIZE;
     count = sFLASH_PROGRAM_PAGESIZE - Addr;

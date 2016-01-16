@@ -319,10 +319,15 @@ void system_pending_shutdown()
     }
 }
 
+inline bool canShutdown()
+{
+	return (System.resetPending() && System.resetEnabled());
+}
+
 void system_shutdown_if_enabled()
 {
     // shutdown if user initiated poweroff or system reset is allowed
-    if (System.resetPending() && System.resetEnabled())
+    if (canShutdown())
     {
         if (SYSTEM_POWEROFF) {              // shutdown network module too.
             system_sleep(SLEEP_MODE_SOFTPOWEROFF, 0, 0, NULL);
@@ -335,9 +340,24 @@ void system_shutdown_if_enabled()
 
 void system_shutdown_if_needed()
 {
-    if (System.resetPending() && System.resetEnabled())
+	static bool in_shutdown = false;
+    if (canShutdown() && !in_shutdown)
     {
+    		in_shutdown = true;
         system_notify_event(reset, 0, nullptr, system_shutdown_if_enabled);
+
+#if PLATFORM_THREADING
+        // timeout for 30 seconds. Keep the system thread pumping queue messages and the background task running
+        system_tick_t start = millis();
+        while (canShutdown() && (millis()-start)<30000)
+        {
+        		// todo - find a more enapsulated way for the SystemThread to take care of re-entranly doing work.
+        		spark_process();
+        		SystemThread.process();
+        }
+        in_shutdown = false;
+        system_shutdown_if_enabled();
+#endif
     }
 }
 
