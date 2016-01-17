@@ -563,6 +563,10 @@ void wlan_fetch_ipconfig(WLanConfig* config)
         uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
         memcpy(config->uaSSID, ap_info.SSID, len);
         config->uaSSID[len] = 0;
+
+        if (config->size>=WLanConfig_Size_V2) {
+        		memcpy(config->BSSID, ap_info.BSSID.octet, sizeof(config->BSSID));
+        }
     }
     // todo DNS and DHCP servers
 }
