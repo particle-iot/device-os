@@ -58,7 +58,6 @@ using namespace spark;
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#if Wiring_SetupButtonUX
 #if defined(DEBUG_BUTTON_WD)
 #define BUTTON_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
 #else
@@ -81,7 +80,6 @@ inline void CLR_BUTTON_TIMEOUT() {
     button_timeout_duration = 0;
     BUTTON_WD_DEBUG("Button WD Cleared, was %d",button_timeout_duration);
 }
-#endif // #if Wiring_SetupButtonUX
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -116,13 +114,13 @@ uint16_t system_button_pushed_duration(uint8_t button, void*)
     return pressed_time ? HAL_Timer_Get_Milli_Seconds()-pressed_time : 0;
 }
 
-#if Wiring_SetupButtonUX
 /* flag used to initiate system_handle_single_click() from main thread */
 static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
 
 static uint32_t prev_release_time = 0;
 static uint8_t clicks = 0;
 
+#if Wiring_SetupButtonUX
 void system_prepare_display_bars()
 {
 	led_state.save();
@@ -143,9 +141,8 @@ void system_display_bars(int bars)
     }
 }
 
-/* single click handler displays RSSI value on system LED */
-void system_handle_single_click()
-{
+/* displays RSSI value on system LED */
+void system_display_rssi() {
     /*   signal strength (u-Blox Sara U2 and G3 modules)
      *   0: < -105 dBm
      *   1: < -93 dBm
@@ -154,34 +151,46 @@ void system_handle_single_click()
      *   4: < - 57 dBm
      *   5: >= -57 dBm
      */
+    system_prepare_display_bars();
+    int rssi = 0;
+    int bars = 0;
+#if Wiring_WiFi == 1
+    rssi = WiFi.RSSI();
+#elif Wiring_Cellular == 1
+    CellularSignal sig = Cellular.RSSI();
+    rssi = sig.rssi;
+#endif
+    if (rssi < 0) {
+        if (rssi >= -57) bars = 5;
+        else if (rssi > -68) bars = 4;
+        else if (rssi > -80) bars = 3;
+        else if (rssi > -92) bars = 2;
+        else if (rssi > -104) bars = 1;
+    }
+    DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
+
+    system_display_bars(bars);
+}
+#endif // #if Wiring_SetupButtonUX
+
+void system_handle_single_click()
+{
     if (SYSTEM_HANDLE_SINGLE_CLICK) {
         SYSTEM_HANDLE_SINGLE_CLICK = false;
-        system_prepare_display_bars();
-        int rssi = 0;
-        int bars = 0;
-#if Wiring_WiFi == 1
-        rssi = WiFi.RSSI();
-#elif Wiring_Cellular == 1
-        CellularSignal sig = Cellular.RSSI();
-        rssi = sig.rssi;
+#if Wiring_SetupButtonUX
+        system_display_rssi();
 #endif
-        if (rssi < 0) {
-            if (rssi >= -57) bars = 5;
-            else if (rssi > -68) bars = 4;
-            else if (rssi > -80) bars = 3;
-            else if (rssi > -92) bars = 2;
-            else if (rssi > -104) bars = 1;
-        }
-        DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
-
-        system_display_bars(bars);
     }
 }
 
 void system_handle_double_click()
 {
+#if Wiring_SetupButtonUX
     SYSTEM_POWEROFF = 1;
     network.connect_cancel(true, true);
+#else
+    system_notify_event(button_double_click);
+#endif
 }
 
 void reset_button_click(uint32_t release_time)
@@ -217,9 +226,7 @@ void handle_button_click(uint16_t depressed_duration, uint32_t release_time)
     if (reset) {
         reset_button_click(release_time);
     }
-
 }
-#endif // #if Wiring_SetupButtonUX
 
 // this is called on multiple threads - ideally need a mutex
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
@@ -242,9 +249,7 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 
             if (!network.listening()) {
                 system_notify_event(button_status, depressed_duration);
-#if Wiring_SetupButtonUX
                 handle_button_click(depressed_duration, release_time);
-#endif
             }
             pressed_time = 0;
             if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening())
@@ -469,13 +474,11 @@ extern "C" void HAL_SysTick_Handler(void)
     }
 #endif
 
-#if Wiring_SetupButtonUX
     if (IS_BUTTON_TIMEOUT())
     {
         reset_button_click(button_timeout_start);
         SYSTEM_HANDLE_SINGLE_CLICK = true;
     }
-#endif
 }
 
 void manage_safe_mode()
