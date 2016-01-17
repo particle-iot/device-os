@@ -591,6 +591,8 @@ SCENARIO("retransmit delay is exponential with randomness")
 {
 	for (int i=0; i<CoAPMessage::MAX_RETRANSMIT; i++)
 	{
+		system_tick_t gmin = INT_MAX;
+		system_tick_t gmax = 0;
 		for (unsigned u = 0; u<500; u++)
 		{
 			system_tick_t timeout = CoAPMessage::transmit_timeout(i);
@@ -600,7 +602,13 @@ SCENARIO("retransmit delay is exponential with randomness")
 				REQUIRE(timeout>=min);
 			if (timeout>max)
 				REQUIRE(timeout<=max);
+			if (timeout<gmin)
+				gmin = timeout;
+			if (timeout>gmax)
+				gmax = timeout;
 		}
+		REQUIRE(gmin<gmax);
+
 	}
 }
 
