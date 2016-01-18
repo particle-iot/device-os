@@ -56,9 +56,9 @@ void call_raw_interrupt_handler(void* data)
  * Return         : true if function handler was allocated, false otherwise.
  *******************************************************************************/
 
-void configure_interrupt(HAL_InterruptExtraConfiguration extra, int8_t priority, uint8_t subpriority)
+HAL_InterruptExtraConfiguration* configure_interrupt(HAL_InterruptExtraConfiguration& extra, int8_t priority, uint8_t subpriority)
 {
-	config.size = sizeof(config);
+	extra.size = sizeof(extra);
     if (priority >= 0) {
       extra.IRQChannelPreemptionPriority = (uint8_t)priority;
       extra.IRQChannelSubPriority = subpriority;
@@ -92,7 +92,7 @@ bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMod
 #endif
     HAL_Interrupts_Detach(pin);
     HAL_InterruptExtraConfiguration extra = {0};
-    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra));
+    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra, priority, subpriority));
     return true;
 }
 
