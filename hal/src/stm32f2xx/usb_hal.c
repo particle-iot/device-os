@@ -33,6 +33,7 @@
 #include "usb_conf.h"
 #include "usbd_desc.h"
 #include "delay_hal.h"
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -60,7 +61,6 @@ extern volatile uint32_t USB_Rx_Buffer_length;
 extern volatile uint8_t USB_Tx_Buffer[];
 extern volatile uint32_t USB_Tx_Buffer_head;
 extern volatile uint32_t USB_Tx_Buffer_tail;
-extern volatile uint32_t USB_Tx_Buffer_length;
 extern volatile uint8_t  USB_Tx_State;
 extern volatile uint8_t  USB_Rx_State;
 #endif
@@ -155,17 +155,14 @@ static inline bool USB_USART_Connected() {
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
-    if (USB_USART_Connected())
-    {
-        int32_t available = 0;
-        if (USB_Rx_Buffer_head >= USB_Rx_Buffer_tail)
-            available = USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
-        else
-            available = USB_Rx_Buffer_length + USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
-        return available;
-    }
-
-    return 0;
+    int32_t available = 0;
+    HAL_disable_irq();
+    if (USB_Rx_Buffer_head >= USB_Rx_Buffer_tail)
+        available = USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
+    else
+        available = USB_Rx_Buffer_length + USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
+    HAL_enable_irq(0);
+    return available;
 }
 
 /*******************************************************************************
@@ -178,14 +175,14 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
 {
     if (USB_USART_Available_Data() > 0)
     {
-        uint32_t tail = USB_Rx_Buffer_tail;
+        HAL_disable_irq();
         uint8_t data = USB_Rx_Buffer[USB_Rx_Buffer_tail];
         if (!peek) {
-            tail++;
-            if (tail == USB_Rx_Buffer_length)
-                tail = 0;
-            USB_Rx_Buffer_tail = tail;
+            USB_Rx_Buffer_tail++;
+            if (USB_Rx_Buffer_tail == USB_Rx_Buffer_length)
+                USB_Rx_Buffer_tail = 0;
         }
+        HAL_enable_irq(0);
         return data;
     }
 
@@ -202,8 +199,10 @@ int32_t USB_USART_Available_Data_For_Write(void)
 {
     if (USB_USART_Connected())
     {
-        return USB_TX_BUFFER_SIZE - (USB_Tx_Buffer_head >= USB_Tx_Buffer_tail ?
-            USB_Tx_Buffer_head - USB_Tx_Buffer_tail : USB_TX_BUFFER_SIZE + USB_Tx_Buffer_head - USB_Tx_Buffer_tail) - 1;
+        uint32_t tail = USB_Tx_Buffer_tail;
+        int32_t available = USB_TX_BUFFER_SIZE - (USB_Tx_Buffer_head >= tail ?
+            USB_Tx_Buffer_head - tail : USB_TX_BUFFER_SIZE + USB_Tx_Buffer_head - tail) - 1;
+        return available;
     }
 
     return -1;
@@ -227,7 +226,7 @@ void USB_USART_Send_Data(uint8_t Data)
     {
         uint32_t head = USB_Tx_Buffer_head;
 
-        USB_Tx_Buffer[USB_Tx_Buffer_head] = Data;
+        USB_Tx_Buffer[head] = Data;
 
         USB_Tx_Buffer_head = ++head % USB_TX_BUFFER_SIZE;
     }

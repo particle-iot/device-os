@@ -88,7 +88,7 @@
 #define CDC_IN_FRAME_INTERVAL           1    /* Number of micro-frames between IN transfers */
 #define USB_TX_BUFFER_SIZE              128  /* Total size of IN buffer:
                                                 APP_RX_DATA_SIZE*8/MAX_BAUDARATE*1000 should be > CDC_IN_FRAME_INTERVAL */
-#define USB_RX_BUFFER_SIZE              128
+#define USB_RX_BUFFER_SIZE              256
 
 #define APP_FOPS                        APP_fops
 

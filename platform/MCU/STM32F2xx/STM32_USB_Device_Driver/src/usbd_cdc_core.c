@@ -231,7 +231,6 @@ __ALIGN_BEGIN uint8_t USB_Tx_Buffer   [USB_TX_BUFFER_SIZE] __ALIGN_END ;
 
 volatile uint32_t USB_Tx_Buffer_head = 0;
 volatile uint32_t USB_Tx_Buffer_tail = 0;
-volatile uint32_t USB_Tx_Buffer_length = 0;
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
@@ -714,13 +713,15 @@ static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
              USB_Tx_length);
 
   USB_Tx_Buffer_tail = ring_wrap(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_tail + USB_Tx_length);
-  USB_Tx_Buffer_length += USB_Tx_length;
   return USBD_OK;
 }
 
 static inline int usbd_cdc_Start_Rx(void *pdev)
 {
-  //
+
+  /* USB_Rx_Buffer_length is used here to keep track of
+   * available _contiguous_ buffer space in USB_Rx_Buffer.
+   */
   uint32_t USB_Rx_length;
   if (USB_Rx_Buffer_head >= USB_Rx_Buffer_tail)
     USB_Rx_Buffer_length = USB_RX_BUFFER_SIZE;
