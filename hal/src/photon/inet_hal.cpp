@@ -29,7 +29,6 @@
 int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, network_interface_t nif, void* reserved)
 {
     wiced_ip_address_t address;
-    address.version = WICED_IPV4;
     wiced_result_t result = wiced_hostname_lookup (hostname, &address, 5000);
     if (result == WICED_SUCCESS) {
     		HAL_IPV4_SET(out_ip_addr, GET_IPV4_ADDRESS(address));

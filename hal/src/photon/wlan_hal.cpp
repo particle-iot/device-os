@@ -530,7 +530,7 @@ void wlan_set_error_count(uint32_t errorCount)
 }
 
 inline void setAddress(wiced_ip_address_t* addr, HAL_IPAddress& target) {
-    target.ipv4 = GET_IPV4_ADDRESS(*addr);
+    HAL_IPV4_SET(&target, GET_IPV4_ADDRESS(*addr));
 }
 
 void wlan_fetch_ipconfig(WLanConfig* config)
@@ -538,7 +538,6 @@ void wlan_fetch_ipconfig(WLanConfig* config)
     wiced_ip_address_t addr;
     wiced_interface_t ifup = WICED_STA_INTERFACE;
 
-    memset(config, 0, sizeof(*config));
     if (wiced_network_is_up(ifup)) {
 
         if (wiced_ip_get_ipv4_address(ifup, &addr)==WICED_SUCCESS)

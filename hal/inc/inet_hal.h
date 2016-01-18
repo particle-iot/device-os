@@ -49,7 +49,7 @@ typedef struct __attribute__((__packed__)) _HAL_IPAddress_t  {
     uint8_t v;              // 4 for Ipv4, 6 for Ipv6
 } HAL_IPAddress;
 
-#define HAL_IPV4_SET(paddress, value)  (paddress->v = 4); (paddress->ipv4 = value)
+#define HAL_IPV4_SET(paddress, value)  ((paddress)->v = 4); ((paddress)->ipv4 = value)
 
 STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==17);
 #else
