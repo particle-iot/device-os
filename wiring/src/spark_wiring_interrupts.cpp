@@ -56,6 +56,17 @@ void call_raw_interrupt_handler(void* data)
  * Return         : true if function handler was allocated, false otherwise.
  *******************************************************************************/
 
+void configure_interrupt(HAL_InterruptExtraConfiguration extra, int8_t priority, uint8_t subpriority)
+{
+	config.size = sizeof(config);
+    if (priority >= 0) {
+      extra.IRQChannelPreemptionPriority = (uint8_t)priority;
+      extra.IRQChannelSubPriority = subpriority;
+      return &extra;
+    }
+	return nullptr;
+}
+
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
 #if Wiring_Cellular == 1
@@ -67,13 +78,7 @@ bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode 
     wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
     if (handler) {
         HAL_InterruptExtraConfiguration extra = {0};
-        HAL_InterruptExtraConfiguration* extraPtr = NULL;
-        if (priority >= 0) {
-          extra.IRQChannelPreemptionPriority = (uint8_t)priority;
-          extra.IRQChannelSubPriority = subpriority;
-          extraPtr = &extra;
-        }
-        HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, extraPtr);
+        HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, configure_interrupt(extra, priority, subpriority));
     }
     return handler!=NULL;
 }
@@ -86,15 +91,8 @@ bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMod
   if (pin == D7) return false;
 #endif
     HAL_Interrupts_Detach(pin);
-
     HAL_InterruptExtraConfiguration extra = {0};
-    HAL_InterruptExtraConfiguration* extraPtr = NULL;
-    if (priority >= 0) {
-      extra.IRQChannelPreemptionPriority = (uint8_t)priority;
-      extra.IRQChannelSubPriority = subpriority;
-      extraPtr = &extra;
-    }
-    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, extraPtr);
+    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra));
     return true;
 }
 
