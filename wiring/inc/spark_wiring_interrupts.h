@@ -61,4 +61,21 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler);
  */
 bool detachSystemInterrupt(hal_irq_t irq);
 
+
+class AtomicSection {
+	int prev;
+public:
+	AtomicSection() {
+		prev = HAL_disable_irq();
+	}
+
+	~AtomicSection() {
+		HAL_enable_irq(prev);
+	}
+};
+
+#define ATOMIC_SECTION()  AtomicSection __as;
+
+
+
 #endif /* SPARK_WIRING_INTERRUPTS_H_ */
