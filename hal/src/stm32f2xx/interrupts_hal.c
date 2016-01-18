@@ -79,7 +79,7 @@ static exti_state exti_saved_state;
 
 /* Private function prototypes -----------------------------------------------*/
 
-void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved)
+void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
 {
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
 
@@ -156,8 +156,13 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   //configure NVIC
   //select NVIC channel to configure
   NVIC_InitStructure.NVIC_IRQChannel = GPIO_IRQn[GPIO_PinSource];
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 14;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  if (config == NULL) {
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 14;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  } else {
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = config->IRQChannelPreemptionPriority;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = config->IRQChannelSubPriority;
+  }
   //enable IRQ channel
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   //update NVIC registers

@@ -51,11 +51,17 @@ typedef struct HAL_InterruptCallback {
     void* data;
 } HAL_InterruptCallback;
 
+typedef struct HAL_InterruptExtraConfiguration {
+  uint8_t size;
+  uint8_t IRQChannelPreemptionPriority;
+  uint8_t IRQChannelSubPriority;
+} HAL_InterruptExtraConfiguration;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved);
+void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config);
 void HAL_Interrupts_Detach(uint16_t pin);
 void HAL_Interrupts_Enable_All(void);
 void HAL_Interrupts_Disable_All(void);
