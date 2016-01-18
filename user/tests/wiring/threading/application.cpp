@@ -37,13 +37,14 @@ void increment(void)
 
 test(system_thread_can_pump_events)
 {
+	WiFi.listen(false);
     test_val = 0;
 
     ActiveObjectBase* system = (ActiveObjectBase*)system_internal(1, nullptr); // Returns system thread instance
     system->invoke_async(std::function<void()>(increment));
 
     uint32_t start = millis();
-    while (test_val != 1 && millis() - start < 1000); // Busy wait
+    while (test_val != 1 && millis() - start < 4000); // Busy wait
 
     assertEqual((int)test_val, 1);
 }
