@@ -1,72 +1,85 @@
 #include "application.h"
 
-static bool buttonStatusEvent = false,
-        buttonDoubleClickEvent = false;
-static uint32_t buttonStatusEventTime = 0;
+#include <deque>
 
-void systemEventHandler(system_event_t event, uint32_t data, void*) {
-    switch (event) {
-    case button_status:
-        buttonStatusEvent = true;
-        buttonStatusEventTime = data;
-        break;
-    case button_double_click:
-        buttonDoubleClickEvent = true;
-        break;
-    default:
-        break;
+struct Event {
+    system_event_t type;
+    uint32_t data;
+
+    explicit Event(system_event_t type, uint32_t data = 0) :
+            type(type),
+            data(data) {
     }
+};
+
+const uint32_t testTimeout = 5000;
+
+std::deque<Event> eventQueue;
+uint32_t testStarted = 0;
+uint32_t eventData = 0;
+
+#define WAIT_EVENT(event) \
+        do { \
+            while (eventQueue.empty() && millis() - testStarted < testTimeout) { \
+                Particle.process(); \
+            } \
+            if (eventQueue.empty() || eventQueue.front().type != (event)) { \
+                return 1; \
+            } \
+            eventData = eventQueue.front().data; \
+            eventQueue.pop_front(); \
+        } while (false)
+
+void eventHandler(system_event_t event, uint32_t data, void*) {
+    eventQueue.push_back(Event(event, data));
 }
 
-int testClick() {
-    // Waiting the button to be pressed in next 5 seconds
-    buttonStatusEvent = false;
-    uint32_t t = millis();
-    do {
-        Particle.process();
-    } while (!buttonStatusEvent && millis() - t < 5000);
-    if (!buttonStatusEvent || buttonStatusEventTime != 0) {
+void resetTest() {
+    eventQueue = std::deque<Event>();
+    testStarted = millis();
+}
+
+int testClicks(String arg) {
+    resetTest();
+    const int expectedClicks = arg.toInt();
+    if (expectedClicks <= 0) {
         return 1;
     }
-    // Waiting for the button to be released in next second
-    buttonStatusEvent = false;
-    buttonStatusEventTime = 0;
-    t = millis();
+    int clicks = 0;
     do {
-        Particle.process();
-    } while (!buttonStatusEvent && millis() - t < 1000);
-    if (!buttonStatusEvent || buttonStatusEventTime == 0 || buttonStatusEventTime > 1000) {
+        // Waiting for button press event
+        WAIT_EVENT(button_status);
+        if (eventData != 0) {
+            return 1;
+        }
+        // Waiting for button release event
+        WAIT_EVENT(button_status);
+        if (eventData == 0 || eventData > 1000) {
+            return 1;
+        }
+        // Waiting for button click event
+        WAIT_EVENT(button_click);
+        if ((int)eventData != clicks + 1) {
+            return 1;
+        }
+        ++clicks;
+        if (clicks == expectedClicks) {
+            // Waiting for final click event
+            WAIT_EVENT(button_final_click);
+            if ((int)eventData != clicks) {
+                return 1;
+            }
+        }
+    } while (clicks != expectedClicks && millis() - testStarted < testTimeout);
+    if (clicks != expectedClicks) {
         return 1;
     }
     return 0;
-}
-
-int testDoubleClick() {
-    // Waiting for the button to be double-clicked in next 5 seconds
-    buttonDoubleClickEvent = false;
-    uint32_t t = millis();
-    do {
-        Particle.process();
-    } while (!buttonDoubleClickEvent && millis() - t < 5000);
-    if (!buttonDoubleClickEvent) {
-        return 1;
-    }
-    return 0;
-}
-
-int test(String name) {
-    int result = 1;
-    if (name == "click") {
-        result = testClick();
-    } else if (name == "doubleClick") {
-        result = testDoubleClick();
-    }
-    return result;
 }
 
 void setup() {
-    System.on(button_status | button_double_click, systemEventHandler);
-    Particle.function("test", test);
+    System.on(button_status | button_click | button_final_click, eventHandler);
+    Particle.function("testClicks", testClicks);
 }
 
 void loop() {

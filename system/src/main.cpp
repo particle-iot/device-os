@@ -114,11 +114,8 @@ uint16_t system_button_pushed_duration(uint8_t button, void*)
     return pressed_time ? HAL_Timer_Get_Milli_Seconds()-pressed_time : 0;
 }
 
-/* flag used to initiate system_handle_single_click() from main thread */
-static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
-
-static uint32_t prev_release_time = 0;
-static uint8_t clicks = 0;
+static volatile uint8_t button_final_clicks = 0;
+static uint8_t button_current_clicks = 0;
 
 #if Wiring_SetupButtonUX
 void system_prepare_display_bars()
@@ -171,60 +168,51 @@ void system_display_rssi() {
 
     system_display_bars(bars);
 }
+
+void system_handle_button_click()
+{
+    const uint8_t clicks = button_final_clicks;
+    button_final_clicks = 0;
+    switch (clicks) {
+    case 1: // Single click
+        system_display_rssi();
+        break;
+    case 2: // Double click
+        SYSTEM_POWEROFF = 1;
+        network.connect_cancel(true, true);
+        break;
+    default:
+        break;
+    }
+}
 #endif // #if Wiring_SetupButtonUX
 
-void system_handle_single_click()
+void reset_button_click()
 {
-    if (SYSTEM_HANDLE_SINGLE_CLICK) {
-        SYSTEM_HANDLE_SINGLE_CLICK = false;
-#if Wiring_SetupButtonUX
-        system_display_rssi();
-#endif
+    const uint8_t clicks = button_current_clicks;
+    button_current_clicks = 0;
+    CLR_BUTTON_TIMEOUT();
+    if (clicks > 0) {
+        system_notify_event(button_final_click, clicks);
+        button_final_clicks = clicks;
     }
 }
 
-void system_handle_double_click()
+void handle_button_click(uint16_t depressed_duration)
 {
-#if Wiring_SetupButtonUX
-    SYSTEM_POWEROFF = 1;
-    network.connect_cancel(true, true);
-#else
-    system_notify_event(button_double_click);
-#endif
-}
-
-void reset_button_click(uint32_t release_time)
-{
-    clicks = 0;
-    prev_release_time = release_time - 1000;
-    CLR_BUTTON_TIMEOUT();
-}
-
-void handle_button_click(uint16_t depressed_duration, uint32_t release_time)
-{
-    uint32_t start_time = release_time - depressed_duration;
-    uint32_t since_prev = start_time - prev_release_time;
     bool reset = true;
-    if (depressed_duration<500) {               // a short button press
-        if (!clicks || (since_prev<1000)) {		// first click or within 1 second of the previous click
-            clicks++;
-            prev_release_time = release_time;
-            if (clicks == 1)
-            {
-                // If a second button press doesn't come within 1.5 seconds,
-                // declare a single button press valid.
-                ARM_BUTTON_TIMEOUT(1500);
-                reset = false;
-            }
-            else if (clicks == 2)
-            {
-                reset_button_click(release_time);
-                system_handle_double_click();
-            }
+    if (depressed_duration < 500) { // a short button press
+        button_current_clicks++;
+        if (button_current_clicks < 5) { // 5 clicks "ought to be enough for anybody"
+            // If next button click doesn't come within 1 second, declare a
+            // final button click.
+            ARM_BUTTON_TIMEOUT(1000);
+            reset = false;
         }
+        system_notify_event(button_click, button_current_clicks);
     }
     if (reset) {
-        reset_button_click(release_time);
+        reset_button_click();
     }
 }
 
@@ -249,7 +237,7 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 
             if (!network.listening()) {
                 system_notify_event(button_status, depressed_duration);
-                handle_button_click(depressed_duration, release_time);
+                handle_button_click(depressed_duration);
             }
             pressed_time = 0;
             if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening())
@@ -476,8 +464,7 @@ extern "C" void HAL_SysTick_Handler(void)
 
     if (IS_BUTTON_TIMEOUT())
     {
-        reset_button_click(button_timeout_start);
-        SYSTEM_HANDLE_SINGLE_CLICK = true;
+        reset_button_click();
     }
 }
 

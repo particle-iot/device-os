@@ -306,7 +306,9 @@ void manage_cloud_connection(bool force_events)
 }
 #endif
 
-extern void	system_handle_single_click();
+#if Wiring_SetupButtonUX
+extern void system_handle_button_click();
+#endif
 
 void Spark_Idle_Events(bool force_events/*=false*/)
 {
@@ -317,8 +319,9 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     if (!SYSTEM_POWEROFF) {
 
-        system_handle_single_click();
-
+#if Wiring_SetupButtonUX
+        system_handle_button_click();
+#endif
         manage_serial_flasher();
 
         manage_network_connection();
