@@ -31,6 +31,9 @@
 #include "dac_hal.h"
 #include "pwm_hal.h"
 #include "rng_hal.h"
+#if PLATFORM_ID == 88
+#include "device_name.h"
+#endif
 #include "config.h"
 #include "spark_macros.h"
 #include "debug.h"
