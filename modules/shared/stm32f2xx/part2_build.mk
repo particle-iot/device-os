@@ -19,7 +19,8 @@ LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
-LDFLAGS += --specs=nano.specs -lnosys
+LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
+LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
