@@ -146,10 +146,10 @@ private:
 
 public:
 
-	static const uint16_t ACK_TIMEOUT = 2000;
+	static const uint16_t ACK_TIMEOUT = 4000;
 	static const uint16_t ACK_RANDOM_FACTOR = 1500;
 	static const uint16_t ACK_RANDOM_DIVISOR = 1000;
-	static const uint8_t MAX_RETRANSMIT = 4;
+	static const uint8_t MAX_RETRANSMIT = 3;
 	static const uint16_t MAX_TRANSMIT_SPAN = 45*1000;
 
 
