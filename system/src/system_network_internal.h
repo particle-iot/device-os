@@ -464,7 +464,12 @@ public:
             WLAN_DHCP = 0;
             SPARK_LED_FADE = 0;
             if (WLAN_LISTEN_ON_FAILED_CONNECT)
+            {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+                ble_provision_on_failed();
+#endif
                 listen();
+            }
             else
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
         }
