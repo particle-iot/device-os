@@ -120,7 +120,7 @@ test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
     // then
     assertEqual(HAL_PWM_Get_AnalogValue(pin), 200);
     pinMode(pin, INPUT);
-	}
+	});
 }
 
 
@@ -184,6 +184,6 @@ test(PWM_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // avgPulseHigh should equal 10 +/- 5
     assertMoreOrEqual(avgPulseHigh, 5);
     assertLessOrEqual(avgPulseHigh, 15);
-	}
+	});
 }
 
