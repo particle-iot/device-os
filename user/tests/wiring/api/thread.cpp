@@ -23,7 +23,7 @@ test(api_thread) {
 }
 
 test(api_critical_section) {
-    API_COMPILE(CriticalSection cs);
+    API_COMPILE(SingleThreadedSection cs);
 }
 
 #endif
