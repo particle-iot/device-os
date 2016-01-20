@@ -23,11 +23,11 @@ test(api_thread) {
 }
 
 test(api_single_threaded_section) {
-    //API_COMPILE(SingleThreadedSection sts);
+    API_COMPILE(SingleThreadedSection sts);
 }
 
 test(api_atomic_section) {
-    //API_COMPILE(AtomicSection as);
+    API_COMPILE(AtomicSection as);
 }
 
 #endif
