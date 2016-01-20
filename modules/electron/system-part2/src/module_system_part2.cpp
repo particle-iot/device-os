@@ -23,6 +23,7 @@ DYNALIB_TABLE_EXTERN(hal_socket);
 DYNALIB_TABLE_EXTERN(hal_cellular);
 DYNALIB_TABLE_EXTERN(hal_usart);
 DYNALIB_TABLE_EXTERN(hal_concurrent);
+DYNALIB_TABLE_EXTERN(hal_can);
 
 
 /**
@@ -44,6 +45,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part2_mo
     DYNALIB_TABLE_NAME(system_net),
     DYNALIB_TABLE_NAME(system_cloud),
     DYNALIB_TABLE_NAME(hal_concurrent),
+    DYNALIB_TABLE_NAME(hal_can),
 };
 
 #include "system_part2_loader.c"

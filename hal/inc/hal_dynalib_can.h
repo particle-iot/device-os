@@ -1,7 +1,8 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
+ * @file    hal_dynalib_can.h
+ * @authors Brian Spranger
+ * @date    01 October 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -20,18 +21,29 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
-#include "hal_dynalib.h"
-#include "hal_dynalib_core.h"
-#include "hal_dynalib_gpio.h"
-#include "hal_dynalib_i2c.h"
-#include "hal_dynalib_ota.h"
-#include "hal_dynalib_peripherals.h"
-#include "hal_dynalib_socket.h"
-#include "hal_dynalib_spi.h"
-#include "hal_dynalib_usart.h"
-#include "hal_dynalib_wlan.h"
-#include "hal_dynalib_concurrent.h"
-#include "hal_dynalib_cellular.h"
-#include "hal_dynalib_can.h"
+#ifndef HAL_DYNALIB_CAN_H
+#define HAL_DYNALIB_CAN_H
+
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
+#include "can_hal.h"
+#endif
+
+DYNALIB_BEGIN(hal_can)
+
+DYNALIB_FN(hal_can,HAL_CAN_Init)
+DYNALIB_FN(hal_can,HAL_CAN_Begin)
+DYNALIB_FN(hal_can,HAL_CAN_End)
+DYNALIB_FN(hal_can,HAL_CAN_Transmit)
+DYNALIB_FN(hal_can,HAL_CAN_Receive)
+DYNALIB_FN(hal_can,HAL_CAN_Available_Messages)
+DYNALIB_FN(hal_can,HAL_CAN_Add_Filter)
+DYNALIB_FN(hal_can,HAL_CAN_Clear_Filters)
+DYNALIB_FN(hal_can,HAL_CAN_Is_Enabled)
+DYNALIB_FN(hal_can,HAL_CAN_Error_Status)
+
+DYNALIB_END(hal_can)
+
+#endif	/* HAL_DYNALIB_CAN_H */
 

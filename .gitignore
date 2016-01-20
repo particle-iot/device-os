@@ -27,6 +27,9 @@ Release/*
 *.d
 *.o
 
+# Unit test build folder
+user/tests/unit/obj/*
+
 # Platform-specific settings
 .settings/*
 .cproject
