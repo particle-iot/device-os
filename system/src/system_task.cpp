@@ -306,9 +306,8 @@ void manage_cloud_connection(bool force_events)
 }
 #endif
 
-
 #if Wiring_SetupButtonUX
-extern void		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+extern void system_handle_button_click();
 #endif
 
 void Spark_Idle_Events(bool force_events/*=false*/)
@@ -321,9 +320,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     if (!SYSTEM_POWEROFF) {
 
 #if Wiring_SetupButtonUX
-		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+        system_handle_button_click();
 #endif
-
         manage_serial_flasher();
 
         manage_network_connection();
