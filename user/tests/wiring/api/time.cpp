@@ -18,12 +18,14 @@ test(time_format)
 
 test(time_zone)
 {
-	float zone;
-	time_t time;
-	API_COMPILE(Time.zone(1.0f));
-	API_COMPILE(Time.zone(-5));
-	API_COMPILE(zone=Time.zone());
-	API_COMPILE(time=Time.now());
-	API_COMPILE(time=Time.local());
+    float zone;
+    time_t time;
+    API_COMPILE(Time.zone(1.0f));
+    API_COMPILE(Time.zone(-5));
+    API_COMPILE(zone=Time.zone());
+    API_COMPILE(time=Time.now());
+    API_COMPILE(time=Time.local());
+    zone+=1.0; // avoid unused warning
+    (void)time++; // avoid unused warning
 }
 
