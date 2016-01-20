@@ -1,12 +1,24 @@
-## v0.4.8
+## v0.4.9
+
+### FEATURES
+
+- 
+
+### ENHANCEMENTS
+
+- `System.freeMemory()` shows an accurate value for free memory rather than the highwater mark for the heap. 
+
+### BUGFIXES
+
+- RSA key generation would sometimes produce invalid keys. [#779](https://github.com/spark/firmware/pull/779)
+
+## v0.4.8-rc.1
 
 ### FEATURE
 
 - factory firmware uses full modular firmware [#749](https://github.com/spark/firmware/pull/749). No need for UpdateZero.
 
 - `Timer.changePeriod()` [#720](https://github.com/spark/firmware/pull/720)
-
-- 
 
 ### BUGFIXES
 

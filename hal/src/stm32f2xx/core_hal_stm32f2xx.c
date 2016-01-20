@@ -47,6 +47,7 @@
 #include "timer_hal.h"
 #include "dct.h"
 #include "hal_platform.h"
+#include "malloc.h"
 
 #define STOP_MODE_EXIT_CONDITION_PIN 0x01
 #define STOP_MODE_EXIT_CONDITION_RTC 0x02
@@ -916,7 +917,9 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     extern unsigned char _eheap[];
     extern unsigned char *sbrk_heap_top;
 
-    info->freeheap = _eheap-sbrk_heap_top;
+    struct mallinfo heapinfo = mallinfo();
+    info->freeheap = _eheap-sbrk_heap_top + heapinfo.fordblks;
+
     return 0;
 }
 
