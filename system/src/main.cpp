@@ -201,7 +201,9 @@ void reset_button_click()
 void handle_button_click(uint16_t depressed_duration)
 {
     bool reset = true;
-    if (depressed_duration < 500) { // a short button press
+    if (depressed_duration < 30) { // Likely a spurious click due to switch bouncing
+        reset = false;
+    } else if (depressed_duration < 500) { // a short button press
         button_current_clicks++;
         if (button_current_clicks < 5) { // 5 clicks "ought to be enough for anybody"
             // If next button click doesn't come within 1 second, declare a
