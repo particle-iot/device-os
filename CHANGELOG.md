@@ -11,6 +11,7 @@
 ### BUGFIXES
 
 - RSA key generation would sometimes produce invalid keys. [#779](https://github.com/spark/firmware/pull/779)
+- Static IP configuration was not being used. 
 
 ## v0.4.8-rc.1
 
