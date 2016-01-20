@@ -2,13 +2,13 @@
 
 ### FEATURES
 
+- Support for CAN Bus [#790](https://github.com/spark/firmware/pull/790)
 - `WiFi.BSSID()` to retrieve the 6-byte address of the connected AP. [#816](https://github.com/spark/firmware/pull/816)
 - `attachInterrupt()` configurable interrupt priority [#806](https://github.com/spark/firmware/issues/806)
 - `Time.local()` retrieves the current time in the configured timezone. [#783](https://github.com/spark/firmware/issues/783)
 - `WiFi.getCredentials()` to list configured credentials on the Photon.  [#759](https://github.com/spark/firmware/issues/759)
 - variable frequency PWM with `analogWrite()` [#756](https://github.com/spark/firmware/pull/756)
 - `ATOMIC_SECTION()` and `SINGLE_THREADED_SECTION()` declarations to control atomicity and thread scheduling. [#758](https://github.com/spark/firmware/issues/758)
-- software flow control via `availalbeForWrite()` and `blockOnOverrun()` for USB and Hardware Serial. [#758](https://github.com/spark/firmware/issues/758)
 - System events for individual button clicks and a run of button clicks. [#818](https://github.com/spark/firmware/issues/818)
 
 ### ENHANCEMENTS
