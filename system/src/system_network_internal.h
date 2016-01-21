@@ -155,7 +155,7 @@ protected:
 
         const uint32_t start = millis();
         uint32_t loop = start;
-        system_notify_event(wifi_listen_begin, start);
+        system_notify_event(wifi_listen_begin, 0);
 
         /* Wait for SmartConfig/SerialConfig to finish */
         while (network_listening(0, 0, NULL))
