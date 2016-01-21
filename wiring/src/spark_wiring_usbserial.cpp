@@ -76,6 +76,7 @@ size_t USBSerial::write(uint8_t byte)
 
 void USBSerial::flush()
 {
+  USB_USART_Flush_Data();
 }
 
 void USBSerial::blockOnOverrun(bool block)

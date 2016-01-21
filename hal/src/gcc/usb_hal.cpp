@@ -101,6 +101,16 @@ void USB_USART_Send_Data(uint8_t Data)
     std::cout.write((const char*)&Data, 1);
 }
 
+/*******************************************************************************
+ * Function Name  : USB_USART_Flush_Data.
+ * Description    : Flushes TX buffer
+ * Input          : None.
+ * Return         : None.
+ *******************************************************************************/
+void USB_USART_Flush_Data(void)
+{
+}
+
 #ifdef USB_HID_ENABLE
 /*******************************************************************************
  * Function Name : USB_HID_Send_Report.

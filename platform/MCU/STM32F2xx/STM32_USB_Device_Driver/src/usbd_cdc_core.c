@@ -67,6 +67,7 @@
 #include "usbd_cdc_core.h"
 #include "usbd_desc.h"
 #include "usbd_req.h"
+#include "debug.h"
 
 #ifndef MIN
 #define MIN(a, b) (a) < (b) ? (a) : (b)
@@ -231,6 +232,7 @@ __ALIGN_BEGIN uint8_t USB_Tx_Buffer   [USB_TX_BUFFER_SIZE] __ALIGN_END ;
 
 volatile uint32_t USB_Tx_Buffer_head = 0;
 volatile uint32_t USB_Tx_Buffer_tail = 0;
+volatile uint32_t USB_Tx_failed_counter = 0;
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
@@ -241,6 +243,7 @@ __ALIGN_BEGIN uint8_t CmdBuff[CDC_CMD_PACKET_SZE] __ALIGN_END ;
 
 volatile uint8_t  USB_Tx_State = 0;
 volatile uint8_t  USB_Rx_State = 0;
+volatile uint8_t  USB_Serial_Open = 0;
 
 static uint32_t cdcCmd = 0xFF;
 static uint32_t cdcLen = 0;
@@ -472,6 +475,21 @@ __ALIGN_BEGIN uint8_t usbd_cdc_OtherCfgDesc[USB_CDC_CONFIG_DESC_SIZ]  __ALIGN_EN
   * @}
   */
 
+static inline void usbd_cdc_Change_Open_State(uint8_t state) {
+  if (state != USB_Serial_Open) {
+    DEBUG("USB Serial state: %d", state);
+    if (state) {
+      USB_Tx_failed_counter = 0;
+      // Also flush everything in TX buffer
+      uint32_t USB_Tx_length;
+      USB_Tx_length = ring_data_contig(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_head, USB_Tx_Buffer_tail);
+      if (USB_Tx_length)
+          USB_Tx_Buffer_tail = ring_wrap(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_tail + USB_Tx_length);
+    }
+    USB_Serial_Open = state;
+  }
+}
+
 /** @defgroup usbd_cdc_Private_Functions
   * @{
   */
@@ -661,6 +679,8 @@ static uint8_t  usbd_cdc_Setup (void  *pdev,
   */
 static uint8_t  usbd_cdc_EP0_RxReady (void  *pdev)
 {
+  usbd_cdc_Change_Open_State(1);
+
   if (cdcCmd != NO_CMD)
   {
     /* Process the data */
@@ -693,6 +713,8 @@ static inline uint32_t usbd_Last_Rx_Packet_size(void *pdev, uint8_t epnum)
 static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
 {
   uint32_t USB_Tx_length;
+
+  usbd_cdc_Change_Open_State(1);
 
   if (!USB_Tx_State)
     return USBD_OK;
@@ -764,6 +786,10 @@ static uint8_t  usbd_cdc_DataOut (void *pdev, uint8_t epnum)
 {
   uint32_t USB_Rx_Count = usbd_Last_Rx_Packet_size(pdev, epnum);
   USB_Rx_Buffer_head = ring_wrap(USB_Rx_Buffer_length, USB_Rx_Buffer_head + USB_Rx_Count);
+
+  // Serial port is definitely open
+  usbd_cdc_Change_Open_State(1);
+
   usbd_cdc_Start_Rx(pdev);
 
   return USBD_OK;
@@ -777,20 +803,37 @@ static void usbd_cdc_Schedule_Out(void *pdev)
 
 static void usbd_cdc_Schedule_In(void *pdev)
 {
-  uint16_t USB_Tx_length;
-  if (USB_Tx_State)
-    return;
-
+  uint32_t USB_Tx_length;
   USB_Tx_length = ring_data_contig(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_head, USB_Tx_Buffer_tail);
+
+  if (USB_Tx_State) {
+    if (USB_Serial_Open) {
+      USB_Tx_failed_counter++;
+      if (USB_Tx_failed_counter >= 500) {
+        usbd_cdc_Change_Open_State(0);
+        // Completely flush TX buffer
+        DCD_EP_Flush(pdev, CDC_IN_EP);
+        // Send ZLP
+        DCD_EP_Tx(pdev, CDC_IN_EP, NULL, 0);
+        if (USB_Tx_length)
+          USB_Tx_Buffer_tail = ring_wrap(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_tail + USB_Tx_length);
+      }
+    }
+    return;
+  }
+
   if (!USB_Tx_length)
     return;
 
   USB_Tx_State = 1;
+  USB_Tx_failed_counter = 0;
+
   USB_Tx_length = MIN(USB_Tx_length, CDC_DATA_IN_PACKET_SIZE);
   DCD_EP_Tx (pdev,
              CDC_IN_EP,
              (uint8_t*)&USB_Tx_Buffer[USB_Tx_Buffer_tail],
              USB_Tx_length);
+
   USB_Tx_Buffer_tail = ring_wrap(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_tail + USB_Tx_length);
 }
 

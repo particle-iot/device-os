@@ -102,6 +102,13 @@ int32_t USB_USART_Receive_Data(uint8_t peek);
  * @return
  */
 void USB_USART_Send_Data(uint8_t Data);
+
+/**
+ * Flushes TX buffer
+ * @return
+ */
+void USB_USART_Flush_Data(void);
+
 #endif
 
 #ifdef USB_HID_ENABLE

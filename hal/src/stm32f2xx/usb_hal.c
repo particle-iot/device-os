@@ -63,6 +63,7 @@ extern volatile uint32_t USB_Tx_Buffer_head;
 extern volatile uint32_t USB_Tx_Buffer_tail;
 extern volatile uint8_t  USB_Tx_State;
 extern volatile uint8_t  USB_Rx_State;
+extern volatile uint8_t  USB_Serial_Open;
 #endif
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -144,7 +145,7 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 }
 
 static inline bool USB_USART_Connected() {
-    return linecoding.bitrate > 0 && USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED;
+    return linecoding.bitrate > 0 && USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED && USB_Serial_Open;
 }
 
 /*******************************************************************************
@@ -156,12 +157,12 @@ static inline bool USB_USART_Connected() {
 uint8_t USB_USART_Available_Data(void)
 {
     int32_t available = 0;
-    HAL_disable_irq();
+    int state = HAL_disable_irq();
     if (USB_Rx_Buffer_head >= USB_Rx_Buffer_tail)
         available = USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
     else
         available = USB_Rx_Buffer_length + USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
-    HAL_enable_irq(0);
+    HAL_enable_irq(state);
     return available;
 }
 
@@ -175,14 +176,14 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
 {
     if (USB_USART_Available_Data() > 0)
     {
-        HAL_disable_irq();
+        int state = HAL_disable_irq();
         uint8_t data = USB_Rx_Buffer[USB_Rx_Buffer_tail];
         if (!peek) {
             USB_Rx_Buffer_tail++;
             if (USB_Rx_Buffer_tail == USB_Rx_Buffer_length)
                 USB_Rx_Buffer_tail = 0;
         }
-        HAL_enable_irq(0);
+        HAL_enable_irq(state);
         return data;
     }
 
@@ -230,6 +231,17 @@ void USB_USART_Send_Data(uint8_t Data)
 
         USB_Tx_Buffer_head = ++head % USB_TX_BUFFER_SIZE;
     }
+}
+
+/*******************************************************************************
+ * Function Name  : USB_USART_Flush_Data.
+ * Description    : Flushes TX buffer
+ * Input          : None.
+ * Return         : None.
+ *******************************************************************************/
+void USB_USART_Flush_Data(void)
+{
+    while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USB_TX_BUFFER_SIZE - 1));
 }
 #endif
 

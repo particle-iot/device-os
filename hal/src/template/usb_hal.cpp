@@ -83,6 +83,17 @@ void USB_USART_Send_Data(uint8_t Data)
 {
 
 }
+
+/*******************************************************************************
+ * Function Name  : USB_USART_Flush_Data.
+ * Description    : Flushes TX buffer
+ * Input          : None.
+ * Return         : None.
+ *******************************************************************************/
+void USB_USART_Flush_Data(void)
+{
+
+}
 #endif
 
 #ifdef USB_HID_ENABLE
