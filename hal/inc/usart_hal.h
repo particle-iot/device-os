@@ -50,7 +50,7 @@ typedef struct Ring_Buffer
 
 typedef enum HAL_USART_Serial {
   HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
-  HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
+  HAL_USART_SERIAL2 = 1     //maps to USART_A1_A0 if Duo, else map to USART_RGBG_RGBB
 #if PLATFORM_ID == 10 // Electron
   ,HAL_USART_SERIAL3 = 2    //maps to USART_TXD_UC_RXD_UC
   ,HAL_USART_SERIAL4 = 3    //maps to USART_C3_C2
