@@ -44,7 +44,7 @@ typedef enum USART_Num_Def {
 /* Private macro -------------------------------------------------------------*/
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0  //Enabling this => 1 is not working at present
 // IS_USART_CONFIG_VALID(config) - returns true for 8 data bit, any flow control, any parity, any stop byte configurations
-#define IS_USART_CONFIG_VALID(CONFIG) ( (((CONFIG & 0b00001100)>>2) != 0b11) && (((CONFIG & 0b00110000)>>4)==0b11) )
+#define IS_USART_CONFIG_VALID(CONFIG) ((((CONFIG & 0b00001100)>>2) != 0b11) && ((CONFIG & 0b10) != 0b10))
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_USART_Info {
@@ -154,7 +154,12 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 	usartMap[serial]->usart_transmitting = false;
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud, uint8_t config)
+void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
+{
+  HAL_USART_BeginConfig(serial, baud, 0); //Default serial configuration is 8N1
+}
+
+void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config)
 {
   //Verify UART configuration, exit it it's invalid.
   if (!IS_USART_CONFIG_VALID(config)) {

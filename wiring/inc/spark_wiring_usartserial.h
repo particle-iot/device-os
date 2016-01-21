@@ -48,7 +48,7 @@ public:
   USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
   virtual ~USARTSerial() {};
   void begin(unsigned long);
-  void begin(unsigned long, uint8_t);
+  void begin(unsigned long, uint32_t);
   void halfduplex(bool);
   void end();
 

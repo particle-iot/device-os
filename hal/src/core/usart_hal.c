@@ -126,7 +126,12 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
   usartMap[serial]->usart_transmitting = false;
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud, uint8_t config)
+void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
+{
+  HAL_USART_BeginConfig(serial, baud, 0); //Default serial configuration is 8N1
+}
+
+void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config)
 {
   //Verify UART configuration, exit it it's invalid.
   if (!IS_USART_CONFIG_VALID(config)) {

@@ -61,6 +61,7 @@ DYNALIB_FN(hal_usart,HAL_USART_Flush_Data)
 DYNALIB_FN(hal_usart,HAL_USART_Is_Enabled)
 DYNALIB_FN(hal_usart,HAL_USART_Half_Duplex)
 DYNALIB_FN(hal_usart,HAL_USART_Available_Data_For_Write)
+DYNALIB_FN(had_usart,HAL_USART_BeginConfig)
 
 DYNALIB_END(hal_usart)
 

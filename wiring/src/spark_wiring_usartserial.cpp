@@ -43,9 +43,9 @@ void USARTSerial::begin(unsigned long baud)
   begin(baud, SERIAL_8N1);
 }
 
-void USARTSerial::begin(unsigned long baud, byte config)
+void USARTSerial::begin(unsigned long baud, uint32_t config)
 {
-  HAL_USART_Begin(_serial, baud, config);
+  HAL_USART_BeginConfig(_serial, baud, config);
 }
 
 void USARTSerial::end()
