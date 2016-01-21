@@ -53,6 +53,8 @@ enum SystemEvents {
     firmware_update_pending = 1<<9,
     reset_pending = 1<<10,          // notifies that the system would like to shutdown (System.resetPending() return true)
     reset = 1<<11,                  // notifies that the system will now reset on return from this event.
+    button_click = 1<<12,           // generated for every click in series
+    button_final_click = 1<<13,     // generated for last click in series
 
     all_events = 0x7FFFFFFF
 };

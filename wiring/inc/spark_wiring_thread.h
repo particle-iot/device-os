@@ -104,22 +104,22 @@ private:
     }
 };
 
-class CriticalSection {
+class SingleThreadedSection {
 public:
-    CriticalSection() {
+	SingleThreadedSection() {
         os_thread_scheduling(false, NULL);
     }
 
-    ~CriticalSection() {
+    ~SingleThreadedSection() {
         os_thread_scheduling(true, NULL);
     }
 };
 
-#define CRITICAL_SECTION_BLOCK() CriticalSection __cs;
+#define SINGLE_THREADED_SECTION() SingleThreadedSection __cs;
 
 #else
 
-#define CRITICAL_SECTION_BLOCK()
+#define SINGLE_THREADED_SECTION()
 
 #endif
 

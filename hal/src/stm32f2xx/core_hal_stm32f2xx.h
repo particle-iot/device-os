@@ -50,6 +50,10 @@ void HAL_USART5_Handler(void);
 void HAL_USART6_Handler(void);
 #endif
 void ADC_irq();
+void CAN1_TX_irq(void);
+void CAN1_RX0_irq(void);
+void CAN1_RX1_irq(void);
+void CAN1_SCE_irq(void);
 void TIM1_CC_irq(void);
 void TIM2_irq(void);
 void TIM3_irq(void);

@@ -58,7 +58,6 @@ using namespace spark;
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#if Wiring_SetupButtonUX
 #if defined(DEBUG_BUTTON_WD)
 #define BUTTON_WD_DEBUG(x,...) DEBUG(x,__VA_ARGS__)
 #else
@@ -81,7 +80,6 @@ inline void CLR_BUTTON_TIMEOUT() {
     button_timeout_duration = 0;
     BUTTON_WD_DEBUG("Button WD Cleared, was %d",button_timeout_duration);
 }
-#endif // #if Wiring_SetupButtonUX
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -116,13 +114,10 @@ uint16_t system_button_pushed_duration(uint8_t button, void*)
     return pressed_time ? HAL_Timer_Get_Milli_Seconds()-pressed_time : 0;
 }
 
+static volatile uint8_t button_final_clicks = 0;
+static uint8_t button_current_clicks = 0;
+
 #if Wiring_SetupButtonUX
-/* flag used to initiate system_handle_single_click() from main thread */
-static volatile bool SYSTEM_HANDLE_SINGLE_CLICK = false;
-
-static uint32_t prev_release_time = 0;
-static uint8_t clicks = 0;
-
 void system_prepare_display_bars()
 {
 	led_state.save();
@@ -143,9 +138,8 @@ void system_display_bars(int bars)
     }
 }
 
-/* single click handler displays RSSI value on system LED */
-void system_handle_single_click()
-{
+/* displays RSSI value on system LED */
+void system_display_rssi() {
     /*   signal strength (u-Blox Sara U2 and G3 modules)
      *   0: < -105 dBm
      *   1: < -93 dBm
@@ -154,72 +148,75 @@ void system_handle_single_click()
      *   4: < - 57 dBm
      *   5: >= -57 dBm
      */
-    if (SYSTEM_HANDLE_SINGLE_CLICK) {
-        SYSTEM_HANDLE_SINGLE_CLICK = false;
-        system_prepare_display_bars();
-        int rssi = 0;
-        int bars = 0;
+    system_prepare_display_bars();
+    int rssi = 0;
+    int bars = 0;
 #if Wiring_WiFi == 1
-        rssi = WiFi.RSSI();
+    rssi = WiFi.RSSI();
 #elif Wiring_Cellular == 1
-        CellularSignal sig = Cellular.RSSI();
-        rssi = sig.rssi;
+    CellularSignal sig = Cellular.RSSI();
+    rssi = sig.rssi;
 #endif
-        if (rssi < 0) {
-            if (rssi >= -57) bars = 5;
-            else if (rssi > -68) bars = 4;
-            else if (rssi > -80) bars = 3;
-            else if (rssi > -92) bars = 2;
-            else if (rssi > -104) bars = 1;
-        }
-        DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
-
-        system_display_bars(bars);
+    if (rssi < 0) {
+        if (rssi >= -57) bars = 5;
+        else if (rssi > -68) bars = 4;
+        else if (rssi > -80) bars = 3;
+        else if (rssi > -92) bars = 2;
+        else if (rssi > -104) bars = 1;
     }
+    DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
+
+    system_display_bars(bars);
 }
 
-void system_handle_double_click()
+void system_handle_button_click()
 {
-    SYSTEM_POWEROFF = 1;
-    network.connect_cancel(true, true);
-}
-
-void reset_button_click(uint32_t release_time)
-{
-    clicks = 0;
-    prev_release_time = release_time - 1000;
-    CLR_BUTTON_TIMEOUT();
-}
-
-void handle_button_click(uint16_t depressed_duration, uint32_t release_time)
-{
-    uint32_t start_time = release_time - depressed_duration;
-    uint32_t since_prev = start_time - prev_release_time;
-    bool reset = true;
-    if (depressed_duration<500) {               // a short button press
-        if (!clicks || (since_prev<1000)) {		// first click or within 1 second of the previous click
-            clicks++;
-            prev_release_time = release_time;
-            if (clicks == 1)
-            {
-                // If a second button press doesn't come within 1.5 seconds,
-                // declare a single button press valid.
-                ARM_BUTTON_TIMEOUT(1500);
-                reset = false;
-            }
-            else if (clicks == 2)
-            {
-                reset_button_click(release_time);
-                system_handle_double_click();
-            }
-        }
+    const uint8_t clicks = button_final_clicks;
+    button_final_clicks = 0;
+    switch (clicks) {
+    case 1: // Single click
+        system_display_rssi();
+        break;
+    case 2: // Double click
+        SYSTEM_POWEROFF = 1;
+        network.connect_cancel(true, true);
+        break;
+    default:
+        break;
     }
-    if (reset) {
-        reset_button_click(release_time);
-    }
-
 }
 #endif // #if Wiring_SetupButtonUX
+
+void reset_button_click()
+{
+    const uint8_t clicks = button_current_clicks;
+    button_current_clicks = 0;
+    CLR_BUTTON_TIMEOUT();
+    if (clicks > 0) {
+        system_notify_event(button_final_click, clicks);
+        button_final_clicks = clicks;
+    }
+}
+
+void handle_button_click(uint16_t depressed_duration)
+{
+    bool reset = true;
+    if (depressed_duration < 30) { // Likely a spurious click due to switch bouncing
+        reset = false;
+    } else if (depressed_duration < 500) { // a short button press
+        button_current_clicks++;
+        if (button_current_clicks < 5) { // 5 clicks "ought to be enough for anybody"
+            // If next button click doesn't come within 1 second, declare a
+            // final button click.
+            ARM_BUTTON_TIMEOUT(1000);
+            reset = false;
+        }
+        system_notify_event(button_click, button_current_clicks);
+    }
+    if (reset) {
+        reset_button_click();
+    }
+}
 
 // this is called on multiple threads - ideally need a mutex
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
@@ -242,9 +239,7 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 
             if (!network.listening()) {
                 system_notify_event(button_status, depressed_duration);
-#if Wiring_SetupButtonUX
-                handle_button_click(depressed_duration, release_time);
-#endif
+                handle_button_click(depressed_duration);
             }
             pressed_time = 0;
             if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening())
@@ -469,13 +464,10 @@ extern "C" void HAL_SysTick_Handler(void)
     }
 #endif
 
-#if Wiring_SetupButtonUX
     if (IS_BUTTON_TIMEOUT())
     {
-        reset_button_click(button_timeout_start);
-        SYSTEM_HANDLE_SINGLE_CLICK = true;
+        reset_button_click();
     }
-#endif
 }
 
 void manage_safe_mode()
@@ -537,9 +529,12 @@ void app_thread_idle()
 }
 
 // don't wait to get items from the queue, so the application loop is processed as often as possible
-// timeout after 3000 ms to put calls into the application queue, so the system thread does not deadlock  (since the application may also
+// timeout after attempting to put calls into the application queue, so the system thread does not deadlock  (since the application may also
 // be trying to put events in the system queue.)
-ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle, 0, 5000));
+ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle,
+		0, /* take time */
+		5000, /* put time */
+		20 /* queue size */));
 
 #endif
 

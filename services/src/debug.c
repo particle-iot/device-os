@@ -57,6 +57,7 @@ void log_print_(int level, int line, const char *func, const char *file, const c
 		debug_output_("...");
 	}
 	debug_output_("\r\n");
+	va_end(args);
 }
 
 void log_print_direct_(int level, void* reserved, const char *msg, ...)
@@ -73,6 +74,7 @@ void log_print_direct_(int level, void* reserved, const char *msg, ...)
 	{
 		debug_output_("...");
 	}
+	va_end(args);
 }
 
 void log_direct_(const char* s) {

@@ -44,7 +44,9 @@ ifneq (,$(HAL_LINK))
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
 LINKER_DEPS=$(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
-LDFLAGS += --specs=nano.specs -lc -lnosys
+# use our version of newlib nano
+LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
+LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker/stm32f2xx
@@ -57,8 +59,12 @@ endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 LDFLAGS += -u uxTopUsedPriority
 
-LDFLAGS += -u uxTopUsedPriority
+# used the -v flag to get gcc to output the commands it passes to the linker when --specs=nano.specs is provided
+# LDFLAGS += -lstdc++ -lg -lc -lm -Wl,--start-group  -lstdc++ -lg -lc -lm -Wl,--end-group -Wl,--start-group $(LIBG_TWEAK) -lstdc++ -lg -lc -lm -Wl,--end-group -lg_nano
+
 endif
+
+
 
 # not using assembler startup script, but will use startup linked in with wiced
 

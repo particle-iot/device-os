@@ -47,6 +47,7 @@
 #include "timer_hal.h"
 #include "dct.h"
 #include "hal_platform.h"
+#include "malloc.h"
 
 #define STOP_MODE_EXIT_CONDITION_PIN 0x01
 #define STOP_MODE_EXIT_CONDITION_RTC 0x02
@@ -182,6 +183,16 @@ void (*HAL_TIM8_Handler)(void);
 void (*HAL_TIM13_Handler)(void);
 void (*HAL_TIM14_Handler)(void);
 #endif
+
+//HAL Interrupt Handlers defined in xxx_hal.c files
+void HAL_CAN1_TX_Handler(void) __attribute__ ((weak));
+void HAL_CAN1_RX0_Handler(void) __attribute__ ((weak));
+void HAL_CAN1_RX1_Handler(void) __attribute__ ((weak));
+void HAL_CAN1_SCE_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_TX_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_RX0_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_RX1_Handler(void) __attribute__ ((weak));
+void HAL_CAN2_SCE_Handler(void) __attribute__ ((weak));
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
@@ -880,23 +891,75 @@ void TIM1_TRG_COM_TIM11_irq(void)
     UNUSED(result);
 }
 
+void CAN1_TX_irq()
+{
+    if(NULL != HAL_CAN1_TX_Handler)
+    {
+        HAL_CAN1_TX_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_TX_IRQ, NULL);
+}
+
+void CAN1_RX0_irq()
+{
+    if(NULL != HAL_CAN1_RX0_Handler)
+    {
+        HAL_CAN1_RX0_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_RX0_IRQ, NULL);
+}
+
+void CAN1_RX1_irq()
+{
+    if(NULL != HAL_CAN1_RX1_Handler)
+    {
+        HAL_CAN1_RX1_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_RX1_IRQ, NULL);
+}
+
+void CAN1_SCE_irq()
+{
+    if(NULL != HAL_CAN1_SCE_Handler)
+    {
+        HAL_CAN1_SCE_Handler();
+    }
+    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_SCE_IRQ, NULL);
+}
+
 void CAN2_TX_irq()
 {
+    if(NULL != HAL_CAN2_TX_Handler)
+    {
+        HAL_CAN2_TX_Handler();
+    }
     HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
 }
 
 void CAN2_RX0_irq()
 {
+    if(NULL != HAL_CAN2_RX0_Handler)
+    {
+        HAL_CAN2_RX0_Handler();
+    }
     HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
 }
 
 void CAN2_RX1_irq()
 {
+    if(NULL != HAL_CAN2_RX1_Handler)
+    {
+        HAL_CAN2_RX1_Handler();
+    }
     HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
 }
 
 void CAN2_SCE_irq()
 {
+    if(NULL != HAL_CAN2_SCE_Handler)
+    {
+        HAL_CAN2_SCE_Handler();
+    }
     HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_SCE_IRQ, NULL);
 }
 
@@ -950,7 +1013,9 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     extern unsigned char _eheap[];
     extern unsigned char *sbrk_heap_top;
 
-    info->freeheap = _eheap-sbrk_heap_top;
+    struct mallinfo heapinfo = mallinfo();
+    info->freeheap = _eheap-sbrk_heap_top + heapinfo.fordblks;
+
     return 0;
 }
 

@@ -27,7 +27,7 @@
  */
 #include "spark_wiring_interrupts.h"
 
-static wiring_interrupt_handler_t* handlers[16];
+static wiring_interrupt_handler_t* handlers[TOTAL_PINS];
 
 wiring_interrupt_handler_t* allocate_handler(uint16_t pin, wiring_interrupt_handler_t& fn)
 {
@@ -56,7 +56,18 @@ void call_raw_interrupt_handler(void* data)
  * Return         : true if function handler was allocated, false otherwise.
  *******************************************************************************/
 
-bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode)
+HAL_InterruptExtraConfiguration* configure_interrupt(HAL_InterruptExtraConfiguration& extra, int8_t priority, uint8_t subpriority)
+{
+	extra.size = sizeof(extra);
+    if (priority >= 0) {
+      extra.IRQChannelPreemptionPriority = (uint8_t)priority;
+      extra.IRQChannelSubPriority = subpriority;
+      return &extra;
+    }
+	return nullptr;
+}
+
+bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
 #if Wiring_Cellular == 1
   /* safety check that prevents users from attaching an interrupt to D7
@@ -66,12 +77,13 @@ bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode 
     HAL_Interrupts_Detach(pin);
     wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
     if (handler) {
-        HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, NULL);
+        HAL_InterruptExtraConfiguration extra = {0};
+        HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, configure_interrupt(extra, priority, subpriority));
     }
     return handler!=NULL;
 }
 
-bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode)
+bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
 #if Wiring_Cellular == 1
   /* safety check that prevents users from attaching an interrupt to D7
@@ -79,10 +91,10 @@ bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMod
   if (pin == D7) return false;
 #endif
     HAL_Interrupts_Detach(pin);
-    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, NULL);
+    HAL_InterruptExtraConfiguration extra = {0};
+    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra, priority, subpriority));
     return true;
 }
-
 
 /*******************************************************************************
  * Function Name  : detachInterrupt

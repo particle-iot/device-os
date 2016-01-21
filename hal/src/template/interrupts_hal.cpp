@@ -25,7 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "interrupts_hal.h"
-void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, void* reserved)
+void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
 {
 }
 

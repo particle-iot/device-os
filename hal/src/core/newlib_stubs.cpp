@@ -26,6 +26,7 @@
 /* Define caddr_t as char* */
 #include <sys/types.h>
 
+#include "malloc.h"
 /* Define abort() */
 #include <stdlib.h>
 #include "debug.h"
@@ -105,7 +106,8 @@ caddr_t _sbrk(int incr)
 
 uint32_t freeheap()
 {
-    return &__Stack_Init-heap_end;
+	struct mallinfo info = mallinfo();
+    return &__Stack_Init-heap_end + info.fordblks;
 }
 
 /* Bare metal, no processes, so error */

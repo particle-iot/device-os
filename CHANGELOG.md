@@ -1,12 +1,52 @@
-## v0.4.8
+## v0.4.9
+
+### FEATURES
+
+- Support for CAN Bus [#790](https://github.com/spark/firmware/pull/790)
+- `WiFi.BSSID()` to retrieve the 6-byte address of the connected AP. [#816](https://github.com/spark/firmware/pull/816)
+- `attachInterrupt()` configurable interrupt priority [#806](https://github.com/spark/firmware/issues/806)
+- `Time.local()` retrieves the current time in the configured timezone. [#783](https://github.com/spark/firmware/issues/783)
+- `WiFi.getCredentials()` to list configured credentials on the Photon.  [#759](https://github.com/spark/firmware/issues/759)
+- variable frequency PWM with `analogWrite()` [#756](https://github.com/spark/firmware/pull/756)
+- `ATOMIC_SECTION()` and `SINGLE_THREADED_SECTION()` declarations to control atomicity and thread scheduling. [#758](https://github.com/spark/firmware/issues/758)
+- System events for individual button clicks and a run of button clicks. [#818](https://github.com/spark/firmware/issues/818)
+
+### ENHANCEMENTS
+
+- `System.freeMemory()` shows an accurate value for free memory rather than the highwater mark for the heap. 
+- [threading] Entering listening mode does not block the system thread. [#788](https://github.com/spark/firmware/issues/788)
+- [threading] System times out waiting for unresponsive application when attempting to reset. [#763](https://github.com/spark/firmware/issues/763)
+- [threading] `Particle.publish()` doesn't block when in listening mode.  [#761](https://github.com/spark/firmware/issues/761)  
+- [threading]. `delay()`/`Particle.process()` on application thread pumps application events.
+
+### BUGFIXES
+
+- RSA key generation would sometimes produce invalid keys. [#779](https://github.com/spark/firmware/pull/779)
+- Static IP configuration was not being used. 
+- Interrupt on WKP with class method as an ISR [#819](https://github.com/spark/firmware/issues/819)
+- Memory leak configuring WiFi credentials via SoftAP (TCP/HTTP)
+- SPI DMA transfer callback invoked too early [#791](https://github.com/spark/firmware/issues/791)
+- Unset `wiced_result_t` for tcp clients in `socket_send`.  [#773](https://github.com/spark/firmware/issues/773)
+- Update bootloader to support `System.enterSafeMode()`. [#751](https://github.com/spark/firmware/issues/751)
+- [threading] `WiFi.listen(false)` remains in listen mode. [#743](https://github.com/spark/firmware/issues/743)
+- Factory Reset doesn't clear WiFi credentials until `network.connect()`. [#736](https://github.com/spark/firmware/issues/736)
+- Comparison between `IPAddress` objects does not always work.  [#715](https://github.com/spark/firmware/issues/715)
+- P1 dfu-util 0.8 does not read/write from External Flash. [#706](https://github.com/spark/firmware/issues/706)
+- DFU errors writing to flash silently ignored. [#813](https://github.com/spark/firmware/pull/813) 
+- [threading] heap allocation not thread-safe. [#826](https://github.com/spark/firmware/issues/826)
+- System crash when button interrupt occurs during i2c transmission. [#709](https://github.com/spark/firmware/issues/709)
+- [photon] 'analogWrite()` to DAC pins.  [#671](https://github.com/spark/firmware/issues/671)  
+- [photon] `analogWrite()` to DAC pins requires `pinMode()` each time. [#662](https://github.com/spark/firmware/issues/662)  
+- [photon] `System.sleep(pin,edge)` doesn't wake.  [#655](https://github.com/spark/firmware/issues/655)
+  
+
+## v0.4.8-rc.1
 
 ### FEATURE
 
 - factory firmware uses full modular firmware [#749](https://github.com/spark/firmware/pull/749). No need for UpdateZero.
 
 - `Timer.changePeriod()` [#720](https://github.com/spark/firmware/pull/720)
-
-- 
 
 ### BUGFIXES
 

@@ -344,9 +344,8 @@ void manage_cloud_connection(bool force_events)
 }
 #endif
 
-
 #if Wiring_SetupButtonUX
-extern void		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+extern void system_handle_button_click();
 #endif
 
 void Spark_Idle_Events(bool force_events/*=false*/)
@@ -359,9 +358,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     if (!SYSTEM_POWEROFF) {
 
 #if Wiring_SetupButtonUX
-		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+        system_handle_button_click();
 #endif
-
         manage_serial_flasher();
 
         manage_network_connection();
@@ -386,7 +384,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 /*
  * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
  */
-void system_delay_ms_non_threaded(unsigned long ms, bool force_no_background_loop=false)
+void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
 {
     if (ms==0) return;
 
@@ -429,23 +427,30 @@ void system_delay_ms_non_threaded(unsigned long ms, bool force_no_background_loo
         }
         else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
         {
+        		bool threading = system_thread_get_state(nullptr);
             spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
             //spark_loop_total_millis is reset to 0 in Spark_Idle()
             do
             {
                 //Run once if the above condition passes
-                Spark_Idle();
+                spark_process();
             }
-            while (SPARK_FLASH_UPDATE); //loop during OTA update
+            while (!threading && SPARK_FLASH_UPDATE); //loop during OTA update
         }
     }
 }
 
+/**
+ * On a non threaded platform, or when called from the application thread, then
+ * run the background loop so that application events are processed.
+ */
 void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 {
-    if (system_thread_get_state(NULL) == spark::feature::DISABLED &&
+	// if not threading, or we are the application thread, then implement delay
+	// as a background message pump
+    if (!system_thread_get_state(NULL) ||
         APPLICATION_THREAD_CURRENT()) {
-        system_delay_ms_non_threaded(ms, force_no_background_loop);
+    		system_delay_pump(ms, force_no_background_loop);
     }
     else
     {

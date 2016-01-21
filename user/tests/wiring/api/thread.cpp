@@ -22,8 +22,12 @@ test(api_thread) {
     API_COMPILE(t = Thread("test", thread_fn));
 }
 
-test(api_critical_section) {
-    API_COMPILE(CriticalSection cs);
+test(api_single_threaded_section) {
+    API_COMPILE(SingleThreadedSection sts);
+}
+
+test(api_atomic_section) {
+    API_COMPILE(AtomicSection as);
 }
 
 #endif

@@ -520,11 +520,14 @@ public:
 
     void update_config() override
     {
+    		// todo - IPv6 may not set this field.
         bool fetched_config = ip_config.nw.aucIP.ipv4!=0;
         if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
         {
             if (!fetched_config)
             {
+            		memset(&ip_config, 0, sizeof(ip_config));
+            		ip_config.size = sizeof(ip_config);
                 fetch_ipconfig(&ip_config);
             }
         }

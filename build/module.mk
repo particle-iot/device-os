@@ -45,7 +45,7 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC
 
 
 # All Target
-all: $(MAKE_DEPENDENCIES) $(TARGET)
+all: $(MAKE_DEPENDENCIES) $(TARGET) postbuild
 
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
@@ -234,7 +234,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all none elf bin hex size program-dfu program-cloud st-flash program-serial
+.PHONY: all postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
 .SECONDARY:
 
 include $(COMMON_BUILD)/recurse.mk

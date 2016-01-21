@@ -66,7 +66,7 @@ USE_PRINTF_FLOAT ?= y
 
 # It's critical that user comes before wiring so that the setup()/loop() functions are linked in preference
 # to the weak functions from wiring
-MAKE_DEPENDENCIES = user wiring hal system services communication platform wiring_globals
+MAKE_DEPENDENCIES = newlib_nano user wiring hal system services communication platform wiring_globals
 DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib
 
 LIBS += $(MAKE_DEPENDENCIES)

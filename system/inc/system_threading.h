@@ -88,7 +88,7 @@ FFL(F const &func)
     if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
         auto callable = FFL([=]() { return (fn); }); \
         auto future = SystemThread.invoke_future(callable); \
-        auto result = future->get();  \
+        auto result = future ? future->get() : 0;  \
         delete future; \
         return result; \
     }
