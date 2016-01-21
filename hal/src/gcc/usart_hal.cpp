@@ -7,6 +7,7 @@ struct Usart {
     virtual void begin(uint32_t baud)=0;
     virtual void end()=0;
     virtual int32_t available()=0;
+    virtual int32_t availableForWrite()=0;
     virtual int32_t read()=0;
     virtual int32_t peek()=0;
     virtual uint32_t write(uint8_t byte)=0;
@@ -83,6 +84,9 @@ class SocketUsartBase : public Usart
         virtual int32_t available() override {
             fillFromSocketIfNeeded();
             return (rx->head-rx->tail) % SERIAL_BUFFER_SIZE;
+        }
+        virtual int32_t availableForWrite() override {
+            return (SERIAL_BUFFER_SIZE + tx->head - tx->tail) % SERIAL_BUFFER_SIZE;
         }
         virtual int32_t read() override {
             fillFromSocketIfNeeded();
@@ -187,6 +191,11 @@ void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 void HAL_USART_End(HAL_USART_Serial serial)
 {
     //usartMap(serial).end();
+}
+
+int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
+{
+    return usartMap(serial).availableForWrite();
 }
 
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
