@@ -103,25 +103,44 @@ void Get_SerialNum(void)
 /*******************************************************************************
  * Function Name  : USB_USART_Init
  * Description    : Start USB-USART protocol.
- * Input          : baudRate (0 : disconnect usb else init usb only once).
+ * Input          : baudRate (0 : disconnect usb else init usb).
  * Return         : None.
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
     if (linecoding.bitrate != baudRate)
     {
-        if (!baudRate)
+        if (!baudRate && linecoding.bitrate > 0)
         {
+            // Deconfigure CDC class endpoints
+            USBD_ClrCfg(&USB_OTG_dev, 0);
+
+            // Class callbacks and descriptor should probably be cleared
+            // to use another USB class, but this causes a hardfault if no descriptor is set
+            // and detach/attach is performed.
+            // Leave them be for now.
+
+            // USB_OTG_dev.dev.class_cb = NULL;
+            // USB_OTG_dev.dev.usr_cb = NULL;
+            // USB_OTG_dev.dev.usr_device = NULL;
+
+            // Perform detach
             USB_Cable_Config(DISABLE);
+
+            // Soft reattach
+            // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
         }
         else if (!linecoding.bitrate)
         {
-            //Perform a Detach-Attach operation on USB bus
+            //Initialize USB device
+            SPARK_USB_Setup();
+
+            // Perform a hard Detach-Attach operation on USB bus
             USB_Cable_Config(DISABLE);
             USB_Cable_Config(ENABLE);
 
-            //Initialize USB device only once (if linecoding.bitrate==0)
-            SPARK_USB_Setup();
+            // Soft reattach
+            // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
         }
         //linecoding.bitrate will be overwritten by USB Host
         linecoding.bitrate = baudRate;

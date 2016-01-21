@@ -552,20 +552,22 @@ static uint8_t  usbd_cdc_Init (void  *pdev,
 static uint8_t  usbd_cdc_DeInit (void  *pdev,
                                  uint8_t cfgidx)
 {
-  /* Open EP IN */
+  /* Close EP IN */
   DCD_EP_Close(pdev,
               CDC_IN_EP);
 
-  /* Open EP OUT */
+  /* Close EP OUT */
   DCD_EP_Close(pdev,
               CDC_OUT_EP);
 
-  /* Open Command IN EP */
+  /* Close Command IN EP */
   DCD_EP_Close(pdev,
               CDC_CMD_EP);
 
   /* Restore default state of the Interface physical components */
   APP_FOPS.pIf_DeInit();
+
+  usbd_cdc_Change_Open_State(0);
 
   return USBD_OK;
 }
