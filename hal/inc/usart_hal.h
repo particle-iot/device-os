@@ -79,7 +79,7 @@ int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial);
 void HAL_USART_Flush_Data(HAL_USART_Serial serial);
 bool HAL_USART_Is_Enabled(HAL_USART_Serial serial);
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable);
-void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config);
+void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*);
 
 #ifdef __cplusplus
 }
