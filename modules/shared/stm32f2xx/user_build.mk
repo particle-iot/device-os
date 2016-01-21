@@ -56,7 +56,7 @@ LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 
 NANO_SUFFIX ?= _nano
 
-LDFLAGS += -lnosys
+LDFLAGS += -lnosys --specs=nano.specs
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
@@ -66,7 +66,7 @@ LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_LOCATION=$(USER_FIRMWARE_IMAGE_LOCAT
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 # used the -v flag to get gcc to output the commands it passes to the linker when --specs=nano.specs is provided
-# LDFLAGS += -lstdc++_nano -lm -Wl,--start-group -lgcc -Wl,--end-group -Wl,--start-group -lgcc  $(LIBG_TWEAK) -Wl,--end-group
+# LDFLAGS += -lstdc++$(NANO_SUFFIX) -lm -Wl,--start-group -lgcc -Wl,--end-group -Wl,--start-group -lgcc  $(LIBG_TWEAK) -Wl,--end-group
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
