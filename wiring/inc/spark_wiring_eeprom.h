@@ -122,6 +122,12 @@ struct EEPtr{
 
 struct EEPROMClass{
 
+	EEPROMClass()
+    {
+    		HAL_EEPROM_Init();
+    }
+
+
     //Basic user access methods.
     EERef operator[]( const int idx )    { return idx; }
     uint8_t read( int idx )              { return EERef( idx ); }
@@ -149,12 +155,8 @@ struct EEPROMClass{
     }
 };
 
-extern EEPROMClass EEPROM;
+#define EEPROM __fetch_global_EEPROM()
+EEPROMClass& __fetch_global_EEPROM();
 
-class EEPROMInitClass
-{
-  public:
-    EEPROMInitClass();
-};
 
 #endif /* __SPARK_WIRING_EEPROM_H */

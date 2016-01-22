@@ -52,6 +52,8 @@ public:
 	using Print::write;
 };
 
-extern USBSerial Serial;
+USBSerial& _fetch_global_serial();
+
+#define Serial _fetch_global_serial()
 
 #endif
