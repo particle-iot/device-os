@@ -92,8 +92,10 @@ void USARTSerial::flush()
 
 size_t USARTSerial::write(uint8_t c)
 {
-  if (HAL_USART_Available_Data_For_Write(_serial) > 0 || _blocking) {
-    return HAL_USART_Write_Data(_serial, c);
+  // attempt a write if blocking, or for non-blocking if there is room.
+  if (_blocking || HAL_USART_Available_Data_For_Write(_serial) > 0) {
+    // the HAL always blocks.
+	  return HAL_USART_Write_Data(_serial, c);
   }
   return 0;
 }
