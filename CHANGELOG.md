@@ -3,7 +3,9 @@
 ### FEATURES
 
 - Support for CAN Bus [#790](https://github.com/spark/firmware/pull/790)
-- [WiFi.BSSID()](https://docs.particle.io/reference/firmware/core/#wifi-bssid-) to retrieve the 6-byte MAC address of the connected AP. [#816](https://github.com/spark/firmware/pull/816)
+- [blockOnOverrun()]((https://docs.particle.io/reference/firmware/photon/#blockonoverrun-)) on hardware serial to allow applications to disable the default flow control. 
+- [availableForWrite()]((https://docs.particle.io/reference/firmware/photon/#availableforwrite-)) on hardware serial to allow applications to implement flow control. [#798](https://github.com/spark/firmware/issues/798)
+- [WiFi.BSSID()](https://docs.particle.io/reference/firmware/photon/#wifi-bssid-) to retrieve the 6-byte MAC address of the connected AP. [#816](https://github.com/spark/firmware/pull/816)
 - [attachInterrupt()](https://docs.particle.io/reference/firmware/photon/#attachinterrupt-) configurable interrupt priority [#806](https://github.com/spark/firmware/issues/806)
 - [Time.local()](https://docs.particle.io/reference/firmware/photon/#local-) retrieves the current time in the configured timezone. [#783](https://github.com/spark/firmware/issues/783)
 - [photon] [WiFi.getCredentials()](https://docs.particle.io/reference/firmware/photon/#wifi-getcredentials-) lists configured credentials.  [#759](https://github.com/spark/firmware/issues/759)
