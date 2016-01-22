@@ -248,6 +248,8 @@ volatile uint8_t  USB_Serial_Open = 0;
 static uint32_t cdcCmd = 0xFF;
 static uint32_t cdcLen = 0;
 
+static uint8_t cdcConfigured = 0;
+
 /* CDC interface class callbacks structure */
 USBD_Class_cb_TypeDef  USBD_CDC_cb =
 {
@@ -506,6 +508,8 @@ static uint8_t  usbd_cdc_Init (void  *pdev,
 {
   uint8_t *pbuf;
 
+  usbd_cdc_DeInit(pdev, cfgidx);
+
   /* Open EP IN */
   DCD_EP_Open(pdev,
               CDC_IN_EP,
@@ -532,6 +536,7 @@ static uint8_t  usbd_cdc_Init (void  *pdev,
   APP_FOPS.pIf_Init();
 
   USB_Rx_State = 1;
+  cdcConfigured = 1;
 
   /* Prepare Out endpoint to receive next packet */
   DCD_EP_PrepareRx(pdev,
@@ -552,22 +557,40 @@ static uint8_t  usbd_cdc_Init (void  *pdev,
 static uint8_t  usbd_cdc_DeInit (void  *pdev,
                                  uint8_t cfgidx)
 {
-  /* Close EP IN */
-  DCD_EP_Close(pdev,
-              CDC_IN_EP);
-
-  /* Close EP OUT */
-  DCD_EP_Close(pdev,
-              CDC_OUT_EP);
-
-  /* Close Command IN EP */
-  DCD_EP_Close(pdev,
-              CDC_CMD_EP);
-
-  /* Restore default state of the Interface physical components */
-  APP_FOPS.pIf_DeInit();
 
   usbd_cdc_Change_Open_State(0);
+
+  if (cdcConfigured) {
+    if (USB_Tx_State) {
+      DCD_EP_Flush(pdev, CDC_IN_EP);
+    }
+
+    /* Close EP IN */
+    DCD_EP_Close(pdev,
+                 CDC_IN_EP);
+
+    /* Close EP OUT */
+    DCD_EP_Close(pdev,
+                 CDC_OUT_EP);
+
+    /* Close Command IN EP */
+    DCD_EP_Close(pdev,
+                 CDC_CMD_EP);
+
+    /* Restore default state of the Interface physical components */
+    APP_FOPS.pIf_DeInit();
+  }
+
+  usbd_cdc_Change_Open_State(0);
+
+  cdcConfigured = 0;
+  USB_Tx_State = 0;
+  USB_Rx_State = 0;
+  USB_Rx_Buffer_head = 0;
+  USB_Rx_Buffer_tail = 0;
+  USB_Rx_Buffer_length = USB_RX_BUFFER_SIZE;
+  USB_Tx_Buffer_tail = 0;
+  USB_Tx_Buffer_head = 0;
 
   return USBD_OK;
 }
