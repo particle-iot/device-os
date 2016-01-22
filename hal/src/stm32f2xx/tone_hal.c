@@ -139,7 +139,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     {
         TIM_CLK = SystemCoreClock / 2;
         GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM13);
-        RCC_APB2PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
         NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_TIM13_IRQn;
         HAL_TIM13_Handler = Tone_TIM13_Handler;
     }
@@ -147,7 +147,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration)
     {
         TIM_CLK = SystemCoreClock / 2;
         GPIO_PinAFConfig(PIN_MAP[pin].gpio_peripheral, PIN_MAP[pin].gpio_pin_source, GPIO_AF_TIM14);
-        RCC_APB2PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
         NVIC_InitStructure.NVIC_IRQChannel = TIM8_TRG_COM_TIM14_IRQn;
         HAL_TIM14_Handler = Tone_TIM14_Handler;
     }
