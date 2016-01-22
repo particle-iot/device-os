@@ -65,6 +65,13 @@ void HAL_WLAN_notify_simple_config_done()
     network.notify_listening_complete();
 }
 
+#if PLATFORM_ID == 88
+void HAL_WLAN_notify_OTA_update_completed()
+{
+    network.notify_ota_update_completed();
+}
+#endif
+
 void HAL_NET_notify_connected()
 {
     network.notify_connected();

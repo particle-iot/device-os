@@ -130,6 +130,9 @@ class ManagedNetworkInterface : public NetworkInterface
     volatile uint8_t WLAN_DHCP;
     volatile uint8_t WLAN_CAN_SHUTDOWN;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    volatile uint8_t WLAN_OTA_UPDATE_FINISHED;
+#endif
 
     WLanConfig ip_config;
 
@@ -146,6 +149,9 @@ protected:
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        WLAN_OTA_UPDATE_FINISHED = 0;
+#endif
 
         cloud_disconnect();
         RGBLEDState led_state;
@@ -224,6 +230,14 @@ protected:
         system_notify_event(wifi_listen_end, millis()-start);
 
         WLAN_SMART_CONFIG_START = 0;
+		
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        if(WLAN_OTA_UPDATE_FINISHED)
+        {
+            return; // Do not try connecting to the AP if the above loop exits because of OTA updating finished.
+        }
+#endif
+		
         if (has_credentials())
             connect();
         else if (!started)
@@ -289,7 +303,11 @@ public:
 
     bool listening() override
     {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE || WLAN_OTA_UPDATE_FINISHED));
+#else
         return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
+#endif
     }
 
 
@@ -484,6 +502,13 @@ public:
     {
         WLAN_CAN_SHUTDOWN = 0;
     }
+	
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    void notify_ota_update_completed()
+    {
+        WLAN_OTA_UPDATE_FINISHED = 1;
+    }
+#endif
 
 
     void listen_loop() override
