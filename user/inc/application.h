@@ -45,7 +45,6 @@
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usbmouse.h"
 #include "spark_wiring_usbkeyboard.h"
-#include "spark_wiring_spi.h"
 #include "spark_wiring_i2c.h"
 #include "spark_wiring_servo.h"
 #include "spark_wiring_wifi.h"
@@ -68,6 +67,7 @@
 #if PLATFORM_ID==88
 #include "spark_wiring_hciserial.h"
 #endif
+#include "spark_wiring_spi.h"
 
 // this was being implicitly pulled in by some of the other headers
 // adding here for backwards compatibility.
