@@ -35,6 +35,7 @@ class USARTSerial : public Stream
 {
 private:
   HAL_USART_Serial _serial;
+  bool _blocking;
 public:
   USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
   virtual ~USARTSerial() {};
@@ -43,6 +44,9 @@ public:
   void halfduplex(bool);
   void end();
 
+  virtual void blockOnOverrun(bool);
+
+  virtual int availableForWrite(void);
   virtual int available(void);
   virtual int peek(void);
   virtual int read(void);

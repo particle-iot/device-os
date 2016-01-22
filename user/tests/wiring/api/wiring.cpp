@@ -59,6 +59,11 @@ test(api_wiring_usartserial) {
     API_COMPILE(Serial1.halfduplex(true));
     API_COMPILE(Serial1.halfduplex(false));
 
+    API_COMPILE(Serial1.blockOnOverrun(false));
+    API_COMPILE(Serial1.blockOnOverrun(true));
+
+    API_COMPILE(Serial1.availableForWrite());
+
 }
 
 void TIM3_callback()

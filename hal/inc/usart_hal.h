@@ -72,6 +72,7 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud);
 void HAL_USART_End(HAL_USART_Serial serial);
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data);
+int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial);
 int32_t HAL_USART_Available_Data(HAL_USART_Serial serial);
 int32_t HAL_USART_Read_Data(HAL_USART_Serial serial);
 int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial);
