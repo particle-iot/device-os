@@ -149,6 +149,7 @@ void spark_disconnect(void)
 
 void spark_process(void)
 {
+	// application thread will pump application messages
 #if PLATFORM_THREADING
     if (system_thread_get_state(NULL) && APPLICATION_THREAD_CURRENT())
     {
@@ -156,7 +157,6 @@ void spark_process(void)
         return;
     }
 #endif
-
 
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);

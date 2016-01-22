@@ -278,7 +278,7 @@ void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint16_t pwm_frequency)
     else if (pin_info->timer_peripheral == TIM2)
     {
         GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM2);
-        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
     }
     else if (pin_info->timer_peripheral == TIM3)
     {

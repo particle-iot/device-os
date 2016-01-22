@@ -146,10 +146,10 @@ private:
 
 public:
 
-	static const uint16_t ACK_TIMEOUT = 2000;
+	static const uint16_t ACK_TIMEOUT = 4000;
 	static const uint16_t ACK_RANDOM_FACTOR = 1500;
 	static const uint16_t ACK_RANDOM_DIVISOR = 1000;
-	static const uint8_t MAX_RETRANSMIT = 4;
+	static const uint8_t MAX_RETRANSMIT = 3;
 	static const uint16_t MAX_TRANSMIT_SPAN = 45*1000;
 
 
@@ -230,7 +230,7 @@ public:
 	static inline system_tick_t transmit_timeout(uint8_t transmit_count)
 	{
 		system_tick_t timeout = (ACK_TIMEOUT << transmit_count);
-		timeout += ((timeout * rand()%256)>>9);
+		timeout += ((timeout * (rand()%256))>>9);
 		return timeout;
 	}
 

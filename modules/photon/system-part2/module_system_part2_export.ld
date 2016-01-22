@@ -64,3 +64,4 @@ PROVIDE ( dynalib_location_hal_usart = system_part2_module_table + 40 );
 PROVIDE ( dynalib_location_system_net = system_part2_module_table + 44 );
 PROVIDE ( dynalib_location_system_cloud = system_part2_module_table + 48 );
 PROVIDE ( dynalib_location_hal_concurrent = system_part2_module_table + 52 );
+PROVIDE ( dynalib_location_hal_can = system_part2_module_table + 56 );

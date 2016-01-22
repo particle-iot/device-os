@@ -69,24 +69,6 @@ bool ActiveObjectBase::process()
     return result;
 }
 
-/*
-void ActiveObjectBase::invoke_impl(void* fn, void* data, size_t len)
-{
-    if (isCurrentThread()) {        // run synchronously since we are already on the thread
-        Item(Item::active_fn_t(fn), data).invoke();
-    }
-    else {
-        // allocate storage for the message
-        void* copy = data;
-        if (data && len) {
-            copy = malloc(len);
-            memcpy(copy, data, len);
-        }
-        put(Item(Item::active_fn_t(fn), copy));
-    }
-}
-*/
-
 void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
 {
     object->run();

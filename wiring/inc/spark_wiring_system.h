@@ -98,27 +98,30 @@ public:
         return system_button_pushed_duration(button, NULL);
     }
 
-    static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t,void*)) {
-        return !system_subscribe_event(events, handler, nullptr);
+    static bool on(system_event_t events, void(*handler)(system_event_t, int,void*)) {
+        return !system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
     }
 
-    /* Contemplating allowing the callback to be a subset of the parameters
-    static bool on(system_event_t events, void(*handler)(system_event_t, uint32_t)) {
-        return system_subscribe_event(events, (system_event_handler_t*)handler, NULL);
+    static bool on(system_event_t events, void(*handler)(system_event_t, int)) {
+        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), NULL);
     }
 
     static bool on(system_event_t events, void(*handler)(system_event_t)) {
-        return system_subscribe_event(events, (system_event_handler_t*)handler, NULL);
+        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), NULL);
     }
 
     static bool on(system_event_t events, void(*handler)()) {
-        return system_subscribe_event(events, (system_event_handler_t*)handler, NULL);
+        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), NULL);
     }
-    */
 
-    static void off(void(*handler)(system_event_t, uint32_t,void*)) {
+    static void off(void(*handler)(system_event_t, int,void*)) {
         system_unsubscribe_event(all_events, handler, nullptr);
     }
+
+    static void off(system_event_t events, void(*handler)(system_event_t, int,void*)) {
+        system_unsubscribe_event(events, handler, nullptr);
+    }
+
 
     static uint32_t freeMemory();
 

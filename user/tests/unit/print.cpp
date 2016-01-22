@@ -28,7 +28,7 @@ SCENARIO("Print.printf() with a small string", "[print]")
     REQUIRE(String("abcd 10") == print.result());
 }
 
-SCENARIO("Print.printfln() with a small string", "[print]")
+SCENARIO("Print.printlnf() with a small string", "[print]")
 {
     BufferPrint print;
     print.printlnf("abcd %d", 10);

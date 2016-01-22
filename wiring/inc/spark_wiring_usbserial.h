@@ -59,6 +59,8 @@ private:
 	bool _blocking;
 };
 
-extern USBSerial Serial;
+USBSerial& _fetch_global_serial();
+
+#define Serial _fetch_global_serial()
 
 #endif

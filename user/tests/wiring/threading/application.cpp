@@ -26,61 +26,42 @@
 #include "system_threading.h"
 #include <functional>
 
-void* abc = NULL;
-
 UNIT_TEST_APP();
 SYSTEM_THREAD(ENABLED);
 
-int test_val;
+volatile int test_val;
 void increment(void)
 {
 	test_val++;
+}
+
+test(system_thread_can_pump_events)
+{
+	WiFi.listen(false);
+    test_val = 0;
+
+    ActiveObjectBase* system = (ActiveObjectBase*)system_internal(1, nullptr); // Returns system thread instance
+    system->invoke_async(std::function<void()>(increment));
+
+    uint32_t start = millis();
+    while (test_val != 1 && millis() - start < 4000); // Busy wait
+
+    assertEqual((int)test_val, 1);
 }
 
 test(application_thread_can_pump_events)
 {
 	test_val = 0;
 
-	ActiveObjectBase* app = (ActiveObjectBase*)system_internal(0, nullptr);
+	ActiveObjectBase* app = (ActiveObjectBase*)system_internal(0, nullptr); // Returns application thread instance
 	std::function<void(void)> fn = increment;
 	app->invoke_async(fn);
 
 	// test value not incremented
-	assertEqual(test_val, 0);
+	assertEqual((int)test_val, 0);
 
     Particle.process();
 
     // validate the function was called.
-    assertEqual(test_val, 1);
-
+    assertEqual((int)test_val, 1);
 }
-
-uint32_t last_listen_event = 0;
-void app_listening(system_event_t event, uint32_t time, void*)
-{
-	last_listen_event = time;
-	if (time>2000)
-		WiFi.listen(false); // exit listening mode
-}
-
-// This test ensures the RTOS time slices between threads when the system is in listening mode.
-// It's not a complete test, since we never exit or re-enter loop so the loop-calling logic isn't exercised.
-// This test indirectly ensures the system thread also runs, since if it didn't then the listen update events wouldn't be
-// published.
-test(application_thread_runs_during_listening_mode)
-{
-	System.on(wifi_listen_update, app_listening);
-
-	uint32_t start = millis();
-	WiFi.listen();
-	delay(10);		// time for the system thread to enter listening mode
-
-	while (millis()-start<1000);		// busy wait 1000 ms
-
-	uint32_t end = millis();
-	assertLess(end-start, 1200);		// small margin of error
-	assertMore(last_listen_event, 0);	// system event should have ran the listen loop
-
-	System.off(app_listening);
-}
-

@@ -48,6 +48,9 @@ typedef struct __attribute__((__packed__)) _HAL_IPAddress_t  {
     };
     uint8_t v;              // 4 for Ipv4, 6 for Ipv6
 } HAL_IPAddress;
+
+#define HAL_IPV4_SET(paddress, value)  ((paddress)->v = 4); ((paddress)->ipv4 = value)
+
 STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==17);
 #else
 typedef struct __attribute__((__packed__)) _HAL_IPAddress_t {
@@ -56,6 +59,8 @@ typedef struct __attribute__((__packed__)) _HAL_IPAddress_t {
     };
 } HAL_IPAddress;
 STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==4);
+#define HAL_IPV4_SET(paddress, value)  (paddress->ipv4 = value)
+
 #endif
 
 inline bool is_ipv4(const HAL_IPAddress* address)
@@ -82,8 +87,13 @@ typedef struct __attribute__((__packed__))  _WLanConfig_t {
     uint16_t size;
     NetworkConfig nw;
     uint8_t uaSSID[33];
+    uint8_t BSSID[6];			// since V2
 } WLanConfig;
 
+#define WLanConfig_Size_V1   (sizeof(NetworkConfig)+2+33)
+#define WLanConfig_Size_V2   (WLanConfig_Size_V1+6)
+
+STATIC_ASSERT(WLanConfigSize, sizeof(WLanConfig)==WLanConfig_Size_V2);
 
 typedef uint32_t network_interface_t;
 

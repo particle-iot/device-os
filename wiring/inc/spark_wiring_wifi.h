@@ -95,6 +95,10 @@ public:
     	return IPAddress(wifi_config()->nw.aucDHCPServer);
     }
 
+    uint8_t* BSSID(uint8_t* bssid) {
+    		memcpy(bssid, wifi_config()->BSSID, 6);
+    		return bssid;
+    }
 
     const char *SSID() {
         return (const char *) wifi_config()->uaSSID;

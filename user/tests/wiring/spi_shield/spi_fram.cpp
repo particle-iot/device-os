@@ -328,3 +328,126 @@ test(SPI_Test3_MODE3_MSBFIRST_ReadWriteSucceedsWithoutUserIntervention) {
     // Then - SPI bus is disabled
     assertFalse(SPI.isEnabled());
 }
+
+static void SPI_Test4_Prepare_SPI() {
+    // When - Setting up the SPI bus
+    SPI.setDataMode(SPI_MODE0);
+    SPI.setBitOrder(MSBFIRST);
+    SPI.setClockSpeed(100000); // 100kHz
+    SPI.begin(D2); // Chip Select line will default to init A2 as OUTPUT, however we're manually using D2
+
+    // pinMode() doesn't support Open-drain mode with Pull-up enabled
+    pinMode(MISO, AF_OUTPUT_DRAIN);
+    pinMode(MOSI, AF_OUTPUT_DRAIN);
+
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    pin_t gpio_pin = PIN_MAP[MISO].gpio_pin;
+    GPIO_TypeDef *gpio_port = PIN_MAP[MISO].gpio_peripheral;
+
+    // Force MISO and MOSI as Open-drain with pull-up
+    GPIO_InitTypeDef GPIO_InitStructure = {0};
+    GPIO_InitStructure.GPIO_Pin = gpio_pin;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(gpio_port, &GPIO_InitStructure);
+
+    gpio_pin = PIN_MAP[MOSI].gpio_pin;
+    gpio_port = PIN_MAP[MOSI].gpio_peripheral;
+    GPIO_InitStructure.GPIO_Pin = gpio_pin;
+    GPIO_Init(gpio_port, &GPIO_InitStructure);
+}
+
+test(SPI_Test4_MODE0_MSBFIRST_ReadWriteDMAFinishesBeforeCallback) {
+    // MODE0 with Chip Select defaulted to A2, manually using D2 instead.
+    // Test init
+    pinMode(D2, OUTPUT);
+    digitalWrite(D2, HIGH);
+
+    SPI_Test4_Prepare_SPI();
+    // Then - SPI bus is enabled
+    assertTrue(SPI.isEnabled());
+
+    //===========================================================
+
+    // Init array
+    int8_t status = 0;
+    char buf1[256];
+    char buf2[256];
+    // 0xaf works better here since at 100kHz we might have enough time only to
+    // cause data corruption in last byte on LSB nibble
+    memset(buf1, 0xaf, 256);
+    memset(buf2, 0x55, 256);
+
+    for (uint16_t i=0; i<arraySize(buf1); i++)
+    {
+        assertNotEqual(buf1[i], buf2[i]);
+    }
+
+    // When - Write 256 0xaf's to FRAM
+    status = FRAMWrite(D2, 0x00, (uint8_t*)buf1, arraySize(buf1));
+    assertTrue(status == 0);
+
+    // Then - Read 256 0xaf's back into buf2 and test for equality
+    status = FRAMRead(D2, 0x00, (uint8_t*)buf2, arraySize(buf1));
+    // Disable SPI and force MISO to go low immediately
+    SPI.end();
+    digitalWrite(MISO, LOW);
+    assertTrue(status == 0);
+
+    for (uint16_t i=0; i<arraySize(buf1); i++)
+    {
+        // Serial.print(buf1[i],HEX);
+        // Serial.print(" != ");
+        // Serial.println(buf2[i],HEX);
+        assertEqual(buf1[i], buf2[i]);
+    }
+
+    // Then - SPI bus is disabled
+    assertFalse(SPI.isEnabled());
+
+    //===========================================================
+
+    // Seed buf1 with 0 - 255
+    for (uint16_t i=0; i<256; i++)
+    {
+        buf1[i] = i;
+    }
+
+    for (uint16_t i=0; i<arraySize(buf1); i++)
+    {
+        if (i != 0xaf) {
+            assertNotEqual(buf1[i], buf2[i]);
+        }
+        else {
+            assertEqual(buf1[i], buf2[i]);
+        }
+    }
+
+    SPI_Test4_Prepare_SPI();
+    // Then - SPI bus is enabled
+    assertTrue(SPI.isEnabled());
+
+
+    // When - Write 256 values to FRAM
+    status = FRAMWrite(D2, 0x00, (uint8_t*)buf1, arraySize(buf1));
+    assertTrue(status == 0);
+
+    // Then - Read 256 values back into buf2 and test for equality
+    status = FRAMRead(D2, 0x00, (uint8_t*)buf2, arraySize(buf1));
+    // Disable SPI and force MISO to go low immediately
+    SPI.end();
+    digitalWrite(MISO, LOW);
+    assertTrue(status == 0);
+
+    for (uint16_t i=0; i<arraySize(buf1); i++)
+    {
+        assertEqual(buf1[i], buf2[i]);
+    }
+
+    //===========================================================
+
+    // Then - SPI bus is disabled
+    assertFalse(SPI.isEnabled());
+}

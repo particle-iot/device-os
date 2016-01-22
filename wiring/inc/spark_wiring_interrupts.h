@@ -38,12 +38,12 @@ typedef void (*raw_interrupt_handler_t)(void);
 /*
  * GPIO Interrupts
  */
-bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t handler, InterruptMode mode);
-bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode);
+bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t handler, InterruptMode mode, int8_t priority = -1, uint8_t subpriority = 0);
+bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode, int8_t priority = -1, uint8_t subpriority = 0);
 template <typename T>
-bool attachInterrupt(uint16_t pin, void (T::*handler)(), T *instance, InterruptMode mode) {
+bool attachInterrupt(uint16_t pin, void (T::*handler)(), T *instance, InterruptMode mode, int8_t priority = -1, uint8_t subpriority = 0) {
     using namespace std::placeholders;
-    return attachInterrupt(pin, std::bind(handler, instance), mode);
+    return attachInterrupt(pin, std::bind(handler, instance), mode, priority, subpriority);
 }
 void detachInterrupt(uint16_t pin);
 void interrupts(void);
@@ -60,5 +60,22 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler);
  * @return {@code true} if handlers were removed.
  */
 bool detachSystemInterrupt(hal_irq_t irq);
+
+
+class AtomicSection {
+	int prev;
+public:
+	AtomicSection() {
+		prev = HAL_disable_irq();
+	}
+
+	~AtomicSection() {
+		HAL_enable_irq(prev);
+	}
+};
+
+#define ATOMIC_SECTION()  AtomicSection __as;
+
+
 
 #endif /* SPARK_WIRING_INTERRUPTS_H_ */

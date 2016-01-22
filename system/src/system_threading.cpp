@@ -12,7 +12,11 @@ void system_thread_idle()
     Spark_Idle_Events(true);
 }
 
-ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle, 100, 1024*3));
+ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle,
+			100, /* take timeout */
+			0x7FFFFFFF, /* put timeout - wait forever */
+			50, /* queue size */
+			3*1024 /* stack size */));
 
 /**
  * Implementation to support gthread's concurrency primitives.

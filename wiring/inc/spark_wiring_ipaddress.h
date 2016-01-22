@@ -119,6 +119,14 @@ public:
 
     String toString() const { return String(*this); }
 
+    uint8_t version() const {
+#if HAL_IPv6
+    		return address.v;
+#else
+    		return 4;
+#endif
+    }
+
     friend class TCPClient;
     friend class TCPServer;
     friend class UDP;

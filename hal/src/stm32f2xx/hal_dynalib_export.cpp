@@ -33,4 +33,5 @@
 #include "hal_dynalib_wlan.h"
 #include "hal_dynalib_concurrent.h"
 #include "hal_dynalib_cellular.h"
+#include "hal_dynalib_can.h"
 

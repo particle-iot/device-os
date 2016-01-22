@@ -27,11 +27,17 @@
 #include "pwm_hal.h"
 #include "unit-test/unit-test.h"
 
+
+uint8_t pwm_pins[] = {
+
 #if defined(STM32F2XX)
-static pin_t pin = D0;//pin under test
+		D0, D1, D2, D3, A4, A5, WKP, RX, TX
 #else
-static pin_t pin = A0;//pin under test
+		A0, A1, A4, A5, A6, A7, D0, D1
 #endif
+};
+
+static pin_t pin = pwm_pins[0];
 
 test(PWM_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     // when
@@ -63,46 +69,64 @@ test(PWM_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
     //To Do : Add test for remaining pins if required
 }
 
+template <typename F> void for_all_pwm_pins(F callback)
+{
+	for (uint8_t i = 0; i<arraySize(pwm_pins); i++)
+	{
+		callback(pwm_pins[i]);
+	}
+}
+
 test(PWM_AnalogWriteOnPinResultsInCorrectFrequency) {
-    // when
+    for_all_pwm_pins([](uint16_t pin) {
+	// when
     pinMode(pin, OUTPUT);
     analogWrite(pin, 150);
     // then
     //analogWrite has a default PWM frequency of 500Hz
     assertEqual(HAL_PWM_Get_Frequency(pin), TIM_PWM_FREQ);
-    //To Do : Add test for remaining pins if required
+    pinMode(pin, INPUT);
+    });
 }
 
 test(PWM_AnalogWriteOnPinResultsInCorrectAnalogValue) {
-    // when
-    pinMode(pin, OUTPUT);
-    analogWrite(pin, 200);
-    // then
-    assertEqual(HAL_PWM_Get_AnalogValue(pin), 200);
-    //To Do : Add test for remaining pins if required
+	for_all_pwm_pins([](uint16_t pin) {
+	// when
+	pinMode(pin, OUTPUT);
+	analogWrite(pin, 200);
+	// then
+	assertEqual(HAL_PWM_Get_AnalogValue(pin), 200);
+	pinMode(pin, INPUT);
+	});
 }
 
 test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
-    // when
+	for_all_pwm_pins([](uint16_t pin) {
+
+	// when
     pinMode(pin, OUTPUT);
     analogWrite(pin, 150, 10000);
     // then
     assertEqual(HAL_PWM_Get_Frequency(pin), 10000);
-    //To Do : Add test for remaining pins if required
+	pinMode(pin, INPUT);
+	});
 }
 
 test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
-    // when
+	for_all_pwm_pins([](uint16_t pin) {
+	// when
     pinMode(pin, OUTPUT);
     analogWrite(pin, 200, 10000);
     // then
     assertEqual(HAL_PWM_Get_AnalogValue(pin), 200);
-    //To Do : Add test for remaining pins if required
+    pinMode(pin, INPUT);
+	});
 }
 
 
 test(PWM_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    pin_t pin = D0; // pin under test
+	for_all_pwm_pins([](uint16_t pin) {
+
     // when
     pinMode(pin, OUTPUT);
 
@@ -118,11 +142,13 @@ test(PWM_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // avgPulseHigh should equal 200 +/- 50
     assertMoreOrEqual(avgPulseHigh, 150);
     assertLessOrEqual(avgPulseHigh, 250);
+    pinMode(pin, INPUT);
+	});
 }
 
 test(PWM_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    pin_t pin = D0; // pin under test
-    // when
+	for_all_pwm_pins([](uint16_t pin) {
+	// when
     pinMode(pin, OUTPUT);
 
     uint32_t avgPulseHigh = 0;
@@ -132,16 +158,18 @@ test(PWM_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     }
     avgPulseHigh /= 5;
     analogWrite(pin, 0, 10);
-
+    pinMode(pin, INPUT);
     // then
     // avgPulseHigh should equal 10000 +/- 50
     assertMoreOrEqual(avgPulseHigh, 9050);
     assertLessOrEqual(avgPulseHigh, 10050);
+	});
 }
 
 test(PWM_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    pin_t pin = D0; // pin under test
-    // when
+	for_all_pwm_pins([](uint16_t pin) {
+
+	// when
     pinMode(pin, OUTPUT);
 
     uint32_t avgPulseHigh = 0;
@@ -151,10 +179,11 @@ test(PWM_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     }
     avgPulseHigh /= 1000;
     analogWrite(pin, 0, 10);
-
+    pinMode(pin, INPUT);
     // then
     // avgPulseHigh should equal 10 +/- 5
     assertMoreOrEqual(avgPulseHigh, 5);
     assertLessOrEqual(avgPulseHigh, 15);
+	});
 }
 
