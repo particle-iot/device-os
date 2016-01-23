@@ -32,6 +32,8 @@
 USARTSerial::USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
 {
   _serial = serial;
+  // Default is blocking mode
+  _blocking = true;
   HAL_USART_Init(serial, rx_buffer, tx_buffer);
 }
 // Public Methods //////////////////////////////////////////////////////////////
@@ -57,6 +59,17 @@ void USARTSerial::halfduplex(bool Enable)
     HAL_USART_Half_Duplex(_serial, Enable);
 }
 
+void USARTSerial::blockOnOverrun(bool block)
+{
+  _blocking = block;
+}
+
+
+int USARTSerial::availableForWrite(void)
+{
+  return HAL_USART_Available_Data(_serial);
+}
+
 int USARTSerial::available(void)
 {
   return HAL_USART_Available_Data(_serial);
@@ -79,7 +92,12 @@ void USARTSerial::flush()
 
 size_t USARTSerial::write(uint8_t c)
 {
-  return HAL_USART_Write_Data(_serial, c);
+  // attempt a write if blocking, or for non-blocking if there is room.
+  if (_blocking || HAL_USART_Available_Data_For_Write(_serial) > 0) {
+    // the HAL always blocks.
+	  return HAL_USART_Write_Data(_serial, c);
+  }
+  return 0;
 }
 
 USARTSerial::operator bool() {

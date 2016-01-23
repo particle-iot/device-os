@@ -3,21 +3,23 @@
 ### FEATURES
 
 - Support for CAN Bus [#790](https://github.com/spark/firmware/pull/790)
-- `WiFi.BSSID()` to retrieve the 6-byte address of the connected AP. [#816](https://github.com/spark/firmware/pull/816)
-- `attachInterrupt()` configurable interrupt priority [#806](https://github.com/spark/firmware/issues/806)
-- `Time.local()` retrieves the current time in the configured timezone. [#783](https://github.com/spark/firmware/issues/783)
-- `WiFi.getCredentials()` to list configured credentials on the Photon.  [#759](https://github.com/spark/firmware/issues/759)
-- variable frequency PWM with `analogWrite()` [#756](https://github.com/spark/firmware/pull/756)
-- `ATOMIC_SECTION()` and `SINGLE_THREADED_SECTION()` declarations to control atomicity and thread scheduling. [#758](https://github.com/spark/firmware/issues/758)
+- [blockOnOverrun()]((https://docs.particle.io/reference/firmware/photon/#blockonoverrun-)) on hardware serial to allow applications to disable the default flow control. 
+- [availableForWrite()]((https://docs.particle.io/reference/firmware/photon/#availableforwrite-)) on hardware serial to allow applications to implement flow control. [#798](https://github.com/spark/firmware/issues/798)
+- [WiFi.BSSID()](https://docs.particle.io/reference/firmware/photon/#wifi-bssid-) to retrieve the 6-byte MAC address of the connected AP. [#816](https://github.com/spark/firmware/pull/816)
+- [attachInterrupt()](https://docs.particle.io/reference/firmware/photon/#attachinterrupt-) configurable interrupt priority [#806](https://github.com/spark/firmware/issues/806)
+- [Time.local()](https://docs.particle.io/reference/firmware/photon/#local-) retrieves the current time in the configured timezone. [#783](https://github.com/spark/firmware/issues/783)
+- [photon] [WiFi.getCredentials()](https://docs.particle.io/reference/firmware/photon/#wifi-getcredentials-) lists configured credentials.  [#759](https://github.com/spark/firmware/issues/759)
+- variable frequency PWM via [analogWrite(pin,value,hz)](https://docs.particle.io/reference/firmware/photon/#analogwrite-) [#756](https://github.com/spark/firmware/pull/756)
+- [ATOMIC_SECTION()](https://docs.particle.io/reference/firmware/photon/#atomic_section-) and [SINGLE_THREADED_SECTION()](https://docs.particle.io/reference/firmware/photon/#single_threaded_section-) declarations for atomicity and thread scheduling control. [#758](https://github.com/spark/firmware/issues/758)
 - System events for individual button clicks and a run of button clicks. [#818](https://github.com/spark/firmware/issues/818)
 
 ### ENHANCEMENTS
 
-- `System.freeMemory()` shows an accurate value for free memory rather than the highwater mark for the heap. 
+- [System.freeMemory()](https://docs.particle.io/reference/firmware/photon/#system-freememory-) shows an accurate value for free memory rather than the highwater mark for the heap. 
 - [threading] Entering listening mode does not block the system thread. [#788](https://github.com/spark/firmware/issues/788)
 - [threading] System times out waiting for unresponsive application when attempting to reset. [#763](https://github.com/spark/firmware/issues/763)
 - [threading] `Particle.publish()` doesn't block when in listening mode.  [#761](https://github.com/spark/firmware/issues/761)  
-- [threading]. `delay()`/`Particle.process()` on application thread pumps application events.
+- [threading]. `delay()`/`Particle.process()` pumps application events.
 
 ### BUGFIXES
 

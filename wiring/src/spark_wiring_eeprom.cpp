@@ -29,10 +29,4 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spark_wiring_eeprom.h"
 
-EEPROMInitClass::EEPROMInitClass()
-{
-    HAL_EEPROM_Init();
-    //Calling the below here just to get rid of compiler error: 'EEPROM' defined but not used
-    EEPROM.length();
-}
 

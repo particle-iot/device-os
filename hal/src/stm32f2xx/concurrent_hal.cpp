@@ -31,6 +31,11 @@
 #include "timers.h"
 #include <mutex>
 
+inline bool isISR()
+{
+	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
 
@@ -308,7 +313,10 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay)
 {
-    return xQueueSend(queue, item, delay)!=pdTRUE;
+	if (isISR())
+		return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
+	else
+		return xQueueSend(queue, item, delay)!=pdTRUE;
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay)

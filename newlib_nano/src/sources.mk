@@ -1,4 +1,3 @@
 NEWLIBNANO_SRC_COMMON_PATH = $(NEWLIBNANO_MODULE_PATH)/src
 
 CSRC += $(call target_files,$(NEWLIBNANO_SRC_COMMON_PATH),*.c)
-$(info $(CSRC))

@@ -323,6 +323,12 @@ int32_t HAL_USART_Available_Data(HAL_USART_Serial serial)
 	return (unsigned int)(SERIAL_BUFFER_SIZE + usartMap[serial]->usart_rx_buffer->head - usartMap[serial]->usart_rx_buffer->tail) % SERIAL_BUFFER_SIZE;
 }
 
+int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
+{
+    return (unsigned int)(SERIAL_BUFFER_SIZE + usartMap[serial]->usart_tx_buffer->head - usartMap[serial]->usart_tx_buffer->tail) % SERIAL_BUFFER_SIZE;
+}
+
+
 int32_t HAL_USART_Read_Data(HAL_USART_Serial serial)
 {
 	// if the head isn't ahead of the tail, we don't have any characters

@@ -165,7 +165,7 @@ protected:
 
         const uint32_t start = millis();
         uint32_t loop = start;
-        system_notify_event(wifi_listen_begin, start);
+        system_notify_event(wifi_listen_begin, 0);
 
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
         ble_provision_init();
