@@ -189,6 +189,7 @@ public:
 #define SINGLE_THREADED_SECTION()
 #define WITH_LOCK(x)
 #define TRY_LOCK(x)
+#define IS_LOCKED(lock)  (true)
 
 #endif
 
