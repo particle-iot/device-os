@@ -28,7 +28,9 @@
 
 #include "concurrent_hal.h"
 #include <stddef.h>
+#include <mutex>
 #include <functional>
+#include <type_traits>
 
 typedef std::function<os_thread_return_t(void)> wiring_thread_fn_t;
 
@@ -178,10 +180,15 @@ public:
 };
 
 #define SINGLE_THREADED_SECTION() SingleThreadedSection __cs;
+#define WITH_LOCK(lock) std::lock_guard<decltype(lock)> __lock##lock((lock));
+#define TRY_LOCK(lock) std::unique_lock<std::remove_reference<decltype(lock)>::type> __lock##lock((lock), std::try_to_lock);
+#define IS_LOCKED(lock) (__lock##lock)
 
 #else
 
 #define SINGLE_THREADED_SECTION()
+#define WITH_LOCK(x)
+#define TRY_LOCK(x)
 
 #endif
 
