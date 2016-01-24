@@ -1,10 +1,10 @@
 
 #include "testapi.h"
 #include "spark_wiring_i2c.h"
-#include "serial2/serial2.h"
-#include "serial3/serial3.h"
-#include "serial4/serial4.h"
-#include "serial5/serial5.h"
+#include "Serial2/Serial2.h"
+#include "Serial3/Serial3.h"
+#include "Serial4/Serial4.h"
+#include "Serial5/Serial5.h"
 
 test(api_i2c)
 {
