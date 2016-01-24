@@ -113,7 +113,11 @@ bool USARTSerial::isEnabled() {
 static Ring_Buffer serial1_rx_buffer;
 static Ring_Buffer serial1_tx_buffer;
 
+USARTSerial& __fetch_global_Serial1()
+{
+	static USARTSerial serial1(HAL_USART_SERIAL1, &serial1_rx_buffer, &serial1_tx_buffer);
+	return serial1;
+}
 
-USARTSerial Serial1(HAL_USART_SERIAL1, &serial1_rx_buffer, &serial1_tx_buffer);
 // optional Serial2 is instantiated from libraries/Serial2/Serial2.h
 #endif
