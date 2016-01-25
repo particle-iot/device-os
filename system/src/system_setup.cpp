@@ -70,12 +70,13 @@ template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
-	WITH_LOCK(serial);
-	if (serial.available()) {
-        int c = serial.read();
-        if (c>=0)
-            handle((char)c);
-    }
+	TRY_LOCK(serial) {
+		if (serial.available()) {
+			int c = serial.read();
+			if (c>=0)
+				handle((char)c);
+		}
+	}
 }
 
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)
