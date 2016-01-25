@@ -1,6 +1,10 @@
 
 #include "testapi.h"
 #include "spark_wiring_i2c.h"
+#include "Serial2/Serial2.h"
+#include "Serial3/Serial3.h"
+#include "Serial4/Serial4.h"
+#include "Serial5/Serial5.h"
 
 test(api_i2c)
 {
@@ -120,3 +124,44 @@ test(api_map)
 {
     map(0x01,0x00,0xFF,0,255);
 }
+
+/**
+ * Ensures that we can stil take the address of the global instances.
+ *
+ */
+test(api_wiring_globals)
+{
+	void* ptrs[] = {
+			&SPI,
+#if Wiring_SPI1
+			&SPI1,
+#endif
+#if Wiring_SPI2
+			&SPI2,
+#endif
+			&Serial,
+			&Wire,
+#if Wiring_Wire1
+			&Wire1,
+#endif
+#if Wiring_Wire3
+			&Wire3,
+#endif
+			&Serial1,
+#if Wiring_Serial2
+			&Serial2,
+#endif
+#if Wiring_Serial3
+			&Serial3,
+#endif
+#if Wiring_Serial4
+			&Serial4,
+#endif
+#if Wiring_Serial5
+			&Serial5,
+#endif
+			&EEPROM,
+	};
+	(void)ptrs;
+}
+

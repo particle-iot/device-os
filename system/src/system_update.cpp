@@ -306,9 +306,6 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     return result;
 }
 
-void serial_dump(const char* msg, ...);
-
-
 void system_pending_shutdown()
 {
     uint8_t was_set = false;
@@ -365,8 +362,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
 {
     SPARK_FLASH_UPDATE = 0;
     TimingFlashUpdateTimeout = 0;
-    //serial_dump("update finished flags=%d store=%d", flags, file.store);
-
+    //DEBUG("update finished flags=%d store=%d", flags, file.store);
 
     if (flags & 1) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
