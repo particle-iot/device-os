@@ -28,7 +28,9 @@
 
 #include "concurrent_hal.h"
 #include <stddef.h>
+#include <mutex>
 #include <functional>
+#include <type_traits>
 
 typedef std::function<os_thread_return_t(void)> wiring_thread_fn_t;
 
@@ -104,6 +106,68 @@ private:
     }
 };
 
+class Mutex
+{
+	os_mutex_t handle_;
+public:
+	/**
+	 * Creates a shared mutex from an existing handle.
+	 * This is mainly used to share mutexes between dynamically linked modules.
+	 */
+	Mutex(os_mutex_t handle) : handle_(handle) {}
+
+	/**
+	 * Creates a new mutex.
+	 */
+	Mutex() : handle_(nullptr)
+	{
+		os_mutex_create(&handle_);
+	}
+
+	void dispose()
+	{
+		if (handle_) {
+			os_mutex_destroy(handle_);
+			handle_ = nullptr;
+		}
+	}
+
+	void lock() { os_mutex_lock(handle_); }
+	bool trylock() { return os_mutex_trylock(handle_)==0; }
+	void unlock() { os_mutex_unlock(handle_); }
+
+};
+
+
+class RecursiveMutex
+{
+	os_mutex_recursive_t handle_;
+public:
+	/**
+	 * Creates a shared mutex.
+	 */
+	RecursiveMutex(os_mutex_recursive_t handle) : handle_(handle) {}
+
+	RecursiveMutex() : handle_(nullptr)
+	{
+		os_mutex_recursive_create(&handle_);
+	}
+
+	void dispose()
+	{
+		if (handle_) {
+			os_mutex_recursive_destroy(handle_);
+			handle_ = nullptr;
+		}
+	}
+
+	void lock() { os_mutex_recursive_lock(handle_); }
+	bool trylock() { return os_mutex_recursive_trylock(handle_)==0; }
+	void unlock() { os_mutex_recursive_unlock(handle_); }
+
+};
+
+
 class SingleThreadedSection {
 public:
 	SingleThreadedSection() {
@@ -116,10 +180,16 @@ public:
 };
 
 #define SINGLE_THREADED_SECTION() SingleThreadedSection __cs;
+#define WITH_LOCK(lock) std::lock_guard<decltype(lock)> __lock##lock((lock));
+#define TRY_LOCK(lock) std::unique_lock<std::remove_reference<decltype(lock)>::type> __lock##lock((lock), std::try_to_lock);
+#define IS_LOCKED(lock) (__lock##lock)
 
 #else
 
 #define SINGLE_THREADED_SECTION()
+#define WITH_LOCK(x)
+#define TRY_LOCK(x)
+#define IS_LOCKED(lock)  (true)
 
 #endif
 
