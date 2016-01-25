@@ -25,6 +25,7 @@
 #include "system_network.h"
 #include "system_task.h"
 #include "system_threading.h"
+#include "system_user.h"
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
 #include "spark_protocol.h"
@@ -524,6 +525,11 @@ void Spark_Protocol_Init(void)
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
         Particle.subscribe("spark", SystemEvents);
+
+        CommunicationsHandlers handlers;
+        handlers.size = sizeof(handlers);
+        handlers.random_seed_from_cloud = &random_seed_from_cloud;
+        spark_protocol_communications_handlers(sp, &handlers);
     }
 }
 

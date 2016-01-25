@@ -41,6 +41,9 @@ void module_user_init_hook(void);
  */
 bool __backup_ram_was_valid();
 
+void random_seed_from_cloud(unsigned int value) __attribute__((weak));
+
+
 #ifdef __cplusplus
 }
 #endif

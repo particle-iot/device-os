@@ -4,6 +4,17 @@
 #include <array>
 #include <stdlib.h>
 
+bool rand_value_set = false;
+
+void random_seed_from_cloud(unsigned int value)
+{
+	rand_value_set = true;
+}
+
+test(rand_value_set_from_cloud)
+{
+	assertTrue(rand_value_set);
+}
 
 template <std::size_t size> void fillBuf(std::array<int, size>& buf, int min, int max) {
     int count = size;
