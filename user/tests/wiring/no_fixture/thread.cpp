@@ -20,6 +20,34 @@ test(Thread_creation)
     assertTrue((bool)threadRan);
 }
 
+test(thread_SingleThreadedBlock)
+{
+	SINGLE_THREADED_BLOCK() {
+
+	}
+	SINGLE_THREADED_BLOCK() {
+
+	}
+}
+
+test(thread_with_lock)
+{
+	WITH_LOCK(Serial) {
+
+	}
+
+	WITH_LOCK(Serial) {
+
+	}
+
+}
+
+test(thread_try_lock)
+{
+	TRY_LOCK(Serial) {
+
+	}
+}
 
 // todo - test for SingleThreadedSection
 

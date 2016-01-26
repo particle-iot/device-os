@@ -11,14 +11,15 @@ test(interrupts_atomic_section)
 	uint32_t start_micros = micros();
 	uint32_t start_millis, end_millis;
 	{
-		ATOMIC_SECTION();
-		start_millis = millis();
-		while (micros()-start_micros<2000)
-		{
-			// validates that atomic sections can be nested and interrupts restored when the outermost one exits
-			ATOMIC_SECTION();
+		ATOMIC_BLOCK() {
+			start_millis = millis();
+			while (micros()-start_micros<2000)
+			{
+				// validates that atomic sections can be nested and interrupts restored when the outermost one exits
+				ATOMIC_BLOCK();
+			}
+			end_millis = millis();
 		}
-		end_millis = millis();
 	}
 	assertEqual(start_millis, end_millis);
 
