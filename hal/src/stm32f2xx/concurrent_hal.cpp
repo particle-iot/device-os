@@ -29,6 +29,7 @@
 #include "task.h"
 #include "semphr.h"
 #include "timers.h"
+#include "stm32f2xx.h"
 #include <mutex>
 
 inline bool isISR()
