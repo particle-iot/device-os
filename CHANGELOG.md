@@ -10,8 +10,10 @@
 - [Time.local()](https://docs.particle.io/reference/firmware/photon/#local-) retrieves the current time in the configured timezone. [#783](https://github.com/spark/firmware/issues/783)
 - [photon] [WiFi.getCredentials()](https://docs.particle.io/reference/firmware/photon/#wifi-getcredentials-) lists configured credentials.  [#759](https://github.com/spark/firmware/issues/759)
 - variable frequency PWM via [analogWrite(pin,value,hz)](https://docs.particle.io/reference/firmware/photon/#analogwrite-) [#756](https://github.com/spark/firmware/pull/756)
-- [ATOMIC_SECTION()](https://docs.particle.io/reference/firmware/photon/#atomic_section-) and [SINGLE_THREADED_SECTION()](https://docs.particle.io/reference/firmware/photon/#single_threaded_section-) declarations for atomicity and thread scheduling control. [#758](https://github.com/spark/firmware/issues/758)
+- [ATOMIC_BLOCK()](https://docs.particle.io/reference/firmware/photon/#atomic_block-) and [SINGLE_THREADED_BLOCK()](https://docs.particle.io/reference/firmware/photon/#single_threaded_block-) declarations for atomicity and thread scheduling control. [#758](https://github.com/spark/firmware/issues/758)
+- [API](https://docs.particle.io/reference/firmware/photon/#synchronizing-access-to-shared-system-resources) for Guarding resources for use between threads. 
 - System events for individual button clicks and a run of button clicks. [#818](https://github.com/spark/firmware/issues/818)
+- 
 
 ### ENHANCEMENTS
 
