@@ -112,16 +112,14 @@ public:
 
 #ifndef SPARK_WIRING_NO_SPI
 
-#define SPI __fetch_global_SPI()
-SPIClass& __fetch_global_SPI();
+extern SPIClass SPI;
 
 #if Wiring_SPI1
 #ifdef SPI1
 #undef SPI1
 #endif  // SPI1
 
-#define SPI1 __fetch_global_SPI1()
-SPIClass& __fetch_global_SPI1();
+extern SPIClass SPI1;
 
 #endif  // Wiring_SPI1
 
@@ -130,8 +128,7 @@ SPIClass& __fetch_global_SPI1();
 #undef SPI2
 #endif  // SPI2
 
-#define SPI2 __fetch_global_SPI2()
-SPIClass& __fetch_global_SPI2();
+extern SPIClass SPI2;
 
 #endif  // Wiring_SPI2
 
