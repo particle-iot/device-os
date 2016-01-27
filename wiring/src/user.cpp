@@ -137,7 +137,7 @@ void system_initialize_user_backup_ram()
 
 #include "platform_headers.h"
 
-static retained_system volatile uint32_t __backup_sram_signature;
+static retained volatile uint32_t __backup_sram_signature;
 static bool backup_ram_was_valid_ = false;
 const uint32_t signature = 0x9A271C1E;
 
