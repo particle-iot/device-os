@@ -199,20 +199,27 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
       break;
   }
   
-  // parity configuration (impacts word length)
-  switch ((config & 0b00001100) >> 2) {
-    case 0: // none
-      USART_InitStructure.USART_Parity = USART_Parity_No;
-      USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-      break;
-    case 1: // even
-      USART_InitStructure.USART_Parity = USART_Parity_Even;
-      USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-      break;
-    case 2: // odd
-      USART_InitStructure.USART_Parity = USART_Parity_Odd;
-      USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-      break;
+  //Eight/Nine data bit configuration
+  if(config & 0b00010000) {
+    //Nine data bits, no parity.
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+  } else {
+    // eight data bits, parity configuration (impacts word length)
+    switch ((config & 0b00001100) >> 2) {
+      case 0: // none
+        USART_InitStructure.USART_Parity = USART_Parity_No;
+        USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+        break;
+      case 1: // even
+        USART_InitStructure.USART_Parity = USART_Parity_Even;
+        USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+        break;
+      case 2: // odd
+        USART_InitStructure.USART_Parity = USART_Parity_Odd;
+        USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+        break;
+    }
   }
 
   // Configure USART
@@ -274,6 +281,11 @@ int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
 }
 
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
+{
+  return HAL_USART_Write_NineBitData(serial, data);
+}
+
+uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data)
 {
   // interrupts are off and data in queue;
   if ((USART_GetITStatus(usartMap[serial]->usart_peripheral, USART_IT_TXE) == RESET)

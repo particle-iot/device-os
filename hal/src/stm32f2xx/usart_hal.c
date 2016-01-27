@@ -37,7 +37,7 @@ typedef enum USART_Num_Def {
 #if PLATFORM_ID == 10 // Electron
 	,USART_TXD_UC_RXD_UC = 2
 	,USART_C3_C2 = 3
-    ,USART_C1_C0 = 4
+	,USART_C1_C0 = 4
 #endif
 } USART_Num_Def;
 
@@ -95,8 +95,8 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 		{ USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG, RGBB, GPIO_PinSource2, GPIO_PinSource3, GPIO_AF_USART2 } // USART 2
 #if PLATFORM_ID == 10 // Electron
 		,{ USART3, &RCC->APB1ENR, RCC_APB1Periph_USART3, USART3_IRQn, TXD_UC, RXD_UC, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_USART3 } // USART 3
-        ,{ UART4, &RCC->APB1ENR, RCC_APB1Periph_UART4, UART4_IRQn, C3, C2, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_UART4 } // UART 4
-        ,{ UART5, &RCC->APB1ENR, RCC_APB1Periph_UART5, UART5_IRQn, C1, C0, GPIO_PinSource12, GPIO_PinSource2, GPIO_AF_UART5 } // UART 5
+		,{ UART4, &RCC->APB1ENR, RCC_APB1Periph_UART4, UART4_IRQn, C3, C2, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_UART4 } // UART 4
+		,{ UART5, &RCC->APB1ENR, RCC_APB1Periph_UART5, UART5_IRQn, C1, C0, GPIO_PinSource12, GPIO_PinSource2, GPIO_AF_UART5 } // UART 5
 #endif
 };
 
@@ -134,14 +134,14 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 	{
 		usartMap[serial] = &USART_MAP[USART_TXD_UC_RXD_UC];
 	}
-    else if(serial == HAL_USART_SERIAL4)
-    {
-        usartMap[serial] = &USART_MAP[USART_C3_C2];
-    }
-    else if(serial == HAL_USART_SERIAL5)
-    {
-        usartMap[serial] = &USART_MAP[USART_C1_C0];
-    }
+	else if(serial == HAL_USART_SERIAL4)
+	{
+		usartMap[serial] = &USART_MAP[USART_C3_C2];
+	}
+	else if(serial == HAL_USART_SERIAL5)
+	{
+		usartMap[serial] = &USART_MAP[USART_C1_C0];
+	}
 #endif
 
 	usartMap[serial]->usart_rx_buffer = rx_buffer;
@@ -163,8 +163,8 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 {
   //Verify UART configuration, exit it it's invalid.
   if (!IS_USART_CONFIG_VALID(config)) {
-    usartMap[serial]->usart_enabled = false;
-    return;
+	usartMap[serial]->usart_enabled = false;
+	return;
   }
   
 	USART_DeInit(usartMap[serial]->usart_peripheral);
@@ -175,9 +175,9 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
 	if (serial == HAL_USART_SERIAL3)
 	{
-	    // Configure USART RTS and CTS as alternate function push-pull
-	    HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
-	    HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
+		// Configure USART RTS and CTS as alternate function push-pull
+		HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
+		HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
 	}
 #endif
 
@@ -189,11 +189,11 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rx_pin].gpio_peripheral, usartMap[serial]->usart_rx_pinsource, usartMap[serial]->usart_af_map);
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral, usartMap[serial]->usart_tx_pinsource, usartMap[serial]->usart_af_map);
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
-    if (serial == HAL_USART_SERIAL3)
-    {
-        GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
-        GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, PIN_MAP[CTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
-    }
+	if (serial == HAL_USART_SERIAL3)
+	{
+		GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
+		GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, PIN_MAP[CTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
+	}
 #endif
 
 	// NVIC Configuration
@@ -212,56 +212,64 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	// - One Stop Bit
 	// - No parity
 	// - Hardware flow control disabled for Serial1/2/4/5
-    // - Hardware flow control enabled (RTS and CTS signals) for Serial3
+	// - Hardware flow control enabled (RTS and CTS signals) for Serial3
 	// - Receive and transmit enabled
-    // USART configuration
-    USART_InitStructure.USART_BaudRate = baud;
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	// USART configuration
+	USART_InitStructure.USART_BaudRate = baud;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
   #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
-    if (serial == HAL_USART_SERIAL3)
-    {
-      USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
-    }
+	if (serial == HAL_USART_SERIAL3)
+	{
+	  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+	}
   #endif
 
-    //Stop bit configuration.
-    switch (config & 0b00000011) {
-      case 0: // 1 stop bit
-        USART_InitStructure.USART_StopBits = USART_StopBits_1;
-        break;
-      case 1: // 2 stop bits
-        USART_InitStructure.USART_StopBits = USART_StopBits_2;
-        break;
-      case 2: // 0.5 stop bits
-        USART_InitStructure.USART_StopBits = USART_StopBits_0_5;
-        break;
-      case 3: // 1.5 stop bits
-        USART_InitStructure.USART_StopBits = USART_StopBits_1_5;
-        break;
-    }
-    
-    // parity configuration (impacts word length)
-    switch ((config & 0b00001100) >> 2) {
-      case 0: // none
-        USART_InitStructure.USART_Parity = USART_Parity_No;
-        USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-        break;
-      case 1: // even
-        USART_InitStructure.USART_Parity = USART_Parity_Even;
-        USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-        break;
-      case 2: // odd
-        USART_InitStructure.USART_Parity = USART_Parity_Odd;
-        USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-        break;
-    }
+
+	//Stop bit configuration.
+	switch (config & 0b00000011) {
+	  case 0: // 1 stop bit
+		USART_InitStructure.USART_StopBits = USART_StopBits_1;
+		break;
+	  case 1: // 2 stop bits
+		USART_InitStructure.USART_StopBits = USART_StopBits_2;
+		break;
+	  case 2: // 0.5 stop bits
+		USART_InitStructure.USART_StopBits = USART_StopBits_0_5;
+		break;
+	  case 3: // 1.5 stop bits
+		USART_InitStructure.USART_StopBits = USART_StopBits_1_5;
+		break;
+	}
+
+	//Eight/Nine data bit configuration
+	if(config & 0b00010000) {
+		//Nine data bits, no parity.
+		USART_InitStructure.USART_Parity = USART_Parity_No;
+		USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+	} else {
+		// eight data bits, parity configuration (impacts word length)
+		switch ((config & 0b00001100) >> 2) {
+		  case 0: // none
+			USART_InitStructure.USART_Parity = USART_Parity_No;
+			USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+			break;
+		  case 1: // even
+			USART_InitStructure.USART_Parity = USART_Parity_Even;
+			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+			break;
+		  case 2: // odd
+			USART_InitStructure.USART_Parity = USART_Parity_Odd;
+			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+			break;
+		}
+	}
 
 #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
-    if (serial == HAL_USART_SERIAL3)
-    {
-        USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
-    }
+	if (serial == HAL_USART_SERIAL3)
+	{
+		USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+	}
 #endif
 
 	// Configure USART
@@ -280,48 +288,53 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 
 void HAL_USART_End(HAL_USART_Serial serial)
 {
-    // wait for transmission of outgoing data
-    while (usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail);
+	// wait for transmission of outgoing data
+	while (usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail);
 
-    // Disable the USART
-    USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+	// Disable the USART
+	USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
 
-    // Deinitialise USART
-    USART_DeInit(usartMap[serial]->usart_peripheral);
+	// Deinitialise USART
+	USART_DeInit(usartMap[serial]->usart_peripheral);
 
-    // Disable USART Receive and Transmit interrupts
-    USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, DISABLE);
-    USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, DISABLE);
+	// Disable USART Receive and Transmit interrupts
+	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, DISABLE);
+	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, DISABLE);
 
-    NVIC_InitTypeDef NVIC_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
 
-    // Disable the USART Interrupt
-    NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+	// Disable the USART Interrupt
+	NVIC_InitStructure.NVIC_IRQChannel = usartMap[serial]->usart_int_n;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 
-    NVIC_Init(&NVIC_InitStructure);
+	NVIC_Init(&NVIC_InitStructure);
 
-    // Disable USART Clock
-    *usartMap[serial]->usart_apbReg &= ~usartMap[serial]->usart_clock_en;
+	// Disable USART Clock
+	*usartMap[serial]->usart_apbReg &= ~usartMap[serial]->usart_clock_en;
 
-    // clear any received data
-    usartMap[serial]->usart_rx_buffer->head = usartMap[serial]->usart_rx_buffer->tail;
+	// clear any received data
+	usartMap[serial]->usart_rx_buffer->head = usartMap[serial]->usart_rx_buffer->tail;
 
-    // Undo any pin re-mapping done for this USART
-    // ...
+	// Undo any pin re-mapping done for this USART
+	// ...
 
-    memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
-    memset(usartMap[serial]->usart_tx_buffer, 0, sizeof(Ring_Buffer));
+	memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+	memset(usartMap[serial]->usart_tx_buffer, 0, sizeof(Ring_Buffer));
 
-    usartMap[serial]->usart_enabled = false;
-    usartMap[serial]->usart_transmitting = false;
+	usartMap[serial]->usart_enabled = false;
+	usartMap[serial]->usart_transmitting = false;
 }
 
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
 {
+	return HAL_USART_Write_NineBitData(serial, data);
+}
+
+uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data)
+{
 	// interrupts are off and data in queue;
 	if ((USART_GetITStatus(usartMap[serial]->usart_peripheral, USART_IT_TXE) == RESET)
-			&& usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail) {
+		&& usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail) {
 		// Get him busy
 		USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, ENABLE);
 	}
@@ -338,12 +351,12 @@ uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
 
 		if (USART_GetITStatus(usartMap[serial]->usart_peripheral, USART_IT_TXE) && USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_TXE))
 		{
-			// protect for good measure
+		  // protect for good measure
 			USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, DISABLE);
-			// Write out a byte
+		  // Write out a byte
 			USART_SendData(usartMap[serial]->usart_peripheral,  usartMap[serial]->usart_tx_buffer->buffer[usartMap[serial]->usart_tx_buffer->tail++]);
 			usartMap[serial]->usart_tx_buffer->tail %= SERIAL_BUFFER_SIZE;
-			// unprotect
+		  // unprotect
 			USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, ENABLE);
 		}
 	}
@@ -500,7 +513,7 @@ void HAL_USART3_Handler(void)
  *******************************************************************************/
 void HAL_USART4_Handler(void)
 {
-    HAL_USART_Handler(HAL_USART_SERIAL4);
+	HAL_USART_Handler(HAL_USART_SERIAL4);
 }
 
 // Serial5 interrupt handler
@@ -513,6 +526,6 @@ void HAL_USART4_Handler(void)
  *******************************************************************************/
 void HAL_USART5_Handler(void)
 {
-    HAL_USART_Handler(HAL_USART_SERIAL5);
+	HAL_USART_Handler(HAL_USART_SERIAL5);
 }
 #endif

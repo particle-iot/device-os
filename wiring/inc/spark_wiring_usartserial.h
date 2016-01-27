@@ -38,6 +38,8 @@
 #define SERIAL_8E2 (uint8_t)0b00000101
 #define SERIAL_8O1 (uint8_t)0b00001000
 #define SERIAL_8O2 (uint8_t)0b00001001
+#define SERIAL_9N1 (uint8_t)0b00010000
+#define SERIAL_9N2 (uint8_t)0b00010001
 
 class USARTSerial : public Stream
 {
@@ -59,12 +61,13 @@ public:
   virtual int peek(void);
   virtual int read(void);
   virtual void flush(void);
+  virtual size_t write(uint16_t);
   virtual size_t write(uint8_t);
 
-  inline size_t write(unsigned long n) { return write((uint8_t)n); }
-  inline size_t write(long n) { return write((uint8_t)n); }
-  inline size_t write(unsigned int n) { return write((uint8_t)n); }
-  inline size_t write(int n) { return write((uint8_t)n); }
+  inline size_t write(unsigned long n) { return write((uint16_t)n); }
+  inline size_t write(long n) { return write((uint16_t)n); }
+  inline size_t write(unsigned int n) { return write((uint16_t)n); }
+  inline size_t write(int n) { return write((uint16_t)n); }
 
   using Print::write; // pull in write(str) and write(buf, size) from Print
 

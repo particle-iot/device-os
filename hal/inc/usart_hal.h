@@ -43,9 +43,9 @@
 /* Exported types ------------------------------------------------------------*/
 typedef struct Ring_Buffer
 {
-  unsigned char buffer[SERIAL_BUFFER_SIZE];
-  volatile uint8_t head;
-  volatile uint8_t tail;
+  uint16_t buffer[SERIAL_BUFFER_SIZE];
+  volatile uint16_t head;
+  volatile uint16_t tail;
 } Ring_Buffer;
 
 typedef enum HAL_USART_Serial {
@@ -80,6 +80,7 @@ void HAL_USART_Flush_Data(HAL_USART_Serial serial);
 bool HAL_USART_Is_Enabled(HAL_USART_Serial serial);
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable);
 void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*);
+uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data);
 
 #ifdef __cplusplus
 }
