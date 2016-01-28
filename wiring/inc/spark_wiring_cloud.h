@@ -61,6 +61,10 @@ public:
         return variable(varKey, &var, INT);
     }
 
+    static bool variable(const char* varKey, const float& var)
+    __attribute__((error("Please change the variable from type `float` to `double` for use with Particle.variable().")));
+
+
     static inline bool variable(const char* varKey, const double& var)
     {
         return variable(varKey, &var, DOUBLE);
