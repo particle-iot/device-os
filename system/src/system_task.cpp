@@ -42,7 +42,6 @@
 #include "system_threading.h"
 #if PLATFORM_ID==88
 #include "hw_config.h"
-#include "ble_hal.h"
 #include "spark_wiring_hciserial.h"
 #endif
 
