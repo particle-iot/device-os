@@ -152,6 +152,12 @@ struct Channel
 		 * DTLS handshake with the server.
 		 */
 		DISCARD_SESSION,
+
+		/**
+		 * Sends a special DTLS packet to the server that indicates
+		 * the session has moved.
+		 */
+		MOVE_SESSION,
 	};
 
 
