@@ -147,7 +147,11 @@ struct Channel
 	{
 		CLOSE,
 
-		REFRESH_SESSION,
+		/**
+		 * Discard the current session. This performs a new
+		 * DTLS handshake with the server.
+		 */
+		DISCARD_SESSION,
 	};
 
 
