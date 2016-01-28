@@ -157,5 +157,7 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     return 0;
 }
 
-
+extern "C" void random_seed_from_cloud(unsigned int value)
+{
+}
 

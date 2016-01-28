@@ -28,7 +28,9 @@
 
 #include "concurrent_hal.h"
 #include <stddef.h>
+#include <mutex>
 #include <functional>
+#include <type_traits>
 
 typedef std::function<os_thread_return_t(void)> wiring_thread_fn_t;
 
@@ -104,6 +106,68 @@ private:
     }
 };
 
+class Mutex
+{
+	os_mutex_t handle_;
+public:
+	/**
+	 * Creates a shared mutex from an existing handle.
+	 * This is mainly used to share mutexes between dynamically linked modules.
+	 */
+	Mutex(os_mutex_t handle) : handle_(handle) {}
+
+	/**
+	 * Creates a new mutex.
+	 */
+	Mutex() : handle_(nullptr)
+	{
+		os_mutex_create(&handle_);
+	}
+
+	void dispose()
+	{
+		if (handle_) {
+			os_mutex_destroy(handle_);
+			handle_ = nullptr;
+		}
+	}
+
+	void lock() { os_mutex_lock(handle_); }
+	bool trylock() { return os_mutex_trylock(handle_)==0; }
+	void unlock() { os_mutex_unlock(handle_); }
+
+};
+
+
+class RecursiveMutex
+{
+	os_mutex_recursive_t handle_;
+public:
+	/**
+	 * Creates a shared mutex.
+	 */
+	RecursiveMutex(os_mutex_recursive_t handle) : handle_(handle) {}
+
+	RecursiveMutex() : handle_(nullptr)
+	{
+		os_mutex_recursive_create(&handle_);
+	}
+
+	void dispose()
+	{
+		if (handle_) {
+			os_mutex_recursive_destroy(handle_);
+			handle_ = nullptr;
+		}
+	}
+
+	void lock() { os_mutex_recursive_lock(handle_); }
+	bool trylock() { return os_mutex_recursive_trylock(handle_)==0; }
+	void unlock() { os_mutex_recursive_unlock(handle_); }
+
+};
+
+
 class SingleThreadedSection {
 public:
 	SingleThreadedSection() {
@@ -115,11 +179,17 @@ public:
     }
 };
 
-#define SINGLE_THREADED_SECTION() SingleThreadedSection __cs;
+#define SINGLE_THREADED_SECTION()  SingleThreadedSection __cs;
+
+#define SINGLE_THREADED_BLOCK() for (bool __todo = true; __todo; ) for (SingleThreadedSection __cs; __todo; __todo=0)
+#define WITH_LOCK(lock) for (bool __todo = true; __todo;) for (std::lock_guard<decltype(lock)> __lock##lock((lock)); __todo; __todo=0)
+#define TRY_LOCK(lock) for (bool __todo = true; __todo; ) for (std::unique_lock<typename std::remove_reference<decltype(lock)>::type> __lock##lock((lock), std::try_to_lock); __todo &= bool(__lock##lock); __todo=0)
 
 #else
-
 #define SINGLE_THREADED_SECTION()
+#define SINGLE_THREADED_BLOCK()
+#define WITH_LOCK(x)
+#define TRY_LOCK(x)
 
 #endif
 

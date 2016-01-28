@@ -71,7 +71,7 @@ test(CAN_D1D2_DoesntReceiveFilteredMessage) {
 
 #ifdef HAL_HAS_CAN_C4_C5
 
-test(CAN_D1D2_ReceivesTransmittedMessage) {
+test(CAN_C4C5_ReceivesTransmittedMessage) {
     CANChannel can(CAN_C4_C5);
     can.begin(500000, CAN_TEST_MODE);
 
@@ -91,7 +91,7 @@ test(CAN_D1D2_ReceivesTransmittedMessage) {
     assertEqual(rx.data[0], 10);
 }
 
-test(CAN_D1D2_DoesntReceiveFilteredMessage) {
+test(CAN_C4C5_DoesntReceiveFilteredMessage) {
     CANChannel can(CAN_C4_C5);
     can.begin(500000, CAN_TEST_MODE);
     // Accept only message 0x100

@@ -22,57 +22,73 @@
 #if PLATFORM_ID!=3
 #include "stddef.h"
 #include "concurrent_hal.h"
+#include <functional>
 
 class Timer
 {
 public:
 
-    typedef void (*timer_callback_fn)(Timer& timer);
+    typedef std::function<void(void)> timer_callback_fn;
 
-    Timer(unsigned period, void (*callback)()) : Timer(period, timer_callback_fn(callback)) {}
-
-    Timer(unsigned period, timer_callback_fn callback_) : handle(nullptr), callback(callback_) {
-        os_timer_create(&handle, period, invoke_timer, this, nullptr);
+    Timer(unsigned period, timer_callback_fn callback_, bool one_shot=false) : running(false), handle(nullptr), callback(std::move(callback_)) {
+        os_timer_create(&handle, period, invoke_timer, this, one_shot, nullptr);
     }
 
+    template <typename T>
+    Timer(unsigned period, void (T::*handler)(), T& instance, bool one_shot=false) : Timer(period, std::bind(handler, &instance), one_shot)
+    {
+    }
 
-    virtual ~Timer() { dispose(); }
+    virtual ~Timer() {
+    		// when the timer is calling the std::function, we cannot dispose of it until the function completes.
+		// the call has exited.
+		dispose();
+    }
 
-    void startFromISR() { start(true); }
-    void stopFromISR() { stop(true); }
-    void resetFromISR() { reset(true); }
-    void changePeriodFromISR(unsigned period) { changePeriod(period, true); }
+    bool startFromISR() { return _start(0, true); }
+    bool stopFromISR() { return _stop(0, true); }
+    bool resetFromISR() { return _reset(0, true); }
+    bool changePeriodFromISR(unsigned period) { return _changePeriod(period, 0, true); }
 
+    static const unsigned default_wait = 0x7FFFFFFF;
 
-    void start(bool fromISR=false)
+    bool start(unsigned block=default_wait) { return _start(block, false); }
+    bool stop(unsigned block=default_wait) { return _stop(block, false); }
+    bool reset(unsigned block=default_wait) { return _reset(block, false); }
+    bool changePeriod(unsigned period, unsigned block=default_wait) { return _changePeriod(period, block, false); }
+
+    bool isValid() const { return handle!=nullptr; }
+
+    bool _start(unsigned block, bool fromISR=false)
     {
         stop(fromISR);
-        if (handle)
-            os_timer_change(handle, OS_TIMER_CHANGE_START, fromISR, 0, 0, nullptr);
+        return handle ? !os_timer_change(handle, OS_TIMER_CHANGE_START, fromISR, 0, block, nullptr) : false;
     }
 
-    void stop(bool fromISR=false)
+    bool _stop(unsigned block, bool fromISR=false)
     {
-        if (handle)
-            os_timer_change(handle, OS_TIMER_CHANGE_STOP, fromISR, 0, 0, nullptr);
+        return handle ? !os_timer_change(handle, OS_TIMER_CHANGE_STOP, fromISR, 0, block, nullptr) : false;
     }
 
-    void reset(bool fromISR=false)
+    bool _reset(unsigned block, bool fromISR=false)
     {
-        if (handle)
-            os_timer_change(handle, OS_TIMER_CHANGE_RESET, fromISR, 0, 0, nullptr);
+        return handle ? !os_timer_change(handle, OS_TIMER_CHANGE_RESET, fromISR, 0, block, nullptr) : false;
     }
 
-    void changePeriod(unsigned period, bool fromISR=false)
+    bool _changePeriod(unsigned period, unsigned block, bool fromISR=false)
     {
-        if (handle)
-            os_timer_change(handle, OS_TIMER_CHANGE_PERIOD, fromISR, period, 0, nullptr);
+         return handle ? !os_timer_change(handle, OS_TIMER_CHANGE_PERIOD, fromISR, period, block, nullptr) : false;
     }
 
     void dispose()
     {
-        if (handle) {
-            os_timer_destroy(handle, nullptr);
+        if (handle)
+        	{
+        		stop();
+        		while (running) {
+				delay(1);
+			}
+        		os_timer_destroy(handle, nullptr);
             handle = nullptr;
         }
     }
@@ -83,12 +99,16 @@ public:
      */
     virtual void timeout()
     {
+		running = true;
         if (callback)
-            callback(*this);
+        {
+            callback();
+        }
+        running = false;
     }
 
 private:
-
+	volatile bool running;
     os_timer_t handle;
     timer_callback_fn callback;
 
@@ -100,7 +120,6 @@ private:
                 ((Timer*)timer_id)->timeout();
         }
     }
-
 
 };
 

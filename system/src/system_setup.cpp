@@ -32,6 +32,8 @@
 #include "spark_wiring.h"   // for serialReadLine
 #include "system_network_internal.h"
 #include "system_network.h"
+#include "system_task.h"
+#include "spark_wiring_thread.h"
 
 #if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
@@ -61,17 +63,20 @@ public:
 template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
     : config(config_)
 {
+	WITH_LOCK(serial);
     if (serial.baud()==0)
         serial.begin(9600);
 }
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
-    if (serial.available()) {
-        int c = serial.read();
-        if (c>=0)
-            handle((char)c);
-    }
+	TRY_LOCK(serial) {
+		if (serial.available()) {
+			int c = serial.read();
+			if (c>=0)
+				handle((char)c);
+		}
+	}
 }
 
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)

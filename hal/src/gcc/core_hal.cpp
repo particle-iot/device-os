@@ -137,7 +137,7 @@ void HAL_Core_Factory_Reset(void)
 
 void HAL_Core_Enter_Safe_Mode(void* reserved)
 {
-    MSG("Enter sate mode not implemented.");
+    MSG("Enter safe mode not implemented.");
 }
 
 

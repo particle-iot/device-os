@@ -74,7 +74,7 @@ public:
 	}
 };
 
-#define ATOMIC_SECTION()  AtomicSection __as;
+#define ATOMIC_BLOCK() 	for (bool __todo=true; __todo;) for (AtomicSection __as; __todo; __todo=false)
 
 
 
