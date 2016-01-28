@@ -487,6 +487,9 @@ static inline void usbd_cdc_Change_Open_State(uint8_t state) {
       USB_Tx_length = ring_data_contig(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_head, USB_Tx_Buffer_tail);
       if (USB_Tx_length)
           USB_Tx_Buffer_tail = ring_wrap(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_tail + USB_Tx_length);
+
+      USB_Tx_State = 0;
+      USB_Rx_State = 1;
     }
     USB_Serial_Open = state;
   }
@@ -557,7 +560,6 @@ static uint8_t  usbd_cdc_Init (void  *pdev,
 static uint8_t  usbd_cdc_DeInit (void  *pdev,
                                  uint8_t cfgidx)
 {
-
   usbd_cdc_Change_Open_State(0);
 
   if (cdcConfigured) {
@@ -842,6 +844,8 @@ static void usbd_cdc_Schedule_In(void *pdev)
         DCD_EP_Tx(pdev, CDC_IN_EP, NULL, 0);
         if (USB_Tx_length)
           USB_Tx_Buffer_tail = ring_wrap(USB_TX_BUFFER_SIZE, USB_Tx_Buffer_tail + USB_Tx_length);
+
+        USB_Tx_State = 0;
       }
     }
     return;

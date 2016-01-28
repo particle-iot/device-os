@@ -261,6 +261,8 @@ void USB_USART_Send_Data(uint8_t Data)
 void USB_USART_Flush_Data(void)
 {
     while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USB_TX_BUFFER_SIZE - 1));
+    // We should also wait for USB_Tx_State to become 0, as hardware might still be busy transmitting data
+    while(USB_Tx_State == 1);
 }
 #endif
 
