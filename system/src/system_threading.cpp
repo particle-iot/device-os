@@ -117,7 +117,18 @@ namespace std {
     }
 }
 
+static os_mutex_recursive_t usb_serial_mutex;
+
+os_mutex_recursive_t mutex_usb_serial()
+{
+	if (nullptr==usb_serial_mutex) {
+		os_mutex_recursive_create(&usb_serial_mutex);
+	}
+	return usb_serial_mutex;
+}
+
 #endif
+
 
 
 void* system_internal(int item, void* reserved)
@@ -126,6 +137,7 @@ void* system_internal(int item, void* reserved)
 #if PLATFORM_THREADING
     case 0: return &ApplicationThread;
     case 1: return &SystemThread;
+    case 2: return mutex_usb_serial();
 #endif
     }
     return nullptr;

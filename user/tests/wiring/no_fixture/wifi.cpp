@@ -20,6 +20,8 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+#if Wiring_WiFi == 1
+
 test(wifi_resolve_3_levels)
 {
     IPAddress address = WiFi.resolve("pool.ntp.org");
@@ -87,3 +89,5 @@ test(wifi_config)
 	checkEtherAddress(ether);
 	assertTrue(!memcmp(ether, ether2, 6))
 }
+
+#endif

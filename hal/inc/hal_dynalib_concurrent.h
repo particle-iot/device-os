@@ -40,6 +40,19 @@ DYNALIB_FN(hal_concurrent,os_timer_create)
 DYNALIB_FN(hal_concurrent,os_timer_destroy)
 DYNALIB_FN(hal_concurrent,os_timer_get_id)
 DYNALIB_FN(hal_concurrent,os_timer_change)
+
+DYNALIB_FN(hal_concurrent,os_mutex_create)
+DYNALIB_FN(hal_concurrent,os_mutex_destroy)
+DYNALIB_FN(hal_concurrent,os_mutex_lock)
+DYNALIB_FN(hal_concurrent,os_mutex_trylock)
+DYNALIB_FN(hal_concurrent,os_mutex_unlock)
+
+DYNALIB_FN(hal_concurrent,os_mutex_recursive_create)
+DYNALIB_FN(hal_concurrent,os_mutex_recursive_destroy)
+DYNALIB_FN(hal_concurrent,os_mutex_recursive_lock)
+DYNALIB_FN(hal_concurrent,os_mutex_recursive_trylock)
+DYNALIB_FN(hal_concurrent,os_mutex_recursive_unlock)
+
 #endif
 DYNALIB_END(hal_concurrent)
 

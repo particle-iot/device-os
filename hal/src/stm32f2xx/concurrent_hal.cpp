@@ -29,6 +29,7 @@
 #include "task.h"
 #include "semphr.h"
 #include "timers.h"
+#include "stm32f2xx.h"
 #include <mutex>
 
 inline bool isISR()
@@ -419,9 +420,9 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
 /**
  * Create a new timer. Returns 0 on success.
  */
-int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* const timer_id, void* reserved)
+int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* const timer_id, bool one_shot, void* reserved)
 {
-    *timer = xTimerCreate((_CREATE_NAME_TYPE*)"", period, true, timer_id, callback);
+    *timer = xTimerCreate((_CREATE_NAME_TYPE*)"", period, !one_shot, timer_id, callback);
     return *timer==NULL;
 }
 

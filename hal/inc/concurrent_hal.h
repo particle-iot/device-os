@@ -194,7 +194,7 @@ void os_thread_scheduling(bool enabled, void* reserved);
 /**
  * Create a new timer. Returns 0 on success.
  */
-int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* timer_id, void* reserved);
+int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* timer_id, bool one_shot, void* reserved);
 int os_timer_get_id(os_timer_t timer, void** timer_id);
 
 typedef enum os_timer_change_t

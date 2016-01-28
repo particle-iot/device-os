@@ -27,7 +27,7 @@ SPARK_CLOUD=( y n )
 APP=( "" tinker )
 TEST=( wiring/api wiring/no_fixture )
 
-MODULAR_PLATFORM=( photon P1 )
+MODULAR_PLATFORM=( photon P1 electron)
 
 # set current working dir
 cd main

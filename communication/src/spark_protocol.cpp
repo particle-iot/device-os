@@ -320,7 +320,7 @@ void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 
 void SparkProtocol::notify_update_done(uint8_t* buf)
 {
-    serial_dump("Sending UpdateDone");
+    DEBUG("Sending UpdateDone");
     unsigned short message_id = next_message_id();
     size_t size = Messages::update_done(buf+2, message_id, false);
     wrap(buf, size);
@@ -691,7 +691,7 @@ int SparkProtocol::send_missing_chunks(int count)
     }
 
     if (sent>0) {
-        serial_dump("Sent %d missing chunks", sent);
+        DEBUG("Sent %d missing chunks", sent);
 
         size_t message_size = 7+(sent*2);
         message_size = wrap(queue, message_size);
@@ -1001,7 +1001,7 @@ bool SparkProtocol::handle_update_begin(msg& message)
     {
         if (!callbacks.prepare_for_firmware_update(file, 0, NULL))
         {
-            serial_dump("starting file length %d chunks %d chunk_size %d",
+            DEBUG("starting file length %d chunks %d chunk_size %d",
                     file.file_length, file.chunk_count(file.chunk_size), file.chunk_size);
             last_chunk_millis = callbacks.millis();
             chunk_index = 0;
@@ -1039,9 +1039,9 @@ bool SparkProtocol::handle_chunk(msg& message)
       // error
       return false;
     }
-    serial_dump("chunk");
+    DEBUG("chunk");
     if (!this->updating) {
-        serial_dump("got chunk when not updating");
+        WARN("got chunk when not updating");
         return true;
     }
 
@@ -1070,13 +1070,13 @@ bool SparkProtocol::handle_chunk(msg& message)
         file.chunk_size = message.len - payload - queue[message.len - 1];   // remove length added due to pkcs #7 padding?
         file.chunk_address  = file.file_address + (chunk_index * chunk_size);
         if (chunk_index>=MAX_CHUNKS) {
-            serial_dump("invalid chunk index %d", chunk_index);
+            WARN("invalid chunk index %d", chunk_index);
             return false;
         }
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
         bool has_response = false;
         bool crc_valid = (crc == given_crc);
-        serial_dump("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
+        DEBUG("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
         if (crc_valid)
         {
             callbacks.save_firmware_chunk(file, chunk, NULL);
@@ -1088,16 +1088,15 @@ bool SparkProtocol::handle_chunk(msg& message)
             if (updating==2) {                      // clearing up missed chunks at the end of fast OTA
                 chunk_index_t next_missed = next_chunk_missing(0);
                 if (next_missed==NO_CHUNKS_MISSING) {
-                    serial_dump("received all chunks");
+                    INFO("received all chunks");
                     reset_updating();
-                    callbacks.finish_firmware_update(file, 1, NULL);
                     notify_update_done(msg_to_send);
+                    callbacks.finish_firmware_update(file, 1, NULL);
                     has_response = true;
                 }
                 else {
                     if (has_response && 0 > blocking_send(msg_to_send, 18)) {
-
-                        serial_dump("send chunk response failed");
+                        WARN("send chunk response failed");
                         return false;
                     }
                     has_response = false;
@@ -1112,7 +1111,7 @@ bool SparkProtocol::handle_chunk(msg& message)
         {
             chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::BAD);
             has_response = true;
-            serial_dump("chunk bad %d", chunk_index);
+            WARN("chunk bad %d", chunk_index);
         }
         // fast OTA will request the chunk later
 
@@ -1129,7 +1128,6 @@ bool SparkProtocol::handle_chunk(msg& message)
 
 inline void SparkProtocol::flag_chunk_received(chunk_index_t idx)
 {
-//    serial_dump("flagged chunk %d", idx);
     chunk_bitmap()[idx>>3] |= uint8_t(1<<(idx&7));
 }
 
@@ -1147,7 +1145,7 @@ chunk_index_t SparkProtocol::next_chunk_missing(chunk_index_t start)
     {
         if (!is_chunk_received(idx))
         {
-            //serial_dump("next missing chunk %d from %d", idx, start);
+            //TRACE("next missing chunk %d from %d", idx, start);
             chunk = idx;
             break;
         }
@@ -1169,10 +1167,10 @@ bool SparkProtocol::handle_update_done(msg& message)
 
     *msg_to_send = 0;
     *(msg_to_send + 1) = 16;
-    serial_dump("update done received");
     chunk_index_t index = next_chunk_missing(0);
     bool missing = index!=NO_CHUNKS_MISSING;
     coded_ack(msg_to_send + 2, message.token, missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK, queue[2], queue[3]);
+    DEBUG("update done received - has missing chunks %d", missing);
     if (0 > blocking_send(msg_to_send, 18))
     {
         // error
@@ -1180,7 +1178,7 @@ bool SparkProtocol::handle_update_done(msg& message)
     }
 
     if (!missing) {
-        serial_dump("update done - all done!");
+        DEBUG("update done - all done!");
         reset_updating();
         callbacks.finish_firmware_update(file, 1, NULL);
     }

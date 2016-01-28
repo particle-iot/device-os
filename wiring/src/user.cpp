@@ -27,6 +27,8 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
+#include "rng_hal.h"
+
 
 
 /**
@@ -155,6 +157,17 @@ void module_user_init_hook()
     if (!backup_ram_was_valid_) {
         system_initialize_user_backup_ram();
         __backup_sram_signature = signature;
+    }
+#endif
+
+    /* for dynamically linked user part, set the random seed if the user
+     * app defines random_seed_from_cloud.
+     */
+// todo - add a RNG define for that capability
+#if defined(STM32F2XX)
+    if (random_seed_from_cloud) {
+    		uint32_t seed = HAL_RNG_GetRandomNumber();
+    		random_seed_from_cloud(seed);
     }
 #endif
 }

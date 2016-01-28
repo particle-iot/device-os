@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+#include "static_assert.h"
 
 typedef enum hal_irq_t {
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD)
@@ -135,6 +136,11 @@ typedef enum hal_irq_t {
     __Last_irq = 0
 #endif
 } hal_irq_t;
+
+#if defined(STM32F2XX)
+STATIC_ASSERT(__last_irq_is_set, __Last_irq==SysInterrupt_CAN1_SCE_IRQ+1);
+STATIC_ASSERT(__last_irq_is_set, __Last_irq==83);
+#endif
 
 #ifdef	__cplusplus
 }

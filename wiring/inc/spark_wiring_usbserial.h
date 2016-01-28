@@ -29,6 +29,7 @@
 
 #include "spark_wiring_stream.h"
 #include "usb_hal.h"
+#include "system_task.h"
 
 class USBSerial : public Stream
 {
@@ -52,6 +53,35 @@ public:
 
 	virtual void blockOnOverrun(bool);
 
+#if PLATFORM_THREADING
+	os_mutex_recursive_t get_mutex()
+	{
+		return os_mutex_recursive_t(system_internal(2, nullptr));
+	}
+#endif
+
+	bool try_lock()
+	{
+#if PLATFORM_THREADING
+		return !os_mutex_recursive_trylock(get_mutex());
+#else
+		return true;
+#endif
+	}
+
+	void lock()
+	{
+#if PLATFORM_THREADING
+		os_mutex_recursive_lock(get_mutex());
+#endif
+	}
+
+	void unlock()
+	{
+#if PLATFORM_THREADING
+		os_mutex_recursive_unlock(get_mutex());
+#endif
+	}
 
 	using Print::write;
 
