@@ -14,12 +14,10 @@ endif
 
 # redefine these for your environment
 TOOLCHAIN_PREFIX=arm-none-eabi-
-CORE?=../../../..
-WICED_SDK?=$(CORE)/WICED/WICED-SDK-3.1.1/WICED-SDK
-FIRMWARE=$(CORE)/firmware
+BASE?=../../../..
+WICED_SDK?=$(BASE)/WICED/WICED-SDK-3.1.1/WICED-SDK
+FIRMWARE?=$(BASE)/firmware
 COMMON_BUILD=$(FIRMWARE)/build
-#WICED_SDK?=$(CORE)/photon-wiced
-#FIRMWARE=$(CORE)/firmware-private
 
 include $(COMMON_BUILD)/macros.mk
 include $(COMMON_BUILD)/os.mk
