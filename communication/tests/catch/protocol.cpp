@@ -107,6 +107,12 @@ uint32_t fake_millis()
 	return 0;
 }
 
+/**
+ *
+ * @param confirmable sets the type of event message to send
+ * @param unreliable determines the is_unreliable() result on the message channel.
+ *
+ */
 void event_ack(bool confirmable, bool unreliable)
 {
 	ProtocolBuilder builder;
@@ -182,3 +188,41 @@ SCENARIO("non-confirmable events are not acknowledged")
 	event_ack(false, false);
 }
 
+void verify_event_type_with_flags(int flags, CoAPType::Enum coapType)
+{
+	bool unreliable = true;
+
+	Mock<MessageChannel> channel;
+	When(Method(channel,is_unreliable)).Return(unreliable);
+	When(Method(channel,command)).Return(NO_ERROR);
+
+	uint8_t buf[50];
+	When(Method(channel, create)).Do([&buf](Message& msg, size_t size) {
+		msg.set_buffer(buf, 50);
+		return NO_ERROR;
+	});
+
+
+	auto validate_event = [coapType](Message& msg){
+		REQUIRE(msg.length()>=4);
+		uint8_t* buf = msg.buf();
+		REQUIRE(CoAP::type(buf)==coapType);
+		return NO_ERROR;
+	};
+	When(Method(channel,send)).Do(validate_event);
+
+	Publisher publisher;
+	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0);
+
+	Verify(Method(channel,send));
+}
+
+SCENARIO("Events are confirmable by default over an unreliable channel")
+{
+	verify_event_type_with_flags(EventType::EMPTY_FLAGS, CoAPType::CON);
+}
+
+SCENARIO("Events are non-confirmable over an unreliable channel with the NO_ACK flag set")
+{
+	verify_event_type_with_flags(EventType::NO_ACK, CoAPType::NON);
+}

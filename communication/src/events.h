@@ -30,10 +30,32 @@
 
 namespace EventType {
   enum Enum {
-    PUBLIC = 'e',
-    PRIVATE = 'E'
+    PUBLIC = 'e',			// 0x65
+    PRIVATE = 'E',			// 0x45
   };
+
+  enum Flags {
+	  EMPTY_FLAGS = 0,
+	   NO_ACK = 0x2,
+
+	   ALL_FLAGS = NO_ACK
+  };
+
+  static_assert((PUBLIC & NO_ACK)==0, "flags should be distinct from event type");
+  static_assert((PRIVATE & NO_ACK)==0, "flags should be distinct from event type");
+
+
+  inline int extract_flags(Enum& et)
+  {
+	  int flags = et & ALL_FLAGS;
+	  et = Enum(et & ~ALL_FLAGS);
+	  return flags;
+  }
 }
+
+#if PLATFORM_ID!=3
+static_assert(sizeof(EventType::Enum)==1, "EventType size is 1");
+#endif
 
 namespace SubscriptionScope {
   enum Enum {

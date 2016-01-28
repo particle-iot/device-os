@@ -87,7 +87,8 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
                 int ttl, EventType::Enum event_type, void*) {
-    return protocol->send_event(event_name, data, ttl, event_type);
+	int flags = extract_flags(event_type);
+	return protocol->send_event(event_name, data, ttl, event_type, flags);
 }
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {
