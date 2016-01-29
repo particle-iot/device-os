@@ -78,8 +78,12 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
 
 cellular_result_t cellular_fetch_ipconfig(WLanConfig* config, void* reserved)
 {
-    memset(&config, 0, sizeof(config));
-    return 0;
+    uint32_t ip_addr = electronMDM.getIpAddress(); // Local IP
+    if (ip_addr > 0) {
+        memcpy(&config->nw.aucIP, &ip_addr, 4);
+        return 0;
+    }
+    return -1;
 }
 
 cellular_result_t cellular_credentials_set(const char* apn, const char* username, const char* password, void* reserved)
