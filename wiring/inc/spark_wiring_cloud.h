@@ -61,9 +61,10 @@ public:
         return variable(varKey, &var, INT);
     }
 
+#if PLATFORM_ID!=3
     static bool variable(const char* varKey, const float& var)
     __attribute__((error("Please change the variable from type `float` to `double` for use with Particle.variable().")));
-
+#endif
 
     static inline bool variable(const char* varKey, const double& var)
     {
