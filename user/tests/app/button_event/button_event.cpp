@@ -4,9 +4,9 @@
 
 struct Event {
     system_event_t type;
-    uint32_t data;
+    int data;
 
-    explicit Event(system_event_t type, uint32_t data = 0) :
+    explicit Event(system_event_t type, int data = 0) :
             type(type),
             data(data) {
     }
@@ -16,7 +16,7 @@ const uint32_t testTimeout = 10000;
 
 std::deque<Event> eventQueue;
 uint32_t testStarted = 0;
-uint32_t eventData = 0;
+int eventData = 0;
 
 #define WAIT_EVENT(event) \
         do { \

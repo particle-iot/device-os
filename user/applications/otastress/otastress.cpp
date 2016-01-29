@@ -72,7 +72,7 @@ void update_end(bool success)
     stats.save();
 }
 
-void system_event_handler(system_event_t events, uint32_t param, void* pointer)
+void system_event_handler(system_event_t events, int param, void* pointer)
 {
     if (events&firmware_update)
     {

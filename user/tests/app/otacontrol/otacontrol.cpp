@@ -77,7 +77,7 @@ int handleCmd(String cmd)
 }
 
 
-void eventHandler(system_event_t event, uint32_t param, void*)
+void eventHandler(system_event_t event, int param, void*)
 {
     switch (event)
     {
