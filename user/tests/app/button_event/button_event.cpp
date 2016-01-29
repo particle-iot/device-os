@@ -30,7 +30,7 @@ uint32_t eventData = 0;
             eventQueue.pop_front(); \
         } while (false)
 
-void eventHandler(system_event_t event, uint32_t data, void*) {
+void eventHandler(system_event_t event, int data, void*) {
     eventQueue.push_back(Event(event, data));
 }
 
