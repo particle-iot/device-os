@@ -45,6 +45,12 @@ class CloudClass {
 
 public:
 
+
+    static inline bool variable(const char* varKey, const bool& var)
+    {
+        return variable(varKey, &var, BOOLEAN);
+    }
+
     static inline bool variable(const char* varKey, const int& var)
     {
         return variable(varKey, &var, INT);
