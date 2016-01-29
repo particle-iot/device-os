@@ -152,7 +152,8 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
     message_type = handle_received_message();
     if (message_type==CoAPMessageType::ERROR)
     {
-        if (updating) {      // was updating but had an error, inform the client
+    		WARN("received ERROR CoAPMessage");
+    		if (updating) {      // was updating but had an error, inform the client
             serial_dump("handle received message failed - aborting transfer");
             callbacks.finish_firmware_update(file, 0, NULL);
             updating = false;
@@ -166,7 +167,8 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
   {
     if (0 > bytes_received)
     {
-      // error, disconnected
+    	  WARN("bytes recieved error %d", bytes_received);
+    	// error, disconnected
       return false;
     }
 
@@ -206,6 +208,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
           // timed out, disconnect
           expecting_ping_ack = false;
           last_message_millis = callbacks.millis();
+    		WARN("ping ACK not received");
           return false;
         }
       }
