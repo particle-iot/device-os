@@ -820,6 +820,8 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
             bytes_read = read_packet_and_dispose(server_client->packet, buffer, len, server_client->get_socket(), _timeout);
         }
     }
+    if (bytes_read<0)
+    		DEBUG("socket_receive on %d returned %d", sd, bytes_read);
     return bytes_read;
 }
 
