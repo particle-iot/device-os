@@ -66,6 +66,7 @@
 
 #if PLATFORM_ID==88
 #include "spark_wiring_hciserial.h"
+#include "spark_wiring_btstack.h"
 #endif
 #include "spark_wiring_spi.h"
 
