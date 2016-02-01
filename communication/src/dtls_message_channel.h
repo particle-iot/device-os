@@ -94,7 +94,7 @@ private:
 	 */
 	message_id_t* coap_state;
 	bool move_session;
-	uint8_t device_id[DEVICE_ID_LEN];
+	const uint8_t* device_id;
 
     void init();
     void dispose();

@@ -195,7 +195,7 @@ ProtocolError DTLSMessageChannel::init(
 	this->coap_state = coap_state;
 	int ret;
 	this->callbacks = callbacks;
-	memcpy(this->device_id, device_id, DEVICE_ID_LEN);
+	this->device_id = device_id;
 	keys_checksum = compute_checksum(server_public, server_public_len, core_private, core_private_len);
 
 	ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
@@ -233,13 +233,19 @@ inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
 	if (move_session && len && data[0]==23)
 	{
-		uint8_t* d = const_cast<uint8_t*>(data);
+		uint8_t d[len+DEVICE_ID_LEN+1];
+		memcpy(d, data, len);
 		d[0] = 254;
 		memcpy(d+len, device_id, DEVICE_ID_LEN);
 		d[len+DEVICE_ID_LEN] = DEVICE_ID_LEN;
-		len += DEVICE_ID_LEN+1;
+		int result = callbacks.send(d, len+DEVICE_ID_LEN+1, callbacks.tx_context);
+		// hide the increased length from DTLS
+		if (result==int(len+DEVICE_ID_LEN+1))
+			result = len;
+		return result;
 	}
-	return callbacks.send(data, len, callbacks.tx_context);
+	else
+		return callbacks.send(data, len, callbacks.tx_context);
 }
 
 void DTLSMessageChannel::reset_session()
