@@ -231,6 +231,22 @@ int32_t HAL_GPIO_Read(uint16_t pin)
             HAL_Pin_Mode(pin, pm);
         }
     }
+    else if (PIN_MAP[pin].pin_mode == AN_OUTPUT)
+    {
+        PinMode pm = HAL_GPIO_Recall_Pin_Mode();
+        if(pm == PIN_MODE_NONE)
+        {
+            return 0;
+        }
+        else
+        {
+            // Disable DAC
+            if (HAL_DAC_Is_Enabled(pin))
+                HAL_DAC_Enable(pin, 0);
+            // Restore pin mode
+            HAL_Pin_Mode(pin, pm);
+        }
+    }
 
     if(PIN_MAP[pin].pin_mode == OUTPUT)
     {
