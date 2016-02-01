@@ -76,7 +76,7 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
     return 0;
 }
 
-cellular_result_t cellular_fetch_ipconfig(WLanConfig* config, void* reserved)
+cellular_result_t cellular_fetch_ipconfig(CellularConfig* config, void* reserved)
 {
     uint32_t ip_addr = electronMDM.getIpAddress(); // Local IP
     if (ip_addr > 0) {

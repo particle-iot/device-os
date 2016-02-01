@@ -38,7 +38,7 @@ class CellularClass : public NetworkClass
 public:
 
     IPAddress localIP() {
-        return IPAddress(((WLanConfig*)network_config(*this, 0, NULL))->nw.aucIP);
+        return IPAddress(((CellularConfig*)network_config(*this, 0, NULL))->nw.aucIP);
     }
     void on() {
         network_on(*this, 0, 0, NULL);
