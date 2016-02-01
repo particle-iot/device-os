@@ -151,7 +151,7 @@ ProtocolError Protocol::handle_key_change(Message& message)
 		uint8_t option_idx = 7 + (buf[0] & 0xF);
 		if (buf[option_idx]==1)
 		{
-			result = channel.command(MessageChannel::REFRESH_SESSION);
+			result = channel.command(MessageChannel::DISCARD_SESSION);
 		}
 	}
 	return result;
@@ -217,6 +217,12 @@ int Protocol::begin()
 	if (error && !session_resumed) {
 		WARN("handshake failed with code %d", error);
 		return error;
+	}
+
+	if (session_resumed)
+	{
+		// for now, unconditionally move the session on resumption
+		channel.command(MessageChannel::MOVE_SESSION, nullptr);
 	}
 
 	// hello not needed because it's already been sent and the server maintains device state
