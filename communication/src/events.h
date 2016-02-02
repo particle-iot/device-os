@@ -34,6 +34,9 @@ namespace EventType {
     PRIVATE = 'E',			// 0x45
   };
 
+  /**
+   * These flags are encoded into the same 32-bit integer that alredy holds EventType::Enum
+   */
   enum Flags {
 	  EMPTY_FLAGS = 0,
 	   NO_ACK = 0x2,
@@ -44,14 +47,16 @@ namespace EventType {
   static_assert((PUBLIC & NO_ACK)==0, "flags should be distinct from event type");
   static_assert((PRIVATE & NO_ACK)==0, "flags should be distinct from event type");
 
-
-  inline int extract_flags(Enum& et)
+/**
+ * The flags are encoded in with the event type.
+ */
+  inline Enum extract_event_type(uint32_t& value)
   {
-	  int flags = et & ALL_FLAGS;
-	  et = Enum(et & ~ALL_FLAGS);
-	  return flags;
+	  Enum et = Enum(value & ~ALL_FLAGS);
+	  value = value & ALL_FLAGS;
+	  return et;
   }
-}
+} // namespace EventType
 
 #if PLATFORM_ID!=3
 static_assert(sizeof(EventType::Enum)==1, "EventType size is 1");

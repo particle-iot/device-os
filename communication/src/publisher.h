@@ -97,8 +97,9 @@ public:
 		Message message;
 		channel.create(message);
 		bool noack = flags & EventType::NO_ACK;
+		bool confirmable = channel.is_unreliable() && !noack;
 		size_t msglen = Messages::event(message.buf(), 0, event_name, data, ttl,
-				event_type, channel.is_unreliable() && !noack);
+				event_type, confirmable);
 		message.set_length(msglen);
 		return channel.send(message);
 	}

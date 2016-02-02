@@ -60,11 +60,11 @@ void Spark_Subscribe_When_Not_Connected_Handler(const char* topic, const char* d
     Serial.println("event ***");
     if (data) Serial.println(data);
     if (data && !strcmp(data, deviceId.c_str())) {
-        not_connected_handler_count++;
+    		not_connected_handler_count++;
     }
 }
 
-test(Spark_Subscribe_When_Not_Connected) {
+test(Spark_Subscribe_When_Not_Connected_Recieves_Events_When_Connected) {
     disconnect();
     Particle.unsubscribe();
     not_connected_handler_count = 0;
@@ -176,7 +176,7 @@ class Subscriber {
       assertTrue(Particle.subscribe("test/event3", &Subscriber::handler, this));
       // To make sure calling subscribe with a different handler is not a no op
       assertTrue(Particle.subscribe("test/event3", &Subscriber::handler2, this));
-      assertTrue(Particle.subscribe("test/eventmine", &Subscriber::handler3, this), MY_DEVICES);
+      assertTrue(Particle.subscribe("test/eventmine", &Subscriber::handler3, this, MY_DEVICES));
 
       receivedCount = 0;
       mineCount = 0;
@@ -202,7 +202,7 @@ test(Subscribe_With_Object) {
 
     subscriber.subscribe();
 
-    String deviceID = Spark.deviceID();
+    String deviceID = Particle.deviceID();
     Particle.publish("test/event3");
 
     // now wait for published event to be received

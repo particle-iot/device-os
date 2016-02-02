@@ -40,6 +40,22 @@ typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 #define CLOUD_FN(x,y) (x)
 #endif
 
+class PublishFlag
+{
+	typedef uint8_t flag_t;
+	flag_t flag_;
+
+public:
+	PublishFlag(flag_t flag) : flag_(flag) {}
+
+	operator flag_t() const { return flag_; }
+};
+
+const PublishFlag PUBLIC(PUBLISH_EVENT_FLAG_PUBLIC);
+const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
+const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
+
+
 class CloudClass {
 
 
@@ -171,17 +187,17 @@ public:
       function(funcKey, std::bind(func, instance, _1));
     }
 
-    bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
     {
         return CLOUD_FN(spark_send_event(eventName, NULL, 60, eventType, NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
     {
         return CLOUD_FN(spark_send_event(eventName, eventData, 60, eventType, NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
+    bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
     {
         return CLOUD_FN(spark_send_event(eventName, eventData, ttl, eventType, NULL), false);
     }
