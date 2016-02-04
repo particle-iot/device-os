@@ -562,6 +562,18 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
     {
         /* Send STOP condition */
         I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+
+        _micros = HAL_Timer_Get_Micro_Seconds();
+        while(i2cMap[i2c]->I2C_Peripheral->CR1 & I2C_CR1_STOP)
+        {
+            if(EVENT_TIMEOUT < (HAL_Timer_Get_Micro_Seconds() - _micros))
+            {
+                /* SW Reset the I2C Peripheral */
+                HAL_I2C_SoftwareReset(i2c);
+
+                return 0;
+            }
+        }
     }
 
     // reset tx buffer iterator vars
