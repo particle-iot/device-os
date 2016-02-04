@@ -27,6 +27,7 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
+#include "spark_wiring_watchdog.h"
 #include "rng_hal.h"
 
 
@@ -86,6 +87,7 @@ void serialEvent5() __attribute__((weak));
 void _post_loop()
 {
 	serialEventRun();
+	application_checkin();
 }
 
 /**

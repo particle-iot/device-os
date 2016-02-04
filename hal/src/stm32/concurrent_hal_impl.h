@@ -6,7 +6,6 @@
 extern "C" {
 #endif
 
-
 // This code is used by HAL-clients which don't have access to the FreeRTOS sources
 // so we cannot directly define __gthread_t as TaskHandle_t, however, we define it
 // here and statically assert that it is the same size.
@@ -18,6 +17,7 @@ typedef int32_t os_result_t;
 typedef uint8_t os_thread_prio_t;
 /* Default priority is the same as the application thread */
 const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 2;
+const os_thread_prio_t OS_THREAD_PRIORITY_CRITICAL = 9;
 const size_t OS_THREAD_STACK_SIZE_DEFAULT = 3*1024;
 
 typedef void* os_mutex_t;
