@@ -514,18 +514,21 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
 {
     uint32_t _micros;
 
-    _micros = HAL_Timer_Get_Micro_Seconds();
-    /* While the I2C Bus is busy */
-    while(I2C_GetFlagStatus(i2cMap[i2c]->I2C_Peripheral, I2C_FLAG_BUSY))
-    {
-        if(EVENT_TIMEOUT < (HAL_Timer_Get_Micro_Seconds() - _micros))
-        {
-            /* SW Reset the I2C Peripheral */
-            HAL_I2C_SoftwareReset(i2c);
+    /* In case a previous transaction didn't end with STOP (and the intention is
+     * to "end" it with a repeated-START), this will timeout
+     */
+    // _micros = HAL_Timer_Get_Micro_Seconds();
+    // /* While the I2C Bus is busy */
+    // while(I2C_GetFlagStatus(i2cMap[i2c]->I2C_Peripheral, I2C_FLAG_BUSY))
+    // {
+    //     if(EVENT_TIMEOUT < (HAL_Timer_Get_Micro_Seconds() - _micros))
+    //     {
+    //         /* SW Reset the I2C Peripheral */
+    //         HAL_I2C_SoftwareReset(i2c);
 
-            return 1;
-        }
-    }
+    //         return 1;
+    //     }
+    // }
 
     /* Send START condition */
     I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
