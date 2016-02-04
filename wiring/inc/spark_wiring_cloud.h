@@ -42,13 +42,18 @@ typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 
 class PublishFlag
 {
-	typedef uint8_t flag_t;
-	flag_t flag_;
-
 public:
+	typedef uint8_t flag_t;
 	PublishFlag(flag_t flag) : flag_(flag) {}
 
-	operator flag_t() const { return flag_; }
+	explicit operator flag_t() const { return flag_; }
+
+	flag_t flag() const { return flag_; }
+
+private:
+	flag_t flag_;
+
+
 };
 
 const PublishFlag PUBLIC(PUBLISH_EVENT_FLAG_PUBLIC);
@@ -187,27 +192,33 @@ public:
       function(funcKey, std::bind(func, instance, _1));
     }
 
-    bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, NULL, 60, eventType, NULL), false);
+        return CLOUD_FN(spark_send_event(eventName, NULL, 60, PublishFlag::flag_t(eventType), NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, 60, eventType, NULL), false);
+        return CLOUD_FN(spark_send_event(eventName, eventData, 60, PublishFlag::flag_t(eventType), NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, eventType, NULL), false);
+        return CLOUD_FN(spark_send_event(eventName, eventData, 60, f1.flag()+f2.flag(), NULL), false);
     }
 
-    bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
+
+    inline bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
+    {
+        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, PublishFlag::flag_t(eventType), NULL), false);
+    }
+
+    inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
     }
 
-    bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
+    inline bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
     }
