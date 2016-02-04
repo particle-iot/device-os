@@ -83,6 +83,10 @@ void serialEvent4() __attribute__((weak));
 void serialEvent5() __attribute__((weak));
 #endif
 
+void _post_loop()
+{
+	serialEventRun();
+}
 
 /**
  * Provides background processing of serial data.
