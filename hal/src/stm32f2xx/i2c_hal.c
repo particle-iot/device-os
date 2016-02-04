@@ -30,6 +30,7 @@
 #include "pinmap_impl.h"
 #include <stddef.h>
 #include "service_debug.h"
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
