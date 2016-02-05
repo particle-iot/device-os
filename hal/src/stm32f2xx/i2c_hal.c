@@ -410,11 +410,11 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         *(pBuffer++) = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
         bytesRead = 2;
     }
-    else
+    else if (numByteToRead > 2)
     {
         // Clear I2C_FLAG_ADDR flag by reading SR2
         (void)i2cMap[i2c]->I2C_Peripheral->SR2;
-        while(numByteToRead != 3)
+        while(numByteToRead > 3)
         {
             _micros = HAL_Timer_Get_Micro_Seconds();
             while(I2C_GetFlagStatus(i2cMap[i2c]->I2C_Peripheral, I2C_FLAG_BTF) == RESET)
@@ -475,6 +475,14 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
 
         bytesRead += 3;
         numByteToRead = 0;
+    }
+    else
+    {
+        // Zero-byte read
+        // Clear I2C_FLAG_ADDR flag by reading SR2
+        (void)i2cMap[i2c]->I2C_Peripheral->SR2;
+        if (stop)
+            I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
     }
 
     if (stop)
