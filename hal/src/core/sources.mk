@@ -23,3 +23,6 @@ CPPSRC += $(call target_files,$(HAL_SRC_STM32_PATH)/,*.cpp)
 # ASM source files included in this build.
 ASRC +=
 
+# Stick to some POSIX-conforming API to disable BSD extensions
+CFLAGS += -D_POSIX_C_SOURCE=200809
+
