@@ -30,10 +30,37 @@
 
 namespace EventType {
   enum Enum {
-    PUBLIC = 'e',
-    PRIVATE = 'E'
+    PUBLIC = 'e',			// 0x65
+    PRIVATE = 'E',			// 0x45
   };
-}
+
+  /**
+   * These flags are encoded into the same 32-bit integer that alredy holds EventType::Enum
+   */
+  enum Flags {
+	  EMPTY_FLAGS = 0,
+	   NO_ACK = 0x2,
+
+	   ALL_FLAGS = NO_ACK
+  };
+
+  static_assert((PUBLIC & NO_ACK)==0, "flags should be distinct from event type");
+  static_assert((PRIVATE & NO_ACK)==0, "flags should be distinct from event type");
+
+/**
+ * The flags are encoded in with the event type.
+ */
+  inline Enum extract_event_type(uint32_t& value)
+  {
+	  Enum et = Enum(value & ~ALL_FLAGS);
+	  value = value & ALL_FLAGS;
+	  return et;
+  }
+} // namespace EventType
+
+#if PLATFORM_ID!=3
+static_assert(sizeof(EventType::Enum)==1, "EventType size is 1");
+#endif
 
 namespace SubscriptionScope {
   enum Enum {

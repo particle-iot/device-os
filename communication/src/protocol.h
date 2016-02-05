@@ -302,13 +302,13 @@ public:
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,
-			EventType::Enum event_type)
+			EventType::Enum event_type, int flags)
 	{
 		if (chunkedTransfer.is_updating())
 		{
 			return false;
 		}
-		return !publisher.send_event(channel, event_name, data, ttl, event_type,
+		return !publisher.send_event(channel, event_name, data, ttl, event_type, flags,
 				callbacks.millis());
 	}
 

@@ -89,11 +89,11 @@ STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 
 #endif
 
+const uint32_t PUBLISH_EVENT_FLAG_PUBLIC = 0;
+const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 1;
+const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 2;
 
-typedef enum
-{
-	PUBLIC = 0, PRIVATE = 1
-} Spark_Event_TypeDef;
+STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
 
 typedef void (*EventHandler)(const char* name, const char* data);
 
@@ -138,7 +138,7 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
  * @param reserved  For future expansion, set to NULL.
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved);
-bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved);
+bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
 

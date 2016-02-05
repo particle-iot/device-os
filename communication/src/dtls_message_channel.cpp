@@ -428,6 +428,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	}
 	message.set_length(ret);
 	if (ret>0) {
+		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
 		if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
 		  DEBUG("message length %d", message.length());

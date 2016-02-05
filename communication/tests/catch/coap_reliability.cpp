@@ -89,10 +89,11 @@ SCENARIO("message IDs monotinically increment from 1")
 
 				AND_WHEN("300 more messages are sent")
 				{
-					Message msg;
 					for (int i=0; i<300; i++)
 					{
+						Message msg;
 						channel.create(msg, 5);
+						msg.set_length(4);
 						channel.send(msg);
 					}
 					THEN("the encoded message ID is 302")
@@ -503,6 +504,7 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 				msg.set_buffer(buf, 10); return NO_ERROR;
 			});
 		When(Method(mock,send)).AlwaysReturn(NO_ERROR);
+		build_message_channel_mock(mock);
 
 		Message m;
 		channel.create(m, 5);
@@ -548,7 +550,6 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 							REQUIRE(m.length()==0);
 						}
 					}
-
 				}
 
 				AND_WHEN("the message is reset")
@@ -596,7 +597,7 @@ SCENARIO("retransmit delay is exponential with randomness")
 		for (unsigned u = 0; u<500; u++)
 		{
 			system_tick_t timeout = CoAPMessage::transmit_timeout(i);
-			system_tick_t min = 2000 << i;
+			system_tick_t min = 4000 << i;
 			system_tick_t max = min * 1.5;
 			if (timeout<min)
 				REQUIRE(timeout>=min);
