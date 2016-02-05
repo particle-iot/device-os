@@ -43,6 +43,8 @@ extern "C" {
 #endif
 
 void HAL_DAC_Write(pin_t pin, uint16_t value);
+uint8_t HAL_DAC_Is_Enabled(pin_t pin);
+uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state);
 
 #ifdef __cplusplus
 }
