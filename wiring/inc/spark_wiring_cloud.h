@@ -28,6 +28,7 @@
 #include "system_sleep.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
+#include "spark_wiring_watchdog.h"
 #include "interrupts_hal.h"
 #include <functional>
 
@@ -268,7 +269,10 @@ public:
     static bool disconnected(void) { return !connected(); }
     static void connect(void) { spark_connect(); }
     static void disconnect(void) { spark_disconnect(); }
-    static void process(void) { spark_process(); }
+    static void process(void) {
+    		application_checkin();
+    		spark_process();
+    }
     static String deviceID(void) { return SystemClass::deviceID(); }
 
 private:

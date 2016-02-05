@@ -102,7 +102,8 @@ private:
 
     static os_thread_return_t call_wiring_handler(void *param) {
         auto wrapper = (wiring_thread_fn_t*)(param);
-        return (*wrapper)();
+        (*wrapper)();
+        os_thread_cleanup(nullptr);
     }
 };
 

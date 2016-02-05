@@ -28,6 +28,7 @@ extern "C" {
 void setup();
 void loop();
 
+void _post_loop();
 void serialEventRun();
 
 /**

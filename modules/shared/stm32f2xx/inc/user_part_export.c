@@ -74,7 +74,7 @@ void module_user_setup() {
 
 void module_user_loop() {
     loop();
-    serialEventRun();
+    _post_loop();
 }
 
 #include "user_dynalib.h"

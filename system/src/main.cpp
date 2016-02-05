@@ -500,6 +500,9 @@ void app_loop(bool threaded)
                 if (system_mode()!=SAFE_MODE)
                  setup();
                 SPARK_WIRING_APPLICATION = 1;
+#if !MODULAR_FIRMWARE
+                _post_loop();
+#endif
             }
 
             //Execute user application loop
@@ -508,7 +511,7 @@ void app_loop(bool threaded)
                 loop();
                 DECLARE_SYS_HEALTH(RAN_Loop);
 #if !MODULAR_FIRMWARE
-                serialEventRun();
+                _post_loop();
 #endif
 #if Wiring_Cellular == 1
                 system_power_management_update();
