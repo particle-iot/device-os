@@ -98,6 +98,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
 void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
 {
+	nif(network).connect_cancel(true);
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).disconnect());
 }
 

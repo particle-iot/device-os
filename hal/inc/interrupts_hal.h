@@ -79,6 +79,7 @@ void HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved);
 int HAL_disable_irq();
 void HAL_enable_irq(int mask);
 
+uint8_t HAL_IsISR();
 
 #ifdef __cplusplus
 }

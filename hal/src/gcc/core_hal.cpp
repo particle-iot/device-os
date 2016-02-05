@@ -35,6 +35,7 @@
 #include "service_debug.h"
 #include "device_config.h"
 #include "hal_platform.h"
+#include "interrupts_hal.h"
 #include <boost/crc.hpp>  // for boost::crc_32_type
 
 
@@ -345,3 +346,5 @@ int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, si
 }
 
 #endif
+
+uint8_t HAL_IsISR() { return false; }
