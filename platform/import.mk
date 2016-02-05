@@ -22,6 +22,8 @@ CFLAGS += -DUSE_SWD
 endif
 
 
+# Stick to some POSIX-conforming API to disable BSD extensions
+CFLAGS += -D_POSIX_C_SOURCE=200809
 
 # pull in the includes/sources corresponding to the target platform
 
