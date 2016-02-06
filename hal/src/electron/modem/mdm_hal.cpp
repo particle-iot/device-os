@@ -851,6 +851,43 @@ bool MDMParser::getSignalStrength(NetStatus &status)
     return ok;
 }
 
+bool MDMParser::getDataUsage(MDM_DataUsage &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_INFO("\r\n[ Modem::getDataUsage ] = = = = = = = = = =");
+        sendFormated("AT+UGCNTRD\r\n");
+        if (RESP_OK == waitFinalResp(_cbUGCNTRD, &_data_usage)) {
+            ok = true;
+            data.cid = _data_usage.cid;
+            data.tx_session = _data_usage.tx_session;
+            data.rx_session = _data_usage.rx_session;
+            data.tx_total = _data_usage.tx_total;
+            data.rx_total = _data_usage.rx_total;
+        }
+    }
+    UNLOCK();
+    return ok;
+}
+
+int MDMParser::_cbUGCNTRD(int type, const char* buf, int len, MDM_DataUsage* data)
+{
+    if ((type == TYPE_PLUS) && data) {
+        int a,b,c,d,e;
+        // +UGCNTRD: 31,2704,1819,2724,1839\r\n
+        // +UGCNTRD: <cid>,<tx_sess_bytes>,<rx_sess_bytes>,<tx_total_bytes>,<rx_total_bytes>
+        if (sscanf(buf, "\r\n+UGCNTRD: %d,%d,%d,%d,%d\r\n", &a,&b,&c,&d,&e) == 5) {
+            data->cid = a;
+            data->tx_session = b;
+            data->rx_session = c;
+            data->tx_total = d;
+            data->rx_total = e;
+        }
+    }
+    return WAIT;
+}
+
 int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
 {
     if ((type == TYPE_PLUS) && status){

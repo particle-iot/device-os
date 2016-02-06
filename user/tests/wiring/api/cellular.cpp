@@ -31,4 +31,21 @@ test(api_cellular_rssi) {
     API_COMPILE(Serial.println(sig));
 }
 
+test(api_cellular_data_usage) {
+    CellularData data;
+    bool result;
+
+    API_COMPILE(Cellular.dataUsage());
+
+    API_COMPILE(data = Cellular.dataUsage());
+
+    API_COMPILE(data = Cellular.dataUsage(data));
+
+    API_COMPILE(result = Cellular.dataUsageReset());
+
+    API_COMPILE(Serial.println(data));
+
+    (void)result; // avoid unused warning
+}
+
 #endif

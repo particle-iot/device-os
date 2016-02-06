@@ -39,6 +39,7 @@
 */
 class MDMParser
 {
+
 public:
     //! Constructor
     MDMParser(void);
@@ -107,6 +108,13 @@ public:
         \return true if successful, false otherwise
     */
     bool getSignalStrength(NetStatus &status);
+
+    /** fetches the current data usage byte counts
+        \param data a required structure that will be populated with
+               current data usage values.
+        \return true if successful, false otherwise
+    */
+    bool getDataUsage(MDM_DataUsage &data);
 
     /** Power off the MT, This function has to be called prior to
         switching off the supply.
@@ -457,6 +465,7 @@ protected:
     static int _cbCPIN(int type, const char* buf, int len, Sim* sim);
     static int _cbCCID(int type, const char* buf, int len, char* ccid);
     // network
+    static int _cbUGCNTRD(int type, const char* buf, int len, MDM_DataUsage* data);
     static int _cbCSQ(int type, const char* buf, int len, NetStatus* status);
     static int _cbCOPS(int type, const char* buf, int len, NetStatus* status);
     static int _cbCNUM(int type, const char* buf, int len, char* num);
@@ -487,6 +496,7 @@ protected:
     DevStatus   _dev; //!< collected device information
     NetStatus   _net; //!< collected network information
     MDM_IP       _ip;  //!< assigned ip address
+    MDM_DataUsage _data_usage; //!< collected data usage information
     // management struture for sockets
     typedef struct {
         int handle;

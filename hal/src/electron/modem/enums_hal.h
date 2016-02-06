@@ -17,7 +17,9 @@
  ******************************************************************************
  */
 
- #pragma once
+#pragma once
+
+#include <string.h>
 
 // ----------------------------------------------------------------
 // Types
@@ -60,6 +62,25 @@ typedef struct {
     unsigned short lac;  //!< location area code in hexadecimal format (2 bytes in hex)
     unsigned int ci;     //!< Cell ID in hexadecimal format (2 to 4 bytes in hex)
 } NetStatus;
+#ifdef __cplusplus
+//! Data Usage struct
+struct MDM_DataUsage {
+    uint16_t size;
+    int cid;
+    int tx_session;
+    int rx_session;
+    int tx_total;
+    int rx_total;
+
+    MDM_DataUsage()
+    {
+        memset(this, 0, sizeof(*this));
+        size = sizeof(*this);
+    }
+};
+#else
+typedef struct MDM_DataUsage MDM_DataUsage;
+#endif
 //! An IP v4 address
 typedef uint32_t MDM_IP;
 #define NOIP ((MDM_IP)0) //!< No IP address

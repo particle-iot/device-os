@@ -137,3 +137,56 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
 
     return electronMDM.waitFinalResp((MDMParser::_CALLBACKPTR)cb, (void*)param, timeout_ms);
 }
+
+cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved)
+{
+    // First get a copy of the current data usage values
+    MDM_DataUsage data_usage;
+    if (!electronMDM.getDataUsage(data_usage)) {
+        data.cid = -1; // let the caller know this object was not updated
+        return data.cid;
+    }
+    // Now update the data usage values in the provided CellularDataHal object
+    data.cid = data_usage.cid;
+    // Offset = Requested Set Count - Actual Modem Current Count
+    // Current Count is the Requested Set Count
+    data.tx_session_offset = data.tx_session - data_usage.tx_session;
+    data.rx_session_offset = data.rx_session - data_usage.rx_session;
+    data.tx_total_offset = data.tx_total - data_usage.tx_total;
+    data.rx_total_offset = data.rx_total - data_usage.rx_total;
+    return 0;
+}
+
+cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved)
+{
+    MDM_DataUsage data_usage;
+    if (!electronMDM.getDataUsage(data_usage)) {
+        data.cid = -1; // let the caller know this object was not updated
+        return data.cid;
+    }
+    // Now update the data usage values in the provided CellularDataHal object
+    data.cid = data_usage.cid; // set the CID
+    // If any counts are decreasing, suspect modem counters have been set/reset
+    // to a lower value. Rebase count at current count by updating offsets.
+    if ( (data.tx_session > (data_usage.tx_session + data.tx_session_offset))
+         || (data.rx_session > (data_usage.rx_session + data.rx_session_offset))
+         || (data.tx_total > (data_usage.tx_total + data.tx_total_offset))
+         || (data.rx_total > (data_usage.rx_total + data.rx_total_offset)) )
+    {
+        // Offset = Current Count - Actual Modem Current Count
+        // Current Count is the old Current Count (remains unchanged)
+        data.tx_session_offset = data.tx_session - data_usage.tx_session;
+        data.rx_session_offset = data.rx_session - data_usage.rx_session;
+        data.tx_total_offset = data.tx_total - data_usage.tx_total;
+        data.rx_total_offset = data.rx_total - data_usage.rx_total;
+    }
+    else
+    {
+        // Current Count = Actual Modem Current Count + Offset
+        data.tx_session = data_usage.tx_session + data.tx_session_offset;
+        data.rx_session = data_usage.rx_session + data.rx_session_offset;
+        data.tx_total = data_usage.tx_total + data.tx_total_offset;
+        data.rx_total = data_usage.rx_total + data.rx_total_offset;
+    }
+    return 0;
+}

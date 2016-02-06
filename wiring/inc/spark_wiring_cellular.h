@@ -24,7 +24,7 @@
 #include "spark_wiring_network.h"
 #include "system_network.h"
 #include "cellular_hal.h"
-#include "spark_wiring_cellularsignal.h"
+#include "spark_wiring_cellular_printable.h"
 
 #if Wiring_Cellular
 
@@ -73,6 +73,12 @@ public:
     }
 
     CellularSignal RSSI();
+
+    CellularData dataUsage(void);
+
+    CellularData dataUsage(CellularData &data_set);
+
+    bool dataUsageReset(void);
 
     template<typename... Targs>
     inline int command(const char* format, Targs... Fargs)
