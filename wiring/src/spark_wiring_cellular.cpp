@@ -43,6 +43,52 @@ namespace spark {
         return sig;
     }
 
+    CellularDataHal data_hal;
+
+    CellularData CellularClass::dataUsage() {
+        CellularData data_ret;
+        if (cellular_data_usage_get(data_hal, NULL) != 0) {
+            data_ret.cid = data_hal.cid; // data_hal.cid will indicate -1
+            return data_ret; // dataUsage object was not updated
+        }
+        data_ret.cid = data_hal.cid;
+        data_ret.tx_session = data_hal.tx_session;
+        data_ret.rx_session = data_hal.rx_session;
+        data_ret.tx_total = data_hal.tx_total;
+        data_ret.rx_total = data_hal.rx_total;
+        return data_ret;
+    }
+
+    CellularData CellularClass::dataUsage(CellularData &data_set) {
+        CellularData data_ret;
+        data_hal.tx_session = data_set.tx_session;
+        data_hal.rx_session = data_set.rx_session;
+        data_hal.tx_total = data_set.tx_total;
+        data_hal.rx_total = data_set.rx_total;
+        if (cellular_data_usage_set(data_hal, NULL) != 0) {
+            data_ret.cid = data_hal.cid; // data_hal.cid will indicate -1
+            return data_ret; // dataUsage object was not updated
+        }
+        data_ret.cid = data_hal.cid;
+        data_ret.tx_session = data_hal.tx_session;
+        data_ret.rx_session = data_hal.rx_session;
+        data_ret.tx_total = data_hal.tx_total;
+        data_ret.rx_total = data_hal.rx_total;
+        return data_ret;
+    }
+
+    bool CellularClass::dataUsageReset() {
+        data_hal.cid = -1;
+        data_hal.tx_session = 0;
+        data_hal.rx_session = 0;
+        data_hal.tx_total = 0;
+        data_hal.rx_total = 0;
+        if (cellular_data_usage_set(data_hal, NULL) != 0) {
+            return 0; // dataUsage object was not updated
+        }
+        return 1;
+    }
+
     CellularClass Cellular;
     NetworkClass& Network = Cellular;
 }

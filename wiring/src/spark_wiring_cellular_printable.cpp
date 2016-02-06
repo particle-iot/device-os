@@ -17,23 +17,30 @@
  ******************************************************************************
  */
 
-#ifndef __SPARK_WIRING_CELLULARSIGNAL_H
-#define __SPARK_WIRING_CELLULARSIGNAL_H
+#include "spark_wiring_cellular_printable.h"
+#include "spark_wiring_print.h"
+#include "string.h"
 
-#include <string.h>
-#include "spark_wiring_printable.h"
-#include "spark_wiring_string.h"
-#include "cellular_hal.h"
+size_t CellularSignal::printTo(Print& p) const
+{
+    size_t n = 0;
+    n += p.print((*this).rssi, DEC);
+    n += p.print(',');
+    n += p.print((*this).qual, DEC);
+    return n;
+}
 
-class CellularSignal : public Printable {
-
-public:
-    int rssi = 0;
-    int qual = 0;
-
-    CellularSignal() { /* n/a */ }
-
-    virtual size_t printTo(Print& p) const;
-};
-
-#endif
+size_t CellularData::printTo(Print& p) const
+{
+    size_t n = 0;
+    n += p.print((*this).cid, DEC);
+    n += p.print(',');
+    n += p.print((*this).tx_session, DEC);
+    n += p.print(',');
+    n += p.print((*this).rx_session, DEC);
+    n += p.print(',');
+    n += p.print((*this).tx_total, DEC);
+    n += p.print(',');
+    n += p.print((*this).rx_total, DEC);
+    return n;
+}
