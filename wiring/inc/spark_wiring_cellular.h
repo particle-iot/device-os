@@ -76,7 +76,7 @@ public:
 
     CellularData dataUsage(void);
 
-    CellularData dataUsage(CellularData &data_set);
+    CellularData dataUsage(const CellularData &data_set);
 
     bool dataUsageReset(void);
 

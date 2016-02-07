@@ -59,7 +59,7 @@ namespace spark {
         return data_ret;
     }
 
-    CellularData CellularClass::dataUsage(CellularData &data_set) {
+    CellularData CellularClass::dataUsage(const CellularData &data_set) {
         CellularData data_ret;
         data_hal.tx_session = data_set.tx_session;
         data_hal.rx_session = data_set.rx_session;
