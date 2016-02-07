@@ -60,6 +60,7 @@ typedef struct __attribute__((packed)) SystemVersionInfo
     uint16_t reserved;      // use this if you need to.
     uint32_t versionNumber;
     char     versionString[20];
+    char     commitString[41]; // git commit SHA1 35a78512e983e667e3b9a1696396f42b82c66465
 
 
 

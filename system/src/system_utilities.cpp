@@ -41,16 +41,17 @@ unsigned backoff_period(unsigned connection_attempts)
     return 1000*(1<<exponent);
 }
 
-STATIC_ASSERT(system_version_info_size, sizeof(SystemVersionInfo)==28);
+STATIC_ASSERT(system_version_info_size, sizeof(SystemVersionInfo)==69);
 
 int system_version_info(SystemVersionInfo* info, void* /*reserved*/)
 {
     if (info)
     {
-        if (info->size>=28)
+        if (info->size>=69)
         {
             info->versionNumber = SYSTEM_VERSION;
             strncpy(info->versionString, stringify(SYSTEM_VERSION_STRING), sizeof(info->versionString));
+            strncpy(info->commitString, stringify(GIT_COMMIT_STRING), sizeof(info->commitString));
         }
     }
     return sizeof(SystemVersionInfo);
