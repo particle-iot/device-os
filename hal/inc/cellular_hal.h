@@ -26,6 +26,7 @@
 #include "net_hal.h"
 #include "inet_hal.h"
 #include "system_tick_hal.h"
+#include "modem/enums_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -186,10 +187,21 @@ struct CellularDataHal {
 typedef struct CellularDataHal CellularDataHal;
 #endif
 
+
+/**
+ * Function for processing Set cellular data usage info, broken out for unit tests
+ */
+cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
+
 /**
  * Set cellular data usage info
  */
 cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved);
+
+/**
+ * Function for processing Get cellular data usage info, broken out for unit tests
+ */
+cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
 
 /**
  * Get cellular data usage info

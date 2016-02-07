@@ -38,16 +38,39 @@ public:
 
 class CellularData : public Printable {
 
+private:
+    typedef void (CellularData::*bool_type)() const;
+    void this_type_does_not_support_comparisons() const {}
+
 public:
+    /* false when constructed, used to indicate whether
+     * last operation on object was successful or not. */
+    bool ok;
+
     int cid = -1;
     int tx_session = 0;
     int rx_session = 0;
     int tx_total = 0;
     int rx_total = 0;
 
-    CellularData() { /* n/a */ }
-
     virtual size_t printTo(Print& p) const;
+
+    explicit CellularData(bool b=false):ok(b) {}
+    operator bool_type() const {
+        return ok==true ? &CellularData::this_type_does_not_support_comparisons : 0;
+    }
 };
+
+// Bjorn Karlsson's Safe Bool Idiom - http://www.artima.com/cppsource/safebool.html
+template <typename T>
+bool operator!=(const CellularData& lhs,const T& rhs) {
+    lhs.this_type_does_not_support_comparisons();
+    return false;
+}
+template <typename T>
+bool operator==(const CellularData& lhs,const T& rhs) {
+    lhs.this_type_does_not_support_comparisons();
+    return false;
+}
 
 #endif

@@ -138,11 +138,9 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
     return electronMDM.waitFinalResp((MDMParser::_CALLBACKPTR)cb, (void*)param, timeout_ms);
 }
 
-cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved)
+cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
 {
-    // First get a copy of the current data usage values
-    MDM_DataUsage data_usage;
-    if (!electronMDM.getDataUsage(data_usage)) {
+    if (!ret) {
         data.cid = -1; // let the caller know this object was not updated
         return data.cid;
     }
@@ -157,10 +155,18 @@ cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved)
     return 0;
 }
 
-cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved)
+cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved)
 {
+    // First get a copy of the current data usage values
     MDM_DataUsage data_usage;
-    if (!electronMDM.getDataUsage(data_usage)) {
+    bool rv = electronMDM.getDataUsage(data_usage);
+    // Now process the Set request
+    return _cellular_data_usage_set(data, data_usage, rv);
+}
+
+cellular_result_t _cellular_data_usage_get(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
+{
+    if (!ret) {
         data.cid = -1; // let the caller know this object was not updated
         return data.cid;
     }
@@ -189,4 +195,13 @@ cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved)
         data.rx_total = data_usage.rx_total + data.rx_total_offset;
     }
     return 0;
+}
+
+cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved)
+{
+    // First get a copy of the current data usage values
+    MDM_DataUsage data_usage;
+    bool rv = electronMDM.getDataUsage(data_usage);
+    // Now process the Get request
+    return _cellular_data_usage_get(data, data_usage, rv);
 }

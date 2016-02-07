@@ -45,48 +45,44 @@ namespace spark {
 
     CellularDataHal data_hal;
 
-    CellularData CellularClass::dataUsage() {
-        CellularData data_ret;
+    bool CellularClass::getDataUsage(CellularData &data_get) {
         if (cellular_data_usage_get(data_hal, NULL) != 0) {
-            data_ret.cid = data_hal.cid; // data_hal.cid will indicate -1
-            return data_ret; // dataUsage object was not updated
+            data_get.cid = data_hal.cid; // data_hal.cid will indicate -1
+            data_get.ok = false; // dataUsage object was not updated
         }
-        data_ret.cid = data_hal.cid;
-        data_ret.tx_session = data_hal.tx_session;
-        data_ret.rx_session = data_hal.rx_session;
-        data_ret.tx_total = data_hal.tx_total;
-        data_ret.rx_total = data_hal.rx_total;
-        return data_ret;
+        data_get.cid = data_hal.cid;
+        data_get.tx_session = data_hal.tx_session;
+        data_get.rx_session = data_hal.rx_session;
+        data_get.tx_total = data_hal.tx_total;
+        data_get.rx_total = data_hal.rx_total;
+        data_get.ok = true;
+        return data_get.ok;
     }
 
-    CellularData CellularClass::dataUsage(const CellularData &data_set) {
-        CellularData data_ret;
+    bool CellularClass::setDataUsage(CellularData &data_set) {
         data_hal.tx_session = data_set.tx_session;
         data_hal.rx_session = data_set.rx_session;
         data_hal.tx_total = data_set.tx_total;
         data_hal.rx_total = data_set.rx_total;
         if (cellular_data_usage_set(data_hal, NULL) != 0) {
-            data_ret.cid = data_hal.cid; // data_hal.cid will indicate -1
-            return data_ret; // dataUsage object was not updated
+            data_set.cid = data_hal.cid; // data_hal.cid will indicate -1
+            data_set.ok = false; // dataUsage object was not updated
         }
-        data_ret.cid = data_hal.cid;
-        data_ret.tx_session = data_hal.tx_session;
-        data_ret.rx_session = data_hal.rx_session;
-        data_ret.tx_total = data_hal.tx_total;
-        data_ret.rx_total = data_hal.rx_total;
-        return data_ret;
+        data_set.cid = data_hal.cid; // update, in case CID changed
+        data_set.ok = true;
+        return data_set.ok;
     }
 
-    bool CellularClass::dataUsageReset() {
+    bool CellularClass::resetDataUsage() {
         data_hal.cid = -1;
         data_hal.tx_session = 0;
         data_hal.rx_session = 0;
         data_hal.tx_total = 0;
         data_hal.rx_total = 0;
         if (cellular_data_usage_set(data_hal, NULL) != 0) {
-            return 0; // dataUsage object was not updated
+            return false; // dataUsage object was not updated
         }
-        return 1;
+        return true;
     }
 
     CellularClass Cellular;

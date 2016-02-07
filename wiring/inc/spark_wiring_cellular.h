@@ -74,11 +74,11 @@ public:
 
     CellularSignal RSSI();
 
-    CellularData dataUsage(void);
+    bool getDataUsage(CellularData &data_set);
 
-    CellularData dataUsage(const CellularData &data_set);
+    bool setDataUsage(CellularData &data_set);
 
-    bool dataUsageReset(void);
+    bool resetDataUsage(void);
 
     template<typename... Targs>
     inline int command(const char* format, Targs... Fargs)
