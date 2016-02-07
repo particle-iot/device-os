@@ -32,18 +32,30 @@ test(api_cellular_rssi) {
 }
 
 test(api_cellular_data_usage) {
-    CellularData data;
+    CellularData data1;
+    CellularData data2;
+    data2.ok = true;
     bool result;
 
-    API_COMPILE(Cellular.dataUsage());
+    API_COMPILE(result = Cellular.getDataUsage(data1));
 
-    API_COMPILE(data = Cellular.dataUsage());
+    API_COMPILE(result = Cellular.setDataUsage(data1));
 
-    API_COMPILE(data = Cellular.dataUsage(data));
+    API_COMPILE(result = Cellular.resetDataUsage());
 
-    API_COMPILE(result = Cellular.dataUsageReset());
+    API_COMPILE(!Cellular.getDataUsage(data1));
 
-    API_COMPILE(Serial.println(data));
+    API_COMPILE(!!Cellular.getDataUsage(data1));
+
+    API_COMPILE(result = data1);
+
+    API_COMPILE(result = data2);
+
+    API_COMPILE(Serial.println(data1));
+
+    // These should not compile, test these manually by changing to API_COMPILE()
+    API_NO_COMPILE(data1 == data2);
+    API_NO_COMPILE(data1 != data2);
 
     (void)result; // avoid unused warning
 }
