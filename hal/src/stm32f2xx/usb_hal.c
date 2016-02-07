@@ -157,8 +157,6 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
     //Init USB Serial first before calling the linecoding handler
     USB_USART_Init(9600);
 
-    HAL_Delay_Milliseconds(1000);
-
     //Set the system defined custom handler
     SetLineCodingBitRateHandler(handler);
 }
