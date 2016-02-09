@@ -260,10 +260,9 @@ TEST_CASE("Get multi-byte", "[eeprom]")
 
         SECTION("With a partially written block of records")
         {
-            // It takes 6 writes to write the 3 data records, followed
-            // by the 3 valid statuses, so discard everything after the
-            // first invalid record write
-            eeprom.store.discardWritesAfter(1, [&] {
+            // It takes 12 byte writes to write the 3 data records
+            // so discard everything after the first record write
+            eeprom.store.discardWritesAfter(4, [&] {
                 uint8_t partialValues[] = { 1, 2, 3 };
                 eeprom.put(eepromIndex, partialValues, sizeof(partialValues));
             });
@@ -277,9 +276,9 @@ TEST_CASE("Get multi-byte", "[eeprom]")
 
         SECTION("With a partially validated block of records")
         {
-            // It takes 6 writes to write the 3 data records, followed
-            // by the 3 valid statuses, so discard the 6th write
-            eeprom.store.discardWritesAfter(5, [&] {
+            // It takes 12 byte writes to write the 3 data records,
+            // so discard the write of the last index
+            eeprom.store.discardWritesAfter(10, [&] {
                 uint8_t partialValues[] = { 1, 2, 3 };
                 eeprom.put(eepromIndex, partialValues, sizeof(partialValues));
             });
@@ -374,6 +373,22 @@ TEST_CASE("Get multi-byte", "[eeprom]")
         {
             eeprom.get(eepromIndex, values, sizeof(values));
             requireValues(10, 20, 0xFF);
+        }
+    }
+
+    SECTION("The record is put after partially written records")
+    {
+        eeprom.store.discardWritesAfter(8, [&] {
+            uint8_t partialValues[] = { 1, 2, 3 };
+            eeprom.put(eepromIndex, partialValues, sizeof(partialValues));
+        });
+
+        eeprom.put(eepromIndex, 10);
+
+        THEN("get returns only the fully written value")
+        {
+            eeprom.get(eepromIndex, values, sizeof(values));
+            requireValues(10, 0xFF, 0xFF);
         }
     }
 }
@@ -784,7 +799,7 @@ TEST_CASE("Copy records during page swap", "[eeprom]")
     uint16_t eepromIndex = 0;
     uintptr_t toAddress = PageBase2;
 
-    auto performSwap = [&](uint16_t writeCount = 0) {
+    auto performSwap = [&]() {
         // Don't write any new records
         eeprom.swapPagesAndWrite(100, NULL, 0);
     };
@@ -918,6 +933,27 @@ TEST_CASE("Copy records during page swap", "[eeprom]")
             });
         }
     }
+
+    SECTION("Full page")
+    {
+        for(uint16_t index = 0; index < eeprom.capacity(); index++)
+        {
+            eeprom.put(index, 0);
+        }
+
+        performSwap();
+
+        THEN("All records are copied")
+        {
+            for(uint16_t index = 0; index < eeprom.capacity(); index++)
+            {
+                CAPTURE(index);
+                uint8_t value;
+                eeprom.get(index, value);
+                REQUIRE(value == 0);
+            }
+        }
+    }
 }
 
 TEST_CASE("Swap pages recovery", "[eeprom]")
@@ -987,7 +1023,8 @@ TEST_CASE("Swap pages recovery", "[eeprom]")
 
     SECTION("Interrupted page swap 2: during copy")
     {
-        eeprom.store.discardWritesAfter(2, [&] {
+        // Enough writes for the status to be written, but no records
+        eeprom.store.discardWritesAfter(4, [&] {
             performSwap();
         });
 
@@ -1004,7 +1041,9 @@ TEST_CASE("Swap pages recovery", "[eeprom]")
 
     SECTION("Interrupted page swap 3: before old page becomes inactive")
     {
-        eeprom.store.discardWritesAfter(6, [&] {
+        // Enough writes to copy all records, but not enough to make old
+        // page inactive
+        eeprom.store.discardWritesAfter(19, [&] {
             performSwap();
         });
 

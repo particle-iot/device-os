@@ -22,7 +22,7 @@
 
 #include <cstring>
 #include <memory>
-#include <map>
+#include <vector>
 
 /* EEPROM Emulation using Flash memory
  *
@@ -34,7 +34,7 @@
  * emulated EEPROM.
  *
  * Each record contain an index (EEPROM cell virtual address), a data
- * byte. One bit of the index is used as a valid flag.
+ * byte and a status byte (valid/erased).
  *
  * The maximum number of bytes that can be written is the smallest page
  * size divided by the record size.
@@ -66,9 +66,9 @@
  *
  * Atomic writes are implemented as follows:
  * - If any invalid records exist, do a page swap (which is atomic)
- * - Write records with an invalid flag for all changed bytes
- * - Going backwards from the end, write a valid flag for all invalid records
- * - If any of the writes failed, do a page swap
+ * - Write records backwards from the end
+ * - If any of the writes failed or there was not enough room for all
+ *   records, do a page swap
  *
  * It is possible for a write to fail verification (reading back the
  * value). This is because of previous marginal writes or marginal
@@ -80,7 +80,7 @@
  * On the STM32 microcontroller, the Flash memory cannot be read while
  * being programmed which means the application is frozen while writing
  * or erasing the Flash (no interrupts are serviced). Flash writes are
- * pretty fast, but erases take 200ms or more (depending on the sector
+ * fast (~10 us), but erases take 200ms or more (depending on the sector
  * size). To avoid intermittent pauses in the user application due to
  * page erases during the page swap, the hasPendingErase() and
  * performPendingErase() APIs exist to allow the user application to
@@ -121,7 +121,7 @@ public:
         static const uint32_t ERASED   = 0xFFFFFFFF;
         static const uint32_t COPY     = 0xFFFFEEEE;
         static const uint32_t ACTIVE   = 0xFFFF0000;
-        static const uint32_t INACTIVE = 0xFF000000;
+        static const uint32_t INACTIVE = 0xCCCC0000;
 
         uint32_t status;
 
@@ -132,49 +132,37 @@ public:
 
     // A record stores the value of 1 byte in the emulated EEPROM
     //
-    // An invalid record will have the index MSB bit set
-    //
     // WARNING: Do not change the size of struct or order of elements since
     // instances of this struct are persisted in the flash memory
     struct __attribute__((packed)) Record
     {
         static const Index EMPTY_INDEX = 0xFFFF;
-        static const Index INVALID_INDEX_FLAG = 0x8000;
+        static const uint8_t VALID = 0;
 
         Data data;
-        uint8_t reserved;
+        uint8_t status;
         Index index;
 
         Record(Address index, Data data)
-            : data(data), reserved(0), index(index)
+            : data(data), status(VALID), index(index)
         {
         }
 
         Record()
-            : data(FLASH_ERASED), reserved(0), index(EMPTY_INDEX)
+            : data(FLASH_ERASED), status(FLASH_ERASED), index(EMPTY_INDEX)
         {
         }
 
         bool empty() const
         {
-            return index == EMPTY_INDEX;
+            return index == EMPTY_INDEX &&
+                status == FLASH_ERASED &&
+                data == FLASH_ERASED;
         }
 
         bool valid() const
         {
-            return (index & INVALID_INDEX_FLAG) == 0;
-        }
-
-        const Record &invalidate()
-        {
-            index |= INVALID_INDEX_FLAG;
-            return *this;
-        }
-
-        const Record &validate()
-        {
-            index &= ~INVALID_INDEX_FLAG;
-            return *this;
+            return index != EMPTY_INDEX && status == VALID;
         }
     };
 
@@ -192,15 +180,15 @@ public:
         }
     }
 
-    // Read the latest value of a byte of EEPROM
-    // Writes 0xFF into data if the value was not programmed
+    // Read the latest value of a byte of EEPROM in data or 0xFF if the
+    // value was not programmed
     void get(Index index, Data &data)
     {
         readRange(index, &data, sizeof(data));
     }
 
-    // Reads the latest valid values of a block of EEPROM
-    // Fills data with 0xFF if values were not programmed
+    // Reads the latest valid values of a block of EEPROM into data.
+    // Fills data with 0xFF for values that were not programmed
     void get(Index index, void *data, uint16_t length)
     {
         readRange(index, (Data *)data, length);
@@ -360,11 +348,6 @@ public:
     }
 
     // Write each byte in the range if its value has changed.
-    //
-    // Write new records as invalid in increasing order of index, then
-    // go back and write records as valid in decreasing order of
-    // index. This ensures data consistency if writeRange is
-    // interrupted by a reset.
     void writeRange(Index indexBegin, const Data *data, uint16_t length)
     {
         // don't write anything if index is out of range
@@ -382,34 +365,15 @@ public:
             return;
         }
 
-        Address writeAddress;
+        Address writeAddressBegin;
 
         // Read the data and make sure there are no previous invalid
         // records before starting to write
         bool success = readRangeAndFindEmpty(getActivePage(),
-                existingData.get(), indexBegin, length, writeAddress);
+                existingData.get(), indexBegin, length, writeAddressBegin);
 
-        Address writeAddressBegin = writeAddress;
-        Address endAddress = getPageEnd(getActivePage());
-
-        // Write all changed values as invalid records
-        for(uint16_t i = 0; i < length && success; i++)
-        {
-            if(existingData[i] != data[i])
-            {
-                Index index = indexBegin + i;
-                success = success && writeRecord(writeAddress,
-                        endAddress, Record(index, data[i]).invalidate());
-            }
-        }
-
-        // If all writes succeeded, mark all invalid records active
-        // going backwards
-        while(success && writeAddress > writeAddressBegin)
-        {
-            writeAddress -= sizeof(Record);
-            success = success && validateRecord(writeAddress);
-        }
+        // Write records for all new values
+        success = success && writeRangeChanged(writeAddressBegin, indexBegin, data, existingData.get(), length);
 
         // If any writes failed because the page was full or a marginal
         // write error occured, do a page swap then write all the
@@ -458,11 +422,61 @@ public:
         return !hasInvalidRecords;
     }
 
+
+    // Write new records backwards in Flash. This ensures data
+    // consistency if writeRange is interrupted by a reset since reads
+    // stop at the first non-valid record.
+    bool writeRangeChanged(Address writeAddressBegin, Index indexBegin, const uint8_t *data, const uint8_t *existingData, uint16_t length)
+    {
+        bool success = true;
+
+        // Count changed values
+        uint16_t changedCount = 0;
+        for(uint16_t i = 0; i < length && success; i++)
+        {
+            if(existingData[i] != data[i])
+            {
+                changedCount++;
+            }
+        }
+
+        // Write all changed values, backwards from the end
+        if(changedCount > 0)
+        {
+            Address writeAddress = writeAddressBegin + changedCount * sizeof(Record);
+            Address endAddress = getPageEnd(getActivePage());
+
+            // There must be an empty record after the position where the
+            // last record will be written to act as a separator for the
+            // valid record detection algorithm to work well
+            if(writeAddress < endAddress)
+            {
+                Record separatorRecord;
+                store.read(writeAddress, &separatorRecord, sizeof(separatorRecord));
+
+                success = separatorRecord.empty();
+            }
+
+            for(uint16_t i = 0; i < length && success; i++)
+            {
+                if(existingData[i] != data[i])
+                {
+                    Index index = indexBegin + i;
+                    writeAddress -= sizeof(Record);
+                    success = success && writeRecord(
+                            writeAddress, endAddress, Record(index, data[i]));
+                }
+            }
+        }
+
+        return success;
+    }
+
     // Write a record to the first empty space available in a page
     //
     // Returns false when write was unsuccessful to protect against
     // marginal erase, true on proper write
-    bool writeRecord(Address &writeAddress,
+    bool writeRecord(Address writeAddress,
             Address endAddress,
             const Record &record)
     {
@@ -473,25 +487,7 @@ public:
         }
 
         // Write record and return true when write is verified successfully
-        bool success = (store.write(writeAddress, &record, sizeof(record)) >= 0);
-
-        // Advance to next record
-        writeAddress += sizeof(record);
-        return success;
-    }
-
-    // Make a partially written record valid
-    //
-    // Returns false when write was unsuccessful to protect against
-    // marginal erase, true on proper write
-    bool validateRecord(Address address)
-    {
-        Record record;
-        store.read(address, &record, sizeof(record));
-        record.validate();
-
-        Address indexAddress = address + offsetof(Record, index);
-        return (store.write(indexAddress, &record.index, sizeof(record.index)) >= 0);
+        return (store.write(writeAddress, &record, sizeof(record)) >= 0);
     }
 
     // Iterate through a page and yield each record, including valid
@@ -546,20 +542,28 @@ public:
     template <typename Func>
     void forEachUniqueValidRecord(LogicalPage page, Func f)
     {
-        std::map<Index, Address> recordAddresses;
-
+        // Find latest address of each record in one pass through the page
+        // Note: this creates a vector with up to capacity() bytes on the heap.
+        std::vector<Address> recordAddresses;
         forEachValidRecord(page, [&](Address address, const Record &record)
         {
+            if(record.index >= recordAddresses.size())
+            {
+                recordAddresses.resize(record.index + 1);
+            }
             recordAddresses[record.index] = address;
         });
 
-        for(auto indexAddress: recordAddresses)
+        // Yield the records that have a value
+        for(auto address: recordAddresses)
         {
-            auto address = indexAddress.second;
-            const Record &record = *(const Record *) store.dataAt(address);
+            if(address != 0)
+            {
+                const Record &record = *(const Record *) store.dataAt(address);
 
-            // Yield record
-            f(address, record);
+                // Yield record
+                f(address, record);
+            }
         }
     }
 
@@ -643,29 +647,6 @@ public:
         return false;
     }
 
-    // Write a range of valid records starting a specified address
-    bool writeRangeDirect(Address &writeAddress,
-            Address endAddress,
-            Index indexBegin,
-            const Data *data,
-            uint16_t length)
-    {
-        bool success = true;
-        // Write new records to destination directly
-        for(uint16_t i = 0; i < length && success; i++)
-        {
-            // Don't bother writing records that are 0xFF
-            if(data[i] != FLASH_ERASED)
-            {
-                Index index = indexBegin + i;
-                success = success && writeRecord(writeAddress, endAddress, Record(index, data[i]));
-            }
-        }
-
-        return success;
-    }
-
-
     // Perform the actual copy of records during page swap
     bool copyAllRecordsToPageExcept(LogicalPage sourcePage,
             LogicalPage destinationPage,
@@ -682,8 +663,34 @@ public:
                 record.data != FLASH_ERASED)
             {
                 success = success && writeRecord(writeAddress, endAddress, Record(record.index, record.data));
+                writeAddress += sizeof(Record);
             }
         });
+
+        return success;
+    }
+
+    // Write a range of valid records starting a specified address
+    bool writeRangeDirect(Address writeAddress,
+            Address endAddress,
+            Index indexBegin,
+            const Data *data,
+            uint16_t length)
+    {
+        bool success = true;
+
+        // Write new records to destination directly
+        for(uint16_t i = 0; i < length && success; i++)
+        {
+            // Don't bother writing records that are 0xFF
+            if(data[i] != FLASH_ERASED)
+            {
+                Index index = indexBegin + i;
+                success = success && writeRecord(
+                        writeAddress, endAddress, Record(index, data[i]));
+                writeAddress += sizeof(Record);
+            }
+        }
 
         return success;
     }

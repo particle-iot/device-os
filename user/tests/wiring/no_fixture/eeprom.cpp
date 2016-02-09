@@ -51,6 +51,10 @@ test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
             assertEqual(EEPROM.read(address), data);
         }
     }
+
+    // Avoid leaving the EEPROM 100% full which leads to poor performance
+    // in other programs using EEPROM on this device in the future
+    EEPROM.clear();
 }
 
 test(EEPROM_ReadWriteFailsForAnyAddressOutOfRange) {

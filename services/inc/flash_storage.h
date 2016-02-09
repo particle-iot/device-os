@@ -89,13 +89,13 @@ public:
         if (!isValidRange(offset,size))
             return FLASH_INVALID_RANGE;
 
-        if (!write_count)
-            return -1;
-        write_count--;
-
         unsigned start = offset-Base;
         while (size --> 0)
         {
+            if (!write_count)
+                return -1;
+            write_count--;
+
             memory[start++] &= *data++;
         }
         return 0;

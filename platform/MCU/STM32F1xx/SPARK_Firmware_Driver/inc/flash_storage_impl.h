@@ -40,6 +40,7 @@ public:
         const uint8_t* end_ptr  = data_ptr+size;
         unsigned destination = offset;
         FLASH_Unlock();
+        FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 
         while (data_ptr < end_ptr)
         {
