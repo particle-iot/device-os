@@ -50,9 +50,9 @@ DYNALIB_FN(17, services, LED_RGB_SetChangeHandler, void(led_update_handler_fn, v
 DYNALIB_FN(18, services, log_print_direct_, void(int, void*, const char*, ...))
 DYNALIB_FN(19, services, LED_GetColor, uint32_t(uint32_t, void*))
 
+DYNALIB_FN(20, services, log_set_handler, void(log_message_handler_fn, log_stream_handler_fn))
+
 DYNALIB_END(services)
-
-
 
 #endif	/* SERVICES_DYNALIB_H */
 

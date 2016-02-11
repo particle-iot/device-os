@@ -43,15 +43,18 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_random.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_logging.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,timer_hal.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
 # for now, just RGB led
 CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
+CSRC += $(call target_files,$(LIB_SERVICES)src,debug.c)
 
 
 # Additional include directories, applied to objects built for this target.

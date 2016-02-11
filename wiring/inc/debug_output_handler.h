@@ -22,39 +22,42 @@
 
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_usbserial.h"
+#include "spark_wiring_logging.h"
 #include "service_debug.h"
 #include "delay_hal.h"
 
-struct SerialDebugOutput
+class SerialDebugOutput: public spark::FormattingLogger
 {
-    SerialDebugOutput(int baud=9600, LoggerOutputLevel level=ALL_LEVEL)
+public:
+    explicit SerialDebugOutput(int baud = 9600, LoggerOutputLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
+            FormattingLogger(level, filters)
     {
         Serial.begin(baud);
-        set_logger_output(log_output, level);
+        Logger::install(this);
     }
 
-    static void log_output(const char* msg)
+private:
+    virtual void writeString(const char* msg, LoggerOutputLevel) override
     {
         Serial.print(msg);
-    //    Serial.flush();
-     //  HAL_Delay_Milliseconds(10);
     }
-
 };
 
-struct Serial1DebugOutput
+class Serial1DebugOutput: public spark::FormattingLogger
 {
-    Serial1DebugOutput(int baud=9600, LoggerOutputLevel level=ALL_LEVEL)
+public:
+    explicit Serial1DebugOutput(int baud = 9600, LoggerOutputLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
+            FormattingLogger(level, filters)
     {
         Serial1.begin(baud);
-        set_logger_output(log_output, level);
+        Logger::install(this);
     }
 
-    static void log_output(const char* msg)
+private:
+    virtual void writeString(const char* msg, LoggerOutputLevel) override
     {
         Serial1.print(msg);
     }
-
 };
 
 

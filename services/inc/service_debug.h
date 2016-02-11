@@ -61,10 +61,12 @@ typedef enum LoggerOutputLevel {
     NO_LOG_LEVEL    = 70,        // set to not log any messages
 } LoggerOutputLevel;
 
-#if !defined(INCLUDE_FILE_INFO_IN_DEBUG)
-#define _FILE_PATH          __FILE__
+#ifdef INCLUDE_SOURCE_INFO_IN_DEBUG
+#define _LOG_SOURCE_FILE __FILE__
+#define _LOG_SOURCE_FUNCTION __PRETTY_FUNCTION__
 #else
-#define _FILE_PATH          NULL
+#define _LOG_SOURCE_FILE NULL
+#define _LOG_SOURCE_FUNCTION NULL
 #endif  //
 
 #if defined(DEBUG_BUILD)
@@ -77,10 +79,13 @@ typedef enum LoggerOutputLevel {
 #define LOG_LEVEL_AT_RUN_TIME ERROR_LEVEL
 #endif
 
+#define LOG_CATEGORY(name) \
+        static const char* const _LOG_CATEGORY = name;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...);
+void log_print_(LoggerOutputLevel level, const char *category, const char *file, int line, const char *func, const char *msg, ...);
 
 void log_direct_(const char* s);
 
@@ -92,12 +97,19 @@ void log_print_direct_(int level, void* reserved, const char *msg, ...);
  */
 typedef void (*debug_output_fn)(const char *);
 
+typedef void (*log_message_handler_fn)(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
+        const char *file, int line, const char *func);
+
+typedef void (*log_stream_handler_fn)(const char *str, LoggerOutputLevel level);
+
 /**
  * Set the debug logger function and optionally the logging level.
  * @param output                The output function. `NULL` to use the existing function.
  * @param debug_output_level    The log level to output.
  */
 void set_logger_output(debug_output_fn output, LoggerOutputLevel level);
+
+void log_set_handler(log_message_handler_fn msg_handler, log_stream_handler_fn str_handler);
 
 #define LOG_LEVEL_ACTIVE(level)  (log_level_active(level, NULL))
 
@@ -106,7 +118,7 @@ void set_logger_output(debug_output_fn output, LoggerOutputLevel level);
 extern void HAL_Delay_Microseconds(uint32_t delay);
 
 // Short Cuts
-#define __LOG_LEVEL_TEST(level) (level >= LOG_LEVEL_AT_COMPILE_TIME && level >= LOG_LEVEL_AT_RUN_TIME)
+#define __LOG_LEVEL_TEST(level) (level >= LOG_LEVEL_AT_COMPILE_TIME)
 
 #if defined(USE_ONLY_PANIC)
 #define LOG(fmt, ...)
@@ -118,13 +130,13 @@ extern void HAL_Delay_Microseconds(uint32_t delay);
 #define DEBUG_D(fmt, ...)
 #else
 // Macros to use
-#define LOG(fmt, ...)    do { if ( __LOG_LEVEL_TEST(LOG_LEVEL)  )  {log_print_(LOG_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt, ##__VA_ARGS__);}}while(0)
-#define DEBUG(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_(DEBUG_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
-#define INFO(fmt, ...)   do { if ( __LOG_LEVEL_TEST(INFO_LEVEL) )  {log_print_(INFO_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
-#define WARN(fmt, ...)   do { if ( __LOG_LEVEL_TEST(WARN_LEVEL) )  {log_print_(WARN_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
-#define ERROR(fmt, ...)  do { if ( __LOG_LEVEL_TEST(ERROR_LEVEL) ) {log_print_(ERROR_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);}}while(0)
-#define PANIC(code,fmt, ...)  do { if ( __LOG_LEVEL_TEST(PANIC_LEVEL) ) {log_print_(PANIC_LEVEL,__LINE__,__PRETTY_FUNCTION__,_FILE_PATH,fmt,##__VA_ARGS__);} panic_(code, NULL, HAL_Delay_Microseconds);}while(0)
-#define DEBUG_D(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_direct_(LOG_LEVEL, nullptr, fmt,##__VA_ARGS__);}}while(0)
+#define LOG(fmt, ...)    do { if ( __LOG_LEVEL_TEST(LOG_LEVEL)  )  {log_print_(LOG_LEVEL,_LOG_CATEGORY,_LOG_SOURCE_FILE,__LINE__,_LOG_SOURCE_FUNCTION,fmt, ##__VA_ARGS__);}}while(0)
+#define DEBUG(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_(DEBUG_LEVEL,_LOG_CATEGORY,_LOG_SOURCE_FILE,__LINE__,_LOG_SOURCE_FUNCTION,fmt,##__VA_ARGS__);}}while(0)
+#define INFO(fmt, ...)   do { if ( __LOG_LEVEL_TEST(INFO_LEVEL) )  {log_print_(INFO_LEVEL,_LOG_CATEGORY,_LOG_SOURCE_FILE,__LINE__,_LOG_SOURCE_FUNCTION,fmt,##__VA_ARGS__);}}while(0)
+#define WARN(fmt, ...)   do { if ( __LOG_LEVEL_TEST(WARN_LEVEL) )  {log_print_(WARN_LEVEL,_LOG_CATEGORY,_LOG_SOURCE_FILE,__LINE__,_LOG_SOURCE_FUNCTION,fmt,##__VA_ARGS__);}}while(0)
+#define ERROR(fmt, ...)  do { if ( __LOG_LEVEL_TEST(ERROR_LEVEL) ) {log_print_(ERROR_LEVEL,_LOG_CATEGORY,_LOG_SOURCE_FILE,__LINE__,_LOG_SOURCE_FUNCTION,fmt,##__VA_ARGS__);}}while(0)
+#define PANIC(code,fmt, ...)  do { if ( __LOG_LEVEL_TEST(PANIC_LEVEL) ) {log_print_(PANIC_LEVEL,_LOG_CATEGORY,_LOG_SOURCE_FILE,__LINE__,_LOG_SOURCE_FUNCTION,fmt,##__VA_ARGS__);} panic_(code, NULL, HAL_Delay_Microseconds);}while(0)
+#define DEBUG_D(fmt, ...)  do { if ( __LOG_LEVEL_TEST(DEBUG_LEVEL))  {log_print_direct_(LOG_LEVEL, NULL, fmt,##__VA_ARGS__);}}while(0)
 #endif
 #define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure "#predicate);} while(0);
 
