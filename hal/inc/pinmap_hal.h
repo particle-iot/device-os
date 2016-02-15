@@ -114,8 +114,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 
 // todo - this is corev1 specific, needs to go in a conditional define
 
-#define LED1 LED_USER
-
 #define A0 10
 #define A1 11
 #define A2 12

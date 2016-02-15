@@ -94,9 +94,6 @@ namespace std {
         thread_startup startup;
         startup.call = base.get();
         startup.started = false;
-        // FIXME: if the priority of the new thread is low enough not to cause `os_thread_create` to
-        // preempt the current thread to run the thread start function, by the time `invoke_thread`
-        // executes `call->_M_run()` will cause a pure virtual error
         if (os_thread_create(&_M_id._M_thread, "std::thread", OS_THREAD_PRIORITY_DEFAULT, invoke_thread, &startup, 1024*3)) {
             PANIC(AssertionFailure, "%s %s", __FILE__, __LINE__);
         }

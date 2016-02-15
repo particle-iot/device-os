@@ -393,8 +393,6 @@ public:
     {
         if (SPARK_WLAN_STARTED)
         {
-            config_clear();
-            cloud_disconnect();
             disconnect();
             off_now();
 
@@ -479,6 +477,7 @@ public:
         }
         else
         {
+            config_clear();
             WLAN_DHCP = 0;
             SPARK_LED_FADE = 0;
             if (WLAN_LISTEN_ON_FAILED_CONNECT)

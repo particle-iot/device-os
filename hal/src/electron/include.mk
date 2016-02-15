@@ -19,13 +19,9 @@ ifdef UBLOX_PHONE_NUM
 CFLAGS += -DUBLOX_PHONE_NUM='"$(UBLOX_PHONE_NUM)"'
 endif
 
-# if we are being compiled with platform as a dependency, then also include
-# implementation headers.
-ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_ELECTRON_INCL_PATH)
 INCLUDE_DIRS += $(HAL_INCL_STM32F2XX_PATH)
 INCLUDE_DIRS += $(HAL_INCL_STM32_PATH)
-endif
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
 

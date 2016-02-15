@@ -30,4 +30,13 @@ test(api_atomic_section) {
     API_COMPILE(AtomicSection as);
 }
 
+test(api_application_watchdog)
+{
+	unsigned stack_size = 512;
+	application_checkin();
+	ApplicationWatchdog wd(30000, System.reset);
+	ApplicationWatchdog wd2(30000, System.reset, stack_size);
+}
+
+
 #endif

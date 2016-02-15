@@ -33,6 +33,11 @@ test(api_spark_variable) {
     char valueString[] = "oh yeah!";
 
     String valueSmartString(valueString);
+    bool boolValue = true;
+    uint8_t uint8Value = 1;
+
+    API_COMPILE(Particle.variable("mybool", boolValue));
+    API_COMPILE(Particle.variable("mybool", uint8Value));
 
     API_COMPILE(Particle.variable("myint", &valueInt, INT));
 

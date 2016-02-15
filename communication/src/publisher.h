@@ -86,7 +86,7 @@ public:
 public:
 
 	ProtocolError send_event(MessageChannel& channel, const char* event_name,
-			const char* data, int ttl, EventType::Enum event_type,
+			const char* data, int ttl, EventType::Enum event_type, int flags,
 			system_tick_t time)
 	{
 		bool is_system_event = is_system(event_name);
@@ -96,8 +96,10 @@ public:
 
 		Message message;
 		channel.create(message);
+		bool noack = flags & EventType::NO_ACK;
+		bool confirmable = channel.is_unreliable() && !noack;
 		size_t msglen = Messages::event(message.buf(), 0, event_name, data, ttl,
-				event_type, channel.is_unreliable());
+				event_type, confirmable);
 		message.set_length(msglen);
 		return channel.send(message);
 	}

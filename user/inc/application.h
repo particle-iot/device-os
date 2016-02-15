@@ -59,6 +59,7 @@
 #include "spark_wiring_tone.h"
 #include "spark_wiring_eeprom.h"
 #include "spark_wiring_version.h"
+#include "spark_wiring_watchdog.h"
 #include "spark_wiring_thread.h"
 #include "fast_pin.h"
 #include "string_convert.h"
