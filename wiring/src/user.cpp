@@ -171,9 +171,13 @@ void module_user_init_hook()
      */
 // todo - add a RNG define for that capability
 #if defined(STM32F2XX)
+    uint32_t seed = HAL_RNG_GetRandomNumber();
+
     if (random_seed_from_cloud) {
-    		uint32_t seed = HAL_RNG_GetRandomNumber();
     		random_seed_from_cloud(seed);
+    }
+    else {
+    		srand(seed);
     }
 #endif
 }

@@ -1,3 +1,11 @@
+## v0.5.0
+
+- BUGFIXES
+
+Random seed was not being set if the application didn't define
+`random_seed_from_cloud()`. Test app added to test suite. 
+
+
 ## v0.4.9
 
 ### FEATURES
