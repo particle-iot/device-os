@@ -170,8 +170,14 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
+	
+    const module_bounds_t* bounds;
+    if(reserved == NULL)
+        bounds = &module_ota;
+    else
+        bounds = (module_bounds_t*)reserved;
 
-    bool module_fetched = fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY);
+    bool module_fetched = fetch_module(&module, bounds, true, MODULE_VALIDATION_INTEGRITY);
 	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
@@ -180,7 +186,7 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 
         // bootloader is copied directly
         if (function==MODULE_FUNCTION_BOOTLOADER) {
-            if (bootloader_update((const void*)module_ota.start_address, moduleLength+4))
+            if (bootloader_update((const void*)bounds->start_address, moduleLength+4))
                 result = HAL_UPDATE_APPLIED;
         }
         else
@@ -190,7 +196,7 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 #else
             flash_device_t flash_device = FLASH_INTERNAL;
 #endif
-            if (FLASH_AddToNextAvailableModulesSlot(flash_device, module_ota.start_address,
+            if (FLASH_AddToNextAvailableModulesSlot(flash_device, bounds->start_address,
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
                 (moduleLength + 4),//+4 to copy the CRC too
                 function,
