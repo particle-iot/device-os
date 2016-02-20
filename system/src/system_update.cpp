@@ -32,6 +32,7 @@
 #include "system_ymodem.h"
 #if (PLATFORM_ID==88) 
 #include "hw_config.h"
+#include "ota_flash_hal_stm32f2xx.h"
 #ifdef START_AVRDUDE_FLASHER_SERIAL_SPEED
 #include "system_avrdude.h"
 #endif
@@ -282,6 +283,14 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
             file.file_length = HAL_OTA_FlashLength();
         }
     }
+#if (PLATFORM_ID==88) 
+    else if(file.store==FileTransfer::Store::SYSTEM)
+    {
+        // address is absolute to the external flash.
+        file.file_address = file.chunk_address;
+    }
+#endif
+	
     int result = 0;
     if (flags & 1) {
         // only check address
@@ -367,7 +376,18 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     if (flags & 1) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
+#if (PLATFORM_ID==88) 
+            const module_bounds_t* bounds = NULL;
+            for(uint8_t i=0; i<3; i++)
+            {
+                if(file.file_address == module_ota_bounds[i]->start_address)
+                    bounds = module_ota_bounds[i];
+            }
+			
+            hal_update_complete_t result = HAL_FLASH_End((void *)bounds);
+#else
             hal_update_complete_t result = HAL_FLASH_End(NULL);
+#endif
             system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
 
             // always restart for now
@@ -376,6 +396,12 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
                 system_pending_shutdown();
             }
         }
+#if (PLATFORM_ID==88) 
+        else if(file.store==FileTransfer::Store::SYSTEM)
+        {
+            system_pending_shutdown();
+        }
+#endif
     }
     else
     {
@@ -390,7 +416,11 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
     TimingFlashUpdateTimeout = 0;
     int result = -1;
     system_notify_event(firmware_update, firmware_update_progress, &file);
+#if (PLATFORM_ID==88) 
+    if (file.store==FileTransfer::Store::FIRMWARE || file.store==FileTransfer::Store::SYSTEM)
+#else
     if (file.store==FileTransfer::Store::FIRMWARE)
+#endif
     {
         result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size, NULL);
         LED_Toggle(LED_RGB);
