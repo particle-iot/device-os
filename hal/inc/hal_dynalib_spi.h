@@ -49,6 +49,10 @@ DYNALIB_FN(hal_spi,HAL_SPI_Init)
 DYNALIB_FN(hal_spi,HAL_SPI_Is_Enabled)
 DYNALIB_FN(hal_spi,HAL_SPI_Info)
 DYNALIB_FN(hal_spi,HAL_SPI_DMA_Transfer)
+DYNALIB_FN(hal_spi,HAL_SPI_Begin_Ext)
+DYNALIB_FN(hal_spi,HAL_SPI_Set_Callback_On_Select)
+DYNALIB_FN(hal_spi,HAL_SPI_DMA_Transfer_Cancel)
+DYNALIB_FN(hal_spi,HAL_SPI_DMA_Last_Transfer_Length)
 DYNALIB_END(hal_spi)
 
 
