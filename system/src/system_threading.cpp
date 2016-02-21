@@ -94,7 +94,7 @@ namespace std {
         thread_startup startup;
         startup.call = base.get();
         startup.started = false;
-        if (os_thread_create(&_M_id._M_thread, "std::thread", OS_THREAD_PRIORITY_DEFAULT, invoke_thread, &startup, 1024*3)) {
+        if (os_thread_create(&_M_id._M_thread, "std::thread", OS_THREAD_PRIORITY_DEFAULT, invoke_thread, &startup, 1024*4)) {
             PANIC(AssertionFailure, "%s %s", __FILE__, __LINE__);
         }
         else {  // C++ ensure the thread has started execution, as required by the standard
