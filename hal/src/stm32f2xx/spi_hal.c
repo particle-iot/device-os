@@ -224,14 +224,15 @@ static void HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
     if (DMA_GetITStatus(spiMap[spi].SPI_RX_DMA_Stream, spiMap[spi].SPI_RX_DMA_Stream_TC_Event) == SET)
     {
         uint32_t remainingCount = DMA_GetCurrDataCounter(spiMap[spi].SPI_RX_DMA_Stream);
+
+        if (!spiState[spi].SPI_DMA_Aborted)
+        {
+            while (SPI_I2S_GetFlagStatus(spiMap[spi].SPI_Peripheral, SPI_I2S_FLAG_TXE) == RESET);
+            while (SPI_I2S_GetFlagStatus(spiMap[spi].SPI_Peripheral, SPI_I2S_FLAG_BSY) == SET);
+        }
+
         if (spiState[spi].mode == SPI_MODE_SLAVE)
         {
-            if (!spiState[spi].SPI_DMA_Aborted)
-            {
-                while (SPI_I2S_GetFlagStatus(spiMap[spi].SPI_Peripheral, SPI_I2S_FLAG_TXE) == RESET);
-                while (SPI_I2S_GetFlagStatus(spiMap[spi].SPI_Peripheral, SPI_I2S_FLAG_BSY) == SET);
-            }
-
             SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
 
             if (spiState[spi].SPI_DMA_Aborted)
