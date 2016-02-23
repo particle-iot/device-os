@@ -60,4 +60,33 @@ test(api_cellular_data_usage) {
     (void)result; // avoid unused warning
 }
 
+test(api_cellular_band_select) {
+    CellularBand band1;
+    CellularBand band2;
+    band2.ok = true;
+    bool result;
+
+    API_COMPILE(result = Cellular.getBandSelect(band1));
+
+    API_COMPILE(result = Cellular.setBandSelect("1900"));
+
+    API_COMPILE(result = Cellular.getBandAvailable(band1));
+
+    API_COMPILE(!Cellular.getBandSelect(band1));
+
+    API_COMPILE(!!Cellular.getBandSelect(band1));
+
+    API_COMPILE(result = band1);
+
+    API_COMPILE(result = band2);
+
+    API_COMPILE(Serial.println(band1));
+
+    // These should not compile, test these manually by changing to API_COMPILE()
+    API_NO_COMPILE(band1 == band2);
+    API_NO_COMPILE(band1 != band2);
+
+    (void)result; // avoid unused warning
+}
+
 #endif

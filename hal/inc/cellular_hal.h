@@ -211,6 +211,23 @@ cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved)
  */
 cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved);
 
+#if PLATFORM_ID == 10 // electron
+/**
+ * Set cellular band select
+ */
+cellular_result_t cellular_band_select_set(MDM_BandSelect &bands, void* reserved);
+
+/**
+ * Get cellular band select
+ */
+cellular_result_t cellular_band_select_get(MDM_BandSelect &bands, void* reserved);
+
+/**
+ * Get cellular band available
+ */
+cellular_result_t cellular_band_available_get(MDM_BandSelect &bands, void* reserved);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

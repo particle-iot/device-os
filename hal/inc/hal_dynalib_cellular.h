@@ -53,6 +53,9 @@ DYNALIB_FN(hal_cellular, cellular_signal)
 DYNALIB_FN(hal_cellular, cellular_command)
 DYNALIB_FN(hal_cellular, cellular_data_usage_set)
 DYNALIB_FN(hal_cellular, cellular_data_usage_get)
+DYNALIB_FN(hal_cellular, cellular_band_select_set)
+DYNALIB_FN(hal_cellular, cellular_band_select_get)
+DYNALIB_FN(hal_cellular, cellular_band_available_get)
 
 DYNALIB_END(hal_cellular)
 

@@ -44,3 +44,13 @@ size_t CellularData::printTo(Print& p) const
     n += p.print((*this).rx_total, DEC);
     return n;
 }
+
+size_t CellularBand::printTo(Print& p) const
+{
+    size_t n = 0;
+    for (int i=0; i<(*this).count; i++) {
+      n += p.print((*this).band[i], DEC);
+      if (i+1<(*this).count) n += p.print(',');
+    }
+    return n;
+}
