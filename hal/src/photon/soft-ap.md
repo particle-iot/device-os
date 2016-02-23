@@ -153,6 +153,10 @@ supported:
 
 
 
+
+
+# Proposed Commands (not implemented)
+
 ## provision-keys
 - request: provision-keys { "salt": number, "force": 0|1 )
 - response: generation status (0 keys generated, 1 not generated)
@@ -162,9 +166,6 @@ supported:
 
 (Ideally this would be a non-blocking operation that continued in the background, but initially it will block for ca 6s)
 
-
-
-# Proposed Commands (not implemented)
 
 ## signal
 - desc: enables/disables signalling on the device for easier identification
