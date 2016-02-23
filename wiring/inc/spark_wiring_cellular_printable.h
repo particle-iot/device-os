@@ -25,8 +25,10 @@
 #include "spark_wiring_string.h"
 #include "cellular_hal.h"
 
+/*
+ * CellularSignal
+ */
 class CellularSignal : public Printable {
-
 public:
     int rssi = 0;
     int qual = 0;
@@ -36,8 +38,10 @@ public:
     virtual size_t printTo(Print& p) const;
 };
 
+/*
+ * CellularData
+ */
 class CellularData : public Printable {
-
 private:
     typedef void (CellularData::*bool_type)() const;
     void this_type_does_not_support_comparisons() const {}
@@ -60,7 +64,6 @@ public:
         return ok==true ? &CellularData::this_type_does_not_support_comparisons : 0;
     }
 };
-
 // Bjorn Karlsson's Safe Bool Idiom - http://www.artima.com/cppsource/safebool.html
 template <typename T>
 bool operator!=(const CellularData& lhs,const T& rhs) {
@@ -69,6 +72,53 @@ bool operator!=(const CellularData& lhs,const T& rhs) {
 }
 template <typename T>
 bool operator==(const CellularData& lhs,const T& rhs) {
+    lhs.this_type_does_not_support_comparisons();
+    return false;
+}
+
+/*
+ * CellularBand
+ */
+class CellularBand : public Printable {
+private:
+    typedef void (CellularBand::*bool_type)() const;
+    void this_type_does_not_support_comparisons() const {}
+    const int band_enums[11] { BAND_0, BAND_700, BAND_800, BAND_850,
+                       BAND_900, BAND_1500, BAND_1700, BAND_1800,
+                       BAND_1900, BAND_2100, BAND_2600 };
+public:
+    /* false when constructed, used to indicate whether
+     * last operation on object was successful or not. */
+    bool ok;
+
+    int count = 0;
+    MDM_Band band[5] = {BAND_DEFAULT};
+
+    virtual size_t printTo(Print& p) const;
+
+    explicit CellularBand(bool b=false):ok(b) {}
+    operator bool_type() const {
+        return ok==true ? &CellularBand::this_type_does_not_support_comparisons : 0;
+    }
+
+    bool isBand(int x)
+    {
+        for (int i=0; i<(int)(sizeof(band_enums)/sizeof(*band_enums)); i++)
+        {
+            if (band_enums[i] == x) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+template <typename T>
+bool operator!=(const CellularBand& lhs,const T& rhs) {
+    lhs.this_type_does_not_support_comparisons();
+    return false;
+}
+template <typename T>
+bool operator==(const CellularBand& lhs,const T& rhs) {
     lhs.this_type_does_not_support_comparisons();
     return false;
 }

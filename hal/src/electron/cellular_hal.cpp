@@ -205,3 +205,21 @@ cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved)
     // Now process the Get request
     return _cellular_data_usage_get(data, data_usage, rv);
 }
+
+cellular_result_t cellular_band_select_set(MDM_BandSelect &bands, void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.setBandSelect(bands));
+    return 0;
+}
+
+cellular_result_t cellular_band_select_get(MDM_BandSelect &bands, void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.getBandSelect(bands));
+    return 0;
+}
+
+cellular_result_t cellular_band_available_get(MDM_BandSelect &bands, void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.getBandAvailable(bands));
+    return 0;
+}

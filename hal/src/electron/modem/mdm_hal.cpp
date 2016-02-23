@@ -871,6 +871,103 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
     return ok;
 }
 
+void MDMParser::_setBandSelectString(MDM_BandSelect &data, char* bands, int index /*= 0*/) {
+    char band[5];
+    for (int x=index; x<data.count; x++) {
+        sprintf(band, "%d", data.band[x]);
+        strcat(bands, band);
+        if ((x+1) < data.count) strcat(bands, ",");
+    }
+}
+
+bool MDMParser::setBandSelect(MDM_BandSelect &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_INFO("\r\n[ Modem::setBandSelect ] = = = = = = = = = =");
+
+        char bands_to_set[22] = "";
+        _setBandSelectString(data, bands_to_set, 0);
+        if (strcmp(bands_to_set,"") == 0)
+            goto failure;
+
+        // create default bands string
+        MDM_BandSelect band_avail;
+        if (!getBandAvailable(band_avail))
+            goto failure;
+
+        char band_defaults[22] = "";
+        if (band_avail.band[0] == BAND_DEFAULT)
+            _setBandSelectString(band_avail, band_defaults, 1);
+
+        // create selected bands string
+        MDM_BandSelect band_sel;
+        if (!getBandSelect(band_sel))
+            goto failure;
+
+        char bands_selected[22] = "";
+        _setBandSelectString(band_sel, bands_selected, 0);
+
+        if (strcmp(bands_to_set, "0") == 0) {
+            if (strcmp(bands_selected, band_defaults) == 0) {
+                ok = true;
+                goto success;
+            }
+        }
+
+        if (strcmp(bands_selected, bands_to_set) != 0) {
+            sendFormated("AT+UBANDSEL=%s\r\n", bands_to_set);
+            if (RESP_OK == waitFinalResp(NULL,NULL,10000)) {
+                ok = true;
+            }
+        }
+        else {
+            ok = true;
+        }
+    }
+success:
+    UNLOCK();
+    return ok;
+failure:
+    UNLOCK();
+    return false;
+}
+
+bool MDMParser::getBandSelect(MDM_BandSelect &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_BandSelect data_sel;
+        MDM_INFO("\r\n[ Modem::getBandSelect ] = = = = = = = = = =");
+        sendFormated("AT+UBANDSEL?\r\n");
+        if (RESP_OK == waitFinalResp(_cbBANDSEL, &data_sel)) {
+            ok = true;
+            memcpy(&data, &data_sel, sizeof(MDM_BandSelect));
+        }
+    }
+    UNLOCK();
+    return ok;
+}
+
+bool MDMParser::getBandAvailable(MDM_BandSelect &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_BandSelect data_avail;
+        MDM_INFO("\r\n[ Modem::getBandAvailable ] = = = = = = = = = =");
+        sendFormated("AT+UBANDSEL=?\r\n");
+        if (RESP_OK == waitFinalResp(_cbBANDAVAIL, &data_avail)) {
+            ok = true;
+            memcpy(&data, &data_avail, sizeof(MDM_BandSelect));
+        }
+    }
+    UNLOCK();
+    return ok;
+}
+
 int MDMParser::_cbUGCNTRD(int type, const char* buf, int len, MDM_DataUsage* data)
 {
     if ((type == TYPE_PLUS) && data) {
@@ -883,6 +980,39 @@ int MDMParser::_cbUGCNTRD(int type, const char* buf, int len, MDM_DataUsage* dat
             data->rx_session = c;
             data->tx_total = d;
             data->rx_total = e;
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbBANDAVAIL(int type, const char* buf, int len, MDM_BandSelect* data)
+{
+    if ((type == TYPE_PLUS) && data) {
+        int c;
+        int b[5];
+        // \r\n+UBANDSEL: (0,850,900,1800,1900)\r\n
+        if ((c = sscanf(buf, "\r\n+UBANDSEL: (%d,%d,%d,%d,%d)\r\n", &b[0],&b[1],&b[2],&b[3],&b[4])) > 0) {
+            for (int i=0; i<c; i++) {
+                data->band[i] = (MDM_Band)b[i];
+            }
+            data->count = c;
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbBANDSEL(int type, const char* buf, int len, MDM_BandSelect* data)
+{
+    if ((type == TYPE_PLUS) && data) {
+        int c;
+        int b[4];
+        // \r\n+UBANDSEL: 850\r\n
+        // \r\n+UBANDSEL: 850,1900\r\n
+        if ((c = sscanf(buf, "\r\n+UBANDSEL: %d,%d,%d,%d\r\n", &b[0],&b[1],&b[2],&b[3])) > 0) {
+            for (int i=0; i<c; i++) {
+                data->band[i] = (MDM_Band)b[i];
+            }
+            data->count = c;
         }
     }
     return WAIT;

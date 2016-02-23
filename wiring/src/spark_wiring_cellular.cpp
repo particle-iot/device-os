@@ -85,6 +85,65 @@ namespace spark {
         return true;
     }
 
+    bool CellularClass::setBandSelect(CellularBand &band_set) {
+        MDM_BandSelect band_hal;
+        for (int i=0; i<band_set.count; i++) {
+            if (band_set.isBand(band_set.band[i])) {
+                band_hal.band[i] = band_set.band[i];
+            } else {
+                return (band_set.ok = false); // mark band_set object invalid
+            }
+        }
+        band_hal.count = band_set.count;
+        // mark band_set object valid
+        band_set.ok = true;
+        if (cellular_band_select_set(band_hal, NULL) != 0) {
+            return false; // band select was not updated
+        }
+        return true;
+    }
+
+    bool CellularClass::setBandSelect(const char* bands) {
+        CellularBand band_set;
+        int c = 0;
+        int b[4];
+        if ((c = sscanf(bands, "%d,%d,%d,%d", &b[0],&b[1],&b[2],&b[3])) > 0) {
+            for (int i=0; i<c; i++) {
+                // ensure each matched band also matches an enumerated band
+                if (band_set.isBand(b[i])) {
+                    band_set.band[i] = (MDM_Band)b[i];
+                } else {
+                    return false;
+                }
+            }
+            band_set.count = c;
+            // if the first band is 0, this superceeds all other band input (factory defaults)
+            if (band_set.band[0] == 0) band_set.count = 1;
+            return setBandSelect(band_set);
+        }
+        return false; // no integers parsed from string.
+    }
+
+    bool CellularClass::getBandSelect(CellularBand &band_get) {
+        MDM_BandSelect band_hal;
+        if (cellular_band_select_get(band_hal, NULL) != 0) {
+            return (band_get.ok = false); // band_hal object was not updated
+        }
+        band_get.count = band_hal.count;
+        memcpy(band_get.band, &band_hal.band, sizeof(band_get.band));
+        return (band_get.ok = true);
+    }
+
+    bool CellularClass::getBandAvailable(CellularBand &band_get) {
+        MDM_BandSelect band_hal;
+        if (cellular_band_available_get(band_hal, NULL) != 0) {
+            return (band_get.ok = false); // band_hal object was not updated
+        }
+        band_get.count = band_hal.count;
+        memcpy(band_get.band, &band_hal.band, sizeof(band_get.band));
+        return (band_get.ok = true);
+    }
+
     CellularClass Cellular;
     NetworkClass& Network = Cellular;
 }
