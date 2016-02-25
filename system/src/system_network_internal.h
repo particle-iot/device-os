@@ -214,10 +214,6 @@ protected:
                 SystemThread.process();
             }
 #endif
-
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-            ble_provision_loop();
-#endif
         }
 
         LED_On(LED_RGB);
