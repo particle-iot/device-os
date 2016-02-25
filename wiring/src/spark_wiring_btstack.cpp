@@ -14,15 +14,6 @@ void BLEDevice::deInit(void)
     hal_btstack_deInit();
 }
 
-/**
- * @brief BLE loop
- *
- * @Note When use ble.loop in "void loop()",can't use delay in "void loop()".
- */
-void BLEDevice::loop(void)
-{
-	hal_btstack_loop_execute();
-}
 
 /**
  * @brief Set timer.

@@ -16,7 +16,6 @@ public:
 
 	void init(void);
 	void deInit(void);
-	void loop(void);
 
 	void setTimer(hal_timer_source_t *ts, uint32_t timeout_in_ms);
 	void setTimerHandler(hal_timer_source_t *ts, void (*process)(void *_ts));
