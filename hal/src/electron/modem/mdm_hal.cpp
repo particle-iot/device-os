@@ -224,6 +224,18 @@ void MDMParser::SMSreceived(int index) {
     sms_cb(sms_data, index); // call the SMS callback with the index of the new SMS
 }
 
+void MDMParser::setATresponseHandler(_CELLULAR_LOGGER_CB cb, void* data) {
+    logger_cb = cb;
+    logger_data = data;
+}
+
+void MDMParser::logATcommandResponse(const char* buf, int len) {
+    char response[MAX_SIZE + 64];
+    strncpy(response, buf, len);
+    response[len] = '\0';
+    logger_cb(logger_data, response);
+}
+
 int MDMParser::send(const char* buf, int len)
 {
 #ifdef MDM_DEBUG
@@ -301,6 +313,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                                                         "..." ;
             DEBUG_D("%10.3f AT read %s", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001, s);
             dumpAtCmd(buf, len);
+            if (logger_cb) logATcommandResponse(buf, len);
             (void)s;
         }
 #endif
