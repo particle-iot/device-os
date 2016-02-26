@@ -32,8 +32,8 @@
 #define USE_ONLY_PANIC // Define to remove all Logging and only have Panic
 #endif
 
-// define to include __FILE__ and __FUNCTION__ information within the debug output
-#define INCLUDE_SOURCE_INFO_IN_DEBUG
+// define to include __FILE__ information within the debug output
+#define INCLUDE_FILE_INFO_IN_DEBUG
 #define MAX_DEBUG_MESSAGE_LENGTH 120
 
 #define RESET_ON_CFOD                   1       // 1 Will do reset 0 will not
