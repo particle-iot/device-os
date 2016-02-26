@@ -408,4 +408,13 @@ void cellular_set_power_mode(int mode, void* reserved)
     }
 }
 
+cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved)
+{
+    if (cb) {
+        electronMDM.setATresponseHandler((MDMParser::_CELLULAR_LOGGER_CB)cb, (void*)data);
+        return 0;
+    }
+    return -1;
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)
