@@ -137,3 +137,12 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
 
     return electronMDM.waitFinalResp((MDMParser::_CALLBACKPTR)cb, (void*)param, timeout_ms);
 }
+
+cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved)
+{
+    if (cb) {
+        electronMDM.setATresponseHandler((MDMParser::_CELLULAR_LOGGER_CB)cb, (void*)data);
+        return 0;
+    }
+    return -1;
+}

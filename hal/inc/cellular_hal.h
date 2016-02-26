@@ -35,6 +35,8 @@ typedef int cellular_result_t;
 
 typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
 
+typedef void (*_CELLULAR_LOGGER_CB_MDM)(void* data, const char* buf);
+
 /**
  * Power on and initialize the cellular module,
  * if USART3 not initialized, will be done on first call.
@@ -161,6 +163,11 @@ cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
  */
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
                          system_tick_t timeout_ms, const char* format, ...);
+
+/**
+ * Set the AT command response callback handler
+ */
+cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved);
 
 #ifdef __cplusplus
 }
