@@ -290,4 +290,13 @@ cellular_result_t cellular_resume(void* reserved)
     return 0;
 }
 
+cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved)
+{
+    if (cb) {
+        electronMDM.setATresponseHandler((MDMParser::_CELLULAR_LOGGER_CB)cb, (void*)data);
+        return 0;
+    }
+    return -1;
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

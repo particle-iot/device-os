@@ -66,6 +66,7 @@ DYNALIB_FN(25, hal_cellular, HAL_USART3_Handler_Impl, void(void*))
 DYNALIB_FN(26, hal_cellular, HAL_NET_SetCallbacks, void(const HAL_NET_Callbacks*, void*))
 DYNALIB_FN(27, hal_cellular, cellular_pause, cellular_result_t(void*))
 DYNALIB_FN(28, hal_cellular, cellular_resume, cellular_result_t(void*))
+DYNALIB_FN(29, hal_cellular, cellular_at_response_handler_set, cellular_result_t(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved))
 DYNALIB_END(hal_cellular)
 
 #endif  // PLATFORM_ID == 10
