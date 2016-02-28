@@ -30,6 +30,7 @@
 #define PROGMEM
 #define PSTR(x) (x)
 #define pgm_read_byte(x)  (*(x))
+#define pgm_read_word(x)  ((uint16_t)(*(x)))
 
 
 
