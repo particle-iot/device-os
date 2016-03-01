@@ -182,8 +182,8 @@ int cellular_file_write(const char* filename, const char* buf, int len, void* re
  * Read a file from the cellular module
  *
  * @param filename: the filename of the file to be downloaded.
- *        buf: buffer into which the file is written
- *        len: lnumber of bytes that should be read. 
+ *        buf: buffer into which the file is written.
+ *        len: number of bytes that should be read.
  *        reserved: pass NULL. Allows future expansion.
  *
  * @returns number of bytes read

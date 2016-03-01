@@ -140,15 +140,27 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
 
 int cellular_file_write(const char* filename, const char* buf, int len, void* reserved) 
 {
+    if (!filename || !buf || !len) {
+        return -1;
+    }
+
     return electronMDM.writeFile(filename, buf, len);
 }
 
 int cellular_file_read(const char* filename, char* buf, int len, void* reserved) 
 {
+    if (!filename || !buf || !len) {
+        return -1;
+    }
+
     return electronMDM.readFile(filename, buf, len);
 }
 
 cellular_result_t cellular_file_delete(const char* filename, void* reserved) 
 {
+    if (!filename) {
+        return -1;
+    }
+    
     return electronMDM.delFile(filename);
 }
