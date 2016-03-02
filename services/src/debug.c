@@ -31,7 +31,7 @@ void log_print_(int level, int line, const char *func, const char *file, const c
     if (level<log_level_at_run_time || !debug_output_)
         return;
 
-    char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
+    char _buffer[LOG_FORMATTED_STRING_LENGTH];
     static char * levels[] = {
             "",
             "LOG  ",
@@ -65,7 +65,7 @@ void log_print_direct_(int level, void* reserved, const char *msg, ...)
     if (level<log_level_at_run_time || !debug_output_)
         return;
 
-    char _buffer[MAX_DEBUG_MESSAGE_LENGTH];
+    char _buffer[LOG_FORMATTED_STRING_LENGTH];
     va_list args;
     va_start(args, msg);
     int trunc = vsnprintf(_buffer, arraySize(_buffer), msg, args);
