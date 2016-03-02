@@ -27,15 +27,15 @@
 #ifndef _SOCKET_HAL_H
 #define	_SOCKET_HAL_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 #include "debug.h"
 #include <stdint.h>
 #include "system_tick_hal.h"
 #include "inet_hal.h"
 #include <stdbool.h>
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 typedef struct _sockaddr_t
 {
