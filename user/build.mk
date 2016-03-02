@@ -54,3 +54,5 @@ ifeq ("$(PLATFORM_NET)", "CC3000")
 # Stick to some POSIX-conforming API to disable BSD extensions
 CPPFLAGS += -D_POSIX_C_SOURCE=200809
 endif
+
+LOG_MODULE_CATEGORY = app
