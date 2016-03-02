@@ -5,9 +5,7 @@
 #include "catch.hpp"
 
 #include "spark_wiring_logging.h"
-
-// Global logging category
-LOG_CATEGORY("test");
+#include "service_debug.h"
 
 namespace {
 
@@ -15,7 +13,7 @@ using namespace spark;
 
 class LogMessage {
 public:
-    LogMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category, const char *file, int line, const char *func) :
+    LogMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time, const char *file, int line, const char *func) :
             msg_(msg ? msg : ""),
             cat_(category ? category : ""),
             file_(file ? file : ""),
@@ -35,13 +33,13 @@ public:
         return *this;
     }
 
-    const LogMessage& checkTime(uint32_t time) const {
-        CATCH_CHECK(time_ == time);
+    const LogMessage& checkCategory(const std::string &category) const {
+        CATCH_CHECK(cat_ == category);
         return *this;
     }
 
-    const LogMessage& checkCategory(const std::string &category) const {
-        CATCH_CHECK(cat_ == category);
+    const LogMessage& checkTime(uint32_t time) const {
+        CATCH_CHECK(time_ == time);
         return *this;
     }
 
@@ -93,6 +91,11 @@ public:
         return buf_;
     }
 
+    const TestLogger& checkBuffer(const std::string &data) const {
+        CATCH_CHECK(buf_ == data);
+        return *this;
+    }
+
     void clear() {
         msgs_ = std::queue<LogMessage>();
         buf_ = std::string();
@@ -104,16 +107,15 @@ public:
 
 protected:
     // spark::Logger
-    virtual void writeMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
+    virtual void writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
             const char *file, int line, const char *func) override {
-        const LogMessage m(msg, level, time, category, file, line, func);
+        const LogMessage m(msg, level, category, time, file, line, func);
         msgs_.push(m);
-        FormattingLogger::writeMessage(msg, level, time, category, file, line, func);
     }
 
-    virtual void writeString(const char *str, LoggerOutputLevel) override {
-        // std::cout << str;
-        buf_.append(str);
+    // spark::FormattingLogger
+    virtual void write(const char *data, size_t size) override {
+        buf_.append(data, size);
     }
 
 private:
@@ -123,112 +125,221 @@ private:
 
 } // namespace
 
+// Global logging category
+LOG_SOURCE_CATEGORY("global");
+
 CATCH_TEST_CASE("Basic logging") {
-    TestLogger log(ALL_LEVEL);
-    LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-    log.next().checkMessage("log").checkLevel(LOG_LEVEL);
-    log.next().checkMessage("debug").checkLevel(DEBUG_LEVEL);
-    log.next().checkMessage("info").checkLevel(INFO_LEVEL);
-    log.next().checkMessage("warn").checkLevel(WARN_LEVEL);
-    log.next().checkMessage("error").checkLevel(ERROR_LEVEL);
+    CATCH_SECTION("message") {
+        TestLogger log(ALL_LEVEL);
+        LOG(TRACE, "trace");
+        log.next().checkMessage("trace").checkLevel(TRACE_LEVEL);
+        LOG(INFO, "info");
+        log.next().checkMessage("info").checkLevel(INFO_LEVEL);
+        LOG(WARN, "warn");
+        log.next().checkMessage("warn").checkLevel(WARN_LEVEL);
+        LOG(ERROR, "error");
+        log.next().checkMessage("error").checkLevel(ERROR_LEVEL);
+    }
+    CATCH_SECTION("stream") {
+        TestLogger log(ALL_LEVEL);
+        LOG_DATA(TRACE, "a", 1);
+        LOG_STRING(INFO, "b");
+        LOG_FORMAT(WARN, "%s", "c");
+        log.checkBuffer("abc");
+    }
+}
+
+CATCH_TEST_CASE("Basic logging (compatibility)") {
+    CATCH_SECTION("message") {
+        TestLogger log(ALL_LEVEL);
+        DEBUG("debug");
+        log.next().checkMessage("debug").checkLevel(DEBUG_LEVEL);
+        INFO("info");
+        log.next().checkMessage("info").checkLevel(INFO_LEVEL);
+        WARN("warn");
+        log.next().checkMessage("warn").checkLevel(WARN_LEVEL);
+        ERROR("error");
+        log.next().checkMessage("error").checkLevel(ERROR_LEVEL);
+    }
+    CATCH_SECTION("stream") {
+        TestLogger log(ALL_LEVEL);
+        DEBUG_D("%s", "abc");
+        log.checkBuffer("abc");
+    }
 }
 
 CATCH_TEST_CASE("Basic filtering") {
     CATCH_SECTION("warn") {
-        TestLogger log(WARN_LEVEL);
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkLevel(WARN_LEVEL).checkMessage("warn");
-        log.next().checkLevel(ERROR_LEVEL).checkMessage("error");
-        CATCH_CHECK(!log.hasNext()); // "log", "debug" and "info" have been filtered out
+        TestLogger log(WARN_LEVEL); // TRACE and INFO should be filtered out
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("cd");
     }
     CATCH_SECTION("none") {
-        TestLogger log(NO_LOG_LEVEL);
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
+        TestLogger log(NO_LOG_LEVEL); // All levels should be filtered out
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && !LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
         CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("");
     }
+}
+
+CATCH_TEST_CASE("Scoped category") {
+    TestLogger log(ALL_LEVEL);
+    LOG(INFO, "");
+    log.next().checkCategory("global");
+    {
+        LOG_CATEGORY("local");
+        LOG(INFO, "");
+        log.next().checkCategory("local");
+    }
+    LOG(INFO, "");
+    log.next().checkCategory("global");
 }
 
 CATCH_TEST_CASE("Category filtering") {
     TestLogger log(ERROR_LEVEL, {
         { "b.b", INFO_LEVEL },
         { "a", WARN_LEVEL },
-        { "a.a.a", DEBUG_LEVEL },
+        { "a.a.a", TRACE_LEVEL },
         { "a.a", INFO_LEVEL }
     });
     CATCH_SECTION("a") {
-        LOG_CATEGORY("a");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("a").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("a").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log", "debug" and "info" have been filtered out
+        LOG_CATEGORY("a"); // TRACE and INFO should be filtered out
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("cd");
     }
     CATCH_SECTION("a.a") {
-        LOG_CATEGORY("a.a");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("a.a").checkMessage("info").checkLevel(INFO_LEVEL);
-        log.next().checkCategory("a.a").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("a.a").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log" and "debug" have been filtered out
+        LOG_CATEGORY("a.a"); // TRACE should be filtered out
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(INFO_LEVEL);
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("bcd");
     }
     CATCH_SECTION("a.a.a") {
-        LOG_CATEGORY("a.a.a");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("a.a.a").checkMessage("debug").checkLevel(DEBUG_LEVEL);
-        log.next().checkCategory("a.a.a").checkMessage("info").checkLevel(INFO_LEVEL);
-        log.next().checkCategory("a.a.a").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("a.a.a").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log" has been filtered out
+        LOG_CATEGORY("a.a.a"); // No messages should be filtered out
+        CATCH_CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(TRACE_LEVEL);
+        log.next().checkLevel(INFO_LEVEL);
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("abcd");
     }
     CATCH_SECTION("a.x") {
-        LOG_CATEGORY("a.x");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("a.x").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("a.x").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log", "debug" and "info" have been filtered out (according to filter for "a" category)
+        LOG_CATEGORY("a.x"); // TRACE and INFO should be filtered out (according to filter set for "a" category)
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("cd");
     }
     CATCH_SECTION("a.a.x") {
-        LOG_CATEGORY("a.a.x");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("a.a.x").checkMessage("info").checkLevel(INFO_LEVEL);
-        log.next().checkCategory("a.a.x").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("a.a.x").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log" and "debug" have been filtered out (according to filter for "a.a" category)
+        LOG_CATEGORY("a.a.x"); // TRACE should be filtered out (according to filter set for "a.a" category)
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(INFO_LEVEL);
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("bcd");
     }
     CATCH_SECTION("a.a.a.x") {
-        LOG_CATEGORY("a.a.a.x");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("a.a.a.x").checkMessage("debug").checkLevel(DEBUG_LEVEL);
-        log.next().checkCategory("a.a.a.x").checkMessage("info").checkLevel(INFO_LEVEL);
-        log.next().checkCategory("a.a.a.x").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("a.a.a.x").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log" has been filtered out (according to filter for "a.a.a" category)
+        LOG_CATEGORY("a.a.a.x"); // No messages should be filtered out (according to filter set for "a.a.a" category)
+        CATCH_CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(TRACE_LEVEL);
+        log.next().checkLevel(INFO_LEVEL);
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("abcd");
     }
     CATCH_SECTION("b") {
-        LOG_CATEGORY("b");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("b").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // Everything except "error" has been filtered out (default logging level)
+        LOG_CATEGORY("b"); // All levels except ERROR should be filtered out (default level)
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("d");
     }
     CATCH_SECTION("b.x") {
-        LOG_CATEGORY("b.x");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("b.x").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // Everything except "error" has been filtered out (default logging level)
+        LOG_CATEGORY("b.x"); // All levels except ERROR should be filtered out (default level)
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("d");
     }
     CATCH_SECTION("b.b") {
-        LOG_CATEGORY("b.b");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("b.b").checkMessage("info").checkLevel(INFO_LEVEL);
-        log.next().checkCategory("b.b").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("b.b").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log" and "debug" have been filtered out
+        LOG_CATEGORY("b.b"); // TRACE should be filtered out
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(INFO_LEVEL);
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("bcd");
     }
     CATCH_SECTION("b.b.x") {
-        LOG_CATEGORY("b.b.x");
-        LOG("log"); DEBUG("debug"); INFO("info"); WARN("warn"); ERROR("error");
-        log.next().checkCategory("b.b.x").checkMessage("info").checkLevel(INFO_LEVEL);
-        log.next().checkCategory("b.b.x").checkMessage("warn").checkLevel(WARN_LEVEL);
-        log.next().checkCategory("b.b.x").checkMessage("error").checkLevel(ERROR_LEVEL);
-        CATCH_CHECK(!log.hasNext()); // "log" and "debug" have been filtered out (according to filter for "b.b" category)
+        LOG_CATEGORY("b.b.x"); // TRACE should be filtered out (according to filter set for "b.b" category)
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
+        log.next().checkLevel(INFO_LEVEL);
+        log.next().checkLevel(WARN_LEVEL);
+        log.next().checkLevel(ERROR_LEVEL);
+        CATCH_CHECK(!log.hasNext());
+        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        log.checkBuffer("bcd");
+    }
+}
+
+CATCH_TEST_CASE("Malformed category name") {
+    TestLogger log(ERROR_LEVEL, {
+        { "a", WARN_LEVEL },
+        { "a.a", INFO_LEVEL }
+    });
+    CATCH_SECTION("empty") {
+        LOG_CATEGORY(""); // All levels should be filtered out (default level)
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+    }
+    CATCH_SECTION(".") {
+        LOG_CATEGORY("."); // ditto
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+    }
+    CATCH_SECTION(".a") {
+        LOG_CATEGORY(".a"); // ditto
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+    }
+    CATCH_SECTION("a.") {
+        LOG_CATEGORY("a."); // TRACE and INFO should be filtered out (according to filter set for "a" category)
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+    }
+    CATCH_SECTION("a..a") {
+        LOG_CATEGORY("a."); // ditto
+        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
 }

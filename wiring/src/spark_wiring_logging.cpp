@@ -15,6 +15,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <cstring>
+
 #include "spark_wiring_logging.h"
 
 #include <algorithm>
@@ -28,18 +33,18 @@ using spark::Logger;
 class LogHandler {
 public:
     LogHandler() {
-        log_set_handler(logMessage, logString);
+        log_set_callbacks(logMessage, logData, logEnabled, nullptr);
     }
 
     void addLogger(Logger *logger) {
-        auto it = std::find(loggers_.begin(), loggers_.end(), logger);
+        const auto it = std::find(loggers_.cbegin(), loggers_.cend(), logger);
         if (it == loggers_.end()) {
             loggers_.push_back(logger);
         }
     }
 
     void removeLogger(Logger *logger) {
-        auto it = std::find(loggers_.begin(), loggers_.end(), logger);
+        const auto it = std::find(loggers_.begin(), loggers_.end(), logger);
         if (it != loggers_.end()) {
             loggers_.erase(it);
         }
@@ -53,19 +58,31 @@ public:
 private:
     std::vector<Logger*> loggers_;
 
-    static void logMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
-            const char *file, int line, const char *func) {
+    static void logMessage(const char *msg, int level, const char *category, uint32_t time,
+            const char *file, int line, const char *func, void *reserved) {
         const auto &loggers = instance()->loggers_;
         for (size_t i = 0; i < loggers.size(); ++i) {
-            loggers[i]->logMessage(msg, level, time, category, file, line, func);
+            loggers[i]->logMessage(msg, (LoggerOutputLevel)level, category, time, file, line, func);
         }
     }
 
-    static void logString(const char *str, LoggerOutputLevel level) {
+    static void logData(const char *data, size_t size, int level, const char *category, void *reserved) {
         const auto &loggers = instance()->loggers_;
         for (size_t i = 0; i < loggers.size(); ++i) {
-            loggers[i]->logString(str, level);
+            loggers[i]->logData(data, size, (LoggerOutputLevel)level, category);
         }
+    }
+
+    static int logEnabled(int level, const char *category, void *reserved) {
+        int minLevel = NO_LOG_LEVEL;
+        const auto &loggers = instance()->loggers_;
+        for (size_t i = 0; i < loggers.size(); ++i) {
+            const int level = loggers[i]->categoryLevel(category);
+            if (level < minLevel) {
+                minLevel = level;
+            }
+        }
+        return (level >= minLevel);
     }
 };
 
@@ -110,7 +127,7 @@ spark::Logger::Logger(LoggerOutputLevel level, const std::initializer_list<Categ
     }
 }
 
-LoggerOutputLevel spark::Logger::categoryLevel(const char *category) {
+LoggerOutputLevel spark::Logger::categoryLevel(const char *category) const {
     if (!category || filters_.empty()) {
         return level_; // Default level
     }
@@ -159,70 +176,41 @@ void spark::Logger::uninstall(Logger *logger) {
 }
 
 // spark::FormattingLogger
-void spark::FormattingLogger::writeMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
+void spark::FormattingLogger::writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
         const char *file, int line, const char *func) {
-    const size_t size = 80;
-    char buf[size];
-    size_t pos = 0;
-    do {
-        // Timestamp
-        pos += snprintf(buf + pos, size - pos, "%010u", (unsigned)time);
-        if (pos >= size) {
-            break;
-        }
-        // Category (optional)
-        if (category) {
-            pos += snprintf(buf + pos, size - pos, ": %s", category);
-            if (pos >= size) {
-                break;
-            }
-        }
-        // File, line number (optional)
-        if (file) {
-            pos += snprintf(buf + pos, size - pos, ": %s:%d", file, line);
-            if (pos >= size) {
-                break;
-            }
-        }
-        // Function name (optional)
-        if (func) {
-            pos += snprintf(buf + pos, size - pos, ": %s", func);
-            if (pos >= size) {
-                break;
-            }
-        }
-        // Level
-        pos += snprintf(buf + pos, size - pos, ": %s", levelName(level));
-        if (pos >= size) {
-            break;
-        }
-    } while (false);
-    if (pos >= size) {
-        buf[size - 2] = '~';
+    // Timestamp
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%010u ", (unsigned)time);
+    write(buf);
+    // Category (optional)
+    if (category && category[0]) {
+        write(category);
+        write(": ");
     }
-    writeString(buf, level);
-    writeString(": ", level);
-    writeString(msg, level);
-    writeString("\r\n", level);
-}
-
-const char* spark::FormattingLogger::levelName(LoggerOutputLevel level) {
-    switch (level) {
-    case TRACE_LEVEL:
-        return "TRACE";
-    case LOG_LEVEL:
-        return "LOG";
-    case DEBUG_LEVEL:
-        return "DEBUG";
-    case INFO_LEVEL:
-        return "INFO";
-    case WARN_LEVEL:
-        return "WARN";
-    case ERROR_LEVEL:
-        return "ERROR";
-    case PANIC_LEVEL:
-        return "PANIC";
-    default:
-        return "";
+    // Source info (optional)
+    if (file && func) {
+        write(file);
+        write(":");
+        snprintf(buf, sizeof(buf), "%d", line);
+        write(buf);
+        write(", ");
+        // Strip argument and return types for better readability
+        int n = 0;
+        const char *p = strchrnul(func, ' ');
+        if (*p) {
+            p += 1;
+            n = strchrnul(p, '(') - p;
+        } else {
+            n = p - func;
+            p = func;
+        }
+        write(p, n);
+        write("(): ");
     }
+    // Level
+    write(levelName(level));
+    write(": ");
+    // Message
+    write(msg);
+    write("\r\n");
 }

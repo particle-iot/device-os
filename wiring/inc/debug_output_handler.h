@@ -37,11 +37,13 @@ public:
     }
 
 private:
-    virtual void writeString(const char* msg, LoggerOutputLevel) override
+    virtual void write(const char* data, size_t size) override
     {
-        Serial.print(msg);
+        Serial.write((const uint8_t*)data, size);
     }
 };
+
+typedef SerialDebugOutput SerialLogger;
 
 class Serial1DebugOutput: public spark::FormattingLogger
 {
@@ -54,12 +56,13 @@ public:
     }
 
 private:
-    virtual void writeString(const char* msg, LoggerOutputLevel) override
+    virtual void write(const char* data, size_t size) override
     {
-        Serial1.print(msg);
+        Serial1.write((const uint8_t*)data, size);
     }
 };
 
+typedef Serial1DebugOutput Serial1Logger;
+
 
 #endif	/* DEBUG_OUTPUT_HANDLER_H */
-

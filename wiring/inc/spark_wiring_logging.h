@@ -20,8 +20,9 @@
 
 #include <initializer_list>
 #include <vector>
+#include <cstring>
 
-#include "service_debug.h"
+#include "logging.h"
 
 namespace spark {
 
@@ -33,17 +34,20 @@ public:
     explicit Logger(LoggerOutputLevel level = WARN_LEVEL, const CategoryFilters &filters = {});
     virtual ~Logger() = default;
 
-    void logMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
+    void logMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
             const char *file, int line, const char *func);
-    void logString(const char *str, LoggerOutputLevel level);
+    void logData(const char *data, size_t size, LoggerOutputLevel level, const char *category);
+
+    LoggerOutputLevel defaultLevel() const;
+    LoggerOutputLevel categoryLevel(const char *category) const;
 
     static void install(Logger *logger);
     static void uninstall(Logger *logger);
 
 protected:
-    virtual void writeMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
+    virtual void writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
             const char *file, int line, const char *func) = 0;
-    virtual void writeString(const char *str, LoggerOutputLevel level) = 0;
+    virtual void writeData(const char *data, size_t size, LoggerOutputLevel level, const char *category) = 0;
 
 private:
     struct Filter {
@@ -61,8 +65,6 @@ private:
 
     std::vector<Filter> filters_;
     LoggerOutputLevel level_;
-
-    LoggerOutputLevel categoryLevel(const char *category);
 };
 
 class FormattingLogger: public Logger {
@@ -72,25 +74,47 @@ public:
     static const char* levelName(LoggerOutputLevel level);
 
 protected:
+    virtual void write(const char *data, size_t size) = 0;
+
     // spark::Logger
-    virtual void writeMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
+    virtual void writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
             const char *file, int line, const char *func) override;
+    virtual void writeData(const char *data, size_t size, LoggerOutputLevel level, const char *category) override;
+
+    void write(const char *str);
 };
 
 } // namespace spark
 
 // spark::Logger
-inline void spark::Logger::logMessage(const char *msg, LoggerOutputLevel level, uint32_t time, const char *category,
-            const char *file, int line, const char *func) {
+inline void spark::Logger::logMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
+        const char *file, int line, const char *func) {
     if (level >= categoryLevel(category)) {
-        writeMessage(msg, level, time, category, file, line, func);
+        writeMessage(msg, level, category, time, file, line, func);
     }
 }
 
-inline void spark::Logger::logString(const char *str, LoggerOutputLevel level) {
-    if (level >= level_) {
-        writeString(str, level);
+inline void spark::Logger::logData(const char *data, size_t size, LoggerOutputLevel level, const char *category) {
+    if (level >= categoryLevel(category)) {
+        writeData(data, size, level, category);
     }
+}
+
+inline LoggerOutputLevel spark::Logger::defaultLevel() const {
+    return level_;
+}
+
+// spark::FormattingLogger
+inline const char* spark::FormattingLogger::levelName(LoggerOutputLevel level) {
+    return log_level_name(level, nullptr);
+}
+
+inline void spark::FormattingLogger::writeData(const char *data, size_t size, LoggerOutputLevel, const char*) {
+    write(data, size);
+}
+
+inline void spark::FormattingLogger::write(const char *str) {
+    write(str, strlen(str));
 }
 
 #endif // SPARK_WIRING_LOGGING_H

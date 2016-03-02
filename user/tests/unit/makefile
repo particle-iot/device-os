@@ -52,9 +52,10 @@ CPPSRC += $(call target_files,$(HAL)src/gcc,timer_hal.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
-# for now, just RGB led
+
 CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,debug.c)
+CPPSRC += $(call target_files,$(LIB_SERVICES)src,logging.cpp)
 
 
 # Additional include directories, applied to objects built for this target.
