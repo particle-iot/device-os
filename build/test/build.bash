@@ -1,14 +1,21 @@
 load assert
 
+make_args=
+
 function setup()
 {
     # get in the project root
     pushd ../..
 }
 
+function teardown()
+{
+   popd
+}
+
 function force_clean() {
-   # rm -rf build/target
-    true
+   rm -rf build/target
+   true
 }
 
 function trim() {
