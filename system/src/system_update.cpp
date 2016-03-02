@@ -378,7 +378,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         {
 #if (PLATFORM_ID==88) 
             const module_bounds_t* bounds = NULL;
-            for(uint8_t i=0; i<3; i++)
+            for(uint8_t i=0; i<7; i++)
             {
                 if(file.file_address == module_ota_bounds[i]->start_address)
                     bounds = module_ota_bounds[i];
