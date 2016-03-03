@@ -69,7 +69,9 @@ DYNALIB_FN(hal_btstack,hal_btstack_setConnectedCallback)
 DYNALIB_FN(hal_btstack,hal_btstack_setDisconnectedCallback)
 
 DYNALIB_FN(hal_btstack,hal_btstack_disconnect)
+DYNALIB_FN(hal_btstack,hal_btstack_connect)
 
+DYNALIB_FN(hal_btstack,hal_btstack_setConnParamsRange)
 
 DYNALIB_FN(hal_btstack,hal_btstack_attServerCanSend)
 DYNALIB_FN(hal_btstack,hal_btstack_attServerSendNotify)
@@ -89,6 +91,7 @@ DYNALIB_FN(hal_btstack,hal_btstack_addCharsDynamicUUID128bits)
 DYNALIB_FN(hal_btstack,hal_btstack_startScanning)
 DYNALIB_FN(hal_btstack,hal_btstack_stopScanning)
 
+DYNALIB_FN(hal_btstack,hal_btstack_setScanParams)
 DYNALIB_FN(hal_btstack,hal_btstack_setBLEAdvertisementCallback)
 
 
