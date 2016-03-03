@@ -42,7 +42,7 @@ public:
     void startAdvertising(void);
     void stopAdvertising(void);
 
-    void disconect(uint16_t conn_handle);
+    void disconnect(uint16_t conn_handle);
     uint8_t connect(bd_addr_t addr, bd_addr_type_t type);
 
     void addService(uint16_t uuid);

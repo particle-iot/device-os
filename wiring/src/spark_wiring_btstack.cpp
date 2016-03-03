@@ -135,7 +135,7 @@ void BLEDevice::stopAdvertising(void)
 }
 
 
-void BLEDevice::disconect(uint16_t conn_handle)
+void BLEDevice::disconnect(uint16_t conn_handle)
 {
     hal_btstack_disconnect(conn_handle);
 }
