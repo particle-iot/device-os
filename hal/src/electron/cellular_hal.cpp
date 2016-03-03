@@ -1,5 +1,6 @@
 
 #include "cellular_hal.h"
+#include "cellular_internal.h"
 #include "modem/mdm_hal.h"
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }

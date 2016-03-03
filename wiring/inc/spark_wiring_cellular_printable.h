@@ -20,10 +20,15 @@
 #ifndef __SPARK_WIRING_CELLULAR_PRINTABLE_H
 #define __SPARK_WIRING_CELLULAR_PRINTABLE_H
 
-#include <string.h>
+#include "spark_wiring_platform.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_string.h"
+#include <string.h>
+
+#if Wiring_Cellular
+
 #include "cellular_hal.h"
+#include "modem/enums_hal.h"
 
 /*
  * CellularSignal
@@ -123,4 +128,6 @@ bool operator==(const CellularBand& lhs,const T& rhs) {
     return false;
 }
 
-#endif
+#endif // Wiring_Cellular
+
+#endif // __SPARK_WIRING_CELLULAR_PRINTABLE_H

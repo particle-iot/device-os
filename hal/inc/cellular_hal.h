@@ -26,9 +26,6 @@
 #include "net_hal.h"
 #include "inet_hal.h"
 #include "system_tick_hal.h"
-#if PLATFORM_ID == 10 // electron
-#include "modem/enums_hal.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -189,18 +186,6 @@ struct CellularDataHal {
 typedef struct CellularDataHal CellularDataHal;
 #endif
 
-#if PLATFORM_ID == 10 // electron
-/**
- * Function for processing Set cellular data usage info, broken out for unit tests
- */
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
-
-/**
- * Function for processing Get cellular data usage info, broken out for unit tests
- */
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
-#endif
-
 /**
  * Set cellular data usage info
  */
@@ -210,23 +195,6 @@ cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved)
  * Get cellular data usage info
  */
 cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved);
-
-#if PLATFORM_ID == 10 // electron
-/**
- * Set cellular band select
- */
-cellular_result_t cellular_band_select_set(MDM_BandSelect &bands, void* reserved);
-
-/**
- * Get cellular band select
- */
-cellular_result_t cellular_band_select_get(MDM_BandSelect &bands, void* reserved);
-
-/**
- * Get cellular band available
- */
-cellular_result_t cellular_band_available_get(MDM_BandSelect &bands, void* reserved);
-#endif
 
 #ifdef __cplusplus
 }

@@ -21,6 +21,8 @@
 
 #if Wiring_Cellular
 
+#include "cellular_internal.h"
+
 namespace spark {
 
     CellularSignal CellularClass::RSSI() {

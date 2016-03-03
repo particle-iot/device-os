@@ -23,10 +23,11 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
 #include "system_network.h"
-#include "cellular_hal.h"
-#include "spark_wiring_cellular_printable.h"
 
 #if Wiring_Cellular
+
+#include "cellular_hal.h"
+#include "spark_wiring_cellular_printable.h"
 
 namespace spark {
 

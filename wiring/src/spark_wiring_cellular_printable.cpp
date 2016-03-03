@@ -21,6 +21,8 @@
 #include "spark_wiring_print.h"
 #include "string.h"
 
+#if Wiring_Cellular
+
 size_t CellularSignal::printTo(Print& p) const
 {
     size_t n = 0;
@@ -54,3 +56,5 @@ size_t CellularBand::printTo(Print& p) const
     }
     return n;
 }
+
+#endif // Wiring_Cellular
