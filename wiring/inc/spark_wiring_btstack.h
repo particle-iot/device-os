@@ -14,6 +14,7 @@ public:
         //do nothing.
     }
 
+    // Device API.
     void init(void);
     void deInit(void);
 
@@ -27,8 +28,7 @@ public:
     void debugError(bool flag);
     void enablePacketLogger(void);
 
-
-    void getAdvertisementAddr(uint8_t *addr_type, bd_addr_t addr);
+    // Gap API.
     void setRandomAddrMode(gap_random_address_type_t random_addr_type);
     void setRandomAddr(bd_addr_t addr);
     void setPublicBDAddr(bd_addr_t addr);
@@ -45,6 +45,15 @@ public:
     void disconnect(uint16_t conn_handle);
     uint8_t connect(bd_addr_t addr, bd_addr_type_t type);
 
+    void setConnParams(le_connection_parameter_range_t range);
+
+    void startScanning(void);
+    void stopScanning(void);
+
+    void setScanParams(uint8_t scan_type, uint16_t scan_interval, uint16_t scan_window);
+    void onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report));
+
+    // Gatt server API.
     void addService(uint16_t uuid);
     void addService(uint8_t *uuid);
 
@@ -60,10 +69,7 @@ public:
     int sendNotify(uint16_t value_handle, uint8_t *value, uint16_t length);
     int sendIndicate(uint16_t value_handle, uint8_t *value, uint16_t length);
 
-    void startScanning(void);
-    void stopScanning(void);
-
-    void onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report));
+    // Gatt client API.
 
 };
 

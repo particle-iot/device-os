@@ -55,7 +55,6 @@ DYNALIB_FN(hal_btstack,hal_btstack_debugLogger)
 DYNALIB_FN(hal_btstack,hal_btstack_debugError)
 DYNALIB_FN(hal_btstack,hal_btstack_enablePacketLogger)
 
-DYNALIB_FN(hal_btstack,hal_btstack_getAdvertisementAddr)
 DYNALIB_FN(hal_btstack,hal_btstack_setRandomAddressMode)
 DYNALIB_FN(hal_btstack,hal_btstack_setRandomAddr)
 DYNALIB_FN(hal_btstack,hal_btstack_setPublicBdAddr)
@@ -70,8 +69,13 @@ DYNALIB_FN(hal_btstack,hal_btstack_setDisconnectedCallback)
 
 DYNALIB_FN(hal_btstack,hal_btstack_disconnect)
 DYNALIB_FN(hal_btstack,hal_btstack_connect)
-
 DYNALIB_FN(hal_btstack,hal_btstack_setConnParamsRange)
+
+DYNALIB_FN(hal_btstack,hal_btstack_startScanning)
+DYNALIB_FN(hal_btstack,hal_btstack_stopScanning)
+
+DYNALIB_FN(hal_btstack,hal_btstack_setScanParams)
+DYNALIB_FN(hal_btstack,hal_btstack_setBLEAdvertisementCallback)
 
 DYNALIB_FN(hal_btstack,hal_btstack_attServerCanSend)
 DYNALIB_FN(hal_btstack,hal_btstack_attServerSendNotify)
@@ -86,13 +90,6 @@ DYNALIB_FN(hal_btstack,hal_btstack_addCharsUUID16bits)
 DYNALIB_FN(hal_btstack,hal_btstack_addCharsUUID128bits)
 DYNALIB_FN(hal_btstack,hal_btstack_addCharsDynamicUUID16bits)
 DYNALIB_FN(hal_btstack,hal_btstack_addCharsDynamicUUID128bits)
-
-
-DYNALIB_FN(hal_btstack,hal_btstack_startScanning)
-DYNALIB_FN(hal_btstack,hal_btstack_stopScanning)
-
-DYNALIB_FN(hal_btstack,hal_btstack_setScanParams)
-DYNALIB_FN(hal_btstack,hal_btstack_setBLEAdvertisementCallback)
 
 
 DYNALIB_END(hal_btstack)
