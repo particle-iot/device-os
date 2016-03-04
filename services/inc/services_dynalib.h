@@ -51,11 +51,12 @@ DYNALIB_FN(18, services, log_print_direct_, void(int, void*, const char*, ...))
 DYNALIB_FN(19, services, LED_GetColor, uint32_t(uint32_t, void*))
 
 DYNALIB_FN(20, services, log_message, void(int, const char*, const char*, int, const char*, void*, const char*, ...))
-DYNALIB_FN(21, services, log_data, void(int, const char*, const char*, size_t, void*))
+DYNALIB_FN(21, services, log_write, void(int, const char*, const char*, size_t, void*))
 DYNALIB_FN(22, services, log_format, void(int, const char*, void*, const char*, ...))
-DYNALIB_FN(23, services, log_enabled, int(int, const char*, void*))
-DYNALIB_FN(24, services, log_level_name, const char*(int, void*))
-DYNALIB_FN(25, services, log_set_callbacks, void(log_message_callback_type, log_data_callback_type, log_enabled_callback_type, void*))
+DYNALIB_FN(23, services, log_dump, void(int, const char*, const void*, size_t, void*))
+DYNALIB_FN(24, services, log_enabled, int(int, const char*, void*))
+DYNALIB_FN(25, services, log_level_name, const char*(int, void*))
+DYNALIB_FN(26, services, log_set_callbacks, void(log_message_callback_type, log_data_callback_type, log_enabled_callback_type, void*))
 
 DYNALIB_END(services)
 

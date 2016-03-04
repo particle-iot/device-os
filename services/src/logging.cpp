@@ -27,15 +27,15 @@
 namespace {
 
 log_message_callback_type log_msg_callback = 0;
-log_data_callback_type log_data_callback = 0;
+log_write_callback_type log_write_callback = 0;
 log_enabled_callback_type log_enabled_callback = 0;
 
 } // namespace
 
-void log_set_callbacks(log_message_callback_type log_msg, log_data_callback_type log_data,
+void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_type log_write,
         log_enabled_callback_type log_enabled, void *reserved) {
     log_msg_callback = log_msg;
-    log_data_callback = log_data;
+    log_write_callback = log_write;
     log_enabled_callback = log_enabled;
 }
 
@@ -93,15 +93,15 @@ void log_message(int level, const char *category, const char *file, int line, co
     }
 }
 
-void log_data(int level, const char *category, const char *data, size_t size, void *reserved) {
-    if (!log_data_callback) {
+void log_write(int level, const char *category, const char *data, size_t size, void *reserved) {
+    if (!log_write_callback || !size) {
         return;
     }
-    log_data_callback(data, size, level, category, 0);
+    log_write_callback(data, size, level, category, 0);
 }
 
 void log_format(int level, const char *category, void *reserved, const char *fmt, ...) {
-    if (!log_data_callback) {
+    if (!log_write_callback) {
         return;
     }
     char buf[LOG_FORMATTED_STRING_LENGTH];
@@ -113,7 +113,28 @@ void log_format(int level, const char *category, void *reserved, const char *fmt
         buf[sizeof(buf) - 2] = '~';
         n = sizeof(buf) - 1;
     }
-    log_data_callback(buf, n, level, category, 0);
+    log_write_callback(buf, n, level, category, 0);
+}
+
+void log_dump(int level, const char *category, const void *data, size_t size, void *reserved) {
+    if (!log_write_callback || !size) {
+        return;
+    }
+    static const char hex[] = "0123456789abcdef";
+    char buf[32 * 2]; // Hex data is flushed in chunks
+    size_t offs = 0;
+    for (size_t i = 0; i < size; ++i) {
+        const uint8_t b = ((const uint8_t*)data)[i];
+        buf[offs++] = hex[b >> 4];
+        buf[offs++] = hex[b & 0x0f];
+        if (offs == sizeof(buf)) {
+            log_write_callback(buf, sizeof(buf), level, category, 0);
+            offs = 0;
+        }
+    }
+    if (offs) {
+        log_write_callback(buf, offs, level, category, 0);
+    }
 }
 
 int log_enabled(int level, const char *category, void *reserved) {

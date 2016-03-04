@@ -142,10 +142,18 @@ CATCH_TEST_CASE("Basic logging") {
     }
     CATCH_SECTION("stream") {
         TestLogger log(ALL_LEVEL);
-        LOG_DATA(TRACE, "a", 1);
-        LOG_STRING(INFO, "b");
+        LOG_WRITE(TRACE, "a", 1);
+        LOG_PRINT(INFO, "b");
         LOG_FORMAT(WARN, "%s", "c");
         log.checkBuffer("abc");
+    }
+    CATCH_SECTION("dump") {
+        TestLogger log(ALL_LEVEL);
+        const uint8_t data[] = {
+            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff
+        };
+        LOG_DUMP(INFO, &data, sizeof(data));
+        log.checkBuffer("00112233445566778899aabbccddeeff");
     }
 }
 
@@ -176,7 +184,7 @@ CATCH_TEST_CASE("Basic filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("cd");
     }
     CATCH_SECTION("none") {
@@ -184,7 +192,7 @@ CATCH_TEST_CASE("Basic filtering") {
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && !LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("");
     }
 }
@@ -216,7 +224,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("cd");
     }
     CATCH_SECTION("a.a") {
@@ -227,7 +235,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("bcd");
     }
     CATCH_SECTION("a.a.a") {
@@ -239,7 +247,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("abcd");
     }
     CATCH_SECTION("a.x") {
@@ -249,7 +257,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("cd");
     }
     CATCH_SECTION("a.a.x") {
@@ -260,7 +268,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("bcd");
     }
     CATCH_SECTION("a.a.a.x") {
@@ -272,7 +280,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("abcd");
     }
     CATCH_SECTION("b") {
@@ -281,7 +289,7 @@ CATCH_TEST_CASE("Category filtering") {
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("d");
     }
     CATCH_SECTION("b.x") {
@@ -290,7 +298,7 @@ CATCH_TEST_CASE("Category filtering") {
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("d");
     }
     CATCH_SECTION("b.b") {
@@ -301,7 +309,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("bcd");
     }
     CATCH_SECTION("b.b.x") {
@@ -312,7 +320,7 @@ CATCH_TEST_CASE("Category filtering") {
         log.next().checkLevel(WARN_LEVEL);
         log.next().checkLevel(ERROR_LEVEL);
         CATCH_CHECK(!log.hasNext());
-        LOG_STRING(TRACE, "a"); LOG_STRING(INFO, "b"); LOG_STRING(WARN, "c"); LOG_STRING(ERROR, "d");
+        LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.checkBuffer("bcd");
     }
 }
@@ -323,7 +331,7 @@ CATCH_TEST_CASE("Malformed category name") {
         { "a.a", INFO_LEVEL }
     });
     CATCH_SECTION("empty") {
-        LOG_CATEGORY(""); // All levels should be filtered out (default level)
+        LOG_CATEGORY(""); // All levels except ERROR should be filtered out (default level)
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
     CATCH_SECTION(".") {

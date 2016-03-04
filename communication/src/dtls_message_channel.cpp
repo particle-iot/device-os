@@ -437,9 +437,9 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 				  char buf[3];
 				  char c = message.buf()[i];
 				  sprintf(buf, "%02x", c);
-				  LOG_STRING(DEBUG, buf);
+				  LOG_PRINT(DEBUG, buf);
 		  }
-		  LOG_STRING(DEBUG, "\n");
+		  LOG_PRINT(DEBUG, "\n");
 		}
 #endif
 	}
@@ -465,9 +465,9 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 	  	  char buf[3];
 	  	  char c = message.buf()[i];
 	  	  sprintf(buf, "%02x", c);
-	  	  LOG_STRING(DEBUG, buf);
+	  	  LOG_PRINT(DEBUG, buf);
       }
-      LOG_STRING(DEBUG, "\n");
+      LOG_PRINT(DEBUG, "\n");
 #endif
 
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());

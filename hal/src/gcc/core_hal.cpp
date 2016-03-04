@@ -50,7 +50,7 @@ void setLoggerLevel(LoggerOutputLevel level)
     log_level = level;
 }
 
-void log_message_cb(const char *msg, int level, const char *category, uint32_t time, const char *file, int line,
+void log_message_callback(const char *msg, int level, const char *category, uint32_t time, const char *file, int line,
         const char *func, void *reserved)
 {
     if (level < log_level) {
@@ -81,7 +81,7 @@ void log_message_cb(const char *msg, int level, const char *category, uint32_t t
     std::cout << strm.str() << std::endl;
 }
 
-void log_data_cb(const char *data, size_t size, int level, const char *category, void *reserved)
+void log_write_callback(const char *data, size_t size, int level, const char *category, void *reserved)
 {
     if (level < log_level) {
         return;
@@ -89,7 +89,7 @@ void log_data_cb(const char *data, size_t size, int level, const char *category,
     std::cout.write(data, size);
 }
 
-int log_enabled_cb(int level, const char *category, void *reserved)
+int log_enabled_callback(int level, const char *category, void *reserved)
 {
     return (level >= log_level);
 }
@@ -106,7 +106,7 @@ void core_log(const char* msg, ...)
 
 extern "C" int main(int argc, char* argv[])
 {
-    log_set_callbacks(log_message_cb, log_data_cb, log_enabled_cb, nullptr);
+    log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
     if (read_device_config(argc, argv)) {
         app_setup_and_loop();
     }

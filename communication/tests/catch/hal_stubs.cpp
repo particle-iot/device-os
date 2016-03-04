@@ -35,6 +35,6 @@ extern "C" void log_message(int level, const char *category, const char *file, i
 {
 }
 
-extern "C" void log_data(int level, const char *category, const char *data, size_t size, void *reserved)
+extern "C" void log_write(int level, const char *category, const char *data, size_t size, void *reserved)
 {
 }

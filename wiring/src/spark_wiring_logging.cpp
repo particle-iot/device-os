@@ -33,7 +33,7 @@ using spark::Logger;
 class LogHandler {
 public:
     LogHandler() {
-        log_set_callbacks(logMessage, logData, logEnabled, nullptr);
+        log_set_callbacks(logMessage, logWrite, logEnabled, nullptr);
     }
 
     void addLogger(Logger *logger) {
@@ -66,7 +66,7 @@ private:
         }
     }
 
-    static void logData(const char *data, size_t size, int level, const char *category, void *reserved) {
+    static void logWrite(const char *data, size_t size, int level, const char *category, void *reserved) {
         const auto &loggers = instance()->loggers_;
         for (size_t i = 0; i < loggers.size(); ++i) {
             loggers[i]->logData(data, size, (LoggerOutputLevel)level, category);
