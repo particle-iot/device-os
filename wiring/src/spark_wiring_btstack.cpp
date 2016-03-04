@@ -238,7 +238,65 @@ int BLEDevice::sendIndicate(uint16_t value_handle, uint8_t *value, uint16_t leng
  * Gatt client API
  *
 ***************************************************************/
+void BLEDevice::onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_service_t *service))
+{
+	hal_btstack_setGattServiceDiscoveredCallback(cb);
+}
 
+void BLEDevice::onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_t *characteristic))
+{
+	hal_btstack_setGattCharsDiscoveredCallback(cb);
+}
+
+void BLEDevice::onCharsDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_descriptor_t *characteristic))
+{
+	hal_btstack_setGattCharsDescriptorsDiscoveredCallback(cb);
+}
+
+uint8_t BLEDevice::discoverPrimaryServices(uint16_t con_handle)
+{
+	return hal_btstack_discoverPrimaryServices(con_handle);
+}
+
+uint8_t BLEDevice::discoverPrimaryServicesByUUID16(uint16_t con_handle, uint16_t uuid16)
+{
+	return hal_btstack_discoverPrimaryServicesByUUID16(con_handle, uuid16);
+}
+
+uint8_t BLEDevice::discoverPrimaryServicesByUUID128(uint16_t con_handle, const uint8_t *uuid)
+{
+	return hal_btstack_discoverPrimaryServicesByUUID128(con_handle, uuid);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForService(uint16_t con_handle, gatt_client_service_t  *service)
+{
+	return hal_btstack_discoverCharsForService(con_handle, service);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForHandleRangeByUUID16(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint16_t uuid16)
+{
+	return hal_btstack_discoverCharsForHandleRangeByUUID16(con_handle, start_handle, end_handle, uuid16);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForHandleRangeByUUID128(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t *uuid)
+{
+	return hal_btstack_discoverCharsForHandleRangeByUUID128(con_handle, start_handle, end_handle, uuid);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForServiceByUUID16(uint16_t con_handle, gatt_client_service_t *service, uint16_t uuid16)
+{
+	return hal_btstack_discoverCharsForServiceByUUID16(con_handle, service, uuid16);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForServiceByUUID128(uint16_t con_handle, gatt_client_service_t *service, uint8_t *uuid128)
+{
+	return hal_btstack_discoverCharsForServiceByUUID128(con_handle, service, uuid128);
+}
+
+uint8_t BLEDevice::discoverCharacteristicDescriptors(uint16_t con_handle, gatt_client_characteristic_t *characteristic)
+{
+	return hal_btstack_discoverCharsDescriptors(con_handle, characteristic);
+}
 
 BLEDevice ble;
 

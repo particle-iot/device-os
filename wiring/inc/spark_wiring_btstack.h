@@ -70,7 +70,21 @@ public:
     int sendIndicate(uint16_t value_handle, uint8_t *value, uint16_t length);
 
     // Gatt client API.
+    void onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_service_t *service));
+    void onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_t *characteristic));
+    void onCharsDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_descriptor_t *characteristic));
 
+    uint8_t discoverPrimaryServices(uint16_t con_handle);
+    uint8_t discoverPrimaryServicesByUUID16(uint16_t con_handle, uint16_t uuid16);
+    uint8_t discoverPrimaryServicesByUUID128(uint16_t con_handle, const uint8_t *uuid);
+
+    uint8_t discoverCharacteristicsForService(uint16_t con_handle, gatt_client_service_t  *service);
+    uint8_t discoverCharacteristicsForHandleRangeByUUID16(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint16_t uuid16);
+    uint8_t discoverCharacteristicsForHandleRangeByUUID128(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t *uuid);
+    uint8_t discoverCharacteristicsForServiceByUUID16(uint16_t con_handle, gatt_client_service_t *service, uint16_t uuid16);
+    uint8_t discoverCharacteristicsForServiceByUUID128(uint16_t con_handle, gatt_client_service_t *service, uint8_t *uuid128);
+
+    uint8_t discoverCharacteristicDescriptors(uint16_t con_handle, gatt_client_characteristic_t *characteristic);
 };
 
 
