@@ -23,46 +23,49 @@
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_logging.h"
-#include "service_debug.h"
-#include "delay_hal.h"
 
-class SerialDebugOutput: public spark::FormattingLogger
-{
+namespace spark {
+
+class SerialLogger: public Logger {
 public:
-    explicit SerialDebugOutput(int baud = 9600, LoggerOutputLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
-            FormattingLogger(level, filters)
-    {
+    explicit SerialLogger(int baud = 9600, LogLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
+            Logger(level, filters) {
         Serial.begin(baud);
         Logger::install(this);
     }
 
-private:
-    virtual void write(const char* data, size_t size) override
-    {
+    virtual ~SerialLogger() {
+        Logger::uninstall(this);
+    }
+
+protected:
+    virtual void write(const char* data, size_t size) override { // spark::Logger
         Serial.write((const uint8_t*)data, size);
     }
 };
 
-typedef SerialDebugOutput SerialLogger;
-
-class Serial1DebugOutput: public spark::FormattingLogger
-{
+class Serial1Logger: public Logger {
 public:
-    explicit Serial1DebugOutput(int baud = 9600, LoggerOutputLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
-            FormattingLogger(level, filters)
-    {
+    explicit Serial1Logger(int baud = 9600, LogLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
+            Logger(level, filters) {
         Serial1.begin(baud);
         Logger::install(this);
     }
 
-private:
-    virtual void write(const char* data, size_t size) override
-    {
+    virtual ~Serial1Logger() {
+        Logger::uninstall(this);
+    }
+
+protected:
+    virtual void write(const char* data, size_t size) override { // spark::Logger
         Serial1.write((const uint8_t*)data, size);
     }
 };
 
-typedef Serial1DebugOutput Serial1Logger;
+} // namespace spark
 
+// Compatibility typedefs
+typedef spark::SerialLogger SerialDebugOutput;
+typedef spark::Serial1Logger Serial1DebugOutput;
 
 #endif	/* DEBUG_OUTPUT_HANDLER_H */

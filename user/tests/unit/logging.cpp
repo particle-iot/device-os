@@ -13,7 +13,7 @@ using namespace spark;
 
 class LogMessage {
 public:
-    LogMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time, const char *file, int line, const char *func) :
+    LogMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const char *file, int line, const char *func) :
             msg_(msg ? msg : ""),
             cat_(category ? category : ""),
             file_(file ? file : ""),
@@ -28,7 +28,7 @@ public:
         return *this;
     }
 
-    const LogMessage& checkLevel(LoggerOutputLevel level) const {
+    const LogMessage& checkLevel(LogLevel level) const {
         CATCH_CHECK(level_ == level);
         return *this;
     }
@@ -60,15 +60,15 @@ public:
 
 private:
     std::string msg_, cat_, file_, func_;
-    LoggerOutputLevel level_;
+    LogLevel level_;
     uint32_t time_;
     int line_;
 };
 
-class TestLogger: public FormattingLogger {
+class TestLogger: public Logger {
 public:
-    explicit TestLogger(LoggerOutputLevel level = ALL_LEVEL, const CategoryFilters &filters = {}):
-            FormattingLogger(level, filters) {
+    explicit TestLogger(LogLevel level = ALL_LEVEL, const CategoryFilters &filters = {}):
+            Logger(level, filters) {
         Logger::install(this);
     }
 
@@ -107,13 +107,12 @@ public:
 
 protected:
     // spark::Logger
-    virtual void writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
+    virtual void formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
             const char *file, int line, const char *func) override {
         const LogMessage m(msg, level, category, time, file, line, func);
         msgs_.push(m);
     }
 
-    // spark::FormattingLogger
     virtual void write(const char *data, size_t size) override {
         buf_.append(data, size);
     }

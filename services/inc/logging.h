@@ -115,10 +115,9 @@
 extern "C" {
 #endif
 
-// Log level
-typedef enum LoggerOutputLevel {
+typedef enum LogLevel {
     DEFAULT_LEVEL = 0,
-    ALL_LEVEL = 1,
+    ALL_LEVEL = 1, // Set to log all messages
     TRACE_LEVEL = 1,
     LOG_LEVEL = 10,
     DEBUG_LEVEL = 20,
@@ -127,7 +126,7 @@ typedef enum LoggerOutputLevel {
     ERROR_LEVEL = 50,
     PANIC_LEVEL = 60,
     NO_LOG_LEVEL = 70 // Set to not log any messages
-} LoggerOutputLevel;
+} LogLevel;
 
 // Logger callbacks
 typedef void (*log_message_callback_type)(const char *msg, int level, const char *category, uint32_t time,
@@ -303,6 +302,7 @@ static const char* const _log_category = NULL;
 
 #define LOG_CATEGORY(_name)
 #define LOG_SOURCE_CATEGORY(_name)
+
 #define LOG(_level, _fmt, ...)
 #define LOG_C(_level, _category, _fmt, ...)
 #define LOG_WRITE(_level, _data, _size)

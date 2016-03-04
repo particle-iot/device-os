@@ -20,11 +20,10 @@
 #endif
 #include <cstring>
 
-#include "spark_wiring_logging.h"
-
 #include <algorithm>
-#include <cstring>
 #include <cstdio>
+
+#include "spark_wiring_logging.h"
 
 namespace {
 
@@ -62,14 +61,14 @@ private:
             const char *file, int line, const char *func, void *reserved) {
         const auto &loggers = instance()->loggers_;
         for (size_t i = 0; i < loggers.size(); ++i) {
-            loggers[i]->logMessage(msg, (LoggerOutputLevel)level, category, time, file, line, func);
+            loggers[i]->logMessage(msg, (LogLevel)level, category, time, file, line, func);
         }
     }
 
     static void logWrite(const char *data, size_t size, int level, const char *category, void *reserved) {
         const auto &loggers = instance()->loggers_;
         for (size_t i = 0; i < loggers.size(); ++i) {
-            loggers[i]->logData(data, size, (LoggerOutputLevel)level, category);
+            loggers[i]->write(data, size, (LogLevel)level, category);
         }
     }
 
@@ -89,11 +88,11 @@ private:
 } // namespace
 
 // spark::Logger
-spark::Logger::Logger(LoggerOutputLevel level, const std::initializer_list<CategoryFilter> &filters) :
+spark::Logger::Logger(LogLevel level, const std::initializer_list<CategoryFilter> &filters) :
         level_(level) {
     for (auto it = filters.begin(); it != filters.end(); ++it) {
         const char* const category = it->first;
-        const LoggerOutputLevel level = it->second;
+        const LogLevel level = it->second;
         std::vector<Filter> *filters = &filters_; // Root categories
         size_t pos = 0;
         for (size_t i = 0;; ++i) {
@@ -127,11 +126,11 @@ spark::Logger::Logger(LoggerOutputLevel level, const std::initializer_list<Categ
     }
 }
 
-LoggerOutputLevel spark::Logger::categoryLevel(const char *category) const {
+LogLevel spark::Logger::categoryLevel(const char *category) const {
     if (!category || filters_.empty()) {
         return level_; // Default level
     }
-    LoggerOutputLevel level = level_;
+    LogLevel level = level_;
     const std::vector<Filter> *filters = &filters_; // Root categories
     size_t pos = 0;
     for (size_t i = 0;; ++i) {
@@ -156,7 +155,7 @@ LoggerOutputLevel spark::Logger::categoryLevel(const char *category) const {
             break;
         }
         if (it->level >= 0) {
-            level = (LoggerOutputLevel)it->level;
+            level = (LogLevel)it->level;
         }
         if (!category[i]) {
             break;
@@ -167,16 +166,7 @@ LoggerOutputLevel spark::Logger::categoryLevel(const char *category) const {
     return level;
 }
 
-void spark::Logger::install(Logger *logger) {
-    LogHandler::instance()->addLogger(logger);
-}
-
-void spark::Logger::uninstall(Logger *logger) {
-    LogHandler::instance()->removeLogger(logger);
-}
-
-// spark::FormattingLogger
-void spark::FormattingLogger::writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
+void spark::Logger::formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
         const char *file, int line, const char *func) {
     // Timestamp
     char buf[16];
@@ -213,4 +203,12 @@ void spark::FormattingLogger::writeMessage(const char *msg, LoggerOutputLevel le
     // Message
     write(msg);
     write("\r\n");
+}
+
+void spark::Logger::install(Logger *logger) {
+    LogHandler::instance()->addLogger(logger);
+}
+
+void spark::Logger::uninstall(Logger *logger) {
+    LogHandler::instance()->removeLogger(logger);
 }

@@ -28,26 +28,30 @@ namespace spark {
 
 class Logger {
 public:
-    typedef std::pair<const char*, LoggerOutputLevel> CategoryFilter;
+    typedef std::pair<const char*, LogLevel> CategoryFilter;
     typedef std::initializer_list<CategoryFilter> CategoryFilters;
 
-    explicit Logger(LoggerOutputLevel level = WARN_LEVEL, const CategoryFilters &filters = {});
+    explicit Logger(LogLevel level = ALL_LEVEL, const CategoryFilters &filters = {});
     virtual ~Logger() = default;
 
-    void logMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
+    void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
             const char *file, int line, const char *func);
-    void logData(const char *data, size_t size, LoggerOutputLevel level, const char *category);
+    void write(const char *data, size_t size, LogLevel level, const char *category);
 
-    LoggerOutputLevel defaultLevel() const;
-    LoggerOutputLevel categoryLevel(const char *category) const;
+    LogLevel defaultLevel() const;
+    LogLevel categoryLevel(const char *category) const;
+
+    static const char* levelName(LogLevel level);
 
     static void install(Logger *logger);
     static void uninstall(Logger *logger);
 
 protected:
-    virtual void writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
-            const char *file, int line, const char *func) = 0;
-    virtual void writeData(const char *data, size_t size, LoggerOutputLevel level, const char *category) = 0;
+    virtual void formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
+            const char *file, int line, const char *func);
+    virtual void write(const char *data, size_t size) = 0;
+
+    void write(const char *data);
 
 private:
     struct Filter {
@@ -64,57 +68,35 @@ private:
     };
 
     std::vector<Filter> filters_;
-    LoggerOutputLevel level_;
-};
-
-class FormattingLogger: public Logger {
-public:
-    using Logger::Logger;
-
-    static const char* levelName(LoggerOutputLevel level);
-
-protected:
-    virtual void write(const char *data, size_t size) = 0;
-
-    // spark::Logger
-    virtual void writeMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
-            const char *file, int line, const char *func) override;
-    virtual void writeData(const char *data, size_t size, LoggerOutputLevel level, const char *category) override;
-
-    void write(const char *str);
+    LogLevel level_;
 };
 
 } // namespace spark
 
 // spark::Logger
-inline void spark::Logger::logMessage(const char *msg, LoggerOutputLevel level, const char *category, uint32_t time,
+inline void spark::Logger::logMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
         const char *file, int line, const char *func) {
     if (level >= categoryLevel(category)) {
-        writeMessage(msg, level, category, time, file, line, func);
+        formatMessage(msg, level, category, time, file, line, func);
     }
 }
 
-inline void spark::Logger::logData(const char *data, size_t size, LoggerOutputLevel level, const char *category) {
+inline void spark::Logger::write(const char *data, size_t size, LogLevel level, const char *category) {
     if (level >= categoryLevel(category)) {
-        writeData(data, size, level, category);
+        write(data, size);
     }
 }
 
-inline LoggerOutputLevel spark::Logger::defaultLevel() const {
+inline void spark::Logger::write(const char *str) {
+    write(str, strlen(str));
+}
+
+inline LogLevel spark::Logger::defaultLevel() const {
     return level_;
 }
 
-// spark::FormattingLogger
-inline const char* spark::FormattingLogger::levelName(LoggerOutputLevel level) {
+inline const char* spark::Logger::levelName(LogLevel level) {
     return log_level_name(level, nullptr);
-}
-
-inline void spark::FormattingLogger::writeData(const char *data, size_t size, LoggerOutputLevel, const char*) {
-    write(data, size);
-}
-
-inline void spark::FormattingLogger::write(const char *str) {
-    write(str, strlen(str));
 }
 
 #endif // SPARK_WIRING_LOGGING_H

@@ -32,8 +32,6 @@
  * PANIC(code,fmt,...)
  */
 
-#include <stdint.h>
-#include <stddef.h>
 #include "logging.h"
 
 #if defined(DEBUG_BUILD)
@@ -47,6 +45,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef LogLevel LoggerOutputLevel; // Compatibility typedef
 
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...);
 
