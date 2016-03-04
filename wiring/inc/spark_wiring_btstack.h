@@ -14,6 +14,7 @@ public:
         //do nothing.
     }
 
+    // Device API.
     void init(void);
     void deInit(void);
 
@@ -27,8 +28,7 @@ public:
     void debugError(bool flag);
     void enablePacketLogger(void);
 
-
-    void getAdvertisementAddr(uint8_t *addr_type, bd_addr_t addr);
+    // Gap API.
     void setRandomAddrMode(gap_random_address_type_t random_addr_type);
     void setRandomAddr(bd_addr_t addr);
     void setPublicBDAddr(bd_addr_t addr);
@@ -42,9 +42,18 @@ public:
     void startAdvertising(void);
     void stopAdvertising(void);
 
-    void disconect(uint16_t conn_handle);
+    void disconnect(uint16_t conn_handle);
     uint8_t connect(bd_addr_t addr, bd_addr_type_t type);
 
+    void setConnParams(le_connection_parameter_range_t range);
+
+    void startScanning(void);
+    void stopScanning(void);
+
+    void setScanParams(uint8_t scan_type, uint16_t scan_interval, uint16_t scan_window);
+    void onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report));
+
+    // Gatt server API.
     void addService(uint16_t uuid);
     void addService(uint8_t *uuid);
 
@@ -60,11 +69,22 @@ public:
     int sendNotify(uint16_t value_handle, uint8_t *value, uint16_t length);
     int sendIndicate(uint16_t value_handle, uint8_t *value, uint16_t length);
 
-    void startScanning(void);
-    void stopScanning(void);
+    // Gatt client API.
+    void onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_service_t *service));
+    void onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_t *characteristic));
+    void onCharsDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_descriptor_t *characteristic));
 
-    void onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report));
+    uint8_t discoverPrimaryServices(uint16_t con_handle);
+    uint8_t discoverPrimaryServicesByUUID16(uint16_t con_handle, uint16_t uuid16);
+    uint8_t discoverPrimaryServicesByUUID128(uint16_t con_handle, const uint8_t *uuid);
 
+    uint8_t discoverCharacteristicsForService(uint16_t con_handle, gatt_client_service_t  *service);
+    uint8_t discoverCharacteristicsForHandleRangeByUUID16(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint16_t uuid16);
+    uint8_t discoverCharacteristicsForHandleRangeByUUID128(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t *uuid);
+    uint8_t discoverCharacteristicsForServiceByUUID16(uint16_t con_handle, gatt_client_service_t *service, uint16_t uuid16);
+    uint8_t discoverCharacteristicsForServiceByUUID128(uint16_t con_handle, gatt_client_service_t *service, uint8_t *uuid128);
+
+    uint8_t discoverCharacteristicDescriptors(uint16_t con_handle, gatt_client_characteristic_t *characteristic);
 };
 
 

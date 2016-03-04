@@ -3,7 +3,11 @@
 
 #include "spark_wiring_btstack.h"
 
-
+/***************************************************************
+ *
+ * Device API
+ *
+***************************************************************/
 void BLEDevice::init(void)
 {
     hal_btstack_init();
@@ -13,7 +17,6 @@ void BLEDevice::deInit(void)
 {
     hal_btstack_deInit();
 }
-
 
 /**
  * @brief Set timer.
@@ -69,14 +72,11 @@ void BLEDevice::enablePacketLogger(void)
     hal_btstack_enablePacketLogger();
 }
 
-/**
- * @brief Get the address information in advertisement.
- */
-void BLEDevice::getAdvertisementAddr(uint8_t *addr_type, bd_addr_t addr)
-{
-    hal_btstack_getAdvertisementAddr(addr_type, addr);
-}
-
+/***************************************************************
+ *
+ * Gap API
+ *
+***************************************************************/
 /**
  * @brief Set random mode.
  */
@@ -134,8 +134,7 @@ void BLEDevice::stopAdvertising(void)
     hal_btstack_stopAdvertising();
 }
 
-
-void BLEDevice::disconect(uint16_t conn_handle)
+void BLEDevice::disconnect(uint16_t conn_handle)
 {
     hal_btstack_disconnect(conn_handle);
 }
@@ -145,6 +144,36 @@ uint8_t BLEDevice::connect(bd_addr_t addr, bd_addr_type_t type)
     return hal_btstack_connect(addr, type);
 }
 
+void BLEDevice::setConnParams(le_connection_parameter_range_t range)
+{
+    hal_btstack_setConnParamsRange(range);
+}
+
+void BLEDevice::startScanning(void)
+{
+    hal_btstack_startScanning();
+}
+
+void BLEDevice::stopScanning(void)
+{
+    hal_btstack_stopScanning();
+}
+
+void BLEDevice::setScanParams(uint8_t scan_type, uint16_t scan_interval, uint16_t scan_window)
+{
+    hal_btstack_setScanParams(scan_type, scan_interval, scan_window);
+}
+
+void BLEDevice::onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report))
+{
+    hal_btstack_setBLEAdvertisementCallback(cb);
+}
+
+/***************************************************************
+ *
+ * Gatt server API
+ *
+***************************************************************/
 void BLEDevice::addService(uint16_t uuid)
 {
     hal_btstack_addServiceUUID16bits(uuid);
@@ -204,21 +233,70 @@ int BLEDevice::sendIndicate(uint16_t value_handle, uint8_t *value, uint16_t leng
     return hal_btstack_attServerSendIndicate(value_handle, value, length);
 }
 
-void BLEDevice::startScanning(void)
+/***************************************************************
+ *
+ * Gatt client API
+ *
+***************************************************************/
+void BLEDevice::onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_service_t *service))
 {
-    hal_btstack_startScanning();
+	hal_btstack_setGattServiceDiscoveredCallback(cb);
 }
 
-void BLEDevice::stopScanning(void)
+void BLEDevice::onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_t *characteristic))
 {
-    hal_btstack_stopScanning();
+	hal_btstack_setGattCharsDiscoveredCallback(cb);
 }
 
-void BLEDevice::onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report))
+void BLEDevice::onCharsDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_descriptor_t *characteristic))
 {
-    hal_btstack_setBLEAdvertisementCallback(cb);
+	hal_btstack_setGattCharsDescriptorsDiscoveredCallback(cb);
 }
 
+uint8_t BLEDevice::discoverPrimaryServices(uint16_t con_handle)
+{
+	return hal_btstack_discoverPrimaryServices(con_handle);
+}
+
+uint8_t BLEDevice::discoverPrimaryServicesByUUID16(uint16_t con_handle, uint16_t uuid16)
+{
+	return hal_btstack_discoverPrimaryServicesByUUID16(con_handle, uuid16);
+}
+
+uint8_t BLEDevice::discoverPrimaryServicesByUUID128(uint16_t con_handle, const uint8_t *uuid)
+{
+	return hal_btstack_discoverPrimaryServicesByUUID128(con_handle, uuid);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForService(uint16_t con_handle, gatt_client_service_t  *service)
+{
+	return hal_btstack_discoverCharsForService(con_handle, service);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForHandleRangeByUUID16(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint16_t uuid16)
+{
+	return hal_btstack_discoverCharsForHandleRangeByUUID16(con_handle, start_handle, end_handle, uuid16);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForHandleRangeByUUID128(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t *uuid)
+{
+	return hal_btstack_discoverCharsForHandleRangeByUUID128(con_handle, start_handle, end_handle, uuid);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForServiceByUUID16(uint16_t con_handle, gatt_client_service_t *service, uint16_t uuid16)
+{
+	return hal_btstack_discoverCharsForServiceByUUID16(con_handle, service, uuid16);
+}
+
+uint8_t BLEDevice::discoverCharacteristicsForServiceByUUID128(uint16_t con_handle, gatt_client_service_t *service, uint8_t *uuid128)
+{
+	return hal_btstack_discoverCharsForServiceByUUID128(con_handle, service, uuid128);
+}
+
+uint8_t BLEDevice::discoverCharacteristicDescriptors(uint16_t con_handle, gatt_client_characteristic_t *characteristic)
+{
+	return hal_btstack_discoverCharsDescriptors(con_handle, characteristic);
+}
 
 BLEDevice ble;
 

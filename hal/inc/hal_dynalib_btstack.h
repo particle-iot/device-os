@@ -55,7 +55,6 @@ DYNALIB_FN(hal_btstack,hal_btstack_debugLogger)
 DYNALIB_FN(hal_btstack,hal_btstack_debugError)
 DYNALIB_FN(hal_btstack,hal_btstack_enablePacketLogger)
 
-DYNALIB_FN(hal_btstack,hal_btstack_getAdvertisementAddr)
 DYNALIB_FN(hal_btstack,hal_btstack_setRandomAddressMode)
 DYNALIB_FN(hal_btstack,hal_btstack_setRandomAddr)
 DYNALIB_FN(hal_btstack,hal_btstack_setPublicBdAddr)
@@ -69,7 +68,14 @@ DYNALIB_FN(hal_btstack,hal_btstack_setConnectedCallback)
 DYNALIB_FN(hal_btstack,hal_btstack_setDisconnectedCallback)
 
 DYNALIB_FN(hal_btstack,hal_btstack_disconnect)
+DYNALIB_FN(hal_btstack,hal_btstack_connect)
+DYNALIB_FN(hal_btstack,hal_btstack_setConnParamsRange)
 
+DYNALIB_FN(hal_btstack,hal_btstack_startScanning)
+DYNALIB_FN(hal_btstack,hal_btstack_stopScanning)
+
+DYNALIB_FN(hal_btstack,hal_btstack_setScanParams)
+DYNALIB_FN(hal_btstack,hal_btstack_setBLEAdvertisementCallback)
 
 DYNALIB_FN(hal_btstack,hal_btstack_attServerCanSend)
 DYNALIB_FN(hal_btstack,hal_btstack_attServerSendNotify)
@@ -86,10 +92,20 @@ DYNALIB_FN(hal_btstack,hal_btstack_addCharsDynamicUUID16bits)
 DYNALIB_FN(hal_btstack,hal_btstack_addCharsDynamicUUID128bits)
 
 
-DYNALIB_FN(hal_btstack,hal_btstack_startScanning)
-DYNALIB_FN(hal_btstack,hal_btstack_stopScanning)
+DYNALIB_FN(hal_btstack,hal_btstack_setGattServiceDiscoveredCallback)
+DYNALIB_FN(hal_btstack,hal_btstack_setGattCharsDiscoveredCallback)
+DYNALIB_FN(hal_btstack,hal_btstack_setGattCharsDescriptorsDiscoveredCallback)
 
-DYNALIB_FN(hal_btstack,hal_btstack_setBLEAdvertisementCallback)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverPrimaryServices)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverPrimaryServicesByUUID16)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverPrimaryServicesByUUID128)
+
+DYNALIB_FN(hal_btstack,hal_btstack_discoverCharsForService)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverCharsForHandleRangeByUUID16)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverCharsForHandleRangeByUUID128)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverCharsForServiceByUUID16)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverCharsForServiceByUUID128)
+DYNALIB_FN(hal_btstack,hal_btstack_discoverCharsDescriptors)
 
 
 DYNALIB_END(hal_btstack)
