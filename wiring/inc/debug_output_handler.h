@@ -28,7 +28,7 @@ namespace spark {
 
 class SerialLogger: public Logger {
 public:
-    explicit SerialLogger(int baud = 9600, LogLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
+    explicit SerialLogger(int baud = 9600, LogLevel level = ALL_LEVEL, const Filters &filters = {}) :
             Logger(level, filters) {
         Serial.begin(baud);
         Logger::install(this);
@@ -46,7 +46,7 @@ protected:
 
 class Serial1Logger: public Logger {
 public:
-    explicit Serial1Logger(int baud = 9600, LogLevel level = ALL_LEVEL, const CategoryFilters &filters = {}) :
+    explicit Serial1Logger(int baud = 9600, LogLevel level = ALL_LEVEL, const Filters &filters = {}) :
             Logger(level, filters) {
         Serial1.begin(baud);
         Logger::install(this);

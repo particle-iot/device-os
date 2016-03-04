@@ -67,7 +67,7 @@ private:
 
 class TestLogger: public Logger {
 public:
-    explicit TestLogger(LogLevel level = ALL_LEVEL, const CategoryFilters &filters = {}):
+    explicit TestLogger(LogLevel level = ALL_LEVEL, const Filters &filters = {}):
             Logger(level, filters) {
         Logger::install(this);
     }

@@ -88,12 +88,12 @@ private:
 } // namespace
 
 // spark::Logger
-spark::Logger::Logger(LogLevel level, const std::initializer_list<CategoryFilter> &filters) :
+spark::Logger::Logger(LogLevel level, const Filters &filters) :
         level_(level) {
     for (auto it = filters.begin(); it != filters.end(); ++it) {
         const char* const category = it->first;
         const LogLevel level = it->second;
-        std::vector<Filter> *filters = &filters_; // Root categories
+        std::vector<FilterData> *filters = &filters_; // Root categories
         size_t pos = 0;
         for (size_t i = 0;; ++i) {
             if (category[i] && category[i] != '.') { // Category separator
@@ -106,7 +106,7 @@ spark::Logger::Logger(LogLevel level, const std::initializer_list<CategoryFilter
             const char* const name = category + pos;
             bool found = false;
             auto it = std::lower_bound(filters->begin(), filters->end(), std::make_pair(name, size),
-                    [&found](const Filter &filter, const std::pair<const char*, size_t> &value) {
+                    [&found](const FilterData &filter, const std::pair<const char*, size_t> &value) {
                 const int cmp = std::strncmp(filter.name, value.first, std::min(filter.size, value.second));
                 if (cmp == 0) {
                     found = true;
@@ -114,7 +114,7 @@ spark::Logger::Logger(LogLevel level, const std::initializer_list<CategoryFilter
                 return cmp < 0;
             });
             if (!found) {
-                it = filters->insert(it, Filter(name, size)); // Add subcategory
+                it = filters->insert(it, FilterData(name, size)); // Add subcategory
             }
             if (!category[i]) {
                 it->level = level;
@@ -131,7 +131,7 @@ LogLevel spark::Logger::categoryLevel(const char *category) const {
         return level_; // Default level
     }
     LogLevel level = level_;
-    const std::vector<Filter> *filters = &filters_; // Root categories
+    const std::vector<FilterData> *filters = &filters_; // Root categories
     size_t pos = 0;
     for (size_t i = 0;; ++i) {
         if (category[i] && category[i] != '.') { // Category separator
@@ -144,7 +144,7 @@ LogLevel spark::Logger::categoryLevel(const char *category) const {
         const char* const name = category + pos;
         bool found = false;
         auto it = std::lower_bound(filters->begin(), filters->end(), std::make_pair(name, size),
-                [&found](const Filter &filter, const std::pair<const char*, size_t> &value) {
+                [&found](const FilterData &filter, const std::pair<const char*, size_t> &value) {
             const int cmp = std::strncmp(filter.name, value.first, std::min(filter.size, value.second));
             if (cmp == 0) {
                 found = true;
