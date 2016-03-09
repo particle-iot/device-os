@@ -63,7 +63,7 @@
 #elif __STDC_VERSION__ >= 199901 && !__STRICT_ANSI__ // C99 with GNU extensions
 
     #define DYNALIB_FN(tablename,name,type) \
-        __builtin_choose_expr(__builtin_types_compatible_p(type, __typeof__(name)), name, sizeof(struct { \
+        __builtin_choose_expr(__builtin_types_compatible_p(type, __typeof__(name)), (const void*)&name, sizeof(struct { \
             _Static_assert(__builtin_types_compatible_p(type, __typeof__(name)), \
                 "Signature of the dynamically exported function has changed");})),
 #else
