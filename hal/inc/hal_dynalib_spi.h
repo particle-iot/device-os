@@ -38,17 +38,17 @@
 // GNINRAW
 
 DYNALIB_BEGIN(hal_spi)
-DYNALIB_FN(hal_spi,HAL_SPI_Begin)
-DYNALIB_FN(hal_spi,HAL_SPI_End)
-DYNALIB_FN(hal_spi,HAL_SPI_Set_Bit_Order)
-DYNALIB_FN(hal_spi,HAL_SPI_Set_Data_Mode)
-DYNALIB_FN(hal_spi,HAL_SPI_Set_Clock_Divider)
-DYNALIB_FN(hal_spi,HAL_SPI_Send_Receive_Data)
-DYNALIB_FN(hal_spi,HAL_SPI_Is_Enabled_Old)
-DYNALIB_FN(hal_spi,HAL_SPI_Init)
-DYNALIB_FN(hal_spi,HAL_SPI_Is_Enabled)
-DYNALIB_FN(hal_spi,HAL_SPI_Info)
-DYNALIB_FN(hal_spi,HAL_SPI_DMA_Transfer)
+DYNALIB_FN(hal_spi, HAL_SPI_Begin, void(HAL_SPI_Interface, uint16_t))
+DYNALIB_FN(hal_spi, HAL_SPI_End, void(HAL_SPI_Interface))
+DYNALIB_FN(hal_spi, HAL_SPI_Set_Bit_Order, void(HAL_SPI_Interface, uint8_t))
+DYNALIB_FN(hal_spi, HAL_SPI_Set_Data_Mode, void(HAL_SPI_Interface, uint8_t))
+DYNALIB_FN(hal_spi, HAL_SPI_Set_Clock_Divider, void(HAL_SPI_Interface, uint8_t))
+DYNALIB_FN(hal_spi, HAL_SPI_Send_Receive_Data, uint16_t(HAL_SPI_Interface, uint16_t))
+DYNALIB_FN(hal_spi, HAL_SPI_Is_Enabled_Old, bool(void))
+DYNALIB_FN(hal_spi, HAL_SPI_Init, void(HAL_SPI_Interface))
+DYNALIB_FN(hal_spi, HAL_SPI_Is_Enabled, bool(HAL_SPI_Interface))
+DYNALIB_FN(hal_spi, HAL_SPI_Info, void(HAL_SPI_Interface, hal_spi_info_t*, void*))
+DYNALIB_FN(hal_spi, HAL_SPI_DMA_Transfer, void(HAL_SPI_Interface, void*, void*, uint32_t, HAL_SPI_DMA_UserCallback))
 DYNALIB_END(hal_spi)
 
 

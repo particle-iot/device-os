@@ -45,16 +45,16 @@
 // GNINRAW
 
 DYNALIB_BEGIN(hal_peripherals)
-DYNALIB_FN(hal_peripherals,HAL_Tone_Start)
-DYNALIB_FN(hal_peripherals,HAL_Tone_Stop)
-DYNALIB_FN(hal_peripherals,HAL_Tone_Get_Frequency)
-DYNALIB_FN(hal_peripherals,HAL_Tone_Is_Stopped)
+DYNALIB_FN(hal_peripherals, HAL_Tone_Start, void(uint8_t, uint32_t, uint32_t))
+DYNALIB_FN(hal_peripherals, HAL_Tone_Stop, void(uint8_t))
+DYNALIB_FN(hal_peripherals, HAL_Tone_Get_Frequency, uint32_t(uint8_t))
+DYNALIB_FN(hal_peripherals, HAL_Tone_Is_Stopped, bool(uint8_t))
 
-DYNALIB_FN(hal_peripherals,HAL_Servo_Attach)
-DYNALIB_FN(hal_peripherals,HAL_Servo_Detach)
-DYNALIB_FN(hal_peripherals,HAL_Servo_Write_Pulse_Width)
-DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Pulse_Width)
-DYNALIB_FN(hal_peripherals,HAL_Servo_Read_Frequency)
+DYNALIB_FN(hal_peripherals, HAL_Servo_Attach, void(uint16_t))
+DYNALIB_FN(hal_peripherals, HAL_Servo_Detach, void(uint16_t))
+DYNALIB_FN(hal_peripherals, HAL_Servo_Write_Pulse_Width, void(uint16_t, uint16_t))
+DYNALIB_FN(hal_peripherals, HAL_Servo_Read_Pulse_Width, uint16_t(uint16_t))
+DYNALIB_FN(hal_peripherals, HAL_Servo_Read_Frequency, uint16_t(uint16_t))
 
 DYNALIB_END(hal_peripherals)
 

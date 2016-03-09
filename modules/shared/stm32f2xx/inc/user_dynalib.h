@@ -28,10 +28,10 @@
 #include "dynalib.h"
 
 DYNALIB_BEGIN(user)
-DYNALIB_FN(user, module_user_pre_init)
-DYNALIB_FN(user, module_user_init)
-DYNALIB_FN(user, module_user_setup)
-DYNALIB_FN(user, module_user_loop)
+DYNALIB_FN(user, module_user_pre_init, void*(void))
+DYNALIB_FN(user, module_user_init, void(void))
+DYNALIB_FN(user, module_user_setup, void(void))
+DYNALIB_FN(user, module_user_loop, void(void))
 DYNALIB_END(user)
 
 

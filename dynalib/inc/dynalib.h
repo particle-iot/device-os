@@ -48,13 +48,38 @@
 
 #ifdef DYNALIB_EXPORT
 
+#if __cplusplus >= 201103 // C++11
+
+    #include <type_traits>
+
+    template<typename T1, typename T2>
+    constexpr const void* dynalib_check_function_type(T2 *func) {
+        static_assert(std::is_same<T1, T2>::value, "Signature of the dynamically exported function has changed");
+        return (const void*)func;
+    }
+    #define DYNALIB_FN(tablename,name,type) \
+        dynalib_check_function_type<type>(name),
+
+#elif __STDC_VERSION__ >= 199901 && !__STRICT_ANSI__ // C99 with GNU extensions
+
+    #define DYNALIB_FN(tablename,name,type) \
+        __builtin_choose_expr(__builtin_types_compatible_p(type, __typeof__(name)), name, sizeof(struct { \
+            _Static_assert(__builtin_types_compatible_p(type, __typeof__(name)), \
+                "Signature of the dynamically exported function has changed");})),
+#else
+
+    #warning "Compile-time check of the dynamically exported functions is not supported under current compiler settings"
+    #define DYNALIB_FN(tablename,name,type) \
+        DYNALIB_FN_UNCHECKED(tablename,name)
+#endif
+
     /**
      * Begin the jump table definition
      */
     #define DYNALIB_BEGIN(tablename) \
         DYNALIB_EXTERN_C const void* const dynalib_##tablename[] = {
 
-    #define DYNALIB_FN(tablename,name) \
+    #define DYNALIB_FN_UNCHECKED(tablename,name) \
         (const void*)&name,
 
     #define DYNALIB_FN_PLACEHOLDER(tablename) \
@@ -74,7 +99,7 @@
         #define __S(x) #x
         #define __SX(x) __S(x)
 
-        #define DYNALIB_FN(tablename, name) \
+        #define DYNALIB_FN_UNCHECKED(tablename, name) \
             const char check_name_##tablename_##name[0]={}; /* this will fail if the name is already defined */ \
             void name() __attribute__((naked)); \
             void name() { \
@@ -91,6 +116,9 @@
                     "pop {r3, pc}\n"                    /* restore register and jump to function */ \
                 ); \
             };
+
+        #define DYNALIB_FN(tablename, name, type) \
+            DYNALIB_FN_UNCHECKED(tablename, name)
 
         #define DYNALIB_FN_PLACEHOLDER(tablename)
 
