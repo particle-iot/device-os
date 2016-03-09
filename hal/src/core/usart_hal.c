@@ -40,7 +40,7 @@ typedef enum USART_Num_Def {
 
 /* Private macro -------------------------------------------------------------*/
 // IS_USART_CONFIG_VALID(config) - returns true for 8 data bit, any flow control, any parity, any stop byte configurations
-#define IS_USART_CONFIG_VALID(CONFIG) ( (((CONFIG & 0b00001100)>>2) != 0b11) && (((CONFIG & 0b00110000)>>4)==0b11) )
+#define IS_USART_CONFIG_VALID(CONFIG) (((CONFIG & 0b00001100) >> 2) != 0b11)
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_USART_Info {
