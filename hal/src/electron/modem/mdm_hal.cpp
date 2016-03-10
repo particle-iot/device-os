@@ -288,9 +288,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 } else if ((sscanf(cmd, "UUSOCL: %d", &a) == 1)) {
                     int socket = _findSocket(a);
                     DEBUG_D("Socket %d: handle %d closed by remote host\r\n", socket, a);
-                    if ((socket != MDM_SOCKET_ERROR) && _sockets[socket].connected) {
-                        _sockets[socket].open = false;
-                        _sockets[socket].connected = false;
+                    if (socket != MDM_SOCKET_ERROR) {
+                        _socketFree(socket);
                     }
                 }
 
