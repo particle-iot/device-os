@@ -1,3 +1,11 @@
+## v0.5.0
+
+### FEATURES
+
+- [Electron] `SYSTEM_THREAD()` is supported
+- Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
+
+
 ## v0.4.9
 
 ### FEATURES
