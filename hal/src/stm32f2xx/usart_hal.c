@@ -44,7 +44,7 @@ typedef enum USART_Num_Def {
 /* Private macro -------------------------------------------------------------*/
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0  //Enabling this => 1 is not working at present
 // IS_USART_CONFIG_VALID(config) - returns true for 8 data bit, any flow control, any parity, any stop byte configurations
-#define IS_USART_CONFIG_VALID(CONFIG) (((CONFIG & 0b00001100) >> 2) != 0b11)
+#define IS_USART_CONFIG_VALID(CONFIG) (((CONFIG & SERIAL_VALID_CONFIG) >> 2) != 0b11)
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_USART_Info {
@@ -156,12 +156,12 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 
 void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
 {
-  HAL_USART_BeginConfig(serial, baud, 0, 0); //Default serial configuration is 8N1
+  HAL_USART_BeginConfig(serial, baud, 0, 0); // Default serial configuration is 8N1
 }
 
 void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr)
 {
-  //Verify UART configuration, exit it it's invalid.
+  // Verify UART configuration, exit if it's invalid.
   if (!IS_USART_CONFIG_VALID(config)) {
 	usartMap[serial]->usart_enabled = false;
 	return;
@@ -218,6 +218,7 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	USART_InitStructure.USART_BaudRate = baud;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+
   #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
 	if (serial == HAL_USART_SERIAL3)
 	{
@@ -225,52 +226,44 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	}
   #endif
 
-
-	//Stop bit configuration.
-	switch (config & 0b00000011) {
-	  case 0: // 1 stop bit
+	// Stop bit configuration.
+	switch (config & SERIAL_STOP_BITS) {
+	  case 0b00: // 1 stop bit
 		USART_InitStructure.USART_StopBits = USART_StopBits_1;
 		break;
-	  case 1: // 2 stop bits
+	  case 0b01: // 2 stop bits
 		USART_InitStructure.USART_StopBits = USART_StopBits_2;
 		break;
-	  case 2: // 0.5 stop bits
+	  case 0b10: // 0.5 stop bits
 		USART_InitStructure.USART_StopBits = USART_StopBits_0_5;
 		break;
-	  case 3: // 1.5 stop bits
+	  case 0b11: // 1.5 stop bits
 		USART_InitStructure.USART_StopBits = USART_StopBits_1_5;
 		break;
 	}
 
-	//Eight/Nine data bit configuration
-	if(config & 0b00010000) {
-		//Nine data bits, no parity.
+	// Eight / Nine data bit configuration
+	if (config & SERIAL_NINE_BITS) {
+		// Nine data bits, no parity.
 		USART_InitStructure.USART_Parity = USART_Parity_No;
 		USART_InitStructure.USART_WordLength = USART_WordLength_9b;
 	} else {
 		// eight data bits, parity configuration (impacts word length)
-		switch ((config & 0b00001100) >> 2) {
-		  case 0: // none
+		switch ((config & SERIAL_PARITY_BITS) >> 2) {
+		  case 0b00: // none
 			USART_InitStructure.USART_Parity = USART_Parity_No;
 			USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 			break;
-		  case 1: // even
+		  case 0b01: // even
 			USART_InitStructure.USART_Parity = USART_Parity_Even;
 			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
 			break;
-		  case 2: // odd
+		  case 0b10: // odd
 			USART_InitStructure.USART_Parity = USART_Parity_Odd;
 			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
 			break;
 		}
 	}
-
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
-	if (serial == HAL_USART_SERIAL3)
-	{
-		USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
-	}
-#endif
 
 	// Configure USART
 	USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
@@ -288,7 +281,7 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 
 void HAL_USART_End(HAL_USART_Serial serial)
 {
-	// wait for transmission of outgoing data
+	// Wait for transmission of outgoing data
 	while (usartMap[serial]->usart_tx_buffer->head != usartMap[serial]->usart_tx_buffer->tail);
 
 	// Disable the USART

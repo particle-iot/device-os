@@ -40,6 +40,22 @@
 #endif
 #define SERIAL_BUFFER_SIZE      64
 
+// Available Serial Configurations for C
+#define SERIAL_8N1 (uint8_t)0b00000000
+#define SERIAL_8N2 (uint8_t)0b00000001
+#define SERIAL_8E1 (uint8_t)0b00000100
+#define SERIAL_8E2 (uint8_t)0b00000101
+#define SERIAL_8O1 (uint8_t)0b00001000
+#define SERIAL_8O2 (uint8_t)0b00001001
+#define SERIAL_9N1 (uint8_t)0b00010000
+#define SERIAL_9N2 (uint8_t)0b00010001
+
+// Serial Configuration masks
+#define SERIAL_VALID_CONFIG (uint8_t)0b00001100
+#define SERIAL_STOP_BITS (uint8_t)0b00000011
+#define SERIAL_PARITY_BITS (uint8_t)0b00001100
+#define SERIAL_NINE_BITS (uint8_t)0b00010000
+
 /* Exported types ------------------------------------------------------------*/
 typedef struct Ring_Buffer
 {
