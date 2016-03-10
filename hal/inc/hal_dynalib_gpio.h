@@ -70,6 +70,8 @@ DYNALIB_FN(hal_gpio, HAL_Interrupts_Suspend)
 DYNALIB_FN(hal_gpio, HAL_Interrupts_Restore)
 
 DYNALIB_FN(hal_gpio, HAL_PWM_Write_With_Frequency)
+DYNALIB_FN(hal_gpio, HAL_DAC_Is_Enabled)
+DYNALIB_FN(hal_gpio, HAL_DAC_Enable)
 DYNALIB_END(hal_gpio)
 
 #endif	/* HAL_DYNALIB_GPIO_H */

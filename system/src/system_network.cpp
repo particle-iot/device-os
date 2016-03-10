@@ -96,9 +96,15 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).connect(!(flags & WIFI_CONNECT_SKIP_LISTEN)));
 }
 
+void network_cancel_connect(network_handle_t network)
+{
+	nif(network).connect_cancel(true);
+}
+
 void network_disconnect(network_handle_t network, uint32_t param, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).disconnect());
+	network_cancel_connect(network);
+	SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).disconnect());
 }
 
 bool network_ready(network_handle_t network, uint32_t param, void* reserved)
@@ -130,6 +136,7 @@ bool network_has_credentials(network_handle_t network, uint32_t param, void* res
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
+	network_cancel_connect(network);
     // flags & 1 means also disconnect the cloud (so it doesn't autmatically connect when network resumed.)
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).off(flags & 1));
 }
@@ -142,6 +149,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
  */
 void network_listen(network_handle_t network, uint32_t flags, void*)
 {
+	network_cancel_connect(network);
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).listen(flags & NETWORK_LISTEN_EXIT));
 }
 

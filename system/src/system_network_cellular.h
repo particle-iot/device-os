@@ -21,6 +21,7 @@
 
 #include "system_network_internal.h"
 #include "cellular_hal.h"
+#include "interrupts_hal.h"
 
 
 class CellularNetworkInterface : public ManagedNetworkInterface
@@ -108,7 +109,7 @@ public:
         return cellular_sim_ready(NULL);
     }
     int set_credentials(NetworkCredentials* creds) override { /* n/a */ return -1; }
-    void connect_cancel(bool cancel, bool calledFromISR) override { cellular_cancel(cancel, calledFromISR, NULL);  }
+    void connect_cancel(bool cancel) override { cellular_cancel(cancel, HAL_IsISR(), NULL);  }
 
     void set_error_count(unsigned count) override { /* n/a */ }
 };

@@ -1,3 +1,16 @@
+## v0.5.0
+
+
+### FEATURES
+
+- Faster network disconencts: any in-progress network connection attempts are cancelled when disconnecting or deactivating a network, or entering listening mode. [#859](https://github.com/spark/firmware/issues/859)
+
+### BUGFIXES
+
+- Random seed was not being set if the application didn't define
+`random_seed_from_cloud()`. Test app added to test suite. 
+
+
 ## v0.4.9
 
 ### FEATURES

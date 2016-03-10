@@ -64,10 +64,6 @@ static void HAL_DAC_Init()
 
     DAC_Init(DAC_Channel_1, &DAC_InitStructure);
     DAC_Init(DAC_Channel_2, &DAC_InitStructure);
-
-    /* Enable DAC Channel1 */
-    DAC_Cmd(DAC_Channel_1, ENABLE);
-    DAC_Cmd(DAC_Channel_2, ENABLE);
 }
 
 /*
@@ -77,15 +73,17 @@ static void HAL_DAC_Init()
 void HAL_DAC_Write(pin_t pin, uint16_t value)
 {
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    if (HAL_Get_Pin_Mode(pin) != AN_OUTPUT)
-    {
-        HAL_Pin_Mode(pin, AN_OUTPUT);
-    }
 
     if (dacInitFirstTime == true)
     {
         HAL_DAC_Init();
         dacInitFirstTime = false;
+    }
+
+    if (HAL_Get_Pin_Mode(pin) != AN_OUTPUT)
+    {
+        HAL_Pin_Mode(pin, AN_OUTPUT);
+        HAL_DAC_Enable(pin, 1);
     }
 
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
@@ -99,4 +97,28 @@ void HAL_DAC_Write(pin_t pin, uint16_t value)
         /* Set the DAC Channel2 data */
         DAC_SetChannel2Data(DAC_Align_12b_R, value);
     }
+}
+
+uint8_t HAL_DAC_Is_Enabled(pin_t pin)
+{
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    if (!dacInitFirstTime && HAL_Get_Pin_Mode(pin) == AN_OUTPUT)
+    {
+        if (DAC->CR & (DAC_CR_EN1 << PIN_MAP[pin].dac_channel))
+            return 1;
+    }
+
+    return 0;
+}
+
+uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state)
+{
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    if (!dacInitFirstTime && HAL_Get_Pin_Mode(pin) == AN_OUTPUT)
+    {
+        DAC_Cmd(PIN_MAP[pin].dac_channel, state ? ENABLE : DISABLE);
+        return 0;
+    }
+
+    return 1;
 }

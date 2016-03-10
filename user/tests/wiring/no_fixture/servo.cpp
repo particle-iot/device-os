@@ -28,9 +28,9 @@
 #include "unit-test/unit-test.h"
 
 #if defined(STM32F2XX)
-static pin_t pin = D0;//pin under test
+static pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
 #else
-static pin_t pin = A0;//pin under test
+static pin_t pin = A0, pin2 = A1;
 #endif
 
 test(SERVO_CannotAttachWhenPinSelectedIsNotTimerChannel) {
@@ -75,4 +75,30 @@ test(SERVO_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
     // then
     assertEqual(readPulseWidth, pulseWidth);
     //To Do : Add test for remaining pins if required
+}
+
+test(SERVO_DetachDoesntAffectAnotherServoUsingSameTimer) {
+    const int pulseWidth = 2000;
+    // Attach 1st servo
+    Servo servo1;
+    servo1.attach(pin);
+    servo1.writeMicroseconds(pulseWidth);
+    // Attach 2nd servo
+    Servo servo2;
+    servo2.attach(pin2);
+    servo2.writeMicroseconds(pulseWidth);
+    // Detach 1st servo
+    servo1.detach();
+    // Ensure 2nd servo is not affected
+    int readPulseWidth = 0;
+    const uint32_t start = millis();
+    for (int i = 0; i < 100; ++i) {
+        readPulseWidth += pulseIn(pin2, HIGH);
+        if (millis() - start > 3000) {
+            break; // pulseIn() takes too long time
+        }
+    }
+    readPulseWidth /= 100; // Average pulse width
+    servo2.detach();
+    assertTrue(readPulseWidth > pulseWidth - 50 && readPulseWidth < pulseWidth + 50);
 }
