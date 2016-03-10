@@ -26,7 +26,7 @@
 #include "protocol_selector.h"
 #include "hal_platform.h"
 
-#ifdef  __cplusplus
+#ifdef	__cplusplus
 extern "C" {
 #endif
 
@@ -70,6 +70,7 @@ DYNALIB_FN(BASE_IDX + 2, communication, extract_public_ec_key, int(uint8_t*, siz
 
 DYNALIB_FN(BASE_IDX2 + 0, communication, spark_protocol_set_connection_property,
            int(ProtocolFacade*, unsigned, unsigned, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 1, communication, spark_protocol_command, int(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved))
 
 DYNALIB_END(communication)
 

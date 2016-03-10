@@ -66,6 +66,38 @@ public:
 		return len;
 	}
 
+	virtual void command(ProtocolCommands::Enum command, uint32_t data)
+	{
+		switch (command)
+		{
+		case ProtocolCommands::SLEEP:
+			sleep();
+			break;
+		case ProtocolCommands::WAKE:
+			wake();
+			break;
+		}
+	}
+
+
+
+	/**
+	 * Ensures that all outstanding sent coap messages have been acknowledged.
+	 */
+	void sleep(uint32_t timeout=60000)
+	{
+		system_tick_t start = millis();
+		while (channel.has_unacknowledged_requests() && (millis()-start)<timeout)
+		{
+			if (channel.receive_confirmations())
+				break;
+		}
+	}
+
+	void wake()
+	{
+		ping();
+	}
 };
 
 

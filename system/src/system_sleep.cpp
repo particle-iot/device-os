@@ -53,6 +53,7 @@ static void network_suspend() {
 }
 
 static void network_resume() {
+	// Set the system flags that triggers the wifi/cloud reconnection in the background loop
     if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
         SPARK_WLAN_SLEEP = 0;
     if (wakeupState.cloud)
@@ -91,10 +92,11 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
     if (seconds)
         HAL_RTC_Set_UnixAlarm((time_t) seconds);
 
+    network_suspend();
+
     switch (sleepMode)
     {
         case SLEEP_MODE_WLAN:
-            network_suspend();
             break;
 
         case SLEEP_MODE_DEEP:
@@ -130,4 +132,5 @@ void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds
     {
         network_resume();
     }
+    Spark_Wake();
 }
