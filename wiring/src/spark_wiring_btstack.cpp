@@ -18,58 +18,43 @@ void BLEDevice::deInit(void)
     hal_btstack_deInit();
 }
 
-/**
- * @brief Set timer.
- */
 void BLEDevice::setTimer(btstack_timer_source_t *ts, uint32_t timeout_in_ms)
 {
     hal_btstack_setTimer(ts, timeout_in_ms);
 }
 
-/**
- * @brief Set timer handler..
- */
 void BLEDevice::setTimerHandler(btstack_timer_source_t *ts, void (*process)(btstack_timer_source_t *_ts))
 {
     hal_btstack_setTimerHandler(ts, process);
 }
 
-/**
- * @brief Add/Remove timer task to run loop.
- */
-void BLEDevice::addTimerToLoop(btstack_timer_source_t *timer)
+void BLEDevice::addTimer(btstack_timer_source_t *timer)
 {
     hal_btstack_addTimer(timer);
 }
-int BLEDevice::removeTimerFromLoop(btstack_timer_source_t *timer)
+int BLEDevice::removeTimer(btstack_timer_source_t *timer)
 {
     return hal_btstack_removeTimer(timer);
 }
 
-/**
- * @brief Get the time of system running.
- */
 uint32_t BLEDevice::getTimeMs(void)
 {
     return hal_btstack_getTimeMs();
 }
 
-/**
- * @brief Enable/Disable the logger info in btstack library.
- *
- * @Note Use usb_hal.
- */
 void BLEDevice::debugLogger(bool flag)
 {
-    hal_btstack_debugLogger((uint8_t)flag);
+	hal_btstack_Log_info((uint8_t)flag);
 }
+
 void BLEDevice::debugError(bool flag)
 {
-    hal_btstack_debugError(flag);
+	hal_btstack_error_info(flag);
 }
+
 void BLEDevice::enablePacketLogger(void)
 {
-    hal_btstack_enablePacketLogger();
+	hal_btstack_enable_packet_info();
 }
 
 /***************************************************************
@@ -77,9 +62,7 @@ void BLEDevice::enablePacketLogger(void)
  * Gap API
  *
 ***************************************************************/
-/**
- * @brief Set random mode.
- */
+
 void BLEDevice::setRandomAddrMode(gap_random_address_type_t random_addr_type)
 {
     hal_btstack_setRandomAddressMode(random_addr_type);
@@ -193,6 +176,7 @@ uint16_t BLEDevice::addCharacteristic(uint16_t uuid, uint16_t flags, uint8_t *da
 {
     return hal_btstack_addCharsUUID16bits(uuid, flags, data, data_len);
 }
+
 uint16_t BLEDevice::addCharacteristic(uint8_t *uuid, uint16_t flags, uint8_t *data, uint16_t data_len)
 {
     return hal_btstack_addCharsUUID128bits(uuid, flags, data, data_len);
@@ -238,19 +222,54 @@ int BLEDevice::sendIndicate(uint16_t value_handle, uint8_t *value, uint16_t leng
  * Gatt client API
  *
 ***************************************************************/
-void BLEDevice::onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_service_t *service))
+void BLEDevice::onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_service_t *service))
 {
 	hal_btstack_setGattServiceDiscoveredCallback(cb);
 }
 
-void BLEDevice::onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_t *characteristic))
+void BLEDevice::onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_characteristic_t *characteristic))
 {
 	hal_btstack_setGattCharsDiscoveredCallback(cb);
 }
 
-void BLEDevice::onCharsDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, gatt_client_characteristic_descriptor_t *characteristic))
+void BLEDevice::onDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_characteristic_descriptor_t *characteristic))
 {
 	hal_btstack_setGattCharsDescriptorsDiscoveredCallback(cb);
+}
+
+void BLEDevice::onGattCharacteristicReadCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+{
+	hal_btstack_setGattCharacteristicReadCallback(cb);
+}
+
+void BLEDevice::onGattCharacteristicWrittenCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle))
+{
+	hal_btstack_setGattCharacteristicWrittenCallback(cb);
+}
+
+void BLEDevice::onGattDescriptorReadCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+{
+	hal_btstack_setGattCharsDescriptorReadCallback(cb);
+}
+
+void BLEDevice::onGattDescriptorWrittenCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle))
+{
+	hal_btstack_setGattCharsDescriptorWrittenCallback(cb);
+}
+
+void BLEDevice::onGattWriteClientCharacteristicConfigCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle))
+{
+	hal_btstack_setGattWriteClientCharacteristicConfigCallback(cb);
+}
+
+void BLEDevice::onGattNotifyUpdateCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+{
+	hal_btstack_setGattNotifyUpdateCallback(cb);
+}
+
+void BLEDevice::onGattIndicateUpdateCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+{
+	hal_btstack_setGattIndicateUpdateCallback(cb);
 }
 
 uint8_t BLEDevice::discoverPrimaryServices(uint16_t con_handle)
@@ -258,37 +277,37 @@ uint8_t BLEDevice::discoverPrimaryServices(uint16_t con_handle)
 	return hal_btstack_discoverPrimaryServices(con_handle);
 }
 
-uint8_t BLEDevice::discoverPrimaryServicesByUUID16(uint16_t con_handle, uint16_t uuid16)
+uint8_t BLEDevice::discoverPrimaryServices(uint16_t con_handle, uint16_t uuid16)
 {
 	return hal_btstack_discoverPrimaryServicesByUUID16(con_handle, uuid16);
 }
 
-uint8_t BLEDevice::discoverPrimaryServicesByUUID128(uint16_t con_handle, const uint8_t *uuid)
+uint8_t BLEDevice::discoverPrimaryServices(uint16_t con_handle, const uint8_t *uuid)
 {
 	return hal_btstack_discoverPrimaryServicesByUUID128(con_handle, uuid);
 }
 
-uint8_t BLEDevice::discoverCharacteristicsForService(uint16_t con_handle, gatt_client_service_t  *service)
+uint8_t BLEDevice::discoverCharacteristics(uint16_t con_handle, gatt_client_service_t *service)
 {
 	return hal_btstack_discoverCharsForService(con_handle, service);
 }
 
-uint8_t BLEDevice::discoverCharacteristicsForHandleRangeByUUID16(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint16_t uuid16)
+uint8_t BLEDevice::discoverCharacteristics(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint16_t uuid16)
 {
 	return hal_btstack_discoverCharsForHandleRangeByUUID16(con_handle, start_handle, end_handle, uuid16);
 }
 
-uint8_t BLEDevice::discoverCharacteristicsForHandleRangeByUUID128(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t *uuid)
+uint8_t BLEDevice::discoverCharacteristics(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t *uuid)
 {
 	return hal_btstack_discoverCharsForHandleRangeByUUID128(con_handle, start_handle, end_handle, uuid);
 }
 
-uint8_t BLEDevice::discoverCharacteristicsForServiceByUUID16(uint16_t con_handle, gatt_client_service_t *service, uint16_t uuid16)
+uint8_t BLEDevice::discoverCharacteristics(uint16_t con_handle, gatt_client_service_t *service, uint16_t uuid16)
 {
 	return hal_btstack_discoverCharsForServiceByUUID16(con_handle, service, uuid16);
 }
 
-uint8_t BLEDevice::discoverCharacteristicsForServiceByUUID128(uint16_t con_handle, gatt_client_service_t *service, uint8_t *uuid128)
+uint8_t BLEDevice::discoverCharacteristics(uint16_t con_handle, gatt_client_service_t *service, uint8_t *uuid128)
 {
 	return hal_btstack_discoverCharsForServiceByUUID128(con_handle, service, uuid128);
 }
@@ -296,6 +315,116 @@ uint8_t BLEDevice::discoverCharacteristicsForServiceByUUID128(uint16_t con_handl
 uint8_t BLEDevice::discoverCharacteristicDescriptors(uint16_t con_handle, gatt_client_characteristic_t *characteristic)
 {
 	return hal_btstack_discoverCharsDescriptors(con_handle, characteristic);
+}
+
+uint8_t BLEDevice::readValue(uint16_t con_handle, gatt_client_characteristic_t  *characteristic)
+{
+	return hal_btstack_readValueOfCharacteristic(con_handle, characteristic);
+}
+
+uint8_t BLEDevice::readValue(uint16_t con_handle, uint16_t characteristic_value_handle)
+{
+	return hal_btstack_readValueOfCharacteristicUsingValueHandle(con_handle, characteristic_value_handle);
+}
+
+uint8_t BLEDevice::readValue(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint16_t uuid16)
+{
+	return hal_btstack_readValueOfCharacteristicByUUID16(con_handle, start_handle, end_handle, uuid16);
+}
+
+uint8_t BLEDevice::readValue(uint16_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t *uuid128)
+{
+	return hal_btstack_readValueOfCharacteristicByUUID128(con_handle, start_handle, end_handle, uuid128);
+}
+
+uint8_t BLEDevice::readLongValue(uint16_t con_handle, gatt_client_characteristic_t *characteristic)
+{
+	return hal_btstack_readLongValueOfCharacteristic(con_handle, characteristic);
+}
+
+uint8_t BLEDevice::readLongValue(uint16_t con_handle, uint16_t characteristic_value_handle)
+{
+	return hal_btstack_readLongValueOfCharacteristicUsingValueHandle(con_handle, characteristic_value_handle);
+}
+
+uint8_t BLEDevice::readLongValueWithOffset(uint16_t con_handle, uint16_t characteristic_value_handle, uint16_t offset)
+{
+	return hal_btstack_readLongValueOfCharacteristicUsingValueHandleWithOffset(con_handle, characteristic_value_handle, offset);
+}
+
+uint8_t BLEDevice::writeValueWithoutResponse(uint16_t con_handle, uint16_t characteristic_value_handle, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeValueOfChracteristicWithoutResponse(con_handle, characteristic_value_handle, length, data);
+}
+
+uint8_t BLEDevice::writeValue(uint16_t con_handle, uint16_t characteristic_value_handle, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeValueOfCharacteristic(con_handle, characteristic_value_handle, length, data);
+}
+
+uint8_t BLEDevice::writeLongValue(uint16_t con_handle, uint16_t characteristic_value_handle, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeLongValueOfCharacteristic(con_handle, characteristic_value_handle, length, data);
+}
+
+uint8_t BLEDevice::writeLongValueWithOffset(uint16_t con_handle, uint16_t characteristic_value_handle, uint16_t offset, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeLongValueOfCharacteristicWithOffset(con_handle, characteristic_value_handle, offset, length, data);
+}
+
+uint8_t BLEDevice::readDescriptorValue(uint16_t con_handle, gatt_client_characteristic_descriptor_t *descriptor)
+{
+	return hal_btstack_readCharacteristicDescriptor(con_handle, descriptor);
+}
+
+uint8_t BLEDevice::readDescriptorValue(uint16_t con_handle, uint16_t descriptor_handle)
+{
+	return hal_btstack_readCharacteristicDescriptorUsingDescriptorHandle(con_handle, descriptor_handle);
+}
+
+uint8_t BLEDevice::readLongDescriptorValue(uint16_t con_handle, gatt_client_characteristic_descriptor_t *descriptor)
+{
+	return hal_btstack_readLongCharacteristicDescriptor(con_handle, descriptor);
+}
+
+uint8_t BLEDevice::readLongDescriptorValue(uint16_t con_handle, uint16_t descriptor_handle)
+{
+	return hal_btstack_readLongCharacteristicDescriptorUsingDescriptorHandle(con_handle, descriptor_handle);
+}
+
+uint8_t BLEDevice::readLongDescriptorValueWithOffset(uint16_t con_handle, uint16_t descriptor_handle, uint16_t offset)
+{
+	return hal_btstack_readLongCharacteristicDescriptorUsingDescriptorHandleWithOffset(con_handle, descriptor_handle, offset);
+}
+
+uint8_t BLEDevice::writeDescriptorValue(uint16_t con_handle, gatt_client_characteristic_descriptor_t *descriptor, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeCharacteristicDescriptor(con_handle, descriptor, length, data);
+}
+
+uint8_t BLEDevice::writeDescriptorValue(uint16_t con_handle, uint16_t descriptor_handle, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeCharacteristicDescriptorUsingDescriptorHandle(con_handle, descriptor_handle, length, data);
+}
+
+uint8_t BLEDevice::writeLongDescriptorValue(uint16_t con_handle, gatt_client_characteristic_descriptor_t *descriptor, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeLongCharacteristicDescriptor(con_handle, descriptor, length, data);
+}
+
+uint8_t BLEDevice::writeLongDescriptorValue(uint16_t con_handle, uint16_t descriptor_handle, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeLongCharacteristicDescriptorUsingDescriptorHandle(con_handle, descriptor_handle, length, data);
+}
+
+uint8_t BLEDevice::writeLongDescriptorValueWithOffset(uint16_t con_handle, uint16_t descriptor_handle, uint16_t offset, uint16_t length, uint8_t *data)
+{
+	return hal_btstack_writeLongCharacteristicDescriptorUsingDescriptorHandleWithOffset(con_handle, descriptor_handle, offset, length, data);
+}
+
+uint8_t BLEDevice::writeClientCharsConfigDescritpor(uint16_t con_handle, gatt_client_characteristic_t *characteristic, uint16_t configuration)
+{
+	return hal_btstack_WriteClientCharacteristicConfiguration(con_handle, characteristic, configuration);
 }
 
 BLEDevice ble;
