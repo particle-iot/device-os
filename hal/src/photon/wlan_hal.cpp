@@ -37,6 +37,7 @@
 #include "wwd_sdpcm.h"
 #include "delay_hal.h"
 #include "dct_hal.h"
+#include "concurrent_hal.h"
 
 // dns.h includes a class member, which doesn't compile in C++
 #define class clazz
@@ -156,12 +157,20 @@ bool to_wiced_ip_address(wiced_ip_address_t& wiced, const dct_ip_address_v4_t& d
     return (dct!=0);
 }
 
+void wlan_connect_timeout(os_timer_t t)
+{
+	wlan_connect_cancel(false);
+}
+
 /**
  * Do what is needed to finalize the connection.
  * @return
  */
 wlan_result_t wlan_connect_finalize()
 {
+	os_timer_t cancel_timer = 0;
+	os_timer_create(&cancel_timer, 60000, &wlan_connect_timeout, nullptr, false /* oneshot */, nullptr);
+
     // enable connection from stored profiles
     wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
     if (!result) {
@@ -194,6 +203,9 @@ wlan_result_t wlan_connect_finalize()
     // DHCP happens synchronously
     HAL_NET_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
+
+    if (cancel_timer)
+    		os_timer_destroy(cancel_timer, nullptr);
     return result;
 }
 
