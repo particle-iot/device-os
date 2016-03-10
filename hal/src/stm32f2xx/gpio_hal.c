@@ -29,6 +29,7 @@
 #include "stm32f2xx.h"
 #include <stddef.h>
 #include "hw_ticks.h"
+#include "dac_hal.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -194,6 +195,12 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value)
     {
         HAL_Pin_Mode(pin, OUTPUT);
     }
+    else if (PIN_MAP[pin].pin_mode == AN_OUTPUT)
+    {
+        if (HAL_DAC_Is_Enabled(pin))
+            HAL_DAC_Enable(pin, 0);
+        HAL_Pin_Mode(pin, OUTPUT);
+    }
 
     if(value == 0)
     {
@@ -221,6 +228,22 @@ int32_t HAL_GPIO_Read(uint16_t pin)
         else
         {
             // Restore the PinMode after calling analogRead() on same pin earlier
+            HAL_Pin_Mode(pin, pm);
+        }
+    }
+    else if (PIN_MAP[pin].pin_mode == AN_OUTPUT)
+    {
+        PinMode pm = HAL_GPIO_Recall_Pin_Mode();
+        if(pm == PIN_MODE_NONE)
+        {
+            return 0;
+        }
+        else
+        {
+            // Disable DAC
+            if (HAL_DAC_Is_Enabled(pin))
+                HAL_DAC_Enable(pin, 0);
+            // Restore pin mode
             HAL_Pin_Mode(pin, pm);
         }
     }
