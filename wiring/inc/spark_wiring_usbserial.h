@@ -35,11 +35,13 @@ class USBSerial : public Stream
 {
 public:
 	// public methods
-	USBSerial();
+    USBSerial();
+	USBSerial(HAL_USB_USART_Serial serial, uint8_t* rx_buffer, uint8_t* tx_buffer);
 
-        unsigned int baud() { return USB_USART_Baud_Rate(); }
+    unsigned int baud();
 
-        operator bool() { return baud()!=0; }
+    operator bool();
+    bool isEnabled();
 
 	void begin(long speed);
 	void end();
@@ -86,11 +88,15 @@ public:
 	using Print::write;
 
 private:
+    HAL_USB_USART_Serial _serial;
 	bool _blocking;
 };
 
-USBSerial& _fetch_global_serial();
+extern USBSerial& _fetch_usbserial();
+#define Serial _fetch_usbserial()
 
-#define Serial _fetch_global_serial()
+extern USBSerial& _fetch_usbserial1();
+#define Serial10 _fetch_usbserial1()
+#define USBSerial1 _fetch_usbserial1()
 
 #endif

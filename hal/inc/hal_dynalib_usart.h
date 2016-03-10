@@ -64,6 +64,24 @@ DYNALIB_FN(hal_usart,HAL_USART_Available_Data_For_Write)
 #ifdef USB_CDC_ENABLE
 DYNALIB_FN(hal_usart,USB_USART_Available_Data_For_Write)
 DYNALIB_FN(hal_usart,USB_USART_Flush_Data)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Init)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Begin)
+DYNALIB_FN(hal_usart,HAL_USB_USART_End)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Baud_Rate)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Available_Data)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Available_Data_For_Write)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Receive_Data)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Send_Data)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Flush_Data)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Is_Enabled)
+DYNALIB_FN(hal_usart,HAL_USB_USART_Is_Connected)
+#endif
+/* HID shouldn't probably go in hal_usart */
+#ifdef USB_HID_ENABLE
+DYNALIB_FN(hal_usart,HAL_USB_HID_Init)
+DYNALIB_FN(hal_usart,HAL_USB_HID_Begin)
+DYNALIB_FN(hal_usart,HAL_USB_HID_Send_Report)
+DYNALIB_FN(hal_usart,HAL_USB_HID_End)
 #endif
 
 DYNALIB_END(hal_usart)

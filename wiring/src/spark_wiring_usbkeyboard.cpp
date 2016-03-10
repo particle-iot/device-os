@@ -23,6 +23,8 @@
   ******************************************************************************
  */
 
+#include "usb_hal.h"
+
 #ifdef SPARK_USB_KEYBOARD
 #include "spark_wiring_usbkeyboard.h"
 
@@ -165,16 +167,18 @@ const uint8_t asciimap[128] =
 //
 USBKeyboard::USBKeyboard(void)
 {
+	keyReport.reportId = 0x02;
+	HAL_USB_HID_Init(0, NULL);
 }
 
 void USBKeyboard::begin(void)
 {
-	SPARK_USB_Setup();
+	HAL_USB_HID_Begin(0, NULL);
 }
 
 void USBKeyboard::end(void)
 {
-	//To Do
+	HAL_USB_HID_End(0);
 }
 
 // press() adds the specified key (printing, non-printing, or modifier)
@@ -234,7 +238,7 @@ size_t USBKeyboard::press(uint8_t key)
 		}
 	}
 
-	USB_HID_Send_Report(&keyReport, sizeof(KeyReport));
+	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
 	return 1;
 }
 
@@ -281,7 +285,7 @@ size_t USBKeyboard::release(uint8_t key)
 		}
 	}
 
-	USB_HID_Send_Report(&keyReport, sizeof(KeyReport));
+	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
 	return 1;
 }
 
@@ -294,7 +298,7 @@ void USBKeyboard::releaseAll(void)
 	keyReport.keys[4] = 0;
 	keyReport.keys[5] = 0;
 	keyReport.modifiers = 0;
-	USB_HID_Send_Report(&keyReport, sizeof(KeyReport));
+	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
 }
 
 size_t USBKeyboard::write(uint8_t key)
@@ -302,6 +306,7 @@ size_t USBKeyboard::write(uint8_t key)
 	uint8_t p = press(key);		// Keydown
 	delay(100);
 	uint8_t r = release(key);	// Keyup
+	(void)r;
 	return (p);					// just return the result of press() since release() almost always returns 1
 }
 

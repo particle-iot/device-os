@@ -55,7 +55,9 @@ extern "C" {
                  CNTR_RESETM  \
 )
 
-#define USART_RX_DATA_SIZE      256
+#define USB_TX_BUFFER_SIZE              128  /* Total size of IN buffer:
+                                                APP_RX_DATA_SIZE*8/MAX_BAUDARATE*1000 should be > CDC_IN_FRAME_INTERVAL */
+#define USB_RX_BUFFER_SIZE              256
 
 /* Exported functions ------------------------------------------------------- */
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -112,8 +114,49 @@ void USB_USART_Flush_Data(void);
 #endif
 
 #ifdef USB_HID_ENABLE
-void USB_HID_Send_Report(void *pHIDReport, size_t reportSize);
+void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize);
 #endif
+
+/*******************************************************************************************************/
+/* Multi-instanced USB classes */
+/*******************************************************************************************************/
+#ifdef USB_CDC_ENABLE
+
+typedef enum HAL_USB_USART_Serial {
+  HAL_USB_USART_SERIAL = 0,
+  HAL_USB_USART_SERIAL10 = 1,
+
+  HAL_USB_USART_SERIAL_COUNT
+} HAL_USB_USART_Serial;
+
+typedef struct HAL_USB_USART_Config {
+  uint8_t* rx_buffer;
+  uint16_t rx_buffer_size;
+  uint8_t* tx_buffer;
+  uint16_t tx_buffer_size;
+} HAL_USB_USART_Config;
+
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* config);
+void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved);
+void HAL_USB_USART_End(HAL_USB_USART_Serial serial);
+unsigned int HAL_USB_USART_Baud_Rate(HAL_USB_USART_Serial serial);
+int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial);
+int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial);
+int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek);
+int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data);
+void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial);
+bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial);
+bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial);
+
+#endif
+
+#ifdef USB_HID_ENABLE
+void HAL_USB_HID_Init(uint8_t reserved, void* reserved1);
+void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1);
+void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t reportSize, void* reserved1);
+void HAL_USB_HID_End(uint8_t reserved);
+#endif
+
 
 #ifdef __cplusplus
 }

@@ -51,9 +51,9 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
         0x00,                       /*bcdUSB */
         0x02,
-        0x02,                       /*bDeviceClass: CDC*/
-        0x00,                       /*bDeviceSubClass*/
-        0x00,                       /*bDeviceProtocol*/
+        0xef,                       /*bDeviceClass: Misc */
+        0x02,                       /*bDeviceSubClass*/
+        0x01,                       /*bDeviceProtocol*/
         USB_OTG_MAX_EP0_SIZE,       /*bMaxPacketSize*/
         LOBYTE(USBD_VID_SPARK),     /*idVendor*/
         HIBYTE(USBD_VID_SPARK),     /*idVendor*/

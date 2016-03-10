@@ -26,12 +26,42 @@
 
 #include "spark_wiring_usbserial.h"
 
+#ifdef SPARK_USB_SERIAL
+
+static uint8_t serial_rx_buffer[USB_RX_BUFFER_SIZE];
+static uint8_t serial_tx_buffer[USB_TX_BUFFER_SIZE];
+
+static uint8_t usbserial1_rx_buffer[USB_RX_BUFFER_SIZE];
+static uint8_t usbserial1_tx_buffer[USB_TX_BUFFER_SIZE];
+
+#endif
 //
 // Constructor
 //
 USBSerial::USBSerial()
 {
+  _serial = HAL_USB_USART_SERIAL;
   _blocking = true;
+
+  HAL_USB_USART_Config conf;
+  conf.rx_buffer = serial_rx_buffer;
+  conf.tx_buffer = serial_tx_buffer;
+  conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
+  conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
+  HAL_USB_USART_Init(_serial, &conf);
+}
+
+USBSerial::USBSerial(HAL_USB_USART_Serial serial, uint8_t* rx_buffer, uint8_t* tx_buffer)
+{
+  _serial = serial;
+  _blocking = true;
+
+  HAL_USB_USART_Config conf;
+  conf.rx_buffer = rx_buffer;
+  conf.tx_buffer = tx_buffer;
+  conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
+  conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
+  HAL_USB_USART_Init(_serial, &conf);
 }
 
 //
@@ -40,35 +70,35 @@ USBSerial::USBSerial()
 
 void USBSerial::begin(long speed)
 {
-    USB_USART_Init((unsigned)speed);
+    HAL_USB_USART_Begin(_serial, speed, NULL);
 }
 
 void USBSerial::end()
 {
-    USB_USART_Init(0);
+    HAL_USB_USART_End(_serial);
 }
 
 
 // Read data from buffer
 int USBSerial::read()
 {
-	return USB_USART_Receive_Data(false);
+	return HAL_USB_USART_Receive_Data(_serial, false);
 }
 
 int USBSerial::availableForWrite()
 {
-  return USB_USART_Available_Data_For_Write();
+  return HAL_USB_USART_Available_Data_For_Write(_serial);
 }
 
 int USBSerial::available()
 {
-	return USB_USART_Available_Data();
+	return HAL_USB_USART_Available_Data(_serial);
 }
 
 size_t USBSerial::write(uint8_t byte)
 {
-  if (USB_USART_Available_Data_For_Write() > 0 || _blocking) {
-    USB_USART_Send_Data(byte);
+  if (HAL_USB_USART_Available_Data_For_Write(_serial) > 0 || _blocking) {
+    HAL_USB_USART_Send_Data(_serial, byte);
     return 1;
   }
   return 0;
@@ -76,7 +106,7 @@ size_t USBSerial::write(uint8_t byte)
 
 void USBSerial::flush()
 {
-  USB_USART_Flush_Data();
+  HAL_USB_USART_Flush_Data(_serial);
 }
 
 void USBSerial::blockOnOverrun(bool block)
@@ -86,15 +116,34 @@ void USBSerial::blockOnOverrun(bool block)
 
 int USBSerial::peek()
 {
-	return USB_USART_Receive_Data(true);
+	return HAL_USB_USART_Receive_Data(_serial, true);
+}
+
+USBSerial::operator bool() {
+  return isEnabled();
+}
+
+bool USBSerial::isEnabled() {
+  return HAL_USB_USART_Is_Enabled(_serial);
+}
+
+unsigned int USBSerial::baud() {
+  return HAL_USB_USART_Baud_Rate(_serial);
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
 #ifdef SPARK_USB_SERIAL
-USBSerial& _fetch_global_serial()
+
+USBSerial& _fetch_usbserial()
 {
-	static USBSerial _globalSerial;
-	return _globalSerial;
+	static USBSerial _usbserial(HAL_USB_USART_SERIAL, serial_rx_buffer, serial_tx_buffer);
+	return _usbserial;
+}
+
+USBSerial& _fetch_usbserial1()
+{
+  static USBSerial _usbserial1(HAL_USB_USART_SERIAL10, usbserial1_rx_buffer, usbserial1_tx_buffer);
+  return _usbserial1;
 }
 
 

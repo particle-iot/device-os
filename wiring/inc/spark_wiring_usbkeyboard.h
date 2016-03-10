@@ -26,6 +26,8 @@
 #ifndef __SPARK_WIRING_USBKEYBOARD_H
 #define __SPARK_WIRING_USBKEYBOARD_H
 
+#include "usb_config_hal.h"
+
 #ifdef SPARK_USB_KEYBOARD
 #include "spark_wiring.h"
 
@@ -68,6 +70,7 @@
 
 typedef struct
 {
+  uint8_t reportId; // 0x02
 	uint8_t modifiers;
 	uint8_t reserved;
 	uint8_t keys[6];
