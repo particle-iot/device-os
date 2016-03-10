@@ -82,6 +82,12 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate));
 uint8_t USB_USART_Available_Data(void);
 
 /**
+ * Retrieves the number of bytes of data available in the TX buffer.
+ * @return
+ */
+int32_t USB_USART_Available_Data_For_Write(void);
+
+/**
  * Reads data from the input buffer.
  * @param peek  If the data should be peeked reather than fetched.
  * The default, `false` means fetch, where data is removed from the buffer.
@@ -93,8 +99,16 @@ int32_t USB_USART_Receive_Data(uint8_t peek);
 /**
  * Sends data to the USB serial.
  * @param Data      The data to write.
+ * @return
  */
 void USB_USART_Send_Data(uint8_t Data);
+
+/**
+ * Flushes TX buffer
+ * @return
+ */
+void USB_USART_Flush_Data(void);
+
 #endif
 
 #ifdef USB_HID_ENABLE
