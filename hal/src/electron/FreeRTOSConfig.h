@@ -154,6 +154,10 @@ configKERNEL_INTERRUPT_PRIORITY setting.  Here 15 corresponds to the lowest
 NVIC value of 255. */
 #define configLIBRARY_KERNEL_INTERRUPT_PRIORITY	15
 
+/* Enable stack overflow detection for debug builds (see rtos_hook.cpp) */
+#ifdef DEBUG_BUILD
+# define configCHECK_FOR_STACK_OVERFLOW 2
+#endif
 
 #define xPortPendSVHandler PendSV_Handler
 #define vPortSVCHandler SVC_Handler
