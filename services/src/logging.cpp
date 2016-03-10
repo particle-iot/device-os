@@ -59,8 +59,7 @@ void log_message(int level, const char *category, const char *file, int line, co
             buf[sizeof(buf) - 2] = '~';
         }
         log_msg_callback(buf, level, category, time, file, line, func, 0);
-    } else if (debug_output_ && level >= log_level_at_run_time) {
-        // Using compatibility callback
+    } else if (debug_output_ && level >= log_level_at_run_time) { // Compatibility callback
         const uint32_t time = HAL_Timer_Get_Milli_Seconds();
         const char* const levelName = log_level_name(level, 0);
         if (file) {
@@ -101,7 +100,7 @@ void log_write(int level, const char *category, const char *data, size_t size, v
 }
 
 void log_format(int level, const char *category, void *reserved, const char *fmt, ...) {
-    if (!log_write_callback) {
+    if (!log_write_callback && (!debug_output_ || level < log_level_at_run_time)) {
         return;
     }
     char buf[LOG_FORMATTED_STRING_LENGTH];
@@ -113,7 +112,11 @@ void log_format(int level, const char *category, void *reserved, const char *fmt
         buf[sizeof(buf) - 2] = '~';
         n = sizeof(buf) - 1;
     }
-    log_write_callback(buf, n, level, category, 0);
+    if (log_write_callback) {
+        log_write_callback(buf, n, level, category, 0);
+    } else {
+        debug_output_(buf); // Compatibility callback
+    }
 }
 
 void log_dump(int level, const char *category, const void *data, size_t size, void *reserved) {
@@ -138,10 +141,13 @@ void log_dump(int level, const char *category, const void *data, size_t size, vo
 }
 
 int log_enabled(int level, const char *category, void *reserved) {
-    if (!log_enabled_callback) {
-        return 0;
+    if (log_enabled_callback) {
+        return log_enabled_callback(level, category, 0);
     }
-    return log_enabled_callback(level, category, 0);
+    if (debug_output_ && level >= log_level_at_run_time) { // Compatibility callback
+        return 1;
+    }
+    return 0;
 }
 
 const char* log_level_name(int level, void *reserved) {
