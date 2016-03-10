@@ -187,6 +187,9 @@ uint16_t MAL_Erase(uint32_t Idx, uint32_t Add)
 /**
   * @brief  MAL_Write
   *         Write sectors of memory.
+  *         Write is tried twice in case of a first time failure.
+  *         After a successful write, data is verified.  If verification
+  *         fails this sequence is tried once more before failing.
   * @param  Add: Sector address/code
   * @param  Len: Number of data to be written (in bytes)
   * @retval Result of the opeartion: MAL_OK if all operations are OK else MAL_FAIL
@@ -211,7 +214,29 @@ uint16_t MAL_Write (uint32_t Idx, uint32_t Add, uint32_t Len)
     /* Check if the command is supported */
     if (tMALTab[memIdx]->pMAL_Write != NULL)
     {
-      return tMALTab[memIdx]->pMAL_Write(Add, Len);
+      int8_t tries_remaining = 2;
+      uint16_t status = MAL_FAIL;
+      do {
+        status = tMALTab[memIdx]->pMAL_Write(Add, Len);
+        if (status != MAL_OK) {
+          // Write failed, try once more.
+          status = tMALTab[memIdx]->pMAL_Write(Add, Len);
+          // If write failed twice, don't bother wasting time verifying and trying again.
+          if (status != MAL_OK) {
+            return MAL_FAIL;
+          }
+        }
+
+        // Write was successful, let's verify now.
+        status = tMALTab[memIdx]->pMAL_Verify(Add, Len);
+        if (status == MAL_OK) {
+          return MAL_OK;
+        }
+        // If verify failed, fall through and try write-verify one more time.
+
+      } while (tries_remaining-- > 0);
+
+      return MAL_FAIL;
     }
     else
     {

@@ -44,6 +44,7 @@ typedef struct _DFU_MAL_PROP
   uint16_t (*pMAL_Erase)    (uint32_t Add);
   uint16_t (*pMAL_Write)    (uint32_t Add, uint32_t Len);
   const uint8_t  *(*pMAL_Read)    (uint32_t Add, uint32_t Len);
+  uint16_t (*pMAL_Verify)   (uint32_t Add, uint32_t Len);
   uint16_t (*pMAL_CheckAdd) (uint32_t Add);
   const uint32_t EraseTiming;
   const uint32_t WriteTiming;
