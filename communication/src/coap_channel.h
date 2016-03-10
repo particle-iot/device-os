@@ -29,7 +29,10 @@ namespace particle
 namespace protocol
 {
 
-
+/**
+ * Decorates a MessageChannel with message ID management as required by CoAP.
+ * When a message is sent that doesn't have an assigned ID, it is assigned the next available ID.
+ */
 template <typename T>
 class CoAPChannel : public T
 {
@@ -338,6 +341,11 @@ public:
 		clear();
 	}
 
+	bool has_messages()
+	{
+		return head!=nullptr;
+	}
+
 	/**
 	 * Retrieves the current confirmable message that is still
 	 * waiting acknowledgement.
@@ -606,16 +614,48 @@ public:
 	 */
 	ProtocolError receive(Message& msg) override
 	{
+		return receive(msg, true);
+	}
+
+	/**
+	 * Pulls messages from the message channel
+	 */
+	ProtocolError receive_confirmations()
+	{
+		Message msg;
+		channel::create(msg);
+		return receive(msg, false);
+	}
+
+	bool has_unacknowledged_requests()
+	{
+		return client.has_messages();
+	}
+
+	/**
+	 * Pulls messages from the channel and stores it in a message store for
+	 * reliable receipt and retransmission.
+	 *
+	 * @param msg			The message received
+	 * @param requests		When true, both requests and responses are retreived. When false, only responses are retrieved.
+	 */
+	ProtocolError receive(Message& msg, bool requests)
+	{
 		ProtocolError error = channel::receive(msg);
 		if (!error && msg.length())
 		{
+			// is it a request from the server or a response from the server?
+			// responses are paired with the original client request
 			CoAPMessageStore& store = msg.is_request() ? server : client;
-			error = store.receive(msg, delegateChannel, millis());
+			if (!msg.is_request() || requests) {
+				error = store.receive(msg, delegateChannel, millis());
+			}
 		}
 		client.process(millis(), delegateChannel);
 		server.process(millis(), delegateChannel);
 		return error;
 	}
+
 };
 
 

@@ -390,6 +390,10 @@ public:
 		return -1;
 	}
 
+	inline system_tick_t millis() { return callbacks.millis(); }
+
+	virtual void command(ProtocolCommands::Enum command, uint32_t data) {}
+
 };
 
 }
