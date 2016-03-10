@@ -28,7 +28,7 @@
 
 #ifdef HAL_HAS_CAN_D1_D2
 
-test(CAN_D1D2_ReceivesTransmittedMessage) {
+test(CAN_D1_D2_ReceivesTransmittedMessage) {
     CANChannel can(CAN_D1_D2);
     can.begin(500000, CAN_TEST_MODE);
 
@@ -48,10 +48,29 @@ test(CAN_D1D2_ReceivesTransmittedMessage) {
     assertEqual(rx.data[0], 10);
 }
 
-test(CAN_D1D2_DoesntReceiveFilteredMessage) {
+test(CAN_D1_D2_ReceivesAcceptedMessage) {
     CANChannel can(CAN_D1_D2);
     can.begin(500000, CAN_TEST_MODE);
-    // Accept only message 0x100
+    // Accept only standard message 0x100
+    can.addFilter(0x100, 0x7FF);
+
+    CANMessage tx;
+    tx.id = 0x100;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, true);
+}
+
+test(CAN_D1_D2_DoesntReceiveFilteredMessage) {
+    CANChannel can(CAN_D1_D2);
+    can.begin(500000, CAN_TEST_MODE);
+    // Accept only standard message 0x100
     can.addFilter(0x100, 0x7FF);
 
     CANMessage tx;
@@ -67,11 +86,73 @@ test(CAN_D1D2_DoesntReceiveFilteredMessage) {
     assertEqual(hasMessage, false);
 }
 
+test(CAN_D1_D2_ReceivesTransmittedExtendedMessage) {
+    CANChannel can(CAN_D1_D2);
+    can.begin(500000, CAN_TEST_MODE);
+
+    CANMessage tx;
+    tx.extended = true;
+    tx.id = 0x3000;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, true);
+    assertEqual(rx.extended, true);
+    assertEqual(rx.id, 0x3000);
+    assertEqual(rx.len, 1);
+    assertEqual(rx.data[0], 10);
+}
+
+test(CAN_D1_D2_ReceivesAcceptedExtendedMessage) {
+    CANChannel can(CAN_D1_D2);
+    can.begin(500000, CAN_TEST_MODE);
+    // Accept only extended message 0x3000
+    can.addFilter(0x3000, 0x7FF, CAN_FILTER_EXTENDED);
+
+    CANMessage tx;
+    tx.extended = true;
+    tx.id = 0x3000;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, true);
+}
+
+test(CAN_D1_D2_DoesntReceiveFilteredExtendedMessage) {
+    CANChannel can(CAN_D1_D2);
+    can.begin(500000, CAN_TEST_MODE);
+    // Accept only extended message 0x3000
+    can.addFilter(0x3000, 0x7FF, CAN_FILTER_EXTENDED);
+
+    CANMessage tx;
+    tx.extended = true;
+    tx.id = 0x3001;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, false);
+}
+
 #endif // HAL_HAS_CAN_D1_D2
 
 #ifdef HAL_HAS_CAN_C4_C5
 
-test(CAN_C4C5_ReceivesTransmittedMessage) {
+test(CAN_C4_C5_ReceivesTransmittedMessage) {
     CANChannel can(CAN_C4_C5);
     can.begin(500000, CAN_TEST_MODE);
 
@@ -91,14 +172,95 @@ test(CAN_C4C5_ReceivesTransmittedMessage) {
     assertEqual(rx.data[0], 10);
 }
 
-test(CAN_C4C5_DoesntReceiveFilteredMessage) {
+test(CAN_C4_C5_ReceivesAcceptedMessage) {
     CANChannel can(CAN_C4_C5);
     can.begin(500000, CAN_TEST_MODE);
-    // Accept only message 0x100
+    // Accept only standard message 0x100
+    can.addFilter(0x100, 0x7FF);
+
+    CANMessage tx;
+    tx.id = 0x100;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, true);
+}
+
+test(CAN_C4_C5_DoesntReceiveFilteredMessage) {
+    CANChannel can(CAN_C4_C5);
+    can.begin(500000, CAN_TEST_MODE);
+    // Accept only standard message 0x100
     can.addFilter(0x100, 0x7FF);
 
     CANMessage tx;
     tx.id = 0x101;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, false);
+}
+
+test(CAN_C4_C5_ReceivesTransmittedExtendedMessage) {
+    CANChannel can(CAN_C4_C5);
+    can.begin(500000, CAN_TEST_MODE);
+
+    CANMessage tx;
+    tx.extended = true;
+    tx.id = 0x3000;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, true);
+    assertEqual(rx.extended, true);
+    assertEqual(rx.id, 0x3000);
+    assertEqual(rx.len, 1);
+    assertEqual(rx.data[0], 10);
+}
+
+test(CAN_C4_C5_ReceivesAcceptedExtendedMessage) {
+    CANChannel can(CAN_C4_C5);
+    can.begin(500000, CAN_TEST_MODE);
+    // Accept only extended message 0x3000
+    can.addFilter(0x3000, 0x7FF, CAN_FILTER_EXTENDED);
+
+    CANMessage tx;
+    tx.extended = true;
+    tx.id = 0x3000;
+    tx.len = 1;
+    tx.data[0] = 10;
+    can.transmit(tx);
+    delay(1);
+    CANMessage rx;
+    bool hasMessage = can.receive(rx);
+    can.end();
+
+    assertEqual(hasMessage, true);
+}
+
+test(CAN_C4_C5_DoesntReceiveFilteredExtendedMessage) {
+    CANChannel can(CAN_C4_C5);
+    can.begin(500000, CAN_TEST_MODE);
+    // Accept only extended message 0x3000
+    can.addFilter(0x3000, 0x7FF, CAN_FILTER_EXTENDED);
+
+    CANMessage tx;
+    tx.extended = true;
+    tx.id = 0x3001;
     tx.len = 1;
     tx.data[0] = 10;
     can.transmit(tx);
