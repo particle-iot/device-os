@@ -1580,10 +1580,12 @@ int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
 int MDMParser::socketRecv(int socket, char* buf, int len)
 {
     int cnt = 0;
-    // DEBUG_D("socketRecv(%d,%d)\r\n", socket, len);
+/*
+    DEBUG_D("socketRecv(%d,%d)\r\n", socket, len);
 #ifdef MDM_DEBUG
     memset(buf, '\0', len);
 #endif
+*/
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     while (len) {
         int blk = MAX_SIZE; // still need space for headers and unsolicited  commands
