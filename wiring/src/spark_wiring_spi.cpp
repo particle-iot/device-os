@@ -178,7 +178,7 @@ bool SPIClass::isEnabled()
 
 void SPIClass::onSelect(wiring_spi_select_callback_t user_callback)
 {
-  HAL_SPI_Set_Callback_On_Select(_spi, user_callback);
+  HAL_SPI_Set_Callback_On_Select(_spi, user_callback, NULL);
 }
 
 void SPIClass::transferCancel()

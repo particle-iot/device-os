@@ -91,7 +91,7 @@ void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffe
 bool HAL_SPI_Is_Enabled_Old();
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi);
 void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved);
-void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb);
+void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved);
 void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi);
 int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi);
 

@@ -500,7 +500,7 @@ int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi)
     return spiState[spi].SPI_DMA_Current_Transfer_Length - DMA_GetCurrDataCounter(spiMap[spi].SPI_RX_DMA_Stream);
 }
 
-void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb)
+void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved)
 {
     spiState[spi].SPI_Select_UserCallback = cb;
 }
