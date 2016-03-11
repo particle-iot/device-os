@@ -8,23 +8,28 @@ Class=Ports
 ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318} 
 Provider=%PROVIDER% 
 LayoutFile=layout.inf
-DriverVer=01/10/2014,5.2.0.0
-CatalogFile=electron.cat
+DriverVer=03/10/2016,5.2.0.1
+; FIXME: Unsigned
+;CatalogFile=electron.cat
 
 [Manufacturer] 
 %DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64, NTARM
 
 [DeviceList.NTx86] 
-%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C00A
+%DEVICE_DESCRIPTION1%=DriverInstall, USB\VID_2B04&PID_C00A&MI_00
+%DEVICE_DESCRIPTION2%=DriverInstall, USB\VID_2B04&PID_C00A&MI_02
 
 [DeviceList.NTia64] 
-%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C00A
+%DEVICE_DESCRIPTION1%=DriverInstall, USB\VID_2B04&PID_C00A&MI_00
+%DEVICE_DESCRIPTION2%=DriverInstall, USB\VID_2B04&PID_C00A&MI_02
 
 [DeviceList.NTamd64] 
-%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C00A
+%DEVICE_DESCRIPTION1%=DriverInstall, USB\VID_2B04&PID_C00A&MI_00
+%DEVICE_DESCRIPTION2%=DriverInstall, USB\VID_2B04&PID_C00A&MI_02
 
 [DeviceList.NTARM] 
-%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C00A
+%DEVICE_DESCRIPTION1%=DriverInstall, USB\VID_2B04&PID_C00A&MI_00
+%DEVICE_DESCRIPTION2%=DriverInstall, USB\VID_2B04&PID_C00A&MI_02
 
 
 [DriverCopyFiles]
@@ -86,6 +91,7 @@ LoadOrderGroup = PNP Filter
 
 [Strings] 
 PROVIDER="Particle"
-DEVICE_DESCRIPTION ="Electron"
+DEVICE_DESCRIPTION1 ="Electron Serial"
+DEVICE_DESCRIPTION2 ="Electron USBSerial1"
 USBSER.DESC = "USB Serial Driver"
 SERENUM.DESC = "Serenum Filter Driver"
