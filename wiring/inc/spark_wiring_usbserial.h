@@ -28,6 +28,7 @@
 #define __SPARK_WIRING_USBSERIAL_H
 
 #include "spark_wiring_stream.h"
+#include "spark_wiring_platform.h"
 #include "usb_hal.h"
 #include "system_task.h"
 
@@ -95,8 +96,9 @@ private:
 extern USBSerial& _fetch_usbserial();
 #define Serial _fetch_usbserial()
 
+#if Wiring_USBSerial1
 extern USBSerial& _fetch_usbserial1();
-#define Serial10 _fetch_usbserial1()
 #define USBSerial1 _fetch_usbserial1()
+#endif /* Wiring_USBSerial1 */
 
 #endif

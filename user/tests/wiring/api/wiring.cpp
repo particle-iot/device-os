@@ -73,6 +73,12 @@ test(api_wiring_usbserial) {
     API_COMPILE(Serial.blockOnOverrun(false));
     API_COMPILE(Serial.blockOnOverrun(true));
     API_COMPILE(Serial.availableForWrite());
+
+#if Wiring_USBSerial1
+    API_COMPILE(USBSerial1.blockOnOverrun(false));
+    API_COMPILE(USBSerial1.blockOnOverrun(true));
+    API_COMPILE(USBSerial1.availableForWrite());
+#endif
 }
 
 void TIM3_callback()
@@ -145,6 +151,9 @@ test(api_wiring_globals)
 			&SPI2,
 #endif
 			&Serial,
+#if Wiring_USBSerial1
+            &USBSerial1,
+#endif
 			&Wire,
 #if Wiring_Wire1
 			&Wire1,

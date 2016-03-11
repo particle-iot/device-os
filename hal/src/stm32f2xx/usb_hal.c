@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
+#include "platform_headers.h"
 #include "usbd_usr.h"
 #include "usb_conf.h"
 #include "usbd_desc.h"
@@ -99,7 +100,7 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 
     // Enable Serial by default
     HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, NULL);
-    HAL_USB_USART_Begin(HAL_USB_USART_SERIAL10, 9600, NULL);
+    HAL_USB_USART_Begin(HAL_USB_USART_SERIAL1, 9600, NULL);
 
     SPARK_USB_Setup();
 
@@ -149,7 +150,7 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* confi
         usbUsartMap[serial].data->ep_in_data = CDC0_IN_EP;
         usbUsartMap[serial].data->ep_in_int = CDC0_CMD_EP;
         usbUsartMap[serial].data->ep_out_data = CDC0_OUT_EP;
-    } else if (serial == HAL_USB_USART_SERIAL10) {
+    } else if (serial == HAL_USB_USART_SERIAL1) {
         usbUsartMap[serial].data->ep_in_data = CDC1_IN_EP;
         usbUsartMap[serial].data->ep_in_int = CDC1_CMD_EP;
         usbUsartMap[serial].data->ep_out_data = CDC1_OUT_EP;

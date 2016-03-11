@@ -25,16 +25,20 @@
  */
 
 #include "spark_wiring_usbserial.h"
+#include "platform_headers.h"
 
 #ifdef SPARK_USB_SERIAL
 
+#ifdef USB_SERIAL_USERSPACE_BUFFERS
 static uint8_t serial_rx_buffer[USB_RX_BUFFER_SIZE];
 static uint8_t serial_tx_buffer[USB_TX_BUFFER_SIZE];
+#else
+static uint8_t* serial_rx_buffer = NULL;
+static uint8_t* serial_tx_buffer = NULL;
+#endif /* USB_SERIAL_USERSPACE_BUFFERS */
 
-static uint8_t usbserial1_rx_buffer[USB_RX_BUFFER_SIZE];
-static uint8_t usbserial1_tx_buffer[USB_TX_BUFFER_SIZE];
+#endif /* SPARK_USB_SERIAL */
 
-#endif
 //
 // Constructor
 //
@@ -43,11 +47,13 @@ USBSerial::USBSerial()
   _serial = HAL_USB_USART_SERIAL;
   _blocking = true;
 
-  HAL_USB_USART_Config conf;
+  HAL_USB_USART_Config conf = {0};
+#ifdef USB_SERIAL_USERSPACE_BUFFERS
   conf.rx_buffer = serial_rx_buffer;
   conf.tx_buffer = serial_tx_buffer;
   conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
   conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
+#endif
   HAL_USB_USART_Init(_serial, &conf);
 }
 
@@ -56,11 +62,13 @@ USBSerial::USBSerial(HAL_USB_USART_Serial serial, uint8_t* rx_buffer, uint8_t* t
   _serial = serial;
   _blocking = true;
 
-  HAL_USB_USART_Config conf;
+  HAL_USB_USART_Config conf = {0};
+#ifdef USB_SERIAL_USERSPACE_BUFFERS
   conf.rx_buffer = rx_buffer;
   conf.tx_buffer = tx_buffer;
   conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
   conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
+#endif
   HAL_USB_USART_Init(_serial, &conf);
 }
 
@@ -140,11 +148,15 @@ USBSerial& _fetch_usbserial()
 	return _usbserial;
 }
 
+#if Wiring_USBSerial1
+static uint8_t usbserial1_rx_buffer[USB_RX_BUFFER_SIZE];
+static uint8_t usbserial1_tx_buffer[USB_TX_BUFFER_SIZE];
+
 USBSerial& _fetch_usbserial1()
 {
-  static USBSerial _usbserial1(HAL_USB_USART_SERIAL10, usbserial1_rx_buffer, usbserial1_tx_buffer);
+  static USBSerial _usbserial1(HAL_USB_USART_SERIAL1, usbserial1_rx_buffer, usbserial1_tx_buffer);
   return _usbserial1;
 }
+#endif /* Wiring_USBSerial1 */
 
-
-#endif
+#endif /* SPARK_USB_SERIAL */

@@ -55,10 +55,6 @@ extern "C" {
                  CNTR_RESETM  \
 )
 
-#define USB_TX_BUFFER_SIZE              128  /* Total size of IN buffer:
-                                                APP_RX_DATA_SIZE*8/MAX_BAUDARATE*1000 should be > CDC_IN_FRAME_INTERVAL */
-#define USB_RX_BUFFER_SIZE              256
-
 /* Exported functions ------------------------------------------------------- */
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
 void SPARK_USB_Setup(void);
@@ -124,7 +120,7 @@ void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize);
 
 typedef enum HAL_USB_USART_Serial {
   HAL_USB_USART_SERIAL = 0,
-  HAL_USB_USART_SERIAL10 = 1,
+  HAL_USB_USART_SERIAL1 = 1,
 
   HAL_USB_USART_SERIAL_COUNT
 } HAL_USB_USART_Serial;

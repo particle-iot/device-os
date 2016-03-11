@@ -23,6 +23,7 @@ extern "C" {
 #include "socket.h"
 #include "nvmem.h"
 #include "netapp.h"
+#include "usb_settings.h"
 
 #define retained static_assert(1==0, "retained variables are not supported on the Core");
 #define retained_system static_assert(1==0, "retained variables are not supported on the Core");
