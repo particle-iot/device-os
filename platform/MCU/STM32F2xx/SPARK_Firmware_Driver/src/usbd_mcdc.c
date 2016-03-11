@@ -343,51 +343,54 @@ static uint8_t USBD_MCDC_Setup(void* pdev, USBD_Composite_Class_Data* cls, USB_S
 
       return USBD_OK;
 
-    default:
-      USBD_CtlError (pdev, req);
-      return USBD_FAIL;
-
-
-
-    /* Standard Requests -------------------------------*/
-  case USB_REQ_TYPE_STANDARD:
-    switch (req->bRequest)
-    {
-    case USB_REQ_GET_DESCRIPTOR:
-      if( (req->wValue >> 8) == CDC_DESCRIPTOR_TYPE)
+  /* Standard Requests -------------------------------*/
+  case USB_REQ_TYPE_STANDARD: {
+      switch (req->bRequest)
       {
-        // For CDC this request should never arrive probably
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-        pbuf = priv->descriptor;
-#else
-        pbuf = cls->cfg;
-#endif
-        len = MIN(USBD_MCDC_CONFIG_DESC_SIZE , req->wLength);
-      }
+      case USB_REQ_GET_DESCRIPTOR:
+        if( (req->wValue >> 8) == CDC_DESCRIPTOR_TYPE)
+        {
+          // For CDC this request should never arrive probably
+  #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
+          pbuf = priv->descriptor;
+  #else
+          pbuf = cls->cfg;
+  #endif
+          len = MIN(USBD_MCDC_CONFIG_DESC_SIZE , req->wLength);
+        }
 
-      USBD_CtlSendData (pdev,
-                        pbuf,
-                        len);
-      break;
+        USBD_CtlSendData (pdev,
+                          pbuf,
+                          len);
+        break;
 
-    case USB_REQ_GET_INTERFACE :
-      USBD_CtlSendData (pdev,
-                        (uint8_t *)&priv->alt_set,
-                        1);
-      break;
+      case USB_REQ_GET_INTERFACE :
+        USBD_CtlSendData (pdev,
+                          (uint8_t *)&priv->alt_set,
+                          1);
+        break;
 
-    case USB_REQ_SET_INTERFACE :
-      if ((uint8_t)(req->wValue) < USBD_ITF_MAX_NUM)
-      {
-        priv->alt_set = (uint8_t)(req->wValue);
+      case USB_REQ_SET_INTERFACE :
+        if ((uint8_t)(req->wValue) < USBD_ITF_MAX_NUM)
+        {
+          priv->alt_set = (uint8_t)(req->wValue);
+        }
+        else
+        {
+          /* Call the error management function (command will be nacked */
+          USBD_CtlError (pdev, req);
+        }
+        break;
+      default:
+        USBD_CtlError(pdev, req);
+        return USBD_OK;
       }
-      else
-      {
-        /* Call the error management function (command will be nacked */
-        USBD_CtlError (pdev, req);
-      }
-      break;
+    break;
     }
+
+  default:
+    USBD_CtlError (pdev, req);
+    return USBD_FAIL;
   }
   return USBD_OK;
 }
@@ -556,14 +559,8 @@ static uint8_t USBD_MCDC_SOF(void* pdev, USBD_Composite_Class_Data* cls)
 {
   USBD_MCDC_Instance_Data* priv = (USBD_MCDC_Instance_Data*)cls->priv;
 
-  // if (priv->frame_count++ == CDC_IN_FRAME_INTERVAL)
-  // {
-  //   /* Reset the frame counter */
-  //   priv->frame_count = 0;
-
-    USBD_MCDC_Schedule_In(pdev, priv);
-    USBD_MCDC_Schedule_Out(pdev, priv);
-  //}
+  USBD_MCDC_Schedule_In(pdev, priv);
+  USBD_MCDC_Schedule_Out(pdev, priv);
 
   return USBD_OK;
 }
@@ -601,7 +598,6 @@ static uint8_t* USBD_MCDC_GetCfgDesc(uint8_t speed, USBD_Composite_Class_Data* c
 }
 
 static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len) {
-  DEBUG("USBD_MCDC_Request_Handler %d", cmd);
   USBD_MCDC_Instance_Data* priv = (USBD_MCDC_Instance_Data*)cls->priv;
   switch (cmd)
   {

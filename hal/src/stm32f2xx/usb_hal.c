@@ -143,7 +143,6 @@ static void HAL_USB_Attach(void)
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* config)
 {
-    DEBUG("HAL_USB_USART_Init");
     usbUsartMap[serial].data = &usbUsartInstanceData[serial];
 
     if (serial == HAL_USB_USART_SERIAL) {
@@ -157,11 +156,14 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* confi
     }
 
     if (config) {
+        // Just in case disable interrupts
+        int32_t state = HAL_disable_irq();
         usbUsartMap[serial].data->rx_buffer = config->rx_buffer;
         usbUsartMap[serial].data->rx_buffer_size = config->rx_buffer_size;
 
         usbUsartMap[serial].data->tx_buffer = config->tx_buffer;
         usbUsartMap[serial].data->tx_buffer_size = config->tx_buffer_size;
+        HAL_enable_irq(state);
     }
 
     usbUsartMap[serial].data->req_handler = HAL_USB_USART_Request_Handler;
@@ -169,7 +171,6 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* confi
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved)
 {
-    DEBUG("HAL_USB_USART_Begin");
     if (!usbUsartMap[serial].data) {
         HAL_USB_USART_Init(serial, NULL);
     }
@@ -185,7 +186,6 @@ void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reser
 
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial)
 {
-    DEBUG("HAL_USB_USART_End");
     if (usbUsartMap[serial].registered) {
         HAL_USB_Detach();
         USBD_Composite_Unregister(usbUsartMap[serial].cls, usbUsartMap[serial].data);
@@ -305,7 +305,6 @@ void HAL_USB_HID_Init(uint8_t reserved, void* reserved1)
 
 void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1)
 {
-    DEBUG("HAL_USB_HID_Begin");
     if (usbHid.refcount == 0 && !usbHid.registered)
     {
         HAL_USB_Detach();
@@ -320,7 +319,6 @@ void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1)
 
 void HAL_USB_HID_End(uint8_t reserved)
 {
-    DEBUG("HAL_USB_HID_End");
     if (usbHid.registered && --usbHid.refcount == 0) {
         HAL_USB_Detach();
         USBD_Composite_Unregister(usbHid.cls, NULL);
@@ -350,7 +348,6 @@ void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t report
 #ifdef USB_CDC_ENABLE
 void USB_USART_Init(uint32_t baudRate)
 {
-    DEBUG("USB_USART_Init");
     if (usbUsartMap[HAL_USB_USART_SERIAL].data == NULL) {
         // For compatibility we allocate buffers from heap here, as application calling USB_USART_Init
         // assumes that the driver has its own buffers
