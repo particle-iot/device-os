@@ -145,9 +145,19 @@ struct Channel
 {
 	enum Command
 	{
-		CLOSE,
+		CLOSE = 0,
 
-		REFRESH_SESSION,
+		/**
+		 * Discard the current session. This performs a new
+		 * DTLS handshake with the server.
+		 */
+		DISCARD_SESSION = 1,
+
+		/**
+		 * Sends a special DTLS packet to the server that indicates
+		 * the session has moved.
+		 */
+		MOVE_SESSION = 2,
 	};
 
 

@@ -27,6 +27,7 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
+#include "spark_wiring_watchdog.h"
 #include "rng_hal.h"
 
 
@@ -83,6 +84,11 @@ void serialEvent4() __attribute__((weak));
 void serialEvent5() __attribute__((weak));
 #endif
 
+void _post_loop()
+{
+	serialEventRun();
+	application_checkin();
+}
 
 /**
  * Provides background processing of serial data.
@@ -137,7 +143,7 @@ void system_initialize_user_backup_ram()
 
 #include "platform_headers.h"
 
-static retained_system volatile uint32_t __backup_sram_signature;
+static retained volatile uint32_t __backup_sram_signature;
 static bool backup_ram_was_valid_ = false;
 const uint32_t signature = 0x9A271C1E;
 

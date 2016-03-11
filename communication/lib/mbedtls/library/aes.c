@@ -31,6 +31,8 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
+#include "hal_platform.h"
+
 #if defined(MBEDTLS_AES_C)
 
 #include <string.h>
@@ -88,10 +90,17 @@ static int aes_padlock_ace = -1;
 #endif
 
 #if defined(MBEDTLS_AES_ROM_TABLES)
+
+#if HAL_PLATFORM_CLOUD_TCP
+#define UDP_ONLY(x)
+#else
+#define UDP_ONLY(x) x
+#endif
+
 /*
  * Forward S-box
  */
-static const unsigned char FSb[256] =
+UDP_ONLY(static) const unsigned char FSb[256] =
 {
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5,
     0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -198,19 +207,19 @@ static const unsigned char FSb[256] =
     V(CB,B0,B0,7B), V(FC,54,54,A8), V(D6,BB,BB,6D), V(3A,16,16,2C)
 
 #define V(a,b,c,d) 0x##a##b##c##d
-static const uint32_t FT0[256] = { FT };
+UDP_ONLY(static) const uint32_t FT0[256] = { FT };
 #undef V
 
 #define V(a,b,c,d) 0x##b##c##d##a
-static const uint32_t FT1[256] = { FT };
+UDP_ONLY(static) const uint32_t FT1[256] = { FT };
 #undef V
 
 #define V(a,b,c,d) 0x##c##d##a##b
-static const uint32_t FT2[256] = { FT };
+UDP_ONLY(static) const uint32_t FT2[256] = { FT };
 #undef V
 
 #define V(a,b,c,d) 0x##d##a##b##c
-static const uint32_t FT3[256] = { FT };
+UDP_ONLY(static) const uint32_t FT3[256] = { FT };
 #undef V
 
 #undef FT
@@ -218,7 +227,7 @@ static const uint32_t FT3[256] = { FT };
 /*
  * Reverse S-box
  */
-static const unsigned char RSb[256] =
+UDP_ONLY(static) const unsigned char RSb[256] =
 {
     0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38,
     0xBF, 0x40, 0xA3, 0x9E, 0x81, 0xF3, 0xD7, 0xFB,
@@ -325,19 +334,19 @@ static const unsigned char RSb[256] =
     V(61,84,CB,7B), V(70,B6,32,D5), V(74,5C,6C,48), V(42,57,B8,D0)
 
 #define V(a,b,c,d) 0x##a##b##c##d
-static const uint32_t RT0[256] = { RT };
+UDP_ONLY(static) const uint32_t RT0[256] = { RT };
 #undef V
 
 #define V(a,b,c,d) 0x##b##c##d##a
-static const uint32_t RT1[256] = { RT };
+UDP_ONLY(static) const uint32_t RT1[256] = { RT };
 #undef V
 
 #define V(a,b,c,d) 0x##c##d##a##b
-static const uint32_t RT2[256] = { RT };
+UDP_ONLY(static) const uint32_t RT2[256] = { RT };
 #undef V
 
 #define V(a,b,c,d) 0x##d##a##b##c
-static const uint32_t RT3[256] = { RT };
+UDP_ONLY(static) const uint32_t RT3[256] = { RT };
 #undef V
 
 #undef RT

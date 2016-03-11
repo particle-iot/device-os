@@ -37,6 +37,11 @@ namespace protocol
 {
 
 /**
+ * Please centralize this somewhere else!
+ */
+const size_t DEVICE_ID_LEN = 12;
+
+/**
  * This implements the lightweight and RSA encrypted handshake, AES session encryption over a TCP Stream.
  *
  * The buffer provided to the message starts at offset 2 to allow a 2-byte length to be added.
@@ -88,6 +93,8 @@ private:
 	 * The next message ID for new messages over this channel.
 	 */
 	message_id_t* coap_state;
+	bool move_session;
+	const uint8_t* device_id;
 
     void init();
     void dispose();
@@ -103,9 +110,12 @@ private:
 
 	ProtocolError setup_context();
 
+	void cancel_move_session() { move_session = false; }
+
+	void reset_session();
 
  public:
-	DTLSMessageChannel() : coap_state(nullptr) {}
+	DTLSMessageChannel() : coap_state(nullptr), move_session(false) {}
 
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,

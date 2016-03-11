@@ -195,6 +195,7 @@ void TCPClient::stop()
       socket_close(_sock);
   _sock = socket_handle_invalid();
   _remoteIP.clear();
+  flush_buffer();
 }
 
 uint8_t TCPClient::connected()

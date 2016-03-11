@@ -49,3 +49,8 @@ BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
 
 CFLAGS += $(EXTRA_CFLAGS)
+
+ifeq ("$(PLATFORM_NET)", "CC3000")
+# Stick to some POSIX-conforming API to disable BSD extensions
+CPPFLAGS += -D_POSIX_C_SOURCE=200809
+endif

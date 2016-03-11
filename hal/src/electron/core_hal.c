@@ -331,13 +331,18 @@ void __malloc_unlock(void* ptr)
         xSemaphoreGiveRecursive(malloc_mutex);
 }
 
+void application_task_start(void* arg)
+{
+	application_start();
+}
+
 /**
  * Called from startup_stm32f2xx.s at boot, main entry point.
  */
 int main(void)
 {
     init_malloc_mutex();
-    xTaskCreate( application_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
+    xTaskCreate( application_task_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
 
     vTaskStartScheduler();
 

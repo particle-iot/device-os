@@ -24,6 +24,8 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+uint32_t publish_timeout = 90000;
+
 void idle()
 {
     Particle.process();
@@ -60,11 +62,11 @@ void Spark_Subscribe_When_Not_Connected_Handler(const char* topic, const char* d
     Serial.println("event ***");
     if (data) Serial.println(data);
     if (data && !strcmp(data, deviceId.c_str())) {
-        not_connected_handler_count++;
+    		not_connected_handler_count++;
     }
 }
 
-test(Spark_Subscribe_When_Not_Connected) {
+test(Spark_Subscribe_When_Not_Connected_Recieves_Events_When_Connected) {
     disconnect();
     Particle.unsubscribe();
     not_connected_handler_count = 0;
@@ -77,7 +79,7 @@ test(Spark_Subscribe_When_Not_Connected) {
     Particle.publish(eventName, deviceID.c_str());
 
     long start = millis();
-    while ((millis()-start)<30000 && !not_connected_handler_count)
+    while ((millis()-start)<publish_timeout && !not_connected_handler_count)
         idle();
 
     assertEqual(not_connected_handler_count, 1);
@@ -128,7 +130,7 @@ test(Spark_Unsubscribe) {
     Particle.publish(eventName, deviceID.c_str());
 
     long start = millis();
-    while ((millis()-start)<30000 && !not_connected_handler_count)
+    while ((millis()-start)<publish_timeout && !not_connected_handler_count)
         idle();
 
     assertEqual(not_connected_handler_count, 1);
@@ -137,7 +139,7 @@ test(Spark_Unsubscribe) {
     Particle.unsubscribe();
     Particle.publish(eventName, deviceID.c_str());
     start = millis();
-    while ((millis()-start)<10000 && !not_connected_handler_count)
+    while ((millis()-start)<publish_timeout && !not_connected_handler_count)
         idle();
 
     // no further events received
@@ -164,7 +166,7 @@ test(Spark_Second_Event_Handler_Not_Matched) {
 
     // now wait for published event to be received
     long start = millis();
-    while ((millis()-start)<30000 && !not_connected_handler_count)
+    while ((millis()-start)<publish_timeout && !not_connected_handler_count)
         idle();
 
     assertEqual(not_connected_handler_count, 1);
@@ -176,7 +178,7 @@ class Subscriber {
       assertTrue(Particle.subscribe("test/event3", &Subscriber::handler, this));
       // To make sure calling subscribe with a different handler is not a no op
       assertTrue(Particle.subscribe("test/event3", &Subscriber::handler2, this));
-      assertTrue(Particle.subscribe("test/eventmine", &Subscriber::handler3, this), MY_DEVICES);
+      assertTrue(Particle.subscribe("test/eventmine", &Subscriber::handler3, this, MY_DEVICES));
 
       receivedCount = 0;
       mineCount = 0;
@@ -202,12 +204,12 @@ test(Subscribe_With_Object) {
 
     subscriber.subscribe();
 
-    String deviceID = Spark.deviceID();
+    String deviceID = Particle.deviceID();
     Particle.publish("test/event3");
 
     // now wait for published event to be received
     long start = millis();
-    while ((millis()-start)<30000 && !subscriber.receivedCount)
+    while ((millis()-start)<publish_timeout && !subscriber.receivedCount)
         idle();
 
     assertEqual(subscriber.receivedCount, 2);
@@ -225,12 +227,12 @@ test(all_events_subscription)
 	// public events
     subscriber.subscribe();
 
-    Particle.publish("test/event4");	// my devices subscription
+    Particle.publish("test/eventmine");	// my devices subscription
     Particle.publish("test/event3");
 
     // now wait for published event to be received
     long start = millis();
-    while ((millis()-start)<30000 && !subscriber.receivedCount)
+    while ((millis()-start)<publish_timeout && !subscriber.receivedCount)
         idle();
 
     // the public test/event3 is received by ALL_DEVICES subscription
@@ -251,12 +253,12 @@ test(mine_events_subscription)
 
     subscriber.subscribe();
 
-    Particle.publish("test/event4", "", PRIVATE);	// my devices subscription
+    Particle.publish("test/eventmine", "", PRIVATE);	// my devices subscription
     Particle.publish("test/event3", "", PRIVATE);
 
     // now wait for published event to be received
     long start = millis();
-    while ((millis()-start)<30000 && !subscriber.mineCount)
+    while ((millis()-start)<publish_timeout && !subscriber.mineCount)
         idle();
 
     // the private test/event3 is not received by ALL_DEVICES subscription

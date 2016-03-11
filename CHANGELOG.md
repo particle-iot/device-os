@@ -1,3 +1,11 @@
+## v0.5.0
+
+### FEATURES
+
+- [Electron] `SYSTEM_THREAD()` is supported
+- Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
+
+
 ## v0.4.9
 
 ### FEATURES
@@ -13,7 +21,6 @@
 - [ATOMIC_BLOCK()](https://docs.particle.io/reference/firmware/photon/#atomic_block-) and [SINGLE_THREADED_BLOCK()](https://docs.particle.io/reference/firmware/photon/#single_threaded_block-) declarations for atomicity and thread scheduling control. [#758](https://github.com/spark/firmware/issues/758)
 - [API](https://docs.particle.io/reference/firmware/photon/#synchronizing-access-to-shared-system-resources) for Guarding resources for use between threads. 
 - System events for individual button clicks and a run of button clicks. [#818](https://github.com/spark/firmware/issues/818)
-- 
 
 ### ENHANCEMENTS
 

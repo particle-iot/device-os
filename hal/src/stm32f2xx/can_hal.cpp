@@ -760,11 +760,22 @@ bool CANDriver::addFilter(uint32_t id, uint32_t mask, HAL_CAN_Filters type)
         return false;
     }
 
-    // Filter configuration - Register organization
-    // Lowest 11 bits of id are first, then next 18 bits of id, then
-    // standard/extended bit, then RTR bit, then 1 zero bit
-    uint32_t filterId = (id << 21) | ((id >> 8) & 0x1FFFF8) | (type == CAN_FILTER_EXTENDED ? 0x4 : 0);
-    uint32_t filterMask = (mask << 21) | ((mask >> 8) & 0x1FFFF8) | 0x6;
+    // Filter configuration
+    // See STM32F2 Reference Manual for register organization
+    uint32_t filterId, filterMask;
+    const uint32_t extendedBit = 0x4;
+    const uint32_t rtrBit = 0x2;
+
+    if(type == CAN_FILTER_STANDARD)
+    {
+        filterId = id << 21;
+        filterMask = (mask << 21) | extendedBit | rtrBit;
+    }
+    else
+    {
+        filterId = (id << 3) | extendedBit;
+        filterMask = (mask << 3) | extendedBit | rtrBit;
+    }
 
     CAN_FilterInitTypeDef   CAN_FilterInitStructure = {};
     CAN_FilterInitStructure.CAN_FilterNumber         = nextFilter;

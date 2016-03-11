@@ -195,7 +195,7 @@ ProtocolError DTLSMessageChannel::init(
 	this->coap_state = coap_state;
 	int ret;
 	this->callbacks = callbacks;
-
+	this->device_id = device_id;
 	keys_checksum = compute_checksum(server_public, server_public_len, core_private, core_private_len);
 
 	ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
@@ -231,7 +231,28 @@ ProtocolError DTLSMessageChannel::init(
 
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
-	return callbacks.send(data, len, callbacks.tx_context);
+	if (move_session && len && data[0]==23)
+	{
+		uint8_t d[len+DEVICE_ID_LEN+1];
+		memcpy(d, data, len);
+		d[0] = 254;
+		memcpy(d+len, device_id, DEVICE_ID_LEN);
+		d[len+DEVICE_ID_LEN] = DEVICE_ID_LEN;
+		int result = callbacks.send(d, len+DEVICE_ID_LEN+1, callbacks.tx_context);
+		// hide the increased length from DTLS
+		if (result==int(len+DEVICE_ID_LEN+1))
+			result = len;
+		return result;
+	}
+	else
+		return callbacks.send(data, len, callbacks.tx_context);
+}
+
+void DTLSMessageChannel::reset_session()
+{
+	cancel_move_session();
+	mbedtls_ssl_session_reset(&ssl_context);
+	sessionPersist.clear(callbacks.save);
 }
 
 inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
@@ -243,7 +264,7 @@ inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
 	return size;
 }
 
-int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len ) {
+int DTLSMessageChannel::send_(void *ctx, const unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
 	int count = channel->send(buf, len);
 	if (count == 0)
@@ -254,9 +275,10 @@ int DTLSMessageChannel::send_( void *ctx, const unsigned char *buf, size_t len )
 
 int DTLSMessageChannel::recv_( void *ctx, unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
+
 	int count = channel->recv(buf, len);
 	if (count == 0) {
-		// 0 means EOF in this context
+		// 0 means no more data available yet
 		return MBEDTLS_ERR_SSL_WANT_READ;
 	}
 	return count;
@@ -332,8 +354,7 @@ ProtocolError DTLSMessageChannel::establish()
 	}
 	else // no session or clear
 	{
-		sessionPersist.clear(callbacks.save);
-		mbedtls_ssl_session_reset(&ssl_context);
+		reset_session();
 		ProtocolError error = setup_context();
 		if (error)
 			return error;
@@ -362,9 +383,8 @@ ProtocolError DTLSMessageChannel::establish()
 
 	if (ret)
 	{
-		mbedtls_ssl_session_reset(&ssl_context);
 		DEBUG("handshake failed -%x", -ret);
-		sessionPersist.clear(callbacks.save);
+		reset_session();
 	}
 	else
 	{
@@ -402,12 +422,13 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 			command(CLOSE);
 			break;
 		default:
-			mbedtls_ssl_session_reset(&ssl_context);
+			reset_session();
 			return IO_ERROR;
 		}
 	}
 	message.set_length(ret);
 	if (ret>0) {
+		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
 		if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
 		  DEBUG("message length %d", message.length());
@@ -452,8 +473,8 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
   if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
   {
-		mbedtls_ssl_session_reset(&ssl_context);
-		return IO_ERROR;
+	  reset_session();
+	  return IO_ERROR;
   }
   sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
   return NO_ERROR;
@@ -470,13 +491,16 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 	switch (command)
 	{
 	case CLOSE:
-		sessionPersist.clear(callbacks.save);
-		mbedtls_ssl_session_reset(&ssl_context);
+		reset_session();
 		break;
-	case REFRESH_SESSION:
-		sessionPersist.clear(callbacks.save);
-		mbedtls_ssl_session_reset(&ssl_context);
+
+	case DISCARD_SESSION:
+		reset_session();
 		return IO_ERROR; //force re-establish
+
+	case MOVE_SESSION:
+		move_session = true;
+		break;
 	}
 	return NO_ERROR;
 }

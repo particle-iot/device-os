@@ -65,7 +65,16 @@ void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
 
+/**
+ * Enables the WDT if the system flags allow it.
+ */
 void IWDG_Reset_Enable(uint32_t msTimeout);
+
+/**
+ * Unconditionally enables the WDT.
+ */
+void IWDG_Force_Enable(uint32_t msTimeout);
+
 
 void UI_Timer_Configure(void);
 

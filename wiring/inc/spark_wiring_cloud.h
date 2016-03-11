@@ -28,6 +28,7 @@
 #include "system_sleep.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
+#include "spark_wiring_watchdog.h"
 #include "interrupts_hal.h"
 #include <functional>
 
@@ -40,84 +41,132 @@ typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 #define CLOUD_FN(x,y) (x)
 #endif
 
+#ifndef __XSTRING
+#define	__STRING(x)	#x		/* stringify without expanding x */
+#define	__XSTRING(x)	__STRING(x)	/* expand x, then stringify */
+#endif
+
+class PublishFlag
+{
+public:
+	typedef uint8_t flag_t;
+	PublishFlag(flag_t flag) : flag_(flag) {}
+
+	explicit operator flag_t() const { return flag_; }
+
+	flag_t flag() const { return flag_; }
+
+private:
+	flag_t flag_;
+
+
+};
+
+const PublishFlag PUBLIC(PUBLISH_EVENT_FLAG_PUBLIC);
+const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
+const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
+
+
 class CloudClass {
 
 
 public:
 
-    static inline bool variable(const char* varKey, const int& var)
+    template <typename T, class ... Types>
+    static inline bool variable(const T &name, Types ... args)
     {
-        return variable(varKey, &var, INT);
+        static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
+            "\n\nIn Particle.variable, name must be less than " __XSTRING(USER_VAR_KEY_LENGTH) " characters\n\n");
+
+        return _variable(name, args...);
     }
+
+
+    static inline bool _variable(const char* varKey, const bool& var)
+    {
+        return _variable(varKey, &var, BOOLEAN);
+    }
+
+    static inline bool _variable(const char* varKey, const int& var)
+    {
+        return _variable(varKey, &var, INT);
+    }
+
 #if PLATFORM_ID!=3
     // compiling with gcc this function duplicates the previous one.
-    static inline bool variable(const char* varKey, const int32_t& var)
+    static inline bool _variable(const char* varKey, const int32_t& var)
     {
-        return variable(varKey, &var, INT);
+        return _variable(varKey, &var, INT);
     }
 #endif
-    static inline bool variable(const char* varKey, const uint32_t& var)
+
+    static inline bool _variable(const char* varKey, const uint32_t& var)
     {
-        return variable(varKey, &var, INT);
+        return _variable(varKey, &var, INT);
     }
 
-    static inline bool variable(const char* varKey, const double& var)
+#if PLATFORM_ID!=3
+    static bool _variable(const char* varKey, const float& var)
+    __attribute__((error("Please change the variable from type `float` to `double` for use with Particle.variable().")));
+#endif
+
+    static inline bool _variable(const char* varKey, const double& var)
     {
-        return variable(varKey, &var, DOUBLE);
+        return _variable(varKey, &var, DOUBLE);
     }
 
-    static inline bool variable(const char* varKey, const String& var)
+    static inline bool _variable(const char* varKey, const String& var)
     {
-        return variable(varKey, &var, STRING);
+        return _variable(varKey, &var, STRING);
     }
 
-    static inline bool variable(const char* varKey, const char* var)
+    static inline bool _variable(const char* varKey, const char* var)
     {
-        return variable(varKey, var, STRING);
+        return _variable(varKey, var, STRING);
     }
 
     template<std::size_t N>
-    static inline bool variable(const char* varKey, const char var[N])
+    static inline bool _variable(const char* varKey, const char var[N])
     {
-        return variable(varKey, var, STRING);
+        return _variable(varKey, var, STRING);
     }
 
     template<std::size_t N>
-    static inline bool variable(const char* varKey, const unsigned char var[N])
+    static inline bool _variable(const char* varKey, const unsigned char var[N])
     {
-        return variable(varKey, var, STRING);
+        return _variable(varKey, var, STRING);
     }
 
-    static inline bool variable(const char *varKey, const uint8_t* userVar, const CloudVariableTypeString& userVarType)
+    static inline bool _variable(const char *varKey, const uint8_t* userVar, const CloudVariableTypeString& userVarType)
     {
-        return variable(varKey, (const char*)userVar, userVarType);
+        return _variable(varKey, (const char*)userVar, userVarType);
     }
 
-    template<typename T> static inline bool variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
+    template<typename T> static inline bool _variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
     {
         return CLOUD_FN(spark_variable(varKey, (const void*)userVar, T::value(), NULL), false);
     }
 
-    static inline bool variable(const char *varKey, const int32_t* userVar, const CloudVariableTypeInt& userVarType)
+    static inline bool _variable(const char *varKey, const int32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
         return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
     }
 
-    static inline bool variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
+    static inline bool _variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
         return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
     }
 
     // Return clear errors for common misuses of Particle.variable()
     template<typename T, std::size_t N>
-    static inline bool variable(const char *varKey, const T (*userVar)[N], const CloudVariableTypeString& userVarType)
+    static inline bool _variable(const char *varKey, const T (*userVar)[N], const CloudVariableTypeString& userVarType)
     {
         static_assert(sizeof(T)==0, "\n\nUse Particle.variable(\"name\", myVar, STRING); without & in front of myVar\n\n");
         return false;
     }
 
     template<typename T>
-    static inline bool variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
+    static inline bool _variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
     {
         spark_variable_t extra;
         extra.size = sizeof(extra);
@@ -126,18 +175,27 @@ public:
     }
 
     template<typename T>
-    static inline bool variable(const T *varKey, const String &userVar, const CloudVariableTypeString& userVarType)
+    static inline bool _variable(const T *varKey, const String &userVar, const CloudVariableTypeString& userVarType)
     {
         static_assert(sizeof(T)==0, "\n\nIn Particle.variable(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
         return false;
     }
 
-    static bool function(const char *funcKey, user_function_int_str_t* func)
+    template <typename T, class ... Types>
+    static inline bool function(const T &name, Types ... args)
+    {
+        static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_FUNC_KEY_LENGTH + 1,
+            "\n\nIn Particle.function, name must be less than " __XSTRING(USER_FUNC_KEY_LENGTH) " characters\n\n");
+
+        return _function(name, args...);
+    }
+
+    static bool _function(const char *funcKey, user_function_int_str_t* func)
     {
         return CLOUD_FN(register_function(call_raw_user_function, (void*)func, funcKey), false);
     }
 
-    static bool function(const char *funcKey, user_std_function_int_str_t func, void* reserved=NULL)
+    static bool _function(const char *funcKey, user_std_function_int_str_t func, void* reserved=NULL)
     {
 #ifdef SPARK_NO_CLOUD
         return false;
@@ -155,32 +213,38 @@ public:
     }
 
     template <typename T>
-    static void function(const char *funcKey, int (T::*func)(String), T *instance) {
+    static bool _function(const char *funcKey, int (T::*func)(String), T *instance) {
       using namespace std::placeholders;
-      function(funcKey, std::bind(func, instance, _1));
+      return _function(funcKey, std::bind(func, instance, _1));
     }
 
-    bool publish(const char *eventName, Spark_Event_TypeDef eventType=PUBLIC)
+    inline bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, NULL, 60, eventType, NULL), false);
+        return CLOUD_FN(spark_send_event(eventName, NULL, 60, PublishFlag::flag_t(eventType), NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, Spark_Event_TypeDef eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, 60, eventType, NULL), false);
+        return CLOUD_FN(spark_send_event(eventName, eventData, 60, PublishFlag::flag_t(eventType), NULL), false);
     }
 
-    bool publish(const char *eventName, const char *eventData, int ttl, Spark_Event_TypeDef eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, eventType, NULL), false);
+        return CLOUD_FN(spark_send_event(eventName, eventData, 60, f1.flag()+f2.flag(), NULL), false);
     }
 
-    bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
+
+    inline bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
+    {
+        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, PublishFlag::flag_t(eventType), NULL), false);
+    }
+
+    inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
     }
 
-    bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
+    inline bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
     }
@@ -230,7 +294,10 @@ public:
     static bool disconnected(void) { return !connected(); }
     static void connect(void) { spark_connect(); }
     static void disconnect(void) { spark_disconnect(); }
-    static void process(void) { spark_process(); }
+    static void process(void) {
+    		application_checkin();
+    		spark_process();
+    }
     static String deviceID(void) { return SystemClass::deviceID(); }
 
 private:
@@ -264,6 +331,12 @@ private:
     {
         const String* s = (const String*)var;
         return s->c_str();
+    }
+
+    // Test if the paramater a regular C "string" literal
+    template <typename T>
+    constexpr static bool IsStringLiteral(const T& param) {
+      return std::is_array<T>::value && std::is_same<typename std::remove_extent<T>::type, char>::value;
     }
 };
 

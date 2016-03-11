@@ -70,16 +70,22 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
     return success;
 }
 
-
-inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
-    return eventType==PUBLIC ? EventType::PUBLIC : EventType::PRIVATE;
+/**
+ * Convert from the API flags to the communications lib flags
+ * The event visibility flag (public/private) is encoded differently. The other flags map directly.
+ */
+inline uint32_t convert(uint32_t flags) {
+	bool priv = flags & PUBLISH_EVENT_FLAG_PRIVATE;
+	flags &= ~PUBLISH_EVENT_FLAG_PRIVATE;
+	flags |= !priv ? EventType::PUBLIC : EventType::PRIVATE;
+	return flags;
 }
 
-bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved)
+bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, eventType, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
 
-    return spark_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
+    return spark_protocol_send_event(sp, name, data, ttl, convert(flags), NULL);
 }
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)

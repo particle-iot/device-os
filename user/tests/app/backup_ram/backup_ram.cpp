@@ -22,37 +22,15 @@ retained int variable = 10;
 
 void setup()
 {
+	System.enableFeature(FEATURE_RETAINED_MEMORY);
 	Serial.begin(9600);
+	while (!Serial.available()) Particle.process();
+
 	if (int(&variable) < 0x30000000) {
 		Serial.printlnf("ERROR: expected variable in backup memory, but was at %x", &variable);
 		return;
 	}
 
-	if (!System.featureEnabled(FEATURE_WARM_START))
-	{
-		// cold start
-		Serial.println("Cold start");
-		if (variable!=10)
-		{
-			Serial.printlnf("ERROR: expected retained variable to be initialized to 10, but was %d", variable);
-		}
-		else
-		{
-			Serial.println("Retained variable initialized to 10. Restarting");
-			System.enableFeature(FEATURE_RETAINED_MEMORY);
-			variable++;
-			System.reset();
-		}
-	}
-	else {
-		Serial.println("Warm start");
-		if (variable!=11)
-		{
-			Serial.printlnf("ERROR: expected retained variable to be 11, but was %d", variable);
-		}
-		else
-		{
-			Serial.println("SUCCESS: Retained variable retained after reset");
-		}
-	}
+	Serial.println(variable);
+	variable++;
 }

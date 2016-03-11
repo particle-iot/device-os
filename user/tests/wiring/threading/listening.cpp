@@ -20,9 +20,9 @@ void listening_set_test_flag() {
 }
 
 // Following test ensures that handler function is invoked for SystemEvents::wifi_listen_update events
-uint32_t listening_update_time;
+int listening_update_time;
 
-void listening_update_handler(system_event_t, uint32_t time, void*) {
+void listening_update_handler(system_event_t, int time, void*) {
     listening_update_time = time;
 }
 

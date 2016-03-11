@@ -86,8 +86,9 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
-                int ttl, EventType::Enum event_type, void*) {
-    return protocol->send_event(event_name, data, ttl, event_type);
+                int ttl, uint32_t flags, void*) {
+	EventType::Enum event_type = EventType::extract_event_type(flags);
+	return protocol->send_event(event_name, data, ttl, event_type, flags);
 }
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {
@@ -171,7 +172,8 @@ int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char 
 }
 
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
-                int ttl, EventType::Enum event_type, void*) {
+                int ttl, uint32_t flags, void*) {
+	EventType::Enum event_type = EventType::extract_event_type(flags);
     return protocol->send_event(event_name, data, ttl, event_type);
 }
 

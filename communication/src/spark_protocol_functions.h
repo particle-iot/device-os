@@ -158,7 +158,7 @@ bool spark_protocol_event_loop(ProtocolFacade* protocol, void* reserved=NULL);
 bool spark_protocol_is_initialized(ProtocolFacade* protocol);
 int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char *buf, const unsigned char *id, void* reserved=NULL);
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
-                int ttl, EventType::Enum event_type, void* reserved);
+                int ttl, uint32_t flags, void* reserved);
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
 bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);
 bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id, void* handler_data=NULL);
