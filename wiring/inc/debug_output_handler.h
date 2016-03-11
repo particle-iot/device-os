@@ -57,6 +57,23 @@ struct Serial1DebugOutput
 
 };
 
+#if Wiring_USBSerial1
+struct USBSerial1DebugOutput
+{
+    USBSerial1DebugOutput(int baud=9600, LoggerOutputLevel level=ALL_LEVEL)
+    {
+        USBSerial1.begin(baud);
+        set_logger_output(log_output, level);
+    }
+
+    static void log_output(const char* msg)
+    {
+        USBSerial1.print(msg);
+    }
+
+};
+#endif
+
 
 #endif	/* DEBUG_OUTPUT_HANDLER_H */
 
