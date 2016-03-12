@@ -51,6 +51,9 @@ DYNALIB_FN(hal_cellular, inet_gethostbyname)
 DYNALIB_FN(hal_cellular, inet_ping)
 DYNALIB_FN(hal_cellular, cellular_signal)
 DYNALIB_FN(hal_cellular, cellular_command)
+DYNALIB_FN(hal_cellular, cellular_file_write)
+DYNALIB_FN(hal_cellular, cellular_file_read)
+DYNALIB_FN(hal_cellular, cellular_file_delete)
 
 DYNALIB_END(hal_cellular)
 

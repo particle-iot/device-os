@@ -158,9 +158,49 @@ cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
 
 /**
  * Send an AT command and wait for response, optionally specify a callback function to parse the results
+ *
+ * @note maxmimal length of the resulting command is currently 256 bytes
  */
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
                          system_tick_t timeout_ms, const char* format, ...);
+
+/** 
+ * Write a file to the cellular module
+ *
+ * @param filename: the filename used to store the file. Max length is 47 for SARA-Gxxx and the currently used SARA-U modules
+ *        buf: buffer that is written
+ *        len: len of buf
+ *        reserved: pass NULL. Allows future expansion.
+ *
+ * @returns number of bytes written
+ *
+ * @note if an existing file is overwritten depends on the module. SARA-[GU]xxx does not overwrite files.
+ */
+int cellular_file_write(const char* filename, const char* buf, int len, void* reserved);
+
+/** 
+ * Read a file from the cellular module
+ *
+ * @param filename: the filename of the file to be downloaded.
+ *        buf: buffer into which the file is written.
+ *        len: number of bytes that should be read.
+ *        reserved: pass NULL. Allows future expansion.
+ *
+ * @returns number of bytes read
+ * 
+ * @note there is currently no way to get the file size of the file, but to use +ULSTFILE directly
+ */
+int cellular_file_read(const char* filename, char* buf, int len, void* reserved);
+
+/** 
+ * Delete a file from the cellular module
+ *
+ * @param filename: the filename of the file to be deleted
+ *        reserved: pass NULL. Allows future expansion.
+ * 
+ */
+cellular_result_t cellular_file_delete(const char* filename, void* reserved);
+
 
 #ifdef __cplusplus
 }
