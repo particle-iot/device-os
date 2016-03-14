@@ -50,6 +50,10 @@ DYNALIB_FN(7, hal_spi, HAL_SPI_Init, void(HAL_SPI_Interface))
 DYNALIB_FN(8, hal_spi, HAL_SPI_Is_Enabled, bool(HAL_SPI_Interface))
 DYNALIB_FN(9, hal_spi, HAL_SPI_Info, void(HAL_SPI_Interface, hal_spi_info_t*, void*))
 DYNALIB_FN(10, hal_spi, HAL_SPI_DMA_Transfer, void(HAL_SPI_Interface, void*, void*, uint32_t, HAL_SPI_DMA_UserCallback))
+DYNALIB_FN(11, hal_spi, HAL_SPI_Begin_Ext, void(HAL_SPI_Interface, SPI_Mode, uint16_t, void*))
+DYNALIB_FN(12, hal_spi, HAL_SPI_Set_Callback_On_Select, void(HAL_SPI_Interface, HAL_SPI_Select_UserCallback, void*))
+DYNALIB_FN(13, hal_spi, HAL_SPI_DMA_Transfer_Cancel, void(HAL_SPI_Interface))
+DYNALIB_FN(14, hal_spi, HAL_SPI_DMA_Last_Transfer_Length, int32_t(HAL_SPI_Interface))
 
 DYNALIB_END(hal_spi)
 

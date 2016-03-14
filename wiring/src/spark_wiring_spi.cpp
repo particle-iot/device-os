@@ -51,6 +51,16 @@ void SPIClass::begin(uint16_t ss_pin)
   HAL_SPI_Begin(_spi, ss_pin);
 }
 
+void SPIClass::begin(SPI_Mode mode, uint16_t ss_pin)
+{
+  if (ss_pin >= TOTAL_PINS)
+  {
+    return;
+  }
+
+  HAL_SPI_Begin_Ext(_spi, mode, ss_pin, NULL);
+}
+
 void SPIClass::end()
 {
   HAL_SPI_End(_spi);
@@ -164,4 +174,19 @@ void SPIClass::detachInterrupt()
 bool SPIClass::isEnabled()
 {
   return HAL_SPI_Is_Enabled(_spi);
+}
+
+void SPIClass::onSelect(wiring_spi_select_callback_t user_callback)
+{
+  HAL_SPI_Set_Callback_On_Select(_spi, user_callback, NULL);
+}
+
+void SPIClass::transferCancel()
+{
+  HAL_SPI_DMA_Transfer_Cancel(_spi);
+}
+
+int32_t SPIClass::available()
+{
+  return HAL_SPI_DMA_Last_Transfer_Length(_spi);
 }
