@@ -288,9 +288,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 } else if ((sscanf(cmd, "UUSOCL: %d", &a) == 1)) {
                     int socket = _findSocket(a);
                     DEBUG_D("Socket %d: handle %d closed by remote host\r\n", socket, a);
-                    if ((socket != MDM_SOCKET_ERROR) && _sockets[socket].connected) {
-                        _sockets[socket].open = false;
-                        _sockets[socket].connected = false;
+                    if (socket != MDM_SOCKET_ERROR) {
+                        _socketFree(socket);
                     }
                 }
 
@@ -1581,10 +1580,12 @@ int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
 int MDMParser::socketRecv(int socket, char* buf, int len)
 {
     int cnt = 0;
-    // DEBUG_D("socketRecv(%d,%d)\r\n", socket, len);
+/*
+    DEBUG_D("socketRecv(%d,%d)\r\n", socket, len);
 #ifdef MDM_DEBUG
     memset(buf, '\0', len);
 #endif
+*/
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     while (len) {
         int blk = MAX_SIZE; // still need space for headers and unsolicited  commands
@@ -1594,26 +1595,35 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         	LOCK();
 			if (ISSOCKET(socket)) {
 				if (_sockets[socket].connected) {
-					if (blk > 0) {
-						DEBUG_D("socketRecv: _cbUSORD\r\n");
-						sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
-						USORDparam param;
-						param.buf = buf;
-						if (RESP_OK == waitFinalResp(_cbUSORD, &param)) {
-							blk = param.len;
-							_sockets[socket].pending -= blk;
-							len -= blk;
-							cnt += blk;
-							buf += blk;
+					int available = socketReadable(socket);
+					if (available<0)  {
+						ok = false;
+					}
+					else
+					{
+						if (blk > available)	// only read up to the amount available. When 0,
+							blk = available;// skip reading and check timeout.
+						if (blk > 0) {
+							DEBUG_D("socketRecv: _cbUSORD\r\n");
+							sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
+							USORDparam param;
+							param.buf = buf;
+							if (RESP_OK == waitFinalResp(_cbUSORD, &param)) {
+								blk = param.len;
+								_sockets[socket].pending -= blk;
+								len -= blk;
+								cnt += blk;
+								buf += blk;
+								ok = true;
+							}
+						} else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
+							// DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
+							ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
+						} else {
+							// DEBUG_D("socketRecv: TIMEOUT\r\n");
+							len = 0;
 							ok = true;
 						}
-					} else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
-						// DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
-						ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
-					} else {
-						// DEBUG_D("socketRecv: TIMEOUT\r\n");
-						len = 0;
-						ok = true;
 					}
 				} else {
 					// DEBUG_D("socketRecv: SOCKET NOT CONNECTED\r\n");

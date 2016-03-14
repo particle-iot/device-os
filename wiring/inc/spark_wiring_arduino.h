@@ -29,7 +29,10 @@
 #define vsnprintf_P vsnprintf
 #define PROGMEM
 #define PSTR(x) (x)
-#define pgm_read_byte(x)  (*(x))
+#define pgm_read_byte(x)      (*(x))
+#define pgm_read_word(x)      ((uint16_t)(*(x)))
+#define pgm_read_byte_near(x) (*(x))
+#define pgm_read_word_near(x) ((uint16_t)(*(x)))
 
 
 

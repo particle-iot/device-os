@@ -37,6 +37,7 @@ else
 SUBDIR_GOALS := $(MAKECMDGOALS)
 endif
 
+INVOKEDGOALS := $(MAKECMDGOALS)
 MAKECMDGOALS := all
 MODULE=combined
 
@@ -47,7 +48,7 @@ endif
 makefiles = $(foreach module,$(projects),$(and $(strip $(subst $(MODULE_EXCLUDE),,$(notdir $(module)))),$(wildcard $(module)/makefile)))
 $(info $(makefiles))
 
-all system clean program-dfu stflash: make_deps
+all $(INVOKEDGOALS): make_deps
 
 UPDATE_ZERO = $(BUILD_PATH)/update-zero-$(VERSION_STRING)-p$(PLATFORM_ID).bin
 MODULAR_DIR=.

@@ -94,11 +94,3 @@ test(application_watchdog_doesnt_fire_when_app_checks_in)
 }
 
 #endif
-
-void init_tests()
-{
-	Test::exclude("*");
-	Test::include("application_watchdog*");
-}
-
-STARTUP(init_tests());
