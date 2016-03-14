@@ -1,6 +1,14 @@
 
 #pragma once
 
+
+#if defined(SYSTEM_MINIMAL)
+#define SOFTAP_HTTP 0
+#else
+#define SOFTAP_HTTP 1
+#endif
+
+
 #ifdef __cplusplus
 #include <algorithm>
 

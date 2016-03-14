@@ -17,10 +17,7 @@
 #include "rng_hal.h"
 #include "ota_flash_hal_stm32f2xx.h"
 
-#if defined(SYSTEM_MINIMAL)
-#define SOFTAP_HTTP 0
-#else
-#define SOFTAP_HTTP 1
+#if SOFTAP_HTTP
 #include "http_server.h"
 #endif
 
@@ -975,7 +972,7 @@ void reader_from_http_body(Reader* r, wiced_http_message_body_t* body)
 extern "C" wiced_http_page_t soft_ap_http_pages[];
 
 extern const char* SOFT_AP_MSG;
-extern "C" void default_page_handler(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result)
+extern "C" void default_page_handler(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved)
 {
 	if (strcmp(url,"/index")) {
 		cb(cbArg, 0, 404, 0, 0);	// not found
