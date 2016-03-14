@@ -26,6 +26,8 @@
 
 #include "dynalib.h"
 
+#if PLATFORM_ID != 10
+
 #ifdef DYNALIB_EXPORT
 #include "wlan_hal.h"
 #include "inet_hal.h"
@@ -71,6 +73,8 @@ DYNALIB_FN(23, hal_wlan, wlan_scan, int(wlan_scan_result_t, void*))
 DYNALIB_FN(24, hal_wlan, wlan_get_credentials, int(wlan_scan_result_t, void*))
 
 DYNALIB_END(hal_wlan)
+
+#endif  // PLATFORM_ID != 10
 
 #endif	/* HAL_DYNALIB_WLAN_H */
 

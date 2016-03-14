@@ -26,8 +26,11 @@
 
 #include "dynalib.h"
 
+#if PLATFORM_ID == 10
+
 #ifdef DYNALIB_EXPORT
 #include "cellular_hal.h"
+#include "cellular_internal.h"
 #include "inet_hal.h"
 #endif
 
@@ -52,8 +55,13 @@ DYNALIB_FN(15, hal_cellular, inet_gethostbyname, int(const char*, uint16_t, HAL_
 DYNALIB_FN(16, hal_cellular, inet_ping, int(const HAL_IPAddress*, network_interface_t, uint8_t, void*))
 DYNALIB_FN(17, hal_cellular, cellular_signal, cellular_result_t(CellularSignalHal&, void*))
 DYNALIB_FN(18, hal_cellular, cellular_command, cellular_result_t(_CALLBACKPTR_MDM, void*, system_tick_t, const char*, ...))
-
+DYNALIB_FN(19, hal_cellular, cellular_data_usage_set, cellular_result_t(CellularDataHal*,void*))
+DYNALIB_FN(20, hal_cellular, cellular_data_usage_get, cellular_result_t(CellularDataHal*,void*))
+DYNALIB_FN(21, hal_cellular, cellular_band_select_set, cellular_result_t(MDM_BandSelect* bands, void* reserved))
+DYNALIB_FN(22, hal_cellular, cellular_band_select_get, cellular_result_t(MDM_BandSelect* bands, void* reserved))
+DYNALIB_FN(23, hal_cellular, cellular_band_available_get, cellular_result_t(MDM_BandSelect* bands, void* reserved))
 DYNALIB_END(hal_cellular)
 
+#endif  // PLATFORM_ID == 10
 
-#endif
+#endif  // HAL_DYNALIB_CELLULAR_H

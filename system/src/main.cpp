@@ -50,7 +50,7 @@
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
-#include "spark_wiring_cellularsignal.h"
+#include "spark_wiring_cellular_printable.h"
 #include "system_rgbled.h"
 
 using namespace spark;
