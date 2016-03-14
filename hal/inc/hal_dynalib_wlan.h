@@ -31,7 +31,7 @@
 #ifdef DYNALIB_EXPORT
 #include "wlan_hal.h"
 #include "inet_hal.h"
-#include "softap.h"
+#include "softap_http.h"
 #endif
 
 // WARNING

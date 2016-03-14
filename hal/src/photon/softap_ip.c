@@ -2,6 +2,7 @@
 #include "wiced.h"
 #include "http_server.h"
 #include "softap.h"
+#include "softap_http.h"
 
 // This has to be compiled as C since it doesn't compile as C++ due to non-trivial assignment
 
@@ -14,7 +15,7 @@ const wiced_ip_setting_t device_init_ip_settings =
 
 const char SOFT_AP_MSG[] = "Soft AP Setup";
 START_OF_HTTP_PAGE_DATABASE(soft_ap_http_pages)
-    ROOT_HTTP_PAGE_REDIRECT("/hello"),
+	ROOT_HTTP_PAGE_REDIRECT("/index"),
     { "/hello", "text/plain", WICED_STATIC_URL_CONTENT, .url_content.static_data = {SOFT_AP_MSG, sizeof(SOFT_AP_MSG) }},
     { "/version", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
     { "/device-id", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
@@ -26,7 +27,9 @@ START_OF_HTTP_PAGE_DATABASE(soft_ap_http_pages)
 	{ "/", "application/octet-stream", .url_content_type = WICED_RAW_DYNAMIC_URL_CONTENT },
 END_OF_HTTP_PAGE_DATABASE();
 
-PageProvider* page_handler;
+extern void default_page_handler(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved);
+
+PageProvider* page_handler = default_page_handler;
 
 int softap_set_application_page_handler(PageProvider* provider, void* reserved)
 {

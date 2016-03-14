@@ -8,6 +8,7 @@
 #include "wiced_security.h"
 #include "jsmn.h"
 #include "softap.h"
+#include "softap_http.h"
 #include "dct.h"
 #include "ota_flash_hal.h"
 #include "spark_protocol_functions.h"
@@ -973,6 +974,18 @@ void reader_from_http_body(Reader* r, wiced_http_message_body_t* body)
 #if SOFTAP_HTTP
 extern "C" wiced_http_page_t soft_ap_http_pages[];
 
+extern const char* SOFT_AP_MSG;
+extern "C" void default_page_handler(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result)
+{
+	if (strcmp(url,"/index")) {
+		cb(cbArg, 0, 404, 0, 0);	// not found
+	}
+	else {
+		Header h("Location: /hello\r\n");
+		cb(cbArg, 0, 301, "text/plain", &h);
+	}
+}
+
 
 static void http_write(Writer* w, const uint8_t *buf, size_t count) {
     wiced_http_response_stream_t* stream = (wiced_http_response_stream_t*)w->state;
@@ -984,10 +997,57 @@ static void http_stream_writer(Writer& w, wiced_http_response_stream_t* stream) 
     w.state = stream;
 }
 
-int writeHeader(void* cbArg, uint16_t flags, uint16_t responseCode, const char* mimeType)
+/**
+ * Maps from the status code as an integer to the WICED HTTP server codes.
+ */
+http_status_codes_t status_from_code(uint16_t response)
 {
-   return wiced_http_response_stream_write_header( (wiced_http_response_stream_t*)cbArg, http_status_codes_t(responseCode),
-		   CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, http_server_get_mime_type(mimeType) );
+	switch (response) {
+	case 200:
+		return HTTP_200_TYPE;
+	case 204:
+		return HTTP_204_TYPE;
+	case 207:
+		return HTTP_207_TYPE;
+	case 301:
+		return HTTP_301_TYPE;
+	case 400:
+	default:
+		return HTTP_400_TYPE;
+	case 403:
+		return HTTP_403_TYPE;
+	case 404:
+		return HTTP_404_TYPE;
+	case 405:
+		return HTTP_405_TYPE;
+	case 406:
+		return HTTP_406_TYPE;
+	case 412:
+		return HTTP_412_TYPE;
+	case 415:
+		return HTTP_415_TYPE;
+	case 429:
+		return HTTP_429_TYPE;
+	case 444:
+		return HTTP_444_TYPE;
+	case 470:
+		return HTTP_470_TYPE;
+	case 500:
+		return HTTP_500_TYPE;
+	case 504:
+		return HTTP_504_TYPE;
+	}
+}
+
+int writeHeader(void* cbArg, uint16_t flags, uint16_t responseCode, const char* mimeType, Header* header)
+{
+	const char* header_list = nullptr;
+	if (header && header->size) {
+		header_list = header->header_list;
+	}
+
+   return wiced_http_response_stream_write_header( (wiced_http_response_stream_t*)cbArg, status_from_code(responseCode),
+		   CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, http_server_get_mime_type(mimeType), header_list);
 }
 
 
@@ -1030,7 +1090,7 @@ public:
         reader_from_http_body(&r, http_data);
         wiced_http_response_stream_enable_chunked_transfer( stream );
         stream->cross_host_requests_enabled = WICED_TRUE;
-        wiced_http_response_stream_write_header( stream, HTTP_200_TYPE, CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_JSON );
+        wiced_http_response_stream_write_header( stream, HTTP_200_TYPE, CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_JSON, nullptr);
         Writer w;
         http_stream_writer(w, stream);
         int result = cmd->execute(r, w);
@@ -1047,7 +1107,7 @@ public:
         Writer w;
         http_stream_writer(w, stream);
         if (p)
-        		p(url, &writeHeader, stream, &r, &w);
+        		p(url, &writeHeader, stream, &r, &w, nullptr);
         cleanup_http_body(http_data);
         return 0;
     }
