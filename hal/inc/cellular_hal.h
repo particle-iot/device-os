@@ -189,12 +189,12 @@ typedef struct CellularDataHal CellularDataHal;
 /**
  * Set cellular data usage info
  */
-cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved);
+cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved);
 
 /**
  * Get cellular data usage info
  */
-cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved);
+cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved);
 
 #ifdef __cplusplus
 }

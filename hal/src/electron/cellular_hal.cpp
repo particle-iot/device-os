@@ -156,16 +156,16 @@ cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_Data
     return 0;
 }
 
-cellular_result_t cellular_data_usage_set(CellularDataHal &data, void* reserved)
+cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved)
 {
     // First get a copy of the current data usage values
     MDM_DataUsage data_usage;
     bool rv = electronMDM.getDataUsage(data_usage);
     // Now process the Set request
-    return _cellular_data_usage_set(data, data_usage, rv);
+    return _cellular_data_usage_set(*data, data_usage, rv);
 }
 
-cellular_result_t _cellular_data_usage_get(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
+cellular_result_t _cellular_data_usage_get(CellularDataHal& data, const MDM_DataUsage &data_usage, bool ret)
 {
     if (!ret) {
         data.cid = -1; // let the caller know this object was not updated
@@ -198,29 +198,29 @@ cellular_result_t _cellular_data_usage_get(CellularDataHal &data, const MDM_Data
     return 0;
 }
 
-cellular_result_t cellular_data_usage_get(CellularDataHal &data, void* reserved)
+cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
 {
     // First get a copy of the current data usage values
     MDM_DataUsage data_usage;
     bool rv = electronMDM.getDataUsage(data_usage);
     // Now process the Get request
-    return _cellular_data_usage_get(data, data_usage, rv);
+    return _cellular_data_usage_get(*data, data_usage, rv);
 }
 
-cellular_result_t cellular_band_select_set(MDM_BandSelect &bands, void* reserved)
+cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved)
 {
-    CHECK_SUCCESS(electronMDM.setBandSelect(bands));
+    CHECK_SUCCESS(electronMDM.setBandSelect(*bands));
     return 0;
 }
 
-cellular_result_t cellular_band_select_get(MDM_BandSelect &bands, void* reserved)
+cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved)
 {
-    CHECK_SUCCESS(electronMDM.getBandSelect(bands));
+    CHECK_SUCCESS(electronMDM.getBandSelect(*bands));
     return 0;
 }
 
-cellular_result_t cellular_band_available_get(MDM_BandSelect &bands, void* reserved)
+cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reserved)
 {
-    CHECK_SUCCESS(electronMDM.getBandAvailable(bands));
+    CHECK_SUCCESS(electronMDM.getBandAvailable(*bands));
     return 0;
 }

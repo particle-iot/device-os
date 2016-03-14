@@ -343,7 +343,7 @@ To customize the build, append values to these variables:
 
 - `CSRC`, `CPPSRC`: the c and cpp files in the build which are compiled and linked, e.g.
 ```
-SRC += $(call target_files,,*.c)
+CSRC += $(call target_files,,*.c)
 CPPSRC += $(call target_files,,*.cpp)
 ```
 To add all files in the application directory and subdirectories.

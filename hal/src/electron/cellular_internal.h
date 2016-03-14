@@ -39,17 +39,17 @@ cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_Data
 /**
  * Set cellular band select
  */
-cellular_result_t cellular_band_select_set(MDM_BandSelect &bands, void* reserved);
+cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved);
 
 /**
  * Get cellular band select
  */
-cellular_result_t cellular_band_select_get(MDM_BandSelect &bands, void* reserved);
+cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved);
 
 /**
  * Get cellular band available
  */
-cellular_result_t cellular_band_available_get(MDM_BandSelect &bands, void* reserved);
+cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reserved);
 
 #ifdef __cplusplus
 }

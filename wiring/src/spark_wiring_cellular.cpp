@@ -48,7 +48,7 @@ namespace spark {
     CellularDataHal data_hal;
 
     bool CellularClass::getDataUsage(CellularData &data_get) {
-        if (cellular_data_usage_get(data_hal, NULL) != 0) {
+        if (cellular_data_usage_get(&data_hal, NULL) != 0) {
             data_get.cid = data_hal.cid; // data_hal.cid will indicate -1
             data_get.ok = false; // dataUsage object was not updated
         }
@@ -66,7 +66,7 @@ namespace spark {
         data_hal.rx_session = data_set.rx_session;
         data_hal.tx_total = data_set.tx_total;
         data_hal.rx_total = data_set.rx_total;
-        if (cellular_data_usage_set(data_hal, NULL) != 0) {
+        if (cellular_data_usage_set(&data_hal, NULL) != 0) {
             data_set.cid = data_hal.cid; // data_hal.cid will indicate -1
             data_set.ok = false; // dataUsage object was not updated
         }
@@ -81,7 +81,7 @@ namespace spark {
         data_hal.rx_session = 0;
         data_hal.tx_total = 0;
         data_hal.rx_total = 0;
-        if (cellular_data_usage_set(data_hal, NULL) != 0) {
+        if (cellular_data_usage_set(&data_hal, NULL) != 0) {
             return false; // dataUsage object was not updated
         }
         return true;
@@ -99,7 +99,7 @@ namespace spark {
         band_hal.count = band_set.count;
         // mark band_set object valid
         band_set.ok = true;
-        if (cellular_band_select_set(band_hal, NULL) != 0) {
+        if (cellular_band_select_set(&band_hal, NULL) != 0) {
             return false; // band select was not updated
         }
         return true;
@@ -128,7 +128,7 @@ namespace spark {
 
     bool CellularClass::getBandSelect(CellularBand &band_get) {
         MDM_BandSelect band_hal;
-        if (cellular_band_select_get(band_hal, NULL) != 0) {
+        if (cellular_band_select_get(&band_hal, NULL) != 0) {
             return (band_get.ok = false); // band_hal object was not updated
         }
         band_get.count = band_hal.count;
@@ -138,7 +138,7 @@ namespace spark {
 
     bool CellularClass::getBandAvailable(CellularBand &band_get) {
         MDM_BandSelect band_hal;
-        if (cellular_band_available_get(band_hal, NULL) != 0) {
+        if (cellular_band_available_get(&band_hal, NULL) != 0) {
             return (band_get.ok = false); // band_hal object was not updated
         }
         band_get.count = band_hal.count;
