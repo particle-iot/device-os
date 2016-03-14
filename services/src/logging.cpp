@@ -41,16 +41,19 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
 
 void log_message(int level, const char *category, const char *file, int line, const char *func, void *reserved,
         const char *fmt, ...) {
-    if (log_msg_callback) {
-        const uint32_t time = HAL_Timer_Get_Milli_Seconds();
-        if (file) {
-            // Strip directory path
-            const char *p = strrchr(file, '/');
-            if (p) {
-                file = p + 1;
-            }
+    if (!log_write_callback && (!log_compat_callback || level < log_compat_level)) {
+        return;
+    }
+    const uint32_t time = HAL_Timer_Get_Milli_Seconds();
+    if (file) {
+        // Strip directory path
+        const char *p = strrchr(file, '/');
+        if (p) {
+            file = p + 1;
         }
-        char buf[LOG_FORMATTED_STRING_LENGTH];
+    }
+    char buf[LOG_MAX_STRING_LENGTH];
+    if (log_msg_callback) {
         va_list args;
         va_start(args, fmt);
         const int n = vsnprintf(buf, sizeof(buf), fmt, args);
@@ -59,16 +62,9 @@ void log_message(int level, const char *category, const char *file, int line, co
             buf[sizeof(buf) - 2] = '~';
         }
         log_msg_callback(buf, level, category, time, file, line, func, 0);
-    } else if (debug_output_ && level >= log_level_at_run_time) { // Compatibility callback
-        const uint32_t time = HAL_Timer_Get_Milli_Seconds();
+    } else {
+        // Using compatibility callback
         const char* const levelName = log_level_name(level, 0);
-        if (file) {
-            const char *p = strrchr(file, '/');
-            if (p) {
-                file = p + 1;
-            }
-        }
-        char buf[LOG_FORMATTED_STRING_LENGTH];
         int n = 0;
         if (file && func) {
             n = snprintf(buf, sizeof(buf), "%010u %s:%d, %s: %s", (unsigned)time, file, line, func, levelName);
@@ -78,8 +74,8 @@ void log_message(int level, const char *category, const char *file, int line, co
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
         }
-        debug_output_(buf);
-        debug_output_(": ");
+        log_compat_callback(buf);
+        log_compat_callback(": ");
         va_list args;
         va_start(args, fmt);
         n = vsnprintf(buf, sizeof(buf), fmt, args);
@@ -87,23 +83,40 @@ void log_message(int level, const char *category, const char *file, int line, co
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
         }
-        debug_output_(buf);
-        debug_output_("\r\n");
+        log_compat_callback(buf);
+        log_compat_callback("\r\n");
     }
 }
 
 void log_write(int level, const char *category, const char *data, size_t size, void *reserved) {
-    if (!log_write_callback || !size) {
+    if (!size) {
         return;
     }
-    log_write_callback(data, size, level, category, 0);
+    if (log_write_callback) {
+        log_write_callback(data, size, level, category, 0);
+    } else if (log_compat_callback && level >= log_compat_level) {
+        // Compatibility callback expects null-terminated strings
+        if (!data[size - 1]) {
+            log_compat_callback(data);
+        } else {
+            char buf[LOG_MAX_STRING_LENGTH];
+            size_t offs = 0;
+            do {
+                const size_t n = std::min(size - offs, sizeof(buf) - 1);
+                memcpy(buf, data + offs, n);
+                buf[n] = 0;
+                log_compat_callback(buf);
+                offs += n;
+            } while (offs < size);
+        }
+    }
 }
 
 void log_format(int level, const char *category, void *reserved, const char *fmt, ...) {
-    if (!log_write_callback && (!debug_output_ || level < log_level_at_run_time)) {
+    if (!log_write_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
-    char buf[LOG_FORMATTED_STRING_LENGTH];
+    char buf[LOG_MAX_STRING_LENGTH];
     va_list args;
     va_start(args, fmt);
     int n = vsnprintf(buf, sizeof(buf), fmt, args);
@@ -115,28 +128,38 @@ void log_format(int level, const char *category, void *reserved, const char *fmt
     if (log_write_callback) {
         log_write_callback(buf, n, level, category, 0);
     } else {
-        debug_output_(buf); // Compatibility callback
+        log_compat_callback(buf); // Compatibility callback
     }
 }
 
 void log_dump(int level, const char *category, const void *data, size_t size, void *reserved) {
-    if (!log_write_callback || !size) {
+    if (!size || (!log_write_callback && (!log_compat_callback || level < log_compat_level))) {
         return;
     }
     static const char hex[] = "0123456789abcdef";
-    char buf[32 * 2]; // Hex data is flushed in chunks
+    char buf[LOG_MAX_STRING_LENGTH / 2 * 2 + 1]; // Hex data is flushed in chunks
+    buf[sizeof(buf) - 1] = 0; // Compatibility callback expects null-terminated strings
     size_t offs = 0;
     for (size_t i = 0; i < size; ++i) {
         const uint8_t b = ((const uint8_t*)data)[i];
         buf[offs++] = hex[b >> 4];
         buf[offs++] = hex[b & 0x0f];
-        if (offs == sizeof(buf)) {
-            log_write_callback(buf, sizeof(buf), level, category, 0);
+        if (offs == sizeof(buf) - 1) {
+            if (log_write_callback) {
+                log_write_callback(buf, sizeof(buf) - 1, level, category, 0);
+            } else {
+                log_compat_callback(buf);
+            }
             offs = 0;
         }
     }
     if (offs) {
-        log_write_callback(buf, offs, level, category, 0);
+        if (log_write_callback) {
+            log_write_callback(buf, offs, level, category, 0);
+        } else {
+            buf[offs] = 0;
+            log_compat_callback(buf);
+        }
     }
 }
 
@@ -144,7 +167,7 @@ int log_enabled(int level, const char *category, void *reserved) {
     if (log_enabled_callback) {
         return log_enabled_callback(level, category, 0);
     }
-    if (debug_output_ && level >= log_level_at_run_time) { // Compatibility callback
+    if (log_compat_callback && level >= log_compat_level) { // Compatibility callback
         return 1;
     }
     return 0;

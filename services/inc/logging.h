@@ -98,9 +98,8 @@
     LOG_COMPILE_TIME_LEVEL - allows to strip any logging output that is below of certain logging level
     at compile time. Default value is ALL_LEVEL meaning that no compile-time filtering is applied.
 
-    LOG_FORMATTED_STRING_LENGTH - specifies maximum number of characters allowed for formatted strings.
-    This parameter affects log_message() and log_format() functions as well as their LOG() and
-    LOG_FORMAT() wrapper macros.
+    LOG_MAX_STRING_LENGTH - specifies maximum number of characters allowed for formatted strings.
+    This parameter affects log_message() and some other functions as well as their wrapper macros.
 
     LOG_DISABLED - disables logging entirely, turning all logging macros into no-op.
 */
@@ -168,8 +167,8 @@ extern void HAL_Delay_Microseconds(uint32_t delay);
 #define LOG_COMPILE_TIME_LEVEL ALL_LEVEL
 #endif
 
-#ifndef LOG_FORMATTED_STRING_LENGTH
-#define LOG_FORMATTED_STRING_LENGTH 160
+#ifndef LOG_MAX_STRING_LENGTH
+#define LOG_MAX_STRING_LENGTH 160
 #endif
 
 #ifndef LOG_DISABLED
