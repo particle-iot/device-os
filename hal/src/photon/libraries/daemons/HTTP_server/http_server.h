@@ -498,6 +498,10 @@ wiced_result_t wiced_http_response_stream_write_resource( wiced_http_response_st
  */
 wiced_result_t wiced_http_response_stream_flush( wiced_http_response_stream_t* stream );
 
+
+wiced_packet_mime_type_t http_server_get_mime_type( const char* request_data );
+
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

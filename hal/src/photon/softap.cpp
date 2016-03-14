@@ -61,61 +61,6 @@ bool is_device_claimed()
     return (*claimed)=='1';
 }
 
-/**
- * Abstraction of an input stream.
- */
-struct Reader {
-    typedef int (*callback_t)(Reader* stream, uint8_t *buf, size_t count);
-
-    callback_t callback;
-    size_t bytes_left;
-    void* state;
-
-    inline int read(uint8_t* buf, size_t length) {
-        int result = -1;
-        if (bytes_left) {
-            result = callback(this, buf, std::min(length, bytes_left));
-            if (result>0)
-                bytes_left -= result;
-        }
-        return result;
-    }
-
-    /**
-     * Allocates a buffer with the remaining data as a string.
-     * It's the caller's responsibility to free the buffer with free().
-     * @return
-     */
-    char* fetch_as_string() {
-        char* buf = (char*)malloc(bytes_left+1);
-        if (buf) {
-            int len = bytes_left;
-            read((uint8_t*)buf, bytes_left);
-            buf[len] = 0;
-            bytes_left = 0;
-        }
-        return buf;
-    }
-};
-
-/**
- * Abstraction of an output stream.
- */
-struct Writer {
-    typedef void (*callback_t)(Writer* stream, const uint8_t *buf, size_t count);
-
-    callback_t callback;
-    void* state;
-
-    inline void write(const uint8_t* buf, size_t length) {
-        callback(this, buf, length);
-    }
-
-    void write(const char* s) {
-        write((const uint8_t*)s, strlen(s));
-    }
-
-};
 
 /**
  * A command that consumes data from a reader and produces a result to a writer.
@@ -134,9 +79,7 @@ public:
 
 /**
  * Base class for commands whose requests and responses are encoded using
- * protobuf. Subclasses must ensure the req_ and resp_ members are set to
- * the nanopb fields and data used to decode the request and encode
- * the response.
+ * json.
  */
 class JSONCommand : public Command {
 
@@ -1041,10 +984,17 @@ static void http_stream_writer(Writer& w, wiced_http_response_stream_t* stream) 
     w.state = stream;
 }
 
+int writeHeader(void* cbArg, uint16_t flags, uint16_t responseCode, const char* mimeType)
+{
+   return wiced_http_response_stream_write_header( (wiced_http_response_stream_t*)cbArg, http_status_codes_t(responseCode),
+		   CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, http_server_get_mime_type(mimeType) );
+}
+
+
 class HTTPDispatcher {
     wiced_http_server_t server;
 
-    wiced_http_page_t page[9];
+    wiced_http_page_t page[10];
 
     void setCommand(unsigned index, Command& cmd) {
         page[index].url_content.dynamic_data.generator = handle_command;
@@ -1062,6 +1012,8 @@ public:
         setCommand(6, commands.connectAP);
         setCommand(7, commands.publicKey);
         setCommand(8, commands.setValue);
+        page[9].url_content.dynamic_data.generator = handle_app_renderer;
+        page[9].url_content.dynamic_data.arg = (void*)softap_get_application_page_handler();
     }
 
     void start() {
@@ -1086,8 +1038,23 @@ public:
         return result;
     }
 
+    static int32_t handle_app_renderer(const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
+    	    PageProvider* p = (PageProvider*)arg;
+        Reader r;
+        reader_from_http_body(&r, http_data);
+        wiced_http_response_stream_enable_chunked_transfer( stream );
+        stream->cross_host_requests_enabled = WICED_TRUE;
+        Writer w;
+        http_stream_writer(w, stream);
+        if (p)
+        		p(url, &writeHeader, stream, &r, &w);
+        cleanup_http_body(http_data);
+        return 0;
+    }
+
 };
 #endif
+
 
 /**
  * Parses a very simple protocol for sending command requests over a stream
