@@ -22,43 +22,52 @@
 
 #pragma once
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 #include "dynalib.h"
 #include "protocol_selector.h"
 #include "hal_platform.h"
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 DYNALIB_BEGIN(communication)
-DYNALIB_FN(communication, spark_protocol_instance)
-DYNALIB_FN(communication, spark_protocol_set_product_id)
-DYNALIB_FN(communication, spark_protocol_set_product_firmware_version)
-DYNALIB_FN(communication, spark_protocol_get_product_details)
-DYNALIB_FN(communication, spark_protocol_communications_handlers)
-DYNALIB_FN(communication, spark_protocol_init)
-DYNALIB_FN(communication, spark_protocol_handshake)
-DYNALIB_FN(communication, spark_protocol_event_loop)
-DYNALIB_FN(communication, spark_protocol_is_initialized)
-DYNALIB_FN(communication, spark_protocol_presence_announcement)
-DYNALIB_FN(communication, spark_protocol_send_event)
-DYNALIB_FN(communication, spark_protocol_send_subscription_device)
-DYNALIB_FN(communication, spark_protocol_send_subscription_scope)
-DYNALIB_FN(communication, spark_protocol_add_event_handler)
-DYNALIB_FN(communication, spark_protocol_send_time_request)
-DYNALIB_FN(communication, spark_protocol_send_subscriptions)
+
+DYNALIB_FN(0, communication, spark_protocol_instance, ProtocolFacade*(void))
+DYNALIB_FN(1, communication, spark_protocol_set_product_id, void(ProtocolFacade*, product_id_t, unsigned, void*))
+DYNALIB_FN(2, communication, spark_protocol_set_product_firmware_version, void(ProtocolFacade*, product_firmware_version_t, unsigned, void*))
+DYNALIB_FN(3, communication, spark_protocol_get_product_details, void(ProtocolFacade*, product_details_t*, void*))
+DYNALIB_FN(4, communication, spark_protocol_communications_handlers, void(ProtocolFacade*, CommunicationsHandlers*))
+DYNALIB_FN(5, communication, spark_protocol_init, void(ProtocolFacade*, const char*, const SparkKeys&, const SparkCallbacks&, const SparkDescriptor&, void*))
+DYNALIB_FN(6, communication, spark_protocol_handshake, int(ProtocolFacade*, void*))
+DYNALIB_FN(7, communication, spark_protocol_event_loop, bool(ProtocolFacade* protocol, void*))
+DYNALIB_FN(8, communication, spark_protocol_is_initialized, bool(ProtocolFacade*))
+DYNALIB_FN(9, communication, spark_protocol_presence_announcement, int(ProtocolFacade*, uint8_t*, const uint8_t*, void*))
+DYNALIB_FN(10, communication, spark_protocol_send_event, bool(ProtocolFacade*, const char*, const char*, int, uint32_t, void*))
+DYNALIB_FN(11, communication, spark_protocol_send_subscription_device, bool(ProtocolFacade*, const char*, const char*, void*))
+DYNALIB_FN(12, communication, spark_protocol_send_subscription_scope, bool(ProtocolFacade*, const char*, SubscriptionScope::Enum, void*))
+DYNALIB_FN(13, communication, spark_protocol_add_event_handler, bool(ProtocolFacade*, const char*, EventHandler, SubscriptionScope::Enum, const char*, void*))
+DYNALIB_FN(14, communication, spark_protocol_send_time_request, bool(ProtocolFacade*, void*))
+DYNALIB_FN(15, communication, spark_protocol_send_subscriptions, void(ProtocolFacade*, void*))
+
 #if !defined(PARTICLE_PROTOCOL) || HAL_PLATFORM_CLOUD_TCP
-DYNALIB_FN(communication, decrypt_rsa)
-DYNALIB_FN(communication, gen_rsa_key)
-DYNALIB_FN(communication, extract_public_rsa_key)
+DYNALIB_FN(16, communication, decrypt_rsa, int(const uint8_t*, const uint8_t*, uint8_t*, int))
+DYNALIB_FN(17, communication, gen_rsa_key, int(uint8_t*, size_t, int(*)(void*), void*))
+DYNALIB_FN(18, communication, extract_public_rsa_key, void(uint8_t*, const uint8_t*))
+#define BASE_IDX 19 // Base index for all subsequent functions
+#else
+#define BASE_IDX 16
 #endif
-DYNALIB_FN(communication, spark_protocol_remove_event_handlers)
+
+DYNALIB_FN(BASE_IDX + 0, communication, spark_protocol_remove_event_handlers, void(ProtocolFacade*, const char*, void*))
+
 #if defined(PARTICLE_PROTOCOL) && HAL_PLATFORM_CLOUD_UDP
-DYNALIB_FN(communication, gen_ec_key)
-DYNALIB_FN(communication, extract_public_ec_key)
+DYNALIB_FN(BASE_IDX + 1, communication, gen_ec_key, int(uint8_t*, size_t, int(*)(void*, uint8_t*, size_t), void*))
+DYNALIB_FN(BASE_IDX + 2, communication, extract_public_ec_key, int(uint8_t*, size_t, const uint8_t*))
 #endif
+
 DYNALIB_END(communication)
 
+#undef BASE_IDX
 
 #ifdef	__cplusplus
 }

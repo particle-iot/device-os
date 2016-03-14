@@ -38,16 +38,18 @@
 // GNINRAW
 
 DYNALIB_BEGIN(hal_ota)
-DYNALIB_FN(hal_ota,HAL_OTA_FlashAddress)
-DYNALIB_FN(hal_ota,HAL_OTA_FlashLength)
-DYNALIB_FN(hal_ota,HAL_OTA_ChunkSize)
 
-DYNALIB_FN(hal_ota,HAL_OTA_Flashed_GetStatus)
-DYNALIB_FN(hal_ota,HAL_OTA_Flashed_ResetStatus)
+DYNALIB_FN(0, hal_ota, HAL_OTA_FlashAddress, uint32_t(void))
+DYNALIB_FN(1, hal_ota, HAL_OTA_FlashLength, uint32_t(void))
+DYNALIB_FN(2, hal_ota, HAL_OTA_ChunkSize, uint16_t(void))
 
-DYNALIB_FN(hal_ota,HAL_FLASH_Begin)
-DYNALIB_FN(hal_ota,HAL_FLASH_Update)
-DYNALIB_FN(hal_ota,HAL_FLASH_End)
+DYNALIB_FN(3, hal_ota, HAL_OTA_Flashed_GetStatus, bool(void))
+DYNALIB_FN(4, hal_ota, HAL_OTA_Flashed_ResetStatus, void(void))
+
+DYNALIB_FN(5, hal_ota, HAL_FLASH_Begin, bool(uint32_t, uint32_t, void*))
+DYNALIB_FN(6, hal_ota, HAL_FLASH_Update, int(const uint8_t*, uint32_t, uint32_t, void*))
+DYNALIB_FN(7, hal_ota, HAL_FLASH_End, hal_update_complete_t(void*))
+
 DYNALIB_END(hal_ota)
 
 #endif	/* HAL_DYNALIB_OTA_H */

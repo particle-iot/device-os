@@ -31,18 +31,20 @@
 #endif
 
 DYNALIB_BEGIN(system_net)
-DYNALIB_FN(system_net, network_config)
-DYNALIB_FN(system_net, network_connect)
-DYNALIB_FN(system_net, network_connecting)
-DYNALIB_FN(system_net, network_disconnect)
-DYNALIB_FN(system_net, network_ready)
-DYNALIB_FN(system_net, network_on)
-DYNALIB_FN(system_net, network_off)
-DYNALIB_FN(system_net, network_listen)
-DYNALIB_FN(system_net, network_listening)
-DYNALIB_FN(system_net, network_has_credentials)
-DYNALIB_FN(system_net, network_set_credentials)
-DYNALIB_FN(system_net, network_clear_credentials)
+
+DYNALIB_FN(0, system_net, network_config, const void*(network_handle_t, uint32_t, void*))
+DYNALIB_FN(1, system_net, network_connect, void(network_handle_t, uint32_t, uint32_t, void*))
+DYNALIB_FN(2, system_net, network_connecting, bool(network_handle_t, uint32_t, void*))
+DYNALIB_FN(3, system_net, network_disconnect, void(network_handle_t, uint32_t, void*))
+DYNALIB_FN(4, system_net, network_ready, bool(network_handle_t, uint32_t, void*))
+DYNALIB_FN(5, system_net, network_on, void(network_handle_t, uint32_t, uint32_t, void*))
+DYNALIB_FN(6, system_net, network_off, void(network_handle_t, uint32_t, uint32_t, void*))
+DYNALIB_FN(7, system_net, network_listen, void(network_handle_t, uint32_t, void*))
+DYNALIB_FN(8, system_net, network_listening, bool(network_handle_t, uint32_t, void*))
+DYNALIB_FN(9, system_net, network_has_credentials, bool(network_handle_t, uint32_t, void*))
+DYNALIB_FN(10, system_net, network_set_credentials, int(network_handle_t, uint32_t, NetworkCredentials*, void*))
+DYNALIB_FN(11, system_net, network_clear_credentials, bool(network_handle_t, uint32_t, NetworkCredentials*, void*))
+
 DYNALIB_END(system_net)
 
 
