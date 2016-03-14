@@ -36,7 +36,13 @@ test(system_api) {
 
     API_COMPILE(System.sleep(60));
 
-    API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
+}
+
+test(system_sleep)
+{
+    API_COMPILE(System.sleep(60));
+
+	API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
 
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
 
@@ -47,14 +53,30 @@ test(system_api) {
     API_COMPILE(System.sleep(A0, FALLING));
     API_COMPILE(System.sleep(A0, FALLING, 20));
 
+    // with network flags
+	API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60, SLEEP_NETWORK_STANDBY));
+
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY, 60));
+
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY));
+
+    API_COMPILE(System.sleep(A0, CHANGE, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, RISING, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, FALLING, 20, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY, 20));
+
+
+}
+
+test(system_mode) {
     API_COMPILE(System.mode());
     API_COMPILE(SystemClass(AUTOMATIC));
     API_COMPILE(SystemClass(SEMI_AUTOMATIC));
     API_COMPILE(SystemClass(MANUAL));
-}
 
-test(system_mode) {
-    // braces are required since the macro evaluates to a declaration
+	// braces are required since the macro evaluates to a declaration
     API_COMPILE({ SYSTEM_MODE(AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(SEMI_AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(MANUAL) });
