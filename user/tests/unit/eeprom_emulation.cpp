@@ -527,7 +527,8 @@ TEST_CASE("Capacity", "[eeprom]")
 {
     TestEEPROM eeprom;
     // Each record is 4 bytes, and some space is used by the page header
-    size_t expectedByteCapacity = PageSize2 / 4 - 1;
+    // Capacity if 50% of the theoretical max
+    size_t expectedByteCapacity = PageSize2 / 4 / 2 - 1;
 
     REQUIRE(eeprom.capacity() == expectedByteCapacity);
 }
@@ -1292,6 +1293,7 @@ TEST_CASE("Write works for all indexes", "[eeprom]")
 TEST_CASE("Write ignored for any address out of range", "[eeprom]")
 {
     TestEEPROM eeprom;
+    eeprom.init();
     uint16_t index;
     uint8_t data;
 
@@ -1308,5 +1310,31 @@ TEST_CASE("Write ignored for any address out of range", "[eeprom]")
         eeprom.get(index, dataRead);
         CAPTURE(index);
         REQUIRE(dataRead != data);
+    }
+}
+
+TEST_CASE("Page swap with data in multiple batches", "[eeprom]")
+{
+    TestEEPROM eeprom;
+    eeprom.init();
+    uint16_t index;
+    uint8_t data;
+
+    // when
+    for(index = 0, data = 10; index <= 500; index += 100, data += 10)
+    {
+        eeprom.put(index, data);
+    }
+
+    // Force a page swap
+    eeprom.swapPagesAndWrite(1, nullptr, 0);
+
+    // then
+    for(index = 0, data = 10; index <= 500; index += 100, data += 10)
+    {
+        uint8_t dataRead;
+        eeprom.get(index, dataRead);
+        CAPTURE(index);
+        REQUIRE(dataRead == data);
     }
 }

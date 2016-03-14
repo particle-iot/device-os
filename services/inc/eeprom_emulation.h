@@ -23,6 +23,7 @@
 #include <cstring>
 #include <memory>
 #include <vector>
+#include <limits>
 
 /* EEPROM Emulation using Flash memory
  *
@@ -224,9 +225,10 @@ public:
     }
 
     // Returns number of bytes that can be stored in EEPROM
+    // The actual capacity is set to 50% of the records that fit in the smallest page
     constexpr size_t capacity()
     {
-        return (SmallestPageSize - sizeof(PageHeader)) / sizeof(Record);
+        return (SmallestPageSize - sizeof(PageHeader)) / sizeof(Record) / 2;
     }
 
     // Check if the old page needs to be erased
@@ -542,28 +544,70 @@ public:
     template <typename Func>
     void forEachUniqueValidRecord(LogicalPage page, Func f)
     {
-        // Find latest address of each record in one pass through the page
-        // Note: this creates a vector with up to capacity() bytes on the heap.
-        std::vector<Address> recordAddresses;
-        forEachValidRecord(page, [&](Address address, const Record &record)
-        {
-            if(record.index >= recordAddresses.size())
-            {
-                recordAddresses.resize(record.index + 1);
-            }
-            recordAddresses[record.index] = address;
-        });
+        // Find latest address of each record in several passes through the page, batching
+        // the finds to reduce the number of linear searches through the page.
 
-        // Yield the records that have a value
-        for(auto address: recordAddresses)
-        {
-            if(address != 0)
-            {
-                const Record &record = *(const Record *) store.dataAt(address);
+        // To save heap space, only address offsets are used instead of the full
+        // addresses, so make sure offsets fit in the chosen AddressOffset data type
+        using AddressOffset = uint16_t;
+        static_assert(
+            PageSize1 <= std::numeric_limits<AddressOffset>::max() + 1 && 
+            PageSize2 <= std::numeric_limits<AddressOffset>::max() + 1,
+            "PageSize1 or PageSize2 doesn't fit in AddressOffset. "
+            "Make pages smaller or AddressOffset a larger data type"
+        );
 
-                // Yield record
-                f(address, record);
+        // The recordAddresses vector will use up to BatchSize * sizeof(AddressOffset)
+        // bytes on the heap.
+        std::vector<AddressOffset> recordAddresses;
+        const Index BatchSize = 128;
+
+        Address baseAddress = getPageBegin(page);
+
+        Index firstIndex = 0;
+        Index lastIndex = BatchSize;
+        bool hasMoreRecords = true;
+
+        while(hasMoreRecords) {
+            hasMoreRecords = false;
+
+            forEachValidRecord(page, [&](Address address, const Record &record)
+            {
+                // Save records in this batch
+                if(record.index >= firstIndex && record.index < lastIndex) {
+                    Index indexOffset = record.index - firstIndex;
+                    AddressOffset addressOffset = address - baseAddress;
+
+                    if(indexOffset >= recordAddresses.size())
+                    {
+                        recordAddresses.resize(indexOffset + 1);
+                    }
+
+                    recordAddresses[indexOffset] = addressOffset;
+                }
+
+                // More records in a later batch
+                if(record.index >= lastIndex) {
+                    hasMoreRecords = true;
+                }
+            });
+
+            // Yield the records in this batch that have a value
+            for(auto addressOffset: recordAddresses)
+            {
+                if(addressOffset != 0) {
+                    Address address = baseAddress + addressOffset;
+                    const Record &record = *(const Record *) store.dataAt(address);
+
+                    // Yield record
+                    f(address, record);
+                }
             }
+
+            // Get ready for a new batch
+            recordAddresses.clear();
+            firstIndex += BatchSize;
+            lastIndex += BatchSize;
         }
     }
 
