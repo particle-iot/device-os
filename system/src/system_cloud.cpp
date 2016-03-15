@@ -131,6 +131,8 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     return result;
 }
 
+#endif
+
 bool spark_connected(void)
 {
     if (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
@@ -138,8 +140,6 @@ bool spark_connected(void)
     else
         return false;
 }
-
-#endif
 
 void spark_process(void)
 {
