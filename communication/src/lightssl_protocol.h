@@ -50,7 +50,7 @@ public:
 	void init(const char *id,
 	          const SparkKeys &keys,
 	          const SparkCallbacks &callbacks,
-	          const SparkDescriptor &descriptor)
+	          const SparkDescriptor &descriptor) override
 	{
 		set_protocol_flags(REQUIRE_HELLO_RESPONSE);
 
@@ -76,9 +76,7 @@ public:
 		return len;
 	}
 
-	virtual void command(ProtocolCommands::Enum command, uint32_t data)
-	{
-	}
+	virtual void command(ProtocolCommands::Enum command, uint32_t data) override;
 
 };
 
