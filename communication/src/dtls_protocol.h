@@ -52,7 +52,7 @@ public:
 	void init(const char *id,
 	          const SparkKeys &keys,
 	          const SparkCallbacks &callbacks,
-	          const SparkDescriptor &descriptor);
+	          const SparkDescriptor &descriptor) override;
 
 	size_t build_hello(Message& message, bool ota_updated) override
 	{
