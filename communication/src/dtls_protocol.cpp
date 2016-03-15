@@ -50,4 +50,21 @@ void DTLSProtocol::init(const char *id,
 }
 
 
+void DTLSProtocol::sleep(uint32_t timeout)
+{
+	system_tick_t start = millis();
+	INFO("waiting for Confirmed messages to be sent.");
+	while (channel.has_unacknowledged_requests() && (millis()-start)<timeout)
+	{
+		ProtocolError error = channel.receive_confirmations();
+		if (error)
+		{
+			WARN("error receiving acknowledgements: %d", error);
+			break;
+		}
+	}
+	INFO("all Confirmed messages sent.");
+}
+
+
 }}

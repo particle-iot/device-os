@@ -54,7 +54,7 @@ public:
 	          const SparkCallbacks &callbacks,
 	          const SparkDescriptor &descriptor);
 
-	size_t build_hello(Message& message, bool ota_updated)
+	size_t build_hello(Message& message, bool ota_updated) override
 	{
 		product_details_t deets;
 		deets.size = sizeof(deets);
@@ -66,7 +66,7 @@ public:
 		return len;
 	}
 
-	virtual void command(ProtocolCommands::Enum command, uint32_t data)
+	virtual void command(ProtocolCommands::Enum command, uint32_t data) override
 	{
 		switch (command)
 		{
@@ -84,15 +84,7 @@ public:
 	/**
 	 * Ensures that all outstanding sent coap messages have been acknowledged.
 	 */
-	void sleep(uint32_t timeout=60000)
-	{
-		system_tick_t start = millis();
-		while (channel.has_unacknowledged_requests() && (millis()-start)<timeout)
-		{
-			if (channel.receive_confirmations())
-				break;
-		}
-	}
+	void sleep(uint32_t timeout=60000);
 
 	void wake()
 	{
