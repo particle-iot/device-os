@@ -74,6 +74,12 @@ DYNALIB_FN(BASE_IDX + 12, hal, HAL_disable_irq, int(void))
 DYNALIB_FN(BASE_IDX + 13, hal, HAL_enable_irq, void(int))
 DYNALIB_FN(BASE_IDX + 14, hal, HAL_RTC_Cancel_UnixAlarm, void(void))
 
+DYNALIB_FN(BASE_IDX + 15, hal,HAL_EEPROM_Get, void(uint32_t, void *, size_t))
+DYNALIB_FN(BASE_IDX + 16, hal,HAL_EEPROM_Put, void(uint32_t, const void *, size_t))
+DYNALIB_FN(BASE_IDX + 17, hal,HAL_EEPROM_Clear, void(void))
+DYNALIB_FN(BASE_IDX + 18, hal,HAL_EEPROM_Has_Pending_Erase, bool(void))
+DYNALIB_FN(BASE_IDX + 19, hal,HAL_EEPROM_Perform_Pending_Erase, void(void))
+
 DYNALIB_END(hal)
 
 #undef BASE_IDX
