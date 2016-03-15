@@ -44,17 +44,12 @@ void set_system_mode(System_Mode_TypeDef mode)
     		case DEFAULT:   // DEFULT can't happen in practice since it's cleared above. just keeps gcc happy.
         case SAFE_MODE:
         case AUTOMATIC:
-            SPARK_CLOUD_CONNECT = 1;
-            SPARK_WLAN_SLEEP = 0;
-            break;
-
-        case SEMI_AUTOMATIC:
-            SPARK_CLOUD_CONNECT = 0;
-            SPARK_WLAN_SLEEP = 1;
+        		spark_connect();
             break;
 
         case MANUAL:
-            SPARK_CLOUD_CONNECT = 0;
+        case SEMI_AUTOMATIC:
+        		spark_disconnect();
             SPARK_WLAN_SLEEP = 1;
             break;
     }

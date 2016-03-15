@@ -110,7 +110,7 @@ void manage_network_connection()
     }
     else
     {
-        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !network.connected()))
+        if (!SPARK_WLAN_STARTED || (spark_auto_connect() && !network.connected()))
         {
             INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.connected()");
             network.connect();
@@ -293,7 +293,7 @@ void handle_cloud_connection(bool force_events)
 
 void manage_cloud_connection(bool force_events)
 {
-    if (SPARK_CLOUD_CONNECT == 0)
+    if (spark_auto_connect() == 0)
     {
         cloud_disconnect();
     }

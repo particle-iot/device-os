@@ -58,7 +58,6 @@ extern volatile uint32_t TimingFlashUpdateTimeout;
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_STARTED;
-extern volatile uint8_t SPARK_CLOUD_CONNECT;
 extern volatile uint8_t SPARK_CLOUD_SOCKETED;
 extern volatile uint8_t SPARK_CLOUD_CONNECTED;
 extern volatile uint8_t SPARK_FLASH_UPDATE;

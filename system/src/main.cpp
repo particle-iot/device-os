@@ -489,7 +489,7 @@ void app_loop(bool threaded)
         Spark_Idle();
 
     static uint8_t SPARK_WIRING_APPLICATION = 0;
-    if(threaded || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
+    if(threaded || SPARK_WLAN_SLEEP || !spark_auto_connect() || spark_connected() || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
     {
         if(threaded || !SPARK_FLASH_UPDATE)
         {

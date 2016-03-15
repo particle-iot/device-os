@@ -22,6 +22,7 @@
 #include "system_network.h"
 #include "system_task.h"
 #include "system_cloud.h"
+#include "system_cloud_internal.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
 #include "rgbled.h"
@@ -43,7 +44,9 @@ static void network_suspend() {
     wakeupState.wifi = !SPARK_WLAN_SLEEP;
     wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
 #ifndef SPARK_NO_CLOUD
-    wakeupState.cloud = spark_connected();
+    wakeupState.cloud = spark_auto_connect();
+    // disconnect the cloud now, and clear the auto connect status
+    Spark_Disconnect();
     spark_disconnect();
 #endif
     network_off(0, 0, 0, NULL);
@@ -52,10 +55,8 @@ static void network_suspend() {
 static void network_resume() {
     if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
         SPARK_WLAN_SLEEP = 0;
-#ifndef SPARK_NO_CLOUD
     if (wakeupState.cloud)
-        spark_connect();
-#endif
+    		spark_connect();
 }
 
 /*******************************************************************************
