@@ -28,6 +28,7 @@
 #include "rgbled.h"
 #include <stddef.h>
 #include "spark_wiring_fuel.h"
+#include "spark_wiring_system.h"
 #include "spark_wiring_platform.h"
 
 struct WakeupState
@@ -128,9 +129,15 @@ void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds
     }
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
-    if (network_sleep)
-    {
-        network_resume();
+    network_resume();		// asynchronously bring up the network/cloud
+
+    // if single-threaded, managed mode then reconnect to the cloud (for up to 30 seconds)
+    auto mode = system_mode();
+    if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && SPARK_CLOUD_CONNECT) {
+    		waitFor(spark_connected, 60000);
     }
-    Spark_Wake();
+
+    if (spark_connected()) {
+    		Spark_Wake();
+    }
 }
