@@ -40,7 +40,7 @@ public:
   USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
   virtual ~USARTSerial() {};
   void begin(unsigned long);
-  void begin(unsigned long, uint8_t);
+  void begin(unsigned long, uint32_t);
   void halfduplex(bool);
   void end();
 
@@ -51,12 +51,13 @@ public:
   virtual int peek(void);
   virtual int read(void);
   virtual void flush(void);
+  size_t write(uint16_t);
   virtual size_t write(uint8_t);
 
-  inline size_t write(unsigned long n) { return write((uint8_t)n); }
-  inline size_t write(long n) { return write((uint8_t)n); }
-  inline size_t write(unsigned int n) { return write((uint8_t)n); }
-  inline size_t write(int n) { return write((uint8_t)n); }
+  inline size_t write(unsigned long n) { return write((uint16_t)n); }
+  inline size_t write(long n) { return write((uint16_t)n); }
+  inline size_t write(unsigned int n) { return write((uint16_t)n); }
+  inline size_t write(int n) { return write((uint16_t)n); }
 
   using Print::write; // pull in write(str) and write(buf, size) from Print
 
