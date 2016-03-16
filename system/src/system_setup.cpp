@@ -148,6 +148,11 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
         append_system_version_info(&appender);
         print("\r\n");
     }
+    else if ('L' == c)
+    {
+		system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
+		System.enterSafeMode();
+    }
 }
 
 /* private methods */

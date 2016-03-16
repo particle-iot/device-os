@@ -172,6 +172,9 @@ bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
 
 void system_lineCodingBitRateHandler(uint32_t bitrate)
 {
+// todo - ideally the system should post a reset pending event before
+// resetting. This does mean the application can block entering listening mode
+
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
     if (bitrate == start_dfu_flasher_serial_speed)
     {
@@ -183,12 +186,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #ifdef START_YMODEM_FLASHER_SERIAL_SPEED
     if (!network_listening(0, 0, NULL) && bitrate == start_ymodem_flasher_serial_speed)
     {
-        //Set the Ymodem flasher flag to execute system_serialFirmwareUpdate()
-        set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
-        RGB.control(true);
-        RGB.color(RGB_COLOR_MAGENTA);
-        SPARK_FLASH_UPDATE = 3;
-        TimingFlashUpdateTimeout = 0;
+    		network_listen(0,0,0);
     }
 #endif
 }
