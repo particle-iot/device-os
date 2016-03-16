@@ -59,21 +59,30 @@ static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
-static_assert(SYSTEM_FLAG_MAX==4, "system flag max value");
+static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE==4, "system flag value");
+static_assert(SYSTEM_FLAG_MAX==5, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     0, 1,   // OTA updates pending/enabled
     0, 1,   // Reset pending/enabled
+	0,		// SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE
 };
+
+const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
+	if (flag==SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+	{
+		HAL_Core_Write_Backup_Register(BKP_DR_10, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
+	}
 }
 
 int system_set_flag(system_flag_t flag, uint8_t value, void*)
 {
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
+
     if (systemFlags[flag]!=value) {
         uint8_t oldValue = systemFlags[flag];
         systemFlags[flag] = value;
@@ -88,7 +97,17 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
     if (value)
+    {
+    		if (flag==SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+    		{
+    			uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_10);
+			*value = (reg==SAFE_MODE_LISTEN);
+    		}
+    		else
+    		{
         *value = systemFlags[flag];
+    		}
+    }
     return 0;
 }
 
