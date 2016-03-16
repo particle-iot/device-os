@@ -94,6 +94,11 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
   SPI_Enabled = true;
 }
 
+void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved)
+{
+  HAL_SPI_Begin(spi, pin);
+}
+
 void HAL_SPI_End(HAL_SPI_Interface spi)
 {
   if(SPI_Enabled != false)
@@ -194,4 +199,17 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
 {
     info->system_clock = 36000000;
+}
+
+void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved)
+{
+}
+
+void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi)
+{
+}
+
+int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi)
+{
+    return 0;
 }

@@ -136,6 +136,10 @@ inline int32_t pinReadFast(pin_t _pin)
 void pinResetFast(pin_t _pin);
 void pinSetFast(pin_t _pin);
 void pinReadFast(pin_t _pin);
+#elif PLATFORM==newhal
+    // no need to generate a warning for newhal
+    #define pinSetFast(pin) digitalWrite(pin, HIGH)
+    #define pinResetFast(pin) digitalWrite(pin, LOW)
 #else
     #warning "*** MCU architecture not supported by the fastPin library. ***"
     #define pinSetFast(pin) digitalWrite(pin, HIGH)

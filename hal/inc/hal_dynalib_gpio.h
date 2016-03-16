@@ -42,34 +42,38 @@
 // GNINRAW
 
 DYNALIB_BEGIN(hal_gpio)
-DYNALIB_FN(hal_gpio,HAL_Pin_Map)
-DYNALIB_FN(hal_gpio,HAL_Validate_Pin_Function)
-DYNALIB_FN(hal_gpio,HAL_Pin_Mode)
-DYNALIB_FN(hal_gpio,HAL_Get_Pin_Mode)
-DYNALIB_FN(hal_gpio,HAL_GPIO_Write)
-DYNALIB_FN(hal_gpio,HAL_GPIO_Read)
-DYNALIB_FN(hal_gpio,HAL_Interrupts_Attach)
-DYNALIB_FN(hal_gpio,HAL_Interrupts_Detach)
-DYNALIB_FN(hal_gpio,HAL_Interrupts_Enable_All)
-DYNALIB_FN(hal_gpio,HAL_Interrupts_Disable_All)
 
-DYNALIB_FN(hal_gpio,HAL_DAC_Write)
-DYNALIB_FN(hal_gpio,HAL_ADC_Set_Sample_Time)
-DYNALIB_FN(hal_gpio,HAL_ADC_Read)
+DYNALIB_FN(0, hal_gpio, HAL_Pin_Map, STM32_Pin_Info*(void))
+DYNALIB_FN(1, hal_gpio, HAL_Validate_Pin_Function, PinFunction(pin_t, PinFunction))
+DYNALIB_FN(2, hal_gpio, HAL_Pin_Mode, void(pin_t, PinMode))
+DYNALIB_FN(3, hal_gpio, HAL_Get_Pin_Mode, PinMode(pin_t))
+DYNALIB_FN(4, hal_gpio, HAL_GPIO_Write, void(pin_t, uint8_t))
+DYNALIB_FN(5, hal_gpio, HAL_GPIO_Read, int32_t(pin_t))
+DYNALIB_FN(6, hal_gpio, HAL_Interrupts_Attach, void(uint16_t, HAL_InterruptHandler, void*, InterruptMode, HAL_InterruptExtraConfiguration*))
+DYNALIB_FN(7, hal_gpio, HAL_Interrupts_Detach, void(uint16_t))
+DYNALIB_FN(8, hal_gpio, HAL_Interrupts_Enable_All, void(void))
+DYNALIB_FN(9, hal_gpio, HAL_Interrupts_Disable_All, void(void))
 
-DYNALIB_FN(hal_gpio,HAL_PWM_Write)
-DYNALIB_FN(hal_gpio,HAL_PWM_Get_Frequency)
-DYNALIB_FN(hal_gpio,HAL_PWM_Get_AnalogValue)
+DYNALIB_FN(10, hal_gpio, HAL_DAC_Write, void(pin_t, uint16_t))
+DYNALIB_FN(11, hal_gpio, HAL_ADC_Set_Sample_Time, void(uint8_t))
+DYNALIB_FN(12, hal_gpio, HAL_ADC_Read, int32_t(uint16_t))
 
-DYNALIB_FN(hal_gpio, HAL_Set_System_Interrupt_Handler)
-DYNALIB_FN(hal_gpio, HAL_Get_System_Interrupt_Handler)
-DYNALIB_FN(hal_gpio, HAL_System_Interrupt_Trigger)
+DYNALIB_FN(13, hal_gpio, HAL_PWM_Write, void(uint16_t, uint8_t))
+DYNALIB_FN(14, hal_gpio, HAL_PWM_Get_Frequency, uint16_t(uint16_t))
+DYNALIB_FN(15, hal_gpio, HAL_PWM_Get_AnalogValue, uint16_t(uint16_t))
 
-DYNALIB_FN(hal_gpio, HAL_Pulse_In)
-DYNALIB_FN(hal_gpio, HAL_Interrupts_Suspend)
-DYNALIB_FN(hal_gpio, HAL_Interrupts_Restore)
+DYNALIB_FN(16, hal_gpio, HAL_Set_System_Interrupt_Handler, uint8_t(hal_irq_t, const HAL_InterruptCallback*, HAL_InterruptCallback*, void*))
+DYNALIB_FN(17, hal_gpio, HAL_Get_System_Interrupt_Handler, uint8_t(hal_irq_t, HAL_InterruptCallback*, void*))
+DYNALIB_FN(18, hal_gpio, HAL_System_Interrupt_Trigger, void(hal_irq_t, void*))
 
-DYNALIB_FN(hal_gpio, HAL_PWM_Write_With_Frequency)
+DYNALIB_FN(19, hal_gpio, HAL_Pulse_In, uint32_t(pin_t, uint16_t))
+DYNALIB_FN(20, hal_gpio, HAL_Interrupts_Suspend, void(void))
+DYNALIB_FN(21, hal_gpio, HAL_Interrupts_Restore, void(void))
+
+DYNALIB_FN(22, hal_gpio, HAL_PWM_Write_With_Frequency, void(uint16_t, uint8_t, uint16_t))
+DYNALIB_FN(23, hal_gpio, HAL_DAC_Is_Enabled, uint8_t(pin_t))
+DYNALIB_FN(24, hal_gpio, HAL_DAC_Enable, uint8_t(pin_t, uint8_t))
+
 DYNALIB_END(hal_gpio)
 
 #endif	/* HAL_DYNALIB_GPIO_H */

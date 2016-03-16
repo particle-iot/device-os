@@ -64,12 +64,24 @@ test(api_spark_variable) {
     API_COMPILE(Particle.variable("mystring", valueString));
     API_COMPILE(Particle.variable("mystring", constValueString));
     API_COMPILE(Particle.variable("mystring", valueSmartString));
+    
+    // This should gives a compiler error about too long name
+    //API_COMPILE(Particle.variable("mystring123456789", valueString));
 
 }
 
 test(api_spark_function) {
     int (*handler)(String) = NULL;
+
     API_COMPILE(Particle.function("name", handler));
+
+    // This should gives a compiler error about too long name
+    //API_COMPILE(Particle.function("superlongfunctionname", handler));
+
+    // Length not checked until run time
+    API_COMPILE(Particle.function(String("name"), handler));
+    const char *longname = "superlongfunctionname";
+    API_COMPILE(Particle.function(longname, handler));
 
     class MyClass {
       public:

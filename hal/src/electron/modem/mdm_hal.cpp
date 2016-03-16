@@ -288,9 +288,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 } else if ((sscanf(cmd, "UUSOCL: %d", &a) == 1)) {
                     int socket = _findSocket(a);
                     DEBUG_D("Socket %d: handle %d closed by remote host\r\n", socket, a);
-                    if ((socket != MDM_SOCKET_ERROR) && _sockets[socket].connected) {
-                        _sockets[socket].open = false;
-                        _sockets[socket].connected = false;
+                    if (socket != MDM_SOCKET_ERROR) {
+                        _socketFree(socket);
                     }
                 }
 
@@ -849,6 +848,173 @@ bool MDMParser::getSignalStrength(NetStatus &status)
     }
     UNLOCK();
     return ok;
+}
+
+bool MDMParser::getDataUsage(MDM_DataUsage &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_INFO("\r\n[ Modem::getDataUsage ] = = = = = = = = = =");
+        sendFormated("AT+UGCNTRD\r\n");
+        if (RESP_OK == waitFinalResp(_cbUGCNTRD, &_data_usage)) {
+            ok = true;
+            data.cid = _data_usage.cid;
+            data.tx_session = _data_usage.tx_session;
+            data.rx_session = _data_usage.rx_session;
+            data.tx_total = _data_usage.tx_total;
+            data.rx_total = _data_usage.rx_total;
+        }
+    }
+    UNLOCK();
+    return ok;
+}
+
+void MDMParser::_setBandSelectString(MDM_BandSelect &data, char* bands, int index /*= 0*/) {
+    char band[5];
+    for (int x=index; x<data.count; x++) {
+        sprintf(band, "%d", data.band[x]);
+        strcat(bands, band);
+        if ((x+1) < data.count) strcat(bands, ",");
+    }
+}
+
+bool MDMParser::setBandSelect(MDM_BandSelect &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_INFO("\r\n[ Modem::setBandSelect ] = = = = = = = = = =");
+
+        char bands_to_set[22] = "";
+        _setBandSelectString(data, bands_to_set, 0);
+        if (strcmp(bands_to_set,"") == 0)
+            goto failure;
+
+        // create default bands string
+        MDM_BandSelect band_avail;
+        if (!getBandAvailable(band_avail))
+            goto failure;
+
+        char band_defaults[22] = "";
+        if (band_avail.band[0] == BAND_DEFAULT)
+            _setBandSelectString(band_avail, band_defaults, 1);
+
+        // create selected bands string
+        MDM_BandSelect band_sel;
+        if (!getBandSelect(band_sel))
+            goto failure;
+
+        char bands_selected[22] = "";
+        _setBandSelectString(band_sel, bands_selected, 0);
+
+        if (strcmp(bands_to_set, "0") == 0) {
+            if (strcmp(bands_selected, band_defaults) == 0) {
+                ok = true;
+                goto success;
+            }
+        }
+
+        if (strcmp(bands_selected, bands_to_set) != 0) {
+            sendFormated("AT+UBANDSEL=%s\r\n", bands_to_set);
+            if (RESP_OK == waitFinalResp(NULL,NULL,10000)) {
+                ok = true;
+            }
+        }
+        else {
+            ok = true;
+        }
+    }
+success:
+    UNLOCK();
+    return ok;
+failure:
+    UNLOCK();
+    return false;
+}
+
+bool MDMParser::getBandSelect(MDM_BandSelect &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_BandSelect data_sel;
+        MDM_INFO("\r\n[ Modem::getBandSelect ] = = = = = = = = = =");
+        sendFormated("AT+UBANDSEL?\r\n");
+        if (RESP_OK == waitFinalResp(_cbBANDSEL, &data_sel)) {
+            ok = true;
+            memcpy(&data, &data_sel, sizeof(MDM_BandSelect));
+        }
+    }
+    UNLOCK();
+    return ok;
+}
+
+bool MDMParser::getBandAvailable(MDM_BandSelect &data)
+{
+    bool ok = false;
+    LOCK();
+    if (_init && _pwr) {
+        MDM_BandSelect data_avail;
+        MDM_INFO("\r\n[ Modem::getBandAvailable ] = = = = = = = = = =");
+        sendFormated("AT+UBANDSEL=?\r\n");
+        if (RESP_OK == waitFinalResp(_cbBANDAVAIL, &data_avail)) {
+            ok = true;
+            memcpy(&data, &data_avail, sizeof(MDM_BandSelect));
+        }
+    }
+    UNLOCK();
+    return ok;
+}
+
+int MDMParser::_cbUGCNTRD(int type, const char* buf, int len, MDM_DataUsage* data)
+{
+    if ((type == TYPE_PLUS) && data) {
+        int a,b,c,d,e;
+        // +UGCNTRD: 31,2704,1819,2724,1839\r\n
+        // +UGCNTRD: <cid>,<tx_sess_bytes>,<rx_sess_bytes>,<tx_total_bytes>,<rx_total_bytes>
+        if (sscanf(buf, "\r\n+UGCNTRD: %d,%d,%d,%d,%d\r\n", &a,&b,&c,&d,&e) == 5) {
+            data->cid = a;
+            data->tx_session = b;
+            data->rx_session = c;
+            data->tx_total = d;
+            data->rx_total = e;
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbBANDAVAIL(int type, const char* buf, int len, MDM_BandSelect* data)
+{
+    if ((type == TYPE_PLUS) && data) {
+        int c;
+        int b[5];
+        // \r\n+UBANDSEL: (0,850,900,1800,1900)\r\n
+        if ((c = sscanf(buf, "\r\n+UBANDSEL: (%d,%d,%d,%d,%d)\r\n", &b[0],&b[1],&b[2],&b[3],&b[4])) > 0) {
+            for (int i=0; i<c; i++) {
+                data->band[i] = (MDM_Band)b[i];
+            }
+            data->count = c;
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbBANDSEL(int type, const char* buf, int len, MDM_BandSelect* data)
+{
+    if ((type == TYPE_PLUS) && data) {
+        int c;
+        int b[4];
+        // \r\n+UBANDSEL: 850\r\n
+        // \r\n+UBANDSEL: 850,1900\r\n
+        if ((c = sscanf(buf, "\r\n+UBANDSEL: %d,%d,%d,%d\r\n", &b[0],&b[1],&b[2],&b[3])) > 0) {
+            for (int i=0; i<c; i++) {
+                data->band[i] = (MDM_Band)b[i];
+            }
+            data->count = c;
+        }
+    }
+    return WAIT;
 }
 
 int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
@@ -1581,10 +1747,12 @@ int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
 int MDMParser::socketRecv(int socket, char* buf, int len)
 {
     int cnt = 0;
-    // DEBUG_D("socketRecv(%d,%d)\r\n", socket, len);
+/*
+    DEBUG_D("socketRecv(%d,%d)\r\n", socket, len);
 #ifdef MDM_DEBUG
     memset(buf, '\0', len);
 #endif
+*/
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     while (len) {
         int blk = MAX_SIZE; // still need space for headers and unsolicited  commands
@@ -1594,26 +1762,35 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         	LOCK();
 			if (ISSOCKET(socket)) {
 				if (_sockets[socket].connected) {
-					if (blk > 0) {
-						DEBUG_D("socketRecv: _cbUSORD\r\n");
-						sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
-						USORDparam param;
-						param.buf = buf;
-						if (RESP_OK == waitFinalResp(_cbUSORD, &param)) {
-							blk = param.len;
-							_sockets[socket].pending -= blk;
-							len -= blk;
-							cnt += blk;
-							buf += blk;
+					int available = socketReadable(socket);
+					if (available<0)  {
+						ok = false;
+					}
+					else
+					{
+						if (blk > available)	// only read up to the amount available. When 0,
+							blk = available;// skip reading and check timeout.
+						if (blk > 0) {
+							DEBUG_D("socketRecv: _cbUSORD\r\n");
+							sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
+							USORDparam param;
+							param.buf = buf;
+							if (RESP_OK == waitFinalResp(_cbUSORD, &param)) {
+								blk = param.len;
+								_sockets[socket].pending -= blk;
+								len -= blk;
+								cnt += blk;
+								buf += blk;
+								ok = true;
+							}
+						} else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
+							// DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
+							ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
+						} else {
+							// DEBUG_D("socketRecv: TIMEOUT\r\n");
+							len = 0;
 							ok = true;
 						}
-					} else if (!TIMEOUT(start, _sockets[socket].timeout_ms)) {
-						// DEBUG_D("socketRecv: WAIT FOR URCs\r\n");
-						ok = (WAIT == waitFinalResp(NULL,NULL,0)); // wait for URCs
-					} else {
-						// DEBUG_D("socketRecv: TIMEOUT\r\n");
-						len = 0;
-						ok = true;
 					}
 				} else {
 					// DEBUG_D("socketRecv: SOCKET NOT CONNECTED\r\n");
