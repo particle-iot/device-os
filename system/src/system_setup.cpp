@@ -95,10 +95,10 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     else if ('m' == c)
     {
         print("Your device MAC address is\r\n");
-        WLanConfig ip_config;
-        ip_config.size = sizeof(ip_config);
-        network.fetch_ipconfig(&ip_config);
-        uint8_t* addr = ip_config.nw.uaMacAddr;
+        IPConfig config;
+        config.size = sizeof(config);
+        network.get_ipconfig(&config);
+        const uint8_t* addr = config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)
         {

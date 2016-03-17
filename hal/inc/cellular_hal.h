@@ -31,6 +31,11 @@
 extern "C" {
 #endif
 
+typedef struct __attribute__((__packed__))  _CellularConfig_t {
+    uint16_t size;
+    NetworkConfig nw;
+} CellularConfig;
+
 typedef int cellular_result_t;
 
 typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
@@ -95,7 +100,7 @@ cellular_result_t  cellular_gprs_detach(void* reserved);
 /**
  * Fetch the ip configuration.
  */
-cellular_result_t  cellular_fetch_ipconfig(WLanConfig* config, void* reserved);
+cellular_result_t  cellular_fetch_ipconfig(CellularConfig* config, void* reserved);
 
 #ifdef __cplusplus
 struct CellularDevice

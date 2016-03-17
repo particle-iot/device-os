@@ -44,7 +44,7 @@ DYNALIB_FN(4, hal_cellular, cellular_pdp_activate, cellular_result_t(CellularCre
 DYNALIB_FN(5, hal_cellular, cellular_pdp_deactivate, cellular_result_t(void*))
 DYNALIB_FN(6, hal_cellular, cellular_gprs_attach, cellular_result_t(CellularCredentials*, void*))
 DYNALIB_FN(7, hal_cellular, cellular_gprs_detach, cellular_result_t(void*))
-DYNALIB_FN(8, hal_cellular, cellular_fetch_ipconfig, cellular_result_t(WLanConfig*, void*))
+DYNALIB_FN(8, hal_cellular, cellular_fetch_ipconfig, cellular_result_t(CellularConfig*, void*))
 DYNALIB_FN(9, hal_cellular, cellular_device_info, cellular_result_t(CellularDevice*, void*))
 DYNALIB_FN(10, hal_cellular, cellular_credentials_set, cellular_result_t(const char*, const char*, const char*, void*))
 DYNALIB_FN(11, hal_cellular, cellular_credentials_get, CellularCredentials*(void*))

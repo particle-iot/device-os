@@ -348,3 +348,23 @@ test(BAND_SELECT_setting_non_defaults_then_restore_defaults) {
     assertEqual(band_select_default, true);
 }
 #endif
+
+#if Wiring_Cellular == 1
+
+void checkIPAddress(const char* name, const IPAddress& address)
+{
+	if (address.version()==0 || address[0]==0)
+	{
+		Serial.print("address failed:");
+		Serial.println(name);
+		assertNotEqual(address.version(), 0);
+		assertNotEqual(address[0], 0);
+	}
+}
+
+test(cellular_config)
+{
+	checkIPAddress("local", Cellular.localIP());
+}
+
+#endif

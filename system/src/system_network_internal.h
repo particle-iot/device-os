@@ -107,11 +107,10 @@ struct NetworkInterface
     virtual int set_credentials(NetworkCredentials* creds)=0;
 
     virtual void config_clear()=0;
-    virtual void update_config()=0;
+    virtual void update_config(bool force=false)=0;
     virtual void* config()=0;       // not really happy about lack of type
 
 };
-
 
 
 class ManagedNetworkInterface : public NetworkInterface
@@ -126,8 +125,6 @@ class ManagedNetworkInterface : public NetworkInterface
     volatile uint8_t WLAN_DHCP;
     volatile uint8_t WLAN_CAN_SHUTDOWN;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
-
-    WLanConfig ip_config;
 
 protected:
     volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
@@ -242,7 +239,7 @@ protected:
 
 public:
 
-    virtual void fetch_ipconfig(WLanConfig* target)=0;
+    virtual void get_ipconfig(IPConfig* config)=0;
 
     virtual void set_error_count(unsigned count)=0;
 
@@ -486,17 +483,39 @@ public:
         }
     }
 
-    void update_config() override
+    inline bool hasDHCP()
+    {
+    		return WLAN_DHCP && !SPARK_WLAN_SLEEP;
+    }
+
+};
+
+extern ManagedNetworkInterface& network;
+
+template <typename Config, typename C>
+class ManagedIPNetworkInterface : public ManagedNetworkInterface
+{
+	Config ip_config;
+
+public:
+
+    void get_ipconfig(IPConfig* config)
+    {
+    		update_config(true);
+    		memcpy(config, this->config(), config->size);
+    }
+
+    void update_config(bool force=false) override
     {
     		// todo - IPv6 may not set this field.
         bool fetched_config = ip_config.nw.aucIP.ipv4!=0;
-        if (WLAN_DHCP && !SPARK_WLAN_SLEEP)
+        if (hasDHCP() || force)
         {
-            if (!fetched_config)
+            if (!fetched_config || force)
             {
             		memset(&ip_config, 0, sizeof(ip_config));
             		ip_config.size = sizeof(ip_config);
-                fetch_ipconfig(&ip_config);
+            		reinterpret_cast<C*>(this)->fetch_ipconfig(&ip_config);
             }
         }
         else if (fetched_config)
@@ -513,9 +532,6 @@ public:
     void* config() override  { return &ip_config; }
 
 };
-
-extern ManagedNetworkInterface& network;
-
 
 
 
