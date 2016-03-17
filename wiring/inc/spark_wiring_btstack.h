@@ -1,5 +1,5 @@
 
-#ifndef __SPARK_WIRING_BTSTACK_H
+#ifndef __SPARK_WIRING_BTSTACK_H_
 #define __SPARK_WIRING_BTSTACK_H_
 
 #if PLATFORM_ID == 88 // Duo
