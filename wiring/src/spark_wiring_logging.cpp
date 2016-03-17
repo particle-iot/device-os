@@ -169,7 +169,7 @@ LogLevel spark::Logger::categoryLevel(const char *category) const {
 
 inline const char* strchrend(const char* s, char c)
 {
-	char* result = strchr(s, c);
+	const char* result = strchr(s, c);
 	return result ? result : s+strlen(s);
 }
 
