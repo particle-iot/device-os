@@ -69,7 +69,19 @@ INCLUDE_DIRS += $(HAL)inc
 INCLUDE_DIRS += $(COMMUNICATION)src
 INCLUDE_DIRS += dynalib/inc
 
-CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
+# prefix $(SRC_ROOT)
+ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS)) 
+
+
+ifeq ("$(BOOST_ROOT)","")
+$(error BOOST_ROOT not defined)
+else
+$(info BOOST_ROOT "$(BOOST_ROOT)")
+endif
+
+ABS_INCLUDE_DIRS += $(BOOST_ROOT)
+
+CFLAGS += $(patsubst %,-I%,$(ABS_INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -fdata-sections -Wall
 
 # Flag compiler error for [-Wdeprecated-declarations]

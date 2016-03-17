@@ -166,6 +166,13 @@ LogLevel spark::Logger::categoryLevel(const char *category) const {
     return level;
 }
 
+
+inline const char* strchrend(const char* s, char c)
+{
+	char* result = strchr(s, c);
+	return result ? result : s+strlen(s);
+}
+
 void spark::Logger::formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
         const char *file, int line, const char *func) {
     // Timestamp
@@ -186,10 +193,10 @@ void spark::Logger::formatMessage(const char *msg, LogLevel level, const char *c
         write(", ");
         // Strip argument and return types for better readability
         int n = 0;
-        const char *p = strchrnul(func, ' ');
+        const char *p = strchrend(func, ' ');
         if (*p) {
             p += 1;
-            n = strchrnul(p, '(') - p;
+            n = strchrend(p, '(') - p;
         } else {
             n = p - func;
             p = func;

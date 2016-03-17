@@ -224,7 +224,11 @@ static const char* const _log_module_category = LOG_MODULE_CATEGORY;
 //
 // weakref allows to have different implementations of the same function in different translation
 // units if target function is declared as static
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 static const char* _log_source_category() __attribute__((weakref("_log_source_category_impl")));
+#pragma GCC diagnostic pop
+
 #define LOG_SOURCE_CATEGORY(_name) \
         static const char* _log_source_category_impl() { \
             return _name; \
