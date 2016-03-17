@@ -47,7 +47,8 @@ static void network_suspend() {
 #ifndef SPARK_NO_CLOUD
     wakeupState.cloud = spark_connected();
     Spark_Sleep();
-    spark_disconnect();
+    Spark_Disconnect();	// actually disconnect the cloud
+    spark_disconnect();	// flag the system to not automatically connect the cloud
 #endif
     network_off(0, 0, 0, NULL);
 }
