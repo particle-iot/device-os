@@ -39,7 +39,8 @@ void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on, unsigned, void*);
 void Spark_SetTime(unsigned long dateTime);
 void Spark_Process_Events();
-
+void Spark_Sleep();
+void Spark_Wake();
 extern volatile uint8_t LED_Spark_Signal;
 void LED_Signaling_Override(void);
 

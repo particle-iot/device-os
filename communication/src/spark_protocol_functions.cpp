@@ -132,7 +132,11 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
     protocol->get_product_details(*details);
 }
 
-
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
+{
+	protocol->command(cmd, data);
+	return 0;
+}
 
 
 #else
@@ -217,5 +221,11 @@ void spark_protocol_get_product_details(SparkProtocol* protocol, product_details
     (void)reserved;
     protocol->get_product_details(*details);
 }
+
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
+{
+	return 0;
+}
+
 
 #endif
