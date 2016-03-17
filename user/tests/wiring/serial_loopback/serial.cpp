@@ -64,9 +64,115 @@ test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
     Serial1.begin(9600);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+    Serial1.end();
     // then
     assertTrue(strncmp(test, message, 5)==0);
 }
+
+test(SERIAL1_ReadWriteParity8N1SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_8N1);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_ReadWriteParity8E1SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_8E1);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_ReadWriteParity8O1SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_8O1);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_ReadWriteParity8N2SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_8N2);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_ReadWriteParity8E2SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_8E2);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_ReadWriteParity8O2SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_8O2);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_ReadWriteParity9N1SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_9N1);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
+        //The following code will test all the important USART Serial1 routines
+        char test[] = "hello";
+        char message[10];
+        // when
+        Serial1.begin(9600, SERIAL_9N2);
+        Serial1.println(test);
+        serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
+	Serial1.end();
+        // then
+        assertTrue(strncmp(test, message, 5)==0);
+}
+
 
 #if (PLATFORM_ID == 0)
 test(SERIAL2_ReadWriteSucceedsInLoopbackWithD0D1Shorted) {

@@ -29,7 +29,8 @@
 void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
 {
 }
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
+
+void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud, uint8_t config, void*)
 {
 }
 
