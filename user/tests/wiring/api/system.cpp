@@ -126,6 +126,7 @@ void handler_event_data_param(system_event_t event, int data, void* param)
 test(system_events)
 {
 	int clicks = system_button_clicks(123);
+	(void)clicks;
 
 	system_event_t my_events =
 			wifi_listen_begin+wifi_listen_end+wifi_listen_update+

@@ -24,5 +24,9 @@ test(system_ticks)
     API_COMPILE(value=System.ticks());
     API_COMPILE(value=System.ticksPerMicrosecond());
     API_COMPILE(System.ticksDelay(30));
+    API_COMPILE(value = System.benchmark([] {
+      for(volatile int i = 0; i < 10000; i++) {}
+    }));
+
     (void)value;
 }

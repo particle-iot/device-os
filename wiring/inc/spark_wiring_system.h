@@ -87,6 +87,13 @@ public:
         uint32_t start = ticks();
         while ((ticks()-start)<duration) {}
     }
+
+    template<typename Work> static uint32_t benchmark(Work _work) {
+      uint32_t start = ticks();
+      _work();
+      return (ticks() - start) / ticksPerMicrosecond();
+    }
+
 #endif
 
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
