@@ -94,7 +94,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('m' == c)
     {
-        print("Your device MAC address is\r\n");
+        print("Your device MAC address is ");
         WLanConfig ip_config;
         ip_config.size = sizeof(ip_config);
         network.fetch_ipconfig(&ip_config);
