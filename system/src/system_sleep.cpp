@@ -23,6 +23,7 @@
 #include "system_task.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
+#include "system_threading.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
 #include "rgbled.h"
@@ -110,8 +111,10 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
     }
 }
 
-void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+
+int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
+	SYSTEM_THREAD_CONTEXT_SYNC_CALL(system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved));
     network_suspend();
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
@@ -126,4 +129,13 @@ void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds
     if (spark_connected()) {
     		Spark_Wake();
     }
+    return 0;
+}
+
+/**
+ * Wraps the actual implementation, which has to return a value as part of the threaded implementation.
+ */
+void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+{
+	system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved);
 }
