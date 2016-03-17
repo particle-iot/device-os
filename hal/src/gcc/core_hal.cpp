@@ -346,5 +346,3 @@ int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, si
 }
 
 #endif
-
-uint8_t HAL_IsISR() { return false; }
