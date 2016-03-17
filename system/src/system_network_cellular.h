@@ -22,10 +22,12 @@
 #include "system_network_internal.h"
 #include "cellular_hal.h"
 #include "interrupts_hal.h"
-
+#include "spark_wiring_interrupts.h"
 
 class CellularNetworkInterface : public ManagedIPNetworkInterface<CellularConfig, CellularNetworkInterface>
 {
+	volatile bool connect_cancelled = false;
+	volatile bool connecting = false;
 
 protected:
 
@@ -46,7 +48,7 @@ protected:
 
     virtual void connect_init() override { /* n/a */ }
 
-    virtual void connect_finalize() override {
+    void connect_finalize_impl() {
         cellular_result_t result = -1;
         result = cellular_init(NULL);
         if (result) return;
@@ -66,6 +68,22 @@ protected:
         HAL_NET_notify_connected();
         HAL_NET_notify_dhcp(true);
     }
+
+    void connect_finalize() override {
+		ATOMIC_BLOCK() { connecting = true; }
+
+		connect_finalize_impl();
+
+        ATOMIC_BLOCK() {
+        		// ensure after connection exits the cancel flag is cleared
+        		if (connect_cancelled) {
+    				connect_cancel(false);
+        		}
+        		connecting = false;
+        }
+    }
+
+ 
 
     void on_now() override {
         cellular_on(NULL);
@@ -109,7 +127,19 @@ public:
         return cellular_sim_ready(NULL);
     }
     int set_credentials(NetworkCredentials* creds) override { /* n/a */ return -1; }
-    void connect_cancel(bool cancel) override { cellular_cancel(cancel, HAL_IsISR(), NULL);  }
+
+    void connect_cancel(bool cancel) override {
+    		// only cancel if presently connecting
+    		ATOMIC_BLOCK() {
+    			if (connecting)
+    			{
+    				if (cancel!=connect_cancelled) {
+    					cellular_cancel(cancel, HAL_IsISR(), NULL);
+    					connect_cancelled = cancel;
+    				}
+    			}
+    		}
+    }
 
     void set_error_count(unsigned count) override { /* n/a */ }
 };
