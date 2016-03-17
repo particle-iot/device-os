@@ -87,9 +87,9 @@ void system_unsubscribe_event(system_event_t events, system_event_handler_t* han
  * @param data
  * @param pointer
  */
-void system_notify_event(system_event_t event, uint32_t data, void* pointer, void (*fn)())
+void system_notify_event(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata)
 {
-    APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event(event, data, pointer, fn));
+    APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event(event, data, pointer, fn, fndata));
     // run event notifications on the application thread
 
     for (const SystemEventSubscription& subscription : subscriptions)
@@ -97,7 +97,7 @@ void system_notify_event(system_event_t event, uint32_t data, void* pointer, voi
         subscription.notify(event, data, pointer);
     }
     if (fn)
-        fn();
+        fn(fndata);
 }
 
 
