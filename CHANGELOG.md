@@ -4,12 +4,14 @@
 
 - [Electron] `SYSTEM_THREAD()` is supported [#884](https://github.com/spark/firmware/pull/884)
 - [Electron] data usage API [#866](https://github.com/spark/firmware/pull/866)
-- Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
-- Cellular Band Select API [#891](https://github.com/spark/firmware/pull/891)
+- [Electron] Configurable keep-alive ping [#913](https://github.com/spark/firmware/pull/913) 
+- [Electron] Cellular Band Select API [#891](https://github.com/spark/firmware/pull/891)
+- [Photon/Electron] Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
 - [Photon/Electron] SPI Slave support [#882](https://github.com/spark/firmware/pull/882) 
 - Atomic writes in EEPROM emulation [#871](https://github.com/spark/firmware/pull/871)
 - Software Watchdog [#860](https://github.com/spark/firmware/pull/860)
 - `Serial.availableForWrite()` and `Serial.blockOnOverrun()` [#798](https://github.com/spark/firmware/issues/798)
+- [Photon] SoftAP HTTP server can serve application pages. [#906](https://github.com/spark/firmware/pull/906)
 
 ### ENHANCEMENTS
 
@@ -17,7 +19,9 @@
 - DFU writes are verified [#870](https://github.com/spark/firmware/pull/870) 
 - [Electron] `NO_ACK` flag on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
 - [Electron] Allow session to resume when IP changes. [#848](https://github.com/spark/firmware/pull/848)
-
+- [Electron] Ensure published events are received by the cloud before sleeping. [#909](https://github.com/spark/firmware/pull/909)
+- [Electron] `SYSTEM_NETWORK_STANDBY` on `System.sleep()` [#845](https://github.com/spark/firmware/pull/845)
+- Serial baudrate to select ymodem mode includes listening mode [#912](https://github.com/spark/firmware/pull/912) 
 
 ### BUGFIXES
 
@@ -29,6 +33,8 @@
 - DAC1/2 possible problem with `digitalWrite()` after `analogWrite()` [#833](https://github.com/spark/firmware/issues/833) 
 - Servo HAL: Do not disable timer if some of its channels are still in use [#839](https://github.com/spark/firmware/pull/839)
 - USB driver fixes [#812](https://github.com/spark/firmware/pull/812)
+- SOS During `WiFi.scan()` [#651](https://github.com/spark/firmware/issues/651)
+
 
 ### INTERNALS
 
