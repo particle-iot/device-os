@@ -15,11 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <cstring>
-
 #include <algorithm>
 #include <cstdio>
 
@@ -85,6 +80,11 @@ private:
     }
 };
 
+inline const char* strchrend(const char* s, char c) {
+    const char* result = strchr(s, c);
+    return result ? result : s + strlen(s);
+}
+
 } // namespace
 
 // spark::Logger
@@ -109,7 +109,10 @@ spark::Logger::Logger(LogLevel level, const Filters &filters) :
                     [&found](const FilterData &filter, const std::pair<const char*, size_t> &value) {
                 const int cmp = std::strncmp(filter.name, value.first, std::min(filter.size, value.second));
                 if (cmp == 0) {
-                    found = true;
+                    if (filter.size == value.second) {
+                        found = true;
+                    }
+                    return filter.size < value.second;
                 }
                 return cmp < 0;
             });
@@ -147,7 +150,10 @@ LogLevel spark::Logger::categoryLevel(const char *category) const {
                 [&found](const FilterData &filter, const std::pair<const char*, size_t> &value) {
             const int cmp = std::strncmp(filter.name, value.first, std::min(filter.size, value.second));
             if (cmp == 0) {
-                found = true;
+                if (filter.size == value.second) {
+                    found = true;
+                }
+                return filter.size < value.second;
             }
             return cmp < 0;
         });
@@ -164,13 +170,6 @@ LogLevel spark::Logger::categoryLevel(const char *category) const {
         pos = i + 1;
     }
     return level;
-}
-
-
-inline const char* strchrend(const char* s, char c)
-{
-	const char* result = strchr(s, c);
-	return result ? result : s+strlen(s);
 }
 
 void spark::Logger::formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,

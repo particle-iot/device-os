@@ -350,3 +350,17 @@ CATCH_TEST_CASE("Malformed category name") {
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
 }
+
+CATCH_TEST_CASE("Miscellaneous") {
+    CATCH_SECTION("Exact subcategory match") {
+        TestLogger log(ERROR_LEVEL, {
+            { "aaa", TRACE_LEVEL },
+            { "aa", INFO_LEVEL },
+            { "a", WARN_LEVEL }
+        });
+        CATCH_CHECK(LOG_ENABLED_C(WARN, "a"));
+        CATCH_CHECK(LOG_ENABLED_C(INFO, "aa"));
+        CATCH_CHECK(LOG_ENABLED_C(TRACE, "aaa"));
+        CATCH_CHECK(LOG_ENABLED_C(ERROR, "x"));
+    }
+}
