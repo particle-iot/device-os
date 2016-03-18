@@ -150,16 +150,16 @@ int wlan_connect_init()
 
 bool to_wiced_ip_address(wiced_ip_address_t& wiced, const dct_ip_address_v4_t& dct)
 {
-	if (dct!=0) {
-		wiced.ip.v4 = dct;
-		wiced.version = WICED_IPV4;
-	}
+    if (dct!=0) {
+        wiced.ip.v4 = dct;
+        wiced.version = WICED_IPV4;
+    }
     return (dct!=0);
 }
 
 void wlan_connect_timeout(os_timer_t t)
 {
-	wlan_connect_cancel(false);
+    wlan_connect_cancel(false);
 }
 
 /**
@@ -168,8 +168,8 @@ void wlan_connect_timeout(os_timer_t t)
  */
 wlan_result_t wlan_connect_finalize()
 {
-	os_timer_t cancel_timer = 0;
-	os_timer_create(&cancel_timer, 60000, &wlan_connect_timeout, nullptr, false /* oneshot */, nullptr);
+    os_timer_t cancel_timer = 0;
+    os_timer_create(&cancel_timer, 60000, &wlan_connect_timeout, nullptr, false /* oneshot */, nullptr);
 
     // enable connection from stored profiles
     wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
@@ -204,8 +204,9 @@ wlan_result_t wlan_connect_finalize()
     HAL_NET_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
 
-    if (cancel_timer)
-    		os_timer_destroy(cancel_timer, nullptr);
+    if (cancel_timer) {
+        os_timer_destroy(cancel_timer, nullptr);
+    }
     return result;
 }
 
@@ -417,7 +418,7 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
 
 bool equals_ssid(const char* ssid, wiced_ssid_t& current)
 {
-	return (strlen(ssid)==current.length) && !memcmp(ssid, current.value, current.length);
+    return (strlen(ssid)==current.length) && !memcmp(ssid, current.value, current.length);
 }
 
 static bool wifi_creds_changed;
@@ -434,18 +435,18 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
 
         // find a slot with the same ssid
         for (unsigned i=0; i<CONFIG_AP_LIST_SIZE; i++) {
-        		if (equals_ssid(ssid, wifi_config->stored_ap_list[i].details.SSID)) {
-        			replace = i;
-        			break;
-        		}
+            if (equals_ssid(ssid, wifi_config->stored_ap_list[i].details.SSID)) {
+                replace = i;
+                break;
+            }
         }
 
         if (replace < 0)
-        	{
-			// shuffle all slots along
-			memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
-			replace = 0;
-        	}
+        {
+            // shuffle all slots along
+            memmove(wifi_config->stored_ap_list+1, wifi_config->stored_ap_list, sizeof(wiced_config_ap_entry_t)*(CONFIG_AP_LIST_SIZE-1));
+            replace = 0;
+        }
         wiced_config_ap_entry_t& entry = wifi_config->stored_ap_list[replace];
         memset(&entry, 0, sizeof(entry));
         passwordLen = std::min(passwordLen, uint16_t(64));
@@ -575,7 +576,7 @@ void wlan_fetch_ipconfig(WLanConfig* config)
         config->uaSSID[len] = 0;
 
         if (config->size>=WLanConfig_Size_V2) {
-        		memcpy(config->BSSID, ap_info.BSSID.octet, sizeof(config->BSSID));
+            memcpy(config->BSSID, ap_info.BSSID.octet, sizeof(config->BSSID));
         }
     }
     // todo DNS and DHCP servers
