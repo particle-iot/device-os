@@ -42,7 +42,7 @@ test(system_sleep)
 {
     API_COMPILE(System.sleep(60));
 
-	API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
+    API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
 
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
 
@@ -54,7 +54,7 @@ test(system_sleep)
     API_COMPILE(System.sleep(A0, FALLING, 20));
 
     // with network flags
-	API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60, SLEEP_NETWORK_STANDBY));
 
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_NETWORK_STANDBY));
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY, 60));
@@ -76,7 +76,7 @@ test(system_mode) {
     API_COMPILE(SystemClass(SEMI_AUTOMATIC));
     API_COMPILE(SystemClass(MANUAL));
 
-	// braces are required since the macro evaluates to a declaration
+    // braces are required since the macro evaluates to a declaration
     API_COMPILE({ SYSTEM_MODE(AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(SEMI_AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(MANUAL) });
@@ -165,6 +165,3 @@ test(system_events)
     API_COMPILE(System.on(my_events, handler_event_data_param));
     (void)clicks; // avoid unused variable warning
 }
-
-
-

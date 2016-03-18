@@ -81,9 +81,9 @@ void sleep_fuel_gauge()
 
 bool network_sleep_flag(uint32_t flags)
 {
-	static_assert(static_cast<int>(SystemSleepNetwork::Off)==0, "expected SystemSleepNetwork::Off==0");
-	static_assert(static_cast<int>(SystemSleepNetwork::Standby)==1, "expected SystemSleepNetwork::Standby==1");
-	return (flags & 1)==0;
+    static_assert(static_cast<int>(SystemSleepNetwork::Off)==0, "expected SystemSleepNetwork::Off==0");
+    static_assert(static_cast<int>(SystemSleepNetwork::Standby)==1, "expected SystemSleepNetwork::Standby==1");
+    return (flags & 1)==0;
 }
 
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
@@ -98,11 +98,11 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
             break;
 
         case SLEEP_MODE_DEEP:
-        		if (network_sleep_flag(param))
-        		{
-				network_disconnect(0,0,NULL);
-				network_off(0, 0, 0, NULL);
-        		}
+            if (network_sleep_flag(param))
+            {
+                network_disconnect(0, 0, NULL);
+                network_off(0, 0, 0, NULL);
+            }
             HAL_Core_Enter_Standby_Mode();
             break;
 
@@ -119,11 +119,15 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
 
 void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
-	bool network_sleep = (param & 1)==0;
-	if (network_sleep)
-		network_suspend();
+    bool network_sleep = network_sleep_flag(param);
+    if (network_sleep)
+    {
+        network_suspend();
+    }
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
     if (network_sleep)
-    		network_resume();
+    {
+        network_resume();
+    }
 }
