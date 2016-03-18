@@ -37,7 +37,7 @@ void spark_disconnect(void)
 
 bool spark_auto_connect()
 {
-	return SPARK_CLOUD_AUTO_CONNECT;
+    return SPARK_CLOUD_AUTO_CONNECT;
 }
 
 void set_system_mode(System_Mode_TypeDef mode)
@@ -59,15 +59,15 @@ void set_system_mode(System_Mode_TypeDef mode)
     current_mode = mode;
     switch (mode)
     {
-    		case DEFAULT:   // DEFULT can't happen in practice since it's cleared above. just keeps gcc happy.
+        case DEFAULT:   // DEFAULT can't happen in practice since it's cleared above. just keeps gcc happy.
         case SAFE_MODE:
         case AUTOMATIC:
-        		spark_connect();
+            spark_connect();
             break;
 
         case MANUAL:
         case SEMI_AUTOMATIC:
-        		spark_disconnect();
+            spark_disconnect();
             SPARK_WLAN_SLEEP = 1;
             break;
     }

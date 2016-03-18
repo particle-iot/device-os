@@ -56,7 +56,7 @@ static void network_resume() {
     if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
         SPARK_WLAN_SLEEP = 0;
     if (wakeupState.cloud)
-    		spark_connect();
+        spark_connect();
 }
 
 /*******************************************************************************
