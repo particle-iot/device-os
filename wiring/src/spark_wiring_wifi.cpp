@@ -66,7 +66,7 @@ namespace spark {
 
         int start()
         {
-            return wlan_scan(callback, this);
+            return std::min(count, wlan_scan(callback, this));
         }
     };
 
@@ -76,7 +76,7 @@ namespace spark {
 
         int start()
         {
-            return wlan_get_credentials(callback, this);
+            return std::min(count, wlan_get_credentials(callback, this));
         }
     };
 
