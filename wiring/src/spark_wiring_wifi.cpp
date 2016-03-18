@@ -37,7 +37,7 @@ namespace spark {
     class APArrayPopulator
     {
         WiFiAccessPoint* results;
-        int count;
+
         int index;
 
         void addResult(WiFiAccessPoint* result) {
@@ -52,6 +52,7 @@ namespace spark {
             ((APArrayPopulator*)cookie)->addResult(result);
         }
 
+        int count;
     public:
         APArrayPopulator(WiFiAccessPoint* results, int size) {
             this->results = results;
