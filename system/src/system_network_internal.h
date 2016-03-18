@@ -368,7 +368,7 @@ public:
             SPARK_WLAN_SLEEP = 1;
 #if !SPARK_NO_CLOUD
             if (disconnect_cloud) {
-                spark_disconnect();
+                spark_cloud_flag_disconnect();
             }
 #endif
             SPARK_WLAN_STARTED = 0;

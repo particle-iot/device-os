@@ -144,22 +144,22 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
 
 
 void spark_process(void);
-bool spark_connected(void);
+bool spark_cloud_flag_connected(void);
 
 /**
  * Sets the auto-connect state to true. The cloud will be connected by the system.
  */
-void spark_connect(void);
+void spark_cloud_flag_connect(void);
 
 /**
  * Sets the auto-connect state to false. The cloud will be disconnected by the system.
  */
-void spark_disconnect(void);    // should be set connected since it manages the connection state)
+void spark_cloud_flag_disconnect(void);    // should be set connected since it manages the connection state)
 
 /**
  * Determines if the system will attempt to connect or disconnect from the cloud.
  */
-bool spark_auto_connect(void);
+bool spark_cloud_flag_auto_connect(void);
 
 ProtocolFacade* system_cloud_protocol_instance(void);
 

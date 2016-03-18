@@ -23,19 +23,19 @@ static System_Mode_TypeDef current_mode = DEFAULT;
 
 volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
 
-void spark_connect(void)
+void spark_cloud_flag_connect(void)
 {
     //Schedule cloud connection and handshake
     SPARK_CLOUD_AUTO_CONNECT = 1;
     SPARK_WLAN_SLEEP = 0;
 }
 
-void spark_disconnect(void)
+void spark_cloud_flag_disconnect(void)
 {
     SPARK_CLOUD_AUTO_CONNECT = 0;
 }
 
-bool spark_auto_connect()
+bool spark_cloud_flag_auto_connect()
 {
     return SPARK_CLOUD_AUTO_CONNECT;
 }
@@ -62,12 +62,12 @@ void set_system_mode(System_Mode_TypeDef mode)
         case DEFAULT:   // DEFAULT can't happen in practice since it's cleared above. just keeps gcc happy.
         case SAFE_MODE:
         case AUTOMATIC:
-            spark_connect();
+            spark_cloud_flag_connect();
             break;
 
         case MANUAL:
         case SEMI_AUTOMATIC:
-            spark_disconnect();
+            spark_cloud_flag_disconnect();
             SPARK_WLAN_SLEEP = 1;
             break;
     }

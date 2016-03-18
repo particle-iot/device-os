@@ -63,7 +63,7 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
     SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(eventName, handler, handler_data, scope, deviceID, reserved));
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
-    if (success && spark_connected())
+    if (success && spark_cloud_flag_connected())
     {
         register_event(eventName, event_scope, deviceID);
     }
@@ -133,7 +133,7 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
 
 #endif
 
-bool spark_connected(void)
+bool spark_cloud_flag_connected(void)
 {
     if (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
         return true;

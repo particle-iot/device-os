@@ -44,10 +44,10 @@ static void network_suspend() {
     wakeupState.wifi = !SPARK_WLAN_SLEEP;
     wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
 #ifndef SPARK_NO_CLOUD
-    wakeupState.cloud = spark_auto_connect();
+    wakeupState.cloud = spark_cloud_flag_auto_connect();
     // disconnect the cloud now, and clear the auto connect status
-    Spark_Disconnect();
-    spark_disconnect();
+    spark_cloud_socket_disconnect();
+    spark_cloud_flag_disconnect();
 #endif
     network_off(0, 0, 0, NULL);
 }
@@ -56,7 +56,7 @@ static void network_resume() {
     if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
         SPARK_WLAN_SLEEP = 0;
     if (wakeupState.cloud)
-        spark_connect();
+        spark_cloud_flag_connect();
 }
 
 /*******************************************************************************
