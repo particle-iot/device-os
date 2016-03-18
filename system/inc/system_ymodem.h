@@ -17,7 +17,7 @@
  */
 
 #ifndef SYSTEM_YMODEM_H
-#define	SYSTEM_YMODEM_H
+#define SYSTEM_YMODEM_H
 
 #include "file_transfer.h"
 #include "spark_wiring_stream.h"
@@ -31,6 +31,9 @@ extern "C" {
 bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& desc, void*);
 
 
+#ifdef __cplusplus
+}
+#endif
 
 class YModem
 {
@@ -114,10 +117,5 @@ private:
 };
 
 
-#ifdef __cplusplus
-}
-#endif
-
-
-#endif	/* SYSTEM_YMODEM_H */
+#endif /* SYSTEM_YMODEM_H */
 

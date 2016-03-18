@@ -75,7 +75,7 @@ static void Serial_PrintCharArray(Stream *serialObj, char *s)
  */
 inline int32_t YModem::receive_byte(uint8_t& c, uint32_t timeout)
 {
-		uint32_t start = HAL_Timer_Get_Milli_Seconds();
+    uint32_t start = HAL_Timer_Get_Milli_Seconds();
     while (HAL_Timer_Get_Milli_Seconds()-start <= timeout)
     {
         if (Serial_KeyPressed(&stream, &c) == 1)
@@ -132,7 +132,7 @@ int32_t YModem::receive_packet(uint8_t *data, int32_t& length, uint32_t timeout)
     case ABORT2:
         return 1;
     case ' ':
-    		return 2;
+        return 2;
     default:
         return -1;
     }
@@ -267,9 +267,9 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
                 send_byte(CA);
                 return -3;
 
-            case 2:	// ignore
+            case 2: // ignore
                 send_byte(ACK);
-            		break;
+                break;
 
             default:
                 if (session_begin >= 0)
