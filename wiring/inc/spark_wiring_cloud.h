@@ -291,10 +291,10 @@ public:
     static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(wakeUpPin, edgeTriggerMode, seconds); }
 
-    static bool connected(void) { return spark_connected(); }
+    static bool connected(void) { return spark_cloud_flag_connected(); }
     static bool disconnected(void) { return !connected(); }
-    static void connect(void) { spark_connect(); }
-    static void disconnect(void) { spark_disconnect(); }
+    static void connect(void) { spark_cloud_flag_connect(); }
+    static void disconnect(void) { spark_cloud_flag_disconnect(); }
     static void process(void) {
     		application_checkin();
     		spark_process();
