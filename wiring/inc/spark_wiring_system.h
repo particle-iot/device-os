@@ -21,7 +21,7 @@
  */
 
 #ifndef SPARK_WIRING_SYSTEM_H
-#define	SPARK_WIRING_SYSTEM_H
+#define SPARK_WIRING_SYSTEM_H
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_version.h"
@@ -47,6 +47,27 @@
 #endif
 
 class Stream;
+
+class SleepNetworkFlag
+{
+public:
+    typedef uint8_t flag_t;
+    inline SleepNetworkFlag(SystemSleepNetwork f) : SleepNetworkFlag(static_cast<flag_t>(f)) {}
+
+    inline SleepNetworkFlag(flag_t flag) : flag_(flag) {}
+
+    inline explicit operator flag_t() const { return flag_; }
+
+    inline flag_t flag() const { return flag_; }
+
+private:
+    flag_t flag_;
+};
+
+// Bring the system enum into global scope
+const SleepNetworkFlag SLEEP_NETWORK_OFF(SystemSleepNetwork::Off);
+const SleepNetworkFlag SLEEP_NETWORK_STANDBY(SystemSleepNetwork::Standby);
+
 
 class SystemClass {
 public:
@@ -89,9 +110,17 @@ public:
     }
 #endif
 
-    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0);
-    static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
-    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0);
+    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepNetworkFlag flag=SLEEP_NETWORK_OFF);
+    inline static void sleep(Spark_Sleep_TypeDef sleepMode, SleepNetworkFlag flag, long seconds=0) {
+        sleep(sleepMode, seconds, flag);
+    }
+
+    inline static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
+    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepNetworkFlag flag=SLEEP_NETWORK_OFF);
+    inline static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepNetworkFlag flag, long seconds=0) {
+        sleep(wakeUpPin, edgeTriggerMode, seconds, flag);
+    }
+
     static String deviceID(void) { return spark_deviceID(); }
 
     static uint16_t buttonPushed(uint8_t button=0) {
@@ -251,5 +280,5 @@ extern SystemClass System;
 #define waitFor(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
 #define waitUntil(condition) System.waitCondition([]{ return (condition)(); })
 
-#endif	/* SPARK_WIRING_SYSTEM_H */
+#endif /* SPARK_WIRING_SYSTEM_H */
 
