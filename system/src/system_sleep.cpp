@@ -47,6 +47,7 @@ static void network_suspend() {
     wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
 #ifndef SPARK_NO_CLOUD
     wakeupState.cloud = spark_cloud_flag_auto_connect();
+    Spark_Sleep();
     // disconnect the cloud now, and clear the auto connect status
     spark_cloud_socket_disconnect();
     spark_cloud_flag_disconnect();
@@ -123,18 +124,24 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
 
 int _system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
-    network_suspend();
+    bool network_sleep = network_sleep_flag(param);
+    if (network_sleep)
+    {
+        network_suspend();
+    }
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
-    network_resume();   // asynchronously bring up the network/cloud
-
+    if (network_sleep)
+    {
+        network_resume();   // asynchronously bring up the network/cloud
+    }
     // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
     auto mode = system_mode();
-    if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && SPARK_CLOUD_CONNECT) {
-        waitFor(spark_connected, 60000);
+    if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {
+        waitFor(spark_cloud_flag_connected, 60000);
     }
 
-    if (spark_connected()) {
+    if (spark_cloud_flag_connected()) {
         Spark_Wake();
     }
     return 0;
