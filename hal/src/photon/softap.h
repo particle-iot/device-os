@@ -11,14 +11,15 @@
 #include "wiced.h"          // for wiced_result_t
 
 #ifdef	__cplusplus
+#include <algorithm>
 extern "C" {
 #endif
 
     typedef void* softap_handle;
 
-    struct softap_config {
+    typedef struct softap_config {
         void (*softap_complete)();
-    };
+    } softap_config;
 
     /**
      * Starts the soft ap setup process.

@@ -90,4 +90,11 @@ test(wifi_config)
 	assertTrue(!memcmp(ether, ether2, 6))
 }
 
+test(wifi_scan)
+{
+	WiFiAccessPoint aps[20];
+	int apsFound = WiFi.scan(aps, 20);
+	assertMoreOrEqual(apsFound, 1);
+}
+
 #endif

@@ -232,4 +232,11 @@ void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 {
 }
 
+void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr)
+{
+}
 
+uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data)
+{
+    return usartMap(serial).write((uint8_t) data);
+}

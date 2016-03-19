@@ -162,9 +162,32 @@ void HAL_Servo_Attach(uint16_t pin)
 
 void HAL_Servo_Detach(uint16_t pin)
 {
-    // TIM disable counter
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    TIM_Cmd(PIN_MAP[pin].timer_peripheral, DISABLE);
+    const STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+
+    // Disable timer's channel
+    switch (pin_info->timer_ch)
+    {
+        case TIM_Channel_1:
+            pin_info->timer_peripheral->CCER &= ~TIM_CCER_CC1E;
+            break;
+        case TIM_Channel_2:
+            pin_info->timer_peripheral->CCER &= ~TIM_CCER_CC2E;
+            break;
+        case TIM_Channel_3:
+            pin_info->timer_peripheral->CCER &= ~TIM_CCER_CC3E;
+            break;
+        case TIM_Channel_4:
+            pin_info->timer_peripheral->CCER &= ~TIM_CCER_CC4E;
+            break;
+        default:
+            break;
+    }
+
+    // Disable timer if none of its channels are enabled
+    if (!(pin_info->timer_peripheral->CCER & (TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E)))
+    {
+        TIM_Cmd(pin_info->timer_peripheral, DISABLE);
+    }
 }
 
 void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth)

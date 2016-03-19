@@ -41,6 +41,10 @@ extern "C" {
 #define SPARK_NO_CLOUD 1
 #endif
 
+/**
+ * network_handle_t used to differentiate between two networks
+ * on the same device, e.g. WLAN and AP modes on Photon.
+ */
 typedef network_interface_t    network_handle_t;
 const network_interface_t NIF_DEFAULT = 0;
 

@@ -40,6 +40,7 @@ uint16_t FLASH_If_Init(void);
 uint16_t FLASH_If_Erase (uint32_t Add);
 uint16_t FLASH_If_Write (uint32_t Add, uint32_t Len);
 const uint8_t *FLASH_If_Read  (uint32_t Add, uint32_t Len);
+uint16_t FLASH_If_Verify  (uint32_t Add, uint32_t Len);
 uint16_t FLASH_If_DeInit(void);
 uint16_t FLASH_If_CheckAdd(uint32_t Add);
 
@@ -53,6 +54,7 @@ DFU_MAL_Prop_TypeDef DFU_Flash_cb =
     FLASH_If_Erase,
     FLASH_If_Write,
     FLASH_If_Read,
+    FLASH_If_Verify,
     FLASH_If_CheckAdd,
 #if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
     5, /* Host polling time interval in ms when waiting erasing operation complete */
@@ -181,7 +183,30 @@ const uint8_t *FLASH_If_Read (uint32_t Add, uint32_t Len)
   return (uint8_t*)(MAL_Buffer);
 #else
   return  (const uint8_t *)(Add);
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
+#endif // USB_OTG_HS_INTERNAL_DMA_ENABLED
+}
+
+/**
+  * @brief  FLASH_If_Verify
+  *         Memory verify routine. Assumes FLASH_If_Write was
+  *         called just prior, with same Add and Len.
+  * @param  Add: Address to be read/verified from.
+  * @param  Len: Number of data to be read/verified (in bytes).
+  * @retval MAL_OK if operation is successeful, MAL_FAIL else.
+  */
+uint16_t FLASH_If_Verify (uint32_t Add, uint32_t Len)
+{
+  uint16_t status = MAL_OK;
+  uint32_t idx = 0;
+  for (idx = 0; idx < Len; idx += 4)
+  {
+    if ( (*(uint32_t*)(MAL_Buffer + idx)) != (*(uint32_t *)(Add + idx)) )
+    {
+      status = MAL_FAIL;
+      break;
+    }
+  }
+  return status;
 }
 
 /**

@@ -8,6 +8,7 @@ GCC_PREFIX ?= arm-none-eabi-
 
 include $(COMMON_BUILD)/common-tools.mk
 
+AR = $(GCC_ARM_PATH)$(GCC_PREFIX)gcc-ar
 
 #
 # default flags for targeting ARM

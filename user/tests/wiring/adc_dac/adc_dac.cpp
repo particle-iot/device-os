@@ -111,4 +111,57 @@ test(ADC_AnalogReadOnPinWithDACShmoo) {
     }
     assertTrue(errorCount == 0);
 }
+
+test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
+    pin_t pin1 = A5;
+    pin_t pin2 = A1;
+    pinMode(pin1, INPUT);
+    pinMode(pin2, INPUT);
+
+    // Tests for issue #833 where digitalWrite after analogWrite on DAC pin
+    // causes pin to latch at last analogWrite value
+
+    // Shmoo test
+    // Set DAC/DAC2 output from 200 to 3896 (ignore non-linearity near 0V or VDD)
+    // Read back analog and compare for significant difference
+    int errorCount = 0;
+    for(int i = 200; i < 3896; i++){
+        analogWrite(DAC, i);
+        analogWrite(DAC2, 4096-i);
+        if (abs(analogRead(pin1)-i) > 200) {
+            errorCount ++;
+        }
+        else if (abs(analogRead(pin2) - 4096 + i) > 200) {
+            errorCount ++;
+        }
+    }
+    assertTrue(errorCount == 0);
+
+    digitalWrite(DAC, LOW);
+    digitalWrite(DAC2, HIGH);
+    assertFalse(abs(analogRead(pin1) - 0) > 128);
+    assertFalse(abs(analogRead(pin2) - 4096) > 128);
+
+    // Tests that digitalWrite on DAC doesn't influence analog value on DAC2
+    // and vice versa
+    errorCount = 0;
+    for(int i = 200; i < 3896; i++){
+        analogWrite(DAC, i);
+        digitalWrite(DAC2, !digitalRead(DAC2));
+        if (abs(analogRead(pin1)-i) > 200) {
+            errorCount ++;
+        }
+    }
+    assertTrue(errorCount == 0);
+
+    errorCount = 0;
+    for(int i = 200; i < 3896; i++){
+        analogWrite(DAC2, 4096-i);
+        digitalWrite(DAC, !digitalRead(DAC));
+        if (abs(analogRead(pin2) - 4096 + i) > 200) {
+            errorCount ++;
+        }
+    }
+    assertTrue(errorCount == 0);
+}
 #endif

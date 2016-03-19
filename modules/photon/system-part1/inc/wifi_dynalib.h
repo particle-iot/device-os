@@ -27,8 +27,10 @@
 #include "dynalib.h"
 
 DYNALIB_BEGIN(wifi_resource)
-DYNALIB_FN(wifi_resource, wwd_firmware_image_resource)
-DYNALIB_FN(wifi_resource, wwd_nvram_image_resource)
+
+DYNALIB_FN(0, wifi_resource, wwd_firmware_image_resource, const resource_hnd_t*(void))
+DYNALIB_FN(1, wifi_resource, wwd_nvram_image_resource, const resource_hnd_t*(void))
+
 DYNALIB_END(wifi_resource)
 
 

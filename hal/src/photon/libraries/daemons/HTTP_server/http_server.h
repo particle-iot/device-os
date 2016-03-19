@@ -466,7 +466,7 @@ wiced_result_t wiced_http_response_stream_disable_chunked_transfer( wiced_http_r
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_http_response_stream_write_header( wiced_http_response_stream_t* stream, http_status_codes_t status_code, uint32_t content_length, http_cache_t cache_type, wiced_packet_mime_type_t mime_type );
+wiced_result_t wiced_http_response_stream_write_header( wiced_http_response_stream_t* stream, http_status_codes_t status_code, uint32_t content_length, http_cache_t cache_type, wiced_packet_mime_type_t mime_type, const char* header );
 
 /**
  * Write data to HTTP stream
@@ -497,6 +497,10 @@ wiced_result_t wiced_http_response_stream_write_resource( wiced_http_response_st
  * @return @ref wiced_result_t
  */
 wiced_result_t wiced_http_response_stream_flush( wiced_http_response_stream_t* stream );
+
+
+/*static*/ wiced_packet_mime_type_t http_server_get_mime_type( const char* request_data );
+
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -36,6 +36,12 @@ test(system_api) {
 
     API_COMPILE(System.sleep(60));
 
+}
+
+test(system_sleep)
+{
+    API_COMPILE(System.sleep(60));
+
     API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60));
 
     API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60));
@@ -47,13 +53,29 @@ test(system_api) {
     API_COMPILE(System.sleep(A0, FALLING));
     API_COMPILE(System.sleep(A0, FALLING, 20));
 
+    // with network flags
+    API_COMPILE(System.sleep(SLEEP_MODE_WLAN, 60, SLEEP_NETWORK_STANDBY));
+
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY, 60));
+
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY));
+
+    API_COMPILE(System.sleep(A0, CHANGE, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, RISING, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, FALLING, 20, SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY, 20));
+
+
+}
+
+test(system_mode) {
     API_COMPILE(System.mode());
     API_COMPILE(SystemClass(AUTOMATIC));
     API_COMPILE(SystemClass(SEMI_AUTOMATIC));
     API_COMPILE(SystemClass(MANUAL));
-}
 
-test(system_mode) {
     // braces are required since the macro evaluates to a declaration
     API_COMPILE({ SYSTEM_MODE(AUTOMATIC) });
     API_COMPILE({ SYSTEM_MODE(SEMI_AUTOMATIC) });
@@ -125,23 +147,21 @@ void handler_event_data_param(system_event_t event, int data, void* param)
 
 test(system_events)
 {
-	int clicks = system_button_clicks(123);
+    int clicks = system_button_clicks(123);
 
-	system_event_t my_events =
-			wifi_listen_begin+wifi_listen_end+wifi_listen_update+
-			setup_begin+setup_end+setup_update+
-			network_credentials+
-			network_status+
-			button_status+button_click+button_final_click+
-			reset+reset_pending+
-			firmware_update+firmware_update_pending+
-			all_events;
+    system_event_t my_events =
+        wifi_listen_begin+wifi_listen_end+wifi_listen_update+
+        setup_begin+setup_end+setup_update+
+        network_credentials+
+        network_status+
+        button_status+button_click+button_final_click+
+        reset+reset_pending+
+        firmware_update+firmware_update_pending+
+        all_events;
 
-	API_COMPILE(System.on(my_events, handler));
-	API_COMPILE(System.on(my_events, handler_event));
-	API_COMPILE(System.on(my_events, handler_event_data));
-	API_COMPILE(System.on(my_events, handler_event_data_param));
+    API_COMPILE(System.on(my_events, handler));
+    API_COMPILE(System.on(my_events, handler_event));
+    API_COMPILE(System.on(my_events, handler_event_data));
+    API_COMPILE(System.on(my_events, handler_event_data_param));
+    (void)clicks; // avoid unused variable warning
 }
-
-
-

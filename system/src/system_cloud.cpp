@@ -63,7 +63,7 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
     SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(eventName, handler, handler_data, scope, deviceID, reserved));
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
-    if (success && spark_connected())
+    if (success && spark_cloud_flag_connected())
     {
         register_event(eventName, event_scope, deviceID);
     }
@@ -131,27 +131,15 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     return result;
 }
 
-bool spark_connected(void)
+#endif
+
+bool spark_cloud_flag_connected(void)
 {
     if (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
         return true;
     else
         return false;
 }
-
-void spark_connect(void)
-{
-    //Schedule cloud connection and handshake
-    SPARK_CLOUD_CONNECT = 1;
-    SPARK_WLAN_SLEEP = 0;
-}
-
-void spark_disconnect(void)
-{
-    SPARK_CLOUD_CONNECT = 0;
-}
-
-#endif
 
 void spark_process(void)
 {

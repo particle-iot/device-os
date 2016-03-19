@@ -40,13 +40,12 @@ USARTSerial::USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_B
 
 void USARTSerial::begin(unsigned long baud)
 {
-  HAL_USART_Begin(_serial, baud);
+  begin(baud, SERIAL_8N1);
 }
 
-// TODO
-void USARTSerial::begin(unsigned long baud, byte config)
+void USARTSerial::begin(unsigned long baud, uint32_t config)
 {
-
+  HAL_USART_BeginConfig(_serial, baud, config, 0);
 }
 
 void USARTSerial::end()
@@ -98,6 +97,11 @@ size_t USARTSerial::write(uint8_t c)
 	  return HAL_USART_Write_Data(_serial, c);
   }
   return 0;
+}
+
+size_t USARTSerial::write(uint16_t c)
+{
+  return HAL_USART_Write_NineBitData(_serial, c);
 }
 
 USARTSerial::operator bool() {

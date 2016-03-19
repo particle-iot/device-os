@@ -23,7 +23,7 @@
 #include "cellular_hal.h"
 
 
-class CellularNetworkInterface : public ManagedNetworkInterface
+class CellularNetworkInterface : public ManagedIPNetworkInterface<CellularConfig, CellularNetworkInterface>
 {
 
 protected:
@@ -66,10 +66,6 @@ protected:
         HAL_NET_notify_dhcp(true);
     }
 
-    void fetch_ipconfig(WLanConfig* target) override {
-        cellular_fetch_ipconfig(target, NULL);
-    }
-
     void on_now() override {
         cellular_on(NULL);
     }
@@ -86,6 +82,10 @@ protected:
     }
 
 public:
+
+    void fetch_ipconfig(CellularConfig* target)  {
+        cellular_fetch_ipconfig(target, NULL);
+    }
 
     void start_listening() override
     {

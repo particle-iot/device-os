@@ -140,7 +140,7 @@ void manage_network_connection()
     }
     else
     {
-        if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !network.connected()))
+        if (!SPARK_WLAN_STARTED || (spark_cloud_flag_auto_connect() && !network.connected()))
         {
             INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.connected()");
             network.connect();
@@ -249,7 +249,7 @@ void establish_cloud_connection()
 
         INFO("Cloud: connecting");
         LED_On(LED_RGB);
-        int connect_result = Spark_Connect();
+        int connect_result = spark_cloud_socket_connect();
         if (connect_result >= 0)
         {
             cfod_count = 0;
@@ -330,7 +330,7 @@ void handle_cloud_connection(bool force_events)
 
 void manage_cloud_connection(bool force_events)
 {
-    if (SPARK_CLOUD_CONNECT == 0)
+    if (spark_cloud_flag_auto_connect() == 0)
     {
         cloud_disconnect();
     }
@@ -466,7 +466,7 @@ void cloud_disconnect(bool closeSocket)
     {
         INFO("Cloud: disconnecting");
         if (closeSocket)
-        Spark_Disconnect();
+        spark_cloud_socket_disconnect();
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;

@@ -30,7 +30,7 @@
 // DYNALIB_IMPORT is defined to produce a set of function stubs
 //
 
-// DYNALIB_EXETRN_C to mark symbols with C linkage
+// DYNALIB_EXTERN_C to mark symbols with C linkage
 #ifdef __cplusplus
 #define DYNALIB_EXTERN_C extern "C"
 #define EXTERN_C DYNALIB_EXTERN_C
@@ -46,6 +46,44 @@
     dynalib_##tablename
 
 
+#if __cplusplus >= 201103 // C++11
+
+#include <type_traits>
+
+template<typename T1, typename T2>
+constexpr const void* dynalib_checked_cast(T2 *p) {
+    static_assert(std::is_same<T1, T2>::value, "Signature of the dynamically exported function has changed");
+    return (const void*)p;
+}
+
+#define DYNALIB_FN_EXPORT(index, tablename, name, type) \
+    dynalib_checked_cast<type>(name),
+
+#define DYNALIB_STATIC_ASSERT(cond, msg) \
+    static_assert(cond, msg)
+
+#elif __STDC_VERSION__ >= 199901 && !__STRICT_ANSI__ // C99 with GNU extensions
+
+#define DYNALIB_FN_EXPORT(index, tablename, name, type) \
+    __builtin_choose_expr(__builtin_types_compatible_p(type, __typeof__(name)), (const void*)&name, sizeof(struct { \
+        _Static_assert(__builtin_types_compatible_p(type, __typeof__(name)), \
+            "Signature of the dynamically exported function has changed");})),
+
+#define DYNALIB_STATIC_ASSERT(cond, msg) \
+    _Static_assert(cond, msg)
+
+#else
+
+#warning "Compile-time check of the dynamically exported functions is not supported under current compiler settings"
+
+#define DYNALIB_FN_EXPORT(index, tablename, name, type) \
+    (const void*)&name,
+
+#define DYNALIB_STATIC_ASSERT(cond, msg)
+
+#endif
+
+
 #ifdef DYNALIB_EXPORT
 
     /**
@@ -54,10 +92,10 @@
     #define DYNALIB_BEGIN(tablename) \
         DYNALIB_EXTERN_C const void* const dynalib_##tablename[] = {
 
-    #define DYNALIB_FN(tablename,name) \
-        (const void*)&name,
+    #define DYNALIB_FN(index, tablename, name, type) \
+        DYNALIB_FN_EXPORT(index, tablename, name, type)
 
-    #define DYNALIB_FN_PLACEHOLDER(tablename) \
+    #define DYNALIB_FN_PLACEHOLDER(index, tablename) \
         0,
 
     #define DYNALIB_END(name)   \
@@ -74,12 +112,13 @@
         #define __S(x) #x
         #define __SX(x) __S(x)
 
-        #define DYNALIB_FN(tablename, name) \
+        #define DYNALIB_FN_IMPORT(index, tablename, name, counter) \
+            DYNALIB_STATIC_ASSERT(index == counter, "Index of the dynamically exported function has changed"); \
             const char check_name_##tablename_##name[0]={}; /* this will fail if the name is already defined */ \
             void name() __attribute__((naked)); \
             void name() { \
                 asm volatile ( \
-                    ".equ offset, ( " __SX(__COUNTER__) " * 4)\n" \
+                    ".equ offset, ( " __SX(counter) " * 4)\n" \
                     ".extern dynalib_location_" #tablename "\n" \
                     "push {r3, lr}\n"           /* save register we will change plus storage for sp value */ \
                                                 /* pushes highest register first, so lowest register is at lowest memory address */ \
@@ -92,7 +131,11 @@
                 ); \
             };
 
-        #define DYNALIB_FN_PLACEHOLDER(tablename)
+        #define DYNALIB_FN(index, tablename, name, type) \
+            DYNALIB_FN_IMPORT(index, tablename, name, __COUNTER__)
+
+        #define DYNALIB_FN_PLACEHOLDER(index, tablename) \
+            DYNALIB_STATIC_ASSERT(index == __COUNTER__, "Index of the dynamically exported function has changed"); // Ensures that __COUNTER__ is incremented
 
         #define DYNALIB_END(name)
     #else

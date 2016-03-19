@@ -42,11 +42,15 @@ endif
 endif
 
 MAKE_DEPENDENCIES = modules/$(PLATFORM_DYNALIB_MODULES)/user-part
+ifeq ("$(MAKECMDGOALS)","")
+MAKECMDGOALS := all
+endif
+
+$(MAKECMDGOALS): make_deps
 
 SUBDIR_GOALS := $(MAKECMDGOALS)
 MAKECMDGOALS := all
 
-all program-dfu st-flash bin elf: make_deps
 
 include $(COMMON_BUILD)/common-tools.mk
 include $(COMMON_BUILD)/recurse.mk

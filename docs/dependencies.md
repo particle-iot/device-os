@@ -5,9 +5,9 @@ Building the firmware locally requires these dependencies ot be installed:
 1. [GCC for ARM Cortex processors](#1-gcc-for-arm-cortex-processors)
 2. [Make](#2-make)
 3. [Device Firmware Upgrade Utilities](#3-device-firmware-upgrade-utilities)
-4. [Zatig](#4-zatig) (for windows users only)
+4. [Zatig](#4-zatig) (for Windows users only)
 5. [Git](#5-git)
-
+6. [Command line tools](#6-command-line-tools)
 
 #### 1. GCC for ARM Cortex processors
 The Core/Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.

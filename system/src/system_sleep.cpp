@@ -22,6 +22,7 @@
 #include "system_network.h"
 #include "system_task.h"
 #include "system_cloud.h"
+#include "system_cloud_internal.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
 #include "rgbled.h"
@@ -43,8 +44,10 @@ static void network_suspend() {
     wakeupState.wifi = !SPARK_WLAN_SLEEP;
     wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
 #ifndef SPARK_NO_CLOUD
-    wakeupState.cloud = spark_connected();
-    spark_disconnect();
+    wakeupState.cloud = spark_cloud_flag_auto_connect();
+    // disconnect the cloud now, and clear the auto connect status
+    spark_cloud_socket_disconnect();
+    spark_cloud_flag_disconnect();
 #endif
     network_off(0, 0, 0, NULL);
 }
@@ -52,10 +55,8 @@ static void network_suspend() {
 static void network_resume() {
     if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
         SPARK_WLAN_SLEEP = 0;
-#ifndef SPARK_NO_CLOUD
     if (wakeupState.cloud)
-        spark_connect();
-#endif
+        spark_cloud_flag_connect();
 }
 
 /*******************************************************************************
@@ -78,6 +79,13 @@ void sleep_fuel_gauge()
     gauge.sleep();
 }
 
+bool network_sleep_flag(uint32_t flags)
+{
+    static_assert(static_cast<int>(SystemSleepNetwork::Off)==0, "expected SystemSleepNetwork::Off==0");
+    static_assert(static_cast<int>(SystemSleepNetwork::Standby)==1, "expected SystemSleepNetwork::Standby==1");
+    return (flags & 1)==0;
+}
+
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
     if (seconds)
@@ -90,6 +98,11 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
             break;
 
         case SLEEP_MODE_DEEP:
+            if (network_sleep_flag(param))
+            {
+                network_disconnect(0, 0, NULL);
+                network_off(0, 0, 0, NULL);
+            }
             HAL_Core_Enter_Standby_Mode();
             break;
 
@@ -106,8 +119,15 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
 
 void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
-    network_suspend();
+    bool network_sleep = network_sleep_flag(param);
+    if (network_sleep)
+    {
+        network_suspend();
+    }
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
-    network_resume();
+    if (network_sleep)
+    {
+        network_resume();
+    }
 }

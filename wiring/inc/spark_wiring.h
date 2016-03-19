@@ -42,7 +42,7 @@
 #include "spark_wiring_stream.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_ipaddress.h"
-#include "spark_wiring_cellularsignal.h"
+#include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_character.h"

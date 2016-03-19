@@ -63,12 +63,34 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
 }
 
 /*******************************************************************************
+ * Function Name  : USB_USART_Available_Data_For_Write.
+ * Description    : Return the length of available space in TX buffer
+ * Input          : None.
+ * Return         : Length.
+ *******************************************************************************/
+int32_t USB_USART_Available_Data_For_Write(void)
+{
+  return 0;
+}
+
+/*******************************************************************************
  * Function Name  : USB_USART_Send_Data.
  * Description    : Send Data from USB_USART to USB Host.
  * Input          : Data.
  * Return         : None.
  *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
+{
+
+}
+
+/*******************************************************************************
+ * Function Name  : USB_USART_Flush_Data.
+ * Description    : Flushes TX buffer
+ * Input          : None.
+ * Return         : None.
+ *******************************************************************************/
+void USB_USART_Flush_Data(void)
 {
 
 }

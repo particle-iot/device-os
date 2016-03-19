@@ -20,6 +20,7 @@ uint16_t DCT_If_Init(void);
 uint16_t DCT_If_Erase (uint32_t Add);
 uint16_t DCT_If_Write (uint32_t Add, uint32_t Len);
 const uint8_t *DCT_If_Read  (uint32_t Add, uint32_t Len);
+uint16_t DCT_If_Verify (uint32_t Add, uint32_t Len);
 uint16_t DCT_If_DeInit(void);
 uint16_t DCT_If_CheckAdd(uint32_t Add);
 
@@ -32,6 +33,7 @@ DFU_MAL_Prop_TypeDef DFU_DCT_cb =
     DCT_If_Erase,
     DCT_If_Write,
     DCT_If_Read,
+    DCT_If_Verify,
     DCT_If_CheckAdd,
     1, /* Erase Time in ms */
     500  /* Programming Time in ms */
@@ -52,6 +54,10 @@ uint16_t DCT_If_Write (uint32_t Add, uint32_t Len) {
 
 const uint8_t *DCT_If_Read  (uint32_t Add, uint32_t Len) {
     return dct_read_app_data(Add);
+}
+
+uint16_t DCT_If_Verify (uint32_t Add, uint32_t Len) {
+    return MAL_OK; /* unimplemented, todo */
 }
 
 uint16_t DCT_If_DeInit(void) {

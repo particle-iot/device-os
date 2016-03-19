@@ -6,7 +6,7 @@
 #include "module_info.h"
 
 #if !defined(SYSTEM_MINIMAL)
-#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10 || PLATFORM_ID==88
+#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==88
 #define HAL_REPLACE_BOOTLOADER
 #endif
 #endif

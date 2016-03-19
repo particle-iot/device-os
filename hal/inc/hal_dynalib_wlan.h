@@ -26,9 +26,12 @@
 
 #include "dynalib.h"
 
+#if PLATFORM_ID != 10
+
 #ifdef DYNALIB_EXPORT
 #include "wlan_hal.h"
 #include "inet_hal.h"
+#include "softap_http.h"
 #endif
 
 // WARNING
@@ -39,36 +42,40 @@
 // GNINRAW
 
 DYNALIB_BEGIN(hal_wlan)
-DYNALIB_FN(hal_wlan,wlan_connect_init)
-DYNALIB_FN(hal_wlan,wlan_connect_finalize)
-DYNALIB_FN(hal_wlan,wlan_reset_credentials_store_required)
-DYNALIB_FN(hal_wlan,wlan_reset_credentials_store)
-DYNALIB_FN(hal_wlan,wlan_disconnect_now)
-DYNALIB_FN(hal_wlan,wlan_activate)
-DYNALIB_FN(hal_wlan,wlan_deactivate)
-DYNALIB_FN(hal_wlan,wlan_connected_rssi)
 
-DYNALIB_FN(hal_wlan,wlan_clear_credentials)
-DYNALIB_FN(hal_wlan,wlan_has_credentials)
-DYNALIB_FN(hal_wlan,wlan_set_credentials)
+DYNALIB_FN(0, hal_wlan, wlan_connect_init, wlan_result_t(void))
+DYNALIB_FN(1, hal_wlan, wlan_connect_finalize, wlan_result_t(void))
+DYNALIB_FN(2, hal_wlan, wlan_reset_credentials_store_required, bool(void))
+DYNALIB_FN(3, hal_wlan, wlan_reset_credentials_store, wlan_result_t(void))
+DYNALIB_FN(4, hal_wlan, wlan_disconnect_now, wlan_result_t(void))
+DYNALIB_FN(5, hal_wlan, wlan_activate, wlan_result_t(void))
+DYNALIB_FN(6, hal_wlan, wlan_deactivate, wlan_result_t(void))
+DYNALIB_FN(7, hal_wlan, wlan_connected_rssi, int(void))
 
-DYNALIB_FN(hal_wlan,wlan_smart_config_init)
-DYNALIB_FN(hal_wlan,wlan_smart_config_cleanup)
-DYNALIB_FN(hal_wlan,wlan_smart_config_finalize)
+DYNALIB_FN(8, hal_wlan, wlan_clear_credentials, int(void))
+DYNALIB_FN(9, hal_wlan, wlan_has_credentials, int(void))
+DYNALIB_FN(10, hal_wlan, wlan_set_credentials, int(WLanCredentials*))
 
-DYNALIB_FN(hal_wlan,wlan_set_error_count)
-DYNALIB_FN(hal_wlan,wlan_fetch_ipconfig)
-DYNALIB_FN(hal_wlan,wlan_setup)
+DYNALIB_FN(11, hal_wlan, wlan_smart_config_init, void(void))
+DYNALIB_FN(12, hal_wlan, wlan_smart_config_cleanup, void(void))
+DYNALIB_FN(13, hal_wlan, wlan_smart_config_finalize, bool(void))
 
-DYNALIB_FN(hal_wlan,HAL_NET_SetNetWatchDog)
-DYNALIB_FN(hal_wlan,inet_gethostbyname)
-DYNALIB_FN(hal_wlan,inet_ping)
-DYNALIB_FN(hal_wlan,wlan_select_antenna)
-DYNALIB_FN(hal_wlan,wlan_set_ipaddress)
-DYNALIB_FN(hal_wlan,wlan_set_ipaddress_source)
-DYNALIB_FN(hal_wlan,wlan_scan)
-DYNALIB_FN(hal_wlan,wlan_get_credentials)
+DYNALIB_FN(14, hal_wlan, wlan_set_error_count, void(uint32_t))
+DYNALIB_FN(15, hal_wlan, wlan_fetch_ipconfig, void(WLanConfig*))
+DYNALIB_FN(16, hal_wlan, wlan_setup, void(void))
+
+DYNALIB_FN(17, hal_wlan, HAL_NET_SetNetWatchDog, uint32_t(uint32_t))
+DYNALIB_FN(18, hal_wlan, inet_gethostbyname, int(const char*, uint16_t, HAL_IPAddress*, network_interface_t, void*))
+DYNALIB_FN(19, hal_wlan, inet_ping, int(const HAL_IPAddress*, network_interface_t, uint8_t, void*))
+DYNALIB_FN(20, hal_wlan, wlan_select_antenna, int(WLanSelectAntenna_TypeDef))
+DYNALIB_FN(21, hal_wlan, wlan_set_ipaddress, void(const HAL_IPAddress*, const HAL_IPAddress*, const HAL_IPAddress*, const HAL_IPAddress*, const HAL_IPAddress*, void*))
+DYNALIB_FN(22, hal_wlan, wlan_set_ipaddress_source, void(IPAddressSource, bool, void*))
+DYNALIB_FN(23, hal_wlan, wlan_scan, int(wlan_scan_result_t, void*))
+DYNALIB_FN(24, hal_wlan, wlan_get_credentials, int(wlan_scan_result_t, void*))
+DYNALIB_FN(25, hal_wlan,softap_set_application_page_handler, int(PageProvider* provider, void* reserved))
 DYNALIB_END(hal_wlan)
+
+#endif  // PLATFORM_ID != 10
 
 #endif	/* HAL_DYNALIB_WLAN_H */
 

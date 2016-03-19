@@ -18,7 +18,7 @@
  */
 
 #ifndef SYSTEM_SLEEP_H
-#define	SYSTEM_SLEEP_H
+#define SYSTEM_SLEEP_H
 
 #include <stdint.h>
 
@@ -31,6 +31,15 @@ typedef enum
     SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1, SLEEP_MODE_SOFTPOWEROFF = 2
 } Spark_Sleep_TypeDef;
 
+enum class SystemSleepNetwork
+{
+    Off,
+    Standby,
+};
+
+/**
+ * @param param A SystemSleepNetwork enum cast as an integer.
+ */
 void system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
 void system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
 
@@ -39,5 +48,5 @@ void system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param,
 #endif
 
 
-#endif	/* SYSTEM_SLEEP_H */
+#endif /* SYSTEM_SLEEP_H */
 

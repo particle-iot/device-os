@@ -62,7 +62,7 @@ for the network or cloud to be available.
 
 - Cloud functions registered with `Particle.function()` execute on the application
 thread in between calls to `loop()`. (This is also true in non-threaded mode.)
-A long running cloud function will block the applicatino thread (since it is application code)
+A long running cloud function will block the application thread (since it is application code)
 but not the system code, so cloud connectivity is maintained.
 > We are considering an enhancement to `Particle.function()` that would allow
 the `Particle.function()` call to specify that the function is executed on a separate
@@ -236,7 +236,7 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
 {
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
-    if (success && spark_connected())
+    if (success && spark_cloud_flag_connected())
     {
         register_event(eventName, event_scope, deviceID);
     }
@@ -262,7 +262,7 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
     SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(eventName, handler, handler_data, scope, deviceID, reserved));
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
-    if (success && spark_connected())
+    if (success && spark_cloud_flag_connected())
     {
         register_event(eventName, event_scope, deviceID);
     }

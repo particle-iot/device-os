@@ -32,16 +32,18 @@
 
 
 DYNALIB_BEGIN(system_cloud)
-DYNALIB_FN(system_cloud, spark_variable)
-DYNALIB_FN(system_cloud, spark_function)
-DYNALIB_FN(system_cloud, spark_process)
-DYNALIB_FN(system_cloud, spark_connect)
-DYNALIB_FN(system_cloud, spark_disconnect)
-DYNALIB_FN(system_cloud, spark_connected)
-DYNALIB_FN(system_cloud, system_cloud_protocol_instance)
-DYNALIB_FN(system_cloud, spark_deviceID)
-DYNALIB_FN(system_cloud, spark_send_event)
-DYNALIB_FN(system_cloud, spark_subscribe)
+
+DYNALIB_FN(0, system_cloud, spark_variable, bool(const char*, const void*, Spark_Data_TypeDef, spark_variable_t*))
+DYNALIB_FN(1, system_cloud, spark_function, bool(const char*, p_user_function_int_str_t, void*))
+DYNALIB_FN(2, system_cloud, spark_process, void(void))
+DYNALIB_FN(3, system_cloud, spark_cloud_flag_connect, void(void))
+DYNALIB_FN(4, system_cloud, spark_cloud_flag_disconnect, void(void))
+DYNALIB_FN(5, system_cloud, spark_cloud_flag_connected, bool(void))
+DYNALIB_FN(6, system_cloud, system_cloud_protocol_instance, ProtocolFacade*(void))
+DYNALIB_FN(7, system_cloud, spark_deviceID, String(void))
+DYNALIB_FN(8, system_cloud, spark_send_event, bool(const char*, const char*, int, uint32_t, void*))
+DYNALIB_FN(9, system_cloud, spark_subscribe, bool(const char*, EventHandler, void*, Spark_Subscription_Scope_TypeDef, const char*, void*))
+
 DYNALIB_END(system_cloud)
 
 #endif	/* SYSTEM_DYNALIB_CLOUD_H */

@@ -22,7 +22,7 @@ void HAL_Core_Setup_finalize(void);
  * This should be called from the RTOS main thread once initialization has been
  * completed, constructors invoked and and HAL_Core_Config() has been called.
  */
-void application_start();
+void application_start(void);
 
 
 /**

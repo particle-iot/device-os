@@ -90,7 +90,15 @@ void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
     //GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
     //GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_OTG_HS, ENABLE) ;
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_OTG_HS, ENABLE);
+
+    // Do not disable USB clock in sleep mode.
+    // This fixes the issue of USB Serial not working after exiting STOP mode
+    // !!!
+    // Currently this option is not used, as USB is detached before going into
+    // STOP mode and reattached after exiting.
+    // RCC_AHB1PeriphClockLPModeCmd(RCC_AHB1Periph_OTG_HS_ULPI, DISABLE);
+
 #endif
 }
 

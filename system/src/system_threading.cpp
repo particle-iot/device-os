@@ -7,6 +7,15 @@
 
 
 #if PLATFORM_THREADING
+
+#if HAL_PLATFORM_CLOUD_UDP
+// Electron uses larger stack size to workaround stack overflow problem that occurs during
+// handshake in multithreaded configuration
+#define THREAD_STACK_SIZE 4*1024
+#else
+#define THREAD_STACK_SIZE 3*1024
+#endif
+
 void system_thread_idle()
 {
     Spark_Idle_Events(true);
@@ -16,7 +25,7 @@ ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idl
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
-			3*1024 /* stack size */));
+			THREAD_STACK_SIZE /* stack size */)); // TODO: Use this value for threads spawned by ActiveObjectBase
 
 /**
  * Implementation to support gthread's concurrency primitives.
@@ -94,7 +103,7 @@ namespace std {
         thread_startup startup;
         startup.call = base.get();
         startup.started = false;
-        if (os_thread_create(&_M_id._M_thread, "std::thread", OS_THREAD_PRIORITY_DEFAULT, invoke_thread, &startup, 1024*3)) {
+        if (os_thread_create(&_M_id._M_thread, "std::thread", OS_THREAD_PRIORITY_DEFAULT, invoke_thread, &startup, THREAD_STACK_SIZE)) {
             PANIC(AssertionFailure, "%s %s", __FILE__, __LINE__);
         }
         else {  // C++ ensure the thread has started execution, as required by the standard

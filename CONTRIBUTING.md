@@ -16,8 +16,7 @@ Any changes that affect firmware application developers, such as a new class or 
 
 New firmware APIs should have an API test. These are found in the `user/tests/wiring/api` folder. see [Building Platform Tests](https://github.com/spark/firmware/blob/develop/user/tests/readme.md#building-platform-tests).
 
-New functionality should also have a corresponding unit test. These are found in `user/tests/wiring/no_fixture` when they do not require any additional test fixture beyond the device itself. 
-
+New functionality should also have a corresponding unit test. These are found in `user/tests/wiring/no_fixture` when they do not require any additional test fixture beyond the device itself. Tests requiring a hardware fixture are found in the varoius subdirecotires. If the hardware fixture you need is already present, then feel free to add more tests to that. When the hardware fixture is not present, simply create a new directory, following the pattern of the existing tests (and by copying application.cpp from an existing test.)
 
 
 
@@ -41,7 +40,7 @@ of the `DYNALIB_FN` entries must remain unchanged. New entries can be added at t
 The repository imports content from other repos via git subtrees. These are the current
 subtrees:
 
-- communication/lib/libcoap
+- communication/lib/mbedtls
 
 (you can find an up-to-date list by running git log | grep git-subtree-dir | awk '{ print $2 }')
 

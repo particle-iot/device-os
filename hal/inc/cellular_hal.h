@@ -31,6 +31,11 @@
 extern "C" {
 #endif
 
+typedef struct __attribute__((__packed__))  _CellularConfig_t {
+    uint16_t size;
+    NetworkConfig nw;
+} CellularConfig;
+
 typedef int cellular_result_t;
 
 typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
@@ -95,7 +100,7 @@ cellular_result_t  cellular_gprs_detach(void* reserved);
 /**
  * Fetch the ip configuration.
  */
-cellular_result_t  cellular_fetch_ipconfig(WLanConfig* config, void* reserved);
+cellular_result_t  cellular_fetch_ipconfig(CellularConfig* config, void* reserved);
 
 #ifdef __cplusplus
 struct CellularDevice
@@ -161,6 +166,40 @@ cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
  */
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
                          system_tick_t timeout_ms, const char* format, ...);
+
+#ifdef __cplusplus
+struct CellularDataHal {
+    uint16_t size;
+    int cid;
+    int tx_session_offset;
+    int rx_session_offset;
+    int tx_total_offset;
+    int rx_total_offset;
+    int tx_session;
+    int rx_session;
+    int tx_total;
+    int rx_total;
+
+    CellularDataHal()
+    {
+        memset(this, 0, sizeof(*this));
+        cid = -1;
+        size = sizeof(*this);
+    }
+};
+#else
+typedef struct CellularDataHal CellularDataHal;
+#endif
+
+/**
+ * Set cellular data usage info
+ */
+cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved);
+
+/**
+ * Get cellular data usage info
+ */
+cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved);
 
 #ifdef __cplusplus
 }

@@ -21,6 +21,24 @@
 #include "system_task.h"
 static System_Mode_TypeDef current_mode = DEFAULT;
 
+volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
+
+void spark_cloud_flag_connect(void)
+{
+    //Schedule cloud connection and handshake
+    SPARK_CLOUD_AUTO_CONNECT = 1;
+    SPARK_WLAN_SLEEP = 0;
+}
+
+void spark_cloud_flag_disconnect(void)
+{
+    SPARK_CLOUD_AUTO_CONNECT = 0;
+}
+
+bool spark_cloud_flag_auto_connect()
+{
+    return SPARK_CLOUD_AUTO_CONNECT;
+}
 
 void set_system_mode(System_Mode_TypeDef mode)
 {
@@ -41,20 +59,15 @@ void set_system_mode(System_Mode_TypeDef mode)
     current_mode = mode;
     switch (mode)
     {
-    		case DEFAULT:   // DEFULT can't happen in practice since it's cleared above. just keeps gcc happy.
+        case DEFAULT:   // DEFAULT can't happen in practice since it's cleared above. just keeps gcc happy.
         case SAFE_MODE:
         case AUTOMATIC:
-            SPARK_CLOUD_CONNECT = 1;
-            SPARK_WLAN_SLEEP = 0;
-            break;
-
-        case SEMI_AUTOMATIC:
-            SPARK_CLOUD_CONNECT = 0;
-            SPARK_WLAN_SLEEP = 1;
+            spark_cloud_flag_connect();
             break;
 
         case MANUAL:
-            SPARK_CLOUD_CONNECT = 0;
+        case SEMI_AUTOMATIC:
+            spark_cloud_flag_disconnect();
             SPARK_WLAN_SLEEP = 1;
             break;
     }

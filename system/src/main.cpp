@@ -50,7 +50,7 @@
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
-#include "spark_wiring_cellularsignal.h"
+#include "spark_wiring_cellular_printable.h"
 #include "system_rgbled.h"
 
 using namespace spark;
@@ -489,7 +489,7 @@ void app_loop(bool threaded)
         Spark_Idle();
 
     static uint8_t SPARK_WIRING_APPLICATION = 0;
-    if(threaded || SPARK_WLAN_SLEEP || !SPARK_CLOUD_CONNECT || SPARK_CLOUD_CONNECTED || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
+    if(threaded || SPARK_WLAN_SLEEP || !spark_cloud_flag_auto_connect() || spark_cloud_flag_connected() || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
     {
         if(threaded || !SPARK_FLASH_UPDATE)
         {

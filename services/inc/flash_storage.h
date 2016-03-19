@@ -25,8 +25,8 @@ class FlashStorage
 {
 public:
     int eraseSector(unsigned address);
-    int write(unsigned offset, const uint8_t* data, unsigned size);
-    int read(uint8_t* data, unsigned offset, unsigned size);
+    int write(unsigned offset, const void* data, unsigned size);
+    int read(unsigned offset, void* data, unsigned size);
 
     const uint8_t* dataAt(unsigned address);
 };
@@ -40,6 +40,7 @@ class RAMFlashStorage
 {
     uint8_t memory[Sectors*SectorSize];
     int write_count;
+    int erase_count;
 
 public:
     enum Errors
@@ -54,6 +55,7 @@ public:
             memory[i] = rand();
         }
         write_count = INT_MAX;
+        erase_count = 0;
     }
 
     inline bool isValidRange(unsigned address, unsigned size)
@@ -77,6 +79,7 @@ public:
         {
             memory[start++] = 0xFF;
         }
+        erase_count++;
         return 0;
     }
 
@@ -86,20 +89,21 @@ public:
         if (!isValidRange(offset,size))
             return FLASH_INVALID_RANGE;
 
-        if (!write_count)
-            return -1;
-        write_count--;
-
         unsigned start = offset-Base;
         while (size --> 0)
         {
+            if (!write_count)
+                return -1;
+            write_count--;
+
             memory[start++] &= *data++;
         }
         return 0;
     }
 
-    int read(uint8_t* data, unsigned offset, unsigned size)
+    int read(unsigned offset, void* _data, unsigned size)
     {
+        uint8_t *data = (uint8_t *)_data;
         if (!isValidRange(offset,size))
             return FLASH_INVALID_RANGE;
 
@@ -124,4 +128,21 @@ public:
         write_count = count;
     }
 
+    int getEraseCount()
+    {
+        return erase_count;
+    }
+
+    void resetEraseCount()
+    {
+        erase_count = 0;
+    }
+
+    template <typename Func>
+    void discardWritesAfter(int count, Func f)
+    {
+        setWriteCount(count);
+        f();
+        setWriteCount(INT_MAX);
+    }
 };

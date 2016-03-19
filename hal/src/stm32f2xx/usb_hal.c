@@ -33,6 +33,7 @@
 #include "usb_conf.h"
 #include "usbd_desc.h"
 #include "delay_hal.h"
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -54,12 +55,15 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 extern volatile LINE_CODING linecoding;
 extern volatile uint8_t USB_DEVICE_CONFIGURED;
 extern volatile uint8_t USB_Rx_Buffer[];
-extern volatile uint8_t APP_Rx_Buffer[];
-extern volatile uint32_t APP_Rx_ptr_in;
-extern volatile uint16_t USB_Rx_length;
-extern volatile uint16_t USB_Rx_ptr;
+extern volatile uint32_t USB_Rx_Buffer_head;
+extern volatile uint32_t USB_Rx_Buffer_tail;
+extern volatile uint32_t USB_Rx_Buffer_length;
+extern volatile uint8_t USB_Tx_Buffer[];
+extern volatile uint32_t USB_Tx_Buffer_head;
+extern volatile uint32_t USB_Tx_Buffer_tail;
 extern volatile uint8_t  USB_Tx_State;
 extern volatile uint8_t  USB_Rx_State;
+extern volatile uint8_t  USB_Serial_Open;
 #endif
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -99,25 +103,44 @@ void Get_SerialNum(void)
 /*******************************************************************************
  * Function Name  : USB_USART_Init
  * Description    : Start USB-USART protocol.
- * Input          : baudRate (0 : disconnect usb else init usb only once).
+ * Input          : baudRate (0 : disconnect usb else init usb).
  * Return         : None.
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
     if (linecoding.bitrate != baudRate)
     {
-        if (!baudRate)
+        if (!baudRate && linecoding.bitrate > 0)
         {
+            // Deconfigure CDC class endpoints
+            USBD_ClrCfg(&USB_OTG_dev, 0);
+
+            // Class callbacks and descriptor should probably be cleared
+            // to use another USB class, but this causes a hardfault if no descriptor is set
+            // and detach/attach is performed.
+            // Leave them be for now.
+
+            // USB_OTG_dev.dev.class_cb = NULL;
+            // USB_OTG_dev.dev.usr_cb = NULL;
+            // USB_OTG_dev.dev.usr_device = NULL;
+
+            // Perform detach
             USB_Cable_Config(DISABLE);
+
+            // Soft reattach
+            // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
         }
         else if (!linecoding.bitrate)
         {
-            //Perform a Detach-Attach operation on USB bus
+            //Initialize USB device
+            SPARK_USB_Setup();
+
+            // Perform a hard Detach-Attach operation on USB bus
             USB_Cable_Config(DISABLE);
             USB_Cable_Config(ENABLE);
 
-            //Initialize USB device only once (if linecoding.bitrate==0)
-            SPARK_USB_Setup();
+            // Soft reattach
+            // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
         }
         //linecoding.bitrate will be overwritten by USB Host
         linecoding.bitrate = baudRate;
@@ -144,6 +167,10 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
     SetLineCodingBitRateHandler(handler);
 }
 
+static inline bool USB_USART_Connected() {
+    return linecoding.bitrate > 0 && USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED && USB_Serial_Open;
+}
+
 /*******************************************************************************
  * Function Name  : USB_USART_Available_Data.
  * Description    : Return the length of available data received from USB.
@@ -152,12 +179,14 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
-    if(USB_Rx_State == 1)
-    {
-        return (USB_Rx_length - USB_Rx_ptr);
-    }
-
-    return 0;
+    int32_t available = 0;
+    int state = HAL_disable_irq();
+    if (USB_Rx_Buffer_head >= USB_Rx_Buffer_tail)
+        available = USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
+    else
+        available = USB_Rx_Buffer_length + USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
+    HAL_enable_irq(state);
+    return available;
 }
 
 /*******************************************************************************
@@ -168,20 +197,36 @@ uint8_t USB_USART_Available_Data(void)
  *******************************************************************************/
 int32_t USB_USART_Receive_Data(uint8_t peek)
 {
-    if(USB_Rx_State == 1)
+    if (USB_USART_Available_Data() > 0)
     {
-        if(!peek && ((USB_Rx_length - USB_Rx_ptr) == 1))
-        {
-            USB_Rx_State = 0;
-
-            /* Prepare Out endpoint to receive next packet */
-            DCD_EP_PrepareRx(&USB_OTG_dev,
-                             CDC_OUT_EP,
-                             (uint8_t*)(USB_Rx_Buffer),
-                             CDC_DATA_OUT_PACKET_SIZE);
+        int state = HAL_disable_irq();
+        uint8_t data = USB_Rx_Buffer[USB_Rx_Buffer_tail];
+        if (!peek) {
+            USB_Rx_Buffer_tail++;
+            if (USB_Rx_Buffer_tail == USB_Rx_Buffer_length)
+                USB_Rx_Buffer_tail = 0;
         }
+        HAL_enable_irq(state);
+        return data;
+    }
 
-        return USB_Rx_Buffer[peek ? USB_Rx_ptr : USB_Rx_ptr++];
+    return -1;
+}
+
+/*******************************************************************************
+ * Function Name  : USB_USART_Available_Data_For_Write.
+ * Description    : Return the length of available space in TX buffer
+ * Input          : None.
+ * Return         : Length.
+ *******************************************************************************/
+int32_t USB_USART_Available_Data_For_Write(void)
+{
+    if (USB_USART_Connected())
+    {
+        uint32_t tail = USB_Tx_Buffer_tail;
+        int32_t available = USB_TX_BUFFER_SIZE - (USB_Tx_Buffer_head >= tail ?
+            USB_Tx_Buffer_head - tail : USB_TX_BUFFER_SIZE + USB_Tx_Buffer_head - tail) - 1;
+        return available;
     }
 
     return -1;
@@ -195,18 +240,33 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
  *******************************************************************************/
 void USB_USART_Send_Data(uint8_t Data)
 {
-    APP_Rx_Buffer[APP_Rx_ptr_in] = Data;
-
-    APP_Rx_ptr_in++;
-
-    /* To avoid buffer overflow */
-    if(APP_Rx_ptr_in == APP_RX_DATA_SIZE)
-    {
-        APP_Rx_ptr_in = 0;
+    int32_t available = 0;
+    do {
+        available = USB_USART_Available_Data_For_Write();
     }
+    while (available < 1 && available != -1);
+    // Confirm once again that the Host is connected
+    if (USB_USART_Connected())
+    {
+        uint32_t head = USB_Tx_Buffer_head;
 
-    //Delay 100us to avoid losing the data
-    HAL_Delay_Microseconds(100);
+        USB_Tx_Buffer[head] = Data;
+
+        USB_Tx_Buffer_head = ++head % USB_TX_BUFFER_SIZE;
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : USB_USART_Flush_Data.
+ * Description    : Flushes TX buffer
+ * Input          : None.
+ * Return         : None.
+ *******************************************************************************/
+void USB_USART_Flush_Data(void)
+{
+    while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USB_TX_BUFFER_SIZE - 1));
+    // We should also wait for USB_Tx_State to become 0, as hardware might still be busy transmitting data
+    while(USB_Tx_State == 1);
 }
 #endif
 
