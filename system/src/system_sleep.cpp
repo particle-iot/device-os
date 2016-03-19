@@ -55,7 +55,7 @@ static void network_suspend() {
 }
 
 static void network_resume() {
-	// Set the system flags that triggers the wifi/cloud reconnection in the background loop
+    // Set the system flags that triggers the wifi/cloud reconnection in the background loop
     if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
         SPARK_WLAN_SLEEP = 0;
     if (wakeupState.cloud)
@@ -121,24 +121,28 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
     }
 }
 
-
-int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+int _system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
-	SYSTEM_THREAD_CONTEXT_SYNC_CALL(system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved));
     network_suspend();
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
-    network_resume();		// asynchronously bring up the network/cloud
+    network_resume();   // asynchronously bring up the network/cloud
 
-    // if single-threaded, managed mode then reconnect to the cloud (for up to 30 seconds)
+    // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
     auto mode = system_mode();
     if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && SPARK_CLOUD_CONNECT) {
-    		waitFor(spark_connected, 60000);
+        waitFor(spark_connected, 60000);
     }
 
     if (spark_connected()) {
-    		Spark_Wake();
+        Spark_Wake();
     }
+    return 0;
+}
+
+int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC_CALL(_system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved));
     return 0;
 }
 
@@ -147,5 +151,5 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
  */
 void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
-	system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved);
+    system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved);
 }
