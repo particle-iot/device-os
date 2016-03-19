@@ -113,4 +113,4 @@ void system_unsubscribe_event(system_event_t events, system_event_handler_t* han
  * @param data
  * @param pointer
  */
-void system_notify_event(system_event_t event, uint32_t data=0, void* pointer=nullptr, void (*fn)()=nullptr);
+void system_notify_event(system_event_t event, uint32_t data=0, void* pointer=nullptr, void (*fn)(void* data)=nullptr, void* fndata=nullptr);

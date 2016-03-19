@@ -23,12 +23,101 @@
 
 test(api_cellular_rssi) {
     CellularSignal sig;
-
     API_COMPILE(Cellular.RSSI());
-
     API_COMPILE(sig = Cellular.RSSI());
-
     API_COMPILE(Serial.println(sig));
+}
+
+test(api_cellular_ip) {
+    IPAddress address;
+    API_COMPILE(address=Cellular.localIP());
+}
+
+test(api_cellular_set_credentials) {
+    API_COMPILE(Cellular.setCredentials("apn"));
+    API_COMPILE(Cellular.setCredentials("username","password"));
+}
+
+test (api_cellular_connect_disconnect) {
+    API_COMPILE(Cellular.connect());
+    API_COMPILE(Cellular.disconnect());
+}
+
+test (api_cellular_on_off) {
+    API_COMPILE(Cellular.on());
+    API_COMPILE(Cellular.off());
+}
+
+test (api_cellular_listen) {
+    bool result;
+    API_COMPILE(Cellular.listen());
+    API_COMPILE(Cellular.listen(false));
+    API_COMPILE(result=Cellular.listening());
+    (void)result; // avoid unused variable warning
+}
+
+test (api_cellular_ready) {
+    bool result;
+    API_COMPILE(result=Cellular.ready());
+    (void)result; // avoid unused variable warning
+}
+
+test(api_cellular_data_usage) {
+    CellularData data1;
+    CellularData data2;
+    data2.ok = true;
+    bool result;
+
+    API_COMPILE(result = Cellular.getDataUsage(data1));
+
+    API_COMPILE(result = Cellular.setDataUsage(data1));
+
+    API_COMPILE(result = Cellular.resetDataUsage());
+
+    API_COMPILE(!Cellular.getDataUsage(data1));
+
+    API_COMPILE(!!Cellular.getDataUsage(data1));
+
+    API_COMPILE(result = data1);
+
+    API_COMPILE(result = data2);
+
+    API_COMPILE(Serial.println(data1));
+
+    // These should not compile, test these manually by changing to API_COMPILE()
+    API_NO_COMPILE(data1 == data2);
+    API_NO_COMPILE(data1 != data2);
+
+    (void)result; // avoid unused warning
+}
+
+test(api_cellular_band_select) {
+    CellularBand band1;
+    CellularBand band2;
+    band2.ok = true;
+    bool result;
+
+    API_COMPILE(result = Cellular.getBandSelect(band1));
+
+    API_COMPILE(result = Cellular.setBandSelect("1900"));
+
+    API_COMPILE(result = Cellular.getBandAvailable(band1));
+
+    API_COMPILE(!Cellular.getBandSelect(band1));
+
+    API_COMPILE(!!Cellular.getBandSelect(band1));
+
+    API_COMPILE(result = band1);
+
+    API_COMPILE(result = band2);
+
+    API_COMPILE(Serial.println(band1));
+
+    // These should not compile, test these manually by changing to API_COMPILE()
+    API_NO_COMPILE(band1 == band2);
+    API_NO_COMPILE(band1 != band2);
+
+    (void)result; // avoid unused warning
 }
 
 #endif

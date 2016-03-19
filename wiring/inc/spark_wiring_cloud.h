@@ -184,9 +184,10 @@ public:
     template <typename T, class ... Types>
     static inline bool function(const T &name, Types ... args)
     {
+#if PLATFORM_ID!=3
         static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_FUNC_KEY_LENGTH + 1,
             "\n\nIn Particle.function, name must be less than " __XSTRING(USER_FUNC_KEY_LENGTH) " characters\n\n");
-
+#endif
         return _function(name, args...);
     }
 

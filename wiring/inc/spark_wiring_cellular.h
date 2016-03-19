@@ -23,10 +23,11 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
 #include "system_network.h"
-#include "cellular_hal.h"
-#include "spark_wiring_cellularsignal.h"
 
 #if Wiring_Cellular
+
+#include "cellular_hal.h"
+#include "spark_wiring_cellular_printable.h"
 
 namespace spark {
 
@@ -36,6 +37,9 @@ class CellularClass : public NetworkClass
 
 public:
 
+    IPAddress localIP() {
+        return IPAddress(((CellularConfig*)network_config(*this, 0, NULL))->nw.aucIP);
+    }
     void on() {
         network_on(*this, 0, 0, NULL);
     }
@@ -73,6 +77,15 @@ public:
     }
 
     CellularSignal RSSI();
+
+    bool getDataUsage(CellularData &data_get);
+    bool setDataUsage(CellularData &data_set);
+    bool resetDataUsage(void);
+
+    bool setBandSelect(const char* band);
+    bool setBandSelect(CellularBand &data_set);
+    bool getBandSelect(CellularBand &data_get);
+    bool getBandAvailable(CellularBand &data_get);
 
     template<typename... Targs>
     inline int command(const char* format, Targs... Fargs)

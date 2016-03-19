@@ -69,7 +69,7 @@ Commands:
 - `l`: list tests included
 - `t`: run the tests
 
-For example:
+```
 
 # Unit Tests
 

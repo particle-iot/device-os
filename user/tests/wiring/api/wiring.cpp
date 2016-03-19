@@ -67,6 +67,27 @@ test(api_wiring_usartserial) {
     API_COMPILE(Serial1.blockOnOverrun(true));
 
     API_COMPILE(Serial1.availableForWrite());
+
+    API_COMPILE(Serial1.begin(9600, SERIAL_8N1));
+    API_COMPILE(Serial1.end());
+    API_COMPILE(Serial1.begin(9600, SERIAL_8N2));
+    API_COMPILE(Serial1.end());
+
+    API_COMPILE(Serial1.begin(9600, SERIAL_8E1));
+    API_COMPILE(Serial1.end());
+    API_COMPILE(Serial1.begin(9600, SERIAL_8E2));
+    API_COMPILE(Serial1.end());
+
+    API_COMPILE(Serial1.begin(9600, SERIAL_8O1));
+    API_COMPILE(Serial1.end());
+    API_COMPILE(Serial1.begin(9600, SERIAL_8O2));
+    API_COMPILE(Serial1.end());
+
+
+    API_COMPILE(Serial1.begin(9600, SERIAL_9N1));
+    API_COMPILE(Serial1.end());
+    API_COMPILE(Serial1.begin(9600, SERIAL_9N2));
+    API_COMPILE(Serial1.end());
 }
 
 test(api_wiring_usbserial) {

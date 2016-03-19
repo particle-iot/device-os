@@ -881,9 +881,10 @@ static uint8_t  usbd_cdc_SOF (void *pdev)
   {
     /* Reset the frame counter */
     FrameCount = 0;
-
-    usbd_cdc_Schedule_In(pdev);
-    usbd_cdc_Schedule_Out(pdev);
+    if (cdcConfigured) {
+      usbd_cdc_Schedule_In(pdev);
+      usbd_cdc_Schedule_Out(pdev);
+    }
   }
 
   return USBD_OK;

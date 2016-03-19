@@ -39,7 +39,13 @@ typedef enum HAL_SPI_Interface {
 #endif
 } HAL_SPI_Interface;
 
+typedef enum
+{
+    SPI_MODE_MASTER = 0, SPI_MODE_SLAVE = 1
+} SPI_Mode;
+
 typedef void (*HAL_SPI_DMA_UserCallback)(void);
+typedef void (*HAL_SPI_Select_UserCallback)(uint8_t);
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -75,6 +81,7 @@ typedef struct hal_spi_info_t {
 
 void HAL_SPI_Init(HAL_SPI_Interface spi);
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin);
+void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved);
 void HAL_SPI_End(HAL_SPI_Interface spi);
 void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order);
 void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode);
@@ -84,6 +91,9 @@ void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffe
 bool HAL_SPI_Is_Enabled_Old();
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi);
 void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved);
+void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved);
+void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi);
+int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi);
 
 #ifdef __cplusplus
 }
