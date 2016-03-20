@@ -82,10 +82,19 @@
 #define CDC0_CMD_EP                      0x82  /* EP2 for CDC commands */
 #define CDC1_IN_EP                       0x83  /* EP3 for data IN */
 #define CDC1_OUT_EP                      0x02  /* EP2 for data OUT */
-#define CDC1_CMD_EP                      0x84  /* EP4 for CDC commands */
+#ifndef USE_USB_OTG_FS
+# define CDC1_CMD_EP                      0x84  /* EP4 for CDC commands */
+#else
+# define CDC1_CMD_EP                      0x82  /* EP2 for CDC commands (shared) */
+# define CDC_CMD_EP_SHARED
+#endif
 
 /* USB HID Class Layer Parameters */
-#define HID_IN_EP                        0x85  /* EP 5 */
+#ifndef USE_USB_OTG_FS
+# define HID_IN_EP                        0x85  /* EP5 */
+#else
+# define HID_IN_EP                        0x83  /* EP3 */
+#endif
 #define HID_IN_PACKET                    16
 #define HID_OUT_EP                       0x03
 #define HID_OUT_PACKET                   16

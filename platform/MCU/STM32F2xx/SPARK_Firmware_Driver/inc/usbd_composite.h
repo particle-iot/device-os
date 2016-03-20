@@ -58,6 +58,7 @@ struct USBD_Composite_Class_Data {
 
 extern void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, uint8_t front);
 extern void  USBD_Composite_Unregister(void* cls, void* priv);
+extern void  USBD_Composite_Set_State(void* cls, bool state);
 extern void  USBD_Composite_Unregister_All();
 
 #endif /* USBD_COMPOSITE_H_ */

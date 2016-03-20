@@ -162,7 +162,6 @@ static uint8_t USBD_MHID_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
   memcpy(priv->descriptor, cls->cfg + 0x09, USBD_MHID_DESC_SIZE);
 #endif
 
-  cls->epMask = (1 << (priv->ep_in & 0x7f) | ((1 << (priv->ep_out & 0x7f)) << 16));
   /* Open EP IN */
   DCD_EP_Open(pdev,
               priv->ep_in,
@@ -271,7 +270,6 @@ static uint8_t USBD_MHID_Setup(void* pdev, USBD_Composite_Class_Data* cls, USB_S
 
 uint8_t USBD_MHID_SendReport (USB_OTG_CORE_HANDLE* pdev, USBD_MHID_Instance_Data* priv, uint8_t* report, uint16_t len)
 {
-  DEBUG("USBD_MHID_SendReport %d", len);
   priv = &USBD_MHID_Instance;
   
   if (pdev->dev.device_status == USB_OTG_CONFIGURED && priv->configured)
@@ -293,6 +291,9 @@ static uint8_t* USBD_MHID_GetConfigDescriptor(uint8_t speed, USBD_Composite_Clas
   *(buf + 2) = cls->firstInterface;
   // Update endpoint number
   *(buf + 20) = priv->ep_in;
+
+  cls->epMask = (1 << (priv->ep_in & 0x7f));
+
   return buf;
 }
 

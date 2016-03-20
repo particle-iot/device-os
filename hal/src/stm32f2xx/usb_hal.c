@@ -57,6 +57,9 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 #endif
 
 static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
+static void HAL_USB_Attach(void);
+static void HAL_USB_Detach(void);
+static uint8_t USB_Configured = 0;
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
 /*******************************************************************************
@@ -67,6 +70,10 @@ static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
  *******************************************************************************/
 void SPARK_USB_Setup(void)
 {
+    if (USB_Configured)
+        return;
+
+    USB_Configured = 1;
     USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_FS
             USB_OTG_FS_CORE_ID,
@@ -77,6 +84,7 @@ void SPARK_USB_Setup(void)
             //&USBD_CDC_cb,
             &USBD_Composite_cb,
             NULL);
+    HAL_USB_Attach();
 }
 
 /*******************************************************************************
@@ -96,14 +104,8 @@ void Get_SerialNum(void)
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 {
-    USBD_Composite_Unregister_All();
-
     // Enable Serial by default
     HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, NULL);
-    HAL_USB_USART_Begin(HAL_USB_USART_SERIAL1, 9600, NULL);
-
-    SPARK_USB_Setup();
-
     LineCoding_BitRate_Handler = handler;
 }
 
@@ -134,12 +136,14 @@ static HAL_USB_USART_Info usbUsartMap[HAL_USB_USART_SERIAL_COUNT] = { {0} };
 
 static void HAL_USB_Detach(void)
 {
-    USB_Cable_Config(DISABLE);
+    if (USB_Configured)
+        USB_Cable_Config(DISABLE);
 }
 
 static void HAL_USB_Attach(void)
 {
-    USB_Cable_Config(ENABLE);
+    if (USB_Configured)
+        USB_Cable_Config(ENABLE);
 }
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* config)
@@ -168,6 +172,11 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* confi
     }
 
     usbUsartMap[serial].data->req_handler = HAL_USB_USART_Request_Handler;
+
+    if (!usbUsartMap[serial].cls) {
+        usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, serial == HAL_USB_USART_SERIAL ? 1 : 0);
+        USBD_Composite_Set_State(usbUsartMap[serial].cls, false);
+    }
 }
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved)
@@ -178,18 +187,25 @@ void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reser
     
     if (!usbUsartMap[serial].registered) {
         HAL_USB_Detach();
-        usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, 0);
+        if (!usbUsartMap[serial].cls)
+            usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, 0);
+        else
+            USBD_Composite_Set_State(usbUsartMap[serial].cls, true);
         usbUsartMap[serial].registered = 1;
         usbUsartMap[serial].data->linecoding.bitrate = baud;
         HAL_USB_Attach();
     }
+
+    SPARK_USB_Setup();
 }
 
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial)
 {
     if (usbUsartMap[serial].registered) {
         HAL_USB_Detach();
-        USBD_Composite_Unregister(usbUsartMap[serial].cls, usbUsartMap[serial].data);
+        // Do not unregister, just deactivate to keep Serial and USBSerial1 using the same interface numbers
+        // USBD_Composite_Unregister(usbUsartMap[serial].cls, usbUsartMap[serial].data);
+        USBD_Composite_Set_State(usbUsartMap[serial].cls, false);
         usbUsartMap[serial].registered = 0;
         HAL_USB_Attach();
     }
@@ -313,6 +329,8 @@ void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1)
         usbHid.registered = 1;
         usbHid.refcount++;
         HAL_USB_Attach();
+
+        SPARK_USB_Setup();
     } else {
         usbHid.refcount++;
     }

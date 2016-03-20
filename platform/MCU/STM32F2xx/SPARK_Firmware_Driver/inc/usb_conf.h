@@ -110,11 +110,11 @@
 
 /****************** USB OTG FS CONFIGURATION **********************************/
 #ifdef USB_OTG_FS_CORE
- #define RX_FIFO_FS_SIZE                          128
+ #define RX_FIFO_FS_SIZE                          112
  #define TX0_FIFO_FS_SIZE                          32
- #define TX1_FIFO_FS_SIZE                         128
+ #define TX1_FIFO_FS_SIZE                         112
  #define TX2_FIFO_FS_SIZE                          32
- #define TX3_FIFO_FS_SIZE                           0
+ #define TX3_FIFO_FS_SIZE                          32
 
 // #define USB_OTG_FS_LOW_PWR_MGMT_SUPPORT
 // #define USB_OTG_FS_SOF_OUTPUT_ENABLED

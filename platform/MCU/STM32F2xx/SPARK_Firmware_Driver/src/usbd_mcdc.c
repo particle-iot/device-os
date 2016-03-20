@@ -79,6 +79,10 @@ static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32
 
 static const uint8_t USBD_MCDC_CfgDesc[USBD_MCDC_CONFIG_DESC_SIZE] __ALIGN_END;
 
+#ifdef CDC_CMD_EP_SHARED
+static uint8_t USBD_MCDC_Cmd_Ep_Refcount = 0;
+#endif
+
 /* CDC interface class callbacks structure */
 USBD_Multi_Instance_cb_Typedef USBD_MCDC_cb =
 {
@@ -223,9 +227,6 @@ static uint8_t USBD_MCDC_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
   memcpy(priv->descriptor, cls->cfg, USBD_MCDC_DESC_SIZE);
 #endif
 
-  cls->epMask = (1 << (priv->ep_in_data & 0x7f)) | (1 << (priv->ep_in_int & 0x7f)) |
-                ((1 << (priv->ep_out_data & 0x7f)) << 16);
-
   /* Open EP IN */
   DCD_EP_Open(pdev,
               priv->ep_in_data,
@@ -238,12 +239,17 @@ static uint8_t USBD_MCDC_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
               CDC_DATA_OUT_PACKET_SIZE,
               USB_OTG_EP_BULK);
 
+#ifdef CDC_CMD_EP_SHARED
+  if (USBD_MCDC_Cmd_Ep_Refcount++ == 0) {
+#endif
   /* Open Command IN EP */
   DCD_EP_Open(pdev,
               priv->ep_in_int,
               CDC_CMD_PACKET_SZE,
               USB_OTG_EP_INT);
-
+#ifdef CDC_CMD_EP_SHARED
+  }
+#endif
   priv->rx_state = 1;
   priv->configured = 1;
   
@@ -273,10 +279,15 @@ static uint8_t USBD_MCDC_DeInit(void* pdev, USBD_Composite_Class_Data* cls, uint
     /* Close EP OUT */
     DCD_EP_Close(pdev,
                  priv->ep_out_data);
-
+#ifdef CDC_CMD_EP_SHARED
+    if (--USBD_MCDC_Cmd_Ep_Refcount == 0) {
+#endif
     /* Close Command IN EP */
     DCD_EP_Close(pdev,
                  priv->ep_in_int);
+#ifdef CDC_CMD_EP_SHARED
+    }
+#endif
   }
 
   USBD_MCDC_Change_Open_State(priv, 0);
@@ -593,7 +604,13 @@ static uint8_t* USBD_MCDC_GetCfgDesc(uint8_t speed, USBD_Composite_Class_Data* c
 
   // Update IN endpoint
   *(buf + 61) = priv->ep_in_data;
-
+#ifndef CDC_CMD_EP_SHARED
+  cls->epMask = (1 << (priv->ep_in_data & 0x7f)) | (1 << (priv->ep_in_int & 0x7f)) |
+                ((1 << (priv->ep_out_data & 0x7f)) << 16);
+#else
+  cls->epMask = (1 << (priv->ep_in_data & 0x7f)) | ((cls->firstInterface == 0 ? 1 : 0) << (priv->ep_in_int & 0x7f)) |
+                ((1 << (priv->ep_out_data & 0x7f)) << 16);
+#endif
   return buf;
 }
 

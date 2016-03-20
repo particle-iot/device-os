@@ -67,10 +67,10 @@ USBD_Class_cb_TypeDef USBD_Composite_cb = {
   NULL, // USBD_Composite_IsoOUTIncomplete,
   USBD_Composite_GetConfigDescriptor,
 #ifdef USB_OTG_HS_CORE
-  USBD_Composite_GetOtherConfigDescriptor
+  USBD_Composite_GetOtherConfigDescriptor,
 #endif
 #ifdef USB_SUPPORT_USER_STRING_DESC
-  , USBD_Composite_GetUsrStrDescriptor
+  USBD_Composite_GetUsrStrDescriptor
 #endif
 };
 
@@ -222,8 +222,11 @@ static uint8_t* USBD_Composite_GetUsrStrDescriptor(uint8_t speed, uint8_t index,
 
 static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
   uint8_t totalInterfaces = 0;
+  uint8_t activeInterfaces = 0;
   uint16_t totalLength = USBD_COMPOSITE_CFGDESC_HEADER_LENGTH;
   uint16_t clsCfgLength;
+
+  uint32_t epMask = 0;
 
   uint8_t *pbuf = buf;
   memcpy(pbuf, USBD_Composite_CfgDescHeaderTemplate, USBD_COMPOSITE_CFGDESC_HEADER_LENGTH);
@@ -244,18 +247,22 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
 #endif
 
     if (clsCfgLength) {
-      c->cfg = pbuf;
       totalInterfaces += c->interfaces;
-      pbuf += clsCfgLength;
-      totalLength += clsCfgLength;
+      if (c->active && (epMask & c->epMask) == 0) {
+        epMask |= c->epMask;
+        activeInterfaces += c->interfaces;
+        c->cfg = pbuf;
+        pbuf += clsCfgLength;
+        totalLength += clsCfgLength;
+      }
     }
   }
 
   // Update wTotalLength and bNumInterfaces
-  *(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES) = totalInterfaces;
+  *(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES) = activeInterfaces;
   *((uint16_t *)(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_TOTAL_LENGTH)) = totalLength;
 
-  DEBUG("Built USB descriptors: %d bytes, %d total interfaces", totalLength, totalInterfaces);
+  DEBUG("Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces, activeInterfaces);
 
   return totalLength;
 }
@@ -322,4 +329,13 @@ void USBD_Composite_Unregister_All() {
   s_Classes = NULL;
   s_Classes_Count = 0;
   memset(s_Class_Entries, 0, sizeof(s_Class_Entries));
+}
+
+void USBD_Composite_Set_State(void* cls, bool state) {
+  for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
+    if (cls && c == cls) {
+      c->active = state;
+      break;
+    }
+  }
 }
