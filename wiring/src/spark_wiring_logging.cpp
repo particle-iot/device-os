@@ -26,20 +26,22 @@ using spark::Logger;
 
 class LogHandler {
 public:
-    LogHandler() {
-        log_set_callbacks(logMessage, logWrite, logEnabled, nullptr);
-    }
-
     void addLogger(Logger *logger) {
         const auto it = std::find(loggers_.cbegin(), loggers_.cend(), logger);
         if (it == loggers_.end()) {
             loggers_.push_back(logger);
+            if (loggers_.size() == 1) {
+                log_set_callbacks(logMessage, logWrite, logEnabled, nullptr);
+            }
         }
     }
 
     void removeLogger(Logger *logger) {
         const auto it = std::find(loggers_.begin(), loggers_.end(), logger);
         if (it != loggers_.end()) {
+            if (loggers_.size() == 1) {
+                log_set_callbacks(nullptr, nullptr, nullptr, nullptr);
+            }
             loggers_.erase(it);
         }
     }
