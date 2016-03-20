@@ -132,7 +132,7 @@ void log_format(int level, const char *category, void *reserved, const char *fmt
     }
 }
 
-void log_dump(int level, const char *category, const void *data, size_t size, void *reserved) {
+void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved) {
     if (!size || (!log_write_callback && (!log_compat_callback || level < log_compat_level))) {
         return;
     }

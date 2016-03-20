@@ -145,7 +145,7 @@ void log_write(int level, const char *category, const char *data, size_t size, v
 void log_format(int level, const char *category, void *reserved, const char *fmt, ...);
 
 // Encodes data as hex string and forwards it to backend logger
-void log_dump(int level, const char *category, const void *data, size_t size, void *reserved);
+void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved);
 
 // Returns 1 if logging is enabled for specified level and category
 int log_enabled(int level, const char *category, void *reserved);
@@ -278,15 +278,15 @@ static const char* const _log_category = NULL;
 #define LOG_PRINT_C(_level, _category, _str) \
         do { \
             if (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL) { \
-                const char* const s = _str; \
-                log_write(_level##_LEVEL, _category, s, strlen(s), NULL); \
+                const char* const _s = _str; \
+                log_write(_level##_LEVEL, _category, _s, strlen(_s), NULL); \
             } \
         } while (0)
 
 #define LOG_DUMP_C(_level, _category, _data, _size) \
         do { \
             if (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL) { \
-                log_dump(_level##_LEVEL, _category, _data, _size, NULL); \
+                log_dump(_level##_LEVEL, _category, _data, _size, 0, NULL); \
             } \
         } while (0)
 
