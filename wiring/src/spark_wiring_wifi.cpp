@@ -37,7 +37,7 @@ namespace spark {
     class APArrayPopulator
     {
         WiFiAccessPoint* results;
-        int count;
+
         int index;
 
         void addResult(WiFiAccessPoint* result) {
@@ -52,6 +52,7 @@ namespace spark {
             ((APArrayPopulator*)cookie)->addResult(result);
         }
 
+        int count;
     public:
         APArrayPopulator(WiFiAccessPoint* results, int size) {
             this->results = results;
@@ -66,7 +67,7 @@ namespace spark {
 
         int start()
         {
-            return wlan_scan(callback, this);
+            return std::min(count, wlan_scan(callback, this));
         }
     };
 
@@ -76,7 +77,7 @@ namespace spark {
 
         int start()
         {
-            return wlan_get_credentials(callback, this);
+            return std::min(count, wlan_get_credentials(callback, this));
         }
     };
 
