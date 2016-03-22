@@ -76,7 +76,7 @@ static void Serial_PrintCharArray(Stream *serialObj, char *s)
 inline int32_t YModem::receive_byte(uint8_t& c, uint32_t timeout)
 {
     uint32_t start = HAL_Timer_Get_Milli_Seconds();
-    while (HAL_Timer_Get_Milli_Seconds()-start <= timeout)
+    while (HAL_Timer_Get_Milli_Seconds() - start <= timeout)
     {
         if (Serial_KeyPressed(&stream, &c) == 1)
         {
@@ -85,7 +85,6 @@ inline int32_t YModem::receive_byte(uint8_t& c, uint32_t timeout)
     }
     return -1;
 }
-
 
 /**
  * @brief  Receive a packet from sender

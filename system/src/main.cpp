@@ -480,7 +480,8 @@ void manage_safe_mode()
             system_thread_set_state(spark::feature::DISABLED, NULL);
             uint8_t value = 0;
             system_get_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, &value, nullptr);
-            if (value) {
+            if (value)
+            {
                 // disable logging so that it doesn't interfere with serial output
                 set_logger_output(nullptr, NO_LOG_LEVEL);
                 system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 0, 0);

@@ -147,7 +147,7 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
 
 int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
 {
-	return -1;
+    return -1;
 }
 
 void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data)
@@ -156,6 +156,5 @@ void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data)
 
 uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR)
 {
-	return 0xFFFFFFFF;
+    return 0xFFFFFFFF;
 }
-

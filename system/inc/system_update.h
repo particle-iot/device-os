@@ -102,18 +102,18 @@ typedef enum
      */
     SYSTEM_FLAG_RESET_ENABLED,
 
-	/**
-	 * A persistent flag that when set will cause the system to startup
-	 * in listening mode if booting in safe mode. The flag is automatically
-	 * cleared on reboot.
-	 */
-	SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
+    /**
+     * A persistent flag that when set will cause the system to startup
+     * in listening mode if booting in safe mode. The flag is automatically
+     * cleared on reboot.
+     */
+    SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
 
     /**
      * When 0, the application code is not paused.
      * When 1, the application code is paused.
      */
-    //SYSTEM_FLAG_APPLICATION_PAUSED=4,
+    // SYSTEM_FLAG_APPLICATION_PAUSED=4,
 
     SYSTEM_FLAG_MAX
 

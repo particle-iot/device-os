@@ -42,7 +42,7 @@ uint8_t DeviceStatus[6];
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
+static void IntToUnicode(uint32_t value, uint8_t* pbuf, uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -105,8 +105,8 @@ void Get_SerialNum(void)
 
     if (Device_Serial0 != 0)
     {
-        IntToUnicode (Device_Serial0, &DFU_StringSerial[2] , 8);
-        IntToUnicode (Device_Serial1, &DFU_StringSerial[18], 4);
+        IntToUnicode(Device_Serial0, &DFU_StringSerial[2], 8);
+        IntToUnicode(Device_Serial1, &DFU_StringSerial[18], 4);
     }
 }
 
@@ -116,24 +116,24 @@ void Get_SerialNum(void)
  * Input          : None.
  * Return         : None.
  *******************************************************************************/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
+static void IntToUnicode(uint32_t value, uint8_t* pbuf, uint8_t len)
 {
     uint8_t idx = 0;
 
-    for( idx = 0 ; idx < len ; idx ++)
+    for (idx = 0; idx < len; idx++)
     {
-        if( ((value >> 28)) < 0xA )
+        if (((value >> 28)) < 0xA)
         {
-            pbuf[ 2* idx] = (value >> 28) + '0';
+            pbuf[2 * idx] = (value >> 28) + '0';
         }
         else
         {
-            pbuf[2* idx] = (value >> 28) + 'A' - 10;
+            pbuf[2 * idx] = (value >> 28) + 'A' - 10;
         }
 
         value = value << 4;
 
-        pbuf[ 2* idx + 1] = 0;
+        pbuf[2 * idx + 1] = 0;
     }
 }
 

@@ -30,7 +30,6 @@ extern "C" {
 
 bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& desc, void*);
 
-
 #ifdef __cplusplus
 }
 #endif
@@ -40,7 +39,6 @@ class YModem
     Stream& stream;
 
 public:
-
     enum protocol_params_t
     {
         PACKET_SEQNO_INDEX = 1,
@@ -59,16 +57,16 @@ public:
 
     enum protocol_msg_t
     {
-        SOH = (0x01), /* start of 128-byte data packet */
-        STX = (0x02), /* start of 1024-byte data packet */
-        EOT = (0x04), /* end of transmission */
-        ACK = (0x06), /* acknowledge */
-        NAK = (0x15), /* negative acknowledge */
-        CA = (0x18), /* two of these in succession aborts transfer */
+        SOH = (0x01),   /* start of 128-byte data packet */
+        STX = (0x02),   /* start of 1024-byte data packet */
+        EOT = (0x04),   /* end of transmission */
+        ACK = (0x06),   /* acknowledge */
+        NAK = (0x15),   /* negative acknowledge */
+        CA = (0x18),    /* two of these in succession aborts transfer */
         CRC16 = (0x43), /* 'C' == 0x43, request 16-bit CRC */
 
         ABORT1 = (0x41), /* 'A' == 0x41, abort by user */
-        ABORT2 = (0x61) /* 'a' == 0x61, abort by user */
+        ABORT2 = (0x61)  /* 'a' == 0x61, abort by user */
     };
 
     struct file_desc_t
@@ -77,11 +75,11 @@ public:
         char file_size[FILE_SIZE_LENGTH];
     };
 
-    YModem(Stream& stream_) : stream(stream_) { }
-
+    YModem(Stream& stream_) : stream(stream_)
+    {
+    }
 
     int32_t receive_file(FileTransfer::Descriptor& tx, file_desc_t& file_info);
-
 
 private:
     uint8_t packet_data[YModem::PACKET_1K_SIZE + YModem::PACKET_OVERHEAD];
@@ -111,11 +109,9 @@ private:
     //#define CMD_STRING_SIZE         128
 
     int32_t receive_packet(uint8_t* data, int32_t& length, uint32_t timeout);
-    int32_t handle_packet(uint8_t* packet_data, int32_t packet_length, FileTransfer::Descriptor& tx, file_desc_t& desc);
+    int32_t handle_packet(uint8_t* packet_data, int32_t packet_length, FileTransfer::Descriptor& tx,
+                          file_desc_t& desc);
     void parse_file_packet(FileTransfer::Descriptor& tx, file_desc_t& desc, uint8_t* packet_data);
-
 };
 
-
 #endif /* SYSTEM_YMODEM_H */
-

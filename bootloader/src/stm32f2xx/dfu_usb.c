@@ -60,12 +60,10 @@ void HAL_DFU_USB_Init(void)
 {
     USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_FS
-            USB_OTG_FS_CORE_ID,
+              USB_OTG_FS_CORE_ID,
 #elif defined USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
+              USB_OTG_HS_CORE_ID,
 #endif
-            &USR_desc,
-            &DFU_cb,
-            NULL); //Passing NULL here to reduce bootloader flash requirements
+              &USR_desc, &DFU_cb,
+              NULL); // Passing NULL here to reduce bootloader flash requirements
 }
-

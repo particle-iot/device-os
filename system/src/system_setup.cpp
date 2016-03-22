@@ -65,19 +65,25 @@ template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config
     : config(config_)
 {
     WITH_LOCK(serial);
-    if (serial.baud() == 0) {
+    if (serial.baud() == 0)
+    {
         serial.begin(9600);
     }
 }
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
-    TRY_LOCK(serial) {
-        if (serial.available()) {
+    TRY_LOCK(serial)
+    {
+        if (serial.available())
+        {
             int c = serial.peek();
-            if (c >= 0) {
-                if (!handle_peek((char)c)) {
-                    if (serial.available()) {
+            if (c >= 0)
+            {
+                if (!handle_peek((char)c))
+                {
+                    if (serial.available())
+                    {
                         c = serial.read();
                         handle((char)c);
                     }
@@ -87,17 +93,16 @@ template<typename Config> void SystemSetupConsole<Config>::loop(void)
     }
 }
 
-template<typename Config> bool SystemSetupConsole<Config>::handle_peek(char c)
+template <typename Config>
+bool SystemSetupConsole<Config>::handle_peek(char c)
 {
-    if (YModem::SOH==c || YModem::STX==c)
+    if (YModem::SOH == c || YModem::STX == c)
     {
         system_firmwareUpdate(&serial);
         return true;
     }
     return false;
 }
-
-
 
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)
 {

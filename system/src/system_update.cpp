@@ -59,13 +59,13 @@ static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
-static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE==4, "system flag value");
-static_assert(SYSTEM_FLAG_MAX==5, "system flag max value");
+static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE == 4, "system flag value");
+static_assert(SYSTEM_FLAG_MAX == 5, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
-    0, 1,   // OTA updates pending/enabled
-    0, 1,   // Reset pending/enabled
-    0,      // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE
+    0, 1, // OTA updates pending/enabled
+    0, 1, // Reset pending/enabled
+    0,    // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE
 };
 
 const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
@@ -98,10 +98,10 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
         return -1;
     if (value)
     {
-        if (flag==SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+        if (flag == SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
         {
             uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_10);
-            *value = (reg==SAFE_MODE_LISTEN);
+            *value = (reg == SAFE_MODE_LISTEN);
         }
         else
         {
@@ -186,7 +186,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #ifdef START_YMODEM_FLASHER_SERIAL_SPEED
     if (!network_listening(0, 0, NULL) && bitrate == start_ymodem_flasher_serial_speed)
     {
-        network_listen(0,0,0);
+        network_listen(0, 0, 0);
     }
 #endif
 }
@@ -276,7 +276,8 @@ void system_shutdown_if_needed()
         system_tick_t start = millis();
         while (canShutdown() && (millis()-start)<30000)
         {
-            // todo - find a more enapsulated way for the SystemThread to take care of re-entranly doing work.
+            // todo - find a more enapsulated way for the SystemThread to take care of re-entranly
+            // doing work.
             spark_process();
             SystemThread.process();
         }
