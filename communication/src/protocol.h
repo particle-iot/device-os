@@ -264,6 +264,11 @@ public:
 		pinger.init(interval, timeout);
 	}
 
+	void set_keepalive(system_tick_t interval)
+	{
+		pinger.set_interval(interval);
+	}
+
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);

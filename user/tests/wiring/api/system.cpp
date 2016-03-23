@@ -148,16 +148,11 @@ void handler_event_data_param(system_event_t event, int data, void* param)
 test(system_events)
 {
     int clicks = system_button_clicks(123);
-
-    system_event_t my_events =
-        wifi_listen_begin+wifi_listen_end+wifi_listen_update+
-        setup_begin+setup_end+setup_update+
-        network_credentials+
-        network_status+
-        button_status+button_click+button_final_click+
-        reset+reset_pending+
-        firmware_update+firmware_update_pending+
-        all_events;
+    system_event_t my_events = wifi_listen_begin + wifi_listen_end + wifi_listen_update +
+                               setup_begin + setup_end + setup_update + network_credentials +
+                               network_status + button_status + button_click + button_final_click +
+                               reset + reset_pending + firmware_update + firmware_update_pending +
+                               all_events;
 
     API_COMPILE(System.on(my_events, handler));
     API_COMPILE(System.on(my_events, handler_event));

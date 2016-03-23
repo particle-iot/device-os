@@ -22,7 +22,13 @@ public:
 		this->ping_timeout = timeout;
 	}
 
-	void reset() {
+	void set_interval(system_tick_t interval)
+	{
+		this->ping_interval = interval;
+	}
+
+	void reset()
+	{
 		expecting_ping_ack = false;
 	}
 
