@@ -302,8 +302,11 @@ public:
     static String deviceID(void) { return SystemClass::deviceID(); }
 
 #if HAL_PLATFORM_CLOUD_UDP
-    static void keepAlive(unsigned sec) {
-        CLOUD_FN(spark_protocol_set_connection_property(sp(), particle::protocol::Connection::PING, sec*1000, nullptr, nullptr),(void)0);
+    static void keepAlive(unsigned sec)
+    {
+        CLOUD_FN(spark_protocol_set_connection_property(sp(), particle::protocol::Connection::PING,
+                                                        sec * 1000, nullptr, nullptr),
+                 (void)0);
     }
 #endif
 
@@ -315,7 +318,10 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    static ProtocolFacade* sp() { return spark_protocol_instance(); }
+    static ProtocolFacade* sp()
+    {
+        return spark_protocol_instance();
+    }
 
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {

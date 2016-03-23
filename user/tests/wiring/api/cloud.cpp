@@ -187,7 +187,7 @@ test(api_spark_connection) {
     API_COMPILE(Particle.process());
 
 #if HAL_PLATFORM_CLOUD_UDP
-    API_COMPILE(Particle.keepAlive(20*60));
+    API_COMPILE(Particle.keepAlive(20 * 60));
 #endif
 }
 
