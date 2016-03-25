@@ -2,16 +2,18 @@
 
 ### FEATURES
 
-- [Electron] `SYSTEM_THREAD()` is supported [#884](https://github.com/spark/firmware/pull/884)
+- [Electron] `SYSTEM_THREAD()` is supported (in Beta) [#884](https://github.com/spark/firmware/pull/884)
 - [Electron] data usage API [#866](https://github.com/spark/firmware/pull/866)
 - [Electron] Configurable keep-alive ping [#913](https://github.com/spark/firmware/pull/913) 
 - [Electron] Cellular Band Select API [#891](https://github.com/spark/firmware/pull/891)
+- [Electron] Cellular Local IP API [#850](https://github.com/spark/firmware/pull/850)
 - [Photon/Electron] Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
 - [Photon/Electron] SPI Slave support [#882](https://github.com/spark/firmware/pull/882) 
 - Atomic writes in EEPROM emulation [#871](https://github.com/spark/firmware/pull/871)
 - Software Watchdog [#860](https://github.com/spark/firmware/pull/860)
 - `Serial.availableForWrite()` and `Serial.blockOnOverrun()` [#798](https://github.com/spark/firmware/issues/798)
 - [Photon] SoftAP HTTP server can serve application pages. [#906](https://github.com/spark/firmware/pull/906)
+- Added NO_ACK flag for Particle.publish("event", "data", NO_ACK); for non-acknowledged publishes (consumes less data on Electron)
 
 ### ENHANCEMENTS
 
@@ -20,8 +22,11 @@
 - [Electron] `NO_ACK` flag on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
 - [Electron] Allow session to resume when IP changes. [#848](https://github.com/spark/firmware/pull/848)
 - [Electron] Ensure published events are received by the cloud before sleeping. [#909](https://github.com/spark/firmware/pull/909)
-- [Electron] `SYSTEM_NETWORK_STANDBY` on `System.sleep()` [#845](https://github.com/spark/firmware/pull/845)
+- [Electron] `SLEEP_NETWORK_STANDBY` on `System.sleep()` [#845](https://github.com/spark/firmware/pull/845)
 - Serial baudrate to select ymodem mode includes listening mode [#912](https://github.com/spark/firmware/pull/912) 
+- Wi-Fi connection process forced to timeout after 60 seconds if unsuccessful [#898](https://github.com/spark/firmware/pull/898)
+- Added write-verify-retry-fail logic to DFU writes [#870](https://github.com/spark/firmware/pull/870)
+- Support for USART (Serial1/2/4/5) parity [#757](https://github.com/spark/firmware/pull/757)
 
 ### BUGFIXES
 
@@ -29,8 +34,8 @@
 - TCPClient on Electron not receiving all of the data for small files [#896](https://github.com/spark/firmware/issues/896) 
 - [Electron] Free socket when the socket is closed remotely [#885](https://github.com/spark/firmware/pull/885)
 - Extended CAN filters [#857](https://github.com/spark/firmware/pull/857)
-- I2C does not ensure a stop condition completes correctly in endTransmission [#854](https://github.com/spark/firmware/issues/854)
-- DAC1/2 possible problem with `digitalWrite()` after `analogWrite()` [#833](https://github.com/spark/firmware/issues/833) 
+- I2C does not ensure a stop condition completes correctly in endTransmission [#856](https://github.com/spark/firmware/pull/856)
+- DAC1/2 possible problem with `digitalWrite()` after `analogWrite()` [#855](https://github.com/spark/firmware/pull/855) 
 - Servo HAL: Do not disable timer if some of its channels are still in use [#839](https://github.com/spark/firmware/pull/839)
 - USB driver fixes and Serial.available() not returning values greater than 1 [#812](https://github.com/spark/firmware/pull/812) [#669](https://github.com/spark/firmware/issues/669) [#846](https://github.com/spark/firmware/issues/846) [#923](https://github.com/spark/firmware/issues/923)
 - SOS During `WiFi.scan()` [#651](https://github.com/spark/firmware/issues/651)
