@@ -32,7 +32,7 @@
 - I2C does not ensure a stop condition completes correctly in endTransmission [#854](https://github.com/spark/firmware/issues/854)
 - DAC1/2 possible problem with `digitalWrite()` after `analogWrite()` [#833](https://github.com/spark/firmware/issues/833) 
 - Servo HAL: Do not disable timer if some of its channels are still in use [#839](https://github.com/spark/firmware/pull/839)
-- USB driver fixes [#812](https://github.com/spark/firmware/pull/812)
+- USB driver fixes and Serial.available() not returning values greater than 1 [#812](https://github.com/spark/firmware/pull/812) [#669](https://github.com/spark/firmware/issues/669) [#846](https://github.com/spark/firmware/issues/846) [#923](https://github.com/spark/firmware/issues/923)
 - SOS During `WiFi.scan()` [#651](https://github.com/spark/firmware/issues/651)
 
 
