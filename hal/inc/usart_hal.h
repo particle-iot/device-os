@@ -55,6 +55,34 @@
 #define SERIAL_STOP_BITS (uint8_t)0b00000011
 #define SERIAL_PARITY_BITS (uint8_t)0b00001100
 #define SERIAL_NINE_BITS (uint8_t)0b00010000
+#define SERIAL_FLOW_CONTROL ((uint8_t)0b01100000)
+
+// Flow control settings
+#define SERIAL_FLOW_CONTROL_NONE ((uint8_t)0b00000000)
+#define SERIAL_FLOW_CONTROL_RTS ((uint8_t)0b00100000)
+#define SERIAL_FLOW_CONTROL_CTS ((uint8_t)0b01000000)
+#define SERIAL_FLOW_CONTROL_RTS_CTS ((uint8_t)0b01100000)
+
+// LIN Configuration masks
+#define LIN_MODE ((uint32_t)0x0300)
+#define LIN_BREAK_BITS ((uint32_t)0x0C00)
+
+// LIN modes
+#define LIN_MODE_MASTER ((uint32_t)0x0100)
+#define LIN_MODE_SLAVE  ((uint32_t)0x0200)
+
+// LIN break settings
+// Supported only in Master mode
+#define LIN_BREAK_13 ((uint32_t)0x0400)
+// Supported only in Slave mode
+#define LIN_BREAK_10 ((uint32_t)0x0800)
+#define LIN_BREAK_11 ((uint32_t)0x0C00)
+
+// Pre-defined LIN configurations
+#define LIN_MASTER_13 (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_MASTER | LIN_BREAK_13)
+#define LIN_SLAVE_10  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE | LIN_BREAK_10)
+#define LIN_SLAVE_11  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE | LIN_BREAK_11)
+
 
 /* Exported types ------------------------------------------------------------*/
 typedef struct Ring_Buffer
@@ -97,6 +125,8 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial);
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable);
 void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*);
 uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data);
+void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved);
+uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial);
 
 #ifdef __cplusplus
 }
