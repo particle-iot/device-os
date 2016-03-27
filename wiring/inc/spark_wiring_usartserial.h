@@ -54,6 +54,10 @@ public:
   size_t write(uint16_t);
   virtual size_t write(uint8_t);
 
+  // LIN
+  void breakTx(void);
+  bool breakRx(void);
+
   inline size_t write(unsigned long n) { return write((uint16_t)n); }
   inline size_t write(long n) { return write((uint16_t)n); }
   inline size_t write(unsigned int n) { return write((uint16_t)n); }
