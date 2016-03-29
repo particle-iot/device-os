@@ -121,8 +121,9 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
     }
 }
 
-int _system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved));
     if (spark_cloud_flag_connected()) {
         Spark_Sleep();
     }
@@ -147,12 +148,6 @@ int _system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long se
     if (spark_cloud_flag_connected()) {
         Spark_Wake();
     }
-    return 0;
-}
-
-int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
-{
-    SYSTEM_THREAD_CONTEXT_SYNC_CALL(_system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved));
     return 0;
 }
 
