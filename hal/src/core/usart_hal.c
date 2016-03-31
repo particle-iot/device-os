@@ -450,13 +450,11 @@ void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 
 void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved)
 {
-  if (usartMap[serial]->usart_config & LIN_MODE_MASTER) {
-    int32_t state = HAL_disable_irq();
-    while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
-    USART_SendBreak(usartMap[serial]->usart_peripheral);
-    while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
-    HAL_enable_irq(state);
-  }
+  int32_t state = HAL_disable_irq();
+  while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
+  USART_SendBreak(usartMap[serial]->usart_peripheral);
+  while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
+  HAL_enable_irq(state);
 }
 
 uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial)
