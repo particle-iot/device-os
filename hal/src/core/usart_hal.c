@@ -28,6 +28,7 @@
 #include "gpio_hal.h"
 #include "stm32f10x.h"
 #include <string.h>
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum USART_Num_Def {
