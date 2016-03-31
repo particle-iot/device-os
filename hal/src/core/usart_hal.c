@@ -259,22 +259,25 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
     }
   }
 
+  // Disable LIN mode just in case
+  USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
+
   // Configure USART
   USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
 
   // LIN configuration
-  if (config & LIN_MODE_MASTER) {
-    // Ignore break settings
-  } else if (config & LIN_MODE_SLAVE) {
+  if (config & LIN_MODE) {
+    // Enable break detection
     switch(config & LIN_BREAK_BITS) {
-      case LIN_BREAK_10:
+      case LIN_BREAK_10B:
         USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_10b);
         break;
-      case LIN_BREAK_11:
+      case LIN_BREAK_11B:
         USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_11b);
         break;
     }
   }
+
 
   // Enable USART Receive and Transmit interrupts
   USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, ENABLE);
@@ -299,6 +302,9 @@ void HAL_USART_End(HAL_USART_Serial serial)
 
   // Disable the USART
   USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+
+  // Disable LIN mode
+  USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
 
   // Deinitialise USART
   USART_DeInit(usartMap[serial]->usart_peripheral);
@@ -445,7 +451,11 @@ void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved)
 {
   if (usartMap[serial]->usart_config & LIN_MODE_MASTER) {
+    int32_t state = HAL_disable_irq();
+    while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
     USART_SendBreak(usartMap[serial]->usart_peripheral);
+    while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
+    HAL_enable_irq(state);
   }
 }
 

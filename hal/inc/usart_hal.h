@@ -73,15 +73,15 @@
 
 // LIN break settings
 // Supported only in Master mode
-#define LIN_BREAK_13 ((uint32_t)0x0400)
+#define LIN_BREAK_13B ((uint32_t)0x0000)
 // Supported only in Slave mode
-#define LIN_BREAK_10 ((uint32_t)0x0800)
-#define LIN_BREAK_11 ((uint32_t)0x0C00)
+#define LIN_BREAK_10B ((uint32_t)0x0800)
+#define LIN_BREAK_11B ((uint32_t)0x0C00)
 
 // Pre-defined LIN configurations
-#define LIN_MASTER_13 (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_MASTER | LIN_BREAK_13)
-#define LIN_SLAVE_10  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE | LIN_BREAK_10)
-#define LIN_SLAVE_11  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE | LIN_BREAK_11)
+#define LIN_MASTER_13B (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_MASTER | LIN_BREAK_13B)
+#define LIN_SLAVE_10B  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE  | LIN_BREAK_10B)
+#define LIN_SLAVE_11B  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE  | LIN_BREAK_11B)
 
 
 /* Exported types ------------------------------------------------------------*/
