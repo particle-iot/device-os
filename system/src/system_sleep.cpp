@@ -91,10 +91,29 @@ bool network_sleep_flag(uint32_t flags)
 
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
-    if (seconds)
+    if (seconds) {
         HAL_RTC_Set_UnixAlarm((time_t) seconds);
+    }
 
-    network_suspend();
+    // TODO - determine if these are valuable:
+    // - Currently publishes will get through with or without #1.
+    // - More data is consumed with #1.
+    // - Session is not resuming after waking from DEEP sleep,
+    //   so a full handshake currently outweighs leaving the
+    //   modem on for #2.
+    //
+    //---- #1
+    // If we're connected to the cloud, make sure all
+    // confirmable UDP messages are sent before sleeping
+    // if (spark_cloud_flag_connected()) {
+    //     Spark_Sleep();
+    // }
+    //---- #2
+    // SLEEP_NETWORK_STANDBY can keep the modem on during DEEP sleep
+    // System.sleep(10) always powers down the network, even if SLEEP_NETWORK_STANDBY flag is used.
+    if (network_sleep_flag(param) || SLEEP_MODE_WLAN == sleepMode) {
+        network_suspend();
+    }
 
     switch (sleepMode)
     {
@@ -124,6 +143,8 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
 int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved));
+    // If we're connected to the cloud, make sure all
+    // confirmable UDP messages are sent before sleeping
     if (spark_cloud_flag_connected()) {
         Spark_Sleep();
     }
