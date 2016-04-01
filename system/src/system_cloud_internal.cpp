@@ -1107,3 +1107,13 @@ bool system_cloud_active()
 #endif
     return true;
 }
+
+void Spark_Sleep(void)
+{
+	spark_protocol_command(sp, ProtocolCommands::SLEEP);
+}
+
+void Spark_Wake(void)
+{
+	spark_protocol_command(sp, ProtocolCommands::WAKE);
+}

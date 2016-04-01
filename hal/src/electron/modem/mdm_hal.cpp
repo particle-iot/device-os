@@ -649,20 +649,6 @@ bool MDMParser::init(DevStatus* status)
             goto failure;
         _dev.lpm = LPM_ACTIVE;
     }
-    // setup the GPRS network registration URC (Unsolicited Response Code)
-    // 0: (default value and factory-programmed value): network registration URC disabled
-    // 1: network registration URC enabled
-    // 2: network registration and location information URC enabled
-    sendFormated("AT+CGREG=2\r\n");
-    if (RESP_OK != waitFinalResp())
-        goto failure;
-    // setup the network registration URC (Unsolicited Response Code)
-    // 0: (default value and factory-programmed value): network registration URC disabled
-    // 1: network registration URC enabled
-    // 2: network registration and location information URC enabled
-    sendFormated("AT+CREG=2\r\n");
-    if (RESP_OK != waitFinalResp())
-        goto failure;
     // Setup SMS in text mode
     sendFormated("AT+CMGF=1\r\n");
     if (RESP_OK != waitFinalResp())
@@ -770,22 +756,42 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
 {
     LOCK();
     if (_init && _pwr) {
-        system_tick_t start = HAL_Timer_Get_Milli_Seconds();
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
-        while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
+        // Check to see if we are already connected. If so don't issue these
+        // commands as they will knock us off the cellular network.
+        if (checkNetStatus() == false) {
+            // setup the GPRS network registration URC (Unsolicited Response Code)
+            // 0: (default value and factory-programmed value): network registration URC disabled
+            // 1: network registration URC enabled
+            // 2: network registration and location information URC enabled
+            sendFormated("AT+CGREG=2\r\n");
+            if (RESP_OK != waitFinalResp())
+                goto failure;
+            // setup the network registration URC (Unsolicited Response Code)
+            // 0: (default value and factory-programmed value): network registration URC disabled
+            // 1: network registration URC enabled
+            // 2: network registration and location information URC enabled
+            sendFormated("AT+CREG=2\r\n");
+            if (RESP_OK != waitFinalResp())
+                goto failure;
+            // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM and GPRS)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-            while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations); // just wait
-            //HAL_Delay_Milliseconds(15000);
+            while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
+                system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+                while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations); // just wait
+                //HAL_Delay_Milliseconds(15000);
+            }
+            if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
+            if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
+            // if (_net.csd == REG_DENIED || _net.psd == REG_DENIED) {
+            //     sendFormated("AT+CEER\r\n");
+            //     waitFinalResp();
+            // }
         }
-        if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
-        if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
-        // if (_net.csd == REG_DENIED || _net.psd == REG_DENIED) {
-        //     sendFormated("AT+CEER\r\n");
-        //     waitFinalResp();
-        // }
         UNLOCK();
         return REG_OK(_net.csd) && REG_OK(_net.psd);
     }
+failure:
     UNLOCK();
     return false;
 }
