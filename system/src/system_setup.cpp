@@ -34,6 +34,7 @@
 #include "system_network.h"
 #include "system_task.h"
 #include "spark_wiring_thread.h"
+#include "system_ymodem.h"
 
 #if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
@@ -63,20 +64,44 @@ public:
 template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
     : config(config_)
 {
-	WITH_LOCK(serial);
-    if (serial.baud()==0)
+    WITH_LOCK(serial);
+    if (serial.baud() == 0)
+    {
         serial.begin(9600);
+    }
 }
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
-	TRY_LOCK(serial) {
-		if (serial.available()) {
-			int c = serial.read();
-			if (c>=0)
-				handle((char)c);
-		}
-	}
+    TRY_LOCK(serial)
+    {
+        if (serial.available())
+        {
+            int c = serial.peek();
+            if (c >= 0)
+            {
+                if (!handle_peek((char)c))
+                {
+                    if (serial.available())
+                    {
+                        c = serial.read();
+                        handle((char)c);
+                    }
+                }
+            }
+        }
+    }
+}
+
+template <typename Config>
+bool SystemSetupConsole<Config>::handle_peek(char c)
+{
+    if (YModem::SOH == c || YModem::STX == c)
+    {
+        system_firmwareUpdate(&serial);
+        return true;
+    }
+    return false;
 }
 
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)
@@ -128,6 +153,11 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
         StreamAppender appender(serial);
         append_system_version_info(&appender);
         print("\r\n");
+    }
+    else if ('L' == c)
+    {
+        system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
+        System.enterSafeMode();
     }
 }
 

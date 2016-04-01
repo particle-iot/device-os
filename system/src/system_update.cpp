@@ -59,21 +59,30 @@ static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
-static_assert(SYSTEM_FLAG_MAX==4, "system flag max value");
+static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE == 4, "system flag value");
+static_assert(SYSTEM_FLAG_MAX == 5, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
-    0, 1,   // OTA updates pending/enabled
-    0, 1,   // Reset pending/enabled
+    0, 1, // OTA updates pending/enabled
+    0, 1, // Reset pending/enabled
+    0,    // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE
 };
+
+const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
+    if (flag == SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+    {
+        HAL_Core_Write_Backup_Register(BKP_DR_10, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
+    }
 }
 
 int system_set_flag(system_flag_t flag, uint8_t value, void*)
 {
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
+
     if (systemFlags[flag]!=value) {
         uint8_t oldValue = systemFlags[flag];
         systemFlags[flag] = value;
@@ -88,7 +97,17 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
     if (value)
-        *value = systemFlags[flag];
+    {
+        if (flag == SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+        {
+            uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_10);
+            *value = (reg == SAFE_MODE_LISTEN);
+        }
+        else
+        {
+            *value = systemFlags[flag];
+        }
+    }
     return 0;
 }
 
@@ -153,6 +172,9 @@ bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
 
 void system_lineCodingBitRateHandler(uint32_t bitrate)
 {
+// todo - ideally the system should post a reset pending event before
+// resetting. This does mean the application can block entering listening mode
+
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
     if (bitrate == start_dfu_flasher_serial_speed)
     {
@@ -164,12 +186,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #ifdef START_YMODEM_FLASHER_SERIAL_SPEED
     if (!network_listening(0, 0, NULL) && bitrate == start_ymodem_flasher_serial_speed)
     {
-        //Set the Ymodem flasher flag to execute system_serialFirmwareUpdate()
-        set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
-        RGB.control(true);
-        RGB.color(RGB_COLOR_MAGENTA);
-        SPARK_FLASH_UPDATE = 3;
-        TimingFlashUpdateTimeout = 0;
+        network_listen(0, 0, 0);
     }
 #endif
 }
@@ -242,7 +259,7 @@ void system_pending_shutdown()
 
 inline bool canShutdown()
 {
-	return (System.resetPending() && System.resetEnabled());
+    return (System.resetPending() && System.resetEnabled());
 }
 
 void system_shutdown_if_enabled(void* data=nullptr)
@@ -261,10 +278,10 @@ void system_shutdown_if_enabled(void* data=nullptr)
 
 void system_shutdown_if_needed()
 {
-	static bool in_shutdown = false;
+    static bool in_shutdown = false;
     if (canShutdown() && !in_shutdown)
     {
-    		in_shutdown = true;
+        in_shutdown = true;
         system_notify_event(reset, 0, nullptr, system_shutdown_if_enabled);
 
 #if PLATFORM_THREADING
@@ -272,9 +289,10 @@ void system_shutdown_if_needed()
         system_tick_t start = millis();
         while (canShutdown() && (millis()-start)<30000)
         {
-        		// todo - find a more enapsulated way for the SystemThread to take care of re-entranly doing work.
-        		spark_process();
-        		SystemThread.process();
+            // todo - find a more enapsulated way for the SystemThread to take care of re-entranly
+            // doing work.
+            spark_process();
+            SystemThread.process();
         }
         in_shutdown = false;
         system_shutdown_if_enabled();
