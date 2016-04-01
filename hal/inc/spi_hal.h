@@ -79,6 +79,14 @@ typedef struct hal_spi_info_t {
 
 } hal_spi_info_t;
 
+typedef struct HAL_SPI_TransferStatus {
+    uint8_t version;
+    uint32_t configured_transfer_length;
+    uint32_t transfer_length;
+    uint8_t transfer_ongoing    : 1;
+    uint8_t ss_state            : 1;
+} HAL_SPI_TransferStatus;
+
 void HAL_SPI_Init(HAL_SPI_Interface spi);
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin);
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved);
@@ -93,7 +101,7 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi);
 void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved);
 void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved);
 void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi);
-int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi);
+int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st);
 
 #ifdef __cplusplus
 }
