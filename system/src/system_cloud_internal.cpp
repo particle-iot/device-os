@@ -38,11 +38,13 @@
 #include "rgbled.h"
 #include "spark_macros.h"   // for S2M
 #include "string_convert.h"
-#include <stdint.h>
 #include "core_hal.h"
 #include "hal_platform.h"
 #include "system_string_interpolate.h"
 #include "dtls_session_persist.h"
+
+#include <stdio.h>
+#include <stdint.h>
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
@@ -52,6 +54,7 @@ int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
 
+static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size);
 
 static sock_handle_t sparkSocket = socket_handle_invalid();
 
@@ -698,6 +701,18 @@ int Spark_Handshake(bool presence_announce)
             Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
         }
 #endif
+        uint8_t flag = 0;
+        if (system_get_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, &flag, nullptr) == 0 && flag)
+        {
+            int reason = RESET_REASON_NONE;
+            uint32_t data = 0;
+            if (HAL_Core_Get_Last_Reset_Info(&reason, &data, nullptr) == 0 && reason != RESET_REASON_NONE)
+            {
+                char buf[64];
+                formatResetReasonEventData(reason, data, buf, sizeof(buf));
+                Particle.publish("spark/device/last_reset", buf, 60, PRIVATE);
+            }
+        }
 
         if (presence_announce)
         		Multicast_Presence_Announcement();
@@ -1113,9 +1128,91 @@ inline uint8_t spark_cloud_socket_closed()
     return closed;
 }
 
+static const char* resetReasonString(System_Reset_Reason reason)
+{
+    switch (reason) {
+    case RESET_REASON_UNKNOWN:
+        return "unknown";
+    case RESET_REASON_PIN_RESET:
+        return "pin_reset";
+    case RESET_REASON_POWER_MANAGEMENT:
+        return "power_management";
+    case RESET_REASON_POWER_DOWN:
+        return "power_down";
+    case RESET_REASON_POWER_BROWNOUT:
+        return "power_brownout";
+    case RESET_REASON_WATCHDOG:
+        return "watchdog";
+    case RESET_REASON_UPDATE:
+        return "update";
+    case RESET_REASON_UPDATE_ERROR:
+        return "update_error";
+    case RESET_REASON_UPDATE_TIMEOUT:
+        return "update_timeout";
+    case RESET_REASON_FACTORY_RESET:
+        return "factory_reset";
+    case RESET_REASON_SAFE_MODE:
+        return "safe_mode";
+    case RESET_REASON_DFU_MODE:
+        return "dfu_mode";
+    case RESET_REASON_PANIC:
+        return "panic";
+    case RESET_REASON_USER:
+        return "user";
+    default:
+        return nullptr;
+    }
+}
 
+static const char* panicCodeString(ePanicCode code)
+{
+    switch (code) {
+    case HardFault:
+        return "hard_fault";
+    case MemManage:
+        return "memory_fault";
+    case BusFault:
+        return "bus_fault";
+    case UsageFault:
+        return "usage_fault";
+    case OutOfHeap:
+        return "out_of_heap";
+    case AssertionFailure:
+        return "assert_failed";
+    case StackOverflow:
+        return "stack_overflow";
+    default:
+        return nullptr;
+    }
+}
 
-#else
+static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size)
+{
+    // Reset reason
+    int n = 0;
+    const char* s = resetReasonString((System_Reset_Reason)reason);
+    if (s) {
+        n = snprintf(buf, size, "%s", s);
+    } else {
+        n = snprintf(buf, size, "%d", (int)reason); // Print as numeric code
+    }
+    if (n < 0 || n >= (int)size) {
+        return;
+    }
+    buf += n;
+    size -= n;
+    // Additional data for selected reason codes
+    if (reason == RESET_REASON_PANIC) {
+        s = panicCodeString((ePanicCode)data);
+        if (s) {
+            n = snprintf(buf, size, ", %s", s);
+        } else {
+            n = snprintf(buf, size, ", %d", (int)data);
+        }
+    }
+}
+
+#else // SPARK_NO_CLOUD
 
 void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {

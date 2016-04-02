@@ -27,7 +27,7 @@ void SystemClass::dfu(bool persist)
 
 void SystemClass::reset(void)
 {
-    HAL_Core_System_Reset();
+    HAL_Core_System_Reset_Ex(RESET_REASON_USER, 0, nullptr);
 }
 
 void SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepNetworkFlag network)

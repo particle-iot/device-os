@@ -89,7 +89,7 @@ void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uin
             // pause
             HAL_Delay_Microseconds(MS2u(800));
 #if defined(RELEASE_BUILD) || defined(PANIC_BUT_KEEP_CALM)
-            if (--loops == 0) HAL_Core_System_Reset();
+            if (--loops == 0) HAL_Core_System_Reset_Ex(RESET_REASON_PANIC, code, NULL);
 #endif
         }
 

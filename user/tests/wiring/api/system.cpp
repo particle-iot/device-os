@@ -33,6 +33,7 @@ test(system_api) {
     API_COMPILE(System.enterSafeMode());
 
     API_COMPILE(System.reset());
+    API_COMPILE(System.resetReason());
 
     API_COMPILE(System.sleep(60));
 

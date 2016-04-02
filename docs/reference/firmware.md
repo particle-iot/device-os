@@ -7612,6 +7612,36 @@ void loop() {
 ```
 
 
+### resetReason()
+
+*Since 0.6.0*
+
+Returns code describing reason of the last device reset. Possible codes are:
+
+- `RESET_REASON_PIN_RESET`: Reset button or reset pin
+- `RESET_REASON_POWER_MANAGEMENT`: Low-power management reset
+- `RESET_REASON_POWER_DOWN`: Power-down reset
+- `RESET_REASON_POWER_BROWNOUT`: Brownout reset
+- `RESET_REASON_WATCHDOG`: Hardware watchdog reset
+- `RESET_REASON_UPDATE`: Successful firmware update
+- `RESET_REASON_UPDATE_TIMEOUT`: Firmware update timeout
+- `RESET_REASON_FACTORY_RESET`: Factory reset requested
+- `RESET_REASON_SAFE_MODE`: Safe mode requested
+- `RESET_REASON_DFU_MODE`: DFU mode requested
+- `RESET_REASON_PANIC`: System panic
+- `RESET_REASON_USER`: User-requested reset
+- `RESET_REASON_UNKNOWN`: Unspecified reset reason
+- `RESET_REASON_NONE`: Information is not available
+
+```C++
+// EXAMPLE USAGE
+int reason = System.resetReason();
+if (reason == RESET_REASON_PIN_RESET) {
+    // ...
+}
+```
+
+
 ## OTA Updates
 
 Application firmware can use these functions to turn on or off OTA updates.

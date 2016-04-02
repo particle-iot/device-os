@@ -37,6 +37,11 @@ extern void linkme();
 
 /* Private typedef -----------------------------------------------------------*/
 
+typedef struct Last_Reset_Info {
+    int reason;
+    uint32_t data;
+} Last_Reset_Info;
+
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,12 +49,66 @@ extern void linkme();
 /* Private variables ---------------------------------------------------------*/
 volatile uint8_t IWDG_SYSTEM_RESET;
 
+static Last_Reset_Info last_reset_info = { RESET_REASON_NONE, 0 };
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 
+/* Private functions ---------------------------------------------------------*/
+
+static void Init_Last_Reset_Info()
+{
+    if (HAL_Core_System_Reset_FlagSet(SOFTWARE_RESET))
+    {
+        // Load reset info from backup registers
+        last_reset_info.reason = BKP_ReadBackupRegister(BKP_DR2);
+        const uint16_t hi = BKP_ReadBackupRegister(BKP_DR3);
+        const uint16_t lo = BKP_ReadBackupRegister(BKP_DR4);
+        last_reset_info.data = ((uint32_t)hi << 16) | (uint32_t)lo;
+        // Clear backup registers
+        BKP_WriteBackupRegister(BKP_DR2, 0);
+        BKP_WriteBackupRegister(BKP_DR3, 0);
+        BKP_WriteBackupRegister(BKP_DR4, 0);
+    }
+    else // Hardware reset
+    {
+        if (HAL_Core_System_Reset_FlagSet(WATCHDOG_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_WATCHDOG;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_MANAGEMENT_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_MANAGEMENT; // Reset generated when entering standby mode (nRST_STDBY: 0)
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_DOWN_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_DOWN;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(PIN_RESET)) // Pin reset flag should be checked in the last place
+        {
+            last_reset_info.reason = RESET_REASON_PIN_RESET;
+        }
+        else if (PWR_GetFlagStatus(PWR_FLAG_SB) != RESET) // Check if MCU was in standby mode
+        {
+            last_reset_info.reason = RESET_REASON_POWER_MANAGEMENT; // Reset generated when exiting standby mode (nRST_STDBY: 1)
+        }
+        else
+        {
+            last_reset_info.reason = RESET_REASON_UNKNOWN;
+        }
+        last_reset_info.data = 0; // Not used
+    }
+    // Note: RCC reset flags should be cleared, see HAL_Core_Init()
+}
+
 void HAL_Core_Init(void)
 {
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        // Clear RCC reset flags
+        RCC_ClearFlag();
+    }
 }
 
 /*******************************************************************************
@@ -166,6 +225,35 @@ void HAL_Core_Factory_Reset(void)
 	Factory_Reset_SysFlag = 0xAAAA;
 	Save_SystemFlags();
 	HAL_Core_System_Reset();
+}
+
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
+{
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        // Save reset info to backup registers
+        BKP_WriteBackupRegister(BKP_DR2, reason);
+        BKP_WriteBackupRegister(BKP_DR3, data >> 16);
+        BKP_WriteBackupRegister(BKP_DR4, data & 0xffff);
+    }
+    HAL_Core_System_Reset();
+}
+
+int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
+{
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        if (reason)
+        {
+            *reason = last_reset_info.reason;
+        }
+        if (data)
+        {
+            *data = last_reset_info.data;
+        }
+        return 0;
+    }
+    return -1;
 }
 
 void HAL_Core_Enter_Safe_Mode(void* reserved)
@@ -437,6 +525,13 @@ int main() {
     // the rtos systick can only be enabled after the system has been initialized
     systick_hook_enabled = true;
     HAL_Hook_Main();
+
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        // Load last reset info from RCC / backup registers
+        Init_Last_Reset_Info();
+    }
+
     app_setup_and_loop();
     return 0;
 }
@@ -448,6 +543,30 @@ void HAL_Bootloader_Lock(bool lock)
         FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
     else
         FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
+}
+
+static inline bool Is_System_Reset_Flag_Set(uint8_t flag)
+{
+    return SYSTEM_FLAG(RCC_CSR_SysFlag) & ((uint32_t)1 << (flag & 0x1f));
+}
+
+bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
+{
+    switch(resetType)
+    {
+    case PIN_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_PINRST);
+    case SOFTWARE_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_SFTRST);
+    case WATCHDOG_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_IWDGRST) || Is_System_Reset_Flag_Set(RCC_FLAG_WWDGRST);
+    case POWER_MANAGEMENT_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_LPWRRST);
+    case POWER_DOWN_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_PORRST);
+    default:
+        return false;
+    }
 }
 
 uint32_t freeheap();
@@ -470,6 +589,10 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
 
 bool HAL_Feature_Get(HAL_Feature feature)
 {
+    if (feature == FEATURE_RESET_INFO)
+    {
+        return true;
+    }
     return false;
 }
 
