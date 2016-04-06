@@ -1066,11 +1066,11 @@ bool HAL_Feature_Get(HAL_Feature feature)
 #include "deepsleep_hal_impl.h"
 #include <string.h>
 
-retained_system SessionPersistOpaque session;
+retained_system SessionPersistDataOpaque session;
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
-	if (offset==0 && length==sizeof(SessionPersistOpaque))
+	if (offset==0 && length==sizeof(SessionPersistDataOpaque))
 	{
 		memcpy(&session, buffer, length);
 		return 0;
@@ -1080,9 +1080,9 @@ int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, voi
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-	if (offset==0 && max_length>=sizeof(SessionPersistOpaque) && session.size==sizeof(SessionPersistOpaque))
+	if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque) && session.size==sizeof(SessionPersistDataOpaque))
 	{
-		*length = sizeof(SessionPersistOpaque);
+		*length = sizeof(SessionPersistDataOpaque);
 		memcpy(buffer, &session, sizeof(session));
 		return 0;
 	}

@@ -34,7 +34,6 @@
 #include "system_cloud_internal.h"
 #include "string_convert.h"
 #include "spark_protocol_functions.h"
-#include "spark_protocol.h"
 #include "events.h"
 #include "deviceid_hal.h"
 #include "system_mode.h"
