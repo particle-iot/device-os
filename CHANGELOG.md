@@ -2,31 +2,30 @@
 
 ### FEATURES
 
-- [Electron] `SYSTEM_THREAD()` is supported (in Beta) [#884](https://github.com/spark/firmware/pull/884)
-- [Electron] data usage API [#866](https://github.com/spark/firmware/pull/866)
+- [Electron] [SYSTEM_THREAD()](https://docs.particle.io/reference/firmware/electron/#system-thread) is supported (in Beta) [#884](https://github.com/spark/firmware/pull/884)
+- [Electron] Cellular [Data Usage API](https://docs.particle.io/reference/firmware/electron/#getdatausage-) [#866](https://github.com/spark/firmware/pull/866)
 - [Electron] Configurable keep-alive ping [#913](https://github.com/spark/firmware/pull/913) 
-- [Electron] Cellular Band Select API [#891](https://github.com/spark/firmware/pull/891)
-- [Electron] Cellular Local IP API [#850](https://github.com/spark/firmware/pull/850)
-- [Photon/Electron] Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
-- [Photon/Electron] SPI Slave support [#882](https://github.com/spark/firmware/pull/882) 
-- Atomic writes in EEPROM emulation [#871](https://github.com/spark/firmware/pull/871)
+- [Electron] Cellular [Band Select API](https://docs.particle.io/reference/firmware/electron/#getbandavailable-) [#891](https://github.com/spark/firmware/pull/891)
+- [Electron] Cellular [Local IP API](https://docs.particle.io/reference/firmware/electron/#localip-) [#850](https://github.com/spark/firmware/pull/850)
+- [Photon/Electron] Stack overflow detection with SOS code [13-blinks](https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos)
+- [Photon/Electron] [SPI Slave support](https://docs.particle.io/reference/firmware/photon/#begin-spi_mode-uint16_t-) [#882](https://github.com/spark/firmware/pull/882) 
+- Atomic writes in [EEPROM emulation](https://docs.particle.io/reference/firmware/electron/#eeprom) [#871](https://github.com/spark/firmware/pull/871)
 - Software Watchdog [#860](https://github.com/spark/firmware/pull/860)
-- `Serial.availableForWrite()` and `Serial.blockOnOverrun()` [#798](https://github.com/spark/firmware/issues/798)
+- [Serial.availableForWrite()](https://docs.particle.io/reference/firmware/photon/#availableforwrite-) and [Serial.blockOnOverrun()](https://docs.particle.io/reference/firmware/photon/#blockonoverrun-) [#798](https://github.com/spark/firmware/issues/798)
 - [Photon] SoftAP HTTP server can serve application pages. [#906](https://github.com/spark/firmware/pull/906)
-- Added NO_ACK flag for Particle.publish("event", "data", NO_ACK); for non-acknowledged publishes (consumes less data on Electron)
 
 ### ENHANCEMENTS
 
 - Compiler error with variable/function names that are too long. [#883](https://github.com/spark/firmware/pull/883) 
 - DFU writes are verified [#870](https://github.com/spark/firmware/pull/870) 
-- [Electron] `NO_ACK` flag on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
+- [Electron] [NO_ACK flag](https://docs.particle.io/reference/firmware/electron/#particle-publish-) on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
 - [Electron] Allow session to resume when IP changes. [#848](https://github.com/spark/firmware/pull/848)
 - [Electron] Ensure published events are received by the cloud before sleeping. [#909](https://github.com/spark/firmware/pull/909)
-- [Electron] `SLEEP_NETWORK_STANDBY` on `System.sleep()` [#845](https://github.com/spark/firmware/pull/845)
+- [Electron] [SLEEP_NETWORK_STANDBY on System.sleep()](https://docs.particle.io/reference/firmware/electron/#sleep-sleep-) [#845](https://github.com/spark/firmware/pull/845)
 - Serial baudrate to select ymodem mode includes listening mode [#912](https://github.com/spark/firmware/pull/912) 
 - Wi-Fi connection process forced to timeout after 60 seconds if unsuccessful [#898](https://github.com/spark/firmware/pull/898)
 - Added write-verify-retry-fail logic to DFU writes [#870](https://github.com/spark/firmware/pull/870)
-- Support for USART (Serial1/2/4/5) parity [#757](https://github.com/spark/firmware/pull/757)
+- Support for USART (Serial1/2/4/5) [data bits, parity and stop bits](https://docs.particle.io/reference/firmware/electron/#begin-) [#757](https://github.com/spark/firmware/pull/757)
 
 ### BUGFIXES
 
