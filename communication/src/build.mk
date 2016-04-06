@@ -33,3 +33,4 @@ ASRC +=
 
 CPPFLAGS += -std=gnu++11
 
+CFLAGS += -DMBEDTLS_CONFIG_FILE="<mbedtls_config.h>"
