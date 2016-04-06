@@ -20,12 +20,19 @@
 
 #include "stddef.h"
 
+// The size of the persisted data
 #define SessionPersistBaseSize 196
+// variable size due to int/size_t members
+#define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
+
+/**
+ * An entirely opaque version of SessionPersistData for use with C.
+ */
 typedef struct __attribute__((packed)) SessionPersistDataOpaque
 {
 	uint16_t size;
-//	uint8_t data[SessionPersistBaseSize-2+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression)];
-	uint8_t data[SessionPersistBaseSize-2+sizeof(int)+sizeof(int)+sizeof(size_t)];
+//	uint8_t data[SessionPersistBaseSize-sizeof(uint16_t)+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression)];
+	uint8_t data[SessionPersistBaseSize-sizeof(uint16_t)+SessionPersistVariableSize];
 } SessionPersistDataOpaque;
 
 
@@ -41,6 +48,9 @@ typedef struct __attribute__((packed)) SessionPersistDataOpaque
 
 namespace particle { namespace protocol {
 
+/**
+ * A simple POD for the persisted session data.
+ */
 struct __attribute__((packed)) SessionPersistData
 {
 	uint16_t size;
@@ -69,7 +79,8 @@ struct __attribute__((packed)) SessionPersistData
 	// application data
 	message_id_t next_coap_id;
 #else
-	uint8_t opaque_ssl[64+4+4+4+32+48+2+8+2];
+	// when the mbedtls headers aren't available, just pad with the requisite size
+	uint8_t opaque_ssl[64+sizeof(int)+sizeof(int)+sizeof(size_t)+32+48+2+8+2];
 #endif
 
 };
@@ -221,9 +232,12 @@ static_assert(sizeof(SessionPersist)==sizeof(SessionPersistDataOpaque), "Session
 // the connection buffer is used by external code to store connection data in the session
 // it must be binary compatible with previous releases
 static_assert(offsetof(SessionPersistData, connection)==4, "internal layout of public member has changed.");
-static_assert(sizeof(SessionPersistData)==sizeof(SessionPersistDataOpaque), "session persist data and the subclass should be the same size.");
+static_assert((sizeof(SessionPersistData)==sizeof(SessionPersistDataOpaque)), "session persist data and the subclass should be the same size.");
 
 }}
+
+static_assert(sizeof(SessionPersistDataOpaque)==SessionPersistBaseSize+SessionPersistVariableSize, "SessionPersistDataOpque size should be SessionPersistBaseSize+SessionPersistVariableSize");
+
 #endif
 
 
