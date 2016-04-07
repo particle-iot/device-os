@@ -39,8 +39,15 @@ static volatile system_tick_t system_millis_clock = 0;
  */
 void System1MsTick(void)
 {
+	int is = __get_PRIMASK();
+	__disable_irq();
+
     system_millis++;
     system_millis_clock = DWT->CYCCNT;
+
+    if ((is & 1) == 0) {
+        __enable_irq();
+    }
 }
 
 /**
@@ -49,7 +56,15 @@ void System1MsTick(void)
  */
 system_tick_t GetSystem1MsTick()
 {
-    return system_millis;
+	int is = __get_PRIMASK();
+	__disable_irq();
+
+    system_tick_t millis = system_millis + (DWT->CYCCNT-system_millis_clock) / SYSTEM_US_TICKS / 1000;
+
+    if ((is & 1) == 0) {
+        __enable_irq();
+    }
+	return millis;
 }
 
 /**
