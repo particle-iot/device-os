@@ -59,16 +59,20 @@ static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
-static_assert(SYSTEM_FLAG_MAX==4, "system flag max value");
+static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE == 4, "system flag value");
+static_assert(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1 == 5, "system flag value");
+static_assert(SYSTEM_FLAG_MAX == 6, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
-    0, 1,   // OTA updates pending/enabled
-    0, 1,   // Reset pending/enabled
+    0, 1, // OTA updates pending/enabled
+    0, 1, // Reset pending/enabled
+    0,    // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
+	0,	  // SYSTEM_FLAG_SETUP_OVER_SERIAL1
 };
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
-}
+    }
 
 int system_set_flag(system_flag_t flag, uint8_t value, void*)
 {
@@ -88,7 +92,7 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
     if (value)
-        *value = systemFlags[flag];
+            *value = systemFlags[flag];
     return 0;
 }
 
@@ -203,7 +207,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
         system_notify_event(firmware_update_pending);
         if (waitFor(System.updatesEnabled, timeRemaining(start, 30000)))
         {
-            system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
+        system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
             RGB.control(true);
             RGB.color(RGB_COLOR_MAGENTA);
             SPARK_FLASH_UPDATE = 1;
@@ -213,7 +217,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
         }
         else
             result = 1;     // updates disabled
-    }
+        }
     return result;
 }
 
