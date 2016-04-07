@@ -205,6 +205,13 @@ public:
         return String(info.versionString);
     }
 
+    String commit()
+    {
+        SystemVersionInfo info;
+        system_version_info(&info, nullptr);
+        return String(info.commitString);
+    }
+
     uint32_t versionNumber()
     {
         SystemVersionInfo info;
