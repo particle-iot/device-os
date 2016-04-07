@@ -36,6 +36,7 @@ extern "C" {
         uint16_t passwordLen, wiced_security_t security, unsigned channel);
 
     size_t hex_decode(uint8_t* buf, size_t len, const char* hex);
+    uint8_t hex_nibble(unsigned char c);
 
 #ifdef	__cplusplus
 }
