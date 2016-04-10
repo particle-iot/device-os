@@ -468,3 +468,8 @@ int os_timer_destroy(os_timer_t timer, void* reserved)
 {
     return xTimerDelete(timer, CONCURRENT_WAIT_FOREVER)!=pdPASS;
 }
+
+int os_timer_is_active(os_timer_t timer, void* reserved)
+{
+    return xTimerIsTimerActive(timer) != pdFALSE;
+}
