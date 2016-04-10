@@ -150,7 +150,10 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
     callback.handler = call_wiring_interrupt_handler;
     wiring_interrupt_handler_t& h = handler;
     callback.data = new wiring_interrupt_handler_t(h);
-    return HAL_Set_System_Interrupt_Handler(irq, &callback, NULL, NULL);
+    HAL_InterruptCallback prev = { 0 };
+    const bool ok = HAL_Set_System_Interrupt_Handler(irq, &callback, &prev, NULL);
+    delete (wiring_interrupt_handler_t*)prev.data;
+    return ok;
 }
 
 /**
@@ -160,5 +163,8 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
  */
 bool detachSystemInterrupt(hal_irq_t irq)
 {
-    return HAL_Set_System_Interrupt_Handler(irq, NULL, NULL, NULL);
+    HAL_InterruptCallback prev = { 0 };
+    const bool ok = HAL_Set_System_Interrupt_Handler(irq, NULL, &prev, NULL);
+    delete (wiring_interrupt_handler_t*)prev.data;
+    return ok;
 }
