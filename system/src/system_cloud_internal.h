@@ -70,7 +70,7 @@ struct User_Func_Lookup_Table_t
 {
     void* pUserFuncData;
     cloud_function_t pUserFunc;
-    char userFuncKey[USER_FUNC_KEY_LENGTH];
+    char userFuncKey[USER_FUNC_KEY_LENGTH+1];
 };
 
 

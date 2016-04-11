@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#define SessionPersistBaseSize 196
+#define SessionPersistBaseSize 208
 
 #include "mbedtls/ssl.h"
 #include "stddef.h"
@@ -63,7 +63,15 @@ struct __attribute__((packed)) SessionPersistData
 	unsigned char out_ctr[8];
 	// application data
 	message_id_t next_coap_id;
-
+	/**
+	 * The state of the subscriptions that have been sent to the cloud.
+	 */
+	uint32_t subscriptions_crc;
+	/**
+	 * The state of the functions and variables last sent to the cloud.
+	 */
+	uint32_t describe_app_crc;
+	uint32_t describe_system_crc;
 };
 
 class __attribute__((packed)) SessionPersist : SessionPersistData
@@ -156,6 +164,7 @@ public:
 	 * Persist information in this context .
 	 */
 	void save(save_fn_t saver);
+	void restore(restore_fn_t restore) { restore_this_from(restore); }
 
 	/**
 	 * Update information in this context and saves if the context
@@ -194,6 +203,9 @@ public:
 
 	uint8_t* connection_data() { return connection; }
 
+	uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len));
+
+	SessionPersistData& as_data() { return *this; }
 };
 
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");

@@ -18,6 +18,7 @@
  */
 
 #include "dtls_message_channel.h"
+#include "protocol.h"
 #include "service_debug.h"
 #include "rng_hal.h"
 #include "mbedtls/error.h"
@@ -26,7 +27,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "dtls_session_persist.h"
-#include "core_hal.h"
 #include "service_debug.h"
 
 #if HAL_PLATFORM_CLOUD_UDP
@@ -34,12 +34,12 @@
 namespace particle { namespace protocol {
 
 
-uint32_t compute_checksum(const uint8_t* server, size_t server_len, const uint8_t* device, size_t device_len)
+uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t len), const uint8_t* server, size_t server_len, const uint8_t* device, size_t device_len)
 {
 	uint32_t sum[2];
-	sum[0] = HAL_Core_Compute_CRC32(server, server_len);
-	sum[1] = HAL_Core_Compute_CRC32(device, device_len);
-	uint32_t result = HAL_Core_Compute_CRC32((uint8_t*)&sum, sizeof(sum));
+	sum[0] = calculate_crc(server, server_len);
+	sum[1] = calculate_crc(device, device_len);
+	uint32_t result = calculate_crc((uint8_t*)&sum, sizeof(sum));
 	return result;
 }
 
@@ -78,7 +78,7 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, messa
 	}
 }
 
-auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* next_id,  restore_fn_t restorer) -> RestoreStatus
+auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* next_id, restore_fn_t restorer) -> RestoreStatus
 {
 	if (!restore_this_from(restorer))
 		return NO_SESSION;
@@ -142,6 +142,11 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 	}
 }
 
+uint32_t SessionPersist::application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len))
+{
+	return Protocol::application_state_checksum(calc_crc, subscriptions_crc, describe_app_crc, describe_system_crc);
+}
+
 
 SessionPersist sessionPersist;
 
@@ -196,7 +201,7 @@ ProtocolError DTLSMessageChannel::init(
 	int ret;
 	this->callbacks = callbacks;
 	this->device_id = device_id;
-	keys_checksum = compute_checksum(server_public, server_public_len, core_private, core_private_len);
+	keys_checksum = compute_checksum(callbacks.calculate_crc, server_public, server_public_len, core_private, core_private_len);
 
 	ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
 			MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
@@ -332,7 +337,7 @@ ProtocolError DTLSMessageChannel::setup_context()
 	return NO_ERROR;
 }
 
-ProtocolError DTLSMessageChannel::establish()
+ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_crc)
 {
 	int ret = 0;
 
@@ -341,10 +346,13 @@ ProtocolError DTLSMessageChannel::establish()
 		return error;
 
 	bool renegotiate = false;
+
 	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore);
 	if (restoreStatus==SessionPersist::COMPLETE)
 	{
 		sessionPersist.make_persistent();
+		if (sessionPersist.application_state_checksum(this->callbacks.calculate_crc)==app_state_crc)
+			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
 		DEBUG("restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
 	}
@@ -500,6 +508,14 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 
 	case MOVE_SESSION:
 		move_session = true;
+		break;
+
+	case LOAD_SESSION:
+		sessionPersist.restore(callbacks.restore);
+		break;
+
+	case SAVE_SESSION:
+		sessionPersist.save(callbacks.save);
 		break;
 	}
 	return NO_ERROR;
