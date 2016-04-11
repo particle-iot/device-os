@@ -21,7 +21,8 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 196
+#define SessionPersistBaseSize 208
+
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
 
@@ -80,8 +81,21 @@ struct __attribute__((packed)) SessionPersistData
 	message_id_t next_coap_id;
 #else
 	// when the mbedtls headers aren't available, just pad with the requisite size
-	uint8_t opaque_ssl[64+sizeof(int)+sizeof(int)+sizeof(size_t)+32+48+2+8+2];
+	uint8_t opaque_ssl[64+SessionPersistVariableSize+32+48+2+8+2];
 #endif
+
+   /**
+	 * Checksum of the state of the subscriptions that have been sent to the cloud.
+	 */
+	uint32_t subscriptions_crc;
+	/**
+	 * Checksum of state of the functions and variables last sent to the cloud.
+	 */
+	uint32_t describe_app_crc;
+	/**
+	  * Checksum of the system describe message.
+	  */
+	uint32_t describe_system_crc;
 
 };
 
@@ -186,6 +200,7 @@ public:
 	 * Persist information in this context .
 	 */
 	void save(save_fn_t saver);
+	void restore(restore_fn_t restore) { restore_this_from(restore); }
 
 	/**
 	 * Update information in this context and saves if the context
@@ -222,6 +237,9 @@ public:
 	 */
 	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* message, restore_fn_t restorer);
 
+	uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len));
+
+	SessionPersistData& as_data() { return *this; }
 };
 
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");

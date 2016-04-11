@@ -118,9 +118,7 @@ class Protocol
 
 	uint8_t flags;
 
-
-protected:
-
+public:
 	enum Flags
 	{
 		/**
@@ -140,6 +138,10 @@ protected:
 		 */
 		PING_AS_EMPTY_MESSAGE = 1<<2,
 	};
+
+
+protected:
+
 
 	void set_protocol_flags(int flags)
 	{
@@ -247,6 +249,13 @@ protected:
 
 	void init(const SparkCallbacks &callbacks, const SparkDescriptor &descriptor);
 
+	/**
+	 * Updates the cached crc of subscriptions registered with the cloud.
+	 */
+	void update_subscription_crc();
+
+	uint32_t application_state_checksum();
+
 public:
 	Protocol(MessageChannel& channel) :
 			channel(channel),
@@ -273,6 +282,15 @@ public:
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
 	}
+
+	/**
+	 * Determines the checksum of the application state.
+	 * Application state comprises cloud functinos, variables and subscriptions.
+	 */
+	static uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
+			uint32_t describe_app_crc, uint32_t describe_system_crc);
+
+
 
 	/**
 	 * Establish a secure connection and send and process the hello message.
@@ -319,13 +337,19 @@ public:
 
 	inline bool send_subscription(const char *event_name, const char *device_id)
 	{
-		return !subscriptions.send_subscription(channel, event_name, device_id);
+		bool success = !subscriptions.send_subscription(channel, event_name, device_id);
+		if (success)
+			update_subscription_crc();
+		return success;
 	}
 
 	inline bool send_subscription(const char *event_name,
 			SubscriptionScope::Enum scope)
 	{
-		return !subscriptions.send_subscription(channel, event_name, scope);
+		bool success = !subscriptions.send_subscription(channel, event_name, scope);
+		if (success)
+			update_subscription_crc();
+		return success;
 	}
 
 	inline bool add_event_handler(const char *event_name, EventHandler handler)
@@ -344,7 +368,10 @@ public:
 
 	inline bool send_subscriptions()
 	{
-		return !subscriptions.send_subscriptions(channel);
+		bool success = !subscriptions.send_subscriptions(channel);
+		if (success)
+			update_subscription_crc();
+		return success;
 	}
 
 	inline bool remove_event_handlers(const char* name)
