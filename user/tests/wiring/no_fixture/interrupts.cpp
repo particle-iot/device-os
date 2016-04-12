@@ -36,3 +36,46 @@ test(interrupts_atomic_section)
 
 	assertMore(end_millis, start_millis);
 }
+
+namespace
+{
+
+class TestHandler
+{
+public:
+	TestHandler()
+	{
+		++count;
+	}
+
+	TestHandler(const TestHandler&)
+	{
+		++count;
+	}
+
+	~TestHandler()
+	{
+		--count;
+	}
+
+	void operator()()
+	{
+	}
+
+	static int count;
+};
+
+} // namespace
+
+int TestHandler::count = 0;
+
+test(interrupts_detached_handler_is_destroyed)
+{
+	assertEqual(TestHandler::count, 0);
+	attachSystemInterrupt(SysInterrupt_SysTick, TestHandler());
+	assertEqual(TestHandler::count, 1);
+	attachSystemInterrupt(SysInterrupt_SysTick, TestHandler()); // Override current handler
+	assertEqual(TestHandler::count, 1); // Previous handler has been destroyed
+	detachSystemInterrupt(SysInterrupt_SysTick);
+	assertEqual(TestHandler::count, 0);
+}
