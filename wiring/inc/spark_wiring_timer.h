@@ -58,6 +58,7 @@ public:
     bool changePeriod(unsigned period, unsigned block=default_wait) { return _changePeriod(period, block, false); }
 
     bool isValid() const { return handle!=nullptr; }
+    bool isActive() const { return isValid() && os_timer_is_active(handle, nullptr); }
 
     bool _start(unsigned block, bool fromISR=false)
     {
