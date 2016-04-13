@@ -125,8 +125,8 @@ class SparkProtocol
     void update_ready(unsigned char *buf, unsigned char token);
     void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
 
-    int description(unsigned char *buf, unsigned char token,
-                    unsigned char message_id_msb, unsigned char message_id_lsb, int description_flags);
+    int description(unsigned char *buf, unsigned char token, unsigned char message_id_msb,
+    		unsigned char message_id_lsb, int description_flags, CoAPType::Enum coapType=CoAPType::ACK);
     void ping(unsigned char *buf);
 
     bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
@@ -140,6 +140,8 @@ class SparkProtocol
     void set_handlers(CommunicationsHandlers& handlers) {
         this->handlers = handlers;
     }
+
+    int command(ProtocolCommands::Enum cmd, uint32_t data);
 
     /********** State Machine **********/
     ProtocolState::Enum state();
@@ -245,12 +247,18 @@ class SparkProtocol
      * @param message
      * @return true on success
      */
-    bool send_description(int description_flags, msg& message);
+    bool send_description(int description_flags, uint8_t token, CoAPType::Enum coapType=CoAPType::ACK);
 
     /**
      * Marks the indices of missed chunks not yet requested.
      */
     chunk_index_t missed_chunk_index;
+
+    /**
+     * Flag that is set once the application describe message has been sent.
+     */
+    uint8_t application_description_sent;
+    uint8_t application_description_needed;
 };
 
 #endif // __SPARK_PROTOCOL_H

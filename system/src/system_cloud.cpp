@@ -104,6 +104,7 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
             }
             memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
             memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);
+            spark_protocol_command(sp, ProtocolCommands::DESCRIBE_APPLICATION, 0, nullptr);
         }
     }
     return item!=NULL;

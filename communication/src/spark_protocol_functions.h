@@ -175,7 +175,11 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
 namespace ProtocolCommands {
 	enum Enum {
 		SLEEP,
-		WAKE
+		WAKE,
+		/**
+		 * Send the application descriptor.
+		 */
+		DESCRIBE_APPLICATION
 	};
 };
 

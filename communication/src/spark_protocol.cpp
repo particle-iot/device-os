@@ -61,7 +61,8 @@ void SparkProtocol::reset_updating(void)
 }
 
 SparkProtocol::SparkProtocol() : QUEUE_SIZE(sizeof(queue)), handlers({sizeof(handlers), NULL}), expecting_ping_ack(false),
-                                     initialized(false), updating(false), product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION)
+                                     initialized(false), updating(false), product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION),
+									 application_description_sent(false), application_description_needed(false)
 {
     queue_init();
 }
@@ -120,6 +121,8 @@ int SparkProtocol::handshake(void)
       ERROR("Handshake: could not receive hello response");
       return -1;
   }
+  application_description_sent = false;
+  application_description_needed = false;
   INFO("Hanshake: completed");
   return 0;
 }
@@ -226,6 +229,20 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
         }
       }
     }
+  }
+
+  if (application_description_needed) {
+/*
+	  unsigned short message_id = next_message_id();
+	  queue[2] = message_id >> 8;
+	  queue[3] = message_id & 0xff;
+
+	  if (!send_description(DESCRIBE_APPLICATION, 0, CoAPType::NON))
+		  return false;
+	  application_description_needed = false;
+*/
+	  if (!send_event("spark/device/describe/reset", "", 60, EventType::PRIVATE))
+	  	  return false;
   }
 
   // no errors, still connected
@@ -734,10 +751,16 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token, uint8_
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
-                               unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags)
+                               unsigned char message_id_msb, unsigned char message_id_lsb,
+							   int desc_flags, CoAPType::Enum coapType)
 {
-    buf[0] = 0x61; // acknowledgment, one-byte token
-    buf[1] = 0x45; // response code 2.05 CONTENT
+	if (coapType==CoAPType::ACK) {
+		buf[0] = 0x61; // acknowledgment, one-byte token
+	}
+	else if (coapType==CoAPType::NON) {
+		buf[0] = 0x51; // non 1 byte token
+	}
+	buf[1] = 0x45; // response code 2.05 CONTENT
     buf[2] = message_id_msb;
     buf[3] = message_id_lsb;
     buf[4] = token;
@@ -1359,9 +1382,9 @@ void SparkProtocol::handle_event(msg& message)
   }
 }
 
-bool SparkProtocol::send_description(int description_flags, msg& message)
+bool SparkProtocol::send_description(int description_flags, uint8_t token, CoAPType::Enum coapType)
 {
-    int desc_len = description(queue + 2, message.token, queue[2], queue[3], description_flags);
+    int desc_len = description(queue + 2, token, queue[2], queue[3], description_flags, coapType);
     queue[0] = (desc_len >> 8) & 0xff;
     queue[1] = desc_len & 0xff;
     return blocking_send(queue, desc_len + 2)>=0;
@@ -1373,9 +1396,11 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
   {
     case CoAPMessageType::DESCRIBE:
     {
-        if (!send_description(DESCRIBE_SYSTEM, message) || !send_description(DESCRIBE_APPLICATION, message)) {
+        if (!send_description(DESCRIBE_SYSTEM, message.token) || !send_description(DESCRIBE_APPLICATION, message.token)) {
             return false;
         }
+        application_description_needed = false;
+        application_description_sent = true;
         break;
     }
     case CoAPMessageType::FUNCTION_CALL:
@@ -1663,3 +1688,14 @@ inline void SparkProtocol::coded_ack(unsigned char *buf,
 
   encrypt(buf, 16);
 }
+
+int SparkProtocol::command(ProtocolCommands::Enum cmd, uint32_t data)
+{
+	switch (cmd) {
+	case ProtocolCommands::DESCRIBE_APPLICATION:
+		if (application_description_sent)
+			application_description_needed = true;
+	}
+	return 0;
+}
+

@@ -218,6 +218,8 @@ bool spark_function_internal(const cloud_function_descriptor* desc, void* reserv
             item->pUserFuncData = desc->data;
             memset(item->userFuncKey, 0, USER_FUNC_KEY_LENGTH);
             memcpy(item->userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
+            spark_protocol_command(sp, ProtocolCommands::DESCRIBE_APPLICATION, 0, nullptr);
+
         }
     }
     return item!=NULL;

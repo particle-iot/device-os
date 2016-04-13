@@ -238,7 +238,7 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
 
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
 {
-	return 0;
+	return protocol->command(cmd, data);
 }
 
 #endif
