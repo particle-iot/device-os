@@ -25,6 +25,7 @@
 
 #include "system_setup.h"
 #include "delay_hal.h"
+#include "ota_flash_hal.h"
 #include "wlan_hal.h"
 #include "cellular_hal.h"
 #include "system_cloud_internal.h"
@@ -158,6 +159,28 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     {
         system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
         System.enterSafeMode();
+    }
+    else if ('c' == c)
+    {
+    		bool claimed = HAL_IsDeviceClaimed(nullptr);
+    		print("Device claimed: ");
+    		print(claimed ? "yes" : "no");
+    		print("\r\n");
+    }
+    else if ('C' == c)
+    {
+    		char code[64];
+    		print("Enter 63-digit claim code:");
+    		read_line(code, 63);
+    		if (strlen(code)==63) {
+    			HAL_Set_Claim_Code(code);
+    			print("Claim code set to: ");
+    			print(code);
+    		}
+    		else {
+    			print("Sorry, claim code is not 63 characters long. Claim code unchanged.");
+    		}
+		print("\r\n");
     }
 }
 
