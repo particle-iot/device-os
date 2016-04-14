@@ -74,13 +74,17 @@ protected:
 
 		connect_finalize_impl();
 
+		bool require_resume = false;
+
         ATOMIC_BLOCK() {
-        		// ensure after connection exits the cancel flag is cleared
+        		// ensure after connection exits the cancel flag is cleared if it was set during connection
         		if (connect_cancelled) {
-    				connect_cancel(false);
+        			require_resume = true;
         		}
         		connecting = false;
         }
+        if (require_resume)
+        		cellular_cancel(false, HAL_IsISR(), NULL);
     }
 
  
@@ -130,15 +134,18 @@ public:
 
     void connect_cancel(bool cancel) override {
     		// only cancel if presently connecting
+    		bool require_cancel = false;
     		ATOMIC_BLOCK() {
     			if (connecting)
     			{
     				if (cancel!=connect_cancelled) {
-    					cellular_cancel(cancel, HAL_IsISR(), NULL);
+    					require_cancel = true;
     					connect_cancelled = cancel;
     				}
     			}
     		}
+    		if (require_cancel)
+    			cellular_cancel(cancel, HAL_IsISR(), NULL);
     }
 
     void set_error_count(unsigned count) override { /* n/a */ }
