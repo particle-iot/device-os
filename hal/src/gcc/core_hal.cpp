@@ -35,6 +35,7 @@
 #include "service_debug.h"
 #include "device_config.h"
 #include "hal_platform.h"
+#include "interrupts_hal.h"
 #include <boost/crc.hpp>  // for boost::crc_32_type
 
 

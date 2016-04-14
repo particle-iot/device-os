@@ -49,6 +49,10 @@ public:
     void connect(unsigned flags=0) {
         network_connect(*this, flags, 0, NULL);
     }
+    bool connecting(void) {
+        return network_connecting(*this, 0, NULL);
+    }
+
     void disconnect() {
         network_disconnect(*this, 0, NULL);
     }
