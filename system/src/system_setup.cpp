@@ -170,7 +170,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     else if ('C' == c)
     {
     		char code[64];
-    		print("Enter 63-digit claim code:");
+    		print("Enter 63-digit claim code: ");
     		read_line(code, 63);
     		if (strlen(code)==63) {
     			HAL_Set_Claim_Code(code);
