@@ -14,6 +14,10 @@ AR = $(GCC_ARM_PATH)$(GCC_PREFIX)gcc-ar
 # default flags for targeting ARM
 #
 
+# Rust flags
+export RUST_TARGET_PATH=$(COMMON_BUILD)/arm/rust
+RUSTFLAGS += --target thumbv7m-none-eabi  -C opt-level=2 -Z no-landing-pads -g -L $(COMMON_BUILD)/arm/rust
+
 # C compiler flags
 CFLAGS +=  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb
 
