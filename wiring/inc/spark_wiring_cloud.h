@@ -73,7 +73,7 @@ class CloudClass {
 public:
 
     template <typename T, class ... Types>
-    static inline bool variable(const T &name, Types ... args)
+    static inline bool variable(const T &name, const Types& ... args)
     {
         static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
             "\n\nIn Particle.variable, name must be less than " __XSTRING(USER_VAR_KEY_LENGTH) " characters\n\n");
