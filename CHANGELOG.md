@@ -1,4 +1,20 @@
-## v0.5.0
+## v0.5.0-rc.2
+
+### FEATURES
+
+- Added SYSTEM_FLAG_WIFITEST_OVER_SERIAL1 which is disabled by default. Tinker enables this by default so that the Wi-Fi Tester is available during manufacturing.  Also ensures TX/RX pins are not used for Serial1 by default, in case you want to use these as GPIO. [945](https://github.com/spark/firmware/pull/945)
+
+### ENHANCEMENTS
+
+- Timer::isActive() function added [#950](https://github.com/spark/firmware/pull/950)
+- mbedtls headers are private to the communications module now, so user applications can include their own version of mbedtls [](https://github.com/spark/firmware/pull/940)
+
+### BUGFIXES
+
+- Soft AP Claim code fix [#956](https://github.com/spark/firmware/pull/956)
+- Variable template fix [#952](https://github.com/spark/firmware/pull/952)
+
+## v0.5.0-rc.1
 
 ### FEATURES
 
