@@ -224,6 +224,8 @@ inline bool HAL_IsISR()
 
 #elif PLATFORM_ID==60000
 inline bool HAL_IsISR() { return false; }
+#elif PLATFORM_ID==3
+inline bool HAL_IsISR() { return false; }
 #else
 #error "*** MCU architecture not supported by HAL_IsISR(). ***"
 #endif
