@@ -208,6 +208,25 @@ extern void module_user_init_hook(void);
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved);
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved);
 
+#ifdef USE_STDPERIPH_DRIVER
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD)
+#include "stm32f10x.h"
+inline bool HAL_IsISR()
+{
+	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+#elif defined(STM32F2XX)
+#include "stm32f2xx.h"
+inline bool HAL_IsISR()
+{
+	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
+#else
+#warning "*** MCU architecture not supported by HAL_IsISR(). ***"
+inline bool HAL_IsISR() { return false; }
+#endif
+#endif
 
 #ifdef __cplusplus
 }
