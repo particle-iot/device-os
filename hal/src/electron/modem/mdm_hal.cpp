@@ -1761,6 +1761,7 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
 */
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     while (len) {
+        // DEBUG_D("socketRecv: LEN: %d\r\n", len);
         int blk = MAX_SIZE; // still need space for headers and unsolicited  commands
         if (len < blk) blk = len;
         bool ok = false;
@@ -1770,7 +1771,12 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
 				if (_sockets[socket].connected) {
 					int available = socketReadable(socket);
 					if (available<0)  {
-						ok = false;
+                        // DEBUG_D("socketRecv: SOCKET CLOSED or NO AVAIL DATA\r\n");
+                        // Socket may have been closed remotely during read, or no more data to read.
+                        // Zero the `len` to break out of the while(len), and set `ok` to true so
+                        // we return the `cnt` recv'd up until the socket was closed.
+                        len = 0;
+                        ok = true;
 					}
 					else
 					{
@@ -1811,7 +1817,7 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
             return MDM_SOCKET_ERROR;
         }
     }
-    //DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
+    // DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
     return cnt;
 }
 
