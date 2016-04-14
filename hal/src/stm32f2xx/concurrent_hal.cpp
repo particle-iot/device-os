@@ -33,17 +33,6 @@
 #include "interrupts_hal.h"
 #include <mutex>
 
-inline bool isISR()
-{
-	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
-}
-
-uint8_t HAL_IsISR()
-{
-	return isISR();
-}
-
-
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
 
@@ -321,7 +310,7 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay)
 {
-	if (isISR())
+	if (HAL_IsISR())
 		return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
 	else
 		return xQueueSend(queue, item, delay)!=pdTRUE;

@@ -28,6 +28,7 @@
 #include "system_update.h"
 #include "spark_macros.h"
 #include "string.h"
+#include "core_hal.h"
 #include "system_tick_hal.h"
 #include "watchdog_hal.h"
 #include "wlan_hal.h"
@@ -406,8 +407,8 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 {
 	// if not threading, or we are the application thread, then implement delay
 	// as a background message pump
-    if (!system_thread_get_state(NULL) ||
-        APPLICATION_THREAD_CURRENT()) {
+    if ((!system_thread_get_state(NULL) || APPLICATION_THREAD_CURRENT()) && !HAL_IsISR())
+    {
     		system_delay_pump(ms, force_no_background_loop);
     }
     else
