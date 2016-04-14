@@ -222,9 +222,10 @@ inline bool HAL_IsISR()
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 }
 
-#else
-#warning "*** MCU architecture not supported by HAL_IsISR(). ***"
+#elif PLATFORM_ID==60000
 inline bool HAL_IsISR() { return false; }
+#else
+#error "*** MCU architecture not supported by HAL_IsISR(). ***"
 #endif
 #endif
 
