@@ -62,6 +62,7 @@ cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* rese
 cellular_result_t  cellular_gprs_detach(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.detach());
+    HAL_NET_notify_disconnected();
     return 0;
 }
 
