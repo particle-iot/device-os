@@ -22,13 +22,17 @@
 #include "stdarg.h"
 
 PRODUCT_ID(PLATFORM_ID);
-PRODUCT_VERSION(2);
+PRODUCT_VERSION(3);
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
 int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
+
+#if Wiring_WiFi
+STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
+#endif
 
 SYSTEM_MODE(AUTOMATIC);
 

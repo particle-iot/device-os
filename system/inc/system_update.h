@@ -109,15 +109,15 @@ typedef enum
      */
     SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
 
-    /**
-     * When 0, the application code is not paused.
-     * When 1, the application code is paused.
-     */
-    // SYSTEM_FLAG_APPLICATION_PAUSED=4,
+	/**
+	 * Enable/Disable use of serial1 during setup.
+	 */
+	SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1,
 
     SYSTEM_FLAG_MAX
 
 } system_flag_t;
+
 
 void system_shutdown_if_needed();
 void system_pending_shutdown();
