@@ -499,7 +499,7 @@ class ManagedIPNetworkInterface : public ManagedNetworkInterface
 
 public:
 
-    void get_ipconfig(IPConfig* config)
+    void get_ipconfig(IPConfig* config) override
     {
     		update_config(true);
     		memcpy(config, this->config(), config->size);
