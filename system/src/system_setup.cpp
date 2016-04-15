@@ -58,16 +58,74 @@ public:
     }
 };
 
+#if SETUP_OVER_SERIAL1
+inline bool setup_serial1() {
+	uint8_t value = 0;
+	system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
+	return value;
+}
+#endif
+
+
 template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
     : config(config_)
 {
     if (serial.baud()==0)
         serial.begin(9600);
+
+#if SETUP_OVER_SERIAL1
+    serial1Enabled = false;
+    magicPos = 0;
+    if (setup_serial1()) {
+    		SETUP_SERIAL.begin(9600);
+    }
+    this->tester = NULL;
+#endif
 }
+
+template <typename Config> SystemSetupConsole<Config>::~SystemSetupConsole()
+{
+#if SETUP_OVER_SERIAL1
+    delete this->tester;
+#endif
+}
+
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
-    if (serial.available()) {
+#if SETUP_OVER_SERIAL1
+	if (setup_serial1()) {
+		int c = -1;
+		if (SETUP_SERIAL.available()) {
+			c = SETUP_SERIAL.read();
+		}
+		if (SETUP_LISTEN_MAGIC) {
+			static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
+			if (!serial1Enabled) {
+				if (c>=0) {
+					if (c==magic_code[magicPos++]) {
+						serial1Enabled = magicPos==sizeof(magic_code);
+						if (serial1Enabled) {
+							if (tester==NULL)
+								tester = new WiFiTester();
+							tester->setup(SETUP_OVER_SERIAL1);
+						}
+					}
+					else {
+						magicPos = 0;
+					}
+					c = -1;
+				}
+			}
+			else {
+				if (tester)
+					tester->loop(c);
+			}
+		}
+	}
+#endif
+
+	if (serial.available()) {
         int c = serial.read();
         if (c>=0)
             handle((char)c);
@@ -147,66 +205,13 @@ template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, 
 
 #if Wiring_WiFi
 
-inline bool setup_serial1() {
-	uint8_t value = 0;
-	system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
-	return value;
-}
-
 WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
-#if SETUP_OVER_SERIAL1
-    serial1Enabled = false;
-    magicPos = 0;
-    if (setup_serial1()) {
-    		SETUP_SERIAL.begin(9600);
-    }
-    this->tester = NULL;
-#endif
 }
 
 WiFiSetupConsole::~WiFiSetupConsole()
 {
-#if SETUP_OVER_SERIAL1
-    delete this->tester;
-#endif
-}
-
-void WiFiSetupConsole::loop()
-{
-#if SETUP_OVER_SERIAL1
-	if (setup_serial1()) {
-		int c = -1;
-		if (SETUP_SERIAL.available()) {
-			c = SETUP_SERIAL.read();
-		}
-		if (SETUP_LISTEN_MAGIC) {
-			static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
-			if (!serial1Enabled) {
-				if (c>=0) {
-					if (c==magic_code[magicPos++]) {
-						serial1Enabled = magicPos==sizeof(magic_code);
-						if (serial1Enabled) {
-							if (tester==NULL)
-								tester = new WiFiTester();
-							tester->setup(SETUP_OVER_SERIAL1);
-						}
-					}
-					else {
-						magicPos = 0;
-					}
-					c = -1;
-				}
-			}
-			else {
-				if (tester)
-					tester->loop(c);
-			}
-		}
-	}
-#endif
-    super::loop();
 }
 
 void WiFiSetupConsole::handle(char c)
@@ -313,6 +318,12 @@ CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
 }
+
+
+CellularSetupConsole::~CellularSetupConsole()
+{
+}
+
 
 void CellularSetupConsole::exit()
 {
