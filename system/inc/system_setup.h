@@ -84,7 +84,6 @@ class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
 public:
     WiFiSetupConsole(WiFiSetupConsoleConfig& config);
     ~WiFiSetupConsole();
-    virtual void loop() override;
 
 protected:
     virtual void handle(char c) override;
