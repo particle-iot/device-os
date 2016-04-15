@@ -213,13 +213,21 @@ void WiFiTester::printInfo() {
 #if Wiring_WiFi
     String rssi(WiFi.RSSI());
     printItem("MAC", macAddress.c_str());
-    printItem("SSID", serial.string);
-    printItem("RSSI", rssi.c_str());
 #endif
+
+
 #if Wiring_Cellular
+    printItem("MAC", "");   // needed by the sticker rig
     CellularDevice dev;
     cellular_device_info(&dev, NULL);
     printItem("IMEI", dev.imei);
+#endif
+
+#if Wiring_WiFi
+    printItem("RSSI", rssi.c_str());
+#else
+    // the sticker rig waits for the RSSI value
+    printItem("RSSI", "0");
 #endif
 
 }
