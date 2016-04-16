@@ -13,6 +13,7 @@
 
 - Soft AP Claim code fix [#956](https://github.com/spark/firmware/pull/956)
 - Variable template fix [#952](https://github.com/spark/firmware/pull/952)
+- TCPClient on Electron not receiving all of the data for small files [#896](https://github.com/spark/firmware/issues/896) 
 
 ## v0.5.0-rc.1
 
@@ -46,7 +47,6 @@
 ### BUGFIXES
 
 - targets `program-cloud`, `program-dfu` can be used without requiring `all` and will built the firmware correctly. [#899](https://github.com/spark/firmware/issues/899)
-- TCPClient on Electron not receiving all of the data for small files [#896](https://github.com/spark/firmware/issues/896) 
 - [Electron] Free socket when the socket is closed remotely [#885](https://github.com/spark/firmware/pull/885)
 - Extended CAN filters [#857](https://github.com/spark/firmware/pull/857)
 - I2C does not ensure a stop condition completes correctly in endTransmission [#856](https://github.com/spark/firmware/pull/856)
