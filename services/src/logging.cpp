@@ -26,9 +26,9 @@
 
 namespace {
 
-log_message_callback_type log_msg_callback = 0;
-log_write_callback_type log_write_callback = 0;
-log_enabled_callback_type log_enabled_callback = 0;
+volatile log_message_callback_type log_msg_callback = 0;
+volatile log_write_callback_type log_write_callback = 0;
+volatile log_enabled_callback_type log_enabled_callback = 0;
 
 } // namespace
 

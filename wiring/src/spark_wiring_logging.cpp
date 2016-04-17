@@ -90,6 +90,19 @@ inline const char* strchrend(const char* s, char c) {
 } // namespace
 
 // spark::Logger
+struct spark::Logger::FilterData {
+    const char *name; // Category name
+    size_t size; // Name length
+    int level; // Logging level (-1 if not specified for this category)
+    std::vector<FilterData> filters; // Subcategories
+
+    FilterData(const char *name, size_t size) :
+            name(name),
+            size(size),
+            level(-1) {
+    }
+};
+
 spark::Logger::Logger(LogLevel level, const Filters &filters) :
         level_(level) {
     for (auto it = filters.begin(); it != filters.end(); ++it) {
@@ -129,6 +142,9 @@ spark::Logger::Logger(LogLevel level, const Filters &filters) :
             pos = i + 1;
         }
     }
+}
+
+spark::Logger::~Logger() {
 }
 
 LogLevel spark::Logger::categoryLevel(const char *category) const {

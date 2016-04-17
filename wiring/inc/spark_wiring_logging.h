@@ -55,7 +55,7 @@ public:
     /*!
         \brief Destructor.
     */
-    virtual ~Logger() = default;
+    virtual ~Logger();
     /*!
         \brief Returns default logging level.
     */
@@ -120,18 +120,7 @@ protected:
     void write(const char *str);
 
 private:
-    struct FilterData {
-        const char *name; // Category name
-        size_t size; // Name length
-        int level; // Logging level (-1 if not specified for this category)
-        std::vector<FilterData> filters; // Subcategories
-
-        FilterData(const char *name, size_t size) :
-                name(name),
-                size(size),
-                level(-1) {
-        }
-    };
+    struct FilterData;
 
     std::vector<FilterData> filters_;
     LogLevel level_;
