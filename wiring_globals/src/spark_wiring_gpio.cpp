@@ -178,6 +178,27 @@ int32_t analogRead(pin_t pin)
   return HAL_ADC_Read(pin);
 }
 
+int32_t analogReadSamples(uint16_t pin, void* sampleBuffer, uint32_t size)
+{
+  // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
+  if(pin < FIRST_ANALOG_PIN)
+  {
+    pin = pin + FIRST_ANALOG_PIN;
+  }
+
+  // Safety check
+  if( !pinAvailable(pin) ) {
+    return 0;
+  }
+
+  if(HAL_Validate_Pin_Function(pin, PF_ADC)!=PF_ADC)
+  {
+    return 0;
+  }
+
+  return HAL_ADC_Read_Samples(pin, sampleBuffer, size);
+}
+
 /*
  * @brief Should take an integer 0-255 and create a 500Hz PWM signal with a duty cycle from 0-100%.
  * On Photon, DAC1 and DAC2 act as true analog outputs(values: 0 to 4095) using onchip DAC peripheral
@@ -203,7 +224,7 @@ void analogWrite(pin_t pin, uint16_t value)
             return;
         }
 
-        HAL_PWM_Write(pin, value);
+        HAL_PWM_Write_Ext(pin, value);
     }
 }
 
@@ -229,8 +250,50 @@ void analogWrite(pin_t pin, uint16_t value, uint16_t pwm_frequency)
             return;
         }
 
-        HAL_PWM_Write_With_Frequency(pin, value, pwm_frequency);
+        HAL_PWM_Write_With_Frequency_Ext(pin, value, pwm_frequency);
     }
+}
+
+uint8_t analogWriteResolution(pin_t pin, uint8_t value)
+{
+  // Safety check
+  if (!pinAvailable(pin))
+  {
+      return 0;
+  }
+
+  if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+  {
+    HAL_PWM_Set_Resolution(pin, value);
+    return HAL_PWM_Get_Resolution(pin);
+  }
+  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_DAC)
+  {
+    HAL_DAC_Set_Resolution(pin, value);
+    return HAL_DAC_Get_Resolution(pin);
+  }
+
+  return 0;
+}
+
+uint8_t analogWriteResolution(pin_t pin)
+{
+  // Safety check
+  if (!pinAvailable(pin))
+  {
+      return 0;
+  }
+
+  if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+  {
+    return HAL_PWM_Get_Resolution(pin);
+  }
+  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_DAC)
+  {
+    return HAL_DAC_Get_Resolution(pin);
+  }
+
+  return 0;
 }
 
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder) {

@@ -88,5 +88,7 @@ uint32_t pulseIn(pin_t pin, uint16_t value);
 
 void analogWrite(uint16_t pin, uint16_t value);
 void analogWrite(uint16_t pin, uint16_t value, uint16_t pwm_frequency);
+uint8_t analogWriteResolution(uint16_t pin, uint8_t value);
+uint8_t analogWriteResolution(pin_t pin);
 
 #endif /* SPARK_WIRING_H_ */
