@@ -50,15 +50,6 @@ public:
         \brief Constructor.
         \param level Default logging level.
         \param filters Category filters.
-
-        Category filters are optional and can be specified via C++11 initializer list syntax:
-
-        \code
-        SerialLogger logger(ERROR_LEVEL, { // Default logging level
-            { "system", INFO_LEVEL }, // Logging level for system messages
-            { "app", TRACE_LEVEL } // Logging level for application messages
-        });
-        \endcode
     */
     explicit Logger(LogLevel level = ALL_LEVEL, const Filters &filters = {});
     /*!
@@ -110,8 +101,6 @@ protected:
 
         Default implementation generates messages in the following format:
         `<timestamp>: [category]: [file]:[line], [function]: <level>: <message>`
-
-        Resulting string is then written to output stream via \ref write(const char*, size_t) method.
     */
     virtual void formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
             const char *file, int line, const char *func);
