@@ -28,7 +28,7 @@ namespace spark {
 
 class SerialLogger: public Logger {
 public:
-    explicit SerialLogger(int baud = 9600, LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {}) :
+    explicit SerialLogger(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             Logger(level, filters) {
         Serial.begin(baud);
         Logger::install(this);
@@ -46,7 +46,7 @@ protected:
 
 class Serial1Logger: public Logger {
 public:
-    explicit Serial1Logger(int baud = 9600, LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {}) :
+    explicit Serial1Logger(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             Logger(level, filters) {
         Serial1.begin(baud);
         Logger::install(this);
@@ -64,8 +64,19 @@ protected:
 
 } // namespace spark
 
-// Compatibility typedefs
-typedef spark::SerialLogger SerialDebugOutput;
-typedef spark::Serial1Logger Serial1DebugOutput;
+// Compatibility API
+class SerialDebugOutput: public spark::SerialLogger {
+public:
+    explicit SerialDebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
+        SerialLogger(baud, level) {
+    }
+};
+
+class Serial1DebugOutput: public spark::Serial1Logger {
+public:
+    explicit Serial1DebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
+        Serial1Logger(baud, level) {
+    }
+};
 
 #endif	/* DEBUG_OUTPUT_HANDLER_H */

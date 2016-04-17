@@ -51,7 +51,7 @@ public:
         \param level Default logging level.
         \param filters Category filters.
     */
-    explicit Logger(LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {});
+    explicit Logger(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
     /*!
         \brief Destructor.
     */
