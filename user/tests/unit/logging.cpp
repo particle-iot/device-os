@@ -72,7 +72,7 @@ private:
 
 class TestLogger: public Logger {
 public:
-    explicit TestLogger(LogLevel level = ALL_LEVEL, const Filters &filters = {}):
+    explicit TestLogger(LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {}):
             Logger(level, filters) {
         Logger::install(this);
     }
@@ -127,13 +127,13 @@ private:
 // Logger using compatibility callback
 class CompatLogger {
 public:
-    explicit CompatLogger(LogLevel level = ALL_LEVEL) {
+    explicit CompatLogger(LogLevel level = LOG_LEVEL_ALL) {
         instance = this;
         set_logger_output(callback, level);
     }
 
     ~CompatLogger() {
-        set_logger_output(nullptr, NO_LOG_LEVEL);
+        set_logger_output(nullptr, LOG_LEVEL_NONE);
         instance = nullptr;
     }
 
@@ -216,16 +216,16 @@ const std::string fileName = sourceFileName();
 LOG_SOURCE_CATEGORY("global");
 
 CATCH_TEST_CASE("Message logging") {
-    TestLogger log(ALL_LEVEL);
+    TestLogger log(LOG_LEVEL_ALL);
     CATCH_SECTION("attributes") {
         LOG(TRACE, "trace");
-        log.next().messageEquals("trace").levelEquals(TRACE_LEVEL).fileEquals(fileName);
+        log.next().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).fileEquals(fileName);
         LOG(INFO, "info");
-        log.next().messageEquals("info").levelEquals(INFO_LEVEL).fileEquals(fileName);
+        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).fileEquals(fileName);
         LOG(WARN, "warn");
-        log.next().messageEquals("warn").levelEquals(WARN_LEVEL).fileEquals(fileName);
+        log.next().messageEquals("warn").levelEquals(LOG_LEVEL_WARN).fileEquals(fileName);
         LOG(ERROR, "error");
-        log.next().messageEquals("error").levelEquals(ERROR_LEVEL).fileEquals(fileName);
+        log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).fileEquals(fileName);
     }
     CATCH_SECTION("formatting") {
         std::string s = "";
@@ -243,18 +243,18 @@ CATCH_TEST_CASE("Message logging") {
     }
     CATCH_SECTION("compatibility macros") {
         DEBUG("debug"); // Alias for LOG(DEBUG, ...)
-        log.next().messageEquals("debug").levelEquals(DEBUG_LEVEL);
+        log.next().messageEquals("debug").levelEquals(DEBUG_LEVEL); // Compatibility level
         INFO("info"); // Alias for LOG(INFO, ...)
-        log.next().messageEquals("info").levelEquals(INFO_LEVEL);
+        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO);
         WARN("warn"); // Alias for LOG(WARN, ...)
-        log.next().messageEquals("warn").levelEquals(WARN_LEVEL);
+        log.next().messageEquals("warn").levelEquals(LOG_LEVEL_WARN);
         ERROR("error"); // Alias for LOG(ERROR, ...)
-        log.next().messageEquals("error").levelEquals(ERROR_LEVEL);
+        log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR);
     }
 }
 
 CATCH_TEST_CASE("Message logging (compatibility callback)") {
-    CompatLogger log(ALL_LEVEL);
+    CompatLogger log(LOG_LEVEL_ALL);
     CATCH_SECTION("attributes") {
         LOG(TRACE, "trace");
         log.bufferEndsWith("TRACE: trace\r\n");
@@ -280,7 +280,7 @@ CATCH_TEST_CASE("Message logging (compatibility callback)") {
 }
 
 CATCH_TEST_CASE("Direct logging") {
-    TestLogger log(ALL_LEVEL);
+    TestLogger log(LOG_LEVEL_ALL);
     CATCH_SECTION("write") {
         std::string s = "";
         LOG_WRITE(INFO, s.c_str(), s.size());
@@ -329,7 +329,7 @@ CATCH_TEST_CASE("Direct logging") {
 
 // Copy-pase of above test case with TestLogger replaced with CompatLogger
 CATCH_TEST_CASE("Direct logging (compatibility callback)") {
-    CompatLogger log(ALL_LEVEL);
+    CompatLogger log(LOG_LEVEL_ALL);
     CATCH_SECTION("write") {
         std::string s = "";
         LOG_WRITE(INFO, s.c_str(), s.size());
@@ -378,17 +378,17 @@ CATCH_TEST_CASE("Direct logging (compatibility callback)") {
 
 CATCH_TEST_CASE("Basic filtering") {
     CATCH_SECTION("warn") {
-        TestLogger log(WARN_LEVEL); // TRACE and INFO should be filtered out
+        TestLogger log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("cd");
     }
     CATCH_SECTION("none") {
-        TestLogger log(NO_LOG_LEVEL); // All levels should be filtered out
+        TestLogger log(LOG_LEVEL_NONE); // All levels should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && !LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
         CATCH_CHECK(!log.hasNext());
@@ -399,7 +399,7 @@ CATCH_TEST_CASE("Basic filtering") {
 
 CATCH_TEST_CASE("Basic filtering (compatibility callback)") {
     CATCH_SECTION("warn") {
-        CompatLogger log(WARN_LEVEL); // TRACE and INFO should be filtered out
+        CompatLogger log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         CATCH_SECTION("trace") {
             LOG(TRACE, "message");
@@ -433,7 +433,7 @@ CATCH_TEST_CASE("Basic filtering (compatibility callback)") {
 }
 
 CATCH_TEST_CASE("Scoped category") {
-    TestLogger log(ALL_LEVEL);
+    TestLogger log(LOG_LEVEL_ALL);
     LOG(INFO, "");
     log.next().categoryEquals("global");
     {
@@ -446,18 +446,18 @@ CATCH_TEST_CASE("Scoped category") {
 }
 
 CATCH_TEST_CASE("Category filtering") {
-    TestLogger log(ERROR_LEVEL, {
-        { "b.b", INFO_LEVEL },
-        { "a", WARN_LEVEL },
-        { "a.a.a", TRACE_LEVEL },
-        { "a.a", INFO_LEVEL }
+    TestLogger log(LOG_LEVEL_ERROR, {
+        { "b.b", LOG_LEVEL_INFO },
+        { "a", LOG_LEVEL_WARN },
+        { "a.a.a", LOG_LEVEL_TRACE },
+        { "a.a", LOG_LEVEL_INFO }
     });
     CATCH_SECTION("a") {
         LOG_CATEGORY("a"); // TRACE and INFO should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("cd");
@@ -466,9 +466,9 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("a.a"); // TRACE should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(INFO_LEVEL);
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_INFO);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("bcd");
@@ -477,10 +477,10 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("a.a.a"); // No messages should be filtered out
         CATCH_CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(TRACE_LEVEL);
-        log.next().levelEquals(INFO_LEVEL);
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_TRACE);
+        log.next().levelEquals(LOG_LEVEL_INFO);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("abcd");
@@ -489,8 +489,8 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("a.x"); // TRACE and INFO should be filtered out (according to filter set for "a" category)
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("cd");
@@ -499,9 +499,9 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("a.a.x"); // TRACE should be filtered out (according to filter set for "a.a" category)
         CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(INFO_LEVEL);
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_INFO);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("bcd");
@@ -510,10 +510,10 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("a.a.a.x"); // No messages should be filtered out (according to filter set for "a.a.a" category)
         CATCH_CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(TRACE_LEVEL);
-        log.next().levelEquals(INFO_LEVEL);
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_TRACE);
+        log.next().levelEquals(LOG_LEVEL_INFO);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("abcd");
@@ -522,7 +522,7 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("b"); // All levels except ERROR should be filtered out (default level)
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("d");
@@ -531,7 +531,7 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("b.x"); // All levels except ERROR should be filtered out (default level)
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("d");
@@ -540,9 +540,9 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("b.b"); // TRACE should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(INFO_LEVEL);
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_INFO);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("bcd");
@@ -551,9 +551,9 @@ CATCH_TEST_CASE("Category filtering") {
         LOG_CATEGORY("b.b.x"); // TRACE should be filtered out (according to filter set for "b.b" category)
         CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(INFO_LEVEL);
-        log.next().levelEquals(WARN_LEVEL);
-        log.next().levelEquals(ERROR_LEVEL);
+        log.next().levelEquals(LOG_LEVEL_INFO);
+        log.next().levelEquals(LOG_LEVEL_WARN);
+        log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
         log.bufferEquals("bcd");
@@ -561,9 +561,9 @@ CATCH_TEST_CASE("Category filtering") {
 }
 
 CATCH_TEST_CASE("Malformed category name") {
-    TestLogger log(ERROR_LEVEL, {
-        { "a", WARN_LEVEL },
-        { "a.a", INFO_LEVEL }
+    TestLogger log(LOG_LEVEL_ERROR, {
+        { "a", LOG_LEVEL_WARN },
+        { "a.a", LOG_LEVEL_INFO }
     });
     CATCH_SECTION("empty") {
         LOG_CATEGORY(""); // All levels except ERROR should be filtered out (default level)
@@ -589,10 +589,10 @@ CATCH_TEST_CASE("Malformed category name") {
 
 CATCH_TEST_CASE("Miscellaneous") {
     CATCH_SECTION("exact category match") {
-        TestLogger log(ERROR_LEVEL, {
-            { "aaa", TRACE_LEVEL },
-            { "aa", INFO_LEVEL },
-            { "a", WARN_LEVEL }
+        TestLogger log(LOG_LEVEL_ERROR, {
+            { "aaa", LOG_LEVEL_TRACE },
+            { "aa", LOG_LEVEL_INFO },
+            { "a", LOG_LEVEL_WARN }
         });
         CATCH_CHECK(LOG_ENABLED_C(WARN, "a"));
         CATCH_CHECK(LOG_ENABLED_C(INFO, "aa"));

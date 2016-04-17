@@ -29,8 +29,9 @@ extern "C" {
 #endif
 
 typedef enum LogLevel {
+    // Compatibility levels
     DEFAULT_LEVEL = 0,
-    ALL_LEVEL = 1, // Set to log all messages
+    ALL_LEVEL = 1,
     TRACE_LEVEL = 1,
     LOG_LEVEL = 10,
     DEBUG_LEVEL = 20,
@@ -38,7 +39,15 @@ typedef enum LogLevel {
     WARN_LEVEL = 40,
     ERROR_LEVEL = 50,
     PANIC_LEVEL = 60,
-    NO_LOG_LEVEL = 70 // Set to not log any messages
+    NO_LOG_LEVEL = 70,
+    // Public API
+    LOG_LEVEL_ALL = ALL_LEVEL, // Log all messages
+    LOG_LEVEL_TRACE = TRACE_LEVEL,
+    LOG_LEVEL_INFO = INFO_LEVEL,
+    LOG_LEVEL_WARN = WARN_LEVEL,
+    LOG_LEVEL_ERROR = ERROR_LEVEL,
+    LOG_LEVEL_PANIC = PANIC_LEVEL,
+    LOG_LEVEL_NONE = NO_LOG_LEVEL // Do not log any messages
 } LogLevel;
 
 // Logger callbacks
@@ -78,7 +87,7 @@ extern void HAL_Delay_Microseconds(uint32_t delay);
 #endif
 
 #ifndef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL ALL_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 #endif
 
 #ifndef LOG_MAX_STRING_LENGTH

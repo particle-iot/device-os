@@ -70,7 +70,7 @@ private:
     }
 
     static int logEnabled(int level, const char *category, void *reserved) {
-        int minLevel = NO_LOG_LEVEL;
+        int minLevel = LOG_LEVEL_NONE;
         const auto &loggers = instance()->loggers_;
         for (size_t i = 0; i < loggers.size(); ++i) {
             const int level = loggers[i]->categoryLevel(category);
