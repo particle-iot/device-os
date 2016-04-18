@@ -30,12 +30,19 @@
 #include "semphr.h"
 #include "timers.h"
 #include "stm32f2xx.h"
+#include "interrupts_hal.h"
 #include <mutex>
 
 inline bool isISR()
 {
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 }
+
+uint8_t HAL_IsISR()
+{
+	return isISR();
+}
+
 
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
@@ -467,4 +474,9 @@ int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, un
 int os_timer_destroy(os_timer_t timer, void* reserved)
 {
     return xTimerDelete(timer, CONCURRENT_WAIT_FOREVER)!=pdPASS;
+}
+
+int os_timer_is_active(os_timer_t timer, void* reserved)
+{
+    return xTimerIsTimerActive(timer) != pdFALSE;
 }

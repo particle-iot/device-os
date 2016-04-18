@@ -1,38 +1,58 @@
-## v0.5.0
+## v0.5.0-rc.2
 
 ### FEATURES
 
-- [Electron] `SYSTEM_THREAD()` is supported [#884](https://github.com/spark/firmware/pull/884)
-- [Electron] data usage API [#866](https://github.com/spark/firmware/pull/866)
+- Added SYSTEM_FLAG_WIFITEST_OVER_SERIAL1 which is disabled by default. Tinker enables this by default so that the Wi-Fi Tester is available during manufacturing.  Also ensures TX/RX pins are not used for Serial1 by default, in case you want to use these as GPIO. [945](https://github.com/spark/firmware/pull/945)
+
+### ENHANCEMENTS
+
+- Timer::isActive() function added [#950](https://github.com/spark/firmware/pull/950)
+- mbedtls headers are private to the communications module now, so user applications can include their own version of mbedtls [](https://github.com/spark/firmware/pull/940)
+
+### BUGFIXES
+
+- Soft AP Claim code fix [#956](https://github.com/spark/firmware/pull/956)
+- Variable template fix [#952](https://github.com/spark/firmware/pull/952)
+- TCPClient on Electron not receiving all of the data for small files [#896](https://github.com/spark/firmware/issues/896) 
+
+## v0.5.0-rc.1
+
+### FEATURES
+
+- [Electron] [SYSTEM_THREAD()](https://docs.particle.io/reference/firmware/electron/#system-thread) is supported (in Beta) [#884](https://github.com/spark/firmware/pull/884)
+- [Electron] Cellular [Data Usage API](https://docs.particle.io/reference/firmware/electron/#getdatausage-) [#866](https://github.com/spark/firmware/pull/866)
 - [Electron] Configurable keep-alive ping [#913](https://github.com/spark/firmware/pull/913) 
-- [Electron] Cellular Band Select API [#891](https://github.com/spark/firmware/pull/891)
-- [Photon/Electron] Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
-- [Photon/Electron] SPI Slave support [#882](https://github.com/spark/firmware/pull/882) 
-- Atomic writes in EEPROM emulation [#871](https://github.com/spark/firmware/pull/871)
+- [Electron] Cellular [Band Select API](https://docs.particle.io/reference/firmware/electron/#getbandavailable-) [#891](https://github.com/spark/firmware/pull/891)
+- [Electron] Cellular [Local IP API](https://docs.particle.io/reference/firmware/electron/#localip-) [#850](https://github.com/spark/firmware/pull/850)
+- [Photon/Electron] Stack overflow detection with SOS code [13-blinks](https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos)
+- [Photon/Electron] [SPI Slave support](https://docs.particle.io/reference/firmware/photon/#begin-spi_mode-uint16_t-) [#882](https://github.com/spark/firmware/pull/882) 
+- Atomic writes in [EEPROM emulation](https://docs.particle.io/reference/firmware/electron/#eeprom) [#871](https://github.com/spark/firmware/pull/871)
 - Software Watchdog [#860](https://github.com/spark/firmware/pull/860)
-- `Serial.availableForWrite()` and `Serial.blockOnOverrun()` [#798](https://github.com/spark/firmware/issues/798)
+- [Serial.availableForWrite()](https://docs.particle.io/reference/firmware/photon/#availableforwrite-) and [Serial.blockOnOverrun()](https://docs.particle.io/reference/firmware/photon/#blockonoverrun-) [#798](https://github.com/spark/firmware/issues/798)
 - [Photon] SoftAP HTTP server can serve application pages. [#906](https://github.com/spark/firmware/pull/906)
 
 ### ENHANCEMENTS
 
 - Compiler error with variable/function names that are too long. [#883](https://github.com/spark/firmware/pull/883) 
 - DFU writes are verified [#870](https://github.com/spark/firmware/pull/870) 
-- [Electron] `NO_ACK` flag on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
+- [Electron] [NO_ACK flag](https://docs.particle.io/reference/firmware/electron/#particle-publish-) on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
 - [Electron] Allow session to resume when IP changes. [#848](https://github.com/spark/firmware/pull/848)
 - [Electron] Ensure published events are received by the cloud before sleeping. [#909](https://github.com/spark/firmware/pull/909)
-- [Electron] `SYSTEM_NETWORK_STANDBY` on `System.sleep()` [#845](https://github.com/spark/firmware/pull/845)
+- [Electron] [SLEEP_NETWORK_STANDBY on System.sleep()](https://docs.particle.io/reference/firmware/electron/#sleep-sleep-) [#845](https://github.com/spark/firmware/pull/845)
 - Serial baudrate to select ymodem mode includes listening mode [#912](https://github.com/spark/firmware/pull/912) 
+- Wi-Fi connection process forced to timeout after 60 seconds if unsuccessful [#898](https://github.com/spark/firmware/pull/898)
+- Added write-verify-retry-fail logic to DFU writes [#870](https://github.com/spark/firmware/pull/870)
+- Support for USART (Serial1/2/4/5) [data bits, parity and stop bits](https://docs.particle.io/reference/firmware/electron/#begin-) [#757](https://github.com/spark/firmware/pull/757)
 
 ### BUGFIXES
 
 - targets `program-cloud`, `program-dfu` can be used without requiring `all` and will built the firmware correctly. [#899](https://github.com/spark/firmware/issues/899)
-- TCPClient on Electron not receiving all of the data for small files [#896](https://github.com/spark/firmware/issues/896) 
 - [Electron] Free socket when the socket is closed remotely [#885](https://github.com/spark/firmware/pull/885)
 - Extended CAN filters [#857](https://github.com/spark/firmware/pull/857)
-- I2C does not ensure a stop condition completes correctly in endTransmission [#854](https://github.com/spark/firmware/issues/854)
-- DAC1/2 possible problem with `digitalWrite()` after `analogWrite()` [#833](https://github.com/spark/firmware/issues/833) 
+- I2C does not ensure a stop condition completes correctly in endTransmission [#856](https://github.com/spark/firmware/pull/856)
+- DAC1/2 possible problem with `digitalWrite()` after `analogWrite()` [#855](https://github.com/spark/firmware/pull/855) 
 - Servo HAL: Do not disable timer if some of its channels are still in use [#839](https://github.com/spark/firmware/pull/839)
-- USB driver fixes [#812](https://github.com/spark/firmware/pull/812)
+- USB driver fixes and Serial.available() not returning values greater than 1 [#812](https://github.com/spark/firmware/pull/812) [#669](https://github.com/spark/firmware/issues/669) [#846](https://github.com/spark/firmware/issues/846) [#923](https://github.com/spark/firmware/issues/923)
 - SOS During `WiFi.scan()` [#651](https://github.com/spark/firmware/issues/651)
 
 

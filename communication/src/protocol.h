@@ -264,6 +264,11 @@ public:
 		pinger.init(interval, timeout);
 	}
 
+	void set_keepalive(system_tick_t interval)
+	{
+		pinger.set_interval(interval);
+	}
+
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
@@ -389,6 +394,10 @@ public:
 	{
 		return -1;
 	}
+
+	system_tick_t millis() { return callbacks.millis(); }
+
+	virtual void command(ProtocolCommands::Enum command, uint32_t data)=0;
 
 };
 

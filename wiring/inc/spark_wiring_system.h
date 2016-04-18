@@ -253,6 +253,14 @@ public:
         return get_flag(SYSTEM_FLAG_RESET_PENDING)!=0;
     }
 
+    inline void enable(system_flag_t flag) {
+    		set_flag(flag, true);
+    }
+
+    inline void disable(system_flag_t flag) {
+		set_flag(flag, false);
+    }
+
 
 private:
 

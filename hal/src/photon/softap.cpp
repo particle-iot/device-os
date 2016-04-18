@@ -201,7 +201,21 @@ class JSONRequestCommand : public JSONCommand {
 
 protected:
 
+	/**
+	 * Template method allowing subclasses to handle the parsed json keys.
+	 * @param index The index into the array of keys passed to parse_json_requet of the key that has been matched.
+	 */
     virtual bool parsed_key(unsigned index)=0;
+
+    /**
+     * Template methods allowing subclasses to handle the parsed JSON values.
+     * @param index	the key index this value belongs to
+     * @param t		the jsmn token
+     * @param value	The string value.
+     *
+     * Note that the t and value parameters have a lifetime only for the duration of the method.
+     * They should not be stored for later use.
+     */
     virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value)=0;
 
     int parse_json_request(Reader& reader, const char* const keys[], const jsmntype_t types[], unsigned count) {
@@ -282,6 +296,7 @@ protected:
         return result;
     }
 };
+
 
 class VersionCommand : public JSONCommand {
 
@@ -440,6 +455,10 @@ int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext
  * soft-ap process complete.
  */
 class ConfigureAPCommand : public JSONRequestCommand {
+
+	/**
+	 * Receives the data from parsing the json.
+	 */
     ConfigureAP configureAP;
 
     static const char* KEY[5];
@@ -626,11 +645,14 @@ protected:
 
 class SetValueCommand  : public JSONRequestCommand {
 
+	static const unsigned MAX_KEY_LEN = 3;
+	static const unsigned MAX_VALUE_LEN = 64;
+
     static const char* const KEY[2];
     static const jsmntype_t TYPE[2];
 
-    const char* key;
-    const char* value;
+    char key[MAX_KEY_LEN+1];
+    char value[MAX_VALUE_LEN+1];
 
 protected:
 
@@ -638,24 +660,30 @@ protected:
         return true;
     }
 
+    inline void assign(char* target, const char* value, unsigned len) {
+    		strncpy(target, value, len);
+    		target[len-1] = '\0';
+    }
+
     virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value) {
         if (index==0)     // key
-            this->key = value;
+        		assign(this->key, value, MAX_KEY_LEN);
         else
-            this->value = value;
+        		assign(this->value, value, MAX_VALUE_LEN);
         return true;
     }
 
     int parse_request(Reader& reader) {
-        key = NULL; value = NULL;
+        key[0] = 0; value[0] = 0;
         return parse_json_request(reader, KEY, TYPE, arraySize(KEY));
     }
 
     int process() {
         int result = -1;
-        if (key && value) {
-            if (!strcmp(key,"cc"))
+        if (*key && *value) {
+            if (!strcmp(key,"cc")) {
                 result = HAL_Set_Claim_Code(value);
+            }
         }
         return result;
     }
@@ -956,7 +984,7 @@ int read_from_http_body(Reader* r, uint8_t* target, size_t length) {
 
 void reader_from_http_body(Reader* r, wiced_http_message_body_t* body)
 {
-    if (body->total_message_data_remaining==0)
+    if (false && body->total_message_data_remaining==0)
     {
         reader_from_buffer(r, (uint8_t*)body->data, body->message_data_length);
     }

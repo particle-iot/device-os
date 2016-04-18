@@ -23,12 +23,12 @@ static void SPI_DMA_Completed_Callback()
     DMA_Completed_Flag = 1;
 }
 
-static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length)
+static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, HAL_SPI_DMA_UserCallback cb)
 {
     while (true)
     {
-        DMA_Completed_Flag = 0;
-        SPI.transfer(tx, rx, length, SPI_DMA_Completed_Callback);
+        DMA_Completed_Flag = cb ? 0 : 1;
+        SPI.transfer(tx, rx, length, cb);
         while(DMA_Completed_Flag == 0);
         if (SPI.available() == 0)
         {
@@ -41,13 +41,14 @@ static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length)
 
 test(SPI_Master_Slave_Slave_Transfer)
 {
+    /* Test will alternate between asynchronous and synchronous SPI.transfer() */
     Serial.println("This is Slave");
     SPI.begin(SPI_MODE_SLAVE, A2);
     SPI.onSelect(SPI_On_Select);
 
     uint32_t requestedLength = 0;
 
-    int count = 0;
+    uint32_t count = 0;
 
     while (true)
     {
@@ -62,7 +63,7 @@ test(SPI_Master_Slave_Slave_Transfer)
         SPI_Selected_State = 0;
 
         /* Receive up to TRANSFER_LENGTH_2 bytes */
-        SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, TRANSFER_LENGTH_2);
+        SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, TRANSFER_LENGTH_2, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check how many bytes we have received */
         assertEqual(SPI.available(), TRANSFER_LENGTH_1);
 
@@ -81,7 +82,7 @@ test(SPI_Master_Slave_Slave_Transfer)
         // Serial.print("> ");
         // Serial.println((const char *)SPI_Slave_Tx_Buffer);
 
-        SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, requestedLength);
+        SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, requestedLength, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check that we have transferred requestedLength bytes as requested */
         assertEqual(SPI.available(), requestedLength);
 

@@ -251,8 +251,8 @@ static void HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
         SPI_I2S_DMACmd(spiMap[spi].SPI_Peripheral, SPI_I2S_DMAReq_Rx, DISABLE);
         DMA_Cmd(spiMap[spi].SPI_RX_DMA_Stream, DISABLE);
 
-        spiState[spi].SPI_DMA_Configured = 0;
         spiState[spi].SPI_DMA_Last_Transfer_Length = spiState[spi].SPI_DMA_Current_Transfer_Length - remainingCount;
+        spiState[spi].SPI_DMA_Configured = 0;
 
         HAL_SPI_DMA_UserCallback callback = spiState[spi].SPI_DMA_UserCallback;
         if (callback) {
@@ -492,12 +492,27 @@ void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi)
     }
 }
 
-int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi)
+int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st)
 {
+    int32_t transferLength = 0;
     if (spiState[spi].SPI_DMA_Configured == 0)
-        return spiState[spi].SPI_DMA_Last_Transfer_Length;
+    {
+        transferLength = spiState[spi].SPI_DMA_Last_Transfer_Length;
+    }
+    else
+    {
+        transferLength = spiState[spi].SPI_DMA_Current_Transfer_Length - DMA_GetCurrDataCounter(spiMap[spi].SPI_RX_DMA_Stream);
+    }
 
-    return spiState[spi].SPI_DMA_Current_Transfer_Length - DMA_GetCurrDataCounter(spiMap[spi].SPI_RX_DMA_Stream);
+    if (st != NULL)
+    {
+        st->configured_transfer_length = spiState[spi].SPI_DMA_Current_Transfer_Length;
+        st->transfer_length = (uint32_t)transferLength;
+        st->ss_state = spiState[spi].SPI_SS_State;
+        st->transfer_ongoing = spiState[spi].SPI_DMA_Configured;
+    }
+
+    return transferLength;
 }
 
 void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved)

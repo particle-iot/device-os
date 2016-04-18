@@ -50,7 +50,7 @@ public:
 	void init(const char *id,
 	          const SparkKeys &keys,
 	          const SparkCallbacks &callbacks,
-	          const SparkDescriptor &descriptor)
+	          const SparkDescriptor &descriptor) override
 	{
 		set_protocol_flags(REQUIRE_HELLO_RESPONSE);
 
@@ -64,7 +64,7 @@ public:
         initialize_ping(15000,10000);
 	}
 
-	size_t build_hello(Message& message, bool ota_updated)
+	size_t build_hello(Message& message, bool ota_updated) override
 	{
 		product_details_t deets;
 		deets.size = sizeof(deets);
@@ -75,6 +75,8 @@ public:
 				deets.product_version, false, nullptr, 0);
 		return len;
 	}
+
+	virtual void command(ProtocolCommands::Enum command, uint32_t data) override;
 
 };
 

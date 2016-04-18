@@ -179,7 +179,7 @@ void system_handle_button_click()
         break;
     case 2: // Double click
         SYSTEM_POWEROFF = 1;
-        network.connect_cancel(true, true);
+        network.connect_cancel(true);
         break;
     default:
         break;
@@ -440,7 +440,7 @@ extern "C" void HAL_SysTick_Handler(void)
     // determine if the button press needs to change the state (and hasn't done so already))
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
-        network.connect_cancel(true, true);
+        network.connect_cancel(true);
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
@@ -478,6 +478,16 @@ void manage_safe_mode()
             set_system_mode(SAFE_MODE);
             // explicitly disable multithreading
             system_thread_set_state(spark::feature::DISABLED, NULL);
+            uint8_t value = 0;
+            system_get_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, &value, nullptr);
+            if (value)
+            {
+                // disable logging so that it doesn't interfere with serial output
+                set_logger_output(nullptr, NO_LOG_LEVEL);
+                system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 0, 0);
+                // flag listening mode
+                network_listen(0, 0, 0);
+            }
         }
     }
 }

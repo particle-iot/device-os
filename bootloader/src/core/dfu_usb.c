@@ -42,7 +42,7 @@ uint8_t DeviceStatus[6];
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
+static void IntToUnicode(uint32_t value, uint8_t* pbuf, uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -87,35 +87,6 @@ void HAL_DFU_USB_Init(void)
     USB_Init();
 }
 
-int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
-{
-    switch(BKP_DR)
-    {
-        case BKP_DR_01: return BKP_DR1;  break;
-        case BKP_DR_10: return BKP_DR10; break;
-    }
-    return -1;
-}
-
-void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data)
-{
-    uint32_t BKP_DR_Address = HAL_Core_Backup_Register(BKP_DR);
-    if(BKP_DR_Address != -1)
-    {
-        BKP_WriteBackupRegister(BKP_DR_Address, Data);
-    }
-}
-
-uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR)
-{
-    uint32_t BKP_DR_Address = HAL_Core_Backup_Register(BKP_DR);
-    if(BKP_DR_Address != -1)
-    {
-        return BKP_ReadBackupRegister(BKP_DR_Address);
-    }
-    return 0xFFFFFFFF;
-}
-
 /*******************************************************************************
  * Function Name  : Get_SerialNum.
  * Description    : Create the serial number string descriptor.
@@ -134,8 +105,8 @@ void Get_SerialNum(void)
 
     if (Device_Serial0 != 0)
     {
-        IntToUnicode (Device_Serial0, &DFU_StringSerial[2] , 8);
-        IntToUnicode (Device_Serial1, &DFU_StringSerial[18], 4);
+        IntToUnicode(Device_Serial0, &DFU_StringSerial[2], 8);
+        IntToUnicode(Device_Serial1, &DFU_StringSerial[18], 4);
     }
 }
 
@@ -145,24 +116,24 @@ void Get_SerialNum(void)
  * Input          : None.
  * Return         : None.
  *******************************************************************************/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
+static void IntToUnicode(uint32_t value, uint8_t* pbuf, uint8_t len)
 {
     uint8_t idx = 0;
 
-    for( idx = 0 ; idx < len ; idx ++)
+    for (idx = 0; idx < len; idx++)
     {
-        if( ((value >> 28)) < 0xA )
+        if (((value >> 28)) < 0xA)
         {
-            pbuf[ 2* idx] = (value >> 28) + '0';
+            pbuf[2 * idx] = (value >> 28) + '0';
         }
         else
         {
-            pbuf[2* idx] = (value >> 28) + 'A' - 10;
+            pbuf[2 * idx] = (value >> 28) + 'A' - 10;
         }
 
         value = value << 4;
 
-        pbuf[ 2* idx + 1] = 0;
+        pbuf[2 * idx + 1] = 0;
     }
 }
 

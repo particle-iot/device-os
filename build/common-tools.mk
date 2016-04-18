@@ -19,6 +19,7 @@ DFUSUFFIX = dfu-suffix
 CURL = curl
 CRC = crc32
 XXD = xxd
+SERIAL_SWITCHER = $(COMMON_BUILD)/serial_switcher.py
 
 CPPFLAGS +=
 
