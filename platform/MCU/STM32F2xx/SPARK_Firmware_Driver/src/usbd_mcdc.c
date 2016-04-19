@@ -203,6 +203,7 @@ static const uint8_t USBD_MCDC_CfgDesc[USBD_MCDC_CONFIG_DESC_SIZE] __ALIGN_END =
 static inline void USBD_MCDC_Change_Open_State(USBD_MCDC_Instance_Data* priv, uint8_t state) {
   if (state != priv->serial_open) {
     USBD_Composite_Class_Data* cls = (USBD_Composite_Class_Data*)priv->cls;
+    (void)cls;
     DEBUG("[%s] USB Serial state: %d", cls->firstInterface == 0 ? "Serial" : "USBSerial1", state);
     if (state) {
       priv->tx_failed_counter = 0;
