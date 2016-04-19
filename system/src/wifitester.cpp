@@ -217,17 +217,17 @@ void WiFiTester::printInfo() {
 
 
 #if Wiring_Cellular
-    printItem("MAC", "");   // needed by the sticker rig
+    printItem("MAC", "00:00:00:00:00:00");   // needed by the sticker rig
     CellularDevice dev;
     cellular_device_info(&dev, NULL);
-    printItem("IMEI", dev.imei);
+    //printItem("IMEI", dev.imei);
 #endif
 
 #if Wiring_WiFi
     printItem("RSSI", rssi.c_str());
 #else
     // the sticker rig waits for the RSSI value
-    printItem("RSSI", "0");
+    printItem("RSSI", "-50");
 #endif
 
 }
