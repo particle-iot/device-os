@@ -44,6 +44,7 @@ struct USBD_Composite_Class_Data {
   // Linked-list
   struct USBD_Composite_Class_Data* next;
   uint8_t active;
+  uint8_t enabled;
 
   USBD_Multi_Instance_cb_Typedef* cb;
   uint8_t* cfg;

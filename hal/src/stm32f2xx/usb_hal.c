@@ -175,6 +175,7 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* confi
 
     if (!usbUsartMap[serial].cls) {
         usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, serial == HAL_USB_USART_SERIAL ? 1 : 0);
+        usbUsartMap[serial].data->cls = usbUsartMap[serial].cls;
         USBD_Composite_Set_State(usbUsartMap[serial].cls, false);
     }
 }
@@ -187,10 +188,12 @@ void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reser
     
     if (!usbUsartMap[serial].registered) {
         HAL_USB_Detach();
-        if (!usbUsartMap[serial].cls)
+        if (!usbUsartMap[serial].cls) {
             usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, 0);
-        else
+            usbUsartMap[serial].data->cls = usbUsartMap[serial].cls;
+        } else {
             USBD_Composite_Set_State(usbUsartMap[serial].cls, true);
+        }
         usbUsartMap[serial].registered = 1;
         usbUsartMap[serial].data->linecoding.bitrate = baud;
         HAL_USB_Attach();
@@ -295,7 +298,7 @@ bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial)
 
 bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial)
 {
-    return usbUsartMap[serial].registered && usbUsartMap[serial].cls && 
+    return usbUsartMap[serial].registered && usbUsartMap[serial].cls &&
                 usbUsartMap[serial].data->linecoding.bitrate > 0 &&
                 USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED &&
                 usbUsartMap[serial].data->serial_open;

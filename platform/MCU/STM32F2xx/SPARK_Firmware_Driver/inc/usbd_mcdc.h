@@ -42,16 +42,10 @@
 #define SET_CONTROL_LINE_STATE                  0x22
 #define SEND_BREAK                              0x23
 #define NO_CMD                                  0xFF
+#define ACM_SERIAL_STATE                        0x20
 
-// typedef struct _CDC_IF_PROP
-// {
-//   uint16_t (*pIf_Init)     (void);
-//   uint16_t (*pIf_DeInit)   (void);
-//   uint16_t (*pIf_Ctrl)     (uint32_t Cmd, uint8_t* Buf, uint32_t Len);
-//   uint16_t (*pIf_DataTx)   (uint8_t* Buf, uint32_t Len);
-//   uint16_t (*pIf_DataRx)   (uint8_t* Buf, uint32_t Len);
-// }
-// CDC_IF_Prop_TypeDef;
+#define CDC_DTR                                 0x01
+#define CDC_RTS                                 0x02
 
 typedef struct USBD_MCDC_Instance_Data {
   // Back-reference to USBD_Composite_Class_Data
@@ -88,6 +82,8 @@ typedef struct USBD_MCDC_Instance_Data {
   uint32_t cmd_len;
 
   uint32_t frame_count;
+
+  uint8_t ctrl_line;
 
   uint16_t (*req_handler) (USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len);
 

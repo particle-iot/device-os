@@ -135,6 +135,10 @@ bool USBSerial::isEnabled() {
   return HAL_USB_USART_Is_Enabled(_serial);
 }
 
+bool USBSerial::isConnected() {
+  return HAL_USB_USART_Is_Connected(_serial);
+}
+
 unsigned int USBSerial::baud() {
   return HAL_USB_USART_Baud_Rate(_serial);
 }

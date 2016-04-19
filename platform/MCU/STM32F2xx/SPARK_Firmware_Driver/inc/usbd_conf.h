@@ -79,14 +79,20 @@
 /* USB CDC/VCP Class Layer Parameter */
 #define CDC0_IN_EP                       0x81  /* EP1 for data IN */
 #define CDC0_OUT_EP                      0x01  /* EP1 for data OUT */
-#define CDC0_CMD_EP                      0x82  /* EP2 for CDC commands */
-#define CDC1_IN_EP                       0x83  /* EP3 for data IN */
+#define CDC1_IN_EP                       0x82  /* EP2 for data IN */
 #define CDC1_OUT_EP                      0x02  /* EP2 for data OUT */
+
+/* XXX: Using dummy CMD endpoints on Electron, since Electron uses USB OTG FS peripheral,
+ * which has only 3 IN and 3 OUT endpoints, which is not enough to run 2 CDC + HID
+ * or even 2 CDC.
+ */
 #ifndef USE_USB_OTG_FS
+# define CDC0_CMD_EP                      0x83  /* EP3 for CDC commands */
 # define CDC1_CMD_EP                      0x84  /* EP4 for CDC commands */
 #else
-# define CDC1_CMD_EP                      0x82  /* EP2 for CDC commands (shared) */
-# define CDC_CMD_EP_SHARED
+# define CDC0_CMD_EP                      0x8A  /* dummy EP10 for CDC commands */
+# define CDC1_CMD_EP                      0x8B  /* dummy EP11 for CDC commands */
+//# define CDC_CMD_EP_SHARED
 #endif
 
 /* USB HID Class Layer Parameters */

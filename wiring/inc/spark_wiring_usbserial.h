@@ -43,6 +43,7 @@ public:
 
     operator bool();
     bool isEnabled();
+    bool isConnected();
 
 	void begin(long speed);
 	void end();

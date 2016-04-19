@@ -28,6 +28,7 @@
 #include "usbd_desc.h"
 #include "usbd_req.h"
 #include "debug.h"
+#include "interrupts_hal.h"
 
 static USBD_Composite_Class_Data s_Class_Entries[USBD_COMPOSITE_MAX_CLASSES] = { {0} };
 static uint32_t s_Classes_Count = 0;
@@ -41,8 +42,8 @@ static uint8_t USBD_Composite_DeInit(void* pdev, uint8_t cfgidx);
 static uint8_t USBD_Composite_Setup(void* pdev, USB_SETUP_REQ* req);
 static uint8_t USBD_Composite_EP0_TxSent(void* pdev);
 static uint8_t USBD_Composite_EP0_RxReady(void* pdev);
-static uint8_t USBD_Composite_DataIn(void* pdev , uint8_t epnum);
-static uint8_t USBD_Composite_DataOut(void* pdev , uint8_t epnum);
+static uint8_t USBD_Composite_DataIn(void* pdev, uint8_t epnum);
+static uint8_t USBD_Composite_DataOut(void* pdev, uint8_t epnum);
 static uint8_t USBD_Composite_SOF(void *pdev);
 // static uint8_t USBD_Composite_IsoINIncomplete(void *pdev);
 // static uint8_t USBD_Composite_IsoOUTIncomplete(void *pdev);
@@ -95,7 +96,7 @@ static const uint8_t USBD_Composite_CfgDescHeaderTemplate[USBD_COMPOSITE_CFGDESC
 static uint8_t USBD_Composite_Init(void* pdev, uint8_t cfgidx) {
   uint8_t status = USBD_OK;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->cb->Init) {
+    if(c->enabled && c->cb->Init) {
       status += c->cb->Init(pdev, c, cfgidx);
     }
   }
@@ -111,7 +112,7 @@ static uint8_t USBD_Composite_DeInit(void* pdev, uint8_t cfgidx) {
   s_Initialized = 0;
 
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->cb->DeInit) {
+    if(c->enabled && c->cb->DeInit) {
       status += c->cb->DeInit(pdev, c, cfgidx);
     }
   }
@@ -121,19 +122,20 @@ static uint8_t USBD_Composite_DeInit(void* pdev, uint8_t cfgidx) {
 
 static uint8_t USBD_Composite_Setup(void* pdev, USB_SETUP_REQ* req) {
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if (req->wIndex >= c->firstInterface && req->wIndex < (c->firstInterface + c->interfaces)) {
+    if (c->enabled && req->wIndex >= c->firstInterface && req->wIndex < (c->firstInterface + c->interfaces)) {
       if(c->cb->Setup) {
         return c->cb->Setup(pdev, c, req);
       }
     }
   }
+
   return USBD_OK;
 }
 
 static uint8_t USBD_Composite_EP0_TxSent(void* pdev) {
   uint8_t status = USBD_OK;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->cb->EP0_TxSent) {
+    if(c->enabled && c->cb->EP0_TxSent) {
       status += c->cb->EP0_TxSent(pdev, c);
     }
   }
@@ -144,7 +146,7 @@ static uint8_t USBD_Composite_EP0_TxSent(void* pdev) {
 static uint8_t USBD_Composite_EP0_RxReady(void* pdev) {
   uint8_t status = USBD_OK;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->cb->EP0_RxReady) {
+    if(c->enabled && c->cb->EP0_RxReady) {
       status += c->cb->EP0_RxReady(pdev, c);
     }
   }
@@ -155,7 +157,7 @@ static uint8_t USBD_Composite_EP0_RxReady(void* pdev) {
 static uint8_t USBD_Composite_DataIn(void* pdev, uint8_t epnum) {
   uint32_t msk = 1 << (epnum & 0x7f);
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->cb->DataIn) {
+    if(c->enabled && c->cb->DataIn) {
       if (c->epMask & msk) {
         // Class handled this endpoint?
         if (c->cb->DataIn(pdev, c, epnum) == USBD_OK)
@@ -172,7 +174,7 @@ static uint8_t USBD_Composite_DataOut(void* pdev , uint8_t epnum) {
   uint32_t msk = 1 << (epnum & 0x7f);
   msk <<= 16;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->cb->DataOut) {
+    if(c->enabled && c->cb->DataOut) {
       if (c->epMask & msk) {
         // Class handled this endpoint?
         if (c->cb->DataOut(pdev, c, epnum) == USBD_OK)
@@ -187,7 +189,7 @@ static uint8_t USBD_Composite_DataOut(void* pdev , uint8_t epnum) {
 
 static uint8_t USBD_Composite_SOF(void *pdev) {
   for(USBD_Composite_Class_Data* c = s_Classes; s_Initialized && c != NULL; c = c->next) {
-    if(c->cb->SOF) {
+    if(c->enabled && c->cb->SOF) {
       c->cb->SOF(pdev, c);
     }
   }
@@ -248,7 +250,7 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
 
     if (clsCfgLength) {
       totalInterfaces += c->interfaces;
-      if (c->active && (epMask & c->epMask) == 0) {
+      if (c->enabled && (epMask & c->epMask) == 0) {
         epMask |= c->epMask;
         activeInterfaces += c->interfaces;
         c->cfg = pbuf;
@@ -271,6 +273,8 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
 void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, uint8_t front) {
   if (s_Classes_Count >= USBD_COMPOSITE_MAX_CLASSES || cb == NULL)
     return NULL;
+
+  int32_t irq = HAL_disable_irq();
   USBD_Composite_Class_Data* cls = NULL;
   for (int i = 0; i < USBD_COMPOSITE_MAX_CLASSES; i++) {
     if (s_Class_Entries[i].active == 0) {
@@ -281,6 +285,7 @@ void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, ui
 
   if (cls) {
     cls->active = 1;
+    cls->enabled = 1;
     cls->cb = cb;
     cls->priv = priv;
     cls->epMask = 0xffffffff;
@@ -306,10 +311,12 @@ void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, ui
     s_Classes_Count++;
   }
 
+  HAL_enable_irq(irq);
   return (void*)cls;
 }
 
 void USBD_Composite_Unregister(void* cls, void* priv) {
+  int32_t irq = HAL_disable_irq();
   USBD_Composite_Class_Data* prev = NULL;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; prev = c, c = c->next) {
     if ((cls && c == cls) || (priv && c->priv == priv)) {
@@ -323,19 +330,24 @@ void USBD_Composite_Unregister(void* cls, void* priv) {
       break;
     }
   }
+  HAL_enable_irq(irq);
 }
 
 void USBD_Composite_Unregister_All() {
+  int32_t irq = HAL_disable_irq();
   s_Classes = NULL;
   s_Classes_Count = 0;
   memset(s_Class_Entries, 0, sizeof(s_Class_Entries));
+  HAL_enable_irq(irq);
 }
 
 void USBD_Composite_Set_State(void* cls, bool state) {
+  int32_t irq = HAL_disable_irq();
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
     if (cls && c == cls) {
-      c->active = state;
+      c->enabled = state;
       break;
     }
   }
+  HAL_enable_irq(irq);
 }
