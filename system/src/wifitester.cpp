@@ -223,6 +223,8 @@ void WiFiTester::printInfo() {
     //printItem("IMEI", dev.imei);
 #endif
 
+    printItem("SSID", serial.string);
+
 #if Wiring_WiFi
     printItem("RSSI", rssi.c_str());
 #else
