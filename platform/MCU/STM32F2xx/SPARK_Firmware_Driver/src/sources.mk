@@ -26,10 +26,14 @@ endif
 
 
 # C++ source files included in this build.
-CPPSRC +=
+ifeq ("$(PLATFORM_ID)","10")
+CPPSRC += $(TARGET_SPARK_SRC_PATH)/dcd_flash_impl.cpp
+endif
 
 # ASM source files included in this build.
 ASRC +=
 
 # include common sources also
 include $(call rwildcard,$(PLATFORM_MCU_SHARED_STM32_PATH)/,sources.mk)
+
+CPPFLAGS += -std=c++11
