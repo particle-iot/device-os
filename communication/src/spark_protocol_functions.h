@@ -169,6 +169,19 @@ void spark_protocol_set_product_id(ProtocolFacade* protocol, product_id_t produc
 void spark_protocol_set_product_firmware_version(ProtocolFacade* protocol, product_firmware_version_t product_firmware_version, unsigned int param=0, void* reserved = NULL);
 void spark_protocol_get_product_details(ProtocolFacade* protocol, product_details_t* product_details, void* reserved=NULL);
 
+int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
+                                           unsigned data, void* datap, void* reserved);
+
+namespace ProtocolCommands {
+	enum Enum {
+		SLEEP,
+		WAKE
+	};
+};
+
+
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data=0, void* reserved=NULL);
+
 /**
  * Decrypt a buffer using the given public key.
  * @param ciphertext        The ciphertext to decrypt

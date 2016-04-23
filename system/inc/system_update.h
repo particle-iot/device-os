@@ -81,35 +81,43 @@ typedef enum
      * When 1, an OTA update is pending, and will start when the SYSTEM_FLAG_OTA_UPDATES_FLAG
      * is set.
      */
-    SYSTEM_FLAG_OTA_UPDATE_PENDING=0,
+    SYSTEM_FLAG_OTA_UPDATE_PENDING,
 
     /**
      * When 0, OTA updates are not started.
      * When 1, OTA updates are started. Default.
      */
-    SYSTEM_FLAG_OTA_UPDATE_ENABLED=1,
+    SYSTEM_FLAG_OTA_UPDATE_ENABLED,
 
     /*
      * When 0, no reset is pending.
      * When 1, a reset is pending. The system will perform the reset
      * when SYSTEM_FLAG_RESET_ENABLED is set to 1.
      */
-    SYSTEM_FLAG_RESET_PENDING=2,
+    SYSTEM_FLAG_RESET_PENDING,
 
     /**
      * When 0, the system is not able to perform a system reset.
      * When 1, thee system will reset the device when a reset is pending.
      */
-    SYSTEM_FLAG_RESET_ENABLED=3,
+    SYSTEM_FLAG_RESET_ENABLED,
 
     /**
-     * When 0, the application code is not paused.
-     * When 1, the application code is paused.
+     * A persistent flag that when set will cause the system to startup
+     * in listening mode if booting in safe mode. The flag is automatically
+     * cleared on reboot.
      */
-    //SYSTEM_FLAG_APPLICATION_PAUSED=4,
-    SYSTEM_FLAG_MAX = 4
+    SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
+
+	/**
+	 * Enable/Disable use of serial1 during setup.
+	 */
+	SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1,
+
+    SYSTEM_FLAG_MAX
 
 } system_flag_t;
+
 
 void system_shutdown_if_needed();
 void system_pending_shutdown();

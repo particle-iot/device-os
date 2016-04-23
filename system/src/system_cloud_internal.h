@@ -29,8 +29,8 @@
 
 int Internet_Test(void);
 
-int Spark_Connect(void);
-int Spark_Disconnect(void);
+int spark_cloud_socket_connect(void);
+int spark_cloud_socket_disconnect(void);
 
 void Spark_Protocol_Init(void);
 int Spark_Handshake(bool presence_announce);
@@ -39,7 +39,8 @@ void Multicast_Presence_Announcement(void);
 void Spark_Signal(bool on, unsigned, void*);
 void Spark_SetTime(unsigned long dateTime);
 void Spark_Process_Events();
-
+void Spark_Sleep();
+void Spark_Wake();
 extern volatile uint8_t LED_Spark_Signal;
 void LED_Signaling_Override(void);
 
@@ -48,7 +49,7 @@ void system_set_time(time_t time, unsigned param, void* reserved);
 extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* output);
 String bytes2hex(const uint8_t* buf, unsigned len);
 
-uint8_t cloudSocketClosed();
+uint8_t spark_cloud_socket_closed();
 
 bool spark_function_internal(const cloud_function_descriptor* desc, void* reserved);
 int call_raw_user_function(void* data, const char* param, void* reserved);

@@ -28,7 +28,6 @@
 #include "system_user.h"
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
-#include "spark_protocol.h"
 #include "append_list.h"
 #include "core_hal.h"
 #include "deviceid_hal.h"
@@ -259,7 +258,7 @@ SessionConnection cloud_endpoint;
 
 int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
     {
         DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
         //break from any blocking loop
@@ -271,7 +270,7 @@ int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
 
 int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
     {
         //break from any blocking loop
         DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
@@ -315,7 +314,7 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 // Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
     {
         DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
         //break from any blocking loop
@@ -330,7 +329,7 @@ int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 // Returns number of bytes received or -1 if an error occurred
 int Spark_Receive(unsigned char *buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || cloudSocketClosed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
     {
         //break from any blocking loop
         DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
@@ -405,15 +404,17 @@ void SystemEvents(const char* name, const char* data)
     }
 }
 
+using particle::protocol::SessionPersistOpaque;
+
 #if HAL_PLATFORM_CLOUD_UDP
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
 	if (type==SparkCallbacks::PERSIST_SESSION)
 	{
-		static_assert(sizeof(SessionPersistData::connection)>=sizeof(cloud_endpoint),"connection space in session is not large enough");
+		static_assert(sizeof(SessionPersistOpaque::connection)>=sizeof(cloud_endpoint),"connection space in session is not large enough");
 
 		// save the current connection to the persisted session
-		SessionPersist* persist = (SessionPersist*)buffer;
+		SessionPersistOpaque* persist = (SessionPersistOpaque*)buffer;
 		if (persist->is_valid())
 		{
 			memcpy(persist->connection_data(), &cloud_endpoint, sizeof(cloud_endpoint));
@@ -584,7 +585,7 @@ int Spark_Handshake(bool presence_announce)
         spark_protocol_send_time_request(sp);
         Spark_Process_Events();
     }
-    if (err==SESSION_RESUMED)
+    if (err==particle::protocol::SESSION_RESUMED)
     {
     		DEBUG("cloud connected from existing session.");
     		err = 0;
@@ -712,7 +713,7 @@ uint32_t compute_session_checksum(ServerAddress& addr)
  */
 int determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr)
 {
-	SessionPersist persist;
+	SessionPersistOpaque persist;
 	if (Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr)==sizeof(persist) && persist.is_valid())
 	{
 		SessionConnection* connection = (SessionConnection*)persist.connection_data();
@@ -828,12 +829,12 @@ int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddre
 }
 
 // Same return value as connect(), -1 on error
-int Spark_Connect()
+int spark_cloud_socket_connect()
 {
     DEBUG("sparkSocket Now =%d", sparkSocket);
 
     // Close Original
-    Spark_Disconnect();
+    spark_cloud_socket_disconnect();
 
     const bool udp =
 #if HAL_PLATFORM_CLOUD_UDP
@@ -893,11 +894,11 @@ int Spark_Connect()
         }
     }
     if (rv)     // error - prevent socket leaks
-        Spark_Disconnect();
+        spark_cloud_socket_disconnect();
     return rv;
 }
 
-int Spark_Disconnect(void)
+int spark_cloud_socket_disconnect(void)
 {
     int retVal = 0;
     if (socket_handle_valid(sparkSocket))
@@ -971,7 +972,7 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
     }
 }
 
-inline uint8_t cloudSocketClosed()
+inline uint8_t spark_cloud_socket_closed()
 {
     uint8_t closed = socket_active_status(sparkSocket) == SOCKET_STATUS_INACTIVE;
 
@@ -1106,4 +1107,14 @@ bool system_cloud_active()
     }
 #endif
     return true;
+}
+
+void Spark_Sleep(void)
+{
+	spark_protocol_command(sp, ProtocolCommands::SLEEP);
+}
+
+void Spark_Wake(void)
+{
+	spark_protocol_command(sp, ProtocolCommands::WAKE);
 }

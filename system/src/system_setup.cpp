@@ -34,6 +34,7 @@
 #include "system_network.h"
 #include "system_task.h"
 #include "spark_wiring_thread.h"
+#include "system_ymodem.h"
 
 #if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
@@ -63,20 +64,44 @@ public:
 template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
     : config(config_)
 {
-	WITH_LOCK(serial);
-    if (serial.baud()==0)
+    WITH_LOCK(serial);
+    if (serial.baud() == 0)
+    {
         serial.begin(9600);
+    }
 }
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
-	TRY_LOCK(serial) {
-		if (serial.available()) {
-			int c = serial.read();
-			if (c>=0)
-				handle((char)c);
-		}
-	}
+    TRY_LOCK(serial)
+    {
+        if (serial.available())
+        {
+            int c = serial.peek();
+            if (c >= 0)
+            {
+                if (!handle_peek((char)c))
+                {
+                    if (serial.available())
+                    {
+                        c = serial.read();
+                        handle((char)c);
+                    }
+                }
+            }
+        }
+    }
+}
+
+template <typename Config>
+bool SystemSetupConsole<Config>::handle_peek(char c)
+{
+    if (YModem::SOH == c || YModem::STX == c)
+    {
+        system_firmwareUpdate(&serial);
+        return true;
+    }
+    return false;
 }
 
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)
@@ -129,6 +154,11 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
         append_system_version_info(&appender);
         print("\r\n");
     }
+    else if ('L' == c)
+    {
+        system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
+        System.enterSafeMode();
+    }
 }
 
 /* private methods */
@@ -150,8 +180,13 @@ template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, 
         serial.read();
 }
 
-
 #if Wiring_WiFi
+
+inline bool setup_serial1() {
+	uint8_t value = 0;
+	system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
+	return value;
+}
 
 WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
  : SystemSetupConsole(config)
@@ -159,7 +194,9 @@ WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
 #if SETUP_OVER_SERIAL1
     serial1Enabled = false;
     magicPos = 0;
-    Serial1.begin(9600);
+    if (setup_serial1()) {
+    		SETUP_SERIAL.begin(9600);
+    }
     this->tester = NULL;
 #endif
 }
@@ -174,33 +211,35 @@ WiFiSetupConsole::~WiFiSetupConsole()
 void WiFiSetupConsole::loop()
 {
 #if SETUP_OVER_SERIAL1
-    int c = -1;
-    if (SETUP_SERIAL.available()) {
-        c = SETUP_SERIAL.read();
-    }
-    if (SETUP_LISTEN_MAGIC) {
-        static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
-        if (!serial1Enabled) {
-            if (c>=0) {
-                if (c==magic_code[magicPos++]) {
-                    serial1Enabled = magicPos==sizeof(magic_code);
-                    if (serial1Enabled) {
-                        if (tester==NULL)
-                            tester = new WiFiTester();
-                        tester->setup(SETUP_OVER_SERIAL1);
-                    }
-                }
-                else {
-                    magicPos = 0;
-                }
-                c = -1;
-            }
-        }
-        else {
-            if (tester)
-                tester->loop(c);
-        }
-    }
+	if (setup_serial1()) {
+		int c = -1;
+		if (SETUP_SERIAL.available()) {
+			c = SETUP_SERIAL.read();
+		}
+		if (SETUP_LISTEN_MAGIC) {
+			static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
+			if (!serial1Enabled) {
+				if (c>=0) {
+					if (c==magic_code[magicPos++]) {
+						serial1Enabled = magicPos==sizeof(magic_code);
+						if (serial1Enabled) {
+							if (tester==NULL)
+								tester = new WiFiTester();
+							tester->setup(SETUP_OVER_SERIAL1);
+						}
+					}
+					else {
+						magicPos = 0;
+					}
+					c = -1;
+				}
+			}
+			else {
+				if (tester)
+					tester->loop(c);
+			}
+		}
+	}
 #endif
     super::loop();
 }

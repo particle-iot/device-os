@@ -209,7 +209,7 @@ void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi)
 {
 }
 
-int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi)
+int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st)
 {
-    return 0;
+    return -1;
 }

@@ -165,5 +165,18 @@ test(timer_disposed_early)
 	t2.start(0);
 }
 
+test(timer_is_active)
+{
+	Timer t(10, [] {}, true);
+	assertFalse(t.isActive());
+	t.start();
+	assertTrue(t.isActive());
+	delay(20);
+	assertFalse(t.isActive());
+	t.start();
+	assertTrue(t.isActive());
+	t.stop();
+	assertFalse(t.isActive());
+}
 
 #endif

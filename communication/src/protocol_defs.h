@@ -69,7 +69,13 @@ enum DescriptionType {
 	DESCRIBE_ALL = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION
 };
 
-
+namespace Connection
+{
+enum Enum
+{
+    PING = 0
+};
+}
 
 typedef std::function<system_tick_t()> millis_callback;
 typedef std::function<int()> callback;

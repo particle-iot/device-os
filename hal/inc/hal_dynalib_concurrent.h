@@ -53,6 +53,8 @@ DYNALIB_FN(18, hal_concurrent, os_mutex_recursive_destroy, int(os_mutex_recursiv
 DYNALIB_FN(19, hal_concurrent, os_mutex_recursive_lock, int(os_mutex_recursive_t))
 DYNALIB_FN(20, hal_concurrent, os_mutex_recursive_trylock, int(os_mutex_recursive_t))
 DYNALIB_FN(21, hal_concurrent, os_mutex_recursive_unlock, int(os_mutex_recursive_t))
+
+DYNALIB_FN(22, hal_concurrent, os_timer_is_active, int(os_timer_t, void*))
 #endif
 
 DYNALIB_END(hal_concurrent)

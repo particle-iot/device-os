@@ -26,7 +26,7 @@
 #include "protocol_selector.h"
 #include "hal_platform.h"
 
-#ifdef  __cplusplus
+#ifdef	__cplusplus
 extern "C" {
 #endif
 
@@ -63,11 +63,19 @@ DYNALIB_FN(BASE_IDX + 0, communication, spark_protocol_remove_event_handlers, vo
 #if defined(PARTICLE_PROTOCOL) && HAL_PLATFORM_CLOUD_UDP
 DYNALIB_FN(BASE_IDX + 1, communication, gen_ec_key, int(uint8_t*, size_t, int(*)(void*, uint8_t*, size_t), void*))
 DYNALIB_FN(BASE_IDX + 2, communication, extract_public_ec_key, int(uint8_t*, size_t, const uint8_t*))
+#define BASE_IDX2 (BASE_IDX + 3)
+#else
+#define BASE_IDX2 (BASE_IDX + 1)
 #endif
+
+DYNALIB_FN(BASE_IDX2 + 0, communication, spark_protocol_set_connection_property,
+           int(ProtocolFacade*, unsigned, unsigned, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 1, communication, spark_protocol_command, int(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved))
 
 DYNALIB_END(communication)
 
 #undef BASE_IDX
+#undef BASE_IDX2
 
 #ifdef	__cplusplus
 }
