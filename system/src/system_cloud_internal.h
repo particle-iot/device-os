@@ -45,7 +45,7 @@ void LED_Signaling_Override(void);
 
 void system_set_time(time_t time, unsigned param, void* reserved);
 
-char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* output);
+extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* output);
 String bytes2hex(const uint8_t* buf, unsigned len);
 
 uint8_t cloudSocketClosed();

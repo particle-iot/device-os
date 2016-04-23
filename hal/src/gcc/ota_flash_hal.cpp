@@ -138,7 +138,7 @@ void HAL_OTA_Flashed_ResetStatus(void)
 #define PUBLIC_KEY_LEN 294
 #define PRIVATE_KEY_LEN 612
 
-char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
+extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {

@@ -620,7 +620,7 @@ static inline char ascii_nibble(uint8_t nibble) {
     return hex_digit;
 }
 
-char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
+extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 
 class DeviceIDCommand : public JSONCommand {
 
