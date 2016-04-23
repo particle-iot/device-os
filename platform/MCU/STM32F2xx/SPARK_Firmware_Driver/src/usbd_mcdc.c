@@ -4,6 +4,8 @@
 #include "usbd_req.h"
 #include "debug.h"
 
+#define USBD_MCDC_USRSTR_BASE 10
+
 #ifndef MIN
 #define MIN(a, b) (a) < (b) ? (a) : (b)
 #endif
@@ -73,7 +75,8 @@ static uint8_t  USBD_MCDC_DataIn      (void* pdev, USBD_Composite_Class_Data* cl
 static uint8_t  USBD_MCDC_DataOut     (void* pdev, USBD_Composite_Class_Data* cls, uint8_t epnum);
 static uint8_t  USBD_MCDC_SOF         (void* pdev, USBD_Composite_Class_Data* cls);
 
-static uint8_t  *USBD_MCDC_GetCfgDesc (uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t* buf, uint16_t *length);
+static uint8_t* USBD_MCDC_GetCfgDesc (uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t* buf, uint16_t *length);
+static uint8_t* USBD_MCDC_GetUsrStrDescriptor(uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t index, uint16_t* length);
 
 static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len);
 
@@ -100,7 +103,7 @@ USBD_Multi_Instance_cb_Typedef USBD_MCDC_cb =
 #ifdef USE_USB_OTG_HS
   USBD_MCDC_GetCfgDesc, /* use same cobfig as per FS */
 #endif /* USE_USB_OTG_HS  */
-  NULL,
+  USBD_MCDC_GetUsrStrDescriptor,
 
 };
 
@@ -204,7 +207,7 @@ static inline void USBD_MCDC_Change_Open_State(USBD_MCDC_Instance_Data* priv, ui
   if (state != priv->serial_open) {
     USBD_Composite_Class_Data* cls = (USBD_Composite_Class_Data*)priv->cls;
     (void)cls;
-    DEBUG("[%s] USB Serial state: %d", cls->firstInterface == 0 ? "Serial" : "USBSerial1", state);
+    DEBUG("[%s] USB Serial state: %d", priv->name, state);
     if (state) {
       priv->tx_failed_counter = 0;
       // Also flush everything in TX buffer
@@ -596,6 +599,10 @@ static uint8_t* USBD_MCDC_GetCfgDesc(uint8_t speed, USBD_Composite_Class_Data* c
   *(buf + 2) = cls->firstInterface;
   // Update bInterfaceNumber 0
   *(buf + 10) = cls->firstInterface;
+  // Update iFunction in IAD
+  *(buf + 7) = USBD_MCDC_USRSTR_BASE + cls->firstInterface;
+  // Update iInterface
+  *(buf + 10 + 6) = USBD_MCDC_USRSTR_BASE + cls->firstInterface;
   // Update bDataInterface
   *(buf + 26) = cls->firstInterface + 1;
   // Update bMasterInterface and bSlaveInterface0
@@ -607,6 +614,8 @@ static uint8_t* USBD_MCDC_GetCfgDesc(uint8_t speed, USBD_Composite_Class_Data* c
   
   // Update bInterfaceNumber 1
   *(buf + 45) = cls->firstInterface + 1;
+  // Update iInterface
+  *(buf + 45 + 6) = USBD_MCDC_USRSTR_BASE + cls->firstInterface;
 
   // Update OUT endpoint
   *(buf + 54) = priv->ep_out_data;
@@ -652,7 +661,7 @@ static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32
       priv->linecoding.format = buf[4];
       priv->linecoding.paritytype = buf[5];
       priv->linecoding.datatype = buf[6];
-      DEBUG("[%s] SET_LINE_CODING %d", cls->firstInterface == 0 ? "Serial" : "USBSerial1", priv->linecoding.bitrate);
+      DEBUG("[%s] SET_LINE_CODING %d", priv->name, priv->linecoding.bitrate);
       break;
 
   case GET_LINE_CODING:
@@ -672,7 +681,7 @@ static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32
       } else if ((priv->ctrl_line & CDC_DTR) == 0x00) {
         USBD_MCDC_Change_Open_State(priv, 0);
       }
-      DEBUG("[%s] SET_CONTROL_LINE_STATE DTR=%d RTS=%d", cls->firstInterface == 0 ? "Serial" : "USBSerial1", priv->ctrl_line & CDC_DTR ? 1 : 0, priv->ctrl_line & CDC_RTS ? 1 : 0);
+      DEBUG("[%s] SET_CONTROL_LINE_STATE DTR=%d RTS=%d", priv->name, priv->ctrl_line & CDC_DTR ? 1 : 0, priv->ctrl_line & CDC_RTS ? 1 : 0);
       break;
 
   case SEND_BREAK:
@@ -688,4 +697,16 @@ static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32
   }
 
   return USBD_OK;
+}
+
+uint8_t* USBD_MCDC_GetUsrStrDescriptor(uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t index, uint16_t* length) {
+  USBD_MCDC_Instance_Data* priv = (USBD_MCDC_Instance_Data*)cls->priv;
+
+  if (index == (USBD_MCDC_USRSTR_BASE + cls->firstInterface)) {
+    USBD_GetString((uint8_t*)priv->name, USBD_StrDesc, length);
+    return USBD_StrDesc;
+  }
+
+  *length = 0;
+  return NULL;
 }

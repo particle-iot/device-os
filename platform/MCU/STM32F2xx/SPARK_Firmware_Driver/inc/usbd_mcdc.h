@@ -87,6 +87,8 @@ typedef struct USBD_MCDC_Instance_Data {
 
   uint16_t (*req_handler) (USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len);
 
+  const char* name;
+
   #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   // Temporary aligned buffer
   __ALIGN_BEGIN uint8_t descriptor[USBD_MCDC_DESC_SIZE] __ALIGN_END;
