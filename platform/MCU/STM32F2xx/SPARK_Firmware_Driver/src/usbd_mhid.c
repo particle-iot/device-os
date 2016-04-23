@@ -4,11 +4,15 @@
 #include "usbd_req.h"
 #include "debug.h"
 
+#define USBD_MHID_USRSTR_BASE 15
+#define USBD_MHID_INTERFACE_NAME "HID Mouse / Keyboard"
+
 static uint8_t USBD_MHID_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_t cfgidx);
 static uint8_t USBD_MHID_DeInit(void* pdev, USBD_Composite_Class_Data* cls, uint8_t cfgidx);
 static uint8_t USBD_MHID_Setup(void* pdev, USBD_Composite_Class_Data* cls, USB_SETUP_REQ* req);
 static uint8_t USBD_MHID_DataIn(void* pdev, USBD_Composite_Class_Data* cls, uint8_t epnum);
 static uint8_t* USBD_MHID_GetConfigDescriptor(uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t* buf, uint16_t* length);
+static uint8_t* USBD_MHID_GetUsrStrDescriptor(uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t index, uint16_t* length);
 
 __ALIGN_BEGIN static const uint8_t USBD_MHID_DefaultReportDesc[USBD_MHID_REPORT_DESC_SIZE] __ALIGN_END;
 
@@ -39,7 +43,7 @@ USBD_Multi_Instance_cb_Typedef USBD_MHID_cb =
 #ifdef USB_OTG_HS_CORE
   USBD_MHID_GetConfigDescriptor, /* use same config as per FS */
 #endif
-  NULL
+  USBD_MHID_GetUsrStrDescriptor
 };
 
 /* USB HID device Configuration Descriptor */
@@ -55,7 +59,7 @@ static const uint8_t USBD_MHID_CfgDesc[USBD_MHID_CONFIG_DESC_SIZE] =
   0x03,         /*bInterfaceClass: HID*/
   0x00,         /*bInterfaceSubClass : 1=BOOT, 0=no boot*/
   0x00,         /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
-  0,            /*iInterface: Index of string descriptor*/
+  USBD_MHID_USRSTR_BASE, /*iInterface: Index of string descriptor*/
   /******************** Descriptor of Joystick Mouse HID ********************/
   /* 09 */
   0x09,         /*bLength: HID Descriptor size*/
@@ -308,4 +312,14 @@ static uint8_t USBD_MHID_DataIn(void* pdev, USBD_Composite_Class_Data* cls, uint
 
   DCD_EP_Flush(pdev, priv->ep_in);
   return USBD_OK;
+}
+
+uint8_t* USBD_MHID_GetUsrStrDescriptor(uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t index, uint16_t* length) {
+  if (index == (USBD_MHID_USRSTR_BASE)) {
+    USBD_GetString((uint8_t*)USBD_MHID_INTERFACE_NAME, USBD_StrDesc, length);
+    return USBD_StrDesc;
+  }
+
+  *length = 0;
+  return NULL;
 }
