@@ -142,8 +142,11 @@ static void HAL_USB_Detach(void)
 
 static void HAL_USB_Attach(void)
 {
-    if (USB_Configured)
-        USB_Cable_Config(ENABLE);
+    if (USB_Configured) {
+        // Do not attach if there are no USB classes registered
+        if (USBD_Composite_Registered_Count() > 0)
+            USB_Cable_Config(ENABLE);
+    }
 }
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* config)
@@ -154,10 +157,12 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* confi
         usbUsartMap[serial].data->ep_in_data = CDC0_IN_EP;
         usbUsartMap[serial].data->ep_in_int = CDC0_CMD_EP;
         usbUsartMap[serial].data->ep_out_data = CDC0_OUT_EP;
+        usbUsartMap[serial].data->name = "Serial";
     } else if (serial == HAL_USB_USART_SERIAL1) {
         usbUsartMap[serial].data->ep_in_data = CDC1_IN_EP;
         usbUsartMap[serial].data->ep_in_int = CDC1_CMD_EP;
         usbUsartMap[serial].data->ep_out_data = CDC1_OUT_EP;
+        usbUsartMap[serial].data->name = "USBSerial1";
     }
 
     if (config) {

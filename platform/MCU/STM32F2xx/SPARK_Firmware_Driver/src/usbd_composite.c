@@ -88,7 +88,7 @@ static const uint8_t USBD_Composite_CfgDescHeaderTemplate[USBD_COMPOSITE_CFGDESC
   0x00, 0x00,                                    /* wTotalLength TEMPLATE */
   0x00,                                          /* bNumInterfaces TEMPLATE */
   0x01,                                          /* bConfigurationValue */
-  0x01,                                          /* iConfiguration */
+  USBD_IDX_CONFIG_STR,                           /* iConfiguration */
   0xc0,                                          /* bmAttirbutes (Bus powered) */
   0x32                                           /* bMaxPower (100mA) */
 };
@@ -218,6 +218,15 @@ static uint8_t* USBD_Composite_GetOtherConfigDescriptor(uint8_t speed, uint16_t 
 #endif
 
 static uint8_t* USBD_Composite_GetUsrStrDescriptor(uint8_t speed, uint8_t index, uint16_t *length) {
+  for(USBD_Composite_Class_Data* c = s_Classes; s_Initialized && c != NULL; c = c->next) {
+    if(c->enabled && c->cb->GetUsrStrDescriptor) {
+      uint8_t* ret = c->cb->GetUsrStrDescriptor(speed, c, index, length);
+      if (ret) {
+        return ret;
+      }
+    }
+  }
+
   *length = 0;
   return NULL;
 }
@@ -350,4 +359,19 @@ void USBD_Composite_Set_State(void* cls, bool state) {
     }
   }
   HAL_enable_irq(irq);
+}
+
+uint8_t USBD_Composite_Registered_Count(bool onlyActive) {
+  uint8_t registered = (uint8_t)s_Classes_Count;
+
+  if (onlyActive) {
+    int32_t irq = HAL_disable_irq();
+    for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
+      if (c->active)
+        registered++;
+    }
+    HAL_enable_irq(irq);
+  }
+
+  return registered;
 }
