@@ -144,7 +144,7 @@ static void HAL_USB_Attach(void)
 {
     if (USB_Configured) {
         // Do not attach if there are no USB classes registered
-        if (USBD_Composite_Registered_Count() > 0)
+        if (USBD_Composite_Registered_Count(true) > 0)
             USB_Cable_Config(ENABLE);
     }
 }
