@@ -132,7 +132,7 @@ typedef struct HAL_USB_USART_Config {
   uint16_t tx_buffer_size;
 } HAL_USB_USART_Config;
 
-void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* config);
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config);
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved);
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial);
 unsigned int HAL_USB_USART_Baud_Rate(HAL_USB_USART_Serial serial);

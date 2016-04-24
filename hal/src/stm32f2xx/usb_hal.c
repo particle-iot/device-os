@@ -149,7 +149,7 @@ static void HAL_USB_Attach(void)
     }
 }
 
-void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* config)
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config)
 {
     usbUsartMap[serial].data = &usbUsartInstanceData[serial];
 

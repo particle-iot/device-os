@@ -252,7 +252,7 @@ void USB_USART_Flush_Data(void)
     // Not implemented properly
 }
 
-void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, HAL_USB_USART_Config* config)
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config)
 {
 }
 

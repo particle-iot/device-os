@@ -37,7 +37,7 @@ class USBSerial : public Stream
 public:
 	// public methods
     USBSerial();
-	USBSerial(HAL_USB_USART_Serial serial, uint8_t* rx_buffer, uint8_t* tx_buffer);
+	USBSerial(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config& conf);
 
     unsigned int baud();
 
@@ -93,6 +93,11 @@ private:
     HAL_USB_USART_Serial _serial;
 	bool _blocking;
 };
+
+HAL_USB_USART_Config acquireSerialBuffer() __attribute__((weak));
+#if Wiring_USBSerial1
+HAL_USB_USART_Config acquireUSBSerial1Buffer() __attribute__((weak));
+#endif
 
 extern USBSerial& _fetch_usbserial();
 #define Serial _fetch_usbserial()
