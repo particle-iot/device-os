@@ -76,36 +76,10 @@ DYNALIB_FN(BASE_IDX + 12, hal_usart, USB_USART_Flush_Data, void(void))
 DYNALIB_FN(BASE_IDX2 + 0, hal_usart, HAL_USART_BeginConfig, void(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr))
 DYNALIB_FN(BASE_IDX2 + 1, hal_usart, HAL_USART_Write_NineBitData, uint32_t(HAL_USART_Serial serial, uint16_t data))
 
-#ifdef USB_CDC_ENABLE
-DYNALIB_FN(BASE_IDX2 + 2, hal_usart, HAL_USB_USART_Init, void(HAL_USB_USART_Serial, HAL_USB_USART_Config*))
-DYNALIB_FN(BASE_IDX2 + 3, hal_usart, HAL_USB_USART_Begin, void(HAL_USB_USART_Serial, uint32_t, void *))
-DYNALIB_FN(BASE_IDX2 + 4, hal_usart, HAL_USB_USART_End, void(HAL_USB_USART_Serial))
-DYNALIB_FN(BASE_IDX2 + 5, hal_usart, HAL_USB_USART_Baud_Rate, unsigned int(HAL_USB_USART_Serial))
-DYNALIB_FN(BASE_IDX2 + 6, hal_usart, HAL_USB_USART_Available_Data, int32_t(HAL_USB_USART_Serial))
-DYNALIB_FN(BASE_IDX2 + 7, hal_usart, HAL_USB_USART_Available_Data_For_Write, int32_t(HAL_USB_USART_Serial))
-DYNALIB_FN(BASE_IDX2 + 8, hal_usart, HAL_USB_USART_Receive_Data, int32_t(HAL_USB_USART_Serial, uint8_t))
-DYNALIB_FN(BASE_IDX2 + 9, hal_usart, HAL_USB_USART_Send_Data, int32_t(HAL_USB_USART_Serial, uint8_t))
-DYNALIB_FN(BASE_IDX2 + 10, hal_usart, HAL_USB_USART_Flush_Data, void(HAL_USB_USART_Serial))
-DYNALIB_FN(BASE_IDX2 + 11, hal_usart, HAL_USB_USART_Is_Enabled, bool(HAL_USB_USART_Serial))
-DYNALIB_FN(BASE_IDX2 + 12, hal_usart, HAL_USB_USART_Is_Connected, bool(HAL_USB_USART_Serial))
-#define BASE_IDX3 (BASE_IDX2 + 13)
-#else
-#define BASE_IDX3 (BASE_IDX2 + 2)
-#endif
-
-/* HID shouldn't probably go in hal_usart? */
-#ifdef USB_HID_ENABLE
-DYNALIB_FN(BASE_IDX3 + 0, hal_usart, HAL_USB_HID_Init, void(uint8_t, void*))
-DYNALIB_FN(BASE_IDX3 + 1, hal_usart, HAL_USB_HID_Begin, void(uint8_t, void*))
-DYNALIB_FN(BASE_IDX3 + 2, hal_usart, HAL_USB_HID_Send_Report, void(uint8_t, void*, uint16_t, void*))
-DYNALIB_FN(BASE_IDX3 + 3, hal_usart, HAL_USB_HID_End, void(uint8_t))
-#endif
-
 DYNALIB_END(hal_usart)
 
 #undef BASE_IDX
 #undef BASE_IDX2
-#undef BASE_IDX3
 
 #endif	/* HAL_DYNALIB_USART_H */
 
