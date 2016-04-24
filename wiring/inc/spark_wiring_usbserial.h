@@ -31,6 +31,7 @@
 #include "spark_wiring_platform.h"
 #include "usb_hal.h"
 #include "system_task.h"
+#include "spark_wiring_startup.h"
 
 class USBSerial : public Stream
 {
@@ -103,8 +104,12 @@ extern USBSerial& _fetch_usbserial();
 #define Serial _fetch_usbserial()
 
 #if Wiring_USBSerial1
+
 extern USBSerial& _fetch_usbserial1();
 #define USBSerial1 _fetch_usbserial1()
+
+#define USBSERIAL1_ENABLE() STARTUP(USBSerial1.begin(9600))
+
 #endif /* Wiring_USBSerial1 */
 
 #endif
