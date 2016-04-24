@@ -42,7 +42,7 @@ Navigate to the `modules` folder under firmware
 
     make clean all PLATFORM=photon -s program-dfu
 
-This will clean build the system firmware and the default main application (`firmware/user/src/application.cpp`) which contains Tinker, but you may overwrite this with your own application and add any required dependencies. The `-s` makes silences the verbose output, so be patient while it builds.  If your device is in DFU mode, it will then download the 3 binaries one at a time.  For more custom application location solutions, see the [makefile documentation](build.md) and learn how to use the `APP=myapp` option.
+This will clean build the system firmware and the default main application (`firmware/user/src/application.cpp`) which contains Tinker, but you may overwrite this with your own application and add any required dependencies. The `-s` silences the verbose output, so be patient while it builds.  If your device is in DFU mode, it will then download the 3 binaries one at a time.  For more custom application location solutions, see the [makefile documentation](build.md) and learn how to use the `APP=myapp` option.
 
 The [makefile documentation](build.md) describes the build options supported and how to target platforms other than the Core (i.e., Photon, P1, Electron, etc..)
 
@@ -116,6 +116,8 @@ A flash of white then flashing green can happen when you get this wrong. You wan
    ```
 
    (Windows users will need to use the Zatig utility to replace the USB driver as described earlier)
+   (Linux users who encounter someting like: `dfu-util: Cannot open DFU device 2b04:d00a` should try `sudo dfu-util -l`)
+   
 
 3. Now, from the `main/` folder in your firmware repository and use the following command to transfer the *.bin* file into the device.
    ```
