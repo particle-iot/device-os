@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include "panic.h"
 #include "config.h"
@@ -61,11 +62,18 @@ typedef int (*log_enabled_callback_type)(int level, const char *category, void *
 void log_message(int level, const char *category, const char *file, int line, const char *func, void *reserved,
         const char *fmt, ...);
 
+// Variant of the log_message() function taking variable arguments via va_list
+void log_message_v(int level, const char *category, const char *file, int line, const char *func, void *reserved,
+        const char *fmt, va_list args);
+
 // Forwards buffer to backend logger
 void log_write(int level, const char *category, const char *data, size_t size, void *reserved);
 
 // Performs printf-alike formatting and forwards resulting string to backend logger
 void log_format(int level, const char *category, void *reserved, const char *fmt, ...);
+
+// Variant of the log_format() function taking variable arguments via va_list
+void log_format_v(int level, const char *category, void *reserved, const char *fmt, va_list args);
 
 // Encodes data as hex string and forwards it to backend logger
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved);

@@ -39,8 +39,8 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
     log_enabled_callback = log_enabled;
 }
 
-void log_message(int level, const char *category, const char *file, int line, const char *func, void *reserved,
-        const char *fmt, ...) {
+void log_message_v(int level, const char *category, const char *file, int line, const char *func, void *reserved,
+        const char *fmt, va_list args) {
     if (!log_write_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
@@ -54,10 +54,7 @@ void log_message(int level, const char *category, const char *file, int line, co
     }
     char buf[LOG_MAX_STRING_LENGTH];
     if (log_msg_callback) {
-        va_list args;
-        va_start(args, fmt);
         const int n = vsnprintf(buf, sizeof(buf), fmt, args);
-        va_end(args);
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
         }
@@ -76,16 +73,21 @@ void log_message(int level, const char *category, const char *file, int line, co
         }
         log_compat_callback(buf);
         log_compat_callback(": ");
-        va_list args;
-        va_start(args, fmt);
         n = vsnprintf(buf, sizeof(buf), fmt, args);
-        va_end(args);
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
         }
         log_compat_callback(buf);
         log_compat_callback("\r\n");
     }
+}
+
+void log_message(int level, const char *category, const char *file, int line, const char *func, void *reserved,
+        const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    log_message_v(level, category, file, line, func, reserved, fmt, args);
+    va_end(args);
 }
 
 void log_write(int level, const char *category, const char *data, size_t size, void *reserved) {
@@ -112,15 +114,12 @@ void log_write(int level, const char *category, const char *data, size_t size, v
     }
 }
 
-void log_format(int level, const char *category, void *reserved, const char *fmt, ...) {
+void log_format_v(int level, const char *category, void *reserved, const char *fmt, va_list args) {
     if (!log_write_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
     char buf[LOG_MAX_STRING_LENGTH];
-    va_list args;
-    va_start(args, fmt);
     int n = vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
     if (n > (int)sizeof(buf) - 1) {
         buf[sizeof(buf) - 2] = '~';
         n = sizeof(buf) - 1;
@@ -130,6 +129,13 @@ void log_format(int level, const char *category, void *reserved, const char *fmt
     } else {
         log_compat_callback(buf); // Compatibility callback
     }
+}
+
+void log_format(int level, const char *category, void *reserved, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    log_format_v(level, category, reserved, fmt, args);
+    va_end(args);
 }
 
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved) {
