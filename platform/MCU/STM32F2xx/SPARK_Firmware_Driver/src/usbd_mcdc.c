@@ -207,7 +207,7 @@ static inline void USBD_MCDC_Change_Open_State(USBD_MCDC_Instance_Data* priv, ui
   if (state != priv->serial_open) {
     USBD_Composite_Class_Data* cls = (USBD_Composite_Class_Data*)priv->cls;
     (void)cls;
-    DEBUG("[%s] USB Serial state: %d", priv->name, state);
+    //DEBUG("[%s] USB Serial state: %d", priv->name, state);
     if (state) {
       priv->tx_failed_counter = 0;
       // Also flush everything in TX buffer
@@ -661,7 +661,7 @@ static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32
       priv->linecoding.format = buf[4];
       priv->linecoding.paritytype = buf[5];
       priv->linecoding.datatype = buf[6];
-      DEBUG("[%s] SET_LINE_CODING %d", priv->name, priv->linecoding.bitrate);
+      //DEBUG("[%s] SET_LINE_CODING %d", priv->name, priv->linecoding.bitrate);
       break;
 
   case GET_LINE_CODING:
@@ -681,7 +681,7 @@ static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32
       } else if ((priv->ctrl_line & CDC_DTR) == 0x00) {
         USBD_MCDC_Change_Open_State(priv, 0);
       }
-      DEBUG("[%s] SET_CONTROL_LINE_STATE DTR=%d RTS=%d", priv->name, priv->ctrl_line & CDC_DTR ? 1 : 0, priv->ctrl_line & CDC_RTS ? 1 : 0);
+      //DEBUG("[%s] SET_CONTROL_LINE_STATE DTR=%d RTS=%d", priv->name, priv->ctrl_line & CDC_DTR ? 1 : 0, priv->ctrl_line & CDC_RTS ? 1 : 0);
       break;
 
   case SEND_BREAK:
