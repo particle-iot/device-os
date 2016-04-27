@@ -83,18 +83,23 @@ void BLEDevice::setLocalName(const char *local_name)
     hal_btstack_setLocalName(local_name);
 }
 
-void BLEDevice::setAdvParams(advParams_t *adv_params)
+void BLEDevice::setAdvertisementParams(advParams_t *adv_params)
 {
-    hal_btstack_setAdvParams(adv_params->adv_int_min, adv_params->adv_int_max, \
-                             adv_params->adv_type, \
-                             adv_params->dir_addr_type, adv_params->dir_addr, \
-                             adv_params->channel_map, \
-                             adv_params->filter_policy);
+	hal_btstack_setAdvertisementParams(adv_params->adv_int_min, adv_params->adv_int_max, \
+                                       adv_params->adv_type, \
+                                       adv_params->dir_addr_type, adv_params->dir_addr, \
+                                       adv_params->channel_map, \
+                                       adv_params->filter_policy);
 }
 
-void BLEDevice::setAdvData(uint16_t size, uint8_t *data)
+void BLEDevice::setAdvertisementData(uint16_t size, uint8_t *data)
 {
-    hal_btstack_setAdvData(size, data);
+	hal_btstack_setAdvertisementData(size, data);
+}
+
+void BLEDevice::setScanResponseData(uint16_t size, uint8_t *data)
+{
+	hal_btstack_setScanResponseData(size, data);
 }
 
 void BLEDevice::onConnectedCallback(bleConnectedCallback_t cb)

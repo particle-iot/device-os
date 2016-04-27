@@ -103,15 +103,23 @@ public:
      * @note  If the advertising_type is set to ADV_SCAN_IND or ADV_NONCONN_IND,advertising_interval_min and advertising_interval_max shal not be set to less than 0x00A0.
      *
      */
-    void setAdvParams(advParams_t *adv_params);
+    void setAdvertisementParams(advParams_t *adv_params);
 
     /**
      * @brief Set advertising data.
      *
      * @param[in]  size  The size of advertising data, no more than 31bytes.
-     * @param[in]  data  Advertising data.
+     * @param[in]  data  Advertising data. Data is not copied, pointer has to stay valid.
      */
-    void setAdvData(uint16_t size, uint8_t *data);
+    void setAdvertisementData(uint16_t size, uint8_t *data);
+
+    /**
+     * @brief Set scanResponse data.
+     *
+     * @param[in]  size  The size of scanResponse data, no more than 31bytes.
+     * @param[in]  data  The buffer pointer of scanResponse data. Data is not copied, pointer has to stay valid.
+     */
+    void setScanResponseData(uint16_t size, uint8_t *data);
 
     /**
      * @brief Connected callback.
