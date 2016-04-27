@@ -62,21 +62,21 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t claim_code[63];             // claim code. no terminating null.
     uint8_t claimed[1];                 // 0,0xFF, not claimed. 1 claimed.
     uint8_t ssid_prefix[26];            // SSID prefix (25 chars max). First byte is length.
-    uint8_t device_code[6];               // 6 suffix characters (not null terminated))
+    uint8_t device_code[6];             // 6 suffix characters (not null terminated))
     uint8_t version_string[32];         // version string including date
     uint8_t dns_resolve[128];           // DNS names to resolve.
     uint8_t reserved1[64];
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
-    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
+    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT]; //100 bytes
     uint16_t product_store[12];
     uint8_t antenna_selection;           // 0xFF is uninitialized
-    uint8_t cloud_transport;				// 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
-    uint8_t alt_device_public_key[128];	// alternative device public key
-    uint8_t alt_device_private_key[192];	// alternative device private key
+    uint8_t cloud_transport;             // 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
+    uint8_t alt_device_public_key[128];  // alternative device public key
+    uint8_t alt_device_private_key[192]; // alternative device private key
     uint8_t alt_server_public_key[192];
-    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
-    uint8_t device_id[12];									// the STM32 device ID
+    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
+    uint8_t device_id[12];                               // the STM32 device ID
     uint8_t reserved2[628];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
@@ -125,7 +125,6 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_ALT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::alt_server_public_key))
 #define DCT_ALT_SERVER_ADDRESS_SIZE  (sizeof(application_dct_t::alt_server_address))
 #define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id))
-
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)

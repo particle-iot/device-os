@@ -57,13 +57,11 @@ unsigned HAL_Platform_ID();
  */
 int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved);
 
-
 /**
  * Save the device ID to persistent storage so it can be retrieved via DCT. This is
  * done automatically by the system on startup.
  */
 void HAL_save_device_id(uint32_t offset);
-
 
 #ifdef	__cplusplus
 }
