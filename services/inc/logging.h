@@ -69,10 +69,10 @@ void log_message_v(int level, const char *category, const char *file, int line, 
 void log_write(int level, const char *category, const char *data, size_t size, void *reserved);
 
 // Performs printf-alike formatting and forwards resulting string to backend logger
-void log_format(int level, const char *category, void *reserved, const char *fmt, ...);
+void log_printf(int level, const char *category, void *reserved, const char *fmt, ...);
 
-// Variant of the log_format() function taking variable arguments via va_list
-void log_format_v(int level, const char *category, void *reserved, const char *fmt, va_list args);
+// Variant of the log_printf() function taking variable arguments via va_list
+void log_printf_v(int level, const char *category, void *reserved, const char *fmt, va_list args);
 
 // Encodes data as hex string and forwards it to backend logger
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved);
@@ -198,18 +198,18 @@ static const char* const _log_category = NULL;
             } \
         } while (0)
 
-#define LOG_FORMAT_C(_level, _category, _fmt, ...) \
-        do { \
-            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                log_format(LOG_LEVEL_##_level, _category, NULL, _fmt, ##__VA_ARGS__); \
-            } \
-        } while (0)
-
 #define LOG_PRINT_C(_level, _category, _str) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
                 const char* const _s = _str; \
                 log_write(LOG_LEVEL_##_level, _category, _s, strlen(_s), NULL); \
+            } \
+        } while (0)
+
+#define LOG_PRINTF_C(_level, _category, _fmt, ...) \
+        do { \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                log_printf(LOG_LEVEL_##_level, _category, NULL, _fmt, ##__VA_ARGS__); \
             } \
         } while (0)
 
@@ -226,8 +226,8 @@ static const char* const _log_category = NULL;
 // Macros using current category
 #define LOG(_level, _fmt, ...) LOG_C(_level, _LOG_CATEGORY, _fmt, ##__VA_ARGS__)
 #define LOG_WRITE(_level, _data, _size) LOG_WRITE_C(_level, _LOG_CATEGORY, _data, _size)
-#define LOG_FORMAT(_level, _fmt, ...) LOG_FORMAT_C(_level, _LOG_CATEGORY, _fmt, ##__VA_ARGS__)
 #define LOG_PRINT(_level, _str) LOG_PRINT_C(_level, _LOG_CATEGORY, _str)
+#define LOG_PRINTF(_level, _fmt, ...) LOG_PRINTF_C(_level, _LOG_CATEGORY, _fmt, ##__VA_ARGS__)
 #define LOG_DUMP(_level, _data, _size) LOG_DUMP_C(_level, _LOG_CATEGORY, _data, _size)
 #define LOG_ENABLED(_level) LOG_ENABLED_C(_level, _LOG_CATEGORY)
 
@@ -240,10 +240,10 @@ static const char* const _log_category = NULL;
 #define LOG_C(_level, _category, _fmt, ...)
 #define LOG_WRITE(_level, _data, _size)
 #define LOG_WRITE_C(_level, _category, _data, _size)
-#define LOG_FORMAT(_level, _fmt, ...)
-#define LOG_FORMAT_C(_level, _category, _fmt, ...)
 #define LOG_PRINT(_level, _str)
 #define LOG_PRINT_C(_level, _category, _str)
+#define LOG_PRINTF(_level, _fmt, ...)
+#define LOG_PRINTF_C(_level, _category, _fmt, ...)
 #define LOG_DUMP(_level, _data, _size)
 #define LOG_DUMP_C(_level, _category, _data, _size)
 #define LOG_ENABLED(_level) (0)
@@ -256,10 +256,10 @@ static const char* const _log_category = NULL;
 #define LOG_DEBUG_C(_level, _category, _fmt, ...) LOG_C(_level, _category, _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_WRITE(_level, _data, _size) LOG_WRITE(_level, _data, _size)
 #define LOG_DEBUG_WRITE_C(_level, _category, _data, _size) LOG_WRITE_C(_level, _category, _data, _size)
-#define LOG_DEBUG_FORMAT(_level, _fmt, ...) LOG_FORMAT(_level, _fmt, ##__VA_ARGS__)
-#define LOG_DEBUG_FORMAT_C(_level, _category, _fmt, ...) LOG_FORMAT_C(_level, _category, _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_PRINT(_level, _str) LOG_PRINT(_level, _str)
 #define LOG_DEBUG_PRINT_C(_level, _category, _str) LOG_PRINT_C(_level, _category, _str)
+#define LOG_DEBUG_PRINTF(_level, _fmt, ...) LOG_PRINTF(_level, _fmt, ##__VA_ARGS__)
+#define LOG_DEBUG_PRINTF_C(_level, _category, _fmt, ...) LOG_PRINTF_C(_level, _category, _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_DUMP(_level, _data, _size) LOG_DUMP(_level, _data, _size)
 #define LOG_DEBUG_DUMP_C(_level, _category, _data, _size) LOG_DUMP_C(_level, _category, _data, _size)
 #else
@@ -267,10 +267,10 @@ static const char* const _log_category = NULL;
 #define LOG_DEBUG_C(_level, _category, _fmt, ...)
 #define LOG_DEBUG_WRITE(_level, _data, _size)
 #define LOG_DEBUG_WRITE_C(_level, _category, _data, _size)
-#define LOG_DEBUG_FORMAT(_level, _fmt, ...)
-#define LOG_DEBUG_FORMAT_C(_level, _category, _fmt, ...)
 #define LOG_DEBUG_PRINT(_level, _str)
 #define LOG_DEBUG_PRINT_C(_level, _category, _str)
+#define LOG_DEBUG_PRINTF(_level, _fmt, ...)
+#define LOG_DEBUG_PRINTF_C(_level, _category, _fmt, ...)
 #define LOG_DEBUG_DUMP(_level, _data, _size)
 #define LOG_DEBUG_DUMP_C(_level, _category, _data, _size)
 #endif

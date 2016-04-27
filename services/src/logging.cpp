@@ -114,7 +114,7 @@ void log_write(int level, const char *category, const char *data, size_t size, v
     }
 }
 
-void log_format_v(int level, const char *category, void *reserved, const char *fmt, va_list args) {
+void log_printf_v(int level, const char *category, void *reserved, const char *fmt, va_list args) {
     if (!log_write_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
@@ -131,10 +131,10 @@ void log_format_v(int level, const char *category, void *reserved, const char *f
     }
 }
 
-void log_format(int level, const char *category, void *reserved, const char *fmt, ...) {
+void log_printf(int level, const char *category, void *reserved, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    log_format_v(level, category, reserved, fmt, args);
+    log_printf_v(level, category, reserved, fmt, args);
     va_end(args);
 }
 

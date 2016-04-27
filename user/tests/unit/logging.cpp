@@ -310,18 +310,18 @@ CATCH_TEST_CASE("Direct logging") {
         LOG_PRINT(ERROR, s.c_str()); // Alias for LOG_WRITE(level, str, strlen(str))
         log.bufferEndsWith(s);
     }
-    CATCH_SECTION("format") {
+    CATCH_SECTION("printf") {
         std::string s = "";
-        LOG_FORMAT(TRACE, "%s", s.c_str());
+        LOG_PRINTF(TRACE, "%s", s.c_str());
         log.bufferEquals("");
         s = randomString(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
-        LOG_FORMAT(INFO, "%s", s.c_str());
+        LOG_PRINTF(INFO, "%s", s.c_str());
         log.bufferEquals(s);
         s = randomString(LOG_MAX_STRING_LENGTH);
-        LOG_FORMAT(WARN, "%s", s.c_str());
+        LOG_PRINTF(WARN, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
         s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
-        LOG_FORMAT(ERROR, "%s", s.c_str());
+        LOG_PRINTF(ERROR, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
     CATCH_SECTION("dump") {
@@ -340,7 +340,7 @@ CATCH_TEST_CASE("Direct logging") {
     }
     CATCH_SECTION("compatibility macros") {
         std::string s = randomString();
-        DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_FORMAT(TRACE, ...)
+        DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_PRINTF(TRACE, ...)
 #ifdef DEBUG_BUILD
         log.bufferEquals(s);
 #endif
@@ -361,18 +361,18 @@ CATCH_TEST_CASE("Direct logging (compatibility callback)") {
         LOG_PRINT(ERROR, s.c_str()); // Alias for LOG_WRITE(level, str, strlen(str))
         log.bufferEndsWith(s);
     }
-    CATCH_SECTION("format") {
+    CATCH_SECTION("printf") {
         std::string s = "";
-        LOG_FORMAT(TRACE, "%s", s.c_str());
+        LOG_PRINTF(TRACE, "%s", s.c_str());
         log.bufferEquals("");
         s = randomString(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
-        LOG_FORMAT(INFO, "%s", s.c_str());
+        LOG_PRINTF(INFO, "%s", s.c_str());
         log.bufferEquals(s);
         s = randomString(LOG_MAX_STRING_LENGTH);
-        LOG_FORMAT(WARN, "%s", s.c_str());
+        LOG_PRINTF(WARN, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
         s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
-        LOG_FORMAT(ERROR, "%s", s.c_str());
+        LOG_PRINTF(ERROR, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
     CATCH_SECTION("dump") {
@@ -391,7 +391,7 @@ CATCH_TEST_CASE("Direct logging (compatibility callback)") {
     }
     CATCH_SECTION("compatibility macros") {
         std::string s = randomString();
-        DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_FORMAT(TRACE, ...)
+        DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_PRINTF(TRACE, ...)
 #ifdef DEBUG_BUILD
         log.bufferEquals(s);
 #endif
@@ -426,30 +426,30 @@ CATCH_TEST_CASE("Basic filtering (compatibility callback)") {
         CATCH_SECTION("trace") {
             LOG(TRACE, "message");
             LOG_PRINT(TRACE, "print,");
-            LOG_FORMAT(TRACE, "%s", "format,");
+            LOG_PRINTF(TRACE, "%s", "printf,");
             LOG_DUMP(TRACE, "\0", 1);
             log.bufferEquals("");
         }
         CATCH_SECTION("info") {
             LOG(INFO, "message");
             LOG_PRINT(INFO, "print,");
-            LOG_FORMAT(INFO, "%s", "format,");
+            LOG_PRINTF(INFO, "%s", "printf,");
             LOG_DUMP(INFO, "\0", 1);
             log.bufferEquals("");
         }
         CATCH_SECTION("warn") {
             LOG(WARN, "message");
             LOG_PRINT(WARN, "print,");
-            LOG_FORMAT(WARN, "%s", "format,");
+            LOG_PRINTF(WARN, "%s", "printf,");
             LOG_DUMP(WARN, "\0", 1);
-            log.bufferEndsWith("WARN: message\r\nprint,format,00");
+            log.bufferEndsWith("WARN: message\r\nprint,printf,00");
         }
         CATCH_SECTION("error") {
             LOG(ERROR, "message");
             LOG_PRINT(ERROR, "print,");
-            LOG_FORMAT(ERROR, "%s", "format,");
+            LOG_PRINTF(ERROR, "%s", "printf,");
             LOG_DUMP(ERROR, "\0", 1);
-            log.bufferEndsWith("ERROR: message\r\nprint,format,00");
+            log.bufferEndsWith("ERROR: message\r\nprint,printf,00");
         }
     }
 }

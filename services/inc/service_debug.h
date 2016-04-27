@@ -61,7 +61,7 @@ int log_level_active(LoggerOutputLevel level, void* reserved);
 #define INFO(fmt, ...) LOG(INFO, fmt, ##__VA_ARGS__)
 #define WARN(fmt, ...) LOG(WARN, fmt, ##__VA_ARGS__)
 #define ERROR(fmt, ...) LOG(ERROR, fmt, ##__VA_ARGS__)
-#define DEBUG_D(fmt, ...) LOG_DEBUG_FORMAT(TRACE, fmt, ##__VA_ARGS__)
+#define DEBUG_D(fmt, ...) LOG_DEBUG_PRINTF(TRACE, fmt, ##__VA_ARGS__)
 
 #define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure "#predicate);} while(0);
 

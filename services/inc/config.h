@@ -28,7 +28,7 @@
 #undef  DEBUG_BUILD
 #endif
 
-#ifdef DEBUG_BUILD
+#if defined(DEBUG_BUILD) && !defined(LOG_INCLUDE_SOURCE_INFO)
 #define LOG_INCLUDE_SOURCE_INFO
 #endif
 
