@@ -146,3 +146,9 @@ cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, v
     }
     return -1;
 }
+
+cellular_result_t cellular_urcs_get(void* reserved)
+{
+    electronMDM.waitFinalResp(NULL, NULL, 0);
+    return 0;
+}

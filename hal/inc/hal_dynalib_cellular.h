@@ -52,6 +52,7 @@ DYNALIB_FN(hal_cellular, inet_ping)
 DYNALIB_FN(hal_cellular, cellular_signal)
 DYNALIB_FN(hal_cellular, cellular_command)
 DYNALIB_FN(hal_cellular, cellular_at_response_handler_set)
+DYNALIB_FN(hal_cellular, cellular_urcs_get)
 
 DYNALIB_END(hal_cellular)
 
