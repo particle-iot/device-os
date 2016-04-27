@@ -203,12 +203,15 @@ void loop()
         }
     } // END if (Serial.available() > 0)
 
+    // Update GSM and GPRS registration status every 5 seconds for 2 minutes
     if (millis() - updateRegistrationTime < 2*60*1000UL) {
         if (millis() - lastUpdate > 5000UL) {
             lastUpdate = millis();
             updateRegistrationStatus();
         }
     }
+
+    // Receive all URCs
     cellular_urcs_get(NULL);
 }
 
