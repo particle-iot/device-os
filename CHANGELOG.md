@@ -5,6 +5,10 @@
 
 - Local build support for ARM GCC 5.3.1 [#963](https://github.com/spark/firmware/issues/963)
 
+### BUGFIXES
+
+- SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971) 
+
 
 ## v0.5.0
 
