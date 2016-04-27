@@ -121,6 +121,11 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
 cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved);
 
 /**
+ * Get the URCs waiting
+ */
+cellular_result_t cellular_urcs_get(void* reserved);
+
+/**
  * Set cellular data usage info
  */
 cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved);
