@@ -208,7 +208,6 @@ extern void module_user_init_hook(void);
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved);
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved);
 
-
 #ifdef __cplusplus
 }
 #endif

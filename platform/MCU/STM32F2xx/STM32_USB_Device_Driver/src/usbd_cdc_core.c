@@ -479,7 +479,7 @@ __ALIGN_BEGIN uint8_t usbd_cdc_OtherCfgDesc[USB_CDC_CONFIG_DESC_SIZ]  __ALIGN_EN
 
 static inline void usbd_cdc_Change_Open_State(uint8_t state) {
   if (state != USB_Serial_Open) {
-    DEBUG("USB Serial state: %d", state);
+    //DEBUG("USB Serial state: %d", state);
     if (state) {
       USB_Tx_failed_counter = 0;
       // Also flush everything in TX buffer

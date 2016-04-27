@@ -1,4 +1,17 @@
-## v0.5.0-rc.2
+
+## v0.6.0-rc.1
+
+### ENHANCEMENTS
+
+- Local build support for ARM GCC 5.3.1. [#963](https://github.com/spark/firmware/issues/963)
+- Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
+
+### BUGFIXES
+
+- SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971) 
+- Free memory allocated for previous system interrupt handler [#927](https://github.com/spark/firmware/issues/927)
+
+## v0.5.0
 
 ### FEATURES
 

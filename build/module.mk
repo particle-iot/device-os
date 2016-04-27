@@ -33,6 +33,10 @@ CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
 export GLOBAL_DEFINES
 endif
 
+# fixes build errors on ubuntu with arm gcc 5.3.1
+# GNU_SOURCE is needed for isascii/toascii
+# WINSOCK_H stops select.h from being used which conflicts with CC3000 headers
+CFLAGS += -D_GNU_SOURCE -D_WINSOCK_H
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
