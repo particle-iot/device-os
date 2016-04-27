@@ -430,16 +430,16 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	if (ret>0) {
 		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
-		if (LOG_ENABLED(DEBUG)) {
-		  DEBUG("message length %d", message.length());
+		if (LOG_ENABLED(TRACE)) {
+		  LOG(TRACE, "message length %d", message.length());
 		  for (size_t i=0; i<message.length(); i++)
 		  {
 				  char buf[3];
 				  char c = message.buf()[i];
 				  sprintf(buf, "%02x", c);
-				  LOG_PRINT(DEBUG, buf);
+				  LOG_PRINT(TRACE, buf);
 		  }
-		  LOG_PRINT(DEBUG, "\n");
+		  LOG_PRINT(TRACE, "\n");
 		}
 #endif
 	}
@@ -459,15 +459,15 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   }
 
 #ifdef DEBUG_BUILD
-      DEBUG("message length %d", message.length());
+      LOG(TRACE, "message length %d", message.length());
       for (size_t i=0; i<message.length(); i++)
       {
 	  	  char buf[3];
 	  	  char c = message.buf()[i];
 	  	  sprintf(buf, "%02x", c);
-	  	  LOG_PRINT(DEBUG, buf);
+	  	  LOG_PRINT(TRACE, buf);
       }
-      LOG_PRINT(DEBUG, "\n");
+      LOG_PRINT(TRACE, "\n");
 #endif
 
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());

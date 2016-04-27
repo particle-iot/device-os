@@ -258,8 +258,10 @@ CATCH_TEST_CASE("Message logging") {
         log.next().messageEquals(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
     CATCH_SECTION("compatibility macros") {
-        DEBUG("debug"); // Alias for LOG(DEBUG, ...)
-        log.next().messageEquals("debug").levelEquals(DEBUG_LEVEL); // Compatibility level
+        DEBUG("debug"); // Alias for LOG_DEBUG(TRACE, ...)
+#ifdef DEBUG_BUILD
+        log.next().messageEquals("debug").levelEquals(LOG_LEVEL_TRACE);
+#endif
         INFO("info"); // Alias for LOG(INFO, ...)
         log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO);
         WARN("warn"); // Alias for LOG(WARN, ...)
@@ -338,8 +340,10 @@ CATCH_TEST_CASE("Direct logging") {
     }
     CATCH_SECTION("compatibility macros") {
         std::string s = randomString();
-        DEBUG_D("%s", s.c_str()); // Alias for LOG_FORMAT()
+        DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_FORMAT(TRACE, ...)
+#ifdef DEBUG_BUILD
         log.bufferEquals(s);
+#endif
     }
 }
 
@@ -387,8 +391,10 @@ CATCH_TEST_CASE("Direct logging (compatibility callback)") {
     }
     CATCH_SECTION("compatibility macros") {
         std::string s = randomString();
-        DEBUG_D("%s", s.c_str()); // Alias for LOG_FORMAT()
+        DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_FORMAT(TRACE, ...)
+#ifdef DEBUG_BUILD
         log.bufferEquals(s);
+#endif
     }
 }
 

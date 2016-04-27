@@ -182,8 +182,8 @@ int log_enabled(int level, const char *category, void *reserved) {
 const char* log_level_name(int level, void *reserved) {
     static const char* const names[] = {
         "TRACE",
-        "LOG",
-        "DEBUG",
+        "TRACE", // LOG (deprecated)
+        "TRACE", // DEBUG (deprecated)
         "INFO",
         "WARN",
         "ERROR",

@@ -30,25 +30,24 @@ extern "C" {
 #endif
 
 typedef enum LogLevel {
+    LOG_LEVEL_ALL = 1, // Log all messages
+    LOG_LEVEL_TRACE = 1,
+    LOG_LEVEL_INFO = 30,
+    LOG_LEVEL_WARN = 40,
+    LOG_LEVEL_ERROR = 50,
+    LOG_LEVEL_PANIC = 60,
+    LOG_LEVEL_NONE = 70, // Do not log any messages
     // Compatibility levels
     DEFAULT_LEVEL = 0,
-    ALL_LEVEL = 1,
-    TRACE_LEVEL = 1,
-    LOG_LEVEL = 10,
-    DEBUG_LEVEL = 20,
-    INFO_LEVEL = 30,
-    WARN_LEVEL = 40,
-    ERROR_LEVEL = 50,
-    PANIC_LEVEL = 60,
-    NO_LOG_LEVEL = 70,
-    // Public API
-    LOG_LEVEL_ALL = ALL_LEVEL, // Log all messages
-    LOG_LEVEL_TRACE = TRACE_LEVEL,
-    LOG_LEVEL_INFO = INFO_LEVEL,
-    LOG_LEVEL_WARN = WARN_LEVEL,
-    LOG_LEVEL_ERROR = ERROR_LEVEL,
-    LOG_LEVEL_PANIC = PANIC_LEVEL,
-    LOG_LEVEL_NONE = NO_LOG_LEVEL // Do not log any messages
+    ALL_LEVEL = LOG_LEVEL_ALL,
+    TRACE_LEVEL = LOG_LEVEL_TRACE,
+    LOG_LEVEL = LOG_LEVEL_TRACE,
+    DEBUG_LEVEL = LOG_LEVEL_TRACE,
+    INFO_LEVEL = LOG_LEVEL_INFO,
+    WARN_LEVEL = LOG_LEVEL_WARN,
+    ERROR_LEVEL = LOG_LEVEL_ERROR,
+    PANIC_LEVEL = LOG_LEVEL_PANIC,
+    NO_LOG_LEVEL = LOG_LEVEL_NONE
 } LogLevel;
 
 // Logger callbacks
@@ -187,42 +186,42 @@ static const char* const _log_category = NULL;
 // Wrapper macros
 #define LOG_C(_level, _category, _fmt, ...) \
         do { \
-            if (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL) { \
-                log_message(_level##_LEVEL, _category, _LOG_SOURCE_INFO, NULL, _fmt, ##__VA_ARGS__); \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                log_message(LOG_LEVEL_##_level, _category, _LOG_SOURCE_INFO, NULL, _fmt, ##__VA_ARGS__); \
             } \
         } while (0)
 
 #define LOG_WRITE_C(_level, _category, _data, _size) \
         do { \
-            if (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL) { \
-                log_write(_level##_LEVEL, _category, _data, _size, NULL); \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                log_write(LOG_LEVEL_##_level, _category, _data, _size, NULL); \
             } \
         } while (0)
 
 #define LOG_FORMAT_C(_level, _category, _fmt, ...) \
         do { \
-            if (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL) { \
-                log_format(_level##_LEVEL, _category, NULL, _fmt, ##__VA_ARGS__); \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                log_format(LOG_LEVEL_##_level, _category, NULL, _fmt, ##__VA_ARGS__); \
             } \
         } while (0)
 
 #define LOG_PRINT_C(_level, _category, _str) \
         do { \
-            if (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL) { \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
                 const char* const _s = _str; \
-                log_write(_level##_LEVEL, _category, _s, strlen(_s), NULL); \
+                log_write(LOG_LEVEL_##_level, _category, _s, strlen(_s), NULL); \
             } \
         } while (0)
 
 #define LOG_DUMP_C(_level, _category, _data, _size) \
         do { \
-            if (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL) { \
-                log_dump(_level##_LEVEL, _category, _data, _size, 0, NULL); \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                log_dump(LOG_LEVEL_##_level, _category, _data, _size, 0, NULL); \
             } \
         } while (0)
 
 #define LOG_ENABLED_C(_level, _category) \
-        (_level##_LEVEL >= LOG_COMPILE_TIME_LEVEL && log_enabled(_level##_LEVEL, _category, NULL))
+        (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL && log_enabled(LOG_LEVEL_##_level, _category, NULL))
 
 // Macros using current category
 #define LOG(_level, _fmt, ...) LOG_C(_level, _LOG_CATEGORY, _fmt, ##__VA_ARGS__)

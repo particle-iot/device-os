@@ -301,7 +301,7 @@ void system_power_management_update()
 //        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
 //        }
 #if defined(DEBUG_BUILD) && 0
-        if (LOG_ENABLED(DEBUG)) {
+        if (LOG_ENABLED(TRACE)) {
 			uint8_t stat = power.getSystemStatus();
 			uint8_t fault = power.getFault();
 			uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
