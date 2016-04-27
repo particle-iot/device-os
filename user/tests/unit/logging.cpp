@@ -18,14 +18,14 @@ using namespace spark;
 
 class LogMessage {
 public:
-    LogMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const char *file, int line, const char *func) :
+    LogMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const LogHandler::SourceInfo &info) :
             msg_(msg ? msg : ""),
             cat_(category ? category : ""),
-            file_(file ? file : ""),
-            func_(func ? func : ""),
+            file_(info.file ? info.file : ""),
+            func_(info.function ? info.function : ""),
             level_(level),
             time_(time),
-            line_(line) {
+            line_(info.line) {
     }
 
     const LogMessage& messageEquals(const std::string &msg) const {
@@ -70,15 +70,35 @@ private:
     int line_;
 };
 
-class TestLogger: public Logger {
+class StringStream: public Print {
 public:
-    explicit TestLogger(LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {}):
-            Logger(level, filters) {
-        Logger::install(this);
+    // Print
+    virtual size_t write(const uint8_t *data, size_t size) override {
+        buf_.append((const char*)data, size);
+        return size;
     }
 
-    virtual ~TestLogger() {
-        Logger::uninstall(this);
+    virtual size_t write(uint8_t c) override {
+        return write(&c, 1);
+    }
+
+    const std::string& string() const {
+        return buf_;
+    }
+
+private:
+    std::string buf_;
+};
+
+class TestHandler: public LogHandler {
+public:
+    explicit TestHandler(LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {}):
+            LogHandler(strm_, level, filters) {
+        LogHandler::install(this);
+    }
+
+    virtual ~TestHandler() {
+        LogHandler::uninstall(this);
     }
 
     LogMessage next() {
@@ -93,46 +113,42 @@ public:
     }
 
     const std::string& buffer() const {
-        return buf_;
+        return strm_.string();
     }
 
-    const TestLogger& bufferEquals(const std::string &str) const {
-        CATCH_CHECK(buf_ == str);
+    const TestHandler& bufferEquals(const std::string &str) const {
+        CATCH_CHECK(buffer() == str);
         return *this;
     }
 
-    const TestLogger& bufferEndsWith(const std::string &str) const {
-        const std::string s = (buf_.size() >= str.size()) ? buf_.substr(buf_.size() - str.size(), str.size()) : str;
+    const TestHandler& bufferEndsWith(const std::string &str) const {
+        const std::string &buf = buffer();
+        const std::string s = (buf.size() >= str.size()) ? buf.substr(buf.size() - str.size(), str.size()) : str;
         CATCH_CHECK(str == s);
         return *this;
     }
 
 protected:
-    // spark::Logger
-    virtual void formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
-            const char *file, int line, const char *func) override {
-        const LogMessage m(msg, level, category, time, file, line, func);
-        msgs_.push(m);
-    }
-
-    virtual void write(const char *data, size_t size) override {
-        buf_.append(data, size);
+    // spark::LogHandler
+    virtual void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info) override {
+        msgs_.push(LogMessage(msg, level, category, time, info));
     }
 
 private:
+    StringStream strm_;
     std::queue<LogMessage> msgs_;
     std::string buf_;
 };
 
-// Logger using compatibility callback
-class CompatLogger {
+// Log handler using compatibility callback
+class CompatHandler {
 public:
-    explicit CompatLogger(LogLevel level = LOG_LEVEL_ALL) {
+    explicit CompatHandler(LogLevel level = LOG_LEVEL_ALL) {
         instance = this;
         set_logger_output(callback, level);
     }
 
-    ~CompatLogger() {
+    ~CompatHandler() {
         set_logger_output(nullptr, LOG_LEVEL_NONE);
         instance = nullptr;
     }
@@ -141,12 +157,12 @@ public:
         return buf_;
     }
 
-    const CompatLogger& bufferEquals(const std::string &str) const {
+    const CompatHandler& bufferEquals(const std::string &str) const {
         CATCH_CHECK(buf_ == str);
         return *this;
     }
 
-    const CompatLogger& bufferEndsWith(const std::string &str) const {
+    const CompatHandler& bufferEndsWith(const std::string &str) const {
         const std::string s = (buf_.size() >= str.size()) ? buf_.substr(buf_.size() - str.size(), str.size()) : str;
         CATCH_CHECK(str == s);
         return *this;
@@ -155,7 +171,7 @@ public:
 private:
     std::string buf_;
 
-    static CompatLogger *instance;
+    static CompatHandler *instance;
 
     static void callback(const char *str) {
         instance->buf_.append(str);
@@ -206,7 +222,7 @@ std::string toHex(const std::string &str) {
     return s;
 }
 
-CompatLogger* CompatLogger::instance = nullptr;
+CompatHandler* CompatHandler::instance = nullptr;
 
 const std::string fileName = sourceFileName();
 
@@ -216,7 +232,7 @@ const std::string fileName = sourceFileName();
 LOG_SOURCE_CATEGORY("global");
 
 CATCH_TEST_CASE("Message logging") {
-    TestLogger log(LOG_LEVEL_ALL);
+    TestHandler log(LOG_LEVEL_ALL);
     CATCH_SECTION("attributes") {
         LOG(TRACE, "trace");
         log.next().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).fileEquals(fileName);
@@ -254,7 +270,7 @@ CATCH_TEST_CASE("Message logging") {
 }
 
 CATCH_TEST_CASE("Message logging (compatibility callback)") {
-    CompatLogger log(LOG_LEVEL_ALL);
+    CompatHandler log(LOG_LEVEL_ALL);
     CATCH_SECTION("attributes") {
         LOG(TRACE, "trace");
         log.bufferEndsWith("TRACE: trace\r\n");
@@ -280,7 +296,7 @@ CATCH_TEST_CASE("Message logging (compatibility callback)") {
 }
 
 CATCH_TEST_CASE("Direct logging") {
-    TestLogger log(LOG_LEVEL_ALL);
+    TestHandler log(LOG_LEVEL_ALL);
     CATCH_SECTION("write") {
         std::string s = "";
         LOG_WRITE(INFO, s.c_str(), s.size());
@@ -327,9 +343,9 @@ CATCH_TEST_CASE("Direct logging") {
     }
 }
 
-// Copy-pase of above test case with TestLogger replaced with CompatLogger
+// Copy-pase of above test case with TestHandler replaced with CompatHandler
 CATCH_TEST_CASE("Direct logging (compatibility callback)") {
-    CompatLogger log(LOG_LEVEL_ALL);
+    CompatHandler log(LOG_LEVEL_ALL);
     CATCH_SECTION("write") {
         std::string s = "";
         LOG_WRITE(INFO, s.c_str(), s.size());
@@ -378,7 +394,7 @@ CATCH_TEST_CASE("Direct logging (compatibility callback)") {
 
 CATCH_TEST_CASE("Basic filtering") {
     CATCH_SECTION("warn") {
-        TestLogger log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
+        TestHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
         log.next().levelEquals(LOG_LEVEL_WARN);
@@ -388,7 +404,7 @@ CATCH_TEST_CASE("Basic filtering") {
         log.bufferEquals("cd");
     }
     CATCH_SECTION("none") {
-        TestLogger log(LOG_LEVEL_NONE); // All levels should be filtered out
+        TestHandler log(LOG_LEVEL_NONE); // All levels should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && !LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
         CATCH_CHECK(!log.hasNext());
@@ -399,7 +415,7 @@ CATCH_TEST_CASE("Basic filtering") {
 
 CATCH_TEST_CASE("Basic filtering (compatibility callback)") {
     CATCH_SECTION("warn") {
-        CompatLogger log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
+        CompatHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
         CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         CATCH_SECTION("trace") {
             LOG(TRACE, "message");
@@ -433,7 +449,7 @@ CATCH_TEST_CASE("Basic filtering (compatibility callback)") {
 }
 
 CATCH_TEST_CASE("Scoped category") {
-    TestLogger log(LOG_LEVEL_ALL);
+    TestHandler log(LOG_LEVEL_ALL);
     LOG(INFO, "");
     log.next().categoryEquals("global");
     {
@@ -446,7 +462,7 @@ CATCH_TEST_CASE("Scoped category") {
 }
 
 CATCH_TEST_CASE("Category filtering") {
-    TestLogger log(LOG_LEVEL_ERROR, {
+    TestHandler log(LOG_LEVEL_ERROR, {
         { "b.b", LOG_LEVEL_INFO },
         { "a", LOG_LEVEL_WARN },
         { "a.a.a", LOG_LEVEL_TRACE },
@@ -561,7 +577,7 @@ CATCH_TEST_CASE("Category filtering") {
 }
 
 CATCH_TEST_CASE("Malformed category name") {
-    TestLogger log(LOG_LEVEL_ERROR, {
+    TestHandler log(LOG_LEVEL_ERROR, {
         { "a", LOG_LEVEL_WARN },
         { "a.a", LOG_LEVEL_INFO }
     });
@@ -589,7 +605,7 @@ CATCH_TEST_CASE("Malformed category name") {
 
 CATCH_TEST_CASE("Miscellaneous") {
     CATCH_SECTION("exact category match") {
-        TestLogger log(LOG_LEVEL_ERROR, {
+        TestHandler log(LOG_LEVEL_ERROR, {
             { "aaa", LOG_LEVEL_TRACE },
             { "aa", LOG_LEVEL_INFO },
             { "a", LOG_LEVEL_WARN }

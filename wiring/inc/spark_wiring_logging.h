@@ -24,20 +24,23 @@
 
 #include "logging.h"
 
+#include "spark_wiring_print.h"
+
 namespace spark {
 
 /*!
-    \brief Abstract logger.
-
-    This class can be subclassed to implement custom loggers. The library also provides several built-in
-    loggers, such as \ref spark::SerialLogger and \ref spark::Serial1Logger.
-
-    Typically, custom logger classes only need to implement \ref write(const char*, size_t) method that will
-    write data to some output stream. Optionally, \ref formatMessage() method can be reimplemented to customize
-    format of the generated messages.
+    \brief Log handler.
 */
-class Logger {
+class LogHandler {
 public:
+    /*!
+        \brief Source file info.
+    */
+    struct SourceInfo {
+        const char* file; //!< File name (can be null).
+        const char* function; //!< Function name (can be null).
+        int line; //!< Line number.
+    };
     /*!
         \brief Category filter.
     */
@@ -47,15 +50,30 @@ public:
     */
     typedef std::initializer_list<Filter> Filters;
     /*!
+        \brief Output stream type.
+    */
+    typedef Print Stream;
+    /*!
         \brief Constructor.
         \param level Default logging level.
         \param filters Category filters.
     */
-    explicit Logger(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
+    explicit LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
+    /*!
+        \brief Constructor.
+        \param stream Output stream.
+        \param level Default logging level.
+        \param filters Category filters.
+    */
+    explicit LogHandler(Stream &stream, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
     /*!
         \brief Destructor.
     */
-    virtual ~Logger();
+    virtual ~LogHandler();
+    /*!
+        \brief Returns output stream (can be null).
+    */
+    Stream* stream() const;
     /*!
         \brief Returns default logging level.
     */
@@ -71,49 +89,47 @@ public:
     */
     static const char* levelName(LogLevel level);
     /*!
-        \brief Registers logger globally.
-        \param logger Logger instance.
-        \note This method is not thread-safe.
+        \brief Registers log handler globally.
+        \param logger Handler instance.
+
+        Note that the library doesn't take ownership over handler objects.
     */
-    static void install(Logger *logger);
+    static void install(LogHandler *handler);
     /*!
-        \brief Unregisters previously registered logger.
-        \param logger Logger instance.
-        \note This method is not thread-safe.
+        \brief Unregisters log handler.
+        \param logger Handler instance.
     */
-    static void uninstall(Logger *logger);
+    static void uninstall(LogHandler *handler);
 
     // These methods are called by the system modules
-    void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
-            const char *file, int line, const char *func);
+    void message(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info);
     void write(const char *data, size_t size, LogLevel level, const char *category);
 
 protected:
     /*!
-        \brief Formats message and writes it to output stream.
+        \brief Processes log message.
         \param msg Text message.
         \param level Logging level.
         \param category Category name (can be null).
         \param time Timestamp (milliseconds since startup).
-        \param file Source file name (can be null).
-        \param line Line number.
-        \param func Function name (can be null).
+        \param info Source file info.
 
         Default implementation generates messages in the following format:
-        `<timestamp>: [category]: [file]:[line], [function]: <level>: <message>`
-    */
-    virtual void formatMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
-            const char *file, int line, const char *func);
-    /*!
-        \brief Writes data to output stream.
-        \param data Data buffer.
-        \param size Data size.
+        `<timestamp>: [category]: [file]:[line], [function]: <level>: <message>`.
 
-        This method should be implemented by all subclasses.
+        Resulting string is then written to the output stream.
     */
-    virtual void write(const char *data, size_t size) = 0;
+    virtual void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info);
     /*!
-        \brief Writes string to output stream.
+        \brief Writes buffer to the output stream.
+        \param data Characters buffer.
+        \param size Buffer size.
+
+        This method is equivalent to `stream()->write((const uint8_t*)data, size)`.
+    */
+    void write(const char *data, size_t size);
+    /*!
+        \brief Writes string to the output stream.
 
         This method is equivalent to `write(str, strlen(str))`.
     */
@@ -123,34 +139,54 @@ private:
     struct FilterData;
 
     std::vector<FilterData> filters_;
+    Stream *stream_;
     LogLevel level_;
+
+    LogHandler(Stream *stream, LogLevel level, const Filters &filters);
 };
 
 } // namespace spark
 
-// spark::Logger
-inline void spark::Logger::logMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
-        const char *file, int line, const char *func) {
+// spark::LogHandler
+inline spark::LogHandler::LogHandler(LogLevel level, const Filters &filters) :
+        LogHandler(nullptr, level, filters) {
+}
+
+inline spark::LogHandler::LogHandler(Stream &stream, LogLevel level, const Filters &filters) :
+        LogHandler(&stream, level, filters) {
+}
+
+inline void spark::LogHandler::message(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info) {
     if (level >= categoryLevel(category)) {
-        formatMessage(msg, level, category, time, file, line, func);
+        logMessage(msg, level, category, time, info);
     }
 }
 
-inline void spark::Logger::write(const char *data, size_t size, LogLevel level, const char *category) {
-    if (level >= categoryLevel(category)) {
-        write(data, size);
+inline void spark::LogHandler::write(const char *data, size_t size, LogLevel level, const char *category) {
+    if (stream_ && level >= categoryLevel(category)) {
+        stream_->write((const uint8_t*)data, size);
     }
 }
 
-inline void spark::Logger::write(const char *str) {
+inline void spark::LogHandler::write(const char *data, size_t size) {
+    if (stream_) {
+        stream_->write((const uint8_t*)data, size);
+    }
+}
+
+inline void spark::LogHandler::write(const char *str) {
     write(str, strlen(str));
 }
 
-inline LogLevel spark::Logger::defaultLevel() const {
+inline spark::LogHandler::Stream* spark::LogHandler::stream() const {
+    return stream_;
+}
+
+inline LogLevel spark::LogHandler::defaultLevel() const {
     return level_;
 }
 
-inline const char* spark::Logger::levelName(LogLevel level) {
+inline const char* spark::LogHandler::levelName(LogLevel level) {
     return log_level_name(level, nullptr);
 }
 

@@ -26,56 +26,46 @@
 
 namespace spark {
 
-class SerialLogger: public Logger {
+class SerialLogHandler: public LogHandler {
 public:
-    explicit SerialLogger(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
-            Logger(level, filters) {
+    explicit SerialLogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            LogHandler(Serial, level, filters) {
         Serial.begin(baud);
-        Logger::install(this);
+        LogHandler::install(this);
     }
 
-    virtual ~SerialLogger() {
-        Logger::uninstall(this);
-    }
-
-protected:
-    virtual void write(const char* data, size_t size) override { // spark::Logger
-        Serial.write((const uint8_t*)data, size);
+    virtual ~SerialLogHandler() {
+        LogHandler::uninstall(this);
     }
 };
 
-class Serial1Logger: public Logger {
+class Serial1LogHandler: public LogHandler {
 public:
-    explicit Serial1Logger(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
-            Logger(level, filters) {
+    explicit Serial1LogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            LogHandler(Serial1, level, filters) {
         Serial1.begin(baud);
-        Logger::install(this);
+        LogHandler::install(this);
     }
 
-    virtual ~Serial1Logger() {
-        Logger::uninstall(this);
-    }
-
-protected:
-    virtual void write(const char* data, size_t size) override { // spark::Logger
-        Serial1.write((const uint8_t*)data, size);
+    virtual ~Serial1LogHandler() {
+        LogHandler::uninstall(this);
     }
 };
 
 } // namespace spark
 
 // Compatibility API
-class SerialDebugOutput: public spark::SerialLogger {
+class SerialDebugOutput: public spark::SerialLogHandler {
 public:
     explicit SerialDebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
-        SerialLogger(baud, level) {
+        SerialLogHandler(baud, level) {
     }
 };
 
-class Serial1DebugOutput: public spark::Serial1Logger {
+class Serial1DebugOutput: public spark::Serial1LogHandler {
 public:
     explicit Serial1DebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
-        Serial1Logger(baud, level) {
+        Serial1LogHandler(baud, level) {
     }
 };
 
