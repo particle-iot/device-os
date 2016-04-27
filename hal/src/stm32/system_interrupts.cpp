@@ -21,8 +21,10 @@ uint8_t HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallb
         *previous = cb;
     if (callback)
         cb = *callback;
-    else
+    else {
         cb.handler = 0;
+        cb.data = 0;
+    }
 
     return true;
 }
