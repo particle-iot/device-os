@@ -36,6 +36,7 @@ public:
 
     virtual ~SerialLogHandler() {
         LogHandler::uninstall(this);
+        Serial.end();
     }
 };
 
@@ -49,6 +50,7 @@ public:
 
     virtual ~Serial1LogHandler() {
         LogHandler::uninstall(this);
+        Serial1.end();
     }
 };
 
