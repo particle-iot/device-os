@@ -3,7 +3,8 @@
 
 ### ENHANCEMENTS
 
-- Local build support for ARM GCC 5.3.1 [#963](https://github.com/spark/firmware/issues/963)
+- Local build support for ARM GCC 5.3.1. [#963](https://github.com/spark/firmware/issues/963)
+- Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
 
 ### BUGFIXES
 
