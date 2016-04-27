@@ -208,53 +208,6 @@ extern void module_user_init_hook(void);
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved);
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved);
 
-#ifdef USE_STDPERIPH_DRIVER
-#if defined(STM32F10X_MD) || defined(STM32F10X_HD)
-#include "stm32f10x.h"
-#elif defined(STM32F2XX)
-#include "stm32f2xx.h"
-#endif // defined(STM32F10X_MD) || defined(STM32F10X_HD)
-
-#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX)
-inline bool HAL_IsISR()
-{
-	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
-}
-
-inline int32_t HAL_ServicedIRQn()
-{
-  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
-}
-
-static inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2)
-{
-  if (irqn1 == irqn2)
-    return false;
-
-  uint32_t priorityGroup = NVIC_GetPriorityGrouping();
-  uint32_t priority1 = NVIC_GetPriority((IRQn_Type)irqn1);
-  uint32_t priority2 = NVIC_GetPriority((IRQn_Type)irqn2);
-  uint32_t p1, sp1, p2, sp2;
-  NVIC_DecodePriority(priority1, priorityGroup, &p1, &sp1);
-  NVIC_DecodePriority(priority2, priorityGroup, &p2, &sp2);
-  if (p1 < p2)
-    return true;
-
-  return false;
-}
-#elif PLATFORM_ID==60000
-inline bool HAL_IsISR() { return false; }
-inline int32_t HAL_ServicedIRQn() { return 0; }
-inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#elif PLATFORM_ID==3
-inline bool HAL_IsISR() { return false; }
-inline int32_t HAL_ServicedIRQn() { return 0; }
-inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#else
-#error "*** MCU architecture not supported by HAL_IsISR(). ***"
-#endif
-#endif
-
 #ifdef __cplusplus
 }
 #endif
