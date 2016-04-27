@@ -609,6 +609,15 @@ static uint8_t* USBD_MCDC_GetCfgDesc(uint8_t speed, USBD_Composite_Class_Data* c
   *(buf + 34) = cls->firstInterface;
   *(buf + 35) = cls->firstInterface + 1;
 
+  // XXX: Compatibility for old Windows driver
+#ifdef CDC0_CMD_EP_COMPAT
+  if (USBD_Composite_Registered_Count(true) == 1 && cls->firstInterface == 0) {
+    priv->ep_in_int = CDC0_CMD_EP_COMPAT;
+  } else {
+    priv->ep_in_int = CDC0_CMD_EP;
+  }
+#endif
+
   // Update CMD endpoint
   *(buf + 38) = priv->ep_in_int;
   

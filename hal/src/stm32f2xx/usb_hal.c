@@ -38,6 +38,7 @@
 #include "usbd_mcdc.h"
 #include "usbd_mhid.h"
 #include "debug.h"
+#include "usbd_desc_device.h"
 
 extern void *malloc(uint32_t size);
 
@@ -157,12 +158,12 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
         usbUsartMap[serial].data->ep_in_data = CDC0_IN_EP;
         usbUsartMap[serial].data->ep_in_int = CDC0_CMD_EP;
         usbUsartMap[serial].data->ep_out_data = CDC0_OUT_EP;
-        usbUsartMap[serial].data->name = "Serial";
+        usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "Serial";
     } else if (serial == HAL_USB_USART_SERIAL1) {
         usbUsartMap[serial].data->ep_in_data = CDC1_IN_EP;
         usbUsartMap[serial].data->ep_in_int = CDC1_CMD_EP;
         usbUsartMap[serial].data->ep_out_data = CDC1_OUT_EP;
-        usbUsartMap[serial].data->name = "USBSerial1";
+        usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "USBSerial1";
     }
 
     if (config) {

@@ -91,6 +91,7 @@
 # define CDC1_CMD_EP                      0x84  /* EP4 for CDC commands */
 #else
 # define CDC0_CMD_EP                      0x8A  /* dummy EP10 for CDC commands */
+# define CDC0_CMD_EP_COMPAT               0x83  /* EP3 used for compatibility */
 # define CDC1_CMD_EP                      0x8B  /* dummy EP11 for CDC commands */
 //# define CDC_CMD_EP_SHARED
 #endif

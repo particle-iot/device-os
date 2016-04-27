@@ -365,6 +365,7 @@ uint8_t USBD_Composite_Registered_Count(bool onlyActive) {
   uint8_t registered = (uint8_t)s_Classes_Count;
 
   if (onlyActive) {
+    registered = 0;
     int32_t irq = HAL_disable_irq();
     for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
       if (c->active)

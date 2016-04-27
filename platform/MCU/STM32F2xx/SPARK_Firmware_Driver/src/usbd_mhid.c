@@ -2,10 +2,11 @@
 #include "usbd_mhid.h"
 #include "usbd_desc.h"
 #include "usbd_req.h"
+#include "usbd_desc_device.h"
 #include "debug.h"
 
 #define USBD_MHID_USRSTR_BASE 15
-#define USBD_MHID_INTERFACE_NAME "HID Mouse / Keyboard"
+#define USBD_MHID_INTERFACE_NAME USBD_PRODUCT_STRING " " "HID Mouse / Keyboard"
 
 static uint8_t USBD_MHID_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_t cfgidx);
 static uint8_t USBD_MHID_DeInit(void* pdev, USBD_Composite_Class_Data* cls, uint8_t cfgidx);

@@ -36,9 +36,9 @@
 #define USBD_MANUFACTURER_STRING        "Particle"
 
 #if PLATFORM_ID==PLATFORM_P1
-#define USBD_PRODUCT_STRING          "P1 with WiFi"
+#define USBD_PRODUCT_STRING             "P1"
 #else
-#define USBD_PRODUCT_STRING          "Photon with WiFi"
+#define USBD_PRODUCT_STRING             "Photon"
 #endif
 
 #define USBD_CONFIGURATION_STRING    "Composite"
