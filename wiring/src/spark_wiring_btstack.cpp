@@ -23,9 +23,9 @@ void BLEDevice::setTimer(btstack_timer_source_t *ts, uint32_t timeout_in_ms)
     hal_btstack_setTimer(ts, timeout_in_ms);
 }
 
-void BLEDevice::setTimerHandler(btstack_timer_source_t *ts, void (*process)(btstack_timer_source_t *_ts))
+void BLEDevice::setTimerHandler(btstack_timer_source_t *ts, btstack_timer_handler_t handler)
 {
-    hal_btstack_setTimerHandler(ts, process);
+    hal_btstack_setTimerHandler(ts, handler);
 }
 
 void BLEDevice::addTimer(btstack_timer_source_t *timer)
@@ -97,14 +97,14 @@ void BLEDevice::setAdvData(uint16_t size, uint8_t *data)
     hal_btstack_setAdvData(size, data);
 }
 
-void BLEDevice::onConnectedCallback(void (*callback)(BLEStatus_t status, uint16_t handle))
+void BLEDevice::onConnectedCallback(bleConnectedCallback_t cb)
 {
-    hal_btstack_setConnectedCallback(callback);
+    hal_btstack_setConnectedCallback(cb);
 }
 
-void BLEDevice::onDisconnectedCallback(void (*callback)(uint16_t handle))
+void BLEDevice::onDisconnectedCallback(bleDisconnectedCallback_t cb)
 {
-    hal_btstack_setDisconnectedCallback(callback);
+    hal_btstack_setDisconnectedCallback(cb);
 }
 
 void BLEDevice::startAdvertising(void)
@@ -147,7 +147,7 @@ void BLEDevice::setScanParams(uint8_t scan_type, uint16_t scan_interval, uint16_
     hal_btstack_setScanParams(scan_type, scan_interval, scan_window);
 }
 
-void BLEDevice::onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report))
+void BLEDevice::onScanReportCallback(bleAdvertismentCallback_t cb)
 {
     hal_btstack_setBLEAdvertisementCallback(cb);
 }
@@ -192,12 +192,12 @@ uint16_t BLEDevice::addCharacteristicDynamic(uint8_t *uuid, uint16_t flags, uint
     return hal_btstack_addCharsDynamicUUID128bits(uuid, flags, data, data_len);
 }
 
-void BLEDevice::onDataReadCallback(uint16_t (*cb)(uint16_t handle, uint8_t *buffer, uint16_t buffer_size))
+void BLEDevice::onDataReadCallback(gattReadCallback_t cb)
 {
     hal_btstack_setGattCharsRead(cb);
 }
 
-void BLEDevice::onDataWriteCallback(int (*cb)(uint16_t handle, uint8_t *buffer, uint16_t buffer_size))
+void BLEDevice::onDataWriteCallback(gattWriteCallback_t cb)
 {
     hal_btstack_setGattCharsWrite(cb);
 }
@@ -222,52 +222,52 @@ int BLEDevice::sendIndicate(uint16_t value_handle, uint8_t *value, uint16_t leng
  * Gatt client API
  *
 ***************************************************************/
-void BLEDevice::onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_service_t *service))
+void BLEDevice::onServiceDiscoveredCallback(gattServicesDiscoveredCallback_t cb)
 {
 	hal_btstack_setGattServiceDiscoveredCallback(cb);
 }
 
-void BLEDevice::onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_characteristic_t *characteristic))
+void BLEDevice::onCharacteristicDiscoveredCallback(gattCharsDiscoveredCallback_t cb)
 {
 	hal_btstack_setGattCharsDiscoveredCallback(cb);
 }
 
-void BLEDevice::onDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_characteristic_descriptor_t *characteristic))
+void BLEDevice::onDescriptorDiscoveredCallback(gattDescriptorsDiscoveredCallback_t cb)
 {
-	hal_btstack_setGattCharsDescriptorsDiscoveredCallback(cb);
+	hal_btstack_setGattDescriptorsDiscoveredCallback(cb);
 }
 
-void BLEDevice::onGattCharacteristicReadCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+void BLEDevice::onGattCharacteristicReadCallback(gattCharacteristicReadCallback_t cb)
 {
 	hal_btstack_setGattCharacteristicReadCallback(cb);
 }
 
-void BLEDevice::onGattCharacteristicWrittenCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle))
+void BLEDevice::onGattCharacteristicWrittenCallback(gattCharacteristicWrittenCallback_t cb)
 {
 	hal_btstack_setGattCharacteristicWrittenCallback(cb);
 }
 
-void BLEDevice::onGattDescriptorReadCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+void BLEDevice::onGattDescriptorReadCallback(gattDescriptorReadCallback_t cb)
 {
-	hal_btstack_setGattCharsDescriptorReadCallback(cb);
+	hal_btstack_setGattDescriptorReadCallback(cb);
 }
 
-void BLEDevice::onGattDescriptorWrittenCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle))
+void BLEDevice::onGattDescriptorWrittenCallback(gattDescriptorWrittenCallback_t cb)
 {
-	hal_btstack_setGattCharsDescriptorWrittenCallback(cb);
+	hal_btstack_setGattDescriptorWrittenCallback(cb);
 }
 
-void BLEDevice::onGattWriteClientCharacteristicConfigCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle))
+void BLEDevice::onGattWriteClientCharacteristicConfigCallback(gattWriteCCCDCallback_t cb)
 {
-	hal_btstack_setGattWriteClientCharacteristicConfigCallback(cb);
+	hal_btstack_setGattWriteCCCDCallback(cb);
 }
 
-void BLEDevice::onGattNotifyUpdateCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+void BLEDevice::onGattNotifyUpdateCallback(gattNotifyUpdateCallback_t cb)
 {
 	hal_btstack_setGattNotifyUpdateCallback(cb);
 }
 
-void BLEDevice::onGattIndicateUpdateCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length))
+void BLEDevice::onGattIndicateUpdateCallback(gattIndicateUpdateCallback_t cb)
 {
 	hal_btstack_setGattIndicateUpdateCallback(cb);
 }
