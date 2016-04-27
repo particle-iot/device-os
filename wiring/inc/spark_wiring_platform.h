@@ -46,6 +46,8 @@
 #define Wiring_SPI1 1
 #define Wiring_Serial2 1
 #define Wiring_USBSerial1 1
+#define Wiring_Mouse 1
+#define Wiring_Keyboard 1
 #endif
 
 #if PLATFORM_ID==7
@@ -54,6 +56,8 @@
 #define Wiring_SPI1 1
 #define Wiring_Serial2 1
 #define Wiring_USBSerial1 1
+#define Wiring_Mouse 1
+#define Wiring_Keyboard 1
 #endif
 
 #if PLATFORM_ID==8      // P1 / bm14
@@ -62,6 +66,8 @@
 #define Wiring_SPI1 1
 #define Wiring_Serial2 1
 #define Wiring_USBSerial1 1
+#define Wiring_Mouse 1
+#define Wiring_Keyboard 1
 #endif
 
 #if PLATFORM_ID==9      // ethernet
@@ -81,6 +87,8 @@
 #define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
 #define Wiring_SetupButtonUX 1
 #define Wiring_USBSerial1 1
+#define Wiring_Mouse 1
+#define Wiring_Keyboard 1
 #endif
 
 #ifndef Wiring_SPI1
