@@ -29,7 +29,7 @@ public:
     /**
      * @brief Set callback that will be executed when timer expires.
      */
-    void setTimerHandler(btstack_timer_source_t *ts, void (*process)(btstack_timer_source_t *_ts));
+    void setTimerHandler(btstack_timer_source_t *ts, btstack_timer_handler_t handler);
 
     /**
      * @brief Add timer to run_loop (keep list sorted).
@@ -77,11 +77,26 @@ public:
     /**
      * @brief Set public bd address.
      *
-     * @note  Be used befor init.
+     * @note  Must be called befor ble.init().
      *
      * @param[in]  public_bd_addr
      */
     void setPublicBDAddr(bd_addr_t addr);
+
+    /**
+     * @brief Get local bd address.
+     *
+     * @param[out]  local_bd_addr
+     */
+    void getLocalBdAddr(bd_addr_t address_buffer);
+
+    /**
+     * @brief Get the address at advertisement when advertising.
+     *
+     * @param[out]  addr_type
+     * @param[out]  addr
+     */
+    void getAddrOfAdvertisement(uint8_t *addr_type, bd_addr_t addr);
 
     /**
      * @brief Set local name.
@@ -95,29 +110,41 @@ public:
     /**
      * @brief Set advertisement parameters.
      *
-     * @note  A problem when setting adv_type, need more test.
-     * @note  own_address_type is used from gap_random_address_set_mode
+     * @note  advertising_interval_min ([0x0020,0x4000], default: 0x0800, unit: 0.625 msec)
+     *        advertising_interval_max ([0x0020,0x4000], default: 0x0800, unit: 0.625 msec)
+     *        advertising_type (enum from 0: ADV_IND, ADC_DIRECT_IND, ADV_SCAN_IND, ADV_NONCONN_IND)
+     *        own_address_type (enum from 0: public device address, random device address)
+     *        advertising_channel_map (flags: chan_37(1), chan_38(2), chan_39(4))
+     * @note  If the advertising_type is set to ADV_SCAN_IND or ADV_NONCONN_IND,advertising_interval_min and advertising_interval_max shal not be set to less than 0x00A0.
      *
      */
-    void setAdvParams(advParams_t *adv_params);
+    void setAdvertisementParams(advParams_t *adv_params);
 
     /**
      * @brief Set advertising data.
      *
      * @param[in]  size  The size of advertising data, no more than 31bytes.
-     * @param[in]  data  Advertising data.
+     * @param[in]  data  Advertising data. Data is not copied, pointer has to stay valid.
      */
-    void setAdvData(uint16_t size, uint8_t *data);
+    void setAdvertisementData(uint16_t size, uint8_t *data);
+
+    /**
+     * @brief Set scanResponse data.
+     *
+     * @param[in]  size  The size of scanResponse data, no more than 31bytes.
+     * @param[in]  data  The buffer pointer of scanResponse data. Data is not copied, pointer has to stay valid.
+     */
+    void setScanResponseData(uint16_t size, uint8_t *data);
 
     /**
      * @brief Connected callback.
      */
-    void onConnectedCallback(void (*callback)(BLEStatus_t status, uint16_t handle));
+    void onConnectedCallback(bleConnectedCallback_t cb);
 
     /**
      * @brief Disconnected callback.
      */
-    void onDisconnectedCallback(void (*callback)(uint16_t handle));
+    void onDisconnectedCallback(bleDisconnectedCallback_t cb);
 
     /**
      * @brief Start advertising.
@@ -162,7 +189,7 @@ public:
     /**
      * @brief Set advertisement report callback for scanning device.
      */
-    void onScanReportCallback(void (*cb)(advertisementReport_t *advertisement_report));
+    void onScanReportCallback(bleAdvertismentCallback_t cb);
 
 
     /***************************************************************
@@ -237,12 +264,12 @@ public:
     /**
      * @brief Set read callback of gatt server characteristic.
      */
-    void onDataReadCallback(uint16_t (*cb)(uint16_t handle, uint8_t *buffer, uint16_t buffer_size));
+    void onDataReadCallback(gattReadCallback_t cb);
 
     /**
      * @brief Set write callback of gatt server characteristic.
      */
-    void onDataWriteCallback(int (*cb)(uint16_t handle, uint8_t *buffer, uint16_t buffer_size));
+    void onDataWriteCallback(gattWriteCallback_t cb);
 
     /**
      * @brief Check if a notification or indication can be send right now.
@@ -280,52 +307,52 @@ public:
     /**
      * @brief Register callback for discovering service.
      */
-    void onServiceDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_service_t *service));
+    void onServiceDiscoveredCallback(gattServicesDiscoveredCallback_t cb);
 
     /**
      * @brief Register callback for discovering characteristic.
      */
-    void onCharacteristicDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_characteristic_t *characteristic));
+    void onCharacteristicDiscoveredCallback(gattCharsDiscoveredCallback_t cb);
 
     /**
      * @brief Register callback for discovering descriptors of characteristic.
      */
-    void onDescriptorDiscoveredCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, gatt_client_characteristic_descriptor_t *characteristic));
+    void onDescriptorDiscoveredCallback(gattDescriptorsDiscoveredCallback_t cb);
 
     /**
      * @brief Register callback for reading characteristic value.
      */
-    void onGattCharacteristicReadCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length));
+    void onGattCharacteristicReadCallback(gattCharacteristicReadCallback_t cb);
 
     /**
      * @brief Register callback for writing characteristic value.
      */
-    void onGattCharacteristicWrittenCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle));
+    void onGattCharacteristicWrittenCallback(gattCharacteristicWrittenCallback_t cb);
 
     /**
      * @brief Register callback for reading characteristic descriptor value.
      */
-    void onGattDescriptorReadCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length));
+    void onGattDescriptorReadCallback(gattDescriptorReadCallback_t cb);
 
     /**
      * @brief Register callback for writing characteristic descriptor value.
      */
-    void onGattDescriptorWrittenCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle));
+    void onGattDescriptorWrittenCallback(gattDescriptorWrittenCallback_t cb);
 
     /**
      * @brief Register callback for enable/disable client characteristic configuration.
      */
-    void onGattWriteClientCharacteristicConfigCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle));
+    void onGattWriteClientCharacteristicConfigCallback(gattWriteCCCDCallback_t cb);
 
     /**
      * @brief Register callback for notify value update.
      */
-    void onGattNotifyUpdateCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length));
+    void onGattNotifyUpdateCallback(gattNotifyUpdateCallback_t cb);
 
     /**
      * @brief Register callback for indicate value update.
      */
-    void onGattIndicateUpdateCallback(void (*cb)(BLEStatus_t status, uint16_t con_handle, uint16_t value_handle, uint8_t * value, uint16_t length));
+    void onGattIndicateUpdateCallback(gattIndicateUpdateCallback_t cb);
 
     /**
      * @brief Discover primary service by conn_handle.
@@ -427,7 +454,7 @@ public:
      *        BLE_STATUS_OTHER_ERROR : Error.
      *
      * @param[in]  con_handle
-	 * @param[in]  *service
+     * @param[in]  *service
      * @param[in]  uuid16
      *
      * @return BTSTACK_MEMORY_ALLOC_FAILED
@@ -443,7 +470,7 @@ public:
      *        BLE_STATUS_OTHER_ERROR : Error.
      *
      * @param[in]  con_handle
-	 * @param[in]  *service
+     * @param[in]  *service
      * @param[in]  *uuid           Buffer of 128bits-UUID.
      *
      * @return BTSTACK_MEMORY_ALLOC_FAILED
