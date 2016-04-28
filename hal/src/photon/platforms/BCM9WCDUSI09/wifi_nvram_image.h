@@ -36,6 +36,7 @@
 /** @file
  *
  *  BCM43362 NVRAM variables for WM-N-BM-09 USI SiP
+ * 20151216 modify maxp2ga0 from 74 to 62(3dBm deduced);ofdm2gpo from 0x44111111 to all C; mcs2gpo0 from all 4 to all C ; mcs2gpo1=0x6444 to ALL C
  *
  */
 
@@ -46,11 +47,19 @@
 #include <stdint.h>
 #include "../generated_mac_address.txt"
 
+#ifndef WIFI_NVRAM_LTXP
+#define WIFI_NVRAM_LTXP 0
+#endif
+
 /**
  * Character array of NVRAM image
  */
 
-static const char wifi_nvram_image[] =
+#if !WIFI_NVRAM_LTXP
+static const char wifi_main_nvram_image[] =
+#else
+static const char wifi_ltxp_nvram_image[] =
+#endif
         "manfid=0x2d0"                                              "\x00"
         "prodid=0x492"                                              "\x00"
         "vendid=0x14e4"                                             "\x00"
@@ -65,10 +74,19 @@ static const char wifi_nvram_image[] =
         NVRAM_GENERATED_MAC_ADDRESS                                 "\x00"
         "aa2g=3"                                                    "\x00"
         "ag0=2"                                                     "\x00"
+
+#if !WIFI_NVRAM_LTXP
         "maxp2ga0=74"                                               "\x00"
         "ofdm2gpo=0x44111111"                                       "\x00"
         "mcs2gpo0=0x4444"                                           "\x00"
         "mcs2gpo1=0x6444"                                           "\x00"
+#else
+        "maxp2ga0=62"                                               "\x00"
+        "ofdm2gpo=0xCCCCCCCC"                                       "\x00"
+        "mcs2gpo0=0xCCCC"                                           "\x00"
+        "mcs2gpo1=0xCCCC"                                           "\x00"
+#endif
+
         "pa0maxpwr=80"                                              "\x00"
         "pa0b0=5264"                                                "\x00"  /*PA params*/
         "pa0b1=64897"                                               "\x00"
@@ -107,8 +125,8 @@ static const char wifi_nvram_image[] =
         "rfreg033_cck=0x1f"                                         "\x00"
         "cckPwrIdxCorr=-8"                                          "\x00"
         "spuravoid_enable2g=1"                                      "\x00"
-		"edonthd=-70" 												"\x00"
-		"edoffthd=-76"												"\x00"
+        "edonthd=-70"                                               "\x00"
+        "edoffthd=-76"                                              "\x00"
         "\x00\x00";
 
 #else /* ifndef INCLUDED_NVRAM_IMAGE_H_ */

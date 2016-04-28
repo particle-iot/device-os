@@ -57,7 +57,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t device_private_key[1216];   // sufficient for 2048 bits
     uint8_t device_public_key[384];     // sufficient for 2048 bits
     static_ip_config_t  ip_config;
-    uint8_t unused[104];
+    uint8_t unused[100];
+    uint8_t country_code[4];            // WICED country code. Stored as bit-endian format: CH1/CH2/0/rev (max 255)
     uint8_t claim_code[63];             // claim code. no terminating null.
     uint8_t claimed[1];                 // 0,0xFF, not claimed. 1 claimed.
     uint8_t ssid_prefix[26];            // SSID prefix (25 chars max). First byte is length.
@@ -88,6 +89,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, server_public_key))
 #define DCT_SERVER_ADDRESS_OFFSET ((DCT_SERVER_PUBLIC_KEY_OFFSET)+384)
 #define DCT_IP_CONFIG_OFFSET (offsetof(application_dct_t, ip_config))
+#define DCT_COUNTRY_CODE_OFFSET (offsetof(application_dct_t, country_code))
 #define DCT_CLAIM_CODE_OFFSET (offsetof(application_dct_t, claim_code))
 #define DCT_SSID_PREFIX_OFFSET (offsetof(application_dct_t, ssid_prefix))
 #define DCT_DNS_RESOLVE_OFFSET (offsetof(application_dct_t, dns_resolve))
@@ -107,6 +109,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
 #define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
 #define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
+#define DCT_COUNTRY_CODE_SIZE  (sizeof(application_dct_t::country_code))
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
 #define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix))
 #define DCT_DNS_RESOLVE_SIZE  (sizeof(application_dct_t::dns_resolve))
@@ -132,7 +135,8 @@ STATIC_ASSERT_DCT_OFFSET(version, 32);
 STATIC_ASSERT_DCT_OFFSET(device_private_key, 34);
 STATIC_ASSERT_DCT_OFFSET(device_public_key, 1250 /*34+1216*/);
 STATIC_ASSERT_DCT_OFFSET(ip_config, 1634 /* 1250 + 384 */);
-STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1634 + 128 */);
+STATIC_ASSERT_DCT_OFFSET(country_code, 1758 /* 1634 + 124 */);
+STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1758 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(claimed, 1825 /* 1762 + 63 */ );
 STATIC_ASSERT_DCT_OFFSET(ssid_prefix, 1826 /* 1825 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(device_id, 1852 /* 1826 + 26 */);
