@@ -228,7 +228,7 @@ public:
     // The actual capacity is set to 50% of the records that fit in the smallest page
     constexpr size_t capacity()
     {
-        return (SmallestPageSize - sizeof(PageHeader)) / sizeof(Record) / 2;
+        return SmallestPageSize / sizeof(Record) / 2;
     }
 
     // Check if the old page needs to be erased

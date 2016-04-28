@@ -528,7 +528,7 @@ TEST_CASE("Capacity", "[eeprom]")
     TestEEPROM eeprom;
     // Each record is 4 bytes, and some space is used by the page header
     // Capacity if 50% of the theoretical max
-    size_t expectedByteCapacity = PageSize2 / 4 / 2 - 1;
+    size_t expectedByteCapacity = PageSize2 / 4 / 2;
 
     REQUIRE(eeprom.capacity() == expectedByteCapacity);
 }
