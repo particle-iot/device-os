@@ -56,8 +56,8 @@ void System1MsTick(void)
  */
 system_tick_t GetSystem1MsTick()
 {
-	int is = __get_PRIMASK();
-	__disable_irq();
+    int is = __get_PRIMASK();
+    __disable_irq();
 
     system_tick_t millis = system_millis + (DWT->CYCCNT-system_millis_clock) / SYSTEM_US_TICKS / 1000;
 
@@ -76,15 +76,17 @@ system_tick_t GetSystem1UsTick()
     system_tick_t base_millis;
     system_tick_t base_clock;
 
-    // these values need to be fetched consistently - if system_millis changes after fetching
-    // (due to the millisecond counter being updated), try again.
-    do {
-        base_millis = system_millis;
-        base_clock = system_millis_clock;
-    }
-    while (base_millis!=system_millis);
+    int is = __get_PRIMASK();
+    __disable_irq();
 
+    base_millis = system_millis;
+    base_clock = system_millis_clock;
+    
     system_tick_t elapsed_since_millis = ((DWT->CYCCNT-base_clock) / SYSTEM_US_TICKS);
+
+    if ((is & 1) == 0) {
+        __enable_irq();
+    }
     return (base_millis * 1000) + elapsed_since_millis;
 }
 
