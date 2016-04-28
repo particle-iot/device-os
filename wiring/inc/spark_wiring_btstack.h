@@ -77,11 +77,26 @@ public:
     /**
      * @brief Set public bd address.
      *
-     * @note  Be used befor init.
+     * @note  Must be called befor ble.init().
      *
      * @param[in]  public_bd_addr
      */
     void setPublicBDAddr(bd_addr_t addr);
+
+    /**
+     * @brief Get local bd address.
+     *
+     * @param[out]  local_bd_addr
+     */
+    void getLocalBdAddr(bd_addr_t address_buffer);
+
+    /**
+     * @brief Get the address at advertisement when advertising.
+     *
+     * @param[out]  addr_type
+     * @param[out]  addr
+     */
+    void getAddrOfAdvertisement(uint8_t *addr_type, bd_addr_t addr);
 
     /**
      * @brief Set local name.
@@ -439,7 +454,7 @@ public:
      *        BLE_STATUS_OTHER_ERROR : Error.
      *
      * @param[in]  con_handle
-	 * @param[in]  *service
+     * @param[in]  *service
      * @param[in]  uuid16
      *
      * @return BTSTACK_MEMORY_ALLOC_FAILED
@@ -455,7 +470,7 @@ public:
      *        BLE_STATUS_OTHER_ERROR : Error.
      *
      * @param[in]  con_handle
-	 * @param[in]  *service
+     * @param[in]  *service
      * @param[in]  *uuid           Buffer of 128bits-UUID.
      *
      * @return BTSTACK_MEMORY_ALLOC_FAILED
