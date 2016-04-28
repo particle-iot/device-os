@@ -1,6 +1,10 @@
 
 ## v0.6.0-rc.1
 
+### FEATURES
+
+- [Photon] Wi-Fi Country Code [#942](https://github.com/spark/firmware/pull/942)
+
 ### ENHANCEMENTS
 
 - Local build support for ARM GCC 5.3.1. [#963](https://github.com/spark/firmware/issues/963)
