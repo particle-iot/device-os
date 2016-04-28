@@ -162,7 +162,7 @@ static uint8_t USBD_Composite_DataIn(void* pdev, uint8_t epnum) {
         // Class handled this endpoint?
         if (c->cb->DataIn(pdev, c, epnum) == USBD_OK)
           return USBD_OK;
-        DEBUG("FAIL %x %d", (void*)c, epnum);
+        // DEBUG("FAIL %x %d", (void*)c, epnum);
       }
     }
   }
@@ -179,7 +179,7 @@ static uint8_t USBD_Composite_DataOut(void* pdev , uint8_t epnum) {
         // Class handled this endpoint?
         if (c->cb->DataOut(pdev, c, epnum) == USBD_OK)
           return USBD_OK;
-        DEBUG("FAIL %x %d", (void*)c, epnum);
+        // DEBUG("FAIL %x %d", (void*)c, epnum);
       }
     }
   }
@@ -273,7 +273,7 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
   *(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES) = activeInterfaces;
   *((uint16_t *)(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_TOTAL_LENGTH)) = totalLength;
 
-  DEBUG("Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces, activeInterfaces);
+  // DEBUG("Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces, activeInterfaces);
 
   return totalLength;
 }

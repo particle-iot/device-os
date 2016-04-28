@@ -268,13 +268,28 @@ int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek)
     return -1;
 }
 
+static bool HAL_USB_WillPreempt()
+{
+    if (HAL_IsISR()) {
+#ifdef USE_USB_OTG_FS
+        int32_t irq = OTG_FS_IRQn;
+#else
+        int32_t irq = OTG_HS_IRQn;
+#endif
+        if (!HAL_WillPreempt(irq, HAL_ServicedIRQn()))
+            return false;
+    }
+
+    return true;
+}
+
 int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data)
 {
     int32_t available = 0;
     do {
         available = HAL_USB_USART_Available_Data_For_Write(serial);
     }
-    while (available < 1 && available != -1);
+    while (available < 1 && available != -1 && HAL_USB_WillPreempt());
     // Confirm once again that the Host is connected
     if (HAL_USB_USART_Is_Connected(serial) && available > 0)
     {
@@ -292,6 +307,8 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data)
 
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial)
 {
+    if (!HAL_USB_WillPreempt())
+        return;
     while(HAL_USB_USART_Is_Connected(serial) && HAL_USB_USART_Available_Data_For_Write(serial) != (usbUsartMap[serial].data->tx_buffer_size - 1));
     // We should also wait for USB_Tx_State to become 0, as hardware might still be busy transmitting data
     while(usbUsartMap[serial].data->tx_state == 1);
