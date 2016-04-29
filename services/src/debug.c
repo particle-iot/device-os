@@ -35,12 +35,3 @@ void log_print_(int level, int line, const char *func, const char *file, const c
 void log_print_direct_(int level, void* reserved, const char *msg, ...) {
     // Not implemented, use newer log_printf() function instead
 }
-
-void log_direct_(const char* s) {
-    // Not implemented, use newer log_write() function instead
-}
-
-int log_level_active(LoggerOutputLevel level, void* reserved) {
-    // Not implemented, use newer log_enabled() function instead
-	return 0;
-}

@@ -49,9 +49,7 @@ void set_logger_output(debug_output_fn output, LoggerOutputLevel level);
 
 // These functions do nothing. Use alternatives declared in logging.h header instead
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...);
-void log_direct_(const char* s);
 void log_print_direct_(int level, void* reserved, const char *msg, ...);
-int log_level_active(LoggerOutputLevel level, void* reserved);
 
 #ifdef __cplusplus
 }
