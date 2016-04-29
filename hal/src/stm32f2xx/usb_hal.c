@@ -58,8 +58,6 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 #endif
 
 static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
-static void HAL_USB_Attach(void);
-static void HAL_USB_Detach(void);
 static uint8_t USB_Configured = 0;
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -135,13 +133,13 @@ static HAL_USB_USART_Info usbUsartMap[HAL_USB_USART_SERIAL_COUNT] = { {0} };
 //     USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
 // }
 
-static void HAL_USB_Detach(void)
+void HAL_USB_Detach(void)
 {
     if (USB_Configured)
         USB_Cable_Config(DISABLE);
 }
 
-static void HAL_USB_Attach(void)
+void HAL_USB_Attach(void)
 {
     if (USB_Configured) {
         // Do not attach if there are no USB classes registered

@@ -252,6 +252,16 @@ void USB_USART_Flush_Data(void)
     // Not implemented properly
 }
 
+void HAL_USB_Attach()
+{
+ // TODO
+}
+
+void HAL_USB_Detach()
+{
+  // TODO
+}
+
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config)
 {
 }

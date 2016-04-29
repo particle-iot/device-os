@@ -116,6 +116,11 @@ void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize);
 /*******************************************************************************************************/
 /* Multi-instanced USB classes */
 /*******************************************************************************************************/
+#if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)
+void HAL_USB_Attach();
+void HAL_USB_Detach();
+#endif
+
 #ifdef USB_CDC_ENABLE
 
 typedef enum HAL_USB_USART_Serial {

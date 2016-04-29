@@ -52,6 +52,17 @@ DYNALIB_FN(BASE_IDX + 0, hal_usb, HAL_USB_HID_Init, void(uint8_t, void*))
 DYNALIB_FN(BASE_IDX + 1, hal_usb, HAL_USB_HID_Begin, void(uint8_t, void*))
 DYNALIB_FN(BASE_IDX + 2, hal_usb, HAL_USB_HID_Send_Report, void(uint8_t, void*, uint16_t, void*))
 DYNALIB_FN(BASE_IDX + 3, hal_usb, HAL_USB_HID_End, void(uint8_t))
+# define BASE_IDX1 (BASE_IDX + 4)
+#else
+# define BASE_IDX1 BASE_IDX
+#endif
+
+#if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)
+DYNALIB_FN(BASE_IDX1 + 0, hal_usb, HAL_USB_Attach, void(void))
+DYNALIB_FN(BASE_IDX1 + 1, hal_usb, HAL_USB_Detach, void(void))
+# define BASE_IDX2 (BASE_IDX1 + 2)
+#else
+# define BASE_IDX2 BASE_IDX1
 #endif
 
 DYNALIB_END(hal_usb)

@@ -387,8 +387,8 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
-    // Disable USB Serial (detach)
-    USB_USART_Init(0);
+    // Detach USB
+    HAL_USB_Detach();
 
     // Flush all USARTs
     for (int usart = 0; usart < TOTAL_USARTS; usart++)
@@ -475,7 +475,7 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 
     SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
 
-    USB_USART_Init(9600);
+    HAL_USB_Attach();
 }
 
 void HAL_Core_Execute_Stop_Mode(void)
