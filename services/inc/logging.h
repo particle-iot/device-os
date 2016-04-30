@@ -115,6 +115,7 @@
 extern "C" {
 #endif
 
+// Log level. Ensure log_level_name() is updated for newly added levels
 typedef enum LogLevel {
     LOG_LEVEL_ALL = 1, // Log all messages
     LOG_LEVEL_TRACE = 1,
@@ -136,10 +137,17 @@ typedef enum LogLevel {
     NO_LOG_LEVEL = LOG_LEVEL_NONE
 } LogLevel;
 
-// Logger callbacks
+// Application module needs to register following callbacks in order to handle generated logging output
+// (see log_set_callbacks()):
+
+// Callback for message-based logging (used by log_message())
 typedef void (*log_message_callback_type)(const char *msg, int level, const char *category, uint32_t time,
         const char *file, int line, const char *func, void *reserved);
+
+// Callback for direct logging (used by log_write(), log_printf(), log_dump())
 typedef void (*log_write_callback_type)(const char *data, size_t size, int level, const char *category, void *reserved);
+
+// Callback invoked to check whether logging is enabled for particular level and category (used by log_enabled())
 typedef int (*log_enabled_callback_type)(int level, const char *category, void *reserved);
 
 // Generates log message

@@ -19,19 +19,19 @@ LoggerOutputLevel log_compat_level = LOG_LEVEL_AT_RUN_TIME;
 debug_output_fn log_compat_callback = NULL;
 
 void set_logger_output(debug_output_fn output, LoggerOutputLevel level) {
-    if (output) {
-        log_compat_callback = output;
-    }
     if (level == DEFAULT_LEVEL) {
         level = LOG_LEVEL_AT_RUN_TIME;
     }
     log_compat_level = level;
+    log_compat_callback = output;
 }
 
 void log_print_(int level, int line, const char *func, const char *file, const char *msg, ...) {
-    // Not implemented, use newer log_message() function instead
+    // Deprecated, use newer log_message() function instead
+    // This function may not be removed because it is exported in dynalib
 }
 
 void log_print_direct_(int level, void* reserved, const char *msg, ...) {
-    // Not implemented, use newer log_printf() function instead
+    // Deprecated, use newer log_printf() function instead
+    // This function may not be removed because it is exported in dynalib
 }

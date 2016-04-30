@@ -107,6 +107,26 @@ struct spark::LogHandler::FilterData {
 spark::LogHandler::LogHandler(Stream *stream, LogLevel level, const Filters &filters) :
         stream_(stream),
         level_(level) {
+    /*
+        This method builds prefix tree based on the list of filter strings. Every node of the tree
+        contains subcategory name and, optionally, logging level - if node matches complete filter
+        string. For example, given following filters:
+
+        a (error)
+        a.b.c (trace)
+        a.b.x (trace)
+        aa (error)
+        aa.b (warn)
+
+        The code builds following prefix tree:
+
+        |
+        |- a (error) -- b - c (trace)
+        |               |
+        |               `-- x (trace)
+        |
+        `- aa (error) - b (warn)
+    */
     for (auto it = filters.begin(); it != filters.end(); ++it) {
         const char* const category = it->first;
         const LogLevel level = it->second;
@@ -121,6 +141,7 @@ spark::LogHandler::LogHandler(Stream *stream, LogLevel level, const Filters &fil
                 break; // Invalid category name
             }
             const char* const name = category + pos;
+            // Use binary search to find existent node or position for new node
             bool found = false;
             auto it = std::lower_bound(filters->begin(), filters->end(), std::make_pair(name, size),
                     [&found](const FilterData &filter, const std::pair<const char*, size_t> &value) {
