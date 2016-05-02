@@ -14,8 +14,18 @@
 
 - SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971) 
 - Free memory allocated for previous system interrupt handler [#927](https://github.com/spark/firmware/issues/927)
+- Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
 
-## v0.5.0
+## v0.5.1
+
+### BUGFIXES
+
+- Fixes bit mask provided for PMIC::setChargeVoltage(4208) option. [#987](https://github.com/spark/firmware/pull/987)
+- Revert EEPROM capacity to 2048 instead of 2047 Photon / 128 Core [#983](https://github.com/spark/firmware/pull/983)
+
+## v0.5.0 (same as v0.5.0-rc.2)
+
+## v0.5.0-rc.2
 
 ### FEATURES
 
