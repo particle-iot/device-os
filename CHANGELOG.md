@@ -1,9 +1,20 @@
 
-## v0.6.0-rc.1
+## v0.5.1
+
+### FEATURES
+
+- Wi-Fi Country Code can be set to configure the available channels and power transmission. [#942](https://github.com/spark/firmware/pull/942)
 
 ### ENHANCEMENTS
 
-- Local build support for ARM GCC 5.3.1 [#963](https://github.com/spark/firmware/issues/963)
+- ARM GCC 5.3.1 compiler support
+
+### BUGFIXES
+
+- [Photon/P1] Fix a timing-critical bug in WICED that causes system freeze. [#877](https://github.com/spark/firmware/issues/877)
+- Tone not available on A7 after stop-mode sleep. [#938](https://github.com/spark/firmware/issues/938) 
+- Regression in EEPROM emulation size. [#983](https://github.com/spark/firmware/pull/983)
+- [Electron] Wrong bitmask is provided for 4208 setting in power management [#987](https://github.com/spark/firmware/pull/987)
 
 
 ## v0.5.0
