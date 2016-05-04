@@ -43,7 +43,7 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
     return 0;
 }
 
-void HAL_PWM_Write_Ext(uint16_t pin, uint32_t value);
+void HAL_PWM_Write_Ext(uint16_t pin, uint32_t value)
 {
 }
 
