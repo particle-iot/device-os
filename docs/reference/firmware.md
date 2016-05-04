@@ -2204,8 +2204,8 @@ analogWrite(pin, value, frequency);
 `analogWrite()` takes two or three arguments:
 
 - `pin`: the number of the pin whose value you wish to set
-- `value`: the duty cycle: between 0 (always off) and 255 (always on).
-- `frequency`: the PWM frequency: between 1 Hz and 65535 Hz (default 500 Hz).
+- `value`: the duty cycle: between 0 (always off) and 255 (always on). *Since 0.6.0:* between 0 and 255 (default 8-bit resolution) or `2^(analogWriteResolution(pin)) - 1` in general.
+- `frequency`: the PWM frequency: between 1 Hz and 65535 Hz (default 500 Hz). *Since 0.6.0:* between 1 Hz and `analogWriteMaxFrequency(pin)`.
 
 **NOTE:** `pinMode(pin, OUTPUT);` is required before calling `analogWrite(pin, value);` or else the `pin` will not be initialized as a PWM output and set to the desired duty cycle.
 
@@ -2244,6 +2244,55 @@ The PWM frequency must be the same for pins in the same timer group.
 - On the Electron, the timer groups are D0/D1/C4/C5, D2/D3/A4/A5/B2/B3, WKP, RX/TX, B0/B1.
 
 **NOTE:** When used with PWM capable pins, the `analogWrite()` function sets up these pins as PWM only.  {{#unless core}}This function operates differently when used with the [`Analog Output (DAC)`](#analog-output-dac-) pins.{{/unless}}
+
+{{#unless core}}
+### analogWriteResolution() (PWM and DAC)
+{{/unless}}
+{{#if core}}
+### analogWriteResolution() (PWM)
+{{/if}}
+
+*Since 0.6.0.*
+
+Sets or retrieves the resolution of `analogWrite()` function of a particular pin.
+
+`analogWriteResolution()` takes one or two arguments:
+
+- `pin`: the number of the pin whose resolution you wish to set or retrieve
+- `resolution`: (optional) resolution in bits. The value can range from 2 to 31 bits. If the resolution is not supported, it will not be applied. 
+
+`analogWriteResolution()` returns currently set resolution.
+
+```C++
+// EXAMPLE USAGE
+pinMode(D1, OUTPUT);     // sets the pin as output
+analogWriteResolution(D1, 12); // sets analogWrite resolution to 12 bits
+analogWrite(D1, 3000, 1000); // 3000/4095 = ~73% duty cycle at 1kHz
+```
+
+{{#unless core}}
+**NOTE:** DAC pins `DAC1` (`A6`) and `DAC2` (`A3`) support only either 8-bit or 12-bit (default) resolutions.
+{{/unless}}
+
+**NOTE:** The resolution also affects maximum frequency that can be used with `analogWrite()`. The maximum frequency allowed with current resolution can be checked by calling `analogWriteMaxFrequency()`.
+
+### analogWriteMaxFrequency() (PWM)
+
+*Since 0.6.0.*
+
+Returns maximum frequency that can be used with `analogWrite()` on this pin.
+
+`analogWriteMaxFrequency()` takes one argument:
+
+- `pin`: the number of the pin
+
+```C++
+// EXAMPLE USAGE
+pinMode(D1, OUTPUT);     // sets the pin as output
+analogWriteResolution(D1, 12); // sets analogWrite resolution to 12 bits
+int maxFreq = analogWriteMaxFrequency(D1);
+analogWrite(D1, 3000, maxFreq / 2); // 3000/4095 = ~73% duty cycle
+```
 
 {{#unless core}}
 ### Analog Output (DAC)
