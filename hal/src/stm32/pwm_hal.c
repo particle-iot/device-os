@@ -24,6 +24,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include <stddef.h>
 #include "pwm_hal.h"
 #include "gpio_hal.h"
 #include "pinmap_impl.h"
