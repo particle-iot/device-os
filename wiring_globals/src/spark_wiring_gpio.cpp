@@ -178,32 +178,11 @@ int32_t analogRead(pin_t pin)
   return HAL_ADC_Read(pin);
 }
 
-int32_t analogReadSamples(uint16_t pin, void* sampleBuffer, uint32_t size)
-{
-  // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
-  if(pin < FIRST_ANALOG_PIN)
-  {
-    pin = pin + FIRST_ANALOG_PIN;
-  }
-
-  // Safety check
-  if( !pinAvailable(pin) ) {
-    return 0;
-  }
-
-  if(HAL_Validate_Pin_Function(pin, PF_ADC)!=PF_ADC)
-  {
-    return 0;
-  }
-
-  return HAL_ADC_Read_Samples(pin, sampleBuffer, size);
-}
-
 /*
  * @brief Should take an integer 0-255 and create a 500Hz PWM signal with a duty cycle from 0-100%.
  * On Photon, DAC1 and DAC2 act as true analog outputs(values: 0 to 4095) using onchip DAC peripheral
  */
-void analogWrite(pin_t pin, uint16_t value)
+void analogWrite(pin_t pin, uint32_t value)
 {
     // Safety check
     if (!pinAvailable(pin))
@@ -233,7 +212,7 @@ void analogWrite(pin_t pin, uint16_t value)
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%
  * and frequency from 1 to 65535 Hz.
  */
-void analogWrite(pin_t pin, uint16_t value, uint16_t pwm_frequency)
+void analogWrite(pin_t pin, uint32_t value, uint32_t pwm_frequency)
 {
     // Safety check
     if (!pinAvailable(pin))
@@ -294,6 +273,11 @@ uint8_t analogWriteResolution(pin_t pin)
   }
 
   return 0;
+}
+
+uint32_t analogWriteMaxFrequency(pin_t pin)
+{
+  return HAL_PWM_Get_Max_Frequency(pin);
 }
 
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder) {

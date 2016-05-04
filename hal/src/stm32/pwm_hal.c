@@ -1,12 +1,12 @@
 /**
  ******************************************************************************
  * @file    pwm_hal.c
- * @authors Satish Nair, Julien Vanier
- * @version V2.0.0
- * @date    4-Dec-2015
+ * @authors Satish Nair, Julien Vanier, Andrey Tolstoy
+ * @version V2.1.0
+ * @date    02-May-2016
  * @brief
  ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2013-2016 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -27,7 +27,8 @@
 #include "pwm_hal.h"
 #include "gpio_hal.h"
 #include "pinmap_impl.h"
-#include "debug.h"
+
+#define DIV_ROUND_CLOSEST(n, d) ((n + d/2)/d)
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -62,19 +63,20 @@ static pwm_state_t PWM_State[TIM_NUM] = {
 
 /* Private function prototypes -----------------------------------------------*/
 
-void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint16_t pwm_frequency);
-uint32_t HAL_PWM_Calculate_Prescaled_Clock(uint16_t pwm_frequency, uint8_t resolution);
-uint16_t HAL_PWM_Calculate_Period(uint32_t prescaled_clock, uint16_t pwm_frequency);
-uint16_t HAL_PWM_Get_Period(uint16_t pin);
-uint16_t HAL_PWM_Calculate_Pulse(uint16_t period, uint16_t value, uint8_t resolution);
+void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint32_t pwm_frequency);
+uint8_t  HAL_PWM_Timer_Resolution(uint16_t pin);
+uint16_t HAL_PWM_Calculate_Prescaler(uint32_t clock, uint32_t pwm_frequency, uint8_t timer_resolution, uint8_t resolution);
+uint32_t HAL_PWM_Calculate_Period(uint32_t clock, uint16_t prescaler, uint32_t pwm_frequency);
+uint32_t HAL_PWM_Get_Period(uint16_t pin);
+uint32_t HAL_PWM_Calculate_Pulse(uint32_t period, uint32_t value, uint8_t resolution);
 uint32_t HAL_PWM_Base_Clock(uint16_t pin);
-uint16_t HAL_PWM_Calculate_Prescaler(uint32_t clock, uint32_t prescaled_clock);
-TIM_TimeBaseInitTypeDef HAL_PWM_Calculate_Time_Base(uint16_t pin, uint16_t pwm_frequency);
+uint32_t HAL_PWM_Calculate_Max_Frequency(uint32_t clock, uint8_t resolution);
+TIM_TimeBaseInitTypeDef HAL_PWM_Calculate_Time_Base(uint16_t pin, uint32_t pwm_frequency);
 void HAL_PWM_Update_Registers(uint16_t pin, FunctionalState new_state);
-void HAL_PWM_Configure_TIM(uint16_t pin, uint16_t value);
+void HAL_PWM_Configure_TIM(uint16_t pin, uint32_t value);
 void HAL_PWM_Enable_TIM(uint16_t pin);
-void HAL_PWM_Update_Duty_Cycle(uint16_t pin, uint16_t value);
-void HAL_PWM_Update_DC_Frequency(uint16_t pin, uint16_t value, uint16_t pwm_frequency);
+void HAL_PWM_Update_Duty_Cycle(uint16_t pin, uint32_t value);
+void HAL_PWM_Update_DC_Frequency(uint16_t pin, uint32_t value, uint32_t pwm_frequency);
 
 /*
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%.
@@ -92,7 +94,7 @@ void HAL_PWM_Write(uint16_t pin, uint8_t value)
  * TIM_PWM_FREQ is set at 500 Hz
  */
 
-void HAL_PWM_Write_Ext(uint16_t pin, uint16_t value)
+void HAL_PWM_Write_Ext(uint16_t pin, uint32_t value)
 {
     HAL_PWM_Write_With_Frequency_Ext(pin, value, TIM_PWM_FREQ);
 }
@@ -114,9 +116,11 @@ void HAL_PWM_Write_With_Frequency(uint16_t pin, uint8_t value, uint16_t pwm_freq
  * and a specified frequency.
  */
 
-void HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint16_t value, uint16_t pwm_frequency)
+void HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint32_t value, uint32_t pwm_frequency)
 {
-    if(pwm_frequency == 0)
+    if((pwm_frequency == 0) ||
+        (pwm_frequency > HAL_PWM_Get_Max_Frequency(pin)) ||
+        (value >= (1 << HAL_PWM_Get_Resolution(pin))))
     {
         return;
     }
@@ -149,6 +153,16 @@ void HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint16_t value, uint16_t pwm
 
 uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
 {
+    return HAL_PWM_Get_Frequency_Ext(pin);
+}
+
+uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
+{
+    return HAL_PWM_Get_AnalogValue_Ext(pin);
+}
+
+uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin)
+{
     STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if(!pin_info->timer_peripheral)
@@ -157,21 +171,19 @@ uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
     }
 
     uint32_t clock = HAL_PWM_Base_Clock(pin);
-    uint16_t prescaler = TIM_GetPrescaler(pin_info->timer_peripheral);
-    uint32_t prescaled_clock = clock / (prescaler + 1);
-
-    uint16_t period = HAL_PWM_Get_Period(pin);
-    uint16_t pwm_frequency = (uint16_t)(prescaled_clock / (period + 1));
-
+    uint16_t prescaler = TIM_GetPrescaler(pin_info->timer_peripheral) + 1;
+    uint32_t period = HAL_PWM_Get_Period(pin);
+    uint32_t period_cycles = period * prescaler;
+    uint32_t pwm_frequency = DIV_ROUND_CLOSEST(clock, period_cycles);
     return pwm_frequency;
 }
 
 
-uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
+uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin)
 {
-    uint16_t pulse_width = 0;
-    uint16_t period = 0;
-    uint16_t pwm_analog_value = 0;
+    uint32_t pulse_width = 0;
+    uint32_t period = 0;
+    uint32_t pwm_analog_value = 0;
 
     STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
@@ -197,8 +209,8 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
     }
 
     period = HAL_PWM_Get_Period(pin);
-    uint16_t max_value = (1 << PWM_State[TIM_PERIPHERAL_TO_STATE_IDX(pin_info->timer_peripheral)].resolution) - 1;
-    pwm_analog_value = (uint16_t)(((pulse_width + 1) * max_value) / (period + 1));
+    uint32_t max_value = (1 << HAL_PWM_Get_Resolution(pin)) - 1;
+    pwm_analog_value = pulse_width == period + 1 ? max_value : DIV_ROUND_CLOSEST((uint64_t)pulse_width * max_value, period);
 
     return pwm_analog_value;
 }
@@ -223,68 +235,90 @@ uint32_t HAL_PWM_Base_Clock(uint16_t pin)
 #endif
 }
 
-uint32_t HAL_PWM_Calculate_Prescaled_Clock(uint16_t pwm_frequency, uint8_t resolution)
+uint8_t HAL_PWM_Timer_Resolution(uint16_t pin)
 {
-    if(pwm_frequency == 0)
+#if PLATFORM_ID == 0 // Core
+    return 16;
+#else
+    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+
+    if(pin_info->timer_peripheral == TIM2 || pin_info->timer_peripheral == TIM5)
+    {
+        return 32;
+    }
+    
+    return 16;
+#endif
+}
+
+uint32_t HAL_PWM_Calculate_Max_Frequency(uint32_t clock, uint8_t resolution)
+{
+    return clock / (1 << resolution);
+}
+
+uint32_t HAL_PWM_Get_Max_Frequency(uint16_t pin)
+{
+    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    if (pin_info->timer_peripheral == NULL)
+        return 0;
+    return HAL_PWM_Calculate_Max_Frequency(HAL_PWM_Base_Clock(pin), HAL_PWM_Get_Resolution(pin));
+}
+
+uint16_t HAL_PWM_Calculate_Prescaler(uint32_t clock, uint32_t pwm_frequency, uint8_t timer_resolution, uint8_t resolution)
+{
+    if(pwm_frequency == 0 || pwm_frequency > HAL_PWM_Calculate_Max_Frequency(clock, resolution))
     {
         return 0;
     }
-    else if(pwm_frequency >= TIM_PWM_FREQ)
-    {
-        return TIM_PWM_COUNTER_CLOCK_FREQ / (resolution / 8);
-    }
-    else
-    {
-        // Decrease the clock frequency for lower PWM frequencies to
-        // avoid an overflow in the Period calculation
-        return TIM_PWM_COUNTER_CLOCK_FREQ / (TIM_PWM_FREQ / pwm_frequency + 1);
-    }
+    
+    uint32_t period_cycles = clock / pwm_frequency;
+    uint16_t prescaler = (period_cycles / ((1 << timer_resolution) - 1)) + 1;
+    return prescaler;
 }
 
-uint16_t HAL_PWM_Calculate_Prescaler(uint32_t clock, uint32_t prescaled_clock)
+uint32_t HAL_PWM_Calculate_Period(uint32_t clock, uint16_t prescaler, uint32_t pwm_frequency)
 {
-    return (uint16_t) (clock / prescaled_clock) - 1;
+    uint32_t period_cycles = clock / pwm_frequency;
+    uint32_t period = DIV_ROUND_CLOSEST(period_cycles, prescaler);
+    return period;
 }
 
-uint16_t HAL_PWM_Calculate_Period(uint32_t prescaled_clock, uint16_t pwm_frequency)
+uint32_t HAL_PWM_Calculate_Pulse(uint32_t period, uint32_t value, uint8_t resolution)
 {
-    return (uint16_t) (prescaled_clock / pwm_frequency) - 1;
-}
+    // Duty Cycle(%) = (value * period / max_value) * 100
+    uint32_t max_value = (1 << resolution) - 1;
+    uint32_t pulse_width = max_value == value ? period + 1 : DIV_ROUND_CLOSEST((uint64_t)value * period, max_value);
 
-uint16_t HAL_PWM_Calculate_Pulse(uint16_t period, uint16_t value, uint8_t resolution)
-{
-    // Duty Cycle(%) = (pulse_width / period + 1) * 100
-    uint16_t max_value = (1 << resolution) - 1;
-    uint16_t pulse_width = (uint16_t) (value * (period + 1) / max_value);
-    DEBUG("pulse width = %d\t%d\t%d\t%d", pulse_width, period, max_value, value);
     return pulse_width;
 }
 
-uint16_t HAL_PWM_Get_Period(uint16_t pin)
+uint32_t HAL_PWM_Get_Period(uint16_t pin)
 {
     STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     return pin_info->timer_peripheral->ARR;
 }
 
-TIM_TimeBaseInitTypeDef HAL_PWM_Calculate_Time_Base(uint16_t pin, uint16_t pwm_frequency)
+TIM_TimeBaseInitTypeDef HAL_PWM_Calculate_Time_Base(uint16_t pin, uint32_t pwm_frequency)
 {
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = { 0 };
 
     uint32_t clock = HAL_PWM_Base_Clock(pin);
-    uint32_t prescaled_clock = HAL_PWM_Calculate_Prescaled_Clock(pwm_frequency, HAL_PWM_Get_Resolution(pin));
-    uint16_t prescaler = HAL_PWM_Calculate_Prescaler(clock, prescaled_clock);
-    uint16_t period = HAL_PWM_Calculate_Period(prescaled_clock, pwm_frequency);
+    uint16_t prescaler = HAL_PWM_Calculate_Prescaler(clock, pwm_frequency, HAL_PWM_Timer_Resolution(pin), HAL_PWM_Get_Resolution(pin));
+    if (prescaler != 0)
+    {
+        uint32_t period = HAL_PWM_Calculate_Period(clock, prescaler, pwm_frequency);
 
-    // Time base configuration
-    TIM_TimeBaseStructure.TIM_Period = period;
-    TIM_TimeBaseStructure.TIM_Prescaler = prescaler;
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+        // Time base configuration
+        TIM_TimeBaseStructure.TIM_Period = period;
+        TIM_TimeBaseStructure.TIM_Prescaler = prescaler - 1;
+        TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+        TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    }
 
     return TIM_TimeBaseStructure;
 }
 
-void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint16_t pwm_frequency)
+void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint32_t pwm_frequency)
 {
     STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
@@ -350,14 +384,14 @@ void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint16_t pwm_frequency)
 }
 
 
-void HAL_PWM_Configure_TIM(uint16_t pin, uint16_t value)
+void HAL_PWM_Configure_TIM(uint16_t pin, uint32_t value)
 {
     STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     //PWM Duty Cycle
-    uint16_t period = HAL_PWM_Get_Period(pin);
+    uint32_t period = HAL_PWM_Get_Period(pin);
     uint8_t resolution = HAL_PWM_Get_Resolution(pin);
-    uint16_t pulse_width = HAL_PWM_Calculate_Pulse(period, value, resolution);
+    uint32_t pulse_width = HAL_PWM_Calculate_Pulse(period, value, resolution);
 
     // PWM1 Mode configuration
     // Initialize all 8 struct params to 0, fixes randomly inverted RX, TX PWM
@@ -416,14 +450,14 @@ void HAL_PWM_Enable_TIM(uint16_t pin)
 }
 
 
-void HAL_PWM_Update_DC_Frequency(uint16_t pin, uint16_t value, uint16_t pwm_frequency)
+void HAL_PWM_Update_DC_Frequency(uint16_t pin, uint32_t value, uint32_t pwm_frequency)
 {
     STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     // Calculate new prescaler, period and output compare register value
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = HAL_PWM_Calculate_Time_Base(pin, pwm_frequency);
     uint8_t resolution = HAL_PWM_Get_Resolution(pin);
-    uint16_t pulse_width = HAL_PWM_Calculate_Pulse(TIM_TimeBaseStructure.TIM_Period, value, resolution);
+    uint32_t pulse_width = HAL_PWM_Calculate_Pulse(TIM_TimeBaseStructure.TIM_Period, value, resolution);
 
     // Disable update events while updating registers
     // In case a PWM period ends, it will keep the current values
@@ -475,6 +509,7 @@ void HAL_PWM_Set_Resolution(uint16_t pin, uint8_t resolution)
 
     if (pin_info->timer_peripheral)
     {
-        PWM_State[TIM_PERIPHERAL_TO_STATE_IDX(pin_info->timer_peripheral)].resolution = resolution <= 8 ? 8 : 16;
+        if (resolution > 1 && resolution <= (HAL_PWM_Timer_Resolution(pin) - 1))
+            PWM_State[TIM_PERIPHERAL_TO_STATE_IDX(pin_info->timer_peripheral)].resolution = resolution;
     }
 }
