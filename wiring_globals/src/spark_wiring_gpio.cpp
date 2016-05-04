@@ -241,16 +241,17 @@ uint8_t analogWriteResolution(pin_t pin, uint8_t value)
       return 0;
   }
 
-  if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
-  {
-    HAL_PWM_Set_Resolution(pin, value);
-    return HAL_PWM_Get_Resolution(pin);
-  }
-  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_DAC)
+  if (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
   {
     HAL_DAC_Set_Resolution(pin, value);
     return HAL_DAC_Get_Resolution(pin);
   }
+  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+  {
+    HAL_PWM_Set_Resolution(pin, value);
+    return HAL_PWM_Get_Resolution(pin);
+  }
+  
 
   return 0;
 }
@@ -263,13 +264,13 @@ uint8_t analogWriteResolution(pin_t pin)
       return 0;
   }
 
-  if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
-  {
-    return HAL_PWM_Get_Resolution(pin);
-  }
-  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_DAC)
+  if (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
   {
     return HAL_DAC_Get_Resolution(pin);
+  }
+  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+  {
+    return HAL_PWM_Get_Resolution(pin);
   }
 
   return 0;
@@ -320,4 +321,8 @@ uint32_t pulseIn(pin_t pin, uint16_t value) {
     // NO SAFETY CHECKS!!! WILD WILD WEST!!!
 
     return HAL_Pulse_In(pin, value);
+}
+
+void setDACBufferred(pin_t pin, uint8_t state) {
+  HAL_DAC_Enable_Buffer(pin, state);
 }

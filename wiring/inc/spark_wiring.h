@@ -91,5 +91,6 @@ void analogWrite(pin_t pin, uint32_t value, uint32_t pwm_frequency);
 uint8_t analogWriteResolution(pin_t pin, uint8_t value);
 uint8_t analogWriteResolution(pin_t pin);
 uint32_t analogWriteMaxFrequency(pin_t pin);
+void setDACBufferred(pin_t pin, uint8_t state);
 
 #endif /* SPARK_WIRING_H_ */
