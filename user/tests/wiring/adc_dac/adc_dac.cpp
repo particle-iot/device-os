@@ -69,6 +69,8 @@ test(ADC_AnalogReadOnPinWithVoltageDividerResultsInCorrectValue) {
 test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
     pin_t pin = A5;//pin under test
     // when
+    analogWriteResolution(DAC1, 12);
+    assertEqual(analogWriteResolution(DAC1), 12);
     analogWrite(DAC1, 2048);
     int32_t ADCValue = analogRead(pin);
     // then
@@ -84,12 +86,18 @@ test(ADC_AnalogReadOnPinWithDACShmoo) {
     pinMode(pin1, INPUT);
     pinMode(pin2, INPUT);
 
+    analogWriteResolution(DAC, 12);
+    analogWriteResolution(DAC2, 12);
+
+    assertEqual(analogWriteResolution(DAC), 12);
+    assertEqual(analogWriteResolution(DAC2), 12);
+
     // In Github issues #671, following code will cause DAC output to stuck a constant value
-    for(int i = 0; i < 4096; i++) {
+    for(int i = 0; i < 4095; i++) {
         pinMode(DAC, OUTPUT);
         analogWrite(DAC, i);
     }
-    for(int i = 0; i < 4096; i++) {
+    for(int i = 0; i < 4095; i++) {
         pinMode(DAC2, OUTPUT);
         analogWrite(DAC2, i);
     }
@@ -100,12 +108,12 @@ test(ADC_AnalogReadOnPinWithDACShmoo) {
     // Read back analog and compare for significant difference
     int errorCount = 0;
     for(int i = 200; i < 3896; i++){
-    	analogWrite(DAC, i);
-    	analogWrite(DAC2, 4096-i);
+        analogWrite(DAC, i);
+        analogWrite(DAC2, 4095-i);
     	if (abs(analogRead(pin1)-i) > 200) {
     		errorCount ++;
     	}
-    	else if (abs(analogRead(pin2) - 4096 + i) > 200) {
+        else if (abs(analogRead(pin2) - 4095 + i) > 200) {
     		errorCount ++;
     	}
     }
@@ -118,6 +126,12 @@ test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
     pinMode(pin1, INPUT);
     pinMode(pin2, INPUT);
 
+    analogWriteResolution(DAC, 12);
+    analogWriteResolution(DAC2, 12);
+
+    assertEqual(analogWriteResolution(DAC), 12);
+    assertEqual(analogWriteResolution(DAC2), 12);
+
     // Tests for issue #833 where digitalWrite after analogWrite on DAC pin
     // causes pin to latch at last analogWrite value
 
@@ -127,11 +141,11 @@ test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
     int errorCount = 0;
     for(int i = 200; i < 3896; i++){
         analogWrite(DAC, i);
-        analogWrite(DAC2, 4096-i);
+        analogWrite(DAC2, 4095-i);
         if (abs(analogRead(pin1)-i) > 200) {
             errorCount ++;
         }
-        else if (abs(analogRead(pin2) - 4096 + i) > 200) {
+        else if (abs(analogRead(pin2) - 4095 + i) > 200) {
             errorCount ++;
         }
     }
@@ -140,7 +154,7 @@ test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
     digitalWrite(DAC, LOW);
     digitalWrite(DAC2, HIGH);
     assertFalse(abs(analogRead(pin1) - 0) > 128);
-    assertFalse(abs(analogRead(pin2) - 4096) > 128);
+    assertFalse(abs(analogRead(pin2) - 4095) > 128);
 
     // Tests that digitalWrite on DAC doesn't influence analog value on DAC2
     // and vice versa
@@ -156,9 +170,108 @@ test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
 
     errorCount = 0;
     for(int i = 200; i < 3896; i++){
-        analogWrite(DAC2, 4096-i);
+        analogWrite(DAC2, 4095-i);
         digitalWrite(DAC, !digitalRead(DAC));
-        if (abs(analogRead(pin2) - 4096 + i) > 200) {
+        if (abs(analogRead(pin2) - 4095 + i) > 200) {
+            errorCount ++;
+        }
+    }
+    assertTrue(errorCount == 0);
+}
+
+test(ADC_AnalogReadOnPinWithDACShmoo8bit) {
+    pin_t pin1 = A5;
+    pin_t pin2 = A1;
+    pinMode(pin1, INPUT);
+    pinMode(pin2, INPUT);
+
+    analogWriteResolution(DAC, 8);
+    analogWriteResolution(DAC2, 8);
+
+    assertEqual(analogWriteResolution(DAC), 8);
+    assertEqual(analogWriteResolution(DAC2), 8);
+
+    // In Github issues #671, following code will cause DAC output to stuck a constant value
+    for(int i = 0; i < 255; i++) {
+        pinMode(DAC, OUTPUT);
+        analogWrite(DAC, i);
+    }
+    for(int i = 0; i < 255; i++) {
+        pinMode(DAC2, OUTPUT);
+        analogWrite(DAC2, i);
+    }
+    delay(100);
+
+    // Shmoo test
+    // Set DAC/DAC2 output from 20 to 230 (ignore non-linearity near 0V or VDD)
+    // Read back analog and compare for significant difference
+    int errorCount = 0;
+    for(int i = 20; i < 230; i++){
+        analogWrite(DAC, i);
+        analogWrite(DAC2, 255-i);
+        if (abs(analogRead(pin1)*255/4095-i) > 15) {
+            errorCount ++;
+        }
+        else if (abs(analogRead(pin2)*255/4095 - 255 + i) > 15) {
+            errorCount ++;
+        }
+    }
+    assertTrue(errorCount == 0);
+}
+
+test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite8bit) {
+    pin_t pin1 = A5;
+    pin_t pin2 = A1;
+    pinMode(pin1, INPUT);
+    pinMode(pin2, INPUT);
+
+    analogWriteResolution(DAC, 8);
+    analogWriteResolution(DAC2, 8);
+
+    assertEqual(analogWriteResolution(DAC), 8);
+    assertEqual(analogWriteResolution(DAC2), 8);
+
+    // Tests for issue #833 where digitalWrite after analogWrite on DAC pin
+    // causes pin to latch at last analogWrite value
+
+    // Shmoo test
+    // Set DAC/DAC2 output from 20 to 230 (ignore non-linearity near 0V or VDD)
+    // Read back analog and compare for significant difference
+    int errorCount = 0;
+    for(int i = 20; i < 230; i++){
+        analogWrite(DAC, i);
+        analogWrite(DAC2, 255-i);
+        if (abs(analogRead(pin1)*255/4095-i) > 15) {
+            errorCount ++;
+        }
+        else if (abs(analogRead(pin2)*255/4095 - 255 + i) > 15) {
+            errorCount ++;
+        }
+    }
+    assertTrue(errorCount == 0);
+
+    digitalWrite(DAC, LOW);
+    digitalWrite(DAC2, HIGH);
+    assertFalse(abs(analogRead(pin1)*255/4095 - 0) > 10);
+    assertFalse(abs(analogRead(pin2)*255/4095 - 255) > 10);
+
+    // Tests that digitalWrite on DAC doesn't influence analog value on DAC2
+    // and vice versa
+    errorCount = 0;
+    for(int i = 20; i < 230; i++){
+        analogWrite(DAC, i);
+        digitalWrite(DAC2, !digitalRead(DAC2));
+        if (abs(analogRead(pin1)*255/4095-i) > 15) {
+            errorCount ++;
+        }
+    }
+    assertTrue(errorCount == 0);
+
+    errorCount = 0;
+    for(int i = 20; i < 230; i++){
+        analogWrite(DAC2, 255-i);
+        digitalWrite(DAC, !digitalRead(DAC));
+        if (abs(analogRead(pin2)*255/4095 - 255 + i) > 15) {
             errorCount ++;
         }
     }
