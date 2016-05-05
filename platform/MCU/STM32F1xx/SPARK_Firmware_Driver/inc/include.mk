@@ -1,0 +1,6 @@
+
+TARGET_SPARK_PATH = $(PLATFORM_MCU_PATH)/SPARK_Firmware_Driver
+INCLUDE_DIRS += $(TARGET_SPARK_PATH)/inc
+
+include $(PLATFORM_MODULE_PATH)/MCU/shared/STM32/inc/include.mk
+

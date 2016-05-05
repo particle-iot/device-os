@@ -1,0 +1,12 @@
+locker-firmware and unlocker-firmware are provided as example binaries 
+that will set and unset the write protection flag for the bootloader.
+
+
+#WARNING!
+
+Only load these binaries if you have an ST-Link programmer and a programming
+shield, since you run the risk of overwriting your bootloader and "bricking"
+your core.
+
+source code is available here: https://github.com/spark/core-firmware/tree/unlocker
+

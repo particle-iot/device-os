@@ -1,0 +1,37 @@
+# Object files
+*.o
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+*.dSYM
+
+# Executables
+*.exe
+*.out
+*.app
+tests/testSparkCoreCommunication
+
+# Debug folder
+Debug/*
+
+# Release folder
+Release/*
+
+# build folder
+*.map
+*.lst
+*.d
+*.o
+
+# Platform-specific settings
+.settings/*
+.cproject
+.project
+.DS_Store

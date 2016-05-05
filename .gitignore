@@ -3,7 +3,6 @@
 
 # Libraries
 *.lib
-*.a
 
 # Shared objects (inc. Windows DLLs)
 *.dll
@@ -28,10 +27,14 @@ Release/*
 *.d
 *.o
 
+# Unit test build folder
+user/tests/unit/obj/*
+
 # Platform-specific settings
 .settings/*
 .cproject
 .project
+.DS_Store
 
 # Raisonance RIDE Project
 RIDE/*
@@ -44,3 +47,8 @@ libraries/Arduino/
 
 # TropicSSL libraries
 libraries/Tropicssl/
+ci/test-reports/
+nbproject/
+build/target/
+build/cores/
+hal/soft-ap/.idea/

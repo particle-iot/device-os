@@ -1,0 +1,2 @@
+MAIN_MODULE_VERSION ?= 0
+

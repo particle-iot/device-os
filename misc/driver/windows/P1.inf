@@ -1,0 +1,91 @@
+; --------------------------------------------
+; USB CDC ACM Setup File
+; --------------------------------------------
+
+[Version] 
+Signature="$Windows NT$" 
+Class=Ports
+ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318} 
+Provider=%PROVIDER% 
+LayoutFile=layout.inf
+DriverVer=01/10/2014,5.2.0.0
+CatalogFile=P1.cat
+
+[Manufacturer] 
+%DEVICE_DESCRIPTION%=DeviceList, NTx86, NTia64, NTamd64, NTARM
+
+[DeviceList.NTx86] 
+%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C008
+
+[DeviceList.NTia64] 
+%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C008
+
+[DeviceList.NTamd64] 
+%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C008
+
+[DeviceList.NTARM] 
+%DEVICE_DESCRIPTION%=DriverInstall, USB\VID_2B04&PID_C008
+
+
+[DriverCopyFiles]
+usbser.sys,,,0x20
+serenum.sys,,,0x20
+
+;------------------------------------------------------------------------------
+;  Installation Configuration
+;------------------------------------------------------------------------------
+
+[DriverInstall]
+include=mdmcpq.inf 
+CopyFiles=DriverCopyFiles
+AddReg=DriverInstall.AddReg 
+
+[DriverInstall.HW] 
+AddReg=DriverInstall.HW.AddReg 
+
+[DriverInstall.AddReg]
+HKR,,EnumPropPages32,,"MsPorts.dll,SerialPortPropPageProvider"
+
+[DriverInstall.HW.AddReg]
+HKR,,NTMPDriver,,*ntkern
+HKR,,NTMPDriver,,usbser.sys
+HKR,,PortSubClass,1,01
+HKR,,"UpperFilters",0x00010000,"serenum" 
+
+[DriverInstall.Services] 
+AddService=usbser, 0x00000002, UsbserService
+AddService=Serenum,,SerenumService
+
+;------------------------------------------------------------------------------
+;  Usbser Service
+;------------------------------------------------------------------------------
+
+[UsbserService] 
+DisplayName=%USBSER.DESC% 
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%12%\usbser.sys 
+LoadOrderGroup = Base
+
+;------------------------------------------------------------------------------
+;  Serenum Service
+;------------------------------------------------------------------------------
+
+[SerenumService] 
+DisplayName    = %SERENUM.DESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\serenum.sys
+LoadOrderGroup = PNP Filter
+
+;------------------------------------------------------------------------------
+;  String Definitions
+;------------------------------------------------------------------------------
+
+[Strings] 
+PROVIDER="Particle"
+DEVICE_DESCRIPTION ="P1"
+USBSER.DESC = "USB Serial Driver"
+SERENUM.DESC = "Serenum Filter Driver"
