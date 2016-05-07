@@ -92,10 +92,10 @@ inline const char* strchrend(const char* s, char c) {
 
 // spark::LogHandler
 struct spark::LogHandler::FilterData {
-    const char *name; // Category name
+    const char *name; // Subcategory name
     size_t size; // Name length
-    int level; // Logging level (-1 if not specified for this category)
-    std::vector<FilterData> filters; // Subcategories
+    int level; // Logging level (-1 if not specified for this node)
+    std::vector<FilterData> filters; // Children nodes
 
     FilterData(const char *name, size_t size) :
             name(name),
@@ -104,36 +104,35 @@ struct spark::LogHandler::FilterData {
     }
 };
 
-spark::LogHandler::LogHandler(Stream *stream, LogLevel level, const Filters &filters) :
-        stream_(stream),
+/*
+    This method builds prefix tree based on the list of filter strings. Every node of the tree
+    contains subcategory name and, optionally, logging level - if node matches complete filter
+    string. For example, given following filters:
+
+    a (error)
+    a.b.c (trace)
+    a.b.x (trace)
+    aa (error)
+    aa.b (warn)
+
+    The code builds following prefix tree:
+
+    |
+    |- a (error) -- b - c (trace)
+    |               |
+    |               `-- x (trace)
+    |
+    `- aa (error) - b (warn)
+*/
+spark::LogHandler::LogHandler(LogLevel level, const Filters &filters) :
         level_(level) {
-    /*
-        This method builds prefix tree based on the list of filter strings. Every node of the tree
-        contains subcategory name and, optionally, logging level - if node matches complete filter
-        string. For example, given following filters:
-
-        a (error)
-        a.b.c (trace)
-        a.b.x (trace)
-        aa (error)
-        aa.b (warn)
-
-        The code builds following prefix tree:
-
-        |
-        |- a (error) -- b - c (trace)
-        |               |
-        |               `-- x (trace)
-        |
-        `- aa (error) - b (warn)
-    */
     for (auto it = filters.begin(); it != filters.end(); ++it) {
         const char* const category = it->first;
         const LogLevel level = it->second;
-        std::vector<FilterData> *filters = &filters_; // Root categories
+        std::vector<FilterData> *filters = &filters_; // Root nodes
         size_t pos = 0;
         for (size_t i = 0;; ++i) {
-            if (category[i] && category[i] != '.') { // Category separator
+            if (category[i] && category[i] != '.') { // Category name separator
                 continue;
             }
             const size_t size = i - pos;
@@ -155,7 +154,7 @@ spark::LogHandler::LogHandler(Stream *stream, LogLevel level, const Filters &fil
                 return cmp < 0;
             });
             if (!found) {
-                it = filters->insert(it, FilterData(name, size)); // Add subcategory
+                it = filters->insert(it, FilterData(name, size)); // Add node
             }
             if (!category[i]) {
                 it->level = level;
@@ -175,10 +174,10 @@ LogLevel spark::LogHandler::categoryLevel(const char *category) const {
         return level_; // Default level
     }
     LogLevel level = level_;
-    const std::vector<FilterData> *filters = &filters_; // Root categories
+    const std::vector<FilterData> *filters = &filters_; // Root nodes
     size_t pos = 0;
     for (size_t i = 0;; ++i) {
-        if (category[i] && category[i] != '.') { // Category separator
+        if (category[i] && category[i] != '.') { // Category name separator
             continue;
         }
         const size_t size = i - pos;
@@ -186,6 +185,7 @@ LogLevel spark::LogHandler::categoryLevel(const char *category) const {
             break; // Invalid category name
         }
         const char* const name = category + pos;
+        // Use binary search to find node for current subcategory
         bool found = false;
         auto it = std::lower_bound(filters->begin(), filters->end(), std::make_pair(name, size),
                 [&found](const FilterData &filter, const std::pair<const char*, size_t> &value) {

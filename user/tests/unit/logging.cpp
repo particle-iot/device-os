@@ -70,30 +70,10 @@ private:
     int line_;
 };
 
-class StringStream: public Print {
-public:
-    // Print
-    virtual size_t write(const uint8_t *data, size_t size) override {
-        buf_.append((const char*)data, size);
-        return size;
-    }
-
-    virtual size_t write(uint8_t c) override {
-        return write(&c, 1);
-    }
-
-    const std::string& string() const {
-        return buf_;
-    }
-
-private:
-    std::string buf_;
-};
-
 class TestHandler: public LogHandler {
 public:
     explicit TestHandler(LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {}):
-            LogHandler(strm_, level, filters) {
+            LogHandler(level, filters) {
         LogHandler::install(this);
     }
 
@@ -113,17 +93,16 @@ public:
     }
 
     const std::string& buffer() const {
-        return strm_.string();
+        return buf_;
     }
 
     const TestHandler& bufferEquals(const std::string &str) const {
-        CATCH_CHECK(buffer() == str);
+        CATCH_CHECK(buf_ == str);
         return *this;
     }
 
     const TestHandler& bufferEndsWith(const std::string &str) const {
-        const std::string &buf = buffer();
-        const std::string s = (buf.size() >= str.size()) ? buf.substr(buf.size() - str.size(), str.size()) : str;
+        const std::string s = (buf_.size() >= str.size()) ? buf_.substr(buf_.size() - str.size(), str.size()) : str;
         CATCH_CHECK(str == s);
         return *this;
     }
@@ -134,8 +113,11 @@ protected:
         msgs_.push(LogMessage(msg, level, category, time, info));
     }
 
+    virtual void write(const char *data, size_t size) override {
+        buf_.append(data, size);
+    }
+
 private:
-    StringStream strm_;
     std::queue<LogMessage> msgs_;
     std::string buf_;
 };
@@ -247,13 +229,13 @@ CATCH_TEST_CASE("Message logging") {
         std::string s = "";
         LOG(TRACE, "%s", s.c_str());
         log.next().messageEquals("");
-        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
+        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG(INFO, "%s", s.c_str());
         log.next().messageEquals(s);
         s = randomString(LOG_MAX_STRING_LENGTH);
         LOG(WARN, "%s", s.c_str());
         log.next().messageEquals(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
+        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG(ERROR, "%s", s.c_str());
         log.next().messageEquals(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
@@ -285,13 +267,13 @@ CATCH_TEST_CASE("Message logging (compatibility callback)") {
         CATCH_CHECK(log.buffer().find(fileName) != std::string::npos);
     }
     CATCH_SECTION("formatting") {
-        std::string s = randomString(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
+        std::string s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG(INFO, "%s", s.c_str());
         log.bufferEndsWith(s + "\r\n");
         s = randomString(LOG_MAX_STRING_LENGTH);
         LOG(WARN, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + "~\r\n"); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
+        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG(ERROR, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + "~\r\n");
     }
@@ -314,13 +296,13 @@ CATCH_TEST_CASE("Direct logging") {
         std::string s = "";
         LOG_PRINTF(TRACE, "%s", s.c_str());
         log.bufferEquals("");
-        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
+        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_PRINTF(INFO, "%s", s.c_str());
         log.bufferEquals(s);
         s = randomString(LOG_MAX_STRING_LENGTH);
         LOG_PRINTF(WARN, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
+        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_PRINTF(ERROR, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
@@ -328,13 +310,13 @@ CATCH_TEST_CASE("Direct logging") {
         std::string s = "";
         LOG_DUMP(TRACE, s.c_str(), s.size());
         log.bufferEquals("");
-        s = randomBytes(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
+        s = randomBytes(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_DUMP(INFO, s.c_str(), s.size());
         log.bufferEquals(toHex(s));
         s = randomBytes(LOG_MAX_STRING_LENGTH);
         LOG_DUMP(WARN, s.c_str(), s.size());
         log.bufferEndsWith(toHex(s));
-        s = randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
+        s = randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_DUMP(ERROR, s.c_str(), s.size());
         log.bufferEndsWith(toHex(s));
     }
@@ -365,13 +347,13 @@ CATCH_TEST_CASE("Direct logging (compatibility callback)") {
         std::string s = "";
         LOG_PRINTF(TRACE, "%s", s.c_str());
         log.bufferEquals("");
-        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
+        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_PRINTF(INFO, "%s", s.c_str());
         log.bufferEquals(s);
         s = randomString(LOG_MAX_STRING_LENGTH);
         LOG_PRINTF(WARN, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
+        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_PRINTF(ERROR, "%s", s.c_str());
         log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
@@ -379,13 +361,13 @@ CATCH_TEST_CASE("Direct logging (compatibility callback)") {
         std::string s = "";
         LOG_DUMP(TRACE, s.c_str(), s.size());
         log.bufferEquals("");
-        s = randomBytes(LOG_MAX_STRING_LENGTH / 2); // Less than internal buffer
+        s = randomBytes(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_DUMP(INFO, s.c_str(), s.size());
         log.bufferEquals(toHex(s));
         s = randomBytes(LOG_MAX_STRING_LENGTH);
         LOG_DUMP(WARN, s.c_str(), s.size());
         log.bufferEndsWith(toHex(s));
-        s = randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Greater than internal buffer
+        s = randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_DUMP(ERROR, s.c_str(), s.size());
         log.bufferEndsWith(toHex(s));
     }

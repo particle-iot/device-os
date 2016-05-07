@@ -26,10 +26,10 @@
 
 namespace spark {
 
-class SerialLogHandler: public LogHandler {
+class SerialLogHandler: public StreamLogHandler {
 public:
     explicit SerialLogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
-            LogHandler(Serial, level, filters) {
+            StreamLogHandler(Serial, level, filters) {
         Serial.begin(baud);
         LogHandler::install(this);
     }
@@ -40,10 +40,10 @@ public:
     }
 };
 
-class Serial1LogHandler: public LogHandler {
+class Serial1LogHandler: public StreamLogHandler {
 public:
     explicit Serial1LogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
-            LogHandler(Serial1, level, filters) {
+            StreamLogHandler(Serial1, level, filters) {
         Serial1.begin(baud);
         LogHandler::install(this);
     }

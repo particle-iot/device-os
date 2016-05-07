@@ -29,7 +29,10 @@
 namespace spark {
 
 /*!
-    \brief Log handler.
+    \brief Abstract log handler.
+
+    This class can be subclassed to implement custom log handlers. The library also provides several
+    built-in handlers, such as \ref spark::SerialLogHandler and \ref spark::Serial1LogHandler.
 */
 class LogHandler {
 public:
@@ -49,10 +52,7 @@ public:
         \brief List of category filters.
     */
     typedef std::initializer_list<Filter> Filters;
-    /*!
-        \brief Output stream type.
-    */
-    typedef Print Stream;
+
     /*!
         \brief Constructor.
         \param level Default logging level.
@@ -60,20 +60,9 @@ public:
     */
     explicit LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
     /*!
-        \brief Constructor.
-        \param stream Output stream.
-        \param level Default logging level.
-        \param filters Category filters.
-    */
-    explicit LogHandler(Stream &stream, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
-    /*!
         \brief Destructor.
     */
     virtual ~LogHandler();
-    /*!
-        \brief Returns output stream (can be null).
-    */
-    Stream* stream() const;
     /*!
         \brief Returns default logging level.
     */
@@ -101,7 +90,7 @@ public:
     */
     static void uninstall(LogHandler *handler);
 
-    // These methods are called by the system modules
+    // These methods are called by the LogManager instance
     void message(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info);
     void write(const char *data, size_t size, LogLevel level, const char *category);
 
@@ -117,19 +106,19 @@ protected:
         Default implementation generates messages in the following format:
         `<timestamp>: [category]: [file]:[line], [function]: <level>: <message>`.
 
-        Resulting string is then written to the output stream.
+        Resulting string is then written to output stream via \ref write(const char*, size_t) method.
     */
     virtual void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info);
     /*!
-        \brief Writes buffer to the output stream.
+        \brief Writes buffer to output stream.
         \param data Characters buffer.
         \param size Buffer size.
 
-        This method is equivalent to `stream()->write((const uint8_t*)data, size)`.
+        This method should be implemented by all subclasses.
     */
-    void write(const char *data, size_t size);
+    virtual void write(const char *data, size_t size) = 0;
     /*!
-        \brief Writes string to the output stream.
+        \brief Writes string to output stream.
 
         This method is equivalent to `write(str, strlen(str))`.
     */
@@ -139,23 +128,50 @@ private:
     struct FilterData;
 
     std::vector<FilterData> filters_;
-    Stream *stream_;
     LogLevel level_;
+};
 
-    LogHandler(Stream *stream, LogLevel level, const Filters &filters);
+/*!
+    \brief Stream-based log handler.
+
+    Adapter class allowing to use existent stream objects as destination for logging output.
+*/
+class StreamLogHandler: public LogHandler {
+public:
+    /*!
+        \brief Output stream type.
+    */
+    typedef Print Stream;
+
+    /*!
+        \brief Constructor.
+        \param stream Output stream.
+        \param level Default logging level.
+        \param filters Category filters.
+    */
+    explicit StreamLogHandler(Stream &stream, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
+    /*!
+        \brief Returns output stream.
+    */
+    Stream* stream() const;
+
+protected:
+    /*!
+        \brief Writes buffer to output stream.
+        \param data Characters buffer.
+        \param size Buffer size.
+
+        This method is equivalent to `stream()->write((const uint8_t*)data, size)`.
+    */
+    virtual void write(const char *data, size_t size) override;
+
+private:
+    Stream *stream_;
 };
 
 } // namespace spark
 
 // spark::LogHandler
-inline spark::LogHandler::LogHandler(LogLevel level, const Filters &filters) :
-        LogHandler(nullptr, level, filters) {
-}
-
-inline spark::LogHandler::LogHandler(Stream &stream, LogLevel level, const Filters &filters) :
-        LogHandler(&stream, level, filters) {
-}
-
 inline void spark::LogHandler::message(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info) {
     if (level >= categoryLevel(category)) {
         logMessage(msg, level, category, time, info);
@@ -163,23 +179,13 @@ inline void spark::LogHandler::message(const char *msg, LogLevel level, const ch
 }
 
 inline void spark::LogHandler::write(const char *data, size_t size, LogLevel level, const char *category) {
-    if (stream_ && level >= categoryLevel(category)) {
-        stream_->write((const uint8_t*)data, size);
-    }
-}
-
-inline void spark::LogHandler::write(const char *data, size_t size) {
-    if (stream_) {
-        stream_->write((const uint8_t*)data, size);
+    if (level >= categoryLevel(category)) {
+        write(data, size);
     }
 }
 
 inline void spark::LogHandler::write(const char *str) {
     write(str, strlen(str));
-}
-
-inline spark::LogHandler::Stream* spark::LogHandler::stream() const {
-    return stream_;
 }
 
 inline LogLevel spark::LogHandler::defaultLevel() const {
@@ -188,6 +194,20 @@ inline LogLevel spark::LogHandler::defaultLevel() const {
 
 inline const char* spark::LogHandler::levelName(LogLevel level) {
     return log_level_name(level, nullptr);
+}
+
+// spark::StreamLogHandler
+inline spark::StreamLogHandler::StreamLogHandler(Stream &stream, LogLevel level, const Filters &filters) :
+        LogHandler(level, filters),
+        stream_(&stream) {
+}
+
+inline void spark::StreamLogHandler::write(const char *data, size_t size) {
+    stream_->write((const uint8_t*)data, size);
+}
+
+inline spark::StreamLogHandler::Stream* spark::StreamLogHandler::stream() const {
+    return stream_;
 }
 
 #endif // SPARK_WIRING_LOGGING_H
