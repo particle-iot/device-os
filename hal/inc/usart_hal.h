@@ -55,13 +55,13 @@
 #define SERIAL_STOP_BITS (uint8_t)0b00000011
 #define SERIAL_PARITY_BITS (uint8_t)0b00001100
 #define SERIAL_NINE_BITS (uint8_t)0b00010000
-#define SERIAL_FLOW_CONTROL ((uint8_t)0b01100000)
+#define SERIAL_FLOW_CONTROL ((uint8_t)0b11000000)
 
 // Flow control settings
 #define SERIAL_FLOW_CONTROL_NONE ((uint8_t)0b00000000)
-#define SERIAL_FLOW_CONTROL_RTS ((uint8_t)0b00100000)
-#define SERIAL_FLOW_CONTROL_CTS ((uint8_t)0b01000000)
-#define SERIAL_FLOW_CONTROL_RTS_CTS ((uint8_t)0b01100000)
+#define SERIAL_FLOW_CONTROL_RTS ((uint8_t)0b01000000)
+#define SERIAL_FLOW_CONTROL_CTS ((uint8_t)0b10000000)
+#define SERIAL_FLOW_CONTROL_RTS_CTS ((uint8_t)0b11000000)
 
 // LIN Configuration masks
 #define LIN_MODE ((uint32_t)0x0300)
