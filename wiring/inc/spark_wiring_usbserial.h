@@ -46,7 +46,7 @@ public:
     bool isEnabled();
     bool isConnected();
 
-	void begin(long speed);
+	void begin(long speed = 9600);
 	void end();
 	int peek();
 

@@ -28,9 +28,9 @@ namespace spark {
 
 class SerialLogHandler: public StreamLogHandler {
 public:
-    explicit SerialLogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit SerialLogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             StreamLogHandler(Serial, level, filters) {
-        Serial.begin(baud);
+        Serial.begin();
         LogHandler::install(this);
     }
 
@@ -57,9 +57,9 @@ public:
 #if Wiring_USBSerial1
 class USBSerial1LogHandler: public StreamLogHandler {
 public:
-    explicit USBSerial1LogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit USBSerial1LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             StreamLogHandler(USBSerial1, level, filters) {
-        USBSerial1.begin(baud);
+        USBSerial1.begin();
         LogHandler::install(this);
     }
 
@@ -76,7 +76,7 @@ public:
 class SerialDebugOutput: public spark::SerialLogHandler {
 public:
     explicit SerialDebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
-        SerialLogHandler(baud, level) {
+        SerialLogHandler(level) {
     }
 };
 
