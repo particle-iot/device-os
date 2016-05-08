@@ -24,5 +24,6 @@
 #include "rgbled.h"
 #include "debug.h"
 #include "jsmn.h"
+#include "logging.h"
 #include "services_dynalib.h"
 

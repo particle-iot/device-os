@@ -37,33 +37,61 @@
 #include "hal_platform.h"
 #include "interrupts_hal.h"
 #include <boost/crc.hpp>  // for boost::crc_32_type
+#include <sstream>
+#include <iomanip>
 
 
 using std::cout;
 
-void debug_output_(const char* msg);
+static LoggerOutputLevel log_level = NO_LOG_LEVEL;
 
 void setLoggerLevel(LoggerOutputLevel level)
 {
-    set_logger_output(debug_output_, level);
+    log_level = level;
 }
 
-extern "C" int main(int argc, char* argv[])
+void log_message_callback(const char *msg, int level, const char *category, uint32_t time, const char *file, int line,
+        const char *func, void *reserved)
 {
-    setLoggerLevel(NO_LOG_LEVEL);
-    if (read_device_config(argc, argv)) {
-        app_setup_and_loop();
+    if (level < log_level) {
+        return;
     }
-    return 0;
+    std::ostringstream strm;
+    // Timestamp
+    strm << std::setw(10) << std::setfill('0') << time << ' ';
+    // Category (optional)
+    if (category && category[0]) {
+        strm << category << ": ";
+    }
+    // Source info (optional)
+    if (file && func) {
+        strm << file << ':' << line << ", ";
+        // Strip argument and return types for better readability
+        std::string funcName(func);
+        const size_t pos = funcName.find(' ');
+        if (pos != std::string::npos) {
+            funcName = funcName.substr(pos + 1, funcName.find('(') - pos - 1);
+        }
+        strm << funcName << "(): ";
+    }
+    // Level
+    strm << log_level_name(level, nullptr) << ": ";
+    // Message
+    strm << msg;
+    std::cout << strm.str() << std::endl;
 }
 
-/**
- * Output debug info to standard output.
- * @param msg
- */
-void debug_output_(const char* msg)
+void log_write_callback(const char *data, size_t size, int level, const char *category, void *reserved)
 {
-    cout << msg << std::endl;
+    if (level < log_level) {
+        return;
+    }
+    std::cout.write(data, size);
+}
+
+int log_enabled_callback(int level, const char *category, void *reserved)
+{
+    return (level >= log_level);
 }
 
 void core_log(const char* msg, ...)
@@ -74,6 +102,15 @@ void core_log(const char* msg, ...)
     vsnprintf(buf, 2048, msg, args);
     cout << buf << std::endl;
     va_end(args);
+}
+
+extern "C" int main(int argc, char* argv[])
+{
+    log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
+    if (read_device_config(argc, argv)) {
+        app_setup_and_loop();
+    }
+    return 0;
 }
 
 class GCCStartup {

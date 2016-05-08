@@ -40,19 +40,27 @@ DYNALIB_FN(9, services, LED_Toggle, void(Led_TypeDef))
 DYNALIB_FN(10, services, LED_Fade, void(Led_TypeDef))
 DYNALIB_FN(11, services, Get_LED_Brightness, uint8_t(void))
 
-DYNALIB_FN(12, services, set_logger_output, void(debug_output_fn, LoggerOutputLevel))
+DYNALIB_FN(12, services, set_logger_output, void(debug_output_fn, LoggerOutputLevel)) // Deprecated
 DYNALIB_FN(13, services, panic_, void(ePanicCode, void*, void(*)(uint32_t)))
 
 DYNALIB_FN(14, services, jsmn_init, void(jsmn_parser*, void*))
 DYNALIB_FN(15, services, jsmn_parse, jsmnerr_t(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
-DYNALIB_FN(16, services, log_print_, void(int, int, const char*, const char*, const char*, ...))
+DYNALIB_FN(16, services, log_print_, void(int, int, const char*, const char*, const char*, ...)) // Deprecated
 DYNALIB_FN(17, services, LED_RGB_SetChangeHandler, void(led_update_handler_fn, void*))
-DYNALIB_FN(18, services, log_print_direct_, void(int, void*, const char*, ...))
+DYNALIB_FN(18, services, log_print_direct_, void(int, void*, const char*, ...)) // Deprecated
 DYNALIB_FN(19, services, LED_GetColor, uint32_t(uint32_t, void*))
 
+DYNALIB_FN(20, services, log_message, void(int, const char*, const char*, int, const char*, void*, const char*, ...))
+DYNALIB_FN(21, services, log_message_v, void(int, const char*, const char*, int, const char*, void*, const char*, va_list))
+DYNALIB_FN(22, services, log_write, void(int, const char*, const char*, size_t, void*))
+DYNALIB_FN(23, services, log_printf, void(int, const char*, void*, const char*, ...))
+DYNALIB_FN(24, services, log_printf_v, void(int, const char*, void*, const char*, va_list))
+DYNALIB_FN(25, services, log_dump, void(int, const char*, const void*, size_t, int, void*))
+DYNALIB_FN(26, services, log_enabled, int(int, const char*, void*))
+DYNALIB_FN(27, services, log_level_name, const char*(int, void*))
+DYNALIB_FN(28, services, log_set_callbacks, void(log_message_callback_type, log_write_callback_type, log_enabled_callback_type, void*))
+
 DYNALIB_END(services)
-
-
 
 #endif	/* SERVICES_DYNALIB_H */
 

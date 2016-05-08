@@ -112,13 +112,13 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 			DEBUG("unknown ciphersuite with id %d", ciphersuite);
 			return ERROR;
 		}
-	
+
 		int err = mbedtls_ssl_derive_keys(context);
 		if (err)
 		{
 			DEBUG("derive keys failed with %d", err);
 			return ERROR;
-		}	
+		}
 
 		context->in_msg = context->in_iv + context->transform_negotiate->ivlen -
 											context->transform_negotiate->fixed_ivlen;
@@ -127,10 +127,10 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 
 		context->session_in = context->session_negotiate;
 		context->session_out = context->session_negotiate;
-		
+
 		context->transform_in = context->transform_negotiate;
 		context->transform_out = context->transform_negotiate;
-		
+
 		mbedtls_ssl_handshake_wrapup(context);
 		size = sizeof(*this);
 		return COMPLETE;
@@ -430,16 +430,16 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	if (ret>0) {
 		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
-		if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
-		  DEBUG("message length %d", message.length());
+		if (LOG_ENABLED(TRACE)) {
+		  LOG(TRACE, "message length %d", message.length());
 		  for (size_t i=0; i<message.length(); i++)
 		  {
 				  char buf[3];
 				  char c = message.buf()[i];
 				  sprintf(buf, "%02x", c);
-				  log_direct_(buf);
+				  LOG_PRINT(TRACE, buf);
 		  }
-		  log_direct_("\n");
+		  LOG_PRINT(TRACE, "\n");
 		}
 #endif
 	}
@@ -459,15 +459,15 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   }
 
 #ifdef DEBUG_BUILD
-      DEBUG("message length %d", message.length());
+      LOG(TRACE, "message length %d", message.length());
       for (size_t i=0; i<message.length(); i++)
       {
 	  	  char buf[3];
 	  	  char c = message.buf()[i];
 	  	  sprintf(buf, "%02x", c);
-	  	  log_direct_(buf);
+	  	  LOG_PRINT(TRACE, buf);
       }
-      log_direct_("\n");
+      LOG_PRINT(TRACE, "\n");
 #endif
 
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());

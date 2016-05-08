@@ -46,7 +46,7 @@ void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uin
         LED_Signaling_Stop();
         uint16_t c;
         int loops = 2;
-        log_direct_("!");
+        LOG_PRINT(TRACE, "!");
         LED_Off(LED_RGB);
         while(loops) {
                 // preamble

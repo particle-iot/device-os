@@ -17,9 +17,11 @@
  ******************************************************************************
  */
 
+#include <climits>
+
 #include "coap_channel.h"
 #include "forward_message_channel.h"
-#include "Messages.h"
+#include "messages.h"
 
 #include "catch.hpp"
 #include "fakeit.hpp"

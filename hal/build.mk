@@ -6,3 +6,5 @@
 
 HAL_PLATFORM_SRC_PATH = $(HAL_MODULE_PATH)/src/$(PLATFORM_NAME)
 include $(call rwildcard,$(HAL_PLATFORM_SRC_PATH)/,sources.mk)
+
+LOG_MODULE_CATEGORY = hal
