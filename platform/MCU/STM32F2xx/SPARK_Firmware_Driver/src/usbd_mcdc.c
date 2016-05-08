@@ -611,10 +611,13 @@ static uint8_t* USBD_MCDC_GetCfgDesc(uint8_t speed, USBD_Composite_Class_Data* c
 
   // XXX: Compatibility for old Windows driver
 #ifdef CDC0_CMD_EP_COMPAT
-  if (USBD_Composite_Registered_Count(true) == 1 && cls->firstInterface == 0) {
-    priv->ep_in_int = CDC0_CMD_EP_COMPAT;
-  } else {
-    priv->ep_in_int = CDC0_CMD_EP;
+  // Serial
+  if (cls->firstInterface == 0) {
+    if (USBD_Composite_Registered_Count(true) == 1) {
+      priv->ep_in_int = CDC0_CMD_EP_COMPAT;
+    } else {
+      priv->ep_in_int = CDC0_CMD_EP;
+    }
   }
 #endif
 

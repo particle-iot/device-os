@@ -111,6 +111,10 @@ void USB_USART_Flush_Data(void)
 {
 }
 
+void HAL_USB_Init(void)
+{
+}
+
 void HAL_USB_Attach()
 {
 }

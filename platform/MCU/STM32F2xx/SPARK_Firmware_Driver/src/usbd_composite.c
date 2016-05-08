@@ -96,7 +96,7 @@ static const uint8_t USBD_Composite_CfgDescHeaderTemplate[USBD_COMPOSITE_CFGDESC
 static uint8_t USBD_Composite_Init(void* pdev, uint8_t cfgidx) {
   uint8_t status = USBD_OK;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->enabled && c->cb->Init) {
+    if(c->active && c->cb->Init) {
       status += c->cb->Init(pdev, c, cfgidx);
     }
   }
@@ -112,7 +112,7 @@ static uint8_t USBD_Composite_DeInit(void* pdev, uint8_t cfgidx) {
   s_Initialized = 0;
 
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->enabled && c->cb->DeInit) {
+    if(c->active && c->cb->DeInit) {
       status += c->cb->DeInit(pdev, c, cfgidx);
     }
   }
@@ -122,7 +122,7 @@ static uint8_t USBD_Composite_DeInit(void* pdev, uint8_t cfgidx) {
 
 static uint8_t USBD_Composite_Setup(void* pdev, USB_SETUP_REQ* req) {
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if (c->enabled && req->wIndex >= c->firstInterface && req->wIndex < (c->firstInterface + c->interfaces)) {
+    if (c->active && req->wIndex >= c->firstInterface && req->wIndex < (c->firstInterface + c->interfaces)) {
       if(c->cb->Setup) {
         return c->cb->Setup(pdev, c, req);
       }
@@ -135,7 +135,7 @@ static uint8_t USBD_Composite_Setup(void* pdev, USB_SETUP_REQ* req) {
 static uint8_t USBD_Composite_EP0_TxSent(void* pdev) {
   uint8_t status = USBD_OK;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->enabled && c->cb->EP0_TxSent) {
+    if(c->active && c->cb->EP0_TxSent) {
       status += c->cb->EP0_TxSent(pdev, c);
     }
   }
@@ -146,7 +146,7 @@ static uint8_t USBD_Composite_EP0_TxSent(void* pdev) {
 static uint8_t USBD_Composite_EP0_RxReady(void* pdev) {
   uint8_t status = USBD_OK;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->enabled && c->cb->EP0_RxReady) {
+    if(c->active && c->cb->EP0_RxReady) {
       status += c->cb->EP0_RxReady(pdev, c);
     }
   }
@@ -157,12 +157,12 @@ static uint8_t USBD_Composite_EP0_RxReady(void* pdev) {
 static uint8_t USBD_Composite_DataIn(void* pdev, uint8_t epnum) {
   uint32_t msk = 1 << (epnum & 0x7f);
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->enabled && c->cb->DataIn) {
+    if(c->active && c->cb->DataIn) {
       if (c->epMask & msk) {
         // Class handled this endpoint?
         if (c->cb->DataIn(pdev, c, epnum) == USBD_OK)
           return USBD_OK;
-        // DEBUG("FAIL %x %d", (void*)c, epnum);
+        LOG_DEBUG(ERROR, "FAIL %x %d", (void*)c, epnum);
       }
     }
   }
@@ -174,12 +174,12 @@ static uint8_t USBD_Composite_DataOut(void* pdev , uint8_t epnum) {
   uint32_t msk = 1 << (epnum & 0x7f);
   msk <<= 16;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    if(c->enabled && c->cb->DataOut) {
+    if(c->active && c->cb->DataOut) {
       if (c->epMask & msk) {
         // Class handled this endpoint?
         if (c->cb->DataOut(pdev, c, epnum) == USBD_OK)
           return USBD_OK;
-        // DEBUG("FAIL %x %d", (void*)c, epnum);
+        LOG_DEBUG(ERROR, "FAIL %x %d", (void*)c, epnum);
       }
     }
   }
@@ -189,7 +189,7 @@ static uint8_t USBD_Composite_DataOut(void* pdev , uint8_t epnum) {
 
 static uint8_t USBD_Composite_SOF(void *pdev) {
   for(USBD_Composite_Class_Data* c = s_Classes; s_Initialized && c != NULL; c = c->next) {
-    if(c->enabled && c->cb->SOF) {
+    if(c->active && c->cb->SOF) {
       c->cb->SOF(pdev, c);
     }
   }
@@ -219,7 +219,7 @@ static uint8_t* USBD_Composite_GetOtherConfigDescriptor(uint8_t speed, uint16_t 
 
 static uint8_t* USBD_Composite_GetUsrStrDescriptor(uint8_t speed, uint8_t index, uint16_t *length) {
   for(USBD_Composite_Class_Data* c = s_Classes; s_Initialized && c != NULL; c = c->next) {
-    if(c->enabled && c->cb->GetUsrStrDescriptor) {
+    if(c->active && c->cb->GetUsrStrDescriptor) {
       uint8_t* ret = c->cb->GetUsrStrDescriptor(speed, c, index, length);
       if (ret) {
         return ret;
@@ -259,7 +259,7 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
 
     if (clsCfgLength) {
       totalInterfaces += c->interfaces;
-      if (c->enabled && (epMask & c->epMask) == 0) {
+      if (c->active && (epMask & c->epMask) == 0) {
         epMask |= c->epMask;
         activeInterfaces += c->interfaces;
         c->cfg = pbuf;
@@ -273,7 +273,7 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
   *(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES) = activeInterfaces;
   *((uint16_t *)(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_TOTAL_LENGTH)) = totalLength;
 
-  // DEBUG("Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces, activeInterfaces);
+  LOG_DEBUG(TRACE, "Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces, activeInterfaces);
 
   return totalLength;
 }
@@ -286,15 +286,15 @@ void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, ui
   int32_t irq = HAL_disable_irq();
   USBD_Composite_Class_Data* cls = NULL;
   for (int i = 0; i < USBD_COMPOSITE_MAX_CLASSES; i++) {
-    if (s_Class_Entries[i].active == 0) {
+    if (s_Class_Entries[i].inuse == 0) {
       cls = s_Class_Entries + i;
       break;
     }
   }
 
   if (cls) {
+    cls->inuse = 1;
     cls->active = 1;
-    cls->enabled = 1;
     cls->cb = cb;
     cls->priv = priv;
     cls->epMask = 0xffffffff;
@@ -319,7 +319,6 @@ void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, ui
     }
     s_Classes_Count++;
   }
-
   HAL_enable_irq(irq);
   return (void*)cls;
 }
@@ -329,7 +328,7 @@ void USBD_Composite_Unregister(void* cls, void* priv) {
   USBD_Composite_Class_Data* prev = NULL;
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; prev = c, c = c->next) {
     if ((cls && c == cls) || (priv && c->priv == priv)) {
-      c->active = 0;
+      c->inuse = 0;
       if (prev) {
         prev->next = c->next;
       } else {
@@ -354,11 +353,25 @@ void USBD_Composite_Set_State(void* cls, bool state) {
   int32_t irq = HAL_disable_irq();
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
     if (cls && c == cls) {
-      c->enabled = state;
+      c->active = state;
       break;
     }
   }
   HAL_enable_irq(irq);
+}
+
+bool USBD_Composite_Get_State(void* cls) {
+  bool state = false;
+  int32_t irq = HAL_disable_irq();
+  for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
+    if (cls && c == cls) {
+      state = c->active;
+      break;
+    }
+  }
+  HAL_enable_irq(irq);
+
+  return state;
 }
 
 uint8_t USBD_Composite_Registered_Count(bool onlyActive) {

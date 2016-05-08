@@ -43,8 +43,8 @@ struct USBD_Multi_Instance_cb_Typedef
 struct USBD_Composite_Class_Data {
   // Linked-list
   struct USBD_Composite_Class_Data* next;
+  uint8_t inuse;
   uint8_t active;
-  uint8_t enabled;
 
   USBD_Multi_Instance_cb_Typedef* cb;
   uint8_t* cfg;
@@ -60,6 +60,7 @@ struct USBD_Composite_Class_Data {
 extern void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, uint8_t front);
 extern void  USBD_Composite_Unregister(void* cls, void* priv);
 extern void  USBD_Composite_Set_State(void* cls, bool state);
+extern bool  USBD_Composite_Get_State(void* cls);
 extern void  USBD_Composite_Unregister_All();
 extern uint8_t USBD_Composite_Registered_Count(bool onlyActive);
 

@@ -252,6 +252,11 @@ void USB_USART_Flush_Data(void)
     // Not implemented properly
 }
 
+void HAL_USB_Init()
+{
+  // TODO
+}
+
 void HAL_USB_Attach()
 {
  // TODO

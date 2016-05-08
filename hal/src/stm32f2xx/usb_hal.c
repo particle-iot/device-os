@@ -69,10 +69,9 @@ static uint8_t USB_Configured = 0;
  *******************************************************************************/
 void SPARK_USB_Setup(void)
 {
-    if (USB_Configured)
+    if (!USB_Configured)
         return;
 
-    USB_Configured = 1;
     USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_FS
             USB_OTG_FS_CORE_ID,
@@ -133,6 +132,19 @@ static HAL_USB_USART_Info usbUsartMap[HAL_USB_USART_SERIAL_COUNT] = { {0} };
 //     USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
 // }
 
+void HAL_USB_Init(void)
+{
+    if (USB_Configured)
+        return;
+    // Pre-register Serial and USBSerial1 but keep them inactive.
+    // This is only needed to reserve interfaces #0 and #1 for Serial, and #2 and #3 for USBSerial1
+    HAL_USB_USART_Init(HAL_USB_USART_SERIAL, NULL);
+    HAL_USB_USART_Init(HAL_USB_USART_SERIAL1, NULL);
+
+    USB_Configured = 1;
+    SPARK_USB_Setup();
+}
+
 void HAL_USB_Detach(void)
 {
     if (USB_Configured)
@@ -186,24 +198,20 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved)
 {
-    if (!usbUsartMap[serial].data) {
+    if (!usbUsartMap[serial].data || !usbUsartMap[serial].cls) {
         HAL_USB_USART_Init(serial, NULL);
     }
     
     if (!usbUsartMap[serial].registered) {
-        HAL_USB_Detach();
-        if (!usbUsartMap[serial].cls) {
-            usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, 0);
-            usbUsartMap[serial].data->cls = usbUsartMap[serial].cls;
-        } else {
+        if (USBD_Composite_Get_State(usbUsartMap[serial].cls) == false) {
+            // Detach, change state, re-attach
+            HAL_USB_Detach();
             USBD_Composite_Set_State(usbUsartMap[serial].cls, true);
+            usbUsartMap[serial].registered = 1;
+            usbUsartMap[serial].data->linecoding.bitrate = baud;
+            HAL_USB_Attach();
         }
-        usbUsartMap[serial].registered = 1;
-        usbUsartMap[serial].data->linecoding.bitrate = baud;
-        HAL_USB_Attach();
     }
-
-    SPARK_USB_Setup();
 }
 
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial)
@@ -340,6 +348,8 @@ static HAL_USB_HID_Instance_Info usbHid = {0};
 void HAL_USB_HID_Init(uint8_t reserved, void* reserved1)
 {
     if (!usbHid.configured) {
+        // Just in case run HAL_USB_Init() here to ensure that Serial and USBSerial1 were pre-registered
+        HAL_USB_Init();
         usbHid.configured = 1;
     }
 }
@@ -353,8 +363,6 @@ void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1)
         usbHid.registered = 1;
         usbHid.refcount++;
         HAL_USB_Attach();
-
-        SPARK_USB_Setup();
     } else {
         usbHid.refcount++;
     }
