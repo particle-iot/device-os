@@ -50,8 +50,6 @@ test(SERIAL_ReadWriteSucceedsWithUserIntervention) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial.print("Type the following message and press Enter : ");
     Serial.println(test);
     serialReadLine(&Serial, message, 9, 10000);//10 sec timeout
@@ -65,8 +63,6 @@ test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -76,12 +72,10 @@ test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
 }
 
 test(SERIAL1_ReadWriteParity8N1SucceedsInLoopbackWithTxRxShorted) {
-        //The following code will test all the important USART Serial1 routines
+    //The following code will test all the important USART Serial1 routines
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_8N1);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -95,8 +89,6 @@ test(SERIAL1_ReadWriteParity8E1SucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_8E1);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -110,8 +102,6 @@ test(SERIAL1_ReadWriteParity8O1SucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_8O1);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -125,8 +115,6 @@ test(SERIAL1_ReadWriteParity8N2SucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_8N2);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -140,8 +128,6 @@ test(SERIAL1_ReadWriteParity8E2SucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_8E2);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -155,8 +141,6 @@ test(SERIAL1_ReadWriteParity8O2SucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_8O2);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -170,8 +154,6 @@ test(SERIAL1_ReadWriteParity9N1SucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_9N1);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -185,8 +167,6 @@ test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
     Serial1.begin(9600, SERIAL_9N2);
     Serial1.println(test);
     serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
@@ -202,8 +182,6 @@ test(SERIAL2_ReadWriteSucceedsInLoopbackWithD0D1Shorted) {
     char test[] = "hello";
     char message[10];
     // when
-    if (Serial2.isEnabled())
-        Serial2.end();
     Serial2.begin(9600);
     Serial2.println(test);
     serialReadLine(&Serial2, message, 9, 1000);//1 sec timeout
