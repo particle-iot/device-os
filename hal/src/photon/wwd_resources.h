@@ -22,17 +22,29 @@
  */
 
 #ifndef WICED_STUBS_H
-#define	WICED_STUBS_H
+#define WICED_STUBS_H
 
-typedef struct resource_hnd_t {
+#include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef INCLUDED_RESOURCE_H_
+// resource_hnd_t not defined so let's typedef it (it's only used as a pointer here.)
+typedef struct
+{
 } resource_hnd_t;
+#endif
 
 const resource_hnd_t* wwd_firmware_image_resource(void);
 
 const resource_hnd_t* wwd_nvram_image_resource(void);
 
+int wwd_select_nvram_image_resource(uint8_t res, void* reserved);
 
+#ifdef __cplusplus
+}
+#endif
 
-#endif	/* WICED_STUBS_H */
-
+#endif /* WICED_STUBS_H */

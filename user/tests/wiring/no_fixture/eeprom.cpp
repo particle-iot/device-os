@@ -32,6 +32,15 @@ struct EEPROMCustomObject{
   char sValue[10];
 };
 
+test(EEPROM_Capacity) {
+#if (PLATFORM_ID == 0) // Core
+  uint16_t expectedCapacity = 128;
+#else // Photon/P1/Electron
+  uint16_t expectedCapacity = 2048;
+#endif
+  assertEqual(EEPROM.length(), expectedCapacity);
+}
+
 test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
     int EEPROM_SIZE = EEPROM.length();
     uint16_t address = 0;

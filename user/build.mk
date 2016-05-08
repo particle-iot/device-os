@@ -54,3 +54,7 @@ ifeq ("$(PLATFORM_NET)", "CC3000")
 # Stick to some POSIX-conforming API to disable BSD extensions
 CPPFLAGS += -D_POSIX_C_SOURCE=200809
 endif
+
+# Use application source info regardless of release/debug build
+CFLAGS += -DLOG_INCLUDE_SOURCE_INFO
+LOG_MODULE_CATEGORY = app

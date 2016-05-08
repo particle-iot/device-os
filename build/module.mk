@@ -38,6 +38,11 @@ endif
 # WINSOCK_H stops select.h from being used which conflicts with CC3000 headers
 CFLAGS += -D_GNU_SOURCE -D_WINSOCK_H
 
+# Global category name for logging
+ifneq (,$(LOG_MODULE_CATEGORY))
+CFLAGS += -DLOG_MODULE_CATEGORY="\"$(LOG_MODULE_CATEGORY)\""
+endif
+
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))

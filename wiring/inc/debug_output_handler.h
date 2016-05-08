@@ -22,58 +22,69 @@
 
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_usbserial.h"
-#include "service_debug.h"
-#include "delay_hal.h"
+#include "spark_wiring_logging.h"
 
-struct SerialDebugOutput
-{
-    SerialDebugOutput(int baud=9600, LoggerOutputLevel level=ALL_LEVEL)
-    {
+namespace spark {
+
+class SerialLogHandler: public StreamLogHandler {
+public:
+    explicit SerialLogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            StreamLogHandler(Serial, level, filters) {
         Serial.begin(baud);
-        set_logger_output(log_output, level);
+        LogHandler::install(this);
     }
 
-    static void log_output(const char* msg)
-    {
-        Serial.print(msg);
-    //    Serial.flush();
-     //  HAL_Delay_Milliseconds(10);
+    virtual ~SerialLogHandler() {
+        LogHandler::uninstall(this);
+        Serial.end();
     }
-
 };
 
-struct Serial1DebugOutput
-{
-    Serial1DebugOutput(int baud=9600, LoggerOutputLevel level=ALL_LEVEL)
-    {
+class Serial1LogHandler: public StreamLogHandler {
+public:
+    explicit Serial1LogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            StreamLogHandler(Serial1, level, filters) {
         Serial1.begin(baud);
-        set_logger_output(log_output, level);
+        LogHandler::install(this);
     }
 
-    static void log_output(const char* msg)
-    {
-        Serial1.print(msg);
+    virtual ~Serial1LogHandler() {
+        LogHandler::uninstall(this);
+        Serial1.end();
     }
-
 };
 
 #if Wiring_USBSerial1
-struct USBSerial1DebugOutput
-{
-    USBSerial1DebugOutput(int baud=9600, LoggerOutputLevel level=ALL_LEVEL)
-    {
+class USBSerial1LogHandler: public StreamLogHandler {
+public:
+    explicit USBSerial1LogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            StreamLogHandler(USBSerial1, level, filters) {
         USBSerial1.begin(baud);
-        set_logger_output(log_output, level);
+        LogHandler::install(this);
     }
 
-    static void log_output(const char* msg)
-    {
-        USBSerial1.print(msg);
+    virtual ~USBSerial1LogHandler() {
+        LogHandler::uninstall(this);
+        USBSerial1.end();
     }
-
 };
-#endif
+#endif // Wiring_USBSerial1
 
+} // namespace spark
+
+// Compatibility API
+class SerialDebugOutput: public spark::SerialLogHandler {
+public:
+    explicit SerialDebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
+        SerialLogHandler(baud, level) {
+    }
+};
+
+class Serial1DebugOutput: public spark::Serial1LogHandler {
+public:
+    explicit Serial1DebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
+        Serial1LogHandler(baud, level) {
+    }
+};
 
 #endif	/* DEBUG_OUTPUT_HANDLER_H */
-
