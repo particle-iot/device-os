@@ -31,11 +31,11 @@ public:
     explicit SerialLogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             StreamLogHandler(Serial, level, filters) {
         Serial.begin(baud);
-        LogHandler::install(this);
+        LogManager::instance()->addHandler(this);
     }
 
     virtual ~SerialLogHandler() {
-        LogHandler::uninstall(this);
+        LogManager::instance()->removeHandler(this);
         Serial.end();
     }
 };
@@ -45,11 +45,11 @@ public:
     explicit Serial1LogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             StreamLogHandler(Serial1, level, filters) {
         Serial1.begin(baud);
-        LogHandler::install(this);
+        LogManager::instance()->addHandler(this);
     }
 
     virtual ~Serial1LogHandler() {
-        LogHandler::uninstall(this);
+        LogManager::instance()->removeHandler(this);
         Serial1.end();
     }
 };

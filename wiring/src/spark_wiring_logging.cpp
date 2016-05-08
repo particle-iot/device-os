@@ -22,67 +22,6 @@
 
 namespace {
 
-using spark::LogHandler;
-
-class LogManager {
-public:
-    void addHandler(LogHandler *handler) {
-        const auto it = std::find(handlers_.cbegin(), handlers_.cend(), handler);
-        if (it == handlers_.end()) {
-            handlers_.push_back(handler);
-            if (handlers_.size() == 1) {
-                log_set_callbacks(logMessage, logWrite, logEnabled, nullptr);
-            }
-        }
-    }
-
-    void removeHandler(LogHandler *handler) {
-        const auto it = std::find(handlers_.begin(), handlers_.end(), handler);
-        if (it != handlers_.end()) {
-            if (handlers_.size() == 1) {
-                log_set_callbacks(nullptr, nullptr, nullptr, nullptr);
-            }
-            handlers_.erase(it);
-        }
-    }
-
-    static LogManager* instance() {
-        static LogManager mgr;
-        return &mgr;
-    }
-
-private:
-    std::vector<LogHandler*> handlers_;
-
-    static void logMessage(const char *msg, int level, const char *category, uint32_t time, const char *file, int line,
-            const char *func, void *reserved) {
-        const LogHandler::SourceInfo info = {file, func, line};
-        const auto &handlers = instance()->handlers_;
-        for (size_t i = 0; i < handlers.size(); ++i) {
-            handlers[i]->message(msg, (LogLevel)level, category, time, info);
-        }
-    }
-
-    static void logWrite(const char *data, size_t size, int level, const char *category, void *reserved) {
-        const auto &handlers = instance()->handlers_;
-        for (size_t i = 0; i < handlers.size(); ++i) {
-            handlers[i]->write(data, size, (LogLevel)level, category);
-        }
-    }
-
-    static int logEnabled(int level, const char *category, void *reserved) {
-        int minLevel = LOG_LEVEL_NONE;
-        const auto &handlers = instance()->handlers_;
-        for (size_t i = 0; i < handlers.size(); ++i) {
-            const int level = handlers[i]->categoryLevel(category);
-            if (level < minLevel) {
-                minLevel = level;
-            }
-        }
-        return (level >= minLevel);
-    }
-};
-
 inline const char* strchrend(const char* s, char c) {
     const char* result = strchr(s, c);
     return result ? result : s + strlen(s);
@@ -213,7 +152,8 @@ LogLevel spark::LogHandler::categoryLevel(const char *category) const {
     return level;
 }
 
-void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info) {
+void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
+        const SourceInfo &info) {
     // Timestamp
     char buf[16];
     snprintf(buf, sizeof(buf), "%010u ", (unsigned)time);
@@ -258,10 +198,56 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
     write("\r\n");
 }
 
-void spark::LogHandler::install(LogHandler *handler) {
-    LogManager::instance()->addHandler(handler);
+// spark::LogManager
+void spark::LogManager::addHandler(LogHandler *handler) {
+    const auto it = std::find(handlers_.cbegin(), handlers_.cend(), handler);
+    if (it == handlers_.end()) {
+        handlers_.push_back(handler);
+        if (handlers_.size() == 1) {
+            log_set_callbacks(logMessage, logWrite, logEnabled, nullptr); // Set system callbacks
+        }
+    }
 }
 
-void spark::LogHandler::uninstall(LogHandler *handler) {
-    LogManager::instance()->removeHandler(handler);
+void spark::LogManager::removeHandler(LogHandler *handler) {
+    const auto it = std::find(handlers_.begin(), handlers_.end(), handler);
+    if (it != handlers_.end()) {
+        if (handlers_.size() == 1) {
+            log_set_callbacks(nullptr, nullptr, nullptr, nullptr); // Reset system callbacks
+        }
+        handlers_.erase(it);
+    }
+}
+
+spark::LogManager* spark::LogManager::instance() {
+    static LogManager mgr;
+    return &mgr;
+}
+
+void spark::LogManager::logMessage(const char *msg, int level, const char *category, uint32_t time, const char *file,
+        int line, const char *func, void *reserved) {
+    const LogHandler::SourceInfo info = {file, func, line};
+    const auto &handlers = instance()->handlers_;
+    for (size_t i = 0; i < handlers.size(); ++i) {
+        handlers[i]->message(msg, (LogLevel)level, category, time, info);
+    }
+}
+
+void spark::LogManager::logWrite(const char *data, size_t size, int level, const char *category, void *reserved) {
+    const auto &handlers = instance()->handlers_;
+    for (size_t i = 0; i < handlers.size(); ++i) {
+        handlers[i]->write(data, size, (LogLevel)level, category);
+    }
+}
+
+int spark::LogManager::logEnabled(int level, const char *category, void *reserved) {
+    int minLevel = LOG_LEVEL_NONE;
+    const auto &handlers = instance()->handlers_;
+    for (size_t i = 0; i < handlers.size(); ++i) {
+        const int level = handlers[i]->categoryLevel(category);
+        if (level < minLevel) {
+            minLevel = level;
+        }
+    }
+    return (level >= minLevel);
 }
