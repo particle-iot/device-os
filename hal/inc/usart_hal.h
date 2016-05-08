@@ -40,32 +40,51 @@
 #endif
 #define SERIAL_BUFFER_SIZE      64
 
-// Available Serial Configurations for C
-#define SERIAL_8N1 (uint8_t)0b00000000
-#define SERIAL_8N2 (uint8_t)0b00000001
-#define SERIAL_8E1 (uint8_t)0b00000100
-#define SERIAL_8E2 (uint8_t)0b00000101
-#define SERIAL_8O1 (uint8_t)0b00001000
-#define SERIAL_8O2 (uint8_t)0b00001001
-#define SERIAL_9N1 (uint8_t)0b00010000
-#define SERIAL_9N2 (uint8_t)0b00010001
+// Pre-defined USART configurations
+#define SERIAL_7E1 (uint32_t)(SERIAL_DATA_BITS_7 | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_1)
+#define SERIAL_7E2 (uint32_t)(SERIAL_DATA_BITS_7 | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_2)
+#define SERIAL_7O1 (uint32_t)(SERIAL_DATA_BITS_7 | SERIAL_PARITY_ODD  | SERIAL_STOP_BITS_1)
+#define SERIAL_7O2 (uint32_t)(SERIAL_DATA_BITS_7 | SERIAL_PARITY_ODD  | SERIAL_STOP_BITS_2)
+#define SERIAL_8N1 (uint32_t)(SERIAL_DATA_BITS_8 | SERIAL_PARITY_NO   | SERIAL_STOP_BITS_1)
+#define SERIAL_8N2 (uint32_t)(SERIAL_DATA_BITS_8 | SERIAL_PARITY_NO   | SERIAL_STOP_BITS_2)
+#define SERIAL_8E1 (uint32_t)(SERIAL_DATA_BITS_8 | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_1)
+#define SERIAL_8E2 (uint32_t)(SERIAL_DATA_BITS_8 | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_2)
+#define SERIAL_8O1 (uint32_t)(SERIAL_DATA_BITS_8 | SERIAL_PARITY_ODD  | SERIAL_STOP_BITS_1)
+#define SERIAL_8O2 (uint32_t)(SERIAL_DATA_BITS_8 | SERIAL_PARITY_ODD  | SERIAL_STOP_BITS_2)
+#define SERIAL_9N1 (uint32_t)(SERIAL_DATA_BITS_9 | SERIAL_PARITY_NO   | SERIAL_STOP_BITS_1)
+#define SERIAL_9N2 (uint32_t)(SERIAL_DATA_BITS_9 | SERIAL_PARITY_NO   | SERIAL_STOP_BITS_2)
 
 // Serial Configuration masks
-#define SERIAL_VALID_CONFIG (uint8_t)0b00001100
-#define SERIAL_STOP_BITS (uint8_t)0b00000011
-#define SERIAL_PARITY_BITS (uint8_t)0b00001100
-#define SERIAL_NINE_BITS (uint8_t)0b00010000
-#define SERIAL_FLOW_CONTROL ((uint8_t)0b11000000)
+#define SERIAL_STOP_BITS      ((uint32_t)0b00000011)
+#define SERIAL_PARITY         ((uint32_t)0b00001100)
+#define SERIAL_DATA_BITS      ((uint32_t)0b00110000)
+#define SERIAL_FLOW_CONTROL   ((uint32_t)0b11000000)
+
+// Stop bits
+#define SERIAL_STOP_BITS_1    ((uint32_t)0b00000000)
+#define SERIAL_STOP_BITS_2    ((uint32_t)0b00000001)
+#define SERIAL_STOP_BITS_0_5  ((uint32_t)0b00000010)
+#define SERIAL_STOP_BITS_1_5  ((uint32_t)0b00000011)
+
+// Parity
+#define SERIAL_PARITY_NO      ((uint32_t)0b00000000)
+#define SERIAL_PARITY_EVEN    ((uint32_t)0b00000100)
+#define SERIAL_PARITY_ODD     ((uint32_t)0b00001000)
+
+// Data bits
+#define SERIAL_DATA_BITS_8    ((uint32_t)0b00000000)
+#define SERIAL_DATA_BITS_9    ((uint32_t)0b00010000)
+#define SERIAL_DATA_BITS_7    ((uint32_t)0b00100000)
 
 // Flow control settings
-#define SERIAL_FLOW_CONTROL_NONE ((uint8_t)0b00000000)
-#define SERIAL_FLOW_CONTROL_RTS ((uint8_t)0b01000000)
-#define SERIAL_FLOW_CONTROL_CTS ((uint8_t)0b10000000)
-#define SERIAL_FLOW_CONTROL_RTS_CTS ((uint8_t)0b11000000)
+#define SERIAL_FLOW_CONTROL_NONE    ((uint32_t)0b00000000)
+#define SERIAL_FLOW_CONTROL_RTS     ((uint32_t)0b01000000)
+#define SERIAL_FLOW_CONTROL_CTS     ((uint32_t)0b10000000)
+#define SERIAL_FLOW_CONTROL_RTS_CTS ((uint32_t)0b11000000)
 
 // LIN Configuration masks
-#define LIN_MODE ((uint32_t)0x0300)
-#define LIN_BREAK_BITS ((uint32_t)0x0C00)
+#define LIN_MODE        ((uint32_t)0x0300)
+#define LIN_BREAK_BITS  ((uint32_t)0x0C00)
 
 // LIN modes
 #define LIN_MODE_MASTER ((uint32_t)0x0100)
@@ -73,10 +92,10 @@
 
 // LIN break settings
 // Supported only in Master mode
-#define LIN_BREAK_13B ((uint32_t)0x0000)
+#define LIN_BREAK_13B   ((uint32_t)0x0000)
 // Supported only in Slave mode
-#define LIN_BREAK_10B ((uint32_t)0x0800)
-#define LIN_BREAK_11B ((uint32_t)0x0C00)
+#define LIN_BREAK_10B   ((uint32_t)0x0800)
+#define LIN_BREAK_11B   ((uint32_t)0x0C00)
 
 // Pre-defined LIN configurations
 #define LIN_MASTER_13B (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_MASTER | LIN_BREAK_13B)
