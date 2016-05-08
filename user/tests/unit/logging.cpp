@@ -640,7 +640,7 @@ CATCH_TEST_CASE("Logger API") {
         TestLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
         Logger logger;
         CATCH_CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
-        logger.trace(""); logger.info(""); logger.warn(""); logger.error("");
+        logger.trace("trace"); logger.info("info"); logger.warn("warn"); logger.error("error");
         log.next().levelEquals(LOG_LEVEL_WARN);
         log.next().levelEquals(LOG_LEVEL_ERROR);
         CATCH_CHECK(!log.hasNext());
