@@ -2989,18 +2989,67 @@ _Since 0.5.0_
 
 As of 0.5.0 firmware, 28800 baud set on the Host will put the device in Listening Mode, where a YMODEM download can be started by additionally sending an `f` character.
 
-The configuration of the serial channel may also specify the number of data bits, stop bits and parity. The default is SERIAL_8N1 (8 data bits, no parity and 1 stop bit) and does not need to be specified to achieve this configuration.  To specify one of the following configurations, add one of these defines as the second parameter in the `begin()` function, e.g. `Serial.begin(9600, SERIAL_8E1);` for 8 data bits, even parity and 1 stop bit.
+The configuration of the serial channel may also specify the number of data bits, stop bits, parity, flow control and other settings. The default is SERIAL_8N1 (8 data bits, no parity and 1 stop bit) and does not need to be specified to achieve this configuration.  To specify one of the following configurations, add one of these defines as the second parameter in the `begin()` function, e.g. `Serial.begin(9600, SERIAL_8E1);` for 8 data bits, even parity and 1 stop bit.
 
-Serial configurations available:
+Pre-defined Serial configurations available:
 
-`SERIAL_8N1` - 8 data bits, no parity, 1 stop bit (default)
-`SERIAL_8N2` - 8 data bits, no parity, 2 stop bits
-`SERIAL_8E1` - 8 data bits, even parity, 1 stop bit
-`SERIAL_8E2` - 8 data bits, even parity, 2 stop bits
-`SERIAL_8O1` - 8 data bits, odd parity, 1 stop bit
-`SERIAL_8O2` - 8 data bits, odd parity, 2 stop bits
-`SERIAL_9N1` - 9 data bits, no parity, 1 stop bit
-`SERIAL_9N2` - 9 data bits, no parity, 2 stop bits
+- `SERIAL_8N1` - 8 data bits, no parity, 1 stop bit (default)
+- `SERIAL_8N2` - 8 data bits, no parity, 2 stop bits
+- `SERIAL_8E1` - 8 data bits, even parity, 1 stop bit
+- `SERIAL_8E2` - 8 data bits, even parity, 2 stop bits
+- `SERIAL_8O1` - 8 data bits, odd parity, 1 stop bit
+- `SERIAL_8O2` - 8 data bits, odd parity, 2 stop bits
+- `SERIAL_9N1` - 9 data bits, no parity, 1 stop bit
+- `SERIAL_9N2` - 9 data bits, no parity, 2 stop bits
+
+_Since 0.6.0_
+
+- `SERIAL_7O1` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7O2` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7E1` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7E2` - 7 data bits, odd parity, 1 stop bit
+- `LIN_MASTER_13B` - 8 data bits, no parity, 1 stop bit, LIN Master mode with 13-bit break generation
+- `LIN_SLAVE_10B` - 8 data bits, no parity, 1 stop bit, LIN Slave mode with 10-bit break detection
+- `LIN_SLAVE_11B` - 8 data bits, no parity, 1 stop bit, LIN Slave mode with 11-bit break detection
+
+Alternatively, configuration may be constructed manually by ORing (`|`) the following configuration constants:
+
+Data bits:
+- `SERIAL_DATA_BITS_7` - 7 data bits
+- `SERIAL_DATA_BITS_8` - 8 data bits
+- `SERIAL_DATA_BITS_9` - 9 data bits
+
+Stop bits:
+- `SERIAL_STOP_BITS_1` - 1 stop bit
+- `SERIAL_STOP_BITS_2` - 2 stop bits
+- `SERIAL_STOP_BITS_0_5` - 0.5 stop bits
+- `SERIAL_STOP_BITS_1_5` - 1.5 stop bits
+
+Parity:
+- `SERIAL_PARITY_NO` - no parity
+- `SERIAL_PARITY_EVEN` - even parity
+- `SERIAL_PARITY_ODD` - odd parity
+
+{{#if core}}
+Hardware flow control, available only on Serial1 (`CTS` - `A0`, `RTS` - `A1`):
+{{/if}}
+{{#unless core}}
+Hardware flow control, available only on Serial2 (`CTS` - `A7`, `RTS` - `RGBR` ):
+{{/unless}}
+- `SERIAL_FLOW_CONTROL_NONE` - no flow control
+- `SERIAL_FLOW_CONTROL_RTS` - RTS flow control
+- `SERIAL_FLOW_CONTROL_CTS` - CTS flow control
+- `SERIAL_FLOW_CONTROL_RTS_CTS` - RTS/CTS flow control
+
+LIN configuration:
+- `LIN_MODE_MASTER` - LIN Master
+- `LIN_MODE_SLAVE` - LIN Slave
+- `LIN_BREAK_13B` - 13-bit break generation
+- `LIN_BREAK_10B` - 10-bit break detection
+- `LIN_BREAK_11B` - 10-bit break detection
+
+**NOTE:** LIN break detection may be enabled in both Master and Slave modes.
+
 
 ```C++
 // SYNTAX
@@ -3016,6 +3065,9 @@ Serial2.begin(speed);         // on Core via
                               // RGB-LED green(TX) and
                               // RGB-LED blue (RX) pins
 Serial2.begin(speed, config); //  "
+
+Serial1.begin(9600, SERIAL_9N1); // via TX/RX pins, 9600 9N1 mode
+Serial2.begin(9600, SERIAL_DATA_BITS_8 | SERIAL_STOP_BITS_1_5 | SERIAL_PARITY_EVEN); // via TX/RX pins, 9600 8E1.5
 {{#if electron}}
 
 Serial4.begin(speed);         // via C3(TX)/C2(RX) pins
@@ -3026,8 +3078,9 @@ Serial5.begin(speed, config); //  "
 {{/if}}
 ```
 
-`speed`: parameter that specifies the baud rate *(long)*
-`config`: parameter that specifies the number of data bits used, parity and stop bits *(long)*
+Parameters:
+- `speed`: parameter that specifies the baud rate *(long)*
+- `config`: parameter that specifies the number of data bits used, parity and stop bits *(long)*
 
 `begin()` does not return anything
 
