@@ -3,11 +3,8 @@
 
 ### FEATURES
 
-- [Photon] Wi-Fi Country Code [#942](https://github.com/spark/firmware/pull/942)
-
 ### ENHANCEMENTS
 
-- Local build support for ARM GCC 5.3.1. [#963](https://github.com/spark/firmware/issues/963)
 - Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
 
 ### BUGFIXES
@@ -16,12 +13,24 @@
 - Free memory allocated for previous system interrupt handler [#927](https://github.com/spark/firmware/issues/927)
 - Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
 
+
 ## v0.5.1
+
+### FEATURES
+
+- Wi-Fi Country Code can be set to configure the available channels and power transmission. [#942](https://github.com/spark/firmware/pull/942)
+
+### ENHANCEMENTS
+
+- ARM GCC 5.3.1 compiler support
 
 ### BUGFIXES
 
-- Fixes bit mask provided for PMIC::setChargeVoltage(4208) option. [#987](https://github.com/spark/firmware/pull/987)
-- Revert EEPROM capacity to 2048 instead of 2047 Photon / 128 Core [#983](https://github.com/spark/firmware/pull/983)
+- [Photon/P1] Fix a timing-critical bug in WICED that causes system freeze. [#877](https://github.com/spark/firmware/issues/877)
+- Tone not available on A7 after stop-mode sleep. [#938](https://github.com/spark/firmware/issues/938) 
+- Regression in EEPROM emulation size. [#983](https://github.com/spark/firmware/pull/983)
+- [Electron] Wrong bitmask is provided for 4208 setting in power management [#987](https://github.com/spark/firmware/pull/987)
+
 
 ## v0.5.0 (same as v0.5.0-rc.2)
 

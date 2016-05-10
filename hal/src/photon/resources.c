@@ -22,10 +22,14 @@ static uint8_t wifi_nvram_resource_index = 0;
  * system-part1, which is linked as a dynamic library. The resources.o is still linked in the hal in
  * part2, but part2 is also importing the dynamic library, leading to a double definition of these
  * functions. Marking them weak sidesteps this.
+ * This is a bit of a hack. The resources.c file is compiled in the HAL, but then it's borrowed for system-part1, which is linked as a
+ * dynamic library. The resources.o is still linked in the hal in part2, but part2 is also importing the dynamic library, leading to a double
+ * definition of these functions. Marking them weak sidesteps this.
  * I imagine there's a more elegant way to solve this, but this was quick to implement.
  */
-const resource_hnd_t* wwd_nvram_image_resource(void) __attribute__((weak));
+const resource_hnd_t* wwd_nvram_image_resource(void) __attribute__((weak)) ;
 int wwd_select_nvram_image_resource(uint8_t index, void* reserved) __attribute__((weak));
+
 
 const resource_hnd_t* wwd_nvram_image_resource(void)
 {
