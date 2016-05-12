@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- Copyright (c) 2016 Particle Industries, Inc.  All rights reserved.
+ Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Lesser General Public
@@ -17,13 +17,21 @@
  ******************************************************************************
  */
 
-#include "lightssl_protocol.h"
+#ifndef MBEDTLS_COMPAT_H
+#define MBEDTLS_COMPAT_H
 
-#if HAL_PLATFORM_CLOUD_TCP
+// Compatibility aliases for mbedTLS / TropicSSL APIs
 
-namespace particle { namespace protocol {
-	void LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data) { }
+#define rsa_context mbedtls_rsa_context
+#define rsa_free mbedtls_rsa_free
 
-}}
+#define mpi mbedtls_mpi
+#define mpi_init mbedtls_mpi_init
+#define mpi_free mbedtls_mpi_free
+#define mpi_lset mbedtls_mpi_lset
+#define mpi_size mbedtls_mpi_size
+#define mpi_read_binary mbedtls_mpi_read_binary
+#define mpi_read_string mbedtls_mpi_read_string
+#define mpi_write_binary mbedtls_mpi_write_binary
 
-#endif
+#endif // MBEDTLS_COMPAT_H
