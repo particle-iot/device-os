@@ -2,6 +2,7 @@
 #include "UnitTest++.h"
 #include "handshake.h"
 #include "tropicssl/rsa.h"
+#include "tropicssl/sha1.h"
 
 struct HandshakeFixture
 {

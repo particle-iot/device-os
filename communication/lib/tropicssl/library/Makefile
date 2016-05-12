@@ -20,6 +20,9 @@
 CFLAGS	= -I../include -D_FILE_OFFSET_BITS=64 -Wall $(TROPICSSL_CFLAGS_EXTRA_WARNINGS)
 OFLAGS	= -Os
 
+# Platform defs for unit tests
+CFLAGS += -DPLATFORM_ID=3 -I../../../../hal/inc
+
 ifndef TROPICSSL_CFLAGS_NO_WARNINGS_AS_ERRORS
 CFLAGS += -Werror
 endif # TROPICSSL_CFLAGS_NO_WARNINGS_AS_ERRORS

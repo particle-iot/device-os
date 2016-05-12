@@ -2,6 +2,9 @@
 #include "spark_protocol.h"
 #include "ConstructorFixture.h"
 
+// Dummy argument for SparkProtocol::event_loop()
+static CoAPMessageType::Enum msg_type = CoAPMessageType::NONE;
+
 SUITE(SparkProtocolConstruction)
 {
   TEST_FIXTURE(ConstructorFixture, NoErrorReturnedFromHandshake)
@@ -51,7 +54,7 @@ SUITE(SparkProtocolConstruction)
   {
     spark_protocol.handshake();
     bytes_received[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_EQUAL(2, bytes_received[0]);
   }
 
@@ -64,7 +67,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, describe, 18);
     spark_protocol.handshake();
     bytes_received[0] = bytes_received[1] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_EQUAL(16, bytes_received[1]);
   }
 
@@ -77,7 +80,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, describe, 18);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_EQUAL(50, bytes_sent[0]);
   }
 
@@ -98,7 +101,7 @@ SUITE(SparkProtocolConstruction)
       0x6a, 0xed, 0x83, 0xc5, 0xe0, 0x5d, 0x5c, 0x5a };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 50);
   }
 
@@ -117,7 +120,7 @@ SUITE(SparkProtocolConstruction)
       0xf5, 0x06, 0xf9, 0x7d, 0xf1, 0xce, 0x25, 0x36 };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
   }
 
@@ -137,7 +140,7 @@ SUITE(SparkProtocolConstruction)
       0xb9, 0x1c, 0x09, 0x2d, 0xe2, 0x8b, 0x4f, 0xe0 };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_1, 18);
   }
 
@@ -157,7 +160,7 @@ SUITE(SparkProtocolConstruction)
       0x15, 0xb5, 0x06, 0x6d, 0x44, 0x65, 0x83, 0xa8 };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
   }
 
@@ -172,7 +175,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, function_call, 34);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK(function_called);
   }
 
@@ -213,7 +216,7 @@ SUITE(SparkProtocolConstruction)
       0x3d, 0x5b, 0xf1, 0x6d, 0xb3, 0xfb, 0x46, 0x4d };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
   }
 
@@ -226,7 +229,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, update_begin, 18);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK(did_prepare_for_update);
   }
 
@@ -243,7 +246,7 @@ SUITE(SparkProtocolConstruction)
       0x83, 0xa8, 0xe4, 0x32, 0x55, 0x2f, 0x21, 0xcb };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_1, 18);
   }
 
@@ -270,7 +273,7 @@ SUITE(SparkProtocolConstruction)
       0x90, 0xf7, 0x25, 0x63, 0x70, 0xb8, 0x88, 0xe3 };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
   }
 
@@ -284,7 +287,7 @@ SUITE(SparkProtocolConstruction)
       0x61, 0x30, 0xc7, 0x4c, 0x9c, 0x11, 0x5c, 0x5b,
       0x03, 0x83, 0x8a, 0x9a, 0xa7, 0x6c, 0xf1, 0x83 };
     memcpy(message_to_receive, update_begin, 18);
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     uint8_t chunk[98] = {
       0x00, 0x60,
@@ -305,7 +308,7 @@ SUITE(SparkProtocolConstruction)
     // Now reset test buffer and look for chunk response
     bytes_received[0] = bytes_sent[0] = 0;
     mock_crc = 0x01234567;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     const uint8_t expected[18] = {
       0x00, 0x10,
@@ -325,7 +328,7 @@ SUITE(SparkProtocolConstruction)
       0x61, 0x30, 0xc7, 0x4c, 0x9c, 0x11, 0x5c, 0x5b,
       0x03, 0x83, 0x8a, 0x9a, 0xa7, 0x6c, 0xf1, 0x83 };
     memcpy(message_to_receive, update_begin, 18);
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     uint8_t chunk[98] = {
       0x00, 0x60,
@@ -346,7 +349,7 @@ SUITE(SparkProtocolConstruction)
     // Now reset test buffer and look for chunk response
     bytes_received[0] = bytes_sent[0] = 0;
     mock_crc = 0xabad1dea;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     const uint8_t expected[18] = {
       0x00, 0x10,
@@ -366,7 +369,7 @@ SUITE(SparkProtocolConstruction)
       0x61, 0x30, 0xc7, 0x4c, 0x9c, 0x11, 0x5c, 0x5b,
       0x03, 0x83, 0x8a, 0x9a, 0xa7, 0x6c, 0xf1, 0x83 };
     memcpy(message_to_receive, update_begin, 18);
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     uint8_t chunk[98] = {
       0x00, 0x60,
@@ -387,7 +390,7 @@ SUITE(SparkProtocolConstruction)
     // Now reset test buffer and look for chunk response
     bytes_received[0] = bytes_sent[0] = 0;
     mock_crc = 0x01234567;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     const uint8_t expected[] = "not actually a valid firmware data "
                                "chunk payload, but the header is fine";
@@ -407,7 +410,7 @@ SUITE(SparkProtocolConstruction)
       0x76, 0xb2, 0xf5, 0xab, 0xb9, 0xb2, 0x2d, 0xae };
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_ARRAY_EQUAL(expected, sent_buf_0, 18);
   }
 
@@ -420,7 +423,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, update_done, 18);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK(did_finish_update);
   }
 
@@ -436,12 +439,12 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, update_begin, 18);
     next_millis = 0;
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     next_millis = 4000;
     nothing_to_receive = true;
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
 
     const uint8_t expected[18] = {
       0x00, 0x10,
@@ -468,7 +471,7 @@ SUITE(SparkProtocolConstruction)
       event_handlers_called_with[0].event_name[0] = 0;
 
       spark_protocol.add_event_handler(event_name, mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL(event_name, event_handlers_called_with[0].event_name);
     }
 
@@ -487,7 +490,7 @@ SUITE(SparkProtocolConstruction)
       event_handlers_called_with[0].data[0] = 0;
 
       spark_protocol.add_event_handler(event_name, mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("", event_handlers_called_with[0].data);
     }
 
@@ -506,7 +509,7 @@ SUITE(SparkProtocolConstruction)
       event_handlers_called_with[0].event_name[0] = 0;
 
       spark_protocol.add_event_handler(event_name, mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_ARRAY_EQUAL(event_name, event_handlers_called_with[0].event_name, strlen(event_name));
     }
 
@@ -526,7 +529,7 @@ SUITE(SparkProtocolConstruction)
 
       spark_protocol.add_event_handler(event_name, mock_event_handler_0);
       spark_protocol.add_event_handler("foo", mock_event_handler_1);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_ARRAY_EQUAL(event_name, event_handlers_called_with[0].event_name, strlen(event_name));
     }
 
@@ -546,7 +549,7 @@ SUITE(SparkProtocolConstruction)
 
       spark_protocol.add_event_handler(event_name, mock_event_handler_0);
       spark_protocol.add_event_handler("foo", mock_event_handler_1);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("", event_handlers_called_with[1].event_name);
     }
 
@@ -566,7 +569,7 @@ SUITE(SparkProtocolConstruction)
 
       spark_protocol.add_event_handler("foo", mock_event_handler_0);
       spark_protocol.add_event_handler(event_name, mock_event_handler_1);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_ARRAY_EQUAL(event_name, event_handlers_called_with[1].event_name, strlen(event_name));
     }
 
@@ -586,7 +589,7 @@ SUITE(SparkProtocolConstruction)
 
       spark_protocol.add_event_handler("foo", mock_event_handler_0);
       spark_protocol.add_event_handler(event_name, mock_event_handler_1);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       const char *expected = "208F";
       CHECK_EQUAL(expected, event_handlers_called_with[1].data);
     }
@@ -603,7 +606,7 @@ SUITE(SparkProtocolConstruction)
       event_handlers_called_with[0].event_name[0] = 0;
 
       spark_protocol.add_event_handler("teapot-boiled-over", mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("", event_handlers_called_with[0].event_name);
     }
 
@@ -623,7 +626,7 @@ SUITE(SparkProtocolConstruction)
       event_handlers_called_with[0].event_name[0] = 0;
 
       spark_protocol.add_event_handler("teacup", mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("teacup-overflow", event_handlers_called_with[0].event_name);
     }
 
@@ -641,7 +644,7 @@ SUITE(SparkProtocolConstruction)
       memset(event_handlers_called_with[0].event_name, 0, 64);
 
       spark_protocol.add_event_handler("a", mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("a/b/c/d", event_handlers_called_with[0].event_name);
     }
 
@@ -659,7 +662,7 @@ SUITE(SparkProtocolConstruction)
       memset(event_handlers_called_with[0].data, 0, 64);
 
       spark_protocol.add_event_handler("a", mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("xyz", event_handlers_called_with[0].data);
     }
 
@@ -681,7 +684,7 @@ SUITE(SparkProtocolConstruction)
       memset(event_handlers_called_with[0].event_name, 0, 64);
 
       spark_protocol.add_event_handler("a/long-coap-option", mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("a/long-coap-option/another-long-path/b", event_handlers_called_with[0].event_name);
     }
 
@@ -703,7 +706,7 @@ SUITE(SparkProtocolConstruction)
       memset(event_handlers_called_with[0].data, 0, 64);
 
       spark_protocol.add_event_handler("a/long-coap-option", mock_event_handler_0);
-      spark_protocol.event_loop();
+      spark_protocol.event_loop(msg_type);
       CHECK_EQUAL("xyz", event_handlers_called_with[0].data);
     }
   }
@@ -718,7 +721,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, signal_start, 18);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_EQUAL(true, signal_called_with);
   }
 
@@ -731,7 +734,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, signal_stop, 18);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_EQUAL(false, signal_called_with);
   }
 
@@ -744,7 +747,7 @@ SUITE(SparkProtocolConstruction)
     memcpy(message_to_receive, time, 18);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    spark_protocol.event_loop();
+    spark_protocol.event_loop(msg_type);
     CHECK_EQUAL(1398367917, set_time_called_with);
   }
 

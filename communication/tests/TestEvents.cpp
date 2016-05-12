@@ -25,9 +25,17 @@
 #include <string.h>
 #include "UnitTest++.h"
 #include "events.h"
+#include "messages.h"
+
+using namespace particle::protocol;
 
 static uint8_t buf[54];
 size_t len;
+
+static size_t event(uint8_t buf[], uint16_t message_id, const char *event_name, const char *data, int ttl, EventType::Enum event_type)
+{
+    return Messages::event(buf, message_id, event_name, data, ttl, event_type, false /* Non-confirmable */);
+}
 
 SUITE(Events)
 {

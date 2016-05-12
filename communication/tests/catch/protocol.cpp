@@ -29,7 +29,7 @@ class AbstractProtocol : public Protocol
 public:
 	AbstractProtocol(MessageChannel& channel) : Protocol(channel) {}
 
-	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful)
+	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful) override
 	{
 		return 0;
 	}
@@ -37,11 +37,14 @@ public:
 	virtual void init(const char *id,
 	          const SparkKeys &keys,
 	          const SparkCallbacks &callbacks,
-	          const SparkDescriptor &descriptor)
+	          const SparkDescriptor &descriptor) override
 	{
 		Protocol::init(callbacks, descriptor);
 	}
 
+	virtual void command(ProtocolCommands::Enum command, uint32_t data) override
+	{
+	}
 };
 
 SCENARIO("default product co-ordinates are set")

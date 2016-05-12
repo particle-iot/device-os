@@ -26,6 +26,8 @@
 #include "ConstructorFixture.h"
 #include <string.h>
 
+#include "protocol_defs.h"
+
 const uint8_t ConstructorFixture::nonce[41] =
   "\x31\xE8\x30\x24\x6F\x2D\x7D\x98\x7C\x42\x47\x7E\xF0\x33\xF4\x24"
   "\xFF\x62\xD3\x82\xB1\x7A\x09\x31\x13\x0B\x23\x63\x98\xDE\x90\x84"
@@ -174,7 +176,7 @@ ConstructorFixture::ConstructorFixture()
   spark_protocol.init(id, keys, callbacks, descriptor);
 }
 
-int ConstructorFixture::mock_send(const unsigned char *buf, uint32_t buflen)
+int ConstructorFixture::mock_send(const unsigned char *buf, uint32_t buflen, void*)
 {
   if (0 < buflen)
   {
@@ -216,7 +218,7 @@ int ConstructorFixture::mock_send(const unsigned char *buf, uint32_t buflen)
   return buflen;
 }
 
-int ConstructorFixture::mock_receive(unsigned char *buf, uint32_t buflen)
+int ConstructorFixture::mock_receive(unsigned char *buf, uint32_t buflen, void*)
 {
   if (nothing_to_receive)
     return 0;
@@ -304,7 +306,7 @@ int ConstructorFixture::mock_num_functions(void)
 void ConstructorFixture::mock_copy_function_key(char *dst, int i)
 {
   const char *funcs[1] = { "brew\0\0\0\0\0\0\0\0" };
-  memcpy(dst, funcs[i], SparkProtocol::MAX_FUNCTION_KEY_LENGTH);
+  memcpy(dst, funcs[i], MAX_FUNCTION_KEY_LENGTH);
 }
 
 int ConstructorFixture::mock_call_function(const char *function_key, const char *arg,
@@ -327,7 +329,7 @@ int ConstructorFixture::mock_num_variables(void)
 void ConstructorFixture::mock_copy_variable_key(char *dst, int i)
 {
   const char *vars[1] = { "temperature\0" };
-  memcpy(dst, vars[i], SparkProtocol::MAX_VARIABLE_KEY_LENGTH);
+  memcpy(dst, vars[i], MAX_VARIABLE_KEY_LENGTH);
 }
 
 const void *ConstructorFixture::mock_get_variable(const char *variable_key)

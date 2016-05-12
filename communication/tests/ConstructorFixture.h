@@ -28,6 +28,10 @@
 
 #include <stdint.h>
 #include "spark_protocol.h"
+#include "spark_protocol_functions.h"
+#include "spark_descriptor.h"
+#include "file_transfer.h"
+#include "system_tick_hal.h"
 
 struct EventHandlerCalledWith
 {
@@ -46,8 +50,8 @@ struct ConstructorFixture
   static int bytes_received[2];
   static uint8_t sent_buf_0[256];
   static uint8_t sent_buf_1[256];
-  static int mock_send(const unsigned char *buf, uint32_t buflen);
-  static int mock_receive(unsigned char *buf, uint32_t buflen);
+  static int mock_send(const unsigned char *buf, uint32_t buflen, void *handle);
+  static int mock_receive(unsigned char *buf, uint32_t buflen, void *handle);
   static uint8_t message_to_receive[98];
   static int mock_prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void*);
   static uint32_t mock_crc;
