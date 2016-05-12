@@ -42,6 +42,7 @@ CPPSRC += $(call target_files,tests/catch,*.cpp)
 CPPSRC += src/coap.cpp src/messages.cpp src/events.cpp src/protocol.cpp
 CPPSRC += src/chunked_transfer.cpp src/coap_channel.cpp src/eckeygen.cpp
 CPPSRC += src/dtls_message_channel.cpp src/dtls_protocol.cpp
+CPPSRC += src/mbedtls_util.cpp
 
 CSRC += $(call target_files,lib/mbedtls/library,*.c)
 
@@ -55,6 +56,8 @@ INCLUDE_DIRS += $(PROJECT_ROOT)/$(SERVICES)/inc
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(COMMUNICATION)/src
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(HAL)/shared $(PROJECT_ROOT)/$(HAL)/inc
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(DYNALIB)/inc
+
+CFLAGS += -DMBEDTLS_CONFIG_FILE="<mbedtls_config.h>"
 
 CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -fdata-sections -Wall
