@@ -1,5 +1,6 @@
 #include "UnitTest++.h"
 #include "spark_protocol.h"
+#include "protocol_defs.h"
 
 struct CoAPFixture
 {
@@ -101,14 +102,14 @@ const uint8_t CoAPFixture::signed_encrypted_credentials[385] =
   "\xCE\x1D\xAD\xC2\x18\xEB\x07\x27\xC5\x1C\xC3\x38\xC3\xE6\xB7\xAD"
   "\xBB\x85\xAC\xE2\xAB\xDA\x30\xBF\x02\xC6\x34\xC7\x99\x1E\x7F\x83";
 
-int mock_send(const unsigned char *buf, uint32_t buflen)
+int mock_send(const unsigned char *buf, uint32_t buflen, void*)
 {
   unsigned const char *prevent_warnings = buf;
   prevent_warnings += buflen;
   return 0;
 }
 
-int mock_receive(unsigned char *buf, uint32_t buflen)
+int mock_receive(unsigned char *buf, uint32_t buflen, void*)
 {
   unsigned char *prevent_warnings = buf;
   prevent_warnings += buflen;
@@ -497,13 +498,13 @@ SUITE(CoAP)
     unsigned char buf[48];
     memset(buf, 0, 48);
     init();
-    spark_protocol.description(buf, 0x66, 0xf6, 0x49, SparkProtocol::DESCRIBE_APPLICATION);
+    spark_protocol.description(buf, 0x66, 0xf6, 0x49, DESCRIBE_APPLICATION);
     CHECK_ARRAY_EQUAL(expected, buf, 48);
   }
 
   TEST_FIXTURE(CoAPFixture, PresenceAnnouncementReturns19)
   {
-    const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    const unsigned char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     unsigned char buf[19];
     init();
     int len = spark_protocol.presence_announcement(buf, id);
@@ -515,7 +516,7 @@ SUITE(CoAP)
     uint8_t expected[19] = {
       0x50, 0x02, 0x00, 0x00, 0xb1, 'h', 0xff,
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-    const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    const unsigned char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     unsigned char buf[19];
     memset(buf, 0, 19);
     init();

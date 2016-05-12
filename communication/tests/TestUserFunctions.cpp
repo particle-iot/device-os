@@ -27,6 +27,9 @@
 #include "spark_protocol.h"
 #include "ConstructorFixture.h"
 
+// Dummy argument for SparkProtocol::event_loop()
+static CoAPMessageType::Enum msg_type = CoAPMessageType::NONE;
+
 SUITE(UserFunctions)
 {
   TEST_FIXTURE(ConstructorFixture, ArgLen63Succeeds)
@@ -46,7 +49,7 @@ SUITE(UserFunctions)
     memcpy(message_to_receive, function_call, 82);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    bool success = spark_protocol.event_loop();
+    bool success = spark_protocol.event_loop(msg_type);
     CHECK(success);
   }
 
@@ -67,7 +70,7 @@ SUITE(UserFunctions)
     memcpy(message_to_receive, function_call, 82);
     spark_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
-    bool success = spark_protocol.event_loop();
+    bool success = spark_protocol.event_loop(msg_type);
     CHECK(!success);
   }
 }
