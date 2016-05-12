@@ -21,10 +21,12 @@
 LOG_SOURCE_CATEGORY("comm.dtls")
 
 #include "dtls_message_channel.h"
+#include "service_debug.h"
 #include "protocol.h"
 #include "rng_hal.h"
 #include "mbedtls/error.h"
 #include "mbedtls/ssl_internal.h"
+#include "mbedtls_util.h"
 #include "timer_hal.h"
 #include <stdio.h>
 #include <string.h>
@@ -177,24 +179,6 @@ static void my_debug(void *ctx, int level,
 #endif
 }
 
-// todo - would like to make this a callback
-int dtls_rng(void* handle, uint8_t* data, const size_t len_)
-{
-	size_t len = len_;
-	while (len>=4)
-	{
-		*((uint32_t*)data) = HAL_RNG_GetRandomNumber();
-		data += 4;
-		len -= 4;
-	}
-	while (len-->0)
-	{
-		*data++ = HAL_RNG_GetRandomNumber();
-	}
-
-	return 0;
-}
-
 ProtocolError DTLSMessageChannel::init(
 		const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,
@@ -215,7 +199,7 @@ ProtocolError DTLSMessageChannel::init(
 
 	mbedtls_ssl_conf_handshake_timeout(&conf, 3000, 6000);
 
-	mbedtls_ssl_conf_rng(&conf, dtls_rng, this);
+	mbedtls_ssl_conf_rng(&conf, default_rng, nullptr); // todo - would like to make this a callback
 	mbedtls_ssl_conf_dbg(&conf, my_debug, nullptr);
 	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
 

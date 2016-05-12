@@ -23,6 +23,14 @@
 #include "debug.h"
 #include <stdlib.h>
 
+#if USE_MBEDTLS
+#include "mbedtls/rsa.h"
+#include "mbedtls_util.h"
+#include "mbedtls_compat.h"
+#else
+#include "tropicssl/rsa.h"
+#endif
+
 using particle::CompletionHandler;
 
 /**
@@ -40,7 +48,13 @@ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* 
 {
     rsa_context rsa;
     init_rsa_context_with_private_key(&rsa, private_key);
+#if USE_MBEDTLS
+    size_t size = 0; // mbedTLS wants size_t*
+    int err = mbedtls_rsa_pkcs1_decrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PRIVATE, &size, ciphertext, plaintext, plaintext_len);
+    plaintext_len = size;
+#else
     int err = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &plaintext_len, ciphertext, plaintext, plaintext_len);
+#endif
     rsa_free(&rsa);
     return err ? -abs(err) : plaintext_len;
 }

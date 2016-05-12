@@ -22,10 +22,17 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
   */
-#include "tropicssl/rsa.h"
-#include "tropicssl/sha1.h"
 #include <string.h>
 #include <stdint.h>
+
+#include "protocol_selector.h"
+
+#if USE_MBEDTLS
+#include "mbedtls/rsa.h"
+#include "mbedtls_compat.h"
+#else
+#include "tropicssl/rsa.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {

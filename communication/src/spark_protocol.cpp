@@ -27,6 +27,10 @@
 LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 
 #include "spark_protocol.h"
+#include "protocol_selector.h"
+
+#ifndef PARTICLE_PROTOCOL
+
 #include "protocol_defs.h"
 #include "handshake.h"
 #include <string.h>
@@ -1714,3 +1718,5 @@ inline void SparkProtocol::coded_ack(unsigned char *buf,
 
   encrypt(buf, 16);
 }
+
+#endif // !PARTICLE_PROTOCOL

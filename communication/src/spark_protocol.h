@@ -26,6 +26,10 @@
 #ifndef __SPARK_PROTOCOL_H
 #define __SPARK_PROTOCOL_H
 
+#include "protocol_selector.h"
+
+#ifndef PARTICLE_PROTOCOL
+
 #include "protocol_defs.h"
 #include "spark_descriptor.h"
 #include "coap.h"
@@ -264,5 +268,7 @@ class SparkProtocol
 
     TimeSyncManager timesync_;
 };
+
+#endif // !PARTICLE_PROTOCOL
 
 #endif // __SPARK_PROTOCOL_H
