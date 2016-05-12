@@ -27,6 +27,13 @@
 
 #if HAL_PLATFORM_CLOUD_TCP
 
+#if USE_MBEDTLS
+#include "mbedtls/md.h"
+#include "mbedtls_util.h"
+#else
+#include "tropicssl/sha1.h"
+#endif
+
 int ciphertext_from_nonce_and_id(const unsigned char *nonce,
                                  const unsigned char *id,
                                  const unsigned char *pubkey,
@@ -40,7 +47,11 @@ int ciphertext_from_nonce_and_id(const unsigned char *nonce,
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, pubkey);
 
+#if USE_MBEDTLS
+  int ret = mbedtls_rsa_pkcs1_encrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PUBLIC, 52, plaintext, ciphertext);
+#else
   int ret = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, 52, plaintext, ciphertext);
+#endif
   rsa_free(&rsa);
   return ret;
 }
@@ -52,9 +63,15 @@ int decipher_aes_credentials(const unsigned char *private_key,
   rsa_context rsa;
   init_rsa_context_with_private_key(&rsa, private_key);
 
+#if USE_MBEDTLS
+  size_t len = 128;
+  int ret = mbedtls_rsa_pkcs1_decrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PRIVATE, &len, ciphertext,
+                              aes_credentials, 40);
+#else
   int len = 128;
   int ret = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &len, ciphertext,
                               aes_credentials, 40);
+#endif
   rsa_free(&rsa);
   return ret;
 }
@@ -63,7 +80,11 @@ void calculate_ciphertext_hmac(const unsigned char *ciphertext,
                                const unsigned char *hmac_key,
                                unsigned char *hmac)
 {
+#if USE_MBEDTLS
+  mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA1), hmac_key, 40, ciphertext, 128, hmac);
+#else
   sha1_hmac(hmac_key, 40, ciphertext, 128, hmac);
+#endif
 }
 
 int verify_signature(const unsigned char *signature,
@@ -73,8 +94,14 @@ int verify_signature(const unsigned char *signature,
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, pubkey);
 
+#if USE_MBEDTLS
+  int ret = mbedtls_rsa_pkcs1_verify(&rsa, default_rng, nullptr, MBEDTLS_RSA_PUBLIC, MBEDTLS_MD_NONE, 20,
+                             expected_hmac, signature);
+#else
   int ret = rsa_pkcs1_verify(&rsa, RSA_PUBLIC, RSA_RAW, 20,
                              expected_hmac, signature);
+#endif
+
   rsa_free(&rsa);
   return ret;
 }
@@ -82,7 +109,11 @@ int verify_signature(const unsigned char *signature,
 void init_rsa_context_with_public_key(rsa_context *rsa,
                                       const unsigned char *pubkey)
 {
+#if USE_MBEDTLS
+  mbedtls_rsa_init(rsa, MBEDTLS_RSA_PKCS_V15, 0);
+#else
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
+#endif
 
   rsa->len = 256;
   mpi_read_binary(&rsa->N, pubkey + 33, 256);
@@ -98,7 +129,11 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
 void init_rsa_context_with_private_key(rsa_context *rsa,
                                        const unsigned char *private_key)
 {
+#if USE_MBEDTLS
+  mbedtls_rsa_init(rsa, MBEDTLS_RSA_PKCS_V15, 0);
+#else
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
+#endif
 
   rsa->len = 128;
 

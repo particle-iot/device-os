@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- Copyright (c) 2016 Particle Industries, Inc.  All rights reserved.
+ Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Lesser General Public
@@ -17,13 +17,12 @@
  ******************************************************************************
  */
 
-#include "lightssl_protocol.h"
+#ifndef MBEDTLS_UTIL_H
+#define MBEDTLS_UTIL_H
 
-#if HAL_PLATFORM_CLOUD_TCP
+#include <cstddef>
 
-namespace particle { namespace protocol {
-	void LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data) { }
+// Random number generator callback
+int default_rng(void*, unsigned char* data, size_t size);
 
-}}
-
-#endif
+#endif // MBEDTLS_UTIL_H

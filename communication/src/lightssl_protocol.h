@@ -84,4 +84,4 @@ public:
 
 }}
 
-#endif
+#endif // HAL_PLATFORM_CLOUD_TCP

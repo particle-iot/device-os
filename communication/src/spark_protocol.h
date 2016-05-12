@@ -26,6 +26,10 @@
 #ifndef __SPARK_PROTOCOL_H
 #define __SPARK_PROTOCOL_H
 
+#include "protocol_selector.h"
+
+#ifndef PARTICLE_PROTOCOL
+
 #include "protocol_defs.h"
 #include "spark_descriptor.h"
 #include "coap.h"
@@ -252,5 +256,7 @@ class SparkProtocol
      */
     chunk_index_t missed_chunk_index;
 };
+
+#endif // !PARTICLE_PROTOCOL
 
 #endif // __SPARK_PROTOCOL_H
