@@ -72,8 +72,6 @@
 #endif
 
 #if defined(TROPICSSL_AES_ROM_TABLES)
-
-#if !HAL_PLATFORM_CLOUD_UDP
 /*
  * Forward S-box
  */
@@ -333,24 +331,6 @@ static const unsigned long RT3[256] = { RT };
 #undef V
 
 #undef RT
-
-#else
-
-
-extern const unsigned char FSb[256];
-extern const unsigned long FT0[256];
-extern const unsigned long FT1[256];
-extern const unsigned long FT2[256];
-extern const unsigned long FT3[256];
-
-extern const unsigned char RSb[256];
-extern const unsigned long RT0[256];
-extern const unsigned long RT1[256];
-extern const unsigned long RT2[256];
-extern const unsigned long RT3[256];
-
-
-#endif //!HAL_PLATFORM_CLOUD_UDP
 
 /*
  * Round constants

@@ -43,10 +43,6 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
 #endif
 
-#include "hal_platform.h"
-
-#if HAL_PLATFORM_CLOUD_TCP
-
 /*
  * Uncomment if native integers are 8-bit wide.
  *
@@ -329,7 +325,5 @@
  * Caller:
  */
 #define TROPICSSL_XTEA_C
-
-#endif
 
 #endif /* config.h */
