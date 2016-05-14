@@ -2,7 +2,7 @@ CXX ?= g++
 CXXFLAGS ?= -g -Wall -W -Winline -ansi -std=c++11
 CXXFLAGS += -I../hal/inc -I../hal/shared -I../services/inc -Ilib/tropicssl/include -Ilib/mbedtls/include -Isrc -Itests/UnitTest++/src
 RM = rm
-CXXFLAGS += -DPLATFORM_ID=3 -DUSE_MBEDTLS=0
+CXXFLAGS += -DPLATFORM_ID=3 -DPARTICLE_PROTOCOL=0
 
 .SUFFIXES: .o .cpp
 
@@ -22,7 +22,8 @@ objects = \
         src/events.o \
         src/handshake.o \
         src/spark_protocol.o \
-        src/spark_protocol_functions.o
+        src/spark_protocol_functions.o \
+        src/messages.o
 
 testobjects = tests/ConstructorFixture.o \
               tests/TestHandshake.o \
@@ -33,7 +34,8 @@ testobjects = tests/ConstructorFixture.o \
               tests/TestSparkProtocol.o \
               tests/TestDescriptor.o \
               tests/TestUserFunctions.o \
-              tests/TestEvents.o
+              tests/TestEvents.o \
+              tests/TestStubs.o
 
 LDFLAGS ?= -L$(ssllibdir) -ltropicssl -Lsrc -l$(name) -L$(testlibdir) -l$(testlib)
 

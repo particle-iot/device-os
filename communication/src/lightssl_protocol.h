@@ -20,7 +20,8 @@
 #pragma once
 
 #include "protocol_selector.h"
-#if HAL_PLATFORM_CLOUD_TCP
+
+#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
 
 #include <string.h>
 #include "protocol_defs.h"
@@ -84,4 +85,4 @@ public:
 
 }}
 
-#endif // HAL_PLATFORM_CLOUD_TCP
+#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL

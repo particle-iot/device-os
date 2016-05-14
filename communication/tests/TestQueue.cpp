@@ -1,6 +1,9 @@
 #include "UnitTest++.h"
 #include "spark_protocol.h"
 
+#if 0
+
+// Obsolete functionality
 SUITE(Queue)
 {
   TEST(QueueAvailableBeginsEqualToConst)
@@ -99,3 +102,5 @@ SUITE(Queue)
     CHECK_EQUAL(0, popped);
   }
 }
+
+#endif

@@ -20,7 +20,8 @@
 
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+
 #include "service_debug.h"
 #include "handshake.h"
 #include "device_keys.h"
@@ -128,4 +129,4 @@ protected:
 }
 }
 
-#endif // HAL_PLATFORM_CLOUD_TCP
+#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
