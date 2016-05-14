@@ -3,8 +3,7 @@
 #include "protocol_selector.h"
 #include "hal_platform.h"
 
-#ifdef PARTICLE_PROTOCOL
-#if HAL_PLATFORM_CLOUD_UDP
+#if PARTICLE_PROTOCOL && HAL_PLATFORM_CLOUD_UDP
 #include "mbedtls/pk.h"
 #include "mbedtls/asn1.h"
 #include <string.h>
@@ -61,5 +60,4 @@ int extract_public_ec_key(uint8_t* buffer, size_t max_length, const uint8_t* pri
 }
 
 
-#endif
 #endif

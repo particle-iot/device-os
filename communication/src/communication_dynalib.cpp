@@ -7,7 +7,7 @@
 #include "protocol_selector.h"
 #include "core_hal.h"
 
-#ifdef PARTICLE_PROTOCOL
+#if PARTICLE_PROTOCOL
 #include "lightssl_protocol.h"
 #include "dtls_protocol.h"
 #else
@@ -25,7 +25,7 @@ ProtocolFacade* create_protocol(ProtocolFactory factory)
 {
     	// if compile time only TCP, then that's the only option, otherwise
     	// choose between UDP and TCP
-#ifdef PARTICLE_PROTOCOL
+#if PARTICLE_PROTOCOL
 #if HAL_PLATFORM_CLOUD_UDP
     	if (factory==PROTOCOL_DTLS) {
     		DEBUG("creating DTLS protocol");

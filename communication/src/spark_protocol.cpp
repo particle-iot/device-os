@@ -25,7 +25,7 @@
 #include "spark_protocol.h"
 #include "protocol_selector.h"
 
-#ifndef PARTICLE_PROTOCOL
+#if !PARTICLE_PROTOCOL
 
 #include "protocol_defs.h"
 #include "handshake.h"

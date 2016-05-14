@@ -18,8 +18,10 @@
  */
 
 #include "dtls_message_channel.h"
+
+#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+
 #include "protocol.h"
-#include "service_debug.h"
 #include "mbedtls/error.h"
 #include "mbedtls/ssl_internal.h"
 #include "mbedtls_util.h"
@@ -28,8 +30,6 @@
 #include <string.h>
 #include "dtls_session_persist.h"
 #include "service_debug.h"
-
-#if HAL_PLATFORM_CLOUD_UDP
 
 namespace particle { namespace protocol {
 
@@ -536,4 +536,4 @@ extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
     return 0;  // return non-zero for error
 } // end _gettimeofday()
 
-#endif
+#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL

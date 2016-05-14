@@ -19,7 +19,7 @@
 
 #include "lightssl_protocol.h"
 
-#if HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
 
 namespace particle { namespace protocol {
 	void LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data) { }
