@@ -27,7 +27,7 @@
 
 #include "protocol_selector.h"
 
-#if USE_MBEDTLS
+#ifdef USE_MBEDTLS
 #include "mbedtls/rsa.h"
 #include "mbedtls_compat.h"
 #else
