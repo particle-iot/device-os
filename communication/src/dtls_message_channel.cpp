@@ -21,6 +21,9 @@
 LOG_SOURCE_CATEGORY("comm.dtls")
 
 #include "dtls_message_channel.h"
+
+#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+
 #include "service_debug.h"
 #include "protocol.h"
 #include "rng_hal.h"
@@ -32,8 +35,6 @@ LOG_SOURCE_CATEGORY("comm.dtls")
 #include <string.h>
 #include "dtls_session_persist.h"
 
-
-#if HAL_PLATFORM_CLOUD_UDP
 
 namespace particle { namespace protocol {
 
@@ -540,4 +541,4 @@ extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
     return 0;  // return non-zero for error
 } // end _gettimeofday()
 
-#endif
+#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL

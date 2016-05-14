@@ -3,8 +3,7 @@ LOG_SOURCE_CATEGORY("comm.lightssl")
 
 #include "lightssl_message_channel.h"
 
-#include "protocol_selector.h"
-#if HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
 
 #include "service_debug.h"
 #include "handshake.h"
@@ -164,11 +163,11 @@ namespace protocol
 		LOG(INFO,"Encrypting nonce");
 		extract_public_rsa_key(queue + 52, core_private_key);
 
-		rsa_context rsa;
+		mbedtls_rsa_context rsa;
 		init_rsa_context_with_public_key(&rsa, server_public_key);
 		const int len = 52 + MAX_DEVICE_PUBLIC_KEY_LENGTH;
 		err = mbedtls_rsa_pkcs1_encrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PUBLIC, len, queue, queue + len);
-		rsa_free(&rsa);
+		mbedtls_rsa_free(&rsa);
 
 		if (err)
 		{
@@ -271,4 +270,4 @@ namespace protocol
 }
 }
 
-#endif // HAL_PLATFORM_CLOUD_TCP
+#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL

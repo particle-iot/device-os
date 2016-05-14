@@ -19,6 +19,10 @@
 
 #pragma once
 
+#include "protocol_selector.h"
+
+#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+
 #include <string.h>
 #include "protocol_defs.h"
 #include "message_channel.h"
@@ -95,3 +99,5 @@ public:
 
 
 }}
+
+#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL

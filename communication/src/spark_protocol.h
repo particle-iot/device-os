@@ -28,7 +28,7 @@
 
 #include "protocol_selector.h"
 
-#ifndef PARTICLE_PROTOCOL
+#if !PARTICLE_PROTOCOL
 
 #include "protocol_defs.h"
 #include "spark_descriptor.h"
@@ -142,10 +142,11 @@ class SparkProtocol
 
     /********** Queue **********/
     const size_t QUEUE_SIZE;
+#if 0
     int queue_bytes_available();
     int queue_push(const char *src, int length);
     int queue_pop(char *dst, int length);
-
+#endif
     void set_handlers(CommunicationsHandlers& handlers) {
         this->handlers = handlers;
     }

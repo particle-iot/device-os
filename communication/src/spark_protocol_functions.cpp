@@ -43,7 +43,7 @@ void default_random_seed_from_cloud(unsigned int seed)
     srand(seed);
 }
 
-#if !defined(PARTICLE_PROTOCOL) || HAL_PLATFORM_CLOUD_TCP
+#if !PARTICLE_PROTOCOL || HAL_PLATFORM_CLOUD_TCP
 int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int plaintext_len)
 {
     rsa_context rsa;
@@ -60,7 +60,7 @@ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* 
 }
 #endif
 
-#ifdef PARTICLE_PROTOCOL
+#if PARTICLE_PROTOCOL
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_CLOUD_TCP
