@@ -29,9 +29,7 @@
 #endif
 
 #if PARTICLE_PROTOCOL
-#ifndef USE_MBEDTLS
-#define USE_MBEDTLS 1 // Use mbedTLS for both UDP and TCP-based protocols
-#endif
+#define USE_MBEDTLS // Use mbedTLS for both UDP and TCP-based protocols
 #ifdef __cplusplus
 namespace particle { namespace protocol { class Protocol; }}
 typedef particle::protocol::Protocol ProtocolFacade;
