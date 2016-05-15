@@ -29,6 +29,9 @@
 #include "usbd_req.h"
 #include "debug.h"
 #include "interrupts_hal.h"
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("usb.composite")
 
 static USBD_Composite_Class_Data s_Class_Entries[USBD_COMPOSITE_MAX_CLASSES] = { {0} };
 static uint32_t s_Classes_Count = 0;
@@ -89,8 +92,8 @@ static const uint8_t USBD_Composite_CfgDescHeaderTemplate[USBD_COMPOSITE_CFGDESC
   0x00,                                          /* bNumInterfaces TEMPLATE */
   0x01,                                          /* bConfigurationValue */
   USBD_IDX_CONFIG_STR,                           /* iConfiguration */
-  0xc0,                                          /* bmAttirbutes (Bus powered) */
-  0x32                                           /* bMaxPower (100mA) */
+  0x80,                                          /* bmAttirbutes (Bus powered) */
+  0xFA                                           /* bMaxPower (500mA) */
 };
 
 static uint8_t USBD_Composite_Init(void* pdev, uint8_t cfgidx) {
