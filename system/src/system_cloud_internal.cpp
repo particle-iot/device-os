@@ -1085,11 +1085,11 @@ void Multicast_Presence_Announcement(void)
 #endif
 }
 
-const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
 
 bool system_cloud_active()
 {
 #ifndef SPARK_NO_CLOUD
+	const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
     if (!SPARK_CLOUD_SOCKETED)
         return false;
 
@@ -1111,10 +1111,14 @@ bool system_cloud_active()
 
 void Spark_Sleep(void)
 {
+#ifndef SPARK_NO_CLOUD
 	spark_protocol_command(sp, ProtocolCommands::SLEEP);
+#endif
 }
 
 void Spark_Wake(void)
 {
+#ifndef SPARK_NO_CLOUD
 	spark_protocol_command(sp, ProtocolCommands::WAKE);
+#endif
 }
