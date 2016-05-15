@@ -3,6 +3,9 @@
 #include "usbd_desc.h"
 #include "usbd_req.h"
 #include "debug.h"
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("usb.mcdc")
 
 #define USBD_MCDC_USRSTR_BASE 10
 
@@ -555,8 +558,9 @@ static void USBD_MCDC_Schedule_In(void *pdev, USBD_MCDC_Instance_Data* priv)
         DCD_EP_Flush(pdev, priv->ep_in_data);
         // Send ZLP
         DCD_EP_Tx(pdev, priv->ep_in_data, NULL, 0);
-        if (USB_Tx_length)
-          priv->tx_buffer_tail = ring_wrap(priv->tx_buffer_size, priv->tx_buffer_tail + USB_Tx_length);
+        priv->tx_buffer_head = 0;
+        priv->tx_buffer_tail = 0;
+        USB_Tx_length = 0;
 
         priv->tx_state = 0;
     }
