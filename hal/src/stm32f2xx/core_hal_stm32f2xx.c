@@ -500,9 +500,6 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 
 void HAL_Core_Execute_Stop_Mode(void)
 {
-    /* Enable WKUP pin */
-    PWR_WakeUpPinCmd(ENABLE);
-
     /* Request to enter STOP mode with regulator in low power mode */
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 

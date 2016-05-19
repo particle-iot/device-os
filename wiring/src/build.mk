@@ -20,3 +20,4 @@ CPPFLAGS += -std=gnu++11
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
 
+LOG_MODULE_CATEGORY = wiring

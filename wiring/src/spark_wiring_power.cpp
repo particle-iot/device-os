@@ -629,7 +629,7 @@ bool PMIC::setChargeVoltage(uint16_t voltage) {
         break;
 
         case 4208:
-        writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b11100000));
+        writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b10110000));
         break;
 
         default:

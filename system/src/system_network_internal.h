@@ -216,7 +216,7 @@ protected:
         LED_On(LED_RGB);
         led_state.restore();
 
-        WLAN_LISTEN_ON_FAILED_CONNECT = started && on_stop_listening();
+        WLAN_LISTEN_ON_FAILED_CONNECT = on_stop_listening() && started;
 
         on_finalize_listening(WLAN_SMART_CONFIG_FINISHED);
 

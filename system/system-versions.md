@@ -14,7 +14,10 @@
 | 9 | 0.4.8-rc.1 |  (2nd release to MFG for Photon)
 | 10 | 0.4.8-rc.6 |  (Electron MFG Release)
 | 11 | 0.4.9 |
-| 12 | 0.5.0 |  (Core, Photon, P1 & Electron)
+| 12 | 0.5.0-rc.1 |  (Core, Photon, P1 & Electron)
+| 13 | 0.5.0-rc.2 |  (Core, Photon, P1 & Electron)
+| 14 | 0.5.1 | (Core, Photon, P1, Electron)
+| 30 | 0.6.0-rc.1 |
 -------------
 
 To find out the release version of system firmware currently installed, in listening mode,

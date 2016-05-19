@@ -43,15 +43,19 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_random.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_logging.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,timer_hal.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
-# for now, just RGB led
+
 CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
+CSRC += $(call target_files,$(LIB_SERVICES)src,debug.c)
+CPPSRC += $(call target_files,$(LIB_SERVICES)src,logging.cpp)
 
 
 # Additional include directories, applied to objects built for this target.
@@ -65,7 +69,19 @@ INCLUDE_DIRS += $(HAL)inc
 INCLUDE_DIRS += $(COMMUNICATION)src
 INCLUDE_DIRS += dynalib/inc
 
-CFLAGS += $(patsubst %,-I$(SRC_ROOT)%,$(INCLUDE_DIRS)) -I.
+# prefix $(SRC_ROOT)
+ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS)) 
+
+
+ifeq ("$(BOOST_ROOT)","")
+$(error BOOST_ROOT not defined)
+else
+$(info BOOST_ROOT "$(BOOST_ROOT)")
+endif
+
+ABS_INCLUDE_DIRS += $(BOOST_ROOT)
+
+CFLAGS += $(patsubst %,-I%,$(ABS_INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -fdata-sections -Wall
 
 # Flag compiler error for [-Wdeprecated-declarations]

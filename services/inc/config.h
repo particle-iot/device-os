@@ -28,13 +28,9 @@
 #undef  DEBUG_BUILD
 #endif
 
-#if !defined(DEBUG_BUILD)
-#define USE_ONLY_PANIC // Define to remove all Logging and only have Panic
+#if defined(DEBUG_BUILD) && !defined(LOG_INCLUDE_SOURCE_INFO)
+#define LOG_INCLUDE_SOURCE_INFO
 #endif
-
-// define to include __FILE__ information within the debug output
-#define INCLUDE_FILE_INFO_IN_DEBUG
-#define MAX_DEBUG_MESSAGE_LENGTH 120
 
 #define RESET_ON_CFOD                   1       // 1 Will do reset 0 will not
 #define MAX_SEC_WAIT_CONNECT            8       // Number of second a TCP, spark will wait
