@@ -1,5 +1,11 @@
+## v0.5.1-rc.2
 
-## v0.5.1
+### FEATURES
+
+- [Electron] Added support in HAL for a SMS received callback handler.
+
+
+## v0.5.1-rc.1
 
 ### FEATURES
 
