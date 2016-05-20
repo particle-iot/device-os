@@ -189,6 +189,15 @@ void MDMParser::resume(void) {
     _cancel_all_operations = false;
 }
 
+void MDMParser::setSMSreceivedHandler(_CELLULAR_SMS_CB cb, void* data) {
+    sms_cb = cb;
+    sms_data = data;
+}
+
+void MDMParser::SMSreceived(int index) {
+    sms_cb(sms_data, index); // call the SMS callback with the index of the new SMS
+}
+
 int MDMParser::send(const char* buf, int len)
 {
 #ifdef MDM_DEBUG
@@ -262,6 +271,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 // +CNMI: <mem>,<index>
                 if (sscanf(cmd, "CMTI: \"%*[^\"]\",%d", &a) == 1) {
                     DEBUG_D("New SMS at index %d\r\n", a);
+                    if (sms_cb) SMSreceived(a);
                 }
                 else if ((sscanf(cmd, "CIEV: 9,%d", &a) == 1)) {
                     DEBUG_D("CIEV matched: 9,%d\r\n", a);

@@ -40,6 +40,8 @@ typedef int cellular_result_t;
 
 typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
 
+typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);
+
 /**
  * Power on and initialize the cellular module,
  * if USART3 not initialized, will be done on first call.
@@ -200,6 +202,11 @@ cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved)
  * Get cellular data usage info
  */
 cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved);
+
+/**
+ * Set the SMS received callback handler
+ */
+cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, void* data, void* reserved);
 
 #ifdef __cplusplus
 }
