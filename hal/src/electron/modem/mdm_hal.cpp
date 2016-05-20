@@ -170,6 +170,7 @@ MDMParser::MDMParser(void)
     _attached_urc = false; // updated by GPRS detached/attached URC,
                            // used to notify system of prolonged GPRS detach.
     _cancel_all_operations = false;
+    sms_cb = NULL;
     memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
