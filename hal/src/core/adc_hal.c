@@ -86,9 +86,9 @@ int32_t HAL_ADC_Read(uint16_t pin)
 
   int i = 0;
 
-  if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
+  if (PIN_MAP[pin].pin_mode != AN_INPUT)
   {
-    HAL_GPIO_Save_Pin_Mode(PIN_MAP[pin].pin_mode);
+    HAL_GPIO_Save_Pin_Mode(pin);
     HAL_Pin_Mode(pin, AN_INPUT);
   }
 

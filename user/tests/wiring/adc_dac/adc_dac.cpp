@@ -164,4 +164,31 @@ test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
     }
     assertTrue(errorCount == 0);
 }
+
+test(DAC_AnalogWriteWorksMixedWithDigitalRead) {
+    pin_t pin = DAC;
+
+    // when
+    pinMode(pin, INPUT_PULLUP);
+    // then
+    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+
+    // 2 analogReads
+    analogWrite(pin, 1000);
+    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+    analogWrite(pin, 2000);
+    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+    // 2 digitalReads
+    digitalRead(pin);
+    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    digitalRead(pin);
+    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    // 2 analogReads again
+    analogWrite(pin, 1000);
+    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+    analogWrite(pin, 500);
+    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+}
+
+
 #endif
