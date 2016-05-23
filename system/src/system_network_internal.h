@@ -122,7 +122,6 @@ class ManagedNetworkInterface : public NetworkInterface
     volatile uint8_t WLAN_DISCONNECT;
     volatile uint8_t WLAN_DELETE_PROFILES;
     volatile uint8_t WLAN_SMART_CONFIG_START;
-    volatile uint8_t WLAN_SMART_CONFIG_STOP;
     volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
     volatile uint8_t WLAN_CONNECTED;
     volatile uint8_t WLAN_CONNECTING;
@@ -135,6 +134,7 @@ class ManagedNetworkInterface : public NetworkInterface
 
 protected:
     volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
+    volatile uint8_t WLAN_SMART_CONFIG_STOP;
 
     virtual network_interface_t network_interface() override { return 0; }
 
@@ -515,24 +515,16 @@ public:
         // 2. CC3000 established AP connection
         // 3. DHCP IP is configured
         // then send mDNS packet to stop external SmartConfig application
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-        if (((WLAN_SMART_CONFIG_STOP == 1) || (WLAN_SERIAL_CONFIG_DONE == 1)) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
-        {
-            on_setup_cleanup();
-
-            ble_provision_finalize();
-
-            WLAN_SERIAL_CONFIG_DONE = 0;
-            WLAN_SMART_CONFIG_STOP  = 0;
-        }
-#else
         if ((WLAN_SMART_CONFIG_STOP == 1) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
         {
             on_setup_cleanup();
 
             WLAN_SMART_CONFIG_STOP = 0;
-        }
+
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+            ble_provision_finalize(); // Reset to re-config BLE database for application upon smart config succeed.
 #endif
+        }
     }
 
     inline bool hasDHCP()

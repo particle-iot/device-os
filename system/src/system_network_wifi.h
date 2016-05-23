@@ -60,7 +60,10 @@ class WiFiNetworkInterface : public ManagedIPNetworkInterface<WLanConfig, WiFiNe
             result = network_set_credentials(0, 0, &creds, NULL);
         }
         if (result==0)
+        {
             WLAN_SERIAL_CONFIG_DONE = 1;
+            WLAN_SMART_CONFIG_STOP = 1;
+        }
         return result;
     }
 
