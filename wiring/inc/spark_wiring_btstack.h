@@ -113,8 +113,9 @@ public:
      * @note  advertising_interval_min ([0x0020,0x4000], default: 0x0800, unit: 0.625 msec)
      *        advertising_interval_max ([0x0020,0x4000], default: 0x0800, unit: 0.625 msec)
      *        advertising_type (enum from 0: ADV_IND, ADC_DIRECT_IND, ADV_SCAN_IND, ADV_NONCONN_IND)
-     *        own_address_type (enum from 0: public device address, random device address)
-     *        advertising_channel_map (flags: chan_37(1), chan_38(2), chan_39(4))
+     *        own_address_type (enum from 0: BLE_GAP_ADDR_TYPE_PUBLIC, BLE_GAP_ADDR_TYPE_RANDOM)
+     *        advertising_channel_map (flags: chan_37(1), chan_38(2), chan_39(4), all(7))
+     *        filter policies (enum from 0: BLE_GAP_ADV_FP_ANY, BLE_GAP_ADV_FP_FILTER_SCANREQ, BLE_GAP_ADV_FP_FILTER_CONNREQ, BLE_GAP_ADV_FP_FILTER_BOTH)
      * @note  If the advertising_type is set to ADV_SCAN_IND or ADV_NONCONN_IND,advertising_interval_min and advertising_interval_max shal not be set to less than 0x00A0.
      *
      */
