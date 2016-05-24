@@ -8,12 +8,12 @@ Follow [this link](https://github.com/spark/core-firmware/blob/master/README.md)
 
 ### SECURITY OVERVIEW
 
-* [RSA encrypt initial handshake message to cloud](src/spark_protocol.cpp#L107)
-* [Decrypt return message from Cloud with an RSA private key on the Core](src/handshake.cpp#L53)
-* [Verify HMAC signature](src/spark_protocol.cpp#L1626-L1630)
+* [RSA encrypt initial handshake message to cloud](src/spark_protocol.cpp#L101)
+* [Decrypt return message from Cloud with an RSA private key on the Core](src/handshake.cpp#L56)
+* [Verify HMAC signature](src/spark_protocol.cpp#L1609-L1613)
 * If everything checks out, AES-128-CBC session key is saved and IV is rotated with every message exchanged
-  * [encrypt](src/spark_protocol.cpp#L1575-L1580)
-  * [decrypt](src/spark_protocol.cpp#L291-L297)
+  * [encrypt](src/spark_protocol.cpp#L1558-L1563)
+  * [decrypt](src/spark_protocol.cpp#L306-L312)
 
 ### CREDITS AND ATTRIBUTIONS
 
