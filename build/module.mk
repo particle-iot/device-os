@@ -5,10 +5,6 @@ include $(COMMON_BUILD)/macros.mk
 
 SOURCE_PATH ?= $(MODULE_PATH)
 
-# Recursive wildcard function - finds matching files in a directory tree
-target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,$2))
-here_files = $(call wildcard,$(SOURCE_PATH)/$1$2)
-
 # import this module's symbols
 include $(MODULE_PATH)/import.mk
 
