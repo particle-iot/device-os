@@ -36,5 +36,14 @@ assert_filebyte = $(call _assert_equal,"file $1 offset $2",$3,$(shell echo $(cal
 target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,$2))
 here_files = $(call wildcard,$(SOURCE_PATH)/$1$2)
 
+remove_slash = $(patsubst %/,%,$1)
+add_slash = $(call remove_slash,$1)/
+
+# enumerates the files across a number of directories
+# $1 the list of directories to search. Each directory is searched recursively
+# $2 the wildcard to search within each directory
+# Each file is returned relative to the directory it was (recursively) searched in. E.g.
+# /files/libs/mylib/abc.cpp ->  mylib/abc.cpp when the search is in directory /files/libs with wildcard *.cpp
+target_files_dirs = $(foreach d,$1,$(patsubst $(call remove_slash,$d)/%,%,$(call rwildcard,$(call add_slash,$d),$2)))
 
 check_modular = $(if $(PLATFORM_DYNALIB_MODULES),,$(error "Platform '$(PLATFORM)' does not support dynamic modules"))

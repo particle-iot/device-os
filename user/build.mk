@@ -3,6 +3,13 @@
 # USRSRC - relative path to SOURCE_PATH for the sources to build
 
 # determine where user sources are, relative to project root
+
+# propagate the APPLIBs to module libs only when building this user module
+# (otherwise if we used APPLIBs directly in the module build each recursivly
+# built module would build the libs.)
+MODULE_LIBS += $(APPLIBS)
+
+
 ifdef APP
 USER_MAKEFILE ?= $(APP).mk
 # when TARGET_FILE is defined on the command line,
