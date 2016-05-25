@@ -29,6 +29,9 @@ inline const char* strchrend(const char* s, char c) {
 
 } // namespace
 
+// Default logger instance
+const spark::Logger spark::Log;
+
 // spark::LogHandler
 struct spark::LogHandler::FilterData {
     const char *name; // Subcategory name
