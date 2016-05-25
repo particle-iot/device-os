@@ -39,6 +39,15 @@ ifneq (,$(LOG_MODULE_CATEGORY))
 CFLAGS += -DLOG_MODULE_CATEGORY="\"$(LOG_MODULE_CATEGORY)\""
 endif
 
+LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBS),*.cpp)
+LIBCSRC += $(call target_files_dirs,$(MODULE_LIBS),*.c)
+
+CPPSRC += $(LIBCPPSRC)
+CSRC += $(LIBCSRC)
+
+INCLUDE_DIRS += $(MODULE_LIBS)
+
+
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
@@ -211,13 +220,41 @@ $(TARGET_BASE).a : $(ALLOBJ)
 	$(VERBOSE)$(AR) -cr $@ $^
 	$(call echo,)
 
-# C compiler to build .o from .c in $(BUILD_DIR)
-$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.c
-	$(call echo,'Building file: $<')
+define build_C_file
+	$(call echo,'Building c file: $<')
 	$(call echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CC) $(CFLAGS) $(CONLYFLAGS) -c -o $@ $<
 	$(call echo,)
+endef
+
+define build_CPP_file
+	$(call echo,'Building cpp file: $<')
+	$(call echo,'Invoking: ARM GCC CPP Compiler')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(call echo,)
+endef
+
+# C compiler to build .o from .c in $(BUILD_DIR)
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.c
+	$(build_C_file)
+
+# CPP compiler to build .o from .cpp in $(BUILD_DIR)
+# Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
+	$(build_CPP_file)
+
+define build_LIB_files
+$(BUILD_PATH)/%.o : $1/%.c
+	$$(build_C_file)
+
+$(BUILD_PATH)/%.o : $1/%.cpp
+	$$(build_CPP_file)
+endef
+
+# define rules for each library
+$(foreach lib,$(MODULE_LIBS),$(info $(eval $(call build_LIB_files,$(call remove_slash,$(lib))))))
 
 # Assember to build .o from .S in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
@@ -227,15 +264,7 @@ $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 	$(VERBOSE)$(CC) $(ASFLAGS) -c -o $@ $<
 	$(call echo,)
 
-# CPP compiler to build .o from .cpp in $(BUILD_DIR)
-# Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
-$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
-	$(call echo,'Building file: $<')
-	$(call echo,'Invoking: ARM GCC CPP Compiler')
-	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-	$(call echo,)
-
+	
 # Other Targets
 clean: clean_deps
 	$(VERBOSE)$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
