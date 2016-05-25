@@ -628,13 +628,15 @@ CATCH_TEST_CASE("Logger API") {
     CATCH_SECTION("direct logging") {
         TestLogHandler log(LOG_LEVEL_ALL);
         Logger logger;
-        logger.write(LOG_LEVEL_INFO, "a", 1);
+        logger.write(LOG_LEVEL_TRACE, "a", 1);
         logger.write("b", 1); // Uses default level
-        logger.print(LOG_LEVEL_WARN, "c");
+        logger.print(LOG_LEVEL_INFO, "c");
         logger.print("d");
-        logger.printf(LOG_LEVEL_ERROR, "%s", "e");
+        logger.printf(LOG_LEVEL_WARN, "%s", "e");
         logger.printf("%s", "f");
-        log.bufferEquals("abcdef");
+        logger.dump(LOG_LEVEL_ERROR, "\x01", 1);
+        logger.dump("\x02", 1);
+        log.bufferEquals("abcdef0102");
     }
     CATCH_SECTION("basic filtering") {
         TestLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out

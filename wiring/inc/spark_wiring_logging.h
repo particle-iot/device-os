@@ -189,61 +189,61 @@ public:
         \brief Generates trace message.
         \param fmt Format string.
     */
-    void trace(const char *fmt, ...) __attribute__((format(printf, 2, 3))); // First argument is implicit 'this'
+    void trace(const char *fmt, ...) const __attribute__((format(printf, 2, 3))); // First argument is implicit 'this'
     /*!
         \brief Generates info message.
         \param fmt Format string.
     */
-    void info(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+    void info(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
     /*!
         \brief Generates warn message.
         \param fmt Format string.
     */
-    void warn(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+    void warn(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
     /*!
         \brief Generates error message.
         \param fmt Format string.
     */
-    void error(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+    void error(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
     /*!
         \brief Generates log message.
         \param fmt Format string.
 
         This method uses default logging level (\ref DEFAULT_LEVEL).
     */
-    void log(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+    void log(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
     /*!
         \brief Generates log message.
         \param level Logging level.
         \param fmt Format string.
     */
-    void log(LogLevel level, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+    void log(LogLevel level, const char *fmt, ...) const __attribute__((format(printf, 3, 4)));
     /*!
         \brief Writes formatted string to log.
         \param fmt Format string.
 
         This method uses default logging level (\ref DEFAULT_LEVEL).
     */
-    void printf(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+    void printf(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
     /*!
         \brief Writes formatted string to log.
         \param level Logging level.
         \param fmt Format string.
     */
-    void printf(LogLevel level, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+    void printf(LogLevel level, const char *fmt, ...) const __attribute__((format(printf, 3, 4)));
     /*!
         \brief Writes string to log.
         \param str String.
 
         This method uses default logging level (\ref DEFAULT_LEVEL).
     */
-    void print(const char *str);
+    void print(const char *str) const;
     /*!
         \brief Writes string to log.
         \param level Logging level.
         \param str String.
     */
-    void print(LogLevel level, const char *str);
+    void print(LogLevel level, const char *str) const;
     /*!
         \brief Writes character buffer to log.
         \param data Buffer.
@@ -251,14 +251,29 @@ public:
 
         This method uses default logging level (\ref DEFAULT_LEVEL).
     */
-    void write(const char *data, size_t size);
+    void write(const char *data, size_t size) const;
     /*!
         \brief Writes character buffer to log.
         \param level Logging level.
         \param data Buffer.
         \param size Buffer size.
     */
-    void write(LogLevel level, const char *data, size_t size);
+    void write(LogLevel level, const char *data, size_t size) const;
+    /*!
+        \brief Encodes data buffer in hex and writes resulting string to log.
+        \param data Buffer.
+        \param size Buffer size.
+
+        This method uses default logging level (\ref DEFAULT_LEVEL).
+    */
+    void dump(const void *data, size_t size) const;
+    /*!
+        \brief Encodes data buffer in hex and writes resulting string to log.
+        \param level Logging level.
+        \param data Buffer.
+        \param size Buffer size.
+    */
+    void dump(LogLevel level, const void *data, size_t size) const;
     /*!
         \brief Returns `true` if trace level is enabled for this logger.
     */
@@ -288,7 +303,7 @@ public:
 private:
     const char *name_; // Category name
 
-    void log(LogLevel level, const char *fmt, va_list args);
+    void log(LogLevel level, const char *fmt, va_list args) const;
 };
 
 /*!
@@ -375,77 +390,87 @@ inline spark::Logger::Logger(const char *name) :
         name_(name) {
 }
 
-inline void spark::Logger::trace(const char *fmt, ...) {
+inline void spark::Logger::trace(const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_TRACE, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::info(const char *fmt, ...) {
+inline void spark::Logger::info(const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_INFO, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::warn(const char *fmt, ...) {
+inline void spark::Logger::warn(const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_WARN, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::error(const char *fmt, ...) {
+inline void spark::Logger::error(const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_ERROR, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::log(const char *fmt, ...) {
+inline void spark::Logger::log(const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log(DEFAULT_LEVEL, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::log(LogLevel level, const char *fmt, ...) {
+inline void spark::Logger::log(LogLevel level, const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log(level, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::printf(const char *fmt, ...) {
+inline void spark::Logger::printf(const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log_printf_v(DEFAULT_LEVEL, name_, nullptr, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::printf(LogLevel level, const char *fmt, ...) {
+inline void spark::Logger::printf(LogLevel level, const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
     log_printf_v(level, name_, nullptr, fmt, args);
     va_end(args);
 }
 
-inline void spark::Logger::write(const char *data, size_t size) {
+inline void spark::Logger::write(const char *data, size_t size) const {
     write(DEFAULT_LEVEL, data, size);
 }
 
-inline void spark::Logger::write(LogLevel level, const char *data, size_t size) {
+inline void spark::Logger::write(LogLevel level, const char *data, size_t size) const {
     if (data) {
         log_write(level, name_, data, size, nullptr);
     }
 }
 
-inline void spark::Logger::print(const char *str) {
+inline void spark::Logger::dump(const void *data, size_t size) const {
+    dump(DEFAULT_LEVEL, data, size);
+}
+
+inline void spark::Logger::dump(LogLevel level, const void *data, size_t size) const {
+    if (data) {
+        log_dump(level, name_, data, size, 0, nullptr);
+    }
+}
+
+inline void spark::Logger::print(const char *str) const {
     print(DEFAULT_LEVEL, str);
 }
 
-inline void spark::Logger::print(LogLevel level, const char *str) {
+inline void spark::Logger::print(LogLevel level, const char *str) const {
     write(level, str, strlen(str));
 }
 
@@ -473,7 +498,7 @@ inline const char* spark::Logger::name() const {
     return name_;
 }
 
-inline void spark::Logger::log(LogLevel level, const char *fmt, va_list args) {
+inline void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {
     log_message_v(level, name_, nullptr, 0, nullptr, nullptr, fmt, args);
 }
 
