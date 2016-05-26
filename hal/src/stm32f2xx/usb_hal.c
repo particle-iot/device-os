@@ -60,6 +60,74 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
 static uint8_t USB_Configured = 0;
 
+static uint8_t USB_SetupRequest_Data[HAL_USB_SETUP_REQUEST_MAX_DATA];
+static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
+static uint8_t USB_InSetupRequest = 0;
+static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;
+
+#ifdef USB_VENDOR_REQUEST_ENABLE
+
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* reserved)
+{
+    USB_Vendor_Request_Callback = cb;
+}
+
+uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
+{
+    uint8_t ret = USBD_OK;
+    if (req != NULL) {
+        USB_SetupRequest.bmRequestType = req->bmRequest;
+        USB_SetupRequest.bRequest = req->bRequest;
+        USB_SetupRequest.wValue = req->wValue;
+        USB_SetupRequest.wIndex = req->wIndex;
+        USB_SetupRequest.wLength = req->wLength;
+
+        if (req->wLength) {
+            // Setup request with data stage
+
+            if (req->bmRequest & 0x80) {
+                // Device -> Host
+                if (USB_Vendor_Request_Callback) {
+                    USB_SetupRequest.data = USB_SetupRequest_Data;
+                    ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
+
+                    if (ret == USBD_OK && USB_SetupRequest.data != NULL &&
+                        USB_SetupRequest.wLength && USB_SetupRequest.wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA) {
+                        if (USB_SetupRequest.data != USB_SetupRequest_Data) {
+                            memcpy(USB_SetupRequest_Data, USB_SetupRequest.data, USB_SetupRequest.wLength);
+                        }
+                        USBD_CtlSendData (&USB_OTG_dev, USB_SetupRequest_Data, USB_SetupRequest.wLength);
+                    } else {
+                        ret = USBD_FAIL;
+                    }
+                }
+            } else {
+                // Host -> Device
+                USB_InSetupRequest = 1;
+                USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest_Data, req->wLength);
+            }
+        } else {
+            // Setup request without data stage
+            if (USB_Vendor_Request_Callback) {
+                USB_SetupRequest.data = NULL;
+                ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
+            }
+        }
+    } else if (dataStage && USB_InSetupRequest) {
+        USB_InSetupRequest = 0;
+        if (USB_Vendor_Request_Callback) {
+            USB_SetupRequest.data = USB_SetupRequest_Data;
+            ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
+        }
+    } else {
+        ret = USBD_FAIL;
+    }
+
+    return ret;
+}
+
+#endif // USB_VENDOR_REQUEST_ENABLE
+
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
 /*******************************************************************************
  * Function Name  : SPARK_USB_Setup
@@ -81,7 +149,7 @@ void SPARK_USB_Setup(void)
             &USR_desc,
             //&USBD_CDC_cb,
             &USBD_Composite_cb,
-            NULL);
+            &USR_cb);
     HAL_USB_Attach();
 }
 

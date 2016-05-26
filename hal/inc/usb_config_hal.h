@@ -54,5 +54,9 @@
 # endif
 #endif
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
+# define USB_VENDOR_REQUEST_ENABLE
+#endif // PLATFORM_ID == 6 || 8 || 10
+
 #endif	/* USB_CONFIG_HAL_H */
 

@@ -42,6 +42,27 @@ extern "C" {
 
 #include "usb_config_hal.h"
 
+#ifdef USB_VENDOR_REQUEST_ENABLE
+typedef struct HAL_USB_SetupRequest {
+  union {
+    uint8_t bmRequestType;
+    struct {
+      uint8_t bmRequestTypeRecipient : 5;
+      uint8_t bmRequestTypeType : 2;
+      uint8_t bmRequestTypeDirection : 1;
+    };
+  };
+  uint8_t bRequest;
+  uint16_t wValue;
+  uint16_t wIndex;
+  uint16_t wLength;
+  uint8_t* data;
+} HAL_USB_SetupRequest;
+
+#define HAL_USB_SETUP_REQUEST_MAX_DATA 64
+
+typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req);
+#endif // USB_VENDOR_REQUEST_ENABLE
 
     /* USB Config : IMR_MSK */
 /* mask defining which events has to be handled */
@@ -116,6 +137,11 @@ void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize);
 /*******************************************************************************************************/
 /* Multi-instanced USB classes */
 /*******************************************************************************************************/
+
+#ifdef USB_VENDOR_REQUEST_ENABLE
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* reserved);
+#endif
+
 #if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)
 void HAL_USB_Init();
 void HAL_USB_Attach();
