@@ -123,7 +123,7 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
         ret = USBD_FAIL;
     }
 
-    return ret;
+    return ret ? USBD_FAIL : USBD_OK;
 }
 
 #endif // USB_VENDOR_REQUEST_ENABLE
