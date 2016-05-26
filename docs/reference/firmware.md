@@ -13,17 +13,18 @@ Particle Device Firmware
 
 {{#if electron}}
 ### Optimizing Cellular Data Use with Cloud connectivity on the Electron
+
 _Since 0.6.0_
 
-When the device first connects to the cloud, it provides the cloud
-with detials of the registered functions, variables and subscriptions, as well as establishing a secure channel. This requires 4300 bytes of ata, plus additional data for each function, variable and subscription. 
+When the device first connects to the cloud, it establishes a secure channel
+and informs the cloud of the registered functions, variables and subscriptions. This uses 4400 bytes of data, plus additional data for each function, variable and subscription. 
 
 Subsequent reconnections to the cloud while the device is still powered does not resend this data. Instead,
-just a ping is sent to the cloud, which uses 135 bytes.   
+a small reconnection message is sent to the cloud, which uses 135 bytes.   
 
-Prior to 0.6.0, when the device was reset or when woke from deep sleep, the cloud connection would be fullly reinitialized, resending the 4300 bytes of data. From 0.6.0, the device determines that a full reinitialization isn't needed and reuses the existing session, after validating that the local state matches what was last communicated to the cloud. Connecting to the cloud after reset or wake-up sends just a ping message, useing 135 bytes of data. A key requirement for the device to be able to determine that the existing session can be reuses is that the functions, variables and subscriptions are registered BEFORE connecting to the cloud. 
+Prior to 0.6.0, when the device was reset or woken from deep sleep, the cloud connection would be fullly reinitialized, which meant resending the 4400 bytes of data. From 0.6.0, the device determines that a full reinitialization isn't needed and reuses the existing session, after validating that the local state matches what was last communicated to the cloud. Connecting to the cloud after reset or wake-up sends just a reconnect message, using 135 bytes of data. A key requirement for the device to be able to determine that the existing session can be reused is that the functions, variables and subscriptions are registered BEFORE connecting to the cloud. 
 
-Ensuring the application has registered its cloud state before connecting to the cloud can be easily done using `SEMI_AUTOMATIC` mode: 
+Registering functions and variables before connecting to the cloud is easily done using `SEMI_AUTOMATIC` mode: 
 
 ```cpp
 // Using SEMI_AUTOMATIC mode to get the lowest possible data usage
