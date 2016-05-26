@@ -17,22 +17,22 @@ Particle Device Firmware
 _Since 0.6.0_
 
 When the device first connects to the cloud, it establishes a secure channel
-and informs the cloud of the registered functions, variables and subscriptions. This uses 4400 bytes of data, plus additional data for each function, variable and subscription. 
+and informs the cloud of the registered functions, variables and subscriptions. This uses 4400 bytes of data, plus additional data for each function, variable and subscription.
 
-Subsequent reconnections to the cloud while the device is still powered does not resend this data. Instead,
-a small reconnection message is sent to the cloud, which uses 135 bytes.   
+Subsequent reconnections to the cloud while the device is still powered does not resend this data. Instead, a small reconnection message is sent to the cloud, which uses 135 bytes.
 
-Prior to 0.6.0, when the device was reset or woken from deep sleep, the cloud connection would be fullly reinitialized, which meant resending the 4400 bytes of data. From 0.6.0, the device determines that a full reinitialization isn't needed and reuses the existing session, after validating that the local state matches what was last communicated to the cloud. Connecting to the cloud after reset or wake-up sends just a reconnect message, using 135 bytes of data. A key requirement for the device to be able to determine that the existing session can be reused is that the functions, variables and subscriptions are registered BEFORE connecting to the cloud. 
+Prior to 0.6.0, when the device was reset or woken from deep sleep, the cloud connection would be fully reinitialized, which meant resending the 4400 bytes of data. From 0.6.0, the device determines that a full reinitialization isn't needed and reuses the existing session, after validating that the local state matches what was last communicated to the cloud. Connecting to the cloud after reset or wake-up sends just a reconnect message, using 135 bytes of data. A key requirement for the device to be able to determine that the existing session can be reused is that the functions, variables and subscriptions are registered BEFORE connecting to the cloud.
 
-Registering functions and variables before connecting to the cloud is easily done using `SEMI_AUTOMATIC` mode: 
+Registering functions and variables before connecting to the cloud is easily done using `SEMI_AUTOMATIC` mode:
 
 ```cpp
-// Using SEMI_AUTOMATIC mode to get the lowest possible data usage
-// when reconnecting to the cloud. 
+// EXAMPLE USAGE
+// Using SEMI_AUTOMATIC mode to get the lowest possible data usage by
+// registering functions and variables BEFORE connecting to the cloud.
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
 void setup() {
-	// register cloudy things
+    // register cloudy things
     Particle.function(....);
     Particle.variable(....);
     Particle.subscribe(....);
