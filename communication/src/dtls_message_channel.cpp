@@ -80,11 +80,15 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, messa
 
 auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* next_id, restore_fn_t restorer) -> RestoreStatus
 {
-	if (!restore_this_from(restorer))
-		return NO_SESSION;
+	if (!restore_this_from(restorer)) {
 
-	if (!is_valid() || keys_checksum!=this->keys_checksum)
 		return NO_SESSION;
+	}
+
+	if (!is_valid() || keys_checksum!=this->keys_checksum) {
+		DEBUG("discarding session: valid %d, keys_sum: %d/%d", is_valid(), keys_checksum, this->keys_checksum);
+		return NO_SESSION;
+	}
 
 	// assume invalid initially. With the ssl context being reset,
 	// we cannot return NO_SESSION from this point onwards.
@@ -340,19 +344,29 @@ ProtocolError DTLSMessageChannel::setup_context()
 ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_crc)
 {
 	int ret = 0;
-
+	INFO("establish");
 	ProtocolError error = setup_context();
-	if (error)
+	if (error) {
+		INFO("setup_contex error %x", error);
 		return error;
-
+	}
 	bool renegotiate = false;
 
 	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore);
+	DEBUG("restoreStatus = %d", restoreStatus);
 	if (restoreStatus==SessionPersist::COMPLETE)
 	{
+		DEBUG("out_ctr %d,%d,%d,%d,%d,%d,%d,%d, next_coap_id=%d", sessionPersist.out_ctr[0],
+				sessionPersist.out_ctr[1],sessionPersist.out_ctr[2],sessionPersist.out_ctr[3],
+				sessionPersist.out_ctr[4],sessionPersist.out_ctr[5],sessionPersist.out_ctr[6],
+				sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
 		sessionPersist.make_persistent();
-		if (sessionPersist.application_state_checksum(this->callbacks.calculate_crc)==app_state_crc)
+		uint32_t actual = sessionPersist.application_state_checksum(this->callbacks.calculate_crc);
+		DEBUG("application state checksum: %x, expected: %x", actual, app_state_crc);
+		if (actual==app_state_crc) {
+			DEBUG("skipping sending hello message");
 			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
+		}
 		DEBUG("restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
 	}

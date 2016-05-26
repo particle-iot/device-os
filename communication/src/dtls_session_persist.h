@@ -119,7 +119,7 @@ public:
 
 #ifdef MBEDTLS_SSL_H
 
-class __attribute__((packed)) SessionPersist : SessionPersistOpaque
+class __attribute__((packed)) SessionPersist : public SessionPersistOpaque
 {
 public:
 
@@ -155,10 +155,15 @@ private:
 	{
 		if (restorer)
 		{
-			if (restorer(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr)!=sizeof(*this))
+			int size = restorer(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr);
+			if (size!=sizeof(*this)) {
+				DEBUG("restore size mismatch 1: %d/%d", size, sizeof(*this));
 				return false;
-			if (size!=sizeof(*this))
+			}
+			if (size!=sizeof(*this)) {
+				DEBUG("restore size mismatch %d/%d", size, sizeof(*this));
 				return false;
+			}
 		}
 		return true;
 	}

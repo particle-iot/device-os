@@ -91,6 +91,8 @@ SECTIONS
         link_ram_interrupt_vectors_location_end = .;
     }> SRAM
 
+    INCLUDE backup_ram_system.ld
+
     .data : /* Contains the non-zero initialised global variables */
     {
         _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
@@ -102,7 +104,6 @@ SECTIONS
         _edata = . ;
         . = ALIGN(., 4);
     }> SRAM AT> APP_FLASH
-
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
