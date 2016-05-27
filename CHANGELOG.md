@@ -1,4 +1,4 @@
-## v0.5.1-rc.2
+## v0.5.1 (same as v0.5.1-rc.2)
 
 ### FEATURES
 
@@ -23,7 +23,7 @@
 - [Electron] Wrong bitmask is provided for 4208 setting in power management [#987](https://github.com/spark/firmware/pull/987)
 
 
-## v0.5.0
+## v0.5.0 (same as v0.5.0-rc.2)
 
 ### FEATURES
 
