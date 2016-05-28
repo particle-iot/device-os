@@ -22,9 +22,18 @@
 
 namespace {
 
-inline const char* strchrend(const char* s, char c) {
-    const char* result = strchr(s, c);
-    return result ? result : s + strlen(s);
+// Extracts function name from string based on __PRETTY_FUNCTION__ or similar macro
+void extractFuncName(const char *s, const char **name, size_t *size) {
+    const char *s1 = s;
+    for (; *s; ++s) {
+        if (*s == ' ') {
+            s1 = s + 1; // Skip return type
+        } else if (*s == '(') {
+            break; // Skip argument types
+        }
+    }
+    *name = s1;
+    *size = s - s1;
 }
 
 } // namespace
@@ -182,16 +191,10 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
     // Function name (optional)
     if (attr.function) {
         // Strip argument and return types for better readability
-        int n = 0;
-        const char *p = strchrend(attr.function, ' ');
-        if (*p) {
-            p += 1;
-            n = strchrend(p, '(') - p;
-        } else {
-            n = p - attr.function;
-            p = attr.function;
-        }
-        write(p, n);
+        const char *s = nullptr;
+        size_t n = 0;
+        extractFuncName(attr.function, &s, &n);
+        write(s, n);
         write("(): ");
     }
     // Level
