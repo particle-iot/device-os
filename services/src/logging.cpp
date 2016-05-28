@@ -26,7 +26,7 @@
 #include "static_assert.h"
 
 #define STATIC_ASSERT_FIELD_SIZE(type, field, size) \
-        STATIC_ASSERT(field_size_changed_##type##_##field, sizeof(type::field) == size);
+        STATIC_ASSERT(field_size_changed_##type##_##field, sizeof(((type*)0)->field) == size);
 #define STATIC_ASSERT_FIELD_OFFSET(type, field, offs) \
         STATIC_ASSERT(field_offset_changed_##type##_##field, offsetof(type, field) == offs);
 #define STATIC_ASSERT_FIELD_ORDER(type, field1, field2) \

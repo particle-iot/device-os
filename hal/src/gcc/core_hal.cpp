@@ -52,24 +52,23 @@ void setLoggerLevel(LoggerOutputLevel level)
     log_level = level;
 }
 
-void log_message_callback(const char *msg, int level, const char *category, uint32_t time, const char *file, int line,
-        const char *func, void *reserved)
+void log_message_callback(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved)
 {
     if (level < log_level) {
         return;
     }
     std::ostringstream strm;
     // Timestamp
-    strm << std::setw(10) << std::setfill('0') << time << ' ';
+    strm << std::setw(10) << std::setfill('0') << attr->time << ' ';
     // Category (optional)
     if (category && category[0]) {
         strm << '[' << category << "] ";
     }
     // Source info (optional)
-    if (file && func) {
-        strm << file << ':' << line << ", ";
+    if (attr->file && attr->function) {
+        strm << attr->file << ':' << attr->line << ", ";
         // Strip argument and return types for better readability
-        std::string funcName(func);
+        std::string funcName(attr->function);
         const size_t pos = funcName.find(' ');
         if (pos != std::string::npos) {
             funcName = funcName.substr(pos + 1, funcName.find('(') - pos - 1);
