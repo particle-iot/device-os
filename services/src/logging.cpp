@@ -23,6 +23,33 @@
 #include <cstdarg>
 #include "timer_hal.h"
 #include "service_debug.h"
+#include "static_assert.h"
+
+#define STATIC_ASSERT_FIELD_SIZE(type, field, size) \
+        STATIC_ASSERT(field_size_changed_##type##_##field, sizeof(type::field) == size);
+#define STATIC_ASSERT_FIELD_OFFSET(type, field, offs) \
+        STATIC_ASSERT(field_offset_changed_##type##_##field, offsetof(type, field) == offs);
+#define STATIC_ASSERT_FIELD_ORDER(type, field1, field2) \
+        STATIC_ASSERT(field_offset_changed_##type##_##field1, offsetof(type, field1) < offsetof(type, field2));
+
+// LogAttributes::size
+STATIC_ASSERT_FIELD_OFFSET(LogAttributes, size, 0);
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, size, sizeof(size_t));
+// LogAttributes::flags
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, size, flags);
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, flags, sizeof(uint32_t));
+// LogAttributes::file
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, flags, file);
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, file, sizeof(const char*));
+// LogAttributes::line
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, file, line);
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, line, sizeof(int));
+// LogAttributes::function
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, line, function);
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, function, sizeof(const char*));
+// LogAttributes::time
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, function, time);
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, time, sizeof(uint32_t));
 
 namespace {
 
@@ -39,34 +66,25 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
     log_enabled_callback = log_enabled;
 }
 
-void log_message_v(int level, const char *category, const char *file, int line, const char *func, void *reserved,
-        const char *fmt, va_list args) {
-    if (!log_write_callback && (!log_compat_callback || level < log_compat_level)) {
-        return;
-    }
-    const uint32_t time = HAL_Timer_Get_Milli_Seconds();
-    if (file) {
-        // Strip directory path
-        const char *p = strrchr(file, '/');
-        if (p) {
-            file = p + 1;
-        }
-    }
-    char buf[LOG_MAX_STRING_LENGTH];
+void log_message_v(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt,
+        va_list args) {
     if (log_msg_callback) {
+        char buf[LOG_MAX_STRING_LENGTH];
         const int n = vsnprintf(buf, sizeof(buf), fmt, args);
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
         }
-        log_msg_callback(buf, level, category, time, file, line, func, 0);
-    } else {
+        log_msg_callback(buf, level, category, attr, 0);
+    } else if (log_compat_callback && level >= log_compat_level) {
         // Using compatibility callback
+        char buf[LOG_MAX_STRING_LENGTH];
         const char* const levelName = log_level_name(level, 0);
         int n = 0;
-        if (file && func) {
-            n = snprintf(buf, sizeof(buf), "%010u %s:%d, %s: %s", (unsigned)time, file, line, func, levelName);
+        if (attr->file && attr->function) {
+            n = snprintf(buf, sizeof(buf), "%010u %s:%d, %s: %s", (unsigned)attr->time, attr->file, attr->line,
+                    attr->function, levelName);
         } else {
-            n = snprintf(buf, sizeof(buf), "%010u %s", (unsigned)time, levelName);
+            n = snprintf(buf, sizeof(buf), "%010u %s", (unsigned)attr->time, levelName);
         }
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
@@ -82,11 +100,10 @@ void log_message_v(int level, const char *category, const char *file, int line, 
     }
 }
 
-void log_message(int level, const char *category, const char *file, int line, const char *func, void *reserved,
-        const char *fmt, ...) {
+void log_message(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    log_message_v(level, category, file, line, func, reserved, fmt, args);
+    log_message_v(level, category, attr, reserved, fmt, args);
     va_end(args);
 }
 
@@ -191,4 +208,16 @@ const char* log_level_name(int level, void *reserved) {
     };
     const int i = std::max(0, std::min<int>(level / 10, sizeof(names) / sizeof(names[0]) - 1));
     return names[i];
+}
+
+void log_init_attr(LogAttributes *attr, void *reserved) {
+    if (attr->file) {
+        // Strip directory path
+        const char *p = strrchr(attr->file, '/');
+        if (p) {
+            attr->file = p + 1;
+        }
+    }
+    attr->time = HAL_Timer_Get_Milli_Seconds();
+    // TODO: Thread ID, status code, ...
 }

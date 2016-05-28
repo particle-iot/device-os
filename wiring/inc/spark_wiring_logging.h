@@ -42,14 +42,6 @@ namespace spark {
 class LogHandler {
 public:
     /*!
-        \brief Source file info.
-    */
-    struct SourceInfo {
-        const char* file; //!< File name (can be null).
-        const char* function; //!< Function name (can be null).
-        int line; //!< Line number.
-    };
-    /*!
         \brief Category filter.
 
         Describes minimal logging level allowed for category.
@@ -86,7 +78,7 @@ public:
     static const char* levelName(LogLevel level);
 
     // These methods are called by the LogManager instance
-    void message(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info);
+    void message(const char *msg, LogLevel level, const char *category, const LogAttributes &attr);
     void write(const char *data, size_t size, LogLevel level, const char *category);
 
 protected:
@@ -95,15 +87,14 @@ protected:
         \param msg Text message.
         \param level Logging level.
         \param category Category name (can be null).
-        \param time Timestamp (milliseconds since startup).
-        \param info Source file info.
+        \param attr Message attributes.
 
         Default implementation generates messages in the following format:
         `<timestamp>: [category]: [file]:[line], [function]: <level>: <message>`.
 
         Resulting string is then written to output stream via \ref write(const char*, size_t) method.
     */
-    virtual void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info);
+    virtual void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr);
     /*!
         \brief Writes character buffer to output stream.
         \param data Buffer.
@@ -340,8 +331,7 @@ private:
     LogManager() = default;
 
     // System callbacks
-    static void logMessage(const char *msg, int level, const char *category, uint32_t time, const char *file, int line,
-            const char *func, void *reserved);
+    static void logMessage(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved);
     static void logWrite(const char *data, size_t size, int level, const char *category, void *reserved);
     static int logEnabled(int level, const char *category, void *reserved);
 };
@@ -354,9 +344,9 @@ extern const Logger Log;
 } // namespace spark
 
 // spark::LogHandler
-inline void spark::LogHandler::message(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info) {
+inline void spark::LogHandler::message(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
     if (level >= categoryLevel(category)) {
-        logMessage(msg, level, category, time, info);
+        logMessage(msg, level, category, attr);
     }
 }
 
@@ -507,10 +497,6 @@ inline void spark::Logger::operator()(LogLevel level, const char *fmt, ...) cons
     va_start(args, fmt);
     log(level, fmt, args);
     va_end(args);
-}
-
-inline void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {
-    log_message_v(level, name_, nullptr, 0, nullptr, nullptr, fmt, args);
 }
 
 #endif // SPARK_WIRING_LOGGING_H

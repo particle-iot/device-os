@@ -22,14 +22,14 @@ using namespace spark;
 
 class LogMessage {
 public:
-    LogMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const LogHandler::SourceInfo &info) :
+    LogMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) :
             msg_(msg ? msg : ""),
             cat_(category ? category : ""),
-            file_(info.file ? info.file : ""),
-            func_(info.function ? info.function : ""),
+            file_(attr.file ? attr.file : ""),
+            func_(attr.function ? attr.function : ""),
             level_(level),
-            time_(time),
-            line_(info.line) {
+            time_(attr.time),
+            line_(attr.line) {
     }
 
     const LogMessage& messageEquals(const std::string &msg) const {
@@ -113,8 +113,8 @@ public:
 
 protected:
     // spark::LogHandler
-    virtual void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info) override {
-        msgs_.push(LogMessage(msg, level, category, time, info));
+    virtual void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) override {
+        msgs_.push(LogMessage(msg, level, category, attr));
     }
 
     virtual void write(const char *data, size_t size) override {

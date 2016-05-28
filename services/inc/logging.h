@@ -136,8 +136,8 @@ typedef enum LogLevel {
     DEFAULT_LEVEL = 0,
     ALL_LEVEL = LOG_LEVEL_ALL,
     TRACE_LEVEL = LOG_LEVEL_TRACE,
-    LOG_LEVEL = LOG_LEVEL_TRACE,
-    DEBUG_LEVEL = LOG_LEVEL_TRACE,
+    LOG_LEVEL = LOG_LEVEL_TRACE, // Deprecated
+    DEBUG_LEVEL = LOG_LEVEL_TRACE, // Deprecated
     INFO_LEVEL = LOG_LEVEL_INFO,
     WARN_LEVEL = LOG_LEVEL_WARN,
     ERROR_LEVEL = LOG_LEVEL_ERROR,
@@ -145,12 +145,19 @@ typedef enum LogLevel {
     NO_LOG_LEVEL = LOG_LEVEL_NONE
 } LogLevel;
 
-// Application module needs to register following callbacks in order to handle generated logging output
-// (see log_set_callbacks()):
+// Log message attributes
+typedef struct LogAttributes {
+    size_t size; // Structure size
+    uint32_t flags; // Reserved for future use
+    const char *file; // Source file name (can be null)
+    int line; // Line number
+    const char *function; // Function name (can be null)
+    uint32_t time; // Number of milliseconds passed since the startup
+} LogAttributes;
 
 // Callback for message-based logging (used by log_message())
-typedef void (*log_message_callback_type)(const char *msg, int level, const char *category, uint32_t time,
-        const char *file, int line, const char *func, void *reserved);
+typedef void (*log_message_callback_type)(const char *msg, int level, const char *category, const LogAttributes *attr,
+        void *reserved);
 
 // Callback for direct logging (used by log_write(), log_printf(), log_dump())
 typedef void (*log_write_callback_type)(const char *data, size_t size, int level, const char *category, void *reserved);
@@ -159,12 +166,11 @@ typedef void (*log_write_callback_type)(const char *data, size_t size, int level
 typedef int (*log_enabled_callback_type)(int level, const char *category, void *reserved);
 
 // Generates log message
-void log_message(int level, const char *category, const char *file, int line, const char *func, void *reserved,
-        const char *fmt, ...);
+void log_message(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt, ...);
 
 // Variant of the log_message() function taking variable arguments via va_list
-void log_message_v(int level, const char *category, const char *file, int line, const char *func, void *reserved,
-        const char *fmt, va_list args);
+void log_message_v(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt,
+        va_list args);
 
 // Forwards buffer to backend logger
 void log_write(int level, const char *category, const char *data, size_t size, void *reserved);
@@ -187,6 +193,9 @@ const char* log_level_name(int level, void *reserved);
 // Sets logger callbacks
 void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_type log_write,
         log_enabled_callback_type log_enabled, void *reserved);
+
+// Initializes log message attributes
+void log_init_attr(LogAttributes *attr, void *reserved);
 
 extern void HAL_Delay_Microseconds(uint32_t delay);
 
@@ -273,11 +282,17 @@ static const char* const _log_category = NULL;
 #define _LOG_SOURCE_INFO NULL, 0, NULL
 #endif
 
+// Declares and initializes log message attributes
+#define _LOG_INIT_ATTR(_name) \
+        LogAttributes _name = { sizeof(LogAttributes), 0, _LOG_SOURCE_INFO }; \
+        log_init_attr(&_name, NULL)
+
 // Wrapper macros
 #define LOG_C(_level, _category, _fmt, ...) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                log_message(LOG_LEVEL_##_level, _category, _LOG_SOURCE_INFO, NULL, _fmt, ##__VA_ARGS__); \
+                _LOG_INIT_ATTR(_attr); \
+                log_message(LOG_LEVEL_##_level, _category, &_attr, NULL, _fmt, ##__VA_ARGS__); \
             } \
         } while (0)
 

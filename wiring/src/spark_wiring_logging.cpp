@@ -156,11 +156,10 @@ LogLevel spark::LogHandler::categoryLevel(const char *category) const {
     return level;
 }
 
-void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
-        const SourceInfo &info) {
+void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
     // Timestamp
     char buf[16];
-    snprintf(buf, sizeof(buf), "%010u ", (unsigned)time);
+    snprintf(buf, sizeof(buf), "%010u ", (unsigned)attr.time);
     write(buf);
     // Category (optional)
     if (category) {
@@ -169,28 +168,28 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
         write("] ");
     }
     // Source file (optional)
-    if (info.file) {
-        write(info.file); // File name
+    if (attr.file) {
+        write(attr.file); // File name
         write(":");
-        snprintf(buf, sizeof(buf), "%d", info.line); // Line number
+        snprintf(buf, sizeof(buf), "%d", attr.line); // Line number
         write(buf);
-        if (info.function) {
+        if (attr.function) {
             write(", ");
         } else {
             write(": ");
         }
     }
     // Function name (optional)
-    if (info.function) {
+    if (attr.function) {
         // Strip argument and return types for better readability
         int n = 0;
-        const char *p = strchrend(info.function, ' ');
+        const char *p = strchrend(attr.function, ' ');
         if (*p) {
             p += 1;
             n = strchrend(p, '(') - p;
         } else {
-            n = p - info.function;
-            p = info.function;
+            n = p - attr.function;
+            p = attr.function;
         }
         write(p, n);
         write("(): ");
@@ -201,6 +200,13 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
     // Message
     write(msg);
     write("\r\n");
+}
+
+// spark::Logger
+void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {
+    LogAttributes attr = { 0 };
+    log_init_attr(&attr, nullptr);
+    log_message_v(level, name_, &attr, nullptr, fmt, args);
 }
 
 // spark::LogManager
@@ -229,12 +235,10 @@ spark::LogManager* spark::LogManager::instance() {
     return &mgr;
 }
 
-void spark::LogManager::logMessage(const char *msg, int level, const char *category, uint32_t time, const char *file,
-        int line, const char *func, void *reserved) {
-    const LogHandler::SourceInfo info = {file, func, line};
+void spark::LogManager::logMessage(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved) {
     const auto &handlers = instance()->handlers_;
     for (size_t i = 0; i < handlers.size(); ++i) {
-        handlers[i]->message(msg, (LogLevel)level, category, time, info);
+        handlers[i]->message(msg, (LogLevel)level, category, *attr);
     }
 }
 
