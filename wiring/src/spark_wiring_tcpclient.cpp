@@ -35,7 +35,7 @@
 
 using namespace spark;
 
-uint16_t TCPClient::_srcport = 1024;
+uint16_t TCPClient::_srcport;
 
 static bool inline isOpen(sock_handle_t sd)
 {
@@ -81,6 +81,9 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
 
           if (socket_handle_valid(_sock))
           {
+
+            _srcport = 1024 + _sock; // source ports should be unique, in case we make more than one connection to the same IP/dest_port
+            
             flush_buffer();
 
             tSocketAddr.sa_family = AF_INET;
