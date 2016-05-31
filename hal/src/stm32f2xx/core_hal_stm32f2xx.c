@@ -291,11 +291,7 @@ void HAL_Core_Setup(void) {
     HAL_Core_Setup_finalize();
 
     bootloader_update_if_needed();
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-    HAL_Bootloader_Lock(false);
-#else
     HAL_Bootloader_Lock(true);
-#endif
 
 #if !defined(MODULAR_FIRMWARE)
     module_user_init_hook();
