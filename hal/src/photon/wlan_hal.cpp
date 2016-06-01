@@ -40,6 +40,8 @@
 #include "concurrent_hal.h"
 #include "wwd_resources.h"
 
+LOG_SOURCE_CATEGORY("hal.wlan");
+
 // dns.h includes a class member, which doesn't compile in C++
 #define class clazz
 #include "dns.h"
@@ -120,6 +122,7 @@ uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
  */
 int wlan_clear_credentials()
 {
+    WARN("Clearing WiFi credentials");
     // write to DCT credentials
     // clear current IP
     platform_dct_wifi_config_t* wifi_config = NULL;
@@ -221,18 +224,21 @@ wlan_result_t wlan_connect_finalize()
         switch (IPAddressSource(ip_config.config_mode))
         {
             case STATIC_IP:
+                INFO("Bringing WiFi interface up with static IP");
                 to_wiced_ip_address(settings.ip_address, ip_config.host);
                 to_wiced_ip_address(settings.netmask, ip_config.netmask);
                 to_wiced_ip_address(settings.gateway, ip_config.gateway);
                 result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_STATIC_IP, &settings);
-            if (!result)
-            {
+                if (!result)
+                {
                     if (to_wiced_ip_address(dns, ip_config.dns1))
                         dns_client_add_server_address(dns);
                     if (to_wiced_ip_address(dns, ip_config.dns2))
                         dns_client_add_server_address(dns);
                 }
+                break;
             default:
+                INFO("Bringing WiFi interface up with DHCP");
                 result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
                 break;
         }
@@ -259,6 +265,8 @@ WLanSelectAntenna_TypeDef fetch_antenna_selection()
     uint8_t result = *(const uint8_t*)dct_read_app_data(DCT_ANTENNA_SELECTION_OFFSET);
     if (result==0xFF)
         result = ANT_INTERNAL;  // default
+
+    INFO("Using %s antenna", result == ANT_INTERNAL ? "internal" : (result == ANT_EXTERNAL ? "external" : "auto"));
     return WLanSelectAntenna_TypeDef(result);
 }
 
