@@ -58,7 +58,7 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return 0;
 }
 
-hal_update_complete_t HAL_FLASH_End(void* reserved)
+hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length, void* reserved)
 {
     return HAL_UPDATE_ERROR;
 }

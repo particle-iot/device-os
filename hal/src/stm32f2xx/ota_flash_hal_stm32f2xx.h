@@ -23,9 +23,6 @@
 extern const module_bounds_t* module_bounds[];
 extern const unsigned module_bounds_length;
 extern const module_bounds_t module_ota;
-#if PLATFORM_ID == 88
-extern const module_bounds_t* module_ota_bounds[];
-#endif
 extern const module_bounds_t module_user;
 
 

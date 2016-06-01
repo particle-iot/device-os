@@ -166,18 +166,26 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
-hal_update_complete_t HAL_FLASH_End(void* reserved)
+hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length, void* reserved)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
 	
-    const module_bounds_t* bounds;
-    if(reserved == NULL)
-        bounds = &module_ota;
-    else
-        bounds = (module_bounds_t*)reserved;
+    module_bounds_t bounds;
+    if(file_address != HAL_OTA_FlashAddress()) // The image isn't stored from the start of the OTA region
+    {
+        bounds.start_address = file_address;
+        bounds.end_address = file_address + file_length;
+        bounds.maximum_size = file_length;
+        bounds.module_function = MODULE_FUNCTION_NONE;
+        bounds.module_index = 0;
+        bounds.store = MODULE_STORE_SCRATCHPAD;
+    }
+    else {
+        memcpy(&bounds, &module_ota, sizeof(module_bounds_t)); // Default OTA bounds
+    }
 
-    bool module_fetched = fetch_module(&module, bounds, true, MODULE_VALIDATION_INTEGRITY);
+    bool module_fetched = fetch_module(&module, &bounds, true, MODULE_VALIDATION_INTEGRITY);
 	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
@@ -186,7 +194,7 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 
         // bootloader is copied directly
         if (function==MODULE_FUNCTION_BOOTLOADER) {
-            if (bootloader_update((const void*)bounds->start_address, moduleLength+4))
+            if (bootloader_update((const void*)bounds.start_address, moduleLength+4))
                 result = HAL_UPDATE_APPLIED;
         }
         else
@@ -196,7 +204,7 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
 #else
             flash_device_t flash_device = FLASH_INTERNAL;
 #endif
-            if (FLASH_AddToNextAvailableModulesSlot(flash_device, bounds->start_address,
+            if (FLASH_AddToNextAvailableModulesSlot(flash_device, bounds.start_address,
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
                 (moduleLength + 4),//+4 to copy the CRC too
                 function,

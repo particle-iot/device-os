@@ -130,7 +130,7 @@ typedef enum {
     HAL_UPDATE_APPLIED
 } hal_update_complete_t;
 
-hal_update_complete_t HAL_FLASH_End(void* reserved);
+hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length, void* reserved);
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
 uint32_t HAL_FLASH_ModuleLength(uint32_t address);
