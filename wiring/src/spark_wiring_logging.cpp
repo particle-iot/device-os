@@ -233,7 +233,7 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
 
 // spark::Logger
 void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {
-    LogAttributes attr = { 0 };
+    LogAttributes attr = { sizeof(LogAttributes) };
     log_attr_init(&attr, nullptr);
     log_message_v(level, name_, &attr, nullptr, fmt, args);
 }
