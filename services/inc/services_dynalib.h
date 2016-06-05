@@ -59,7 +59,7 @@ DYNALIB_FN(25, services, log_dump, void(int, const char*, const void*, size_t, i
 DYNALIB_FN(26, services, log_enabled, int(int, const char*, void*))
 DYNALIB_FN(27, services, log_level_name, const char*(int, void*))
 DYNALIB_FN(28, services, log_set_callbacks, void(log_message_callback_type, log_write_callback_type, log_enabled_callback_type, void*))
-DYNALIB_FN(29, services, log_init_attr, void(LogAttributes*, void*))
+DYNALIB_FN(29, services, log_attr_init, void(LogAttributes*, void*))
 
 DYNALIB_END(services)
 

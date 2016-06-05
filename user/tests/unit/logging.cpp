@@ -1,5 +1,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>
+#include <boost/optional/optional.hpp>
+#include <boost/optional/optional_io.hpp>
 
 #include <iostream>
 #include <random>
@@ -23,13 +25,31 @@ using namespace spark;
 class LogMessage {
 public:
     LogMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) :
-            msg_(msg ? msg : ""),
-            cat_(category ? category : ""),
-            file_(attr.file ? attr.file : ""),
-            func_(attr.function ? attr.function : ""),
-            level_(level),
-            time_(attr.time),
-            line_(attr.line) {
+            level_(level) {
+        if (msg) {
+            msg_ = msg;
+        }
+        if (category) {
+            cat_ = category;
+        }
+        if (attr.has_file) {
+            file_ = attr.file;
+        }
+        if (attr.has_line) {
+            line_ = attr.line;
+        }
+        if (attr.has_function) {
+            func_ = attr.function;
+        }
+        if (attr.has_time) {
+            time_ = attr.time;
+        }
+        if (attr.has_code) {
+            code_ = attr.code;
+        }
+        if (attr.has_detail) {
+            detail_ = attr.detail;
+        }
     }
 
     const LogMessage& messageEquals(const std::string &msg) const {
@@ -47,11 +67,7 @@ public:
         return *this;
     }
 
-    const LogMessage& timeEquals(uint32_t time) const {
-        CATCH_CHECK(time_ == time);
-        return *this;
-    }
-
+    // Default attributes
     const LogMessage& fileEquals(const std::string &file) const {
         CATCH_CHECK(file_ == file);
         return *this;
@@ -67,11 +83,38 @@ public:
         return *this;
     }
 
+    const LogMessage& timeEquals(uint32_t time) const {
+        CATCH_CHECK(time_ == time);
+        return *this;
+    }
+
+    // Additional attributes
+    const LogMessage& codeEquals(intptr_t code) const {
+        CATCH_CHECK(code_ == code);
+        return *this;
+    }
+
+    const LogMessage& hasCode(bool yes = true) const {
+        CATCH_CHECK((bool)code_ == yes);
+        return *this;
+    }
+
+    const LogMessage& detailEquals(const std::string &detail) const {
+        CATCH_CHECK(detail_ == detail);
+        return *this;
+    }
+
+    const LogMessage& hasDetail(bool yes = true) const {
+        CATCH_CHECK((bool)detail_ == yes);
+        return *this;
+    }
+
 private:
-    std::string msg_, cat_, file_, func_;
+    boost::optional<std::string> msg_, cat_, file_, func_, detail_;
+    boost::optional<intptr_t> code_;
+    boost::optional<uint32_t> time_;
+    boost::optional<int> line_;
     LogLevel level_;
-    uint32_t time_;
-    int line_;
 };
 
 class TestLogHandler: public LogHandler {
@@ -217,7 +260,7 @@ const std::string SOURCE_CATEGORY = LOG_THIS_CATEGORY();
 
 CATCH_TEST_CASE("Message logging") {
     TestLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("attributes") {
+    CATCH_SECTION("default attributes") {
         LOG(TRACE, "trace");
         log.next().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
         LOG(INFO, "info");
@@ -227,7 +270,14 @@ CATCH_TEST_CASE("Message logging") {
         LOG(ERROR, "error");
         log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
     }
-    CATCH_SECTION("formatting") {
+    CATCH_SECTION("additional attributes") {
+        LOG(INFO, "info");
+        log.next().hasCode(false).hasDetail(false); // No additional attributes
+        LOG_ATTR(INFO, (code = -1, detail = "detail"), "info");
+        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE)
+                .codeEquals(-1).detailEquals("detail");
+    }
+    CATCH_SECTION("message formatting") {
         std::string s = "";
         LOG(TRACE, "%s", s.c_str());
         log.next().messageEquals("");
@@ -257,7 +307,7 @@ CATCH_TEST_CASE("Message logging") {
 
 CATCH_TEST_CASE("Message logging (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("attributes") {
+    CATCH_SECTION("default attributes") {
         LOG(TRACE, "trace");
         log.bufferEndsWith("TRACE: trace\r\n");
         LOG(INFO, "info");
@@ -268,7 +318,7 @@ CATCH_TEST_CASE("Message logging (compatibility callback)") {
         log.bufferEndsWith("ERROR: error\r\n");
         CATCH_CHECK(log.buffer().find(SOURCE_FILE) != std::string::npos);
     }
-    CATCH_SECTION("formatting") {
+    CATCH_SECTION("message formatting") {
         std::string s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG(INFO, "%s", s.c_str());
         log.bufferEndsWith(s + "\r\n");

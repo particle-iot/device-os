@@ -23,33 +23,6 @@
 #include <cstdarg>
 #include "timer_hal.h"
 #include "service_debug.h"
-#include "static_assert.h"
-
-#define STATIC_ASSERT_FIELD_SIZE(type, field, size) \
-        STATIC_ASSERT(field_size_changed_##type##_##field, sizeof(((type*)0)->field) == size);
-#define STATIC_ASSERT_FIELD_OFFSET(type, field, offs) \
-        STATIC_ASSERT(field_offset_changed_##type##_##field, offsetof(type, field) == offs);
-#define STATIC_ASSERT_FIELD_ORDER(type, field1, field2) \
-        STATIC_ASSERT(field_offset_changed_##type##_##field1, offsetof(type, field1) < offsetof(type, field2));
-
-// LogAttributes::size
-STATIC_ASSERT_FIELD_OFFSET(LogAttributes, size, 0);
-STATIC_ASSERT_FIELD_SIZE(LogAttributes, size, sizeof(size_t));
-// LogAttributes::flags
-STATIC_ASSERT_FIELD_ORDER(LogAttributes, size, flags);
-STATIC_ASSERT_FIELD_SIZE(LogAttributes, flags, sizeof(uint32_t));
-// LogAttributes::file
-STATIC_ASSERT_FIELD_ORDER(LogAttributes, flags, file);
-STATIC_ASSERT_FIELD_SIZE(LogAttributes, file, sizeof(const char*));
-// LogAttributes::line
-STATIC_ASSERT_FIELD_ORDER(LogAttributes, file, line);
-STATIC_ASSERT_FIELD_SIZE(LogAttributes, line, sizeof(int));
-// LogAttributes::function
-STATIC_ASSERT_FIELD_ORDER(LogAttributes, line, function);
-STATIC_ASSERT_FIELD_SIZE(LogAttributes, function, sizeof(const char*));
-// LogAttributes::time
-STATIC_ASSERT_FIELD_ORDER(LogAttributes, function, time);
-STATIC_ASSERT_FIELD_SIZE(LogAttributes, time, sizeof(uint32_t));
 
 namespace {
 
@@ -210,14 +183,13 @@ const char* log_level_name(int level, void *reserved) {
     return names[i];
 }
 
-void log_init_attr(LogAttributes *attr, void *reserved) {
-    if (attr->file) {
+void log_attr_init(LogAttributes *attr, void *reserved) {
+    if (attr->has_file) {
         // Strip directory path
         const char *p = strrchr(attr->file, '/');
         if (p) {
             attr->file = p + 1;
         }
     }
-    attr->time = HAL_Timer_Get_Milli_Seconds();
-    // TODO: Thread ID, status code, ...
+    LOG_ATTR_SET(*attr, time, HAL_Timer_Get_Milli_Seconds());
 }

@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <cinttypes>
 #include <cstdio>
 
 #include "spark_wiring_logging.h"
@@ -166,30 +167,34 @@ LogLevel spark::LogHandler::categoryLevel(const char *category) const {
 }
 
 void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
-    // Timestamp
     char buf[16];
-    snprintf(buf, sizeof(buf), "%010u ", (unsigned)attr.time);
-    write(buf);
-    // Category (optional)
+    // Timestamp
+    if (attr.has_time) {
+        snprintf(buf, sizeof(buf), "%010u ", (unsigned)attr.time);
+        write(buf);
+    }
+    // Category
     if (category) {
         write("[");
         write(category);
         write("] ");
     }
-    // Source file (optional)
-    if (attr.file) {
+    // Source file
+    if (attr.has_file) {
         write(attr.file); // File name
-        write(":");
-        snprintf(buf, sizeof(buf), "%d", attr.line); // Line number
-        write(buf);
-        if (attr.function) {
+        if (attr.has_line) {
+            write(":");
+            snprintf(buf, sizeof(buf), "%d", attr.line); // Line number
+            write(buf);
+        }
+        if (attr.has_function) {
             write(", ");
         } else {
             write(": ");
         }
     }
-    // Function name (optional)
-    if (attr.function) {
+    // Function name
+    if (attr.has_function) {
         // Strip argument and return types for better readability
         const char *s = nullptr;
         size_t n = 0;
@@ -201,14 +206,35 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
     write(levelName(level));
     write(": ");
     // Message
-    write(msg);
+    if (msg) {
+        write(msg);
+    }
+    // Additional attributes
+    if (attr.has_code || attr.has_detail) {
+        write(" [");
+        if (attr.has_code) {
+            write("code");
+            write(" = ");
+            snprintf(buf, sizeof(buf), "%" PRIiPTR, attr.code);
+            write(buf);
+        }
+        if (attr.has_detail) {
+            if (attr.has_code) {
+                write(", ");
+            }
+            write("detail");
+            write(" = ");
+            write(attr.detail);
+        }
+        write("]");
+    }
     write("\r\n");
 }
 
 // spark::Logger
 void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {
     LogAttributes attr = { 0 };
-    log_init_attr(&attr, nullptr);
+    log_attr_init(&attr, nullptr);
     log_message_v(level, name_, &attr, nullptr, fmt, args);
 }
 

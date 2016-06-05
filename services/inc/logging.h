@@ -22,11 +22,19 @@
     This header defines various macros for logging:
 
     LOG(level, format, ...) - generates log message according to printf-alike format string.
-    This macro adds several attributes to all generated messages: timestamp, source file name, line
-    number, function name (see also LOG_INCLUDE_SOURCE_INFO).
+    This macro adds several default attributes to all log messages: timestamp, source file name,
+    line number, function name (see also LOG_INCLUDE_SOURCE_INFO).
 
         const char* user = "John D.";
         LOG(INFO, "Hello %s!", user);
+
+    LOG_ATTR(level, attrs, format, ...) - generates log message with additional attributes.
+    Supported attributes and their types are described by the LogAttributes structure.
+
+        int error = network_connect();
+        if (error) {
+            LOG_ATTR(ERROR, (code = error, detail = "network"), "Connection error");
+        }
 
     LOG_WRITE(level, data, size) - primary macro for direct logging. Provided buffer is forwarded to
     backend logger as is.
@@ -80,6 +88,7 @@
     Following macros take category name as argument:
 
     LOG_C(level, category, format, ...)
+    LOG_ATTR_C(level, category, attrs, format, ...)
     LOG_WRITE_C(level, category, data, size)
     LOG_PRINT_C(level, category, str)
     LOG_PRINTF_C(level, category, format, ...)
@@ -115,6 +124,7 @@
 #include <stddef.h>
 #include "panic.h"
 #include "config.h"
+#include "preprocessor.h"
 
 // NOTE: This header defines various string constants. Ensure identical strings defined in different
 // translation units get merged during linking (may require enabled optimizations)
@@ -146,13 +156,29 @@ typedef enum LogLevel {
 } LogLevel;
 
 // Log message attributes
+// NOTE: Do not change types and order of the existent fields
 typedef struct LogAttributes {
     size_t size; // Structure size
-    uint32_t flags; // Reserved for future use
-    const char *file; // Source file name (can be null)
+    union { // Attribute flags
+        uint32_t flags;
+        struct {
+            // 1 - attribute is set, 0 - attribute is not set
+            unsigned has_file: 1;
+            unsigned has_line: 1;
+            unsigned has_function: 1;
+            unsigned has_time: 1;
+            unsigned has_code: 1;
+            unsigned has_detail: 1;
+            // <--- Add new attribute flag here
+        };
+    };
+    const char *file; // Source file name
     int line; // Line number
-    const char *function; // Function name (can be null)
-    uint32_t time; // Number of milliseconds passed since the startup
+    const char *function; // Function name
+    uint32_t time; // Timestamp
+    intptr_t code; // Status code
+    const char *detail; // Additional information
+    // <--- Add new attribute field here
 } LogAttributes;
 
 // Callback for message-based logging (used by log_message())
@@ -195,7 +221,7 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
         log_enabled_callback_type log_enabled, void *reserved);
 
 // Initializes log message attributes
-void log_init_attr(LogAttributes *attr, void *reserved);
+void log_attr_init(LogAttributes *attr, void *reserved);
 
 extern void HAL_Delay_Microseconds(uint32_t delay);
 
@@ -210,6 +236,13 @@ extern void HAL_Delay_Microseconds(uint32_t delay);
 #ifndef LOG_MAX_STRING_LENGTH
 #define LOG_MAX_STRING_LENGTH 160
 #endif
+
+// Sets log message attribute
+#define LOG_ATTR_SET(_attr, _name, _val) \
+        do { \
+            (_attr)._name = _val; \
+            (_attr).has_##_name = 1; \
+        } while (0)
 
 #ifndef LOG_DISABLE
 
@@ -277,21 +310,38 @@ static const char* const _log_category = NULL;
 #endif // !defined(__cplusplus)
 
 #ifdef LOG_INCLUDE_SOURCE_INFO
-#define _LOG_SOURCE_INFO __FILE__, __LINE__, __PRETTY_FUNCTION__
+#define _LOG_ATTR_SET_SOURCE_INFO(_attr) \
+        LOG_ATTR_SET(_attr, file, __FILE__); \
+        LOG_ATTR_SET(_attr, line, __LINE__); \
+        LOG_ATTR_SET(_attr, function, __PRETTY_FUNCTION__)
 #else
-#define _LOG_SOURCE_INFO NULL, 0, NULL
+#define _LOG_ATTR_SET_SOURCE_INFO(_attr)
 #endif
 
-// Declares and initializes log message attributes
-#define _LOG_INIT_ATTR(_name) \
-        LogAttributes _name = { sizeof(LogAttributes), 0, _LOG_SOURCE_INFO }; \
-        log_init_attr(&_name, NULL)
+#define _LOG_ATTR_INIT(_name) \
+        LogAttributes _name = { sizeof(LogAttributes) }; \
+        _LOG_ATTR_SET_SOURCE_INFO(_name); \
+        log_attr_init(&_name, NULL)
 
-// Wrapper macros
+// Generator macro for PP_FOR_EACH()
+#define _LOG_ATTR_SET(_attr, _expr) \
+        (_attr)._expr; /* attr.file = "logging.h"; */ \
+        (_attr).has_##_expr ? 1 : 1; /* attr.has_file = "logging.h" ? 1 : 1; */
+
+// Primary logging macros
 #define LOG_C(_level, _category, _fmt, ...) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                _LOG_INIT_ATTR(_attr); \
+                _LOG_ATTR_INIT(_attr); \
+                log_message(LOG_LEVEL_##_level, _category, &_attr, NULL, _fmt, ##__VA_ARGS__); \
+            } \
+        } while (0)
+
+#define LOG_ATTR_C(_level, _category, _attrs, _fmt, ...) \
+        do { \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                _LOG_ATTR_INIT(_attr); \
+                PP_FOR_EACH(_LOG_ATTR_SET, _attr, PP_ARGS(_attrs)); \
                 log_message(LOG_LEVEL_##_level, _category, &_attr, NULL, _fmt, ##__VA_ARGS__); \
             } \
         } while (0)
@@ -328,58 +378,53 @@ static const char* const _log_category = NULL;
 #define LOG_ENABLED_C(_level, _category) \
         (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL && log_enabled(LOG_LEVEL_##_level, _category, NULL))
 
-// Macros using current category
-#define LOG(_level, _fmt, ...) LOG_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
-#define LOG_WRITE(_level, _data, _size) LOG_WRITE_C(_level, LOG_THIS_CATEGORY(), _data, _size)
-#define LOG_PRINT(_level, _str) LOG_PRINT_C(_level, LOG_THIS_CATEGORY(), _str)
-#define LOG_PRINTF(_level, _fmt, ...) LOG_PRINTF_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
-#define LOG_DUMP(_level, _data, _size) LOG_DUMP_C(_level, LOG_THIS_CATEGORY(), _data, _size)
-#define LOG_ENABLED(_level) LOG_ENABLED_C(_level, LOG_THIS_CATEGORY())
-
 #else // LOG_DISABLE
 
 #define LOG_CATEGORY(_name)
 #define LOG_SOURCE_CATEGORY(_name)
 #define LOG_THIS_CATEGORY() NULL
 
-#define LOG(_level, _fmt, ...)
 #define LOG_C(_level, _category, _fmt, ...)
-#define LOG_WRITE(_level, _data, _size)
+#define LOG_ATTR_C(_level, _category, _attrs, _fmt, ...)
 #define LOG_WRITE_C(_level, _category, _data, _size)
-#define LOG_PRINT(_level, _str)
 #define LOG_PRINT_C(_level, _category, _str)
-#define LOG_PRINTF(_level, _fmt, ...)
 #define LOG_PRINTF_C(_level, _category, _fmt, ...)
-#define LOG_DUMP(_level, _data, _size)
 #define LOG_DUMP_C(_level, _category, _data, _size)
-#define LOG_ENABLED(_level) (0)
 #define LOG_ENABLED_C(_level, _category) (0)
 
 #endif
 
 #ifdef DEBUG_BUILD
-#define LOG_DEBUG(_level, _fmt, ...) LOG(_level, _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_C(_level, _category, _fmt, ...) LOG_C(_level, _category, _fmt, ##__VA_ARGS__)
-#define LOG_DEBUG_WRITE(_level, _data, _size) LOG_WRITE(_level, _data, _size)
+#define LOG_DEBUG_ATTR_C(_level, _category, _attrs, _fmt, ...) LOG_ATTR_C(_level, _category, _attrs, _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_WRITE_C(_level, _category, _data, _size) LOG_WRITE_C(_level, _category, _data, _size)
-#define LOG_DEBUG_PRINT(_level, _str) LOG_PRINT(_level, _str)
 #define LOG_DEBUG_PRINT_C(_level, _category, _str) LOG_PRINT_C(_level, _category, _str)
-#define LOG_DEBUG_PRINTF(_level, _fmt, ...) LOG_PRINTF(_level, _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_PRINTF_C(_level, _category, _fmt, ...) LOG_PRINTF_C(_level, _category, _fmt, ##__VA_ARGS__)
-#define LOG_DEBUG_DUMP(_level, _data, _size) LOG_DUMP(_level, _data, _size)
 #define LOG_DEBUG_DUMP_C(_level, _category, _data, _size) LOG_DUMP_C(_level, _category, _data, _size)
 #else
-#define LOG_DEBUG(_level, _fmt, ...)
 #define LOG_DEBUG_C(_level, _category, _fmt, ...)
-#define LOG_DEBUG_WRITE(_level, _data, _size)
+#define LOG_DEBUG_ATTR_C(_level, _category, _attrs, _fmt, ...)
 #define LOG_DEBUG_WRITE_C(_level, _category, _data, _size)
-#define LOG_DEBUG_PRINT(_level, _str)
 #define LOG_DEBUG_PRINT_C(_level, _category, _str)
-#define LOG_DEBUG_PRINTF(_level, _fmt, ...)
 #define LOG_DEBUG_PRINTF_C(_level, _category, _fmt, ...)
-#define LOG_DEBUG_DUMP(_level, _data, _size)
 #define LOG_DEBUG_DUMP_C(_level, _category, _data, _size)
 #endif
+
+// Macros using current category
+#define LOG(_level, _fmt, ...) LOG_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
+#define LOG_ATTR(_level, _attrs, _fmt, ...) LOG_ATTR_C(_level, LOG_THIS_CATEGORY(), _attrs, _fmt, ##__VA_ARGS__)
+#define LOG_WRITE(_level, _data, _size) LOG_WRITE_C(_level, LOG_THIS_CATEGORY(), _data, _size)
+#define LOG_PRINT(_level, _str) LOG_PRINT_C(_level, LOG_THIS_CATEGORY(), _str)
+#define LOG_PRINTF(_level, _fmt, ...) LOG_PRINTF_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
+#define LOG_DUMP(_level, _data, _size) LOG_DUMP_C(_level, LOG_THIS_CATEGORY(), _data, _size)
+#define LOG_ENABLED(_level) LOG_ENABLED_C(_level, LOG_THIS_CATEGORY())
+
+#define LOG_DEBUG(_level, _fmt, ...) LOG_DEBUG_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
+#define LOG_DEBUG_ATTR(_level, _attrs, _fmt, ...) LOG_DEBUG_ATTR_C(_level, LOG_THIS_CATEGORY(), _attrs, _fmt, ##__VA_ARGS__)
+#define LOG_DEBUG_WRITE(_level, _data, _size) LOG_DEBUG_WRITE_C(_level, LOG_THIS_CATEGORY(), _data, _size)
+#define LOG_DEBUG_PRINT(_level, _str) LOG_DEBUG_PRINT_C(_level, LOG_THIS_CATEGORY(), _str)
+#define LOG_DEBUG_PRINTF(_level, _fmt, ...) LOG_DEBUG_PRINTF_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
+#define LOG_DEBUG_DUMP(_level, _data, _size) LOG_DEBUG_DUMP_C(_level, LOG_THIS_CATEGORY(), _data, _size)
 
 #define PANIC(_code, _fmt, ...) \
         do { \
