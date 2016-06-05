@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "logging.h"
 
 extern "C" uint32_t HAL_RNG_GetRandomNumber()
 {
@@ -36,5 +37,9 @@ extern "C" void log_message(int level, const char *category, const LogAttributes
 }
 
 extern "C" void log_write(int level, const char *category, const char *data, size_t size, void *reserved)
+{
+}
+
+extern "C" void log_attr_init(LogAttributes *attr, void *reserved)
 {
 }

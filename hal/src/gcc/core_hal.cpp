@@ -59,13 +59,15 @@ void log_message_callback(const char *msg, int level, const char *category, cons
     }
     std::ostringstream strm;
     // Timestamp
-    strm << std::setw(10) << std::setfill('0') << attr->time << ' ';
-    // Category (optional)
-    if (category && category[0]) {
+    if (attr->has_time) {
+        strm << std::setw(10) << std::setfill('0') << attr->time << ' ';
+    }
+    // Category
+    if (category) {
         strm << '[' << category << "] ";
     }
-    // Source info (optional)
-    if (attr->file && attr->function) {
+    // Source info
+    if (attr->has_file && attr->has_line && attr->has_function) {
         strm << attr->file << ':' << attr->line << ", ";
         // Strip argument and return types for better readability
         std::string funcName(attr->function);
@@ -78,7 +80,21 @@ void log_message_callback(const char *msg, int level, const char *category, cons
     // Level
     strm << log_level_name(level, nullptr) << ": ";
     // Message
-    strm << msg;
+    if (msg) {
+        strm << msg;
+    }
+    // Additional attributes
+    if (attr->has_code || attr->has_detail) {
+        strm << " [";
+        if (attr->has_code) {
+            strm << "code = " << attr->code << ", ";
+        }
+        if (attr->has_detail) {
+            strm << "detail = " << attr->detail << ", ";
+        }
+        strm.seekp(-2, std::ios_base::end); // Overwrite trailing comma
+        strm << "] ";
+    }
     std::cout << strm.str() << std::endl;
 }
 
