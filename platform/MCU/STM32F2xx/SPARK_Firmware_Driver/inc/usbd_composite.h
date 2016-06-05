@@ -6,7 +6,7 @@
 
 #define USBD_COMPOSITE_CFGDESC_MAX_LENGTH     256
 #define USBD_COMPOSITE_MAX_CLASSES            4
-#define USBD_COMPOSITE_CFGDESC_HEADER_LENGTH  9
+#define USBD_COMPOSITE_CFGDESC_HEADER_LENGTH  18
 #define USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_TOTAL_LENGTH  2
 #define USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES 4
 
@@ -63,5 +63,6 @@ extern void  USBD_Composite_Set_State(void* cls, bool state);
 extern bool  USBD_Composite_Get_State(void* cls);
 extern void  USBD_Composite_Unregister_All();
 extern uint8_t USBD_Composite_Registered_Count(bool onlyActive);
+extern uint8_t USBD_Composite_Handle_Msft_Request(void* pdev, USB_SETUP_REQ* req);
 
 #endif /* USBD_COMPOSITE_H_ */

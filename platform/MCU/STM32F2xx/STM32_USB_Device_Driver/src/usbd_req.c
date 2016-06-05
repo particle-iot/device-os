@@ -150,16 +150,18 @@ USBD_Status  USBD_StdDevReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 
   if ((req->bmRequest & 0b01100000) == USB_REQ_TYPE_VENDOR)
   {
-    if(pdev->dev.usr_cb && pdev->dev.usr_cb->ControlRequest)
+    if (pdev->dev.usr_cb && pdev->dev.usr_cb->ControlRequest)
+    {
       ret = pdev->dev.usr_cb->ControlRequest(req, 0);
-      if((req->wLength == 0) && (ret == USBD_OK))
+      if ((req->wLength == 0) && (ret == USBD_OK))
       {
         USBD_CtlSendStatus(pdev);
       } else if (ret != USBD_OK) {
         USBD_CtlError(pdev, req);
       }
+    }
 
-      return ret;
+    return ret;
   }
 
   switch (req->bRequest)
@@ -381,7 +383,6 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
 {
   uint16_t len;
   uint8_t *pbuf;
-
 
   switch (req->wValue >> 8)
   {

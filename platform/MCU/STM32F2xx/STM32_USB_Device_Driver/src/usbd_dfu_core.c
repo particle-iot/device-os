@@ -265,7 +265,7 @@ __ALIGN_BEGIN uint8_t usbd_dfu_CfgDesc[USB_DFU_CONFIG_DESC_SIZ] __ALIGN_END =
 #endif /* (USBD_ITF_MAX_NUM > 5) */
 
 #if (USBD_ITF_MAX_NUM > 6)
-#error "ERROR: usbd_dfu_core.c: Modify the file to support more descriptors!"
+//#error "ERROR: usbd_dfu_core.c: Modify the file to support more descriptors!"
 #endif /* (USBD_ITF_MAX_NUM > 6) */
 
   /******************** DFU Functional Descriptor********************/
@@ -339,7 +339,7 @@ __ALIGN_BEGIN uint8_t usbd_dfu_OtherCfgDesc[USB_DFU_CONFIG_DESC_SIZ] __ALIGN_END
 #endif /* (USBD_ITF_MAX_NUM > 5) */
 
 #if (USBD_ITF_MAX_NUM > 6)
-#error "ERROR: usbd_dfu_core.c: Modify the file to support more descriptors!"
+//#error "ERROR: usbd_dfu_core.c: Modify the file to support more descriptors!"
 #endif /* (USBD_ITF_MAX_NUM > 6) */
 
   /******************** DFU Functional Descriptor********************/

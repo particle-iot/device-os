@@ -33,6 +33,8 @@
 
 LOG_SOURCE_CATEGORY("usb.composite")
 
+#define USBD_COMPOSITE_USRSTR_BASE 0x09
+
 static USBD_Composite_Class_Data s_Class_Entries[USBD_COMPOSITE_MAX_CLASSES] = { {0} };
 static uint32_t s_Classes_Count = 0;
 static USBD_Composite_Class_Data* s_Classes = NULL;
@@ -93,7 +95,75 @@ static const uint8_t USBD_Composite_CfgDescHeaderTemplate[USBD_COMPOSITE_CFGDESC
   0x01,                                          /* bConfigurationValue */
   USBD_IDX_CONFIG_STR,                           /* iConfiguration */
   0x80,                                          /* bmAttirbutes (Bus powered) */
-  0xFA                                           /* bMaxPower (500mA) */
+  0xFA,                                          /* bMaxPower (500mA) */
+
+  /* Vendor-specific interface #0 */
+  0x09,                                          /* bLength: Interface Descriptor size */
+  USB_INTERFACE_DESCRIPTOR_TYPE,                 /* bDescriptorType: Interface descriptor type */
+  0x00,                                          /* bInterfaceNumber: Number of Interface */
+  0x00,                                          /* bAlternateSetting: Alternate setting */
+  0x00,                                          /* bNumEndpoints */
+  0xff,                                          /* bInterfaceClass: Vendor */
+  0xff,                                          /* bInterfaceSubClass */
+  0xff,                                          /* nInterfaceProtocol */
+  USBD_COMPOSITE_USRSTR_BASE                     /* iInterface: Index of string descriptor */
+};
+
+/* MS OS String Descriptor */
+static const uint8_t USBD_Composite_MsftStrDesc[] = {
+  0x12,                                          /* bLength */
+  0x03,                                          /* bDescriptorType */
+  'M', 0x00,                                     /* qwSignature */
+  'S', 0x00,
+  'F', 0x00,
+  'T', 0x00,
+  '1', 0x00,
+  '0', 0x00,
+  '0', 0x00,
+  0xee,                                          /* MS_VendorCode */
+  0x00                                           /* Padding */
+};
+
+/* Extended Compat ID OS Descriptor */
+static const uint8_t USBD_Composite_MsftExtCompatIdOsDescr[] = {
+  0x28, 0x00, 0x00, 0x00,                        /* dwLength */
+  0x00, 0x01,                                    /* bcdVersion */
+  0x04, 0x00,                                    /* wIndex */
+  0x01,                                          /* bCount */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,      /* Reserved */
+  0x00,                                          /* bFirstInterfaceNumber */
+  0x01,                                          /* Reserved */
+  'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,      /* compatibleID */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,/* subCompatibleID */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00             /* Reserved */
+};
+
+/* Extended Properties OS Descriptor */
+static const uint8_t USBD_Composite_MsftExtPropOsDescr[] = {
+  0x92, 0x00, 0x00, 0x00,                        /* dwLength */
+  0x00, 0x01,                                    /* bcdVersion */
+  0x05, 0x00,                                    /* wIndex */
+  0x01, 0x00,                                    /* wCount */
+  0x88, 0x00, 0x00, 0x00,                        /* dwSize */
+  0x07, 0x00, 0x00, 0x00,                        /* dwPropertyDataType */
+  0x2a, 0x00,                                    /* wPropertyNameLength */
+  'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00,    /* bPropertyName "DeviceInterfaceGUID" */
+  'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00,
+  't', 0x00, 'e', 0x00, 'r', 0x00, 'f', 0x00,
+  'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00,
+  'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00,
+  0x00, 0x00,
+  0x50, 0x00, 0x00, 0x00,                        /* dwPropertyDataLength */
+  '{', 0x00, '2', 0x00, '0', 0x00, 'b', 0x00,    /* bPropertyData "{20b6cfa4-6dc7-468a-a8db-faa7c23ddea5}" */
+  '6', 0x00, 'c', 0x00, 'f', 0x00, 'a', 0x00,
+  '4', 0x00, '-', 0x00, '6', 0x00, 'd', 0x00,
+  'c', 0x00, '7', 0x00, '-', 0x00, '4', 0x00,
+  '6', 0x00, '8', 0x00, 'a', 0x00, '-', 0x00,
+  'a', 0x00, '8', 0x00, 'd', 0x00, 'b', 0x00,
+  '-', 0x00, 'f', 0x00, 'a', 0x00, 'a', 0x00,
+  '7', 0x00, 'c', 0x00, '2', 0x00, '3', 0x00,
+  'd', 0x00, 'd', 0x00, 'e', 0x00, 'a', 0x00,
+  '5', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
 static uint8_t USBD_Composite_Init(void* pdev, uint8_t cfgidx) {
@@ -124,6 +194,11 @@ static uint8_t USBD_Composite_DeInit(void* pdev, uint8_t cfgidx) {
 }
 
 static uint8_t USBD_Composite_Setup(void* pdev, USB_SETUP_REQ* req) {
+  if (req->bRequest == 0xee && req->bmRequest == 0b11000001 &&
+      (req->wValue & 0xff) == 0x00 && req->wIndex == 0x0005) {
+    return USBD_Composite_Handle_Msft_Request(pdev, req);
+  }
+
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
     if (c->active && req->wIndex >= c->firstInterface && req->wIndex < (c->firstInterface + c->interfaces)) {
       if(c->cb->Setup) {
@@ -220,7 +295,20 @@ static uint8_t* USBD_Composite_GetOtherConfigDescriptor(uint8_t speed, uint16_t 
 }
 #endif
 
+static uint8_t* USBD_Composite_GetMsftStrDescriptor(uint16_t* length) {
+  *length = sizeof(USBD_Composite_MsftStrDesc);
+  return (uint8_t*)USBD_Composite_MsftStrDesc;
+}
+
 static uint8_t* USBD_Composite_GetUsrStrDescriptor(uint8_t speed, uint8_t index, uint16_t *length) {
+  // MSFT-specific
+  if (index == 0xee) {
+    return USBD_Composite_GetMsftStrDescriptor(length);
+  } else if (index == USBD_COMPOSITE_USRSTR_BASE) {
+    USBD_GetString("Particle Control Interface", USBD_StrDesc, length);
+    return USBD_StrDesc;
+  }
+
   for(USBD_Composite_Class_Data* c = s_Classes; s_Initialized && c != NULL; c = c->next) {
     if(c->active && c->cb->GetUsrStrDescriptor) {
       uint8_t* ret = c->cb->GetUsrStrDescriptor(speed, c, index, length);
@@ -248,7 +336,7 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
 
   // Append all class Interface and Class Specific descriptors
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
-    c->firstInterface = totalInterfaces;
+    c->firstInterface = totalInterfaces + 1;
     clsCfgLength = USBD_COMPOSITE_CFGDESC_MAX_LENGTH - (pbuf - buf);
     
     if (!other && c->cb->GetConfigDescriptor) {
@@ -273,10 +361,10 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
   }
 
   // Update wTotalLength and bNumInterfaces
-  *(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES) = activeInterfaces;
+  *(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES) = activeInterfaces + 1;
   *((uint16_t *)(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_TOTAL_LENGTH)) = totalLength;
 
-  LOG_DEBUG(TRACE, "Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces, activeInterfaces);
+  LOG_DEBUG(TRACE, "Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces + 1, activeInterfaces + 1);
 
   return totalLength;
 }
@@ -391,4 +479,16 @@ uint8_t USBD_Composite_Registered_Count(bool onlyActive) {
   }
 
   return registered;
+}
+
+uint8_t USBD_Composite_Handle_Msft_Request(void* pdev, USB_SETUP_REQ* req) {
+  if (req->wIndex == 0x0004)
+    USBD_CtlSendData(pdev, USBD_Composite_MsftExtCompatIdOsDescr, req->wLength);
+  else if (req->wIndex == 0x0005) {
+    USBD_CtlSendData(pdev, USBD_Composite_MsftExtPropOsDescr, req->wLength);
+  }
+  else
+    return USBD_FAIL;
+
+  return USBD_OK;
 }

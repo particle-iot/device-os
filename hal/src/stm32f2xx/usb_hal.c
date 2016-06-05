@@ -75,6 +75,12 @@ void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, voi
 uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
 {
     uint8_t ret = USBD_OK;
+
+    // Forward Microsoft vendor requests to Composite driver
+    if (req->bRequest == 0xee && req->wIndex == 0x0004 && req->wValue == 0x0000) {
+        return USBD_Composite_Handle_Msft_Request(&USB_OTG_dev, req);
+    }
+
     if (req != NULL) {
         USB_SetupRequest.bmRequestType = req->bmRequest;
         USB_SetupRequest.bRequest = req->bRequest;
@@ -91,9 +97,11 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
                     USB_SetupRequest.data = USB_SetupRequest_Data;
                     ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
 
-                    if (ret == USBD_OK && USB_SetupRequest.data != NULL &&
-                        USB_SetupRequest.wLength && USB_SetupRequest.wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA) {
-                        if (USB_SetupRequest.data != USB_SetupRequest_Data) {
+                    if (ret == USBD_OK && USB_SetupRequest.data != NULL && USB_SetupRequest.wLength) {
+                        if (USB_SetupRequest.data != USB_SetupRequest_Data &&
+                            USB_SetupRequest.wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA) {
+                            // Don't use user buffer if wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA
+                            // and copy into internal buffer
                             memcpy(USB_SetupRequest_Data, USB_SetupRequest.data, USB_SetupRequest.wLength);
                         }
                         USBD_CtlSendData (&USB_OTG_dev, USB_SetupRequest_Data, USB_SetupRequest.wLength);
@@ -104,7 +112,11 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
             } else {
                 // Host -> Device
                 USB_InSetupRequest = 1;
-                USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest_Data, req->wLength);
+                if (req->wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA) {
+                    USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest_Data, req->wLength);
+                } else {
+                    ret = USBD_FAIL;
+                }
             }
         } else {
             // Setup request without data stage
