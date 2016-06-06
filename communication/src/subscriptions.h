@@ -27,9 +27,14 @@ namespace protocol
 #include "protocol_defs.h"
 #include "events.h"
 #include "message_channel.h"
+#include <stdint.h>
 
 class Subscriptions
 {
+public:
+	typedef uint32_t (*calculate_crc_fn)(const unsigned char *buf, uint32_t buflen);
+
+private:
 	FilteringEventHandler event_handlers[5];
 
 protected:
@@ -44,7 +49,13 @@ protected:
         else
           msglen = subscription(message.buf(), 0, filter, scope);
         message.set_length(msglen);
-        return channel.send(message);
+        ProtocolError result = channel.send(message);
+        return result;
+	}
+
+	inline ProtocolError send_subscription(MessageChannel& channel, const FilteringEventHandler& handler)
+	{
+		return send_subscription(channel, handler.filter, handler.device_id[0] ? handler.device_id : nullptr, handler.scope);
 	}
 
 public:
@@ -52,6 +63,21 @@ public:
 	Subscriptions()
 	{
 		memset(&event_handlers, 0, sizeof(event_handlers));
+	}
+
+	uint32_t compute_subscriptions_checksum(calculate_crc_fn calculate_crc)
+	{
+		uint32_t checksum = 0;
+		for_each([&checksum, calculate_crc](FilteringEventHandler& handler){
+			uint32_t chk[4];
+			chk[0] = checksum;
+			chk[1] = calculate_crc((const uint8_t*)handler.device_id, sizeof(handler.device_id));
+			chk[2] = calculate_crc((const uint8_t*)handler.filter, sizeof(handler.filter));
+			chk[3] = calculate_crc((const uint8_t*)handler.scope, sizeof(handler.scope));
+			checksum = calculate_crc((const uint8_t*)chk, sizeof(chk));
+			return NO_ERROR;
+		});
+		return checksum;
 	}
 
 	ProtocolError handle_event(Message& message,
@@ -288,12 +314,11 @@ public:
 
 	inline ProtocolError send_subscriptions(MessageChannel& channel)
 	{
-		return for_each([&](const FilteringEventHandler& handler){return send_subscription(channel, handler);});
-	}
-
-	inline ProtocolError send_subscription(MessageChannel& channel, const FilteringEventHandler& handler)
-	{
-		return send_subscription(channel, handler.filter, handler.device_id[0] ? handler.device_id : nullptr, handler.scope);
+		ProtocolError result = for_each([&](const FilteringEventHandler& handler){return send_subscription(channel, handler);});
+		if (result==NO_ERROR) {
+			//
+		}
+		return result;
 	}
 
 	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id)

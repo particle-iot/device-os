@@ -578,11 +578,11 @@ public:
 		return server;
 	}
 
-	ProtocolError establish() override
+	ProtocolError establish(uint32_t& flags, uint32_t app_crc) override
 	{
 		server.clear();
 		client.clear();
-		return channel::establish();
+		return channel::establish(flags, app_crc);
 	}
 
 	/**

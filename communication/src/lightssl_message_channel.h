@@ -79,7 +79,7 @@ public:
 	void init(const uint8_t* core_private, const uint8_t* server_public,
 			const uint8_t* device_id, Callbacks& callbacks, message_id_t* counter);
 
-	virtual ProtocolError establish() override
+	virtual ProtocolError establish(uint32_t& flags, uint32_t app_crc) override
 	{
 		return handshake();
 	}

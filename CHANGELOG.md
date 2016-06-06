@@ -5,7 +5,9 @@
 
 ### FEATURES
 
+- [Electron] Reduced data consumption connecting to the cloud with deep sleep. (NB: see the docs for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
 - Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602) 
+
 
 ### ENHANCEMENTS
 

@@ -17,6 +17,7 @@ void DTLSProtocol::init(const char *id,
 	channelCallbacks.handle_seed = handle_seed;
 	channelCallbacks.receive = callbacks.receive;
 	channelCallbacks.send = callbacks.send;
+	channelCallbacks.calculate_crc = callbacks.calculate_crc;
 	if (callbacks.size>=52) {
 		channelCallbacks.save = callbacks.save;
 		channelCallbacks.restore = callbacks.restore;

@@ -128,6 +128,78 @@ int call_raw_user_function(void* data, const char* param, void* reserved)
     return (*fn)(p);
 }
 
+inline uint32_t crc(const void* data, size_t len)
+{
+	return HAL_Core_Compute_CRC32((const uint8_t*)data, len);
+}
+
+template <typename T>
+uint32_t crc(const T& t)
+{
+	return crc(&t, sizeof(t));
+}
+
+uint32_t string_crc(const char* s)
+{
+	return crc(s, strlen(s));
+}
+
+/**
+ * Computes the checksum of the registered functions.
+ * The function name is used to compute the checksum.
+ */
+uint32_t compute_functions_checksum()
+{
+	uint32_t checksum = 0;
+	for (int i = funcs.size(); i-->0; )
+    {
+		checksum += string_crc(funcs[i].userFuncKey);
+    }
+	return checksum;
+}
+
+/**
+ * Computes the checksum of the registered variables.
+ * The checksum is derived from the variable name and type.
+ */
+uint32_t compute_variables_checksum()
+{
+	uint32_t checksum = 0;
+	for (int i = vars.size(); i-->0; )
+	{
+		checksum += string_crc(vars[i].userVarKey);
+		checksum += crc(vars[i].userVarType);
+	}
+	return checksum;
+}
+
+/**
+ * Computes the checksum of all functions and variables.
+ */
+uint32_t compute_describe_app_checksum()
+{
+	uint32_t chk[2];
+	chk[0] = compute_variables_checksum();
+	chk[1] = compute_functions_checksum();
+	return crc(chk, sizeof(chk));
+}
+
+uint32_t compute_describe_system_checksum()
+{
+    hal_system_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    HAL_System_Info(&info, true, NULL);
+	uint32_t checksum = info.platform_id;
+	for (int i=0; i<info.module_count; i++)
+	{
+		checksum += crc(info.modules[i].suffix->sha);
+	}
+	HAL_System_Info(&info, false, NULL);
+    return checksum;
+}
+
+
 /**
  * Register a function.
  * @param desc
@@ -404,9 +476,10 @@ void SystemEvents(const char* name, const char* data)
     }
 }
 
-using particle::protocol::SessionPersistOpaque;
-
 #if HAL_PLATFORM_CLOUD_UDP
+using particle::protocol::SessionPersistOpaque;
+using particle::protocol::SessionPersistData;
+
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
 	if (type==SparkCallbacks::PERSIST_SESSION)
@@ -432,7 +505,53 @@ int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved)
 		length = 0;
 	return length;
 }
+
+void update_persisted_state(std::function<void(SessionPersistOpaque&)> fn)
+{
+	SessionPersistOpaque persist;
+	if (Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr)==sizeof(persist) && persist.is_valid())
+	{
+		fn(persist);
+		Spark_Save(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr);
+	}
+}
+
+uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector, SparkAppStateUpdate::Enum operation, uint32_t value, void* reserved)
+{
+	if (operation==SparkAppStateUpdate::COMPUTE_AND_PERSIST ) {
+		switch (stateSelector)
+		{
+		case SparkAppStateSelector::DESCRIBE_APP:
+			update_persisted_state([](SessionPersistData& data){
+				data.describe_app_crc = compute_describe_app_checksum();
+			});
+		case SparkAppStateSelector::DESCRIBE_SYSTEM:
+			update_persisted_state([](SessionPersistData& data){
+				data.describe_system_crc = compute_describe_system_checksum();
+			});
+		}
+	}
+	else if (operation==SparkAppStateUpdate::PERSIST && stateSelector==SparkAppStateSelector::SUBSCRIPTIONS)
+	{
+		update_persisted_state([value](SessionPersistData& data){
+			data.subscriptions_crc = value;
+		});
+	}
+	else if (operation==SparkAppStateUpdate::COMPUTE)
+	{
+		switch (stateSelector)
+		{
+		case SparkAppStateSelector::DESCRIBE_APP:
+			return compute_describe_app_checksum();
+
+		case SparkAppStateSelector::DESCRIBE_SYSTEM:
+			return compute_describe_system_checksum();
+		}
+	}
+	return 0;
+}
 #endif
+
 
 void Spark_Protocol_Init(void)
 {
@@ -503,7 +622,9 @@ void Spark_Protocol_Init(void)
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
         descriptor.append_system_info = system_module_info;
         descriptor.call_event_handler = invokeEventHandler;
-
+#if HAL_PLATFORM_CLOUD_UDP
+        descriptor.app_state_selector_info = compute_cloud_state_checksum;
+#endif
         // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
