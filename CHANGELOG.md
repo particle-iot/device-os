@@ -1,7 +1,11 @@
 
+
+
 ## v0.6.0-rc.1
 
 ### FEATURES
+
+- Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602) 
 
 ### ENHANCEMENTS
 

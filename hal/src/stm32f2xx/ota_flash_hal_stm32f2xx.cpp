@@ -340,6 +340,13 @@ uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
     return result;
 }
 
+bool HAL_IsDeviceClaimed(void* reserved)
+{
+    const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
+    return (*claimed)=='1';
+}
+
+
 const uint8_t* fetch_server_public_key()
 {
     return (const uint8_t*)dct_read_app_data(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_SERVER_PUBLIC_KEY_OFFSET : DCT_SERVER_PUBLIC_KEY_OFFSET);

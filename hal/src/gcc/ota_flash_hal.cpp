@@ -76,6 +76,12 @@ uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
     return 0;
 }
 
+bool HAL_IsDeviceClaimed(void* reserved)
+{
+	return false;
+}
+
+
 #define EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH 128
 
 // todo - duplicate from core, factor this down into a common area
