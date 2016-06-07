@@ -66,7 +66,7 @@ void USARTSerial::blockOnOverrun(bool block)
 
 int USARTSerial::availableForWrite(void)
 {
-  return HAL_USART_Available_Data(_serial);
+  return HAL_USART_Available_Data_For_Write(_serial);
 }
 
 int USARTSerial::available(void)
