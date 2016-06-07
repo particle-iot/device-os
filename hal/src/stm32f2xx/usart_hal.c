@@ -369,7 +369,12 @@ int32_t HAL_USART_Available_Data(HAL_USART_Serial serial)
 
 int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
 {
-    return (unsigned int)(SERIAL_BUFFER_SIZE + usartMap[serial]->usart_tx_buffer->head - usartMap[serial]->usart_tx_buffer->tail) % SERIAL_BUFFER_SIZE;
+	int32_t tail = usartMap[serial]->usart_tx_buffer->tail;
+	int32_t available = SERIAL_BUFFER_SIZE - (usartMap[serial]->usart_tx_buffer->head >= tail ?
+		usartMap[serial]->usart_tx_buffer->head - tail :
+		(SERIAL_BUFFER_SIZE + usartMap[serial]->usart_tx_buffer->head - tail) - 1);
+
+	return available;
 }
 
 
