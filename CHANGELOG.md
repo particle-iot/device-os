@@ -1,6 +1,4 @@
 
-
-
 ## v0.6.0-rc.1
 
 ### FEATURES
@@ -20,7 +18,16 @@
 - Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
 
 
-## v0.5.1
+
+
+## v0.5.1 (same as v0.5.1-rc.2)
+
+### FEATURES
+
+- [Electron] Added support in HAL for a SMS received callback handler.
+
+
+## v0.5.1-rc.1
 
 ### FEATURES
 
@@ -39,8 +46,6 @@
 
 
 ## v0.5.0 (same as v0.5.0-rc.2)
-
-## v0.5.0-rc.2
 
 ### FEATURES
 

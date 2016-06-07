@@ -229,3 +229,12 @@ cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reser
     CHECK_SUCCESS(electronMDM.getBandAvailable(*bands));
     return 0;
 }
+
+cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, void* data, void* reserved)
+{
+    if (cb) {
+        electronMDM.setSMSreceivedHandler((MDMParser::_CELLULAR_SMS_CB)cb, (void*)data);
+        return 0;
+    }
+    return -1;
+}
