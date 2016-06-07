@@ -6,10 +6,10 @@
 - [Electron] Reduced data consumption connecting to the cloud with deep sleep. (NB: see the docs for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
 - Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602) 
 
-
 ### ENHANCEMENTS
 
 - Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
+- [Photon/Core] MAC address is available immediately after `WiFi.on()` [#879](https://github.com/spark/firmware/issues/879)
 
 ### BUGFIXES
 
