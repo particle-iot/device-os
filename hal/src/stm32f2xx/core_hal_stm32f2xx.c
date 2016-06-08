@@ -50,6 +50,7 @@
 #include "malloc.h"
 #include "usb_hal.h"
 #include "usart_hal.h"
+#include "deviceid_hal.h"
 
 #define STOP_MODE_EXIT_CONDITION_PIN 0x01
 #define STOP_MODE_EXIT_CONDITION_RTC 0x02
@@ -280,6 +281,8 @@ void HAL_Core_Setup(void) {
 
     bootloader_update_if_needed();
     HAL_Bootloader_Lock(true);
+
+    HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
 
 #if !defined(MODULAR_FIRMWARE)
     module_user_init_hook();

@@ -31,6 +31,7 @@
 
 const unsigned device_id_len = 12;
 
+/* Read the STM32 Device electronic signature */
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
     if (dest!=NULL && destLen!=0)

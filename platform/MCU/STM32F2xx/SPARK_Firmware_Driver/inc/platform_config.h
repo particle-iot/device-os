@@ -29,6 +29,8 @@
 
 #include "platforms.h"
 
+// STM32 Device electronic signature
+// Factory-programmed 12 byte unique device ID
 #define         ID1          (0x1FFF7A10)
 #define         ID2          (0x1FFF7A14)
 #define         ID3          (0x1FFF7A18)
