@@ -32,14 +32,10 @@ extern "C" uint32_t HAL_Core_Compute_CRC32(const uint8_t* buf, size_t length)
 	return 0;
 }
 
-extern "C" void log_message(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt, ...)
+extern "C" void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...)
 {
 }
 
 extern "C" void log_write(int level, const char *category, const char *data, size_t size, void *reserved)
-{
-}
-
-extern "C" void log_attr_init(LogAttributes *attr, void *reserved)
 {
 }
