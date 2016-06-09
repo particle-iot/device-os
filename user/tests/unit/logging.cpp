@@ -620,9 +620,9 @@ CATCH_TEST_CASE("Logger API") {
         log.next().messageEquals("warn").levelEquals(LOG_LEVEL_WARN).categoryEquals(LOG_MODULE_CATEGORY);
         logger.error("%s", "error");
         log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_MODULE_CATEGORY);
-        logger.log(LOG_LEVEL_PANIC, "%s", "panic");
+        logger(LOG_LEVEL_PANIC, "%s", "panic");
         log.next().messageEquals("panic").levelEquals(LOG_LEVEL_PANIC).categoryEquals(LOG_MODULE_CATEGORY);
-        logger.log("%s", "default"); // Uses default level
+        logger("%s", "default"); // Uses default level
         log.next().messageEquals("default").levelEquals(Logger::DEFAULT_LEVEL).categoryEquals(LOG_MODULE_CATEGORY);
     }
     CATCH_SECTION("direct logging") {

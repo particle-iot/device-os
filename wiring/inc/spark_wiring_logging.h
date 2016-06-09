@@ -198,7 +198,7 @@ public:
     */
     void info(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
     /*!
-        \brief Generates warn message.
+        \brief Generates warning message.
         \param fmt Format string.
     */
     void warn(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
@@ -207,19 +207,6 @@ public:
         \param fmt Format string.
     */
     void error(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
-    /*!
-        \brief Generates log message.
-        \param fmt Format string.
-
-        This method uses default logging level (\ref DEFAULT_LEVEL).
-    */
-    void log(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
-    /*!
-        \brief Generates log message.
-        \param level Logging level.
-        \param fmt Format string.
-    */
-    void log(LogLevel level, const char *fmt, ...) const __attribute__((format(printf, 3, 4)));
     /*!
         \brief Writes formatted string to log.
         \param fmt Format string.
@@ -301,6 +288,19 @@ public:
         \brief Returns category name set for this logger.
     */
     const char* name() const;
+    /*!
+        \brief Generates log message.
+        \param fmt Format string.
+
+        This method uses default logging level (\ref DEFAULT_LEVEL).
+    */
+    void operator()(const char *fmt, ...) const __attribute__((format(printf, 2, 3)));
+    /*!
+        \brief Generates log message.
+        \param level Logging level.
+        \param fmt Format string.
+    */
+    void operator()(LogLevel level, const char *fmt, ...) const __attribute__((format(printf, 3, 4)));
 
 private:
     const char *name_; // Category name
@@ -429,20 +429,6 @@ inline void spark::Logger::error(const char *fmt, ...) const {
     va_end(args);
 }
 
-inline void spark::Logger::log(const char *fmt, ...) const {
-    va_list args;
-    va_start(args, fmt);
-    log(DEFAULT_LEVEL, fmt, args);
-    va_end(args);
-}
-
-inline void spark::Logger::log(LogLevel level, const char *fmt, ...) const {
-    va_list args;
-    va_start(args, fmt);
-    log(level, fmt, args);
-    va_end(args);
-}
-
 inline void spark::Logger::printf(const char *fmt, ...) const {
     va_list args;
     va_start(args, fmt);
@@ -507,6 +493,20 @@ inline bool spark::Logger::isLevelEnabled(LogLevel level) const {
 
 inline const char* spark::Logger::name() const {
     return name_;
+}
+
+inline void spark::Logger::operator()(const char *fmt, ...) const {
+    va_list args;
+    va_start(args, fmt);
+    log(DEFAULT_LEVEL, fmt, args);
+    va_end(args);
+}
+
+inline void spark::Logger::operator()(LogLevel level, const char *fmt, ...) const {
+    va_list args;
+    va_start(args, fmt);
+    log(level, fmt, args);
+    va_end(args);
 }
 
 inline void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {

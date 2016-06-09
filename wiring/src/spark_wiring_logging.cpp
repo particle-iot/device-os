@@ -29,8 +29,9 @@ inline const char* strchrend(const char* s, char c) {
 
 } // namespace
 
-// Default logger instance
-const spark::Logger spark::Log;
+// Default logger instance. This code is compiled as part of the wiring library which has its own
+// category name specified at module level, so here we have to use "app" category name explicitly
+const spark::Logger spark::Log("app");
 
 // spark::LogHandler
 struct spark::LogHandler::FilterData {
@@ -163,8 +164,9 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
     write(buf);
     // Category (optional)
     if (category) {
+        write("[");
         write(category);
-        write(": ");
+        write("] ");
     }
     // Source file (optional)
     if (info.file) {

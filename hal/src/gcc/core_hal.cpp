@@ -61,7 +61,7 @@ void log_message_callback(const char *msg, int level, const char *category, uint
     strm << std::setw(10) << std::setfill('0') << time << ' ';
     // Category (optional)
     if (category && category[0]) {
-        strm << category << ": ";
+        strm << '[' << category << "] ";
     }
     // Source info (optional)
     if (file && func) {
