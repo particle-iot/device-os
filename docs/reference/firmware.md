@@ -3332,10 +3332,6 @@ so to that subsequent output appears on the next line.
 
 Waits for the transmission of outgoing serial data to complete.
 
-**NOTE:** That this function does nothing at present, in particular it doesn't
-wait for the data to be sent, since this causes the application to wait indefinitely
-when there is no serial monitor connected.
-
 ```C++
 // SYNTAX
 Serial.flush();
@@ -4667,7 +4663,9 @@ Returns the next byte (or character), or -1 if none is available.
 
 ### flush()
 
-Discard any bytes that have been written to the client but not yet read.
+Waits until all outgoing data in buffer has been sent.
+
+**NOTE:** That this function does nothing at present.
 
 ```C++
 // SYNTAX
@@ -4767,7 +4765,8 @@ void loop() {
     char c = Udp.read();
 
     // Ignore other chars
-    Udp.flush();
+    while(Udp.available())
+      Udp.read();
 
     // Store sender ip and port
     IPAddress ipAddress = Udp.remoteIP();
@@ -4913,6 +4912,16 @@ Returns:
 
  - `int`: returns the character in the buffer or -1 if no character is available
 
+### flush()
+
+Waits until all outgoing data in buffer has been sent.
+
+**NOTE:** That this function does nothing at present.
+
+```C++
+// SYNTAX
+Udp.flush();
+```
 
 ### stop()
 
