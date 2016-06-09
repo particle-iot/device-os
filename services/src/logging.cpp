@@ -37,8 +37,7 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
     log_enabled_callback = log_enabled;
 }
 
-void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt,
-        va_list args) {
+void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, va_list args) {
     if (!log_msg_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
@@ -53,7 +52,7 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
             buf[sizeof(buf) - 2] = '~';
         }
         log_msg_callback(buf, level, category, attr, 0);
-    } else  {
+    } else {
         // Using compatibility callback
         const char* const levelName = log_level_name(level, 0);
         int n = 0;
