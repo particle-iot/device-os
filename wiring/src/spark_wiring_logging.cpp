@@ -23,8 +23,15 @@
 
 namespace {
 
-// Extracts function name from string based on __PRETTY_FUNCTION__ or similar macro
-void extractFuncName(const char *s, const char **name, size_t *size) {
+const char* extractFileName(const char *s) {
+    const char *s1 = strrchr(s, '/');
+    if (s1) {
+        return s1;
+    }
+    return s;
+}
+
+const char* extractFuncName(const char *s, size_t *size) {
     const char *s1 = s;
     for (; *s; ++s) {
         if (*s == ' ') {
@@ -33,8 +40,8 @@ void extractFuncName(const char *s, const char **name, size_t *size) {
             break; // Skip argument types
         }
     }
-    *name = s1;
     *size = s - s1;
+    return s1;
 }
 
 } // namespace
@@ -181,7 +188,9 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
     }
     // Source file
     if (attr.has_file) {
-        write(attr.file); // File name
+        // Strip directory path
+        const char *s = extractFileName(attr.file);
+        write(s); // File name
         if (attr.has_line) {
             write(":");
             snprintf(buf, sizeof(buf), "%d", attr.line); // Line number
@@ -196,9 +205,8 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
     // Function name
     if (attr.has_function) {
         // Strip argument and return types for better readability
-        const char *s = nullptr;
         size_t n = 0;
-        extractFuncName(attr.function, &s, &n);
+        const char *s = extractFuncName(attr.function, &n);
         write(s, n);
         write("(): ");
     }
@@ -229,13 +237,6 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
         write("]");
     }
     write("\r\n");
-}
-
-// spark::Logger
-void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {
-    LogAttributes attr = { sizeof(LogAttributes) };
-    log_attr_init(&attr, nullptr);
-    log_message_v(level, name_, &attr, nullptr, fmt, args);
 }
 
 // spark::LogManager

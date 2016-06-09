@@ -68,6 +68,8 @@ namespace {
 
 using namespace spark;
 
+std::string fileName(const std::string &path);
+
 class LogMessage {
 public:
     LogMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) :
@@ -79,7 +81,7 @@ public:
             cat_ = category;
         }
         if (attr.has_file) {
-            file_ = attr.file;
+            file_ = fileName(attr.file); // Strip directory path
         }
         if (attr.has_line) {
             line_ = attr.line;
@@ -282,13 +284,12 @@ std::string randomBytes(size_t size = 0) {
     return s;
 }
 
-std::string sourceFileName() {
-    const std::string s(__FILE__);
-    const size_t pos = s.rfind('/');
+std::string fileName(const std::string &path) {
+    const size_t pos = path.rfind('/');
     if (pos != std::string::npos) {
-        return s.substr(pos + 1);
+        return path.substr(pos + 1);
     }
-    return s;
+    return path;
 }
 
 std::string toHex(const std::string &str) {
@@ -299,7 +300,7 @@ std::string toHex(const std::string &str) {
 
 CompatLogHandler* CompatLogHandler::instance = nullptr;
 
-const std::string SOURCE_FILE = sourceFileName();
+const std::string SOURCE_FILE = fileName(__FILE__);
 const std::string SOURCE_CATEGORY = LOG_THIS_CATEGORY();
 
 } // namespace

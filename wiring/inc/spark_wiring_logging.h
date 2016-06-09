@@ -499,4 +499,9 @@ inline void spark::Logger::operator()(LogLevel level, const char *fmt, ...) cons
     va_end(args);
 }
 
+inline void spark::Logger::log(LogLevel level, const char *fmt, va_list args) const {
+    LogAttributes attr = { sizeof(LogAttributes) };
+    log_message_v(level, name_, &attr, nullptr, fmt, args);
+}
+
 #endif // SPARK_WIRING_LOGGING_H

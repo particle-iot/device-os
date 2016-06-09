@@ -194,10 +194,10 @@ typedef void (*log_write_callback_type)(const char *data, size_t size, int level
 typedef int (*log_enabled_callback_type)(int level, const char *category, void *reserved);
 
 // Generates log message
-void log_message(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt, ...);
+void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...);
 
 // Variant of the log_message() function taking variable arguments via va_list
-void log_message_v(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt,
+void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt,
         va_list args);
 
 // Forwards buffer to backend logger
@@ -221,9 +221,6 @@ const char* log_level_name(int level, void *reserved);
 // Sets logger callbacks
 void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_type log_write,
         log_enabled_callback_type log_enabled, void *reserved);
-
-// Initializes log message attributes
-void log_attr_init(LogAttributes *attr, void *reserved);
 
 extern void HAL_Delay_Microseconds(uint32_t delay);
 
@@ -322,8 +319,7 @@ static const char* const _log_category = NULL;
 
 #define _LOG_ATTR_INIT(_name) \
         LogAttributes _name = { sizeof(LogAttributes) }; \
-        _LOG_ATTR_SET_SOURCE_INFO(_name); \
-        log_attr_init(&_name, NULL)
+        _LOG_ATTR_SET_SOURCE_INFO(_name);
 
 // Generator macro for PP_FOR_EACH()
 #define _LOG_ATTR_SET(_attr, _expr) \

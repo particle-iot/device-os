@@ -19,8 +19,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <cstring>
-#include <cstdarg>
 #include "timer_hal.h"
 #include "service_debug.h"
 
@@ -39,21 +37,27 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
     log_enabled_callback = log_enabled;
 }
 
-void log_message_v(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt,
+void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt,
         va_list args) {
+    if (!log_msg_callback && (!log_compat_callback || level < log_compat_level)) {
+        return;
+    }
+    // Set default attributes
+    if (!attr->has_time) {
+        LOG_ATTR_SET(*attr, time, HAL_Timer_Get_Milli_Seconds());
+    }
+    char buf[LOG_MAX_STRING_LENGTH];
     if (log_msg_callback) {
-        char buf[LOG_MAX_STRING_LENGTH];
         const int n = vsnprintf(buf, sizeof(buf), fmt, args);
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
         }
         log_msg_callback(buf, level, category, attr, 0);
-    } else if (log_compat_callback && level >= log_compat_level) {
+    } else  {
         // Using compatibility callback
-        char buf[LOG_MAX_STRING_LENGTH];
         const char* const levelName = log_level_name(level, 0);
         int n = 0;
-        if (attr->file && attr->function) {
+        if (attr->has_file && attr->has_line && attr->has_function) {
             n = snprintf(buf, sizeof(buf), "%010u %s:%d, %s: %s", (unsigned)attr->time, attr->file, attr->line,
                     attr->function, levelName);
         } else {
@@ -73,7 +77,7 @@ void log_message_v(int level, const char *category, const LogAttributes *attr, v
     }
 }
 
-void log_message(int level, const char *category, const LogAttributes *attr, void *reserved, const char *fmt, ...) {
+void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     log_message_v(level, category, attr, reserved, fmt, args);
@@ -181,15 +185,4 @@ const char* log_level_name(int level, void *reserved) {
     };
     const int i = std::max(0, std::min<int>(level / 10, sizeof(names) / sizeof(names[0]) - 1));
     return names[i];
-}
-
-void log_attr_init(LogAttributes *attr, void *reserved) {
-    if (attr->has_file) {
-        // Strip directory path
-        const char *p = strrchr(attr->file, '/');
-        if (p) {
-            attr->file = p + 1;
-        }
-    }
-    LOG_ATTR_SET(*attr, time, HAL_Timer_Get_Milli_Seconds());
 }
