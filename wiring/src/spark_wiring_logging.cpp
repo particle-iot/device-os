@@ -26,7 +26,7 @@ namespace {
 const char* extractFileName(const char *s) {
     const char *s1 = strrchr(s, '/');
     if (s1) {
-        return s1;
+        return s1 + 1;
     }
     return s;
 }
