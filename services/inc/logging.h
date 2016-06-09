@@ -170,6 +170,7 @@ typedef struct LogAttributes {
             unsigned has_code: 1;
             unsigned has_detail: 1;
             // <--- Add new attribute flag here
+            unsigned has_end: 1; // Keep this field at the end of the structure
         };
     };
     const char *file; // Source file name
@@ -179,6 +180,7 @@ typedef struct LogAttributes {
     intptr_t code; // Status code
     const char *detail; // Additional information
     // <--- Add new attribute field here
+    char end[0]; // Keep this field at the end of the structure
 } LogAttributes;
 
 // Callback for message-based logging (used by log_message())

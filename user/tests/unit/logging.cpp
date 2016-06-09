@@ -3,9 +3,9 @@
 #include <boost/optional/optional.hpp>
 #include <boost/optional/optional_io.hpp>
 
-#include <iostream>
 #include <random>
 #include <queue>
+#include <type_traits>
 
 #define CATCH_CONFIG_PREFIX_ALL
 #include "catch.hpp"
@@ -15,8 +15,54 @@
 #include "spark_wiring_logging.h"
 #include "service_debug.h"
 
+// Helper macros for ABI compatibility checks
+#define STATIC_ASSERT_FIELD_TYPE(struct, field, type) \
+        static_assert(std::is_same<decltype(struct::field), type>::value, "Field type has changed: " #struct "::" #field);
+
+#define STATIC_ASSERT_FIELD_OFFSET(struct, field, offset) \
+        static_assert(offsetof(struct, field) == offset, "Field offset has changed: " #struct "::" #field);
+
+#define STATIC_ASSERT_FIELD_ORDER(struct, field1, field2) \
+        static_assert(offsetof(struct, field2) == offsetof(struct, field1) + sizeof(struct::field1) + \
+                /* Padding */ (__alignof__(struct::field2) - (offsetof(struct, field1) + sizeof(struct::field1)) % __alignof__(struct::field2)) % __alignof__(struct::field2), \
+                "Field offset has changed: " #struct "::" #field2);
+
+#define CHECK_LOG_ATTR_FLAG(flag, value) \
+        do { \
+            LogAttributes attr = { 0 }; \
+            attr.flag = 1; \
+            CATCH_CHECK(attr.flags == value); \
+        } while (false)
+
+// LogAttributes::size
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, size, size_t);
+STATIC_ASSERT_FIELD_OFFSET(LogAttributes, size, 0);
+// LogAttributes::flags
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, flags, uint32_t);
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, size, flags);
+// LogAttributes::file
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, file, const char*);
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, flags, file);
+// LogAttributes::line
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, line, int);
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, file, line);
+// LogAttributes::function
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, function, const char*);
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, line, function);
+// LogAttributes::time
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, time, uint32_t);
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, function, time);
+// LogAttributes::code
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, code, intptr_t);
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, time, code);
+// LogAttributes::detail
+STATIC_ASSERT_FIELD_TYPE(LogAttributes, detail, const char*);
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, code, detail);
+// LogAttributes::end
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, detail, end);
+
 // Source file's logging category
-LOG_SOURCE_CATEGORY("source");
+LOG_SOURCE_CATEGORY("source")
 
 namespace {
 
@@ -655,6 +701,15 @@ CATCH_TEST_CASE("Miscellaneous") {
         CATCH_CHECK(LOG_ENABLED_C(INFO, "aa"));
         CATCH_CHECK(LOG_ENABLED_C(TRACE, "aaa"));
         CATCH_CHECK(LOG_ENABLED_C(ERROR, "x"));
+    }
+    CATCH_SECTION("attribute flag values") {
+        CHECK_LOG_ATTR_FLAG(has_file, 0x01);
+        CHECK_LOG_ATTR_FLAG(has_line, 0x02);
+        CHECK_LOG_ATTR_FLAG(has_function, 0x04);
+        CHECK_LOG_ATTR_FLAG(has_time, 0x08);
+        CHECK_LOG_ATTR_FLAG(has_code, 0x10);
+        CHECK_LOG_ATTR_FLAG(has_detail, 0x20);
+        CHECK_LOG_ATTR_FLAG(has_end, 0x40);
     }
 }
 
