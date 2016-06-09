@@ -7611,12 +7611,37 @@ void loop() {
 }
 ```
 
-
-### resetReason()
+### Reset Reason
 
 *Since 0.6.0*
 
-Returns code describing reason of the last device reset. Possible codes are:
+The system can track the hardware and software resets of the device.
+
+```cpp
+// EXAMPLE
+STARTUP(System.enableFeature(FEATURE_RESET_INFO))
+
+void setup() {
+    // Reset the device 3 times in a row
+    if (System.resetReason() == RESET_REASON_USER) {
+        uint32_t data = System.resetReasonData();
+        if (data < 3) {
+            System.reset(data + 1);
+        }
+    } else {
+        System.reset(1);
+    }
+}
+
+void loop() {
+}
+```
+
+**Note:** This functionality requires `FEATURE_RESET_INFO` flag to be enabled in order to work.
+
+`resetReason()`
+
+Returns a code describing reason of the last device reset. The following codes are defined:
 
 - `RESET_REASON_PIN_RESET`: Reset button or reset pin
 - `RESET_REASON_POWER_MANAGEMENT`: Low-power management reset
@@ -7633,13 +7658,13 @@ Returns code describing reason of the last device reset. Possible codes are:
 - `RESET_REASON_UNKNOWN`: Unspecified reset reason
 - `RESET_REASON_NONE`: Information is not available
 
-```C++
-// EXAMPLE USAGE
-int reason = System.resetReason();
-if (reason == RESET_REASON_PIN_RESET) {
-    // ...
-}
-```
+`resetReasonData()`
+
+Returns a user-defined value that has been previously specified for the `reset()` call.
+
+`reset(uint32_t data)`
+
+This overloaded method accepts an arbitrary 32-bit value, stores it to the backup register and resets the device. The value can be retrieved via `resetReasonData()` method after the device is restarted.
 
 
 ## OTA Updates
