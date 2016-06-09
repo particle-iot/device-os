@@ -704,6 +704,7 @@ int Spark_Handshake(bool presence_announce)
         uint8_t flag = 0;
         if (system_get_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, &flag, nullptr) == 0 && flag)
         {
+            system_set_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, 0, nullptr); // Publish the reset info only once
             int reason = RESET_REASON_NONE;
             uint32_t data = 0;
             if (HAL_Core_Get_Last_Reset_Info(&reason, &data, nullptr) == 0 && reason != RESET_REASON_NONE)
