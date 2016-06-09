@@ -255,19 +255,24 @@ static void Init_Last_Reset_Info()
 static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
 {
     uint32_t flags = *(uint32_t*)dct_read_app_data(DCT_FEATURE_FLAGS_OFFSET);
+    const bool cur_value = flags & flag;
     if (prev_value)
     {
-        *prev_value = flags & flag;
+        *prev_value = cur_value;
     }
-    if (value)
+    if (cur_value != value)
     {
-        flags |= flag;
+        if (value)
+        {
+            flags |= flag;
+        }
+        else
+        {
+            flags &= ~flag;
+        }
+        return dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
     }
-    else
-    {
-        flags &= ~flag;
-    }
-    return dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
+    return 0;
 }
 
 static bool Read_Feature_Flag(uint32_t flag)
