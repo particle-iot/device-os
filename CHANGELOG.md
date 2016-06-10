@@ -12,6 +12,8 @@
 - Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
 - [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
 - [System reset reporting](https://docs.particle.io/reference/firmware/core/#reset-reason) [#403](https://github.com/spark/firmware/issues/403)
+- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930)
+- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
 
 ### ENHANCEMENTS
 
@@ -30,6 +32,7 @@
 - availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
 - `digitalRead()` interferes with `analogRead()` [#993](https://github.com/spark/firmware/issues/993)
 - [electron] reinstated OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
+- USART 9-bit receiving. [#968](https://github.com/spark/firmware/issues/968)
 
 
 ## v0.5.1 (same as v0.5.1-rc.2)
