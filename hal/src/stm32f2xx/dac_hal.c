@@ -82,6 +82,7 @@ void HAL_DAC_Write(pin_t pin, uint16_t value)
 
     if (HAL_Get_Pin_Mode(pin) != AN_OUTPUT)
     {
+        HAL_GPIO_Save_Pin_Mode(pin);
         HAL_Pin_Mode(pin, AN_OUTPUT);
         HAL_DAC_Enable(pin, 1);
     }
