@@ -12,8 +12,6 @@
 - Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
 - [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
 - [System reset reporting](https://docs.particle.io/reference/firmware/core/#reset-reason) [#403](https://github.com/spark/firmware/issues/403)
-- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930)
-- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
 
 ### ENHANCEMENTS
 
@@ -22,6 +20,9 @@
 - [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
 - [virtual device] support for EEPROM emulation [#1004](https://github.com/spark/firmware/pull/1004)
 - Low-level RTOS queues exposed in HAL [#1018](https://github.com/spark/firmware/pull/1018)
+- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930)
+- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
+- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991)
 
 ### BUGFIXES
 
