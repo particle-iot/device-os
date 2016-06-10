@@ -29,6 +29,7 @@
 #include "gpio_hal.h"
 #include "stm32f2xx.h"
 #include <string.h>
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum USART_Num_Def {
@@ -63,12 +64,17 @@ typedef struct STM32_USART_Info {
 
 	uint8_t usart_af_map;
 
+	uint8_t usart_cts_pin;
+	uint8_t usart_rts_pin;
+
 	// Buffer pointers. These need to be global for IRQ handler access
 	Ring_Buffer* usart_tx_buffer;
 	Ring_Buffer* usart_rx_buffer;
 
 	bool usart_enabled;
 	bool usart_transmitting;
+
+	uint32_t usart_config;
 } STM32_USART_Info;
 
 /*
@@ -86,15 +92,17 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
 		 * TX pin source
 		 * RX pin source
 		 * GPIO AF map (GPIO_AF_USARTx/GPIO_AF_UARTx)
+		 * CTS pin
+		 * RTS pin
 		 * <tx_buffer pointer> used internally and does not appear below
 		 * <rx_buffer pointer> used internally and does not appear below
 		 * <usart enabled> used internally and does not appear below
 		 * <usart transmitting> used internally and does not appear below
 		 */
 		{ USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, TX, RX, GPIO_PinSource9, GPIO_PinSource10, GPIO_AF_USART1 }, // USART 1
-		{ USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG, RGBB, GPIO_PinSource2, GPIO_PinSource3, GPIO_AF_USART2 } // USART 2
+		{ USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG, RGBB, GPIO_PinSource2, GPIO_PinSource3, GPIO_AF_USART2, A7, RGBR } // USART 2
 #if PLATFORM_ID == 10 // Electron
-		,{ USART3, &RCC->APB1ENR, RCC_APB1Periph_USART3, USART3_IRQn, TXD_UC, RXD_UC, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_USART3 } // USART 3
+		,{ USART3, &RCC->APB1ENR, RCC_APB1Periph_USART3, USART3_IRQn, TXD_UC, RXD_UC, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_USART3, CTS_UC, RTS_UC } // USART 3
 		,{ UART4, &RCC->APB1ENR, RCC_APB1Periph_UART4, UART4_IRQn, C3, C2, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_UART4 } // UART 4
 		,{ UART5, &RCC->APB1ENR, RCC_APB1Periph_UART5, UART5_IRQn, C1, C0, GPIO_PinSource12, GPIO_PinSource2, GPIO_AF_UART5 } // UART 5
 #endif
@@ -172,14 +180,6 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	// Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
 	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
 	HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
-	if (serial == HAL_USART_SERIAL3)
-	{
-		// Configure USART RTS and CTS as alternate function push-pull
-		HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
-		HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
-	}
-#endif
 
 	// Enable USART Clock
 	*usartMap[serial]->usart_apbReg |=  usartMap[serial]->usart_clock_en;
@@ -188,13 +188,6 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rx_pin].gpio_peripheral, usartMap[serial]->usart_rx_pinsource, usartMap[serial]->usart_af_map);
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral, usartMap[serial]->usart_tx_pinsource, usartMap[serial]->usart_af_map);
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
-	if (serial == HAL_USART_SERIAL3)
-	{
-		GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
-		GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, PIN_MAP[CTS_UC].gpio_pin_source, usartMap[serial]->usart_af_map);
-	}
-#endif
 
 	// NVIC Configuration
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -217,14 +210,62 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	// USART configuration
 	USART_InitStructure.USART_BaudRate = baud;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 
-  #if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
+	// Flow control configuration
+	switch (config & SERIAL_FLOW_CONTROL) {
+		case SERIAL_FLOW_CONTROL_CTS:
+			USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_CTS;
+			break;
+		case SERIAL_FLOW_CONTROL_RTS:
+			USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS;
+			break;
+		case SERIAL_FLOW_CONTROL_RTS_CTS:
+			USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+			break;
+		case SERIAL_FLOW_CONTROL_NONE:
+		default:
+			USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+			break;
+	}
+
+	if (serial == HAL_USART_SERIAL1) {
+		// USART1 supports hardware flow control, but RTS and CTS pins are not exposed
+		USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	}
+
+#if PLATFORM_ID == 10 // Electron
+	if (serial == HAL_USART_SERIAL4 || serial == HAL_USART_SERIAL5) {
+		// UART4 and UART5 do not support hardware flow control
+		USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	}
+#endif // PLATFORM_ID == 10
+
+#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
 	if (serial == HAL_USART_SERIAL3)
 	{
-	  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+		USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
 	}
-  #endif
+#endif
+
+	switch (USART_InitStructure.USART_HardwareFlowControl) {
+		case USART_HardwareFlowControl_CTS:
+			HAL_Pin_Mode(usartMap[serial]->usart_cts_pin, AF_OUTPUT_PUSHPULL);
+			GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
+			break;
+		case USART_HardwareFlowControl_RTS:
+			HAL_Pin_Mode(usartMap[serial]->usart_rts_pin, AF_OUTPUT_PUSHPULL);
+			GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
+			break;
+		case USART_HardwareFlowControl_RTS_CTS:
+			HAL_Pin_Mode(usartMap[serial]->usart_cts_pin, AF_OUTPUT_PUSHPULL);
+			HAL_Pin_Mode(usartMap[serial]->usart_rts_pin, AF_OUTPUT_PUSHPULL);
+			GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
+			GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
+			break;
+		case USART_HardwareFlowControl_None:
+		default:
+			break;
+	}
 
 	// Stop bit configuration.
 	switch (config & SERIAL_STOP_BITS) {
@@ -265,12 +306,33 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 		}
 	}
 
+	// Disable LIN mode just in case
+	USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
+
 	// Configure USART
 	USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
+
+	// LIN configuration
+	if (config & LIN_MODE) {
+		// Enable break detection
+		switch(config & LIN_BREAK_BITS) {
+			case LIN_BREAK_10B:
+				USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_10b);
+				break;
+			case LIN_BREAK_11B:
+				USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_11b);
+				break;
+		}
+	}
 
 	// Enable the USART
 	USART_Cmd(usartMap[serial]->usart_peripheral, ENABLE);
 
+	if (config & LIN_MODE) {
+		USART_LINCmd(usartMap[serial]->usart_peripheral, ENABLE);
+	}
+
+	usartMap[serial]->usart_config = config;
 	usartMap[serial]->usart_enabled = true;
 	usartMap[serial]->usart_transmitting = false;
 
@@ -286,6 +348,9 @@ void HAL_USART_End(HAL_USART_Serial serial)
 
 	// Disable the USART
 	USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+
+	// Disable LIN mode
+	USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
 
 	// Deinitialise USART
 	USART_DeInit(usartMap[serial]->usart_peripheral);
@@ -422,6 +487,26 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 {
 	USART_HalfDuplexCmd(usartMap[serial]->usart_peripheral, Enable ? ENABLE : DISABLE);
+}
+
+void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved)
+{
+	int32_t state = HAL_disable_irq();
+	while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
+	USART_SendBreak(usartMap[serial]->usart_peripheral);
+	while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
+	HAL_enable_irq(state);
+}
+
+uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial)
+{
+	if (USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_LBD)) {
+		// Clear LBD flag
+		USART_ClearFlag(usartMap[serial]->usart_peripheral, USART_FLAG_LBD);
+		return 1;
+	}
+
+	return 0;
 }
 
 // Shared Interrupt Handler for USART2/Serial1 and USART1/Serial2

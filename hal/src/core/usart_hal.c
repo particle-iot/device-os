@@ -28,6 +28,7 @@
 #include "gpio_hal.h"
 #include "stm32f10x.h"
 #include <string.h>
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum USART_Num_Def {
@@ -55,12 +56,17 @@ typedef struct STM32_USART_Info {
 
   uint32_t usart_pin_remap;
 
+  uint16_t usart_cts_pin;
+  uint16_t usart_rts_pin;
+
   // Buffer pointers. These need to be global for IRQ handler access
   Ring_Buffer* usart_tx_buffer;
   Ring_Buffer* usart_rx_buffer;
 
   bool usart_enabled;
   bool usart_transmitting;
+
+  uint32_t usart_config;
 } STM32_USART_Info;
 
 /*
@@ -76,12 +82,14 @@ STM32_USART_Info USART_MAP[TOTAL_USARTS] =
      * TX pin
      * RX pin
      * GPIO Remap (RCC_APB2Periph_USART2 or GPIO_Remap_None )
+     * CTS pin
+     * RTS pin
      * <tx_buffer pointer> used internally and does not appear below
      * <rx_buffer pointer> used internally and does not appear below
      * <usart enabled> used internally and does not appear below
      * <usart transmitting> used internally and does not appear below
      */
-    { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, TX, RX, GPIO_Remap_None },
+    { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, TX, RX, GPIO_Remap_None, A0, A1 },
     { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, D1, D0, GPIO_Remap_USART1 }
 };
 
@@ -175,13 +183,43 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
   // USART configuration
   USART_InitStructure.USART_BaudRate = baud;
   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS    // Electron
-  if (serial == HAL_USART_SERIAL3)
-  {
-    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+
+  switch (config & SERIAL_FLOW_CONTROL) {
+    case SERIAL_FLOW_CONTROL_CTS:
+      USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_CTS;
+      break;
+    case SERIAL_FLOW_CONTROL_RTS:
+      USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS;
+      break;
+    case SERIAL_FLOW_CONTROL_RTS_CTS:
+      USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
+      break;
+    case SERIAL_FLOW_CONTROL_NONE:
+    default:
+      USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+      break;
   }
-#endif
+
+  if (serial == HAL_USART_SERIAL2) {
+    // USART1 supports hardware flow control, but RTS and CTS pins are not exposed
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+  }
+
+  switch (USART_InitStructure.USART_HardwareFlowControl) {
+    case USART_HardwareFlowControl_CTS:
+      HAL_Pin_Mode(usartMap[serial]->usart_cts_pin, AF_OUTPUT_PUSHPULL);
+      break;
+    case USART_HardwareFlowControl_RTS:
+      HAL_Pin_Mode(usartMap[serial]->usart_rts_pin, AF_OUTPUT_PUSHPULL);
+      break;
+    case USART_HardwareFlowControl_RTS_CTS:
+      HAL_Pin_Mode(usartMap[serial]->usart_cts_pin, AF_OUTPUT_PUSHPULL);
+      HAL_Pin_Mode(usartMap[serial]->usart_rts_pin, AF_OUTPUT_PUSHPULL);
+      break;
+    case USART_HardwareFlowControl_None:
+    default:
+      break;
+  }
 
   // Stop bit configuration.
   switch (config & SERIAL_STOP_BITS) {
@@ -222,8 +260,25 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
     }
   }
 
+  // Disable LIN mode just in case
+  USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
+
   // Configure USART
   USART_Init(usartMap[serial]->usart_peripheral, &USART_InitStructure);
+
+  // LIN configuration
+  if (config & LIN_MODE) {
+    // Enable break detection
+    switch(config & LIN_BREAK_BITS) {
+      case LIN_BREAK_10B:
+        USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_10b);
+        break;
+      case LIN_BREAK_11B:
+        USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_11b);
+        break;
+    }
+  }
+
 
   // Enable USART Receive and Transmit interrupts
   USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, ENABLE);
@@ -232,6 +287,11 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
   // Enable the USART
   USART_Cmd(usartMap[serial]->usart_peripheral, ENABLE);
 
+  if (config & LIN_MODE) {
+    USART_LINCmd(usartMap[serial]->usart_peripheral, ENABLE);
+  }
+
+  usartMap[serial]->usart_config = config;
   usartMap[serial]->usart_enabled = true;
   usartMap[serial]->usart_transmitting = false;
 }
@@ -243,6 +303,9 @@ void HAL_USART_End(HAL_USART_Serial serial)
 
   // Disable the USART
   USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+
+  // Disable LIN mode
+  USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
 
   // Deinitialise USART
   USART_DeInit(usartMap[serial]->usart_peripheral);
@@ -384,6 +447,26 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 {
     USART_HalfDuplexCmd(usartMap[serial]->usart_peripheral, Enable ? ENABLE : DISABLE);
+}
+
+void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved)
+{
+  int32_t state = HAL_disable_irq();
+  while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
+  USART_SendBreak(usartMap[serial]->usart_peripheral);
+  while((usartMap[serial]->usart_peripheral->CR1 & USART_CR1_SBK) == SET);
+  HAL_enable_irq(state);
+}
+
+uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial)
+{
+  if (USART_GetFlagStatus(usartMap[serial]->usart_peripheral, USART_FLAG_LBD)) {
+    // Clear LBD flag
+    USART_ClearFlag(usartMap[serial]->usart_peripheral, USART_FLAG_LBD);
+    return 1;
+  }
+
+  return 0;
 }
 
 // Shared Interrupt Handler for USART2/Serial1 and USART1/Serial2

@@ -112,6 +112,14 @@ bool USARTSerial::isEnabled() {
   return HAL_USART_Is_Enabled(_serial);
 }
 
+void USARTSerial::breakTx() {
+  HAL_USART_Send_Break(_serial, NULL);
+}
+
+bool USARTSerial::breakRx() {
+  return (bool)HAL_USART_Break_Detected(_serial);
+}
+
 #ifndef SPARK_WIRING_NO_USART_SERIAL
 // Preinstantiate Objects //////////////////////////////////////////////////////
 static Ring_Buffer serial1_rx_buffer;
