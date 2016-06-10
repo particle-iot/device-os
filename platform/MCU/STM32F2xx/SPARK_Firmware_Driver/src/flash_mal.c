@@ -557,8 +557,8 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
     {
         //Only write dct app data if factory reset module slot is different
         dct_write_app_data(&flash_modules[FAC_RESET_SLOT],
-                           offsetof(application_dct_t, flash_modules[FAC_RESET_SLOT]),
-                           sizeof(platform_flash_modules_t));
+        						DCT_FLASH_MODULES_OFFSET,
+								sizeof(platform_flash_modules_t));
     }
 
     return true;
