@@ -28,28 +28,36 @@ namespace spark {
 
 class SerialLogHandler: public StreamLogHandler {
 public:
-    explicit SerialLogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit SerialLogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            SerialLogHandler(9600, level, filters) {
+    }
+
+    explicit SerialLogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             StreamLogHandler(Serial, level, filters) {
         Serial.begin(baud);
-        LogHandler::install(this);
+        LogManager::instance()->addHandler(this);
     }
 
     virtual ~SerialLogHandler() {
-        LogHandler::uninstall(this);
+        LogManager::instance()->removeHandler(this);
         Serial.end();
     }
 };
 
 class Serial1LogHandler: public StreamLogHandler {
 public:
-    explicit Serial1LogHandler(int baud = 9600, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit Serial1LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            Serial1LogHandler(9600, level, filters) {
+    }
+
+    explicit Serial1LogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
             StreamLogHandler(Serial1, level, filters) {
         Serial1.begin(baud);
-        LogHandler::install(this);
+        LogManager::instance()->addHandler(this);
     }
 
     virtual ~Serial1LogHandler() {
-        LogHandler::uninstall(this);
+        LogManager::instance()->removeHandler(this);
         Serial1.end();
     }
 };

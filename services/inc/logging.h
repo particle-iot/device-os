@@ -72,6 +72,11 @@
             ...
         }
 
+    LOG_THIS_CATEGORY() - expands to current category name.
+
+        // Using low-level API
+        log_printf(LOG_LEVEL_INFO, LOG_THIS_CATEGORY(), NULL, "Hello");
+
     Following macros take category name as argument:
 
     LOG_C(level, category, format, ...)
@@ -110,6 +115,9 @@
 #include <stddef.h>
 #include "panic.h"
 #include "config.h"
+
+// NOTE: This header defines various string constants. Ensure identical strings defined in different
+// translation units get merged during linking (may require enabled optimizations)
 
 #ifdef __cplusplus
 extern "C" {
@@ -232,26 +240,15 @@ typedef _LogCategoryWrapper<_LogGlobalCategory> _LogCategory;
         }
 
 // Expands to current category name
-#define _LOG_CATEGORY _LogCategory::name()
+#define LOG_THIS_CATEGORY() _LogCategory::name()
 
 #else // !defined(__cplusplus)
 
-// Module category
-//
-// All constants defined in this header file are static, and implementation expects that GCC
-// merges identical string constants defined in different translation units during linking
-// (requires optimization enabled)
-static const char* const _log_module_category = LOG_MODULE_CATEGORY;
-
-// Source file category
-//
 // weakref allows to have different implementations of the same function in different translation
 // units if target function is declared as static
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-static const char* _log_source_category() __attribute__((weakref("_log_source_category_impl")));
-#pragma GCC diagnostic pop
+static const char* _log_source_category() __attribute__((weakref("_log_source_category_impl"), unused));
 
+// Source file category
 #define LOG_SOURCE_CATEGORY(_name) \
         static const char* _log_source_category_impl() { \
             return _name; \
@@ -265,8 +262,8 @@ static const char* const _log_category = NULL;
         static const char* const _log_category = _name
 
 // Expands to current category name
-#define _LOG_CATEGORY \
-        (_log_category ? _log_category : (_log_source_category ? _log_source_category() : _log_module_category))
+#define LOG_THIS_CATEGORY() \
+        (_log_category ? _log_category : (_log_source_category ? _log_source_category() : LOG_MODULE_CATEGORY))
 
 #endif // !defined(__cplusplus)
 
@@ -317,17 +314,18 @@ static const char* const _log_category = NULL;
         (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL && log_enabled(LOG_LEVEL_##_level, _category, NULL))
 
 // Macros using current category
-#define LOG(_level, _fmt, ...) LOG_C(_level, _LOG_CATEGORY, _fmt, ##__VA_ARGS__)
-#define LOG_WRITE(_level, _data, _size) LOG_WRITE_C(_level, _LOG_CATEGORY, _data, _size)
-#define LOG_PRINT(_level, _str) LOG_PRINT_C(_level, _LOG_CATEGORY, _str)
-#define LOG_PRINTF(_level, _fmt, ...) LOG_PRINTF_C(_level, _LOG_CATEGORY, _fmt, ##__VA_ARGS__)
-#define LOG_DUMP(_level, _data, _size) LOG_DUMP_C(_level, _LOG_CATEGORY, _data, _size)
-#define LOG_ENABLED(_level) LOG_ENABLED_C(_level, _LOG_CATEGORY)
+#define LOG(_level, _fmt, ...) LOG_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
+#define LOG_WRITE(_level, _data, _size) LOG_WRITE_C(_level, LOG_THIS_CATEGORY(), _data, _size)
+#define LOG_PRINT(_level, _str) LOG_PRINT_C(_level, LOG_THIS_CATEGORY(), _str)
+#define LOG_PRINTF(_level, _fmt, ...) LOG_PRINTF_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
+#define LOG_DUMP(_level, _data, _size) LOG_DUMP_C(_level, LOG_THIS_CATEGORY(), _data, _size)
+#define LOG_ENABLED(_level) LOG_ENABLED_C(_level, LOG_THIS_CATEGORY())
 
 #else // LOG_DISABLE
 
 #define LOG_CATEGORY(_name)
 #define LOG_SOURCE_CATEGORY(_name)
+#define LOG_THIS_CATEGORY() NULL
 
 #define LOG(_level, _fmt, ...)
 #define LOG_C(_level, _category, _fmt, ...)
