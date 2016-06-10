@@ -353,10 +353,10 @@ int main(void)
 }
 
 /**
- * Called at the beginning of app_setup_and_loop() from main.cpp to
- * pre-initialize any low level hardware before the main loop runs.
+ * Called by HAL_Core_Init() to pre-initialize any low level hardware before
+ * the main loop runs.
  */
-void HAL_Core_Init(void)
+void HAL_Core_Init_finalize(void)
 {
 }
 

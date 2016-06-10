@@ -57,7 +57,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t device_private_key[1216];   // sufficient for 2048 bits
     uint8_t device_public_key[384];     // sufficient for 2048 bits
     static_ip_config_t  ip_config;
-    uint8_t unused[100];
+    uint8_t unused[96];
+    uint32_t feature_flags[1];          // Configurable feature flags (see HAL_Feature_Set()). Default uninitialized value is 0xffffffff
     uint8_t country_code[4];            // WICED country code. Stored as bit-endian format: CH1/CH2/0/rev (max 255)
     uint8_t claim_code[63];             // claim code. no terminating null.
     uint8_t claimed[1];                 // 0,0xFF, not claimed. 1 claimed.
@@ -89,6 +90,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, server_public_key))
 #define DCT_SERVER_ADDRESS_OFFSET ((DCT_SERVER_PUBLIC_KEY_OFFSET)+384)
 #define DCT_IP_CONFIG_OFFSET (offsetof(application_dct_t, ip_config))
+#define DCT_FEATURE_FLAGS_OFFSET (offsetof(application_dct_t, feature_flags))
 #define DCT_COUNTRY_CODE_OFFSET (offsetof(application_dct_t, country_code))
 #define DCT_CLAIM_CODE_OFFSET (offsetof(application_dct_t, claim_code))
 #define DCT_SSID_PREFIX_OFFSET (offsetof(application_dct_t, ssid_prefix))
@@ -110,6 +112,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
 #define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
 #define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
+#define DCT_FEATURE_FLAGS_SIZE  (sizeof(application_dct_t::feature_flags))
 #define DCT_COUNTRY_CODE_SIZE  (sizeof(application_dct_t::country_code))
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
 #define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix))
@@ -137,7 +140,8 @@ STATIC_ASSERT_DCT_OFFSET(version, 32);
 STATIC_ASSERT_DCT_OFFSET(device_private_key, 34);
 STATIC_ASSERT_DCT_OFFSET(device_public_key, 1250 /*34+1216*/);
 STATIC_ASSERT_DCT_OFFSET(ip_config, 1634 /* 1250 + 384 */);
-STATIC_ASSERT_DCT_OFFSET(country_code, 1758 /* 1634 + 124 */);
+STATIC_ASSERT_DCT_OFFSET(feature_flags, 1754 /* 1634 + 120 */);
+STATIC_ASSERT_DCT_OFFSET(country_code, 1758 /* 1754 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1758 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(claimed, 1825 /* 1762 + 63 */ );
 STATIC_ASSERT_DCT_OFFSET(ssid_prefix, 1826 /* 1825 + 1 */);
@@ -158,7 +162,7 @@ STATIC_ASSERT_DCT_OFFSET(alt_server_address, 3490 /* 3298 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(device_id, 3618 /* 3490 + 128 */);
 
 STATIC_ASSERT_DCT_OFFSET(reserved2, 3630 /* 3618 + 12 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2952 + 1280 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3630 + 628 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);

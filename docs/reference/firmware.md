@@ -7611,6 +7611,74 @@ void loop() {
 }
 ```
 
+### Reset Reason
+
+*Since 0.6.0*
+
+The system can track the hardware and software resets of the device.
+
+```
+// EXAMPLE
+// Restart in safe mode if the device previously reset due to a PANIC (SOS code)
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
+
+void setup() {
+   if (System.resetReason() == RESET_REASON_PANIC) {
+       System.enterSafeMode();
+   }
+}
+```
+
+You can also pass in your own data as part of an application-initiated reset:
+
+```cpp
+// EXAMPLE
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
+
+void setup() {
+    // Reset the device 3 times in a row
+    if (System.resetReason() == RESET_REASON_USER) {
+        uint32_t data = System.resetReasonData();
+        if (data < 3) {
+            System.reset(data + 1);
+        }
+    } else {
+		// This will set the reset reason to RESET_REASON_USER
+        System.reset(1);
+    }
+}
+
+```
+
+**Note:** This functionality requires `FEATURE_RESET_INFO` flag to be enabled in order to work.
+
+`resetReason()`
+
+Returns a code describing reason of the last device reset. The following codes are defined:
+
+- `RESET_REASON_PIN_RESET`: Reset button or reset pin
+- `RESET_REASON_POWER_MANAGEMENT`: Low-power management reset
+- `RESET_REASON_POWER_DOWN`: Power-down reset
+- `RESET_REASON_POWER_BROWNOUT`: Brownout reset
+- `RESET_REASON_WATCHDOG`: Hardware watchdog reset
+- `RESET_REASON_UPDATE`: Successful firmware update
+- `RESET_REASON_UPDATE_TIMEOUT`: Firmware update timeout
+- `RESET_REASON_FACTORY_RESET`: Factory reset requested
+- `RESET_REASON_SAFE_MODE`: Safe mode requested
+- `RESET_REASON_DFU_MODE`: DFU mode requested
+- `RESET_REASON_PANIC`: System panic
+- `RESET_REASON_USER`: User-requested reset
+- `RESET_REASON_UNKNOWN`: Unspecified reset reason
+- `RESET_REASON_NONE`: Information is not available
+
+`resetReasonData()`
+
+Returns a user-defined value that has been previously specified for the `System.reset()` call.
+
+`reset(uint32_t data)`
+
+This overloaded method accepts an arbitrary 32-bit value, stores it to the backup register and resets the device. The value can be retrieved via `resetReasonData()` method after the device has restarted.
+
 
 ## OTA Updates
 

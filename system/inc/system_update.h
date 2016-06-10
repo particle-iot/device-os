@@ -114,6 +114,11 @@ typedef enum
 	 */
 	SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1,
 
+    /**
+     * Enable/disable publishing of last reset info to the cloud.
+     */
+    SYSTEM_FLAG_PUBLISH_RESET_INFO,
+
     SYSTEM_FLAG_MAX
 
 } system_flag_t;

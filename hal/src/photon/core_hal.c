@@ -86,7 +86,7 @@ void HAL_Core_Setup_override_interrupts(void) {
 
 
 /* Extern function prototypes ------------------------------------------------*/
-void HAL_Core_Init(void)
+void HAL_Core_Init_finalize(void)
 {
     wiced_core_init();
     wlan_initialize_dct();
