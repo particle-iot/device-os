@@ -168,7 +168,7 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     handle.io_control(command);
     std::size_t available = command.get();
     sock_result_t result = 0;
-    available = handle.read_some(boost::asio::buffer(buffer, len), ec);
+    		available = handle.read_some(boost::asio::buffer(buffer, len), ec);
     result = ec.value() ? -abs(ec.value()) : available;
     if (ec.value()) {
         if (ec.value() == boost::system::errc::resource_deadlock_would_occur || // EDEADLK (35)
@@ -222,7 +222,7 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 	}
 
 	sock_handle_t result = ec.value();
-    if (result == boost::asio::error::would_block)
+	if (result == boost::asio::error::would_block)
         return 0;
 
 	return result ? result : count;
@@ -327,7 +327,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
 }
 
 uint8_t socket_handle_valid(sock_handle_t handle) {
-    return handle<SOCKET_COUNT ? is_valid(tcp_from(handle)) : is_valid(udp_from(handle));
+	return handle<SOCKET_COUNT ? is_valid(tcp_from(handle)) : is_valid(udp_from(handle));
 }
 
 
@@ -336,12 +336,25 @@ sock_handle_t socket_handle_invalid()
     return SOCKET_INVALID;
 }
 
-sock_result_t socket_join_multicast(const HAL_IPAddress* addr, network_interface_t nif, void* reserved)
+sock_result_t socket_join_multicast(const HAL_IPAddress* addr, network_interface_t nif, socket_multicast_info_t* info)
 {
+	if (info) {
+		sock_handle_t socket = info->sock_handle;
+		if (socket>=SOCKET_COUNT)
+		{
+			auto& s = udp_from(socket);
+			ip::address_v4 address(addr->ipv4);
+			DEBUG("join multicast %s", address.to_string().c_str());
+			s.set_option(ip::multicast::enable_loopback(true));
+			boost::asio::ip::multicast::join_group option(address);
+			s.set_option(option);
+			return 0;
+		}
+	}
     return -1;
 }
 
-sock_result_t socket_leave_multicast(const HAL_IPAddress* addr, network_interface_t nif, void* reserved)
+sock_result_t socket_leave_multicast(const HAL_IPAddress* addr, network_interface_t nif, socket_multicast_info_t* reserved)
 {
 	return -1;
 }
