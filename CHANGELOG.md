@@ -13,6 +13,7 @@
 - Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
 - [Photon/Core] MAC address is available immediately after `WiFi.on()` [#879](https://github.com/spark/firmware/issues/879)
 - [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
+- [virtual device] support for EEPROM emulation [#1004](https://github.com/spark/firmware/pull/1004)
 - Low-level RTOS queues exposed in HAL [#1018](https://github.com/spark/firmware/pull/1018)
 
 ### BUGFIXES
