@@ -31,6 +31,10 @@
 #include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/
+typedef struct dac_state_t {
+    uint8_t resolution;
+    uint8_t buffer;
+} dac_state_t;
 
 /* Private define ------------------------------------------------------------*/
 
@@ -38,8 +42,18 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-uint8_t dacInitFirstTime = true;
+static uint8_t dacInitFirstTime = true;
 
+static dac_state_t DAC_State[2] = {
+    {
+        .resolution = DAC_Align_12b_R,
+        .buffer = 1
+    },
+    {
+        .resolution = DAC_Align_12b_R,
+        .buffer = 1
+    }
+};
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,9 +74,11 @@ static void HAL_DAC_Init()
     memset(&DAC_InitStructure, 0, sizeof DAC_InitStructure);
     DAC_InitStructure.DAC_Trigger = DAC_Trigger_None;
     DAC_InitStructure.DAC_WaveGeneration = DAC_WaveGeneration_None;
-    DAC_InitStructure.DAC_OutputBuffer = DAC_OutputBuffer_Enable;
 
+    DAC_InitStructure.DAC_OutputBuffer = DAC_State[0].buffer ? DAC_OutputBuffer_Enable : DAC_OutputBuffer_Disable;
     DAC_Init(DAC_Channel_1, &DAC_InitStructure);
+    
+    DAC_InitStructure.DAC_OutputBuffer = DAC_State[1].buffer ? DAC_OutputBuffer_Enable : DAC_OutputBuffer_Disable;
     DAC_Init(DAC_Channel_2, &DAC_InitStructure);
 }
 
@@ -90,13 +106,13 @@ void HAL_DAC_Write(pin_t pin, uint16_t value)
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
     {
         /* Set the DAC Channel1 data */
-        DAC_SetChannel1Data(DAC_Align_12b_R, value);
+        DAC_SetChannel1Data(DAC_State[0].resolution, value);
 
     }
     else if (PIN_MAP[pin].dac_channel == DAC_Channel_2)
     {
         /* Set the DAC Channel2 data */
-        DAC_SetChannel2Data(DAC_Align_12b_R, value);
+        DAC_SetChannel2Data(DAC_State[1].resolution, value);
     }
 }
 
@@ -122,4 +138,62 @@ uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state)
     }
 
     return 1;
+}
+
+uint8_t HAL_DAC_Get_Resolution(pin_t pin)
+{
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
+    {
+        return DAC_State[0].resolution == DAC_Align_12b_R ? 12 : 8;
+    }
+    else if (PIN_MAP[pin].dac_channel == DAC_Channel_2)
+    {
+        return DAC_State[1].resolution == DAC_Align_12b_R ? 12 : 8;
+    }
+
+    return 0;
+}
+
+void HAL_DAC_Set_Resolution(pin_t pin, uint8_t resolution)
+{
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
+    {
+        DAC_State[0].resolution = resolution <= 8 ? DAC_Align_8b_R : DAC_Align_12b_R;
+    }
+    else if (PIN_MAP[pin].dac_channel == DAC_Channel_2)
+    {
+        DAC_State[1].resolution = resolution <= 8 ? DAC_Align_8b_R : DAC_Align_12b_R;
+    }
+}
+
+void HAL_DAC_Enable_Buffer(pin_t pin, uint8_t state)
+{
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
+    {
+        DAC_State[0].buffer = state;
+        if (!dacInitFirstTime)
+        {
+            if (state)
+                DAC->CR |= DAC_CR_BOFF1;
+            else
+                DAC->CR &= ~(DAC_CR_BOFF1);
+        }
+    }
+    else if (PIN_MAP[pin].dac_channel == DAC_Channel_2)
+    {
+        DAC_State[1].buffer = state;
+        if (!dacInitFirstTime)
+        {
+            if (state)
+                DAC->CR |= DAC_CR_BOFF2;
+            else
+                DAC->CR &= ~(DAC_CR_BOFF2);
+        }
+    }
 }
