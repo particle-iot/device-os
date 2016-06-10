@@ -7617,9 +7617,23 @@ void loop() {
 
 The system can track the hardware and software resets of the device.
 
+```
+// EXAMPLE
+// Restart in safe mode if the device previously reset due to a PANIC (SOS code)
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
+
+void setup() {
+   if (System.resetReason() == RESET_REASON_PANIC) {
+       System.enterSafeMode();
+   }
+}
+```
+
+You can also pass in your own data as part of an application-initiated reset:
+
 ```cpp
 // EXAMPLE
-STARTUP(System.enableFeature(FEATURE_RESET_INFO))
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
 
 void setup() {
     // Reset the device 3 times in a row
@@ -7629,12 +7643,11 @@ void setup() {
             System.reset(data + 1);
         }
     } else {
+		// This will set the reset reason to RESET_REASON_USER
         System.reset(1);
     }
 }
 
-void loop() {
-}
 ```
 
 **Note:** This functionality requires `FEATURE_RESET_INFO` flag to be enabled in order to work.
@@ -7660,11 +7673,11 @@ Returns a code describing reason of the last device reset. The following codes a
 
 `resetReasonData()`
 
-Returns a user-defined value that has been previously specified for the `reset()` call.
+Returns a user-defined value that has been previously specified for the `System.reset()` call.
 
 `reset(uint32_t data)`
 
-This overloaded method accepts an arbitrary 32-bit value, stores it to the backup register and resets the device. The value can be retrieved via `resetReasonData()` method after the device is restarted.
+This overloaded method accepts an arbitrary 32-bit value, stores it to the backup register and resets the device. The value can be retrieved via `resetReasonData()` method after the device has restarted.
 
 
 ## OTA Updates
