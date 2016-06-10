@@ -12,6 +12,7 @@
 
 - Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
 - [Photon/Core] MAC address is available immediately after `WiFi.on()` [#879](https://github.com/spark/firmware/issues/879)
+- [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
 
 ### BUGFIXES
 

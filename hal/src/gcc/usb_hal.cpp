@@ -42,6 +42,7 @@ uint32_t last_baudRate;
 void USB_USART_Init(uint32_t baudRate)
 {
     last_baudRate = baudRate;
+    std::cout.setf(std::ios::unitbuf);
 }
 
 /*******************************************************************************
