@@ -40,7 +40,7 @@ uint8_t pwm_pins[] = {
 
 static pin_t pin = pwm_pins[0];
 
-test(PWM_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
+test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     // when
     pinMode(pin, INPUT);//pin set to INPUT mode
     analogWrite(pin, 50);
@@ -49,7 +49,7 @@ test(PWM_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     //To Do : Add test for remaining pins if required
 }
 
-test(PWM_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
+test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
     pin_t pin = D5;//pin under test
     // when
     pinMode(pin, OUTPUT);//D5 is not a Timer channel
@@ -60,14 +60,14 @@ test(PWM_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
     //To Do : Add test for remaining pins if required
 }
 
-test(PWM_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 51;//pin under test (not a valid user pin)
+test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
+    pin_t pin = 51; // pin under test (not a valid user pin)
     // when
-    pinMode(pin, OUTPUT);//21 is not a user pin
-    analogWrite(pin, 100);
-    // then
-    assertNotEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 100);
-    //To Do : Add test for remaining pins if required
+    pinMode(pin, OUTPUT); // will simply return
+    analogWrite(pin, 100); // will simply return
+    // when pinAvailable is checked with a bad pin,
+    // then it returns 0
+    assertEqual(pinAvailable(pin), 0);
 }
 
 template <typename F> void for_all_pwm_pins(F callback)
@@ -78,7 +78,7 @@ template <typename F> void for_all_pwm_pins(F callback)
 	}
 }
 
-test(PWM_AnalogWriteOnPinResultsInCorrectFrequency) {
+test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
     for_all_pwm_pins([](uint16_t pin) {
 	// when
     pinMode(pin, OUTPUT);
@@ -116,7 +116,7 @@ test(PWM_AnalogWriteOnPinResultsInCorrectFrequency) {
     });
 }
 
-test(PWM_AnalogWriteOnPinResultsInCorrectAnalogValue) {
+test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
 	for_all_pwm_pins([](uint16_t pin) {
 	// when
 	pinMode(pin, OUTPUT);
@@ -153,7 +153,7 @@ test(PWM_AnalogWriteOnPinResultsInCorrectAnalogValue) {
 	});
 }
 
-test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
+test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
 	for_all_pwm_pins([](uint16_t pin) {
 
 	// when
@@ -195,7 +195,7 @@ test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
 	});
 }
 
-test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
+test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
 	for_all_pwm_pins([](uint16_t pin) {
 	// when
     pinMode(pin, OUTPUT);
@@ -232,8 +232,7 @@ test(PWM_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
 	});
 }
 
-
-test(PWM_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
+test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
 	for_all_pwm_pins([](uint16_t pin) {
 
     // when
@@ -307,7 +306,7 @@ test(PWM_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
 	});
 }
 
-test(PWM_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
+test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 	for_all_pwm_pins([](uint16_t pin) {
 	// when
     pinMode(pin, OUTPUT);
@@ -373,7 +372,7 @@ test(PWM_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 	});
 }
 
-test(PWM_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
+test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 	for_all_pwm_pins([](uint16_t pin) {
 
 	// when
