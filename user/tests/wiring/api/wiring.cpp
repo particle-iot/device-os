@@ -88,6 +88,17 @@ test(api_wiring_usartserial) {
     API_COMPILE(Serial1.end());
     API_COMPILE(Serial1.begin(9600, SERIAL_9N2));
     API_COMPILE(Serial1.end());
+
+    // LIN mode
+    API_COMPILE(Serial1.begin(9600, LIN_MASTER_13B));
+    API_COMPILE(Serial1.breakTx());
+    API_COMPILE(Serial1.end());
+    API_COMPILE(Serial1.begin(9600, LIN_SLAVE_10B));
+    API_COMPILE(Serial1.breakRx());
+    API_COMPILE(Serial1.end());
+    API_COMPILE(Serial1.begin(9600, LIN_SLAVE_11B));
+    API_COMPILE(Serial1.breakRx());
+    API_COMPILE(Serial1.end());
 }
 
 test(api_wiring_usbserial) {
