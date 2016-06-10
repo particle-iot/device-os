@@ -278,6 +278,12 @@ uint8_t analogWriteResolution(pin_t pin)
 
 uint32_t analogWriteMaxFrequency(pin_t pin)
 {
+  // Safety check
+  if (!pinAvailable(pin))
+  {
+      return 0;
+  }
+
   return HAL_PWM_Get_Max_Frequency(pin);
 }
 
