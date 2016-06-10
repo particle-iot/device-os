@@ -1,6 +1,10 @@
 
 ## v0.6.0-rc.1
 
+### BREAKING CHANGES
+- `UDP.flush()` and `TCP.flush()`  now conform to the `Stream.flush()` behavior from Arduino 1.0 Wiring. The current (correct) behavior is to wait
+  until all data has been transmitted. Previous behavior discarded data in the buffer. [#469](https://github.com/spark/firmware/issues/469)
+
 ### FEATURES
 
 - [Electron] Reduced data consumption connecting to the cloud with deep sleep. (NB: see the docs for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
