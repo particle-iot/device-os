@@ -24,7 +24,7 @@
 - `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916) and [#925](https://github.com/spark/firmware/issues/925)
 - availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
 - `digitalRead()` interferes with `analogRead()` [#993](https://github.com/spark/firmware/issues/993)
-
+- [electron] reinstated OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
 
 
 ## v0.5.1 (same as v0.5.1-rc.2)
