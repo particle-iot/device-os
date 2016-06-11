@@ -318,8 +318,10 @@ static const char* const _log_category = NULL;
 #endif
 
 #define _LOG_ATTR_INIT(_name) \
-        LogAttributes _name = { sizeof(LogAttributes) }; \
-        _LOG_ATTR_SET_SOURCE_INFO(_name);
+        LogAttributes _name; \
+        _name.size = sizeof(LogAttributes); \
+        _name.flags = 0; \
+        _LOG_ATTR_SET_SOURCE_INFO(_name)
 
 // Generator macro for PP_FOR_EACH()
 #define _LOG_ATTR_SET(_attr, _expr) \

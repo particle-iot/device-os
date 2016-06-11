@@ -68,10 +68,16 @@ void log_message_callback(const char *msg, int level, const char *category, cons
     }
     // Source info
     if (attr->has_file && attr->has_line && attr->has_function) {
-        strm << attr->file << ':' << attr->line << ", ";
-        // Strip argument and return types for better readability
+        // Strip directory path
+        std::string fileName(attr->file);
+        size_t pos = fileName.rfind('/');
+        if (pos != std::string::npos) {
+            fileName = fileName.substr(pos + 1);
+        }
+        strm << fileName << ':' << attr->line << ", ";
+        // Strip argument and return types
         std::string funcName(attr->function);
-        const size_t pos = funcName.find(' ');
+        pos = funcName.find(' ');
         if (pos != std::string::npos) {
             funcName = funcName.substr(pos + 1, funcName.find('(') - pos - 1);
         }
@@ -132,7 +138,7 @@ extern "C" int main(int argc, char* argv[])
     		if (exists_file(eeprom_bin)) {
     			GCC_EEPROM_Load(eeprom_bin);
     		}
-			app_setup_and_loop();    
+			app_setup_and_loop();
 	}
     return 0;
 }
