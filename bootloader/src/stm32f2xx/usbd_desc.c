@@ -31,6 +31,7 @@
 #include "usbd_desc.h"
 #include "usbd_req.h"
 #include "usb_regs.h"
+#include "usbd_wcid.h"
 
 #include "deviceid_hal.h"
 extern char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
@@ -49,6 +50,8 @@ extern char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 #define USBD_CONFIGURATION_STRING       "DFU"
 #define USBD_INTERFACE_STRING           "DFU"
 
+static uint8_t *  USBD_USR_MsftStrDescriptor( uint8_t speed , uint16_t *length);
+
 USBD_DEVICE USR_desc =
 {
         USBD_USR_DeviceDescriptor,
@@ -58,6 +61,7 @@ USBD_DEVICE USR_desc =
         USBD_USR_SerialStrDescriptor,
         USBD_USR_ConfigStrDescriptor,
         USBD_USR_InterfaceStrDescriptor,
+        USBD_USR_MsftStrDescriptor
 };
 
 /* USB Standard Device Descriptor */
@@ -105,6 +109,15 @@ uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] =
         USB_DESC_TYPE_STRING,
         LOBYTE(USBD_LANGID_STRING),
         HIBYTE(USBD_LANGID_STRING),
+};
+
+/* MS OS String Descriptor */
+static const uint8_t USBD_MsftStrDesc[] = {
+    USB_WCID_MS_OS_STRING_DESCRIPTOR(
+        // "MSFT100"
+        USB_WCID_DATA('M', '\0', 'S', '\0', 'F', '\0', 'T', '\0', '1', '\0', '0', '\0', '0', '\0'),
+        0xee
+    )
 };
 
 /**
@@ -201,4 +214,17 @@ uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
 {
     USBD_GetString (USBD_INTERFACE_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
+}
+
+/**
+ * @brief  USBD_USR_MsftStrDescriptor
+ *         return MS OS String Descriptor
+ * @param  speed : current device speed
+ * @param  length : pointer to data length variable
+ * @retval pointer to descriptor buffer
+ */
+uint8_t *  USBD_USR_MsftStrDescriptor( uint8_t speed , uint16_t *length)
+{
+    *length = sizeof(USBD_MsftStrDesc);
+    return (uint8_t*)USBD_MsftStrDesc;
 }
