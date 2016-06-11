@@ -63,9 +63,6 @@
 #define USB_OTG_DATA_FIFO_OFFSET             0x1000
 #define USB_OTG_DATA_FIFO_SIZE               0x1000
 
-
-#define USB_OTG_MAX_TX_FIFOS                 15
-
 #define USB_OTG_HS_MAX_PACKET_SIZE           512
 #define USB_OTG_FS_MAX_PACKET_SIZE           64
 #define USB_OTG_MAX_EP0_SIZE                 64
