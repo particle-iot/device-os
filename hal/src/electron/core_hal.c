@@ -353,10 +353,10 @@ int main(void)
 }
 
 /**
- * Called at the beginning of app_setup_and_loop() from main.cpp to
- * pre-initialize any low level hardware before the main loop runs.
+ * Called by HAL_Core_Init() to pre-initialize any low level hardware before
+ * the main loop runs.
  */
-void HAL_Core_Init(void)
+void HAL_Core_Init_finalize(void)
 {
 }
 
@@ -385,6 +385,8 @@ void HAL_Core_Setup_finalize(void)
 {
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTick_Handler_Idx] = (uint32_t)SysTickChain;
+    // retained memory is critical for efficient data use on the electron
+    HAL_Feature_Set(FEATURE_RETAINED_MEMORY, ENABLE);
 }
 
 /******************************************************************************/

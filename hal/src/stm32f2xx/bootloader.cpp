@@ -9,7 +9,27 @@
 #if PLATFORM_ID==6 || PLATFORM_ID==8
 #define HAL_REPLACE_BOOTLOADER
 #endif
+#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10
+#define HAL_REPLACE_BOOTLOADER_OTA
 #endif
+#endif
+
+#ifdef HAL_REPLACE_BOOTLOADER_OTA
+bool bootloader_update(const void* bootloader_image, unsigned length)
+{
+    HAL_Bootloader_Lock(false);
+    bool result =  (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
+        FLASH_INTERNAL, 0x8000000, length, MODULE_FUNCTION_BOOTLOADER,
+        MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION));
+    HAL_Bootloader_Lock(true);
+    return result;
+}
+#else
+bool bootloader_update(const void*, unsigned)
+{
+    return false;
+}
+#endif // HAL_REPLACE_BOOTLOADER_OTA
 
 #ifdef HAL_REPLACE_BOOTLOADER
 
@@ -37,16 +57,6 @@ bool bootloader_requires_update()
     return requires_update;
 }
 
-bool bootloader_update(const void* bootloader_image, unsigned length)
-{
-    HAL_Bootloader_Lock(false);
-    bool result =  (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
-        FLASH_INTERNAL, 0x8000000, length, MODULE_FUNCTION_BOOTLOADER,
-        MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION));
-    HAL_Bootloader_Lock(true);
-    return result;
-}
-
 bool bootloader_update_if_needed()
 {
     bool updated = false;
@@ -56,16 +66,9 @@ bool bootloader_update_if_needed()
     return updated;
 }
 
-
-
 #else
 
 bool bootloader_requires_update()
-{
-    return false;
-}
-
-bool bootloader_update(const void*, unsigned)
 {
     return false;
 }

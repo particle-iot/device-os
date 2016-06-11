@@ -158,6 +158,16 @@ struct Channel
 		 * the session has moved.
 		 */
 		MOVE_SESSION = 2,
+
+		/**
+		 * Load session - load the session from persistent store.
+		 */
+		LOAD_SESSION = 3,
+
+		/**
+		 * Save session - saves the session to persistent store.
+		 */
+		SAVE_SESSION = 4,
 	};
 
 
@@ -201,8 +211,10 @@ struct MessageChannel : public Channel
 
 	/**
 	 * Establish this channel for communication.
+	 * @param flags on return, SKIP_SESSION_RESUME_HELLO is set if the hello/vars/funcs/sucriptions regitration is not needed.
+	 * @param app_state_crc	The crc of the current application state.
 	 */
-	virtual ProtocolError establish()=0;
+	virtual ProtocolError establish(uint32_t& flags, uint32_t app_state_crc)=0;
 
 	/**
 	 * Retrieves a new message object containing the message buffer.

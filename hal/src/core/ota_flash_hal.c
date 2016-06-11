@@ -117,3 +117,9 @@ uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
     return 0;
 }
 
+bool HAL_IsDeviceClaimed(void* reserved)
+{
+	return false;
+}
+
+

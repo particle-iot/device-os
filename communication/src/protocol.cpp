@@ -52,7 +52,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	{
 	case CoAPMessageType::DESCRIBE:
 	{
-		// 4 bytes header, 1 byte token, 2 bytes location path for event
+		// 4 bytes header, 1 byte token, 2 bytes location path
 		// 2 bytes optional single character location path for describe flags
 		int descriptor_type = DESCRIBE_ALL;
 		if (message.length()>8)
@@ -203,6 +203,38 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	initialized = true;
 }
 
+uint32_t Protocol::application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
+		uint32_t describe_app_crc, uint32_t describe_system_crc)
+{
+	uint32_t chk[3];
+	chk[0] = subscriptions_crc;
+	chk[1] = describe_app_crc;
+	chk[2] = describe_system_crc;
+	return calc_crc((uint8_t*)chk, sizeof(chk));
+}
+
+void Protocol::update_subscription_crc()
+{
+	if (descriptor.app_state_selector_info)
+	{
+		uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
+		this->channel.command(Channel::SAVE_SESSION);
+		descriptor.app_state_selector_info(SparkAppStateSelector::SUBSCRIPTIONS, SparkAppStateUpdate::PERSIST, crc, nullptr);
+		this->channel.command(Channel::LOAD_SESSION);
+	}
+}
+
+/**
+ * Computes the current checksum from the application cloud state
+ */
+uint32_t Protocol::application_state_checksum()
+{
+	return descriptor.app_state_selector_info ? application_state_checksum(callbacks.calculate_crc,
+			subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc),
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr),
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr))
+			: 0;
+}
 
 /**
  * Establish a secure connection and send and process the hello message.
@@ -212,7 +244,8 @@ int Protocol::begin()
 	chunkedTransfer.reset();
 	pinger.reset();
 
-	ProtocolError error = channel.establish();
+	uint32_t channel_flags = 0;
+	ProtocolError error = channel.establish(channel_flags, application_state_checksum());
 	bool session_resumed = (error==SESSION_RESUMED);
 	if (error && !session_resumed) {
 		WARN("handshake failed with code %d", error);
@@ -223,6 +256,9 @@ int Protocol::begin()
 	{
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
+		if (channel_flags & SKIP_SESSION_RESUME_HELLO) {
+			flags |= SKIP_SESSION_RESUME_HELLO;
+		}
 	}
 
 	// hello not needed because it's already been sent and the server maintains device state
@@ -357,7 +393,7 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	appender.append("{");
 	bool has_content = false;
 
-	if (desc_flags && DESCRIBE_APPLICATION)
+	if (desc_flags & DESCRIBE_APPLICATION)
 	{
 		has_content = true;
 		appender.append("\"f\":[");
@@ -413,9 +449,23 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 		descriptor.append_system_info(append_instance, &appender, nullptr);
 	}
 	appender.append('}');
-	int msglen = appender.next() - (uint8_t *) buf;
+	int msglen = appender.next() - (uint8_t*) buf;
 	message.set_length(msglen);
-	return channel.send(message);
+	ProtocolError error = channel.send(message);
+	if (error==NO_ERROR && descriptor.app_state_selector_info)
+	{
+		if (desc_flags & DESCRIBE_APPLICATION)
+		{
+			// have sent the describe message to the cloud so update the crc
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+		}
+		if (desc_flags & DESCRIBE_SYSTEM)
+		{
+			// have sent the describe message to the cloud so update the crc
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+		}
+	}
+	return error;
 }
 
 

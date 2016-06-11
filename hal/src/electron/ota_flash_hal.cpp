@@ -37,7 +37,7 @@ const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE
 const module_bounds_t module_system_part1 = { 0x20000, 0x8020000, 0x8040000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
 const module_bounds_t module_system_part2 = { 0x20000, 0x8040000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 2, MODULE_STORE_MAIN };
 const module_bounds_t module_user = { 0x20000, 0x8080000, 0x80A0000, MODULE_FUNCTION_USER_PART, 1, MODULE_STORE_MAIN};
-const module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000, MODULE_FUNCTION_USER_PART, 1, MODULE_STORE_FACTORY};
+const module_bounds_t module_factory = { 0x20000, 0x80A0000, 0x80C0000, MODULE_FUNCTION_USER_PART, 1, MODULE_STORE_FACTORY};
 const module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user, &module_factory };
 
 const module_bounds_t module_ota = { 0x20000, 0x80C0000, 0x80E0000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD};

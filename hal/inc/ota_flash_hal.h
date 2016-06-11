@@ -143,7 +143,7 @@ void HAL_OTA_Flashed_ResetStatus(void);
 
 /**
  * Set the claim code for this device.
- * @param code  The claim code to set. If null, clears the claim code.
+ * @param code  The claim code to set. If null, clears the claim code and registers the device as claimed.
  * @return 0 on success.
  */
 uint16_t HAL_Set_Claim_Code(const char* code);
@@ -155,6 +155,11 @@ uint16_t HAL_Set_Claim_Code(const char* code);
  * @return          0 on success.
  */
 uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len);
+
+/**
+ * Determines if this device has been claimed.
+ */
+bool HAL_IsDeviceClaimed(void* reserved);
 
 typedef enum
 {

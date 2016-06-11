@@ -67,7 +67,7 @@ void UDP::releaseBuffer()
     _buffer = NULL;
     _buffer_allocated = false;
     _buffer_size = 0;
-    flush();
+    flush_buffer();
 }
 
 uint8_t UDP::begin(uint16_t port, network_interface_t nif)
@@ -235,6 +235,10 @@ int UDP::peek()
 
 void UDP::flush()
 {
+}
+
+void UDP::flush_buffer()
+{
   _offset = 0;
   _total = 0;
 }
@@ -251,7 +255,10 @@ int UDP::joinMulticast(const IPAddress& ip)
     if (_sock == socket_handle_invalid())
         return -1;
     HAL_IPAddress address = ip.raw();
-    return socket_join_multicast(&address, _nif, 0);
+    socket_multicast_info_t info;
+    info.size = sizeof(info);
+    info.sock_handle = _sock;
+    return socket_join_multicast(&address, _nif, &info);
 }
 
 int UDP::leaveMulticast(const IPAddress& ip)

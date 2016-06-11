@@ -22,7 +22,7 @@
  */
 
 #ifndef WICED_STUBS_H
-#define WICED_STUBS_H
+#define	WICED_STUBS_H
 
 #include <stdint.h>
 
@@ -47,4 +47,4 @@ int wwd_select_nvram_image_resource(uint8_t res, void* reserved);
 }
 #endif
 
-#endif /* WICED_STUBS_H */
+#endif	/* WICED_STUBS_H */

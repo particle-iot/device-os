@@ -18,6 +18,7 @@
  */
 
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * Emulates rewritable storage using two flash blocks.

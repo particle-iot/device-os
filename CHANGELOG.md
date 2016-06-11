@@ -1,31 +1,67 @@
 
 ## v0.6.0-rc.1
 
-### FEATURES
+### BREAKING CHANGES
+- `UDP.flush()` and `TCP.flush()`  now conform to the `Stream.flush()` behavior from Arduino 1.0 Wiring. The current (correct) behavior is to wait
+  until all data has been transmitted. Previous behavior discarded data in the buffer. [#469](https://github.com/spark/firmware/issues/469)
 
-- [Photon] Wi-Fi Country Code [#942](https://github.com/spark/firmware/pull/942)
+### FEATURES
+- [Logging](https://docs.particle.io/reference/firmware/photon/#logging) library for flexible system and application logging. 
+- [Electron] Reduced data consumption connecting to the cloud with deep sleep. (NB: see the docs for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
+- Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602) 
+- Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
+- [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
+- [System reset reporting](https://docs.particle.io/reference/firmware/core/#reset-reason) [#403](https://github.com/spark/firmware/issues/403)
 
 ### ENHANCEMENTS
 
-- Local build support for ARM GCC 5.3.1. [#963](https://github.com/spark/firmware/issues/963)
 - Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
+- [Photon/Core] MAC address is available immediately after `WiFi.on()` [#879](https://github.com/spark/firmware/issues/879)
+- [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
+- [virtual device] support for EEPROM emulation [#1004](https://github.com/spark/firmware/pull/1004)
+- Low-level RTOS queues exposed in HAL [#1018](https://github.com/spark/firmware/pull/1018)
+- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930)
+- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
+- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991)
 
 ### BUGFIXES
 
 - SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971) 
 - Free memory allocated for previous system interrupt handler [#927](https://github.com/spark/firmware/issues/927)
 - Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
+- `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916) and [#925](https://github.com/spark/firmware/issues/925)
+- availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
+- `digitalRead()` interferes with `analogRead()` [#993](https://github.com/spark/firmware/issues/993)
+- [electron] reinstated OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
+- USART 9-bit receiving. [#968](https://github.com/spark/firmware/issues/968)
 
-## v0.5.1
+
+## v0.5.1 (same as v0.5.1-rc.2)
+
+### FEATURES
+
+- [Electron] Added support in HAL for a SMS received callback handler.
+
+
+## v0.5.1-rc.1
+
+### FEATURES
+
+- Wi-Fi Country Code can be set to configure the available channels and power transmission. [#942](https://github.com/spark/firmware/pull/942)
+
+### ENHANCEMENTS
+
+- ARM GCC 5.3.1 compiler support
 
 ### BUGFIXES
 
-- Fixes bit mask provided for PMIC::setChargeVoltage(4208) option. [#987](https://github.com/spark/firmware/pull/987)
-- Revert EEPROM capacity to 2048 instead of 2047 Photon / 128 Core [#983](https://github.com/spark/firmware/pull/983)
+- [Photon/P1] Fix a timing-critical bug in WICED that causes system freeze. [#877](https://github.com/spark/firmware/issues/877)
+- Tone not available on A7 after stop-mode sleep. [#938](https://github.com/spark/firmware/issues/938) 
+- Regression in EEPROM emulation size. [#983](https://github.com/spark/firmware/pull/983)
+- [Electron] Wrong bitmask is provided for 4208 setting in power management [#987](https://github.com/spark/firmware/pull/987)
+
 
 ## v0.5.0 (same as v0.5.0-rc.2)
-
-## v0.5.0-rc.2
 
 ### FEATURES
 

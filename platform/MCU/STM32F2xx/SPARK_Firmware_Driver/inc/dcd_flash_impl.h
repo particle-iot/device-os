@@ -60,19 +60,6 @@ public:
     }
 };
 
-UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000> dcd;
-
-const void* dct_read_app_data (uint32_t offset)
-{
-    return dcd.read(offset);
-}
-
-int dct_write_app_data(const void* data, uint32_t offset, uint32_t size)
-{
-    return dcd.write(offset, data, size);
-}
-
-void dcd_migrate_data()
-{
-    dcd.migrate();
-}
+const void* dct_read_app_data (uint32_t offset);
+int dct_write_app_data(const void* data, uint32_t offset, uint32_t size);
+void dcd_migrate_data();

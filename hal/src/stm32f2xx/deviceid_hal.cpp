@@ -26,6 +26,7 @@
 
 #include "deviceid_hal.h"
 #include "platform_config.h"
+#include "dct_hal.h"
 #include <algorithm>
 #include <cstring>
 
@@ -41,4 +42,15 @@ unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 unsigned HAL_Platform_ID()
 {
     return PLATFORM_ID;
+}
+
+void HAL_save_device_id(uint32_t dct_offset)
+{
+    const char* saved_device_id = (const char*)dct_read_app_data(dct_offset);
+    if (*saved_device_id == 0xFF)
+    {
+        uint8_t device_id[device_id_len];
+        HAL_device_ID(device_id, sizeof(device_id));
+        dct_write_app_data(device_id, dct_offset, device_id_len);
+    }
 }

@@ -55,8 +55,7 @@ int dns_resolve_query(const char* query)
 
 bool is_device_claimed()
 {
-    const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
-    return (*claimed)=='1';
+	return HAL_IsDeviceClaimed(nullptr);
 }
 
 

@@ -40,6 +40,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include "eeprom_file.h"
+#include "eeprom_hal.h"
 
 using std::cout;
 
@@ -61,7 +63,7 @@ void log_message_callback(const char *msg, int level, const char *category, uint
     strm << std::setw(10) << std::setfill('0') << time << ' ';
     // Category (optional)
     if (category && category[0]) {
-        strm << category << ": ";
+        strm << '[' << category << "] ";
     }
     // Source info (optional)
     if (file && func) {
@@ -104,12 +106,19 @@ void core_log(const char* msg, ...)
     va_end(args);
 }
 
+const char* eeprom_bin = "eeprom.bin";
+
 extern "C" int main(int argc, char* argv[])
 {
     log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
     if (read_device_config(argc, argv)) {
-        app_setup_and_loop();
-    }
+    		// init the eeprom so that a file of size 0 can be used to trigger the save.
+    		HAL_EEPROM_Init();
+    		if (exists_file(eeprom_bin)) {
+    			GCC_EEPROM_Load(eeprom_bin);
+    		}
+			app_setup_and_loop();    
+	}
     return 0;
 }
 
@@ -166,6 +175,16 @@ void HAL_Core_Mode_Button_Reset(void)
 void HAL_Core_System_Reset(void)
 {
     exit(0);
+}
+
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
+{
+    HAL_Core_System_Reset();
+}
+
+int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
+{
+    return -1;
 }
 
 void HAL_Core_Factory_Reset(void)

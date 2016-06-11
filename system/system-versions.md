@@ -15,7 +15,9 @@
 | 10 | 0.4.8-rc.6 |  (Electron MFG Release)
 | 11 | 0.4.9 |
 | 12 | 0.5.0-rc.1 |  (Core, Photon, P1 & Electron)
-| 13 | 0.5.0-rc.2 |  (Core, Photon, P1 & Electron)
+| 13 | 0.5.0-rc.2 / 0.5.0 |  (Core, Photon, P1 & Electron)
+| 14 | 0.5.1-rc.1 | (Core, Photon, P1, Electron)
+| 15 | 0.5.1-rc.2 / 0.5.1 | (Core, Photon, P1, Electron)
 | 30 | 0.6.0-rc.1 |
 -------------
 
