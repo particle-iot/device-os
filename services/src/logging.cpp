@@ -21,6 +21,46 @@
 #include <cstdio>
 #include "timer_hal.h"
 #include "service_debug.h"
+#include "static_assert.h"
+
+#define STATIC_ASSERT_FIELD_SIZE(struct, field, size) \
+        STATIC_ASSERT(field_size_changed_##struct##_##field, sizeof(struct::field) == size);
+
+#define STATIC_ASSERT_FIELD_OFFSET(struct, field, offset) \
+        STATIC_ASSERT(field_offset_changed_##struct##_##field, offsetof(struct, field) == offset);
+
+#define STATIC_ASSERT_FIELD_ORDER(struct, field1, field2) \
+        STATIC_ASSERT(field_offset_changed_##struct##_##field2, \
+                offsetof(struct, field2) == offsetof(struct, field1) + sizeof(struct::field1) + /* Padding */ \
+                (__alignof__(struct::field2) - (offsetof(struct, field1) + sizeof(struct::field1)) % \
+                __alignof__(struct::field2)) % __alignof__(struct::field2));
+
+// LogAttributes::size
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, size, sizeof(size_t));
+STATIC_ASSERT_FIELD_OFFSET(LogAttributes, size, 0);
+// LogAttributes::flags
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, flags, sizeof(uint32_t));
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, size, flags);
+// LogAttributes::file
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, file, sizeof(const char*));
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, flags, file);
+// LogAttributes::line
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, line, sizeof(int));
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, file, line);
+// LogAttributes::function
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, function, sizeof(const char*));
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, line, function);
+// LogAttributes::time
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, time, sizeof(uint32_t));
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, function, time);
+// LogAttributes::code
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, code, sizeof(intptr_t));
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, time, code);
+// LogAttributes::detail
+STATIC_ASSERT_FIELD_SIZE(LogAttributes, detail, sizeof(const char*));
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, code, detail);
+// LogAttributes::end
+STATIC_ASSERT_FIELD_ORDER(LogAttributes, detail, end);
 
 namespace {
 
