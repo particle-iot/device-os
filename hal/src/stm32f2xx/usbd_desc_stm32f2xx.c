@@ -45,6 +45,7 @@ USBD_DEVICE USR_desc =
         USBD_USR_SerialStrDescriptor,
         USBD_USR_ConfigStrDescriptor,
         USBD_USR_InterfaceStrDescriptor,
+        NULL
 };
 
 /* USB Standard Device Descriptor */

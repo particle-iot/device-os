@@ -60,7 +60,7 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
 static uint8_t USB_Configured = 0;
 
-static uint8_t USB_SetupRequest_Data[HAL_USB_SETUP_REQUEST_MAX_DATA];
+static uint8_t USB_SetupRequest_Data[USBD_EP0_MAX_PACKET_SIZE];
 static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
 static uint8_t USB_InSetupRequest = 0;
 static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;
@@ -77,9 +77,12 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
     uint8_t ret = USBD_OK;
 
     // Forward Microsoft vendor requests to Composite driver
-    if (req->bRequest == 0xee && req->wIndex == 0x0004 && req->wValue == 0x0000) {
+    if (req != NULL && req->bRequest == 0xee && req->wIndex == 0x0004 && req->wValue == 0x0000) {
         return USBD_Composite_Handle_Msft_Request(&USB_OTG_dev, req);
     }
+
+    if (USB_Vendor_Request_Callback == NULL)
+        return USBD_FAIL;
 
     if (req != NULL) {
         USB_SetupRequest.bmRequestType = req->bmRequest;
@@ -90,47 +93,50 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
 
         if (req->wLength) {
             // Setup request with data stage
-
             if (req->bmRequest & 0x80) {
                 // Device -> Host
-                if (USB_Vendor_Request_Callback) {
-                    USB_SetupRequest.data = USB_SetupRequest_Data;
-                    ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
+                USB_SetupRequest.data = USB_SetupRequest_Data;
+                ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
 
-                    if (ret == USBD_OK && USB_SetupRequest.data != NULL && USB_SetupRequest.wLength) {
-                        if (USB_SetupRequest.data != USB_SetupRequest_Data &&
-                            USB_SetupRequest.wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA) {
-                            // Don't use user buffer if wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA
-                            // and copy into internal buffer
-                            memcpy(USB_SetupRequest_Data, USB_SetupRequest.data, USB_SetupRequest.wLength);
-                        }
-                        USBD_CtlSendData (&USB_OTG_dev, USB_SetupRequest_Data, USB_SetupRequest.wLength);
-                    } else {
-                        ret = USBD_FAIL;
+                if (ret == USBD_OK && USB_SetupRequest.data != NULL && USB_SetupRequest.wLength) {
+                    if (USB_SetupRequest.data != USB_SetupRequest_Data &&
+                        USB_SetupRequest.wLength <= USBD_EP0_MAX_PACKET_SIZE) {
+                        // Don't use user buffer if wLength <= USBD_EP0_MAX_PACKET_SIZE
+                        // and copy into internal buffer
+                        memcpy(USB_SetupRequest_Data, USB_SetupRequest.data, USB_SetupRequest.wLength);
                     }
+                    USBD_CtlSendData (&USB_OTG_dev, USB_SetupRequest_Data, USB_SetupRequest.wLength);
+                } else {
+                    ret = USBD_FAIL;
                 }
             } else {
                 // Host -> Device
                 USB_InSetupRequest = 1;
-                if (req->wLength <= HAL_USB_SETUP_REQUEST_MAX_DATA) {
+                if (req->wLength <= USBD_EP0_MAX_PACKET_SIZE) {
+                    // Use internal buffer
+                    USB_SetupRequest.data = USB_SetupRequest_Data;
                     USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest_Data, req->wLength);
                 } else {
-                    ret = USBD_FAIL;
+                    // Try to request the buffer
+                    USB_SetupRequest.data = NULL;
+                    USB_Vendor_Request_Callback(&USB_SetupRequest);
+                    if (USB_SetupRequest.data != NULL && USB_SetupRequest.wLength >= req->wLength) {
+                        USB_SetupRequest.wLength = req->wLength;
+                        USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest.data, req->wLength);
+                    } else {
+                        ret = USBD_FAIL;
+                    }
                 }
             }
         } else {
             // Setup request without data stage
-            if (USB_Vendor_Request_Callback) {
-                USB_SetupRequest.data = NULL;
-                ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
-            }
-        }
-    } else if (dataStage && USB_InSetupRequest) {
-        USB_InSetupRequest = 0;
-        if (USB_Vendor_Request_Callback) {
-            USB_SetupRequest.data = USB_SetupRequest_Data;
+            USB_SetupRequest.data = NULL;
             ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
         }
+    } else if (dataStage && USB_InSetupRequest) {
+        // Data stage completed
+        USB_InSetupRequest = 0;
+        ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
     } else {
         ret = USBD_FAIL;
     }

@@ -148,7 +148,7 @@ USBD_Status  USBD_StdDevReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 {
   USBD_Status ret = USBD_OK;
 
-  if ((req->bmRequest & 0b01100000) == USB_REQ_TYPE_VENDOR)
+  if ((req->bmRequest & USB_REQ_TYPE_MASK) == USB_REQ_TYPE_VENDOR)
   {
     if (pdev->dev.usr_cb && pdev->dev.usr_cb->ControlRequest)
     {
@@ -434,6 +434,12 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
       pbuf = pdev->dev.usr_device->GetInterfaceStrDescriptor(pdev->cfg.speed, &len);
       break;
 
+    case USBD_IDX_MSFT_STR:
+      if (pdev->dev.usr_device->GetMsftStrDescriptor != NULL)
+      {
+        pbuf = pdev->dev.usr_device->GetMsftStrDescriptor(pdev->cfg.speed, &len);
+        break;
+      }
     default:
 #ifdef USB_SUPPORT_USER_STRING_DESC
       pbuf = pdev->dev.class_cb->GetUsrStrDescriptor(pdev->cfg.speed, (req->wValue) , &len);

@@ -59,8 +59,6 @@ typedef struct HAL_USB_SetupRequest {
   uint8_t* data;
 } HAL_USB_SetupRequest;
 
-#define HAL_USB_SETUP_REQUEST_MAX_DATA 64
-
 typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req);
 #endif // USB_VENDOR_REQUEST_ENABLE
 

@@ -195,6 +195,7 @@ typedef struct _Device_TypeDef
   uint8_t  *(*GetSerialStrDescriptor)( uint8_t speed , uint16_t *length);
   uint8_t  *(*GetConfigurationStrDescriptor)( uint8_t speed , uint16_t *length);
   uint8_t  *(*GetInterfaceStrDescriptor)( uint8_t speed , uint16_t *length);
+  uint8_t  *(*GetMsftStrDescriptor)( uint8_t speed , uint16_t *length);
 } USBD_DEVICE, *pUSBD_DEVICE;
 
 //typedef struct USB_OTG_hPort
