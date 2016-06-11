@@ -26,7 +26,9 @@
 
 #include "deviceid_hal.h"
 #include "platform_config.h"
+#ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct_hal.h"
+#endif // HAL_DEVICE_ID_NO_DCT
 #include <string.h>
 
 #ifndef MIN
@@ -47,6 +49,7 @@ unsigned HAL_Platform_ID()
     return PLATFORM_ID;
 }
 
+#ifndef HAL_DEVICE_ID_NO_DCT
 void HAL_save_device_id(uint32_t dct_offset)
 {
     const char* saved_device_id = (const char*)dct_read_app_data(dct_offset);
@@ -57,3 +60,4 @@ void HAL_save_device_id(uint32_t dct_offset)
         dct_write_app_data(device_id, dct_offset, device_id_len);
     }
 }
+#endif // HAL_DEVICE_ID_NO_DCT
