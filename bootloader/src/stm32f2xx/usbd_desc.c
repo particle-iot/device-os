@@ -75,8 +75,8 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         HIBYTE(USBD_VID_SPARK),     /*idVendor*/
         LOBYTE(USBD_PID_DFU),       /*idProduct*/
         HIBYTE(USBD_PID_DFU),       /*idProduct*/
-        LOBYTE(BOOTLOADER_VERSION), /*bcdDevice*/
-        HIBYTE(BOOTLOADER_VERSION), /*bcdDevice*/
+        LOBYTE(0x0200),             /*bcdDevice (2.00) */
+        HIBYTE(0x0200),             /*bcdDevice (2.00) */
         USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/
         USBD_IDX_PRODUCT_STR,       /*Index of product string*/
         USBD_IDX_SERIAL_STR,        /*Index of serial number string*/
