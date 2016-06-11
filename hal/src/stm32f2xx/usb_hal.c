@@ -247,9 +247,11 @@ int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial)
 {
     if (HAL_USB_USART_Is_Connected(serial))
     {
+        int state = HAL_disable_irq();
         uint32_t tail = usbUsartMap[serial].data->tx_buffer_tail;
         int32_t available = usbUsartMap[serial].data->tx_buffer_size - (usbUsartMap[serial].data->tx_buffer_head >= tail ?
             usbUsartMap[serial].data->tx_buffer_head - tail : usbUsartMap[serial].data->tx_buffer_size + usbUsartMap[serial].data->tx_buffer_head - tail) - 1;
+        HAL_enable_irq(state);
         return available;
     }
 
