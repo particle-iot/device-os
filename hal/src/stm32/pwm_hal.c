@@ -31,6 +31,11 @@
 
 #define DIV_ROUND_CLOSEST(n, d) ((n + d/2)/d)
 
+#if PLATFORM_ID == 10
+# include <math.h>
+# define PWM_USE_FLOATING_POINT_ARITHMETICS
+#endif // PLATFORM_ID == 10
+
 /* Private typedef -----------------------------------------------------------*/
 
 typedef struct pwm_state_t {
@@ -211,7 +216,12 @@ uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin)
 
     period = HAL_PWM_Get_Period(pin);
     uint32_t max_value = (1 << HAL_PWM_Get_Resolution(pin)) - 1;
+#ifndef PWM_USE_FLOATING_POINT_ARITHMETICS
     pwm_analog_value = pulse_width == period + 1 ? max_value : DIV_ROUND_CLOSEST((uint64_t)pulse_width * max_value, period);
+#else
+    // Use floating point calculations on Electron to save flash space without involving 64-bit integer division
+    pwm_analog_value = pulse_width == period + 1 ? max_value : (uint32_t)ceil(((double)pulse_width/(double)period) * max_value);
+#endif
 
     return pwm_analog_value;
 }
@@ -288,8 +298,12 @@ uint32_t HAL_PWM_Calculate_Pulse(uint32_t period, uint32_t value, uint8_t resolu
 {
     // Duty Cycle(%) = (value * period / max_value) * 100
     uint32_t max_value = (1 << resolution) - 1;
+#ifndef PWM_USE_FLOATING_POINT_ARITHMETICS
     uint32_t pulse_width = max_value == value ? period + 1 : DIV_ROUND_CLOSEST((uint64_t)value * period, max_value);
-
+#else
+    // Use floating point calculations on Electron to save flash space without involving 64-bit integer division
+    uint32_t pulse_width = max_value == value ? period + 1 : (uint32_t)ceil(((double)value / (double)max_value) * period);
+#endif
     return pulse_width;
 }
 
