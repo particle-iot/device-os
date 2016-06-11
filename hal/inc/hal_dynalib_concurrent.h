@@ -55,6 +55,12 @@ DYNALIB_FN(20, hal_concurrent, os_mutex_recursive_trylock, int(os_mutex_recursiv
 DYNALIB_FN(21, hal_concurrent, os_mutex_recursive_unlock, int(os_mutex_recursive_t))
 
 DYNALIB_FN(22, hal_concurrent, os_timer_is_active, int(os_timer_t, void*))
+
+DYNALIB_FN(23, hal_concurrent, os_queue_create, int(os_queue_t*, size_t, size_t, void*))
+DYNALIB_FN(24, hal_concurrent, os_queue_destroy, int(os_queue_t, void*))
+DYNALIB_FN(25, hal_concurrent, os_queue_put, int(os_queue_t, const void* item, system_tick_t, void*))
+DYNALIB_FN(26, hal_concurrent, os_queue_take, int(os_queue_t, void* item, system_tick_t, void*))
+
 #endif
 
 DYNALIB_END(hal_concurrent)

@@ -425,7 +425,7 @@ extern "C" void HAL_SysTick_Handler(void)
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
         {
             //Reset is the only way now to recover from stuck OTA update
-            HAL_Core_System_Reset();
+            HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE_TIMEOUT, 0, nullptr);
         }
         else
         {
@@ -579,6 +579,14 @@ void app_setup_and_loop(void)
     DEBUG("Hello from Particle!");
     String s = spark_deviceID();
     INFO("Device %s started", s.c_str());
+
+    if (LOG_ENABLED(TRACE)) {
+        int reason = RESET_REASON_NONE;
+        uint32_t data = 0;
+        if (HAL_Core_Get_Last_Reset_Info(&reason, &data, nullptr) == 0 && reason != RESET_REASON_NONE) {
+            LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
+        }
+    }
 
     manage_safe_mode();
 

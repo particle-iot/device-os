@@ -50,8 +50,8 @@ DYNALIB_FN(17, services, LED_RGB_SetChangeHandler, void(led_update_handler_fn, v
 DYNALIB_FN(18, services, log_print_direct_, void(int, void*, const char*, ...)) // Deprecated
 DYNALIB_FN(19, services, LED_GetColor, uint32_t(uint32_t, void*))
 
-DYNALIB_FN(20, services, log_message, void(int, const char*, const char*, int, const char*, void*, const char*, ...))
-DYNALIB_FN(21, services, log_message_v, void(int, const char*, const char*, int, const char*, void*, const char*, va_list))
+DYNALIB_FN(20, services, log_message, void(int, const char*, LogAttributes*, void*, const char*, ...))
+DYNALIB_FN(21, services, log_message_v, void(int, const char*, LogAttributes*, void*, const char*, va_list))
 DYNALIB_FN(22, services, log_write, void(int, const char*, const char*, size_t, void*))
 DYNALIB_FN(23, services, log_printf, void(int, const char*, void*, const char*, ...))
 DYNALIB_FN(24, services, log_printf_v, void(int, const char*, void*, const char*, va_list))

@@ -38,8 +38,6 @@
 
 /* Private variables --------------------------------------------------------*/
 
-PinMode digitalPinModeSaved = PIN_MODE_NONE;
-
 /* Extern variables ---------------------------------------------------------*/
 
 /* Private function prototypes ----------------------------------------------*/
@@ -140,17 +138,47 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
 /*
  * @brief Saves a pin mode to be recalled later.
  */
-void HAL_GPIO_Save_Pin_Mode(PinMode mode)
+void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
 {
-  digitalPinModeSaved = mode;
+  // Save pin mode in STM32_Pin_Info.user_property
+  STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+  uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
+  uprop = (uprop & 0xFFFF) | (((uint32_t)PIN_MAP[pin].pin_mode & 0xFF) << 16) | (0xAA << 24);
+  PIN_MAP[pin].user_property = (int32_t)uprop;
 }
 
 /*
  * @brief Recalls a saved pin mode.
  */
-PinMode HAL_GPIO_Recall_Pin_Mode()
+PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
 {
-  return digitalPinModeSaved;
+  // Recall pin mode in STM32_Pin_Info.user_property
+  STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+  uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
+  if ((uprop & 0xFF000000) != 0xAA000000)
+      return PIN_MODE_NONE;
+
+  PinMode pm = (PinMode)((uprop & 0x00FF0000) >> 16);
+
+  // Safety check
+  switch(pm)
+  {
+      case INPUT:
+      case OUTPUT:
+      case INPUT_PULLUP:
+      case INPUT_PULLDOWN:
+      case AF_OUTPUT_PUSHPULL:
+      case AF_OUTPUT_DRAIN:
+      case AN_INPUT:
+      case AN_OUTPUT:
+      break;
+
+      default:
+      pm = PIN_MODE_NONE;
+      break;
+  }
+
+  return pm;
 }
 
 /*
@@ -181,7 +209,7 @@ int32_t HAL_GPIO_Read(uint16_t pin)
 {
   if(PIN_MAP[pin].pin_mode == AN_INPUT)
   {
-    PinMode pm = HAL_GPIO_Recall_Pin_Mode();
+    PinMode pm = HAL_GPIO_Recall_Pin_Mode(pin);
     if(pm == PIN_MODE_NONE)
     {
       return 0;

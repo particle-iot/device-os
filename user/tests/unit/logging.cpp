@@ -1,7 +1,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>
+#include <boost/optional/optional.hpp>
+#include <boost/optional/optional_io.hpp>
 
-#include <iostream>
 #include <random>
 #include <queue>
 
@@ -13,23 +14,50 @@
 #include "spark_wiring_logging.h"
 #include "service_debug.h"
 
+#define CHECK_LOG_ATTR_FLAG(flag, value) \
+        do { \
+            LogAttributes attr = { 0 }; \
+            attr.flag = 1; \
+            CATCH_CHECK(attr.flags == value); \
+        } while (false)
+
 // Source file's logging category
-LOG_SOURCE_CATEGORY("source");
+LOG_SOURCE_CATEGORY("source")
 
 namespace {
 
 using namespace spark;
 
+std::string fileName(const std::string &path);
+
 class LogMessage {
 public:
-    LogMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const LogHandler::SourceInfo &info) :
-            msg_(msg ? msg : ""),
-            cat_(category ? category : ""),
-            file_(info.file ? info.file : ""),
-            func_(info.function ? info.function : ""),
-            level_(level),
-            time_(time),
-            line_(info.line) {
+    LogMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) :
+            level_(level) {
+        if (msg) {
+            msg_ = msg;
+        }
+        if (category) {
+            cat_ = category;
+        }
+        if (attr.has_file) {
+            file_ = fileName(attr.file); // Strip directory path
+        }
+        if (attr.has_line) {
+            line_ = attr.line;
+        }
+        if (attr.has_function) {
+            func_ = attr.function;
+        }
+        if (attr.has_time) {
+            time_ = attr.time;
+        }
+        if (attr.has_code) {
+            code_ = attr.code;
+        }
+        if (attr.has_detail) {
+            detail_ = attr.detail;
+        }
     }
 
     const LogMessage& messageEquals(const std::string &msg) const {
@@ -47,11 +75,7 @@ public:
         return *this;
     }
 
-    const LogMessage& timeEquals(uint32_t time) const {
-        CATCH_CHECK(time_ == time);
-        return *this;
-    }
-
+    // Default attributes
     const LogMessage& fileEquals(const std::string &file) const {
         CATCH_CHECK(file_ == file);
         return *this;
@@ -67,11 +91,38 @@ public:
         return *this;
     }
 
+    const LogMessage& timeEquals(uint32_t time) const {
+        CATCH_CHECK(time_ == time);
+        return *this;
+    }
+
+    // Additional attributes
+    const LogMessage& codeEquals(intptr_t code) const {
+        CATCH_CHECK(code_ == code);
+        return *this;
+    }
+
+    const LogMessage& hasCode(bool yes = true) const {
+        CATCH_CHECK((bool)code_ == yes);
+        return *this;
+    }
+
+    const LogMessage& detailEquals(const std::string &detail) const {
+        CATCH_CHECK(detail_ == detail);
+        return *this;
+    }
+
+    const LogMessage& hasDetail(bool yes = true) const {
+        CATCH_CHECK((bool)detail_ == yes);
+        return *this;
+    }
+
 private:
-    std::string msg_, cat_, file_, func_;
+    boost::optional<std::string> msg_, cat_, file_, func_, detail_;
+    boost::optional<intptr_t> code_;
+    boost::optional<uint32_t> time_;
+    boost::optional<int> line_;
     LogLevel level_;
-    uint32_t time_;
-    int line_;
 };
 
 class TestLogHandler: public LogHandler {
@@ -113,8 +164,8 @@ public:
 
 protected:
     // spark::LogHandler
-    virtual void logMessage(const char *msg, LogLevel level, const char *category, uint32_t time, const SourceInfo &info) override {
-        msgs_.push(LogMessage(msg, level, category, time, info));
+    virtual void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) override {
+        msgs_.push(LogMessage(msg, level, category, attr));
     }
 
     virtual void write(const char *data, size_t size) override {
@@ -193,13 +244,12 @@ std::string randomBytes(size_t size = 0) {
     return s;
 }
 
-std::string sourceFileName() {
-    const std::string s(__FILE__);
-    const size_t pos = s.rfind('/');
+std::string fileName(const std::string &path) {
+    const size_t pos = path.rfind('/');
     if (pos != std::string::npos) {
-        return s.substr(pos + 1);
+        return path.substr(pos + 1);
     }
-    return s;
+    return path;
 }
 
 std::string toHex(const std::string &str) {
@@ -210,14 +260,14 @@ std::string toHex(const std::string &str) {
 
 CompatLogHandler* CompatLogHandler::instance = nullptr;
 
-const std::string SOURCE_FILE = sourceFileName();
+const std::string SOURCE_FILE = fileName(__FILE__);
 const std::string SOURCE_CATEGORY = LOG_THIS_CATEGORY();
 
 } // namespace
 
 CATCH_TEST_CASE("Message logging") {
     TestLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("attributes") {
+    CATCH_SECTION("default attributes") {
         LOG(TRACE, "trace");
         log.next().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
         LOG(INFO, "info");
@@ -227,7 +277,14 @@ CATCH_TEST_CASE("Message logging") {
         LOG(ERROR, "error");
         log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
     }
-    CATCH_SECTION("formatting") {
+    CATCH_SECTION("additional attributes") {
+        LOG(INFO, "info");
+        log.next().hasCode(false).hasDetail(false); // No additional attributes
+        LOG_ATTR(INFO, (code = -1, detail = "detail"), "info");
+        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE)
+                .codeEquals(-1).detailEquals("detail");
+    }
+    CATCH_SECTION("message formatting") {
         std::string s = "";
         LOG(TRACE, "%s", s.c_str());
         log.next().messageEquals("");
@@ -257,7 +314,7 @@ CATCH_TEST_CASE("Message logging") {
 
 CATCH_TEST_CASE("Message logging (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("attributes") {
+    CATCH_SECTION("default attributes") {
         LOG(TRACE, "trace");
         log.bufferEndsWith("TRACE: trace\r\n");
         LOG(INFO, "info");
@@ -268,7 +325,7 @@ CATCH_TEST_CASE("Message logging (compatibility callback)") {
         log.bufferEndsWith("ERROR: error\r\n");
         CATCH_CHECK(log.buffer().find(SOURCE_FILE) != std::string::npos);
     }
-    CATCH_SECTION("formatting") {
+    CATCH_SECTION("message formatting") {
         std::string s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG(INFO, "%s", s.c_str());
         log.bufferEndsWith(s + "\r\n");
@@ -605,6 +662,16 @@ CATCH_TEST_CASE("Miscellaneous") {
         CATCH_CHECK(LOG_ENABLED_C(INFO, "aa"));
         CATCH_CHECK(LOG_ENABLED_C(TRACE, "aaa"));
         CATCH_CHECK(LOG_ENABLED_C(ERROR, "x"));
+    }
+    CATCH_SECTION("attribute flag values") {
+        CHECK_LOG_ATTR_FLAG(has_file, 0x01);
+        CHECK_LOG_ATTR_FLAG(has_line, 0x02);
+        CHECK_LOG_ATTR_FLAG(has_function, 0x04);
+        CHECK_LOG_ATTR_FLAG(has_time, 0x08);
+        CHECK_LOG_ATTR_FLAG(has_code, 0x10);
+        CHECK_LOG_ATTR_FLAG(has_detail, 0x20);
+        // <--- Add new attribute flag here and update value of the 'has_end' flag below
+        CHECK_LOG_ATTR_FLAG(has_end, 0x40);
     }
 }
 

@@ -2237,8 +2237,8 @@ analogWrite(pin, value, frequency);
 `analogWrite()` takes two or three arguments:
 
 - `pin`: the number of the pin whose value you wish to set
-- `value`: the duty cycle: between 0 (always off) and 255 (always on).
-- `frequency`: the PWM frequency: between 1 Hz and 65535 Hz (default 500 Hz).
+- `value`: the duty cycle: between 0 (always off) and 255 (always on). *Since 0.6.0:* between 0 and 255 (default 8-bit resolution) or `2^(analogWriteResolution(pin)) - 1` in general.
+- `frequency`: the PWM frequency: between 1 Hz and 65535 Hz (default 500 Hz). *Since 0.6.0:* between 1 Hz and `analogWriteMaxFrequency(pin)`.
 
 **NOTE:** `pinMode(pin, OUTPUT);` is required before calling `analogWrite(pin, value);` or else the `pin` will not be initialized as a PWM output and set to the desired duty cycle.
 
@@ -2277,6 +2277,55 @@ The PWM frequency must be the same for pins in the same timer group.
 - On the Electron, the timer groups are D0/D1/C4/C5, D2/D3/A4/A5/B2/B3, WKP, RX/TX, B0/B1.
 
 **NOTE:** When used with PWM capable pins, the `analogWrite()` function sets up these pins as PWM only.  {{#unless core}}This function operates differently when used with the [`Analog Output (DAC)`](#analog-output-dac-) pins.{{/unless}}
+
+{{#unless core}}
+### analogWriteResolution() (PWM and DAC)
+{{/unless}}
+{{#if core}}
+### analogWriteResolution() (PWM)
+{{/if}}
+
+*Since 0.6.0.*
+
+Sets or retrieves the resolution of `analogWrite()` function of a particular pin.
+
+`analogWriteResolution()` takes one or two arguments:
+
+- `pin`: the number of the pin whose resolution you wish to set or retrieve
+- `resolution`: (optional) resolution in bits. The value can range from 2 to 31 bits. If the resolution is not supported, it will not be applied. 
+
+`analogWriteResolution()` returns currently set resolution.
+
+```C++
+// EXAMPLE USAGE
+pinMode(D1, OUTPUT);     // sets the pin as output
+analogWriteResolution(D1, 12); // sets analogWrite resolution to 12 bits
+analogWrite(D1, 3000, 1000); // 3000/4095 = ~73% duty cycle at 1kHz
+```
+
+{{#unless core}}
+**NOTE:** DAC pins `DAC1` (`A6`) and `DAC2` (`A3`) support only either 8-bit or 12-bit (default) resolutions.
+{{/unless}}
+
+**NOTE:** The resolution also affects maximum frequency that can be used with `analogWrite()`. The maximum frequency allowed with current resolution can be checked by calling `analogWriteMaxFrequency()`.
+
+### analogWriteMaxFrequency() (PWM)
+
+*Since 0.6.0.*
+
+Returns maximum frequency that can be used with `analogWrite()` on this pin.
+
+`analogWriteMaxFrequency()` takes one argument:
+
+- `pin`: the number of the pin
+
+```C++
+// EXAMPLE USAGE
+pinMode(D1, OUTPUT);     // sets the pin as output
+analogWriteResolution(D1, 12); // sets analogWrite resolution to 12 bits
+int maxFreq = analogWriteMaxFrequency(D1);
+analogWrite(D1, 3000, maxFreq / 2); // 3000/4095 = ~73% duty cycle
+```
 
 {{#unless core}}
 ### Analog Output (DAC)
@@ -2989,18 +3038,67 @@ _Since 0.5.0_
 
 As of 0.5.0 firmware, 28800 baud set on the Host will put the device in Listening Mode, where a YMODEM download can be started by additionally sending an `f` character.
 
-The configuration of the serial channel may also specify the number of data bits, stop bits and parity. The default is SERIAL_8N1 (8 data bits, no parity and 1 stop bit) and does not need to be specified to achieve this configuration.  To specify one of the following configurations, add one of these defines as the second parameter in the `begin()` function, e.g. `Serial.begin(9600, SERIAL_8E1);` for 8 data bits, even parity and 1 stop bit.
+The configuration of the serial channel may also specify the number of data bits, stop bits, parity, flow control and other settings. The default is SERIAL_8N1 (8 data bits, no parity and 1 stop bit) and does not need to be specified to achieve this configuration.  To specify one of the following configurations, add one of these defines as the second parameter in the `begin()` function, e.g. `Serial.begin(9600, SERIAL_8E1);` for 8 data bits, even parity and 1 stop bit.
 
-Serial configurations available:
+Pre-defined Serial configurations available:
 
-`SERIAL_8N1` - 8 data bits, no parity, 1 stop bit (default)
-`SERIAL_8N2` - 8 data bits, no parity, 2 stop bits
-`SERIAL_8E1` - 8 data bits, even parity, 1 stop bit
-`SERIAL_8E2` - 8 data bits, even parity, 2 stop bits
-`SERIAL_8O1` - 8 data bits, odd parity, 1 stop bit
-`SERIAL_8O2` - 8 data bits, odd parity, 2 stop bits
-`SERIAL_9N1` - 9 data bits, no parity, 1 stop bit
-`SERIAL_9N2` - 9 data bits, no parity, 2 stop bits
+- `SERIAL_8N1` - 8 data bits, no parity, 1 stop bit (default)
+- `SERIAL_8N2` - 8 data bits, no parity, 2 stop bits
+- `SERIAL_8E1` - 8 data bits, even parity, 1 stop bit
+- `SERIAL_8E2` - 8 data bits, even parity, 2 stop bits
+- `SERIAL_8O1` - 8 data bits, odd parity, 1 stop bit
+- `SERIAL_8O2` - 8 data bits, odd parity, 2 stop bits
+- `SERIAL_9N1` - 9 data bits, no parity, 1 stop bit
+- `SERIAL_9N2` - 9 data bits, no parity, 2 stop bits
+
+_Since 0.6.0_
+
+- `SERIAL_7O1` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7O2` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7E1` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7E2` - 7 data bits, odd parity, 1 stop bit
+- `LIN_MASTER_13B` - 8 data bits, no parity, 1 stop bit, LIN Master mode with 13-bit break generation
+- `LIN_SLAVE_10B` - 8 data bits, no parity, 1 stop bit, LIN Slave mode with 10-bit break detection
+- `LIN_SLAVE_11B` - 8 data bits, no parity, 1 stop bit, LIN Slave mode with 11-bit break detection
+
+Alternatively, configuration may be constructed manually by ORing (`|`) the following configuration constants:
+
+Data bits:
+- `SERIAL_DATA_BITS_7` - 7 data bits
+- `SERIAL_DATA_BITS_8` - 8 data bits
+- `SERIAL_DATA_BITS_9` - 9 data bits
+
+Stop bits:
+- `SERIAL_STOP_BITS_1` - 1 stop bit
+- `SERIAL_STOP_BITS_2` - 2 stop bits
+- `SERIAL_STOP_BITS_0_5` - 0.5 stop bits
+- `SERIAL_STOP_BITS_1_5` - 1.5 stop bits
+
+Parity:
+- `SERIAL_PARITY_NO` - no parity
+- `SERIAL_PARITY_EVEN` - even parity
+- `SERIAL_PARITY_ODD` - odd parity
+
+{{#if core}}
+Hardware flow control, available only on Serial1 (`CTS` - `A0`, `RTS` - `A1`):
+{{/if}}
+{{#unless core}}
+Hardware flow control, available only on Serial2 (`CTS` - `A7`, `RTS` - `RGBR` ):
+{{/unless}}
+- `SERIAL_FLOW_CONTROL_NONE` - no flow control
+- `SERIAL_FLOW_CONTROL_RTS` - RTS flow control
+- `SERIAL_FLOW_CONTROL_CTS` - CTS flow control
+- `SERIAL_FLOW_CONTROL_RTS_CTS` - RTS/CTS flow control
+
+LIN configuration:
+- `LIN_MODE_MASTER` - LIN Master
+- `LIN_MODE_SLAVE` - LIN Slave
+- `LIN_BREAK_13B` - 13-bit break generation
+- `LIN_BREAK_10B` - 10-bit break detection
+- `LIN_BREAK_11B` - 10-bit break detection
+
+**NOTE:** LIN break detection may be enabled in both Master and Slave modes.
+
 
 ```C++
 // SYNTAX
@@ -3016,6 +3114,9 @@ Serial2.begin(speed);         // on Core via
                               // RGB-LED green(TX) and
                               // RGB-LED blue (RX) pins
 Serial2.begin(speed, config); //  "
+
+Serial1.begin(9600, SERIAL_9N1); // via TX/RX pins, 9600 9N1 mode
+Serial2.begin(9600, SERIAL_DATA_BITS_8 | SERIAL_STOP_BITS_1_5 | SERIAL_PARITY_EVEN); // via TX/RX pins, 9600 8E1.5
 {{#if electron}}
 
 Serial4.begin(speed);         // via C3(TX)/C2(RX) pins
@@ -3026,8 +3127,9 @@ Serial5.begin(speed, config); //  "
 {{/if}}
 ```
 
-`speed`: parameter that specifies the baud rate *(long)*
-`config`: parameter that specifies the number of data bits used, parity and stop bits *(long)*
+Parameters:
+- `speed`: parameter that specifies the baud rate *(long)*
+- `config`: parameter that specifies the number of data bits used, parity and stop bits *(long)*
 
 `begin()` does not return anything
 
@@ -3331,10 +3433,6 @@ so to that subsequent output appears on the next line.
 ### flush()
 
 Waits for the transmission of outgoing serial data to complete.
-
-**NOTE:** That this function does nothing at present, in particular it doesn't
-wait for the data to be sent, since this causes the application to wait indefinitely
-when there is no serial monitor connected.
 
 ```C++
 // SYNTAX
@@ -4667,7 +4765,9 @@ Returns the next byte (or character), or -1 if none is available.
 
 ### flush()
 
-Discard any bytes that have been written to the client but not yet read.
+Waits until all outgoing data in buffer has been sent.
+
+**NOTE:** That this function does nothing at present.
 
 ```C++
 // SYNTAX
@@ -4767,7 +4867,8 @@ void loop() {
     char c = Udp.read();
 
     // Ignore other chars
-    Udp.flush();
+    while(Udp.available())
+      Udp.read();
 
     // Store sender ip and port
     IPAddress ipAddress = Udp.remoteIP();
@@ -4913,6 +5014,16 @@ Returns:
 
  - `int`: returns the character in the buffer or -1 if no character is available
 
+### flush()
+
+Waits until all outgoing data in buffer has been sent.
+
+**NOTE:** That this function does nothing at present.
+
+```C++
+// SYNTAX
+Udp.flush();
+```
 
 ### stop()
 
@@ -7610,6 +7721,74 @@ void loop() {
   }
 }
 ```
+
+### Reset Reason
+
+*Since 0.6.0*
+
+The system can track the hardware and software resets of the device.
+
+```
+// EXAMPLE
+// Restart in safe mode if the device previously reset due to a PANIC (SOS code)
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
+
+void setup() {
+   if (System.resetReason() == RESET_REASON_PANIC) {
+       System.enterSafeMode();
+   }
+}
+```
+
+You can also pass in your own data as part of an application-initiated reset:
+
+```cpp
+// EXAMPLE
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
+
+void setup() {
+    // Reset the device 3 times in a row
+    if (System.resetReason() == RESET_REASON_USER) {
+        uint32_t data = System.resetReasonData();
+        if (data < 3) {
+            System.reset(data + 1);
+        }
+    } else {
+		// This will set the reset reason to RESET_REASON_USER
+        System.reset(1);
+    }
+}
+
+```
+
+**Note:** This functionality requires `FEATURE_RESET_INFO` flag to be enabled in order to work.
+
+`resetReason()`
+
+Returns a code describing reason of the last device reset. The following codes are defined:
+
+- `RESET_REASON_PIN_RESET`: Reset button or reset pin
+- `RESET_REASON_POWER_MANAGEMENT`: Low-power management reset
+- `RESET_REASON_POWER_DOWN`: Power-down reset
+- `RESET_REASON_POWER_BROWNOUT`: Brownout reset
+- `RESET_REASON_WATCHDOG`: Hardware watchdog reset
+- `RESET_REASON_UPDATE`: Successful firmware update
+- `RESET_REASON_UPDATE_TIMEOUT`: Firmware update timeout
+- `RESET_REASON_FACTORY_RESET`: Factory reset requested
+- `RESET_REASON_SAFE_MODE`: Safe mode requested
+- `RESET_REASON_DFU_MODE`: DFU mode requested
+- `RESET_REASON_PANIC`: System panic
+- `RESET_REASON_USER`: User-requested reset
+- `RESET_REASON_UNKNOWN`: Unspecified reset reason
+- `RESET_REASON_NONE`: Information is not available
+
+`resetReasonData()`
+
+Returns a user-defined value that has been previously specified for the `System.reset()` call.
+
+`reset(uint32_t data)`
+
+This overloaded method accepts an arbitrary 32-bit value, stores it to the backup register and resets the device. The value can be retrieved via `resetReasonData()` method after the device has restarted.
 
 
 ## OTA Updates

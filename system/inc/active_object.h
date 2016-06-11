@@ -365,17 +365,17 @@ protected:
 
     virtual bool take(Item& result)
     {
-        return !os_queue_take(queue, &result, configuration.take_wait);
+        return !os_queue_take(queue, &result, configuration.take_wait, nullptr);
     }
 
     virtual bool put(Item& item)
     {
-    		return !os_queue_put(queue, &item, configuration.put_wait);
+    		return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
     }
 
     void createQueue()
     {
-        os_queue_create(&queue, sizeof(Item), configuration.queue_size);
+        os_queue_create(&queue, sizeof(Item), configuration.queue_size, nullptr);
     }
 
 public:

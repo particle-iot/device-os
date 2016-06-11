@@ -16,15 +16,32 @@
  */
 
 #include <algorithm>
+#include <cinttypes>
 #include <cstdio>
 
 #include "spark_wiring_logging.h"
 
 namespace {
 
-inline const char* strchrend(const char* s, char c) {
-    const char* result = strchr(s, c);
-    return result ? result : s + strlen(s);
+const char* extractFileName(const char *s) {
+    const char *s1 = strrchr(s, '/');
+    if (s1) {
+        return s1 + 1;
+    }
+    return s;
+}
+
+const char* extractFuncName(const char *s, size_t *size) {
+    const char *s1 = s;
+    for (; *s; ++s) {
+        if (*s == ' ') {
+            s1 = s + 1; // Skip return type
+        } else if (*s == '(') {
+            break; // Skip argument types
+        }
+    }
+    *size = s - s1;
+    return s1;
 }
 
 } // namespace
@@ -156,50 +173,69 @@ LogLevel spark::LogHandler::categoryLevel(const char *category) const {
     return level;
 }
 
-void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, uint32_t time,
-        const SourceInfo &info) {
-    // Timestamp
+void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
     char buf[16];
-    snprintf(buf, sizeof(buf), "%010u ", (unsigned)time);
-    write(buf);
-    // Category (optional)
+    // Timestamp
+    if (attr.has_time) {
+        snprintf(buf, sizeof(buf), "%010u ", (unsigned)attr.time);
+        write(buf);
+    }
+    // Category
     if (category) {
         write("[");
         write(category);
         write("] ");
     }
-    // Source file (optional)
-    if (info.file) {
-        write(info.file); // File name
-        write(":");
-        snprintf(buf, sizeof(buf), "%d", info.line); // Line number
-        write(buf);
-        if (info.function) {
+    // Source file
+    if (attr.has_file) {
+        // Strip directory path
+        const char *s = extractFileName(attr.file);
+        write(s); // File name
+        if (attr.has_line) {
+            write(":");
+            snprintf(buf, sizeof(buf), "%d", attr.line); // Line number
+            write(buf);
+        }
+        if (attr.has_function) {
             write(", ");
         } else {
             write(": ");
         }
     }
-    // Function name (optional)
-    if (info.function) {
+    // Function name
+    if (attr.has_function) {
         // Strip argument and return types for better readability
-        int n = 0;
-        const char *p = strchrend(info.function, ' ');
-        if (*p) {
-            p += 1;
-            n = strchrend(p, '(') - p;
-        } else {
-            n = p - info.function;
-            p = info.function;
-        }
-        write(p, n);
+        size_t n = 0;
+        const char *s = extractFuncName(attr.function, &n);
+        write(s, n);
         write("(): ");
     }
     // Level
     write(levelName(level));
     write(": ");
     // Message
-    write(msg);
+    if (msg) {
+        write(msg);
+    }
+    // Additional attributes
+    if (attr.has_code || attr.has_detail) {
+        write(" [");
+        if (attr.has_code) {
+            write("code");
+            write(" = ");
+            snprintf(buf, sizeof(buf), "%" PRIiPTR, attr.code);
+            write(buf);
+        }
+        if (attr.has_detail) {
+            if (attr.has_code) {
+                write(", ");
+            }
+            write("detail");
+            write(" = ");
+            write(attr.detail);
+        }
+        write("]");
+    }
     write("\r\n");
 }
 
@@ -229,12 +265,10 @@ spark::LogManager* spark::LogManager::instance() {
     return &mgr;
 }
 
-void spark::LogManager::logMessage(const char *msg, int level, const char *category, uint32_t time, const char *file,
-        int line, const char *func, void *reserved) {
-    const LogHandler::SourceInfo info = {file, func, line};
+void spark::LogManager::logMessage(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved) {
     const auto &handlers = instance()->handlers_;
     for (size_t i = 0; i < handlers.size(); ++i) {
-        handlers[i]->message(msg, (LogLevel)level, category, time, info);
+        handlers[i]->message(msg, (LogLevel)level, category, *attr);
     }
 }
 
