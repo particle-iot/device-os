@@ -58,7 +58,7 @@ static uint8_t* USBD_Composite_GetOtherConfigDescriptor(uint8_t speed, uint16_t 
 
 static uint8_t* USBD_Composite_GetUsrStrDescriptor(uint8_t speed, uint8_t index, uint16_t *length);
 
-USBD_Class_cb_TypeDef USBD_Composite_cb = {
+static USBD_Class_cb_TypeDef USBD_Composite_cb = {
   USBD_Composite_Init,
   USBD_Composite_DeInit,
   USBD_Composite_Setup,
@@ -95,6 +95,10 @@ static const uint8_t USBD_Composite_CfgDescHeaderTemplate[USBD_COMPOSITE_CFGDESC
   0x80,                                          /* bmAttirbutes (Bus powered) */
   0xFA                                           /* bMaxPower (500mA) */
 };
+
+USBD_Class_cb_TypeDef* USBD_Composite_Instance() {
+  return &USBD_Composite_cb;
+}
 
 static uint8_t USBD_Composite_Init(void* pdev, uint8_t cfgidx) {
   uint8_t status = USBD_OK;

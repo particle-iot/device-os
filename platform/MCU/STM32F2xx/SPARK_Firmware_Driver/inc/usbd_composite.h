@@ -2,6 +2,9 @@
 #define USBD_COMPOSITE_H_
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "usbd_conf.h"
+#include "usb_core.h"
 #include "usbd_ioreq.h"
 
 #define USBD_COMPOSITE_CFGDESC_MAX_LENGTH     256
@@ -12,8 +15,6 @@
 
 typedef struct USBD_Composite_Class_Data USBD_Composite_Class_Data;
 typedef struct USBD_Multi_Instance_cb_Typedef USBD_Multi_Instance_cb_Typedef;
-
-extern USBD_Class_cb_TypeDef USBD_Composite_cb;
 
 struct USBD_Multi_Instance_cb_Typedef
 {
@@ -57,11 +58,12 @@ struct USBD_Composite_Class_Data {
   void* priv;
 };
 
-extern void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, uint8_t front);
-extern void  USBD_Composite_Unregister(void* cls, void* priv);
-extern void  USBD_Composite_Set_State(void* cls, bool state);
-extern bool  USBD_Composite_Get_State(void* cls);
-extern void  USBD_Composite_Unregister_All();
-extern uint8_t USBD_Composite_Registered_Count(bool onlyActive);
+USBD_Class_cb_TypeDef* USBD_Composite_Instance();
+void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, uint8_t front);
+void USBD_Composite_Unregister(void* cls, void* priv);
+void USBD_Composite_Set_State(void* cls, bool state);
+bool USBD_Composite_Get_State(void* cls);
+void USBD_Composite_Unregister_All();
+uint8_t USBD_Composite_Registered_Count(bool onlyActive);
 
 #endif /* USBD_COMPOSITE_H_ */

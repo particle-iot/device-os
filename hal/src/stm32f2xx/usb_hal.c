@@ -80,7 +80,7 @@ void SPARK_USB_Setup(void)
 #endif
             &USR_desc,
             //&USBD_CDC_cb,
-            &USBD_Composite_cb,
+            USBD_Composite_Instance(),
             NULL);
     HAL_USB_Attach();
 }
