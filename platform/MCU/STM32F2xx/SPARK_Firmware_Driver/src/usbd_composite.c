@@ -292,7 +292,7 @@ static uint8_t* USBD_Composite_GetUsrStrDescriptor(uint8_t speed, uint8_t index,
   if (index == USBD_IDX_MSFT_STR) {
     return USBD_Composite_GetMsftStrDescriptor(length);
   } else if (index == USBD_COMPOSITE_USRSTR_BASE) {
-    USBD_GetString("Particle Control Interface", USBD_StrDesc, length);
+    USBD_GetString(USBD_PRODUCT_STRING " " "Control Interface", USBD_StrDesc, length);
     return USBD_StrDesc;
   }
 
