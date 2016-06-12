@@ -670,7 +670,6 @@ CATCH_TEST_CASE("Miscellaneous") {
         CHECK_LOG_ATTR_FLAG(has_time, 0x08);
         CHECK_LOG_ATTR_FLAG(has_code, 0x10);
         CHECK_LOG_ATTR_FLAG(has_detail, 0x20);
-        // <--- Add new attribute flag here and update value of the 'has_end' flag below
         CHECK_LOG_ATTR_FLAG(has_end, 0x40);
     }
 }
@@ -687,10 +686,26 @@ CATCH_TEST_CASE("Logger API") {
         log.next().messageEquals("warn").levelEquals(LOG_LEVEL_WARN).categoryEquals(LOG_MODULE_CATEGORY);
         logger.error("%s", "error");
         log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_MODULE_CATEGORY);
-        logger(LOG_LEVEL_PANIC, "%s", "panic");
-        log.next().messageEquals("panic").levelEquals(LOG_LEVEL_PANIC).categoryEquals(LOG_MODULE_CATEGORY);
-        logger("%s", "default"); // Uses default level
+        logger.log(LOG_LEVEL_INFO, "%s", "info");
+        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
+        logger.log("%s", "default"); // Uses default level
         log.next().messageEquals("default").levelEquals(Logger::DEFAULT_LEVEL).categoryEquals(LOG_MODULE_CATEGORY);
+        logger(LOG_LEVEL_INFO, "%s", "info"); // Alias for Logger::log(LogLevel, const char *fmt)
+        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
+        logger("%s", "default"); // Alias for Logger::log(const char *fmt)
+        log.next().messageEquals("default").levelEquals(Logger::DEFAULT_LEVEL).categoryEquals(LOG_MODULE_CATEGORY);
+    }
+    CATCH_SECTION("additional attributes") {
+        TestLogHandler log(LOG_LEVEL_ALL);
+        Logger logger;
+        logger.log("");
+        log.next().hasCode(false).hasDetail(false); // No additional attributes
+        // LogAttributes::code
+        logger.code(-1).log("");
+        log.next().codeEquals(-1);
+        // LogAttributes::detail
+        logger.details("detail").info("");
+        log.next().detailEquals("detail");
     }
     CATCH_SECTION("direct logging") {
         TestLogHandler log(LOG_LEVEL_ALL);
