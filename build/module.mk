@@ -40,20 +40,35 @@ CFLAGS += -DLOG_MODULE_CATEGORY="\"$(LOG_MODULE_CATEGORY)\""
 endif
 
 # Adds the sources from the specified library directories
-LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBS),*.cpp)
-LIBCSRC += $(call target_files_dirs,$(MODULE_LIBS),*.c)
+# v1 libraries include all sources
+LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.cpp)
+LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.c)
+
+# v2 libraries only include sources in the "src" dir
+LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV2),src/,*.cpp)
+LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV2),src/,*.c)
+
+$(info libcppsrc $(LIBCPPSRC))
 
 CPPSRC += $(LIBCPPSRC)
 CSRC += $(LIBCSRC)
 
 # add all module libraries as include directories
-INCLUDE_DIRS += $(MODULE_LIBS)
+INCLUDE_DIRS += $(MODULE_LIBSV1)
+
+# v2 libraries contain their sources under a "src" folder
+INCLUDE_DIRS += $(addsuffix /src,$(MODULE_LIBSV2))
+
+# $(info cppsrc $(CPPSRC))
+# $(info csrc $(CSRC))
 
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o)))
+
+# $(info allobj $(ALLOBJ))
 
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
@@ -213,7 +228,6 @@ $(TARGET_BASE)$(EXECUTABLE_EXTENSION) : build_dependencies $(ALLOBJ) $(LIB_DEPS)
 	$(call echo,)
 
 
-
 # Tool invocations
 $(TARGET_BASE).a : $(ALLOBJ)
 	$(call echo,'Building target: $@')
@@ -248,15 +262,16 @@ $(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
 	$(build_CPP_file)
 
 define build_LIB_files
-$(BUILD_PATH)/%.o : $1/%.c
+$(BUILD_PATH)/$(notdir $1)/%.o : $1/%.c
 	$$(build_C_file)
 
-$(BUILD_PATH)/%.o : $1/%.cpp
+$(BUILD_PATH)/$(notdir $1)/%.o : $1/%.cpp
 	$$(build_CPP_file)
 endef
 
 # define rules for each library
-$(foreach lib,$(MODULE_LIBS),$(info $(eval $(call build_LIB_files,$(call remove_slash,$(lib))))))
+# only the sources added for each library are built (so for v2 libraries only files under "src" are built.)
+$(foreach lib,$(MODULE_LIBSV1) $(MODULE_LIBSV2),$(info $(eval $(call build_LIB_files,$(lib)))))
 
 # Assember to build .o from .S in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S

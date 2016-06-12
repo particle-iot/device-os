@@ -1,2 +1,1 @@
-
-void lib1();
+#include "lib1internal/lib1.h"
