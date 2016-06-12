@@ -59,7 +59,7 @@ typedef struct HAL_USB_SetupRequest {
   uint8_t* data;
 } HAL_USB_SetupRequest;
 
-typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req);
+typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req, void* p);
 #endif // USB_VENDOR_REQUEST_ENABLE
 
     /* USB Config : IMR_MSK */
@@ -137,7 +137,7 @@ void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize);
 /*******************************************************************************************************/
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
-void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* reserved);
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p);
 #endif
 
 #if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)

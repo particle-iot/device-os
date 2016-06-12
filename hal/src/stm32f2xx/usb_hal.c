@@ -64,12 +64,14 @@ static uint8_t USB_SetupRequest_Data[USBD_EP0_MAX_PACKET_SIZE];
 static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
 static uint8_t USB_InSetupRequest = 0;
 static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;
+static void* USB_Vendor_Request_Ptr = NULL;
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
-void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* reserved)
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p)
 {
     USB_Vendor_Request_Callback = cb;
+    USB_Vendor_Request_Ptr = p;
 }
 
 uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
@@ -95,8 +97,11 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
             // Setup request with data stage
             if (req->bmRequest & 0x80) {
                 // Device -> Host
-                USB_SetupRequest.data = USB_SetupRequest_Data;
-                ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
+                if (req->wLength <= USBD_EP0_MAX_PACKET_SIZE)
+                    USB_SetupRequest.data = USB_SetupRequest_Data;
+                else
+                    USB_SetupRequest.data = NULL;
+                ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
 
                 if (ret == USBD_OK && USB_SetupRequest.data != NULL && USB_SetupRequest.wLength) {
                     if (USB_SetupRequest.data != USB_SetupRequest_Data &&
@@ -119,7 +124,7 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
                 } else {
                     // Try to request the buffer
                     USB_SetupRequest.data = NULL;
-                    USB_Vendor_Request_Callback(&USB_SetupRequest);
+                    USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
                     if (USB_SetupRequest.data != NULL && USB_SetupRequest.wLength >= req->wLength) {
                         USB_SetupRequest.wLength = req->wLength;
                         USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest.data, req->wLength);
@@ -131,12 +136,12 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
         } else {
             // Setup request without data stage
             USB_SetupRequest.data = NULL;
-            ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
+            ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
         }
     } else if (dataStage && USB_InSetupRequest) {
         // Data stage completed
         USB_InSetupRequest = 0;
-        ret = USB_Vendor_Request_Callback(&USB_SetupRequest);
+        ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
     } else {
         ret = USBD_FAIL;
     }
