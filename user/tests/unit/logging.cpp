@@ -55,8 +55,8 @@ public:
         if (attr.has_code) {
             code_ = attr.code;
         }
-        if (attr.has_detail) {
-            detail_ = attr.detail;
+        if (attr.has_details) {
+            detail_ = attr.details;
         }
     }
 
@@ -107,12 +107,12 @@ public:
         return *this;
     }
 
-    const LogMessage& detailEquals(const std::string &detail) const {
-        CATCH_CHECK(detail_ == detail);
+    const LogMessage& detailsEquals(const std::string &str) const {
+        CATCH_CHECK(detail_ == str);
         return *this;
     }
 
-    const LogMessage& hasDetail(bool yes = true) const {
+    const LogMessage& hasDetails(bool yes = true) const {
         CATCH_CHECK((bool)detail_ == yes);
         return *this;
     }
@@ -279,10 +279,10 @@ CATCH_TEST_CASE("Message logging") {
     }
     CATCH_SECTION("additional attributes") {
         LOG(INFO, "info");
-        log.next().hasCode(false).hasDetail(false); // No additional attributes
-        LOG_ATTR(INFO, (code = -1, detail = "detail"), "info");
+        log.next().hasCode(false).hasDetails(false); // No additional attributes
+        LOG_ATTR(INFO, (code = -1, details = "details"), "info");
         log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE)
-                .codeEquals(-1).detailEquals("detail");
+                .codeEquals(-1).detailsEquals("details");
     }
     CATCH_SECTION("message formatting") {
         std::string s = "";
@@ -669,7 +669,7 @@ CATCH_TEST_CASE("Miscellaneous") {
         CHECK_LOG_ATTR_FLAG(has_function, 0x04);
         CHECK_LOG_ATTR_FLAG(has_time, 0x08);
         CHECK_LOG_ATTR_FLAG(has_code, 0x10);
-        CHECK_LOG_ATTR_FLAG(has_detail, 0x20);
+        CHECK_LOG_ATTR_FLAG(has_details, 0x20);
         CHECK_LOG_ATTR_FLAG(has_end, 0x40);
     }
 }
@@ -699,13 +699,13 @@ CATCH_TEST_CASE("Logger API") {
         TestLogHandler log(LOG_LEVEL_ALL);
         Logger logger;
         logger.log("");
-        log.next().hasCode(false).hasDetail(false); // No additional attributes
+        log.next().hasCode(false).hasDetails(false); // No additional attributes
         // LogAttributes::code
         logger.code(-1).log("");
         log.next().codeEquals(-1);
-        // LogAttributes::detail
-        logger.details("detail").info("");
-        log.next().detailEquals("detail");
+        // LogAttributes::details
+        logger.details("details").info("");
+        log.next().detailsEquals("details");
     }
     CATCH_SECTION("direct logging") {
         TestLogHandler log(LOG_LEVEL_ALL);

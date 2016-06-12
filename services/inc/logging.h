@@ -33,7 +33,7 @@
 
         int error = network_connect();
         if (error) {
-            LOG_ATTR(ERROR, (code = error, detail = "network"), "Connection error");
+            LOG_ATTR(ERROR, (code = error, details = "network"), "Connection error");
         }
 
     LOG_WRITE(level, data, size) - primary macro for direct logging. Provided buffer is forwarded to
@@ -168,7 +168,7 @@ typedef struct LogAttributes {
             unsigned has_function: 1;
             unsigned has_time: 1;
             unsigned has_code: 1;
-            unsigned has_detail: 1;
+            unsigned has_details: 1;
             // <--- Add new attribute flag here
             unsigned has_end: 1; // Keep this field at the end of the structure
         };
@@ -178,7 +178,7 @@ typedef struct LogAttributes {
     const char *function; // Function name
     uint32_t time; // Timestamp
     intptr_t code; // Status code
-    const char *detail; // Additional information
+    const char *details; // Additional information
     // <--- Add new attribute field here
     char end[0]; // Keep this field at the end of the structure
 } LogAttributes;

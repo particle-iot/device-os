@@ -300,7 +300,7 @@ public:
     */
     AttributedLogger code(intptr_t code) const;
     /*!
-        \brief Sets `LogAttributes::detail` attribute.
+        \brief Sets `LogAttributes::details` attribute.
         \param str String.
     */
     AttributedLogger details(const char *str) const;
@@ -653,7 +653,7 @@ inline spark::AttributedLogger& spark::AttributedLogger::code(intptr_t code) {
 }
 
 inline spark::AttributedLogger& spark::AttributedLogger::details(const char *str) {
-    LOG_ATTR_SET(attr_, detail, str);
+    LOG_ATTR_SET(attr_, details, str);
     return *this;
 }
 

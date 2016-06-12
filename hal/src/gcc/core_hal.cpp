@@ -90,13 +90,13 @@ void log_message_callback(const char *msg, int level, const char *category, cons
         strm << msg;
     }
     // Additional attributes
-    if (attr->has_code || attr->has_detail) {
+    if (attr->has_code || attr->has_details) {
         strm << " [";
         if (attr->has_code) {
             strm << "code = " << attr->code << ", ";
         }
-        if (attr->has_detail) {
-            strm << "detail = " << attr->detail << ", ";
+        if (attr->has_details) {
+            strm << "details = " << attr->details << ", ";
         }
         strm.seekp(-2, std::ios_base::end); // Overwrite trailing comma
         strm << "] ";

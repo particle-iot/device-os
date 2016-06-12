@@ -218,7 +218,7 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
         write(msg);
     }
     // Additional attributes
-    if (attr.has_code || attr.has_detail) {
+    if (attr.has_code || attr.has_details) {
         write(" [");
         if (attr.has_code) {
             write("code");
@@ -226,13 +226,13 @@ void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *
             snprintf(buf, sizeof(buf), "%" PRIiPTR, attr.code);
             write(buf);
         }
-        if (attr.has_detail) {
+        if (attr.has_details) {
             if (attr.has_code) {
                 write(", ");
             }
-            write("detail");
+            write("details");
             write(" = ");
-            write(attr.detail);
+            write(attr.details);
         }
         write("]");
     }
