@@ -46,7 +46,7 @@ public:
     /*!
         \brief Category filter.
 
-        Describes a minimal logging level enabled for a matching category.
+        Specifies minimal logging level enabled for a matching category.
     */
     typedef std::pair<const char*, LogLevel> Filter;
     /*!
