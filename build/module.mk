@@ -39,12 +39,14 @@ ifneq (,$(LOG_MODULE_CATEGORY))
 CFLAGS += -DLOG_MODULE_CATEGORY="\"$(LOG_MODULE_CATEGORY)\""
 endif
 
+# Adds the sources from the specified library directories
 LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBS),*.cpp)
 LIBCSRC += $(call target_files_dirs,$(MODULE_LIBS),*.c)
 
 CPPSRC += $(LIBCPPSRC)
 CSRC += $(LIBCSRC)
 
+# add all module libraries as include directories
 INCLUDE_DIRS += $(MODULE_LIBS)
 
 
