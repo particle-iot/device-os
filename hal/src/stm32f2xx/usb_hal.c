@@ -401,7 +401,9 @@ void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t report
 #ifdef USB_CDC_ENABLE
 void USB_USART_Init(uint32_t baudRate)
 {
-    if (usbUsartMap[HAL_USB_USART_SERIAL].data == NULL) {
+    if (usbUsartMap[HAL_USB_USART_SERIAL].data == NULL ||
+        usbUsartMap[HAL_USB_USART_SERIAL].data->rx_buffer == NULL ||
+        usbUsartMap[HAL_USB_USART_SERIAL].data->tx_buffer == NULL) {
         // For compatibility we allocate buffers from heap here, as application calling USB_USART_Init
         // assumes that the driver has its own buffers
         HAL_USB_USART_Config conf;
