@@ -48,8 +48,6 @@ LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.c)
 LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV2),src/,*.cpp)
 LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV2),src/,*.c)
 
-$(info libcppsrc $(LIBCPPSRC))
-
 CPPSRC += $(LIBCPPSRC)
 CSRC += $(LIBCSRC)
 
@@ -271,7 +269,7 @@ endef
 
 # define rules for each library
 # only the sources added for each library are built (so for v2 libraries only files under "src" are built.)
-$(foreach lib,$(MODULE_LIBSV1) $(MODULE_LIBSV2),$(info $(eval $(call build_LIB_files,$(lib)))))
+$(foreach lib,$(MODULE_LIBSV1) $(MODULE_LIBSV2),$(eval $(call build_LIB_files,$(lib))))
 
 # Assember to build .o from .S in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
