@@ -69,7 +69,7 @@ volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     0, 1, // OTA updates pending/enabled
     0, 1, // Reset pending/enabled
     0,    // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
-	0,    // SYSTEM_FLAG_SETUP_OVER_SERIAL1
+    0,    // SYSTEM_FLAG_SETUP_OVER_SERIAL1
     1,    // SYSTEM_FLAG_PUBLISH_RESET_INFO
     1     // SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS
 };
