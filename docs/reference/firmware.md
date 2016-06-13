@@ -8525,7 +8525,7 @@ void loop() {
 }
 ```
 
-In the provided example, both trace and info messages has been filtered out due to the log handler settings, which prevent log messages below the `LOG_LEVEL_WARN` level from being logged:
+In the provided example, the trace and info messages will be filtered out according to the log handler settings, which prevent log messages below the `LOG_LEVEL_WARN` level from being logged:
 
 `0000000050 [app] WARN: This is warning message`  
 `0000000100 [app] ERROR: This is error message`
@@ -8576,7 +8576,7 @@ The example application generates the following logging output:
 `0000000044 [app] INFO: System started`  
 `0000000044 [app.network] TRACE: Connecting to server`
 
-Note that the trace message containing device ID has been filtered out due to the log handler settings, which prevent log messages with the `app` category from being logged if their logging level is below the `LOG_LEVEL_INFO` level.
+Note that the trace message containing device ID has been filtered out according to the log handler settings, which prevent log messages with the `app` category from being logged if their logging level is below the `LOG_LEVEL_INFO` level.
 
 Category filters are specified using _initializer list_ syntax with each element of the list containing a filter string and a minimum logging level required for messages with matching category to be logged. Note that filter string matches not only exact category name but any of its subcategory names as well, for example:
 
@@ -8616,7 +8616,7 @@ void loop() {
 }
 ```
 
-The example application specifies `code` and `details` attributes and generates the following logging output:
+The example application specifies `code` and `details` attributes for the error message, generating the following logging output:
 
 `0000000084 [app] INFO: Connecting to server`  
 `0000000087 [app] ERROR: Connection error [code = 111, details = Connection refused]`
