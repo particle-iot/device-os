@@ -185,7 +185,7 @@ void USBKeyboard::end(void)
 // to the persistent key report and sends the report.  Because of the way
 // USB HID works, the host acts like the key remains pressed until we
 // call release(), releaseAll(), or otherwise clear the report and resend.
-size_t USBKeyboard::press(uint8_t key)
+size_t USBKeyboard::press(uint16_t key)
 {
 	uint8_t i;
 	if (key >= 136)
@@ -245,7 +245,7 @@ size_t USBKeyboard::press(uint8_t key)
 // release() takes the specified key out of the persistent key report and
 // sends the report.  This tells the OS the key is no longer pressed and that
 // it shouldn't be repeated any more.
-size_t USBKeyboard::release(uint8_t key)
+size_t USBKeyboard::release(uint16_t key)
 {
 	uint8_t i;
 	if (key >= 136)
@@ -299,6 +299,15 @@ void USBKeyboard::releaseAll(void)
 	keyReport.keys[5] = 0;
 	keyReport.modifiers = 0;
 	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
+}
+
+size_t USBKeyboard::writeRaw(uint16_t key)
+{
+	uint8_t p = press(136 + key);	// Keydown
+	delay(100);
+	uint8_t r = release(136 + key);	// Keyup
+	(void)r;
+	return (p);					// just return the result of press() since release() almost always returns 1
 }
 
 size_t USBKeyboard::write(uint8_t key)

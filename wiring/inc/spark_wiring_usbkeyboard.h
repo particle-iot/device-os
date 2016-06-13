@@ -68,6 +68,8 @@
 #define KEY_F11				0xCC
 #define KEY_F12				0xCD
 
+#define KEY_RAW       0x88
+
 typedef struct
 {
   uint8_t reportId; // 0x02
@@ -86,9 +88,10 @@ public:
 
 	void begin(void);
 	void end(void);
-	virtual size_t write(uint8_t k);
-	virtual size_t press(uint8_t k);
-	virtual size_t release(uint8_t k);
+  virtual size_t write(uint8_t k);
+	virtual size_t writeRaw(uint16_t k);
+	virtual size_t press(uint16_t k);
+	virtual size_t release(uint16_t k);
 	virtual void releaseAll(void);
 };
 
