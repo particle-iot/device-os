@@ -31,6 +31,7 @@
 #include "interrupts_hal.h"
 #include "logging.h"
 #include "usbd_wcid.h"
+#include "usbd_desc_device.h"
 
 LOG_SOURCE_CATEGORY("usb.composite")
 
