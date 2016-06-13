@@ -45,8 +45,9 @@ LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.cpp)
 LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.c)
 
 # v2 libraries only include sources in the "src" dir
-LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV2),src/,*.cpp)
-LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV2),src/,*.c)
+LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV2)/,src/,*.cpp)
+LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV2)/,src/,*.c)
+
 
 CPPSRC += $(LIBCPPSRC)
 CSRC += $(LIBCSRC)
