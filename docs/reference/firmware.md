@@ -7722,6 +7722,39 @@ void loop() {
 }
 ```
 
+### disableReset()
+
+This method allows to disable automatic resetting of the device on such events as successful firmware update.
+
+```cpp
+// EXAMPLE
+void on_reset_pending() {
+    // Enable resetting of the device. The system will reset after this method is called
+    System.enableReset();
+}
+
+void setup() {
+    // Register the event handler
+    System.on(reset_pending, on_reset_pending);
+    // Disable resetting of the device
+    System.enableReset();
+
+}
+
+void loop() {
+}
+```
+
+When the system needs to reset the device it first sends the [`reset_pending`](#system-events-reference) event to the application, and, if automatic resetting is disabled, waits until the application has called `enableReset()` to finally perform the reset. This allows the application to perform any necessary cleanup before resetting the device.
+
+### enableReset()
+
+Allows the system to reset the device when necessary.
+
+### resetPending()
+
+Returns `true` if the system needs to reset the device.
+
 ### Reset Reason
 
 *Since 0.6.0*
@@ -7789,6 +7822,34 @@ Returns a user-defined value that has been previously specified for the `System.
 `reset(uint32_t data)`
 
 This overloaded method accepts an arbitrary 32-bit value, stores it to the backup register and resets the device. The value can be retrieved via `resetReasonData()` method after the device has restarted.
+
+### System Flags
+
+The system allows to alter certain aspects of its default behavior via the system flags. The following system flags are defined:
+
+  * `SYSTEM_FLAG_PUBLISH_RESET_INFO` : enables publishing of the last [reset reason](#reset-reason) to the cloud (enabled by default)
+  * `SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS` : enables resetting of the network connection on cloud connection errors (enabled by default)
+
+```cpp
+// EXAMPLE
+// Do not publish last reset reason
+System.disable(SYSTEM_FLAG_PUBLISH_RESET_INFO);
+
+// Do not reset network connection on cloud errors
+System.disable(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS);
+```
+
+`System.enable(system_flag_t flag)`
+
+Enables the system flag.
+
+`System.disable(system_flag_t flag)`
+
+Disables the system flag.
+
+`System.enabled(system_flag_t flag)`
+
+Returns `true` if the system flag is enabled.
 
 
 ## OTA Updates
