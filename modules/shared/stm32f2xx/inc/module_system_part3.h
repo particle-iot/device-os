@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @authors Matthew McGowan
- * @date    10 February 2015
+ * @date    09 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -20,11 +20,24 @@
  ******************************************************************************
  */
 
-#ifndef MODULE_SYSTEM_PART2_H
-#define	MODULE_SYSTEM_PART2_H
+#ifndef SYSTEM_PART3_H
+#define	SYSTEM_PART3_H
 
-DYNALIB_EXTERN_C const void* const system_part1_module[];
+#include "dynalib.h"
 
-
+#ifdef	__cplusplus
+extern "C" {
 #endif
+
+/**
+ * The static module-level export table of library jump table addresses.
+ */
+extern const void* const system_part3_module[];
+
+
+#ifdef	__cplusplus
+}
+#endif
+
+#endif	/* SYSTEM_PART3_H */
 

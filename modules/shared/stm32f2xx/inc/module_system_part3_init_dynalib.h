@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @authors Matthew McGowan
- * @date    10 February 2015
+ * @date    11 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -20,11 +20,23 @@
  ******************************************************************************
  */
 
-#ifndef MODULE_SYSTEM_PART2_H
-#define	MODULE_SYSTEM_PART2_H
+#ifndef MODULE_SYSTEM_PART3_INIT_DYNALIB_H
+#define	MODULE_SYSTEM_PART3_INIT_DYNALIB_H
 
-DYNALIB_EXTERN_C const void* const system_part1_module[];
+#include "dynalib.h"
+
+/**
+    Module-management functions
+ */
+
+DYNALIB_BEGIN(system_module_part3)
+
+DYNALIB_FN(0, system_module_part3, module_system_part3_pre_init, void*(void))
+DYNALIB_FN(1, system_module_part3, module_system_part3_init, void(void))
+
+DYNALIB_END(system_module_part3)
 
 
-#endif
+
+#endif	/* MODULE_SYSTEM_PART3_INIT_DYNALIB_H */
 

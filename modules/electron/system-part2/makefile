@@ -5,7 +5,7 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x8040000
 
-DEPENDENCIES = newlib_nano modules/electron/user-part modules/electron/system-part1 dynalib services services-dynalib hal platform system wiring communication-dynalib communication rt-dynalib wiring_globals
+DEPENDENCIES = newlib_nano modules/electron/user-part modules/electron/system-part1 modules/electron/system-part3 dynalib services services-dynalib hal platform system wiring communication-dynalib communication rt-dynalib wiring_globals
 LIB_DEPENDENCIES = services-dynalib system wiring communication-dynalib hal platform wiring_globals
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
 MAKE_DEPENDENCIES = newlib_nano $(LIB_DEPENDENCIES)
