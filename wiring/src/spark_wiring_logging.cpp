@@ -173,7 +173,8 @@ LogLevel spark::LogHandler::categoryLevel(const char *category) const {
     return level;
 }
 
-void spark::LogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
+// spark::StreamLogHandler
+void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
     char buf[16];
     // Timestamp
     if (attr.has_time) {
