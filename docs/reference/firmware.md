@@ -8699,10 +8699,13 @@ Returns category name set for this logger.
 
 ```cpp
 // EXAMPLE
-Log.trace("This is %s message", "trace");
-Log.info("This is %s message", "info");
-Log.warn("This is %s message", "warning");
-Log.error("This is %s message", "error");
+Log.trace("This is trace message");
+Log.info("This is info message");
+Log.warn("This is warn message");
+Log.error("This is error message");
+
+// Format text message
+Log.info("The secret of everything is %d", 42);
 ```
 
 Generate trace, info, warning or error message respectively.
@@ -8716,10 +8719,10 @@ Parameters:
 
 ```cpp
 // EXAMPLE
-Log("This is %s message", "info");
+Log("The secret of everything is %d", 42); // Generates info message
 ```
 
-Generate log message with the default logging level (`LOG_LEVEL_INFO`).
+Generates log message with the default logging level (`LOG_LEVEL_INFO`).
 
 Parameters:
 
@@ -8730,10 +8733,10 @@ Parameters:
 
 ```cpp
 // EXAMPLE
-Log(LOG_LEVEL_INFO, "This is %s message", "info");
+Log(LOG_LEVEL_INFO, "The secret of everything is %d", 42);
 ```
 
-Generate log message with the specified logging level.
+Generates log message with the specified logging level.
 
 Parameters:
 
