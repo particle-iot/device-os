@@ -590,6 +590,10 @@ void app_setup_and_loop(void)
 
     manage_safe_mode();
 
+#if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)
+    HAL_USB_Init();
+#endif
+
 #if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif

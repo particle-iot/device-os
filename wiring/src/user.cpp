@@ -63,6 +63,7 @@ void serialEventRun() __attribute__((weak));
 
 void serialEvent() __attribute__((weak));
 void serialEvent1() __attribute__((weak));
+void usbSerialEvent1() __attribute__((weak));
 
 #if PLATFORM_ID==3
 // gcc doesn't allow weak functions to not exist, so they must be defined.
@@ -119,6 +120,10 @@ void serialEventRun()
     if (serialEventRun5) serialEventRun5();
 #endif
 
+#if Wiring_USBSerial1
+    if (usbSerialEvent1 && USBSerial1.available()>0)
+        usbSerialEvent1();
+#endif
 }
 
 #if defined(STM32F2XX)

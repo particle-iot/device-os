@@ -105,7 +105,30 @@ test(api_wiring_usbserial) {
     API_COMPILE(Serial.blockOnOverrun(false));
     API_COMPILE(Serial.blockOnOverrun(true));
     API_COMPILE(Serial.availableForWrite());
+    API_COMPILE(Serial.isConnected());
+
+#if Wiring_USBSerial1
+    API_COMPILE(USBSerial1.blockOnOverrun(false));
+    API_COMPILE(USBSerial1.blockOnOverrun(true));
+    API_COMPILE(USBSerial1.availableForWrite());
+    API_COMPILE(USBSerial1.isConnected());
+#endif
 }
+
+test(api_wiring_keyboard) {
+#if Wiring_Keyboard
+    API_COMPILE(Keyboard.begin());
+    API_COMPILE(Keyboard.end());
+#endif
+}
+
+test(api_wiring_mouse) {
+#if Wiring_Mouse
+    API_COMPILE(Mouse.begin());
+    API_COMPILE(Mouse.end());
+#endif
+}
+
 
 void TIM3_callback()
 {
@@ -177,6 +200,9 @@ test(api_wiring_globals)
 			&SPI2,
 #endif
 			&Serial,
+#if Wiring_USBSerial1
+            &USBSerial1,
+#endif
 			&Wire,
 #if Wiring_Wire1
 			&Wire1,

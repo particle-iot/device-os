@@ -26,6 +26,8 @@
 #ifndef __SPARK_WIRING_USBMOUSE_H
 #define __SPARK_WIRING_USBMOUSE_H
 
+#include "usb_config_hal.h"
+
 #ifdef SPARK_USB_MOUSE
 #include "spark_wiring.h"
 
@@ -36,6 +38,7 @@
 
 typedef struct
 {
+    uint8_t reportId; // 0x01
 	uint8_t buttons;
 	int8_t x;
 	int8_t y;

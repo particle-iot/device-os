@@ -29,7 +29,9 @@ namespace spark {
 class SerialLogHandler: public StreamLogHandler {
 public:
     explicit SerialLogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
-            SerialLogHandler(9600, level, filters) {
+            StreamLogHandler(Serial, level, filters) {
+        Serial.begin();
+        LogManager::instance()->addHandler(this);
     }
 
     explicit SerialLogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
@@ -62,13 +64,36 @@ public:
     }
 };
 
+#if Wiring_USBSerial1
+class USBSerial1LogHandler: public StreamLogHandler {
+public:
+    explicit USBSerial1LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            StreamLogHandler(USBSerial1, level, filters) {
+        USBSerial1.begin();
+        LogManager::instance()->addHandler(this);
+    }
+
+    explicit USBSerial1LogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+            StreamLogHandler(USBSerial1, level, filters) {
+        USBSerial1.begin(baud);
+        LogManager::instance()->addHandler(this);
+    }
+
+    virtual ~USBSerial1LogHandler() {
+        LogManager::instance()->removeHandler(this);
+        USBSerial1.end();
+    }
+};
+
+#endif // Wiring_USBSerial1
+
 } // namespace spark
 
 // Compatibility API
 class SerialDebugOutput: public spark::SerialLogHandler {
 public:
     explicit SerialDebugOutput(int baud = 9600, LogLevel level = LOG_LEVEL_ALL) :
-        SerialLogHandler(baud, level) {
+        SerialLogHandler(level) {
     }
 };
 

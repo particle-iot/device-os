@@ -23,6 +23,8 @@
   ******************************************************************************
  */
 
+#include "usb_hal.h"
+
 #ifdef SPARK_USB_MOUSE
 #include "spark_wiring_usbmouse.h"
 
@@ -31,6 +33,8 @@
 //
 USBMouse::USBMouse(void)
 {
+    mouseReport.reportId = 0x01;
+    HAL_USB_HID_Init(0, NULL);
 }
 
 void USBMouse::buttons(uint8_t button)
@@ -44,12 +48,12 @@ void USBMouse::buttons(uint8_t button)
 
 void USBMouse::begin(void)
 {
-	SPARK_USB_Setup();
+	HAL_USB_HID_Begin(0, NULL);
 }
 
 void USBMouse::end(void)
 {
-	//To Do
+	HAL_USB_HID_End(0);
 }
 
 void USBMouse::move(int8_t x, int8_t y, int8_t wheel)
@@ -57,7 +61,7 @@ void USBMouse::move(int8_t x, int8_t y, int8_t wheel)
 	mouseReport.x = x;
 	mouseReport.y = y;
 	mouseReport.wheel = wheel;
-	USB_HID_Send_Report(&mouseReport, sizeof(mouseReport));
+	HAL_USB_HID_Send_Report(0, &mouseReport, sizeof(mouseReport), NULL);
 }
 
 void USBMouse::click(uint8_t button)

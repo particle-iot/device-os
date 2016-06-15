@@ -28,20 +28,25 @@
 #define __SPARK_WIRING_USBSERIAL_H
 
 #include "spark_wiring_stream.h"
+#include "spark_wiring_platform.h"
 #include "usb_hal.h"
 #include "system_task.h"
+#include "spark_wiring_startup.h"
 
 class USBSerial : public Stream
 {
 public:
 	// public methods
-	USBSerial();
+    USBSerial();
+	USBSerial(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config& conf);
 
-        unsigned int baud() { return USB_USART_Baud_Rate(); }
+    unsigned int baud();
 
-        operator bool() { return baud()!=0; }
+    operator bool();
+    bool isEnabled();
+    bool isConnected();
 
-	void begin(long speed);
+	void begin(long speed = 9600);
 	void end();
 	int peek();
 
@@ -86,11 +91,25 @@ public:
 	using Print::write;
 
 private:
+    HAL_USB_USART_Serial _serial;
 	bool _blocking;
 };
 
-USBSerial& _fetch_global_serial();
+HAL_USB_USART_Config acquireSerialBuffer() __attribute__((weak));
+#if Wiring_USBSerial1
+HAL_USB_USART_Config acquireUSBSerial1Buffer() __attribute__((weak));
+#endif
 
-#define Serial _fetch_global_serial()
+extern USBSerial& _fetch_usbserial();
+#define Serial _fetch_usbserial()
+
+#if Wiring_USBSerial1
+
+extern USBSerial& _fetch_usbserial1();
+#define USBSerial1 _fetch_usbserial1()
+
+#define USBSERIAL1_ENABLE() STARTUP(USBSerial1.begin(9600))
+
+#endif /* Wiring_USBSerial1 */
 
 #endif

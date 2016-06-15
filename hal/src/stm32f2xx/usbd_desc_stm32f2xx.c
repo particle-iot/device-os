@@ -32,6 +32,9 @@
 #include "usbd_desc_device.h"
 #include "usbd_req.h"
 #include "usb_regs.h"
+#include "deviceid_hal.h"
+
+extern char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 
 USBD_DEVICE USR_desc =
 {
@@ -51,16 +54,16 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
         0x00,                       /*bcdUSB */
         0x02,
-        0x02,                       /*bDeviceClass: CDC*/
-        0x00,                       /*bDeviceSubClass*/
-        0x00,                       /*bDeviceProtocol*/
+        0xef,                       /*bDeviceClass: Misc */
+        0x02,                       /*bDeviceSubClass*/
+        0x01,                       /*bDeviceProtocol*/
         USB_OTG_MAX_EP0_SIZE,       /*bMaxPacketSize*/
         LOBYTE(USBD_VID_SPARK),     /*idVendor*/
         HIBYTE(USBD_VID_SPARK),     /*idVendor*/
         LOBYTE(USBD_PID_CDC),       /*idProduct*/
         HIBYTE(USBD_PID_CDC),       /*idProduct*/
-        0x00,                       /*bcdDevice rel. 2.00*/
-        0x02,
+        LOBYTE(0x0200),             /*bcdDevice (2.00) */
+        HIBYTE(0x0200),             /*bcdDevice (2.00) */
         USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/
         USBD_IDX_PRODUCT_STR,       /*Index of product string*/
         USBD_IDX_SERIAL_STR,        /*Index of serial number string*/
@@ -127,14 +130,7 @@ uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_ProductStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_PRODUCT_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
-    }
+    USBD_GetString (USBD_PRODUCT_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
 
@@ -160,14 +156,12 @@ uint8_t *  USBD_USR_ManufacturerStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_SERIALNUMBER_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
-    }
+    uint8_t deviceId[16];
+    char deviceIdHex[sizeof(deviceId) * 2 + 1] = {0};
+    unsigned deviceIdLen = 0;
+    deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+    bytes2hexbuf(deviceId, deviceIdLen, deviceIdHex);
+    USBD_GetString (deviceIdHex, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
 
@@ -180,14 +174,7 @@ uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_CONFIGURATION_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
-    }
+    USBD_GetString (USBD_CONFIGURATION_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
 
@@ -200,13 +187,6 @@ uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_INTERFACE_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
-    }
+    USBD_GetString (USBD_INTERFACE_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
