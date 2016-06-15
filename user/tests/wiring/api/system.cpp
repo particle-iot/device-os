@@ -163,3 +163,23 @@ test(system_events)
     API_COMPILE(System.on(my_events, handler_event_data_param));
     (void)clicks; // avoid unused variable warning
 }
+
+test(system_flags)
+{
+    // SYSTEM_FLAG_OTA_UPDATE_ENABLED
+    API_COMPILE(System.enableUpdates());
+    API_COMPILE(System.disableUpdates());
+    API_COMPILE(System.updatesEnabled());
+    // SYSTEM_FLAG_OTA_UPDATE_PENDING
+    API_COMPILE(System.updatesPending());
+    // SYSTEM_FLAG_RESET_ENABLED
+    API_COMPILE(System.enableReset());
+    API_COMPILE(System.disableReset());
+    API_COMPILE(System.resetEnabled());
+    // SYSTEM_FLAG_RESET_PENDING
+    API_COMPILE(System.resetPending());
+    // Generic API
+    API_COMPILE(System.enable(SYSTEM_FLAG_MAX));
+    API_COMPILE(System.disable(SYSTEM_FLAG_MAX));
+    API_COMPILE(System.enabled(SYSTEM_FLAG_MAX));
+}
