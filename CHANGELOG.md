@@ -38,6 +38,7 @@
 - `digitalRead()` interferes with `analogRead()` [#993](https://github.com/spark/firmware/issues/993)
 - [electron] reinstated OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
 - USART 9-bit receiving. [#968](https://github.com/spark/firmware/issues/968)
+- Fix soft AP suffix broken by the addition of device id in DCT [#1030](https://github.com/spark/firmware/pull/1030)
 
 
 ## v0.5.1 (same as v0.5.1-rc.2)
