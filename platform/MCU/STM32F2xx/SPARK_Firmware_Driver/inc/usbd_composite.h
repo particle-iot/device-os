@@ -65,5 +65,6 @@ void USBD_Composite_Set_State(void* cls, bool state);
 bool USBD_Composite_Get_State(void* cls);
 void USBD_Composite_Unregister_All();
 uint8_t USBD_Composite_Registered_Count(bool onlyActive);
+uint8_t USBD_Composite_Handle_Msft_Request(void* pdev, USB_SETUP_REQ* req);
 
 #endif /* USBD_COMPOSITE_H_ */

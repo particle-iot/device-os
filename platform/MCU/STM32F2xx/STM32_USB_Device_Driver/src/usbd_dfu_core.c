@@ -239,34 +239,34 @@ __ALIGN_BEGIN uint8_t usbd_dfu_CfgDesc[USB_DFU_CONFIG_DESC_SIZ] __ALIGN_END =
   /**********  Descriptor of DFU interface 0 Alternate setting 0 **************/
   USBD_DFU_IF_DESC(0), /* This interface is mandatory for all devices */
 
-#if (USBD_ITF_MAX_NUM > 1)
+#if (USBD_DFU_INT_NUM > 1)
   /**********  Descriptor of DFU interface 0 Alternate setting 1 **************/
   USBD_DFU_IF_DESC(1),
-#endif /* (USBD_ITF_MAX_NUM > 1) */
+#endif /* (USBD_DFU_INT_NUM > 1) */
 
-#if (USBD_ITF_MAX_NUM > 2)
+#if (USBD_DFU_INT_NUM > 2)
   /**********  Descriptor of DFU interface 0 Alternate setting 2 **************/
   USBD_DFU_IF_DESC(2),
-#endif /* (USBD_ITF_MAX_NUM > 2) */
+#endif /* (USBD_DFU_INT_NUM > 2) */
 
-#if (USBD_ITF_MAX_NUM > 3)
+#if (USBD_DFU_INT_NUM > 3)
   /**********  Descriptor of DFU interface 0 Alternate setting 3 **************/
   USBD_DFU_IF_DESC(3),
-#endif /* (USBD_ITF_MAX_NUM > 3) */
+#endif /* (USBD_DFU_INT_NUM > 3) */
 
-#if (USBD_ITF_MAX_NUM > 4)
+#if (USBD_DFU_INT_NUM > 4)
   /**********  Descriptor of DFU interface 0 Alternate setting 4 **************/
   USBD_DFU_IF_DESC(4),
-#endif /* (USBD_ITF_MAX_NUM > 4) */
+#endif /* (USBD_DFU_INT_NUM > 4) */
 
-#if (USBD_ITF_MAX_NUM > 5)
+#if (USBD_DFU_INT_NUM > 5)
   /**********  Descriptor of DFU interface 0 Alternate setting 5 **************/
   USBD_DFU_IF_DESC(5),
-#endif /* (USBD_ITF_MAX_NUM > 5) */
+#endif /* (USBD_DFU_INT_NUM > 5) */
 
-#if (USBD_ITF_MAX_NUM > 6)
+#if (USBD_DFU_INT_NUM > 6)
 #error "ERROR: usbd_dfu_core.c: Modify the file to support more descriptors!"
-#endif /* (USBD_ITF_MAX_NUM > 6) */
+#endif /* (USBD_DFU_INT_NUM > 6) */
 
   /******************** DFU Functional Descriptor********************/
   0x09,   /*blength = 9 Bytes*/
@@ -313,34 +313,34 @@ __ALIGN_BEGIN uint8_t usbd_dfu_OtherCfgDesc[USB_DFU_CONFIG_DESC_SIZ] __ALIGN_END
   /**********  Descriptor of DFU interface 0 Alternate setting 0 **************/
   USBD_DFU_IF_DESC(0), /* This interface is mandatory for all devices */
 
-#if (USBD_ITF_MAX_NUM > 1)
+#if (USBD_DFU_INT_NUM > 1)
   /**********  Descriptor of DFU interface 0 Alternate setting 1 **************/
   USBD_DFU_IF_DESC(1),
-#endif /* (USBD_ITF_MAX_NUM > 1) */
+#endif /* (USBD_DFU_INT_NUM > 1) */
 
-#if (USBD_ITF_MAX_NUM > 2)
+#if (USBD_DFU_INT_NUM > 2)
   /**********  Descriptor of DFU interface 0 Alternate setting 2 **************/
   USBD_DFU_IF_DESC(2),
-#endif /* (USBD_ITF_MAX_NUM > 2) */
+#endif /* (USBD_DFU_INT_NUM > 2) */
 
-#if (USBD_ITF_MAX_NUM > 3)
+#if (USBD_DFU_INT_NUM > 3)
   /**********  Descriptor of DFU interface 0 Alternate setting 3 **************/
   USBD_DFU_IF_DESC(3),
-#endif /* (USBD_ITF_MAX_NUM > 3) */
+#endif /* (USBD_DFU_INT_NUM > 3) */
 
-#if (USBD_ITF_MAX_NUM > 4)
+#if (USBD_DFU_INT_NUM > 4)
   /**********  Descriptor of DFU interface 0 Alternate setting 4 **************/
   USBD_DFU_IF_DESC(4),
-#endif /* (USBD_ITF_MAX_NUM > 4) */
+#endif /* (USBD_DFU_INT_NUM > 4) */
 
-#if (USBD_ITF_MAX_NUM > 5)
+#if (USBD_DFU_INT_NUM > 5)
   /**********  Descriptor of DFU interface 0 Alternate setting 5 **************/
   USBD_DFU_IF_DESC(5),
-#endif /* (USBD_ITF_MAX_NUM > 5) */
+#endif /* (USBD_DFU_INT_NUM > 5) */
 
-#if (USBD_ITF_MAX_NUM > 6)
+#if (USBD_DFU_INT_NUM > 6)
 #error "ERROR: usbd_dfu_core.c: Modify the file to support more descriptors!"
-#endif /* (USBD_ITF_MAX_NUM > 6) */
+#endif /* (USBD_DFU_INT_NUM > 6) */
 
   /******************** DFU Functional Descriptor********************/
   0x09,   /*blength = 9 Bytes*/
@@ -505,7 +505,7 @@ static uint8_t  usbd_dfu_Setup (void  *pdev,
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
         pbuf = usbd_dfu_Desc;
 #else
-        pbuf = usbd_dfu_CfgDesc + 9 + (9 * USBD_ITF_MAX_NUM);
+        pbuf = usbd_dfu_CfgDesc + 9 + (9 * USBD_DFU_INT_NUM);
 #endif
         len = MIN(USB_DFU_DESC_SIZ , req->wLength);
       }
@@ -522,7 +522,7 @@ static uint8_t  usbd_dfu_Setup (void  *pdev,
       break;
 
     case USB_REQ_SET_INTERFACE :
-      if ((uint8_t)(req->wValue) < USBD_ITF_MAX_NUM)
+      if ((uint8_t)(req->wValue) < USBD_DFU_INT_NUM)
       {
         usbd_dfu_AltSet = (uint8_t)(req->wValue);
       }
@@ -664,7 +664,7 @@ static void DFU_Req_DETACH(void *pdev, USB_SETUP_REQ *req)
   }
 
   /* Check the detach capability in the DFU functional descriptor */
-  if ((usbd_dfu_CfgDesc[12 + (9 * USBD_ITF_MAX_NUM)]) & DFU_DETACH_MASK)
+  if ((usbd_dfu_CfgDesc[12 + (9 * USBD_DFU_INT_NUM)]) & DFU_DETACH_MASK)
   {
     /* Perform an Attach-Detach operation on USB bus */
     DCD_DevDisconnect (pdev);
@@ -872,7 +872,7 @@ static void DFU_Req_GETSTATUS(void *pdev)
       //break;
     }
     else if ((Manifest_State == Manifest_complete) && \
-      ((usbd_dfu_CfgDesc[(11 + (9 * USBD_ITF_MAX_NUM))]) & 0x04))
+      ((usbd_dfu_CfgDesc[(11 + (9 * USBD_DFU_INT_NUM))]) & 0x04))
     {
       DeviceState = STATE_dfuIDLE;
       DeviceStatus[4] = DeviceState;
@@ -994,7 +994,7 @@ void DFU_LeaveDFUMode(void *pdev)
 {
  Manifest_State = Manifest_complete;
 
-  if ((usbd_dfu_CfgDesc[(11 + (9 * USBD_ITF_MAX_NUM))]) & 0x04)
+  if ((usbd_dfu_CfgDesc[(11 + (9 * USBD_DFU_INT_NUM))]) & 0x04)
   {
     DeviceState = STATE_dfuMANIFEST_SYNC;
     DeviceStatus[4] = DeviceState;

@@ -66,6 +66,13 @@ DYNALIB_FN(BASE_IDX1 + 2, hal_usb, HAL_USB_Detach, void(void))
 # define BASE_IDX2 BASE_IDX1
 #endif
 
+#ifdef USB_VENDOR_REQUEST_ENABLE
+DYNALIB_FN(BASE_IDX2 + 0, hal_usb, HAL_USB_Set_Vendor_Request_Callback, void(HAL_USB_Vendor_Request_Callback, void*))
+# define BASE_IDX3 (BASE_IDX2 + 1)
+#else
+# define BASE_IDX3 BASE_IDX2
+#endif
+
 DYNALIB_END(hal_usb)
 
 #undef BASE_IDX

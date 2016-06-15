@@ -46,7 +46,7 @@
 /** @defgroup usbd_dfu_Exported_Defines
   * @{
   */
-#define USB_DFU_CONFIG_DESC_SIZ       (18 + (9 * USBD_ITF_MAX_NUM))
+#define USB_DFU_CONFIG_DESC_SIZ       (18 + (9 * USBD_DFU_INT_NUM))
 #define USB_DFU_DESC_SIZ              9
 
 #define DFU_DESCRIPTOR_TYPE           0x21

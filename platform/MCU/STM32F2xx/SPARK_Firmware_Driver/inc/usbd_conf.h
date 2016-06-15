@@ -42,9 +42,12 @@
 #endif
 
 #define USBD_CFG_MAX_NUM                1
-#define USBD_ITF_MAX_NUM                4
+#define USBD_ITF_MAX_NUM                10
+#define USBD_DFU_INT_NUM                2
 #define USB_MAX_STR_DESC_SIZ            255
 #define USB_SUPPORT_USER_STRING_DESC
+
+#define USBD_EP0_MAX_PACKET_SIZE        64
 
 #define USBD_SELF_POWERED
 
