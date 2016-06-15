@@ -12,6 +12,9 @@
 - Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
 - [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
 - [System reset reporting](https://docs.particle.io/reference/firmware/core/#reset-reason) [#403](https://github.com/spark/firmware/issues/403)
+- [Photon/Electron/P1] Composite USB device driver with HID Mouse & Keyboard implementation for STM32F2 [#902](https://github.com/spark/firmware/pull/902) and [#528](https://github.com/spark/firmware/issues/528)
+- Exposes Device ID and Bootloader Version through USB descriptors while in DFU mode, Microsoft WCID support [#1001](https://github.com/spark/firmware/pull/1001)
+- USB vendor-specific setup request handling [#1010](https://github.com/spark/firmware/pull/1010)
 
 ### ENHANCEMENTS
 
