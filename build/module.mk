@@ -5,10 +5,6 @@ include $(COMMON_BUILD)/macros.mk
 
 SOURCE_PATH ?= $(MODULE_PATH)
 
-# Recursive wildcard function - finds matching files in a directory tree
-target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,$2))
-here_files = $(call wildcard,$(SOURCE_PATH)/$1$2)
-
 # import this module's symbols
 include $(MODULE_PATH)/import.mk
 
@@ -43,10 +39,35 @@ ifneq (,$(LOG_MODULE_CATEGORY))
 CFLAGS += -DLOG_MODULE_CATEGORY="\"$(LOG_MODULE_CATEGORY)\""
 endif
 
+# Adds the sources from the specified library directories
+# v1 libraries include all sources
+LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.cpp)
+LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.c)
+
+# v2 libraries only include sources in the "src" dir
+LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV2)/,src/,*.cpp)
+LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV2)/,src/,*.c)
+
+
+CPPSRC += $(LIBCPPSRC)
+CSRC += $(LIBCSRC)
+
+# add all module libraries as include directories
+INCLUDE_DIRS += $(MODULE_LIBSV1)
+
+# v2 libraries contain their sources under a "src" folder
+INCLUDE_DIRS += $(addsuffix /src,$(MODULE_LIBSV2))
+
+# $(info cppsrc $(CPPSRC))
+# $(info csrc $(CSRC))
+
+
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o)))
+
+# $(info allobj $(ALLOBJ))
 
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
@@ -206,7 +227,6 @@ $(TARGET_BASE)$(EXECUTABLE_EXTENSION) : build_dependencies $(ALLOBJ) $(LIB_DEPS)
 	$(call echo,)
 
 
-
 # Tool invocations
 $(TARGET_BASE).a : $(ALLOBJ)
 	$(call echo,'Building target: $@')
@@ -215,13 +235,42 @@ $(TARGET_BASE).a : $(ALLOBJ)
 	$(VERBOSE)$(AR) -cr $@ $^
 	$(call echo,)
 
-# C compiler to build .o from .c in $(BUILD_DIR)
-$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.c
-	$(call echo,'Building file: $<')
+define build_C_file
+	$(call echo,'Building c file: $<')
 	$(call echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CC) $(CFLAGS) $(CONLYFLAGS) -c -o $@ $<
 	$(call echo,)
+endef
+
+define build_CPP_file
+	$(call echo,'Building cpp file: $<')
+	$(call echo,'Invoking: ARM GCC CPP Compiler')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(call echo,)
+endef
+
+# C compiler to build .o from .c in $(BUILD_DIR)
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.c
+	$(build_C_file)
+
+# CPP compiler to build .o from .cpp in $(BUILD_DIR)
+# Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
+$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
+	$(build_CPP_file)
+
+define build_LIB_files
+$(BUILD_PATH)/$(notdir $1)/%.o : $1/%.c
+	$$(build_C_file)
+
+$(BUILD_PATH)/$(notdir $1)/%.o : $1/%.cpp
+	$$(build_CPP_file)
+endef
+
+# define rules for each library
+# only the sources added for each library are built (so for v2 libraries only files under "src" are built.)
+$(foreach lib,$(MODULE_LIBSV1) $(MODULE_LIBSV2),$(eval $(call build_LIB_files,$(lib))))
 
 # Assember to build .o from .S in $(BUILD_DIR)
 $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
@@ -231,15 +280,7 @@ $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 	$(VERBOSE)$(CC) $(ASFLAGS) -c -o $@ $<
 	$(call echo,)
 
-# CPP compiler to build .o from .cpp in $(BUILD_DIR)
-# Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
-$(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
-	$(call echo,'Building file: $<')
-	$(call echo,'Invoking: ARM GCC CPP Compiler')
-	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-	$(call echo,)
-
+	
 # Other Targets
 clean: clean_deps
 	$(VERBOSE)$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
