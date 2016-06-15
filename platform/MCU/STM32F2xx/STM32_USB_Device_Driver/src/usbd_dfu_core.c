@@ -67,7 +67,7 @@
 #include "usbd_req.h"
 #include "usb_bsp.h"
 #include "usbd_dfu_mal.h"
-
+#include "usbd_wcid.h"
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
@@ -390,6 +390,33 @@ __ALIGN_BEGIN static uint8_t usbd_dfu_Desc[USB_DFU_DESC_SIZ] __ALIGN_END =
 };
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 
+/* Extended Compat ID OS Descriptor */
+static const uint8_t USBD_DFU_MsftExtCompatIdOsDescr[] = {
+    USB_WCID_EXT_COMPAT_ID_OS_DESCRIPTOR(
+        0x00,
+        USB_WCID_DATA('W', 'I', 'N', 'U', 'S', 'B', '\0', '\0'),
+        USB_WCID_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+    )
+};
+
+/* Extended Properties OS Descriptor */
+static const uint8_t USBD_DFU_MsftExtPropOsDescr[] = {
+    USB_WCID_EXT_PROP_OS_DESCRIPTOR(
+        USB_WCID_DATA(
+            /* bPropertyData "{37fb5f90-1a34-4929-933b-8a27e1850033}" */
+            '{', 0x00, '3', 0x00, '7', 0x00, 'f', 0x00, 'b', 0x00,
+            '5', 0x00, 'f', 0x00, '9', 0x00, '0', 0x00, '-', 0x00,
+            '1', 0x00, 'a', 0x00, '3', 0x00, '4', 0x00, '-', 0x00,
+            '4', 0x00, '9', 0x00, '2', 0x00, '9', 0x00, '-', 0x00,
+            '9', 0x00, '3', 0x00, '3', 0x00, 'b', 0x00, '-', 0x00,
+            '8', 0x00, 'a', 0x00, '2', 0x00, '7', 0x00, 'e', 0x00,
+            '1', 0x00, '8', 0x00, '5', 0x00, '0', 0x00, '0', 0x00,
+            '3', 0x00, '3', 0x00, '}'
+        )
+    )
+};
+
+
 /**
   * @}
   */
@@ -442,6 +469,25 @@ static uint8_t  usbd_dfu_DeInit (void  *pdev,
   return USBD_OK;
 }
 
+uint8_t USBD_DFU_Handle_Msft_Request(void* pdev, USB_SETUP_REQ* req) {
+  if (req->wIndex == 0x0004) {
+    USBD_CtlSendData(pdev, USBD_DFU_MsftExtCompatIdOsDescr, req->wLength);
+  } else if (req->wIndex == 0x0005) {
+    if ((req->wValue & 0xff) == 0x00) {
+      USBD_CtlSendData(pdev, USBD_DFU_MsftExtPropOsDescr, req->wLength);
+    } else {
+      // Send dummy
+      uint8_t dummy[10] = {0};
+      USBD_CtlSendData(pdev, dummy, req->wLength);
+    }
+  } else {
+    return USBD_FAIL;
+  }
+
+  return USBD_OK;
+}
+
+
 /**
   * @brief  usbd_dfu_Setup
   *         Handles the DFU request parsing.
@@ -454,6 +500,11 @@ static uint8_t  usbd_dfu_Setup (void  *pdev,
 {
   uint16_t len = 0;
   uint8_t  *pbuf = NULL;
+
+  if ((req->bRequest == 0xee && req->bmRequest == 0b11000001 && req->wIndex == 0x0005) ||
+      (req->bRequest == 0xee && req->bmRequest == 0xc0 && req->wIndex == 0x0004)) {
+    return USBD_DFU_Handle_Msft_Request(pdev, req);
+  }
 
   switch (req->bmRequest & USB_REQ_TYPE_MASK)
   {

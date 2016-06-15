@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    deviceid_hal.cpp
+ * @file    deviceid_hal.c
  * @author  Matthew McGowan
  * @version V1.0.0
  * @date    25-Sept-2014
@@ -26,16 +26,21 @@
 
 #include "deviceid_hal.h"
 #include "platform_config.h"
+#ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct_hal.h"
-#include <algorithm>
-#include <cstring>
+#endif // HAL_DEVICE_ID_NO_DCT
+#include <string.h>
+
+#ifndef MIN
+# define MIN(a,b) (((a)<(b))?(a):(b))
+#endif
 
 const unsigned device_id_len = 12;
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
     if (dest!=NULL && destLen!=0)
-        memcpy(dest, (char*)ID1, std::min(destLen, device_id_len));
+        memcpy(dest, (char*)ID1, MIN(destLen, device_id_len));
     return device_id_len;
 }
 
@@ -44,6 +49,7 @@ unsigned HAL_Platform_ID()
     return PLATFORM_ID;
 }
 
+#ifndef HAL_DEVICE_ID_NO_DCT
 void HAL_save_device_id(uint32_t dct_offset)
 {
     const char* saved_device_id = (const char*)dct_read_app_data(dct_offset);
@@ -54,3 +60,4 @@ void HAL_save_device_id(uint32_t dct_offset)
         dct_write_app_data(device_id, dct_offset, device_id_len);
     }
 }
+#endif // HAL_DEVICE_ID_NO_DCT
