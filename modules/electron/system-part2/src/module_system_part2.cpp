@@ -1,6 +1,7 @@
 
 #include "dynalib.h"
 #include "module_system_part1_init.h"
+#include "module_system_part3_init.h"
 #include "system_mode.h"
 #include "module_user_init.h"
 #include "core_hal.h"

@@ -1,8 +1,8 @@
 
 system_part3_start = 0x8060000;
 
-system_part3_module_ram_end = 0x201FD800 /* 0x20200000-10K */;
-
+system_part3_ram_end = 0x2001D800 /* 0x20200000-10K */;
+system_part3_ram_start = 0x2001c000 /* end of SRAM - 16K */;
 
 system_part3_module_info_size = 24;
 
@@ -10,6 +10,8 @@ system_part3_module_info_start = system_part3_start;
 
 system_part3_module_info_end = system_part3_module_info_start + system_part3_module_info_size;
 
+/* static ram for system modules starts with part3, then part2 (and above that the stack) */
+system_static_ram_start = system_part3_ram_start;
 
 /**
  * The location of the module export table.
