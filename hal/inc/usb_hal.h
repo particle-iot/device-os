@@ -184,6 +184,19 @@ void HAL_USB_HID_End(uint8_t reserved);
 #endif
 
 
+// MDM: I'm putting these here so we can export them from the hal_usb dynalib
+/* USB Interrupt Handlers from usb_hal.c */
+#ifdef USE_USB_OTG_FS
+    extern void OTG_FS_WKUP_irq(void);
+    extern void OTG_FS_irq(void);
+#elif defined USE_USB_OTG_HS
+    extern void OTG_HS_EP1_OUT_irq(void);
+    extern void OTG_HS_EP1_IN_irq(void);
+    extern void OTG_HS_WKUP_irq(void);
+    extern void OTG_HS_irq(void);
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif

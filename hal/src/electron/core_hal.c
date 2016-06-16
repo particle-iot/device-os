@@ -45,17 +45,6 @@ extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
-/* USB Interrupt Handlers from usb_hal.c */
-#ifdef USE_USB_OTG_FS
-    extern void OTG_FS_WKUP_irq(void);
-    extern void OTG_FS_irq(void);
-#elif defined USE_USB_OTG_HS
-    extern void OTG_HS_EP1_OUT_irq(void);
-    extern void OTG_HS_EP1_IN_irq(void);
-    extern void OTG_HS_WKUP_irq(void);
-    extern void OTG_HS_irq(void);
-#endif
-
 #if 0
 IDX[x] = added IRQ handler
 00 [ ] _estack

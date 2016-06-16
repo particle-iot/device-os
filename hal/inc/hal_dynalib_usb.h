@@ -73,6 +73,21 @@ DYNALIB_FN(BASE_IDX2 + 0, hal_usb, HAL_USB_Set_Vendor_Request_Callback, void(HAL
 # define BASE_IDX3 BASE_IDX2
 #endif
 
+
+#ifdef USE_USB_OTG_FS
+	DYNALIB_FN(BASE_IDX3 + 0, hal_usb, OTG_FS_WKUP_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 1, hal_usb, OTG_FS_irq, void(void))
+	#define BASE_IDX4 (BASE_IDX3 + 2)
+#elif defined USE_USB_OTG_HS
+	DYNALIB_FN(BASE_IDX3 + 0, hal_usb, OTG_HS_WKUP_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 1, hal_usb, OTG_HS_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 2, hal_usb, OTG_HS_EP1_OUT_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 3, hal_usb, OTG_HS_EP1_IN_irq, void(void))
+	#define BASE_IDX4 (BASE_IDX3 + 4)
+#endif
+
+
+
 DYNALIB_END(hal_usb)
 
 #undef BASE_IDX
