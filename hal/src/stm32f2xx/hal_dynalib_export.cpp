@@ -34,4 +34,7 @@
 #include "hal_dynalib_concurrent.h"
 #include "hal_dynalib_cellular.h"
 #include "hal_dynalib_can.h"
+
+#ifndef HAL_USB_EXCLUDE
 #include "hal_dynalib_usb.h"
+#endif

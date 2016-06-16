@@ -26,6 +26,9 @@
  ******************************************************************************
  */
 
+// on some platforms the USB drivers are stored in a separate system module.
+#ifndef HAL_USB_EXCLUDE
+
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
 #include "platform_headers.h"
@@ -281,7 +284,7 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
     			conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
     		}
 
-        // Just in case disable interrupts
+    		// Just in case disable interrupts
         int32_t state = HAL_disable_irq();
         usbUsartMap[serial].data->rx_buffer = conf.rx_buffer;
         usbUsartMap[serial].data->rx_buffer_size = conf.rx_buffer_size;
@@ -574,4 +577,6 @@ void OTG_HS_EP1_OUT_irq(void)
 {
     USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
 }
+#endif
+
 #endif

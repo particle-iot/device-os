@@ -26,6 +26,8 @@
  ******************************************************************************
  */
 
+#ifndef HAL_USB_EXCLUDE
+
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_core.h"
 #include "usbd_desc.h"
@@ -190,3 +192,5 @@ uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
     USBD_GetString (USBD_INTERFACE_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
+
+#endif // HAL_USB_EXCLUDE
