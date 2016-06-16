@@ -41,6 +41,7 @@ extern "C" {
 #endif
 
 #include "usb_config_hal.h"
+#include "platform_config.h"
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 typedef struct HAL_USB_SetupRequest {
@@ -156,6 +157,7 @@ typedef enum HAL_USB_USART_Serial {
 } HAL_USB_USART_Serial;
 
 typedef struct HAL_USB_USART_Config {
+  uint16_t size;
   uint8_t* rx_buffer;
   uint16_t rx_buffer_size;
   uint8_t* tx_buffer;
@@ -173,7 +175,7 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data);
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial);
 bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial);
 bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial);
-
+int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved);
 #endif
 
 #ifdef USB_HID_ENABLE
