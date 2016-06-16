@@ -40,6 +40,7 @@
 #include "system_version.h"
 #include "spark_macros.h"
 #include "system_network_internal.h"
+#include "bytes2hexbuf.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;

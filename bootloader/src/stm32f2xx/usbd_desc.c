@@ -34,7 +34,7 @@
 #include "usbd_wcid.h"
 
 #include "deviceid_hal.h"
-extern char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
+#include "bytes2hexbuf.h"
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Particle"

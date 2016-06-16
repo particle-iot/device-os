@@ -33,8 +33,7 @@
 #include "usbd_req.h"
 #include "usb_regs.h"
 #include "deviceid_hal.h"
-
-extern char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
+#include "bytes2hexbuf.h"
 
 USBD_DEVICE USR_desc =
 {
