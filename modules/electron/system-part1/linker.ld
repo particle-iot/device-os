@@ -6,6 +6,7 @@ MEMORY
 }
 
 INCLUDE module_system_part1_export.ld
+INCLUDE module_system_part3_export.ld
 INCLUDE module_system_part2_export.ld
 
 INCLUDE ../../shared/stm32f2xx/part1.ld
