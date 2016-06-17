@@ -81,7 +81,9 @@ static uint8_t  USBD_MCDC_SOF         (void* pdev, USBD_Composite_Class_Data* cl
 static uint8_t* USBD_MCDC_GetCfgDesc (uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t* buf, uint16_t *length);
 static uint8_t* USBD_MCDC_GetUsrStrDescriptor(uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t index, uint16_t* length);
 
-static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len);
+static uint16_t USBD_MCDC_Request_Handler(void* pdev, USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len);
+static int USBD_MCDC_Start_Rx(void *pdev, USBD_MCDC_Instance_Data* priv);
+static void USBD_MCDC_Schedule_Out(void *pdev, USBD_MCDC_Instance_Data* priv);
 
 static const uint8_t USBD_MCDC_CfgDesc[USBD_MCDC_CONFIG_DESC_SIZE] __ALIGN_END;
 
@@ -206,7 +208,7 @@ static const uint8_t USBD_MCDC_CfgDesc[USBD_MCDC_CONFIG_DESC_SIZE] __ALIGN_END =
   0x00                               /* bInterval: ignore for Bulk transfer */
 };
 
-static inline void USBD_MCDC_Change_Open_State(USBD_MCDC_Instance_Data* priv, uint8_t state) {
+static void USBD_MCDC_Change_Open_State(void* pdev, USBD_MCDC_Instance_Data* priv, uint8_t state) {
   if (state != priv->serial_open) {
     USBD_Composite_Class_Data* cls = (USBD_Composite_Class_Data*)priv->cls;
     (void)cls;
@@ -220,7 +222,7 @@ static inline void USBD_MCDC_Change_Open_State(USBD_MCDC_Instance_Data* priv, ui
           priv->tx_buffer_tail = ring_wrap(priv->tx_buffer_size, priv->tx_buffer_tail + USB_Tx_length);
 
       priv->tx_state = 0;
-      priv->rx_state = 1;
+      USBD_MCDC_Schedule_Out(pdev, priv);
     }
     priv->serial_open = state;
   }
@@ -260,14 +262,10 @@ static uint8_t USBD_MCDC_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
 #ifdef CDC_CMD_EP_SHARED
   }
 #endif
-  priv->rx_state = 1;
   priv->configured = 1;
-  
-  /* Prepare Out endpoint to receive next packet */
-  DCD_EP_PrepareRx(pdev,
-                   priv->ep_out_data,
-                   (uint8_t*)(priv->rx_buffer),
-                   CDC_DATA_OUT_PACKET_SIZE);
+  priv->rx_state = 1;
+
+  USBD_MCDC_Start_Rx(pdev, priv);
 
   return USBD_OK;
 }
@@ -275,7 +273,7 @@ static uint8_t USBD_MCDC_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
 static uint8_t USBD_MCDC_DeInit(void* pdev, USBD_Composite_Class_Data* cls, uint8_t cfgidx)
 {
   USBD_MCDC_Instance_Data* priv = (USBD_MCDC_Instance_Data*)cls->priv;
-  USBD_MCDC_Change_Open_State(priv, 0);
+  USBD_MCDC_Change_Open_State(pdev, priv, 0);
 
   if (priv->configured) {
     if (priv->tx_state) {
@@ -302,7 +300,7 @@ static uint8_t USBD_MCDC_DeInit(void* pdev, USBD_Composite_Class_Data* cls, uint
 #endif
   }
 
-  USBD_MCDC_Change_Open_State(priv, 0);
+  USBD_MCDC_Change_Open_State(pdev, priv, 0);
 
   priv->configured = 0;
   priv->tx_state = 0;
@@ -336,7 +334,7 @@ static uint8_t USBD_MCDC_Setup(void* pdev, USBD_Composite_Class_Data* cls, USB_S
         if (req->bmRequest & 0x80)
         {
           /* Get the data to be sent to Host from interface layer */
-          USBD_MCDC_Request_Handler(cls, req->bRequest, priv->cmd_buffer, req->wLength);
+          USBD_MCDC_Request_Handler(pdev, cls, req->bRequest, priv->cmd_buffer, req->wLength);
 
           /* Send the data to the host */
           USBD_CtlSendData (pdev,
@@ -360,7 +358,7 @@ static uint8_t USBD_MCDC_Setup(void* pdev, USBD_Composite_Class_Data* cls, USB_S
       else /* No Data request */
       {
         /* Transfer the command to the interface layer */
-        USBD_MCDC_Request_Handler(cls, req->bRequest, (uint8_t*)&req->wValue, sizeof(req->wValue));
+        USBD_MCDC_Request_Handler(pdev, cls, req->bRequest, (uint8_t*)&req->wValue, sizeof(req->wValue));
       }
 
       return USBD_OK;
@@ -425,7 +423,7 @@ static uint8_t USBD_MCDC_EP0_RxReady(void* pdev, USBD_Composite_Class_Data* cls)
   {
     // USBD_MCDC_Change_Open_State(priv, 1);
     /* Process the data */
-    USBD_MCDC_Request_Handler(cls, priv->cmd, priv->cmd_buffer, priv->cmd_len);
+    USBD_MCDC_Request_Handler(pdev, cls, priv->cmd, priv->cmd_buffer, priv->cmd_len);
 
     /* Reset the command variable to default value */
     priv->cmd = NO_CMD;
@@ -453,7 +451,7 @@ static uint8_t USBD_MCDC_DataIn(void* pdev, USBD_Composite_Class_Data* cls, uint
     return USBD_FAIL;
   }
 
-  USBD_MCDC_Change_Open_State(priv, 1);
+  USBD_MCDC_Change_Open_State(pdev, priv, 1);
 
   if (!priv->tx_state)
     return USBD_OK;
@@ -479,7 +477,7 @@ static uint8_t USBD_MCDC_DataIn(void* pdev, USBD_Composite_Class_Data* cls, uint
   return USBD_OK;
 }
 
-static inline int USBD_MCDC_Start_Rx(void *pdev, USBD_MCDC_Instance_Data* priv)
+int USBD_MCDC_Start_Rx(void *pdev, USBD_MCDC_Instance_Data* priv)
 {
 
   /* USB_Rx_Buffer_length is used here to keep track of
@@ -509,6 +507,7 @@ static inline int USBD_MCDC_Start_Rx(void *pdev, USBD_MCDC_Instance_Data* priv)
     priv->rx_state = 1;
     DCD_SetEPStatus(pdev, priv->ep_out_data, USB_OTG_EP_RX_VALID);
   }
+
   DCD_EP_PrepareRx(pdev,
                    priv->ep_out_data,
                    priv->rx_buffer + priv->rx_buffer_head,
@@ -527,14 +526,14 @@ static uint8_t  USBD_MCDC_DataOut(void* pdev, USBD_Composite_Class_Data* cls, ui
   priv->rx_buffer_head = ring_wrap(priv->rx_buffer_length, priv->rx_buffer_head + USB_Rx_Count);
 
   // Serial port is definitely open
-  USBD_MCDC_Change_Open_State(priv, 1);
+  USBD_MCDC_Change_Open_State(pdev, priv, 1);
 
   USBD_MCDC_Start_Rx(pdev, priv);
 
   return USBD_OK;
 }
 
-static void USBD_MCDC_Schedule_Out(void *pdev, USBD_MCDC_Instance_Data* priv)
+void USBD_MCDC_Schedule_Out(void *pdev, USBD_MCDC_Instance_Data* priv)
 {
   if (!priv->rx_state)
     USBD_MCDC_Start_Rx(pdev, priv);
@@ -549,7 +548,7 @@ static void USBD_MCDC_Schedule_In(void *pdev, USBD_MCDC_Instance_Data* priv)
     if (priv->serial_open) {
       priv->tx_failed_counter++;
       if (priv->tx_failed_counter >= 1000) {
-        USBD_MCDC_Change_Open_State(priv, 0);
+        USBD_MCDC_Change_Open_State(pdev, priv, 0);
       }
     }
 
@@ -648,7 +647,7 @@ static uint8_t* USBD_MCDC_GetCfgDesc(uint8_t speed, USBD_Composite_Class_Data* c
   return buf;
 }
 
-static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len) {
+static uint16_t USBD_MCDC_Request_Handler(void* pdev, USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len) {
   USBD_MCDC_Instance_Data* priv = (USBD_MCDC_Instance_Data*)cls->priv;
   switch (cmd)
   {
@@ -693,9 +692,9 @@ static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32
   case SET_CONTROL_LINE_STATE:
       priv->ctrl_line = buf[0];
       if (priv->ctrl_line & CDC_DTR) {
-        USBD_MCDC_Change_Open_State(priv, 1);
+        USBD_MCDC_Change_Open_State(pdev, priv, 1);
       } else if ((priv->ctrl_line & CDC_DTR) == 0x00) {
-        USBD_MCDC_Change_Open_State(priv, 0);
+        USBD_MCDC_Change_Open_State(pdev, priv, 0);
       }
       LOG_DEBUG(TRACE, "[%s] SET_CONTROL_LINE_STATE DTR=%d RTS=%d", priv->name, priv->ctrl_line & CDC_DTR ? 1 : 0, priv->ctrl_line & CDC_RTS ? 1 : 0);
       break;
