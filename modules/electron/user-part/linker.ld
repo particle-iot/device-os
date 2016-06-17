@@ -6,11 +6,12 @@ MEMORY
 
      /* The SRAM Origin is system_part1_module_ram_end, and extends to
         system_static_ram_start */
-    SRAM      (rwx) : ORIGIN = 0x20000400, LENGTH = 0x20000 - 0x400 - 40K
+    SRAM      (rwx) : ORIGIN = 0x20000400, LENGTH = 0x20000 - 0x400 - 16K
     INCLUDE backup_ram_memory.ld
 }
 
 INCLUDE module_system_part1_export.ld
+INCLUDE module_system_part3_export.ld
 INCLUDE module_system_part2_export.ld
 
 INCLUDE ../../shared/stm32f2xx/user.ld

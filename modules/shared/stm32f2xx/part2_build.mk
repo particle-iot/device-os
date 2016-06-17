@@ -17,12 +17,20 @@ LINKER_DEPS += $(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
 LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
+ifneq (,$(MODULE_HAS_SYSTEM_PART3))
+LINKER_DEPS += $(SYSTEM_PART3_MODULE_PATH)/module_system_part3_export.ld
+endif
+
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
+ifneq (,$(MODULE_HAS_SYSTEM_PART3))
+LDFLAGS += -L$(SYSTEM_PART3_MODULE_PATH)
+endif
+
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)

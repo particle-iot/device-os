@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
+ * @authors Matthew McGowan
+ * @date    11 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -20,21 +20,29 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
-#include "hal_dynalib.h"
-#include "hal_dynalib_core.h"
-#include "hal_dynalib_gpio.h"
-#include "hal_dynalib_i2c.h"
-#include "hal_dynalib_ota.h"
-#include "hal_dynalib_peripherals.h"
-#include "hal_dynalib_socket.h"
-#include "hal_dynalib_spi.h"
-#include "hal_dynalib_usart.h"
-#include "hal_dynalib_wlan.h"
-#include "hal_dynalib_concurrent.h"
-#include "hal_dynalib_cellular.h"
-#include "hal_dynalib_can.h"
+#ifndef MODULE_SYSTEM_PART3_INIT_H
+#define	MODULE_SYSTEM_PART3_INIT_H
 
-#ifndef HAL_USB_EXCLUDE
-#include "hal_dynalib_usb.h"
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+/*
+ * Initialize this module. This should erase the BSS area, copy initialized
+ * variables from flash to RAM.
+ * Returns a pointer to the address following the statically allocated memory.
+ */
+void* module_system_part3_pre_init();
+
+/**
+ * Called after the dynamic memory heap has been established. This function should
+ * perform any final initialization of the module, such as calling constructors on static instances.
+ */
+void module_system_part3_init();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif	/* MODULE_SYSTEM_PART3_INIT_H */
+

@@ -1,10 +1,5 @@
 /**
- ******************************************************************************
- * @file    user_module.h
- * @authors Matthew McGowan
- * @date    13 February 2015
- ******************************************************************************
-  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2013-2016 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -21,34 +16,32 @@
  ******************************************************************************
  */
 
-#ifndef USER_MODULE_H
-#define	USER_MODULE_H
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-/**
- * Initializes the static memory for this module.
- *
- * @return The end of static memory for this module.
- */
-void* module_user_pre_init();
-
-/**
- * Initializes the global object instances in this module.
- */
-void module_user_init();
-
-void module_user_loop();
-
-void module_user_setup();
-
-#ifdef __cplusplus
+static inline char ascii_nibble(uint8_t nibble) {
+    char hex_digit = nibble + 48;
+    if (57 < hex_digit)
+        hex_digit += 7;
+    return hex_digit;
 }
-#endif
 
+static inline char* concat_nibble(char* p, uint8_t nibble)
+{
+    *p++ = ascii_nibble(nibble);
+    return p;
+}
 
-#endif	/* USER_MODULE_H */
+static inline char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
+{
+    unsigned i;
+    char* result = out;
+    for (i = 0; i < len; ++i)
+    {
+        concat_nibble(out, (buf[i] >> 4));
+        out++;
+        concat_nibble(out, (buf[i] & 0xF));
+        out++;
+    }
+    return result;
+}
 

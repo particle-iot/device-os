@@ -1,8 +1,7 @@
 /**
  ******************************************************************************
- * @file    user_module.h
  * @authors Matthew McGowan
- * @date    13 February 2015
+ * @date    11 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -21,34 +20,23 @@
  ******************************************************************************
  */
 
-#ifndef USER_MODULE_H
-#define	USER_MODULE_H
+#ifndef MODULE_SYSTEM_PART3_INIT_DYNALIB_H
+#define	MODULE_SYSTEM_PART3_INIT_DYNALIB_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include "dynalib.h"
 
 /**
- * Initializes the static memory for this module.
- *
- * @return The end of static memory for this module.
+    Module-management functions
  */
-void* module_user_pre_init();
 
-/**
- * Initializes the global object instances in this module.
- */
-void module_user_init();
+DYNALIB_BEGIN(system_module_part3)
 
-void module_user_loop();
+DYNALIB_FN(0, system_module_part3, module_system_part3_pre_init, void*(void))
+DYNALIB_FN(1, system_module_part3, module_system_part3_init, void(void))
 
-void module_user_setup();
-
-#ifdef __cplusplus
-}
-#endif
+DYNALIB_END(system_module_part3)
 
 
-#endif	/* USER_MODULE_H */
+
+#endif	/* MODULE_SYSTEM_PART3_INIT_DYNALIB_H */
 

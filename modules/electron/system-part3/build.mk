@@ -1,0 +1,1 @@
+include $(SHARED_MODULAR)/part3_build.mk

@@ -16,6 +16,7 @@
 #include "core_hal.h"
 #include "rng_hal.h"
 #include "ota_flash_hal_stm32f2xx.h"
+#include "bytes2hexbuf.h"
 
 #if SOFTAP_HTTP
 #include "http_server.h"
@@ -571,15 +572,6 @@ protected:
             softap_complete_();
     }
 };
-
-static inline char ascii_nibble(uint8_t nibble) {
-    char hex_digit = nibble + 48;
-    if (57 < hex_digit)
-        hex_digit += 7;
-    return hex_digit;
-}
-
-extern "C" char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
 
 class DeviceIDCommand : public JSONCommand {
 

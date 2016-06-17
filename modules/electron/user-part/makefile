@@ -7,7 +7,7 @@ PLATFORM_DFU = $(USER_FIRMWARE_IMAGE_LOCATION)
 PLATFORM_DFU_LEAVE = y
 
 # communication used only for header declarations
-DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication-dynalib modules/electron/system-part1 modules/electron/system-part2 platform wiring_globals
+DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication-dynalib modules/electron/system-part1 modules/electron/system-part2 modules/electron/system-part3 platform wiring_globals
 MAKE_DEPENDENCIES = user hal-dynalib services-dynalib system-dynalib rt-dynalib wiring communication-dynalib platform wiring_globals
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk

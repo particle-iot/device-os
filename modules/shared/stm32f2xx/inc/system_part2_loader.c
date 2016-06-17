@@ -23,6 +23,9 @@ extern void* sbrk_heap_top;
  */
 void system_part2_pre_init() {
     // initialize dependent modules
+#if MODULE_HAS_SYSTEM_PART3
+    module_system_part3_pre_init();
+#endif
     module_system_part1_pre_init();
 
     HAL_Core_Config();
@@ -40,6 +43,10 @@ void system_part2_pre_init() {
     }
 
     // now call any C++ constructors in this module's dependencies
+
+#if MODULE_HAS_SYSTEM_PART3
+    module_system_part3_init();
+#endif
     module_system_part1_init();
 }
 

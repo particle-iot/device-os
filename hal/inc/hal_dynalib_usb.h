@@ -23,6 +23,7 @@
 
 #include "dynalib.h"
 #include "usb_config_hal.h"
+#include "platform_config.h"
 
 #ifdef DYNALIB_EXPORT
 #include "usb_hal.h"
@@ -42,7 +43,8 @@ DYNALIB_FN(7, hal_usb, HAL_USB_USART_Send_Data, int32_t(HAL_USB_USART_Serial, ui
 DYNALIB_FN(8, hal_usb, HAL_USB_USART_Flush_Data, void(HAL_USB_USART_Serial))
 DYNALIB_FN(9, hal_usb, HAL_USB_USART_Is_Enabled, bool(HAL_USB_USART_Serial))
 DYNALIB_FN(10, hal_usb, HAL_USB_USART_Is_Connected, bool(HAL_USB_USART_Serial))
-#define BASE_IDX 11
+DYNALIB_FN(11, hal_usb, HAL_USB_USART_LineCoding_BitRate_Handler, int32_t(void (*handler)(uint32_t bitRate), void* reserved))
+#define BASE_IDX 12
 #else
 #define BASE_IDX 0
 #endif
@@ -72,6 +74,21 @@ DYNALIB_FN(BASE_IDX2 + 0, hal_usb, HAL_USB_Set_Vendor_Request_Callback, void(HAL
 #else
 # define BASE_IDX3 BASE_IDX2
 #endif
+
+
+#ifdef USE_USB_OTG_FS
+	DYNALIB_FN(BASE_IDX3 + 0, hal_usb, OTG_FS_WKUP_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 1, hal_usb, OTG_FS_irq, void(void))
+	#define BASE_IDX4 (BASE_IDX3 + 2)
+#elif defined USE_USB_OTG_HS
+	DYNALIB_FN(BASE_IDX3 + 0, hal_usb, OTG_HS_WKUP_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 1, hal_usb, OTG_HS_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 2, hal_usb, OTG_HS_EP1_OUT_irq, void(void))
+	DYNALIB_FN(BASE_IDX3 + 3, hal_usb, OTG_HS_EP1_IN_irq, void(void))
+	#define BASE_IDX4 (BASE_IDX3 + 4)
+#endif
+
+
 
 DYNALIB_END(hal_usb)
 

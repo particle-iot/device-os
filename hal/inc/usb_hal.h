@@ -42,6 +42,11 @@ extern "C" {
 
 #include "usb_config_hal.h"
 
+#ifdef USE_STDPERIPH_DRIVER
+// this is one way to determine if the platform module is being used or not
+#include "hw_config.h"
+#endif
+
 #ifdef USB_VENDOR_REQUEST_ENABLE
 typedef struct HAL_USB_SetupRequest {
   union {
@@ -156,6 +161,7 @@ typedef enum HAL_USB_USART_Serial {
 } HAL_USB_USART_Serial;
 
 typedef struct HAL_USB_USART_Config {
+  uint16_t size;
   uint8_t* rx_buffer;
   uint16_t rx_buffer_size;
   uint8_t* tx_buffer;
@@ -173,7 +179,7 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data);
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial);
 bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial);
 bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial);
-
+int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved);
 #endif
 
 #ifdef USB_HID_ENABLE
@@ -181,6 +187,19 @@ void HAL_USB_HID_Init(uint8_t reserved, void* reserved1);
 void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1);
 void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t reportSize, void* reserved1);
 void HAL_USB_HID_End(uint8_t reserved);
+#endif
+
+
+// MDM: I'm putting these here so we can export them from the hal_usb dynalib
+/* USB Interrupt Handlers from usb_hal.c */
+#ifdef USE_USB_OTG_FS
+    extern void OTG_FS_WKUP_irq(void);
+    extern void OTG_FS_irq(void);
+#elif defined USE_USB_OTG_HS
+    extern void OTG_HS_EP1_OUT_irq(void);
+    extern void OTG_HS_EP1_IN_irq(void);
+    extern void OTG_HS_WKUP_irq(void);
+    extern void OTG_HS_irq(void);
 #endif
 
 

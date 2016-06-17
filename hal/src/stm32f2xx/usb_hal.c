@@ -26,6 +26,9 @@
  ******************************************************************************
  */
 
+// on some platforms the USB drivers are stored in a separate system module.
+#ifndef HAL_USB_EXCLUDE
+
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
 #include "platform_headers.h"
@@ -39,8 +42,7 @@
 #include "usbd_mhid.h"
 #include "debug.h"
 #include "usbd_desc_device.h"
-
-extern void *malloc(uint32_t size);
+#include <stdlib.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -191,11 +193,12 @@ void Get_SerialNum(void)
 
 #ifdef USB_CDC_ENABLE
 
-void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
+int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved)
 {
     // Enable Serial by default
     HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, NULL);
     LineCoding_BitRate_Handler = handler;
+    return 0;
 }
 
 uint16_t HAL_USB_USART_Request_Handler(USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len) {
@@ -268,13 +271,26 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
     }
 
     if (config) {
-        // Just in case disable interrupts
-        int32_t state = HAL_disable_irq();
-        usbUsartMap[serial].data->rx_buffer = config->rx_buffer;
-        usbUsartMap[serial].data->rx_buffer_size = config->rx_buffer_size;
+    		HAL_USB_USART_Config conf;
+    		memset(&conf, 0, sizeof(conf));
+    		memcpy(&conf, config, (config->size>sizeof(conf) ? sizeof(conf) : config->size));
 
-        usbUsartMap[serial].data->tx_buffer = config->tx_buffer;
-        usbUsartMap[serial].data->tx_buffer_size = config->tx_buffer_size;
+		if (!conf.rx_buffer) {
+    			conf.rx_buffer = malloc(USB_RX_BUFFER_SIZE);
+    			conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
+    		}
+    		if (!conf.tx_buffer) {
+    			conf.tx_buffer = malloc(USB_TX_BUFFER_SIZE);
+    			conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
+    		}
+
+    		// Just in case disable interrupts
+        int32_t state = HAL_disable_irq();
+        usbUsartMap[serial].data->rx_buffer = conf.rx_buffer;
+        usbUsartMap[serial].data->rx_buffer_size = conf.rx_buffer_size;
+
+        usbUsartMap[serial].data->tx_buffer = conf.tx_buffer;
+        usbUsartMap[serial].data->tx_buffer_size = conf.tx_buffer_size;
         HAL_enable_irq(state);
     }
 
@@ -485,114 +501,6 @@ void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t report
 #endif
 
 
-
-/************************************************************************************************************/
-/* Compatibility */
-/************************************************************************************************************/
-#ifdef USB_CDC_ENABLE
-void USB_USART_Init(uint32_t baudRate)
-{
-    if (usbUsartMap[HAL_USB_USART_SERIAL].data == NULL ||
-        usbUsartMap[HAL_USB_USART_SERIAL].data->rx_buffer == NULL ||
-        usbUsartMap[HAL_USB_USART_SERIAL].data->tx_buffer == NULL) {
-        // For compatibility we allocate buffers from heap here, as application calling USB_USART_Init
-        // assumes that the driver has its own buffers
-        HAL_USB_USART_Config conf;
-        conf.rx_buffer = malloc(USB_RX_BUFFER_SIZE);
-        conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
-        conf.tx_buffer = malloc(USB_TX_BUFFER_SIZE);
-        conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
-        HAL_USB_USART_Init(HAL_USB_USART_SERIAL, &conf);
-    }
-    if (HAL_USB_USART_Baud_Rate(HAL_USB_USART_SERIAL) != baudRate)
-    {
-        if (!baudRate && HAL_USB_USART_Baud_Rate(HAL_USB_USART_SERIAL) > 0)
-        {
-            HAL_USB_USART_End(HAL_USB_USART_SERIAL);
-        }
-        else if (!HAL_USB_USART_Baud_Rate(HAL_USB_USART_SERIAL))
-        {
-           HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, baudRate, NULL);
-        }
-    }
-}
-
-unsigned USB_USART_Baud_Rate(void)
-{
-    return HAL_USB_USART_Baud_Rate(HAL_USB_USART_SERIAL);
-}
-
-/*******************************************************************************
- * Function Name  : USB_USART_Available_Data.
- * Description    : Return the length of available data received from USB.
- * Input          : None.
- * Return         : Length.
- *******************************************************************************/
-uint8_t USB_USART_Available_Data(void)
-{
-    return HAL_USB_USART_Available_Data(HAL_USB_USART_SERIAL);
-}
-
-/*******************************************************************************
- * Function Name  : USB_USART_Receive_Data.
- * Description    : Return data sent by USB Host.
- * Input          : None
- * Return         : Data.
- *******************************************************************************/
-int32_t USB_USART_Receive_Data(uint8_t peek)
-{
-    return HAL_USB_USART_Receive_Data(HAL_USB_USART_SERIAL, peek);
-}
-
-/*******************************************************************************
- * Function Name  : USB_USART_Available_Data_For_Write.
- * Description    : Return the length of available space in TX buffer
- * Input          : None.
- * Return         : Length.
- *******************************************************************************/
-int32_t USB_USART_Available_Data_For_Write(void)
-{
-    return HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_SERIAL);
-}
-
-/*******************************************************************************
- * Function Name  : USB_USART_Send_Data.
- * Description    : Send Data from USB_USART to USB Host.
- * Input          : Data.
- * Return         : None.
- *******************************************************************************/
-void USB_USART_Send_Data(uint8_t Data)
-{
-    HAL_USB_USART_Send_Data(HAL_USB_USART_SERIAL, Data);
-}
-
-/*******************************************************************************
- * Function Name  : USB_USART_Flush_Data.
- * Description    : Flushes TX buffer
- * Input          : None.
- * Return         : None.
- *******************************************************************************/
-void USB_USART_Flush_Data(void)
-{
-    HAL_USB_USART_Flush_Data(HAL_USB_USART_SERIAL);
-}
-#endif /* USB_CDC_ENABLE */
-
-#ifdef USB_HID_ENABLE
-/*******************************************************************************
- * Function Name : USB_HID_Send_Report.
- * Description   : Send HID Report Info to Host.
- * Input         : pHIDReport and reportSize.
- * Output        : None.
- * Return value  : None.
- *******************************************************************************/
-void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize)
-{
-    HAL_USB_HID_Send_Report(0, pHIDReport, reportSize, NULL);
-}
-#endif
-
-
 #ifdef USE_USB_OTG_FS
 /**
  * @brief  This function handles OTG_FS_WKUP Handler.
@@ -669,4 +577,6 @@ void OTG_HS_EP1_OUT_irq(void)
 {
     USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
 }
+#endif
+
 #endif

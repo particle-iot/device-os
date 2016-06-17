@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_export.c
- * @author  Matthew McGowan
+ * @authors Matthew McGowan
+ * @date    09 February 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
@@ -20,21 +20,24 @@
  ******************************************************************************
  */
 
-#define DYNALIB_EXPORT
-#include "hal_dynalib.h"
-#include "hal_dynalib_core.h"
-#include "hal_dynalib_gpio.h"
-#include "hal_dynalib_i2c.h"
-#include "hal_dynalib_ota.h"
-#include "hal_dynalib_peripherals.h"
-#include "hal_dynalib_socket.h"
-#include "hal_dynalib_spi.h"
-#include "hal_dynalib_usart.h"
-#include "hal_dynalib_wlan.h"
-#include "hal_dynalib_concurrent.h"
-#include "hal_dynalib_cellular.h"
-#include "hal_dynalib_can.h"
+#ifndef SYSTEM_PART3_H
+#define	SYSTEM_PART3_H
 
-#ifndef HAL_USB_EXCLUDE
-#include "hal_dynalib_usb.h"
+#include "dynalib.h"
+
+#ifdef	__cplusplus
+extern "C" {
 #endif
+
+/**
+ * The static module-level export table of library jump table addresses.
+ */
+extern const void* const system_part3_module[];
+
+
+#ifdef	__cplusplus
+}
+#endif
+
+#endif	/* SYSTEM_PART3_H */
+
