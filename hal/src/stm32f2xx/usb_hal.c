@@ -154,6 +154,26 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
 #endif // USB_VENDOR_REQUEST_ENABLE
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
+
+static void HAL_USB_Handle_Configuration(uint8_t cfgidx)
+{
+    switch (cfgidx) {
+        case USBD_CONFIGURATION_NONE:
+            // Deconfigured
+        case USBD_CONFIGURATION_100MA: {
+            // TODO: Update PMIC current limit?
+            break;
+        }
+        case USBD_CONFIGURATION_500MA:
+        default: {
+            // TODO: Update PMIC current limit?
+            break;
+        }
+
+    }
+}
+
+
 /*******************************************************************************
  * Function Name  : SPARK_USB_Setup
  * Description    : Spark USB Setup.
@@ -173,7 +193,7 @@ void SPARK_USB_Setup(void)
 #endif
             &USR_desc,
             //&USBD_CDC_cb,
-            USBD_Composite_Instance(),
+            USBD_Composite_Instance(&HAL_USB_Handle_Configuration),
             &USR_cb);
     HAL_USB_Attach();
 }

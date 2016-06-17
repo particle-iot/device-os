@@ -41,7 +41,7 @@
 #define MAX_USED_MEDIA                  2
 #endif
 
-#define USBD_CFG_MAX_NUM                1
+#define USBD_CFG_MAX_NUM                2
 #define USBD_ITF_MAX_NUM                10
 #define USBD_DFU_INT_NUM                2
 #define USB_MAX_STR_DESC_SIZ            255

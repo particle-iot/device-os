@@ -395,7 +395,8 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
     break;
 
   case USB_DESC_TYPE_CONFIGURATION:
-      pbuf   = (uint8_t *)pdev->dev.class_cb->GetConfigDescriptor(pdev->cfg.speed, &len);
+      // We don't care much about speed, pass index of the configuration from LOBYTE(wValue)
+      pbuf   = (uint8_t *)pdev->dev.class_cb->GetConfigDescriptor((uint8_t)(req->wValue & 0xff), &len);
 #ifdef USB_OTG_HS_CORE
     if((pdev->cfg.speed == USB_OTG_SPEED_FULL )&&
        (pdev->cfg.phy_itface  == USB_OTG_ULPI_PHY))

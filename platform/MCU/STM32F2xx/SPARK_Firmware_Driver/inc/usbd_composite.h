@@ -58,7 +58,13 @@ struct USBD_Composite_Class_Data {
   void* priv;
 };
 
-USBD_Class_cb_TypeDef* USBD_Composite_Instance();
+typedef void (*USBD_Composite_Configuration_Callback)(uint8_t cfgidx);
+
+#define USBD_CONFIGURATION_NONE  0
+#define USBD_CONFIGURATION_500MA 1
+#define USBD_CONFIGURATION_100MA 2
+
+USBD_Class_cb_TypeDef* USBD_Composite_Instance(USBD_Composite_Configuration_Callback cb);
 void* USBD_Composite_Register(USBD_Multi_Instance_cb_Typedef* cb, void* priv, uint8_t front);
 void USBD_Composite_Unregister(void* cls, void* priv);
 void USBD_Composite_Set_State(void* cls, bool state);

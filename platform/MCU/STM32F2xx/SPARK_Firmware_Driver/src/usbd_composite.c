@@ -41,6 +41,7 @@ static USBD_Composite_Class_Data s_Class_Entries[USBD_COMPOSITE_MAX_CLASSES] = {
 static uint32_t s_Classes_Count = 0;
 static USBD_Composite_Class_Data* s_Classes = NULL;
 static uint8_t s_Initialized = 0;
+static USBD_Composite_Configuration_Callback s_Configuration_Callback = NULL;
 
 static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other);
 
@@ -150,13 +151,17 @@ static const uint8_t USBD_Composite_MsftExtPropOsDescr[] = {
   )
 };
 
-USBD_Class_cb_TypeDef* USBD_Composite_Instance() {
+USBD_Class_cb_TypeDef* USBD_Composite_Instance(USBD_Composite_Configuration_Callback cb) {
+  s_Configuration_Callback = cb;
   return &USBD_Composite_cb;
 }
 
 
 static uint8_t USBD_Composite_Init(void* pdev, uint8_t cfgidx) {
   uint8_t status = USBD_OK;
+
+  LOG_DEBUG(TRACE, "Initializing (0x%x)", cfgidx);
+
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
     if(c->active && c->cb->Init) {
       status += c->cb->Init(pdev, c, cfgidx);
@@ -164,6 +169,11 @@ static uint8_t USBD_Composite_Init(void* pdev, uint8_t cfgidx) {
   }
 
   s_Initialized = 1;
+
+  if (status == USBD_OK) {
+    if (s_Configuration_Callback)
+      s_Configuration_Callback(cfgidx);
+  }
 
   return status;
 }
@@ -173,11 +183,16 @@ static uint8_t USBD_Composite_DeInit(void* pdev, uint8_t cfgidx) {
 
   s_Initialized = 0;
 
+  LOG_DEBUG(TRACE, "DeInitializing (0x%x)", cfgidx);
+
   for(USBD_Composite_Class_Data* c = s_Classes; c != NULL; c = c->next) {
     if(c->active && c->cb->DeInit) {
       status += c->cb->DeInit(pdev, c, cfgidx);
     }
   }
+
+  if (s_Configuration_Callback)
+    s_Configuration_Callback(0);
 
   return status;
 }
@@ -320,7 +335,17 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
 
   uint8_t *pbuf = buf;
   uint8_t *vbuf = NULL;
+  // usbd_req.c was patched to provide LOBYTE(wValue) here, which is a bConfigurationValue
+  uint8_t configValue = speed + 1;
+
   memcpy(pbuf, USBD_Composite_CfgDescHeaderTemplate, USBD_COMPOSITE_CFGDESC_HEADER_LENGTH);
+
+  if (configValue == USBD_CONFIGURATION_100MA) {
+    // Set bMaxPower to 100mA
+    *(pbuf + USBD_COMPOSITE_CFGDESC_HEADER_LENGTH - 1) = 0x32;
+    *(pbuf + 5) = USBD_CONFIGURATION_100MA;
+  }
+
   pbuf += USBD_COMPOSITE_CFGDESC_HEADER_LENGTH;
 
   // Append all class Interface and Class Specific descriptors
@@ -373,7 +398,8 @@ static uint16_t USBD_Build_CfgDesc(uint8_t* buf, uint8_t speed, uint8_t other) {
   *(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_NUM_INTERFACES) = activeInterfaces;
   *((uint16_t *)(buf + USBD_COMPOSITE_CFGDESC_HEADER_OFFSET_TOTAL_LENGTH)) = totalLength;
 
-  LOG_DEBUG(TRACE, "Built USB descriptors: %d bytes, %d total interfaces, %d active", totalLength, totalInterfaces, activeInterfaces);
+  LOG_DEBUG(TRACE, "Built configuration (0x%x): %d bytes, %d total interfaces, %d active",
+            configValue, totalLength, totalInterfaces, activeInterfaces);
 
   return totalLength;
 }
