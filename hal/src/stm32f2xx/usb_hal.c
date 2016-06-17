@@ -251,7 +251,7 @@ void HAL_USB_Init(void)
     if (USB_Configured)
         return;
     // Pre-register Serial and USBSerial1 but keep them inactive.
-    // This is only needed to reserve interfaces #0 and #1 for Serial, and #2 and #3 for USBSerial1
+    // This is only needed to reserve interfaces #0 and #1 for Serial, and #3 and #4 for USBSerial1
     HAL_USB_USART_Init(HAL_USB_USART_SERIAL, NULL);
     HAL_USB_USART_Init(HAL_USB_USART_SERIAL1, NULL);
 
@@ -276,35 +276,44 @@ void HAL_USB_Attach(void)
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config)
 {
-    usbUsartMap[serial].data = &usbUsartInstanceData[serial];
+    if (usbUsartMap[serial].data == NULL) {
+        usbUsartMap[serial].data = &usbUsartInstanceData[serial];
 
-    if (serial == HAL_USB_USART_SERIAL) {
-        usbUsartMap[serial].data->ep_in_data = CDC0_IN_EP;
-        usbUsartMap[serial].data->ep_in_int = CDC0_CMD_EP;
-        usbUsartMap[serial].data->ep_out_data = CDC0_OUT_EP;
-        usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "Serial";
-    } else if (serial == HAL_USB_USART_SERIAL1) {
-        usbUsartMap[serial].data->ep_in_data = CDC1_IN_EP;
-        usbUsartMap[serial].data->ep_in_int = CDC1_CMD_EP;
-        usbUsartMap[serial].data->ep_out_data = CDC1_OUT_EP;
-        usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "USBSerial1";
+        if (serial == HAL_USB_USART_SERIAL) {
+            usbUsartMap[serial].data->ep_in_data = CDC0_IN_EP;
+            usbUsartMap[serial].data->ep_in_int = CDC0_CMD_EP;
+            usbUsartMap[serial].data->ep_out_data = CDC0_OUT_EP;
+            usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "Serial";
+        } else if (serial == HAL_USB_USART_SERIAL1) {
+            usbUsartMap[serial].data->ep_in_data = CDC1_IN_EP;
+            usbUsartMap[serial].data->ep_in_int = CDC1_CMD_EP;
+            usbUsartMap[serial].data->ep_out_data = CDC1_OUT_EP;
+            usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "USBSerial1";
+        }
+
+        usbUsartMap[serial].data->req_handler = HAL_USB_USART_Request_Handler;
     }
 
-    if (config) {
-    		HAL_USB_USART_Config conf;
-    		memset(&conf, 0, sizeof(conf));
-    		memcpy(&conf, config, (config->size>sizeof(conf) ? sizeof(conf) : config->size));
+    if (config && (
+        usbUsartMap[serial].data->rx_buffer == NULL ||
+        usbUsartMap[serial].data->rx_buffer_size == 0 || 
+        usbUsartMap[serial].data->tx_buffer == NULL ||
+        usbUsartMap[serial].data->tx_buffer_size == 0))
+    {
+        HAL_USB_USART_Config conf;
+        memset(&conf, 0, sizeof(conf));
+        memcpy(&conf, config, (config->size>sizeof(conf) ? sizeof(conf) : config->size));
 
-		if (!conf.rx_buffer) {
-    			conf.rx_buffer = malloc(USB_RX_BUFFER_SIZE);
-    			conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
-    		}
-    		if (!conf.tx_buffer) {
-    			conf.tx_buffer = malloc(USB_TX_BUFFER_SIZE);
-    			conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
-    		}
+        if (!conf.rx_buffer) {
+            conf.rx_buffer = malloc(USB_RX_BUFFER_SIZE);
+            conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
+        }
+        if (!conf.tx_buffer) {
+            conf.tx_buffer = malloc(USB_TX_BUFFER_SIZE);
+            conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
+        }
 
-    		// Just in case disable interrupts
+        // Just in case disable interrupts
         int32_t state = HAL_disable_irq();
         usbUsartMap[serial].data->rx_buffer = conf.rx_buffer;
         usbUsartMap[serial].data->rx_buffer_size = conf.rx_buffer_size;
@@ -313,8 +322,6 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
         usbUsartMap[serial].data->tx_buffer_size = conf.tx_buffer_size;
         HAL_enable_irq(state);
     }
-
-    usbUsartMap[serial].data->req_handler = HAL_USB_USART_Request_Handler;
 
     if (!usbUsartMap[serial].cls) {
         usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, serial == HAL_USB_USART_SERIAL ? 1 : 0);

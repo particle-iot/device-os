@@ -82,6 +82,7 @@ static uint8_t* USBD_MCDC_GetCfgDesc (uint8_t speed, USBD_Composite_Class_Data* 
 static uint8_t* USBD_MCDC_GetUsrStrDescriptor(uint8_t speed, USBD_Composite_Class_Data* cls, uint8_t index, uint16_t* length);
 
 static uint16_t USBD_MCDC_Request_Handler(USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len);
+static void USBD_MCDC_Schedule_Out(void *pdev, USBD_MCDC_Instance_Data* priv);
 
 static const uint8_t USBD_MCDC_CfgDesc[USBD_MCDC_CONFIG_DESC_SIZE] __ALIGN_END;
 
@@ -260,14 +261,9 @@ static uint8_t USBD_MCDC_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
 #ifdef CDC_CMD_EP_SHARED
   }
 #endif
-  priv->rx_state = 1;
   priv->configured = 1;
-  
-  /* Prepare Out endpoint to receive next packet */
-  DCD_EP_PrepareRx(pdev,
-                   priv->ep_out_data,
-                   (uint8_t*)(priv->rx_buffer),
-                   CDC_DATA_OUT_PACKET_SIZE);
+
+  USBD_MCDC_Schedule_Out(pdev, priv);
 
   return USBD_OK;
 }
@@ -534,7 +530,7 @@ static uint8_t  USBD_MCDC_DataOut(void* pdev, USBD_Composite_Class_Data* cls, ui
   return USBD_OK;
 }
 
-static void USBD_MCDC_Schedule_Out(void *pdev, USBD_MCDC_Instance_Data* priv)
+void USBD_MCDC_Schedule_Out(void *pdev, USBD_MCDC_Instance_Data* priv)
 {
   if (!priv->rx_state)
     USBD_MCDC_Start_Rx(pdev, priv);
