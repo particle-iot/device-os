@@ -44,6 +44,8 @@
 #include "usbd_desc_device.h"
 #include <stdlib.h>
 
+LOG_SOURCE_CATEGORY("usb.hal")
+
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
