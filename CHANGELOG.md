@@ -45,6 +45,7 @@
 
 - [Electron] Use floating point arithmetic in PWM to save about 1KB of flash space [#1027](https://github.com/spark/firmware/pull/1027)
 - Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
+- [Electron] Added a 3rd system module to provide room for additional system firmware [#1035](https://github.com/spark/firmware/pull/1035)
 
 ## v0.5.1 (same as v0.5.1-rc.2)
 
