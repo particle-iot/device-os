@@ -141,6 +141,8 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
+void spark_unsubscribe(void *reserved);
+bool spark_sync_time(void *reserved);
 
 
 void spark_process(void);

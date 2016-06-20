@@ -43,6 +43,8 @@ DYNALIB_FN(6, system_cloud, system_cloud_protocol_instance, ProtocolFacade*(void
 DYNALIB_FN(7, system_cloud, spark_deviceID, String(void))
 DYNALIB_FN(8, system_cloud, spark_send_event, bool(const char*, const char*, int, uint32_t, void*))
 DYNALIB_FN(9, system_cloud, spark_subscribe, bool(const char*, EventHandler, void*, Spark_Subscription_Scope_TypeDef, const char*, void*))
+DYNALIB_FN(10, system_cloud, spark_unsubscribe, void(void*))
+DYNALIB_FN(11, system_cloud, spark_sync_time, bool(void*))
 
 DYNALIB_END(system_cloud)
 
