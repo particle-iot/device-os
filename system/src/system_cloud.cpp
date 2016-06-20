@@ -69,6 +69,18 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
     return success;
 }
 
+void spark_unsubscribe(void *reserved)
+{
+    SYSTEM_THREAD_CONTEXT_ASYNC(spark_unsubscribe(reserved));
+    spark_protocol_remove_event_handlers(sp, NULL);
+}
+
+bool spark_sync_time(void *reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time(reserved));
+    return spark_protocol_send_time_request(sp);
+}
+
 /**
  * Convert from the API flags to the communications lib flags
  * The event visibility flag (public/private) is encoded differently. The other flags map directly.
