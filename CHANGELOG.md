@@ -1,3 +1,10 @@
+## v0.5.2
+
+### ENHANCEMENTS
+
+- [Photon/P1] Restores the default WICED country to Japan [#1014](https://github.com/spark/firmware/pull/1014)
+
+
 ## v0.5.1 (same as v0.5.1-rc.2)
 
 ### FEATURES
