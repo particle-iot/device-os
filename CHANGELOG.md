@@ -48,6 +48,13 @@
 - Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
 - [Electron] Added a 3rd system module to provide room for additional system firmware [#1035](https://github.com/spark/firmware/pull/1035)
 
+## v0.5.2
+
+### ENHANCEMENTS
+
+- [Photon/P1] Restores the default WICED country to Japan [#1014](https://github.com/spark/firmware/pull/1014)
+
+
 ## v0.5.1 (same as v0.5.1-rc.2)
 
 ### FEATURES
