@@ -1,4 +1,4 @@
-## v0.5.2
+## v0.5.2-rc.1
 
 ### ENHANCEMENTS
 
