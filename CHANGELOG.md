@@ -3,6 +3,9 @@
 ### ENHANCEMENTS
 
 - [Photon/P1] Restores the default WICED country to Japan [#1014](https://github.com/spark/firmware/pull/1014)
+
+### BUGFIXES
+
 - .syncTime() and .unsubscribe() called on the system thread. Prevents issues when multiple threads try to send messages through the cloud connection or manage the network state shared memory. [#1041](https://github.com/spark/firmware/pull/1041)
 
 
