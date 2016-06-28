@@ -183,3 +183,23 @@ test(system_flags)
     API_COMPILE(System.disable(SYSTEM_FLAG_MAX));
     API_COMPILE(System.enabled(SYSTEM_FLAG_MAX));
 }
+
+// todo - use platform feature flags
+#if defined(STM32F2XX)
+#define USER_BACKUP_RAM (1024*3)
+#endif
+
+#if defined(USER_BACKUP_RAM)
+// 4 bytes for signature
+static retained uint8_t app_backup[USER_BACKUP_RAM-4];
+
+test(backup_ram)
+{
+	int total = 0;
+	for (unsigned i=0; i<sizeof(app_backup); i++) {
+		total += app_backup[i];		// 8 bytes for the
+	}
+	Serial.println(total);
+}
+
+#endif
