@@ -40,7 +40,6 @@
 - USART 9-bit receiving. [#968](https://github.com/spark/firmware/issues/968)
 - Fix soft AP suffix broken by the addition of device id in DCT [#1030](https://github.com/spark/firmware/pull/1030)
 - WKP pin should not be enabled as a wakeup source unconditionally for STOP mode [#948](https://github.com/spark/firmware/pull/948) and [#938](https://github.com/spark/firmware/issues/938)
-- .syncTime() and .unsubscribe() called on the system thread. Prevents issues when multiple threads try to send messages through the cloud connection or manage the network state shared memory. [#1041](https://github.com/spark/firmware/pull/1041)
 
 ### INTERNAL
 
@@ -48,11 +47,15 @@
 - Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
 - [Electron] Added a 3rd system module to provide room for additional system firmware [#1035](https://github.com/spark/firmware/pull/1035)
 
-## v0.5.2
+## v0.5.2-rc.1
 
 ### ENHANCEMENTS
 
 - [Photon/P1] Restores the default WICED country to Japan [#1014](https://github.com/spark/firmware/pull/1014)
+
+### BUGFIXES
+
+- .syncTime() and .unsubscribe() called on the system thread. Prevents issues when multiple threads try to send messages through the cloud connection or manage the network state shared memory. [#1041](https://github.com/spark/firmware/pull/1041)
 
 
 ## v0.5.1 (same as v0.5.1-rc.2)

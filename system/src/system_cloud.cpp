@@ -75,10 +75,16 @@ void spark_unsubscribe(void *reserved)
     spark_protocol_remove_event_handlers(sp, NULL);
 }
 
+static void spark_sync_time_impl()
+{
+    SYSTEM_THREAD_CONTEXT_ASYNC(spark_sync_time_impl());
+    spark_protocol_send_time_request(sp);
+}
+
 bool spark_sync_time(void *reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time(reserved));
-    return spark_protocol_send_time_request(sp);
+    spark_sync_time_impl();
+    return spark_cloud_flag_connected();
 }
 
 /**
