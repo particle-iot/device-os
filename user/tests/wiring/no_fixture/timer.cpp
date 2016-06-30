@@ -168,14 +168,24 @@ test(timer_disposed_early)
 test(timer_is_active)
 {
 	Timer t(10, [] {}, true);
+	// Serial.println("not started");
 	assertFalse(t.isActive());
 	t.start();
+	// Serial.println("valid");
+	assertTrue(t.isValid());
+	// Serial.println("started");
+	delay(1);
 	assertTrue(t.isActive());
 	delay(20);
+	// Serial.println("20ms later should be stopped");
 	assertFalse(t.isActive());
 	t.start();
+	// Serial.println("re-started");
+	delay(1);
 	assertTrue(t.isActive());
 	t.stop();
+	delay(1);
+	// Serial.println("stopped");
 	assertFalse(t.isActive());
 }
 
