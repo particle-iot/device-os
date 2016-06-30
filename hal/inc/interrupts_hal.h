@@ -51,10 +51,21 @@ typedef struct HAL_InterruptCallback {
     void* data;
 } HAL_InterruptCallback;
 
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1 4
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2 5
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2
+
 typedef struct HAL_InterruptExtraConfiguration {
-  uint8_t size;
+  uint8_t version;
   uint8_t IRQChannelPreemptionPriority;
   uint8_t IRQChannelSubPriority;
+  union {
+    uint8_t flags;
+    struct {
+      uint8_t keepPriority : 1;
+      uint8_t keepHandler  : 1;
+    };
+  };
 } HAL_InterruptExtraConfiguration;
 
 #ifdef __cplusplus
@@ -63,6 +74,7 @@ extern "C" {
 
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config);
 void HAL_Interrupts_Detach(uint16_t pin);
+void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved);
 void HAL_Interrupts_Enable_All(void);
 void HAL_Interrupts_Disable_All(void);
 
