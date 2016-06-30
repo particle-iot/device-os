@@ -350,16 +350,18 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
 
             return 0;
         }
-    }
-    /* Send START condition */
-    I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
-    if (!WAIT_TIMED(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_MODE_SELECT)))
-    {
-        /* SW Reset the I2C Peripheral */
-        HAL_I2C_SoftwareReset(i2c);
+        /* Send START condition */
+        I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
-        return 0;
+        if (!WAIT_TIMED(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_MODE_SELECT)))
+        {
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset(i2c);
+
+            return 0;
+        }
+
     }
 
     /* Initialized variables here to minimize delays
@@ -402,6 +404,8 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         (void)i2cMap[i2c]->I2C_Peripheral->SR2;
         if (stop)
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+        else
+            I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
         HAL_enable_irq(state);
 
         // Wait for RXNE
@@ -437,6 +441,8 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         state = HAL_disable_irq();
         if (stop)
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+        else
+            I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
         *(pBuffer++) = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
         HAL_enable_irq(state);
@@ -499,6 +505,8 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
 
         if (stop)
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+        else
+            I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
         // Byte N-1
         *(pBuffer++) = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
@@ -516,6 +524,8 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         (void)i2cMap[i2c]->I2C_Peripheral->SR2;
         if (stop)
             I2C_GenerateSTOP(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+        else
+            I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
     }
 
     if (stop)
@@ -533,6 +543,14 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     else
     {
         i2cMap[i2c]->prevEnding = I2C_ENDING_START;
+
+        if (!WAIT_TIMED(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_MODE_SELECT)))
+        {
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset(i2c);
+
+            return 0;
+        }
     }
 
     // set rx buffer iterator vars
@@ -565,16 +583,17 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
 
             return 1;
         }
-    }
-    /* Send START condition */
-    I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
-    if (!WAIT_TIMED(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_MODE_SELECT)))
-    {
-        /* SW Reset the I2C Peripheral */
-        HAL_I2C_SoftwareReset(i2c);
+        /* Send START condition */
+        I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
-        return 2;
+        if (!WAIT_TIMED(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_MODE_SELECT)))
+        {
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset(i2c);
+
+            return 2;
+        }
     }
 
     /* Ensure ackFailure flag is cleared */
@@ -646,13 +665,24 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
 
-            return 0;
+            return 6;
         }
         i2cMap[i2c]->prevEnding = I2C_ENDING_STOP;
     }
     else
     {
         i2cMap[i2c]->prevEnding = I2C_ENDING_START;
+
+        /* Send START condition */
+        I2C_GenerateSTART(i2cMap[i2c]->I2C_Peripheral, ENABLE);
+
+        if (!WAIT_TIMED(!I2C_CheckEvent(i2cMap[i2c]->I2C_Peripheral, I2C_EVENT_MASTER_MODE_SELECT)))
+        {
+            /* SW Reset the I2C Peripheral */
+            HAL_I2C_SoftwareReset(i2c);
+
+            return 7;
+        }
     }
 
     // reset tx buffer iterator vars
