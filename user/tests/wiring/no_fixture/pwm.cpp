@@ -27,8 +27,6 @@
 #include "pwm_hal.h"
 #include "unit-test/unit-test.h"
 
-SYSTEM_MODE(MANUAL);
-
 uint8_t pwm_pins[] = {
 
 #if defined(STM32F2XX)
