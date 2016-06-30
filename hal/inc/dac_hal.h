@@ -45,6 +45,9 @@ extern "C" {
 void HAL_DAC_Write(pin_t pin, uint16_t value);
 uint8_t HAL_DAC_Is_Enabled(pin_t pin);
 uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state);
+uint8_t HAL_DAC_Get_Resolution(pin_t pin);
+void HAL_DAC_Set_Resolution(pin_t pin, uint8_t resolution);
+void HAL_DAC_Enable_Buffer(pin_t pin, uint8_t state);
 
 #ifdef __cplusplus
 }

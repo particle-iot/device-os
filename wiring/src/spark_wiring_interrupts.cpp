@@ -58,13 +58,13 @@ void call_raw_interrupt_handler(void* data)
 
 HAL_InterruptExtraConfiguration* configure_interrupt(HAL_InterruptExtraConfiguration& extra, int8_t priority, uint8_t subpriority)
 {
-	extra.size = sizeof(extra);
-    if (priority >= 0) {
-      extra.IRQChannelPreemptionPriority = (uint8_t)priority;
-      extra.IRQChannelSubPriority = subpriority;
-      return &extra;
-    }
-	return nullptr;
+  extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
+  if (priority >= 0) {
+    extra.IRQChannelPreemptionPriority = (uint8_t)priority;
+    extra.IRQChannelSubPriority = subpriority;
+    return &extra;
+  }
+  return nullptr;
 }
 
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode, int8_t priority, uint8_t subpriority)

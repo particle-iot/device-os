@@ -65,6 +65,16 @@ typedef struct exti_channel {
 
 //Array to hold user ISR function pointers
 static exti_channel exti_channels[16];
+
+typedef struct exti_state {
+    uint32_t imr;
+    uint32_t emr;
+    uint32_t rtsr;
+    uint32_t ftsr;
+} exti_state;
+
+static exti_state exti_saved_state;
+
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -99,8 +109,12 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   }
 
   // Register the handler for the user function name
-  exti_channels[GPIO_PinSource].fn = handler;
-  exti_channels[GPIO_PinSource].data = data;
+  if (config && config->version >= HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2 && config->keepHandler) {
+    // keep the old handler
+  } else {
+    exti_channels[GPIO_PinSource].fn = handler;
+    exti_channels[GPIO_PinSource].data = data;
+  }
 
   //Connect EXTI Line to appropriate Pin
   GPIO_EXTILineConfig(GPIO_PortSource, GPIO_PinSource);
@@ -139,7 +153,6 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   {
     //configure NVIC
     //select NVIC channel to configure
-    NVIC_InitStructure.NVIC_IRQChannel = GPIO_IRQn[GPIO_PinSource];
     if (config == NULL) {
       if(GPIO_PinSource > 4)
         NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 14;
@@ -149,6 +162,18 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
     } else {
       NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = config->IRQChannelPreemptionPriority;
       NVIC_InitStructure.NVIC_IRQChannelSubPriority = config->IRQChannelSubPriority;
+
+      // Keep the same priority
+      if (config->version >= HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2) {
+        if (config->keepPriority) {
+          uint32_t priorityGroup = NVIC_GetPriorityGrouping();
+          uint32_t priority = NVIC_GetPriority(NVIC_InitStructure.NVIC_IRQChannel);
+          uint32_t p, sp;
+          NVIC_DecodePriority(priority, priorityGroup, &p, &sp);
+          NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = p;
+          NVIC_InitStructure.NVIC_IRQChannelSubPriority = sp;
+        }
+      }
     }
     //enable IRQ channel
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -157,14 +182,20 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   }
 }
 
-void HAL_Interrupts_Detach(uint16_t pin)
+void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
   //Map the Spark Core pin to the appropriate pin on the STM32
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
   uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
 
   //Clear the pending interrupt flag for that interrupt pin
-  EXTI_ClearITPendingBit(gpio_pin);
+  if (!keepHandler || !exti_channels[GPIO_PinSource].fn)
+    EXTI_ClearITPendingBit(gpio_pin);
+
+  if (!keepHandler) {
+    exti_channels[GPIO_PinSource].fn = NULL;
+    exti_channels[GPIO_PinSource].data = NULL;
+  }
 
   //EXTI structure to init EXT
   EXTI_InitTypeDef EXTI_InitStructure = {0};
@@ -178,10 +209,11 @@ void HAL_Interrupts_Detach(uint16_t pin)
     //send values to registers
     EXTI_Init(&EXTI_InitStructure);
   }
+}
 
-  //unregister the user's handler
-  exti_channels[GPIO_PinSource].fn = NULL;
-  exti_channels[GPIO_PinSource].data = NULL;
+void HAL_Interrupts_Detach(uint16_t pin)
+{
+  HAL_Interrupts_Detach_Ext(pin, 0, NULL);
 }
 
 void HAL_Interrupts_Enable_All(void)
@@ -202,14 +234,20 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 }
 
-void HAL_Interrupts_Suspend(void)
-{
-  // Untested/Unsupported
+void HAL_Interrupts_Suspend(void) {
+  exti_saved_state.imr = EXTI->IMR;
+  exti_saved_state.emr = EXTI->EMR;
+  exti_saved_state.rtsr = EXTI->RTSR;
+  exti_saved_state.ftsr = EXTI->FTSR;
+
+  EXTI_DeInit();
 }
 
-void HAL_Interrupts_Restore(void)
-{
-  // Untested/Unsupported
+void HAL_Interrupts_Restore(void) {
+  EXTI->IMR = exti_saved_state.imr;
+  EXTI->EMR = exti_saved_state.emr;
+  EXTI->RTSR = exti_saved_state.rtsr;
+  EXTI->FTSR = exti_saved_state.ftsr;
 }
 
 /*******************************************************************************
