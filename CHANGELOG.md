@@ -15,6 +15,7 @@
 - [Photon/Electron/P1] Composite USB device driver with HID Mouse & Keyboard implementation for STM32F2 [#902](https://github.com/spark/firmware/pull/902) and [#528](https://github.com/spark/firmware/issues/528)
 - Exposes Device ID and Bootloader Version through USB descriptors while in DFU mode, Microsoft WCID support [#1001](https://github.com/spark/firmware/pull/1001)
 - USB vendor-specific setup request handling [#1010](https://github.com/spark/firmware/pull/1010)
+- [Electron] now allows OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
 
 ### ENHANCEMENTS
 
@@ -36,7 +37,6 @@
 - `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916) and [#925](https://github.com/spark/firmware/issues/925)
 - availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
 - `digitalRead()` interferes with `analogRead()` [#993](https://github.com/spark/firmware/issues/993)
-- [Electron] reinstated OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
 - USART 9-bit receiving. [#968](https://github.com/spark/firmware/issues/968)
 - Fix soft AP suffix broken by the addition of device id in DCT [#1030](https://github.com/spark/firmware/pull/1030)
 - WKP pin should not be enabled as a wakeup source unconditionally for STOP mode [#948](https://github.com/spark/firmware/pull/948) and [#938](https://github.com/spark/firmware/issues/938)
