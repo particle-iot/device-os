@@ -41,6 +41,7 @@
 #include "spark_wiring_constants.h"
 #include "spark_wiring_cloud.h"
 #include "system_threading.h"
+#include "spark_wiring_interrupts.h"
 
 using spark::Network;
 
@@ -146,26 +147,33 @@ inline uint8_t in_cloud_backoff_period()
 
 void handle_cloud_errors()
 {
-    WARN("Handling cloud error: %d", Spark_Error_Count);
-    int error = Spark_Error_Count;
+    int blinks = Spark_Error_Count;
+    int error = blinks;
+    WARN("Handling cloud error: %d", blinks);
     // cfod resets in orange since they are soft errors
-    // TODO: Spark_Error_Count is never equal to 1
-    LED_SetRGBColor(Spark_Error_Count > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED);
+    // TODO: Spark_Error_Count is never equal to 1, refactor into new LED handling routine
+    ATOMIC_BLOCK() {
+        LED_SetRGBColor(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED);
 
-    while (Spark_Error_Count != 0)
-    {
-        // HAL_Delay_Microseconds blocks properly
-        LED_On(LED_RGB);
-        HAL_Delay_Microseconds(500000);
-        LED_Off(LED_RGB);
-        HAL_Delay_Microseconds(500000);
-        Spark_Error_Count--;
+        while (blinks != 0)
+        {
+            // HAL_Delay_Microseconds blocks properly
+            LED_On(LED_RGB);
+            HAL_Delay_Microseconds(250000);
+            LED_Off(LED_RGB);
+            HAL_Delay_Microseconds(250000);
+            blinks--;
+        }
+        // Set the LED color back to something appropriately not orange or red.
+        if (error == 2) { // Internet test failed
+            LED_SetRGBColor(RGB_COLOR_GREEN);
+        } else if (error == 3) { // Internet connected, Cloud not reachable
+            LED_SetRGBColor(RGB_COLOR_CYAN);
+        }
+        // Now finally clear the Spark_Error_Count
+        Spark_Error_Count = 0;
     }
-    if (error == 2) { // Internet test failed
-        LED_SetRGBColor(RGB_COLOR_GREEN);
-    } else if (error == 3) { // Internet connected, Cloud not reachable
-        LED_SetRGBColor(RGB_COLOR_CYAN);
-    }
+
     // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
 
     // Reset Error Count
@@ -251,7 +259,15 @@ void establish_cloud_connection()
         // Handle errors last to ensure they are shown
         if (Spark_Error_Count > 0)
         {
-            handle_cloud_errors();
+            /* TODO: Refactor this in the new LED handling routine */
+            // handle_cloud_errors();
+
+            /* Even though we are not calling handle_cloud_errors
+             * we still need to do the most important part,
+             * reset the error count.
+             */
+            Spark_Error_Count = 0;
+            network.set_error_count(0);
         }
     }
 }
