@@ -26,7 +26,7 @@ load build
     [ -d $outdir ]
     [ -s $outdir/main.bin ]
     [ -s $outdir/main.elf ]
-    file_size_range $outdir/main.bin 70 86 K
+    file_size_range $outdir/main.bin 70 89 K
 }
 
 @test "repeat core main build silent outputs size" {
