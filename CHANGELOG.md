@@ -1,4 +1,4 @@
-## v0.5.2-rc.1
+## v0.5.2 (same as v0.5.2-rc.1)
 
 ### ENHANCEMENTS
 
