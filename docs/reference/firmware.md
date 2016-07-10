@@ -5673,6 +5673,9 @@ Retrieve the current time in the configured timezone as seconds since January 1,
 
 Note that the functions in the `Time` class expect times in UTC time, so the result from this should be used carefully.
 
+_Since 0.6.0_
+
+Local time is also affected by the Daylight Saving Time (DST) settings.
 
 ### zone()
 
@@ -5686,8 +5689,59 @@ The device will remember this offset until reboot.
 Time.zone(-4);
 ```
 
-Parameters: floating point offset from UTC in hours, from -12.0 to 13.0
+Parameters: floating point offset from UTC in hours, from -12.0 to 14.0
 
+### isDST()
+
+_Since 0.6.0_
+
+Returns true if Daylight Saving Time (DST) is in effect.
+
+```cpp
+// Print true or false depending on whether the DST in in effect
+Serial.print(Time.isDST());
+```
+
+Returns: Unsigned 8-bit integer: 0 = false, 1 = true
+
+### getDSTOffset()
+
+_Since 0.6.0_
+
+Retrieve the current Daylight Saving Time (DST) offset that is added to the current local time when Time.beginDST() has been called. The default is 1 hour.
+
+```cpp
+// Get current DST offset
+float offset = Time.getDSTOffset();
+```
+
+Returns: floating point DST offset in hours (default is +1.0 hours)
+
+### setDSTOffset()
+
+_Since 0.6.0_
+
+Set a custom Daylight Saving Time (DST) offset.
+The device will remember this offset until reboot.
+
+```cpp
+// Set DST offset to 30 minutes
+Time.setDSTOffset(0.5);
+```
+
+Parameters: floating point offset in hours, from 0.0 to 2.0
+
+### beginDST()
+
+_Since 0.6.0_
+
+Start applying Daylight Saving Time (DST) offset to the current time.
+
+### endDST()
+
+_Since 0.6.0_
+
+Stop applying Daylight Saving Time (DST) offset to the current time.
 
 ### setTime()
 
