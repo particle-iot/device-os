@@ -61,7 +61,20 @@ public:
 	static void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
 	static float	   zone();						// retrieve the current timezone
 	static void    setTime(time_t t);			// set the given time as unix/rtc time
-
+  
+  /* Retrieve the current DST offset that is added to the current local time when
+   * Time.beginDST() has been called.
+   * The default is 1 hour.
+   */
+  static float getDSTOffset();
+  /* Set a custom DST offset */
+  static void setDSTOffset(float offset);
+  /* Add the offset from getDSTOffset() to the current time */
+  static void beginDST();
+  /* Do not add the offset from getDSTOffset() to the current time */
+  static void endDST();
+  /* Returns true if DST is in effect (beginDST() was called previously) */
+  static uint8_t isDST();
 
         /* return string representation of the current time */
         inline String timeStr()

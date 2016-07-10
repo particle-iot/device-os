@@ -40,18 +40,66 @@ test(TIME_NowReturnsCorrectUnixTime) {
 test(TIME_LocalReturnsUnixTimePlusTimezone) {
     // when
 	Time.zone(-5);
-	// todo - ideally need to disable interrupts or we may get the 1 second switch between invoking
+    Time.endDST();
 	// Time.now() and Time.local();
-    time_t last_time = Time.now();
+    time_t last_time;
+    time_t local_time;
+    ATOMIC_BLOCK() {
+        last_time = Time.now();
+        local_time = Time.local();
+    }
     // then
-    time_t local_time = Time.local();
     assertEqual(local_time, last_time - (5*3600));
 }
 
+test(TIME_LocalReturnsUnixTimePlusTimezoneAndDST) {
+    // when
+    Time.zone(-5);
+    Time.setDSTOffset(1.0);
+    Time.beginDST();
+    assertTrue(Time.isDST());
+    // Time.now() and Time.local();
+    time_t last_time;
+    time_t local_time;
+    ATOMIC_BLOCK() {
+        last_time = Time.now();
+        local_time = Time.local();
+    }
+    // then
+    assertEqual(local_time, last_time - (4*3600));
+
+    Time.endDST();
+    assertFalse(Time.isDST());
+}
+
+test(TIME_LocalReturnsUnixTimePlusDST) {
+    // when
+    Time.zone(0);
+    Time.setDSTOffset(1.25);
+    Time.beginDST();
+    assertTrue(Time.isDST());
+    // Time.now() and Time.local();
+    time_t last_time;
+    time_t local_time;
+    ATOMIC_BLOCK() {
+        last_time = Time.now();
+        local_time = Time.local();
+    }
+    // then
+    assertEqual(local_time, last_time + (4500));
+
+    Time.endDST();
+    assertFalse(Time.isDST());
+}
 
 test(TIME_zoneIsReturned) {
 	Time.zone(-10);
 	assertEqual(Time.zone(), -10);
+}
+
+test(TIME_DSTOffsetIsReturned) {
+    Time.setDSTOffset(1.5);
+    assertEqual(Time.getDSTOffset(), 1.5);
 }
 
 test(TIME_SetTimeResultsInCorrectUnixTimeUpdate) {
@@ -80,8 +128,22 @@ test(TIME_ChangingTimeZoneWorksImmediately) {
     Time.zone(0);
 }
 
-test(TIME_Format) {
+test(TIME_ChangingDSTWorksImmediately) {
+    Time.zone(0.0);
+    int currentHour = Time.hour();
+    Time.setDSTOffset(1.0);
+    Time.beginDST();
+    assertTrue(Time.isDST());
+    int newHour = Time.hour();
+    assertEqual((newHour-currentHour)%12, 1);
+    Time.endDST();
+    newHour = Time.hour();
+    assertEqual((newHour-currentHour)%12, 0);
+    assertFalse(Time.isDST());
+}
 
+test(TIME_Format) {
+    Time.endDST();
     Time.zone(-5.25);
     time_t t = 1024*1024*1024;
     assertEqual(Time.timeStr(t).c_str(),(const char*)"Sat Jan 10 08:22:04 2004");
@@ -92,11 +154,28 @@ test(TIME_Format) {
     Time.zone(0);
     assertEqual(Time.format(t).c_str(), (const char*)("2004-01-10T13:37:04Z"));
     Time.setFormat(TIME_FORMAT_DEFAULT);
+
+    Time.setDSTOffset(1.5);
+    Time.zone(-5.25);
+    Time.beginDST();
+    assertTrue(Time.isDST());
+    t = 1024*1024*1024;
+    assertEqual(Time.timeStr(t).c_str(),(const char*)"Sat Jan 10 09:52:04 2004");
+    assertEqual(Time.format(t, TIME_FORMAT_DEFAULT).c_str(), (const char*)("Sat Jan 10 09:52:04 2004"));
+    assertEqual(Time.format(t, TIME_FORMAT_ISO8601_FULL).c_str(), (const char*)"2004-01-10T09:52:04-03:45");
+    Time.setFormat(TIME_FORMAT_ISO8601_FULL);
+    assertEqual(Time.format(t).c_str(), (const char*)("2004-01-10T09:52:04-03:45"));
+    Time.zone(0);
+    assertEqual(Time.format(t).c_str(), (const char*)("2004-01-10T15:07:04+01:30"));
+    Time.setFormat(TIME_FORMAT_DEFAULT);
+    Time.endDST();
+    assertFalse(Time.isDST());
 }
 
 test(TIME_concatenate) {
     // addresses reports of timeStr() not being concatenatable
     time_t t = 1024*1024*1024;
+    Time.endDST();
     Time.zone(0);
     assertEqual(Time.timeStr(t).c_str(),(const char*)"Sat Jan 10 13:37:04 2004");
     String s = Time.timeStr(t);
