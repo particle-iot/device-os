@@ -28,23 +28,28 @@ extern "C" {
  * This file is referenced from https://github.com/spark/firmware/wiki/Firmware-Release-Checklist
  */
 
-#define SYSTEM_VERSION_v040  0x00040000
-#define SYSTEM_VERSION_v041  0x00040100
-#define SYSTEM_VERSION_v042  0x00040200
-#define SYSTEM_VERSION_v043  0x00040300
-#define SYSTEM_VERSION_v044  0x00040400
-#define SYSTEM_VERSION_v045  0x00040500
-#define SYSTEM_VERSION_v046  0x00040600
-#define SYSTEM_VERSION_v047  0x00040700
-#define SYSTEM_VERSION_v048  0x00040800		// photon RTM Dec 2015
+#define SYSTEM_VERSION_v040     0x00040000
+#define SYSTEM_VERSION_v041     0x00040100
+#define SYSTEM_VERSION_v042     0x00040200
+#define SYSTEM_VERSION_v043     0x00040300
+#define SYSTEM_VERSION_v044     0x00040400
+#define SYSTEM_VERSION_v045     0x00040500
+#define SYSTEM_VERSION_v046     0x00040600
+#define SYSTEM_VERSION_v047     0x00040700
+#define SYSTEM_VERSION_v048     0x00040800	// photon RTM Dec 2015
 #define SYSTEM_VERSION_v048RC6  0x00040806	// electron RTM Jan 2016
-#define SYSTEM_VERSION_v049  0x00040900
-#define SYSTEM_VERSION_v050  0x00050000
-#define SYSTEM_VERSION_v051  0x00050100
-#define SYSTEM_VERSION_v060_rc1  0x00060001
+#define SYSTEM_VERSION_v049     0x00040900
+#define SYSTEM_VERSION_v050     0x00050000
+#define SYSTEM_VERSION_v051     0x00050100
+#define SYSTEM_VERSION_v052RC1  0x00050201
+#define SYSTEM_VERSION_v060RC1  0x00060001
 
-#define SYSTEM_VERSION  SYSTEM_VERSION_v060_rc1
+#define SYSTEM_VERSION  SYSTEM_VERSION_v060RC1
 
+/**
+ * For Library/App creators. Can be used to ensure features/api's are present.
+ * Add a new define for every XYZRCN or final XYZ release.
+ */
 #define SYSTEM_VERSION_040
 #define SYSTEM_VERSION_041
 #define SYSTEM_VERSION_042
@@ -57,8 +62,9 @@ extern "C" {
 #define SYSTEM_VERSION_048RC6
 #define SYSTEM_VERSION_049
 #define SYSTEM_VERSION_050
-#define SYSTEM_VERSION_060
 #define SYSTEM_VERSION_051
+#define SYSTEM_VERSION_052RC1
+#define SYSTEM_VERSION_060RC1
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {

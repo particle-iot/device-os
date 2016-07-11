@@ -20,6 +20,7 @@ extern "C" {
 #if PLATFORM_ID == 10 // Electron
 #include "modem/enums_hal.h"
 #endif
+#include "usb_settings.h"
 
 #ifdef	__cplusplus
 }

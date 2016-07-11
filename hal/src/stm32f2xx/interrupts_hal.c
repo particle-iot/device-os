@@ -262,18 +262,3 @@ void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
     userISR_Handle(data);
   }
 }
-
-
-int HAL_disable_irq()
-{
-  int is = __get_PRIMASK();
-  __disable_irq();
-  return is;
-}
-
-void HAL_enable_irq(int is) {
-    if ((is & 1) == 0) {
-        __enable_irq();
-    }
-}
-

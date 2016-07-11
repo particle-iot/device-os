@@ -372,6 +372,7 @@ public:
         {
             config_clear();
             on_now();
+            update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
             SPARK_LED_FADE = 1;

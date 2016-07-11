@@ -25,10 +25,13 @@ test(System_FreeMemory)
 test(system_version)
 {
     uint32_t versionNumber = System.versionNumber();
-
+    // Serial.println(System.versionNumber()); // 328193 -> 0x00050201
+    // Serial.println(System.version().c_str()); // 0.5.2-rc.1
     char expected[20];
-    sprintf(expected, "%d.%d.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1));
+    if (SYSTEM_VERSION & 0xFF)
+        sprintf(expected, "%d.%d.%d-rc.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0));
+    else
+        sprintf(expected, "%d.%d.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1));
 
     assertTrue(strcmp(expected,System.version().c_str())==0);
-
 }

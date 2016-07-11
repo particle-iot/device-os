@@ -87,6 +87,7 @@ public:
     static void factoryReset(void);
     static void dfu(bool persist=false);
     static void reset(void);
+    static void reset(uint32_t data);
 
     static void enterSafeMode(void) {
         HAL_Core_Enter_Safe_Mode(NULL);
@@ -261,17 +262,35 @@ public:
 		set_flag(flag, false);
     }
 
+    inline bool enabled(system_flag_t flag) const {
+        return get_flag(flag) != 0;
+    }
+
+
+    inline int resetReason() const
+    {
+        int reason = RESET_REASON_NONE;
+        HAL_Core_Get_Last_Reset_Info(&reason, nullptr, nullptr);
+        return reason;
+    }
+
+    inline uint32_t resetReasonData() const
+    {
+        uint32_t data = 0;
+        HAL_Core_Get_Last_Reset_Info(nullptr, &data, nullptr);
+        return data;
+    }
 
 private:
 
-    inline uint8_t get_flag(system_flag_t flag)
+    static inline uint8_t get_flag(system_flag_t flag)
     {
         uint8_t value = 0;
         system_get_flag(flag, &value, nullptr);
         return value;
     }
 
-    inline void set_flag(system_flag_t flag, uint8_t value)
+    static inline void set_flag(system_flag_t flag, uint8_t value)
     {
         system_set_flag(flag, value, nullptr);
     }

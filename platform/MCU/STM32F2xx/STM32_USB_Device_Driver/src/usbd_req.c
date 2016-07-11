@@ -30,7 +30,6 @@
 #include "usbd_ioreq.h"
 #include "usbd_desc.h"
 
-
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
@@ -148,6 +147,22 @@ static uint8_t USBD_GetLen(uint8_t *buf);
 USBD_Status  USBD_StdDevReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 {
   USBD_Status ret = USBD_OK;
+
+  if ((req->bmRequest & USB_REQ_TYPE_MASK) == USB_REQ_TYPE_VENDOR)
+  {
+    if (pdev->dev.usr_cb && pdev->dev.usr_cb->ControlRequest)
+    {
+      ret = pdev->dev.usr_cb->ControlRequest(req, 0);
+      if ((req->wLength == 0) && (ret == USBD_OK))
+      {
+        USBD_CtlSendStatus(pdev);
+      } else if (ret != USBD_OK) {
+        USBD_CtlError(pdev, req);
+      }
+    }
+
+    return ret;
+  }
 
   switch (req->bRequest)
   {
@@ -369,7 +384,6 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
   uint16_t len;
   uint8_t *pbuf;
 
-
   switch (req->wValue >> 8)
   {
   case USB_DESC_TYPE_DEVICE:
@@ -381,7 +395,8 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
     break;
 
   case USB_DESC_TYPE_CONFIGURATION:
-      pbuf   = (uint8_t *)pdev->dev.class_cb->GetConfigDescriptor(pdev->cfg.speed, &len);
+      // We don't care much about speed, pass index of the configuration from LOBYTE(wValue)
+      pbuf   = (uint8_t *)pdev->dev.class_cb->GetConfigDescriptor((uint8_t)(req->wValue & 0xff), &len);
 #ifdef USB_OTG_HS_CORE
     if((pdev->cfg.speed == USB_OTG_SPEED_FULL )&&
        (pdev->cfg.phy_itface  == USB_OTG_ULPI_PHY))
@@ -420,6 +435,12 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
       pbuf = pdev->dev.usr_device->GetInterfaceStrDescriptor(pdev->cfg.speed, &len);
       break;
 
+    case USBD_IDX_MSFT_STR:
+      if (pdev->dev.usr_device->GetMsftStrDescriptor != NULL)
+      {
+        pbuf = pdev->dev.usr_device->GetMsftStrDescriptor(pdev->cfg.speed, &len);
+        break;
+      }
     default:
 #ifdef USB_SUPPORT_USER_STRING_DESC
       pbuf = pdev->dev.class_cb->GetUsrStrDescriptor(pdev->cfg.speed, (req->wValue) , &len);

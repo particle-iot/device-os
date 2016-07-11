@@ -18,6 +18,12 @@ void HAL_Core_Setup_override_interrupts(void);
 void HAL_Core_Setup_finalize(void);
 
 /**
+ * Called by HAL_Core_Init() to perform platform-specific HAL initialization before
+ * entering the main loop and after user constructors have been called
+ */
+void HAL_Core_Init_finalize(void);
+
+/**
  * The entrypoint to start system firmware and the application.
  * This should be called from the RTOS main thread once initialization has been
  * completed, constructors invoked and and HAL_Core_Config() has been called.

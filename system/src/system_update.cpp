@@ -46,6 +46,7 @@
 #include "system_version.h"
 #include "spark_macros.h"
 #include "system_network_internal.h"
+#include "bytes2hexbuf.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -74,13 +75,17 @@ static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
 static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE == 4, "system flag value");
 static_assert(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1 == 5, "system flag value");
-static_assert(SYSTEM_FLAG_MAX == 6, "system flag max value");
+static_assert(SYSTEM_FLAG_PUBLISH_RESET_INFO == 6, "system flag value");
+static_assert(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS == 7, "system flag value");
+static_assert(SYSTEM_FLAG_MAX == 8, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     0, 1, // OTA updates pending/enabled
     0, 1, // Reset pending/enabled
     0,    // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
-	0,	  // SYSTEM_FLAG_SETUP_OVER_SERIAL1
+    0,    // SYSTEM_FLAG_SETUP_OVER_SERIAL1
+    1,    // SYSTEM_FLAG_PUBLISH_RESET_INFO
+    1     // SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS
 };
 
 const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
@@ -187,7 +192,7 @@ bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
             if (tx->descriptor.store==FileTransfer::Store::FIRMWARE) {
                 serialObj->println("Restarting system to apply firmware update...");
                 HAL_Delay_Milliseconds(100);
-                HAL_Core_System_Reset();
+                HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
             }
         }
     }

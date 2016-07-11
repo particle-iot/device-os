@@ -13,14 +13,19 @@ MEMORY
 
        The value given here is the sum of system_static_ram_size and stack_size
     */
-    SRAM      (rwx) : ORIGIN = 0x20020000 - 40K, LENGTH = 40K
+    SRAM      (rwx) : ORIGIN = 0x20020000 - 10K, LENGTH = 10K
+    
+    INCLUDE backup_ram_memory.ld    
 }
 
 
 /* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
 INCLUDE module_system_part1_export.ld
+INCLUDE module_system_part3_export.ld
+
 /* Definitions for the stack size */
 INCLUDE module_system_part2_export.ld
+
 /* Definitions for the static parts of the user module */
 INCLUDE module_user_export.ld
 

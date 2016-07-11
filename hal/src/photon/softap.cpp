@@ -16,6 +16,7 @@
 #include "core_hal.h"
 #include "rng_hal.h"
 #include "ota_flash_hal_stm32f2xx.h"
+#include "bytes2hexbuf.h"
 
 #if SOFTAP_HTTP
 #include "http_server.h"
@@ -55,8 +56,7 @@ int dns_resolve_query(const char* query)
 
 bool is_device_claimed()
 {
-    const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
-    return (*claimed)=='1';
+	return HAL_IsDeviceClaimed(nullptr);
 }
 
 
@@ -573,15 +573,6 @@ protected:
     }
 };
 
-static inline char ascii_nibble(uint8_t nibble) {
-    char hex_digit = nibble + 48;
-    if (57 < hex_digit)
-        hex_digit += 7;
-    return hex_digit;
-}
-
-char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
-
 class DeviceIDCommand : public JSONCommand {
 
     char device_id[25];
@@ -728,31 +719,31 @@ void random_code(uint8_t* dest, unsigned len) {
     bytesToCode(value, (char*)dest, len);
 }
 
-const int DEVICE_ID_LEN = 4;
+const int DEVICE_CODE_LEN = 4;
 
-STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN<=DCT_DEVICE_ID_SIZE);
+STATIC_ASSERT(device_code_len_is_same_as_dct_storage, DEVICE_CODE_LEN<=DCT_DEVICE_CODE_SIZE);
 
 
 extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
 
 /**
- * Copies the device ID to the destination, generating it if necessary.
+ * Copies the device code to the destination, generating it if necessary.
  * @param dest      A buffer with room for at least 6 characters. The
- *  device ID is copied here, without a null terminator.
- * @return true if the device ID was generated.
+ *  device code is copied here, without a null terminator.
+ * @return true if the device code was generated.
  */
-bool fetch_or_generate_device_id(wiced_ssid_t* SSID) {
-    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_ID_OFFSET);
+bool fetch_or_generate_device_code(wiced_ssid_t* SSID) {
+    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CODE_OFFSET);
     int8_t c = (int8_t)*suffix;    // check out first byte
     bool generate = (!c || c<0);
     uint8_t* dest = SSID->value+SSID->length;
-    SSID->length += DEVICE_ID_LEN;
+    SSID->length += DEVICE_CODE_LEN;
     if (generate) {
-        random_code(dest, DEVICE_ID_LEN);
-        dct_write_app_data(dest, DCT_DEVICE_ID_OFFSET, DEVICE_ID_LEN);
+        random_code(dest, DEVICE_CODE_LEN);
+        dct_write_app_data(dest, DCT_DEVICE_CODE_OFFSET, DEVICE_CODE_LEN);
     }
     else {
-        memcpy(dest, suffix, DEVICE_ID_LEN);
+        memcpy(dest, suffix, DEVICE_CODE_LEN);
     }
     return generate;
 }
@@ -779,7 +770,7 @@ bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
 bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID) {
     bool result = fetch_or_generate_ssid_prefix(SSID);
     SSID->value[SSID->length++] = '-';
-    result |= fetch_or_generate_device_id(SSID);
+    result |= fetch_or_generate_device_code(SSID);
     return result;
 }
 

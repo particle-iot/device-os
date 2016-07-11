@@ -66,7 +66,7 @@ void USARTSerial::blockOnOverrun(bool block)
 
 int USARTSerial::availableForWrite(void)
 {
-  return HAL_USART_Available_Data(_serial);
+  return HAL_USART_Available_Data_For_Write(_serial);
 }
 
 int USARTSerial::available(void)
@@ -110,6 +110,14 @@ USARTSerial::operator bool() {
 
 bool USARTSerial::isEnabled() {
   return HAL_USART_Is_Enabled(_serial);
+}
+
+void USARTSerial::breakTx() {
+  HAL_USART_Send_Break(_serial, NULL);
+}
+
+bool USARTSerial::breakRx() {
+  return (bool)HAL_USART_Break_Detected(_serial);
 }
 
 #ifndef SPARK_WIRING_NO_USART_SERIAL

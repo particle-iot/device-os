@@ -74,6 +74,8 @@ DYNALIB_FN(25, hal_core, HAL_Feature_Set, int(HAL_Feature, bool))
 #if PLATFORM_ID == 88
 DYNALIB_FN(26, hal_core, HAL_Local_Name, void(local_name_t*))
 #endif
+DYNALIB_FN(27, hal_core, HAL_Core_System_Reset_Ex, void(int, uint32_t, void*))
+DYNALIB_FN(28, hal_core, HAL_Core_Get_Last_Reset_Info, int(int*, uint32_t*, void*))
 
 DYNALIB_END(hal_core)
 

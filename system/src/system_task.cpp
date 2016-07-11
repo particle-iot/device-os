@@ -203,21 +203,20 @@ void handle_cloud_errors()
 
 void handle_cfod()
 {
-    if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
+    if (cfod_count < 255)
+        ++cfod_count;
+
+    uint8_t reset = 0;
+    system_get_flag(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS, &reset, nullptr);
+    if (reset && cfod_count >= MAX_FAILED_CONNECTS)
     {
         SPARK_WLAN_RESET = RESET_ON_CFOD;
-        ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+        ERROR("Resetting WLAN due to %d failed connect attempts", MAX_FAILED_CONNECTS);
     }
 
     if (Internet_Test() < 0)
     {
         // No Internet Connection
-        if ((cfod_count += RESET_ON_CFOD) == MAX_FAILED_CONNECTS)
-        {
-            SPARK_WLAN_RESET = RESET_ON_CFOD;
-            ERROR("Resetting CC3000 due to %d failed connect attempts", MAX_FAILED_CONNECTS);
-        }
-
         Spark_Error_Count = 2;
     }
     else

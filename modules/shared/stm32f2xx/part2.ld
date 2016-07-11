@@ -75,7 +75,7 @@ SECTIONS
 
     link_heap_location_end = ORIGIN(SRAM);
 
-    padding_length = ALIGN(system_static_ram_start - ORIGIN(SRAM), 512);
+    padding_length = ALIGN(system_part2_ram_start - ORIGIN(SRAM), 512);
 
     .padding : /* 512 byte aligned offset in SRAM */
     {
@@ -91,6 +91,8 @@ SECTIONS
         link_ram_interrupt_vectors_location_end = .;
     }> SRAM
 
+    INCLUDE backup_ram_system.ld
+
     .data : /* Contains the non-zero initialised global variables */
     {
         _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
@@ -102,7 +104,6 @@ SECTIONS
         _edata = . ;
         . = ALIGN(., 4);
     }> SRAM AT> APP_FLASH
-
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
@@ -220,13 +221,12 @@ ASSERT ( min_end_of_heap < link_static_ram_start, "Insufficient room for heap" )
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
-ASSERT ( system_static_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
+ASSERT ( system_part2_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 ASSERT ( system_part2_module_info_start == link_module_info_start, "part2 module info start not where expected" );
 ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module info end not where expected" );
 
-ASSERT ( ORIGIN(SRAM) == system_static_ram_start, "ORIGIN of SRAM should be equal to system_static_ram_start. Adjust by hand to obtain the correct address and length. ");
-ASSERT ( LENGTH(SRAM) == ( system_static_ram_size + stack_size ), "LENGTH of SRAM should be equal to system_static_ram_size plus stack_size. Adjust by hand to obtain the correct address and length. ");
-ASSERT ( system_heap_end == link_heap_location_end , "heap end locations differ" );
+ASSERT ( ORIGIN(SRAM) == system_part2_ram_start, "ORIGIN of SRAM should be equal to system_part2_ram_start. Adjust by hand to obtain the correct address and length. ");
+ASSERT ( LENGTH(SRAM) == ( system_part2_ram_size + stack_size ), "LENGTH of SRAM should be equal to system_static_ram_size plus stack_size. Adjust by hand to obtain the correct address and length. ");

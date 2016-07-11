@@ -129,6 +129,18 @@ typedef enum
 	 */
 	SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1,
 
+    /**
+     * Enable/disable publishing of last reset info to the cloud.
+     */
+    SYSTEM_FLAG_PUBLISH_RESET_INFO,
+
+    /**
+     * When 0, the system doesn't reset network connection on cloud connection errors.
+     * When 1 (default), the system resets network connection after a number of failed attempts to
+     * connect to the cloud.
+     */
+    SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS,
+
     SYSTEM_FLAG_MAX
 
 } system_flag_t;

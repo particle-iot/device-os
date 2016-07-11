@@ -1,20 +1,71 @@
 
 ## v0.6.0-rc.1
 
+### BREAKING CHANGES
+- `UDP.flush()` and `TCP.flush()`  now conform to the `Stream.flush()` behavior from Arduino 1.0 Wiring. The current (correct) behavior is to wait
+  until all data has been transmitted. Previous behavior discarded data in the buffer. [#469](https://github.com/spark/firmware/issues/469)
+
 ### FEATURES
+- [Logging](https://docs.particle.io/reference/firmware/photon/#logging) library for flexible system and application logging. 
+- [Electron] Reduced data consumption connecting to the cloud with deep sleep. (NB: see the docs for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
+- Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602) 
+- Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
+- [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
+- [System reset reporting](https://docs.particle.io/reference/firmware/core/#reset-reason) [#403](https://github.com/spark/firmware/issues/403)
+- [Photon/Electron/P1] Composite USB device driver with HID Mouse & Keyboard implementation for STM32F2 [#902](https://github.com/spark/firmware/pull/902) and [#528](https://github.com/spark/firmware/issues/528)
+- Exposes Device ID and Bootloader Version through USB descriptors while in DFU mode, Microsoft WCID support [#1001](https://github.com/spark/firmware/pull/1001)
+- USB vendor-specific setup request handling [#1010](https://github.com/spark/firmware/pull/1010)
+- [Electron] now allows OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
 
 ### ENHANCEMENTS
 
 - Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
+- [Photon/Core] MAC address is available immediately after `WiFi.on()` [#879](https://github.com/spark/firmware/issues/879)
+- [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
+- [virtual device] support for EEPROM emulation [#1004](https://github.com/spark/firmware/pull/1004)
+- Low-level RTOS queues exposed in HAL [#1018](https://github.com/spark/firmware/pull/1018)
+- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930)
+- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
+- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991)
+- [System flag](https://docs.particle.io/reference/firmware/core/#system-flags) `SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS` to control if the device resets the network when it cannot connect to the cloud. [#946](https://github.com/spark/firmware/pull/946)
 
 ### BUGFIXES
 
 - SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971) 
 - Free memory allocated for previous system interrupt handler [#927](https://github.com/spark/firmware/issues/927)
 - Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
+- `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916) and [#925](https://github.com/spark/firmware/issues/925)
+- availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
+- `digitalRead()` interferes with `analogRead()` [#993](https://github.com/spark/firmware/issues/993)
+- USART 9-bit receiving. [#968](https://github.com/spark/firmware/issues/968)
+- Fix soft AP suffix broken by the addition of device id in DCT [#1030](https://github.com/spark/firmware/pull/1030)
+- WKP pin should not be enabled as a wakeup source unconditionally for STOP mode [#948](https://github.com/spark/firmware/pull/948) and [#938](https://github.com/spark/firmware/issues/938)
+
+### INTERNAL
+
+- [Electron] Use floating point arithmetic in PWM to save about 1KB of flash space [#1027](https://github.com/spark/firmware/pull/1027)
+- Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
+- [Electron] Added a 3rd system module to provide room for additional system firmware [#1035](https://github.com/spark/firmware/pull/1035)
+
+## v0.5.2-rc.1
+
+### ENHANCEMENTS
+
+- [Photon/P1] Restores the default WICED country to Japan [#1014](https://github.com/spark/firmware/pull/1014)
+
+### BUGFIXES
+
+- .syncTime() and .unsubscribe() called on the system thread. Prevents issues when multiple threads try to send messages through the cloud connection or manage the network state shared memory. [#1041](https://github.com/spark/firmware/pull/1041)
 
 
-## v0.5.1
+## v0.5.1 (same as v0.5.1-rc.2)
+
+### FEATURES
+
+- [Electron] Added support in HAL for a SMS received callback handler.
+
+
+## v0.5.1-rc.1
 
 ### FEATURES
 
@@ -33,8 +84,6 @@
 
 
 ## v0.5.0 (same as v0.5.0-rc.2)
-
-## v0.5.0-rc.2
 
 ### FEATURES
 

@@ -41,6 +41,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 extern volatile uint8_t USART_Rx_Buffer[];
+extern uint32_t USART_Rx_Buffer_size;
 extern volatile uint32_t USART_Rx_ptr_in;
 extern volatile uint32_t USART_Rx_ptr_out;
 extern volatile uint32_t USART_Rx_length;
@@ -137,7 +138,7 @@ void Handle_USBAsynchXfer (void)
 
 	if(USB_Tx_State != 1)
 	{
-		if (USART_Rx_ptr_out == USART_RX_DATA_SIZE)
+		if (USART_Rx_ptr_out == USART_Rx_Buffer_size)
 		{
 			USART_Rx_ptr_out = 0;
 		}
@@ -150,7 +151,7 @@ void Handle_USBAsynchXfer (void)
 
 		if(USART_Rx_ptr_out > USART_Rx_ptr_in) /* rollback */
 		{
-			USART_Rx_length = USART_RX_DATA_SIZE - USART_Rx_ptr_out;
+			USART_Rx_length = USART_Rx_Buffer_size - USART_Rx_ptr_out;
 		}
 		else
 		{

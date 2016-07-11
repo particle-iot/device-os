@@ -195,6 +195,7 @@ typedef struct _Device_TypeDef
   uint8_t  *(*GetSerialStrDescriptor)( uint8_t speed , uint16_t *length);
   uint8_t  *(*GetConfigurationStrDescriptor)( uint8_t speed , uint16_t *length);
   uint8_t  *(*GetInterfaceStrDescriptor)( uint8_t speed , uint16_t *length);
+  uint8_t  *(*GetMsftStrDescriptor)( uint8_t speed , uint16_t *length);
 } USBD_DEVICE, *pUSBD_DEVICE;
 
 //typedef struct USB_OTG_hPort
@@ -245,6 +246,7 @@ typedef struct _USBD_USR_PROP
 
   void (*DeviceConnected)(void);
   void (*DeviceDisconnected)(void);
+  uint8_t (*ControlRequest)(USB_SETUP_REQ* req, uint8_t dataStage);
 
 }
 USBD_Usr_cb_TypeDef;

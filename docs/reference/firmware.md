@@ -11,6 +11,39 @@ Particle Device Firmware
 
 ## Cloud Functions
 
+{{#if electron}}
+### Optimizing Cellular Data Use with Cloud connectivity on the Electron
+
+_Since 0.6.0_
+
+When the device first connects to the cloud, it establishes a secure channel
+and informs the cloud of the registered functions, variables and subscriptions. This uses 4400 bytes of data, plus additional data for each function, variable and subscription.
+
+Subsequent reconnections to the cloud while the device is still powered does not resend this data. Instead, a small reconnection message is sent to the cloud, which uses 135 bytes.
+
+Prior to 0.6.0, when the device was reset or woken from deep sleep, the cloud connection would be fully reinitialized, which meant resending the 4400 bytes of data. From 0.6.0, the device determines that a full reinitialization isn't needed and reuses the existing session, after validating that the local state matches what was last communicated to the cloud. Connecting to the cloud after reset or wake-up sends just a reconnect message, using 135 bytes of data. A key requirement for the device to be able to determine that the existing session can be reused is that the functions, variables and subscriptions are registered BEFORE connecting to the cloud.
+
+Registering functions and variables before connecting to the cloud is easily done using `SEMI_AUTOMATIC` mode:
+
+```cpp
+// EXAMPLE USAGE
+// Using SEMI_AUTOMATIC mode to get the lowest possible data usage by
+// registering functions and variables BEFORE connecting to the cloud.
+SYSTEM_MODE(SEMI_AUTOMATIC);
+
+void setup() {
+    // register cloudy things
+    Particle.function(....);
+    Particle.variable(....);
+    Particle.subscribe(....);
+    // etc...
+    // then connect
+    Particle.connect();
+}
+```
+{{/if}}
+
+
 ### Particle.variable()
 
 Expose a *variable* through the Cloud so that it can be called with `GET /v1/devices/{DEVICE_ID}/{VARIABLE}`.
@@ -2204,8 +2237,8 @@ analogWrite(pin, value, frequency);
 `analogWrite()` takes two or three arguments:
 
 - `pin`: the number of the pin whose value you wish to set
-- `value`: the duty cycle: between 0 (always off) and 255 (always on).
-- `frequency`: the PWM frequency: between 1 Hz and 65535 Hz (default 500 Hz).
+- `value`: the duty cycle: between 0 (always off) and 255 (always on). *Since 0.6.0:* between 0 and 255 (default 8-bit resolution) or `2^(analogWriteResolution(pin)) - 1` in general.
+- `frequency`: the PWM frequency: between 1 Hz and 65535 Hz (default 500 Hz). *Since 0.6.0:* between 1 Hz and `analogWriteMaxFrequency(pin)`.
 
 **NOTE:** `pinMode(pin, OUTPUT);` is required before calling `analogWrite(pin, value);` or else the `pin` will not be initialized as a PWM output and set to the desired duty cycle.
 
@@ -2244,6 +2277,55 @@ The PWM frequency must be the same for pins in the same timer group.
 - On the Electron, the timer groups are D0/D1/C4/C5, D2/D3/A4/A5/B2/B3, WKP, RX/TX, B0/B1.
 
 **NOTE:** When used with PWM capable pins, the `analogWrite()` function sets up these pins as PWM only.  {{#unless core}}This function operates differently when used with the [`Analog Output (DAC)`](#analog-output-dac-) pins.{{/unless}}
+
+{{#unless core}}
+### analogWriteResolution() (PWM and DAC)
+{{/unless}}
+{{#if core}}
+### analogWriteResolution() (PWM)
+{{/if}}
+
+*Since 0.6.0.*
+
+Sets or retrieves the resolution of `analogWrite()` function of a particular pin.
+
+`analogWriteResolution()` takes one or two arguments:
+
+- `pin`: the number of the pin whose resolution you wish to set or retrieve
+- `resolution`: (optional) resolution in bits. The value can range from 2 to 31 bits. If the resolution is not supported, it will not be applied. 
+
+`analogWriteResolution()` returns currently set resolution.
+
+```C++
+// EXAMPLE USAGE
+pinMode(D1, OUTPUT);     // sets the pin as output
+analogWriteResolution(D1, 12); // sets analogWrite resolution to 12 bits
+analogWrite(D1, 3000, 1000); // 3000/4095 = ~73% duty cycle at 1kHz
+```
+
+{{#unless core}}
+**NOTE:** DAC pins `DAC1` (`A6`) and `DAC2` (`A3`) support only either 8-bit or 12-bit (default) resolutions.
+{{/unless}}
+
+**NOTE:** The resolution also affects maximum frequency that can be used with `analogWrite()`. The maximum frequency allowed with current resolution can be checked by calling `analogWriteMaxFrequency()`.
+
+### analogWriteMaxFrequency() (PWM)
+
+*Since 0.6.0.*
+
+Returns maximum frequency that can be used with `analogWrite()` on this pin.
+
+`analogWriteMaxFrequency()` takes one argument:
+
+- `pin`: the number of the pin
+
+```C++
+// EXAMPLE USAGE
+pinMode(D1, OUTPUT);     // sets the pin as output
+analogWriteResolution(D1, 12); // sets analogWrite resolution to 12 bits
+int maxFreq = analogWriteMaxFrequency(D1);
+analogWrite(D1, 3000, maxFreq / 2); // 3000/4095 = ~73% duty cycle
+```
 
 {{#unless core}}
 ### Analog Output (DAC)
@@ -2956,18 +3038,67 @@ _Since 0.5.0_
 
 As of 0.5.0 firmware, 28800 baud set on the Host will put the device in Listening Mode, where a YMODEM download can be started by additionally sending an `f` character.
 
-The configuration of the serial channel may also specify the number of data bits, stop bits and parity. The default is SERIAL_8N1 (8 data bits, no parity and 1 stop bit) and does not need to be specified to achieve this configuration.  To specify one of the following configurations, add one of these defines as the second parameter in the `begin()` function, e.g. `Serial.begin(9600, SERIAL_8E1);` for 8 data bits, even parity and 1 stop bit.
+The configuration of the serial channel may also specify the number of data bits, stop bits, parity, flow control and other settings. The default is SERIAL_8N1 (8 data bits, no parity and 1 stop bit) and does not need to be specified to achieve this configuration.  To specify one of the following configurations, add one of these defines as the second parameter in the `begin()` function, e.g. `Serial.begin(9600, SERIAL_8E1);` for 8 data bits, even parity and 1 stop bit.
 
-Serial configurations available:
+Pre-defined Serial configurations available:
 
-`SERIAL_8N1` - 8 data bits, no parity, 1 stop bit (default)
-`SERIAL_8N2` - 8 data bits, no parity, 2 stop bits
-`SERIAL_8E1` - 8 data bits, even parity, 1 stop bit
-`SERIAL_8E2` - 8 data bits, even parity, 2 stop bits
-`SERIAL_8O1` - 8 data bits, odd parity, 1 stop bit
-`SERIAL_8O2` - 8 data bits, odd parity, 2 stop bits
-`SERIAL_9N1` - 9 data bits, no parity, 1 stop bit
-`SERIAL_9N2` - 9 data bits, no parity, 2 stop bits
+- `SERIAL_8N1` - 8 data bits, no parity, 1 stop bit (default)
+- `SERIAL_8N2` - 8 data bits, no parity, 2 stop bits
+- `SERIAL_8E1` - 8 data bits, even parity, 1 stop bit
+- `SERIAL_8E2` - 8 data bits, even parity, 2 stop bits
+- `SERIAL_8O1` - 8 data bits, odd parity, 1 stop bit
+- `SERIAL_8O2` - 8 data bits, odd parity, 2 stop bits
+- `SERIAL_9N1` - 9 data bits, no parity, 1 stop bit
+- `SERIAL_9N2` - 9 data bits, no parity, 2 stop bits
+
+_Since 0.6.0_
+
+- `SERIAL_7O1` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7O2` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7E1` - 7 data bits, odd parity, 1 stop bit
+- `SERIAL_7E2` - 7 data bits, odd parity, 1 stop bit
+- `LIN_MASTER_13B` - 8 data bits, no parity, 1 stop bit, LIN Master mode with 13-bit break generation
+- `LIN_SLAVE_10B` - 8 data bits, no parity, 1 stop bit, LIN Slave mode with 10-bit break detection
+- `LIN_SLAVE_11B` - 8 data bits, no parity, 1 stop bit, LIN Slave mode with 11-bit break detection
+
+Alternatively, configuration may be constructed manually by ORing (`|`) the following configuration constants:
+
+Data bits:
+- `SERIAL_DATA_BITS_7` - 7 data bits
+- `SERIAL_DATA_BITS_8` - 8 data bits
+- `SERIAL_DATA_BITS_9` - 9 data bits
+
+Stop bits:
+- `SERIAL_STOP_BITS_1` - 1 stop bit
+- `SERIAL_STOP_BITS_2` - 2 stop bits
+- `SERIAL_STOP_BITS_0_5` - 0.5 stop bits
+- `SERIAL_STOP_BITS_1_5` - 1.5 stop bits
+
+Parity:
+- `SERIAL_PARITY_NO` - no parity
+- `SERIAL_PARITY_EVEN` - even parity
+- `SERIAL_PARITY_ODD` - odd parity
+
+{{#if core}}
+Hardware flow control, available only on Serial1 (`CTS` - `A0`, `RTS` - `A1`):
+{{/if}}
+{{#unless core}}
+Hardware flow control, available only on Serial2 (`CTS` - `A7`, `RTS` - `RGBR` ):
+{{/unless}}
+- `SERIAL_FLOW_CONTROL_NONE` - no flow control
+- `SERIAL_FLOW_CONTROL_RTS` - RTS flow control
+- `SERIAL_FLOW_CONTROL_CTS` - CTS flow control
+- `SERIAL_FLOW_CONTROL_RTS_CTS` - RTS/CTS flow control
+
+LIN configuration:
+- `LIN_MODE_MASTER` - LIN Master
+- `LIN_MODE_SLAVE` - LIN Slave
+- `LIN_BREAK_13B` - 13-bit break generation
+- `LIN_BREAK_10B` - 10-bit break detection
+- `LIN_BREAK_11B` - 10-bit break detection
+
+**NOTE:** LIN break detection may be enabled in both Master and Slave modes.
+
 
 ```C++
 // SYNTAX
@@ -2983,6 +3114,9 @@ Serial2.begin(speed);         // on Core via
                               // RGB-LED green(TX) and
                               // RGB-LED blue (RX) pins
 Serial2.begin(speed, config); //  "
+
+Serial1.begin(9600, SERIAL_9N1); // via TX/RX pins, 9600 9N1 mode
+Serial2.begin(9600, SERIAL_DATA_BITS_8 | SERIAL_STOP_BITS_1_5 | SERIAL_PARITY_EVEN); // via TX/RX pins, 9600 8E1.5
 {{#if electron}}
 
 Serial4.begin(speed);         // via C3(TX)/C2(RX) pins
@@ -2993,8 +3127,9 @@ Serial5.begin(speed, config); //  "
 {{/if}}
 ```
 
-`speed`: parameter that specifies the baud rate *(long)*
-`config`: parameter that specifies the number of data bits used, parity and stop bits *(long)*
+Parameters:
+- `speed`: parameter that specifies the baud rate *(long)*
+- `config`: parameter that specifies the number of data bits used, parity and stop bits *(long)*
 
 `begin()` does not return anything
 
@@ -3298,10 +3433,6 @@ so to that subsequent output appears on the next line.
 ### flush()
 
 Waits for the transmission of outgoing serial data to complete.
-
-**NOTE:** That this function does nothing at present, in particular it doesn't
-wait for the data to be sent, since this causes the application to wait indefinitely
-when there is no serial monitor connected.
 
 ```C++
 // SYNTAX
@@ -4634,7 +4765,9 @@ Returns the next byte (or character), or -1 if none is available.
 
 ### flush()
 
-Discard any bytes that have been written to the client but not yet read.
+Waits until all outgoing data in buffer has been sent.
+
+**NOTE:** That this function does nothing at present.
 
 ```C++
 // SYNTAX
@@ -4734,7 +4867,8 @@ void loop() {
     char c = Udp.read();
 
     // Ignore other chars
-    Udp.flush();
+    while(Udp.available())
+      Udp.read();
 
     // Store sender ip and port
     IPAddress ipAddress = Udp.remoteIP();
@@ -4880,6 +5014,16 @@ Returns:
 
  - `int`: returns the character in the buffer or -1 if no character is available
 
+### flush()
+
+Waits until all outgoing data in buffer has been sent.
+
+**NOTE:** That this function does nothing at present.
+
+```C++
+// SYNTAX
+Udp.flush();
+```
 
 ### stop()
 
@@ -7578,6 +7722,135 @@ void loop() {
 }
 ```
 
+### disableReset()
+
+This method allows to disable automatic resetting of the device on such events as successful firmware update.
+
+```cpp
+// EXAMPLE
+void on_reset_pending() {
+    // Enable resetting of the device. The system will reset after this method is called
+    System.enableReset();
+}
+
+void setup() {
+    // Register the event handler
+    System.on(reset_pending, on_reset_pending);
+    // Disable resetting of the device
+    System.enableReset();
+
+}
+
+void loop() {
+}
+```
+
+When the system needs to reset the device it first sends the [`reset_pending`](#system-events-reference) event to the application, and, if automatic resetting is disabled, waits until the application has called `enableReset()` to finally perform the reset. This allows the application to perform any necessary cleanup before resetting the device.
+
+### enableReset()
+
+Allows the system to reset the device when necessary.
+
+### resetPending()
+
+Returns `true` if the system needs to reset the device.
+
+### Reset Reason
+
+*Since 0.6.0*
+
+The system can track the hardware and software resets of the device.
+
+```
+// EXAMPLE
+// Restart in safe mode if the device previously reset due to a PANIC (SOS code)
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
+
+void setup() {
+   if (System.resetReason() == RESET_REASON_PANIC) {
+       System.enterSafeMode();
+   }
+}
+```
+
+You can also pass in your own data as part of an application-initiated reset:
+
+```cpp
+// EXAMPLE
+STARTUP(System.enableFeature(FEATURE_RESET_INFO));
+
+void setup() {
+    // Reset the device 3 times in a row
+    if (System.resetReason() == RESET_REASON_USER) {
+        uint32_t data = System.resetReasonData();
+        if (data < 3) {
+            System.reset(data + 1);
+        }
+    } else {
+		// This will set the reset reason to RESET_REASON_USER
+        System.reset(1);
+    }
+}
+
+```
+
+**Note:** This functionality requires `FEATURE_RESET_INFO` flag to be enabled in order to work.
+
+`resetReason()`
+
+Returns a code describing reason of the last device reset. The following codes are defined:
+
+- `RESET_REASON_PIN_RESET`: Reset button or reset pin
+- `RESET_REASON_POWER_MANAGEMENT`: Low-power management reset
+- `RESET_REASON_POWER_DOWN`: Power-down reset
+- `RESET_REASON_POWER_BROWNOUT`: Brownout reset
+- `RESET_REASON_WATCHDOG`: Hardware watchdog reset
+- `RESET_REASON_UPDATE`: Successful firmware update
+- `RESET_REASON_UPDATE_TIMEOUT`: Firmware update timeout
+- `RESET_REASON_FACTORY_RESET`: Factory reset requested
+- `RESET_REASON_SAFE_MODE`: Safe mode requested
+- `RESET_REASON_DFU_MODE`: DFU mode requested
+- `RESET_REASON_PANIC`: System panic
+- `RESET_REASON_USER`: User-requested reset
+- `RESET_REASON_UNKNOWN`: Unspecified reset reason
+- `RESET_REASON_NONE`: Information is not available
+
+`resetReasonData()`
+
+Returns a user-defined value that has been previously specified for the `System.reset()` call.
+
+`reset(uint32_t data)`
+
+This overloaded method accepts an arbitrary 32-bit value, stores it to the backup register and resets the device. The value can be retrieved via `resetReasonData()` method after the device has restarted.
+
+### System Flags
+
+The system allows to alter certain aspects of its default behavior via the system flags. The following system flags are defined:
+
+  * `SYSTEM_FLAG_PUBLISH_RESET_INFO` : enables publishing of the last [reset reason](#reset-reason) to the cloud (enabled by default)
+  * `SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS` : enables resetting of the network connection on cloud connection errors (enabled by default)
+
+```cpp
+// EXAMPLE
+// Do not publish last reset reason
+System.disable(SYSTEM_FLAG_PUBLISH_RESET_INFO);
+
+// Do not reset network connection on cloud errors
+System.disable(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS);
+```
+
+`System.enable(system_flag_t flag)`
+
+Enables the system flag.
+
+`System.disable(system_flag_t flag)`
+
+Disables the system flag.
+
+`System.enabled(system_flag_t flag)`
+
+Returns `true` if the system flag is enabled.
+
 
 ## OTA Updates
 
@@ -8224,6 +8497,341 @@ Parameters:
   * skipChar : the character to ignore while parsing (char).
 
 Returns: parsed float value (float). If no valid digits were read when the time-out occurs, 0 is returned.
+
+
+
+## Logging
+
+_Since 0.6.0_
+
+This library provides various classes for logging.
+
+```cpp
+// EXAMPLE
+
+// Use primary serial over USB interface for logging output
+SerialLogHandler logHandler;
+
+void setup() {
+    // Log some messages with different logging levels
+    Log.info("This is info message");
+    Log.warn("This is warning message");
+    Log.error("This is error message");
+
+    // Format text message
+    Log.info("System version: %s", (const char*)System.version());
+}
+
+void loop() {
+}
+```
+
+At higher level, the logging framework consists of two parts represented by their respective classes: [loggers](#logger-class) and [log handlers](#log-handlers). Most of the logging operations, such as generating a log message, are done through logger instances, while log handlers act as _sinks_ for the overall logging output generated by the system and application modules.
+
+The library provides default logger instance named `Log`, which can be used for all typical logging operations. Note that applications still need to instantiate at least one log handler in order to enable logging, otherwise most of the logging operations will have no effect. In the provided example, the application uses `SerialLogHandler` which sends the logging output to the primary serial over USB interface.
+
+Consider the following logging output as generated by the example application:
+
+`0000000047 [app] INFO: This is info message`  
+`0000000050 [app] WARN: This is warning message`  
+`0000000100 [app] ERROR: This is error message`  
+`0000000149 [app] INFO: System version: 0.6.0`
+
+Here, each line starts with a timestamp (a number of milliseconds since the system startup), `app` is a default [logging category](#logging-categories), and `INFO`, `WARN` and `ERROR` are [logging levels](#logging-levels) of the respective log messages.
+
+### Logging Levels
+
+Every log message is always associated with some logging level that describes _severity_ of the message. Supported logging levels are defined by the `LogLevel` enum (from lowest to highest level):
+
+  * `LOG_LEVEL_ALL` : special value that can be used to enable logging of all messages
+  * `LOG_LEVEL_TRACE` : verbose output for debugging purposes
+  * `LOG_LEVEL_INFO` : regular information messages
+  * `LOG_LEVEL_WARN` : warnings and non-critical errors
+  * `LOG_LEVEL_ERROR` : error messages
+  * `LOG_LEVEL_NONE` : special value that can be used to disable logging of any messages
+
+```cpp
+// EXAMPLE - message logging
+
+Log.trace("This is trace message");
+Log.info("This is info message");
+Log.warn("This is warning message");
+Log.error("This is error message");
+
+// Specify logging level directly
+Log(LOG_LEVEL_INFO, "This is info message");
+
+// Log message with the default logging level (LOG_LEVEL_INFO)
+Log("This is info message");
+```
+
+For convenience, [Logger class](#logger-class) (and its default `Log` instance) provides separate logging method for each of the defined logging levels.
+
+Log handlers can be configured to filter out messages that are below a certain logging level. By default, any messages below the `LOG_LEVEL_INFO` level are filtered out.
+
+```cpp
+// EXAMPLE - basic filtering
+
+// Log handler processing only warning and error messages
+SerialLogHandler logHandler(LOG_LEVEL_WARN);
+
+void setup() {
+    Log.trace("This is trace message"); // Ignored by the handler
+    Log.info("This is info message"); // Ignored by the handler
+    Log.warn("This is warning message");
+    Log.error("This is error message");
+}
+
+void loop() {
+}
+```
+
+In the provided example, the trace and info messages will be filtered out according to the log handler settings, which prevent log messages below the `LOG_LEVEL_WARN` level from being logged:
+
+`0000000050 [app] WARN: This is warning message`  
+`0000000100 [app] ERROR: This is error message`
+
+### Logging Categories
+
+In addition to logging level, log messages can also be associated with some _category_ name. Categories allow to organize system and application modules into namespaces, and are used for more selective filtering of the logging output.
+
+One of the typical use cases for category filtering is suppressing of non-critical system messages while preserving application messages at lower logging levels. In the provided example, a message that is not associated with the `app` category will be logged only if its logging level is at or above the warning level (`LOG_LEVEL_WARN`).
+
+```cpp
+// EXAMPLE - filtering out system messages
+
+SerialLogHandler logHandler(LOG_LEVEL_WARN, { // Logging level for non-application messages
+    { "app", LOG_LEVEL_ALL } // Logging level for application messages
+});
+```
+
+Default `Log` logger uses `app` category for all messages generated via its logging methods. In order to log messages with different category name it is necessary to instantiate another logger, passing category name to its constructor.
+
+```cpp
+// EXAMPLE - using custom loggers
+
+void connect() {
+    Logger log("app.network");
+    log.trace("Connecting to server"); // Using local logger
+}
+
+SerialLogHandler logHandler(LOG_LEVEL_WARN, { // Logging level for non-application messages
+    { "app", LOG_LEVEL_INFO }, // Default logging level for all application messages
+    { "app.network", LOG_LEVEL_TRACE } // Logging level for networking messages
+});
+
+void setup() {
+    Log.info("System started"); // Using default logger instance
+    Log.trace("My device ID: %s", (const char*)System.deviceID());
+    connect();
+}
+
+void loop() {
+}
+```
+
+Category names are written in all lower case and may contain arbitrary number of _subcategories_ separated by period character. In order to not interfere with the system logging, it is recommended to always add `app` prefix to all application-specific category names.
+
+The example application generates the following logging output:
+
+`0000000044 [app] INFO: System started`  
+`0000000044 [app.network] TRACE: Connecting to server`
+
+Note that the trace message containing device ID has been filtered out according to the log handler settings, which prevent log messages with the `app` category from being logged if their logging level is below the `LOG_LEVEL_INFO` level.
+
+Category filters are specified using _initializer list_ syntax with each element of the list containing a filter string and a minimum logging level required for messages with matching category to be logged. Note that filter string matches not only exact category name but any of its subcategory names as well, for example:
+
+  * `a` – matches `a`, `a.b`, `a.b.c` but not `aaa` or `aaa.b`
+  * `b.c` – matches `b.c`, `b.c.d` but not `a.b.c` or `b.ccc`
+
+If more than one filter matches a given category name, the most specific filter is used.
+
+### Additional Attributes
+
+As described in previous sections, certain log message attributes, such as a timestamp, are automatically added to all generated messages. The library also defines some attributes that can be used for application-specific needs:
+
+  * `code` : arbitrary integer value (e.g. error code)
+  * `details` : description string (e.g. error message)
+
+```cpp
+// EXAMPLE - specifying additional attributes
+
+SerialLogHandler logHandler;
+
+int connect() {
+    return ECONNREFUSED; // Return an error
+}
+
+void setup() {
+    Log.info("Connecting to server");
+    int error = connect();
+    if (error) {
+        // Get error message string
+        const char *message = strerror(error);
+        // Log message with additional attributes
+        Log.code(error).details(message).error("Connection error");
+    }
+}
+
+void loop() {
+}
+```
+
+The example application specifies `code` and `details` attributes for the error message, generating the following logging output:
+
+`0000000084 [app] INFO: Connecting to server`  
+`0000000087 [app] ERROR: Connection error [code = 111, details = Connection refused]`
+
+### Log Handlers
+
+In order to enable logging, application needs to instantiate at least one log handler. If necessary, several different log handlers can be instantiated at the same time.
+
+```cpp
+// EXAMPLE - enabling multiple log handlers
+
+SerialLogHandler logHandler1;
+Serial1LogHandler logHandler2(57600); // Baud rate
+
+void setup() {
+    Log.info("This is info message"); // Processed by all handlers
+}
+
+void loop() {
+}
+```
+
+The library provides the following log handlers:
+
+`SerialLogHandler`
+
+This handler uses primary serial over USB interface for the logging output ([Serial](#serial)).
+
+`SerialLogHandler(LogLevel level, const Filters &filters)`
+
+Parameters:
+
+  * level : default logging level (default value is `LOG_LEVEL_INFO`)
+  * filters : category filters (not specified by default)
+
+`Serial1LogHandler`
+
+This handler uses the device's TX and RX pins for the logging output ([Serial1](#serial)).
+
+`Serial1LogHandler(LogLevel level, const Filters &filters)`  
+`Serial1LogHandler(int baud, LogLevel level, const Filters &filters)`
+
+Parameters:
+
+  * level : default logging level (default value is `LOG_LEVEL_INFO`)
+  * filters : category filters (not specified by default)
+  * baud : baud rate (default value is 9600)
+
+### Logger Class
+
+This class is used to generate log messages. The library also provides default instance of this class named `Log`, which can be used for all typical logging operations.
+
+`Logger()`  
+`Logger(const char *name)`
+
+```cpp
+// EXAMPLE
+Logger myLogger("app.main");
+```
+
+Construct logger.
+
+Parameters:
+
+  * name : category name (default value is `app`)
+
+`const char* name()`
+
+```cpp
+// EXAMPLE
+const char *name = Log.name(); // Returns "app"
+```
+
+Returns category name set for this logger.
+
+`void trace(const char *format, ...)`  
+`void info(const char *format, ...)`  
+`void warn(const char *format, ...)`  
+`void error(const char *format, ...)`
+
+```cpp
+// EXAMPLE
+Log.trace("This is trace message");
+Log.info("This is info message");
+Log.warn("This is warn message");
+Log.error("This is error message");
+
+// Format text message
+Log.info("The secret of everything is %d", 42);
+```
+
+Generate trace, info, warning or error message respectively.
+
+Parameters:
+
+  * format : format string
+
+`void log(const char *format, ...)`  
+`void operator()(const char *format, ...)`
+
+```cpp
+// EXAMPLE
+Log("The secret of everything is %d", 42); // Generates info message
+```
+
+Generates log message with the default logging level (`LOG_LEVEL_INFO`).
+
+Parameters:
+
+  * format : format string
+
+`void log(LogLevel level, const char *format, ...)`  
+`void operator()(LogLevel level, const char *format, ...)`
+
+```cpp
+// EXAMPLE
+Log(LOG_LEVEL_INFO, "The secret of everything is %d", 42);
+```
+
+Generates log message with the specified logging level.
+
+Parameters:
+
+  * format : format string
+  * level : logging level (default value is `LOG_LEVEL_INFO`)
+
+`bool isTraceEnabled()`  
+`bool isInfoEnabled()`  
+`bool isWarnEnabled()`  
+`bool isErrorEnabled()`
+
+```cpp
+// EXAMPLE
+if (Log.isTraceEnabled()) {
+    // Do some heavy logging
+}
+```
+
+Return `true` if logging is enabled for trace, info, warning or error messages respectively.
+
+`bool isLevelEnabled(LogLevel level)`
+
+```cpp
+// EXAMPLE
+if (Log.isLevelEnabled(LOG_LEVEL_TRACE)) {
+    // Do some heavy logging
+}
+```
+
+Returns `true` if logging is enabled for the specified logging level.
+
+Parameters:
+
+  * level : logging level
 
 
 

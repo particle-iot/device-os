@@ -26,14 +26,25 @@
  ******************************************************************************
  */
 
+// on some platforms the USB drivers are stored in a separate system module.
+#ifndef HAL_USB_EXCLUDE
+
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
-#include "usbd_cdc_core.h"
+#include "platform_headers.h"
 #include "usbd_usr.h"
 #include "usb_conf.h"
 #include "usbd_desc.h"
 #include "delay_hal.h"
 #include "interrupts_hal.h"
+#include "usbd_composite.h"
+#include "usbd_mcdc.h"
+#include "usbd_mhid.h"
+#include "debug.h"
+#include "usbd_desc_device.h"
+#include <stdlib.h>
+
+LOG_SOURCE_CATEGORY("usb.hal")
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -50,23 +61,121 @@ extern uint32_t USBD_OTG_EP1IN_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 #endif
 
-/* Extern variables ----------------------------------------------------------*/
-#ifdef USB_CDC_ENABLE
-extern volatile LINE_CODING linecoding;
-extern volatile uint8_t USB_DEVICE_CONFIGURED;
-extern volatile uint8_t USB_Rx_Buffer[];
-extern volatile uint32_t USB_Rx_Buffer_head;
-extern volatile uint32_t USB_Rx_Buffer_tail;
-extern volatile uint32_t USB_Rx_Buffer_length;
-extern volatile uint8_t USB_Tx_Buffer[];
-extern volatile uint32_t USB_Tx_Buffer_head;
-extern volatile uint32_t USB_Tx_Buffer_tail;
-extern volatile uint8_t  USB_Tx_State;
-extern volatile uint8_t  USB_Rx_State;
-extern volatile uint8_t  USB_Serial_Open;
-#endif
+static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
+static uint8_t USB_Configured = 0;
+
+static uint8_t USB_SetupRequest_Data[USBD_EP0_MAX_PACKET_SIZE];
+static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
+static uint8_t USB_InSetupRequest = 0;
+static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;
+static void* USB_Vendor_Request_Ptr = NULL;
+
+#ifdef USB_VENDOR_REQUEST_ENABLE
+
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p)
+{
+    USB_Vendor_Request_Callback = cb;
+    USB_Vendor_Request_Ptr = p;
+}
+
+uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
+{
+    uint8_t ret = USBD_OK;
+
+    // Forward Microsoft vendor requests to Composite driver
+    if (req != NULL && req->bRequest == 0xee && req->wIndex == 0x0004 && req->wValue == 0x0000) {
+        return USBD_Composite_Handle_Msft_Request(&USB_OTG_dev, req);
+    }
+
+    if (USB_Vendor_Request_Callback == NULL)
+        return USBD_FAIL;
+
+    if (req != NULL) {
+        USB_SetupRequest.bmRequestType = req->bmRequest;
+        USB_SetupRequest.bRequest = req->bRequest;
+        USB_SetupRequest.wValue = req->wValue;
+        USB_SetupRequest.wIndex = req->wIndex;
+        USB_SetupRequest.wLength = req->wLength;
+
+        if (req->wLength) {
+            // Setup request with data stage
+            if (req->bmRequest & 0x80) {
+                // Device -> Host
+                if (req->wLength <= USBD_EP0_MAX_PACKET_SIZE)
+                    USB_SetupRequest.data = USB_SetupRequest_Data;
+                else
+                    USB_SetupRequest.data = NULL;
+                ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
+
+                if (ret == USBD_OK && USB_SetupRequest.data != NULL && USB_SetupRequest.wLength) {
+                    if (USB_SetupRequest.data != USB_SetupRequest_Data &&
+                        USB_SetupRequest.wLength <= USBD_EP0_MAX_PACKET_SIZE) {
+                        // Don't use user buffer if wLength <= USBD_EP0_MAX_PACKET_SIZE
+                        // and copy into internal buffer
+                        memcpy(USB_SetupRequest_Data, USB_SetupRequest.data, USB_SetupRequest.wLength);
+                    }
+                    USBD_CtlSendData (&USB_OTG_dev, USB_SetupRequest_Data, USB_SetupRequest.wLength);
+                } else {
+                    ret = USBD_FAIL;
+                }
+            } else {
+                // Host -> Device
+                USB_InSetupRequest = 1;
+                if (req->wLength <= USBD_EP0_MAX_PACKET_SIZE) {
+                    // Use internal buffer
+                    USB_SetupRequest.data = USB_SetupRequest_Data;
+                    USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest_Data, req->wLength);
+                } else {
+                    // Try to request the buffer
+                    USB_SetupRequest.data = NULL;
+                    USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
+                    if (USB_SetupRequest.data != NULL && USB_SetupRequest.wLength >= req->wLength) {
+                        USB_SetupRequest.wLength = req->wLength;
+                        USBD_CtlPrepareRx(&USB_OTG_dev, USB_SetupRequest.data, req->wLength);
+                    } else {
+                        ret = USBD_FAIL;
+                    }
+                }
+            }
+        } else {
+            // Setup request without data stage
+            USB_SetupRequest.data = NULL;
+            ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
+        }
+    } else if (dataStage && USB_InSetupRequest) {
+        // Data stage completed
+        USB_InSetupRequest = 0;
+        ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
+    } else {
+        ret = USBD_FAIL;
+    }
+
+    return ret ? USBD_FAIL : USBD_OK;
+}
+
+#endif // USB_VENDOR_REQUEST_ENABLE
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
+
+static void HAL_USB_Handle_Configuration(uint8_t cfgidx)
+{
+    switch (cfgidx) {
+        case USBD_CONFIGURATION_NONE:
+            // Deconfigured
+        case USBD_CONFIGURATION_100MA: {
+            // TODO: Update PMIC current limit?
+            break;
+        }
+        case USBD_CONFIGURATION_500MA:
+        default: {
+            // TODO: Update PMIC current limit?
+            break;
+        }
+
+    }
+}
+
+
 /*******************************************************************************
  * Function Name  : SPARK_USB_Setup
  * Description    : Spark USB Setup.
@@ -75,6 +184,9 @@ extern volatile uint8_t  USB_Serial_Open;
  *******************************************************************************/
 void SPARK_USB_Setup(void)
 {
+    if (!USB_Configured)
+        return;
+
     USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_FS
             USB_OTG_FS_CORE_ID,
@@ -82,8 +194,10 @@ void SPARK_USB_Setup(void)
             USB_OTG_HS_CORE_ID,
 #endif
             &USR_desc,
-            &USBD_CDC_cb,
-            NULL);
+            //&USBD_CDC_cb,
+            USBD_Composite_Instance(&HAL_USB_Handle_Configuration),
+            &USR_cb);
+    HAL_USB_Attach();
 }
 
 /*******************************************************************************
@@ -100,111 +214,196 @@ void Get_SerialNum(void)
 #endif
 
 #ifdef USB_CDC_ENABLE
-/*******************************************************************************
- * Function Name  : USB_USART_Init
- * Description    : Start USB-USART protocol.
- * Input          : baudRate (0 : disconnect usb else init usb).
- * Return         : None.
- *******************************************************************************/
-void USB_USART_Init(uint32_t baudRate)
+
+int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved)
 {
-    if (linecoding.bitrate != baudRate)
-    {
-        if (!baudRate && linecoding.bitrate > 0)
-        {
-            // Deconfigure CDC class endpoints
-            USBD_ClrCfg(&USB_OTG_dev, 0);
+    // Enable Serial by default
+    HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, NULL);
+    LineCoding_BitRate_Handler = handler;
+    return 0;
+}
 
-            // Class callbacks and descriptor should probably be cleared
-            // to use another USB class, but this causes a hardfault if no descriptor is set
-            // and detach/attach is performed.
-            // Leave them be for now.
+uint16_t HAL_USB_USART_Request_Handler(USBD_Composite_Class_Data* cls, uint32_t cmd, uint8_t* buf, uint32_t len) {
+    if (cmd == SET_LINE_CODING && LineCoding_BitRate_Handler) {
+        USBD_MCDC_Instance_Data* priv = (USBD_MCDC_Instance_Data*)cls->priv;
+        if (priv)
+            LineCoding_BitRate_Handler(priv->linecoding.bitrate);
+    }
 
-            // USB_OTG_dev.dev.class_cb = NULL;
-            // USB_OTG_dev.dev.usr_cb = NULL;
-            // USB_OTG_dev.dev.usr_device = NULL;
+    return 0;
+}
 
-            // Perform detach
-            USB_Cable_Config(DISABLE);
+typedef struct HAL_USB_USART_Instance_Info
+{
+    uint8_t registered;
+    void* cls;
+    USBD_MCDC_Instance_Data* data;
+} HAL_USB_USART_Info;
 
-            // Soft reattach
-            // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
-        }
-        else if (!linecoding.bitrate)
-        {
-            //Initialize USB device
-            SPARK_USB_Setup();
+static USBD_MCDC_Instance_Data usbUsartInstanceData[HAL_USB_USART_SERIAL_COUNT] = { {0} };
+static HAL_USB_USART_Info usbUsartMap[HAL_USB_USART_SERIAL_COUNT] = { {0} };
 
-            // Perform a hard Detach-Attach operation on USB bus
-            USB_Cable_Config(DISABLE);
+// static void HAL_USB_SoftReattach(void)
+// {
+//     USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
+// }
+
+void HAL_USB_Init(void)
+{
+    if (USB_Configured)
+        return;
+    // Pre-register Serial and USBSerial1 but keep them inactive.
+    // This is only needed to reserve interfaces #0 and #1 for Serial, and #3 and #4 for USBSerial1
+    HAL_USB_USART_Init(HAL_USB_USART_SERIAL, NULL);
+    HAL_USB_USART_Init(HAL_USB_USART_SERIAL1, NULL);
+
+    USB_Configured = 1;
+    SPARK_USB_Setup();
+}
+
+void HAL_USB_Detach(void)
+{
+    if (USB_Configured)
+        USB_Cable_Config(DISABLE);
+}
+
+void HAL_USB_Attach(void)
+{
+    if (USB_Configured) {
+        // Do not attach if there are no USB classes registered
+        if (USBD_Composite_Registered_Count(true) > 0)
             USB_Cable_Config(ENABLE);
-
-            // Soft reattach
-            // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
-        }
-        //linecoding.bitrate will be overwritten by USB Host
-        linecoding.bitrate = baudRate;
     }
 }
 
-unsigned USB_USART_Baud_Rate(void)
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config)
 {
-    return linecoding.bitrate;
+    if (usbUsartMap[serial].data == NULL) {
+        usbUsartMap[serial].data = &usbUsartInstanceData[serial];
+
+        if (serial == HAL_USB_USART_SERIAL) {
+            usbUsartMap[serial].data->ep_in_data = CDC0_IN_EP;
+            usbUsartMap[serial].data->ep_in_int = CDC0_CMD_EP;
+            usbUsartMap[serial].data->ep_out_data = CDC0_OUT_EP;
+            usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "Serial";
+        } else if (serial == HAL_USB_USART_SERIAL1) {
+            usbUsartMap[serial].data->ep_in_data = CDC1_IN_EP;
+            usbUsartMap[serial].data->ep_in_int = CDC1_CMD_EP;
+            usbUsartMap[serial].data->ep_out_data = CDC1_OUT_EP;
+            usbUsartMap[serial].data->name = USBD_PRODUCT_STRING " " "USBSerial1";
+        }
+
+        usbUsartMap[serial].data->req_handler = HAL_USB_USART_Request_Handler;
+    }
+
+    if (config && (
+        usbUsartMap[serial].data->rx_buffer == NULL ||
+        usbUsartMap[serial].data->rx_buffer_size == 0 || 
+        usbUsartMap[serial].data->tx_buffer == NULL ||
+        usbUsartMap[serial].data->tx_buffer_size == 0))
+    {
+        HAL_USB_USART_Config conf;
+        memset(&conf, 0, sizeof(conf));
+        memcpy(&conf, config, (config->size>sizeof(conf) ? sizeof(conf) : config->size));
+
+        if (!conf.rx_buffer) {
+            conf.rx_buffer = malloc(USB_RX_BUFFER_SIZE);
+            conf.rx_buffer_size = USB_RX_BUFFER_SIZE;
+        }
+        if (!conf.tx_buffer) {
+            conf.tx_buffer = malloc(USB_TX_BUFFER_SIZE);
+            conf.tx_buffer_size = USB_TX_BUFFER_SIZE;
+        }
+
+        // Just in case disable interrupts
+        int32_t state = HAL_disable_irq();
+        usbUsartMap[serial].data->rx_buffer = conf.rx_buffer;
+        usbUsartMap[serial].data->rx_buffer_size = conf.rx_buffer_size;
+
+        usbUsartMap[serial].data->tx_buffer = conf.tx_buffer;
+        usbUsartMap[serial].data->tx_buffer_size = conf.tx_buffer_size;
+        HAL_enable_irq(state);
+    }
+
+    if (!usbUsartMap[serial].cls) {
+        usbUsartMap[serial].cls = USBD_Composite_Register(&USBD_MCDC_cb, usbUsartMap[serial].data, serial == HAL_USB_USART_SERIAL ? 1 : 0);
+        usbUsartMap[serial].data->cls = usbUsartMap[serial].cls;
+        USBD_Composite_Set_State(usbUsartMap[serial].cls, false);
+    }
 }
 
-void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
+void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved)
 {
-    //Init USB Serial first before calling the linecoding handler
-    USB_USART_Init(9600);
-
-    // When using Arduino avrdude to upload user sketch to Duo, 
-    // this delay maybe make it miss the start signal from Arduino avrdude.
-#if PLATFORM_ID != 88
-    HAL_Delay_Milliseconds(1000);
-#endif
-
-    //Set the system defined custom handler
-    SetLineCodingBitRateHandler(handler);
+    if (!usbUsartMap[serial].data || !usbUsartMap[serial].cls) {
+        HAL_USB_USART_Init(serial, NULL);
+    }
+    
+    if (!usbUsartMap[serial].registered) {
+        if (USBD_Composite_Get_State(usbUsartMap[serial].cls) == false) {
+            // Detach, change state, re-attach
+            HAL_USB_Detach();
+            USBD_Composite_Set_State(usbUsartMap[serial].cls, true);
+            usbUsartMap[serial].registered = 1;
+            usbUsartMap[serial].data->linecoding.bitrate = baud;
+            HAL_USB_Attach();
+        }
+    }
 }
 
-static inline bool USB_USART_Connected() {
-    return linecoding.bitrate > 0 && USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED && USB_Serial_Open;
+void HAL_USB_USART_End(HAL_USB_USART_Serial serial)
+{
+    if (usbUsartMap[serial].registered) {
+        HAL_USB_Detach();
+        // Do not unregister, just deactivate to keep Serial and USBSerial1 using the same interface numbers
+        // USBD_Composite_Unregister(usbUsartMap[serial].cls, usbUsartMap[serial].data);
+        USBD_Composite_Set_State(usbUsartMap[serial].cls, false);
+        usbUsartMap[serial].registered = 0;
+        HAL_USB_Attach();
+    }
 }
 
-/*******************************************************************************
- * Function Name  : USB_USART_Available_Data.
- * Description    : Return the length of available data received from USB.
- * Input          : None.
- * Return         : Length.
- *******************************************************************************/
-uint8_t USB_USART_Available_Data(void)
+unsigned int HAL_USB_USART_Baud_Rate(HAL_USB_USART_Serial serial)
+{
+    return usbUsartMap[serial].data->linecoding.bitrate;
+}
+
+int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial)
 {
     int32_t available = 0;
     int state = HAL_disable_irq();
-    if (USB_Rx_Buffer_head >= USB_Rx_Buffer_tail)
-        available = USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
+    if (usbUsartMap[serial].data->rx_buffer_head >= usbUsartMap[serial].data->rx_buffer_tail)
+        available = usbUsartMap[serial].data->rx_buffer_head - usbUsartMap[serial].data->rx_buffer_tail;
     else
-        available = USB_Rx_Buffer_length + USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
+        available = usbUsartMap[serial].data->rx_buffer_length + usbUsartMap[serial].data->rx_buffer_head - usbUsartMap[serial].data->rx_buffer_tail;
     HAL_enable_irq(state);
     return available;
 }
 
-/*******************************************************************************
- * Function Name  : USB_USART_Receive_Data.
- * Description    : Return data sent by USB Host.
- * Input          : None
- * Return         : Data.
- *******************************************************************************/
-int32_t USB_USART_Receive_Data(uint8_t peek)
+int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial)
 {
-    if (USB_USART_Available_Data() > 0)
+    if (HAL_USB_USART_Is_Connected(serial))
     {
         int state = HAL_disable_irq();
-        uint8_t data = USB_Rx_Buffer[USB_Rx_Buffer_tail];
+        uint32_t tail = usbUsartMap[serial].data->tx_buffer_tail;
+        int32_t available = usbUsartMap[serial].data->tx_buffer_size - (usbUsartMap[serial].data->tx_buffer_head >= tail ?
+            usbUsartMap[serial].data->tx_buffer_head - tail : usbUsartMap[serial].data->tx_buffer_size + usbUsartMap[serial].data->tx_buffer_head - tail) - 1;
+        HAL_enable_irq(state);
+        return available;
+    }
+
+    return -1;
+}
+
+int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek)
+{
+    if (HAL_USB_USART_Available_Data(serial) > 0)
+    {
+        int state = HAL_disable_irq();
+        uint8_t data = usbUsartMap[serial].data->rx_buffer[usbUsartMap[serial].data->rx_buffer_tail];
         if (!peek) {
-            USB_Rx_Buffer_tail++;
-            if (USB_Rx_Buffer_tail == USB_Rx_Buffer_length)
-                USB_Rx_Buffer_tail = 0;
+            usbUsartMap[serial].data->rx_buffer_tail++;
+            if (usbUsartMap[serial].data->rx_buffer_tail == usbUsartMap[serial].data->rx_buffer_length)
+                usbUsartMap[serial].data->rx_buffer_tail = 0;
         }
         HAL_enable_irq(state);
         return data;
@@ -213,64 +412,110 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
     return -1;
 }
 
-/*******************************************************************************
- * Function Name  : USB_USART_Available_Data_For_Write.
- * Description    : Return the length of available space in TX buffer
- * Input          : None.
- * Return         : Length.
- *******************************************************************************/
-int32_t USB_USART_Available_Data_For_Write(void)
+static bool HAL_USB_WillPreempt()
 {
-    if (USB_USART_Connected())
+    if (HAL_IsISR()) {
+#ifdef USE_USB_OTG_FS
+        int32_t irq = OTG_FS_IRQn;
+#else
+        int32_t irq = OTG_HS_IRQn;
+#endif
+        if (!HAL_WillPreempt(irq, HAL_ServicedIRQn()))
+            return false;
+    }
+
+    return true;
+}
+
+int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data)
+{
+    int32_t available = 0;
+    do {
+        available = HAL_USB_USART_Available_Data_For_Write(serial);
+    }
+    while (available < 1 && available != -1 && HAL_USB_WillPreempt());
+    // Confirm once again that the Host is connected
+    if (HAL_USB_USART_Is_Connected(serial) && available > 0)
     {
-        uint32_t tail = USB_Tx_Buffer_tail;
-        int32_t available = USB_TX_BUFFER_SIZE - (USB_Tx_Buffer_head >= tail ?
-            USB_Tx_Buffer_head - tail : USB_TX_BUFFER_SIZE + USB_Tx_Buffer_head - tail) - 1;
-        return available;
+        uint32_t head = usbUsartMap[serial].data->tx_buffer_head;
+
+        usbUsartMap[serial].data->tx_buffer[head] = data;
+
+        usbUsartMap[serial].data->tx_buffer_head = ++head % usbUsartMap[serial].data->tx_buffer_size;
+
+        return 1;
     }
 
     return -1;
 }
 
-/*******************************************************************************
- * Function Name  : USB_USART_Send_Data.
- * Description    : Send Data from USB_USART to USB Host.
- * Input          : Data.
- * Return         : None.
- *******************************************************************************/
-void USB_USART_Send_Data(uint8_t Data)
+void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial)
 {
-    int32_t available = 0;
-    do {
-        available = USB_USART_Available_Data_For_Write();
-    }
-    while (available < 1 && available != -1);
-    // Confirm once again that the Host is connected
-    if (USB_USART_Connected())
-    {
-        uint32_t head = USB_Tx_Buffer_head;
-
-        USB_Tx_Buffer[head] = Data;
-
-        USB_Tx_Buffer_head = ++head % USB_TX_BUFFER_SIZE;
-    }
-}
-
-/*******************************************************************************
- * Function Name  : USB_USART_Flush_Data.
- * Description    : Flushes TX buffer
- * Input          : None.
- * Return         : None.
- *******************************************************************************/
-void USB_USART_Flush_Data(void)
-{
-    while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USB_TX_BUFFER_SIZE - 1));
+    if (!HAL_USB_WillPreempt())
+        return;
+    while(HAL_USB_USART_Is_Connected(serial) && HAL_USB_USART_Available_Data_For_Write(serial) != (usbUsartMap[serial].data->tx_buffer_size - 1));
     // We should also wait for USB_Tx_State to become 0, as hardware might still be busy transmitting data
-    while(USB_Tx_State == 1);
+    while(usbUsartMap[serial].data->tx_state == 1);
 }
-#endif
+
+bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial)
+{
+    return usbUsartMap[serial].registered;
+}
+
+bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial)
+{
+    return usbUsartMap[serial].registered && usbUsartMap[serial].cls &&
+                usbUsartMap[serial].data->linecoding.bitrate > 0 &&
+                USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED &&
+                usbUsartMap[serial].data->serial_open;
+}
+#endif /* USB_CDC_ENABLE */
 
 #ifdef USB_HID_ENABLE
+
+typedef struct HAL_USB_HID_Instance_Info {
+    uint8_t configured;
+    uint8_t registered;
+    uint8_t refcount;
+    void* cls;
+} HAL_USB_HID_Instance_Info;
+
+static HAL_USB_HID_Instance_Info usbHid = {0};
+
+void HAL_USB_HID_Init(uint8_t reserved, void* reserved1)
+{
+    if (!usbHid.configured) {
+        // Just in case run HAL_USB_Init() here to ensure that Serial and USBSerial1 were pre-registered
+        HAL_USB_Init();
+        usbHid.configured = 1;
+    }
+}
+
+void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1)
+{
+    if (usbHid.refcount == 0 && !usbHid.registered)
+    {
+        HAL_USB_Detach();
+        usbHid.cls = USBD_Composite_Register(&USBD_MHID_cb, NULL, 0);
+        usbHid.registered = 1;
+        usbHid.refcount++;
+        HAL_USB_Attach();
+    } else {
+        usbHid.refcount++;
+    }
+}
+
+void HAL_USB_HID_End(uint8_t reserved)
+{
+    if (usbHid.registered && --usbHid.refcount == 0) {
+        HAL_USB_Detach();
+        USBD_Composite_Unregister(usbHid.cls, NULL);
+        usbHid.registered = 0;
+        HAL_USB_Attach();
+    }
+}
+
 /*******************************************************************************
  * Function Name : USB_HID_Send_Report.
  * Description   : Send HID Report Info to Host.
@@ -278,11 +523,12 @@ void USB_USART_Flush_Data(void)
  * Output        : None.
  * Return value  : None.
  *******************************************************************************/
-void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
+void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t reportSize, void* reserved1)
 {
-    //To Do
+    USBD_MHID_SendReport(&USB_OTG_dev, NULL, pHIDReport, reportSize);
 }
 #endif
+
 
 #ifdef USE_USB_OTG_FS
 /**
@@ -360,4 +606,6 @@ void OTG_HS_EP1_OUT_irq(void)
 {
     USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
 }
+#endif
+
 #endif

@@ -1,9 +1,9 @@
-if [ $1 -eq 6 ] || [ $1 -eq 8 ]; then
+# if [ $1 -eq 6 ] || [ $1 -eq 8 ]; then
 	VERSION="0.6.0-rc.1"
-else if [ $1 -eq 10 ]; then
-	VERSION="0.6.0-rc.1"
-	fi
-fi
+# else if [ $1 -eq 10 ]; then
+# 	VERSION="0.6.0-rc.1"
+# 	fi
+# fi
 
 function release_file()
 {
@@ -31,10 +31,13 @@ mkdir -p $OUT
 rm -rf ../build/target
 if [ $1 -eq 6 ] || [ $1 -eq 8 ]; then
 	make -s PLATFORM_ID=$PLATFORM_ID clean all COMPILE_LTO=n
+	release_binary system-part1
+	release_binary system-part2
 else if [ $1 -eq 10 ]; then
 	make -s PLATFORM_ID=$PLATFORM_ID clean all COMPILE_LTO=n DEBUG_BUILD=y # APP=tinker_electron
+	release_binary system-part1
+	release_binary system-part2
+	release_binary system-part3
 	fi
 fi
-release_binary system-part1
-release_binary system-part2
 

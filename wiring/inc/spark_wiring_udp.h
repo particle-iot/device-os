@@ -201,9 +201,15 @@ public:
 	virtual int peek();
 
         /**
-         * Discards the currently read packet.
+         * Blocks until all data has been sent out
          */
 	virtual void flush();
+
+
+    /**
+     * Discards the currently read packet.
+     */
+    void flush_buffer();
 
 
 	virtual IPAddress remoteIP() { return _remoteIP; };

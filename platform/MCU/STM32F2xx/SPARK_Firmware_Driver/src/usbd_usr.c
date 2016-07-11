@@ -30,6 +30,8 @@
 #include "usbd_usr.h"
 #include "usbd_ioreq.h"
 
+extern uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage);
+
 USBD_Usr_cb_TypeDef USR_cb =
 {
         USBD_USR_Init,
@@ -40,6 +42,7 @@ USBD_Usr_cb_TypeDef USR_cb =
 
         USBD_USR_DeviceConnected,
         USBD_USR_DeviceDisconnected,
+        HAL_USB_Handle_Vendor_Request
 };
 
 /**

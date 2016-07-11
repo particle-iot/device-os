@@ -1061,14 +1061,14 @@ sock_handle_t socket_handle_invalid()
     return SOCKET_INVALID;
 }
 
-sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void * /*reserved*/)
+sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, socket_multicast_info_t * /*reserved*/)
 {
     wiced_ip_address_t multicast_address;
     SET_IPV4_ADDRESS(multicast_address, address->ipv4);
     return as_sock_result(wiced_multicast_join(wiced_wlan_interface(nif), &multicast_address));
 }
 
-sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void * /*reserved*/)
+sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, socket_multicast_info_t * /*reserved*/)
 {
     wiced_ip_address_t multicast_address;
     SET_IPV4_ADDRESS(multicast_address, address->ipv4);

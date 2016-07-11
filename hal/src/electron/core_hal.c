@@ -45,17 +45,6 @@ extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
-/* USB Interrupt Handlers from usb_hal.c */
-#ifdef USE_USB_OTG_FS
-    extern void OTG_FS_WKUP_irq(void);
-    extern void OTG_FS_irq(void);
-#elif defined USE_USB_OTG_HS
-    extern void OTG_HS_EP1_OUT_irq(void);
-    extern void OTG_HS_EP1_IN_irq(void);
-    extern void OTG_HS_WKUP_irq(void);
-    extern void OTG_HS_irq(void);
-#endif
-
 #if 0
 IDX[x] = added IRQ handler
 00 [ ] _estack
@@ -353,10 +342,10 @@ int main(void)
 }
 
 /**
- * Called at the beginning of app_setup_and_loop() from main.cpp to
- * pre-initialize any low level hardware before the main loop runs.
+ * Called by HAL_Core_Init() to pre-initialize any low level hardware before
+ * the main loop runs.
  */
-void HAL_Core_Init(void)
+void HAL_Core_Init_finalize(void)
 {
 }
 
@@ -385,6 +374,8 @@ void HAL_Core_Setup_finalize(void)
 {
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTick_Handler_Idx] = (uint32_t)SysTickChain;
+    // retained memory is critical for efficient data use on the electron
+    HAL_Feature_Set(FEATURE_RETAINED_MEMORY, ENABLE);
 }
 
 /******************************************************************************/

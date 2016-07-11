@@ -42,6 +42,7 @@ uint32_t last_baudRate;
 void USB_USART_Init(uint32_t baudRate)
 {
     last_baudRate = baudRate;
+    std::cout.setf(std::ios::unitbuf);
 }
 
 /*******************************************************************************
@@ -109,6 +110,73 @@ void USB_USART_Send_Data(uint8_t Data)
  *******************************************************************************/
 void USB_USART_Flush_Data(void)
 {
+}
+
+void HAL_USB_Init(void)
+{
+}
+
+void HAL_USB_Attach()
+{
+}
+
+void HAL_USB_Detach()
+{
+}
+
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config)
+{
+}
+
+void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved)
+{
+  USB_USART_Init(baud);
+}
+
+void HAL_USB_USART_End(HAL_USB_USART_Serial serial)
+{
+  USB_USART_Init(0);
+}
+
+unsigned int HAL_USB_USART_Baud_Rate(HAL_USB_USART_Serial serial)
+{
+  return USB_USART_Baud_Rate();
+}
+
+int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial)
+{
+  return USB_USART_Available_Data();
+}
+
+int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial)
+{
+  return USB_USART_Available_Data_For_Write();
+}
+
+int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek)
+{
+  return USB_USART_Receive_Data(peek);
+}
+
+int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data)
+{
+  USB_USART_Send_Data(data);
+  return 1;
+}
+
+void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial)
+{
+  USB_USART_Flush_Data();
+}
+
+bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial)
+{
+  return true;
+}
+
+bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial)
+{
+  return true;
 }
 
 #ifdef USB_HID_ENABLE

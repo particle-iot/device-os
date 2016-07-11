@@ -77,7 +77,7 @@ extern constructor_ptr_t link_constructors_end;
 void module_system_part1_init()
 {
     // invoke constructors
-    int ctor_num;
+    unsigned int ctor_num;
     for (ctor_num=0; ctor_num < link_constructors_size/sizeof(constructor_ptr_t); ctor_num++ )
     {
         link_constructors_location[ctor_num]();
