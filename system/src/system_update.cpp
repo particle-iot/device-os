@@ -221,7 +221,7 @@ bool system_avrdudeFileTransfer(system_file_transfer_t* tx, void* reserved)
             if (tx->descriptor.store==FileTransfer::Store::FIRMWARE) {
                 //serialObj->println("Restarting system to apply firmware update...");
                 HAL_Delay_Milliseconds(100);
-                HAL_Core_System_Reset();
+                HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
             }
         }
         else
@@ -271,7 +271,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
         EXTRA_SYSTEM_FLAG(arduino_upload) = 0xAABB;
         Save_ExtraSystemFlags();
 
-        USB_Cable_Config(DISABLE);
+        HAL_USB_Detach();
         NVIC_SystemReset();
     }
 #endif
