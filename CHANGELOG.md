@@ -1,3 +1,13 @@
+## v0.5.3-rc.1
+
+### BUGFIXES
+
+- SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971)
+- Free memory allocated for previous system interrupt handler [#927](https://github.com/spark/firmware/issues/927)
+- availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
+- `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916) and [#925](https://github.com/spark/firmware/issues/925)
+- Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
+
 ## v0.5.2 (same as v0.5.2-rc.1)
 
 ### ENHANCEMENTS

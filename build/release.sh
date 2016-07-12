@@ -1,5 +1,5 @@
 #if [ $1 -eq 6 ] || [ $1 -eq 8 ]; then
-	VERSION="0.5.2"
+	VERSION="0.5.3-rc.1"
 #else if [ $1 -eq 10 ]; then
 #	VERSION="0.5.0-rc.2"
 #	fi
