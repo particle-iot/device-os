@@ -41,11 +41,7 @@
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "RedBear"
 
-#define USBD_PRODUCT_HS_STRING          "Duo DFU Mode"
-#define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
-
-#define USBD_PRODUCT_FS_STRING          "Duo DFU Mode"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
+#define USBD_PRODUCT_NAME               "Duo"
 
 #else
 	
@@ -59,6 +55,9 @@
 #else
 # define USBD_PRODUCT_NAME              "Photon"
 #endif
+
+#endif
+
 #define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"
 #define USBD_CONFIGURATION_STRING       "DFU"
 #define USBD_INTERFACE_STRING           "DFU"
