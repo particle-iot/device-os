@@ -44,7 +44,7 @@ int32_t readRegister(uint8_t slaveAddress, uint8_t addr, bool stop, bool stopAft
     Wire.write(addr);
     int32_t err = -Wire.endTransmission(stopAfterWrite);
     if (err == 0) {
-        err = Wire.requestFrom(slaveAddress, (uint8_t)1, stop);
+        err = Wire.requestFrom(slaveAddress, (uint8_t)1, (uint8_t)stop);
         if (err == 1) {
             return Wire.read();
         } else {
@@ -63,7 +63,7 @@ int32_t readRegister(uint8_t slaveAddress, uint8_t addr, uint8_t* buffer, uint8_
     Wire.write(addr);
     int32_t err = -Wire.endTransmission(stopAfterWrite);
     if (err == 0) {
-        err = Wire.requestFrom(slaveAddress, len, stop);
+        err = Wire.requestFrom(slaveAddress, len, (uint8_t)stop);
         if (err == len) {
             while (len-- > 0) {
                 uint8_t b = Wire.read();
@@ -82,7 +82,7 @@ int32_t readRegister(uint8_t slaveAddress, uint8_t addr, uint8_t* buffer, uint8_
 }
 
 int32_t readAddr(uint8_t slaveAddress, uint8_t* buffer, uint8_t len, bool stop) {
-    int32_t err = Wire.requestFrom(slaveAddress, len, stop);
+    int32_t err = Wire.requestFrom(slaveAddress, len, (uint8_t)stop);
     if (err == len) {
         while(len-- > 0) {
             (*buffer++) = Wire.read();

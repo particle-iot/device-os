@@ -230,13 +230,13 @@ test(7_I2C_MCP23017_HighPriorityInterruptsAndNastyThreadDisablingContextSwitchin
 void mcp23017_looped_test() {
     // With STOP conditions
     // Read GPIO state
-    uint8_t gpioa = i2c::readRegister(s_mcpAddress, 0x12);
-    uint8_t gpiob = i2c::readRegister(s_mcpAddress, 0x13);
+    uint8_t gpioa = i2c::readRegister(s_mcpAddress, 0x12, true, true);
+    uint8_t gpiob = i2c::readRegister(s_mcpAddress, 0x13, true, true);
     assertEqual(i2c::errorCount, 0);
 
     // Invert GPIO state
-    i2c::writeRegister(s_mcpAddress, 0x12, ~gpioa);
-    i2c::writeRegister(s_mcpAddress, 0x13, ~gpiob);
+    i2c::writeRegister(s_mcpAddress, 0x12, ~gpioa, true);
+    i2c::writeRegister(s_mcpAddress, 0x13, ~gpiob, true);
     assertEqual(i2c::errorCount, 0);
 
     // With repeated-START conditions
