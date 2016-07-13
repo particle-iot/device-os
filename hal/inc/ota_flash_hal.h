@@ -54,6 +54,7 @@ typedef enum {
     MODULE_VALIDATION_RANGE            = 1<<3,
     MODULE_VALIDATION_PLATFORM         = 1<<4,
     MODULE_VALIDATION_PRODUCT          = 1<<5,
+    MODULE_VALIDATION_DEPENDENCIES_FULL= 1<<6,
     MODULE_VALIDATION_END = 0x7FFF
 } module_validation_flags_t;
 
