@@ -35,10 +35,16 @@
 *******************************************************************************/
 #include "HTU21D.h"
 #include "SparkFun_MPL3115A2.h"
-#include "core_hal.h"
 
 SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
+
+#if Wiring_WiFi
+  STARTUP(WiFi.selectAntenna(ANT_INTERNAL));
+#endif
+
+// ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, INFO_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
+// SerialDebugOutput debugOutput(115200, DEBUG_LEVEL);
 
 float humidity = 0;
 float tempf = 0;
@@ -47,21 +53,33 @@ float altf = 0;
 float baroTemp = 0;
 
 int count = 0;
+volatile bool TOGGLE_CONNECTED = false;
 
 HTU21D htu = HTU21D();//create instance of HTU21D Temp and humidity sensor
 MPL3115A2 baro = MPL3115A2();//create instance of MPL3115A2 barrometric sensor
 
+void setupBaro();
 void printInfo();
 void getTempHumidity();
 void getBaro();
 void calcWeather();
+void button_handler(system_event_t event, int data, void*);
 
+//---------------------------------------------------------------
+void button_handler(system_event_t event, int data, void* )
+{
+    if (button_final_click == event) { // just pressed
+        if (data == 1) {
+            TOGGLE_CONNECTED = true;
+        }
+    }
+}
 //---------------------------------------------------------------
 void setup()
 {
     Serial.begin(9600);   // open serial over USB at 9600 baud
+    System.on(button_final_click, button_handler);
 
-    //Initialize both on-board sensors
     //Initialize both on-board sensors
     while(! htu.begin()){
   	    Serial.println("HTU21D not found");
@@ -75,34 +93,27 @@ void setup()
      }
      Serial.println("MPL3115A2 OK");
 
-     //MPL3115A2 Settings
-     //baro.setModeBarometer();//Set to Barometer Mode
-     baro.setModeAltimeter();//Set to altimeter Mode
-
-     baro.setOversampleRate(7); // Set Oversample to the recommended 128
-     baro.enableEventFlags(); //Necessary register calls to enble temp, baro ansd alt
-
+    // MPL3115A2 Settings
+    setupBaro();
 }
 //---------------------------------------------------------------
 void loop()
 {
-    // Button press needs to be 1 second long
-    if (HAL_Core_Mode_Button_Pressed(1000)) {
-        if (!Spark.connected()) {
+    if (TOGGLE_CONNECTED == true) {
+        TOGGLE_CONNECTED = false;
+        if (!Particle.connected()) {
             WiFi.on();
-            Spark.connect();
+            Particle.connect();
         }
         else {
-            Spark.disconnect();
+            Particle.disconnect();
             WiFi.off();
         }
-        // delay 2.1 more seconds before resetting debounce time
-        // in case user is trying to enter Listening Mode
-        delay(2100);
-        HAL_Core_Mode_Button_Reset();
     }
 
-    //Get readings from all sensors
+    // in case of bus errors, re-setup baro sensor to auto recover
+    setupBaro();
+    // Get readings from all sensors
     calcWeather();
     printInfo();
 
@@ -117,7 +128,16 @@ void loop()
        count = 0;
     }
     */
-    Spark.process();
+    Particle.process();
+}
+//---------------------------------------------------------------
+void setupBaro()
+{
+    //MPL3115A2 Settings
+    //baro.setModeBarometer();//Set to Barometer Mode
+    baro.setModeAltimeter();//Set to altimeter Mode
+    baro.setOversampleRate(7); // Set Oversample to the recommended 128
+    baro.enableEventFlags(); //Necessary register calls to enble temp, baro ansd alt
 }
 //---------------------------------------------------------------
 void printInfo()
@@ -137,28 +157,28 @@ void printInfo()
     //return;
 
     //Or you can print each temp separately
-    Serial.print("HTU21D Temp:");
+    Serial.print("HTU21D T:");
     Serial.print(tempf);
     Serial.print("F, ");
     if (abs(tempf)>1000) errors++;
 
-    Serial.print("Humidity:");
+    Serial.print("H:");
     Serial.print(humidity);
     Serial.print("%, ");
     if (abs(humidity)>200) errors++;
 
-    Serial.print("Baro Temp:");
+    Serial.print("| MPL3115A2 T:");
     Serial.print(baroTemp);
     Serial.print("F, ");
     //Serial.println();
     if (abs(baroTemp)>1000) errors++;
 
-    Serial.print("Pressure:");
+    Serial.print("P:");
     Serial.print(pascals);
     Serial.print("Pa, ");
-    if (abs(pascals)>900) errors++;
+    if (pascals < -990) errors++;
 
-    Serial.print("Altitude:");
+    Serial.print("A:");
     Serial.print(altf);
     Serial.print("ft, ");
     if (abs(altf)>3200) errors++;
@@ -185,13 +205,8 @@ void getTempHumidity()
 void getBaro()
 {
   baroTemp = baro.readTempF();//get the temperature in F
-  //delay(100);
-
   pascals = baro.readPressure();//get pressure in Pascals
-  //delay(20);
-
   altf = baro.readAltitudeFt();//get altitude in feet
-  //delay(100);
 }
 //---------------------------------------------------------------
 void calcWeather()
