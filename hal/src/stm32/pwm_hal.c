@@ -31,7 +31,7 @@
 
 #define DIV_ROUND_CLOSEST(n, d) ((n + d/2)/d)
 
-#if PLATFORM_ID == 10
+#if 0/* PLATFORM_ID == 10 */
 # include <math.h>
 # define PWM_USE_FLOATING_POINT_ARITHMETICS
 #endif // PLATFORM_ID == 10
