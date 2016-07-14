@@ -35,7 +35,6 @@
 *******************************************************************************/
 #include "HTU21D.h"
 #include "SparkFun_MPL3115A2.h"
-#include "core_hal.h"
 
 SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
@@ -54,6 +53,7 @@ float altf = 0;
 float baroTemp = 0;
 
 int count = 0;
+volatile bool TOGGLE_CONNECTED = false;
 
 HTU21D htu = HTU21D();//create instance of HTU21D Temp and humidity sensor
 MPL3115A2 baro = MPL3115A2();//create instance of MPL3115A2 barrometric sensor
@@ -63,11 +63,22 @@ void printInfo();
 void getTempHumidity();
 void getBaro();
 void calcWeather();
+void button_handler(system_event_t event, int data, void*);
 
+//---------------------------------------------------------------
+void button_handler(system_event_t event, int data, void* )
+{
+    if (button_final_click == event) { // just pressed
+        if (data == 1) {
+            TOGGLE_CONNECTED = true;
+        }
+    }
+}
 //---------------------------------------------------------------
 void setup()
 {
-    //Serial.begin(9600);   // open serial over USB at 9600 baud
+    Serial.begin(9600);   // open serial over USB at 9600 baud
+    System.on(button_final_click, button_handler);
 
     //Initialize both on-board sensors
     while(! htu.begin()){
@@ -88,8 +99,8 @@ void setup()
 //---------------------------------------------------------------
 void loop()
 {
-    // Button press needs to be 1 second long
-    if (HAL_Core_Mode_Button_Pressed(1000)) {
+    if (TOGGLE_CONNECTED == true) {
+        TOGGLE_CONNECTED = false;
         if (!Particle.connected()) {
             WiFi.on();
             Particle.connect();
@@ -98,10 +109,6 @@ void loop()
             Particle.disconnect();
             WiFi.off();
         }
-        // delay 2.1 more seconds before resetting debounce time
-        // in case user is trying to enter Listening Mode
-        delay(2100);
-        HAL_Core_Mode_Button_Reset();
     }
 
     // in case of bus errors, re-setup baro sensor to auto recover

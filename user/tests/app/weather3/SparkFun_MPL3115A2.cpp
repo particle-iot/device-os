@@ -292,7 +292,8 @@ byte MPL3115A2::IIC_Read(byte regAddr)
  	Wire.write(regAddr);  // Address of CTRL_REG1
  // Serial.print(rv);
  // Serial.print(",ET:");
-    byte rv = Wire.endTransmission(false); // Send data to I2C dev with option for a repeated start. THIS IS NECESSARY and not supported before Arduino V1.0.1!
+    // byte rv = 
+    Wire.endTransmission(false); // Send data to I2C dev with option for a repeated start. THIS IS NECESSARY and not supported before Arduino V1.0.1!
     byte rv2 = Wire.requestFrom(MPL3115A2_ADDRESS, 1);
     // Serial.print(rv);
     // Serial.print(",RF:");
