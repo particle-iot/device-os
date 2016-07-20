@@ -4,7 +4,7 @@
 #define MASTER_TEST_MESSAGE "Hello from SPI Master!?"
 #define SLAVE_TEST_MESSAGE_1  "SPI Slave is doing good"
 #define SLAVE_TEST_MESSAGE_2  "All work and no play makes Jack a dull boy"
-#define TRANSFER_LENGTH_1 (sizeof(MASTER_TEST_MESSAGE) + sizeof(uint32_t))
+#define TRANSFER_LENGTH_1 (sizeof(MASTER_TEST_MESSAGE) + sizeof(uint32_t) + sizeof(uint32_t))
 #define TRANSFER_LENGTH_2 sizeof(SLAVE_TEST_MESSAGE_2)
 
 static uint8_t SPI_Slave_Tx_Buffer[TRANSFER_LENGTH_2];
@@ -39,12 +39,25 @@ static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, HAL_SP
     }
 }
 
+static void SPI_Init(uint8_t mode, uint8_t bitOrder) {
+    if (SPI.isEnabled()) {
+        SPI.end();
+    }
+
+    SPI.onSelect(SPI_On_Select);
+    SPI.setBitOrder(bitOrder);
+    SPI.setDataMode(mode);
+
+    SPI.begin(SPI_MODE_SLAVE, A2);
+}
+
 test(SPI_Master_Slave_Slave_Transfer)
 {
     /* Test will alternate between asynchronous and synchronous SPI.transfer() */
     Serial.println("This is Slave");
-    SPI.begin(SPI_MODE_SLAVE, A2);
-    SPI.onSelect(SPI_On_Select);
+
+    // Default SPI_MODE3, MSBFIRST
+    SPI_Init(SPI_MODE3, MSBFIRST);
 
     uint32_t requestedLength = 0;
 
@@ -74,8 +87,29 @@ test(SPI_Master_Slave_Slave_Transfer)
         requestedLength = *((uint32_t *)(SPI_Slave_Rx_Buffer + sizeof(MASTER_TEST_MESSAGE)));
         assertTrue((requestedLength >= 0 && requestedLength <= TRANSFER_LENGTH_2));
 
-        if (requestedLength == 0)
-            break;
+        if (requestedLength == 0) {
+            // Check if Master wants us to switch mode
+            uint32_t switchMode = *((uint32_t *)(SPI_Slave_Rx_Buffer + sizeof(MASTER_TEST_MESSAGE) + sizeof(uint32_t)));
+            if (((switchMode >> 16) & 0xffff) == 0x8DC6) {
+                uint8_t mode = switchMode & 0xff;
+                uint8_t bitOrder = (switchMode >> 8) & 0xff;
+                
+                assertMoreOrEqual(mode, SPI_MODE0);
+                assertLessOrEqual(mode, SPI_MODE3);
+
+                assertTrue((bitOrder == MSBFIRST) || (bitOrder == LSBFIRST));
+
+                Serial.printf("Switching SPI mode to MODE%1d %s\r\n", mode,
+                              bitOrder == MSBFIRST ? "MSBFIRST" : "LSBFIRST");
+
+                SPI_Init(mode, bitOrder);
+
+                continue;
+            } else {
+                // Otherwise end the test
+                break;
+            }
+        }
 
         memcpy(SPI_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength);
         SPI_Slave_Tx_Buffer[requestedLength] = '\0';
