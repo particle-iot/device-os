@@ -16,13 +16,15 @@ static volatile uint8_t DMA_Completed_Flag = 0;
 
 static void SPI_Master_Configure()
 {
-    // Run SPI bus at 1 MHz, so that this test works reliably even if the
-    // devices are connected with jumper wires
-    SPI.setClockSpeed(1, MHZ);
-    SPI.begin(A2);
+    if (!SPI.isEnabled()) {
+        // Run SPI bus at 1 MHz, so that this test works reliably even if the
+        // devices are connected with jumper wires
+        SPI.setClockSpeed(1, MHZ);
+        SPI.begin(A2);
 
-    // Clock dummy byte just in case
-    (void)SPI.transfer(0xff);
+        // Clock dummy byte just in case
+        (void)SPI.transfer(0xff);
+    }
 }
 
 static void SPI_DMA_Completed_Callback()
@@ -79,7 +81,6 @@ bool SPI_Master_Slave_Change_Mode(uint8_t mode, uint8_t bitOrder, std::function<
     bool ret = (strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
 
     // Apply new settings here
-    SPI.end();
     SPI.setDataMode(mode);
     SPI.setBitOrder(bitOrder);
     SPI_Master_Configure();
@@ -134,8 +135,6 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
 
         requestedLength--;
     }
-
-    SPI.end();
 }
 
 /*

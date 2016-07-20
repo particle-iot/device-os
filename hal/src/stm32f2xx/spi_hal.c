@@ -312,8 +312,9 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
 
     if (mode == SPI_MODE_MASTER)
     {
+        // Ensure that there is no glitch on SS pin
+        PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
         HAL_Pin_Mode(pin, OUTPUT);
-        HAL_GPIO_Write(pin, Bit_SET);//HIGH
     }
     else
     {
