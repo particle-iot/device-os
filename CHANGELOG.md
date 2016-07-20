@@ -16,6 +16,7 @@
 - Exposes Device ID and Bootloader Version through USB descriptors while in DFU mode, Microsoft WCID support [#1001](https://github.com/spark/firmware/pull/1001)
 - USB vendor-specific setup request handling [#1010](https://github.com/spark/firmware/pull/1010)
 - [Electron] now allows OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
+- Added Daylight Saving Time support [#1058](https://github.com/spark/firmware/pull/1058) per proposed [#211](https://github.com/spark/firmware/issues/211)
 
 ### ENHANCEMENTS
 
@@ -28,6 +29,8 @@
 - USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
 - Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991)
 - [System flag](https://docs.particle.io/reference/firmware/core/#system-flags) `SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS` to control if the device resets the network when it cannot connect to the cloud. [#946](https://github.com/spark/firmware/pull/946)
+- [Photon] 1KB system backup memory added (same size as Electron) reducing user backup memory to 3KB (3068 bytes) [#1046](https://github.com/spark/firmware/pull/1046)
+- Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
 
 ### BUGFIXES
 
@@ -42,7 +45,8 @@
 - WKP pin should not be enabled as a wakeup source unconditionally for STOP mode [#948](https://github.com/spark/firmware/pull/948) and [#938](https://github.com/spark/firmware/issues/938)
 - General I2C Improvements and MCP23017 tests [#1047](https://github.com/spark/firmware/pull/1047)
 - Rebuilt Wiced_Network_LwIP_FreeRTOS.a WWD_for_SDIO_FreeRTOS.a on OSX [#1057](https://github.com/spark/firmware/pull/1057) fixes Local build stalling on object dump [#1049](https://github.com/spark/firmware/issues/1049)
-- Validates that module dependencies would still be satisfied after the module from the "ota_module" location is flashed (via OTA or YMODEM flashing) [#1063](https://github.com/spark/firmware/pull/1063) 
+- Validates that module dependencies would still be satisfied after the module from the "ota_module" location is flashed (via OTA or YMODEM flashing) [#1063](https://github.com/spark/firmware/pull/1063)
+- System.sleep SLEEP_MODE_DEEP timing accuracy and sleep STOP mode retains user interrupt handler after resuming [#1051](https://github.com/spark/firmware/pull/1051) fixes [#1043](https://github.com/spark/firmware/issues/1043) and [#1029](https://github.com/spark/firmware/issues/1029)
 
 ### INTERNAL
 
