@@ -32,7 +32,6 @@
 #define LOG_INCLUDE_SOURCE_INFO
 #endif
 
-#define RESET_ON_CFOD                   1       // 1 Will do reset 0 will not
 #define MAX_SEC_WAIT_CONNECT            8       // Number of second a TCP, spark will wait
 #define MAX_FAILED_CONNECTS             2       // Number of time a connect can fail
 #define DEFAULT_SEC_INACTIVITY          0
