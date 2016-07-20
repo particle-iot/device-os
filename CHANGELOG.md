@@ -55,7 +55,22 @@
 - [Electron] Added a 3rd system module to provide room for additional system firmware [#1035](https://github.com/spark/firmware/pull/1035)
 - Remove accidental SYSTEM_MODE(MANUAL) from pwm.cpp in wiring/no_fixture [#1052](https://github.com/spark/firmware/pull/1052)
 
-## v0.5.2-rc.1
+## v0.5.3-rc.1
+
+### BUGFIXES
+
+- SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971)
+- Free memory allocated for previous system interrupt handler [#951](https://github.com/spark/firmware/pull/951) fixes [#927](https://github.com/spark/firmware/issues/927)
+- availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
+- `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916), [#925](https://github.com/spark/firmware/issues/925) and [#1042](https://github.com/spark/firmware/issues/1042)
+- Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
+- General I2C Improvements and MCP23017 tests [#1047](https://github.com/spark/firmware/pull/1047)
+- Rebuilt Wiced_Network_LwIP_FreeRTOS.a WWD_for_SDIO_FreeRTOS.a on OSX [#1057](https://github.com/spark/firmware/pull/1057) fixes Local build stalling on object dump [#1049](https://github.com/spark/firmware/issues/1049)
+- `digitalRead()` interfered with `analogRead()` [#1006](https://github.com/spark/firmware/pull/1006) fixes [#993](https://github.com/spark/firmware/issues/993)
+- Validates that module dependencies would still be satisfied after the module from the "ota_module" location is flashed (via OTA or YMODEM flashing) [#1063](https://github.com/spark/firmware/pull/1063)
+
+
+## v0.5.2 (same as v0.5.2-rc.1)
 
 ### ENHANCEMENTS
 
