@@ -50,6 +50,8 @@ const char* TIME_FORMAT_ISO8601_FULL = "%Y-%m-%dT%H:%M:%S%z";
 struct tm calendar_time_cache;	// a cache of calendar time structure elements
 time_t unix_time_cache;  		// a cache of unix_time that was updated
 time_t time_zone_cache;			// a cache of the time zone that was set
+time_t dst_cache = 3600;        // a cache of the DST offset that was set (default 1hr)
+time_t dst_current_cache = 0;   // a cache of the DST offset currently being applied
 
 /* Time utility functions */
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time);
@@ -100,6 +102,7 @@ static void Set_CalendarTime(struct tm calendar_time)
 static void Refresh_UnixTime_Cache(time_t unix_time)
 {
     unix_time += time_zone_cache;
+    unix_time += dst_current_cache;
     if(unix_time != unix_time_cache)
     {
             calendar_time_cache = Convert_UnixTime_To_CalendarTime(unix_time);
@@ -250,13 +253,13 @@ time_t TimeClass::now()
 
 time_t TimeClass::local()
 {
-	return HAL_RTC_Get_UnixTime()+time_zone_cache;
+	return HAL_RTC_Get_UnixTime()+time_zone_cache+dst_current_cache;
 }
 
 /* set the time zone (+/-) offset from GMT */
 void TimeClass::zone(float GMT_Offset)
 {
-	if(GMT_Offset < -12 || GMT_Offset > 13)
+	if(GMT_Offset < -12 || GMT_Offset > 14)
 	{
 		return;
 	}
@@ -266,6 +269,35 @@ void TimeClass::zone(float GMT_Offset)
 float TimeClass::zone()
 {
 	return time_zone_cache / 3600.0;
+}
+
+float TimeClass::getDSTOffset()
+{
+    return dst_cache / 3600.0;
+}
+
+void TimeClass::setDSTOffset(float offset)
+{
+    if (offset < 0 || offset > 2)
+    {
+        return;
+    }
+    dst_cache = offset * 3600;
+}
+
+void TimeClass::beginDST()
+{
+    dst_current_cache = dst_cache;
+}
+
+void TimeClass::endDST()
+{
+    dst_current_cache = 0;
+}
+
+uint8_t TimeClass::isDST()
+{
+    return !(dst_current_cache == 0);
 }
 
 /* set the given time as unix/rtc time */
@@ -278,6 +310,7 @@ void TimeClass::setTime(time_t t)
 String TimeClass::timeStr(time_t t)
 {
 	t += time_zone_cache;
+    t += dst_current_cache;
 	tm* calendar_time = localtime(&t);
         char* ascstr = asctime(calendar_time);
         int len = strlen(ascstr);
@@ -294,8 +327,9 @@ String TimeClass::format(time_t t, const char* format_spec)
         return timeStr(t);
     }
     t += time_zone_cache;
+    t += dst_current_cache;
     tm* calendar_time = localtime(&t);
-    return timeFormatImpl(calendar_time, format_spec, time_zone_cache);
+    return timeFormatImpl(calendar_time, format_spec, time_zone_cache + dst_current_cache);
 }
 
 String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time_zone)
