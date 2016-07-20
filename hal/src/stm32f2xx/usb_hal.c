@@ -69,6 +69,7 @@ static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
 static uint8_t USB_InSetupRequest = 0;
 static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;
 static void* USB_Vendor_Request_Ptr = NULL;
+static USBD_Class_cb_TypeDef* USB_Composite_Instance = NULL;
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
@@ -187,6 +188,7 @@ void SPARK_USB_Setup(void)
     if (!USB_Configured)
         return;
 
+    USB_Composite_Instance = USBD_Composite_Instance(&HAL_USB_Handle_Configuration);
     USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_FS
             USB_OTG_FS_CORE_ID,
@@ -195,7 +197,7 @@ void SPARK_USB_Setup(void)
 #endif
             &USR_desc,
             //&USBD_CDC_cb,
-            USBD_Composite_Instance(&HAL_USB_Handle_Configuration),
+            USB_Composite_Instance,
             &USR_cb);
     HAL_USB_Attach();
 }
@@ -263,8 +265,12 @@ void HAL_USB_Init(void)
 
 void HAL_USB_Detach(void)
 {
-    if (USB_Configured)
+    if (USB_Configured) {
         USB_Cable_Config(DISABLE);
+        if (USB_Composite_Instance) {
+            USB_Composite_Instance->DeInit(&USB_OTG_dev, 0);
+        }
+    }
 }
 
 void HAL_USB_Attach(void)

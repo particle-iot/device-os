@@ -280,8 +280,10 @@ void HAL_Core_Enter_Bootloader(bool persist)
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
-    if (seconds > 0)
-       HAL_RTC_Set_UnixAlarm((time_t) seconds);
+    if (seconds > 0) {
+        HAL_RTC_Cancel_UnixAlarm();
+        HAL_RTC_Set_UnixAlarm((time_t) seconds);
+    }
 
 	if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
 	{
@@ -307,7 +309,7 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 
 void HAL_Core_Execute_Stop_Mode(void)
 {
-    HAL_disable_irq();
+    int32_t state = HAL_disable_irq();
 	if((BKP_ReadBackupRegister(BKP_DR9) >> 12) == 0xA)
 	{
 		uint16_t wakeUpPin = BKP_ReadBackupRegister(BKP_DR9) & 0xFF;
@@ -375,11 +377,17 @@ void HAL_Core_Execute_Stop_Mode(void)
 			while(RCC_GetSYSCLKSource() != 0x08);
 		}
 	}
-    HAL_enable_irq(0);
+    HAL_enable_irq(state);
 }
 
-void HAL_Core_Enter_Standby_Mode(void)
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved)
 {
+    // Configure RTC wake-up
+    if (seconds > 0) {
+        HAL_RTC_Cancel_UnixAlarm();
+        HAL_RTC_Set_UnixAlarm((time_t) seconds);
+    }
+
 	/* Execute Standby mode on next system reset */
 	BKP_WriteBackupRegister(BKP_DR9, 0xA5A5);
 
@@ -395,8 +403,8 @@ void HAL_Core_Execute_Standby_Mode(void)
 		/* Clear Standby mode system flag */
 		BKP_WriteBackupRegister(BKP_DR9, 0xFFFF);
 
-                /* Enable WKUP pin */
-                PWR_WakeUpPinCmd(ENABLE);
+        /* Enable WKUP pin */
+        PWR_WakeUpPinCmd(ENABLE);
 
 		/* Request to enter STANDBY mode */
 		PWR_EnterSTANDBYMode();
