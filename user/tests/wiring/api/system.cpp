@@ -186,15 +186,17 @@ test(system_flags)
 
 // todo - use platform feature flags
 #if defined(STM32F2XX)
-#define USER_BACKUP_RAM (1024*3)
-#endif
+    // subtract 4 bytes for signature (3068 bytes)
+    #define USER_BACKUP_RAM ((1024*3)-4)
+#endif // defined(STM32F2XX)
 
 #if defined(USER_BACKUP_RAM)
-// 4 bytes for signature
-static retained uint8_t app_backup[USER_BACKUP_RAM-4];
+static retained uint8_t app_backup[USER_BACKUP_RAM];
 
 test(backup_ram)
 {
+    // Not designed to be run!
+    // only here to prevent compiler from optimizing out the app_backup array.
 	int total = 0;
 	for (unsigned i=0; i<sizeof(app_backup); i++) {
 		total += app_backup[i];		// 8 bytes for the
@@ -202,4 +204,4 @@ test(backup_ram)
 	Serial.println(total);
 }
 
-#endif
+#endif // defined(USER_BACKUP_RAM)
