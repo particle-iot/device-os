@@ -52,6 +52,10 @@ ifeq ("$(PLATFORM)","P1")
 PLATFORM_ID = 8
 endif
 
+ifeq ("$(PLATFORM)","p1")
+PLATFORM_ID = 8
+endif
+
 ifeq ("$(PLATFORM)","ethernet")
 PLATFORM_ID = 9
 endif
