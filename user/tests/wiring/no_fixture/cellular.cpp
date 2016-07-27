@@ -34,6 +34,7 @@
 void disconnect_from_cloud(system_tick_t timeout)
 {
     Particle.disconnect();
+    Cellular.disconnect();
     waitFor(Particle.disconnected, timeout);
 }
 void connect_to_cloud(system_tick_t timeout)
@@ -49,16 +50,15 @@ void consume_all_sockets(uint8_t protocol)
         socket_handle = socket_create(AF_INET, SOCK_STREAM, protocol==IPPROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP, port++, NIF_DEFAULT);
     } while(socket_handle_valid(socket_handle));
 }
-test(device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
+test(CLOUD_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
     //Serial.println("the device will connect to the cloud when all tcp sockets are consumed");
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // When all available TCP sockets are consumed
     consume_all_sockets(IPPROTO_TCP);
     // And the device attempts to connect to the Cloud
-    Particle.connect();
+    connect_to_cloud(6*60*1000);
     // Then the device overcomes this socket obstacle and connects to the Cloud
-    connect_to_cloud(60*1000);
     assertEqual(Particle.connected(), true);
 }
 /* Scenario: The device will connect to the Cloud even when all
@@ -69,17 +69,33 @@ test(device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
  * And the device attempts to connect to the Cloud
  * Then the device overcomes this socket obstacle and connects to the Cloud
  */
-test(device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
+test(CLOUD_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
     //Serial.println("the device will connect to the cloud when all udp sockets are consumed");
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // When all available UDP sockets are consumed
     consume_all_sockets(IPPROTO_UDP);
     // And the device attempts to connect to the Cloud
-    Particle.connect();
+    connect_to_cloud(6*60*1000);
     // Then the device overcomes this socket obstacle and connects to the Cloud
-    connect_to_cloud(60*1000);
     assertEqual(Particle.connected(), true);
+}
+
+void checkIPAddress(const char* name, const IPAddress& address)
+{
+    if (address.version()==0 || address[0]==0)
+    {
+        Serial.print("address failed:");
+        Serial.println(name);
+        assertNotEqual(address.version(), 0);
+        assertNotEqual(address[0], 0);
+    }
+}
+
+test(CLOUD_03_local_ip_cellular_config)
+{
+    connect_to_cloud(6*60*1000);
+    checkIPAddress("local", Cellular.localIP());
 }
 
 int how_many_band_options_are_available(void)
@@ -168,7 +184,7 @@ bool is_band_available(CellularBand& band_avail, MDM_Band band)
  * When we request how many bands are available
  * Then the device returns at least 3 options
  */
-test(BAND_SELECT_more_than_three_band_options_available_on_any_electron) {
+test(BAND_SELECT_01_more_than_three_band_options_available_on_any_electron) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // When we request how many band options are available
@@ -184,7 +200,7 @@ test(BAND_SELECT_more_than_three_band_options_available_on_any_electron) {
  * And we set and verify each one matches the original available band
  * Then all bands matched
  */
-test(BAND_SELECT_iterate_through_the_available_bands_and_check_that_they_are_set) {
+test(BAND_SELECT_02_iterate_through_the_available_bands_and_check_that_they_are_set) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // Given the list of available bands
@@ -206,7 +222,7 @@ test(BAND_SELECT_iterate_through_the_available_bands_and_check_that_they_are_set
  * And we verify each one matches the original available band
  * Then all bands matched
  */
-test(BAND_SELECT_iterate_through_the_available_bands_as_strings_and_check_that_they_are_set) {
+test(BAND_SELECT_03_iterate_through_the_available_bands_as_strings_and_check_that_they_are_set) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // Given the list of available bands
@@ -226,7 +242,7 @@ test(BAND_SELECT_iterate_through_the_available_bands_as_strings_and_check_that_t
  * When we set an invalid band
  * Then set band select will fail
  */
-test(BAND_SELECT_trying_to_set_an_invalid_band_will_fail) {
+test(BAND_SELECT_04_trying_to_set_an_invalid_band_will_fail) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // When we set an invalid band
@@ -243,7 +259,7 @@ test(BAND_SELECT_trying_to_set_an_invalid_band_will_fail) {
  * When we set an invalid band as a string
  * Then set band select will fail
  */
-test(BAND_SELECT_trying_to_set_an_invalid_band_as_a_string_will_fail) {
+test(BAND_SELECT_05_trying_to_set_an_invalid_band_as_a_string_will_fail) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // When we set an invalid band as a string
@@ -258,7 +274,7 @@ test(BAND_SELECT_trying_to_set_an_invalid_band_as_a_string_will_fail) {
  * When we set an unavailable band
  * Then set band select will fail
  */
-test(BAND_SELECT_trying_to_set_an_unavailable_band_will_fail) {
+test(BAND_SELECT_06_trying_to_set_an_unavailable_band_will_fail) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // Given the list of available bands
@@ -284,7 +300,7 @@ test(BAND_SELECT_trying_to_set_an_unavailable_band_will_fail) {
  * And get band select will pass
  * Then band select will not be default
  */
-test(BAND_SELECT_setting_one_available_band_results_in_non_defaults) {
+test(BAND_SELECT_07_setting_non_defaults) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // Given the list of available bands
@@ -302,69 +318,36 @@ test(BAND_SELECT_setting_one_available_band_results_in_non_defaults) {
     bool band_select_not_default = is_bands_selected_not_equal_to_default_bands(band_sel, band_avail);
     assertEqual(band_select_not_default, true);
 }
-/* Scenario: Setting one available band results in non default settings
- *           and setting the default band option results in default settings
+
+/* Scenario: Setting the default band option results in default settings
  *
  * Given the device is currently disconnected from the Cloud
  * Given the list of available bands
- * When we set one available band
- * And set band select will pass
- * And get band select will pass
- * Then band select will not be default
  * When we set the default band option
  * And set band select will pass
  * And get band select will pass
  * Then band select will be default
  */
-test(BAND_SELECT_setting_non_defaults_then_restore_defaults) {
+test(BAND_SELECT_08_restore_defaults) {
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // Given the list of available bands
     CellularBand band_avail;
     get_list_of_bands_available(band_avail);
-    // When we set one available band
-    bool set_band_select_passes = set_one_available_band(band_avail);
+    // When we set the default band option
+    CellularBand band_set;
+    band_set.band[0] = BAND_DEFAULT;
+    band_set.count = 1;
+    bool set_band_select_passes = Cellular.setBandSelect(band_set);
     // And set band select will pass
     assertEqual(set_band_select_passes, true);
     // And get band select will pass
     CellularBand band_sel;
     bool get_band_select_passes = Cellular.getBandSelect(band_sel);
     assertEqual(get_band_select_passes, true);
-    // Then band select will not be default
-    bool band_select_not_default = is_bands_selected_not_equal_to_default_bands(band_sel, band_avail);
-    assertEqual(band_select_not_default, true);
-    // When we set the default band option
-    CellularBand band_set;
-    band_set.band[0] = BAND_DEFAULT;
-    band_set.count = 1;
-    set_band_select_passes = Cellular.setBandSelect(band_set);
-    // And set band select will pass
-    assertEqual(set_band_select_passes, true);
-    // And get band select will pass
-    get_band_select_passes = Cellular.getBandSelect(band_sel);
-    assertEqual(get_band_select_passes, true);
     // Then band select will be default
     bool band_select_default = !is_bands_selected_not_equal_to_default_bands(band_sel, band_avail);
     assertEqual(band_select_default, true);
-}
-#endif
-
-#if Wiring_Cellular == 1
-
-void checkIPAddress(const char* name, const IPAddress& address)
-{
-	if (address.version()==0 || address[0]==0)
-	{
-		Serial.print("address failed:");
-		Serial.println(name);
-		assertNotEqual(address.version(), 0);
-		assertNotEqual(address[0], 0);
-	}
-}
-
-test(cellular_config)
-{
-	checkIPAddress("local", Cellular.localIP());
 }
 
 #endif
