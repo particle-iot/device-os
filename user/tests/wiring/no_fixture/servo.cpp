@@ -33,7 +33,7 @@ static pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
 static pin_t pin = A0, pin2 = A1;
 #endif
 
-test(SERVO_CannotAttachWhenPinSelectedIsNotTimerChannel) {
+test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
     pin_t pin = D5;//pin under test (not a Timer channel)
     Servo testServo;
     // when
@@ -44,7 +44,7 @@ test(SERVO_CannotAttachWhenPinSelectedIsNotTimerChannel) {
     //To Do : Add test for remaining pins if required
 }
 
-test(SERVO_CannotAttachWhenPinSelectedIsOutOfRange) {
+test(SERVO_02_CannotAttachWhenPinSelectedIsOutOfRange) {
     pin_t pin = 51;//pin under test (not a valid user pin)
     Servo testServo;
     // when
@@ -55,7 +55,7 @@ test(SERVO_CannotAttachWhenPinSelectedIsOutOfRange) {
     //To Do : Add test for remaining pins if required
 }
 
-test(SERVO_AttachedOnPinResultsInCorrectFrequency) {
+test(SERVO_03_AttachedOnPinResultsInCorrectFrequency) {
     Servo testServo;
     // when
     testServo.attach(pin);
@@ -65,7 +65,7 @@ test(SERVO_AttachedOnPinResultsInCorrectFrequency) {
     //To Do : Add test for remaining pins if required
 }
 
-test(SERVO_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
+test(SERVO_04_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
     uint16_t pulseWidth = 1500;//value corresponding to servo's mid-point
     Servo testServo;
     // when
@@ -77,7 +77,7 @@ test(SERVO_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
     //To Do : Add test for remaining pins if required
 }
 
-test(SERVO_DetachDoesntAffectAnotherServoUsingSameTimer) {
+test(SERVO_05_DetachDoesntAffectAnotherServoUsingSameTimer) {
     const int pulseWidth = 2000;
     // Attach 1st servo
     Servo servo1;

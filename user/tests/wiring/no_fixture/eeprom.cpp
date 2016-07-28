@@ -32,7 +32,7 @@ struct EEPROMCustomObject{
   char sValue[10];
 };
 
-test(EEPROM_Capacity) {
+test(EEPROM_01_Capacity) {
 #if (PLATFORM_ID == 0) // Core
   uint16_t expectedCapacity = 128;
 #else // Photon/P1/Electron
@@ -41,7 +41,7 @@ test(EEPROM_Capacity) {
   assertEqual(EEPROM.length(), expectedCapacity);
 }
 
-test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
+test(EEPROM_02_ReadWriteSucceedsForAllAddressWithInRange) {
     int EEPROM_SIZE = EEPROM.length();
     uint16_t address = 0;
     uint8_t data = 0;
@@ -66,7 +66,7 @@ test(EEPROM_ReadWriteSucceedsForAllAddressWithInRange) {
     EEPROM.clear();
 }
 
-test(EEPROM_ReadWriteFailsForAnyAddressOutOfRange) {
+test(EEPROM_03_ReadWriteFailsForAnyAddressOutOfRange) {
     int EEPROM_SIZE = EEPROM.length();
     uint16_t address = 0;
     uint8_t data = 0;
@@ -83,7 +83,7 @@ test(EEPROM_ReadWriteFailsForAnyAddressOutOfRange) {
     }
 }
 
-test(EEPROM_PutGetSucceedsForCustomDataType) {
+test(EEPROM_04_PutGetSucceedsForCustomDataType) {
     // when
     EEPROMCustomObject putCustomData = { 123.456f, 100, "Success" };
     EEPROM.put(0, putCustomData);
