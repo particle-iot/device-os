@@ -3,7 +3,7 @@
 #include "unit-test/unit-test.h"
 
 #if PLATFORM_THREADING
-test(Thread_creation)
+test(THREAD_01_creation)
 {
     volatile bool threadRan = false;
     Thread testThread = Thread("test", [&]() {
@@ -20,7 +20,7 @@ test(Thread_creation)
     assertTrue((bool)threadRan);
 }
 
-test(thread_SingleThreadedBlock)
+test(THREAD_02_SingleThreadedBlock)
 {
 	SINGLE_THREADED_BLOCK() {
 
@@ -30,7 +30,7 @@ test(thread_SingleThreadedBlock)
 	}
 }
 
-test(thread_with_lock)
+test(THREAD_03_with_lock)
 {
 	WITH_LOCK(Serial) {
 
@@ -42,7 +42,7 @@ test(thread_with_lock)
 
 }
 
-test(thread_try_lock)
+test(THREAD_04_try_lock)
 {
 	TRY_LOCK(Serial) {
 
@@ -67,7 +67,7 @@ void waitForComplete(ApplicationWatchdog& wd)
 }
 
 
-test(application_watchdog_fires_timeout)
+test(APPLICATION_WATCHDOG_01_fires_timeout)
 {
 	timeout_called = 0;
 	ApplicationWatchdog wd(5, timeout);
@@ -77,20 +77,32 @@ test(application_watchdog_fires_timeout)
 	waitForComplete(wd);
 }
 
-test(application_watchdog_doesnt_fire_when_app_checks_in)
+test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 {
-	timeout_called = 0;
-	unsigned t = 100;
-	ApplicationWatchdog wd(t, timeout);
-
-	for (int i=0; i<10; i++) {
-		assertEqual(timeout_called, 0);
-		application_checkin();
-		os_thread_yield();
+	for (int x=0; x<10; x++) {
+		timeout_called = 0;
+		unsigned t = 100;
+		uint32_t startTime;
+		// LOG_DEBUG(INFO, "S %d", millis());
+		ApplicationWatchdog wd(t, timeout, 2048);
+		startTime = millis();
+		// this for() loop should consume more than t(seconds), about 2x as much
+		for (int i=0; i<10; i++) {
+			HAL_Delay_Milliseconds(t/5);
+			assertEqual(timeout_called, 0);
+			application_checkin();
+			os_thread_yield();
+		}
+		// now force a timeout
+		HAL_Delay_Milliseconds(t+10);
+		assertEqual(timeout_called, 1);
+		// LOG_DEBUG(INFO, "TIME: %d, R %d:%s", millis()-startTime, x, timeout_called?"pass":"fail");
+		waitForComplete(wd);
+		uint32_t endTime = millis();
+		assertMoreOrEqual(endTime-startTime, 307); // should be 310 (give it 1% margin)
+		assertLessOrEqual(endTime-startTime, 313); //   |
+		// LOG_DEBUG(INFO, "E %d",endTime-startTime);
 	}
-	HAL_Delay_Milliseconds(t);
-	assertEqual(timeout_called, 1);
-	waitForComplete(wd);
 }
 
 #endif
