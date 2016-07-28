@@ -4,6 +4,7 @@
 #include "usbd_req.h"
 #include "debug.h"
 #include "logging.h"
+#include "ringbuf_helper.h"
 
 LOG_SOURCE_CATEGORY("usb.mcdc")
 
@@ -15,60 +16,6 @@ LOG_SOURCE_CATEGORY("usb.mcdc")
 #ifndef MAX
 #define MAX(a, b) (a) > (b) ? (a) : (b)
 #endif
-
-/* Wrap up buffer index */
-static inline uint32_t ring_wrap(uint32_t size, uint32_t idx)
-{
-  return idx >= size ? idx - size : idx;
-}
-
-/* Returns the number of bytes available in buffer */
-static inline uint32_t ring_data_avail(uint32_t size, uint32_t head, uint32_t tail)
-{
-  if (head >= tail)
-    return head - tail;
-  else
-    return size + head - tail;
-}
-
-/* Returns the amount of free space available in buffer */
-static inline uint32_t ring_space_avail(uint32_t size, uint32_t head, uint32_t tail)
-{
-  if (size == 0)
-    return 0;
-  return size - ring_data_avail(size, head, tail) - 1;
-}
-
-/* Returns the number of contiguous data bytes available in buffer */
-static inline uint32_t ring_data_contig(uint32_t size, uint32_t head, uint32_t tail)
-{
-  if (head >= tail)
-    return head - tail;
-  else
-    return size - tail;
-}
-
-/* Returns the amount of contiguous space available in buffer */
-static inline uint32_t ring_space_contig(uint32_t size, uint32_t head, uint32_t tail)
-{
-  if (size == 0)
-    return 0;
-  if (head >= tail)
-    return (tail ? size : size - 1) - head;
-  else
-    return tail - head - 1;
-}
-
-/* Returns the amount of free space available after wrapping up the head */
-static inline uint32_t ring_space_wrapped(uint32_t size, uint32_t head, uint32_t tail)
-{
-  if (size == 0)
-    return 0;
-  if (head < tail || !tail)
-    return 0;
-  else
-    return tail - 1;
-}
 
 static uint8_t  USBD_MCDC_Init        (void* pdev, USBD_Composite_Class_Data* cls, uint8_t cfgidx);
 static uint8_t  USBD_MCDC_DeInit      (void* pdev, USBD_Composite_Class_Data* cls, uint8_t cfgidx);
@@ -216,10 +163,7 @@ static void USBD_MCDC_Change_Open_State(void* pdev, USBD_MCDC_Instance_Data* pri
     if (state) {
       priv->tx_failed_counter = 0;
       // Also flush everything in TX buffer
-      uint32_t USB_Tx_length;
-      USB_Tx_length = ring_data_contig(priv->tx_buffer_size, priv->tx_buffer_head, priv->tx_buffer_tail);
-      if (USB_Tx_length)
-          priv->tx_buffer_tail = ring_wrap(priv->tx_buffer_size, priv->tx_buffer_tail + USB_Tx_length);
+      priv->tx_buffer_head = priv->tx_buffer_tail = priv->tx_buffer_last = 0;
 
       priv->tx_state = 0;
       USBD_MCDC_Schedule_Out(pdev, priv);
@@ -310,6 +254,7 @@ static uint8_t USBD_MCDC_DeInit(void* pdev, USBD_Composite_Class_Data* cls, uint
   priv->rx_buffer_length = priv->rx_buffer_size;
   priv->tx_buffer_head = 0;
   priv->tx_buffer_tail = 0;
+  priv->tx_buffer_last = 0;
   priv->frame_count = 0;  
   priv->cmd = NO_CMD;
   priv->ctrl_line = 0x00;
@@ -457,6 +402,8 @@ static uint8_t USBD_MCDC_DataIn(void* pdev, USBD_Composite_Class_Data* cls, uint
     return USBD_OK;
 
   priv->tx_failed_counter = 0;
+  priv->tx_buffer_tail = ring_wrap(priv->tx_buffer_size, priv->tx_buffer_tail + priv->tx_buffer_last);
+  priv->tx_buffer_last = 0;
 
   USB_Tx_length = ring_data_contig(priv->tx_buffer_size, priv->tx_buffer_head, priv->tx_buffer_tail);
 
@@ -467,13 +414,14 @@ static uint8_t USBD_MCDC_DataIn(void* pdev, USBD_Composite_Class_Data* cls, uint
     return USBD_OK;
   }
 
+  priv->tx_buffer_last = USB_Tx_length;
+
   /* Prepare the available data buffer to be sent on IN endpoint */
   DCD_EP_Tx (pdev,
              priv->ep_in_data,
              (uint8_t*)&priv->tx_buffer[priv->tx_buffer_tail],
              USB_Tx_length);
 
-  priv->tx_buffer_tail = ring_wrap(priv->tx_buffer_size, priv->tx_buffer_tail + USB_Tx_length);
   return USBD_OK;
 }
 
@@ -542,7 +490,6 @@ void USBD_MCDC_Schedule_Out(void *pdev, USBD_MCDC_Instance_Data* priv)
 static void USBD_MCDC_Schedule_In(void *pdev, USBD_MCDC_Instance_Data* priv)
 {
   uint32_t USB_Tx_length;
-  USB_Tx_length = ring_data_contig(priv->tx_buffer_size, priv->tx_buffer_head, priv->tx_buffer_tail);
 
   if (priv->tx_state) {
     if (priv->serial_open) {
@@ -559,12 +506,18 @@ static void USBD_MCDC_Schedule_In(void *pdev, USBD_MCDC_Instance_Data* priv)
         DCD_EP_Tx(pdev, priv->ep_in_data, NULL, 0);
         priv->tx_buffer_head = 0;
         priv->tx_buffer_tail = 0;
+        priv->tx_buffer_last = 0;
         USB_Tx_length = 0;
 
         priv->tx_state = 0;
     }
     return;
   }
+
+  priv->tx_buffer_tail = ring_wrap(priv->tx_buffer_size, priv->tx_buffer_tail + priv->tx_buffer_last);
+  priv->tx_buffer_last = 0;
+
+  USB_Tx_length = ring_data_contig(priv->tx_buffer_size, priv->tx_buffer_head, priv->tx_buffer_tail);
 
   if (!USB_Tx_length)
     return;
@@ -573,12 +526,12 @@ static void USBD_MCDC_Schedule_In(void *pdev, USBD_MCDC_Instance_Data* priv)
   priv->tx_failed_counter = 0;
 
   USB_Tx_length = MIN(USB_Tx_length, CDC_DATA_IN_PACKET_SIZE);
+  priv->tx_buffer_last = USB_Tx_length;
+
   DCD_EP_Tx (pdev,
              priv->ep_in_data,
              (uint8_t*)&priv->tx_buffer[priv->tx_buffer_tail],
              USB_Tx_length);
-
-  priv->tx_buffer_tail = ring_wrap(priv->tx_buffer_size, priv->tx_buffer_tail + USB_Tx_length);
 }
 
 static uint8_t USBD_MCDC_SOF(void* pdev, USBD_Composite_Class_Data* cls)
