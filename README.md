@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/spark/firmware.svg?branch=develop)](https://travis-ci.org/spark/firmware)
 
-# Particle Firmware for the Core and Photon
+# Particle Firmware for the Core, Photon, P1 and Electron
 
 This is the main source code repository of the Particle firmware libraries.
 
