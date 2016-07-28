@@ -121,37 +121,48 @@ test(TIME_08_TimeStrDoesNotEndWithNewline) {
 }
 
 test(TIME_09_ChangingTimeZoneWorksImmediately) {
-    Time.zone(0);
-    int currentHour = Time.hour();
-    Time.zone(4);
-    int newHour = Time.hour();
-    // check 24 hour wrapping case
-    if (newHour-currentHour != -20) {
-        assertEqual((newHour-currentHour), 4);
+    for (int x=-12; x<=13; x++)
+    {
+        Time.zone(x);
+        int currentHour = Time.hour();
+        int y = x + 4;
+        if (y > 13) {
+            y -= 24;
+        }
+        Time.zone(y);
+        int newHour = Time.hour();
+        // check 24 hour wrapping case
+        int diff = newHour - currentHour;
+        if (diff < 0) {
+            diff += 24;
+        }
+        assertEqual(diff, 4);
+        Time.zone(x);
+        newHour = Time.hour();
+        assertEqual((newHour-currentHour), 0);
     }
-    Time.zone(0);
-    newHour = Time.hour();
-    assertEqual((newHour-currentHour), 0);
 }
 
 test(TIME_10_ChangingDSTWorksImmediately) {
-    Time.zone(0.0);
-    int currentHour = Time.hour();
-    Time.setDSTOffset(1.0);
-    Time.beginDST();
-    assertTrue(Time.isDST());
-    int newHour = Time.hour();
-    // check 24 hour wrapping case
-    if (newHour == 0) {
-        assertEqual((newHour-currentHour), -23);
+    for (float x=-12; x<=13; x+=0.5)
+    {
+        Time.zone(x);
+        int currentHour = Time.hour();
+        Time.setDSTOffset(1.0);
+        Time.beginDST();
+        assertTrue(Time.isDST());
+        int newHour = Time.hour();
+        // check 24 hour wrapping case
+        int diff = newHour - currentHour;
+        if (diff < 0) {
+            diff += 24;
+        }
+        assertEqual(diff, 1);
+        Time.endDST();
+        newHour = Time.hour();
+        assertEqual((newHour-currentHour), 0);
+        assertFalse(Time.isDST());
     }
-    else {
-        assertEqual((newHour-currentHour), 1);
-    }
-    Time.endDST();
-    newHour = Time.hour();
-    assertEqual((newHour-currentHour), 0);
-    assertFalse(Time.isDST());
 }
 
 test(TIME_11_Format) {
