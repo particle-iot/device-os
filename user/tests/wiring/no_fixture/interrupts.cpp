@@ -13,7 +13,7 @@ uint32_t get_time() {
 	return time_ms;
 }
 
-test(interrupts_atomic_section)
+test(INTERRUPTS_01_atomic_section)
 {
 	// software timer and time_ms will not increment while interrupts are disabled.
 	// micros() does increment
@@ -85,7 +85,7 @@ public:
 
 int TestHandler::count = 0;
 
-test(interrupts_detached_handler_is_destroyed)
+test(INTERRUPTS_02_detached_handler_is_destroyed)
 {
 	assertEqual(TestHandler::count, 0);
 	attachSystemInterrupt(SysInterrupt_SysTick, TestHandler());
@@ -96,7 +96,7 @@ test(interrupts_detached_handler_is_destroyed)
 	assertEqual(TestHandler::count, 0);
 }
 
-test(interrupts_isisr_willpreempt_servicedirqn)
+test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 {
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX)
 	volatile bool cont = false;
