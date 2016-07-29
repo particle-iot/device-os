@@ -1,2 +1,1 @@
-SYSTEM_PART1_MODULE_DEPENDENCY=0,0,0
-include $(SHARED_MODULAR)/part1_build.mk
+include $(SHARED_MODULAR)/part3_build.mk
