@@ -32,6 +32,7 @@
 - [Photon] 1KB system backup memory added (same size as Electron) reducing user backup memory to 3KB (3068 bytes) [#1046](https://github.com/spark/firmware/pull/1046)
 - Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
 - Extended spi_master_slave tests with SPI_MODE0/1/2/3 and MSBFIRST/LSBFIRST testing [#1056](https://github.com/spark/firmware/pull/1056)
+- [Electron] System parts reordered from 3,1,2 to 1,2,3 to preserve logical flashing order for OTA/YModem when upgrading. [#1065](https://github.com/spark/firmware/pull/1065)
 
 ### BUGFIXES
 
