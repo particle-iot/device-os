@@ -25,7 +25,7 @@
 // Regression test for the WICED deadlock in sys_sem_new
 // See https://github.com/spark/firmware/pull/984
 Thread allocatorThread;
-test(concurrent_semaphore_deadlock)
+test(CONCURRENT_01_semaphore_deadlock)
 {
     volatile bool run = true;
 

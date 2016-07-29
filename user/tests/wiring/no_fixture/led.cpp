@@ -64,7 +64,7 @@ uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
     return (value*brightness)>>8;
 }
 
-test(LED_Updated) {
+test(LED_01_Updated) {
     RGB.control(false);
     RGB.onChange(onChangeRGBLED);
     uint32_t start = rgbNotifyCount;
@@ -76,21 +76,21 @@ test(LED_Updated) {
 }
 
 
-test(LED_ControlledReturnsFalseWhenNoControl) {
+test(LED_02_ControlledReturnsFalseWhenNoControl) {
     // when
     RGB.control(false);
     // then
     assertFalse(RGB.controlled());
 }
 
-test(LED_ControlledReturnsTrueWhenControlled) {
+test(LED_03_ControlledReturnsTrueWhenControlled) {
     // when
     RGB.control(true);
     // then
     assertTrue(RGB.controlled());
 }
 
-test(LED_ChangesWhenNotControlled) {
+test(LED_04_ChangesWhenNotControlled) {
     // when
     RGB.control(false);
     // then
@@ -103,7 +103,7 @@ test(LED_ChangesWhenNotControlled) {
     assertFalse(rgbInitial[0]==rgbChanged[0] && rgbInitial[1]==rgbChanged[1] && rgbInitial[2]==rgbChanged[2]);
 }
 
-test(LED_StaticWhenControlled) {
+test(LED_05_StaticWhenControlled) {
     // given
     RGB.control(true);
     RGB.brightness(255);
@@ -128,7 +128,7 @@ test(LED_StaticWhenControlled) {
         assertEqual(rgbInitial[i], rgbNotify[i]);
 }
 
-test(LED_SettingRGBAfterOverrideShouldChangeLED) {
+test(LED_06_SettingRGBAfterOverrideShouldChangeLED) {
     // given
     RGB.control(true);
     RGB.brightness(255);
@@ -140,7 +140,7 @@ test(LED_SettingRGBAfterOverrideShouldChangeLED) {
     assertLEDColorIs(ledAdjust(10),ledAdjust(20),ledAdjust(30));
 }
 
-test(LED_SettingRGBWithoutOverrideShouldNotChangeLED) {
+test(LED_07_SettingRGBWithoutOverrideShouldNotChangeLED) {
     // given
     RGB.control(false);
 
@@ -151,7 +151,7 @@ test(LED_SettingRGBWithoutOverrideShouldNotChangeLED) {
     assertLEDColorIsNot(ledAdjust(10),ledAdjust(20),ledAdjust(30));
 }
 
-test(LED_BrightnessChangesColor) {
+test(LED_08_BrightnessChangesColor) {
     // given
     RGB.control(true);
     RGB.brightness(255);
@@ -164,7 +164,7 @@ test(LED_BrightnessChangesColor) {
     assertLEDColorIs(ledAdjust(255,128), ledAdjust(127,128), ledAdjust(0,128));
 }
 
-test(LED_BrightnessIsPersisted) {
+test(LED_09_BrightnessIsPersisted) {
     // given
     RGB.control(true);
     RGB.brightness(128);
@@ -191,7 +191,7 @@ void assertChangeHandlerCalledWith(uint8_t r, uint8_t g, uint8_t b) {
     assertEqual(rgbUser[2], b);
 }
 
-test(LED_ChangeHandlerCalled) {
+test(LED_10_ChangeHandlerCalled) {
     // given
     RGB.onChange(userLEDChangeHandler);
 

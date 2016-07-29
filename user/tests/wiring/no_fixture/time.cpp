@@ -28,7 +28,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-test(TIME_NowReturnsCorrectUnixTime) {
+test(TIME_01_NowReturnsCorrectUnixTime) {
     // when
     time_t last_time = Time.now();
     delay(1000); //systick delay for 1 second
@@ -37,7 +37,7 @@ test(TIME_NowReturnsCorrectUnixTime) {
     assertEqual(current_time, last_time + 1);//RTC interrupt fires successfully
 }
 
-test(TIME_LocalReturnsUnixTimePlusTimezone) {
+test(TIME_02_LocalReturnsUnixTimePlusTimezone) {
     // when
 	Time.zone(-5);
     Time.endDST();
@@ -52,7 +52,7 @@ test(TIME_LocalReturnsUnixTimePlusTimezone) {
     assertEqual(local_time, last_time - (5*3600));
 }
 
-test(TIME_LocalReturnsUnixTimePlusTimezoneAndDST) {
+test(TIME_03_LocalReturnsUnixTimePlusTimezoneAndDST) {
     // when
     Time.zone(-5);
     Time.setDSTOffset(1.0);
@@ -72,7 +72,7 @@ test(TIME_LocalReturnsUnixTimePlusTimezoneAndDST) {
     assertFalse(Time.isDST());
 }
 
-test(TIME_LocalReturnsUnixTimePlusDST) {
+test(TIME_04_LocalReturnsUnixTimePlusDST) {
     // when
     Time.zone(0);
     Time.setDSTOffset(1.25);
@@ -92,17 +92,17 @@ test(TIME_LocalReturnsUnixTimePlusDST) {
     assertFalse(Time.isDST());
 }
 
-test(TIME_zoneIsReturned) {
+test(TIME_05_zoneIsReturned) {
 	Time.zone(-10);
 	assertEqual(Time.zone(), -10);
 }
 
-test(TIME_DSTOffsetIsReturned) {
+test(TIME_06_DSTOffsetIsReturned) {
     Time.setDSTOffset(1.5);
     assertEqual(Time.getDSTOffset(), 1.5);
 }
 
-test(TIME_SetTimeResultsInCorrectUnixTimeUpdate) {
+test(TIME_07_SetTimeResultsInCorrectUnixTimeUpdate) {
     // when
     time_t current_time = Time.now();
     Time.setTime(86400);//set to epoch time + 1 day
@@ -113,36 +113,59 @@ test(TIME_SetTimeResultsInCorrectUnixTimeUpdate) {
     Time.setTime(current_time);
 }
 
-test(TIME_TimeStrDoesNotEndWithNewline) {
+test(TIME_08_TimeStrDoesNotEndWithNewline) {
     String t = Time.timeStr();
     assertMore(t.length(), 0);
     char c = t[t.length()-1];
     assertNotEqual('\n', c);
 }
 
-test(TIME_ChangingTimeZoneWorksImmediately) {
-    int currentHour = Time.hour();
-    Time.zone(4);
-    int newHour = Time.hour();
-    assertMoreOrEqual(4, (newHour-currentHour)%12);
-    Time.zone(0);
+test(TIME_09_ChangingTimeZoneWorksImmediately) {
+    for (int x=-12; x<=13; x++)
+    {
+        Time.zone(x);
+        int currentHour = Time.hour();
+        int y = x + 4;
+        if (y > 13) {
+            y -= 24;
+        }
+        Time.zone(y);
+        int newHour = Time.hour();
+        // check 24 hour wrapping case
+        int diff = newHour - currentHour;
+        if (diff < 0) {
+            diff += 24;
+        }
+        assertEqual(diff, 4);
+        Time.zone(x);
+        newHour = Time.hour();
+        assertEqual((newHour-currentHour), 0);
+    }
 }
 
-test(TIME_ChangingDSTWorksImmediately) {
-    Time.zone(0.0);
-    int currentHour = Time.hour();
-    Time.setDSTOffset(1.0);
-    Time.beginDST();
-    assertTrue(Time.isDST());
-    int newHour = Time.hour();
-    assertEqual((newHour-currentHour)%12, 1);
-    Time.endDST();
-    newHour = Time.hour();
-    assertEqual((newHour-currentHour)%12, 0);
-    assertFalse(Time.isDST());
+test(TIME_10_ChangingDSTWorksImmediately) {
+    for (float x=-12; x<=13; x+=0.5)
+    {
+        Time.zone(x);
+        int currentHour = Time.hour();
+        Time.setDSTOffset(1.0);
+        Time.beginDST();
+        assertTrue(Time.isDST());
+        int newHour = Time.hour();
+        // check 24 hour wrapping case
+        int diff = newHour - currentHour;
+        if (diff < 0) {
+            diff += 24;
+        }
+        assertEqual(diff, 1);
+        Time.endDST();
+        newHour = Time.hour();
+        assertEqual((newHour-currentHour), 0);
+        assertFalse(Time.isDST());
+    }
 }
 
-test(TIME_Format) {
+test(TIME_11_Format) {
     Time.endDST();
     Time.zone(-5.25);
     time_t t = 1024*1024*1024;
@@ -172,7 +195,7 @@ test(TIME_Format) {
     assertFalse(Time.isDST());
 }
 
-test(TIME_concatenate) {
+test(TIME_12_concatenate) {
     // addresses reports of timeStr() not being concatenatable
     time_t t = 1024*1024*1024;
     Time.endDST();

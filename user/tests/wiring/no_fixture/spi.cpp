@@ -12,7 +12,7 @@ void assertClockDivider(unsigned reference, unsigned desired, uint8_t expected_d
     assertEqual(expected_clock, clock);
 }
 
-test(spi_computeClockSpeed)
+test(SPI_01_computeClockSpeed)
 {
     assertClockDivider(60*MHZ, 120*MHZ, SPI_CLOCK_DIV2, 30*MHZ);
     assertClockDivider(60*MHZ, 30*MHZ, SPI_CLOCK_DIV2, 30*MHZ);
