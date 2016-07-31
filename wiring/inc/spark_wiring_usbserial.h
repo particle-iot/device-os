@@ -37,11 +37,11 @@ public:
 	// public methods
 	USBSerial();
 
-        unsigned int baud() { return USB_USART_Baud_Rate(); }
+    unsigned int baud() { return USB_USART_Baud_Rate(); }
+    operator bool() { return baud()!=0; }
+    bool isConnected();
 
-        operator bool() { return baud()!=0; }
-
-	void begin(long speed);
+	void begin(long speed=9600);
 	void end();
 	int peek();
 

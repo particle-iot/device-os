@@ -28,12 +28,15 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
-#include "usbd_cdc_core.h"
+#include "usb_settings.h"
+#include "usbd_mcdc.h"
 #include "usbd_usr.h"
 #include "usb_conf.h"
 #include "usbd_desc.h"
 #include "delay_hal.h"
 #include "interrupts_hal.h"
+#include "ringbuf_helper.h"
+#include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -52,18 +55,10 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 
 /* Extern variables ----------------------------------------------------------*/
 #ifdef USB_CDC_ENABLE
-extern volatile LINE_CODING linecoding;
-extern volatile uint8_t USB_DEVICE_CONFIGURED;
-extern volatile uint8_t USB_Rx_Buffer[];
-extern volatile uint32_t USB_Rx_Buffer_head;
-extern volatile uint32_t USB_Rx_Buffer_tail;
-extern volatile uint32_t USB_Rx_Buffer_length;
-extern volatile uint8_t USB_Tx_Buffer[];
-extern volatile uint32_t USB_Tx_Buffer_head;
-extern volatile uint32_t USB_Tx_Buffer_tail;
-extern volatile uint8_t  USB_Tx_State;
-extern volatile uint8_t  USB_Rx_State;
-extern volatile uint8_t  USB_Serial_Open;
+static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
+USBD_MCDC_Instance_Data USBD_MCDC = {{0}};
+__ALIGN_BEGIN static uint8_t USBD_MCDC_Rx_Buffer[USB_RX_BUFFER_SIZE];
+__ALIGN_BEGIN static uint8_t USBD_MCDC_Tx_Buffer[USB_TX_BUFFER_SIZE];
 #endif
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -82,7 +77,7 @@ void SPARK_USB_Setup(void)
             USB_OTG_HS_CORE_ID,
 #endif
             &USR_desc,
-            &USBD_CDC_cb,
+            &USBD_MCDC_cb,
             NULL);
 }
 
@@ -100,6 +95,18 @@ void Get_SerialNum(void)
 #endif
 
 #ifdef USB_CDC_ENABLE
+
+uint16_t USB_USART_Request_Handler(/*USBD_Composite_Class_Data* cls, */uint32_t cmd, uint8_t* buf, uint32_t len) {
+    if (cmd == SET_LINE_CODING && LineCoding_BitRate_Handler) {
+        // USBD_MCDC_Instance_Data* priv = (USBD_MCDC_Instance_Data*)cls->priv;
+        USBD_MCDC_Instance_Data* priv = &USBD_MCDC;
+        if (priv)
+            LineCoding_BitRate_Handler(priv->linecoding.bitrate);
+    }
+
+    return 0;
+}
+
 /*******************************************************************************
  * Function Name  : USB_USART_Init
  * Description    : Start USB-USART protocol.
@@ -108,9 +115,9 @@ void Get_SerialNum(void)
  *******************************************************************************/
 void USB_USART_Init(uint32_t baudRate)
 {
-    if (linecoding.bitrate != baudRate)
+    if (USBD_MCDC.linecoding.bitrate != baudRate)
     {
-        if (!baudRate && linecoding.bitrate > 0)
+        if (!baudRate && USBD_MCDC.linecoding.bitrate > 0)
         {
             // Deconfigure CDC class endpoints
             USBD_ClrCfg(&USB_OTG_dev, 0);
@@ -130,8 +137,18 @@ void USB_USART_Init(uint32_t baudRate)
             // Soft reattach
             // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
         }
-        else if (!linecoding.bitrate)
+        else if (!USBD_MCDC.linecoding.bitrate)
         {
+            memset((void*)&USBD_MCDC, 0, sizeof(USBD_MCDC));
+            USBD_MCDC.ep_in_data = CDC_IN_EP;
+            USBD_MCDC.ep_in_int = CDC_CMD_EP;
+            USBD_MCDC.ep_out_data = CDC_OUT_EP;
+            USBD_MCDC.rx_buffer = USBD_MCDC_Rx_Buffer;
+            USBD_MCDC.tx_buffer = USBD_MCDC_Tx_Buffer;
+            USBD_MCDC.rx_buffer_size = USB_RX_BUFFER_SIZE;
+            USBD_MCDC.tx_buffer_size = USB_TX_BUFFER_SIZE;
+            USBD_MCDC.name = "Serial";
+            USBD_MCDC.req_handler = USB_USART_Request_Handler;
             //Initialize USB device
             SPARK_USB_Setup();
 
@@ -143,13 +160,13 @@ void USB_USART_Init(uint32_t baudRate)
             // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
         }
         //linecoding.bitrate will be overwritten by USB Host
-        linecoding.bitrate = baudRate;
+        // linecoding.bitrate = baudRate;
     }
 }
 
 unsigned USB_USART_Baud_Rate(void)
 {
-    return linecoding.bitrate;
+    return USBD_MCDC.linecoding.bitrate;
 }
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
@@ -157,12 +174,11 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
     //Init USB Serial first before calling the linecoding handler
     USB_USART_Init(9600);
 
-    //Set the system defined custom handler
-    SetLineCodingBitRateHandler(handler);
+    LineCoding_BitRate_Handler = handler;
 }
 
 static inline bool USB_USART_Connected() {
-    return linecoding.bitrate > 0 && USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED && USB_Serial_Open;
+    return USBD_MCDC.linecoding.bitrate > 0 && USB_OTG_dev.dev.device_status == USB_OTG_CONFIGURED && USBD_MCDC.serial_open;
 }
 
 /*******************************************************************************
@@ -175,10 +191,9 @@ uint8_t USB_USART_Available_Data(void)
 {
     int32_t available = 0;
     int state = HAL_disable_irq();
-    if (USB_Rx_Buffer_head >= USB_Rx_Buffer_tail)
-        available = USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
-    else
-        available = USB_Rx_Buffer_length + USB_Rx_Buffer_head - USB_Rx_Buffer_tail;
+    available = ring_data_avail(USBD_MCDC.rx_buffer_length,
+                                USBD_MCDC.rx_buffer_head,
+                                USBD_MCDC.rx_buffer_tail);
     HAL_enable_irq(state);
     return available;
 }
@@ -194,11 +209,9 @@ int32_t USB_USART_Receive_Data(uint8_t peek)
     if (USB_USART_Available_Data() > 0)
     {
         int state = HAL_disable_irq();
-        uint8_t data = USB_Rx_Buffer[USB_Rx_Buffer_tail];
+        uint8_t data = USBD_MCDC.rx_buffer[USBD_MCDC.rx_buffer_tail];
         if (!peek) {
-            USB_Rx_Buffer_tail++;
-            if (USB_Rx_Buffer_tail == USB_Rx_Buffer_length)
-                USB_Rx_Buffer_tail = 0;
+            USBD_MCDC.rx_buffer_tail = ring_wrap(USBD_MCDC.rx_buffer_length, USBD_MCDC.rx_buffer_tail + 1);
         }
         HAL_enable_irq(state);
         return data;
@@ -217,9 +230,11 @@ int32_t USB_USART_Available_Data_For_Write(void)
 {
     if (USB_USART_Connected())
     {
-        uint32_t tail = USB_Tx_Buffer_tail;
-        int32_t available = USB_TX_BUFFER_SIZE - (USB_Tx_Buffer_head >= tail ?
-            USB_Tx_Buffer_head - tail : USB_TX_BUFFER_SIZE + USB_Tx_Buffer_head - tail) - 1;
+        int state = HAL_disable_irq();
+        int32_t available = ring_space_avail(USBD_MCDC.tx_buffer_size,
+                                             USBD_MCDC.tx_buffer_head,
+                                             USBD_MCDC.tx_buffer_tail);
+        HAL_enable_irq(state);
         return available;
     }
 
@@ -232,22 +247,26 @@ int32_t USB_USART_Available_Data_For_Write(void)
  * Input          : Data.
  * Return         : None.
  *******************************************************************************/
-void USB_USART_Send_Data(uint8_t Data)
+void USB_USART_Send_Data(uint8_t data)
 {
+    int32_t ret = -1;
     int32_t available = 0;
     do {
         available = USB_USART_Available_Data_For_Write();
     }
     while (available < 1 && available != -1);
     // Confirm once again that the Host is connected
-    if (USB_USART_Connected())
+    int32_t state = HAL_disable_irq();
+    if (USB_USART_Connected() && available > 0)
     {
-        uint32_t head = USB_Tx_Buffer_head;
-
-        USB_Tx_Buffer[head] = Data;
-
-        USB_Tx_Buffer_head = ++head % USB_TX_BUFFER_SIZE;
+        USBD_MCDC.tx_buffer[USBD_MCDC.tx_buffer_head] = data;
+        USBD_MCDC.tx_buffer_head = ring_wrap(USBD_MCDC.tx_buffer_size, USBD_MCDC.tx_buffer_head + 1);
+        ret = 1;
     }
+    HAL_enable_irq(state);
+
+    //return ret;
+    (void)ret;
 }
 
 /*******************************************************************************
@@ -258,9 +277,9 @@ void USB_USART_Send_Data(uint8_t Data)
  *******************************************************************************/
 void USB_USART_Flush_Data(void)
 {
-    while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USB_TX_BUFFER_SIZE - 1));
+    while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USBD_MCDC.tx_buffer_size - 1));
     // We should also wait for USB_Tx_State to become 0, as hardware might still be busy transmitting data
-    while(USB_Tx_State == 1);
+    while(USBD_MCDC.tx_state == 1);
 }
 #endif
 
