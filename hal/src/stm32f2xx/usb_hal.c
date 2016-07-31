@@ -160,7 +160,7 @@ void USB_USART_Init(uint32_t baudRate)
             // USB_OTG_dev.regs.DREGS->DCTL |= 0x02;
         }
         //linecoding.bitrate will be overwritten by USB Host
-        // linecoding.bitrate = baudRate;
+        USBD_MCDC.linecoding.bitrate = baudRate;
     }
 }
 
@@ -168,6 +168,22 @@ unsigned USB_USART_Baud_Rate(void)
 {
     return USBD_MCDC.linecoding.bitrate;
 }
+
+static bool USB_WillPreempt()
+{
+    if (HAL_IsISR()) {
+#ifdef USE_USB_OTG_FS
+        int32_t irq = OTG_FS_IRQn;
+#else
+        int32_t irq = OTG_HS_IRQn;
+#endif
+        if (!HAL_WillPreempt(irq, HAL_ServicedIRQn()))
+            return false;
+    }
+
+    return true;
+}
+
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 {
@@ -254,7 +270,7 @@ void USB_USART_Send_Data(uint8_t data)
     do {
         available = USB_USART_Available_Data_For_Write();
     }
-    while (available < 1 && available != -1);
+    while (available < 1 && available != -1 && USB_WillPreempt());
     // Confirm once again that the Host is connected
     int32_t state = HAL_disable_irq();
     if (USB_USART_Connected() && available > 0)
@@ -277,7 +293,7 @@ void USB_USART_Send_Data(uint8_t data)
  *******************************************************************************/
 void USB_USART_Flush_Data(void)
 {
-    while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USBD_MCDC.tx_buffer_size - 1));
+    while(USB_USART_Connected() && USB_USART_Available_Data_For_Write() != (USBD_MCDC.tx_buffer_size - 1) && USB_WillPreempt());
     // We should also wait for USB_Tx_State to become 0, as hardware might still be busy transmitting data
     while(USBD_MCDC.tx_state == 1);
 }

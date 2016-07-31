@@ -31,6 +31,7 @@
 #include "usb_hal.h"
 #include "system_task.h"
 
+
 class USBSerial : public Stream
 {
 public:
@@ -38,8 +39,9 @@ public:
 	USBSerial();
 
     unsigned int baud() { return USB_USART_Baud_Rate(); }
-    operator bool() { return baud()!=0; }
+    operator bool() { return isEnabled(); }
     bool isConnected();
+    bool isEnabled() { return baud()!=0; }
 
 	void begin(long speed=9600);
 	void end();
