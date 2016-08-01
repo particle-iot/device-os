@@ -69,6 +69,7 @@ typedef struct USBD_MCDC_Instance_Data {
   volatile uint32_t tx_buffer_head;
   volatile uint32_t tx_buffer_tail;
   volatile uint32_t tx_failed_counter;
+  volatile uint32_t tx_buffer_last;
 
   __ALIGN_BEGIN uint8_t cmd_buffer[CDC_CMD_PACKET_SZE] __ALIGN_END;
 
