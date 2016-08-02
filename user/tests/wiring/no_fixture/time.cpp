@@ -28,7 +28,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-test(TIME_NowReturnsCorrectUnixTime) {
+test(TIME_01_NowReturnsCorrectUnixTime) {
     // when
     time_t last_time = Time.now();
     delay(1000); //systick delay for 1 second
@@ -37,7 +37,7 @@ test(TIME_NowReturnsCorrectUnixTime) {
     assertEqual(current_time, last_time + 1);//RTC interrupt fires successfully
 }
 
-test(TIME_LocalReturnsUnixTimePlusTimezone) {
+test(TIME_02_LocalReturnsUnixTimePlusTimezone) {
     // when
 	Time.zone(-5);
 	// todo - ideally need to disable interrupts or we may get the 1 second switch between invoking
@@ -49,12 +49,12 @@ test(TIME_LocalReturnsUnixTimePlusTimezone) {
 }
 
 
-test(TIME_zoneIsReturned) {
+test(TIME_03_zoneIsReturned) {
 	Time.zone(-10);
 	assertEqual(Time.zone(), -10);
 }
 
-test(TIME_SetTimeResultsInCorrectUnixTimeUpdate) {
+test(TIME_04_SetTimeResultsInCorrectUnixTimeUpdate) {
     // when
     time_t current_time = Time.now();
     Time.setTime(86400);//set to epoch time + 1 day
@@ -65,22 +65,37 @@ test(TIME_SetTimeResultsInCorrectUnixTimeUpdate) {
     Time.setTime(current_time);
 }
 
-test(TIME_TimeStrDoesNotEndWithNewline) {
+test(TIME_05_TimeStrDoesNotEndWithNewline) {
     String t = Time.timeStr();
     assertMore(t.length(), 0);
     char c = t[t.length()-1];
     assertNotEqual('\n', c);
 }
 
-test(TIME_ChangingTimeZoneWorksImmediately) {
-    int currentHour = Time.hour();
-    Time.zone(4);
-    int newHour = Time.hour();
-    assertMoreOrEqual(4, (newHour-currentHour)%12);
-    Time.zone(0);
+test(TIME_06_ChangingTimeZoneWorksImmediately) {
+    for (int x=-12; x<=13; x++)
+    {
+        Time.zone(x);
+        int currentHour = Time.hour();
+        int y = x + 4;
+        if (y > 13) {
+            y -= 24;
+        }
+        Time.zone(y);
+        int newHour = Time.hour();
+        // check 24 hour wrapping case
+        int diff = newHour - currentHour;
+        if (diff < 0) {
+            diff += 24;
+        }
+        assertEqual(diff, 4);
+        Time.zone(x);
+        newHour = Time.hour();
+        assertEqual((newHour-currentHour), 0);
+    }
 }
 
-test(TIME_Format) {
+test(TIME_07_Format) {
 
     Time.zone(-5.25);
     time_t t = 1024*1024*1024;
@@ -94,7 +109,7 @@ test(TIME_Format) {
     Time.setFormat(TIME_FORMAT_DEFAULT);
 }
 
-test(TIME_concatenate) {
+test(TIME_08_concatenate) {
     // addresses reports of timeStr() not being concatenatable
     time_t t = 1024*1024*1024;
     Time.zone(0);
