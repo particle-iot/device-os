@@ -22,7 +22,7 @@ message if the version is older than this.
 **OS X** users can install the toolchain with [Homebrew](http://brew.sh/):
 - `brew tap PX4/homebrew-px4`
 - `brew update`
-- `brew install gcc-arm-none-eabi-49`
+- `brew install gcc-arm-none-eabi`
 - `arm-none-eabi-gcc --version` (should now say v4.9.x)
 
 If you are upgrading an existing installation you will have to unlink and link your symblinks:
