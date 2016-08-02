@@ -1,5 +1,9 @@
 ## v0.5.3-rc.1
 
+### ENHANCEMENTS
+
+- [Electron] System firmware is now aware of system-part3 to allow OTA/YModem upgrade from 0.5.3 to >=0.6.0
+
 ### BUGFIXES
 
 - SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971)
