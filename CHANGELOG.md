@@ -1,8 +1,22 @@
-## v0.5.3-rc.1
+## v0.5.3-rc.2
+
+### FEATURE
+
+- DTR/RTS support (open/closed detection: `Serial.isConnected()`). [#1073](https://github.com/spark/firmware/pull/1073)
 
 ### ENHANCEMENTS
 
-- [Electron] System firmware is now aware of system-part3 to allow OTA/YModem upgrade from 0.5.3 to >=0.6.0
+- [Electron] System firmware is now aware of system-part3 to allow OTA/YModem upgrade from >=0.5.3-rc.2 to >=0.6.0-rc.1
+
+### BUGFIXES
+
+- added HAL_IsISR() which is used to skip calling the background loop from delay(). fixes [#673](https://github.com/spark/firmware/issue/673)
+- Fixes an issue of USB Serial erroneously switching to closed state. [#1073](https://github.com/spark/firmware/pull/1073)
+- RTC wakeup time now calculated right before entering SLEEP_MODE_DEEP. Fixes [#1043](https://github.com/spark/firmware/issue/1043)
+- STOP mode should retain user interrupt handler. Fixes [#1029](https://github.com/spark/firmware/issue/1029)
+
+
+## v0.5.3-rc.1
 
 ### BUGFIXES
 
