@@ -95,3 +95,20 @@ test(interrupts_detached_handler_is_destroyed)
 	detachSystemInterrupt(SysInterrupt_SysTick);
 	assertEqual(TestHandler::count, 0);
 }
+
+test(interrupts_isisr_willpreempt_servicedirqn)
+{
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX)
+	volatile bool cont = false;
+	attachSystemInterrupt(SysInterrupt_SysTick, [&] {
+		assertTrue(HAL_IsISR());
+		assertEqual((IRQn)HAL_ServicedIRQn(), SysTick_IRQn);
+		cont = true;
+	});
+	while (!cont);
+	detachSystemInterrupt(SysInterrupt_SysTick);
+	assertFalse(HAL_WillPreempt(SysTick_IRQn, SysTick_IRQn));
+	assertTrue(HAL_WillPreempt(NonMaskableInt_IRQn, SysTick_IRQn));
+	assertFalse(HAL_WillPreempt(SysTick_IRQn, NonMaskableInt_IRQn));
+#endif
+}

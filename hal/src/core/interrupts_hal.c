@@ -249,15 +249,3 @@ void HAL_enable_irq(int is) {
 }
 
 
-inline bool isISR()
-{
-	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
-}
-
-uint8_t HAL_IsISR()
-{
-	return isISR();
-}
-
-
-
