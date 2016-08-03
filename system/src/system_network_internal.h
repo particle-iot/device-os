@@ -335,6 +335,7 @@ public:
                 SPARK_LED_FADE = 0;
                 WLAN_CONNECTING = 1;
                 LED_SetRGBColor(RGB_COLOR_GREEN);
+                INFO("ARM_WLAN_WD 1");
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
                 connect_finalize();
             }
@@ -417,8 +418,13 @@ public:
     {
         WLAN_CONNECTED = 1;
         WLAN_CONNECTING = 0;
-        if (!WLAN_DISCONNECT)
+
+        /* If DHCP has completed, don't re-arm WD due to spurious notify_connected()
+         * from WICED on loss of internet and reconnect
+         */
+        if (!WLAN_DISCONNECT && !WLAN_DHCP)
         {
+            INFO("ARM_WLAN_WD 2");
             ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
         }
     }
@@ -428,26 +434,28 @@ public:
         cloud_disconnect(false); // don't close the socket on the callback since this causes a lockup on the Core
         if (WLAN_CONNECTED)     /// unsolicited disconnect
         {
-          //Breathe blue if established connection gets disconnected
-          if(!WLAN_DISCONNECT)
-          {
-            //if WiFi.disconnect called, do not enable wlan watchdog
-            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-          }
-          SPARK_LED_FADE = 1;
-          LED_SetRGBColor(RGB_COLOR_BLUE);
-          LED_On(LED_RGB);
+            //Breathe blue if established connection gets disconnected
+            if (!WLAN_DISCONNECT)
+            {
+                //if WiFi.disconnect called, do not enable wlan watchdog
+                INFO("ARM_WLAN_WD 3");
+                ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+            }
+            SPARK_LED_FADE = 1;
+            LED_SetRGBColor(RGB_COLOR_BLUE);
+            LED_On(LED_RGB);
         }
         else if (!WLAN_SMART_CONFIG_START)
         {
-          //Do not enter if smart config related disconnection happens
-          //Blink green if connection fails because of wrong password
+            //Do not enter if smart config related disconnection happens
+            //Blink green if connection fails because of wrong password
             if (!WLAN_DISCONNECT) {
+                INFO("ARM_WLAN_WD 4");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
             }
-          SPARK_LED_FADE = 0;
-          LED_SetRGBColor(RGB_COLOR_GREEN);
-          LED_On(LED_RGB);
+            SPARK_LED_FADE = 0;
+            LED_SetRGBColor(RGB_COLOR_GREEN);
+            LED_On(LED_RGB);
         }
         WLAN_CONNECTED = 0;
         WLAN_CONNECTING = 0;
@@ -464,6 +472,7 @@ public:
         if (dhcp)
         {
             LED_On(LED_RGB);
+            INFO("CLR_WLAN_WD 1, DHCP success");
             CLR_WLAN_WD();
             WLAN_DHCP = 1;
             SPARK_LED_FADE = 1;
@@ -480,9 +489,10 @@ public:
                 ble_provision_on_failed();
 #endif
                 listen();
-            }
-            else
+            }else {
+                INFO("DHCP fail, ARM_WLAN_WD 5");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+            }
         }
     }
 

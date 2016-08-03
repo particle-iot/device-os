@@ -87,6 +87,9 @@ typedef struct SPI_State
     volatile uint8_t SPI_SS_State;
     uint8_t SPI_DMA_Configured;
     volatile uint8_t SPI_DMA_Aborted;
+
+    __attribute__((aligned(4))) uint8_t tempMemoryRx;
+    __attribute__((aligned(4))) uint8_t tempMemoryTx;
 } SPI_State;
 
 static void HAL_SPI_SS_Handler(void *data);
@@ -147,8 +150,8 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
 
     DMA_InitStructure.DMA_Channel = spiMap[spi].SPI_DMA_Channel;
 
-    static uint8_t tempMemoryTx = 0xFF;
-    static uint8_t tempMemoryRx = 0xFF;
+    spiState[spi].tempMemoryTx = 0xFF;
+    spiState[spi].tempMemoryRx = 0xFF;
 
     /* Configure Tx DMA Stream */
     DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
@@ -159,7 +162,7 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     }
     else
     {
-        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)(&tempMemoryTx);
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)(&spiState[spi].tempMemoryTx);
         DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
     }
     DMA_Init(spiMap[spi].SPI_TX_DMA_Stream, &DMA_InitStructure);
@@ -173,7 +176,7 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     }
     else
     {
-        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&tempMemoryRx;
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&spiState[spi].tempMemoryRx;
         DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
     }
     DMA_Init(spiMap[spi].SPI_RX_DMA_Stream, &DMA_InitStructure);
@@ -309,8 +312,9 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
 
     if (mode == SPI_MODE_MASTER)
     {
+        // Ensure that there is no glitch on SS pin
+        PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
         HAL_Pin_Mode(pin, OUTPUT);
-        HAL_GPIO_Write(pin, Bit_SET);//HIGH
     }
     else
     {
@@ -354,7 +358,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
     {
         /* Attach interrupt to slave select pin */
         HAL_InterruptExtraConfiguration irqConf = {0};
-        irqConf.size = sizeof(irqConf);
+        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
         irqConf.IRQChannelPreemptionPriority = 1;
         irqConf.IRQChannelSubPriority = 0;
 
@@ -400,18 +404,17 @@ void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
         spiState[spi].SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     }
 
-    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
+    if(spiState[spi].SPI_Enabled != false) {
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
+        SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, ENABLE);
+    }
 
     spiState[spi].SPI_Bit_Order_Set = true;
 }
 
 void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
 {
-    if(spiState[spi].SPI_Enabled != false)
-    {
-        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
-    }
-
     switch(mode)
     {
         case SPI_MODE0:
@@ -435,10 +438,10 @@ void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
             break;
     }
 
-    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
-
     if(spiState[spi].SPI_Enabled != false)
     {
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
+        SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
         SPI_Cmd(spiMap[spi].SPI_Peripheral, ENABLE);
     }
 

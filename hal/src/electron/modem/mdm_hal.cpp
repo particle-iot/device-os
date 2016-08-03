@@ -934,7 +934,7 @@ bool MDMParser::setBandSelect(MDM_BandSelect &data)
 
         if (strcmp(bands_selected, bands_to_set) != 0) {
             sendFormated("AT+UBANDSEL=%s\r\n", bands_to_set);
-            if (RESP_OK == waitFinalResp(NULL,NULL,10000)) {
+            if (RESP_OK == waitFinalResp(NULL,NULL,40000)) {
                 ok = true;
             }
         }

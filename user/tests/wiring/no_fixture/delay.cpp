@@ -21,7 +21,7 @@ class DelayTest
 
 DelayTest dt(10);
 
-test(delay_1_is_within_5_percent)
+test(DELAY_01_delay_1_is_within_5_percent)
 {
     // on RTOS have to stop task scheduling for the delays or we may not
     // be executed often enough

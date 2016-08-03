@@ -164,8 +164,8 @@ SECTIONS
         link_stack_end = .;
     }> SRAM AT> SRAM
 
-    INCLUDE backup_ram_system.ld
     INCLUDE backup_ram_user.ld
+    INCLUDE backup_ram_system.ld
 
     /DISCARD/ :
     {

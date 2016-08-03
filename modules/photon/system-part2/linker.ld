@@ -14,6 +14,8 @@ MEMORY
        The value given here is the sum of system_static_ram_size and stack_size
     */
     SRAM      (rwx) : ORIGIN = 0x20020000 - 42K, LENGTH = 42K
+    
+   	INCLUDE backup_ram_memory.ld
 }
 
 

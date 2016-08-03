@@ -43,6 +43,7 @@
 #include "debug.h"
 #include "usbd_desc_device.h"
 #include <stdlib.h>
+#include "ringbuf_helper.h"
 
 LOG_SOURCE_CATEGORY("usb.hal")
 
@@ -69,6 +70,7 @@ static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
 static uint8_t USB_InSetupRequest = 0;
 static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;
 static void* USB_Vendor_Request_Ptr = NULL;
+static USBD_Class_cb_TypeDef* USB_Composite_Instance = NULL;
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
@@ -187,6 +189,7 @@ void SPARK_USB_Setup(void)
     if (!USB_Configured)
         return;
 
+    USB_Composite_Instance = USBD_Composite_Instance(&HAL_USB_Handle_Configuration);
     USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_FS
             USB_OTG_FS_CORE_ID,
@@ -195,7 +198,7 @@ void SPARK_USB_Setup(void)
 #endif
             &USR_desc,
             //&USBD_CDC_cb,
-            USBD_Composite_Instance(&HAL_USB_Handle_Configuration),
+            USB_Composite_Instance,
             &USR_cb);
     HAL_USB_Attach();
 }
@@ -263,8 +266,12 @@ void HAL_USB_Init(void)
 
 void HAL_USB_Detach(void)
 {
-    if (USB_Configured)
+    if (USB_Configured) {
         USB_Cable_Config(DISABLE);
+        if (USB_Composite_Instance) {
+            USB_Composite_Instance->DeInit(&USB_OTG_dev, 0);
+        }
+    }
 }
 
 void HAL_USB_Attach(void)
@@ -371,10 +378,9 @@ int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial)
 {
     int32_t available = 0;
     int state = HAL_disable_irq();
-    if (usbUsartMap[serial].data->rx_buffer_head >= usbUsartMap[serial].data->rx_buffer_tail)
-        available = usbUsartMap[serial].data->rx_buffer_head - usbUsartMap[serial].data->rx_buffer_tail;
-    else
-        available = usbUsartMap[serial].data->rx_buffer_length + usbUsartMap[serial].data->rx_buffer_head - usbUsartMap[serial].data->rx_buffer_tail;
+    available = ring_data_avail(usbUsartMap[serial].data->rx_buffer_length,
+                                usbUsartMap[serial].data->rx_buffer_head,
+                                usbUsartMap[serial].data->rx_buffer_tail);
     HAL_enable_irq(state);
     return available;
 }
@@ -384,9 +390,9 @@ int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial)
     if (HAL_USB_USART_Is_Connected(serial))
     {
         int state = HAL_disable_irq();
-        uint32_t tail = usbUsartMap[serial].data->tx_buffer_tail;
-        int32_t available = usbUsartMap[serial].data->tx_buffer_size - (usbUsartMap[serial].data->tx_buffer_head >= tail ?
-            usbUsartMap[serial].data->tx_buffer_head - tail : usbUsartMap[serial].data->tx_buffer_size + usbUsartMap[serial].data->tx_buffer_head - tail) - 1;
+        int32_t available = ring_space_avail(usbUsartMap[serial].data->tx_buffer_size,
+                                             usbUsartMap[serial].data->tx_buffer_head,
+                                             usbUsartMap[serial].data->tx_buffer_tail);
         HAL_enable_irq(state);
         return available;
     }
@@ -401,9 +407,8 @@ int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek)
         int state = HAL_disable_irq();
         uint8_t data = usbUsartMap[serial].data->rx_buffer[usbUsartMap[serial].data->rx_buffer_tail];
         if (!peek) {
-            usbUsartMap[serial].data->rx_buffer_tail++;
-            if (usbUsartMap[serial].data->rx_buffer_tail == usbUsartMap[serial].data->rx_buffer_length)
-                usbUsartMap[serial].data->rx_buffer_tail = 0;
+            usbUsartMap[serial].data->rx_buffer_tail = ring_wrap(usbUsartMap[serial].data->rx_buffer_length,
+                                                                 usbUsartMap[serial].data->rx_buffer_tail + 1);
         }
         HAL_enable_irq(state);
         return data;
@@ -429,24 +434,24 @@ static bool HAL_USB_WillPreempt()
 
 int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data)
 {
+    int32_t ret = -1;
     int32_t available = 0;
     do {
         available = HAL_USB_USART_Available_Data_For_Write(serial);
     }
     while (available < 1 && available != -1 && HAL_USB_WillPreempt());
     // Confirm once again that the Host is connected
+    int32_t state = HAL_disable_irq();
     if (HAL_USB_USART_Is_Connected(serial) && available > 0)
     {
-        uint32_t head = usbUsartMap[serial].data->tx_buffer_head;
-
-        usbUsartMap[serial].data->tx_buffer[head] = data;
-
-        usbUsartMap[serial].data->tx_buffer_head = ++head % usbUsartMap[serial].data->tx_buffer_size;
-
-        return 1;
+        usbUsartMap[serial].data->tx_buffer[usbUsartMap[serial].data->tx_buffer_head] = data;
+        usbUsartMap[serial].data->tx_buffer_head = ring_wrap(usbUsartMap[serial].data->tx_buffer_size,
+                                                             usbUsartMap[serial].data->tx_buffer_head + 1);
+        ret = 1;
     }
+    HAL_enable_irq(state);
 
-    return -1;
+    return ret;
 }
 
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial)

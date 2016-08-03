@@ -91,7 +91,12 @@ unsigned USB_USART_Baud_Rate(void)
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
-    return HAL_USB_USART_Available_Data(HAL_USB_USART_SERIAL);
+    int32_t available = HAL_USB_USART_Available_Data(HAL_USB_USART_SERIAL);
+    if (available > 255)
+        return 255;
+    else if (available < 0)
+        return 0;
+    return available;
 }
 
 /*******************************************************************************

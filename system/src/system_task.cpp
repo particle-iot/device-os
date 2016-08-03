@@ -45,6 +45,7 @@
 #include "hw_config.h"
 #include "spark_wiring_hciserial.h"
 #endif
+#include "spark_wiring_interrupts.h"
 
 using spark::Network;
 
@@ -127,7 +128,7 @@ void manage_network_connection()
     {
         if (SPARK_WLAN_STARTED)
         {
-            WARN("!! Resetting WLAN due to %s", (WLAN_WD_TO()) ? "WLAN_WD_TO()":((SPARK_WLAN_RESET) ? "SPARK_WLAN_RESET" : "SPARK_WLAN_SLEEP"));
+            WARN("Resetting WLAN due to %s", (WLAN_WD_TO()) ? "WLAN_WD_TO()":((SPARK_WLAN_RESET) ? "SPARK_WLAN_RESET" : "SPARK_WLAN_SLEEP"));
             auto was_sleeping = SPARK_WLAN_SLEEP;
             auto was_disconnected = network.manual_disconnect();
             cloud_disconnect();
@@ -183,16 +184,31 @@ inline uint8_t in_cloud_backoff_period()
 
 void handle_cloud_errors()
 {
+    int blinks = Spark_Error_Count;
+    int error = blinks;
+    WARN("Handling cloud error: %d", blinks);
     // cfod resets in orange since they are soft errors
-    LED_SetRGBColor(Spark_Error_Count > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED);
+    // TODO: Spark_Error_Count is never equal to 1, refactor into new LED handling routine
+    ATOMIC_BLOCK() {
+        LED_SetRGBColor(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED);
 
-    while (Spark_Error_Count != 0)
-    {
-        LED_On(LED_RGB);
-        HAL_Delay_Milliseconds(500);
-        LED_Off(LED_RGB);
-        HAL_Delay_Milliseconds(500);
-        Spark_Error_Count--;
+        while (blinks != 0)
+        {
+            // HAL_Delay_Microseconds blocks properly
+            LED_On(LED_RGB);
+            HAL_Delay_Microseconds(250000);
+            LED_Off(LED_RGB);
+            HAL_Delay_Microseconds(250000);
+            blinks--;
+        }
+        // Set the LED color back to something appropriately not orange or red.
+        if (error == 2) { // Internet test failed
+            LED_SetRGBColor(RGB_COLOR_GREEN);
+        } else if (error == 3) { // Internet connected, Cloud not reachable
+            LED_SetRGBColor(RGB_COLOR_CYAN);
+        }
+        // Now finally clear the Spark_Error_Count
+        Spark_Error_Count = 0;
     }
 
     // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
@@ -203,32 +219,38 @@ void handle_cloud_errors()
 
 void handle_cfod()
 {
-    if (cfod_count < 255)
-        ++cfod_count;
-
     uint8_t reset = 0;
     system_get_flag(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS, &reset, nullptr);
-    if (reset && cfod_count >= MAX_FAILED_CONNECTS)
+    if (reset && ++cfod_count >= MAX_FAILED_CONNECTS)
     {
-        SPARK_WLAN_RESET = RESET_ON_CFOD;
-        ERROR("Resetting WLAN due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+        SPARK_WLAN_RESET = 1;
+        WARN("Resetting WLAN due to %d failed connect attempts", MAX_FAILED_CONNECTS);
     }
 
     if (Internet_Test() < 0)
     {
-        // No Internet Connection
+        WARN("Internet Test Failed!");
+        if (reset && ++cfod_count >= MAX_FAILED_CONNECTS)
+        {
+            SPARK_WLAN_RESET = 1;
+            WARN("Resetting WLAN due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+        }
         Spark_Error_Count = 2;
     }
     else
     {
-        // Cloud not Reachable
+        WARN("Internet available, Cloud not reachable!");
         Spark_Error_Count = 3;
+    }
+
+    if (reset == 0) {
+        CLR_WLAN_WD();
     }
 }
 
 /**
  * Establishes a socket connection to the cloud if not already present.
- * - handles previous connection errors by flashing the LED
+ * - handles connection errors by flashing the LED
  * - attempts to open a socket to the cloud
  * - handles the CFOD
  *
@@ -239,13 +261,12 @@ void establish_cloud_connection()
 {
     if (network.ready() && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
     {
-        if (Spark_Error_Count)
-            handle_cloud_errors();
-
         SPARK_LED_FADE = 0;
         LED_SetRGBColor(RGB_COLOR_CYAN);
         if (in_cloud_backoff_period())
+        {
             return;
+        }
 
         INFO("Cloud: connecting");
         LED_On(LED_RGB);
@@ -263,11 +284,27 @@ void establish_cloud_connection()
             // if the user put the networkin listening mode via the button,
             // the cloud connect may have been cancelled.
             if (SPARK_WLAN_RESET || network.listening())
+            {
                 return;
+            }
 
             cloud_connection_failed();
             handle_cfod();
             network.set_error_count(Spark_Error_Count);
+        }
+
+        // Handle errors last to ensure they are shown
+        if (Spark_Error_Count > 0)
+        {
+            /* TODO: Refactor this in the new LED handling routine */
+            // handle_cloud_errors();
+
+            /* Even though we are not calling handle_cloud_errors
+             * we still need to do the most important part,
+             * reset the error count.
+             */
+            Spark_Error_Count = 0;
+            network.set_error_count(0);
         }
     }
 }

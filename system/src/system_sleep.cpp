@@ -91,10 +91,6 @@ bool network_sleep_flag(uint32_t flags)
 
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
-    if (seconds) {
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-    }
-
     // TODO - determine if these are valuable:
     // - Currently publishes will get through with or without #1.
     // - More data is consumed with #1.
@@ -126,7 +122,7 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
                 network_disconnect(0, 0, NULL);
                 network_off(0, 0, 0, NULL);
             }
-            HAL_Core_Enter_Standby_Mode();
+            HAL_Core_Enter_Standby_Mode(seconds, nullptr);
             break;
 
 #if Wiring_SetupButtonUX
@@ -134,7 +130,7 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
             network_disconnect(0,0,NULL);
             network_off(0, 0, 0, NULL);
             sleep_fuel_gauge();
-            HAL_Core_Enter_Standby_Mode();
+            HAL_Core_Enter_Standby_Mode(seconds, nullptr);
             break;
 #endif
     }

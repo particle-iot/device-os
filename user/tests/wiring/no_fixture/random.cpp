@@ -11,7 +11,7 @@ void random_seed_from_cloud(unsigned int value)
 	rand_value_set = true;
 }
 
-test(rand_value_set_from_cloud)
+test(RANDOM_01_value_set_from_cloud)
 {
 	assertTrue(rand_value_set);
 }
@@ -23,7 +23,7 @@ template <std::size_t size> void fillBuf(std::array<int, size>& buf, int min, in
     }
 }
 
-test(Random_values_consistent_with_the_same_seed) {
+test(RANDOM_02_values_consistent_with_the_same_seed) {
     std::array<int, 100> buf1;
     std::array<int, 100> buf2;
     randomSeed(42);
@@ -36,7 +36,7 @@ test(Random_values_consistent_with_the_same_seed) {
 }
 
 
-test(Random_values_different_with_different_seeds) {
+test(RANDOM_03_values_different_with_different_seeds) {
     std::array<int, 100> buf1;
     std::array<int, 100> buf2;
     randomSeed(42);
@@ -47,16 +47,16 @@ test(Random_values_different_with_different_seeds) {
     assertFalse(buf1==buf2);
 }
 
-test(random_zero_returns_zero) {
+test(RANDOM_04_zero_returns_zero) {
     assertEqual(random(0), 0);
 }
 
-test(empty_range_returns_min) {
+test(RANDOM_05_empty_range_returns_min) {
     assertEqual(random(10, 5),10);
     assertEqual(random(20, 20),20);
 }
 
-test(closed_range_returns_same_value) {
+test(RANDOM_06_closed_range_returns_same_value) {
     assertEqual(random(10,10),10);
     assertEqual(random(11,11),11);
     assertEqual(random(-3,-3),-3);
@@ -70,14 +70,14 @@ void assertRandomRange(int min, int max, int iterations) {
     }
 }
 
-test(Positive_range_values_are_within_range) {
+test(RANDOM_07_positive_range_values_are_within_range) {
     assertRandomRange(20,30, 1000);
 }
 
-test(Negative_range_values_are_within_range) {
+test(RANDOM_08_negative_range_values_are_within_range) {
     assertRandomRange(-30,-20, 1000);
 }
 
-test(ZeroCrossing_range_values_are_within_range) {
+test(RANDOM_09_zero_crossing_range_values_are_within_range) {
     assertRandomRange(-10,10, 1000);
 }

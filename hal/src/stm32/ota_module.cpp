@@ -97,8 +97,8 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
                     target->validity_result |= MODULE_VALIDATION_INTEGRITY;
             }
 #else
-            if (validate_module_dependencies(bounds, userDepsOptional))
-                target->validity_result |= MODULE_VALIDATION_DEPENDENCIES;
+            if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL))
+                target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
             if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
                 target->validity_result |= MODULE_VALIDATION_INTEGRITY;
 #endif

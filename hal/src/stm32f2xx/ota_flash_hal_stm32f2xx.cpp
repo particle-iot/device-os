@@ -84,7 +84,58 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     HAL_OTA_Add_System_Info(info, construct, reserved);
 }
 
-bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional)
+bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
+{
+    if (module_function(module) != MODULE_FUNCTION_SYSTEM_PART)
+        return true;
+
+    bool valid = true;
+
+    // When updating system-parts
+    // If MODULE_VALIDATION_DEPENDENCIES_FULL was requested, validate that the dependecies
+    // would still be satisfied after the module from the "ota_module" replaces the current one
+    hal_system_info_t sysinfo;
+    memset(&sysinfo, 0, sizeof(sysinfo));
+    sysinfo.size = sizeof(sysinfo);
+    HAL_System_Info(&sysinfo, true, nullptr);
+    for (unsigned i=0; i<sysinfo.module_count; i++) {
+        const hal_module_t& smod = sysinfo.modules[i];
+        const module_info_t* info = smod.info;
+        if (!info)
+            continue;
+
+        // Just in case
+        if (!memcmp((const void*)&smod.bounds, (const void*)bounds, sizeof(module_bounds_t))) {
+            // Do not validate against self
+            continue;
+        }
+
+        // Validate only system parts
+        if (module_function(info) != MODULE_FUNCTION_SYSTEM_PART)
+            continue;
+
+        if (info->module_start_address == module->module_start_address &&
+            module_function(module) == module_function(info) &&
+            module_index(module) == module_index(info)) {
+            // Do not validate replaced module
+            continue;
+        }
+
+        if (info->dependency.module_function != MODULE_FUNCTION_NONE) {
+            if (info->dependency.module_function == module->module_function &&
+                info->dependency.module_index == module->module_index) {
+                valid = module->module_version >= info->dependency.module_version;
+                if (!valid)
+                    break;
+            }
+        }
+    }
+    HAL_System_Info(&sysinfo, false, nullptr);
+
+    return valid;
+}
+
+bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional, bool fullDeps)
 {
     bool valid = false;
     const module_info_t* module = locate_module(bounds);
@@ -100,6 +151,10 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
             const module_info_t* dependency = locate_module(dependency_bounds);
             valid = dependency && (dependency->module_version>=module->dependency.module_version);
         }
+
+        if (fullDeps && valid) {
+            valid = valid && validate_module_dependencies_full(module, bounds);
+        }
     }
     return valid;
 }
@@ -108,7 +163,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
 bool HAL_Verify_User_Dependencies()
 {
     const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1);
-    return validate_module_dependencies(bounds, false);
+    return validate_module_dependencies(bounds, false, false);
 }
 
 bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
@@ -185,7 +240,8 @@ hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length,
         memcpy(&bounds, &module_ota, sizeof(module_bounds_t)); // Default OTA bounds
     }
 
-    bool module_fetched = fetch_module(&module, &bounds, true, MODULE_VALIDATION_INTEGRITY);
+    bool module_fetched = fetch_module(&module, &bounds, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
+
 	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {

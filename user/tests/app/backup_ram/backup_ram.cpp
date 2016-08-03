@@ -18,19 +18,25 @@
  */
 #include "application.h"
 
-retained int variable = 10;
+retained int app_backup = 10;
+int app_ram = 10;
+
+STARTUP(System.disableFeature(FEATURE_RETAINED_MEMORY));
 
 void setup()
 {
-	System.enableFeature(FEATURE_RETAINED_MEMORY);
-	Serial.begin(9600);
-	while (!Serial.available()) Particle.process();
+    Serial.begin(9600);
+    while (!Serial.available()) Particle.process();
 
-	if (int(&variable) < 0x30000000) {
-		Serial.printlnf("ERROR: expected variable in backup memory, but was at %x", &variable);
-		return;
-	}
+    if (int(&app_backup) < 0x40024000) {
+        Serial.printlnf("ERROR: expected app_backup in backup memory, but was at %x", &app_backup);
+    }
 
-	Serial.println(variable);
-	variable++;
+    if (int(&app_ram) >= 0x40024000) {
+        Serial.printlnf("ERROR: expected app_ram in sram memory, but was at %x", &app_ram);
+    }
+
+    Serial.printlnf("app_backup(%x):%d, app_ram(%x):%d", &app_backup, app_backup, &app_ram, app_ram);
+    app_backup++;
+    app_ram++;
 }

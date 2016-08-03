@@ -67,7 +67,7 @@ void UDP::releaseBuffer()
     _buffer = NULL;
     _buffer_allocated = false;
     _buffer_size = 0;
-    flush_buffer();
+    flush_buffer(); // clear buffer
 }
 
 uint8_t UDP::begin(uint16_t port, network_interface_t nif)
@@ -79,7 +79,7 @@ uint8_t UDP::begin(uint16_t port, network_interface_t nif)
         DEBUG("socket=%d",_sock);
         if (socket_handle_valid(_sock))
         {
-            flush();
+            flush_buffer(); // clear buffer
             _port = port;
             _nif = nif;
             bound = true;
@@ -106,7 +106,7 @@ void UDP::stop()
     }
     _sock = socket_handle_invalid();
 
-    flush();
+    flush_buffer(); // clear buffer
 }
 
 int UDP::beginPacket(const char *host, uint16_t port)
@@ -133,14 +133,14 @@ int UDP::beginPacket(IPAddress ip, uint16_t port)
 
     _remoteIP = ip;
     _remotePort = port;
-    flush();
+    flush_buffer(); // clear buffer
     return _buffer_size;
 }
 
 int UDP::endPacket()
 {
     int result = sendPacket(_buffer, _offset, _remoteIP, _remotePort);
-    flush();
+    flush(); // wait for send to complete
     return result;
 }
 
@@ -183,7 +183,7 @@ int UDP::parsePacket()
         setBuffer(_buffer_size);
     }
 
-    flush();         // start a new read - discard the old data
+    flush_buffer();         // start a new read - discard the old data
     if (_buffer && _buffer_size) {
         int result = receivePacket(_buffer, _buffer_size);
         if (result>0) {

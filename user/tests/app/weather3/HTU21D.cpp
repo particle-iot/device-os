@@ -13,8 +13,6 @@ bool HTU21D::begin(void)
 {
 	// Only join the I2C bus as master if needed
 	if(! Wire.isEnabled()) {
-		// Wire.setSpeed(100000);   // Tried lower frequencies, did not help
-		// Wire.stretchClock(true); // Did not help
 		Wire.begin();
 	}
 
@@ -67,11 +65,11 @@ float HTU21D::readTemperature(){
 //	Serial.println("Slave Address...");
 	Wire.beginTransmission(HTDU21D_ADDRESS);
 //	Serial.print("Write: ");
-	// rv = 
+	// rv =
 	Wire.write(TRIGGER_TEMP_MEASURE_NOHOLD);
 //	Serial.println(rv);
 //	Serial.print("End Transmission: ");
-	// rv = 
+	// rv =
 	Wire.endTransmission(true);
 //	Serial.println(rv);
 
@@ -79,7 +77,7 @@ float HTU21D::readTemperature(){
 	delay(55); // 50ms measure time for 14bit measures
 
 //	Serial.print("Request From: ");
-	// rv = 
+	// rv =
 	if (Wire.requestFrom(HTDU21D_ADDRESS, 3) != 3)
 		return HTU21D_I2C_TIMEOUT; // if all data not received
 //	Serial.println(rv);
@@ -118,7 +116,7 @@ void HTU21D::setResolution(byte resolution)
   userRegister &= 0b01111110; //Turn off the resolution bits
   resolution &= 0b10000001; //Turn off all other bits but resolution bits
   userRegister |= resolution; //Mask in the requested resolution bits
-  
+
   //Request a write to user register
   Wire.beginTransmission(HTDU21D_ADDRESS);
   Wire.write(WRITE_USER_REG); //Write to the user register
