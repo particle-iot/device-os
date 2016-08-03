@@ -31,7 +31,7 @@
 //
 USBSerial::USBSerial()
 {
-  _blocking = true;
+    _blocking = true;
 }
 
 //
@@ -46,6 +46,11 @@ void USBSerial::begin(long speed)
 void USBSerial::end()
 {
     USB_USART_Init(0);
+}
+
+bool USBSerial::isConnected()
+{
+    return USB_USART_Available_Data_For_Write() >= 0;
 }
 
 
