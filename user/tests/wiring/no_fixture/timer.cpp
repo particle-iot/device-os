@@ -26,7 +26,7 @@ void stop(Timer** timers, int count)
 }
 
 
-test(timer_create_10_timers)
+test(TIMER_01_create_10_timers)
 {
 	const int count = 10;
 	Timer* timers[count];
@@ -57,7 +57,7 @@ public:
 	}
 };
 
-test(timer_subclass)
+test(TIMER_02_subclass)
 {
 	MyTimer timer(10);
 	assertTrue(timer.isValid());
@@ -82,7 +82,7 @@ public:
 };
 
 
-test(timer_class_method)
+test(TIMER_03_class_method)
 {
 	CallbackClass c;
 	Timer timer(10, &CallbackClass::onTimeout, c);
@@ -94,7 +94,7 @@ test(timer_class_method)
 	assertMore(c.time, start);
 }
 
-test(timer_not_started)
+test(TIMER_04_not_started)
 {
 	CallbackClass c;
 	Timer timer(10, &CallbackClass::onTimeout, c);
@@ -134,13 +134,13 @@ int create_timers_with_delay(unsigned block_for)
 }
 
 
-test(timer_create_with_no_delay_fails_when_timer_service_is_busy)
+test(TIMER_05_create_with_no_delay_fails_when_timer_service_is_busy)
 {
 	int fails = create_timers_with_delay(0);
 	assertMore(fails, 0);
 }
 
-test(timer_create_with_long_delay_succeeds_when_timer_service_is_not_busy)
+test(TIMER_06_create_with_long_delay_succeeds_when_timer_service_is_not_busy)
 {
 	int fails = create_timers_with_delay(1000);
 	assertEqual(fails, 0);
@@ -150,13 +150,13 @@ test(timer_create_with_long_delay_succeeds_when_timer_service_is_not_busy)
  * When the timer service is busy, attempts to create a timer with too short a delay
  * will fail.
  */
-test(timer_can_be_disposed_disposed_when_running)
+test(TIMER_07_can_be_disposed_disposed_when_running)
 {
 	Timer t(1, [] { HAL_Delay_Milliseconds(50); }, true);
 	assertTrue(t.start());
 }
 
-test(timer_disposed_early)
+test(TIMER_08_disposed_early)
 {
 	Timer t(1, [] { HAL_Delay_Milliseconds(50); }, true);
 	assertTrue(t.start());
@@ -165,7 +165,7 @@ test(timer_disposed_early)
 	t2.start(0);
 }
 
-test(timer_is_active)
+test(TIMER_09_is_active)
 {
 	Timer t(10, [] {}, true);
 	// Serial.println("not started");

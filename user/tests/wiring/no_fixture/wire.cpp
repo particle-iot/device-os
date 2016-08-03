@@ -20,7 +20,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-test(Wire_end)
+test(WIRE_01_Wire_end_begin_end)
 {
     Wire.end();
     assertTrue(pinAvailable(D0));
