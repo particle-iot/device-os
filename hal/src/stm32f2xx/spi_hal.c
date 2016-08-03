@@ -354,7 +354,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
     {
         /* Attach interrupt to slave select pin */
         HAL_InterruptExtraConfiguration irqConf = {0};
-        irqConf.size = sizeof(irqConf);
+        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
         irqConf.IRQChannelPreemptionPriority = 1;
         irqConf.IRQChannelSubPriority = 0;
 

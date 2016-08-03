@@ -78,7 +78,7 @@ void HAL_Core_Execute_Stop_Mode(void)
 {
 }
 
-void HAL_Core_Enter_Standby_Mode(void)
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved)
 {
 }
 
