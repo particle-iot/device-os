@@ -1,0 +1,1 @@
+{ "id": "3f004c000e51343035353132", "name": "electron1", "connected": true, "variables": { "bool": "int32", "int": "int32", "double": "double", "string": "string" }, "functions": [ "updateString", "update", "setString", "checkString", "cmd" ], "product_id": 10, "last_heard": 1450773450793, "status": "normal", "last_iccid": "8934076500002590750", "imei": "352253060214185" }
