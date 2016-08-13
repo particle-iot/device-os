@@ -167,6 +167,7 @@ const uint8_t asciimap[128] =
 //
 USBKeyboard::USBKeyboard(void)
 {
+	memset((void*)&keyReport, 0, sizeof(keyReport));
 	keyReport.reportId = 0x02;
 	HAL_USB_HID_Init(0, NULL);
 }
@@ -238,7 +239,7 @@ size_t USBKeyboard::press(uint16_t key)
 		}
 	}
 
-	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
+	sendReport();
 	return 1;
 }
 
@@ -285,7 +286,7 @@ size_t USBKeyboard::release(uint16_t key)
 		}
 	}
 
-	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
+	sendReport();
 	return 1;
 }
 
@@ -298,13 +299,12 @@ void USBKeyboard::releaseAll(void)
 	keyReport.keys[4] = 0;
 	keyReport.keys[5] = 0;
 	keyReport.modifiers = 0;
-	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
+	sendReport();
 }
 
 size_t USBKeyboard::writeRaw(uint16_t key)
 {
 	uint8_t p = press(136 + key);	// Keydown
-	delay(100);
 	uint8_t r = release(136 + key);	// Keyup
 	(void)r;
 	return (p);					// just return the result of press() since release() almost always returns 1
@@ -313,10 +313,28 @@ size_t USBKeyboard::writeRaw(uint16_t key)
 size_t USBKeyboard::write(uint8_t key)
 {
 	uint8_t p = press(key);		// Keydown
-	delay(100);
 	uint8_t r = release(key);	// Keyup
 	(void)r;
 	return (p);					// just return the result of press() since release() almost always returns 1
+}
+
+void USBKeyboard::sendReport()
+{
+	uint32_t m = millis();
+	while(HAL_USB_HID_Status(0, nullptr)) {
+		// Wait 1 bInterval (1ms)
+		delay(1);
+		if ((millis() - m) >= 50)
+			return;
+	}
+	HAL_USB_HID_Send_Report(0, &keyReport, sizeof(keyReport), NULL);
+	m = millis();
+	while(HAL_USB_HID_Status(0, nullptr)) {
+		// Wait 1 bInterval (1ms)
+		delay(1);
+		if ((millis() - m) >= 50)
+			return;
+	}
 }
 
 //Preinstantiate Object

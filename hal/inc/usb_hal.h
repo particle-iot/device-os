@@ -186,6 +186,7 @@ int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRat
 void HAL_USB_HID_Init(uint8_t reserved, void* reserved1);
 void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1);
 void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t reportSize, void* reserved1);
+int32_t HAL_USB_HID_Status(uint8_t reserved, void* reserved1);
 void HAL_USB_HID_End(uint8_t reserved);
 #endif
 
