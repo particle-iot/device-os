@@ -544,7 +544,12 @@ bool HAL_SPI_Is_Enabled_Old()
 void DMA1_Stream7_irq(void)
 {
     //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
-    HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+#if TOTAL_SPI==3
+    if (spiState[HAL_SPI_INTERFACE3].SPI_DMA_Configured)
+        HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE3);
+    else
+#endif
+        HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
 }
 
 /**
@@ -565,7 +570,12 @@ void DMA2_Stream5_irq(void)
 void DMA1_Stream2_irq(void)
 {
     //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
-    HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+#if TOTAL_SPI==3
+    if (spiState[HAL_SPI_INTERFACE3].SPI_DMA_Configured)
+        HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE3);
+    else
+#endif
+        HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
 }
 
 /**
