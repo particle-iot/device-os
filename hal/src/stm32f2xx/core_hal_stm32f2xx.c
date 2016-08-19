@@ -52,6 +52,11 @@
 #include "usart_hal.h"
 #include "deviceid_hal.h"
 
+#if PLATFORM_ID==PLATFORM_P1
+#include "wwd_management.h"
+#include "dct.h"
+#endif
+
 #define STOP_MODE_EXIT_CONDITION_PIN 0x01
 #define STOP_MODE_EXIT_CONDITION_RTC 0x02
 
@@ -1169,6 +1174,20 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
             return 0;
         }
+
+#if PLATFORM_ID==PLATFORM_P1
+        case FEATURE_WIFI_POWERSAVE_CLOCK:
+        {
+        		wwd_set_wlan_sleep_clock_enabled(enabled);
+        		const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
+        		uint8_t current = (*data);
+        		current &= 0xFC;
+        		if (!enabled)
+        			current |= 2;	// 0bxxxxxx10 to disable the clock, any other value to enable it.
+        		dct_write_app_data(&current, DCT_RADIO_FLAGS_OFFSET, 1);
+        }
+#endif
+
 
     }
     return -1;

@@ -12,12 +12,12 @@
  * list of conditions and the following disclaimer in the documentation and/or
  * other materials provided with the distribution.
  *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
+ * 3. Neither the name of Broadcom nor the names of other contributors to this 
+ * software may be used to endorse or promote products derived from this software 
  * without specific prior written permission.
  *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
+ * 4. This software may not be used as a standalone product, and may only be used as 
+ * incorporated in your product or device that incorporates Broadcom wireless connectivity 
  * products and solely for the purpose of enabling the functionalities of such Broadcom products.
  *
  *
@@ -93,6 +93,8 @@ wwd_result_t wwd_management_init( wiced_country_code_t country, /*@null@*/ void*
  * @return WWD_SUCCESS if initialization is successful, Error code otherwise
  */
 wwd_result_t wwd_management_wifi_on( void );
+
+wwd_result_t wwd_set_wlan_sleep_clock_enabled(wiced_bool_t enabled);
 
 /**
  * Turn off the Wi-Fi device
