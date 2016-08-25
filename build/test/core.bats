@@ -26,14 +26,14 @@ load build
     [ -d $outdir ]
     [ -s $outdir/main.bin ]
     [ -s $outdir/main.elf ]
-    file_size_range $outdir/main.bin 70 85 K
+    file_size_range $outdir/main.bin 70 89 K
 }
 
 @test "repeat core main build silent outputs size" {
     cd main
     run make PLATFORM=core -s
     outdir="../build/target/main/platform-0-lto"
-    assert_equal "text data bss dec hex filename" "$(trim ${lines[0]})"
+    assert_equal "text data bss dec hex filename" "$(trim "${lines[0]}")"
     assert_equal "2" "${#lines[@]}"
 }
 
