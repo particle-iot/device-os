@@ -37,9 +37,9 @@ load build
 
 @test "can build a v2 project with explicitly set vendored v2 libraries" {
     cd modules/photon/user-part
-    outdir=../build/test/files/applibs_v2_vendored/app/src/target
+    outdir=../build/test/files/applibs_v2_vendored/app_explicit/src/target
     rm -rf $outdir
-    run make $make_args PLATFORM=photon APPDIR=../build/test/files/applibs_v2_vendored/app/src "APPLIBSV2=../build/test/files/applibs_v2_vendored/app/lib/lib1/ ../build/test/files/applibs_v2_vendored/app/lib/lib2"
+    run make $make_args PLATFORM=photon APPDIR=../build/test/files/applibs_v2_vendored/app_explicit/src "APPLIBSV2=../build/test/files/applibs_v2_vendored/app/lib/lib1/ ../build/test/files/applibs_v2_vendored/app/lib/lib2"
     [ $status -eq 0 ]
     [ -s $outdir/src.bin ]
     file_size_range $outdir/src.bin 2 5 K 
