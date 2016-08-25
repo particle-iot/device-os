@@ -1,3 +1,14 @@
+## v0.5.3-rc.3
+
+### ENHANCEMENTS
+
+- Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
+
+### INTERNAL
+
+- Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
+
+
 ## v0.5.3-rc.2
 
 ### FEATURE
