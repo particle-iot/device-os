@@ -27,6 +27,8 @@
 #include "delay_hal.h"
 #include "spark_utilities.h"
 
+using namespace spark;
+
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
   this->connect_callback = connect_callback;
@@ -81,6 +83,21 @@ void WiFiCredentialsReader::read(void)
         String id = Spark.deviceID();
         print(id.c_str());
         print("\r\n");
+
+        byte mac[6];
+        WiFi.macAddress(mac);
+        print("MAC: ");
+        serial.print(mac[5],HEX);
+        print(":");
+        serial.print(mac[4],HEX);
+        print(":");
+        serial.print(mac[3],HEX);
+        print(":");
+        serial.print(mac[2],HEX);
+        print(":");
+        serial.print(mac[1],HEX);
+        print(":");
+        serial.print(mac[0],HEX);
     }
     else if ('m' == c)
     {
