@@ -1,0 +1,9 @@
+[submodule "core-common"]
+	path = lib/core-common
+	url = git@github.com:spark/core-common-lib.git
+[submodule "core-communication"]
+	path = lib/core-communication
+	url = git@github.com:spark/core-communication-lib.git
+[submodule "dstemp"]
+	path = lib/DallasTemperature_SparkCore
+	url = git@github.com:justinatomatic/DallasTemperature_SparkCore.git
