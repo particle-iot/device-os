@@ -4,7 +4,7 @@
   * @author  Zachary Crockett and Satish Nair
   * @version V1.0.0
   * @date    24-April-2013
-  * @brief  
+  * @brief
   ******************************************************************************
   Copyright (c) 2013 Spark Labs, Inc.  All rights reserved.
 
@@ -26,6 +26,8 @@
 #include "wifi_credentials_reader.h"
 #include "delay_hal.h"
 #include "spark_utilities.h"
+
+using namespace spark;
 
 WiFiCredentialsReader::WiFiCredentialsReader(ConnectCallback connect_callback)
 {
@@ -79,8 +81,24 @@ void WiFiCredentialsReader::read(void)
     {
         print("Your core id is ");
         String id = Spark.deviceID();
+        print("Your device id is");
         print(id.c_str());
         print("\r\n");
+
+        byte mac[6];
+        WiFi.macAddress(mac);
+        print("MAC: ");
+        serial.print(mac[5],HEX);
+        print(":");
+        serial.print(mac[4],HEX);
+        print(":");
+        serial.print(mac[3],HEX);
+        print(":");
+        serial.print(mac[2],HEX);
+        print(":");
+        serial.print(mac[1],HEX);
+        print(":");
+        serial.print(mac[0],HEX);
     }
     else if ('m' == c)
     {
