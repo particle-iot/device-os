@@ -22,6 +22,9 @@ Debug/*
 Release/*
 
 # build folder
+*.bin
+*.hex
+*.elf
 *.map
 *.lst
 *.d
