@@ -33,6 +33,7 @@
 //
 USBMouse::USBMouse(void)
 {
+    memset((void*)&mouseReport, 0, sizeof(mouseReport));
     mouseReport.reportId = 0x01;
     HAL_USB_HID_Init(0, NULL);
 }
@@ -61,14 +62,13 @@ void USBMouse::move(int8_t x, int8_t y, int8_t wheel)
 	mouseReport.x = x;
 	mouseReport.y = y;
 	mouseReport.wheel = wheel;
-	HAL_USB_HID_Send_Report(0, &mouseReport, sizeof(mouseReport), NULL);
+	sendReport();
 }
 
 void USBMouse::click(uint8_t button)
 {
 	mouseReport.buttons = button;
 	move(0,0,0);
-	delay(100);
 	mouseReport.buttons = 0;
 	move(0,0,0);
 }
@@ -91,6 +91,25 @@ bool USBMouse::isPressed(uint8_t button)
 	}
 
 	return false;
+}
+
+void USBMouse::sendReport()
+{
+    uint32_t m = millis();
+    while(HAL_USB_HID_Status(0, nullptr)) {
+        // Wait 1 bInterval (1ms)
+        delay(1);
+        if ((millis() - m) >= 50)
+            return;
+    }
+    HAL_USB_HID_Send_Report(0, &mouseReport, sizeof(mouseReport), NULL);
+    m = millis();
+    while(HAL_USB_HID_Status(0, nullptr)) {
+        // Wait 1 bInterval (1ms)
+        delay(1);
+        if ((millis() - m) >= 50)
+            return;
+    }
 }
 
 //Preinstantiate Object

@@ -38,8 +38,11 @@ typedef struct USBD_MHID_Instance_Data {
   // Temporary aligned buffer
   __ALIGN_BEGIN uint8_t descriptor[USBD_MHID_DESC_SIZE] __ALIGN_END;
   #endif
+
+  volatile uint8_t intransfer;
 } USBD_MHID_Instance_Data;
 
 uint8_t USBD_MHID_SendReport (USB_OTG_CORE_HANDLE* pdev, USBD_MHID_Instance_Data* priv, uint8_t* report, uint16_t len);
+int32_t USBD_MHID_Transfer_Status(void* pdev, USBD_Composite_Class_Data* cls);
 
 #endif /* USBD_MHID_H_ */
