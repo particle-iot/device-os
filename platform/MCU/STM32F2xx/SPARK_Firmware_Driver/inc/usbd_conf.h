@@ -41,7 +41,15 @@
 #define MAX_USED_MEDIA                  2
 #endif
 
-#define USBD_CFG_MAX_NUM                2
+/*
+ * Disabling multiple configurations (100mA and 500mA) due to this Windows note:
+ * 
+ * USBCCGP will not load on a multi-config device by default
+ * because the hub driver doesn't create a "USB\COMPOSITE" PNP ID for a composite device
+ * if it has multiple configurations. However, you can write your own INF
+ * that matches a device-specific PNP ID to get USBCCGP to load as your device's function driver.
+ */
+#define USBD_CFG_MAX_NUM                1    // ^^^
 #define USBD_ITF_MAX_NUM                10
 #define USBD_DFU_INT_NUM                2
 #define USB_MAX_STR_DESC_SIZ            255
