@@ -59,6 +59,9 @@ DYNALIB_FN(16, system, Spark_Prepare_For_Firmware_Update, int(FileTransfer::Desc
 DYNALIB_FN(17, system, Spark_Save_Firmware_Chunk, int(FileTransfer::Descriptor&, const uint8_t*, void*))
 DYNALIB_FN(18, system, Spark_Finish_Firmware_Update, int(FileTransfer::Descriptor&, uint32_t, void*))
 
+DYNALIB_FN(19, system, application_thread_current, uint8_t(void*))
+DYNALIB_FN(20, system, system_thread_current, uint8_t(void*))
+
 DYNALIB_END(system)
 
 

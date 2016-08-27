@@ -82,6 +82,8 @@ unsigned backoff_period(unsigned connection_attempts);
  */
 void* system_internal(int item, void* reserved);
 
+uint8_t application_thread_current(void* reserved);
+uint8_t system_thread_current(void* reserved);
 
 #ifdef __cplusplus
 }
