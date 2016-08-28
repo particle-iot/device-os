@@ -279,8 +279,9 @@ public:
 
     void connect(bool listen_enabled=true) override
     {
-        INFO("ready():%s,connecting():%s,listening():%s",(ready())?"true":"false",(connecting())?"true":"false",(listening())?"true":"false");
-        if (!ready() && !connecting() && !listening())
+        const bool listening = WLAN_SMART_CONFIG_START;
+        INFO("ready():%s,connecting():%s,listening():%s",(ready())?"true":"false",(connecting())?"true":"false",(listening)?"true":"false");
+        if (!ready() && !connecting() && !listening)
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
