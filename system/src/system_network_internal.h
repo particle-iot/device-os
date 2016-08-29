@@ -279,6 +279,7 @@ public:
 
     void connect(bool listen_enabled=true) override
     {
+        // Do not try to connect if listening mode is active or pending
         const bool listening = WLAN_SMART_CONFIG_START;
         INFO("ready():%s,connecting():%s,listening():%s",(ready())?"true":"false",(connecting())?"true":"false",(listening)?"true":"false");
         if (!ready() && !connecting() && !listening)
