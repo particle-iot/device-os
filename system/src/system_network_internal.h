@@ -117,7 +117,8 @@ class ManagedNetworkInterface : public NetworkInterface
 {
     volatile uint8_t WLAN_DISCONNECT;
     volatile uint8_t WLAN_DELETE_PROFILES;
-    volatile uint8_t WLAN_SMART_CONFIG_START;
+    volatile uint8_t WLAN_SMART_CONFIG_START; // Set to 'true' when listening mode is pending
+    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE;
     volatile uint8_t WLAN_SMART_CONFIG_STOP;
     volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
     volatile uint8_t WLAN_CONNECTED;
@@ -135,10 +136,11 @@ protected:
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
-        bool started = SPARK_WLAN_STARTED;
+        WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
+        bool wlanStarted = SPARK_WLAN_STARTED;
 
         cloud_disconnect();
         RGBLEDState led_state;
@@ -201,16 +203,16 @@ protected:
         LED_On(LED_RGB);
         led_state.restore();
 
-        WLAN_LISTEN_ON_FAILED_CONNECT = on_stop_listening() && started;
+        WLAN_LISTEN_ON_FAILED_CONNECT = on_stop_listening() && wlanStarted;
 
         on_finalize_listening(WLAN_SMART_CONFIG_FINISHED);
 
         system_notify_event(wifi_listen_end, millis()-start);
 
-        WLAN_SMART_CONFIG_START = 0;
+        WLAN_SMART_CONFIG_ACTIVE = 0;
         if (has_credentials())
             connect();
-        else if (!started)
+        else if (!wlanStarted)
             off();
     }
 
@@ -261,9 +263,12 @@ public:
 
     void listen(bool stop=false) override
     {
-        WLAN_SMART_CONFIG_START = !stop;
-        if (!WLAN_SMART_CONFIG_START)
+        if (stop) {
             WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
+        } else {
+            WLAN_SMART_CONFIG_START = 1;
+        }
+        WLAN_SMART_CONFIG_ACTIVE = 0; // Break current listening loop
     }
 
     void listen_command() override
@@ -273,16 +278,15 @@ public:
 
     bool listening() override
     {
-        return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
+        return (WLAN_SMART_CONFIG_ACTIVE && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
     }
 
 
     void connect(bool listen_enabled=true) override
     {
-        // Do not try to connect if listening mode is active or pending
-        const bool listening = WLAN_SMART_CONFIG_START;
-        INFO("ready():%s,connecting():%s,listening():%s",(ready())?"true":"false",(connecting())?"true":"false",(listening)?"true":"false");
-        if (!ready() && !connecting() && !listening)
+        INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
+                (int)listening(), (int)WLAN_SMART_CONFIG_START);
+        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
@@ -420,7 +424,7 @@ public:
             LED_SetRGBColor(RGB_COLOR_BLUE);
             LED_On(LED_RGB);
         }
-        else if (!WLAN_SMART_CONFIG_START)
+        else if (!WLAN_SMART_CONFIG_ACTIVE)
         {
             //Do not enter if smart config related disconnection happens
             //Blink green if connection fails because of wrong password
@@ -440,7 +444,7 @@ public:
     void notify_dhcp(bool dhcp)
     {
         WLAN_CONNECTING = 0;
-        if (!WLAN_SMART_CONFIG_START)
+        if (!WLAN_SMART_CONFIG_ACTIVE)
         {
             LED_SetRGBColor(RGB_COLOR_GREEN);
         }
@@ -482,6 +486,7 @@ public:
     {
         if (WLAN_SMART_CONFIG_START)
         {
+            WLAN_SMART_CONFIG_START = 0;
             start_listening();
         }
 

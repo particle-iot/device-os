@@ -145,11 +145,12 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 void network_listen(network_handle_t network, uint32_t flags, void*)
 {
     const bool stop = flags & NETWORK_LISTEN_EXIT;
+    // Set/clear listening mode flag
+    nif(network).listen(stop);
     if (!stop) {
-        // Cancel current connection attempt before entering listening mode
+        // Cancel current connection attempt
         nif(network).connect_cancel(true);
     }
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).listen(stop));
 }
 
 bool network_listening(network_handle_t network, uint32_t, void*)
