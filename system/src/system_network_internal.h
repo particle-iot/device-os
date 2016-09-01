@@ -266,10 +266,10 @@ public:
         if (stop) {
             WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
             WLAN_SMART_CONFIG_START = 0; // Cancel pending transition to listening mode
-        } else {
+            WLAN_SMART_CONFIG_ACTIVE = 0; // Break current listening loop
+        } else if (!WLAN_SMART_CONFIG_ACTIVE) {
             WLAN_SMART_CONFIG_START = 1;
         }
-        WLAN_SMART_CONFIG_ACTIVE = 0; // Break current listening loop
     }
 
     void listen_command() override
