@@ -265,6 +265,7 @@ public:
     {
         if (stop) {
             WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
+            WLAN_SMART_CONFIG_START = 0; // Cancel pending transition to listening mode
         } else {
             WLAN_SMART_CONFIG_START = 1;
         }
