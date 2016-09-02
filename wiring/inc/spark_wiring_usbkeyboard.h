@@ -93,6 +93,9 @@ public:
 	virtual size_t press(uint16_t k);
 	virtual size_t release(uint16_t k);
 	virtual void releaseAll(void);
+
+private:
+  void sendReport();
 };
 
 extern USBKeyboard Keyboard;

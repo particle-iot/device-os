@@ -23,7 +23,7 @@ TwoWire& __fetch_global_Wire1()
 
 #endif
 
-/* System PMIC and Fuel Guage I2C3 */
+/* System PMIC and Fuel Gauge I2C3 */
 #if Wiring_Wire3
 TwoWire& __fetch_global_Wire3()
 {

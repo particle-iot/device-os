@@ -532,6 +532,12 @@ void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t report
 {
     USBD_MHID_SendReport(&USB_OTG_dev, NULL, pHIDReport, reportSize);
 }
+
+int32_t HAL_USB_HID_Status(uint8_t reserved, void* reserved1)
+{
+    return USBD_MHID_Transfer_Status(&USB_OTG_dev, NULL);
+}
+
 #endif
 
 

@@ -179,6 +179,7 @@ static uint8_t USBD_MHID_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
   //             HID_OUT_PACKET,
   //             USB_OTG_EP_INT);
 
+  priv->intransfer = 0;
   priv->configured = 1;
 
   return USBD_OK;
@@ -279,6 +280,7 @@ uint8_t USBD_MHID_SendReport (USB_OTG_CORE_HANDLE* pdev, USBD_MHID_Instance_Data
   
   if (pdev->dev.device_status == USB_OTG_CONFIGURED && priv->configured)
   {
+    priv->intransfer = 1;
     DCD_EP_Tx (pdev, priv->ep_in, report, len);
   }
   return USBD_OK;
@@ -312,6 +314,7 @@ static uint8_t USBD_MHID_DataIn(void* pdev, USBD_Composite_Class_Data* cls, uint
     return USBD_FAIL;
 
   DCD_EP_Flush(pdev, priv->ep_in);
+  priv->intransfer = 0;
   return USBD_OK;
 }
 
@@ -323,4 +326,10 @@ uint8_t* USBD_MHID_GetUsrStrDescriptor(uint8_t speed, USBD_Composite_Class_Data*
 
   *length = 0;
   return NULL;
+}
+
+int32_t USBD_MHID_Transfer_Status(void* pdev, USBD_Composite_Class_Data* cls)
+{
+  USBD_MHID_Instance_Data* priv = &USBD_MHID_Instance; /* (USBD_MHID_Instance_Data*)cls->priv; */
+  return priv->intransfer && (((USB_OTG_CORE_HANDLE*)pdev)->dev.device_status == USB_OTG_CONFIGURED && priv->configured);
 }

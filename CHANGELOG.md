@@ -1,3 +1,15 @@
+## v0.6.0-rc.2
+
+### BUGFIX
+
+- Consecutive HID reports were overwriting previous the report before it was delivered to the host. Fixes [#1090](https://github.com/spark/firmware/issues/1090).
+- Disabling multiple USB configurations (normal/high power) as this breaks composite driver on Windows. Fixes [#1089](https://github.com/spark/firmware/issues/1089) Serial and USBSerial1 not working at same time on Windows 8.1 Pro.
+- Do not run the event loop from delay() when threading is enabled. Fixes [#1055](https://github.com/spark/firmware/issues/1055)
+
+### Internal
+
+- Removed hardcoded server IP that was used when DNS resolution fails. Instead, the cloud connection is failed and the system will have to retry.  This means DNS lookup failure is now consistent with other modes of connection failure.  Addresses #139 Related to #1024
+
 
 ## v0.6.0-rc.1
 
@@ -6,17 +18,17 @@
   until all data has been transmitted. Previous behavior discarded data in the buffer. [#469](https://github.com/spark/firmware/issues/469)
 
 ### FEATURES
-- [Logging](https://docs.particle.io/reference/firmware/photon/#logging) library for flexible system and application logging.
-- [Electron] Reduced data consumption connecting to the cloud with deep sleep. (NB: see the docs for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
+- [Logging](https://docs.staging.particle.io/reference/firmware/electron/#logging) library for flexible system and application logging. [Docs](https://docs.staging.particle.io/reference/firmware/electron/#logging)
+- [Electron] Reduced data consumption connecting to the cloud with deep sleep. ([See the Docs](https://docs.staging.particle.io/reference/firmware/electron/#optimizing-cellular-data-use-with-cloud-connectivity-on-the-electron) for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
 - Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602)
 - Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
 - [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
-- [System reset reporting](https://docs.particle.io/reference/firmware/core/#reset-reason) [#403](https://github.com/spark/firmware/issues/403)
+- System Reset Reason [#403](https://github.com/spark/firmware/issues/403) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#reset-reason)
 - [Photon/Electron/P1] Composite USB device driver with HID Mouse & Keyboard implementation for STM32F2 [#902](https://github.com/spark/firmware/pull/902) and [#528](https://github.com/spark/firmware/issues/528)
 - Exposes Device ID and Bootloader Version through USB descriptors while in DFU mode, Microsoft WCID support [#1001](https://github.com/spark/firmware/pull/1001)
 - USB vendor-specific setup request handling [#1010](https://github.com/spark/firmware/pull/1010)
 - [Electron] now allows OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
-- Added Daylight Saving Time support [#1058](https://github.com/spark/firmware/pull/1058) per proposed [#211](https://github.com/spark/firmware/issues/211)
+- Added Daylight Saving Time support [#1058](https://github.com/spark/firmware/pull/1058) per proposed [#211](https://github.com/spark/firmware/issues/211) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#local-)
 
 ### ENHANCEMENTS
 
@@ -25,9 +37,9 @@
 - [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
 - [virtual device] support for EEPROM emulation [#1004](https://github.com/spark/firmware/pull/1004)
 - Low-level RTOS queues exposed in HAL [#1018](https://github.com/spark/firmware/pull/1018)
-- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930)
-- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
-- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991)
+- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#begin--1)
+- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#begin--1)
+- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991) [analogWrite() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwrite-pwm-) | [analogWriteResolution() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwriteresolution-pwm-and-dac-) |  [analogWriteMaxFrequency() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwritemaxfrequency-pwm-)
 - [System flag](https://docs.particle.io/reference/firmware/core/#system-flags) `SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS` to control if the device resets the network when it cannot connect to the cloud. [#946](https://github.com/spark/firmware/pull/946)
 - [Photon] 1KB system backup memory added (same size as Electron) reducing user backup memory to 3KB (3068 bytes) [#1046](https://github.com/spark/firmware/pull/1046)
 - Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
@@ -56,6 +68,36 @@
 - Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
 - [Electron] Added a 3rd system module to provide room for additional system firmware [#1035](https://github.com/spark/firmware/pull/1035)
 - Remove accidental SYSTEM_MODE(MANUAL) from pwm.cpp in wiring/no_fixture [#1052](https://github.com/spark/firmware/pull/1052)
+
+
+## v0.5.3-rc.3
+
+### ENHANCEMENTS
+
+- Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
+
+### INTERNAL
+
+- Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
+
+
+## v0.5.3-rc.2
+
+### FEATURE
+
+- DTR/RTS support (open/closed detection: `Serial.isConnected()`). [#1073](https://github.com/spark/firmware/pull/1073)
+
+### ENHANCEMENTS
+
+- [Electron] System firmware is now aware of system-part3 to allow OTA/YModem upgrade from >=0.5.3-rc.2 to >=0.6.0-rc.1
+
+### BUGFIXES
+
+- added HAL_IsISR() which is used to skip calling the background loop from delay(). fixes [#673](https://github.com/spark/firmware/issue/673)
+- Fixes an issue of USB Serial erroneously switching to closed state. [#1073](https://github.com/spark/firmware/pull/1073)
+- RTC wakeup time now calculated right before entering SLEEP_MODE_DEEP. Fixes [#1043](https://github.com/spark/firmware/issue/1043)
+- STOP mode should retain user interrupt handler. Fixes [#1029](https://github.com/spark/firmware/issue/1029)
+
 
 ## v0.5.3-rc.1
 

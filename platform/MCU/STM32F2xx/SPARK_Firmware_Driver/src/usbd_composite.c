@@ -98,7 +98,8 @@ static const uint8_t USBD_Composite_CfgDescHeaderTemplate[USBD_COMPOSITE_CFGDESC
   0x01,                                          /* bConfigurationValue */
   USBD_IDX_CONFIG_STR,                           /* iConfiguration */
   0x80,                                          /* bmAttirbutes (Bus powered) */
-  0xFA                                           /* bMaxPower (500mA) */
+  // 0xFA                                           /* bMaxPower (500mA) */
+  0x32                                           /* bMaxPower (100mA) */
 };
 
 static const uint8_t USBD_Composite_VendorInterface[] = {

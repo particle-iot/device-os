@@ -955,14 +955,6 @@ int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddre
     }
 #endif
 
-	if (ip_address_error && (!HAL_PLATFORM_CLOUD_UDP || !udp))
-	{
-		// TCP - final fallback in case where flash invalid
-		ip_addr = (54 << 24) | (208 << 16) | (229 << 8) | 4;
-		//ip_addr = (52<<24) | (0<<16) | (3<<8) | 40;
-		ip_address_error = false;
-	}
-
 	return ip_address_error;
 }
 

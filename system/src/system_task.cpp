@@ -484,7 +484,8 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 {
 	// if not threading, or we are the application thread, then implement delay
 	// as a background message pump
-    if ((!system_thread_get_state(NULL) || APPLICATION_THREAD_CURRENT()) && !HAL_IsISR())
+
+    if ((!PLATFORM_THREADING || APPLICATION_THREAD_CURRENT()) && !HAL_IsISR())
     {
     		system_delay_pump(ms, force_no_background_loop);
     }
@@ -519,4 +520,14 @@ void cloud_disconnect(bool closeSocket)
     Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set.
 
 #endif
+}
+
+uint8_t application_thread_current(void* reserved)
+{
+    return APPLICATION_THREAD_CURRENT();
+}
+
+uint8_t system_thread_current(void* reserved)
+{
+    return SYSTEM_THREAD_CURRENT();
 }
