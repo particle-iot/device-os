@@ -18,17 +18,17 @@
   until all data has been transmitted. Previous behavior discarded data in the buffer. [#469](https://github.com/spark/firmware/issues/469)
 
 ### FEATURES
-- [Logging](https://docs.particle.io/reference/firmware/photon/#logging) library for flexible system and application logging.
-- [Electron] Reduced data consumption connecting to the cloud with deep sleep. (NB: see the docs for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
+- [Logging](https://docs.staging.particle.io/reference/firmware/electron/#logging) library for flexible system and application logging. [Docs](https://docs.staging.particle.io/reference/firmware/electron/#logging)
+- [Electron] Reduced data consumption connecting to the cloud with deep sleep. ([See the Docs](https://docs.staging.particle.io/reference/firmware/electron/#optimizing-cellular-data-use-with-cloud-connectivity-on-the-electron) for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
 - Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602)
 - Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
 - [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
-- [System reset reporting](https://docs.particle.io/reference/firmware/core/#reset-reason) [#403](https://github.com/spark/firmware/issues/403)
+- System Reset Reason [#403](https://github.com/spark/firmware/issues/403) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#reset-reason)
 - [Photon/Electron/P1] Composite USB device driver with HID Mouse & Keyboard implementation for STM32F2 [#902](https://github.com/spark/firmware/pull/902) and [#528](https://github.com/spark/firmware/issues/528)
 - Exposes Device ID and Bootloader Version through USB descriptors while in DFU mode, Microsoft WCID support [#1001](https://github.com/spark/firmware/pull/1001)
 - USB vendor-specific setup request handling [#1010](https://github.com/spark/firmware/pull/1010)
 - [Electron] now allows OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
-- Added Daylight Saving Time support [#1058](https://github.com/spark/firmware/pull/1058) per proposed [#211](https://github.com/spark/firmware/issues/211)
+- Added Daylight Saving Time support [#1058](https://github.com/spark/firmware/pull/1058) per proposed [#211](https://github.com/spark/firmware/issues/211) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#local-)
 
 ### ENHANCEMENTS
 
@@ -37,9 +37,9 @@
 - [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
 - [virtual device] support for EEPROM emulation [#1004](https://github.com/spark/firmware/pull/1004)
 - Low-level RTOS queues exposed in HAL [#1018](https://github.com/spark/firmware/pull/1018)
-- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930)
-- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997)
-- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991)
+- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#begin--1)
+- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#begin--1)
+- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991) [analogWrite() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwrite-pwm-) | [analogWriteResolution() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwriteresolution-pwm-and-dac-) |  [analogWriteMaxFrequency() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwritemaxfrequency-pwm-)
 - [System flag](https://docs.particle.io/reference/firmware/core/#system-flags) `SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS` to control if the device resets the network when it cannot connect to the cloud. [#946](https://github.com/spark/firmware/pull/946)
 - [Photon] 1KB system backup memory added (same size as Electron) reducing user backup memory to 3KB (3068 bytes) [#1046](https://github.com/spark/firmware/pull/1046)
 - Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
