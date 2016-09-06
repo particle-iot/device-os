@@ -521,6 +521,18 @@ void HAL_USB_HID_End(uint8_t reserved)
     }
 }
 
+uint8_t HAL_USB_HID_Set_State(uint8_t id, uint8_t state, void* reserved)
+{
+    uint8_t ret = 0;
+    if (usbHid.registered) {
+        HAL_USB_Detach();
+        ret = USBD_MHID_SetDigitizerState(&USB_OTG_dev, NULL, id, state);
+        HAL_USB_Attach();
+    }
+
+    return ret;
+}
+
 /*******************************************************************************
  * Function Name : USB_HID_Send_Report.
  * Description   : Send HID Report Info to Host.
