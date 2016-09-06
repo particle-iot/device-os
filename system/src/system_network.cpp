@@ -131,6 +131,7 @@ bool network_has_credentials(network_handle_t network, uint32_t param, void* res
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
+    nif(network).connect_cancel(true);
     // flags & 1 means also disconnect the cloud (so it doesn't autmatically connect when network resumed.)
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).off(flags & 1));
 }
@@ -143,7 +144,13 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
  */
 void network_listen(network_handle_t network, uint32_t flags, void*)
 {
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).listen(flags & NETWORK_LISTEN_EXIT));
+    const bool stop = flags & NETWORK_LISTEN_EXIT;
+    // Set/clear listening mode flag
+    nif(network).listen(stop);
+    if (!stop) {
+        // Cancel current connection attempt
+        nif(network).connect_cancel(true);
+    }
 }
 
 bool network_listening(network_handle_t network, uint32_t, void*)
