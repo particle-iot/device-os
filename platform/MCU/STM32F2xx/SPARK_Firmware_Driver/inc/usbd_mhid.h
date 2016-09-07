@@ -6,7 +6,9 @@
 
 #define USBD_MHID_CONFIG_DESC_SIZE      32
 #define USBD_MHID_DESC_SIZE              9
-#define USBD_MHID_REPORT_DESC_SIZE      99
+#define USBD_MHID_REPORT_DESC_SIZE     178
+
+#define USBD_MHID_DIGITIZER_REPORT_DESC_SIZE 65
 
 #define HID_DESCRIPTOR_TYPE           0x21
 #define HID_REPORT_DESC               0x22
@@ -44,5 +46,6 @@ typedef struct USBD_MHID_Instance_Data {
 
 uint8_t USBD_MHID_SendReport (USB_OTG_CORE_HANDLE* pdev, USBD_MHID_Instance_Data* priv, uint8_t* report, uint16_t len);
 int32_t USBD_MHID_Transfer_Status(void* pdev, USBD_Composite_Class_Data* cls);
+uint8_t USBD_MHID_SetDigitizerState(void* pdev, USBD_Composite_Class_Data* cls, uint8_t idx, uint8_t state);
 
 #endif /* USBD_MHID_H_ */

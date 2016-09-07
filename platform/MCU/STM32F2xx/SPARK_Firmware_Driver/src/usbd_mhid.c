@@ -100,9 +100,9 @@ __ALIGN_BEGIN static const uint8_t USBD_MHID_DefaultReportDesc[USBD_MHID_REPORT_
   0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
   0x09, 0x02,                    // USAGE (Mouse)
   0xa1, 0x01,                    // COLLECTION (Application)
+  0x85, 0x01,                    //   REPORT_ID (1)
   0x09, 0x01,                    //   USAGE (Pointer)
   0xa1, 0x00,                    //   COLLECTION (Physical)
-  0x85, 0x01,                    //     REPORT_ID (1)
   0x05, 0x09,                    //     USAGE_PAGE (Button)
   0x19, 0x01,                    //     USAGE_MINIMUM (Button 1)
   0x29, 0x03,                    //     USAGE_MAXIMUM (Button 3)
@@ -117,14 +117,24 @@ __ALIGN_BEGIN static const uint8_t USBD_MHID_DefaultReportDesc[USBD_MHID_REPORT_
   0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
   0x09, 0x30,                    //     USAGE (X)
   0x09, 0x31,                    //     USAGE (Y)
+  // 0x36, 0x01, 0x80,              //     PHYSICAL_MINIMUM (-32767)
+  // 0x46, 0xff, 0x7f,              //     PHYSICAL_MAXIMUM (32767)
+  0x16, 0x01, 0x80,              //     LOGICAL_MINIMUM (-32767)
+  0x26, 0xff, 0x7f,              //     LOGICAL_MAXIMUM (32767)
+  // 0x15, 0x81,                    //     LOGICAL_MINIMUM (-127)
+  // 0x25, 0x7f,                    //     LOGICAL_MAXIMUM (127)
+  0x75, 0x10,                    //     REPORT_SIZE (16)
+  0x95, 0x02,                    //     REPORT_COUNT (2)
+  0x81, 0x06,                    //     INPUT (Data,Var,Rel)
   0x09, 0x38,                    //     USAGE (WHEEL)
   0x15, 0x81,                    //     LOGICAL_MINIMUM (-127)
   0x25, 0x7f,                    //     LOGICAL_MAXIMUM (127)
   0x75, 0x08,                    //     REPORT_SIZE (8)
-  0x95, 0x03,                    //     REPORT_COUNT (3)
+  0x95, 0x01,                    //     REPORT_COUNT (1)
   0x81, 0x06,                    //     INPUT (Data,Var,Rel)
   0xc0,                          //   END_COLLECTION
   0xc0,                          // END_COLLECTION
+  0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
   0x09, 0x06,                    // USAGE (Keyboard)
   0xa1, 0x01,                    // COLLECTION (Application)
   0x85, 0x02,                    //   REPORT_ID (2)
@@ -152,11 +162,43 @@ __ALIGN_BEGIN static const uint8_t USBD_MHID_DefaultReportDesc[USBD_MHID_REPORT_
   0x95, 0x06,                    //   REPORT_COUNT (6)
   0x75, 0x08,                    //   REPORT_SIZE (8)
   0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
-  0x25, 0x65,                    //   LOGICAL_MAXIMUM (101)
+  0x25, 0xdd,                    //   LOGICAL_MAXIMUM (221)
   0x05, 0x07,                    //   USAGE_PAGE (Keyboard)
   0x19, 0x00,                    //   USAGE_MINIMUM (Reserved (no event indicated))
-  0x29, 0x65,                    //   USAGE_MAXIMUM (Keyboard Application)
+  0x29, 0xdd,                    //   USAGE_MAXIMUM (Keypad Hexadecimal)
   0x81, 0x00,                    //   INPUT (Data,Ary,Abs)
+  0xc0,                          // END_COLLECTION
+  0x05, 0x0d,                    // USAGE_PAGE (Digitizer)
+  0x09, 0x02,                    // USAGE (Pen)
+  0xa1, 0x01,                    // COLLECTION (Application)
+  0x85, 0x03,                    //   REPORT_ID (3)
+  0x09, 0x20,                    //   USAGE (Stylus)
+  0xa1, 0x00,                    //   COLLECTION (Physical)
+  0x09, 0x42,                    //     USAGE (Tip Switch)
+  0x09, 0x32,                    //     USAGE (In Rnage)
+  0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+  0x25, 0x01,                    //     LOGICAL_MAXIMUM (1)
+  0x75, 0x01,                    //     REPORT_SIZE (1)
+  0x95, 0x02,                    //     REPORT_COUNT (2)
+  0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+  0x75, 0x01,                    //     REPORT_SIZE (1)
+  0x95, 0x06,                    //     REPORT_COUNT (6)
+  0x81, 0x01,                    //     INPUT (Cnst,Ary,Abs)
+  0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
+  0x09, 0x01,                    //     USAGE (Pointer)
+  0xa1, 0x00,                    //     COLLECTION (Physical)
+  0x09, 0x30,                    //       USAGE (X)
+  0x09, 0x31,                    //       USAGE (Y)
+  0x16, 0x00, 0x00,              //       LOGICAL_MINIMUM (0)
+  0x26, 0xff, 0x7f,              //       LOGICAL_MAXIMUM (32767)
+  0x36, 0x00, 0x00,              //       PHYSICAL_MINIMUM (0)
+  0x46, 0xff, 0x7f,              //       PHYSICAL_MAXIMUM (32767)
+  0x65, 0x00,                    //       UNIT (None)
+  0x75, 0x10,                    //       REPORT_SIZE (16)
+  0x95, 0x02,                    //       REPORT_COUNT (2)
+  0x81, 0x02,                    //       INPUT (Data,Var,Abs)
+  0xc0,                          //     END_COLLECTION
+  0xc0,                          //   END_COLLECTION
   0xc0                           // END_COLLECTION
 };
 
@@ -332,4 +374,16 @@ int32_t USBD_MHID_Transfer_Status(void* pdev, USBD_Composite_Class_Data* cls)
 {
   USBD_MHID_Instance_Data* priv = &USBD_MHID_Instance; /* (USBD_MHID_Instance_Data*)cls->priv; */
   return priv->intransfer && (((USB_OTG_CORE_HANDLE*)pdev)->dev.device_status == USB_OTG_CONFIGURED && priv->configured);
+}
+
+uint8_t USBD_MHID_SetDigitizerState(void* pdev, USBD_Composite_Class_Data* cls, uint8_t idx, uint8_t state)
+{
+  USBD_MHID_Instance_Data* priv = &USBD_MHID_Instance; /* (USBD_MHID_Instance_Data*)cls->priv; */
+  if (state) {
+    priv->report_descriptor_size = USBD_MHID_REPORT_DESC_SIZE;
+  } else {
+    priv->report_descriptor_size = USBD_MHID_REPORT_DESC_SIZE - USBD_MHID_DIGITIZER_REPORT_DESC_SIZE;
+  }
+
+  return 1;
 }
