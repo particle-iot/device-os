@@ -1,5 +1,9 @@
 ## v0.6.0-rc.2
 
+### ENHANCEMENTS
+
+- USB HID enhancements, please see PR: [#1110](https://github.com/spark/firmware/pull/1110) for a list. Closes [#1096](https://github.com/spark/firmware/issues/1096)
+
 ### BUGFIX
 
 - Consecutive HID reports were overwriting previous the report before it was delivered to the host. Fixes [#1090](https://github.com/spark/firmware/issues/1090).
@@ -7,11 +11,7 @@
 - Do not run the event loop from delay() when threading is enabled. Fixes [#1055](https://github.com/spark/firmware/issues/1055)
 - Cancel current connection attempt before entering the listening mode with WiFi.listen(true) and also WiFi.off(). Fixes [#1013](https://github.com/spark/firmware/issues/1013)
 
-### Enhancements
-
-- USB HID enhancements, please see PR: [#1110](https://github.com/spark/firmware/pull/1110) for a list. Closes [#1096](https://github.com/spark/firmware/issues/1096)
-
-### Internal
+### INTERNAL
 
 - Removed hardcoded server IP that was used when DNS resolution fails. Instead, the cloud connection is failed and the system will have to retry.  This means DNS lookup failure is now consistent with other modes of connection failure.  Addresses #139 Related to #1024
 
