@@ -22,7 +22,7 @@
 #include "rng_hal.h"
 
 int default_rng(void*, unsigned char* data, size_t size) {
-    while (size) {
+    while (size >= 4) {
         *((uint32_t*)data) = HAL_RNG_GetRandomNumber();
         data += 4;
         size -= 4;
