@@ -2,7 +2,7 @@
 
 #pragma once
 
-#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #ifdef __clang__
 // compiling with gcc this produces
 // src/gcc/device_globals.h:6:32: error: unknown option after '#pragma GCC diagnostic' kind [-Werror=pragmas]                            ^
@@ -10,6 +10,5 @@
 #pragma GCC diagnostic ignored "-Wunused-local-typedef"
 #endif
 #include <boost/asio.hpp>
-#pragma GCC diagnostic pop
 
 extern boost::asio::io_service device_io_service;

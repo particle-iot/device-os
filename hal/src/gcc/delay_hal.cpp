@@ -19,6 +19,8 @@
 #include "delay_hal.h"
 #include "timer_hal.h"
 
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp>
 
