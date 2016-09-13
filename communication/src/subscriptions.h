@@ -73,7 +73,7 @@ public:
 			chk[0] = checksum;
 			chk[1] = calculate_crc((const uint8_t*)handler.device_id, sizeof(handler.device_id));
 			chk[2] = calculate_crc((const uint8_t*)handler.filter, sizeof(handler.filter));
-			chk[3] = calculate_crc((const uint8_t*)handler.scope, sizeof(handler.scope));
+			chk[3] = calculate_crc((const uint8_t*)&handler.scope, sizeof(handler.scope));
 			checksum = calculate_crc((const uint8_t*)chk, sizeof(chk));
 			return NO_ERROR;
 		});
