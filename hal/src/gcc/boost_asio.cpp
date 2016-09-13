@@ -16,6 +16,7 @@
  ******************************************************************************
  */
 
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #ifdef __clang__
 #pragma GCC diagnostic ignored "-Wunused-local-typedef"
 #endif
