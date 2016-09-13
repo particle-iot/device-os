@@ -18,7 +18,7 @@ sudo ./bjam --install --link=static --runtime-link=static --layout=tagged --with
 ## Building
 ```
 cd main
-make -s PRODUCT_ID=3
+make -s PLATFORM_ID=3
 ```
 The resulting executable is placed in `build/target/main/platform-3/main`.
 

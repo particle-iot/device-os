@@ -16,18 +16,14 @@
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 
-#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #ifdef __clang__
 #pragma GCC diagnostic ignored "-Wunused-local-typedef"
 #endif
 #include <boost/asio.hpp>
-#pragma GCC diagnostic pop
-
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <boost/asio/ip/icmp.hpp>
-
 
 
 using boost::asio::ip::icmp;
