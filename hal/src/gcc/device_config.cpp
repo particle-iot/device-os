@@ -95,6 +95,7 @@ public:
             ("server_key,sk", po::value<string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
             ("state,s", po::value<string>(&config.periph_directory)->default_value("state"), "the directory where device state and peripherals is stored")
 			("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
+            ("claim_code,cc", po::value<string>(&config.claim_code)->default_value(""), "the claim code")
 			;
 
         command_line_options.add(program_options).add(device_options);
@@ -201,6 +202,8 @@ void DeviceConfig::read(Configuration& configuration)
 #endif
 
     setLoggerLevel(LoggerOutputLevel(NO_LOG_LEVEL-configuration.log_level));
+
+    memcpy(claim_code, configuration.claim_code.c_str(), configuration.claim_code.length());
 
     this->protocol = configuration.protocol;
 }

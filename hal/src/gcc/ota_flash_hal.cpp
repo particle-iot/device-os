@@ -53,7 +53,7 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
      return HAL_UPDATE_APPLIED;
 }
 
-
+#define CLAIM_CODE_SIZE (63)
 
 /**
  * Set the claim code for this device.
@@ -62,6 +62,10 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
  */
 uint16_t HAL_Set_Claim_Code(const char* code)
 {
+    if (code)
+        memcpy(deviceConfig.claim_code, code, CLAIM_CODE_SIZE);
+    else
+        *deviceConfig.claim_code = '\0';
     return 0;
 }
 
@@ -73,7 +77,7 @@ uint16_t HAL_Set_Claim_Code(const char* code)
  */
 uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
 {
-    *buffer = 0;
+    memcpy(buffer, deviceConfig.claim_code, len);
     return 0;
 }
 

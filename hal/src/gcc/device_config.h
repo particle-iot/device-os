@@ -51,6 +51,7 @@ struct Configuration
     std::string device_key;
     std::string server_key;
     std::string periph_directory;
+    std::string claim_code;
     uint16_t log_level = 0;
     ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
 };
@@ -64,6 +65,7 @@ struct DeviceConfig
     uint8_t device_id[12];
     uint8_t device_key[1024];
     uint8_t server_key[1024];
+    uint8_t claim_code[63];
     ProtocolFactory protocol;
 
     size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen);
