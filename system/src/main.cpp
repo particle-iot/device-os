@@ -571,6 +571,12 @@ void system_part2_post_init()
 {
 }
 
+static volatile bool run = TRUE;
+void signal_handler(int signal)
+{
+    run = FALSE;
+}
+
 namespace {
 
 // LED status shown during device key generation
@@ -683,7 +689,7 @@ void app_setup_and_loop(void)
 #endif
     if(!threaded) {
         /* Main loop */
-        while (1) {
+        while (run) {
             app_loop(false);
         }
     }
