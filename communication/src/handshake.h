@@ -55,10 +55,10 @@ int verify_signature(const unsigned char *signature,
                      const unsigned char *pubkey,
                      const unsigned char *expected_hmac);
 
-void init_rsa_context_with_public_key(rsa_context *rsa,
+int init_rsa_context_with_public_key(rsa_context *rsa,
                                       const unsigned char *pubkey);
 
-void init_rsa_context_with_private_key(rsa_context *rsa,
+int init_rsa_context_with_private_key(rsa_context *rsa,
                                        const unsigned char *private_key);
 
 

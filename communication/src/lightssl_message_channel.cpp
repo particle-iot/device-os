@@ -158,9 +158,12 @@ namespace protocol
 		extract_public_rsa_key(queue + 52, core_private_key);
 
 		mbedtls_rsa_context rsa;
-		init_rsa_context_with_public_key(&rsa, server_public_key);
+		err = init_rsa_context_with_public_key(&rsa, server_public_key);
 		const int len = 52 + MAX_DEVICE_PUBLIC_KEY_LENGTH;
-		err = mbedtls_rsa_pkcs1_encrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PUBLIC, len, queue, queue + len);
+		if (!err) 
+		{
+			err = mbedtls_rsa_pkcs1_encrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PUBLIC, len, queue, queue + len);
+		}
 		mbedtls_rsa_free(&rsa);
 
 		if (err)

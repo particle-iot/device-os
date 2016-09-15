@@ -27,9 +27,12 @@
 
 #if HAL_PLATFORM_CLOUD_TCP
 
+#include "service_debug.h"
+
 #ifdef USE_MBEDTLS
 #include "mbedtls/md.h"
 #include "mbedtls_util.h"
+#include "mbedtls/pk.h"
 #else
 #include "tropicssl/sha1.h"
 #endif
@@ -61,15 +64,19 @@ int decipher_aes_credentials(const unsigned char *private_key,
                              unsigned char *aes_credentials)
 {
   rsa_context rsa;
-  init_rsa_context_with_private_key(&rsa, private_key);
+  int ret = init_rsa_context_with_private_key(&rsa, private_key);
+  if (ret)
+  {
+    return ret;
+  }
 
 #ifdef USE_MBEDTLS
   size_t len = 128;
-  int ret = mbedtls_rsa_pkcs1_decrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PRIVATE, &len, ciphertext,
+  ret = mbedtls_rsa_pkcs1_decrypt(&rsa, default_rng, nullptr, MBEDTLS_RSA_PRIVATE, &len, ciphertext,
                               aes_credentials, 40);
 #else
   int len = 128;
-  int ret = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &len, ciphertext,
+  ret = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &len, ciphertext,
                               aes_credentials, 40);
 #endif
   rsa_free(&rsa);
@@ -106,18 +113,28 @@ int verify_signature(const unsigned char *signature,
   return ret;
 }
 
-void init_rsa_context_with_public_key(rsa_context *rsa,
+int init_rsa_context_with_public_key(rsa_context *rsa,
                                       const unsigned char *pubkey)
 {
 #ifdef USE_MBEDTLS
-  mbedtls_rsa_init(rsa, MBEDTLS_RSA_PKCS_V15, 0);
+  mbedtls_pk_context pk;
+  mbedtls_pk_init(&pk);
+  unsigned char **p = (unsigned char **)&pubkey;
+  int ret = mbedtls_pk_parse_subpubkey(p, *p + 294, &pk);
+  if (ret)
+  {
+    mbedtls_pk_free(&pk);
+    return ret;
+  }
+  *rsa = *mbedtls_pk_rsa(pk);
 #else
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
-#endif
 
   rsa->len = 256;
   mpi_read_binary(&rsa->N, pubkey + 33, 256);
   mpi_read_string(&rsa->E, 16, "10001");
+#endif
+  return 0;
 }
 
 /* Very simple ASN.1 parsing.
@@ -126,14 +143,21 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
  * and encoding process sometimes pads each number with a
  * leading zero byte.
  */
-void init_rsa_context_with_private_key(rsa_context *rsa,
+int init_rsa_context_with_private_key(rsa_context *rsa,
                                        const unsigned char *private_key)
 {
 #ifdef USE_MBEDTLS
-  mbedtls_rsa_init(rsa, MBEDTLS_RSA_PKCS_V15, 0);
+  mbedtls_pk_context pk;
+  mbedtls_pk_init(&pk);
+  int ret = mbedtls_pk_parse_key(&pk, private_key, 612, NULL, 0);
+  if (ret)
+  {
+    mbedtls_pk_free(&pk);
+    return ret;
+  }
+  *rsa = *mbedtls_pk_rsa(pk);
 #else
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
-#endif
 
   rsa->len = 128;
 
@@ -207,6 +231,8 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
   ++i;
 
   mpi_read_binary(&rsa->QP, private_key + i, 64);
+#endif
+  return 0;
 }
 
 
