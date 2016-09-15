@@ -78,7 +78,7 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t alt_server_public_key[192];
     uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
     uint8_t device_id[12];                               // the STM32 device ID
-    uint8_t radio_flags;									// xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
+    uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
     uint8_t reserved2[627];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
@@ -163,10 +163,10 @@ STATIC_ASSERT_DCT_OFFSET(alt_device_private_key, 3106 /* 2978 + 128 */);
 STATIC_ASSERT_DCT_OFFSET(alt_server_public_key, 3298 /* 3106 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(alt_server_address, 3490 /* 3298 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(device_id, 3618 /* 3490 + 128 */);
-STATIC_ASSERT_DCT_OFFSET(radio_flags, 3630 /* 3418 + 12 */);
+STATIC_ASSERT_DCT_OFFSET(radio_flags, 3630 /* 3618 + 12 */);
 
 STATIC_ASSERT_DCT_OFFSET(reserved2, 3631 /* 3630 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3630 + 628 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3631 + 627 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
