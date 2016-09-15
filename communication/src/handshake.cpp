@@ -33,6 +33,7 @@
 #include "mbedtls/md.h"
 #include "mbedtls_util.h"
 #include "mbedtls/pk.h"
+#include "mbedtls/asn1.h"
 #else
 #include "tropicssl/sha1.h"
 #endif
@@ -117,16 +118,65 @@ int init_rsa_context_with_public_key(rsa_context *rsa,
                                       const unsigned char *pubkey)
 {
 #ifdef USE_MBEDTLS
-  mbedtls_pk_context pk;
-  mbedtls_pk_init(&pk);
+  // mbedtls_pk_context pk;
+  // mbedtls_pk_init(&pk);
+  // unsigned char **p = (unsigned char **)&pubkey;
+  // int ret = mbedtls_pk_parse_subpubkey(p, *p + 294, &pk);
+  // if (ret)
+  // {
+  //   mbedtls_pk_free(&pk);
+  //   return ret;
+  // }
+  // *rsa = *mbedtls_pk_rsa(pk);
+  int ret;
+  size_t len;
+  mbedtls_asn1_buf alg_params;
+  mbedtls_rsa_init(rsa, MBEDTLS_RSA_PKCS_V15, 0);
   unsigned char **p = (unsigned char **)&pubkey;
-  int ret = mbedtls_pk_parse_subpubkey(p, *p + 294, &pk);
-  if (ret)
+  unsigned char *end = *p + 294;
+
+  if( ( ret = mbedtls_asn1_get_tag( p, end, &len,
+                  MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
   {
-    mbedtls_pk_free(&pk);
-    return ret;
+      return( MBEDTLS_ERR_PK_KEY_INVALID_FORMAT + ret );
   }
-  *rsa = *mbedtls_pk_rsa(pk);
+
+  end = *p + len;
+
+  mbedtls_asn1_buf alg_oid;
+
+  memset( &alg_params, 0, sizeof(mbedtls_asn1_buf) );
+
+  if( ( ret = mbedtls_asn1_get_alg( p, end, &alg_oid, &alg_params ) ) != 0 )
+      return( MBEDTLS_ERR_PK_INVALID_ALG + ret );
+
+  if( ( ret = mbedtls_asn1_get_bitstring_null( p, end, &len ) ) != 0 )
+      return( MBEDTLS_ERR_PK_INVALID_PUBKEY + ret );
+
+  if( *p + len != end )
+      return( MBEDTLS_ERR_PK_INVALID_PUBKEY +
+              MBEDTLS_ERR_ASN1_LENGTH_MISMATCH );
+
+  if( ( ret = mbedtls_asn1_get_tag( p, end, &len,
+          MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
+      return( MBEDTLS_ERR_PK_INVALID_PUBKEY + ret );
+
+  if( *p + len != end )
+      return( MBEDTLS_ERR_PK_INVALID_PUBKEY +
+              MBEDTLS_ERR_ASN1_LENGTH_MISMATCH );
+
+  if( ( ret = mbedtls_asn1_get_mpi( p, end, &rsa->N ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( p, end, &rsa->E ) ) != 0 )
+      return( MBEDTLS_ERR_PK_INVALID_PUBKEY + ret );
+
+  if( *p != end )
+      return( MBEDTLS_ERR_PK_INVALID_PUBKEY +
+              MBEDTLS_ERR_ASN1_LENGTH_MISMATCH );
+
+  if( ( ret = mbedtls_rsa_check_pubkey( rsa ) ) != 0 )
+      return( MBEDTLS_ERR_PK_INVALID_PUBKEY );
+
+  rsa->len = mbedtls_mpi_size( &rsa->N );
 #else
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 
@@ -147,15 +197,84 @@ int init_rsa_context_with_private_key(rsa_context *rsa,
                                        const unsigned char *private_key)
 {
 #ifdef USE_MBEDTLS
-  mbedtls_pk_context pk;
-  mbedtls_pk_init(&pk);
-  int ret = mbedtls_pk_parse_key(&pk, private_key, 612, NULL, 0);
-  if (ret)
+  // mbedtls_pk_context pk;
+  // mbedtls_pk_init(&pk);
+  // int ret = mbedtls_pk_parse_key(&pk, private_key, 612, NULL, 0);
+  // if (ret)
+  // {
+  //   mbedtls_pk_free(&pk);
+  //   return ret;
+  // }
+  // *rsa = *mbedtls_pk_rsa(pk);
+  int ret;
+  size_t len;
+  unsigned char *p, *end;
+  mbedtls_rsa_init(rsa, MBEDTLS_RSA_PKCS_V15, 0);
+
+  p = (unsigned char *) private_key;
+  end = p + 612;
+
+  /*
+    * This function parses the RSAPrivateKey (PKCS#1)
+    *
+    *  RSAPrivateKey ::= SEQUENCE {
+    *      version           Version,
+    *      modulus           INTEGER,  -- n
+    *      publicExponent    INTEGER,  -- e
+    *      privateExponent   INTEGER,  -- d
+    *      prime1            INTEGER,  -- p
+    *      prime2            INTEGER,  -- q
+    *      exponent1         INTEGER,  -- d mod (p-1)
+    *      exponent2         INTEGER,  -- d mod (q-1)
+    *      coefficient       INTEGER,  -- (inverse of q) mod p
+    *      otherPrimeInfos   OtherPrimeInfos OPTIONAL
+    *  }
+    */
+  if( ( ret = mbedtls_asn1_get_tag( &p, end, &len,
+          MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
   {
-    mbedtls_pk_free(&pk);
-    return ret;
+      return( MBEDTLS_ERR_PK_KEY_INVALID_FORMAT + ret );
   }
-  *rsa = *mbedtls_pk_rsa(pk);
+
+  end = p + len;
+
+  if( ( ret = mbedtls_asn1_get_int( &p, end, &rsa->ver ) ) != 0 )
+  {
+      return( MBEDTLS_ERR_PK_KEY_INVALID_FORMAT + ret );
+  }
+
+  if( rsa->ver != 0 )
+  {
+      return( MBEDTLS_ERR_PK_KEY_INVALID_VERSION );
+  }
+
+  if( ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->N  ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->E  ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->D  ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->P  ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->Q  ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->DP ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->DQ ) ) != 0 ||
+      ( ret = mbedtls_asn1_get_mpi( &p, end, &rsa->QP ) ) != 0 )
+  {
+      mbedtls_rsa_free( rsa );
+      return( MBEDTLS_ERR_PK_KEY_INVALID_FORMAT + ret );
+  }
+
+  rsa->len = mbedtls_mpi_size( &rsa->N );
+
+  if( p != end )
+  {
+      mbedtls_rsa_free( rsa );
+      return( MBEDTLS_ERR_PK_KEY_INVALID_FORMAT +
+              MBEDTLS_ERR_ASN1_LENGTH_MISMATCH );
+  }
+
+  if( ( ret = mbedtls_rsa_check_privkey( rsa ) ) != 0 )
+  {
+      mbedtls_rsa_free( rsa );
+      return( ret );
+  }
 #else
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 
