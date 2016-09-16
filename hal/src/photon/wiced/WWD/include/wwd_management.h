@@ -94,6 +94,18 @@ wwd_result_t wwd_management_init( wiced_country_code_t country, /*@null@*/ void*
  */
 wwd_result_t wwd_management_wifi_on( void );
 
+/**
+ * Get WLAN powersave sleep clock enabled function
+ *
+ * @return WICED_TRUE if powersave sleep clock is enabled, WICED_FALSE if powersave sleep clock disabled
+ */
+wiced_bool_t wwd_get_wlan_sleep_clock_enabled( void );
+
+/**
+ * Set WLAN powersave sleep clock enabled function
+ *
+ * @param enabled : enables/disables the powersave sleep clock
+ */
 wwd_result_t wwd_set_wlan_sleep_clock_enabled(wiced_bool_t enabled);
 
 /**
