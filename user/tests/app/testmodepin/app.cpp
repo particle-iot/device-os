@@ -10,7 +10,13 @@
 #include "application.h"
 
 retained int step = 0;
+const int max_steps = 6;
+const int TESTMODE = P1S6;
+const int TESTMODE_MIRROR = A4;
+volatile int mirror_pin_state = 0;
 
+SYSTEM_MODE(SEMI_AUTOMATIC);
+SYSTEM_THREAD(ENABLED);
 
 void setup_testmode()
 {
@@ -24,16 +30,28 @@ void setup_testmode()
 	case 2: // leave clock still active from before;
 		break;
 
-	case 3:
+	case 3: // leave clock still active from before;
+		break;
+
+	case 4:
 		System.disableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
 		break;
 
-	case 4:	// leave clock inactive
+	case 5:	// leave clock inactive
+		break;
+
+	case 6:	// leave clock inactive
 		break;
 	}
 }
 
-const int max_steps = 5;
+STARTUP(setup_testmode());
+
+void pinWentLow()
+{
+	mirror_pin_state = 0;
+	detachInterrupt(TESTMODE_MIRROR);
+}
 
 bool assertPinPeriod(const int pin, const int expectedPeriod, const int variancePercent=20, const int count=100)
 {
@@ -57,19 +75,29 @@ bool assertPinPeriod(const int pin, const int expectedPeriod, const int variance
     return success;
 }
 
-const int TESTMODE = 33;
-
 bool wifiPowersaveClockRunning(int mirror) {
 	return assertPinPeriod(mirror, 1000/64);
 }
 
+bool connectToCloud(void) {
+	Particle.connect();
+	if (!waitFor(Particle.connected, 30000)) {
+		Serial1.println("Cloud did not connect within 30s!");
+		return false;
+	}
+	return true;
+}
+
 bool validate_testmode(int mirror, int step)
 {
+	// check for active powersave clock
 	if (step==1 || step==2) {
+		if (!connectToCloud()) return false;
 		Serial1.println("checking powersave clock is active.");
 		return wifiPowersaveClockRunning(mirror);
 	}
-	else if (step==3 || step==4) {
+	// check for inactive powersave clock
+	else if (step==4 || step==5) {
 		bool success = true;
 
 		// pulseIn doesn't work well with static signals - needs a configurable timeout.
@@ -102,17 +130,40 @@ bool validate_testmode(int mirror, int step)
 		}
 		return success;
 	}
+	// delay connection for step 3 and step 6 to test for retained control of P1S6 after Wi-Fi enabled
+	else if ( step==3 || step==6 ) {
+		Serial1.println("checking pin retains control after wifi is enabled.");
+		digitalWrite(TESTMODE, HIGH);
+		mirror_pin_state = 1;
+		pinMode(mirror, INPUT_PULLUP);
+		attachInterrupt(mirror, pinWentLow, FALLING);
+		delay(500);
+		if (digitalRead(mirror) == LOW || mirror_pin_state == 0) {
+			Serial1.println("expected P1S6 to remain high while Wi-Fi is off for 500ms");
+			return false;
+		}
+		if (!connectToCloud()) {
+			return false;
+		}
+		if (step == 6) { // powersave clock is disabled, we expect P1S6 to remain high
+			if (digitalRead(mirror) == LOW || mirror_pin_state == 0) {
+				Serial1.println("powersave clock is disabled, expected P1S6 to remain high");
+				return false;
+			}
+		}
+		else { // step 3, powersave clock is enabled, we expect P1S6 to have gone LOW, and be clocking at 32kHz again
+			if (mirror_pin_state == 1) {
+				Serial1.println("powersave clock is enabled, expected P1S6 to have gone LOW, and be clocking at 32kHz again");
+				return false;
+			}
+		}
+	}
 	return true;
 }
 
-
-STARTUP(setup_testmode());
-
-const int testModeMirror = A4;
-
 void setup() {
 	Serial1.begin(9600);
-	pinMode(testModeMirror, INPUT);
+	pinMode(TESTMODE_MIRROR, INPUT);
 	Serial1.printlnf("step %d", step);
 }
 
@@ -126,7 +177,7 @@ void loop() {
 		RGB.control(true);
 		RGB.color(255,255,0);
 
-		if (validate_testmode(testModeMirror, step)) {
+		if (validate_testmode(TESTMODE_MIRROR, step)) {
 			Serial1.println("test successful");
 
 			if (step<max_steps) {
