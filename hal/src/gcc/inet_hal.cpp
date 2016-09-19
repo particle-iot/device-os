@@ -8,11 +8,12 @@ namespace ip = boost::asio::ip;
 int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr,
         network_interface_t nif, void* reserved)
 {
+    boost::system::error_code ec;
     out_ip_addr->ipv4 = 0;
     ip::tcp::resolver resolver(device_io_service);
     ip::tcp::resolver::query query(hostname, "");
-    for(ip::tcp::resolver::iterator i = resolver.resolve(query);
-                            i != ip::tcp::resolver::iterator();
+    for(ip::tcp::resolver::iterator i = resolver.resolve(query, ec);
+                            i != ip::tcp::resolver::iterator() && !ec.value();
                             ++i)
     {
         ip::tcp::endpoint end = *i;
@@ -22,5 +23,5 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
             out_ip_addr->ipv4 = addr_v4.to_ulong();
         }
     }
-    return 0;
+    return ec.value();
 }
