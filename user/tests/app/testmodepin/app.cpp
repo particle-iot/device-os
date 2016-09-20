@@ -165,6 +165,21 @@ void setup() {
 	Serial1.begin(9600);
 	pinMode(TESTMODE_MIRROR, INPUT);
 	Serial1.printlnf("step %d", step);
+	if (step==1) {
+		Serial1.println("checking for jumper between TESTMODE (P1S6) to SPI1_MISO (A4)");
+		pinMode(TESTMODE_MIRROR, INPUT_PULLDOWN);
+		pinMode(TESTMODE, OUTPUT);
+		if (digitalRead(TESTMODE_MIRROR)!=LOW) {
+			Serial1.println("SPI1_MISO (A4) should be LOW, do you have it hooked to wrong pin?");
+			while (digitalRead(TESTMODE_MIRROR)!=LOW) Particle.process(); // wait for error to be cleared.
+		}
+		digitalWrite(TESTMODE, HIGH);
+		if (digitalRead(TESTMODE_MIRROR)!=HIGH) {
+			Serial1.println("SPI1_MISO (A4) should be HIGH, do you have it hooked to wrong pin?");
+			while (digitalRead(TESTMODE_MIRROR)!=HIGH) Particle.process(); // wait for error to be cleared.
+		}
+		pinMode(TESTMODE_MIRROR, INPUT);
+	}
 }
 
 void loop() {
