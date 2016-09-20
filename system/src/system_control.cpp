@@ -24,44 +24,64 @@
  */
 
 #include "system_control.h"
+
 #include "deviceid_hal.h"
-#include "spark_wiring.h"
+
+#include "system_task.h"
+#include "system_threading.h"
+
+#include "spark_wiring_system.h"
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
-static SystemControlInterface controlInterface;
+namespace {
 
-enum ControlRequest {
-  REQUEST_GET_DEVICE_ID               = 0x0000,
-  REQUEST_GET_SYSTEM_VERSION          = 0x0001,
-  REQUEST_RESET                       = 0x0002,
-  // Perhaps could be combined into a signle request and a mode could be supplied in wValue?
-  REQUEST_ENTER_DFU_MODE              = 0x0003,
-  REQUEST_ENTER_LISTENING_MODE        = 0x0004
-  //
-};
+SystemControlInterface systemControl;
 
+usb_request_app_handler_type usbReqAppHandler = nullptr;
+
+} // namespace
+
+// ::
+void system_set_usb_request_app_handler(usb_request_app_handler_type handler, void* reserved) {
+  usbReqAppHandler = handler;
+}
+
+void system_set_usb_request_result(USBRequest* req, int result, void* reserved) {
+  SystemControlInterface::setRequestResult(req, (USBRequestResult)result);
+}
+
+// SystemControlInterface::USBRequestData
+SystemControlInterface::USBRequestData::USBRequestData() :
+    result(USB_REQUEST_RESULT_ERROR),
+    active(false),
+    ready(false) {
+  req.size = sizeof(USBRequest);
+  req.type = USB_REQUEST_INVALID;
+  req.data = (char*)malloc(USB_REQUEST_BUFFER_SIZE);
+  req.request_size = 0;
+  req.reply_size = 0;
+  req.format = DATA_FORMAT_INVALID;
+}
+
+SystemControlInterface::USBRequestData::~USBRequestData() {
+  free(req.data);
+}
+
+// SystemControlInterface
 SystemControlInterface::SystemControlInterface() {
-  HAL_USB_Set_Vendor_Request_Callback(&SystemControlInterface::vendorRequestCallback, static_cast<void*>(this));
+  HAL_USB_Set_Vendor_Request_Callback(vendorRequestCallback, static_cast<void*>(this));
 }
 
 SystemControlInterface::~SystemControlInterface() {
   HAL_USB_Set_Vendor_Request_Callback(nullptr, nullptr);
 }
 
-uint8_t SystemControlInterface::vendorRequestCallback(HAL_USB_SetupRequest* req, void* ptr) {
-  SystemControlInterface* self = static_cast<SystemControlInterface*>(ptr);
-  if (self)
-    return self->handleVendorRequest(req);
-
-  return 1;
-}
-
 uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
   /*
    * This callback should process vendor-specific SETUP requests from the host.
    * NOTE: This callback is called from an ISR.
-   * 
+   *
    * Each request contains the following fields:
    * - bmRequestType - request type bit mask. Since only vendor-specific device requests are forwarded
    *                   to this callback, the only bit that should be of intereset is
@@ -77,12 +97,12 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
    *             Device -> Host requests request the device to send up to wLength bytes of data.
    *
    * This callback should return 0 if the request has been correctly handled or 1 otherwise.
-   * 
+   *
    * When handling Device->Host requests with data stage, this callback should fill req->data buffer with
    * up to wLength bytes of data if req->data != NULL (which should be the case when wLength <= 64)
    * or set req->data to point to some buffer which contains up to wLength bytes of data.
    * wLength may be safely modified to notify that there is less data in the buffer than requested by the host.
-   * 
+   *
    * [1] Host -> Device requests with data stage containing up to 64 bytes can be handled by
    * an internal buffer in HAL. For requests larger than 64 bytes, the vendor request callback
    * needs to provide a buffer of an appropriate size:
@@ -95,26 +115,17 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
    * req->data should contain wLength bytes received from the host.
    */
 
-  /* 
+  /*
    * We are handling only bRequest = 0x50 ('P') requests.
-   * The request type itself (enum ControlRequest) should be in wIndex field.
+   * The request type itself (enum USBRequestType) should be in wIndex field.
    */
   if (req->bRequest != 0x50)
     return 1;
 
   if (req->bmRequestTypeDirection == 0) {
     // Host -> Device
-
-    if (req->wLength && req->data == NULL) {
-      /*
-       * Currently not handled.
-       * See [1]
-       */
-      return 1;
-    }
-
     switch (req->wIndex) {
-      case REQUEST_RESET: {
+      case USB_REQUEST_RESET: {
         // FIXME: We probably shouldn't reset from an ISR.
         // The host will probably get an error that control request has timed out since we
         // didn't respond to it.
@@ -122,7 +133,7 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
         break;
       }
 
-      case REQUEST_ENTER_DFU_MODE: {
+      case USB_REQUEST_DFU_MODE: {
         // FIXME: We probably shouldn't enter DFU mode from an ISR.
         // The host will probably get an error that control request has timed out since we
         // didn't respond to it.
@@ -130,13 +141,21 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
         break;
       }
 
-      case REQUEST_ENTER_LISTENING_MODE: {
+      case USB_REQUEST_LISTENING_MODE: {
         // FIXME: We probably shouldn't enter listening mode from an ISR.
         // The host will probably get an error that control request has timed out since we
         // didn't respond to it.
         system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
         System.enterSafeMode();
         break;
+      }
+
+      case USB_REQUEST_LOG_CONFIG: {
+        return enqueueRequest(req, DATA_FORMAT_JSON);
+      }
+
+      case USB_REQUEST_CUSTOM: {
+        return enqueueRequest(req);
       }
 
       default: {
@@ -147,7 +166,7 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
   } else {
     // Device -> Host
     switch (req->wIndex) {
-      case REQUEST_GET_DEVICE_ID: {
+      case USB_REQUEST_DEVICE_ID: {
         if (req->wLength == 0 || req->data == NULL) {
           // No data stage or requested > 64 bytes
           return 1;
@@ -170,7 +189,7 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
         break;
       }
 
-      case REQUEST_GET_SYSTEM_VERSION: {
+      case USB_REQUEST_SYSTEM_VERSION: {
         if (req->wLength == 0 || req->data == NULL) {
           // No data stage or requested > 64 bytes
           return 1;
@@ -181,6 +200,11 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
         break;
       }
 
+      case USB_REQUEST_LOG_CONFIG:
+      case USB_REQUEST_CUSTOM: {
+        return fetchRequestResult(req);
+      }
+
       default: {
         // Unknown request
         return 1;
@@ -189,6 +213,112 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
   }
 
   return 0;
+}
+
+uint8_t SystemControlInterface::enqueueRequest(HAL_USB_SetupRequest* req, DataFormat fmt) {
+  SPARK_ASSERT(req->bmRequestTypeDirection == 0); // Host to device
+  if (usbReq_.active && !usbReq_.ready) {
+    return 1; // // There is an active request already
+  }
+  if (req->wLength > 0) {
+    if (!usbReq_.req.data) {
+      return 1; // Initialization error
+    }
+    if (req->wLength > USB_REQUEST_BUFFER_SIZE) {
+      return 1; // Too large request
+    }
+    if (req->wLength <= 64) {
+      if (!req->data) {
+        return 1; // Invalid request info
+      }
+      memcpy(usbReq_.req.data, req->data, req->wLength);
+    } else if (!req->data) {
+      req->data = (uint8_t*)usbReq_.req.data; // Provide buffer for request data
+      return 0; // OK
+    }
+  }
+  // Schedule request for processing in the system thread's context
+  if (!SystemISRTaskQueue.enqueue(processSystemRequest, &usbReq_.req)) {
+    return 1;
+  }
+  usbReq_.req.type = (USBRequestType)req->wIndex;
+  usbReq_.req.request_size = req->wLength;
+  usbReq_.req.reply_size = 0;
+  usbReq_.req.format = fmt;
+  usbReq_.ready = false;
+  usbReq_.active = true;
+  return 0;
+}
+
+uint8_t SystemControlInterface::fetchRequestResult(HAL_USB_SetupRequest* req) {
+  SPARK_ASSERT(req->bmRequestTypeDirection == 1); // Device to host
+  if (!usbReq_.ready) {
+    return 1; // No reply data available
+  }
+  if (usbReq_.req.type != (USBRequestType)req->wIndex) {
+    return 1; // Unexpected request type
+  }
+  if (usbReq_.result != USB_REQUEST_RESULT_OK) {
+    return 1; // Request has failed (TODO: Reply with a result code?)
+  }
+  if (req->wLength > 0) {
+    if (!usbReq_.req.data) {
+      return 1; // Initialization error
+    }
+    if (req->wLength < usbReq_.req.reply_size) {
+      return 1; // Too large reply
+    }
+    if (req->wLength <= 64) {
+      if (!req->data) {
+        return 1; // Invalid request info
+      }
+      memcpy(req->data, usbReq_.req.data, usbReq_.req.reply_size);
+    } else {
+      req->data = (uint8_t*)usbReq_.req.data; // Provide buffer with reply data
+    }
+    req->wLength = usbReq_.req.reply_size;
+  }
+  usbReq_.active = false;
+  // FIXME: Don't invalidate reply data for now (simplifies testing with usbtool)
+  // usbReq_.ready = false;
+  return 0;
+}
+
+void SystemControlInterface::setRequestResult(USBRequest* req, USBRequestResult result) {
+  USBRequestData *r = (USBRequestData*)req;
+  r->result = result;
+  r->ready = true;
+}
+
+void SystemControlInterface::processSystemRequest(void* data) {
+  USBRequest* req = static_cast<USBRequest*>(data);
+  switch (req->type) {
+  // Handle requests that should be processed by the system modules here
+  default:
+    if (usbReqAppHandler) {
+      processAppRequest(data); // Forward request to the application thread
+    } else {
+      setRequestResult(req, USB_REQUEST_RESULT_ERROR);
+    }
+  }
+}
+
+void SystemControlInterface::processAppRequest(void* data) {
+  // FIXME: Request leak may occur if underlying asynchronous event cannot be queued
+  APPLICATION_THREAD_CONTEXT_ASYNC(processAppRequest(data));
+  USBRequest* req = static_cast<USBRequest*>(data);
+  SPARK_ASSERT(usbReqAppHandler); // Checked in processSystemRequest()
+  if (!usbReqAppHandler(req, nullptr)) {
+    setRequestResult(req, USB_REQUEST_RESULT_ERROR);
+  }
+}
+
+uint8_t SystemControlInterface::vendorRequestCallback(HAL_USB_SetupRequest* req, void* data) {
+  SystemControlInterface* self = static_cast<SystemControlInterface*>(data);
+  if (self) {
+    return self->handleVendorRequest(req);
+  }
+  return 1;
 }
 
 #endif // USB_VENDOR_REQUEST_ENABLE
