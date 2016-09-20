@@ -74,7 +74,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 47
 #elif PLATFORM_ID == 8 // P1
-#define TOTAL_PINS 30
+#define TOTAL_PINS 31
 #else // Must be Photon
 #define TOTAL_PINS 24
 #endif
@@ -159,6 +159,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define P1S3    27
 #define P1S4    28
 #define P1S5    29
+#define P1S6    30
 #endif
 
 #if PLATFORM_ID == 10 // Electron
