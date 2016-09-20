@@ -54,7 +54,7 @@
 
 #if PLATFORM_ID==PLATFORM_P1
 #include "wwd_management.h"
-#include "dct.h"
+#include "wlan_hal.h"
 #endif
 
 #define STOP_MODE_EXIT_CONDITION_PIN 0x01
@@ -319,9 +319,7 @@ void HAL_Core_Config(void)
 #if PLATFORM_ID==8 // Additional pins for P1
     for (pin_t pin=24; pin<=29; pin++)
         HAL_Pin_Mode(pin, INPUT);
-    const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
-    uint8_t current = (*data);
-    if ((current&3) == 0x2) {
+    if (isWiFiPowersaveClockDisabled()) {
         HAL_Pin_Mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
     }
 #endif

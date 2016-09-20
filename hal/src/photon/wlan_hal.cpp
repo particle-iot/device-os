@@ -73,6 +73,12 @@ wiced_country_code_t fetch_country_code()
     return result;
 }
 
+bool isWiFiPowersaveClockDisabled() {
+    const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
+    uint8_t current = (*data);
+    return ((current&3) == 0x2);
+}
+
 bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
 {
     bool changed = false;
@@ -299,9 +305,7 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
 wlan_result_t wlan_activate()
 {
 #if PLATFORM_ID==PLATFORM_P1
-	const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
-	uint8_t current = (*data);
-	if ((current&3) == 0x2) {
+	if (isWiFiPowersaveClockDisabled()) {
 		wwd_set_wlan_sleep_clock_enabled(WICED_FALSE);
 	}
 #endif
