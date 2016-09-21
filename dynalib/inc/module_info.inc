@@ -24,7 +24,7 @@
 
 #include "module_info.h"
 
-#if PLATFORM_ID==3
+#if !EMBEDDED_TARGET
 #define _ARM_SECTION(x)
 char link_module_start;
 char link_module_end;
@@ -107,7 +107,7 @@ extern char link_module_end;
 
 #define MODULE_DEPENDENCY2 0,0,0
 
-#if PLATFORM_ID!=3
+#if EMBEDDED_TARGET
 __attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info"))))
 
 const module_info_t module_info = {

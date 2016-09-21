@@ -167,7 +167,7 @@ static void my_debug( void *ctx, int level,
 		const char *file, int line,
 		const char *str )
 {
-#if PLATFORM_ID!=3
+#if EMBEDDED_TARGET
 	DEBUG_D("%s:%04d: %s", file, line, str);
 #else
 	fprintf(stdout, "%s:%04d: %s", file, line, str);

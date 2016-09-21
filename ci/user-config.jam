@@ -1,0 +1,3 @@
+# Support the toolset=gcc-arm for building boost for the Raspberry Pi
+
+using gcc : arm : arm-unknown-linux-gnueabi-g++ ; 

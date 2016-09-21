@@ -15,6 +15,7 @@
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
 #define Wiring_Serial2 1
+#define Wiring_Timer 1
 #endif
 
 #if PLATFORM_ID==1      // unused
@@ -31,6 +32,7 @@
 #define Wiring_WiFi 1
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1
+#define Wiring_Timer 1
 #endif
 
 #if PLATFORM_ID==5
@@ -38,6 +40,7 @@
 #define Wiring_IPv6 1
 #define Wiring_SPI1 1
 #define Wiring_Serial2 1
+#define Wiring_Timer 1
 #endif
 
 #if PLATFORM_ID==6      // photon
@@ -48,6 +51,7 @@
 #define Wiring_USBSerial1 1
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
+#define Wiring_Timer 1
 #endif
 
 #if PLATFORM_ID==7
@@ -58,6 +62,7 @@
 #define Wiring_USBSerial1 1
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
+#define Wiring_Timer 1
 #endif
 
 #if PLATFORM_ID==8      // P1 / bm14
@@ -68,10 +73,12 @@
 #define Wiring_USBSerial1 1
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
+#define Wiring_Timer 1
 #endif
 
 #if PLATFORM_ID==9      // ethernet
 #define Wiring_IPv6 1
+#define Wiring_Timer 1
 #endif
 
 #if PLATFORM_ID==10      // electron
@@ -89,6 +96,12 @@
 #define Wiring_USBSerial1 1
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
+#define Wiring_Timer 1
+#endif
+
+#if PLATFORM_ID==31 // raspberry pi
+#define Wiring_WiFi 1
+#define Wiring_SPI1 1
 #endif
 
 #ifndef Wiring_SPI1
@@ -137,6 +150,10 @@
 
 #ifndef Wiring_USBSerial1
 #define Wiring_USBSerial1 0
+#endif
+
+#ifndef Wiring_Timer
+#define Wiring_Timer 0
 #endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */

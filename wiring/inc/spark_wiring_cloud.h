@@ -92,7 +92,7 @@ public:
         return _variable(varKey, &var, INT);
     }
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=31
     // compiling with gcc this function duplicates the previous one.
     static inline bool _variable(const char* varKey, const int32_t& var)
     {
@@ -105,7 +105,7 @@ public:
         return _variable(varKey, &var, INT);
     }
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=31
     static bool _variable(const char* varKey, const float& var)
     __attribute__((error("Please change the variable from type `float` to `double` for use with Particle.variable().")));
 #endif
@@ -184,7 +184,7 @@ public:
     template <typename T, class ... Types>
     static inline bool function(const T &name, Types ... args)
     {
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=31
         static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_FUNC_KEY_LENGTH + 1,
             "\n\nIn Particle.function, name must be less than " __XSTRING(USER_FUNC_KEY_LENGTH) " characters\n\n");
 #endif

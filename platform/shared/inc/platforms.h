@@ -34,6 +34,7 @@
 #define PLATFORM_P1                         8
 #define PLATFORM_ETHERNET_PROTO             9
 #define PLATFORM_ELECTRON_PRODUCTION        10
+#define PLATFORM_RASPBERRY_PI               31
 
 
 #endif	/* PLATFORMS_H */

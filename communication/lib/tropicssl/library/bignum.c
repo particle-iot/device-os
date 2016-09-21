@@ -851,7 +851,7 @@ int mpi_sub_int(mpi * X, const mpi * A, int b)
  * Helper for mpi multiplication.
  * This has to be optimized else it will fail with "z7 not allowed here".
  */
-#if PLATFORM_ID!=3
+#if EMBEDDED_TARGET
 __attribute__((optimize("-Os")))
 #endif
 
