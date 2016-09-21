@@ -76,7 +76,11 @@ LIB_DIRS += $(dir $(LIB_DEPS))
 ifeq ("$(ARCH)","gcc")
 TARGET=exe
 else
+ifeq ("$(ARCH)","arm-linux")
+TARGET=exe
+else
 TARGET=elf bin lst hex size
+endif
 endif
 
 include ../build/arm-tlm.mk

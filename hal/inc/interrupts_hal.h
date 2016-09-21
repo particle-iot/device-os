@@ -28,6 +28,7 @@
 #define __INTERRUPTS_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
+#include "hal_platform.h"
 #include "pinmap_hal.h"
 #include "interrupts_irq.h"
 
@@ -113,11 +114,7 @@ static inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2)
 
   return false;
 }
-#elif PLATFORM_ID==60000
-inline bool HAL_IsISR() { return false; }
-inline int32_t HAL_ServicedIRQn() { return 0; }
-inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#elif PLATFORM_ID==3
+#elif HAL_PLATFORM_NO_ISR
 inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }

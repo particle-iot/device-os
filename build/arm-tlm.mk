@@ -12,7 +12,11 @@ else
 ifeq ("$(ARCH)","gcc")
 include $(current_dir)/gcc-tools.mk
 else
+ifeq ("$(ARCH)","arm-linux")
+include $(current_dir)/arm-linux-tools.mk
+else
 $(error "Unknown architecture '$(ARCH)'");
+endif
 endif
 endif
 

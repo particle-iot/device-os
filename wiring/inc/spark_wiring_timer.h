@@ -19,7 +19,9 @@
 
 #pragma once
 
-#if PLATFORM_ID!=3
+#include "spark_wiring_platform.h"
+
+#if Wiring_Timer
 #include "stddef.h"
 #include "concurrent_hal.h"
 #include <functional>

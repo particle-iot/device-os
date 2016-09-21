@@ -136,7 +136,7 @@ struct varstring_t {
     char string[33];
 };
 
-#if PLATFORM_ID>3
+#if PLATFORM_ID>3 && PLATFORM_ID!=31
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
 #else
 bool fetch_or_generate_setup_ssid(varstring_t* result) {

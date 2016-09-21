@@ -1,4 +1,4 @@
-BOOST_VERSION=1_61_0
+BOOST_VERSION=1_61_0_arm
 
 test -f boost_$BOOST_VERSION.tar.gz || wget --quiet http://downloads.sourceforge.net/project/boost/boost/1.61.0/boost_$BOOST_VERSION.tar.gz 
 export BOOST_HOME=$HOME/.ci/boost
