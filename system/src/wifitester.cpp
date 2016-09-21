@@ -58,6 +58,12 @@ int32_t digitalRead(pin_t pin) {
 #endif
 
 #if Wiring_WiFi
+
+#if PLATFORM_ID==31
+void WiFiTester::setup(bool) {}
+void WiFiTester::loop(int) {}
+#else
+
 using namespace spark;
 
 uint8_t serialAvailable();
@@ -136,7 +142,7 @@ struct varstring_t {
     char string[33];
 };
 
-#if PLATFORM_ID>3 && PLATFORM_ID!=31
+#if PLATFORM_ID>3
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
 #else
 bool fetch_or_generate_setup_ssid(varstring_t* result) {
@@ -485,4 +491,5 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     serialPrintln("  WIFI Connected?    ");
 }
 
+#endif // PLATFORM_ID!=31
 #endif

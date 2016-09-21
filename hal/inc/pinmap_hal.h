@@ -61,16 +61,158 @@ typedef enum {
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 
-typedef struct STM32_Pin_Info  STM32_Pin_Info;
-
-STM32_Pin_Info* HAL_Pin_Map(void);
-
 /* Exported macros -----------------------------------------------------------*/
 
 /*
 * Pin mapping. Borrowed from Wiring
 */
-#if PLATFORM_ID!=3
+#if PLATFORM_ID==3
+// GCC virtual device pins
+
+const pin_t TOTAL_PINS = 21;
+const pin_t TOTAL_ANALOG_PINS = 8;
+const pin_t FIRST_ANALOG_PIN = 10;
+const pin_t D0 = 0;
+const pin_t D1 = 1;
+const pin_t D2 = 2;
+const pin_t D3 = 3;
+const pin_t D4 = 4;
+const pin_t D5 = 5;
+const pin_t D6 = 6;
+const pin_t D7 = 7;
+
+const pin_t A0 = 10;
+const pin_t A1 = 11;
+const pin_t A2 = 12;
+const pin_t A3 = 13;
+const pin_t A4 = 14;
+const pin_t A5 = 15;
+const pin_t A6 = 16;
+
+// WKP pin is also an ADC on Photon
+const pin_t A7 = 17;
+
+// RX and TX pins are also ADCs on Photon
+const pin_t A8 = 18;
+const pin_t A9 = 19;
+
+const pin_t RX = 18;
+const pin_t TX = 19;
+
+const pin_t BTN = 20;
+
+// WKP pin on Photon
+const pin_t WKP = 17;
+
+// Timer pins
+
+const pin_t TIMER2_CH1 = 10;
+const pin_t TIMER2_CH2 = 11;
+const pin_t TIMER2_CH3 = 18;
+const pin_t TIMER2_CH4 = 19;
+
+const pin_t TIMER3_CH1 = 14;
+const pin_t TIMER3_CH2 = 15;
+const pin_t TIMER3_CH3 = 16;
+const pin_t TIMER3_CH4 = 17;
+
+const pin_t TIMER4_CH1 = 1;
+const pin_t TIMER4_CH2 = 0;
+
+// SPI pins
+
+const pin_t SS   = 12;
+const pin_t SCK  = 13;
+const pin_t MISO = 14;
+const pin_t MOSI = 15;
+
+// I2C pins
+
+const pin_t SDA  = 0;
+const pin_t SCL  = 1;
+
+// DAC pins on Photon
+const pin_t DAC1 = 16;
+const pin_t DAC2 = 13;
+
+const uint8_t LSBFIRST = 0;
+const uint8_t MSBFIRST = 1;
+
+// #endif PLATFORM_ID==3
+
+#elif PLATFORM_ID==31
+// Raspberry Pi device pins
+
+typedef struct RPi_Pin_Info  RPi_Pin_Info;
+
+RPi_Pin_Info* HAL_Pin_Map(void);
+
+#define TOTAL_PINS 28
+#define TOTAL_ANALOG_PINS 0
+#define FIRST_ANALOG_PIN 0
+#define D0 0
+#define D1 1
+#define D2 2
+#define D3 3
+#define D4 4
+#define D5 5
+#define D6 6
+#define D7 7
+#define D8 8
+#define D9 4
+#define D10 10
+#define D11 11
+#define D12 12
+#define D13 13
+#define D14 14
+#define D15 15
+#define D16 16
+#define D17 17
+#define D18 18
+#define D19 19
+#define D20 20
+#define D21 21
+#define D22 22
+#define D23 23
+#define D24 24
+#define D25 25
+#define D26 26
+#define D27 27
+
+// PWM pins
+
+#define PWM0 18
+
+// UART pins
+
+#define RX 15
+#define TX 14
+
+// SPI pins
+
+#define CE0  8
+#define CE1  7
+#define SCK  21
+#define MISO 19
+#define MOSI 20
+
+// I2C pins
+
+#define SDA  2
+#define SCL  3
+
+#define LSBFIRST 0
+#define MSBFIRST 1
+
+// #endif PLATFORM_ID==31
+
+#else
+// Other device pins
+
+typedef struct STM32_Pin_Info  STM32_Pin_Info;
+
+STM32_Pin_Info* HAL_Pin_Map(void);
+
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 47
 #elif PLATFORM_ID == 8 // P1
@@ -205,75 +347,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define LSBFIRST 0
 #define MSBFIRST 1
 
-#else
-const pin_t TOTAL_PINS = 21;
-const pin_t TOTAL_ANALOG_PINS = 8;
-const pin_t FIRST_ANALOG_PIN = 10;
-const pin_t D0 = 0;
-const pin_t D1 = 1;
-const pin_t D2 = 2;
-const pin_t D3 = 3;
-const pin_t D4 = 4;
-const pin_t D5 = 5;
-const pin_t D6 = 6;
-const pin_t D7 = 7;
-
-const pin_t A0 = 10;
-const pin_t A1 = 11;
-const pin_t A2 = 12;
-const pin_t A3 = 13;
-const pin_t A4 = 14;
-const pin_t A5 = 15;
-const pin_t A6 = 16;
-
-// WKP pin is also an ADC on Photon
-const pin_t A7 = 17;
-
-// RX and TX pins are also ADCs on Photon
-const pin_t A8 = 18;
-const pin_t A9 = 19;
-
-const pin_t RX = 18;
-const pin_t TX = 19;
-
-const pin_t BTN = 20;
-
-// WKP pin on Photon
-const pin_t WKP = 17;
-
-// Timer pins
-
-const pin_t TIMER2_CH1 = 10;
-const pin_t TIMER2_CH2 = 11;
-const pin_t TIMER2_CH3 = 18;
-const pin_t TIMER2_CH4 = 19;
-
-const pin_t TIMER3_CH1 = 14;
-const pin_t TIMER3_CH2 = 15;
-const pin_t TIMER3_CH3 = 16;
-const pin_t TIMER3_CH4 = 17;
-
-const pin_t TIMER4_CH1 = 1;
-const pin_t TIMER4_CH2 = 0;
-
-// SPI pins
-
-const pin_t SS   = 12;
-const pin_t SCK  = 13;
-const pin_t MISO = 14;
-const pin_t MOSI = 15;
-
-// I2C pins
-
-const pin_t SDA  = 0;
-const pin_t SCL  = 1;
-
-// DAC pins on Photon
-const pin_t DAC1 = 16;
-const pin_t DAC2 = 13;
-
-const uint8_t LSBFIRST = 0;
-const uint8_t MSBFIRST = 1;
 
 #endif // PLATFORM_ID==3
 
