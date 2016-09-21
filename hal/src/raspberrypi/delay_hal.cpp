@@ -17,20 +17,15 @@
  */
 
 #include "delay_hal.h"
-#include "timer_hal.h"
-
-#pragma GCC diagnostic ignored "-Wunused-variable"
-
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp>
+#include "wiringPi.h"
 
 void HAL_Delay_Milliseconds(uint32_t millis)
 {
-    boost::this_thread::sleep(boost::posix_time::milliseconds(millis));
+    delayPi(millis);
 }
 
 void HAL_Delay_Microseconds(uint32_t micros)
 {
-    boost::this_thread::sleep(boost::posix_time::milliseconds(1));
+    delayMicrosecondsPi(micros);
 }
 

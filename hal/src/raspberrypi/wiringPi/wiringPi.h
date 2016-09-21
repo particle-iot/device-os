@@ -24,6 +24,8 @@
 #ifndef	__WIRING_PI_H__
 #define	__WIRING_PI_H__
 
+/* Particle modification
+ * Namespace these global methods to avoid linker errors */
 #define pinMode pinModePi
 #define digitalWrite digitalWritePi
 #define digitalRead digitalReadPi
@@ -31,6 +33,10 @@
 #define shiftIn shiftInPi
 #define shiftOut shiftOutPi
 #define delay delayPi
+#define delayMicroseconds delayMicrosecondsPi
+#define millis millisPi
+#define micros microsPi
+/* End Particle modification */
 
 // C doesn't have true/false by default and I can never remember which
 //	way round they are, so ...
@@ -53,6 +59,20 @@
 
 // Pin modes
 
+/* Particle modification
+ * Namespace these global symbols to avoid redefinition */
+#ifdef NAMESPACE_WPI_PINMODE
+
+#define	WPI_INPUT			 0
+#define	WPI_OUTPUT			 1
+#define	WPI_PWM_OUTPUT		 2
+#define	WPI_GPIO_CLOCK		 3
+#define	WPI_SOFT_PWM_OUTPUT		 4
+#define	WPI_SOFT_TONE_OUTPUT	 5
+#define	WPI_PWM_TONE_OUTPUT		 6
+
+#else
+
 #define	INPUT			 0
 #define	OUTPUT			 1
 #define	PWM_OUTPUT		 2
@@ -60,6 +80,9 @@
 #define	SOFT_PWM_OUTPUT		 4
 #define	SOFT_TONE_OUTPUT	 5
 #define	PWM_TONE_OUTPUT		 6
+
+#endif
+/* End Particle modification */
 
 #define	LOW			 0
 #define	HIGH			 1
