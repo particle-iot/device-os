@@ -359,7 +359,7 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 	}
 	if (received>0)
     {
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=31
     		// filter out by destination IP and port
     		// todo - IPv6 will need to change this
     		if (memcmp(&addr.sa_data, &cloud_endpoint.address.sa_data, 6)) {

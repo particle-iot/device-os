@@ -48,7 +48,7 @@ typedef enum eSystemHealth_ {
   CLEARED_WATCHDOG=0xFFFF
 } eSystemHealth;
 
-#if PLATFORM_ID!=3
+#if EMBEDDED_TARGET
 // gcc enums are at least an int wide
 STATIC_ASSERT(system_health_16_bits, sizeof(eSystemHealth)==2);
 #endif

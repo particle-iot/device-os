@@ -74,7 +74,7 @@ CONLYFLAGS += -Wno-pointer-sign -std=gnu99
 LDFLAGS += $(LIBS_EXT)
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
 
-ifneq ($(PLATFORM_ID),3)
+ifeq ($(EMBEDDED_TARGET),1)
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker
 WHOLE_ARCHIVE=y
 else

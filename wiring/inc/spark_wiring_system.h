@@ -37,7 +37,7 @@
 #include "system_user.h"
 #include "system_version.h"
 
-#if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
+#if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID!=31
 #define SYSTEM_HW_TICKS 1
 #else
 #define SYSTEM_HW_TICKS 0

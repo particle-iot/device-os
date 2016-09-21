@@ -64,7 +64,7 @@ const CloudVariableTypeInt INT;
 const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
 
-#if PLATFORM_ID==3
+#if !EMBEDDED_TARGET
 // avoid a c-linkage incompatible with C error on newer versions of gcc
 String spark_deviceID(void);
 #endif
@@ -72,7 +72,7 @@ String spark_deviceID(void);
 #ifdef __cplusplus
 extern "C" {
 #endif
-#if PLATFORM_ID!=3
+#if EMBEDDED_TARGET
 String spark_deviceID(void);
 #endif
 
@@ -84,7 +84,7 @@ class String;
 
 #if defined(PLATFORM_ID)
 
-#if PLATFORM_ID!=3
+#if EMBEDDED_TARGET
 STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 #endif
 

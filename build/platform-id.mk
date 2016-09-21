@@ -64,6 +64,10 @@ ifeq ("$(PLATFORM)","electron")
 PLATFORM_ID=10
 endif
 
+ifeq ("$(PLATFORM)", "raspberrypi")
+PLATFORM_ID=31
+endif
+
 ifeq ("$(PLATFORM)","newhal")
 PLATFORM_ID=60000
 endif
@@ -80,6 +84,7 @@ endif
 # Determine which is the target device
 
 ARCH=arm
+EMBEDDED_TARGET=1
 
 ifeq ("$(PLATFORM_ID)","0")
 STM32_DEVICE=STM32F10X_MD
@@ -123,6 +128,7 @@ PRODUCT_DESC=GCC xcompile
 # explicitly exclude platform headers
 SPARK_NO_PLATFORM=1
 DEFAULT_PRODUCT_ID=3
+EMBEDDED_TARGET=0
 endif
 
 ifeq ("$(PLATFORM_ID)","4")
@@ -226,6 +232,19 @@ DEFAULT_PRODUCT_ID=10
 PLATFORM_DYNALIB_MODULES=electron
 endif
 
+ifeq ("$(PLATFORM_ID)","31")
+PLATFORM=raspberrypi
+PLATFORM_NAME=raspberrypi
+PLATFORM_MCU=gcc
+PLATFORM_NET=gcc
+ARCH=arm-linux
+PRODUCT_DESC=Raspberry Pi xcompile
+# explicitly exclude platform headers
+SPARK_NO_PLATFORM=1
+DEFAULT_PRODUCT_ID=31
+EMBEDDED_TARGET=0
+endif
+
 ifeq ("$(PLATFORM_ID)","60000")
 PLATFORM=newhal
 # needed for conditional compilation of some stm32 specific files
@@ -284,6 +303,7 @@ CFLAGS += -DPLATFORM_ID=$(PLATFORM_ID) -DPLATFORM_NAME=$(PLATFORM_NAME)
 CFLAGS += -DUSBD_VID_SPARK=$(USBD_VID_SPARK)
 CFLAGS += -DUSBD_PID_DFU=$(USBD_PID_DFU)
 CFLAGS += -DUSBD_PID_CDC=$(USBD_PID_CDC)
+CFLAGS += -DEMBEDDED_TARGET=$(EMBEDDED_TARGET)
 
 
 MODULE_FUNCTION_NONE            :=0

@@ -24,9 +24,11 @@
 
 void setup() {
     Serial.begin(9600);
+    Serial.println("Welcome to the cloud!");
 }
 
 void loop() {
-    Serial.println("Test");
+    Particle.publish("whoami", "Raspberry Pi");
+    Serial.println("Particle.publish(\"whoami\", \"Raspberry Pi\");");
     delay(1000);
 }

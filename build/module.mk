@@ -1,6 +1,6 @@
 # This is the common makefile used to build all top-level modules
-# It contains common recipes for bulding C/CPP/asm files to objects, and
-# to combine those objects into libraries or elf files.
+# It contains common recipes for building C/CPP/asm files to objects, and
+# for combining those objects into libraries or elf files.
 include $(COMMON_BUILD)/macros.mk
 
 SOURCE_PATH ?= $(MODULE_PATH)
