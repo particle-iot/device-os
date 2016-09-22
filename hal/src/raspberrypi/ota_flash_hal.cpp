@@ -20,7 +20,8 @@ uint32_t HAL_OTA_FlashAddress()
 
 uint32_t HAL_OTA_FlashLength()
 {
-    return 1024*100;
+    // debug firmware is currently 8.5 Mb
+    return 10*1024*1024;
 }
 
 uint16_t HAL_OTA_ChunkSize()
