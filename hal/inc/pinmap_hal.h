@@ -201,6 +201,11 @@ RPi_Pin_Info* HAL_Pin_Map(void);
 #define SDA  2
 #define SCL  3
 
+// I2C Hat pins
+#define EED 0
+#define EEC 1
+
+
 #define LSBFIRST 0
 #define MSBFIRST 1
 
