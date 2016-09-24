@@ -178,7 +178,7 @@ struct RNGCallbackData {
 
 static int rngCallback(void* p, unsigned char* data, size_t size) {
     RNGCallbackData* d = (RNGCallbackData*)p;
-    while (size) {
+    while (size >= 4) {
         *((uint32_t*)data) = d->f_rng(d->p_rng);
         data += 4;
         size -= 4;
