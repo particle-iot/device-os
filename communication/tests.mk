@@ -49,7 +49,7 @@ $(lib): $(objects)
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
-	-@$(RM) $(objects) $(lib) $(testobjects) 2> /dev/null
+	-@$(RM) -f $(objects) $(lib) $(testobjects) 2> /dev/null
 
 
 ############### tests #############
