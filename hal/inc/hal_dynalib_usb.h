@@ -90,7 +90,8 @@ DYNALIB_FN(BASE_IDX2 + 0, hal_usb, HAL_USB_Set_Vendor_Request_Callback, void(HAL
 
 #ifdef USB_HID_ENABLE
 DYNALIB_FN(BASE_IDX4 + 0, hal_usb, HAL_USB_HID_Status, int32_t(uint8_t, void*))
-# define BASE_IDX5 (BASE_IDX4 + 1)
+DYNALIB_FN(BASE_IDX4 + 1, hal_usb, HAL_USB_HID_Set_State, uint8_t(uint8_t, uint8_t, void*))
+# define BASE_IDX5 (BASE_IDX4 + 2)
 #else
 # define BASE_IDX5 BASE_IDX4
 #endif

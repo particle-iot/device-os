@@ -29,14 +29,25 @@
 
 uint8_t pwm_pins[] = {
 
-#if defined(STM32F2XX)
+#if (PLATFORM_ID == 0) // Core
+        A0, A1, A4, A5, A6, A7, D0, D1
+#elif (PLATFORM_ID == 6) // Photon
 		D0, D1, D2, D3, A4, A5, WKP, RX, TX
-#else
-		A0, A1, A4, A5, A6, A7, D0, D1
+#elif (PLATFORM_ID == 8) // P1
+        D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
+#elif (PLATFORM_ID == 10) // Electron
+        D0, D1, D2, D3, A4, A5, WKP, RX, TX, B0, B1, B2, B3, C4, C5
 #endif
 };
 
 static pin_t pin = pwm_pins[0];
+
+#if (PLATFORM_ID == 8) // P1
+test(PWM_00_P1S6SetupForP1) {
+    // disable POWERSAVE_CLOCK on P1S6
+    System.disableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
+}
+#endif
 
 test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     // when
@@ -436,3 +447,10 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     pinMode(pin, INPUT);
 	});
 }
+
+#if (PLATFORM_ID == 8) // P1
+test(PWM_11_P1S6CleanupForP1) {
+    // enable POWERSAVE_CLOCK on P1S6
+    System.enableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
+}
+#endif
