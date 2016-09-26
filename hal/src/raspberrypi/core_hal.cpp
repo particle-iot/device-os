@@ -41,6 +41,8 @@
 #include <iomanip>
 #include "wiringPi.h"
 
+#include "eeprom_file.h"
+#include "eeprom_hal.h"
 
 using std::cout;
 
@@ -51,25 +53,32 @@ void setLoggerLevel(LoggerOutputLevel level)
     log_level = level;
 }
 
-void log_message_callback(const char *msg, int level, const char *category, uint32_t time, const char *file, int line,
-        const char *func, void *reserved)
+void log_message_callback(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved)
 {
     if (level < log_level) {
         return;
     }
     std::ostringstream strm;
     // Timestamp
-    strm << std::setw(10) << std::setfill('0') << time << ' ';
-    // Category (optional)
-    if (category && category[0]) {
-        strm << category << ": ";
+    if (attr->has_time) {
+        strm << std::setw(10) << std::setfill('0') << attr->time << ' ';
     }
-    // Source info (optional)
-    if (file && func) {
-        strm << file << ':' << line << ", ";
-        // Strip argument and return types for better readability
-        std::string funcName(func);
-        const size_t pos = funcName.find(' ');
+    // Category
+    if (category) {
+        strm << '[' << category << "] ";
+    }
+    // Source info
+    if (attr->has_file && attr->has_line && attr->has_function) {
+        // Strip directory path
+        std::string fileName(attr->file);
+        size_t pos = fileName.rfind('/');
+        if (pos != std::string::npos) {
+            fileName = fileName.substr(pos + 1);
+        }
+        strm << fileName << ':' << attr->line << ", ";
+        // Strip argument and return types
+        std::string funcName(attr->function);
+        pos = funcName.find(' ');
         if (pos != std::string::npos) {
             funcName = funcName.substr(pos + 1, funcName.find('(') - pos - 1);
         }
@@ -78,7 +87,21 @@ void log_message_callback(const char *msg, int level, const char *category, uint
     // Level
     strm << log_level_name(level, nullptr) << ": ";
     // Message
-    strm << msg;
+    if (msg) {
+        strm << msg;
+    }
+    // Additional attributes
+    if (attr->has_code || attr->has_details) {
+        strm << " [";
+        if (attr->has_code) {
+            strm << "code = " << attr->code << ", ";
+        }
+        if (attr->has_details) {
+            strm << "details = " << attr->details << ", ";
+        }
+        strm.seekp(-2, std::ios_base::end); // Overwrite trailing comma
+        strm << "] ";
+    }
     std::cout << strm.str() << std::endl;
 }
 
@@ -105,10 +128,17 @@ void core_log(const char* msg, ...)
     va_end(args);
 }
 
+const char* eeprom_bin = "eeprom.bin";
+
 extern "C" int main(int argc, char* argv[])
 {
     log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
     if (read_device_config(argc, argv)) {
+        // init the eeprom so that a file of size 0 can be used to trigger the save.
+        HAL_EEPROM_Init();
+        if (exists_file(eeprom_bin)) {
+            GCC_EEPROM_Load(eeprom_bin);
+        }
         app_setup_and_loop();
     }
     return 0;
@@ -170,6 +200,16 @@ void HAL_Core_System_Reset(void)
     exit(0);
 }
 
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
+{
+    HAL_Core_System_Reset();
+}
+
+int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
+{
+    return -1;
+}
+
 void HAL_Core_Factory_Reset(void)
 {
     MSG("Factory reset not implemented.");
@@ -196,7 +236,7 @@ void HAL_Core_Execute_Stop_Mode(void)
     MSG("Stop mode not implemented.");
 }
 
-void HAL_Core_Enter_Standby_Mode(void)
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved)
 {
     MSG("Standby mode not implemented.");
 }

@@ -240,3 +240,12 @@ uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data)
 {
     return usartMap(serial).write((uint8_t) data);
 }
+
+void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved)
+{
+}
+
+uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial)
+{
+  return 0;
+}

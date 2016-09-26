@@ -42,10 +42,16 @@ extern "C" {
 	#define HAL_PLATFORM_CLOUD_TCP 1
 #endif
 
-#if PLATFORM_ID==6000 || PLATFORM_ID==3 || PLATFORM_ID==31
+#if PLATFORM_ID==60000 || PLATFORM_ID==3 || PLATFORM_ID==31
 	#define HAL_PLATFORM_NO_ISR 1
 #else
 	#define HAL_PLATFORM_NO_ISR 0
+#endif
+
+#if PLATFORM_ID >= 6 && PLATFORM_ID != 31
+	#define HAL_PLATFORM_USB_HID 1
+#else
+	#define HAL_PLATFORM_USB_HID 0
 #endif
 
 #ifndef HAL_PLATFORM_WIFI

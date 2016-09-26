@@ -24,11 +24,13 @@
 #ifndef USB_CONFIG_HAL_H
 #define	USB_CONFIG_HAL_H
 
+#include "hal_platform.h"
+
 /* We are temporary defining this macro over here */
 /* This could also be passed via -D option in build script */
 #define SPARK_USB_SERIAL        //Default is Virtual COM Port
 
-#if PLATFORM_ID >= 6
+#if HAL_PLATFORM_USB_HID
 # define SPARK_USB_MOUSE
 # define SPARK_USB_KEYBOARD
 
