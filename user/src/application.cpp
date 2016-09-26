@@ -47,7 +47,6 @@ void setup()
 
     Particle.function("analogread", tinkerAnalogRead);
     Particle.function("analogwrite", tinkerAnalogWrite);
-    Serial.begin(9600);
 }
 
 /* This function loops forever --------------------------------------------*/
