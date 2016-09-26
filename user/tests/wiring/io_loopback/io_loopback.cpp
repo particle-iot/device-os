@@ -44,7 +44,9 @@ vector<pair<int,int>> pinPairs = {
 #endif // PLATFORM_ID==8
 
 #if PLATFORM_ID==31
-    make_pair(SDA, SCL),
+    // Special pins on the Raspberry Pi currently don't work for GPIO
+
+    //make_pair(SDA, SCL),
     make_pair(4, 17),
     make_pair(27, 22),
     //make_pair(MOSI, MISO),
@@ -102,13 +104,11 @@ test(IO_PullUpPullDown) {
         pinMode(p.second, INPUT);
         pinMode(p.first, INPUT_PULLUP);
         delay(1);
-        if(p.first== 18) { Serial.println("1 up"); Serial.read(); }
         assertTrue(digitalRead(p.second) == HIGH);
 
         // first pulls down to second
         pinMode(p.first, INPUT_PULLDOWN);
         delay(1);
-        if(p.first== 18) { Serial.println("1 down"); Serial.read(); }
         assertTrue(digitalRead(p.second) == LOW);
 
         pinMode(p.first, INPUT);
@@ -119,13 +119,11 @@ test(IO_PullUpPullDown) {
             // second pulls up to first
             pinMode(p.second, INPUT_PULLUP);
             delay(1);
-            if(p.first== 18) { Serial.println("2 up"); Serial.read(); }
             assertTrue(digitalRead(p.first) == HIGH);
 
             // second pulls down to first
             pinMode(p.second, INPUT_PULLDOWN);
             delay(1);
-            if(p.first== 18) { Serial.println("2 down"); Serial.read(); }
             assertTrue(digitalRead(p.first) == LOW);
         }
 
