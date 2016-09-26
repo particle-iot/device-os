@@ -65,6 +65,18 @@ void loop()
  *******************************************************************************/
 int tinkerDigitalRead(String pin)
 {
+#if PLATFORM_ID==31
+    // Raspberry Pi uses raw pin numbers
+    int pinNumber = pin.toInt();
+
+    //Sanity check to see if the pin numbers are within limits
+    if (pinNumber < 0 || pinNumber > 27) return -1;
+
+    pinMode(pinNumber, INPUT_PULLDOWN);
+    return digitalRead(pinNumber);
+
+#else
+
     //convert ascii to integer
     int pinNumber = pin.charAt(1) - '0';
     //Sanity check to see if the pin numbers are within limits
@@ -95,6 +107,7 @@ int tinkerDigitalRead(String pin)
     }
 #endif
     return -2;
+#endif // other PLATFORM_ID
 }
 
 /*******************************************************************************
@@ -106,6 +119,24 @@ int tinkerDigitalRead(String pin)
  *******************************************************************************/
 int tinkerDigitalWrite(String command)
 {
+#if PLATFORM_ID==31
+    bool value = 0;
+    // Raspberry Pi uses raw pin numbers
+    int pinNumber = command.toInt();
+
+    //Sanity check to see if the pin numbers are within limits
+    if (pinNumber < 0 || pinNumber > 27) return -1;
+
+    int valueStart = pinNumber < 10 ? 2 : 3;
+    if(command.substring(valueStart,valueStart+4) == "HIGH") value = 1;
+    else if(command.substring(valueStart,valueStart+3) == "LOW") value = 0;
+    else return -2;
+
+    pinMode(pinNumber, OUTPUT);
+    digitalWrite(pinNumber, value);
+    return 1;
+#else
+
     bool value = 0;
     //convert ascii to integer
     int pinNumber = command.charAt(1) - '0';
@@ -145,6 +176,7 @@ int tinkerDigitalWrite(String command)
     }
 #endif
     else return -3;
+#endif // other PLATFORM_ID
 }
 
 /*******************************************************************************
@@ -157,6 +189,10 @@ int tinkerDigitalWrite(String command)
  *******************************************************************************/
 int tinkerAnalogRead(String pin)
 {
+#if PLATFORM_ID==31
+    // Raspberry Pi doesn't have analog pins
+    return -2;
+#else
     //convert ascii to integer
     int pinNumber = pin.charAt(1) - '0';
     //Sanity check to see if the pin numbers are within limits
@@ -178,6 +214,7 @@ int tinkerAnalogRead(String pin)
     }
 #endif
     return -2;
+#endif // other PLATFORM_ID
 }
 
 /*******************************************************************************
@@ -189,6 +226,10 @@ int tinkerAnalogRead(String pin)
  *******************************************************************************/
 int tinkerAnalogWrite(String command)
 {
+#if PLATFORM_ID==31
+    // Raspberry Pi doesn't have analog pins
+    return -2;
+#else
     String value = command.substring(3);
 
     if(command.substring(0,2) == "TX")
@@ -251,4 +292,5 @@ int tinkerAnalogWrite(String command)
     }
 #endif
     else return -2;
+#endif // other PLATFORM_ID
 }
