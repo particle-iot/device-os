@@ -29,6 +29,8 @@
 
 #include "platforms.h"
 
+// STM32 Device electronic signature
+// Factory-programmed 12 byte unique device ID
 #define         ID1          (0x1FFF7A10)
 #define         ID2          (0x1FFF7A14)
 #define         ID3          (0x1FFF7A18)
@@ -121,11 +123,13 @@
       PLATFORM_ELECTRON_PRODUCTION == PLATFORM_ID
 //BM-14 and ELECTRON uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
+#define USB_OTG_MAX_TX_FIFOS 4
 //BM-14 has serial flash
 #elif   PLATFORM_PHOTON_DEV == PLATFORM_ID || \
         PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
+#define USB_OTG_MAX_TX_FIFOS 6
 #endif
 
 #if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \

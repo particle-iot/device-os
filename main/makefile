@@ -53,10 +53,8 @@ include $(COMMON_BUILD)/common-tools.mk
 include $(COMMON_BUILD)/recurse.mk
 include $(COMMON_BUILD)/verbose.mk
 
-clean: clean_deps
-	$(VERBOSE)$(RMDIR) $(BUILD_PATH_BASE)
 
-.PNONY: st-flash program-dfu clean
+.PNONY: st-flash program-dfu clean all
 
 else
 

@@ -393,6 +393,18 @@ public:
     */
     virtual int send(const char* buf, int len);
 
+    /** callback function pointer typedef for SMS RESPONSE
+        \param void* for optional parameter
+        \param int index of the received SMS message
+    */
+    typedef void (*_CELLULAR_SMS_CB)(void* data, int index);
+
+    /** Set the SMS received callback handler
+        \param callback function pointer for SMS received handler
+        \param void* for optional parameter
+    */
+    void setSMSreceivedHandler(_CELLULAR_SMS_CB cb = NULL, void* data = NULL);
+
     /** Write formated date to the physical interface (printf style)
         \param fmt the format string
         \param .. variable arguments to be formated
@@ -470,6 +482,10 @@ protected:
     */
     static int _parseFormated(Pipe<char>* pipe, int len, const char* fmt);
 
+    /** Helper: Send SMS received index to callback
+        \param index the index of the received SMS
+    */
+    void SMSreceived(int index);
 protected:
     // for rtos over riding by useing Rtos<MDMxx>
     //! override the lock in a rtos system
@@ -519,6 +535,9 @@ protected:
     NetStatus   _net; //!< collected network information
     MDM_IP       _ip;  //!< assigned ip address
     MDM_DataUsage _data_usage; //!< collected data usage information
+    // Cellular callback to notify of new SMS
+    _CELLULAR_SMS_CB sms_cb;
+    void* sms_data;
     // management struture for sockets
     typedef struct {
         int handle;

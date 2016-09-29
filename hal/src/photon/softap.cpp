@@ -16,6 +16,7 @@
 #include "core_hal.h"
 #include "rng_hal.h"
 #include "ota_flash_hal_stm32f2xx.h"
+#include "bytes2hexbuf.h"
 
 #if SOFTAP_HTTP
 #include "http_server.h"
@@ -55,8 +56,7 @@ int dns_resolve_query(const char* query)
 
 bool is_device_claimed()
 {
-    const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
-    return (*claimed)=='1';
+	return HAL_IsDeviceClaimed(nullptr);
 }
 
 
@@ -201,7 +201,21 @@ class JSONRequestCommand : public JSONCommand {
 
 protected:
 
+	/**
+	 * Template method allowing subclasses to handle the parsed json keys.
+	 * @param index The index into the array of keys passed to parse_json_requet of the key that has been matched.
+	 */
     virtual bool parsed_key(unsigned index)=0;
+
+    /**
+     * Template methods allowing subclasses to handle the parsed JSON values.
+     * @param index	the key index this value belongs to
+     * @param t		the jsmn token
+     * @param value	The string value.
+     *
+     * Note that the t and value parameters have a lifetime only for the duration of the method.
+     * They should not be stored for later use.
+     */
     virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value)=0;
 
     int parse_json_request(Reader& reader, const char* const keys[], const jsmntype_t types[], unsigned count) {
@@ -282,6 +296,7 @@ protected:
         return result;
     }
 };
+
 
 class VersionCommand : public JSONCommand {
 
@@ -440,6 +455,10 @@ int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext
  * soft-ap process complete.
  */
 class ConfigureAPCommand : public JSONRequestCommand {
+
+	/**
+	 * Receives the data from parsing the json.
+	 */
     ConfigureAP configureAP;
 
     static const char* KEY[5];
@@ -554,15 +573,6 @@ protected:
     }
 };
 
-static inline char ascii_nibble(uint8_t nibble) {
-    char hex_digit = nibble + 48;
-    if (57 < hex_digit)
-        hex_digit += 7;
-    return hex_digit;
-}
-
-char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out);
-
 class DeviceIDCommand : public JSONCommand {
 
     char device_id[25];
@@ -626,11 +636,14 @@ protected:
 
 class SetValueCommand  : public JSONRequestCommand {
 
+	static const unsigned MAX_KEY_LEN = 3;
+	static const unsigned MAX_VALUE_LEN = 64;
+
     static const char* const KEY[2];
     static const jsmntype_t TYPE[2];
 
-    const char* key;
-    const char* value;
+    char key[MAX_KEY_LEN+1];
+    char value[MAX_VALUE_LEN+1];
 
 protected:
 
@@ -638,24 +651,30 @@ protected:
         return true;
     }
 
+    inline void assign(char* target, const char* value, unsigned len) {
+    		strncpy(target, value, len);
+    		target[len-1] = '\0';
+    }
+
     virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value) {
         if (index==0)     // key
-            this->key = value;
+        		assign(this->key, value, MAX_KEY_LEN);
         else
-            this->value = value;
+        		assign(this->value, value, MAX_VALUE_LEN);
         return true;
     }
 
     int parse_request(Reader& reader) {
-        key = NULL; value = NULL;
+        key[0] = 0; value[0] = 0;
         return parse_json_request(reader, KEY, TYPE, arraySize(KEY));
     }
 
     int process() {
         int result = -1;
-        if (key && value) {
-            if (!strcmp(key,"cc"))
+        if (*key && *value) {
+            if (!strcmp(key,"cc")) {
                 result = HAL_Set_Claim_Code(value);
+            }
         }
         return result;
     }
@@ -700,31 +719,31 @@ void random_code(uint8_t* dest, unsigned len) {
     bytesToCode(value, (char*)dest, len);
 }
 
-const int DEVICE_ID_LEN = 4;
+const int DEVICE_CODE_LEN = 4;
 
-STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN<=DCT_DEVICE_ID_SIZE);
+STATIC_ASSERT(device_code_len_is_same_as_dct_storage, DEVICE_CODE_LEN<=DCT_DEVICE_CODE_SIZE);
 
 
 extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
 
 /**
- * Copies the device ID to the destination, generating it if necessary.
+ * Copies the device code to the destination, generating it if necessary.
  * @param dest      A buffer with room for at least 6 characters. The
- *  device ID is copied here, without a null terminator.
- * @return true if the device ID was generated.
+ *  device code is copied here, without a null terminator.
+ * @return true if the device code was generated.
  */
-bool fetch_or_generate_device_id(wiced_ssid_t* SSID) {
-    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_ID_OFFSET);
+bool fetch_or_generate_device_code(wiced_ssid_t* SSID) {
+    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CODE_OFFSET);
     int8_t c = (int8_t)*suffix;    // check out first byte
     bool generate = (!c || c<0);
     uint8_t* dest = SSID->value+SSID->length;
-    SSID->length += DEVICE_ID_LEN;
+    SSID->length += DEVICE_CODE_LEN;
     if (generate) {
-        random_code(dest, DEVICE_ID_LEN);
-        dct_write_app_data(dest, DCT_DEVICE_ID_OFFSET, DEVICE_ID_LEN);
+        random_code(dest, DEVICE_CODE_LEN);
+        dct_write_app_data(dest, DCT_DEVICE_CODE_OFFSET, DEVICE_CODE_LEN);
     }
     else {
-        memcpy(dest, suffix, DEVICE_ID_LEN);
+        memcpy(dest, suffix, DEVICE_CODE_LEN);
     }
     return generate;
 }
@@ -751,7 +770,7 @@ bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
 bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID) {
     bool result = fetch_or_generate_ssid_prefix(SSID);
     SSID->value[SSID->length++] = '-';
-    result |= fetch_or_generate_device_id(SSID);
+    result |= fetch_or_generate_device_code(SSID);
     return result;
 }
 
@@ -956,7 +975,7 @@ int read_from_http_body(Reader* r, uint8_t* target, size_t length) {
 
 void reader_from_http_body(Reader* r, wiced_http_message_body_t* body)
 {
-    if (body->total_message_data_remaining==0)
+    if (false && body->total_message_data_remaining==0)
     {
         reader_from_buffer(r, (uint8_t*)body->data, body->message_data_length);
     }

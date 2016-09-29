@@ -1,0 +1,24 @@
+# This file is used by https://github.com/spark/firmware-buildpack-builder to
+# build Docker images containing all toolchains and sources nessesary for
+# compilation.
+#
+# Additionally release/prerelease information is used to automatically create
+# build targets in Particle Cloud when pushing a tag.
+
+# GCC buildpack variation to use ( see: https://hub.docker.com/r/particle/buildpack-hal/tags/ )
+export BUILDPACK_VARIATION=gcc-arm-none-eabi-4_8-2014q2
+
+# Platforms for which this firmware is considered stable
+export RELEASE_PLATFORMS=( )
+
+# Platforms for which this firmware is considered experimental
+export PRERELEASE_PLATFORMS=( core photon p1 electron )
+# Note: a single platform should be only in release or prerelease list. If
+# added to both it will be considered a prerelease
+
+# Platforms which require modules to be prebuilt
+export MODULAR_PLATFORMS=( photon p1 electron )
+
+# Example GCC ARM version override for FOO platform
+# Replace FOO with (CORE, PHOTON, P1, ELECTRON)
+export BUILDPACK_VARIATION_PLATFORM_FOO=gcc-arm-none-eabi-4_9-2015q3

@@ -23,16 +23,8 @@
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Particle"
-
-#define USBD_PRODUCT_HS_STRING          "Electron"
-#define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
-
-#define USBD_PRODUCT_FS_STRING          "Electron"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
-
-#define USBD_CONFIGURATION_HS_STRING    "VCP Config"
-#define USBD_INTERFACE_HS_STRING        "VCP Interface"
-
-#define USBD_CONFIGURATION_FS_STRING    "VCP Config"
-#define USBD_INTERFACE_FS_STRING        "VCP Interface"
+#define USBD_PRODUCT_STRING             "Electron"
+#define USBD_CONFIGURATION_STRING       "Composite"
+// Unused
+#define USBD_INTERFACE_STRING           ""
  

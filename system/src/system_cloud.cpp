@@ -34,7 +34,6 @@
 #include "system_cloud_internal.h"
 #include "string_convert.h"
 #include "spark_protocol_functions.h"
-#include "spark_protocol.h"
 #include "events.h"
 #include "deviceid_hal.h"
 #include "system_mode.h"
@@ -68,6 +67,24 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
         register_event(eventName, event_scope, deviceID);
     }
     return success;
+}
+
+void spark_unsubscribe(void *reserved)
+{
+    SYSTEM_THREAD_CONTEXT_ASYNC(spark_unsubscribe(reserved));
+    spark_protocol_remove_event_handlers(sp, NULL);
+}
+
+static void spark_sync_time_impl()
+{
+    SYSTEM_THREAD_CONTEXT_ASYNC(spark_sync_time_impl());
+    spark_protocol_send_time_request(sp);
+}
+
+bool spark_sync_time(void *reserved)
+{
+    spark_sync_time_impl();
+    return spark_cloud_flag_connected();
 }
 
 /**

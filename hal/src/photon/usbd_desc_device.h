@@ -36,22 +36,11 @@
 #define USBD_MANUFACTURER_STRING        "Particle"
 
 #if PLATFORM_ID==PLATFORM_P1
-#define USBD_PRODUCT_HS_STRING          "P1 with WiFi"
-#define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
-
-#define USBD_PRODUCT_FS_STRING          "P1 with WiFi"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
+#define USBD_PRODUCT_STRING             "P1"
 #else
-#define USBD_PRODUCT_HS_STRING          "Photon with WiFi"
-#define USBD_SERIALNUMBER_HS_STRING     "00000000050B"
-
-#define USBD_PRODUCT_FS_STRING          "Photon with WiFi"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
+#define USBD_PRODUCT_STRING             "Photon"
 #endif
 
-#define USBD_CONFIGURATION_HS_STRING    "VCP Config"
-#define USBD_INTERFACE_HS_STRING        "VCP Interface"
-
-#define USBD_CONFIGURATION_FS_STRING    "VCP Config"
-#define USBD_INTERFACE_FS_STRING        "VCP Interface"
-
+#define USBD_CONFIGURATION_STRING    "Composite"
+// Unused
+#define USBD_INTERFACE_STRING        ""

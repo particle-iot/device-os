@@ -87,6 +87,9 @@ typedef struct SPI_State
     volatile uint8_t SPI_SS_State;
     uint8_t SPI_DMA_Configured;
     volatile uint8_t SPI_DMA_Aborted;
+
+    __attribute__((aligned(4))) uint8_t tempMemoryRx;
+    __attribute__((aligned(4))) uint8_t tempMemoryTx;
 } SPI_State;
 
 static void HAL_SPI_SS_Handler(void *data);
@@ -147,8 +150,8 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
 
     DMA_InitStructure.DMA_Channel = spiMap[spi].SPI_DMA_Channel;
 
-    static uint8_t tempMemoryTx = 0xFF;
-    static uint8_t tempMemoryRx = 0xFF;
+    spiState[spi].tempMemoryTx = 0xFF;
+    spiState[spi].tempMemoryRx = 0xFF;
 
     /* Configure Tx DMA Stream */
     DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
@@ -159,7 +162,7 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     }
     else
     {
-        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)(&tempMemoryTx);
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)(&spiState[spi].tempMemoryTx);
         DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
     }
     DMA_Init(spiMap[spi].SPI_TX_DMA_Stream, &DMA_InitStructure);
@@ -173,7 +176,7 @@ static void HAL_SPI_DMA_Config(HAL_SPI_Interface spi, void* tx_buffer, void* rx_
     }
     else
     {
-        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&tempMemoryRx;
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&spiState[spi].tempMemoryRx;
         DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
     }
     DMA_Init(spiMap[spi].SPI_RX_DMA_Stream, &DMA_InitStructure);
@@ -251,8 +254,8 @@ static void HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_Interface spi)
         SPI_I2S_DMACmd(spiMap[spi].SPI_Peripheral, SPI_I2S_DMAReq_Rx, DISABLE);
         DMA_Cmd(spiMap[spi].SPI_RX_DMA_Stream, DISABLE);
 
-        spiState[spi].SPI_DMA_Configured = 0;
         spiState[spi].SPI_DMA_Last_Transfer_Length = spiState[spi].SPI_DMA_Current_Transfer_Length - remainingCount;
+        spiState[spi].SPI_DMA_Configured = 0;
 
         HAL_SPI_DMA_UserCallback callback = spiState[spi].SPI_DMA_UserCallback;
         if (callback) {
@@ -309,8 +312,9 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
 
     if (mode == SPI_MODE_MASTER)
     {
+        // Ensure that there is no glitch on SS pin
+        PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
         HAL_Pin_Mode(pin, OUTPUT);
-        HAL_GPIO_Write(pin, Bit_SET);//HIGH
     }
     else
     {
@@ -354,7 +358,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
     {
         /* Attach interrupt to slave select pin */
         HAL_InterruptExtraConfiguration irqConf = {0};
-        irqConf.size = sizeof(irqConf);
+        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
         irqConf.IRQChannelPreemptionPriority = 1;
         irqConf.IRQChannelSubPriority = 0;
 
@@ -400,18 +404,17 @@ void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
         spiState[spi].SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     }
 
-    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
+    if(spiState[spi].SPI_Enabled != false) {
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
+        SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, ENABLE);
+    }
 
     spiState[spi].SPI_Bit_Order_Set = true;
 }
 
 void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
 {
-    if(spiState[spi].SPI_Enabled != false)
-    {
-        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
-    }
-
     switch(mode)
     {
         case SPI_MODE0:
@@ -435,10 +438,10 @@ void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
             break;
     }
 
-    SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
-
     if(spiState[spi].SPI_Enabled != false)
     {
+        SPI_Cmd(spiMap[spi].SPI_Peripheral, DISABLE);
+        SPI_Init(spiMap[spi].SPI_Peripheral, &spiState[spi].SPI_InitStructure);
         SPI_Cmd(spiMap[spi].SPI_Peripheral, ENABLE);
     }
 
@@ -492,12 +495,27 @@ void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi)
     }
 }
 
-int32_t HAL_SPI_DMA_Last_Transfer_Length(HAL_SPI_Interface spi)
+int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st)
 {
+    int32_t transferLength = 0;
     if (spiState[spi].SPI_DMA_Configured == 0)
-        return spiState[spi].SPI_DMA_Last_Transfer_Length;
+    {
+        transferLength = spiState[spi].SPI_DMA_Last_Transfer_Length;
+    }
+    else
+    {
+        transferLength = spiState[spi].SPI_DMA_Current_Transfer_Length - DMA_GetCurrDataCounter(spiMap[spi].SPI_RX_DMA_Stream);
+    }
 
-    return spiState[spi].SPI_DMA_Current_Transfer_Length - DMA_GetCurrDataCounter(spiMap[spi].SPI_RX_DMA_Stream);
+    if (st != NULL)
+    {
+        st->configured_transfer_length = spiState[spi].SPI_DMA_Current_Transfer_Length;
+        st->transfer_length = (uint32_t)transferLength;
+        st->ss_state = spiState[spi].SPI_SS_State;
+        st->transfer_ongoing = spiState[spi].SPI_DMA_Configured;
+    }
+
+    return transferLength;
 }
 
 void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved)
@@ -526,7 +544,12 @@ bool HAL_SPI_Is_Enabled_Old()
 void DMA1_Stream7_irq(void)
 {
     //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
-    HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+#if TOTAL_SPI==3
+    if (spiState[HAL_SPI_INTERFACE3].SPI_DMA_Configured)
+        HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE3);
+    else
+#endif
+        HAL_SPI_TX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
 }
 
 /**
@@ -547,7 +570,12 @@ void DMA2_Stream5_irq(void)
 void DMA1_Stream2_irq(void)
 {
     //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
-    HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
+#if TOTAL_SPI==3
+    if (spiState[HAL_SPI_INTERFACE3].SPI_DMA_Configured)
+        HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE3);
+    else
+#endif
+        HAL_SPI_RX_DMA_Stream_InterruptHandler(HAL_SPI_INTERFACE2);
 }
 
 /**

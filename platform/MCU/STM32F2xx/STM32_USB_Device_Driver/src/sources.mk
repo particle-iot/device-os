@@ -29,10 +29,6 @@ ifeq ("$(HAL_SERIAL_FLASH)","1")
 CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_sflash_if.c
 endif
 
-# cdc/usbserial specific files
-CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_core.c
-CSRC += $(TARGET_USB_FS_SRC_PATH)/usbd_cdc_if.c
-
 # C++ source files included in this build.
 CPPSRC +=
 

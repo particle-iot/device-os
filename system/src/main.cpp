@@ -179,7 +179,7 @@ void system_handle_button_click()
         break;
     case 2: // Double click
         SYSTEM_POWEROFF = 1;
-        network.connect_cancel(true, true);
+        network.connect_cancel(true);
         break;
     default:
         break;
@@ -297,11 +297,11 @@ void system_power_management_update()
         if (LOWBATT) {
             fuel.clearAlert(); // Clear the Low Battery Alert flag if set
         }
-//        if (LOG_LEVEL_ACTIVE(INFO_LEVEL)) {
+//        if (LOG_ENABLED(INFO)) {
 //        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
 //        }
 #if defined(DEBUG_BUILD) && 0
-        if (LOG_LEVEL_ACTIVE(DEBUG_LEVEL)) {
+        if (LOG_ENABLED(TRACE)) {
 			uint8_t stat = power.getSystemStatus();
 			uint8_t fault = power.getFault();
 			uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
@@ -425,7 +425,7 @@ extern "C" void HAL_SysTick_Handler(void)
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
         {
             //Reset is the only way now to recover from stuck OTA update
-            HAL_Core_System_Reset();
+            HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE_TIMEOUT, 0, nullptr);
         }
         else
         {
@@ -440,7 +440,7 @@ extern "C" void HAL_SysTick_Handler(void)
     // determine if the button press needs to change the state (and hasn't done so already))
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
-        network.connect_cancel(true, true);
+        network.connect_cancel(true);
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
@@ -580,7 +580,19 @@ void app_setup_and_loop(void)
     String s = spark_deviceID();
     INFO("Device %s started", s.c_str());
 
+    if (LOG_ENABLED(TRACE)) {
+        int reason = RESET_REASON_NONE;
+        uint32_t data = 0;
+        if (HAL_Core_Get_Last_Reset_Info(&reason, &data, nullptr) == 0 && reason != RESET_REASON_NONE) {
+            LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
+        }
+    }
+
     manage_safe_mode();
+
+#if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)
+    HAL_USB_Init();
+#endif
 
 #if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);

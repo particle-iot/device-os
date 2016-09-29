@@ -41,10 +41,21 @@
 #define MAX_USED_MEDIA                  2
 #endif
 
-#define USBD_CFG_MAX_NUM                1
-#define USBD_ITF_MAX_NUM                MAX_USED_MEDIA
+/*
+ * Disabling multiple configurations (100mA and 500mA) due to this Windows note:
+ * 
+ * USBCCGP will not load on a multi-config device by default
+ * because the hub driver doesn't create a "USB\COMPOSITE" PNP ID for a composite device
+ * if it has multiple configurations. However, you can write your own INF
+ * that matches a device-specific PNP ID to get USBCCGP to load as your device's function driver.
+ */
+#define USBD_CFG_MAX_NUM                1    // ^^^
+#define USBD_ITF_MAX_NUM                10
+#define USBD_DFU_INT_NUM                2
 #define USB_MAX_STR_DESC_SIZ            255
 #define USB_SUPPORT_USER_STRING_DESC
+
+#define USBD_EP0_MAX_PACKET_SIZE        64
 
 #define USBD_SELF_POWERED
 
@@ -77,18 +88,40 @@
                                           ((uint8_t)(sze >> 8)) /* XFERSIZEB1 */
 
 /* USB CDC/VCP Class Layer Parameter */
-#define CDC_IN_EP                       0x81  /* EP1 for data IN */
-#define CDC_OUT_EP                      0x01  /* EP1 for data OUT */
-#define CDC_CMD_EP                      0x82  /* EP2 for CDC commands */
+#define CDC0_IN_EP                       0x81  /* EP1 for data IN */
+#define CDC0_OUT_EP                      0x01  /* EP1 for data OUT */
+#define CDC1_IN_EP                       0x82  /* EP2 for data IN */
+#define CDC1_OUT_EP                      0x02  /* EP2 for data OUT */
+
+/* XXX: Using dummy CMD endpoints on Electron, since Electron uses USB OTG FS peripheral,
+ * which has only 3 IN and 3 OUT endpoints, which is not enough to run 2 CDC + HID
+ * or even 2 CDC.
+ */
+#ifndef USE_USB_OTG_FS
+# define CDC0_CMD_EP                      0x83  /* EP3 for CDC commands */
+# define CDC1_CMD_EP                      0x84  /* EP4 for CDC commands */
+#else
+# define CDC0_CMD_EP                      0x8A  /* dummy EP10 for CDC commands */
+# define CDC0_CMD_EP_COMPAT               0x83  /* EP3 used for compatibility */
+# define CDC1_CMD_EP                      0x8B  /* dummy EP11 for CDC commands */
+//# define CDC_CMD_EP_SHARED
+#endif
+
+/* USB HID Class Layer Parameters */
+#ifndef USE_USB_OTG_FS
+# define HID_IN_EP                        0x85  /* EP5 */
+#else
+# define HID_IN_EP                        0x83  /* EP3 */
+#endif
+#define HID_IN_PACKET                    16
+#define HID_OUT_EP                       0x03
+#define HID_OUT_PACKET                   16
 
 /* CDC Endpoints parameters: you can fine tune these values depending on the needed baudrates and performance. */
 #define CDC_DATA_MAX_PACKET_SIZE        64   /* Endpoint IN & OUT Packet size */
 #define CDC_CMD_PACKET_SZE              8    /* Control Endpoint Packet size */
 
 #define CDC_IN_FRAME_INTERVAL           1    /* Number of micro-frames between IN transfers */
-#define USB_TX_BUFFER_SIZE              128  /* Total size of IN buffer:
-                                                APP_RX_DATA_SIZE*8/MAX_BAUDARATE*1000 should be > CDC_IN_FRAME_INTERVAL */
-#define USB_RX_BUFFER_SIZE              256
 
 #define APP_FOPS                        APP_fops
 

@@ -38,6 +38,7 @@ USB_OTG_CORE_HANDLE USB_OTG_dev;
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+static uint8_t HAL_DFU_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage);
 /* Private functions ---------------------------------------------------------*/
 
 uint8_t is_application_valid(uint32_t address)
@@ -48,6 +49,21 @@ uint8_t is_application_valid(uint32_t address)
     return (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000);
 #endif
 }
+
+static void dummy(void) {}
+static void dummy1(uint8_t speed) {}
+
+USBD_Usr_cb_TypeDef DFU_USR_cb =
+{
+        dummy, // USBD_USR_Init,
+        dummy1, // USBD_USR_DeviceReset,
+        dummy, // USBD_USR_DeviceConfigured,
+        dummy, // USBD_USR_DeviceSuspended,
+        dummy, // USBD_USR_DeviceResumed,
+        dummy, // USBD_USR_DeviceConnected,
+        dummy, // USBD_USR_DeviceDisconnected,
+        HAL_DFU_USB_Handle_Vendor_Request
+};
 
 /*******************************************************************************
  * Function Name  : HAL_DFU_USB_Init.
@@ -65,5 +81,14 @@ void HAL_DFU_USB_Init(void)
               USB_OTG_HS_CORE_ID,
 #endif
               &USR_desc, &DFU_cb,
-              NULL); // Passing NULL here to reduce bootloader flash requirements
+              &DFU_USR_cb); // Passing NULL here to reduce bootloader flash requirements
+}
+
+uint8_t HAL_DFU_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage) {
+    // Forward to DFU class driver
+    if (req != NULL && req->bRequest == 0xee && req->wIndex == 0x0004 && req->wValue == 0x0000) {
+        return DFU_cb.Setup(&USB_OTG_dev, req);
+    }
+
+    return USBD_FAIL;
 }

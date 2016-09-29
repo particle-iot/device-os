@@ -73,7 +73,7 @@ class CloudClass {
 public:
 
     template <typename T, class ... Types>
-    static inline bool variable(const T &name, Types ... args)
+    static inline bool variable(const T &name, const Types& ... args)
     {
         static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
             "\n\nIn Particle.variable, name must be less than " __XSTRING(USER_VAR_KEY_LENGTH) " characters\n\n");
@@ -276,12 +276,12 @@ public:
 
     void unsubscribe()
     {
-        CLOUD_FN(spark_protocol_remove_event_handlers(sp(), NULL), (void)0);
+        CLOUD_FN(spark_unsubscribe(NULL), (void)0);
     }
 
     bool syncTime(void)
     {
-        return CLOUD_FN(spark_protocol_send_time_request(sp()),false);
+        return CLOUD_FN(spark_sync_time(NULL), false);
     }
 
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))

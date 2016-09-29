@@ -73,8 +73,10 @@ DYNALIB_FN(BASE_IDX + 12, hal_usart, USB_USART_Flush_Data, void(void))
 #define BASE_IDX2 (BASE_IDX+11)
 #endif
 
-DYNALIB_FN(BASE_IDX2 + 0, hal_usart,HAL_USART_BeginConfig,void(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr))
-DYNALIB_FN(BASE_IDX2 + 1, hal_usart,HAL_USART_Write_NineBitData, uint32_t(HAL_USART_Serial serial, uint16_t data))
+DYNALIB_FN(BASE_IDX2 + 0, hal_usart, HAL_USART_BeginConfig, void(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr))
+DYNALIB_FN(BASE_IDX2 + 1, hal_usart, HAL_USART_Write_NineBitData, uint32_t(HAL_USART_Serial serial, uint16_t data))
+DYNALIB_FN(BASE_IDX2 + 2, hal_usart, HAL_USART_Send_Break, void(HAL_USART_Serial, void*))
+DYNALIB_FN(BASE_IDX2 + 3, hal_usart, HAL_USART_Break_Detected, uint8_t(HAL_USART_Serial))
 
 
 DYNALIB_END(hal_usart)

@@ -60,6 +60,7 @@ DYNALIB_FN(20, hal_cellular, cellular_data_usage_get, cellular_result_t(Cellular
 DYNALIB_FN(21, hal_cellular, cellular_band_select_set, cellular_result_t(MDM_BandSelect* bands, void* reserved))
 DYNALIB_FN(22, hal_cellular, cellular_band_select_get, cellular_result_t(MDM_BandSelect* bands, void* reserved))
 DYNALIB_FN(23, hal_cellular, cellular_band_available_get, cellular_result_t(MDM_BandSelect* bands, void* reserved))
+DYNALIB_FN(24, hal_cellular, cellular_sms_received_handler_set, cellular_result_t(_CELLULAR_SMS_CB_MDM cb, void* data, void* reserved))
 DYNALIB_END(hal_cellular)
 
 #endif  // PLATFORM_ID == 10

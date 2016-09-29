@@ -50,6 +50,12 @@
 #include "malloc.h"
 #include "usb_hal.h"
 #include "usart_hal.h"
+#include "deviceid_hal.h"
+
+#if PLATFORM_ID==PLATFORM_P1
+#include "wwd_management.h"
+#include "wlan_hal.h"
+#endif
 
 #define STOP_MODE_EXIT_CONDITION_PIN 0x01
 #define STOP_MODE_EXIT_CONDITION_RTC 0x02
@@ -169,11 +175,22 @@ void UsageFault_Handler(void)
 
 /* Private typedef -----------------------------------------------------------*/
 
+typedef struct Last_Reset_Info {
+    int reason;
+    uint32_t data;
+} Last_Reset_Info;
+
+typedef enum Feature_Flag {
+    FEATURE_FLAG_RESET_INFO = 0x01 // HAL_Feature::FEATURE_RESET_INFO
+} Feature_Flag;
+
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+
+static Last_Reset_Info last_reset_info = { RESET_REASON_NONE, 0 };
 
 /* Private function prototypes -----------------------------------------------*/
 void (*HAL_TIM1_Handler)(void);
@@ -191,6 +208,83 @@ void HAL_CAN2_TX_Handler(void) __attribute__ ((weak));
 void HAL_CAN2_RX0_Handler(void) __attribute__ ((weak));
 void HAL_CAN2_RX1_Handler(void) __attribute__ ((weak));
 void HAL_CAN2_SCE_Handler(void) __attribute__ ((weak));
+
+/* Private functions ---------------------------------------------------------*/
+
+static void Init_Last_Reset_Info()
+{
+    if (HAL_Core_System_Reset_FlagSet(SOFTWARE_RESET))
+    {
+        // Load reset info from backup registers
+        last_reset_info.reason = RTC_ReadBackupRegister(RTC_BKP_DR2);
+        last_reset_info.data = RTC_ReadBackupRegister(RTC_BKP_DR3);
+        // Clear backup registers
+        RTC_WriteBackupRegister(RTC_BKP_DR2, 0);
+        RTC_WriteBackupRegister(RTC_BKP_DR3, 0);
+    }
+    else // Hardware reset
+    {
+        if (HAL_Core_System_Reset_FlagSet(WATCHDOG_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_WATCHDOG;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_MANAGEMENT_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_MANAGEMENT; // Reset generated when entering standby mode (nRST_STDBY: 0)
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_DOWN_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_DOWN;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_BROWNOUT_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_BROWNOUT;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(PIN_RESET)) // Pin reset flag should be checked in the last place
+        {
+            last_reset_info.reason = RESET_REASON_PIN_RESET;
+        }
+        else if (PWR_GetFlagStatus(PWR_FLAG_SB) != RESET) // Check if MCU was in standby mode
+        {
+            last_reset_info.reason = RESET_REASON_POWER_MANAGEMENT; // Reset generated when exiting standby mode (nRST_STDBY: 1)
+        }
+        else
+        {
+            last_reset_info.reason = RESET_REASON_UNKNOWN;
+        }
+        last_reset_info.data = 0; // Not used
+    }
+    // Note: RCC reset flags should be cleared, see HAL_Core_Init()
+}
+
+static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
+{
+    uint32_t flags = *(uint32_t*)dct_read_app_data(DCT_FEATURE_FLAGS_OFFSET);
+    const bool cur_value = flags & flag;
+    if (prev_value)
+    {
+        *prev_value = cur_value;
+    }
+    if (cur_value != value)
+    {
+        if (value)
+        {
+            flags |= flag;
+        }
+        else
+        {
+            flags &= ~flag;
+        }
+        return dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
+    }
+    return 0;
+}
+
+static bool Read_Feature_Flag(uint32_t flag)
+{
+    const uint32_t flags = *(uint32_t*)dct_read_app_data(DCT_FEATURE_FLAGS_OFFSET);
+    return flags & flag;
+}
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
@@ -225,6 +319,9 @@ void HAL_Core_Config(void)
 #if PLATFORM_ID==8 // Additional pins for P1
     for (pin_t pin=24; pin<=29; pin++)
         HAL_Pin_Mode(pin, INPUT);
+    if (isWiFiPowersaveClockDisabled()) {
+        HAL_Pin_Mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
+    }
 #endif
 #if PLATFORM_ID==10 // Additional pins for Electron
     for (pin_t pin=24; pin<=35; pin++)
@@ -249,7 +346,7 @@ void HAL_Core_Config(void)
     // where WICED isn't ready for a SysTick until after main() has been called to
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
-    
+
 #if MODULAR_FIRMWARE
     // write protect system module parts if not already protected
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
@@ -263,8 +360,6 @@ void HAL_Core_Config(void)
                                       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
                                       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 #endif
-
-
 }
 
 #if !MODULAR_FIRMWARE
@@ -281,9 +376,22 @@ void HAL_Core_Setup(void) {
     bootloader_update_if_needed();
     HAL_Bootloader_Lock(true);
 
+    HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
+
 #if !defined(MODULAR_FIRMWARE)
     module_user_init_hook();
 #endif
+}
+
+void HAL_Core_Init(void) {
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        // Clear RCC reset flags
+        RCC_ClearFlag();
+    }
+
+    // Perform platform-specific initialization
+    HAL_Core_Init_finalize();
 }
 
 #if MODULAR_FIRMWARE
@@ -292,7 +400,7 @@ bool HAL_Core_Validate_User_Module(void)
 {
     bool valid = false;
 
-    if (!SYSTEM_FLAG(StartupMode_SysFlag) & 1)
+    if (!(SYSTEM_FLAG(StartupMode_SysFlag) & 1)) // Safe mode flag
     {
         //CRC verification Enabled by default
         if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
@@ -355,7 +463,35 @@ void HAL_Core_Factory_Reset(void)
 {
     system_flags.Factory_Reset_SysFlag = 0xAAAA;
     Save_SystemFlags();
+    HAL_Core_System_Reset_Ex(RESET_REASON_FACTORY_RESET, 0, NULL);
+}
+
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
+{
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        // Save reset info to backup registers
+        RTC_WriteBackupRegister(RTC_BKP_DR2, reason);
+        RTC_WriteBackupRegister(RTC_BKP_DR3, data);
+    }
     HAL_Core_System_Reset();
+}
+
+int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
+{
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        if (reason)
+        {
+            *reason = last_reset_info.reason;
+        }
+        if (data)
+        {
+            *data = last_reset_info.data;
+        }
+        return 0;
+    }
+    return -1;
 }
 
 void HAL_Core_Enter_Bootloader(bool persist)
@@ -371,13 +507,13 @@ void HAL_Core_Enter_Bootloader(bool persist)
         RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_DFU_APP_REQUEST);
     }
 
-    HAL_Core_System_Reset();
+    HAL_Core_System_Reset_Ex(RESET_REASON_DFU_MODE, 0, NULL);
 }
 
 void HAL_Core_Enter_Safe_Mode(void* reserved)
 {
     RTC_WriteBackupRegister(RTC_BKP_DR1, ENTER_SAFE_MODE_APP_REQUEST);
-    HAL_Core_System_Reset();
+    HAL_Core_System_Reset_Ex(RESET_REASON_SAFE_MODE, 0, NULL);
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
@@ -387,8 +523,8 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
-    // Disable USB Serial (detach)
-    USB_USART_Init(0);
+    // Detach USB
+    HAL_USB_Detach();
 
     // Flush all USARTs
     for (int usart = 0; usart < TOTAL_USARTS; usart++)
@@ -426,7 +562,13 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
         }
 
         HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
-        HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, NULL);
+        HAL_InterruptExtraConfiguration irqConf = {0};
+        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
+        irqConf.IRQChannelPreemptionPriority = 0;
+        irqConf.IRQChannelSubPriority = 0;
+        irqConf.keepHandler = 1;
+        irqConf.keepPriority = 1;
+        HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, &irqConf);
 
         exit_conditions |= STOP_MODE_EXIT_CONDITION_PIN;
     }
@@ -437,7 +579,7 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
          * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
          * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
          * or Event modes) using the EXTI_Init() function.
-         * 
+         *
          */
         HAL_RTC_Cancel_UnixAlarm();
         HAL_RTC_Set_UnixAlarm((time_t) seconds);
@@ -457,7 +599,7 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
         /* Detach the Interrupt pin */
-        HAL_Interrupts_Detach(wakeUpPin);
+        HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
     }
 
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
@@ -475,14 +617,11 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 
     SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
 
-    USB_USART_Init(9600);
+    HAL_USB_Attach();
 }
 
 void HAL_Core_Execute_Stop_Mode(void)
 {
-    /* Enable WKUP pin */
-    PWR_WakeUpPinCmd(ENABLE);
-
     /* Request to enter STOP mode with regulator in low power mode */
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 
@@ -512,8 +651,14 @@ void HAL_Core_Execute_Stop_Mode(void)
     while(RCC_GetSYSCLKSource() != 0x08);
 }
 
-void HAL_Core_Enter_Standby_Mode(void)
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved)
 {
+    // Configure RTC wake-up
+    if (seconds > 0) {
+        HAL_RTC_Cancel_UnixAlarm();
+        HAL_RTC_Set_UnixAlarm((time_t) seconds);
+    }
+
     HAL_Core_Execute_Standby_Mode();
 }
 
@@ -581,6 +726,12 @@ void application_start()
     HAL_Core_Setup();
 
     generate_key();
+
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        // Load last reset info from RCC / backup registers
+        Init_Last_Reset_Info();
+    }
 
     app_setup_and_loop();
 }
@@ -957,36 +1108,30 @@ void HAL_Bootloader_Lock(bool lock)
         FLASH_WriteProtection_Disable(BOOTLOADER_FLASH_PAGES);
 }
 
+static inline bool Is_System_Reset_Flag_Set(uint8_t flag)
+{
+    return SYSTEM_FLAG(RCC_CSR_SysFlag) & ((uint32_t)1 << (flag & 0x1f));
+}
+
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
 {
-    uint8_t FLAG_Mask = 0x1F;
-    uint8_t RCC_Flag = 0;
-
     switch(resetType)
     {
     case PIN_RESET:
-        RCC_Flag = RCC_FLAG_PINRST;
-        break;
-
+        return Is_System_Reset_Flag_Set(RCC_FLAG_PINRST);
     case SOFTWARE_RESET:
-        RCC_Flag = RCC_FLAG_SFTRST;
-        break;
-
+        return Is_System_Reset_Flag_Set(RCC_FLAG_SFTRST);
     case WATCHDOG_RESET:
-        RCC_Flag = RCC_FLAG_IWDGRST;
-        break;
-
-    case LOW_POWER_RESET:
-        RCC_Flag = RCC_FLAG_LPWRRST;
-        break;
+        return Is_System_Reset_Flag_Set(RCC_FLAG_IWDGRST) || Is_System_Reset_Flag_Set(RCC_FLAG_WWDGRST);
+    case POWER_MANAGEMENT_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_LPWRRST);
+    case POWER_DOWN_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_PORRST);
+    case POWER_BROWNOUT_RESET:
+        return Is_System_Reset_Flag_Set(RCC_FLAG_BORRST);
+    default:
+        return false;
     }
-
-    if ((RCC_Flag != 0) && (SYSTEM_FLAG(RCC_CSR_SysFlag) & ((uint32_t)1 << (RCC_Flag & FLAG_Mask))))
-    {
-        return true;
-    }
-
-    return false;
 }
 
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
@@ -1027,6 +1172,26 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             }
             return 0;
         }
+        case FEATURE_RESET_INFO:
+        {
+            Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
+            return 0;
+        }
+
+#if PLATFORM_ID==PLATFORM_P1
+        case FEATURE_WIFI_POWERSAVE_CLOCK:
+        {
+            wwd_set_wlan_sleep_clock_enabled(enabled);
+            const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
+            uint8_t current = (*data);
+            current &= 0xFC;
+            if (!enabled) {
+                current |= 2;   // 0bxxxxxx10 to disable the clock, any other value to enable it.
+            }
+            dct_write_app_data(&current, DCT_RADIO_FLAGS_OFFSET, 1);
+        }
+#endif
+
 
     }
     return -1;
@@ -1056,6 +1221,10 @@ bool HAL_Feature_Get(HAL_Feature feature)
 #endif
         		return value;
         }
+        case FEATURE_RESET_INFO:
+        {
+            return Read_Feature_Flag(FEATURE_FLAG_RESET_INFO);
+        }
     }
     return false;
 }
@@ -1066,11 +1235,11 @@ bool HAL_Feature_Get(HAL_Feature feature)
 #include "deepsleep_hal_impl.h"
 #include <string.h>
 
-retained_system SessionPersistOpaque session;
+retained_system SessionPersistDataOpaque session;
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
-	if (offset==0 && length==sizeof(SessionPersistOpaque))
+	if (offset==0 && length==sizeof(SessionPersistDataOpaque))
 	{
 		memcpy(&session, buffer, length);
 		return 0;
@@ -1080,9 +1249,9 @@ int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, voi
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-	if (offset==0 && max_length>=sizeof(SessionPersistOpaque) && session.size==sizeof(SessionPersistOpaque))
+	if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque) && session.size==sizeof(SessionPersistDataOpaque))
 	{
-		*length = sizeof(SessionPersistOpaque);
+		*length = sizeof(SessionPersistDataOpaque);
 		memcpy(buffer, &session, sizeof(session));
 		return 0;
 	}

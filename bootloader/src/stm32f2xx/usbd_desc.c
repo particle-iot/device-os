@@ -31,21 +31,26 @@
 #include "usbd_desc.h"
 #include "usbd_req.h"
 #include "usb_regs.h"
+#include "usbd_wcid.h"
+
+#include "deviceid_hal.h"
+#include "bytes2hexbuf.h"
 
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Particle"
 
-#define USBD_PRODUCT_HS_STRING          "Photon DFU Mode"
-#define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
+#if PLATFORM_ID == 10
+# define USBD_PRODUCT_NAME              "Electron"
+#elif PLATFORM_ID == 8
+# define USBD_PRODUCT_NAME              "P1"
+#else
+# define USBD_PRODUCT_NAME              "Photon"
+#endif
+#define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"
+#define USBD_CONFIGURATION_STRING       "DFU"
+#define USBD_INTERFACE_STRING           "DFU"
 
-#define USBD_PRODUCT_FS_STRING          "Photon DFU Mode"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000010C"
-
-#define USBD_CONFIGURATION_HS_STRING    "DFU Config"
-#define USBD_INTERFACE_HS_STRING        "DFU Interface"
-
-#define USBD_CONFIGURATION_FS_STRING    "DFU Config"
-#define USBD_INTERFACE_FS_STRING        "DFU Interface"
+static uint8_t *  USBD_USR_MsftStrDescriptor( uint8_t speed , uint16_t *length);
 
 USBD_DEVICE USR_desc =
 {
@@ -56,6 +61,7 @@ USBD_DEVICE USR_desc =
         USBD_USR_SerialStrDescriptor,
         USBD_USR_ConfigStrDescriptor,
         USBD_USR_InterfaceStrDescriptor,
+        USBD_USR_MsftStrDescriptor
 };
 
 /* USB Standard Device Descriptor */
@@ -73,8 +79,8 @@ uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] =
         HIBYTE(USBD_VID_SPARK),     /*idVendor*/
         LOBYTE(USBD_PID_DFU),       /*idProduct*/
         HIBYTE(USBD_PID_DFU),       /*idProduct*/
-        0x00,                       /*bcdDevice rel. 2.00*/
-        0x02,
+        LOBYTE(0x0250),             /*bcdDevice (2.50) */
+        HIBYTE(0x0250),             /*bcdDevice (2.50) */
         USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/
         USBD_IDX_PRODUCT_STR,       /*Index of product string*/
         USBD_IDX_SERIAL_STR,        /*Index of serial number string*/
@@ -103,6 +109,15 @@ uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] =
         USB_DESC_TYPE_STRING,
         LOBYTE(USBD_LANGID_STRING),
         HIBYTE(USBD_LANGID_STRING),
+};
+
+/* MS OS String Descriptor */
+static const uint8_t USBD_MsftStrDesc[] = {
+    USB_WCID_MS_OS_STRING_DESCRIPTOR(
+        // "MSFT100"
+        USB_WCID_DATA('M', '\0', 'S', '\0', 'F', '\0', 'T', '\0', '1', '\0', '0', '\0', '0', '\0'),
+        0xee
+    )
 };
 
 /**
@@ -140,14 +155,7 @@ uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_ProductStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_PRODUCT_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
-    }
+    USBD_GetString (USBD_PRODUCT_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
 
@@ -173,14 +181,12 @@ uint8_t *  USBD_USR_ManufacturerStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_SERIALNUMBER_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
-    }
+    uint8_t deviceId[16];
+    char deviceIdHex[sizeof(deviceId) * 2 + 1] = {0};
+    unsigned deviceIdLen = 0;
+    deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+    bytes2hexbuf(deviceId, deviceIdLen, deviceIdHex);
+    USBD_GetString (deviceIdHex, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
 
@@ -193,14 +199,7 @@ uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_CONFIGURATION_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
-    }
+    USBD_GetString (USBD_CONFIGURATION_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
 
@@ -213,13 +212,19 @@ uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
  */
 uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
 {
-    if(speed == USB_OTG_SPEED_HIGH)
-    {
-        USBD_GetString (USBD_INTERFACE_HS_STRING, USBD_StrDesc, length);
-    }
-    else
-    {
-        USBD_GetString (USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
-    }
+    USBD_GetString (USBD_INTERFACE_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
+}
+
+/**
+ * @brief  USBD_USR_MsftStrDescriptor
+ *         return MS OS String Descriptor
+ * @param  speed : current device speed
+ * @param  length : pointer to data length variable
+ * @retval pointer to descriptor buffer
+ */
+uint8_t *  USBD_USR_MsftStrDescriptor( uint8_t speed , uint16_t *length)
+{
+    *length = sizeof(USBD_MsftStrDesc);
+    return (uint8_t*)USBD_MsftStrDesc;
 }

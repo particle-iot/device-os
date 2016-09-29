@@ -145,7 +145,7 @@ void os_condition_variable_notify_all(condition_variable_t var);
 
 const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
 
-int os_queue_create(os_queue_t* queue, size_t item_size, size_t item_count);
+int os_queue_create(os_queue_t* queue, size_t item_size, size_t item_count, void* reserved);
 /**
  * Return 0 on success.
  * @param queue
@@ -153,7 +153,7 @@ int os_queue_create(os_queue_t* queue, size_t item_size, size_t item_count);
  * @param delay
  * @return
  */
-int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay);
+int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void* reserved);
 
 /**
  * Return 0 on success.
@@ -162,8 +162,8 @@ int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay);
  * @param delay
  * @return
  */
-int os_queue_take(os_queue_t queue, void* item, system_tick_t delay);
-void os_queue_destroy(os_queue_t queue);
+int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void* reserved);
+int os_queue_destroy(os_queue_t queue, void* reserved);
 
 int os_mutex_create(os_mutex_t* mutex);
 int os_mutex_destroy(os_mutex_t mutex);
@@ -207,7 +207,7 @@ typedef enum os_timer_change_t
 
 int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, unsigned period, unsigned block, void* reserved);
 int os_timer_destroy(os_timer_t timer, void* reserved);
-
+int os_timer_is_active(os_timer_t timer, void* reserved);
 
 #ifdef __cplusplus
 }

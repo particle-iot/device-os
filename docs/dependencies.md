@@ -49,9 +49,11 @@ Download and install Git: http://git-scm.com/
 
 #### 6. Command line tools
 
-- crc32
+On Windows, you'll need to install MinGW and have it in your path to make available some of the typical *nix command line tools. 
+
+The tool `crc32` is also needed:
  - available in MinGW on Windows
  - available by default on OS X
- - linux users, please check with your package manager
+ - linux users, please check with your package manager. On debian based systems it can be installed via `sudo apt-get install libarchive-zip-perl`
 
 

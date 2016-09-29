@@ -47,8 +47,6 @@ bool MPL3115A2::begin()
 {
 	// Only join the I2C bus as master if needed
 	if(! Wire.isEnabled()) {
-		// Wire.setSpeed(100000);   // Tried lower frequencies, did not help
-		// Wire.stretchClock(true); // Did not help
 		Wire.begin();
 	}
 
@@ -69,10 +67,10 @@ float MPL3115A2::readAltitude()
 	toggleOneShot(); //Toggle the OST bit causing the sensor to immediately take another reading
 
 	//Wait for PDR bit, indicates we have new pressure data
-	int counter = 0;
+	uint32_t startTime = millis();
 	while( (IIC_Read(STATUS) & (1<<1)) == 0)
 	{
-		if(++counter > 600) return(-999); //Error out after max of 512ms for a read
+		if(millis() - startTime > 512UL) return(-999); //Error out after max of 512ms for a read
 		delayMicroseconds(1000);
 	}
 
@@ -285,38 +283,51 @@ void MPL3115A2::toggleOneShot(void)
 // These are the two I2C functions in this sketch.
 byte MPL3115A2::IIC_Read(byte regAddr)
 {
-//  uint8_t rv = 0;
-//  This function reads one byte over IIC
-//  Serial.print("SA");
+ // uint8_t rv = 0;
+ //This function reads one byte over IIC
+ 	//Serial.print("RD-SA");
   	Wire.beginTransmission(MPL3115A2_ADDRESS);
-//  Serial.print(",W:");
-//  rv = 
-	Wire.write(regAddr);  // Address of CTRL_REG1
-//  Serial.print(rv);
-//  Serial.print(",ET:");
-//  rv = 
-	Wire.endTransmission(false); // Send data to I2C dev with option for a repeated start. THIS IS NECESSARY and not supported before Arduino V1.0.1!
-//  Serial.print(rv);
-//  delay(5);
-//  Serial.print(",RF:");
-  	if (Wire.requestFrom(MPL3115A2_ADDRESS, 1) == 1) // Request the data...
-  		return (Wire.read());
+ // Serial.print(",W:");
+ // rv =
+ 	Wire.write(regAddr);  // Address of CTRL_REG1
+ // Serial.print(rv);
+ // Serial.print(",ET:");
+    // byte rv = 
+    Wire.endTransmission(false); // Send data to I2C dev with option for a repeated start. THIS IS NECESSARY and not supported before Arduino V1.0.1!
+    byte rv2 = Wire.requestFrom(MPL3115A2_ADDRESS, 1);
+    // Serial.print(rv);
+    // Serial.print(",RF:");
+  	if (rv2 == 1) { // Request the data...
+  		// Serial.print(rv2);
+  		// Serial.print(",R:");
+		byte rv3 = Wire.read();
+ 		// Serial.println(rv3);
+  		return rv3;
+  	}
   	else
+  	{
+  		// Serial.println(0);
   		return 0; // 0 will keep STATUS waiting
-//  Serial.print(rv);
-//  Serial.print(",R:");
-// 	byte rv2 = Wire.read();
-//  Serial.println(rv2);
-//  delay(5);
-// 	return rv2;
+  	}
 }
 
 void MPL3115A2::IIC_Write(byte regAddr, byte value)
 {
   // This function writes one byto over IIC
+  // uint8_t rv = 0;
+  // Serial.print("WR-SA");
   Wire.beginTransmission(MPL3115A2_ADDRESS);
+  // Serial.print(",W:");
+  // rv =
   Wire.write(regAddr);
+  // Serial.print(rv);
+  // Serial.print(",W:");
+  // rv =
   Wire.write(value);
+  // Serial.print(rv);
+  // Serial.print(",ET:");
+  // rv =
   Wire.endTransmission(true);
+  // Serial.println(rv);
   //delay(5);
 }

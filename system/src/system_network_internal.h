@@ -83,7 +83,7 @@ struct NetworkInterface
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
     virtual bool connected()=0;
-    virtual void connect_cancel(bool cancel, bool calledFromISR)=0;
+    virtual void connect_cancel(bool cancel)=0;
     /**
      * Force a manual disconnct.
      */
@@ -117,7 +117,8 @@ class ManagedNetworkInterface : public NetworkInterface
 {
     volatile uint8_t WLAN_DISCONNECT;
     volatile uint8_t WLAN_DELETE_PROFILES;
-    volatile uint8_t WLAN_SMART_CONFIG_START;
+    volatile uint8_t WLAN_SMART_CONFIG_START; // Set to 'true' when listening mode is pending
+    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE;
     volatile uint8_t WLAN_SMART_CONFIG_STOP;
     volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
     volatile uint8_t WLAN_CONNECTED;
@@ -135,10 +136,11 @@ protected:
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
-        bool started = SPARK_WLAN_STARTED;
+        WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
+        bool wlanStarted = SPARK_WLAN_STARTED;
 
         cloud_disconnect();
         RGBLEDState led_state;
@@ -201,16 +203,16 @@ protected:
         LED_On(LED_RGB);
         led_state.restore();
 
-        WLAN_LISTEN_ON_FAILED_CONNECT = started && on_stop_listening();
+        WLAN_LISTEN_ON_FAILED_CONNECT = on_stop_listening() && wlanStarted;
 
         on_finalize_listening(WLAN_SMART_CONFIG_FINISHED);
 
         system_notify_event(wifi_listen_end, millis()-start);
 
-        WLAN_SMART_CONFIG_START = 0;
+        WLAN_SMART_CONFIG_ACTIVE = 0;
         if (has_credentials())
             connect();
-        else if (!started)
+        else if (!wlanStarted)
             off();
     }
 
@@ -261,9 +263,13 @@ public:
 
     void listen(bool stop=false) override
     {
-        WLAN_SMART_CONFIG_START = !stop;
-        if (!WLAN_SMART_CONFIG_START)
+        if (stop) {
             WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
+            WLAN_SMART_CONFIG_START = 0; // Cancel pending transition to listening mode
+            WLAN_SMART_CONFIG_ACTIVE = 0; // Break current listening loop
+        } else if (!WLAN_SMART_CONFIG_ACTIVE) {
+            WLAN_SMART_CONFIG_START = 1;
+        }
     }
 
     void listen_command() override
@@ -273,14 +279,15 @@ public:
 
     bool listening() override
     {
-        return (WLAN_SMART_CONFIG_START && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
+        return (WLAN_SMART_CONFIG_ACTIVE && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
     }
 
 
     void connect(bool listen_enabled=true) override
     {
-        INFO("ready():%s,connecting():%s,listening():%s",(ready())?"true":"false",(connecting())?"true":"false",(listening())?"true":"false");
-        if (!ready() && !connecting() && !listening())
+        INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
+                (int)listening(), (int)WLAN_SMART_CONFIG_START);
+        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
@@ -308,6 +315,7 @@ public:
                 SPARK_LED_FADE = 0;
                 WLAN_CONNECTING = 1;
                 LED_SetRGBColor(RGB_COLOR_GREEN);
+                INFO("ARM_WLAN_WD 1");
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
                 connect_finalize();
             }
@@ -345,6 +353,7 @@ public:
         {
             config_clear();
             on_now();
+            update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
             SPARK_LED_FADE = 1;
@@ -389,8 +398,13 @@ public:
     {
         WLAN_CONNECTED = 1;
         WLAN_CONNECTING = 0;
-        if (!WLAN_DISCONNECT)
+
+        /* If DHCP has completed, don't re-arm WD due to spurious notify_connected()
+         * from WICED on loss of internet and reconnect
+         */
+        if (!WLAN_DISCONNECT && !WLAN_DHCP)
         {
+            INFO("ARM_WLAN_WD 2");
             ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
         }
     }
@@ -400,26 +414,28 @@ public:
         cloud_disconnect(false); // don't close the socket on the callback since this causes a lockup on the Core
         if (WLAN_CONNECTED)     /// unsolicited disconnect
         {
-          //Breathe blue if established connection gets disconnected
-          if(!WLAN_DISCONNECT)
-          {
-            //if WiFi.disconnect called, do not enable wlan watchdog
-            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-          }
-          SPARK_LED_FADE = 1;
-          LED_SetRGBColor(RGB_COLOR_BLUE);
-          LED_On(LED_RGB);
-        }
-        else if (!WLAN_SMART_CONFIG_START)
-        {
-          //Do not enter if smart config related disconnection happens
-          //Blink green if connection fails because of wrong password
-            if (!WLAN_DISCONNECT) {
+            //Breathe blue if established connection gets disconnected
+            if (!WLAN_DISCONNECT)
+            {
+                //if WiFi.disconnect called, do not enable wlan watchdog
+                INFO("ARM_WLAN_WD 3");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
             }
-          SPARK_LED_FADE = 0;
-          LED_SetRGBColor(RGB_COLOR_GREEN);
-          LED_On(LED_RGB);
+            SPARK_LED_FADE = 1;
+            LED_SetRGBColor(RGB_COLOR_BLUE);
+            LED_On(LED_RGB);
+        }
+        else if (!WLAN_SMART_CONFIG_ACTIVE)
+        {
+            //Do not enter if smart config related disconnection happens
+            //Blink green if connection fails because of wrong password
+            if (!WLAN_DISCONNECT) {
+                INFO("ARM_WLAN_WD 4");
+                ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+            }
+            SPARK_LED_FADE = 0;
+            LED_SetRGBColor(RGB_COLOR_GREEN);
+            LED_On(LED_RGB);
         }
         WLAN_CONNECTED = 0;
         WLAN_CONNECTING = 0;
@@ -429,13 +445,14 @@ public:
     void notify_dhcp(bool dhcp)
     {
         WLAN_CONNECTING = 0;
-        if (!WLAN_SMART_CONFIG_START)
+        if (!WLAN_SMART_CONFIG_ACTIVE)
         {
             LED_SetRGBColor(RGB_COLOR_GREEN);
         }
         if (dhcp)
         {
             LED_On(LED_RGB);
+            INFO("CLR_WLAN_WD 1, DHCP success");
             CLR_WLAN_WD();
             WLAN_DHCP = 1;
             SPARK_LED_FADE = 1;
@@ -446,10 +463,12 @@ public:
             config_clear();
             WLAN_DHCP = 0;
             SPARK_LED_FADE = 0;
-            if (WLAN_LISTEN_ON_FAILED_CONNECT)
+            if (WLAN_LISTEN_ON_FAILED_CONNECT) {
                 listen();
-            else
+            } else {
+                INFO("DHCP fail, ARM_WLAN_WD 5");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+            }
         }
     }
 
@@ -468,6 +487,7 @@ public:
     {
         if (WLAN_SMART_CONFIG_START)
         {
+            WLAN_SMART_CONFIG_START = 0;
             start_listening();
         }
 
@@ -499,7 +519,7 @@ class ManagedIPNetworkInterface : public ManagedNetworkInterface
 
 public:
 
-    void get_ipconfig(IPConfig* config)
+    void get_ipconfig(IPConfig* config) override
     {
     		update_config(true);
     		memcpy(config, this->config(), config->size);

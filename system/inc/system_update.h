@@ -109,15 +109,27 @@ typedef enum
      */
     SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
 
+	/**
+	 * Enable/Disable use of serial1 during setup.
+	 */
+	SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1,
+
     /**
-     * When 0, the application code is not paused.
-     * When 1, the application code is paused.
+     * Enable/disable publishing of last reset info to the cloud.
      */
-    // SYSTEM_FLAG_APPLICATION_PAUSED=4,
+    SYSTEM_FLAG_PUBLISH_RESET_INFO,
+
+    /**
+     * When 0, the system doesn't reset network connection on cloud connection errors.
+     * When 1 (default), the system resets network connection after a number of failed attempts to
+     * connect to the cloud.
+     */
+    SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS,
 
     SYSTEM_FLAG_MAX
 
 } system_flag_t;
+
 
 void system_shutdown_if_needed();
 void system_pending_shutdown();

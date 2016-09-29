@@ -1,3 +1,13 @@
+# Define the prefix to this directory.
+# Note: The name must be unique within this build and should be
+#       based on the root of the project
+HAL_SRC_GCC_PATH = $(TARGET_HAL_PATH)/src/gcc
+
+# if we are being compiled with platform as a dependency, then also include
+# implementation headers.
+ifneq (,$(findstring platform,$(DEPENDENCIES)))
+INCLUDE_DIRS += $(HAL_SRC_GCC_PATH)
+endif
 
 ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 

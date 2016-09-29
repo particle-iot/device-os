@@ -74,6 +74,18 @@ DYNALIB_FN(22, hal_gpio, HAL_PWM_Write_With_Frequency, void(uint16_t, uint8_t, u
 DYNALIB_FN(23, hal_gpio, HAL_DAC_Is_Enabled, uint8_t(pin_t))
 DYNALIB_FN(24, hal_gpio, HAL_DAC_Enable, uint8_t(pin_t, uint8_t))
 
+DYNALIB_FN(25, hal_gpio, HAL_DAC_Get_Resolution, uint8_t(pin_t))
+DYNALIB_FN(26, hal_gpio, HAL_DAC_Set_Resolution, void(pin_t, uint8_t))
+DYNALIB_FN(27, hal_gpio, HAL_DAC_Enable_Buffer, void(pin_t pin, uint8_t state))
+DYNALIB_FN(28, hal_gpio, HAL_PWM_Get_Resolution, uint8_t(uint16_t))
+DYNALIB_FN(29, hal_gpio, HAL_PWM_Set_Resolution, void(uint16_t, uint8_t))
+DYNALIB_FN(30, hal_gpio, HAL_PWM_Write_Ext, void(uint16_t, uint32_t))
+DYNALIB_FN(31, hal_gpio, HAL_PWM_Write_With_Frequency_Ext, void(uint16_t, uint32_t, uint32_t))
+DYNALIB_FN(32, hal_gpio, HAL_PWM_Get_Frequency_Ext, uint32_t(uint16_t))
+DYNALIB_FN(33, hal_gpio, HAL_PWM_Get_AnalogValue_Ext, uint32_t(uint16_t))
+DYNALIB_FN(34, hal_gpio, HAL_PWM_Get_Max_Frequency, uint32_t(uint16_t))
+DYNALIB_FN(35, hal_gpio, HAL_Interrupts_Detach_Ext, void(uint16_t, uint8_t, void*))
+
 DYNALIB_END(hal_gpio)
 
 #endif	/* HAL_DYNALIB_GPIO_H */

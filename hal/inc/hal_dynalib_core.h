@@ -51,7 +51,7 @@ DYNALIB_FN(6, hal_core, HAL_Core_Factory_Reset, void(void))
 DYNALIB_FN(7, hal_core, HAL_Core_Enter_Bootloader, void(bool))
 DYNALIB_FN(8, hal_core, HAL_Core_Enter_Stop_Mode, void(uint16_t, uint16_t, long))
 DYNALIB_FN(9, hal_core, HAL_Core_Execute_Stop_Mode, void(void))
-DYNALIB_FN(10, hal_core, HAL_Core_Enter_Standby_Mode, void(void))
+DYNALIB_FN(10, hal_core, HAL_Core_Enter_Standby_Mode, void(uint32_t, void*))
 DYNALIB_FN(11, hal_core, HAL_Core_Execute_Standby_Mode, void(void))
 DYNALIB_FN(12, hal_core, HAL_Core_Compute_CRC32, uint32_t(const uint8_t*, uint32_t))
 DYNALIB_FN(13, hal_core, HAL_device_ID, unsigned(uint8_t*, unsigned))
@@ -68,6 +68,8 @@ DYNALIB_FN(22, hal_core, HAL_Set_System_Config, int(hal_system_config_t, const v
 DYNALIB_FN(23, hal_core, HAL_Core_Enter_Safe_Mode, void(void*))
 DYNALIB_FN(24, hal_core, HAL_Feature_Get, bool(HAL_Feature))
 DYNALIB_FN(25, hal_core, HAL_Feature_Set, int(HAL_Feature, bool))
+DYNALIB_FN(26, hal_core, HAL_Core_System_Reset_Ex, void(int, uint32_t, void*))
+DYNALIB_FN(27, hal_core, HAL_Core_Get_Last_Reset_Info, int(int*, uint32_t*, void*))
 
 DYNALIB_END(hal_core)
 

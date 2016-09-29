@@ -42,6 +42,30 @@ extern "C" {
 
 #include "usb_config_hal.h"
 
+#ifdef USE_STDPERIPH_DRIVER
+// this is one way to determine if the platform module is being used or not
+#include "hw_config.h"
+#endif
+
+#ifdef USB_VENDOR_REQUEST_ENABLE
+typedef struct HAL_USB_SetupRequest {
+  union {
+    uint8_t bmRequestType;
+    struct {
+      uint8_t bmRequestTypeRecipient : 5;
+      uint8_t bmRequestTypeType : 2;
+      uint8_t bmRequestTypeDirection : 1;
+    };
+  };
+  uint8_t bRequest;
+  uint16_t wValue;
+  uint16_t wIndex;
+  uint16_t wLength;
+  uint8_t* data;
+} HAL_USB_SetupRequest;
+
+typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req, void* p);
+#endif // USB_VENDOR_REQUEST_ENABLE
 
     /* USB Config : IMR_MSK */
 /* mask defining which events has to be handled */
@@ -54,8 +78,6 @@ extern "C" {
                  CNTR_ESOFM | \
                  CNTR_RESETM  \
 )
-
-#define USART_RX_DATA_SIZE      256
 
 /* Exported functions ------------------------------------------------------- */
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
@@ -112,8 +134,76 @@ void USB_USART_Flush_Data(void);
 #endif
 
 #ifdef USB_HID_ENABLE
-void USB_HID_Send_Report(void *pHIDReport, size_t reportSize);
+void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize);
 #endif
+
+/*******************************************************************************************************/
+/* Multi-instanced USB classes */
+/*******************************************************************************************************/
+
+#ifdef USB_VENDOR_REQUEST_ENABLE
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p);
+#endif
+
+#if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)
+void HAL_USB_Init();
+void HAL_USB_Attach();
+void HAL_USB_Detach();
+#endif
+
+#ifdef USB_CDC_ENABLE
+
+typedef enum HAL_USB_USART_Serial {
+  HAL_USB_USART_SERIAL = 0,
+  HAL_USB_USART_SERIAL1 = 1,
+
+  HAL_USB_USART_SERIAL_COUNT
+} HAL_USB_USART_Serial;
+
+typedef struct HAL_USB_USART_Config {
+  uint16_t size;
+  uint8_t* rx_buffer;
+  uint16_t rx_buffer_size;
+  uint8_t* tx_buffer;
+  uint16_t tx_buffer_size;
+} HAL_USB_USART_Config;
+
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config);
+void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved);
+void HAL_USB_USART_End(HAL_USB_USART_Serial serial);
+unsigned int HAL_USB_USART_Baud_Rate(HAL_USB_USART_Serial serial);
+int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial);
+int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial);
+int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek);
+int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data);
+void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial);
+bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial);
+bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial);
+int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved);
+#endif
+
+#ifdef USB_HID_ENABLE
+void HAL_USB_HID_Init(uint8_t reserved, void* reserved1);
+void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1);
+void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t reportSize, void* reserved1);
+int32_t HAL_USB_HID_Status(uint8_t reserved, void* reserved1);
+void HAL_USB_HID_End(uint8_t reserved);
+uint8_t HAL_USB_HID_Set_State(uint8_t id, uint8_t state, void* reserved);
+#endif
+
+
+// MDM: I'm putting these here so we can export them from the hal_usb dynalib
+/* USB Interrupt Handlers from usb_hal.c */
+#ifdef USE_USB_OTG_FS
+    extern void OTG_FS_WKUP_irq(void);
+    extern void OTG_FS_irq(void);
+#elif defined USE_USB_OTG_HS
+    extern void OTG_HS_EP1_OUT_irq(void);
+    extern void OTG_HS_EP1_IN_irq(void);
+    extern void OTG_HS_WKUP_irq(void);
+    extern void OTG_HS_irq(void);
+#endif
+
 
 #ifdef __cplusplus
 }

@@ -281,8 +281,12 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie);
  * @param callback_data An opaque handle that is passed to the callback.
  * @return count of stored credentials, negative on error.
  */
-
 int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data);
+
+/**
+ * @return true if wi-fi powersave clock is enabled, false if disabled.
+ */
+bool isWiFiPowersaveClockDisabled(void);
 
 #ifdef	__cplusplus
 }

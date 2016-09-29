@@ -51,10 +51,21 @@ typedef struct HAL_InterruptCallback {
     void* data;
 } HAL_InterruptCallback;
 
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1 4
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2 5
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2
+
 typedef struct HAL_InterruptExtraConfiguration {
-  uint8_t size;
+  uint8_t version;
   uint8_t IRQChannelPreemptionPriority;
   uint8_t IRQChannelSubPriority;
+  union {
+    uint8_t flags;
+    struct {
+      uint8_t keepPriority : 1;
+      uint8_t keepHandler  : 1;
+    };
+  };
 } HAL_InterruptExtraConfiguration;
 
 #ifdef __cplusplus
@@ -63,6 +74,7 @@ extern "C" {
 
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config);
 void HAL_Interrupts_Detach(uint16_t pin);
+void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved);
 void HAL_Interrupts_Enable_All(void);
 void HAL_Interrupts_Disable_All(void);
 
@@ -78,6 +90,53 @@ void HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved);
 
 int HAL_disable_irq();
 void HAL_enable_irq(int mask);
+
+#ifdef USE_STDPERIPH_DRIVER
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD)
+#include "stm32f10x.h"
+#elif defined(STM32F2XX)
+#include "stm32f2xx.h"
+#endif // defined(STM32F10X_MD) || defined(STM32F10X_HD)
+
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX)
+inline bool HAL_IsISR()
+{
+	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
+inline int32_t HAL_ServicedIRQn()
+{
+  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
+}
+
+static inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2)
+{
+  if (irqn1 == irqn2)
+    return false;
+
+  uint32_t priorityGroup = NVIC_GetPriorityGrouping();
+  uint32_t priority1 = NVIC_GetPriority((IRQn_Type)irqn1);
+  uint32_t priority2 = NVIC_GetPriority((IRQn_Type)irqn2);
+  uint32_t p1, sp1, p2, sp2;
+  NVIC_DecodePriority(priority1, priorityGroup, &p1, &sp1);
+  NVIC_DecodePriority(priority2, priorityGroup, &p2, &sp2);
+  if (p1 < p2)
+    return true;
+
+  return false;
+}
+#elif PLATFORM_ID==60000
+inline bool HAL_IsISR() { return false; }
+inline int32_t HAL_ServicedIRQn() { return 0; }
+inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
+#elif PLATFORM_ID==3
+inline bool HAL_IsISR() { return false; }
+inline int32_t HAL_ServicedIRQn() { return 0; }
+inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
+#else
+#error "*** MCU architecture not supported by HAL_IsISR(). ***"
+#endif
+#endif
 
 
 #ifdef __cplusplus

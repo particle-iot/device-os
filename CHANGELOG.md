@@ -1,37 +1,209 @@
-## v0.5.0
+## v0.6.0-rc.2
+
+### ENHANCEMENTS
+
+- USB HID enhancements, please see PR: [#1110](https://github.com/spark/firmware/pull/1110) for a list. Closes [#1096](https://github.com/spark/firmware/issues/1096)
+
+### BUGFIX
+
+- Consecutive HID reports were overwriting previous the report before it was delivered to the host. Fixes [#1090](https://github.com/spark/firmware/issues/1090).
+- Disabling multiple USB configurations (normal/high power) as this breaks composite driver on Windows. Fixes [#1089](https://github.com/spark/firmware/issues/1089) Serial and USBSerial1 not working at same time on Windows 8.1 Pro.
+- Do not run the event loop from delay() when threading is enabled. Fixes [#1055](https://github.com/spark/firmware/issues/1055)
+- Cancel current connection attempt before entering the listening mode with WiFi.listen(true) and also WiFi.off(). Fixes [#1013](https://github.com/spark/firmware/issues/1013)
+
+### INTERNAL
+
+- Removed hardcoded server IP that was used when DNS resolution fails. Instead, the cloud connection is failed and the system will have to retry.  This means DNS lookup failure is now consistent with other modes of connection failure.  Addresses #139 Related to #1024
+
+
+## v0.6.0-rc.1
+
+### BREAKING CHANGES
+- `UDP.flush()` and `TCP.flush()`  now conform to the `Stream.flush()` behavior from Arduino 1.0 Wiring. The current (correct) behavior is to wait
+  until all data has been transmitted. Previous behavior discarded data in the buffer. [#469](https://github.com/spark/firmware/issues/469)
+
+### FEATURES
+- [Logging](https://docs.staging.particle.io/reference/firmware/electron/#logging) library for flexible system and application logging. [Docs](https://docs.staging.particle.io/reference/firmware/electron/#logging)
+- [Electron] Reduced data consumption connecting to the cloud with deep sleep. ([See the Docs](https://docs.staging.particle.io/reference/firmware/electron/#optimizing-cellular-data-use-with-cloud-connectivity-on-the-electron) for how to gain the full data reduction.) [#953](https://github.com/spark/firmware/pull/953)
+- Can set Claim Code via the Serial interface (for use by the CLI.) [#602](https://github.com/spark/firmware/issues/602)
+- Device ID available via dfu-util. [#949](https://github.com/spark/firmware/pull/949)
+- [Electron] Firmware Reset now available. [#975](https://github.com/spark/firmware/pull/975) and  [Docs](https://docs.particle.io/guide/getting-started/modes/electron/#firmware-reset)
+- System Reset Reason [#403](https://github.com/spark/firmware/issues/403) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#reset-reason)
+- [Photon/Electron/P1] Composite USB device driver with HID Mouse & Keyboard implementation for STM32F2 [#902](https://github.com/spark/firmware/pull/902) and [#528](https://github.com/spark/firmware/issues/528)
+- Exposes Device ID and Bootloader Version through USB descriptors while in DFU mode, Microsoft WCID support [#1001](https://github.com/spark/firmware/pull/1001)
+- USB vendor-specific setup request handling [#1010](https://github.com/spark/firmware/pull/1010)
+- [Electron] now allows OTA bootloader updates [#1002](https://github.com/spark/firmware/pull/1002)
+- Added Daylight Saving Time support [#1058](https://github.com/spark/firmware/pull/1058) per proposed [#211](https://github.com/spark/firmware/issues/211) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#local-)
+
+### ENHANCEMENTS
+
+- Local build warns if crc32 is not present. [#941](https://github.com/spark/firmware/issues/941)
+- [Photon/Core] MAC address is available immediately after `WiFi.on()` [#879](https://github.com/spark/firmware/issues/879)
+- [virtual device] support for TCP Server [#1000](https://github.com/spark/firmware/pull/1000)
+- [virtual device] support for EEPROM emulation [#1004](https://github.com/spark/firmware/pull/1004)
+- Low-level RTOS queues exposed in HAL [#1018](https://github.com/spark/firmware/pull/1018)
+- USART LIN bus support. [#930](https://github.com/spark/firmware/pull/930) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#begin--1)
+- USART added support for 7E1, 7E2, 7O1, 7O2 modes. [#997](https://github.com/spark/firmware/pull/997) [Docs](https://docs.staging.particle.io/reference/firmware/electron/#begin--1)
+- Configurable resolution for analogWrite (PWM and DAC) [#991](https://github.com/spark/firmware/pull/991) [analogWrite() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwrite-pwm-) | [analogWriteResolution() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwriteresolution-pwm-and-dac-) |  [analogWriteMaxFrequency() Docs](https://docs.staging.particle.io/reference/firmware/electron/#analogwritemaxfrequency-pwm-)
+- [System flag](https://docs.particle.io/reference/firmware/core/#system-flags) `SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS` to control if the device resets the network when it cannot connect to the cloud. [#946](https://github.com/spark/firmware/pull/946)
+- [Photon] 1KB system backup memory added (same size as Electron) reducing user backup memory to 3KB (3068 bytes) [#1046](https://github.com/spark/firmware/pull/1046)
+- Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
+- Extended spi_master_slave tests with SPI_MODE0/1/2/3 and MSBFIRST/LSBFIRST testing [#1056](https://github.com/spark/firmware/pull/1056)
+- [Electron] System parts reordered from 3,1,2 to 1,2,3 to preserve logical flashing order for OTA/YModem when upgrading. [#1065](https://github.com/spark/firmware/pull/1065)
+
+### BUGFIXES
+
+- SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971)
+- Free memory allocated for previous system interrupt handler [#951](https://github.com/spark/firmware/pull/951) fixes [#927](https://github.com/spark/firmware/issues/927)
+- Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
+- `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916), [#925](https://github.com/spark/firmware/issues/925) and [#1042](https://github.com/spark/firmware/issues/1042)
+- availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
+- `digitalRead()` interferes with `analogRead()` [#993](https://github.com/spark/firmware/issues/993)
+- USART 9-bit receiving. [#968](https://github.com/spark/firmware/issues/968)
+- Fix soft AP suffix broken by the addition of device id in DCT [#1030](https://github.com/spark/firmware/pull/1030)
+- WKP pin should not be enabled as a wakeup source unconditionally for STOP mode [#948](https://github.com/spark/firmware/pull/948) and [#938](https://github.com/spark/firmware/issues/938)
+- General I2C Improvements and MCP23017 tests [#1047](https://github.com/spark/firmware/pull/1047)
+- Rebuilt Wiced_Network_LwIP_FreeRTOS.a WWD_for_SDIO_FreeRTOS.a on OSX [#1057](https://github.com/spark/firmware/pull/1057) fixes Local build stalling on object dump [#1049](https://github.com/spark/firmware/issues/1049)
+- Validates that module dependencies would still be satisfied after the module from the "ota_module" location is flashed (via OTA or YMODEM flashing) [#1063](https://github.com/spark/firmware/pull/1063)
+- System.sleep SLEEP_MODE_DEEP timing accuracy and sleep STOP mode retains user interrupt handler after resuming [#1051](https://github.com/spark/firmware/pull/1051) fixes [#1043](https://github.com/spark/firmware/issues/1043) and [#1029](https://github.com/spark/firmware/issues/1029)
+
+### INTERNAL
+
+- [Electron] Use floating point arithmetic in PWM to save about 1KB of flash space [#1027](https://github.com/spark/firmware/pull/1027)
+- Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
+- [Electron] Added a 3rd system module to provide room for additional system firmware [#1035](https://github.com/spark/firmware/pull/1035)
+- Remove accidental SYSTEM_MODE(MANUAL) from pwm.cpp in wiring/no_fixture [#1052](https://github.com/spark/firmware/pull/1052)
+
+
+## v0.5.3-rc.3
+
+### ENHANCEMENTS
+
+- Automatically adds vendored libraries from the `lib` directory for extended application projects [#1053](https://github.com/spark/firmware/pull/1053)
+
+### INTERNAL
+
+- Feature/vendorlibraries [#1009](https://github.com/spark/firmware/pull/1009)
+
+
+## v0.5.3-rc.2
+
+### FEATURE
+
+- DTR/RTS support (open/closed detection: `Serial.isConnected()`). [#1073](https://github.com/spark/firmware/pull/1073)
+
+### ENHANCEMENTS
+
+- [Electron] System firmware is now aware of system-part3 to allow OTA/YModem upgrade from >=0.5.3-rc.2 to >=0.6.0-rc.1
+
+### BUGFIXES
+
+- added HAL_IsISR() which is used to skip calling the background loop from delay(). fixes [#673](https://github.com/spark/firmware/issue/673)
+- Fixes an issue of USB Serial erroneously switching to closed state. [#1073](https://github.com/spark/firmware/pull/1073)
+- RTC wakeup time now calculated right before entering SLEEP_MODE_DEEP. Fixes [#1043](https://github.com/spark/firmware/issue/1043)
+- STOP mode should retain user interrupt handler. Fixes [#1029](https://github.com/spark/firmware/issue/1029)
+
+
+## v0.5.3-rc.1
+
+### BUGFIXES
+
+- SoftAP mode persisting when setup complete if Wi-Fi was off. [#971](https://github.com/spark/firmware/issues/971)
+- Free memory allocated for previous system interrupt handler [#951](https://github.com/spark/firmware/pull/951) fixes [#927](https://github.com/spark/firmware/issues/927)
+- availableForWrite() was reporting bytes available instead of bytes available for write [#1020](https://github.com/spark/firmware/pull/1020) and [#1017](https://github.com/spark/firmware/issues/1017)
+- `millis()`/`micros()` are now atomic to ensure monotonic values. Fixes [#916](https://github.com/spark/firmware/issues/916), [#925](https://github.com/spark/firmware/issues/925) and [#1042](https://github.com/spark/firmware/issues/1042)
+- Fixes to I2C Slave mode implementation with clock stretching enabled [#931](https://github.com/spark/firmware/pull/931)
+- General I2C Improvements and MCP23017 tests [#1047](https://github.com/spark/firmware/pull/1047)
+- Rebuilt Wiced_Network_LwIP_FreeRTOS.a WWD_for_SDIO_FreeRTOS.a on OSX [#1057](https://github.com/spark/firmware/pull/1057) fixes Local build stalling on object dump [#1049](https://github.com/spark/firmware/issues/1049)
+- `digitalRead()` interfered with `analogRead()` [#1006](https://github.com/spark/firmware/pull/1006) fixes [#993](https://github.com/spark/firmware/issues/993)
+- Validates that module dependencies would still be satisfied after the module from the "ota_module" location is flashed (via OTA or YMODEM flashing) [#1063](https://github.com/spark/firmware/pull/1063)
+
+
+## v0.5.2 (same as v0.5.2-rc.1)
+
+### ENHANCEMENTS
+
+- [Photon/P1] Restores the default WICED country to Japan [#1014](https://github.com/spark/firmware/pull/1014)
+
+### BUGFIXES
+
+- .syncTime() and .unsubscribe() called on the system thread. Prevents issues when multiple threads try to send messages through the cloud connection or manage the network state shared memory. [#1041](https://github.com/spark/firmware/pull/1041)
+
+
+## v0.5.1 (same as v0.5.1-rc.2)
 
 ### FEATURES
 
-- [Electron] `SYSTEM_THREAD()` is supported (in Beta) [#884](https://github.com/spark/firmware/pull/884)
-- [Electron] data usage API [#866](https://github.com/spark/firmware/pull/866)
+- [Electron] Added support in HAL for a SMS received callback handler.
+
+
+## v0.5.1-rc.1
+
+### FEATURES
+
+- Wi-Fi Country Code can be set to configure the available channels and power transmission. [#942](https://github.com/spark/firmware/pull/942)
+
+### ENHANCEMENTS
+
+- ARM GCC 5.3.1 compiler support
+
+### BUGFIXES
+
+- [Photon/P1] Fix a timing-critical bug in WICED that causes system freeze. [#877](https://github.com/spark/firmware/issues/877)
+- Tone not available on A7 after stop-mode sleep. [#938](https://github.com/spark/firmware/issues/938) 
+- Regression in EEPROM emulation size. [#983](https://github.com/spark/firmware/pull/983)
+- [Electron] Wrong bitmask is provided for 4208 setting in power management [#987](https://github.com/spark/firmware/pull/987)
+
+
+## v0.5.0 (same as v0.5.0-rc.2)
+
+### FEATURES
+
+- Added SYSTEM_FLAG_WIFITEST_OVER_SERIAL1 which is disabled by default. Tinker enables this by default so that the Wi-Fi Tester is available during manufacturing.  Also ensures TX/RX pins are not used for Serial1 by default, in case you want to use these as GPIO. [945](https://github.com/spark/firmware/pull/945)
+
+### ENHANCEMENTS
+
+- Timer::isActive() function added [#950](https://github.com/spark/firmware/pull/950)
+- mbedtls headers are private to the communications module now, so user applications can include their own version of mbedtls [](https://github.com/spark/firmware/pull/940)
+
+### BUGFIXES
+
+- Soft AP Claim code fix [#956](https://github.com/spark/firmware/pull/956)
+- Variable template fix [#952](https://github.com/spark/firmware/pull/952)
+- TCPClient on Electron not receiving all of the data for small files [#896](https://github.com/spark/firmware/issues/896) 
+
+## v0.5.0-rc.1
+
+### FEATURES
+
+- [Electron] [SYSTEM_THREAD()](https://docs.particle.io/reference/firmware/electron/#system-thread) is supported (in Beta) [#884](https://github.com/spark/firmware/pull/884)
+- [Electron] Cellular [Data Usage API](https://docs.particle.io/reference/firmware/electron/#getdatausage-) [#866](https://github.com/spark/firmware/pull/866)
 - [Electron] Configurable keep-alive ping [#913](https://github.com/spark/firmware/pull/913) 
-- [Electron] Cellular Band Select API [#891](https://github.com/spark/firmware/pull/891)
-- [Electron] Cellular Local IP API [#850](https://github.com/spark/firmware/pull/850)
-- [Photon/Electron] Stack overflow detection with SOS code ((13-blinks))[https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos]
-- [Photon/Electron] SPI Slave support [#882](https://github.com/spark/firmware/pull/882) 
-- Atomic writes in EEPROM emulation [#871](https://github.com/spark/firmware/pull/871)
+- [Electron] Cellular [Band Select API](https://docs.particle.io/reference/firmware/electron/#getbandavailable-) [#891](https://github.com/spark/firmware/pull/891)
+- [Electron] Cellular [Local IP API](https://docs.particle.io/reference/firmware/electron/#localip-) [#850](https://github.com/spark/firmware/pull/850)
+- [Photon/Electron] Stack overflow detection with SOS code [13-blinks](https://docs.particle.io/guide/getting-started/modes/photon/#red-flash-sos)
+- [Photon/Electron] [SPI Slave support](https://docs.particle.io/reference/firmware/photon/#begin-spi_mode-uint16_t-) [#882](https://github.com/spark/firmware/pull/882) 
+- Atomic writes in [EEPROM emulation](https://docs.particle.io/reference/firmware/electron/#eeprom) [#871](https://github.com/spark/firmware/pull/871)
 - Software Watchdog [#860](https://github.com/spark/firmware/pull/860)
-- `Serial.availableForWrite()` and `Serial.blockOnOverrun()` [#798](https://github.com/spark/firmware/issues/798)
+- [Serial.availableForWrite()](https://docs.particle.io/reference/firmware/photon/#availableforwrite-) and [Serial.blockOnOverrun()](https://docs.particle.io/reference/firmware/photon/#blockonoverrun-) [#798](https://github.com/spark/firmware/issues/798)
 - [Photon] SoftAP HTTP server can serve application pages. [#906](https://github.com/spark/firmware/pull/906)
-- Added NO_ACK flag for Particle.publish("event", "data", NO_ACK); for non-acknowledged publishes (consumes less data on Electron)
 
 ### ENHANCEMENTS
 
 - Compiler error with variable/function names that are too long. [#883](https://github.com/spark/firmware/pull/883) 
 - DFU writes are verified [#870](https://github.com/spark/firmware/pull/870) 
-- [Electron] `NO_ACK` flag on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
+- [Electron] [NO_ACK flag](https://docs.particle.io/reference/firmware/electron/#particle-publish-) on `Particle.publish()` disables acknoweldgements reducing data use [#862](https://github.com/spark/firmware/pull/862)
 - [Electron] Allow session to resume when IP changes. [#848](https://github.com/spark/firmware/pull/848)
 - [Electron] Ensure published events are received by the cloud before sleeping. [#909](https://github.com/spark/firmware/pull/909)
-- [Electron] `SLEEP_NETWORK_STANDBY` on `System.sleep()` [#845](https://github.com/spark/firmware/pull/845)
+- [Electron] [SLEEP_NETWORK_STANDBY on System.sleep()](https://docs.particle.io/reference/firmware/electron/#sleep-sleep-) [#845](https://github.com/spark/firmware/pull/845)
 - Serial baudrate to select ymodem mode includes listening mode [#912](https://github.com/spark/firmware/pull/912) 
 - Wi-Fi connection process forced to timeout after 60 seconds if unsuccessful [#898](https://github.com/spark/firmware/pull/898)
 - Added write-verify-retry-fail logic to DFU writes [#870](https://github.com/spark/firmware/pull/870)
-- Support for USART (Serial1/2/4/5) parity [#757](https://github.com/spark/firmware/pull/757)
+- Support for USART (Serial1/2/4/5) [data bits, parity and stop bits](https://docs.particle.io/reference/firmware/electron/#begin-) [#757](https://github.com/spark/firmware/pull/757)
 
 ### BUGFIXES
 
 - targets `program-cloud`, `program-dfu` can be used without requiring `all` and will built the firmware correctly. [#899](https://github.com/spark/firmware/issues/899)
-- TCPClient on Electron not receiving all of the data for small files [#896](https://github.com/spark/firmware/issues/896) 
 - [Electron] Free socket when the socket is closed remotely [#885](https://github.com/spark/firmware/pull/885)
 - Extended CAN filters [#857](https://github.com/spark/firmware/pull/857)
 - I2C does not ensure a stop condition completes correctly in endTransmission [#856](https://github.com/spark/firmware/pull/856)

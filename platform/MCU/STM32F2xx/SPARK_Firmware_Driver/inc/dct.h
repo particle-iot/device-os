@@ -57,26 +57,29 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t device_private_key[1216];   // sufficient for 2048 bits
     uint8_t device_public_key[384];     // sufficient for 2048 bits
     static_ip_config_t  ip_config;
-    uint8_t unused[104];
+    uint8_t unused[96];
+    uint32_t feature_flags[1];          // Configurable feature flags (see HAL_Feature_Set()). Default uninitialized value is 0xffffffff
+    uint8_t country_code[4];            // WICED country code. Stored as bit-endian format: CH1/CH2/0/rev (max 255)
     uint8_t claim_code[63];             // claim code. no terminating null.
     uint8_t claimed[1];                 // 0,0xFF, not claimed. 1 claimed.
     uint8_t ssid_prefix[26];            // SSID prefix (25 chars max). First byte is length.
-    uint8_t device_id[6];               // 6 suffix characters (not null terminated))
+    uint8_t device_code[6];             // 6 suffix characters (not null terminated))
     uint8_t version_string[32];         // version string including date
     uint8_t dns_resolve[128];           // DNS names to resolve.
     uint8_t reserved1[64];
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
-    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
+    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT]; //100 bytes
     uint16_t product_store[12];
     uint8_t antenna_selection;           // 0xFF is uninitialized
-    uint8_t cloud_transport;				// 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
-    uint8_t alt_device_public_key[128];	// alternative device public key
-    uint8_t alt_device_private_key[192];	// alternative device private key
+    uint8_t cloud_transport;             // 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
+    uint8_t alt_device_public_key[128];  // alternative device public key
+    uint8_t alt_device_private_key[192]; // alternative device private key
     uint8_t alt_server_public_key[192];
-    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
-
-    uint8_t reserved2[640];
+    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
+    uint8_t device_id[12];                               // the STM32 device ID
+    uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
+    uint8_t reserved2[627];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -88,10 +91,12 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, server_public_key))
 #define DCT_SERVER_ADDRESS_OFFSET ((DCT_SERVER_PUBLIC_KEY_OFFSET)+384)
 #define DCT_IP_CONFIG_OFFSET (offsetof(application_dct_t, ip_config))
+#define DCT_FEATURE_FLAGS_OFFSET (offsetof(application_dct_t, feature_flags))
+#define DCT_COUNTRY_CODE_OFFSET (offsetof(application_dct_t, country_code))
 #define DCT_CLAIM_CODE_OFFSET (offsetof(application_dct_t, claim_code))
 #define DCT_SSID_PREFIX_OFFSET (offsetof(application_dct_t, ssid_prefix))
 #define DCT_DNS_RESOLVE_OFFSET (offsetof(application_dct_t, dns_resolve))
-#define DCT_DEVICE_ID_OFFSET (offsetof(application_dct_t, device_id))
+#define DCT_DEVICE_CODE_OFFSET (offsetof(application_dct_t, device_code))
 #define DCT_DEVICE_CLAIMED_OFFSET (offsetof(application_dct_t, claimed))
 #define DCT_FLASH_MODULES_OFFSET (offsetof(application_dct_t, flash_modules))
 #define DCT_PRODUCT_STORE_OFFSET (offsetof(application_dct_t, product_store))
@@ -101,16 +106,20 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET (offsetof(application_dct_t, alt_device_private_key))
 #define DCT_ALT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, alt_server_public_key))
 #define DCT_ALT_SERVER_ADDRESS_OFFSET (offsetof(application_dct_t, alt_server_address))
+#define DCT_DEVICE_ID_OFFSET (offsetof(application_dct_t, device_id))
+#define DCT_RADIO_FLAGS_OFFSET (offsetof(application_dct_t, radio_flags))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
 #define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
 #define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
 #define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
+#define DCT_FEATURE_FLAGS_SIZE  (sizeof(application_dct_t::feature_flags))
+#define DCT_COUNTRY_CODE_SIZE  (sizeof(application_dct_t::country_code))
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
 #define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix))
 #define DCT_DNS_RESOLVE_SIZE  (sizeof(application_dct_t::dns_resolve))
-#define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id))
+#define DCT_DEVICE_CODE_SIZE  (sizeof(application_dct_t::device_code))
 #define DCT_DEVICE_CLAIMED_SIZE  (sizeof(application_dct_t::claimed))
 #define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
 #define DCT_PRODUCT_STORE_SIZE  (sizeof(application_dct_t::product_store))
@@ -120,6 +129,8 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_ALT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::alt_device_private_key))
 #define DCT_ALT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::alt_server_public_key))
 #define DCT_ALT_SERVER_ADDRESS_SIZE  (sizeof(application_dct_t::alt_server_address))
+#define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id))
+#define DCT_RADIO_FLAGS_SIZE  (sizeof(application_dct_t::radio_flags))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -132,10 +143,12 @@ STATIC_ASSERT_DCT_OFFSET(version, 32);
 STATIC_ASSERT_DCT_OFFSET(device_private_key, 34);
 STATIC_ASSERT_DCT_OFFSET(device_public_key, 1250 /*34+1216*/);
 STATIC_ASSERT_DCT_OFFSET(ip_config, 1634 /* 1250 + 384 */);
-STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1634 + 128 */);
+STATIC_ASSERT_DCT_OFFSET(feature_flags, 1754 /* 1634 + 120 */);
+STATIC_ASSERT_DCT_OFFSET(country_code, 1758 /* 1754 + 4 */);
+STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1758 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(claimed, 1825 /* 1762 + 63 */ );
 STATIC_ASSERT_DCT_OFFSET(ssid_prefix, 1826 /* 1825 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(device_id, 1852 /* 1826 + 26 */);
+STATIC_ASSERT_DCT_OFFSET(device_code, 1852 /* 1826 + 26 */);
 STATIC_ASSERT_DCT_OFFSET(version_string, 1858 /* 1852 + 6 */);
 STATIC_ASSERT_DCT_OFFSET(dns_resolve, 1890 /* 1868 + 32 */);
 STATIC_ASSERT_DCT_OFFSET(reserved1, 2018 /* 1890 + 128 */);
@@ -149,9 +162,11 @@ STATIC_ASSERT_DCT_OFFSET(alt_device_public_key, 2978 /* 2977 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(alt_device_private_key, 3106 /* 2978 + 128 */);
 STATIC_ASSERT_DCT_OFFSET(alt_server_public_key, 3298 /* 3106 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(alt_server_address, 3490 /* 3298 + 192 */);
+STATIC_ASSERT_DCT_OFFSET(device_id, 3618 /* 3490 + 128 */);
+STATIC_ASSERT_DCT_OFFSET(radio_flags, 3630 /* 3618 + 12 */);
 
-STATIC_ASSERT_DCT_OFFSET(reserved2, 3618 /* 3490 + 128 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 2952 + 1280 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 3631 /* 3630 + 1 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3631 + 627 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);

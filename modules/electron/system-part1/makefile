@@ -3,15 +3,20 @@ WIFI_SYSTEM_MODULE_PATH=.
 PROJECT_ROOT=../../..
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
-PLATFORM_DFU = 0x8020000
+PLATFORM_DFU = 0x8060000
 
-# Platform dependency is for the LED implementation used by rgbled.c in services.
-MAKE_DEPENDENCIES = communication hal-dynalib services platform
-DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib rt-dynalib modules/electron/system-part2
+LIB_DEPENDENCIES = services-dynalib rt-dynalib platform
+MAKE_DEPENDENCIES = $(LIB_DEPENDENCIES) 
+
+DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib services hal
+
+# rebuild if the linker specs change for other modules
+DEPENDENCIES += modules/electron/user-part modules/electron/system-part2 modules/electron/system-part3
+ 
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
-LIBS += $(MAKE_DEPENDENCIES)
-LIB_DEPS += $(COMMUNICATION_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP)
+LIBS += $(LIB_DEPENDENCIES)
+LIB_DEPS += $(SERVICES_DYNALIB_LIB_DEP) $(RT_DYNALIB_LIB_DEP) $(PLATFORM_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
 

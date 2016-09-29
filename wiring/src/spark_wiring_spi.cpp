@@ -159,6 +159,12 @@ byte SPIClass::transfer(byte _data)
 void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback)
 {
   HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
+  if (user_callback == NULL) {
+    HAL_SPI_TransferStatus st;
+    do {
+      HAL_SPI_DMA_Transfer_Status(_spi, &st);
+    } while(st.transfer_ongoing);
+  }
 }
 
 void SPIClass::attachInterrupt()
@@ -188,5 +194,5 @@ void SPIClass::transferCancel()
 
 int32_t SPIClass::available()
 {
-  return HAL_SPI_DMA_Last_Transfer_Length(_spi);
+  return HAL_SPI_DMA_Transfer_Status(_spi, NULL);
 }

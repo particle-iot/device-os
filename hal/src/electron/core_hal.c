@@ -45,17 +45,6 @@ extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
-/* USB Interrupt Handlers from usb_hal.c */
-#ifdef USE_USB_OTG_FS
-    extern void OTG_FS_WKUP_irq(void);
-    extern void OTG_FS_irq(void);
-#elif defined USE_USB_OTG_HS
-    extern void OTG_HS_EP1_OUT_irq(void);
-    extern void OTG_HS_EP1_IN_irq(void);
-    extern void OTG_HS_WKUP_irq(void);
-    extern void OTG_HS_irq(void);
-#endif
-
 #if 0
 IDX[x] = added IRQ handler
 00 [ ] _estack
@@ -88,7 +77,7 @@ IDX[x] = added IRQ handler
 26 [x] EXTI4_IRQHandler                  // EXTI Line4
 27 [ ] DMA1_Stream0_IRQHandler           // DMA1 Stream 0
 28 [ ] DMA1_Stream1_IRQHandler           // DMA1 Stream 1
-29 [ ] DMA1_Stream2_IRQHandler           // DMA1 Stream 2
+29 [x] DMA1_Stream2_IRQHandler           // DMA1 Stream 2
 30 [ ] DMA1_Stream3_IRQHandler           // DMA1 Stream 3
 31 [ ] DMA1_Stream4_IRQHandler           // DMA1 Stream 4
 32 [ ] DMA1_Stream5_IRQHandler           // DMA1 Stream 5
@@ -173,6 +162,7 @@ const unsigned EXTI1_IRQHandler_Idx                 = 23;
 const unsigned EXTI2_IRQHandler_Idx                 = 24;
 const unsigned EXTI3_IRQHandler_Idx                 = 25;
 const unsigned EXTI4_IRQHandler_Idx                 = 26;
+const unsigned DMA1_Stream2_IRQHandler_Idx          = 29;
 const unsigned ADC_IRQHandler_Idx                   = 34;
 const unsigned CAN1_TX_IRQHandler_Idx               = 35;
 const unsigned CAN1_RX0_IRQHandler_Idx              = 36;
@@ -302,6 +292,8 @@ void HAL_Core_Setup_override_interrupts(void)
     isrs[I2C3_ER_IRQHandler_Idx]            = (uint32_t)I2C3_ER_irq;
     isrs[DMA1_Stream7_IRQHandler_Idx]       = (uint32_t)DMA1_Stream7_irq;
     isrs[DMA2_Stream5_IRQHandler_Idx]       = (uint32_t)DMA2_Stream5_irq;
+    isrs[DMA1_Stream2_IRQHandler_Idx]       = (uint32_t)DMA1_Stream2_irq;
+
     isrs[RTC_Alarm_IRQHandler_Idx]          = (uint32_t)RTC_Alarm_irq;
     SCB->VTOR = (unsigned long)isrs;
 }
@@ -353,10 +345,10 @@ int main(void)
 }
 
 /**
- * Called at the beginning of app_setup_and_loop() from main.cpp to
- * pre-initialize any low level hardware before the main loop runs.
+ * Called by HAL_Core_Init() to pre-initialize any low level hardware before
+ * the main loop runs.
  */
-void HAL_Core_Init(void)
+void HAL_Core_Init_finalize(void)
 {
 }
 
@@ -385,6 +377,8 @@ void HAL_Core_Setup_finalize(void)
 {
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[SysTick_Handler_Idx] = (uint32_t)SysTickChain;
+    // retained memory is critical for efficient data use on the electron
+    HAL_Feature_Set(FEATURE_RETAINED_MEMORY, ENABLE);
 }
 
 /******************************************************************************/
@@ -609,7 +603,7 @@ void FLASH_IRQHandler(void)         {__ASM("bkpt 0");}
 void RCC_IRQHandler(void)           {__ASM("bkpt 0");}
 void DMA1_Stream0_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream1_IRQHandler(void)  {__ASM("bkpt 0");}
-void DMA1_Stream2_IRQHandler(void)  {__ASM("bkpt 0");}
+//void DMA1_Stream2_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream3_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream4_IRQHandler(void)  {__ASM("bkpt 0");}
 void DMA1_Stream5_IRQHandler(void)  {__ASM("bkpt 0");}

@@ -27,17 +27,36 @@
 /* We are temporary defining this macro over here */
 /* This could also be passed via -D option in build script */
 #define SPARK_USB_SERIAL        //Default is Virtual COM Port
-//#define SPARK_USB_MOUSE
-//#define SPARK_USB_KEYBOARD
 
-#if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
-#define USB_CDC_ENABLE	//Use USB Serial feature by default if none is defined
-#elif defined (SPARK_USB_SERIAL)
-#define USB_CDC_ENABLE	//Enable USB CDC code
-#elif defined (SPARK_USB_MOUSE) || defined (SPARK_USB_KEYBOARD)
-#define USB_HID_ENABLE	//Enable USB HID code
+#if PLATFORM_ID >= 6
+# define SPARK_USB_MOUSE
+# define SPARK_USB_KEYBOARD
+
+# if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
+#  define USB_CDC_ENABLE  //Use USB Serial feature by default if none is defined
+# else
+#  if defined(SPARK_USB_SERIAL)
+#   define USB_CDC_ENABLE  //Enable USB CDC code
+#  endif
+#  if defined (SPARK_USB_MOUSE) || defined (SPARK_USB_KEYBOARD)
+#   define USB_HID_ENABLE  //Enable USB HID code
+#  endif
+# endif
+
+#else
+
+# if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
+#  define USB_CDC_ENABLE	//Use USB Serial feature by default if none is defined
+# elif defined (SPARK_USB_SERIAL)
+#  define USB_CDC_ENABLE	//Enable USB CDC code
+# elif defined (SPARK_USB_MOUSE) || defined (SPARK_USB_KEYBOARD)
+#  define USB_HID_ENABLE	//Enable USB HID code
+# endif
 #endif
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
+# define USB_VENDOR_REQUEST_ENABLE
+#endif // PLATFORM_ID == 6 || 8 || 10
 
 #endif	/* USB_CONFIG_HAL_H */
 

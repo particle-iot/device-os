@@ -17,6 +17,7 @@ void DTLSProtocol::init(const char *id,
 	channelCallbacks.handle_seed = handle_seed;
 	channelCallbacks.receive = callbacks.receive;
 	channelCallbacks.send = callbacks.send;
+	channelCallbacks.calculate_crc = callbacks.calculate_crc;
 	if (callbacks.size>=52) {
 		channelCallbacks.save = callbacks.save;
 		channelCallbacks.restore = callbacks.restore;
@@ -47,6 +48,23 @@ void DTLSProtocol::init(const char *id,
 		Protocol::init(callbacks, descriptor);
 	}
 
+}
+
+
+void DTLSProtocol::sleep(uint32_t timeout)
+{
+	system_tick_t start = millis();
+	INFO("waiting for Confirmed messages to be sent.");
+	while (channel.has_unacknowledged_requests() && (millis()-start)<timeout)
+	{
+		ProtocolError error = channel.receive_confirmations();
+		if (error)
+		{
+			WARN("error receiving acknowledgements: %d", error);
+			break;
+		}
+	}
+	INFO("all Confirmed messages sent.");
 }
 
 

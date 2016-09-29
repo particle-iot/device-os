@@ -21,6 +21,7 @@
 
 #include "system_network_internal.h"
 #include "wlan_hal.h"
+#include "interrupts_hal.h"
 
 
 class WiFiNetworkInterface : public ManagedIPNetworkInterface<WLanConfig, WiFiNetworkInterface>
@@ -129,10 +130,10 @@ public:
     }
 
 
-    void connect_cancel(bool cancel, bool calledFromISR) override
+    void connect_cancel(bool cancel) override
     {
         if (cancel)
-            wlan_connect_cancel(calledFromISR);
+            wlan_connect_cancel(HAL_IsISR());
     }
 
     bool has_credentials() override

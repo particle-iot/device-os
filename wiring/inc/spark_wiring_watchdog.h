@@ -40,12 +40,22 @@ class ApplicationWatchdog
 	void loop();
 
 public:
+    static const unsigned DEFAULT_STACK_SIZE = 512;
 
-	ApplicationWatchdog(unsigned timeout_ms, std::function<void(void)> fn, unsigned stack_size=512) : timeout(timeout_ms), timeout_fn(fn),
+	ApplicationWatchdog(unsigned timeout_ms, std::function<void(void)> fn, unsigned stack_size=DEFAULT_STACK_SIZE) :
+		timeout(timeout_ms),
+		timeout_fn(fn),
 		thread("appwdt", start, this, OS_THREAD_PRIORITY_CRITICAL, stack_size)
 	{
 		checkin();
 	}
+
+    // This constuctor helps to resolve overloaded function types, such as System.reset(), which is not always
+    // possible in case of std::function
+    ApplicationWatchdog(unsigned timeout_ms, void (*fn)(), unsigned stack_size=DEFAULT_STACK_SIZE) :
+        ApplicationWatchdog(timeout_ms, std::function<void()>(fn), stack_size)
+    {
+    }
 
 	bool isComplete()
 	{

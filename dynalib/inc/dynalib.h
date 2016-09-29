@@ -39,6 +39,13 @@
 #define EXTERN_C extern
 #endif
 
+
+/*
+ * Create an export table that delegates to the export table in another module.
+ */
+
+
+
 #define DYNALIB_TABLE_EXTERN(tablename) \
     EXTERN_C const void* const dynalib_##tablename[];
 

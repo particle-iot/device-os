@@ -33,7 +33,7 @@ static pin_t pin = D1;//pin under test
 static pin_t pin = A1;//pin under test
 #endif
 
-test(TONE_NoGenerateWhenPinSelectedIsNotTimerChannel) {
+test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
     uint8_t pin = D5;//pin under test
     uint32_t frequency = 500;
     uint32_t duration = 100;
@@ -44,7 +44,7 @@ test(TONE_NoGenerateWhenPinSelectedIsNotTimerChannel) {
     //To Do : Add test for remaining pins if required
 }
 
-test(TONE_GeneratedOnPinResultsInCorrectFrequency) {
+test(TONE_02_GeneratedOnPinResultsInCorrectFrequency) {
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when
@@ -54,7 +54,7 @@ test(TONE_GeneratedOnPinResultsInCorrectFrequency) {
     //To Do : Add test for remaining pins if required
 }
 
-test(TONE_GeneratedOnPinResultsInCorrectDuration) {
+test(TONE_03_GeneratedOnPinResultsInCorrectDuration) {
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when
@@ -68,7 +68,7 @@ test(TONE_GeneratedOnPinResultsInCorrectDuration) {
     //To Do : Add test for remaining pins if required
 }
 
-test(TONE_GeneratedOnPinStopsWhenStopped) {
+test(TONE_04_GeneratedOnPinStopsWhenStopped) {
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when

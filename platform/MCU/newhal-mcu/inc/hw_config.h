@@ -1,4 +1,6 @@
 
+#pragma once
+
 /*
  * This header defines the platform-provided symbols needed to build a functioning
  * bootloader.
@@ -10,7 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-const module_info_t* FLASH_ModuleInfo(flash_device_t device, uint32_t address) { return (module_info_t*)0; }
+inline const module_info_t* FLASH_ModuleInfo(flash_device_t device, uint32_t address) { return (module_info_t*)0; }
 
 inline void Set_System() {}
 inline void SysTick_Configuration() {}

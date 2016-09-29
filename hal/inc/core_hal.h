@@ -51,8 +51,33 @@ typedef enum
     PIN_RESET = 0x01,
     SOFTWARE_RESET = 0x02,
     WATCHDOG_RESET = 0x03,
-    LOW_POWER_RESET = 0x04
+    POWER_MANAGEMENT_RESET = 0x04,
+    POWER_DOWN_RESET = 0x05,
+    POWER_BROWNOUT_RESET = 0x06
 } RESET_TypeDef;
+
+// Reason codes are exposed under identifier names via the cloud - ensure the mapping is
+// updated for newly added reason codes
+typedef enum System_Reset_Reason
+{
+    RESET_REASON_NONE = 0,
+    RESET_REASON_UNKNOWN = 10, // Unspecified reason
+    // Hardware
+    RESET_REASON_PIN_RESET = 20, // Reset from the NRST pin
+    RESET_REASON_POWER_MANAGEMENT = 30, // Low-power management reset
+    RESET_REASON_POWER_DOWN = 40, // Power-down reset
+    RESET_REASON_POWER_BROWNOUT = 50, // Brownout reset
+    RESET_REASON_WATCHDOG = 60, // Watchdog reset
+    // Software
+    RESET_REASON_UPDATE = 70, // Successful firmware update
+    RESET_REASON_UPDATE_ERROR = 80, // Generic update error
+    RESET_REASON_UPDATE_TIMEOUT = 90, // Update timeout
+    RESET_REASON_FACTORY_RESET = 100, // Factory reset requested
+    RESET_REASON_SAFE_MODE = 110, // Safe mode requested
+    RESET_REASON_DFU_MODE = 120, // DFU mode requested
+    RESET_REASON_PANIC = 130, // System panic (additional data may contain panic code)
+    RESET_REASON_USER = 140 // User-requested reset
+} System_Reset_Reason;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -99,6 +124,9 @@ void HAL_Core_Mode_Button_Reset(void);
 void HAL_Core_System_Reset(void);
 void HAL_Core_Factory_Reset(void);
 
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved);
+int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved);
+
 /**
  * Notification from hal to the external system.
  * @param button    The button that was pressed, 0-based
@@ -110,7 +138,7 @@ void HAL_Core_Enter_Safe_Mode(void* reserved);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
 void HAL_Core_Execute_Stop_Mode(void);
-void HAL_Core_Enter_Standby_Mode(void);
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved);
 void HAL_Core_Execute_Standby_Mode(void);
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
@@ -195,6 +223,8 @@ typedef enum HAL_Feature {
     FEATURE_RETAINED_MEMORY=1,       // [write only] retained memory on backup power
     FEATURE_WARM_START,              // [read only] set to true if previous retained memory contents are available]
 	FEATURE_CLOUD_UDP,				// [read only] true if the UDP implementation should be used.
+    FEATURE_RESET_INFO,              // [read/write] enables handling of last reset info (may affect backup registers)
+	FEATURE_WIFI_POWERSAVE_CLOCK,	// [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
 } HAL_Feature;
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);
@@ -207,7 +237,6 @@ extern void module_user_init_hook(void);
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved);
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved);
-
 
 #ifdef __cplusplus
 }

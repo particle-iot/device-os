@@ -19,6 +19,12 @@ DFUSUFFIX = dfu-suffix
 CURL = curl
 CRC = crc32
 XXD = xxd
+SERIAL_SWITCHER = $(COMMON_BUILD)/serial_switcher.py
+
+crc32_path := $(shell which $(CRC))
+ifeq ("$(crc32_path)", "")
+    $(error "$(CRC) tool is not found")
+endif
 
 CPPFLAGS +=
 

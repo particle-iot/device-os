@@ -1,0 +1,3 @@
+source 'https://rubygems.org'
+gem 'aruba', '~> 0.14.1'
+gem 'diff_dirs', '~> 0.1.2'

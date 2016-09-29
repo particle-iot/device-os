@@ -27,15 +27,15 @@
 #ifndef _SOCKET_HAL_H
 #define	_SOCKET_HAL_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 #include "debug.h"
 #include <stdint.h>
 #include "system_tick_hal.h"
 #include "inet_hal.h"
 #include <stdbool.h>
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 typedef struct _sockaddr_t
 {
@@ -93,6 +93,12 @@ sock_result_t socket_accept(sock_handle_t sd);
  */
 sock_handle_t socket_handle_invalid();
 
+typedef struct  __attribute__((packed)) socket_multicast_info_t
+{
+	uint16_t size;
+	sock_handle_t sock_handle;
+} socket_multicast_info_t;
+
 /*
  * Join a multicast address for all UDP sockets. This will allow reception of multicast packets
  * sent to the given address on all UDP sockets which have bound the port to which the multicast
@@ -102,7 +108,7 @@ sock_handle_t socket_handle_invalid();
  * @param reserved Reserved for future use
  * @return Return the result of the join operation, 0 for success, other values for errors
  */
-sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
+sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interface_t nif, socket_multicast_info_t *reserved);
 
 
 /*
@@ -112,7 +118,7 @@ sock_result_t socket_join_multicast(const HAL_IPAddress *address, network_interf
  * @param reserved Reserved for future use
  * @return Return the result of the leave operation, 0 for success, other values for errors
  */
-sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, void *reserved);
+sock_result_t socket_leave_multicast(const HAL_IPAddress *address, network_interface_t nif, socket_multicast_info_t *reserved);
 
 
 typedef struct sock_peer_t {

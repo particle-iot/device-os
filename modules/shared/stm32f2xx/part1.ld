@@ -135,7 +135,7 @@ ASSERT( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at sta
 ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
 
 ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export address for module table is incorrect" );
-ASSERT ( link_end_of_static_ram < system_part1_module_ram_end, "static RAM use exceeds allocated space" );
+ASSERT ( link_end_of_static_ram <= system_part1_module_ram_end, "static RAM use exceeds allocated space" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
