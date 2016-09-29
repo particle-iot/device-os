@@ -242,10 +242,6 @@ inline spark::JSONValue::JSONValue() :
         t_(nullptr) {
 }
 
-inline int spark::JSONValue::toInt() const {
-    return toDouble();
-}
-
 inline spark::JSONString spark::JSONValue::toString() const {
     return JSONString(t_, d_);
 }
