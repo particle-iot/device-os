@@ -40,28 +40,8 @@ const jsmntok_t* skipToken(const jsmntok_t *t) {
     return t;
 }
 
-double doubleFromToken(const jsmntok_t *t, const char *json, bool *ok = nullptr) {
-    // SPARK_ASSERT(t->type == JSMN_PRIMITIVE);
-    const char* const s = json + t->start;
-    char *end = nullptr;
-    const double val = strtod(s, &end);
-    if (!end || *end != '\0') {
-        return 0.0; // Error
-    }
-    if (ok) {
-        *ok = true;
-    }
-    return val;
-}
-
-inline bool boolFromToken(const jsmntok_t *t, const char *json) {
-    // SPARK_ASSERT(t->type == JSMN_PRIMITIVE);
-    const char* const s = json + t->start;
-    return *s == 't'; // Literal names are always in lower case
-}
-
-uint32_t hexToInt(const char *s, size_t size, bool *ok = nullptr) {
-    uint32_t val = 0;
+bool hexToInt(const char *s, size_t size, uint32_t *val) {
+    uint32_t v = 0;
     const char* const end = s + size;
     while (s != end) {
         uint32_t n = 0;
@@ -73,15 +53,13 @@ uint32_t hexToInt(const char *s, size_t size, bool *ok = nullptr) {
         } else if (c >= 'A' && c <= 'F') {
             n = c - 'A' + 10;
         } else {
-            return 0; // Error
+            return false; // Error
         }
-        val = (val << 4) | n;
+        v = (v << 4) | n;
         ++s;
     }
-    if (ok) {
-        *ok = true;
-    }
-    return val;
+    *val = v;
+    return true;
 }
 
 } // namespace
@@ -90,17 +68,17 @@ uint32_t hexToInt(const char *s, size_t size, bool *ok = nullptr) {
 struct spark::detail::JSONData {
     jsmntok_t *tokens;
     char *json;
-    bool copy;
+    bool freeJson;
 
     JSONData() :
             tokens(nullptr),
             json(nullptr),
-            copy(false) {
+            freeJson(false) {
     }
 
     ~JSONData() {
         delete[] tokens;
-        if (copy) {
+        if (freeJson) {
             delete[] json;
         }
     }
@@ -117,34 +95,55 @@ spark::JSONValue::JSONValue(const jsmntok_t *t, detail::JSONDataPtr d) :
 
 bool spark::JSONValue::toBool() const {
     switch (type()) {
-    case JSON_TYPE_BOOL:
-        return boolFromToken(t_, d_->json);
-    case JSON_TYPE_NUMBER:
-        return doubleFromToken(t_, d_->json);
+    case JSON_TYPE_BOOL: {
+        const char* const s = d_->json + t_->start;
+        return *s == 't';
+    }
+    case JSON_TYPE_NUMBER: {
+        const char* const s = d_->json + t_->start;
+        return strcmp(s, "0") != 0 && strcmp(s, "0.0") != 0;
+    }
     case JSON_TYPE_STRING: {
         const char* const s = d_->json + t_->start;
-        if (*s == '\0' || strcmp(s, "false") == 0) { // Empty string or "false" in lower case
-            return false;
+        if (*s == '\0' || strcmp(s, "false") == 0 || strcmp(s, "0") == 0 || strcmp(s, "0.0") == 0) {
+            return false; // Empty string, "false", "0" or "0.0"
         }
-        bool ok = false;
-        const bool val = doubleFromToken(t_, d_->json, &ok); // Check if string can be converted to a number
-        if (ok) {
-            return val;
-        }
-        return true; // Any other non-empty string
+        return true; // Any other string
     }
     default:
         return false;
     }
 }
 
+int spark::JSONValue::toInt() const {
+    switch (type()) {
+    case JSON_TYPE_BOOL: {
+        const char* const s = d_->json + t_->start;
+        return *s == 't';
+    }
+    case JSON_TYPE_NUMBER:
+    case JSON_TYPE_STRING: {
+        // toInt() may produce incorrect results for floating point numbers, since we want to keep
+        // compile-time dependency on strtod() optional
+        const char* const s = d_->json + t_->start;
+        return strtol(s, nullptr, 10);
+    }
+    default:
+        return 0;
+    }
+}
+
 double spark::JSONValue::toDouble() const {
     switch (type()) {
-    case JSON_TYPE_BOOL:
-        return boolFromToken(t_, d_->json);
+    case JSON_TYPE_BOOL: {
+        const char* const s = d_->json + t_->start;
+        return *s == 't';
+    }
     case JSON_TYPE_NUMBER:
-    case JSON_TYPE_STRING:
-        return doubleFromToken(t_, d_->json);
+    case JSON_TYPE_STRING: {
+        const char* const s = d_->json + t_->start;
+        return strtod(s, nullptr);
+    }
     default:
         return 0.0;
     }
@@ -196,7 +195,7 @@ spark::JSONValue spark::JSONValue::parse(char *json, size_t size) {
             return JSONValue();
         }
         memcpy(d->json, json, size);
-        d->copy = true; // Set ownership flag
+        d->freeJson = true; // Set ownership flag
     } else {
         d->json = json;
     }
@@ -220,7 +219,7 @@ spark::JSONValue spark::JSONValue::parseCopy(const char *json, size_t size) {
         return JSONValue();
     }
     memcpy(d->json, json, size); // TODO: Copy only token data
-    d->copy = true;
+    d->freeJson = true;
     if (!stringize(d->tokens, tokenCount, d->json)) {
         return JSONValue();
     }
@@ -286,9 +285,8 @@ bool spark::JSONValue::unescape(jsmntok_t *t, char *json) {
                 if (end - s < 4) {
                     return false; // Unexpected end of string
                 }
-                bool ok = false;
-                const uint32_t u = ::hexToInt(s, 4, &ok); // Unicode code point or UTF-16 surrogate pair
-                if (!ok) {
+                uint32_t u = 0; // Unicode code point or UTF-16 surrogate pair
+                if (!hexToInt(s, 4, &u)) {
                     return false; // Invalid escaped sequence
                 }
                 if (u <= 0x7f) { // Processing only code points within the basic latin block

@@ -14,50 +14,6 @@ namespace {
 
 using namespace spark;
 
-template<typename T>
-T fromString(const std::string &s, bool *ok = nullptr) {
-    char *end = nullptr;
-    const T val = strtod(s.c_str(), &end);
-    if (!end || *end != '\0') {
-        return T();
-    }
-    if (ok) {
-        *ok = true;
-    }
-    return val;
-}
-
-template<>
-bool fromString<bool>(const std::string &s, bool *ok) {
-    if (ok) {
-        *ok = true;
-    }
-    if (s.empty() || s == "false") { // Empty string or "false" in lower case
-        return false;
-    }
-    bool isNum = false;
-    const double val = fromString<double>(s, &isNum); // Check if string can be converted to a number
-    if (isNum) {
-        return val;
-    }
-    return true; // Any other non-empty string
-}
-
-template<typename T>
-inline T fromString(const JSONString &s, bool *ok = nullptr) {
-    return fromString<T>(std::string(s.data(), s.size()), ok);
-}
-
-void checkString(const JSONString &s, const std::string &str) {
-    const size_t n = s.size();
-    REQUIRE(n == str.size());
-    CHECK(s.isEmpty() == !n);
-    const char *d = s.data();
-    REQUIRE(d != nullptr);
-    CHECK(d[n] == '\0'); // JSONString::data() returns null-terminated string
-    CHECK(std::string(d, n) == str);
-}
-
 class Checker {
 public:
     Checker() {
@@ -70,11 +26,7 @@ public:
     Checker& invalid() {
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_INVALID);
-        CHECK(v.isValid() == false); // Check conversions to other types
-        CHECK(v.toBool() == false);
-        CHECK(v.toInt() == 0);
-        CHECK(v.toDouble() == 0.0);
-        checkString(v.toString(), "");
+        CHECK(v.isValid() == false);
         return *this;
     }
 
@@ -82,11 +34,6 @@ public:
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_NULL);
         CHECK(v.isNull() == true);
-        CHECK(v.isValid() == true);
-        CHECK(v.toBool() == false);
-        CHECK(v.toInt() == 0);
-        CHECK(v.toDouble() == 0.0);
-        checkString(v.toString(), "");
         return *this;
     }
 
@@ -94,24 +41,23 @@ public:
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_BOOL);
         CHECK(v.isBool() == true);
-        CHECK(v.isValid() == true);
         CHECK(v.toBool() == val);
-        CHECK((bool)v.toInt() == val);
-        CHECK((bool)v.toDouble() == val);
-        checkString(v.toString(), val ? "true" : "false");
         return *this;
     }
 
-    template<typename T>
-    Checker& number(T val) {
+    Checker& number(int val) {
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_NUMBER);
         CHECK(v.isNumber());
-        CHECK(v.isValid());
-        CHECK((T)v.toBool() == (bool)val);
-        CHECK((T)v.toInt() == (int)val);
-        CHECK((T)v.toDouble() == (double)val);
-        CHECK(fromString<T>(v.toString()) == val);
+        CHECK(v.toInt() == val);
+        return *this;
+    }
+
+    Checker& number(double val) {
+        const JSONValue v = value();
+        REQUIRE(v.type() == JSON_TYPE_NUMBER);
+        CHECK(v.isNumber());
+        CHECK(v.toDouble() == val);
         return *this;
     }
 
@@ -119,23 +65,15 @@ public:
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_STRING);
         CHECK(v.isString() == true);
-        CHECK(v.isValid() == true);
         const JSONString s = v.toString();
-        CHECK(v.toBool() == fromString<bool>(s));
-        CHECK(v.toInt() == fromString<int>(s));
-        CHECK(v.toDouble() == fromString<double>(s));
-        checkString(s, str);
+        CHECK(std::string(s.data(), s.size()) == str);
         return *this;
     }
 
     Checker& beginArray() {
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_ARRAY);
-        CHECK(v.isValid() == true);
-        CHECK(v.toBool() == false);
-        CHECK(v.toInt() == 0);
-        CHECK(v.toDouble() == 0.0);
-        checkString(v.toString(), "");
+        CHECK(v.isArray() == true);
         v_.push_back(JSONArrayIterator(v));
         return *this;
     }
@@ -155,11 +93,7 @@ public:
     Checker& beginObject() {
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_OBJECT);
-        CHECK(v.isValid() == true);
-        CHECK(v.toBool() == false);
-        CHECK(v.toInt() == 0);
-        CHECK(v.toDouble() == 0.0);
-        checkString(v.toString(), "");
+        CHECK(v.isObject() == true);
         v_.push_back(JSONObjectIterator(v));
         return *this;
     }
@@ -185,7 +119,8 @@ public:
         const size_t n = it.count();
         REQUIRE(it.next() == true);
         CHECK(it.count() == n - 1);
-        checkString(it.name(), str);
+        const JSONString s = it.name();
+        CHECK(std::string(s.data(), s.size()) == str);
         v = it; // Update iterator
         return *this;
     }
@@ -269,10 +204,10 @@ TEST_CASE("Parsing JSON") {
             check("-1").number(-1);
             check("12345").number(12345);
             check("-12345").number(-12345);
-            check("-2147483648").number(-2147483648); // INT_MIN
-            check("2147483647").number(2147483647); // INT_MAX
+            check("-2147483648").number((int)-2147483648); // INT_MIN
+            check("2147483647").number((int)2147483647); // INT_MAX
         }
-        SECTION("double") {
+        SECTION("float") {
             check("0.0").number(0.0);
             check("1.0").number(1.0);
             check("-1.0").number(-1.0);
@@ -280,8 +215,8 @@ TEST_CASE("Parsing JSON") {
             check("-0.5").number(-0.5);
             check("3.1416").number(3.1416);
             check("-3.1416").number(-3.1416);
-            check("2.22507e-308").number(2.22507e-308); // ~DBL_MIN
-            check("1.79769e+308").number(1.79769e+308); // ~DBL_MAX
+            check("1.17549e-38").number(1.17549e-38); // ~FLT_MIN
+            check("3.40282e+38").number(3.40282e+38); // ~FLT_MAX
         }
     }
 
@@ -362,11 +297,11 @@ TEST_CASE("Parsing JSON") {
                     .endObject();
         }
         SECTION("primitive elements") {
-            check("{\"null\":null,\"bool\":true,\"int\":2,\"double\":3.14,\"string\":\"abcd\"}").beginObject()
+            check("{\"null\":null,\"bool\":true,\"int\":2,\"float\":3.14,\"string\":\"abcd\"}").beginObject()
                     .name("null").null()
                     .name("bool").boolean(true)
                     .name("int").number(2)
-                    .name("double").number(3.14)
+                    .name("float").number(3.14)
                     .name("string").string("abcd")
                     .endObject();
         }
@@ -468,16 +403,16 @@ TEST_CASE("Writing JSON") {
                 json.value(-12345);
                 check(data).equals("-12345");
             }
-            SECTION("min") {
+            SECTION("-2147483648") {
                 json.value((int)-2147483648); // INT_MIN
                 check(data).equals("-2147483648");
             }
-            SECTION("max") {
+            SECTION("2147483647") {
                 json.value((int)2147483647); // INT_MAX
                 check(data).equals("2147483647");
             }
         }
-        SECTION("double") {
+        SECTION("float") {
             SECTION("0.0") {
                 json.value(0.0);
                 check(data).equals("0");
@@ -506,13 +441,13 @@ TEST_CASE("Writing JSON") {
                 json.value(-3.1416);
                 check(data).equals("-3.1416");
             }
-            SECTION("min") {
-                json.value(2.22507e-308); // ~DBL_MIN
-                check(data).equals("2.22507e-308");
+            SECTION("1.17549e-38") {
+                json.value(1.17549e-38); // ~FLT_MIN
+                check(data).equals("1.17549e-38");
             }
-            SECTION("max") {
-                json.value(1.79769e+308); // ~DBL_MAX
-                check(data).equals("1.79769e+308");
+            SECTION("3.40282e+38") {
+                json.value(3.40282e+38); // ~FLT_MAX
+                check(data).equals("3.40282e+38");
             }
         }
     }
@@ -617,10 +552,10 @@ TEST_CASE("Writing JSON") {
             json.name("null").nullValue();
             json.name("bool").value(true);
             json.name("int").value(2);
-            json.name("double").value(3.14);
+            json.name("float").value(3.14);
             json.name("string").value("abcd");
             json.endObject();
-            check(data).equals("{\"null\":null,\"bool\":true,\"int\":2,\"double\":3.14,\"string\":\"abcd\"}");
+            check(data).equals("{\"null\":null,\"bool\":true,\"int\":2,\"float\":3.14,\"string\":\"abcd\"}");
         }
         SECTION("nested object") {
             json.beginObject();
@@ -670,6 +605,142 @@ TEST_CASE("JSONValue") {
         check(v).invalid();
     }
 
+    SECTION("type conversions") {
+        SECTION("invalid") {
+            const JSONValue v;
+            check(v).invalid();
+            CHECK(v.toBool() == false);
+            CHECK(v.toInt() == 0);
+            CHECK(v.toDouble() == 0.0);
+            CHECK(v.toString() == "");
+        }
+        SECTION("null") {
+            const JSONValue v = parse("null");
+            check(v).null();
+            CHECK(v.toBool() == false);
+            CHECK(v.toInt() == 0);
+            CHECK(v.toDouble() == 0.0);
+            CHECK(v.toString() == "");
+        }
+        SECTION("bool") {
+            SECTION("true") {
+                const JSONValue v = parse("true");
+                check(v).boolean(true);
+                CHECK(v.toInt() == 1);
+                CHECK(v.toDouble() == 1.0);
+                CHECK(v.toString() == "true");
+            }
+            SECTION("false") {
+                const JSONValue v = parse("false");
+                check(v).boolean(false);
+                CHECK(v.toInt() == 0);
+                CHECK(v.toDouble() == 0.0);
+                CHECK(v.toString() == "false");
+            }
+        }
+        SECTION("number") {
+            SECTION("int") {
+                SECTION("0") {
+                    const JSONValue v = parse("0");
+                    check(v).number(0);
+                    CHECK(v.toBool() == false);
+                    CHECK(v.toDouble() == 0.0);
+                    CHECK(v.toString() == "0");
+                }
+                SECTION("12345") {
+                    const JSONValue v = parse("12345");
+                    check(v).number(12345);
+                    CHECK(v.toBool() == true);
+                    CHECK(v.toDouble() == 12345.0);
+                    CHECK(v.toString() == "12345");
+                }
+            }
+            SECTION("float") {
+                SECTION("0.0") {
+                    const JSONValue v = parse("0.0");
+                    check(v).number(0.0);
+                    CHECK(v.toBool() == false);
+                    CHECK(v.toInt() == 0);
+                    CHECK(v.toString() == "0.0");
+                }
+                SECTION("3.1416") {
+                    const JSONValue v = parse("3.1416");
+                    check(v).number(3.1416);
+                    CHECK(v.toBool() == true);
+                    CHECK(v.toInt() == 3);
+                    CHECK(v.toString() == "3.1416");
+                }
+                SECTION("1.0e+1") {
+                    const JSONValue v = parse("1.0e+1");
+                    check(v).number(1.0e+1);
+                    CHECK(v.toBool() == true);
+                    CHECK(v.toInt() == 1); // toInt() may produce incorrect results for floating point numbers
+                    CHECK(v.toString() == "1.0e+1");
+                }
+            }
+        }
+        SECTION("string") {
+            SECTION("empty") {
+                const JSONValue v = parse("\"\"");
+                check(v).string("");
+                CHECK(v.toBool() == false);
+                CHECK(v.toInt() == 0);
+                CHECK(v.toDouble() == 0.0);
+            }
+            SECTION("abc") {
+                const JSONValue v = parse("\"abc\"");
+                check(v).string("abc");
+                CHECK(v.toBool() == true); // Non-empty string which is not "false"
+                CHECK(v.toInt() == 0);
+                CHECK(v.toDouble() == 0.0);
+            }
+            SECTION("true") {
+                const JSONValue v = parse("\"true\"");
+                check(v).string("true");
+                CHECK(v.toBool() == true);
+                CHECK(v.toInt() == 0);
+                CHECK(v.toDouble() == 0.0);
+            }
+            SECTION("false") {
+                const JSONValue v = parse("\"false\"");
+                check(v).string("false");
+                CHECK(v.toBool() == false);
+                CHECK(v.toInt() == 0);
+                CHECK(v.toDouble() == 0.0);
+            }
+            SECTION("3.1416") {
+                const JSONValue v = parse("\"3.1416\"");
+                check(v).string("3.1416");
+                CHECK(v.toBool() == true);
+                CHECK(v.toInt() == 3);
+                CHECK(v.toDouble() == 3.1416);
+            }
+            SECTION("1.0e+1") {
+                const JSONValue v = parse("\"1.0e+1\"");
+                check(v).string("1.0e+1");
+                CHECK(v.toBool() == true);
+                CHECK(v.toInt() == 1); // toInt() may produce incorrect results for floating point numbers
+                CHECK(v.toDouble() == 1.0e+1);
+            }
+        }
+        SECTION("array") {
+            const JSONValue v = parse("[]");
+            check(v).beginArray().endArray();
+            CHECK(v.toBool() == false);
+            CHECK(v.toInt() == 0);
+            CHECK(v.toDouble() == 0.0);
+            CHECK(v.toString() == "");
+        }
+        SECTION("object") {
+            const JSONValue v = parse("{}");
+            check(v).beginObject().endObject();
+            CHECK(v.toBool() == false);
+            CHECK(v.toInt() == 0);
+            CHECK(v.toDouble() == 0.0);
+            CHECK(v.toString() == "");
+        }
+    }
+
     SECTION("in-place processing vs copying") {
         SECTION("in-place processing") {
             char json[] = "\"abc\"";
@@ -696,8 +767,15 @@ TEST_CASE("JSONValue") {
 
 TEST_CASE("JSONString") {
     SECTION("construction") {
-        checkString(JSONString(), "");
-        checkString(JSONString(JSONValue()), ""); // Constructing from invalid JSONValue
+        JSONString s1; // Constructs empty string
+        CHECK(s1 == "");
+        CHECK(s1.size() == 0);
+        CHECK(s1.isEmpty() == true);
+        JSONValue v;
+        JSONString s2(v); // Constructing from invalid JSONValue
+        CHECK(s2 == "");
+        CHECK(s2.size() == 0);
+        CHECK(s2.isEmpty() == true);
     }
 
     SECTION("comparison") {
@@ -744,14 +822,14 @@ TEST_CASE("JSONArrayIterator") {
 TEST_CASE("JSONObjectIterator") {
     SECTION("construction") {
         JSONObjectIterator it1;
-        checkString(it1.name(), "");
-        check(it1.value()).invalid();
+        CHECK(it1.name() == "");
+        CHECK(it1.value().isValid() == false);
         CHECK(it1.count() == 0);
         CHECK(it1.next() == false);
         const JSONValue v;
         JSONObjectIterator it2(v); // Constructing from invalid JSONValue
-        checkString(it2.name(), "");
-        check(it2.value()).invalid();
+        CHECK(it2.name() == "");
+        CHECK(it2.value().isValid() == false);
         CHECK(it2.count() == 0);
         CHECK(it2.next() == false);
     }
