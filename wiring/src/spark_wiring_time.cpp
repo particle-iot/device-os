@@ -27,7 +27,9 @@
 #include "rtc_hal.h"
 #include "stdio.h"
 #include "stdlib.h"
-
+#include "spark_wiring_system.h"
+#include "spark_wiring_cloud.h"
+#include "system_mode.h"
 
 const char* TIME_FORMAT_DEFAULT = "asctime";
 const char* TIME_FORMAT_ISO8601_FULL = "%Y-%m-%dT%H:%M:%S%z";
@@ -248,6 +250,7 @@ int TimeClass::year(time_t t)
 /* return the current time as seconds since Jan 1 1970 */
 time_t TimeClass::now()
 {
+    (void)isValid();
 	return HAL_RTC_Get_UnixTime();
 }
 
@@ -363,5 +366,24 @@ String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time
     strftime(buf, 50, format_str, calendar_time);
     return String(buf);
 }
+
+bool TimeClass::isValid()
+{
+    bool rtcstate = HAL_RTC_Time_Is_Valid(nullptr);
+    if (rtcstate)
+        return rtcstate;
+    if (System.mode() == AUTOMATIC && system_thread_get_state(nullptr) == spark::feature::DISABLED)
+    {
+        waitUntil(Particle.syncTimeDone);
+        return HAL_RTC_Time_Is_Valid(nullptr);
+    }
+    return rtcstate;
+}
+
+TimeClass::operator bool() const
+{
+  return isValid();
+}
+
 
 TimeClass Time;

@@ -87,6 +87,18 @@ bool spark_sync_time(void *reserved)
     return spark_cloud_flag_connected();
 }
 
+bool spark_sync_time_pending(void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_pending(reserved));
+    return spark_protocol_time_request_pending(sp, nullptr);
+}
+
+system_tick_t spark_sync_time_last(time_t* tm, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_pending(reserved));
+    return spark_protocol_time_last_synced(sp, tm, nullptr);
+}
+
 /**
  * Convert from the API flags to the communications lib flags
  * The event visibility flag (public/private) is encoded differently. The other flags map directly.

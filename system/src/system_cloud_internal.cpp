@@ -659,7 +659,7 @@ void Spark_Protocol_Init(void)
     }
 }
 
-void system_set_time(time_t time, unsigned, void*)
+void system_set_time(time_t time, unsigned param, void*)
 {
     HAL_RTC_Set_UnixTime(time);
 }

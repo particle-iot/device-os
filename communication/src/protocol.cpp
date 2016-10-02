@@ -167,7 +167,7 @@ void Protocol::handle_time_response(uint32_t time)
 	//uint32_t latency = last_chunk_millis ? (callbacks.millis()-last_chunk_millis)/2000 : 0;
 	//last_chunk_millis = 0;
 	// todo - compute connection latency
-	callbacks.set_time(time, 0, NULL);
+	timesync_.handle_time_response(time, callbacks.millis(), callbacks.set_time);
 }
 
 /**
@@ -243,6 +243,7 @@ int Protocol::begin()
 {
 	chunkedTransfer.reset();
 	pinger.reset();
+	timesync_.reset();
 
 	uint32_t channel_flags = 0;
 	ProtocolError error = channel.establish(channel_flags, application_state_checksum());

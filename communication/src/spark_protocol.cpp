@@ -58,6 +58,7 @@ void SparkProtocol::reset_updating(void)
 {
   updating = false;
   last_chunk_millis = 0;    // this is used for the time latency also
+  timesync_.reset();
 }
 
 SparkProtocol::SparkProtocol() : QUEUE_SIZE(sizeof(queue)), handlers({sizeof(handlers), NULL}), expecting_ping_ack(false),
@@ -518,11 +519,13 @@ bool SparkProtocol::send_time_request(void)
     return false;
   }
 
-  size_t msglen = time_request(queue + 2);
-  size_t wrapped_len = wrap(queue, msglen);
-  last_chunk_millis = callbacks.millis();
+  return timesync_.send_request(callbacks.millis(), [&]() {
+    size_t msglen = time_request(queue + 2);
+    size_t wrapped_len = wrap(queue, msglen);
+    last_chunk_millis = callbacks.millis();
 
-  return (0 <= blocking_send(queue, wrapped_len));
+    return (0 <= blocking_send(queue, wrapped_len));
+  });
 }
 
 bool SparkProtocol::send_subscription(const char *event_name, const char *device_id)
@@ -1542,7 +1545,7 @@ void SparkProtocol::handle_time_response(uint32_t time)
     // deduct latency
     uint32_t latency = last_chunk_millis ? (callbacks.millis()-last_chunk_millis)/2000 : 0;
     last_chunk_millis = 0;
-    callbacks.set_time(time-latency,0,NULL);
+    timesync_.handle_time_response(time - latency, callbacks.millis(), callbacks.set_time);
 }
 
 unsigned short SparkProtocol::next_message_id()

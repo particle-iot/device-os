@@ -147,6 +147,17 @@ int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd,
 	return 0;
 }
 
+bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_request_pending();
+}
+system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_last_synced(tm);
+}
+
 #else
 
 #include "spark_protocol.h"
@@ -239,6 +250,17 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
 {
 	return 0;
+}
+
+bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_request_pending();
+}
+system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_last_synced(tm);
 }
 
 #endif

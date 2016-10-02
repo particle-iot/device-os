@@ -284,6 +284,28 @@ public:
         return CLOUD_FN(spark_sync_time(NULL), false);
     }
 
+    bool syncTimePending(void)
+    {
+        return connected() && CLOUD_FN(spark_sync_time_pending(nullptr), false);
+    }
+
+    bool syncTimeDone(void)
+    {
+        return !CLOUD_FN(spark_sync_time_pending(nullptr), false) || disconnected();
+    }
+
+    system_tick_t timeSyncedLast(void)
+    {
+        time_t dummy;
+        return timeSyncedLast(dummy);
+    }
+
+    system_tick_t timeSyncedLast(time_t& tm)
+    {
+        tm = 0;
+        return CLOUD_FN(spark_sync_time_last(&tm, nullptr), 0);
+    }
+
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(seconds); }
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))

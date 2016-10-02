@@ -27,6 +27,8 @@
 #include "rtc_hal.h"
 #include "stm32f2xx_rtc.h"
 #include "hw_config.h"
+#include "interrupts_hal.h"
+#include "debug.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -35,7 +37,7 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-
+static time_t HAL_RTC_Time_Last_Set = 0;
 /* Extern variables ----------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -58,7 +60,7 @@ void setRTCTime(RTC_TimeTypeDef* RTC_TimeStructure, RTC_DateTypeDef* RTC_DateStr
 	}
 }
 
-/* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
+/* Set date/time to 2000/01/01 00:00:00 */
 void HAL_RTC_Initialize_UnixTime()
 {
     RTC_TimeTypeDef RTC_TimeStructure;
@@ -70,10 +72,10 @@ void HAL_RTC_Initialize_UnixTime()
     RTC_TimeStructure.RTC_Seconds = 0;
 
     /* Get calendar_time date struct values */
-    RTC_DateStructure.RTC_WeekDay = 4;
+    RTC_DateStructure.RTC_WeekDay = 6;
     RTC_DateStructure.RTC_Date = 1;
     RTC_DateStructure.RTC_Month = 0;
-    RTC_DateStructure.RTC_Year = 70;
+    RTC_DateStructure.RTC_Year = 0;
 
     setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
 }
@@ -153,7 +155,7 @@ void HAL_RTC_Configuration(void)
 		    if (RTC_Init(&RTC_InitStructure) != ERROR)
 		    {
                         /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
-                        /* Set Date/Time to Epoch 0 (Thu, 01 Jan 1970 00:00:00 GMT) */
+                        /* Set date/time to 2000/01/01 00:00:00 */
                         HAL_RTC_Initialize_UnixTime();
 
                         /* Indicator for the RTC configuration */
@@ -183,7 +185,8 @@ time_t HAL_RTC_Get_UnixTime(void)
 	calendar_time.tm_wday = RTC_DateStructure.RTC_WeekDay;
 	calendar_time.tm_mday = RTC_DateStructure.RTC_Date;
 	calendar_time.tm_mon = RTC_DateStructure.RTC_Month-1;
-	calendar_time.tm_year = RTC_DateStructure.RTC_Year;
+    // STM32F2 year is only 2-digit (00 - 99)
+	calendar_time.tm_year = RTC_DateStructure.RTC_Year + 100;
 
 	return (time_t)mktime(&calendar_time);
 }
@@ -205,9 +208,13 @@ void HAL_RTC_Set_UnixTime(time_t value)
 	RTC_DateStructure.RTC_WeekDay = calendar_time->tm_wday;
 	RTC_DateStructure.RTC_Date = calendar_time->tm_mday;
 	RTC_DateStructure.RTC_Month = calendar_time->tm_mon+1;
-	RTC_DateStructure.RTC_Year = calendar_time->tm_year;
+    // STM32F2 year is only 2-digit (00 - 99)
+	RTC_DateStructure.RTC_Year = calendar_time->tm_year % 100;
 
-        setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
+    int32_t state = HAL_disable_irq();
+    setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
+    HAL_RTC_Time_Last_Set = value;
+    HAL_enable_irq(state);
 }
 
 void HAL_RTC_Set_UnixAlarm(time_t value)
@@ -271,3 +278,28 @@ void RTC_Alarm_irq(void)
 	}
 }
 
+uint8_t HAL_RTC_Time_Is_Valid(void* reserved)
+{
+    uint8_t valid = 0;
+    int32_t state = HAL_disable_irq();
+    for (;;)
+    {
+        RTC_DateTypeDef RTC_DateStructure;
+        RTC_GetDate(RTC_Format_BIN, &RTC_DateStructure);
+
+        if (!(RTC->ISR & RTC_ISR_INITS))
+            break;
+
+        if (RTC_DateStructure.RTC_Year == 0)
+            break;
+
+        if (HAL_RTC_Time_Last_Set && HAL_RTC_Get_UnixTime() < HAL_RTC_Time_Last_Set)
+            break;
+
+        valid = 1;
+        break;
+    }
+    HAL_enable_irq(state);
+
+    return valid;
+}

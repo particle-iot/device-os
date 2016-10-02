@@ -105,10 +105,10 @@ test(TIME_06_DSTOffsetIsReturned) {
 test(TIME_07_SetTimeResultsInCorrectUnixTimeUpdate) {
     // when
     time_t current_time = Time.now();
-    Time.setTime(86400);//set to epoch time + 1 day
+    Time.setTime(978307200);//set to 2001/01/01 00:00:00
     // then
     time_t temp_time = Time.now();
-    assertEqual(temp_time, 86400);
+    assertEqual(temp_time, 978307200);
     // restore original time
     Time.setTime(current_time);
 }
@@ -204,6 +204,87 @@ test(TIME_12_concatenate) {
     String s = Time.timeStr(t);
     s += "abcd";
     assertEqual(s.c_str(), (const char*)"Sat Jan 10 13:37:04 2004abcd");
+}
+
+test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
+{
+    if (!Particle.connected())
+    {
+        Particle.connect();
+        waitFor(Particle.connected, 10000);
+    }
+    assertTrue(Particle.connected());
+    Particle.syncTime();
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 10000);
+    assertTrue(Particle.disconnected());
+
+    assertTrue(Particle.syncTimeDone());
+    assertFalse(Particle.syncTimePending());
+}
+
+test(TIME_14_timeSyncedLast_works_correctly)
+{
+    if (!Particle.connected())
+    {
+        Particle.connect();
+        waitFor(Particle.connected, 10000);
+    }
+    uint32_t mil = millis();
+    Particle.syncTime();
+    waitFor(Particle.syncTimeDone, 10000);
+    assertMore(Particle.timeSyncedLast(), mil);
+}
+
+test(TIME_15_SyncTimeInAutomaticMode) {
+    time_t syncedLast, temp;
+    system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLast);
+    // Invalid time (year = 00) 2000/01/01 00:00:00
+    Time.setTime(946684800);
+    assertFalse(Time.isValid());
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 10000);
+
+    set_system_mode(AUTOMATIC);
+
+    Particle.connect();
+    waitFor(Particle.connected, 10000);
+    // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
+    Particle.syncTime();
+    assertTrue(Time.isValid());
+    assertMore(Particle.timeSyncedLast(temp), syncedLastMillis);
+    assertMore(temp, syncedLast);
+}
+
+test(TIME_16_SyncTimeInManualMode) {
+    time_t syncedLast, temp;
+    system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLast);
+    // Invalid time (year = 00) 2000/01/01 00:00:00
+    Time.setTime(946684800);
+    assertFalse(Time.isValid());
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 10000);
+
+    set_system_mode(MANUAL);
+
+    Particle.connect();
+    waitFor(Particle.connected, 10000);
+    // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
+    Particle.syncTime();
+    if (!Time.isValid()) {
+         waitFor(Particle.syncTimeDone, 10000);
+    }
+    assertTrue(Time.isValid());
+    assertMore(Particle.timeSyncedLast(temp), syncedLastMillis);
+    assertMore(temp, syncedLast);
+}
+
+test(TIME_17_RestoreSystemMode) {
+    set_system_mode(AUTOMATIC);
+    if (!Particle.connected()) {
+        Particle.connect();
+        waitFor(Particle.connected, 10000);
+    }
 }
 
 #endif
