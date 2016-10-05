@@ -150,34 +150,63 @@ RPi_Pin_Info* HAL_Pin_Map(void);
 #define TOTAL_PINS 28
 #define TOTAL_ANALOG_PINS 0
 #define FIRST_ANALOG_PIN 0
-#define D0 0
-#define D1 1
-#define D2 2
-#define D3 3
-#define D4 4
-#define D5 5
-#define D6 6
-#define D7 7
-#define D8 8
-#define D9 4
-#define D10 10
-#define D11 11
-#define D12 12
-#define D13 13
-#define D14 14
-#define D15 15
-#define D16 16
-#define D17 17
-#define D18 18
-#define D19 19
-#define D20 20
-#define D21 21
-#define D22 22
-#define D23 23
-#define D24 24
-#define D25 25
-#define D26 26
-#define D27 27
+
+// Broadcom pin numbers
+#define BCM0 0
+#define BCM1 1
+#define BCM2 2
+#define BCM3 3
+#define BCM4 4
+#define BCM5 5
+#define BCM6 6
+#define BCM7 7
+#define BCM8 8
+#define BCM9 4
+#define BCM10 10
+#define BCM11 11
+#define BCM12 12
+#define BCM13 13
+#define BCM14 14
+#define BCM15 15
+#define BCM16 16
+#define BCM17 17
+#define BCM18 18
+#define BCM19 19
+#define BCM20 20
+#define BCM21 21
+#define BCM22 22
+#define BCM23 23
+#define BCM24 24
+#define BCM25 25
+#define BCM26 26
+#define BCM27 27
+
+// Particle pins
+#define D0 BCM4
+#define D1 BCM17
+#define D2 BCM27
+#define D3 BCM22
+#define D4 BCM5
+#define D5 BCM6
+#define D6 BCM13
+#define D7 BCM19
+#define D8 BCM26
+#define D9 BCM23
+#define D10 BCM24
+#define D11 BCM25
+#define D12 BCM12
+#define D13 BCM16
+#define D14 BCM20
+#define D15 BCM21
+
+#define A0 D8
+#define A1 D9
+#define A2 D10
+#define A3 D11
+#define A4 D12
+#define A5 D13
+#define A6 D14
+#define A7 D15
 
 // PWM pins
 
@@ -190,6 +219,7 @@ RPi_Pin_Info* HAL_Pin_Map(void);
 
 // SPI pins
 
+#define SS   8
 #define CE0  8
 #define CE1  7
 #define SCK  21
