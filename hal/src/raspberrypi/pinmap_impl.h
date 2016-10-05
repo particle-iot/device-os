@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 typedef struct RPi_Pin_Info {
-  bool pwmCapable;
+  bool pwm_capable;
   PinMode pin_mode;
 } RPi_Pin_Info;
 

@@ -12,8 +12,15 @@ inline bool is_valid_pin(pin_t pin)
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
 {
-    // Only digital pins supported by the Raspberry Pi
-    return (!is_valid_pin(pin)) ? PF_NONE : PF_DIO;
+    RPi_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (!is_valid_pin(pin)) {
+        return PF_NONE;
+    }
+    if (pinFunction == PF_TIMER && PIN_MAP[pin].pwm_capable) {
+        return PF_TIMER;
+    }
+    return PF_DIO;
 }
 
 void HAL_Pin_Mode(pin_t pin, PinMode mode)
