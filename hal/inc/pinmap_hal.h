@@ -48,6 +48,7 @@ typedef enum PinMode {
   AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
   AN_INPUT,           //Used internally for ADC Input
   AN_OUTPUT,          //Used internally for DAC Output
+  AF_OUTPUT_PWM,      //Used internally for platforms where PWM mode is different than OUTPUT
   PIN_MODE_NONE=0xFF
 } PinMode;
 

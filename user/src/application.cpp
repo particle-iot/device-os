@@ -227,8 +227,18 @@ int tinkerAnalogRead(String pin)
 int tinkerAnalogWrite(String command)
 {
 #if PLATFORM_ID==31
-    // Raspberry Pi doesn't have analog pins
-    return -2;
+    // Raspberry Pi uses raw pin numbers
+    int pinNumber = command.toInt();
+
+    //Sanity check to see if the pin numbers are within limits
+    if (pinNumber < 0 || pinNumber > 27) return -1;
+
+    int valueStart = pinNumber < 10 ? 2 : 3;
+    String value = command.substring(valueStart);
+
+    pinMode(pinNumber, OUTPUT);
+    analogWrite(pinNumber, value.toInt());
+    return 1;
 #else
     String value = command.substring(3);
 
