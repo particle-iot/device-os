@@ -30,6 +30,7 @@
 #include "spark_wiring_system.h"
 #include "spark_wiring_watchdog.h"
 #include "interrupts_hal.h"
+#include "system_mode.h"
 #include <functional>
 
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
@@ -293,7 +294,15 @@ public:
 
     static bool connected(void) { return spark_cloud_flag_connected(); }
     static bool disconnected(void) { return !connected(); }
-    static void connect(void) { spark_cloud_flag_connect(); }
+    static void connect(void) {
+        spark_cloud_flag_connect();
+        if (system_thread_get_state(nullptr)==spark::feature::DISABLED &&
+            SystemClass::mode() == SEMI_AUTOMATIC)
+        {
+            // Particle.connect() should be blocking in SEMI_AUTOMATIC mode when threading is disabled
+            waitUntil(connected);
+        }
+    }
     static void disconnect(void) { spark_cloud_flag_disconnect(); }
     static void process(void) {
     		application_checkin();
