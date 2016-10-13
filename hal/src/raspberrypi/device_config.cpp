@@ -190,9 +190,12 @@ void DeviceConfig::read(Configuration& configuration)
 {
     size_t length = configuration.device_id.length();
     if (length!=24) {
-        throw std::invalid_argument(std::string("expected device ID of length 24 from config ") + DEVICE_ID + ", got: '"+configuration.device_id+ "'");
+        char device_id_file[24];
+        read_file("device_id.txt", device_id_file, sizeof(device_id_file));
+        hex2bin(device_id_file, device_id, sizeof(device_id));
+    } else {
+        hex2bin(configuration.device_id, device_id, sizeof(device_id));
     }
-    hex2bin(configuration.device_id, device_id, sizeof(device_id));
 
     read_file(configuration.device_key.c_str(), device_key, sizeof(device_key));
     read_file(configuration.server_key.c_str(), server_key, sizeof(server_key));
