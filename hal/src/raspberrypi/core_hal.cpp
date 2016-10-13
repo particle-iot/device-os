@@ -120,6 +120,11 @@ extern "C" int main(int argc, char* argv[])
 class RPiStartup {
     public:
     RPiStartup() {
+        if (geteuid () != 0) {
+            std::cerr << "Firmware must run as root. Run again with sudo\n";
+            exit(1);
+        }
+
         HAL_Core_Config();
     }
 };
