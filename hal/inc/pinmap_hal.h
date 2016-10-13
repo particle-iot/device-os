@@ -192,13 +192,14 @@ RPi_Pin_Info* HAL_Pin_Map(void);
 #define D6 BCM13
 #define D7 BCM19
 #define D8 BCM26
-#define D9 BCM23
-#define D10 BCM24
-#define D11 BCM25
-#define D12 BCM12
-#define D13 BCM16
-#define D14 BCM20
-#define D15 BCM21
+#define D9 BCM18
+#define D10 BCM23
+#define D11 BCM24
+#define D12 BCM25
+#define D13 BCM12
+#define D14 BCM16
+#define D15 BCM20
+#define D16 BCM21
 
 #define A0 D8
 #define A1 D9
@@ -208,10 +209,6 @@ RPi_Pin_Info* HAL_Pin_Map(void);
 #define A5 D13
 #define A6 D14
 #define A7 D15
-
-// PWM pins
-
-#define PWM0 18
 
 // UART pins
 
