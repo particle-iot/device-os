@@ -452,11 +452,11 @@ inline T spark::Vector<T, AllocatorT>::takeLast() {
 template<typename T, typename AllocatorT>
 inline T spark::Vector<T, AllocatorT>::takeAt(int i) {
     T* const p = data_ + i;
-    const T v(std::move(*p));
+    T v(std::move(*p));
     p->~T();
     move(p, p + 1, data_ + size_);
     --size_;
-    return v;
+    return std::move(v);
 }
 
 template<typename T, typename AllocatorT>
