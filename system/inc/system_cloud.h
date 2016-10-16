@@ -21,6 +21,7 @@
 #include "static_assert.h"
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
+#include "completion_handler.h"
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
@@ -138,6 +139,14 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
  * @param reserved  For future expansion, set to NULL.
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved);
+
+// Additional parameters for spark_send_event()
+typedef struct {
+    size_t size;
+    completion_callback handler_callback;
+    void* handler_data;
+} spark_send_event_data;
+
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);

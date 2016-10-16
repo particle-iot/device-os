@@ -145,6 +145,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum message_type, system_tick_t
 // Returns false if there was an error, and we are probably disconnected.
 bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
 {
+  ack_completion_handlers.processTimeouts();
     message_type = CoAPMessageType::NONE;
   int bytes_received = callbacks.receive(queue, 2, nullptr);
   if (2 <= bytes_received)
@@ -456,10 +457,11 @@ inline bool is_system(const char* event_name) {
 
 // Returns true on success, false on sending timeout or rate-limiting failure
 bool SparkProtocol::send_event(const char *event_name, const char *data,
-                               int ttl, EventType::Enum event_type)
+                               int ttl, EventType::Enum event_type, CompletionHandler handler)
 {
   if (updating)
   {
+    handler.setError(SYSTEM_ERROR_BUSY);
     return false;
   }
 
@@ -471,8 +473,10 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
 
       uint16_t currentMinute = uint16_t(callbacks.millis()>>16);
       if (currentMinute==lastMinute) {      // == handles millis() overflow
-          if (eventsThisMinute==255)
+          if (eventsThisMinute==255) {
+              handler.setError(SYSTEM_ERROR_QUOTA_EXCEEDED);
               return false;
+          }
       }
       else {
           lastMinute = currentMinute;
@@ -493,14 +497,20 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
     if (now - recent_event_ticks[evt_tick_idx] < 1000)
     {
       // exceeded allowable burst of 4 events per second
+      handler.setError(SYSTEM_ERROR_QUOTA_EXCEEDED);
       return false;
     }
   }
   uint16_t msg_id = next_message_id();
   size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, false);
   size_t wrapped_len = wrap(queue, msglen);
-
-  return (0 <= blocking_send(queue, wrapped_len));
+  const int n = blocking_send(queue, wrapped_len);
+  if (n < 0) {
+    handler.setError(SYSTEM_ERROR_NETWORK_ERROR);
+    return false;
+  }
+  ack_completion_handlers.add(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
+  return true;
 }
 
 size_t SparkProtocol::time_request(unsigned char *buf)
@@ -1500,6 +1510,9 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
       break;
 
     case CoAPMessageType::EMPTY_ACK:
+      ack_completion_handlers.setResult(message.id);
+      break;
+
     case CoAPMessageType::ERROR:
     default:
       ; // drop it on the floor
@@ -1527,11 +1540,14 @@ CoAPMessageType::Enum SparkProtocol::handle_received_message(void)
   unsigned char token = queue[4];
   unsigned char *msg_to_send = queue + len;
 
+  const uint16_t msg_id = (uint16_t)queue[2] << 8 | (uint16_t)queue[3];
+
   msg message;
   message.len = len;
   message.token = queue[4];
   message.response = msg_to_send;
   message.response_len = QUEUE_SIZE-len;
+  message.id = msg_id;
 
   return handle_message(message, token, message_type)
           ? message_type : CoAPMessageType::ERROR;

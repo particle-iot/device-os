@@ -29,3 +29,24 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     desc.funcKey = funcKey;
     return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
+
+spark::Future<void> CloudClass::publish(const char *eventName, const char *eventData, int ttl, uint32_t flags) {
+#ifndef SPARK_NO_CLOUD
+    spark_send_event_data d = { sizeof(spark_send_event_data) };
+
+    // Completion handler
+    spark::Promise<void> p;
+    d.handler_callback = p.systemCallback;
+    d.handler_data = p.toData();
+
+    if (!spark_send_event(eventName, eventData, ttl, flags, &d) && !p.isDone()) {
+        // Set generic error code in case completion callback wasn't invoked by the system for some reason
+        p.setError(spark::Error::UNKNOWN);
+        p.fromData(d.handler_data); // Free wrapper object
+    }
+
+    return p.future();
+#else
+    return spark::Future<void>::makeFailed(spark::Error::NOT_SUPPORTED);
+#endif
+}
