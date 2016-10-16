@@ -22,6 +22,7 @@
 #include "spark_wiring_error.h"
 
 #include "system_cloud.h"
+#include "system_task.h"
 
 #include <functional>
 #include <memory>
@@ -62,8 +63,8 @@ template<typename ResultT>
 struct FutureDataBase {
     std::atomic<bool> done; // Signals that future is in a final state
     std::atomic<FutureState> state; // Future state
-    std::atomic<typename FutureCallbackTypes<ResultT>::OnSuccess*> onSuccess; // Pointer to callback for succeeded operation
-    std::atomic<typename FutureCallbackTypes<ResultT>::OnError*> onError; // Pointer to callback for failed operation
+    std::atomic<typename FutureCallbackTypes<ResultT>::OnSuccess*> onSuccess; // User callback for succeeded operation
+    std::atomic<typename FutureCallbackTypes<ResultT>::OnError*> onError; // User callback for failed operation
 
     explicit FutureDataBase(FutureState state) :
             done(state != FutureState::RUNNING),
@@ -78,7 +79,7 @@ struct FutureDataBase {
     }
 };
 
-// Internal future implementation
+// Internal future data
 template<typename ResultT>
 struct FutureData: FutureDataBase<ResultT> {
     union {
@@ -86,9 +87,7 @@ struct FutureData: FutureDataBase<ResultT> {
         Error error;
     };
 
-    explicit FutureData(FutureState state) :
-            FutureDataBase<ResultT>(state) {
-    }
+    using FutureDataBase<ResultT>::FutureDataBase;
 
     virtual ~FutureData() {
         // Call destructor of the appropriate unnamed enum's field
@@ -101,14 +100,12 @@ struct FutureData: FutureDataBase<ResultT> {
     }
 };
 
-// Internal future implementation. Specialization for void result type
+// Internal future data. Specialization for void result type
 template<>
 struct FutureData<void>: FutureDataBase<void> {
     Error error;
 
-    explicit FutureData(FutureState state) :
-            FutureDataBase<void>(state) {
-    }
+    using FutureDataBase<void>::FutureDataBase;
 };
 
 template<typename ResultT>
@@ -121,14 +118,13 @@ struct FutureContext {
     }
 
     // Asynchronously invokes callback in the application context
-    static void invokeApplicationCallback(void (*callback)(void* data), void* data) {
-        // TODO
+    static bool invokeApplicationCallback(void (*callback)(void* data), void* data) {
+        return (application_thread_invoke(callback, data, nullptr) == 0);
     }
 
     // Returns true if current thread is the application thread
     static bool isApplicationThreadCurrent() {
-        // TODO
-        return true;
+        return (application_thread_current(nullptr) != 0);
     }
 };
 
@@ -146,7 +142,7 @@ inline void invokeFutureCallback(const std::function<FunctionT>& callback, ArgsT
     }
 }
 
-// Convenience overload taking callback from its atomic wrapper
+// Convenience overload taking pointer to a callback from its atomic wrapper
 template<typename ContextT, typename FunctionT, typename... ArgsT>
 inline void invokeFutureCallback(std::atomic<std::function<FunctionT>*>& callback, ArgsT&&... args) {
     std::function<FunctionT>* callbackPtr = callback.exchange(nullptr, std::memory_order_acquire);
@@ -192,12 +188,12 @@ public:
         }
     }
 
-    bool isDone() const {
-        return d_->done.load(std::memory_order_relaxed);
-    }
-
     Future<ResultT, ContextT> future() const {
         return Future<ResultT, ContextT>(d_);
+    }
+
+    bool isDone() const {
+        return d_->done.load(std::memory_order_relaxed);
     }
 
     // Wraps this promise into an object that can be passed to a C function
@@ -249,6 +245,7 @@ public:
     }
 };
 
+// Specialization for void result type
 template<typename ContextT>
 class Promise<void, ContextT>: public PromiseBase<void, ContextT> {
 public:
@@ -394,6 +391,7 @@ public:
     }
 };
 
+// Specialization for void result type
 template<typename ContextT>
 class Future<void, ContextT>: public FutureBase<void, ContextT> {
 public:

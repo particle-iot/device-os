@@ -490,3 +490,12 @@ uint8_t system_thread_current(void* reserved)
 {
     return SYSTEM_THREAD_CURRENT();
 }
+
+uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void* reserved)
+{
+    // FIXME: We need a way to report an error back to caller, if asynchronous function call can't
+    // be scheduled for some reason
+    APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(application_thread_invoke(callback, data, reserved), 0);
+    callback(data);
+    return 0;
+}
