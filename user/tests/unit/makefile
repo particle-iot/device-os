@@ -45,6 +45,7 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_logging.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_json.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_async.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
@@ -58,6 +59,7 @@ CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,debug.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,jsmn.c)
 CPPSRC += $(call target_files,$(LIB_SERVICES)src,logging.cpp)
+CPPSRC += $(call target_files,$(LIB_SERVICES)src,system_error.cpp)
 
 
 # Additional include directories, applied to objects built for this target.
