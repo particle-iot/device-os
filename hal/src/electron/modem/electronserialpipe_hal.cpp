@@ -218,13 +218,13 @@ void ElectronSerialPipe::rxIrqBuf(void)
         char c = USART_ReceiveData(USART3);
         _pipeRx.putc(c);
     } else {
-        /* TODO: Handle overflow?
-         * We should not read USART3->RDR register in order to
-         * signal to the modem that we are not ready to receive,
-         * then try to process and free the buffer.
-         */
-        (void)USART_ReceiveData(USART3);
+        USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
     }
+}
+
+void ElectronSerialPipe::rxResume(void)
+{
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
 }
 
 /*******************************************************************************
