@@ -322,7 +322,8 @@ wlan_result_t wlan_activate()
 wlan_result_t wlan_deactivate()
 {
     wlan_disconnect_now();
-    return 0;
+    wiced_result_t result = wiced_wlan_connectivity_deinit();
+    return result;
 }
 
 wlan_result_t wlan_disconnect_now()
