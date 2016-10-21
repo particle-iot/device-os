@@ -100,6 +100,7 @@ public:
 
     bool add(const KeyT& key, CompletionHandler&& handler, unsigned timeout = defaultTimeoutMillis) {
         if (handler) {
+            // FIXME: Handle timer overflow
             const system_tick_t t = HAL_Timer_Get_Milli_Seconds() + timeout; // Absolute expiration time
             if (!handlers_.append(Handler(key, std::move(handler), t))) {
                 return false;

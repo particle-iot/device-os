@@ -42,12 +42,13 @@ public:
     }
 
     static void invokeApplicationCallback(void (*callback)(void* data), void* data) {
-        // TODO
+        instance()->postEvent([=]() {
+            callback(data);
+        });
     }
 
     static bool isApplicationThreadCurrent() {
-        // TODO
-        return true;
+        return true; // TODO
     }
 
 private:
@@ -132,7 +133,7 @@ TEST_CASE("Future<void>") {
         CHECK(f.error().type() == Error::UNKNOWN);
     }
 
-    SECTION("waiting for succeeded operation (single thread)") {
+    SECTION("waiting for succeeded operation") {
         Promise p;
         Future f = p.future();
         postEvent([&p]() {
@@ -142,7 +143,7 @@ TEST_CASE("Future<void>") {
         CHECK(f.isSucceeded() == true);
     }
 
-    SECTION("waiting for failed operation (single thread)") {
+    SECTION("waiting for failed operation") {
         Promise p;
         Future f = p.future();
         postEvent([&p]() {
@@ -153,37 +154,31 @@ TEST_CASE("Future<void>") {
         CHECK(f.error().type() == Error::UNKNOWN);
     }
 
-    SECTION("waiting for timed out operation (single thread)") {
+    SECTION("waiting for timed out operation") {
         Promise p;
         Future f = p.future();
         CHECK(f.wait(50).isDone() == false); // 50 ms
     }
 
-    SECTION("callback for succeeded operation (single thread)") {
+    SECTION("callback for succeeded operation") {
         Promise p;
         Future f = p.future();
         bool called = false;
         f.onSuccess([&called]() {
             called = true;
         });
-        postEvent([&p]() {
-            p.setResult();
-        });
-        f.wait();
+        p.setResult();
         CHECK(called == true);
     }
 
-    SECTION("callback for failed operation (single thread)") {
+    SECTION("callback for failed operation") {
         Promise p;
         Future f = p.future();
         Error error(Error::NONE);
         f.onError([&error](Error e) {
             error = e;
         });
-        postEvent([&p]() {
-            p.setError(Error::UNKNOWN);
-        });
-        f.wait();
+        p.setError(Error::UNKNOWN);
         CHECK(error.type() == Error::UNKNOWN);
     }
 
@@ -203,6 +198,56 @@ TEST_CASE("Future<void>") {
         f2.onError([&error](Error e) {
             error = e;
         });
+        CHECK(error.type() == Error::UNKNOWN);
+    }
+
+    SECTION("callbacks are not invoked for cancelled future") {
+        // Succeeded operation
+        Promise p1;
+        Future f1 = p1.future();
+        bool called = false;
+        f1.onSuccess([&called]() {
+            called = true;
+        });
+        CHECK(f1.cancel() == true);
+        p1.setResult();
+        CHECK(called == false);
+        // Failed operation
+        Promise p2;
+        Future f2 = p2.future();
+        Error error(Error::NONE);
+        f2.onError([&error](Error e) {
+            error = e;
+        });
+        CHECK(f2.cancel() == true);
+        p2.setError(Error::UNKNOWN);
+        CHECK(error.type() == Error::NONE);
+    }
+
+    SECTION("callbacks are invoked before wait() returns") {
+        // Succeeded operation
+        Promise p1;
+        Future f1 = p1.future();
+        bool called = false;
+        f1.onSuccess([&called]() {
+            called = true;
+        });
+        postEvent([&p1]() {
+            p1.setResult();
+        });
+        f1.wait();
+        CHECK(called == true);
+        // Failed operation
+        Promise p2;
+        Future f2 = p2.future();
+        Error error(Error::NONE);
+        f2.onError([&error](Error e) {
+            error = e;
+        });
+        postEvent([&p2]() {
+            p2.setError(Error::UNKNOWN);
+        });
+        f2.wait();
         CHECK(error.type() == Error::UNKNOWN);
     }
 }
@@ -248,7 +293,7 @@ TEST_CASE("Future<int>") {
         CHECK(f.result() == 0); // Default-constructed value
     }
 
-    SECTION("waiting for succeeded operation (single thread)") {
+    SECTION("waiting for succeeded operation") {
         Promise p;
         Future f = p.future();
         postEvent([&p]() {
@@ -259,17 +304,14 @@ TEST_CASE("Future<int>") {
         CHECK(f.result() == 1);
     }
 
-    SECTION("callback for succeeded operation (single thread)") {
+    SECTION("callback for succeeded operation") {
         Promise p;
         Future f = p.future();
         int result = 0;
         f.onSuccess([&result](int r) {
             result = r;
         });
-        postEvent([&p]() {
-            p.setResult(1);
-        });
-        f.wait();
+        p.setResult(1);
         CHECK(result == 1);
     }
 }
