@@ -33,6 +33,7 @@
 const char* system_error_message(int error, void* reserved) {
     switch (error) {
         SYSTEM_ERROR_MESSAGE_SWITCH_CASES()
-        default: return ""; // Unknown error
+        default:
+            return "Unknown error";
     }
 }

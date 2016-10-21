@@ -24,14 +24,20 @@
 #define SYSTEM_ERRORS \
         (NONE, "", 0), \
         (UNKNOWN, "Unknown error", 100), \
-        (TIMEOUT, "Timeout", 200), \
-        (BUSY, "Busy", 300), \
-        (CANCELLED, "Cancelled", 400), \
-        (ABORTED, "Aborted", 500), \
-        (NOT_SUPPORTED, "Not supported", 600), \
-        (NOT_ALLOWED, "Not allowed", 700), \
-        (QUOTA_EXCEEDED, "Quota exceeded", 800), \
-        (NETWORK_ERROR, "Network error", 900)
+        (BUSY, "Resource busy", 200), \
+        (NOT_SUPPORTED, "Not supported", 300), \
+        (NOT_ALLOWED, "Not allowed", 400), \
+        (CANCELLED, "Operation cancelled", 500), \
+        (ABORTED, "Operation aborted", 600), \
+        (TIMEOUT, "Timeout error", 700), \
+        (NOT_FOUND, "Not found", 800), \
+        (ALREADY_EXIST, "Already exists", 900), \
+        (TOO_LARGE, "Too large data", 1000), \
+        (QUOTA_EXCEEDED, "Quota exceeded", 1100), \
+        (INVALID_STATE, "Invalid state", 1200), \
+        (IO, "IO error", 1300), \
+        (NETWORK, "Network error", 1400), \
+        (PROTOCOL, "Protocol error", 1500)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
