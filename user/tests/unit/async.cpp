@@ -1,6 +1,6 @@
 #include "spark_wiring_async.h"
 
-#include "catch.hpp"
+#include "tools/catch.h"
 
 #include <thread>
 #include <deque>
@@ -107,6 +107,11 @@ TEST_CASE("Future<void>") {
         CHECK(f.isCancelled() == false);
         CHECK(f.isDone() == true);
         CHECK(f.error().type() == Error::NONE);
+    }
+
+    SECTION("making succeeded future (convenience method)") {
+        Future f = Future::makeSucceeded();
+        CHECK(f.isSucceeded() == true);
     }
 
     SECTION("making failed future") {
@@ -225,6 +230,12 @@ TEST_CASE("Future<int>") {
         Promise p;
         Future f = p.future();
         p.setResult(1);
+        CHECK(f.isSucceeded() == true);
+        CHECK(f.result() == 1);
+    }
+
+    SECTION("making succeeded future (convenience method)") {
+        Future f = Future::makeSucceeded(1);
         CHECK(f.isSucceeded() == true);
         CHECK(f.result() == 1);
     }
