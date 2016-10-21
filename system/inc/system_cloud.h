@@ -93,7 +93,7 @@ STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 const uint32_t PUBLISH_EVENT_FLAG_PUBLIC = 0x0;
 const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 0x1;
 const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 0x2;
-const uint32_t PUBLISH_EVENT_FLAG_REQUIRE_ACK = 0x8;
+const uint32_t PUBLISH_EVENT_FLAG_WITH_ACK = 0x8;
 
 STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
 

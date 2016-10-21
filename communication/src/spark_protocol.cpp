@@ -504,7 +504,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
     }
   }
   uint16_t msg_id = next_message_id();
-  const bool confirmable = flags & EventType::REQUIRE_ACK;
+  const bool confirmable = flags & EventType::WITH_ACK;
   size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, confirmable);
   size_t wrapped_len = wrap(queue, msglen);
   const int n = blocking_send(queue, wrapped_len);
@@ -515,7 +515,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
   // Currently, the server sends acknowledgements for all published events, regardless of whether
   // original request has been sent as confirmable or non-confirmable CoAP message. Here we register
   // completion handler only if acknowledgement was requested explicitly
-  if (confirmable) {
+  if (flags & EventType::WITH_ACK) {
     ack_handlers.add(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
   } else {
     handler.setResult();
@@ -1520,6 +1520,7 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
       break;
 
     case CoAPMessageType::EMPTY_ACK:
+      LOG_DEBUG_C(TRACE, "comm.coap", "received ACK for message: %x", (unsigned)message.id);
       ack_handlers.setResult(message.id);
       break;
 

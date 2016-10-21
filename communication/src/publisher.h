@@ -106,7 +106,7 @@ public:
 		bool confirmable = channel.is_unreliable();
 		if (flags & EventType::NO_ACK) {
 			confirmable = false;
-		} else if (flags & EventType::REQUIRE_ACK) {
+		} else if (flags & EventType::WITH_ACK) {
 			confirmable = true;
 		}
 		size_t msglen = Messages::event(message.buf(), 0, event_name, data, ttl,
@@ -114,10 +114,11 @@ public:
 		message.set_length(msglen);
 		const ProtocolError result = channel.send(message);
 		if (result == NO_ERROR) {
-			if (confirmable && message.has_id()) {
+			// Registering completion handler only if acknowledgement was requested explicitly
+			if ((flags & EventType::WITH_ACK) && message.has_id()) {
 			    add_ack_handler(message.get_id(), std::move(handler));
 			} else {
-			    handler.setResult(); // Confirmation is not required
+			    handler.setResult();
 			}
 		}
 		return result;

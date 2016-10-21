@@ -66,7 +66,7 @@ private:
 const PublishFlag PUBLIC(PUBLISH_EVENT_FLAG_PUBLIC);
 const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
 const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
-const PublishFlag REQUIRE_ACK(PUBLISH_EVENT_FLAG_REQUIRE_ACK);
+const PublishFlag WITH_ACK(PUBLISH_EVENT_FLAG_WITH_ACK);
 
 
 class CloudClass {

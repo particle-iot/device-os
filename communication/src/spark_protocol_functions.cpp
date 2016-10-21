@@ -22,6 +22,7 @@
 #include "handshake.h"
 #include <stdlib.h>
 
+using particle::CompletionHandler;
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using
