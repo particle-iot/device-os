@@ -37,12 +37,12 @@ spark::Future<void> CloudClass::publish(const char *eventName, const char *event
     // Completion handler
     spark::Promise<void> p;
     d.handler_callback = p.systemCallback;
-    d.handler_data = p.toData();
+    d.handler_data = p.dataPtr();
 
     if (!spark_send_event(eventName, eventData, ttl, flags, &d) && !p.isDone()) {
-        // Set generic error code in case completion callback wasn't invoked by the system for some reason
+        // Set generic error code in case completion callback wasn't invoked for some reason
         p.setError(spark::Error::UNKNOWN);
-        p.fromData(d.handler_data); // Free wrapper object
+        p.fromDataPtr(d.handler_data); // Free wrapper object
     }
 
     return p.future();

@@ -3,6 +3,8 @@
 #include <functional>
 #include "system_tick_hal.h"
 
+#include "system_error.h"
+
 typedef uint16_t product_id_t;
 typedef uint16_t product_firmware_version_t;
 
@@ -35,6 +37,9 @@ enum ProtocolError
 	UNKNOWN = 0x7FFFF
 };
 
+// Converts protocol error to system error code
+system_error toSystemError(ProtocolError error);
+
 typedef uint16_t chunk_index_t;
 
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
@@ -46,6 +51,9 @@ const size_t MAX_VARIABLE_KEY_LENGTH = 12;
 const size_t MAX_EVENT_NAME_LENGTH = 64;
 const size_t MAX_EVENT_DATA_LENGTH = 64;
 const size_t MAX_EVENT_TTL_SECONDS = 16777215;
+
+// Timeout in milliseconds given to receive an acknowledgement for a published event
+const unsigned SEND_EVENT_ACK_TIMEOUT = 10000;
 
 #ifndef PROTOCOL_BUFFER_SIZE
     #if PLATFORM_ID<2

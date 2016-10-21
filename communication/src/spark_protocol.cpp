@@ -89,6 +89,8 @@ void SparkProtocol::init(const char *id,
 
 int SparkProtocol::handshake(void)
 {
+  ack_handlers.clear(); // FIXME: Cancel pending handlers right after previous session has ended
+
   memcpy(queue + 40, device_id, 12);
   int err = blocking_receive(queue, 40);
   if (0 > err) { ERROR("Handshake: could not receive nonce: %d", err);  return err; }
@@ -145,7 +147,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum message_type, system_tick_t
 // Returns false if there was an error, and we are probably disconnected.
 bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
 {
-  ack_completion_handlers.processTimeouts();
+  ack_handlers.processTimeouts(); // Process expired handlers
     message_type = CoAPMessageType::NONE;
   int bytes_received = callbacks.receive(queue, 2, nullptr);
   if (2 <= bytes_received)
@@ -456,8 +458,8 @@ inline bool is_system(const char* event_name) {
 }
 
 // Returns true on success, false on sending timeout or rate-limiting failure
-bool SparkProtocol::send_event(const char *event_name, const char *data,
-                               int ttl, EventType::Enum event_type, CompletionHandler handler)
+bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl, EventType::Enum event_type,
+                               int flags, CompletionHandler handler)
 {
   if (updating)
   {
@@ -502,14 +504,22 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
     }
   }
   uint16_t msg_id = next_message_id();
-  size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, false);
+  const bool confirmable = flags & EventType::REQUIRE_ACK;
+  size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, confirmable);
   size_t wrapped_len = wrap(queue, msglen);
   const int n = blocking_send(queue, wrapped_len);
   if (n < 0) {
-    handler.setError(SYSTEM_ERROR_NETWORK_ERROR);
+    handler.setError(SYSTEM_ERROR_IO);
     return false;
   }
-  ack_completion_handlers.add(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
+  // Currently, the server sends acknowledgements for all published events, regardless of whether
+  // original request has been sent as confirmable or non-confirmable CoAP message. Here we register
+  // completion handler only if acknowledgement was requested explicitly
+  if (confirmable) {
+    ack_handlers.add(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
+  } else {
+    handler.setResult();
+  }
   return true;
 }
 
@@ -1510,7 +1520,7 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
       break;
 
     case CoAPMessageType::EMPTY_ACK:
-      ack_completion_handlers.setResult(message.id);
+      ack_handlers.setResult(message.id);
       break;
 
     case CoAPMessageType::ERROR:

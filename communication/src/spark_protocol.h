@@ -105,7 +105,7 @@ class SparkProtocol
                        unsigned char message_id_msb, unsigned char message_id_lsb,
                        const void *return_value, int length);
     bool send_event(const char *event_name, const char *data,
-                    int ttl, EventType::Enum event_type, CompletionHandler handler);
+                    int ttl, EventType::Enum event_type, int flags, CompletionHandler handler);
 
     bool add_event_handler(const char *event_name, EventHandler handler) {
         return add_event_handler(event_name, handler, NULL, SubscriptionScope::FIREHOSE, NULL);
@@ -165,7 +165,7 @@ class SparkProtocol
     SparkCallbacks callbacks;
     SparkDescriptor descriptor;
 
-    CompletionHandlerMap<uint16_t> ack_completion_handlers;
+    CompletionHandlerMap<uint16_t> ack_handlers;
 
     static const unsigned SEND_EVENT_ACK_TIMEOUT = 10000;
 

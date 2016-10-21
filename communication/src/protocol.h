@@ -109,6 +109,11 @@ class Protocol
 	Publisher publisher;
 
 	/**
+	 * Completion handlers for messages with confirmable delivery.
+	 */
+	CompletionHandlerMap<message_id_t> ack_handlers;
+
+	/**
 	 * The token ID for the next request made.
 	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
 	 */
@@ -259,7 +264,10 @@ protected:
 public:
 	Protocol(MessageChannel& channel) :
 			channel(channel),
-			product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION), initialized(false)
+			product_id(PRODUCT_ID),
+			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
+			publisher(this),
+			initialized(false)
 	{
 	}
 
@@ -281,6 +289,11 @@ public:
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
+	}
+
+	void add_ack_handler(message_id_t msg_id, CompletionHandler handler, unsigned timeout)
+	{
+		ack_handlers.add(msg_id, std::move(handler), timeout);
 	}
 
 	/**
@@ -325,14 +338,21 @@ public:
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,
-			EventType::Enum event_type, int flags)
+			EventType::Enum event_type, int flags, CompletionHandler handler)
 	{
 		if (chunkedTransfer.is_updating())
 		{
+			handler.setError(SYSTEM_ERROR_BUSY);
 			return false;
 		}
-		return !publisher.send_event(channel, event_name, data, ttl, event_type, flags,
-				callbacks.millis());
+		const ProtocolError error = publisher.send_event(channel, event_name, data, ttl, event_type, flags,
+				callbacks.millis(), std::move(handler));
+		if (error != NO_ERROR)
+		{
+			handler.setError(toSystemError(error));
+			return false;
+		}
+		return true;
 	}
 
 	inline bool send_subscription(const char *event_name, const char *device_id)
