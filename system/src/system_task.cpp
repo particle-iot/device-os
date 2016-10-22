@@ -502,6 +502,10 @@ uint8_t system_thread_current(void* reserved)
 
 uint8_t main_thread_current(void* reserved)
 {
+#if PLATFORM_THREADING == 1
     static std::thread::id _thread_id = std::this_thread::get_id();
     return _thread_id == std::this_thread::get_id();
+#else
+    return true;
+#endif
 }
