@@ -39,8 +39,8 @@ typedef void (*completion_callback)(int error, void* result, void* data, void* r
 namespace particle {
 
 // C++ wrapper for completion callback. Instances of this class can only be moved and not copied
-// (similarly to std::unique_ptr). If no result or error is assigned to a CompletionHandler instance
-// during its lifetime, underlying completion callback will be invoked with SYSTEM_ERROR_CANCELLED error
+// (similarly to std::unique_ptr). If no result or error is passed to a CompletionHandler instance
+// during its lifetime, underlying completion callback will be invoked with SYSTEM_ERROR_INTERNAL error
 class CompletionHandler {
 public:
     explicit CompletionHandler(completion_callback callback = nullptr, void* data = nullptr) :
@@ -55,7 +55,8 @@ public:
     }
 
     ~CompletionHandler() {
-        setError(SYSTEM_ERROR_CANCELLED);
+        // It's an error if a completion handler wasn't invoked during its lifetime
+        setError(SYSTEM_ERROR_INTERNAL);
     }
 
     void setResult(void* data = nullptr) {
@@ -70,6 +71,10 @@ public:
             callback_(error, nullptr, data_, nullptr);
             callback_ = nullptr;
         }
+    }
+
+    void operator()(void* data = nullptr) {
+        setResult(data);
     }
 
     operator bool() const {

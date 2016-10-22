@@ -476,7 +476,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
       uint16_t currentMinute = uint16_t(callbacks.millis()>>16);
       if (currentMinute==lastMinute) {      // == handles millis() overflow
           if (eventsThisMinute==255) {
-              handler.setError(SYSTEM_ERROR_QUOTA_EXCEEDED);
+              handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
               return false;
           }
       }
@@ -499,7 +499,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
     if (now - recent_event_ticks[evt_tick_idx] < 1000)
     {
       // exceeded allowable burst of 4 events per second
-      handler.setError(SYSTEM_ERROR_QUOTA_EXCEEDED);
+      handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
       return false;
     }
   }

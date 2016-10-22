@@ -31,13 +31,14 @@
         (ABORTED, "Operation aborted", 600), \
         (TIMEOUT, "Timeout error", 700), \
         (NOT_FOUND, "Not found", 800), \
-        (ALREADY_EXIST, "Already exists", 900), \
+        (ALREADY_EXISTS, "Already exists", 900), \
         (TOO_LARGE, "Too large data", 1000), \
-        (QUOTA_EXCEEDED, "Quota exceeded", 1100), \
+        (LIMIT_EXCEEDED, "Limit exceeded", 1100), \
         (INVALID_STATE, "Invalid state", 1200), \
         (IO, "IO error", 1300), \
         (NETWORK, "Network error", 1400), \
-        (PROTOCOL, "Protocol error", 1500)
+        (PROTOCOL, "Protocol error", 1500), \
+        (INTERNAL, "Internal error", 1600)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

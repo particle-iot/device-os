@@ -31,7 +31,7 @@ system_error particle::protocol::toSystemError(ProtocolError error) {
     case AUTHENTICATION_ERROR:
         return SYSTEM_ERROR_NOT_ALLOWED;
     case BANDWIDTH_EXCEEDED:
-        return SYSTEM_ERROR_QUOTA_EXCEEDED;
+        return SYSTEM_ERROR_LIMIT_EXCEEDED;
     case INSUFFICIENT_STORAGE:
         return SYSTEM_ERROR_TOO_LARGE;
     default:
