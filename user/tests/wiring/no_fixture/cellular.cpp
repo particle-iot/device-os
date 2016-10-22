@@ -50,7 +50,7 @@ void consume_all_sockets(uint8_t protocol)
         socket_handle = socket_create(AF_INET, SOCK_STREAM, protocol==IPPROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP, port++, NIF_DEFAULT);
     } while(socket_handle_valid(socket_handle));
 }
-test(CLOUD_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
+test(CELLULAR_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
     //Serial.println("the device will connect to the cloud when all tcp sockets are consumed");
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
@@ -69,7 +69,7 @@ test(CLOUD_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
  * And the device attempts to connect to the Cloud
  * Then the device overcomes this socket obstacle and connects to the Cloud
  */
-test(CLOUD_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
+test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
     //Serial.println("the device will connect to the cloud when all udp sockets are consumed");
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
@@ -92,7 +92,7 @@ void checkIPAddress(const char* name, const IPAddress& address)
     }
 }
 
-test(CLOUD_03_local_ip_cellular_config)
+test(CELLULAR_03_local_ip_cellular_config)
 {
     connect_to_cloud(6*60*1000);
     checkIPAddress("local", Cellular.localIP());
