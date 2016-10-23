@@ -420,8 +420,6 @@ public:
             INFO("ARM_WLAN_WD 2");
             ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);
         }
-
-        system_notify_event(network_status, network_status_connected);
     }
 
     void notify_disconnected()
@@ -474,6 +472,10 @@ public:
             WLAN_DHCP = 1;
             SPARK_LED_FADE = 1;
             WLAN_LISTEN_ON_FAILED_CONNECT = false;
+
+            // notify_dhcp() seems to be called even in case of static IP configuration, so here we
+            // notify final connection state for all configurations
+            system_notify_event(network_status, network_status_connected);
         }
         else
         {
