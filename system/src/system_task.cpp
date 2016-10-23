@@ -233,6 +233,7 @@ void establish_cloud_connection()
 
         INFO("Cloud: connecting");
         LED_On(LED_RGB);
+        system_notify_event(cloud_status, cloud_status_connecting);
         int connect_result = spark_cloud_socket_connect();
         if (connect_result >= 0)
         {
@@ -318,6 +319,7 @@ void handle_cloud_connection(bool force_events)
                 INFO("Cloud connected");
                 SPARK_CLOUD_CONNECTED = 1;
                 cloud_failed_connection_attempts = 0;
+                system_notify_event(cloud_status, cloud_status_connected);
             }
         }
 
@@ -462,8 +464,9 @@ void cloud_disconnect(bool closeSocket)
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
         INFO("Cloud: disconnecting");
+        system_notify_event(cloud_status, cloud_status_disconnecting);
         if (closeSocket)
-        spark_cloud_socket_disconnect();
+            spark_cloud_socket_disconnect();
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
@@ -475,6 +478,7 @@ void cloud_disconnect(bool closeSocket)
             LED_On(LED_RGB);
         }
         INFO("Cloud: disconnected");
+        system_notify_event(cloud_status, cloud_status_disconnected);
     }
     Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set.
 
