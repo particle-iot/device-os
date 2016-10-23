@@ -18,16 +18,16 @@
 #include "system_error.h"
 
 #define SYSTEM_ERROR_MESSAGE_SWITCH_CASES() \
-        PP_FOR_EACH(_SYSTEM_ERROR_MESSAGE_SWITCH_CASE, SYSTEM_ERRORS)
+        PP_FOR_EACH(_SYSTEM_ERROR_MESSAGE_SWITCH_CASE, /* data */, SYSTEM_ERRORS)
 
-#define _SYSTEM_ERROR_MESSAGE_SWITCH_CASE(tuple) \
-        __SYSTEM_ERROR_MESSAGE_SWITCH_CASE(PP_ARGS(tuple))
+#define _SYSTEM_ERROR_MESSAGE_SWITCH_CASE(data, tuple) \
+        _SYSTEM_ERROR_MESSAGE_SWITCH_CASE_(PP_ARGS(tuple))
 
-// Intermediate macro expanding PP_ARGS(tuple)
-#define __SYSTEM_ERROR_MESSAGE_SWITCH_CASE(...) \
-        ___SYSTEM_ERROR_MESSAGE_SWITCH_CASE(__VA_ARGS__)
+// Intermediate macro used to expand PP_ARGS(tuple)
+#define _SYSTEM_ERROR_MESSAGE_SWITCH_CASE_(...) \
+        _SYSTEM_ERROR_MESSAGE_SWITCH_CASE__(__VA_ARGS__)
 
-#define ___SYSTEM_ERROR_MESSAGE_SWITCH_CASE(name, msg, code) \
+#define _SYSTEM_ERROR_MESSAGE_SWITCH_CASE__(name, msg, code) \
         case code: return msg;
 
 const char* system_error_message(int error, void* reserved) {

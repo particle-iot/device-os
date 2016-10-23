@@ -167,7 +167,7 @@ class SparkProtocol
 
     CompletionHandlerMap<uint16_t> ack_handlers;
 
-    static const unsigned SEND_EVENT_ACK_TIMEOUT = 10000;
+    static const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
 
     unsigned char key[16];
     unsigned char iv_send[16];

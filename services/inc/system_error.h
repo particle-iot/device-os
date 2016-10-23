@@ -47,7 +47,7 @@
 #define _SYSTEM_ERROR_ENUM_VALUE(prefix, tuple) \
         _SYSTEM_ERROR_ENUM_VALUE_(prefix, PP_ARGS(tuple))
 
-// Intermediate macro expanding PP_ARGS(tuple)
+// Intermediate macro used to expand PP_ARGS(tuple)
 #define _SYSTEM_ERROR_ENUM_VALUE_(...) \
         _SYSTEM_ERROR_ENUM_VALUE__(__VA_ARGS__)
 

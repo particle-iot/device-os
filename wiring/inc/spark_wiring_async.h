@@ -349,7 +349,8 @@ class Future;
 template<typename ResultT, typename ContextT>
 class Promise;
 
-// Base class for Promise. Promise allows to store a value or an error that later can be acquired via Future
+// Base class for Promise. Promise allows to store result of an asynchronous operation that later
+// can be acquired via Future
 template<typename ResultT, typename ContextT>
 class PromiseBase {
 public:
@@ -366,10 +367,6 @@ public:
 
     void setError(Error error) {
         p_->setError(std::move(error));
-    }
-
-    Error error() const {
-        return p_->error();
     }
 
     bool isDone() const {
@@ -405,10 +402,6 @@ public:
 
     void setResult(ResultT result) {
         this->p_->setResult(std::move(result));
-    }
-
-    ResultT result() const {
-        return this->p_->result();
     }
 
     // System completion callback (see services/inc/completion_handler.h). This function is provided for

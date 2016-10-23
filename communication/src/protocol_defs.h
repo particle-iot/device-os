@@ -53,7 +53,7 @@ const size_t MAX_EVENT_DATA_LENGTH = 64;
 const size_t MAX_EVENT_TTL_SECONDS = 16777215;
 
 // Timeout in milliseconds given to receive an acknowledgement for a published event
-const unsigned SEND_EVENT_ACK_TIMEOUT = 10000;
+const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
 
 #ifndef PROTOCOL_BUFFER_SIZE
     #if PLATFORM_ID<2

@@ -223,33 +223,6 @@ TEST_CASE("Future<void>") {
         p2.setError(Error::UNKNOWN);
         CHECK(error.type() == Error::NONE);
     }
-
-    SECTION("callbacks are invoked before wait() returns") {
-        // Succeeded operation
-        Promise p1;
-        Future f1 = p1.future();
-        bool called = false;
-        f1.onSuccess([&called]() {
-            called = true;
-        });
-        postEvent([&p1]() {
-            p1.setResult();
-        });
-        f1.wait();
-        CHECK(called == true);
-        // Failed operation
-        Promise p2;
-        Future f2 = p2.future();
-        Error error(Error::NONE);
-        f2.onError([&error](Error e) {
-            error = e;
-        });
-        postEvent([&p2]() {
-            p2.setError(Error::UNKNOWN);
-        });
-        f2.wait();
-        CHECK(error.type() == Error::UNKNOWN);
-    }
 }
 
 TEST_CASE("Future<int>") {

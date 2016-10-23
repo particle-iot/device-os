@@ -114,7 +114,7 @@ public:
 		message.set_length(msglen);
 		const ProtocolError result = channel.send(message);
 		if (result == NO_ERROR) {
-			// Registering completion handler only if acknowledgement was requested explicitly
+			// Register completion handler only if acknowledgement was requested explicitly
 			if ((flags & EventType::WITH_ACK) && message.has_id()) {
 			    add_ack_handler(message.get_id(), std::move(handler));
 			} else {
