@@ -99,7 +99,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define D6 6
 #define D7 7
 
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#if PLATFORM_ID == 88
 #define D8 10
 #define D9 11
 #define D10 12
@@ -134,7 +134,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define WKP 17
 
 // Timer pins
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#if PLATFORM_ID == 88
 #define TIMER1_CH2 19
 #define TIMER1_CH3 18
 
@@ -183,7 +183,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define SCL  1
 
 // DAC pins on Duo
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#if PLATFORM_ID == 88
 #define DAC1 12
 #define DAC2 13
 #else
