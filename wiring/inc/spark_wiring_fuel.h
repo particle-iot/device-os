@@ -43,15 +43,19 @@
 #define CONFIG_REGISTER   0x0C
 #define COMMAND_REGISTER  0xFE
 
+/* detail functions defined for unit tests */
+namespace detail {
+    float _getVCell(byte MSB, byte LSB);
+    float _getSoC(byte MSB, byte LSB);
+}
 
 class FuelGauge {
 
   public:
+
     FuelGauge();
     boolean begin();
-    float _getVCell(byte MSB, byte LSB);
     float getVCell();
-    float _getSoC(byte MSB, byte LSB);
     float getSoC();
     int getVersion();
     byte getCompensateValue();

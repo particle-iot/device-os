@@ -37,12 +37,22 @@ boolean FuelGauge::begin()
 	return 1;
 }
 
-// Converts VCELL_REGISTER reading to Battery Voltage
-float FuelGauge::_getVCell(byte MSB, byte LSB) {
-	// VCELL = 12-bit value, 1.25mV (1V/800) per bit
-	float value = (float)((MSB << 4) | (LSB >> 4));
-	return value / 800.0;
-}
+namespace detail {
+	// Converts VCELL_REGISTER reading to Battery Voltage
+	float _getVCell(byte MSB, byte LSB) {
+		// VCELL = 12-bit value, 1.25mV (1V/800) per bit
+		float value = (float)((MSB << 4) | (LSB >> 4));
+		return value / 800.0;
+	}
+
+	// Converts SOC_REGISTER reading to state of charge of the cell as a percentage
+	float _getSoC(byte MSB, byte LSB) {
+		// MSB is the whole number
+		// LSB is the decimal, resolution in units 1/256%
+		float decimal = LSB / 256.0;
+		return MSB + decimal;
+	}
+} // namespace detail
 
 // Read and return the cell voltage
 float FuelGauge::getVCell() {
@@ -51,15 +61,7 @@ float FuelGauge::getVCell() {
 	byte LSB = 0;
 
 	readRegister(VCELL_REGISTER, MSB, LSB);
-	return _getVCell(MSB, LSB);
-}
-
-// Converts SOC_REGISTER reading to state of charge of the cell as a percentage
-float FuelGauge::_getSoC(byte MSB, byte LSB) {
-	// MSB is the whole number
-	// LSB is the decimal, resolution in units 1/256%
-	float decimal = LSB / 256.0;
-	return MSB + decimal;
+	return detail::_getVCell(MSB, LSB);
 }
 
 // Read and return the state of charge of the cell
@@ -69,7 +71,7 @@ float FuelGauge::getSoC() {
 	byte LSB = 0;
 
 	readRegister(SOC_REGISTER, MSB, LSB);
-	return _getSoC(MSB, LSB);
+	return detail::_getSoC(MSB, LSB);
 }
 
 // Return the version number of the chip
