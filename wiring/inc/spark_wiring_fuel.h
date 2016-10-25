@@ -47,9 +47,11 @@
 class FuelGauge {
 
   public:
-      FuelGauge();
+    FuelGauge();
     boolean begin();
+    float _getVCell(byte MSB, byte LSB);
     float getVCell();
+    float _getSoC(byte MSB, byte LSB);
     float getSoC();
     int getVersion();
     byte getCompensateValue();

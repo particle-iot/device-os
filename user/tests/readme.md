@@ -80,7 +80,9 @@ Unit tests are executed on your development machine. They test the code indepede
 The unit tests are run on the host gcc platform and are compiled using regular
 gcc. (So gcc should be in the path.)
 
-They are built and executed by running
+[BOOST](http://www.boost.org/) standard C++ libraries are also required.  On Mac OSX, use Homebrew to install boost with `brew install boost`.  The command will end with the location of boost.  Copy this and add it to your `~/.bash_profile` like so `export BOOST_ROOT="/usr/local/Cellar/boost/1.62.0/"`
+
+Unit tests are then built and executed by running:
 
 ```
 cd user/tests/unit
