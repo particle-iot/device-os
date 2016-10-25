@@ -44,9 +44,9 @@ float FuelGauge::getVCell() {
 	byte LSB = 0;
 
 	readRegister(VCELL_REGISTER, MSB, LSB);
-	int value = (MSB << 4) | (LSB >> 4);
-	return map(value, 0x000, 0xFFF, 0, 50000) / 10000.0;
-	//return value * 0.00125;
+	// VCELL = 12-bit value, 1.25mV (1V/800) per bit
+	float value = (float)((MSB << 4) | (LSB >> 4));
+	return value / 800.0;
 }
 
 // Read and return the state of charge of the cell
