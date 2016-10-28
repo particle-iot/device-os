@@ -29,6 +29,10 @@
 #include "system_threading.h"
 #include "system_rgbled.h"
 
+#include "platforms.h"
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+#include "ble_provision.h"
+#endif
 
 enum eWanTimings
 {
@@ -119,16 +123,19 @@ class ManagedNetworkInterface : public NetworkInterface
     volatile uint8_t WLAN_DELETE_PROFILES;
     volatile uint8_t WLAN_SMART_CONFIG_START; // Set to 'true' when listening mode is pending
     volatile uint8_t WLAN_SMART_CONFIG_ACTIVE;
-    volatile uint8_t WLAN_SMART_CONFIG_STOP;
     volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
     volatile uint8_t WLAN_CONNECTED;
     volatile uint8_t WLAN_CONNECTING;
     volatile uint8_t WLAN_DHCP;
     volatile uint8_t WLAN_CAN_SHUTDOWN;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    volatile uint8_t WLAN_OTA_UPDATE_FINISHED;
+#endif
 
 protected:
     volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
+    volatile uint8_t WLAN_SMART_CONFIG_STOP;
 
     virtual network_interface_t network_interface() override { return 0; }
 
@@ -140,6 +147,9 @@ protected:
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        WLAN_OTA_UPDATE_FINISHED = 0;
+#endif
         bool wlanStarted = SPARK_WLAN_STARTED;
 
         cloud_disconnect();
@@ -155,6 +165,10 @@ protected:
         const uint32_t start = millis();
         uint32_t loop = start;
         system_notify_event(wifi_listen_begin, 0);
+
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        ble_provision_init();
+#endif
 
         /* Wait for SmartConfig/SerialConfig to finish */
         while (network_listening(0, 0, NULL))
@@ -193,6 +207,7 @@ protected:
                 }
                 console.loop();
             }
+			
 #if PLATFORM_THREADING
             if (!APPLICATION_THREAD_CURRENT()) {
                 SystemThread.process();
@@ -210,6 +225,14 @@ protected:
         system_notify_event(wifi_listen_end, millis()-start);
 
         WLAN_SMART_CONFIG_ACTIVE = 0;
+		
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        if(WLAN_OTA_UPDATE_FINISHED)
+        {
+            return; // Do not try connecting to the AP if the above loop exits because of OTA updating finished.
+        }
+#endif
+
         if (has_credentials())
             connect();
         else if (!wlanStarted)
@@ -279,7 +302,11 @@ public:
 
     bool listening() override
     {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        return (WLAN_SMART_CONFIG_ACTIVE && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE || WLAN_OTA_UPDATE_FINISHED));
+#else
         return (WLAN_SMART_CONFIG_ACTIVE && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
+#endif
     }
 
 
@@ -463,9 +490,13 @@ public:
             config_clear();
             WLAN_DHCP = 0;
             SPARK_LED_FADE = 0;
-            if (WLAN_LISTEN_ON_FAILED_CONNECT) {
+            if (WLAN_LISTEN_ON_FAILED_CONNECT)
+            {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+                ble_provision_on_failed();
+#endif
                 listen();
-            } else {
+            }else {
                 INFO("DHCP fail, ARM_WLAN_WD 5");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
             }
@@ -481,6 +512,13 @@ public:
     {
         WLAN_CAN_SHUTDOWN = 0;
     }
+	
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    void notify_ota_update_completed()
+    {
+        WLAN_OTA_UPDATE_FINISHED = 1;
+    }
+#endif
 
 
     void listen_loop() override
@@ -499,7 +537,12 @@ public:
         if ((WLAN_SMART_CONFIG_STOP == 1) && (WLAN_DHCP == 1) && (WLAN_CONNECTED == 1))
         {
             on_setup_cleanup();
+
             WLAN_SMART_CONFIG_STOP = 0;
+
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+            ble_provision_finalize(); // Reset to re-config BLE database for application upon smart config succeed.
+#endif
         }
     }
 

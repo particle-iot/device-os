@@ -38,7 +38,11 @@
 
 #ifdef STM32F2XX
  #define FLASH_END_ADD                   0x08100000
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+ #define FLASH_IF_STRING                 "@Internal Flash   /0x08000000/01*016Ka,02*016Kg,01*016Kg,01*064Kg,07*128Kg"
+#else
  #define FLASH_IF_STRING                 "@Internal Flash   /0x08000000/03*016Ka,01*016Kg,01*064Kg,07*128Kg"
+#endif
 #elif defined(STM32F4XX)
  #define FLASH_END_ADD                   0x08100000
  #define FLASH_IF_STRING                 "@Internal Flash   /0x08000000/03*016Ka,01*016Kg,01*064Kg,07*128Kg"

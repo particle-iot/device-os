@@ -26,7 +26,7 @@ extern "C" {
 
 
 
-#if PLATFORM_ID<9
+#if PLATFORM_ID<9 || PLATFORM_ID==88
     #define HAL_PLATFORM_WIFI 1
 #endif
 

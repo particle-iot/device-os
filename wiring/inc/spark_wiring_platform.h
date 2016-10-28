@@ -91,6 +91,17 @@
 #define Wiring_Keyboard 1
 #endif
 
+#if PLATFORM_ID==88      // duo
+#define Wiring_WiFi 1
+#define Wiring_IPv6 1
+#define Wiring_SPI1 1
+#define Wiring_Serial2 1
+#define Wiring_Serial6 1
+#define Wiring_USBSerial1 1
+#define Wiring_Mouse 1
+#define Wiring_Keyboard 1
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif

@@ -30,6 +30,9 @@
 #include "core_hal.h"
 #include "deviceid_hal.h"
 #include "syshealth_hal.h"
+#if PLATFORM_ID == 88
+#include "device_name.h"
+#endif
 #endif
 
 // WARNING
@@ -68,8 +71,14 @@ DYNALIB_FN(22, hal_core, HAL_Set_System_Config, int(hal_system_config_t, const v
 DYNALIB_FN(23, hal_core, HAL_Core_Enter_Safe_Mode, void(void*))
 DYNALIB_FN(24, hal_core, HAL_Feature_Get, bool(HAL_Feature))
 DYNALIB_FN(25, hal_core, HAL_Feature_Set, int(HAL_Feature, bool))
+#if PLATFORM_ID == 88
+DYNALIB_FN(26, hal_core, HAL_Local_Name, void(local_name_t*))
+DYNALIB_FN(27, hal_core, HAL_Core_System_Reset_Ex, void(int, uint32_t, void*))
+DYNALIB_FN(28, hal_core, HAL_Core_Get_Last_Reset_Info, int(int*, uint32_t*, void*))
+#else
 DYNALIB_FN(26, hal_core, HAL_Core_System_Reset_Ex, void(int, uint32_t, void*))
 DYNALIB_FN(27, hal_core, HAL_Core_Get_Last_Reset_Info, int(int*, uint32_t*, void*))
+#endif
 
 DYNALIB_END(hal_core)
 

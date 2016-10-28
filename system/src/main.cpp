@@ -565,6 +565,9 @@ void system_part2_post_init()
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
+ #if defined (RESET_AVRDUDE_FLASHER_SERIAL_SPEED)
+extern void manage_serial_flasher();
+#endif
 void app_setup_and_loop(void)
 {
     system_part2_post_init();
@@ -594,8 +597,13 @@ void app_setup_and_loop(void)
     HAL_USB_Init();
 #endif
 
-#if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED)
+#if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED) || defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
+#endif
+
+#if defined (RESET_AVRDUDE_FLASHER_SERIAL_SPEED)
+    // If the reset is trigged by arduino avrdude, then begin the uploading progress directly.
+    manage_serial_flasher();
 #endif
 
     bool threaded = system_thread_get_state(NULL) != spark::feature::DISABLED &&

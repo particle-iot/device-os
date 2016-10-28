@@ -38,6 +38,14 @@ typedef struct platform_system_flags {
     uint16_t reserved[4];
 } platform_system_flags_t;
 
+#if PLATFORM_ID == 88
+typedef struct extra_platform_system_flags {
+    uint16_t wiced_application;
+    uint16_t arduino_upload;
+    uint16_t reserved[14];
+} extra_platform_system_flags_t;
+#endif
+
 
 #ifdef	__cplusplus
 }

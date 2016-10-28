@@ -46,6 +46,7 @@
 #define sFLASH_PROGRAM_PAGESIZE         0x100       /* 256 bytes */
 
 #define sFLASH_MX25L8006E_ID            0xC22014    /* JEDEC Read-ID Data */
+#define sFLASH_MX25L1606E_ID            0xC22015    /* JEDEC Read-ID Data */
 
 /* Local function forward declarations ---------------------------------------*/
 static void sFLASH_WritePage(const uint8_t* pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
@@ -357,6 +358,40 @@ static void sFLASH_WriteEnable(void)
 
     /* Deselect the FLASH: Chip Select high */
     sFLASH_CS_HIGH();
+
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION	
+	/* Check if Block protect bits are set */
+    uint8_t flashstatus = 0xFF;
+	
+    /* Select the FLASH: Chip Select low */
+    sFLASH_CS_LOW();
+    /* Send "Read Status Register" instruction */
+    sFLASH_SendByte(sFLASH_CMD_RDSR);
+    /* Send a dummy byte to generate the clock needed by the FLASH and put the
+     * value of the status register in FLASH_Status variable */
+    flashstatus = sFLASH_SendByte(sFLASH_DUMMY_BYTE);
+    /* Deselect the FLASH: Chip Select high */
+    sFLASH_CS_HIGH();
+
+    if ( flashstatus != 0x02 )
+    {
+        /* Select the FLASH: Chip Select low */
+		sFLASH_CS_LOW();
+		/* Send "Write Status Register" instruction */
+		sFLASH_SendByte(sFLASH_CMD_WRSR);
+		sFLASH_SendByte(0);
+		/* Deselect the FLASH: Chip Select high */
+		sFLASH_CS_HIGH();
+
+		/* Re-Enable writing */
+		/* Select the FLASH: Chip Select low */
+		sFLASH_CS_LOW();
+		/* Send "Write Enable" instruction */
+		sFLASH_SendByte(sFLASH_CMD_WREN);
+		/* Deselect the FLASH: Chip Select high */
+		sFLASH_CS_HIGH();
+	}
+#endif
 }
 
 /**
@@ -420,7 +455,11 @@ int sFLASH_SelfTest(void)
     FlashID = sFLASH_ReadID();
 
     /* Check the SPI Flash ID */
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	if(FlashID == sFLASH_MX25L1606E_ID)
+#else
     if(FlashID == sFLASH_MX25L8006E_ID)
+#endif
     {
         /* Perform a write in the Flash followed by a read of the written data */
         /* Erase SPI FLASH Sector to write on */
@@ -472,3 +511,51 @@ int sFLASH_SelfTest(void)
 
     return TestStatus;
 }
+
+uint32_t sFLASH_Compute_CRC32(uint32_t startAddress, uint32_t length)
+{
+    /* Hardware CRC32 calculation */
+    uint32_t i, j;
+    uint32_t Data;
+    uint8_t serialFlashData[4];
+    uint8_t *pBuffer = serialFlashData;
+
+    CRC_ResetDR();
+
+    i = length >> 2;
+
+    while (i--)
+    {
+    	sFLASH_ReadBuffer(serialFlashData, startAddress, 4);
+        Data = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+        startAddress += 4;
+
+        Data = __RBIT(Data);//reverse the bit order of input Data
+        CRC->DR = Data;
+    }
+
+    Data = CRC->DR;
+    Data = __RBIT(Data);//reverse the bit order of output Data
+
+    sFLASH_ReadBuffer(serialFlashData, startAddress, 4);
+
+    i = length & 3;
+
+	while (i--)
+	{
+		Data ^= (uint32_t)*pBuffer++;
+
+		for (j = 0 ; j < 8 ; j++)
+		{
+			if (Data & 1)
+				Data = (Data >> 1) ^ 0xEDB88320;
+			else
+				Data >>= 1;
+		}
+	}
+
+    Data ^= 0xFFFFFFFF;
+
+    return Data;
+}
+

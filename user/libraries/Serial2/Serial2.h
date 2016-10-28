@@ -3,6 +3,8 @@
 
 #include "spark_wiring_usartserial.h"
 
+#if PLATFORM_ID != 88 // Duo: Serial2 is instantiated in spark_wiring_usartserial.cpp
+
 #if Wiring_Serial2
 
 // instantiate Serial2
@@ -21,8 +23,10 @@ void serialEventRun2()
     __handleSerialEvent(Serial2, serialEvent2);
 }
 
-#endif
+#endif // Wiring_Serial2
 
-#endif
+#endif // PLATFORM_ID != 88
+
+#endif // __LIB_SERIAL2_H
 
 

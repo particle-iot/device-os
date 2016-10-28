@@ -20,6 +20,9 @@ endif
 ifeq ($(PLATFORM_ID),10)
 MODULAR?=y
 endif
+ifeq ($(PLATFORM_ID),88)
+MODULAR?=y
+endif
 
 ifeq ($(MODULAR),y)
 

@@ -40,6 +40,9 @@ static const uint8_t flashSectors[] = {
     FLASH_Sector_5, FLASH_Sector_6, FLASH_Sector_7, FLASH_Sector_8, FLASH_Sector_9,
     FLASH_Sector_10, FLASH_Sector_11
 };
+#ifdef USE_SERIAL_FLASH
+static module_info_t ex_module_info;
+#endif
 
 
 /**
@@ -102,7 +105,7 @@ uint32_t EndOfFlashSector(flash_device_t device, uint32_t address)
 		uint16_t sector = addressToSectorIndex(address);
 		end = sectorIndexToStartAddress(sector+1);
 	}
-#if USE_SERIAL_FLASH
+#ifdef USE_SERIAL_FLASH
 	else if (device==FLASH_SERIAL)
 	{
 		uint16_t sector = address / sFLASH_PAGESIZE;
@@ -127,7 +130,12 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     else if (flashDeviceID == FLASH_SERIAL)
     {
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+        // Since dfu-util can not upload data to serial flash from address 0x0, skip the first sector, i.e. 4KB.
+        if (startAddress < 0x1000 || endAddress >= 0x200000)
+#else
         if (startAddress < 0x4000 || endAddress >= 0x100000)
+#endif
         {
             return false;
         }
@@ -267,8 +275,13 @@ bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress
         return false;
     }
 
-#ifndef USE_SERIAL_FLASH    // this predates the module system (early P1's using external flash for storage)
+	// this predates the module system (early P1's using external flash for storage)
+#if (!defined USE_SERIAL_FLASH) || (PLATFORM_ID==PLATFORM_DUO_PRODUCTION)
+#ifndef USE_SERIAL_FLASH
     if ((sourceDeviceID == FLASH_INTERNAL) && (flags & MODULE_VERIFY_MASK))
+#else
+    if (flags & MODULE_VERIFY_MASK)    // Use serial flash and support flag verify
+#endif
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
 
@@ -426,6 +439,9 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length)
 {
+#ifdef USE_SERIAL_FLASH
+    uint8_t serialFlashData[4];
+#endif
 	uint32_t endAddress = sourceAddress + length;
 
     if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
@@ -449,7 +465,7 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     /* Program source to destination */
     while (sourceAddress < endAddress)
     {
-    		uint32_t sourceDeviceData = 0;
+        uint32_t sourceDeviceData = 0;
         if (sourceDeviceID == FLASH_INTERNAL)
         {
             /* Read data from internal flash source address */
@@ -605,10 +621,14 @@ bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
     }
     else
     {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    	// Not implement yet
+#else
         // attempt to use the default that the bootloader was built with
         restoreFactoryReset = copy(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
             FACTORY_RESET_MODULE_FUNCTION,
             MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION);
+#endif
     }
     return restoreFactoryReset;
 
@@ -687,6 +707,28 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
 
         return module_info;
     }
+	else if(flashDeviceID == FLASH_SERIAL)
+	{
+#ifdef USE_SERIAL_FLASH
+        uint8_t serialFlashData[4];
+        uint32_t first_word = 0;
+
+        /* Initialize SPI Flash */
+        sFLASH_Init();
+
+        sFLASH_ReadBuffer(serialFlashData, startAddress, 4);
+        first_word = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+        if ((first_word & APP_START_MASK) == 0x20000000)
+        {
+            startAddress += 0x184;
+        }
+
+        memset((uint8_t *)&ex_module_info, 0x00, sizeof(module_info_t));
+        sFLASH_ReadBuffer((uint8_t *)&ex_module_info, startAddress, sizeof(module_info_t));
+
+        return &ex_module_info;
+#endif
+	}
 
     return NULL;
 }
@@ -715,6 +757,18 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
     return 0;
 }
 
+uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+
+    if (module_info != NULL)
+    {
+        return module_info->module_version;
+    }
+
+    return 0;
+}
+
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
     const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
@@ -725,7 +779,7 @@ bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, u
             && (module_info->platform_id==PLATFORM_ID));
 }
 
-bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
+bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     if(flashDeviceID == FLASH_INTERNAL && length > 0)
     {
@@ -736,6 +790,51 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
         {
             return true;
         }
+    }
+	else if(flashDeviceID == FLASH_SERIAL && length > 0)
+    {
+#ifdef USE_SERIAL_FLASH
+        /* Initialize SPI Flash */
+        sFLASH_Init();
+
+    	uint8_t serialFlashData[4];
+    	sFLASH_ReadBuffer(serialFlashData, (startAddress + length), 4);
+    	uint32_t expectedCRC = (uint32_t)(serialFlashData[3] | (serialFlashData[2] << 8) | (serialFlashData[1] << 16) | (serialFlashData[0] << 24));
+    	uint32_t computedCRC = sFLASH_Compute_CRC32(startAddress, length);
+
+		if (expectedCRC == computedCRC)
+		{
+			return true;
+		}
+#endif
+    }
+
+    return false;
+}
+
+bool FLASH_InvalidCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
+{
+    if(flashDeviceID == FLASH_INTERNAL && length > 0)
+    {
+        FLASH_Unlock();
+
+        FLASH_ProgramWord(startAddress + length, 0);
+
+        FLASH_Lock();
+
+        return true;
+    }
+    else if(flashDeviceID == FLASH_SERIAL && length > 0)
+    {
+#ifdef USE_SERIAL_FLASH
+        /* Initialize SPI Flash */
+        sFLASH_Init();
+
+        uint8_t serialFlashData[4] = {0x00};
+        sFLASH_WriteBuffer(serialFlashData, startAddress + length, 4);
+
+        return true;
+#endif
     }
 
     return false;
@@ -833,7 +932,11 @@ void FLASH_Erase(void)
 void FLASH_Backup(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	// Modular firmware perform CRC check before copying memory, so backup image isn't necessary.
+#else
     FLASH_CopyMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FLASH_SERIAL, FLASH_Address, FIRMWARE_IMAGE_SIZE, 0, 0);
+#endif
 #else
     //Don't have enough space in Internal Flash to save a Backup copy of the firmware
 #endif
@@ -842,8 +945,12 @@ void FLASH_Backup(uint32_t FLASH_Address)
 void FLASH_Restore(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	// Use module slot to restore firmware
+#else
     //CRC verification Disabled by default
     FLASH_CopyMemory(FLASH_SERIAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE, 0, 0);
+#endif
 #else
     //commented below since FIRMWARE_IMAGE_SIZE != Actual factory firmware image size
     //FLASH_CopyMemory(FLASH_INTERNAL, FLASH_Address, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, true);
@@ -937,10 +1044,14 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 void FLASH_End(void)
 {
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	//FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
+#else
     system_flags.FLASH_OTA_Update_SysFlag = 0x0005;
     Save_SystemFlags();
 
     RTC_WriteBackupRegister(RTC_BKP_DR10, 0x0005);
+#endif
 #else
     //FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
 #endif

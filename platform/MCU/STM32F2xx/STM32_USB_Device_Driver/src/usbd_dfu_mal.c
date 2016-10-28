@@ -329,8 +329,8 @@ static uint8_t  MAL_CheckAdd(uint32_t Idx, uint32_t Add)
 {
   uint32_t memIdx = Idx;
 
-    if (tMALTab[memIdx]->pMAL_CheckAdd(Add) == MAL_OK)
-    {
+  if (tMALTab[memIdx]->pMAL_CheckAdd(Add) == MAL_OK)
+  {
      return MAL_OK;
   }
   

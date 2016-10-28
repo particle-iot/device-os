@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
- * @file    hal_dynalib_ota.h
- * @authors Matthew McGowan
+ * @file    hal_dynalib_hci_usart.h
+ * @authors mat
  * @date    04 March 2015
  ******************************************************************************
   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
@@ -21,13 +21,16 @@
  ******************************************************************************
  */
 
-#ifndef HAL_DYNALIB_OTA_H
-#define	HAL_DYNALIB_OTA_H
+#ifndef HAL_DYNALIB_HCI_USART_H
+#define HAL_DYNALIB_HCI_USART_H
+
+#if PLATFORM_ID == 88 // Duo
 
 #include "dynalib.h"
+#include "usb_config_hal.h"
 
 #ifdef DYNALIB_EXPORT
-#include "ota_flash_hal.h"
+#include "hci_usart_hal.h"
 #endif
 
 // WARNING
@@ -37,20 +40,23 @@
 // New HAL functions must be added to the end of this list.
 // GNINRAW
 
-DYNALIB_BEGIN(hal_ota)
+DYNALIB_BEGIN(hal_hci_usart)
 
-DYNALIB_FN(0, hal_ota, HAL_OTA_FlashAddress, uint32_t(void))
-DYNALIB_FN(1, hal_ota, HAL_OTA_FlashLength, uint32_t(void))
-DYNALIB_FN(2, hal_ota, HAL_OTA_ChunkSize, uint16_t(void))
+DYNALIB_FN(0, hal_hci_usart, HAL_HCI_USART_registerReceiveHandler, void(ReceiveHandler_t))
+DYNALIB_FN(1, hal_hci_usart, HAL_HCI_USART_receiveEvent, void(void))
+DYNALIB_FN(2, hal_hci_usart, HAL_HCI_USART_downloadFirmeare, int32_t(HAL_HCI_USART_Serial))
+DYNALIB_FN(3, hal_hci_usart, HAL_HCI_USART_Init, void(HAL_HCI_USART_Serial, HCI_USART_Ring_Buffer*, HCI_USART_Ring_Buffer*))
+DYNALIB_FN(4, hal_hci_usart, HAL_HCI_USART_Begin, void(HAL_HCI_USART_Serial, uint32_t))
+DYNALIB_FN(5, hal_hci_usart, HAL_HCI_USART_End, void(HAL_HCI_USART_Serial))
+DYNALIB_FN(6, hal_hci_usart, HAL_HCI_USART_Write_Data, int32_t(HAL_HCI_USART_Serial, uint8_t))
+DYNALIB_FN(7, hal_hci_usart, HAL_HCI_USART_Write_Buffer, int32_t(HAL_HCI_USART_Serial, const uint8_t*, uint16_t))
+DYNALIB_FN(8, hal_hci_usart, HAL_HCI_USART_Available_Data, int32_t(HAL_HCI_USART_Serial))
+DYNALIB_FN(9, hal_hci_usart, HAL_HCI_USART_Read_Data, int32_t(HAL_HCI_USART_Serial))
+DYNALIB_FN(10, hal_hci_usart, HAL_HCI_USART_RestartSend, void(HAL_HCI_USART_Serial))
 
-DYNALIB_FN(3, hal_ota, HAL_OTA_Flashed_GetStatus, bool(void))
-DYNALIB_FN(4, hal_ota, HAL_OTA_Flashed_ResetStatus, void(void))
+DYNALIB_END(hal_hci_usart)
 
-DYNALIB_FN(5, hal_ota, HAL_FLASH_Begin, bool(uint32_t, uint32_t, void*))
-DYNALIB_FN(6, hal_ota, HAL_FLASH_Update, int(const uint8_t*, uint32_t, uint32_t, void*))
-DYNALIB_FN(7, hal_ota, HAL_FLASH_End, hal_update_complete_t(uint32_t, uint32_t, void*))
+#endif
 
-DYNALIB_END(hal_ota)
-
-#endif	/* HAL_DYNALIB_OTA_H */
+#endif	/* HAL_DYNALIB_USART_H */
 

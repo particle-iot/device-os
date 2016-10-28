@@ -223,6 +223,9 @@ void UI_Timer_Configure(void)
 
     /* Enable TIM2 clock */
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+#endif
 
     /*
     Since APB1 prescaler is different from 1.
@@ -243,6 +246,9 @@ void UI_Timer_Configure(void)
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
     TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+#endif
 
     /* Output Compare Timing Mode configuration: Channel 1 */
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
@@ -260,19 +266,33 @@ void UI_Timer_Configure(void)
     TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
     TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
 
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_OC3Init(TIM3, &TIM_OCInitStructure);
+    TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Disable);
+
+    TIM_OC4Init(TIM3, &TIM_OCInitStructure);
+    TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Disable);
+#else
     TIM_OC2Init(TIM2, &TIM_OCInitStructure);
     TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
     TIM_OC3Init(TIM2, &TIM_OCInitStructure);
     TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Disable);
+#endif
 
     TIM_OC4Init(TIM2, &TIM_OCInitStructure);
     TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
     TIM_ARRPreloadConfig(TIM2, ENABLE);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_ARRPreloadConfig(TIM3, ENABLE);
+#endif
 
     /* TIM2 enable counter */
     TIM_Cmd(TIM2, ENABLE);
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM_Cmd(TIM3, ENABLE);
+#endif
 }
 
 /**
@@ -318,6 +338,11 @@ void LED_Init(Led_TypeDef Led)
 
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	TIM2->CCR4 = r;
+	TIM3->CCR4 = g;
+	TIM3->CCR3 = b;
+#else
 #ifdef RGB_LINES_REVERSED
     TIM2->CCR4 = r;
     TIM2->CCR3 = g;
@@ -327,10 +352,16 @@ void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
     TIM2->CCR3 = g;
     TIM2->CCR4 = b;
 #endif
+#endif
 }
 
 void Get_RGB_LED_Values(uint16_t* values)
 {
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	values[0] = TIM2->CCR4;
+    values[1] = TIM3->CCR4;
+    values[2] = TIM3->CCR3;
+#else
 #ifdef RGB_LINES_REVERSED
     values[0] = TIM2->CCR4;
     values[1] = TIM2->CCR3;
@@ -339,6 +370,7 @@ void Get_RGB_LED_Values(uint16_t* values)
     values[0] = TIM2->CCR2;
     values[1] = TIM2->CCR3;
     values[2] = TIM2->CCR4;
+#endif
 #endif
 }
 
@@ -625,13 +657,33 @@ void Save_SystemFlags()
     Save_SystemFlags_Impl(&system_flags);
 }
 
+#if PLATFORM_ID == 88
+extra_platform_system_flags_t extra_system_flags;
+
+void Load_ExtraSystemFlags()
+{
+    const void* extra_flags_store = dct_read_app_data(DCT_EXTRA_SYSTEM_FLAGS_OFFSET);
+    memcpy(&extra_system_flags, extra_flags_store, sizeof(extra_platform_system_flags_t));
+}
+
+void Save_ExtraSystemFlags()
+{
+    dct_write_app_data(&extra_system_flags, DCT_EXTRA_SYSTEM_FLAGS_OFFSET, sizeof(extra_platform_system_flags_t));
+}
+#endif
+
 bool FACTORY_Flash_Reset(void)
 {
     bool success;
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    // Restore the Factory firmware using flash_modules application dct info
+    success = FLASH_RestoreFromFactoryResetModuleSlot();
+#else
     // Restore the Factory programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_FAC_ADDRESS);
-    success = 1;
+	success = 1;
+#endif
 #else
     // Restore the Factory firmware using flash_modules application dct info
     success = FLASH_RestoreFromFactoryResetModuleSlot();
@@ -655,6 +707,9 @@ bool FACTORY_Flash_Reset(void)
 void BACKUP_Flash_Reset(void)
 {
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	// Modular firmware perform CRC check before copying memory, so backup image isn't necessary.
+#else
     //Restore the Backup programmed application firmware from External Flash
     FLASH_Restore(EXTERNAL_FLASH_BKP_ADDRESS);
 
@@ -662,6 +717,7 @@ void BACKUP_Flash_Reset(void)
     system_flags.dfu_on_no_firmware = 0;
 
     Finish_Update();
+#endif
 #else
 
     //Not supported since there is no Backup copy of the firmware in Internal Flash
@@ -674,6 +730,9 @@ void OTA_Flash_Reset(void)
     // if that fails, abort the copy and leave the existing user firmware as is.
 
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+	//FLASH_UpdateModules() does the job of copying the split firmware modules
+#else
 /*
     First take backup of the current application firmware to External Flash
     Commented for BM-14 since there's not much external flash space.
@@ -701,6 +760,7 @@ void OTA_Flash_Reset(void)
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0001;
 
     Finish_Update();
+#endif
 #else
     //FLASH_UpdateModules() does the job of copying the split firmware modules
 #endif
