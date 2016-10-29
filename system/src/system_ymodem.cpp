@@ -184,11 +184,7 @@ int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
 
         /* End of transmission */
     case 0:
-        /* Do not send ACK immediately after receiving EOT
-         * Validate the received binary and in case of an error respond with a CANCEL
-         */
-        // send_byte(ACK);
-        session_done = 1;
+        send_byte(ACK);
         file_done = 1;
         return 1;
     }
@@ -218,7 +214,10 @@ int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
             } /* Filename packet is empty, end session */
             else
             {
-                send_byte(ACK);
+                /* Do not send ACK immediately
+                 * Validate the received binary and in case of an error respond with a CANCEL
+                 */
+                // send_byte(ACK);
                 file_done = 1;
                 session_done = 1;
             }
