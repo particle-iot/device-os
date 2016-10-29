@@ -29,6 +29,16 @@
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
 
+#include "spark_wiring_interrupts.h"
+
+#ifdef DEBUG_BUILD
+// When compiled with DEBUG_BUILD=y use ATOMIC_BLOCK
+# define LOG_WITH_LOCK(x) ATOMIC_BLOCK()
+#else
+// Otherwise use mutex
+# define LOG_WITH_LOCK(x) WITH_LOCK(x)
+#endif // DEBUG_BUILD
+
 namespace {
 
 using namespace spark;
@@ -660,14 +670,14 @@ spark::LogManager::LogManager() {
 spark::LogManager::~LogManager() {
     resetSystemCallbacks();
 #if Wiring_LogConfig
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
          destroyFactoryHandlers();
     }
 #endif
 }
 
 bool spark::LogManager::addHandler(LogHandler *handler) {
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
         if (activeHandlers_.contains(handler) || !activeHandlers_.append(handler)) {
             return false;
         }
@@ -679,7 +689,7 @@ bool spark::LogManager::addHandler(LogHandler *handler) {
 }
 
 void spark::LogManager::removeHandler(LogHandler *handler) {
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
         if (activeHandlers_.removeOne(handler) && activeHandlers_.isEmpty()) {
             resetSystemCallbacks();
         }
@@ -695,7 +705,7 @@ spark::LogManager* spark::LogManager::instance() {
 
 bool spark::LogManager::addFactoryHandler(const char *id, const char *handlerType, LogLevel level, LogCategoryFilters filters,
         const JSONValue &handlerParams, const char *streamType, const JSONValue &streamParams) {
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
         destroyFactoryHandler(id); // Destroy existent handler with the same ID
         FactoryHandler h;
         h.id = id;
@@ -739,13 +749,13 @@ bool spark::LogManager::addFactoryHandler(const char *id, const char *handlerTyp
 }
 
 void spark::LogManager::removeFactoryHandler(const char *id) {
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
         destroyFactoryHandler(id);
     }
 }
 
 void spark::LogManager::enumFactoryHandlers(void(*callback)(const char *id, void *data), void *data) {
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
         for (const FactoryHandler &h: factoryHandlers_) {
             callback(h.id.c_str(), data);
         }
@@ -753,7 +763,7 @@ void spark::LogManager::enumFactoryHandlers(void(*callback)(const char *id, void
 }
 
 void spark::LogManager::setHandlerFactory(LogHandlerFactory *factory) {
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
         if (handlerFactory_ != factory) {
             destroyFactoryHandlers();
             handlerFactory_ = factory;
@@ -762,7 +772,7 @@ void spark::LogManager::setHandlerFactory(LogHandlerFactory *factory) {
 }
 
 void spark::LogManager::setStreamFactory(OutputStreamFactory *factory) {
-    WITH_LOCK(mutex_) {
+    LOG_WITH_LOCK(mutex_) {
         if (streamFactory_ != factory) {
             destroyFactoryHandlers();
             streamFactory_ = factory;
@@ -813,8 +823,14 @@ void spark::LogManager::resetSystemCallbacks() {
 }
 
 void spark::LogManager::logMessage(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved) {
+#ifndef DEBUG_BUILD
+    // No-op when DEBUG_BUILD=n
+    if (HAL_IsISR())
+        return;
+#endif // DEBUG_BUILD
+
     LogManager *that = instance();
-    WITH_LOCK(that->mutex_) {
+    LOG_WITH_LOCK(that->mutex_) {
         for (LogHandler *handler: that->activeHandlers_) {
             handler->message(msg, (LogLevel)level, category, *attr);
         }
@@ -822,8 +838,14 @@ void spark::LogManager::logMessage(const char *msg, int level, const char *categ
 }
 
 void spark::LogManager::logWrite(const char *data, size_t size, int level, const char *category, void *reserved) {
+#ifndef DEBUG_BUILD
+    // No-op when DEBUG_BUILD=n
+    if (HAL_IsISR())
+        return;
+#endif // DEBUG_BUILD
+
     LogManager *that = instance();
-    WITH_LOCK(that->mutex_) {
+    LOG_WITH_LOCK(that->mutex_) {
         for (LogHandler *handler: that->activeHandlers_) {
             handler->write(data, size, (LogLevel)level, category);
         }
@@ -831,9 +853,15 @@ void spark::LogManager::logWrite(const char *data, size_t size, int level, const
 }
 
 int spark::LogManager::logEnabled(int level, const char *category, void *reserved) {
+#ifndef DEBUG_BUILD
+    // No-op when DEBUG_BUILD=n
+    if (HAL_IsISR())
+        return 0;
+#endif // DEBUG_BUILD
+
     LogManager *that = instance();
     int minLevel = LOG_LEVEL_NONE;
-    WITH_LOCK(that->mutex_) {
+    LOG_WITH_LOCK(that->mutex_) {
         for (LogHandler *handler: that->activeHandlers_) {
             const int level = handler->level(category);
             if (level < minLevel) {
