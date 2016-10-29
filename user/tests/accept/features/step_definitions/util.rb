@@ -10,3 +10,7 @@ end
 Transform(/^(-?\d+)$/) do |val|
   val.to_i
 end
+
+Given(/^I have specified (.*) environmental variable$/) do |var|
+  raise "#{var} enironmental variable not set" unless Particle::Util.env_var(var)
+end

@@ -1,6 +1,7 @@
 require 'aruba/cucumber'
 require 'concurrent/atomics'
 require 'em/pure_ruby' # Pure implementation is required by em-rubyserial
+require 'particle_spec'
 
 # Runs EventMachine's event loop in background thread
 class EventLoop

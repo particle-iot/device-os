@@ -7,6 +7,7 @@ module Particle
   module Util
     class << self
       include RSpec::Matchers
+      include ParticleSpec::Utils
 
       def should(op, val1, val2 = nil)
         case op
@@ -65,6 +66,16 @@ module Particle
         val = ENV[name]
         raise "Environment variable is not defined: #{name}" unless val
         val
+      end
+
+      def cellular_data_usage(fileSize)
+        numChunks = (fileSize / 512).ceil
+        perChunkOverhead = (16+29+28)
+        controlOverhead = 48 + (6*(29+28))
+        totalBytes = (numChunks * perChunkOverhead) + controlOverhead + fileSize
+
+        res = (totalBytes / 1E6)
+        return "#{format("%.3f", res)}"
       end
     end
   end
