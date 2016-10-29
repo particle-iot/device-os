@@ -38,11 +38,11 @@ if [ ! $USB_VENDOR_ID ] || [ ! $USB_PRODUCT_ID ]; then
       ;;
     p1)
       USB_VENDOR_ID=2b04
-      USB_PRODUCT_ID=d008
+      USB_PRODUCT_ID=c008
       ;;
     electron)
       USB_VENDOR_ID=2b04
-      USB_PRODUCT_ID=d00a
+      USB_PRODUCT_ID=c00a
       ;;
     *)
       error "Unsupported platform: $PLATFORM"
