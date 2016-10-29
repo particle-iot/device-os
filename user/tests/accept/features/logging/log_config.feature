@@ -1,3 +1,4 @@
+@log_config
 Feature: Runtime logging configuration. See also user/tests/unit/logging.cpp
 
 
