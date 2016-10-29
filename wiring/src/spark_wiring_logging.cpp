@@ -31,7 +31,7 @@
 
 #include "spark_wiring_interrupts.h"
 
-#ifdef DEBUG_BUILD
+#if defined(DEBUG_BUILD) && PLATFORM_ID != 3
 // When compiled with DEBUG_BUILD=y use ATOMIC_BLOCK
 # define LOG_WITH_LOCK(x) ATOMIC_BLOCK()
 #else
