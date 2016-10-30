@@ -18,13 +18,14 @@
 
 void system_thread_idle()
 {
-    Spark_Idle_Events(true);
+    Spark_Idle_Events(true /* force_events */, false /* process_thread_queue */);
 }
 
 ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle,
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
+			4, /* maximum number of ISR tasks */
 			THREAD_STACK_SIZE /* stack size */)); // TODO: Use this value for threads spawned by ActiveObjectBase
 
 /**

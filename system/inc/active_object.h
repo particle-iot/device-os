@@ -27,6 +27,8 @@
 #include <future>
 #include "channel.h"
 #include "concurrent_hal.h"
+#include "interrupts_hal.h"
+#include "debug.h"
 
 /**
  * Configuratino data for an active object.
@@ -60,12 +62,21 @@ struct ActiveObjectConfiguration
      */
     uint16_t queue_size;
 
-public:
-    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, unsigned put_wait_,
-    			uint16_t queue_size_,
-            size_t stack_size_ =0) : background_task(task), stack_size(stack_size_),
-            take_wait(take_wait_), put_wait(put_wait_), queue_size(queue_size_) {}
+    /**
+     * Number of preallocated task objects than can be enqueued from an ISR.
+     */
+    uint16_t isr_task_pool_size;
 
+public:
+    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, unsigned put_wait_, uint16_t queue_size_,
+                uint16_t isr_task_pool_size, size_t stack_size_ = 0) :
+            background_task(task),
+            stack_size(stack_size_),
+            take_wait(take_wait_),
+            put_wait(put_wait_),
+            queue_size(queue_size_),
+            isr_task_pool_size(isr_task_pool_size) {
+    }
 };
 
 /**
@@ -229,6 +240,45 @@ public:
     }
 };
 
+class ISRTaskPool;
+
+/**
+ * Simple asynchronous task that can be scheduled from an ISR.
+ */
+class ISRTask: public Message
+{
+public:
+    typedef void (*Callback)(void*);
+
+    // Invokes a callback and returns this object back to associated pool
+    virtual void operator()() override;
+
+private:
+    Callback callback;
+    void* data;
+    ISRTask* next;
+    ISRTaskPool* pool;
+
+    friend class ISRTaskPool;
+};
+
+/**
+ * Preallocated pool of ISRTask objects.
+ */
+class ISRTaskPool
+{
+public:
+    explicit ISRTaskPool(size_t size);
+    ~ISRTaskPool();
+
+    ISRTask* take(ISRTask::Callback callback, void* data = nullptr);
+    void release(ISRTask* task);
+
+private:
+    ISRTask* tasks; // All tasks
+    ISRTask* availTask; // Next unused task
+};
+
 
 class ActiveObjectBase
 {
@@ -247,6 +297,8 @@ protected:
     std::thread::id _thread_id;
 
     std::mutex _start;
+
+    ISRTaskPool isr_tasks;
 
     volatile bool started;
 
@@ -278,7 +330,11 @@ protected:
 
 public:
 
-    ActiveObjectBase(const ActiveObjectConfiguration& config) : configuration(config), started(false) {}
+    ActiveObjectBase(const ActiveObjectConfiguration& config) :
+            configuration(config),
+            isr_tasks(config.isr_task_pool_size),
+            started(false) {
+    }
 
     bool process();
 
@@ -320,6 +376,20 @@ public:
         return promise;
     }
 
+    bool invoke_async_from_isr(void (*callback)(void*), void* data)
+    {
+        SPARK_ASSERT(HAL_IsISR());
+        ISRTask* task = isr_tasks.take(callback, data);
+        if (!task) {
+            return false;
+        }
+        Item item = task;
+        if (!put(item)) { // Implementation of put() method should support being called within an ISR
+            isr_tasks.release(task);
+            return false;
+        }
+        return true;
+    }
 };
 
 
@@ -373,9 +443,11 @@ protected:
     		return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
     }
 
-    void createQueue()
+    void createQueue(bool isr_tasks_only = false)
     {
-        os_queue_create(&queue, sizeof(Item), configuration.queue_size, nullptr);
+        const size_t size = isr_tasks_only ? configuration.isr_task_pool_size :
+                std::max(configuration.queue_size, configuration.isr_task_pool_size);
+        os_queue_create(&queue, sizeof(Item), size, nullptr);
     }
 
 public:
@@ -411,6 +483,11 @@ public:
     {
         ActiveObjectQueue::process();
     }
+
+    void createISRTaskQueue()
+    {
+        createQueue(true /* isr_tasks_only */);
+    }
 };
 
 
@@ -431,6 +508,15 @@ public:
         start_thread();
     }
 
+    void process()
+    {
+        ActiveObjectQueue::process();
+    }
+
+    void createISRTaskQueue()
+    {
+        createQueue(true /* isr_tasks_only */);
+    }
 };
 
 

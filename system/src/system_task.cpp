@@ -347,12 +347,20 @@ void manage_cloud_connection(bool force_events)
 extern void system_handle_button_click();
 #endif
 
-void Spark_Idle_Events(bool force_events/*=false*/)
+void Spark_Idle_Events(bool force_events, bool process_thread_queue)
 {
     HAL_Notify_WDT();
 
     ON_EVENT_DELTA();
     spark_loop_total_millis = 0;
+
+#if PLATFORM_THREADING
+    if (process_thread_queue) {
+        // Process asynchronous calls scheduled for execution in the system thread's context.
+        // When threading is enabled, such calls are normally processed by the thread's own loop
+        SystemThread.process();
+    }
+#endif
 
     if (!SYSTEM_POWEROFF) {
 

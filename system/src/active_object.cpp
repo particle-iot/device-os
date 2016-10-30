@@ -23,6 +23,7 @@
 #include "active_object.h"
 #include "concurrent_hal.h"
 #include "timer_hal.h"
+#include "spark_wiring_interrupts.h"
 
 void ActiveObjectBase::start_thread()
 {
@@ -72,6 +73,68 @@ bool ActiveObjectBase::process()
 void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
 {
     object->run();
+}
+
+void ISRTask::operator()()
+{
+    SPARK_ASSERT(callback && pool);
+    callback(data); // Invoke callback
+    pool->release(this); // Return this object back to associated pool
+}
+
+ISRTaskPool::ISRTaskPool(size_t size) :
+        tasks(nullptr),
+        availTask(nullptr)
+{
+    if (size) {
+        // Initialize pool of task objects
+        tasks = new(std::nothrow) ISRTask[size];
+        if (tasks) {
+            for (size_t i = 0; i < size; ++i) {
+                ISRTask* t = tasks + i;
+                if (i != size - 1) {
+                    t->next = t + 1;
+                } else {
+                    t->next = nullptr;
+                }
+                t->pool = this;
+            }
+        }
+        availTask = tasks;
+    }
+}
+
+ISRTaskPool::~ISRTaskPool()
+{
+    delete[] tasks;
+}
+
+ISRTask* ISRTaskPool::take(ISRTask::Callback callback, void* data)
+{
+    ISRTask* task = nullptr;
+    ATOMIC_BLOCK() { // Prevent preemption of current ISR
+        // Take task object from the pool
+        task = availTask;
+        if (task) {
+            availTask = task->next;
+        }
+    }
+    if (task) {
+        // Initialize task object
+        task->callback = callback;
+        task->data = data;
+    }
+    return task;
+}
+
+void ISRTaskPool::release(ISRTask* task)
+{
+    SPARK_ASSERT(task);
+    ATOMIC_BLOCK() {
+        // Return task object to the pool
+        task->next = availTask;
+        availTask = task;
+    }
 }
 
 #endif

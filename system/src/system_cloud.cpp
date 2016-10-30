@@ -170,7 +170,7 @@ void spark_process(void)
 #endif
 
     // run the background processing loop, and specifically also pump cloud events
-    Spark_Idle_Events(true);
+    Spark_Idle_Events(true /* force_events */, true /* process_thread_queue */);
 }
 
 String spark_deviceID(void)

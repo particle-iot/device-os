@@ -492,11 +492,33 @@ void manage_safe_mode()
     }
 }
 
+#if PLATFORM_THREADING
+
+void app_loop(bool threaded);
+
+// This is the application loop ActiveObject.
+
+void app_thread_idle()
+{
+    app_loop(true);
+}
+
+// don't wait to get items from the queue, so the application loop is processed as often as possible
+// timeout after attempting to put calls into the application queue, so the system thread does not deadlock  (since the application may also
+// be trying to put events in the system queue.)
+ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle,
+		0, /* take time */
+		5000, /* put time */
+		20, /* queue size */
+		4 /* maximum number of ISR tasks */));
+
+#endif // PLATFORM_THREADING
+
 void app_loop(bool threaded)
 {
     DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
     if (!threaded)
-        Spark_Idle();
+        Spark_Idle(true /* process_thread_queue */);
 
     static uint8_t SPARK_WIRING_APPLICATION = 0;
     if(threaded || SPARK_WLAN_SLEEP || !spark_cloud_flag_auto_connect() || spark_cloud_flag_connected() || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
@@ -527,29 +549,17 @@ void app_loop(bool threaded)
                 system_power_management_update();
 #endif
             }
+
+#if PLATFORM_THREADING
+            if (!threaded) {
+                // Process asynchronous calls scheduled for execution in the application thread's context.
+                // When threading is enabled, such calls are normally processed by the thread's own loop
+                ApplicationThread.process();
+            }
+#endif
         }
     }
 }
-
-
-#if PLATFORM_THREADING
-
-// This is the application loop ActiveObject.
-
-void app_thread_idle()
-{
-    app_loop(true);
-}
-
-// don't wait to get items from the queue, so the application loop is processed as often as possible
-// timeout after attempting to put calls into the application queue, so the system thread does not deadlock  (since the application may also
-// be trying to put events in the system queue.)
-ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle,
-		0, /* take time */
-		5000, /* put time */
-		20 /* queue size */));
-
-#endif
 
 extern "C" void system_part2_post_init() __attribute__((weak));
 
@@ -613,6 +623,9 @@ void app_setup_and_loop(void)
     {
         SystemThread.setCurrentThread();
         ApplicationThread.setCurrentThread();
+        // Create queues for asynchronous calls scheduled from ISR
+        SystemThread.createISRTaskQueue();
+        ApplicationThread.createISRTaskQueue();
     }
 #endif
     if(!threaded) {

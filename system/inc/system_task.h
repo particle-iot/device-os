@@ -41,9 +41,10 @@ void Network_Setup(bool threaded);
 /**
  * Run background processing. This function should be called as often as possible by user code.
  * @param force_events when true, runs cloud event pump in addition to maintaining the wifi and cloud connection.
+ * @param process_thread_queue when true, performs processing of the system thread's event queue
  */
-void Spark_Idle_Events(bool force_events);
-inline void Spark_Idle() { Spark_Idle_Events(false); }
+void Spark_Idle_Events(bool force_events, bool process_thread_queue);
+inline void Spark_Idle(bool process_thread_queue) { Spark_Idle_Events(false, process_thread_queue); }
 
 /**
  * The old method
