@@ -100,8 +100,10 @@ STM32_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* P1S2          - 26 */ { GPIOC, GPIO_Pin_0, GPIO_PinSource0, ADC_Channel_10, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 /* P1S3          - 27 */ { GPIOC, GPIO_Pin_4, GPIO_PinSource4, ADC_Channel_14, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 /* P1S4          - 28 */ { GPIOC, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* P1S5          - 29 */ { GPIOC, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_11, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }
+/* P1S5          - 29 */ { GPIOC, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_11, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
+/* P1S6          - 30 */ { GPIOA, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, TIM1, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
 #endif
+
 #if PLATFORM_ID == 10 // Electron
 /* B0            - 24 */,{ GPIOC, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, TIM8, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
 /* B1            - 25 */ { GPIOC, GPIO_Pin_6, GPIO_PinSource6, NONE, NONE, TIM8, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },

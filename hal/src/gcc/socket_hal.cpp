@@ -281,15 +281,16 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     handle.io_control(command);
     std::size_t available = command.get();
     sock_result_t result = 0;
-    if (_timeout || available)
-    available = handle.read_some(boost::asio::buffer(buffer, len), ec);
-    result = ec.value() ? -abs(ec.value()) : available;
-    if (ec.value()) {
-        if (ec.value() == boost::system::errc::resource_deadlock_would_occur || // EDEADLK (35)
-            ec.value() == boost::system::errc::resource_unavailable_try_again) { // EAGAIN (11)
-            result = 0; // No data available
-        } else {
-            DEBUG("socket receive error: %d %s, read=%d", ec.value(), ec.message().c_str(), available);
+    if (_timeout || available) {
+        available = handle.read_some(boost::asio::buffer(buffer, len), ec);
+        result = ec.value() ? -abs(ec.value()) : available;
+        if (ec.value()) {
+            if (ec.value() == boost::system::errc::resource_deadlock_would_occur || // EDEADLK (35)
+                ec.value() == boost::system::errc::resource_unavailable_try_again) { // EAGAIN (11)
+                result = 0; // No data available
+            } else {
+                DEBUG("socket receive error: %d %s, read=%d", ec.value(), ec.message().c_str(), available);
+            }
         }
     }
     return result;
