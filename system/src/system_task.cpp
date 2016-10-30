@@ -240,11 +240,16 @@ void establish_cloud_connection()
             cfod_count = 0;
             SPARK_CLOUD_SOCKETED = 1;
             INFO("Cloud socket connected");
+            // "Connected" event is generated only after a successful handshake
         }
         else
         {
             WARN("Cloud socket connection failed: %d", connect_result);
             SPARK_CLOUD_SOCKETED = 0;
+
+            // "Connecting" event should be followed by either "connected" or "disconnected" event
+            system_notify_event(cloud_status, cloud_status_disconnected);
+
             // if the user put the networkin listening mode via the button,
             // the cloud connect may have been cancelled.
             if (SPARK_WLAN_RESET || network.listening())
@@ -464,7 +469,12 @@ void cloud_disconnect(bool closeSocket)
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
         INFO("Cloud: disconnecting");
-        system_notify_event(cloud_status, cloud_status_disconnecting);
+        if (SPARK_CLOUD_CONNECTED)
+        {
+            // "Disconnecting" event is generated only for a successfully established connection (including handshake)
+            system_notify_event(cloud_status, cloud_status_disconnecting);
+        }
+
         if (closeSocket)
             spark_cloud_socket_disconnect();
 
