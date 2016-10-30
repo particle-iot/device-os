@@ -84,6 +84,16 @@ FFL(F const &func)
         return; \
     }
 
+#define _THREAD_CONTEXT_ASYNC_FROM_ISR(thread, fn) \
+    do { \
+        struct _Wrapper { \
+            static void callback(void*) { \
+                (fn); \
+            } \
+        }; \
+        (thread).invoke_async_from_isr(_Wrapper::callback, nullptr); \
+    } while (false)
+
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn) \
     if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
         auto callable = FFL([=]() { return (fn); }); \
@@ -93,17 +103,26 @@ FFL(F const &func)
         return result; \
     }
 
-#else
+#else // !PLATFORM_THREADING
 
 #define _THREAD_CONTEXT_ASYNC(thread, fn)
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result)
-#define SYSTEM_THREAD_CONTEXT_SYNC(fn) 
+
+// Asynchronous calls from ISR are not supported on the platforms without threading
+#define _THREAD_CONTEXT_ASYNC_FROM_ISR(thread, fn) \
+    do { \
+        (fn); \
+    } while (false)
+
+#define SYSTEM_THREAD_CONTEXT_SYNC(fn)
 #endif
 
 #define SYSTEM_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(SystemThread, fn)
 #define SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(SystemThread, fn, result)
+#define SYSTEM_THREAD_CONTEXT_ASYNC_FROM_ISR(fn) _THREAD_CONTEXT_ASYNC_FROM_ISR(SystemThread, fn)
 #define APPLICATION_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(ApplicationThread, fn)
 #define APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(ApplicationThread, fn, result)
+#define APPLICATION_THREAD_CONTEXT_ASYNC_FROM_ISR(fn) _THREAD_CONTEXT_ASYNC_FROM_ISR(ApplicationThread, fn)
 
 // Perform an asynchronous function call if not on the system thread,
 // or execute directly if on the system thread

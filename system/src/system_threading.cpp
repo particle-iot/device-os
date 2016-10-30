@@ -25,7 +25,7 @@ ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idl
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
-			4, /* maximum number of ISR tasks */
+			10, /* maximum number of ISR tasks */
 			THREAD_STACK_SIZE /* stack size */)); // TODO: Use this value for threads spawned by ActiveObjectBase
 
 /**

@@ -376,20 +376,7 @@ public:
         return promise;
     }
 
-    bool invoke_async_from_isr(void (*callback)(void*), void* data)
-    {
-        SPARK_ASSERT(HAL_IsISR());
-        ISRTask* task = isr_tasks.take(callback, data);
-        if (!task) {
-            return false;
-        }
-        Item item = task;
-        if (!put(item)) { // Implementation of put() method should support being called within an ISR
-            isr_tasks.release(task);
-            return false;
-        }
-        return true;
-    }
+    bool invoke_async_from_isr(void (*callback)(void*), void* data);
 };
 
 
@@ -515,6 +502,8 @@ public:
 
     void createISRTaskQueue()
     {
+        // FIXME: Looks like we need to refactor active object classes a little
+        configuration.take_wait = 0; // Do not wait on ISR-only task queue
         createQueue(true /* isr_tasks_only */);
     }
 };

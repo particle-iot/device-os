@@ -510,7 +510,7 @@ ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_t
 		0, /* take time */
 		5000, /* put time */
 		20, /* queue size */
-		4 /* maximum number of ISR tasks */));
+		5 /* maximum number of ISR tasks */));
 
 #endif // PLATFORM_THREADING
 
