@@ -63,6 +63,7 @@ DYNALIB_FN(19, system, application_thread_current, uint8_t(void*))
 DYNALIB_FN(20, system, system_thread_current, uint8_t(void*))
 
 DYNALIB_FN(21, system, system_thread_get_state, spark::feature::State(void*))
+DYNALIB_FN(22, system, system_notify_time_changed, void(uint32_t, void*, void*))
 
 DYNALIB_END(system)
 

@@ -100,5 +100,6 @@ void system_notify_event(system_event_t event, uint32_t data, void* pointer, voi
         fn(fndata);
 }
 
-
-
+void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1) {
+    system_notify_event(time_changed, data);
+}

@@ -287,4 +287,26 @@ test(TIME_17_RestoreSystemMode) {
     }
 }
 
+static int s_time_changed_reason = -1;
+static void time_changed_handler(system_event_t event, int param)
+{
+    s_time_changed_reason = param;
+}
+
+test(TIME_18_TimeChangedEvent) {
+    assertTrue(Particle.connected());
+
+    system_tick_t syncedLastMillis = Particle.timeSyncedLast();
+
+    System.on(time_changed, time_changed_handler);
+    Time.setTime(946684800);
+    assertEqual(s_time_changed_reason, (int)time_changed_manually);
+    s_time_changed_reason = -1;
+
+    Particle.syncTime();
+    waitFor(Particle.syncTimeDone, 60000);
+    assertMore(Particle.timeSyncedLast(), syncedLastMillis);
+    assertEqual(s_time_changed_reason, (int)time_changed_sync);
+}
+
 #endif

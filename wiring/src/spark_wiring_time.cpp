@@ -30,6 +30,7 @@
 #include "spark_wiring_system.h"
 #include "spark_wiring_cloud.h"
 #include "system_mode.h"
+#include "system_event.h"
 
 const char* TIME_FORMAT_DEFAULT = "asctime";
 const char* TIME_FORMAT_ISO8601_FULL = "%Y-%m-%dT%H:%M:%S%z";
@@ -307,6 +308,7 @@ uint8_t TimeClass::isDST()
 void TimeClass::setTime(time_t t)
 {
     HAL_RTC_Set_UnixTime(t);
+    system_notify_time_changed((uint32_t)time_changed_manually, nullptr, nullptr);
 }
 
 /* return string representation for the given time */
