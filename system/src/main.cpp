@@ -306,6 +306,7 @@ void system_power_management_update()
         bool LOWBATT = fuel.getAlert();
         if (LOWBATT) {
             fuel.clearAlert(); // Clear the Low Battery Alert flag if set
+            system_notify_event(low_battery);
         }
 //        if (LOG_ENABLED(INFO)) {
 //        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
