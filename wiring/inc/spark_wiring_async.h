@@ -213,8 +213,8 @@ public:
     void setResult(ResultT result) {
         if (this->exchangeState(State::SUCCEEDED)) {
             new(&result_) ResultT(std::move(result));
-            this->invokeCallback(this->onSuccess_, result_);
             this->releaseDone();
+            this->invokeCallback(this->onSuccess_, result_);
         }
     }
 
@@ -228,8 +228,8 @@ public:
     void setError(Error error) {
         if (this->exchangeState(State::FAILED)) {
             new(&error_) Error(std::move(error));
-            this->invokeCallback(this->onError_, error_);
             this->releaseDone();
+            this->invokeCallback(this->onError_, error_);
         }
     }
 
@@ -281,16 +281,16 @@ public:
 
     void setResult() {
         if (this->exchangeState(State::SUCCEEDED)) {
-            this->invokeCallback(this->onSuccess_);
             this->releaseDone();
+            this->invokeCallback(this->onSuccess_);
         }
     }
 
     void setError(Error error) {
         if (this->exchangeState(State::FAILED)) {
             error_ = std::move(error);
-            this->invokeCallback(this->onError_, error_);
             this->releaseDone();
+            this->invokeCallback(this->onError_, error_);
         }
     }
 
