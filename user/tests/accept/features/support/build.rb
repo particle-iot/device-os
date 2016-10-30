@@ -5,6 +5,8 @@ module Particle
       @last_app_path = nil
       @last_bin_path = nil
 
+      attr_reader :last_app_path
+
       def flash_app(app_path, platform=nil)
         if app_path != @last_app_path
           target_path = Util.cache_dir(File.join('build_target', app_path))

@@ -1,7 +1,11 @@
 Given(/^the application ([^ ]+)$/) do |app_dir|
   feature_path = File.dirname(@current_scenario.location.file)
   app_path = File.join(feature_path, app_dir)
-  Particle::Build.flash_app(app_path)
+  if app_path != Particle::Build.last_app_path
+    step 'I put the device into dfu mode'
+    step 'I wait for 5 seconds'
+    Particle::Build.flash_app(app_path)
+  end
 end
 
 Given(/^([^ ]+) application binary built for (.*)$/) do |app_dir, platform|
