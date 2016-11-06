@@ -206,7 +206,9 @@ void reset_button_click()
     if (clicks > 0) {
         system_notify_event(button_final_click, clicks);
         button_final_clicks = clicks;
+#if Wiring_SetupButtonUX
         system_on_button_click();
+#endif
     }
 }
 
