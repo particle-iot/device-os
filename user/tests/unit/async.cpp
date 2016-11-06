@@ -1,5 +1,7 @@
 #include "spark_wiring_async.h"
 
+#include "completion_handler.h"
+
 #include "tools/catch.h"
 
 #include <thread>
@@ -55,6 +57,12 @@ private:
     std::deque<Event> events_;
 };
 
+template<typename ResultT>
+using Future = spark::Future<ResultT, Context>;
+
+template<typename ResultT>
+using Promise = spark::Promise<ResultT, Context>;
+
 inline void postEvent(Context::Event event) {
     Context::instance()->postEvent(std::move(event));
 }
@@ -63,11 +71,36 @@ inline void resetContext() {
     Context::instance()->reset();
 }
 
-template<typename ResultT>
-using Future = spark::Future<ResultT, Context>;
+using particle::CompletionHandler;
+using particle::CompletionHandlerMap;
 
-template<typename ResultT>
-using Promise = spark::Promise<ResultT, Context>;
+// Adapter class allowing to use C++ lambda as completion_callback
+class CompletionCallback {
+public:
+    typedef std::function<void(int error, void* result)> Function;
+
+    CompletionCallback(Function func) :
+            func_(std::move(func)) {
+    }
+
+    operator completion_callback() const {
+        return callback;
+    }
+
+private:
+    static void callback(int error, void* result, void* data, void* reserved) {
+        if (data) {
+            auto d = static_cast<const CompletionCallback*>(data);
+            d->func_(error, result);
+        }
+    }
+
+    Function func_;
+};
+
+inline CompletionCallback completionCallback(CompletionCallback::Function func) {
+    return CompletionCallback(std::move(func));
+}
 
 } // namespace
 
@@ -286,5 +319,105 @@ TEST_CASE("Future<int>") {
         });
         p.setResult(1);
         CHECK(result == 1);
+    }
+}
+
+TEST_CASE("CompletionHandler") {
+    SECTION("using default-constructed handler") {
+        CHECK((bool)CompletionHandler() == false);
+        CompletionHandler().setResult(); // Shouldn't crash
+        CompletionHandler().setError(SYSTEM_ERROR_UNKNOWN); // ditto
+    }
+
+    SECTION("invoking handler with result data") {
+        int result = 0;
+        int error = SYSTEM_ERROR_UNKNOWN;
+        auto cb = completionCallback([&](int e, void* r) {
+            // Copy callback arguments to local variables
+            result = *static_cast<const int*>(r);
+            error = e;
+        });
+        CompletionHandler h(cb, &cb); // Wrap completion_callback to CompletionHandler
+        CHECK((bool)h == true);
+        int val = 1;
+        h.setResult(&val); // Set result data
+        CHECK(result == 1);
+        CHECK(error == SYSTEM_ERROR_NONE);
+    }
+
+    SECTION("invoking handler with error code") {
+        bool hasResult = false;
+        int error = SYSTEM_ERROR_NONE;
+        auto cb = completionCallback([&](int e, void* r) {
+            hasResult = (bool)r;
+            error = e;
+        });
+        CompletionHandler h(cb, &cb);
+        h.setError(SYSTEM_ERROR_UNKNOWN); // Set error code
+        CHECK(hasResult == false);
+        CHECK(error == SYSTEM_ERROR_UNKNOWN);
+    }
+
+    SECTION("handler can be invoked only once") {
+        bool hasResult = false;
+        int error = SYSTEM_ERROR_NONE;
+        auto cb = completionCallback([&](int e, void* r) {
+            hasResult = (bool)r;
+            error = e;
+        });
+        // Invoking already completed handler with error code
+        CompletionHandler h1(cb, &cb);
+        int val = 1;
+        h1.setResult(&val);
+        h1.setError(SYSTEM_ERROR_UNKNOWN);
+        CHECK(hasResult == true);
+        CHECK(error == SYSTEM_ERROR_NONE);
+        // Invoking already completed handler with result data
+        CompletionHandler h2(cb, &cb);
+        h2.setError(SYSTEM_ERROR_UNKNOWN);
+        h2.setResult(&val);
+        CHECK(hasResult == false);
+        CHECK(error == SYSTEM_ERROR_UNKNOWN);
+    }
+
+    SECTION("handler instance can be moved via move constructor") {
+        bool called = false;
+        auto cb = completionCallback([&](int, void*) {
+            called = true;
+        });
+        CompletionHandler h1(cb, &cb);
+        CompletionHandler h2(std::move(h1));
+        h1.setResult();
+        CHECK(called == false); // Callback ownership has been transferred to h2
+        h2.setResult();
+        CHECK(called == true);
+    }
+
+    SECTION("handler instance can be moved via move assignment") {
+        int error = SYSTEM_ERROR_NONE;
+        auto cb = completionCallback([&](int e, void*) {
+            error = e;
+        });
+        CompletionHandler h1(cb, &cb);
+        CompletionHandler h2(cb, &cb);
+        h1 = std::move(h2);
+        // It's an error if a completion handler wasn't invoked during its lifetime
+        CHECK(error == SYSTEM_ERROR_INTERNAL);
+        h1.setError(SYSTEM_ERROR_UNKNOWN);
+        CHECK(error == SYSTEM_ERROR_UNKNOWN);
+        h2.setResult();
+        CHECK(error == SYSTEM_ERROR_UNKNOWN); // Callback ownership has been transferred to h1
+    }
+
+    SECTION("completion callback is invoked on handler destruction") {
+        int error = SYSTEM_ERROR_NONE;
+        {
+            auto cb = completionCallback([&](int e, void*) {
+                error = e;
+            });
+            CompletionHandler h(cb, &cb);
+        }
+        // It's an error if a completion handler wasn't invoked during its lifetime
+        CHECK(error == SYSTEM_ERROR_INTERNAL);
     }
 }

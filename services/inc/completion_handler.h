@@ -82,7 +82,7 @@ public:
     }
 
     CompletionHandler& operator=(CompletionHandler&& handler) {
-        setError(SYSTEM_ERROR_CANCELLED); // Invoke current callback
+        setError(SYSTEM_ERROR_INTERNAL); // Invoke current callback
         callback_ = handler.callback_;
         data_ = handler.data_;
         handler.callback_ = nullptr; // Reset source handler
