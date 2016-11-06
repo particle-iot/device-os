@@ -79,3 +79,14 @@ test(sleep_1_interrupts_attached_handler_is_not_detached_after_stop_mode)
 
     detachInterrupt(pin);
 }
+
+/*
+ * Issue #1155, broken by PR #1051/#1076
+ */
+test(sleep_2_system_sleep_sleep_mode_wlan_works_correctly)
+{
+    System.sleep(10);
+    assertTrue(Particle.disconnected());
+    waitFor(Particle.connected, 120000);
+    assertTrue(Particle.connected());
+}
