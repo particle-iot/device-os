@@ -40,5 +40,25 @@ module Particle
       @reply = nil
       @except = nil
     end
+
+    def wait_until_request_fails(type, data='', timeout=60)
+      Timeout::timeout(timeout) do
+        loop do
+            sleep(0.1)
+            send_request(type, data)
+            break if @except
+          end
+      end
+    end
+
+    def wait_until_request_succeeds(type, data='', timeout=60)
+      Timeout::timeout(timeout) do
+        loop do
+            sleep(0.1)
+            send_request(type, data)
+            break unless @except
+          end
+      end
+    end
   end
 end

@@ -7,6 +7,7 @@ usage() {
   echo "Tests:"
   echo -e "  - log_config"
   echo -e "  - update_result"
+  echo -e "  - electron_modem_pause"
   exit 1
 }
 
@@ -20,6 +21,8 @@ case $1 in
   log_config)
     ;;
   update_result)
+    ;;
+  electron_modem_pause)
     ;;
   *)
     usage

@@ -33,3 +33,17 @@ Then(/^USB request should( not)? (fail|succeed)$/) do |neg, op|
   raise e if e && status
   expect(!e).to eq(status)
 end
+
+When(/^I wait for the device to reply to USB request(?: with type (\d+))?$/) do |type|
+  type ||= Particle::Usb::DEFAULT_REQUEST_TYPE
+  usb.wait_until_request_succeeds(type)
+  e = usb.last_error
+  raise "Error while waiting for the device to reply to USB request" if e
+end
+
+When(/^I wait for the device to stop replying to USB request(?: with type (\d+))?$/) do |type|
+  type ||= Particle::Usb::DEFAULT_REQUEST_TYPE
+  usb.wait_until_request_fails(type)
+  e = usb.last_error
+  raise "Error while waiting for the device to stop replying to USB request" unless e
+end
