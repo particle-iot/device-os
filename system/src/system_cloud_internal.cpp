@@ -16,6 +16,10 @@
  ******************************************************************************
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE // for strdup() function (gcc 4.9.x)
+#endif
+
 #include "spark_wiring_string.h"
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_ticks.h"
@@ -46,6 +50,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
