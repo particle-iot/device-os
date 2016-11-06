@@ -23,6 +23,7 @@
 #include "system_task.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
+#include "system_network_internal.h"
 #include "system_threading.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
@@ -48,10 +49,12 @@ WakeupState wakeupState;
 
 static void network_suspend() {
     // save the current state so it can be restored on wakeup
-    wakeupState.wifi = !SPARK_WLAN_SLEEP;
-    wakeupState.wifiConnected = wakeupState.cloud | network_ready(0, 0, NULL) | network_connecting(0, 0, NULL);
 #ifndef SPARK_NO_CLOUD
     wakeupState.cloud = spark_cloud_flag_auto_connect();
+#endif
+    wakeupState.wifi = !SPARK_WLAN_SLEEP;
+    wakeupState.wifiConnected = wakeupState.cloud || network_ready(0, 0, NULL) || network_connecting(0, 0, NULL);
+#ifndef SPARK_NO_CLOUD
     // disconnect the cloud now, and clear the auto connect status
     spark_cloud_socket_disconnect();
     spark_cloud_flag_disconnect();
@@ -194,5 +197,7 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
  */
 void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
+    // Cancel current connection attempt to unblock the system thread
+    network.connect_cancel(true);
     system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved);
 }

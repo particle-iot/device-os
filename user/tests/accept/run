@@ -1,5 +1,32 @@
 #!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-pushd $DIR > /dev/null
-PATH=$DIR:$PATH cucumber features --expand --tags ~@wip $*
-popd
+
+set -e
+
+usage() {
+  echo "$(basename $0) <test name>"
+  echo "Tests:"
+  echo -e "  - log_config"
+  echo -e "  - update_result"
+  exit 1
+}
+
+cd $(dirname "$0")
+this_dir=$(pwd)
+
+PATH="$this_dir/tools:$PATH"
+source ./init_env
+
+case $1 in
+  log_config)
+    ;;
+  update_result)
+    ;;
+  *)
+    usage
+    ;;
+esac
+
+testname="$1"
+shift
+
+cucumber features --expand --tags @"${testname}" $*

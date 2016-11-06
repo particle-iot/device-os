@@ -482,8 +482,6 @@ void manage_safe_mode()
             system_get_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, &value, nullptr);
             if (value)
             {
-                // disable logging so that it doesn't interfere with serial output
-                set_logger_output(nullptr, NO_LOG_LEVEL);
                 system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 0, 0);
                 // flag listening mode
                 network_listen(0, 0, 0);
