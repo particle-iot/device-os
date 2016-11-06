@@ -100,6 +100,10 @@ public:
     */
     void rxResume();
 
+    /** pauses receiver (deasserts RTS line - hardware flow control)
+    */
+    void rxPause();
+
 protected:
     //! start transmission helper
     void txStart(void);
@@ -107,4 +111,6 @@ protected:
     void txCopy(void);
     Pipe<char> _pipeRx; //!< receive pipe
     Pipe<char> _pipeTx; //!< transmit pipe
+
+    bool pause_;
 };

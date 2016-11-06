@@ -28,7 +28,8 @@ static USART_InitTypeDef USART_InitStructure;
 
 ElectronSerialPipe::ElectronSerialPipe(int rxSize, int txSize) :
     _pipeRx( rxSize ),
-    _pipeTx( txSize )
+    _pipeTx( txSize ),
+    pause_(false)
 {
 }
 
@@ -224,7 +225,26 @@ void ElectronSerialPipe::rxIrqBuf(void)
 
 void ElectronSerialPipe::rxResume(void)
 {
+#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
+    if (pause_) {
+        pause_ = false;
+        HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
+        STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+        GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
+    }
+#endif
+
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+}
+
+void ElectronSerialPipe::rxPause(void)
+{
+#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
+    pause_ = true;
+    HAL_Pin_Mode(RTS_UC, OUTPUT);
+    HAL_GPIO_Write(RTS_UC, 1);
+    USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
+#endif
 }
 
 /*******************************************************************************

@@ -2310,3 +2310,15 @@ int MDMElectronSerial::getLine(char* buffer, int length)
     rxResume();
     return ret;
 }
+
+void MDMElectronSerial::pause()
+{
+    LOCK();
+    rxPause();
+}
+
+void MDMElectronSerial::resume()
+{
+    LOCK();
+    rxResume();
+}
