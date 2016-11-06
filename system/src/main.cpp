@@ -169,6 +169,21 @@ void system_display_rssi() {
     system_display_bars(bars);
 }
 
+// This function is called immediately when button click (or series of clicks) is registered in the ISR
+void system_on_button_click()
+{
+    switch (button_final_clicks) {
+    case 2: // Double click
+        SYSTEM_POWEROFF = 1;
+        // Cancel current connection attempt to unblock the system thread
+        network.connect_cancel(true); // Can be called from an ISR
+        break;
+    default:
+        break;
+    }
+}
+
+// This function is called by the system event loop
 void system_handle_button_click()
 {
     const uint8_t clicks = button_final_clicks;
@@ -176,10 +191,6 @@ void system_handle_button_click()
     switch (clicks) {
     case 1: // Single click
         system_display_rssi();
-        break;
-    case 2: // Double click
-        SYSTEM_POWEROFF = 1;
-        network.connect_cancel(true);
         break;
     default:
         break;
@@ -195,6 +206,7 @@ void reset_button_click()
     if (clicks > 0) {
         system_notify_event(button_final_click, clicks);
         button_final_clicks = clicks;
+        system_on_button_click();
     }
 }
 
