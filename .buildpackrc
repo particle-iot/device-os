@@ -11,7 +11,7 @@ export BUILDPACK_VARIATION=gcc-arm-none-eabi-4_9-2015q3
 # Platforms for which this firmware is considered stable
 export RELEASE_PLATFORMS=( )
 # Platforms for which this firmware is considered experimental
-export PRERELEASE_PLATFORMS=( core photon p1 electron )
+export PRERELEASE_PLATFORMS=( raspberrypi )
 # Note: a single platform should be only in release or prerelease list. If
 # added to both it will be considered a prerelease
 

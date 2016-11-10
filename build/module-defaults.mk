@@ -84,6 +84,12 @@ LDFLAGS += $(patsubst %,-l%,$(LIBS))
 endif
 
 
+ifeq ($(PLATFORM_ID),31)
+STRIP_SYMBOLS?=y
+else
+STRIP_SYMBOLS?=n
+endif
+
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
 

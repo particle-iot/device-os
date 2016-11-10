@@ -203,6 +203,9 @@ $(TARGET_BASE)$(EXECUTABLE_EXTENSION) : build_dependencies $(ALLOBJ) $(LIB_DEPS)
 	$(call echo,'Invoking: GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+ifeq (y,$(STRIP_SYMBOLS))
+	$(VERBOSE)$(STRIP) $@
+endif
 	$(call echo,)
 
 
