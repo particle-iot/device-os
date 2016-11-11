@@ -17,6 +17,8 @@
   ******************************************************************************
  */
 
+#ifndef UNIT_TEST
+
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include "stdarg.h"
@@ -35,6 +37,62 @@ STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
 #endif
 
 SYSTEM_MODE(AUTOMATIC);
+
+#endif // UNIT_TEST
+
+struct TinkerCommand {
+    String pinType;
+    int pinNumber;
+    int value;
+    TinkerCommand() {
+        pinType = "";
+        pinNumber = 0;
+        value = 0;
+    }
+};
+
+// Convert text like D7=HIGH into a structured command
+TinkerCommand parseCommand(String command) {
+    TinkerCommand result;
+
+    // find the type of pin (D7 --> D, RX --> RX)
+    unsigned pos = 0;
+    for (; pos < command.length(); pos++) {
+        char c = command.charAt(pos);
+        if (c >= 'A' && c <= 'Z') {
+        	result.pinType += c;
+        } else {
+        	break;
+        }
+    }
+
+    // find the pin number (D7 --> 7)
+    String num = "";
+    for (; pos < command.length(); pos++) {
+        char c = command.charAt(pos);
+        if (c >= '0' && c <= '9') {
+        	num += c;
+        } else {
+        	break;
+        }
+    }
+    result.pinNumber = num.toInt();
+
+    // Convert the value to integer (A0=50 --> 50, D7=HIGH --> 1)
+
+    String value = command.substring(pos + 1); // + 1 to skip the equal sign
+    if (value.equals("HIGH")) {
+        result.value = 1;
+    } else if (value.equals("LOW")) {
+        result.value = 0;
+    } else {
+        result.value = value.toInt();
+    }
+
+    return result;
+}
+
+#ifndef UNIT_TEST
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
@@ -304,3 +362,5 @@ int tinkerAnalogWrite(String command)
     else return -2;
 #endif // other PLATFORM_ID
 }
+
+#endif // UNIT_TEST
