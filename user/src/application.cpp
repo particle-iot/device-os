@@ -40,14 +40,45 @@ SYSTEM_MODE(AUTOMATIC);
 
 #endif // UNIT_TEST
 
+// Pin config for various platforms
+#if PLATFORM_ID == 31 || PLATFORM_ID == 3
+#define D_PIN_COUNT 17
+#define A_PIN_COUNT 8
+#define GPIO_PIN_COUNT 28
+#else
+#define D_PIN_COUNT 8
+#define A_PIN_COUNT 8
+#define GPIO_PIN_COUNT 0
+#endif
+
+#if PLATFORM_ID == 31
+#define HAS_ANALOG_PINS 0
+#else
+#define HAS_ANALOG_PINS 1
+#endif
+
+#if PLATFORM_ID == 10 || PLATFORM_ID == 3
+#define B_PIN_COUNT 6
+#define C_PIN_COUNT 6
+#define B_ANALOG_PIN_COUNT 3
+#else
+#define B_PIN_COUNT 0
+#define C_PIN_COUNT 0
+#define B_ANALOG_PIN_COUNT 0
+#endif
+
 struct TinkerCommand {
     String pinType;
     int pinNumber;
     int value;
+    bool hasNumber;
+    bool hasValue;
     TinkerCommand() {
         pinType = "";
         pinNumber = 0;
         value = 0;
+        hasNumber = false;
+        hasValue = false;
     }
 };
 
@@ -76,11 +107,13 @@ TinkerCommand parseCommand(String command) {
         	break;
         }
     }
+    result.hasNumber = num.length() > 0;
     result.pinNumber = num.toInt();
 
     // Convert the value to integer (A0=50 --> 50, D7=HIGH --> 1)
 
     String value = command.substring(pos + 1); // + 1 to skip the equal sign
+    result.hasValue = value.length() > 0;
     if (value.equals("HIGH")) {
         result.value = 1;
     } else if (value.equals("LOW")) {
@@ -113,6 +146,8 @@ void loop()
     //This will run in a loop
 }
 
+#endif // UNIT_TEST
+
 /*******************************************************************************
  * Function Name  : tinkerDigitalRead
  * Description    : Reads the digital value of a given pin
@@ -121,51 +156,61 @@ void loop()
  * Return         : Value of the pin (0 or 1) in INT type
                     Returns a negative number on failure
  *******************************************************************************/
-int tinkerDigitalRead(String pin)
+int tinkerDigitalRead(String command)
 {
-#if PLATFORM_ID==31
-    // Raspberry Pi uses raw pin numbers
-    int pinNumber = pin.toInt();
+    TinkerCommand c = parseCommand(command);
 
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 27) return -1;
-
-    pinMode(pinNumber, INPUT_PULLDOWN);
-    return digitalRead(pinNumber);
-
-#else
-
-    //convert ascii to integer
-    int pinNumber = pin.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 7) return -1;
-
-    if(pin.startsWith("D"))
-    {
-        pinMode(pinNumber, INPUT_PULLDOWN);
-        return digitalRead(pinNumber);
+    if (!c.hasNumber) {
+        return -2;
     }
-    else if (pin.startsWith("A"))
+
+    if (c.pinType.equals("D"))
     {
-        pinMode(pinNumber+10, INPUT_PULLDOWN);
-        return digitalRead(pinNumber+10);
+        if (c.pinNumber >= D_PIN_COUNT) {
+            return -1;
+        }
+        pinMode(D0 + c.pinNumber, INPUT_PULLDOWN);
+        return digitalRead(D0 + c.pinNumber);
     }
-#if Wiring_Cellular
-    else if (pin.startsWith("B"))
+    else if (c.pinType.equals("A"))
     {
-        if (pinNumber > 5) return -3;
-        pinMode(pinNumber+24, INPUT_PULLDOWN);
-        return digitalRead(pinNumber+24);
+        if (c.pinNumber >= A_PIN_COUNT) {
+            return -1;
+        }
+        pinMode(A0 + c.pinNumber, INPUT_PULLDOWN);
+        return digitalRead(A0 + c.pinNumber);
     }
-    else if (pin.startsWith("C"))
+#if B_PIN_COUNT > 0
+    else if(c.pinType.equals("B"))
     {
-        if (pinNumber > 5) return -4;
-        pinMode(pinNumber+30, INPUT_PULLDOWN);
-        return digitalRead(pinNumber+30);
+        if (c.pinNumber >= B_PIN_COUNT) {
+            return -3;
+        }
+        pinMode(B0 + c.pinNumber, INPUT_PULLDOWN);
+        return digitalRead(B0 + c.pinNumber);
+    }
+#endif
+#if C_PIN_COUNT > 0
+    else if(c.pinType.equals("C"))
+    {
+        if (c.pinNumber >= C_PIN_COUNT) {
+            return -4;
+        }
+        pinMode(C0 + c.pinNumber, INPUT_PULLDOWN);
+        return digitalRead(C0 + c.pinNumber);
+    }
+#endif
+#if GPIO_PIN_COUNT > 0
+    else if(c.pinType.equals("GPIO"))
+    {
+        if (c.pinNumber >= GPIO_PIN_COUNT) {
+            return -5;
+        }
+        pinMode(GPIO0 + c.pinNumber, INPUT_PULLDOWN);
+        return digitalRead(GPIO0 + c.pinNumber);
     }
 #endif
     return -2;
-#endif // other PLATFORM_ID
 }
 
 /*******************************************************************************
@@ -177,64 +222,68 @@ int tinkerDigitalRead(String pin)
  *******************************************************************************/
 int tinkerDigitalWrite(String command)
 {
-#if PLATFORM_ID==31
-    bool value = 0;
-    // Raspberry Pi uses raw pin numbers
-    int pinNumber = command.toInt();
+    TinkerCommand c = parseCommand(command);
 
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 27) return -1;
+    if (!c.hasNumber || !c.hasValue) {
+        return -2;
+    }
 
-    int valueStart = pinNumber < 10 ? 2 : 3;
-    if(command.substring(valueStart,valueStart+4) == "HIGH") value = 1;
-    else if(command.substring(valueStart,valueStart+3) == "LOW") value = 0;
-    else return -2;
+    if (c.value != 0 && c.value != 1) {
+        return -2;
+    }
 
-    pinMode(pinNumber, OUTPUT);
-    digitalWrite(pinNumber, value);
-    return 1;
-#else
-
-    bool value = 0;
-    //convert ascii to integer
-    int pinNumber = command.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 7) return -1;
-
-    if(command.substring(3,7) == "HIGH") value = 1;
-    else if(command.substring(3,6) == "LOW") value = 0;
-    else return -2;
-
-    if(command.startsWith("D"))
+    if (c.pinType.equals("D"))
     {
-        pinMode(pinNumber, OUTPUT);
-        digitalWrite(pinNumber, value);
+        if (c.pinNumber >= D_PIN_COUNT) {
+            return -1;
+        }
+        pinMode(D0 + c.pinNumber, OUTPUT);
+        digitalWrite(D0 + c.pinNumber, c.value);
         return 1;
     }
-    else if(command.startsWith("A"))
+    else if (c.pinType.equals("A"))
     {
-        pinMode(pinNumber+10, OUTPUT);
-        digitalWrite(pinNumber+10, value);
+        if (c.pinNumber >= A_PIN_COUNT) {
+            return -1;
+        }
+        pinMode(A0 + c.pinNumber, OUTPUT);
+        digitalWrite(A0 + c.pinNumber, c.value);
         return 1;
     }
-#if Wiring_Cellular
-    else if(command.startsWith("B"))
+#if B_PIN_COUNT > 0
+    else if (c.pinType.equals("B"))
     {
-        if (pinNumber > 5) return -4;
-        pinMode(pinNumber+24, OUTPUT);
-        digitalWrite(pinNumber+24, value);
-        return 1;
-    }
-    else if(command.startsWith("C"))
-    {
-        if (pinNumber > 5) return -5;
-        pinMode(pinNumber+30, OUTPUT);
-        digitalWrite(pinNumber+30, value);
+        if (c.pinNumber >= B_PIN_COUNT) {
+            return -4;
+        }
+        pinMode(B0 + c.pinNumber, OUTPUT);
+        digitalWrite(B0 + c.pinNumber, c.value);
         return 1;
     }
 #endif
-    else return -3;
-#endif // other PLATFORM_ID
+#if C_PIN_COUNT > 0
+    else if (c.pinType.equals("C"))
+    {
+        if (c.pinNumber >= C_PIN_COUNT) {
+            return -5;
+        }
+        pinMode(C0 + c.pinNumber, OUTPUT);
+        digitalWrite(C0 + c.pinNumber, c.value);
+        return 1;
+    }
+#endif
+#if GPIO_PIN_COUNT > 0
+    else if(c.pinType.equals("GPIO"))
+    {
+        if (c.pinNumber >= GPIO_PIN_COUNT) {
+            return -6;
+        }
+        pinMode(GPIO0 + c.pinNumber, OUTPUT);
+        digitalWrite(GPIO0 + c.pinNumber, c.value);
+        return 1;
+    }
+#endif
+    return -3;
 }
 
 /*******************************************************************************
@@ -245,34 +294,35 @@ int tinkerDigitalWrite(String command)
  * Return         : Returns the analog value in INT type (0 to 4095)
                     Returns a negative number on failure
  *******************************************************************************/
-int tinkerAnalogRead(String pin)
+int tinkerAnalogRead(String command)
 {
-#if PLATFORM_ID==31
-    // Raspberry Pi doesn't have analog pins
-    return -2;
-#else
-    //convert ascii to integer
-    int pinNumber = pin.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 7) return -1;
+#if HAS_ANALOG_PINS == 1
+    TinkerCommand c = parseCommand(command);
 
-    if(pin.startsWith("D"))
-    {
+    if (!c.hasNumber) {
+        return -2;
+    }
+
+    if (c.pinType.equals("D")) {
         return -3;
     }
-    else if (pin.startsWith("A"))
-    {
-        return analogRead(pinNumber+10);
+    else if (c.pinType.equals("A")) {
+        if (c.pinNumber >= A_PIN_COUNT) {
+            return -1;
+        }
+        return analogRead(A0 + c.pinNumber);
     }
-#if Wiring_Cellular
-    else if (pin.startsWith("B"))
-    {
-        if (pinNumber < 2 || pinNumber > 5) return -3;
-        return analogRead(pinNumber+24);
+#if B_PIN_COUNT > 0
+    else if (c.pinType.equals("B")) {
+        if (c.pinNumber >= B_PIN_COUNT) {
+            return -3;
+        }
+        return analogRead(B0 + c.pinNumber);
     }
 #endif
+
+#endif
     return -2;
-#endif // other PLATFORM_ID
 }
 
 /*******************************************************************************
@@ -284,83 +334,75 @@ int tinkerAnalogRead(String pin)
  *******************************************************************************/
 int tinkerAnalogWrite(String command)
 {
-#if PLATFORM_ID==31
-    // Raspberry Pi uses raw pin numbers
-    int pinNumber = command.toInt();
+    TinkerCommand c = parseCommand(command);
 
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 27) return -1;
+    if (!c.hasValue) {
+        return -2;
+    }
 
-    int valueStart = pinNumber < 10 ? 2 : 3;
-    String value = command.substring(valueStart);
-
-    pinMode(pinNumber, OUTPUT);
-    analogWrite(pinNumber, value.toInt());
-    return 1;
-#else
-    String value = command.substring(3);
-
-    if(command.substring(0,2) == "TX")
-    {
+    if (c.pinType.equals("TX")) {
         pinMode(TX, OUTPUT);
-        analogWrite(TX, value.toInt());
+        analogWrite(TX, c.value);
         return 1;
     }
-    else if(command.substring(0,2) == "RX")
-    {
+    else if (c.pinType.equals("RX")) {
         pinMode(RX, OUTPUT);
-        analogWrite(RX, value.toInt());
+        analogWrite(RX, c.value);
         return 1;
     }
 
-    //convert ascii to integer
-    int pinNumber = command.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
+    if (!c.hasNumber) {
+        return -2;
+    }
 
-    if (pinNumber < 0 || pinNumber > 7) return -1;
-
-    if(command.startsWith("D"))
-    {
-        pinMode(pinNumber, OUTPUT);
-        analogWrite(pinNumber, value.toInt());
+    if (c.pinType.equals("D")) {
+        if (c.pinNumber >= D_PIN_COUNT) {
+            return -1;
+        }
+        pinMode(D0 + c.pinNumber, OUTPUT);
+        analogWrite(D0 + c.pinNumber, c.value);
         return 1;
     }
-    else if(command.startsWith("A"))
-    {
-        pinMode(pinNumber+10, OUTPUT);
-        analogWrite(pinNumber+10, value.toInt());
+    else if (c.pinType.equals("A")) {
+        if (c.pinNumber >= A_PIN_COUNT) {
+            return -1;
+        }
+        pinMode(A0 + c.pinNumber, OUTPUT);
+        analogWrite(A0 + c.pinNumber, c.value);
         return 1;
     }
-    else if(command.substring(0,2) == "TX")
+#if B_PIN_COUNT > 0
+    else if (c.pinType.equals("B"))
     {
-        pinMode(TX, OUTPUT);
-        analogWrite(TX, value.toInt());
-        return 1;
-    }
-    else if(command.substring(0,2) == "RX")
-    {
-        pinMode(RX, OUTPUT);
-        analogWrite(RX, value.toInt());
-        return 1;
-    }
-#if Wiring_Cellular
-    else if (command.startsWith("B"))
-    {
-        if (pinNumber > 3) return -3;
-        pinMode(pinNumber+24, OUTPUT);
-        analogWrite(pinNumber+24, value.toInt());
-        return 1;
-    }
-    else if (command.startsWith("C"))
-    {
-        if (pinNumber < 4 || pinNumber > 5) return -4;
-        pinMode(pinNumber+30, OUTPUT);
-        analogWrite(pinNumber+30, value.toInt());
+        if (c.pinNumber >= B_PIN_COUNT) {
+            return -3;
+        }
+        pinMode(B0 + c.pinNumber, OUTPUT);
+        analogWrite(B0 + c.pinNumber, c.value);
         return 1;
     }
 #endif
-    else return -2;
-#endif // other PLATFORM_ID
+#if C_PIN_COUNT > 0
+    else if (c.pinType.equals("C"))
+    {
+        if (c.pinNumber >= C_PIN_COUNT) {
+            return -4;
+        }
+        pinMode(C0 + c.pinNumber, OUTPUT);
+        analogWrite(C0 + c.pinNumber, c.value);
+        return 1;
+    }
+#endif
+#if GPIO_PIN_COUNT > 0
+    else if(c.pinType.equals("GPIO"))
+    {
+        if (c.pinNumber >= GPIO_PIN_COUNT) {
+            return -5;
+        }
+        pinMode(GPIO0 + c.pinNumber, OUTPUT);
+        analogWrite(GPIO0 + c.pinNumber, c.value);
+        return 1;
+    }
+#endif
+    return -2;
 }
-
-#endif // UNIT_TEST
