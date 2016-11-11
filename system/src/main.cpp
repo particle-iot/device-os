@@ -53,6 +53,11 @@
 #include "spark_wiring_cellular_printable.h"
 #include "system_rgbled.h"
 
+#if PLATFORM_ID == 3
+// Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
+#include <thread>
+#endif
+
 using namespace spark;
 
 /* Private typedef -----------------------------------------------------------*/
@@ -529,6 +534,15 @@ void app_loop(bool threaded)
             }
         }
     }
+#if PLATFORM_ID == 3
+    // Suspend thread execution for some minimum time on every Nth loop iteration in order to workaround
+    // 100% CPU usage on the virtual device platform
+    static uint32_t loops = 0;
+    if (++loops >= 25) {
+        loops = 0;
+        std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+    }
+#endif // PLATFORM_ID == 3
 }
 
 
