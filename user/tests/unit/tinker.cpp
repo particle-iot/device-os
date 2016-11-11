@@ -59,7 +59,7 @@ static int analogRead(int pin) {
 
 
 SCENARIO("Parse commands") {
-    GIVEN("A blank command") {
+    GIVEN("a blank command") {
         TinkerCommand command = parseCommand("");
         THEN("The result is blank") {
             REQUIRE(command.pinType.equals(""));
@@ -67,36 +67,36 @@ SCENARIO("Parse commands") {
             REQUIRE(command.value == 0);
         }
     }
-    GIVEN("Parsing pin type") {
+    GIVEN("a pin without a number") {
         TinkerCommand command = parseCommand("TX");
-        THEN("The result contains the pin type") {
+        THEN("the result contains the pin type") {
             REQUIRE(command.pinType.equals("TX"));
             REQUIRE(command.pinNumber == 0);
             REQUIRE(command.value == 0);
         }
     }
-    GIVEN("Parsing pin number") {
-        WHEN("a short number") {
+    GIVEN("a pin with number") {
+        WHEN("a short type and number") {
             TinkerCommand command = parseCommand("D7");
-            THEN("The result contains the pin info") {
+            THEN("the result contains the pin info") {
                 REQUIRE(command.pinType.equals("D"));
                 REQUIRE(command.pinNumber == 7);
                 REQUIRE(command.value == 0);
             }
         }
-        WHEN("a long pin number") {
+        WHEN("a long type and number") {
             TinkerCommand command = parseCommand("GPIO17");
-            THEN("The result contains the pin info") {
+            THEN("the result contains the pin info") {
                 REQUIRE(command.pinType.equals("GPIO"));
                 REQUIRE(command.pinNumber == 17);
                 REQUIRE(command.value == 0);
             }
         }
     }
-    GIVEN("Parsing pin and digital value") {
+    GIVEN("a pin and digital value") {
         WHEN("HIGH") {
             TinkerCommand command = parseCommand("D7=HIGH");
-            THEN("The result contains the pin info") {
+            THEN("the result contains the pin info and value") {
                 REQUIRE(command.pinType.equals("D"));
                 REQUIRE(command.pinNumber == 7);
                 REQUIRE(command.value == 1);
@@ -104,7 +104,7 @@ SCENARIO("Parse commands") {
         }
         WHEN("LOW") {
             TinkerCommand command = parseCommand("A0=LOW");
-            THEN("The result contains the pin info") {
+            THEN("the result contains the pin info and value") {
                 REQUIRE(command.pinType.equals("A"));
                 REQUIRE(command.pinNumber == 0);
                 REQUIRE(command.value == 0);
@@ -112,16 +112,16 @@ SCENARIO("Parse commands") {
         }
         WHEN("no pin number") {
             TinkerCommand command = parseCommand("TX=HIGH");
-            THEN("The result contains the pin info") {
+            THEN("the result contains the pin info and value") {
                 REQUIRE(command.pinType.equals("TX"));
                 REQUIRE(command.pinNumber == 0);
                 REQUIRE(command.value == 1);
             }
         }
     }
-    GIVEN("Parsing pin and analog value") {
+    GIVEN("a pin and analog value") {
         TinkerCommand command = parseCommand("A6=150");
-        THEN("The result contains the pin info") {
+        THEN("the result contains the pin info and value") {
             REQUIRE(command.pinType.equals("A"));
             REQUIRE(command.pinNumber == 6);
             REQUIRE(command.value == 150);
@@ -129,17 +129,17 @@ SCENARIO("Parse commands") {
     }
 }
 
-SCENARIO("digital read") {
-    GIVEN("Valid pin number") {
+SCENARIO("Digital read") {
+    GIVEN("a valid pin number") {
         WHEN("D pin") {
             int pin = D2;
             digitalReadValue[pin] = 1;
             int result = tinkerDigitalRead("D2");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == INPUT_PULLDOWN);
             }
-            THEN("returns value for correct pin") {
+            THEN("it returns value for correct pin") {
                 REQUIRE(digitalReadPin == pin);
                 REQUIRE(result == 1);
             }
@@ -148,11 +148,11 @@ SCENARIO("digital read") {
             int pin = A2;
             digitalReadValue[pin] = 1;
             int result = tinkerDigitalRead("A2");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == INPUT_PULLDOWN);
             }
-            THEN("returns value for correct pin") {
+            THEN("it returns value for correct pin") {
                 REQUIRE(digitalReadPin == pin);
                 REQUIRE(result == 1);
             }
@@ -161,11 +161,11 @@ SCENARIO("digital read") {
             int pin = B2;
             digitalReadValue[pin] = 1;
             int result = tinkerDigitalRead("B2");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == INPUT_PULLDOWN);
             }
-            THEN("returns value for correct pin") {
+            THEN("it returns value for correct pin") {
                 REQUIRE(digitalReadPin == pin);
                 REQUIRE(result == 1);
             }
@@ -174,11 +174,11 @@ SCENARIO("digital read") {
             int pin = C2;
             digitalReadValue[pin] = 1;
             int result = tinkerDigitalRead("C2");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == INPUT_PULLDOWN);
             }
-            THEN("returns value for correct pin") {
+            THEN("it returns value for correct pin") {
                 REQUIRE(digitalReadPin == pin);
                 REQUIRE(result == 1);
             }
@@ -187,7 +187,7 @@ SCENARIO("digital read") {
             int pin = GPIO2;
             digitalReadValue[pin] = 1;
             int result = tinkerDigitalRead("GPIO2");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == INPUT_PULLDOWN);
             }
@@ -198,38 +198,38 @@ SCENARIO("digital read") {
         }
     }
 
-    GIVEN("Invalid pin number") {
+    GIVEN("an invalid pin number") {
         int result = tinkerDigitalRead("D99");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -1);
         }
     }
 
-    GIVEN("Missing pin number") {
+    GIVEN("a missing pin number") {
         int result = tinkerDigitalRead("D");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 
-    GIVEN("Invalid input") {
+    GIVEN("invalid input") {
         int result = tinkerDigitalRead("foo");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 }
 
-SCENARIO("digital write") {
-    GIVEN("Valid pin number") {
+SCENARIO("Digital write") {
+    GIVEN("a valid pin number") {
         WHEN("D pin") {
             int pin = D3;
             int result = tinkerDigitalWrite("D3=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(digitalWritePin == pin);
                 REQUIRE(digitalWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -238,11 +238,11 @@ SCENARIO("digital write") {
         WHEN("A pin") {
             int pin = A3;
             int result = tinkerDigitalWrite("A3=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(digitalWritePin == pin);
                 REQUIRE(digitalWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -251,11 +251,11 @@ SCENARIO("digital write") {
         WHEN("B pin") {
             int pin = B3;
             int result = tinkerDigitalWrite("B3=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(digitalWritePin == pin);
                 REQUIRE(digitalWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -264,11 +264,11 @@ SCENARIO("digital write") {
         WHEN("C pin") {
             int pin = C3;
             int result = tinkerDigitalWrite("C3=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(digitalWritePin == pin);
                 REQUIRE(digitalWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -277,11 +277,11 @@ SCENARIO("digital write") {
         WHEN("GPIO pin") {
             int pin = GPIO3;
             int result = tinkerDigitalWrite("GPIO3=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(digitalWritePin == pin);
                 REQUIRE(digitalWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -289,44 +289,44 @@ SCENARIO("digital write") {
         }
     }
 
-    GIVEN("Invalid pin number") {
+    GIVEN("an invalid pin number") {
         int result = tinkerDigitalWrite("D99=HIGH");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -1);
         }
     }
 
-    GIVEN("Missing pin number") {
+    GIVEN("a missing pin number") {
         int result = tinkerDigitalWrite("D=HIGH");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 
-    GIVEN("Missing value") {
+    GIVEN("a missing value") {
         int result = tinkerDigitalWrite("D0");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 
-    GIVEN("Bad value") {
+    GIVEN("a bad value") {
         int result = tinkerDigitalWrite("D3=2");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 
-    GIVEN("Invalid input") {
+    GIVEN("invalid input") {
         int result = tinkerDigitalWrite("foo");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 }
 
-SCENARIO("analog read") {
-    GIVEN("Valid pin number") {
+SCENARIO("Analog read") {
+    GIVEN("a valid pin number") {
         WHEN("A pin") {
             int pin = A4;
             analogReadValue[pin] = 50;
@@ -347,45 +347,45 @@ SCENARIO("analog read") {
         }
     }
 
-    GIVEN("Invalid pin number") {
+    GIVEN("an invalid pin number") {
         int result = tinkerAnalogRead("A99");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -1);
         }
     }
 
-    GIVEN("Missing pin number") {
+    GIVEN("a missing pin number") {
         int result = tinkerAnalogRead("A");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 
-    GIVEN("Unsupported pin") {
+    GIVEN("an unsupported pin") {
         int result = tinkerAnalogRead("D2");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -3);
         }
     }
 
-    GIVEN("Invalid input") {
+    GIVEN("invalid input") {
         int result = tinkerAnalogRead("foo");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 }
 
-SCENARIO("analog write") {
-    GIVEN("Valid pin number") {
+SCENARIO("Analog write") {
+    GIVEN("a valid pin number") {
         WHEN("D pin") {
             int pin = D5;
             int result = tinkerAnalogWrite("D5=50");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(analogWritePin == pin);
                 REQUIRE(analogWriteValue[pin] == 50);
                 REQUIRE(result == 1);
@@ -394,11 +394,11 @@ SCENARIO("analog write") {
         WHEN("A pin") {
             int pin = A5;
             int result = tinkerAnalogWrite("A5=50");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(analogWritePin == pin);
                 REQUIRE(analogWriteValue[pin] == 50);
                 REQUIRE(result == 1);
@@ -407,11 +407,11 @@ SCENARIO("analog write") {
         WHEN("TX pin") {
             int pin = TX;
             int result = tinkerAnalogWrite("TX=50");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(analogWritePin == pin);
                 REQUIRE(analogWriteValue[pin] == 50);
                 REQUIRE(result == 1);
@@ -420,11 +420,11 @@ SCENARIO("analog write") {
         WHEN("RX pin") {
             int pin = RX;
             int result = tinkerAnalogWrite("RX=50");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(analogWritePin == pin);
                 REQUIRE(analogWriteValue[pin] == 50);
                 REQUIRE(result == 1);
@@ -433,11 +433,11 @@ SCENARIO("analog write") {
         WHEN("B pin") {
             int pin = B5;
             int result = tinkerAnalogWrite("B5=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(analogWritePin == pin);
                 REQUIRE(analogWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -446,11 +446,11 @@ SCENARIO("analog write") {
         WHEN("C pin") {
             int pin = C5;
             int result = tinkerAnalogWrite("C5=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(analogWritePin == pin);
                 REQUIRE(analogWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -459,11 +459,11 @@ SCENARIO("analog write") {
         WHEN("GPIO pin") {
             int pin = GPIO5;
             int result = tinkerAnalogWrite("GPIO5=HIGH");
-            THEN("sets correct pin mode") {
+            THEN("it sets correct pin mode") {
                 REQUIRE(pinModePin == pin);
                 REQUIRE(pinModeMode[pin] == OUTPUT);
             }
-            THEN("sets value for correct pin") {
+            THEN("it sets value for correct pin") {
                 REQUIRE(analogWritePin == pin);
                 REQUIRE(analogWriteValue[pin] == 1);
                 REQUIRE(result == 1);
@@ -471,30 +471,30 @@ SCENARIO("analog write") {
         }
     }
 
-    GIVEN("Invalid pin number") {
+    GIVEN("an invalid pin number") {
         int result = tinkerAnalogWrite("D99=50");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -1);
         }
     }
 
-    GIVEN("Missing pin number") {
+    GIVEN("a missing pin number") {
         int result = tinkerAnalogWrite("D=50");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 
-    GIVEN("Missing value") {
+    GIVEN("a missing value") {
         int result = tinkerAnalogWrite("D0");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
 
-    GIVEN("Invalid input") {
+    GIVEN("invalid input") {
         int result = tinkerAnalogWrite("foo");
-        THEN("return error") {
+        THEN("it return error") {
             REQUIRE(result == -2);
         }
     }
