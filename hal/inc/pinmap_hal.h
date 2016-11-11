@@ -153,85 +153,85 @@ RPi_Pin_Info* HAL_Pin_Map(void);
 #define FIRST_ANALOG_PIN 0
 
 // Broadcom pin numbers
-#define BCM0 0
-#define BCM1 1
-#define BCM2 2
-#define BCM3 3
-#define BCM4 4
-#define BCM5 5
-#define BCM6 6
-#define BCM7 7
-#define BCM8 8
-#define BCM9 4
-#define BCM10 10
-#define BCM11 11
-#define BCM12 12
-#define BCM13 13
-#define BCM14 14
-#define BCM15 15
-#define BCM16 16
-#define BCM17 17
-#define BCM18 18
-#define BCM19 19
-#define BCM20 20
-#define BCM21 21
-#define BCM22 22
-#define BCM23 23
-#define BCM24 24
-#define BCM25 25
-#define BCM26 26
-#define BCM27 27
+#define GPIO0 0
+#define GPIO1 1
+#define GPIO2 2
+#define GPIO3 3
+#define GPIO4 4
+#define GPIO5 5
+#define GPIO6 6
+#define GPIO7 7
+#define GPIO8 8
+#define GPIO9 4
+#define GPIO10 10
+#define GPIO11 11
+#define GPIO12 12
+#define GPIO13 13
+#define GPIO14 14
+#define GPIO15 15
+#define GPIO16 16
+#define GPIO17 17
+#define GPIO18 18
+#define GPIO19 19
+#define GPIO20 20
+#define GPIO21 21
+#define GPIO22 22
+#define GPIO23 23
+#define GPIO24 24
+#define GPIO25 25
+#define GPIO26 26
+#define GPIO27 27
 
 // Particle pins
-#define D0 BCM4
-#define D1 BCM17
-#define D2 BCM27
-#define D3 BCM22
-#define D4 BCM5
-#define D5 BCM6
-#define D6 BCM13
-#define D7 BCM19
-#define D8 BCM26
-#define D9 BCM18
-#define D10 BCM23
-#define D11 BCM24
-#define D12 BCM25
-#define D13 BCM12
-#define D14 BCM16
-#define D15 BCM20
-#define D16 BCM21
+#define D0 GPIO4
+#define D1 GPIO17
+#define D2 GPIO27
+#define D3 GPIO22
+#define D4 GPIO5
+#define D5 GPIO6
+#define D6 GPIO13
+#define D7 GPIO19
+#define D8 GPIO26
+#define D9 GPIO18
+#define D10 GPIO23
+#define D11 GPIO24
+#define D12 GPIO25
+#define D13 GPIO12
+#define D14 GPIO16
+#define D15 GPIO20
+#define D16 GPIO21
 
-#define A0 D8
-#define A1 D9
-#define A2 D10
-#define A3 D11
-#define A4 D12
-#define A5 D13
-#define A6 D14
-#define A7 D15
+#define A0 D9
+#define A1 D10
+#define A2 D11
+#define A3 D12
+#define A4 D13
+#define A5 D14
+#define A6 D15
+#define A7 D16
 
 // UART pins
 
-#define RX 15
-#define TX 14
+#define RX GPIO15
+#define TX GPIO14
 
 // SPI pins
 
-#define SS   8
-#define CE0  8
-#define CE1  7
-#define SCK  21
-#define MISO 19
-#define MOSI 20
+#define SS   GPIO8
+#define CE0  GPIO8
+#define CE1  GPIO7
+#define SCK  GPIO21
+#define MISO GPIO19
+#define MOSI GPIO20
 
 // I2C pins
 
-#define SDA  2
-#define SCL  3
+#define SDA  GPIO2
+#define SCL  GPIO3
 
 // I2C Hat pins
-#define EED 0
-#define EEC 1
+#define ID_SD GPIO0
+#define ID_SC GPIO1
 
 
 #define LSBFIRST 0
