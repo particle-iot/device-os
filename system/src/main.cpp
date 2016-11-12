@@ -534,11 +534,11 @@ void app_loop(bool threaded)
             }
         }
     }
-#if PLATFORM_ID == 3
+#if PLATFORM_ID == 3 && SUSPEND_APPLICATION_THREAD_LOOP_COUNT
     // Suspend thread execution for some minimum time on every Nth loop iteration in order to workaround
     // 100% CPU usage on the virtual device platform
     static uint32_t loops = 0;
-    if (++loops >= 25) {
+    if (++loops >= SUSPEND_APPLICATION_THREAD_LOOP_COUNT) {
         loops = 0;
         std::this_thread::sleep_for(std::chrono::nanoseconds(1));
     }
