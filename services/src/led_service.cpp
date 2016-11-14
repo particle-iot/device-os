@@ -28,6 +28,8 @@
 
 #else // PLATFORM_ID == 3
 
+#include <iostream> // FIXME
+
 #if PLATFORM_THREADING
 
 #include "spark_wiring_thread.h"
@@ -46,21 +48,21 @@
 
 namespace {
 
-class StateQueue {
+class StatusQueue {
 public:
-    StateQueue() :
+    StatusQueue() :
             front_(nullptr) {
     }
 
-    void add(LEDState* state) {
-        state->prev = nullptr;
-        state->next = front_;
-        front_ = state;
+    void add(LEDStatus* status) {
+        status->prev = nullptr;
+        status->next = front_;
+        front_ = status;
     }
 
-    void remove(LEDState* state) {
-        for (LEDState* s = front_; s != nullptr; ++s) {
-            if (s == state) {
+    void remove(LEDStatus* status) {
+        for (LEDStatus* s = front_; s != nullptr; ++s) {
+            if (s == status) {
                 if (s->prev) {
                     s->prev->next = s->next;
                 } else {
@@ -74,34 +76,37 @@ public:
         }
     }
 
-    LEDState* front() const {
+    LEDStatus* front() const {
         return front_;
     }
 
 private:
-    LEDState* front_;
+    LEDStatus* front_;
 };
 
-// TODO: Move to header file for testing
 class LEDService {
 public:
     LEDService() :
-            lastPatternType_(0) { // Invalid pattern type
+            ticks_(0),
+            disabled_(0),
+            reset_(true),
+            currentColor_(0),
+            currentPattern_(0),
+            currentSpeed_(0) {
     }
 
-    void enterState(LEDState* state, int source, int priority) {
-        const int oldPriority = state->priority;
-        state->priority = priority;
-        state->source = source;
+    void addStatus(LEDStatus* status, int priority) {
+        const int oldPriority = status->priority;
+        status->priority = priority;
         LED_SERVICE_WITH_LOCK(lock_) {
-            stateQueue(source, oldPriority).remove(state);
-            stateQueue(source, priority).add(state);
+            statusQueue(status->source, oldPriority).remove(status);
+            statusQueue(status->source, priority).add(status);
         }
     }
 
-    void leaveState(LEDState* state) {
+    void removeStatus(LEDStatus* status) {
         LED_SERVICE_WITH_LOCK(lock_) {
-            stateQueue(state->source, state->priority).remove(state);
+            statusQueue(status->source, status->priority).remove(status);
         }
     }
 
@@ -111,119 +116,181 @@ public:
     void stopSignal(int signal) {
     }
 
-    void setSignalTheme(const LEDSignalTheme* theme, int flags) {
+    void setTheme(const LEDTheme* theme, int flags) {
     }
 
-    void getSignalTheme(LEDSignalTheme* theme) {
+    void getTheme(LEDTheme* theme) {
     }
 
     void enableUpdates() {
+        LED_SERVICE_WITH_LOCK(lock_) {
+            --disabled_;
+            if (disabled_ == 0) {
+                reset_ = true;
+            }
+        }
     }
 
     void disableUpdates() {
+        LED_SERVICE_WITH_LOCK(lock_) {
+            ++disabled_;
+        }
     }
 
-    void update(system_tick_t time) {
-        LEDPattern p;
+    void update(system_tick_t ticks) {
+        uint32_t color = 0;
+        uint8_t pattern = 0;
+        // uint8_t speed = 0;
+        bool enabled = false;
+        bool reset = false;
+        bool off = false;
         LED_SERVICE_WITH_LOCK(lock_) {
-            if (!getActivePattern(&p)) {
-                return;
+            LEDStatus* s = activeStatus();
+            if (s) {
+                color = s->pattern.color;
+                pattern = s->pattern.type;
+                // speed = s->pattern.speed;
+                off = s->flags & LED_STATUS_FLAG_OFF;
+            } else {
+                off = true;
             }
+            enabled = (disabled_ == 0);
+            reset = reset_;
+            reset_ = false;
         }
-        if (p.type != lastPatternType_) {
-            // Reset pattern state
-            lastUpdateTime_ = 0;
+        if (pattern != currentPattern_) {
+            currentPattern_ = pattern;
+            reset = true;
         }
+        if (off) {
+            color = 0xff000000;
+        }
+        if (currentColor_ != color || reset) {
+            if (enabled) {
+                setColor(color);
+            }
+            currentColor_ = color;
+        }
+    }
+
+    // FIXME
+    void dump() {
+        LEDStatus* s = activeStatus();
+        if (s) {
+            uint32_t c = s->pattern.color;
+            int r = (c >> 16) & 0xff;
+            int g = (c >> 8) & 0xff;
+            int b = c & 0xff;
+            std::cout << "r: " << r << ", g: " << g << ", b: " << b << std::endl;
+            setColor(c);
+        } else {
+            std::cout << "no status" << std::endl;
+        }
+    }
+
+    static LEDService* instance() {
+        static LEDService service;
+        return &service;
     }
 
 private:
     static const int PRIORITY_COUNT = 4;
 
-    StateQueue sysStates_[PRIORITY_COUNT];
-    StateQueue appStates_[PRIORITY_COUNT];
+    StatusQueue sysStats_[PRIORITY_COUNT];
+    StatusQueue appStats_[PRIORITY_COUNT];
 
-    uint32_t lastUpdateTime_;
-    int lastPatternType_;
+    system_tick_t ticks_;
+    int disabled_;
+    bool reset_;
+
+    uint32_t currentColor_;
+    uint8_t currentPattern_;
+    uint8_t currentSpeed_;
 
     LED_SERVICE_DECLARE_LOCK(lock_);
 
-    bool getActivePattern(LEDPattern* pattern) {
-        LEDState* const sysState = activeState(sysStates_); // System state
-        LEDState* const appState = activeState(appStates_); // Application state
-        LEDState* state = nullptr; // Active state
-        if (sysState) {
-            if (appState) {
-                // System state overrides application state with same priority
-                state = (sysState->priority >= appState->priority) ? sysState : appState;
+    LEDStatus* activeStatus() const {
+        LEDStatus* const sysStat = activeStatus(sysStats_); // System status
+        LEDStatus* const appStat = activeStatus(appStats_); // Application status
+        LEDStatus* s = nullptr; // Active status
+        if (sysStat) {
+            if (appStat) {
+                // System status always overrides application status with same priority
+                s = (sysStat->priority >= appStat->priority) ? sysStat : appStat;
             } else {
-                state = sysState;
+                s = sysStat;
             }
-        } else if (appState) {
-            state = appState;
-        } else {
-            return false;
+        } else if (appStat) {
+            s = appStat;
         }
-        // Do not use assignment operator here
-        pattern->type = state->pattern.type;
-        pattern->speed = state->pattern.speed;
-        pattern->color = state->pattern.color;
-        return true;
+        return s;
     }
 
-    StateQueue& stateQueue(int source, int priority) {
-        SPARK_ASSERT((source == LED_SOURCE_SYSTEM || source == LED_SOURCE_APPLICATION) &&
-                (priority == LED_PRIORITY_BACKGROUND || priority == LED_PRIORITY_NORMAL ||
-                priority == LED_PRIORITY_IMPORTANT || priority == LED_PRIORITY_CRITICAL));
-        return (source == LED_SOURCE_SYSTEM) ? sysStates_[priority] : appStates_[priority];
-    }
-
-    static LEDState* activeState(const StateQueue states[]) {
+    static LEDStatus* activeStatus(const StatusQueue stats[]) {
         for (int i = PRIORITY_COUNT - 1; i >= 0; --i) { // Starting from highest priority
-            LEDState* s = states[i].front();
+            LEDStatus* s = stats[i].front();
             if (s) {
                 return s;
             }
         }
         return nullptr;
     }
-};
 
-LEDService ledService;
+    // Returns status queue for specified source and priority
+    StatusQueue& statusQueue(int source, int priority) {
+        SPARK_ASSERT((source == LED_SOURCE_SYSTEM || source == LED_SOURCE_APPLICATION) &&
+                (priority == LED_PRIORITY_BACKGROUND || priority == LED_PRIORITY_NORMAL ||
+                priority == LED_PRIORITY_IMPORTANT || priority == LED_PRIORITY_CRITICAL));
+        return (source == LED_SOURCE_SYSTEM) ? sysStats_[priority] : appStats_[priority];
+    }
+
+    static void setColor(uint32_t color) {
+        const uint32_t k = (((color >> 24) & 0xff) + 1) /* alpha */ * Get_RGB_LED_Max_Value();
+        const uint16_t r = (((color >> 16) & 0xff) * k) >> 16;
+        const uint16_t g = (((color >> 8) & 0xff) * k) >> 16;
+        const uint16_t b = ((color & 0xff) * k) >> 16;
+        Set_RGB_LED_Values(r, g, b);
+    }
+};
 
 } // namespace
 
-void led_enter_state(LEDState* state, int source, int priority, void* reserved) {
-    ledService.enterState(state, source, priority);
+void led_status_start(LEDStatus* status, int priority, void* reserved) {
+    LEDService::instance()->addStatus(status, priority);
 }
 
-void led_leave_state(LEDState* state, void* reserved) {
-    ledService.leaveState(state);
+void led_status_stop(LEDStatus* status, void* reserved) {
+    LEDService::instance()->removeStatus(status);
 }
 
-void led_start_signal(int signal, int priority, void* reserved) {
-    ledService.startSignal(signal, priority);
+void led_signal_start(int signal, int priority, void* reserved) {
+    LEDService::instance()->startSignal(signal, priority);
 }
 
-void led_stop_signal(int signal, void* reserved) {
-    ledService.stopSignal(signal);
+void led_signal_stop(int signal, void* reserved) {
+    LEDService::instance()->stopSignal(signal);
 }
 
-void led_set_signal_theme(const LEDSignalTheme* theme, int flags, void* reserved) {
-    ledService.setSignalTheme(theme, flags);
+void led_theme_set(const LEDTheme* theme, int flags, void* reserved) {
+    LEDService::instance()->setTheme(theme, flags);
 }
 
-void led_get_signal_theme(LEDSignalTheme* theme, void* reserved) {
-    ledService.getSignalTheme(theme);
+void led_theme_get(LEDTheme* theme, void* reserved) {
+    LEDService::instance()->getTheme(theme);
 }
 
-void led_enable_updates(void* reserved) {
-    ledService.enableUpdates();
+void led_update_enable(void* reserved) {
+    LEDService::instance()->enableUpdates();
 }
 
-void led_disable_updates(void* reserved) {
-    ledService.disableUpdates();
+void led_update_disable(void* reserved) {
+    LEDService::instance()->disableUpdates();
 }
 
-void led_update(system_tick_t time, void* reserved) {
-    ledService.update(time);
+void led_update(system_tick_t ticks, void* reserved) {
+    LEDService::instance()->update(ticks);
+}
+
+void led_dump() {
+    LEDService::instance()->dump();
 }

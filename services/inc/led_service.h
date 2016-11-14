@@ -20,7 +20,64 @@
 
 #include "rgbled.h"
 
+#include "rgbled_hal.h"
+#include "system_tick_hal.h"
+
 #include <stddef.h>
+
+// Helper macro used as LEDStatus initializer
+#define LED_STATUS(_color, _pattern, _source) \
+        { { LED_PATTERN_TYPE_##_pattern, LED_PATTERN_SPEED_NORMAL, RGB_COLOR_##_color } /* LEDPattern */, LED_SOURCE_##_source }
+
+#define LED_COLOR(_status, _color) \
+        do { \
+            _status.pattern.color = RGB_COLOR_##_color; \
+        } while (0)
+
+#define LED_BRIGHTNESS(_status, _level) \
+        do { \
+            _status.pattern.color = (_status.pattern.color & 0x00ffffff) | ((uint32_t)_level << 24); \
+        } while (0)
+
+#define LED_PATTERN(_status, _pattern) \
+        do { \
+            _status.pattern.type = LED_PATTERN_TYPE_##_pattern; \
+        } while (0)
+
+#define LED_SPEED(_status, _speed) \
+        do { \
+            _status.pattern.speed = LED_PATTERN_SPEED_##_speed; \
+        } while (0)
+
+#define LED_ON(_status) \
+        do { \
+            _status.flags &= ~(uint8_t)LED_STATUS_FLAG_OFF; \
+        } while (0)
+
+#define LED_OFF(_status) \
+        do { \
+            _status.flags |= (uint8_t)LED_STATUS_FLAG_OFF; \
+        } while (0)
+
+#define LED_TOGGLE(_status) \
+        do { \
+            _status.flags ^= (uint8_t)LED_STATUS_FLAG_OFF; \
+        } while (0)
+
+#define LED_START(_status, _priority) \
+        do { \
+            led_status_start(&_status, LED_PRIORITY_##_priority, NULL); \
+        } while (0)
+
+#define LED_STOP(_status) \
+        do { \
+            led_status_stop(&_status, NULL); \
+        } while (0)
+
+#define LED_SIGNAL(_signal, _priority) \
+        do { \
+            led_signal_start(LED_SIGNAL_##_signal, LED_PRIORITY_##_priority, NULL); \
+        } while (0)
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,7 +96,7 @@ typedef enum {
 } LEDPriority;
 
 typedef enum {
-    LED_PATTERN_TYPE_STEADY = 10,
+    LED_PATTERN_TYPE_SOLID = 10,
     LED_PATTERN_TYPE_BLINK = 20,
     LED_PATTERN_TYPE_FADE = 30
 } LEDPatternType;
@@ -63,27 +120,32 @@ typedef enum {
 } LEDSignal;
 
 typedef enum {
-    LED_FLAG_USE_AS_DEFAULT = 0x01 // Save signal theme to persistent storage
-} LEDFlag;
+    LED_STATUS_FLAG_OFF = 0x01 // Turn LED off
+} LEDStatusFlag;
+
+typedef enum {
+    LED_THEME_FLAG_USE_AS_DEFAULT = 0x01 // Save signal theme to persistent storage and use it as default theme
+} LEDThemeFlag;
 
 struct LEDPattern {
-    // TODO: ABI
+    // TODO: ABI, atomic / volatile
     uint8_t type; // Type (as defined by LEDPatternType enum)
     uint8_t speed; // Speed (as defined by LEDPatternSpeed enum)
-    uint32_t color; // Color (0x00RRGGBB)
+    uint32_t color; // Color (0xAARRGGBB)
 };
 
-struct LEDState {
+struct LEDStatus {
     // TODO: ABI
     LEDPattern pattern; // Pattern
-    // Internal data. Caller code should initialize these fields to 0 and never modify them directly since then
-    LEDState* next;
-    LEDState* prev;
-    uint8_t source;
+    uint8_t source; // Source (as defined by LEDSource enum)
+    uint8_t flags; // Flags (as defined by LEDStatusFlag enum)
+    // Internal data. Caller code should initialize these fields to 0 and never modify them directly again
+    LEDStatus* next;
+    LEDStatus* prev;
     uint8_t priority;
 };
 
-struct LEDSignalTheme {
+struct LEDTheme {
     // TODO: ABI
     LEDPattern setup_mode;
     LEDPattern network_off;
@@ -94,19 +156,21 @@ struct LEDSignalTheme {
     LEDPattern cloud_connected;
 };
 
-void led_enter_state(LEDState* state, int source, int priority, void* reserved);
-void led_leave_state(LEDState* state, void* reserved);
+void led_status_start(LEDStatus* status, int priority, void* reserved);
+void led_status_stop(LEDStatus* status, void* reserved);
 
-void led_start_signal(int signal, int priority, void* reserved);
-void led_stop_signal(int signal, void* reserved);
+void led_signal_start(int signal, int priority, void* reserved);
+void led_signal_stop(int signal, void* reserved);
 
-void led_set_signal_theme(const LEDSignalTheme* theme, int flags, void* reserved);
-void led_get_signal_theme(LEDSignalTheme* theme, void* reserved);
+void led_theme_set(const LEDTheme* theme, int flags, void* reserved);
+void led_theme_get(LEDTheme* theme, void* reserved);
 
-void led_enable_updates(void* reserved);
-void led_disable_updates(void* reserved);
+void led_update_enable(void* reserved);
+void led_update_disable(void* reserved);
 
-void led_update(system_tick_t time, void* reserved);
+void led_update(system_tick_t ticks, void* reserved);
+
+void led_dump(); // FIXME
 
 #ifdef __cplusplus
 } // extern "C"
