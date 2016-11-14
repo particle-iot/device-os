@@ -44,22 +44,39 @@ vector<pair<int,int>> pinPairs = {
 #endif // PLATFORM_ID==8
 
 #if PLATFORM_ID==31
-    // Special pins on the Raspberry Pi currently don't work for GPIO
 
+    // Broadcom pin numbers
+    make_pair(GPIO4, GPIO17),
+    make_pair(GPIO27, GPIO22),
+    make_pair(GPIO5, GPIO6),
+    make_pair(GPIO13, GPIO19),
+    make_pair(GPIO19, GPIO26),
+    make_pair(GPIO18, GPIO25),
+    make_pair(GPIO23, GPIO24),
+    make_pair(GPIO12, GPIO16),
+    make_pair(GPIO20, GPIO21),
+
+    // Particle pin numbers
+    make_pair(D0, D1),
+    make_pair(D2, D3),
+    make_pair(D4, D5),
+    make_pair(D6, D7),
+    make_pair(D7, D8),
+    make_pair(D9, D12),
+    make_pair(D10, D11),
+    make_pair(D13, D14),
+    make_pair(D15, D16),
+
+    make_pair(A0, A3),
+    make_pair(A1, A2),
+    make_pair(A4, A5),
+    make_pair(A6, A7),
+
+    // Peripheral pins on the Raspberry Pi don't work for GPIO
     //make_pair(SDA, SCL),
-    make_pair(4, 17),
-    make_pair(27, 22),
     //make_pair(MOSI, MISO),
     //make_pair(SCK, EED),
-    make_pair(5, 6),
-    make_pair(13, 19),
     //make_pair(TX, RX),
-    make_pair(18, 23),
-    make_pair(24, 25),
-    make_pair(CE0, CE1),
-    make_pair(EEC, 12),
-    make_pair(16, 20),
-    make_pair(26, 21),
 #endif // PLATFORM_ID==31
 
 };

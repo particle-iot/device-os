@@ -8,8 +8,10 @@ for each platform.
 ## Flashing the wiring/io_loopback
 
 ### Raspberry Pi
-```
-docker run --rm -v firmware:/firmware -v output:/output particle/buildpack-raspberrypi -e MAKE_ARGS="TEST=wiring/io_loopback"
-```
 
+```
+export FIRMWARE=~/Programming/firmware
+docker run --rm -it -v $FIRMWARE:/firmware -v $DIR/output:/output particle/buildpack-raspberrypi make APPDIR= TEST=wiring/io_loopback
+particle flash my_pi $FIRMWARE/build/target/main/platform-31/io_loopback
+```
 
