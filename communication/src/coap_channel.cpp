@@ -85,6 +85,7 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 	if (!msg.has_id())
 		return MISSING_MESSAGE_ID;
 
+	DEBUG("sending message id=%x", msg.get_id());
 	CoAPType::Enum coapType = CoAP::type(msg.buf());
 	if (coapType==CoAPType::CON || coapType==CoAPType::ACK || coapType==CoAPType::RESET)
 	{
@@ -118,7 +119,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 			}
 			channel.command(Channel::DISCARD_SESSION, nullptr);
 		}
-		DEBUG("recieved ACK for message %x", id);
+		DEBUG("recieved ACK for message id=%x", id);
 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
 			msg.set_length(0);
 		}

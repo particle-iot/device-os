@@ -161,7 +161,7 @@ private:
 				return false;
 			}
 			if (size!=sizeof(*this)) {
-				DEBUG("restore size mismatch %d/%d", size, sizeof(*this));
+				DEBUG("restore size mismatch 2: %d/%d", size, sizeof(*this));
 				return false;
 			}
 		}
