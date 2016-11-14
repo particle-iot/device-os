@@ -41,35 +41,44 @@ SYSTEM_MODE(AUTOMATIC);
 #endif // UNIT_TEST
 
 // Pin config for various platforms
-#if PLATFORM_ID == 31 || PLATFORM_ID == 3
-#define D_PIN_COUNT 17
-#define A_PIN_COUNT 8
-#define GPIO_PIN_COUNT 28
-#else
-#define D_PIN_COUNT 8
-#define A_PIN_COUNT 8
-#define GPIO_PIN_COUNT 0
+const pin_t D_PINS[] = {
+    D0, D1, D2, D3, D4, D5, D6, D7,
+#if PLATFORM_ID == 31 || UNIT_TEST // Raspberry Pi (31)
+    D8, D9, D10, D11, D12, D13, D14, D15, D16
 #endif
+};
+const pin_t A_PINS[] = {
+    A0, A1, A2, A3, A4, A5, A6, A7
+};
+const pin_t B_PINS[] = {
+#if PLATFORM_ID == 10 || UNIT_TEST // Electron (10)
+    B0, B1, B2, B3, B4, B5
+#endif
+};
+const pin_t C_PINS[] = {
+#if PLATFORM_ID == 10 || UNIT_TEST // Electron (10)
+    C0, C1, C2, C3, C4, C5
+#endif
+};
+const pin_t GPIO_PINS[] = {
+#if PLATFORM_ID == 31 || UNIT_TEST // Raspberry Pi (31)
+    GPIO0, GPIO1, GPIO2, GPIO3, GPIO4, GPIO5, GPIO6, GPIO7, GPIO8, GPIO9,
+    GPIO10, GPIO11, GPIO12, GPIO13, GPIO14, GPIO15, GPIO16, GPIO17, GPIO18, GPIO19,
+    GPIO20, GPIO21, GPIO22, GPIO23, GPIO24, GPIO25, GPIO26, GPIO27
+#endif
+};
 
-#if PLATFORM_ID == 31
+#if PLATFORM_ID == 31 // Raspberry Pi (31)
 #define HAS_ANALOG_PINS 0
 #else
 #define HAS_ANALOG_PINS 1
 #endif
 
-#if PLATFORM_ID == 10 || PLATFORM_ID == 3
-#define B_PIN_COUNT 6
-#define C_PIN_COUNT 6
-#define B_ANALOG_PIN_COUNT 3
-#else
-#define B_PIN_COUNT 0
-#define C_PIN_COUNT 0
-#define B_ANALOG_PIN_COUNT 0
-#endif
+#define countof(arr) (sizeof((arr))/sizeof((arr)[0]))
 
 struct TinkerCommand {
     String pinType;
-    int pinNumber;
+    unsigned pinNumber;
     int value;
     bool hasNumber;
     bool hasValue;
@@ -144,6 +153,10 @@ void setup()
 void loop()
 {
     //This will run in a loop
+#if PLATFORM_ID == 31
+    // Decrease CPU usage on Raspberry Pi
+    delay(50);
+#endif
 }
 
 #endif // UNIT_TEST
@@ -166,50 +179,44 @@ int tinkerDigitalRead(String command)
 
     if (c.pinType.equals("D"))
     {
-        if (c.pinNumber >= D_PIN_COUNT) {
+        if (c.pinNumber >= countof(D_PINS)) {
             return -1;
         }
-        pinMode(D0 + c.pinNumber, INPUT_PULLDOWN);
-        return digitalRead(D0 + c.pinNumber);
+        pinMode(D_PINS[c.pinNumber], INPUT_PULLDOWN);
+        return digitalRead(D_PINS[c.pinNumber]);
     }
     else if (c.pinType.equals("A"))
     {
-        if (c.pinNumber >= A_PIN_COUNT) {
+        if (c.pinNumber >= countof(A_PINS)) {
             return -1;
         }
-        pinMode(A0 + c.pinNumber, INPUT_PULLDOWN);
-        return digitalRead(A0 + c.pinNumber);
+        pinMode(A_PINS[c.pinNumber], INPUT_PULLDOWN);
+        return digitalRead(A_PINS[c.pinNumber]);
     }
-#if B_PIN_COUNT > 0
     else if(c.pinType.equals("B"))
     {
-        if (c.pinNumber >= B_PIN_COUNT) {
-            return -3;
+        if (c.pinNumber >= countof(B_PINS)) {
+            return -1;
         }
-        pinMode(B0 + c.pinNumber, INPUT_PULLDOWN);
-        return digitalRead(B0 + c.pinNumber);
+        pinMode(B_PINS[c.pinNumber], INPUT_PULLDOWN);
+        return digitalRead(B_PINS[c.pinNumber]);
     }
-#endif
-#if C_PIN_COUNT > 0
     else if(c.pinType.equals("C"))
     {
-        if (c.pinNumber >= C_PIN_COUNT) {
-            return -4;
+        if (c.pinNumber >= countof(C_PINS)) {
+            return -1;
         }
-        pinMode(C0 + c.pinNumber, INPUT_PULLDOWN);
-        return digitalRead(C0 + c.pinNumber);
+        pinMode(C_PINS[c.pinNumber], INPUT_PULLDOWN);
+        return digitalRead(C_PINS[c.pinNumber]);
     }
-#endif
-#if GPIO_PIN_COUNT > 0
     else if(c.pinType.equals("GPIO"))
     {
-        if (c.pinNumber >= GPIO_PIN_COUNT) {
-            return -5;
+        if (c.pinNumber >= countof(GPIO_PINS)) {
+            return -1;
         }
-        pinMode(GPIO0 + c.pinNumber, INPUT_PULLDOWN);
-        return digitalRead(GPIO0 + c.pinNumber);
+        pinMode(GPIO_PINS[c.pinNumber], INPUT_PULLDOWN);
+        return digitalRead(GPIO_PINS[c.pinNumber]);
     }
-#endif
     return -2;
 }
 
@@ -234,56 +241,50 @@ int tinkerDigitalWrite(String command)
 
     if (c.pinType.equals("D"))
     {
-        if (c.pinNumber >= D_PIN_COUNT) {
+        if (c.pinNumber >= countof(D_PINS)) {
             return -1;
         }
-        pinMode(D0 + c.pinNumber, OUTPUT);
-        digitalWrite(D0 + c.pinNumber, c.value);
+        pinMode(D_PINS[c.pinNumber], OUTPUT);
+        digitalWrite(D_PINS[c.pinNumber], c.value);
         return 1;
     }
     else if (c.pinType.equals("A"))
     {
-        if (c.pinNumber >= A_PIN_COUNT) {
+        if (c.pinNumber >= countof(A_PINS)) {
             return -1;
         }
-        pinMode(A0 + c.pinNumber, OUTPUT);
-        digitalWrite(A0 + c.pinNumber, c.value);
+        pinMode(A_PINS[c.pinNumber], OUTPUT);
+        digitalWrite(A_PINS[c.pinNumber], c.value);
         return 1;
     }
-#if B_PIN_COUNT > 0
     else if (c.pinType.equals("B"))
     {
-        if (c.pinNumber >= B_PIN_COUNT) {
-            return -4;
+        if (c.pinNumber >= countof(B_PINS)) {
+            return -1;
         }
-        pinMode(B0 + c.pinNumber, OUTPUT);
-        digitalWrite(B0 + c.pinNumber, c.value);
+        pinMode(B_PINS[c.pinNumber], OUTPUT);
+        digitalWrite(B_PINS[c.pinNumber], c.value);
         return 1;
     }
-#endif
-#if C_PIN_COUNT > 0
     else if (c.pinType.equals("C"))
     {
-        if (c.pinNumber >= C_PIN_COUNT) {
-            return -5;
+        if (c.pinNumber >= countof(C_PINS)) {
+            return -1;
         }
-        pinMode(C0 + c.pinNumber, OUTPUT);
-        digitalWrite(C0 + c.pinNumber, c.value);
+        pinMode(C_PINS[c.pinNumber], OUTPUT);
+        digitalWrite(C_PINS[c.pinNumber], c.value);
         return 1;
     }
-#endif
-#if GPIO_PIN_COUNT > 0
     else if(c.pinType.equals("GPIO"))
     {
-        if (c.pinNumber >= GPIO_PIN_COUNT) {
-            return -6;
+        if (c.pinNumber >= countof(GPIO_PINS)) {
+            return -1;
         }
-        pinMode(GPIO0 + c.pinNumber, OUTPUT);
-        digitalWrite(GPIO0 + c.pinNumber, c.value);
+        pinMode(GPIO_PINS[c.pinNumber], OUTPUT);
+        digitalWrite(GPIO_PINS[c.pinNumber], c.value);
         return 1;
     }
-#endif
-    return -3;
+    return -2;
 }
 
 /*******************************************************************************
@@ -307,19 +308,17 @@ int tinkerAnalogRead(String command)
         return -3;
     }
     else if (c.pinType.equals("A")) {
-        if (c.pinNumber >= A_PIN_COUNT) {
+        if (c.pinNumber >= countof(A_PINS)) {
             return -1;
         }
-        return analogRead(A0 + c.pinNumber);
+        return analogRead(A_PINS[c.pinNumber]);
     }
-#if B_PIN_COUNT > 0
     else if (c.pinType.equals("B")) {
-        if (c.pinNumber >= B_PIN_COUNT) {
-            return -3;
+        if (c.pinNumber >= countof(B_PINS)) {
+            return -1;
         }
-        return analogRead(B0 + c.pinNumber);
+        return analogRead(B_PINS[c.pinNumber]);
     }
-#endif
 
 #endif
     return -2;
@@ -356,53 +355,47 @@ int tinkerAnalogWrite(String command)
     }
 
     if (c.pinType.equals("D")) {
-        if (c.pinNumber >= D_PIN_COUNT) {
+        if (c.pinNumber >= countof(D_PINS)) {
             return -1;
         }
-        pinMode(D0 + c.pinNumber, OUTPUT);
-        analogWrite(D0 + c.pinNumber, c.value);
+        pinMode(D_PINS[c.pinNumber], OUTPUT);
+        analogWrite(D_PINS[c.pinNumber], c.value);
         return 1;
     }
     else if (c.pinType.equals("A")) {
-        if (c.pinNumber >= A_PIN_COUNT) {
+        if (c.pinNumber >= countof(A_PINS)) {
             return -1;
         }
-        pinMode(A0 + c.pinNumber, OUTPUT);
-        analogWrite(A0 + c.pinNumber, c.value);
+        pinMode(A_PINS[c.pinNumber], OUTPUT);
+        analogWrite(A_PINS[c.pinNumber], c.value);
         return 1;
     }
-#if B_PIN_COUNT > 0
     else if (c.pinType.equals("B"))
     {
-        if (c.pinNumber >= B_PIN_COUNT) {
-            return -3;
+        if (c.pinNumber >= countof(B_PINS)) {
+            return -1;
         }
-        pinMode(B0 + c.pinNumber, OUTPUT);
-        analogWrite(B0 + c.pinNumber, c.value);
+        pinMode(B_PINS[c.pinNumber], OUTPUT);
+        analogWrite(B_PINS[c.pinNumber], c.value);
         return 1;
     }
-#endif
-#if C_PIN_COUNT > 0
     else if (c.pinType.equals("C"))
     {
-        if (c.pinNumber >= C_PIN_COUNT) {
-            return -4;
+        if (c.pinNumber >= countof(C_PINS)) {
+            return -1;
         }
-        pinMode(C0 + c.pinNumber, OUTPUT);
-        analogWrite(C0 + c.pinNumber, c.value);
+        pinMode(C_PINS[c.pinNumber], OUTPUT);
+        analogWrite(C_PINS[c.pinNumber], c.value);
         return 1;
     }
-#endif
-#if GPIO_PIN_COUNT > 0
     else if(c.pinType.equals("GPIO"))
     {
-        if (c.pinNumber >= GPIO_PIN_COUNT) {
-            return -5;
+        if (c.pinNumber >= countof(GPIO_PINS)) {
+            return -1;
         }
-        pinMode(GPIO0 + c.pinNumber, OUTPUT);
-        analogWrite(GPIO0 + c.pinNumber, c.value);
+        pinMode(GPIO_PINS[c.pinNumber], OUTPUT);
+        analogWrite(GPIO_PINS[c.pinNumber], c.value);
         return 1;
     }
-#endif
     return -2;
 }

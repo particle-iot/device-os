@@ -2,14 +2,16 @@
 #include "spark_wiring_string.h"
 
 // Mock Tinker dependencies
+typedef uint16_t pin_t;
 enum PinT {
-    D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16,
-    A0, A1, A2, A3, A4, A5, A6, A7,
-    B0, B1, B2, B3, B4, B5, B6, B7,
-    C0, C1, C2, C3, C4, C5, C6, C7,
-    GPIO0, GPIO1, GPIO2, GPIO3, GPIO4, GPIO5, GPIO6, GPIO7, GPIO8, GPIO9,
+    // Don't have all the pins in order to simulate platforms where D1 != D0 + 1
+    D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, D0,
+    A1, A2, A3, A4, A5, A6, A7, A0,
+    B1, B2, B3, B4, B5, B6, B7, B0,
+    C1, C2, C3, C4, C5, C6, C7, C0,
+    GPIO1, GPIO2, GPIO3, GPIO4, GPIO5, GPIO6, GPIO7, GPIO8, GPIO9,
     GPIO10, GPIO11, GPIO12, GPIO13, GPIO14, GPIO15, GPIO16, GPIO17, GPIO18, GPIO19,
-    GPIO20, GPIO21, GPIO22, GPIO23, GPIO24, GPIO25, GPIO26, GPIO27,
+    GPIO20, GPIO21, GPIO22, GPIO23, GPIO24, GPIO25, GPIO26, GPIO27, GPIO0,
     TX, RX,
     NUM_PINS
 };
@@ -65,6 +67,8 @@ SCENARIO("Parse commands") {
             REQUIRE(command.pinType.equals(""));
             REQUIRE(command.pinNumber == 0);
             REQUIRE(command.value == 0);
+            REQUIRE(command.hasNumber == false);
+            REQUIRE(command.hasValue == false);
         }
     }
     GIVEN("a pin without a number") {
@@ -73,6 +77,8 @@ SCENARIO("Parse commands") {
             REQUIRE(command.pinType.equals("TX"));
             REQUIRE(command.pinNumber == 0);
             REQUIRE(command.value == 0);
+            REQUIRE(command.hasNumber == false);
+            REQUIRE(command.hasValue == false);
         }
     }
     GIVEN("a pin with number") {
@@ -82,6 +88,8 @@ SCENARIO("Parse commands") {
                 REQUIRE(command.pinType.equals("D"));
                 REQUIRE(command.pinNumber == 7);
                 REQUIRE(command.value == 0);
+                REQUIRE(command.hasNumber == true);
+                REQUIRE(command.hasValue == false);
             }
         }
         WHEN("a long type and number") {
@@ -90,6 +98,8 @@ SCENARIO("Parse commands") {
                 REQUIRE(command.pinType.equals("GPIO"));
                 REQUIRE(command.pinNumber == 17);
                 REQUIRE(command.value == 0);
+                REQUIRE(command.hasNumber == true);
+                REQUIRE(command.hasValue == false);
             }
         }
     }
@@ -100,6 +110,8 @@ SCENARIO("Parse commands") {
                 REQUIRE(command.pinType.equals("D"));
                 REQUIRE(command.pinNumber == 7);
                 REQUIRE(command.value == 1);
+                REQUIRE(command.hasNumber == true);
+                REQUIRE(command.hasValue == true);
             }
         }
         WHEN("LOW") {
@@ -108,6 +120,8 @@ SCENARIO("Parse commands") {
                 REQUIRE(command.pinType.equals("A"));
                 REQUIRE(command.pinNumber == 0);
                 REQUIRE(command.value == 0);
+                REQUIRE(command.hasNumber == true);
+                REQUIRE(command.hasValue == true);
             }
         }
         WHEN("no pin number") {
@@ -116,6 +130,8 @@ SCENARIO("Parse commands") {
                 REQUIRE(command.pinType.equals("TX"));
                 REQUIRE(command.pinNumber == 0);
                 REQUIRE(command.value == 1);
+                REQUIRE(command.hasNumber == false);
+                REQUIRE(command.hasValue == true);
             }
         }
     }
@@ -125,6 +141,8 @@ SCENARIO("Parse commands") {
             REQUIRE(command.pinType.equals("A"));
             REQUIRE(command.pinNumber == 6);
             REQUIRE(command.value == 150);
+            REQUIRE(command.hasNumber == true);
+            REQUIRE(command.hasValue == true);
         }
     }
 }
