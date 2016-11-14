@@ -43,7 +43,7 @@
 #include "wiringPi.h"
 
 
-using std::cout;
+using std::cerr;
 
 static LoggerOutputLevel log_level = NO_LOG_LEVEL;
 
@@ -80,7 +80,7 @@ void log_message_callback(const char *msg, int level, const char *category, uint
     strm << log_level_name(level, nullptr) << ": ";
     // Message
     strm << msg;
-    std::cout << strm.str() << std::endl;
+    std::cerr << strm.str() << std::endl;
 }
 
 void log_write_callback(const char *data, size_t size, int level, const char *category, void *reserved)
@@ -88,7 +88,7 @@ void log_write_callback(const char *data, size_t size, int level, const char *ca
     if (level < log_level) {
         return;
     }
-    std::cout.write(data, size);
+    std::cerr.write(data, size);
 }
 
 int log_enabled_callback(int level, const char *category, void *reserved)
@@ -102,7 +102,7 @@ void core_log(const char* msg, ...)
     va_start(args, msg);
     char buf[2048];
     vsnprintf(buf, 2048, msg, args);
-    cout << buf << std::endl;
+    cerr << buf << std::endl;
     va_end(args);
 }
 
