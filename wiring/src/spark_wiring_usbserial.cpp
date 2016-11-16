@@ -48,11 +48,10 @@ void USBSerial::end()
     USB_USART_Init(0);
 }
 
-
 // Read data from buffer
 int USBSerial::read()
 {
-	return USB_USART_Receive_Data(false);
+  return USB_USART_Receive_Data(false);
 }
 
 int USBSerial::availableForWrite()
@@ -62,7 +61,7 @@ int USBSerial::availableForWrite()
 
 int USBSerial::available()
 {
-	return USB_USART_Available_Data();
+  return USB_USART_Available_Data();
 }
 
 size_t USBSerial::write(uint8_t byte)
