@@ -61,7 +61,6 @@ void USBSerial::end()
     HAL_USB_USART_End(_serial);
 }
 
-
 // Read data from buffer
 int USBSerial::read()
 {

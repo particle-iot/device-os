@@ -99,6 +99,9 @@ int32_t USB_USART_Available_Data_For_Write(void)
 void USB_USART_Send_Data(uint8_t Data)
 {
     std::cout.write((const char*)&Data, 1);
+    if (Data == '\r') {
+      USB_USART_Flush_Data();
+    }
 }
 
 /*******************************************************************************
@@ -109,6 +112,7 @@ void USB_USART_Send_Data(uint8_t Data)
  *******************************************************************************/
 void USB_USART_Flush_Data(void)
 {
+  std::cout.flush();
 }
 
 #ifdef USB_HID_ENABLE
