@@ -117,14 +117,14 @@ int SparkProtocol::handshake(void)
   hello(queue, descriptor.was_ota_upgrade_successful());
 
   err = blocking_send(queue, 18);
-  if (0 > err) { ERROR("Hanshake: could not send hello message: %d", err); return err; }
+  if (0 > err) { ERROR("Handshake: could not send hello message: %d", err); return err; }
 
   if (!event_loop(CoAPMessageType::HELLO, 2000))        // read the hello message from the server
   {
       ERROR("Handshake: could not receive hello response");
       return -1;
   }
-  INFO("Hanshake: completed");
+  INFO("Handshake: completed");
   return 0;
 }
 

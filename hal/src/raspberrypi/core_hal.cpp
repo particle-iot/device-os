@@ -40,8 +40,12 @@
 #include <boost/crc.hpp>  // for boost::crc_32_type
 #include <sstream>
 #include <iomanip>
+#include <thread>
+#define NAMESPACE_WPI_PINMODE
 #include "wiringPi.h"
+#include "gpio_hal.h"
 
+const auto graceful_exit_time = std::chrono::seconds(3);
 
 using std::cerr;
 
@@ -106,10 +110,28 @@ void core_log(const char* msg, ...)
     va_end(args);
 }
 
+void makePinsInput() {
+    for (pin_t pin = 0; pin < TOTAL_PINS; pin++) {
+        HAL_Pin_Mode(pin, INPUT);
+    }
+}
+
+std::thread forceQuitThread;
+void quit_gracefully(int signal) {
+    // Terminal main app loop
+    signal_handler(signal);
+
+    forceQuitThread = std::thread([]{
+        std::this_thread::sleep_for(graceful_exit_time);
+        makePinsInput();
+        std::raise(SIGQUIT);
+    });
+}
+
 extern "C" int main(int argc, char* argv[])
 {
-    std::signal(SIGTERM, signal_handler);
-    std::signal(SIGINT, signal_handler);
+    std::signal(SIGTERM, quit_gracefully);
+    std::signal(SIGINT, quit_gracefully);
     log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
     if (read_device_config(argc, argv)) {
         app_setup_and_loop();
@@ -150,8 +172,6 @@ char* bytes2hex(const uint8_t* buf, char* result, unsigned len)
     return result;
 }
 
-
-
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
  * Description    : Called in startup routine, before calling C++ constructors.
@@ -162,6 +182,9 @@ char* bytes2hex(const uint8_t* buf, char* result, unsigned len)
 void HAL_Core_Config(void)
 {
     wiringPiSetupGpio();
+    // Put pins in a safe state now and at exit
+    atexit(makePinsInput);
+    makePinsInput();
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)

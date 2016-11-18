@@ -239,7 +239,7 @@ int Protocol::begin()
 	error = hello(descriptor.was_ota_upgrade_successful());
 	if (error)
 	{
-		ERROR("Hanshake: could not send hello message: %d", error);
+		ERROR("Handshake: could not send hello message: %d", error);
 		return error;
 	}
 
@@ -248,7 +248,7 @@ int Protocol::begin()
 		if (error)
 			return error;
 	}
-	INFO("Hanshake: completed");
+	INFO("Handshake: completed");
 	channel.notify_established();
 	flags |= SKIP_SESSION_RESUME_HELLO;
 	return error;
