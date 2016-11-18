@@ -115,6 +115,20 @@ do
   done
 done
 
+cd ../bootloader
+for p in "${PLATFORM[@]}"
+do
+  echo
+  echo '-----------------------------------------------------------------------'
+  $MAKE PLATFORM="$p"
+  if [[ "$?" -eq 0 ]]; then
+      echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
+    else
+      echo -e "$RED ✗ FAILED $NO_COLOR"
+      exit 1
+  fi
+done
+
 cd ../modules
 
 # enumerate the matrix, exit 1 if anything fails
