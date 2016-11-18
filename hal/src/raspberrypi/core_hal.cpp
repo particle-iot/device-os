@@ -116,22 +116,26 @@ void makePinsInput() {
     }
 }
 
-std::thread forceQuitThread;
+void quit_forcefully(int signal) {
+    INFO("Force quitting");
+    makePinsInput();
+    // Exit by resending the terminate signal
+    std::signal(signal, SIG_DFL);
+    std::raise(signal);
+}
+
 void quit_gracefully(int signal) {
+    INFO("Stopping main loop()");
     // Terminal main app loop
     signal_handler(signal);
-
-    forceQuitThread = std::thread([]{
-        std::this_thread::sleep_for(graceful_exit_time);
-        makePinsInput();
-        std::raise(SIGQUIT);
-    });
+    // Pressing Ctrl-C a second time quits forcefully
+    std::signal(signal, quit_forcefully);
 }
 
 extern "C" int main(int argc, char* argv[])
 {
-    std::signal(SIGTERM, quit_gracefully);
     std::signal(SIGINT, quit_gracefully);
+    std::signal(SIGTERM, quit_forcefully);
     log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
     if (read_device_config(argc, argv)) {
         app_setup_and_loop();
