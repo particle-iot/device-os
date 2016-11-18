@@ -141,6 +141,14 @@ public:
         network_listen(*this, begin ? 0 : 1, NULL);
     }
 
+    void setListenTimeout(uint16_t timeout) {
+        network_set_listen_timeout(*this, timeout, NULL);
+    }
+
+    uint16_t getListenTimeout(void) {
+        return network_get_listen_timeout(*this, 0, NULL);
+    }
+
     bool listening(void) {
         return network_listening(*this, 0, NULL);
     }

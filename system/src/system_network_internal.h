@@ -28,6 +28,7 @@
 #include "system_network.h"
 #include "system_threading.h"
 #include "system_rgbled.h"
+#include "spark_wiring_timer.h"
 
 
 enum eWanTimings
@@ -96,6 +97,8 @@ struct NetworkInterface
     virtual void listen(bool stop=false)=0;
     virtual void listen_loop()=0;
     virtual bool listening()=0;
+    virtual void set_listen_timeout(uint16_t timeout)=0;
+    virtual uint16_t get_listen_timeout()=0;
     /**
      * Perform the 10sec press command, e.g. clear credentials.
      */
@@ -126,16 +129,51 @@ class ManagedNetworkInterface : public NetworkInterface
     volatile uint8_t WLAN_DHCP;
     volatile uint8_t WLAN_CAN_SHUTDOWN;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
+#if PLATFORM_ID == 10 // Electron
+    uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
+#else
+    uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled by default on Photon/P1/Core
+#endif
+    Timer* pStartListeningTimer;
 
 protected:
+
     volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
-
     virtual network_interface_t network_interface() override { return 0; }
-
     virtual void start_listening()=0;
+
+    void start_listening_timer_create() {
+        if (START_LISTENING_TIMER_MS != 0) {
+            if (!pStartListeningTimer) {
+                pStartListeningTimer = new Timer(START_LISTENING_TIMER_MS, &ManagedNetworkInterface::start_listening_timeout, *this, true /*one_shot*/);
+            }
+            if (pStartListeningTimer) {
+                pStartListeningTimer->start();
+                LOG(INFO,"Start Listening timer: created");
+            }
+        }
+    }
+
+    void start_listening_timeout()
+    {
+        if (ManagedNetworkInterface::listening()) {
+            ManagedNetworkInterface::listen(true);
+            LOG(INFO,"Start listening timer: timeout");
+        }
+    }
+
+    void start_listening_timer_destroy(void)
+    {
+        if (pStartListeningTimer) {
+            delete pStartListeningTimer;
+            pStartListeningTimer = nullptr;
+            LOG(INFO,"Start listening timer: destroyed");
+        }
+    }
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
+        // LOG(INFO,"Start Listening");
         WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
@@ -151,6 +189,7 @@ protected:
         LED_On(LED_RGB);
 
         on_start_listening();
+        start_listening_timer_create();
 
         const uint32_t start = millis();
         uint32_t loop = start;
@@ -198,7 +237,8 @@ protected:
                 SystemThread.process();
             }
 #endif
-        }
+        // while (network_listening(0, 0, NULL))
+        } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
 
         LED_On(LED_RGB);
         led_state.restore();
@@ -260,7 +300,6 @@ public:
         return WLAN_CONNECTED;
     }
 
-
     void listen(bool stop=false) override
     {
         if (stop) {
@@ -282,6 +321,21 @@ public:
         return (WLAN_SMART_CONFIG_ACTIVE && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
     }
 
+    void set_listen_timeout(uint16_t timeout) override {
+        START_LISTENING_TIMER_MS = timeout * 1000UL;
+        if (pStartListeningTimer) {
+            if (START_LISTENING_TIMER_MS != 0) {
+                pStartListeningTimer->changePeriod(START_LISTENING_TIMER_MS);
+            }
+            else {
+                pStartListeningTimer->stop();
+            }
+        }
+    }
+
+    uint16_t get_listen_timeout() override {
+        return START_LISTENING_TIMER_MS/1000UL;
+    }
 
     void connect(bool listen_enabled=true) override
     {

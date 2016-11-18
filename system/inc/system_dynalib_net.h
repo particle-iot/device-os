@@ -44,6 +44,8 @@ DYNALIB_FN(8, system_net, network_listening, bool(network_handle_t, uint32_t, vo
 DYNALIB_FN(9, system_net, network_has_credentials, bool(network_handle_t, uint32_t, void*))
 DYNALIB_FN(10, system_net, network_set_credentials, int(network_handle_t, uint32_t, NetworkCredentials*, void*))
 DYNALIB_FN(11, system_net, network_clear_credentials, bool(network_handle_t, uint32_t, NetworkCredentials*, void*))
+DYNALIB_FN(12, system_net, network_set_listen_timeout, void(network_handle_t, uint16_t, void*))
+DYNALIB_FN(13, system_net, network_get_listen_timeout, uint16_t(network_handle_t, uint32_t, void*))
 
 DYNALIB_END(system_net)
 

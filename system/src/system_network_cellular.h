@@ -26,8 +26,8 @@
 
 class CellularNetworkInterface : public ManagedIPNetworkInterface<CellularConfig, CellularNetworkInterface>
 {
-	volatile bool connect_cancelled = false;
-	volatile bool connecting = false;
+    volatile bool connect_cancelled = false;
+    volatile bool connecting = false;
 
 protected:
 
@@ -51,43 +51,42 @@ protected:
     void connect_finalize_impl() {
         cellular_result_t result = -1;
         result = cellular_init(NULL);
-        if (result) return;
+        if (result) { return; }
 
         result = cellular_register(NULL);
-        if (result) return;
+        if (result) { return; }
 
         CellularCredentials* savedCreds;
         savedCreds = cellular_credentials_get(NULL);
         result = cellular_pdp_activate(savedCreds, NULL);
-        if (result) return;
+        if (result) { return; }
 
         //DEBUG_D("savedCreds = %s %s %s\r\n", savedCreds->apn, savedCreds->username, savedCreds->password);
         result = cellular_gprs_attach(savedCreds, NULL);
-        if (result) return;
+        if (result) { return; }
 
         HAL_NET_notify_connected();
         HAL_NET_notify_dhcp(true);
     }
 
     void connect_finalize() override {
-		ATOMIC_BLOCK() { connecting = true; }
+        ATOMIC_BLOCK() { connecting = true; }
 
-		connect_finalize_impl();
+        connect_finalize_impl();
 
-		bool require_resume = false;
+        bool require_resume = false;
 
         ATOMIC_BLOCK() {
-        		// ensure after connection exits the cancel flag is cleared if it was set during connection
-        		if (connect_cancelled) {
-        			require_resume = true;
-        		}
-        		connecting = false;
+            // ensure after connection exits the cancel flag is cleared if it was set during connection
+            if (connect_cancelled) {
+                require_resume = true;
+            }
+            connecting = false;
         }
-        if (require_resume)
-        		cellular_cancel(false, HAL_IsISR(), NULL);
+        if (require_resume) {
+            cellular_cancel(false, HAL_IsISR(), NULL);
+        }
     }
-
- 
 
     void on_now() override {
         cellular_on(NULL);
@@ -128,24 +127,32 @@ public:
     bool clear_credentials() override { /* n/a */ return true; }
     bool has_credentials() override
     {
-        return cellular_sim_ready(NULL);
+        bool rv = cellular_sim_ready(NULL);
+        LOG(INFO,"%s", (rv)?"Sim Ready":"Sim not inserted? Detecting...");
+        if (!rv) {
+            cellular_on(NULL);
+            rv = cellular_sim_ready(NULL);
+            LOG(INFO,"%s", (rv)?"Sim Ready":"Sim not inserted.");
+        }
+        return rv;
     }
     int set_credentials(NetworkCredentials* creds) override { /* n/a */ return -1; }
 
     void connect_cancel(bool cancel) override {
-    		// only cancel if presently connecting
-    		bool require_cancel = false;
-    		ATOMIC_BLOCK() {
-    			if (connecting)
-    			{
-    				if (cancel!=connect_cancelled) {
-    					require_cancel = true;
-    					connect_cancelled = cancel;
-    				}
-    			}
-    		}
-    		if (require_cancel)
-    			cellular_cancel(cancel, HAL_IsISR(), NULL);
+        // only cancel if presently connecting
+        bool require_cancel = false;
+        ATOMIC_BLOCK() {
+            if (connecting)
+            {
+                if (cancel!=connect_cancelled) {
+                    require_cancel = true;
+                    connect_cancelled = cancel;
+                }
+            }
+        }
+        if (require_cancel) {
+            cellular_cancel(cancel, HAL_IsISR(), NULL);
+        }
     }
 
     void set_error_count(unsigned count) override { /* n/a */ }

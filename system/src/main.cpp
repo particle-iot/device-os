@@ -242,8 +242,9 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
                 handle_button_click(depressed_duration);
             }
             pressed_time = 0;
-            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening())
+            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening()) {
                 network.listen(true);
+            }
         }
     }
 }
@@ -445,6 +446,8 @@ extern "C" void HAL_SysTick_Handler(void)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
         HAL_Notify_Button_State(0, false);
+        // LOG(INFO,"BUTTON PRESSED FOR LISTENING");
+        // TODO: this code is called repeatedly every 1ms while the button is held (from 3-8s) and should only be called once
         network.listen();
         HAL_Notify_Button_State(0, true);
     }

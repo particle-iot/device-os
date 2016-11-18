@@ -548,6 +548,7 @@ bool MDMParser::powerOn(const char* simpin)
 {
     LOCK();
     memset(&_dev, 0, sizeof(_dev));
+    bool retried_after_reset = false;
 
     /* Power on the modem and perform basic initialization */
     if (!_powerOn())
@@ -569,7 +570,6 @@ bool MDMParser::powerOn(const char* simpin)
 
     // check the sim card
     for (int i = 0; (i < 5) && (_dev.sim != SIM_READY) && !_cancel_all_operations; i++) {
-        static bool retried_after_reset = false;
         sendFormated("AT+CPIN?\r\n");
         int ret = waitFinalResp(_cbCPIN, &_dev.sim);
         // having an error here is ok (sim may still be initializing)
