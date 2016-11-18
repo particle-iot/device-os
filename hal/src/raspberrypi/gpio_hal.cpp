@@ -4,6 +4,9 @@
 #define NAMESPACE_WPI_PINMODE
 #include "wiringPi.h"
 
+#include <iostream>
+#include <fstream>
+
 inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
 inline bool is_valid_pin(pin_t pin)
 {
@@ -65,6 +68,28 @@ PinMode HAL_Get_Pin_Mode(pin_t pin)
     return (!is_valid_pin(pin)) ? PIN_MODE_NONE : HAL_Pin_Map()[pin].pin_mode;
 }
 
+void userLedWrite(uint8_t value) {
+    static bool initialized = false;
+    if (!initialized) {
+	std::ofstream trigger;
+	trigger.open("/sys/class/leds/led0/trigger");
+	if (trigger.fail()) {
+	    return;
+	}
+	trigger << "none";
+	trigger.close();
+	initialized = true;
+    }
+
+    std::ofstream brightness;
+    brightness.open("/sys/class/leds/led0/brightness");
+    if (brightness.fail()) {
+	return;
+    }
+    brightness << (value ? "1" : "0");
+    brightness.close();
+}
+
 void HAL_GPIO_Write(pin_t pin, uint8_t value)
 {
     if (!is_valid_pin(pin)) {
@@ -72,6 +97,9 @@ void HAL_GPIO_Write(pin_t pin, uint8_t value)
     }
 
     digitalWritePi(pin, value);
+    if (pin == D7) {
+	userLedWrite(value);
+    }
 }
 
 int32_t HAL_GPIO_Read(pin_t pin)
