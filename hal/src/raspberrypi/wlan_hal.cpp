@@ -78,7 +78,6 @@ wlan_result_t wlan_reset_credentials_store()
 wlan_result_t wlan_connect_finalize()
 {
     // enable connection from stored profiles
-    HAL_Delay_Milliseconds(1000);
     HAL_NET_notify_connected();
     INFO("Virtual WLAN connected");
     HAL_NET_notify_dhcp(true);

@@ -17,6 +17,7 @@
  */
 
 #include "delay_hal.h"
+#define NAMESPACE_WPI_PINMODE
 #include "wiringPi.h"
 
 void HAL_Delay_Milliseconds(uint32_t millis)
