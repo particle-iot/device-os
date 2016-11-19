@@ -19,50 +19,62 @@
 
 #include "testapi.h"
 
-#if Wiring_Cellular == 1
+#if Wiring_Cellular
 
-test(api_cellular_rssi) {
+test(api_cellular_rssi)
+{
     CellularSignal sig;
     API_COMPILE(Cellular.RSSI());
     API_COMPILE(sig = Cellular.RSSI());
     API_COMPILE(Serial.println(sig));
 }
 
-test(api_cellular_ip) {
+test(api_cellular_ip)
+{
     IPAddress address;
-    API_COMPILE(address=Cellular.localIP());
+    API_COMPILE(address = Cellular.localIP());
 }
 
-test(api_cellular_set_credentials) {
+test(api_cellular_set_credentials)
+{
     API_COMPILE(Cellular.setCredentials("apn"));
     API_COMPILE(Cellular.setCredentials("username","password"));
 }
 
-test (api_cellular_connect_disconnect) {
+test (api_cellular_connect_disconnect)
+{
     API_COMPILE(Cellular.connect());
     API_COMPILE(Cellular.disconnect());
 }
 
-test (api_cellular_on_off) {
+test (api_cellular_on_off)
+{
     API_COMPILE(Cellular.on());
     API_COMPILE(Cellular.off());
 }
 
-test (api_cellular_listen) {
+test (api_cellular_listen)
+{
     bool result;
+    uint16_t val;
     API_COMPILE(Cellular.listen());
     API_COMPILE(Cellular.listen(false));
-    API_COMPILE(result=Cellular.listening());
-    (void)result; // avoid unused variable warning
+    API_COMPILE(result = Cellular.listening());
+    API_COMPILE(Cellular.setListenTimeout(10));
+    API_COMPILE(val = Cellular.getListenTimeout());
+    (void)result; // avoid unused warning
+    (void)val;    //   |
 }
 
-test (api_cellular_ready) {
+test (api_cellular_ready)
+{
     bool result;
-    API_COMPILE(result=Cellular.ready());
+    API_COMPILE(result = Cellular.ready());
     (void)result; // avoid unused variable warning
 }
 
-test(api_cellular_data_usage) {
+test(api_cellular_data_usage)
+{
     CellularData data1;
     CellularData data2;
     data2.ok = true;

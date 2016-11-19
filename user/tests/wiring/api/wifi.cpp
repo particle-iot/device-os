@@ -23,7 +23,7 @@
 
 #include "testapi.h"
 
-#if Wiring_WiFi == 1
+#if Wiring_WiFi
 
 test(api_wifi_config)
 {
@@ -39,44 +39,47 @@ test(api_wifi_config)
 	API_COMPILE(ether=WiFi.BSSID(ether));
 }
 
-test(api_wifi_resolve) {
-
+test(api_wifi_resolve)
+{
     API_COMPILE(WiFi.resolve(String("abc.def.com")));
     API_COMPILE(WiFi.resolve("abc.def.com"));
 }
 
 test (api_wifi_connect) {
-
-    bool UNUSED(result);
+    bool result;
     API_COMPILE(WiFi.connect());
     API_COMPILE(WiFi.connect(WIFI_CONNECT_SKIP_LISTEN));
-    API_COMPILE(WiFi.connecting());
+    API_COMPILE(result = WiFi.connecting());
+    (void)result; // avoid unused warning
 }
 
-test (wifi_api_listen) {
-    bool UNUSED(result);
+test (wifi_api_listen)
+{
+    bool result;
+    uint16_t val;
     API_COMPILE(WiFi.listen());
     API_COMPILE(WiFi.listen(false));
-    API_COMPILE(WiFi.listening());
+    API_COMPILE(result = WiFi.listening());
+    API_COMPILE(WiFi.setListenTimeout(10));
+    API_COMPILE(val = WiFi.getListenTimeout());
+    (void)result; // avoid unused warning
+    (void)val;    //   |
 }
 
 #if PLATFORM_ID>=4
-test(api_wifi_selectantenna) {
-
+test(api_wifi_selectantenna)
+{
     API_COMPILE(WiFi.selectAntenna(ANT_AUTO));
     API_COMPILE(WiFi.selectAntenna(ANT_INTERNAL));
     API_COMPILE(WiFi.selectAntenna(ANT_EXTERNAL));
-
 }
 #endif
 
 
-test(api_wifi_set_credentials) {
-
+test(api_wifi_set_credentials)
+{
     API_COMPILE(WiFi.setCredentials("ssid)",4,"password", 8, WPA2));
-
     API_COMPILE(WiFi.setCredentials("ssid)",4,"password", 8, WPA2, WLAN_CIPHER_AES));
-
     API_COMPILE(WiFi.setCredentials("ssid)","password", WPA2, WLAN_CIPHER_AES));
 }
 
