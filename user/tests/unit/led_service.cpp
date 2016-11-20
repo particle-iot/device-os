@@ -47,10 +47,10 @@ public:
 
     Color scaled(double value) const {
         value = std::max(0.0, std::min(value, 1.0));
-        return Color(std::floor(r() * value), std::round(g() * value), std::round(b() * value));
+        return Color(std::round(r() * value), std::round(g() * value), std::round(b() * value));
     }
 
-    // Returns `true` two colors are equal with given precision
+    // Returns `true` if this color is equal to another color with given precision
     bool equalsTo(const Color& color, int d = 0) const {
         return (std::abs(r() - color.r()) <= d &&
                 std::abs(g() - color.g()) <= d &&
@@ -142,7 +142,7 @@ public:
     }
 
     void operator()(int period) {
-        const int step = std::round(period / 7.0);
+        const int step = std::round(period / 5.0);
         int ticks = 0;
         while (ticks < period * 4) {
             update((ticks > 0) ? step : 0);
@@ -345,7 +345,7 @@ TEST_CASE("LEDPattern") {
 
         SECTION("slow speed") {
             s.setSpeed(LEDSpeed::SLOW);
-            check(400); // Pattern period is 400ms
+            check(500); // Pattern period is 400ms
         }
 
         SECTION("normal speed") {
@@ -363,7 +363,7 @@ TEST_CASE("LEDPattern") {
         LEDStatus s(Color::WHITE, LEDPattern::FADE);
         s.setActive();
 
-        PatternChecker check(led, [&](double t) {
+        PatternChecker check(led, [](double t) {
             if (t < 0.5) {
                 return Color::WHITE.scaled(1.0 - t / 0.5); // Fading out
             } else {
@@ -383,7 +383,7 @@ TEST_CASE("LEDPattern") {
 
         SECTION("fast speed") {
             s.setSpeed(LEDSpeed::FAST);
-            check(2000); // Pattern period is 2s
+            check(1000); // Pattern period is 2s
         }
     }
 }

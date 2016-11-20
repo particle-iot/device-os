@@ -155,6 +155,7 @@ public:
                 pattern = s->pattern;
                 speed = s->speed;
                 off = s->flags & LED_STATUS_FLAG_OFF;
+            } else {
             }
             enabled = (disabled_ == 0);
             reset = reset_;
@@ -197,10 +198,10 @@ private:
 
     uint8_t pattern_; // Pattern type
     uint8_t speed_; // Pattern speed
-    unsigned period_; // Pattern period in milliseconds
-    unsigned ticks_; // Number of ticks within pattern period
+    uint32_t period_; // Pattern period in milliseconds
+    uint32_t ticks_; // Number of ticks within pattern period
 
-    unsigned disabled_; // LED updates are enabled if this counter is set to 0
+    uint16_t disabled_; // LED updates are enabled if this counter is set to 0
     bool reset_; // Flag signaling that cached LED color should be ignored
 
     LED_SERVICE_DECLARE_LOCK(lock_);
@@ -241,22 +242,29 @@ private:
     }
 
     // Returns pattern period in milliseconds
-    static unsigned patternPeriod(uint8_t pattern, uint8_t speed) {
-        unsigned period = 0;
+    static uint32_t patternPeriod(uint8_t pattern, uint8_t speed) {
         switch (pattern) {
         case LED_PATTERN_TYPE_BLINK:
-            period = 200;
-            break;
+            // Blinking color
+            if (speed == LED_PATTERN_SPEED_NORMAL) {
+                return 200; // Normal
+            } else if (speed > LED_PATTERN_SPEED_NORMAL) {
+                return 100; // Fast
+            } else {
+                return 500; // Slow
+            }
         case LED_PATTERN_TYPE_FADE:
-            period = 4000;
-            break;
+            // "Breathing" color
+            if (speed == LED_PATTERN_SPEED_NORMAL) {
+                return 4000; // Normal
+            } else if (speed > LED_PATTERN_SPEED_NORMAL) {
+                return 1000; // Fast
+            } else {
+                return 8000; // Slow
+            }
+        default:
+            return 0; // Not applicable
         }
-        if (speed > LED_PATTERN_SPEED_NORMAL) {
-            period /= 2;
-        } else if (speed < LED_PATTERN_SPEED_NORMAL) {
-            period *= 2;
-        }
-        return period;
     }
 };
 
