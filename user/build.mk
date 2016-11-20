@@ -79,3 +79,5 @@ CFLAGS += $(EXTRA_CFLAGS)
 # Use application source info regardless of release/debug build
 CFLAGS += -DLOG_INCLUDE_SOURCE_INFO=1
 LOG_MODULE_CATEGORY = app
+
+CFLAGS += -DPARTICLE_USER_MODULE

@@ -62,6 +62,10 @@ DYNALIB_FN(28, services, log_set_callbacks, void(log_message_callback_type, log_
 DYNALIB_FN(29, services, set_thread_current_function_pointers, void(void*, void*, void*, void*, void*))
 DYNALIB_FN(30, services, system_error_message, const char*(int, void*))
 
+DYNALIB_FN(29, services, led_set_status_active, void(LEDStatusData*, bool, void*))
+DYNALIB_FN(30, services, led_set_updates_enabled, void(bool, void*))
+DYNALIB_FN(31, services, led_update, void(system_tick_t, void*))
+
 DYNALIB_END(services)
 
 #endif	/* SERVICES_DYNALIB_H */

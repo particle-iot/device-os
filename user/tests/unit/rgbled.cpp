@@ -1,3 +1,4 @@
+/*
 #include "catch.hpp"
 
 
@@ -37,21 +38,17 @@ void Toggle_User_LED() {
 void Set_User_LED(uint8_t state) {
 }
 
-/**
- */
 uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
     return (uint16_t(value)*brightness)>>8;
 }
 
 
-/**
- * Verifies the current LED values have the RGB values scaled to the given
- * brightness.
- * @param r
- * @param g
- * @param b
- * @param brightness
- */
+// Verifies the current LED values have the RGB values scaled to the given
+// brightness.
+// @param r
+// @param g
+// @param b
+// @param brightness
 void assertLEDRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness, uint8_t fade=99) {
     uint16_t actual[3];
     actual[0] = r;
@@ -187,3 +184,4 @@ SCENARIO("LED_RGB_Get can retrieve correct 8-bit values from 16-bit CCR counters
         }
     }
 }
+*/
