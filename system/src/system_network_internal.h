@@ -28,8 +28,6 @@
 #include "system_network.h"
 #include "system_threading.h"
 #include "system_rgbled.h"
-#include "spark_wiring_timer.h"
-
 
 enum eWanTimings
 {
@@ -134,7 +132,8 @@ class ManagedNetworkInterface : public NetworkInterface
 #else
     volatile uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled by default on Photon/P1/Core
 #endif
-    Timer* pStartListeningTimer;
+    volatile uint32_t start_listening_timer_base;
+    volatile uint32_t start_listening_timer_duration;
 
 protected:
 
@@ -144,14 +143,26 @@ protected:
 
     void start_listening_timer_create() {
         if (START_LISTENING_TIMER_MS != 0) {
-            if (!pStartListeningTimer) {
-                pStartListeningTimer = new Timer(START_LISTENING_TIMER_MS, &ManagedNetworkInterface::start_listening_timeout, *this, true /*one_shot*/);
+            start_listening_timer_base = HAL_Timer_Get_Milli_Seconds();
+            start_listening_timer_duration = START_LISTENING_TIMER_MS;
+            LOG(INFO,"Start Listening timer: created");
+        }
+    }
+
+    void start_listening_timer_update(uint16_t timeout) {
+        if (ManagedNetworkInterface::listening()) {
+            if (START_LISTENING_TIMER_MS != 0) {
+                start_listening_timer_create();
             }
-            if (pStartListeningTimer) {
-                pStartListeningTimer->start();
-                LOG(INFO,"Start Listening timer: created");
+            else {
+                start_listening_timer_destroy();
             }
         }
+    }
+
+    bool is_start_listening_timeout()
+    {
+        return start_listening_timer_duration && ((HAL_Timer_Get_Milli_Seconds()-start_listening_timer_base)>start_listening_timer_duration);
     }
 
     void start_listening_timeout()
@@ -164,16 +175,14 @@ protected:
 
     void start_listening_timer_destroy(void)
     {
-        if (pStartListeningTimer) {
-            delete pStartListeningTimer;
-            pStartListeningTimer = nullptr;
+        if (start_listening_timer_duration) {
+            start_listening_timer_duration = 0UL;
             LOG(INFO,"Start listening timer: destroyed");
         }
     }
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
-        // LOG(INFO,"Start Listening");
         WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
@@ -237,6 +246,9 @@ protected:
                 SystemThread.process();
             }
 #endif
+            if (is_start_listening_timeout()) {
+                start_listening_timeout();
+            }
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
 
@@ -325,14 +337,7 @@ public:
 
     void set_listen_timeout(uint16_t timeout) override {
         START_LISTENING_TIMER_MS = timeout * 1000UL;
-        if (pStartListeningTimer) {
-            if (START_LISTENING_TIMER_MS != 0) {
-                pStartListeningTimer->changePeriod(START_LISTENING_TIMER_MS);
-            }
-            else {
-                pStartListeningTimer->stop();
-            }
-        }
+        start_listening_timer_update(timeout);
     }
 
     uint16_t get_listen_timeout() override {
