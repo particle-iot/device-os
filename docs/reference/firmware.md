@@ -831,6 +831,54 @@ It will return `false` when the device is not in listening mode.
 {{/if}}
 
 
+### setListenTimeout()
+
+```cpp
+// SYNTAX
+WiFi.setListenTimeout(seconds);
+```
+
+`WiFi.setListenTimeout(seconds)` is used to set a timeout value for Listening Mode.  Values are specified in `seconds`, and 0 disables the timeout.  By default, Wi-Fi devices do not have any timeout set (seconds=0).  As long as interrupts are enabled, a timer is started and running while the device is in listening mode (WiFi.listening()==true).  After the timer expires, listening mode will be exited automatically.  If WiFi.setListenTimeout() is called while the timer is currently in progress, the timer will be updated and restarted with the new value (e.g. updating from 10 seconds to 30 seconds, or 10 seconds to 0 seconds (disabled)).  {{#unless core}}**Note:** Enabling multi-threaded mode with SYSTEM_THREAD(ENABLED) will allow user code to update the timeout value while Listening Mode is active.{{/unless}} {{#if core}}Because listening mode blocks your application code on the Core, this command should be avoided in loop().  It can be used with the STARTUP() macro or in setup() on the Core.
+It will always return `false`.
+
+This setting is not persistent in memory if the {{device}} is rebooted.
+{{/if}}
+
+```cpp
+// EXAMPLE
+// If desired, use the STARTUP() macro to set the timeout value at boot time.
+STARTUP(WiFi.setListenTimeout(60)); // set listening mode timeout to 60 seconds
+
+void setup() {
+  // your setup code
+}
+{{#unless core}}
+void loop() {
+  // update the timeout later in code based on an expression
+  if (disableTimeout) WiFi.setListenTimeout(0); // disables the listening mode timeout
+}
+{{/unless}}
+```
+
+
+### getListenTimeout()
+
+```cpp
+// SYNTAX
+uint16_t seconds = WiFi.getListenTimeout();
+```
+
+`WiFi.getListenTimeout()` is used to get the timeout value currently set for Listening Mode.  Values are returned in (uint16_t)`seconds`, and 0 indicates the timeout is disabled.  By default, Wi-Fi devices do not have any timeout set (seconds=0).
+
+```cpp
+// EXAMPLE
+void setup() {
+  Serial.begin();
+  Serial.println(WiFi.getListenTimeout());
+}
+```
+
+
 ### setCredentials()
 
 Allows the application to set credentials for the Wi-Fi network from within the code. These credentials will be added to the device's memory, and the device will automatically attempt to connect to this network in the future.
@@ -1548,6 +1596,52 @@ Once system code does not block application code,
 `Cellular.listening()` will return `true` once `Cellular.listen()` has been called
 or the setup button has been held for 3 seconds, when the RGB LED should be blinking blue.
 It will return `false` when the device is not in listening mode.
+
+
+### setListenTimeout()
+
+```cpp
+// SYNTAX
+Cellular.setListenTimeout(seconds);
+```
+
+`Cellular.setListenTimeout(seconds)` is used to set a timeout value for Listening Mode.  Values are specified in `seconds`, and 0 disables the timeout.  By default, Cellular devices have a 5 minute timeout set (seconds=300).  As long as interrupts are enabled, a timer is started and running while the device is in listening mode (Cellular.listening()==true).  After the timer expires, listening mode will be exited automatically.  If Cellular.setListenTimeout() is called while the timer is currently in progress, the timer will be updated and restarted with the new value (e.g. updating from 10 seconds to 30 seconds, or 10 seconds to 0 seconds (disabled)).  **Note:** Enabling multi-threaded mode with SYSTEM_THREAD(ENABLED) will allow user code to update the timeout value while Listening Mode is active.
+
+This setting is not persistent in memory if the {{device}} is rebooted.
+
+```cpp
+// EXAMPLE
+// If desired, use the STARTUP() macro to set the timeout value at boot time.
+STARTUP(Cellular.setListenTimeout(60)); // set listening mode timeout to 60 seconds
+
+void setup() {
+  // your setup code
+}
+
+void loop() {
+  // update the timeout later in code based on an expression
+  if (disableTimeout) Cellular.setListenTimeout(0); // disables the listening mode timeout
+}
+```
+
+
+### getListenTimeout()
+
+```cpp
+// SYNTAX
+uint16_t seconds = Cellular.getListenTimeout();
+```
+
+`Cellular.getListenTimeout()` is used to get the timeout value currently set for Listening Mode.  Values are returned in (uint16_t)`seconds`, and 0 indicates the timeout is disabled.  By default, Cellular devices have a 5 minute timeout set (seconds=300).
+
+```cpp
+// EXAMPLE
+void setup() {
+  Serial.begin();
+  Serial.println(Cellular.getListenTimeout());
+}
+```
+
 
 
 ### setCredentials()
