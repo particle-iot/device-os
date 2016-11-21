@@ -214,7 +214,10 @@ int32_t YModem::handle_packet(uint8_t* packet_data, int32_t packet_length,
             } /* Filename packet is empty, end session */
             else
             {
-                send_byte(ACK);
+                /* Do not send ACK immediately
+                 * Validate the received binary and in case of an error respond with a CANCEL
+                 */
+                // send_byte(ACK);
                 file_done = 1;
                 session_done = 1;
             }
@@ -296,41 +299,62 @@ int32_t YModem::receive_file(FileTransfer::Descriptor& tx, YModem::file_desc_t& 
  */
 bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& file, void* reserved)
 {
+    bool result = false;
     YModem::file_desc_t desc;
     YModem* ymodem = new YModem(*serialObj);
     int32_t size = ymodem->receive_file(file, desc);
-    delete ymodem;
     if (size > 0)
     {
-        serialObj->println("\r\nDownloaded file successfully!");
-        serialObj->print("Name: ");
-        Serial_PrintCharArray(serialObj, desc.file_name);
-        serialObj->println("");
-        serialObj->print("Size: ");
-        serialObj->print(size);
-        serialObj->println(" bytes");
-        serialObj->flush();
-        HAL_Delay_Milliseconds(1000);
-        Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, NULL);
-        return true;
+        hal_module_t module;
+        int update_result = Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, &module);
+        module_validation_flags_t validation_result = (module_validation_flags_t)(module.validity_checked ^ module.validity_result);
+
+        if (!update_result && (validation_result == MODULE_VALIDATION_PASSED))
+        {
+            // Respond to EOT with ACK
+            ymodem->send_byte(YModem::ACK);
+
+            serialObj->println("\r\nDownloaded file successfully!");
+            serialObj->print("Name: ");
+            Serial_PrintCharArray(serialObj, desc.file_name);
+            serialObj->println("");
+            serialObj->print("Size: ");
+            serialObj->print(size);
+            serialObj->println(" bytes");
+            serialObj->flush();
+            HAL_Delay_Milliseconds(1000);
+            result = true;
+        } else {
+            // Respond to EOT with CANCEL
+            ymodem->send_byte(YModem::CA);
+            ymodem->send_byte(YModem::CA);
+            serialObj->printf("Validation failed: 0x%x\r\n", (uint32_t)validation_result);
+        }
+    } else {
+        ymodem->send_byte(YModem::CA);
+        ymodem->send_byte(YModem::CA);
     }
-    else if (size == -1)
+    
+    if (size == -1)
     {
         serialObj->println("The file size is higher than the allowed space memory!");
     }
     else if (size == -2)
     {
-        serialObj->println("Verification failed!");
+        serialObj->println("Failed to save chunk!");
     }
     else if (size == -3)
     {
         serialObj->println("Aborted by user.");
     }
-    else
+    else if (size <= 0)
     {
         serialObj->println("Failed to receive the file!");
     }
-    return false;
+
+    delete ymodem;
+
+    return result;
 }
 
 #endif  /* __LIB_YMODEM_H */
