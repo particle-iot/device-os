@@ -1,5 +1,11 @@
 #!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-pushd $DIR > /dev/null
-PATH=$DIR:$PATH cucumber features --expand --tags ~@wip $*
-popd
+
+set -e
+
+cd $(dirname "$0")
+this_dir=$(pwd)
+
+PATH="$this_dir/tools:$PATH"
+source ./init_env
+
+cucumber features --expand --tags ~@wip $*

@@ -28,13 +28,13 @@ namespace spark {
 
 class SerialLogHandler: public StreamLogHandler {
 public:
-    explicit SerialLogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit SerialLogHandler(LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
             StreamLogHandler(Serial, level, filters) {
         Serial.begin();
         LogManager::instance()->addHandler(this);
     }
 
-    explicit SerialLogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit SerialLogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
             StreamLogHandler(Serial, level, filters) {
         Serial.begin(baud);
         LogManager::instance()->addHandler(this);
@@ -48,11 +48,11 @@ public:
 
 class Serial1LogHandler: public StreamLogHandler {
 public:
-    explicit Serial1LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit Serial1LogHandler(LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
             Serial1LogHandler(9600, level, filters) {
     }
 
-    explicit Serial1LogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit Serial1LogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
             StreamLogHandler(Serial1, level, filters) {
         Serial1.begin(baud);
         LogManager::instance()->addHandler(this);
@@ -67,13 +67,13 @@ public:
 #if Wiring_USBSerial1
 class USBSerial1LogHandler: public StreamLogHandler {
 public:
-    explicit USBSerial1LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit USBSerial1LogHandler(LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
             StreamLogHandler(USBSerial1, level, filters) {
         USBSerial1.begin();
         LogManager::instance()->addHandler(this);
     }
 
-    explicit USBSerial1LogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {}) :
+    explicit USBSerial1LogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
             StreamLogHandler(USBSerial1, level, filters) {
         USBSerial1.begin(baud);
         LogManager::instance()->addHandler(this);
