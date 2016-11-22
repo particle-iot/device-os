@@ -27,6 +27,8 @@ CPPSRC += $(TARGET_SRC_PATH)/protocol.cpp
 CPPSRC += $(TARGET_SRC_PATH)/messages.cpp
 CPPSRC += $(TARGET_SRC_PATH)/chunked_transfer.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_channel.cpp
+CPPSRC += $(TARGET_SRC_PATH)/publisher.cpp
+CPPSRC += $(TARGET_SRC_PATH)/protocol_defs.cpp
 
 # ASM source files included in this build.
 ASRC +=

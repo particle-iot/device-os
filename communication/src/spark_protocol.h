@@ -38,6 +38,8 @@
 #include <stdint.h>
 
 using namespace particle::protocol;
+using particle::CompletionHandler;
+using particle::CompletionHandlerMap;
 
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
@@ -103,7 +105,7 @@ class SparkProtocol
                        unsigned char message_id_msb, unsigned char message_id_lsb,
                        const void *return_value, int length);
     bool send_event(const char *event_name, const char *data,
-                    int ttl, EventType::Enum event_type);
+                    int ttl, EventType::Enum event_type, int flags, CompletionHandler handler);
 
     bool add_event_handler(const char *event_name, EventHandler handler) {
         return add_event_handler(event_name, handler, NULL, SubscriptionScope::FIREHOSE, NULL);
@@ -150,6 +152,7 @@ class SparkProtocol
         size_t len;
         uint8_t* response;
         size_t response_len;
+        uint16_t id;
     };
 
     CommunicationsHandlers handlers;   // application callbacks
@@ -161,6 +164,10 @@ class SparkProtocol
     FilteringEventHandler event_handlers[5];    // 1 system event listener + 4 application event listeners
     SparkCallbacks callbacks;
     SparkDescriptor descriptor;
+
+    CompletionHandlerMap<uint16_t> ack_handlers;
+
+    static const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
 
     unsigned char key[16];
     unsigned char iv_send[16];
