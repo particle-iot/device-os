@@ -48,7 +48,7 @@ DYNALIB_FN(4, hal_ota, HAL_OTA_Flashed_ResetStatus, void(void))
 
 DYNALIB_FN(5, hal_ota, HAL_FLASH_Begin, bool(uint32_t, uint32_t, void*))
 DYNALIB_FN(6, hal_ota, HAL_FLASH_Update, int(const uint8_t*, uint32_t, uint32_t, void*))
-DYNALIB_FN(7, hal_ota, HAL_FLASH_End, hal_update_complete_t(void*))
+DYNALIB_FN(7, hal_ota, HAL_FLASH_End, hal_update_complete_t(hal_module_t*))
 
 DYNALIB_END(hal_ota)
 
