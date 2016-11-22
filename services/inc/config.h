@@ -28,9 +28,13 @@
 #undef  DEBUG_BUILD
 #endif
 
-#if defined(DEBUG_BUILD) && !defined(LOG_INCLUDE_SOURCE_INFO)
-#define LOG_INCLUDE_SOURCE_INFO
+#ifndef LOG_INCLUDE_SOURCE_INFO
+#ifdef DEBUG_BUILD
+#define LOG_INCLUDE_SOURCE_INFO 1
+#else
+#define LOG_INCLUDE_SOURCE_INFO 0
 #endif
+#endif // !defined(LOG_INCLUDE_SOURCE_INFO)
 
 #define MAX_SEC_WAIT_CONNECT            8       // Number of second a TCP, spark will wait
 #define MAX_FAILED_CONNECTS             2       // Number of time a connect can fail
