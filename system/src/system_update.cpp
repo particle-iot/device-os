@@ -307,17 +307,21 @@ void system_shutdown_if_needed()
     }
 }
 
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
+int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* module)
 {
     SPARK_FLASH_UPDATE = 0;
     TimingFlashUpdateTimeout = 0;
     //DEBUG("update finished flags=%d store=%d", flags, file.store);
+    int res = 1;
+
+    hal_module_t mod;
 
     if (flags & 1) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
-            hal_update_complete_t result = HAL_FLASH_End(NULL);
+            hal_update_complete_t result = HAL_FLASH_End(module ? (hal_module_t*)module : &mod);
             system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
+            res = (result == HAL_UPDATE_ERROR);
 
             // always restart for now
             if (true || result==HAL_UPDATE_APPLIED_PENDING_RESTART)
@@ -330,8 +334,9 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     {
         system_notify_event(firmware_update, firmware_update_failed, &file);
     }
+
     RGB.control(false);
-    return 0;
+    return res;
 }
 
 int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved)
@@ -443,6 +448,42 @@ const char* module_name(uint8_t index, char* buf)
     return itoa(index, buf, 10);
 }
 
+bool module_info_to_json(appender_fn append, void* append_data, const hal_module_t* module, uint32_t flags)
+{
+    AppendJson json(append, append_data);
+    char buf[65];
+    bool result = true;
+    const module_info_t* info = module->info;
+
+    buf[64] = 0;
+    bool output_uuid = module->suffix && module_function(info)==MODULE_FUNCTION_USER_PART;
+    result &= json.write('{') && json.write_value("s", module->bounds.maximum_size) && json.write_string("l", module_store_string(module->bounds.store))
+            && json.write_value("vc",module->validity_checked) && json.write_value("vv", module->validity_result)
+      && (!output_uuid || json.write_string("u", bytes2hexbuf(module->suffix->sha, 32, buf)))
+      && (!info || (json.write_string("f", module_function_string(module_function(info)))
+                    && json.write_string("n", module_name(module_index(info), buf))
+                    && json.write_value("v", info->module_version)
+                    && (!(flags & MODULE_INFO_JSON_INCLUDE_PLATFORM_ID) || json.write_value("p", info->platform_id))))
+    // on the photon we have just one dependency, this will need generalizing for other platforms
+      && json.write_attribute("d") && json.write('[');
+
+    for (unsigned int d=0; d<1 && info; d++) {
+        const module_dependency_t& dependency = info->dependency;
+        module_function_t function = module_function_t(dependency.module_function);
+        if (function==MODULE_FUNCTION_NONE) // skip empty dependents
+            continue;
+        if (d) result &= json.write(',');
+        result &= json.write('{')
+          && json.write_string("f", module_function_string(function))
+          && json.write_string("n", module_name(dependency.module_index, buf))
+          && json.write_value("v", dependency.module_version)
+           && json.end_list() && json.write('}');
+    }
+    result &= json.write("]}");
+
+    return result;
+}
+
 bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_t& system)
 {
     AppendJson json(append, append_data);
@@ -451,41 +492,33 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         && json.write_key_values(system.key_value_count, system.key_values)
         && json.write_attribute("m")
         && json.write('[');
-    char buf[65];
     for (unsigned i=0; i<system.module_count; i++) {
         if (i) result &= json.write(',');
         const hal_module_t& module = system.modules[i];
-        const module_info_t* info = module.info;
-        buf[64] = 0;
-        bool output_uuid = module.suffix && module_function(info)==MODULE_FUNCTION_USER_PART;
-        result &= json.write('{') && json.write_value("s", module.bounds.maximum_size) && json.write_string("l", module_store_string(module.bounds.store))
-                && json.write_value("vc",module.validity_checked) && json.write_value("vv", module.validity_result)
-          && (!output_uuid || json.write_string("u", bytes2hexbuf(module.suffix->sha, 32, buf)))
-          && (!info || (json.write_string("f", module_function_string(module_function(info)))
-                        && json.write_string("n", module_name(module_index(info), buf))
-                        && json.write_value("v", info->module_version)))
-        // on the photon we have just one dependency, this will need generalizing for other platforms
-          && json.write_attribute("d") && json.write('[');
-
-        for (unsigned int d=0; d<1 && info; d++) {
-            const module_dependency_t& dependency = info->dependency;
-            module_function_t function = module_function_t(dependency.module_function);
-            if (function==MODULE_FUNCTION_NONE) // skip empty dependents
-                continue;
-            if (d) result &= json.write(',');
-            result &= json.write('{')
-              && json.write_string("f", module_function_string(function))
-              && json.write_string("n", module_name(dependency.module_index, buf))
-              && json.write_value("v", dependency.module_version)
-               && json.end_list() && json.write('}');
-        }
-        result &= json.write("]}");
+        result &= module_info_to_json(append, append_data, &module, 0);
     }
 
     result &= json.write(']');
     return result;
 }
 
+bool ota_update_info(appender_fn append, void* append_data, void* mod, bool full, void* reserved)
+{
+    bool result = true;
+    AppendJson json(append, append_data);
+    //result &= json.write('{');
+    result &= json.write_attribute("u");
+    result &= module_info_to_json(append, append_data, (hal_module_t*)mod, MODULE_INFO_JSON_INCLUDE_PLATFORM_ID);
+    if (full) {
+        result &= json.write(",");
+        result &= json.write_attribute("s");
+        result &= json.write('{');
+        result &= system_module_info(append, append_data, NULL);
+        result &= json.write('}');
+    }
+    //result &= json.write('}');
+    return result;
+}
 
 bool system_module_info(appender_fn append, void* append_data, void* reserved)
 {
