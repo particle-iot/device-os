@@ -277,9 +277,10 @@ void HAL_USB_Detach(void)
 void HAL_USB_Attach(void)
 {
     if (USB_Configured) {
-        // Do not attach if there are no USB classes registered
-        if (USBD_Composite_Registered_Count(true) > 0)
-            USB_Cable_Config(ENABLE);
+        // Attach even if there are no classes registered
+        // We still want the control interface that receives vendor requests
+        // to be available.
+        USB_Cable_Config(ENABLE);
     }
 }
 
