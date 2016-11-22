@@ -121,6 +121,9 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		break;
 
 	case CoAPMessageType::EMPTY_ACK:
+		ack_handlers.setResult(msg_id);
+		break;
+
 	case CoAPMessageType::ERROR:
 	default:
 		; // drop it on the floor
@@ -244,6 +247,7 @@ int Protocol::begin()
 	chunkedTransfer.reset();
 	pinger.reset();
 	timesync_.reset();
+	ack_handlers.clear(); // FIXME: Cancel pending handlers right after previous session has ended
 
 	uint32_t channel_flags = 0;
 	ProtocolError error = channel.establish(channel_flags, application_state_checksum());
@@ -352,6 +356,7 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum message_type,
  */
 ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 {
+	ack_handlers.processTimeouts(); // Process expired handlers
 	Message message;
 	message_type = CoAPMessageType::NONE;
 	ProtocolError error = channel.receive(message);

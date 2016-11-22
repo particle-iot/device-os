@@ -29,6 +29,7 @@
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_watchdog.h"
+#include "spark_wiring_async.h"
 #include "interrupts_hal.h"
 #include <functional>
 
@@ -65,6 +66,7 @@ private:
 const PublishFlag PUBLIC(PUBLISH_EVENT_FLAG_PUBLIC);
 const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
 const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
+const PublishFlag WITH_ACK(PUBLISH_EVENT_FLAG_WITH_ACK);
 
 
 class CloudClass {
@@ -219,25 +221,25 @@ public:
       return _function(funcKey, std::bind(func, instance, _1));
     }
 
-    inline bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
+    inline spark::Future<void> publish(const char *eventName, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, NULL, 60, PublishFlag::flag_t(eventType), NULL), false);
+        return publish(eventName, NULL, 60, PublishFlag::flag_t(eventType));
     }
 
-    inline bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
+    inline spark::Future<void> publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, 60, PublishFlag::flag_t(eventType), NULL), false);
+        return publish(eventName, eventData, 60, PublishFlag::flag_t(eventType));
     }
 
-    inline bool publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
+    inline spark::Future<void> publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, 60, f1.flag()+f2.flag(), NULL), false);
+        return publish(eventName, eventData, 60, f1.flag()+f2.flag());
     }
 
 
-    inline bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
+    inline spark::Future<void> publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, PublishFlag::flag_t(eventType), NULL), false);
+        return publish(eventName, eventData, ttl, PublishFlag::flag_t(eventType));
     }
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
@@ -339,6 +341,8 @@ private:
     static int call_std_user_function(void* data, const char* param, void* reserved);
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
+
+    static spark::Future<void> publish(const char *eventName, const char *eventData, int ttl, uint32_t flags);
 
     static ProtocolFacade* sp()
     {

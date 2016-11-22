@@ -28,6 +28,8 @@
 #include "pinmap_impl.h"
 #include <stddef.h>
 
+#define NONE CHANNEL_NONE
+
 /* Private typedef -----------------------------------------------------------*/
 
 STM32_Pin_Info PIN_MAP[TOTAL_PINS] =

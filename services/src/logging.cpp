@@ -78,7 +78,8 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
 }
 
 void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, va_list args) {
-    if (!log_msg_callback && (!log_compat_callback || level < log_compat_level)) {
+    const log_message_callback_type msg_callback = log_msg_callback;
+    if (!msg_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
     // Set default attributes
@@ -86,12 +87,12 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
         LOG_ATTR_SET(*attr, time, HAL_Timer_Get_Milli_Seconds());
     }
     char buf[LOG_MAX_STRING_LENGTH];
-    if (log_msg_callback) {
+    if (msg_callback) {
         const int n = vsnprintf(buf, sizeof(buf), fmt, args);
         if (n > (int)sizeof(buf) - 1) {
             buf[sizeof(buf) - 2] = '~';
         }
-        log_msg_callback(buf, level, category, attr, 0);
+        msg_callback(buf, level, category, attr, 0);
     } else {
         // Using compatibility callback
         const char* const levelName = log_level_name(level, 0);
@@ -127,8 +128,9 @@ void log_write(int level, const char *category, const char *data, size_t size, v
     if (!size) {
         return;
     }
-    if (log_write_callback) {
-        log_write_callback(data, size, level, category, 0);
+    const log_write_callback_type write_callback = log_write_callback;
+    if (write_callback) {
+        write_callback(data, size, level, category, 0);
     } else if (log_compat_callback && level >= log_compat_level) {
         // Compatibility callback expects null-terminated strings
         if (!data[size - 1]) {
@@ -148,7 +150,8 @@ void log_write(int level, const char *category, const char *data, size_t size, v
 }
 
 void log_printf_v(int level, const char *category, void *reserved, const char *fmt, va_list args) {
-    if (!log_write_callback && (!log_compat_callback || level < log_compat_level)) {
+    const log_write_callback_type write_callback = log_write_callback;
+    if (!write_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
     char buf[LOG_MAX_STRING_LENGTH];
@@ -157,8 +160,8 @@ void log_printf_v(int level, const char *category, void *reserved, const char *f
         buf[sizeof(buf) - 2] = '~';
         n = sizeof(buf) - 1;
     }
-    if (log_write_callback) {
-        log_write_callback(buf, n, level, category, 0);
+    if (write_callback) {
+        write_callback(buf, n, level, category, 0);
     } else {
         log_compat_callback(buf); // Compatibility callback
     }
@@ -172,7 +175,8 @@ void log_printf(int level, const char *category, void *reserved, const char *fmt
 }
 
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved) {
-    if (!size || (!log_write_callback && (!log_compat_callback || level < log_compat_level))) {
+    const log_write_callback_type write_callback = log_write_callback;
+    if (!size || (!write_callback && (!log_compat_callback || level < log_compat_level))) {
         return;
     }
     static const char hex[] = "0123456789abcdef";
@@ -184,8 +188,8 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
         buf[offs++] = hex[b >> 4];
         buf[offs++] = hex[b & 0x0f];
         if (offs == sizeof(buf) - 1) {
-            if (log_write_callback) {
-                log_write_callback(buf, sizeof(buf) - 1, level, category, 0);
+            if (write_callback) {
+                write_callback(buf, sizeof(buf) - 1, level, category, 0);
             } else {
                 log_compat_callback(buf);
             }
@@ -193,8 +197,8 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
         }
     }
     if (offs) {
-        if (log_write_callback) {
-            log_write_callback(buf, offs, level, category, 0);
+        if (write_callback) {
+            write_callback(buf, offs, level, category, 0);
         } else {
             buf[offs] = 0;
             log_compat_callback(buf);
@@ -203,8 +207,9 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
 }
 
 int log_enabled(int level, const char *category, void *reserved) {
-    if (log_enabled_callback) {
-        return log_enabled_callback(level, category, 0);
+    const log_enabled_callback_type enabled_callback = log_enabled_callback;
+    if (enabled_callback) {
+        return enabled_callback(level, category, 0);
     }
     if (log_compat_callback && level >= log_compat_level) { // Compatibility callback
         return 1;
