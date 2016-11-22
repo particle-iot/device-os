@@ -60,6 +60,8 @@ DYNALIB_FN(26, services, log_enabled, int(int, const char*, void*))
 DYNALIB_FN(27, services, log_level_name, const char*(int, void*))
 DYNALIB_FN(28, services, log_set_callbacks, void(log_message_callback_type, log_write_callback_type, log_enabled_callback_type, void*))
 
+DYNALIB_FN(29, services, system_error_message, const char*(int, void*))
+
 DYNALIB_END(services)
 
 #endif	/* SERVICES_DYNALIB_H */
