@@ -1,24 +1,25 @@
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/hex.hpp>
+#define LOG_MODULE_CATEGORY "module"
+#define LOG_INCLUDE_SOURCE_INFO 1
+
+#include "spark_wiring_logging.h"
+#include "service_debug.h"
+
+#include "tools/catch.h"
+#include "tools/string.h"
+#include "tools/stream.h"
+#include "tools/random.h"
+
 #include <boost/optional/optional.hpp>
 #include <boost/optional/optional_io.hpp>
 
-#include <random>
 #include <queue>
-
-#define CATCH_CONFIG_PREFIX_ALL
-#include "catch.hpp"
-
-#define LOG_MODULE_CATEGORY "module"
-#define LOG_INCLUDE_SOURCE_INFO
-#include "spark_wiring_logging.h"
-#include "service_debug.h"
+#include <map>
 
 #define CHECK_LOG_ATTR_FLAG(flag, value) \
         do { \
             LogAttributes attr = { 0 }; \
             attr.flag = 1; \
-            CATCH_CHECK(attr.flags == value); \
+            CHECK(attr.flags == value); \
         } while (false)
 
 // Source file's logging category
@@ -30,9 +31,12 @@ using namespace spark;
 
 std::string fileName(const std::string &path);
 
+class TestLogHandler;
+
 class LogMessage {
 public:
-    LogMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) :
+    LogMessage(TestLogHandler &handler, const char *msg, LogLevel level, const char *category, const LogAttributes &attr) :
+            handler_(handler),
             level_(level) {
         if (msg) {
             msg_ = msg;
@@ -61,63 +65,67 @@ public:
     }
 
     const LogMessage& messageEquals(const std::string &msg) const {
-        CATCH_CHECK(msg_ == msg);
+        CHECK(msg_ == msg);
         return *this;
     }
 
     const LogMessage& levelEquals(LogLevel level) const {
-        CATCH_CHECK(level_ == level);
+        CHECK(level_ == level);
         return *this;
     }
 
     const LogMessage& categoryEquals(const std::string &category) const {
-        CATCH_CHECK(cat_ == category);
+        CHECK(cat_ == category);
         return *this;
     }
 
     // Default attributes
     const LogMessage& fileEquals(const std::string &file) const {
-        CATCH_CHECK(file_ == file);
+        CHECK(file_ == file);
         return *this;
     }
 
     const LogMessage& lineEquals(int line) const {
-        CATCH_CHECK(line_ == line);
+        CHECK(line_ == line);
         return *this;
     }
 
     const LogMessage& functionEquals(const std::string &func) const {
-        CATCH_CHECK(func_ == func);
+        CHECK(func_ == func);
         return *this;
     }
 
     const LogMessage& timeEquals(uint32_t time) const {
-        CATCH_CHECK(time_ == time);
+        CHECK(time_ == time);
         return *this;
     }
 
     // Additional attributes
     const LogMessage& codeEquals(intptr_t code) const {
-        CATCH_CHECK(code_ == code);
+        CHECK(code_ == code);
         return *this;
     }
 
     const LogMessage& hasCode(bool yes = true) const {
-        CATCH_CHECK((bool)code_ == yes);
+        CHECK((bool)code_ == yes);
         return *this;
     }
 
     const LogMessage& detailsEquals(const std::string &str) const {
-        CATCH_CHECK(detail_ == str);
+        CHECK(detail_ == str);
         return *this;
     }
 
     const LogMessage& hasDetails(bool yes = true) const {
-        CATCH_CHECK((bool)detail_ == yes);
+        CHECK((bool)detail_ == yes);
         return *this;
     }
 
+    LogMessage checkNext() const;
+    void checkAtEnd() const;
+
 private:
+    TestLogHandler &handler_;
     boost::optional<std::string> msg_, cat_, file_, func_, detail_;
     boost::optional<intptr_t> code_;
     boost::optional<uint32_t> time_;
@@ -125,123 +133,316 @@ private:
     LogLevel level_;
 };
 
+// Base class for test log handlers
 class TestLogHandler: public LogHandler {
 public:
-    explicit TestLogHandler(LogLevel level = LOG_LEVEL_ALL, const Filters &filters = {}):
-            LogHandler(level, filters) {
-        LogManager::instance()->addHandler(this);
+    TestLogHandler(LogLevel level, LogCategoryFilters filters, Print *stream) :
+            LogHandler(level, filters),
+            strm_(stream) {
     }
 
-    virtual ~TestLogHandler() {
-        LogManager::instance()->removeHandler(this);
-    }
-
-    LogMessage next() {
-        CATCH_REQUIRE(!msgs_.empty());
+    LogMessage checkNext() {
+        REQUIRE(!msgs_.empty());
         const LogMessage m = msgs_.front();
         msgs_.pop();
         return m;
+    }
+
+    void checkAtEnd() const {
+        REQUIRE(msgs_.empty());
     }
 
     bool hasNext() const {
         return !msgs_.empty();
     }
 
-    const std::string& buffer() const {
-        return buf_;
-    }
-
-    const TestLogHandler& bufferEquals(const std::string &str) const {
-        CATCH_CHECK(buf_ == str);
-        return *this;
-    }
-
-    const TestLogHandler& bufferEndsWith(const std::string &str) const {
-        const std::string s = (buf_.size() >= str.size()) ? buf_.substr(buf_.size() - str.size(), str.size()) : str;
-        CATCH_CHECK(str == s);
-        return *this;
+    Print* stream() const {
+        return strm_;
     }
 
 protected:
     // spark::LogHandler
     virtual void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) override {
-        msgs_.push(LogMessage(msg, level, category, attr));
+        msgs_.push(LogMessage(*this, msg, level, category, attr));
     }
 
     virtual void write(const char *data, size_t size) override {
-        buf_.append(data, size);
+        if (strm_) { // Output stream is optional
+            strm_->write((const uint8_t*)data, size);
+        }
     }
 
 private:
     std::queue<LogMessage> msgs_;
-    std::string buf_;
+    Print *strm_;
+};
+
+inline LogMessage LogMessage::checkNext() const {
+    return handler_.checkNext();
+}
+
+inline void LogMessage::checkAtEnd() const {
+    handler_.checkAtEnd();
+}
+
+// Log handler using its own output stream and registering itself automatically
+class DefaultLogHandler: public TestLogHandler {
+public:
+    explicit DefaultLogHandler(LogLevel level = LOG_LEVEL_ALL, LogCategoryFilters filters = {}) :
+            TestLogHandler(level, filters, &strm_) {
+        LogManager::instance()->addHandler(this);
+    }
+
+    virtual ~DefaultLogHandler() {
+        LogManager::instance()->removeHandler(this);
+    }
+
+    const test::OutputStream& stream() const {
+        return strm_;
+    }
+
+private:
+    test::OutputStream strm_;
+};
+
+// Log handler with additional parameters
+class NamedLogHandler: public TestLogHandler {
+public:
+    NamedLogHandler(std::string name, LogLevel level, LogCategoryFilters filters, Print *stream) :
+            TestLogHandler(level, filters, stream),
+            name_(name) {
+        ++s_count;
+    }
+
+    virtual ~NamedLogHandler() {
+        --s_count;
+    }
+
+    const std::string& name() const {
+        return name_;
+    }
+
+    static size_t instanceCount() {
+        return s_count;
+    }
+
+    // This class is non-copyable
+    NamedLogHandler(const NamedLogHandler&) = delete;
+    NamedLogHandler& operator=(const NamedLogHandler&) = delete;
+
+private:
+    std::string name_;
+
+    static size_t s_count;
 };
 
 // Log handler using compatibility callback
 class CompatLogHandler {
 public:
     explicit CompatLogHandler(LogLevel level = LOG_LEVEL_ALL) {
-        instance = this;
+        s_instance = this;
         set_logger_output(callback, level);
     }
 
     ~CompatLogHandler() {
         set_logger_output(nullptr, LOG_LEVEL_NONE);
-        instance = nullptr;
+        s_instance = nullptr;
     }
 
-    const std::string& buffer() const {
-        return buf_;
-    }
-
-    const CompatLogHandler& bufferEquals(const std::string &str) const {
-        CATCH_CHECK(buf_ == str);
-        return *this;
-    }
-
-    const CompatLogHandler& bufferEndsWith(const std::string &str) const {
-        const std::string s = (buf_.size() >= str.size()) ? buf_.substr(buf_.size() - str.size(), str.size()) : str;
-        CATCH_CHECK(str == s);
-        return *this;
+    const test::OutputStream& stream() const {
+        return strm_;
     }
 
 private:
-    std::string buf_;
+    test::OutputStream strm_;
 
-    static CompatLogHandler *instance;
+    static CompatLogHandler *s_instance;
 
     static void callback(const char *str) {
-        instance->buf_.append(str);
+        s_instance->strm_.write((const uint8_t*)str, strlen(str));
     }
 };
 
-std::string randomString(size_t size = 0) {
-    static const std::string chars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()`~-_=+[{]}\\|;:'\",<.>/? ");
-    std::random_device rd;
-    if (!size) {
-        size = rd() % LOG_MAX_STRING_LENGTH + 1;
+// Mixin class registering log handler automatically
+template<typename HandlerT>
+class ScopedLogHandler: public HandlerT {
+public:
+    template<typename... ArgsT>
+    explicit ScopedLogHandler(ArgsT&&... args) :
+            HandlerT(std::forward<ArgsT>(args)...) {
+        LogManager::instance()->addHandler(this);
     }
-    std::uniform_int_distribution<size_t> dist(0, chars.size() - 1);
-    std::string s;
-    s.reserve(size);
-    for (size_t i = 0; i < size; ++i) {
-        s += chars[dist(rd)];
-    }
-    return s;
-}
 
-std::string randomBytes(size_t size = 0) {
-    std::random_device rd;
-    if (!size) {
-        size = rd() % (LOG_MAX_STRING_LENGTH / 2) + 1;
+    virtual ~ScopedLogHandler() {
+        LogManager::instance()->removeHandler(this);
     }
-    std::uniform_int_distribution<uint8_t> dist(0, 255);
-    std::string s;
-    s.reserve(size);
-    for (size_t i = 0; i < size; ++i) {
-        s += (char)dist(rd);
+};
+
+class NamedLogHandlerFactory: public LogHandlerFactory {
+public:
+    NamedLogHandlerFactory() {
+        LogManager::instance()->setHandlerFactory(this);
     }
-    return s;
+
+    virtual ~NamedLogHandlerFactory() {
+        // Restore default factory (destroys all active handlers)
+        LogManager::instance()->setHandlerFactory(DefaultLogHandlerFactory::instance());
+    }
+
+    virtual LogHandler* createHandler(const char *type, LogLevel level, LogCategoryFilters filters, Print *stream,
+            const JSONValue &params) override {
+        if (strcmp(type, "NamedLogHandler") != 0) {
+            return nullptr; // Unsupported handler type
+        }
+        // Getting additional parameters
+        std::string name;
+        JSONObjectIterator it(params);
+        while (it.next()) {
+            if (it.name() == "name") { // Handler name
+                name = (const char*)it.value().toString();
+                break;
+            }
+        }
+        if (handlers_.count(name)) {
+            return nullptr; // Duplicate handler name
+        }
+        NamedLogHandler *h = new NamedLogHandler(name, level, filters, stream);
+        handlers_.insert(std::make_pair(name, h));
+        return h;
+    }
+
+    virtual void destroyHandler(LogHandler *handler) override {
+        NamedLogHandler *h = dynamic_cast<NamedLogHandler*>(handler);
+        if (h) {
+            handlers_.erase(h->name());
+            delete h;
+        } else {
+            CATCH_WARN("NamedLogHandlerFactory: Unexpected handler type");
+        }
+    }
+
+    NamedLogHandler& handler(const std::string &name = std::string()) const {
+        const auto it = handlers_.find(name);
+        if (it == handlers_.end()) {
+            FAIL("NamedLogHandlerFactory: Unknown handler name: " << name);
+        }
+        return *it->second;
+    }
+
+    bool hasHandler(const std::string &name = std::string()) const {
+        return handlers_.count(name);
+    }
+
+private:
+    std::map<std::string, NamedLogHandler*> handlers_;
+};
+
+// Output stream with additional parameters
+class NamedOutputStream: public test::OutputStream {
+public:
+    explicit NamedOutputStream(std::string name) :
+            name_(name) {
+        ++s_count;
+    }
+
+    virtual ~NamedOutputStream() {
+        --s_count;
+    }
+
+    const std::string& name() const {
+        return name_;
+    }
+
+    static size_t instanceCount() {
+        return s_count;
+    }
+
+    // This class is non-copyable
+    NamedOutputStream(const NamedOutputStream&) = delete;
+    NamedOutputStream& operator=(const NamedOutputStream&) = delete;
+
+private:
+    std::string name_;
+
+    static size_t s_count;
+};
+
+class NamedOutputStreamFactory: public OutputStreamFactory {
+public:
+    NamedOutputStreamFactory() {
+        LogManager::instance()->setStreamFactory(this);
+    }
+
+    virtual ~NamedOutputStreamFactory() {
+        // Restore default factory (destroys all active handlers)
+        LogManager::instance()->setStreamFactory(DefaultOutputStreamFactory::instance());
+    }
+
+    virtual Print* createStream(const char *type, const JSONValue &params) override {
+        if (strcmp(type, "NamedOutputStream") != 0) {
+            return nullptr; // Unsupported stream type
+        }
+        // Getting additional parameters
+        std::string name;
+        JSONObjectIterator it(params);
+        while (it.next()) {
+            if (it.name() == "name") { // Stream name
+                name = (const char*)it.value().toString();
+                break;
+            }
+        }
+        if (streams_.count(name)) {
+            return nullptr; // Duplicate stream name
+        }
+        NamedOutputStream *s = new NamedOutputStream(name);
+        streams_.insert(std::make_pair(name, s));
+        return s;
+    }
+
+    virtual void destroyStream(Print *stream) override {
+        NamedOutputStream *s = dynamic_cast<NamedOutputStream*>(stream);
+        if (s) {
+            streams_.erase(s->name());
+            delete s;
+        } else {
+            CATCH_WARN("NamedOutputStreamFactory: Unexpected stream type");
+        }
+    }
+
+    NamedOutputStream& stream(const std::string &name = std::string()) const {
+        const auto it = streams_.find(name);
+        if (it == streams_.end()) {
+            FAIL("NamedOutputStreamFactory: Unknown stream name: " << name);
+        }
+        return *it->second;
+    }
+
+    bool hasStream(const std::string &name = std::string()) const {
+        return streams_.count(name);
+    }
+
+private:
+    std::map<std::string, NamedOutputStream*> streams_;
+};
+
+// Convenience wrapper for spark::logProcessConfigRequest()
+bool processConfigRequest(const std::string &req, std::string *rep = nullptr, DataFormat fmt = DATA_FORMAT_JSON) {
+    char buf[1024];
+    if (req.size() > sizeof(buf)) {
+        FAIL("processConfigRequest(): Too large request");
+    }
+    memcpy(buf, req.data(), req.size());
+    size_t repSize = 0;
+    if (!logProcessConfigRequest(buf, sizeof(buf), req.size(), &repSize, fmt)) {
+        return false;
+    }
+    if (rep) {
+        if (repSize > sizeof(buf)) {
+            FAIL("processConfigRequest(): Too large reply");
+        }
+        *rep = std::string(buf, repSize);
+    }
+    return true;
 }
 
 std::string fileName(const std::string &path) {
@@ -252,418 +453,415 @@ std::string fileName(const std::string &path) {
     return path;
 }
 
-std::string toHex(const std::string &str) {
-    std::string s(boost::algorithm::hex(str));
-    boost::algorithm::to_lower(s); // Logging library uses lower case
-    return s;
-}
+size_t NamedLogHandler::s_count = 0;
+size_t NamedOutputStream::s_count = 0;
 
-CompatLogHandler* CompatLogHandler::instance = nullptr;
+CompatLogHandler* CompatLogHandler::s_instance = nullptr;
 
 const std::string SOURCE_FILE = fileName(__FILE__);
 const std::string SOURCE_CATEGORY = LOG_THIS_CATEGORY();
 
 } // namespace
 
-CATCH_TEST_CASE("Message logging") {
-    TestLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("default attributes") {
+TEST_CASE("Message logging") {
+    DefaultLogHandler log(LOG_LEVEL_ALL);
+    SECTION("default attributes") {
         LOG(TRACE, "trace");
-        log.next().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
+        log.checkNext().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
         LOG(INFO, "info");
-        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
+        log.checkNext().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
         LOG(WARN, "warn");
-        log.next().messageEquals("warn").levelEquals(LOG_LEVEL_WARN).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
+        log.checkNext().messageEquals("warn").levelEquals(LOG_LEVEL_WARN).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
         LOG(ERROR, "error");
-        log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
+        log.checkNext().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE);
     }
-    CATCH_SECTION("additional attributes") {
+    SECTION("additional attributes") {
         LOG(INFO, "info");
-        log.next().hasCode(false).hasDetails(false); // No additional attributes
+        log.checkNext().hasCode(false).hasDetails(false); // No additional attributes
         LOG_ATTR(INFO, (code = -1, details = "details"), "info");
-        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE)
+        log.checkNext().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE)
                 .codeEquals(-1).detailsEquals("details");
     }
-    CATCH_SECTION("message formatting") {
+    SECTION("message formatting") {
         std::string s = "";
         LOG(TRACE, "%s", s.c_str());
-        log.next().messageEquals("");
-        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
+        log.checkNext().messageEquals("");
+        s = test::randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG(INFO, "%s", s.c_str());
-        log.next().messageEquals(s);
-        s = randomString(LOG_MAX_STRING_LENGTH);
+        log.checkNext().messageEquals(s);
+        s = test::randomString(LOG_MAX_STRING_LENGTH);
         LOG(WARN, "%s", s.c_str());
-        log.next().messageEquals(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
+        log.checkNext().messageEquals(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
+        s = test::randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG(ERROR, "%s", s.c_str());
-        log.next().messageEquals(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
+        log.checkNext().messageEquals(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
-    CATCH_SECTION("compatibility macros") {
+    SECTION("compatibility macros") {
         DEBUG("debug"); // Alias for LOG_DEBUG(TRACE, ...)
 #ifdef DEBUG_BUILD
-        log.next().messageEquals("debug").levelEquals(LOG_LEVEL_TRACE);
+        log.checkNext().messageEquals("debug").levelEquals(LOG_LEVEL_TRACE);
 #endif
         INFO("info"); // Alias for LOG(INFO, ...)
-        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO);
+        log.checkNext().messageEquals("info").levelEquals(LOG_LEVEL_INFO);
         WARN("warn"); // Alias for LOG(WARN, ...)
-        log.next().messageEquals("warn").levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().messageEquals("warn").levelEquals(LOG_LEVEL_WARN);
         ERROR("error"); // Alias for LOG(ERROR, ...)
-        log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR);
+        log.checkNext().messageEquals("error").levelEquals(LOG_LEVEL_ERROR);
     }
 }
 
-CATCH_TEST_CASE("Message logging (compatibility callback)") {
+TEST_CASE("Message logging (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("default attributes") {
+    SECTION("default attributes") {
         LOG(TRACE, "trace");
-        log.bufferEndsWith("TRACE: trace\r\n");
+        check(log.stream()).endsWith("TRACE: trace\r\n");
         LOG(INFO, "info");
-        log.bufferEndsWith("INFO: info\r\n");
+        check(log.stream()).endsWith("INFO: info\r\n");
         LOG(WARN, "warn");
-        log.bufferEndsWith("WARN: warn\r\n");
+        check(log.stream()).endsWith("WARN: warn\r\n");
         LOG(ERROR, "error");
-        log.bufferEndsWith("ERROR: error\r\n");
-        CATCH_CHECK(log.buffer().find(SOURCE_FILE) != std::string::npos);
+        check(log.stream()).endsWith("ERROR: error\r\n");
+        check(log.stream()).contains(SOURCE_FILE);
     }
-    CATCH_SECTION("message formatting") {
-        std::string s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
+    SECTION("message formatting") {
+        std::string s = test::randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG(INFO, "%s", s.c_str());
-        log.bufferEndsWith(s + "\r\n");
-        s = randomString(LOG_MAX_STRING_LENGTH);
+        check(log.stream()).endsWith(s + "\r\n");
+        s = test::randomString(LOG_MAX_STRING_LENGTH);
         LOG(WARN, "%s", s.c_str());
-        log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + "~\r\n"); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
+        check(log.stream()).endsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + "~\r\n"); // 1 character is reserved for term. null
+        s = test::randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG(ERROR, "%s", s.c_str());
-        log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + "~\r\n");
+        check(log.stream()).endsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + "~\r\n");
     }
 }
 
-CATCH_TEST_CASE("Direct logging") {
-    TestLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("write") {
+TEST_CASE("Direct logging") {
+    DefaultLogHandler log(LOG_LEVEL_ALL);
+    SECTION("write") {
         std::string s = "";
         LOG_WRITE(INFO, s.c_str(), s.size());
-        log.bufferEquals("");
-        s = randomString();
+        check(log.stream()).isEmpty();
+        s = test::randomString(1, 100);
         LOG_WRITE(WARN, s.c_str(), s.size());
-        log.bufferEndsWith(s);
-        s = randomString();
+        check(log.stream()).endsWith(s);
+        s = test::randomString(1, 100);
         LOG_PRINT(ERROR, s.c_str()); // Alias for LOG_WRITE(level, str, strlen(str))
-        log.bufferEndsWith(s);
+        check(log.stream()).endsWith(s);
     }
-    CATCH_SECTION("printf") {
+    SECTION("printf") {
         std::string s = "";
         LOG_PRINTF(TRACE, "%s", s.c_str());
-        log.bufferEquals("");
-        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
+        check(log.stream()).isEmpty();
+        s = test::randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_PRINTF(INFO, "%s", s.c_str());
-        log.bufferEquals(s);
-        s = randomString(LOG_MAX_STRING_LENGTH);
+        check(log.stream()).equals(s);
+        s = test::randomString(LOG_MAX_STRING_LENGTH);
         LOG_PRINTF(WARN, "%s", s.c_str());
-        log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
+        check(log.stream()).endsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
+        s = test::randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_PRINTF(ERROR, "%s", s.c_str());
-        log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
+        check(log.stream()).endsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
-    CATCH_SECTION("dump") {
+    SECTION("dump") {
         std::string s = "";
         LOG_DUMP(TRACE, s.c_str(), s.size());
-        log.bufferEquals("");
-        s = randomBytes(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
+        check(log.stream()).isEmpty();
+        s = test::randomBytes(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_DUMP(INFO, s.c_str(), s.size());
-        log.bufferEquals(toHex(s));
-        s = randomBytes(LOG_MAX_STRING_LENGTH);
+        check(log.stream()).unhex().equals(s);
+        s = test::randomBytes(LOG_MAX_STRING_LENGTH);
         LOG_DUMP(WARN, s.c_str(), s.size());
-        log.bufferEndsWith(toHex(s));
-        s = randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
+        check(log.stream()).unhex().endsWith(s);
+        s = test::randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_DUMP(ERROR, s.c_str(), s.size());
-        log.bufferEndsWith(toHex(s));
+        check(log.stream()).unhex().endsWith(s);
     }
-    CATCH_SECTION("compatibility macros") {
-        std::string s = randomString();
+    SECTION("compatibility macros") {
+        std::string s = test::randomString(LOG_MAX_STRING_LENGTH / 2);
         DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_PRINTF(TRACE, ...)
 #ifdef DEBUG_BUILD
-        log.bufferEquals(s);
+        check(log.stream()).equals(s);
 #endif
     }
 }
 
-// Copy-pase of above test case with TestLogHandler replaced with CompatLogHandler
-CATCH_TEST_CASE("Direct logging (compatibility callback)") {
+// Copy-pase of above test case with DefaultLogHandler replaced with CompatLogHandler
+TEST_CASE("Direct logging (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_ALL);
-    CATCH_SECTION("write") {
+    SECTION("write") {
         std::string s = "";
         LOG_WRITE(INFO, s.c_str(), s.size());
-        log.bufferEquals("");
-        s = randomString();
+        check(log.stream()).isEmpty();
+        s = test::randomString(1, 100);
         LOG_WRITE(WARN, s.c_str(), s.size());
-        log.bufferEndsWith(s);
-        s = randomString();
+        check(log.stream()).endsWith(s);
+        s = test::randomString(1, 100);
         LOG_PRINT(ERROR, s.c_str()); // Alias for LOG_WRITE(level, str, strlen(str))
-        log.bufferEndsWith(s);
+        check(log.stream()).endsWith(s);
     }
-    CATCH_SECTION("printf") {
+    SECTION("printf") {
         std::string s = "";
         LOG_PRINTF(TRACE, "%s", s.c_str());
-        log.bufferEquals("");
-        s = randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
+        check(log.stream()).isEmpty();
+        s = test::randomString(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_PRINTF(INFO, "%s", s.c_str());
-        log.bufferEquals(s);
-        s = randomString(LOG_MAX_STRING_LENGTH);
+        check(log.stream()).equals(s);
+        s = test::randomString(LOG_MAX_STRING_LENGTH);
         LOG_PRINTF(WARN, "%s", s.c_str());
-        log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
-        s = randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
+        check(log.stream()).endsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~'); // 1 character is reserved for term. null
+        s = test::randomString(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_PRINTF(ERROR, "%s", s.c_str());
-        log.bufferEndsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
+        check(log.stream()).endsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + '~');
     }
-    CATCH_SECTION("dump") {
+    SECTION("dump") {
         std::string s = "";
         LOG_DUMP(TRACE, s.c_str(), s.size());
-        log.bufferEquals("");
-        s = randomBytes(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
+        check(log.stream()).isEmpty();
+        s = test::randomBytes(LOG_MAX_STRING_LENGTH / 2); // Smaller than the internal buffer
         LOG_DUMP(INFO, s.c_str(), s.size());
-        log.bufferEquals(toHex(s));
-        s = randomBytes(LOG_MAX_STRING_LENGTH);
+        check(log.stream()).unhex().equals(s);
+        s = test::randomBytes(LOG_MAX_STRING_LENGTH);
         LOG_DUMP(WARN, s.c_str(), s.size());
-        log.bufferEndsWith(toHex(s));
-        s = randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
+        check(log.stream()).unhex().endsWith(s);
+        s = test::randomBytes(LOG_MAX_STRING_LENGTH * 3 / 2); // Larger than the internal buffer
         LOG_DUMP(ERROR, s.c_str(), s.size());
-        log.bufferEndsWith(toHex(s));
+        check(log.stream()).unhex().endsWith(s);
     }
-    CATCH_SECTION("compatibility macros") {
-        std::string s = randomString();
+    SECTION("compatibility macros") {
+        std::string s = test::randomString(LOG_MAX_STRING_LENGTH / 2);
         DEBUG_D("%s", s.c_str()); // Alias for LOG_DEBUG_PRINTF(TRACE, ...)
 #ifdef DEBUG_BUILD
-        log.bufferEquals(s);
+        check(log.stream()).equals(s);
 #endif
     }
 }
 
-CATCH_TEST_CASE("Basic filtering") {
-    CATCH_SECTION("warn") {
-        TestLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+TEST_CASE("Basic filtering") {
+    SECTION("warn") {
+        DefaultLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("cd");
+        check(log.stream()).equals("cd");
     }
-    CATCH_SECTION("none") {
-        TestLogHandler log(LOG_LEVEL_NONE); // All levels should be filtered out
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && !LOG_ENABLED(ERROR)));
+    SECTION("none") {
+        DefaultLogHandler log(LOG_LEVEL_NONE); // All levels should be filtered out
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && !LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        CATCH_CHECK(!log.hasNext());
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("");
+        check(log.stream()).isEmpty();
     }
 }
 
-CATCH_TEST_CASE("Basic filtering (compatibility callback)") {
+TEST_CASE("Basic filtering (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
-    CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
-    CATCH_SECTION("trace") {
+    CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+    SECTION("trace") {
         LOG(TRACE, "message");
         LOG_PRINT(TRACE, "print,");
         LOG_PRINTF(TRACE, "%s", "printf,");
         LOG_DUMP(TRACE, "\0", 1);
-        log.bufferEquals("");
+        check(log.stream()).isEmpty();
     }
-    CATCH_SECTION("info") {
+    SECTION("info") {
         LOG(INFO, "message");
         LOG_PRINT(INFO, "print,");
         LOG_PRINTF(INFO, "%s", "printf,");
         LOG_DUMP(INFO, "\0", 1);
-        log.bufferEquals("");
+        check(log.stream()).isEmpty();
     }
-    CATCH_SECTION("warn") {
+    SECTION("warn") {
         LOG(WARN, "message");
         LOG_PRINT(WARN, "print,");
         LOG_PRINTF(WARN, "%s", "printf,");
         LOG_DUMP(WARN, "\0", 1);
-        log.bufferEndsWith("WARN: message\r\nprint,printf,00");
+        check(log.stream()).endsWith("WARN: message\r\nprint,printf,00");
     }
-    CATCH_SECTION("error") {
+    SECTION("error") {
         LOG(ERROR, "message");
         LOG_PRINT(ERROR, "print,");
         LOG_PRINTF(ERROR, "%s", "printf,");
         LOG_DUMP(ERROR, "\0", 1);
-        log.bufferEndsWith("ERROR: message\r\nprint,printf,00");
+        check(log.stream()).endsWith("ERROR: message\r\nprint,printf,00");
     }
 }
 
-CATCH_TEST_CASE("Scoped category") {
-    TestLogHandler log(LOG_LEVEL_ALL);
-    CATCH_CHECK(LOG_THIS_CATEGORY() == SOURCE_CATEGORY);
+TEST_CASE("Scoped category") {
+    DefaultLogHandler log(LOG_LEVEL_ALL);
+    CHECK(LOG_THIS_CATEGORY() == SOURCE_CATEGORY);
     LOG(INFO, "");
-    log.next().categoryEquals(SOURCE_CATEGORY);
+    log.checkNext().categoryEquals(SOURCE_CATEGORY);
     {
         LOG_CATEGORY("scope");
-        CATCH_CHECK(LOG_THIS_CATEGORY() == std::string("scope"));
+        CHECK(LOG_THIS_CATEGORY() == std::string("scope"));
         LOG(INFO, "");
-        log.next().categoryEquals("scope");
+        log.checkNext().categoryEquals("scope");
     }
-    CATCH_CHECK(LOG_THIS_CATEGORY() == SOURCE_CATEGORY);
+    CHECK(LOG_THIS_CATEGORY() == SOURCE_CATEGORY);
     LOG(INFO, "");
-    log.next().categoryEquals(SOURCE_CATEGORY);
+    log.checkNext().categoryEquals(SOURCE_CATEGORY);
 }
 
-CATCH_TEST_CASE("Category filtering") {
-    TestLogHandler log(LOG_LEVEL_ERROR, {
+TEST_CASE("Category filtering") {
+    DefaultLogHandler log(LOG_LEVEL_ERROR, {
         { "b.b", LOG_LEVEL_INFO },
         { "a", LOG_LEVEL_WARN },
         { "a.a.a", LOG_LEVEL_TRACE },
         { "a.a", LOG_LEVEL_INFO }
     });
-    CATCH_SECTION("a") {
+    SECTION("a") {
         LOG_CATEGORY("a"); // TRACE and INFO should be filtered out
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("cd");
+        check(log.stream()).equals("cd");
     }
-    CATCH_SECTION("a.a") {
+    SECTION("a.a") {
         LOG_CATEGORY("a.a"); // TRACE should be filtered out
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_INFO);
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_INFO);
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("bcd");
+        check(log.stream()).equals("bcd");
     }
-    CATCH_SECTION("a.a.a") {
+    SECTION("a.a.a") {
         LOG_CATEGORY("a.a.a"); // No messages should be filtered out
-        CATCH_CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_TRACE);
-        log.next().levelEquals(LOG_LEVEL_INFO);
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_TRACE);
+        log.checkNext().levelEquals(LOG_LEVEL_INFO);
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("abcd");
+        check(log.stream()).equals("abcd");
     }
-    CATCH_SECTION("a.x") {
+    SECTION("a.x") {
         LOG_CATEGORY("a.x"); // TRACE and INFO should be filtered out (according to filter set for "a" category)
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("cd");
+        check(log.stream()).equals("cd");
     }
-    CATCH_SECTION("a.a.x") {
+    SECTION("a.a.x") {
         LOG_CATEGORY("a.a.x"); // TRACE should be filtered out (according to filter set for "a.a" category)
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_INFO);
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_INFO);
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("bcd");
+        check(log.stream()).equals("bcd");
     }
-    CATCH_SECTION("a.a.a.x") {
+    SECTION("a.a.a.x") {
         LOG_CATEGORY("a.a.a.x"); // No messages should be filtered out (according to filter set for "a.a.a" category)
-        CATCH_CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_TRACE);
-        log.next().levelEquals(LOG_LEVEL_INFO);
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_TRACE);
+        log.checkNext().levelEquals(LOG_LEVEL_INFO);
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("abcd");
+        check(log.stream()).equals("abcd");
     }
-    CATCH_SECTION("b") {
+    SECTION("b") {
         LOG_CATEGORY("b"); // All levels except ERROR should be filtered out (default level)
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("d");
+        check(log.stream()).equals("d");
     }
-    CATCH_SECTION("b.x") {
+    SECTION("b.x") {
         LOG_CATEGORY("b.x"); // All levels except ERROR should be filtered out (default level)
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("d");
+        check(log.stream()).equals("d");
     }
-    CATCH_SECTION("b.b") {
+    SECTION("b.b") {
         LOG_CATEGORY("b.b"); // TRACE should be filtered out
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_INFO);
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_INFO);
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("bcd");
+        check(log.stream()).equals("bcd");
     }
-    CATCH_SECTION("b.b.x") {
+    SECTION("b.b.x") {
         LOG_CATEGORY("b.b.x"); // TRACE should be filtered out (according to filter set for "b.b" category)
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
         LOG(TRACE, ""); LOG(INFO, ""); LOG(WARN, ""); LOG(ERROR, "");
-        log.next().levelEquals(LOG_LEVEL_INFO);
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_INFO);
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         LOG_PRINT(TRACE, "a"); LOG_PRINT(INFO, "b"); LOG_PRINT(WARN, "c"); LOG_PRINT(ERROR, "d");
-        log.bufferEquals("bcd");
+        check(log.stream()).equals("bcd");
     }
 }
 
-CATCH_TEST_CASE("Malformed category name") {
-    TestLogHandler log(LOG_LEVEL_ERROR, {
+TEST_CASE("Malformed category name") {
+    DefaultLogHandler log(LOG_LEVEL_ERROR, {
         { "a", LOG_LEVEL_WARN },
         { "a.a", LOG_LEVEL_INFO }
     });
-    CATCH_SECTION("empty") {
+    SECTION("empty") {
         LOG_CATEGORY(""); // All levels except ERROR should be filtered out (default level)
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
-    CATCH_SECTION(".") {
+    SECTION(".") {
         LOG_CATEGORY("."); // ditto
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
-    CATCH_SECTION(".a") {
+    SECTION(".a") {
         LOG_CATEGORY(".a"); // ditto
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && !LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
-    CATCH_SECTION("a.") {
+    SECTION("a.") {
         LOG_CATEGORY("a."); // TRACE and INFO should be filtered out (according to filter set for "a" category)
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
-    CATCH_SECTION("a..a") {
+    SECTION("a..a") {
         LOG_CATEGORY("a..a"); // ditto
-        CATCH_CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
+        CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
     }
 }
 
-CATCH_TEST_CASE("Miscellaneous") {
-    CATCH_SECTION("exact category match") {
-        TestLogHandler log(LOG_LEVEL_ERROR, {
+TEST_CASE("Miscellaneous") {
+    SECTION("exact category match") {
+        DefaultLogHandler log(LOG_LEVEL_ERROR, {
             { "aaa", LOG_LEVEL_TRACE },
             { "aa", LOG_LEVEL_INFO },
             { "a", LOG_LEVEL_WARN }
         });
-        CATCH_CHECK(LOG_ENABLED_C(WARN, "a"));
-        CATCH_CHECK(LOG_ENABLED_C(INFO, "aa"));
-        CATCH_CHECK(LOG_ENABLED_C(TRACE, "aaa"));
-        CATCH_CHECK(LOG_ENABLED_C(ERROR, "x"));
+        CHECK(LOG_ENABLED_C(WARN, "a"));
+        CHECK(LOG_ENABLED_C(INFO, "aa"));
+        CHECK(LOG_ENABLED_C(TRACE, "aaa"));
+        CHECK(LOG_ENABLED_C(ERROR, "x"));
     }
-    CATCH_SECTION("attribute flag values") {
+    SECTION("attribute flag values") {
         CHECK_LOG_ATTR_FLAG(has_file, 0x01);
         CHECK_LOG_ATTR_FLAG(has_line, 0x02);
         CHECK_LOG_ATTR_FLAG(has_function, 0x04);
@@ -674,41 +872,41 @@ CATCH_TEST_CASE("Miscellaneous") {
     }
 }
 
-CATCH_TEST_CASE("Logger API") {
-    CATCH_SECTION("message logging") {
-        TestLogHandler log(LOG_LEVEL_ALL);
+TEST_CASE("Logger API") {
+    SECTION("message logging") {
+        DefaultLogHandler log(LOG_LEVEL_ALL);
         Logger logger; // Uses module's category by default
         logger.trace("%s", "trace");
-        log.next().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).categoryEquals(LOG_MODULE_CATEGORY); // No file info available
+        log.checkNext().messageEquals("trace").levelEquals(LOG_LEVEL_TRACE).categoryEquals(LOG_MODULE_CATEGORY); // No file info available
         logger.info("%s", "info");
-        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
+        log.checkNext().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
         logger.warn("%s", "warn");
-        log.next().messageEquals("warn").levelEquals(LOG_LEVEL_WARN).categoryEquals(LOG_MODULE_CATEGORY);
+        log.checkNext().messageEquals("warn").levelEquals(LOG_LEVEL_WARN).categoryEquals(LOG_MODULE_CATEGORY);
         logger.error("%s", "error");
-        log.next().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_MODULE_CATEGORY);
+        log.checkNext().messageEquals("error").levelEquals(LOG_LEVEL_ERROR).categoryEquals(LOG_MODULE_CATEGORY);
         logger.log(LOG_LEVEL_INFO, "%s", "info");
-        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
+        log.checkNext().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
         logger.log("%s", "default"); // Uses default level
-        log.next().messageEquals("default").levelEquals(Logger::DEFAULT_LEVEL).categoryEquals(LOG_MODULE_CATEGORY);
+        log.checkNext().messageEquals("default").levelEquals(Logger::DEFAULT_LEVEL).categoryEquals(LOG_MODULE_CATEGORY);
         logger(LOG_LEVEL_INFO, "%s", "info"); // Alias for Logger::log(LogLevel, const char *fmt)
-        log.next().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
+        log.checkNext().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_MODULE_CATEGORY);
         logger("%s", "default"); // Alias for Logger::log(const char *fmt)
-        log.next().messageEquals("default").levelEquals(Logger::DEFAULT_LEVEL).categoryEquals(LOG_MODULE_CATEGORY);
+        log.checkNext().messageEquals("default").levelEquals(Logger::DEFAULT_LEVEL).categoryEquals(LOG_MODULE_CATEGORY);
     }
-    CATCH_SECTION("additional attributes") {
-        TestLogHandler log(LOG_LEVEL_ALL);
+    SECTION("additional attributes") {
+        DefaultLogHandler log(LOG_LEVEL_ALL);
         Logger logger;
-        logger.log("");
-        log.next().hasCode(false).hasDetails(false); // No additional attributes
+        logger.log("%s", "");
+        log.checkNext().hasCode(false).hasDetails(false); // No additional attributes
         // LogAttributes::code
-        logger.code(-1).log("");
-        log.next().codeEquals(-1);
+        logger.code(-1).log("%s", "");
+        log.checkNext().codeEquals(-1);
         // LogAttributes::details
-        logger.details("details").info("");
-        log.next().detailsEquals("details");
+        logger.details("details").info("%s", "");
+        log.checkNext().detailsEquals("details");
     }
-    CATCH_SECTION("direct logging") {
-        TestLogHandler log(LOG_LEVEL_ALL);
+    SECTION("direct logging") {
+        DefaultLogHandler log(LOG_LEVEL_ALL);
         Logger logger;
         logger.write(LOG_LEVEL_TRACE, "a", 1);
         logger.write("b", 1); // Uses default level
@@ -718,40 +916,329 @@ CATCH_TEST_CASE("Logger API") {
         logger.printf("%s", "f");
         logger.dump(LOG_LEVEL_ERROR, "\x01", 1);
         logger.dump("\x02", 1);
-        log.bufferEquals("abcdef0102");
+        check(log.stream()).equals("abcdef0102");
     }
-    CATCH_SECTION("basic filtering") {
-        TestLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
+    SECTION("basic filtering") {
+        DefaultLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
         Logger logger;
-        CATCH_CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
+        CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
         logger.trace("trace"); logger.info("info"); logger.warn("warn"); logger.error("error");
-        log.next().levelEquals(LOG_LEVEL_WARN);
-        log.next().levelEquals(LOG_LEVEL_ERROR);
-        CATCH_CHECK(!log.hasNext());
+        log.checkNext().levelEquals(LOG_LEVEL_WARN);
+        log.checkNext().levelEquals(LOG_LEVEL_ERROR);
+        CHECK(!log.hasNext());
         logger.print(LOG_LEVEL_TRACE, "a"); logger.print(LOG_LEVEL_INFO, "b"); logger.print(LOG_LEVEL_WARN, "c"); logger.print(LOG_LEVEL_ERROR, "d");
-        log.bufferEquals("cd");
+        check(log.stream()).equals("cd");
     }
-    CATCH_SECTION("category filtering") {
+    SECTION("category filtering") {
         // Only basic checks here - category filtering is tested in above test cases
-        TestLogHandler log(LOG_LEVEL_ERROR, {
+        DefaultLogHandler log(LOG_LEVEL_ERROR, {
             { "a", LOG_LEVEL_WARN },
             { "a.b", LOG_LEVEL_INFO }
         });
-        CATCH_SECTION("a") {
+        SECTION("a") {
             Logger logger("a"); // TRACE and INFO should be filtered out
-            CATCH_CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
+            CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
         }
-        CATCH_SECTION("a.b") {
+        SECTION("a.b") {
             Logger logger("a.b"); // TRACE should be filtered out
-            CATCH_CHECK((!logger.isTraceEnabled() && logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
+            CHECK((!logger.isTraceEnabled() && logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
         }
-        CATCH_SECTION("a.x") {
+        SECTION("a.x") {
             Logger logger("a.x"); // TRACE and INFO should be filtered out (according to filter set for "a" category)
-            CATCH_CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
+            CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && logger.isWarnEnabled() && logger.isErrorEnabled()));
         }
-        CATCH_SECTION("x") {
+        SECTION("x") {
             Logger logger("x"); // All levels except ERROR should be filtered out (default level)
-            CATCH_CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && !logger.isWarnEnabled() && logger.isErrorEnabled()));
+            CHECK((!logger.isTraceEnabled() && !logger.isInfoEnabled() && !logger.isWarnEnabled() && logger.isErrorEnabled()));
         }
     }
+}
+
+TEST_CASE("Message formatting") {
+    SECTION("level names") {
+        CHECK(LogHandler::levelName(LOG_LEVEL_TRACE) == std::string("TRACE"));
+        CHECK(LogHandler::levelName(LOG_LEVEL_INFO) == std::string("INFO"));
+        CHECK(LogHandler::levelName(LOG_LEVEL_WARN) == std::string("WARN"));
+        CHECK(LogHandler::levelName(LOG_LEVEL_ERROR) == std::string("ERROR"));
+        CHECK(LogHandler::levelName(LOG_LEVEL_PANIC) == std::string("PANIC"));
+    }
+
+    SECTION("default formatting") {
+        test::OutputStream stream;
+        ScopedLogHandler<StreamLogHandler> handler(stream);
+        LOG_ATTR(INFO, (code = -1, details = "details"), "\"message\"");
+        // timestamp [category] file:line, function(): level: message [code = ..., details = ...]
+        check(stream).matches("\\d{10} \\[(.+)\\] (.+):\\d+, .+\\(\\): (.+): (.+) \\[code = (.+), details = (.+)\\]\r\n")
+                .at(0).equals(LOG_THIS_CATEGORY())
+                .at(1).equals(SOURCE_FILE)
+                .at(2).equals("INFO")
+                .at(3).equals("\"message\"")
+                .at(4).equals("-1")
+                .at(5).equals("details");
+    }
+
+    SECTION("JSON formatting") {
+        test::OutputStream stream;
+        ScopedLogHandler<JSONStreamLogHandler> handler(stream);
+        LOG_ATTR(INFO, (code = -1, details = "details"), "\"message\"");
+        // {"l": level, "m": message, "c": category, "f": file, "ln": line, "fn": function, "t": timestamp, "code": code, "detail": details}
+        check(stream).matches("{\"l\":\"(.+)\",\"m\":\"(.+)\",\"c\":\"(.+)\",\"f\":\"(.+)\",\"ln\":\\d+,\"fn\":\".+\",\"t\":\\d+,\"code\":(.+),\"detail\":\"(.+)\"}\r\n")
+                .at(0).equals("INFO")
+                .at(1).equals("\\\"message\\\"") // Special characters are escaped
+                .at(2).equals(LOG_THIS_CATEGORY())
+                .at(3).equals(SOURCE_FILE)
+                .at(4).equals("-1")
+                .at(5).equals("details");
+    }
+}
+
+TEST_CASE("Configuration requests") {
+    NamedOutputStreamFactory streamFactory;
+    NamedLogHandlerFactory handlerFactory;
+
+    SECTION("adding and removing message-based handler") {
+        // Add handler
+        std::string rep;
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"1\"," // Handler ID
+                "\"hnd\": {\"type\": \"NamedLogHandler\"}" // Handler settings
+                "}", &rep));
+        CHECK(rep.empty()); // No reply data expected
+        CHECK(handlerFactory.handler().stream() == nullptr); // No output stream
+        CHECK(!streamFactory.hasStream());
+        // Enumerate handlers
+        REQUIRE(processConfigRequest("{\"cmd\": \"enumHandlers\"}", &rep));
+        CHECK(rep == "[\"1\"]");
+        // Do some logging
+        LOG(TRACE, ""); // Ignored by default
+        LOG(INFO, "");
+        handlerFactory.handler().checkNext().levelEquals(LOG_LEVEL_INFO);
+        // Remove handler
+        REQUIRE(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"1\"}", &rep));
+        CHECK(rep.empty()); // No reply data expected
+        CHECK(!handlerFactory.hasHandler());
+        // Enumerate handlers
+        REQUIRE(processConfigRequest("{\"cmd\": \"enumHandlers\"}", &rep));
+        CHECK(rep == "[]"); // No active handlers
+    }
+
+    SECTION("adding and removing stream-based handler") {
+        // Add handler
+        std::string rep;
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"1\"," // Handler ID
+                "\"hnd\": {\"type\": \"NamedLogHandler\"}," // Handler settings
+                "\"strm\": {\"type\": \"NamedOutputStream\"}" // Stream settings
+                "}", &rep));
+        CHECK(rep.empty()); // No reply data expected
+        CHECK(handlerFactory.hasHandler());
+        CHECK(streamFactory.hasStream());
+        // Enumerate handlers
+        REQUIRE(processConfigRequest("{\"cmd\": \"enumHandlers\"}", &rep));
+        CHECK(rep == "[\"1\"]");
+        // Do some logging
+        LOG(TRACE, ""); LOG_PRINT(TRACE, "trace"); // Ignored by default
+        LOG(INFO, ""); LOG_PRINT(INFO, "info");
+        handlerFactory.handler().checkNext().levelEquals(LOG_LEVEL_INFO);
+        streamFactory.stream().check().equals("info");
+        // Remove handler
+        REQUIRE(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"1\"}", &rep));
+        CHECK(rep.empty()); // No reply data expected
+        CHECK(!handlerFactory.hasHandler());
+        CHECK(!streamFactory.hasStream());
+        // Enumerate handlers
+        REQUIRE(processConfigRequest("{\"cmd\": \"enumHandlers\"}", &rep));
+        CHECK(rep == "[]"); // No active handlers
+    }
+
+    SECTION("handler- and stream-specific parameters") {
+        // Add handler
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"1\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"The Handler\"}}," // Handler name
+                "\"strm\": {\"type\": \"NamedOutputStream\", \"param\": {\"name\": \"The Stream\"}}" // Stream name
+                "}"));
+        CHECK(handlerFactory.hasHandler("The Handler"));
+        CHECK(streamFactory.hasStream("The Stream"));
+        // Remove handler
+        CHECK(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"1\"}"));
+    }
+
+    SECTION("adding multiple handlers with different settings") {
+        // Add handlers
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"1\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"a\"}},"
+                "\"lvl\": \"all\"" // LOG_LEVEL_ALL
+                "}"));
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"2\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"b\"}},"
+                "\"lvl\": \"info\"" // LOG_LEVEL_INFO
+                "}"));
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"3\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"c\"}},"
+                "\"lvl\": \"warn\"" // LOG_LEVEL_WARN
+                "}"));
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"4\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"d\"}},"
+                "\"lvl\": \"error\"," // LOG_LEVEL_ERROR (default level)
+                "\"filt\": ["
+                "{\"test\": \"trace\"}" // LOG_LEVEL_TRACE
+                "]}"));
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"5\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"e\"}},"
+                "\"lvl\": \"none\"" // LOG_LEVEL_NONE
+                "}"));
+        std::string rep;
+        REQUIRE(processConfigRequest("{\"cmd\": \"enumHandlers\"}", &rep));
+        CHECK(rep == "[\"1\",\"2\",\"3\",\"4\",\"5\"]");
+        CHECK(handlerFactory.hasHandler("a"));
+        CHECK(handlerFactory.hasHandler("b"));
+        CHECK(handlerFactory.hasHandler("c"));
+        CHECK(handlerFactory.hasHandler("d"));
+        CHECK(handlerFactory.hasHandler("e"));
+        // Do some logging
+        LOG_C(TRACE, "test", ""); // Specifying category name explicitly
+        LOG(TRACE, "");
+        LOG(INFO, "");
+        LOG(WARN, "");
+        LOG(ERROR, "");
+        handlerFactory.handler("a")
+                .checkNext().levelEquals(LOG_LEVEL_TRACE).categoryEquals("test")
+                .checkNext().levelEquals(LOG_LEVEL_TRACE)
+                .checkNext().levelEquals(LOG_LEVEL_INFO)
+                .checkNext().levelEquals(LOG_LEVEL_WARN)
+                .checkNext().levelEquals(LOG_LEVEL_ERROR)
+                .checkAtEnd();
+        handlerFactory.handler("b")
+                .checkNext().levelEquals(LOG_LEVEL_INFO)
+                .checkNext().levelEquals(LOG_LEVEL_WARN)
+                .checkNext().levelEquals(LOG_LEVEL_ERROR)
+                .checkAtEnd();
+        handlerFactory.handler("c")
+                .checkNext().levelEquals(LOG_LEVEL_WARN)
+                .checkNext().levelEquals(LOG_LEVEL_ERROR)
+                .checkAtEnd();
+        handlerFactory.handler("d")
+                .checkNext().levelEquals(LOG_LEVEL_TRACE).categoryEquals("test")
+                .checkNext().levelEquals(LOG_LEVEL_ERROR)
+                .checkAtEnd();
+        handlerFactory.handler("e").checkAtEnd();
+        // Remove handlers
+        CHECK(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"1\"}"));
+        CHECK(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"2\"}"));
+        CHECK(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"3\"}"));
+        CHECK(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"4\"}"));
+        CHECK(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"5\"}"));
+    }
+
+    SECTION("replacing handler") {
+        // Add handler
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"1\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"a\"}}"
+                "}"));
+        std::string rep;
+        REQUIRE(processConfigRequest("{\"cmd\": \"enumHandlers\"}", &rep));
+        CHECK(rep == "[\"1\"]");
+        CHECK(handlerFactory.hasHandler("a"));
+        // Add another handler with the same ID
+        REQUIRE(processConfigRequest("{"
+                "\"cmd\": \"addHandler\","
+                "\"id\": \"1\","
+                "\"hnd\": {\"type\": \"NamedLogHandler\", \"param\": {\"name\": \"b\"}}" // a -> b
+                "}"));
+        REQUIRE(processConfigRequest("{\"cmd\": \"enumHandlers\"}", &rep));
+        CHECK(rep == "[\"1\"]");
+        CHECK(!handlerFactory.hasHandler("a"));
+        CHECK(handlerFactory.hasHandler("b")); // a -> b
+        // Remove handler
+        CHECK(processConfigRequest("{\"cmd\": \"removeHandler\", \"id\": \"1\"}"));
+    }
+
+    SECTION("error handling and other checks") {
+        SECTION("too small buffer for reply data") {
+            char buf[] = "{\"cmd\": \"enumHandlers\"}";
+            size_t repSize = 0;
+            REQUIRE(logProcessConfigRequest(buf, // Buffer used for request and reply data
+                    0, // Maximum size allowed for reply data
+                    strlen(buf), // Request size
+                    &repSize, // Actual size of reply data
+                    DATA_FORMAT_JSON)); // Data format
+            CHECK(repSize == strlen("[]"));
+            CHECK(strncmp(buf, "[]", 2) != 0);
+        }
+        SECTION("unsupported handler type") {
+            CHECK(!processConfigRequest("{"
+                    "\"cmd\": \"addHandler\","
+                    "\"id\": \"1\","
+                    "\"hnd\": {\"type\": \"DummyLogHandler\"},"
+                    "\"strm\": {\"type\": \"NamedOutputStream\"}"
+                    "}"));
+        }
+        SECTION("unsupported stream type") {
+            CHECK(!processConfigRequest("{"
+                    "\"cmd\": \"addHandler\","
+                    "\"id\": \"1\","
+                    "\"hnd\": {\"type\": \"NamedLogHandler\"},"
+                    "\"strm\": {\"type\": \"DummyOutputStream\"}"
+                    "}"));;
+        }
+        SECTION("missing or invalid parameters") {
+            SECTION("cmd") {
+                CHECK(!processConfigRequest("{"
+                        "\"id\": \"1\""
+                        "}")); // Missing command name
+                CHECK(!processConfigRequest("{"
+                        "\"cmd\": \"resetHandler\"" // Unsupported command
+                        "\"id\": \"1\""
+                        "}"));
+            }
+            SECTION("addHandler") {
+                CHECK(!processConfigRequest("{"
+                        "\"cmd\": \"addHandler\","
+                        "\"hnd\": {\"type\": \"NamedLogHandler\"},"
+                        "}")); // Missing handler ID
+                CHECK(!processConfigRequest("{"
+                        "\"cmd\": \"addHandler\","
+                        "\"id\": \"1\","
+                        "\"hnd\": {\"param\": {\"name\": \"a\"}}"
+                        "}")); // Missing handler type
+                CHECK(!processConfigRequest("{"
+                        "\"cmd\": \"addHandler\","
+                        "\"id\": \"1\","
+                        "\"hnd\": {\"type\": \"NamedLogHandler\"},"
+                        "\"lvl\": \"debug\"" // Invalid level name
+                        "}"));
+                CHECK(!processConfigRequest("{"
+                        "\"cmd\": \"addHandler\","
+                        "\"id\": \"1\","
+                        "\"hnd\": {\"type\": \"NamedLogHandler\"},"
+                        "\"filt\": ["
+                        "{\"\": \"trace\"}" // Empty category name
+                        "]}"));
+            }
+            SECTION("removeHandler") {
+                CHECK(!processConfigRequest("{"
+                        "\"cmd\": \"removeHandler\","
+                        "}")); // Missing handler ID
+            }
+        }
+    }
+
+    CHECK(NamedOutputStream::instanceCount() == 0);
+    CHECK(NamedLogHandler::instanceCount() == 0);
 }

@@ -46,6 +46,7 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_logging.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_json.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_async.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_fuel.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
@@ -74,7 +75,7 @@ INCLUDE_DIRS += $(COMMUNICATION)src
 INCLUDE_DIRS += dynalib/inc
 
 # prefix $(SRC_ROOT)
-ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS)) 
+ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS))
 
 
 ifeq ("$(BOOST_ROOT)","")

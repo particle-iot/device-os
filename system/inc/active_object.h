@@ -19,12 +19,15 @@
 
 #pragma once
 
+#include <cstddef>
+
 #if PLATFORM_THREADING
 
 #include <functional>
 #include <mutex>
 #include <thread>
 #include <future>
+
 #include "channel.h"
 #include "concurrent_hal.h"
 
@@ -435,4 +438,31 @@ public:
 
 
 
-#endif
+#endif // PLATFORM_THREADING
+
+/**
+ * This class implements a queue of asynchronous calls that can be scheduled from an ISR and then
+ * invoked from an event loop running in a regular thread.
+ */
+class ISRTaskQueue {
+public:
+    typedef void(*TaskFunc)(void*);
+
+    explicit ISRTaskQueue(size_t size);
+    ~ISRTaskQueue();
+
+    bool enqueue(TaskFunc func, void* data = nullptr); // Called from an ISR
+    bool process(); // Called from the primary thread
+
+private:
+    struct Task {
+        TaskFunc func;
+        void* data;
+        Task* next;
+    };
+
+    Task* tasks_;
+    Task* availTask_; // Task pool
+    Task* firstTask_; // Task queue
+    Task* lastTask_;
+};

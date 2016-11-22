@@ -57,6 +57,7 @@ volatile uint8_t SPARK_LED_FADE = 1;
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t SYSTEM_POWEROFF;
 
+ISRTaskQueue SystemISRTaskQueue(4);
 
 void Network_Setup(bool threaded)
 {
@@ -341,7 +342,12 @@ void manage_cloud_connection(bool force_events)
         handle_cloud_connection(force_events);
     }
 }
-#endif
+#endif // !SPARK_NO_CLOUD
+
+static void process_isr_task_queue()
+{
+    SystemISRTaskQueue.process();
+}
 
 #if Wiring_SetupButtonUX
 extern void system_handle_button_click();
@@ -353,6 +359,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     ON_EVENT_DELTA();
     spark_loop_total_millis = 0;
+
+    process_isr_task_queue();
 
     if (!SYSTEM_POWEROFF) {
 

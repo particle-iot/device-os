@@ -18,18 +18,71 @@
 #ifndef SPARK_WIRING_LOGGING_H
 #define SPARK_WIRING_LOGGING_H
 
-#include <initializer_list>
-#include <vector>
 #include <cstring>
 #include <cstdarg>
 
 #include "logging.h"
 
+#include "spark_wiring_json.h"
 #include "spark_wiring_print.h"
+#include "spark_wiring_string.h"
+#include "spark_wiring_thread.h"
+#include "spark_wiring_vector.h"
+#include "spark_wiring_platform.h"
+
+#if Wiring_LogConfig
+#include "system_control.h"
+#endif
 
 namespace spark {
 
-class AttributedLogger;
+class LogCategoryFilter;
+
+typedef Vector<LogCategoryFilter> LogCategoryFilters;
+
+namespace detail {
+
+// Internal implementation
+class LogFilter {
+public:
+    explicit LogFilter(LogLevel level);
+    LogFilter(LogLevel level, LogCategoryFilters filters);
+    ~LogFilter();
+
+    LogLevel level() const;
+    LogLevel level(const char *category) const;
+
+    // This class in non-copyable
+    LogFilter(const LogFilter&) = delete;
+    LogFilter& operator=(const LogFilter&) = delete;
+
+private:
+    struct Node;
+
+    Vector<String> cats_; // Category filter strings
+    Vector<Node> nodes_; // Lookup table
+    LogLevel level_; // Default level
+
+    static int nodeIndex(const Vector<Node> &nodes, const char *name, size_t size, bool &found);
+};
+
+} // namespace spark::detail
+
+class LogCategoryFilter {
+public:
+    LogCategoryFilter(String category, LogLevel level);
+    LogCategoryFilter(const char *category, LogLevel level);
+    LogCategoryFilter(const char *category, size_t length, LogLevel level);
+
+    const char* category() const;
+    LogLevel level() const;
+
+private:
+    String cat_;
+    LogLevel level_;
+
+    friend class detail::LogFilter;
+};
 
 /*!
     \brief Abstract log handler.
@@ -43,36 +96,26 @@ class AttributedLogger;
 */
 class LogHandler {
 public:
-    /*!
-        \brief Category filter.
-
-        Specifies minimal logging level enabled for a matching category.
-    */
-    typedef std::pair<const char*, LogLevel> Filter;
-    /*!
-        \brief List of category filters.
-    */
-    typedef std::initializer_list<Filter> Filters;
-
+    explicit LogHandler(LogLevel level = LOG_LEVEL_INFO);
     /*!
         \brief Constructor.
         \param level Default logging level.
         \param filters Category filters.
     */
-    explicit LogHandler(LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
+    LogHandler(LogLevel level, LogCategoryFilters filters);
     /*!
         \brief Destructor.
     */
-    virtual ~LogHandler();
+    virtual ~LogHandler() = default;
     /*!
         \brief Returns default logging level.
     */
-    LogLevel defaultLevel() const;
+    LogLevel level() const;
     /*!
         \brief Returns logging level enabled for specified category.
         \param category Category name.
     */
-    LogLevel categoryLevel(const char *category) const;
+    LogLevel level(const char *category) const;
     /*!
         \brief Returns level name.
         \param level Logging level.
@@ -82,6 +125,10 @@ public:
     // These methods are called by the LogManager
     void message(const char *msg, LogLevel level, const char *category, const LogAttributes &attr);
     void write(const char *data, size_t size, LogLevel level, const char *category);
+
+    // This class is non-copyable
+    LogHandler(const LogHandler&) = delete;
+    LogHandler& operator=(const LogHandler&) = delete;
 
 protected:
     /*!
@@ -104,10 +151,7 @@ protected:
     virtual void write(const char *data, size_t size);
 
 private:
-    struct FilterData;
-
-    std::vector<FilterData> filters_;
-    LogLevel level_;
+    detail::LogFilter filter_;
 };
 
 /*!
@@ -118,21 +162,16 @@ private:
 class StreamLogHandler: public LogHandler {
 public:
     /*!
-        \brief Output stream type.
-    */
-    typedef Print Stream;
-
-    /*!
         \brief Constructor.
         \param stream Output stream.
         \param level Default logging level.
         \param filters Category filters.
     */
-    explicit StreamLogHandler(Stream &stream, LogLevel level = LOG_LEVEL_INFO, const Filters &filters = {});
+    explicit StreamLogHandler(Print &stream, LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {});
     /*!
         \brief Returns output stream.
     */
-    Stream* stream() const;
+    Print* stream() const;
 
 protected:
     /*!
@@ -161,10 +200,34 @@ protected:
         This method is equivalent to `write(str, strlen(str))`.
     */
     void write(const char *str);
+    /*!
+        \brief Writes character to output stream.
+        \param c Character.
+    */
+    void write(char c);
+    /*!
+        \brief Formats string and writes it to output stream.
+        \param fmt Format string.
+
+        This method is equivalent to `stream()->printf(fmt, ...)`.
+    */
+    template<typename... ArgsT>
+    void printf(const char *fmt, ArgsT... args);
 
 private:
-    Stream *stream_;
+    Print *stream_;
 };
+
+class JSONStreamLogHandler: public StreamLogHandler {
+public:
+    using StreamLogHandler::StreamLogHandler;
+
+protected:
+    virtual void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) override;
+    virtual void write(const char *data, size_t size) override;
+};
+
+class AttributedLogger;
 
 /*!
     \brief Logger.
@@ -321,6 +384,10 @@ public:
     */
     void operator()(LogLevel level, const char *fmt, ...) const __attribute__((format(printf, 3, 4)));
 
+    // This class is non-copyable
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
+
 private:
     const char* const name_; // Category name
 
@@ -368,10 +435,56 @@ private:
     LogAttributes attr_;
 
     explicit AttributedLogger(const char *name);
+    AttributedLogger(const AttributedLogger&) = default;
+
     void log(LogLevel level, const char *fmt, va_list args);
+
+    AttributedLogger& operator=(const AttributedLogger&) = default;
 
     friend class Logger;
 };
+
+#if Wiring_LogConfig
+
+// NOTE: This is an experimental API and is subject to change
+class LogHandlerFactory {
+public:
+    virtual ~LogHandlerFactory() = default;
+
+    virtual LogHandler* createHandler(const char *type, LogLevel level, LogCategoryFilters filters, Print *stream,
+            const JSONValue &params) = 0; // TODO: Use some generic container or a buffer instead of JSONValue
+    virtual void destroyHandler(LogHandler *handler);
+};
+
+class DefaultLogHandlerFactory: public LogHandlerFactory {
+public:
+    virtual LogHandler* createHandler(const char *type, LogLevel level, LogCategoryFilters filters, Print *stream,
+            const JSONValue &params) override;
+
+    static DefaultLogHandlerFactory* instance();
+};
+
+// NOTE: This is an experimental API and is subject to change
+class OutputStreamFactory {
+public:
+    virtual ~OutputStreamFactory() = default;
+
+    virtual Print* createStream(const char *type, const JSONValue &params) = 0;
+    virtual void destroyStream(Print *stream);
+};
+
+class DefaultOutputStreamFactory: public OutputStreamFactory {
+public:
+    virtual Print* createStream(const char *type, const JSONValue &params) override;
+    virtual void destroyStream(Print *stream) override;
+
+    static DefaultOutputStreamFactory* instance();
+
+private:
+    static void getParams(const JSONValue &params, int *baudRate);
+};
+
+#endif // Wiring_LogConfig
 
 /*!
     \brief Log manager.
@@ -382,33 +495,131 @@ private:
 class LogManager {
 public:
     /*!
-        \brief Registers log handler globally.
-        \param handler Handler instance.
-
-        Note that this method doesn't affect ownership over the handler object.
+        \brief Destructor.
     */
-    void addHandler(LogHandler *handler);
+    ~LogManager();
+    /*!
+        \brief Registers log handler.
+
+        \param handler Handler instance.
+        \return `false` in case of error.
+
+        \note Log manager doesn't take ownership over the handler instance.
+    */
+    bool addHandler(LogHandler *handler);
     /*!
         \brief Unregisters log handler.
+
         \param handler Handler instance.
     */
     void removeHandler(LogHandler *handler);
+
+#if Wiring_LogConfig
+
+    /*!
+        \brief Creates and registers a factory log handler.
+
+        \param id Handler ID.
+        \param handlerType Handler type.
+        \param level Default logging level.
+        \param filters Category filters.
+        \param handlerParams Additional handler parameters.
+        \param streamType Stream type.
+        \param streamParams Additional stream parameters.
+
+        \return `false` in case of error.
+    */
+    bool addFactoryHandler(const char *id, const char *handlerType, LogLevel level, LogCategoryFilters filters,
+            const JSONValue &handlerParams, const char *streamType, const JSONValue &streamParams);
+    /*!
+        \brief Unregisters and destroys a factory log handler.
+
+        \param id Handler ID.
+    */
+    void removeFactoryHandler(const char *id);
+    /*!
+        \brief Enumerates active factory log handlers.
+
+        \param callback Callback function invoked for each active handler.
+        \param data User data.
+    */
+    void enumFactoryHandlers(void(*callback)(const char *id, void *data), void *data);
+    /*!
+        \brief Sets log handler factory.
+
+        \param factory Factory instance.
+
+        \note Log manager doesn't take ownership over the factory instance.
+    */
+    void setHandlerFactory(LogHandlerFactory *factory);
+    /*!
+        \brief Sets output stream factory.
+
+        \param factory Factory instance.
+
+        \note Log manager doesn't take ownership over the factory instance.
+    */
+    void setStreamFactory(OutputStreamFactory *factory);
+
+#endif // Wiring_LogConfig
+
     /*!
         \brief Returns log manager's instance.
     */
     static LogManager* instance();
 
-private:
-    std::vector<LogHandler*> handlers_;
+    // This class is non-copyable
+    LogManager(const LogManager&) = delete;
+    LogManager& operator=(const LogManager&) = delete;
 
-    // This class is instantiated via instance() method
-    LogManager() = default;
+private:
+    struct FactoryHandler;
+
+    Vector<LogHandler*> activeHandlers_;
+
+#if Wiring_LogConfig
+    Vector<FactoryHandler> factoryHandlers_;
+    LogHandlerFactory *handlerFactory_;
+    OutputStreamFactory *streamFactory_;
+#endif
+
+#if PLATFORM_THREADING
+    Mutex mutex_; // TODO: Use read-write lock?
+#endif
+
+    // This class can be instantiated only via instance() method
+    LogManager();
+
+#if Wiring_LogConfig
+    void destroyFactoryHandler(const char *id);
+    void destroyFactoryHandlers();
+#endif
+
+    static void setSystemCallbacks();
+    static void resetSystemCallbacks();
 
     // System callbacks
     static void logMessage(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved);
     static void logWrite(const char *data, size_t size, int level, const char *category, void *reserved);
     static int logEnabled(int level, const char *category, void *reserved);
 };
+
+#if Wiring_LogConfig
+
+/*!
+    \brief Performs processing of a configuration request.
+
+    \param buf Buffer.
+    \param reqData Buffer size.
+    \param reqSize Request data size.
+    \param repSize Reply data size.
+    \param fmt Data format.
+
+    \return `false` in case of error.
+*/
+bool logProcessConfigRequest(char *buf, size_t bufSize, size_t reqSize, size_t *repSize, DataFormat fmt);
+
+#endif // Wiring_LogConfig
 
 /*!
     \brief Default logger instance.
@@ -417,15 +628,64 @@ extern const Logger Log;
 
 } // namespace spark
 
+// spark::detail::LogFilter
+inline LogLevel spark::detail::LogFilter::level() const {
+    return level_;
+}
+
+// spark::LogCategoryFilter
+inline spark::LogCategoryFilter::LogCategoryFilter(String category, LogLevel level) :
+        cat_(category),
+        level_(level) {
+}
+
+inline spark::LogCategoryFilter::LogCategoryFilter(const char *category, LogLevel level) :
+        cat_(category),
+        level_(level) {
+}
+
+inline spark::LogCategoryFilter::LogCategoryFilter(const char *category, size_t length, LogLevel level) :
+        cat_(category, length),
+        level_(level) {
+}
+
+inline const char* spark::LogCategoryFilter::category() const {
+    return cat_.c_str();
+}
+
+inline LogLevel spark::LogCategoryFilter::level() const {
+    return level_;
+}
+
 // spark::LogHandler
+inline spark::LogHandler::LogHandler(LogLevel level) :
+        filter_(level) {
+}
+
+inline spark::LogHandler::LogHandler(LogLevel level, LogCategoryFilters filters) :
+        filter_(level, filters) {
+}
+
+inline LogLevel spark::LogHandler::level() const {
+    return filter_.level();
+}
+
+inline LogLevel spark::LogHandler::level(const char *category) const {
+    return filter_.level(category);
+}
+
+inline const char* spark::LogHandler::levelName(LogLevel level) {
+    return log_level_name(level, nullptr);
+}
+
 inline void spark::LogHandler::message(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
-    if (level >= categoryLevel(category)) {
+    if (level >= filter_.level(category)) {
         logMessage(msg, level, category, attr);
     }
 }
 
 inline void spark::LogHandler::write(const char *data, size_t size, LogLevel level, const char *category) {
-    if (level >= categoryLevel(category)) {
+    if (level >= filter_.level(category)) {
         write(data, size);
     }
 }
@@ -434,30 +694,36 @@ inline void spark::LogHandler::write(const char *data, size_t size) {
     // Default implementation does nothing
 }
 
-inline LogLevel spark::LogHandler::defaultLevel() const {
-    return level_;
-}
-
-inline const char* spark::LogHandler::levelName(LogLevel level) {
-    return log_level_name(level, nullptr);
-}
-
 // spark::StreamLogHandler
-inline spark::StreamLogHandler::StreamLogHandler(Stream &stream, LogLevel level, const Filters &filters) :
+inline spark::StreamLogHandler::StreamLogHandler(Print &stream, LogLevel level, LogCategoryFilters filters) :
         LogHandler(level, filters),
         stream_(&stream) {
+}
+
+inline Print* spark::StreamLogHandler::stream() const {
+    return stream_;
 }
 
 inline void spark::StreamLogHandler::write(const char *data, size_t size) {
     stream_->write((const uint8_t*)data, size);
 }
 
-inline spark::StreamLogHandler::Stream* spark::StreamLogHandler::stream() const {
-    return stream_;
-}
-
 inline void spark::StreamLogHandler::write(const char *str) {
     write(str, strlen(str));
+}
+
+inline void spark::StreamLogHandler::write(char c) {
+    write(&c, 1);
+}
+
+template<typename... ArgsT>
+inline void spark::StreamLogHandler::printf(const char *fmt, ArgsT... args) {
+    stream_->printf(fmt, args...);
+}
+
+// spark::JSONStreamLogHandler
+inline void spark::JSONStreamLogHandler::write(const char *data, size_t size) {
+    // This handler doesn't support direct logging
 }
 
 // spark::Logger
@@ -668,5 +934,19 @@ inline spark::AttributedLogger& spark::AttributedLogger::details(const char *str
 inline void spark::AttributedLogger::log(LogLevel level, const char *fmt, va_list args) {
     log_message_v(level, name_, &attr_, nullptr, fmt, args);
 }
+
+#if Wiring_LogConfig
+
+// spark::LogHandlerFactory
+inline void spark::LogHandlerFactory::destroyHandler(LogHandler *handler) {
+    delete handler;
+}
+
+// spark::OutputStreamFactory
+inline void spark::OutputStreamFactory::destroyStream(Print *stream) {
+    delete stream;
+}
+
+#endif // Wiring_LogConfig
 
 #endif // SPARK_WIRING_LOGGING_H

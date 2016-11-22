@@ -217,7 +217,7 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
-hal_update_complete_t HAL_FLASH_End(void* reserved)
+hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
@@ -251,6 +251,10 @@ hal_update_complete_t HAL_FLASH_End(void* reserved)
     else
     {
     		WARN("OTA module not applied");
+    }
+    if (mod)
+    {
+        memcpy(mod, &module, sizeof(hal_module_t));
     }
     return result;
 }
