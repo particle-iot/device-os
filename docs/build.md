@@ -85,6 +85,7 @@ When building `main` or `modules`:
 - `APPDIR`: builds the application located in $(APPDIR). The directory specified
     should be outside of the firmware repo working directory, allowing 3rd party applications to be built.
     See `USER_MAKEFILE`.
+- `APPLIBS`: directories containing external firmware libraries. See [External Libraries](#external_libs)
 - `TEST` builds the test application stored in `user/tests/$(TEST)`.
 - `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
     to include, relative to `APPDIR`. The default is `build.mk`.
@@ -356,13 +357,40 @@ To add all files in the application directory and subdirectories.
 To use a different name/location for customization makefile file other than `build.mk`, define `USER_MAKEFILE` to point to
 your custom build file. The value of `USER_MAKEFILE` is the location of your custom makefile relative to the application sources.
 
+<a name='external_libs'>
+## External Libraries
+</a>
 
-## Integrated application.cpp with firmware
+_Note that this is preliminary support for external libraries to bring some feature parity with Build. Over the coming weeks, full support for libraries will be added._
+
+External Particle libraries can be compiled and linked with firmware. To add one or more external libraries:
+
+1. download the library sources store it in a directory outside the firmware, e.g.`/particle/libs/neopixel` for the neopixel library. 
+
+2. remove the `examples` directory if it exists
+```
+cd /particle/libs/neopixel
+rm -rf firmware/examples
+``
+
+3. Rename `firmware` to be the same as the library name. 
+```
+mv firmware neopixel
+```
+This is so that includes like `#include "neopixel/neopixel.h"` will function correctly. 
+
+4. Add the APPLIBS variable to the make command which lists the directories contianing libraries to use. 
+```
+make APPDIR=/particle/apps/myapp APPLIBS=/particle/libs/neopixel
+```
+
+
+## Default application.cpp integrated with firmware
 
 In previous versions of the make system, the application code was integrated with the firmware code at `src/application.cpp`.
 This mode of building is still supported, however the location has changed to: `user/src/application.cpp`.
 
-To build the default application sources, simply run `make`
+To build the default application sources, just run `make`
 
 ```
 make
