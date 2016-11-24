@@ -41,4 +41,10 @@
 #define DEFAULT_SEC_INACTIVITY          0
 #define DEFAULT_SEC_NETOPS              20
 
+// Number of application loop iterations after which the main thread is suspended for some short time.
+// This is primarily used to workaround 100% CPU usage on the virtual device platform
+#ifndef SUSPEND_APPLICATION_THREAD_LOOP_COUNT
+#define SUSPEND_APPLICATION_THREAD_LOOP_COUNT 25
+#endif
+
 #endif /* CONFIG_H_ */
