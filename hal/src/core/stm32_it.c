@@ -533,7 +533,7 @@ void TIM1_CC_IRQHandler(void)
             }
             else
             {
-                HAL_Core_Mode_Button_Reset();
+                HAL_Core_Mode_Button_Reset(BUTTON1);
             }
         }
 

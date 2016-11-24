@@ -28,6 +28,7 @@
 #include "gpio_hal.h"
 #include "pinmap_impl.h"
 #include "stm32f2xx.h"
+#include "service_debug.h"
 #include <stddef.h>
 
 /* Private typedef -----------------------------------------------------------*/
@@ -260,6 +261,11 @@ void HAL_Interrupts_Restore(void) {
   EXTI->EMR = exti_saved_state.emr;
   EXTI->RTSR = exti_saved_state.rtsr;
   EXTI->FTSR = exti_saved_state.ftsr;
+}
+
+uint32_t HAL_Interrupts_Pin_IRQn(pin_t pin) {
+  STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+  return GPIO_IRQn[PIN_MAP[pin].gpio_pin];
 }
 
 /*******************************************************************************

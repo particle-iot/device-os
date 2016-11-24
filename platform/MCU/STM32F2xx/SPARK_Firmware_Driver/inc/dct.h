@@ -27,6 +27,7 @@ extern "C" {
 #include "platform_flash_modules.h"
 #include "static_assert.h"
 #include "stddef.h"     // for offsetof in C
+#include "hw_config.h"  // for button_config_t
 
 #define MAX_MODULES_SLOT    5 //Max modules
 #define FAC_RESET_SLOT      0 //Factory reset module index
@@ -79,7 +80,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
     uint8_t device_id[12];                               // the STM32 device ID
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
-    uint8_t reserved2[627];
+    button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
+    uint8_t reserved2[595];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -108,6 +110,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_ALT_SERVER_ADDRESS_OFFSET (offsetof(application_dct_t, alt_server_address))
 #define DCT_DEVICE_ID_OFFSET (offsetof(application_dct_t, device_id))
 #define DCT_RADIO_FLAGS_OFFSET (offsetof(application_dct_t, radio_flags))
+#define DCT_MODE_BUTTON_MIRROR_OFFSET (offsetof(application_dct_t, mode_button_mirror))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -131,6 +134,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_ALT_SERVER_ADDRESS_SIZE  (sizeof(application_dct_t::alt_server_address))
 #define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id))
 #define DCT_RADIO_FLAGS_SIZE  (sizeof(application_dct_t::radio_flags))
+#define DCT_MODE_BUTTON_MIRROR_SIZE (sizeof(application_dct_t::mode_button_mirror))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -164,9 +168,10 @@ STATIC_ASSERT_DCT_OFFSET(alt_server_public_key, 3298 /* 3106 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(alt_server_address, 3490 /* 3298 + 192 */);
 STATIC_ASSERT_DCT_OFFSET(device_id, 3618 /* 3490 + 128 */);
 STATIC_ASSERT_DCT_OFFSET(radio_flags, 3630 /* 3618 + 12 */);
+STATIC_ASSERT_DCT_OFFSET(mode_button_mirror, 3631 /* 3630 + 1 */);
 
-STATIC_ASSERT_DCT_OFFSET(reserved2, 3631 /* 3630 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3631 + 627 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 3663 /* 3631 + 32 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3663 + 595 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);

@@ -437,3 +437,11 @@ uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR)
 {
     return 0xFFFFFFFF;
 }
+
+void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void* reserved)
+{
+}
+
+void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved)
+{
+}

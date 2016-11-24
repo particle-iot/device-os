@@ -1,5 +1,7 @@
 #pragma once
 
+#include "hw_config.h"
+
 /**
  * Called by HAL_Core_Config() to setup SysTick_Configuration() if necessary.
  */
@@ -103,7 +105,7 @@ void RTC_Alarm_irq(void);
 /**
  * A shared handler for the EXTI interrupt to process presses of the mode button.
  */
-void Handle_Mode_Button_EXTI_irq(void);
+void Handle_Mode_Button_EXTI_irq(Button_TypeDef button);
 
 /**
  * Handle short and generic tasks for the device HAL on 1ms ticks

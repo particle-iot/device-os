@@ -200,7 +200,7 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 	return pressedState;
 }
 
-void HAL_Core_Mode_Button_Reset(void)
+void HAL_Core_Mode_Button_Reset(uint16_t button)
 {
 
     /* Disable TIM1 CC4 Interrupt */
@@ -619,4 +619,10 @@ int HAL_Ssystem_Backup_Restore(size_t offset, void* buffer, size_t max_length, s
 	return -1;
 }
 
+void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void* reserved)
+{
+}
 
+void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved)
+{
+}

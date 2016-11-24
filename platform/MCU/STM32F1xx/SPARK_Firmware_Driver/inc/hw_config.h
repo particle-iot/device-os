@@ -53,7 +53,7 @@ enum SpiBusOwner {
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
-	BUTTON1 = 0, BUTTON2 = 1
+	BUTTON1 = 0, BUTTON2 = 1, BUTTON1_MIRROR = 2
 } Button_TypeDef;
 
 typedef enum

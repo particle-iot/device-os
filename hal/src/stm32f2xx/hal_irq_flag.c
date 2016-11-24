@@ -1,5 +1,4 @@
-
-#include "interrupts_hal.h"
+#include "stm32f2xx.h"
 
 int HAL_disable_irq()
 {
