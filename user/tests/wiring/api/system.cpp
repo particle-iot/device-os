@@ -239,6 +239,6 @@ test(system_mode_button)
     API_COMPILE(System.buttonMirror(D1, RISING, true));
     API_COMPILE(System.buttonMirror(D1, FALLING, true));
 
-    API_COMPILE(Sytem.disableButtonMirror());
-    API_COMPILE(Sytem.disableButtonMirror(false));
+    API_COMPILE(System.disableButtonMirror());
+    API_COMPILE(System.disableButtonMirror(false));
 }
