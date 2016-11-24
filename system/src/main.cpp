@@ -226,7 +226,11 @@ void handle_button_click(uint16_t depressed_duration)
 // this is called on multiple threads - ideally need a mutex
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 {
+#ifdef BUTTON1_MIRROR_SUPPORTED
     if (button==0 || button == BUTTON1_MIRROR)
+#else
+    if (button==0)
+#endif
     {
         if (pressed)
         {
