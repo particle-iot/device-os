@@ -231,3 +231,14 @@ test(backup_ram)
 }
 
 #endif // defined(USER_BACKUP_RAM)
+
+test(system_mode_button)
+{
+    API_COMPILE(System.buttonMirror(D1, RISING));
+    API_COMPILE(System.buttonMirror(D1, FALLING));
+    API_COMPILE(System.buttonMirror(D1, RISING, true));
+    API_COMPILE(System.buttonMirror(D1, FALLING, true));
+
+    API_COMPILE(Sytem.disableButtonMirror());
+    API_COMPILE(Sytem.disableButtonMirror(false));
+}
