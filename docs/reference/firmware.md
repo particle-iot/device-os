@@ -8058,6 +8058,56 @@ Disables the system flag.
 
 Returns `true` if the system flag is enabled.
 
+{{#unless core}}
+### buttonMirror()
+
+*Since 0.7.0*
+
+Allows a pin to mirror the functionality of the SETUP/MODE button.
+
+```C++
+// SYNTAX
+System.buttonMirror(D1, RISING);
+System.buttonMirror(D1, FALLING, true);
+```
+Parameters:
+
+  * `pin`: the pin number
+  * `mode`: defines the condition that signifies a button press:
+    - RISING to trigger when the pin goes from low to high,
+    - FALLING for when the pin goes from high to low.
+  * `bootloader`: (optional) if `true`, the mirror pin configuration is saved in DCT and pin mirrors the SETUP/MODE button functionality while in bootloader as well. If `false`, any previously stored configuration is removed from the DCT and pin only mirrors the SETUP/MODE button while running the firmware (default).
+
+See also [`System.disableButtonMirror()`](#disablebuttonmirror-).
+
+```cpp
+// EXAMPLE
+// Mirror SETUP/MODE button on D1 pin. Button pressed state - LOW
+STARTUP(System.buttonMirror(D1, FALLING));
+
+// EXAMPLE
+// Mirror SETUP/MODE button on D1 pin. Button pressed state - HIGH
+// Works in both firmware and bootloader
+STARTUP(System.buttonMirror(D1, RISING, true));
+```
+
+***NOTE:*** Pins `D0` and `A5` will disable normal SETUP button operation. Pins `D0` and `A5` also can not be used in bootloader, the configuration will not be saved in DCT.
+
+### disableButtonMirror()
+
+*Since 0.7.0*
+
+Disables SETUP button mirroring on a pin.
+
+```C++
+// SYNTAX
+System.disableButtonMirror();
+System.disableButtonMirror(false);
+```
+Parameters:
+  * `bootloader`: (optional) if `true`, the mirror pin configuration is cleared from the DCT, disabling the feature in bootloader (default).
+
+{{/unless}}
 
 ## OTA Updates
 
