@@ -28,13 +28,23 @@
 #undef  DEBUG_BUILD
 #endif
 
-#if defined(DEBUG_BUILD) && !defined(LOG_INCLUDE_SOURCE_INFO)
-#define LOG_INCLUDE_SOURCE_INFO
+#ifndef LOG_INCLUDE_SOURCE_INFO
+#ifdef DEBUG_BUILD
+#define LOG_INCLUDE_SOURCE_INFO 1
+#else
+#define LOG_INCLUDE_SOURCE_INFO 0
 #endif
+#endif // !defined(LOG_INCLUDE_SOURCE_INFO)
 
 #define MAX_SEC_WAIT_CONNECT            8       // Number of second a TCP, spark will wait
 #define MAX_FAILED_CONNECTS             2       // Number of time a connect can fail
 #define DEFAULT_SEC_INACTIVITY          0
 #define DEFAULT_SEC_NETOPS              20
+
+// Number of application loop iterations after which the main thread is suspended for some short time.
+// This is primarily used to workaround 100% CPU usage on the virtual device platform
+#ifndef SUSPEND_APPLICATION_THREAD_LOOP_COUNT
+#define SUSPEND_APPLICATION_THREAD_LOOP_COUNT 25
+#endif
 
 #endif /* CONFIG_H_ */

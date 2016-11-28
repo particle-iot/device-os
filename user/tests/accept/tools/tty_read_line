@@ -1,0 +1,71 @@
+#!/bin/bash
+
+set -e
+
+usage() {
+  echo "$(basename $0) [options] <device>"
+  echo "Options:"
+  echo "-n <number of lines> (number of lines to read; default: 1)"
+  echo "-t <timeout> (timeout in milliseconds)"
+  echo "-b <baud rate>"
+  exit 1
+}
+
+require_tool stty
+
+# Default parameters
+lines=1
+timeout=
+baud=
+
+# Parse arguments
+while getopts ":n:t:b:" opt; do
+  case $opt in
+    n)
+      lines=$OPTARG
+      ;;
+    t)
+      timeout=$OPTARG
+      ;;
+    b)
+      baud=$OPTARG
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+shift $((OPTIND-1))
+
+dev=$1
+if [ ! $dev ]; then
+  error "Device is not specified"
+fi
+
+stty_cmd="stty -F"
+if [ $(uname -s) == Darwin ]; then
+  stty_cmd="stty -f"
+fi
+
+# Backup serial device settings
+tty_conf=$($stty_cmd $dev -g)
+trap "$stty_cmd $dev $tty_conf 2>/dev/null" EXIT
+
+# Set baud rate
+$stty_cmd $dev $baud min 1 time 0
+
+if [ $timeout ]; then
+  # Convert milliseconds to seconds
+  timeout=$(echo "scale=3;$timeout/1000" | bc)
+  timeout_arg="-t $timeout"
+fi
+
+n=0
+while IFS= read $timeout_arg -r line; do
+  echo "$line"
+  n=$((n + 1))
+  [ $n == $lines ] && break
+done < $dev
+
+[ $n == $lines ] || error "Read error"

@@ -44,6 +44,9 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_string.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_ipaddress.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_print.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_logging.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_json.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_async.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_fuel.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
@@ -55,7 +58,9 @@ LIB_SERVICES = services/
 
 CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,debug.c)
+CSRC += $(call target_files,$(LIB_SERVICES)src,jsmn.c)
 CPPSRC += $(call target_files,$(LIB_SERVICES)src,logging.cpp)
+CPPSRC += $(call target_files,$(LIB_SERVICES)src,system_error.cpp)
 
 
 # Additional include directories, applied to objects built for this target.
@@ -70,7 +75,7 @@ INCLUDE_DIRS += $(COMMUNICATION)src
 INCLUDE_DIRS += dynalib/inc
 
 # prefix $(SRC_ROOT)
-ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS)) 
+ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS))
 
 
 ifeq ("$(BOOST_ROOT)","")
@@ -79,7 +84,10 @@ else
 $(info BOOST_ROOT "$(BOOST_ROOT)")
 endif
 
+DEFINES += BOOST_NO_AUTO_PTR
 ABS_INCLUDE_DIRS += $(BOOST_ROOT)
+LIB_DIRS += $(BOOST_ROOT)/stage/lib
+LIBS += boost_regex
 
 CFLAGS += $(patsubst %,-I%,$(ABS_INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -fdata-sections -Wall
@@ -91,9 +99,12 @@ CFLAGS += -Werror=deprecated-declarations
 CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -DSPARK=1 -DPLATFORM_ID=3
 CFLAGS += -DDEBUG_BUILD
+CFLAGS += $(DEFINES:%=-D%)
 
 CPPFLAGS += -std=gnu++11
 CPPFLAGS += -DCATCH_CONFIG_SFINAE
+
+LDFLAGS += $(LIB_DIRS:%=-L%) $(LIBS:%=-l%)
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o))

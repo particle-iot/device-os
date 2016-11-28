@@ -109,9 +109,9 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
                     USB_SetupRequest.data = NULL;
                 ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
 
-                if (ret == USBD_OK && USB_SetupRequest.data != NULL && USB_SetupRequest.wLength) {
+                if (ret == USBD_OK && ((USB_SetupRequest.data != NULL && USB_SetupRequest.wLength) || !USB_SetupRequest.wLength)) {
                     if (USB_SetupRequest.data != USB_SetupRequest_Data &&
-                        USB_SetupRequest.wLength <= USBD_EP0_MAX_PACKET_SIZE) {
+                        USB_SetupRequest.wLength <= USBD_EP0_MAX_PACKET_SIZE && USB_SetupRequest.wLength) {
                         // Don't use user buffer if wLength <= USBD_EP0_MAX_PACKET_SIZE
                         // and copy into internal buffer
                         memcpy(USB_SetupRequest_Data, USB_SetupRequest.data, USB_SetupRequest.wLength);
@@ -277,9 +277,10 @@ void HAL_USB_Detach(void)
 void HAL_USB_Attach(void)
 {
     if (USB_Configured) {
-        // Do not attach if there are no USB classes registered
-        if (USBD_Composite_Registered_Count(true) > 0)
-            USB_Cable_Config(ENABLE);
+        // Attach even if there are no classes registered
+        // We still want the control interface that receives vendor requests
+        // to be available.
+        USB_Cable_Config(ENABLE);
     }
 }
 

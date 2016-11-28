@@ -25,6 +25,7 @@
 #define	SYSTEM_DYNALIB_H
 
 #include "dynalib.h"
+#include "usb_hal.h"
 
 #ifdef DYNALIB_EXPORT
 #include "system_mode.h"
@@ -33,6 +34,7 @@
 #include "system_update.h"
 #include "system_event.h"
 #include "system_version.h"
+#include "system_control.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -61,10 +63,20 @@ DYNALIB_FN(18, system, Spark_Finish_Firmware_Update, int(FileTransfer::Descripto
 
 DYNALIB_FN(19, system, application_thread_current, uint8_t(void*))
 DYNALIB_FN(20, system, system_thread_current, uint8_t(void*))
-DYNALIB_FN(21, system, system_thread_get_state, spark::feature::State(void*))
+DYNALIB_FN(21, system, application_thread_invoke, uint8_t(void(*)(void*), void*, void*))
+DYNALIB_FN(22, system, system_thread_get_state, spark::feature::State(void*))
+DYNALIB_FN(23, system, system_notify_time_changed, void(uint32_t, void*, void*))
+
+#ifdef USB_VENDOR_REQUEST_ENABLE
+DYNALIB_FN(24, system, system_set_usb_request_app_handler, void(usb_request_app_handler_type, void*))
+DYNALIB_FN(25, system, system_set_usb_request_result, void(USBRequest*, int, void*))
+#define BASE_IDX 26
+#else
+#define BASE_IDX 24
+#endif // USB_VENDOR_REQUEST_ENABLE
 
 DYNALIB_END(system)
 
+#undef BASE_IDX
 
 #endif	/* SYSTEM_DYNALIB_H */
-

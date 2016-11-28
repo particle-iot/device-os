@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#ifndef HAL_CELLULAR_EXCLUDE
+
 #include "electronserialpipe_hal.h"
 #include "stm32f2xx.h"
 #include "usart_hal.h"
@@ -170,7 +172,7 @@ int ElectronSerialPipe::put(const void* buffer, int length, bool blocking)
 
 void ElectronSerialPipe::txCopy(void)
 {
-    if (_pipeTx.readable()) {
+    if (_pipeTx.readable() && USART_GetFlagStatus(USART3, USART_FLAG_TXE)) {
         char c = _pipeTx.getc();
         USART_SendData(USART3, c);
     }
@@ -214,21 +216,21 @@ int ElectronSerialPipe::get(void* buffer, int length, bool blocking)
 
 void ElectronSerialPipe::rxIrqBuf(void)
 {
-    char c = USART_ReceiveData(USART3);
-    if (_pipeRx.writeable())
+    if (_pipeRx.writeable()) {
+        char c = USART_ReceiveData(USART3);
         _pipeRx.putc(c);
-    else
-        /* overflow */;
+    } else {
+        USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
+    }
 }
 
-/*******************************************************************************
- * Function Name  : HAL_USART3_Handler
- * Description    : This function handles USART3 global interrupt request.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
-extern "C" void HAL_USART3_Handler(void)
+void ElectronSerialPipe::rxResume(void)
+{
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+}
+
+// Implementation of the USART3 IRQ handler exported via dynalib interface
+extern "C" void HAL_USART3_Handler_Impl(void* reserved)
 {
     if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
     {
@@ -239,4 +241,10 @@ extern "C" void HAL_USART3_Handler(void)
     {
         electronMDM.txIrqBuf();
     }
+
+    if (USART_GetFlagStatus(USART3, USART_FLAG_ORE) != RESET) {
+        (void)USART_ReceiveData(USART3);
+    }
 }
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)

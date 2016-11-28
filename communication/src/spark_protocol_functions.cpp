@@ -22,6 +22,7 @@
 #include "handshake.h"
 #include <stdlib.h>
 
+using particle::CompletionHandler;
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using
@@ -86,9 +87,14 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void*) {
+                int ttl, uint32_t flags, void* reserved) {
+	CompletionHandler handler;
+	if (reserved) {
+		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
+		handler = CompletionHandler(r->handler_callback, r->handler_data);
+	}
 	EventType::Enum event_type = EventType::extract_event_type(flags);
-	return protocol->send_event(event_name, data, ttl, event_type, flags);
+	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
 }
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {
@@ -147,7 +153,18 @@ int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd,
 	return 0;
 }
 
-#else
+bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_request_pending();
+}
+system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_last_synced(tm);
+}
+
+#else // !defined(PARTICLE_PROTOCOL)
 
 #include "spark_protocol.h"
 
@@ -184,9 +201,14 @@ int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char 
 }
 
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void*) {
+                int ttl, uint32_t flags, void* reserved) {
+	CompletionHandler handler;
+	if (reserved) {
+		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
+		handler = CompletionHandler(r->handler_callback, r->handler_data);
+	}
 	EventType::Enum event_type = EventType::extract_event_type(flags);
-    return protocol->send_event(event_name, data, ttl, event_type);
+	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
 }
 
 bool spark_protocol_send_subscription_device(SparkProtocol* protocol, const char *event_name, const char *device_id, void*) {
@@ -230,15 +252,26 @@ void spark_protocol_get_product_details(SparkProtocol* protocol, product_details
     protocol->get_product_details(*details);
 }
 
-int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
+int spark_protocol_set_connection_property(SparkProtocol* protocol, unsigned property_id,
                                            unsigned data, void* datap, void* reserved)
 {
     return 0;
 }
 
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
+int spark_protocol_command(SparkProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
 {
 	return 0;
+}
+
+bool spark_protocol_time_request_pending(SparkProtocol* protocol, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_request_pending();
+}
+system_tick_t spark_protocol_time_last_synced(SparkProtocol* protocol, time_t* tm, void* reserved)
+{
+    (void)reserved;
+    return protocol->time_last_synced(tm);
 }
 
 #endif

@@ -49,6 +49,7 @@ typedef struct {
 } module_bounds_t;
 
 typedef enum {
+    MODULE_VALIDATION_PASSED           = 0,
     MODULE_VALIDATION_INTEGRITY        = 1<<1,
     MODULE_VALIDATION_DEPENDENCIES     = 1<<2,
     MODULE_VALIDATION_RANGE            = 1<<3,
@@ -131,7 +132,7 @@ typedef enum {
     HAL_UPDATE_APPLIED
 } hal_update_complete_t;
 
-hal_update_complete_t HAL_FLASH_End(void* reserved);
+hal_update_complete_t HAL_FLASH_End(hal_module_t* module);
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
 uint32_t HAL_FLASH_ModuleLength(uint32_t address);

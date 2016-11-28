@@ -28,6 +28,7 @@
 #include "stm32f10x_rtc.h"
 #include "hw_config.h"
 #include <stdlib.h>
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -41,6 +42,8 @@ static struct skew
   int8_t error;
   uint8_t ticks;
 } skew;
+
+static time_t HAL_RTC_Time_Last_Set = 0;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -147,6 +150,7 @@ void HAL_RTC_Set_UnixTime(time_t value)
         skew.error = delta_error;
         skew.ticks = 2 * abs(delta_error);
     }
+    HAL_RTC_Time_Last_Set = value;
 }
 
 void HAL_RTC_Set_UnixAlarm(time_t value)
@@ -166,6 +170,28 @@ void HAL_RTC_Cancel_UnixAlarm(void)
     EXTI_ClearITPendingBit(EXTI_Line17);
     RTC_ClearITPendingBit(RTC_IT_ALR);
 }
+
+uint8_t HAL_RTC_Time_Is_Valid(void* reserved)
+{
+    uint8_t valid = 0;
+    int32_t state = HAL_disable_irq();
+    for (;;)
+    {
+        // 2001/01/01 00:00:00
+        if (HAL_RTC_Get_UnixTime() < 978307200)
+            break;
+
+        if (HAL_RTC_Time_Last_Set && HAL_RTC_Get_UnixTime() < HAL_RTC_Time_Last_Set)
+            break;
+
+        valid = 1;
+        break;
+    }
+    HAL_enable_irq(state);
+
+    return valid;
+}
+
 
 /*******************************************************************************
  * Function Name  : HAL_RTC_Handler (Declared as weak in stm32_it.h)

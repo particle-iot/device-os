@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#ifndef HAL_CELLULAR_EXCLUDE
+
 /* Includes -----------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdint.h>
@@ -2251,6 +2253,7 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             { "\r\n>",                  NULL,               TYPE_PROMPT     }, // SMS
             { "\n>",                    NULL,               TYPE_PROMPT     }, // File
             { "\r\nABORTED\r\n",        NULL,               TYPE_ABORTED    }, // Current command aborted
+            { "\r\n",                   "\r\n",             TYPE_UNKNOWN    }, // If all else fails, break up generic strings
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
             pipe->set(unkn);
@@ -2305,5 +2308,9 @@ int MDMElectronSerial::_send(const void* buf, int len)
 
 int MDMElectronSerial::getLine(char* buffer, int length)
 {
-    return _getLine(&_pipeRx, buffer, length);
+    int ret = _getLine(&_pipeRx, buffer, length);
+    rxResume();
+    return ret;
 }
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)

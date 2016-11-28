@@ -30,6 +30,9 @@
 #include "socket_hal.h"
 #include "system_cloud.h"
 #include "wlan_hal.h"
+#include "active_object.h"
+
+extern ISRTaskQueue SystemISRTaskQueue;
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,6 +87,8 @@ void* system_internal(int item, void* reserved);
 
 uint8_t application_thread_current(void* reserved);
 uint8_t system_thread_current(void* reserved);
+
+uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void* reserved);
 
 #ifdef __cplusplus
 }

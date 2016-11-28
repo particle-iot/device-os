@@ -1,0 +1,6 @@
+#include "../src/electron/modem/electronserialpipe_hal.cpp"
+#include "../src/electron/modem/mdm_hal.cpp"
+#include "../src/electron/parser.cpp"
+#include "../src/electron/cellular_hal.cpp"
+#include "../src/electron/inet_hal_new.cpp"
+#include "../src/electron/socket_hal.cpp"

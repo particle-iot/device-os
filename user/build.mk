@@ -82,5 +82,5 @@ CPPFLAGS += -D_POSIX_C_SOURCE=200809
 endif
 
 # Use application source info regardless of release/debug build
-CFLAGS += -DLOG_INCLUDE_SOURCE_INFO
+CFLAGS += -DLOG_INCLUDE_SOURCE_INFO=1
 LOG_MODULE_CATEGORY = app
