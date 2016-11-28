@@ -43,3 +43,7 @@ test(time_dst)
     (void)time;
 }
 
+test(time_valid)
+{
+    API_COMPILE(Time.isValid());
+}

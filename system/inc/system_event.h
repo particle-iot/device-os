@@ -55,6 +55,7 @@ enum SystemEvents {
     reset = 1<<11,                  // notifies that the system will now reset on return from this event.
     button_click = 1<<12,           // generated for every click in series - data is number of clicks in the lower 4 bits.
     button_final_click = 1<<13,     // generated for last click in series - data is the number of clicks in the lower 4 bits.
+    time_changed = 1<<14,
 
     all_events = 0xFFFFFFFFFFFFFFFF
 };
@@ -83,6 +84,9 @@ enum SystemEventsParam {
 
     cloud_status_disconnected = 0,
     cloud_status_connected = 1,
+
+    time_changed_manually = 0,
+    time_changed_sync = 1
 };
 
 
@@ -101,6 +105,8 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
  * @param reserved  Set to NULL.
  */
 void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved);
+
+void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
 
 #ifdef __cplusplus
 }

@@ -65,7 +65,7 @@ static struct SetThreadCurrentFunctionPointers {
                                              nullptr, nullptr);
     }
 } s_SetThreadCurrentFunctionPointersInitializer;
-
+ISRTaskQueue SystemISRTaskQueue(4);
 
 void Network_Setup(bool threaded)
 {
@@ -350,7 +350,12 @@ void manage_cloud_connection(bool force_events)
         handle_cloud_connection(force_events);
     }
 }
-#endif
+#endif // !SPARK_NO_CLOUD
+
+static void process_isr_task_queue()
+{
+    SystemISRTaskQueue.process();
+}
 
 #if Wiring_SetupButtonUX
 extern void system_handle_button_click();
@@ -362,6 +367,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     ON_EVENT_DELTA();
     spark_loop_total_millis = 0;
+
+    process_isr_task_queue();
 
     if (!SYSTEM_POWEROFF) {
 
@@ -508,4 +515,13 @@ uint8_t main_thread_current(void* reserved)
 #else
     return true;
 #endif
+}
+
+uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void* reserved)
+{
+    // FIXME: We need a way to report an error back to caller, if asynchronous function call can't
+    // be scheduled for some reason
+    APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(application_thread_invoke(callback, data, reserved), 0);
+    callback(data);
+    return 0;
 }

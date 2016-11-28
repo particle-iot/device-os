@@ -40,12 +40,15 @@ namespace EventType {
   enum Flags {
 	  EMPTY_FLAGS = 0,
 	   NO_ACK = 0x2,
+	   WITH_ACK = 0x8,
 
-	   ALL_FLAGS = NO_ACK
+	   ALL_FLAGS = NO_ACK | WITH_ACK
   };
 
-  static_assert((PUBLIC & NO_ACK)==0, "flags should be distinct from event type");
-  static_assert((PRIVATE & NO_ACK)==0, "flags should be distinct from event type");
+  static_assert((PUBLIC & NO_ACK)==0 &&
+	  (PRIVATE & NO_ACK)==0 &&
+	  (PUBLIC & WITH_ACK)==0 &&
+	  (PRIVATE & WITH_ACK)==0, "flags should be distinct from event type");
 
 /**
  * The flags are encoded in with the event type.
