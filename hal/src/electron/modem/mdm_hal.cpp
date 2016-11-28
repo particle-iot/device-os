@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#ifndef HAL_CELLULAR_EXCLUDE
+
 /* Includes -----------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdint.h>
@@ -2307,3 +2309,5 @@ int MDMElectronSerial::getLine(char* buffer, int length)
 {
     return _getLine(&_pipeRx, buffer, length);
 }
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)
