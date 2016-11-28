@@ -43,6 +43,7 @@
 #include "system_string_interpolate.h"
 #include "dtls_session_persist.h"
 #include "bytes2hexbuf.h"
+#include "system_event.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -661,9 +662,10 @@ void Spark_Protocol_Init(void)
     }
 }
 
-void system_set_time(time_t time, unsigned, void*)
+void system_set_time(time_t time, unsigned param, void*)
 {
     HAL_RTC_Set_UnixTime(time);
+    system_notify_event(time_changed, time_changed_sync);
 }
 
 const int CLAIM_CODE_SIZE = 63;
@@ -729,6 +731,10 @@ int Spark_Handshake(bool presence_announce)
     {
     		DEBUG("cloud connected from existing session.");
     		err = 0;
+            if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
+                spark_protocol_send_time_request(sp);
+                Spark_Process_Events();
+            }
     }
     return err;
 }

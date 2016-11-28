@@ -153,6 +153,8 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
 void spark_unsubscribe(void *reserved);
 bool spark_sync_time(void *reserved);
+bool spark_sync_time_pending(void* reserved);
+system_tick_t spark_sync_time_last(time_t* tm, void* reserved);
 
 
 void spark_process(void);

@@ -13,6 +13,7 @@
 #include "subscriptions.h"
 #include "variables.h"
 #include "hal_platform.h"
+#include "timesyncmanager.h"
 
 namespace particle
 {
@@ -107,6 +108,11 @@ class Protocol
 	 * Manages published events from this device.
 	 */
 	Publisher publisher;
+
+	/**
+	 * Manages time sync requests
+	 */
+	TimeSyncManager timesync_;
 
 	/**
 	 * Completion handlers for messages with confirmable delivery.
@@ -427,13 +433,18 @@ public:
 			return false;
 		}
 
-		uint8_t token = next_token();
-		Message message;
-		channel.create(message);
-		size_t len = Messages::time_request(message.buf(), 0, token);
-		message.set_length(len);
-		return !channel.send(message);
+		return timesync_.send_request(callbacks.millis(), [&]() {
+			uint8_t token = next_token();
+			Message message;
+			channel.create(message);
+			size_t len = Messages::time_request(message.buf(), 0, token);
+			message.set_length(len);
+			return !channel.send(message);
+		});
 	}
+
+	bool time_request_pending() const { return timesync_.is_request_pending(); }
+	system_tick_t time_last_synced(time_t* tm) const { return timesync_.last_sync(*tm); }
 
 	bool is_initialized() { return initialized; }
 
