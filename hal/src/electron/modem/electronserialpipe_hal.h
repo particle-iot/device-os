@@ -96,6 +96,10 @@ public:
     */
     void txIrqBuf(void);
 
+    /** resumes paused receiver (hardware flow control)
+    */
+    void rxResume();
+
 protected:
     //! start transmission helper
     void txStart(void);
