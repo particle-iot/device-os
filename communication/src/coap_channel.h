@@ -296,6 +296,8 @@ inline bool time_has_passed(system_tick_t now, system_tick_t tick)
  */
 class CoAPMessageStore
 {
+	LOG_CATEGORY("comm.coap");
+
 	/**
 	 * The head of the list of messages.
 	 */

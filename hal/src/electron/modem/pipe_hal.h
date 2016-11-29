@@ -45,11 +45,11 @@ public:
     */
     Pipe(int n, T* b = NULL)
     {
-        _a = b ? NULL : n ? new T[n] : NULL;
+        _a = b ? NULL : n ? new T[n + 1] : NULL;
         _r = 0;
         _w = 0;
         _b = b ? b : _a;
-        _s = n;
+        _s = n + 1;
     }
     /** Destructor
         frees a allocated buffer.
@@ -96,10 +96,7 @@ public:
     */
     int free(void)
     {
-        int s = _r - _w;
-        if (s <= 0)
-            s += _s;
-        return s - 1;
+        return _s - size() - 1;
     }
 
     /* Add a single element to the buffer. (blocking)

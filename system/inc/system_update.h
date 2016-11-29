@@ -5,6 +5,7 @@
 #include "file_transfer.h"
 #include "static_assert.h"
 #include "appender.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,6 +48,12 @@ void system_lineCodingBitRateHandler(uint32_t bitrate);
 bool system_module_info(appender_fn appender, void* append_data, void* reserved=NULL);
 bool append_system_version_info(Appender* appender);
 
+bool ota_update_info(appender_fn append, void* append_data, void* mod, bool full, void* reserved);
+
+typedef enum {
+    MODULE_INFO_JSON_INCLUDE_PLATFORM_ID = 0x0001
+} module_info_json_flags_t;
+
 /**
  *
  * @param file
@@ -63,7 +70,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
  * @param reserved NULL
  * @return 0 on success.
  */
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
+int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
 
 /**
  * Provides a chunk of the file data.

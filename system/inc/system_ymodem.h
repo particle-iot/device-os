@@ -81,6 +81,18 @@ public:
 
     int32_t receive_file(FileTransfer::Descriptor& tx, file_desc_t& file_info);
 
+    /**
+     * @brief  Send a byte
+     * @param  c: Character
+     * @retval 0: Byte sent
+     */
+    uint32_t send_byte(uint8_t c)
+    {
+        stream.write(c);
+        return 0;
+    }
+
+
 private:
     uint8_t packet_data[YModem::PACKET_1K_SIZE + YModem::PACKET_OVERHEAD];
     int32_t session_done, file_done, packets_received, errors, session_begin;
@@ -93,17 +105,6 @@ private:
      *         -1: Timeout
      */
     int32_t receive_byte(uint8_t& c, uint32_t timeout);
-
-    /**
-     * @brief  Send a byte
-     * @param  c: Character
-     * @retval 0: Byte sent
-     */
-    uint32_t send_byte(uint8_t c)
-    {
-        stream.write(c);
-        return 0;
-    }
 
     /* Constants used by Serial Command Line Mode */
     //#define CMD_STRING_SIZE         128

@@ -43,6 +43,7 @@
 #include "system_string_interpolate.h"
 #include "dtls_session_persist.h"
 #include "bytes2hexbuf.h"
+#include "system_event.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -55,6 +56,7 @@ int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
 
+static int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
 static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size);
 
 static sock_handle_t sparkSocket = socket_handle_invalid();
@@ -605,7 +607,8 @@ void Spark_Protocol_Init(void)
         		callbacks.transport_context = nullptr;
         }
 		callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
-        callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
+        //callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
+        callbacks.finish_firmware_update = finish_ota_firmware_update;
         callbacks.calculate_crc = HAL_Core_Compute_CRC32;
         callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
         callbacks.signal = Spark_Signal;
@@ -659,9 +662,10 @@ void Spark_Protocol_Init(void)
     }
 }
 
-void system_set_time(time_t time, unsigned, void*)
+void system_set_time(time_t time, unsigned param, void*)
 {
     HAL_RTC_Set_UnixTime(time);
+    system_notify_event(time_changed, time_changed_sync);
 }
 
 const int CLAIM_CODE_SIZE = 63;
@@ -727,6 +731,10 @@ int Spark_Handshake(bool presence_announce)
     {
     		DEBUG("cloud connected from existing session.");
     		err = 0;
+            if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
+                spark_protocol_send_time_request(sp);
+                Spark_Process_Events();
+            }
     }
     return err;
 }
@@ -1120,6 +1128,42 @@ inline uint8_t spark_cloud_socket_closed()
         closed = true;
     }
     return closed;
+}
+
+int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* module, uint8_t *buf, size_t size)
+{
+    int res = 1;
+    memset(buf, 0, size);
+
+    BufferAppender appender(buf, size);
+    appender.append("{");
+    appender.append("\"r\":");
+    appender.append(result ? "\"error\"" : "\"ok\"");
+
+    if (flags & 1) {
+        appender.append(",");
+        res = ota_update_info(append_instance, &appender, module, false, NULL);
+    }
+
+    appender.append("}");
+
+    return res;
+}
+
+int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void*)
+{
+    hal_module_t module;
+    uint8_t buf[512];
+
+    int result = Spark_Finish_Firmware_Update(file, flags, &module);
+
+    formatOtaUpdateStatusEventData(flags, result, &module, buf, sizeof(buf));
+
+    Particle.publish("spark/device/ota_result", (const char*)buf, 60, PRIVATE);
+    HAL_Delay_Milliseconds(1000);
+    Spark_Process_Events();
+
+    return result;
 }
 
 static const char* resetReasonString(System_Reset_Reason reason)

@@ -198,4 +198,7 @@ test(api_spark_deviceID) {
 
 test(api_spark_syncTime) {
     API_COMPILE(Particle.syncTime());
+    API_COMPILE(Particle.syncTimeDone());
+    API_COMPILE(Particle.syncTimePending());
+    API_COMPILE(Particle.timeSyncedLast());
 }
