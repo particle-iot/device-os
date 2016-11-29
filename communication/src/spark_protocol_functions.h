@@ -30,6 +30,7 @@
 #include "file_transfer.h"
 #include "protocol_selector.h"
 #include "protocol_defs.h"
+#include "completion_handler.h"
 
 
 #ifdef	__cplusplus
@@ -157,6 +158,14 @@ int spark_protocol_handshake(ProtocolFacade* protocol, void* reserved=NULL);
 bool spark_protocol_event_loop(ProtocolFacade* protocol, void* reserved=NULL);
 bool spark_protocol_is_initialized(ProtocolFacade* protocol);
 int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char *buf, const unsigned char *id, void* reserved=NULL);
+
+// Additional parameters for spark_protocol_send_event()
+typedef struct {
+    size_t size;
+    completion_callback handler_callback;
+    void* handler_data;
+} spark_protocol_send_event_data;
+
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
                 int ttl, uint32_t flags, void* reserved);
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
@@ -171,6 +180,8 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
 
 int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
                                            unsigned data, void* datap, void* reserved);
+bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved=NULL);
+system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
 
 namespace ProtocolCommands {
 	enum Enum {

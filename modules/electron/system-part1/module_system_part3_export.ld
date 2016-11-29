@@ -24,4 +24,5 @@ system_part3_module_table = system_part3_module_info_end;
  */
 PROVIDE ( dynalib_location_system_module_part3 = system_part3_module_table + 0 );
 PROVIDE ( dynalib_location_hal_usb = system_part3_module_table + 4 );
-
+PROVIDE ( dynalib_location_hal_cellular = system_part3_module_table + 8 );
+PROVIDE ( dynalib_location_hal_socket = system_part3_module_table + 12 );

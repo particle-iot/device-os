@@ -53,8 +53,8 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 extern void HAL_GPIO_Save_Pin_Mode(uint16_t pin);
 extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 
-#define NONE ((uint8_t)0xFF)
-#define ADC_CHANNEL_NONE NONE
+#define CHANNEL_NONE ((uint8_t)0xFF)
+#define ADC_CHANNEL_NONE CHANNEL_NONE
 
 #ifdef	__cplusplus
 }

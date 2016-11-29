@@ -21,6 +21,7 @@
 #include "static_assert.h"
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
+#include "completion_handler.h"
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
@@ -89,9 +90,10 @@ STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 
 #endif
 
-const uint32_t PUBLISH_EVENT_FLAG_PUBLIC = 0;
-const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 1;
-const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 2;
+const uint32_t PUBLISH_EVENT_FLAG_PUBLIC = 0x0;
+const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 0x1;
+const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 0x2;
+const uint32_t PUBLISH_EVENT_FLAG_WITH_ACK = 0x8;
 
 STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
 
@@ -138,11 +140,21 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
  * @param reserved  For future expansion, set to NULL.
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved);
+
+// Additional parameters for spark_send_event()
+typedef struct {
+    size_t size;
+    completion_callback handler_callback;
+    void* handler_data;
+} spark_send_event_data;
+
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
 void spark_unsubscribe(void *reserved);
 bool spark_sync_time(void *reserved);
+bool spark_sync_time_pending(void* reserved);
+system_tick_t spark_sync_time_last(time_t* tm, void* reserved);
 
 
 void spark_process(void);
@@ -164,6 +176,8 @@ void spark_cloud_flag_disconnect(void);    // should be set connected since it m
 bool spark_cloud_flag_auto_connect(void);
 
 ProtocolFacade* system_cloud_protocol_instance(void);
+
+int spark_set_connection_property(unsigned property_id, unsigned data, void* datap, void* reserved);
 
 
 #define SPARK_BUF_LEN			        600

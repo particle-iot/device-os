@@ -1,4 +1,4 @@
-## v0.6.0-rc.2
+## v0.6.0 (same as v0.6.0-rc.2)
 
 ### ENHANCEMENTS
 
@@ -75,7 +75,7 @@
 - Remove accidental SYSTEM_MODE(MANUAL) from pwm.cpp in wiring/no_fixture [#1052](https://github.com/spark/firmware/pull/1052)
 
 
-## v0.5.3-rc.3
+## v0.5.3 (same as v0.5.3-rc.3)
 
 ### ENHANCEMENTS
 

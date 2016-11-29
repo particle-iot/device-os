@@ -13,6 +13,7 @@
 #include "subscriptions.h"
 #include "variables.h"
 #include "hal_platform.h"
+#include "timesyncmanager.h"
 
 namespace particle
 {
@@ -107,6 +108,16 @@ class Protocol
 	 * Manages published events from this device.
 	 */
 	Publisher publisher;
+
+	/**
+	 * Manages time sync requests
+	 */
+	TimeSyncManager timesync_;
+
+	/**
+	 * Completion handlers for messages with confirmable delivery.
+	 */
+	CompletionHandlerMap<message_id_t> ack_handlers;
 
 	/**
 	 * The token ID for the next request made.
@@ -259,7 +270,10 @@ protected:
 public:
 	Protocol(MessageChannel& channel) :
 			channel(channel),
-			product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION), initialized(false)
+			product_id(PRODUCT_ID),
+			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
+			publisher(this),
+			initialized(false)
 	{
 	}
 
@@ -281,6 +295,11 @@ public:
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
+	}
+
+	void add_ack_handler(message_id_t msg_id, CompletionHandler handler, unsigned timeout)
+	{
+		ack_handlers.add(msg_id, std::move(handler), timeout);
 	}
 
 	/**
@@ -325,14 +344,21 @@ public:
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,
-			EventType::Enum event_type, int flags)
+			EventType::Enum event_type, int flags, CompletionHandler handler)
 	{
 		if (chunkedTransfer.is_updating())
 		{
+			handler.setError(SYSTEM_ERROR_BUSY);
 			return false;
 		}
-		return !publisher.send_event(channel, event_name, data, ttl, event_type, flags,
-				callbacks.millis());
+		const ProtocolError error = publisher.send_event(channel, event_name, data, ttl, event_type, flags,
+				callbacks.millis(), std::move(handler));
+		if (error != NO_ERROR)
+		{
+			handler.setError(toSystemError(error));
+			return false;
+		}
+		return true;
 	}
 
 	inline bool send_subscription(const char *event_name, const char *device_id)
@@ -407,13 +433,18 @@ public:
 			return false;
 		}
 
-		uint8_t token = next_token();
-		Message message;
-		channel.create(message);
-		size_t len = Messages::time_request(message.buf(), 0, token);
-		message.set_length(len);
-		return !channel.send(message);
+		return timesync_.send_request(callbacks.millis(), [&]() {
+			uint8_t token = next_token();
+			Message message;
+			channel.create(message);
+			size_t len = Messages::time_request(message.buf(), 0, token);
+			message.set_length(len);
+			return !channel.send(message);
+		});
 	}
+
+	bool time_request_pending() const { return timesync_.is_request_pending(); }
+	system_tick_t time_last_synced(time_t* tm) const { return timesync_.last_sync(*tm); }
 
 	bool is_initialized() { return initialized; }
 

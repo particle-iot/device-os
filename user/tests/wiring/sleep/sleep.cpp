@@ -167,3 +167,14 @@ test(sleep_3_restore_system_mode) {
     set_system_mode(AUTOMATIC);
 }
 #endif // PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+
+/*
+ * Issue #1155, broken by PR #1051/#1076
+ */
+test(sleep_4_system_sleep_sleep_mode_wlan_works_correctly)
+{
+    System.sleep(10);
+    assertTrue(Particle.disconnected());
+    waitFor(Particle.connected, 120000);
+    assertTrue(Particle.connected());
+}
