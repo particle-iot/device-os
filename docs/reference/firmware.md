@@ -7208,8 +7208,10 @@ These are the system events produced by the system, their numeric value (what yo
 | setup_update | 4 | periodic event signalling the device is still in setup mode. | milliseconds since setup mode was started |
 | setup_end | 8 | signals setup mode was exited | time in ms since setup mode was started |
 | network_credentials | 16 | network credentials were changed | `network_credentials_added` or `network_credentials_cleared` |
+| network_status | 32 | network connection status | one of `network_status_powering_on`, `network_status_on`, `network_status_powering_off`, `network_status_off`, `network_status_connecting`, `network_status_connected` |
+| cloud_status | 64 | cloud connection status | one of `cloud_status_connecting`, `cloud_status_connected`, `cloud_status_disconnecting`, `cloud_status_disconnected` |
  | button_status | 128 | button pressed or releasesed | the duration in ms the button was pressed: 0 when pressed, >0 on release. |
- | firmware_update | 256 | firmwarwe update status | one of `firmware_update_begin`, `firmware_update_progress`, `firmware_update_complete`, `firmware_update_failed` |
+ | firmware_update | 256 | firmware update status | one of `firmware_update_begin`, `firmware_update_progress`, `firmware_update_complete`, `firmware_update_failed` |
  | firmware_update_pending | 512 | notifies the application that a firmware update is available. This event is sent even when updates are disabled, giving the application chance to re-enable firmware updates with `System.enableUpdates()` | not used |
  | reset_pending | 1024 | notifies the application that the system would like to reset. This event is sent even when resets are disabled, giving the application chance to re-enable resets with `System.enableReset()` | not used |
  | reset | 2048 | notifies that the system will reset once the application has completed handling this event | not used |

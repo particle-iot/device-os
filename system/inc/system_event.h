@@ -47,7 +47,7 @@ enum SystemEvents {
     setup_all = wifi_listen,
     network_credentials = 1<<4,
     network_status = 1<<5,
-    //cloud_status = 1<<6,           // parameter is 0 for disconnected, 1 for connecting, 2 for connecting (handshake), 3 for connecting (setup), 8 connected.. other values reserved.
+    cloud_status = 1<<6,             // parameter is 0 for disconnected, 1 for connecting, 8 for connected, 9 for disconnecting. other values reserved.
     button_status = 1<<7,            // parameter is >0 for time pressed in ms (when released) or 0 for just pressed.
     firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
     firmware_update_pending = 1<<9,
@@ -76,14 +76,18 @@ enum SystemEventsParam {
     network_status_off              = 1<<1 | 1,
     network_status_powering_on      = 2<<1 | 0,
     network_status_on               = 2<<1 | 1,
-    network_status_conneecting      = 3<<1 | 0,
+    network_status_connecting       = 3<<1 | 0,
     network_status_connected        = 3<<1 | 1,
-    network_status_preparing        = 4<<1 | 0,
-    network_status_ready            = 4<<1 | 1,
-    network_status_disconnecting    = 5<<1 | 1,
+    // network_status_preparing        = 4<<1 | 0,
+    // network_status_ready            = 4<<1 | 1,
+    network_status_disconnecting    = 5<<1 | 0,
+    network_status_disconnected     = 5<<1 | 1,
 
-    cloud_status_disconnected = 0,
-    cloud_status_connected = 1,
+    // Cloud connection status
+    cloud_status_disconnected       = 0,
+    cloud_status_connecting         = 1,
+    cloud_status_connected          = 8,
+    cloud_status_disconnecting      = 9,
 
     time_changed_manually = 0,
     time_changed_sync = 1
