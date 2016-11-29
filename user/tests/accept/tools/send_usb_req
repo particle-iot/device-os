@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-
 require_tool usbtool
 require_var USB_VENDOR_ID
 require_var USB_PRODUCT_ID
@@ -49,7 +48,11 @@ send_in_req() {
 
 # Prints current UNIX time with nanosecond precision
 timestamp() {
-  date "+%s.%N"
+  if [ $(uname) == "Darwin" ]; then
+    date "+%s.000"
+  else
+    date "+%s.%N"
+  fi
 }
 
 # Returns 0 if first argument is less than second argument
@@ -101,7 +104,7 @@ if [ $req_type == reqrep ] || [ $req_type == out ]; then
       data=$(printf "$data" | xxd -p | tr -d '\n')
     fi
     # "616263" -> "0x61,0x62,0x63"
-    data=$(printf "$data" | fold -w 2 | paste -s -d , | sed 's/\([^,]*\)/0x\1/g')
+    data=$(printf "$data" | fold -w 2 | paste -s -d ',' -| sed 's/\([^,]*\)/0x\1/g')
   fi
 
   # Send host-to-device request
