@@ -343,10 +343,12 @@ public:
 		clear();
 	}
 
-	bool has_messages()
+	bool has_messages() const
 	{
 		return head!=nullptr;
 	}
+
+	bool has_unacknowledged_requests() const;
 
 	/**
 	 * Retrieves the current confirmable message that is still
@@ -397,7 +399,7 @@ public:
 		return msg;
 	}
 
-	bool is_confirmable(const uint8_t* buf)
+	bool is_confirmable(const uint8_t* buf) const
 	{
 		return CoAP::type(buf)==CoAPType::CON;
 	}
@@ -629,9 +631,9 @@ public:
 		return receive(msg, false);
 	}
 
-	bool has_unacknowledged_requests()
+	bool has_unacknowledged_requests() const
 	{
-		return client.has_messages();
+		return client.has_messages() || server.has_unacknowledged_requests();
 	}
 
 	/**
