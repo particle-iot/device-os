@@ -200,3 +200,9 @@ String spark_deviceID(void)
     HAL_device_ID(id, len);
     return bytes2hex(id, len);
 }
+
+int spark_set_connection_property(unsigned property_id, unsigned data, void* datap, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, datap, reserved));
+    return spark_protocol_set_connection_property(sp, property_id, data, datap, reserved);
+}

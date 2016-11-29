@@ -177,6 +177,8 @@ bool spark_cloud_flag_auto_connect(void);
 
 ProtocolFacade* system_cloud_protocol_instance(void);
 
+int spark_set_connection_property(unsigned property_id, unsigned data, void* datap, void* reserved);
+
 
 #define SPARK_BUF_LEN			        600
 

@@ -337,8 +337,8 @@ public:
 #if HAL_PLATFORM_CLOUD_UDP
     static void keepAlive(unsigned sec)
     {
-        CLOUD_FN(spark_protocol_set_connection_property(sp(), particle::protocol::Connection::PING,
-                                                        sec * 1000, nullptr, nullptr),
+        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING,
+                                               sec * 1000, nullptr, nullptr),
                  (void)0);
     }
 #endif

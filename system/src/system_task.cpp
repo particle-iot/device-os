@@ -57,6 +57,14 @@ volatile uint8_t SPARK_LED_FADE = 1;
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t SYSTEM_POWEROFF;
 
+static struct SetThreadCurrentFunctionPointers {
+    SetThreadCurrentFunctionPointers() {
+        set_thread_current_function_pointers((void*)&main_thread_current,
+                                             (void*)&system_thread_current,
+                                             (void*)&application_thread_current,
+                                             nullptr, nullptr);
+    }
+} s_SetThreadCurrentFunctionPointersInitializer;
 ISRTaskQueue SystemISRTaskQueue(4);
 
 void Network_Setup(bool threaded)
@@ -497,6 +505,16 @@ uint8_t application_thread_current(void* reserved)
 uint8_t system_thread_current(void* reserved)
 {
     return SYSTEM_THREAD_CURRENT();
+}
+
+uint8_t main_thread_current(void* reserved)
+{
+#if PLATFORM_THREADING == 1
+    static std::thread::id _thread_id = std::this_thread::get_id();
+    return _thread_id == std::this_thread::get_id();
+#else
+    return true;
+#endif
 }
 
 uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void* reserved)
