@@ -5,7 +5,3 @@
 
 PLATFORM_NET_PATH = $(PLATFORM_MODULE_PATH)/NET/$(PLATFORM_NET)
 include $(call rwildcard,$(PLATFORM_NET_PATH)/,sources.mk)
-
-# Stick to some POSIX-conforming API to disable BSD extensions
-CFLAGS += -D_POSIX_C_SOURCE=200809
-

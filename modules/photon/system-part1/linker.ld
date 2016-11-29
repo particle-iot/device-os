@@ -3,7 +3,7 @@ MEMORY
     APP_FLASH (rx)  : ORIGIN = 0x08020000, LENGTH = 256K
 
     /* todo - SRAM must start also at an offset after what has been reserved for system-module 1 */
-    SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 384
+    SRAM      (rwx) : ORIGIN = 0x20000000, LENGTH = 768
 }
 
 INCLUDE module_system_part1_export.ld
