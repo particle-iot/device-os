@@ -278,4 +278,16 @@ cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, voi
     return -1;
 }
 
+cellular_result_t cellular_pause(void* reserved)
+{
+    electronMDM.pause();
+    return 0;
+}
+
+cellular_result_t cellular_resume(void* reserved)
+{
+    electronMDM.resume();
+    return 0;
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

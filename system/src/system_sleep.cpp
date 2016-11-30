@@ -166,7 +166,7 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
     if (!network_sleep_flag(param)) {
         // Pause the modem Serial
-        electronMDM.pause();
+        cellular_pause(nullptr);
     }
 #endif
 
@@ -180,7 +180,7 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
     if (!network_sleep_flag(param)) {
         // Pause the modem Serial
-        electronMDM.resume();
+        cellular_resume(nullptr);
     }
 #endif
 
