@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#ifndef HAL_CELLULAR_EXCLUDE
+
 #include "inet_hal.h"
 #include "parser.h"
 
@@ -37,3 +39,5 @@ int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTr
     // Replace with AT_COMMAND_HAL implementation
     return 0;
 }
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)

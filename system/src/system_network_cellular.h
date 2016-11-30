@@ -87,7 +87,7 @@ protected:
         		cellular_cancel(false, HAL_IsISR(), NULL);
     }
 
- 
+
 
     void on_now() override {
         cellular_on(NULL);
@@ -105,6 +105,16 @@ protected:
     }
 
 public:
+
+    CellularNetworkInterface() {
+        HAL_NET_Callbacks cb;
+        cb.size = sizeof(HAL_NET_Callbacks);
+        cb.notify_connected = HAL_NET_notify_connected;
+        cb.notify_disconnected = HAL_NET_notify_disconnected;
+        cb.notify_dhcp = HAL_NET_notify_dhcp;
+        cb.notify_can_shutdown = HAL_NET_notify_can_shutdown;
+        HAL_NET_SetCallbacks(&cb, nullptr);
+    }
 
     void fetch_ipconfig(CellularConfig* target)  {
         cellular_fetch_ipconfig(target, NULL);

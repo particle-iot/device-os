@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#ifndef HAL_CELLULAR_EXCLUDE
+
 /* Includes -----------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdint.h>
@@ -2322,3 +2324,6 @@ void MDMElectronSerial::resume()
     LOCK();
     rxResume();
 }
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)
+

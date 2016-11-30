@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#ifndef HAL_CELLULAR_EXCLUDE
+
 #include "electronserialpipe_hal.h"
 #include "stm32f2xx.h"
 #include "usart_hal.h"
@@ -254,7 +256,8 @@ void ElectronSerialPipe::rxPause(void)
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-extern "C" void HAL_USART3_Handler(void)
+// Implementation of the USART3 IRQ handler exported via dynalib interface
+extern "C" void HAL_USART3_Handler_Impl(void* reserved)
 {
     if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
     {
@@ -270,3 +273,5 @@ extern "C" void HAL_USART3_Handler(void)
         (void)USART_ReceiveData(USART3);
     }
 }
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)

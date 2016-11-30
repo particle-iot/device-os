@@ -122,6 +122,10 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
     switch (sleepMode)
     {
         case SLEEP_MODE_WLAN:
+            if (seconds)
+            {
+                HAL_RTC_Set_UnixAlarm((time_t) seconds);
+            }
             break;
 
         case SLEEP_MODE_DEEP:

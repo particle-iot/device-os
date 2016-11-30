@@ -22,7 +22,7 @@ void consume(Stream& serial)
     }
 }
 
-test(0_USBSERIAL_RingBufferHelperIsSane) {
+test(USBSERIAL_00_RingBufferHelperIsSane) {
     uint32_t size = 129;
     uint32_t head = 0;
     uint32_t tail = 0;
@@ -108,7 +108,19 @@ test(0_USBSERIAL_RingBufferHelperIsSane) {
     assertEqual(0, ring_space_wrapped(size, head, tail));
 }
 
-test(1_USBSERIAL_ReadWrite) {
+test(USBSERIAL_01_SerialDoesNotDeadlockWhenInterruptsAreMasked) {
+    int32_t state = HAL_disable_irq();
+    // Write 2048 + \r\n bytes into Serial TX buffer
+    for (int i = 0; i < 2048; i++) {
+        char tmp;
+        randomString(&tmp, 1);
+        Serial.write(tmp);
+    }
+    HAL_enable_irq(state);
+    Serial.println();
+}
+
+test(USBSERIAL_02_ReadWrite) {
     //The following code will test all the important USB Serial routines
     char test[] = "hello";
     char message[10];
@@ -122,7 +134,7 @@ test(1_USBSERIAL_ReadWrite) {
     assertTrue(strncmp(test, message, 5)==0);
 }
 
-test(2_USBSERIAL_isConnectedWorksCorrectly) {
+test(USBSERIAL_03_isConnectedWorksCorrectly) {
     Serial.println("Please close the USB Serial port and open it again within 60 seconds");
 
     uint32_t mil = millis();
@@ -150,7 +162,7 @@ test(2_USBSERIAL_isConnectedWorksCorrectly) {
     assertTrue(strncmp(test, message, 5)==0);
 }
 
-test(3_USBSERIAL_RxBufferFillsCompletely) {
+test(USBSERIAL_04_RxBufferFillsCompletely) {
     Serial.println("We will now test USB Serial RX buffer");
     Serial.println("Please close the USB Serial port and open it again once the device reattaches");
 

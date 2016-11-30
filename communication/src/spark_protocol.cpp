@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <strings.h>
 #include "device_keys.h"
 #include "service_debug.h"
 #include "messages.h"
@@ -58,6 +59,7 @@ void SparkProtocol::reset_updating(void)
 {
   updating = false;
   last_chunk_millis = 0;    // this is used for the time latency also
+  timesync_.reset();
 }
 
 SparkProtocol::SparkProtocol() : QUEUE_SIZE(sizeof(queue)), handlers({sizeof(handlers), NULL}), expecting_ping_ack(false),
@@ -89,6 +91,8 @@ void SparkProtocol::init(const char *id,
 
 int SparkProtocol::handshake(void)
 {
+  ack_handlers.clear(); // FIXME: Cancel pending handlers right after previous session has ended
+
   memcpy(queue + 40, device_id, 12);
   int err = blocking_receive(queue, 40);
   if (0 > err) { ERROR("Handshake: could not receive nonce: %d", err);  return err; }
@@ -145,6 +149,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum message_type, system_tick_t
 // Returns false if there was an error, and we are probably disconnected.
 bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
 {
+  ack_handlers.processTimeouts(); // Process expired handlers
     message_type = CoAPMessageType::NONE;
   int bytes_received = callbacks.receive(queue, 2, nullptr);
   if (2 <= bytes_received)
@@ -455,11 +460,12 @@ inline bool is_system(const char* event_name) {
 }
 
 // Returns true on success, false on sending timeout or rate-limiting failure
-bool SparkProtocol::send_event(const char *event_name, const char *data,
-                               int ttl, EventType::Enum event_type)
+bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl, EventType::Enum event_type,
+                               int flags, CompletionHandler handler)
 {
   if (updating)
   {
+    handler.setError(SYSTEM_ERROR_BUSY);
     return false;
   }
 
@@ -471,8 +477,10 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
 
       uint16_t currentMinute = uint16_t(callbacks.millis()>>16);
       if (currentMinute==lastMinute) {      // == handles millis() overflow
-          if (eventsThisMinute==255)
+          if (eventsThisMinute==255) {
+              handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
               return false;
+          }
       }
       else {
           lastMinute = currentMinute;
@@ -493,14 +501,28 @@ bool SparkProtocol::send_event(const char *event_name, const char *data,
     if (now - recent_event_ticks[evt_tick_idx] < 1000)
     {
       // exceeded allowable burst of 4 events per second
+      handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
       return false;
     }
   }
   uint16_t msg_id = next_message_id();
-  size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, false);
+  const bool confirmable = flags & EventType::WITH_ACK;
+  size_t msglen = Messages::event(queue + 2, msg_id, event_name, data, ttl, event_type, confirmable);
   size_t wrapped_len = wrap(queue, msglen);
-
-  return (0 <= blocking_send(queue, wrapped_len));
+  const int n = blocking_send(queue, wrapped_len);
+  if (n < 0) {
+    handler.setError(SYSTEM_ERROR_IO);
+    return false;
+  }
+  // Currently, the server sends acknowledgements for all published events, regardless of whether
+  // original request has been sent as confirmable or non-confirmable CoAP message. Here we register
+  // completion handler only if acknowledgement was requested explicitly
+  if (flags & EventType::WITH_ACK) {
+    ack_handlers.add(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
+  } else {
+    handler.setResult();
+  }
+  return true;
 }
 
 size_t SparkProtocol::time_request(unsigned char *buf)
@@ -518,11 +540,13 @@ bool SparkProtocol::send_time_request(void)
     return false;
   }
 
-  size_t msglen = time_request(queue + 2);
-  size_t wrapped_len = wrap(queue, msglen);
-  last_chunk_millis = callbacks.millis();
+  return timesync_.send_request(callbacks.millis(), [&]() {
+    size_t msglen = time_request(queue + 2);
+    size_t wrapped_len = wrap(queue, msglen);
+    last_chunk_millis = callbacks.millis();
 
-  return (0 <= blocking_send(queue, wrapped_len));
+    return (0 <= blocking_send(queue, wrapped_len));
+  });
 }
 
 bool SparkProtocol::send_subscription(const char *event_name, const char *device_id)
@@ -1500,6 +1524,10 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
       break;
 
     case CoAPMessageType::EMPTY_ACK:
+      LOG_DEBUG_C(TRACE, "comm.coap", "received ACK for message: %x", (unsigned)message.id);
+      ack_handlers.setResult(message.id);
+      break;
+
     case CoAPMessageType::ERROR:
     default:
       ; // drop it on the floor
@@ -1527,11 +1555,14 @@ CoAPMessageType::Enum SparkProtocol::handle_received_message(void)
   unsigned char token = queue[4];
   unsigned char *msg_to_send = queue + len;
 
+  const uint16_t msg_id = (uint16_t)queue[2] << 8 | (uint16_t)queue[3];
+
   msg message;
   message.len = len;
   message.token = queue[4];
   message.response = msg_to_send;
   message.response_len = QUEUE_SIZE-len;
+  message.id = msg_id;
 
   return handle_message(message, token, message_type)
           ? message_type : CoAPMessageType::ERROR;
@@ -1542,7 +1573,7 @@ void SparkProtocol::handle_time_response(uint32_t time)
     // deduct latency
     uint32_t latency = last_chunk_millis ? (callbacks.millis()-last_chunk_millis)/2000 : 0;
     last_chunk_millis = 0;
-    callbacks.set_time(time-latency,0,NULL);
+    timesync_.handle_time_response(time - latency, callbacks.millis(), callbacks.set_time);
 }
 
 unsigned short SparkProtocol::next_message_id()

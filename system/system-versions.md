@@ -23,8 +23,10 @@
 | 18 | 0.5.3-rc.1 |          (Core, Photon, P1, Electron) |
 | 19 | 0.5.3-rc.2 |          (Core, Photon, P1, Electron) |
 | 20 | 0.5.3-rc.3 |          (Core, Photon, P1, Electron) |
+| 21 | 0.5.3 |               (Core, Photon, P1, Electron) |
 | 100 | 0.6.0-rc.1 |         (Core, Photon, P1, Electron) |
 | 101 | 0.6.0-rc.2 |         (Core, Photon, P1, Electron) |
+| 102 | 0.6.0 |              (Core, Photon, P1, Electron) |
 
 To find out the release version of system firmware currently installed, in listening mode,
 connect to serial and send `v` to print the release version string.

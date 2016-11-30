@@ -277,9 +277,10 @@ void HAL_USB_Detach(void)
 void HAL_USB_Attach(void)
 {
     if (USB_Configured) {
-        // Do not attach if there are no USB classes registered
-        if (USBD_Composite_Registered_Count(true) > 0)
-            USB_Cable_Config(ENABLE);
+        // Attach even if there are no classes registered
+        // We still want the control interface that receives vendor requests
+        // to be available.
+        USB_Cable_Config(ENABLE);
     }
 }
 
@@ -419,6 +420,11 @@ int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek)
 
 static bool HAL_USB_WillPreempt()
 {
+    // Ain't no one is preempting us if interrupts are currently disabled
+    if ((__get_PRIMASK() & 1)) {
+        return false;
+    }
+
     if (HAL_IsISR()) {
 #ifdef USE_USB_OTG_FS
         int32_t irq = OTG_FS_IRQn;

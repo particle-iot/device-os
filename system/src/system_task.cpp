@@ -57,6 +57,14 @@ volatile uint8_t SPARK_LED_FADE = 1;
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t SYSTEM_POWEROFF;
 
+static struct SetThreadCurrentFunctionPointers {
+    SetThreadCurrentFunctionPointers() {
+        set_thread_current_function_pointers((void*)&main_thread_current,
+                                             (void*)&system_thread_current,
+                                             (void*)&application_thread_current,
+                                             nullptr, nullptr);
+    }
+} s_SetThreadCurrentFunctionPointersInitializer;
 ISRTaskQueue SystemISRTaskQueue(4);
 
 void Network_Setup(bool threaded)
@@ -234,17 +242,23 @@ void establish_cloud_connection()
 
         INFO("Cloud: connecting");
         LED_On(LED_RGB);
+        system_notify_event(cloud_status, cloud_status_connecting);
         int connect_result = spark_cloud_socket_connect();
         if (connect_result >= 0)
         {
             cfod_count = 0;
             SPARK_CLOUD_SOCKETED = 1;
             INFO("Cloud socket connected");
+            // "Connected" event is generated only after a successful handshake
         }
         else
         {
             WARN("Cloud socket connection failed: %d", connect_result);
             SPARK_CLOUD_SOCKETED = 0;
+
+            // "Connecting" event should be followed by either "connected" or "disconnected" event
+            system_notify_event(cloud_status, cloud_status_disconnected);
+
             // if the user put the networkin listening mode via the button,
             // the cloud connect may have been cancelled.
             if (SPARK_WLAN_RESET || network.listening())
@@ -319,6 +333,7 @@ void handle_cloud_connection(bool force_events)
                 INFO("Cloud connected");
                 SPARK_CLOUD_CONNECTED = 1;
                 cloud_failed_connection_attempts = 0;
+                system_notify_event(cloud_status, cloud_status_connected);
             }
         }
 
@@ -470,8 +485,14 @@ void cloud_disconnect(bool closeSocket)
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
         INFO("Cloud: disconnecting");
+        if (SPARK_CLOUD_CONNECTED)
+        {
+            // "Disconnecting" event is generated only for a successfully established connection (including handshake)
+            system_notify_event(cloud_status, cloud_status_disconnecting);
+        }
+
         if (closeSocket)
-        spark_cloud_socket_disconnect();
+            spark_cloud_socket_disconnect();
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
@@ -483,6 +504,7 @@ void cloud_disconnect(bool closeSocket)
             LED_On(LED_RGB);
         }
         INFO("Cloud: disconnected");
+        system_notify_event(cloud_status, cloud_status_disconnected);
     }
     Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set.
 
@@ -497,4 +519,23 @@ uint8_t application_thread_current(void* reserved)
 uint8_t system_thread_current(void* reserved)
 {
     return SYSTEM_THREAD_CURRENT();
+}
+
+uint8_t main_thread_current(void* reserved)
+{
+#if PLATFORM_THREADING == 1
+    static std::thread::id _thread_id = std::this_thread::get_id();
+    return _thread_id == std::this_thread::get_id();
+#else
+    return true;
+#endif
+}
+
+uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void* reserved)
+{
+    // FIXME: We need a way to report an error back to caller, if asynchronous function call can't
+    // be scheduled for some reason
+    APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(application_thread_invoke(callback, data, reserved), 0);
+    callback(data);
+    return 0;
 }
