@@ -27,6 +27,7 @@
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
 #define Wiring_SPI1 1
+#define Wiring_Process 1
 #define Wiring_LogConfig 1 // for testing purposes
 #endif
 
@@ -107,6 +108,7 @@
 #if PLATFORM_ID==31 // raspberry pi
 #define Wiring_WiFi 1
 #define Wiring_SPI1 1
+#define Wiring_Process 1
 #endif
 
 #ifndef Wiring_SPI1
@@ -166,6 +168,10 @@
 
 #ifndef Wiring_Timer
 #define Wiring_Timer 0
+#endif
+
+#ifndef Wiring_Process
+#define Wiring_Process 0
 #endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
