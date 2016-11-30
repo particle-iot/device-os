@@ -80,4 +80,6 @@
 
 using namespace spark;
 
+#include "spark_wiring_arduino.h"
+
 #endif /* APPLICATION_H_ */
