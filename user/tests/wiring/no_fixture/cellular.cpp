@@ -385,7 +385,7 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     assertEqual(sz, requestSize);
 
     char* responseBuf = new char[2048];
-    memset(responseBuf, 0, sizeof(responseBuf));
+    memset(responseBuf, 0, 2048);
     int responseSize = 0;
     uint32_t mil = millis();
     while(1) {
