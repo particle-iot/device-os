@@ -115,9 +115,9 @@ A flash of white then flashing green can happen when you get this wrong. You wan
    Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
    ```
 
-   (Windows users will need to use the Zatig utility to replace the USB driver as described earlier)
-   (Linux users who encounter someting like: `dfu-util: Cannot open DFU device 2b04:d00a` should try `sudo dfu-util -l`)
-   
+   - Windows users will need to use the Zatig utility to replace the USB driver as described earlier
+   - Linux users who encounter someting like: `dfu-util: Cannot open DFU device 2b04:d00a` can try `sudo dfu-util -l` or if you use the Particle CLI command `particle flash --usb` or `particle update` it will add the device udev rules automatically for you.
+
 
 3. Now, from the `main/` folder in your firmware repository and use the following command to transfer the *.bin* file into the device.
    ```
