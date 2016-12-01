@@ -53,3 +53,12 @@ SCENARIO("Returns an error when a command is not found", "[process]")
     proc.wait();
     REQUIRE(proc.exitCode() == Process::COMMAND_NOT_FOUND);
 }
+
+SCENARIO("Kill stops the process", "[process]")
+{
+    Process proc = Process::run("cat");
+    proc.kill(SIGKILL);
+    proc.wait();
+    REQUIRE(proc.exited() == true);
+    REQUIRE(proc.exitCode() == 128+SIGKILL);
+}
