@@ -67,6 +67,7 @@
 #include "spark_wiring_watchdog.h"
 #include "spark_wiring_thread.h"
 #include "spark_wiring_logging.h"
+#include "spark_wiring_process.h"
 #include "spark_wiring_json.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_async.h"

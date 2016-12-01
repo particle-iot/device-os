@@ -129,14 +129,12 @@ int Process::fork()
 
 uint8_t Process::wait()
 {
-  if (_pid <= 0)
+  if (_pid > 0)
   {
-    return 0;
+    int status;
+    ::waitpid(_pid, &status, 0);
+    processStatus(status);
   }
-
-  int status;
-  ::waitpid(_pid, &status, 0);
-  processStatus(status);
 
   return exitCode();
 }
