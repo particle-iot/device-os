@@ -50,7 +50,9 @@ test(api_wiring_interrupt) {
     API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
 
 
+#if EMBEDDED_TARGET==1
     API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM1_CC_IRQ, D0_callback));
+#endif
 
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14));
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14, 0));
@@ -100,7 +102,7 @@ void TIM3_callback()
 {
 }
 
-#if PLATFORM_ID>=6
+#if EMBEDDED_TARGET==1 && PLATFORM_ID>=6
 // system interrupt not available for the core yet.
 test(api_wiring_system_interrupt) {
 

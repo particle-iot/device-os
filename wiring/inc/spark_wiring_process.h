@@ -35,6 +35,7 @@ class FdPrint;
 class Process
 {
 public:
+  Process();
   static Process run(String command);
 
   int pid();
@@ -48,8 +49,6 @@ public:
 
   static const uint8_t COMMAND_NOT_FOUND;
 protected:
-  Process();
-
   void start(String command);
   int fork();
   void processStatus(int status);
