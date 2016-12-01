@@ -601,6 +601,10 @@ public:
         while (readable())
             getc();
     }
+
+    void pause();
+    void resume();
+
 protected:
     /** Write bytes to the physical interface.
         \param buf the buffer to write

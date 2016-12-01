@@ -33,6 +33,11 @@
 #include "spark_wiring_system.h"
 #include "spark_wiring_platform.h"
 
+#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+# include "parser.h"
+#endif
+
+
 struct WakeupState
 {
     bool wifi;
@@ -157,12 +162,28 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
     {
         network_suspend();
     }
+
+#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+    if (!network_sleep_flag(param)) {
+        // Pause the modem Serial
+        cellular_pause(nullptr);
+    }
+#endif
+
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
     if (network_sleep)
     {
         network_resume();   // asynchronously bring up the network/cloud
     }
+
+#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+    if (!network_sleep_flag(param)) {
+        // Pause the modem Serial
+        cellular_resume(nullptr);
+    }
+#endif
+
     // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
     auto mode = system_mode();
     if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {

@@ -2313,4 +2313,17 @@ int MDMElectronSerial::getLine(char* buffer, int length)
     return ret;
 }
 
+void MDMElectronSerial::pause()
+{
+    LOCK();
+    rxPause();
+}
+
+void MDMElectronSerial::resume()
+{
+    LOCK();
+    rxResume();
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)
+
