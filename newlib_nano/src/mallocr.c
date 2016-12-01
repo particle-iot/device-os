@@ -43,7 +43,8 @@
 #define DEFINE_FREE
 #define DEFINE_REALLOC
 #define DEFINE_CALLOC
-#define DEFINE_MALLOC_STATS
+// Do not compile malloc_stats() function (dumps memory usage stats to console)
+// #define DEFINE_MALLOC_STATS
 #define DEFINE_MALLOC_USABLE_SIZE
 #define DEFINE_MALLOPT
 #define DEFINE_PALLOC

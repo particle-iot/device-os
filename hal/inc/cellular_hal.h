@@ -208,9 +208,23 @@ cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
  */
 cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, void* data, void* reserved);
 
+/**
+ * Implementation of the USART3 IRQ handler exported via dynalib interface
+ */
+void HAL_USART3_Handler_Impl(void* reserved);
+
+/**
+ * Pauses cellular modem serial communication
+ */
+cellular_result_t cellular_pause(void* reserved);
+
+/**
+ * Resumes cellular modem serial communication
+ */
+cellular_result_t cellular_resume(void* reserved);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif	/* CELLULAR_HAL_H */
-

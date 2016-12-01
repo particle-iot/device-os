@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -e
+
+usage() {
+  echo "$(basename $0) reset"
+  echo "$(basename $0) mode <dfu|safe|listening>"
+  exit 1
+}
+
+# See firmware's USBRequestType enum
+REQ_DEVICE_ID=20
+REQ_RESET=40
+REQ_DFU=50
+REQ_SAFE=60
+REQ_LISTEN=70
+
+send_usb_out_req() {
+  send_usb_req -d out -i $1 || true
+}
+
+reset() {
+  send_usb_out_req $REQ_RESET
+}
+
+device_id() {
+  send_usb_req -d in -i "${REQ_DEVICE_ID}" -n 64 || true
+}
+
+mode() {
+  case $1 in
+    dfu)
+      send_usb_out_req $REQ_DFU
+      ;;
+    safe)
+      send_usb_out_req $REQ_SAFE
+      ;;
+    listening)
+      send_usb_out_req $REQ_LISTEN
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+case $1 in
+  id)
+    device_id
+    ;;
+  reset)
+    reset
+    ;;
+  mode)
+    mode $2
+    ;;
+  *)
+    usage
+    ;;
+esac

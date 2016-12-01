@@ -9,10 +9,10 @@
 export BUILDPACK_VARIATION=gcc-arm-none-eabi-4_8-2014q2
 
 # Platforms for which this firmware is considered stable
-export RELEASE_PLATFORMS=( )
+export RELEASE_PLATFORMS=( core photon p1 electron )
 
 # Platforms for which this firmware is considered experimental
-export PRERELEASE_PLATFORMS=( core photon p1 electron )
+export PRERELEASE_PLATFORMS=( )
 # Note: a single platform should be only in release or prerelease list. If
 # added to both it will be considered a prerelease
 

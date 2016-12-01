@@ -29,7 +29,9 @@
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_watchdog.h"
+#include "spark_wiring_async.h"
 #include "interrupts_hal.h"
+#include "system_mode.h"
 #include <functional>
 
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
@@ -65,6 +67,7 @@ private:
 const PublishFlag PUBLIC(PUBLISH_EVENT_FLAG_PUBLIC);
 const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
 const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
+const PublishFlag WITH_ACK(PUBLISH_EVENT_FLAG_WITH_ACK);
 
 
 class CloudClass {
@@ -76,7 +79,7 @@ public:
     static inline bool variable(const T &name, const Types& ... args)
     {
         static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
-            "\n\nIn Particle.variable, name must be less than " __XSTRING(USER_VAR_KEY_LENGTH) " characters\n\n");
+            "\n\nIn Particle.variable, name must be " __XSTRING(USER_VAR_KEY_LENGTH) " characters or less\n\n");
 
         return _variable(name, args...);
     }
@@ -186,7 +189,7 @@ public:
     {
 #if PLATFORM_ID!=3
         static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_FUNC_KEY_LENGTH + 1,
-            "\n\nIn Particle.function, name must be less than " __XSTRING(USER_FUNC_KEY_LENGTH) " characters\n\n");
+            "\n\nIn Particle.function, name must be " __XSTRING(USER_FUNC_KEY_LENGTH) " characters or less\n\n");
 #endif
         return _function(name, args...);
     }
@@ -219,25 +222,25 @@ public:
       return _function(funcKey, std::bind(func, instance, _1));
     }
 
-    inline bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
+    inline spark::Future<void> publish(const char *eventName, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, NULL, 60, PublishFlag::flag_t(eventType), NULL), false);
+        return publish(eventName, NULL, 60, PublishFlag::flag_t(eventType));
     }
 
-    inline bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
+    inline spark::Future<void> publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, 60, PublishFlag::flag_t(eventType), NULL), false);
+        return publish(eventName, eventData, 60, PublishFlag::flag_t(eventType));
     }
 
-    inline bool publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
+    inline spark::Future<void> publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, 60, f1.flag()+f2.flag(), NULL), false);
+        return publish(eventName, eventData, 60, f1.flag()+f2.flag());
     }
 
 
-    inline bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
+    inline spark::Future<void> publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
     {
-        return CLOUD_FN(spark_send_event(eventName, eventData, ttl, PublishFlag::flag_t(eventType), NULL), false);
+        return publish(eventName, eventData, ttl, PublishFlag::flag_t(eventType));
     }
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
@@ -284,6 +287,28 @@ public:
         return CLOUD_FN(spark_sync_time(NULL), false);
     }
 
+    bool syncTimePending(void)
+    {
+        return connected() && CLOUD_FN(spark_sync_time_pending(nullptr), false);
+    }
+
+    bool syncTimeDone(void)
+    {
+        return !CLOUD_FN(spark_sync_time_pending(nullptr), false) || disconnected();
+    }
+
+    system_tick_t timeSyncedLast(void)
+    {
+        time_t dummy;
+        return timeSyncedLast(dummy);
+    }
+
+    system_tick_t timeSyncedLast(time_t& tm)
+    {
+        tm = 0;
+        return CLOUD_FN(spark_sync_time_last(&tm, nullptr), 0);
+    }
+
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
     { SystemClass::sleep(seconds); }
     static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0) __attribute__ ((deprecated("Please use System.sleep() instead.")))
@@ -293,7 +318,15 @@ public:
 
     static bool connected(void) { return spark_cloud_flag_connected(); }
     static bool disconnected(void) { return !connected(); }
-    static void connect(void) { spark_cloud_flag_connect(); }
+    static void connect(void) {
+        spark_cloud_flag_connect();
+        if (system_thread_get_state(nullptr)==spark::feature::DISABLED &&
+            SystemClass::mode() == SEMI_AUTOMATIC)
+        {
+            // Particle.connect() should be blocking in SEMI_AUTOMATIC mode when threading is disabled
+            waitUntil(connected);
+        }
+    }
     static void disconnect(void) { spark_cloud_flag_disconnect(); }
     static void process(void) {
     		application_checkin();
@@ -304,8 +337,8 @@ public:
 #if HAL_PLATFORM_CLOUD_UDP
     static void keepAlive(unsigned sec)
     {
-        CLOUD_FN(spark_protocol_set_connection_property(sp(), particle::protocol::Connection::PING,
-                                                        sec * 1000, nullptr, nullptr),
+        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING,
+                                               sec * 1000, nullptr, nullptr),
                  (void)0);
     }
 #endif
@@ -317,6 +350,8 @@ private:
     static int call_std_user_function(void* data, const char* param, void* reserved);
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
+
+    static spark::Future<void> publish(const char *eventName, const char *eventData, int ttl, uint32_t flags);
 
     static ProtocolFacade* sp()
     {

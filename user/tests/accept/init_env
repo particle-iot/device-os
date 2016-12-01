@@ -1,0 +1,76 @@
+#!/bin/bash
+
+if [ $PARTICLE_TEST_ENV ]; then
+  return
+fi
+
+warn() {
+  >&2 echo "Warning: $1"
+}
+
+error() {
+  >&2 echo "Error: $1"
+  exit 1
+}
+
+require_tool() {
+  which $1 > /dev/null || error "'$1' is not installed"
+}
+
+require_var() {
+  [ ${!1+x} ] || error "$1 is not defined"
+}
+
+export -f warn error require_tool require_var
+
+require_var PLATFORM
+
+# USB vendor/product ID
+if [ ! $USB_VENDOR_ID ] || [ ! $USB_PRODUCT_ID ]; then
+  case $PLATFORM in
+    core)
+      USB_VENDOR_ID=1d50
+      USB_PRODUCT_ID=607d
+      ;;
+    photon)
+      USB_VENDOR_ID=2b04
+      USB_PRODUCT_ID=c006
+      ;;
+    p1)
+      USB_VENDOR_ID=2b04
+      USB_PRODUCT_ID=c008
+      ;;
+    electron)
+      USB_VENDOR_ID=2b04
+      USB_PRODUCT_ID=c00a
+      ;;
+    *)
+      error "Unsupported platform: $PLATFORM"
+      ;;
+  esac
+  export USB_VENDOR_ID
+  export USB_PRODUCT_ID
+fi
+
+# Primary serial over USB interface
+if [ ! $PARTICLE_SERIAL_DEV ]; then
+  PARTICLE_SERIAL_DEV=/dev/ttyACM0
+  warn "PARTICLE_SERIAL_DEV is not defined, using $PARTICLE_SERIAL_DEV (Serial)"
+  export PARTICLE_SERIAL_DEV
+fi
+
+# UART adapter device
+if [ ! $PARTICLE_SERIAL1_DEV ]; then
+  PARTICLE_SERIAL1_DEV=/dev/ttyUSB0
+  warn "PARTICLE_SERIAL1_DEV is not defined, using $PARTICLE_SERIAL1_DEV (Serial1)"
+  export PARTICLE_SERIAL1_DEV
+fi
+
+# Additional serial over USB interface
+if [ ! $PARTICLE_USB_SERIAL1_DEV ]; then
+  PARTICLE_USB_SERIAL1_DEV=/dev/ttyACM1
+  warn "PARTICLE_USB_SERIAL1_DEV is not defined, using $PARTICLE_USB_SERIAL1_DEV (USBSerial1)"
+  export PARTICLE_USB_SERIAL1_DEV
+fi
+
+export PARTICLE_TEST_ENV=1
