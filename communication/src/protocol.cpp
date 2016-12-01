@@ -18,7 +18,7 @@
  */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("protocol")
+LOG_SOURCE_CATEGORY("comm.protocol")
 
 #include "protocol.h"
 #include "chunked_transfer.h"

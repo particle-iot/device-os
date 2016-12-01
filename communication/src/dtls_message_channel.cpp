@@ -18,7 +18,7 @@
  */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("message_channel.dtls")
+LOG_SOURCE_CATEGORY("comm.message_channel.dtls")
 
 #include "dtls_message_channel.h"
 #include "protocol.h"

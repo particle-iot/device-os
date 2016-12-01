@@ -20,34 +20,38 @@ namespace particle { namespace protocol {
 
 enum ProtocolError
 {
-	/* 00 */ NO_ERROR,
-	/* 01 */ PING_TIMEOUT,
-	/* 02 */ IO_ERROR,	// too generic, discontinue using this.  Perfer/add a specific one below
-	/* 03 */ INVALID_STATE,
-	/* 04 */ INSUFFICIENT_STORAGE,
-	/* 05 */ MALFORMED_MESSAGE,
-	/* 06 */ DECRYPTION_ERROR,
-	/* 07 */ ENCRYPTION_ERROR,
-	/* 08 */ AUTHENTICATION_ERROR,
-	/* 09 */ BANDWIDTH_EXCEEDED,
-	/* 10 */ MESSAGE_TIMEOUT,
-	/* 11 */ MISSING_MESSAGE_ID,
-	/* 12 */ MESSAGE_RESET,
-	/* 13 */ SESSION_RESUMED,
-	/* 14 */ IO_ERROR_FORWARD_MESSAGE_CHANNEL,
-	/* 15 */ IO_ERROR_SET_DATA_MAX_EXCEEDED,
-	/* 16 */ IO_ERROR_PARSING_SERVER_PUBLIC_KEY,
-	/* 17 */ IO_ERROR_GENERIC_ESTABLISH,
-	/* 18 */ IO_ERROR_GENERIC_RECEIVE,
-	/* 19 */ IO_ERROR_GENERIC_SEND,
-	/* 20 */ IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE,
-	/* 21 */ IO_ERROR_DISCARD_SESSION,
-	/* 21 */ IO_ERROR_LIGHTSSL_BLOCKING_SEND,
-	/* 22 */ IO_ERROR_LIGHTSSL_BLOCKING_RECEIVE,
-	/* 23 */ IO_ERROR_LIGHTSSL_RECEIVE,
-	/* 24 */ IO_ERROR_LIGHTSSL_HANDSHAKE_NONCE,
-	/* 25 */ IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY,
-	UNKNOWN = 0x7FFFF
+    /* 00 */ NO_ERROR,
+    /* 01 */ PING_TIMEOUT,
+    /* 02 */ IO_ERROR,  // too generic, discontinue using this.  Perfer/add a specific one below
+    /* 03 */ INVALID_STATE,
+    /* 04 */ INSUFFICIENT_STORAGE,
+    /* 05 */ MALFORMED_MESSAGE,
+    /* 06 */ DECRYPTION_ERROR,
+    /* 07 */ ENCRYPTION_ERROR,
+    /* 08 */ AUTHENTICATION_ERROR,
+    /* 09 */ BANDWIDTH_EXCEEDED,
+    /* 10 */ MESSAGE_TIMEOUT,
+    /* 11 */ MISSING_MESSAGE_ID,
+    /* 12 */ MESSAGE_RESET,
+    /* 13 */ SESSION_RESUMED,
+    /* 14 */ IO_ERROR_FORWARD_MESSAGE_CHANNEL,
+    /* 15 */ IO_ERROR_SET_DATA_MAX_EXCEEDED,
+    /* 16 */ IO_ERROR_PARSING_SERVER_PUBLIC_KEY,
+    /* 17 */ IO_ERROR_GENERIC_ESTABLISH,
+    /* 18 */ IO_ERROR_GENERIC_RECEIVE,
+    /* 19 */ IO_ERROR_GENERIC_SEND,
+    /* 20 */ IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE,
+    /* 21 */ IO_ERROR_DISCARD_SESSION,
+    /* 21 */ IO_ERROR_LIGHTSSL_BLOCKING_SEND,
+    /* 22 */ IO_ERROR_LIGHTSSL_BLOCKING_RECEIVE,
+    /* 23 */ IO_ERROR_LIGHTSSL_RECEIVE,
+    /* 24 */ IO_ERROR_LIGHTSSL_HANDSHAKE_NONCE,
+    /* 25 */ IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY,
+
+    /*
+     * NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
+     */
+    UNKNOWN = 0x7FFFF
 };
 
 // Converts protocol error to system error code
@@ -87,7 +91,7 @@ namespace ChunkReceivedCode {
 enum DescriptionType {
     DESCRIBE_SYSTEM = 1<<0,            // modules
     DESCRIBE_APPLICATION = 1<<1,       // functions and variables
-	DESCRIBE_ALL = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION
+    DESCRIBE_ALL = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION
 };
 
 namespace Connection

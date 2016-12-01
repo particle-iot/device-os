@@ -24,7 +24,7 @@
   */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("sparkprotocol")
+LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 
 #include "spark_protocol.h"
 #include "protocol_defs.h"

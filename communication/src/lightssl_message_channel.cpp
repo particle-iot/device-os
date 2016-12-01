@@ -1,5 +1,5 @@
 #include "logging.h"
-LOG_SOURCE_CATEGORY("message_channel.lightssl")
+LOG_SOURCE_CATEGORY("comm.message_channel.lightssl")
 
 #include "protocol_selector.h"
 #if HAL_PLATFORM_CLOUD_TCP
