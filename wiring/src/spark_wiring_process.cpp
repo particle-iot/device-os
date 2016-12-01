@@ -185,6 +185,7 @@ FdPrint& Process::in()
 
 FdStream::FdStream(int fd) : fd(fd)
 {
+  _timeout = 1;
 }
 
 FdStream::~FdStream()
@@ -272,6 +273,11 @@ void FdPrint::close()
 size_t FdPrint::write(uint8_t data)
 {
   return ::write(fd, &data, sizeof(data));
+}
+
+const char *FdPrint::endline(void)
+{
+  return "\n";
 }
 
 #endif /* Wiring_Process == 1 */
