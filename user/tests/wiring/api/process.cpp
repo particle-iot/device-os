@@ -1,12 +1,10 @@
 /**
  ******************************************************************************
- * @file    eeprom_hal.c
- * @author  Matthew McGowan
- * @version V1.0.0
- * @date    27-Sept-2014
- * @brief
+ * @file    process.cpp
+ * @authors Julien Vanier
+ * @date    1 December 2016
  ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2016 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,45 +21,22 @@
  ******************************************************************************
  */
 
-/* Includes ------------------------------------------------------------------*/
-#include "eeprom_hal.h"
+#include "testapi.h"
 
+#if Wiring_Process == 1
 
-void HAL_EEPROM_Init(void)
-{
+test(process_api) {
+    Process proc;
+
+    API_COMPILE(proc = Process::run("cat"));
+    API_COMPILE(proc.pid());
+    API_COMPILE(proc.kill(SIGKILL));
+    API_COMPILE(proc.exited());
+    API_COMPILE(proc.wait());
+    API_COMPILE(proc.out().readString());
+    API_COMPILE(proc.err().readString());
+    API_COMPILE(proc.in().println("test"));
+    API_COMPILE(proc.in().close());
 }
 
-uint8_t HAL_EEPROM_Read(uint32_t address)
-{
-    return 0;
-}
-
-void HAL_EEPROM_Write(uint32_t address, uint8_t data)
-{
-}
-
-void HAL_EEPROM_Get(uint32_t index, void *data, size_t length)
-{
-}
-
-void HAL_EEPROM_Put(uint32_t index, const void *data, size_t length)
-{
-}
-
-size_t HAL_EEPROM_Length() 
-{
-    return 0;
-}
-
-void HAL_EEPROM_Clear()
-{
-}
-
-bool HAL_EEPROM_Has_Pending_Erase()
-{
-    return false;
-}
-
-void HAL_EEPROM_Perform_Pending_Erase()
-{
-}
+#endif // Wiring_Process == 1

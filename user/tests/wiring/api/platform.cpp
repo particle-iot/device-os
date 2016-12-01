@@ -18,6 +18,7 @@ test(api_platform_stm32f2) {
 #endif
 
 
+#if SYSTEM_HW_TICKS
 test(system_ticks)
 {
     uint32_t value;
@@ -26,3 +27,4 @@ test(system_ticks)
     API_COMPILE(System.ticksDelay(30));
     (void)value;
 }
+#endif // SYSTEM_HW_TICKS
