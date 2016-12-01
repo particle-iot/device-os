@@ -49,3 +49,9 @@ SCENARIO("Captures standard error", "[process]")
     REQUIRE(proc.exitCode() == 3);
 }
 
+SCENARIO("Returns an error when a command is not found", "[process]")
+{
+    Process proc = Process::run("iawghoigwaehogwhaiooihgwahiogwe");
+    proc.wait();
+    REQUIRE(proc.exitCode() == Process::COMMAND_NOT_FOUND);
+}
