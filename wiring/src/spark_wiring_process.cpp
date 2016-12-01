@@ -40,11 +40,11 @@ enum { RD, WR };
 const uint8_t Process::COMMAND_NOT_FOUND = 127;
 
 Process::Process() :
-  pid(0),
-  outFd(-1),
-  errFd(-1),
-  inFd(-1),
-  code(0)
+  _pid(0),
+  _outFd(-1),
+  _errFd(-1),
+  _inFd(-1),
+  _code(0)
 {
 
 }
@@ -58,16 +58,18 @@ Process Process::run(String command)
 
 void Process::start(String command)
 {
-  int pid = fork();
-  if (pid > 0)
+  int _pid = fork();
+  if (_pid > 0)
   {
     // parent
 
-    outPtr = std::make_shared<FdStream>(outFd);
-    errPtr = std::make_shared<FdStream>(errFd);
-    inPtr = std::make_shared<FdPrint>(inFd);
+    _out = std::make_shared<FdStream>(_outFd);
+    _err = std::make_shared<FdStream>(_errFd);
+    _in = std::make_shared<FdPrint>(_inFd);
 
-  } else if (pid == 0) {
+  }
+  else if (_pid == 0)
+  {
     // child
 
     // Run the command
@@ -93,18 +95,21 @@ int Process::fork()
     return -1;
   }
 
-  pid = ::fork();
-  if (pid > 0) {
+  _pid = ::fork();
+  if (_pid > 0)
+  {
     // parent
 
-    inFd = inPipes[WR];
+    _inFd = inPipes[WR];
     ::close(inPipes[RD]);
-    outFd = outPipes[RD];
+    _outFd = outPipes[RD];
     ::close(outPipes[WR]);
-    errFd = errPipes[RD];
+    _errFd = errPipes[RD];
     ::close(errPipes[WR]);
 
-  } else if (pid == 0) {
+  }
+  else if (_pid == 0)
+  {
     // child
     ::dup2(inPipes[RD], STDIN_FILENO);
     ::close(inPipes[WR]);
@@ -113,35 +118,48 @@ int Process::fork()
     ::dup2(errPipes[WR], STDERR_FILENO);
     ::close(errPipes[RD]);
 
-  } else {
+  }
+  else
+  {
     perror("Error forking in Process command");
   }
 
-  return pid;
+  return _pid;
 }
 
 uint8_t Process::wait()
 {
-  if (pid <= 0) {
+  if (_pid <= 0)
+  {
     return 0;
   }
 
   int status;
-  ::waitpid(pid, &status, 0);
+  ::waitpid(_pid, &status, 0);
   processStatus(status);
 
   return exitCode();
 }
 
+void Process::kill(int signal)
+{
+  if (_pid <= 0)
+  {
+    return;
+  }
+  ::kill(_pid, signal);
+}
+
 bool Process::exited()
 {
-  if (pid <= 0) {
+  if (_pid <= 0)
+  {
     return true;
   }
 
   int status;
-  int changedPid = ::waitpid(pid, &status, WNOHANG);
-  if (changedPid == pid)
+  int changedPid = ::waitpid(_pid, &status, WNOHANG);
+  if (changedPid == _pid)
   {
     processStatus(status);
     return true;
@@ -154,33 +172,41 @@ bool Process::exited()
 
 void Process::processStatus(int status)
 {
-  if (WIFEXITED(status)) {
-    code = WEXITSTATUS(status);
-  } else if (WIFSIGNALED(status)) {
-    // Bash convention: signal n gives exit code 128+n
-    code = 128 + WTERMSIG(status);
+  if (WIFEXITED(status))
+  {
+    _code = WEXITSTATUS(status);
   }
-  pid = 0;
+  else if (WIFSIGNALED(status))
+  {
+    // Bash convention: signal n gives exit _code 128+n
+    _code = 128 + WTERMSIG(status);
+  }
+  _pid = 0;
+}
+
+int Process::pid()
+{
+  return _pid;
 }
 
 uint8_t Process::exitCode()
 {
-  return code;
+  return _code;
 }
 
 FdStream& Process::out()
 {
-  return *outPtr;
+  return *_out;
 }
 
 FdStream& Process::err()
 {
-  return *errPtr;
+  return *_err;
 }
 
 FdPrint& Process::in()
 {
-  return *inPtr;
+  return *_in;
 }
 
 FdStream::FdStream(int fd) : fd(fd)
@@ -208,7 +234,8 @@ int FdStream::read()
 {
   fillBuffer();
 
-  if (buffer.empty()) {
+  if (buffer.empty())
+  {
     return -1;
   }
 
@@ -221,7 +248,8 @@ int FdStream::peek()
 {
   fillBuffer();
 
-  if (buffer.empty()) {
+  if (buffer.empty())
+  {
     return -1;
   }
 
@@ -231,7 +259,8 @@ int FdStream::peek()
 
 void FdStream::flush()
 {
-  while (available()) {
+  while (available())
+  {
     read();
   }
 }
@@ -242,13 +271,15 @@ size_t FdStream::write(uint8_t data)
 }
 void FdStream::fillBuffer()
 {
-  if (!buffer.empty()) {
+  if (!buffer.empty())
+  {
     return;
   }
 
   char tmp[100];
   size_t count = ::read(fd, tmp, sizeof(tmp));
-  if (count == (size_t)-1) {
+  if (count == (size_t)-1)
+  {
     perror("FdStream::read failed");
     return;
   }

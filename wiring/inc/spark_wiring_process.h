@@ -25,6 +25,7 @@
 #if Wiring_Process == 1
 
 #include "spark_wiring_stream.h"
+#include <signal.h>
 #include <memory>
 #include <deque>
 
@@ -36,6 +37,8 @@ class Process
 public:
   static Process run(String command);
 
+  int pid();
+  void kill(int signal);
   bool exited();
   uint8_t wait();
   uint8_t exitCode();
@@ -51,15 +54,15 @@ protected:
   int fork();
   void processStatus(int status);
 
-  int pid;
-  int outFd;
-  int errFd;
-  int inFd;
-  uint8_t code;
+  int _pid;
+  int _outFd;
+  int _errFd;
+  int _inFd;
+  uint8_t _code;
 
-  std::shared_ptr<FdStream> outPtr;
-  std::shared_ptr<FdStream> errPtr;
-  std::shared_ptr<FdPrint> inPtr;
+  std::shared_ptr<FdStream> _out;
+  std::shared_ptr<FdStream> _err;
+  std::shared_ptr<FdPrint> _in;
 };
 
 class FdStream : public Stream
