@@ -43,10 +43,12 @@ public:
   FdStream& err();
   FdPrint& in();
 
+  static const uint8_t COMMAND_NOT_FOUND;
 protected:
   Process();
 
   void start(String command);
+  int fork();
   void processStatus(int status);
 
   int pid;

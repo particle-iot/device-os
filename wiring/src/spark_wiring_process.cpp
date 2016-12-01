@@ -34,9 +34,10 @@
 
 #include <stdio.h>
 
-// pipe2 returns 2 file descriptors, one for reading, one for writing
-const auto READ_END = 0;
-const auto WRITE_END = 1;
+// constants for read/write ends of pipe created by pipe2
+enum { RD, WR };
+
+const uint8_t Process::COMMAND_NOT_FOUND = 127;
 
 Process::Process() :
   pid(0),
@@ -57,28 +58,10 @@ Process Process::run(String command)
 
 void Process::start(String command)
 {
-  int inPipes[2];
-  int outPipes[2];
-  int errPipes[2];
-
-  if (pipe2(inPipes, 0) < 0 ||
-      pipe2(outPipes, O_NONBLOCK) < 0 ||
-      pipe2(errPipes, O_NONBLOCK) < 0)
+  int pid = fork();
+  if (pid > 0)
   {
-    perror("Error opening pipes for Process command");
-    return;
-  }
-
-  pid = fork();
-  if (pid > 0) {
     // parent
-
-    inFd = inPipes[WRITE_END];
-    close(inPipes[READ_END]);
-    outFd = outPipes[READ_END];
-    close(outPipes[WRITE_END]);
-    errFd = errPipes[READ_END];
-    close(errPipes[WRITE_END]);
 
     outPtr = std::make_shared<FdStream>(outFd);
     errPtr = std::make_shared<FdStream>(errFd);
@@ -86,19 +69,55 @@ void Process::start(String command)
 
   } else if (pid == 0) {
     // child
-    dup2(inPipes[READ_END], STDIN_FILENO);
-    close(inPipes[WRITE_END]);
-    dup2(outPipes[WRITE_END], STDOUT_FILENO);
-    close(outPipes[READ_END]);
-    dup2(errPipes[WRITE_END], STDERR_FILENO);
-    close(errPipes[READ_END]);
 
     // Run the command
     execl("/bin/sh", "sh", "-c", command.c_str(), NULL);
 
+    // Can only get here if execl fails
+    // Use _exit to avoid runnig static C++ destructors
+    ::_exit(errno);
+  }
+}
+
+int Process::fork()
+{
+  int inPipes[2] = { -1, -1 };
+  int outPipes[2] = { -1, -1 };
+  int errPipes[2] = { -1, -1 };
+
+  if (::pipe2(inPipes, 0) < 0 ||
+      ::pipe2(outPipes, O_NONBLOCK) < 0 ||
+      ::pipe2(errPipes, O_NONBLOCK) < 0)
+  {
+    perror("Error opening pipes for Process command");
+    return -1;
+  }
+
+  pid = ::fork();
+  if (pid > 0) {
+    // parent
+
+    inFd = inPipes[WR];
+    ::close(inPipes[RD]);
+    outFd = outPipes[RD];
+    ::close(outPipes[WR]);
+    errFd = errPipes[RD];
+    ::close(errPipes[WR]);
+
+  } else if (pid == 0) {
+    // child
+    ::dup2(inPipes[RD], STDIN_FILENO);
+    ::close(inPipes[WR]);
+    ::dup2(outPipes[WR], STDOUT_FILENO);
+    ::close(outPipes[RD]);
+    ::dup2(errPipes[WR], STDERR_FILENO);
+    ::close(errPipes[RD]);
+
   } else {
     perror("Error forking in Process command");
   }
+
+  return pid;
 }
 
 uint8_t Process::wait()
@@ -108,7 +127,7 @@ uint8_t Process::wait()
   }
 
   int status;
-  waitpid(pid, &status, 0);
+  ::waitpid(pid, &status, 0);
   processStatus(status);
 
   return exitCode();
@@ -121,7 +140,7 @@ bool Process::exited()
   }
 
   int status;
-  int changedPid = waitpid(pid, &status, WNOHANG);
+  int changedPid = ::waitpid(pid, &status, WNOHANG);
   if (changedPid == pid)
   {
     processStatus(status);
