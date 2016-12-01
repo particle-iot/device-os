@@ -63,6 +63,7 @@
 #include "spark_wiring_watchdog.h"
 #include "spark_wiring_thread.h"
 #include "spark_wiring_logging.h"
+#include "spark_wiring_process.h"
 #include "fast_pin.h"
 #include "string_convert.h"
 #include "debug_output_handler.h"
