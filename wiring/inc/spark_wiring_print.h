@@ -88,6 +88,7 @@ class Print
     size_t println(const Printable&);
     size_t println(void);
     size_t println(const __FlashStringHelper*);
+    virtual const char *endline(void);
 
     template <typename... Args>
     inline size_t printf(const char* format, Args... args)

@@ -114,9 +114,12 @@ size_t Print::print(const __FlashStringHelper* str)
 
 size_t Print::println(void)
 {
-  size_t n = print('\r');
-  n += print('\n');
-  return n;
+  return print(endline());
+}
+
+const char *Print::endline(void)
+{
+  return "\r\n";
 }
 
 size_t Print::println(const char c[])

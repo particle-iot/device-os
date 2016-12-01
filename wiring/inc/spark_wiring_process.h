@@ -87,6 +87,7 @@ public:
   virtual ~FdPrint();
   void close();
   virtual size_t write(uint8_t data) override;
+  virtual const char *endline(void) override;
 protected:
   int fd;
 };
