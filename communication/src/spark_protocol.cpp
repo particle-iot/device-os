@@ -95,7 +95,7 @@ void SparkProtocol::init(const char *id,
 
 int SparkProtocol::handshake(void)
 {
-  LOG_CATEGORY("handshake");
+  LOG_CATEGORY("comm.sparkprotocol.handshake");
 
   ack_handlers.clear(); // FIXME: Cancel pending handlers right after previous session has ended
 

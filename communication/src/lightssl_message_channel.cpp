@@ -1,5 +1,5 @@
 #include "logging.h"
-LOG_SOURCE_CATEGORY("comm.message_channel.lightssl")
+LOG_SOURCE_CATEGORY("comm.lightssl")
 
 #include "protocol_selector.h"
 #if HAL_PLATFORM_CLOUD_TCP
@@ -149,7 +149,7 @@ namespace protocol
 
 	ProtocolError LightSSLMessageChannel::handshake()
 	{
-		LOG_CATEGORY("handshake");
+		LOG_CATEGORY("comm.lightssl.handshake");
 		LOG(INFO,"Started, receive nonce");
 		memcpy(queue + 40, device_id, 12);
 		int err = blocking_receive(queue, 40);

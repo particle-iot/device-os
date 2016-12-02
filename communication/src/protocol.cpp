@@ -247,7 +247,7 @@ uint32_t Protocol::application_state_checksum()
  */
 int Protocol::begin()
 {
-	LOG_CATEGORY("protocol.begin");
+	LOG_CATEGORY("comm.protocol.handshake");
 	LOG(INFO,"Establish secure connection");
 	chunkedTransfer.reset();
 	pinger.reset();
