@@ -39,7 +39,7 @@ public:
   static Process run(String command);
 
   int pid();
-  void kill(int signal);
+  void kill(int signal = SIGTERM);
   bool exited();
   uint8_t wait();
   uint8_t exitCode();

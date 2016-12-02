@@ -47,6 +47,17 @@ SCENARIO("Captures standard error", "[process]")
     REQUIRE(proc.exitCode() == 3);
 }
 
+SCENARIO("Parses output", "[process]")
+{
+    // Simulate output of vcgencmd measure_temp
+    Process proc = Process::run("echo temp=43.5'C");
+    proc.wait();
+    // The output is temp=43.5'C
+    proc.out().find("=");
+    float cpuTemp = proc.out().parseFloat();
+    REQUIRE(((cpuTemp - 43.5) < 0.01) == true);
+}
+
 SCENARIO("Returns an error when a command is not found", "[process]")
 {
     Process proc = Process::run("iawghoigwaehogwhaiooihgwahiogwe");

@@ -95,7 +95,7 @@ bool Stream::find(char *target, size_t length)
 // as find but search ends if the terminator string is found
 bool  Stream::findUntil(char *target, char *terminator)
 {
-  return findUntil(target, strlen(target), terminator, strlen(terminator));
+  return findUntil(target, strlen(target), terminator, terminator ? strlen(terminator) : 0);
 }
 
 // reads data from the stream until the target string of the given length is found
