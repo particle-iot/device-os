@@ -26,8 +26,6 @@
 
 #include "completion_handler.h"
 
-#include <strings.h>
-
 namespace particle
 {
 namespace protocol

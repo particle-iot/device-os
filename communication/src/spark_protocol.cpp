@@ -28,7 +28,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-#include <strings.h>
 #include "device_keys.h"
 #include "service_debug.h"
 #include "messages.h"
