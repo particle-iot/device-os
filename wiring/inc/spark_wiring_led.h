@@ -18,45 +18,16 @@
 #ifndef SPARK_WIRING_LED_H
 #define SPARK_WIRING_LED_H
 
-#include "led_service.h"
+#include "system_led_signal.h"
 
 namespace particle {
 
-enum class LEDPattern {
-    SOLID = LED_PATTERN_TYPE_SOLID,
-    BLINK = LED_PATTERN_TYPE_BLINK,
-    FADE = LED_PATTERN_TYPE_FADE
-};
-
-enum class LEDSpeed {
-    SLOW = LED_PATTERN_SPEED_SLOW,
-    NORMAL = LED_PATTERN_SPEED_NORMAL,
-    FAST = LED_PATTERN_SPEED_FAST
-};
-
-enum class LEDPriority {
-    BACKGROUND = 10,
-    NORMAL = 20,
-    IMPORTANT = 30,
-    CRITICAL = 40
-};
-
-enum class LEDSource {
-    APPLICATION = 1,
-    SYSTEM = 2,
-#ifdef PARTICLE_USER_MODULE
-    DEFAULT = APPLICATION
-#else
-    DEFAULT = SYSTEM
-#endif
-};
-
 class LEDStatus {
 public:
-    explicit LEDStatus(uint32_t color, LEDPattern pattern = LEDPattern::SOLID, LEDSpeed speed = LEDSpeed::NORMAL);
-    LEDStatus(uint32_t color, LEDPriority priority, LEDPattern pattern = LEDPattern::SOLID, LEDSpeed speed = LEDSpeed::NORMAL);
-    LEDStatus(uint32_t color, LEDSource source, LEDPattern pattern = LEDPattern::SOLID, LEDSpeed speed = LEDSpeed::NORMAL);
-    LEDStatus(uint32_t color, LEDSource source, LEDPriority priority, LEDPattern pattern = LEDPattern::SOLID, LEDSpeed speed = LEDSpeed::NORMAL);
+    explicit LEDStatus(uint32_t color, LEDPattern pattern = LED_PATTERN_SOLID, LEDSpeed speed = LED_SPEED_NORMAL);
+    LEDStatus(uint32_t color, LEDPriority priority, LEDPattern pattern = LED_PATTERN_SOLID, LEDSpeed speed = LED_SPEED_NORMAL);
+    LEDStatus(uint32_t color, LEDSource source, LEDPattern pattern = LED_PATTERN_SOLID, LEDSpeed speed = LED_SPEED_NORMAL);
+    LEDStatus(uint32_t color, LEDSource source, LEDPriority priority, LEDPattern pattern = LED_PATTERN_SOLID, LEDSpeed speed = LED_SPEED_NORMAL);
     ~LEDStatus();
 
     void setColor(uint32_t color);
@@ -85,23 +56,48 @@ private:
     LEDStatusData status_;
 };
 
+class LEDTheme {
+public:
+    LEDTheme();
+
+    void setColor(LEDSignal signal, int colorIndex);
+    int color(LEDSignal signal) const;
+
+    void setPattern(LEDSignal signal, LEDPattern pattern);
+    LEDPattern pattern(LEDSignal signal) const;
+
+    void setSpeed(LEDSignal signal, LEDSpeed speed);
+    LEDSpeed speed(LEDSignal signal) const;
+
+    void setPaletteColor(int index, uint32_t color);
+    uint32_t paletteColor(int index) const;
+
+    void set();
+
+    static void setDefault();
+
+private:
+    LEDThemeData theme_;
+};
+
 } // namespace particle
 
+// particle::LEDStatus
 inline particle::LEDStatus::LEDStatus(uint32_t color, LEDPattern pattern, LEDSpeed speed) :
-        LEDStatus(color, LEDSource::DEFAULT, LEDPriority::NORMAL, pattern, speed) {
+        LEDStatus(color, LED_SOURCE_DEFAULT, LED_PRIORITY_NORMAL, pattern, speed) {
 }
 
 inline particle::LEDStatus::LEDStatus(uint32_t color, LEDPriority priority, LEDPattern pattern, LEDSpeed speed) :
-        LEDStatus(color, LEDSource::DEFAULT, priority, pattern, speed) {
+        LEDStatus(color, LED_SOURCE_DEFAULT, priority, pattern, speed) {
 }
 
 inline particle::LEDStatus::LEDStatus(uint32_t color, LEDSource source, LEDPattern pattern, LEDSpeed speed) :
-        LEDStatus(color, source, LEDPriority::NORMAL, pattern, speed) {
+        LEDStatus(color, source, LED_PRIORITY_NORMAL, pattern, speed) {
 }
 
 inline particle::LEDStatus::LEDStatus(uint32_t color, LEDSource source, LEDPriority priority, LEDPattern pattern, LEDSpeed speed) :
         status_{ sizeof(LEDStatusData), nullptr /* Internal */, nullptr /* Internal */, color, 0xff /* Brightness */,
-            (uint8_t)pattern, (uint8_t)speed, 0 /* Flags */, (uint8_t)(((uint8_t)priority << 2) | (uint8_t)source) /* Priority */ } {
+            pattern, speed, 0 /* Flags */, LED_PRIORITY_VALUE(priority, source) } {
 }
 
 inline particle::LEDStatus::~LEDStatus() {
@@ -125,18 +121,18 @@ inline uint8_t particle::LEDStatus::brightness() const {
 }
 
 inline void particle::LEDStatus::setPattern(LEDPattern pattern) {
-    status_.pattern = (uint8_t)pattern;
+    status_.pattern = pattern;
 }
 
-inline particle::LEDPattern particle::LEDStatus::pattern() const {
+inline LEDPattern particle::LEDStatus::pattern() const {
     return (LEDPattern)status_.pattern;
 }
 
 inline void particle::LEDStatus::setSpeed(LEDSpeed speed) {
-    status_.speed = (uint8_t)speed;
+    status_.speed = speed;
 }
 
-inline particle::LEDSpeed particle::LEDStatus::speed() const {
+inline LEDSpeed particle::LEDStatus::speed() const {
     return (LEDSpeed)status_.speed;
 }
 
@@ -165,8 +161,59 @@ inline bool particle::LEDStatus::isActive() const {
     return status_.flags & LED_STATUS_FLAG_ACTIVE;
 }
 
-inline particle::LEDPriority particle::LEDStatus::priority() const {
+inline LEDPriority particle::LEDStatus::priority() const {
     return (LEDPriority)(status_.priority >> 2);
+}
+
+// particle::LEDTheme
+inline particle::LEDTheme::LEDTheme() :
+        theme_{ LED_THEME_DATA_VERSION } {
+    led_get_signal_theme(&theme_, 0, nullptr); // Get current theme
+}
+
+inline void particle::LEDTheme::setColor(LEDSignal signal, int colorIndex) {
+    theme_.signals[signal].color = colorIndex;
+}
+
+inline int particle::LEDTheme::color(LEDSignal signal) const {
+    return theme_.signals[signal].color;
+}
+
+inline void particle::LEDTheme::setPattern(LEDSignal signal, LEDPattern pattern) {
+    theme_.signals[signal].pattern = pattern;
+}
+
+inline LEDPattern particle::LEDTheme::pattern(LEDSignal signal) const {
+    return (LEDPattern)theme_.signals[signal].pattern;
+}
+
+inline void particle::LEDTheme::setSpeed(LEDSignal signal, LEDSpeed speed) {
+    theme_.signals[signal].speed = speed;
+}
+
+inline LEDSpeed particle::LEDTheme::speed(LEDSignal signal) const {
+    return (LEDSpeed)theme_.signals[signal].speed;
+}
+
+inline void particle::LEDTheme::setPaletteColor(int index, uint32_t color) {
+    if (index >= 0 && index < LED_PALETTE_COLOR_COUNT) {
+        theme_.palette[index] = color;
+    }
+}
+
+inline uint32_t particle::LEDTheme::paletteColor(int index) const {
+    if (index >= 0 && index < LED_PALETTE_COLOR_COUNT) {
+        return theme_.palette[index];
+    }
+    return 0;
+}
+
+inline void particle::LEDTheme::set() {
+    led_set_signal_theme(&theme_, 0, nullptr);
+}
+
+inline void particle::LEDTheme::setDefault() {
+    led_set_signal_theme(nullptr, LED_THEME_FLAG_DEFAULT, nullptr);
 }
 
 #endif // SPARK_WIRING_LED_H

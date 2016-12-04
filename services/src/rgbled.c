@@ -1,5 +1,7 @@
 
 #include <stdint.h>
+#include <stddef.h>
+
 #include "rgbled.h"
 #include "rgbled_hal.h"
 
@@ -65,12 +67,12 @@ uint8_t Get_LED_Brightness()
     return LED_RGB_BRIGHTNESS;
 }
 
-static void* data;
-static led_update_handler_fn handler;
+led_update_handler_fn led_update_handler = NULL;
+void* led_update_handler_data = NULL;
 
 void LED_RGB_SetChangeHandler(led_update_handler_fn fn, void* fn_data) {
-  handler = fn;
-  data = fn_data;
+  led_update_handler = fn;
+  led_update_handler_data = fn_data;
 }
 
 uint8_t asRGBComponent(uint16_t ccr) {
@@ -80,11 +82,11 @@ uint8_t asRGBComponent(uint16_t ccr) {
 
 void Change_RGB_LED(uint16_t* ccr) {
     Set_RGB_LED(ccr);
-    if (handler) {
+    if (led_update_handler) {
         uint8_t red = asRGBComponent(ccr[0]);
         uint8_t green = asRGBComponent(ccr[1]);
         uint8_t blue = asRGBComponent(ccr[2]);
-        handler(data, red, green, blue, 0);
+        led_update_handler(led_update_handler_data, red, green, blue, 0);
     }
 }
 

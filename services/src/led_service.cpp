@@ -21,6 +21,7 @@
 
 #include "debug.h"
 
+// TODO: Move synchronization macros to some header file
 #if PLATFORM_ID != 3
 
 #include "spark_wiring_interrupts.h"
@@ -149,13 +150,12 @@ public:
         LED_SERVICE_WITH_LOCK(lock_) {
             LEDStatusData* s = queue_.front();
             if (s) {
-                // Copy parameters of currently active status
+                // Copy status parameters
                 color = s->color;
                 value = s->value;
                 pattern = s->pattern;
                 speed = s->speed;
                 off = s->flags & LED_STATUS_FLAG_OFF;
-            } else {
             }
             enabled = (disabled_ == 0);
             reset = reset_;
@@ -173,15 +173,15 @@ public:
             }
         }
         if (enabled) {
-            Color c = { 0 };
+            Color c = { 0 }; // Black
             if (pattern_ != 0 && !off) {
                 scaleColor(color, value, &c);
                 if (period_ > 0) {
-                    updateColor(pattern_, ticks_, period_, &c);
+                    updatePatternColor(pattern_, ticks_, period_, &c);
                 }
             }
             if (reset || color_.r != c.r || color_.g != c.g || color_.b != c.b) {
-                Set_RGB_LED_Values(c.r, c.g, c.b);
+                setLedColor(c);
                 color_ = c;
             }
         }
@@ -199,24 +199,17 @@ private:
     uint8_t pattern_; // Pattern type
     uint8_t speed_; // Pattern speed
     uint32_t period_; // Pattern period in milliseconds
-    uint32_t ticks_; // Number of ticks within pattern period
+    uint32_t ticks_; // Number of milliseconds passed within pattern period
 
     uint16_t disabled_; // LED updates are enabled if this counter is set to 0
     bool reset_; // Flag signaling that cached LED color should be ignored
 
     LED_SERVICE_DECLARE_LOCK(lock_);
 
-    static void scaleColor(uint32_t color, uint8_t value, Color* scaled) {
-        const uint32_t v = (uint32_t)value * Get_RGB_LED_Max_Value();
-        scaled->r = (((color >> 16) & 0xff) * v) >> 16;
-        scaled->g = (((color >> 8) & 0xff) * v) >> 16;
-        scaled->b = ((color & 0xff) * v) >> 16;
-    }
-
     // Updates color according to specified pattern and timing
-    static void updateColor(uint8_t pattern, uint32_t ticks, uint32_t period, Color* color) {
+    static void updatePatternColor(uint8_t pattern, uint32_t ticks, uint32_t period, Color* color) {
         switch (pattern) {
-        case LED_PATTERN_TYPE_BLINK: {
+        case LED_PATTERN_BLINK: {
             if (ticks >= period / 2) { // Turn LED off
                 color->r = 0;
                 color->g = 0;
@@ -224,7 +217,7 @@ private:
             }
             break;
         }
-        case LED_PATTERN_TYPE_FADE: {
+        case LED_PATTERN_FADE: {
             period /= 2;
             if (ticks < period) { // Fade out
                 ticks = period - ticks;
@@ -244,26 +237,43 @@ private:
     // Returns pattern period in milliseconds
     static uint32_t patternPeriod(uint8_t pattern, uint8_t speed) {
         switch (pattern) {
-        case LED_PATTERN_TYPE_BLINK:
-            // Blinking color
-            if (speed == LED_PATTERN_SPEED_NORMAL) {
+        case LED_PATTERN_BLINK:
+            // Blinking LED
+            if (speed == LED_SPEED_NORMAL) {
                 return 200; // Normal
-            } else if (speed > LED_PATTERN_SPEED_NORMAL) {
+            } else if (speed > LED_SPEED_NORMAL) {
                 return 100; // Fast
             } else {
                 return 500; // Slow
             }
-        case LED_PATTERN_TYPE_FADE:
-            // "Breathing" color
-            if (speed == LED_PATTERN_SPEED_NORMAL) {
+        case LED_PATTERN_FADE:
+            // "Breathing" LED
+            if (speed == LED_SPEED_NORMAL) {
                 return 4000; // Normal
-            } else if (speed > LED_PATTERN_SPEED_NORMAL) {
+            } else if (speed > LED_SPEED_NORMAL) {
                 return 1000; // Fast
             } else {
                 return 8000; // Slow
             }
         default:
             return 0; // Not applicable
+        }
+    }
+
+    // Splits 32-bit RGB value into 16-bit color components (as expected by HAL) and applies
+    // brightness correction
+    static void scaleColor(uint32_t color, uint8_t value, Color* scaled) {
+        const uint32_t v = (uint32_t)value * Get_RGB_LED_Max_Value();
+        scaled->r = (((color >> 16) & 0xff) * v) >> 16;
+        scaled->g = (((color >> 8) & 0xff) * v) >> 16;
+        scaled->b = ((color & 0xff) * v) >> 16;
+    }
+
+    // Sets LED color and invokes user callback
+    static void setLedColor(const Color& color) {
+        Set_RGB_LED_Values(color.r, color.g, color.b);
+        if (led_update_handler) {
+            led_update_handler(led_update_handler_data, color.r, color.g, color.b, nullptr /* reserved */);
         }
     }
 };

@@ -30,41 +30,42 @@ extern "C" {
 
 // Pattern type
 typedef enum {
-    LED_PATTERN_TYPE_INVALID = 0,
-    LED_PATTERN_TYPE_SOLID = 10,
-    LED_PATTERN_TYPE_BLINK = 20,
-    LED_PATTERN_TYPE_FADE = 30
-} LEDPatternType;
+    LED_PATTERN_INVALID = 0,
+    LED_PATTERN_SOLID = 10,
+    LED_PATTERN_BLINK = 20,
+    LED_PATTERN_FADE = 30
+} LEDPattern;
 
 // Pattern speed
 typedef enum {
-    LED_PATTERN_SPEED_SLOW = 10,
-    LED_PATTERN_SPEED_NORMAL = 20,
-    LED_PATTERN_SPEED_FAST = 30
-} LEDPatternSpeed;
+    LED_SPEED_INVALID = 0,
+    LED_SPEED_SLOW = 10,
+    LED_SPEED_NORMAL = 20,
+    LED_SPEED_FAST = 30
+} LEDSpeed;
 
 // Status flags
 typedef enum {
-    LED_STATUS_FLAG_ACTIVE = 0x01, // LED status is active (do not set this flag manually)
+    LED_STATUS_FLAG_ACTIVE = 0x01, // LED status is active (do not modify this flag manually)
     LED_STATUS_FLAG_OFF = 0x02 // LED is turned off
 } LEDStatusFlag;
 
 typedef struct LEDStatusData {
     size_t size; // Size of this structure
-    struct LEDStatusData* next; // Internal field. Should be initialized to 0
+    struct LEDStatusData* next; // Internal field. Should be initialized to NULL
     struct LEDStatusData* prev; // Ditto
     volatile uint32_t color; // Color (0x00RRGGBB)
     volatile uint8_t value; // Brightness (0 - 255)
-    volatile uint8_t pattern; // Pattern type (as defined by LEDPatternType enum)
-    volatile uint8_t speed; // Pattern speed (as defined by LEDPatternSpeed enum)
+    volatile uint8_t pattern; // Pattern type (as defined by LEDPattern enum)
+    volatile uint8_t speed; // Pattern speed (as defined by LEDSpeed enum)
     volatile uint8_t flags; // Flags (as defined by LEDStatusFlag enum)
-    uint8_t priority; // Priority (0 - 255)
+    volatile uint8_t priority; // Priority (0 - 255)
 } LEDStatusData;
 
-// Starts / stops LED status indication
+// Starts/stops LED status indication
 void led_set_status_active(LEDStatusData* status, bool active, void* reserved);
 
-// Allows to temporary disable updating of LED color by led_update() function
+// Enables/disables updating of LED color by led_update() function
 void led_set_updates_enabled(bool enabled, void* reserved);
 
 // Updates LED color according to a number of ticks passed since previous update. This function needs

@@ -45,6 +45,7 @@
 #include "usb_hal.h"
 #include "system_mode.h"
 #include "rgbled.h"
+#include "led_service.h"
 #include "ledcontrol.h"
 #include "spark_wiring_power.h"
 #include "spark_wiring_fuel.h"
@@ -349,6 +350,16 @@ inline bool system_led_override()
  *******************************/
 extern "C" void HAL_SysTick_Handler(void)
 {
+    static const uint16_t LED_UPDATE_INTERVAL = 40; // Milliseconds
+    static uint16_t ledUpdateTime = 0;
+
+    if (ledUpdateTime == 0) {
+        led_update(LED_UPDATE_INTERVAL, nullptr);
+        ledUpdateTime = LED_UPDATE_INTERVAL;
+    } else {
+        --ledUpdateTime;
+    }
+
     if (LED_RGB_IsOverRidden() && !system_led_override())
     {
 #ifndef SPARK_NO_CLOUD

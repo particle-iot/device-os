@@ -60,6 +60,9 @@ bool LED_RGB_IsOverRidden(void);
  */
 typedef void (*led_update_handler_fn)(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
 
+extern led_update_handler_fn led_update_handler;
+extern void* led_update_handler_data;
+
 void LED_RGB_SetChangeHandler(led_update_handler_fn fn, void* data);
 
 
