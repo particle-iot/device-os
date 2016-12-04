@@ -29,7 +29,6 @@
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_watchdog.h"
-#include "spark_wiring_async.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
 #include <functional>
@@ -222,23 +221,22 @@ public:
       return _function(funcKey, std::bind(func, instance, _1));
     }
 
-    inline spark::Future<void> publish(const char *eventName, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
     {
         return publish(eventName, NULL, 60, PublishFlag::flag_t(eventType));
     }
 
-    inline spark::Future<void> publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
     {
         return publish(eventName, eventData, 60, PublishFlag::flag_t(eventType));
     }
 
-    inline spark::Future<void> publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
+    inline bool publish(const char *eventName, const char *eventData, PublishFlag f1, PublishFlag f2)
     {
         return publish(eventName, eventData, 60, f1.flag()+f2.flag());
     }
 
-
-    inline spark::Future<void> publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
     {
         return publish(eventName, eventData, ttl, PublishFlag::flag_t(eventType));
     }
@@ -351,7 +349,7 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    static spark::Future<void> publish(const char *eventName, const char *eventData, int ttl, uint32_t flags);
+    static bool publish(const char *eventName, const char *eventData, int ttl, uint32_t flags);
 
     static ProtocolFacade* sp()
     {
