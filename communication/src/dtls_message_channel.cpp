@@ -162,7 +162,7 @@ SessionPersist sessionPersist;
 
 #define EXIT_ERROR(x, msg) \
 	if (x) { \
-		LOG(WARN,"DTLS initialization failure: " #msg ": %c%04X",(x<0)?'-':' ',(x<0)?-x:x);\
+		LOG(WARN,"DTLS init failure: " #msg ": %c%04X",(x<0)?'-':' ',(x<0)?-x:x);\
 		return UNKNOWN; \
 	}
 
@@ -221,13 +221,13 @@ ProtocolError DTLSMessageChannel::init(
 	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
 
 	ret = mbedtls_pk_parse_public_key(&pkey, core_public, core_public_len);
-	EXIT_ERROR(ret, "unable to parse device public key");
+	EXIT_ERROR(ret, "unable to parse device pub key");
 
 	ret = mbedtls_pk_parse_key(&pkey, core_private, core_private_len, NULL, 0);
 	EXIT_ERROR(ret, "unable to parse device private key");
 
 	ret = mbedtls_ssl_conf_own_cert(&conf, &clicert, &pkey);
-	EXIT_ERROR(ret, "unable to configure own certificate");
+	EXIT_ERROR(ret, "unable to config own cert");
 
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 	static int ssl_cert_types[] = { MBEDTLS_TLS_CERT_TYPE_RAW_PUBLIC_KEY, MBEDTLS_TLS_CERT_TYPE_NONE };
@@ -330,14 +330,14 @@ ProtocolError DTLSMessageChannel::setup_context()
 
 	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
 	{
-		LOG(ERROR,"unable to allocate certificate storage");
+		LOG(ERROR,"unable to allocate cert storage");
 		return INSUFFICIENT_STORAGE;
 	}
 
 	mbedtls_x509_crt_init(ssl_context.session_negotiate->peer_cert);
 	ret = mbedtls_pk_parse_public_key(&ssl_context.session_negotiate->peer_cert->pk, server_public, server_public_len);
 	if (ret) {
-		LOG(WARN,"unable to parse negotiated public key: -%x", -ret);
+		LOG(WARN,"unable to parse negotiated pub key: -%x", -ret);
 		return IO_ERROR_PARSING_SERVER_PUBLIC_KEY;
 	}
 
@@ -347,7 +347,7 @@ ProtocolError DTLSMessageChannel::setup_context()
 ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_crc)
 {
 	int ret = 0;
-	LOG(INFO,"setup context");
+	// LOG(INFO,"setup context");
 	ProtocolError error = setup_context();
 	if (error) {
 		LOG(ERROR,"setup_contex error %x", error);
@@ -365,9 +365,9 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_
 				sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
 		sessionPersist.make_persistent();
 		uint32_t actual = sessionPersist.application_state_checksum(this->callbacks.calculate_crc);
-		LOG(INFO,"application state checksum: %x, expected: %x", actual, app_state_crc);
+		LOG(INFO,"app state crc: %x, expected: %x", actual, app_state_crc);
 		if (actual==app_state_crc) {
-			LOG(WARN,"skipping sending hello message");
+			LOG(WARN,"skipping hello message");
 			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
 		}
 		LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
@@ -456,7 +456,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
 		if (LOG_ENABLED(TRACE)) {
-		  LOG(TRACE, "message length %d", message.length());
+		  LOG(TRACE, "msg len %d", message.length());
 		  for (size_t i=0; i<message.length(); i++)
 		  {
 				  char buf[3];
@@ -483,8 +483,8 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 	  return bytes < 0 ? IO_ERROR_GENERIC_SEND : NO_ERROR;
   }
 
-#ifdef DEBUG_BUILD
-      LOG(TRACE, "message length %d", message.length());
+#if defined(DEBUG_BUILD) && 0
+      LOG(TRACE, "msg len %d", message.length());
       for (size_t i=0; i<message.length(); i++)
       {
 	  	  char buf[3];
@@ -512,7 +512,7 @@ bool DTLSMessageChannel::is_unreliable()
 
 ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 {
-	LOG(INFO,"session command (CLS,DIS,MOV,LOD,SAV): %d", command);
+	LOG(INFO,"session cmd (CLS,DIS,MOV,LOD,SAV): %d", command);
 	switch (command)
 	{
 	case CLOSE:
