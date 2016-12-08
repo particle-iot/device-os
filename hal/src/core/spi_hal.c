@@ -24,9 +24,11 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include <stddef.h>
 #include "spi_hal.h"
 #include "gpio_hal.h"
 #include "pinmap_impl.h"
+#include "interrupts_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -40,6 +42,7 @@ static bool SPI_Bit_Order_Set = false;
 static bool SPI_Data_Mode_Set = false;
 static bool SPI_Clock_Divider_Set = false;
 static bool SPI_Enabled = false;
+static uint16_t SPI_SS_Pin = SPI_DEFAULT_SS;
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -91,6 +94,8 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 
   SPI_Cmd(SPI1, ENABLE);
 
+  SPI_SS_Pin = pin;
+
   SPI_Enabled = true;
 }
 
@@ -109,7 +114,7 @@ void HAL_SPI_End(HAL_SPI_Interface spi)
   }
 }
 
-void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
+static inline void HAL_SPI_Set_Bit_Order_Impl(HAL_SPI_Interface spi, uint8_t order)
 {
   if(order == LSBFIRST)
   {
@@ -119,19 +124,24 @@ void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
   {
     SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
   }
+}
 
-  SPI_Init(SPI1, &SPI_InitStructure);
+void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
+{
+  HAL_SPI_Set_Bit_Order_Impl(spi, order);
+
+  if(SPI_Enabled != false)
+  {
+    SPI_Cmd(SPI1, DISABLE);
+    SPI_Init(SPI1, &SPI_InitStructure);
+    SPI_Cmd(SPI1, ENABLE);
+  }
 
   SPI_Bit_Order_Set = true;
 }
 
-void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
+static inline void HAL_SPI_Set_Data_Mode_Impl(HAL_SPI_Interface spi, uint8_t mode)
 {
-  if(SPI_Enabled != false)
-  {
-    SPI_Cmd(SPI1, DISABLE);
-  }
-
   switch(mode)
   {
     case SPI_MODE0:
@@ -154,24 +164,59 @@ void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
       SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
       break;
   }
+}
 
-  SPI_Init(SPI1, &SPI_InitStructure);
+void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
+{
+  HAL_SPI_Set_Data_Mode_Impl(spi, mode);
 
   if(SPI_Enabled != false)
   {
+    SPI_Cmd(SPI1, DISABLE);
+    SPI_Init(SPI1, &SPI_InitStructure);
     SPI_Cmd(SPI1, ENABLE);
   }
 
   SPI_Data_Mode_Set = true;
 }
 
-void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
+static inline void HAL_SPI_Set_Clock_Divider_Impl(HAL_SPI_Interface spi, uint8_t rate)
 {
   SPI_InitStructure.SPI_BaudRatePrescaler = rate;
+}
+
+void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
+{
+  HAL_SPI_Set_Clock_Divider_Impl(spi, rate);
 
   SPI_Init(SPI1, &SPI_InitStructure);
 
   SPI_Clock_Divider_Set = true;
+}
+
+int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved)
+{
+    if (!set_default)
+    {
+        HAL_SPI_Set_Clock_Divider_Impl(spi, clockdiv);
+        HAL_SPI_Set_Bit_Order_Impl(spi, order);
+        HAL_SPI_Set_Data_Mode_Impl(spi, mode);
+    }
+
+    SPI_Clock_Divider_Set = !set_default;
+    SPI_Data_Mode_Set = !set_default;
+    SPI_Bit_Order_Set = !set_default;
+
+    if (set_default) {
+        // HAL_SPI_End(spi);
+        HAL_SPI_Begin_Ext(spi, mode, SPI_SS_Pin, NULL);
+    } else if (SPI_Enabled != false) {
+        SPI_Cmd(SPI1, DISABLE);
+        SPI_Init(SPI1, &SPI_InitStructure);
+        SPI_Cmd(SPI1, ENABLE);
+    }
+
+    return 0;
 }
 
 uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
@@ -198,7 +243,22 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
 
 void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
 {
-    info->system_clock = 36000000;
+  info->system_clock = 36000000;
+  if (info->version >= HAL_SPI_INFO_VERSION_1) {
+    int32_t state = HAL_disable_irq();
+    if (SPI_Enabled) {
+      uint32_t prescaler = (1 << ((SPI_InitStructure.SPI_BaudRatePrescaler / 8) + 1));
+      info->clock = info->system_clock / prescaler;
+    } else {
+      info->clock = 0;
+    }
+    info->default_settings = !(SPI_Clock_Divider_Set || SPI_Data_Mode_Set || SPI_Bit_Order_Set);
+    info->enabled = SPI_Enabled;
+    info->mode = SPI_MODE_MASTER;
+    info->bit_order = SPI_InitStructure.SPI_FirstBit == SPI_FirstBit_MSB ? MSBFIRST : LSBFIRST;
+    info->data_mode = SPI_InitStructure.SPI_CPOL | SPI_InitStructure.SPI_CPHA;
+    HAL_enable_irq(state);
+  }
 }
 
 void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved)
