@@ -23,45 +23,14 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
-#include "system_threading.h"
-#include <functional>
+
+// make clean all TEST=wiring/threading PLATFORM=electron -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y
+//
+// Serial1LogHandler log(115200, LOG_LEVEL_ALL, {
+//     { "comm", LOG_LEVEL_NONE }, // filter out comm messages
+//     { "system", LOG_LEVEL_INFO } // only info level for system messages
+// });
 
 UNIT_TEST_APP();
 SYSTEM_THREAD(ENABLED);
 
-volatile int test_val;
-void increment(void)
-{
-	test_val++;
-}
-
-test(system_thread_can_pump_events)
-{
-	WiFi.listen(false);
-    test_val = 0;
-
-    ActiveObjectBase* system = (ActiveObjectBase*)system_internal(1, nullptr); // Returns system thread instance
-    system->invoke_async(std::function<void()>(increment));
-
-    uint32_t start = millis();
-    while (test_val != 1 && millis() - start < 4000); // Busy wait
-
-    assertEqual((int)test_val, 1);
-}
-
-test(application_thread_can_pump_events)
-{
-	test_val = 0;
-
-	ActiveObjectBase* app = (ActiveObjectBase*)system_internal(0, nullptr); // Returns application thread instance
-	std::function<void(void)> fn = increment;
-	app->invoke_async(fn);
-
-	// test value not incremented
-	assertEqual((int)test_val, 0);
-
-    Particle.process();
-
-    // validate the function was called.
-    assertEqual((int)test_val, 1);
-}

@@ -153,6 +153,16 @@ void network_listen(network_handle_t network, uint32_t flags, void*)
     }
 }
 
+void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void*)
+{
+    return nif(network).set_listen_timeout(timeout);
+}
+
+uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, void*)
+{
+    return nif(network).get_listen_timeout();
+}
+
 bool network_listening(network_handle_t network, uint32_t, void*)
 {
     return nif(network).listening();
