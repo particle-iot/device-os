@@ -22,7 +22,27 @@ message if the version is older than this.
 **OS X** users can install the toolchain with [Homebrew](http://brew.sh/):
 - `brew tap PX4/homebrew-px4`
 - `brew update`
-- `brew install gcc-arm-none-eabi-49`
+- copy/paste this in Terminal and press ENTER to create the proper Brew formula
+```
+echo -e "require 'formula'
+
+class GccArmNoneEabi49 < Formula
+  homepage 'https://launchpad.net/gcc-arm-embdded'
+  version '20150306'
+  url 'https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q1-update/+download/gcc-arm-none-eabi-4_9-2015q1-20150306-mac.tar.bz2'
+  sha256 '049469f06c35d1a7c6d333236bc62ed340531c4377b4e16ce8c5aa8d134e8e8b'
+
+  def install
+    ohai 'Copying binaries...'
+    system 'cp', '-rv', 'arm-none-eabi', 'bin', 'lib', 'share', \"#{prefix}/\"
+  end
+end" > /usr/local/Homebrew/Library/Taps/px4/homebrew-px4/gcc-arm-none-eabi-49.rb
+```
+
+- install it!
+```
+brew install gcc-arm-none-eabi-49
+```
 - `arm-none-eabi-gcc --version` (should now say v4.9.x)
 
 If you are upgrading an existing installation you will have to unlink and link your symblinks:
