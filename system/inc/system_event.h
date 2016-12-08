@@ -47,7 +47,7 @@ enum SystemEvents {
     setup_all = wifi_listen,
     network_credentials = 1<<4,
     network_status = 1<<5,
-    //cloud_status = 1<<6,           // parameter is 0 for disconnected, 1 for connecting, 2 for connecting (handshake), 3 for connecting (setup), 8 connected.. other values reserved.
+    cloud_status = 1<<6,             // parameter is 0 for disconnected, 1 for connecting, 8 for connected, 9 for disconnecting. other values reserved.
     button_status = 1<<7,            // parameter is >0 for time pressed in ms (when released) or 0 for just pressed.
     firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
     firmware_update_pending = 1<<9,
@@ -55,6 +55,7 @@ enum SystemEvents {
     reset = 1<<11,                  // notifies that the system will now reset on return from this event.
     button_click = 1<<12,           // generated for every click in series - data is number of clicks in the lower 4 bits.
     button_final_click = 1<<13,     // generated for last click in series - data is the number of clicks in the lower 4 bits.
+    time_changed = 1<<14,
 
     all_events = 0xFFFFFFFFFFFFFFFF
 };
@@ -75,14 +76,21 @@ enum SystemEventsParam {
     network_status_off              = 1<<1 | 1,
     network_status_powering_on      = 2<<1 | 0,
     network_status_on               = 2<<1 | 1,
-    network_status_conneecting      = 3<<1 | 0,
+    network_status_connecting       = 3<<1 | 0,
     network_status_connected        = 3<<1 | 1,
-    network_status_preparing        = 4<<1 | 0,
-    network_status_ready            = 4<<1 | 1,
-    network_status_disconnecting    = 5<<1 | 1,
+    // network_status_preparing        = 4<<1 | 0,
+    // network_status_ready            = 4<<1 | 1,
+    network_status_disconnecting    = 5<<1 | 0,
+    network_status_disconnected     = 5<<1 | 1,
 
-    cloud_status_disconnected = 0,
-    cloud_status_connected = 1,
+    // Cloud connection status
+    cloud_status_disconnected       = 0,
+    cloud_status_connecting         = 1,
+    cloud_status_connected          = 8,
+    cloud_status_disconnecting      = 9,
+
+    time_changed_manually = 0,
+    time_changed_sync = 1
 };
 
 
@@ -101,6 +109,8 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
  * @param reserved  Set to NULL.
  */
 void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved);
+
+void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
 
 #ifdef __cplusplus
 }

@@ -376,6 +376,7 @@ public:
                 LED_SetRGBColor(RGB_COLOR_GREEN);
                 INFO("ARM_WLAN_WD 1");
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
+                system_notify_event(network_status, network_status_connecting);
                 connect_finalize();
             }
         }
@@ -385,14 +386,23 @@ public:
     {
         if (SPARK_WLAN_STARTED)
         {
+            const bool was_connected = WLAN_CONNECTED;
+            const bool was_connecting = WLAN_CONNECTING;
             WLAN_DISCONNECT = 1; //Do not ARM_WLAN_WD() in WLAN_Async_Callback()
             WLAN_CONNECTING = 0;
             WLAN_CONNECTED = 0;
             WLAN_DHCP = 0;
 
             cloud_disconnect();
+            if (was_connected) {
+                // "Disconnecting" event is generated only for a successfully established connection
+                system_notify_event(network_status, network_status_disconnecting);
+            }
             disconnect_now();
             config_clear();
+            if (was_connected || was_connecting) {
+                system_notify_event(network_status, network_status_disconnected);
+            }
         }
     }
 
@@ -410,6 +420,7 @@ public:
     {
         if (!SPARK_WLAN_STARTED)
         {
+            system_notify_event(network_status, network_status_powering_on);
             config_clear();
             on_now();
             update_config(true);
@@ -420,6 +431,7 @@ public:
                 LED_SetRGBColor(RGB_COLOR_BLUE);
                 LED_On(LED_RGB);
             }
+            system_notify_event(network_status, network_status_on);
         }
     }
 
@@ -428,6 +440,8 @@ public:
         if (SPARK_WLAN_STARTED)
         {
             disconnect();
+
+            system_notify_event(network_status, network_status_powering_off);
             off_now();
 
             SPARK_WLAN_SLEEP = 1;
@@ -444,6 +458,7 @@ public:
             SPARK_LED_FADE = 1;
             LED_SetRGBColor(RGB_COLOR_WHITE);
             LED_On(LED_RGB);
+            system_notify_event(network_status, network_status_off);
         }
     }
 
@@ -483,6 +498,8 @@ public:
             SPARK_LED_FADE = 1;
             LED_SetRGBColor(RGB_COLOR_BLUE);
             LED_On(LED_RGB);
+
+            system_notify_event(network_status, network_status_disconnected);
         }
         else if (!WLAN_SMART_CONFIG_ACTIVE)
         {
@@ -516,6 +533,10 @@ public:
             WLAN_DHCP = 1;
             SPARK_LED_FADE = 1;
             WLAN_LISTEN_ON_FAILED_CONNECT = false;
+
+            // notify_dhcp() is called even in case of static IP configuration, so here we notify
+            // final connection state for both dynamic and static IP configurations
+            system_notify_event(network_status, network_status_connected);
         }
         else
         {
@@ -528,6 +549,9 @@ public:
                 INFO("DHCP fail, ARM_WLAN_WD 5");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
             }
+
+            // "Connecting" event should be followed by either "connected" or "disconnected" event
+            system_notify_event(network_status, network_status_disconnected);
         }
     }
 

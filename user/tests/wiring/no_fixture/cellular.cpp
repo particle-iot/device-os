@@ -50,7 +50,7 @@ void consume_all_sockets(uint8_t protocol)
         socket_handle = socket_create(AF_INET, SOCK_STREAM, protocol==IPPROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP, port++, NIF_DEFAULT);
     } while(socket_handle_valid(socket_handle));
 }
-test(CLOUD_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
+test(CELLULAR_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
     //Serial.println("the device will connect to the cloud when all tcp sockets are consumed");
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
@@ -69,7 +69,7 @@ test(CLOUD_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
  * And the device attempts to connect to the Cloud
  * Then the device overcomes this socket obstacle and connects to the Cloud
  */
-test(CLOUD_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
+test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
     //Serial.println("the device will connect to the cloud when all udp sockets are consumed");
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
@@ -79,6 +79,13 @@ test(CLOUD_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
     connect_to_cloud(6*60*1000);
     // Then the device overcomes this socket obstacle and connects to the Cloud
     assertEqual(Particle.connected(), true);
+}
+
+test(CELLULAR_03_close_consumed_sockets) {
+    for (int i = 0; i < 7; i++) {
+        if (socket_handle_valid(i))
+            socket_close(i);
+    }
 }
 
 void checkIPAddress(const char* name, const IPAddress& address)
@@ -92,7 +99,7 @@ void checkIPAddress(const char* name, const IPAddress& address)
     }
 }
 
-test(CLOUD_03_local_ip_cellular_config)
+test(CELLULAR_04_local_ip_cellular_config)
 {
     connect_to_cloud(6*60*1000);
     checkIPAddress("local", Cellular.localIP());
@@ -348,6 +355,72 @@ test(BAND_SELECT_08_restore_defaults) {
     // Then band select will be default
     bool band_select_default = !is_bands_selected_not_equal_to_default_bands(band_sel, band_avail);
     assertEqual(band_select_default, true);
+}
+
+#define LOREM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut elit nec mi bibendum mollis. Nam nec nisl mi. Donec dignissim iaculis purus, ut condimentum arcu semper quis. Phasellus efficitur ut arcu ac dignissim. In interdum sem id dictum luctus. Ut nec mattis sem. Nullam in aliquet lacus. Donec egestas nisi volutpat lobortis sodales. Aenean elementum magna ipsum, vitae pretium tellus lacinia eu. Phasellus commodo nisi at quam tincidunt, tempor gravida mauris facilisis. Duis tristique ligula ac pulvinar consectetur. Cras aliquam, leo ut eleifend molestie, arcu odio semper odio, quis sollicitudin metus libero et lorem. Donec venenatis congue commodo. Vivamus mattis elit metus, sed fringilla neque viverra eu. Phasellus leo urna, elementum vel pharetra sit amet, auctor non sapien. Phasellus at justo ac augue rutrum vulputate. In hac habitasse platea dictumst. Pellentesque nibh eros, placerat id laoreet sed, dapibus efficitur augue. Praesent pretium diam ac sem varius fermentum. Nunc suscipit dui risus sed"
+
+test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
+    // https://github.com/spark/firmware/issues/1104
+    const char request[] =
+        "POST /post HTTP/1.1\r\n"
+        "Host: httpbin.org\r\n"
+        "Connection: close\r\n"
+        "Content-Type: multipart/form-data; boundary=-------------aaaaaaaa\r\n"
+        "Content-Length: 1124\r\n"
+        "\r\n"
+        "---------------aaaaaaaa\r\n"
+        "Content-Disposition: form-data; name=\"field\"\r\n"
+        "\r\n"
+        LOREM "\r\n"
+        "---------------aaaaaaaa--\r\n";
+    const int requestSize = sizeof(request) - 1;
+
+    Cellular.connect();
+    waitFor(Cellular.ready, 60000);
+
+    TCPClient c;
+    int res = c.connect("httpbin.org", 80);
+
+    int sz = c.write((const uint8_t*)request, requestSize);
+    assertEqual(sz, requestSize);
+
+    char* responseBuf = new char[2048];
+    memset(responseBuf, 0, sizeof(responseBuf));
+    int responseSize = 0;
+    uint32_t mil = millis();
+    while(1) {
+        while (c.available()) {
+            responseBuf[responseSize++] = c.read();
+        }
+        if (!c.connected())
+            break;
+        if (millis() - mil >= 60000) {
+            break;
+        }
+    }
+
+    bool contains = false;
+    if (responseSize > 0 && !c.connected()) {
+        contains = strstr(responseBuf, LOREM) != nullptr;
+    }
+
+    delete responseBuf;
+
+    assertTrue(contains);
+}
+
+static int atCallback(int type, const char* buf, int len, int* lines) {
+    if (len && type == TYPE_UNKNOWN)
+        (*lines)++;
+    return WAIT;
+}
+
+test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
+    // https://github.com/spark/firmware/issues/1138
+    int lines = 0;
+    int ret = Cellular.command(atCallback, &lines, 10000, "AT+CLAC\r\n");
+    assertEqual(ret, (int)RESP_OK);
+    assertMoreOrEqual(lines, 200);
 }
 
 #endif

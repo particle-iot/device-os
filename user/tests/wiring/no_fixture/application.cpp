@@ -2,6 +2,7 @@
 #include "unit-test/unit-test.h"
 
 // make clean all TEST=wiring/no_fixture PLATFORM=electron -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y
+// make clean all TEST=wiring/no_fixture PLATFORM=electron -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y USE_THREADING=y
 //
 // Serial1LogHandler log(115200, LOG_LEVEL_ALL, {
 //     { "comm", LOG_LEVEL_NONE }, // filter out comm messages
@@ -9,3 +10,8 @@
 // });
 
 UNIT_TEST_APP();
+
+// Enable threading if compiled with "USE_THREADING=y"
+#if PLATFORM_THREADING == 1 && USE_THREADING == 1
+SYSTEM_THREAD(ENABLED);
+#endif

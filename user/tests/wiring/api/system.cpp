@@ -146,6 +146,32 @@ void handler_event_data(system_event_t event, int data)
 
 void handler_event_data_param(system_event_t event, int data, void* param)
 {
+    switch (event) {
+    case network_status: {
+        switch (data) {
+        case network_status_powering_off:
+        case network_status_off:
+        case network_status_powering_on:
+        case network_status_on:
+        case network_status_connecting:
+        case network_status_connected:
+        case network_status_disconnecting:
+        case network_status_disconnected:
+            break;
+        }
+    }
+    case cloud_status: {
+        switch (data) {
+        case cloud_status_disconnected:
+        case cloud_status_connecting:
+        case cloud_status_connected:
+        case cloud_status_disconnecting:
+            break;
+        }
+    }
+    default:
+        break;
+    }
 }
 
 test(system_events)
@@ -153,7 +179,7 @@ test(system_events)
     int clicks = system_button_clicks(123);
     system_event_t my_events = wifi_listen_begin + wifi_listen_end + wifi_listen_update +
                                setup_begin + setup_end + setup_update + network_credentials +
-                               network_status + button_status + button_click + button_final_click +
+                               network_status + cloud_status + button_status + button_click + button_final_click +
                                reset + reset_pending + firmware_update + firmware_update_pending +
                                all_events;
 

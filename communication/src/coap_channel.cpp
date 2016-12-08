@@ -19,6 +19,7 @@
 
 #include "coap_channel.h"
 #include "service_debug.h"
+#include "messages.h"
 
 namespace particle { namespace protocol {
 
@@ -151,6 +152,14 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 	return NO_ERROR;
 }
 
+bool CoAPMessageStore::has_unacknowledged_requests() const
+{
+	for (const CoAPMessage* msg = head; msg != nullptr; msg = msg->get_next()) {
+		if (is_confirmable((uint8_t*)msg->get_data()))
+			return true;
+	}
 
+	return false;
+}
 
 }}

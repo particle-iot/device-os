@@ -1,3 +1,4 @@
+#ifndef HAL_CELLULAR_EXCLUDE
 
 #include "cellular_hal.h"
 #include "cellular_internal.h"
@@ -6,6 +7,36 @@
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
 
 static CellularCredentials cellularCredentials;
+
+static HAL_NET_Callbacks netCallbacks = { 0 };
+
+void HAL_NET_notify_connected()
+{
+    if (netCallbacks.notify_connected) {
+        netCallbacks.notify_connected();
+    }
+}
+
+void HAL_NET_notify_disconnected()
+{
+    if (netCallbacks.notify_disconnected) {
+        netCallbacks.notify_disconnected();
+    }
+}
+
+void HAL_NET_notify_dhcp(bool dhcp)
+{
+    if (netCallbacks.notify_dhcp) {
+        netCallbacks.notify_dhcp(dhcp); // dhcp dhcp
+    }
+}
+
+void HAL_NET_notify_can_shutdown()
+{
+    if (netCallbacks.notify_can_shutdown) {
+        netCallbacks.notify_can_shutdown();
+    }
+}
 
 cellular_result_t  cellular_on(void* reserved)
 {
@@ -111,6 +142,14 @@ bool cellular_sim_ready(void* reserved)
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInuS)
 {
     return 0;
+}
+
+void HAL_NET_SetCallbacks(const HAL_NET_Callbacks* callbacks, void* reserved)
+{
+    netCallbacks.notify_connected = callbacks->notify_connected;
+    netCallbacks.notify_disconnected = callbacks->notify_disconnected;
+    netCallbacks.notify_dhcp = callbacks->notify_dhcp;
+    netCallbacks.notify_can_shutdown = callbacks->notify_can_shutdown;
 }
 
 void cellular_cancel(bool cancel, bool calledFromISR, void*)
@@ -238,3 +277,17 @@ cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, voi
     }
     return -1;
 }
+
+cellular_result_t cellular_pause(void* reserved)
+{
+    electronMDM.pause();
+    return 0;
+}
+
+cellular_result_t cellular_resume(void* reserved)
+{
+    electronMDM.resume();
+    return 0;
+}
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)

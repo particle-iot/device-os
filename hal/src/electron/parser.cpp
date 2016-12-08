@@ -16,7 +16,10 @@
  ******************************************************************************
  */
 
+#ifndef HAL_CELLULAR_EXCLUDE
 
 #include "modem/mdm_hal.h"
 
 MDMElectronSerial electronMDM;
+
+#endif // !defined(HAL_CELLULAR_EXCLUDE)

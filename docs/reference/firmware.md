@@ -606,6 +606,120 @@ void loop() {
 Note that this function sends a request message to the Cloud and then returns.
 The time on the device will not be synchronized until some milliseconds later
 when the Cloud responds with the current time between calls to your loop.
+See [`Particle.syncTimeDone()`](#particle-synctimedone-), [`Particle.timeSyncedLast()`](#particle-timesyncedlast-), [`Time.isValid()`](#isvalid-) and [`Particle.syncTimePending()`](#particle-synctimepending-) for information on how to wait for request to be finished.
+
+### Particle.syncTimeDone()
+
+_Since 0.7.0_
+
+Returns `true` if there is no `syncTime()` request currently pending or there is no active connection to Particle Cloud. Returns `false` when there is a pending `syncTime()` request.
+
+```C++
+// SYNTAX
+Particle.syncTimeDone();
+
+// RETURNS
+// boolean (true or false)
+```
+
+```C++
+// EXAMPLE
+
+void loop()
+{
+  // Request time synchronization from the Particle Cloud
+  Particle.syncTime();
+  // Wait until {{device}} receives time from Particle Cloud (or connection to Particle Cloud is lost)
+  waitUntil(Particle.syncTimeDone);
+  // Print current time
+  Serial.println(Time.timeStr());
+}
+```
+
+See also [`Particle.timeSyncedLast()`](#particle-timesyncedlast-) and [`Time.isValid()`](#isvalid-).
+
+### Particle.syncTimePending()
+
+_Since 0.7.0_
+
+Returns `true` if there a `syncTime()` request currently pending. Returns `false` when there is no `syncTime()` request pending or there is no active connection to Particle Cloud.
+
+```C++
+// SYNTAX
+Particle.syncTimePending();
+
+// RETURNS
+// boolean (true or false)
+```
+
+```C++
+// EXAMPLE
+
+void loop()
+{
+  // Request time synchronization from the Particle Cloud
+  Particle.syncTime();
+  // Wait until {{device}} receives time from Particle Cloud (or connection to Particle Cloud is lost)
+  while(Particle.syncTimePending())
+  {
+    //
+    // Do something else
+    //
+
+    Particle.process();
+  }
+  // Print current time
+  Serial.println(Time.timeStr());
+}
+```
+
+See also [`Particle.timeSyncedLast()`](#particle-timesyncedlast-) and [`Time.isValid()`](#isvalid-).
+
+### Particle.timeSyncedLast()
+
+_Since 0.7.0_
+
+Used to check when time was last synchronized with Particle Cloud.
+
+```C++
+// SYNTAX
+Particle.timeSyncedLast();
+Particle.timeSyncedLast(timestamp);
+```
+
+Returns the number of milliseconds since the device began running the current program when last time synchronization with Particle Cloud was performed.
+
+This function takes one optional argument:
+- `timestamp`: `time_t` variable that will contain a UNIX timestamp received from Particle Cloud during last time synchronization
+
+```C++
+// EXAMPLE
+#define ONE_DAY_MILLIS (24 * 60 * 60 * 1000)
+
+void loop() {
+  time_t lastSyncTimestamp;
+  unsigned long lastSync = Particle.timeSyncedLast(lastSyncTimestamp);
+  if (millis() - lastSync > ONE_DAY_MILLIS) {
+    unsigned long cur = millis();
+    Serial.printlnf("Time was last synchronized %lu milliseconds ago", millis() - lastSync);
+    if (lastSyncTimestamp > 0)
+    {
+      Serial.print("Time received from Particle Cloud was: ");
+      Serial.println(Time.timeStr(lastSyncTimestamp));
+    }
+    // Request time synchronization from Particle Cloud
+    Particle.syncTime();
+    // Wait until {{device}} receives time from Particle Cloud (or connection to Particle Cloud is lost)
+    waitUntil(Particle.syncTimeDone);
+    // Check if synchronized successfully
+    if (Particle.timeSyncedLast() >= cur)
+    {
+      // Print current time
+      Serial.println(Time.timeStr());
+    }
+  }
+}
+```
 
 ### Get Public IP
 
@@ -6037,6 +6151,42 @@ void loop()
 }
 ```
 
+### isValid()
+
+_Since 0.7.0_
+
+```cpp
+// SYNTAX
+Time.isValid();
+```
+
+Used to check if current time is valid. This function will return `true` if:
+- Time has been set manually using [`Time.setTime()`](#settime-)
+- Time has been successfully synchronized with the Particle Cloud. The device synchronizes time with the Particle Cloud during the handshake. The application may also manually synchronize time with Particle Cloud using [`Particle.syncTime()`](#particle-synctime-)
+- Correct time has been maintained by RTC.{{#unless core}} See information on [`Backup RAM (SRAM)`](#backup-ram-sram-) for cases when RTC retains the time. RTC is part of the backup domain and retains its counters under the same conditions as Backup RAM.{{/unless}}
+
+**NOTE:** When {{device}} is running in `AUTOMATIC` mode {{#unless core}}and threading is disabled {{/unless}} this function will block if current time is not valid and there is an active connection to Particle Cloud. Once {{device}} synchronizes the time with Particle Cloud or the connection to Particle Cloud is lost, `Time.isValid()` will return its current state. This function is also implicitly called by any `Time` function that returns current time or date (e.g. `Time.hour()`/`Time.now()`/etc).
+
+```cpp
+// Print true or false depending on whether current time is valid
+Serial.print(Time.isValid());
+```
+
+```cpp
+void setup()
+{
+  // Wait for time to be synchronized with Particle Cloud (requires active connection)
+  waitFor(Time.isValid, 60000);
+}
+
+void loop()
+{
+  // Print current time
+  Serial.println(Time.timeStr());
+}
+
+```
+
 ## Interrupts
 
 Interrupts are a way to write code that is run when an external event occurs.
@@ -7152,13 +7302,16 @@ These are the system events produced by the system, their numeric value (what yo
 | setup_update | 4 | periodic event signalling the device is still in setup mode. | milliseconds since setup mode was started |
 | setup_end | 8 | signals setup mode was exited | time in ms since setup mode was started |
 | network_credentials | 16 | network credentials were changed | `network_credentials_added` or `network_credentials_cleared` |
+| network_status | 32 | network connection status | one of `network_status_powering_on`, `network_status_on`, `network_status_powering_off`, `network_status_off`, `network_status_connecting`, `network_status_connected` |
+| cloud_status | 64 | cloud connection status | one of `cloud_status_connecting`, `cloud_status_connected`, `cloud_status_disconnecting`, `cloud_status_disconnected` |
  | button_status | 128 | button pressed or releasesed | the duration in ms the button was pressed: 0 when pressed, >0 on release. |
- | firmware_update | 256 | firmwarwe update status | one of `firmware_update_begin`, `firmware_update_progress`, `firmware_update_complete`, `firmware_update_failed` |
+ | firmware_update | 256 | firmware update status | one of `firmware_update_begin`, `firmware_update_progress`, `firmware_update_complete`, `firmware_update_failed` |
  | firmware_update_pending | 512 | notifies the application that a firmware update is available. This event is sent even when updates are disabled, giving the application chance to re-enable firmware updates with `System.enableUpdates()` | not used |
  | reset_pending | 1024 | notifies the application that the system would like to reset. This event is sent even when resets are disabled, giving the application chance to re-enable resets with `System.enableReset()` | not used |
  | reset | 2048 | notifies that the system will reset once the application has completed handling this event | not used |
  | button_click | 4096 | event sent each time setup button is clicked. | `int clicks = system_button_clicks(param); ` retrieves the number of clicks so far. |
 | button_final_click | 8192 | sent after a run of one or more clicks not followed by additional clicks. Unlike the `button_click` event, the `button_final_click` event is sent once, at the end of a series of clicks. | `int clicks = system_button_clicks(param); ` retrieves the number of times the button was pushed. |
+| time_changed | 16384 | device time changed | `time_changed_manually` or `time_changed_sync` |
 
 
 ## System Modes
