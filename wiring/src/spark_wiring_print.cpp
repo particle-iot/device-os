@@ -107,6 +107,11 @@ size_t Print::print(double n, int digits)
    return x.printTo(*this);
  }
 
+size_t Print::print(const __FlashStringHelper* str)
+{
+  return print(reinterpret_cast<const char*>(str));
+}
+
 size_t Print::println(void)
 {
   size_t n = print('\r');
@@ -176,6 +181,11 @@ size_t Print::println(double num, int digits)
    n += println();
    return n;
  }
+
+size_t Print::println(const __FlashStringHelper* str)
+{
+  return println(reinterpret_cast<const char*>(str));
+}
 
 // Private Methods /////////////////////////////////////////////////////////////
 

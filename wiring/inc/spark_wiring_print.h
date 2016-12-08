@@ -40,6 +40,7 @@ const unsigned char OCT = 8;
 const unsigned char BIN = 2;
 
 class String;
+class __FlashStringHelper;
 
 class Print
 {
@@ -74,6 +75,7 @@ class Print
     size_t print(unsigned long, int = DEC);
     size_t print(double, int = 2);
     size_t print(const Printable&);
+    size_t print(const __FlashStringHelper*);
 
     size_t println(const char[]);
     size_t println(char);
@@ -85,6 +87,7 @@ class Print
     size_t println(double, int = 2);
     size_t println(const Printable&);
     size_t println(void);
+    size_t println(const __FlashStringHelper*);
 
     template <typename... Args>
     inline size_t printf(const char* format, Args... args)
