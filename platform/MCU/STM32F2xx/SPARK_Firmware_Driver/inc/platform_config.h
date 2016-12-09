@@ -92,6 +92,7 @@
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define BUTTON1_EXTI_IRQ_INDEX              24
 #define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
+#define BUTTON1_MIRROR_SUPPORTED            1
 #elif PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
       PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID || \
       PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || \
@@ -111,6 +112,7 @@
 #define BUTTON1_EXTI_IRQ_PRIORITY           7
 #define BUTTON1_EXTI_IRQ_INDEX              39
 #define BUTTON1_EXTI_TRIGGER                EXTI_Trigger_Falling
+#define BUTTON1_MIRROR_SUPPORTED            1
 #endif
 
 #define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */

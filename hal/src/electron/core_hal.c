@@ -510,7 +510,7 @@ void EXTI9_5_IRQHandler(void)
 
     if (EXTI_GetITStatus(EXTI_Line7) != RESET)
     {
-        Handle_Mode_Button_EXTI_irq();
+        Handle_Mode_Button_EXTI_irq(BUTTON1);
     }
 
     if (EXTI_GetITStatus(EXTI_Line8) != RESET)

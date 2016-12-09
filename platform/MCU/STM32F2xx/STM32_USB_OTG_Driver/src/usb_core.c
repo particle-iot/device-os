@@ -26,6 +26,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "usb_conf.h"
 #include "usb_core.h"
 #include "usb_bsp.h"
 

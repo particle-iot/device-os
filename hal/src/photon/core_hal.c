@@ -142,7 +142,7 @@ void Mode_Button_EXTI_irq(void)
 {
     void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[ButtonExtiIndex];
 
-    Handle_Mode_Button_EXTI_irq();
+    Handle_Mode_Button_EXTI_irq(BUTTON1);
 
     chain();
 }

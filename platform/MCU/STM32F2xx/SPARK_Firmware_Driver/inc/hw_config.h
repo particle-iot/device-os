@@ -48,13 +48,38 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
-	BUTTON1 = 0
+  BUTTON1 = 0,
+  BUTTON1_MIRROR = 1
 } Button_TypeDef;
 
 typedef enum
 {
 	BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1
 } ButtonMode_TypeDef;
+
+typedef struct {
+  __IO uint8_t active;
+  GPIO_TypeDef* port;
+  uint16_t pin;
+  union {
+    uint16_t clk;
+    uint16_t hal_pin;
+  };
+  union {
+    GPIOMode_TypeDef mode;
+    uint16_t interrupt_mode;
+  };
+  GPIOPuPd_TypeDef pupd;
+  __IO uint16_t debounce_time;
+  uint16_t exti_line;
+  uint16_t exti_port_source;
+  uint16_t exti_pin_source;
+  uint16_t exti_irqn;
+  uint16_t exti_irq_prio;
+  EXTITrigger_TypeDef exti_trigger;
+} button_config_t;
+
+extern button_config_t HAL_Buttons[];
 
 /* Exported constants --------------------------------------------------------*/
 

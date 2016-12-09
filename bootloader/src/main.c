@@ -29,6 +29,7 @@
 #include "dfu_hal.h"
 #include "hw_config.h"
 #include "rgbled.h"
+#include "button.h"
 
 void platform_startup();
 
@@ -110,6 +111,7 @@ int main(void)
     //    Configure the MODE button
     //--------------------------------------------------------------------------
     Set_System();
+    BUTTON_Init_Ext();
 
     //--------------------------------------------------------------------------
 
@@ -261,7 +263,7 @@ int main(void)
     //--------------------------------------------------------------------------
     //    Check if BUTTON1 is pressed and determine the status
     //--------------------------------------------------------------------------
-    if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED && (features & BL_BUTTON_FEATURES))
+    if (BUTTON_Is_Pressed(BUTTON1) && (features & BL_BUTTON_FEATURES))
     {
 #define TIMING_SAFE_MODE 1000
 #define TIMING_DFU_MODE 3000
@@ -273,23 +275,23 @@ int main(void)
 
         TimingBUTTON = TIMING_ALL;
         uint8_t factory_reset = 0;
-        while (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED && TimingBUTTON)
+        while (BUTTON_Is_Pressed(BUTTON1) && TimingBUTTON)
         {
-            if(TimingBUTTON < (TIMING_ALL-TIMING_RESET_MODE))
+            if(BUTTON_Pressed_Time(BUTTON1) > TIMING_RESET_MODE)
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
                 LED_SetRGBColor(RGB_COLOR_WHITE);
                 SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
             }
-            else if(!factory_reset && TimingBUTTON <= (TIMING_ALL-TIMING_RESTORE_MODE))
+            else if(!factory_reset && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESTORE_MODE)
             {
                 // if pressed for > 6.5 sec, enter firmware reset
                 LED_SetRGBColor(RGB_COLOR_GREEN);
                 SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
                 factory_reset = 1;
             }
-            else if(!USB_DFU_MODE && TimingBUTTON <= (TIMING_ALL-TIMING_DFU_MODE))
+            else if(!USB_DFU_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_DFU_MODE)
             {
                 // if pressed for > 3 sec, enter USB DFU Mode
                 if (features&BL_FEATURE_DFU_MODE) {
@@ -299,7 +301,7 @@ int main(void)
                 if (!factory_reset_available)
                     break;
             }
-            else if(!SAFE_MODE && TimingBUTTON <= TIMING_ALL-TIMING_SAFE_MODE)
+            else if(!SAFE_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_SAFE_MODE)
             {
                 OTA_FLASH_AVAILABLE = 0;
                 REFLASH_FROM_BACKUP = 0;

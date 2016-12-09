@@ -50,19 +50,30 @@ const uint32_t LED_GPIO_CLK[] = {LED1_GPIO_CLK, LED2_GPIO_CLK, LED3_GPIO_CLK, LE
 const uint8_t LED_GPIO_PIN_SOURCE[] = {LED1_GPIO_PIN_SOURCE, LED2_GPIO_PIN_SOURCE, LED3_GPIO_PIN_SOURCE, LED4_GPIO_PIN_SOURCE};
 const uint8_t LED_GPIO_AF_TIM[] = {LED1_GPIO_AF_TIM, LED2_GPIO_AF_TIM, LED3_GPIO_AF_TIM, LED4_GPIO_AF_TIM};
 
-GPIO_TypeDef* BUTTON_GPIO_PORT[] = {BUTTON1_GPIO_PORT};
-const uint16_t BUTTON_GPIO_PIN[] = {BUTTON1_GPIO_PIN};
-const uint32_t BUTTON_GPIO_CLK[] = {BUTTON1_GPIO_CLK};
-GPIOMode_TypeDef BUTTON_GPIO_MODE[] = {BUTTON1_GPIO_MODE};
-GPIOPuPd_TypeDef BUTTON_GPIO_PUPD[] = {BUTTON1_GPIO_PUPD};
-__IO uint16_t BUTTON_DEBOUNCED_TIME[] = {0};
+button_config_t HAL_Buttons[] = {
+    {
+        .active = 0,
+        .port = BUTTON1_GPIO_PORT,
+        .pin = BUTTON1_GPIO_PIN,
+        .clk = BUTTON1_GPIO_CLK,
+        .mode = BUTTON1_GPIO_MODE,
+        .pupd = BUTTON1_GPIO_PUPD,
+        .debounce_time = 0,
 
-const uint16_t BUTTON_EXTI_LINE[] = {BUTTON1_EXTI_LINE};
-const uint16_t BUTTON_EXTI_PORT_SOURCE[] = {BUTTON1_EXTI_PORT_SOURCE};
-const uint16_t BUTTON_EXTI_PIN_SOURCE[] = {BUTTON1_EXTI_PIN_SOURCE};
-const uint16_t BUTTON_EXTI_IRQn[] = {BUTTON1_EXTI_IRQn};
-const uint8_t BUTTON_EXTI_IRQ_PRIORITY[] = {BUTTON1_EXTI_IRQ_PRIORITY};
-EXTITrigger_TypeDef BUTTON_EXTI_TRIGGER[] = {BUTTON1_EXTI_TRIGGER};
+        .exti_line = BUTTON1_EXTI_LINE,
+        .exti_port_source = BUTTON1_EXTI_PORT_SOURCE,
+        .exti_pin_source = BUTTON1_EXTI_PIN_SOURCE,
+        .exti_irqn = BUTTON1_EXTI_IRQn,
+        .exti_irq_prio = BUTTON1_EXTI_IRQ_PRIORITY,
+        .exti_trigger = BUTTON1_EXTI_TRIGGER
+    },
+    {
+        .active = 0,
+        .port = NULL,
+        .debounce_time = 0,
+        .exti_line = 0
+    }
+};
 
 /* Extern variables ----------------------------------------------------------*/
 extern USB_OTG_CORE_HANDLE USB_OTG_dev;
@@ -378,18 +389,28 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
     NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Enable the BUTTON Clock */
-    RCC_AHB1PeriphClockCmd(BUTTON_GPIO_CLK[Button], ENABLE);
+    RCC_AHB1PeriphClockCmd(HAL_Buttons[Button].clk, ENABLE);
 
     /* Configure Button pin */
-    GPIO_InitStructure.GPIO_Pin = BUTTON_GPIO_PIN[Button];
-    GPIO_InitStructure.GPIO_Mode = BUTTON_GPIO_MODE[Button];
-    GPIO_InitStructure.GPIO_PuPd = BUTTON_GPIO_PUPD[Button];
-    GPIO_Init(BUTTON_GPIO_PORT[Button], &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin = HAL_Buttons[Button].pin;
+    GPIO_InitStructure.GPIO_Mode = HAL_Buttons[Button].mode;
+    GPIO_InitStructure.GPIO_PuPd = HAL_Buttons[Button].pupd;
+    GPIO_Init(HAL_Buttons[Button].port, &GPIO_InitStructure);
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
         /* Disable TIM2 CC1 Interrupt */
         TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
+
+        /* Enable the Button EXTI Interrupt */
+        NVIC_InitStructure.NVIC_IRQChannel = HAL_Buttons[Button].exti_irqn;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = HAL_Buttons[Button].exti_irq_prio;
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+        BUTTON_EXTI_Config(Button, ENABLE);
+
+        NVIC_Init(&NVIC_InitStructure);
 
         /* Enable the TIM2 Interrupt */
         NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
@@ -398,16 +419,6 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
         NVIC_Init(&NVIC_InitStructure);
-
-        /* Enable the Button EXTI Interrupt */
-        NVIC_InitStructure.NVIC_IRQChannel = BUTTON_EXTI_IRQn[Button];
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = BUTTON_EXTI_IRQ_PRIORITY[Button];
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
-        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-        NVIC_Init(&NVIC_InitStructure);
-
-        BUTTON_EXTI_Config(Button, ENABLE);
     }
 }
 
@@ -416,17 +427,20 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
     EXTI_InitTypeDef EXTI_InitStructure;
 
     /* Connect Button EXTI Line to Button GPIO Pin */
-    SYSCFG_EXTILineConfig(BUTTON_EXTI_PORT_SOURCE[Button], BUTTON_EXTI_PIN_SOURCE[Button]);
+    SYSCFG_EXTILineConfig(HAL_Buttons[Button].exti_port_source, HAL_Buttons[Button].exti_pin_source);
 
     /* Clear the EXTI line pending flag */
-    EXTI_ClearFlag(BUTTON_EXTI_LINE[Button]);
+    EXTI_ClearITPendingBit(HAL_Buttons[Button].exti_line);
 
     /* Configure Button EXTI line */
-    EXTI_InitStructure.EXTI_Line = BUTTON_EXTI_LINE[Button];
+    EXTI_InitStructure.EXTI_Line = HAL_Buttons[Button].exti_line;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = BUTTON_EXTI_TRIGGER[Button];
+    EXTI_InitStructure.EXTI_Trigger = HAL_Buttons[Button].exti_trigger;
     EXTI_InitStructure.EXTI_LineCmd = NewState;
     EXTI_Init(&EXTI_InitStructure);
+
+    /* Clear the EXTI line pending flag */
+    EXTI_ClearITPendingBit(HAL_Buttons[Button].exti_line);
 }
 
 /**
@@ -438,7 +452,7 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
  */
 uint8_t BUTTON_GetState(Button_TypeDef Button)
 {
-    return GPIO_ReadInputDataBit(BUTTON_GPIO_PORT[Button], BUTTON_GPIO_PIN[Button]);
+    return GPIO_ReadInputDataBit(HAL_Buttons[Button].port, HAL_Buttons[Button].pin);
 }
 
 /**
@@ -450,12 +464,12 @@ uint8_t BUTTON_GetState(Button_TypeDef Button)
  */
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
 {
-    return BUTTON_DEBOUNCED_TIME[Button];
+    return HAL_Buttons[Button].debounce_time;
 }
 
 void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 {
-    BUTTON_DEBOUNCED_TIME[Button] = 0;
+    HAL_Buttons[Button].debounce_time = 0;
 }
 
 #ifdef HAS_SERIAL_FLASH
