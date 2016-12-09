@@ -306,7 +306,7 @@ void system_power_management_update()
         static bool wasCharging = false; // Whether the battery was charging last time when this function was called
         const uint8_t status = power.getSystemStatus();
         const bool charging = (status >> 4) & 0x03;
-        if (!charging && wasCharging) { // Check if charging has been stopped
+        if (charging && !wasCharging) { // Check if the battery has started to charge
             lowBattEventNotified = false; // Allow 'low_battery' event to be generated again
         }
         wasCharging = charging;
