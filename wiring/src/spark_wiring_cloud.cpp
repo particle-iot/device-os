@@ -1,5 +1,7 @@
 #include "spark_wiring_cloud.h"
 
+#include "spark_wiring_async.h"
+
 int CloudClass::call_raw_user_function(void* data, const char* param, void* reserved)
 {
     user_function_int_str_t* fn = (user_function_int_str_t*)(data);
@@ -30,7 +32,7 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
 
-spark::Future<void> CloudClass::publish(const char *eventName, const char *eventData, int ttl, uint32_t flags) {
+bool CloudClass::publish(const char *eventName, const char *eventData, int ttl, uint32_t flags) {
 #ifndef SPARK_NO_CLOUD
     spark_send_event_data d = { sizeof(spark_send_event_data) };
 
@@ -45,8 +47,10 @@ spark::Future<void> CloudClass::publish(const char *eventName, const char *event
         p.fromDataPtr(d.handler_data); // Free wrapper object
     }
 
-    return p.future();
+    // TODO: Return future object instead of synchronous waiting
+    spark::Future<void> f = p.future();
+    return f.wait().isSucceeded();
 #else
-    return spark::Future<void>::makeFailed(spark::Error::NOT_SUPPORTED);
+    return false; // spark::Future<void>::makeFailed(spark::Error::NOT_SUPPORTED);
 #endif
 }

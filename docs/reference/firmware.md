@@ -356,6 +356,18 @@ Particle.publish("t", temperature, ttl, PRIVATE, NO_ACK);
 
 {{/if}}
 
+*`WITH_ACK` flag*
+
+This flag causes `Particle.publish()` to return only after receiving an acknowledgement that the published event has been received by the Cloud.
+
+```C++
+// SYNTAX
+
+Particle.publish("motion-detected", NULL, WITH_ACK);
+Particle.publish("motion-detected", NULL, PRIVATE, WITH_ACK);
+Particle.publish("motion-detected", NULL, ttl, PRIVATE, WITH_ACK);
+```
+
 
 ### Particle.subscribe()
 
