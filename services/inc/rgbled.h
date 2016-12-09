@@ -32,6 +32,8 @@ typedef enum
 #define RGB_COLOR_ORANGE        0xFF6000
 #define RGB_COLOR_GREY          0x1F1F1F
 
+extern volatile uint8_t led_rgb_brightness;
+
 void LED_SetRGBColor(uint32_t RGB_Color);
 void LED_SetSignalingColor(uint32_t RGB_Color);
 void LED_Signaling_Start(void);

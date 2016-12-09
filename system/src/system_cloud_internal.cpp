@@ -61,8 +61,6 @@ static void formatResetReasonEventData(int reason, uint32_t data, char *buf, siz
 
 static sock_handle_t sparkSocket = socket_handle_invalid();
 
-extern uint8_t LED_RGB_BRIGHTNESS;
-
 // LED_Signaling_Override
 volatile uint8_t LED_Spark_Signal;
 const uint32_t VIBGYOR_Colors[] = {

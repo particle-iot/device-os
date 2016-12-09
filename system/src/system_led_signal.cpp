@@ -92,7 +92,7 @@ const size_t THEME_DATA_SIZE = 37; // 8 palette colors (3 bytes each) + 13 signa
 static_assert(THEME_DATA_SIZE == LED_PALETTE_COLOR_COUNT * 3 + LED_SIGNAL_COUNT * 1,
         "Invalid THEME_DATA_SIZE");
 
-static_assert(THEME_DATA_SIZE <= (DCT_LED_THEME_SIZE - 1), // 1 byte in DCT is reserved for theme flags
+static_assert(THEME_DATA_SIZE <= (DCT_LED_THEME_SIZE - 1), // 1 byte in DCT is reserved for theme version
         "THEME_DATA_SIZE is greater than size of LED theme section in DCT");
 
 static_assert(sizeof(DEFAULT_THEME_DATA) == THEME_DATA_SIZE,
@@ -143,18 +143,18 @@ public:
             LEDThemeData t = { LED_THEME_DATA_VERSION };
             deserializeTheme(t, (const char*)DEFAULT_THEME_DATA, THEME_DATA_SIZE);
             setTheme(t);
-            // Reset theme flags in DCT
-            const uint8_t flags = 0xff;
-            dct_write_app_data(&flags, DCT_LED_THEME_OFFSET, 1);
+            // Reset theme version in DCT
+            const uint8_t version = 0xff;
+            dct_write_app_data(&version, DCT_LED_THEME_OFFSET, 1);
             return true;
         } else if (theme->version == LED_THEME_DATA_VERSION) {
             setTheme(*theme);
             // Write theme data to DCT
             char data[THEME_DATA_SIZE];
             serializeTheme(*theme, data, sizeof(data));
-            const uint8_t flags = 0;
-            dct_write_app_data(&flags, DCT_LED_THEME_OFFSET, 1); // Set theme flags
-            dct_write_app_data(data, DCT_LED_THEME_OFFSET + 1, sizeof(data)); // Set theme data
+            const uint8_t version = LED_THEME_DATA_VERSION;
+            dct_write_app_data(&version, DCT_LED_THEME_OFFSET, 1); // Write version
+            dct_write_app_data(data, DCT_LED_THEME_OFFSET + 1, sizeof(data)); // Write theme data
             return true;
         }
         return false;
@@ -179,7 +179,7 @@ private:
     LEDStatusData statusData_[LED_SIGNAL_COUNT];
 
     void setTheme(const LEDThemeData& theme) {
-        led_set_updates_enabled(false, nullptr); // Disable LED updates
+        led_set_updates_enabled(0, nullptr); // Disable LED updates
         for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
             const LEDThemeSignalData& signal = theme.signals[i];
             LEDStatusData& status = statusData_[i];
@@ -188,7 +188,7 @@ private:
             status.pattern = signal.pattern;
             status.speed = signal.speed;
         }
-        led_set_updates_enabled(true, nullptr); // Enable LED updates
+        led_set_updates_enabled(1, nullptr); // Enable LED updates
     }
 
     void initStatusData() {
@@ -198,7 +198,6 @@ private:
             s.next = nullptr;
             s.prev = nullptr;
             s.color = 0;
-            s.value = 255;
             s.pattern = LED_PATTERN_INVALID;
             s.speed = LED_SPEED_INVALID;
             s.flags = 0;
@@ -215,10 +214,10 @@ private:
 
     static const char* currentThemeData() {
         const char* d = (const char*)dct_read_app_data(DCT_LED_THEME_OFFSET);
-        if (!d || *d != 0) { // Check if theme data is initialized in DCT
+        if (!d || *d == 0xff) { // Check if theme data is initialized in DCT
             return (const char*)DEFAULT_THEME_DATA;
         }
-        return d + 1; // First byte is reserved for theme flags
+        return d + 1; // First byte is reserved for theme version
     }
 
     static void serializeTheme(const LEDThemeData& theme, char* data, size_t size) {

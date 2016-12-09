@@ -5,9 +5,9 @@
 #include "rgbled.h"
 #include "rgbled_hal.h"
 
+volatile uint8_t led_rgb_brightness = DEFAULT_LED_RGB_BRIGHTNESS;
 
 volatile uint8_t LED_RGB_OVERRIDE = 0;
-volatile uint8_t LED_RGB_BRIGHTNESS = DEFAULT_LED_RGB_BRIGHTNESS;
 volatile uint32_t lastSignalColor = 0;
 volatile uint32_t lastRGBColor = 0;
 
@@ -17,7 +17,7 @@ static uint8_t led_fade_step = NUM_LED_FADE_STEPS - 1;
 static uint8_t led_fade_direction = -1; /* 1 = rising, -1 = falling. */
 
 uint16_t ccr_scale(uint8_t color) {
-    return (uint16_t)((((uint32_t)(color)) * LED_RGB_BRIGHTNESS * Get_RGB_LED_Max_Value()) >> 16);
+    return (uint16_t)((((uint32_t)(color)) * led_rgb_brightness * Get_RGB_LED_Max_Value()) >> 16);
 }
 
 void Set_CCR_Color(uint32_t RGB_Color, uint16_t* ccr) {
@@ -59,12 +59,12 @@ void LED_Signaling_Stop(void)
 
 void LED_SetBrightness(uint8_t brightness)
 {
-    LED_RGB_BRIGHTNESS = brightness;
+    led_rgb_brightness = brightness;
 }
 
 uint8_t Get_LED_Brightness()
 {
-    return LED_RGB_BRIGHTNESS;
+    return led_rgb_brightness;
 }
 
 led_update_handler_fn led_update_handler = NULL;

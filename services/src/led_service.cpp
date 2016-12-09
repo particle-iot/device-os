@@ -140,7 +140,6 @@ public:
 
     void update(system_tick_t ticks) {
         uint32_t color = 0;
-        uint8_t value = 0;
         uint8_t pattern = 0; // Invalid pattern type
         uint8_t speed = 0;
         bool enabled = false;
@@ -152,7 +151,6 @@ public:
             if (s) {
                 // Copy status parameters
                 color = s->color;
-                value = s->value;
                 pattern = s->pattern;
                 speed = s->speed;
                 off = s->flags & LED_STATUS_FLAG_OFF;
@@ -175,7 +173,7 @@ public:
         if (enabled) {
             Color c = { 0 }; // Black
             if (pattern_ != 0 && !off) {
-                scaleColor(color, value, &c);
+                scaleColor(color, led_rgb_brightness, &c);
                 if (period_ > 0) {
                     updatePatternColor(pattern_, ticks_, period_, &c);
                 }
@@ -282,11 +280,11 @@ LEDService ledService;
 
 } // namespace
 
-void led_set_status_active(LEDStatusData* status, bool active, void* reserved) {
+void led_set_status_active(LEDStatusData* status, int active, void* reserved) {
     ledService.setStatusActive(status, active);
 }
 
-void led_set_updates_enabled(bool enabled, void* reserved) {
+void led_set_updates_enabled(int enabled, void* reserved) {
     ledService.setUpdatesEnabled(enabled);
 }
 

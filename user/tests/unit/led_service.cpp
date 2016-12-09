@@ -100,6 +100,7 @@ public:
             color_ = Color(normalize(r), normalize(g), normalize(b));
         });
         mocks_.OnCallFunc(Get_RGB_LED_Max_Value).Return(MAX_COLOR_VALUE);
+        LED_SetBrightness(255); // Set maximum brightness by default
         reset();
     }
 
@@ -109,8 +110,8 @@ public:
 
     static void reset() {
         // Reset cached LED state
-        led_set_updates_enabled(false, nullptr);
-        led_set_updates_enabled(true, nullptr);
+        led_set_updates_enabled(0, nullptr);
+        led_set_updates_enabled(1, nullptr);
     }
 
 private:
@@ -162,10 +163,10 @@ TEST_CASE("LEDStatus") {
     SECTION("default status parameters") {
         LEDStatus s(Color::WHITE);
         CHECK(s.color() == Color::WHITE);
-        CHECK(s.brightness() == 255);
         CHECK(s.pattern() == LED_PATTERN_SOLID);
         CHECK(s.speed() == LED_SPEED_NORMAL);
         CHECK(s.priority() == LED_PRIORITY_NORMAL);
+        CHECK(s.isOn() == true);
         CHECK(s.isActive() == false); // Status instances need to be activated explicitly
     }
 
@@ -197,34 +198,37 @@ TEST_CASE("LEDStatus") {
         CHECK(led.color() == Color::BLUE);
     }
 
-    SECTION("changing brightness of active status") {
-        LEDStatus s(Color::WHITE);
-        s.setActive();
-        for (int i = 0; i <= 255; ++i) {
-            s.setBrightness(i);
-            REQUIRE(s.brightness() == i);
-            update();
-            REQUIRE(led.color() == Color(i, i, i));
-        }
-    }
-
-    SECTION("using active status to turn LED on and off") {
+    SECTION("turning LED on and off") {
         LEDStatus s(Color::WHITE);
         s.setActive();
         update();
         CHECK(led.color() == Color::WHITE);
         s.off(); // Turn off
+        CHECK(s.isOn() == false);
         update();
         CHECK(led.color() == Color::BLACK);
         s.on(); // Turn on
+        CHECK(s.isOn() == true);
         update();
         CHECK(led.color() == Color::WHITE);
         s.toggle(); // Toggle
+        CHECK(s.isOn() == false);
         update();
         CHECK(led.color() == Color::BLACK);
         s.toggle(); // Toggle
+        CHECK(s.isOn() == true);
         update();
         CHECK(led.color() == Color::WHITE);
+    }
+
+    SECTION("changing LED brightness") {
+        LEDStatus s(Color::WHITE);
+        s.setActive();
+        for (int i = 0; i <= 255; ++i) {
+            LED_SetBrightness(i);
+            update();
+            REQUIRE(led.color() == Color(i, i, i));
+        }
     }
 
     SECTION("temporary disabling LED updates") {
@@ -232,10 +236,10 @@ TEST_CASE("LEDStatus") {
         s.setActive();
         update();
         s.setColor(Color::RED); // Override color
-        led_set_updates_enabled(false, nullptr); // Disable updates
+        led_set_updates_enabled(0, nullptr); // Disable updates
         update();
         CHECK(led.color() == Color::WHITE); // LED color has not changed
-        led_set_updates_enabled(true, nullptr); // Enable updates
+        led_set_updates_enabled(1, nullptr); // Enable updates
         update();
         CHECK(led.color() == Color::RED); // LED color has changed
     }

@@ -33,9 +33,6 @@ public:
     void setColor(uint32_t color);
     uint32_t color() const;
 
-    void setBrightness(uint8_t value);
-    uint8_t brightness() const;
-
     void setPattern(LEDPattern pattern);
     LEDPattern pattern() const;
 
@@ -45,6 +42,7 @@ public:
     void on();
     void off();
     void toggle();
+    bool isOn();
 
     void setActive(LEDPriority priority); // Activate and override priority
     void setActive(bool active = true);
@@ -96,8 +94,8 @@ inline particle::LEDStatus::LEDStatus(uint32_t color, LEDSource source, LEDPatte
 }
 
 inline particle::LEDStatus::LEDStatus(uint32_t color, LEDSource source, LEDPriority priority, LEDPattern pattern, LEDSpeed speed) :
-        status_{ sizeof(LEDStatusData), nullptr /* Internal */, nullptr /* Internal */, color, 0xff /* Brightness */,
-            pattern, speed, 0 /* Flags */, LED_PRIORITY_VALUE(priority, source) } {
+        status_{ sizeof(LEDStatusData), nullptr /* Internal */, nullptr /* Internal */, color, pattern, speed,
+            0 /* Flags */, LED_PRIORITY_VALUE(priority, source) } {
 }
 
 inline particle::LEDStatus::~LEDStatus() {
@@ -110,14 +108,6 @@ inline void particle::LEDStatus::setColor(uint32_t color) {
 
 inline uint32_t particle::LEDStatus::color() const {
     return status_.color;
-}
-
-inline void particle::LEDStatus::setBrightness(uint8_t value) {
-    status_.value = value;
-}
-
-inline uint8_t particle::LEDStatus::brightness() const {
-    return status_.value;
 }
 
 inline void particle::LEDStatus::setPattern(LEDPattern pattern) {
@@ -146,6 +136,10 @@ inline void particle::LEDStatus::off() {
 
 inline void particle::LEDStatus::toggle() {
     status_.flags ^= LED_STATUS_FLAG_OFF;
+}
+
+inline bool particle::LEDStatus::isOn() {
+    return !(status_.flags & LED_STATUS_FLAG_OFF);
 }
 
 inline void particle::LEDStatus::setActive(LEDPriority priority) {
