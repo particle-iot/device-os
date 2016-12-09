@@ -20,6 +20,7 @@
 #include "active_object.h"
 
 #include "spark_wiring_interrupts.h"
+#include "debug.h"
 
 #if PLATFORM_THREADING
 
