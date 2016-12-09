@@ -58,6 +58,12 @@ extern "C" {
 #define HAL_PLATFORM_CLOUD_TCP 0
 #endif
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
+#define HAL_PLATFORM_DCT 1
+#else
+#define HAL_PLATFORM_DCT 0
+#endif
+
 
 #ifdef	__cplusplus
 }
