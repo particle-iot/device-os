@@ -56,6 +56,7 @@ enum SystemEvents {
     button_click = 1<<12,           // generated for every click in series - data is number of clicks in the lower 4 bits.
     button_final_click = 1<<13,     // generated for last click in series - data is the number of clicks in the lower 4 bits.
     time_changed = 1<<14,
+    low_battery = 1<<15,            // generated when low battery condition is detected
 
     all_events = 0xFFFFFFFFFFFFFFFF
 };

@@ -302,10 +302,22 @@ void system_power_management_update()
         power.begin();
         power.setInputCurrentLimit(900);     // 900mA
         power.setChargeCurrent(0,0,0,0,0,0); // 512mA
+        static bool lowBattEventNotified = false; // Whether 'low_battery' event was generated already
+        static bool wasCharging = false; // Whether the battery was charging last time when this function was called
+        const uint8_t status = power.getSystemStatus();
+        const bool charging = (status >> 4) & 0x03;
+        if (charging && !wasCharging) { // Check if the battery has started to charge
+            lowBattEventNotified = false; // Allow 'low_battery' event to be generated again
+        }
+        wasCharging = charging;
         FuelGauge fuel;
         bool LOWBATT = fuel.getAlert();
         if (LOWBATT) {
             fuel.clearAlert(); // Clear the Low Battery Alert flag if set
+            if (!lowBattEventNotified) {
+                lowBattEventNotified = true;
+                system_notify_event(low_battery);
+            }
         }
 //        if (LOG_ENABLED(INFO)) {
 //        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
