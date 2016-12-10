@@ -245,7 +245,7 @@ public:
 	ProtocolError set_data(const uint8_t* data, size_t data_len)
 	{
 		if (data_len>1500)
-			return IO_ERROR;
+			return IO_ERROR_SET_DATA_MAX_EXCEEDED;
 		memcpy(this->data, data, data_len);
 		this->data_len = data_len;
 		return NO_ERROR;
@@ -431,7 +431,7 @@ public:
 	ProtocolError send_synchronous(Message& msg, Channel& channel, Time& time)
 	{
 		message_id_t id = msg.get_id();
-		DEBUG("sending message id %s synchronously", id);
+		DEBUG("sending message id=%x synchronously", id);
 		CoAPType::Enum coapType = CoAP::type(msg.buf());
 		ProtocolError error = send(msg, time());
 		if (!error)
@@ -448,7 +448,7 @@ public:
 			if (coapmsg)
 				coapmsg->set_delivered_handler(&flag_delivered);
 			else
-				ERROR("no coapmessage for msg %x", id);
+				ERROR("no coapmessage for msg id=%x", id);
 			while (from_id(id)!=nullptr && !error)
 			{
 				msg.clear();

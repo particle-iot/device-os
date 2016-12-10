@@ -17,6 +17,9 @@
  ******************************************************************************
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("comm.protocol")
+
 #include "protocol.h"
 #include "chunked_transfer.h"
 #include "subscriptions.h"
@@ -47,7 +50,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	token_t token = queue[4];
 	message_id_t msg_id = CoAP::message_id(queue);
 	ProtocolError error = NO_ERROR;
-	//DEBUG("message type %d", message_type);
+	//LOG(WARN,"message type %d", message_type);
 	switch (message_type)
 	{
 	case CoAPMessageType::DESCRIBE:
@@ -244,6 +247,8 @@ uint32_t Protocol::application_state_checksum()
  */
 int Protocol::begin()
 {
+	LOG_CATEGORY("comm.protocol.handshake");
+	LOG(INFO,"Establish secure connection");
 	chunkedTransfer.reset();
 	pinger.reset();
 	timesync_.reset();
@@ -253,7 +258,7 @@ int Protocol::begin()
 	ProtocolError error = channel.establish(channel_flags, application_state_checksum());
 	bool session_resumed = (error==SESSION_RESUMED);
 	if (error && !session_resumed) {
-		WARN("handshake failed with code %d", error);
+		LOG(ERROR,"handshake failed with code %d", error);
 		return error;
 	}
 
@@ -270,26 +275,28 @@ int Protocol::begin()
 	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
 		ping(true);
-		DEBUG("resumed session - not sending hello message");
+		LOG(INFO,"resumed session - not sending HELLO message");
 		return error;
 	}
 
 	// todo - this will return code 0 even when the session was resumed,
 	// causing all the application events to be sent.
 
+	LOG(INFO,"Sending HELLO message");
 	error = hello(descriptor.was_ota_upgrade_successful());
 	if (error)
 	{
-		ERROR("Handshake: could not send hello message: %d", error);
+		LOG(ERROR,"Could not send HELLO message: %d", error);
 		return error;
 	}
 
 	if (flags & REQUIRE_HELLO_RESPONSE) {
+		LOG(INFO,"Receiving HELLO response");
 		error = hello_response();
 		if (error)
 			return error;
 	}
-	INFO("Handshake: completed");
+	LOG(INFO,"Handshake completed");
 	channel.notify_established();
 	flags |= SKIP_SESSION_RESUME_HELLO;
 	return error;
@@ -316,7 +323,7 @@ ProtocolError Protocol::hello_response()
 	ProtocolError error = event_loop(CoAPMessageType::HELLO,  4000); // read the hello message from the server
 	if (error)
 	{
-		ERROR("Handshake: could not receive hello response %d", error);
+		LOG(ERROR,"Handshake: could not receive HELLO response %d", error);
 	}
 	return error;
 }
@@ -334,12 +341,13 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum message_type,
 		system_tick_t timeout)
 {
 	system_tick_t start = callbacks.millis();
+	LOG(INFO,"waiting %d seconds for message type=%d", timeout/1000, message_type);
 	do
 	{
 		CoAPMessageType::Enum msgtype;
 		ProtocolError error = event_loop(msgtype);
 		if (error) {
-			ERROR("message type=%d, error=%d", msgtype, error);
+			LOG(ERROR,"message type=%d, error=%d", (int)msgtype, error);
 			return error;
 		}
 		if (msgtype == message_type)
@@ -365,6 +373,7 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 		if (message.length())
 		{
 			error = handle_received_message(message, message_type);
+			LOG(INFO,"rcv'd message type=%d", (int)message_type);
 		}
 		else
 		{
@@ -376,7 +385,7 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	{
 		// bail if and only if there was an error
 		chunkedTransfer.cancel();
-		WARN("Event loop error %d", error);
+		LOG(ERROR,"Event loop error %d", error);
 		return error;
 	}
 	return error;
@@ -457,6 +466,7 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	appender.append('}');
 	int msglen = appender.next() - (uint8_t*) buf;
 	message.set_length(msglen);
+	LOG(INFO,"Sending describe message");
 	ProtocolError error = channel.send(message);
 	if (error==NO_ERROR && descriptor.app_state_selector_info)
 	{

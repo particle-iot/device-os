@@ -1,3 +1,6 @@
+#include "logging.h"
+LOG_SOURCE_CATEGORY("comm.lightssl")
+
 #include "protocol_selector.h"
 #if HAL_PLATFORM_CLOUD_TCP
 
@@ -38,15 +41,15 @@ namespace protocol
 	ProtocolError LightSSLMessageChannel::send(Message& message)
 	{
 //            if (message.length()>20)
-//                DEBUG("message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
+//                LOG(WARN,"message length %d, last 20 bytes %s ", message.length(), message.buf()+message.length()-20);
 //            else
-//                DEBUG("message length %d ", message.length());
+//                LOG(WARN,"message length %d ", message.length());
 		if (!message.length())
 			return NO_ERROR;
 
 		uint8_t* buf = message.buf()-2;
 		size_t to_write = wrap(buf, message.length());
-		return blocking_send(buf, to_write)<0 ? IO_ERROR : NO_ERROR;
+		return blocking_send(buf, to_write)<0 ? IO_ERROR_LIGHTSSL_BLOCKING_SEND : NO_ERROR;
 	}
 
 	ProtocolError LightSSLMessageChannel::receive(Message& message)
@@ -62,7 +65,7 @@ namespace protocol
 			{
 				uint8_t* buf = message.buf();
 				if (blocking_receive(buf, packet_size) < 0)
-					error = IO_ERROR;
+					error = IO_ERROR_LIGHTSSL_BLOCKING_RECEIVE;
 				else
 				{
 					unsigned char next_iv[16];
@@ -79,8 +82,8 @@ namespace protocol
 			error = create(message, 0);
 			message.set_length(0);
 			if (bytes_received<0) {
-				WARN("receive error %d", bytes_received);
-				error = IO_ERROR;
+				LOG(WARN,"receive error %d", bytes_received);
+				error = IO_ERROR_LIGHTSSL_RECEIVE;
 			}
 		}
 		return error;
@@ -96,7 +99,7 @@ namespace protocol
 				signed_encrypted_credentials, credentials);
 		if (error)
 		{
-			WARN("decryption failed with code %d", error);
+			LOG(WARN,"decryption failed with code %d", error);
 			return DECRYPTION_ERROR;
 		}
 
@@ -107,7 +110,7 @@ namespace protocol
 				server_public_key, hmac);
 		if (error)
 		{
-			WARN("signature validation failed with code %d", error);
+			LOG(WARN,"signature validation failed with code %d", error);
 			return AUTHENTICATION_ERROR;
 		}
 
@@ -146,14 +149,17 @@ namespace protocol
 
 	ProtocolError LightSSLMessageChannel::handshake()
 	{
+		LOG_CATEGORY("comm.lightssl.handshake");
+		LOG(INFO,"Started, receive nonce");
 		memcpy(queue + 40, device_id, 12);
 		int err = blocking_receive(queue, 40);
 		if (0 > err)
 		{
-			ERROR("Handshake: could not receive nonce: %d", err);
-			return IO_ERROR;
+			LOG(ERROR,"Could not receive nonce: %d", err);
+			return IO_ERROR_LIGHTSSL_HANDSHAKE_NONCE;
 		}
 
+		LOG(INFO,"Encrypting nonce");
 		extract_public_rsa_key(queue + 52, core_private_key);
 
 		rsa_context rsa;
@@ -164,26 +170,29 @@ namespace protocol
 
 		if (err)
 		{
-			ERROR("Handshake: rsa encrypt error %d", err);
+			LOG(ERROR,"RSA encrypt error %d", err);
 			return ENCRYPTION_ERROR;
 		}
 
+		LOG(INFO,"Sending encrypted nonce");
 		blocking_send(queue + len, 256);
+		LOG(INFO,"Receive key");
 		err = blocking_receive(queue, 384);
 		if (0 > err)
 		{
-			ERROR("Handshake: Unable to receive key %d", err);
-			return IO_ERROR;
+			LOG(ERROR,"Unable to receive key %d", err);
+			return IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY;
 		}
 
+		LOG(INFO,"Setting key");
 		ProtocolError error = set_key(queue);
 		if (error)
 		{
-			ERROR("Handshake:  could not set key, %d", error);
+			LOG(ERROR,"Could not set key, %d", error);
 			return error;
 		}
 
-		DEBUG("Handshake complete");
+		LOG(INFO,"Completed");
 		return NO_ERROR;
 	}
 
@@ -202,7 +211,7 @@ namespace protocol
 			if (0 > bytes_or_error)
 			{
 				// error, disconnected
-				WARN("blocking send error %d", bytes_or_error);
+				LOG(WARN,"blocking send error %d", bytes_or_error);
 				return bytes_or_error;
 			}
 			else if (0 < bytes_or_error)
@@ -214,7 +223,7 @@ namespace protocol
 				if (20000 < (callbacks.millis() - _millis))
 				{
 					// timed out, disconnect
-					WARN("blocking send timeout");
+					LOG(WARN,"blocking send timeout");
 					return -1;
 				}
 			}
@@ -237,7 +246,7 @@ namespace protocol
 			if (0 > bytes_or_error)
 			{
 				// error, disconnected
-				WARN("receive error %d", bytes_or_error);
+				LOG(WARN,"receive error %d", bytes_or_error);
 				return bytes_or_error;
 			}
 			else if (0 < bytes_or_error)
@@ -249,7 +258,7 @@ namespace protocol
 				if (20000 < (callbacks.millis() - _millis))
 				{
 					// timed out, disconnect
-					WARN("receive timeout");
+					LOG(WARN,"receive timeout");
 					return -1;
 				}
 			}

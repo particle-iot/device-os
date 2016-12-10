@@ -22,6 +22,10 @@
   License along with this program; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
   */
+
+#include "logging.h"
+LOG_SOURCE_CATEGORY("comm.sparkprotocol")
+
 #include "spark_protocol.h"
 #include "protocol_defs.h"
 #include "handshake.h"
@@ -90,12 +94,16 @@ void SparkProtocol::init(const char *id,
 
 int SparkProtocol::handshake(void)
 {
+  LOG_CATEGORY("comm.sparkprotocol.handshake");
+
   ack_handlers.clear(); // FIXME: Cancel pending handlers right after previous session has ended
 
+  LOG(INFO,"Started: Receive nonce");
   memcpy(queue + 40, device_id, 12);
   int err = blocking_receive(queue, 40);
-  if (0 > err) { ERROR("Handshake: could not receive nonce: %d", err);  return err; }
+  if (0 > err) { LOG(ERROR,"Could not receive nonce: %d", err);  return err; }
 
+  LOG(INFO,"Encrypting handshake nonce");
   extract_public_rsa_key(queue+52, core_private_key);
 
   rsa_context rsa;
@@ -104,26 +112,30 @@ int SparkProtocol::handshake(void)
   err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
   rsa_free(&rsa);
 
-  if (err) { ERROR("Handshake: rsa encrypt error %d", err); return err; }
+  if (err) { LOG(ERROR,"RSA encrypt error %d", err); return err; }
 
+  LOG(INFO,"Sending encrypted nonce");
   blocking_send(queue + len, 256);
+  LOG(INFO,"Receive key");
   err = blocking_receive(queue, 384);
-  if (0 > err) { ERROR("Handshake: Unable to receive key %d", err); return err; }
+  if (0 > err) { LOG(ERROR,"Unable to receive key %d", err); return err; }
 
+  LOG(INFO,"Setting key");
   err = set_key(queue);
-  if (err) { ERROR("Handshake:  could not set key, %d"); return err; }
+  if (err) { LOG(ERROR,"Could not set key, %d"); return err; }
 
+  LOG(INFO,"Sending HELLO message");
   hello(queue, descriptor.was_ota_upgrade_successful());
-
   err = blocking_send(queue, 18);
-  if (0 > err) { ERROR("Hanshake: could not send hello message: %d", err); return err; }
+  if (0 > err) { LOG(ERROR,"Could not send HELLO message: %d", err); return err; }
 
+  LOG(INFO,"Receiving HELLO response");
   if (!event_loop(CoAPMessageType::HELLO, 2000))        // read the hello message from the server
   {
-      ERROR("Handshake: could not receive hello response");
+      LOG(ERROR,"Could not receive HELLO response");
       return -1;
   }
-  INFO("Hanshake: completed");
+  LOG(INFO,"Completed");
   return 0;
 }
 
@@ -156,12 +168,12 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
     message_type = handle_received_message();
     if (message_type==CoAPMessageType::ERROR)
     {
-    		WARN("received ERROR CoAPMessage");
-    		if (updating) {      // was updating but had an error, inform the client
-            serial_dump("handle received message failed - aborting transfer");
-            callbacks.finish_firmware_update(file, 0, NULL);
-            updating = false;
-        }
+      LOG(WARN,"received ERROR CoAPMessage");
+      if (updating) {      // was updating but had an error, inform the client
+        serial_dump("handle received message failed - aborting transfer");
+        callbacks.finish_firmware_update(file, 0, NULL);
+        updating = false;
+      }
 
       // bail if and only if there was an error
       return false;
@@ -171,8 +183,8 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
   {
     if (0 > bytes_received)
     {
-    	  WARN("bytes recieved error %d", bytes_received);
-    	// error, disconnected
+      LOG(WARN,"bytes recieved error %d", bytes_received);
+      // error, disconnected
       return false;
     }
 
@@ -212,7 +224,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
           // timed out, disconnect
           expecting_ping_ack = false;
           last_message_millis = callbacks.millis();
-    		WARN("ping ACK not received");
+          LOG(WARN,"ping ACK not received");
           return false;
         }
       }
@@ -717,7 +729,7 @@ int SparkProtocol::send_missing_chunks(int count)
     }
 
     if (sent>0) {
-        DEBUG("Sent %d missing chunks", sent);
+        LOG(WARN,"Sent %d missing chunks", sent);
 
         size_t message_size = 7+(sent*2);
         message_size = wrap(queue, message_size);
@@ -1027,7 +1039,7 @@ bool SparkProtocol::handle_update_begin(msg& message)
     {
         if (!callbacks.prepare_for_firmware_update(file, 0, NULL))
         {
-            DEBUG("starting file length %d chunks %d chunk_size %d",
+            LOG(WARN,"starting file length %d chunks %d chunk_size %d",
                     file.file_length, file.chunk_count(file.chunk_size), file.chunk_size);
             last_chunk_millis = callbacks.millis();
             chunk_index = 0;
@@ -1065,9 +1077,9 @@ bool SparkProtocol::handle_chunk(msg& message)
       // error
       return false;
     }
-    DEBUG("chunk");
+    LOG(INFO,"chunk");
     if (!this->updating) {
-        WARN("got chunk when not updating");
+        LOG(WARN,"got chunk when not updating");
         return true;
     }
 
@@ -1096,13 +1108,13 @@ bool SparkProtocol::handle_chunk(msg& message)
         file.chunk_size = message.len - payload - queue[message.len - 1];   // remove length added due to pkcs #7 padding?
         file.chunk_address  = file.file_address + (chunk_index * chunk_size);
         if (chunk_index>=MAX_CHUNKS) {
-            WARN("invalid chunk index %d", chunk_index);
+            LOG(WARN,"invalid chunk index %d", chunk_index);
             return false;
         }
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
         bool has_response = false;
         bool crc_valid = (crc == given_crc);
-        DEBUG("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
+        LOG(INFO,"chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
         if (crc_valid)
         {
             callbacks.save_firmware_chunk(file, chunk, NULL);
@@ -1114,7 +1126,7 @@ bool SparkProtocol::handle_chunk(msg& message)
             if (updating==2) {                      // clearing up missed chunks at the end of fast OTA
                 chunk_index_t next_missed = next_chunk_missing(0);
                 if (next_missed==NO_CHUNKS_MISSING) {
-                    INFO("received all chunks");
+                    LOG(INFO,"received all chunks");
                     reset_updating();
                     notify_update_done(msg_to_send);
                     callbacks.finish_firmware_update(file, 1, NULL);
@@ -1122,7 +1134,7 @@ bool SparkProtocol::handle_chunk(msg& message)
                 }
                 else {
                     if (has_response && 0 > blocking_send(msg_to_send, 18)) {
-                        WARN("send chunk response failed");
+                        LOG(WARN,"send chunk response failed");
                         return false;
                     }
                     has_response = false;
@@ -1137,7 +1149,7 @@ bool SparkProtocol::handle_chunk(msg& message)
         {
             chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::BAD);
             has_response = true;
-            WARN("chunk bad %d", chunk_index);
+            LOG(WARN,"chunk bad %d", chunk_index);
         }
         // fast OTA will request the chunk later
 
@@ -1196,7 +1208,7 @@ bool SparkProtocol::handle_update_done(msg& message)
     chunk_index_t index = next_chunk_missing(0);
     bool missing = index!=NO_CHUNKS_MISSING;
     coded_ack(msg_to_send + 2, message.token, missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK, queue[2], queue[3]);
-    DEBUG("update done received - has missing chunks %d", missing);
+    LOG(WARN,"update done: received, has missing chunks %d", missing);
     if (0 > blocking_send(msg_to_send, 18))
     {
         // error
@@ -1204,13 +1216,13 @@ bool SparkProtocol::handle_update_done(msg& message)
     }
 
     if (!missing) {
-        DEBUG("update done - all done!");
+        LOG(INFO,"update done: all done!");
         reset_updating();
         callbacks.finish_firmware_update(file, 1, NULL);
     }
     else {
         updating = 2;       // flag that we are sending missing chunks.
-        serial_dump("update done - missing chunks starting at %d", index);
+        serial_dump("update done: missing chunks starting at %d", index);
         send_missing_chunks(MISSED_CHUNKS_TO_SEND);
         last_chunk_millis = callbacks.millis();
     }

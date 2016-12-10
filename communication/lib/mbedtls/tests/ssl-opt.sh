@@ -1408,7 +1408,7 @@ run_test    "Renegotiation: openssl server, client-initiated" \
             -c "client hello, adding renegotiation extension" \
             -c "found renegotiation extension" \
             -c "=> renegotiate" \
-            -C "ssl_hanshake() returned" \
+            -C "ssl_handshake returned" \
             -C "error" \
             -c "HTTP/1.0 200 [Oo][Kk]"
 
@@ -1420,7 +1420,7 @@ run_test    "Renegotiation: gnutls server strict, client-initiated" \
             -c "client hello, adding renegotiation extension" \
             -c "found renegotiation extension" \
             -c "=> renegotiate" \
-            -C "ssl_hanshake() returned" \
+            -C "ssl_handshake returned" \
             -C "error" \
             -c "HTTP/1.0 200 [Oo][Kk]"
 
@@ -1432,7 +1432,7 @@ run_test    "Renegotiation: gnutls server unsafe, client-initiated default" \
             -c "client hello, adding renegotiation extension" \
             -C "found renegotiation extension" \
             -c "=> renegotiate" \
-            -c "mbedtls_ssl_handshake() returned" \
+            -c "mbedtls_ssl_handshake returned" \
             -c "error" \
             -C "HTTP/1.0 200 [Oo][Kk]"
 
@@ -1445,7 +1445,7 @@ run_test    "Renegotiation: gnutls server unsafe, client-inititated no legacy" \
             -c "client hello, adding renegotiation extension" \
             -C "found renegotiation extension" \
             -c "=> renegotiate" \
-            -c "mbedtls_ssl_handshake() returned" \
+            -c "mbedtls_ssl_handshake returned" \
             -c "error" \
             -C "HTTP/1.0 200 [Oo][Kk]"
 
@@ -1458,7 +1458,7 @@ run_test    "Renegotiation: gnutls server unsafe, client-inititated legacy" \
             -c "client hello, adding renegotiation extension" \
             -C "found renegotiation extension" \
             -c "=> renegotiate" \
-            -C "ssl_hanshake() returned" \
+            -C "ssl_handshake returned" \
             -C "error" \
             -c "HTTP/1.0 200 [Oo][Kk]"
 
