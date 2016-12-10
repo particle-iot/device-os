@@ -33,6 +33,7 @@
 #include "usb_conf.h"
 #include "usbd_dfu_core.h"
 #include "hw_config.h"
+#include "button.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -41,7 +42,6 @@
 /* Private function prototypes -----------------------------------------------*/
 
 /* Extern variables and function prototypes ----------------------------------*/
-extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
 extern void Timing_Decrement(void);
 
 extern USB_OTG_CORE_HANDLE USB_OTG_dev;
@@ -153,28 +153,6 @@ void SysTick_Handler(void)
 }
 
 /**
- * @brief  This function handles BUTTON EXTI Handler.
- * @param  None
- * @retval None
- */
-void BUTTON1_EXTI_IRQ_HANDLER(void)
-{
-    if (EXTI_GetITStatus(BUTTON1_EXTI_LINE) != RESET)
-    {
-        /* Clear the EXTI line pending bit */
-        EXTI_ClearITPendingBit(BUTTON1_EXTI_LINE);
-
-        BUTTON_DEBOUNCED_TIME[BUTTON1] = 0x00;
-
-        /* Disable BUTTON1 Interrupt */
-        BUTTON_EXTI_Config(BUTTON1, DISABLE);
-
-        /* Enable TIM2 CC1 Interrupt */
-        TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
-    }
-}
-
-/**
  * @brief  This function handles TIM2 Handler.
  * @param  None
  * @retval None
@@ -185,18 +163,7 @@ void TIM2_IRQHandler(void)
     {
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 
-        if (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-        {
-            BUTTON_DEBOUNCED_TIME[BUTTON1] += BUTTON_DEBOUNCE_INTERVAL;
-        }
-        else
-        {
-            /* Disable TIM2 CC1 Interrupt */
-            TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
-
-            /* Enable BUTTON1 Interrupt */
-            BUTTON_EXTI_Config(BUTTON1, ENABLE);
-        }
+        BUTTON_Debounce();
     }
 }
 
@@ -271,3 +238,96 @@ void OTG_HS_IRQHandler(void)
 /*void PPP_IRQHandler(void)
 {
 }*/
+
+/*******************************************************************************
+ * Function Name  : EXTI0_IRQHandler
+ * Description    : This function handles EXTI0 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI0_IRQHandler(void)
+{
+    BUTTON_Irq_Handler(EXTI_Line0);
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI1_IRQHandler
+ * Description    : This function handles EXTI1 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI1_IRQHandler(void)
+{
+    BUTTON_Irq_Handler(EXTI_Line1);
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI2_IRQHandler
+ * Description    : This function handles EXTI2 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI2_IRQHandler(void)
+{
+    BUTTON_Irq_Handler(EXTI_Line2);
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI3_IRQHandler
+ * Description    : This function handles EXTI3 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI3_IRQHandler(void)
+{
+    BUTTON_Irq_Handler(EXTI_Line3);
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI4_IRQHandler
+ * Description    : This function handles EXTI4 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI4_IRQHandler(void)
+{
+    BUTTON_Irq_Handler(EXTI_Line4);
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI9_5_IRQHandler
+ * Description    : This function handles EXTI9_5 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI9_5_IRQHandler(void)
+{
+    BUTTON_Irq_Handler(EXTI_Line5);
+    BUTTON_Irq_Handler(EXTI_Line6);
+    BUTTON_Irq_Handler(EXTI_Line7);
+    BUTTON_Irq_Handler(EXTI_Line8);
+    BUTTON_Irq_Handler(EXTI_Line9);
+}
+
+/*******************************************************************************
+ * Function Name  : EXTI15_10_IRQHandler
+ * Description    : This function handles EXTI15_10 interrupt request.
+ * Input          : None
+ * Output         : None
+ * Return         : None
+ *******************************************************************************/
+void EXTI15_10_IRQHandler(void)
+{
+    BUTTON_Irq_Handler(EXTI_Line10);
+    BUTTON_Irq_Handler(EXTI_Line11);
+    BUTTON_Irq_Handler(EXTI_Line12);
+    BUTTON_Irq_Handler(EXTI_Line13);
+    BUTTON_Irq_Handler(EXTI_Line14);
+    BUTTON_Irq_Handler(EXTI_Line15);
+}

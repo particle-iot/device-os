@@ -44,6 +44,11 @@ inline boolean isAlphaNumeric(int c)
     return toBoolean(isalnum(c));
 }
 
+inline boolean isAscii(int c)
+{
+    return toBoolean(isascii(c));
+}
+
 inline boolean isControl(int c)
 {
     return toBoolean(iscntrl(c));
@@ -94,6 +99,11 @@ inline boolean isWhitespace(int c)
     return toBoolean(isblank(c));
 }
 
+inline int toAscii(int c)
+{
+    return toascii(c);
+}
+
 inline int toLowerCase(int c)
 {
     return tolower(c);
@@ -104,7 +114,4 @@ inline int toUpperCase(int c)
     return toupper(c);
 }
 
-boolean isAscii(int c);
-int toAscii(int c);
-
-#endif	/* SPARK_WIRING_CHARACTER_H */
+#endif /* SPARK_WIRING_CHARACTER_H */

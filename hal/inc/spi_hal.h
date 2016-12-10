@@ -72,11 +72,23 @@ typedef void (*HAL_SPI_Select_UserCallback)(uint8_t);
 extern "C" {
 #endif
 
+typedef enum {
+  HAL_SPI_INFO_VERSION_1 = 11
+} hal_spi_info_version_t;
+
+#define HAL_SPI_INFO_VERSION HAL_SPI_INFO_VERSION_1
+
 typedef struct hal_spi_info_t {
-    uint16_t size;
+    uint16_t version;
 
     uint32_t system_clock;      // the clock speed that is divided when setting a divider
-
+    //
+    uint8_t default_settings;
+    uint8_t enabled;
+    SPI_Mode mode;
+    uint32_t clock;
+    uint8_t bit_order;
+    uint8_t data_mode;
 } hal_spi_info_t;
 
 typedef struct HAL_SPI_TransferStatus {
@@ -102,6 +114,9 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved);
 void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved);
 void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi);
 int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st);
+// HAL_SPI_Set_Bit_Order, HAL_SPI_Set_Data_Mode and HAL_SPI_Set_Clock_Divider in one go
+// to avoid having to reconfigure SPI peripheral 3 times
+int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved);
 
 #ifdef __cplusplus
 }

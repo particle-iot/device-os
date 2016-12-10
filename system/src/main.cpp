@@ -226,7 +226,11 @@ void handle_button_click(uint16_t depressed_duration)
 // this is called on multiple threads - ideally need a mutex
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 {
+#ifdef BUTTON1_MIRROR_SUPPORTED
+    if (button==0 || button == BUTTON1_MIRROR)
+#else
     if (button==0)
+#endif
     {
         if (pressed)
         {
@@ -247,8 +251,9 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
                 handle_button_click(depressed_duration);
             }
             pressed_time = 0;
-            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening())
+            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening()) {
                 network.listen(true);
+            }
         }
     }
 }
@@ -297,10 +302,22 @@ void system_power_management_update()
         power.begin();
         power.setInputCurrentLimit(900);     // 900mA
         power.setChargeCurrent(0,0,0,0,0,0); // 512mA
+        static bool lowBattEventNotified = false; // Whether 'low_battery' event was generated already
+        static bool wasCharging = false; // Whether the battery was charging last time when this function was called
+        const uint8_t status = power.getSystemStatus();
+        const bool charging = (status >> 4) & 0x03;
+        if (charging && !wasCharging) { // Check if the battery has started to charge
+            lowBattEventNotified = false; // Allow 'low_battery' event to be generated again
+        }
+        wasCharging = charging;
         FuelGauge fuel;
         bool LOWBATT = fuel.getAlert();
         if (LOWBATT) {
             fuel.clearAlert(); // Clear the Low Battery Alert flag if set
+            if (!lowBattEventNotified) {
+                lowBattEventNotified = true;
+                system_notify_event(low_battery);
+            }
         }
 //        if (LOG_ENABLED(INFO)) {
 //        		INFO(" %s", (LOWBATT)?"Low Battery Alert":"PMIC Interrupt");
@@ -450,6 +467,8 @@ extern "C" void HAL_SysTick_Handler(void)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
         HAL_Notify_Button_State(0, false);
+        // LOG(INFO,"BUTTON PRESSED FOR LISTENING");
+        // TODO: this code is called repeatedly every 1ms while the button is held (from 3-8s) and should only be called once
         network.listen();
         HAL_Notify_Button_State(0, true);
     }

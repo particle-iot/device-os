@@ -281,6 +281,16 @@ public:
         return data;
     }
 
+    void buttonMirror(pin_t pin, InterruptMode mode, bool bootloader=false) const
+    {
+        HAL_Core_Button_Mirror_Pin(pin, mode, (uint8_t)bootloader, 0, NULL);
+    }
+
+    void disableButtonMirror(bool bootloader=true) const
+    {
+        HAL_Core_Button_Mirror_Pin_Disable((uint8_t)bootloader, 0, NULL);
+    }
+
 private:
 
     static inline uint8_t get_flag(system_flag_t flag)

@@ -79,6 +79,12 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define TOTAL_PINS 24
 #endif
 
+#if PLATFORM_ID == 10 || PLATFORM_ID == 8 || PLATFORM_ID == 6
+#define TOTAL_DAC_PINS 2
+#else
+#define TOTAL_DAC_PINS 0
+#endif
+
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_ANALOG_PINS 12
 #elif PLATFORM_ID == 8 // P1

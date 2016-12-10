@@ -356,6 +356,18 @@ Particle.publish("t", temperature, ttl, PRIVATE, NO_ACK);
 
 {{/if}}
 
+*`WITH_ACK` flag*
+
+This flag causes `Particle.publish()` to return only after receiving an acknowledgement that the published event has been received by the Cloud.
+
+```C++
+// SYNTAX
+
+Particle.publish("motion-detected", NULL, WITH_ACK);
+Particle.publish("motion-detected", NULL, PRIVATE, WITH_ACK);
+Particle.publish("motion-detected", NULL, ttl, PRIVATE, WITH_ACK);
+```
+
 
 ### Particle.subscribe()
 
@@ -943,6 +955,54 @@ or the setup button has been held for 3 seconds,
 when the RGB LED should be blinking blue.
 It will return `false` when the device is not in listening mode.
 {{/if}}
+
+
+### setListenTimeout()
+
+```cpp
+// SYNTAX
+WiFi.setListenTimeout(seconds);
+```
+
+`WiFi.setListenTimeout(seconds)` is used to set a timeout value for Listening Mode.  Values are specified in `seconds`, and 0 disables the timeout.  By default, Wi-Fi devices do not have any timeout set (seconds=0).  As long as interrupts are enabled, a timer is started and running while the device is in listening mode (WiFi.listening()==true).  After the timer expires, listening mode will be exited automatically.  If WiFi.setListenTimeout() is called while the timer is currently in progress, the timer will be updated and restarted with the new value (e.g. updating from 10 seconds to 30 seconds, or 10 seconds to 0 seconds (disabled)).  {{#unless core}}**Note:** Enabling multi-threaded mode with SYSTEM_THREAD(ENABLED) will allow user code to update the timeout value while Listening Mode is active.{{/unless}} {{#if core}}Because listening mode blocks your application code on the Core, this command should be avoided in loop().  It can be used with the STARTUP() macro or in setup() on the Core.
+It will always return `false`.
+
+This setting is not persistent in memory if the {{device}} is rebooted.
+{{/if}}
+
+```cpp
+// EXAMPLE
+// If desired, use the STARTUP() macro to set the timeout value at boot time.
+STARTUP(WiFi.setListenTimeout(60)); // set listening mode timeout to 60 seconds
+
+void setup() {
+  // your setup code
+}
+{{#unless core}}
+void loop() {
+  // update the timeout later in code based on an expression
+  if (disableTimeout) WiFi.setListenTimeout(0); // disables the listening mode timeout
+}
+{{/unless}}
+```
+
+
+### getListenTimeout()
+
+```cpp
+// SYNTAX
+uint16_t seconds = WiFi.getListenTimeout();
+```
+
+`WiFi.getListenTimeout()` is used to get the timeout value currently set for Listening Mode.  Values are returned in (uint16_t)`seconds`, and 0 indicates the timeout is disabled.  By default, Wi-Fi devices do not have any timeout set (seconds=0).
+
+```cpp
+// EXAMPLE
+void setup() {
+  Serial.begin();
+  Serial.println(WiFi.getListenTimeout());
+}
+```
 
 
 ### setCredentials()
@@ -1662,6 +1722,52 @@ Once system code does not block application code,
 `Cellular.listening()` will return `true` once `Cellular.listen()` has been called
 or the setup button has been held for 3 seconds, when the RGB LED should be blinking blue.
 It will return `false` when the device is not in listening mode.
+
+
+### setListenTimeout()
+
+```cpp
+// SYNTAX
+Cellular.setListenTimeout(seconds);
+```
+
+`Cellular.setListenTimeout(seconds)` is used to set a timeout value for Listening Mode.  Values are specified in `seconds`, and 0 disables the timeout.  By default, Cellular devices have a 5 minute timeout set (seconds=300).  As long as interrupts are enabled, a timer is started and running while the device is in listening mode (Cellular.listening()==true).  After the timer expires, listening mode will be exited automatically.  If Cellular.setListenTimeout() is called while the timer is currently in progress, the timer will be updated and restarted with the new value (e.g. updating from 10 seconds to 30 seconds, or 10 seconds to 0 seconds (disabled)).  **Note:** Enabling multi-threaded mode with SYSTEM_THREAD(ENABLED) will allow user code to update the timeout value while Listening Mode is active.
+
+This setting is not persistent in memory if the {{device}} is rebooted.
+
+```cpp
+// EXAMPLE
+// If desired, use the STARTUP() macro to set the timeout value at boot time.
+STARTUP(Cellular.setListenTimeout(60)); // set listening mode timeout to 60 seconds
+
+void setup() {
+  // your setup code
+}
+
+void loop() {
+  // update the timeout later in code based on an expression
+  if (disableTimeout) Cellular.setListenTimeout(0); // disables the listening mode timeout
+}
+```
+
+
+### getListenTimeout()
+
+```cpp
+// SYNTAX
+uint16_t seconds = Cellular.getListenTimeout();
+```
+
+`Cellular.getListenTimeout()` is used to get the timeout value currently set for Listening Mode.  Values are returned in (uint16_t)`seconds`, and 0 indicates the timeout is disabled.  By default, Cellular devices have a 5 minute timeout set (seconds=300).
+
+```cpp
+// EXAMPLE
+void setup() {
+  Serial.begin();
+  Serial.println(Cellular.getListenTimeout());
+}
+```
+
 
 
 ### setCredentials()
@@ -7218,6 +7324,7 @@ These are the system events produced by the system, their numeric value (what yo
  | button_click | 4096 | event sent each time setup button is clicked. | `int clicks = system_button_clicks(param); ` retrieves the number of clicks so far. |
 | button_final_click | 8192 | sent after a run of one or more clicks not followed by additional clicks. Unlike the `button_click` event, the `button_final_click` event is sent once, at the end of a series of clicks. | `int clicks = system_button_clicks(param); ` retrieves the number of times the button was pushed. |
 | time_changed | 16384 | device time changed | `time_changed_manually` or `time_changed_sync` |
+| low_battery | 32768 | generated when low battery condition is detected. | not used |
 
 
 ## System Modes
@@ -8058,6 +8165,56 @@ Disables the system flag.
 
 Returns `true` if the system flag is enabled.
 
+{{#unless core}}
+### buttonMirror()
+
+*Since 0.7.0*
+
+Allows a pin to mirror the functionality of the SETUP/MODE button.
+
+```C++
+// SYNTAX
+System.buttonMirror(D1, RISING);
+System.buttonMirror(D1, FALLING, true);
+```
+Parameters:
+
+  * `pin`: the pin number
+  * `mode`: defines the condition that signifies a button press:
+    - RISING to trigger when the pin goes from low to high,
+    - FALLING for when the pin goes from high to low.
+  * `bootloader`: (optional) if `true`, the mirror pin configuration is saved in DCT and pin mirrors the SETUP/MODE button functionality while in bootloader as well. If `false`, any previously stored configuration is removed from the DCT and pin only mirrors the SETUP/MODE button while running the firmware (default).
+
+See also [`System.disableButtonMirror()`](#disablebuttonmirror-).
+
+```cpp
+// EXAMPLE
+// Mirror SETUP/MODE button on D1 pin. Button pressed state - LOW
+STARTUP(System.buttonMirror(D1, FALLING));
+
+// EXAMPLE
+// Mirror SETUP/MODE button on D1 pin. Button pressed state - HIGH
+// Works in both firmware and bootloader
+STARTUP(System.buttonMirror(D1, RISING, true));
+```
+
+***NOTE:*** Pins `D0` and `A5` will disable normal SETUP button operation. Pins `D0` and `A5` also can not be used in bootloader, the configuration will not be saved in DCT.
+
+### disableButtonMirror()
+
+*Since 0.7.0*
+
+Disables SETUP button mirroring on a pin.
+
+```C++
+// SYNTAX
+System.disableButtonMirror();
+System.disableButtonMirror(false);
+```
+Parameters:
+  * `bootloader`: (optional) if `true`, the mirror pin configuration is cleared from the DCT, disabling the feature in bootloader (default).
+
+{{/unless}}
 
 ## OTA Updates
 

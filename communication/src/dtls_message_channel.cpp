@@ -28,7 +28,6 @@ LOG_SOURCE_CATEGORY("comm.dtls")
 #include "timer_hal.h"
 #include <stdio.h>
 #include <string.h>
-#include <strings.h>
 #include "dtls_session_persist.h"
 
 
