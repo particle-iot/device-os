@@ -79,9 +79,9 @@ DYNALIB_FN(26, system, system_set_usb_request_result, void(USBRequest*, int, voi
 
 DYNALIB_FN(BASE_IDX + 0, system, led_start_signal, int(int, uint8_t, void*))
 DYNALIB_FN(BASE_IDX + 1, system, led_stop_signal, void(int, void*))
-DYNALIB_FN(BASE_IDX + 2, system, led_is_signal_started, int(int, void*))
-DYNALIB_FN(BASE_IDX + 3, system, led_set_signal_theme, int(const LEDThemeData*, int, void*))
-DYNALIB_FN(BASE_IDX + 4, system, led_get_signal_theme, int(LEDThemeData*, int, void*))
+DYNALIB_FN(BASE_IDX + 2, system, led_signal_started, int(int, void*))
+DYNALIB_FN(BASE_IDX + 3, system, led_set_signal_theme, int(const LEDSignalThemeData*, int, void*))
+DYNALIB_FN(BASE_IDX + 4, system, led_get_signal_theme, int(LEDSignalThemeData*, int, void*))
 
 DYNALIB_END(system)
 

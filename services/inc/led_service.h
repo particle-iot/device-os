@@ -31,34 +31,36 @@ extern "C" {
 // Pattern type
 typedef enum {
     LED_PATTERN_INVALID = 0,
-    LED_PATTERN_SOLID = 10,
-    LED_PATTERN_BLINK = 20,
-    LED_PATTERN_FADE = 30
+    LED_PATTERN_SOLID = 1,
+    LED_PATTERN_BLINK = 2,
+    LED_PATTERN_FADE = 3,
+    LED_PATTERN_CUSTOM = 15 // Should be last element in this enum
 } LEDPattern;
-
-// Pattern speed
-typedef enum {
-    LED_SPEED_INVALID = 0,
-    LED_SPEED_SLOW = 10,
-    LED_SPEED_NORMAL = 20,
-    LED_SPEED_FAST = 30
-} LEDSpeed;
 
 // Status flags
 typedef enum {
-    LED_STATUS_FLAG_ACTIVE = 0x01, // LED status is active (do not modify this flag manually)
+    LED_STATUS_FLAG_ACTIVE = 0x01, // LED status is active (do not modify this flag directly)
     LED_STATUS_FLAG_OFF = 0x02 // LED is turned off
 } LEDStatusFlag;
 
+// Status data
 typedef struct LEDStatusData {
     size_t size; // Size of this structure
     struct LEDStatusData* next; // Internal field. Should be initialized to NULL
-    struct LEDStatusData* prev; // Ditto
-    volatile uint32_t color; // Color (0x00RRGGBB)
-    volatile uint8_t pattern; // Pattern type (as defined by LEDPattern enum)
-    volatile uint8_t speed; // Pattern speed (as defined by LEDSpeed enum)
-    volatile uint8_t flags; // Flags (as defined by LEDStatusFlag enum)
+    struct LEDStatusData* prev; // ditto
     volatile uint8_t priority; // Priority (0 - 255)
+    volatile uint8_t pattern; // Pattern type (as defined by LEDPattern enum)
+    volatile uint8_t flags; // Flags (as defined by LEDStatusFlag enum)
+    volatile uint32_t color; // Color (0x00RRGGBB)
+    union { // Pattern parameters
+        struct { // Predefined pattern (LEDStatusData::pattern != LED_PATTERN_CUSTOM)
+            volatile uint16_t period; // Pattern period in milliseconds
+        };
+        struct { // Custom pattern (LEDStatusData::pattern == LED_PATTERN_CUSTOM)
+            void(*callback)(system_tick_t, void*); // User callback
+            void* data; // Callback data
+        };
+    };
 } LEDStatusData;
 
 // Starts/stops LED status indication
@@ -66,6 +68,9 @@ void led_set_status_active(LEDStatusData* status, int active, void* reserved);
 
 // Enables/disables updating of LED color by led_update() function
 void led_set_updates_enabled(int enabled, void* reserved);
+
+// Returns 1 if updating of LED color by led_update() function is enabled, or 0 otherwise
+int led_updates_enabled(void* reserved);
 
 // Updates LED color according to a number of ticks passed since previous update. This function needs
 // to be called periodically

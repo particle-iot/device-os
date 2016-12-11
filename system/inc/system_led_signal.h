@@ -20,6 +20,10 @@
 
 #include "led_service.h"
 
+// Convenience macros allowing to start and stop a signal indication. For example:
+//
+// LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL); // Starts signal indication with normal priority
+// LED_SIGNAL_STOP(NETWORK_CONNECTING); // Stops signal indication
 #define LED_SIGNAL_START(_signal, _priority) \
         do { \
             led_start_signal(LED_SIGNAL_##_signal, LED_PRIORITY_VALUE(LED_PRIORITY_##_priority, LED_SOURCE_SYSTEM), NULL); \
@@ -30,18 +34,22 @@
             led_stop_signal(LED_SIGNAL_##_signal, NULL) \
         } while (0)
 
+// Combines system's LED source and priority into a single value as expected by the LED service
 #define LED_PRIORITY_VALUE(_priority, _source) \
         ((uint8_t)((((uint8_t)(_priority) & 0x3f) << 2) | ((uint8_t)(_source) & 0x03)))
 
-#define LED_SIGNAL_COUNT 13
-#define LED_PALETTE_COLOR_COUNT 8
+// Current ABI version number
+#define LED_SIGNAL_THEME_VERSION 1
 
-#define LED_THEME_DATA_VERSION 1
+// Number of defined system signals
+#define LED_SIGNAL_COUNT 13
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// System LED signals.
+// Note: When adding new signals, make sure LED_SIGNAL_COUNT is updated accordingly
 typedef enum {
     LED_SIGNAL_NETWORK_OFF = 0,
     LED_SIGNAL_NETWORK_ON = 1,
@@ -75,31 +83,28 @@ typedef enum {
     LED_PRIORITY_CRITICAL = 40
 } LEDPriority;
 
-typedef struct {
-    uint8_t color; // Color index (0 to LED_PALETTE_COLOR_COUNT - 1)
-    uint8_t pattern; // Pattern type (as defined by LEDPattern enum)
-    uint8_t speed; // Pattern speed (as defined by LEDSpeed enum)
-} LEDThemeSignalData_v1;
-
-typedef struct {
-    uint32_t version; // ABI version number (see LED_THEME_DATA_VERSION)
-    uint32_t palette[LED_PALETTE_COLOR_COUNT]; // Palette colors: 0x00RRGGBB, ...
-    LEDThemeSignalData_v1 signals[LED_SIGNAL_COUNT]; // Signal styles (in order as LEDSignal elements)
-} LEDThemeData_v1;
-
 typedef enum {
-    LED_THEME_FLAG_DEFAULT = 0x01 // Initialize theme with factory default parameters
-} LEDThemeFlag;
+    LED_SIGNAL_THEME_FLAG_SAVE = 0x01, // Save theme to persistent storage
+    LED_SIGNAL_THEME_FLAG_DEFAULT = 0x02 // Initialize theme with factory default parameters
+} LEDSignalThemeFlag;
 
-typedef LEDThemeSignalData_v1 LEDThemeSignalData;
-typedef LEDThemeData_v1 LEDThemeData;
+typedef struct {
+    uint32_t version; // ABI version number. Should be initialized to LED_SIGNAL_THEME_VERSION
+    struct { // Signal settings (in order of LEDSignal enum elements)
+        uint32_t color; // Color (0x00RRGGBB)
+        uint16_t period; // Pattern period in milliseconds
+        uint8_t pattern; // Pattern type (as defined by LEDPattern enum)
+    } signals[LED_SIGNAL_COUNT];
+} LEDSignalThemeData_v1;
+
+typedef LEDSignalThemeData_v1 LEDSignalThemeData;
 
 int led_start_signal(int signal, uint8_t priority, void* reserved);
 void led_stop_signal(int signal, void* reserved);
-int led_is_signal_started(int signal, void* reserved);
+int led_signal_started(int signal, void* reserved);
 
-int led_set_signal_theme(const LEDThemeData* theme, int flags, void* reserved);
-int led_get_signal_theme(LEDThemeData* theme, int flags, void* reserved);
+int led_set_signal_theme(const LEDSignalThemeData* theme, int flags, void* reserved);
+int led_get_signal_theme(LEDSignalThemeData* theme, int flags, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -64,7 +64,8 @@ DYNALIB_FN(30, services, system_error_message, const char*(int, void*))
 
 DYNALIB_FN(31, services, led_set_status_active, void(LEDStatusData*, int, void*))
 DYNALIB_FN(32, services, led_set_updates_enabled, void(int, void*))
-DYNALIB_FN(33, services, led_update, void(system_tick_t, void*))
+DYNALIB_FN(33, services, led_updates_enabled, int(void*))
+DYNALIB_FN(34, services, led_update, void(system_tick_t, void*))
 
 DYNALIB_END(services)
 

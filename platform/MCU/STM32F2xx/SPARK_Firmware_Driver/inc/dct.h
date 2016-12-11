@@ -81,8 +81,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t device_id[12];                               // the STM32 device ID
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
     button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
-    uint8_t led_theme[48];               // LED signaling theme
-    uint8_t reserved2[547];
+    uint8_t led_theme[64];               // LED signaling theme
+    uint8_t reserved2[531];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -174,8 +174,8 @@ STATIC_ASSERT_DCT_OFFSET(radio_flags, 3630 /* 3618 + 12 */);
 STATIC_ASSERT_DCT_OFFSET(mode_button_mirror, 3631 /* 3630 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(led_theme, 3663 /* 3631 + 32 */);
 
-STATIC_ASSERT_DCT_OFFSET(reserved2, 3711 /* 3663 + 48 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3711 + 547 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 3727 /* 3663 + 64 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3727 + 531 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
