@@ -1328,6 +1328,54 @@ void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void
     }
 }
 
+static inline uint32_t Gpio_Peripheral_To_Port_Source(GPIO_TypeDef* gpio)
+{
+    switch((uint32_t)gpio) {
+        case (uint32_t)GPIOA:
+            return 0;
+        case (uint32_t)GPIOB:
+            return 1;
+        case (uint32_t)GPIOC:
+            return 2;
+        case (uint32_t)GPIOD:
+            return 3;
+    }
+
+    return 0;
+}
+
+static inline uint32_t Gpio_Peripheral_To_Clk(GPIO_TypeDef* gpio) {
+    switch((uint32_t)gpio) {
+        case (uint32_t)GPIOA:
+            return RCC_AHB1Periph_GPIOA;
+        case (uint32_t)GPIOB:
+            return RCC_AHB1Periph_GPIOB;
+        case (uint32_t)GPIOC:
+            return RCC_AHB1Periph_GPIOC;
+        case (uint32_t)GPIOD:
+            return RCC_AHB1Periph_GPIOD;
+    }
+
+    return 0;
+}
+
+static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
+    switch((uint32_t)tim) {
+        case (uint32_t)TIM1:
+            return GPIO_AF_TIM1;
+        case (uint32_t)TIM2:
+            return GPIO_AF_TIM2;
+        case (uint32_t)TIM3:
+            return GPIO_AF_TIM3;
+        case (uint32_t)TIM4:
+            return GPIO_AF_TIM4;
+        case (uint32_t)TIM5:
+            return GPIO_AF_TIM5;
+    }
+
+    return 0;
+}
+
 void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved) {
     (void)button; // unused
     STM32_Pin_Info* pinmap = HAL_Pin_Map();
@@ -1337,26 +1385,8 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
     if (mode != RISING && mode != FALLING)
         return;
 
-    uint8_t gpio_port_source = 0;
-    uint32_t gpio_clk = 0x00;
-    switch((uint32_t)pinmap[pin].gpio_peripheral) {
-    case (uint32_t)GPIOA:
-        gpio_port_source = 0;
-        gpio_clk = RCC_AHB1Periph_GPIOA;
-        break;
-    case (uint32_t)GPIOB:
-        gpio_port_source = 1;
-        gpio_clk = RCC_AHB1Periph_GPIOB;
-        break;
-    case (uint32_t)GPIOC:
-        gpio_port_source = 2;
-        gpio_clk = RCC_AHB1Periph_GPIOC;
-        break;
-    case (uint32_t)GPIOD:
-        gpio_port_source = 3;
-        gpio_clk = RCC_AHB1Periph_GPIOD;
-        break;
-    }
+    uint8_t gpio_port_source = Gpio_Peripheral_To_Port_Source(pinmap[pin].gpio_peripheral);
+    uint32_t gpio_clk = Gpio_Peripheral_To_Clk(pinmap[pin].gpio_peripheral);
 
     button_config_t conf = {
         .port = pinmap[pin].gpio_peripheral,
@@ -1405,6 +1435,96 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
     };
 
     BUTTON_Mirror_Persist(&bootloader_conf);
+}
+
+static void LED_Mirror_Persist(uint8_t led, led_config_t* conf) {
+    const size_t offset = DCT_LED_MIRROR_OFFSET + ((led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
+    const led_config_t* saved_config = (const led_config_t*)dct_read_app_data(offset);
+
+    if (conf) {
+        if (saved_config->version == 0xFF || memcmp((void*)conf, (void*)saved_config, sizeof(led_config_t)))
+        {
+            dct_write_app_data((void*)conf, offset, sizeof(led_config_t));
+        }
+    } else {
+        if (saved_config->version != 0xFF) {
+            led_config_t tmp;
+            memset((void*)&tmp, 0xff, sizeof(led_config_t));
+            dct_write_app_data((void*)&tmp, offset, sizeof(led_config_t));
+        }
+    }
+}
+
+void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* reserved)
+{
+    int32_t state = HAL_disable_irq();
+    led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
+    if (ledc->is_active) {
+        ledc->is_active = 0;
+        HAL_Pin_Mode(ledc->hal_pin, INPUT);
+    }
+    HAL_enable_irq(state);
+
+    if (bootloader) {
+        LED_Mirror_Persist(led, NULL);
+    }
+}
+
+void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
+{
+    if (pin > TOTAL_PINS)
+        return;
+
+    STM32_Pin_Info* pinmap = HAL_Pin_Map();
+
+    if (!pinmap[pin].timer_peripheral)
+        return;
+
+    // NOTE: `flags` currently only control whether the LED state should be inverted
+    // NOTE: All mirrored LEDs are currently PWM
+
+    led_config_t conf = {
+        .version = 0x01,
+        .port = pinmap[pin].gpio_peripheral, 
+        .pin = pinmap[pin].gpio_pin,
+        .hal_pin = pin,
+        .hal_mode = AF_OUTPUT_PUSHPULL,
+        .pin_source = pinmap[pin].gpio_pin_source,
+        .af = 0,
+        .tim_peripheral = 0,
+        .tim_channel = 0,
+        .is_active = 1,
+        .is_hal_pin = 1,
+        .is_inverted = flags & 1,
+        .is_pwm = 1
+    };
+
+    int32_t state = HAL_disable_irq();
+    HAL_Led_Init(led, &conf, NULL);
+    HAL_enable_irq(state);
+
+    if (!bootloader) {
+        LED_Mirror_Persist(led, NULL);
+        return;
+    }
+
+    led_config_t bootloader_conf = {
+        .version = 0x01,
+        .port = pinmap[pin].gpio_peripheral,
+        .pin = pinmap[pin].gpio_pin,
+        .clk = Gpio_Peripheral_To_Clk(pinmap[pin].gpio_peripheral),
+        .mode = GPIO_Mode_AF,
+        .pin_source = pinmap[pin].gpio_pin_source,
+        .af = Tim_Peripheral_To_Af(pinmap[pin].timer_peripheral),
+        .tim_peripheral = pinmap[pin].timer_peripheral,
+        .tim_channel = pinmap[pin].timer_ch,
+        .is_active = 1,
+        .is_hal_pin = 0,
+        .is_inverted = flags & 1,
+        .is_pwm = 1
+    };
+
+    LED_Mirror_Persist(led, &bootloader_conf);
 }
 
 #if HAL_PLATFORM_CLOUD_UDP

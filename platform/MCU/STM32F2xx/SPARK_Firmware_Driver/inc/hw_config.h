@@ -37,6 +37,8 @@
 #include "usb_hal.h"
 #include "platform_system_flags.h"
 #include "hw_ticks.h"
+#include "rgbled_hal.h"
+#include "rgbled_hal_impl.h"
 #if defined(HAS_SERIAL_FLASH)
 #include "spi_flash.h"
 #endif
@@ -81,6 +83,12 @@ typedef struct {
 
 extern button_config_t HAL_Buttons[];
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+extern const led_config_t HAL_Leds_Default[];
+#else
+extern led_config_t HAL_Leds_Default[];
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros ------------------------------------------------------------*/
@@ -108,6 +116,8 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
+
+void LED_Init(Led_TypeDef Led);
 
 #ifdef HAS_SERIAL_FLASH
 /* Serial Flash Hardware related methods */

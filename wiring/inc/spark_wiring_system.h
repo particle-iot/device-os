@@ -35,6 +35,7 @@
 #include "core_hal.h"
 #include "system_user.h"
 #include "system_version.h"
+#include "rgbled.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
 #define SYSTEM_HW_TICKS 1
@@ -291,6 +292,19 @@ public:
         HAL_Core_Button_Mirror_Pin_Disable((uint8_t)bootloader, 0, NULL);
     }
 
+    void ledRgbMirror(pin_t rpin, pin_t gpin, pin_t bpin, bool invert=false, bool bootloader=false) const
+    {
+        HAL_Core_Led_Mirror_Pin(LED_RED + LED_MIRROR_OFFSET, rpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+        HAL_Core_Led_Mirror_Pin(LED_GREEN + LED_MIRROR_OFFSET, gpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+        HAL_Core_Led_Mirror_Pin(LED_BLUE + LED_MIRROR_OFFSET, bpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+    }
+
+    void disableLedRgbMirror(bool bootloader=true) const
+    {
+        HAL_Core_Led_Mirror_Pin_Disable(LED_RED + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+        HAL_Core_Led_Mirror_Pin_Disable(LED_GREEN + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+        HAL_Core_Led_Mirror_Pin_Disable(LED_BLUE + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+    }
 private:
 
     static inline uint8_t get_flag(system_flag_t flag)

@@ -1,8 +1,17 @@
 
 #include <stdint.h>
+#include <stddef.h>
 #include "rgbled.h"
 #include "rgbled_hal.h"
 
+LedCallbacks LED_Callbacks = {
+    .version = 0x0000,
+    .Led_Rgb_Set_Values = (void(*)(uint16_t r, uint16_t g, uint16_t b, void*))Set_RGB_LED_Values,
+    .Led_Rgb_Get_Values = (void(*)(uint16_t* rgb, void*))Get_RGB_LED_Values,
+    .Led_Rgb_Get_Max_Value = (uint32_t(*)(void*))Get_RGB_LED_Max_Value,
+    .Led_User_Set = (void(*)(uint8_t, void*))Set_User_LED,
+    .Led_User_Toggle = (void(*)(void*))Toggle_User_LED
+};
 
 volatile uint8_t LED_RGB_OVERRIDE = 0;
 volatile uint8_t LED_RGB_BRIGHTNESS = DEFAULT_LED_RGB_BRIGHTNESS;
@@ -15,7 +24,7 @@ static uint8_t led_fade_step = NUM_LED_FADE_STEPS - 1;
 static uint8_t led_fade_direction = -1; /* 1 = rising, -1 = falling. */
 
 uint16_t ccr_scale(uint8_t color) {
-    return (uint16_t)((((uint32_t)(color)) * LED_RGB_BRIGHTNESS * Get_RGB_LED_Max_Value()) >> 16);
+    return (uint16_t)((((uint32_t)(color)) * LED_RGB_BRIGHTNESS * LED_Callbacks.Led_Rgb_Get_Max_Value(NULL)) >> 16);
 }
 
 void Set_CCR_Color(uint32_t RGB_Color, uint16_t* ccr) {
@@ -74,7 +83,7 @@ void LED_RGB_SetChangeHandler(led_update_handler_fn fn, void* fn_data) {
 }
 
 uint8_t asRGBComponent(uint16_t ccr) {
-    return (uint8_t)((ccr<<8)/Get_RGB_LED_Max_Value());
+    return (uint8_t)((ccr<<8)/LED_Callbacks.Led_Rgb_Get_Max_Value(NULL));
 }
 
 
@@ -177,7 +186,7 @@ void LED_Toggle(Led_TypeDef Led)
     switch(Led)
     {
     case LED_USER:
-        Toggle_User_LED();
+        LED_Callbacks.Led_User_Toggle(NULL);
         break;
     default:
         break;
@@ -185,7 +194,7 @@ void LED_Toggle(Led_TypeDef Led)
     case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case
 
         color = LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor;
-        Get_RGB_LED_Values(rgb);
+        LED_Callbacks.Led_Rgb_Get_Values(rgb, NULL);
         if (rgb[0] | rgb[1] | rgb[2])
             Set_RGB_LED_Color(0);
         else
@@ -222,17 +231,22 @@ void LED_Fade(Led_TypeDef Led)
 void LED_RGB_Get(uint8_t* rgb) {
     int i=0;
     uint16_t values[3];
-    Get_RGB_LED_Values(values);
+    LED_Callbacks.Led_Rgb_Get_Values(values, NULL);
     for (i=0; i<3; i++) {
-        rgb[i] = (uint8_t)(((uint32_t)(values[i])<<8)/(Get_RGB_LED_Max_Value()));
+        rgb[i] = (uint8_t)(((uint32_t)(values[i])<<8)/(LED_Callbacks.Led_Rgb_Get_Max_Value(NULL)));
     }
 }
 
 void Set_RGB_LED(uint16_t* data) {
-    Set_RGB_LED_Values(data[0], data[1], data[2]);
+    LED_Callbacks.Led_Rgb_Set_Values(data[0], data[1], data[2], NULL);
 }
 
 bool LED_RGB_IsOverRidden(void)
 {
     return (LED_RGB_OVERRIDE!=0)?true:false;
+}
+
+void LED_SetCallbacks(LedCallbacks cb, void* reserved)
+{
+    LED_Callbacks = cb;
 }

@@ -166,3 +166,11 @@ void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void
 void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved)
 {
 }
+
+void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* reserved)
+{
+}
+
+void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
+{
+}
