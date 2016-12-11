@@ -9,7 +9,7 @@
 
 namespace {
 
-using particle::LEDStatus;
+using namespace particle;
 
 class Color {
 public:
@@ -161,13 +161,14 @@ TEST_CASE("LEDStatus") {
     Led led;
 
     SECTION("default status parameters") {
-        LEDStatus s(Color::WHITE);
+        LEDStatus s;
         CHECK(s.color() == Color::WHITE);
         CHECK(s.pattern() == LED_PATTERN_SOLID);
-        CHECK(s.speed() == LED_SPEED_NORMAL);
+        CHECK(s.period() == 0);
         CHECK(s.priority() == LED_PRIORITY_NORMAL);
         CHECK(s.isOn() == true);
-        CHECK(s.isActive() == false); // Status instances need to be activated explicitly
+        CHECK(s.isOff() == false);
+        CHECK(s.isActive() == false); // Not active after construction
     }
 
     SECTION("LED is black when no active status available") {
@@ -282,22 +283,22 @@ TEST_CASE("LEDStatus") {
 
     SECTION("system status can be overriden by application status with higher priority") {
         // Activate system status for each priority
-        LEDStatus s1(Color::WHITE, LED_SOURCE_SYSTEM, LED_PRIORITY_BACKGROUND);
+        LEDStatus s1(Color::WHITE, LED_PRIORITY_BACKGROUND, LED_SOURCE_SYSTEM);
         s1.setActive();
-        LEDStatus s2(Color::BLUE, LED_SOURCE_SYSTEM, LED_PRIORITY_NORMAL);
+        LEDStatus s2(Color::BLUE, LED_PRIORITY_NORMAL, LED_SOURCE_SYSTEM);
         s2.setActive();
-        LEDStatus s3(Color::GREEN, LED_SOURCE_SYSTEM, LED_PRIORITY_IMPORTANT);
+        LEDStatus s3(Color::GREEN, LED_PRIORITY_IMPORTANT, LED_SOURCE_SYSTEM);
         s3.setActive();
-        LEDStatus s4(Color::RED, LED_SOURCE_SYSTEM, LED_PRIORITY_CRITICAL);
+        LEDStatus s4(Color::RED, LED_PRIORITY_CRITICAL, LED_SOURCE_SYSTEM);
         s4.setActive();
         // Activate application status for each priority
-        LEDStatus a1(Color::GRAY, LED_SOURCE_APPLICATION, LED_PRIORITY_BACKGROUND);
+        LEDStatus a1(Color::GRAY, LED_PRIORITY_BACKGROUND, LED_SOURCE_APPLICATION);
         a1.setActive();
-        LEDStatus a2(Color::CYAN, LED_SOURCE_APPLICATION, LED_PRIORITY_NORMAL);
+        LEDStatus a2(Color::CYAN, LED_PRIORITY_NORMAL, LED_SOURCE_APPLICATION);
         a2.setActive();
-        LEDStatus a3(Color::YELLOW, LED_SOURCE_APPLICATION, LED_PRIORITY_IMPORTANT);
+        LEDStatus a3(Color::YELLOW, LED_PRIORITY_IMPORTANT, LED_SOURCE_APPLICATION);
         a3.setActive();
-        LEDStatus a4(Color::MAGENTA, LED_SOURCE_APPLICATION, LED_PRIORITY_CRITICAL);
+        LEDStatus a4(Color::MAGENTA, LED_PRIORITY_CRITICAL, LED_SOURCE_APPLICATION);
         a4.setActive();
         update();
         CHECK(led.color() == Color::RED); // Shows critical status (system)
@@ -345,17 +346,22 @@ TEST_CASE("LEDPattern") {
 
         SECTION("slow speed") {
             s.setSpeed(LED_SPEED_SLOW);
-            check(500); // Pattern period is 500ms
+            check(1000); // Pattern period is 1s
         }
 
         SECTION("normal speed") {
             s.setSpeed(LED_SPEED_NORMAL);
-            check(200); // Pattern period is 200ms
+            check(500); // Pattern period is 500ms
         }
 
         SECTION("fast speed") {
             s.setSpeed(LED_SPEED_FAST);
-            check(100); // Pattern period is 100ms
+            check(200); // Pattern period is 200ms
+        }
+
+        SECTION("custom period") {
+            s.setPeriod(2000);
+            check(2000); // Pattern period is 2s
         }
     }
 
@@ -373,7 +379,7 @@ TEST_CASE("LEDPattern") {
 
         SECTION("slow speed") {
             s.setSpeed(LED_SPEED_SLOW);
-            check(8000); // Pattern period is 8s
+            check(7000); // Pattern period is 7s
         }
 
         SECTION("normal speed") {
@@ -384,6 +390,11 @@ TEST_CASE("LEDPattern") {
         SECTION("fast speed") {
             s.setSpeed(LED_SPEED_FAST);
             check(1000); // Pattern period is 1s
+        }
+
+        SECTION("custom period") {
+            s.setPeriod(3000);
+            check(3000); // Pattern period is 3s
         }
     }
 }
