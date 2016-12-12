@@ -371,7 +371,7 @@ External Particle libraries can be compiled and linked with firmware. To add one
 ```
 cd /particle/libs/neopixel
 rm -rf firmware/examples
-``
+```
 
 3. Rename `firmware` to be the same as the library name. 
 ```
