@@ -1,3 +1,48 @@
+## 0.6.1-rc.1
+
+### FEATURES
+
+- [[PR #1190]](https://github.com/spark/firmware/pull/1190) [[Implements #1114]](https://github.com/spark/firmware/issues/1114) Added ability to mirror MODE/SETUP button to any GPIO, available from time of boot, active high or low. 
+- [[PR #1182]](https://github.com/spark/firmware/pull/1182) [[Fixes #687]](https://github.com/spark/firmware/issues/687) [[Docs]](https://prerelease-docs.particle.io/reference/firmware/electron/#setlistentimeout-) Added `WiFi.set|getListenTimeout()` | `Cellular.set|getListenTimeout()` to override the automatic new Listening Mode timeout (Wi-Fi = no timeout by default, Cellular = 5 minute timeout by default).
+- [[PR #1154]](https://github.com/spark/firmware/pull/1154) Added `low_battery` system event, which is generated when low battery condition is detected. This is when the battery falls below the SoC threshold (default 10%, max settable 32%).  The event can only be generated again if the system goes from a non-charging to charing state after the event is generated. The event doesn't carry any data.
+- [[PR #1144]](https://github.com/spark/firmware/pull/1144) Added tracking of ACKs for published events (see `WITH_ACK` flag for `Particle.publish()`)
+- [[PR #1135]](https://github.com/spark/firmware/pull/1135) [[Fixes #1116]](https://github.com/spark/firmware/issues/1116) [[Fixes #965]](https://github.com/spark/firmware/issues/965) New Time API's! `Time.isValid()` | `Particle.syncTimePending()` | `Particle.syncTimeDone()` | `Particle.timeSyncedLast()`
+- [[PR #1127]](https://github.com/spark/firmware/pull/1127) Added support for runtime logging configuration, which allows to enable logging on already running system via USB control requests.
+- [[PR #1120]](https://github.com/spark/firmware/pull/1120) [Implements #1059](https://github.com/spark/firmware/issues/1059) [P1] Added extra spare pin to P1 (P1S6) with GPIO and PWM support.
+
+### ENHANCEMENTS
+
+- [[PR #1191]](https://github.com/spark/firmware/pull/1191) Added more Arduino Library compatibility
+- [[PR #1188]](https://github.com/spark/firmware/pull/1188) [[Implements #1152]](https://github.com/spark/firmware/issues/1152) Added SPI API's: `SPISettings` | `SPI.beginTransaction()` | `SPI.endTransaction()`
+- [[PR #1169]](https://github.com/spark/firmware/pull/1169) Updated system communication logging with new logging API
+- [[PR #1160]](https://github.com/spark/firmware/pull/1160) [Electron] Modem USART paused via HW_FLOW_CONTROL (RTS) before going into sleep with SLEEP_NETWORK_STANDBY. Receives and buffers small messages while system sleeping.
+- [[PR #1159]](https://github.com/spark/firmware/pull/1159) [[Closes #1085]](https://github.com/spark/firmware/issues/1085) [[Closes #1054]](https://github.com/spark/firmware/issues/1054) Added support for GCC 5.4.x
+- [[PR #1151]](https://github.com/spark/firmware/pull/1151) [[Closes #977]](https://github.com/spark/firmware/issues/977) Added System events for cloud/network connection state changes
+- [[PR #1122]](https://github.com/spark/firmware/pull/1122) Attach to host even if Serial, USBSerial1 and Keyboard/Mouse are disabled, so that "Control Interface" that receives vendor requests is still accessible.
+- [[PR #1097]](https://github.com/spark/firmware/pull/1097) [[Implements #1032]](https://github.com/spark/firmware/issues/1032) When flashing (OTA/YModem) an invalid firmware binary (that the device ignores) it will post an event describing why the binary was not applied.
+
+### BUGFIX
+
+- [[PR #1186]](https://github.com/spark/firmware/pull/1186) Fixed issue where USB `Serial` might deadlock when interrupts are disabled while using `DEBUG_BUILD=y`
+- [[PR #1179]](https://github.com/spark/firmware/pull/1179) [[Fixes #1178]](https://github.com/spark/firmware/issues/1178) [[Fixes #1060]](https://github.com/spark/firmware/issues/1160) [Electron] Bootloader build was failing, fixed and added to CI.
+- [[PR #1158]](https://github.com/spark/firmware/pull/1158) [[Fixes #1133]](https://github.com/spark/firmware/issues/1133) [Electron] Before sleeping, now waits for server sent confirmable messages to be acknowledged, in addition to previous behavior of device generated confirmable messages being acknowledged.  Reduces data usage.
+- [[PR #1156]](https://github.com/spark/firmware/pull/1156) [[Fixes #1155]](https://github.com/spark/firmware/pull/1156) System.sleep(30) wasn't reapplying power to the network device after set time.
+- [[PR #1147]](https://github.com/spark/firmware/pull/1147) [Electron] Fixed approx. -0.1V offset on FuelGauge().getVCell() readings
+- [[PR #1145]](https://github.com/spark/firmware/pull/1145) [[Fixes #973]](https://github.com/spark/firmware/issues/973) `Particle.connect()` now blocks `loop()` from running until `Particle.connected()` is `true` in single threaded SEMI_AUTOMATIC mode.
+- [[PR #1140]](https://github.com/spark/firmware/pull/1140) [[Fixes #1138]](https://github.com/spark/firmware/issues/1138) [[Fixes #1104]](https://github.com/spark/firmware/issues/1104) [Electron] Fixed modem USART and buffer handling
+- [[PR #1130]](https://github.com/spark/firmware/pull/1130) Particle.subscribe() used with same events but changing scope between PUBLIC and PRIVATE or vice versa would potentially result in non-registered subscriptions.  This was also crashing the GCC virtual device with a segfault when subscription checksums were calculated.
+- [[PR #1125]](https://github.com/spark/firmware/pull/1125) [[Fixes #1098]](https://github.com/spark/firmware/issues/1098) [Photon/P1] Previously, when entering Sleep-stop mode: `System.sleep(D1, RISING, 60);` while in the process of making a Wi-Fi connection resulted in some parts of the radio still being initialized, consuming about 10-15mA more than normal.
+
+### INTERNAL
+
+- [[PR #1196]](https://github.com/spark/firmware/pull/1196) Re-enable GNU extensions for libc globally. Fixes build with ARM GCC 4.9.3 Q1.
+- [[PR #1189]](https://github.com/spark/firmware/pull/1189) Typo caused a warning during compilation in wiring/no_fixture Cellular tests.
+- [[PR #1184]](https://github.com/spark/firmware/pull/1184) [Electron] moved cellular HAL and its direct dependencies from module 2 to module 3 to free up space (this is system-part3 was reduced in size, while system-part1 was increased)
+- [[PR #1167]](https://github.com/spark/firmware/pull/1167) [[Fixes #1036]](https://github.com/spark/firmware/issues/1036) [GCC Virtual Device] workaround for 100% CPU usage problem.
+- [[PR #1146]](https://github.com/spark/firmware/pull/1146) [[Closes #1040]](https://github.com/spark/firmware/issues/1040) Added asserts for checking that network calls are run on system thread.
+- [[PR #1134]](https://github.com/spark/firmware/pull/1134) [GCC Virtual Device] Error in socket_hal's socket_receive() logic caused random cloud connection errors.
+
+
 ## v0.6.0 (same as v0.6.0-rc.2)
 
 ### ENHANCEMENTS
