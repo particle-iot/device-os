@@ -52,7 +52,7 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_cellular_printable.h"
-#include "system_rgbled.h"
+#include "spark_wiring_led.h"
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -60,6 +60,7 @@
 #endif
 
 using namespace spark;
+using namespace particle;
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -90,18 +91,7 @@ inline void CLR_BUTTON_TIMEOUT() {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-static volatile uint32_t TimingLED;
 static volatile uint32_t TimingIWDGReload;
-
-/**
- * When non-zero, causes the system to play out a count on the LED.
- * For even values, the system displays a bright color for a short period,
- * while for odd values the system displays a dim color for a longer period.
- * The value is then decremented and the process repeated until 0.
- */
-static volatile uint8_t SYSTEM_LED_COUNT;
-
-RGBLEDState led_state;
 
 /**
  * KNowing the current listen mode isn't sufficient to determine the correct action (since that may or may not have changed)
@@ -124,25 +114,78 @@ static volatile uint8_t button_final_clicks = 0;
 static uint8_t button_current_clicks = 0;
 
 #if Wiring_SetupButtonUX
-void system_prepare_display_bars()
-{
-	led_state.save();
-	LED_Signaling_Stop();
-	SYSTEM_LED_COUNT = 255;
-	TimingLED = 0;	// todo - should use a mutex around these shared vars
-}
 
-void system_display_bars(int bars)
-{
-    if (bars>=0)
-    {
-		SYSTEM_LED_COUNT = ((bars<<1)+2) | 128;
+namespace {
+
+class LEDCounterStatus: public LEDCustomStatus {
+public:
+    using LEDCustomStatus::LEDCustomStatus;
+
+    void start(uint8_t count) {
+        setActive(false);
+        count_ = count;
+        state_ = DELAY;
+        ticks_ = DELAY_TICKS;
+        setColor(DELAY_COLOR);
+        setActive(true);
     }
-    else
-    {
-    		SYSTEM_LED_COUNT = 1;
+
+protected:
+    virtual void update(system_tick_t t) override {
+        if (t >= ticks_) { // Change state
+            switch (state_) {
+            case DELAY:
+                if (count_ > 0) {
+                    state_ = ON;
+                    ticks_ = ON_TICKS;
+                    setColor(ON_COLOR);
+                } else {
+                    setActive(false); // Stop indication
+                }
+                break;
+            case ON:
+                if (--count_ > 0) {
+                    state_ = OFF;
+                    ticks_ = OFF_TICKS;
+                    setColor(OFF_COLOR);
+                } else {
+                    state_ = DELAY;
+                    ticks_ = DELAY_TICKS;
+                    setColor(DELAY_COLOR);
+                }
+                break;
+            case OFF:
+                state_ = ON;
+                ticks_ = ON_TICKS;
+                setColor(ON_COLOR);
+                break;
+            }
+        } else {
+            ticks_ -= t; // Update timing
+        }
     }
-}
+
+private:
+    enum State {
+        ON,
+        OFF,
+        DELAY
+    };
+
+    State state_;
+    uint16_t ticks_;
+    uint8_t count_;
+
+    static const uint32_t ON_COLOR = 0x0000ff00;
+    static const uint32_t OFF_COLOR = 0x00000a00;
+    static const uint32_t DELAY_COLOR = OFF_COLOR;
+
+    static const uint16_t ON_TICKS = 50;
+    static const uint16_t OFF_TICKS = 350;
+    static const uint16_t DELAY_TICKS = 750;
+};
+
+} // namespace
 
 /* displays RSSI value on system LED */
 void system_display_rssi() {
@@ -154,7 +197,6 @@ void system_display_rssi() {
      *   4: < - 57 dBm
      *   5: >= -57 dBm
      */
-    system_prepare_display_bars();
     int rssi = 0;
     int bars = 0;
 #if Wiring_WiFi == 1
@@ -172,7 +214,8 @@ void system_display_rssi() {
     }
     DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
 
-    system_display_bars(bars);
+    static LEDCounterStatus ledStatus(LED_PRIORITY_IMPORTANT);
+    ledStatus.start(bars);
 }
 
 void system_handle_button_click()
@@ -191,6 +234,7 @@ void system_handle_button_click()
         break;
     }
 }
+
 #endif // #if Wiring_SetupButtonUX
 
 void reset_button_click()
@@ -335,11 +379,6 @@ void system_power_management_update()
 }
 #endif
 
-inline bool system_led_override()
-{
-	return SYSTEM_LED_COUNT;
-}
-
 /*******************************************************************************
  * Function Name  : HAL_SysTick_Handler
  * Description    : Decrements the various Timing variables related to SysTick.
@@ -350,94 +389,14 @@ inline bool system_led_override()
  *******************************/
 extern "C" void HAL_SysTick_Handler(void)
 {
-    static const uint16_t LED_UPDATE_INTERVAL = 40; // Milliseconds
-    static uint16_t ledUpdateTime = 0;
+    static const uint16_t LED_UPDATE_INTERVAL = 25; // Milliseconds
+    static uint16_t ledUpdateTicks = 0;
 
-    if (ledUpdateTime == 0) {
+    if (ledUpdateTicks == 0) {
         led_update(LED_UPDATE_INTERVAL, nullptr);
-        ledUpdateTime = LED_UPDATE_INTERVAL;
+        ledUpdateTicks = LED_UPDATE_INTERVAL;
     } else {
-        --ledUpdateTime;
-    }
-
-    if (LED_RGB_IsOverRidden() && !system_led_override())
-    {
-#ifndef SPARK_NO_CLOUD
-        if (LED_Spark_Signal != 0)
-        {
-            LED_Signaling_Override();
-        }
-#endif
-    }
-    else if (TimingLED != 0x00)
-    {
-        TimingLED--;
-    }
-    else if(SPARK_FLASH_UPDATE || Spark_Error_Count || network.listening())
-    {
-        //Do nothing
-    }
-    else if (SYSTEM_POWEROFF)
-    {
-        LED_SetRGBColor(RGB_COLOR_GREY);
-        LED_On(LED_RGB);
-    }
-    else if (SYSTEM_LED_COUNT)
-    {
-		SPARK_LED_FADE = 0;
-		if (SYSTEM_LED_COUNT==255)
-		{
-			// hold the LED on this color until the actual number of bars is set
-  			LED_SetRGBColor(0<<16 | 10<<8 | 0);
-    	        LED_On(LED_RGB);
-    			TimingLED = 100;
-		}
-		else if (SYSTEM_LED_COUNT & 128)
-		{
-			LED_SetRGBColor(0<<16 | 10<<8 | 0);
-			LED_On(LED_RGB);
-			TimingLED = 1000;
-			SYSTEM_LED_COUNT &= ~128;
-		}
-		else
-		{
-			--SYSTEM_LED_COUNT;
-			if (SYSTEM_LED_COUNT==0)
-			{
-				led_state.restore();
-			}
-			else if (!(SYSTEM_LED_COUNT&1))
-			{
-				LED_SetRGBColor(0<<16 | 255<<8 | 0);
-				LED_On(LED_RGB);
-				TimingLED = 40;
-			}
-			else
-			{
-				LED_SetRGBColor(0<<16 | 10<<8 | 0);
-				LED_On(LED_RGB);
-				TimingLED = SYSTEM_LED_COUNT==1 ? 750 : 350;
-			}
-		}
-    }
-    else if(SPARK_LED_FADE && (!SPARK_CLOUD_CONNECTED || system_cloud_active()))
-    {
-        LED_Fade(LED_RGB);
-        TimingLED = 20;//Breathing frequency kept constant
-    }
-    else if(SPARK_CLOUD_CONNECTED)
-    {
-        LED_SetRGBColor(system_mode()==SAFE_MODE ? RGB_COLOR_MAGENTA : RGB_COLOR_CYAN);
-        LED_On(LED_RGB);
-        SPARK_LED_FADE = 1;
-    }
-    else
-    {
-        LED_Toggle(LED_RGB);
-        if(SPARK_CLOUD_SOCKETED || ( network.connected() && !network.ready()))
-            TimingLED = 50;         //50ms
-        else
-            TimingLED = 100;        //100ms
+        --ledUpdateTicks;
     }
 
     if(SPARK_FLASH_UPDATE)

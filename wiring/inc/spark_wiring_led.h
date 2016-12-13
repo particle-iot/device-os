@@ -24,9 +24,9 @@ namespace particle {
 
 // Predefined pattern speed values
 enum LEDSpeed {
-    LED_SPEED_SLOW = 10,
-    LED_SPEED_NORMAL = 20,
-    LED_SPEED_FAST = 30
+    LED_SPEED_SLOW,
+    LED_SPEED_NORMAL,
+    LED_SPEED_FAST
 };
 
 class LEDStatus;
@@ -37,7 +37,7 @@ namespace detail {
 // Returns pattern period for predefined speed value
 uint16_t patternPeriod(LEDPattern pattern, LEDSpeed speed);
 
-// Class implementing common functionality of the LEDStatus and LEDCustomStatus classes
+// Base class implementing common functionality of the LEDStatus and LEDCustomStatus classes
 class LEDStatusBase {
 public:
     virtual ~LEDStatusBase();
@@ -102,7 +102,7 @@ private:
     static void updateCallback(system_tick_t ticks, void* data);
 };
 
-// Class allowing to override a theme used for system LED signaling
+// Class allowing to set a custom theme for system LED signaling
 class LEDSignalTheme {
 public:
     LEDSignalTheme();

@@ -141,7 +141,7 @@ public:
     void operator()(int period) {
         const int step = std::round(period / 5.0);
         int ticks = 0;
-        while (ticks < period * 4) {
+        while (ticks < period * 2) {
             update((ticks > 0) ? step : 0);
             const double t = (ticks % period) / (double)(period - 1);
             const Color c = func_(t);
@@ -206,23 +206,27 @@ TEST_CASE("LEDStatus") {
         CHECK(led.color() == Color::WHITE);
         s.off(); // Turn off
         CHECK(s.isOn() == false);
+        CHECK(s.isOff() == true);
         update();
         CHECK(led.color() == Color::BLACK);
         s.on(); // Turn on
         CHECK(s.isOn() == true);
+        CHECK(s.isOff() == false);
         update();
         CHECK(led.color() == Color::WHITE);
         s.toggle(); // Toggle
         CHECK(s.isOn() == false);
+        CHECK(s.isOff() == true);
         update();
         CHECK(led.color() == Color::BLACK);
         s.toggle(); // Toggle
         CHECK(s.isOn() == true);
+        CHECK(s.isOff() == false);
         update();
         CHECK(led.color() == Color::WHITE);
     }
 
-    SECTION("changing LED brightness") {
+    SECTION("changing LED brightness globally") {
         LEDStatus s(Color::WHITE);
         s.setActive();
         for (int i = 0; i <= 255; ++i) {
@@ -327,74 +331,72 @@ TEST_CASE("LEDStatus") {
         update();
         CHECK(led.color() == Color::BLACK); // No active status available
     }
-}
 
-TEST_CASE("LEDPattern") {
-    Led led;
+    SECTION("predefined patterns") {
+        SECTION("LED_PATTERN_BLINK") {
+            LEDStatus s(Color::WHITE, LED_PATTERN_BLINK);
+            s.setActive();
 
-    SECTION("blinking color") {
-        LEDStatus s(Color::WHITE, LED_PATTERN_BLINK);
-        s.setActive();
+            PatternChecker check(led, [](double t) {
+                if (t < 0.5) {
+                    return Color::WHITE; // LED is on
+                } else {
+                    return Color::BLACK; // LED is off
+                }
+            });
 
-        PatternChecker check(led, [](double t) {
-            if (t < 0.5) {
-                return Color::WHITE; // LED is on
-            } else {
-                return Color::BLACK; // LED is off
+            SECTION("slow speed") {
+                s.setSpeed(LED_SPEED_SLOW);
+                check(1000); // Pattern period is 1s
             }
-        });
 
-        SECTION("slow speed") {
-            s.setSpeed(LED_SPEED_SLOW);
-            check(1000); // Pattern period is 1s
-        }
-
-        SECTION("normal speed") {
-            s.setSpeed(LED_SPEED_NORMAL);
-            check(500); // Pattern period is 500ms
-        }
-
-        SECTION("fast speed") {
-            s.setSpeed(LED_SPEED_FAST);
-            check(200); // Pattern period is 200ms
-        }
-
-        SECTION("custom period") {
-            s.setPeriod(2000);
-            check(2000); // Pattern period is 2s
-        }
-    }
-
-    SECTION("breathing color") {
-        LEDStatus s(Color::WHITE, LED_PATTERN_FADE);
-        s.setActive();
-
-        PatternChecker check(led, [](double t) {
-            if (t < 0.5) {
-                return Color::WHITE.scaled(1.0 - t / 0.5); // Fading out
-            } else {
-                return Color::WHITE.scaled((t - 0.5) / 0.5); // Fading in
+            SECTION("normal speed") {
+                s.setSpeed(LED_SPEED_NORMAL);
+                check(500); // Pattern period is 500ms
             }
-        });
 
-        SECTION("slow speed") {
-            s.setSpeed(LED_SPEED_SLOW);
-            check(7000); // Pattern period is 7s
+            SECTION("fast speed") {
+                s.setSpeed(LED_SPEED_FAST);
+                check(200); // Pattern period is 200ms
+            }
+
+            SECTION("custom period") {
+                s.setPeriod(2000);
+                check(2000); // Pattern period is 2s
+            }
         }
 
-        SECTION("normal speed") {
-            s.setSpeed(LED_SPEED_NORMAL);
-            check(4000); // Pattern period is 4s
-        }
+        SECTION("LED_PATTERN_FADE") {
+            LEDStatus s(Color::WHITE, LED_PATTERN_FADE);
+            s.setActive();
 
-        SECTION("fast speed") {
-            s.setSpeed(LED_SPEED_FAST);
-            check(1000); // Pattern period is 1s
-        }
+            PatternChecker check(led, [](double t) {
+                if (t < 0.5) {
+                    return Color::WHITE.scaled(1.0 - t / 0.5); // Fading out
+                } else {
+                    return Color::WHITE.scaled((t - 0.5) / 0.5); // Fading in
+                }
+            });
 
-        SECTION("custom period") {
-            s.setPeriod(3000);
-            check(3000); // Pattern period is 3s
+            SECTION("slow speed") {
+                s.setSpeed(LED_SPEED_SLOW);
+                check(7000); // Pattern period is 7s
+            }
+
+            SECTION("normal speed") {
+                s.setSpeed(LED_SPEED_NORMAL);
+                check(4000); // Pattern period is 4s
+            }
+
+            SECTION("fast speed") {
+                s.setSpeed(LED_SPEED_FAST);
+                check(1000); // Pattern period is 1s
+            }
+
+            SECTION("custom period") {
+                s.setPeriod(3000);
+                check(3000); // Pattern period is 3s
+            }
         }
     }
 }
