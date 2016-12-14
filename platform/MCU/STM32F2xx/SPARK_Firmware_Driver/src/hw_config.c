@@ -196,7 +196,7 @@ void Set_System(void)
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     for(LEDx = 1; LEDx < LEDn; ++LEDx)
 #else
-    for(LEDx = 0; LEDx < LEDn * 2; ++LEDx)
+    for(LEDx = 1; LEDx < LEDn * 2; ++LEDx)
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
         //LED_USER initialization is skipped during system setup
