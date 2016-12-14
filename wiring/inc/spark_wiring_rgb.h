@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <functional>
+#include "pinmap_hal.h"
 #include "rgbled.h"
 
 typedef void (raw_rgb_change_handler_t)(uint8_t, uint8_t, uint8_t);
@@ -47,6 +48,9 @@ public:
       using namespace std::placeholders;
       onChange(std::bind(handler, instance, _1, _2, _3));
     }
+
+  static void mirrorTo(pin_t rpin, pin_t gpin, pin_t bpin, bool invert=false, bool bootloader=false);
+  static void mirrorDisable(bool bootloader=true);
 
 private:
 	static void call_raw_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
