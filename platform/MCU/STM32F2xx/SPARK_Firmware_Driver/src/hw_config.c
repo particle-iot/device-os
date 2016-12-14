@@ -496,11 +496,14 @@ void LED_Init(Led_TypeDef Led)
 
     GPIO_Init(HAL_Leds_Default[Led].port, &GPIO_InitStructure);
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if(HAL_Leds_Default[Led].mode == GPIO_Mode_OUT)
     {
         Set_User_LED(DISABLE);
     }
-    else if (HAL_Leds_Default[Led].mode == GPIO_Mode_AF)
+    else
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (HAL_Leds_Default[Led].mode == GPIO_Mode_AF)
     {
         /* Connect TIM pins to respective AF */
         GPIO_PinAFConfig(HAL_Leds_Default[Led].port, HAL_Leds_Default[Led].pin_source, HAL_Leds_Default[Led].af);
@@ -539,6 +542,7 @@ void Get_RGB_LED_Values(uint16_t* values)
 #endif
 }
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 void Set_User_LED(uint8_t state)
 {
     if (state)
@@ -551,6 +555,7 @@ void Toggle_User_LED()
 {
     HAL_Leds_Default[LED_USER].port->ODR ^= HAL_Leds_Default[LED_USER].pin;
 }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 uint16_t Get_RGB_LED_Max_Value()
 {

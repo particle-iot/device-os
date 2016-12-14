@@ -3,14 +3,17 @@
 #include <stddef.h>
 #include "rgbled.h"
 #include "rgbled_hal.h"
+#include "module_info.h"
 
 LedCallbacks LED_Callbacks = {
     .version = 0x0000,
     .Led_Rgb_Set_Values = (void(*)(uint16_t r, uint16_t g, uint16_t b, void*))Set_RGB_LED_Values,
     .Led_Rgb_Get_Values = (void(*)(uint16_t* rgb, void*))Get_RGB_LED_Values,
     .Led_Rgb_Get_Max_Value = (uint32_t(*)(void*))Get_RGB_LED_Max_Value,
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     .Led_User_Set = (void(*)(uint8_t, void*))Set_User_LED,
     .Led_User_Toggle = (void(*)(void*))Toggle_User_LED
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 };
 
 volatile uint8_t LED_RGB_OVERRIDE = 0;
