@@ -171,16 +171,18 @@ TEST_CASE("LEDStatus") {
         CHECK(s.isActive() == false); // Not active after construction
     }
 
-    SECTION("LED is black when no active status available") {
+    SECTION("LED is not affected when no active status is available") {
+        LED_SetRGBColor(0x00123456); // Set LED color directly
+        LED_On(LED_RGB);
         update();
-        CHECK(led.color() == Color::BLACK);
+        CHECK(led.color() == Color(0x00123456));
         LEDStatus s(Color::WHITE);
         s.setActive(); // Start status indication
         update();
         CHECK(led.color() == Color::WHITE);
         s.setActive(false); // Stop status indication
         update();
-        CHECK(led.color() == Color::BLACK);
+        CHECK(led.color() == Color::WHITE); // LED remains white
     }
 
     SECTION("changing color of active status") {
@@ -329,7 +331,7 @@ TEST_CASE("LEDStatus") {
         CHECK(led.color() == Color::GRAY); // Shows background status (application)
         a1.setActive(false); // Deactivate background status (application)
         update();
-        CHECK(led.color() == Color::BLACK); // No active status available
+        CHECK(led.color() == Color::GRAY); // No active status available (LED remains gray)
     }
 
     SECTION("predefined patterns") {

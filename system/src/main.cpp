@@ -117,48 +117,39 @@ static uint8_t button_current_clicks = 0;
 
 namespace {
 
-// LED status for signal strength indication
-class LEDCounter: public LEDCustomStatus {
+// LED status blinking specified number of times
+class LEDCounterStatus: public LEDCustomStatus {
 public:
     using LEDCustomStatus::LEDCustomStatus;
 
     void start(uint8_t count) {
         setActive(false);
         count_ = count;
-        state_ = DELAY;
-        ticks_ = DELAY_TICKS;
-        setColor(DELAY_COLOR);
+        delay(); // Delay before blinking
         setActive(true);
     }
 
 protected:
     virtual void update(system_tick_t t) override {
-        if (t >= ticks_) { // Change state
+        if (t >= ticks_) {
+            // Change state
             switch (state_) {
             case DELAY:
                 if (count_ > 0) {
-                    state_ = ON;
-                    ticks_ = ON_TICKS;
-                    setColor(ON_COLOR);
+                    on(); // Turn LED on
                 } else {
                     setActive(false); // Stop indication
                 }
                 break;
             case ON:
                 if (--count_ > 0) {
-                    state_ = OFF;
-                    ticks_ = OFF_TICKS;
-                    setColor(OFF_COLOR);
+                    off(); // Turn LED off
                 } else {
-                    state_ = DELAY;
-                    ticks_ = DELAY_TICKS;
-                    setColor(DELAY_COLOR);
+                    delay(); // Delay after blinking
                 }
                 break;
             case OFF:
-                state_ = ON;
-                ticks_ = ON_TICKS;
-                setColor(ON_COLOR);
+                on();
                 break;
             }
         } else {
@@ -177,13 +168,23 @@ private:
     uint16_t ticks_;
     uint8_t count_;
 
-    static const uint32_t ON_COLOR = 0x0000ff00;
-    static const uint32_t OFF_COLOR = 0x00000a00;
-    static const uint32_t DELAY_COLOR = OFF_COLOR;
+    void on() {
+        state_ = ON;
+        ticks_ = 50;
+        setColor(0x0000ff00); // Light green
+    }
 
-    static const uint16_t ON_TICKS = 50;
-    static const uint16_t OFF_TICKS = 350;
-    static const uint16_t DELAY_TICKS = 750;
+    void off() {
+        state_ = OFF;
+        ticks_ = 350;
+        setColor(0x00000a00); // Dark green
+    }
+
+    void delay() {
+        state_ = DELAY;
+        ticks_ = 750;
+        setColor(0x00000a00); // Dark green
+    }
 };
 
 } // namespace
@@ -215,7 +216,7 @@ void system_display_rssi() {
     }
     DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
 
-    static LEDCounter ledCounter(LED_PRIORITY_IMPORTANT);
+    static LEDCounterStatus ledCounter(LED_PRIORITY_IMPORTANT);
     ledCounter.start(bars);
 }
 
@@ -392,24 +393,20 @@ extern "C" void HAL_SysTick_Handler(void)
 {
     // Update LED color
     static const uint16_t LED_UPDATE_INTERVAL = 25; // Milliseconds
-    static uint16_t ledUpdateTicks = 0;
+    static uint16_t ledUpdateTicks = LED_UPDATE_INTERVAL;
 
-    if (ledUpdateTicks == 0) {
+    if (--ledUpdateTicks == 0) {
         led_update(LED_UPDATE_INTERVAL, nullptr);
         ledUpdateTicks = LED_UPDATE_INTERVAL;
-    } else {
-        --ledUpdateTicks;
     }
 
     // Check cloud inactivity timeout
     static const uint16_t CLOUD_CHECK_INTERVAL = 1000; // Milliseconds
     static uint16_t cloudCheckTicks = CLOUD_CHECK_INTERVAL;
 
-    if (cloudCheckTicks == 0) {
+    if (--cloudCheckTicks == 0) {
         system_cloud_active();
         cloudCheckTicks = CLOUD_CHECK_INTERVAL;
-    } else {
-        --cloudCheckTicks;
     }
 
     if(SPARK_FLASH_UPDATE)

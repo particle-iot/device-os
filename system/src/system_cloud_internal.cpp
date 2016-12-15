@@ -742,26 +742,26 @@ inline bool Spark_Communication_Loop(void)
 
 namespace {
 
-// LED status for the "rainbow" indication that can be triggered from the cloud
-class LEDSparkSignal: public LEDCustomStatus {
+// LED status for the test signal that can be triggered from the cloud
+class LEDCloudSignalStatus: public LEDCustomStatus {
 public:
-    explicit LEDSparkSignal(LEDPriority priority) :
+    explicit LEDCloudSignalStatus(LEDPriority priority) :
             LEDCustomStatus(priority),
-            ticks_(TICKS),
+            ticks_(0),
             index_(0) {
-        setColor(COLORS[index_]);
+        updateColor();
     }
 
 protected:
     virtual void update(system_tick_t t) override {
         if (t >= ticks_) {
-            ticks_ = TICKS;
+            // Change LED color
             if (++index_ == COLOR_COUNT) {
                 index_ = 0;
             }
-            setColor(COLORS[index_]);
+            updateColor();
         } else {
-            ticks_ -= t;
+            ticks_ -= t; // Update timing
         }
     }
 
@@ -769,21 +769,24 @@ private:
     uint16_t ticks_;
     uint8_t index_;
 
+    void updateColor() {
+        setColor(COLORS[index_]);
+        ticks_ = 100;
+    }
+
     static const uint32_t COLORS[];
     static const size_t COLOR_COUNT;
-
-    static const uint16_t TICKS = 100;
 };
 
-const uint32_t LEDSparkSignal::COLORS[] = { 0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000 }; // VIBGYOR
-const size_t LEDSparkSignal::COLOR_COUNT = sizeof(LEDSparkSignal::COLORS) / sizeof(LEDSparkSignal::COLORS[0]);
+const uint32_t LEDCloudSignalStatus::COLORS[] = { 0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000 }; // VIBGYOR
+const size_t LEDCloudSignalStatus::COLOR_COUNT = sizeof(LEDCloudSignalStatus::COLORS) / sizeof(LEDCloudSignalStatus::COLORS[0]);
 
 } // namespace
 
 void Spark_Signal(bool on, unsigned, void*)
 {
-    static LEDSparkSignal ledSignal(LED_PRIORITY_IMPORTANT); // LED_PRIORITY_NORMAL?
-    ledSignal.setActive(on);
+    static LEDCloudSignalStatus ledCloudSignal(LED_PRIORITY_IMPORTANT);
+    ledCloudSignal.setActive(on);
 }
 
 size_t system_interpolate(const char* var, size_t var_len, char* buf, size_t buf_len)

@@ -95,6 +95,10 @@ public:
         return front_;
     }
 
+    bool isEmpty() const {
+        return front_ == nullptr;
+    }
+
 private:
     LEDStatusData* front_;
 };
@@ -120,6 +124,10 @@ public:
             if (active) {
                 queue_.add(status);
                 status->flags |= LED_STATUS_FLAG_ACTIVE;
+            } else if (queue_.isEmpty()) {
+                // LED service doesn't reset the LED to any default color when there's no active status
+                // available, so cached LED color should be ignored for a next status activated later
+                reset_ = true;
             }
         }
     }
@@ -165,10 +173,10 @@ public:
                 }
                 color = s->color;
                 off = s->flags & LED_STATUS_FLAG_OFF;
+                enabled = (disabled_ == 0);
+                reset = reset_;
+                reset_ = false;
             }
-            enabled = (disabled_ == 0);
-            reset = reset_;
-            reset_ = false;
         }
         if (pattern_ != pattern || period_ != period) {
             pattern_ = pattern;
@@ -182,7 +190,7 @@ public:
         }
         if (enabled) {
             Color c = { 0 }; // Black
-            if (pattern_ != LED_PATTERN_INVALID && !off) {
+            if (!off) {
                 scaleColor(color, led_rgb_brightness, &c); // Use global LED brightness
                 if (period_ > 0) {
                     updatePatternColor(pattern_, ticks_, period_, &c);
@@ -207,8 +215,8 @@ private:
     uint16_t period_; // Current pattern period in milliseconds
     uint16_t ticks_; // Number of milliseconds passed within pattern period
 
-    uint16_t disabled_; // The service is allowed to change LED color only if this counter is set to 0
-    bool reset_; // Flag signaling that cached LED color should be ignored
+    volatile uint16_t disabled_; // The service is allowed to change LED color only if this counter is set to 0
+    volatile bool reset_; // Flag signaling that cached LED color should be ignored
 
     LED_SERVICE_DECLARE_LOCK(lock_); // Platform-specific lock
 

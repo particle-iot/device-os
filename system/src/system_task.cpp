@@ -136,8 +136,8 @@ void manage_network_connection()
 
 namespace {
 
-// LED status for cloud error code indication
-class LEDCloudErrorBlinker: public LEDCustomStatus {
+// LED status for cloud errors indication
+class LEDErrorCodeStatus: public LEDCustomStatus {
 public:
     using LEDCustomStatus::LEDCustomStatus;
 
@@ -145,26 +145,22 @@ public:
         if (count > 0) {
             setActive(false);
             count_ = count;
-            state_ = ON;
-            ticks_ = ON_TICKS;
             setColor(color);
-            setActive(true); // Start indication (LED is turned on)
+            on(); // LED is turned on initially
+            setActive(true);
         }
     }
 
 protected:
     virtual void update(system_tick_t t) override {
-        if (t >= ticks_) { // Change state
+        if (t >= ticks_) {
+            // Change state
             switch (state_) {
             case ON:
-                state_ = OFF;
-                ticks_ = OFF_TICKS;
                 off(); // Turn LED off
                 break;
             case OFF:
                 if (--count_ > 0) {
-                    state_ = ON;
-                    ticks_ = ON_TICKS;
                     on(); // Turn LED on
                 } else {
                     setActive(false); // Stop indication
@@ -186,8 +182,17 @@ private:
     uint16_t ticks_;
     uint8_t count_;
 
-    static const uint16_t ON_TICKS = 250; // Milliseconds
-    static const uint16_t OFF_TICKS = ON_TICKS;
+    void on() {
+        state_ = ON;
+        ticks_ = 250;
+        LEDCustomStatus::on();
+    }
+
+    void off() {
+        state_ = OFF;
+        ticks_ = 250;
+        LEDCustomStatus::off();
+    }
 };
 
 } // namespace
@@ -225,8 +230,8 @@ void handle_cloud_errors()
 
     // cfod resets in orange since they are soft errors
     // TODO: Spark_Error_Count is never equal to 1
-    static LEDCloudErrorBlinker ledBlinker(LED_PRIORITY_IMPORTANT);
-    ledBlinker.start(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED, blinks);
+    static LEDErrorCodeStatus ledErrorCode(LED_PRIORITY_IMPORTANT);
+    ledErrorCode.start(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED, blinks);
 
     // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
 }
@@ -537,12 +542,10 @@ void cloud_disconnect(bool closeSocket)
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
 
-        if (!network.manual_disconnect() && !network.listening())
-        {
-            LED_SIGNAL_STOP(CLOUD_CONNECTED);
-            LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
-            LED_SIGNAL_STOP(CLOUD_CONNECTING);
-        }
+        LED_SIGNAL_STOP(CLOUD_CONNECTED);
+        LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
+        LED_SIGNAL_STOP(CLOUD_CONNECTING);
+
         INFO("Cloud: disconnected");
         system_notify_event(cloud_status, cloud_status_disconnected);
     }
