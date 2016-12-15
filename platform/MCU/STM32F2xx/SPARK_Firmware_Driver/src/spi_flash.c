@@ -327,7 +327,7 @@ uint32_t sFLASH_ReadID(void)
  * @param  byte: byte to send.
  * @retval The value of the received byte.
  */
-static uint8_t sFLASH_SendByte(uint8_t byte)
+static uint8_t __attribute__((optimize("O2"))) sFLASH_SendByte(uint8_t byte)
 {
     /* Loop while DR register in not empty */
     while (SPI_I2S_GetFlagStatus(sFLASH_SPI, SPI_I2S_FLAG_TXE) == RESET);

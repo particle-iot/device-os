@@ -319,7 +319,7 @@ static void Timer_Configure(TIM_TypeDef* TIMx, bool enable)
     {
         uint32_t clk = Timer_Enable(TIMx);
 
-        TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+        TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = {0};
 
         /* TIM2 Update Frequency = 120000000/2/60/10000 = 100Hz = 10ms */
         /* TIM2_Prescaler: 59 */
@@ -343,7 +343,7 @@ static void Timer_Configure(TIM_TypeDef* TIMx, bool enable)
         /* TIMx enable counter */
         TIM_Cmd(TIMx, ENABLE);
 
-        if (TIMx == TIM1 || TIMx == TIM8) {
+        if (TIMx == TIM1 /*|| TIMx == TIM8 */) {
             TIM_CtrlPWMOutputs(TIMx, ENABLE);
         }
     }
@@ -463,9 +463,9 @@ void LED_Init(Led_TypeDef Led)
         const led_config_t* conf = (const led_config_t*)dct_read_app_data(offset);
 
         if (conf->version != 0xff && conf->is_active && conf->is_pwm) {
-            int32_t state = HAL_disable_irq();
+            //int32_t state = HAL_disable_irq();
             memcpy((void*)&HAL_Leds_Default[Led], (void*)conf, sizeof(led_config_t));
-            HAL_enable_irq(state);
+            //HAL_enable_irq(state);
         }
         else
         {
