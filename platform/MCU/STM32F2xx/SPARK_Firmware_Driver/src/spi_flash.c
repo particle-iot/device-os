@@ -26,7 +26,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "hw_config.h"
 
-#pragma GCC optimize ("O1")
+// #pragma GCC optimize ("O1")
 
 /* SST25 SPI Flash supported commands */
 #define sFLASH_CMD_RDSR                 0x05        /* Read Status Register */

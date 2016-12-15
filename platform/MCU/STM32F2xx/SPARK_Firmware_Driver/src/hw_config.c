@@ -74,7 +74,8 @@ button_config_t HAL_Buttons[] = {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 const led_config_t HAL_Leds_Default[] = {
 #else
-led_config_t HAL_Leds_Default[] = {
+led_config_t HAL_Leds_Default[LEDn * 2] = {{0}};
+const led_config_t HAL_Leds_Default_Data[] = {
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
         .version = 0x01,
@@ -124,13 +125,6 @@ led_config_t HAL_Leds_Default[] = {
         .tim_channel = 0,
         .flags = 0
     },
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-    // Mirror
-    {0},
-    {0},
-    {0},
-    {0}
-#endif
 };
 
 /* Extern variables ----------------------------------------------------------*/
@@ -196,6 +190,7 @@ void Set_System(void)
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     for(LEDx = 1; LEDx < LEDn; ++LEDx)
 #else
+    memcpy(HAL_Leds_Default, HAL_Leds_Default_Data, sizeof(HAL_Leds_Default_Data));
     for(LEDx = 1; LEDx < LEDn * 2; ++LEDx)
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
