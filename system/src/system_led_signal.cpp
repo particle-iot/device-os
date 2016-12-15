@@ -101,20 +101,18 @@ public:
         setTheme(t);
     }
 
-    bool start(int signal, uint8_t priority) {
-        LEDStatusData* const s = signalStatus(signal);
-        if (s) {
-            s->priority = priority;
-            led_set_status_active(s, 1, nullptr);
-            return true;
-        }
-        return false;
+    bool start(int signal, uint8_t priority, int flags) {
+        return startSignal(signal, priority);
     }
 
-    void stop(int signal) {
-        LEDStatusData* const s = signalStatus(signal);
-        if (s) {
-            led_set_status_active(s, 0, nullptr);
+    void stop(int signal, int flags) {
+        if (flags & LED_SIGNAL_FLAG_ALL_SIGNALS) {
+            // Ignore `signal` argument and stop all signals
+            for (int i = 0; i < LED_SIGNAL_COUNT; ++i) {
+                stopSignal(i);
+            }
+        } else {
+            stopSignal(signal);
         }
     }
 
@@ -127,13 +125,13 @@ public:
     }
 
     bool setTheme(const LEDSignalThemeData* theme, int flags) {
-        if (flags & LED_SIGNAL_THEME_FLAG_DEFAULT) {
+        if (flags & LED_SIGNAL_FLAG_DEFAULT_THEME) {
             // Ignore `theme` argument and set factory default theme
             LEDSignalThemeData t = { LED_SIGNAL_THEME_VERSION };
             deserializeTheme(t, (const char*)DEFAULT_THEME_DATA, THEME_DATA_SIZE);
             setTheme(t);
 #if HAL_PLATFORM_DCT
-            if (flags & LED_SIGNAL_THEME_FLAG_SAVE) {
+            if (flags & LED_SIGNAL_FLAG_SAVE_THEME) {
                 // Reset theme version in DCT
                 const uint8_t version = 0xff;
                 dct_write_app_data(&version, DCT_LED_THEME_OFFSET, 1);
@@ -143,8 +141,8 @@ public:
         } else if (theme->version == LED_SIGNAL_THEME_VERSION) {
             setTheme(*theme);
 #if HAL_PLATFORM_DCT
-            if (flags & LED_SIGNAL_THEME_FLAG_SAVE) {
-                // Write theme data to DCT
+            if (flags & LED_SIGNAL_FLAG_SAVE_THEME) {
+                // Serialize theme data and write it to DCT
                 char data[THEME_DATA_SIZE];
                 serializeTheme(*theme, data, sizeof(data));
                 const uint8_t version = LED_SIGNAL_THEME_VERSION;
@@ -159,7 +157,7 @@ public:
 
     bool getTheme(LEDSignalThemeData* theme, int flags) const {
         if (theme->version == LED_SIGNAL_THEME_VERSION) {
-            if (flags & LED_SIGNAL_THEME_FLAG_DEFAULT) {
+            if (flags & LED_SIGNAL_FLAG_DEFAULT_THEME) {
                 // Return factory default theme
                 deserializeTheme(*theme, (const char*)DEFAULT_THEME_DATA, THEME_DATA_SIZE);
                 return true;
@@ -194,6 +192,25 @@ private:
             s.color = 0;
             s.period = 0;
         }
+    }
+
+    bool startSignal(int signal, uint8_t priority) {
+        LEDStatusData* const s = signalStatus(signal);
+        if (s) {
+            s->priority = priority;
+            led_set_status_active(s, 1, nullptr);
+            return true;
+        }
+        return false;
+    }
+
+    bool stopSignal(int signal) {
+        LEDStatusData* const s = signalStatus(signal);
+        if (s) {
+            led_set_status_active(s, 0, nullptr);
+            return true;
+        }
+        return false;
     }
 
     void setTheme(const LEDSignalThemeData& theme) {
@@ -267,12 +284,12 @@ LEDSignalManager ledSignalManager;
 
 } // namespace
 
-int led_start_signal(int signal, uint8_t priority, void* reserved) {
-    return (ledSignalManager.start(signal, priority) ? 0 : 1);
+int led_start_signal(int signal, uint8_t priority, int flags, void* reserved) {
+    return (ledSignalManager.start(signal, priority, flags) ? 0 : 1);
 }
 
-void led_stop_signal(int signal, void* reserved) {
-    ledSignalManager.stop(signal);
+void led_stop_signal(int signal, int flags, void* reserved) {
+    ledSignalManager.stop(signal, flags);
 }
 
 int led_signal_started(int signal, void* reserved) {

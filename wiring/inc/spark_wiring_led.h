@@ -268,11 +268,11 @@ inline uint16_t particle::LEDSystemTheme::period(LEDSignal signal) const {
 }
 
 inline void particle::LEDSystemTheme::apply(bool save) {
-    led_set_signal_theme(&d_, (save ? LED_SIGNAL_THEME_FLAG_SAVE : 0), nullptr);
+    led_set_signal_theme(&d_, (save ? LED_SIGNAL_FLAG_SAVE_THEME : 0), nullptr);
 }
 
 inline void particle::LEDSystemTheme::restoreDefault() {
-    led_set_signal_theme(nullptr, LED_SIGNAL_THEME_FLAG_DEFAULT | LED_SIGNAL_THEME_FLAG_SAVE, nullptr);
+    led_set_signal_theme(nullptr, LED_SIGNAL_FLAG_DEFAULT_THEME | LED_SIGNAL_FLAG_SAVE_THEME, nullptr);
 }
 
 #endif // SPARK_WIRING_LED_H

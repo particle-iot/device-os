@@ -26,12 +26,12 @@
 // LED_SIGNAL_STOP(NETWORK_CONNECTING); // Stops signal indication
 #define LED_SIGNAL_START(_signal, _priority) \
         do { \
-            led_start_signal(LED_SIGNAL_##_signal, LED_PRIORITY_VALUE(LED_PRIORITY_##_priority, LED_SOURCE_SYSTEM), NULL); \
+            led_start_signal(LED_SIGNAL_##_signal, LED_PRIORITY_VALUE(LED_PRIORITY_##_priority, LED_SOURCE_SYSTEM), 0, NULL); \
         } while (0)
 
 #define LED_SIGNAL_STOP(_signal) \
         do { \
-            led_stop_signal(LED_SIGNAL_##_signal, NULL); \
+            led_stop_signal(LED_SIGNAL_##_signal, 0, NULL); \
         } while (0)
 
 // Combines system's LED source and priority into a single value as expected by the LED service
@@ -84,9 +84,10 @@ typedef enum {
 } LEDPriority;
 
 typedef enum {
-    LED_SIGNAL_THEME_FLAG_SAVE = 0x01, // Save theme to persistent storage
-    LED_SIGNAL_THEME_FLAG_DEFAULT = 0x02 // Initialize theme with factory default parameters
-} LEDSignalThemeFlag;
+    LED_SIGNAL_FLAG_SAVE_THEME = 0x01, // Save theme to persistent storage
+    LED_SIGNAL_FLAG_DEFAULT_THEME = 0x02, // Initialize theme with factory default settings
+    LED_SIGNAL_FLAG_ALL_SIGNALS = 0x04 // Stop all signals
+} LEDSignalFlag;
 
 typedef struct {
     uint32_t version; // ABI version number. Should be initialized to LED_SIGNAL_THEME_VERSION
@@ -99,13 +100,22 @@ typedef struct {
 
 typedef LEDSignalThemeData_v1 LEDSignalThemeData;
 
-int led_start_signal(int signal, uint8_t priority, void* reserved);
-void led_stop_signal(int signal, void* reserved);
+// Starts signal indication
+int led_start_signal(int signal, uint8_t priority, int flags, void* reserved);
+
+// Stops signal indication. Supported flags: LED_SIGNAL_FLAG_ALL_SIGNALS
+void led_stop_signal(int signal, int flags, void* reserved);
+
+// Returns 1 if signal indication is started, or 0 otherwise
 int led_signal_started(int signal, void* reserved);
 
+// Sets current theme. Supported flags: LED_SIGNAL_FLAG_SAVE_THEME, LED_SIGNAL_FLAG_DEFAULT_THEME
 int led_set_signal_theme(const LEDSignalThemeData* theme, int flags, void* reserved);
+
+// Gets current or default theme. Supported flags: LED_SIGNAL_FLAG_DEFAULT_THEME
 int led_get_signal_theme(LEDSignalThemeData* theme, int flags, void* reserved);
 
+// Returns LED status data for a signal
 const LEDStatusData* led_signal_status(int signal, void* reserved);
 
 #ifdef __cplusplus
