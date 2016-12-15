@@ -31,7 +31,7 @@
 
 #define LED_SIGNAL_STOP(_signal) \
         do { \
-            led_stop_signal(LED_SIGNAL_##_signal, NULL) \
+            led_stop_signal(LED_SIGNAL_##_signal, NULL); \
         } while (0)
 
 // Combines system's LED source and priority into a single value as expected by the LED service
@@ -59,8 +59,8 @@ typedef enum {
     LED_SIGNAL_CLOUD_CONNECTING = 5,
     LED_SIGNAL_CLOUD_HANDSHAKE = 6,
     LED_SIGNAL_CLOUD_CONNECTED = 7,
-    LED_SIGNAL_LISTENING_MODE = 8,
-    LED_SIGNAL_SAFE_MODE = 9,
+    LED_SIGNAL_SAFE_MODE = 8, // Connected to the cloud while in safe mode
+    LED_SIGNAL_LISTENING_MODE = 9,
     LED_SIGNAL_DFU_MODE = 10,
     LED_SIGNAL_FIRMWARE_UPDATE = 11,
     LED_SIGNAL_POWER_OFF = 12
@@ -105,6 +105,8 @@ int led_signal_started(int signal, void* reserved);
 
 int led_set_signal_theme(const LEDSignalThemeData* theme, int flags, void* reserved);
 int led_get_signal_theme(LEDSignalThemeData* theme, int flags, void* reserved);
+
+const LEDStatusData* led_signal_status(int signal, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

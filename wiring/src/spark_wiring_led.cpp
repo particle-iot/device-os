@@ -17,6 +17,32 @@
 
 #include "spark_wiring_led.h"
 
+// particle::LEDStatus
+particle::LEDStatus::LEDStatus(uint32_t color, LEDPattern pattern, uint16_t period, LEDPriority priority, LEDSource source) {
+    d_.size = sizeof(LEDStatusData);
+    d_.next = nullptr;
+    d_.prev = nullptr;
+    d_.priority = LED_PRIORITY_VALUE(priority, source); // Combine source and priority into single value
+    d_.pattern = (pattern == LED_PATTERN_CUSTOM ? LED_PATTERN_SOLID : pattern); // Sanity check
+    d_.flags = 0;
+    d_.color = color;
+    d_.period = period;
+}
+
+// particle::LEDCustomStatus
+particle::LEDCustomStatus::LEDCustomStatus(uint32_t color, LEDPriority priority, LEDSource source) {
+    d_.size = sizeof(LEDStatusData);
+    d_.next = nullptr;
+    d_.prev = nullptr;
+    d_.priority = LED_PRIORITY_VALUE(priority, source);
+    d_.pattern = LED_PATTERN_CUSTOM;
+    d_.flags = 0;
+    d_.color = color;
+    d_.callback = updateCallback; // User callback
+    d_.data = this; // Callback data
+}
+
+// particle::detail::*
 uint16_t particle::detail::patternPeriod(LEDPattern pattern, LEDSpeed speed) {
     switch (pattern) {
     case LED_PATTERN_BLINK:

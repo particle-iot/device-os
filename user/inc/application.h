@@ -80,6 +80,7 @@
 #include "stdio.h"
 
 using namespace spark;
+using namespace particle;
 
 #include "spark_wiring_arduino.h"
 

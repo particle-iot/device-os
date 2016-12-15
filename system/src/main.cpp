@@ -117,7 +117,8 @@ static uint8_t button_current_clicks = 0;
 
 namespace {
 
-class LEDCounterStatus: public LEDCustomStatus {
+// LED status for signal strength indication
+class LEDCounter: public LEDCustomStatus {
 public:
     using LEDCustomStatus::LEDCustomStatus;
 
@@ -214,8 +215,8 @@ void system_display_rssi() {
     }
     DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
 
-    static LEDCounterStatus ledStatus(LED_PRIORITY_IMPORTANT);
-    ledStatus.start(bars);
+    static LEDCounter ledCounter(LED_PRIORITY_IMPORTANT);
+    ledCounter.start(bars);
 }
 
 void system_handle_button_click()
@@ -389,6 +390,7 @@ void system_power_management_update()
  *******************************/
 extern "C" void HAL_SysTick_Handler(void)
 {
+    // Update LED color
     static const uint16_t LED_UPDATE_INTERVAL = 25; // Milliseconds
     static uint16_t ledUpdateTicks = 0;
 
@@ -397,6 +399,17 @@ extern "C" void HAL_SysTick_Handler(void)
         ledUpdateTicks = LED_UPDATE_INTERVAL;
     } else {
         --ledUpdateTicks;
+    }
+
+    // Check cloud inactivity timeout
+    static const uint16_t CLOUD_CHECK_INTERVAL = 1000; // Milliseconds
+    static uint16_t cloudCheckTicks = CLOUD_CHECK_INTERVAL;
+
+    if (cloudCheckTicks == 0) {
+        system_cloud_active();
+        cloudCheckTicks = CLOUD_CHECK_INTERVAL;
+    } else {
+        --cloudCheckTicks;
     }
 
     if(SPARK_FLASH_UPDATE)
@@ -561,6 +574,8 @@ void app_setup_and_loop(void)
     main_thread_current(NULL);
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
+
+    LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
 #if Wiring_Cellular == 1
     system_power_management_init();

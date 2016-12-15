@@ -82,6 +82,7 @@ DYNALIB_FN(BASE_IDX + 1, system, led_stop_signal, void(int, void*))
 DYNALIB_FN(BASE_IDX + 2, system, led_signal_started, int(int, void*))
 DYNALIB_FN(BASE_IDX + 3, system, led_set_signal_theme, int(const LEDSignalThemeData*, int, void*))
 DYNALIB_FN(BASE_IDX + 4, system, led_get_signal_theme, int(LEDSignalThemeData*, int, void*))
+DYNALIB_FN(BASE_IDX + 5, system, led_signal_status, const LEDStatusData*(int, void*))
 
 DYNALIB_END(system)
 

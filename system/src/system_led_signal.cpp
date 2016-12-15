@@ -27,7 +27,7 @@
 #include <algorithm>
 
 /*
-    In serialized form, parameters of each signal are stored as a 3 bytes sequence with the
+    In serialized form, parameters of each signal are stored as a 3 byte sequence with the
     following layout:
 
     0              |1              |2
@@ -66,8 +66,8 @@ const uint8_t DEFAULT_THEME_DATA[] = {
     DEFAULT_SIGNAL_DATA(CYAN, BLINK, NORMAL), // LED_SIGNAL_CLOUD_CONNECTING
     DEFAULT_SIGNAL_DATA(CYAN, BLINK, FAST), // LED_SIGNAL_CLOUD_HANDSHAKE
     DEFAULT_SIGNAL_DATA(CYAN, FADE, NORMAL), // LED_SIGNAL_CLOUD_CONNECTED
-    DEFAULT_SIGNAL_DATA(BLUE, BLINK, SLOW), // LED_SIGNAL_LISTENING_MODE
     DEFAULT_SIGNAL_DATA(MAGENTA, FADE, NORMAL), // LED_SIGNAL_SAFE_MODE
+    DEFAULT_SIGNAL_DATA(BLUE, BLINK, SLOW), // LED_SIGNAL_LISTENING_MODE
     DEFAULT_SIGNAL_DATA(YELLOW, BLINK, NORMAL), // LED_SIGNAL_DFU_MODE
     DEFAULT_SIGNAL_DATA(MAGENTA, BLINK, FAST), // LED_SIGNAL_FIRMWARE_UPDATE
     DEFAULT_SIGNAL_DATA(GREY, SOLID, NORMAL) // LED_SIGNAL_POWER_OFF
@@ -172,8 +172,29 @@ public:
         return false;
     }
 
+    LEDStatusData* signalStatus(int signal) {
+        if (signal >= 0 && signal < LED_SIGNAL_COUNT) {
+            return &statusData_[signal];
+        }
+        return nullptr;
+    }
+
 private:
     LEDStatusData statusData_[LED_SIGNAL_COUNT];
+
+    void initStatusData() {
+        for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
+            LEDStatusData& s = statusData_[i];
+            s.size = sizeof(LEDStatusData);
+            s.next = nullptr;
+            s.prev = nullptr;
+            s.priority = 0;
+            s.pattern = LED_PATTERN_INVALID;
+            s.flags = 0;
+            s.color = 0;
+            s.period = 0;
+        }
+    }
 
     void setTheme(const LEDSignalThemeData& theme) {
         led_set_updates_enabled(0, nullptr); // Disable LED updates
@@ -197,51 +218,6 @@ private:
         }
     }
 
-    LEDStatusData* signalStatus(int signal) {
-        if (signal >= 0 && signal < LED_SIGNAL_COUNT) {
-            return &statusData_[signal];
-        }
-        return nullptr;
-    }
-
-    void initStatusData() {
-        for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
-            LEDStatusData& s = statusData_[i];
-            s.size = sizeof(LEDStatusData);
-            s.next = nullptr;
-            s.prev = nullptr;
-            s.priority = 0;
-            s.pattern = LED_PATTERN_INVALID;
-            s.flags = 0;
-            s.color = 0;
-            s.period = 0;
-        }
-    }
-
-    static void serializeTheme(const LEDSignalThemeData& theme, char* data, size_t size) {
-        SPARK_ASSERT(size >= LED_SIGNAL_COUNT * 3); // 3 bytes per signal
-        for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
-            const auto& s = theme.signals[i];
-            *(data++) = ((s.color >> 16) & 0xf0) | (((s.color >> 8) & 0xf0) >> 4); // R, G
-            *(data++) = (s.color & 0xf0) | (s.pattern & 0x0f); // B, Pattern type
-            *(data++) = s.period / 50; // Pattern period
-        }
-    }
-
-    static void deserializeTheme(LEDSignalThemeData& theme, const char* data, size_t size) {
-        SPARK_ASSERT(size >= LED_SIGNAL_COUNT * 3); // 3 bytes per signal
-        for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
-            auto& s = theme.signals[i];
-            uint8_t d = *(data++);
-            s.color = ((uint32_t)((d & 0xf0) | 0x0f) << 16) | ((uint32_t)(((d & 0x0f) << 4) | 0x0f) << 8); // R, G
-            d = *(data++);
-            s.color |= (uint32_t)((d & 0xf0) | 0x0f); // B
-            s.pattern = d & 0x0f; // Pattern type
-            d = *(data++);
-            s.period = (uint16_t)d * 50; // Pattern period
-        }
-    }
-
     static const char* currentThemeData() {
 #if HAL_PLATFORM_DCT
         const char* d = (const char*)dct_read_app_data(DCT_LED_THEME_OFFSET);
@@ -252,6 +228,38 @@ private:
 #else
         return (const char*)DEFAULT_THEME_DATA;
 #endif
+    }
+
+    static void serializeTheme(const LEDSignalThemeData& theme, char* data, size_t size) {
+        SPARK_ASSERT(size >= LED_SIGNAL_COUNT * 3); // 3 bytes per signal
+        for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
+            const auto& s = theme.signals[i];
+            *(data++) = (packColorComponent((s.color >> 16) & 0xff) << 4) | packColorComponent((s.color >> 8) & 0xff); // R, G
+            *(data++) = (packColorComponent(s.color & 0xff) << 4) | (s.pattern & 0x0f); // B, Pattern type
+            *(data++) = s.period / 50; // Pattern period
+        }
+    }
+
+    static void deserializeTheme(LEDSignalThemeData& theme, const char* data, size_t size) {
+        SPARK_ASSERT(size >= LED_SIGNAL_COUNT * 3); // 3 bytes per signal
+        for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
+            auto& s = theme.signals[i];
+            uint8_t d = *(data++);
+            s.color = ((uint32_t)unpackColorComponent((d & 0xf0) >> 4) << 16) | ((uint32_t)unpackColorComponent(d & 0x0f) << 8); // R, G
+            d = *(data++);
+            s.color |= (uint32_t)unpackColorComponent((d & 0xf0) >> 4); // B
+            s.pattern = d & 0x0f; // Pattern type
+            d = *(data++);
+            s.period = (uint16_t)d * 50; // Pattern period
+        }
+    }
+
+    static uint8_t packColorComponent(uint8_t value) {
+        return value >> 4;
+    }
+
+    static uint8_t unpackColorComponent(uint8_t value) {
+        return (value << 4) | (value & 0x0f); // 0 -> 0, 1 -> 17, 2 -> 34, ..., 15 -> 255
     }
 };
 
@@ -277,4 +285,8 @@ int led_set_signal_theme(const LEDSignalThemeData* theme, int flags, void* reser
 
 int led_get_signal_theme(LEDSignalThemeData* theme, int flags, void* reserved) {
     return (ledSignalManager.getTheme(theme, flags) ? 0 : 1);
+}
+
+const LEDStatusData* led_signal_status(int signal, void* reserved) {
+    return ledSignalManager.signalStatus(signal);
 }

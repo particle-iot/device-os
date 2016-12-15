@@ -20,6 +20,7 @@
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_ipaddress.h"
+#include "spark_wiring_led.h"
 #include "system_cloud_internal.h"
 #include "system_mode.h"
 #include "system_network.h"
@@ -52,6 +53,8 @@
 
 #ifndef SPARK_NO_CLOUD
 
+using particle::LEDCustomStatus;
+
 int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
@@ -60,14 +63,6 @@ static int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t f
 static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size);
 
 static sock_handle_t sparkSocket = socket_handle_invalid();
-
-// LED_Signaling_Override
-volatile uint8_t LED_Spark_Signal;
-const uint32_t VIBGYOR_Colors[] = {
-    0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000
-};
-const int VIBGYOR_Size = sizeof (VIBGYOR_Colors) / sizeof (uint32_t);
-int VIBGYOR_Index;
 
 ProtocolFacade* sp;
 
@@ -745,43 +740,50 @@ inline bool Spark_Communication_Loop(void)
     return spark_protocol_event_loop(sp);
 }
 
-/* This function MUST NOT BlOCK!
- * It will be executed every 1ms if LED_Signaling_Start() is called
- * and stopped as soon as LED_Signaling_Stop() is called */
-void LED_Signaling_Override(void)
-{
-    static uint8_t LED_Signaling_Timing = 0;
-    if (0 < LED_Signaling_Timing)
-    {
-        --LED_Signaling_Timing;
+namespace {
+
+// LED status for the "rainbow" indication that can be triggered from the cloud
+class LEDSparkSignal: public LEDCustomStatus {
+public:
+    explicit LEDSparkSignal(LEDPriority priority) :
+            LEDCustomStatus(priority),
+            ticks_(TICKS),
+            index_(0) {
+        setColor(COLORS[index_]);
     }
-    else
-    {
-        LED_SetSignalingColor(VIBGYOR_Colors[VIBGYOR_Index]);
-        LED_On(LED_RGB);
 
-        LED_Signaling_Timing = 100; // 100 ms
-
-        ++VIBGYOR_Index;
-        if (VIBGYOR_Index >= VIBGYOR_Size)
-        {
-            VIBGYOR_Index = 0;
+protected:
+    virtual void update(system_tick_t t) override {
+        if (t >= ticks_) {
+            ticks_ = TICKS;
+            if (++index_ == COLOR_COUNT) {
+                index_ = 0;
+            }
+            setColor(COLORS[index_]);
+        } else {
+            ticks_ -= t;
         }
     }
-}
+
+private:
+    uint16_t ticks_;
+    uint8_t index_;
+
+    static const uint32_t COLORS[];
+    static const size_t COLOR_COUNT;
+
+    static const uint16_t TICKS = 100;
+};
+
+const uint32_t LEDSparkSignal::COLORS[] = { 0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000 }; // VIBGYOR
+const size_t LEDSparkSignal::COLOR_COUNT = sizeof(LEDSparkSignal::COLORS) / sizeof(LEDSparkSignal::COLORS[0]);
+
+} // namespace
 
 void Spark_Signal(bool on, unsigned, void*)
 {
-    if (on)
-    {
-        LED_Signaling_Start();
-        LED_Spark_Signal = 1;
-    }
-    else
-    {
-        LED_Signaling_Stop();
-        LED_Spark_Signal = 0;
-    }
+    static LEDSparkSignal ledSignal(LED_PRIORITY_IMPORTANT); // LED_PRIORITY_NORMAL?
+    ledSignal.setActive(on);
 }
 
 size_t system_interpolate(const char* var, size_t var_len, char* buf, size_t buf_len)

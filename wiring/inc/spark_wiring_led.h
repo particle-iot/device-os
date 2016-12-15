@@ -103,9 +103,9 @@ private:
 };
 
 // Class allowing to set a custom theme for system LED signaling
-class LEDSignalTheme {
+class LEDSystemTheme {
 public:
-    LEDSignalTheme();
+    LEDSystemTheme();
 
     void setColor(LEDSignal signal, uint32_t color);
     uint32_t color(LEDSignal signal) const;
@@ -198,19 +198,8 @@ inline particle::LEDStatus::LEDStatus(uint32_t color, LEDPattern pattern, LEDSpe
         LEDStatus(color, pattern, detail::patternPeriod(pattern, speed), priority, source) {
 }
 
-inline particle::LEDStatus::LEDStatus(uint32_t color, LEDPattern pattern, uint16_t period, LEDPriority priority, LEDSource source) {
-    d_.size = sizeof(LEDStatusData);
-    d_.next = nullptr;
-    d_.prev = nullptr;
-    d_.priority = LED_PRIORITY_VALUE(priority, source); // Combine source and priority into single value
-    d_.pattern = (pattern != LED_PATTERN_CUSTOM ? pattern : LED_PATTERN_SOLID); // Sanity check
-    d_.flags = 0;
-    d_.color = color;
-    d_.period = period;
-}
-
 inline void particle::LEDStatus::setPattern(LEDPattern pattern) {
-    d_.pattern = (pattern != LED_PATTERN_CUSTOM ? pattern : LED_PATTERN_SOLID); // Sanity check
+    d_.pattern = (pattern == LED_PATTERN_CUSTOM ? LED_PATTERN_SOLID : pattern); // Sanity check
 }
 
 inline LEDPattern particle::LEDStatus::pattern() const {
@@ -234,18 +223,6 @@ inline particle::LEDCustomStatus::LEDCustomStatus(LEDPriority priority, LEDSourc
         LEDCustomStatus(RGB_COLOR_WHITE, priority, source) { // Use white color by default
 }
 
-inline particle::LEDCustomStatus::LEDCustomStatus(uint32_t color, LEDPriority priority, LEDSource source) {
-    d_.size = sizeof(LEDStatusData);
-    d_.next = nullptr;
-    d_.prev = nullptr;
-    d_.priority = LED_PRIORITY_VALUE(priority, source); // Combine source and priority into single value
-    d_.pattern = LED_PATTERN_CUSTOM;
-    d_.flags = 0;
-    d_.color = color;
-    d_.callback = updateCallback; // User callback
-    d_.data = this; // Callback data
-}
-
 inline void particle::LEDCustomStatus::update(system_tick_t ticks) {
     // Default implementation does nothing
 }
@@ -255,46 +232,46 @@ inline void particle::LEDCustomStatus::updateCallback(system_tick_t ticks, void*
     s->update(ticks);
 }
 
-// particle::LEDSignalTheme
-inline particle::LEDSignalTheme::LEDSignalTheme() :
+// particle::LEDSystemTheme
+inline particle::LEDSystemTheme::LEDSystemTheme() :
         d_{ LED_SIGNAL_THEME_VERSION } {
     led_get_signal_theme(&d_, 0, nullptr); // Get current theme
 }
 
-inline void particle::LEDSignalTheme::setColor(LEDSignal signal, uint32_t color) {
+inline void particle::LEDSystemTheme::setColor(LEDSignal signal, uint32_t color) {
     d_.signals[signal].color = color;
 }
 
-inline uint32_t particle::LEDSignalTheme::color(LEDSignal signal) const {
+inline uint32_t particle::LEDSystemTheme::color(LEDSignal signal) const {
     return d_.signals[signal].color;
 }
 
-inline void particle::LEDSignalTheme::setPattern(LEDSignal signal, LEDPattern pattern) {
-    d_.signals[signal].pattern = (pattern != LED_PATTERN_CUSTOM ? pattern : LED_PATTERN_SOLID); // Sanity check
+inline void particle::LEDSystemTheme::setPattern(LEDSignal signal, LEDPattern pattern) {
+    d_.signals[signal].pattern = (pattern == LED_PATTERN_CUSTOM ? LED_PATTERN_SOLID : pattern); // Sanity check
 }
 
-inline LEDPattern particle::LEDSignalTheme::pattern(LEDSignal signal) const {
+inline LEDPattern particle::LEDSystemTheme::pattern(LEDSignal signal) const {
     return (LEDPattern)d_.signals[signal].pattern;
 }
 
-inline void particle::LEDSignalTheme::setSpeed(LEDSignal signal, LEDSpeed speed) {
+inline void particle::LEDSystemTheme::setSpeed(LEDSignal signal, LEDSpeed speed) {
     auto& s = d_.signals[signal];
     s.period = detail::patternPeriod((LEDPattern)s.pattern, speed);
 }
 
-inline void particle::LEDSignalTheme::setPeriod(LEDSignal signal, uint16_t period) {
+inline void particle::LEDSystemTheme::setPeriod(LEDSignal signal, uint16_t period) {
     d_.signals[signal].period = period;
 }
 
-inline uint16_t particle::LEDSignalTheme::period(LEDSignal signal) const {
+inline uint16_t particle::LEDSystemTheme::period(LEDSignal signal) const {
     return d_.signals[signal].period;
 }
 
-inline void particle::LEDSignalTheme::apply(bool save) {
+inline void particle::LEDSystemTheme::apply(bool save) {
     led_set_signal_theme(&d_, (save ? LED_SIGNAL_THEME_FLAG_SAVE : 0), nullptr);
 }
 
-inline void particle::LEDSignalTheme::restoreDefault() {
+inline void particle::LEDSystemTheme::restoreDefault() {
     led_set_signal_theme(nullptr, LED_SIGNAL_THEME_FLAG_DEFAULT | LED_SIGNAL_THEME_FLAG_SAVE, nullptr);
 }
 
