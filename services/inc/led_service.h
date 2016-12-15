@@ -67,10 +67,10 @@ typedef struct LEDStatusData {
 void led_set_status_active(LEDStatusData* status, int active, void* reserved);
 
 // Enables/disables updating of LED color by led_update() function
-void led_set_updates_enabled(int enabled, void* reserved);
+void led_set_update_enabled(int enabled, void* reserved);
 
 // Returns 1 if updating of LED color by led_update() function is enabled, or 0 otherwise
-int led_updates_enabled(void* reserved);
+int led_update_enabled(void* reserved);
 
 // Updates LED color according to a number of ticks passed since previous update. This function needs
 // to be called periodically

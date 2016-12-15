@@ -207,7 +207,7 @@ protected:
             {
                 // Get base color used for the listening mode indication
                 const LEDStatusData* status = led_signal_status(LED_SIGNAL_LISTENING_MODE, nullptr);
-                LEDStatus led(status ? status->color : 0, LED_PRIORITY_IMPORTANT);
+                LEDStatus led(status ? status->color : RGB_COLOR_BLUE, LED_PRIORITY_IMPORTANT);
                 led.setActive();
                 int toggle = 25;
                 while (toggle--)

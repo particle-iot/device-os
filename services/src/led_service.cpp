@@ -132,7 +132,7 @@ public:
         }
     }
 
-    void setUpdatesEnabled(bool enabled) {
+    void setUpdateEnabled(bool enabled) {
         LED_SERVICE_WITH_LOCK(lock_) {
             if (enabled) {
                 --disabled_;
@@ -145,7 +145,7 @@ public:
         }
     }
 
-    bool updatesEnabled() const {
+    bool isUpdateEnabled() const {
         bool enabled = false;
         LED_SERVICE_WITH_LOCK(lock_) {
             enabled = (disabled_ == 0);
@@ -279,12 +279,12 @@ void led_set_status_active(LEDStatusData* status, int active, void* reserved) {
     ledService.setStatusActive(status, active);
 }
 
-void led_set_updates_enabled(int enabled, void* reserved) {
-    ledService.setUpdatesEnabled(enabled);
+void led_set_update_enabled(int enabled, void* reserved) {
+    ledService.setUpdateEnabled(enabled);
 }
 
-int led_updates_enabled(void* reserved) {
-    return (ledService.updatesEnabled() ? 1 : 0);
+int led_update_enabled(void* reserved) {
+    return (ledService.isUpdateEnabled() ? 1 : 0);
 }
 
 void led_update(system_tick_t ticks, void* reserved) {

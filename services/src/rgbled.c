@@ -5,6 +5,8 @@
 #include "rgbled.h"
 #include "rgbled_hal.h"
 
+#include "led_service.h"
+
 volatile uint8_t led_rgb_brightness = DEFAULT_LED_RGB_BRIGHTNESS;
 
 volatile uint8_t LED_RGB_OVERRIDE = 0;
@@ -45,16 +47,21 @@ uint32_t LED_GetColor(uint32_t index, void* reserved)
 
 void LED_Signaling_Start(void)
 {
-    LED_RGB_OVERRIDE = 1;
-
-    LED_Off(LED_RGB);
+    // Check whether control over the LED is overridden already, since, internally, led_set_update_enabled()
+    // counts a number of its invocations rather than simply sets a flag
+    if (LED_RGB_OVERRIDE == 0) {
+        LED_RGB_OVERRIDE = 1;
+        led_set_update_enabled(0, NULL); // Disable background LED updates
+        LED_Off(LED_RGB);
+    }
 }
 
 void LED_Signaling_Stop(void)
 {
-    LED_RGB_OVERRIDE = 0;
-
-    LED_On(LED_RGB);
+    if (LED_RGB_OVERRIDE != 0) {
+        LED_RGB_OVERRIDE = 0;
+        led_set_update_enabled(1, NULL); // Enable background LED updates
+    }
 }
 
 void LED_SetBrightness(uint8_t brightness)

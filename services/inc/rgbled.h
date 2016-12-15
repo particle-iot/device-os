@@ -1,6 +1,8 @@
-
 #ifndef RGBLED_H
 #define	RGBLED_H
+
+// NOTE: Do not use this API for system RGB LED signaling, unless a low-level control over
+// the LED is required. Consider using LEDStatus and LEDCustomStatus classes instead
 
 #include <stdbool.h>
 #include <stdint.h>

@@ -137,7 +137,7 @@ void manage_network_connection()
 namespace {
 
 // LED status for cloud errors indication
-class LEDErrorCodeStatus: public LEDCustomStatus {
+class LEDCloudErrorStatus: public LEDCustomStatus {
 public:
     using LEDCustomStatus::LEDCustomStatus;
 
@@ -230,8 +230,8 @@ void handle_cloud_errors()
 
     // cfod resets in orange since they are soft errors
     // TODO: Spark_Error_Count is never equal to 1
-    static LEDErrorCodeStatus ledErrorCode(LED_PRIORITY_IMPORTANT);
-    ledErrorCode.start(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED, blinks);
+    static LEDCloudErrorStatus ledCloudError(LED_PRIORITY_IMPORTANT);
+    ledCloudError.start(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED, blinks);
 
     // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
 }

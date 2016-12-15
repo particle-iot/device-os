@@ -214,7 +214,7 @@ private:
     }
 
     void setTheme(const LEDSignalThemeData& theme) {
-        led_set_updates_enabled(0, nullptr); // Disable LED updates
+        led_set_update_enabled(0, nullptr); // Disable background LED updates
         for (size_t i = 0; i < LED_SIGNAL_COUNT; ++i) {
             const auto& signal = theme.signals[i];
             LEDStatusData& status = statusData_[i];
@@ -222,7 +222,7 @@ private:
             status.pattern = signal.pattern;
             status.period = signal.period;
         }
-        led_set_updates_enabled(1, nullptr); // Enable LED updates
+        led_set_update_enabled(1, nullptr); // Enable background LED updates
     }
 
     void getTheme(LEDSignalThemeData& theme) const {

@@ -110,8 +110,8 @@ public:
 
     static void reset() {
         // Reset cached LED state
-        led_set_updates_enabled(0, nullptr);
-        led_set_updates_enabled(1, nullptr);
+        led_set_update_enabled(0, nullptr);
+        led_set_update_enabled(1, nullptr);
     }
 
 private:
@@ -243,10 +243,10 @@ TEST_CASE("LEDStatus") {
         s.setActive();
         update();
         s.setColor(Color::RED); // Override color
-        led_set_updates_enabled(0, nullptr); // Disable updates
+        led_set_update_enabled(0, nullptr); // Disable updates
         update();
         CHECK(led.color() == Color::WHITE); // LED color has not changed
-        led_set_updates_enabled(1, nullptr); // Enable updates
+        led_set_update_enabled(1, nullptr); // Enable updates
         update();
         CHECK(led.color() == Color::RED); // LED color has changed
     }
