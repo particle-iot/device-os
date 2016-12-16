@@ -29,7 +29,8 @@
 #endif
 
 #ifndef LOG_INCLUDE_SOURCE_INFO
-#ifdef DEBUG_BUILD
+// Do not enable source info in debug build for Electron
+#if defined(DEBUG_BUILD) && PLATFORM_ID != 10
 #define LOG_INCLUDE_SOURCE_INFO 1
 #else
 #define LOG_INCLUDE_SOURCE_INFO 0
