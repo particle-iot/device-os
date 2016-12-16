@@ -12,8 +12,9 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
 
-bool bootloader_requires_update();
+bool bootloader_requires_update(const uint8_t* bootloader_image, uint32_t length);
 bool bootloader_update_if_needed();
 
 bool bootloader_update(const void* bootloader_image, unsigned length);
