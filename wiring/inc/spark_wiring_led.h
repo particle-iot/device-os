@@ -118,6 +118,11 @@ public:
     void setPeriod(LEDSignal signal, uint16_t period);
     uint16_t period(LEDSignal signal) const;
 
+    // Convenience methods setting several parameters at once
+    void setSignal(LEDSignal signal, uint32_t color);
+    void setSignal(LEDSignal signal, uint32_t color, LEDPattern pattern, LEDSpeed speed = LED_SPEED_NORMAL);
+    void setSignal(LEDSignal signal, uint32_t color, LEDPattern pattern, uint16_t period);
+
     // Sets this theme as current theme used by the system. If `save` argument is set to `true`,
     // the theme will be saved to persistent storage and used as a default theme after reboot
     void apply(bool save = false);
@@ -265,6 +270,20 @@ inline void particle::LEDSystemTheme::setPeriod(LEDSignal signal, uint16_t perio
 
 inline uint16_t particle::LEDSystemTheme::period(LEDSignal signal) const {
     return d_.signals[signal].period;
+}
+
+inline void particle::LEDSystemTheme::setSignal(LEDSignal signal, uint32_t color) {
+    setColor(signal, color);
+}
+
+inline void particle::LEDSystemTheme::setSignal(LEDSignal signal, uint32_t color, LEDPattern pattern, LEDSpeed speed) {
+    setSignal(signal, color, pattern, detail::patternPeriod(pattern, speed));
+}
+
+inline void particle::LEDSystemTheme::setSignal(LEDSignal signal, uint32_t color, LEDPattern pattern, uint16_t period) {
+    setColor(signal, color);
+    setPattern(signal, pattern);
+    setPeriod(signal, period);
 }
 
 inline void particle::LEDSystemTheme::apply(bool save) {

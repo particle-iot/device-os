@@ -229,7 +229,8 @@ void system_handle_button_click()
         system_display_rssi();
         break;
     case 2: // Double click
-        SYSTEM_POWEROFF = 1;
+        LED_SIGNAL_START(POWER_OFF, CRITICAL); // TODO: Start signal in a separate function
+        SYSTEM_POWEROFF = 1; // ...along with setting of this flag
         network.connect_cancel(true);
         break;
     default:
