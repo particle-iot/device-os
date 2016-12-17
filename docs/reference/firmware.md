@@ -7324,6 +7324,7 @@ These are the system events produced by the system, their numeric value (what yo
  | button_click | 4096 | event sent each time setup button is clicked. | `int clicks = system_button_clicks(param); ` retrieves the number of clicks so far. |
 | button_final_click | 8192 | sent after a run of one or more clicks not followed by additional clicks. Unlike the `button_click` event, the `button_final_click` event is sent once, at the end of a series of clicks. | `int clicks = system_button_clicks(param); ` retrieves the number of times the button was pushed. |
 | time_changed | 16384 | device time changed | `time_changed_manually` or `time_changed_sync` |
+| low_battery | 32768 | generated when low battery condition is detected. | not used |
 
 
 ## System Modes

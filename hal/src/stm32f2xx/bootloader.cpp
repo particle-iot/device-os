@@ -4,9 +4,10 @@
 #include "flash_mal.h"
 #include "bootloader.h"
 #include "module_info.h"
+#include "bootloader_hal.h"
 
 #if !defined(SYSTEM_MINIMAL)
-#if PLATFORM_ID==6 || PLATFORM_ID==8
+#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10
 #define HAL_REPLACE_BOOTLOADER
 #endif
 #if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10
@@ -37,21 +38,15 @@ bool bootloader_update(const void*, unsigned)
  * Manages upgrading the bootloader.
  */
 
-#define CAT2(a,b) a##b
-#define CAT(a,b) CAT2(a,b)
-
-#define BOOTLOADER_IMAGE CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin))
-#define BOOTLOADER_IMAGE_LEN CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin_len))
-
-extern "C" const unsigned int BOOTLOADER_IMAGE_LEN;
-extern "C" const unsigned char BOOTLOADER_IMAGE[];
-
-bool bootloader_requires_update()
+bool bootloader_requires_update(const uint8_t* bootloader_image, uint32_t length)
 {
+    if ((bootloader_image == nullptr) || length == 0)
+        return false;
+
     const uint32_t VERSION_OFFSET = 0x184+10;
 
     uint16_t current_version = *(uint16_t*)(0x8000000+VERSION_OFFSET);
-    uint16_t available_version = *(uint16_t*)(BOOTLOADER_IMAGE+VERSION_OFFSET);
+    uint16_t available_version = *(uint16_t*)(bootloader_image+VERSION_OFFSET);
 
     bool requires_update = current_version<available_version;
     return requires_update;
@@ -60,8 +55,10 @@ bool bootloader_requires_update()
 bool bootloader_update_if_needed()
 {
     bool updated = false;
-    if (bootloader_requires_update()) {
-        updated = bootloader_update(BOOTLOADER_IMAGE, BOOTLOADER_IMAGE_LEN);
+    uint32_t bootloader_image_size = 0;
+    const uint8_t* bootloader_image = HAL_Bootloader_Image(&bootloader_image_size, nullptr);
+    if (bootloader_requires_update(bootloader_image, bootloader_image_size)) {
+        updated = bootloader_update(bootloader_image, bootloader_image_size);
     }
     return updated;
 }

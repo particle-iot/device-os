@@ -17,9 +17,11 @@
  ******************************************************************************
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("comm.dtls")
+
 #include "dtls_message_channel.h"
 #include "protocol.h"
-#include "service_debug.h"
 #include "rng_hal.h"
 #include "mbedtls/error.h"
 #include "mbedtls/ssl_internal.h"
@@ -27,7 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "dtls_session_persist.h"
-#include "service_debug.h"
+
 
 #if HAL_PLATFORM_CLOUD_UDP
 
@@ -86,7 +88,7 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 	}
 
 	if (!is_valid() || keys_checksum!=this->keys_checksum) {
-		DEBUG("discarding session: valid %d, keys_sum: %d/%d", is_valid(), keys_checksum, this->keys_checksum);
+		LOG(WARN,"discarding session: valid %d, keys_sum: %d/%d", is_valid(), keys_checksum, this->keys_checksum);
 		return NO_SESSION;
 	}
 
@@ -113,14 +115,14 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 		context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
 		if (!context->transform_negotiate->ciphersuite_info)
 		{
-			DEBUG("unknown ciphersuite with id %d", ciphersuite);
+			LOG(ERROR,"unknown ciphersuite with id %d", ciphersuite);
 			return ERROR;
 		}
 
 		int err = mbedtls_ssl_derive_keys(context);
 		if (err)
 		{
-			DEBUG("derive keys failed with %d", err);
+			LOG(ERROR,"derive keys failed with %d", err);
 			return ERROR;
 		}
 
@@ -159,11 +161,11 @@ SessionPersist sessionPersist;
 
 #define EXIT_ERROR(x, msg) \
 	if (x) { \
-		WARN("DTLS initialization failure: " #msg ": %c%04X",(x<0)?'-':' ',(x<0)?-x:x);\
+		LOG(WARN,"DTLS init failure: " #msg ": %c%04X",(x<0)?'-':' ',(x<0)?-x:x);\
 		return UNKNOWN; \
 	}
 
-static void my_debug( void *ctx, int level,
+static void my_debug(void *ctx, int level,
 		const char *file, int line,
 		const char *str )
 {
@@ -218,13 +220,13 @@ ProtocolError DTLSMessageChannel::init(
 	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
 
 	ret = mbedtls_pk_parse_public_key(&pkey, core_public, core_public_len);
-	EXIT_ERROR(ret, "unable to parse device public key");
+	EXIT_ERROR(ret, "unable to parse device pub key");
 
 	ret = mbedtls_pk_parse_key(&pkey, core_private, core_private_len, NULL, 0);
 	EXIT_ERROR(ret, "unable to parse device private key");
 
 	ret = mbedtls_ssl_conf_own_cert(&conf, &clicert, &pkey);
-	EXIT_ERROR(ret, "unable to configure own certificate");
+	EXIT_ERROR(ret, "unable to config own cert");
 
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 	static int ssl_cert_types[] = { MBEDTLS_TLS_CERT_TYPE_RAW_PUBLIC_KEY, MBEDTLS_TLS_CERT_TYPE_NONE };
@@ -327,15 +329,15 @@ ProtocolError DTLSMessageChannel::setup_context()
 
 	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
 	{
-		ERROR("unable to allocate certificate storage");
+		LOG(ERROR,"unable to allocate cert storage");
 		return INSUFFICIENT_STORAGE;
 	}
 
 	mbedtls_x509_crt_init(ssl_context.session_negotiate->peer_cert);
 	ret = mbedtls_pk_parse_public_key(&ssl_context.session_negotiate->peer_cert->pk, server_public, server_public_len);
 	if (ret) {
-		WARN("unable to parse negotiated public key: -%x", -ret);
-		return IO_ERROR;
+		LOG(WARN,"unable to parse negotiated pub key: -%x", -ret);
+		return IO_ERROR_PARSING_SERVER_PUBLIC_KEY;
 	}
 
 	return NO_ERROR;
@@ -344,30 +346,30 @@ ProtocolError DTLSMessageChannel::setup_context()
 ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_crc)
 {
 	int ret = 0;
-	INFO("establish");
+	// LOG(INFO,"setup context");
 	ProtocolError error = setup_context();
 	if (error) {
-		INFO("setup_contex error %x", error);
+		LOG(ERROR,"setup_contex error %x", error);
 		return error;
 	}
 	bool renegotiate = false;
 
 	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore);
-	DEBUG("restoreStatus = %d", restoreStatus);
+	LOG(INFO,"(CMPL,RENEG,NO_SESS,ERR) restoreStatus=%d", restoreStatus);
 	if (restoreStatus==SessionPersist::COMPLETE)
 	{
-		DEBUG("out_ctr %d,%d,%d,%d,%d,%d,%d,%d, next_coap_id=%d", sessionPersist.out_ctr[0],
+		LOG(INFO,"out_ctr %d,%d,%d,%d,%d,%d,%d,%d, next_coap_id=%x", sessionPersist.out_ctr[0],
 				sessionPersist.out_ctr[1],sessionPersist.out_ctr[2],sessionPersist.out_ctr[3],
 				sessionPersist.out_ctr[4],sessionPersist.out_ctr[5],sessionPersist.out_ctr[6],
 				sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
 		sessionPersist.make_persistent();
 		uint32_t actual = sessionPersist.application_state_checksum(this->callbacks.calculate_crc);
-		DEBUG("application state checksum: %x, expected: %x", actual, app_state_crc);
+		LOG(INFO,"app state crc: %x, expected: %x", actual, app_state_crc);
 		if (actual==app_state_crc) {
-			DEBUG("skipping sending hello message");
+			LOG(WARN,"skipping hello message");
 			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
 		}
-		DEBUG("restored session from persisted session data. next_msg_id=%d", *coap_state);
+		LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
 	}
 	else if (restoreStatus==SessionPersist::RENEGOTIATE)
@@ -405,14 +407,14 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_
 
 	if (ret)
 	{
-		DEBUG("handshake failed -%x", -ret);
+		LOG(ERROR,"handshake failed -%x", -ret);
 		reset_session();
 	}
 	else
 	{
 		sessionPersist.prepare_save(random, keys_checksum, &ssl_context, 0);
 	}
-	return ret==0 ? NO_ERROR : IO_ERROR;
+	return ret==0 ? NO_ERROR : IO_ERROR_GENERIC_ESTABLISH;
 }
 
 ProtocolError DTLSMessageChannel::notify_established()
@@ -445,7 +447,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 			break;
 		default:
 			reset_session();
-			return IO_ERROR;
+			return IO_ERROR_GENERIC_RECEIVE;
 		}
 	}
 	message.set_length(ret);
@@ -453,7 +455,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
 		if (LOG_ENABLED(TRACE)) {
-		  LOG(TRACE, "message length %d", message.length());
+		  LOG(TRACE, "msg len %d", message.length());
 		  for (size_t i=0; i<message.length(); i++)
 		  {
 				  char buf[3];
@@ -461,7 +463,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 				  sprintf(buf, "%02x", c);
 				  LOG_PRINT(TRACE, buf);
 		  }
-		  LOG_PRINT(TRACE, "\n");
+		  LOG_PRINT(TRACE, "\r\n");
 		}
 #endif
 	}
@@ -477,11 +479,11 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   {
 	  // send unencrypted
 	  int bytes = this->send(message.buf(), message.length());
-	  return bytes < 0 ? IO_ERROR : NO_ERROR;
+	  return bytes < 0 ? IO_ERROR_GENERIC_SEND : NO_ERROR;
   }
 
-#ifdef DEBUG_BUILD
-      LOG(TRACE, "message length %d", message.length());
+#if defined(DEBUG_BUILD) && 0
+      LOG(TRACE, "msg len %d", message.length());
       for (size_t i=0; i<message.length(); i++)
       {
 	  	  char buf[3];
@@ -489,14 +491,14 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 	  	  sprintf(buf, "%02x", c);
 	  	  LOG_PRINT(TRACE, buf);
       }
-      LOG_PRINT(TRACE, "\n");
+      LOG_PRINT(TRACE, "\r\n");
 #endif
 
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
   if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
   {
 	  reset_session();
-	  return IO_ERROR;
+	  return IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE;
   }
   sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
   return NO_ERROR;
@@ -509,7 +511,7 @@ bool DTLSMessageChannel::is_unreliable()
 
 ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 {
-	DEBUG("session command: %d", command);
+	LOG(INFO,"session cmd (CLS,DIS,MOV,LOD,SAV): %d", command);
 	switch (command)
 	{
 	case CLOSE:
@@ -518,7 +520,7 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 
 	case DISCARD_SESSION:
 		reset_session();
-		return IO_ERROR; //force re-establish
+		return IO_ERROR_DISCARD_SESSION; //force re-establish
 
 	case MOVE_SESSION:
 		move_session = true;

@@ -20,6 +20,7 @@
 
 
 #include "spark_wiring_rgb.h"
+#include "core_hal.h"
 #include "rgbled.h"
 
 bool RGBClass::controlled(void)
@@ -84,4 +85,18 @@ void RGBClass::call_std_change_handler(void* data, uint8_t r, uint8_t g, uint8_t
 {
     auto fn = (wiring_rgb_change_handler_t*)(data);
     (*fn)(r, g, b);
+}
+
+void RGBClass::mirrorTo(pin_t rpin, pin_t gpin, pin_t bpin, bool invert, bool bootloader)
+{
+  HAL_Core_Led_Mirror_Pin(LED_RED + LED_MIRROR_OFFSET, rpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+  HAL_Core_Led_Mirror_Pin(LED_GREEN + LED_MIRROR_OFFSET, gpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+  HAL_Core_Led_Mirror_Pin(LED_BLUE + LED_MIRROR_OFFSET, bpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+}
+
+void RGBClass::mirrorDisable(bool bootloader)
+{
+  HAL_Core_Led_Mirror_Pin_Disable(LED_RED + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+  HAL_Core_Led_Mirror_Pin_Disable(LED_GREEN + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+  HAL_Core_Led_Mirror_Pin_Disable(LED_BLUE + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
 }

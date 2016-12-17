@@ -206,10 +206,11 @@ int main(void)
         // Else check if the system has resumed from IWDG reset
         else if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
         {
-            REFLASH_FROM_BACKUP = 0;
-            OTA_FLASH_AVAILABLE = 0;
-            USB_DFU_MODE = 0;
-            FACTORY_RESET_MODE = 0;
+            // These are still initialized to zero, no need to do it again.
+            // REFLASH_FROM_BACKUP = 0;
+            // OTA_FLASH_AVAILABLE = 0;
+            // USB_DFU_MODE = 0;
+            // FACTORY_RESET_MODE = 0;
 
             switch(BKP_DR1_Value)
             {
@@ -228,9 +229,6 @@ int main(void)
                     USB_DFU_MODE = 1;
                     // fall through - No break at the end of case
 
-                default:
-                    BKP_DR1_Value = 0xFFFF;
-                    break;
                     // toDO create a location in vector table for bootloadr->app - app->bootloader API.
                     // add version number to build, and mode (debug,release etc) in vector table
                     // Then make informed decisions on what to do on WDT timeouts
@@ -241,6 +239,8 @@ int main(void)
                 case ENTERED_Loop:
                 case RAN_Loop:
                 case PRESERVE_APP:
+
+                default:
                     BKP_DR1_Value = 0xFFFF;
                     break;
             }
@@ -274,7 +274,7 @@ int main(void)
         bool factory_reset_available = (features & BL_FEATURE_FACTORY_RESET) && FLASH_IsFactoryResetAvailable();
 
         TimingBUTTON = TIMING_ALL;
-        uint8_t factory_reset = 0;
+        // uint8_t factory_reset = 0;
         while (BUTTON_Is_Pressed(BUTTON1) && TimingBUTTON)
         {
             if(BUTTON_Pressed_Time(BUTTON1) > TIMING_RESET_MODE)
@@ -284,12 +284,12 @@ int main(void)
                 LED_SetRGBColor(RGB_COLOR_WHITE);
                 SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
             }
-            else if(!factory_reset && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESTORE_MODE)
+            else if(!FACTORY_RESET_MODE && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESTORE_MODE)
             {
                 // if pressed for > 6.5 sec, enter firmware reset
                 LED_SetRGBColor(RGB_COLOR_GREEN);
                 SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
-                factory_reset = 1;
+                FACTORY_RESET_MODE = 1;
             }
             else if(!USB_DFU_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_DFU_MODE)
             {
@@ -315,12 +315,12 @@ int main(void)
             }
         }
 
-        if (factory_reset || USB_DFU_MODE || SAFE_MODE) {
-            // now set the factory reset mode (to change the LED to rapid blinking.))
-            FACTORY_RESET_MODE = factory_reset;
-            USB_DFU_MODE &= !factory_reset;
-            SAFE_MODE &= !USB_DFU_MODE;
-        }
+        // if (factory_reset || USB_DFU_MODE || SAFE_MODE) {
+        //     // now set the factory reset mode (to change the LED to rapid blinking.))
+        //     FACTORY_RESET_MODE = factory_reset;
+        //     USB_DFU_MODE &= !factory_reset;
+        //     SAFE_MODE &= !USB_DFU_MODE;
+        // }
     }
 
     if (SAFE_MODE) {
@@ -407,9 +407,9 @@ int main(void)
     }
     // Otherwise enters DFU mode to allow user to program his application
 
-    FACTORY_RESET_MODE = 0;         // ensure the LED is slow
-    OTA_FLASH_AVAILABLE = 0;
-    REFLASH_FROM_BACKUP = 0;
+    FACTORY_RESET_MODE = 0;  // ensure the LED is slow flashing (100)
+    OTA_FLASH_AVAILABLE = 0; //   |
+    REFLASH_FROM_BACKUP = 0; //   |
 
     LED_SetRGBColor(RGB_COLOR_YELLOW);
 

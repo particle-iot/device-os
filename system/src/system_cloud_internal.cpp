@@ -16,6 +16,8 @@
  ******************************************************************************
  */
 
+#include "logging.h"
+
 #include "spark_wiring_string.h"
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_ticks.h"
@@ -665,37 +667,43 @@ const int CLAIM_CODE_SIZE = 63;
 
 int Spark_Handshake(bool presence_announce)
 {
-	DEBUG("starting handshake announce=%d", presence_announce);
+	LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
     int err = spark_protocol_handshake(sp);
     if (!err)
     {
         char buf[CLAIM_CODE_SIZE + 1];
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
         {
+            LOG(INFO,"Send spark/device/claim/code event");
             Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
         }
 
         // open up for possibility of retrieving multiple ID datums
         if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
+            LOG(INFO,"Send spark/device/ident/0 event");
             Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
         }
 
         bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 #if PLATFORM_ID!=PLATFORM_ELECTRON || !defined(MODULAR_FIRMWARE)
         ultoa(HAL_OTA_FlashLength(), buf, 10);
+        LOG(INFO,"Send spark/hardware/max_binary event");
         Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
 #endif
 
         uint32_t chunkSize = HAL_OTA_ChunkSize();
         if (chunkSize!=512 || !udp) {
-        		ultoa(chunkSize, buf, 10);
-        		Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+            ultoa(chunkSize, buf, 10);
+            LOG(INFO,"spark/hardware/ota_chunk_size event");
+            Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
         }
         if (system_mode()==SAFE_MODE)
+            LOG(INFO,"Send spark/device/safemode event");
             Particle.publish("spark/device/safemode","", 60, PRIVATE);
 #if defined(SPARK_SUBSYSTEM_EVENT_NAME)
         if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
         {
+            LOG(INFO,"Send spark/" SPARK_SUBSYSTEM_EVENT_NAME " event");
             Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
         }
 #endif
@@ -709,25 +717,29 @@ int Spark_Handshake(bool presence_announce)
             {
                 char buf[64];
                 formatResetReasonEventData(reason, data, buf, sizeof(buf));
+                LOG(INFO,"Send spark/device/last_reset event");
                 Particle.publish("spark/device/last_reset", buf, 60, PRIVATE);
             }
         }
 
-        if (presence_announce)
-        		Multicast_Presence_Announcement();
+        if (presence_announce) {
+            Multicast_Presence_Announcement();
+        }
+        LOG(INFO,"Send subscriptions");
         spark_protocol_send_subscriptions(sp);
         // important this comes at the end since it requires a response from the cloud.
+        LOG(INFO,"Send time request");
         spark_protocol_send_time_request(sp);
         Spark_Process_Events();
     }
     if (err==particle::protocol::SESSION_RESUMED)
     {
-    		DEBUG("cloud connected from existing session.");
-    		err = 0;
-            if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
-                spark_protocol_send_time_request(sp);
-                Spark_Process_Events();
-            }
+        LOG(INFO,"cloud connected from existing session.");
+        err = 0;
+        if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
+            spark_protocol_send_time_request(sp);
+            Spark_Process_Events();
+        }
     }
     return err;
 }

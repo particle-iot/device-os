@@ -68,7 +68,7 @@ public:
 	}
 
 	virtual ProtocolError command(Command cmd, void* arg=nullptr) override {
-		return IO_ERROR;
+		return IO_ERROR_FORWARD_MESSAGE_CHANNEL;
 	}
 
 	virtual ProtocolError notify_established() override { return NO_ERROR; }

@@ -15,7 +15,7 @@ function update_bl()
    cp $bl_dir/platform-$1-lto/bootloader.bin bootloader_platform_$1.bin || die
    xxd -i bootloader_platform_$1.bin > bootloader_platform_$1.c || die
    rm bootloader_platform_$1.bin || die
-   sed -i .bak 's/unsigned/const unsigned/' bootloader_platform_$1.c || die
+   sed -i 's/unsigned/const unsigned/' bootloader_platform_$1.c || die
 }
 update_bl 6
 update_bl 8
