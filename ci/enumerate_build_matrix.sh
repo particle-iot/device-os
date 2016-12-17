@@ -22,6 +22,8 @@ NO_COLOR="\033[0m"
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
 PLATFORM=( core photon P1 electron )
+# P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
+PLATFORM_BOOTLOADER=( core photon electron )
 SPARK_CLOUD=( y n )
 # TODO: Once FIRM-161 is fixed, change APP to this: APP=( "" tinker product_id_and_version )
 APP=( "" tinker )
@@ -116,7 +118,7 @@ do
 done
 
 cd ../bootloader
-for p in "${PLATFORM[@]}"
+for p in "${PLATFORM_BOOTLOADER[@]}"
 do
   echo
   echo '-----------------------------------------------------------------------'

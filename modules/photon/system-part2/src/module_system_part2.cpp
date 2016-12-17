@@ -25,6 +25,7 @@ DYNALIB_TABLE_EXTERN(hal_usart);
 DYNALIB_TABLE_EXTERN(hal_concurrent);
 DYNALIB_TABLE_EXTERN(hal_can);
 DYNALIB_TABLE_EXTERN(hal_usb);
+DYNALIB_TABLE_EXTERN(hal_rgbled);
 DYNALIB_TABLE_EXTERN(hal_bootloader);
 
 
@@ -53,6 +54,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part2_mo
     DYNALIB_TABLE_NAME(hal_concurrent),
     DYNALIB_TABLE_NAME(hal_can),
     DYNALIB_TABLE_NAME(hal_usb),
+    DYNALIB_TABLE_NAME(hal_rgbled),
     DYNALIB_TABLE_NAME(hal_bootloader),
 };
 

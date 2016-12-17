@@ -163,6 +163,10 @@ test(api_rgb) {
     API_COMPILE(flag=RGB.brightness());
     API_COMPILE(RGB.onChange(externalLEDHandler));
     API_COMPILE(RGB.onChange(&ExternalLed::handler, &externalLed));
+    API_COMPILE(RGB.mirrorTo(A4, A5, A7));
+    API_COMPILE(RGB.mirrorTo(A4, A5, A7, false));
+    API_COMPILE(RGB.mirrorTo(A4, A5, A7, true, true));
+    API_COMPILE(RGB.mirrorDisable());
     (void)flag; (void)value; // unused
 }
 

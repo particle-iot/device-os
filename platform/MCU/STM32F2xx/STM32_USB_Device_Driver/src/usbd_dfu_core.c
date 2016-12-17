@@ -68,6 +68,7 @@
 #include "usb_bsp.h"
 #include "usbd_dfu_mal.h"
 #include "usbd_wcid.h"
+#include <string.h>
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
@@ -187,7 +188,7 @@ extern const uint8_t* usbd_dfu_StringDesc[];
 
 /* State Machine variables */
 uint8_t DeviceState;
-uint8_t DeviceStatus[6];
+uint8_t DeviceStatus[6] = {0};
 uint32_t Manifest_State = Manifest_complete;
 /* Data Management variables */
 static uint32_t wBlockNum = 0, wlength = 0;
@@ -440,7 +441,6 @@ static uint8_t  usbd_dfu_Init (void  *pdev,
 
   /* Initialize the state of the DFU interface */
   DeviceState = STATE_dfuIDLE;
-  DeviceStatus[0] = STATUS_OK;
   DeviceStatus[4] = DeviceState;
 
   return USBD_OK;
@@ -458,7 +458,6 @@ static uint8_t  usbd_dfu_DeInit (void  *pdev,
 {
   /* Restore default state */
   DeviceState = STATE_dfuIDLE;
-  DeviceStatus[0] = STATUS_OK;
   DeviceStatus[4] = DeviceState;
   wBlockNum = 0;
   wlength = 0;
@@ -660,9 +659,6 @@ static uint8_t  EP0_TxSent (void  *pdev)
     /* Update the state machine */
     DeviceState =  STATE_dfuDNLOAD_SYNC;
     DeviceStatus[4] = DeviceState;
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0;
     return USBD_OK;
   }
   else if (DeviceState == STATE_dfuMANIFEST)/* Manifestation in progress*/
@@ -704,12 +700,7 @@ static void DFU_Req_DETACH(void *pdev, USB_SETUP_REQ *req)
   {
     /* Update the state machine */
     DeviceState = STATE_dfuIDLE;
-    DeviceStatus[0] = STATUS_OK;
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0; /*bwPollTimeout=0ms*/
     DeviceStatus[4] = DeviceState;
-    DeviceStatus[5] = 0; /*iString*/
     wBlockNum = 0;
     wlength = 0;
   }
@@ -770,9 +761,6 @@ static void DFU_Req_DNLOAD(void *pdev, USB_SETUP_REQ *req)
     {
       Manifest_State = Manifest_In_Progress;
       DeviceState = STATE_dfuMANIFEST_SYNC;
-      DeviceStatus[1] = 0;
-      DeviceStatus[2] = 0;
-      DeviceStatus[3] = 0;
       DeviceStatus[4] = DeviceState;
     }
     else
@@ -810,9 +798,6 @@ static void DFU_Req_UPLOAD(void *pdev, USB_SETUP_REQ *req)
         /* Update the state machine */
         DeviceState = (wlength > 3)? STATE_dfuIDLE:STATE_dfuUPLOAD_IDLE;
         DeviceStatus[4] = DeviceState;
-        DeviceStatus[1] = 0;
-        DeviceStatus[2] = 0;
-        DeviceStatus[3] = 0;
 
         /* Store the values of all supported commands */
         MAL_Buffer[0] = CMD_GETCOMMANDS;
@@ -828,9 +813,6 @@ static void DFU_Req_UPLOAD(void *pdev, USB_SETUP_REQ *req)
       {
         DeviceState = STATE_dfuUPLOAD_IDLE ;
         DeviceStatus[4] = DeviceState;
-        DeviceStatus[1] = 0;
-        DeviceStatus[2] = 0;
-        DeviceStatus[3] = 0;
         Addr = ((wBlockNum - 2) * XFERSIZE) + Pointer;  /* Change is Accelerated*/
 
         /* Return the physical address where data are stored */
@@ -845,9 +827,6 @@ static void DFU_Req_UPLOAD(void *pdev, USB_SETUP_REQ *req)
       {
         DeviceState = STATUS_ERRSTALLEDPKT;
         DeviceStatus[4] = DeviceState;
-        DeviceStatus[1] = 0;
-        DeviceStatus[2] = 0;
-        DeviceStatus[3] = 0;
 
         /* Call the error management function (command will be nacked */
         USBD_CtlError (pdev, req);
@@ -866,9 +845,6 @@ static void DFU_Req_UPLOAD(void *pdev, USB_SETUP_REQ *req)
   else
   {
     DeviceState = STATE_dfuIDLE;
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0;
     DeviceStatus[4] = DeviceState;
   }
 }
@@ -901,9 +877,6 @@ static void DFU_Req_GETSTATUS(void *pdev)
     {
       DeviceState = STATE_dfuDNLOAD_IDLE;
       DeviceStatus[4] = DeviceState;
-      DeviceStatus[1] = 0;
-      DeviceStatus[2] = 0;
-      DeviceStatus[3] = 0;
     }
     break;
 
@@ -917,9 +890,6 @@ static void DFU_Req_GETSTATUS(void *pdev)
     // but this leaves a message Transitioning to dfuMANIFEST state as the last line, which just lingers with no clear indication of what to do next.
 
       DeviceStatus[4] = STATE_dfuDNLOAD_IDLE;
-      DeviceStatus[1] = 0;             /*bwPollTimeout = 1ms*/
-      DeviceStatus[2] = 0;
-      DeviceStatus[3] = 0;
       //break;
     }
     else if ((Manifest_State == Manifest_complete) && \
@@ -927,9 +897,6 @@ static void DFU_Req_GETSTATUS(void *pdev)
     {
       DeviceState = STATE_dfuIDLE;
       DeviceStatus[4] = DeviceState;
-      DeviceStatus[1] = 0;
-      DeviceStatus[2] = 0;
-      DeviceStatus[3] = 0;
       //break;
     }
     break;
@@ -937,9 +904,6 @@ static void DFU_Req_GETSTATUS(void *pdev)
       {
         DeviceState = STATE_dfuIDLE;
         DeviceStatus[4] = DeviceState;
-        DeviceStatus[1] = 0;
-        DeviceStatus[2] = 0;
-        DeviceStatus[3] = 0;
       }
 
   default :
@@ -964,21 +928,13 @@ static void DFU_Req_CLRSTATUS(void *pdev)
   {
     DeviceState = STATE_dfuIDLE;
     DeviceStatus[0] = STATUS_OK;/*bStatus*/
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0; /*bwPollTimeout=0ms*/
     DeviceStatus[4] = DeviceState;/*bState*/
-    DeviceStatus[5] = 0;/*iString*/
   }
   else
   {   /*State Error*/
     DeviceState = STATE_dfuERROR;
     DeviceStatus[0] = STATUS_ERRUNKNOWN;/*bStatus*/
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0; /*bwPollTimeout=0ms*/
     DeviceStatus[4] = DeviceState;/*bState*/
-    DeviceStatus[5] = 0;/*iString*/
   }
 }
 
@@ -1024,11 +980,7 @@ static void DFU_Req_ABORT(void *pdev)
   {
     DeviceState = STATE_dfuIDLE;
     DeviceStatus[0] = STATUS_OK;
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0; /*bwPollTimeout=0ms*/
     DeviceStatus[4] = DeviceState;
-    DeviceStatus[5] = 0; /*iString*/
     wBlockNum = 0;
     wlength = 0;
   }
@@ -1049,18 +1001,12 @@ void DFU_LeaveDFUMode(void *pdev)
   {
     DeviceState = STATE_dfuMANIFEST_SYNC;
     DeviceStatus[4] = DeviceState;
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0;
     return;
   }
   else
   {
     DeviceState = STATE_dfuMANIFEST_WAIT_RESET;
     DeviceStatus[4] = DeviceState;
-    DeviceStatus[1] = 0;
-    DeviceStatus[2] = 0;
-    DeviceStatus[3] = 0;
 
     DFU_Reset_Count = 500;
 

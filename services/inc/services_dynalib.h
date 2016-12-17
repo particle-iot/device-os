@@ -61,7 +61,7 @@ DYNALIB_FN(27, services, log_level_name, const char*(int, void*))
 DYNALIB_FN(28, services, log_set_callbacks, void(log_message_callback_type, log_write_callback_type, log_enabled_callback_type, void*))
 DYNALIB_FN(29, services, set_thread_current_function_pointers, void(void*, void*, void*, void*, void*))
 DYNALIB_FN(30, services, system_error_message, const char*(int, void*))
-
+DYNALIB_FN(31, services, LED_SetCallbacks, void(LedCallbacks, void*))
 DYNALIB_END(services)
 
 #endif	/* SERVICES_DYNALIB_H */

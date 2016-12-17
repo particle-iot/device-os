@@ -204,4 +204,38 @@ test(LED_10_ChangeHandlerCalled) {
     assertChangeHandlerCalledWith(ledAdjust(10),ledAdjust(20),ledAdjust(30));
 }
 
+static void assertRgbLedMirrorPinsColor(const pin_t pins[3], uint16_t r, uint16_t g, uint16_t b)
+{
+    // Convert to CCR
+    r = (uint16_t)((((uint32_t)(r)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
+    g = (uint16_t)((((uint32_t)(g)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
+    b = (uint16_t)((((uint32_t)(b)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
+    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[0])) - (int32_t)(r * ((1UL << HAL_PWM_Get_Resolution(pins[0])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[1])) - (int32_t)(g * ((1UL << HAL_PWM_Get_Resolution(pins[1])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[2])) - (int32_t)(b * ((1UL << HAL_PWM_Get_Resolution(pins[2])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+}
+
+test(LED_11_MirroringWorks) {
+    RGB.control(true);
+    RGB.brightness(255);
+
+    const pin_t pins[3] = {A4, A5, A7};
+
+    // Mirror to r=A4, g=A5, b=A7. Non-inverted (common cathode).
+    // RGB led mirroring in bootloader is not enabled
+    RGB.mirrorTo(A4, A5, A7, false, false);
+
+    RGB.color(0, 0, 0);
+    assertRgbLedMirrorPinsColor(pins, 0, 0, 0);
+
+    RGB.color(127, 255, 127);
+    assertRgbLedMirrorPinsColor(pins, 127, 255, 127);
+
+    RGB.color(255, 0, 127);
+    assertRgbLedMirrorPinsColor(pins, 255, 0, 127);
+
+    RGB.mirrorDisable();
+    RGB.control(false);
+}
+
 #endif

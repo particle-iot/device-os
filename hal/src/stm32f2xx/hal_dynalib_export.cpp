@@ -39,6 +39,8 @@
 #include "hal_dynalib_usb.h"
 #endif
 
+#include "hal_dynalib_rgbled.h"
+
 #ifndef HAL_BOOTLOADER_EXCLUDE
 #include "hal_dynalib_bootloader.h"
 #endif
