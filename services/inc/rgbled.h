@@ -1,6 +1,8 @@
-
 #ifndef RGBLED_H
 #define	RGBLED_H
+
+// NOTE: Do not use this API for system RGB LED signaling, unless a low-level control over
+// the LED is required. Consider using LEDStatus and LEDCustomStatus classes instead
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -65,6 +67,8 @@ typedef enum
 #define RGB_COLOR_ORANGE  0xFF6000
 #define RGB_COLOR_GREY    0x1F1F1F
 
+extern volatile uint8_t led_rgb_brightness;
+
 void LED_SetRGBColor(uint32_t RGB_Color);
 void LED_SetSignalingColor(uint32_t RGB_Color);
 void LED_Signaling_Start(void);
@@ -92,6 +96,9 @@ bool LED_RGB_IsOverRidden(void);
  * The function that handles notifications of changes to the RGB led.
  */
 typedef void (*led_update_handler_fn)(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
+
+extern led_update_handler_fn led_update_handler;
+extern void* led_update_handler_data;
 
 void LED_RGB_SetChangeHandler(led_update_handler_fn fn, void* data);
 

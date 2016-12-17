@@ -67,6 +67,7 @@
 #include "spark_wiring_vector.h"
 #include "spark_wiring_async.h"
 #include "spark_wiring_error.h"
+#include "spark_wiring_led.h"
 #include "fast_pin.h"
 #include "string_convert.h"
 #include "debug_output_handler.h"
@@ -79,6 +80,7 @@
 #include "stdio.h"
 
 using namespace spark;
+using namespace particle;
 
 #include "spark_wiring_arduino.h"
 

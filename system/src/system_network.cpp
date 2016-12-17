@@ -121,7 +121,7 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
  */
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).on(!(flags & 1)));
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).on());
 }
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved)

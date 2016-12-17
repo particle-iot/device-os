@@ -1,48 +1,40 @@
+#include "rgbled.h"
+#include "rgbled_hal.h"
+
 #include "catch.hpp"
+#include "hippomocks.h"
 
-
-extern "C" {
-    #include "rgbled.h"
-    #include "rgbled_hal.h"
-};
-
-
-// The functions for the low-level hardware delecate to mocks so the tests
-// can easily stub/verify calls.
-
-// TODO - want to use Fake-It but get compiler errors - waiting to hear back from author.
-// For now, just save last passed values.
-
-uint16_t Get_RGB_LED_Max_Value() {
-    return 2048;
-}
+namespace {
 
 static uint16_t rgb_values[3];
 
-void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b) {
-    rgb_values[0] = r;
-    rgb_values[1] = g;
-    rgb_values[2] = b;
-}
+// The functions for the low-level hardware delegate to mocks so the tests
+// can easily stub/verify calls.
+class Mocks {
+public:
+    Mocks() {
+        mocks_.OnCallFunc(Set_RGB_LED_Values).Do([&](uint16_t r, uint16_t g, uint16_t b) {
+            rgb_values[0] = r;
+            rgb_values[1] = g;
+            rgb_values[2] = b;
+        });
+        mocks_.OnCallFunc(Get_RGB_LED_Values).Do([&](uint16_t* rgb) {
+            for (int i=0; i<3; i++) {
+                rgb[i] = rgb_values[i];
+            }
+        });
+        mocks_.OnCallFunc(Get_RGB_LED_Max_Value).Return(2048);
+    }
 
-void Get_RGB_LED_Values(uint16_t* rgb) {
-    for (int i=0; i<3; i++)
-        rgb[i] = rgb_values[i];
-}
-
-
-void Toggle_User_LED() {
-}
-
-void Set_User_LED(uint8_t state) {
-}
+private:
+    MockRepository mocks_;
+};
 
 /**
  */
 uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
     return (uint16_t(value)*brightness)>>8;
 }
-
 
 /**
  * Verifies the current LED values have the RGB values scaled to the given
@@ -68,8 +60,10 @@ void assertLEDRGB(uint8_t r, uint8_t g, uint8_t b) {
     assertLEDRGB(r, g, b, Get_LED_Brightness());
 }
 
+} // namespace
 
 SCENARIO( "User can set the LED Color", "[led]" ) {
+    Mocks mocks;
     GIVEN("The RGB led is in override mode") {
         LED_Signaling_Start();
     }
@@ -83,6 +77,7 @@ SCENARIO( "User can set the LED Color", "[led]" ) {
 }
 
 SCENARIO( "User can turn the LED off", "[led]" ) {
+    Mocks mocks;
     GIVEN("The RGB led is in override mode") {
         LED_Signaling_Start();
         WHEN("The LED is turned off") {
@@ -96,6 +91,7 @@ SCENARIO( "User can turn the LED off", "[led]" ) {
 }
 
 SCENARIO("Led can be toggled off then on again") {
+    Mocks mocks;
     GIVEN("The RGB led is in override mode and a color set") {
         LED_Signaling_Start();
         LED_SetSignalingColor(0xFEDCBA);
@@ -118,6 +114,7 @@ SCENARIO("Led can be toggled off then on again") {
 
 
 SCENARIO("Led can be toggled on") {
+    Mocks mocks;
     GIVEN("The RGB led is in override mode, off, and a color set") {
         LED_Signaling_Start();
         LED_SetSignalingColor(0xFEDCBA);
@@ -138,6 +135,7 @@ SCENARIO("Led can be toggled on") {
 }
 
 SCENARIO("LED Brightness can be set") {
+    Mocks mocks;
     GIVEN("The RGB led is in override mode, on, and a color set") {
         LED_Signaling_Start();
         LED_SetSignalingColor(0xFEDCBA);
@@ -153,6 +151,7 @@ SCENARIO("LED Brightness can be set") {
 }
 
 SCENARIO("LED can fade to half brightness in 50 steps", "[led]") {
+    Mocks mocks;
     GIVEN("The RGB led is in override mode, and a color set") {
         LED_Signaling_Start();
         LED_SetBrightness(96);
@@ -171,6 +170,7 @@ SCENARIO("LED can fade to half brightness in 50 steps", "[led]") {
 }
 
 SCENARIO("LED_RGB_Get can retrieve correct 8-bit values from 16-bit CCR counters") {
+    Mocks mocks;
     GIVEN("The RGB Led setup with a color") {
         LED_Signaling_Start();
         LED_SetBrightness(96);

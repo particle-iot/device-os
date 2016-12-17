@@ -42,8 +42,11 @@
 #include "spark_wiring_cloud.h"
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
+#include "spark_wiring_led.h"
 
 using spark::Network;
+using particle::LEDStatus;
+using particle::LEDCustomStatus;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
@@ -131,6 +134,69 @@ void manage_network_connection()
 
 #ifndef SPARK_NO_CLOUD
 
+namespace {
+
+// LED status for cloud errors indication
+class LEDCloudErrorStatus: public LEDCustomStatus {
+public:
+    using LEDCustomStatus::LEDCustomStatus;
+
+    void start(uint32_t color, uint8_t count) {
+        if (count > 0) {
+            setActive(false);
+            count_ = count;
+            setColor(color);
+            on(); // LED is turned on initially
+            setActive(true);
+        }
+    }
+
+protected:
+    virtual void update(system_tick_t t) override {
+        if (t >= ticks_) {
+            // Change state
+            switch (state_) {
+            case ON:
+                off(); // Turn LED off
+                break;
+            case OFF:
+                if (--count_ > 0) {
+                    on(); // Turn LED on
+                } else {
+                    setActive(false); // Stop indication
+                }
+                break;
+            }
+        } else {
+            ticks_ -= t; // Update timing
+        }
+    }
+
+private:
+    enum State {
+        ON,
+        OFF,
+    };
+
+    State state_;
+    uint16_t ticks_;
+    uint8_t count_;
+
+    void on() {
+        state_ = ON;
+        ticks_ = 250;
+        LEDCustomStatus::on();
+    }
+
+    void off() {
+        state_ = OFF;
+        ticks_ = 250;
+        LEDCustomStatus::off();
+    }
+};
+
+} // namespace
+
 /**
  * Time in millis of the last cloud connection attempt.
  * The next attempt isn't made until the backoff period has elapsed.
@@ -156,37 +222,18 @@ inline uint8_t in_cloud_backoff_period()
 
 void handle_cloud_errors()
 {
-    int blinks = Spark_Error_Count;
-    int error = blinks;
-    WARN("Handling cloud error: %d", blinks);
-    // cfod resets in orange since they are soft errors
-    // TODO: Spark_Error_Count is never equal to 1, refactor into new LED handling routine
-    ATOMIC_BLOCK() {
-        LED_SetRGBColor(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED);
+    const uint8_t blinks = Spark_Error_Count;
+    Spark_Error_Count = 0;
+    network.set_error_count(0); // Reset Error Count
 
-        while (blinks != 0)
-        {
-            // HAL_Delay_Microseconds blocks properly
-            LED_On(LED_RGB);
-            HAL_Delay_Microseconds(250000);
-            LED_Off(LED_RGB);
-            HAL_Delay_Microseconds(250000);
-            blinks--;
-        }
-        // Set the LED color back to something appropriately not orange or red.
-        if (error == 2) { // Internet test failed
-            LED_SetRGBColor(RGB_COLOR_GREEN);
-        } else if (error == 3) { // Internet connected, Cloud not reachable
-            LED_SetRGBColor(RGB_COLOR_CYAN);
-        }
-        // Now finally clear the Spark_Error_Count
-        Spark_Error_Count = 0;
-    }
+    LOG(WARN, "Handling cloud error: %d", (int)blinks);
+
+    // cfod resets in orange since they are soft errors
+    // TODO: Spark_Error_Count is never equal to 1
+    static LEDCloudErrorStatus ledCloudError(LED_PRIORITY_IMPORTANT);
+    ledCloudError.start(blinks > 1 ? RGB_COLOR_ORANGE : RGB_COLOR_RED, blinks);
 
     // TODO Send the Error Count to Cloud: NVMEM_Spark_File_Data[ERROR_COUNT_FILE_OFFSET]
-
-    // Reset Error Count
-    network.set_error_count(0);
 }
 
 void handle_cfod()
@@ -233,15 +280,13 @@ void establish_cloud_connection()
 {
     if (network.ready() && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
     {
-        SPARK_LED_FADE = 0;
-        LED_SetRGBColor(RGB_COLOR_CYAN);
+        LED_SIGNAL_START(CLOUD_CONNECTING, NORMAL);
         if (in_cloud_backoff_period())
         {
             return;
         }
 
         INFO("Cloud: connecting");
-        LED_On(LED_RGB);
         system_notify_event(cloud_status, cloud_status_connecting);
         int connect_result = spark_cloud_socket_connect();
         if (connect_result >= 0)
@@ -274,15 +319,7 @@ void establish_cloud_connection()
         // Handle errors last to ensure they are shown
         if (Spark_Error_Count > 0)
         {
-            /* TODO: Refactor this in the new LED handling routine */
-            // handle_cloud_errors();
-
-            /* Even though we are not calling handle_cloud_errors
-             * we still need to do the most important part,
-             * reset the error count.
-             */
-            Spark_Error_Count = 0;
-            network.set_error_count(0);
+            handle_cloud_errors();
         }
     }
 }
@@ -305,28 +342,29 @@ void handle_cloud_connection(bool force_events)
     {
         if (!SPARK_CLOUD_CONNECTED)
         {
-        		int err = cloud_handshake();
+            LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
+            int err = cloud_handshake();
             if (err)
             {
-            		if (!SPARK_WLAN_RESET && !network.listening())
-            		{
-					cloud_connection_failed();
-					uint32_t color = RGB_COLOR_RED;
-					if (particle::protocol::DECRYPTION_ERROR==err)
-							color = RGB_COLOR_ORANGE;
-					else if (particle::protocol::AUTHENTICATION_ERROR==err)
-							color = RGB_COLOR_MAGENTA;
-					WARN("Cloud handshake failed, code=%d", err);
-					LED_SetRGBColor(color);
-					LED_On(LED_RGB);
-					// delay a little to be sure the user sees the LED color, since
-					// the socket may quickly disconnect and the connection retried, turning
-					// the LED back to cyan
-					system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-					// allow time for the LED to be flashed
-					while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
-            		}
-				cloud_disconnect();
+                if (!SPARK_WLAN_RESET && !network.listening())
+                {
+                    cloud_connection_failed();
+                    uint32_t color = RGB_COLOR_RED;
+                    if (particle::protocol::DECRYPTION_ERROR==err)
+                        color = RGB_COLOR_ORANGE;
+                    else if (particle::protocol::AUTHENTICATION_ERROR==err)
+                        color = RGB_COLOR_MAGENTA;
+                    WARN("Cloud handshake failed, code=%d", err);
+                    LEDStatus led(color, LED_PRIORITY_IMPORTANT);
+                    led.setActive();
+                    // delay a little to be sure the user sees the LED color, since
+                    // the socket may quickly disconnect and the connection retried, turning
+                    // the LED back to cyan
+                    system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+                    // allow time for the LED to be flashed
+                    while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
+                }
+                cloud_disconnect();
             }
             else
             {
@@ -334,9 +372,15 @@ void handle_cloud_connection(bool force_events)
                 SPARK_CLOUD_CONNECTED = 1;
                 cloud_failed_connection_attempts = 0;
                 system_notify_event(cloud_status, cloud_status_connected);
+                if (system_mode() == SAFE_MODE) {
+                    LED_SIGNAL_START(SAFE_MODE, BACKGROUND); // Connected to the cloud while in safe mode
+                } else {
+                    LED_SIGNAL_START(CLOUD_CONNECTED, BACKGROUND);
+                }
+                LED_SIGNAL_STOP(CLOUD_CONNECTING);
             }
+            LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
         }
-
         if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)
         {
             Spark_Process_Events();
@@ -498,11 +542,10 @@ void cloud_disconnect(bool closeSocket)
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_SOCKETED = 0;
 
-        if (!network.manual_disconnect() && !network.listening())
-        {
-            LED_SetRGBColor(RGB_COLOR_GREEN);
-            LED_On(LED_RGB);
-        }
+        LED_SIGNAL_STOP(CLOUD_CONNECTED);
+        LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
+        LED_SIGNAL_STOP(CLOUD_CONNECTING);
+
         INFO("Cloud: disconnected");
         system_notify_event(cloud_status, cloud_status_disconnected);
     }

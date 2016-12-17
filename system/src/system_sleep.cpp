@@ -27,7 +27,7 @@
 #include "system_threading.h"
 #include "rtc_hal.h"
 #include "core_hal.h"
-#include "rgbled.h"
+#include "led_service.h"
 #include <stddef.h>
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_system.h"
@@ -170,8 +170,10 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
     }
 #endif
 
+    led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
+    led_set_update_enabled(1, nullptr); // Enable background LED updates
     if (network_sleep)
     {
         network_resume();   // asynchronously bring up the network/cloud

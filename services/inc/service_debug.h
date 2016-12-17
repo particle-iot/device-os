@@ -33,6 +33,10 @@
 
 #include "logging.h"
 
+#if PLATFORM_ID == 3
+#include <assert.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -67,7 +71,11 @@ extern thread_current_fn application_thread_current_;
 #define ERROR(fmt, ...) LOG(ERROR, fmt, ##__VA_ARGS__)
 #define DEBUG_D(fmt, ...) LOG_DEBUG_PRINTF(TRACE, fmt, ##__VA_ARGS__)
 
+#if PLATFORM_ID != 3
 #define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure "#predicate);} while(0);
+#else
+#define SPARK_ASSERT(predicate) assert(predicate)
+#endif
 
 #if defined(DEBUG_BUILD) && defined(DEBUG_THREADING) && PLATFORM_THREADING == 1
 # if defined(MODULE_INDEX) && MODULE_INDEX == 1

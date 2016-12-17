@@ -48,11 +48,13 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_json.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_async.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_fuel.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_character.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_led.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,timer_hal.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,rgbled_hal.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
@@ -62,6 +64,7 @@ CSRC += $(call target_files,$(LIB_SERVICES)src,debug.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,jsmn.c)
 CPPSRC += $(call target_files,$(LIB_SERVICES)src,logging.cpp)
 CPPSRC += $(call target_files,$(LIB_SERVICES)src,system_error.cpp)
+CPPSRC += $(call target_files,$(LIB_SERVICES)src,led_service.cpp)
 
 
 # Additional include directories, applied to objects built for this target.

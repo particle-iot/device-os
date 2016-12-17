@@ -84,7 +84,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
     button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
     led_config_t led_mirror[4];          // LED mirroring configuration, to be used by bootloader
-    uint8_t reserved2[499];
+    uint8_t led_theme[64];               // LED signaling theme
+    uint8_t reserved2[435];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -114,6 +115,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_RADIO_FLAGS_OFFSET (offsetof(application_dct_t, radio_flags))
 #define DCT_MODE_BUTTON_MIRROR_OFFSET (offsetof(application_dct_t, mode_button_mirror))
 #define DCT_LED_MIRROR_OFFSET (offsetof(application_dct_t, led_mirror))
+#define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -139,6 +141,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_RADIO_FLAGS_SIZE  (sizeof(application_dct_t::radio_flags))
 #define DCT_MODE_BUTTON_MIRROR_SIZE (sizeof(application_dct_t::mode_button_mirror))
 #define DCT_LED_MIRROR_SIZE (sizeof(application_dct_t::led_mirror))
+#define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -174,8 +177,10 @@ STATIC_ASSERT_DCT_OFFSET(device_id, 3618 /* 3490 + 128 */);
 STATIC_ASSERT_DCT_OFFSET(radio_flags, 3630 /* 3618 + 12 */);
 STATIC_ASSERT_DCT_OFFSET(mode_button_mirror, 3631 /* 3630 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(led_mirror, 3663 /* 3631 + 32 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 3759 /* 3663 + 24 * 4 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* 3759 + 499 */);
+STATIC_ASSERT_DCT_OFFSET(led_theme, 3759 /* 3663 + 24 * 4 */);
+
+STATIC_ASSERT_DCT_OFFSET(reserved2, 3823 /* 3759 + 64 */);
+STATIC_ASSERT_DCT_OFFSET(end, 4258 /* always 4258 = 3823 + 435 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);

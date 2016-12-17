@@ -66,6 +66,7 @@ void RGBClass::onChange(wiring_rgb_change_handler_t handler) {
     }
   }
   else {
+      // FIXME: This currently causes a memory leak
       LED_RGB_SetChangeHandler(NULL, NULL);
   }
 }
