@@ -8,6 +8,7 @@ usage() {
   echo -e "  - log_config"
   echo -e "  - update_result"
   echo -e "  - electron_modem_pause"
+  echo -e "  - usb_always_attach"
   exit 1
 }
 
@@ -23,6 +24,8 @@ case $1 in
   update_result)
     ;;
   electron_modem_pause)
+    ;;
+  usb_always_attach)
     ;;
   *)
     usage
