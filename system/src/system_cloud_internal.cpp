@@ -1177,7 +1177,7 @@ int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, v
     LOG(INFO, "Send spark/device/ota_result event");
     LOG_PRINT(TRACE, (const char*)buf);
     LOG_PRINTF(TRACE, "\r\n");
-    Particle.publish("sspark/device/ota_result", (const char*)buf, 60, PRIVATE);
+    Particle.publish("spark/device/ota_result", (const char*)buf, 60, PRIVATE);
     HAL_Delay_Milliseconds(1000);
     Spark_Process_Events();
 
