@@ -72,7 +72,8 @@ test(LED_01_Updated) {
     uint32_t end = rgbNotifyCount;
     RGB.onChange(NULL);
 
-    assertMore((end-start), uint32_t(20)); // I think it's meant to be 100Hz, but this is fine as a smoke test
+    // onChange callback is called every 25ms, so 500ms / 25ms = 20
+    assertMoreOrEqual((end-start), uint32_t(20));
 }
 
 
