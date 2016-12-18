@@ -30,15 +30,17 @@ public:
 
         requestSentMillis_ = mil;
         expectingResponse_ = true;
+        LOG(INFO, "Sending TIME request");
         return send_time_request();
     }
 
     template <typename Callback>
     bool handle_time_response(time_t tm, system_tick_t mil, Callback set_time) {
+        LOG(INFO, "Received TIME response: %lu", (unsigned long)tm);
+        set_time(tm, 0, NULL);
         expectingResponse_ = false;
         lastSyncTime_ = tm;
         lastSyncMillis_ = mil;
-        set_time(tm, 0, NULL);
         return true;
     }
 

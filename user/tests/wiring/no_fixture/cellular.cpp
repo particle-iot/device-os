@@ -34,8 +34,11 @@
 void disconnect_from_cloud(system_tick_t timeout)
 {
     Particle.disconnect();
-    Cellular.disconnect();
     waitFor(Particle.disconnected, timeout);
+
+    Cellular.disconnect();
+    // Avoids some sort of race condition in AUTOMATIC mode
+    delay(1000);
 }
 void connect_to_cloud(system_tick_t timeout)
 {
@@ -380,6 +383,7 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 
     TCPClient c;
     int res = c.connect("httpbin.org", 80);
+    (void)res;
 
     int sz = c.write((const uint8_t*)request, requestSize);
     assertEqual(sz, requestSize);
@@ -418,7 +422,8 @@ static int atCallback(int type, const char* buf, int len, int* lines) {
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
     // https://github.com/spark/firmware/issues/1138
     int lines = 0;
-    int ret = Cellular.command(atCallback, &lines, 10000, "AT+CLAC\r\n");
+    int ret = -99999;
+    while ((ret = Cellular.command(atCallback, &lines, 10000, "AT+CLAC\r\n")) == WAIT);
     assertEqual(ret, (int)RESP_OK);
     assertMoreOrEqual(lines, 200);
 }

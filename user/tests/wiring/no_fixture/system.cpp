@@ -82,8 +82,16 @@ static int s_button_clicks = 0;
 static void onButtonClick(system_event_t ev, int data) {
     s_button_clicks = data;
 }
+
 test(SYSTEM_04_button_mirror)
 {
+    // Known bug:
+    // events posted from an ISR might not be delivered to the application queue
+    // when threading is enabled
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        skip();
+        return;
+    }
     System.buttonMirror(D1, FALLING, false);
     auto pinmap = HAL_Pin_Map();
     System.on(button_click, onButtonClick);
@@ -102,9 +110,17 @@ test(SYSTEM_04_button_mirror)
     EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
     delay(300);
     pinMode(D1, INPUT_PULLUP);
+    delay(100);
+
+    // Third click
+    pinMode(D1, INPUT_PULLDOWN);
+    // Just in case manually trigger EXTI interrupt
+    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
+    delay(300);
+    pinMode(D1, INPUT_PULLUP);
     delay(300);
 
-    assertEqual(s_button_clicks, 2);
+    assertEqual(s_button_clicks, 3);
 }
 
 test(SYSTEM_05_button_mirror_disable)

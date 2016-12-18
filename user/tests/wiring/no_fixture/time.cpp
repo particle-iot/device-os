@@ -251,6 +251,7 @@ test(TIME_15_SyncTimeInAutomaticMode) {
     waitFor(Particle.connected, 10000);
     // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
     Particle.syncTime();
+    waitFor(Particle.syncTimeDone, 10000);
     assertTrue(Time.isValid());
     assertMore(Particle.timeSyncedLast(temp), syncedLastMillis);
     assertMore(temp, syncedLast);
@@ -305,6 +306,9 @@ test(TIME_18_TimeChangedEvent) {
 
     Particle.syncTime();
     waitFor(Particle.syncTimeDone, 60000);
+    // If wiring/no_fixture was built with USE_THREADING=y, we need to process application queue here
+    // in order to ensure that event handler has been called by the time we check s_time_changed_reason
+    Particle.process();
     assertMore(Particle.timeSyncedLast(), syncedLastMillis);
     assertEqual(s_time_changed_reason, (int)time_changed_sync);
 }
