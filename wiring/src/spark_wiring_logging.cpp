@@ -619,8 +619,7 @@ Print* spark::DefaultOutputStreamFactory::createStream(const char *type, const J
 void spark::DefaultOutputStreamFactory::destroyStream(Print *stream) {
 #if PLATFORM_ID != 3
     if (stream == &Serial) {
-        // Uninitializing primary USB serial causes the device to get disconnected from the host
-        // Serial.end();
+        Serial.end();
         return;
     }
 #if Wiring_USBSerial1
