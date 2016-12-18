@@ -88,6 +88,7 @@ test(SYSTEM_04_button_mirror)
     auto pinmap = HAL_Pin_Map();
     System.on(button_click, onButtonClick);
 
+    // "Click" setup button 3 times
     // First click
     pinMode(D1, INPUT_PULLDOWN);
     // Just in case manually trigger EXTI interrupt
@@ -102,9 +103,17 @@ test(SYSTEM_04_button_mirror)
     EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
     delay(300);
     pinMode(D1, INPUT_PULLUP);
+    delay(100);
+
+    // Third click
+    pinMode(D1, INPUT_PULLDOWN);
+    // Just in case manually trigger EXTI interrupt
+    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
+    delay(300);
+    pinMode(D1, INPUT_PULLUP);
     delay(300);
 
-    assertEqual(s_button_clicks, 2);
+    assertEqual(s_button_clicks, 3);
 }
 
 test(SYSTEM_05_button_mirror_disable)
