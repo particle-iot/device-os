@@ -18,7 +18,7 @@
 #include "led_service.h"
 
 #include "rgbled_hal.h"
-
+#include "rgbled.h"
 #include "debug.h"
 
 // TODO: Move synchronization macros to some header file
@@ -251,7 +251,7 @@ private:
     // Splits 32-bit RGB value into 16-bit color components (as expected by HAL) and applies
     // brightness correction
     static void scaleColor(uint32_t color, uint8_t value, Color* scaled) {
-        const uint32_t v = (uint32_t)value * Get_RGB_LED_Max_Value();
+        const uint32_t v = (uint32_t)value * LED_Callbacks.Led_Rgb_Get_Max_Value(nullptr);
         scaled->r = (((color >> 16) & 0xff) * v) >> 16;
         scaled->g = (((color >> 8) & 0xff) * v) >> 16;
         scaled->b = ((color & 0xff) * v) >> 16;
@@ -259,10 +259,10 @@ private:
 
     // Sets LED color and invokes user callback
     static void setLedColor(const Color& color) {
-        Set_RGB_LED_Values(color.r, color.g, color.b);
+        LED_Callbacks.Led_Rgb_Set_Values(color.r, color.g, color.b, nullptr);
         if (led_update_handler) {
             // User callback expects RGB values to be in 0 - 255 range
-            const uint32_t v = Get_RGB_LED_Max_Value();
+            const uint32_t v = LED_Callbacks.Led_Rgb_Get_Max_Value(nullptr);
             const uint8_t r = ((uint32_t)color.r << 8) / v;
             const uint8_t g = ((uint32_t)color.g << 8) / v;
             const uint8_t b = ((uint32_t)color.b << 8) / v;
