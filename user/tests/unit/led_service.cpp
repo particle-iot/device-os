@@ -96,9 +96,13 @@ inline std::ostream& operator<<(std::ostream& strm, const Color& color) {
 class Led {
 public:
     Led() {
+        mocks_.OnCallFunc(HAL_Led_Rgb_Set_Values).Do([&](uint16_t r, uint16_t g, uint16_t b, void*) {
+            color_ = Color(normalize(r), normalize(g), normalize(b));
+        });
         mocks_.OnCallFunc(Set_RGB_LED_Values).Do([&](uint16_t r, uint16_t g, uint16_t b) {
             color_ = Color(normalize(r), normalize(g), normalize(b));
         });
+        mocks_.OnCallFunc(HAL_Led_Rgb_Get_Max_Value).Return(MAX_COLOR_VALUE);
         mocks_.OnCallFunc(Get_RGB_LED_Max_Value).Return(MAX_COLOR_VALUE);
         LED_SetBrightness(255); // Set maximum brightness by default
         reset();

@@ -13,16 +13,27 @@ static uint16_t rgb_values[3];
 class Mocks {
 public:
     Mocks() {
+        mocks_.OnCallFunc(HAL_Led_Rgb_Set_Values).Do([&](uint16_t r, uint16_t g, uint16_t b, void*) {
+            rgb_values[0] = r;
+            rgb_values[1] = g;
+            rgb_values[2] = b;
+        });
         mocks_.OnCallFunc(Set_RGB_LED_Values).Do([&](uint16_t r, uint16_t g, uint16_t b) {
             rgb_values[0] = r;
             rgb_values[1] = g;
             rgb_values[2] = b;
+        });
+        mocks_.OnCallFunc(HAL_Led_Rgb_Get_Values).Do([&](uint16_t* rgb, void*) {
+            for (int i=0; i<3; i++) {
+                rgb[i] = rgb_values[i];
+            }
         });
         mocks_.OnCallFunc(Get_RGB_LED_Values).Do([&](uint16_t* rgb) {
             for (int i=0; i<3; i++) {
                 rgb[i] = rgb_values[i];
             }
         });
+        mocks_.OnCallFunc(HAL_Led_Rgb_Get_Max_Value).Return(2048);
         mocks_.OnCallFunc(Get_RGB_LED_Max_Value).Return(2048);
     }
 
@@ -50,7 +61,7 @@ void assertLEDRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness, uint8_t f
     actual[1] = g;
     actual[2] = b;
     for (int i=0; i<3; i++) {
-        actual[i] = (uint32_t(actual[i])*brightness*Get_RGB_LED_Max_Value())>>16;
+        actual[i] = (uint32_t(actual[i])*brightness*HAL_Led_Rgb_Get_Max_Value(nullptr))>>16;
         actual[i] = actual[i]*fade/99;
         REQUIRE((actual[i]>>8) == (rgb_values[i]>>8) );
     }
