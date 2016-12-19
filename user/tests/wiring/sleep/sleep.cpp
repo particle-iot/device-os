@@ -6,7 +6,7 @@ static retained uint32_t magick = 0;
 
 SYSTEM_THREAD(ENABLED);
 
-//Serial1LogHandler dbg(115200, LOG_LEVEL_ALL);
+//Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL);
 
 /*
  * Tests for issue #1043
