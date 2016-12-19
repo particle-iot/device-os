@@ -95,8 +95,8 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 		}
 		// now force a timeout
 		HAL_Delay_Milliseconds(t+10);
-		assertEqual(timeout_called, 1);
 		// LOG_DEBUG(INFO, "TIME: %d, R %d:%s", millis()-startTime, x, timeout_called?"pass":"fail");
+		assertEqual(timeout_called, 1);
 		waitForComplete(wd);
 		uint32_t endTime = millis();
 		assertMoreOrEqual(endTime-startTime, 307); // should be 310 (give it 1% margin)
