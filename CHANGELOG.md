@@ -2,13 +2,14 @@
 
 ### FEATURES
 
-- [[PR #1190]](https://github.com/spark/firmware/pull/1190) [[Implements #1114]](https://github.com/spark/firmware/issues/1114) Added ability to mirror MODE/SETUP button to any GPIO, available from time of boot, active high or low. 
+- [[PR #1190]](https://github.com/spark/firmware/pull/1190) [[Implements #1114]](https://github.com/spark/firmware/issues/1114) Added ability to mirror MODE/SETUP button to any GPIO, available from time of boot, active high or low.
 - [[PR #1182]](https://github.com/spark/firmware/pull/1182) [[Fixes #687]](https://github.com/spark/firmware/issues/687) [[Docs]](https://prerelease-docs.particle.io/reference/firmware/electron/#setlistentimeout-) Added `WiFi.set|getListenTimeout()` | `Cellular.set|getListenTimeout()` to override the automatic new Listening Mode timeout (Wi-Fi = no timeout by default, Cellular = 5 minute timeout by default).
 - [[PR #1154]](https://github.com/spark/firmware/pull/1154) Added `low_battery` system event, which is generated when low battery condition is detected. This is when the battery falls below the SoC threshold (default 10%, max settable 32%).  The event can only be generated again if the system goes from a non-charging to charing state after the event is generated. The event doesn't carry any data.
 - [[PR #1144]](https://github.com/spark/firmware/pull/1144) Added tracking of ACKs for published events (see `WITH_ACK` flag for `Particle.publish()`)
 - [[PR #1135]](https://github.com/spark/firmware/pull/1135) [[Fixes #1116]](https://github.com/spark/firmware/issues/1116) [[Fixes #965]](https://github.com/spark/firmware/issues/965) New Time API's! `Time.isValid()` | `Particle.syncTimePending()` | `Particle.syncTimeDone()` | `Particle.timeSyncedLast()`
-- [[PR #1127]](https://github.com/spark/firmware/pull/1127) Added support for runtime logging configuration, which allows to enable logging on already running system via USB control requests.
+- [[PR #1127]](https://github.com/spark/firmware/pull/1127) [[PR #1213]](https://github.com/spark/firmware/pull/1213) Added support for runtime logging configuration, which allows to enable logging on already running system via USB control requests. Disabled by default to save flash memory space. (note: this feature is not fully baked with tool support)
 - [[PR #1120]](https://github.com/spark/firmware/pull/1120) [Implements #1059](https://github.com/spark/firmware/issues/1059) [P1] Added extra spare pin to P1 (P1S6) with GPIO and PWM support.
+- [[PR #1204]](https://github.com/spark/firmware/pull/1204) [[Implements #1113]](https://github.com/spark/firmware/issues/1113) RGB LED pins can be mirrored to other PWM capable pins via `RGB.mirrorTo()`. Common Anode/Cathode LED and Bootloader compatible. See PR for usage.
 
 ### ENHANCEMENTS
 
@@ -20,6 +21,7 @@
 - [[PR #1151]](https://github.com/spark/firmware/pull/1151) [[Closes #977]](https://github.com/spark/firmware/issues/977) Added System events for cloud/network connection state changes
 - [[PR #1122]](https://github.com/spark/firmware/pull/1122) Attach to host even if Serial, USBSerial1 and Keyboard/Mouse are disabled, so that "Control Interface" that receives vendor requests is still accessible.
 - [[PR #1097]](https://github.com/spark/firmware/pull/1097) [[Implements #1032]](https://github.com/spark/firmware/issues/1032) When flashing (OTA/YModem) an invalid firmware binary (that the device ignores) it will post an event describing why the binary was not applied.
+- [[PR #1203]](https://github.com/spark/firmware/pull/1203) [[PR #1212]](https://github.com/spark/firmware/pull/1212) Automatic bootloader updates have returned to the Electron.  v9 bootloader has been added to firmware release >=0.6.1-rc.1 for Photon/P1/Electron.  After updating your system firmware, a new v9 bootloader will be applied to your device if required.  v9 includes support for SETUP/MODE button and RGB LED mirroring at the bootloader level of operation.  Also included are updates to USB DFU mode so that Windows users do not need to install separate drivers via Zadig.  Bootloader GREEN and WHITE LED flashing speeds (Firmware Reset modes) are faster now as well (you won't see these unless you have loaded user firmware to the Backup location).
 
 ### BUGFIX
 
