@@ -22,6 +22,7 @@
  */
 
 #include "system_user.h"
+#include "system_control.h"
 #include <stddef.h>
 #include <string.h>
 #include "spark_wiring_platform.h"
@@ -163,7 +164,10 @@ bool __backup_ram_was_valid() { return false; }
 
 #endif
 
-#include "system_control.h"
+#if Wiring_LogConfig
+// Callback invoked to process USB request for logging configuration
+bool(*log_process_config_request_callback)(char*, size_t, size_t, size_t*, DataFormat) = nullptr;
+#endif
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
@@ -174,13 +178,16 @@ bool __attribute((weak)) usb_request_custom_handler(char* buf, size_t buf_size, 
 
 bool usb_request_app_handler(USBRequest* req, void* reserved) {
     switch (req->type) {
+#if Wiring_LogConfig
     case USB_REQUEST_LOG_CONFIG: {
-        if (!spark::logProcessConfigRequest(req->data, USB_REQUEST_BUFFER_SIZE, req->request_size, &req->reply_size, (DataFormat)req->format)) {
+        if (!log_process_config_request_callback || !log_process_config_request_callback(req->data, USB_REQUEST_BUFFER_SIZE,
+                req->request_size, &req->reply_size, (DataFormat)req->format)) {
             return false;
         }
         system_set_usb_request_result(req, USB_REQUEST_RESULT_OK, nullptr);
         return true;
     }
+#endif
     case USB_REQUEST_CUSTOM: {
         if (!usb_request_custom_handler(req->data, USB_REQUEST_BUFFER_SIZE, req->request_size, &req->reply_size)) {
             return false;
