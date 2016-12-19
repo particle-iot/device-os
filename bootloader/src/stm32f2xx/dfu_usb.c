@@ -50,18 +50,17 @@ uint8_t is_application_valid(uint32_t address)
 #endif
 }
 
-static void dummy(void) {}
-static void dummy1(uint8_t speed) {}
+static void dummy(void* reserved) {}
 
 USBD_Usr_cb_TypeDef DFU_USR_cb =
 {
-        dummy, // USBD_USR_Init,
-        dummy1, // USBD_USR_DeviceReset,
-        dummy, // USBD_USR_DeviceConfigured,
-        dummy, // USBD_USR_DeviceSuspended,
-        dummy, // USBD_USR_DeviceResumed,
-        dummy, // USBD_USR_DeviceConnected,
-        dummy, // USBD_USR_DeviceDisconnected,
+        (void(*)(void))dummy, // USBD_USR_Init,
+        (void(*)(uint8_t))dummy, // USBD_USR_DeviceReset,
+        (void(*)(void))dummy, // USBD_USR_DeviceConfigured,
+        (void(*)(void))dummy, // USBD_USR_DeviceSuspended,
+        (void(*)(void))dummy, // USBD_USR_DeviceResumed,
+        (void(*)(void))dummy, // USBD_USR_DeviceConnected,
+        (void(*)(void))dummy, // USBD_USR_DeviceDisconnected,
         HAL_DFU_USB_Handle_Vendor_Request
 };
 
