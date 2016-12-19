@@ -287,6 +287,6 @@ int led_update_enabled(void* reserved) {
     return (ledService.isUpdateEnabled() ? 1 : 0);
 }
 
-void led_update(system_tick_t ticks, void* reserved) {
+void led_update(system_tick_t ticks, LEDStatusData* status, void* reserved) {
     ledService.update(ticks);
 }

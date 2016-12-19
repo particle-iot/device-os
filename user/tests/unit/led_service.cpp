@@ -130,7 +130,7 @@ private:
 };
 
 inline void update(system_tick_t ticks = 0) {
-    led_update(ticks, nullptr);
+    led_update(ticks, nullptr, nullptr);
 }
 
 class PatternChecker {
