@@ -65,7 +65,7 @@ DYNALIB_FN(31, services, LED_SetCallbacks, void(LedCallbacks, void*))
 DYNALIB_FN(32, services, led_set_status_active, void(LEDStatusData*, int, void*))
 DYNALIB_FN(33, services, led_set_update_enabled, void(int, void*))
 DYNALIB_FN(34, services, led_update_enabled, int(void*))
-DYNALIB_FN(35, services, led_update, void(system_tick_t, void*))
+DYNALIB_FN(35, services, led_update, void(system_tick_t, LEDStatusData*, void*))
 
 DYNALIB_END(services)
 

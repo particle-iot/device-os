@@ -409,7 +409,7 @@ extern "C" void HAL_SysTick_Handler(void)
     static uint16_t ledUpdateTicks = LED_UPDATE_INTERVAL;
 
     if (--ledUpdateTicks == 0) {
-        led_update(LED_UPDATE_INTERVAL, nullptr);
+        led_update(LED_UPDATE_INTERVAL, nullptr, nullptr);
         ledUpdateTicks = LED_UPDATE_INTERVAL;
     }
 
