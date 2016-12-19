@@ -101,7 +101,7 @@ static volatile bool wasListeningOnButtonPress;
 /**
  * The lower 16-bits of the time when the button was first pressed.
  */
-static volatile uint16_t pressed_time;
+static volatile uint16_t pressed_time = 0;
 
 uint16_t system_button_pushed_duration(uint8_t button, void*)
 {
@@ -111,7 +111,7 @@ uint16_t system_button_pushed_duration(uint8_t button, void*)
 }
 
 static volatile uint8_t button_final_clicks = 0;
-static uint8_t button_current_clicks = 0;
+static volatile uint8_t button_current_clicks = 0;
 
 #if Wiring_SetupButtonUX
 
@@ -289,7 +289,7 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
                 system_notify_event(button_status, 0);
             }
         }
-        else
+        else if (pressed_time > 0)
         {
             int release_time = HAL_Timer_Get_Milli_Seconds();
             uint16_t depressed_duration = release_time - pressed_time;

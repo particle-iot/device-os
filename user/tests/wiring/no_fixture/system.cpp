@@ -96,6 +96,7 @@ test(SYSTEM_04_button_mirror)
     auto pinmap = HAL_Pin_Map();
     System.on(button_click, onButtonClick);
 
+    // "Click" setup button 3 times
     // First click
     pinMode(D1, INPUT_PULLDOWN);
     // Just in case manually trigger EXTI interrupt
