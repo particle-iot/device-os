@@ -87,6 +87,16 @@ void assert_micros_millis_interrupts(system_tick_t duration)
 #endif
 }
 
+test(TICKS_00_millis_micros_baseline_test)
+{
+    #define ONE_SECOND 1*1000
+    system_tick_t start = millis();
+    delay(ONE_SECOND);
+    assertMoreOrEqual(millis()-start,ONE_SECOND);
+    start = micros();
+    delayMicroseconds(ONE_SECOND);
+    assertMoreOrEqual(micros()-start,ONE_SECOND);
+}
 
 #if !MODULAR_FIRMWARE
 // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
