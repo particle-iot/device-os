@@ -379,7 +379,7 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     const int requestSize = sizeof(request) - 1;
 
     Cellular.connect();
-    waitFor(Cellular.ready, 60000);
+    waitFor(Cellular.ready, 120000);
 
     TCPClient c;
     int res = c.connect("httpbin.org", 80);
@@ -423,6 +423,10 @@ test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_control
     // https://github.com/spark/firmware/issues/1138
     int lines = 0;
     int ret = -99999;
+    // Disconnected from the Cloud so we are not dealing with any other command responses
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 30000);
+
     while ((ret = Cellular.command(atCallback, &lines, 10000, "AT+CLAC\r\n")) == WAIT);
     assertEqual(ret, (int)RESP_OK);
     assertMoreOrEqual(lines, 200);

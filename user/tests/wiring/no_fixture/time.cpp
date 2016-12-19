@@ -211,7 +211,7 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 10000);
+        waitFor(Particle.connected, 120000);
     }
     assertTrue(Particle.connected());
     Particle.syncTime();
@@ -228,11 +228,11 @@ test(TIME_14_timeSyncedLast_works_correctly)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 10000);
+        waitFor(Particle.connected, 120000);
     }
     uint32_t mil = millis();
     Particle.syncTime();
-    waitFor(Particle.syncTimeDone, 10000);
+    waitFor(Particle.syncTimeDone, 120000);
     assertMore(Particle.timeSyncedLast(), mil);
 }
 
@@ -240,7 +240,7 @@ test(TIME_15_RestoreSystemMode) {
     set_system_mode(AUTOMATIC);
     if (!Particle.connected()) {
         Particle.connect();
-        waitFor(Particle.connected, 10000);
+        waitFor(Particle.connected, 120000);
     }
 }
 
@@ -261,7 +261,7 @@ test(TIME_16_TimeChangedEvent) {
     s_time_changed_reason = -1;
 
     Particle.syncTime();
-    waitFor(Particle.syncTimeDone, 60000);
+    waitFor(Particle.syncTimeDone, 120000);
     // If wiring/no_fixture was built with USE_THREADING=y, we need to process application queue here
     // in order to ensure that event handler has been called by the time we check s_time_changed_reason
     Particle.process();
