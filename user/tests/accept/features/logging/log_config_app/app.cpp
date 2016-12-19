@@ -2,6 +2,9 @@
 
 SYSTEM_MODE(MANUAL)
 
+// Enable dynamically configurable logging
+STARTUP(System.enableFeature(FEATURE_CONFIGURABLE_LOGGING))
+
 bool usb_request_custom_handler(char* buf, size_t bufSize, size_t reqSize, size_t* repSize) {
     const char* msg = "Test message";
     const char* cat = "app"; // Category name
