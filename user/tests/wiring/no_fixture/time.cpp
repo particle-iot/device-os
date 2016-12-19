@@ -236,51 +236,7 @@ test(TIME_14_timeSyncedLast_works_correctly)
     assertMore(Particle.timeSyncedLast(), mil);
 }
 
-test(TIME_15_SyncTimeInAutomaticMode) {
-    time_t syncedLast, temp;
-    system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLast);
-    // Invalid time (year = 00) 2000/01/01 00:00:00
-    Time.setTime(946684800);
-    assertFalse(Time.isValid());
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 10000);
-
-    set_system_mode(AUTOMATIC);
-
-    Particle.connect();
-    waitFor(Particle.connected, 10000);
-    // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
-    Particle.syncTime();
-    waitFor(Particle.syncTimeDone, 10000);
-    assertTrue(Time.isValid());
-    assertMore(Particle.timeSyncedLast(temp), syncedLastMillis);
-    assertMore(temp, syncedLast);
-}
-
-test(TIME_16_SyncTimeInManualMode) {
-    time_t syncedLast, temp;
-    system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLast);
-    // Invalid time (year = 00) 2000/01/01 00:00:00
-    Time.setTime(946684800);
-    assertFalse(Time.isValid());
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 10000);
-
-    set_system_mode(MANUAL);
-
-    Particle.connect();
-    waitFor(Particle.connected, 10000);
-    // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
-    Particle.syncTime();
-    if (!Time.isValid()) {
-         waitFor(Particle.syncTimeDone, 10000);
-    }
-    assertTrue(Time.isValid());
-    assertMore(Particle.timeSyncedLast(temp), syncedLastMillis);
-    assertMore(temp, syncedLast);
-}
-
-test(TIME_17_RestoreSystemMode) {
+test(TIME_15_RestoreSystemMode) {
     set_system_mode(AUTOMATIC);
     if (!Particle.connected()) {
         Particle.connect();
@@ -294,7 +250,7 @@ static void time_changed_handler(system_event_t event, int param)
     s_time_changed_reason = param;
 }
 
-test(TIME_18_TimeChangedEvent) {
+test(TIME_16_TimeChangedEvent) {
     assertTrue(Particle.connected());
 
     system_tick_t syncedLastMillis = Particle.timeSyncedLast();

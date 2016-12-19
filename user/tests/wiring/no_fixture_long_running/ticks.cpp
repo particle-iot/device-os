@@ -91,20 +91,29 @@ void assert_micros_millis_interrupts(system_tick_t duration)
 #if !MODULAR_FIRMWARE
 // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
 #include "hw_ticks.h"
-test(ticks_millis_and_micros_rollover)
+test(TICKS_01_millis_and_micros_rollover)
 {
     // this places the micros counter 2 seconds from rollover and the systemm ticks 3 seconds
     __advance_system1MsTick(system_tick_t(-5000), 3000);
-    assert_micros_millis(10*1000); // 10 seconds
+    #define TEN_SECONDS 10*1000
+    system_tick_t start = millis();
+    assert_micros_millis(TEN_SECONDS);
+    assertMoreOrEqual(millis()-start,TEN_SECONDS);
 }
 #endif
 
-test(ticks_millis_and_micros_along_with_high_priority_interrupts)
+test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
 {
-    assert_micros_millis_interrupts(2*60*1000); // 2 minutes
+    #define TWO_MINUTES 2*60*1000
+    system_tick_t start = millis();
+    assert_micros_millis_interrupts(TWO_MINUTES);
+    assertMoreOrEqual(millis()-start,TWO_MINUTES);
 }
 
-test(ticks_millis_and_micros_monotonically_increases)
+test(TICKS_03_millis_and_micros_monotonically_increases)
 {
-    assert_micros_millis(2*60*1000);    // 2 minutes
+    #define TWO_MINUTES 2*60*1000
+    system_tick_t start = millis();
+    assert_micros_millis(TWO_MINUTES);
+    assertMoreOrEqual(millis()-start,TWO_MINUTES);
 }
