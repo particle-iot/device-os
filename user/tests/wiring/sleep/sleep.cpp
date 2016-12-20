@@ -15,6 +15,7 @@ SYSTEM_THREAD(ENABLED);
  */
 test(sleep_0_device_wakes_from_deep_sleep_with_short_sleep_time)
 {
+    waitFor(Particle.connected, 5 * 60 * 1000);
     if (magick == 0xdeadbeef) {
         magick = 0;
         // We should have woken up from deep sleep
@@ -84,6 +85,14 @@ test(sleep_1_interrupts_attached_handler_is_not_detached_after_stop_mode)
     detachInterrupt(pin);
 }
 
+static bool NotReady() {
+#if Wiring_Cellular
+    return !Cellular.ready();
+#elif Wiring_WiFi
+    return !WiFi.ready();
+#endif
+}
+
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
 static int testfunc(String s) {
     return 1337;
@@ -114,6 +123,7 @@ test(sleep_2_electron_all_confirmable_messages_are_sent_before_sleep_step_1)
     //Serial.println("Disconnected");
 
     Cellular.off();
+    waitFor(NotReady, 60000);
 
     pinMode(D7, OUTPUT);
     digitalWrite(D7, LOW);
@@ -174,6 +184,7 @@ test(sleep_3_restore_system_mode) {
 test(sleep_4_system_sleep_sleep_mode_wlan_works_correctly)
 {
     System.sleep(10);
+    waitFor(NotReady, 60000);
     assertTrue(Particle.disconnected());
     waitFor(Particle.connected, 120000);
     assertTrue(Particle.connected());
