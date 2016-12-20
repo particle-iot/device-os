@@ -184,8 +184,8 @@ test(sleep_3_restore_system_mode) {
 test(sleep_4_system_sleep_sleep_mode_wlan_works_correctly)
 {
     System.sleep(10);
+    waitFor(Particle.disconnected, 60000);
     waitFor(NotReady, 60000);
-    assertTrue(Particle.disconnected());
     waitFor(Particle.connected, 120000);
     assertTrue(Particle.connected());
 }
