@@ -728,7 +728,6 @@ int Spark_Handshake(bool presence_announce)
         LOG(INFO,"Send subscriptions");
         spark_protocol_send_subscriptions(sp);
         // important this comes at the end since it requires a response from the cloud.
-        LOG(INFO,"Send time request");
         spark_protocol_send_time_request(sp);
         Spark_Process_Events();
     }

@@ -1,3 +1,5 @@
+#if PLATFORM_ID>=3
+
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "pwm_hal.h"
@@ -6,6 +8,7 @@
 #ifndef ABS
 #define ABS(x) (x < 0 ? -x : x)
 #endif // ABS
+
 
 static const uint32_t maxPulseSamples = 100;
 static const uint32_t minimumFrequency = 100;
@@ -29,7 +32,7 @@ template <typename F> void for_all_pwm_pins(F callback)
     }
 }
 
-test(PWM_CompherensiveResolutionFrequency) {
+test(PWM_01_CompherensiveResolutionFrequency) {
     for_all_pwm_pins([&](uint16_t pin) {
         // when
         pinMode(pin, OUTPUT);
@@ -132,3 +135,5 @@ test(PWM_CompherensiveResolutionFrequency) {
         assertMoreOrEqual(resolution, 15);
     });
 }
+
+#endif

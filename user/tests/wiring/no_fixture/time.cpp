@@ -211,7 +211,7 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 10000);
+        waitFor(Particle.connected, 120000);
     }
     assertTrue(Particle.connected());
     Particle.syncTime();
@@ -228,62 +228,19 @@ test(TIME_14_timeSyncedLast_works_correctly)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 10000);
+        waitFor(Particle.connected, 120000);
     }
     uint32_t mil = millis();
     Particle.syncTime();
-    waitFor(Particle.syncTimeDone, 10000);
+    waitFor(Particle.syncTimeDone, 120000);
     assertMore(Particle.timeSyncedLast(), mil);
 }
 
-test(TIME_15_SyncTimeInAutomaticMode) {
-    time_t syncedLast, temp;
-    system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLast);
-    // Invalid time (year = 00) 2000/01/01 00:00:00
-    Time.setTime(946684800);
-    assertFalse(Time.isValid());
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 10000);
-
-    set_system_mode(AUTOMATIC);
-
-    Particle.connect();
-    waitFor(Particle.connected, 10000);
-    // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
-    Particle.syncTime();
-    assertTrue(Time.isValid());
-    assertMore(Particle.timeSyncedLast(temp), syncedLastMillis);
-    assertMore(temp, syncedLast);
-}
-
-test(TIME_16_SyncTimeInManualMode) {
-    time_t syncedLast, temp;
-    system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLast);
-    // Invalid time (year = 00) 2000/01/01 00:00:00
-    Time.setTime(946684800);
-    assertFalse(Time.isValid());
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 10000);
-
-    set_system_mode(MANUAL);
-
-    Particle.connect();
-    waitFor(Particle.connected, 10000);
-    // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
-    Particle.syncTime();
-    if (!Time.isValid()) {
-         waitFor(Particle.syncTimeDone, 10000);
-    }
-    assertTrue(Time.isValid());
-    assertMore(Particle.timeSyncedLast(temp), syncedLastMillis);
-    assertMore(temp, syncedLast);
-}
-
-test(TIME_17_RestoreSystemMode) {
+test(TIME_15_RestoreSystemMode) {
     set_system_mode(AUTOMATIC);
     if (!Particle.connected()) {
         Particle.connect();
-        waitFor(Particle.connected, 10000);
+        waitFor(Particle.connected, 120000);
     }
 }
 
@@ -293,7 +250,7 @@ static void time_changed_handler(system_event_t event, int param)
     s_time_changed_reason = param;
 }
 
-test(TIME_18_TimeChangedEvent) {
+test(TIME_16_TimeChangedEvent) {
     assertTrue(Particle.connected());
 
     system_tick_t syncedLastMillis = Particle.timeSyncedLast();
@@ -304,7 +261,10 @@ test(TIME_18_TimeChangedEvent) {
     s_time_changed_reason = -1;
 
     Particle.syncTime();
-    waitFor(Particle.syncTimeDone, 60000);
+    waitFor(Particle.syncTimeDone, 120000);
+    // If wiring/no_fixture was built with USE_THREADING=y, we need to process application queue here
+    // in order to ensure that event handler has been called by the time we check s_time_changed_reason
+    Particle.process();
     assertMore(Particle.timeSyncedLast(), syncedLastMillis);
     assertEqual(s_time_changed_reason, (int)time_changed_sync);
 }

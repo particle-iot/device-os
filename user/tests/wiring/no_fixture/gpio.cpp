@@ -92,15 +92,17 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
 
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
     pin_t pin = D1; // pin under test
-    // when
-    pinMode(pin, OUTPUT);
-    analogWrite(pin, 128); // 50% Duty Cycle at 500Hz = 1000us HIGH, 1000us LOW.
     uint32_t avgPulseHigh = 0;
-    for(int i=0;i<100;i++) {
-        avgPulseHigh += pulseIn(pin, HIGH);
+    // when
+    SINGLE_THREADED_BLOCK() {
+        pinMode(pin, OUTPUT);
+        analogWrite(pin, 128); // 50% Duty Cycle at 500Hz = 1000us HIGH, 1000us LOW.
+        for(int i=0;i<100;i++) {
+            avgPulseHigh += pulseIn(pin, HIGH);
+        }
+        avgPulseHigh /= 100;
+        analogWrite(pin, 0);
     }
-    avgPulseHigh /= 100;
-    analogWrite(pin, 0);
     // then
     // avgPulseHigh should equal 1000 +/- 5%
     assertMoreOrEqual(avgPulseHigh, 950);
@@ -109,15 +111,18 @@ test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 
 test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
     pin_t pin = D1; // pin under test
-    // when
-    pinMode(pin, OUTPUT);
-    analogWrite(pin, 128); // 50% Duty Cycle at 500Hz = 1000us HIGH, 1000us LOW.
+
     uint32_t avgPulseLow = 0;
-    for(int i=0;i<100;i++) {
-        avgPulseLow += pulseIn(pin, LOW);
+    // when
+    SINGLE_THREADED_BLOCK() {
+        pinMode(pin, OUTPUT);
+        analogWrite(pin, 128); // 50% Duty Cycle at 500Hz = 1000us HIGH, 1000us LOW.
+        for(int i=0;i<100;i++) {
+            avgPulseLow += pulseIn(pin, LOW);
+        }
+        avgPulseLow /= 100;
+        analogWrite(pin, 0);
     }
-    avgPulseLow /= 100;
-    analogWrite(pin, 0);
     // then
     // avgPulseHigh should equal 1000 +/- 5%
     assertMoreOrEqual(avgPulseLow, 950);

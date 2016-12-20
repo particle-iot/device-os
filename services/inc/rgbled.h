@@ -66,6 +66,7 @@ typedef enum
 #define RGB_COLOR_WHITE   0xFFFFFF
 #define RGB_COLOR_ORANGE  0xFF6000
 #define RGB_COLOR_GREY    0x1F1F1F
+#define RGB_COLOR_GRAY    0x1F1F1F
 
 extern volatile uint8_t led_rgb_brightness;
 

@@ -65,7 +65,7 @@ typedef struct exti_channel {
 } exti_channel;
 
 //Array to hold user ISR function pointers
-static exti_channel exti_channels[16];
+static exti_channel exti_channels[16] = {{0}};
 
 typedef struct exti_state {
     uint32_t imr;
@@ -74,7 +74,7 @@ typedef struct exti_state {
     uint32_t ftsr;
 } exti_state;
 
-static exti_state exti_saved_state;
+static exti_state exti_saved_state = {0};
 
 /* Extern variables ----------------------------------------------------------*/
 
