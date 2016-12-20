@@ -174,10 +174,6 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
     LED_Off(LED_RGB);
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
     led_set_update_enabled(1, nullptr); // Enable background LED updates
-    if (network_sleep)
-    {
-        network_resume();   // asynchronously bring up the network/cloud
-    }
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
     if (!network_sleep_flag(param)) {
@@ -185,6 +181,11 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
         cellular_resume(nullptr);
     }
 #endif
+
+    if (network_sleep)
+    {
+        network_resume();   // asynchronously bring up the network/cloud
+    }
 
     // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
     auto mode = system_mode();
