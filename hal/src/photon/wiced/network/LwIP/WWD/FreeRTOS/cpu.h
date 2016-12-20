@@ -40,7 +40,9 @@
 extern "C" {
 #endif
 
+#ifndef __MACHINE_ENDIAN_H__
 #define BYTE_ORDER LITTLE_ENDIAN
+#endif
 
 #ifdef __cplusplus
 } /*extern "C" */
