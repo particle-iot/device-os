@@ -49,6 +49,8 @@ SECTIONS
         *(.glue_7)
         *(.glue_7t)
 
+        . = ALIGN(0x4);
+
         link_constructors_location = .;
         chk_system_pre_init_start = .;
         KEEP (*(.module_pre_init))
