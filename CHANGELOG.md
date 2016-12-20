@@ -22,6 +22,7 @@
 - [[PR #1122]](https://github.com/spark/firmware/pull/1122) Attach to host even if Serial, USBSerial1 and Keyboard/Mouse are disabled, so that "Control Interface" that receives vendor requests is still accessible.
 - [[PR #1097]](https://github.com/spark/firmware/pull/1097) [[Implements #1032]](https://github.com/spark/firmware/issues/1032) When flashing (OTA/YModem) an invalid firmware binary (that the device ignores) it will post an event describing why the binary was not applied.
 - [[PR #1203]](https://github.com/spark/firmware/pull/1203) [[PR #1212]](https://github.com/spark/firmware/pull/1212) Automatic bootloader updates have returned to the Electron.  v9 bootloader has been added to firmware release >=0.6.1-rc.1 for Photon/P1/Electron.  After updating your system firmware, a new v9 bootloader will be applied to your device if required.  v9 includes support for SETUP/MODE button and RGB LED mirroring at the bootloader level of operation.  Also included are updates to USB DFU mode so that Windows users do not need to install separate drivers via Zadig.  Bootloader GREEN and WHITE LED flashing speeds (Firmware Reset modes) are faster now as well (you won't see these unless you have loaded user firmware to the Backup location).
+- [[PR #1125]](https://github.com/spark/firmware/pull/1125) Breaks on-going network connection when Sleep stop mode is called, thereby speeding up the time to entering sleep when using SYSTEM_THREAD(ENABLED).
 
 ### BUGFIX
 
@@ -33,7 +34,6 @@
 - [[PR #1145]](https://github.com/spark/firmware/pull/1145) [[Fixes #973]](https://github.com/spark/firmware/issues/973) `Particle.connect()` now blocks `loop()` from running until `Particle.connected()` is `true` in single threaded SEMI_AUTOMATIC mode.
 - [[PR #1140]](https://github.com/spark/firmware/pull/1140) [[Fixes #1138]](https://github.com/spark/firmware/issues/1138) [[Fixes #1104]](https://github.com/spark/firmware/issues/1104) [Electron] Fixed modem USART and buffer handling
 - [[PR #1130]](https://github.com/spark/firmware/pull/1130) Particle.subscribe() used with same events but changing scope between PUBLIC and PRIVATE or vice versa would potentially result in non-registered subscriptions.  This was also crashing the GCC virtual device with a segfault when subscription checksums were calculated.
-- [[PR #1125]](https://github.com/spark/firmware/pull/1125) [[Fixes #1098]](https://github.com/spark/firmware/issues/1098) [Photon/P1] Previously, when entering Sleep-stop mode: `System.sleep(D1, RISING, 60);` while in the process of making a Wi-Fi connection resulted in some parts of the radio still being initialized, consuming about 10-15mA more than normal.
 
 ### INTERNAL
 
