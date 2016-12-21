@@ -8,8 +8,9 @@
 - [[PR #1144]](https://github.com/spark/firmware/pull/1144) Added tracking of ACKs for published events (see `WITH_ACK` flag for `Particle.publish()`)
 - [[PR #1135]](https://github.com/spark/firmware/pull/1135) [[Fixes #1116]](https://github.com/spark/firmware/issues/1116) [[Fixes #965]](https://github.com/spark/firmware/issues/965) New Time API's! `Time.isValid()` | `Particle.syncTimePending()` | `Particle.syncTimeDone()` | `Particle.timeSyncedLast()`
 - [[PR #1127]](https://github.com/spark/firmware/pull/1127) [[PR #1213]](https://github.com/spark/firmware/pull/1213) Added support for runtime logging configuration, which allows to enable logging on already running system via USB control requests. Disabled by default to save flash memory space. (note: this feature is not fully baked with tool support)
-- [[PR #1120]](https://github.com/spark/firmware/pull/1120) [Implements #1059](https://github.com/spark/firmware/issues/1059) [P1] Added extra spare pin to P1 (P1S6) with GPIO and PWM support.
+- [[PR #1120]](https://github.com/spark/firmware/pull/1120) [[Implements #1059]](https://github.com/spark/firmware/issues/1059) [P1] Added extra spare pin to P1 (P1S6) with GPIO and PWM support.
 - [[PR #1204]](https://github.com/spark/firmware/pull/1204) [[Implements #1113]](https://github.com/spark/firmware/issues/1113) RGB LED pins can be mirrored to other PWM capable pins via `RGB.mirrorTo()`. Common Anode/Cathode LED and Bootloader compatible. See PR for usage.
+- [[PR #1205]](https://github.com/spark/firmware/pull/1205) [[Closes #569]](https://github.com/spark/firmware/issues/569) [[Closes #976]](https://github.com/spark/firmware/issues/976) [[Closes #1111]](https://github.com/spark/firmware/issues/1111) By implementing a centralized LED service and theme "engine" for system LED signaling, giving users the ability to apply custom LED colors and patterns for system events.
 
 ### ENHANCEMENTS
 
