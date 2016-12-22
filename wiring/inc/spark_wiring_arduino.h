@@ -23,7 +23,7 @@
 #ifdef PARTICLE_ARDUINO_COMPATIBILITY
 
 #ifndef ARDUINO
-#define ARDUINO 100
+#define ARDUINO 10800
 #endif
 
 #ifndef __cplusplus
