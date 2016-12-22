@@ -176,6 +176,24 @@ typedef volatile uint32_t RwReg;
 #define isinf std::isinf
 #endif
 
+
+// Hardware serial defines
+
+#define UBRRH
+#define UBRR1H
+#if Wiring_Serial2
+#define UBRR2H
+#endif
+#if Wiring_Serial3
+#define UBRR3H
+#endif
+#if Wiring_Serial4
+#define UBRR4H
+#endif
+#if Wiring_Serial5
+#define UBRR5H
+#endif
+
 typedef USARTSerial HardwareSerial;
 
 #ifndef SERIAL_PORT_MONITOR
@@ -214,7 +232,7 @@ typedef USARTSerial HardwareSerial;
 #define SERIAL_PORT_HARDWARE              Serial1
 #endif
 
-#ifndef SERIAL_PORT_HARDWARE
+#ifndef SERIAL_PORT_HARDWARE1
 #define SERIAL_PORT_HARDWARE1             Serial1
 #endif
 
