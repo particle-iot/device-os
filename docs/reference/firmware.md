@@ -976,7 +976,7 @@ _Since 0.6.1_
 WiFi.setListenTimeout(seconds);
 ```
 
-`WiFi.setListenTimeout(seconds)` is used to set a timeout value for Listening Mode.  Values are specified in `seconds`, and 0 disables the timeout.  By default, Wi-Fi devices do not have any timeout set (seconds=0).  As long as interrupts are enabled, a timer is started and running while the device is in listening mode (WiFi.listening()==true).  After the timer expires, listening mode will be exited automatically.  If WiFi.setListenTimeout() is called while the timer is currently in progress, the timer will be updated and restarted with the new value (e.g. updating from 10 seconds to 30 seconds, or 10 seconds to 0 seconds (disabled)).  {{#unless core}}**Note:** Enabling multi-threaded mode with SYSTEM_THREAD(ENABLED) will allow user code to update the timeout value while Listening Mode is active.{{/unless}} {{#if core}}Because listening mode blocks your application code on the Core, this command should be avoided in loop().  It can be used with the STARTUP() macro or in setup() on the Core.
+`WiFi.setListenTimeout(seconds)` is used to set a timeout value for Listening Mode.  Values are specified in `seconds`, and 0 disables the timeout.  By default, Wi-Fi devices do not have any timeout set (seconds=0).  As long as interrupts are enabled, a timer is started and running while the device is in listening mode (WiFi.listening()==true).  After the timer expires, listening mode will be exited automatically.  If WiFi.setListenTimeout() is called while the timer is currently in progress, the timer will be updated and restarted with the new value (e.g. updating from 10 seconds to 30 seconds, or 10 seconds to 0 seconds (disabled)).  {{#if has-threading}}**Note:** Enabling multi-threaded mode with SYSTEM_THREAD(ENABLED) will allow user code to update the timeout value while Listening Mode is active.{{/if}} {{#if core}}Because listening mode blocks your application code on the Core, this command should be avoided in loop().  It can be used with the STARTUP() macro or in setup() on the Core.
 It will always return `false`.
 
 This setting is not persistent in memory if the {{device}} is rebooted.
@@ -990,12 +990,12 @@ STARTUP(WiFi.setListenTimeout(60)); // set listening mode timeout to 60 seconds
 void setup() {
   // your setup code
 }
-{{#unless core}}
+{{#if has-threading}}
 void loop() {
   // update the timeout later in code based on an expression
   if (disableTimeout) WiFi.setListenTimeout(0); // disables the listening mode timeout
 }
-{{/unless}}
+{{/if}}
 ```
 
 
@@ -3224,7 +3224,9 @@ by the system firmware.
 
 ## Serial
 
-Used for communication between the device and a computer or other devices. The device has {{#if electron}}four{{else}}two{{/if}} hardware (USART) serial channels and {{#unless core}}two{{else}}one{{/unless}} USB serial channel{{#unless core}}s{{else}}{{/unless}}.
+{{#unless raspberry-pi}}
+Used for communication between the {{device}} and a computer or other devices. The {{device}} has {{#if electron}}four{{else}}two{{/if}} hardware (USART) serial channels and {{#if has-usb-serial1}}two{{else}}one{{/if}} USB serial channel{{#if has-usb-serial1}}s{{else}}{{/if}}.
+{{/unless}}
 
 {{#unless raspberry-pi}}
 `Serial:` This channel communicates through the USB port and when connected to a computer, will show up as a virtual COM port.
@@ -3381,9 +3383,9 @@ Parity:
 {{#if core}}
 Hardware flow control, available only on Serial1 (`CTS` - `A0`, `RTS` - `A1`):
 {{/if}}
-{{#unless core}}
+{{#if has-serial2}}{{#unless core}}
 Hardware flow control, available only on Serial2 (`CTS` - `A7`, `RTS` - `RGBR` ):
-{{/unless}}
+{{/unless}}{{/if}}
 - `SERIAL_FLOW_CONTROL_NONE` - no flow control
 - `SERIAL_FLOW_CONTROL_RTS` - RTS flow control
 - `SERIAL_FLOW_CONTROL_CTS` - CTS flow control
@@ -3465,11 +3467,11 @@ Disables serial channel.
 
 When used with hardware serial channels (Serial1, Serial2{{#if electron}}, Serial4, Serial5{{/if}}), disables serial communication, allowing channel's RX and TX pins to be used for general input and output. To re-enable serial communication, call `SerialX.begin()`.
 
-{{#unless core}}
+{{#unless core}}{{#unless raspberry-pi}}
 _Since 0.6.0_
 
 When used with USB serial channels (`Serial`{{#if has-usb-serial1}} or `USBSerial1`{{/if}}), `end()` will cause the device to quickly disconnect from Host and connect back without the selected serial channel.
-{{/unless}}
+{{/unless}}{{/unless}}
 
 ```C++
 // SYNTAX
@@ -4768,11 +4770,11 @@ For transferring a large number of bytes, this form of transfer() uses DMA to sp
 ```C++
 // SYNTAX
 SPI.transfer(tx_buffer, rx_buffer, length, myFunction);
-{{#unless core}}
+{{#if has-multiple-spi}}
 SPI1.transfer(tx_buffer, rx_buffer, length, myFunction);
-{{/unless}}
 {{#if electron}}
 SPI2.transfer(tx_buffer, rx_buffer, length, myFunction);
+{{/if}}
 {{/if}}
 ```
 
@@ -7011,9 +7013,9 @@ Time.isValid();
 Used to check if current time is valid. This function will return `true` if:
 - Time has been set manually using [`Time.setTime()`](#settime-)
 - Time has been successfully synchronized with the Particle Cloud. The device synchronizes time with the Particle Cloud during the handshake. The application may also manually synchronize time with Particle Cloud using [`Particle.syncTime()`](#particle-synctime-)
-- Correct time has been maintained by RTC.{{#unless core}} See information on [`Backup RAM (SRAM)`](#backup-ram-sram-) for cases when RTC retains the time. RTC is part of the backup domain and retains its counters under the same conditions as Backup RAM.{{/unless}}
+- Correct time has been maintained by RTC.{{#if has-backup-ram}} See information on [`Backup RAM (SRAM)`](#backup-ram-sram-) for cases when RTC retains the time. RTC is part of the backup domain and retains its counters under the same conditions as Backup RAM.{{/if}}
 
-**NOTE:** When {{device}} is running in `AUTOMATIC` mode {{#unless core}}and threading is disabled {{/unless}} this function will block if current time is not valid and there is an active connection to Particle Cloud. Once {{device}} synchronizes the time with Particle Cloud or the connection to Particle Cloud is lost, `Time.isValid()` will return its current state. This function is also implicitly called by any `Time` function that returns current time or date (e.g. `Time.hour()`/`Time.now()`/etc).
+**NOTE:** When {{device}} is running in `AUTOMATIC` mode {{#if has-threading}}and threading is disabled {{/if}} this function will block if current time is not valid and there is an active connection to Particle Cloud. Once {{device}} synchronizes the time with Particle Cloud or the connection to Particle Cloud is lost, `Time.isValid()` will return its current state. This function is also implicitly called by any `Time` function that returns current time or date (e.g. `Time.hour()`/`Time.now()`/etc).
 
 ```cpp
 // Print true or false depending on whether current time is valid
@@ -8794,7 +8796,7 @@ System.sleep(SLEEP_MODE_DEEP,60);
 The device will automatically *wake up* and reestablish the Wi-Fi connection after the specified number of seconds.
 
 **Note:**
-You can also wake the device "prematurely" by applying a rising edge signal to the {{#if core}}A7{{/if}}{{#unless core}}WKP{{/unless}} pin.
+You can also wake the device "prematurely" by applying a rising edge signal to the {{#if core}}A7{{/if}}{{#unless core}}{{#unless raspberry-pi}}WKP{{/unless}}{{/unless}} pin.
 
 `System.sleep(uint16_t wakeUpPin, uint16_t edgeTriggerMode)` can be used to put the entire device into a *stop* mode with *wakeup on interrupt*. In this particular mode, the device shuts down the network and puts the microcontroller in a stop mode with configurable wakeup pin and edge triggered interrupt. When the specific interrupt arrives, the device awakens from stop mode. {{#if core}} On the Core, the Core is reset on entering stop mode and runs all user code from the beginning with no values being maintained in memory from before the stop mode. As such, it is recommended that stop mode be called only after all user code has completed.{{/if}} {{#unless core}}The device will not reset before going into stop mode so all the application variables are preserved after waking up from this mode. The voltage regulator is put in low-power mode. This mode achieves the lowest power consumption while retaining the contents of SRAM and registers.{{/unless}}
 
@@ -9222,7 +9224,7 @@ system("my_command");
 
 {{/if}} {{!-- has-linux --}}
 
-{{#unless core}}
+{{#if has-button-mirror}}
 ### buttonMirror()
 
 _Since 0.6.1_
@@ -9271,7 +9273,7 @@ System.disableButtonMirror(false);
 Parameters:
   * `bootloader`: (optional) if `true`, the mirror pin configuration is cleared from the DCT, disabling the feature in bootloader (default).
 
-{{/unless}}
+{{/if}} {{!-- button-mirror --}}
 
 ## OTA Updates
 
