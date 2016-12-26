@@ -420,6 +420,14 @@ typedef enum {
   MOD_RSHIFT             = 0xE020,     // Keyboard RightShift
   MOD_RALT               = 0xE040,     // Keyboard RightAlt
   MOD_RGUI               = 0xE080,     // Keyboard Right GUI
+  
+  // Platform-specific names
+  MOD_LEFT_WINDOWS       = 0xE008,     // Left Windows Key (⊞)
+  MOD_RIGHT_WINDOWS      = 0xE080,     // Right Windows Key (⊞)
+  MOD_LEFT_COMMAND       = 0xE008,     // Left Mac Command Key (⌘)
+  MOD_RIGHT_COMMAND      = 0xE080,     // Right Mac Command Key (⌘)
+  MOD_LEFT_META          = 0xE008,     // Left *nix Meta Key (◆)
+  MOD_RIGHT_META         = 0xE080,     // Right *nix Meta Key (◆)
 } UsbKeyboardModifier;
 
 #endif // __SPARK_WIRING_USBKEYBOARDSCANCODE_H
