@@ -46,7 +46,6 @@
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"
-#include "ledcontrol.h"
 #include "spark_wiring_power.h"
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_interrupts.h"
@@ -570,6 +569,41 @@ void system_part2_post_init()
 {
 }
 
+namespace {
+
+class LEDDeviceKeyStatus: public LEDStatus {
+public:
+    explicit LEDDeviceKeyStatus(LEDPriority priority) :
+            LEDStatus(RGB_COLOR_WHITE, LED_PATTERN_BLINK, LED_SPEED_NORMAL, priority) {
+    }
+
+    void setActive(bool active) {
+        if (active) {
+            const LEDStatusData* s = led_signal_status(LED_SIGNAL_NETWORK_OFF, nullptr);
+            setColor(s ? s->color : RGB_COLOR_WHITE);
+        }
+        LEDStatus::setActive(active);
+    }
+};
+
+} // namespace
+
+void hal_event_handler(int event, int flags, void* data) {
+    switch (event) {
+    case HAL_EVENT_GENERATE_DEVICE_KEY: {
+        static LEDDeviceKeyStatus status(LED_PRIORITY_IMPORTANT);
+        if (flags & HAL_EVENT_FLAG_START) {
+            status.setActive(true);
+        } else if (flags & HAL_EVENT_FLAG_STOP) {
+            status.setActive(false);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 /*******************************************************************************
  * Function Name  : main.
  * Description    : main routine.
@@ -584,6 +618,9 @@ void app_setup_and_loop(void)
     main_thread_current(NULL);
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
+
+    // Register handler for HAL events
+    HAL_Set_Event_Callback(hal_event_handler, nullptr);
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 

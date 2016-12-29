@@ -245,6 +245,25 @@ void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void
 void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved);
 void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* reserved);
 
+/**
+ * HAL event type.
+ */
+typedef enum {
+    HAL_EVENT_GENERATE_DEVICE_KEY = 10 // Fired when HAL attempts to generate device keys
+} HAL_Event;
+
+/**
+ * HAL event flags.
+ */
+typedef enum {
+    HAL_EVENT_FLAG_START = 0x01, // Event started
+    HAL_EVENT_FLAG_STOP = 0x02 // Event stopped
+} HAL_Event_Flag;
+
+typedef void(*HAL_Event_Callback)(int event, int flags, void* data);
+
+void HAL_Set_Event_Callback(HAL_Event_Callback callback, void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

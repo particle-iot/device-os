@@ -25,7 +25,7 @@ enum eWanTimings
     CONNECT_TO_ADDRESS_MAX = S2M(30),
     DISCONNECT_TO_RECONNECT = S2M(2),
 };
-    
+
 extern volatile uint8_t WLAN_CONNECTED;
 extern volatile uint8_t WLAN_DISCONNECT;
 extern volatile uint8_t WLAN_DHCP;
@@ -41,7 +41,6 @@ extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_STARTED;
 
-extern volatile uint8_t SPARK_LED_FADE;
 void manage_smart_config();
 void manage_ip_config();
 

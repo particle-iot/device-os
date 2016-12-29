@@ -55,8 +55,6 @@ unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char wlan_profile_index;
 
-volatile uint8_t SPARK_LED_FADE = 1;
-
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t SYSTEM_POWEROFF;
 

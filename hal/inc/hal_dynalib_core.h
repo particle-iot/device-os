@@ -74,11 +74,9 @@ DYNALIB_FN(28, hal_core, HAL_Core_Button_Mirror_Pin, void(uint16_t, InterruptMod
 DYNALIB_FN(29, hal_core, HAL_Core_Button_Mirror_Pin_Disable, void(uint8_t, uint8_t, void*))
 DYNALIB_FN(30, hal_core, HAL_Core_Led_Mirror_Pin, void(uint8_t, pin_t, uint32_t, uint8_t, void*))
 DYNALIB_FN(31, hal_core, HAL_Core_Led_Mirror_Pin_Disable, void(uint8_t, uint8_t, void*))
+
+DYNALIB_FN(32, hal_core, HAL_Set_Event_Callback, void(HAL_Event_Callback, void*))
+
 DYNALIB_END(hal_core)
 
-
-
-
-
 #endif	/* HAL_DYNALIB_CORE_H */
-
