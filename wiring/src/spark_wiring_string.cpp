@@ -217,7 +217,8 @@ String & String::copy(const char *cstr, unsigned int length)
 		return *this;
 	}
 	len = length;
-	strcpy(buffer, cstr);
+	memcpy(buffer, cstr, length);
+	buffer[len] = 0;
 	return *this;
 }
 
