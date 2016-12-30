@@ -72,7 +72,7 @@ const uint8_t DEFAULT_THEME_DATA[] = {
     DEFAULT_SIGNAL_DATA(BLUE, BLINK, SLOW), // LED_SIGNAL_LISTENING_MODE
     DEFAULT_SIGNAL_DATA(YELLOW, BLINK, NORMAL), // LED_SIGNAL_DFU_MODE
     DEFAULT_SIGNAL_DATA(MAGENTA, BLINK, FAST), // LED_SIGNAL_FIRMWARE_UPDATE
-    DEFAULT_SIGNAL_DATA(GREY, SOLID, NORMAL) // LED_SIGNAL_POWER_OFF
+    DEFAULT_SIGNAL_DATA(GRAY, SOLID, NORMAL) // LED_SIGNAL_POWER_OFF
 };
 
 // Size of a serialized theme in bytes
@@ -91,6 +91,32 @@ static_assert(LED_SIGNAL_THEME_VERSION == 1,
 static_assert(THEME_DATA_SIZE <= (DCT_LED_THEME_SIZE - 1), // 1 byte in DCT is reserved for version number
         "THEME_DATA_SIZE is greater than size of LED theme section in DCT");
 #endif
+
+// Returns pattern period in milliseconds for a predefined speed value
+uint16_t patternPeriod(int pattern, int speed) {
+    switch (pattern) {
+    case LED_PATTERN_BLINK:
+        // Blinking LED
+        if (speed == LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::BLINK_NORMAL;
+        } else if (speed > LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::BLINK_FAST;
+        } else {
+            return (uint16_t)PatternPeriod::BLINK_SLOW;
+        }
+    case LED_PATTERN_FADE:
+        // Breathing LED
+        if (speed == LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::FADE_NORMAL;
+        } else if (speed > LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::FADE_FAST;
+        } else {
+            return (uint16_t)PatternPeriod::FADE_SLOW;
+        }
+    default:
+        return 0; // Not applicable
+    }
+}
 
 class LEDSignalManager {
 public:
@@ -311,26 +337,5 @@ const LEDStatusData* led_signal_status(int signal, void* reserved) {
 }
 
 uint16_t led_pattern_period(int pattern, int speed, void* reserved) {
-    switch (pattern) {
-    case LED_PATTERN_BLINK:
-        // Blinking LED
-        if (speed == LED_SPEED_NORMAL) {
-            return (uint16_t)PatternPeriod::BLINK_NORMAL;
-        } else if (speed > LED_SPEED_NORMAL) {
-            return (uint16_t)PatternPeriod::BLINK_FAST;
-        } else {
-            return (uint16_t)PatternPeriod::BLINK_SLOW;
-        }
-    case LED_PATTERN_FADE:
-        // Breathing LED
-        if (speed == LED_SPEED_NORMAL) {
-            return (uint16_t)PatternPeriod::FADE_NORMAL;
-        } else if (speed > LED_SPEED_NORMAL) {
-            return (uint16_t)PatternPeriod::FADE_FAST;
-        } else {
-            return (uint16_t)PatternPeriod::FADE_SLOW;
-        }
-    default:
-        return 0; // Not applicable
-    }
+    return patternPeriod(pattern, speed);
 }
