@@ -43,17 +43,19 @@
 #define DEFAULT_SIGNAL_DATA(_color, _pattern, _speed) \
         ((RGB_COLOR_##_color >> 16) & 0xf0) | (((RGB_COLOR_##_color >> 8) & 0xf0) >> 4), /* R, G */ \
         (RGB_COLOR_##_color & 0xf0) | (LED_PATTERN_##_pattern & 0x0f), /* B, Pattern type */ \
-        (uint16_t)DefaultPatternPeriod::_pattern##_##_speed / 50 /* Pattern period */
+        (uint16_t)PatternPeriod::_pattern##_##_speed / 50 /* Pattern period */
 
 namespace {
 
-// Predefined pattern periods for factory default theme
-enum class DefaultPatternPeriod {
+// Predefined pattern periods
+enum class PatternPeriod {
     SOLID_NORMAL = 0,
     BLINK_SLOW = 500,
     BLINK_NORMAL = 200,
     BLINK_FAST = 100,
-    FADE_NORMAL = 4000
+    FADE_SLOW = 8000,
+    FADE_NORMAL = 4000,
+    FADE_FAST = 1000
 };
 
 // Serialized factory default theme
@@ -306,4 +308,29 @@ int led_get_signal_theme(LEDSignalThemeData* theme, int flags, void* reserved) {
 
 const LEDStatusData* led_signal_status(int signal, void* reserved) {
     return ledSignalManager.signalStatus(signal);
+}
+
+uint16_t led_pattern_period(int pattern, int speed, void* reserved) {
+    switch (pattern) {
+    case LED_PATTERN_BLINK:
+        // Blinking LED
+        if (speed == LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::BLINK_NORMAL;
+        } else if (speed > LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::BLINK_FAST;
+        } else {
+            return (uint16_t)PatternPeriod::BLINK_SLOW;
+        }
+    case LED_PATTERN_FADE:
+        // Breathing LED
+        if (speed == LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::FADE_NORMAL;
+        } else if (speed > LED_SPEED_NORMAL) {
+            return (uint16_t)PatternPeriod::FADE_FAST;
+        } else {
+            return (uint16_t)PatternPeriod::FADE_SLOW;
+        }
+    default:
+        return 0; // Not applicable
+    }
 }

@@ -66,6 +66,7 @@ typedef enum {
     LED_SIGNAL_POWER_OFF = 12
 } LEDSignal;
 
+// LED signal source
 typedef enum {
     LED_SOURCE_APPLICATION = 1,
     LED_SOURCE_SYSTEM = 2,
@@ -76,12 +77,20 @@ typedef enum {
 #endif
 } LEDSource;
 
+// LED signal priority
 typedef enum {
     LED_PRIORITY_BACKGROUND = 10,
     LED_PRIORITY_NORMAL = 20,
     LED_PRIORITY_IMPORTANT = 30,
     LED_PRIORITY_CRITICAL = 40
 } LEDPriority;
+
+// Predefined LED pattern speed
+typedef enum {
+    LED_SPEED_SLOW = 10,
+    LED_SPEED_NORMAL = 20,
+    LED_SPEED_FAST = 30
+} LEDSpeed;
 
 typedef enum {
     LED_SIGNAL_FLAG_SAVE_THEME = 0x01, // Save theme to persistent storage
@@ -115,8 +124,11 @@ int led_set_signal_theme(const LEDSignalThemeData* theme, int flags, void* reser
 // Gets current or default theme. Supported flags: LED_SIGNAL_FLAG_DEFAULT_THEME
 int led_get_signal_theme(LEDSignalThemeData* theme, int flags, void* reserved);
 
-// Returns LED status data for a signal
+// Returns immutable LED status data for a signal
 const LEDStatusData* led_signal_status(int signal, void* reserved);
+
+// Returns pattern period in milliseconds for a predefined speed value
+uint16_t led_pattern_period(int pattern, int speed, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

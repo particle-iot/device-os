@@ -117,9 +117,11 @@ static volatile uint8_t button_current_clicks = 0;
 namespace {
 
 // LED status blinking specified number of times
-class LEDCounterStatus: public LEDCustomStatus {
+class LEDCounterStatus: public LEDStatus {
 public:
-    using LEDCustomStatus::LEDCustomStatus;
+    explicit LEDCounterStatus(LEDPriority priority) :
+            LEDStatus(LED_PATTERN_CUSTOM, priority) {
+    }
 
     void start(uint8_t count) {
         setActive(false);
@@ -571,14 +573,16 @@ void system_part2_post_init()
 
 namespace {
 
+// LED status shown during device key generation
 class LEDDeviceKeyStatus: public LEDStatus {
 public:
     explicit LEDDeviceKeyStatus(LEDPriority priority) :
-            LEDStatus(RGB_COLOR_WHITE, LED_PATTERN_BLINK, LED_SPEED_NORMAL, priority) {
+            LEDStatus(LED_PATTERN_BLINK, priority) {
     }
 
     void setActive(bool active) {
         if (active) {
+            // Get base color used for the "network off" indication
             const LEDStatusData* s = led_signal_status(LED_SIGNAL_NETWORK_OFF, nullptr);
             setColor(s ? s->color : RGB_COLOR_WHITE);
         }
@@ -586,8 +590,7 @@ public:
     }
 };
 
-} // namespace
-
+// Callback for HAL events
 void hal_event_handler(int event, int flags, void* data) {
     switch (event) {
     case HAL_EVENT_GENERATE_DEVICE_KEY: {
@@ -604,6 +607,8 @@ void hal_event_handler(int event, int flags, void* data) {
     }
 }
 
+} // namespace
+
 /*******************************************************************************
  * Function Name  : main.
  * Description    : main routine.
@@ -619,7 +624,7 @@ void app_setup_and_loop(void)
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
 
-    // Register handler for HAL events
+    // Register callback for HAL events
     HAL_Set_Event_Callback(hal_event_handler, nullptr);
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);

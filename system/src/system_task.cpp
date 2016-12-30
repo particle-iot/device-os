@@ -46,7 +46,6 @@
 
 using spark::Network;
 using particle::LEDStatus;
-using particle::LEDCustomStatus;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
@@ -135,9 +134,11 @@ void manage_network_connection()
 namespace {
 
 // LED status for cloud errors indication
-class LEDCloudErrorStatus: public LEDCustomStatus {
+class LEDCloudErrorStatus: public LEDStatus {
 public:
-    using LEDCustomStatus::LEDCustomStatus;
+    explicit LEDCloudErrorStatus(LEDPriority priority) :
+            LEDStatus(LED_PATTERN_CUSTOM, priority) {
+    }
 
     void start(uint32_t color, uint8_t count) {
         if (count > 0) {
@@ -183,13 +184,13 @@ private:
     void on() {
         state_ = ON;
         ticks_ = 250;
-        LEDCustomStatus::on();
+        LEDStatus::on();
     }
 
     void off() {
         state_ = OFF;
         ticks_ = 250;
-        LEDCustomStatus::off();
+        LEDStatus::off();
     }
 };
 

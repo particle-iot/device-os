@@ -73,8 +73,11 @@ void led_set_update_enabled(int enabled, void* reserved);
 int led_update_enabled(void* reserved);
 
 // Updates LED color according to a number of ticks passed since previous update. This function needs
-// to be called periodically. TODO: If `status` is not null, LED will be updated only if specified
-// status has a highest priority among other active statuses
+// to be called periodically.
+//
+// TODO: If `status` argument is not null, LED will be updated only if specified status has a highest
+// priority among other active statuses. This can be used to implement a status indication that
+// requires real time LED updates
 void led_update(system_tick_t ticks, LEDStatusData* status, void* reserved);
 
 #ifdef __cplusplus

@@ -55,7 +55,7 @@
 
 #ifndef SPARK_NO_CLOUD
 
-using particle::LEDCustomStatus;
+using particle::LEDStatus;
 
 int userVarType(const char *varKey);
 const void *getUserVar(const char *varKey);
@@ -754,10 +754,10 @@ inline bool Spark_Communication_Loop(void)
 namespace {
 
 // LED status for the test signal that can be triggered from the cloud
-class LEDCloudSignalStatus: public LEDCustomStatus {
+class LEDCloudSignalStatus: public LEDStatus {
 public:
     explicit LEDCloudSignalStatus(LEDPriority priority) :
-            LEDCustomStatus(priority),
+            LEDStatus(LED_PATTERN_CUSTOM, priority),
             ticks_(0),
             index_(0) {
         updateColor();

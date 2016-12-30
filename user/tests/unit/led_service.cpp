@@ -213,8 +213,8 @@ private:
     }
 };
 
-// Adapter class allowing to use std::function to define a custom LED signaling pattern
-class CustomStatus: public LEDCustomStatus {
+// Adapter class allowing to use std::function to define a custom LED pattern
+class CustomStatus: public LEDStatus {
 public:
     typedef std::function<Color(double)> Function; // See PatternChecker::Function
 
@@ -227,7 +227,7 @@ public:
     }
 
     CustomStatus(LEDPriority priority, LEDSource source, int period, Function func) :
-            LEDCustomStatus(priority, source),
+            LEDStatus(LED_PATTERN_CUSTOM, priority, source),
             func_(std::move(func)),
             period_(period),
             ticks_(0) {
@@ -242,7 +242,7 @@ protected:
         ticks_ += ticks;
         const double t = (ticks_ % period_) / (double)period_;
         const Color c = func_(t);
-        LEDCustomStatus::setColor(c);
+        setColor(c);
     }
 
 private:
@@ -467,22 +467,22 @@ TEST_CASE("LEDStatus") {
 
             SECTION("slow speed") {
                 s.setSpeed(LED_SPEED_SLOW);
-                check(1000); // Expected period is 1s
+                check(500); // Expected period is 500ms
             }
 
             SECTION("normal speed") {
                 s.setSpeed(LED_SPEED_NORMAL);
-                check(500); // Expected period is 500ms
+                check(200); // Expected period is 200ms
             }
 
             SECTION("fast speed") {
                 s.setSpeed(LED_SPEED_FAST);
-                check(200); // Expected period is 200ms
+                check(100); // Expected period is 100ms
             }
 
             SECTION("custom period") {
-                s.setPeriod(2000);
-                check(2000); // Expected period is 2s
+                s.setPeriod(1000);
+                check(1000); // Expected period is 1s
             }
         }
 
@@ -494,7 +494,7 @@ TEST_CASE("LEDStatus") {
 
             SECTION("slow speed") {
                 s.setSpeed(LED_SPEED_SLOW);
-                check(7000); // Expected period is 7s
+                check(8000); // Expected period is 8s
             }
 
             SECTION("normal speed") {
@@ -508,30 +508,28 @@ TEST_CASE("LEDStatus") {
             }
 
             SECTION("custom period") {
-                s.setPeriod(3000);
-                check(3000); // Expected period is 3s
+                s.setPeriod(2000);
+                check(2000); // Expected period is 2s
             }
         }
     }
-}
 
-TEST_CASE("LEDCustomStatus") {
-    Led led;
+    SECTION("custom patterns") {
+        // Simple pattern alternating between some predefined colors
+        auto patternFunc = [](double t) {
+            static const std::vector<Color> colors = { Color::RED, Color::GREEN, Color::BLUE };
+            return colors.at(std::floor(t * colors.size())); // `t` takes values in the range [0.0, 1.0)
+        };
 
-    // Simple pattern alternating between some predefined colors
-    auto patternFunc = [](double t) {
-        static const std::vector<Color> colors = { Color::RED, Color::GREEN, Color::BLUE };
-        return colors.at(std::floor(t * colors.size())); // `t` takes values in the range [0.0, 1.0)
-    };
+        SECTION("activating custom status") {
+            const int period = 1000;
 
-    SECTION("activating custom status") {
-        const int period = 1000;
+            CustomStatus s(period, patternFunc);
+            s.setActive();
 
-        CustomStatus s(period, patternFunc);
-        s.setActive();
-
-        PatternChecker check(led, patternFunc);
-        check(period);
+            PatternChecker check(led, patternFunc);
+            check(period);
+        }
     }
 }
 
