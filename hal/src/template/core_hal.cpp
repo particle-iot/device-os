@@ -174,3 +174,9 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
 void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
 {
 }
+
+void HAL_Set_Event_Callback(HAL_Event_Callback callback, void* reserved) {
+}
+
+void hal_notify_event(int event, int flags, void* data) {
+}
