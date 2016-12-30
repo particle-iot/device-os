@@ -31,6 +31,12 @@
 #include "rgbled.h"
 #include "button.h"
 
+// FIXME: Bootloader with enabled support for custom LED colors currently overflows on P1
+#if (PLATFORM_ID == 6) || (PLATFORM_ID == 10)
+#include "led_signal.h"
+#define USE_LED_THEME
+#endif
+
 void platform_startup();
 
 
@@ -55,6 +61,11 @@ volatile uint32_t TimingBUTTON;
 volatile uint32_t TimingLED;
 volatile uint32_t TimingIWDGReload;
 
+// Customizable LED colors
+static uint32_t FirmwareUpdateColor = RGB_COLOR_MAGENTA;
+static uint32_t SafeModeColor = RGB_COLOR_MAGENTA;
+static uint32_t DFUModeColor = RGB_COLOR_YELLOW;
+
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -64,7 +75,7 @@ void flashModulesCallback(bool isUpdating)
     if(isUpdating)
     {
         OTA_FLASH_AVAILABLE = 1;
-        LED_SetRGBColor(RGB_COLOR_MAGENTA);
+        LED_SetRGBColor(FirmwareUpdateColor);
     }
     else
     {
@@ -150,6 +161,11 @@ int main(void)
     if (true || (features!=0xFF && (((~(features>>4)&0xF)) != (features & 0xF))) || (features&8)) {     // bit 3 must be reset for this to be enabled
         features = 0xFF;        // ignore - corrupt. Top 4 bits should be the inverse of the bottom 4
     }
+
+#ifdef USE_LED_THEME
+    // Load LED theme colors
+    get_led_theme_colors(&FirmwareUpdateColor, &SafeModeColor, &DFUModeColor);
+#endif
 
     //--------------------------------------------------------------------------
 
@@ -295,7 +311,7 @@ int main(void)
             {
                 // if pressed for > 3 sec, enter USB DFU Mode
                 if (features&BL_FEATURE_DFU_MODE) {
-                    LED_SetRGBColor(RGB_COLOR_YELLOW);
+                    LED_SetRGBColor(DFUModeColor);
                     USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
                 }
                 if (!factory_reset_available)
@@ -309,7 +325,7 @@ int main(void)
 
                 if (features&BL_FEATURE_SAFE_MODE) {
                     // if pressed for > 1 sec, enter Safe Mode
-                    LED_SetRGBColor(RGB_COLOR_MAGENTA);
+                    LED_SetRGBColor(SafeModeColor);
                     SAFE_MODE = 1;
                 }
             }
@@ -332,7 +348,7 @@ int main(void)
 
     if (OTA_FLASH_AVAILABLE == 1)
     {
-        LED_SetRGBColor(RGB_COLOR_MAGENTA);
+        LED_SetRGBColor(FirmwareUpdateColor);
         // Load the OTA Firmware from external flash
         OTA_Flash_Reset();
     }
@@ -411,7 +427,7 @@ int main(void)
     OTA_FLASH_AVAILABLE = 0; //   |
     REFLASH_FROM_BACKUP = 0; //   |
 
-    LED_SetRGBColor(RGB_COLOR_YELLOW);
+    LED_SetRGBColor(DFUModeColor);
 
     USB_DFU_MODE = 1;
 

@@ -37,6 +37,9 @@
     r, g, b - RGB color components (4 bits per component);
     pattern - pattern type, as defined by LEDPattern enum;
     period - pattern period in 50ms units.
+
+    NOTE: Part of the LED theme data is also processed in bootloader. Ensure implementation
+    there is updated accordingly.
 */
 
 // Helper macro for DEFAULT_THEME_DATA initialization
