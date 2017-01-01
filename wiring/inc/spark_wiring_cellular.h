@@ -27,6 +27,7 @@
 #if Wiring_Cellular
 
 #include "cellular_hal.h"
+#include "inet_hal.h"
 #include "spark_wiring_cellular_printable.h"
 
 namespace spark {
@@ -123,6 +124,13 @@ public:
             T* param, system_tick_t timeout_ms, const char* format, Targs... Fargs)
     {
         return cellular_command((_CALLBACKPTR_MDM)cb, (void*)param, timeout_ms, format, Fargs...);
+    }
+
+    IPAddress resolve(const char* name)
+    {
+        HAL_IPAddress ip;
+        return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL)<0) ?
+                IPAddress(uint32_t(0)) : IPAddress(ip);
     }
 };
 

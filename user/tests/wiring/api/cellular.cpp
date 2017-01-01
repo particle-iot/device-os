@@ -132,4 +132,10 @@ test(api_cellular_band_select) {
     (void)result; // avoid unused warning
 }
 
+test(api_cellular_resolve) {
+    IPAddress ip;
+    API_COMPILE(ip = Cellular.resolve("www.google.com"));
+    (void)ip;
+}
+
 #endif

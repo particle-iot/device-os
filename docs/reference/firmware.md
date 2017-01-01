@@ -2166,6 +2166,36 @@ else {
 }
 ```
 
+### resolve()
+_Since 0.6.1_
+
+`Cellular.resolve()` finds the IP address for a domain name.
+
+```cpp
+// SYNTAX
+IPAddress ip = Cellular.resolve(name);
+```
+
+Parameters:
+
+- `name`: the domain name to resolve (string)
+
+It returns the IP address if the domain name is found, otherwise a blank IP address.
+
+```cpp
+// EXAMPLE USAGE
+
+IPAddress ip;
+void setup() {
+   ip = Cellular.resolve("www.google.com");
+   if(ip) {
+     // IP address was resolved
+   } else {
+     // name resolution failed
+   }
+}
+```
+
 ### localIP()
 _Since 0.5.0_
 

@@ -108,6 +108,11 @@ test(CELLULAR_04_local_ip_cellular_config)
     checkIPAddress("local", Cellular.localIP());
 }
 
+test(CELLULAR_05_resolve) {
+    connect_to_cloud(6*60*1000);
+    checkIPAddress("www.google.com", Cellular.resolve("www.google.com"));
+}
+
 int how_many_band_options_are_available(void)
 {
     CellularBand band_avail;
