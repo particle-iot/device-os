@@ -187,6 +187,10 @@ void USBMouse::enableMoveTo(bool state)
     HAL_USB_HID_Set_State(0x03, (uint8_t)state, nullptr);
 }
 
-//Preinstantiate Object
-USBMouse Mouse;
+USBMouse& _fetch_usbmouse()
+{
+  static USBMouse _usbmouse;
+  return _usbmouse;
+}
+
 #endif

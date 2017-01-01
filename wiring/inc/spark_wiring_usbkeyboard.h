@@ -61,7 +61,9 @@ private:
   void sendReport();
 };
 
-extern USBKeyboard Keyboard;
+extern USBKeyboard& _fetch_usbkeyboard();
+#define Keyboard _fetch_usbkeyboard()
+
 #endif
 
 #endif

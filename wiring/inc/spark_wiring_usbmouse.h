@@ -98,7 +98,9 @@ public:
 	bool isPressed(uint8_t button = MOUSE_LEFT);	// check LEFT by default
 };
 
-extern USBMouse Mouse;
+extern USBMouse& _fetch_usbmouse();
+#define Mouse _fetch_usbmouse()
+
 #endif
 
 #endif
