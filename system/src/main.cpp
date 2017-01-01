@@ -590,22 +590,34 @@ public:
     }
 };
 
-// Callback for HAL events
-void hal_event_handler(int event, int flags, void* data) {
-    switch (event) {
-    case HAL_EVENT_GENERATE_DEVICE_KEY: {
-        static LEDDeviceKeyStatus status(LED_PRIORITY_IMPORTANT);
-        if (flags & HAL_EVENT_FLAG_START) {
-            status.setActive(true);
-        } else if (flags & HAL_EVENT_FLAG_STOP) {
-            status.setActive(false);
+// Handler for HAL events
+class HALEventHandler {
+public:
+    HALEventHandler() {
+        HAL_Set_Event_Callback(handleEvent, nullptr); // Register callback
+    }
+
+private:
+    static void handleEvent(int event, int flags, void* data) {
+        switch (event) {
+        case HAL_EVENT_GENERATE_DEVICE_KEY: {
+            static LEDDeviceKeyStatus status(LED_PRIORITY_IMPORTANT);
+            if (flags & HAL_EVENT_FLAG_START) {
+                status.setActive(true);
+            } else if (flags & HAL_EVENT_FLAG_STOP) {
+                status.setActive(false);
+            }
+            break;
         }
-        break;
+        default:
+            break;
+        }
     }
-    default:
-        break;
-    }
-}
+};
+
+// Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
+// global variable allows to register a handler for HAL events early
+HALEventHandler halEventHandler;
 
 } // namespace
 
@@ -623,9 +635,6 @@ void app_setup_and_loop(void)
     main_thread_current(NULL);
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
-
-    // Register callback for HAL events
-    HAL_Set_Event_Callback(hal_event_handler, nullptr);
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
