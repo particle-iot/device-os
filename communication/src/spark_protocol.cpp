@@ -1399,6 +1399,8 @@ bool SparkProtocol::send_description(int description_flags, msg& message)
     int desc_len = description(queue + 2, message.token, queue[2], queue[3], description_flags);
     queue[0] = (desc_len >> 8) & 0xff;
     queue[1] = desc_len & 0xff;
+    LOG(INFO,"Sending %s%s describe message", description_flags & DESCRIBE_SYSTEM ? "S" : "",
+                                              description_flags & DESCRIBE_APPLICATION ? "A" : "");
     return blocking_send(queue, desc_len + 2)>=0;
 }
 
@@ -1408,7 +1410,14 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
   {
     case CoAPMessageType::DESCRIBE:
     {
-        if (!send_description(DESCRIBE_SYSTEM, message) || !send_description(DESCRIBE_APPLICATION, message)) {
+        int desc_flags = DESCRIBE_ALL;
+        if (message.len > 8 && queue[8] <= DESCRIBE_ALL) {
+            desc_flags = queue[8];
+        } else if (message.len > 8) {
+            LOG(WARN, "Invalid DESCRIBE flags %02x", queue[8]);
+        }
+
+        if (!send_description(desc_flags, message)) {
             return false;
         }
         break;
