@@ -37,7 +37,7 @@
 #include "spark_wiring_arduino_binary.h"
 
 #undef F
-#define F(X) (X)
+#define F(X) (reinterpret_cast<const __FlashStringHelper*>(X))
 
 #ifndef makeWord
 inline uint16_t makeWord(uint16_t w) {

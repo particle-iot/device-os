@@ -164,6 +164,9 @@ THE SOFTWARE.
 
 #include <stdint.h>
 
+#undef F
+#define F(X) (X)
+
 // Ensure this doesn't ever become an issue!
 #if 0
 #if ARDUINO >= 100 && ARDUINO < 103
