@@ -18,8 +18,9 @@
 # Debug folder
 Debug/*
 
-# Release folder
+# Releases folder
 Release/*
+build/releases/*
 
 # build folder
 *.map
