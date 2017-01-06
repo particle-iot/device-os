@@ -20,6 +20,8 @@
 #ifndef SPARK_WIRING_ARDUINO_H
 #define	SPARK_WIRING_ARDUINO_H
 
+#if PARTICLE_ARDUINO_COMPATIBILITY == 1
+
 #ifndef ARDUINO
 #define ARDUINO 10800
 #endif
@@ -257,5 +259,7 @@ typedef USARTSerial HardwareSerial;
 #endif
 
 #endif // __cplusplus
+
+#endif // PARTICLE_ARDUINO_COMPATIBILITY
 
 #endif	/* SPARK_WIRING_ARDUINO_H */
