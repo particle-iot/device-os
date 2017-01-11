@@ -225,7 +225,16 @@ typedef enum {
   KEY_RIGHTALT           = 0xE6,     // Keyboard RightAlt
   KEY_RIGHTGUI           = 0xE7,     // Keyboard Right GUI
                                      // End of modifiers
-
+  
+  // Platform-specific names
+  KEY_LEFT_WINDOWS       = 0xE3,     // Left Windows Key (⊞)
+  KEY_RIGHT_WINDOWS      = 0xE7,     // Right Windows Key (⊞)
+  KEY_LEFT_COMMAND       = 0xE3,     // Left Mac Command Key (⌘)
+  KEY_RIGHT_COMMAND      = 0xE7,     // Right Mac Command Key (⌘)
+  KEY_LEFT_META          = 0xE3,     // Left *nix Meta Key (◆)
+  KEY_RIGHT_META         = 0xE7,     // Right *nix Meta Key (◆)
+  
+  
   // Additional alternative names
   KEY_INTL1              = 0x87,     // Keyboard International1
   KEY_INTL2              = 0x88,     // Keyboard International2
@@ -411,6 +420,14 @@ typedef enum {
   MOD_RSHIFT             = 0xE020,     // Keyboard RightShift
   MOD_RALT               = 0xE040,     // Keyboard RightAlt
   MOD_RGUI               = 0xE080,     // Keyboard Right GUI
+  
+  // Platform-specific names
+  MOD_LEFT_WINDOWS       = 0xE008,     // Left Windows Key (⊞)
+  MOD_RIGHT_WINDOWS      = 0xE080,     // Right Windows Key (⊞)
+  MOD_LEFT_COMMAND       = 0xE008,     // Left Mac Command Key (⌘)
+  MOD_RIGHT_COMMAND      = 0xE080,     // Right Mac Command Key (⌘)
+  MOD_LEFT_META          = 0xE008,     // Left *nix Meta Key (◆)
+  MOD_RIGHT_META         = 0xE080,     // Right *nix Meta Key (◆)
 } UsbKeyboardModifier;
 
 #endif // __SPARK_WIRING_USBKEYBOARDSCANCODE_H
