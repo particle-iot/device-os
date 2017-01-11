@@ -354,6 +354,10 @@ void USBKeyboard::sendReport()
     }
 }
 
-//Preinstantiate Object
-USBKeyboard Keyboard;
+USBKeyboard& _fetch_usbkeyboard()
+{
+  static USBKeyboard _usbkeyboard;
+  return _usbkeyboard;
+}
+
 #endif
