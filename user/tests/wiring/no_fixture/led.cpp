@@ -7,6 +7,10 @@
 #include "rgbled.h"
 #include <stdio.h>
 
+#ifdef abs
+#undef abs
+#endif
+
 /**
  * Handles the notification of LED change
  */

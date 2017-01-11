@@ -20,10 +20,10 @@
 #ifndef SPARK_WIRING_ARDUINO_H
 #define	SPARK_WIRING_ARDUINO_H
 
-#ifdef PARTICLE_ARDUINO_COMPATIBILITY
+#if PARTICLE_ARDUINO_COMPATIBILITY == 1
 
 #ifndef ARDUINO
-#define ARDUINO 100
+#define ARDUINO 10800
 #endif
 
 #ifndef __cplusplus
@@ -178,6 +178,24 @@ typedef volatile uint32_t RwReg;
 #define isinf std::isinf
 #endif
 
+
+// Hardware serial defines
+
+#define UBRRH
+#define UBRR1H
+#if Wiring_Serial2
+#define UBRR2H
+#endif
+#if Wiring_Serial3
+#define UBRR3H
+#endif
+#if Wiring_Serial4
+#define UBRR4H
+#endif
+#if Wiring_Serial5
+#define UBRR5H
+#endif
+
 typedef USARTSerial HardwareSerial;
 
 #ifndef SERIAL_PORT_MONITOR
@@ -216,7 +234,7 @@ typedef USARTSerial HardwareSerial;
 #define SERIAL_PORT_HARDWARE              Serial1
 #endif
 
-#ifndef SERIAL_PORT_HARDWARE
+#ifndef SERIAL_PORT_HARDWARE1
 #define SERIAL_PORT_HARDWARE1             Serial1
 #endif
 
@@ -243,6 +261,5 @@ typedef USARTSerial HardwareSerial;
 #endif // __cplusplus
 
 #endif // PARTICLE_ARDUINO_COMPATIBILITY
-
 
 #endif	/* SPARK_WIRING_ARDUINO_H */

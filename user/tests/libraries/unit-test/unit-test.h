@@ -164,6 +164,11 @@ THE SOFTWARE.
 
 #include <stdint.h>
 
+#undef F
+#define F(X) (X)
+
+// Ensure this doesn't ever become an issue!
+#if 0
 #if ARDUINO >= 100 && ARDUINO < 103
 #undef F
 #undef PSTR
@@ -189,6 +194,7 @@ THE SOFTWARE.
 #define memcpy_P(a, b, c) memcpy(a, b, c)
 #define strlen_P(a) strlen(a)
 #endif
+#endif // Ensure this doesn't ever become an issue!
 
 /** \brief This is defined to manage the API transition to 2.X */
 #define ARDUINO_UNIT_MAJOR_VERSION 2
