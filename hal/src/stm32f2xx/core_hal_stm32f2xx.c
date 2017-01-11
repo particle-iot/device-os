@@ -1371,6 +1371,10 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
             return GPIO_AF_TIM4;
         case (uint32_t)TIM5:
             return GPIO_AF_TIM5;
+#if PLATFORM_ID == 10
+        case (uint32_t)TIM8:
+            return GPIO_AF_TIM8;
+#endif // PLATFORM_ID == 10
     }
 
     return 0;
