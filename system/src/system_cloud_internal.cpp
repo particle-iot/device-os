@@ -697,9 +697,10 @@ int Spark_Handshake(bool presence_announce)
             LOG(INFO,"spark/hardware/ota_chunk_size event");
             Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
         }
-        if (system_mode()==SAFE_MODE)
+        if (system_mode()==SAFE_MODE) {
             LOG(INFO,"Send spark/device/safemode event");
             Particle.publish("spark/device/safemode","", 60, PRIVATE);
+        }
 #if defined(SPARK_SUBSYSTEM_EVENT_NAME)
         if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
         {
