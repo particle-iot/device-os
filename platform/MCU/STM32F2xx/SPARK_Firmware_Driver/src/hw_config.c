@@ -779,6 +779,7 @@ void sFLASH_SPI_Init(void)
 void sFLASH_CS_LOW(void)
 {
     GPIO_ResetBits(sFLASH_SPI_CS_GPIO_PORT, sFLASH_SPI_CS_GPIO_PIN);
+    asm("mov r2, r2");
 }
 
 /* Deselect sFLASH: Chip Select pin high */
