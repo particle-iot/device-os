@@ -31,8 +31,7 @@
 #include "rgbled.h"
 #include "button.h"
 
-// FIXME: Bootloader with enabled support for custom LED colors currently overflows on P1
-#if (PLATFORM_ID == 6) || (PLATFORM_ID == 10)
+#if (PLATFORM_ID == 6) || (PLATFORM_ID == 10) || (PLATFORM_ID == 8)
 #include "led_signal.h"
 #define USE_LED_THEME
 #endif
