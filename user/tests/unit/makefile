@@ -53,6 +53,7 @@ CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
+CPPSRC += $(call target_files,$(SYSTEM)src/,system_led_signal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,timer_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,rgbled_hal.cpp)
 

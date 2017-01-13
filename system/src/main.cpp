@@ -46,7 +46,6 @@
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"
-#include "ledcontrol.h"
 #include "spark_wiring_power.h"
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_interrupts.h"
@@ -118,9 +117,11 @@ static volatile uint8_t button_current_clicks = 0;
 namespace {
 
 // LED status blinking specified number of times
-class LEDCounterStatus: public LEDCustomStatus {
+class LEDCounterStatus: public LEDStatus {
 public:
-    using LEDCustomStatus::LEDCustomStatus;
+    explicit LEDCounterStatus(LEDPriority priority) :
+            LEDStatus(LED_PATTERN_CUSTOM, priority) {
+    }
 
     void start(uint8_t count) {
         setActive(false);
@@ -569,6 +570,56 @@ extern "C" void system_part2_post_init() __attribute__((weak));
 void system_part2_post_init()
 {
 }
+
+namespace {
+
+// LED status shown during device key generation
+class LEDDeviceKeyStatus: public LEDStatus {
+public:
+    explicit LEDDeviceKeyStatus(LEDPriority priority) :
+            LEDStatus(LED_PATTERN_BLINK, priority) {
+    }
+
+    void setActive(bool active) {
+        if (active) {
+            // Get base color used for the "network off" indication
+            const LEDStatusData* s = led_signal_status(LED_SIGNAL_NETWORK_OFF, nullptr);
+            setColor(s ? s->color : RGB_COLOR_WHITE);
+        }
+        LEDStatus::setActive(active);
+    }
+};
+
+// Handler for HAL events
+class HALEventHandler {
+public:
+    HALEventHandler() {
+        HAL_Set_Event_Callback(handleEvent, nullptr); // Register callback
+    }
+
+private:
+    static void handleEvent(int event, int flags, void* data) {
+        switch (event) {
+        case HAL_EVENT_GENERATE_DEVICE_KEY: {
+            static LEDDeviceKeyStatus status(LED_PRIORITY_IMPORTANT);
+            if (flags & HAL_EVENT_FLAG_START) {
+                status.setActive(true);
+            } else if (flags & HAL_EVENT_FLAG_STOP) {
+                status.setActive(false);
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
+};
+
+// Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
+// global variable allows to register a handler for HAL events early
+HALEventHandler halEventHandler;
+
+} // namespace
 
 /*******************************************************************************
  * Function Name  : main.

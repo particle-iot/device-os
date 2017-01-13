@@ -64,7 +64,6 @@ extern volatile uint8_t SPARK_WLAN_STARTED;
 extern volatile uint8_t SPARK_CLOUD_SOCKETED;
 extern volatile uint8_t SPARK_CLOUD_CONNECTED;
 extern volatile uint8_t SPARK_FLASH_UPDATE;
-extern volatile uint8_t SPARK_LED_FADE;
 
 extern volatile uint8_t Spark_Error_Count;
 extern volatile uint8_t Cloud_Handshake_Error_Count;

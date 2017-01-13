@@ -22,28 +22,34 @@
 
 namespace particle {
 
-// Predefined pattern speed values
-enum LEDSpeed {
-    LED_SPEED_SLOW,
-    LED_SPEED_NORMAL,
-    LED_SPEED_FAST
-};
-
-class LEDStatus;
-class LEDCustomStatus;
-
-namespace detail {
-
-// Returns pattern period for predefined speed value
-uint16_t patternPeriod(LEDPattern pattern, LEDSpeed speed);
-
-// Base class implementing common functionality of the LEDStatus and LEDCustomStatus classes
-class LEDStatusBase {
+// This class allows to implement a custom RGB LED indication that can be used at the same time
+// with the system indication, according to the predefined LED priorities
+class LEDStatus {
 public:
-    virtual ~LEDStatusBase();
+    explicit LEDStatus(LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+    explicit LEDStatus(LEDPattern pattern, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+    LEDStatus(LEDPattern pattern, LEDSpeed speed, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+    LEDStatus(LEDPattern pattern, uint16_t period, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+
+    explicit LEDStatus(uint32_t color, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+    LEDStatus(uint32_t color, LEDPattern pattern, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+    LEDStatus(uint32_t color, LEDPattern pattern, LEDSpeed speed, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+    LEDStatus(uint32_t color, LEDPattern pattern, uint16_t period, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
+
+    virtual ~LEDStatus();
 
     void setColor(uint32_t color);
     uint32_t color() const;
+
+    void setPattern(LEDPattern pattern);
+    LEDPattern pattern() const;
+
+    void setSpeed(LEDSpeed speed);
+    void setPeriod(uint16_t period);
+    uint16_t period() const;
+
+    void setPriority(LEDPriority priority);
+    LEDPriority priority() const;
 
     void on();
     void off();
@@ -55,43 +61,12 @@ public:
     void setActive(bool active = true);
     bool isActive() const;
 
-    LEDPriority priority() const;
-
-private:
-    LEDStatusData d_;
-
-    friend class particle::LEDStatus;
-    friend class particle::LEDCustomStatus;
-};
-
-} // namespace particle::detail
-
-// LED status using one of the predefined patterns for signaling
-class LEDStatus: public detail::LEDStatusBase {
-public:
-    explicit LEDStatus(LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
-    explicit LEDStatus(uint32_t color, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
-    LEDStatus(uint32_t color, LEDPattern pattern, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
-    LEDStatus(uint32_t color, LEDPattern pattern, LEDSpeed speed, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
-    LEDStatus(uint32_t color, LEDPattern pattern, uint16_t period, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
-
-    void setPattern(LEDPattern pattern);
-    LEDPattern pattern() const;
-
-    void setSpeed(LEDSpeed speed);
-    void setPeriod(uint16_t period);
-    uint16_t period() const;
-};
-
-// LED status implementing a custom pattern for signaling
-class LEDCustomStatus: public detail::LEDStatusBase {
-public:
-    explicit LEDCustomStatus(LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
-    explicit LEDCustomStatus(uint32_t color, LEDPriority priority = LED_PRIORITY_NORMAL, LEDSource source = LED_SOURCE_DEFAULT);
-
 protected:
-    // This method needs to be overridden to implement custom signaling pattern. `ticks` argument
-    // contains number of milliseconds passed since previous update.
+    // This method can be overridden to implement a custom signaling pattern.
+    //
+    // The system calls this method periodically for an active status instance constructed with
+    // LED_PATTERN_CUSTOM pattern type. `ticks` argument contains a number of milliseconds passed
+    // since previous update.
     //
     // NOTE: The system may call this method within an ISR. Ensure provided implementation doesn't
     // make any blocking calls, returns as quickly as possible, and, ideally, only updates internal
@@ -99,6 +74,8 @@ protected:
     virtual void update(system_tick_t ticks);
 
 private:
+    LEDStatusData d_;
+
     static void updateCallback(system_tick_t ticks, void* data);
 };
 
@@ -136,59 +113,21 @@ private:
 
 } // namespace particle
 
-// particle::detail::LEDStatusBase
-inline particle::detail::LEDStatusBase::~LEDStatusBase() {
-    setActive(false);
-}
-
-inline void particle::detail::LEDStatusBase::setColor(uint32_t color) {
-    d_.color = color;
-}
-
-inline uint32_t particle::detail::LEDStatusBase::color() const {
-    return d_.color;
-}
-
-inline void particle::detail::LEDStatusBase::on() {
-    d_.flags &= ~LED_STATUS_FLAG_OFF;
-}
-
-inline void particle::detail::LEDStatusBase::off() {
-    d_.flags |= LED_STATUS_FLAG_OFF;
-}
-
-inline void particle::detail::LEDStatusBase::toggle() {
-    d_.flags ^= LED_STATUS_FLAG_OFF;
-}
-
-inline bool particle::detail::LEDStatusBase::isOn() {
-    return !(d_.flags & LED_STATUS_FLAG_OFF);
-}
-
-inline bool particle::detail::LEDStatusBase::isOff() {
-    return d_.flags & LED_STATUS_FLAG_OFF;
-}
-
-inline void particle::detail::LEDStatusBase::setActive(LEDPriority priority) {
-    d_.priority = (d_.priority & 0x03) | ((uint8_t)priority << 2);
-    setActive(true);
-}
-
-inline void particle::detail::LEDStatusBase::setActive(bool active) {
-    led_set_status_active(&d_, active, nullptr);
-}
-
-inline bool particle::detail::LEDStatusBase::isActive() const {
-    return d_.flags & LED_STATUS_FLAG_ACTIVE;
-}
-
-inline LEDPriority particle::detail::LEDStatusBase::priority() const {
-    return (LEDPriority)(d_.priority >> 2);
-}
-
 // particle::LEDStatus
 inline particle::LEDStatus::LEDStatus(LEDPriority priority, LEDSource source) :
-        LEDStatus(RGB_COLOR_WHITE, priority, source) { // Use white color by default
+        LEDStatus(LED_PATTERN_SOLID, priority, source) { // Use solid pattern by default
+}
+
+inline particle::LEDStatus::LEDStatus(LEDPattern pattern, LEDPriority priority, LEDSource source) :
+        LEDStatus(pattern, LED_SPEED_NORMAL, priority, source) { // Use normal speed by default
+}
+
+inline particle::LEDStatus::LEDStatus(LEDPattern pattern, LEDSpeed speed, LEDPriority priority, LEDSource source) :
+        LEDStatus(pattern, led_pattern_period(pattern, speed, nullptr), priority, source) { // Get pattern period for a predefined speed value
+}
+
+inline particle::LEDStatus::LEDStatus(LEDPattern pattern, uint16_t period, LEDPriority priority, LEDSource source) :
+        LEDStatus(RGB_COLOR_WHITE, pattern, period, priority, source) { // Use white color by default
 }
 
 inline particle::LEDStatus::LEDStatus(uint32_t color, LEDPriority priority, LEDSource source) :
@@ -200,11 +139,26 @@ inline particle::LEDStatus::LEDStatus(uint32_t color, LEDPattern pattern, LEDPri
 }
 
 inline particle::LEDStatus::LEDStatus(uint32_t color, LEDPattern pattern, LEDSpeed speed, LEDPriority priority, LEDSource source) :
-        LEDStatus(color, pattern, detail::patternPeriod(pattern, speed), priority, source) {
+        LEDStatus(color, pattern, led_pattern_period(pattern, speed, nullptr), priority, source) { // Get pattern period for a predefined speed value
+}
+
+inline particle::LEDStatus::~LEDStatus() {
+    setActive(false);
+}
+
+inline void particle::LEDStatus::setColor(uint32_t color) {
+    d_.color = color;
+}
+
+inline uint32_t particle::LEDStatus::color() const {
+    return d_.color;
 }
 
 inline void particle::LEDStatus::setPattern(LEDPattern pattern) {
-    d_.pattern = (pattern == LED_PATTERN_CUSTOM ? LED_PATTERN_SOLID : pattern); // Sanity check
+    // Custom pattern type can be set only at constuction time
+    if (pattern != LED_PATTERN_CUSTOM && d_.pattern != LED_PATTERN_CUSTOM) {
+        d_.pattern = pattern;
+    }
 }
 
 inline LEDPattern particle::LEDStatus::pattern() const {
@@ -212,29 +166,63 @@ inline LEDPattern particle::LEDStatus::pattern() const {
 }
 
 inline void particle::LEDStatus::setSpeed(LEDSpeed speed) {
-    d_.period = detail::patternPeriod((LEDPattern)d_.pattern, speed);
+    setPeriod(led_pattern_period(d_.pattern, speed, nullptr));
 }
 
 inline void particle::LEDStatus::setPeriod(uint16_t period) {
-    d_.period = period;
+    // Pattern period cannot be set for custom pattern type
+    if (d_.pattern != LED_PATTERN_CUSTOM) {
+        d_.period = period;
+    }
 }
 
 inline uint16_t particle::LEDStatus::period() const {
-    return d_.period;
+    return (d_.pattern != LED_PATTERN_CUSTOM ? d_.period : 0);
 }
 
-// particle::LEDCustomStatus
-inline particle::LEDCustomStatus::LEDCustomStatus(LEDPriority priority, LEDSource source) :
-        LEDCustomStatus(RGB_COLOR_WHITE, priority, source) { // Use white color by default
+inline void particle::LEDStatus::setPriority(LEDPriority priority) {
+    d_.priority = (d_.priority & 0x03) | ((uint8_t)priority << 2);
 }
 
-inline void particle::LEDCustomStatus::update(system_tick_t ticks) {
+inline LEDPriority particle::LEDStatus::priority() const {
+    return (LEDPriority)(d_.priority >> 2);
+}
+
+inline void particle::LEDStatus::on() {
+    d_.flags &= ~LED_STATUS_FLAG_OFF;
+}
+
+inline void particle::LEDStatus::off() {
+    d_.flags |= LED_STATUS_FLAG_OFF;
+}
+
+inline void particle::LEDStatus::toggle() {
+    d_.flags ^= LED_STATUS_FLAG_OFF;
+}
+
+inline bool particle::LEDStatus::isOn() {
+    return !(d_.flags & LED_STATUS_FLAG_OFF);
+}
+
+inline bool particle::LEDStatus::isOff() {
+    return d_.flags & LED_STATUS_FLAG_OFF;
+}
+
+inline void particle::LEDStatus::setActive(LEDPriority priority) {
+    setPriority(priority);
+    setActive(true);
+}
+
+inline void particle::LEDStatus::setActive(bool active) {
+    led_set_status_active(&d_, active, nullptr);
+}
+
+inline bool particle::LEDStatus::isActive() const {
+    return d_.flags & LED_STATUS_FLAG_ACTIVE;
+}
+
+inline void particle::LEDStatus::update(system_tick_t ticks) {
     // Default implementation does nothing
-}
-
-inline void particle::LEDCustomStatus::updateCallback(system_tick_t ticks, void* data) {
-    LEDCustomStatus* s = static_cast<LEDCustomStatus*>(data);
-    s->update(ticks);
 }
 
 // particle::LEDSystemTheme
@@ -252,7 +240,8 @@ inline uint32_t particle::LEDSystemTheme::color(LEDSignal signal) const {
 }
 
 inline void particle::LEDSystemTheme::setPattern(LEDSignal signal, LEDPattern pattern) {
-    d_.signals[signal].pattern = (pattern == LED_PATTERN_CUSTOM ? LED_PATTERN_SOLID : pattern); // Sanity check
+    // System LED signaling doesn't support custom patterns
+    d_.signals[signal].pattern = (pattern != LED_PATTERN_CUSTOM ? pattern : LED_PATTERN_SOLID);
 }
 
 inline LEDPattern particle::LEDSystemTheme::pattern(LEDSignal signal) const {
@@ -260,8 +249,7 @@ inline LEDPattern particle::LEDSystemTheme::pattern(LEDSignal signal) const {
 }
 
 inline void particle::LEDSystemTheme::setSpeed(LEDSignal signal, LEDSpeed speed) {
-    auto& s = d_.signals[signal];
-    s.period = detail::patternPeriod((LEDPattern)s.pattern, speed);
+    setPeriod(signal, led_pattern_period(d_.signals[signal].pattern, speed, nullptr));
 }
 
 inline void particle::LEDSystemTheme::setPeriod(LEDSignal signal, uint16_t period) {
@@ -277,13 +265,7 @@ inline void particle::LEDSystemTheme::setSignal(LEDSignal signal, uint32_t color
 }
 
 inline void particle::LEDSystemTheme::setSignal(LEDSignal signal, uint32_t color, LEDPattern pattern, LEDSpeed speed) {
-    setSignal(signal, color, pattern, detail::patternPeriod(pattern, speed));
-}
-
-inline void particle::LEDSystemTheme::setSignal(LEDSignal signal, uint32_t color, LEDPattern pattern, uint16_t period) {
-    setColor(signal, color);
-    setPattern(signal, pattern);
-    setPeriod(signal, period);
+    setSignal(signal, color, pattern, led_pattern_period(pattern, speed, nullptr));
 }
 
 inline void particle::LEDSystemTheme::apply(bool save) {

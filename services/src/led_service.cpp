@@ -157,9 +157,9 @@ public:
         uint32_t color = 0;
         uint16_t period = 0;
         uint8_t pattern = LED_PATTERN_INVALID;
+        uint8_t flags = 0;
         bool enabled = false;
         bool reset = false;
-        bool off = false;
         // TODO: Add some flag to avoid locking if the queue has not changed since last update
         LED_SERVICE_WITH_LOCK(lock_) {
             LEDStatusData* s = queue_.front();
@@ -172,8 +172,8 @@ public:
                     period = s->period;
                 }
                 color = s->color;
-                off = s->flags & LED_STATUS_FLAG_OFF;
-                enabled = (disabled_ == 0);
+                flags = s->flags;
+                enabled = !disabled_;
                 reset = reset_;
                 reset_ = false;
             }
@@ -190,7 +190,7 @@ public:
         }
         if (enabled) {
             Color c = { 0 }; // Black
-            if (!off) {
+            if (!(flags & LED_STATUS_FLAG_OFF)) {
                 scaleColor(color, led_rgb_brightness, &c); // Use global LED brightness
                 if (period_ > 0) {
                     updatePatternColor(pattern_, ticks_, period_, &c);
@@ -238,9 +238,9 @@ private:
             } else { // Fade in
                 ticks = ticks - period;
             }
-            color->r = color->r * ticks / period;
-            color->g = color->g * ticks / period;
-            color->b = color->b * ticks / period;
+            color->r = (uint32_t)color->r * ticks / period;
+            color->g = (uint32_t)color->g * ticks / period;
+            color->b = (uint32_t)color->b * ticks / period;
             break;
         }
         default:

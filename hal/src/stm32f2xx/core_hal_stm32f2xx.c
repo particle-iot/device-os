@@ -341,6 +341,7 @@ void HAL_Core_Config(void)
     Load_SystemFlags();
 #endif
 
+    // TODO: Use current LED theme
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
 
@@ -1489,7 +1490,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
 
     led_config_t conf = {
         .version = 0x01,
-        .port = pinmap[pin].gpio_peripheral, 
+        .port = pinmap[pin].gpio_peripheral,
         .pin = pinmap[pin].gpio_pin,
         .hal_pin = pin,
         .hal_mode = AF_OUTPUT_PUSHPULL,

@@ -46,7 +46,6 @@
 
 using spark::Network;
 using particle::LEDStatus;
-using particle::LEDCustomStatus;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
@@ -54,8 +53,6 @@ volatile system_tick_t spark_loop_total_millis = 0;
 unsigned char _auth = WLAN_SEC_WPA2;
 
 unsigned char wlan_profile_index;
-
-volatile uint8_t SPARK_LED_FADE = 1;
 
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t SYSTEM_POWEROFF;
@@ -137,9 +134,11 @@ void manage_network_connection()
 namespace {
 
 // LED status for cloud errors indication
-class LEDCloudErrorStatus: public LEDCustomStatus {
+class LEDCloudErrorStatus: public LEDStatus {
 public:
-    using LEDCustomStatus::LEDCustomStatus;
+    explicit LEDCloudErrorStatus(LEDPriority priority) :
+            LEDStatus(LED_PATTERN_CUSTOM, priority) {
+    }
 
     void start(uint32_t color, uint8_t count) {
         if (count > 0) {
@@ -185,13 +184,13 @@ private:
     void on() {
         state_ = ON;
         ticks_ = 250;
-        LEDCustomStatus::on();
+        LEDStatus::on();
     }
 
     void off() {
         state_ = OFF;
         ticks_ = 250;
-        LEDCustomStatus::off();
+        LEDStatus::off();
     }
 };
 

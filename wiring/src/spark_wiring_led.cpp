@@ -23,47 +23,25 @@ particle::LEDStatus::LEDStatus(uint32_t color, LEDPattern pattern, uint16_t peri
     d_.next = nullptr;
     d_.prev = nullptr;
     d_.priority = LED_PRIORITY_VALUE(priority, source); // Combine source and priority into single value
-    d_.pattern = (pattern == LED_PATTERN_CUSTOM ? LED_PATTERN_SOLID : pattern); // Sanity check
+    d_.pattern = pattern;
     d_.flags = 0;
     d_.color = color;
-    d_.period = period;
-}
-
-// particle::LEDCustomStatus
-particle::LEDCustomStatus::LEDCustomStatus(uint32_t color, LEDPriority priority, LEDSource source) {
-    d_.size = sizeof(LEDStatusData);
-    d_.next = nullptr;
-    d_.prev = nullptr;
-    d_.priority = LED_PRIORITY_VALUE(priority, source);
-    d_.pattern = LED_PATTERN_CUSTOM;
-    d_.flags = 0;
-    d_.color = color;
-    d_.callback = updateCallback; // User callback
-    d_.data = this; // Callback data
-}
-
-// particle::detail::*
-uint16_t particle::detail::patternPeriod(LEDPattern pattern, LEDSpeed speed) {
-    switch (pattern) {
-    case LED_PATTERN_BLINK:
-        // Blinking LED
-        if (speed == LED_SPEED_NORMAL) {
-            return 500; // Normal
-        } else if (speed > LED_SPEED_NORMAL) {
-            return 200; // Fast
-        } else {
-            return 1000; // Slow
-        }
-    case LED_PATTERN_FADE:
-        // "Breathing" LED
-        if (speed == LED_SPEED_NORMAL) {
-            return 4000; // Normal
-        } else if (speed > LED_SPEED_NORMAL) {
-            return 1000; // Fast
-        } else {
-            return 7000; // Slow
-        }
-    default:
-        return 0; // Not applicable
+    if (d_.pattern == LED_PATTERN_CUSTOM) {
+        d_.callback = updateCallback; // User callback
+        d_.data = this; // Callback data
+    } else {
+        d_.period = period;
     }
+}
+
+void particle::LEDStatus::updateCallback(system_tick_t ticks, void* data) {
+    LEDStatus* s = static_cast<LEDStatus*>(data);
+    s->update(ticks);
+}
+
+// particle::LEDSystemTheme
+void particle::LEDSystemTheme::setSignal(LEDSignal signal, uint32_t color, LEDPattern pattern, uint16_t period) {
+    setColor(signal, color);
+    setPattern(signal, pattern);
+    setPeriod(signal, period);
 }
