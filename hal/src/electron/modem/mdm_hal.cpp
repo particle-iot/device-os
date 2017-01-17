@@ -2253,6 +2253,7 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             { "\r\n>",                  NULL,               TYPE_PROMPT     }, // SMS
             { "\n>",                    NULL,               TYPE_PROMPT     }, // File
             { "\r\nABORTED\r\n",        NULL,               TYPE_ABORTED    }, // Current command aborted
+            { "\r\n\r\n",               "\r\n",             TYPE_DBLNEWLINE }, // Double CRLF detected, discard one and reprocess line
             { "\r\n",                   "\r\n",             TYPE_UNKNOWN    }, // If all else fails, break up generic strings
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
@@ -2270,6 +2271,14 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             int ln = _parseMatch(pipe, len, lut[i].sta, lut[i].end);
             if (ln == WAIT && fr)
                 return WAIT;
+            // Double CRLF detected, discard one and reprocess line.
+            // This resolves a case on G350 where "\r\n" is generated after +USORF response, but missing
+            // on U260/U270, which would otherwise generate "\r\n\r\nOK\r\n" which is not parsable.
+            if ((ln > 0) && (lut[i].type == TYPE_DBLNEWLINE) && (unkn == 0)) {
+                char tmp[2];
+                pipe->get(tmp, 2);
+                break;
+            }
             if ((ln != NOT_FOUND) && (unkn > 0))
                 return TYPE_UNKNOWN | pipe->get(buf, unkn);
             if (ln > 0)
