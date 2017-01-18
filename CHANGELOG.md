@@ -19,6 +19,7 @@
 - [[PR #1225]](https://github.com/spark/firmware/pull/1225) [Photon/P1/Electron] Fixed LED indication shown during device key generation (blinking white) introduced in 0.6.1-rc.1
 - [[PR #1226]](https://github.com/spark/firmware/pull/1226) [[Fixes #1181]](https://github.com/spark/firmware/issues/1181) [Photon/P1/Core] Process TCP `DESCRIBE` properly and return only one response, SYSTEM, APPLICATION, or COMBINED (ALL) describe message.  Was sending separate SYSTEM and APPLICATION previously.
 - [[PR #1230]](https://github.com/spark/firmware/pull/1230) Safe Mode event was being published unconditionally introduced in 0.6.1-rc.1
+- [[PR #1231]](https://github.com/spark/firmware/pull/1231) [Electron] fixes double newline parser issue on G350 introduced in 428835a 0.6.1-rc.1
 
 
 
