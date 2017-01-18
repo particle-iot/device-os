@@ -2253,27 +2253,40 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             { "\r\n>",                  NULL,               TYPE_PROMPT     }, // SMS
             { "\n>",                    NULL,               TYPE_PROMPT     }, // File
             { "\r\nABORTED\r\n",        NULL,               TYPE_ABORTED    }, // Current command aborted
+            { "\r\n\r\n",               "\r\n",             TYPE_DBLNEWLINE }, // Double CRLF detected
             { "\r\n",                   "\r\n",             TYPE_UNKNOWN    }, // If all else fails, break up generic strings
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
             pipe->set(unkn);
             int ln = _parseFormated(pipe, len, lutF[i].fmt);
-            if (ln == WAIT && fr)
+            if (ln == WAIT && fr) {
                 return WAIT;
-            if ((ln != NOT_FOUND) && (unkn > 0))
+            }
+            if ((ln != NOT_FOUND) && (unkn > 0)) {
                 return TYPE_UNKNOWN | pipe->get(buf, unkn);
-            if (ln > 0)
+            }
+            if (ln > 0) {
                 return lutF[i].type  | pipe->get(buf, ln);
+            }
         }
         for (int i = 0; i < (int)(sizeof(lut)/sizeof(*lut)); i ++) {
             pipe->set(unkn);
             int ln = _parseMatch(pipe, len, lut[i].sta, lut[i].end);
-            if (ln == WAIT && fr)
+            if (ln == WAIT && fr) {
                 return WAIT;
-            if ((ln != NOT_FOUND) && (unkn > 0))
+            }
+            // Double CRLF detected, discard it.
+            // This resolves a case on G350 where "\r\n" is generated after +USORF response, but missing
+            // on U260/U270, which would otherwise generate "\r\n\r\nOK\r\n" which is not parseable.
+            if ((ln > 0) && (lut[i].type == TYPE_DBLNEWLINE) && (unkn == 0)) {
+                return TYPE_UNKNOWN | pipe->get(buf, 2);
+            }
+            if ((ln != NOT_FOUND) && (unkn > 0)) {
                 return TYPE_UNKNOWN | pipe->get(buf, unkn);
-            if (ln > 0)
+            }
+            if (ln > 0) {
                 return lut[i].type | pipe->get(buf, ln);
+            }
         }
         // UNKNOWN
         unkn ++;
