@@ -31,7 +31,7 @@
 #endif
 
 
-#if FLASHEE_FATFS_SUPPORT
+#if FLASHEE_FAT_FS_SUPPORT
 #include "FlashIO.h"
 #endif
 
@@ -581,7 +581,7 @@ public:
         return device ? new CircularBuffer(*device) : NULL;
     }
 
-#if FLASHEE_FATFS_SUPPORT
+#if FLASHEE_FAT_FS_SUPPORT
     /**
      * Allocates a region of flash for storing a FAT filesystem. If an existing filesystem
      * has alredy been created elsewhere, that volume is closed. (Only one volume can be

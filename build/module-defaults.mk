@@ -60,6 +60,8 @@ CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -Wno-error=depre
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1 -DPARTICLE=1
 
+CFLAGS += -Wundef
+
 ifdef START_DFU_FLASHER_SERIAL_SPEED
 CFLAGS += -DSTART_DFU_FLASHER_SERIAL_SPEED=$(START_DFU_FLASHER_SERIAL_SPEED)
 endif

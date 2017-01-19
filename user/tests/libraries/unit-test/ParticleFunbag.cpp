@@ -234,7 +234,7 @@ int SparkTestRunner::testStatusColor() {
  * Returns the number of bytes of data available in the variable
  */
 int advanceLog() {
-#if FLASHEE_EEPROM
+#ifdef FLASHEE_EEPROM
     int end = sizeof(buf)-1;
     int read = cblog->read_soft(buf, end);
     buf[read] = 0;  // terminate string
