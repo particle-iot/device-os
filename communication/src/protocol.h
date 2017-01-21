@@ -118,6 +118,7 @@ class Protocol
 	 * Completion handlers for messages with confirmable delivery.
 	 */
 	CompletionHandlerMap<message_id_t> ack_handlers;
+	system_tick_t last_ack_handlers_update;
 
 	/**
 	 * The token ID for the next request made.
@@ -273,6 +274,7 @@ public:
 			product_id(PRODUCT_ID),
 			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
 			publisher(this),
+			last_ack_handlers_update(0),
 			initialized(false)
 	{
 	}
@@ -299,7 +301,7 @@ public:
 
 	void add_ack_handler(message_id_t msg_id, CompletionHandler handler, unsigned timeout)
 	{
-		ack_handlers.add(msg_id, std::move(handler), timeout);
+		ack_handlers.addHandler(msg_id, std::move(handler), timeout);
 	}
 
 	/**
