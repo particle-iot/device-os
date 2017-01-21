@@ -64,10 +64,6 @@ public:
                 std::abs(b() - color.b()) <= d);
     }
 
-    static Color random() {
-        return Color(test::randomInt(0, 0x00ffffff));
-    }
-
     operator uint32_t() const {
         return rgb();
     }
@@ -562,7 +558,7 @@ TEST_CASE("LEDSystemTheme") {
         LEDSystemTheme t2;
         for (int i = 0; i < LED_SIGNAL_COUNT; ++i) {
             const LEDSignal s = (LEDSignal)i;
-            t2.setColor(s, Color::random());
+            t2.setColor(s, Color(i * 10, i * 10, i * 10));
             t2.setPattern(s, test::anyOf(LED_PATTERN_SOLID, LED_PATTERN_BLINK, LED_PATTERN_FADE));
             t2.setPeriod(s, test::randomInt(0, 10000));
         }
