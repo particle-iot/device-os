@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 // Pattern type
-typedef enum {
+typedef enum LEDPattern {
     LED_PATTERN_INVALID = 0,
     LED_PATTERN_SOLID = 1,
     LED_PATTERN_BLINK = 2,
@@ -38,7 +38,7 @@ typedef enum {
 } LEDPattern;
 
 // Status flags
-typedef enum {
+typedef enum LEDStatusFlag {
     LED_STATUS_FLAG_ACTIVE = 0x01, // LED status is active (do not modify this flag directly)
     LED_STATUS_FLAG_OFF = 0x02 // LED is turned off
 } LEDStatusFlag;
