@@ -467,10 +467,13 @@ TEST_CASE("CompletionHandlerMap") {
 
     SECTION("clearing handler map") {
         CompletionHandlerMap m;
-        CompletionData<int> d;
-        m.addHandler(1, d.handler(), 10); // Handler 1, timeout: 10
-        m.addHandler(2, d.handler(), 20); // Handler 2, timeout: 20
+        CompletionData<int> d1, d2;
+        m.addHandler(1, d1.handler(), 10); // Handler 1, timeout: 10
+        m.addHandler(2, d2.handler(), 20); // Handler 2, timeout: 20
         m.clear();
+        // Both handlers should have been invoked with SYSTEM_ERROR_ABORTED error
+        CHECK(d1.error() == SYSTEM_ERROR_ABORTED);
+        CHECK(d2.error() == SYSTEM_ERROR_ABORTED);
         CHECK(m.size() == 0);
         CHECK(m.isEmpty() == true);
         CHECK(m.nearestTimeout() == CompletionHandlerMap::MAX_TIMEOUT);

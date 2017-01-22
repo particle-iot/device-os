@@ -142,8 +142,8 @@ public:
     }
 
     bool hasHandler(const KeyT& key) const {
-        for (int i = 0; i < handlers_.size(); ++i) {
-            if (handlers_.at(i).key == key) {
+        for (const Handler& h: handlers_) {
+            if (h.key == key) {
                 return true;
             }
         }
@@ -151,6 +151,9 @@ public:
     }
 
     void clear() {
+        for (Handler& h: handlers_) {
+            h.handler.setError(SYSTEM_ERROR_ABORTED);
+        }
         handlers_.clear();
         timeoutTicks_ = MAX_TIMEOUT;
         ticks_ = 0;
