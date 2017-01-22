@@ -112,10 +112,11 @@ public:
         return color_;
     }
 
-    static void reset() {
+    void reset() {
         // Reset cached LED state
         led_set_update_enabled(0, nullptr);
         led_set_update_enabled(1, nullptr);
+        color_ = Color::BLACK;
     }
 
 private:
@@ -526,6 +527,30 @@ TEST_CASE("LEDStatus") {
             PatternChecker check(led, patternFunc);
             check(period);
         }
+    }
+
+    SECTION("user callback is invoked when LED changes its color") {
+        struct LedUpdateHandler {
+            static void callback(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved) {
+                *static_cast<Color*>(data) = Color(r, g, b);
+            }
+        };
+
+        Color color;
+        LED_RGB_SetChangeHandler(LedUpdateHandler::callback, &color);
+
+        LEDStatus s(Color::WHITE);
+        s.setActive();
+        update();
+        CHECK(color == Color::WHITE);
+        s.setColor(Color::RED);
+        update();
+        CHECK(color == Color::RED);
+        color = Color::BLACK;
+        update(); // Update without changing status color
+        CHECK(color == Color::BLACK); // User callback has not been called
+
+        LED_RGB_SetChangeHandler(nullptr, nullptr);
     }
 }
 
