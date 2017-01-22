@@ -69,6 +69,10 @@ uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
 }
 
 test(LED_01_Updated) {
+    // Force the LED to show a breathing pattern for this test
+    LEDStatus status(LED_PATTERN_FADE, LED_PRIORITY_IMPORTANT);
+    status.setActive();
+
     RGB.control(false);
     RGB.onChange(onChangeRGBLED);
     uint32_t start = rgbNotifyCount;
@@ -131,6 +135,8 @@ test(LED_05_StaticWhenControlled) {
 
     for (int i=0; i<3; i++)
         assertEqual(rgbInitial[i], rgbNotify[i]);
+
+    RGB.onChange(NULL);
 }
 
 test(LED_06_SettingRGBAfterOverrideShouldChangeLED) {
@@ -207,6 +213,8 @@ test(LED_10_ChangeHandlerCalled) {
 
     // then
     assertChangeHandlerCalledWith(ledAdjust(10),ledAdjust(20),ledAdjust(30));
+
+    RGB.onChange(NULL);
 }
 
 static void assertRgbLedMirrorPinsColor(const pin_t pins[3], uint16_t r, uint16_t g, uint16_t b)
