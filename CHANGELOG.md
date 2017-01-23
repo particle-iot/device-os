@@ -1,3 +1,28 @@
+## 0.6.1-rc.2
+
+### FEATURES
+
+- [[PR #1225]](https://github.com/spark/firmware/pull/1225) [Photon/P1/Electron] Added support for custom LED colors in bootloader v11 (Safe Mode, DFU Mode, Firmware Reset).
+- [[PR #1227]](https://github.com/spark/firmware/pull/1227) [[Implements #961]](https://github.com/spark/firmware/issues/961) [Electron] Added new API for hostname IP address lookup `IPAddress ip = Cellular.resolve(hostname)`
+
+### ENHANCEMENTS
+
+- [[PR #1216]](https://github.com/spark/firmware/pull/1216) Improved Arduino Compatibility (now supported by default, added PARTICLE_NO_ARDUINO_COMPATIBILITY=y command line option for disabling)
+- [[PR #1217]](https://github.com/spark/firmware/pull/1217) Added Windows, Mac command, & Unix/Linux meta USB keyboard scancode definitions.
+- [[PR #1224]](https://github.com/spark/firmware/pull/1224) Allow the compiler to garbage collect USBKeyboard and USBMouse implementations if they are not used in user code, saving flash space.
+- [[PR #1225]](https://github.com/spark/firmware/pull/1225) [Photon/P1/Electron] Combined `LEDStatus` and `LEDCustomStatus` into a single class -> `LEDStatus`
+
+### BUG FIXES
+
+- [[PR #1221]](https://github.com/spark/firmware/pull/1221) [[Fixes #1220]](https://github.com/spark/firmware/issues/1220) [Electron] TIM8 PWM pins (B0, B1) did not work correctly in bootloader with `RGB.mirrorTo()`
+- [[PR #1222]](https://github.com/spark/firmware/pull/1222) Fixed bug in `String(const char* str, int len)` constructor when the string is longer than the specified length.
+- [[PR #1225]](https://github.com/spark/firmware/pull/1225) [Photon/P1/Electron] Fixed LED indication shown during device key generation (blinking white) introduced in 0.6.1-rc.1
+- [[PR #1226]](https://github.com/spark/firmware/pull/1226) [[Fixes #1181]](https://github.com/spark/firmware/issues/1181) [Photon/P1/Core] Process TCP `DESCRIBE` properly and return only one response, SYSTEM, APPLICATION, or COMBINED (ALL) describe message.  Was sending separate SYSTEM and APPLICATION previously.
+- [[PR #1230]](https://github.com/spark/firmware/pull/1230) Safe Mode event was being published unconditionally introduced in 0.6.1-rc.1
+- [[PR #1231]](https://github.com/spark/firmware/pull/1231) [Electron] fixes double newline parser issue on G350 introduced in 428835a 0.6.1-rc.1
+
+
+
 ## 0.6.1-rc.1
 
 ### FEATURES

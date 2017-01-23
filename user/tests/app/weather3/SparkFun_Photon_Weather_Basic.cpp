@@ -102,12 +102,20 @@ void loop()
     if (TOGGLE_CONNECTED == true) {
         TOGGLE_CONNECTED = false;
         if (!Particle.connected()) {
+#if Wiring_Cellular
+            Cellular.on();
+#elif Wiring_WiFi
             WiFi.on();
+#endif
             Particle.connect();
         }
         else {
             Particle.disconnect();
+#if Wiring_Cellular
+            Cellular.off();
+#elif Wiring_WiFi
             WiFi.off();
+#endif
         }
     }
 
