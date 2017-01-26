@@ -30,8 +30,8 @@ extern "C" {
 #endif // defined(__cplusplus)
 
 // Callback invoked when an asynchronous operation completes. For a successfully completed operation
-// 'error' argument should be set to SYSTEM_ERROR_NONE
-typedef void (*completion_callback)(int error, void* result, void* data, void* reserved);
+// `error` argument should be set to SYSTEM_ERROR_NONE
+typedef void (*completion_callback)(int error, const void* data, void* callback_data, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"
@@ -60,11 +60,13 @@ public:
         setError(SYSTEM_ERROR_INTERNAL);
     }
 
-    void setResult(void* data = nullptr) {
-        if (callback_) {
-            callback_(SYSTEM_ERROR_NONE, data, data_, nullptr);
-            callback_ = nullptr;
-        }
+    template<typename T>
+    void setResult(const T& result) {
+        setResult((const void*)&result);
+    }
+
+    void setResult() {
+        setResult(nullptr);
     }
 
     void setError(system_error error) {
@@ -93,6 +95,13 @@ public:
 private:
     completion_callback callback_;
     void* data_;
+
+    void setResult(const void* result) {
+        if (callback_) {
+            callback_(SYSTEM_ERROR_NONE, result, data_, nullptr);
+            callback_ = nullptr;
+        }
+    }
 };
 
 // Container class storing CompletionHandler instances arranged by key. This class also manages
@@ -167,8 +176,13 @@ public:
         return handlers_.isEmpty();
     }
 
-    void setResult(const KeyT& key, void* data = nullptr) {
-        takeHandler(key).setResult(data);
+    template<typename T>
+    void setResult(const KeyT& key, const T& result) {
+        takeHandler(key).setResult(result);
+    }
+
+    void setResult(const KeyT& key) {
+        takeHandler(key).setResult();
     }
 
     void setError(const KeyT& key, system_error error) {

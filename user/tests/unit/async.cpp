@@ -112,14 +112,14 @@ private:
     boost::optional<system_error> error_;
 
     // Completion callback
-    static void callback(int error, void* result, void* data, void* reserved) {
-        auto h = static_cast<CompletionData*>(data);
+    static void callback(int error, const void* data, void* callback_data, void* reserved) {
+        auto d = static_cast<CompletionData*>(callback_data);
         if (error != SYSTEM_ERROR_NONE) {
-            h->error_ = (system_error)error;
-            h->result_ = boost::none;
+            d->error_ = (system_error)error;
+            d->result_ = boost::none;
         } else {
-            h->result_ = result ? *static_cast<const ResultT*>(result) : ResultT();
-            h->error_ = boost::none;
+            d->result_ = data ? *static_cast<const ResultT*>(data) : ResultT();
+            d->error_ = boost::none;
         }
     }
 };
@@ -132,87 +132,102 @@ TEST_CASE("Future<void>") {
 
     resetContext();
 
-    SECTION("constructing via default constructor") {
+    SECTION("constructing succeeded future") {
         Future f;
-        CHECK(f.state() == Future::State::CANCELLED);
-        CHECK(f.isSucceeded() == false);
-        CHECK(f.isFailed() == false);
-        CHECK(f.isCancelled() == true);
         CHECK(f.isDone() == true);
+        CHECK(f.isSucceeded() == true);
+        CHECK(f.isFailed() == false);
+        CHECK(f.isCancelled() == false);
         CHECK(f.error().type() == Error::NONE);
+    }
+
+    SECTION("constructing failed future") {
+        Future f(Error::UNKNOWN);
+        CHECK(f.isDone() == true);
+        CHECK(f.isSucceeded() == false);
+        CHECK(f.isFailed() == true);
+        CHECK(f.isCancelled() == false);
+        CHECK(f.error().type() == Error::UNKNOWN);
     }
 
     SECTION("constructing via promise") {
         Promise p;
         Future f = p.future();
-        CHECK(f.state() == Future::State::RUNNING);
-        CHECK(f.isSucceeded() == false);
-        CHECK(f.isFailed() == false);
-        CHECK(f.isCancelled() == false);
         CHECK(f.isDone() == false);
-        CHECK(f.error().type() == Error::NONE);
+        CHECK(f.isCancelled() == false);
     }
 
-    SECTION("making succeeded future") {
+    SECTION("making succeeded future via promise") {
         Promise p;
         Future f = p.future();
         p.setResult();
-        CHECK(f.state() == Future::State::SUCCEEDED);
+        CHECK(f.isDone() == true);
         CHECK(f.isSucceeded() == true);
         CHECK(f.isFailed() == false);
         CHECK(f.isCancelled() == false);
-        CHECK(f.isDone() == true);
         CHECK(f.error().type() == Error::NONE);
     }
 
-    SECTION("making succeeded future (convenience method)") {
-        Future f = Future::makeSucceeded();
-        CHECK(f.isSucceeded() == true);
-    }
-
-    SECTION("making failed future") {
+    SECTION("making failed future via promise") {
         Promise p;
         Future f = p.future();
         p.setError(Error::UNKNOWN);
-        CHECK(f.state() == Future::State::FAILED);
+        CHECK(f.isDone() == true);
         CHECK(f.isSucceeded() == false);
         CHECK(f.isFailed() == true);
         CHECK(f.isCancelled() == false);
-        CHECK(f.isDone() == true);
-        CHECK(f.error().type() == Error::UNKNOWN);
-    }
-
-    SECTION("making failed future (convenience method)") {
-        Future f = Future::makeFailed(Error::UNKNOWN);
-        CHECK(f.isFailed() == true);
         CHECK(f.error().type() == Error::UNKNOWN);
     }
 
     SECTION("waiting for succeeded operation") {
-        Promise p;
-        Future f = p.future();
-        postEvent([&p]() {
-            p.setResult();
+        // Explicit waiting via Future::wait()
+        Promise p1;
+        Future f1 = p1.future();
+        postEvent([&p1]() {
+            p1.setResult();
         });
-        f.wait();
-        CHECK(f.isSucceeded() == true);
+        f1.wait();
+        CHECK(f1.isSucceeded() == true);
+        // Future::isSucceeded() waits until future is completed
+        Promise p2;
+        Future f2 = p2.future();
+        postEvent([&p2]() {
+            p2.setResult();
+        });
+        CHECK(f2.isSucceeded() == true);
     }
 
     SECTION("waiting for failed operation") {
-        Promise p;
-        Future f = p.future();
-        postEvent([&p]() {
-            p.setError(Error::UNKNOWN);
+        // Explicit waiting via Future::wait()
+        Promise p1;
+        Future f1 = p1.future();
+        postEvent([&p1]() {
+            p1.setError(Error::UNKNOWN);
         });
-        f.wait();
-        CHECK(f.isFailed() == true);
-        CHECK(f.error().type() == Error::UNKNOWN);
+        f1.wait();
+        CHECK(f1.isFailed() == true);
+        CHECK(f1.error().type() == Error::UNKNOWN);
+        // Future::error() waits until future is completed
+        Promise p2;
+        Future f2 = p2.future();
+        postEvent([&p2]() {
+            p2.setError(Error::UNKNOWN);
+        });
+        CHECK(f2.error().type() == Error::UNKNOWN);
+        // Future::isFailed() waits until future is completed
+        Promise p3;
+        Future f3 = p3.future();
+        postEvent([&p3]() {
+            p3.setError(Error::UNKNOWN);
+        });
+        CHECK(f3.isFailed() == true);
     }
 
     SECTION("waiting for timed out operation") {
         Promise p;
         Future f = p.future();
-        CHECK(f.wait(50).isDone() == false); // 50 ms
+        CHECK(f.wait(50) == false); // 50 ms
+        CHECK(f.isDone() == false);
     }
 
     SECTION("callback for succeeded operation") {
@@ -239,16 +254,14 @@ TEST_CASE("Future<void>") {
 
     SECTION("callbacks are invoked immediately for already completed future") {
         // Succeeded operation
-        Promise p1;
-        Future f1 = p1.future();
-        p1.setResult();
+        Future f1;
         bool called = false;
         f1.onSuccess([&called]() {
             called = true;
         });
         CHECK(called == true);
         // Failed operation
-        Future f2 = Future::makeFailed(Error::UNKNOWN);
+        Future f2(Error::UNKNOWN);
         Error error(Error::NONE);
         f2.onError([&error](Error e) {
             error = e;
@@ -286,20 +299,25 @@ TEST_CASE("Future<int>") {
 
     resetContext();
 
-    SECTION("constructing via default constructor") {
-        Future f;
-        CHECK(f.isCancelled() == true);
-        CHECK(f.result() == 0); // Default-constructed value
+    SECTION("constructing succeeded future") {
+        Future f1;
+        CHECK(f1.isSucceeded() == true);
+        CHECK(f1.result() == 0); // Default-constructed value
+        CHECK(f1.result(1) == 0); // User-provided default value is ignored
+        CHECK(f1 == 0); // Implicit conversion
+        Future f2(1);
+        CHECK(f2.result() == 1); // User-provided value
+        CHECK(f2 == 1);
     }
 
-    SECTION("constructing via promise") {
-        Promise p;
-        Future f = p.future();
-        CHECK(f.isDone() == false);
+    SECTION("constructing failed future") {
+        Future f(Error::UNKNOWN);
+        CHECK(f.isFailed() == true);
         CHECK(f.result() == 0); // Default-constructed value
+        CHECK(f.result(1) == 1); // User-provided default value
     }
 
-    SECTION("making succeeded future") {
+    SECTION("making succeeded future via promise") {
         Promise p;
         Future f = p.future();
         p.setResult(1);
@@ -307,13 +325,7 @@ TEST_CASE("Future<int>") {
         CHECK(f.result() == 1);
     }
 
-    SECTION("making succeeded future (convenience method)") {
-        Future f = Future::makeSucceeded(1);
-        CHECK(f.isSucceeded() == true);
-        CHECK(f.result() == 1);
-    }
-
-    SECTION("making failed future") {
+    SECTION("making failed future via promise") {
         Promise p;
         Future f = p.future();
         p.setError(Error::UNKNOWN);
@@ -322,14 +334,29 @@ TEST_CASE("Future<int>") {
     }
 
     SECTION("waiting for succeeded operation") {
-        Promise p;
-        Future f = p.future();
-        postEvent([&p]() {
-            p.setResult(1);
+        // Explicit waiting via Future::wait()
+        Promise p1;
+        Future f1 = p1.future();
+        postEvent([&p1]() {
+            p1.setResult(1);
         });
-        f.wait();
-        CHECK(f.isSucceeded() == true);
-        CHECK(f.result() == 1);
+        f1.wait();
+        CHECK(f1.isSucceeded() == true);
+        CHECK(f1.result() == 1);
+        // Future::result() waits until future is completed
+        Promise p2;
+        Future f2 = p2.future();
+        postEvent([&p2]() {
+            p2.setResult(1);
+        });
+        CHECK(f1.result() == 1);
+        // Conversion operator waits until future is completed
+        Promise p3;
+        Future f3 = p3.future();
+        postEvent([&p3]() {
+            p3.setResult(1);
+        });
+        CHECK((int)f3 == 1);
     }
 
     SECTION("callback for succeeded operation") {
@@ -355,8 +382,7 @@ TEST_CASE("CompletionHandler") {
         CompletionData<int> d;
         CompletionHandler h = d.handler();
         CHECK((bool)h == true);
-        int result = 1;
-        h.setResult(&result); // Set result data
+        h.setResult(1);
         CHECK(d.result() == 1);
         CHECK(d.hasError() == false);
     }
@@ -373,8 +399,7 @@ TEST_CASE("CompletionHandler") {
         CompletionData<int> d;
         // Invoking already completed handler with an error code
         CompletionHandler h1 = d.handler();
-        int result = 1;
-        h1.setResult(&result);
+        h1.setResult(1);
         h1.setError(SYSTEM_ERROR_UNKNOWN);
         CHECK(d.result() == 1);
         CHECK(d.hasError() == false);
@@ -382,7 +407,7 @@ TEST_CASE("CompletionHandler") {
         d.reset();
         CompletionHandler h2 = d.handler();
         h2.setError(SYSTEM_ERROR_UNKNOWN);
-        h2.setResult(&result);
+        h2.setResult(1);
         CHECK(d.hasResult() == false);
         CHECK(d.error() == SYSTEM_ERROR_UNKNOWN);
     }
@@ -515,8 +540,7 @@ TEST_CASE("CompletionHandlerMap") {
         CHECK(m.update(10) == 3); // 3 handlers have expired (Handler 1, Handler 2, Handler 3)
         CHECK((!m.hasHandler(1) && !m.hasHandler(2) && !m.hasHandler(3)));
         CHECK(m.nearestTimeout() == 5); // Handler 4 is a next handler to expire
-        int result = 1;
-        m.setResult(4, &result); // Set result for Handler 4
+        m.setResult(4, 1); // Set result for Handler 4
         CHECK(m.hasHandler(4) == false);
         CHECK(m.nearestTimeout() == 15); // Handler 5 is a next handler to expire
         CHECK(d.result() == 1);

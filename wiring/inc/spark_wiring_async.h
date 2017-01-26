@@ -28,7 +28,7 @@
 #include <memory>
 #include <atomic>
 
-#if (ATOMIC_POINTER_LOCK_FREE != 2) || (ATOMIC_INT_LOCK_FREE != 2) || (ATOMIC_BOOL_LOCK_FREE != 2)
+#if (ATOMIC_POINTER_LOCK_FREE != 2) || (ATOMIC_CHAR_LOCK_FREE != 2) || (ATOMIC_BOOL_LOCK_FREE != 2)
 #error "std::atomic is not always lock-free for required types"
 #endif
 
@@ -58,7 +58,7 @@ template<typename ResultT, typename ContextT>
 class FutureImplBase {
 public:
     // Future state
-    enum class State: int {
+    enum class State: char {
         RUNNING,
         SUCCEEDED,
         FAILED,
@@ -77,18 +77,16 @@ public:
     }
 
     virtual ~FutureImplBase() {
-        // Do we need to use restricted memory ordering in destructor, assuming that FutureImplBase instances are
-        // always managed by std::shared_ptr?
         delete onSuccess_.load(std::memory_order_relaxed);
         delete onError_.load(std::memory_order_relaxed);
     }
 
-    bool wait(int timeout = 0) {
-        // TODO: Waiting for a future in non-default application thread is not supported
+    bool wait(int timeout = 0) const {
+        // TODO: Waiting for a future in a non-default application thread is not supported
         if (ContextT::isApplicationThreadCurrent()) {
             const system_tick_t t = (timeout > 0) ? millis() : 0;
             for (;;) {
-                if (isDone()) { // We can use relaxed ordering here, as long as the future's result is not checked
+                if (isDone()) { // We can use relaxed ordering here, as long as the future's result is not examined
                     return true;
                 }
                 if (timeout > 0 && millis() - t >= (system_tick_t)timeout) {
@@ -100,24 +98,22 @@ public:
         return false;
     }
 
-    // This method only switches the future into final state and doesn't affect pending operation
+    // This method attempts to switch the future into cancelled state and doesn't affect pending operation
     bool cancel() {
-        if (exchangeState(State::CANCELLED)) {
+        if (changeState(State::CANCELLED)) {
             releaseDone();
             return true;
         }
         return false;
     }
 
-    State state() const {
-        return state_.load(std::memory_order_relaxed);
-    }
-
     bool isSucceeded() const {
+        wait();
         return state() == State::SUCCEEDED;
     }
 
     bool isFailed() const {
+        wait();
         return state() == State::FAILED;
     }
 
@@ -135,7 +131,7 @@ protected:
     std::atomic<typename FutureCallbackTypes<ResultT>::OnSuccess*> onSuccess_; // User callback for succeeded operation
     std::atomic<typename FutureCallbackTypes<ResultT>::OnError*> onError_; // User callback for failed operation
 
-    bool exchangeState(State state) {
+    bool changeState(State state) {
         State s = State::RUNNING; // Expected state
         return state_.compare_exchange_strong(s, state, std::memory_order_relaxed);
     }
@@ -146,6 +142,10 @@ protected:
 
     bool acquireDone() const {
         return done_.load(std::memory_order_acquire);
+    }
+
+    State state() const {
+        return state_.load(std::memory_order_relaxed);
     }
 
     template<typename FunctionT>
@@ -186,9 +186,7 @@ public:
     using typename FutureImplBase<ResultT, ContextT>::OnSuccessCallback;
     using typename FutureImplBase<ResultT, ContextT>::OnErrorCallback;
 
-    explicit FutureImpl(State state) :
-            FutureImplBase<ResultT, ContextT>(state) {
-    }
+    using FutureImplBase<ResultT, ContextT>::FutureImplBase;
 
     explicit FutureImpl(ResultT result) :
             FutureImplBase<ResultT, ContextT>(State::SUCCEEDED),
@@ -198,6 +196,10 @@ public:
     explicit FutureImpl(Error error) :
             FutureImplBase<ResultT, ContextT>(State::FAILED),
             error_(std::move(error)) {
+    }
+
+    explicit FutureImpl(Error::Type error) :
+            FutureImpl(Error(error)) {
     }
 
     virtual ~FutureImpl() {
@@ -211,22 +213,23 @@ public:
     }
 
     void setResult(ResultT result) {
-        if (this->exchangeState(State::SUCCEEDED)) {
+        if (this->changeState(State::SUCCEEDED)) {
             new(&result_) ResultT(std::move(result));
             this->releaseDone();
             this->invokeCallback(this->onSuccess_, result_);
         }
     }
 
-    ResultT result() const {
+    ResultT result(ResultT defaultValue = ResultT()) const {
+        this->wait();
         if (this->acquireDone() && this->isSucceeded()) {
             return result_;
         }
-        return ResultT();
+        return std::move(defaultValue);
     }
 
     void setError(Error error) {
-        if (this->exchangeState(State::FAILED)) {
+        if (this->changeState(State::FAILED)) {
             new(&error_) Error(std::move(error));
             this->releaseDone();
             this->invokeCallback(this->onError_, error_);
@@ -234,6 +237,7 @@ public:
     }
 
     Error error() const {
+        this->wait();
         if (this->acquireDone() && this->isFailed()) {
             return error_;
         }
@@ -270,24 +274,26 @@ public:
     using typename FutureImplBase<void, ContextT>::OnSuccessCallback;
     using typename FutureImplBase<void, ContextT>::OnErrorCallback;
 
-    explicit FutureImpl(State state) :
-            FutureImplBase<void, ContextT>(state) {
-    }
+    using FutureImplBase<void, ContextT>::FutureImplBase;
 
     explicit FutureImpl(Error error) :
             FutureImplBase<void, ContextT>(State::FAILED),
             error_(std::move(error)) {
     }
 
+    explicit FutureImpl(Error::Type error) :
+            FutureImpl(Error(error)) {
+    }
+
     void setResult() {
-        if (this->exchangeState(State::SUCCEEDED)) {
+        if (this->changeState(State::SUCCEEDED)) {
             this->releaseDone();
             this->invokeCallback(this->onSuccess_);
         }
     }
 
     void setError(Error error) {
-        if (this->exchangeState(State::FAILED)) {
+        if (this->changeState(State::FAILED)) {
             error_ = std::move(error);
             this->releaseDone();
             this->invokeCallback(this->onError_, error_);
@@ -295,6 +301,7 @@ public:
     }
 
     Error error() const {
+        this->wait();
         if (this->acquireDone() && this->isFailed()) {
             return error_;
         }
@@ -354,15 +361,12 @@ class Promise;
 template<typename ResultT, typename ContextT>
 class PromiseBase {
 public:
-    // Future state
-    typedef typename detail::FutureImpl<ResultT, ContextT>::State State;
-
     PromiseBase() :
             p_(new detail::FutureImpl<ResultT, ContextT>(State::RUNNING)) {
     }
 
     explicit PromiseBase(detail::FutureImplPtr<ResultT, ContextT> ptr) :
-            p_(ptr) {
+            p_(std::move(ptr)) {
     }
 
     void setError(Error error) {
@@ -392,6 +396,8 @@ public:
     }
 
 protected:
+    typedef typename detail::FutureImpl<ResultT, ContextT>::State State;
+
     detail::FutureImplPtr<ResultT, ContextT> p_;
 };
 
@@ -406,12 +412,12 @@ public:
 
     // System completion callback (see services/inc/completion_handler.h). This function is provided for
     // convenience, do not use it with complex result types that require ABI compatibility checks
-    static void systemCallback(int error, void* result, void* data, void* reserved) {
-        auto p = Promise<ResultT, ContextT>::fromDataPtr(data);
+    static void defaultCallback(int error, const void* data, void* callback_data, void* reserved) {
+        auto p = Promise<ResultT, ContextT>::fromDataPtr(callback_data);
         if (error != spark::Error::NONE) {
             p.setError((spark::Error::Type)error);
-        } else if (result) {
-            p.setResult(*static_cast<const ResultT*>(result));
+        } else if (data) {
+            p.setResult(*static_cast<const ResultT*>(data));
         } else {
             p.setResult(ResultT());
         }
@@ -428,8 +434,8 @@ public:
         this->p_->setResult();
     }
 
-    static void systemCallback(int error, void* result, void* data, void* reserved) {
-        auto p = Promise<void, ContextT>::fromDataPtr(data);
+    static void defaultCallback(int error, const void* data, void* callback_data, void* reserved) {
+        auto p = Promise<void, ContextT>::fromDataPtr(callback_data);
         if (error != spark::Error::NONE) {
             p.setError((spark::Error::Type)error);
         } else {
@@ -442,25 +448,25 @@ public:
 template<typename ResultT, typename ContextT>
 class FutureBase {
 public:
-    // Future state
-    typedef typename detail::FutureImpl<ResultT, ContextT>::State State;
-
     // Completion callback types
     typedef typename detail::FutureImpl<ResultT, ContextT>::OnSuccessCallback OnSuccessCallback;
     typedef typename detail::FutureImpl<ResultT, ContextT>::OnErrorCallback OnErrorCallback;
 
-    // Constructs cancelled future
-    FutureBase() :
-            p_(new detail::FutureImpl<ResultT, ContextT>(State::CANCELLED)) {
+    // Construct failed future
+    explicit FutureBase(Error error) :
+            p_(new detail::FutureImpl<ResultT, ContextT>(std::move(error))) {
+    }
+
+    explicit FutureBase(Error::Type error) :
+            FutureBase(Error(error)) {
     }
 
     explicit FutureBase(detail::FutureImplPtr<ResultT, ContextT> ptr) :
-            p_(ptr) {
+            p_(std::move(ptr)) {
     }
 
-    Future<ResultT, ContextT>& wait(int timeout = 0) {
-        p_->wait(timeout);
-        return *static_cast<Future<ResultT, ContextT>*>(this);
+    bool wait(int timeout = 0) const {
+        return p_->wait(timeout);
     }
 
     bool cancel() {
@@ -469,10 +475,6 @@ public:
 
     Error error() const {
         return p_->error();
-    }
-
-    State state() const {
-        return p_->state();
     }
 
     bool isSucceeded() const {
@@ -501,12 +503,9 @@ public:
         return *static_cast<Future<ResultT, ContextT>*>(this);
     }
 
-    static Future<ResultT, ContextT> makeFailed(Error error) {
-        auto p = std::make_shared<detail::FutureImpl<ResultT, ContextT>>(std::move(error));
-        return Future<ResultT, ContextT>(p);
-    }
-
 protected:
+    typedef typename detail::FutureImpl<ResultT, ContextT>::State State;
+
     detail::FutureImplPtr<ResultT, ContextT> p_;
 };
 
@@ -515,13 +514,21 @@ class Future: public FutureBase<ResultT, ContextT> {
 public:
     using FutureBase<ResultT, ContextT>::FutureBase;
 
+    // Constructs succeeded future
+    explicit Future(ResultT result = ResultT()) :
+            FutureBase<ResultT, ContextT>(std::make_shared<detail::FutureImpl<ResultT, ContextT>>(std::move(result))) {
+    }
+
     ResultT result() const {
         return this->p_->result();
     }
 
-    static Future<ResultT, ContextT> makeSucceeded(ResultT result) {
-        auto p = std::make_shared<detail::FutureImpl<ResultT, ContextT>>(std::move(result));
-        return Future<ResultT, ContextT>(p);
+    ResultT result(ResultT defaultValue) const {
+        return this->p_->result(std::move(defaultValue));
+    }
+
+    operator ResultT() const {
+        return result();
     }
 };
 
@@ -529,14 +536,15 @@ public:
 template<typename ContextT>
 class Future<void, ContextT>: public FutureBase<void, ContextT> {
 public:
-    using typename FutureBase<void, ContextT>::State;
-
     using FutureBase<void, ContextT>::FutureBase;
 
-    static Future<void, ContextT> makeSucceeded() {
-        auto p = std::make_shared<detail::FutureImpl<void, ContextT>>(State::SUCCEEDED);
-        return Future<void, ContextT>(p);
+    // Constructs succeeded future
+    Future() :
+            FutureBase<void, ContextT>(std::make_shared<detail::FutureImpl<void, ContextT>>(State::SUCCEEDED)) {
     }
+
+private:
+    using typename FutureBase<void, ContextT>::State;
 };
 
 } // namespace spark

@@ -38,7 +38,7 @@ bool CloudClass::publish(const char *eventName, const char *eventData, int ttl, 
 
     // Completion handler
     spark::Promise<void> p;
-    d.handler_callback = p.systemCallback;
+    d.handler_callback = p.defaultCallback;
     d.handler_data = p.dataPtr();
 
     if (!spark_send_event(eventName, eventData, ttl, flags, &d) && !p.isDone()) {
@@ -49,7 +49,7 @@ bool CloudClass::publish(const char *eventName, const char *eventData, int ttl, 
 
     // TODO: Return future object instead of synchronous waiting
     spark::Future<void> f = p.future();
-    return f.wait().isSucceeded();
+    return f.isSucceeded();
 #else
     return false; // spark::Future<void>::makeFailed(spark::Error::NOT_SUPPORTED);
 #endif
