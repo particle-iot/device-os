@@ -69,13 +69,6 @@ public:
     typedef typename detail::FutureCallbackTypes<ResultT>::OnSuccess OnSuccessCallback;
     typedef typename detail::FutureCallbackTypes<ResultT>::OnError OnErrorCallback;
 
-    explicit FutureImplBase(State state) :
-            state_(state),
-            done_(state != State::RUNNING),
-            onSuccess_(nullptr),
-            onError_(nullptr) {
-    }
-
     virtual ~FutureImplBase() {
         delete onSuccess_.load(std::memory_order_relaxed);
         delete onError_.load(std::memory_order_relaxed);
@@ -130,6 +123,13 @@ protected:
     std::atomic<bool> done_; // Flag signaling that future is in a final state
     std::atomic<typename FutureCallbackTypes<ResultT>::OnSuccess*> onSuccess_; // User callback for succeeded operation
     std::atomic<typename FutureCallbackTypes<ResultT>::OnError*> onError_; // User callback for failed operation
+
+    explicit FutureImplBase(State state) :
+            state_(state),
+            done_(state != State::RUNNING),
+            onSuccess_(nullptr),
+            onError_(nullptr) {
+    }
 
     bool changeState(State state) {
         State s = State::RUNNING; // Expected state
@@ -186,7 +186,9 @@ public:
     using typename FutureImplBase<ResultT, ContextT>::OnSuccessCallback;
     using typename FutureImplBase<ResultT, ContextT>::OnErrorCallback;
 
-    using FutureImplBase<ResultT, ContextT>::FutureImplBase;
+    explicit FutureImpl(State state) :
+            FutureImplBase<ResultT, ContextT>(state) {
+    }
 
     explicit FutureImpl(ResultT result) :
             FutureImplBase<ResultT, ContextT>(State::SUCCEEDED),
@@ -274,7 +276,9 @@ public:
     using typename FutureImplBase<void, ContextT>::OnSuccessCallback;
     using typename FutureImplBase<void, ContextT>::OnErrorCallback;
 
-    using FutureImplBase<void, ContextT>::FutureImplBase;
+    explicit FutureImpl(State state) :
+            FutureImplBase<void, ContextT>(state) {
+    }
 
     explicit FutureImpl(Error error) :
             FutureImplBase<void, ContextT>(State::FAILED),
@@ -412,8 +416,8 @@ public:
 
     // System completion callback (see services/inc/completion_handler.h). This function is provided for
     // convenience, do not use it with complex result types that require ABI compatibility checks
-    static void defaultCallback(int error, const void* data, void* callback_data, void* reserved) {
-        auto p = Promise<ResultT, ContextT>::fromDataPtr(callback_data);
+    static void defaultCallback(int error, const void* data, void* callbackData, void* reserved) {
+        auto p = Promise<ResultT, ContextT>::fromDataPtr(callbackData);
         if (error != spark::Error::NONE) {
             p.setError((spark::Error::Type)error);
         } else if (data) {
@@ -434,8 +438,8 @@ public:
         this->p_->setResult();
     }
 
-    static void defaultCallback(int error, const void* data, void* callback_data, void* reserved) {
-        auto p = Promise<void, ContextT>::fromDataPtr(callback_data);
+    static void defaultCallback(int error, const void* data, void* callbackData, void* reserved) {
+        auto p = Promise<void, ContextT>::fromDataPtr(callbackData);
         if (error != spark::Error::NONE) {
             p.setError((spark::Error::Type)error);
         } else {

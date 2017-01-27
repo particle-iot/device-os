@@ -150,7 +150,7 @@ TEST_CASE("Future<void>") {
         CHECK(f.error().type() == Error::UNKNOWN);
     }
 
-    SECTION("constructing via promise") {
+    SECTION("constructing future via promise") {
         Promise p;
         Future f = p.future();
         CHECK(f.isDone() == false);
