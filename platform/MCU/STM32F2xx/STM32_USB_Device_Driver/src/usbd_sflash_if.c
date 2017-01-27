@@ -39,8 +39,8 @@ DFU_MAL_Prop_TypeDef DFU_sFlash_cb =
         sFLASH_If_Read,
         sFLASH_If_Verify,
         sFLASH_If_CheckAdd,
-        50, /* Erase Time in ms */
-        50  /* Programming Time in ms */
+        0, /* Erase Time in ms */
+        0  /* Programming Time in ms */
 };
 
 /* Private functions ---------------------------------------------------------*/
