@@ -69,7 +69,7 @@ public:
     typedef typename detail::FutureCallbackTypes<ResultT>::OnSuccess OnSuccessCallback;
     typedef typename detail::FutureCallbackTypes<ResultT>::OnError OnErrorCallback;
 
-    virtual ~FutureImplBase() {
+    ~FutureImplBase() {
         delete onSuccess_.load(std::memory_order_relaxed);
         delete onError_.load(std::memory_order_relaxed);
     }
@@ -204,7 +204,7 @@ public:
             FutureImpl(Error(error)) {
     }
 
-    virtual ~FutureImpl() {
+    ~FutureImpl() {
         // Call destructor of the appropriate unnamed enum's field
         const State s = this->state();
         if (s == State::SUCCEEDED) {
