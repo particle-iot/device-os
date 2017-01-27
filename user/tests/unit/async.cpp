@@ -62,6 +62,9 @@ private:
 template<typename ResultT>
 using Future = spark::Future<ResultT, Context>;
 
+template<typename ResultT, ResultT defaultValue>
+using AdaptedFuture = spark::AdaptedFuture<ResultT, defaultValue, Context>;
+
 template<typename ResultT>
 using Promise = spark::Promise<ResultT, Context>;
 
@@ -368,6 +371,46 @@ TEST_CASE("Future<int>") {
         });
         p.setResult(1);
         CHECK(result == 1);
+    }
+}
+
+TEST_CASE("AdaptedFuture<int>") {
+    using Future = ::Future<int>;
+    using AdaptedFuture = ::AdaptedFuture<int, 1>; // Default value is 1
+
+    SECTION("constructing failed future") {
+        AdaptedFuture af(Error::UNKNOWN);
+        CHECK(af.isFailed() == true);
+        CHECK(af.result() == 1); // User-defined default value
+        CHECK(af == 1); // Implicit conversion
+    }
+
+    SECTION("converting from basic future") {
+        // Copying succeeded future
+        Future f1;
+        AdaptedFuture af1(f1);
+        CHECK(af1.isSucceeded() == true);
+        CHECK(af1.result() == 0); // Original value
+        // Assigning failed future
+        Future f2(Error::UNKNOWN);
+        AdaptedFuture af2 = f2;
+        af2 = f2;
+        CHECK(af2.isFailed() == true);
+        CHECK(af2.result() == 1); // User-defined default value
+    }
+
+    SECTION("converting to basic future") {
+        // Copying succeeded future
+        AdaptedFuture af1;
+        Future f1(af1);
+        CHECK(f1.isSucceeded() == true);
+        CHECK(f1.result() == 0); // Original value
+        // Assigning failed future
+        AdaptedFuture af2(Error::UNKNOWN);
+        Future f2;
+        f2 = af2;
+        CHECK(f2.isFailed() == true);
+        CHECK(f2.result() == 0); // Information about user-defined default value has been lost
     }
 }
 

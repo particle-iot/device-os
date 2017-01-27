@@ -551,6 +551,30 @@ private:
     using typename FutureBase<void, ContextT>::State;
 };
 
+// Helper class that can be used to make existent functions, that use their own special return
+// values for error handling, asynchronous in an API-compatible way
+template<typename ResultT, ResultT defaultValue, typename ContextT = detail::FutureContext>
+class AdaptedFuture: public Future<ResultT, ContextT> {
+public:
+    using Future<ResultT, ContextT>::Future;
+
+    explicit AdaptedFuture(ResultT result = ResultT()) :
+            Future<ResultT, ContextT>(std::move(result)) {
+    }
+
+    AdaptedFuture(Future<ResultT, ContextT> future) :
+            Future<ResultT, ContextT>(std::move(future)) {
+    }
+
+    ResultT result() const {
+        return this->p_->result(defaultValue);
+    }
+
+    operator ResultT() const {
+        return result();
+    }
+};
+
 } // namespace spark
 
 #endif // SPARK_WIRING_ASYNC_H
