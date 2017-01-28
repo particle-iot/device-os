@@ -142,7 +142,7 @@ TEST_CASE("Future<void>") {
         CHECK(f.isSucceeded() == true);
         CHECK(f.isFailed() == false);
         CHECK(f.isCancelled() == false);
-        CHECK(f.error().type() == Error::NONE);
+        CHECK(f.error() == Error::NONE);
     }
 
     SECTION("constructing failed future") {
@@ -151,7 +151,7 @@ TEST_CASE("Future<void>") {
         CHECK(f.isSucceeded() == false);
         CHECK(f.isFailed() == true);
         CHECK(f.isCancelled() == false);
-        CHECK(f.error().type() == Error::UNKNOWN);
+        CHECK(f.error() == Error::UNKNOWN);
     }
 
     SECTION("constructing future via promise") {
@@ -169,7 +169,7 @@ TEST_CASE("Future<void>") {
         CHECK(f.isSucceeded() == true);
         CHECK(f.isFailed() == false);
         CHECK(f.isCancelled() == false);
-        CHECK(f.error().type() == Error::NONE);
+        CHECK(f.error() == Error::NONE);
     }
 
     SECTION("making failed future via promise") {
@@ -180,7 +180,7 @@ TEST_CASE("Future<void>") {
         CHECK(f.isSucceeded() == false);
         CHECK(f.isFailed() == true);
         CHECK(f.isCancelled() == false);
-        CHECK(f.error().type() == Error::UNKNOWN);
+        CHECK(f.error() == Error::UNKNOWN);
     }
 
     SECTION("waiting for succeeded operation") {
@@ -210,14 +210,14 @@ TEST_CASE("Future<void>") {
         });
         f1.wait();
         CHECK(f1.isFailed() == true);
-        CHECK(f1.error().type() == Error::UNKNOWN);
+        CHECK(f1.error() == Error::UNKNOWN);
         // Future::error() waits until future is completed
         Promise p2;
         Future f2 = p2.future();
         postEvent([&p2]() {
             p2.setError(Error::UNKNOWN);
         });
-        CHECK(f2.error().type() == Error::UNKNOWN);
+        CHECK(f2.error() == Error::UNKNOWN);
         // Future::isFailed() waits until future is completed
         Promise p3;
         Future f3 = p3.future();
@@ -253,7 +253,7 @@ TEST_CASE("Future<void>") {
             error = e;
         });
         p.setError(Error::UNKNOWN);
-        CHECK(error.type() == Error::UNKNOWN);
+        CHECK(error == Error::UNKNOWN);
     }
 
     SECTION("callbacks are invoked immediately for already completed future") {
@@ -270,7 +270,7 @@ TEST_CASE("Future<void>") {
         f2.onError([&error](Error e) {
             error = e;
         });
-        CHECK(error.type() == Error::UNKNOWN);
+        CHECK(error == Error::UNKNOWN);
     }
 
     SECTION("callbacks are not invoked for cancelled future") {
@@ -293,7 +293,7 @@ TEST_CASE("Future<void>") {
         });
         CHECK(f2.cancel() == true);
         p2.setError(Error::UNKNOWN);
-        CHECK(error.type() == Error::NONE);
+        CHECK(error == Error::NONE);
     }
 }
 

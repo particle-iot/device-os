@@ -243,7 +243,7 @@ public:
         if (this->acquireDone() && this->isFailed()) {
             return error_;
         }
-        return Error();
+        return Error(Error::NONE);
     }
 
     void onSuccess(OnSuccessCallback callback) {
@@ -309,7 +309,7 @@ public:
         if (this->acquireDone() && this->isFailed()) {
             return error_;
         }
-        return Error();
+        return Error(Error::NONE);
     }
 
     void onSuccess(OnSuccessCallback callback) {
