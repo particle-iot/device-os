@@ -30,7 +30,7 @@
 int Internet_Test(void);
 
 int spark_cloud_socket_connect(void);
-int spark_cloud_socket_disconnect(void);
+int spark_cloud_socket_disconnect(bool graceful=true);
 
 void Spark_Protocol_Init(void);
 int Spark_Handshake(bool presence_announce);

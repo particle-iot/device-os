@@ -987,7 +987,7 @@ int spark_cloud_socket_connect()
     DEBUG("sparkSocket Now =%d", sparkSocket);
 
     // Close Original
-    spark_cloud_socket_disconnect();
+    spark_cloud_socket_disconnect(false);
 
     const bool udp =
 #if HAL_PLATFORM_CLOUD_UDP
@@ -1047,24 +1047,41 @@ int spark_cloud_socket_connect()
         }
     }
     if (rv)     // error - prevent socket leaks
-        spark_cloud_socket_disconnect();
+        spark_cloud_socket_disconnect(false);
     return rv;
 }
 
-int spark_cloud_socket_disconnect(void)
+int spark_cloud_socket_disconnect(bool graceful)
 {
     int retVal = 0;
     if (socket_handle_valid(sparkSocket))
     {
 #if defined(SEND_ON_CLOSE)
-        DEBUG("Send Attempt");
+        LOG(TRACE, "Send Attempt");
         char c = 0;
         int rc = send(sparkSocket, &c, 1, 0);
-        DEBUG("send()=%d", rc);
+        LOG(TRACE, "send()=%d", rc);
 #endif
-        DEBUG("Close Attempt");
+        if (graceful) {
+            // Only TCP sockets can be half-closed
+            retVal = socket_shutdown(sparkSocket, SHUT_WR);
+            if (!retVal) {
+                LOG(TRACE, "Half-closed cloud socket");
+                if (!spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr)) {
+                    // Wait for an error (which means that the server closed our connection).
+                    system_tick_t start = millis();
+                    while (millis() - start < 5000) {
+                        if (!Spark_Communication_Loop())
+                            break;
+                    }
+                }
+            } else {
+                spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr);
+            }
+        }
+        LOG(TRACE, "Close Attempt");
         retVal = socket_close(sparkSocket);
-        DEBUG("socket_close()=%s", (retVal ? "fail":"success"));
+        LOG(TRACE, "socket_close()=%s", (retVal ? "fail":"success"));
         sparkSocket = socket_handle_invalid();
     }
     return retVal;

@@ -184,10 +184,11 @@ bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserve
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
 
 namespace ProtocolCommands {
-	enum Enum {
-		SLEEP,
-		WAKE
-	};
+  enum Enum {
+    SLEEP,
+    WAKE,
+    DISCONNECT
+  };
 };
 
 
