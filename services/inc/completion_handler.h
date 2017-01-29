@@ -69,9 +69,10 @@ public:
         setResult(nullptr);
     }
 
-    void setError(system_error error) {
+    // TODO: Message formatting
+    void setError(system_error error, const char* msg = nullptr) {
         if (callback_) {
-            callback_(error, nullptr, data_, nullptr);
+            callback_(error, msg, data_, nullptr);
             callback_ = nullptr;
         }
     }
@@ -160,9 +161,9 @@ public:
         reset();
     }
 
-    void setError(system_error error) {
+    void setError(system_error error, const char* msg = nullptr) {
         for (Handler& h: handlers_) {
-            h.handler.setError(error);
+            h.handler.setError(error, msg);
         }
         reset();
     }
@@ -313,8 +314,8 @@ public:
         takeHandler(key).setResult();
     }
 
-    void setError(const KeyT& key, system_error error) {
-        takeHandler(key).setError(error);
+    void setError(const KeyT& key, system_error error, const char* msg = nullptr) {
+        takeHandler(key).setError(error, msg);
     }
 
     // This method needs to be called periodically in order to invoke expired handlers.
