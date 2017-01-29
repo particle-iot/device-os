@@ -24,7 +24,7 @@
 #include <cstring>
 #include <cstdlib>
 
-namespace spark {
+namespace particle {
 
 class Error {
 public:
@@ -59,53 +59,53 @@ private:
 
 void swap(Error& error1, Error& error2);
 
-} // namespace spark
+} // namespace particle
 
-inline spark::Error::Error(Type type) :
+inline particle::Error::Error(Type type) :
         msg_(nullptr),
         type_(type) {
 }
 
-inline spark::Error::Error(Type type, const char* msg) :
+inline particle::Error::Error(Type type, const char* msg) :
         msg_(msg ? (const char*)strdup(msg) : nullptr),
         type_(type) {
 }
 
-inline spark::Error::Error(const Error& error) :
+inline particle::Error::Error(const Error& error) :
         Error(error.type_, error.msg_) {
 }
 
-inline spark::Error::Error(Error&& error) :
+inline particle::Error::Error(Error&& error) :
         Error() {
     swap(*this, error);
 }
 
-inline spark::Error::~Error() {
+inline particle::Error::~Error() {
     free((void*)msg_);
 }
 
-inline spark::Error::Type spark::Error::type() const {
+inline particle::Error::Type particle::Error::type() const {
     return type_;
 }
 
-inline const char* spark::Error::message() const {
+inline const char* particle::Error::message() const {
     return (msg_ ? msg_ : system_error_message((system_error)type_, nullptr));
 }
 
-inline bool spark::Error::operator==(const Error& error) const {
+inline bool particle::Error::operator==(const Error& error) const {
     return (type_ == error.type_);
 }
 
-inline bool spark::Error::operator==(Type type) const {
+inline bool particle::Error::operator==(Type type) const {
     return (type_ == type);
 }
 
-inline spark::Error& spark::Error::operator=(Error error) {
+inline particle::Error& particle::Error::operator=(Error error) {
     swap(*this, error);
     return *this;
 }
 
-inline void spark::swap(Error& error1, Error& error2) {
+inline void particle::swap(Error& error1, Error& error2) {
     using std::swap;
     swap(error1.type_, error2.type_);
     swap(error1.msg_, error2.msg_);

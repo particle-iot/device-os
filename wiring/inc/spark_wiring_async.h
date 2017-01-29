@@ -32,7 +32,7 @@
 #error "std::atomic is not always lock-free for required types"
 #endif
 
-namespace spark {
+namespace particle {
 
 namespace detail {
 
@@ -352,7 +352,7 @@ struct FutureContext {
     }
 };
 
-} // namespace spark::detail
+} // namespace particle::detail
 
 template<typename ResultT, typename ContextT>
 class Future;
@@ -418,8 +418,8 @@ public:
     // convenience, do not use it with complex result types that require ABI compatibility checks
     static void defaultCallback(int error, const void* data, void* callbackData, void* reserved) {
         auto p = Promise<ResultT, ContextT>::fromDataPtr(callbackData);
-        if (error != spark::Error::NONE) {
-            p.setError((spark::Error::Type)error);
+        if (error != Error::NONE) {
+            p.setError((Error::Type)error);
         } else if (data) {
             p.setResult(*static_cast<const ResultT*>(data));
         } else {
@@ -440,8 +440,8 @@ public:
 
     static void defaultCallback(int error, const void* data, void* callbackData, void* reserved) {
         auto p = Promise<void, ContextT>::fromDataPtr(callbackData);
-        if (error != spark::Error::NONE) {
-            p.setError((spark::Error::Type)error);
+        if (error != Error::NONE) {
+            p.setError((Error::Type)error);
         } else {
             p.setResult();
         }
@@ -575,6 +575,6 @@ public:
     }
 };
 
-} // namespace spark
+} // namespace particle
 
 #endif // SPARK_WIRING_ASYNC_H

@@ -11,11 +11,7 @@
 
 namespace {
 
-using particle::CompletionHandler;
-using particle::CompletionHandlerList;
-using particle::CompletionHandlerMap;
-
-using spark::Error;
+using namespace particle;
 
 // Event loop and threading abstraction
 class Context {
@@ -64,13 +60,13 @@ private:
 };
 
 template<typename ResultT>
-using Future = spark::Future<ResultT, Context>;
+using Future = particle::Future<ResultT, Context>;
 
 template<typename ResultT, ResultT defaultValue>
-using AdaptedFuture = spark::AdaptedFuture<ResultT, defaultValue, Context>;
+using AdaptedFuture = particle::AdaptedFuture<ResultT, defaultValue, Context>;
 
 template<typename ResultT>
-using Promise = spark::Promise<ResultT, Context>;
+using Promise = particle::Promise<ResultT, Context>;
 
 inline void postEvent(Context::Event event) {
     Context::instance()->postEvent(std::move(event));

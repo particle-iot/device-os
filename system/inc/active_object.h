@@ -177,7 +177,7 @@ public:
  * A promise that executes a function and returns the function result as the future
  * value.
  */
-template<typename T> class Promise : public AbstractPromise<T, Promise<T>>
+template<typename T> class SystemPromise : public AbstractPromise<T, SystemPromise<T>>
 {
     /**
      * The result retrieved from the function.
@@ -185,7 +185,7 @@ template<typename T> class Promise : public AbstractPromise<T, Promise<T>>
      */
     T result;
 
-    using super = AbstractPromise<T, Promise<T>>;
+    using super = AbstractPromise<T, SystemPromise<T>>;
     friend typename super::task;
 
     void invoke()
@@ -195,8 +195,8 @@ template<typename T> class Promise : public AbstractPromise<T, Promise<T>>
 
 public:
 
-    Promise(const std::function<T()>& fn_) : super(fn_) {}
-    virtual ~Promise() = default;
+    SystemPromise(const std::function<T()>& fn_) : super(fn_) {}
+    virtual ~SystemPromise() = default;
 
     /**
      * wait for the result
@@ -209,11 +209,11 @@ public:
 };
 
 /**
- * Specialization of Promise that waits for execution of a function returning void.
+ * Specialization of SystemPromise that waits for execution of a function returning void.
  */
-template<> class Promise<void> : public AbstractPromise<void, Promise<void>>
+template<> class SystemPromise<void> : public AbstractPromise<void, SystemPromise<void>>
 {
-    using super = AbstractPromise<void, Promise<void>>;
+    using super = AbstractPromise<void, SystemPromise<void>>;
     friend typename super::task;
 
     inline void invoke()
@@ -223,8 +223,8 @@ template<> class Promise<void> : public AbstractPromise<void, Promise<void>>
 
 public:
 
-    Promise(const std::function<void()>& fn_) : super(fn_) {}
-    virtual ~Promise() = default;
+    SystemPromise(const std::function<void()>& fn_) : super(fn_) {}
+    virtual ~SystemPromise() = default;
 
     void get()
     {
@@ -308,9 +308,9 @@ public:
         }
 	}
 
-    template<typename R> Promise<R>* invoke_future(const std::function<R(void)>& work)
+    template<typename R> SystemPromise<R>* invoke_future(const std::function<R(void)>& work)
     {
-        auto promise = new Promise<R>(work);
+        auto promise = new SystemPromise<R>(work);
         if (promise)
         {
 			Item message = promise;

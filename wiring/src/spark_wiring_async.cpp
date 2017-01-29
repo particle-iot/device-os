@@ -17,7 +17,7 @@
 
 #include "spark_wiring_async.h"
 
-void spark::detail::futureCallbackWrapper(void* data) {
+void particle::detail::futureCallbackWrapper(void* data) {
     auto callbackPtr = static_cast<const std::function<void()>*>(data);
     (*callbackPtr)();
     delete callbackPtr;

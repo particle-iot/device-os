@@ -2,10 +2,12 @@
 
 namespace {
 
+using namespace particle;
+
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
-    auto p = spark::Promise<bool>::fromDataPtr(callbackData);
-    if (error != spark::Error::NONE) {
-        p.setError((spark::Error::Type)error);
+    auto p = Promise<bool>::fromDataPtr(callbackData);
+    if (error != Error::NONE) {
+        p.setError((Error::Type)error);
     } else {
         p.setResult(true);
     }
@@ -43,23 +45,23 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
 
-spark::Future<bool> CloudClass::publish(const char *eventName, const char *eventData, int ttl, uint32_t flags) {
+Future<bool> CloudClass::publish(const char *eventName, const char *eventData, int ttl, uint32_t flags) {
 #ifndef SPARK_NO_CLOUD
     spark_send_event_data d = { sizeof(spark_send_event_data) };
 
     // Completion handler
-    spark::Promise<bool> p;
+    Promise<bool> p;
     d.handler_callback = publishCompletionCallback;
     d.handler_data = p.dataPtr();
 
     if (!spark_send_event(eventName, eventData, ttl, flags, &d) && !p.isDone()) {
         // Set generic error code in case completion callback wasn't invoked for some reason
-        p.setError(spark::Error::UNKNOWN);
+        p.setError(Error::UNKNOWN);
         p.fromDataPtr(d.handler_data); // Free wrapper object
     }
 
     return p.future();
 #else
-    return spark::Future<bool>(spark::Error::NOT_SUPPORTED);
+    return Future<bool>(Error::NOT_SUPPORTED);
 #endif
 }
