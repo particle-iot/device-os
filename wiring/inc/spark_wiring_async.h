@@ -243,7 +243,7 @@ public:
         if (this->acquireDone() && this->isFailed()) {
             return error_;
         }
-        return Error(Error::NONE);
+        return Error::NONE;
     }
 
     void onSuccess(OnSuccessCallback callback) {
@@ -309,7 +309,7 @@ public:
         if (this->acquireDone() && this->isFailed()) {
             return error_;
         }
-        return Error(Error::NONE);
+        return Error::NONE;
     }
 
     void onSuccess(OnSuccessCallback callback) {
@@ -419,7 +419,7 @@ public:
     static void defaultCallback(int error, const void* data, void* callbackData, void* reserved) {
         auto p = Promise<ResultT, ContextT>::fromDataPtr(callbackData);
         if (error != Error::NONE) {
-            p.setError((Error::Type)error);
+            p.setError(Error((Error::Type)error, (const char*)data));
         } else if (data) {
             p.setResult(*static_cast<const ResultT*>(data));
         } else {
@@ -441,7 +441,7 @@ public:
     static void defaultCallback(int error, const void* data, void* callbackData, void* reserved) {
         auto p = Promise<void, ContextT>::fromDataPtr(callbackData);
         if (error != Error::NONE) {
-            p.setError((Error::Type)error);
+            p.setError(Error((Error::Type)error, (const char*)data));
         } else {
             p.setResult();
         }

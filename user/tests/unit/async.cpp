@@ -90,8 +90,8 @@ public:
         return (bool)result_;
     }
 
-    system_error error() const {
-        return error_.value_or(SYSTEM_ERROR_NONE);
+    Error error() const {
+        return error_.value_or(Error::NONE);
     }
 
     bool hasError() const {
@@ -109,13 +109,13 @@ public:
 
 private:
     boost::optional<ResultT> result_;
-    boost::optional<system_error> error_;
+    boost::optional<Error> error_;
 
     // Completion callback
     static void callback(int error, const void* data, void* callback_data, void* reserved) {
         auto d = static_cast<CompletionData*>(callback_data);
-        if (error != SYSTEM_ERROR_NONE) {
-            d->error_ = (system_error)error;
+        if (error != Error::NONE) {
+            d->error_ = Error((Error::Type)error, (const char*)data);
             d->result_ = boost::none;
         } else {
             d->result_ = data ? *static_cast<const ResultT*>(data) : ResultT();
@@ -415,10 +415,10 @@ TEST_CASE("CompletionHandler") {
     SECTION("using default-constructed handler") {
         CHECK((bool)CompletionHandler() == false);
         CompletionHandler().setResult(); // Shouldn't crash :)
-        CompletionHandler().setError(SYSTEM_ERROR_UNKNOWN); // ditto
+        CompletionHandler().setError(Error::UNKNOWN); // ditto
     }
 
-    SECTION("invoking handler with result data") {
+    SECTION("invoking handler with a result data") {
         CompletionData<int> d;
         CompletionHandler h = d.handler();
         CHECK((bool)h == true);
@@ -427,12 +427,18 @@ TEST_CASE("CompletionHandler") {
         CHECK(d.hasError() == false);
     }
 
-    SECTION("invoking handler with error code") {
-        CompletionData<int> d;
-        CompletionHandler h = d.handler();
-        h.setError(SYSTEM_ERROR_UNKNOWN); // Set error code
-        CHECK(d.hasResult() == false);
-        CHECK(d.error() == SYSTEM_ERROR_UNKNOWN);
+    SECTION("invoking handler with an error") {
+        CompletionData<int> d1, d2;
+        CompletionHandler h1 = d1.handler();
+        h1.setError(Error::UNKNOWN); // Set error code
+        Error e1 = d1.error();
+        CHECK(e1.type() == Error::UNKNOWN);
+        CHECK(d1.hasResult() == false);
+        CompletionHandler h2 = d2.handler();
+        h2.setError(Error::INTERNAL, "abc"); // Set error code and message
+        Error e2 = d2.error();
+        CHECK(e2.type() == Error::INTERNAL);
+        CHECK(strcmp(e2.message(), "abc") == 0);
     }
 
     SECTION("handler can be invoked only once") {
@@ -440,16 +446,16 @@ TEST_CASE("CompletionHandler") {
         CompletionData<int> d1;
         CompletionHandler h1 = d1.handler();
         h1.setResult(1);
-        h1.setError(SYSTEM_ERROR_UNKNOWN);
+        h1.setError(Error::UNKNOWN);
         CHECK(d1.result() == 1);
         CHECK(d1.hasError() == false);
         // Invoking already completed handler with a result data
         CompletionData<int> d2;
         CompletionHandler h2 = d2.handler();
-        h2.setError(SYSTEM_ERROR_UNKNOWN);
+        h2.setError(Error::UNKNOWN);
         h2.setResult(1);
         CHECK(d2.hasResult() == false);
-        CHECK(d2.error() == SYSTEM_ERROR_UNKNOWN);
+        CHECK(d2.error() == Error::UNKNOWN);
     }
 
     SECTION("handler instance can be moved via move constructor") {
@@ -468,9 +474,9 @@ TEST_CASE("CompletionHandler") {
         CompletionHandler h2 = d.handler();
         h1 = std::move(h2);
         // It's an internal error if a completion handler wasn't invoked during its lifetime
-        CHECK(d.error() == SYSTEM_ERROR_INTERNAL);
-        h1.setError(SYSTEM_ERROR_UNKNOWN);
-        CHECK(d.error() == SYSTEM_ERROR_UNKNOWN);
+        CHECK(d.error() == Error::INTERNAL);
+        h1.setError(Error::UNKNOWN);
+        CHECK(d.error() == Error::UNKNOWN);
         h2.setResult();
         CHECK(d.hasResult() == false); // Callback ownership has been transferred to h1
     }
@@ -480,7 +486,7 @@ TEST_CASE("CompletionHandler") {
         {
             CompletionHandler h = d.handler();
         }
-        CHECK(d.error() == SYSTEM_ERROR_INTERNAL);
+        CHECK(d.error() == Error::INTERNAL);
     }
 }
 
@@ -515,15 +521,15 @@ TEST_CASE("CompletionHandlerList") {
         CHECK(l.nearestTimeout() == 10); // Handler 2 is still a nearest handler to expire
     }
 
-    SECTION("clearing handler map") {
+    SECTION("clearing handler list") {
         CompletionHandlerList l;
         CompletionData<int> d1, d2;
         CHECK(l.addHandler(d1.handler(), 10) == true); // Handler 1, timeout: 10
         CHECK(l.addHandler(d2.handler(), 20) == true); // Handler 2, timeout: 20
         l.clear();
-        // All handlers should have been invoked with SYSTEM_ERROR_ABORTED error
-        CHECK(d1.error() == SYSTEM_ERROR_ABORTED);
-        CHECK(d2.error() == SYSTEM_ERROR_ABORTED);
+        // All handlers should have been invoked with ABORTED error
+        CHECK(d1.error() == Error::ABORTED);
+        CHECK(d2.error() == Error::ABORTED);
         CHECK(l.size() == 0);
         CHECK(l.isEmpty() == true);
         CHECK(l.nearestTimeout() == CompletionHandlerList::MAX_TIMEOUT);
@@ -547,9 +553,9 @@ TEST_CASE("CompletionHandlerList") {
         CompletionData<int> d1, d2;
         CHECK(l.addHandler(d1.handler(), 10) == true); // Handler 1, timeout: 10
         CHECK(l.addHandler(d2.handler(), 20) == true); // Handler 2, timeout: 20
-        l.setError(SYSTEM_ERROR_UNKNOWN);
-        CHECK(d1.error() == SYSTEM_ERROR_UNKNOWN);
-        CHECK(d2.error() == SYSTEM_ERROR_UNKNOWN);
+        l.setError(Error::UNKNOWN);
+        CHECK(d1.error() == Error::UNKNOWN);
+        CHECK(d2.error() == Error::UNKNOWN);
         CHECK(l.size() == 0);
         CHECK(l.isEmpty() == true);
         CHECK(l.nearestTimeout() == CompletionHandlerList::MAX_TIMEOUT);
@@ -564,12 +570,12 @@ TEST_CASE("CompletionHandlerList") {
         CHECK(l.size() == 2);
         CHECK(l.nearestTimeout() == 5); // Handler 1 is a nearest handler to expire
         CHECK(l.update(5) == 1); // 1 handler has expired (handler 1)
-        CHECK(d1.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d1.error() == Error::TIMEOUT);
         CHECK(d2.hasError() == false);
         CHECK(l.size() == 1);
         CHECK(l.nearestTimeout() == 10); // Handler 2 is a nearest handler to expire
         CHECK(l.update(15) == 1); // 1 handler has expired (handler 2)
-        CHECK(d2.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d2.error() == Error::TIMEOUT);
         CHECK(l.size() == 0);
         CHECK(l.nearestTimeout() == CompletionHandlerList::MAX_TIMEOUT);
     }
@@ -587,8 +593,8 @@ TEST_CASE("CompletionHandlerList") {
         l.addHandler(d4.handler(), 20); // Handler 4, timeout: 20
         CHECK(l.nearestTimeout() == 0); // Handler 3 is a nearest handler to expire
         CHECK(l.update(10) == 2); // 2 handlers have expired (handlers 1 and 3)
-        CHECK(d1.error() == SYSTEM_ERROR_TIMEOUT);
-        CHECK(d3.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d1.error() == Error::TIMEOUT);
+        CHECK(d3.error() == Error::TIMEOUT);
         CHECK(l.size() == 2);
         CHECK(l.nearestTimeout() == 5); // Handler 2 is a nearest handler to expire
         l.setResult(1); // Set result for handlers 2 and 4
@@ -599,9 +605,9 @@ TEST_CASE("CompletionHandlerList") {
         CompletionData<int> d5, d6;
         l.addHandler(d5.handler(), 10); // Handler 5, timeout: 10
         l.addHandler(d6.handler(), 20); // Handler 6, timeout: 20
-        l.setError(SYSTEM_ERROR_UNKNOWN); // Set error for handlers 5 and 6
-        CHECK(d5.error() == SYSTEM_ERROR_UNKNOWN);
-        CHECK(d6.error() == SYSTEM_ERROR_UNKNOWN);
+        l.setError(Error::UNKNOWN); // Set error for handlers 5 and 6
+        CHECK(d5.error() == Error::UNKNOWN);
+        CHECK(d6.error() == Error::UNKNOWN);
         CHECK(l.size() == 0);
         CHECK(l.nearestTimeout() == CompletionHandlerList::MAX_TIMEOUT);
     }
@@ -659,9 +665,9 @@ TEST_CASE("CompletionHandlerMap") {
         m.addHandler(1, d1.handler(), 10); // Handler 1, timeout: 10
         m.addHandler(2, d2.handler(), 20); // Handler 2, timeout: 20
         m.clear();
-        // Both handlers should have been invoked with SYSTEM_ERROR_ABORTED error
-        CHECK(d1.error() == SYSTEM_ERROR_ABORTED);
-        CHECK(d2.error() == SYSTEM_ERROR_ABORTED);
+        // Both handlers should have been invoked with ABORTED error
+        CHECK(d1.error() == Error::ABORTED);
+        CHECK(d2.error() == Error::ABORTED);
         CHECK(m.size() == 0);
         CHECK(m.isEmpty() == true);
         CHECK(m.nearestTimeout() == CompletionHandlerMap::MAX_TIMEOUT);
@@ -688,13 +694,13 @@ TEST_CASE("CompletionHandlerMap") {
         CompletionData<int> d1, d2;
         CHECK(m.addHandler(1, d1.handler(), 10) == true); // Handler 1, timeout: 10
         CHECK(m.addHandler(2, d2.handler(), 20) == true); // Handler 2, timeout: 20
-        m.setError(2, SYSTEM_ERROR_UNKNOWN); // Set error for handler 2
-        CHECK(d2.error() == SYSTEM_ERROR_UNKNOWN);
+        m.setError(2, Error::UNKNOWN); // Set error for handler 2
+        CHECK(d2.error() == Error::UNKNOWN);
         CHECK(d1.hasError() == false);
         CHECK(m.size() == 1);
         CHECK(m.nearestTimeout() == 10); // Handler 1 is a nearest handler to expire
-        m.setError(1, SYSTEM_ERROR_UNKNOWN); // Set error for handler 1
-        CHECK(d1.error() == SYSTEM_ERROR_UNKNOWN);
+        m.setError(1, Error::UNKNOWN); // Set error for handler 1
+        CHECK(d1.error() == Error::UNKNOWN);
         CHECK(m.size() == 0);
         CHECK(m.nearestTimeout() == CompletionHandlerMap::MAX_TIMEOUT);
     }
@@ -709,13 +715,13 @@ TEST_CASE("CompletionHandlerMap") {
         CHECK(m.size() == 2);
         CHECK(m.nearestTimeout() == 5);
         CHECK(m.update(5) == 1); // 1 handler has expired (handler 1)
-        CHECK(d1.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d1.error() == Error::TIMEOUT);
         CHECK(d2.hasError() == false);
         CHECK((!m.hasHandler(1) && m.hasHandler(2)));
         CHECK(m.size() == 1);
         CHECK(m.nearestTimeout() == 10); // Handler 2 is a nearest handler to expire
         CHECK(m.update(15) == 1);
-        CHECK(d2.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d2.error() == Error::TIMEOUT);
         CHECK((!m.hasHandler(1) && !m.hasHandler(2)));
         CHECK(m.size() == 0);
         CHECK(m.nearestTimeout() == CompletionHandlerMap::MAX_TIMEOUT);
@@ -734,12 +740,12 @@ TEST_CASE("CompletionHandlerMap") {
         CHECK(m.size() == 6);
         CHECK(m.nearestTimeout() == 5); // Handler 1 is a nearest handler to expire
         m.takeHandler(1); // Remove handler 1
-        CHECK(d1.error() == SYSTEM_ERROR_INTERNAL);
+        CHECK(d1.error() == Error::INTERNAL);
         CHECK(m.hasHandler(1) == false);
         CHECK(m.size() == 5);
         CHECK(m.nearestTimeout() == 15); // Handler 2 is a nearest handler to expire
         CHECK(m.update(20) == 1); // 1 handler has expired (handler 2)
-        CHECK(d2.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d2.error() == Error::TIMEOUT);
         CHECK(m.hasHandler(2) == false);
         CHECK(m.size() == 4);
         CHECK(m.nearestTimeout() == 5); // Handler 3 is a nearest handler to expire
@@ -749,9 +755,9 @@ TEST_CASE("CompletionHandlerMap") {
         CHECK(m.size() == 6);
         CHECK(m.nearestTimeout() == 0); // Handler 7 is a nearest handler to expire
         CHECK(m.update(10) == 3); // 3 handlers have expired (handlers 3, 7 and 8)
-        CHECK(d3.error() == SYSTEM_ERROR_TIMEOUT);
-        CHECK(d7.error() == SYSTEM_ERROR_TIMEOUT);
-        CHECK(d8.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d3.error() == Error::TIMEOUT);
+        CHECK(d7.error() == Error::TIMEOUT);
+        CHECK(d8.error() == Error::TIMEOUT);
         CHECK((!m.hasHandler(3) && !m.hasHandler(7) && !m.hasHandler(8)));
         CHECK(m.size() == 3);
         CHECK(m.nearestTimeout() == 5); // Handler 4 is a nearest handler to expire
@@ -760,13 +766,13 @@ TEST_CASE("CompletionHandlerMap") {
         CHECK(m.hasHandler(4) == false);
         CHECK(m.size() == 2);
         CHECK(m.nearestTimeout() == 15); // Handler 5 is a nearest handler to expire
-        m.setError(5, SYSTEM_ERROR_UNKNOWN); // Set error for handler 5
-        CHECK(d5.error() == SYSTEM_ERROR_UNKNOWN);
+        m.setError(5, Error::UNKNOWN); // Set error for handler 5
+        CHECK(d5.error() == Error::UNKNOWN);
         CHECK(m.hasHandler(5) == false);
         CHECK(m.size() == 1);
         CHECK(m.nearestTimeout() == 25); // Handler 6 is a nearest handler to expire
         CHECK(m.update(100) == 1); // 1 handler has expired (handler 6)
-        CHECK(d6.error() == SYSTEM_ERROR_TIMEOUT);
+        CHECK(d6.error() == Error::TIMEOUT);
         CHECK(m.hasHandler(6) == false);
         CHECK(m.size() == 0);
         CHECK(m.nearestTimeout() == CompletionHandlerMap::MAX_TIMEOUT);

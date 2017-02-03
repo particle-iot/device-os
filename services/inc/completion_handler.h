@@ -70,7 +70,7 @@ public:
     }
 
     // TODO: Message formatting
-    void setError(system_error error, const char* msg = nullptr) {
+    void setError(int error, const char* msg = nullptr) {
         if (callback_) {
             callback_(error, msg, data_, nullptr);
             callback_ = nullptr;
@@ -105,8 +105,8 @@ private:
     }
 };
 
-// Container class storing a list of CompletionHandler instances. This class also manages handler
-// timeouts, see update() method for details
+// Container class storing a list of CompletionHandler instances. This class manages handler timeouts,
+// see update() method for details
 class CompletionHandlerList {
 public:
     static const system_tick_t MAX_TIMEOUT = std::numeric_limits<system_tick_t>::max();
@@ -161,7 +161,7 @@ public:
         reset();
     }
 
-    void setError(system_error error, const char* msg = nullptr) {
+    void setError(int error, const char* msg = nullptr) {
         for (Handler& h: handlers_) {
             h.handler.setError(error, msg);
         }
@@ -228,8 +228,8 @@ private:
     }
 };
 
-// Container class storing CompletionHandler instances arranged by key. This class also manages
-// handler timeouts, see update() method for details
+// Container class storing CompletionHandler instances arranged by key. This class manages handler
+// timeouts, see update() method for details
 template<typename KeyT>
 class CompletionHandlerMap {
 public:
@@ -314,7 +314,7 @@ public:
         takeHandler(key).setResult();
     }
 
-    void setError(const KeyT& key, system_error error, const char* msg = nullptr) {
+    void setError(const KeyT& key, int error, const char* msg = nullptr) {
         takeHandler(key).setError(error, msg);
     }
 

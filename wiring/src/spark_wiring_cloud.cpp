@@ -7,7 +7,7 @@ using namespace particle;
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
     auto p = Promise<bool>::fromDataPtr(callbackData);
     if (error != Error::NONE) {
-        p.setError((Error::Type)error);
+        p.setError(Error((Error::Type)error, (const char*)data));
     } else {
         p.setResult(true);
     }

@@ -46,7 +46,9 @@ public:
     const char* message() const;
 
     bool operator==(const Error& error) const;
+    bool operator!=(const Error& error) const;
     bool operator==(Type type) const;
+    bool operator!=(Type type) const;
 
     Error& operator=(Error error);
 
@@ -96,8 +98,16 @@ inline bool particle::Error::operator==(const Error& error) const {
     return (type_ == error.type_);
 }
 
+inline bool particle::Error::operator!=(const Error& error) const {
+    return !operator==(error);
+}
+
 inline bool particle::Error::operator==(Type type) const {
     return (type_ == type);
+}
+
+inline bool particle::Error::operator!=(Type type) const {
+    return !operator==(type);
 }
 
 inline particle::Error& particle::Error::operator=(Error error) {
