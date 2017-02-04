@@ -257,7 +257,7 @@ void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handler
         // copy the buffers to dynamically allocated storage.
         String name(event_name);
         String data(event_data);
-        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, event_data, reserved));
+        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, data, reserved));
     }
 }
 
