@@ -153,19 +153,19 @@ public:
         return network_listening(*this, 0, NULL);
     }
 
-    void setCredentials(const char *ssid) {
-        setCredentials(ssid, NULL, UNSEC);
+    bool setCredentials(const char *ssid) {
+        return setCredentials(ssid, NULL, UNSEC);
     }
 
-    void setCredentials(const char *ssid, const char *password) {
-        setCredentials(ssid, password, WPA2);
+    bool setCredentials(const char *ssid, const char *password) {
+        return setCredentials(ssid, password, WPA2);
     }
 
-    void setCredentials(const char *ssid, const char *password, unsigned long security, unsigned long cipher=WLAN_CIPHER_NOT_SET) {
-        setCredentials(ssid, strlen(ssid), password, strlen(password), security, cipher);
+    bool setCredentials(const char *ssid, const char *password, unsigned long security, unsigned long cipher=WLAN_CIPHER_NOT_SET) {
+        return setCredentials(ssid, ssid ? strlen(ssid) : 0, password, password ? strlen(password) : 0, security, cipher);
     }
 
-    void setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
+    bool setCredentials(const char *ssid, unsigned int ssidLen, const char *password,
             unsigned int passwordLen, unsigned long security=WLAN_SEC_UNSEC, unsigned long cipher=WLAN_CIPHER_NOT_SET) {
 
         WLanCredentials creds;
@@ -177,7 +177,7 @@ public:
         creds.password_len = passwordLen;
         creds.security = WLanSecurityType(security);
         creds.cipher = WLanSecurityCipher(cipher);
-        network_set_credentials(*this, 0, &creds, NULL);
+        return (network_set_credentials(*this, 0, &creds, NULL) == 0);
     }
 
     bool hasCredentials(void) {

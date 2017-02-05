@@ -78,9 +78,11 @@ test(api_wifi_selectantenna)
 
 test(api_wifi_set_credentials)
 {
-    API_COMPILE(WiFi.setCredentials("ssid)",4,"password", 8, WPA2));
-    API_COMPILE(WiFi.setCredentials("ssid)",4,"password", 8, WPA2, WLAN_CIPHER_AES));
-    API_COMPILE(WiFi.setCredentials("ssid)","password", WPA2, WLAN_CIPHER_AES));
+    bool ok = false;
+    API_COMPILE(ok = WiFi.setCredentials("ssid)",4,"password", 8, WPA2));
+    API_COMPILE(ok = WiFi.setCredentials("ssid)",4,"password", 8, WPA2, WLAN_CIPHER_AES));
+    API_COMPILE(ok = WiFi.setCredentials("ssid)","password", WPA2, WLAN_CIPHER_AES));
+    (void)ok; // avoid unused warning
 }
 
 test(api_wifi_setStaticIP)

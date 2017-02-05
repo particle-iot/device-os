@@ -148,14 +148,10 @@ public:
             return -1;
         }
 
-        WLanSecurityType security = credentials->security;
-
-        if (0 == credentials->password[0])
+        if (!credentials->password || 0 == credentials->password[0])
         {
-            security = WLAN_SEC_UNSEC;
+            credentials->security = WLAN_SEC_UNSEC;
         }
-
-        credentials->security = security;
 
         int result = wlan_set_credentials(credentials);
         if (!result)
