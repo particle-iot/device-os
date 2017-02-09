@@ -7569,9 +7569,9 @@ The function also handles negative numbers well, so that this example
 
 is also valid and works well.
 
-The `map()` function uses integer math so will not generate fractions, when the math might indicate that it should do so. Fractional remainders are truncated, and are not rounded or averaged.
+When called with integers, the `map()` function uses integer math so will not generate fractions, when the math might indicate that it should do so. Fractional remainders are truncated, not rounded.
 
-*Parameters:*
+*Parameters can either be integers or floating point numbers:*
 
 - `value`: the number to map
 - `fromLow`: the lower bound of the value's current range
@@ -7579,15 +7579,18 @@ The `map()` function uses integer math so will not generate fractions, when the 
 - `toLow`: the lower bound of the value's target range
 - `toHigh`: the upper bound of the value's target range
 
-The function returns the mapped value
+The function returns the mapped value, as integer or floating point depending on the arguments.
 
 *Appendix:*
 For the mathematically inclined, here's the whole function
 
 ```C++
-long map(long x, long in_min, long in_max, long out_min, long out_max)
+int map(int value, int fromStart, int fromEnd, int toStart, int toEnd)
 {
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    if (fromEnd == fromStart) {
+        return value;
+    }
+    return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;
 }
 ```
 
