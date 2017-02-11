@@ -121,9 +121,9 @@ void manage_network_connection()
     }
     else
     {
-        if (!SPARK_WLAN_STARTED || (spark_cloud_flag_auto_connect() && !network.connected()))
+        if (!SPARK_WLAN_STARTED || (spark_cloud_flag_auto_connect() && !network.ready()))
         {
-            INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.connected()");
+            INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.ready()");
             network.connect();
         }
     }
