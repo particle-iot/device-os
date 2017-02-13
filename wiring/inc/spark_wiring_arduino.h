@@ -171,11 +171,11 @@ typedef volatile uint32_t RwReg;
 #ifdef __cplusplus
 
 #ifndef isnan
-#define isnan std::isnan
+using std::isnan;
 #endif
 
 #ifndef isinf
-#define isinf std::isinf
+using std::isinf;
 #endif
 
 
