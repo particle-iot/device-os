@@ -68,6 +68,7 @@ inline void CLR_WLAN_WD() {
     WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog_duration);
 }
 
+// #define DEBUG_NETWORK_STATE
 #ifdef DEBUG_NETWORK_STATE
 class ManagedNetworkInterface;
 
@@ -84,11 +85,11 @@ private:
     void dump() const;
 };
 
-#define DUMP_NETWORK_STATE() \
+#define LOG_NETWORK_STATE() \
         const NetworkStateLogger PP_CAT(_networkStateLogger_, __COUNTER__)(*this, __PRETTY_FUNCTION__)
 
-#else
-#define DUMP_NETWORK_STATE()
+#else // !defined(DEBUG_NETWORK_STATE)
+#define LOG_NETWORK_STATE()
 #endif
 
 /**
@@ -211,7 +212,7 @@ protected:
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SMART_CONFIG_STOP = 0;
@@ -335,7 +336,7 @@ public:
 
     void listen(bool stop=false) override
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         if (stop) {
             WLAN_LISTEN_ON_FAILED_CONNECT = 0;  // ensure a failed wifi connection attempt doesn't bring the device back to listening mode
             WLAN_SMART_CONFIG_START = 0; // Cancel pending transition to listening mode
@@ -366,7 +367,7 @@ public:
 
     void connect(bool listen_enabled=true) override
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
                 (int)listening(), (int)WLAN_SMART_CONFIG_START);
         if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
@@ -403,7 +404,7 @@ public:
 
     void disconnect() override
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
             const bool was_connected = WLAN_CONNECTED;
@@ -441,7 +442,7 @@ public:
 
     void on() override
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         if (!SPARK_WLAN_STARTED)
         {
             system_notify_event(network_status, network_status_powering_on);
@@ -457,7 +458,7 @@ public:
 
     void off(bool disconnect_cloud=false) override
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
             disconnect();
@@ -483,14 +484,14 @@ public:
 
     void notify_listening_complete()
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         WLAN_SMART_CONFIG_FINISHED = 1;
         WLAN_SMART_CONFIG_STOP = 1;
     }
 
     void notify_connected()
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         /* If DHCP has completed, don't re-arm WD due to spurious notify_connected()
          * from WICED on loss of internet and reconnect
          */
@@ -505,7 +506,7 @@ public:
 
     void notify_disconnected()
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         cloud_disconnect(false); // don't close the socket on the callback since this causes a lockup on the Core
         if (WLAN_CONNECTING || WLAN_CONNECTED) {
             if (WLAN_CONNECTED) {
@@ -534,21 +535,20 @@ public:
 
     void notify_dhcp(bool dhcp)
     {
-        DUMP_NETWORK_STATE();
+        LOG_NETWORK_STATE();
         WLAN_CONNECTING = 0;
         WLAN_DHCP_PENDING = 0;
         LED_SIGNAL_STOP(NETWORK_DHCP);
         if (dhcp)
         {
+            // notify_dhcp() is called even in case of static IP configuration, so here we notify
+            // final connection state for both dynamic and static IP configurations
             INFO("CLR_WLAN_WD 1, DHCP success");
             CLR_WLAN_WD();
             WLAN_CONNECTED = 1;
             WLAN_LISTEN_ON_FAILED_CONNECT = false;
             LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);
             LED_SIGNAL_STOP(NETWORK_CONNECTING);
-
-            // notify_dhcp() is called even in case of static IP configuration, so here we notify
-            // final connection state for both dynamic and static IP configurations
             system_notify_event(network_status, network_status_connected);
         }
         else
@@ -558,7 +558,7 @@ public:
                 LED_SIGNAL_STOP(NETWORK_CONNECTING);
                 listen();
             } else {
-                INFO("DHCP fail, ARM_WLAN_WD 5");
+                INFO("DHCP fail, ARM_WLAN_WD 4");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
             }
 
@@ -681,7 +681,6 @@ inline void NetworkStateLogger::dump() const {
 }
 
 #undef NETWORK_STATE_PRINTF
-
-#endif // DEBUG_NETWORK_STATE
+#endif // defined(DEBUG_NETWORK_STATE)
 
 #endif  /* SYSTEM_NETWORK_INTERNAL_H */
