@@ -23,22 +23,23 @@
 // List of all defined system errors
 #define SYSTEM_ERRORS \
         (NONE, "", 0), \
-        (UNKNOWN, "Unknown error", 100), \
-        (BUSY, "Resource busy", 200), \
-        (NOT_SUPPORTED, "Not supported", 300), \
-        (NOT_ALLOWED, "Not allowed", 400), \
-        (CANCELLED, "Operation cancelled", 500), \
-        (ABORTED, "Operation aborted", 600), \
-        (TIMEOUT, "Timeout error", 700), \
-        (NOT_FOUND, "Not found", 800), \
-        (ALREADY_EXISTS, "Already exists", 900), \
-        (TOO_LARGE, "Too large data", 1000), \
-        (LIMIT_EXCEEDED, "Limit exceeded", 1100), \
-        (INVALID_STATE, "Invalid state", 1200), \
-        (IO, "IO error", 1300), \
-        (NETWORK, "Network error", 1400), \
-        (PROTOCOL, "Protocol error", 1500), \
-        (INTERNAL, "Internal error", 1600)
+        (UNKNOWN, "Unknown error", -100), \
+        (BUSY, "Resource busy", -110), \
+        (NOT_SUPPORTED, "Not supported", -120), \
+        (NOT_ALLOWED, "Not allowed", -130), \
+        (CANCELLED, "Operation cancelled", -140), \
+        (ABORTED, "Operation aborted", -150), \
+        (TIMEOUT, "Timeout error", -160), \
+        (NOT_FOUND, "Not found", -170), \
+        (ALREADY_EXISTS, "Already exists", -180), \
+        (TOO_LARGE, "Too large data", -190), \
+        (LIMIT_EXCEEDED, "Limit exceeded", -200), \
+        (INVALID_STATE, "Invalid state", -210), \
+        (IO, "IO error", -220), \
+        (NETWORK, "Network error", -230), \
+        (PROTOCOL, "Protocol error", -240), \
+        (INTERNAL, "Internal error", -250), \
+        (NO_MEMORY, "Memory allocation error", -260)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
@@ -60,7 +61,7 @@ extern "C" {
 
 typedef enum system_error {
     // SYSTEM_ERROR_NONE = 0,
-    // SYSTEM_ERROR_UNKNOWN = 100,
+    // SYSTEM_ERROR_UNKNOWN = -100,
     // ...
     SYSTEM_ERROR_ENUM_VALUES(SYSTEM_ERROR_)
 } system_error;

@@ -31,7 +31,7 @@ public:
     // Error type
     enum Type {
         // NONE = 0,
-        // UNKNOWN = 100,
+        // UNKNOWN = -100,
         // ...
         SYSTEM_ERROR_ENUM_VALUES()
     };
