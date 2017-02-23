@@ -97,8 +97,9 @@ bool network_sleep_flag(uint32_t flags)
     return (flags & 1)==0;
 }
 
-void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
+int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_impl(sleepMode, seconds, param, reserved));
     // TODO - determine if these are valuable:
     // - Currently publishes will get through with or without #1.
     // - More data is consumed with #1.
@@ -146,6 +147,7 @@ void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, v
             break;
 #endif
     }
+    return 0;
 }
 
 int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
@@ -207,4 +209,10 @@ void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds
     // Cancel current connection attempt to unblock the system thread
     network.connect_cancel(true);
     system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved);
+}
+
+void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
+{
+    network.connect_cancel(true);
+    system_sleep_impl(sleepMode, seconds, param, reserved);
 }
