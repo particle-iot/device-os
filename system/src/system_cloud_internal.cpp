@@ -304,6 +304,7 @@ void encode_endpoint(sockaddr_t& tSocketAddr, const IPAddress& ip_addr, const ui
     tSocketAddr.sa_data[5] = ip_addr[3];
 }
 
+volatile bool cloud_socket_aborted = false;
 
 #if HAL_PLATFORM_CLOUD_UDP
 struct Endpoint
@@ -331,9 +332,9 @@ SessionConnection cloud_endpoint;
 
 int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
     {
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
         //break from any blocking loop
         return -1;
     }
@@ -343,10 +344,10 @@ int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
 
 int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
     {
         //break from any blocking loop
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
         return -1;
     }
 
@@ -387,9 +388,9 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 // Returns number of bytes sent or -1 if an error occurred
 int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
     {
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
         //break from any blocking loop
         return -1;
     }
@@ -402,10 +403,10 @@ int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
 // Returns number of bytes received or -1 if an error occurred
 int Spark_Receive(unsigned char *buf, uint32_t buflen, void* reserved)
 {
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed())
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
     {
         //break from any blocking loop
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || isSocketClosed()");
+        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
         return -1;
     }
 
@@ -667,6 +668,7 @@ const int CLAIM_CODE_SIZE = 63;
 
 int Spark_Handshake(bool presence_announce)
 {
+    cloud_socket_aborted = false; // Clear cancellation flag for socket operations
 	LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
     int err = spark_protocol_handshake(sp);
     if (!err)
@@ -1367,5 +1369,11 @@ void Spark_Wake(void)
 {
 #ifndef SPARK_NO_CLOUD
 	spark_protocol_command(sp, ProtocolCommands::WAKE);
+#endif
+}
+
+void Spark_Abort() {
+#ifndef SPARK_NO_CLOUD
+    cloud_socket_aborted = true;
 #endif
 }

@@ -221,22 +221,30 @@ void system_display_rssi() {
     ledCounter.start(bars);
 }
 
-void system_handle_button_click()
+void system_power_off() {
+    LED_SIGNAL_START(POWER_OFF, CRITICAL);
+    SYSTEM_POWEROFF = 1;
+    cancel_connection(); // Unblock the system thread
+}
+
+void system_handle_button_clicks(bool isIsr)
 {
-    const uint8_t clicks = button_final_clicks;
-    button_final_clicks = 0;
-    switch (clicks) {
-    case 1: // Single click
+    switch (button_final_clicks) {
+    case 1: { // Single click
+        if (isIsr) {
+            return; // The event will be processed in the system loop
+        }
         system_display_rssi();
         break;
-    case 2: // Double click
-        LED_SIGNAL_START(POWER_OFF, CRITICAL); // TODO: Start signal in a separate function
-        SYSTEM_POWEROFF = 1; // ...along with setting of this flag
-        network.connect_cancel(true);
+    }
+    case 2: { // Double click
+        system_power_off();
         break;
+    }
     default:
         break;
     }
+    button_final_clicks = 0;
 }
 
 #endif // #if Wiring_SetupButtonUX
@@ -249,6 +257,10 @@ void reset_button_click()
     if (clicks > 0) {
         system_notify_event(button_final_click, clicks);
         button_final_clicks = clicks;
+#if Wiring_SetupButtonUX
+        // Certain numbers of clicks can be processed directly in ISR
+        system_handle_button_clicks(HAL_IsISR());
+#endif
     }
 }
 
@@ -444,7 +456,7 @@ extern "C" void HAL_SysTick_Handler(void)
     // determine if the button press needs to change the state (and hasn't done so already))
     else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
-        network.connect_cancel(true);
+        cancel_connection(); // Unblock the system thread
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
