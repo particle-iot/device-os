@@ -54,6 +54,16 @@ The [makefile documentation](build.md) describes the build options supported and
 
 * You get `make: *** No targets specified and no makefile found.  Stop.`
   Solution: `cd firmware/main`
+  
+* Newer GCCs produce this error message:
+  ```
+MCU/STM32F2xx/SPARK_Firmware_Driver/src/system_stm32f2xx.c: In function 'SetSysClock':
+MCU/STM32F2xx/SPARK_Firmware_Driver/src/system_stm32f2xx.c:394:5: error: this 'while' clause does not guard... [-Werror=misleading-indentation]
+     while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS ) != RCC_CFGR_SWS_PLL);
+     ^~~~~
+  ```
+  Solution: Add `CFLAGS=-Wno-misleading-indentation` to the make command to disable this warning altogether.
+  Example: `make clean all PLATFORM=photon CFLAGS=-Wno-misleading-indentation program-dfu`
 
 Please issue a pull request if you come across similar issues/fixes that trip you up.
 
