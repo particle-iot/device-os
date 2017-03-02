@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
@@ -68,11 +43,12 @@ extern "C" {
  *          TLS -> Host Function Declarations
  ******************************************************/
 
-extern tls_result_t tls_host_create_buffer   ( wiced_tls_context_t* ssl, uint8_t** buffer, uint16_t buffer_size );
+extern tls_result_t tls_host_create_buffer   ( wiced_tls_workspace_t* ssl, uint8_t** buffer, uint16_t buffer_size );
 extern tls_result_t tls_host_free_packet     ( tls_packet_t* packet );
 extern tls_result_t tls_host_send_tcp_packet ( void* context, tls_packet_t* packet );
 extern tls_result_t tls_host_get_packet_data ( ssl_context* ssl, tls_packet_t* packet, uint32_t offset, uint8_t** data, uint16_t* data_length, uint16_t* available_data_length );
 extern tls_result_t tls_host_set_packet_start( tls_packet_t* packet, uint8_t* start );
+extern tls_result_t tls_calculate_encrypt_buffer_length( ssl_context* context, uint16_t* required_buff_size, uint16_t payload_size);
 
 /*
  * This should wait for a specified amount of time to receive a packet.

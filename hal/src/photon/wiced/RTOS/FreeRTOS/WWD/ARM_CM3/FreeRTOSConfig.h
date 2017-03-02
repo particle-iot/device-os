@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 #ifndef FREERTOS_CONFIG_H
@@ -67,6 +42,8 @@ extern "C" {
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
+#define configNO_MALLOC                             ( 0 )
+#define configUSE_NEWLIB_MALLOC_LOCK                ( 0 )
 #define configUSE_TIMERS                            ( 1 )
 #define configTIMER_TASK_PRIORITY                   ( 2 )
 #define configTIMER_QUEUE_LENGTH                    ( 5 )
@@ -75,8 +52,8 @@ extern "C" {
 #define configUSE_IDLE_HOOK                         ( 0 )
 #define configUSE_TICK_HOOK                         ( 1 )
 #define configCPU_CLOCK_HZ                          ( ( unsigned long ) CPU_CLOCK_HZ )
-#define configTICK_RATE_HZ                          ( ( portTickType ) SYSTICK_FREQUENCY )
-#define configMAX_PRIORITIES                        ( ( unsigned portBASE_TYPE ) 10 )
+#define configTICK_RATE_HZ                          ( ( TickType_t ) SYSTICK_FREQUENCY )
+#define configMAX_PRIORITIES                        ( 10 )
 #define configMINIMAL_STACK_SIZE                    ( ( unsigned short ) (250 / sizeof( portSTACK_TYPE )) ) /* size of idle thread stack */
 #define configMAX_TASK_NAME_LEN                     ( 16 )
 #ifndef configUSE_TRACE_FACILITY

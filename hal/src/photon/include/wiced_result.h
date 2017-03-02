@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -41,10 +16,10 @@
 
 #include "wwd_constants.h"
 #include "wiced_resource.h"
-#include "security/BESL/include/besl_structures.h"
+#include "besl_structures.h"
 #include "platform_constants.h"
 #include "wiced_constants.h"
-//#include "../libraries/drivers/bluetooth/include/wiced_bt_constants.h"
+//#include "wiced_bluetooth_result.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,8 +67,30 @@ extern "C" {
     RESULT_ENUM( prefix, CORRUPT_PACKET_BUFFER,         27 ),   /**< Packet buffer is corrupted */     \
     RESULT_ENUM( prefix, UNKNOWN_NETWORK_STACK_ERROR,   28 ),   /**< Unknown network stack error */    \
     RESULT_ENUM( prefix, NO_STORED_AP_IN_DCT,           29 ),   /**< DCT contains no AP credentials */ \
-    RESULT_ENUM( prefix, STA_JOIN_FAILED,               30 ),   /**< Join failed */ \
-    RESULT_ENUM( prefix, PACKET_BUFFER_OVERFLOW,        31 ),   /**< Packet buffer overflow */
+    RESULT_ENUM( prefix, STA_JOIN_FAILED,               30 ),   /**< Join failed */                    \
+    RESULT_ENUM( prefix, PACKET_BUFFER_OVERFLOW,        31 ),   /**< Packet buffer overflow */         \
+    RESULT_ENUM( prefix, ALREADY_INITIALIZED,           32 ),   /**< Module has already been inited */
+
+
+#define FILESYSTEM_RESULT_LIST( prefix ) \
+        RESULT_ENUM( prefix, SUCCESS,                       0 ),   /**< Success */               \
+        RESULT_ENUM( prefix, PENDING,                       1 ),   /**< Pending */               \
+        RESULT_ENUM( prefix, TIMEOUT,                       2 ),   /**< Timeout */               \
+        RESULT_ENUM( prefix, PARTIAL_RESULTS,               3 ),   /**< Partial results */       \
+        RESULT_ENUM( prefix, ERROR,                         4 ),   /**< Error */                 \
+        RESULT_ENUM( prefix, BADARG,                        5 ),   /**< Bad Arguments */         \
+        RESULT_ENUM( prefix, BADOPTION,                     6 ),   /**< Mode not supported */    \
+        RESULT_ENUM( prefix, UNSUPPORTED,                   7 ),   /**< Unsupported function */  \
+        RESULT_ENUM( prefix, DISK_ERROR,                10008 ),   /**< Low level error accessing media */        \
+        RESULT_ENUM( prefix, PATH_NOT_FOUND,            10009 ),   /**< Path was not found in filesystem */        \
+        RESULT_ENUM( prefix, MEDIA_NOT_READY,           10010 ),   /**< Media is not present or ready for access */          \
+        RESULT_ENUM( prefix, ACCESS_DENIED,             10011 ),   /**< Access denied due to permissions  */      \
+        RESULT_ENUM( prefix, WRITE_PROTECTED,           10012 ),   /**< Media is write protected */    \
+        RESULT_ENUM( prefix, OUT_OF_SPACE,              10013 ),   /**< No free space left on media  */ \
+        RESULT_ENUM( prefix, FILENAME_BUFFER_TOO_SMALL, 10014 ),   /**< Filename buffer was too small when retrieving directory contents  */ \
+        RESULT_ENUM( prefix, END_OF_RESOURCE,           10015 ),   /**< End of file/directory reached  */ \
+        RESULT_ENUM( prefix, FILESYSTEM_INVALID,        10016 ),   /**< Filesystem has an unrecoverable error */ \
+        RESULT_ENUM( prefix, BLOCK_SIZE_BAD,            10017 ),   /**< Block size is invalid - not a multiple or sub-multiple of DEFAULT_SECTOR_SIZE */
 
 /******************************************************
  * @endcond    Enumerations
@@ -104,16 +101,17 @@ extern "C" {
  */
 typedef enum
 {
-    WICED_RESULT_LIST   (  WICED_          )  /*    0 -  999 */
-    WWD_RESULT_LIST     (  WICED_WWD_      )  /* 1000 - 1999 */
-    WLAN_RESULT_LIST    (  WICED_WLAN_     )  /* 2000 - 2999 */
-    WPS_BESL_RESULT_LIST(  WICED_BESL_     )  /* 3000 - 3999 */
-    RESOURCE_RESULT_LIST(  WICED_RESOURCE_ )  /* 4000 - 4999 */
-    TLS_RESULT_LIST     (  WICED_TLS_      )  /* 5000 - 5999 */
-    PLATFORM_RESULT_LIST(  WICED_PLATFORM_ )  /* 6000 - 6999 */
-    TCPIP_RESULT_LIST   (  WICED_TCPIP_    )  /* 7000 - 7999 */
- //   BT_RESULT_LIST      (  WICED_BT_       )  /* 8000 - 8999 */
- //   P2P_RESULT_LIST     (  WICED_P2P_      )  /* 9000 - 9999 */
+    WICED_RESULT_LIST     ( WICED_            )  /*     0 -   999 */
+    WWD_RESULT_LIST       ( WICED_WWD_        )  /*  1000 -  1999 */
+    WLAN_RESULT_LIST      ( WICED_WLAN_       )  /*  2000 -  2999 */
+    WPS_BESL_RESULT_LIST  ( WICED_BESL_       )  /*  3000 -  3999 */
+    RESOURCE_RESULT_LIST  ( WICED_RESOURCE_   )  /*  4000 -  4999 */
+    TLS_RESULT_LIST       ( WICED_TLS_        )  /*  5000 -  5999 */
+    PLATFORM_RESULT_LIST  ( WICED_PLATFORM_   )  /*  6000 -  6999 */
+    TCPIP_RESULT_LIST     ( WICED_TCPIP_      )  /*  7000 -  7999 */
+    // BT_RESULT_LIST        ( WICED_BT_         )  /*  8000 -  8999 */
+    // P2P_RESULT_LIST       ( WICED_P2P_        )  /*  9000 -  9999 */
+    FILESYSTEM_RESULT_LIST( WICED_FILESYSTEM_ )  /* 10000 - 10999 */
 } wiced_result_t;
 
 /******************************************************

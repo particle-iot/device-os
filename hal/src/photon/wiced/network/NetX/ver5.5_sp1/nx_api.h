@@ -1,20 +1,20 @@
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*            Copyright (c) 1996-2013 by Express Logic Inc.               */ 
+/*                                                                        */ 
+/*  This software is copyrighted by and is the sole property of Express   */ 
+/*  Logic, Inc.  All rights, title, ownership, or other interests         */ 
+/*  in the software remain the property of Express Logic, Inc.  This      */ 
+/*  software may only be used in accordance with the corresponding        */ 
+/*  license agreement.  Any unauthorized use, duplication, transmission,  */ 
+/*  distribution, or disclosure of this software is expressly forbidden.  */ 
 /*                                                                        */
-/*            Copyright (c) 1996-2013 by Express Logic Inc.               */
-/*                                                                        */
-/*  This software is copyrighted by and is the sole property of Express   */
-/*  Logic, Inc.  All rights, title, ownership, or other interests         */
-/*  in the software remain the property of Express Logic, Inc.  This      */
-/*  software may only be used in accordance with the corresponding        */
-/*  license agreement.  Any unauthorized use, duplication, transmission,  */
-/*  distribution, or disclosure of this software is expressly forbidden.  */
-/*                                                                        */
-/*  This Copyright notice may not be removed or modified without prior    */
-/*  written consent of Express Logic, Inc.                                */
-/*                                                                        */
-/*  Express Logic, Inc. reserves the right to modify this software        */
-/*  without notice.                                                       */
-/*                                                                        */
+/*  This Copyright notice may not be removed or modified without prior    */ 
+/*  written consent of Express Logic, Inc.                                */ 
+/*                                                                        */ 
+/*  Express Logic, Inc. reserves the right to modify this software        */ 
+/*  without notice.                                                       */ 
+/*                                                                        */ 
 /*  Express Logic, Inc.                     info@expresslogic.com         */
 /*  11423 West Bernardo Court               http://www.expresslogic.com   */
 /*  San Diego, CA  92127                                                  */
@@ -24,7 +24,7 @@
 
 /**************************************************************************/
 /**************************************************************************/
-/**                                                                       */
+/**                                                                       */ 
 /** NetX Component                                                        */
 /**                                                                       */
 /**   Application Interface (API)                                         */
@@ -33,77 +33,77 @@
 /**************************************************************************/
 
 
-/**************************************************************************/
-/*                                                                        */
-/*  APPLICATION INTERFACE DEFINITION                       RELEASE        */
-/*                                                                        */
-/*    nx_api.h                                            PORTABLE C      */
+/**************************************************************************/ 
+/*                                                                        */ 
+/*  APPLICATION INTERFACE DEFINITION                       RELEASE        */ 
+/*                                                                        */ 
+/*    nx_api.h                                            PORTABLE C      */ 
 /*                                                           5.5 (sp1)    */
-/*  AUTHOR                                                                */
-/*                                                                        */
-/*    William E. Lamie, Express Logic, Inc.                               */
-/*                                                                        */
-/*  DESCRIPTION                                                           */
-/*                                                                        */
-/*    This file defines the basic Application Interface (API) to the      */
-/*    high-performance NetX TCP/IP implementation for the ThreadX         */
-/*    real-time kernel.  All service prototypes and data structure        */
-/*    definitions are defined in this file. Please note that basic data   */
-/*    type definitions and other architecture-specific information is     */
-/*    contained in the file nx_port.h.                                    */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
-/*    DATE              NAME                      DESCRIPTION             */
-/*                                                                        */
-/*  12-12-2005     William E. Lamie         Initial Version 5.0           */
-/*  08-09-2007     William E. Lamie         Modified comment(s), and      */
-/*                                            changed UL to ULONG cast,   */
-/*                                            resulting in version 5.1    */
-/*  07-04-2009     William E. Lamie         Modified comment(s), added    */
-/*                                            new services, added function*/
-/*                                            prototypes, added TCP window*/
-/*                                            update callback, and added  */
-/*                                            logic for trace support,    */
+/*  AUTHOR                                                                */ 
+/*                                                                        */ 
+/*    William E. Lamie, Express Logic, Inc.                               */ 
+/*                                                                        */ 
+/*  DESCRIPTION                                                           */ 
+/*                                                                        */ 
+/*    This file defines the basic Application Interface (API) to the      */ 
+/*    high-performance NetX TCP/IP implementation for the ThreadX         */ 
+/*    real-time kernel.  All service prototypes and data structure        */ 
+/*    definitions are defined in this file. Please note that basic data   */ 
+/*    type definitions and other architecture-specific information is     */ 
+/*    contained in the file nx_port.h.                                    */ 
+/*                                                                        */ 
+/*  RELEASE HISTORY                                                       */ 
+/*                                                                        */ 
+/*    DATE              NAME                      DESCRIPTION             */ 
+/*                                                                        */ 
+/*  12-12-2005     William E. Lamie         Initial Version 5.0           */ 
+/*  08-09-2007     William E. Lamie         Modified comment(s), and      */ 
+/*                                            changed UL to ULONG cast,   */ 
+/*                                            resulting in version 5.1    */ 
+/*  07-04-2009     William E. Lamie         Modified comment(s), added    */ 
+/*                                            new services, added function*/ 
+/*                                            prototypes, added TCP window*/ 
+/*                                            update callback, and added  */ 
+/*                                            logic for trace support,    */ 
 /*                                            resulting in version 5.2    */
 /*  12-31-2009     Yuxin Zhou               Added multi-home, loopback    */
-/*                                            interface, static routing,  */
-/*                                            IGMPv2 support, added new   */
-/*                                            prototypes, code cleanup,   */
-/*                                            added support for NAT,      */
-/*                                            added TCP window scaling,   */
+/*                                            interface, static routing,  */ 
+/*                                            IGMPv2 support, added new   */ 
+/*                                            prototypes, code cleanup,   */ 
+/*                                            added support for NAT,      */ 
+/*                                            added TCP window scaling,   */  
 /*                                            resulting in version 5.3    */
-/*  06-30-2011     Yuxin Zhou               Modified comment(s), added    */
+/*  06-30-2011     Yuxin Zhou               Modified comment(s), added    */ 
 /*                                            TCP keepalive flag, added   */
 /*                                            NX_IP_INTERFACE_LINK_ENABLED*/
-/*                                            IP status, modified minor   */
-/*                                            version number, added       */
-/*                                            additional notification     */
-/*                                            data structures/prototypes, */
-/*                                            added macro                 */
-/*                                            NX_PACKET_HEADER_PAD_SIZE   */
-/*                                            to allow an application to  */
-/*                                            specify the number of ULONG */
-/*                                            words at the end of the     */
-/*                                            NX_PACKET header such that  */
-/*                                            the payload area starts on  */
-/*                                            a desired alignment, and    */
-/*                                            changed UDP socket interface*/
-/*                                            send to use a pointer to a  */
-/*                                            packet pointer,             */
+/*                                            IP status, modified minor   */ 
+/*                                            version number, added       */ 
+/*                                            additional notification     */ 
+/*                                            data structures/prototypes, */ 
+/*                                            added macro                 */ 
+/*                                            NX_PACKET_HEADER_PAD_SIZE   */ 
+/*                                            to allow an application to  */ 
+/*                                            specify the number of ULONG */ 
+/*                                            words at the end of the     */ 
+/*                                            NX_PACKET header such that  */ 
+/*                                            the payload area starts on  */ 
+/*                                            a desired alignment, and    */ 
+/*                                            changed UDP socket interface*/ 
+/*                                            send to use a pointer to a  */ 
+/*                                            packet pointer,             */ 
 /*                                            resulting in version 5.4    */
 /*  04-30-2013     Yuxin Zhou               Modified comment(s), added a  */
-/*                                            callback function for TCP   */
-/*                                            SYN messages, before the    */
+/*                                            callback function for TCP   */  
+/*                                            SYN messages, before the    */ 
 /*                                            connection is accepted,     */
-/*                                            making 0xff the default     */
-/*                                            value for raw type,         */
-/*                                            resulting in version 5.5    */
+/*                                            making 0xff the default     */  
+/*                                            value for raw type,         */ 
+/*                                            resulting in version 5.5    */ 
 /*  xx-xx-xxxx     Yuxin Zhou               Modified comment(s), added    */
 /*                                            new service,                */
 /*                                            resulting in version 5.5-sp1*/
-/*                                                                        */
-/**************************************************************************/
+/*                                                                        */ 
+/**************************************************************************/ 
 
 #ifndef NX_API_H
 #define NX_API_H
@@ -133,7 +133,7 @@ extern   "C" {
 #include "nx_port.h"
 
 
-/* Include the ThreadX trace information. */
+/* Include the ThreadX trace information. */ 
 #include "tx_trace.h"
 
 
@@ -145,25 +145,25 @@ extern   "C" {
 /* Define the object types in NetX, if not defined.  */
 
 #ifndef NX_TRACE_OBJECT_TYPE_IP
-#define NX_TRACE_OBJECT_TYPE_IP                         11              /* P1 = stack start address, P2 = stack size         */
-#define NX_TRACE_OBJECT_TYPE_PACKET_POOL                12              /* P1 = packet size, P2 = number of packets          */
-#define NX_TRACE_OBJECT_TYPE_TCP_SOCKET                 13              /* P1 = IP address, P2 = window size                 */
-#define NX_TRACE_OBJECT_TYPE_UDP_SOCKET                 14              /* P1 = IP address, P2 = receive queue maximum       */
+#define NX_TRACE_OBJECT_TYPE_IP                         11              /* P1 = stack start address, P2 = stack size         */ 
+#define NX_TRACE_OBJECT_TYPE_PACKET_POOL                12              /* P1 = packet size, P2 = number of packets          */ 
+#define NX_TRACE_OBJECT_TYPE_TCP_SOCKET                 13              /* P1 = IP address, P2 = window size                 */ 
+#define NX_TRACE_OBJECT_TYPE_UDP_SOCKET                 14              /* P1 = IP address, P2 = receive queue maximum       */ 
 #endif
 
 
 /* Define event filters that can be used to selectively disable certain events or groups of events.  */
 
 #define NX_TRACE_ALL_EVENTS                                 0x00FF8000  /* All NetX events                           */
-#define NX_TRACE_INTERNAL_EVENTS                            0x00008000  /* NetX internal events                      */
-#define NX_TRACE_ARP_EVENTS                                 0x00010000  /* NetX ARP events                           */
-#define NX_TRACE_ICMP_EVENTS                                0x00020000  /* NetX ICMP events                          */
-#define NX_TRACE_IGMP_EVENTS                                0x00040000  /* NetX IGMP events                          */
-#define NX_TRACE_IP_EVENTS                                  0x00080000  /* NetX IP events                            */
-#define NX_TRACE_PACKET_EVENTS                              0x00100000  /* NetX Packet events                        */
-#define NX_TRACE_RARP_EVENTS                                0x00200000  /* NetX RARP events                          */
-#define NX_TRACE_TCP_EVENTS                                 0x00400000  /* NetX TCP events                           */
-#define NX_TRACE_UDP_EVENTS                                 0x00800000  /* NetX UDP events                           */
+#define NX_TRACE_INTERNAL_EVENTS                            0x00008000  /* NetX internal events                      */ 
+#define NX_TRACE_ARP_EVENTS                                 0x00010000  /* NetX ARP events                           */ 
+#define NX_TRACE_ICMP_EVENTS                                0x00020000  /* NetX ICMP events                          */ 
+#define NX_TRACE_IGMP_EVENTS                                0x00040000  /* NetX IGMP events                          */ 
+#define NX_TRACE_IP_EVENTS                                  0x00080000  /* NetX IP events                            */ 
+#define NX_TRACE_PACKET_EVENTS                              0x00100000  /* NetX Packet events                        */ 
+#define NX_TRACE_RARP_EVENTS                                0x00200000  /* NetX RARP events                          */ 
+#define NX_TRACE_TCP_EVENTS                                 0x00400000  /* NetX TCP events                           */ 
+#define NX_TRACE_UDP_EVENTS                                 0x00800000  /* NetX UDP events                           */ 
 
 
 /* Define the trace events in NetX, if not defined.  */
@@ -174,8 +174,8 @@ extern   "C" {
 /* Define the NetX internal events first.  */
 
 #ifndef NX_TRACE_INTERNAL_ARP_REQUEST_RECEIVE
-#define NX_TRACE_INTERNAL_ARP_REQUEST_RECEIVE               300         /* I1 = ip ptr, I2 = source IP address, I3 = packet ptr                     */
-#define NX_TRACE_INTERNAL_ARP_REQUEST_SEND                  301         /* I1 = ip ptr, I2 = destination IP address, I3 = packet ptr                */
+#define NX_TRACE_INTERNAL_ARP_REQUEST_RECEIVE               300         /* I1 = ip ptr, I2 = source IP address, I3 = packet ptr                     */ 
+#define NX_TRACE_INTERNAL_ARP_REQUEST_SEND                  301         /* I1 = ip ptr, I2 = destination IP address, I3 = packet ptr                */ 
 #define NX_TRACE_INTERNAL_ARP_RESPONSE_RECEIVE              302         /* I1 = ip ptr, I2 = source IP address, I3 = packet ptr                     */
 #define NX_TRACE_INTERNAL_ARP_RESPONSE_SEND                 303         /* I1 = ip ptr, I2 = destination IP address, I3 = packet ptr                */
 #define NX_TRACE_INTERNAL_ICMP_RECEIVE                      304         /* I1 = ip ptr, I2 = source IP address, I3 = packet ptr, I4 = header word 0 */
@@ -218,95 +218,95 @@ extern   "C" {
 #define NX_TRACE_INTERNAL_IO_DRIVER_UNINITIALIZE            341         /* I1 = ip ptr                                                              */
 #define NX_TRACE_INTERNAL_IO_DRIVER_DEFERRED_PROCESSING     342         /* I1 = ip ptr, I2 = packet ptr, I3 = packet size                           */
 
-#define NX_TRACE_ARP_DYNAMIC_ENTRIES_INVALIDATE             350         /* I1 = ip ptr, I2 = entries invalidated                                    */
-#define NX_TRACE_ARP_DYNAMIC_ENTRY_SET                      351         /* I1 = ip ptr, I2 = ip address, I3 = physical msw, I4 = physical lsw       */
-#define NX_TRACE_ARP_ENABLE                                 352         /* I1 = ip ptr, I2 = arp cache memory, I3 = arp cache size                  */
-#define NX_TRACE_ARP_GRATUITOUS_SEND                        353         /* I1 = ip ptr                                                              */
-#define NX_TRACE_ARP_HARDWARE_ADDRESS_FIND                  354         /* I1 = ip ptr, I2 = ip_address, I3 = physical msw, I4 = physical lsw       */
-#define NX_TRACE_ARP_INFO_GET                               355         /* I1 = ip ptr, I2 = arps sent, I3 = arp responses, I3 = arps received      */
-#define NX_TRACE_ARP_IP_ADDRESS_FIND                        356         /* I1 = ip ptr, I2 = ip address, I3 = physical msw, I4 = physical lsw       */
-#define NX_TRACE_ARP_STATIC_ENTRIES_DELETE                  357         /* I1 = ip ptr, I2 = entries deleted                                        */
-#define NX_TRACE_ARP_STATIC_ENTRY_CREATE                    358         /* I1 = ip ptr, I2 = ip address, I3 = physical msw, I4 = physical_lsw       */
-#define NX_TRACE_ARP_STATIC_ENTRY_DELETE                    359         /* I1 = ip ptr, I2 = ip address, I3 = physical_msw, I4 = physical_lsw       */
-#define NX_TRACE_ICMP_ENABLE                                360         /* I1 = ip ptr                                                              */
-#define NX_TRACE_ICMP_INFO_GET                              361         /* I1 = ip ptr, I2 = pings sent, I3 = ping responses, I4 = pings received   */
-#define NX_TRACE_ICMP_PING                                  362         /* I1 = ip ptr, I2 = ip_address, I3 = data ptr, I4 = data size              */
-#define NX_TRACE_IGMP_ENABLE                                363         /* I1 = ip ptr                                                              */
+#define NX_TRACE_ARP_DYNAMIC_ENTRIES_INVALIDATE             350         /* I1 = ip ptr, I2 = entries invalidated                                    */ 
+#define NX_TRACE_ARP_DYNAMIC_ENTRY_SET                      351         /* I1 = ip ptr, I2 = ip address, I3 = physical msw, I4 = physical lsw       */ 
+#define NX_TRACE_ARP_ENABLE                                 352         /* I1 = ip ptr, I2 = arp cache memory, I3 = arp cache size                  */ 
+#define NX_TRACE_ARP_GRATUITOUS_SEND                        353         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_ARP_HARDWARE_ADDRESS_FIND                  354         /* I1 = ip ptr, I2 = ip_address, I3 = physical msw, I4 = physical lsw       */ 
+#define NX_TRACE_ARP_INFO_GET                               355         /* I1 = ip ptr, I2 = arps sent, I3 = arp responses, I3 = arps received      */ 
+#define NX_TRACE_ARP_IP_ADDRESS_FIND                        356         /* I1 = ip ptr, I2 = ip address, I3 = physical msw, I4 = physical lsw       */ 
+#define NX_TRACE_ARP_STATIC_ENTRIES_DELETE                  357         /* I1 = ip ptr, I2 = entries deleted                                        */ 
+#define NX_TRACE_ARP_STATIC_ENTRY_CREATE                    358         /* I1 = ip ptr, I2 = ip address, I3 = physical msw, I4 = physical_lsw       */ 
+#define NX_TRACE_ARP_STATIC_ENTRY_DELETE                    359         /* I1 = ip ptr, I2 = ip address, I3 = physical_msw, I4 = physical_lsw       */  
+#define NX_TRACE_ICMP_ENABLE                                360         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_ICMP_INFO_GET                              361         /* I1 = ip ptr, I2 = pings sent, I3 = ping responses, I4 = pings received   */ 
+#define NX_TRACE_ICMP_PING                                  362         /* I1 = ip ptr, I2 = ip_address, I3 = data ptr, I4 = data size              */ 
+#define NX_TRACE_IGMP_ENABLE                                363         /* I1 = ip ptr                                                              */ 
 #define NX_TRACE_IGMP_INFO_GET                              364         /* I1 = ip ptr, I2 = reports sent, I3 = queries received, I4 = groups joined*/
-#define NX_TRACE_IGMP_LOOPBACK_DISABLE                      365         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IGMP_LOOPBACK_ENABLE                       366         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IGMP_MULTICAST_JOIN                        367         /* I1 = ip ptr, I2 = group address, I3=interface index                      */
-#define NX_TRACE_IGMP_MULTICAST_LEAVE                       368         /* I1 = ip ptr, I2 = group_address                                          */
-#define NX_TRACE_IP_ADDRESS_CHANGE_NOTIFY                   369         /* I1 = ip ptr, I2 = ip address change notify, I3 = additional info         */
-#define NX_TRACE_IP_ADDRESS_GET                             370         /* I1 = ip ptr, I2 = ip address, I3 = network_mask                          */
-#define NX_TRACE_IP_ADDRESS_SET                             371         /* I1 = ip ptr, I2 = ip address, I3 = network_mask                          */
-#define NX_TRACE_IP_CREATE                                  372         /* I1 = ip ptr, I2 = ip address, I3 = network mask, I4 = default_pool       */
-#define NX_TRACE_IP_DELETE                                  373         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IP_DRIVER_DIRECT_COMMAND                   374         /* I1 = ip ptr, I2 = command, I3 = return value                             */
-#define NX_TRACE_IP_FORWARDING_DISABLE                      375         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IP_FORWARDING_ENABLE                       376         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IP_FRAGMENT_DISABLE                        377         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IP_FRAGMENT_ENABLE                         378         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IP_GATEWAY_ADDRESS_SET                     379         /* I1 = ip ptr, I2 = gateway address                                        */
-#define NX_TRACE_IP_INFO_GET                                380         /* I1 = ip ptr, I2 = bytes sent, I3 = bytes received, I4 = packets dropped  */
-#define NX_TRACE_IP_RAW_PACKET_DISABLE                      381         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IP_RAW_PACKET_ENABLE                       382         /* I1 = ip ptr                                                              */
-#define NX_TRACE_IP_RAW_PACKET_RECEIVE                      383         /* I1 = ip ptr, I2 = packet ptr, I3 = wait option                           */
-#define NX_TRACE_IP_RAW_PACKET_SEND                         384         /* I1 = ip ptr, I2 = packet ptr, I3 = destination ip, I4 = type of service  */
-#define NX_TRACE_IP_STATUS_CHECK                            385         /* I1 = ip ptr, I2 = needed status, I3 = actual status, I4 = wait option    */
-#define NX_TRACE_PACKET_ALLOCATE                            386         /* I1 = pool ptr, I2 = packet ptr, I3 = packet type, I4 = available packets */
-#define NX_TRACE_PACKET_COPY                                387         /* I1 = packet ptr, I2 = new packet ptr, I3 = pool ptr, I4 = wait option    */
-#define NX_TRACE_PACKET_DATA_APPEND                         388         /* I1 = packet ptr, I2 = data start, I3 = data size, I4 = pool ptr          */
-#define NX_TRACE_PACKET_DATA_RETRIEVE                       389         /* I1 = packet ptr, I2 = buffer start, I3 = bytes copied                    */
-#define NX_TRACE_PACKET_LENGTH_GET                          390         /* I1 = packet ptr, I2 = length                                             */
-#define NX_TRACE_PACKET_POOL_CREATE                         391         /* I1 = pool ptr, I2 = payload size, I3 = memory ptr, I4 = memory_size      */
-#define NX_TRACE_PACKET_POOL_DELETE                         392         /* I1 = pool ptr                                                            */
-#define NX_TRACE_PACKET_POOL_INFO_GET                       393         /* I1 = pool ptr, I2 = total_packets, I3 = free packets, I4 = empty requests*/
-#define NX_TRACE_PACKET_RELEASE                             394         /* I1 = packet ptr, I2 = packet status, I3 = available packets              */
-#define NX_TRACE_PACKET_TRANSMIT_RELEASE                    395         /* I1 = packet ptr, I2 = packet status, I3 = available packets              */
-#define NX_TRACE_RARP_DISABLE                               396         /* I1 = ip ptr                                                              */
-#define NX_TRACE_RARP_ENABLE                                397         /* I1 = ip ptr                                                              */
-#define NX_TRACE_RARP_INFO_GET                              398         /* I1 = ip ptr, I2 = requests sent, I3 = responses received, I4 = invalids  */
-#define NX_TRACE_SYSTEM_INITIALIZE                          399         /* none                                                                     */
-#define NX_TRACE_TCP_CLIENT_SOCKET_BIND                     400         /* I1 = ip ptr, I2 = socket ptr, I3 = port, I4 = wait option                */
-#define NX_TRACE_TCP_CLIENT_SOCKET_CONNECT                  401         /* I1 = ip ptr, I2 = socket ptr, I3 = server ip, I4 = server port           */
-#define NX_TRACE_TCP_CLIENT_SOCKET_PORT_GET                 402         /* I1 = ip ptr, I2 = socket ptr, I3 = port                                  */
-#define NX_TRACE_TCP_CLIENT_SOCKET_UNBIND                   403         /* I1 = ip ptr, I2 = socket ptr                                             */
-#define NX_TRACE_TCP_ENABLE                                 404         /* I1 = ip ptr                                                              */
-#define NX_TRACE_TCP_FREE_PORT_FIND                         405         /* I1 = ip ptr, I2 = port, I3 = free port                                   */
-#define NX_TRACE_TCP_INFO_GET                               406         /* I1 = ip ptr, I2 = bytes sent, I3 = bytes received, I4 = invalid packets  */
-#define NX_TRACE_TCP_SERVER_SOCKET_ACCEPT                   407         /* I1 = ip ptr, I2 = socket ptr, I3 = wait option, I4 = socket state        */
-#define NX_TRACE_TCP_SERVER_SOCKET_LISTEN                   408         /* I1 = ip ptr, I2 = port, I3 = socket ptr, I4 = listen queue size          */
-#define NX_TRACE_TCP_SERVER_SOCKET_RELISTEN                 409         /* I1 = ip ptr, I2 = port, I3 = socket ptr, I4 = socket state               */
-#define NX_TRACE_TCP_SERVER_SOCKET_UNACCEPT                 410         /* I1 = ip ptr, I2 = socket ptr, I3 = socket state                          */
-#define NX_TRACE_TCP_SERVER_SOCKET_UNLISTEN                 411         /* I1 = ip ptr, I2 = port                                                   */
-#define NX_TRACE_TCP_SOCKET_CREATE                          412         /* I1 = ip ptr, I2 = socket ptr, I3 = type of service, I4 = window size     */
-#define NX_TRACE_TCP_SOCKET_DELETE                          413         /* I1 = ip ptr, I2 = socket ptr, I3 = socket state                          */
-#define NX_TRACE_TCP_SOCKET_DISCONNECT                      414         /* I1 = ip ptr, I2 = socket ptr, I3 = wait option, I4 = socket state        */
-#define NX_TRACE_TCP_SOCKET_INFO_GET                        415         /* I1 = ip ptr, I2 = socket ptr, I3 = bytes sent, I4 = bytes received       */
-#define NX_TRACE_TCP_SOCKET_MSS_GET                         416         /* I1 = ip ptr, I2 = socket ptr, I3 = mss, I4 = socket state                */
-#define NX_TRACE_TCP_SOCKET_MSS_PEER_GET                    417         /* I1 = ip ptr, I2 = socket ptr, I3 = peer_mss, I4 = socket state           */
-#define NX_TRACE_TCP_SOCKET_MSS_SET                         418         /* I1 = ip ptr, I2 = socket ptr, I3 = mss, I4 socket state                  */
-#define NX_TRACE_TCP_SOCKET_RECEIVE                         419         /* I1 = socket ptr, I2 = packet ptr, I3 = length, I4 = rx sequence          */
-#define NX_TRACE_TCP_SOCKET_RECEIVE_NOTIFY                  420         /* I1 = ip ptr, I2 = socket ptr, I3 = receive notify                        */
-#define NX_TRACE_TCP_SOCKET_SEND                            421         /* I1 = socket ptr, I2 = packet ptr, I3 = length, I4 = tx sequence          */
-#define NX_TRACE_TCP_SOCKET_STATE_WAIT                      422         /* I1 = ip ptr, I2 = socket ptr, I3 = desired state, I4 = previous state    */
-#define NX_TRACE_TCP_SOCKET_TRANSMIT_CONFIGURE              423         /* I1 = ip ptr, I2 = socket ptr, I3 = queue depth, I4 = timeout             */
-#define NX_TRACE_UDP_ENABLE                                 424         /* I1 = ip ptr                                                              */
-#define NX_TRACE_UDP_FREE_PORT_FIND                         425         /* I1 = ip ptr, I2 = port, I3 = free port                                   */
-#define NX_TRACE_UDP_INFO_GET                               426         /* I1 = ip ptr, I2 = bytes sent, I3 = bytes received, I4 = invalid packets  */
-#define NX_TRACE_UDP_SOCKET_BIND                            427         /* I1 = ip ptr, I2 = socket ptr, I3 = port, I4 = wait option                */
-#define NX_TRACE_UDP_SOCKET_CHECKSUM_DISABLE                428         /* I1 = ip ptr, I2 = socket ptr                                             */
-#define NX_TRACE_UDP_SOCKET_CHECKSUM_ENABLE                 429         /* I1 = ip ptr, I2 = socket ptr                                             */
-#define NX_TRACE_UDP_SOCKET_CREATE                          430         /* I1 = ip ptr, I2 = socket ptr, I3 = type of service, I4 = queue maximum   */
-#define NX_TRACE_UDP_SOCKET_DELETE                          431         /* I1 = ip ptr, I2 = socket ptr                                             */
-#define NX_TRACE_UDP_SOCKET_INFO_GET                        432         /* I1 = ip ptr, I2 = socket ptr, I3 = bytes sent, I4 = bytes received       */
-#define NX_TRACE_UDP_SOCKET_PORT_GET                        433         /* I1 = ip ptr, I2 = socket ptr, I3 = port                                  */
-#define NX_TRACE_UDP_SOCKET_RECEIVE                         434         /* I1 = ip ptr, I2 = socket ptr, I3 = packet ptr, I4 = packet size          */
-#define NX_TRACE_UDP_SOCKET_RECEIVE_NOTIFY                  435         /* I1 = ip ptr, I2 = socket ptr, I3 = receive notify                        */
-#define NX_TRACE_UDP_SOCKET_SEND                            436         /* I1 = socket ptr, I2 = packet ptr, I3 = packet size, I4 = ip address      */
-#define NX_TRACE_UDP_SOCKET_UNBIND                          437         /* I1 = ip ptr, I2 = socket ptr, I3 = port                                  */
-#define NX_TRACE_UDP_SOURCE_EXTRACT                         438         /* I1 = packet ptr, I2 = ip address, I3 = port                              */
+#define NX_TRACE_IGMP_LOOPBACK_DISABLE                      365         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IGMP_LOOPBACK_ENABLE                       366         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IGMP_MULTICAST_JOIN                        367         /* I1 = ip ptr, I2 = group address, I3=interface index                      */ 
+#define NX_TRACE_IGMP_MULTICAST_LEAVE                       368         /* I1 = ip ptr, I2 = group_address                                          */ 
+#define NX_TRACE_IP_ADDRESS_CHANGE_NOTIFY                   369         /* I1 = ip ptr, I2 = ip address change notify, I3 = additional info         */ 
+#define NX_TRACE_IP_ADDRESS_GET                             370         /* I1 = ip ptr, I2 = ip address, I3 = network_mask                          */ 
+#define NX_TRACE_IP_ADDRESS_SET                             371         /* I1 = ip ptr, I2 = ip address, I3 = network_mask                          */ 
+#define NX_TRACE_IP_CREATE                                  372         /* I1 = ip ptr, I2 = ip address, I3 = network mask, I4 = default_pool       */  
+#define NX_TRACE_IP_DELETE                                  373         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IP_DRIVER_DIRECT_COMMAND                   374         /* I1 = ip ptr, I2 = command, I3 = return value                             */ 
+#define NX_TRACE_IP_FORWARDING_DISABLE                      375         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IP_FORWARDING_ENABLE                       376         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IP_FRAGMENT_DISABLE                        377         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IP_FRAGMENT_ENABLE                         378         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IP_GATEWAY_ADDRESS_SET                     379         /* I1 = ip ptr, I2 = gateway address                                        */ 
+#define NX_TRACE_IP_INFO_GET                                380         /* I1 = ip ptr, I2 = bytes sent, I3 = bytes received, I4 = packets dropped  */ 
+#define NX_TRACE_IP_RAW_PACKET_DISABLE                      381         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IP_RAW_PACKET_ENABLE                       382         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_IP_RAW_PACKET_RECEIVE                      383         /* I1 = ip ptr, I2 = packet ptr, I3 = wait option                           */ 
+#define NX_TRACE_IP_RAW_PACKET_SEND                         384         /* I1 = ip ptr, I2 = packet ptr, I3 = destination ip, I4 = type of service  */ 
+#define NX_TRACE_IP_STATUS_CHECK                            385         /* I1 = ip ptr, I2 = needed status, I3 = actual status, I4 = wait option    */ 
+#define NX_TRACE_PACKET_ALLOCATE                            386         /* I1 = pool ptr, I2 = packet ptr, I3 = packet type, I4 = available packets */ 
+#define NX_TRACE_PACKET_COPY                                387         /* I1 = packet ptr, I2 = new packet ptr, I3 = pool ptr, I4 = wait option    */ 
+#define NX_TRACE_PACKET_DATA_APPEND                         388         /* I1 = packet ptr, I2 = data start, I3 = data size, I4 = pool ptr          */ 
+#define NX_TRACE_PACKET_DATA_RETRIEVE                       389         /* I1 = packet ptr, I2 = buffer start, I3 = bytes copied                    */ 
+#define NX_TRACE_PACKET_LENGTH_GET                          390         /* I1 = packet ptr, I2 = length                                             */ 
+#define NX_TRACE_PACKET_POOL_CREATE                         391         /* I1 = pool ptr, I2 = payload size, I3 = memory ptr, I4 = memory_size      */ 
+#define NX_TRACE_PACKET_POOL_DELETE                         392         /* I1 = pool ptr                                                            */ 
+#define NX_TRACE_PACKET_POOL_INFO_GET                       393         /* I1 = pool ptr, I2 = total_packets, I3 = free packets, I4 = empty requests*/ 
+#define NX_TRACE_PACKET_RELEASE                             394         /* I1 = packet ptr, I2 = packet status, I3 = available packets              */ 
+#define NX_TRACE_PACKET_TRANSMIT_RELEASE                    395         /* I1 = packet ptr, I2 = packet status, I3 = available packets              */ 
+#define NX_TRACE_RARP_DISABLE                               396         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_RARP_ENABLE                                397         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_RARP_INFO_GET                              398         /* I1 = ip ptr, I2 = requests sent, I3 = responses received, I4 = invalids  */ 
+#define NX_TRACE_SYSTEM_INITIALIZE                          399         /* none                                                                     */ 
+#define NX_TRACE_TCP_CLIENT_SOCKET_BIND                     400         /* I1 = ip ptr, I2 = socket ptr, I3 = port, I4 = wait option                */ 
+#define NX_TRACE_TCP_CLIENT_SOCKET_CONNECT                  401         /* I1 = ip ptr, I2 = socket ptr, I3 = server ip, I4 = server port           */ 
+#define NX_TRACE_TCP_CLIENT_SOCKET_PORT_GET                 402         /* I1 = ip ptr, I2 = socket ptr, I3 = port                                  */ 
+#define NX_TRACE_TCP_CLIENT_SOCKET_UNBIND                   403         /* I1 = ip ptr, I2 = socket ptr                                             */ 
+#define NX_TRACE_TCP_ENABLE                                 404         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_TCP_FREE_PORT_FIND                         405         /* I1 = ip ptr, I2 = port, I3 = free port                                   */ 
+#define NX_TRACE_TCP_INFO_GET                               406         /* I1 = ip ptr, I2 = bytes sent, I3 = bytes received, I4 = invalid packets  */ 
+#define NX_TRACE_TCP_SERVER_SOCKET_ACCEPT                   407         /* I1 = ip ptr, I2 = socket ptr, I3 = wait option, I4 = socket state        */ 
+#define NX_TRACE_TCP_SERVER_SOCKET_LISTEN                   408         /* I1 = ip ptr, I2 = port, I3 = socket ptr, I4 = listen queue size          */ 
+#define NX_TRACE_TCP_SERVER_SOCKET_RELISTEN                 409         /* I1 = ip ptr, I2 = port, I3 = socket ptr, I4 = socket state               */ 
+#define NX_TRACE_TCP_SERVER_SOCKET_UNACCEPT                 410         /* I1 = ip ptr, I2 = socket ptr, I3 = socket state                          */ 
+#define NX_TRACE_TCP_SERVER_SOCKET_UNLISTEN                 411         /* I1 = ip ptr, I2 = port                                                   */ 
+#define NX_TRACE_TCP_SOCKET_CREATE                          412         /* I1 = ip ptr, I2 = socket ptr, I3 = type of service, I4 = window size     */ 
+#define NX_TRACE_TCP_SOCKET_DELETE                          413         /* I1 = ip ptr, I2 = socket ptr, I3 = socket state                          */ 
+#define NX_TRACE_TCP_SOCKET_DISCONNECT                      414         /* I1 = ip ptr, I2 = socket ptr, I3 = wait option, I4 = socket state        */ 
+#define NX_TRACE_TCP_SOCKET_INFO_GET                        415         /* I1 = ip ptr, I2 = socket ptr, I3 = bytes sent, I4 = bytes received       */  
+#define NX_TRACE_TCP_SOCKET_MSS_GET                         416         /* I1 = ip ptr, I2 = socket ptr, I3 = mss, I4 = socket state                */ 
+#define NX_TRACE_TCP_SOCKET_MSS_PEER_GET                    417         /* I1 = ip ptr, I2 = socket ptr, I3 = peer_mss, I4 = socket state           */ 
+#define NX_TRACE_TCP_SOCKET_MSS_SET                         418         /* I1 = ip ptr, I2 = socket ptr, I3 = mss, I4 socket state                  */ 
+#define NX_TRACE_TCP_SOCKET_RECEIVE                         419         /* I1 = socket ptr, I2 = packet ptr, I3 = length, I4 = rx sequence          */ 
+#define NX_TRACE_TCP_SOCKET_RECEIVE_NOTIFY                  420         /* I1 = ip ptr, I2 = socket ptr, I3 = receive notify                        */ 
+#define NX_TRACE_TCP_SOCKET_SEND                            421         /* I1 = socket ptr, I2 = packet ptr, I3 = length, I4 = tx sequence          */ 
+#define NX_TRACE_TCP_SOCKET_STATE_WAIT                      422         /* I1 = ip ptr, I2 = socket ptr, I3 = desired state, I4 = previous state    */ 
+#define NX_TRACE_TCP_SOCKET_TRANSMIT_CONFIGURE              423         /* I1 = ip ptr, I2 = socket ptr, I3 = queue depth, I4 = timeout             */  
+#define NX_TRACE_UDP_ENABLE                                 424         /* I1 = ip ptr                                                              */ 
+#define NX_TRACE_UDP_FREE_PORT_FIND                         425         /* I1 = ip ptr, I2 = port, I3 = free port                                   */ 
+#define NX_TRACE_UDP_INFO_GET                               426         /* I1 = ip ptr, I2 = bytes sent, I3 = bytes received, I4 = invalid packets  */ 
+#define NX_TRACE_UDP_SOCKET_BIND                            427         /* I1 = ip ptr, I2 = socket ptr, I3 = port, I4 = wait option                */ 
+#define NX_TRACE_UDP_SOCKET_CHECKSUM_DISABLE                428         /* I1 = ip ptr, I2 = socket ptr                                             */ 
+#define NX_TRACE_UDP_SOCKET_CHECKSUM_ENABLE                 429         /* I1 = ip ptr, I2 = socket ptr                                             */ 
+#define NX_TRACE_UDP_SOCKET_CREATE                          430         /* I1 = ip ptr, I2 = socket ptr, I3 = type of service, I4 = queue maximum   */ 
+#define NX_TRACE_UDP_SOCKET_DELETE                          431         /* I1 = ip ptr, I2 = socket ptr                                             */ 
+#define NX_TRACE_UDP_SOCKET_INFO_GET                        432         /* I1 = ip ptr, I2 = socket ptr, I3 = bytes sent, I4 = bytes received       */ 
+#define NX_TRACE_UDP_SOCKET_PORT_GET                        433         /* I1 = ip ptr, I2 = socket ptr, I3 = port                                  */ 
+#define NX_TRACE_UDP_SOCKET_RECEIVE                         434         /* I1 = ip ptr, I2 = socket ptr, I3 = packet ptr, I4 = packet size          */ 
+#define NX_TRACE_UDP_SOCKET_RECEIVE_NOTIFY                  435         /* I1 = ip ptr, I2 = socket ptr, I3 = receive notify                        */ 
+#define NX_TRACE_UDP_SOCKET_SEND                            436         /* I1 = socket ptr, I2 = packet ptr, I3 = packet size, I4 = ip address      */ 
+#define NX_TRACE_UDP_SOCKET_UNBIND                          437         /* I1 = ip ptr, I2 = socket ptr, I3 = port                                  */ 
+#define NX_TRACE_UDP_SOURCE_EXTRACT                         438         /* I1 = packet ptr, I2 = ip address, I3 = port                              */ 
 #define NX_TRACE_IP_INTERFACE_ATTACH                        439         /* I1 = ip ptr, I2 = ip address, I3 = interface index                       */
 #define NX_TRACE_UDP_SOCKET_BYTES_AVAILABLE                 440         /* I1 = ip ptr, I2 = socket ptr, I3 = bytes available                       */
 #define NX_TRACE_IP_STATIC_ROUTE_ADD                        441         /* I1 = ip_ptr, I2 = network_address, I3 = net_mask, I4 = next_hop          */
@@ -339,10 +339,10 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 #endif
 
 #else
-#define NX_TRACE_OBJECT_REGISTER(t,p,n,a,b)
-#define NX_TRACE_OBJECT_UNREGISTER(o)
-#define NX_TRACE_IN_LINE_INSERT(i,a,b,c,d,f,g,h)
-#define NX_TRACE_EVENT_UPDATE(e,t,i,a,b,c,d)
+#define NX_TRACE_OBJECT_REGISTER(t,p,n,a,b)                 
+#define NX_TRACE_OBJECT_UNREGISTER(o)                       
+#define NX_TRACE_IN_LINE_INSERT(i,a,b,c,d,f,g,h)            
+#define NX_TRACE_EVENT_UPDATE(e,t,i,a,b,c,d)                
 #endif
 
 
@@ -388,11 +388,11 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 
 #define NX_IP_PACKET                (NX_PHYSICAL_HEADER+20) /* 20 bytes of IP header          */
 #define NX_UDP_PACKET               (NX_IP_PACKET+8)        /* IP header plus 8 bytes         */
-#define NX_TCP_PACKET               (NX_IP_PACKET+20)       /* IP header plus 20 bytes        */
-#define NX_ICMP_PACKET              NX_IP_PACKET            /* IP header                      */
+#define NX_TCP_PACKET               (NX_IP_PACKET+20)       /* IP header plus 20 bytes        */ 
+#define NX_ICMP_PACKET              NX_IP_PACKET            /* IP header                      */     
 #define NX_IGMP_PACKET              NX_IP_PACKET            /* IP header                      */
-#define NX_RECEIVE_PACKET           0                       /* This is for driver receive     */
-                                                            /*   packets.                     */
+#define NX_RECEIVE_PACKET           0                       /* This is for driver receive     */ 
+                                                            /*   packets.                     */ 
 
 
 /* Define the ARP update rate, in terms of IP periodic intervals.  This can be defined on the
@@ -406,7 +406,7 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 /* Define the ARP entry expiration rate, in terms of IP periodic intervals.  This can be defined on the
    command line as well.   A value of 0 disables ARP entry expiration, and is the default.  */
 
-#ifndef NX_ARP_EXPIRATION_RATE
+#ifndef NX_ARP_EXPIRATION_RATE  
 #define NX_ARP_EXPIRATION_RATE      0
 #endif
 
@@ -420,7 +420,7 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 #endif
 
 
-/* Define the maximum number of packets that can be queued while waiting for ARP resolution of an
+/* Define the maximum number of packets that can be queued while waiting for ARP resolution of an 
    IP address.  */
 
 #ifndef NX_ARP_MAX_QUEUE_DEPTH
@@ -449,15 +449,15 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 #define NX_FRAG_OFFSET_MASK         ((ULONG) 0x00001FFF)
 
 
-/* Define the IP Type Of Service constants.  These will be supplied to the
+/* Define the IP Type Of Service constants.  These will be supplied to the 
    IP output packet routine.  */
 
 #define NX_IP_NORMAL                ((ULONG) 0x00000000)    /* Normal IP delivery                     */
 #define NX_IP_MIN_DELAY             ((ULONG) 0x00100000)    /* Minimum Delay delivery                 */
 #define NX_IP_MAX_DATA              ((ULONG) 0x00080000)    /* Maximum Throughput delivery            */
 #define NX_IP_MAX_RELIABLE          ((ULONG) 0x00040000)    /* Maximum Reliable delivery              */
-#define NX_IP_MIN_COST              ((ULONG) 0x00020000)    /* Minimum Cost deliver                   */
-#define NX_IP_TOS_MASK              ((ULONG) 0x00FF0000)    /* Type of Service Mask                   */
+#define NX_IP_MIN_COST              ((ULONG) 0x00020000)    /* Minimum Cost deliver                   */ 
+#define NX_IP_TOS_MASK              ((ULONG) 0x00FF0000)    /* Type of Service Mask                   */ 
 
 
 /* Define the IP length mask.   */
@@ -468,8 +468,8 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 /* Define the default time to live.  */
 
 #define NX_IP_TIME_TO_LIVE          ((ULONG) 0x00000080)    /* Default packet time to live            */
-#define NX_IP_TIME_TO_LIVE_MASK     ((ULONG) 0xFF000000)    /* Mask for isolating the time to live    */
-#define NX_IP_TIME_TO_LIVE_SHIFT    24                      /* Number of bits to shift left           */
+#define NX_IP_TIME_TO_LIVE_MASK     ((ULONG) 0xFF000000)    /* Mask for isolating the time to live    */  
+#define NX_IP_TIME_TO_LIVE_SHIFT    24                      /* Number of bits to shift left           */ 
 
 
 /* Define the type of Protocol in this IP packet.  */
@@ -477,44 +477,44 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 #define NX_IP_ICMP                  ((ULONG) 0x00010000)    /* ICMP Protocol Type                     */
 #define NX_IP_IGMP                  ((ULONG) 0x00020000)    /* IGMP Protocol Type                     */
 #define NX_IP_TCP                   ((ULONG) 0x00060000)    /* TCP Protocol Type                      */
-#define NX_IP_UDP                   ((ULONG) 0x00110000)    /* UDP Protocol Type                      */
-#define NX_IP_PROTOCOL_MASK         ((ULONG) 0x00FF0000)    /* Protocol Type mask                     */
+#define NX_IP_UDP                   ((ULONG) 0x00110000)    /* UDP Protocol Type                      */ 
+#define NX_IP_PROTOCOL_MASK         ((ULONG) 0x00FF0000)    /* Protocol Type mask                     */ 
 
 
-/* Define IP address type masks and values.  These will determine the net id and
+/* Define IP address type masks and values.  These will determine the net id and 
    host id fields of the supplied IP address.  */
 
 #define NX_IP_CLASS_A_MASK          ((ULONG) 0x80000000)    /* Define mask for class A IP addresses   */
-#define NX_IP_CLASS_A_TYPE          ((ULONG) 0x00000000)    /* Define class A address type            */
-#define NX_IP_CLASS_A_NETID         ((ULONG) 0x7F000000)    /* Define class A network ID mask         */
-#define NX_IP_CLASS_A_HOSTID        ((ULONG) 0x00FFFFFF)    /* Define class A host ID mask            */
+#define NX_IP_CLASS_A_TYPE          ((ULONG) 0x00000000)    /* Define class A address type            */ 
+#define NX_IP_CLASS_A_NETID         ((ULONG) 0x7F000000)    /* Define class A network ID mask         */ 
+#define NX_IP_CLASS_A_HOSTID        ((ULONG) 0x00FFFFFF)    /* Define class A host ID mask            */ 
 
 #define NX_IP_CLASS_B_MASK          ((ULONG) 0xC0000000)    /* Define mask for class B IP addresses   */
-#define NX_IP_CLASS_B_TYPE          ((ULONG) 0x80000000)    /* Define class B address type            */
-#define NX_IP_CLASS_B_NETID         ((ULONG) 0x3FFF0000)    /* Define class B network ID mask         */
-#define NX_IP_CLASS_B_HOSTID        ((ULONG) 0x0000FFFF)    /* Define class B host ID mask            */
+#define NX_IP_CLASS_B_TYPE          ((ULONG) 0x80000000)    /* Define class B address type            */ 
+#define NX_IP_CLASS_B_NETID         ((ULONG) 0x3FFF0000)    /* Define class B network ID mask         */ 
+#define NX_IP_CLASS_B_HOSTID        ((ULONG) 0x0000FFFF)    /* Define class B host ID mask            */ 
 
 #define NX_IP_CLASS_C_MASK          ((ULONG) 0xE0000000)    /* Define mask for class A IP addresses   */
-#define NX_IP_CLASS_C_TYPE          ((ULONG) 0xC0000000)    /* Define class A address type            */
-#define NX_IP_CLASS_C_NETID         ((ULONG) 0x1FFFFF00)    /* Define class A network ID mask         */
-#define NX_IP_CLASS_C_HOSTID        ((ULONG) 0x000000FF)    /* Define class A host ID mask            */
+#define NX_IP_CLASS_C_TYPE          ((ULONG) 0xC0000000)    /* Define class A address type            */ 
+#define NX_IP_CLASS_C_NETID         ((ULONG) 0x1FFFFF00)    /* Define class A network ID mask         */ 
+#define NX_IP_CLASS_C_HOSTID        ((ULONG) 0x000000FF)    /* Define class A host ID mask            */ 
 
 #define NX_IP_CLASS_D_MASK          ((ULONG) 0xF0000000)    /* Define mask for class D IP addresses   */
-#define NX_IP_CLASS_D_TYPE          ((ULONG) 0xE0000000)    /* Define class D address type            */
-#define NX_IP_CLASS_D_GROUP         ((ULONG) 0x0FFFFFFF)    /* Define class D group ID mask           */
-#define NX_IP_CLASS_D_HOSTID        ((ULONG) 0x00000000)    /* Define class D host ID mask N/A        */
+#define NX_IP_CLASS_D_TYPE          ((ULONG) 0xE0000000)    /* Define class D address type            */ 
+#define NX_IP_CLASS_D_GROUP         ((ULONG) 0x0FFFFFFF)    /* Define class D group ID mask           */ 
+#define NX_IP_CLASS_D_HOSTID        ((ULONG) 0x00000000)    /* Define class D host ID mask N/A        */ 
 
 #define NX_IP_LIMITED_BROADCAST     ((ULONG) 0xFFFFFFFF)    /* Limited broadcast address (local net)  */
-#define NX_IP_LOOPBACK_FIRST        ((ULONG) 0x7F000000)    /* First loopback address 127.0.0.0       */
-#define NX_IP_LOOPBACK_LAST         ((ULONG) 0x7FFFFFFF)    /* Last loopback address  127.255.255.255 */
+#define NX_IP_LOOPBACK_FIRST        ((ULONG) 0x7F000000)    /* First loopback address 127.0.0.0       */ 
+#define NX_IP_LOOPBACK_LAST         ((ULONG) 0x7FFFFFFF)    /* Last loopback address  127.255.255.255 */  
 
-#define NX_IP_MULTICAST_UPPER       ((ULONG) 0x00000100)    /* Upper two bytes of multicast Ethernet  */
-#define NX_IP_MULTICAST_LOWER       ((ULONG) 0x5E000000)    /* Lower 23 bits of address are from IP   */
-#define NX_IP_MULTICAST_MASK        ((ULONG) 0x007FFFFF)    /* Mask to pickup the lower 23 bits of IP */
+#define NX_IP_MULTICAST_UPPER       ((ULONG) 0x00000100)    /* Upper two bytes of multicast Ethernet  */ 
+#define NX_IP_MULTICAST_LOWER       ((ULONG) 0x5E000000)    /* Lower 23 bits of address are from IP   */ 
+#define NX_IP_MULTICAST_MASK        ((ULONG) 0x007FFFFF)    /* Mask to pickup the lower 23 bits of IP */ 
 #define NX_IP_AUTOIP_MASK           ((ULONG) 0xA9FE0000)    /* mask for AUTOIP address range 169.254.0.0 */
 
-/* Define the constants that determine how big the hash table is for destination IP
-   addresses.  The value must be a power of two, so subtracting one gives us
+/* Define the constants that determine how big the hash table is for destination IP 
+   addresses.  The value must be a power of two, so subtracting one gives us 
    the mask.  */
 
 #define NX_ROUTE_TABLE_SIZE         32
@@ -548,7 +548,7 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 #endif
 
 
-/* Define the maximum number of internal server resources for TCP connections.  Server
+/* Define the maximum number of internal server resources for TCP connections.  Server 
    connections require a listen control structure.  */
 
 #ifndef NX_MAX_LISTEN_REQUESTS
@@ -572,16 +572,16 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 /* Define various states in the TCP connection state machine.  */
 
 #define NX_TCP_CLOSED               1               /* Connection is closed state   */
-#define NX_TCP_LISTEN_STATE         2               /* Server listen state          */
-#define NX_TCP_SYN_SENT             3               /* SYN sent state               */
-#define NX_TCP_SYN_RECEIVED         4               /* SYN received state           */
-#define NX_TCP_ESTABLISHED          5               /* Connection established state */
-#define NX_TCP_CLOSE_WAIT           6               /* Close Wait state             */
-#define NX_TCP_FIN_WAIT_1           7               /* Finished Wait 1 state        */
-#define NX_TCP_FIN_WAIT_2           8               /* Finished Wait 2 state        */
-#define NX_TCP_CLOSING              9               /* Closing state                */
-#define NX_TCP_TIMED_WAIT           10              /* Timed wait state             */
-#define NX_TCP_LAST_ACK             11              /* Last ACK state               */
+#define NX_TCP_LISTEN_STATE         2               /* Server listen state          */ 
+#define NX_TCP_SYN_SENT             3               /* SYN sent state               */ 
+#define NX_TCP_SYN_RECEIVED         4               /* SYN received state           */ 
+#define NX_TCP_ESTABLISHED          5               /* Connection established state */ 
+#define NX_TCP_CLOSE_WAIT           6               /* Close Wait state             */ 
+#define NX_TCP_FIN_WAIT_1           7               /* Finished Wait 1 state        */ 
+#define NX_TCP_FIN_WAIT_2           8               /* Finished Wait 2 state        */ 
+#define NX_TCP_CLOSING              9               /* Closing state                */ 
+#define NX_TCP_TIMED_WAIT           10              /* Timed wait state             */ 
+#define NX_TCP_LAST_ACK             11              /* Last ACK state               */ 
 
 
 /* API return values.  */
@@ -674,6 +674,7 @@ VOID    _nx_trace_event_update(TX_TRACE_BUFFER_ENTRY *event, ULONG timestamp, UL
 #define NX_LINK_DEFERRED_PROCESSING 18
 #define NX_LINK_INTERFACE_ATTACH    19
 #define NX_LINK_USER_COMMAND        50      /* Values after this value are reserved for application.  */
+#define NX_LINK_PTP_SEND            51      /* Precision Time Protocol */
 
 
 /* Define the macro for building IP addresses.  */
@@ -697,7 +698,7 @@ typedef  struct NX_PACKET_STRUCT
 {
 
     /* Define the pool this packet is associated with.  */
-    struct NX_PACKET_POOL_STRUCT
+    struct NX_PACKET_POOL_STRUCT    
                 *nx_packet_pool_owner;
 
     /* Define the link that will be used to queue the packet.  */
@@ -711,7 +712,7 @@ typedef  struct NX_PACKET_STRUCT
 
     /* Define the link to the chain (one or more) of packet extensions.  If this is NULL, there
        are no packet extensions for this packet.  */
-    struct NX_PACKET_STRUCT
+    struct NX_PACKET_STRUCT    
                 *nx_packet_next;
 
     /* Define the link to the last packet (if any) in the chain.  This is used to append
@@ -732,7 +733,7 @@ typedef  struct NX_PACKET_STRUCT
                *nx_packet_ip_interface;
     ULONG       nx_packet_next_hop_address;
 
-    /* Define the packet data area start and end pointer.  These will be used to
+    /* Define the packet data area start and end pointer.  These will be used to 
        mark the physical boundaries of the packet.  */
     UCHAR       *nx_packet_data_start;
     UCHAR       *nx_packet_data_end;
@@ -753,7 +754,7 @@ typedef  struct NX_PACKET_STRUCT
 } NX_PACKET;
 
 
-/* Define the Packet Pool control block that will be used to manage each individual
+/* Define the Packet Pool control block that will be used to manage each individual 
    packet pool.  */
 
 typedef struct NX_PACKET_POOL_STRUCT
@@ -794,15 +795,15 @@ typedef struct NX_PACKET_POOL_STRUCT
     ULONG       nx_packet_pool_suspended_count;
 
     /* Define the created list next and previous pointers.  */
-    struct NX_PACKET_POOL_STRUCT
-                *nx_packet_pool_created_next,
+    struct NX_PACKET_POOL_STRUCT 
+                *nx_packet_pool_created_next,    
                 *nx_packet_pool_created_previous;
 
 } NX_PACKET_POOL;
 
 
 /* Define the Address Resolution Protocol (ARP) structure that makes up the
-   route table in each IP instance.  This is how IP addresses are translated
+   route table in each IP instance.  This is how IP addresses are translated 
    to physical addresses in the system.  */
 
 typedef struct NX_ARP_STRUCT
@@ -813,7 +814,7 @@ typedef struct NX_ARP_STRUCT
     UINT        nx_arp_route_static;
 
     /* Define the counter that indicates when the next ARP update request is
-       sent.  This is always zero for static entries and initialized to the maximum
+       sent.  This is always zero for static entries and initialized to the maximum 
        value for new entries.  */
     UINT        nx_arp_entry_next_update;
 
@@ -827,7 +828,7 @@ typedef struct NX_ARP_STRUCT
                 *nx_arp_pool_next,
                 *nx_arp_pool_previous;
 
-    /* Define the links for the active ARP entry that is part of route
+    /* Define the links for the active ARP entry that is part of route 
        information inside of an IP instance.  */
     struct NX_ARP_STRUCT
                 *nx_arp_active_next,
@@ -844,9 +845,9 @@ typedef struct NX_ARP_STRUCT
     /* Define the physical interface attached to this IP address. */
     struct NX_INTERFACE_STRUCT *nx_arp_ip_interface;
 
-    /* Define a pointer to the queue holding one or more packets while address
+    /* Define a pointer to the queue holding one or more packets while address 
        resolution is pending. The maximum number of packets that can be queued
-       is defined by NX_APR_MAX_QUEUE_DEPTH. If ARP packet queue is exceeded,
+       is defined by NX_APR_MAX_QUEUE_DEPTH. If ARP packet queue is exceeded, 
        the oldest packet is discarded in favor of keeping the newer packet.  */
     struct NX_PACKET_STRUCT
                 *nx_arp_packets_waiting;
@@ -895,7 +896,7 @@ typedef struct NX_UDP_SOCKET_STRUCT
     /* Define the UDP checksum disable flag for this UDP socket.  */
     UINT        nx_udp_socket_disable_checksum;
 
-    /* Define the UDP receive packet queue pointers, queue counter, and
+    /* Define the UDP receive packet queue pointers, queue counter, and 
        the maximum queue depth.  */
     ULONG       nx_udp_socket_receive_count;
     ULONG       nx_udp_socket_queue_maximum;
@@ -909,7 +910,7 @@ typedef struct NX_UDP_SOCKET_STRUCT
                 *nx_udp_socket_bound_previous;
 
     /* Define the UDP socket bind suspension thread pointer.  This pointer points
-       to the thread that that is suspended attempting to bind to a port that is
+       to the thread that that is suspended attempting to bind to a port that is 
        already bound to another socket.  */
     TX_THREAD   *nx_udp_socket_bind_in_progress;
 
@@ -919,27 +920,27 @@ typedef struct NX_UDP_SOCKET_STRUCT
     ULONG       nx_udp_socket_receive_suspended_count;
 
     /* Define the UDP bind suspension list head associated with a count of
-       how many threads are suspended attempting to bind to the same UDP port.  The
+       how many threads are suspended attempting to bind to the same UDP port.  The 
        currently bound socket will maintain the head pointer.  When a socket unbinds,
-       the head of the suspension list is given the port and the remaining entries
+       the head of the suspension list is given the port and the remaining entries 
        of the suspension list are transferred to its suspension list head pointer.  */
     TX_THREAD   *nx_udp_socket_bind_suspension_list;
     ULONG       nx_udp_socket_bind_suspended_count;
 
-    /* Define the link between other UDP structures created by the application.  This
+    /* Define the link between other UDP structures created by the application.  This 
        is linked to the IP instance the socket was created on.  */
     struct NX_UDP_SOCKET_STRUCT
                 *nx_udp_socket_created_next,
                 *nx_udp_socket_created_previous;
 
     /* Define the callback function for receive packet notification. If specified
-       by the application, this function is called whenever a receive packet is
+       by the application, this function is called whenever a receive packet is 
        available on for the socket.  */
     VOID (*nx_udp_receive_callback)(struct NX_UDP_SOCKET_STRUCT *socket_ptr);
 
     /* This pointer is reserved for application specific use.  */
     void        *nx_udp_socket_reserved_ptr;
-
+    
     struct NX_INTERFACE_STRUCT *nx_udp_socket_ip_interface;
 
 } NX_UDP_SOCKET;
@@ -975,7 +976,7 @@ typedef struct NX_TCP_SOCKET_STRUCT
     struct NX_INTERFACE_STRUCT
                *nx_tcp_socket_connect_interface;
     ULONG       nx_tcp_socket_next_hop_address;
-
+    
     /* mss2 is the holding place for the smss * smss value.
        It is computed and stored here once for later use. */
     ULONG       nx_tcp_socket_connect_mss2;
@@ -1028,7 +1029,7 @@ typedef struct NX_TCP_SOCKET_STRUCT
     /* Define the fragment enable bit for this TCP instance.  */
     ULONG       nx_tcp_socket_fragment_enable;
 
-    /* Define the TCP receive packet queue pointers, queue counter, and
+    /* Define the TCP receive packet queue pointers, queue counter, and 
        the maximum queue depth.  */
     ULONG   nx_tcp_socket_receive_queue_count;
     NX_PACKET   *nx_tcp_socket_receive_queue_head,
@@ -1058,12 +1059,12 @@ typedef struct NX_TCP_SOCKET_STRUCT
 
     /* Window scale this side needs to offer to the peer. */
     ULONG       nx_tcp_rcv_win_scale_value;
-
-    /* Window scale offered by the peer.  0xFF indicates the peer does not support window scaling. */
-    ULONG       nx_tcp_snd_win_scale_value;
+    
+    /* Window scale offered by the peer.  0xFF indicates the peer does not support window scaling. */    
+    ULONG       nx_tcp_snd_win_scale_value; 
 #endif /* NX_TCP_ENABLE_WINDOW_SCALING */
 
-    /* Define the TCP keepalive timer parameters.  If enabled with NX_TCP_ENABLE_KEEPALIVE,
+    /* Define the TCP keepalive timer parameters.  If enabled with NX_TCP_ENABLE_KEEPALIVE, 
        these parameters are used to implement the keepalive timer.  */
     ULONG       nx_tcp_socket_keepalive_timeout;
     ULONG       nx_tcp_socket_keepalive_retries;
@@ -1075,7 +1076,7 @@ typedef struct NX_TCP_SOCKET_STRUCT
                 *nx_tcp_socket_bound_previous;
 
     /* Define the TCP socket bind suspension thread pointer.  This pointer points
-       to the thread that that is suspended attempting to bind to a port that is
+       to the thread that that is suspended attempting to bind to a port that is 
        already bound to another socket.  */
     TX_THREAD   *nx_tcp_socket_bind_in_progress;
 
@@ -1098,14 +1099,14 @@ typedef struct NX_TCP_SOCKET_STRUCT
     TX_THREAD   *nx_tcp_socket_disconnect_suspended_thread;
 
     /* Define the TCP bind suspension list head associated with a count of
-       how many threads are suspended attempting to bind to the same TCP port.  The
+       how many threads are suspended attempting to bind to the same TCP port.  The 
        currently bound socket will maintain the head pointer.  When a socket unbinds,
-       the head of the suspension list is given the port and the remaining entries
+       the head of the suspension list is given the port and the remaining entries 
        of the suspension list are transferred to its suspension list head pointer.  */
     TX_THREAD   *nx_tcp_socket_bind_suspension_list;
     ULONG       nx_tcp_socket_bind_suspended_count;
 
-    /* Define the link between other TCP structures created by the application.  This
+    /* Define the link between other TCP structures created by the application.  This 
        is linked to the IP instance the socket was created on.  */
     struct NX_TCP_SOCKET_STRUCT
             *nx_tcp_socket_created_next,
@@ -1118,15 +1119,15 @@ typedef struct NX_TCP_SOCKET_STRUCT
     /* Define the callback function for notifying an incoming SYN request. */
     UINT (*nx_tcp_socket_syn_received_notify)(struct NX_TCP_SOCKET_STRUCT *socket_ptr, NX_PACKET *packet_ptr);
 
-    /* Define the callback function for notifying the host application of a connection handshake completion
+    /* Define the callback function for notifying the host application of a connection handshake completion  
        with a remote host.  */
     VOID (*nx_tcp_establish_notify)(struct NX_TCP_SOCKET_STRUCT *socket_ptr);
 
-    /* Define the callback function for notifying the host application of disconnection completion
+    /* Define the callback function for notifying the host application of disconnection completion  
        with a remote host.  */
     VOID (*nx_tcp_disconnect_complete_notify)(struct NX_TCP_SOCKET_STRUCT *socket_ptr);
 
-    /* Define the callback function for notifying the host application to set the socket
+    /* Define the callback function for notifying the host application to set the socket 
        state in the timed wait state.  */
     VOID (*nx_tcp_timed_wait_callback)(struct NX_TCP_SOCKET_STRUCT *socket_ptr);
 #endif
@@ -1136,12 +1137,12 @@ typedef struct NX_TCP_SOCKET_STRUCT
     VOID (*nx_tcp_disconnect_callback)(struct NX_TCP_SOCKET_STRUCT *socket_ptr);
 
     /* Define the callback function for receive packet notification. If specified
-       by the application, this function is called whenever a receive packet is
+       by the application, this function is called whenever a receive packet is 
        available on for the socket.  */
     VOID (*nx_tcp_receive_callback)(struct NX_TCP_SOCKET_STRUCT *socket_ptr);
 
     /* Define the callback function for change in window size notification. If specified
-       by the application, this function is called whenever a TCP packet is received that
+       by the application, this function is called whenever a TCP packet is received that 
        indicates a change in the transmit window size.  */
     VOID (*nx_tcp_socket_window_update_notify)(struct NX_TCP_SOCKET_STRUCT *socket_ptr);
 
@@ -1167,7 +1168,7 @@ typedef struct NX_TCP_LISTEN_STRUCT
     /* Define the port number that we are allowing a connection on.  */
     UINT        nx_tcp_listen_port;
 
-    /* Define the listen callback routine that will be called when a connection
+    /* Define the listen callback routine that will be called when a connection 
        request is received.  */
     VOID        (*nx_tcp_listen_callback)(NX_TCP_SOCKET *socket_ptr, UINT port);
 
@@ -1182,7 +1183,7 @@ typedef struct NX_TCP_LISTEN_STRUCT
     NX_PACKET   *nx_tcp_listen_queue_head,
                 *nx_tcp_listen_queue_tail;
 
-    /* Define the link between other TCP listen structures created by the application.  */
+    /* Define the link between other TCP listen structures created by the application.  */ 
     struct NX_TCP_LISTEN_STRUCT
                 *nx_tcp_listen_next,
                 *nx_tcp_listen_previous;
@@ -1200,13 +1201,13 @@ struct NX_IP_DRIVER_STRUCT;
 /* Inside interface array, entries 0 up to NX_MAX_PHYSICAL_INTERFACES are assigned to the
    physical interfaces.  Entry NX_MAX_PHYSICAL_INTERFACES is assigned to the loopback interface. */
   #define NX_LOOPBACK_INTERFACE NX_MAX_PHYSICAL_INTERFACES
-#else
+#else 
   #define NX_LOOPBACK_INTERFACE 0
 #endif /* NX_DISALBE_LOOPBACK_INTERFACE */
 
 #if (defined(NX_DISABLE_LOOPBACK_INTERFACE) && (NX_MAX_PHYSICAL_INTERFACES == 0))
 #error "NetX is built without either physical interfaces or loopback interfaces."
-#endif
+#endif 
 
 #if defined(NX_DISABLE_LOOPBACK_INTERFACE)
 #define NX_MAX_IP_INTERFACES NX_MAX_PHYSICAL_INTERFACES
@@ -1232,12 +1233,12 @@ typedef struct NX_INTERFACE_STRUCT
     /* Link to the IP instance which this interface is associated with. */
     struct NX_IP_STRUCT *nx_interface_ip_instance;
 
-    /* Define the physical address of this IP instance.  These field are
+    /* Define the physical address of this IP instance.  These field are 
        setup by the link driver during initialization.  */
     ULONG       nx_interface_physical_address_msw;
     ULONG       nx_interface_physical_address_lsw;
 
-    /* Define the IP address of this IP instance.  Loopback can be done by
+    /* Define the IP address of this IP instance.  Loopback can be done by 
        either using the same address or by using 127.*.*.*.  */
     ULONG       nx_interface_ip_address;
 
@@ -1245,7 +1246,7 @@ typedef struct NX_INTERFACE_STRUCT
     ULONG       nx_interface_ip_network_mask;
 
     /* Define the network only bits of the IP address.  */
-    ULONG       nx_interface_ip_network;
+    ULONG       nx_interface_ip_network;    
 
     /* Define information setup by the Link Driver.  */
     ULONG       nx_interface_ip_mtu_size;
@@ -1255,13 +1256,13 @@ typedef struct NX_INTERFACE_STRUCT
     VOID        *nx_interface_additional_link_info;
 
     /* Define the Link Driver entry point.  */
-    VOID        (*nx_interface_link_driver_entry)(struct NX_IP_DRIVER_STRUCT *);
+    VOID        (*nx_interface_link_driver_entry)(struct NX_IP_DRIVER_STRUCT *);    
 
 } NX_INTERFACE;
 
 #ifdef NX_ENABLE_IP_STATIC_ROUTING
 /* Define the static routing table entry structure. */
-typedef struct NX_IP_ROUTING_ENTRY_STRUCT
+typedef struct NX_IP_ROUTING_ENTRY_STRUCT 
 {
     /* Destination IP address, in host byte order */
     ULONG     nx_ip_routing_entry_destination_ip;
@@ -1276,7 +1277,7 @@ typedef struct NX_IP_ROUTING_ENTRY_STRUCT
              *nx_ip_routing_entry_ip_interface;
 } NX_IP_ROUTING_ENTRY;
 #endif /*  NX_ENABLE_IP_STATIC_ROUTING */
-
+    
 
 /* Define the Internet Protocol (IP) structure.  Any number of IP instances
    may be used by the application.  */
@@ -1291,7 +1292,7 @@ typedef struct NX_IP_STRUCT
     /* Define the Application defined name for this IP instance.  */
     const CHAR        *nx_ip_name;
 
-    /* Define the IP address of this IP instance.  Loopback can be done by
+    /* Define the IP address of this IP instance.  Loopback can be done by 
        either using the same address or by using 127.*.*.*.  */
     /* ULONG       nx_ip_address;  MOVED TO IP_INTERFACE_STRUCTURE */
 #define nx_ip_address                  nx_ip_interface[0].nx_interface_ip_address
@@ -1379,7 +1380,7 @@ typedef struct NX_IP_STRUCT
     ULONG       nx_ip_igmp_checksum_errors;
     ULONG       nx_ip_igmp_groups_joined;
 #ifndef NX_DISABLE_IGMPV2
-    ULONG       nx_ip_igmp_router_version;
+    ULONG       nx_ip_igmp_router_version;  
 #endif
     ULONG       nx_ip_rarp_requests_sent;
     ULONG       nx_ip_rarp_responses_received;
@@ -1390,8 +1391,8 @@ typedef struct NX_IP_STRUCT
     VOID        (*nx_ip_nat_packet_process)(struct NX_IP_STRUCT *, NX_PACKET *, UINT *packet_status);
 #endif /* NX_NAT_ENABLED */
 
-    /* Define the IP forwarding flag.  This is by default set to NX_NULL.
-       If forwarding is desired, the nx_ip_forward_packet_process service
+    /* Define the IP forwarding flag.  This is by default set to NX_NULL.  
+       If forwarding is desired, the nx_ip_forward_packet_process service 
        pointed to by this member should be called.  */
     VOID        (*nx_ip_forward_packet_process)(struct NX_IP_STRUCT *, NX_PACKET *);
 
@@ -1402,7 +1403,7 @@ typedef struct NX_IP_STRUCT
     struct NX_PACKET_POOL_STRUCT
                 *nx_ip_default_packet_pool;
 
-    /* Define the internal mutex used for protection inside the NetX
+    /* Define the internal mutex used for protection inside the NetX 
        data structures.  */
     TX_MUTEX    nx_ip_protection;
 
@@ -1417,12 +1418,12 @@ typedef struct NX_IP_STRUCT
        deferred processing is enabled, this routine is called from the IP helper thread.  */
     VOID        (*nx_ip_driver_deferred_packet_handler)(struct NX_IP_STRUCT *, NX_PACKET *);
 
-    /* Define the deferred packet processing queue.  This is used to
+    /* Define the deferred packet processing queue.  This is used to 
        process packets not initially processed in the receive ISR.  */
     NX_PACKET   *nx_ip_deferred_received_packet_head,
                 *nx_ip_deferred_received_packet_tail;
 
-    /* Define the raw IP function pointer that also indicates whether or
+    /* Define the raw IP function pointer that also indicates whether or 
        not raw IP packet sending and receiving is enabled.  */
     VOID        (*nx_ip_raw_ip_processing)(struct NX_IP_STRUCT *, NX_PACKET *);
 
@@ -1438,7 +1439,7 @@ typedef struct NX_IP_STRUCT
     TX_THREAD   *nx_ip_raw_packet_suspension_list;
     ULONG       nx_ip_raw_packet_suspended_count;
 
-    /* Define the IP helper thread that processes periodic ARP requests,
+    /* Define the IP helper thread that processes periodic ARP requests, 
        reassembles IP messages, and helps handle TCP/IP packets.  */
     TX_THREAD   nx_ip_thread;
 
@@ -1450,7 +1451,7 @@ typedef struct NX_IP_STRUCT
     /* Define the IP periodic timer for this IP instance.  */
     TX_TIMER    nx_ip_periodic_timer;
 
-    /* Define the IP fragment function pointer that also indicates whether or
+    /* Define the IP fragment function pointer that also indicates whether or 
        IP fragmenting is enabled.  */
     VOID        (*nx_ip_fragment_processing)(struct NX_IP_DRIVER_STRUCT *);
 
@@ -1460,13 +1461,13 @@ typedef struct NX_IP_STRUCT
     /* Define the IP unfragment timeout checking function pointer.  */
     VOID        (*nx_ip_fragment_timeout_check)(struct NX_IP_STRUCT *);
 
-    /* Define the fragment pointer to the oldest fragment re-assembly.  If this is
-       the same between any periodic the fragment re-assembly is too old and
+    /* Define the fragment pointer to the oldest fragment re-assembly.  If this is 
+       the same between any periodic the fragment re-assembly is too old and 
        will be deleted.  */
     NX_PACKET   *nx_ip_timeout_fragment;
 
-    /* Define the pointer to the fragmented IP packet queue.  This queue is
-       appended when a fragmented packet is received and is drained inside
+    /* Define the pointer to the fragmented IP packet queue.  This queue is 
+       appended when a fragmented packet is received and is drained inside 
        the IP.  */
     NX_PACKET   *nx_ip_received_fragment_head,
                 *nx_ip_received_fragment_tail;
@@ -1481,7 +1482,7 @@ typedef struct NX_IP_STRUCT
 
     /* Define the IGMP registered group list.  */
     ULONG       nx_ip_igmp_join_list[NX_MAX_MULTICAST_GROUPS];
-
+    
     /* Define the IGMP regstiered group interface list. */
     NX_INTERFACE  *nx_ip_igmp_join_interface_list[NX_MAX_MULTICAST_GROUPS];
 
@@ -1491,7 +1492,7 @@ typedef struct NX_IP_STRUCT
     /* Define the IGMP random time list.  */
     ULONG       nx_ip_igmp_update_time[NX_MAX_MULTICAST_GROUPS];
 
-    /* Define the IGMP loopback flag list. This flag is set based on the global
+    /* Define the IGMP loopback flag list. This flag is set based on the global 
        loopback enable at the time the group was joined. */
     UINT        nx_ip_igmp_group_loopback_enable[NX_MAX_MULTICAST_GROUPS];
 
@@ -1507,23 +1508,23 @@ typedef struct NX_IP_STRUCT
        is enabled.  */
     void        (*nx_ip_igmp_periodic_processing)(struct NX_IP_STRUCT *);
 
-    /* Define the IGMP packet queue processing routine.  This is setup when IGMP is
+    /* Define the IGMP packet queue processing routine.  This is setup when IGMP is 
        enabled.  */
     void        (*nx_ip_igmp_queue_process)(struct NX_IP_STRUCT *);
 
     /* Define the IGMP message queue.  */
     NX_PACKET   *nx_ip_igmp_queue_head;
 
-    /* Define the ICMP sequence number.  This is used in ICMP messages that
+    /* Define the ICMP sequence number.  This is used in ICMP messages that 
        require a sequence number.  */
     ULONG       nx_ip_icmp_sequence;
 
-    /* Define the ICMP packet receive routine.  This also doubles as a
+    /* Define the ICMP packet receive routine.  This also doubles as a 
        mechanism to make sure ICMP is enabled.  If this function is NULL, ICMP
        is not enabled.  */
     void        (*nx_ip_icmp_packet_receive)(struct NX_IP_STRUCT *, struct NX_PACKET_STRUCT *);
 
-    /* Define the ICMP packet queue processing routine.  This is setup when ICMP is
+    /* Define the ICMP packet queue processing routine.  This is setup when ICMP is 
        enabled.  */
     void        (*nx_ip_icmp_queue_process)(struct NX_IP_STRUCT *);
 
@@ -1536,17 +1537,17 @@ typedef struct NX_IP_STRUCT
     ULONG       nx_ip_icmp_ping_suspended_count;
 
     /* Define the UDP port information structure associated with this IP instance.  */
-    struct NX_UDP_SOCKET_STRUCT
+    struct NX_UDP_SOCKET_STRUCT 
                 *nx_ip_udp_port_table[NX_UDP_PORT_TABLE_SIZE];
 
     /* Define the head pointer of the created UDP socket list.  */
-    struct NX_UDP_SOCKET_STRUCT
+    struct NX_UDP_SOCKET_STRUCT 
                 *nx_ip_udp_created_sockets_ptr;
 
     /* Define the number of created UDP socket instances.  */
     ULONG       nx_ip_udp_created_sockets_count;
 
-    /* Define the UDP packet receive routine.  This also doubles as a
+    /* Define the UDP packet receive routine.  This also doubles as a 
        mechanism to make sure UDP is enabled.  If this function is NULL, UDP
        is not enabled.  */
     void        (*nx_ip_udp_packet_receive)(struct NX_IP_STRUCT *, struct NX_PACKET_STRUCT *);
@@ -1555,17 +1556,17 @@ typedef struct NX_IP_STRUCT
     UINT        nx_ip_udp_port_search_start;
 
     /* Define the TCP port information structure associated with this IP instance.  */
-    struct NX_TCP_SOCKET_STRUCT
+    struct NX_TCP_SOCKET_STRUCT 
                 *nx_ip_tcp_port_table[NX_TCP_PORT_TABLE_SIZE];
 
     /* Define the head pointer of the created TCP socket list.  */
-    struct NX_TCP_SOCKET_STRUCT
+    struct NX_TCP_SOCKET_STRUCT 
                 *nx_ip_tcp_created_sockets_ptr;
 
     /* Define the number of created TCP socket instances.  */
     ULONG       nx_ip_tcp_created_sockets_count;
 
-    /* Define the TCP packet receive routine.  This also doubles as a
+    /* Define the TCP packet receive routine.  This also doubles as a 
        mechanism to make sure TCP is enabled.  If this function is NULL, TCP
        is not enabled.  */
     void        (*nx_ip_tcp_packet_receive)(struct NX_IP_STRUCT *, struct NX_PACKET_STRUCT *);
@@ -1576,7 +1577,7 @@ typedef struct NX_IP_STRUCT
     /* Define the TCP fast periodic processing routine for transmit timeout logic.  */
     void        (*nx_ip_tcp_fast_periodic_processing)(struct NX_IP_STRUCT *);
 
-    /* Define the TCP packet queue processing routine.  This is setup when TCP is
+    /* Define the TCP packet queue processing routine.  This is setup when TCP is 
        enabled.  */
     void        (*nx_ip_tcp_queue_process)(struct NX_IP_STRUCT *);
 
@@ -1587,7 +1588,7 @@ typedef struct NX_IP_STRUCT
     /* Define the count of incoming TCP packets on the queue.  */
     ULONG       nx_ip_tcp_received_packet_count;
 
-    /* Define the TCP listen request structure that contains the maximum number of
+    /* Define the TCP listen request structure that contains the maximum number of 
        listen requests allowed for this IP instance.  */
     struct NX_TCP_LISTEN_STRUCT
                 nx_ip_tcp_server_listen_reqs[NX_MAX_LISTEN_REQUESTS];
@@ -1604,54 +1605,54 @@ typedef struct NX_IP_STRUCT
     /* Define the TCP port allocation search value.  */
     UINT        nx_ip_tcp_port_search_start;
 
-    /* Define the fast TCP periodic timer used for high resolution events for
+    /* Define the fast TCP periodic timer used for high resolution events for 
        this IP instance.  */
     TX_TIMER    nx_ip_tcp_fast_periodic_timer;
-
-    /* Define the destination routing information associated with this IP
+    
+    /* Define the destination routing information associated with this IP 
        instance.  */
-    struct NX_ARP_STRUCT
+    struct NX_ARP_STRUCT 
                 *nx_ip_arp_table[NX_ROUTE_TABLE_SIZE];
 
     /* Define the head pointer of the static ARP list.  */
-    struct NX_ARP_STRUCT
+    struct NX_ARP_STRUCT 
                 *nx_ip_arp_static_list;
 
     /* Define the head pointer of the dynamic ARP list.  */
-    struct NX_ARP_STRUCT
+    struct NX_ARP_STRUCT    
                 *nx_ip_arp_dynamic_list;
 
     /* Define the number of dynamic entries that are active.  */
     ULONG       nx_ip_arp_dynamic_active_count;
 
-    /* Define the ARP deferred packet processing queue.  This is used to
+    /* Define the ARP deferred packet processing queue.  This is used to 
        process ARP packets not initially processed in the receive ISR.  */
     NX_PACKET   *nx_ip_arp_deferred_received_packet_head,
                 *nx_ip_arp_deferred_received_packet_tail;
 
-    /* Define the ARP entry allocate routine.  This also doubles as a
+    /* Define the ARP entry allocate routine.  This also doubles as a 
        mechanism to make sure ARP is enabled.  If this function is NULL, ARP
        is not enabled.  */
     UINT        (*nx_ip_arp_allocate)(struct NX_IP_STRUCT *, struct NX_ARP_STRUCT **);
 
-    /* Define the ARP periodic processing routine.  This is setup when ARP is
+    /* Define the ARP periodic processing routine.  This is setup when ARP is 
        enabled.  */
     void        (*nx_ip_arp_periodic_update)(struct NX_IP_STRUCT *);
 
-    /* Define the ARP receive queue processing routine.  This is setup when ARP is
+    /* Define the ARP receive queue processing routine.  This is setup when ARP is 
        enabled.  */
     void        (*nx_ip_arp_queue_process)(struct NX_IP_STRUCT *);
 
-    /* Define the ARP send packet routine.  This is setup when ARP is
+    /* Define the ARP send packet routine.  This is setup when ARP is 
        enabled.  */
     void        (*nx_ip_arp_packet_send)(struct NX_IP_STRUCT *, ULONG destination_ip, NX_INTERFACE *nx_interface);
 
-    /* Define the ARP gratuitous response handler. This routine is setup in the
+    /* Define the ARP gratuitous response handler. This routine is setup in the 
        nx_arp_gratuitous_send function.  */
     void        (*nx_ip_arp_gratuitous_response_handler)(struct NX_IP_STRUCT *, NX_PACKET *);
 
     /* Define the ARP collision notify handler. A non-null value for this function
-       pointer results in NetX calling it whenever an IP address is found in an incoming
+       pointer results in NetX calling it whenever an IP address is found in an incoming 
        ARP packet that matches that of nx_ip_arp_collision_ip_address.  */
     void        (*nx_ip_arp_collision_notify_response_handler)(void *);
     void        *nx_ip_arp_collision_notify_parameter;
@@ -1660,21 +1661,21 @@ typedef struct NX_IP_STRUCT
     /* Define the ARP cache memory area.  This memory is supplied
        by the ARP enable function and is carved up by that function into as
        many ARP entries that will fit.  */
-    struct NX_ARP_STRUCT
+    struct NX_ARP_STRUCT 
                 *nx_ip_arp_cache_memory;
 
     /* Define the number of ARP entries that will fit in the ARP cache.  */
     ULONG       nx_ip_arp_total_entries;
 
-    /* Define the RARP periodic processing routine.  This is setup when RARP is
+    /* Define the RARP periodic processing routine.  This is setup when RARP is 
        enabled.  It is also used to indicate RARP is enabled.  */
     void        (*nx_ip_rarp_periodic_update)(struct NX_IP_STRUCT *);
 
-    /* Define the RARP receive queue processing routine.  This is setup when RARP is
+    /* Define the RARP receive queue processing routine.  This is setup when RARP is 
        enabled.  */
     void        (*nx_ip_rarp_queue_process)(struct NX_IP_STRUCT *);
 
-    /* Define the RARP deferred packet processing queue.  This is used to
+    /* Define the RARP deferred packet processing queue.  This is used to 
        process RARP packets not initially processed in the receive ISR.  */
     NX_PACKET   *nx_ip_rarp_deferred_received_packet_head,
                 *nx_ip_rarp_deferred_received_packet_tail;
@@ -1734,17 +1735,17 @@ typedef struct NX_IP_DRIVER_STRUCT
 } NX_IP_DRIVER;
 
 
-/* Define the system API mappings based on the error checking
-   selected by the user.  Note: this section is only applicable to
+/* Define the system API mappings based on the error checking 
+   selected by the user.  Note: this section is only applicable to 
    application source code, hence the conditional that turns off this
    stuff when the include file is processed by the ThreadX source. */
 
 #ifndef NX_SOURCE_CODE
 
 
-/* Determine if error checking is desired.  If so, map API functions
+/* Determine if error checking is desired.  If so, map API functions 
    to the appropriate error checking front-ends.  Otherwise, map API
-   functions to the core functions that actually perform the work.
+   functions to the core functions that actually perform the work. 
    Note: error checking is enabled by default.  */
 
 #ifdef NX_DISABLE_ERROR_CHECKING
@@ -1825,7 +1826,7 @@ typedef struct NX_IP_DRIVER_STRUCT
 
 #define nx_tcp_client_socket_bind               _nx_tcp_client_socket_bind
 #define nx_tcp_client_socket_connect            _nx_tcp_client_socket_connect
-#define nx_tcp_client_socket_port_get           _nx_tcp_client_socket_port_get
+#define nx_tcp_client_socket_port_get           _nx_tcp_client_socket_port_get   
 #define nx_tcp_client_socket_unbind             _nx_tcp_client_socket_unbind
 #define nx_tcp_enable                           _nx_tcp_enable
 /* WICED_CHANGES */
@@ -1857,7 +1858,7 @@ typedef struct NX_IP_DRIVER_STRUCT
 #define nx_tcp_socket_receive_notify            _nx_tcp_socket_receive_notify
 #define nx_tcp_socket_send                      _nx_tcp_socket_send
 #define nx_tcp_socket_state_wait                _nx_tcp_socket_state_wait
-#define nx_tcp_socket_transmit_configure        _nx_tcp_socket_transmit_configure
+#define nx_tcp_socket_transmit_configure        _nx_tcp_socket_transmit_configure 
 #define nx_tcp_socket_window_update_notify_set  _nx_tcp_socket_window_update_notify_set
 
 #define nx_udp_enable                           _nx_udp_enable
@@ -1875,7 +1876,7 @@ typedef struct NX_IP_DRIVER_STRUCT
 #define nx_udp_socket_port_get                  _nx_udp_socket_port_get
 #define nx_udp_socket_receive                   _nx_udp_socket_receive
 #define nx_udp_socket_receive_notify            _nx_udp_socket_receive_notify
-#define nx_udp_socket_send                      _nx_udp_socket_send
+#define nx_udp_socket_send                      _nx_udp_socket_send 
 #define nx_udp_socket_unbind                    _nx_udp_socket_unbind
 #define nx_udp_source_extract                   _nx_udp_source_extract
 
@@ -1958,7 +1959,7 @@ typedef struct NX_IP_DRIVER_STRUCT
 
 #define nx_tcp_client_socket_bind               _nxe_tcp_client_socket_bind
 #define nx_tcp_client_socket_connect            _nxe_tcp_client_socket_connect
-#define nx_tcp_client_socket_port_get           _nxe_tcp_client_socket_port_get
+#define nx_tcp_client_socket_port_get           _nxe_tcp_client_socket_port_get   
 #define nx_tcp_client_socket_unbind             _nxe_tcp_client_socket_unbind
 #define nx_tcp_enable                           _nxe_tcp_enable
 /* WICED_CHANGES */
@@ -1990,7 +1991,7 @@ typedef struct NX_IP_DRIVER_STRUCT
 #define nx_tcp_socket_receive_notify            _nxe_tcp_socket_receive_notify
 #define nx_tcp_socket_send(s,p,t)               _nxe_tcp_socket_send(s,&p,t)
 #define nx_tcp_socket_state_wait                _nxe_tcp_socket_state_wait
-#define nx_tcp_socket_transmit_configure        _nxe_tcp_socket_transmit_configure
+#define nx_tcp_socket_transmit_configure        _nxe_tcp_socket_transmit_configure 
 #define nx_tcp_socket_window_update_notify_set  _nxe_tcp_socket_window_update_notify_set
 
 #define nx_udp_enable                           _nxe_udp_enable
@@ -2008,7 +2009,7 @@ typedef struct NX_IP_DRIVER_STRUCT
 #define nx_udp_socket_port_get                  _nxe_udp_socket_port_get
 #define nx_udp_socket_receive                   _nxe_udp_socket_receive
 #define nx_udp_socket_receive_notify            _nxe_udp_socket_receive_notify
-#define nx_udp_socket_send(s,p,i,t)             _nxe_udp_socket_send(s,&p,i,t)
+#define nx_udp_socket_send(s,p,i,t)             _nxe_udp_socket_send(s,&p,i,t) 
 #define nx_udp_socket_unbind                    _nxe_udp_socket_unbind
 #define nx_udp_source_extract                   _nxe_udp_source_extract
 
@@ -2023,7 +2024,7 @@ UINT    nx_arp_dynamic_entry_set(NX_IP *ip_ptr, ULONG ip_address,
                                     ULONG physical_msw, ULONG physical_lsw);
 UINT    nx_arp_enable(NX_IP *ip_ptr, VOID *arp_cache_memory, ULONG arp_cache_size);
 UINT    nx_arp_gratuitous_send(NX_IP *ip_ptr, VOID (*response_handler)(NX_IP *ip_ptr, NX_PACKET *packet_ptr));
-UINT    nx_arp_hardware_address_find(NX_IP *ip_ptr, ULONG ip_address,
+UINT    nx_arp_hardware_address_find(NX_IP *ip_ptr, ULONG ip_address, 
                             ULONG *physical_msw, ULONG *physical_lsw);
 UINT    nx_arp_info_get(NX_IP *ip_ptr, ULONG *arp_requests_sent, ULONG *arp_requests_received,
                             ULONG *arp_responses_sent, ULONG *arp_responses_received,
@@ -2032,20 +2033,20 @@ UINT    nx_arp_info_get(NX_IP *ip_ptr, ULONG *arp_requests_sent, ULONG *arp_requ
 UINT    nx_arp_ip_address_find(NX_IP *ip_ptr, ULONG *ip_address,
                             ULONG physical_msw, ULONG physical_lsw);
 UINT    nx_arp_static_entries_delete(NX_IP *ip_ptr);
-UINT    nx_arp_static_entry_create(NX_IP *ip_ptr, ULONG ip_address,
+UINT    nx_arp_static_entry_create(NX_IP *ip_ptr, ULONG ip_address, 
                             ULONG physical_msw, ULONG physical_lsw);
-UINT    nx_arp_static_entry_delete(NX_IP *ip_ptr, ULONG ip_address,
-                            ULONG physical_msw, ULONG physical_lsw);
+UINT    nx_arp_static_entry_delete(NX_IP *ip_ptr, ULONG ip_address, 
+                            ULONG physical_msw, ULONG physical_lsw); 
 
 UINT    nx_icmp_enable(NX_IP *ip_ptr);
-UINT    nx_icmp_info_get(NX_IP *ip_ptr, ULONG *pings_sent, ULONG *ping_timeouts,
+UINT    nx_icmp_info_get(NX_IP *ip_ptr, ULONG *pings_sent, ULONG *ping_timeouts, 
                             ULONG *ping_threads_suspended, ULONG *ping_responses_received,
                             ULONG *icmp_checksum_errors, ULONG *icmp_unhandled_messages);
 UINT    nx_icmp_ping(NX_IP *ip_ptr, ULONG ip_address, CHAR *data, ULONG data_size,
                             NX_PACKET **response_ptr, ULONG wait_option);
 
 UINT    nx_igmp_enable(NX_IP *ip_ptr);
-UINT    nx_igmp_info_get(NX_IP *ip_ptr, ULONG *igmp_reports_sent, ULONG *igmp_queries_received,
+UINT    nx_igmp_info_get(NX_IP *ip_ptr, ULONG *igmp_reports_sent, ULONG *igmp_queries_received, 
                             ULONG *igmp_checksum_errors, ULONG *current_groups_joined);
 UINT    nx_igmp_loopback_disable(NX_IP *ip_ptr);
 UINT    nx_igmp_loopback_enable(NX_IP *ip_ptr);
@@ -2062,12 +2063,12 @@ UINT    nx_ip_interface_info_get(NX_IP *ip_ptr, UINT interface_index, const CHAR
                                  ULONG *network_mask, ULONG *mtu_size, ULONG *phsyical_address_msw, ULONG *physical_address_lsw);
 #ifndef NX_DISABLE_ERROR_CHECKING
 UINT    _nxe_ip_create(NX_IP *ip_ptr, const CHAR *name, ULONG ip_address, ULONG network_mask,
-                            NX_PACKET_POOL *default_pool,
+                            NX_PACKET_POOL *default_pool, 
                             VOID (*ip_link_driver)(NX_IP_DRIVER *),
                             VOID *memory_ptr, ULONG memory_size, UINT priority, UINT ip_control_block_size);
 #else
 UINT    _nx_ip_create(NX_IP *ip_ptr, const CHAR *name, ULONG ip_address, ULONG network_mask,
-                            NX_PACKET_POOL *default_pool,
+                            NX_PACKET_POOL *default_pool, 
                             VOID (*ip_link_driver)(NX_IP_DRIVER *),
                             VOID *memory_ptr, ULONG memory_size, UINT priority);
 #endif
@@ -2083,42 +2084,42 @@ UINT    nx_ip_forwarding_enable(NX_IP *ip_ptr);
 UINT    nx_ip_fragment_disable(NX_IP *ip_ptr);
 UINT    nx_ip_fragment_enable(NX_IP *ip_ptr);
 UINT    nx_ip_gateway_address_set(NX_IP *ip_ptr, ULONG ip_address);
-UINT    nx_ip_info_get(NX_IP *ip_ptr, ULONG *ip_total_packets_sent, ULONG *ip_total_bytes_sent,
+UINT    nx_ip_info_get(NX_IP *ip_ptr, ULONG *ip_total_packets_sent, ULONG *ip_total_bytes_sent, 
                        ULONG *ip_total_packets_received, ULONG *ip_total_bytes_received,
                        ULONG *ip_invalid_packets, ULONG *ip_receive_packets_dropped,
                        ULONG *ip_receive_checksum_errors, ULONG *ip_send_packets_dropped,
                        ULONG *ip_total_fragments_sent, ULONG *ip_total_fragments_received);
 UINT    nx_ip_interface_attach(NX_IP *ip_ptr, const CHAR* interface_name, ULONG ip_address, ULONG network_mask,
                                VOID (*ip_link_driver)(struct NX_IP_DRIVER_STRUCT *));
-UINT    nx_ip_interface_status_check(NX_IP *ip_ptr, UINT interface_index, ULONG needed_status,
+UINT    nx_ip_interface_status_check(NX_IP *ip_ptr, UINT interface_index, ULONG needed_status, 
                                      ULONG *actual_status, ULONG wait_option);
 
 UINT    nx_ip_raw_packet_disable(NX_IP *ip_ptr);
 UINT    nx_ip_raw_packet_enable(NX_IP *ip_ptr);
 UINT    nx_ip_raw_packet_receive(NX_IP *ip_ptr, NX_PACKET **packet_ptr, ULONG wait_option);
 #ifndef NX_DISABLE_ERROR_CHECKING
-UINT    _nxe_ip_raw_packet_send(NX_IP *ip_ptr, NX_PACKET **packet_ptr_ptr,
+UINT    _nxe_ip_raw_packet_send(NX_IP *ip_ptr, NX_PACKET **packet_ptr_ptr, 
                             ULONG destination_ip, ULONG type_of_service);
-UINT    _nxe_ip_raw_packet_packet_send(NX_IP *ip_ptr, NX_PACKET **packet_ptr_ptr,
+UINT    _nxe_ip_raw_packet_packet_send(NX_IP *ip_ptr, NX_PACKET **packet_ptr_ptr, 
                                        ULONG destination_ip, UINT interface_index, ULONG type_of_service);
 #else
-UINT    _nx_ip_raw_packet_send(NX_IP *ip_ptr, NX_PACKET *packet_ptr,
+UINT    _nx_ip_raw_packet_send(NX_IP *ip_ptr, NX_PACKET *packet_ptr, 
                             ULONG destination_ip, ULONG type_of_service);
-UINT    _nx_ip_raw_packet_interface_send(NX_IP *ip_ptr, NX_PACKET *packet_ptr,
+UINT    _nx_ip_raw_packet_interface_send(NX_IP *ip_ptr, NX_PACKET *packet_ptr, 
                                          ULONG destination_ip, UINT interface_index, ULONG type_of_service);
 #endif
 UINT    nx_ip_static_route_add(NX_IP *ip_ptr, ULONG network_address, ULONG net_mask, ULONG next_hop);
 UINT    nx_ip_static_route_delete(NX_IP *ip_ptr, ULONG network_address, ULONG net_mask);
-UINT    nx_ip_status_check(NX_IP *ip_ptr, ULONG needed_status, ULONG *actual_status,
+UINT    nx_ip_status_check(NX_IP *ip_ptr, ULONG needed_status, ULONG *actual_status, 
                             ULONG wait_option);
 
-UINT    nx_packet_allocate(NX_PACKET_POOL *pool_ptr,  NX_PACKET **packet_ptr,
+UINT    nx_packet_allocate(NX_PACKET_POOL *pool_ptr,  NX_PACKET **packet_ptr, 
                             ULONG packet_type, ULONG wait_option);
-UINT    nx_packet_copy(NX_PACKET *packet_ptr, NX_PACKET **new_packet_ptr,
+UINT    nx_packet_copy(NX_PACKET *packet_ptr, NX_PACKET **new_packet_ptr, 
                             NX_PACKET_POOL *pool_ptr, ULONG wait_option);
 UINT    nx_packet_data_append(NX_PACKET *packet_ptr, const VOID *data_start, ULONG data_size,
                             NX_PACKET_POOL *pool_ptr, ULONG wait_option);
-UINT    nx_packet_data_extract_offset(NX_PACKET *packet_ptr, ULONG offset, VOID *buffer_start,
+UINT    nx_packet_data_extract_offset(NX_PACKET *packet_ptr, ULONG offset, VOID *buffer_start, 
                                      ULONG buffer_length, ULONG *bytes_copied);
 UINT    nx_packet_data_retrieve(NX_PACKET *packet_ptr, VOID *buffer_start, ULONG *bytes_copied);
 UINT    nx_packet_length_get(NX_PACKET *packet_ptr, ULONG *length);
@@ -2130,7 +2131,7 @@ UINT    _nx_packet_pool_create(NX_PACKET_POOL *pool_ptr, const CHAR *name, ULONG
                             VOID *memory_ptr, ULONG memory_size);
 #endif
 UINT    nx_packet_pool_delete(NX_PACKET_POOL *pool_ptr);
-UINT    nx_packet_pool_info_get(NX_PACKET_POOL *pool_ptr, ULONG *total_packets, ULONG *free_packets,
+UINT    nx_packet_pool_info_get(NX_PACKET_POOL *pool_ptr, ULONG *total_packets, ULONG *free_packets, 
                             ULONG *empty_pool_requests, ULONG *empty_pool_suspensions,
                             ULONG *invalid_packet_releases);
 #ifndef NX_DISABLE_ERROR_CHECKING
@@ -2144,7 +2145,7 @@ UINT    _nx_packet_transmit_release(NX_PACKET *packet_ptr);
 
 UINT    nx_rarp_disable(NX_IP *ip_ptr);
 UINT    nx_rarp_enable(NX_IP *ip_ptr);
-UINT    nx_rarp_info_get(NX_IP *ip_ptr, ULONG *rarp_requests_sent, ULONG *rarp_responses_received,
+UINT    nx_rarp_info_get(NX_IP *ip_ptr, ULONG *rarp_requests_sent, ULONG *rarp_responses_received, 
                             ULONG *rarp_invalid_messages);
 
 VOID    nx_system_initialize(VOID);
@@ -2159,10 +2160,10 @@ UINT    nx_tcp_suspend(NX_IP *ip_ptr);
 UINT    nx_tcp_resume(NX_IP *ip_ptr);
 /* WICED_CHANGES */
 UINT    nx_tcp_free_port_find(NX_IP *ip_ptr, UINT port, UINT *free_port_ptr);
-UINT    nx_tcp_info_get(NX_IP *ip_ptr, ULONG *tcp_packets_sent, ULONG *tcp_bytes_sent,
+UINT    nx_tcp_info_get(NX_IP *ip_ptr, ULONG *tcp_packets_sent, ULONG *tcp_bytes_sent, 
                             ULONG *tcp_packets_received, ULONG *tcp_bytes_received,
                             ULONG *tcp_invalid_packets, ULONG *tcp_receive_packets_dropped,
-                            ULONG *tcp_checksum_errors, ULONG *tcp_connections,
+                            ULONG *tcp_checksum_errors, ULONG *tcp_connections, 
                             ULONG *tcp_disconnections, ULONG *tcp_connections_dropped,
                             ULONG *tcp_retransmit_packets);
 UINT    nx_tcp_server_socket_accept(NX_TCP_SOCKET *socket_ptr, ULONG wait_option);
@@ -2192,8 +2193,8 @@ UINT    nx_tcp_socket_establish_notify(NX_TCP_SOCKET *socket_ptr, VOID (*tcp_est
 UINT    nx_tcp_socket_disconnect_complete_notify(NX_TCP_SOCKET *socket_ptr, VOID (*tcp_disconnect_complete_notify)(NX_TCP_SOCKET *socket_ptr));
 UINT    nx_tcp_socket_timed_wait_callback(NX_TCP_SOCKET *socket_ptr, VOID (*tcp_timed_wait_callback)(NX_TCP_SOCKET *socket_ptr));
 #endif
-UINT    nx_tcp_socket_info_get(NX_TCP_SOCKET *socket_ptr, ULONG *tcp_packets_sent, ULONG *tcp_bytes_sent,
-                            ULONG *tcp_packets_received, ULONG *tcp_bytes_received,
+UINT    nx_tcp_socket_info_get(NX_TCP_SOCKET *socket_ptr, ULONG *tcp_packets_sent, ULONG *tcp_bytes_sent, 
+                            ULONG *tcp_packets_received, ULONG *tcp_bytes_received, 
                             ULONG *tcp_retransmit_packets, ULONG *tcp_packets_queued,
                             ULONG *tcp_checksum_errors, ULONG *tcp_socket_state,
                             ULONG *tcp_transmit_queue_depth, ULONG *tcp_transmit_window,
@@ -2209,15 +2210,15 @@ UINT    _nxe_tcp_socket_send(NX_TCP_SOCKET *socket_ptr, NX_PACKET **packet_ptr_p
 UINT    _nx_tcp_socket_send(NX_TCP_SOCKET *socket_ptr, NX_PACKET *packet_ptr, ULONG wait_option);
 #endif
 UINT    nx_tcp_socket_state_wait(NX_TCP_SOCKET *socket_ptr, UINT desired_state, ULONG wait_option);
-UINT    nx_tcp_socket_transmit_configure(NX_TCP_SOCKET *socket_ptr, ULONG max_queue_depth, ULONG timeout,
+UINT    nx_tcp_socket_transmit_configure(NX_TCP_SOCKET *socket_ptr, ULONG max_queue_depth, ULONG timeout, 
                             ULONG max_retries, ULONG timeout_shift);
-UINT    nx_tcp_socket_window_update_notify_set(NX_TCP_SOCKET *socket_ptr,
+UINT    nx_tcp_socket_window_update_notify_set(NX_TCP_SOCKET *socket_ptr, 
                                                VOID (*tcp_window_update_notify)(NX_TCP_SOCKET *socket_ptr));
 
 
 UINT    nx_udp_enable(NX_IP *ip_ptr);
 UINT    nx_udp_free_port_find(NX_IP *ip_ptr, UINT port, UINT *free_port_ptr);
-UINT    nx_udp_info_get(NX_IP *ip_ptr, ULONG *udp_packets_sent, ULONG *udp_bytes_sent,
+UINT    nx_udp_info_get(NX_IP *ip_ptr, ULONG *udp_packets_sent, ULONG *udp_bytes_sent, 
                             ULONG *udp_packets_received, ULONG *udp_bytes_received,
                             ULONG *udp_invalid_packets, ULONG *udp_receive_packets_dropped,
                             ULONG *udp_checksum_errors);
@@ -2238,19 +2239,19 @@ UINT    _nx_udp_socket_interface_send(NX_UDP_SOCKET *socket_ptr, NX_PACKET *pack
 
 #endif
 UINT    nx_udp_socket_delete(NX_UDP_SOCKET *socket_ptr);
-UINT    nx_udp_socket_info_get(NX_UDP_SOCKET *socket_ptr, ULONG *udp_packets_sent, ULONG *udp_bytes_sent,
+UINT    nx_udp_socket_info_get(NX_UDP_SOCKET *socket_ptr, ULONG *udp_packets_sent, ULONG *udp_bytes_sent, 
                             ULONG *udp_packets_received, ULONG *udp_bytes_received, ULONG *udp_packets_queued,
                             ULONG *udp_receive_packets_dropped, ULONG *udp_checksum_errors);
 UINT    nx_udp_socket_port_get(NX_UDP_SOCKET *socket_ptr, UINT *port_ptr);
-UINT    nx_udp_socket_receive(NX_UDP_SOCKET *socket_ptr, NX_PACKET **packet_ptr,
+UINT    nx_udp_socket_receive(NX_UDP_SOCKET *socket_ptr, NX_PACKET **packet_ptr, 
                             ULONG wait_option);
-UINT    nx_udp_socket_receive_notify(NX_UDP_SOCKET *socket_ptr,
+UINT    nx_udp_socket_receive_notify(NX_UDP_SOCKET *socket_ptr, 
                             VOID (*udp_receive_notify)(NX_UDP_SOCKET *socket_ptr));
 #ifndef NX_DISABLE_ERROR_CHECKING
-UINT    _nxe_udp_socket_send(NX_UDP_SOCKET *socket_ptr, NX_PACKET **packet_ptr_ptr,
+UINT    _nxe_udp_socket_send(NX_UDP_SOCKET *socket_ptr, NX_PACKET **packet_ptr_ptr, 
                             ULONG ip_address, UINT port);
 #else
-UINT    _nx_udp_socket_send(NX_UDP_SOCKET *socket_ptr, NX_PACKET *packet_ptr,
+UINT    _nx_udp_socket_send(NX_UDP_SOCKET *socket_ptr, NX_PACKET *packet_ptr, 
                             ULONG ip_address, UINT port);
 #endif
 UINT    nx_udp_socket_unbind(NX_UDP_SOCKET *socket_ptr);
@@ -2266,20 +2267,20 @@ UINT    nx_udp_source_extract(NX_PACKET *packet_ptr, ULONG *ip_address, UINT *po
    should be called from the driver's initialization routine, with the driver's deferred
    packet processing routine provided.  Each packet the driver receives should be
    delivered to NetX via the _nx_ip_driver_deferred_receive function.  This function
-   queues the packet for the NetX IP thread.  The NetX IP thread will then call the driver's
-   deferred packet processing routine, which can then process the packet at a thread level
+   queues the packet for the NetX IP thread.  The NetX IP thread will then call the driver's 
+   deferred packet processing routine, which can then process the packet at a thread level 
    of execution.  The deferred packet processing routine should use the _nx_ip_packet_receive,
-   _nx_arp_packet_deferred_receive, and _nx_rarp_packet_deferred_receive to dispatch the
-   appropriate packets to NetX.  In order to use the deferred packet processing, NetX
+   _nx_arp_packet_deferred_receive, and _nx_rarp_packet_deferred_receive to dispatch the 
+   appropriate packets to NetX.  In order to use the deferred packet processing, NetX 
    must be built with NX_DRIVER_DEFERRED_PROCESSING defined.  */
 
 VOID    _nx_ip_driver_deferred_enable(NX_IP *ip_ptr, VOID (*driver_deferred_packet_handler)(NX_IP *ip_ptr, NX_PACKET *packet_ptr));
 VOID    _nx_ip_driver_deferred_receive(NX_IP *ip_ptr, NX_PACKET *packet_ptr);
 
 
-/* Define the driver deferred processing notification routine. Calling this routine from
-   the driver will cause the driver to be called with the NX_LINK_DEFERRED_PROCESSING
-   value specified in the nx_ip_driver_command field of the NX_IP_DRIVER request
+/* Define the driver deferred processing notification routine. Calling this routine from 
+   the driver will cause the driver to be called with the NX_LINK_DEFERRED_PROCESSING 
+   value specified in the nx_ip_driver_command field of the NX_IP_DRIVER request 
    structure. This is useful in situations where the driver wishes to process activities
    like transmit complete interrupts at the thread level rather than in the ISR. Note
    that the driver must set its own internal variables in order to know what processing
@@ -2304,12 +2305,12 @@ VOID    _nx_rarp_packet_deferred_receive(NX_IP *ip_ptr, NX_PACKET *packet_ptr);
    is used, this routine should be used to notify NetX of the newly received IP packet.  */
 
 VOID    _nx_ip_packet_receive(NX_IP *ip_ptr, NX_PACKET *packet_ptr);
-#endif
+#endif 
 
 
 #ifdef NX_ENABLE_IP_STATIC_ROUTING
 #define    nx_ip_static_routing_enable(a)  (NX_SUCCESS)
-#define    nx_ip_static_routing_disable(a) (NX_SUCCESS)
+#define    nx_ip_static_routing_disable(a) (NX_SUCCESS) 
 #else /* !NX_ENABLE_IP_STATIC_ROUTING */
 #define    nx_ip_static_routing_enable(a)  (NX_NOT_IMPLEMENTED)
 #define    nx_ip_static_routing_disable(a) (NX_NOT_IMPLEMENTED)

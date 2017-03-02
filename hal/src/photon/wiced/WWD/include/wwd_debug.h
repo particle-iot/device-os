@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 #ifndef INCLUDED_WWD_DEBUG_H
@@ -38,13 +13,16 @@
 
 #include "wiced_defaults.h"
 #include <stdio.h>
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-
+/******************************************************
+ *                      Macros
+ ******************************************************/
 
 #ifdef DEBUG
 #include "platform_assert.h"
@@ -53,11 +31,21 @@ extern "C"
     #define WICED_BREAK_IF_DEBUG( )
 #endif
 
+#ifdef WPRINT_PLATFORM_PERMISSION
+int platform_wprint_permission(void);
+#define WPRINT_PLATFORM_PERMISSION_FUNC() platform_wprint_permission()
+#else
+#define WPRINT_PLATFORM_PERMISSION_FUNC() 1
+#endif
+
 /******************************************************
  *             Print declarations
  ******************************************************/
 
-#define WPRINT_MACRO(args) do {printf args;} while(0==1)
+#define WPRINT_MACRO(args) do {if (WPRINT_PLATFORM_PERMISSION_FUNC()) printf args;} while(0==1)
+
+// extern void log_printf_wiced(const char *fmt, ...); 
+// #define WPRINT_MACRO(args) do { log_printf_wiced args;} while(0==1)
 
 /* WICED printing macros for general SDK/Library functions*/
 #ifdef WPRINT_ENABLE_LIB_INFO
@@ -187,7 +175,7 @@ extern "C"
     #ifdef WPRINT_ENABLE_SUPPLICANT_DEBUG
         #define SUPPLICANT_DEBUG(args) WPRINT_MACRO(args)
     #else
-        #define SUPPLCAINT_DEBUG(args)
+        #define SUPPLICANT_DEBUG(args)
     #endif
     #ifdef WPRINT_ENABLE_SUPPLICANT_ERROR
         #define SUPPLICANT_ERROR(args) { WPRINT_MACRO(args); WICED_BREAK_IF_DEBUG(); }

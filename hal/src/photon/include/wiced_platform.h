@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -46,7 +21,6 @@
 #include "platform_peripheral.h"
 #include "platform.h" /* This file is unique for each platform */
 #include "platform_dct.h"
-#include "waf_platform.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,6 +33,12 @@ extern "C" {
 /******************************************************
  *                    Constants
  ******************************************************/
+
+#define WICED_I2C_START_FLAG                    (1U << 0)
+#define WICED_I2C_REPEATED_START_FLAG           (1U << 1)
+#define WICED_I2C_STOP_FLAG                     (1U << 2)
+
+#define WICED_GPIO_NONE ((wiced_gpio_t)0x7fffffff)
 
 /******************************************************
  *                   Enumerations
@@ -201,13 +181,13 @@ wiced_result_t wiced_uart_transmit_bytes( wiced_uart_t uart, const void* data, u
  *
  * @param  uart     : the UART interface
  * @param  data     : pointer to the buffer which will store incoming data
- * @param  size     : number of bytes to receive
- * @param  timeout  : timeout in milisecond
+ * @param  size     : number of bytes to receive, function return in same parameter number of actually received bytes
+ * @param  timeout  : timeout in millisecond
  *
  * @return    WICED_SUCCESS : on success.
  * @return    WICED_ERROR   : if an error occurred with any step
  */
-wiced_result_t wiced_uart_receive_bytes( wiced_uart_t uart, void* data, uint32_t size, uint32_t timeout );
+wiced_result_t wiced_uart_receive_bytes( wiced_uart_t uart, void* data, uint32_t * size, uint32_t timeout );
 
 /** @} */
 /*****************************************************************************/
@@ -231,6 +211,18 @@ wiced_result_t wiced_uart_receive_bytes( wiced_uart_t uart, void* data, uint32_t
  * @return    WICED_ERROR   : if the SPI device could not be initialised
  */
 wiced_result_t wiced_spi_init( const wiced_spi_device_t* spi );
+
+
+/** Transmits data to a SPI device
+ *
+ * @param  spi      : the SPI device to be initialised
+ * @param  segments : a pointer to an array of segments
+ * @param  number_of_segments : the number of segments to transfer
+ *
+ * @return    WICED_SUCCESS : on success.
+ * @return    WICED_ERROR   : if an error occurred
+ */
+wiced_result_t wiced_spi_transmit( const wiced_spi_device_t* spi, const wiced_spi_message_segment_t* segments, uint16_t number_of_segments );
 
 
 /** Transmits and/or receives data from a SPI device
@@ -415,6 +407,32 @@ wiced_result_t wiced_i2c_init_combined_message( wiced_i2c_message_t* message, co
  * @return    WICED_ERROR   : if an error occurred during message transfer
  */
 wiced_result_t wiced_i2c_transfer(  const wiced_i2c_device_t* device, wiced_i2c_message_t* message, uint16_t number_of_messages );
+
+
+/** Read data over an I2C interface
+ *
+ * @param device             : the i2c device to communicate with
+ * @param flags              : bitwise flags to control i2c data transfers (WICED_I2C_XXX_FLAG)
+ * @param buffer             : pointer to a buffer to hold received data
+ * @param buffer_length      : length in bytes of the buffer
+ *
+ * @return    WICED_SUCCESS : on success
+ * @return    WICED_ERROR   : if an error occurred during message transfer
+ */
+wiced_result_t wiced_i2c_read( const wiced_i2c_device_t* device, uint16_t flags, void* buffer, uint16_t buffer_length );
+
+
+/** Write data over an I2C interface
+ *
+ * @param device             : the i2c device to communicate with
+ * @param flags              : bitwise flags to control i2c data transfers (WICED_I2C_XXX_FLAG)
+ * @param buffer             : pointer to a buffer to hold received data
+ * @param buffer_length      : length in bytes of the buffer
+ *
+ * @return    WICED_SUCCESS : on success
+ * @return    WICED_ERROR   : if an error occurred during message transfer
+ */
+wiced_result_t wiced_i2c_write( const wiced_i2c_device_t* device, uint16_t flags, const void* buffer, uint16_t buffer_length );
 
 
 /** Deinitialises an I2C device
@@ -672,7 +690,6 @@ wiced_result_t wiced_pwm_stop( wiced_pwm_t pwm );
  */
 wiced_result_t wiced_watchdog_kick( void );
 
-
 /** @} */
 /*****************************************************************************/
 /** @addtogroup mcupowersave       Powersave
@@ -729,7 +746,6 @@ wiced_result_t wiced_platform_get_rtc_time( wiced_rtc_time_t* time );
 wiced_result_t wiced_platform_set_rtc_time( const wiced_rtc_time_t* time );
 
 
-
 /**
  * Enable the 802.1AS time functionality.
  *
@@ -760,6 +776,75 @@ wiced_result_t wiced_time_disable_8021as(void);
 wiced_result_t wiced_time_read_8021as(uint32_t *master_secs, uint32_t *master_nanosecs,
                                       uint32_t *local_secs, uint32_t *local_nanosecs);
 
+
+/**
+ * Read the 802.1AS time along with the I2S-driven audio time
+ *
+ * Retrieve the origin timestamp in the last sync message, correct for the
+ * intervening interval and return the corrected time in seconds + nanoseconds.
+ * Also retrieve the corresponding time from the audio timer.
+ *
+ * @return    WICED_SUCCESS : on success.
+ * @return    WICED_ERROR   : if an error occurred with any step
+ */
+wiced_result_t wiced_time_read_8021as_with_audio(uint32_t *master_secs, uint32_t *master_nanosecs,
+                                                 uint32_t *local_secs, uint32_t *local_nanosecs,
+                                                 uint32_t *audio_time_hi, uint32_t *audio_time_lo);
+
+
+/**
+ * Enable audio timer
+ *
+ * @param     audio_frame_count : audio timer interrupts period expressed in number of audio samples/frames
+ *
+ * @return    WICED_SUCCESS     : on success.
+ * @return    WICED_ERROR       : if an error occurred with any step
+ */
+wiced_result_t wiced_audio_timer_enable        ( uint32_t audio_frame_count );
+
+
+/**
+ * Disable audio timer
+ *
+ * @return    WICED_SUCCESS     : on success.
+ * @return    WICED_ERROR       : if an error occurred with any step
+ */
+wiced_result_t wiced_audio_timer_disable       ( void );
+
+
+/**
+ * Wait for audio timer frame sync event
+ *
+ * @param     timeout_msecs     : timeout value in msecs; WICED_NO_WAIT or WICED_WAIT_FOREVER otherwise.
+ *
+ * @return    WICED_SUCCESS     : on success.
+ * @return    WICED_ERROR       : if an error occurred with any step
+ */
+wiced_result_t wiced_audio_timer_get_frame_sync( uint32_t timeout_msecs );
+
+
+/**
+ * Read audio timer value (tick count)
+ *
+ * @param     time_hi           : upper 32-bit of 64-bit audio timer ticks
+ * @param     time_lo           : lower 32-bit of 64-bit audio timer ticks
+ *
+ * @return    WICED_SUCCESS     : on success.
+ * @return    WICED_ERROR       : if an error occurred with any step
+ */
+wiced_result_t wiced_audio_timer_get_time      ( uint32_t *time_hi, uint32_t *time_lo );
+
+
+/**
+ * Get audio timer resolution (ticks per second)
+ *
+ * @param     audio_sample_rate : audio sample rate
+ * @param     ticks_per_sec     : returned audio timer resolution
+ *
+ * @return    WICED_SUCCESS     : on success.
+ * @return    WICED_ERROR       : if an error occurred with any step
+ */
+wiced_result_t wiced_audio_timer_get_resolution( uint32_t audio_sample_rate, uint32_t *ticks_per_sec );
 
 #ifdef __cplusplus
 } /*extern "C" */

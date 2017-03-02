@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /* Setup options for NetX */
@@ -44,7 +19,7 @@
 #define NX_LITTLE_ENDIAN
 
 /* Setup the characteristics of the Physical layer */
-#define NX_PHYSICAL_HEADER          (14 + 12 + 22 )
+#define NX_PHYSICAL_HEADER          (14 + 12 + 18)
 #define NX_PHYSICAL_TRAILER         (0)
 #undef NX_LINK_MTU
 
@@ -61,6 +36,8 @@
 #define NX_DHCP_CLIENT_RESTORE_STATE
 
 #define NX_TCP_ENABLE_KEEPALIVE
+
+#define NX_ARP_UPDATE_RATE 1
 
 #define NX_TCP_MAX_OUT_OF_ORDER_PACKETS
 
@@ -152,7 +129,6 @@ extern unsigned long host_rtos_get_tickrate( void );
 #undef NX_ARP_EXPIRATION_RATE
 #undef NX_ARP_MAX_QUEUE_DEPTH
 #undef NX_ARP_MAXIMUM_RETRIES
-#undef NX_ARP_UPDATE_RATE
 #undef NX_AUTO_IP_ANNOUNCE_INTERVAL
 #undef NX_AUTO_IP_ANNOUNCE_NUM
 #undef NX_AUTO_IP_ANNOUNCE_WAIT
@@ -629,7 +605,7 @@ extern unsigned long host_rtos_get_tickrate( void );
 #undef NX_SNTP_UDP_BROADCAST_SERVER_ADDRESSES
 #undef NX_SNTP_UDP_UNICAST_SERVER_ADDRESSES
 #undef NX_SNTP_UPDATE_TIMEOUT_INTERVAL
-#undef NX_TCP_ACK_EVERY_N_PACKETS
+#define NX_TCP_ACK_EVERY_N_PACKETS                      2
 #undef NX_TCP_ACK_TIMER_RATE
 #undef NX_TCP_ENABLE_DEBUG_LOG
 #undef NX_TCP_ENABLE_WINDOW_SCALING

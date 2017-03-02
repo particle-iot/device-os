@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
@@ -38,6 +13,7 @@
 #include "crypto_structures.h"
 #include <time.h>
 #include "cipher_suites.h"
+#include "wwd_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,17 +27,21 @@ extern "C" {
  *                    Constants
  ******************************************************/
 
-#define SIZEOF_SESSION_ID        32
-#define SIZEOF_SESSION_MASTER    48
-#define SIZEOF_RANDOM            64
+#define SIZEOF_SESSION_ID                                   32
+#define SIZEOF_SESSION_MASTER                               48
+#define SIZEOF_RANDOM                                       64
 
-#define  TLS_WAIT_FOREVER        (0xFFFFFFFF)
-#define  TLS_HANDSHAKE_PACKET_TIMEOUT_MS        (10000)
+#define  TLS_WAIT_FOREVER                                  (0xFFFFFFFF)
+#define  TLS_HANDSHAKE_PACKET_TIMEOUT_MS                   (20000)
 
+/* Max negotiated length is SSL_MAX_FRAGMENT_LEN_4096 [4K], But if not negotiated then TLS_DEFAULT_MAX_FRAGMENT_LENGTH [16K]
+ * will be used. Its not possible to negotiate above SSL_MAX_FRAGMENT_LEN_4096 [4K].
+ */
+#define  TLS_DEFAULT_MAX_FRAGMENT_LENGTH                   (16384)
+#define  TLS_EXT_MAX_FRAGMENT_LENGTH_FIELD_SIZE            (1)
+#define  TLS_MSG_APPLICATION_DATA                          (23)
 
-/* Supported ciphersuites */
-
-
+#define WICED_TLS_CONTEXT_ID                               (0xd309c08b)
 /******************************************************
  *                   Enumerations
  ******************************************************/
@@ -118,21 +98,74 @@ typedef enum
     TLS_UDP_TRANSPORT = 2,
 } tls_transport_protocol_t;
 
-/******************************************************
- *                 Type Definitions
- ******************************************************/
-
-typedef struct _ssl_context  wiced_tls_context_t;
-typedef struct _ssl_session  wiced_tls_session_t;
-typedef x509_cert            wiced_tls_certificate_t;
-typedef rsa_context          wiced_tls_key_t;
-typedef uint32_t             tls_packet_t;
-
 typedef enum
 {
     TLS_RECEIVE_PACKET_IF_NEEDED,
     TLS_AVOID_NEW_RECORD_PACKET_RECEIVE,
 } tls_packet_receive_option_t;
+
+typedef enum
+{
+    TLS_CERTIFICATE_IN_PEM_FORMAT,
+    TLS_CERTIFICATE_IN_DER_FORMAT,
+} wiced_tls_certificate_format_t;
+
+typedef enum
+{
+    TLS_DIGITALLY_SIGNED_SIGNATURE_ALGORITHM_ANONYMOUS = 0,
+    TLS_DIGITALLY_SIGNED_SIGNATURE_ALGORITHM_RSA       = 1,
+    TLS_DIGITALLY_SIGNED_SIGNATURE_ALGORITHM_DSA       = 2,
+    TLS_DIGITALLY_SIGNED_SIGNATURE_ALGORITHM_ECDSA     = 3,
+} tls_digitally_signed_signature_algorithm_t;
+
+/* Reference: http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml */
+typedef enum
+{
+    TLS_EXTENSION_TYPE_SERVER_NAME                              =  0,
+    TLS_EXTENSION_TYPE_MAX_FRAGMENT_LENGTH                      =  1,
+    TLS_EXTENSION_TYPE_APPLICATION_LAYER_PROTOCOL_NEGOTIATION   = 16,
+} wiced_tls_extension_type_t;
+
+typedef enum
+{
+    TLS_FRAGMENT_LENGTH_512   =  1,
+    TLS_FRAGMENT_LENGTH_1024  =  2,
+    TLS_FRAGMENT_LENGTH_2048  =  3,
+    TLS_FRAGMENT_LENGTH_4096  =  4,
+} wiced_tls_max_fragment_length_t;
+
+/******************************************************
+ *                 Type Definitions
+ ******************************************************/
+
+typedef struct _ssl_context  wiced_tls_workspace_t;
+typedef struct _ssl_session  wiced_tls_session_t;
+typedef uint32_t             tls_packet_t;
+
+typedef int (*wiced_tls_sign_certificate_verify)(  wiced_tls_rsa_key_t* rsa_key ,rsa_hash_id_t hash_id, int32_t hashlen, const unsigned char *hash, unsigned char *rsa_sign, uint32_t* key_length );
+
+typedef struct
+{
+    const uint8_t*   certificate_data;
+    uint32_t         certificate_data_length;
+    wiced_bool_t     certificate_data_malloced;
+    wiced_tls_key_t* public_key;
+    const char*      common_name;
+    x509_cert*       processed_certificate_data;
+} wiced_tls_certificate_t;
+
+typedef struct
+{
+    union
+    {
+        wiced_tls_key_t     common;
+        wiced_tls_rsa_key_t rsa;
+        wiced_tls_ecc_key_t ecc;
+        wiced_tls_psk_key_t psk;
+    } private_key;
+    wiced_tls_certificate_t certificate;
+    wiced_tls_sign_certificate_verify rsa_sign;
+} wiced_tls_identity_t;
 
 #pragma pack(1)
 
@@ -216,21 +249,21 @@ typedef union
         camellia_context camellia;
         chacha_context_t chacha;
         seed_context_t seed;
+        void* gcm;
+        void* ccm;
 } tls_cipher_context;
-
-
 
 /*
  * This structure is used for extensions
  */
-#define MAX_EXTENSIONS       8
-#define MAX_EXTENSION_DATA  32
+#define MAX_NUMBER_OF_EXTENSIONS_SUPPORTED       8
+#define MAX_EXT_DATA_LENGTH                      256
 struct _ssl_extension
 {
     uint16_t id;
     uint16_t used;
     uint16_t sz;
-    uint8_t data[MAX_EXTENSION_DATA+1];
+    uint8_t data[MAX_EXT_DATA_LENGTH+1];
 };
 
 typedef struct _ssl_extension ssl_extension;
@@ -305,11 +338,11 @@ struct _ssl_context
     /*
      * PKI layer
      */
-    rsa_context *rsa_key;               /*!<  own RSA private key     */
-    x509_cert *own_cert;                /*!<  own X.509 certificate   */
+    wiced_tls_identity_t* identity;
     x509_cert *ca_chain;                /*!<  own trusted CA chain    */
     x509_cert *peer_cert;               /*!<  peer X.509 cert chain   */
     const char *peer_cn;                /*!<  expected peer CN        */
+    wiced_tls_key_t* peer_public_key;
 
     int32_t endpoint;                   /*!<  0: client, 1: server    */
     int32_t authmode;                   /*!<  verification mode       */
@@ -330,6 +363,7 @@ struct _ssl_context
     int32_t keylen;                     /*!<  symmetric key length    */
     int32_t minlen;                     /*!<  min. ciphertext length  */
     int32_t ivlen;                      /*!<  IV length               */
+    int32_t iv_fixedlen;                /*!<  Lenght of fixed part of IV */
     int32_t maclen;                     /*!<  MAC length              */
     int verifylen;                      /*!<  verify data length      */
 
@@ -348,27 +382,29 @@ struct _ssl_context
     /*
      * TLS extensions
      */
+    uint16_t ext_max_fragment_length;
     int extension_count;
-    ssl_extension extensions[MAX_EXTENSIONS];
+    ssl_extension extensions[MAX_NUMBER_OF_EXTENSIONS_SUPPORTED];
 };
 
+typedef struct
+{
+    uint32_t                 context_id;
+    wiced_tls_workspace_t    context;
+    wiced_tls_session_t      session;
+    wiced_tls_identity_t*    identity;
+} wiced_tls_context_t;
 
 typedef struct
 {
-    wiced_tls_context_type_t context_type;
-    wiced_tls_context_t      context;
-    wiced_tls_session_t      session;
-} wiced_tls_simple_context_t;
+    wiced_tls_extension_type_t           type;
+    union
+    {
+        uint8_t*                         server_name;
+        wiced_tls_max_fragment_length_t  max_fragment_length;
+    } extension_data;
+} wiced_tls_extension_t;
 
-/* The advanced context contains a simple context but with additional certificate and key information */
-typedef struct
-{
-    wiced_tls_context_type_t context_type;
-    wiced_tls_context_t      context;
-    wiced_tls_session_t      session;
-    wiced_tls_certificate_t  certificate;
-    wiced_tls_key_t          key;
-} wiced_tls_advanced_context_t;
 
 typedef enum
 {
@@ -386,6 +422,25 @@ typedef enum
 /******************************************************
  *               Function Declarations
  ******************************************************/
+
+tls_result_t ssl_init                  ( ssl_context *ssl );
+void         ssl_set_rng               ( ssl_context *ssl, int32_t (*f_rng)( void * ), void *p_rng );
+void         ssl_set_session           ( ssl_context *ssl, int32_t resume, int32_t timeout, ssl_session *session );
+void         ssl_free                  ( ssl_context *ssl );
+void         ssl_set_endpoint          ( ssl_context *ssl, int32_t endpoint );
+void         ssl_set_ca_chain          ( ssl_context *ssl, x509_cert *ca_chain, const char *peer_cn );
+void         ssl_set_authmode          ( ssl_context *ssl, int32_t authmode );
+void         ssl_set_own_cert          ( ssl_context *ssl, x509_cert *own_cert, rsa_context *rsa_key );
+tls_result_t ssl_handshake_server_async( ssl_context *ssl );
+tls_result_t ssl_handshake_client_async( ssl_context *ssl );
+tls_result_t ssl_set_dh_param          ( ssl_context *ssl, const unsigned char *dhm_P, int P_len, const unsigned char *dhm_G, int G_len );
+tls_result_t ssl_close_notify          ( ssl_context *ssl );
+tls_result_t tls_encrypt_record        ( ssl_context *ssl, tls_record_t* record, uint32_t message_length );
+tls_result_t tls_decrypt_record        ( ssl_context *ssl, tls_record_t* record );
+void         microrng_init             ( microrng_state *state );
+int32_t      microrng_rand             ( void *p_state );
+int          ussl_set_extension        ( ssl_context *ssl, const ssl_extension *extension );
+
 
 #ifdef __cplusplus
 } /*extern "C" */

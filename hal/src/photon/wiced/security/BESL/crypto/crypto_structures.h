@@ -1,44 +1,19 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
 #include <stdint.h>
 #include <stddef.h>
-
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /******************************************************
@@ -55,6 +30,13 @@ extern "C" {
 #define N_COL                   4
 #define N_BLOCK   (N_ROW * N_COL)
 #define N_MAX_ROUNDS           14
+
+/*
+ * maxium ECC key size in byte
+ *
+ * 144 bytes for sect571k1, sect571r1 (570 bit)
+ */
+#define ECC_KEY_MAX           144
 
 /******************************************************
  *                   Enumerations
@@ -87,6 +69,24 @@ typedef enum
     RSA_SHA384      = 12,
     RSA_SHA512      = 13,
 } rsa_hash_id_t;
+
+typedef enum
+{
+    TLS_RSA_KEY,
+    TLS_ECC_KEY,
+    TLS_PSK_KEY,
+} wiced_tls_key_type_t;
+
+typedef enum
+{
+    DTLS_PSK_KEY,
+} wiced_dtls_key_type_t;
+
+typedef enum
+{
+    RSA_PUBLIC      = 0,
+    RSA_PRIVATE     = 1,
+} rsa_mode_t;
 
 /******************************************************
  *                 Type Definitions
@@ -132,6 +132,15 @@ typedef struct
     unsigned char opad[64];
 } md5_context;
 
+typedef struct {
+    uint32_t total[2];
+    uint32_t state[4];
+    unsigned char buffer[64];
+
+    unsigned char ipad[64];
+    unsigned char opad[64];
+} md4_context;
+
 typedef struct
 {
     uint32_t len;
@@ -152,8 +161,9 @@ typedef enum
 
 typedef struct
 {
-    int32_t ver;
-    int32_t len;
+    wiced_tls_key_type_t type;
+    uint32_t             version;
+    uint32_t             length;
 
     mpi N;
     mpi E;
@@ -173,13 +183,41 @@ typedef struct
     int32_t hash_id;
     int32_t (*f_rng)( void * );
     void *p_rng;
-} rsa_context;
+} wiced_tls_rsa_key_t;
 
-typedef enum
+/*
+ * We support up to 570-bit ECC keys
+ */
+typedef struct
 {
-    RSA_PUBLIC      = 0,
-    RSA_PRIVATE     = 1,
-} rsa_mode_t;
+    wiced_tls_key_type_t type;
+    uint32_t             version;
+    uint32_t             length;
+    uint8_t              key[ECC_KEY_MAX];
+} wiced_tls_ecc_key_t;
+
+typedef struct
+{
+    wiced_tls_key_type_t type;
+    uint32_t             version;
+    uint32_t             length;
+    uint8_t              psk_identity[256];
+    uint8_t              psk_key[256];
+} wiced_tls_psk_key_t;
+
+typedef wiced_tls_psk_key_t wiced_dtls_psk_key_t;
+typedef wiced_tls_rsa_key_t rsa_context;
+
+/*
+ * wiced_tls_key_t is a prototype for
+ */
+typedef struct
+{
+    wiced_tls_key_type_t type;
+    uint32_t             version;
+    uint32_t             length;
+    uint8_t              data[1];
+} wiced_tls_key_t;
 
 typedef struct _x509_buf
 {
@@ -192,7 +230,7 @@ typedef struct _x509_buf_allocated
 {
     int32_t tag;
     uint32_t len;
-    unsigned char *p;
+    const unsigned char *p;
 } x509_buf_allocated;
 
 typedef struct _x509_name
@@ -231,7 +269,7 @@ typedef struct _x509_cert
     x509_time valid_to;
 
     x509_buf pk_oid;
-    rsa_context rsa;
+    wiced_tls_key_t* public_key;
 
     x509_buf issuer_id;
     x509_buf subject_id;
@@ -242,6 +280,10 @@ typedef struct _x509_cert
 
     x509_buf sig_oid2;
     x509_buf sig;
+
+    uint8_t  der_certificate_malloced;
+    uint8_t* der_certificate_data;
+    uint32_t der_certificate_length;
 
     struct _x509_cert *next;
 } x509_cert;
@@ -297,49 +339,44 @@ typedef struct
 
 typedef struct
 {
-    int32_t mode;                   /*!<  encrypt/decrypt   */
+    int32_t mode;          /*!<  encrypt/decrypt   */
     uint32_t sk[96];       /*!<  3DES subkeys      */
-}
-des3_context;
+} des3_context;
 
 typedef struct
 {
-    int32_t mode;                   /*!<  encrypt/decrypt   */
-    uint32_t sk[32];       /*!<  DES subkeys       */
-}
-des_context;
+    int32_t mode;       /*!<  encrypt/decrypt   */
+    uint32_t sk[32];    /*!<  DES subkeys       */
+} des_context;
 
 typedef struct
 {
-    uint32_t total[2];     /*!< number of bytes processed  */
-    uint32_t state[8];     /*!< intermediate digest state  */
+    uint32_t total[2];          /*!< number of bytes processed  */
+    uint32_t state[8];          /*!< intermediate digest state  */
     unsigned char buffer[64];   /*!< data block being processed */
 
     unsigned char ipad[64];     /*!< HMAC: inner padding        */
     unsigned char opad[64];     /*!< HMAC: outer padding        */
-    int32_t is224;                  /*!< 0 => SHA-256, else SHA-224 */
-}
-sha2_context;
+    int32_t is224;              /*!< 0 => SHA-256, else SHA-224 */
+} sha2_context;
 
 typedef struct
 {
-    int64_t total[2];    /*!< number of bytes processed  */
-    int64_t state[8];    /*!< intermediate digest state  */
+    int64_t total[2];           /*!< number of bytes processed  */
+    int64_t state[8];           /*!< intermediate digest state  */
     unsigned char buffer[128];  /*!< data block being processed */
 
     unsigned char ipad[128];    /*!< HMAC: inner padding        */
     unsigned char opad[128];    /*!< HMAC: outer padding        */
-    int32_t is384;                  /*!< 0 => SHA-512, else SHA-384 */
-}
-sha4_context;
+    int32_t is384;              /*!< 0 => SHA-512, else SHA-384 */
+} sha4_context;
 
 typedef struct
 {
-    int32_t x;                      /*!< permutation index */
-    int32_t y;                      /*!< permutation index */
+    int32_t x;                  /*!< permutation index */
+    int32_t y;                  /*!< permutation index */
     unsigned char m[256];       /*!< permutation table */
-}
-arc4_context;
+} arc4_context;
 
 typedef struct poly1305_context {
     size_t aligner;
@@ -360,9 +397,14 @@ typedef struct {
     uint32_t data[32];
 } seed_context_t;
 
+#ifndef ED25519_H
 typedef unsigned char ed25519_signature[64];
 typedef unsigned char ed25519_public_key[32];
 typedef unsigned char ed25519_secret_key[32];
+#endif
+
+typedef wiced_tls_key_t     wiced_dtls_key_t;
+typedef wiced_tls_ecc_key_t wiced_dtls_ecc_key_t;
 
 /******************************************************
  *                 Global Variables

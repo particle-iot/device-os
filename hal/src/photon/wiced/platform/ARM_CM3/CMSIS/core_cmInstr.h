@@ -445,7 +445,7 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE int32_t __REVSH(int32_t value
   uint32_t result;
 
   __ASM volatile ("revsh %0, %1" : __CMSIS_GCC_OUT_REG (result) : __CMSIS_GCC_USE_REG (value) );
-  return(result);
+  return( (int32_t) result);
 #endif
 }
 
@@ -460,7 +460,7 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE int32_t __REVSH(int32_t value
  */
 __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __ROR(uint32_t op1, uint32_t op2)
 {
-  return (op1 >> op2) | (op1 << (32 - op2));
+  return (op1 >> op2) | (op1 << (32 - op2)); 
 }
 
 

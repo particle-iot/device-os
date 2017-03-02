@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -96,15 +71,48 @@ typedef struct
  * buffering scheme in use.
  * Some implementations of the packet buffer interface may need additional
  * information for initialization, especially the location of packet buffer
- * pool(s). These can be passed via the 'native_arg' parameter. The @ref wwd_management_init
- * function passes the value directly from it's parameters.
+ * pool(s). These can be passed via the 'native_arg' parameter.
  *
- * @param native_arg  An implementation specific argument passed from @ref wwd_management_init
+ * @param native_arg  An implementation specific argument
  *
  * @return WWD_SUCCESS = Success, Error code = Failure
  */
 
-extern wwd_result_t host_buffer_init( /*@null@*/ void* native_arg );
+extern wwd_result_t wwd_buffer_init( /*@null@*/ void* native_arg );
+
+/**
+ * Deinitialize the packet buffer interface
+ *
+ * Implemented in the WICED buffer interface which is specific to the
+ * buffering scheme in use.
+ *
+ * @return WWD_SUCCESS = Success, Error code = Failure
+ */
+
+extern wwd_result_t wwd_buffer_deinit( void );
+
+/**
+ * @brief Allocates a packet buffer
+ *
+ * Implemented in the WICED buffer interface which is specific to the
+ * buffering scheme in use.
+ * Attempts to allocate a packet buffer of the size requested. It can do this
+ * by allocating a pre-existing packet from a pool, using a static buffer,
+ * or by dynamically allocating memory. The method of allocation does not
+ * concern WICED, however it must match the way the network stack expects packet
+ * buffers to be allocated.
+ *
+ * @param buffer     A pointer which receives the allocated packet buffer handle
+ * @param direction : Indicates transmit/receive direction that the packet buffer is
+ *                    used for. This may be needed if tx/rx pools are separate.
+ * @param size      : The number of bytes to allocate.
+ * @param timeout_ms : Maximum period to block for. Can be passed NEVER_TIMEOUT to request no timeout
+ *
+ * @return WWD_SUCCESS = Success, Error code = Failure
+ *
+ */
+
+extern wwd_result_t internal_host_buffer_get( /*@special@*/ /*@out@*/ wiced_buffer_t* buffer, wwd_buffer_dir_t direction, unsigned short size, unsigned long timeout_ms ) /*@allocates *buffer@*/  /*@defines **buffer@*/;
 
 /**
  * @brief Allocates a packet buffer
@@ -245,6 +253,41 @@ extern wwd_result_t host_buffer_add_remove_at_front( wiced_buffer_t* buffer, int
  * @return WWD_SUCCESS = Success, Error code = Failure
  */
 extern wwd_result_t host_buffer_check_leaked( void );
+
+/**
+ * Init fifo
+ *
+ * @param fifo : pointer to fifo structure
+ */
+extern void host_buffer_init_fifo( wiced_buffer_fifo_t* fifo );
+
+/**
+ * Push buffer to tail of fifo
+ *
+ * @param fifo : pointer to fifo structure
+ * @param buffer : buffer to push
+ * @param interface : which interface buffer belong
+ */
+extern void host_buffer_push_to_fifo( wiced_buffer_fifo_t* fifo, wiced_buffer_t buffer, wwd_interface_t interface );
+
+/**
+ * Pop packet from head of fifo.
+ *
+ * @param fifo - pointer to fifo structure
+ * @param interface - out parameter which filled with interface buffer belong
+ *
+ * @return NULL if fifo empty, otherwise return buffer and store interface in 'interface' out parameter.
+ */
+extern wiced_buffer_t host_buffer_pop_from_fifo( wiced_buffer_fifo_t* fifo, wwd_interface_t* interface );
+
+/**
+ * Check whether pools are full or not (whether all packets are freed).
+ *
+ * @param direction - TX or RX pools to check
+ *
+ * @return WICED_TRUE if polls are full, otherwise WICED_FALSE.
+ */
+wiced_bool_t host_buffer_pool_is_full( wwd_buffer_dir_t direction );
 
 wwd_result_t host_buffer_add_application_defined_pool( void* pool_in, wwd_buffer_dir_t direction );
 

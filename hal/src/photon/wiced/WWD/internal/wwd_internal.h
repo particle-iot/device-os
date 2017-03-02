@@ -1,46 +1,21 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 #ifndef INCLUDED_WWD_INTERNAL_H
 #define INCLUDED_WWD_INTERNAL_H
 
-#include <stdint.h>
-#include "wwd_constants.h" /* for wwd_result_t */
-#include "network/wwd_network_interface.h"
 #include "tlv.h"
 #include "wwd_eapol.h"
+#include "wwd_thread.h"
+#include "wwd_rtos.h"
+#include "wwd_bus_protocol.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -62,7 +37,8 @@ typedef enum
 typedef enum
 {
     WLAN_DOWN,
-    WLAN_UP
+    WLAN_UP,
+    WLAN_OFF
 } wlan_state_t;
 
 typedef enum
@@ -70,140 +46,6 @@ typedef enum
     WLAN_CORE_FLAG_NONE,
     WLAN_CORE_FLAG_CPU_HALT,
 } wlan_core_flag_t;
-
-/* 802.11 Information Element Identification Numbers (as per section 8.4.2.1 of 802.11-2012) */
-typedef enum
-{
-    DOT11_IE_ID_SSID                                 = 0,
-    DOT11_IE_ID_SUPPORTED_RATES                      = 1,
-    DOT11_IE_ID_FH_PARAMETER_SET                     = 2,
-    DOT11_IE_ID_DSSS_PARAMETER_SET                   = 3,
-    DOT11_IE_ID_CF_PARAMETER_SET                     = 4,
-    DOT11_IE_ID_TIM                                  = 5,
-    DOT11_IE_ID_IBSS_PARAMETER_SET                   = 6,
-    DOT11_IE_ID_COUNTRY                              = 7,
-    DOT11_IE_ID_HOPPING_PATTERN_PARAMETERS           = 8,
-    DOT11_IE_ID_HOPPING_PATTERN_TABLE                = 9,
-    DOT11_IE_ID_REQUEST                              = 10,
-    DOT11_IE_ID_BSS_LOAD                             = 11,
-    DOT11_IE_ID_EDCA_PARAMETER_SET                   = 12,
-    DOT11_IE_ID_TSPEC                                = 13,
-    DOT11_IE_ID_TCLAS                                = 14,
-    DOT11_IE_ID_SCHEDULE                             = 15,
-    DOT11_IE_ID_CHALLENGE_TEXT                       = 16,
-    /* 17-31 Reserved */
-    DOT11_IE_ID_POWER_CONSTRAINT                     = 32,
-    DOT11_IE_ID_POWER_CAPABILITY                     = 33,
-    DOT11_IE_ID_TPC_REQUEST                          = 34,
-    DOT11_IE_ID_TPC_REPORT                           = 35,
-    DOT11_IE_ID_SUPPORTED_CHANNELS                   = 36,
-    DOT11_IE_ID_CHANNEL_SWITCH_ANNOUNCEMENT          = 37,
-    DOT11_IE_ID_MEASUREMENT_REQUEST                  = 38,
-    DOT11_IE_ID_MEASUREMENT_REPORT                   = 39,
-    DOT11_IE_ID_QUIET                                = 40,
-    DOT11_IE_ID_IBSS_DFS                             = 41,
-    DOT11_IE_ID_ERP                                  = 42,
-    DOT11_IE_ID_TS_DELAY                             = 43,
-    DOT11_IE_ID_TCLAS_PROCESSING                     = 44,
-    DOT11_IE_ID_HT_CAPABILITIES                      = 45,
-    DOT11_IE_ID_QOS_CAPABILITY                       = 46,
-    /* 47 Reserved */
-    DOT11_IE_ID_RSN                                  = 48,
-    /* 49 Reserved */
-    DOT11_IE_ID_EXTENDED_SUPPORTED_RATES             = 50,
-    DOT11_IE_ID_AP_CHANNEL_REPORT                    = 51,
-    DOT11_IE_ID_NEIGHBOR_REPORT                      = 52,
-    DOT11_IE_ID_RCPI                                 = 53,
-    DOT11_IE_ID_MOBILITY_DOMAIN                      = 54,
-    DOT11_IE_ID_FAST_BSS_TRANSITION                  = 55,
-    DOT11_IE_ID_TIMEOUT_INTERVAL                     = 56,
-    DOT11_IE_ID_RIC_DATA                             = 57,
-    DOT11_IE_ID_DSE_REGISTERED_LOCATION              = 58,
-    DOT11_IE_ID_SUPPORTED_OPERATING_CLASSES          = 59,
-    DOT11_IE_ID_EXTENDED_CHANNEL_SWITCH_ANNOUNCEMENT = 60,
-    DOT11_IE_ID_HT_OPERATION                         = 61,
-    DOT11_IE_ID_SECONDARY_CHANNEL_OFFSET             = 62,
-    DOT11_IE_ID_BSS_AVERAGE_ACCESS_DELAY             = 63,
-    DOT11_IE_ID_ANTENNA                              = 64,
-    DOT11_IE_ID_RSNI                                 = 65,
-    DOT11_IE_ID_MEASUREMENT_PILOT_TRANSMISSION       = 66,
-    DOT11_IE_ID_BSS_AVAILABLE_ADMISSION_CAPACITY     = 67,
-    DOT11_IE_ID_BSS_AC_ACCESS_DELAY                  = 68,
-    DOT11_IE_ID_TIME_ADVERTISEMENT                   = 69,
-    DOT11_IE_ID_RM_ENABLED_CAPABILITIES              = 70,
-    DOT11_IE_ID_MULTIPLE_BSSID                       = 71,
-    DOT11_IE_ID_20_40_BSS_COEXISTENCE                = 72,
-    DOT11_IE_ID_20_40_BSS_INTOLERANT_CHANNEL_REPORT  = 73,
-    DOT11_IE_ID_OVERLAPPING_BSS_SCAN_PARAMETERS      = 74,
-    DOT11_IE_ID_RIC_DESCRIPTOR                       = 75,
-    DOT11_IE_ID_MANAGEMENT_MIC                       = 76,
-    DOT11_IE_ID_EVENT_REQUEST                        = 78,
-    DOT11_IE_ID_EVENT_REPORT                         = 79,
-    DOT11_IE_ID_DIAGNOSTIC_REQUEST                   = 80,
-    DOT11_IE_ID_DIAGNOSTIC_REPORT                    = 81,
-    DOT11_IE_ID_LOCATION_PARAMETERS                  = 82,
-    DOT11_IE_ID_NONTRANSMITTED_BSSID_CAPABILITY      = 83,
-    DOT11_IE_ID_SSID_LIST                            = 84,
-    DOT11_IE_ID_MULTIPLE_BSSID_INDEX                 = 85,
-    DOT11_IE_ID_FMS_DESCRIPTOR                       = 86,
-    DOT11_IE_ID_FMS_REQUEST                          = 87,
-    DOT11_IE_ID_FMS_RESPONSE                         = 88,
-    DOT11_IE_ID_QOS_TRAFFIC_CAPABILITY               = 89,
-    DOT11_IE_ID_BSS_MAX_IDLE_PERIOD                  = 90,
-    DOT11_IE_ID_TFS_REQUEST                          = 91,
-    DOT11_IE_ID_TFS_RESPONSE                         = 92,
-    DOT11_IE_ID_WNM_SLEEP_MODE                       = 93,
-    DOT11_IE_ID_TIM_BROADCAST_REQUEST                = 94,
-    DOT11_IE_ID_TIM_BROADCAST_RESPONSE               = 95,
-    DOT11_IE_ID_COLLOCATED_INTERFERENCE_REPORT       = 96,
-    DOT11_IE_ID_CHANNEL_USAGE                        = 97,
-    DOT11_IE_ID_TIME_ZONE                            = 98,
-    DOT11_IE_ID_DMS_REQUEST                          = 99,
-    DOT11_IE_ID_DMS_RESPONSE                         = 100,
-    DOT11_IE_ID_LINK_IDENTIFIER                      = 101,
-    DOT11_IE_ID_WAKEUP_SCHEDULE                      = 102,
-    /* 103 Reserved */
-    DOT11_IE_ID_CHANNEL_SWITCH_TIMING                = 104,
-    DOT11_IE_ID_PTI_CONTROL                          = 105,
-    DOT11_IE_ID_TPU_BUFFER_STATUS                    = 106,
-    DOT11_IE_ID_INTERWORKING                         = 107,
-    DOT11_IE_ID_ADVERTISMENT_PROTOCOL                = 108,
-    DOT11_IE_ID_EXPEDITED_BANDWIDTH_REQUEST          = 109,
-    DOT11_IE_ID_QOS_MAP_SET                          = 110,
-    DOT11_IE_ID_ROAMING_CONSORTIUM                   = 111,
-    DOT11_IE_ID_EMERGENCY_ALERT_IDENTIFIER           = 112,
-    DOT11_IE_ID_MESH_CONFIGURATION                   = 113,
-    DOT11_IE_ID_MESH_ID                              = 114,
-    DOT11_IE_ID_MESH_LINK_METRIC_REPORT              = 115,
-    DOT11_IE_ID_CONGESTION_NOTIFICATION              = 116,
-    DOT11_IE_ID_MESH_PEERING_MANAGEMENT              = 117,
-    DOT11_IE_ID_MESH_CHANNEL_SWITCH_PARAMETERS       = 118,
-    DOT11_IE_ID_MESH_AWAKE_WINDOW                    = 119,
-    DOT11_IE_ID_BEACON_TIMING                        = 120,
-    DOT11_IE_ID_MCCAOP_SETUP_REQUEST                 = 121,
-    DOT11_IE_ID_MCCAOP_SETUP_REPLY                   = 122,
-    DOT11_IE_ID_MCCAOP_ADVERTISMENT                  = 123,
-    DOT11_IE_ID_MCCAOP_TEARDOWN                      = 124,
-    DOT11_IE_ID_GANN                                 = 125,
-    DOT11_IE_ID_RANN                                 = 126,
-    DOT11_IE_ID_EXTENDED_CAPABILITIES                = 127,
-    /* 128-129 Reserved */
-    DOT11_IE_ID_PREQ                                 = 130,
-    DOT11_IE_ID_PREP                                 = 131,
-    DOT11_IE_ID_PERR                                 = 132,
-    /* 133-136 Reserved */
-    DOT11_IE_ID_PXU                                  = 137,
-    DOT11_IE_ID_PXUC                                 = 138,
-    DOT11_IE_ID_AUTHENTICATED_MESH_PEERING_EXCHANGE  = 139,
-    DOT11_IE_ID_MIC                                  = 140,
-    DOT11_IE_ID_DESTINATION_URI                      = 141,
-    DOT11_IE_ID_U_APSD_COEXISTENCE                   = 142,
-    /* 143-173 Reserved */
-    DOT11_IE_ID_MCCAOP_ADVERTISMENT_OVERVIEW         = 174,
-    /* 175-220 Reserved */
-    DOT11_IE_ID_VENDOR_SPECIFIC                      = 221,
-    /* 222-255 Reserved */
-} dot11_ie_id_t;
 
 /**
  * Enumeration of AKM (authentication and key management) suites. Table 8-140 802.11mc D3.0.
@@ -258,23 +100,9 @@ typedef struct
     uint32_t             keep_wlan_awake;
 } wwd_wlan_status_t;
 
-#define WWD_WLAN_KEEP_AWAKE( )  do { wwd_wlan_status.keep_wlan_awake++; } while (0)
-#define WWD_WLAN_LET_SLEEP( )   do { wwd_wlan_status.keep_wlan_awake--; } while (0)
-
-
-
 #pragma pack(1)
 
 /* 802.11 Information Element structures */
-
-/* DSS Parameter Set */
-typedef struct
-{
-    tlv8_header_t tlv_header;          /* id, length */
-    uint8_t current_channel;
-} dsss_parameter_set_ie_t;
-
-#define DSSS_PARAMETER_SET_LENGTH (1)
 
 /* Robust Secure Network */
 typedef struct
@@ -317,18 +145,16 @@ typedef struct
 typedef struct
 {
     tlv8_header_t tlv_header;          /* id, length */
-    uint16_t ht_capabilities_info;
-    uint8_t  ampdu_parameters;
-    uint8_t  rx_mcs[10];
-    uint16_t rxhighest_supported_data_rate;
-    uint8_t  tx_supported_mcs_set;
-    uint8_t  tx_mcs_info[3];
-    uint16_t ht_extended_capabilities;
-    uint32_t transmit_beam_forming_capabilities;
-    uint8_t  antenna_selection_capabilities;
+    uint16_t      ht_capabilities_info;
+    uint8_t       ampdu_parameters;
+    uint8_t       rx_mcs[10];
+    uint16_t      rxhighest_supported_data_rate;
+    uint8_t       tx_supported_mcs_set;
+    uint8_t       tx_mcs_info[3];
+    uint16_t      ht_extended_capabilities;
+    uint32_t      transmit_beam_forming_capabilities;
+    uint8_t       antenna_selection_capabilities;
 } ht_capabilities_ie_t;
-
-#define HT_CAPABILITIES_IE_LENGTH (26)
 
 #define HT_CAPABILITIES_INFO_LDPC_CODING_CAPABILITY        ( 1 <<  0 )
 #define HT_CAPABILITIES_INFO_SUPPORTED_CHANNEL_WIDTH_SET   ( 1 <<  1 )
@@ -347,6 +173,65 @@ typedef struct
 #define HT_CAPABILITIES_INFO_40MHZ_INTOLERANT              ( 1 << 14 )
 #define HT_CAPABILITIES_INFO_L_SIG_TXOP_PROTECTION_SUPPORT ( 1 << 15 )
 
+typedef unsigned int uint;
+typedef struct
+{
+    uint buf;
+    uint buf_size;
+    uint idx;
+    uint out_idx; /* output index */
+} hnd_log_t;
+
+#define CBUF_LEN 128
+
+typedef struct
+{
+    /* Virtual UART
+     *   When there is no UART (e.g. Quickturn), the host should write a complete
+     *   input line directly into cbuf and then write the length into vcons_in.
+     *   This may also be used when there is a real UART (at risk of conflicting with
+     *   the real UART).  vcons_out is currently unused.
+     */
+    volatile uint vcons_in;
+    volatile uint vcons_out;
+
+    /* Output (logging) buffer
+     *   Console output is written to a ring buffer log_buf at index log_idx.
+     *   The host may read the output when it sees log_idx advance.
+     *   Output will be lost if the output wraps around faster than the host polls.
+     */
+    hnd_log_t log;
+
+    /* Console input line buffer
+     *   Characters are read one at a time into cbuf until <CR> is received, then
+     *   the buffer is processed as a command line.  Also used for virtual UART.
+     */
+    uint cbuf_idx;
+    char cbuf[ CBUF_LEN ];
+} hnd_cons_t;
+
+typedef struct wifi_console
+{
+    uint count; /* Poll interval msec counter */
+    uint log_addr; /* Log struct address (fixed) */
+    hnd_log_t log; /* Log struct (host copy) */
+    uint bufsize; /* Size of log buffer */
+    char *buf; /* Log buffer (host copy) */
+    uint last; /* Last buffer read index */
+} wifi_console_t;
+
+typedef struct
+{
+    uint flags;
+    uint trap_addr;
+    uint assert_exp_addr;
+    uint assert_file_addr;
+    uint assert_line;
+    uint console_addr;
+    uint msgtrace_addr;
+    uint fwid;
+} wlan_shared_t;
+
 #pragma pack()
 
 /******************************************************
@@ -362,8 +247,19 @@ extern wwd_result_t wwd_disable_device_core    ( device_core_t core_id, wlan_cor
 extern wwd_result_t wwd_reset_device_core      ( device_core_t core_id, wlan_core_flag_t core_flag );
 extern wwd_result_t wwd_wlan_armcore_run       ( device_core_t core_id, wlan_core_flag_t core_flag );
 extern wwd_result_t wwd_device_core_is_up      ( device_core_t core_id );
-extern wwd_result_t wwd_wifi_set_down          ( wwd_interface_t interface );
+extern wwd_result_t wwd_wifi_set_down          ( void );
+extern wwd_result_t wwd_wifi_set_up            ( void );
 extern void         wwd_set_country            ( wiced_country_code_t code );
+
+extern void         wwd_wait_for_wlan_event    ( host_semaphore_type_t* transceive_semaphore );
+
+/* Chip specific functions */
+extern wwd_result_t wwd_allow_wlan_bus_to_sleep     ( void );
+extern wwd_result_t wwd_ensure_wlan_bus_is_up       ( void );
+
+extern wwd_result_t wwd_chip_specific_init          ( void );
+extern wwd_result_t wwd_chip_specific_socsram_init  ( void );
+extern wwd_result_t wwd_wifi_read_wlan_log_unsafe( uint32_t wlan_shared_address, char* buffer, uint32_t buffer_size );
 
 /******************************************************
  *             Global variables

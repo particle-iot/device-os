@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -43,6 +18,7 @@
 #include <stdint.h>
 #include "platform_dct.h"
 #include "wiced_result.h"
+#include "wiced_utilities.h"
 #include "wiced_dct_common.h"
 #include "wiced_waf_common.h"
 
@@ -124,6 +100,14 @@ typedef struct
     } type;
 } platform_copy_src_t;
 
+
+/** Structure to hold information about a system monitor item */
+typedef struct
+{
+    uint32_t last_update;              /**< Time of the last system monitor update */
+    uint32_t longest_permitted_delay;  /**< Longest permitted delay between checkins with the system monitor */
+} wiced_system_monitor_t;
+
 /******************************************************
  *                 Global Variables
  ******************************************************/
@@ -196,11 +180,14 @@ extern wiced_result_t wiced_dct_read_unlock( void* info_ptr, wiced_bool_t ptr_is
  * @param info_ptr [in] : a pointer to the pointer that will be filled on return
  * @param section [in]: the section of the DCT which should be read
  * @param offset [in]: the offset in bytes within the section
- * @param size [in] : the length of data that should be read
+ * @param size [in] : the length of data that should be written
  *
  * @return    Wiced Result
  */
-static inline  wiced_result_t wiced_dct_write( const void* info_ptr, dct_section_t section, uint32_t offset, uint32_t size );
+wiced_result_t wiced_dct_write( const void* info_ptr, dct_section_t section, uint32_t offset, uint32_t size );
+
+wiced_result_t wiced_dct_write_boot_details( const boot_detail_t* new_boot_details );
+wiced_result_t wiced_dct_write_app_location( image_location_t* new_app_location_info, uint32_t dct_app_index );
 
 /** @} */
 
@@ -263,12 +250,11 @@ static inline wiced_result_t wiced_framework_app_open( uint8_t app_id, wiced_app
  *
  * @warning Applications must be closed after all write and read operations.
  *
- * @param[in] app_id   : Application ID.
- * @param[inout] app   : Application handler.
+ * @param[in] app   : Application handler.
  *
  * @return Wiced reuslt code
  */
-static inline wiced_result_t wiced_framework_app_open( uint8_t app_id, wiced_app_t* app );
+static inline wiced_result_t wiced_framework_app_close( wiced_app_t* app );
 
 /** Erases the application from external flash.
  *
@@ -344,6 +330,43 @@ static inline wiced_result_t  wiced_framework_app_get_size( wiced_app_t* app, ui
  *  @return Wiced reuslt code
  */
 static inline wiced_result_t  wiced_framework_app_set_size( wiced_app_t* app, uint32_t size );
+
+/** @} */
+
+
+/*****************************************************************************/
+/** @addtogroup sysmon       System Monitor
+ *  @ingroup mgmt
+ *
+ * Functions to communicate with the system monitor
+ *
+ *  @{
+ */
+/*****************************************************************************/
+
+/** Registers a system monitor with the system monitor thread
+ *
+ * @param[out] system_monitor          : A pointer to a system monitor object that will be watched
+ * @param[in]  initial_permitted_delay : The maximum time in milliseconds allowed between monitor updates
+ *
+ * @return @ref wiced_result_t
+ */
+extern wiced_result_t wiced_register_system_monitor(wiced_system_monitor_t* system_monitor, uint32_t initial_permitted_delay);
+
+/** Updates a system monitor and resets the last update time
+ *
+ * @param[out] system_monitor  : A pointer to a system monitor object to be updated
+ * @param[in]  permitted_delay : The maximum time in milliseconds allowed between monitor updates
+ *
+ * @return @ref wiced_result_t
+ */
+extern wiced_result_t wiced_update_system_monitor(wiced_system_monitor_t* system_monitor, uint32_t permitted_delay);
+
+/** Wakeup system monitor thread
+ *
+ * @return @ref wiced_result_t
+ */
+extern wiced_result_t wiced_wakeup_system_monitor_thread(void);
 
 /** @} */
 
@@ -478,53 +501,53 @@ extern wiced_result_t DEPRECATE( wiced_dct_write_app_section( const void* app_dc
 /*****************************************************************************/
 /**  Implementations of inline functions                                    **/
 /*****************************************************************************/
+//
+//static inline ALWAYS_INLINE wiced_result_t wiced_dct_write( const void* info_ptr, dct_section_t section, uint32_t offset, uint32_t size )
+//{
+//    return wiced_dct_update( info_ptr, section, offset, size );
+//}
 
-static inline  wiced_result_t wiced_dct_write( const void* info_ptr, dct_section_t section, uint32_t offset, uint32_t size )
-{
-    return wiced_dct_update( info_ptr, section, offset, size );
-}
-
-static inline wiced_result_t wiced_framework_set_boot( uint8_t app_id, char load_once)
+static inline ALWAYS_INLINE wiced_result_t wiced_framework_set_boot( uint8_t app_id, char load_once)
 {
     return wiced_waf_app_set_boot( app_id, load_once );
 }
 
-static inline void wiced_framework_reboot( void )
+static inline ALWAYS_INLINE void wiced_framework_reboot( void )
 {
     wiced_waf_reboot( );
 }
 
-static inline wiced_result_t wiced_framework_app_open( uint8_t app_id, wiced_app_t* app )
+static inline ALWAYS_INLINE wiced_result_t wiced_framework_app_open( uint8_t app_id, wiced_app_t* app )
 {
     return wiced_waf_app_open( app_id, app );
 }
 
-static inline wiced_result_t wiced_framework_app_erase( wiced_app_t* app )
+static inline ALWAYS_INLINE wiced_result_t wiced_framework_app_erase( wiced_app_t* app )
 {
     return wiced_waf_app_erase( app );
 }
 
-static inline wiced_result_t  wiced_framework_app_write_chunk( wiced_app_t* app, const uint8_t* data, uint32_t size )
+static inline ALWAYS_INLINE wiced_result_t  wiced_framework_app_write_chunk( wiced_app_t* app, const uint8_t* data, uint32_t size )
 {
     return wiced_waf_app_write_chunk( app, data, size);
 }
 
-static inline wiced_result_t  wiced_framework_app_read_chunk( wiced_app_t* app, uint32_t offset, uint8_t* data, uint32_t size )
+static inline ALWAYS_INLINE wiced_result_t  wiced_framework_app_read_chunk( wiced_app_t* app, uint32_t offset, uint8_t* data, uint32_t size )
 {
     return wiced_waf_app_read_chunk( app, offset, data, size);
 }
 
-static inline wiced_result_t  wiced_framework_app_get_size( wiced_app_t* app, uint32_t* size )
+static inline ALWAYS_INLINE wiced_result_t  wiced_framework_app_get_size( wiced_app_t* app, uint32_t* size )
 {
     return wiced_waf_app_get_size( app, size);
 }
 
-static inline wiced_result_t  wiced_framework_app_set_size( wiced_app_t* app, uint32_t size )
+static inline ALWAYS_INLINE wiced_result_t  wiced_framework_app_set_size( wiced_app_t* app, uint32_t size )
 {
     return wiced_waf_app_set_size( app, size);
 }
 
-static inline wiced_result_t wiced_framework_app_close( wiced_app_t* app )
+static inline ALWAYS_INLINE wiced_result_t wiced_framework_app_close( wiced_app_t* app )
 {
     return wiced_waf_app_close( app );
 }

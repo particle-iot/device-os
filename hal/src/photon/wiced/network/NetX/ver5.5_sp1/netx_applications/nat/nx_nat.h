@@ -54,20 +54,20 @@
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  01-15-2008     Janet Christiansen          Initial Version 5.0        */
-/*  01-28-2010     Janet Christiansen          Modified comment(s),       */
-/*                                               resulting in version 5.1 */
+/*  01-28-2010     Janet Christiansen          Modified comment(s),       */ 
+/*                                               resulting in version 5.1 */ 
 /*  04-01-2010     Janet Christiansen          Modified comment(s),       */
 /*                                               resulting in version 5.2 */
 /*                                                                        */
 /**************************************************************************/
 
-#ifndef  NX_NAT_H
-#define  NX_NAT_H
+#ifndef  NX_NAT_H 
+#define  NX_NAT_H 
 
 
 #ifdef   __cplusplus
 
-/* Yes, C++ compiler is present.  Use standard C.  */
+/* Yes, C++ compiler is present.  Use standard C.  */ 
 extern   "C" {
 
 #endif
@@ -90,8 +90,8 @@ extern   "C" {
 
 
 
-/* Conversion between seconds and timer ticks. See tx_initialize_low_level.<asm>
-   for timer tick resolution before altering! */
+/* Conversion between seconds and timer ticks. See tx_initialize_low_level.<asm> 
+   for timer tick resolution before altering! */ 
 
 #ifndef NX_NAT_MILLISECONDS_PER_TICK
 #define NX_NAT_MILLISECONDS_PER_TICK           10
@@ -102,7 +102,7 @@ extern   "C" {
 #define NX_NAT_TICKS_PER_SECOND                100
 #endif
 
-    /*  NAT Debug levels in decreased filtering order:
+    /*  NAT Debug levels in decreased filtering order:  
 
     NONE:       No events reported;
     SEVERE:     Report only events requiring session or server to stop operation.
@@ -122,20 +122,20 @@ extern   "C" {
 
 #define NX_NAT_MEMORY_ERROR                 (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x01)       /* Memory handling failure   */
 #define NX_NAT_PARAM_ERROR                  (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x02)       /* Invalid parameter received by a NAT service */
-#define NX_NAT_INVALID_PROTOCOL             (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x03)       /* Invalid network protocol specified for translation table entry.  */
-#define NX_NAT_NO_GLOBAL_IP_AVAILABLE       (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x04)       /* NAT unable to provide a global IP address for an outbound packet.) */
-#define NX_NAT_CREATE_ARP_ENTRY_ERROR       (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x05)       /* Error creating ARP entry for outbound packet destination. */
-#define NX_NAT_NO_ARP_MAPPING_ERROR         (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x06)       /* NAT's ARP packet queue is full and the outbound packet cannot be sent. */
-#define NX_NAT_NO_GATEWAY_ERROR             (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x07)       /* No Gateway defined for an outbound packet. */
-#define NX_NAT_OVERLAPPING_SUBNET_ERROR     (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x08)       /* Overlap between NAT device private and global subnets. */
-#define NX_NAT_BAD_PORT_COMMAND_SYNTAX      (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0A)       /* Improperly formatted PORT command. */
-#define NX_NAT_NO_FREE_PORT_AVAILABLE       (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0B)       /* NAT unable to provide a unique public source port for outbound packet. */
-#define NX_NAT_NO_TRANSLATION_TABLE         (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0C)       /* NAT translation table pointer set to NULL (no translation table?) */
+#define NX_NAT_INVALID_PROTOCOL             (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x03)       /* Invalid network protocol specified for translation table entry.  */ 
+#define NX_NAT_NO_GLOBAL_IP_AVAILABLE       (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x04)       /* NAT unable to provide a global IP address for an outbound packet.) */  
+#define NX_NAT_CREATE_ARP_ENTRY_ERROR       (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x05)       /* Error creating ARP entry for outbound packet destination. */  
+#define NX_NAT_NO_ARP_MAPPING_ERROR         (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x06)       /* NAT's ARP packet queue is full and the outbound packet cannot be sent. */  
+#define NX_NAT_NO_GATEWAY_ERROR             (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x07)       /* No Gateway defined for an outbound packet. */  
+#define NX_NAT_OVERLAPPING_SUBNET_ERROR     (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x08)       /* Overlap between NAT device private and global subnets. */  
+#define NX_NAT_BAD_PORT_COMMAND_SYNTAX      (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0A)       /* Improperly formatted PORT command. */ 
+#define NX_NAT_NO_FREE_PORT_AVAILABLE       (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0B)       /* NAT unable to provide a unique public source port for outbound packet. */  
+#define NX_NAT_NO_TRANSLATION_TABLE         (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0C)       /* NAT translation table pointer set to NULL (no translation table?) */  
 #define NX_NAT_TRANSLATION_TABLE_FULL       (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0D)       /* NAT translation table currently is full. */
 #define NX_NAT_INVALID_TABLE_ENTRY          (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0E)       /* Invalid table entry submitted for translation table (e.g. destination broadcast address). */
-#define NX_NAT_NO_PRELOAD_AFTER_NAT_START   (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0F)       /* NAT table is not accessible for preloading (static) entries (e.g. NAT is running) */
+#define NX_NAT_NO_PRELOAD_AFTER_NAT_START   (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x0F)       /* NAT table is not accessible for preloading (static) entries (e.g. NAT is running) */  
 #define NX_NAT_NOT_FOUND_IN_TRANS_TABLE     (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x10)       /* Packet IP address has no matching entry in translation table. */
-#define NX_NAT_CONVERSION_OVERFLOW_ERROR    (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x13)       /* Number is too large for conversion to ASCII. */
+#define NX_NAT_CONVERSION_OVERFLOW_ERROR    (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x13)       /* Number is too large for conversion to ASCII. */  
 #define NX_NAT_CONVERSION_BUFFER_TOO_SMALL  (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x14)       /* Buffer to hold ascii conversion of number is too small. */
 #define NX_NAT_CANNOT_FRAGMENT_ERROR        (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x15)       /* NAT received a packet with the DONT FRAGMENT bit that must be fragmented for NAT to process. */
 #define NX_NAT_NO_FRAGMENT_ERROR            (NX_NAT_NON_PACKET_ERROR_CONSTANT | 0x16)       /* NAT received a packet that must be fragmented but NAT is not configured to fragment packets. */
@@ -145,14 +145,14 @@ extern   "C" {
 
 #define NX_NAT_PACKET_ERROR_CONSTANT         0xE00
 
-#define NX_NAT_INVALID_IP_HEADER            (NX_NAT_PACKET_ERROR_CONSTANT | 0x01)            /* Invalid IP header. */
-#define NX_NAT_INVALID_ICMP_ERROR_PACKET    (NX_NAT_PACKET_ERROR_CONSTANT | 0x02)            /* ICMP error packet payload is bogus e.g. incomplete IP header etc. */
-#define NX_NAT_BAD_ICMP_PACKET_CHECKSUM     (NX_NAT_PACKET_ERROR_CONSTANT | 0x03)            /* IP checksum for ICMP error message packet fails to validate. */
-#define NX_NAT_PACKET_PAYLOAD_EXCEEDED      (NX_NAT_PACKET_ERROR_CONSTANT | 0x04)            /* Packet payload exceeded. */
-#define NX_NAT_BAD_ICMP_CHECKSUM            (NX_NAT_PACKET_ERROR_CONSTANT | 0x05)            /* IP checksum for ICMP packet fails to validate. */
-#define NX_NAT_BAD_TCP_CHECKSUM             (NX_NAT_PACKET_ERROR_CONSTANT | 0x06)            /* IP checksum for TCP packet fails to validate. */
-#define NX_NAT_BAD_UDP_CHECKSUM             (NX_NAT_PACKET_ERROR_CONSTANT | 0x07)            /* IP checksum for UDP packet fails to validate. */
-#define NX_NAT_ZERO_UDP_CHECKSUM            (NX_NAT_PACKET_ERROR_CONSTANT | 0x08)            /* UDP header checksum is zero but NAT not is configured to accept packets with zero UDP checksum. */
+#define NX_NAT_INVALID_IP_HEADER            (NX_NAT_PACKET_ERROR_CONSTANT | 0x01)            /* Invalid IP header. */  
+#define NX_NAT_INVALID_ICMP_ERROR_PACKET    (NX_NAT_PACKET_ERROR_CONSTANT | 0x02)            /* ICMP error packet payload is bogus e.g. incomplete IP header etc. */  
+#define NX_NAT_BAD_ICMP_PACKET_CHECKSUM     (NX_NAT_PACKET_ERROR_CONSTANT | 0x03)            /* IP checksum for ICMP error message packet fails to validate. */  
+#define NX_NAT_PACKET_PAYLOAD_EXCEEDED      (NX_NAT_PACKET_ERROR_CONSTANT | 0x04)            /* Packet payload exceeded. */ 
+#define NX_NAT_BAD_ICMP_CHECKSUM            (NX_NAT_PACKET_ERROR_CONSTANT | 0x05)            /* IP checksum for ICMP packet fails to validate. */  
+#define NX_NAT_BAD_TCP_CHECKSUM             (NX_NAT_PACKET_ERROR_CONSTANT | 0x06)            /* IP checksum for TCP packet fails to validate. */  
+#define NX_NAT_BAD_UDP_CHECKSUM             (NX_NAT_PACKET_ERROR_CONSTANT | 0x07)            /* IP checksum for UDP packet fails to validate. */  
+#define NX_NAT_ZERO_UDP_CHECKSUM            (NX_NAT_PACKET_ERROR_CONSTANT | 0x08)            /* UDP header checksum is zero but NAT not is configured to accept packets with zero UDP checksum. */  
 #define NX_NAT_MALFORMED_PACKET_FRAGMENT    (NX_NAT_PACKET_ERROR_CONSTANT | 0x09)            /* Packet fragment is malformed. */
 
 
@@ -182,14 +182,14 @@ typedef enum NX_NAT_TRANSLATION_TABLE_ENTRY_ENUM
 /* Define packet type based on direction (inbound, outbound, local). */
 
 #define NX_NAT_INBOUND_PACKET               0x00000001UL    /* Inbound packet with local host destination on private network */
-#define NX_NAT_OUTBOUND_PACKET              0x00000002UL    /* Outbound packet with external host destination on external network */
+#define NX_NAT_OUTBOUND_PACKET              0x00000002UL    /* Outbound packet with external host destination on external network */ 
 #define NX_NAT_PACKET_CONSUMED_BY_NAT       0x00000004UL    /* NAT device forwarded the packet to another host (e.g. packet was not intended for NAT itself) */
 
 
 /* Maximum buffer size for storing an IP address in ASCII. */
 #define NX_NAT_MAX_IP_ADDRESS_IN_ASCII              15
 
-/* Maximum buffer size for storing an FTP Port
+/* Maximum buffer size for storing an FTP Port 
    number command in ASCII. */
 #define NX_NAT_MAX_FTP_PORTNUMBER_IN_ASCII          11
 
@@ -257,14 +257,14 @@ TX_RESTORE                                                          \
 
 /* Set NAT thread priority. */
 
-#ifndef NX_NAT_THREAD_PRIORITY
+#ifndef NX_NAT_THREAD_PRIORITY 
 #define NX_NAT_THREAD_PRIORITY                      2
 #endif
 
 
 /* Set the NAT thread stack size. */
 
-#ifndef NX_NAT_THREAD_STACK_SIZE
+#ifndef NX_NAT_THREAD_STACK_SIZE        
 #define NX_NAT_THREAD_STACK_SIZE                    2048
 #endif
 
@@ -279,7 +279,7 @@ TX_RESTORE                                                          \
 /* Set NAT preemption threshold. */
 
 #ifndef NX_NAT_PREEMPTION_THRESHOLD
-#define NX_NAT_PREEMPTION_THRESHOLD                 NX_NAT_THREAD_PRIORITY
+#define NX_NAT_PREEMPTION_THRESHOLD                 NX_NAT_THREAD_PRIORITY  
 #endif
 
 
@@ -302,7 +302,7 @@ TX_RESTORE                                                          \
 /* Set NAT byte pool mutex name. */
 
 #ifndef NX_NAT_BYTE_POOL_MUTEX_NAME
-#define NX_NAT_BYTE_POOL_MUTEX_NAME                 "NAT Bytepool Mutex"
+#define NX_NAT_BYTE_POOL_MUTEX_NAME                 "NAT Bytepool Mutex" 
 #endif
 
 
@@ -315,7 +315,7 @@ TX_RESTORE                                                          \
 
 /* Set NAT translation table options. */
 
-/* Define the expiration time out for the NAT translation table entry timer.
+/* Define the expiration time out for the NAT translation table entry timer. 
    With each timer expiration, translation table entries' time_remaining parameter
    are decremented by this interval.  When a translation table entry time remaining reaches zero,
    that translation table entry timeout has expired and will be removed from the table. */
@@ -337,7 +337,7 @@ TX_RESTORE                                                          \
 #ifndef NX_NAT_TABLE_MUTEX_WAIT
 #define NX_NAT_TABLE_MUTEX_WAIT                     (20 * NX_NAT_TICKS_PER_SECOND)
 #endif
-
+      
 
 /* Set the maximum number of entries the NAT translation table can hold. The only practical
    limit is the number of available IP addresses if IP address overloading is not enabled,
@@ -352,7 +352,7 @@ TX_RESTORE                                                          \
 /* Set NetX IP packet pool packet size. This should be less than the Maximum Transmit Unit (MTU) of
    the driver (allow enough room for the Ethernet header plus padding bytes for frame alignment).  */
 
-#ifndef NX_NAT_PACKET_SIZE
+#ifndef NX_NAT_PACKET_SIZE   
 #define NX_NAT_PACKET_SIZE                          1500
 #endif
 
@@ -360,9 +360,9 @@ TX_RESTORE                                                          \
 /* Set the size of the NAT IP packet pool. NAT only uses this packet pool to send out
    its own packets e.g. ICMP error messages.  */
 
-#ifndef NX_NAT_PACKET_POOL_SIZE
+#ifndef NX_NAT_PACKET_POOL_SIZE       
 #define NX_NAT_PACKET_POOL_SIZE                     (NX_NAT_PACKET_SIZE * 10)
-#endif
+#endif    
 
 
 /* Set the timeout for allocating a packet from the NAT packet pool. */
@@ -374,7 +374,7 @@ TX_RESTORE                                                          \
 
 /* Set NetX IP helper thread stack size. */
 
-#ifndef NX_NAT_IP_THREAD_STACK_SIZE
+#ifndef NX_NAT_IP_THREAD_STACK_SIZE   
 #define NX_NAT_IP_THREAD_STACK_SIZE                 2048
 #endif
 
@@ -389,7 +389,7 @@ TX_RESTORE                                                          \
 /* Set ARP cache size of a NAT ip instance. */
 
 #ifndef NX_NAT_ARP_CACHE_SIZE
-#define NX_NAT_ARP_CACHE_SIZE                       1040
+#define NX_NAT_ARP_CACHE_SIZE                       1040 
 #endif
 
 
@@ -428,7 +428,7 @@ TX_RESTORE                                                          \
 #define NX_NAT_ENABLE_FRAGMENTATION                 NX_TRUE
 #endif
 
-/* Configure the timeout (sec) for NAT to store packet fragments while waiting to receive
+/* Configure the timeout (sec) for NAT to store packet fragments while waiting to receive 
    all fragments of a fragmented packet datagram.. */
 
 #ifndef NX_NAT_PACKET_QUEUE_TIMEOUT
@@ -450,7 +450,7 @@ TX_RESTORE                                                          \
 
     /* Inbound TCP packet checksum */
 #define NX_NAT_DISABLE_WHOLE_TCP_RX_CHECKSUM
-
+ 
     /* Outbound UDP packet checksum */
 #define NX_NAT_DISABLE_WHOLE_UDP_TX_CHECKSUM
 
@@ -487,7 +487,7 @@ TX_RESTORE                                                          \
 #endif
 
 
-/* Configure NAT to allow UDP packets with zero checksum in the
+/* Configure NAT to allow UDP packets with zero checksum in the 
    UDP protocol header (not recommended by RFCs for NAT). */
 
 #ifndef NX_NAT_ENABLE_ZERO_UDP_CHECKSUM
@@ -520,8 +520,8 @@ TX_RESTORE                                                          \
 
 
 /* Set the minimum ICMP query identifier for assigning to outbound ICMP packets
-   on NAT devices configured for port overloading (sharing a single global IP
-   address). Note this number must be high enough not to exceed with the local host
+   on NAT devices configured for port overloading (sharing a single global IP 
+   address). Note this number must be high enough not to exceed with the local host 
    ICMP packet query IDs. */
 
 #ifndef NX_NAT_START_ICMP_QUERY_ID
@@ -609,7 +609,7 @@ typedef struct NX_NAT_PACKET_FRAGMENT_STRUCT
 } NX_NAT_PACKET_FRAGMENT;
 
 
-/* Define the structure for a queue to store received packet fragments.  Packet fragments can
+/* Define the structure for a queue to store received packet fragments.  Packet fragments can 
    be received out of order. */
 
 typedef struct NX_NAT_PACKET_FRAGMENT_QUEUE_STRUCT
@@ -660,12 +660,12 @@ typedef struct NX_NAT_DEVICE_STRUCT
     ULONG                                  forwarded_packets_sent;          /* Total number of packets forwarded by NAT. */
     ULONG                                  forwarded_bytes_sent;            /* Total number of bytes of packet data sent by NAT. */
     NX_NAT_RESERVED_IP_ITEM                *start_reserved_ip_item_ptr;     /* First reserved IP address held by NAT. */
-    NX_NAT_RESERVED_IP_ITEM                *end_reserved_ip_item_ptr;       /* Last reserved IP address held by NAT. */
+    NX_NAT_RESERVED_IP_ITEM                *end_reserved_ip_item_ptr;       /* Last reserved IP address held by NAT. */ 
     NX_NAT_PACKET_FRAGMENT_QUEUE           *start_fragment_queue_ptr;       /* First queue in NAT's list of active packet fragment queues. */
     NX_NAT_PACKET_FRAGMENT_QUEUE           *end_fragment_queue_ptr;         /* Last queue in NAT's list of active packet fragment queues. */
-
+                                           
     /* Application defined services. */
-    UINT                                    (*nx_nat_get_global_IP_address)(NX_NAT_TRANSLATION_TABLE *table_ptr, UINT protocol, ULONG *global_ip_address, ULONG private_inside_ip_address, ULONG destination_ip_address);
+    UINT                                    (*nx_nat_get_global_IP_address)(NX_NAT_TRANSLATION_TABLE *table_ptr, UINT protocol, ULONG *global_ip_address, ULONG private_inside_ip_address, ULONG destination_ip_address); 
                                                                              /* Pointer to callback for dynamically assigning a global address for a local host packet. */
     UINT                                    (*nx_nat_get_available_port)(NX_NAT_TRANSLATION_TABLE *nat_table_ptr, UINT protocol, ULONG global_inside_ip_address,  UINT private_inside_port, UINT *assigned_port);
                                                                              /* Pointer to callback for dynamically assigning a global port for a local host packet. */
@@ -681,10 +681,10 @@ typedef struct NX_NAT_DEVICE_STRUCT
 
 
 
-#ifndef     NX_NAT_SOURCE_CODE
+#ifndef     NX_NAT_SOURCE_CODE     
 
 
-/* Define the system API mappings based on the error checking
+/* Define the system API mappings based on the error checking 
    selected by the user.   */
 
 /* Determine if error checking is desired.  If so, map API functions
@@ -744,12 +744,12 @@ typedef struct NX_NAT_DEVICE_STRUCT
 /* Define API services available for NAT applications. */
 
 UINT    nx_nat_add_reserved_ip_list(NX_NAT_DEVICE *nat_ptr, ULONG reserved_ip_address, NX_NAT_RESERVED_IP_ITEM *nat_ip_item_ptr);
-UINT    nx_nat_create(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr, NX_IP *nat_private_ip_ptr, NX_IP *nat_global_ip_ptr,
+UINT    nx_nat_create(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr, NX_IP *nat_private_ip_ptr, NX_IP *nat_global_ip_ptr, 
                       ULONG nat_global_gateway_address, UINT icmp_query_respond_enabled, UINT icmp_errmsg_receive_enabled,
-                      VOID *stack_ptr, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout,
-                      UINT (*nx_nat_get_global_IP_address)(NX_NAT_TRANSLATION_TABLE *table_ptr, UINT protocol, ULONG *global_ip_address, ULONG private_inside_ip_address, ULONG destination_ip_address),
+                      VOID *stack_ptr, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout, 
+                      UINT (*nx_nat_get_global_IP_address)(NX_NAT_TRANSLATION_TABLE *table_ptr, UINT protocol, ULONG *global_ip_address, ULONG private_inside_ip_address, ULONG destination_ip_address), 
                       UINT (*nx_nat_get_available_port)(NX_NAT_TRANSLATION_TABLE *nat_table_ptr, UINT protocol, ULONG global_inside_ip_address,  UINT private_inside_port, UINT *assigned_port),
-                      VOID (*nx_nat_set_entry_timeout)(NX_PACKET *packet_ptr, UINT packet_direction, UINT *response_timeout));
+                      VOID (*nx_nat_set_entry_timeout)(NX_PACKET *packet_ptr, UINT packet_direction, UINT *response_timeout));                       
 UINT    nx_nat_delete(NX_NAT_DEVICE *nat_ptr);
 UINT    nx_nat_server_resume(NX_NAT_DEVICE *nat_ptr, UINT reset_packet_counts);
 UINT    nx_nat_server_suspend(NX_NAT_DEVICE *nat_ptr);
@@ -759,7 +759,7 @@ UINT    nx_nat_table_delete(NX_NAT_TRANSLATION_TABLE *nat_table_ptr);
 UINT    nx_nat_table_entry_create(NX_NAT_TRANSLATION_TABLE *nat_table_ptr, UINT protocol, ULONG global_inside_ip_address, ULONG private_inside_ip_address, UINT private_inside_port, UINT NAT_assigned_source_port, ULONG external_ip_address, UINT destination_port, UINT response_timeout, ULONG fragment_id, NX_TCP_SOCKET *tcp_socket_ptr, NX_UDP_SOCKET *udp_socket_ptr, UINT inbound_packet_initiated, NX_NAT_TRANSLATION_ENTRY **match_entry_ptr);
 UINT    nx_nat_table_entry_preload(NX_NAT_TRANSLATION_ENTRY *nat_table_entry_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr,  ULONG global_inside_ip_address, ULONG private_inside_ip_address, UINT global_inside_port, UINT protocol, UINT inbound_packet_initiated);
 UINT    nx_nat_table_entry_delete(NX_NAT_TRANSLATION_ENTRY *remove_table_entry_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr);
-UINT    nx_nat_table_find_entry(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_ENTRY *entry_tomatch, NX_NAT_TRANSLATION_ENTRY **match_entry_ptr, UINT skip_inbound_init);
+UINT    nx_nat_table_find_entry(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_ENTRY *entry_tomatch, NX_NAT_TRANSLATION_ENTRY **match_entry_ptr, UINT skip_inbound_init); 
 UINT    nx_nat_utility_display_arp_table(NX_IP *ip_ptr);
 UINT    nx_nat_utility_display_translation_table(NX_NAT_TRANSLATION_TABLE *nat_table_ptr);
 UINT    nx_nat_utility_display_bytepool_reserves(NX_NAT_DEVICE *nat_ptr);
@@ -774,18 +774,18 @@ UINT    nx_nat_utility_get_source_port(NX_PACKET *packet_ptr, UINT protocol, UIN
 
 UINT    _nx_nat_add_reserved_ip_list(NX_NAT_DEVICE *nat_ptr, ULONG reserved_ip_address, NX_NAT_RESERVED_IP_ITEM *nat_ip_item_ptr);
 UINT    _nxe_nat_add_reserved_ip_list(NX_NAT_DEVICE *nat_ptr, ULONG reserved_ip_address, NX_NAT_RESERVED_IP_ITEM *nat_ip_item_ptr);
-UINT    _nx_nat_create(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr, NX_IP *nat_private_ip_ptr, NX_IP *nat_global_ip_ptr,
+UINT    _nx_nat_create(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr, NX_IP *nat_private_ip_ptr, NX_IP *nat_global_ip_ptr, 
                        ULONG nat_global_gateway_address, UINT icmp_query_respond_enabled, UINT icmp_errmsg_receive_enabled,
-                       VOID *stack_ptr, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout,
-                       UINT (*nx_nat_get_global_IP_address)(NX_NAT_TRANSLATION_TABLE *table_ptr, UINT protocol, ULONG *global_ip_address, ULONG private_inside_ip_address, ULONG destination_ip_address),
+                       VOID *stack_ptr, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout, 
+                       UINT (*nx_nat_get_global_IP_address)(NX_NAT_TRANSLATION_TABLE *table_ptr, UINT protocol, ULONG *global_ip_address, ULONG private_inside_ip_address, ULONG destination_ip_address), 
                        UINT (*nx_nat_get_available_port)(NX_NAT_TRANSLATION_TABLE *nat_table_ptr, UINT protocol, ULONG global_inside_ip_address,  UINT private_inside_port, UINT *assigned_port),
-                       VOID (*nx_nat_set_entry_timeout)(NX_PACKET *packet_ptr, UINT packet_direction, UINT *response_timeout));
-UINT    _nxe_nat_create( NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr, NX_IP *nat_private_ip_ptr,  NX_IP *nat_global_ip_ptr,
+                       VOID (*nx_nat_set_entry_timeout)(NX_PACKET *packet_ptr, UINT packet_direction, UINT *response_timeout));                       
+UINT    _nxe_nat_create( NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr, NX_IP *nat_private_ip_ptr,  NX_IP *nat_global_ip_ptr, 
                          ULONG nat_global_gateway_address, UINT icmp_query_respond_enabled, UINT icmp_errmsg_receive_enabled,
                          VOID *stack_ptr, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout,
                          UINT (*nx_nat_get_global_IP_address)(NX_NAT_TRANSLATION_TABLE *table_ptr, UINT protocol, ULONG *global_ip_address, ULONG private_inside_ip_address, ULONG destination_ip_address),
                          UINT (*nx_nat_get_available_port)(NX_NAT_TRANSLATION_TABLE *nat_table_ptr, UINT protocol, ULONG global_inside_ip_address,  UINT private_inside_port, UINT *assigned_port),
-                         VOID (*nx_nat_set_entry_timeout)(NX_PACKET *packet_ptr, UINT packet_direction, UINT *response_timeout));
+                         VOID (*nx_nat_set_entry_timeout)(NX_PACKET *packet_ptr, UINT packet_direction, UINT *response_timeout));                        
 
 UINT    _nx_nat_delete(NX_NAT_DEVICE *nat_ptr);
 UINT    _nxe_nat_delete(NX_NAT_DEVICE *nat_ptr);
@@ -805,8 +805,8 @@ UINT    _nx_nat_table_entry_preload(NX_NAT_TRANSLATION_ENTRY *nat_table_entry_pt
 UINT    _nxe_nat_table_entry_preload(NX_NAT_TRANSLATION_ENTRY *nat_table_entry_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr,  ULONG global_inside_ip_address, ULONG private_inside_ip_address, UINT global_inside_port, UINT protocol, UINT inbound_packet_initiated);
 UINT    _nx_nat_table_entry_delete(NX_NAT_TRANSLATION_ENTRY *remove_table_entry_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr);
 UINT    _nxe_nat_table_entry_delete(NX_NAT_TRANSLATION_ENTRY *remove_table_entry_ptr, NX_NAT_TRANSLATION_TABLE *nat_table_ptr);
-UINT    _nx_nat_table_find_entry(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_ENTRY *entry_tomatch, NX_NAT_TRANSLATION_ENTRY **match_entry_ptr, UINT skip_inbound_init);
-UINT    _nxe_nat_table_find_entry(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_ENTRY *entry_tomatch, NX_NAT_TRANSLATION_ENTRY **match_entry_ptr, UINT skip_inbound_init);
+UINT    _nx_nat_table_find_entry(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_ENTRY *entry_tomatch, NX_NAT_TRANSLATION_ENTRY **match_entry_ptr, UINT skip_inbound_init); 
+UINT    _nxe_nat_table_find_entry(NX_NAT_DEVICE *nat_ptr, NX_NAT_TRANSLATION_ENTRY *entry_tomatch, NX_NAT_TRANSLATION_ENTRY **match_entry_ptr, UINT skip_inbound_init); 
 UINT    _nx_nat_utility_display_arp_table(NX_IP *ip_ptr);
 UINT    _nxe_nat_utility_display_arp_table(NX_IP *ip_ptr);
 UINT    _nx_nat_utility_display_translation_table(NX_NAT_TRANSLATION_TABLE *nat_table_ptr);

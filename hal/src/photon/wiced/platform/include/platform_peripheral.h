@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -88,6 +63,8 @@ Porting Notes
 #define SPI_NO_DMA             ( 0 << 2 )
 #define SPI_MSB_FIRST          ( 1 << 3 )
 #define SPI_LSB_FIRST          ( 0 << 3 )
+#define SPI_CS_ACTIVE_HIGH     ( 1 << 4 )
+#define SPI_CS_ACTIVE_LOW      ( 0 << 4 )
 
 /* I2C flags constants */
 #define I2C_DEVICE_DMA_MASK_POSN ( 0 )
@@ -103,9 +80,9 @@ Porting Notes
  */
 typedef enum
 {
+    INPUT_HIGH_IMPEDANCE,      /* Input - must always be driven, either actively or by an external pullup resistor */
     INPUT_PULL_UP,             /* Input with an internal pull-up resistor - use with devices that actively drive the signal low - e.g. button connected to ground */
     INPUT_PULL_DOWN,           /* Input with an internal pull-down resistor - use with devices that actively drive the signal high - e.g. button connected to a power rail */
-    INPUT_HIGH_IMPEDANCE,      /* Input - must always be driven, either actively or by an external pullup resistor */
     OUTPUT_PUSH_PULL,          /* Output actively driven high and actively driven low - must not be connected to other active outputs - e.g. LED output */
     OUTPUT_OPEN_DRAIN_NO_PULL, /* Output actively driven low but is high-impedance when set high - can be connected to other open-drain/open-collector outputs. Needs an external pull-up resistor */
     OUTPUT_OPEN_DRAIN_PULL_UP, /* Output actively driven low and is pulled high with an internal resistor when set high - can be connected to other open-drain/open-collector outputs. */
@@ -322,6 +299,8 @@ typedef struct
  *                 Global Variables
  ******************************************************/
 
+extern uint32_t platform_ddr_size;
+
 /******************************************************
  *               Function Declarations
  ******************************************************/
@@ -472,11 +451,20 @@ platform_result_t platform_uart_transmit_bytes( platform_uart_driver_t* driver, 
 
 
 /**
+ * Transmit data over the specified UART port
+ * This should be special version of transmit function used in CPU exception context,
+ * simplest implementation without interrupts.
+ *
+ * @return @ref platform_result_t
+ */
+platform_result_t platform_uart_exception_transmit_bytes( platform_uart_driver_t* driver, const uint8_t* data_out, uint32_t size );
+
+/**
  * Receive data over the specified UART port
  *
  * @return @ref platform_result_t
  */
-platform_result_t platform_uart_receive_bytes( platform_uart_driver_t* driver, uint8_t* data_in, uint32_t expected_data_size, uint32_t timeout_ms );
+platform_result_t platform_uart_receive_bytes( platform_uart_driver_t* driver, uint8_t* data_in, uint32_t* expected_data_size, uint32_t timeout_ms );
 
 
 /**
@@ -499,11 +487,34 @@ platform_result_t platform_spi_deinit( const platform_spi_t* spi );
 
 
 /**
+ * Transfer data to the specified SPI interface
+ *
+ * @return @ref platform_result_t
+ */
+platform_result_t platform_spi_transmit( const platform_spi_t* spi, const platform_spi_config_t* config, const platform_spi_message_segment_t* segments, uint16_t number_of_segments );
+
+
+/**
  * Transfer data over the specified SPI interface
  *
  * @return @ref platform_result_t
  */
 platform_result_t platform_spi_transfer( const platform_spi_t* spi, const platform_spi_config_t* config, const platform_spi_message_segment_t* segments, uint16_t number_of_segments );
+
+/**
+ * Transfer raw data over the specified SPI interface.
+ * No prior setup (toggle chip-select, etc.) is done.
+ *
+ * @return @ref platform_result_t
+ */
+platform_result_t platform_spi_transfer_nosetup( const platform_spi_t* spi, const platform_spi_config_t* config, const uint8_t* send_ptr, uint8_t* recv_ptr, uint32_t length );
+
+/**
+ * Toggle chip-select for the specified SPI interface.
+ *
+ * @return @ref platform_result_t
+ */
+platform_result_t platform_spi_chip_select_toggle( const platform_spi_t* spi, const platform_spi_config_t* config, wiced_bool_t activate );
 
 
 /** Initialises a SPI slave interface
@@ -703,6 +714,33 @@ platform_result_t platform_i2c_transfer( const platform_i2c_t* i2c, const platfo
 
 
 /**
+ * Read bytes via the I2C interface
+ *
+ * @param[in]  i2c                : I2C interface
+ * @param[in]  config             : settings and flags used for transfer
+ * @param[in]  flags              : flags for controlling the the transfer
+ * @param[out] buffer             : pointer to a receiving buffer
+ * @param[in]  buffer_length      : length in bytes of the receiving buffer
+ *
+ * @return @ref platform_result_t
+ */
+platform_result_t platform_i2c_read( const platform_i2c_t* i2c, const platform_i2c_config_t* config, uint16_t flags, void* buffer, uint16_t buffer_length );
+
+
+/**
+ * Write bytes via the I2C interface
+ *
+ * @param[in]  i2c                : I2C interface
+ * @param[in]  config             : settings and flags used for transfer
+ * @param[in]  flags              : flags for controlling the the transfer
+ * @param[in]  buffer             : pointer to a transmit buffer
+ * @param[in]  buffer_length      : length in bytes of the transmit buffer
+ *
+ * @return @ref platform_result_t
+ */
+platform_result_t platform_i2c_write( const platform_i2c_t* i2c, const platform_i2c_config_t* config, uint16_t flags, const void* buffer, uint16_t buffer_length );
+
+/**
  * Initialise PWM interface
  *
  * @param[in] pwm_interface : PWM interface
@@ -859,6 +897,22 @@ wiced_result_t platform_time_disable_8021as(void);
  */
 wiced_result_t platform_time_read_8021as(uint32_t *master_secs, uint32_t *master_nanosecs,
                                          uint32_t *local_secs, uint32_t *local_nanosecs);
+
+
+/**
+ * Read the 802.1AS time along with the corresponding I2S-driven audio time
+ *
+ * Retrieve the origin timestamp in the last sync message, correct for the
+ * intervening interval and return the corrected time in seconds + nanoseconds.
+ * Also retrieve the corresponding time from the audio timer.
+ *
+ * @return    WICED_SUCCESS : on success.
+ * @return    WICED_ERROR   : if an error occurred with any step
+ */
+wiced_result_t platform_time_read_8021as_with_audio(uint32_t *master_secs, uint32_t *master_nanosecs,
+                                                    uint32_t *local_secs, uint32_t *local_nanosecs,
+                                                    uint32_t *audio_time_hi, uint32_t *audio_time_lo);
+
 #ifdef __cplusplus
 } /*"C" */
 #endif

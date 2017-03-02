@@ -52,7 +52,7 @@
 /*                                                                        */
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
-/*  09-21-2007     Janet Christiansen       Initial Version 5.0           */
+/*  09-21-2007     Janet Christiansen       Initial Version 5.0           */ 
 /*  04-22-2010     Janet Christiansen       Modified comment(s),          */
 /*                                          resulting in version 5.1      */
 /*                                                                        */
@@ -67,7 +67,7 @@
 
 #ifdef   __cplusplus
 
-/* Yes, C++ compiler is present.  Use standard C.  */
+/* Yes, C++ compiler is present.  Use standard C.  */ 
 extern   "C" {
 
 #endif
@@ -82,7 +82,7 @@ extern   "C" {
 
 /* #define NX_POP3_CLIENT_DYNAMIC_MEMORY_ALLOC  */
 
-/*  POP Debug levels in decreased filtering order:
+/*  POP Debug levels in decreased filtering order:  
     NONE:   no events reported;
     LOG:    report events as part of normal logging operation.
     SEVERE: report events requiring session or server to stop operation.
@@ -134,17 +134,17 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
     NX_POP3_CLIENT_SESSION_STATE_STAT,
     NX_POP3_CLIENT_SESSION_STATE_RETR,      /* 5 */
     NX_POP3_CLIENT_SESSION_STATE_DELE,
-    NX_POP3_CLIENT_SESSION_STATE_QUIT,
+    NX_POP3_CLIENT_SESSION_STATE_QUIT, 
     NX_POP3_CLIENT_SESSION_STATE_LIST,
-    NX_POP3_CLIENT_SESSION_STATE_RSET,
+    NX_POP3_CLIENT_SESSION_STATE_RSET,      
     NX_POP3_CLIENT_SESSION_STATE_NOOP       /* 10 */
 } NX_POP3_CLIENT_SESSION_STATE;
 
 
 /* Set the number of client POP3 sessions to run concurrently. */
 
-#ifndef NX_POP3_CLIENT_SESSION_COUNT
-#define NX_POP3_CLIENT_SESSION_COUNT             1
+#ifndef NX_POP3_CLIENT_SESSION_COUNT            
+#define NX_POP3_CLIENT_SESSION_COUNT             1 
 #endif
 
 
@@ -186,12 +186,12 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
 #define NX_POP3_CLIENT_SESSION_THREAD_PRIORITY          NX_POP3_CLIENT_THREAD_PRIORITY
 #endif
 
-#ifndef NX_POP3_CLIENT_SESSION_PREEMPTION_THRESHOLD
+#ifndef NX_POP3_CLIENT_SESSION_PREEMPTION_THRESHOLD    
 #define NX_POP3_CLIENT_SESSION_PREEMPTION_THRESHOLD     NX_POP3_CLIENT_SESSION_THREAD_PRIORITY
 #endif
 
 #ifndef NX_POP3_CLIENT_BYTE_POOL_SIZE
-#define NX_POP3_CLIENT_BYTE_POOL_SIZE                   1024 * 2
+#define NX_POP3_CLIENT_BYTE_POOL_SIZE                   1024 * 2 
 #endif
 
 #ifndef NX_POP3_CLIENT_BYTE_POOL_NAME
@@ -199,22 +199,22 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
 #endif
 
 #ifndef NX_POP3_CLIENT_BYTE_POOL_MUTEX_NAME
-#define NX_POP3_CLIENT_BYTE_POOL_MUTEX_NAME             "Client bytepool mutex"
+#define NX_POP3_CLIENT_BYTE_POOL_MUTEX_NAME             "Client bytepool mutex" 
 #endif
 
 #ifndef NX_POP3_CLIENT_BYTE_POOL_MUTEX_WAIT
-#define NX_POP3_CLIENT_BYTE_POOL_MUTEX_WAIT             (5 * NX_POP3_TICKS_PER_SECOND)
+#define NX_POP3_CLIENT_BYTE_POOL_MUTEX_WAIT             (5 * NX_POP3_TICKS_PER_SECOND) 
 #endif
 
-/* Client block pool block size should be at least the size of the packet
+/* Client block pool block size should be at least the size of the packet 
    payload to facilitate transfer of data from packet buffers to block memory. */
 
-#ifndef NX_POP3_CLIENT_BLOCK_SIZE
+#ifndef NX_POP3_CLIENT_BLOCK_SIZE   
 #define NX_POP3_CLIENT_BLOCK_SIZE                       NX_POP3_CLIENT_PACKET_SIZE
 #endif
 
 
-#ifndef NX_POP3_CLIENT_BLOCK_POOL_SIZE
+#ifndef NX_POP3_CLIENT_BLOCK_POOL_SIZE          
 #define NX_POP3_CLIENT_BLOCK_POOL_SIZE                  (16 * NX_POP3_CLIENT_BLOCK_SIZE)
 #endif
 
@@ -224,12 +224,12 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
 #endif
 
 #ifndef NX_POP3_CLIENT_BLOCK_POOL_MUTEX_NAME
-#define NX_POP3_CLIENT_BLOCK_POOL_MUTEX_NAME            "Client blockpool mutex"
+#define NX_POP3_CLIENT_BLOCK_POOL_MUTEX_NAME            "Client blockpool mutex" 
 #endif
 
 
 #ifndef NX_POP3_CLIENT_BLOCK_POOL_MUTEX_WAIT
-#define NX_POP3_CLIENT_BLOCK_POOL_MUTEX_WAIT            (5 * NX_POP3_TICKS_PER_SECOND)
+#define NX_POP3_CLIENT_BLOCK_POOL_MUTEX_WAIT            (5 * NX_POP3_TICKS_PER_SECOND) 
 #endif
 
 
@@ -237,15 +237,15 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
 #define NX_POP3_CLIENT_PACKET_SIZE                      1500
 #endif
 
-#ifndef NX_POP3_CLIENT_PACKET_POOL_SIZE
-#define NX_POP3_CLIENT_PACKET_POOL_SIZE                 (10 * NX_POP3_CLIENT_PACKET_SIZE)
+#ifndef NX_POP3_CLIENT_PACKET_POOL_SIZE     
+#define NX_POP3_CLIENT_PACKET_POOL_SIZE                 (10 * NX_POP3_CLIENT_PACKET_SIZE)     
 #endif
 
 #ifndef NX_POP3_CLIENT_PACKET_TIMEOUT
-#define NX_POP3_CLIENT_PACKET_TIMEOUT                   (1 * NX_POP3_TICKS_PER_SECOND)
+#define NX_POP3_CLIENT_PACKET_TIMEOUT                   (1 * NX_POP3_TICKS_PER_SECOND)    
 #endif
 
-#ifndef NX_POP3_TCP_SOCKET_SEND_WAIT
+#ifndef NX_POP3_TCP_SOCKET_SEND_WAIT     
 #define NX_POP3_TCP_SOCKET_SEND_WAIT                    (2 * NX_POP3_TICKS_PER_SECOND)
 #endif
 
@@ -263,33 +263,33 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
 #define NX_POP3_CLIENT_DISCONNECT_TIMEOUT               (2 * NX_POP3_TICKS_PER_SECOND)
 #endif
 
-#ifndef NX_POP3_CLIENT_TCP_SOCKET_NAME
-#define NX_POP3_CLIENT_TCP_SOCKET_NAME                  "POP3 Client socket"
+#ifndef NX_POP3_CLIENT_TCP_SOCKET_NAME         
+#define NX_POP3_CLIENT_TCP_SOCKET_NAME                  "POP3 Client socket"              
 #endif
 
 #ifndef NX_POP3_SERVER_PORT
-#define NX_POP3_SERVER_PORT                             110
+#define NX_POP3_SERVER_PORT                             110    
 #endif
 
-#ifndef NX_POP3_CLIENT_IPADR
-#define NX_POP3_CLIENT_IPADR                            (IP_ADDRESS(192, 2, 2, 34))
+#ifndef NX_POP3_CLIENT_IPADR        
+#define NX_POP3_CLIENT_IPADR                            (IP_ADDRESS(192, 2, 2, 34))    
 #endif
 
 #ifndef NX_POP3_CLIENT_IP_THREAD_STACK_SIZE
-#define NX_POP3_CLIENT_IP_THREAD_STACK_SIZE             1024
+#define NX_POP3_CLIENT_IP_THREAD_STACK_SIZE             1024 
 #endif
 
 #ifndef NX_POP3_CLIENT_IP_THREAD_PRIORITY
-#define NX_POP3_CLIENT_IP_THREAD_PRIORITY               1
+#define NX_POP3_CLIENT_IP_THREAD_PRIORITY               1 
 #endif
 
-#ifndef NX_POP3_CLIENT_ARP_CACHE_SIZE
-#define NX_POP3_CLIENT_ARP_CACHE_SIZE                   1040
+#ifndef NX_POP3_CLIENT_ARP_CACHE_SIZE 
+#define NX_POP3_CLIENT_ARP_CACHE_SIZE                   1040 
 #endif
 
 /* Set TCP window size (maximum number of bytes in socket receive queue). */
 
-#ifndef NX_POP3_CLIENT_WINDOW_SIZE
+#ifndef NX_POP3_CLIENT_WINDOW_SIZE    
 #define NX_POP3_CLIENT_WINDOW_SIZE                      1500
 #endif
 
@@ -306,7 +306,7 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
 #endif
 
 
-/* Set Client to ask Server to delete mail after successful download.
+/* Set Client to ask Server to delete mail after successful download. 
    The RFC 1939 strongly recommends this to minimize server resources. */
 
 #ifndef NX_POP3_CLIENT_DELETE_MAIL_ON_SERVER
@@ -315,7 +315,7 @@ typedef enum NX_POP3_CLIENT_SESSION_STATE_ENUM
 
 
 /* Internal defines for the session state machine. */
-
+                                                       
 #define   NX_POP3_CLIENT_SESSION_STATE_AWAITING_REPLY       -1     /* Session state depends on outcome of next response handler. */
 #define   NX_POP3_CLIENT_SESSION_STATE_COMPLETED_NORMALLY   -2     /* No internal errors, session completed normally. */
 #define   NX_POP3_CLIENT_SESSION_STATE_ERROR                -3     /* Internal errors e.g. TCP send or receive fails; session terminated abnormally. */
@@ -329,7 +329,7 @@ typedef struct NX_POP3_MESSAGE_SEGMENT_STRUCT
     CHAR                                  *message_ptr;            /* Pointer to message segment data. */
     ULONG                                  message_segment_length; /* Size of message segment. */
     struct NX_POP3_MESSAGE_SEGMENT_STRUCT *next_ptr;               /* Pointer to next message segment. */
-
+                                                                     
 } NX_POP3_MESSAGE_SEGMENT;
 
 
@@ -357,7 +357,7 @@ typedef struct NX_POP3_CLIENT_MAIL_STRUCT
 typedef struct NX_POP3_CLIENT_SESSION_STRUCT
 {
 
-    struct NX_POP3_CLIENT_STRUCT            *client_ptr;                  /* Client to which the session is attached. */
+    struct NX_POP3_CLIENT_STRUCT            *client_ptr;                  /* Client to which the session is attached. */    
     ULONG                                   session_id;                   /* Unique session identifier.  */
     UINT                                    server_ip_address;            /* Server IP address in Big Endian format.  */
     USHORT                                  server_port;                  /* Server port in Big Endian format.  */
@@ -373,7 +373,7 @@ typedef struct NX_POP3_CLIENT_SESSION_STRUCT
     NX_PACKET                               *session_packet_ptr;          /* Pointer to packet received during server session */
     INT                                     cmd_state;                    /* Command state of the POP3 protocol */
     INT                                     rsp_state;                    /* Response state of the POP3 protocol */
-    CHAR                                    reply_buffer[NX_POP3_MAX_SERVER_REPLY];
+    CHAR                                    reply_buffer[NX_POP3_MAX_SERVER_REPLY];      
                                                                           /* Text of server reply. */
     UINT                                    POP3_session_state;           /* State of the POP3 session: Authorization, Update or TRANSACTION. */
     UINT                                    maildrop_items;               /* Number of mail messages waiting in client (user) maildrop. */
@@ -391,12 +391,12 @@ typedef struct NX_POP3_CLIENT_STRUCT
     ULONG                           nx_pop3_client_id;                       /* POP3 ID for identify client service type to server  */
     CHAR                            client_name[NX_POP3_MAX_USERNAME];       /* Client name (also used in authentication) */
     CHAR                            client_password[NX_POP3_MAX_PASSWORD];   /* Client password for authentication */
-    CHAR                            client_shared_secret[NX_POP3_MAX_SHARED_SECRET];
+    CHAR                            client_shared_secret[NX_POP3_MAX_SHARED_SECRET];   
                                                                              /* Client shared secret for APOP authentication */
     UINT                            enable_APOP_authentication;              /* Enable client for APOP authentication instead of USER/PASS. */
     UINT                            enable_user_pass_authentication;         /* Enable client to use USER/PASS (e.g. if APOP fails) */
     NX_MD5                          client_md5data;                          /* POP3 Client MD5 work area            */
-    NX_POP3_CLIENT_SESSION          nx_pop3_client_session_list[NX_POP3_CLIENT_SESSION_COUNT];
+    NX_POP3_CLIENT_SESSION          nx_pop3_client_session_list[NX_POP3_CLIENT_SESSION_COUNT]; 
                                                                              /* POP3 client session array            */
     NX_IP                          *ip_ptr;                                  /* Client IP instance  */
     NX_PACKET_POOL                 *packet_pool_ptr;                         /* packet pool for allocating packets for data transfer */
@@ -408,7 +408,7 @@ typedef struct NX_POP3_CLIENT_STRUCT
     TX_BYTE_POOL                   *bytepool_ptr;                            /* Pointer to client byte pool. */
     TX_MUTEX                       *bytepool_mutex_ptr;                      /* Pointer to client byte pool mutex. */
     ULONG                           bytepool_mutex_timeout;                  /* Timeout value for byte pool mutex. */
-    UINT                            (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr);
+    UINT                            (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr);  
                                                                              /* Pointer to mail spooler function. */
 
 } NX_POP3_CLIENT;
@@ -423,7 +423,7 @@ typedef struct NX_POP3_CLIENT_SESSION_STATES_STRUCT
 
 
 
-#ifndef NX_POP3_SOURCE_CODE
+#ifndef NX_POP3_SOURCE_CODE     
 
 #ifdef NX_DISABLE_ERROR_CHECKING
 
@@ -452,7 +452,7 @@ typedef struct NX_POP3_CLIENT_SESSION_STATES_STRUCT
 #define   nx_pop3_rsp_dele                          _nx_pop3_rsp_dele
 #define   nx_pop3_rsp_greeting                      _nx_pop3_rsp_greeting
 #define   nx_pop3_rsp_list                          _nx_pop3_rsp_list
-#define   nx_pop3_rsp_noop                          _nx_pop3_rsp_noop
+#define   nx_pop3_rsp_noop                          _nx_pop3_rsp_noop   
 #define   nx_pop3_rsp_pass                          _nx_pop3_rsp_pass
 #define   nx_pop3_rsp_quit                          _nx_pop3_rsp_quit
 #define   nx_pop3_rsp_retr                          _nx_pop3_rsp_retr
@@ -493,7 +493,7 @@ typedef struct NX_POP3_CLIENT_SESSION_STATES_STRUCT
 #define   nx_pop3_rsp_dele                          _nxe_pop3_rsp_dele
 #define   nx_pop3_rsp_greeting                      _nxe_pop3_rsp_greeting
 #define   nx_pop3_rsp_list                          _nxe_pop3_rsp_list
-#define   nx_pop3_rsp_noop                          _nxe_pop3_rsp_noop
+#define   nx_pop3_rsp_noop                          _nxe_pop3_rsp_noop   
 #define   nx_pop3_rsp_pass                          _nxe_pop3_rsp_pass
 #define   nx_pop3_rsp_quit                          _nxe_pop3_rsp_quit
 #define   nx_pop3_rsp_retr                          _nxe_pop3_rsp_retr
@@ -515,13 +515,13 @@ typedef struct NX_POP3_CLIENT_SESSION_STATES_STRUCT
 
 
 UINT    nx_pop3_client_connect(NX_POP3_CLIENT_SESSION *session_ptr);
-UINT    nx_pop3_client_create(NX_POP3_CLIENT *client_ptr, CHAR *client_name, CHAR *client_password, CHAR *client_shared_secret,
-                                UINT APOP_authentication, UINT enable_user_pass_authentication, NX_IP *ip_ptr, NX_PACKET_POOL *packet_pool_ptr,
-                                TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr,
+UINT    nx_pop3_client_create(NX_POP3_CLIENT *client_ptr, CHAR *client_name, CHAR *client_password, CHAR *client_shared_secret,   
+                                UINT APOP_authentication, UINT enable_user_pass_authentication, NX_IP *ip_ptr, NX_PACKET_POOL *packet_pool_ptr, 
+                                TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, 
                                 ULONG bytepool_mutex_timeout, TX_BLOCK_POOL *blockpool_ptr,
-                                TX_MUTEX *blockpool_mutex_ptr, ULONG blockpool_mutex_timeout,
+                                TX_MUTEX *blockpool_mutex_ptr, ULONG blockpool_mutex_timeout, 
                                 ULONG reply_timeout, ULONG window_size,
-                                UINT (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr));
+                                UINT (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr)); 
 UINT    nx_pop3_client_delete (NX_POP3_CLIENT *client_ptr);
 UINT    nx_pop3_cmd_apop(NX_POP3_CLIENT_SESSION *session_ptr);
 UINT    nx_pop3_cmd_dele(NX_POP3_CLIENT_SESSION *session_ptr);
@@ -563,20 +563,20 @@ UINT    nx_pop3_utility_print_client_reserves(NX_POP3_CLIENT *client_ptr);
 
 UINT    _nx_pop3_client_connect(NX_POP3_CLIENT_SESSION *session_ptr);
 UINT    _nxe_pop3_client_connect(NX_POP3_CLIENT_SESSION *session_ptr);
-UINT    _nx_pop3_client_create(NX_POP3_CLIENT *client_ptr, CHAR *client_name, CHAR *client_password, CHAR *client_shared_secret,
-                                UINT APOP_authentication, UINT enable_user_pass_authentication, NX_IP *ip_ptr, NX_PACKET_POOL *packet_pool_ptr,
-                                TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr,
+UINT    _nx_pop3_client_create(NX_POP3_CLIENT *client_ptr, CHAR *client_name, CHAR *client_password, CHAR *client_shared_secret,     
+                                UINT APOP_authentication, UINT enable_user_pass_authentication, NX_IP *ip_ptr, NX_PACKET_POOL *packet_pool_ptr, 
+                                TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, 
                                 ULONG bytepool_mutex_timeout, TX_BLOCK_POOL *blockpool_ptr,
-                                TX_MUTEX *blockpool_mutex_ptr, ULONG blockpool_mutex_timeout,
+                                TX_MUTEX *blockpool_mutex_ptr, ULONG blockpool_mutex_timeout, 
                                 ULONG reply_timeout, ULONG window_size,
-                                UINT (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr));
-UINT    _nxe_pop3_client_create(NX_POP3_CLIENT *client_ptr, CHAR *client_name, CHAR *client_password, CHAR *client_shared_secret,
-                                UINT APOP_authentication, UINT enable_user_pass_authentication, NX_IP *ip_ptr, NX_PACKET_POOL *packet_pool_ptr,
-                                TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr,
+                                UINT (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr)); 
+UINT    _nxe_pop3_client_create(NX_POP3_CLIENT *client_ptr, CHAR *client_name, CHAR *client_password, CHAR *client_shared_secret,     
+                                UINT APOP_authentication, UINT enable_user_pass_authentication, NX_IP *ip_ptr, NX_PACKET_POOL *packet_pool_ptr, 
+                                TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, 
                                 ULONG bytepool_mutex_timeout, TX_BLOCK_POOL *blockpool_ptr,
-                                TX_MUTEX *blockpool_mutex_ptr, ULONG blockpool_mutex_timeout,
+                                TX_MUTEX *blockpool_mutex_ptr, ULONG blockpool_mutex_timeout, 
                                 ULONG reply_timeout, ULONG window_size,
-                                UINT (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr));
+                                UINT (*nx_pop3_client_mail_spooler)(NX_POP3_CLIENT_MAIL *mail_ptr)); 
 UINT    _nx_pop3_client_delete (NX_POP3_CLIENT *client_ptr);
 UINT    _nxe_pop3_client_delete (NX_POP3_CLIENT *client_ptr);
 UINT    _nx_pop3_cmd_apop(NX_POP3_CLIENT_SESSION *session_ptr);

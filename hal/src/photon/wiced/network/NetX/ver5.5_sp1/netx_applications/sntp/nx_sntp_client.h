@@ -64,12 +64,12 @@
 /*                                             displaying NTP time in     */
 /*                                             readable date time format  */
 /*                                             resulting in version 5.1   */
-/*  04-01-2010     William E. Lamie         Modified comment(s),          */
-/*                                             resulting in version 5.2   */
-/*  04-30-2013     Janet Christiansen       Modified comment(s), and      */
+/*  04-01-2010     William E. Lamie         Modified comment(s),          */ 
+/*                                             resulting in version 5.2   */ 
+/*  04-30-2013     Janet Christiansen       Modified comment(s), and      */ 
 /*                                             modified the SNTP Client   */
 /*                                             and mutex protected,       */
-/*                                             resulting in version 5.3   */
+/*                                             resulting in version 5.3   */ 
 /*                                                                        */
 /**************************************************************************/
 
@@ -83,7 +83,7 @@
 
 #ifdef   __cplusplus
 
-/* Yes, C++ compiler is present.  Use standard C.  */
+/* Yes, C++ compiler is present.  Use standard C.  */ 
 extern   "C" {
 
 #endif
@@ -92,29 +92,29 @@ extern   "C" {
 #define NX_SNTP_ID                              0x534E5460UL
 
 
-/* Conversion between seconds and timer ticks. This must equal the
-   NetX timer tick to seconds ratio.  */
+/* Conversion between seconds and timer ticks. This must equal the 
+   NetX timer tick to seconds ratio.  */ 
 
 #define NX_SNTP_TICKS_PER_SECOND                100
-#define NX_SNTP_MILLISECONDS_PER_TICK           (1000 / NX_SNTP_TICKS_PER_SECOND)
+#define NX_SNTP_MILLISECONDS_PER_TICK           (1000 / NX_SNTP_TICKS_PER_SECOND)   
 
-/* Set minimum and maximum Client unicast poll period (in seconds) for requesting
-   time data.  RFC 4330 polling range is from 16 - 131072 seconds.
-   Note that the RFC 4330 strongly recommends polling intervals of at least
+/* Set minimum and maximum Client unicast poll period (in seconds) for requesting  
+   time data.  RFC 4330 polling range is from 16 - 131072 seconds.  
+   Note that the RFC 4330 strongly recommends polling intervals of at least 
    one minute to unnecessary reduce demand on public time servers.  */
 
 #define NX_SNTP_CLIENT_MIN_UNICAST_POLL_INTERVAL    64
 #define NX_SNTP_CLIENT_MAX_UNICAST_POLL_INTERVAL    131072
 
-/* Define Client request types. Note that this does not limit the
+/* Define Client request types. Note that this does not limit the 
    NetX SNTP Client from using MANYCAST or MULTICAST discovery options.  */
 
 #define     BROADCAST_MODE      1
 #define     UNICAST_MODE        2
 
-#define NX_SNTP_CLIENT_RECEIVE_EVENT                ((ULONG) 0x00000001)    /* Event flag to signal a receive packet event                          */
+#define NX_SNTP_CLIENT_RECEIVE_EVENT                ((ULONG) 0x00000001)    /* Event flag to signal a receive packet event                          */ 
 
-/* Define the minimum size of the packet NTP/SNTP time message
+/* Define the minimum size of the packet NTP/SNTP time message 
    (e.g. without authentication data).  */
 
 #define NX_SNTP_TIME_MESSAGE_MIN_SIZE           48
@@ -146,7 +146,7 @@ extern   "C" {
 #define STRATUM_RESERVED        0xF0  /* 16 - 255*/
 
 
-/* Kiss of death strings (see Codes below). Applicable when stratum = 0
+/* Kiss of death strings (see Codes below). Applicable when stratum = 0    
 
                             Code    Meaning
       --------------------------------------------------------------  */
@@ -167,25 +167,25 @@ extern   "C" {
 #define       RMOT          "RMOT"    /* Somebody is tinkering with association from remote host running ntpdc.  OK unless they've stolen your keys.  */
 #define       STEP          "STEP"    /* A step change in system time has occurred, but association has not yet resynchronized.  */
 
-/* Define Kiss of Death error codes.  Note: there should be a 1 : 1 correspondence of
+/* Define Kiss of Death error codes.  Note: there should be a 1 : 1 correspondence of 
    KOD strings to KOD error codes! */
 
 #define       NX_SNTP_KISS_OF_DEATH_PACKET                  0xF00
 
 #define       NX_SNTP_KOD_ANYCAST               (NX_SNTP_KISS_OF_DEATH_PACKET | 0x01)
 #define       NX_SNTP_KOD_AUTH_FAIL             (NX_SNTP_KISS_OF_DEATH_PACKET | 0x02)
-#define       NX_SNTP_KOD_AUTOKEY_FAIL          (NX_SNTP_KISS_OF_DEATH_PACKET | 0x03)
-#define       NX_SNTP_KOD_BROADCAST             (NX_SNTP_KISS_OF_DEATH_PACKET | 0x04)
-#define       NX_SNTP_KOD_CRYP_FAIL             (NX_SNTP_KISS_OF_DEATH_PACKET | 0x05)
-#define       NX_SNTP_KOD_DENY                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x06)
-#define       NX_SNTP_KOD_DROP                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x07)
-#define       NX_SNTP_KOD_DENY_POLICY           (NX_SNTP_KISS_OF_DEATH_PACKET | 0x08)
-#define       NX_SNTP_KOD_NOT_INIT              (NX_SNTP_KISS_OF_DEATH_PACKET | 0x09)
-#define       NX_SNTP_KOD_MANYCAST              (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0A)
-#define       NX_SNTP_KOD_NO_KEY                (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0B)
-#define       NX_SNTP_KOD_RATE                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0C)
-#define       NX_SNTP_KOD_RMOT                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0D)
-#define       NX_SNTP_KOD_STEP                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0E)
+#define       NX_SNTP_KOD_AUTOKEY_FAIL          (NX_SNTP_KISS_OF_DEATH_PACKET | 0x03)  
+#define       NX_SNTP_KOD_BROADCAST             (NX_SNTP_KISS_OF_DEATH_PACKET | 0x04)     
+#define       NX_SNTP_KOD_CRYP_FAIL             (NX_SNTP_KISS_OF_DEATH_PACKET | 0x05)     
+#define       NX_SNTP_KOD_DENY                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x06)          
+#define       NX_SNTP_KOD_DROP                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x07)          
+#define       NX_SNTP_KOD_DENY_POLICY           (NX_SNTP_KISS_OF_DEATH_PACKET | 0x08)   
+#define       NX_SNTP_KOD_NOT_INIT              (NX_SNTP_KISS_OF_DEATH_PACKET | 0x09)      
+#define       NX_SNTP_KOD_MANYCAST              (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0A)      
+#define       NX_SNTP_KOD_NO_KEY                (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0B)        
+#define       NX_SNTP_KOD_RATE                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0C)          
+#define       NX_SNTP_KOD_RMOT                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0D)          
+#define       NX_SNTP_KOD_STEP                  (NX_SNTP_KISS_OF_DEATH_PACKET | 0x0E)          
 
 /* Define SNTP protocol modes. SNTP is limited to primarily Client, server and broadcast modes.  */
 
@@ -206,7 +206,7 @@ extern   "C" {
 /* Set the NetX SNTP client thread stack size .  */
 
 #ifndef NX_SNTP_CLIENT_THREAD_STACK_SIZE
-#define NX_SNTP_CLIENT_THREAD_STACK_SIZE            2048
+#define NX_SNTP_CLIENT_THREAD_STACK_SIZE            2048   
 #endif
 
 
@@ -218,14 +218,14 @@ extern   "C" {
 
 
 
-#ifndef NX_SNTP_CLIENT_THREAD_PRIORITY
+#ifndef NX_SNTP_CLIENT_THREAD_PRIORITY                 
 #define NX_SNTP_CLIENT_THREAD_PRIORITY              2
 #endif
 
 
 /* Set NetX SNTP client thread preemption threshold.  */
 
-#ifndef NX_SNTP_CLIENT_PREEMPTION_THRESHOLD
+#ifndef NX_SNTP_CLIENT_PREEMPTION_THRESHOLD     
 #define NX_SNTP_CLIENT_PREEMPTION_THRESHOLD         NX_SNTP_CLIENT_THREAD_PRIORITY
 #endif
 
@@ -235,35 +235,35 @@ extern   "C" {
 
 /* Set Client UDP socket name.  */
 
-#ifndef NX_SNTP_CLIENT_UDP_SOCKET_NAME
-#define NX_SNTP_CLIENT_UDP_SOCKET_NAME              "SNTP Client socket"
+#ifndef NX_SNTP_CLIENT_UDP_SOCKET_NAME     
+#define NX_SNTP_CLIENT_UDP_SOCKET_NAME              "SNTP Client socket"    
 #endif
 
 
 /* Set port for client to bind UDP socket.  */
 
-#ifndef NX_SNTP_CLIENT_UDP_PORT
-#define NX_SNTP_CLIENT_UDP_PORT                    123
+#ifndef NX_SNTP_CLIENT_UDP_PORT              
+#define NX_SNTP_CLIENT_UDP_PORT                    123      
 #endif
 
 /* Set port for client to connect to SNTP server.  */
 
-#ifndef NX_SNTP_SERVER_UDP_PORT
-#define NX_SNTP_SERVER_UDP_PORT                    123
+#ifndef NX_SNTP_SERVER_UDP_PORT              
+#define NX_SNTP_SERVER_UDP_PORT                    123      
 #endif
 
 /* Set Time to Live (TTL) value for transmitted UDP packets, including manycast and
-   multicast transmissions. The default TTL for windows operating system time
+   multicast transmissions. The default TTL for windows operating system time 
    server is used.  */
 
-#ifndef NX_SNTP_CLIENT_TIME_TO_LIVE
+#ifndef NX_SNTP_CLIENT_TIME_TO_LIVE    
 #define NX_SNTP_CLIENT_TIME_TO_LIVE                  NX_IP_TIME_TO_LIVE
 #endif
 
 
 /* Set maximum queue depth for client socket.*/
 
-#ifndef NX_SNTP_CLIENT_MAX_QUEUE_DEPTH
+#ifndef NX_SNTP_CLIENT_MAX_QUEUE_DEPTH    
 #define NX_SNTP_CLIENT_MAX_QUEUE_DEPTH               5
 #endif
 
@@ -271,7 +271,7 @@ extern   "C" {
 /* Set the time out (timer ticks) for packet allocation from the client packet pool.  */
 
 #ifndef NX_SNTP_CLIENT_PACKET_TIMEOUT
-#define NX_SNTP_CLIENT_PACKET_TIMEOUT               (1 * NX_SNTP_TICKS_PER_SECOND)
+#define NX_SNTP_CLIENT_PACKET_TIMEOUT               (1 * NX_SNTP_TICKS_PER_SECOND)    
 #endif
 
 
@@ -290,7 +290,7 @@ extern   "C" {
 
 
 
-/* Define the minimum (numerically highest) stratum the Client will
+/* Define the minimum (numerically highest) stratum the Client will 
    accept for a time server. Valid range is 1 - 15.  */
 
 #ifndef NX_SNTP_CLIENT_MIN_SERVER_STRATUM
@@ -308,7 +308,7 @@ extern   "C" {
 
 /* Define maximum time update (msec) the Client will make to its local time
    per update.  */
-
+        
 #ifndef NX_SNTP_CLIENT_MAX_TIME_ADJUSTMENT
 #define NX_SNTP_CLIENT_MAX_TIME_ADJUSTMENT          180000
 #endif
@@ -318,7 +318,7 @@ extern   "C" {
    host application has a pretty accurate notion of time, this can be set to false. If not
    the SNTP Client may be unable to apply the first (any) updates. */
 
-#ifndef NX_SNTP_CLIENT_IGNORE_MAX_ADJUST_STARTUP
+#ifndef NX_SNTP_CLIENT_IGNORE_MAX_ADJUST_STARTUP    
 #define NX_SNTP_CLIENT_IGNORE_MAX_ADJUST_STARTUP    NX_TRUE
 #endif
 
@@ -330,9 +330,9 @@ extern   "C" {
 #endif
 
 
-/* Set the maximum time lapse (in seconds) without a time update that can be tolerated by
-   the Client (application). This should be determined by application time sensitivity.
-   For unicast operation, the max lapse could be set to three successive poll requests
+/* Set the maximum time lapse (in seconds) without a time update that can be tolerated by 
+   the Client (application). This should be determined by application time sensitivity. 
+   For unicast operation, the max lapse could be set to three successive poll requests 
    without an update.  Here we set it to 2 hour based on the RFC recommendation to limit
    traffic congestion.  */
 
@@ -351,14 +351,14 @@ extern   "C" {
    the SNTP CLient thread is idle. */
 
 #ifndef NX_SNTP_CLIENT_SLEEP_INTERVAL
-#define NX_SNTP_CLIENT_SLEEP_INTERVAL                1
+#define NX_SNTP_CLIENT_SLEEP_INTERVAL                1 
 #endif
 
 
 /* Set the unicast poll interval (in seconds) for Client time update requests. RFC 4330
    recommends a minimum polling interval of once per hour to minimize traffic congestion. */
 
-#ifndef NX_SNTP_CLIENT_UNICAST_POLL_INTERVAL
+#ifndef NX_SNTP_CLIENT_UNICAST_POLL_INTERVAL    
 #define NX_SNTP_CLIENT_UNICAST_POLL_INTERVAL        3600
 #endif
 
@@ -366,13 +366,13 @@ extern   "C" {
 /* Set the Client exponential back off rate for extending Client poll interval.
    To effectively disable, set to 1.  */
 
-#ifndef NX_SNTP_CLIENT_EXP_BACKOFF_RATE
+#ifndef NX_SNTP_CLIENT_EXP_BACKOFF_RATE             
 #define NX_SNTP_CLIENT_EXP_BACKOFF_RATE             2
 #endif
 
 /* Determine if the Client requires round trip calculation of SNTP messages.  */
 
-#ifndef NX_SNTP_CLIENT_RTT_REQUIRED
+#ifndef NX_SNTP_CLIENT_RTT_REQUIRED             
 #define NX_SNTP_CLIENT_RTT_REQUIRED                 NX_FALSE
 #endif
 
@@ -385,10 +385,10 @@ extern   "C" {
 #endif
 
 
-/* Set the limit on consecutive bad updates from server before Client
+/* Set the limit on consecutive bad updates from server before Client 
    switches to alternate server.  */
 
-#ifndef NX_SNTP_CLIENT_INVALID_UPDATE_LIMIT
+#ifndef NX_SNTP_CLIENT_INVALID_UPDATE_LIMIT             
 #define NX_SNTP_CLIENT_INVALID_UPDATE_LIMIT         3
 #endif
 
@@ -396,21 +396,21 @@ extern   "C" {
 #define NX_SNTP_CLIENT_PACKET_DATA_SIZE            48
 
 
-/* Define an upper limit on SNTP packet size including headers for creating the
-   SNTP Client packet pool for tranmitting messages. The receive packet pool payload
+/* Define an upper limit on SNTP packet size including headers for creating the 
+   SNTP Client packet pool for tranmitting messages. The receive packet pool payload 
    should be at least this size as well. */
-#ifndef NX_SNTP_CLIENT_PACKET_SIZE
+#ifndef NX_SNTP_CLIENT_PACKET_SIZE 
 #define NX_SNTP_CLIENT_PACKET_SIZE                 140
 #endif
 
 /* Define a minimum number of packets for successful SNTP operation. SNTP is a UDP
    operation, so packets are returned to the packet pool as soon as they are transmitted. */
 
-#ifndef NX_SNTP_CLIENT_PACKET_POOL_SIZE
+#ifndef NX_SNTP_CLIENT_PACKET_POOL_SIZE 
 #define NX_SNTP_CLIENT_PACKET_POOL_SIZE            (4 * NX_SNTP_CLIENT_PACKET_SIZE)
 #endif
 
-/* To display date in year/month/date format, define the SNTP year in seconds.
+/* To display date in year/month/date format, define the SNTP year in seconds. 
    Otherwise set to zero. */
 #define NX_SNTP_CURRENT_YEAR                        SECONDS_PER_LEAPYEAR
 
@@ -432,7 +432,7 @@ extern   "C" {
 #define UNIX_EPOCH                 1
 #define NTP_EPOCH                  2
 
-
+    
 
 /* Enumerate months*/
 
@@ -453,7 +453,7 @@ extern   "C" {
 /* Compute seconds per month for convenience computating date and time. */
 
 #define SEC_IN_JAN           (31 * SECONDS_PER_DAY)
-#define SEC_IN_LEAPFEB       (29 * SECONDS_PER_DAY)
+#define SEC_IN_LEAPFEB       (29 * SECONDS_PER_DAY) 
 #define SEC_IN_NONLEAPFEB    (28 * SECONDS_PER_DAY)
 #define SEC_IN_MAR           (31 * SECONDS_PER_DAY)
 #define SEC_IN_APR           (30 * SECONDS_PER_DAY)
@@ -482,8 +482,8 @@ extern   "C" {
 
 /* Client side errors.  */
 #define NX_SNTP_CLIENT_NOT_INITIALIZED      (NX_SNTP_ERROR_CONSTANT | 0x01)       /* Client not properly initialized to receive time data.  */
-#define NX_SNTP_OVER_LIMIT_ON_SERVERS       (NX_SNTP_ERROR_CONSTANT | 0x02)       /* Cannot accept server because client list has reached max # servers.  */
-#define NX_SNTP_INVALID_DOMAIN              (NX_SNTP_ERROR_CONSTANT | 0x03)       /* Invalid domain such as bad IP format or empty string. Applicable to broadcast mode.  */
+#define NX_SNTP_OVER_LIMIT_ON_SERVERS       (NX_SNTP_ERROR_CONSTANT | 0x02)       /* Cannot accept server because client list has reached max # servers.  */      
+#define NX_SNTP_INVALID_DOMAIN              (NX_SNTP_ERROR_CONSTANT | 0x03)       /* Invalid domain such as bad IP format or empty string. Applicable to broadcast mode.  */      
 #define NX_SNTP_NO_AVAILABLE_SERVERS        (NX_SNTP_ERROR_CONSTANT | 0x04)       /* Client has no available time servers to contact.  */
 #define NX_SNTP_INVALID_LOCAL_TIME          (NX_SNTP_ERROR_CONSTANT | 0x05)       /* Client local time has not been set or is invalid.  */
 #define NX_SNTP_OUT_OF_DOMAIN_SERVER        (NX_SNTP_ERROR_CONSTANT | 0x06)       /* Broadcast server does not belong to client broadcast domain.  */
@@ -493,19 +493,19 @@ extern   "C" {
 #define NX_SNTP_INVALID_SERVER_ADDRESS      (NX_SNTP_ERROR_CONSTANT | 0x0A)       /* Invalid server type e.g. IPv4 or IPv6 incompatible.                          */
 #define NX_SNTP_CLIENT_NOT_STARTED          (NX_SNTP_ERROR_CONSTANT | 0x0B)       /* SNTP Client task is not running */
 #define NX_SNTP_CLIENT_ALREADY_STARTED      (NX_SNTP_ERROR_CONSTANT | 0x0C)       /* SNTP Client task is already running */
-#define NX_SNTP_PARAM_ERROR                 (NX_SNTP_ERROR_CONSTANT | 0x0D)       /* Invalid non pointer parameter.  */
+#define NX_SNTP_PARAM_ERROR                 (NX_SNTP_ERROR_CONSTANT | 0x0D)       /* Invalid non pointer parameter.  */ 
 
     /* Server side errors */
 #define NX_SNTP_SERVER_NOT_AVAILABLE        (NX_SNTP_ERROR_CONSTANT | 0x10)       /* Client will not get any time update service from current server.  */
 #define NX_SNTP_NO_UNICAST_FROM_SERVER      (NX_SNTP_ERROR_CONSTANT | 0x11)       /* Client did not receive a valid unicast response from server.  */
-#define NX_SNTP_SERVER_CLOCK_NOT_SYNC       (NX_SNTP_ERROR_CONSTANT | 0x12)       /* Server clock not synchronized.  */
-#define NX_SNTP_KOD_SERVER_NOT_AVAILABLE    (NX_SNTP_ERROR_CONSTANT | 0x13)       /* Server sent a KOD packet indicating service temporarily not available.  */
-#define NX_SNTP_KOD_REMOVE_SERVER           (NX_SNTP_ERROR_CONSTANT | 0x14)       /* Server sent a KOD packet indicating service is not available to client (ever).  */
-#define NX_SNTP_SERVER_AUTH_FAIL            (NX_SNTP_ERROR_CONSTANT | 0x15)       /* Server rejects Client packet on basis of missing or invalid authorization data.  */
+#define NX_SNTP_SERVER_CLOCK_NOT_SYNC       (NX_SNTP_ERROR_CONSTANT | 0x12)       /* Server clock not synchronized.  */      
+#define NX_SNTP_KOD_SERVER_NOT_AVAILABLE    (NX_SNTP_ERROR_CONSTANT | 0x13)       /* Server sent a KOD packet indicating service temporarily not available.  */      
+#define NX_SNTP_KOD_REMOVE_SERVER           (NX_SNTP_ERROR_CONSTANT | 0x14)       /* Server sent a KOD packet indicating service is not available to client (ever).  */      
+#define NX_SNTP_SERVER_AUTH_FAIL            (NX_SNTP_ERROR_CONSTANT | 0x15)       /* Server rejects Client packet on basis of missing or invalid authorization data.  */      
 
 /* Bad packet and time update errors */
 #define NX_SNTP_INVALID_TIME_PACKET         (NX_SNTP_ERROR_CONSTANT | 0x20)       /* Invalid packet (length or data incorrect).   */
-#define NX_SNTP_INVALID_NTP_VERSION         (NX_SNTP_ERROR_CONSTANT | 0x21)       /* Server NTP/SNTP version not incompatible with client.  */
+#define NX_SNTP_INVALID_NTP_VERSION         (NX_SNTP_ERROR_CONSTANT | 0x21)       /* Server NTP/SNTP version not incompatible with client.  */      
 #define NX_SNTP_INVALID_SERVER_MODE         (NX_SNTP_ERROR_CONSTANT | 0x22)       /* Server association invalid (out of protocol with client).  */
 #define NX_SNTP_INVALID_SERVER_PORT         (NX_SNTP_ERROR_CONSTANT | 0x23)       /* Server port does not match what the client expects.  */
 #define NX_SNTP_INVALID_IP_ADDRESS          (NX_SNTP_ERROR_CONSTANT | 0x24)       /* Server IP address does not match what the client expects.  */
@@ -520,8 +520,8 @@ extern   "C" {
 /* Arithmetic errors or invalid results */
 #define NX_SNTP_INVALID_TIME                (NX_SNTP_ERROR_CONSTANT | 0x30)       /* Invalid time resulting from arithmetic operation.  */
 #define NX_SNTP_INVALID_RTT_TIME            (NX_SNTP_ERROR_CONSTANT | 0x31)       /* Round trip time correction to server time yields invalid time (e.g. <0).  */
-#define NX_SNTP_OVERFLOW_ERROR              (NX_SNTP_ERROR_CONSTANT | 0x32)       /* Overflow error resulting from multiplying/adding two 32 bit (timestamp) numbers.  */
-#define NX_SNTP_SIGN_ERROR                  (NX_SNTP_ERROR_CONSTANT | 0x33)       /* Loss of sign error resulting from multiplying/adding two 32 bit (timestamp) numbers.  */
+#define NX_SNTP_OVERFLOW_ERROR              (NX_SNTP_ERROR_CONSTANT | 0x32)       /* Overflow error resulting from multiplying/adding two 32 bit (timestamp) numbers.  */      
+#define NX_SNTP_SIGN_ERROR                  (NX_SNTP_ERROR_CONSTANT | 0x33)       /* Loss of sign error resulting from multiplying/adding two 32 bit (timestamp) numbers.  */      
 
 /* Time out errors */
 #define NX_SNTP_TIMED_OUT_ON_SERVER         (NX_SNTP_ERROR_CONSTANT | 0x44)       /* Client did not receive update from the current server within specified timeout.  */
@@ -569,8 +569,8 @@ typedef struct NX_SNTP_TIME_MESSAGE_STRUCT
 
     /* These are represented as 32 bit data fields in the time message format*/
     ULONG root_delay;                                                   /* Round trip time from NTP Server to primary reference source. Applicable only in server NTP messages.  */
-    ULONG clock_dispersion;                                             /* Server reference clock type (but if stratum is zero, indicates server status when not able to send time updates.  */
-    UCHAR reference_clock_id[4];                                        /* Maximum error in server clock based to the clock frequency tolerance. Applicable only in server NTP messages.  */
+    ULONG clock_dispersion;                                             /* Server reference clock type (but if stratum is zero, indicates server status when not able to send time updates.  */ 
+    UCHAR reference_clock_id[4];                                        /* Maximum error in server clock based to the clock frequency tolerance. Applicable only in server NTP messages.  */ 
 
     /* These are represented as 64 bit data fields in the time message format*/
     UCHAR reference_clock_update_time_stamp[8];                         /* Time at which the server clock was last set or corrected in a server time message.  */
@@ -580,7 +580,7 @@ typedef struct NX_SNTP_TIME_MESSAGE_STRUCT
 
     /* Optional authenticator fields.  */
     UCHAR KeyIdentifier[4];                                             /* Key Identifier and Message Digest fields contain the...  */
-    UCHAR MessageDigest[16];                                            /* ...message authentication code (MAC) information defined.  */
+    UCHAR MessageDigest[16];                                            /* ...message authentication code (MAC) information defined.  */ 
 
     /* These fields are used internally for 'convert' UCHAR data in NX_SNTP_TIME data e.g. seconds and fractions.  */
     NX_SNTP_TIME reference_clock_update_time;                           /* Time at which the server clock was last set or corrected in a server time message.  */
@@ -599,10 +599,10 @@ typedef struct NX_SNTP_CLIENT_STRUCT
     NX_IP                          *nx_sntp_client_ip_ptr;                   /* Pointer to the Client IP instance.  */
     UINT                            nx_sntp_client_interface_index;          /* Index to SNTP network interface  */
     NX_PACKET_POOL                 *nx_sntp_client_packet_pool_ptr;          /* Pointer to the Client packet pool.  */
-    UINT                            nx_sntp_client_sleep_flag;               /* The flag indicating the SNTP Client thread is sleeping          */
+    UINT                            nx_sntp_client_sleep_flag;               /* The flag indicating the SNTP Client thread is sleeping          */ 
     UINT                            nx_sntp_client_started;                  /* Flag indicating the SNTP Client task is running */
     TX_THREAD                       nx_sntp_client_thread;                   /* The SNTP Client processing thread                               */
-    TX_MUTEX                        nx_sntp_client_mutex;                    /* The SNTP Client mutex for protecting access                     */
+    TX_MUTEX                        nx_sntp_client_mutex;                    /* The SNTP Client mutex for protecting access                     */ 
     UCHAR                           nx_sntp_client_thread_stack[NX_SNTP_CLIENT_THREAD_STACK_SIZE];  /* Stack size for SNTP client thread        */
     ULONG                           nx_sntp_server_ip_address;               /* Client's current time server IP address.  */
     NX_UDP_SOCKET                   nx_sntp_client_udp_socket;               /* Client UDP socket for sending and receiving time updates.  */
@@ -630,17 +630,17 @@ typedef struct NX_SNTP_CLIENT_STRUCT
     UINT                            (*adjust_local_device_time)(LONG msec);  /* Pointer to callback service for adjusting local device time.  */
     UINT                            (*apply_custom_sanity_checks)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, NX_SNTP_TIME_MESSAGE *client_time_msg_ptr, NX_SNTP_TIME_MESSAGE *server_time_msg_ptr);
     /* Pointer to callback service for  performing additional sanity checks on received time data.  */
-    UINT                            (*leap_second_handler)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, UINT indicator);
+    UINT                            (*leap_second_handler)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, UINT indicator);   
     /* Pointer to callback service for handling an impending leap second.  */
     UINT                            (*kiss_of_death_handler)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, UINT code);
-    /* Pointer to callback service for handling kiss of death packets received from server.  */
+    /* Pointer to callback service for handling kiss of death packets received from server.  */   
     VOID                            (*random_number_generator)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, ULONG *rand);
     /* Pointer to callback service for random number generator.  */
 
 } NX_SNTP_CLIENT;
 
 
-#ifndef     NX_SNTP_SOURCE_CODE
+#ifndef     NX_SNTP_SOURCE_CODE     
 
 /* Define the system API mappings based on the error checking selected by the user.   */
 
@@ -690,12 +690,12 @@ typedef struct NX_SNTP_CLIENT_STRUCT
 
 /* Define the prototypes accessible to the application software.  */
 
-UINT    nx_sntp_client_create(NX_SNTP_CLIENT *client_ptr, NX_IP *ip_ptr, UINT iface_index, NX_PACKET_POOL *packet_pool_ptr,
-                              UINT (*leap_second_handler)(NX_SNTP_CLIENT *client_ptr, UINT indicator),
+UINT    nx_sntp_client_create(NX_SNTP_CLIENT *client_ptr, NX_IP *ip_ptr, UINT iface_index, NX_PACKET_POOL *packet_pool_ptr,   
+                              UINT (*leap_second_handler)(NX_SNTP_CLIENT *client_ptr, UINT indicator), 
                               UINT (*kiss_of_death_handler)(NX_SNTP_CLIENT *client_ptr, UINT code),
                               VOID (random_number_generator)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, ULONG *rand));
 UINT    nx_sntp_client_delete (NX_SNTP_CLIENT *client_ptr);
-UINT    nx_sntp_client_get_local_time(NX_SNTP_CLIENT *client_ptr, ULONG *seconds, ULONG *milliseconds, CHAR *buffer);
+UINT    nx_sntp_client_get_local_time(NX_SNTP_CLIENT *client_ptr, ULONG *seconds, ULONG *milliseconds, CHAR *buffer); 
 UINT    nx_sntp_client_initialize_broadcast(NX_SNTP_CLIENT *client_ptr,  ULONG multicast_server_address, ULONG broadcast_time_server);
 UINT    nx_sntp_client_initialize_unicast(NX_SNTP_CLIENT *client_ptr, ULONG unicast_time_server);
 UINT    nx_sntp_client_receiving_updates(NX_SNTP_CLIENT *client_ptr, UINT *server_status);
@@ -706,18 +706,18 @@ UINT    nx_sntp_client_stop(NX_SNTP_CLIENT *client_ptr);
 UINT    nx_sntp_client_utility_msecs_to_fraction(ULONG msecs, ULONG *fraction);
 UINT    nx_sntp_client_utility_display_date_time(NX_SNTP_CLIENT *client_ptr, CHAR *buffer, UINT length);
 
-
+        
 #else  /*  NX_SNTP_SOURCE_CODE */
 
 
 /* SNTP source code is being compiled, do not perform any API mapping.  */
 
-UINT    _nx_sntp_client_create(NX_SNTP_CLIENT *client_ptr, NX_IP *ip_ptr, UINT iface_index, NX_PACKET_POOL *packet_pool_ptr,
-                               UINT (*leap_second_handler)(NX_SNTP_CLIENT *client_ptr, UINT indicator),
+UINT    _nx_sntp_client_create(NX_SNTP_CLIENT *client_ptr, NX_IP *ip_ptr, UINT iface_index, NX_PACKET_POOL *packet_pool_ptr,   
+                               UINT (*leap_second_handler)(NX_SNTP_CLIENT *client_ptr, UINT indicator), 
                                UINT (*kiss_of_death_handler)(NX_SNTP_CLIENT *client_ptr, UINT code),
                                VOID (random_number_generator)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, ULONG *rand));
-UINT    _nxe_sntp_client_create(NX_SNTP_CLIENT *client_ptr, NX_IP *ip_ptr, UINT iface_index, NX_PACKET_POOL *packet_pool_ptr,
-                                UINT (*leap_second_handler)(NX_SNTP_CLIENT *client_ptr, UINT indicator),
+UINT    _nxe_sntp_client_create(NX_SNTP_CLIENT *client_ptr, NX_IP *ip_ptr, UINT iface_index, NX_PACKET_POOL *packet_pool_ptr,   
+                                UINT (*leap_second_handler)(NX_SNTP_CLIENT *client_ptr, UINT indicator), 
                                 UINT (*kiss_of_death_handler)(NX_SNTP_CLIENT *client_ptr, UINT code),
                                 VOID (random_number_generator)(struct NX_SNTP_CLIENT_STRUCT *client_ptr, ULONG *rand));
 UINT    _nx_sntp_client_delete (NX_SNTP_CLIENT *client_ptr);
@@ -734,8 +734,8 @@ UINT    _nx_sntp_client_run_broadcast(NX_SNTP_CLIENT *client_ptr);
 UINT    _nxe_sntp_client_run_broadcast(NX_SNTP_CLIENT *client_ptr);
 UINT    _nx_sntp_client_run_unicast(NX_SNTP_CLIENT *client_ptr);
 UINT    _nxe_sntp_client_run_unicast(NX_SNTP_CLIENT *client_ptr);
-UINT    _nx_sntp_client_set_local_time(NX_SNTP_CLIENT *client_ptr, ULONG seconds, ULONG fraction);
-UINT    _nxe_sntp_client_set_local_time(NX_SNTP_CLIENT *client_ptr, ULONG seconds, ULONG fraction);
+UINT    _nx_sntp_client_set_local_time(NX_SNTP_CLIENT *client_ptr, ULONG seconds, ULONG fraction); 
+UINT    _nxe_sntp_client_set_local_time(NX_SNTP_CLIENT *client_ptr, ULONG seconds, ULONG fraction); 
 UINT    _nx_sntp_client_stop(NX_SNTP_CLIENT *client_ptr);
 UINT    _nxe_sntp_client_stop(NX_SNTP_CLIENT *client_ptr);
 UINT    _nx_sntp_client_utility_msecs_to_fraction(ULONG msecs, ULONG *fraction);
@@ -766,7 +766,7 @@ UINT    _nx_sntp_client_utility_add_msecs_to_ntp_time(NX_SNTP_TIME *timeA_ptr, L
 UINT    _nx_sntp_client_utility_convert_fraction_to_msecs(ULONG *milliseconds, NX_SNTP_TIME *time_ptr);
 UINT    _nx_sntp_client_utility_convert_seconds_to_date(NX_SNTP_TIME *current_NTP_time_ptr, UINT current_year, NX_SNTP_DATE_TIME *current_date_time_ptr);
 UINT    _nx_sntp_client_utility_convert_refID_KOD_code(UCHAR *reference_id, UINT *code_id);
-VOID    _nx_sntp_client_utility_fraction_to_usecs(ULONG tsf, ULONG *usecs);
+VOID    _nx_sntp_client_utility_fraction_to_usecs(ULONG tsf, ULONG *usecs); 
 UINT    _nx_sntp_client_utility_get_msec_diff(NX_SNTP_TIME *timeA_ptr, NX_SNTP_TIME *timeB_ptr, ULONG *total_difference_msecs, UINT *pos_diff);
 UINT    _nx_sntp_client_utility_addition_overflow_check(ULONG temp1, ULONG temp2);
 UINT    _nx_sntp_client_utility_convert_time_to_UCHAR(NX_SNTP_TIME *time, NX_SNTP_TIME_MESSAGE *time_message_ptr, UINT which_stamp);

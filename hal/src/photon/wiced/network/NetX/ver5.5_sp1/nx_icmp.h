@@ -1,20 +1,20 @@
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*            Copyright (c) 1996-2013 by Express Logic Inc.               */ 
+/*                                                                        */ 
+/*  This software is copyrighted by and is the sole property of Express   */ 
+/*  Logic, Inc.  All rights, title, ownership, or other interests         */ 
+/*  in the software remain the property of Express Logic, Inc.  This      */ 
+/*  software may only be used in accordance with the corresponding        */ 
+/*  license agreement.  Any unauthorized use, duplication, transmission,  */ 
+/*  distribution, or disclosure of this software is expressly forbidden.  */ 
 /*                                                                        */
-/*            Copyright (c) 1996-2013 by Express Logic Inc.               */
-/*                                                                        */
-/*  This software is copyrighted by and is the sole property of Express   */
-/*  Logic, Inc.  All rights, title, ownership, or other interests         */
-/*  in the software remain the property of Express Logic, Inc.  This      */
-/*  software may only be used in accordance with the corresponding        */
-/*  license agreement.  Any unauthorized use, duplication, transmission,  */
-/*  distribution, or disclosure of this software is expressly forbidden.  */
-/*                                                                        */
-/*  This Copyright notice may not be removed or modified without prior    */
-/*  written consent of Express Logic, Inc.                                */
-/*                                                                        */
-/*  Express Logic, Inc. reserves the right to modify this software        */
-/*  without notice.                                                       */
-/*                                                                        */
+/*  This Copyright notice may not be removed or modified without prior    */ 
+/*  written consent of Express Logic, Inc.                                */ 
+/*                                                                        */ 
+/*  Express Logic, Inc. reserves the right to modify this software        */ 
+/*  without notice.                                                       */ 
+/*                                                                        */ 
 /*  Express Logic, Inc.                     info@expresslogic.com         */
 /*  11423 West Bernardo Court               http://www.expresslogic.com   */
 /*  San Diego, CA  92127                                                  */
@@ -24,49 +24,49 @@
 
 /**************************************************************************/
 /**************************************************************************/
-/**                                                                       */
+/**                                                                       */ 
 /** NetX Component                                                        */
 /**                                                                       */
-/**   Internet Control Message Protocol (ICMP)                            */
-/**                                                                       */
+/**   Internet Control Message Protocol (ICMP)                            */ 
+/**                                                                       */ 
 /**************************************************************************/
 /**************************************************************************/
 
 
-/**************************************************************************/
-/*                                                                        */
-/*  COMPONENT DEFINITION                                   RELEASE        */
-/*                                                                        */
-/*    nx_icmp.h                                           PORTABLE C      */
-/*                                                           5.5          */
-/*  AUTHOR                                                                */
-/*                                                                        */
-/*    William E. Lamie, Express Logic, Inc.                               */
-/*                                                                        */
-/*  DESCRIPTION                                                           */
-/*                                                                        */
-/*    This file defines the NetX Internet Control Message Protocol (ICMP) */
-/*    component, including all data types and external references.  It is */
-/*    assumed that nx_api.h and nx_port.h have already been included.     */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
-/*    DATE              NAME                      DESCRIPTION             */
-/*                                                                        */
-/*  12-12-2005     William E. Lamie         Initial Version 5.0           */
-/*  08-09-2007     William E. Lamie         Modified comment(s),          */
-/*                                            resulting in version 5.1    */
-/*  07-04-2009     William E. Lamie         Modified comment(s),          */
-/*                                            resulting in version 5.2    */
+/**************************************************************************/ 
+/*                                                                        */ 
+/*  COMPONENT DEFINITION                                   RELEASE        */ 
+/*                                                                        */ 
+/*    nx_icmp.h                                           PORTABLE C      */ 
+/*                                                           5.5          */ 
+/*  AUTHOR                                                                */ 
+/*                                                                        */ 
+/*    William E. Lamie, Express Logic, Inc.                               */ 
+/*                                                                        */ 
+/*  DESCRIPTION                                                           */ 
+/*                                                                        */ 
+/*    This file defines the NetX Internet Control Message Protocol (ICMP) */ 
+/*    component, including all data types and external references.  It is */ 
+/*    assumed that nx_api.h and nx_port.h have already been included.     */ 
+/*                                                                        */ 
+/*  RELEASE HISTORY                                                       */ 
+/*                                                                        */ 
+/*    DATE              NAME                      DESCRIPTION             */ 
+/*                                                                        */ 
+/*  12-12-2005     William E. Lamie         Initial Version 5.0           */ 
+/*  08-09-2007     William E. Lamie         Modified comment(s),          */ 
+/*                                            resulting in version 5.1    */ 
+/*  07-04-2009     William E. Lamie         Modified comment(s),          */ 
+/*                                            resulting in version 5.2    */ 
 /*  12-31-2009     Yuxin Zhou               Modified comment(s), removed  */
-/*                                            internal debug logic,       */
+/*                                            internal debug logic,       */ 
 /*                                            resulting in version 5.3    */
 /*  06-30-2011     Yuxin Zhou               Modified comment(s),          */
 /*                                            resulting in version 5.4    */
 /*  04-30-2013     Yuxin Zhou               Modified comment(s),          */
 /*                                            resulting in version 5.5    */
-/*                                                                        */
-/**************************************************************************/
+/*                                                                        */ 
+/**************************************************************************/ 
 
 #ifndef NX_ICMP_H
 #define NX_ICMP_H
@@ -105,8 +105,8 @@
 
 typedef  struct NX_ICMP_HEADER_STRUCT
 {
-    /* Define the first 32-bit word of the ICMP header.  This word contains
-       the following information:
+    /* Define the first 32-bit word of the ICMP header.  This word contains 
+       the following information:  
 
             bits 31-24  ICMP 8-bit type defined as follows:
 
@@ -169,7 +169,7 @@ typedef  struct NX_ICMP_HEADER_STRUCT
 /* Define ICMP function prototypes.  */
 
 UINT  _nx_icmp_enable(NX_IP *ip_ptr);
-UINT  _nx_icmp_info_get(NX_IP *ip_ptr, ULONG *pings_sent, ULONG *ping_timeouts,
+UINT  _nx_icmp_info_get(NX_IP *ip_ptr, ULONG *pings_sent, ULONG *ping_timeouts, 
                             ULONG *ping_threads_suspended, ULONG *ping_responses_received,
                             ULONG *icmp_checksum_errors, ULONG *icmp_unhandled_messages);
 UINT  _nx_icmp_ping(NX_IP *ip_ptr, ULONG ip_address, CHAR *data, ULONG data_size,
@@ -182,11 +182,11 @@ VOID  _nx_icmp_packet_process(NX_IP *ip_ptr, NX_PACKET *packet_ptr);
 ULONG _nx_icmp_checksum_compute(NX_PACKET *packet_ptr);
 
 
-/* Define error checking shells for API services.  These are only referenced by the
+/* Define error checking shells for API services.  These are only referenced by the 
    application.  */
 
 UINT  _nxe_icmp_enable(NX_IP *ip_ptr);
-UINT  _nxe_icmp_info_get(NX_IP *ip_ptr, ULONG *pings_sent, ULONG *ping_timeouts,
+UINT  _nxe_icmp_info_get(NX_IP *ip_ptr, ULONG *pings_sent, ULONG *ping_timeouts, 
                             ULONG *ping_threads_suspended, ULONG *ping_responses_received,
                             ULONG *icmp_checksum_errors, ULONG *icmp_unhandled_messages);
 UINT  _nxe_icmp_ping(NX_IP *ip_ptr, ULONG ip_address, CHAR *data, ULONG data_size,
@@ -201,7 +201,7 @@ UINT  _nxe_icmp_ping(NX_IP *ip_ptr, ULONG ip_address, CHAR *data, ULONG data_siz
    make them extern so other functions in the component can access them.  */
 
 #ifdef NX_ICMP_INIT
-#define ICMP_DECLARE
+#define ICMP_DECLARE 
 #else
 #define ICMP_DECLARE extern
 #endif

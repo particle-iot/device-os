@@ -89,7 +89,7 @@ extern   "C" {
 /* Define the HTTP ID.  */
 
 #define NX_HTTP_ID                          0x48545450UL
-/* Enable Digest authentication.
+/* Enable Digest authentication. 
 #define NX_HTTP_DIGEST_ENABLE
 */
 
@@ -155,15 +155,15 @@ extern   "C" {
 /* Define the HTTP server retry parameters.  */
 
 #ifndef NX_HTTP_SERVER_RETRY_SECONDS
-#define NX_HTTP_SERVER_RETRY_SECONDS        2           /* 2 second initial timeout                            */
+#define NX_HTTP_SERVER_RETRY_SECONDS        2           /* 2 second initial timeout                            */ 
 #endif
 
 #ifndef NX_HTTP_SERVER_TRANSMIT_QUEUE_DEPTH
-#define NX_HTTP_SERVER_TRANSMIT_QUEUE_DEPTH 20          /* Maximum of 20 queued transmit packets               */
+#define NX_HTTP_SERVER_TRANSMIT_QUEUE_DEPTH 20          /* Maximum of 20 queued transmit packets               */ 
 #endif
 
 #ifndef NX_HTTP_SERVER_RETRY_MAX
-#define NX_HTTP_SERVER_RETRY_MAX            10          /* Maximum of 10 retries per packet                    */
+#define NX_HTTP_SERVER_RETRY_MAX            10          /* Maximum of 10 retries per packet                    */ 
 #endif
 
 #ifndef NX_HTTP_SERVER_RETRY_SHIFT

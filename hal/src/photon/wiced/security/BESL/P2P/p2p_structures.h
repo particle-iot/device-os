@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
@@ -68,30 +43,6 @@ extern "C" {
  ******************************************************/
 
 /* i/f request */
-typedef struct
-{
-    besl_mac_t  mac_address;
-    uint8_t     interface_type;
-    uint8_t     _padding; // XXX why is this here?
-    uint16_t    chan_spec;
-} wl_p2p_if_t;
-
-typedef struct
-{
-    uint8_t  state; /* see p2p_discovery_state_t */
-    uint16_t chanspec; /* valid in listen state */
-    uint16_t dwell_time_ms; /* valid in listen state, in ms */
-} wl_p2p_disc_st_t;
-
-/* scan request */
-typedef struct
-{
-    uint8_t type; /* 'S' for WLC_SCAN, 'E' for "escan" */
-    uint8_t reserved[3];
-
-    /* escan params */
-    wl_escan_params_t escan;
-} wl_p2p_scan_t;
 
 //typedef struct
 //{
@@ -375,7 +326,7 @@ typedef struct
     uint8_t            configuration_timeout;
     uint16_t           p2p_capability;
     uint8_t            ssid_length;
-    char               ssid[32];
+    uint8_t            ssid[32];
 } p2p_group_details_t;
 
 typedef struct
@@ -463,7 +414,7 @@ typedef struct
     uint8_t                         group_owner_tie_breaker;
     uint16_t                        configuration_timeout;
     uint32_t                        p2p_action_frame_cookie;
-    uint32_t                        p2p_interface;
+    uint32_t                        p2p_interface;               /* Wiced host interface for use when bringing up IP stack etc */
     p2p_state_machine_state_t       p2p_current_state;
     p2p_discovered_device_t         discovered_devices[P2P_MAX_DISCOVERED_DEVICES];
     p2p_discovered_device_t*        candidate_device;

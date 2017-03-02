@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 #ifndef INCLUDED_WWD_BUS_PROTOCOL_INTERFACE_H_
@@ -80,23 +55,22 @@ typedef struct
 
 /* Initialisation functions */
 extern wwd_result_t wwd_bus_init                       ( void );
+extern wwd_result_t wwd_bus_resume_after_deep_sleep    ( void );
 extern wwd_result_t wwd_bus_deinit                     ( void );
 
 /* Device register access functions */
 extern wwd_result_t wwd_bus_write_backplane_value      ( uint32_t address, uint8_t register_length, uint32_t value );
 extern wwd_result_t wwd_bus_read_backplane_value       ( uint32_t address, uint8_t register_length, /*@out@*/ uint8_t* value );
 extern wwd_result_t wwd_bus_write_register_value       ( wwd_bus_function_t function, uint32_t address, uint8_t value_length, uint32_t value );
+extern wwd_result_t wwd_bus_read_register_value        ( wwd_bus_function_t function, uint32_t address, uint8_t value_length, /*@out@*/ uint8_t* value );
 
 /* Device data transfer functions */
 extern wwd_result_t wwd_bus_send_buffer                ( wiced_buffer_t buffer );
 extern wwd_result_t wwd_bus_transfer_bytes             ( wwd_bus_transfer_direction_t direction, wwd_bus_function_t function, uint32_t address, uint16_t size, /*@in@*/ /*@out@*/ wwd_transfer_bytes_packet_t* data );
+extern wwd_result_t wwd_bus_transfer_backplane_bytes   ( wwd_bus_transfer_direction_t direction, uint32_t address, uint32_t size, /*@in@*/ /*@out@*/ uint8_t* data );
 
 /* Frame transfer function */
 extern wwd_result_t wwd_bus_read_frame( /*@out@*/  wiced_buffer_t* buffer );
-
-/* Bus energy saving functions */
-extern wwd_result_t wwd_bus_allow_wlan_bus_to_sleep    ( void );
-extern wwd_result_t wwd_bus_ensure_is_up               ( void );
 
 extern wwd_result_t wwd_bus_poke_wlan                  ( void );
 extern wwd_result_t wwd_bus_set_flow_control           ( uint8_t value );
@@ -105,8 +79,16 @@ extern uint32_t     wwd_bus_packet_available_to_read   ( void );
 extern wwd_result_t wwd_bus_ack_interrupt              ( uint32_t intstatus );
 extern wwd_result_t wwd_bus_write_wifi_firmware_image  ( void );
 extern wwd_result_t wwd_bus_write_wifi_nvram_image     ( void );
+extern void         wwd_bus_set_resource_download_halt ( wiced_bool_t halt );
 extern void         wwd_bus_init_backplane_window      ( void );
 extern wwd_result_t wwd_bus_set_backplane_window       ( uint32_t addr );
+
+extern wwd_result_t wwd_bus_specific_wakeup( void );
+extern wwd_result_t wwd_bus_specific_sleep( void );
+
+#ifdef WWD_TEST_NVRAM_OVERRIDE
+extern wwd_result_t wwd_bus_get_wifi_nvram_image       ( char** nvram, uint32_t* size);
+#endif
 
 #ifdef MFG_TEST_ALTERNATE_WLAN_DOWNLOAD
 extern wwd_result_t external_write_wifi_firmware_and_nvram_image  ( void );

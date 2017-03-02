@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this 
- * software may be used to endorse or promote products derived from this software 
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as 
- * incorporated in your product or device that incorporates Broadcom wireless connectivity 
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -58,41 +33,38 @@ extern "C"
 /*@-exportlocal@*/
 
 /**
- * WICED Initialisation Function
- *
- * - Initialises parts of the hardware platform used for Wi-Fi control
- *   including pins for : SDIO/SPI, interrupt, reset, power etc.
- * - Initialises the WICED thread (which arbitrates access to the SDIO/SPI bus)
- * - Sets the country code to set which radio channels are allowed
- * - Clear the events mask
- * - Bring the Wireless interface to the 'Up' state
- * - Turn off minimum power consumption feature to avoid SDIO timeouts
- *
- * @param country : enumerated country identifier, which sets the allowed
- *                  radio channels according to country regulations
- * @param buffer_interface_arg : abstract parameter which is passed
- *                        to the buffer interface during init.
- *                        Look in @ref host_buffer_init for details
- *                        of the argument required for your particular buffering system
- *
- * @return WWD_SUCCESS if initialization is successful, Error code otherwise
- */
-
-wwd_result_t wwd_management_init( wiced_country_code_t country, /*@null@*/ void* buffer_interface_arg );
-
-/**
- * Turn on the Wi-Fi device
+ * Initialise Wi-Fi platform
  *
  * - Initialises the required parts of the hardware platform
  *   i.e. pins for SDIO/SPI, interrupt, reset, power etc.
  *
- * - Bring the Wireless interface "Up"
  * - Initialises the Wiced thread which arbitrates access
  *   to the SDIO/SPI bus
  *
  * @return WWD_SUCCESS if initialization is successful, Error code otherwise
  */
-wwd_result_t wwd_management_wifi_on( void );
+wwd_result_t wwd_management_wifi_platform_init( wiced_country_code_t country, wiced_bool_t resume_after_deep_sleep );
+
+/*
+ * WARNING: After setting to WICED_TRUE,
+ * Call wwd_management_wifi_platform_init_halt( WICED_FALSE )
+ * prior to next wwd_management_wifi_platform_init.
+ * Halt Wi-Fi platform init by causing abort of firmware download loop.
+ *
+ * @return WWD_SUCCESS if successfully set the flag to abort
+ */
+wwd_result_t wwd_management_wifi_platform_init_halt( wiced_bool_t halt );
+
+/**
+ * Turn on the Wi-Fi device
+ *
+ * - Initialise Wi-Fi platform
+ *
+ * - Program various WiFi parameters and modes
+ *
+ * @return WWD_SUCCESS if initialization is successful, error code otherwise
+ */
+wwd_result_t wwd_management_wifi_on( wiced_country_code_t country );
 
 /**
  * Get WLAN powersave sleep clock enabled function
@@ -114,7 +86,6 @@ wwd_result_t wwd_set_wlan_sleep_clock_enabled(wiced_bool_t enabled);
  * - De-Initialises the required parts of the hardware platform
  *   i.e. pins for SDIO/SPI, interrupt, reset, power etc.
  *
- * - Bring the Wireless interface "Down"
  * - De-Initialises the Wiced thread which arbitrates access
  *   to the SDIO/SPI bus
  *
