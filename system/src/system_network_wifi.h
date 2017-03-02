@@ -148,7 +148,10 @@ public:
             return -1;
         }
 
-        if (!credentials->password || 0 == credentials->password[0])
+        WLanSecurityType security = credentials->security;
+
+        if ((security != WLAN_SEC_WPA_ENTERPRISE) &&
+            (security != WLAN_SEC_WPA2_ENTERPRISE) && credentials->password && (0 == credentials->password[0]))
         {
             credentials->security = WLAN_SEC_UNSEC;
         }

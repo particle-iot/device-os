@@ -36,7 +36,7 @@ extern "C" {
  * @param p_rng             The argument to the random number generator
  * @return  0 on success. Non zero on failure.
  */
-int gen_rsa_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *), void *p_rng);
+int gen_rsa_key(uint8_t* buffer, size_t max_length, int32_t (*f_rng) (void *), void *p_rng);
 
 
 

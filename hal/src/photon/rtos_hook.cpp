@@ -4,7 +4,7 @@
 
 extern "C" {
 
-void vApplicationStackOverflowHook(xTaskHandle, char*) {
+void vApplicationStackOverflowHook(xTaskHandle handle, char* name) {
     PANIC(StackOverflow, "Stack overflow detected");
 }
 

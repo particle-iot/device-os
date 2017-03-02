@@ -1100,7 +1100,7 @@ public:
         wiced_http_server_stop(&server);
     }
 
-    static int32_t handle_command(const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
+    static int32_t handle_command(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
         Command* cmd = (Command*)arg;
         Reader r;
         reader_from_http_body(&r, http_data);
@@ -1114,7 +1114,7 @@ public:
         return result;
     }
 
-    static int32_t handle_app_renderer(const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
+    static int32_t handle_app_renderer(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
     	    PageProvider* p = (PageProvider*)arg;
         Reader r;
         reader_from_http_body(&r, http_data);

@@ -402,6 +402,7 @@ void HAL_Core_Init(void) {
 bool HAL_Core_Validate_User_Module(void)
 {
     bool valid = false;
+    Load_SystemFlags();
 
     if (!(SYSTEM_FLAG(StartupMode_SysFlag) & 1)) // Safe mode flag
     {

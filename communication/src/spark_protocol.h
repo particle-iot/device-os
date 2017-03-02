@@ -30,13 +30,21 @@
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "events.h"
+#if PLATFORM_ID==6 || PLATOFRM_ID==8
+#include "wiced_security.h"
+#else
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
+#endif
 #include "device_keys.h"
 #include "file_transfer.h"
 #include "spark_protocol_functions.h"
 #include "timesyncmanager.h"
 #include <stdint.h>
+
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#define aes_context aes_context_t
+#endif
 
 using namespace particle::protocol;
 using particle::CompletionHandler;

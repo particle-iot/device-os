@@ -9,8 +9,13 @@ LOG_SOURCE_CATEGORY("comm.lightssl")
 #include "device_keys.h"
 #include "message_channel.h"
 #include "buffer_message_channel.h"
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#include "wiced_security.h"
+#include "crypto_open/bignum.h"
+#else
 #include "tropicssl/rsa.h"
 #include "tropicssl/aes.h"
+#endif
 #include "lightssl_message_channel.h"
 
 namespace particle

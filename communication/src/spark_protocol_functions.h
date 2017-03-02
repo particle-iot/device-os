@@ -202,7 +202,7 @@ int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd,
  * @return The number of plaintext bytes in the plain text buffer, or <0 on error.
  */
 extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
-        uint8_t* plaintext, int max_plaintext_len);
+        uint8_t* plaintext, int32_t max_plaintext_len);
 
 void extract_public_rsa_key(uint8_t* device_pubkey, const uint8_t* device_privkey);
 

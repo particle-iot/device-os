@@ -36,11 +36,15 @@ void default_random_seed_from_cloud(unsigned int seed)
 }
 
 #if !defined(PARTICLE_PROTOCOL) || HAL_PLATFORM_CLOUD_TCP
-int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int plaintext_len)
+int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int32_t plaintext_len)
 {
     rsa_context rsa;
     init_rsa_context_with_private_key(&rsa, private_key);
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
     int err = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &plaintext_len, ciphertext, plaintext, plaintext_len);
+#else
+    int err = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, (int*)&plaintext_len, ciphertext, plaintext, (int)plaintext_len);
+#endif
     rsa_free(&rsa);
     return err ? -abs(err) : plaintext_len;
 }

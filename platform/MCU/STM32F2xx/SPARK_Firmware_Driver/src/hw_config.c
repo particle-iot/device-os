@@ -249,6 +249,8 @@ void SysTick_Configuration(void)
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
+    // XXX
+    Load_SystemFlags();
     if(SYSTEM_FLAG(IWDG_Enable_SysFlag) == 0xD001)
     {
         if (msTimeout == 0)

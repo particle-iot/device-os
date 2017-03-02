@@ -74,6 +74,14 @@ CONLYFLAGS += -Wno-pointer-sign -std=gnu99
 LDFLAGS += $(LIBS_EXT)
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
 
+ifeq ($(PLATFORM_ID),6)
+CFLAGS += -DBOOTLOADER_SDK_3_3_0_PARTICLE
+endif
+
+ifeq ($(PLATFORM_ID),8)
+CFLAGS += -DBOOTLOADER_SDK_3_3_0_PARTICLE
+endif
+
 ifneq ($(PLATFORM_ID),3)
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker
 WHOLE_ARCHIVE=y

@@ -27,6 +27,11 @@
 
 #if HAL_PLATFORM_CLOUD_TCP
 
+#if PLATFORM_ID != 6 && PLATFORM_ID != 8
+# define rsa_mode_t int
+# define rsa_hash_id_t int
+#endif
+
 int ciphertext_from_nonce_and_id(const unsigned char *nonce,
                                  const unsigned char *id,
                                  const unsigned char *pubkey,
@@ -51,8 +56,11 @@ int decipher_aes_credentials(const unsigned char *private_key,
 {
   rsa_context rsa;
   init_rsa_context_with_private_key(&rsa, private_key);
-
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+  int32_t len = 128;
+#else
   int len = 128;
+#endif
   int ret = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &len, ciphertext,
                               aes_credentials, 40);
   rsa_free(&rsa);
@@ -73,7 +81,7 @@ int verify_signature(const unsigned char *signature,
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, pubkey);
 
-  int ret = rsa_pkcs1_verify(&rsa, RSA_PUBLIC, RSA_RAW, 20,
+  int ret = rsa_pkcs1_verify(&rsa, (rsa_mode_t)RSA_PUBLIC, (rsa_hash_id_t)RSA_RAW, 20,
                              expected_hmac, signature);
   rsa_free(&rsa);
   return ret;
@@ -84,7 +92,11 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
 {
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+  rsa->length = 256;
+#else
   rsa->len = 256;
+#endif
   mpi_read_binary(&rsa->N, pubkey + 33, 256);
   mpi_read_string(&rsa->E, 16, "10001");
 }
@@ -100,7 +112,11 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
 {
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+  rsa->length = 128;
+#else
   rsa->len = 128;
+#endif
 
   int i = 9;
   if (private_key[i] & 1)

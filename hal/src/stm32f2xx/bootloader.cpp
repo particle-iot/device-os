@@ -6,15 +6,6 @@
 #include "module_info.h"
 #include "bootloader_hal.h"
 
-#if !defined(SYSTEM_MINIMAL)
-#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10
-#define HAL_REPLACE_BOOTLOADER
-#endif
-#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10
-#define HAL_REPLACE_BOOTLOADER_OTA
-#endif
-#endif
-
 #ifdef HAL_REPLACE_BOOTLOADER_OTA
 bool bootloader_update(const void* bootloader_image, unsigned length)
 {

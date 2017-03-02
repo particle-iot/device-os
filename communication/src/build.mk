@@ -8,7 +8,7 @@ TARGET_SRC_PATH = src
 
 
 # C source files included in this build.
-CSRC +=
+CSRC += $(TARGET_SRC_PATH)/wiced_tls_host.c
 
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp

@@ -22,8 +22,13 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
   ******************************************************************************
   */
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#include "wiced_security.h"
+#include "crypto_open/bignum.h"
+#else
 #include "tropicssl/rsa.h"
 #include "tropicssl/sha1.h"
+#endif
 #include <string.h>
 #include <stdint.h>
 

@@ -2,6 +2,15 @@
 #include "spark_protocol_functions.h"
 #include "service_debug.h"
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#include "wiced_security.h"
+#include "crypto_open/x509.h"
+#include "crypto_open/bignum.h"
+#include "micro-ecc/configuration.h"
+#include "micro-ecc/uECC.h"
+#include "tls_callbacks.h"
+#endif
+
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
 #include "protocol_selector.h"

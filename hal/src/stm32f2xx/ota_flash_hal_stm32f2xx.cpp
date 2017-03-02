@@ -292,7 +292,7 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 		copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
 
-int key_gen_random(void* p)
+int32_t key_gen_random(void* p)
 {
     return (int)HAL_RNG_GetRandomNumber();
 }

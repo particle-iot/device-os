@@ -23,7 +23,12 @@
 
 #include <cstdlib>
 #include <cstdint>
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#include "wiced_security.h"
+#include "crypto_open/bignum.h"
+#else
 #include "tropicssl/rsa.h"
+#endif
 #include "dsakeygen.h"
 #include "hal_platform.h"
 
@@ -168,11 +173,14 @@ public:
  * @param p_rng     The argument to the RNG function.
  * @return
  */
-int gen_rsa_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *), void *p_rng)
+int gen_rsa_key(uint8_t* buffer, size_t max_length, int32_t (*f_rng) (void *), void *p_rng)
 {
     rsa_context rsa;
-
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
     rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, f_rng, p_rng);
+#else
+    rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, (int(*)(void*))f_rng, p_rng);
+#endif
 
     int failure = rsa_gen_key(&rsa, 1024, 65537);
     if (!failure)

@@ -37,9 +37,13 @@ extern const unsigned char BOOTLOADER_IMAGE[];
 
 const uint8_t* HAL_Bootloader_Image(uint32_t* size, void* reserved)
 {
+#ifdef HAL_REPLACE_BOOTLOADER
     if (size)
         *size = (uint32_t)BOOTLOADER_IMAGE_LEN;
     return (const uint8_t*)BOOTLOADER_IMAGE;
+#else
+    return (const uint8_t*)0;
+#endif // HAL_REPLACE_BOOTLOADER
 }
 
 #endif // HAL_BOOTLOADER_EXCLUDE
