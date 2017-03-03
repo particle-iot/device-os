@@ -18,7 +18,7 @@ include ../build/platform-id.mk
 ifeq ("$(ARCH)","gcc")
 TARGET=none
 else
-TARGET=elf bin hex size
+TARGET=elf bin hex size lst
 endif
 
 
