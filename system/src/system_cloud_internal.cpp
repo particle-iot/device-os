@@ -1057,16 +1057,16 @@ int spark_cloud_socket_disconnect(bool graceful)
     if (socket_handle_valid(sparkSocket))
     {
 #if defined(SEND_ON_CLOSE)
-        LOG(TRACE, "Send Attempt");
+        LOG_DEBUG(TRACE, "Send Attempt");
         char c = 0;
         int rc = send(sparkSocket, &c, 1, 0);
-        LOG(TRACE, "send()=%d", rc);
+        LOG_DEBUG(TRACE, "send()=%d", rc);
 #endif
         if (graceful) {
             // Only TCP sockets can be half-closed
             retVal = socket_shutdown(sparkSocket, SHUT_WR);
             if (!retVal) {
-                LOG(TRACE, "Half-closed cloud socket");
+                LOG_DEBUG(TRACE, "Half-closed cloud socket");
                 if (!spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr)) {
                     // Wait for an error (which means that the server closed our connection).
                     system_tick_t start = millis();
@@ -1079,9 +1079,9 @@ int spark_cloud_socket_disconnect(bool graceful)
                 spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr);
             }
         }
-        LOG(TRACE, "Close Attempt");
+        LOG_DEBUG(TRACE, "Close Attempt");
         retVal = socket_close(sparkSocket);
-        LOG(TRACE, "socket_close()=%s", (retVal ? "fail":"success"));
+        LOG_DEBUG(TRACE, "socket_close()=%s", (retVal ? "fail":"success"));
         sparkSocket = socket_handle_invalid();
     }
     return retVal;
