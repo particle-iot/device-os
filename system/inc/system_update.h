@@ -54,6 +54,12 @@ typedef enum {
     MODULE_INFO_JSON_INCLUDE_PLATFORM_ID = 0x0001
 } module_info_json_flags_t;
 
+typedef enum {
+    UPDATE_FLAG_ERROR          = 0x00,
+    UPDATE_FLAG_SUCCESS        = 0x01,
+    UPDATE_FLAG_VALIDATE_ONLY  = 0x02
+} update_flags_t;
+
 /**
  *
  * @param file

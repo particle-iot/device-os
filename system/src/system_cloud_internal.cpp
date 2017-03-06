@@ -1165,21 +1165,15 @@ int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* mod
     return res;
 }
 
-int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void*)
+int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* buf)
 {
     hal_module_t module;
-    uint8_t buf[512];
 
     int result = Spark_Finish_Firmware_Update(file, flags, &module);
 
-    formatOtaUpdateStatusEventData(flags, result, &module, buf, sizeof(buf));
-
-    LOG(INFO, "Send spark/device/ota_result event");
-    LOG_PRINT(TRACE, (const char*)buf);
-    LOG_PRINTF(TRACE, "\r\n");
-    Particle.publish("spark/device/ota_result", (const char*)buf, 60, PRIVATE);
-    HAL_Delay_Milliseconds(1000);
-    Spark_Process_Events();
+    if (buf && (flags & (UPDATE_FLAG_SUCCESS | UPDATE_FLAG_VALIDATE_ONLY)) == (UPDATE_FLAG_SUCCESS | UPDATE_FLAG_VALIDATE_ONLY)) {
+        formatOtaUpdateStatusEventData(flags, result, &module, (uint8_t*)buf, 255);
+    }
 
     return result;
 }
