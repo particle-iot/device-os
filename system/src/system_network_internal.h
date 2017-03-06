@@ -386,7 +386,7 @@ public:
             WLAN_CONNECTED = 0;
             WLAN_DHCP = 0;
 
-            cloud_disconnect();
+            cloud_disconnect_graceful();
             if (was_connected) {
                 // "Disconnecting" event is generated only for a successfully established connection
                 system_notify_event(network_status, network_status_disconnecting);
