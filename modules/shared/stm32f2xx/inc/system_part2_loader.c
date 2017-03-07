@@ -3,6 +3,8 @@ extern void** dynalib_location_user;
 
 static bool module_user_part_validated = false;
 
+extern void malloc_enable(uint8_t);
+
 /**
  * Determines if the user module is present and valid.
  * @return
@@ -41,6 +43,8 @@ void system_part2_pre_init() {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
+
+    malloc_enable(1);
 
     // now call any C++ constructors in this module's dependencies
 

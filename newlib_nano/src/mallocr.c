@@ -218,6 +218,17 @@ chunk * free_list = NULL;
 /* Starting point of memory allocated from system */
 char * sbrk_start = NULL;
 
+#ifdef MODULAR_FIRMWARE
+static uint8_t malloc_enabled = 0;
+#else
+static uint8_t malloc_enabled = 1;
+#endif
+
+void malloc_enable(uint8_t val)
+{
+    malloc_enabled = val;
+}
+
 /** Function sbrk_aligned
   * Algorithm:
   *   Use sbrk() to obtain more memory and ensure it is CHUNK_ALIGN aligned
@@ -266,7 +277,7 @@ void * nano_malloc(RARG malloc_size_t s)
     alloc_size += CHUNK_OFFSET; /* size of chunk head */
     alloc_size = MAX(alloc_size, MALLOC_MINCHUNK);
 
-    if (alloc_size >= MAX_ALLOC_SIZE || alloc_size < s)
+    if (alloc_size >= MAX_ALLOC_SIZE || alloc_size < s || !malloc_enabled)
     {
         RERRNO = ENOMEM;
         return NULL;
