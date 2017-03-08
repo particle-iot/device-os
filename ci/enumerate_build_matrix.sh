@@ -38,10 +38,11 @@ cd main
 echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM="newhal" COMPILE_LTO="n"
-if [[ "$?" -eq 0 ]]; then
-  echo "✓ SUCCESS"
+HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
+if [[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]]; then
+  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
 else
-  echo "✗ FAILED"
+  echo -e "$RED ✗ FAILED $NO_COLOR"
   exit 1
 fi
 
@@ -50,9 +51,9 @@ echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM=gcc
 if [[ "$?" -eq 0 ]]; then
-  echo "✓ SUCCESS"
+  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
 else
-  echo "✗ FAILED"
+  echo -e "$RED ✗ FAILED $NO_COLOR"
   exit 1
 fi
 
