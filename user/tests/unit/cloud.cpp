@@ -24,7 +24,7 @@ public:
 };
 
 SCENARIO("defaultPublishVisibility is public") {
-	REQUIRE(defualtPublishVisibility().flag()==PUBLISH_EVENT_FLAG_PUBLIC);
+	REQUIRE(defualtPublishVisibility().flag()==PUBLISH_EVENT_FLAG_PRIVATE);
 }
 
 SCENARIO("Particle.publish(eventName) uses default publish when not specified") {

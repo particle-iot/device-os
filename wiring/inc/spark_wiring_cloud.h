@@ -69,7 +69,7 @@ const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
 const PublishFlag WITH_ACK(PUBLISH_EVENT_FLAG_WITH_ACK);
 
 inline const PublishFlag defualtPublishVisibility() {
-	return PUBLIC;
+	return PRIVATE;
 }
 
 class CloudClass {
