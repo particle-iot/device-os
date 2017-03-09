@@ -68,6 +68,9 @@ const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
 const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
 const PublishFlag WITH_ACK(PUBLISH_EVENT_FLAG_WITH_ACK);
 
+inline const PublishFlag defualtPublishVisibility() {
+	return PUBLIC;
+}
 
 class CloudClass {
 
@@ -221,12 +224,12 @@ public:
       return _function(funcKey, std::bind(func, instance, _1));
     }
 
-    inline bool publish(const char *eventName, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, PublishFlag eventType=defualtPublishVisibility())
     {
         return publish(eventName, NULL, 60, PublishFlag::flag_t(eventType));
     }
 
-    inline bool publish(const char *eventName, const char *eventData, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, PublishFlag eventType=defualtPublishVisibility())
     {
         return publish(eventName, eventData, 60, PublishFlag::flag_t(eventType));
     }
@@ -236,7 +239,7 @@ public:
         return publish(eventName, eventData, 60, f1.flag()+f2.flag());
     }
 
-    inline bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
+    inline bool publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=defualtPublishVisibility())
     {
         return publish(eventName, eventData, ttl, PublishFlag::flag_t(eventType));
     }
@@ -341,6 +344,10 @@ public:
     }
 #endif
 
+protected:
+
+    static bool publish(const char *eventName, const char *eventData, int ttl, uint32_t flags);
+
 private:
 
     static bool register_function(cloud_function_t fn, void* data, const char* funcKey);
@@ -348,8 +355,6 @@ private:
     static int call_std_user_function(void* data, const char* param, void* reserved);
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
-
-    static bool publish(const char *eventName, const char *eventData, int ttl, uint32_t flags);
 
     static ProtocolFacade* sp()
     {
