@@ -685,7 +685,7 @@ int Spark_Handshake(bool presence_announce)
         }
 
         bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-#if PLATFORM_ID!=PLATFORM_ELECTRON || !defined(MODULAR_FIRMWARE)
+#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION || !defined(MODULAR_FIRMWARE)
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         LOG(INFO,"Send spark/hardware/max_binary event");
         Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);

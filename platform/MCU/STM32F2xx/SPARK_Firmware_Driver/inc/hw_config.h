@@ -42,6 +42,7 @@
 #if defined(HAS_SERIAL_FLASH)
 #include "spi_flash.h"
 #endif
+#include "module_info.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -117,7 +117,7 @@ test(system_waitfor) {
 test(system_config_set) {
 
     API_COMPILE(System.set(SYSTEM_CONFIG_DEVICE_KEY, NULL, 123));
-#if PLATFORM == photon
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION
     API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_PREFIX, "hello"));
     API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_SUFFIX, "hello"));
 #endif

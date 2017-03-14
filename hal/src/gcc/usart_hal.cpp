@@ -162,7 +162,7 @@ class SocketUsartServer : public SocketUsartBase {
 
 
 Usart& usartMap(unsigned index) {
-#if SPARK_TEST_DRIVER==1
+#if defined(SPARK_TEST_DRIVER) && SPARK_TEST_DRIVER==1
 static SocketUsartServer usart1 = SocketUsartServer();
 static SocketUsartServer usart2 = SocketUsartServer();
 #else

@@ -14,8 +14,7 @@ endif
 
 # C compiler flags
 CFLAGS +=  -g3 -m64 -O$(GCC_OPTIMIZE) -gdwarf-2
-CFLAGS += -Wno-unused-local-typedefs -Wno-return-type-c-linkage 
-CPPFLAGS += -Wno-unused-private-field
+CFLAGS += -Wno-unused-local-typedefs
 ASFLAGS +=  -g3
 
 
@@ -27,7 +26,10 @@ ifneq ($(MAKE_OS),OSX)
 LDFLAGS += -Xlinker --gc-sections
 endif
 
-
+ifeq ($(MAKE_OS),OSX)
+CFLAGS += -Wno-return-type-c-linkage
+CPPFLAGS += -Wno-unused-private-field
+endif
 
 
 

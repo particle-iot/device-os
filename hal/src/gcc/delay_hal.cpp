@@ -19,8 +19,13 @@
 #include "delay_hal.h"
 #include "timer_hal.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp>
+#include "boost_thread_wrap.h"
+
+#pragma GCC diagnostic pop
 
 void HAL_Delay_Milliseconds(uint32_t millis)
 {

@@ -23,6 +23,11 @@ USER_LIB_DEP = $(USER_LIB_DIR)/libuser.a
 
 CFLAGS += -DINCLUDE_PLATFORM=1
 
+# platforms.h
+ifeq ($(PLATFORM_ID),3)
+INCLUDE_DIRS += $(PROJECT_ROOT)/platform/shared/inc
+endif
+
 # gcc HAL is different for test driver and test subject
 ifeq "$(SPARK_TEST_DRIVER)" "1"
 USER_FLAVOR+=-driver
