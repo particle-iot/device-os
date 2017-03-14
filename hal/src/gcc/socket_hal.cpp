@@ -407,6 +407,28 @@ sock_result_t socket_close(sock_handle_t socket)
     return 0;
 }
 
+sock_result_t socket_shutdown(sock_handle_t socket, int how)
+{
+    if (servers.is_valid(socket) || socket >= SOCKET_COUNT) {
+        return -1;
+    }
+    else
+    {
+        auto& s = tcp_from(socket);
+        auto shflags = boost::asio::ip::tcp::socket::shutdown_both;
+        if (how == SHUT_WR) {
+            shflags = boost::asio::ip::tcp::socket::shutdown_send;
+        } else if (how == SHUT_RD) {
+            shflags = boost::asio::ip::tcp::socket::shutdown_receive;
+        }
+        s.shutdown(shflags, ec);
+        return (sock_result_t)ec.value();
+    }
+
+    return -1;
+}
+
+
 
 sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint16_t port, network_interface_t nif)
 {

@@ -115,11 +115,6 @@ class Protocol
 	TimeSyncManager timesync_;
 
 	/**
-	 * Completion handlers for messages with confirmable delivery.
-	 */
-	CompletionHandlerMap<message_id_t> ack_handlers;
-
-	/**
 	 * The token ID for the next request made.
 	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
 	 */
@@ -152,6 +147,10 @@ public:
 
 
 protected:
+	/**
+	 * Completion handlers for messages with confirmable delivery.
+	 */
+	CompletionHandlerMap<message_id_t> ack_handlers;
 
 
 	void set_protocol_flags(int flags)
@@ -455,7 +454,7 @@ public:
 
 	system_tick_t millis() { return callbacks.millis(); }
 
-	virtual void command(ProtocolCommands::Enum command, uint32_t data)=0;
+	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
 
 };
 

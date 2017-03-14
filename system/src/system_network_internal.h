@@ -189,8 +189,7 @@ protected:
         WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
         bool wlanStarted = SPARK_WLAN_STARTED;
-
-        cloud_disconnect();
+        cloud_disconnect_graceful();
         LED_SIGNAL_START(LISTENING_MODE, NORMAL); // TODO: Use BACKGROUND priority if threading is enabled?
 
         on_start_listening();
@@ -387,7 +386,7 @@ public:
             WLAN_CONNECTED = 0;
             WLAN_DHCP = 0;
 
-            cloud_disconnect();
+            cloud_disconnect_graceful();
             if (was_connected) {
                 // "Disconnecting" event is generated only for a successfully established connection
                 system_notify_event(network_status, network_status_disconnecting);

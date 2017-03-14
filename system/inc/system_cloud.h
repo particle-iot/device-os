@@ -76,8 +76,8 @@ extern "C" {
 String spark_deviceID(void);
 #endif
 
-void cloud_disconnect(bool closeSocket=true);
-
+void cloud_disconnect(bool closeSocket=true, bool graceful=false);
+void cloud_disconnect_graceful(bool closeSocket=true);
 
 class String;
 

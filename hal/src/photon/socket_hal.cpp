@@ -936,7 +936,18 @@ sock_result_t socket_close(sock_handle_t sock)
     socket_t* socket = from_handle(sock);
     if (socket) {
         socket_dispose(sock);
-        DEBUG("socket closed %x", int(sock));
+        LOG_DEBUG(TRACE, "socket closed %x", int(sock));
+    }
+    return result;
+}
+
+sock_result_t socket_shutdown(sock_handle_t sd, int how)
+{
+    sock_result_t result = WICED_ERROR;
+    socket_t* socket = from_handle(sd);
+    if (socket && is_open(socket) && is_tcp(socket)) {
+        result = wiced_tcp_close_shutdown(tcp(socket), (wiced_tcp_shutdown_flags_t)how);
+        LOG_DEBUG(TRACE, "socket shutdown %x %x", sd, how);
     }
     return result;
 }

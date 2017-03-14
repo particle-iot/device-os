@@ -44,6 +44,18 @@ extern void serial_dump(const char* msg, ...);
 #define serial_dump(x, ...)
 #endif
 
+static inline int message_padding_strip(uint8_t* buf, int len)
+{
+  if (len > 0) {
+    int nopadlen = len - (int)buf[len - 1];
+    if (nopadlen < 0)
+      nopadlen = 0;
+    return nopadlen;
+  }
+
+  return 0;
+}
+
 /**
  * Handle the cryptographically secure random seed from the cloud by using
  * it to seed the stdlib PRNG.
@@ -1411,10 +1423,8 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
     case CoAPMessageType::DESCRIBE:
     {
         int desc_flags = DESCRIBE_ALL;
-        if (message.len > 8 && queue[8] <= DESCRIBE_ALL) {
+        if (message_padding_strip(queue, message.len) > 8 && queue[8] <= DESCRIBE_ALL) {
             desc_flags = queue[8];
-        } else if (message.len > 8) {
-            LOG(WARN, "Invalid DESCRIBE flags %02x", queue[8]);
         }
 
         if (!send_description(desc_flags, message)) {
@@ -1713,4 +1723,40 @@ inline void SparkProtocol::coded_ack(unsigned char *buf,
   memset(buf + 5, 11, 11); // PKCS #7 padding
 
   encrypt(buf, 16);
+}
+
+int SparkProtocol::command(ProtocolCommands::Enum command, uint32_t data)
+{
+  if (command == ProtocolCommands::SLEEP || command == ProtocolCommands::DISCONNECT) {
+    return this->wait_confirmable();
+  }
+
+  return 0;
+}
+
+int SparkProtocol::wait_confirmable(uint32_t timeout)
+{
+  bool st = true;
+
+  if (ack_handlers.size() != 0) {
+    system_tick_t start = callbacks.millis();
+    LOG(INFO, "Waiting for Confirmed messages to be ACKed.");
+
+    while (((ack_handlers.size() != 0) && (callbacks.millis()-start)<timeout))
+    {
+      CoAPMessageType::Enum message;
+      st = event_loop(message);
+      if (!st)
+      {
+        LOG(WARN, "error receiving acknowledgements");
+        break;
+      }
+    }
+    LOG(INFO, "All Confirmed messages sent: %s",
+        (ack_handlers.size() != 0) ? "no" : "yes");
+
+    ack_handlers.clear();
+  }
+
+  return (int)(!st);
 }

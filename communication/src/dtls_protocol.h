@@ -66,17 +66,23 @@ public:
 		return len;
 	}
 
-	virtual void command(ProtocolCommands::Enum command, uint32_t data) override
+	virtual int command(ProtocolCommands::Enum command, uint32_t data) override
 	{
+		int result = 1;
 		switch (command)
 		{
 		case ProtocolCommands::SLEEP:
-			sleep();
+			result = wait_confirmable();
+			break;
+		case ProtocolCommands::DISCONNECT:
+			result = wait_confirmable();
+			ack_handlers.clear();
 			break;
 		case ProtocolCommands::WAKE:
 			wake();
 			break;
 		}
+		return result;
 	}
 
 
@@ -84,7 +90,7 @@ public:
 	/**
 	 * Ensures that all outstanding sent coap messages have been acknowledged.
 	 */
-	void sleep(uint32_t timeout=60000);
+	int wait_confirmable(uint32_t timeout=60000);
 
 	void wake()
 	{

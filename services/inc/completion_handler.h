@@ -154,6 +154,10 @@ public:
         nearestTimeout_ = std::numeric_limits<system_tick_t>::max();
     }
 
+    int size() {
+        return handlers_.size();
+    }
+
 private:
     struct Handler {
         KeyT key;
