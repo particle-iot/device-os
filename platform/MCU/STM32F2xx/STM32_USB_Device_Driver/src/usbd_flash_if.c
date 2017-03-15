@@ -56,8 +56,8 @@ DFU_MAL_Prop_TypeDef DFU_Flash_cb =
     FLASH_If_Read,
     FLASH_If_Verify,
     FLASH_If_CheckAdd,
-    50, /* Erase Time in ms */
-    50  /* Programming Time in ms */
+    0, /* Erase Time in ms */
+    0  /* Programming Time in ms */
   };
 
 /* Private functions ---------------------------------------------------------*/

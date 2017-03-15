@@ -514,7 +514,7 @@ void app_loop(bool threaded)
                 if (system_mode()!=SAFE_MODE)
                  setup();
                 SPARK_WIRING_APPLICATION = 1;
-#if !MODULAR_FIRMWARE
+#if !(defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE)
                 _post_loop();
 #endif
             }
@@ -524,7 +524,7 @@ void app_loop(bool threaded)
             if (system_mode()!=SAFE_MODE) {
                 loop();
                 DECLARE_SYS_HEALTH(RAN_Loop);
-#if !MODULAR_FIRMWARE
+#if !(defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE)
                 _post_loop();
 #endif
 #if Wiring_Cellular == 1

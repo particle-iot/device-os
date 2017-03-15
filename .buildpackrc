@@ -6,7 +6,7 @@
 # build targets in Particle Cloud when pushing a tag.
 
 # GCC buildpack variation to use ( see: https://hub.docker.com/r/particle/buildpack-hal/tags/ )
-export BUILDPACK_VARIATION=gcc-arm-none-eabi-4_8-2014q2
+export BUILDPACK_VARIATION=gcc-arm-none-eabi-5_3-2016q1
 
 # Platforms for which this firmware is considered stable
 export RELEASE_PLATFORMS=( core photon p1 electron )

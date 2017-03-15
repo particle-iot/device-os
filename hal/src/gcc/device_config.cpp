@@ -24,7 +24,7 @@
 #include <istream>
 #include <iostream>
 
-#include <boost/program_options.hpp>
+#include "boost_program_options_wrap.h"
 #include <boost/format.hpp>
 
 namespace po = boost::program_options;

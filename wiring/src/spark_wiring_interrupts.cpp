@@ -26,6 +26,7 @@
  ******************************************************************************
  */
 #include "spark_wiring_interrupts.h"
+#include "spark_wiring_platform.h"
 
 static wiring_interrupt_handler_t* handlers[TOTAL_PINS];
 

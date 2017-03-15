@@ -257,7 +257,7 @@ void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handler
         // copy the buffers to dynamically allocated storage.
         String name(event_name);
         String data(event_data);
-        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, event_data, reserved));
+        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, data, reserved));
     }
 }
 
@@ -685,7 +685,7 @@ int Spark_Handshake(bool presence_announce)
         }
 
         bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-#if PLATFORM_ID!=PLATFORM_ELECTRON || !defined(MODULAR_FIRMWARE)
+#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION || !defined(MODULAR_FIRMWARE)
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         LOG(INFO,"Send spark/hardware/max_binary event");
         Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);

@@ -1,6 +1,7 @@
 #ifndef SPARK_WIRING_PLATFORM_H
 #define	SPARK_WIRING_PLATFORM_H
 
+#include "platforms.h"
 #include "inet_hal.h"
 
 /**
@@ -43,7 +44,7 @@
 
 #if PLATFORM_ID==6      // photon
 #define Wiring_WiFi 1
-#define Wiring_IPv6 1
+#define Wiring_IPv6 0
 #define Wiring_SPI1 1
 #define Wiring_Serial2 1
 #define Wiring_USBSerial1 1
@@ -64,7 +65,7 @@
 
 #if PLATFORM_ID==8      // P1 / bm14
 #define Wiring_WiFi 1
-#define Wiring_IPv6 1
+#define Wiring_IPv6 0
 #define Wiring_SPI1 1
 #define Wiring_Serial2 1
 #define Wiring_USBSerial1 1
@@ -145,6 +146,10 @@
 
 #ifndef Wiring_LogConfig
 #define Wiring_LogConfig 0
+#endif
+
+#ifndef Wiring_IPv6
+#define Wiring_IPv6 0
 #endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */

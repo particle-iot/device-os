@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    spark_wiring_system.h
+ * @file    spark_wiring_rgb.h
  * @author  Satish Nair, Zachary Crockett, Matthew McGowan
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
@@ -20,8 +20,12 @@
   ******************************************************************************
  */
 
-#include <stdint.h>
+#ifndef SPARK_WIRING_RGB_H
+#define SPARK_WIRING_RGB_H
+
 #include <functional>
+#include <cstdint>
+
 #include "pinmap_hal.h"
 #include "rgbled.h"
 
@@ -30,31 +34,31 @@ typedef std::function<raw_rgb_change_handler_t> wiring_rgb_change_handler_t;
 
 class RGBClass {
 public:
-	static bool controlled(void);
-	static void control(bool);
-	static void color(int, int, int);
-	static void color(uint32_t rgb);
-	static void brightness(uint8_t, bool update=true);
+    static bool controlled(void);
+    static void control(bool);
+    static void color(int, int, int);
+    static void color(uint32_t rgb);
+    static void brightness(uint8_t, bool update=true);
+    static uint8_t brightness();
 
-	static uint8_t brightness() {
-		return Get_LED_Brightness();
-	}
-
-	static void onChange(wiring_rgb_change_handler_t handler);
-	static void onChange(raw_rgb_change_handler_t *handler);
+    void onChange(wiring_rgb_change_handler_t handler);
+    void onChange(raw_rgb_change_handler_t* handler);
 
     template <typename T>
-    static void onChange(void (T::*handler)(uint8_t, uint8_t, uint8_t), T *instance) {
-      using namespace std::placeholders;
-      onChange(std::bind(handler, instance, _1, _2, _3));
+    void onChange(void (T::*handler)(uint8_t, uint8_t, uint8_t), T *instance) {
+        using namespace std::placeholders;
+        onChange(std::bind(handler, instance, _1, _2, _3));
     }
 
-  static void mirrorTo(pin_t rpin, pin_t gpin, pin_t bpin, bool invert=false, bool bootloader=false);
-  static void mirrorDisable(bool bootloader=true);
+    static void mirrorTo(pin_t rpin, pin_t gpin, pin_t bpin, bool invert=false, bool bootloader=false);
+    static void mirrorDisable(bool bootloader=true);
 
 private:
-	static void call_raw_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
-	static void call_std_change_handler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
+    wiring_rgb_change_handler_t changeHandler_;
+
+    static void ledChangeHandler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved);
 };
 
 extern RGBClass RGB;
+
+#endif // SPARK_WIRING_RGB_H

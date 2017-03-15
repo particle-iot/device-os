@@ -64,7 +64,7 @@ test(api_spark_variable) {
     API_COMPILE(Particle.variable("mystring", valueString));
     API_COMPILE(Particle.variable("mystring", constValueString));
     API_COMPILE(Particle.variable("mystring", valueSmartString));
-    
+
     // This should gives a compiler error about too long name
     //API_COMPILE(Particle.variable("mystring123456789", valueString));
 
@@ -91,44 +91,37 @@ test(api_spark_function) {
 }
 
 test(api_spark_publish) {
+    // Particle.publish(const char*, const char*, ...)
+    API_COMPILE(Particle.publish("event"));
+    API_COMPILE(Particle.publish("event", PUBLIC));
+    API_COMPILE(Particle.publish("event", PUBLIC, NO_ACK));
+    API_COMPILE(Particle.publish("event", PUBLIC | NO_ACK)); // traditional syntax
 
-    API_COMPILE(Particle.publish("public event name"));
+    API_COMPILE(Particle.publish("event", "data"));
+    API_COMPILE(Particle.publish("event", "data", PUBLIC));
+    API_COMPILE(Particle.publish("event", "data", PUBLIC, NO_ACK));
+    API_COMPILE(Particle.publish("event", "data", PUBLIC | NO_ACK));
 
-    API_COMPILE(Particle.publish("public event name", "event data"));
+    API_COMPILE(Particle.publish("event", "data", 60));
+    API_COMPILE(Particle.publish("event", "data", 60, PUBLIC));
+    API_COMPILE(Particle.publish("event", "data", 60, PUBLIC, NO_ACK));
+    API_COMPILE(Particle.publish("event", "data", 60, PUBLIC | NO_ACK));
 
-    API_COMPILE(Particle.publish("public event name", "event data"));
+    // Particle.publish(String, String, ...)
+    API_COMPILE(Particle.publish(String("event")));
+    API_COMPILE(Particle.publish(String("event"), PUBLIC));
+    API_COMPILE(Particle.publish(String("event"), PUBLIC, NO_ACK));
+    API_COMPILE(Particle.publish(String("event"), PUBLIC | NO_ACK));
 
-    API_COMPILE(Particle.publish("public event name", "event data", 60));
+    API_COMPILE(Particle.publish(String("event"), String("data")));
+    API_COMPILE(Particle.publish(String("event"), String("data"), PUBLIC));
+    API_COMPILE(Particle.publish(String("event"), String("data"), PUBLIC, NO_ACK));
+    API_COMPILE(Particle.publish(String("event"), String("data"), PUBLIC | NO_ACK));
 
-    API_COMPILE(Particle.publish("public event name", "event data", 60, PUBLIC));
-
-    API_COMPILE(Particle.publish("private event name", "event data", 60, PRIVATE));
-
-    API_COMPILE(Particle.publish("public event name", PRIVATE));
-
-    API_COMPILE(Particle.publish("public event name", "event data", PRIVATE));
-
-    API_COMPILE(Particle.publish("public event name", PUBLIC));
-
-
-    API_COMPILE(Particle.publish(String("public event name")));
-
-    API_COMPILE(Particle.publish(String("public event name"), String("event data")));
-
-    API_COMPILE(Particle.publish(String("public event name"), String("event data")));
-
-    API_COMPILE(Particle.publish(String("public event name"), String("event data"), 60));
-
-    API_COMPILE(Particle.publish(String("public event name"), String("event data"), 60, PUBLIC));
-
-    API_COMPILE(Particle.publish(String("public event name"), String("event data"), 60, PRIVATE));
-
-    API_COMPILE(Particle.publish(String("public event name"), PRIVATE));
-
-    API_COMPILE(Particle.publish(String("public event name"), String("event data"), PRIVATE));
-
-    API_COMPILE(Particle.publish(String("public event name"), PUBLIC));
-
+    API_COMPILE(Particle.publish(String("event"), String("data"), 60));
+    API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC));
+    API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC, NO_ACK));
+    API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC | NO_ACK));
 }
 
 test(api_spark_subscribe) {

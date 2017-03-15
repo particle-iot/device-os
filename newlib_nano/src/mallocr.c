@@ -52,7 +52,7 @@
 #define DEFINE_MEMALIGN
 #define DEFINE_CFREE
 
-#if DEBUG
+#if defined(DEBUG) && DEBUG
 #include <assert.h>
 #else
 #define assert(x) ((void)0)

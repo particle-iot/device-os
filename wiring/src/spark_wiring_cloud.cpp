@@ -45,7 +45,7 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
 
-Future<bool> CloudClass::publish(const char *eventName, const char *eventData, int ttl, uint32_t flags) {
+Future<bool> CloudClass::publish_event(const char *eventName, const char *eventData, int ttl, Flags<PublishFlag> flags) {
 #ifndef SPARK_NO_CLOUD
     spark_send_event_data d = { sizeof(spark_send_event_data) };
 

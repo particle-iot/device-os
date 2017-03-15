@@ -16,7 +16,7 @@
  */
 #include "flashee-eeprom.h"
 
-#if FLASHEE_FATFS_SUPPORT
+#if FLASHEE_FAT_FS_SUPPORT
 #include "diskio.h"
 #include "FlashIO.h"
 #include "ff.h"
@@ -73,7 +73,7 @@ bool FlashDevice::comparePage(const void* data, flash_addr_t address, page_size_
 }
 #endif
 
-#if FLASHEE_FATFS_SUPPORT
+#if FLASHEE_FAT_FS_SUPPORT
 
 FRESULT Flashee::Devices::createFATRegion(flash_addr_t startAddress, flash_addr_t endAddress,
     FATFS* pfs, FormatCmd formatCmd) {
