@@ -28,6 +28,7 @@
 #include "system_cloud_internal.h"
 #include "system_network.h"
 #include "system_threading.h"
+#include "system_mode.h"
 
 using namespace particle;
 
@@ -191,7 +192,14 @@ protected:
         bool wlanStarted = SPARK_WLAN_STARTED;
 
         cloud_disconnect();
-        LED_SIGNAL_START(LISTENING_MODE, NORMAL); // TODO: Use BACKGROUND priority if threading is enabled?
+
+        if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+            LED_SIGNAL_START(LISTENING_MODE, NORMAL);
+        } else {
+            // Using critical priority here, since in a single-threaded configuration the listening
+            // mode blocks an application code from running
+            LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
+        }
 
         on_start_listening();
         start_listening_timer_create();

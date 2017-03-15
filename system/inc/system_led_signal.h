@@ -50,7 +50,7 @@ extern "C" {
 
 // System LED signals.
 // Note: When adding new signals, make sure LED_SIGNAL_COUNT is updated accordingly
-typedef enum {
+typedef enum LEDSignal {
     LED_SIGNAL_NETWORK_OFF = 0,
     LED_SIGNAL_NETWORK_ON = 1,
     LED_SIGNAL_NETWORK_CONNECTING = 2,
@@ -67,7 +67,7 @@ typedef enum {
 } LEDSignal;
 
 // LED signal source
-typedef enum {
+typedef enum LEDSource {
     LED_SOURCE_APPLICATION = 1,
     LED_SOURCE_SYSTEM = 2,
 #ifdef PARTICLE_USER_MODULE
@@ -78,7 +78,7 @@ typedef enum {
 } LEDSource;
 
 // LED signal priority
-typedef enum {
+typedef enum LEDPriority {
     LED_PRIORITY_BACKGROUND = 10,
     LED_PRIORITY_NORMAL = 20,
     LED_PRIORITY_IMPORTANT = 30,
@@ -86,19 +86,19 @@ typedef enum {
 } LEDPriority;
 
 // Predefined LED pattern speed
-typedef enum {
+typedef enum LEDSpeed {
     LED_SPEED_SLOW = 10,
     LED_SPEED_NORMAL = 20,
     LED_SPEED_FAST = 30
 } LEDSpeed;
 
-typedef enum {
+typedef enum LEDSignalFlag {
     LED_SIGNAL_FLAG_SAVE_THEME = 0x01, // Save theme to persistent storage
     LED_SIGNAL_FLAG_DEFAULT_THEME = 0x02, // Initialize theme with factory default settings
     LED_SIGNAL_FLAG_ALL_SIGNALS = 0x04 // Stop all signals
 } LEDSignalFlag;
 
-typedef struct {
+typedef struct LEDSignalThemeData_v1 {
     uint32_t version; // ABI version number. Should be initialized to LED_SIGNAL_THEME_VERSION
     struct { // Signal settings (in order of LEDSignal enum elements)
         uint32_t color; // Color (0x00RRGGBB)

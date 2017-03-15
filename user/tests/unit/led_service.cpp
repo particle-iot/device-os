@@ -64,10 +64,6 @@ public:
                 std::abs(b() - color.b()) <= d);
     }
 
-    static Color random() {
-        return Color(test::randomInt(0, 0x00ffffff));
-    }
-
     operator uint32_t() const {
         return rgb();
     }
@@ -116,10 +112,11 @@ public:
         return color_;
     }
 
-    static void reset() {
+    void reset() {
         // Reset cached LED state
         led_set_update_enabled(0, nullptr);
         led_set_update_enabled(1, nullptr);
+        color_ = Color::BLACK;
     }
 
 private:
@@ -531,6 +528,30 @@ TEST_CASE("LEDStatus") {
             check(period);
         }
     }
+
+    SECTION("user callback is invoked when LED changes its color") {
+        struct LedUpdateHandler {
+            static void callback(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved) {
+                *static_cast<Color*>(data) = Color(r, g, b);
+            }
+        };
+
+        Color color;
+        LED_RGB_SetChangeHandler(LedUpdateHandler::callback, &color);
+
+        LEDStatus s(Color::WHITE);
+        s.setActive();
+        update();
+        CHECK(color == Color::WHITE);
+        s.setColor(Color::RED);
+        update();
+        CHECK(color == Color::RED);
+        color = Color::BLACK;
+        update(); // Update without changing status color
+        CHECK(color == Color::BLACK); // User callback has not been called
+
+        LED_RGB_SetChangeHandler(nullptr, nullptr);
+    }
 }
 
 TEST_CASE("LEDSystemTheme") {
@@ -562,7 +583,7 @@ TEST_CASE("LEDSystemTheme") {
         LEDSystemTheme t2;
         for (int i = 0; i < LED_SIGNAL_COUNT; ++i) {
             const LEDSignal s = (LEDSignal)i;
-            t2.setColor(s, Color::random());
+            t2.setColor(s, Color(i * 10, i * 10, i * 10));
             t2.setPattern(s, test::anyOf(LED_PATTERN_SOLID, LED_PATTERN_BLINK, LED_PATTERN_FADE));
             t2.setPeriod(s, test::randomInt(0, 10000));
         }
