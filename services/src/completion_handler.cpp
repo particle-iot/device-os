@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2017 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,10 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "spark_wiring_async.h"
+#include "completion_handler.h"
 
-void particle::detail::futureCallbackWrapper(void* data) {
-    auto callbackPtr = static_cast<const std::function<void()>*>(data);
-    (*callbackPtr)();
-    delete callbackPtr;
-}
+const system_tick_t particle::CompletionHandlerList::MAX_TIMEOUT;

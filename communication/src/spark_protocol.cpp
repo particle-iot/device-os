@@ -65,8 +65,15 @@ void SparkProtocol::reset_updating(void)
   timesync_.reset();
 }
 
-SparkProtocol::SparkProtocol() : QUEUE_SIZE(sizeof(queue)), handlers({sizeof(handlers), NULL}), expecting_ping_ack(false),
-                                     initialized(false), updating(false), product_id(PRODUCT_ID), product_firmware_version(PRODUCT_FIRMWARE_VERSION)
+SparkProtocol::SparkProtocol() :
+    QUEUE_SIZE(sizeof(queue)),
+    handlers({sizeof(handlers), NULL}),
+    last_ack_handlers_update(0),
+    expecting_ping_ack(false),
+    initialized(false),
+    updating(false),
+    product_id(PRODUCT_ID),
+    product_firmware_version(PRODUCT_FIRMWARE_VERSION)
 {
     queue_init();
 }
@@ -96,7 +103,9 @@ int SparkProtocol::handshake(void)
 {
   LOG_CATEGORY("comm.sparkprotocol.handshake");
 
-  ack_handlers.clear(); // FIXME: Cancel pending handlers right after previous session has ended
+  // FIXME: Pending completion handlers should be cancelled at the end of a previous session
+  ack_handlers.clear();
+  last_ack_handlers_update = callbacks.millis();
 
   LOG(INFO,"Started: Receive nonce");
   memcpy(queue + 40, device_id, 12);
@@ -160,7 +169,11 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum message_type, system_tick_t
 // Returns false if there was an error, and we are probably disconnected.
 bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
 {
-  ack_handlers.processTimeouts(); // Process expired handlers
+  // Process expired completion handlers
+  const system_tick_t t = callbacks.millis();
+  ack_handlers.update(t - last_ack_handlers_update);
+  last_ack_handlers_update = t;
+
     message_type = CoAPMessageType::NONE;
   int bytes_received = callbacks.receive(queue, 2, nullptr);
   if (2 <= bytes_received)
@@ -529,7 +542,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
   // original request has been sent as confirmable or non-confirmable CoAP message. Here we register
   // completion handler only if acknowledgement was requested explicitly
   if (flags & EventType::WITH_ACK) {
-    ack_handlers.add(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
+    ack_handlers.addHandler(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
   } else {
     handler.setResult();
   }

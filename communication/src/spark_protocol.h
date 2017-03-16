@@ -169,6 +169,7 @@ class SparkProtocol
     SparkDescriptor descriptor;
 
     CompletionHandlerMap<uint16_t> ack_handlers;
+    system_tick_t last_ack_handlers_update;
 
     static const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
 

@@ -29,6 +29,7 @@
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_watchdog.h"
+#include "spark_wiring_async.h"
 #include "spark_wiring_flags.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
@@ -211,17 +212,17 @@ public:
       return _function(funcKey, std::bind(func, instance, _1));
     }
 
-    inline bool publish(const char *eventName, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
+    inline particle::Future<bool> publish(const char *eventName, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
     {
         return publish(eventName, NULL, flags1, flags2);
     }
 
-    inline bool publish(const char *eventName, const char *eventData, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
+    inline particle::Future<bool> publish(const char *eventName, const char *eventData, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
     {
         return publish(eventName, eventData, 60, flags1, flags2);
     }
 
-    inline bool publish(const char *eventName, const char *eventData, int ttl, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
+    inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
     {
         return publish_event(eventName, eventData, ttl, flags1 | flags2);
     }
@@ -334,7 +335,7 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    static bool publish_event(const char *eventName, const char *eventData, int ttl, Flags<PublishFlag> flags);
+    static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, Flags<PublishFlag> flags);
 
     static ProtocolFacade* sp()
     {
