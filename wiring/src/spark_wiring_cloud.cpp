@@ -4,6 +4,7 @@ namespace {
 
 using namespace particle;
 
+#ifndef SPARK_NO_CLOUD
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
     auto p = Promise<bool>::fromDataPtr(callbackData);
     if (error != Error::NONE) {
@@ -12,7 +13,7 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
         p.setResult(true);
     }
 }
-
+#endif
 } // namespace
 
 int CloudClass::call_raw_user_function(void* data, const char* param, void* reserved)
