@@ -227,11 +227,6 @@ public:
         return publish_event(eventName, eventData, ttl, flags1 | flags2);
     }
 
-    inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, PublishFlag eventType=PUBLIC)
-    {
-        return publish(eventName, eventData, ttl, PublishFlag::flag_t(eventType));
-    }
-
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope=ALL_DEVICES)
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
