@@ -156,3 +156,8 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie)
 {
     return -1;
 }
+
+int wlan_restart()
+{
+    return -1;
+}

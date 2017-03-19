@@ -72,7 +72,8 @@ DYNALIB_FN(21, hal_wlan, wlan_set_ipaddress, void(const HAL_IPAddress*, const HA
 DYNALIB_FN(22, hal_wlan, wlan_set_ipaddress_source, void(IPAddressSource, bool, void*))
 DYNALIB_FN(23, hal_wlan, wlan_scan, int(wlan_scan_result_t, void*))
 DYNALIB_FN(24, hal_wlan, wlan_get_credentials, int(wlan_scan_result_t, void*))
-DYNALIB_FN(25, hal_wlan,softap_set_application_page_handler, int(PageProvider* provider, void* reserved))
+DYNALIB_FN(25, hal_wlan, softap_set_application_page_handler, int(PageProvider* provider, void* reserved))
+DYNALIB_FN(26, hal_wlan, wlan_restart, int(void))
 DYNALIB_END(hal_wlan)
 
 #endif  // PLATFORM_ID != 10

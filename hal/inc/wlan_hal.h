@@ -340,6 +340,11 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data);
  */
 bool isWiFiPowersaveClockDisabled(void);
 
+/**
+ * Disables and then enables WLAN connectivity
+ */
+int wlan_restart();
+
 #ifdef	__cplusplus
 }
 #endif

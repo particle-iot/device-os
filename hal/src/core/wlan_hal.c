@@ -577,3 +577,8 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
     // Reading credentials from the CC3000 is not possible
     return 0;
 }
+
+int wlan_restart()
+{
+    return -1;
+}
