@@ -83,6 +83,8 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 
 sock_result_t socket_close(sock_handle_t sd);
 
+sock_result_t socket_shutdown(sock_handle_t sd, int how);
+
 sock_result_t socket_reset_blocking_call();
 
 sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif);
@@ -162,6 +164,18 @@ enum hal_socket_type
  * Notification that an open socket has been closed.
  */
 void HAL_NET_notify_socket_closed(sock_handle_t socket);
+
+#ifndef SHUT_RD
+#define SHUT_RD 1
+#endif
+
+#ifndef SHUT_WR
+#define SHUT_WR 2
+#endif
+
+#ifndef SHUT_RDWR
+#define SHUT_RDWR (SHUT_RD | SHUT_WR)
+#endif
 
 
 #endif

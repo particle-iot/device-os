@@ -154,6 +154,9 @@ class SparkProtocol
         this->handlers = handlers;
     }
 
+    int command(ProtocolCommands::Enum command, uint32_t data);
+    int wait_confirmable(uint32_t timeout=5000);
+
     /********** State Machine **********/
     ProtocolState::Enum state();
 

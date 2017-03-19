@@ -204,6 +204,10 @@ public:
         return timeoutTicks_ - ticks_;
     }
 
+    int size() {
+        return handlers_.size();
+    }
+
 private:
     struct Handler {
         CompletionHandler handler;

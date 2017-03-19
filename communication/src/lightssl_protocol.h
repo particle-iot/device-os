@@ -76,7 +76,9 @@ public:
 		return len;
 	}
 
-	virtual void command(ProtocolCommands::Enum command, uint32_t data) override;
+	virtual int command(ProtocolCommands::Enum command, uint32_t data) override;
+
+	int wait_confirmable(uint32_t timeout=5000);
 
 };
 

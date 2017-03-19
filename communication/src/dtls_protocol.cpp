@@ -51,11 +51,11 @@ void DTLSProtocol::init(const char *id,
 }
 
 
-void DTLSProtocol::sleep(uint32_t timeout)
+int DTLSProtocol::wait_confirmable(uint32_t timeout)
 {
 	system_tick_t start = millis();
 	LOG(INFO, "Waiting for Confirmed messages to be sent.");
-	ProtocolError err = UNKNOWN;
+	ProtocolError err = NO_ERROR;
 	// FIXME: Additionally wait for 1 second before going into sleep to give
 	// a chance for some requests to arrive (e.g. application describe request)
 	while ((channel.has_unacknowledged_requests() && (millis()-start)<timeout) ||
@@ -72,6 +72,8 @@ void DTLSProtocol::sleep(uint32_t timeout)
 	LOG(INFO, "All Confirmed messages sent: client(%s) server(%s)",
 		channel.client_messages().has_messages() ? "no" : "yes",
 		channel.server_messages().has_unacknowledged_requests() ? "no" : "yes");
+
+	return (int)err;
 }
 
 
