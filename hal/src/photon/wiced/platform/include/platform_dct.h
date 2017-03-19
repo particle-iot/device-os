@@ -86,6 +86,10 @@
 #define BOOTLOADER
 #endif
 
+#ifdef DEFINE_PARTICLE_DCT_COMPATIBILITY
+#define PARTICLE_DCT_COMPATIBILITY
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -739,14 +743,23 @@ typedef struct
     platform_dct_mfg_info_t             mfg_info;
     platform_dct_security_t             security_credentials;
     platform_dct_wifi_config_t          wifi_config;
+#ifndef PARTICLE_DCT_COMPATIBILITY
     platform_dct_ethernet_config_t      ethernet_config;
     platform_dct_network_config_t       network_config;
     platform_dct_bt_config_t            bt_config;
     platform_dct_p2p_config_t           p2p_config;
     platform_dct_ota2_config_t          ota2_config;
     platform_dct_version_t              dct_version;
+#endif
 } platform_dct_data_t;
 
+#ifdef PARTICLE_DCT_COMPATIBILITY
+typedef struct
+{
+    platform_dct_network_config_t       network_config;
+    platform_dct_version_t              dct_version;
+} platform_dct_data2_t;
+#endif
 
 /***********************************************************************************
  *
