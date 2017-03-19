@@ -95,6 +95,14 @@ typedef enum
     WICED_TCP_CONNECTED_EVENT    = (1 << 2),
 } wiced_tcp_event_t;
 
+typedef enum
+{
+    WICED_TCP_SHUT_RD   = 1,
+    WICED_TCP_SHUT_WR   = 2,
+    WICED_TCP_SHUT_RDWR = 3,
+} wiced_tcp_shutdown_flags_t;
+
+
 /**
  * Packet type for network packet allocation requests.
  */
@@ -278,6 +286,19 @@ wiced_result_t wiced_tcp_server_peer( wiced_tcp_socket_t* socket, wiced_ip_addre
  * @return @ref wiced_result_t
  */
 wiced_result_t wiced_tcp_accept( wiced_tcp_socket_t* socket );
+
+
+/** Close a TCP socket
+ *
+ *  Either fully close() or shutdown() one side of the socket depending on the passed flags.
+ *  NOTE: Doesn't invalidate socket handle. wiced_tcp_disconnect() still needs to be called later
+ *
+ * @param[in,out] socket : The open TCP socket to close/shutdown
+ * @param[in]     flags  : one of wiced_tcp_shutdown_flags_t
+ *
+ * @return @ref wiced_result_t
+ */
+wiced_result_t wiced_tcp_close_shutdown( wiced_tcp_socket_t* socket, wiced_tcp_shutdown_flags_t flags );
 
 
 /** Disconnect a TCP connection
