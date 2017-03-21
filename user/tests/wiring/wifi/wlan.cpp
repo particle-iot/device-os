@@ -11,9 +11,9 @@ test(WLAN_Test1_Lookup_IP_From_Hostname)
 {
     char hostname[25];
     strcpy(hostname, spark_io_str);
-    uint32_t ip;
-    int result = inet_gethostbyname(hostname, 25, &ip);
-    assertEqual(ip, spark_io);
+    HAL_IPAddress addr = { 0 };
+    int result = inet_gethostbyname(hostname, strlen(hostname), &addr, 0 /* nif */, nullptr);
+    assertEqual(addr.ipv4, spark_io);
     assertMoreOrEqual(result, 0); // cc3000 returns >=0 on success
 }
 
@@ -71,7 +71,7 @@ test(WLAN_Test6_IPAddress_Construct_Octets_Equal_Uint32)
 {
     IPAddress ip(1,2,3,4);
 
-    assertTrue(ip==0x01020304);
+    assertTrue(ip == (uint32_t)0x01020304);
 }
 
 test(WLAN_Test7_IPAddress_Construct_Uin32_Equal_Octets)
@@ -84,3 +84,29 @@ test(WLAN_Test7_IPAddress_Construct_Uin32_Equal_Octets)
     assertEqual(ip[3], 4);
 }
 
+test(WLAN_Test8_SSID_And_Password_Length_Check)
+{
+    // SSID
+    bool ok = WiFi.setCredentials("", "12345678", WLAN_SEC_WPA2, WLAN_CIPHER_AES); // Empty SSID
+    assertEqual(ok, false);
+    ok = WiFi.setCredentials("123456789012345678901234567890123", "12345678", WLAN_SEC_WPA2, WLAN_CIPHER_AES); // Too long SSID
+    assertEqual(ok, false);
+    // WPA2
+    ok = WiFi.setCredentials("too-short-wpa2-key", "1234", WLAN_SEC_WPA2, WLAN_CIPHER_AES);
+    assertEqual(ok, false);
+    ok = WiFi.setCredentials("too-long-wpa2-key", "12345678901234567890123456789012345678901234567890123456789012345",
+            WLAN_SEC_WPA2, WLAN_CIPHER_AES);
+    assertEqual(ok, false);
+    // WPA
+    ok = WiFi.setCredentials("too-short-wpa-key", "1234", WLAN_SEC_WPA, WLAN_CIPHER_AES);
+    assertEqual(ok, false);
+    ok = WiFi.setCredentials("too-long-wpa-key", "12345678901234567890123456789012345678901234567890123456789012345",
+            WLAN_SEC_WPA, WLAN_CIPHER_AES);
+    assertEqual(ok, false);
+    // WEP
+    ok = WiFi.setCredentials("too-short-wep-key", "1234", WLAN_SEC_WEP);
+    assertEqual(ok, false);
+    ok = WiFi.setCredentials("too-long-wep-key", "12345678901234567890123456789012345678901234567890123456789",
+            WLAN_SEC_WEP);
+    assertEqual(ok, false);
+}

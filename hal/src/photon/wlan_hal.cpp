@@ -577,25 +577,27 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
                                   uint16_t passwordLen, WLanSecurityType security,
                                   WLanSecurityCipher cipher, unsigned channel, unsigned flags)
 {
-    int result = WICED_ERROR;
-    if (ssidLen > 0 && ssid)
-    {
-        int security_result = toSecurity(ssid, ssidLen, security, cipher);
-        if (security_result == WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
-        {
-            result = WLAN_SET_CREDENTIALS_CIPHER_REQUIRED;
-        }
-        else if (flags & WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN)
-        {
-            result = WICED_SUCCESS;
-        }
-        else
-        {
-            result = add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen,
-                                                wiced_security_t(security_result), channel);
-        }
+    if (!ssid || !ssidLen || ssidLen > SSID_NAME_SIZE) {
+        return WLAN_INVALID_SSID_LENGTH;
     }
-    return result;
+    const int wicedSecurity = toSecurity(ssid, ssidLen, security, cipher);
+    if (wicedSecurity == WLAN_SET_CREDENTIALS_CIPHER_REQUIRED) {
+        return WLAN_SET_CREDENTIALS_CIPHER_REQUIRED;
+    }
+    // Check WEP password length
+    if (wicedSecurity & WEP_ENABLED && (!password || passwordLen < 5 /* 40-bit key in printable characters */ ||
+            passwordLen > 58 /* 232-bit key in hex characters */)) {
+        return WLAN_INVALID_KEY_LENGTH;
+    }
+    // Check WPA/WPA2 password length
+    if ((wicedSecurity & WPA_SECURITY || wicedSecurity & WPA2_SECURITY) &&
+            (!password || passwordLen < WSEC_MIN_PSK_LEN || passwordLen > WSEC_MAX_PSK_LEN)) {
+        return WLAN_INVALID_KEY_LENGTH;
+    }
+    if (flags & WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN) {
+        return 0;
+    }
+    return add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security_t(wicedSecurity), channel);
 }
 
 int wlan_set_credentials(WLanCredentials* c)
