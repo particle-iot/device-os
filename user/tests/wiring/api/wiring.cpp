@@ -186,7 +186,12 @@ test(api_wire)
 
 test(api_map)
 {
-    map(0x01,0x00,0xFF,0,255);
+    int i = 0;
+    API_COMPILE(i = map(0x01, 0x00, 0xFF, 0, 255));
+    double d = 0;
+    API_COMPILE(d = map(5.0, 0.0, 10.0, 0.0, 20.0));
+    (void)i; // avoid unused variable warning
+    (void)d;
 }
 
 /**

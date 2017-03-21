@@ -71,9 +71,6 @@ bool pinAvailable(uint16_t pin);
 void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
 
-
-long map(long value, long fromStart, long fromEnd, long toStart, long toEnd);
-
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
 
@@ -91,5 +88,8 @@ uint8_t analogWriteResolution(pin_t pin, uint8_t value);
 uint8_t analogWriteResolution(pin_t pin);
 uint32_t analogWriteMaxFrequency(pin_t pin);
 void setDACBufferred(pin_t pin, uint8_t state);
+
+int map(int value, int fromStart, int fromEnd, int toStart, int toEnd);
+double map(double value, double fromStart, double fromEnd, double toStart, double toEnd);
 
 #endif /* SPARK_WIRING_H_ */

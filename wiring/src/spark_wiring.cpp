@@ -32,12 +32,23 @@
  */
 void setADCSampleTime(uint8_t ADC_SampleTime)
 {
-  HAL_ADC_Set_Sample_Time(ADC_SampleTime);
+    HAL_ADC_Set_Sample_Time(ADC_SampleTime);
 }
 
-long map(long value, long fromStart, long fromEnd, long toStart, long toEnd)
+int map(int value, int fromStart, int fromEnd, int toStart, int toEnd)
 {
-  return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;
+    if (fromEnd == fromStart) {
+        return value;
+    }
+    return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;
+}
+
+double map(double value, double fromStart, double fromEnd, double toStart, double toEnd)
+{
+    if (fromEnd == fromStart) {
+        return value;
+    }
+    return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) + toStart;
 }
 
 void delay(unsigned long ms)
