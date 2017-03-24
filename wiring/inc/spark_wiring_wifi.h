@@ -79,7 +79,7 @@ public:
     WiFiCredentials& setSsid(const char* ssid, int ssidLen = -1) {
         SET_STRING_WITH_LEN_FIELD(creds_.ssid, ssid, creds_.ssid_len, ssidLen);
         return *this;
-    }    
+    }
 
     WiFiCredentials& setCipher(WLanSecurityCipher cipher) {
         creds_.cipher = cipher;

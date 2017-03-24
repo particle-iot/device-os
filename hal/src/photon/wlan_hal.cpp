@@ -74,6 +74,7 @@ struct WPAEnterpriseContext {
         supplicant_workspace = nullptr;
         initialized = false;
         supplicant_running = false;
+        supplicant_initialized = false;
     }
 
     ~WPAEnterpriseContext() {
@@ -106,6 +107,7 @@ struct WPAEnterpriseContext {
     supplicant_workspace_t* supplicant_workspace;
     bool initialized;
     bool supplicant_running;
+    bool supplicant_initialized;
 };
 
 static WPAEnterpriseContext eap_context;
@@ -426,6 +428,7 @@ int wlan_supplicant_start()
 
     result = (wiced_result_t)besl_supplicant_init(eap_context.supplicant_workspace, (eap_type_t)eap_conf->type, WWD_STA_INTERFACE);
     if ((besl_result_t)result == BESL_SUCCESS) {
+        eap_context.supplicant_initialized = true;
         wiced_supplicant_enable_tls(eap_context.supplicant_workspace, eap_context.tls_context);
         besl_supplicant_set_identity(eap_context.supplicant_workspace, (const char*)eap_conf->outer_identity, eap_conf->outer_identity_len);
         if (eap_conf->type == WLAN_EAP_TYPE_PEAP) {
@@ -468,8 +471,10 @@ int wlan_supplicant_stop()
     wiced_tls_deinit_context(eap_context.tls_context);
     wiced_tls_deinit_root_ca_certificates();
     wiced_tls_deinit_identity(eap_context.tls_identity);
-
-    besl_supplicant_deinit(eap_context.supplicant_workspace);
+    if (eap_context.supplicant_initialized) {
+        besl_supplicant_deinit(eap_context.supplicant_workspace);
+        eap_context.supplicant_initialized = false;
+    }
 
     eap_context.supplicant_running = false;
 
@@ -499,7 +504,13 @@ wlan_result_t wlan_connect_finalize()
         // ¯\_(ツ)_/¯
         wlan_restart();
         // We need to start supplicant
-        wlan_supplicant_start();
+        if (wlan_supplicant_start()) {
+            // Early error
+            wlan_restart();
+            wlan_supplicant_stop();
+            HAL_NET_notify_dhcp(0);
+            return 1;
+        }
         suppl = true;
     }
 
@@ -678,6 +689,10 @@ WLanSecurityType toSecurityType(wiced_security_t sec)
         return WLAN_SEC_UNSEC;
     if (sec & WEP_ENABLED)
         return WLAN_SEC_WEP;
+    if (sec & (WPA_SECURITY | ENTERPRISE_ENABLED))
+        return WLAN_SEC_WPA_ENTERPRISE;
+    if (sec & (WPA2_SECURITY | ENTERPRISE_ENABLED))
+        return WLAN_SEC_WPA2_ENTERPRISE;
     if (sec & WPA_SECURITY)
         return WLAN_SEC_WPA;
     if (sec & WPA2_SECURITY)
@@ -699,42 +714,45 @@ WLanSecurityCipher toCipherType(wiced_security_t sec)
  */
 wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
 {
-    malloc_transfer_to_curr_thread( malloced_scan_result );
-
-    SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
-    if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
+    if (malloced_scan_result != NULL)
     {
-        wiced_scan_result_t* record = &malloced_scan_result->ap_details;
-        info->count++;
-        if (!info->callback)
+        malloc_transfer_to_curr_thread( malloced_scan_result );
+
+        SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
+        if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
         {
-            if (record->SSID.length == info->ssid_len &&
-                !memcmp(record->SSID.value, info->ssid, info->ssid_len))
+            wiced_scan_result_t* record = &malloced_scan_result->ap_details;
+            info->count++;
+            if (!info->callback)
             {
-                info->security = record->security;
-                info->rssi = record->signal_strength;
+                if (record->SSID.length == info->ssid_len &&
+                    !memcmp(record->SSID.value, info->ssid, info->ssid_len))
+                {
+                    info->security = record->security;
+                    info->rssi = record->signal_strength;
+                }
+            }
+            else
+            {
+                WiFiAccessPoint data;
+                memcpy(data.ssid, record->SSID.value, record->SSID.length);
+                memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
+                data.ssidLength = record->SSID.length;
+                data.ssid[data.ssidLength] = 0;
+                data.security = toSecurityType(record->security);
+                data.cipher = toCipherType(record->security);
+                data.rssi = record->signal_strength;
+                data.channel = record->channel;
+                data.maxDataRate = record->max_data_rate;
+                info->callback(&data, info->callback_data);
             }
         }
         else
         {
-            WiFiAccessPoint data;
-            memcpy(data.ssid, record->SSID.value, record->SSID.length);
-            memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
-            data.ssidLength = record->SSID.length;
-            data.ssid[data.ssidLength] = 0;
-            data.security = toSecurityType(record->security);
-            data.cipher = toCipherType(record->security);
-            data.rssi = record->signal_strength;
-            data.channel = record->channel;
-            data.maxDataRate = record->max_data_rate;
-            info->callback(&data, info->callback_data);
+            wiced_rtos_set_semaphore(&info->complete);
         }
+        free( malloced_scan_result );
     }
-    else
-    {
-        wiced_rtos_set_semaphore(&info->complete);
-    }
-    free( malloced_scan_result );
     return WICED_SUCCESS;
 }
 
@@ -927,11 +945,9 @@ int wlan_set_enterprise_credentials(WLanCredentials* c)
 
     if (c) {
         if (c->client_certificate && c->client_certificate_len) {
-            LOG(TRACE, "Set client certificate");
             memcpy(sec->certificate, c->client_certificate, c->client_certificate_len);
         }
         if (c->private_key && c->private_key_len) {
-            LOG(TRACE, "Set private key");
             memcpy(sec->private_key, c->private_key, c->private_key_len);
         }
     }
@@ -940,22 +956,18 @@ int wlan_set_enterprise_credentials(WLanCredentials* c)
         eap_config->type = (uint8_t)c->eap_type;
         // FIXME length check
         if (c->inner_identity && c->inner_identity_len) {
-            LOG(TRACE, "Set inner identity");
             memcpy(eap_config->inner_identity, c->inner_identity, c->inner_identity_len);
             eap_config->inner_identity_len = c->inner_identity_len;
         }
         if (c->outer_identity && c->outer_identity_len) {
-            LOG(TRACE, "Set outer identity");
             memcpy(eap_config->outer_identity, c->outer_identity, c->outer_identity_len);
             eap_config->outer_identity_len = c->outer_identity_len;
         }
         if (c->password && c->password_len) {
-            LOG(TRACE, "Set password");
             memcpy(eap_config->security_key, c->password, c->password_len);
             eap_config->security_key_len = c->password_len;
         }
         if (c->ca_certificate && c->ca_certificate_len) {
-            LOG(TRACE, "Set CA certificate");
             memcpy(eap_config->ca_certificate, c->ca_certificate, c->ca_certificate_len);
             eap_config->ca_certificate_len = c->ca_certificate_len;
         }
