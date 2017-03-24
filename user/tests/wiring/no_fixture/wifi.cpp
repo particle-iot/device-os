@@ -42,59 +42,133 @@ test(WIFI_02_resolve_4_levels)
 
 void checkIPAddress(const char* name, const IPAddress& address)
 {
-	if (address.version()==0 || address[0]==0)
-	{
-		Serial.print("address failed:");
-		Serial.println(name);
-		assertNotEqual(address.version(), 0);
-		assertNotEqual(address[0], 0);
-	}
+    if (address.version()==0 || address[0]==0)
+    {
+        Serial.print("address failed:");
+        Serial.println(name);
+        assertNotEqual(address.version(), 0);
+        assertNotEqual(address[0], 0);
+    }
 }
 
 void checkEtherAddress(const uint8_t* address)
 {
-	uint8_t sum = 0;
-	for (int i=0; i<6; i++)
-	{
-		sum |= address[i];
-	}
-	assertNotEqual(sum, 0);
+    uint8_t sum = 0;
+    for (int i=0; i<6; i++)
+    {
+        sum |= address[i];
+    }
+    assertNotEqual(sum, 0);
 }
 
 test(WIFI_03_config)
 {
-	checkIPAddress("local", WiFi.localIP());
+    checkIPAddress("local", WiFi.localIP());
 
 // WICED doesn't report DHCP or DNS server
 #if PLATFORM_ID!=6 && PLATFORM_ID!=8
-	checkIPAddress("dnsServer", WiFi.dnsServerIP());
-	checkIPAddress("dhcpServer", WiFi.dhcpServerIP());
+    checkIPAddress("dnsServer", WiFi.dnsServerIP());
+    checkIPAddress("dhcpServer", WiFi.dhcpServerIP());
 #endif
-	checkIPAddress("gateway", WiFi.gatewayIP());
+    checkIPAddress("gateway", WiFi.gatewayIP());
 
-	uint8_t ether[6];
-	uint8_t ether2[6];
-	memset(ether, 0, 6);
-	memset(ether2, 0, 6);
+    uint8_t ether[6];
+    uint8_t ether2[6];
+    memset(ether, 0, 6);
+    memset(ether2, 0, 6);
 
-	assertTrue(WiFi.macAddress(ether)==ether);
-	assertTrue(WiFi.macAddress(ether2)==ether2);
-	checkEtherAddress(ether);
-	assertTrue(!memcmp(ether, ether2, 6))
+    assertTrue(WiFi.macAddress(ether)==ether);
+    assertTrue(WiFi.macAddress(ether2)==ether2);
+    checkEtherAddress(ether);
+    assertTrue(!memcmp(ether, ether2, 6))
 
-	memset(ether, 0, 6);
-	memset(ether2, 0, 6);
-	assertTrue(WiFi.BSSID(ether)==ether);
-	assertTrue(WiFi.BSSID(ether2)==ether2);
-	checkEtherAddress(ether);
-	assertTrue(!memcmp(ether, ether2, 6))
+    memset(ether, 0, 6);
+    memset(ether2, 0, 6);
+    assertTrue(WiFi.BSSID(ether)==ether);
+    assertTrue(WiFi.BSSID(ether2)==ether2);
+    checkEtherAddress(ether);
+    assertTrue(!memcmp(ether, ether2, 6))
 }
 
 test(WIFI_04_scan)
 {
-	WiFiAccessPoint aps[20];
-	int apsFound = WiFi.scan(aps, 20);
-	assertMoreOrEqual(apsFound, 1);
+    spark::Vector<WiFiAccessPoint> aps(20);
+    int apsFound = WiFi.scan(aps.data(), 20);
+    assertMoreOrEqual(apsFound, 1);
 }
+
+
+test(WIFI_05_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
+{
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+    assertTrue(Particle.connected());
+
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 10000);
+    assertTrue(Particle.disconnected());
+
+    WiFi.disconnect();
+    uint32_t ms = millis();
+    while (WiFi.ready()) {
+        if (millis() - ms >= 10000) {
+            assertTrue(false);
+        }
+    }
+
+    set_system_mode(SEMI_AUTOMATIC);
+
+    Particle.connect();
+    waitFor(Particle.connected, 10000);
+
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 10000);
+    assertTrue(Particle.disconnected());
+
+    WiFi.disconnect();
+    ms = millis();
+    while (WiFi.ready()) {
+        if (millis() - ms >= 10000) {
+            assertTrue(false);
+        }
+    }
+
+    uint32_t freeRam1 = System.freeMemory();
+
+    wlan_restart();
+
+    Particle.connect();
+    waitFor(Particle.connected, 10000);
+
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 10000);
+    assertTrue(Particle.disconnected());
+
+    WiFi.disconnect();
+    ms = millis();
+    while (WiFi.ready()) {
+        if (millis() - ms >= 10000) {
+            assertTrue(false);
+        }
+    }
+
+    uint32_t freeRam2 = System.freeMemory();
+
+    LOG(TRACE, "Finished");
+
+    assertMoreOrEqual(freeRam2, freeRam1);
+#endif
+}
+
+test(WIFI_06_restore_connection)
+{
+    set_system_mode(AUTOMATIC);
+    if (!Particle.connected())
+    {
+        Particle.connect();
+    }
+}
+
+Serial1LogHandler dbg(115200, LOG_LEVEL_ALL);
+
 
 #endif
