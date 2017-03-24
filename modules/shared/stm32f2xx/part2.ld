@@ -230,3 +230,5 @@ ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module inf
 
 ASSERT ( ORIGIN(SRAM) == system_part2_ram_start, "ORIGIN of SRAM should be equal to system_part2_ram_start. Adjust by hand to obtain the correct address and length. ");
 ASSERT ( LENGTH(SRAM) == ( system_part2_ram_size + stack_size ), "LENGTH of SRAM should be equal to system_static_ram_size plus stack_size. Adjust by hand to obtain the correct address and length. ");
+
+ASSERT ( (link_bss_end - link_global_data_start) <= system_part2_ram_size, "Insufficient room for .data and .bss sections" )
