@@ -33,6 +33,10 @@
 #include "interrupts_hal.h"
 #include <mutex>
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+# include "wwd_rtos_interface.h"
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
 
@@ -125,13 +129,28 @@ os_result_t os_thread_join(os_thread_t thread)
 }
 
 /**
+ * Terminate thread.
+ * @param thread    The thread to terminate, or NULL to terminate current thread.
+ * @return 0 if the thread has successfully terminated. non-zero in case of an error.
+ */
+os_result_t os_thread_exit(os_thread_t thread)
+{
+    vTaskDelete(thread);
+    return 0;
+}
+
+/**
  * Cleans up resources used by a terminated thread.
  * @param thread    The thread to clean up.
  * @return 0 on success.
  */
 os_result_t os_thread_cleanup(os_thread_t thread)
 {
-    vTaskDelete(thread);
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+    if (!thread || os_thread_is_current(thread))
+        return 1;
+    host_rtos_delete_terminated_thread((host_thread_type_t*)&thread);
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
     return 0;
 }
 

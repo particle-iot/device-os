@@ -108,6 +108,13 @@ bool os_thread_is_current_within_stack();
 os_result_t os_thread_join(os_thread_t thread);
 
 /**
+ * Terminate thread.
+ * @param thread    The thread to terminate, or NULL to terminate current thread.
+ * @return 0 if the thread has successfully terminated. non-zero in case of an error.
+ */
+os_result_t os_thread_exit(os_thread_t thread);
+
+/**
  * Cleans up resources used by a terminated thread.
  * @param thread    The thread to clean up.
  * @return 0 on success.

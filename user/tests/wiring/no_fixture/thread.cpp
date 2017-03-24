@@ -3,13 +3,16 @@
 #include "unit-test/unit-test.h"
 
 #if PLATFORM_THREADING
+
+static uint32_t s_ram_free_before = 0;
+
 test(THREAD_01_creation)
 {
+	s_ram_free_before = System.freeMemory();
     volatile bool threadRan = false;
     Thread testThread = Thread("test", [&]() {
         threadRan = true;
-        for(;;) {}
-    });
+    }, OS_THREAD_PRIORITY_DEFAULT, 4096);
 
     for(int tries = 5; !threadRan && tries >= 0; tries--) {
         delay(1);
@@ -20,7 +23,13 @@ test(THREAD_01_creation)
     assertTrue((bool)threadRan);
 }
 
-test(THREAD_02_SingleThreadedBlock)
+test(THREAD_02_thread_doesnt_leak_memory)
+{
+	// 1024 less to account for fragmentation and other allocations
+	assertMoreOrEqual(System.freeMemory(), s_ram_free_before - 1024);
+}
+
+test(THREAD_03_SingleThreadedBlock)
 {
 	SINGLE_THREADED_BLOCK() {
 
@@ -30,7 +39,7 @@ test(THREAD_02_SingleThreadedBlock)
 	}
 }
 
-test(THREAD_03_with_lock)
+test(THREAD_04_with_lock)
 {
 	WITH_LOCK(Serial) {
 
@@ -66,9 +75,9 @@ void waitForComplete(ApplicationWatchdog& wd)
 	}
 }
 
-
 test(APPLICATION_WATCHDOG_01_fires_timeout)
 {
+	s_ram_free_before = System.freeMemory();
 	timeout_called = 0;
 	ApplicationWatchdog wd(5, timeout);
 	HAL_Delay_Milliseconds(10);
@@ -103,6 +112,15 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 		assertLessOrEqual(endTime-startTime, 313); //   |
 		// LOG_DEBUG(INFO, "E %d",endTime-startTime);
 	}
+}
+
+test(APPLICATION_WATCHDOG_03_doesnt_leak_memory)
+{
+	// Before Photon/P1 Thread fixes were introduced, we would lose approximately 20k
+	// of RAM due to 10 allocations of ApplicationWatchdog in APPLICATION_WATCHDOG_02.
+	// Taking fragmentation and other potential allocations into consideration, 2k seems like
+	// a good testing value.
+	assertMoreOrEqual(System.freeMemory(), s_ram_free_before - 2048);
 }
 
 #endif
