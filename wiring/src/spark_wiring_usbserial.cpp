@@ -125,7 +125,7 @@ HAL_USB_USART_Config __attribute__((weak)) acquireSerialBuffer()
 {
   HAL_USB_USART_Config conf = {0};
 
-#ifdef USB_SERIAL_USERSPACE_BUFFERS
+#if defined(USB_SERIAL_USERSPACE_BUFFERS) && ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MODULE_FUNCTION_MONO_FIRMWARE))
   static uint8_t serial_rx_buffer[USB_RX_BUFFER_SIZE];
   static uint8_t serial_tx_buffer[USB_TX_BUFFER_SIZE];
 
@@ -151,7 +151,7 @@ HAL_USB_USART_Config __attribute__((weak)) acquireUSBSerial1Buffer()
 {
   HAL_USB_USART_Config conf = {0};
 
-#ifdef USB_SERIAL_USERSPACE_BUFFERS
+#if defined(USB_SERIAL_USERSPACE_BUFFERS) && ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MODULE_FUNCTION_MONO_FIRMWARE))
   static uint8_t usbserial1_rx_buffer[USB_RX_BUFFER_SIZE];
   static uint8_t usbserial1_tx_buffer[USB_TX_BUFFER_SIZE];
 

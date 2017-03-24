@@ -122,12 +122,27 @@ bool USARTSerial::breakRx() {
 
 #ifndef SPARK_WIRING_NO_USART_SERIAL
 // Preinstantiate Objects //////////////////////////////////////////////////////
+#if ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MODULE_FUNCTION_MONO_FIRMWARE))
 static Ring_Buffer serial1_rx_buffer;
 static Ring_Buffer serial1_tx_buffer;
+#else
+static Ring_Buffer* serial1_rx_buffer = NULL;
+static Ring_Buffer* serial1_tx_buffer = NULL;
+#endif
 
 USARTSerial& __fetch_global_Serial1()
 {
+#if ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MODULE_FUNCTION_MONO_FIRMWARE))
 	static USARTSerial serial1(HAL_USART_SERIAL1, &serial1_rx_buffer, &serial1_tx_buffer);
+#else
+  if (!serial1_rx_buffer) {
+    serial1_rx_buffer = new Ring_Buffer();
+  }
+  if (!serial1_tx_buffer) {
+    serial1_tx_buffer = new Ring_Buffer();
+  }
+  static USARTSerial serial1(HAL_USART_SERIAL1, serial1_rx_buffer, serial1_tx_buffer);
+#endif
 	return serial1;
 }
 
