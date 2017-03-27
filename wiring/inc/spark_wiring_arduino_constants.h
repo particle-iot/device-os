@@ -76,6 +76,8 @@
 #define abs(x)       ((x)>0?(x):-(x))
 #endif
 
+#ifndef PARTICLE_WIRING_ARDUINO_TEMPLATES
+// constrain is defined in spark_wiring_constants.h
 #ifndef constrain
 #define constrain(amt, low, high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
 #endif
@@ -83,6 +85,8 @@
 #ifndef round
 #define round(x)     ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
 #endif
+#endif
+
 
 #ifndef radians
 #define radians(deg) ((deg)*DEG_TO_RAD)
