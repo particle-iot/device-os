@@ -25,11 +25,21 @@
 
 #include <inttypes.h>
 
+#ifndef PROGMEM
 #define PROGMEM
-#define PGM_P  const char *
-#define PSTR(str) (str)
+#endif
 
+#ifndef PGM_P
+#define PGM_P  const char *
+#endif
+
+#ifndef PSTR
+#define PSTR(str) (str)
+#endif
+
+#ifndef _SFR_BYTE
 #define _SFR_BYTE(n) (n)
+#endif
 
 typedef void prog_void;
 typedef char prog_char;
