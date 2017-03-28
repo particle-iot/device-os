@@ -59,20 +59,43 @@ typedef const void* uint_farptr_t;
 #define memchr_P(s, c, n) memchr((s), (c), (n))
 #define memcmp_P(s1, s2, n) memcmp((s1), (s2), (n))
 #define memccpy_P(dest, src, c, n) memccpy((dest), (src), (c), (n))
+
+#ifdef memcpy_P
+#undef memcpy_P
+#endif
 #define memcpy_P(dest, src, n) memcpy((dest), (src), (n))
+
 #define memmem_P(haystack, haystacklen, needle, needlelen) memmem((haystack), (haystacklen), (needle), (needlelen))
 #define memrchr_P(s, c, n) memrchr((s), (c), (n))
 #define strcat_P(dest, src) strcat((dest), (src))
 #define strchr_P(s, c) strchr((s), (c))
 #define strchrnul_P(s, c) strchrnul((s), (c))
+
+#ifdef strcmp_P
+#undef strcmp_P
+#endif
 #define strcmp_P(a, b) strcmp((a), (b))
+
+#ifdef strcpy_P
+#undef strcpy_P
+#endif
 #define strcpy_P(dest, src) strcpy((dest), (src))
+
 #define strcasecmp_P(s1, s2) strcasecmp((s1), (s2))
 #define strcasestr_P(haystack, needle) strcasestr((haystack), (needle))
 #define strcspn_P(s, accept) strcspn((s), (accept))
 #define strlcat_P(s1, s2, n) strlcat((s1), (s2), (n))
+
+#ifdef strlcpy_P
+#undef strlcpy_P
+#endif
 #define strlcpy_P(s1, s2, n) strlcpy((s1), (s2), (n))
+
+#ifdef strlen_P
+#undef strlen_P
+#endif
 #define strlen_P(a) strlen((a))
+
 #define strnlen_P(s, n) strnlen((s), (n))
 #define strncmp_P(s1, s2, n) strncmp((s1), (s2), (n))
 #define strncasecmp_P(s1, s2, n) strncasecmp((s1), (s2), (n))
@@ -102,17 +125,38 @@ typedef const void* uint_farptr_t;
 #define strlcpy_PF(dest, src, n) strlcpy((dest), (src), (n))
 #define memcmp_PF(s1, s2, n) memcmp((s1), (s2), (n))
 
+#ifdef sprintf_P
+#undef sprintf_P
+#endif
+
 #define sprintf_P(s, f, ...) sprintf((s), (f), __VA_ARGS__)
+
 #define snprintf_P(s, f, ...) snprintf((s), (f), __VA_ARGS__)
 
+#ifdef pgm_read_byte
+#undef pgm_read_byte
+#endif
 #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+
+#ifdef pgm_read_word
+#undef pgm_read_word
+#endif
 #define pgm_read_word(addr) (*(const unsigned short *)(addr))
+
 #define pgm_read_dword(addr) (*(const unsigned long *)(addr))
 #define pgm_read_float(addr) (*(const float *)(addr))
 #define pgm_read_ptr(addr) (*(const void *)(addr))
 
+#ifdef pgm_read_byte_near
+#undef pgm_read_byte_near
+#endif
 #define pgm_read_byte_near(addr) pgm_read_byte(addr)
+
+#ifdef pgm_read_word_near
+#undef pgm_read_word_near
+#endif
 #define pgm_read_word_near(addr) pgm_read_word(addr)
+
 #define pgm_read_dword_near(addr) pgm_read_dword(addr)
 #define pgm_read_float_near(addr) pgm_read_float(addr)
 #define pgm_read_ptr_near(addr) pgm_read_ptr(addr)
