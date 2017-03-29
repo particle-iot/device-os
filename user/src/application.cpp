@@ -25,6 +25,10 @@
 
 PRODUCT_ID(PLATFORM_ID);
 PRODUCT_VERSION(3);
+#if PLATFORM_ID == 31
+// Decrease CPU usage on Raspberry Pi
+SYSTEM_LOOP_DELAY(50);
+#endif
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -152,11 +156,6 @@ void setup()
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    //This will run in a loop
-#if PLATFORM_ID == 31
-    // Decrease CPU usage on Raspberry Pi
-    delay(50);
-#endif
 }
 
 #endif // UNIT_TEST

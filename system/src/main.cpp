@@ -527,6 +527,7 @@ void app_loop(bool threaded)
                 system_power_management_update();
 #endif
             }
+            delay(system_get_loop_delay(NULL));
         }
     }
 }

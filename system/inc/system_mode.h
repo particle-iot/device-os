@@ -47,6 +47,9 @@ void system_thread_set_state(spark::feature::State feature, void* reserved);
 spark::feature::State system_thread_get_state(void*);
 uint16_t system_button_pushed_duration(uint8_t button, void* reserved);
 
+void system_set_loop_delay(const uint32_t ms, void* reserved);
+uint32_t system_get_loop_delay(void* reserved);
+
 #ifdef __cplusplus
 }
 #endif
