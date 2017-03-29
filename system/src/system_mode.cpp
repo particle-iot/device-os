@@ -105,3 +105,18 @@ spark::feature::State system_thread_get_state(void*)
 }
 
 #endif
+
+#define DEFAULT_LOOP_DELAY(ms) static volatile uint32_t system_loop_delay = ms
+#if EMBEDDED_TARGET == 0
+DEFAULT_LOOP_DELAY(5);
+#else
+DEFAULT_LOOP_DELAY(0);
+#endif
+
+void system_set_loop_delay(const uint32_t ms, void* reserved) {
+    system_loop_delay = ms;
+}
+
+uint32_t system_get_loop_delay(void* reserved) {
+    return system_loop_delay;
+}

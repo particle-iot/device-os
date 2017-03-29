@@ -531,6 +531,7 @@ void app_loop(bool threaded)
                 system_power_management_update();
 #endif
             }
+            delay(system_get_loop_delay(NULL));
         }
     }
 #if PLATFORM_ID == 3 && SUSPEND_APPLICATION_THREAD_LOOP_COUNT
