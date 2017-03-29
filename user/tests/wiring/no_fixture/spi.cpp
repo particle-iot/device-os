@@ -6,6 +6,8 @@ static volatile uint8_t DMA_Completed_Flag = 0;
 static uint8_t tempBuf[256];
 static uint8_t tempBuf1[256];
 
+using particle::SPISettings;
+
 static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
 {
   memset(info, 0, sizeof(hal_spi_info_t));

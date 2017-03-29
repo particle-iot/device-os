@@ -47,6 +47,7 @@ enum FrequencyScale
     SPI_CLK_PHOTON = 60*MHZ
 };
 
+namespace particle {
 class SPISettings : public Printable {
 public:
   SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
@@ -127,12 +128,17 @@ public:
   }
 
 private:
-  friend class SPIClass;
+  friend class ::SPIClass;
   bool default_ = true;
   uint32_t clock_ = 0;
   uint8_t bitOrder_ = 0;
   uint8_t dataMode_ = 0;
 };
+}
+
+#ifdef PARTICLE_WIRING_ARDUINO_COMPATIBILITY
+typedef particle::SPISettings SPISettings;
+#endif
 
 class SPIClass {
 private:
@@ -161,7 +167,7 @@ public:
   void setDataMode(uint8_t);
 
   int32_t beginTransaction();
-  int32_t beginTransaction(const SPISettings& settings);
+  int32_t beginTransaction(const particle::SPISettings& settings);
   void endTransaction();
 
   /**
