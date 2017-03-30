@@ -111,9 +111,24 @@ void core_log(const char* msg, ...)
 }
 
 void makePinsInput() {
-    const pin_t ioPins[] = { D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, };
-    for (pin_t pin : ioPins) {
-        HAL_Pin_Mode(pin, INPUT);
+    // Don't reinitialize pins on 26 pin model that are not mapped
+    // externally since it causes the Pi to lock up
+
+    // Raspberry Pi 2, 3, Zero, etc (40 pin connector)
+    const pin_t ioPinsNew[] = { D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, };
+    // Raspberry Pi 1 (26 pin connector)
+    const pin_t ioPinsOld[] = { D0, D1, D2, D3, D9, D10, D11, D12, };
+
+    int model, rev, mem, maker, warranty;
+    piBoardId(&model, &rev, &mem, &maker, &warranty);
+    if (model >= PI_MODEL_2) {
+        for (pin_t pin : ioPinsNew) {
+            HAL_Pin_Mode(pin, INPUT);
+        }
+    } else {
+        for (pin_t pin : ioPinsOld) {
+            HAL_Pin_Mode(pin, INPUT);
+        }
     }
 }
 
