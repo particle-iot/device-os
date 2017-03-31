@@ -134,7 +134,7 @@ if [ $req_type == reqrep ] || [ $req_type == in ]; then
 
   if [ "$data" ]; then
     # "0x61 0x62 0x63" -> "616263"
-    data=$(printf "$data" | sed 's/ //g;s/0x//g')
+    data=$(printf "$data" | tr -d ' \n' | sed 's/0x//g')
     if [ ! $hex_flag ]; then
       # "616263" -> "abc"
       data=$(printf "$data" | xxd -r -p)
