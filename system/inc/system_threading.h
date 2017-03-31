@@ -19,10 +19,12 @@
 #ifndef SYSTEM_THREADING_H
 #define	SYSTEM_THREADING_H
 
+#include "active_object.h"
+extern ISRTaskQueue SystemISRTaskQueue;
+
 #if PLATFORM_THREADING
 
 #include "concurrent_hal.h"
-#include "active_object.h"
 #include <stddef.h>
 #include <functional>
 #include <mutex>
@@ -31,8 +33,6 @@
 #ifndef PARTICLE_GTHREAD_INCLUDED
 #error "GTHREAD header not included. This is required for correct mutex implementation on embedded platforms."
 #endif
-
-extern ISRTaskQueue SystemISRTaskQueue;
 
 
 /**
