@@ -271,8 +271,7 @@ uint8_t SystemControlInterface::fetchRequestResult(HAL_USB_SetupRequest* req) {
     req->wLength = usbReq_.req.reply_size;
   }
   usbReq_.active = false;
-  // FIXME: Don't invalidate reply data for now (simplifies testing with usbtool)
-  // usbReq_.ready = false;
+  usbReq_.ready = false;
   return 0;
 }
 
