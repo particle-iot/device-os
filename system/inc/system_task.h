@@ -30,9 +30,6 @@
 #include "socket_hal.h"
 #include "system_cloud.h"
 #include "wlan_hal.h"
-#include "active_object.h"
-
-extern ISRTaskQueue SystemISRTaskQueue;
 
 #ifdef __cplusplus
 extern "C" {

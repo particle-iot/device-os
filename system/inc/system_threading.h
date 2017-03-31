@@ -32,6 +32,9 @@
 #error "GTHREAD header not included. This is required for correct mutex implementation on embedded platforms."
 #endif
 
+extern ISRTaskQueue SystemISRTaskQueue;
+
+
 /**
  * System thread runs on a separate thread
  */

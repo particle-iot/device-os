@@ -72,5 +72,10 @@
 #define pgm_read_word_near(x) ((uint16_t)(*(x)))
 #endif
 
+#include "math.h"
+
+#ifndef isnan
+#error isnan is not defined
+#endif
 
 #endif	/* SPARK_WIRING_ARDUINO_H */
