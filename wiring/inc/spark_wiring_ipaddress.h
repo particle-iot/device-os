@@ -66,13 +66,19 @@ public:
     /**
      * @return true when this address is not zero.
      */
-    operator bool();
+    operator bool() const;
+
+    // For some reason, without this non-const overload GCC struggles to pick right operator
+    // for bool conversion of a non-const object
+    operator bool() {
+        return static_cast<const IPAddress*>(this)->operator bool();
+    }
 
     // Overloaded cast operator to allow IPAddress objects to be used where a pointer
     // to a four-byte uint8_t array, uint32_t or another IPAddress object is expected.
-    bool operator==(uint32_t address);
-    bool operator==(const uint8_t* address);
-    bool operator==(const IPAddress& address);
+    bool operator==(uint32_t address) const;
+    bool operator==(const uint8_t* address) const;
+    bool operator==(const IPAddress& address) const;
 
     // Overloaded index operator to allow getting and setting individual octets of the address
     uint8_t operator[](int index) const { return (((uint8_t*)(&address.ipv4))[3-index]); }
