@@ -73,6 +73,7 @@ bool TCPServer::begin()
 
 void TCPServer::stop()
 {
+    _client.stop();
     socket_close(_sock);
     _sock = socket_handle_invalid();
 }
@@ -102,7 +103,7 @@ TCPClient TCPServer::available()
     else
     {
         TCPServerClient client = TCPServerClient(sock);
-        client._remoteIP = client.remoteIP();      // fetch the peer IP ready for the copy operator
+        client.d_->remoteIP = client.remoteIP();      // fetch the peer IP ready for the copy operator
         _client = client;
 
     }
