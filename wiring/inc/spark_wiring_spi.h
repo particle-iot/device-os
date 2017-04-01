@@ -48,9 +48,9 @@ enum FrequencyScale
 };
 
 namespace particle {
-class SPISettings : public Printable {
+class __SPISettings : public Printable {
 public:
-  SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
+  __SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
     : default_{false},
       clock_{clock},
       bitOrder_{bitOrder},
@@ -58,11 +58,11 @@ public:
   {
   }
 
-  SPISettings()
+  __SPISettings()
   {
   }
 
-  bool operator==(const SPISettings& other) const
+  bool operator==(const __SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -78,7 +78,7 @@ public:
     return false;
   }
 
-  bool operator>=(const SPISettings& other) const
+  bool operator>=(const __SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -94,7 +94,7 @@ public:
     return false;
   }
 
-  bool operator<=(const SPISettings& other) const
+  bool operator<=(const __SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -110,7 +110,7 @@ public:
     return false;
   }
 
-  bool operator!=(const SPISettings& other) const
+  bool operator!=(const __SPISettings& other) const
   {
     return !(other == *this);
   }
@@ -137,7 +137,7 @@ private:
 }
 
 #ifdef PARTICLE_WIRING_ARDUINO_COMPATIBILITY
-typedef particle::SPISettings SPISettings;
+typedef particle::__SPISettings __SPISettings;
 #endif
 
 class SPIClass {
@@ -167,7 +167,7 @@ public:
   void setDataMode(uint8_t);
 
   int32_t beginTransaction();
-  int32_t beginTransaction(const particle::SPISettings& settings);
+  int32_t beginTransaction(const particle::__SPISettings& settings);
   void endTransaction();
 
   /**
