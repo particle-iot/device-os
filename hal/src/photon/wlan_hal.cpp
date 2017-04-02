@@ -61,7 +61,9 @@ LOG_SOURCE_CATEGORY("hal.wlan");
 #include "dns.h"
 #undef class
 
-// wiced_tls_key_type_t type = TLS_RSA_KEY;
+#ifndef EAP_DEFAULT_OUTER_IDENTITY
+#define EAP_DEFAULT_OUTER_IDENTITY "anonymous"
+#endif
 
 int wlan_clear_enterprise_credentials();
 int wlan_set_enterprise_credentials(WLanCredentials* c);
@@ -94,10 +96,10 @@ struct WPAEnterpriseContext {
             cb.tls_host_get_time_ms = tls_host_get_time_ms_local;
             tls_set_callbacks(cb);
             initialized = true;
-            tls_session = (wiced_tls_session_t*)malloc(sizeof(wiced_tls_session_t));
-            tls_context = (wiced_tls_context_t*)malloc(sizeof(wiced_tls_context_t));
-            tls_identity = (wiced_tls_identity_t*)malloc(sizeof(wiced_tls_identity_t));
-            supplicant_workspace = (supplicant_workspace_t*)malloc(sizeof(supplicant_workspace_t));
+            tls_session = (wiced_tls_session_t*)calloc(1, sizeof(wiced_tls_session_t));
+            tls_context = (wiced_tls_context_t*)calloc(1, sizeof(wiced_tls_context_t));
+            tls_identity = (wiced_tls_identity_t*)calloc(1, sizeof(wiced_tls_identity_t));
+            supplicant_workspace = (supplicant_workspace_t*)calloc(1, sizeof(supplicant_workspace_t));
         }
     }
 
@@ -321,37 +323,10 @@ bool is_eap_configuration_valid(const eap_config_t* eap_conf, platform_dct_secur
 int wlan_has_enterprise_credentials()
 {
     int has_credentials = 0;
-    platform_dct_wifi_config_t* wifi_config = NULL;
-    wiced_result_t result = wiced_dct_read_lock((void**)&wifi_config, WICED_FALSE,
-                                                DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
-    if (result == WICED_SUCCESS)
-    {
-        // the storage may not have been initialized, so device_configured will be 0xFF
-        initialize_dct(wifi_config);
 
-        // iterate through each stored ap
-        for (int i = 0; i < CONFIG_AP_LIST_SIZE; i++)
-        {
-            const wiced_config_ap_entry_t& ap = wifi_config->stored_ap_list[i];
-
-            if (!is_ap_config_set(ap))
-                continue;
-
-            const wiced_ap_info_t *record = &ap.details;
-
-            if (record->security & ENTERPRISE_ENABLED) {
-                has_credentials = 1;
-                break;
-            }
-        }
-    }
-    wiced_dct_read_unlock(wifi_config, WICED_FALSE);
-
-    if (has_credentials) {
-        // TODO: For now we are using only 1 global eap configuration for all access points
-        const eap_config_t* eap_conf = (eap_config_t*)dct_read_app_data(DCT_EAP_CONFIG_OFFSET);
-        has_credentials = (int)is_eap_configuration_valid(eap_conf);
-    }
+    // TODO: For now we are using only 1 global eap configuration for all access points
+    const eap_config_t* eap_conf = (eap_config_t*)dct_read_app_data(DCT_EAP_CONFIG_OFFSET);
+    has_credentials = (int)is_eap_configuration_valid(eap_conf);
 
     return !has_credentials;
 }
@@ -407,6 +382,8 @@ int wlan_supplicant_start()
                                              (uint32_t)strnlen((const char*)sec->private_key, PRIVATE_KEY_SIZE),
                                              (const uint8_t*)sec->certificate,
                                              (uint32_t)strnlen((const char*)sec->certificate, CERTIFICATE_SIZE));
+        } else {
+            result = WICED_ERROR;
         }
     }
 
@@ -430,7 +407,12 @@ int wlan_supplicant_start()
     if ((besl_result_t)result == BESL_SUCCESS) {
         eap_context.supplicant_initialized = true;
         wiced_supplicant_enable_tls(eap_context.supplicant_workspace, eap_context.tls_context);
-        besl_supplicant_set_identity(eap_context.supplicant_workspace, (const char*)eap_conf->outer_identity, eap_conf->outer_identity_len);
+        if (eap_conf->outer_identity_len) {
+            besl_supplicant_set_identity(eap_context.supplicant_workspace, (const char*)eap_conf->outer_identity, eap_conf->outer_identity_len);
+        } else {
+            // It's probably a good idea to set a default outer identity
+            besl_supplicant_set_identity(eap_context.supplicant_workspace, EAP_DEFAULT_OUTER_IDENTITY, strlen(EAP_DEFAULT_OUTER_IDENTITY));
+        }
         if (eap_conf->type == WLAN_EAP_TYPE_PEAP) {
             supplicant_mschapv2_identity_t mschap_identity;
             char mschap_password[32];
@@ -490,36 +472,98 @@ int wlan_restart() {
     return 0;
 }
 
+/*
+ * This is almost an exact copy-paste of wiced_join_ap.
+ * We need to manually loop through the APs here in order to know when to start
+ * WPA Enterprise supplicant.
+ */
+static wiced_result_t wlan_join() {
+    unsigned int             a;
+    int                      retries;
+    wiced_config_ap_entry_t* ap;
+    wiced_result_t           result = WICED_NO_STORED_AP_IN_DCT;
+    char                     ssid_name[SSID_NAME_SIZE + 1];
+
+    for ( retries = WICED_JOIN_RETRY_ATTEMPTS; retries != 0 && !wiced_network_up_cancel; --retries )
+    {
+        /* Try all stored APs */
+        for ( a = 0; a < CONFIG_AP_LIST_SIZE && !wiced_network_up_cancel; ++a )
+        {
+            /* Check if the entry is valid */
+            if (wiced_dct_read_lock((void**)&ap, WICED_FALSE, DCT_WIFI_CONFIG_SECTION,
+                                    (uint32_t) (OFFSETOF(platform_dct_wifi_config_t, stored_ap_list) +
+                                     a * sizeof(wiced_config_ap_entry_t) ),
+                                    sizeof(wiced_config_ap_entry_t)) != WICED_SUCCESS)
+            {
+                continue;
+            }
+
+            if ( ap->details.SSID.length != 0 )
+            {
+                bool suppl = false;
+                bool join = true;
+                if (ap->details.security & ENTERPRISE_ENABLED) {
+                    if (!wlan_has_enterprise_credentials()) {
+                        // Workaround. If connecting not for the first time, for some reason authentication fails.
+                        // It works if we reset wireless module though
+                        // ¯\_(ツ)_/¯
+                        wlan_restart();
+                        // We need to start supplicant
+                        if (wlan_supplicant_start()) {
+                            // Early error
+                            wlan_restart();
+                            wlan_supplicant_stop();
+                            result = WICED_ERROR;
+                            join = false;
+                        } else {
+                            suppl = true;
+                        }
+                    }
+                }
+
+                if (join) {
+                    memset(ssid_name, 0, sizeof(ssid_name));
+                    memcpy(ssid_name, ap->details.SSID.value, ap->details.SSID.length);
+                    LOG(INFO, "Joining %s", ssid_name);
+                    result = wiced_join_ap_specific( &ap->details, ap->security_key_length, ap->security_key );
+                }
+
+                if (suppl) {
+                    if (!result) {
+                        memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
+                    } else {
+                        // And another workaround here: in case of failed authentication we might get somewhat deadlocked
+                        // while stopping supplicant
+                        // ¯\_(ツ)_/¯
+                        wlan_restart();
+                    }
+                    wlan_supplicant_stop();
+                }
+            }
+
+            wiced_dct_read_unlock( (wiced_config_ap_entry_t*) ap, WICED_FALSE );
+
+            if ( result == WICED_SUCCESS )
+            {
+                return result;
+            }
+        }
+    }
+    return result;
+}
+
 /**
  * Do what is needed to finalize the connection.
  * @return
  */
 wlan_result_t wlan_connect_finalize()
 {
-    bool suppl = false;
-
-    if (!wlan_has_enterprise_credentials()) {
-        // Workaround. If connecting not for the first time, for some reason authentication fails.
-        // It works if we reset wireless module though
-        // ¯\_(ツ)_/¯
-        wlan_restart();
-        // We need to start supplicant
-        if (wlan_supplicant_start()) {
-            // Early error
-            wlan_restart();
-            wlan_supplicant_stop();
-            HAL_NET_notify_dhcp(0);
-            return 1;
-        }
-        suppl = true;
-    }
-
     os_timer_t cancel_timer = 0;
     os_timer_create(&cancel_timer, 60000, &wlan_connect_timeout, nullptr, false /* oneshot */,
                     nullptr);
 
     // enable connection from stored profiles
-    wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
+    wlan_result_t result = (wlan_result_t)wlan_join();
     if (!result)
     {
         HAL_NET_notify_connected();
@@ -560,18 +604,6 @@ wlan_result_t wlan_connect_finalize()
     if (cancel_timer)
     {
         os_timer_destroy(cancel_timer, nullptr);
-    }
-
-    if (suppl) {
-        if (!result) {
-            memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
-        } else {
-            // And another workaround here: in case of failed authentication we might get somewhat deadlocked
-            // while stopping supplicant
-            // ¯\_(ツ)_/¯
-            wlan_restart();
-        }
-        wlan_supplicant_stop();
     }
 
     return result;
@@ -1036,6 +1068,7 @@ void wlan_smart_config_init()
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
         wlan_disconnect_now();
+        wlan_restart();
         current_softap_handle = softap_start(&config);
     }
 }
@@ -1046,6 +1079,7 @@ bool wlan_smart_config_finalize()
     {
         softap_stop(current_softap_handle);
         wlan_disconnect_now();  // force a full refresh
+        wlan_restart();
         HAL_Delay_Milliseconds(5);
         wlan_activate();
         current_softap_handle = NULL;
