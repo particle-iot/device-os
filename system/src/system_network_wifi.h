@@ -28,10 +28,31 @@ class WiFiNetworkInterface : public ManagedIPNetworkInterface<WLanConfig, WiFiNe
 {
     WLanConfig ip_config;
 
+    static int wifi_add_profile_callback2(void* data, NetworkCredentials* creds, bool dry_run)
+    {
+        return ((WiFiNetworkInterface*)data)->add_profile(creds, dry_run);
+    }
+
     static int wifi_add_profile_callback(void* data, const char *ssid, const char *password,
         unsigned long security_type, unsigned long cipher, bool dry_run)
     {
         return ((WiFiNetworkInterface*)data)->add_profile(ssid, password, security_type, cipher, dry_run);
+    }
+
+    int add_profile(NetworkCredentials* creds, bool dry_run)
+    {
+        int result = 0;
+        if (creds)
+        {
+            if (dry_run) {
+                creds->flags |= WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN;
+            }
+            result = network_set_credentials(0, 0, creds, NULL);
+        }
+        if (result == 0) {
+            WLAN_SERIAL_CONFIG_DONE = 1;
+        }
+        return result;
     }
 
     /**
@@ -123,6 +144,7 @@ public:
     {
         WiFiSetupConsoleConfig config;
         config.connect_callback = wifi_add_profile_callback;
+        config.connect_callback2 = wifi_add_profile_callback2;
         config.connect_callback_data = this;
         WiFiSetupConsole console(config);
 

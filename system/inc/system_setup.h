@@ -27,6 +27,7 @@
 #include <string.h>
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_platform.h"
+#include "wlan_hal.h"
 
 #if PLATFORM_ID>2
 #define SETUP_OVER_SERIAL1 1
@@ -43,6 +44,11 @@ typedef int (*ConnectCallback)( void* data,
                                 unsigned long cipher,
                                 bool dry_run);
 
+typedef int (*ConnectCallback2)(void* data,
+                                WLanCredentials* creds,
+                                bool dry_run);
+
+
 class WiFiTester;
 
 struct SystemSetupConsoleConfig
@@ -55,6 +61,7 @@ struct SystemSetupConsoleConfig
 struct WiFiSetupConsoleConfig : SystemSetupConsoleConfig
 {
     ConnectCallback connect_callback;
+    ConnectCallback2 connect_callback2;
     void* connect_callback_data;
 };
 #endif
@@ -82,6 +89,9 @@ protected:
     Config& config;
     void print(const char *s);
     void read_line(char *dst, int max_len);
+    void read_multiline(char *dst, int max_len);
+
+    virtual void cleanup();
 
 private:
     USBSerial serial;
@@ -101,6 +111,9 @@ public:
 protected:
     virtual void handle(char c) override;
     virtual void exit() override;
+#if Wiring_WpaEnterprise == 1
+    virtual void cleanup() override;
+#endif
 private:
 #if SETUP_OVER_SERIAL1
     bool serial1Enabled;
@@ -110,6 +123,10 @@ private:
     char ssid[33];
     char password[65];
     char security_type_string[2];
+#if Wiring_WpaEnterprise == 1
+    char eap_type_string[2];
+    std::unique_ptr<char[]> tmp_;
+#endif
 };
 #endif
 
