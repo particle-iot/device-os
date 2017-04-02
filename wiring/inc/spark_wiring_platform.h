@@ -51,6 +51,7 @@
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
+#define Wiring_WpaEnterprise 1
 #endif
 
 #if PLATFORM_ID==7
@@ -72,6 +73,7 @@
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
+#define Wiring_WpaEnterprise 1
 #endif
 
 #if PLATFORM_ID==9      // ethernet
@@ -150,6 +152,10 @@
 
 #ifndef Wiring_IPv6
 #define Wiring_IPv6 0
+#endif
+
+#ifndef Wiring_WpaEnterprise
+#define Wiring_WpaEnterprise 0
 #endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */

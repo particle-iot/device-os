@@ -34,124 +34,12 @@
 #include "wlan_hal.h"
 #include "system_network.h"
 #include "inet_hal.h"
+#include "spark_wiring_wifi_credentials.h"
 #include <string.h>
 
 class IPAddress;
 
 namespace spark {
-
-enum SecurityType {
-    UNSEC = WLAN_SEC_UNSEC,
-    WEP = WLAN_SEC_WEP,
-    WPA = WLAN_SEC_WPA,
-    WPA2 = WLAN_SEC_WPA2,
-    WPA_ENTERPRISE = WLAN_SEC_WPA_ENTERPRISE,
-    WPA2_ENTERPRISE = WLAN_SEC_WPA2_ENTERPRISE
-};
-
-#define SET_STRING_WITH_LEN_FIELD(field, value, len_field, len_value) \
-    field = value;                                                    \
-    if (!value) {                                                     \
-        len_field = 0;                                                \
-    } else {                                                          \
-        if (len_value < 0)                                            \
-            len_field = strlen(value);                                \
-        else                                                          \
-            len_field = (unsigned)(len_value);                        \
-    }
-
-class WiFiCredentials {
-public:
-    WiFiCredentials(SecurityType security = UNSEC) {
-        setSecurity((WLanSecurityType)security);
-    }
-
-    WiFiCredentials(const char* ssid, SecurityType security = UNSEC) {
-        setSecurity((WLanSecurityType)security);
-        setSsid(ssid);
-    }
-
-    WiFiCredentials& setSecurity(WLanSecurityType security) {
-        creds_.security = (WLanSecurityType)security;
-        return *this;
-    }
-
-    WiFiCredentials& setSsid(const char* ssid, int ssidLen = -1) {
-        SET_STRING_WITH_LEN_FIELD(creds_.ssid, ssid, creds_.ssid_len, ssidLen);
-        return *this;
-    }
-
-    WiFiCredentials& setCipher(WLanSecurityCipher cipher) {
-        creds_.cipher = cipher;
-        return *this;
-    }
-
-    WiFiCredentials& setPassword(const char* password, int passwordLen = -1) {
-        SET_STRING_WITH_LEN_FIELD(creds_.password, password, creds_.password_len, passwordLen);
-        return *this;
-    }
-
-    WiFiCredentials& setIdentity(const char* identity, int identityLen = -1) {
-        return setInnerIdentity(identity, identityLen);
-    }
-
-    WiFiCredentials& setInnerIdentity(const char* identity, int identityLen = -1) {
-        SET_STRING_WITH_LEN_FIELD(creds_.inner_identity, identity, creds_.inner_identity_len, identityLen);
-        return *this;
-    }
-
-    WiFiCredentials& setOuterIdentity(const char* identity, int identityLen = -1) {
-        SET_STRING_WITH_LEN_FIELD(creds_.outer_identity, identity, creds_.outer_identity_len, identityLen);
-        return *this;
-    }
-
-    WiFiCredentials& setEapType(WLanEapType type) {
-        creds_.eap_type = type;
-        return *this;
-    }
-
-    WiFiCredentials& setPrivateKey(const uint8_t* pkey, uint16_t pkeyLen) {
-        creds_.private_key = pkey;
-        creds_.private_key_len = pkeyLen;
-        return *this;
-    }
-
-    WiFiCredentials& setClientCertificate(const uint8_t* cert, uint16_t certLen) {
-        creds_.client_certificate = cert;
-        creds_.client_certificate_len = certLen;
-        return *this;
-    }
-
-    WiFiCredentials& setRootCertificate(const uint8_t* cert, uint16_t certLen) {
-        creds_.ca_certificate = cert;
-        creds_.ca_certificate_len = certLen;
-        return *this;
-    }
-
-    WiFiCredentials& setPrivateKey(const char* pkey) {
-        return setPrivateKey((const uint8_t*)pkey, strlen(pkey));
-    }
-
-    WiFiCredentials& setClientCertificate(const char* cert) {
-        return setClientCertificate((const uint8_t*)cert, strlen(cert));
-    }
-
-    WiFiCredentials& setRootCertificate(const char* cert) {
-        return setRootCertificate((const uint8_t*)cert, strlen(cert));
-    }
-
-    operator WLanCredentials() {
-        return getHalCredentials();
-    }
-
-    WLanCredentials getHalCredentials() {
-        creds_.size = sizeof(creds_);
-        creds_.version = 3;
-        return creds_;
-    }
-private:
-    WLanCredentials creds_ = {0};
-};
 
 class WiFiClass : public NetworkClass
 {
