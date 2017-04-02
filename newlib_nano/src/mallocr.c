@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdint.h>
 
 #define INTERNAL_NEWLIB
 #define DEFINE_MALLOC
