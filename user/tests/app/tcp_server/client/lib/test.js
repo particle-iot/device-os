@@ -1,6 +1,5 @@
 const client = require('./client');
 const device = require('./device');
-const async = require('async');
 const util = require('./util');
 const _ = require('lodash');
 
