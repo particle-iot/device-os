@@ -36,6 +36,8 @@
 #include "timer_hal.h"
 #include "rgbled.h"
 #include "service_debug.h"
+#include "cellular_hal.h"
+#include "cellular_internal.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -123,7 +125,7 @@ void manage_network_connection()
     {
         if (!SPARK_WLAN_STARTED || (spark_cloud_flag_auto_connect() && !network.connected()))
         {
-            INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.connected()");
+            // INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.ready()");
             network.connect();
         }
     }
@@ -285,6 +287,17 @@ void establish_cloud_connection()
             return;
         }
 
+#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+        uint16_t electron_udp_port = PORT_COAPS;
+        int electron_udp_keepalive = CELLULAR_NETPROV_TELEFONICA_KEEPALIVE;
+        DEBUG("NETPROV:%s", (cellular_network_provider_get(NULL)==CELLULAR_NETPROV_TWILIO)?"Twilio":"Telefonica");
+        if (cellular_network_provider_get(NULL) == CELLULAR_NETPROV_TWILIO) {
+            electron_udp_port = PORT_COAPS_TWILIO;
+            electron_udp_keepalive = CELLULAR_NETPROV_TWILIO_KEEPALIVE;
+        }
+        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, electron_udp_keepalive * 1000, nullptr, nullptr), (void)0);
+        spark_cloud_udp_port_set(electron_udp_port);
+#endif
         INFO("Cloud: connecting");
         system_notify_event(cloud_status, cloud_status_connecting);
         int connect_result = spark_cloud_socket_connect();

@@ -885,9 +885,18 @@ int determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, Ser
 			if (addr && p)
 			{
 				ip_addr = addr;
-				port = p;
-				DEBUG("using IP/port from session");
-				return 0;
+                // FIXME: the current session could be moved instead of discarded if the ports differ.
+                if (port == p) {
+                    DEBUG("using IP/port from session");
+                    return 0;
+                }
+                else {
+                    // discard the session
+                    persist.invalidate();
+                    Spark_Save(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr);
+                    INFO("connection port mismatch - discarded session");
+                    return -1;
+                }
 			}
 		}
 		else
@@ -944,8 +953,10 @@ int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddre
 
         case DOMAIN_NAME:
             // DEBUG("DOMAIN_NAME");
-            if (server_addr.port!=0 && server_addr.port!=65535)
-            		port = server_addr.port;
+            if (server_addr.port!=0 && server_addr.port!=65535) {
+                port = server_addr.port;
+                // DEBUG("PORT READ AS:%d", port);
+            }
 
             char buf[96];
             system_string_interpolate(server_addr.domain, buf, sizeof(buf), system_interpolate);
@@ -981,6 +992,13 @@ int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddre
 	return ip_address_error;
 }
 
+uint16_t cloud_udp_port = PORT_COAPS; // default Particle Cloud UDP port
+
+void spark_cloud_udp_port_set(uint16_t port)
+{
+    cloud_udp_port = port;
+}
+
 // Same return value as connect(), -1 on error
 int spark_cloud_socket_connect()
 {
@@ -997,18 +1015,30 @@ int spark_cloud_socket_connect()
 #endif
 
     uint16_t port = SPARK_SERVER_PORT;
-    if (udp)
-    		port = PORT_COAPS;
+    if (udp) {
+        port = cloud_udp_port;
+    }
 
     ServerAddress server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     HAL_FLASH_Read_ServerAddress(&server_addr);
-    DEBUG("HAL_FLASH_Read_ServerAddress() = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
+    switch (server_addr.addr_type)
+    {
+        case IP_ADDRESS:
+            LOG(INFO,"Read Server Address = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
+            break;
+
+        case DOMAIN_NAME:
+            LOG(INFO,"Read Server Address = type:%d,domain:%s", server_addr.addr_type, server_addr.domain);
+            break;
+
+        default:
+            LOG(WARN,"Read Server Address = type:%d,defaulting to device.spark.io", server_addr.addr_type);
+    }
 
     bool ip_address_error = false;
     IPAddress ip_addr;
     int rv = -1;
-
     ip_address_error = determine_connection_address(ip_addr, port, server_addr, udp);
     if (!ip_address_error)
     {

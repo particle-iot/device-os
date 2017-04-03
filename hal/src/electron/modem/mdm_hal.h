@@ -61,7 +61,7 @@ public:
         \return true if successful, false otherwise
     */
     bool connect(const char* simpin = NULL,
-            const char* apn = "spark.telefonica.com", const char* username = NULL,
+            const char* apn = NULL, const char* username = NULL,
             const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /**
@@ -144,7 +144,7 @@ public:
 
     /** Setup the PDP context
     */
-    bool pdp(const char* apn = "spark.telefonica.com");
+    bool pdp(const char* apn = NULL);
 
     // ----------------------------------------------------------------
     // Data Connection (GPRS)
@@ -157,7 +157,7 @@ public:
         \param auth is the authentication mode (CHAP,PAP,NONE or DETECT)
         \return the ip that is assigned
     */
-    MDM_IP join(const char* apn = "spark.telefonica.com", const char* username = NULL,
+    MDM_IP join(const char* apn = NULL, const char* username = NULL,
                        const char* password = NULL, Auth auth = AUTH_DETECT);
 
     /** deregister (detach) the MT from the GPRS service.
