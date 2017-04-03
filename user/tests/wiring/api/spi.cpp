@@ -16,3 +16,6 @@ test(spi_transfer)
     API_COMPILE(SPI.transfer(NULL, NULL, 1, NULL));
     API_COMPILE(SPI.transferCancel());
 }
+
+// without Arduino.h we should not get a clash redefining SPISettings
+class SPISettings {};

@@ -35,7 +35,7 @@ enum PinState {
     HIGH = 1
 };
 
-#ifndef PARTICLE_WIRING_ARDUINO_COMPATIBILTY
+#if !PARTICLE_WIRING_ARDUINO_COMPATIBILTY
 #define PARTICLE_WIRING_ARDUINO_TEMPLATES 1
 
 template <typename T, typename U>
@@ -55,7 +55,8 @@ T constrain (T amt, U low, V high) { return ((amt)<(low)?(low):((amt)>(high)?(hi
 template <typename T>
 static inline
 T round (T x) { return ((x)>=0?(long)((x)+0.5):(long)((x)-0.5)); }
-
+#else
+#define PARTICLE_WIRING_ARDUINO_TEMPLATES 0
 #endif // #ifndef PARTICLE_WIRING_ARDUINO_COMPATIBILTY
 
 typedef bool boolean;

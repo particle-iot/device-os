@@ -20,7 +20,7 @@
 #include <cmath>
 #endif // __cplusplus
 
-#ifdef PARTICLE_WIRING_ARDUINO_TEMPLATES
+#if PARTICLE_WIRING_ARDUINO_TEMPLATES
 #ifdef min
 #undef min
 #endif

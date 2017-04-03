@@ -136,7 +136,7 @@ private:
 };
 }
 
-#ifdef PARTICLE_WIRING_ARDUINO_COMPATIBILITY
+#if PARTICLE_WIRING_ARDUINO_COMPATIBILTY == 1
 typedef particle::__SPISettings SPISettings;
 #endif
 
