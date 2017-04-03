@@ -137,7 +137,7 @@ private:
 }
 
 #ifdef PARTICLE_WIRING_ARDUINO_COMPATIBILITY
-typedef particle::__SPISettings __SPISettings;
+typedef particle::__SPISettings SPISettings;
 #endif
 
 class SPIClass {
