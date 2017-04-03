@@ -32,10 +32,10 @@ update . $PHOTON_WICED_REPO_PATH
 
 
 # update platform libraries (any RTOS)
-update lib $PHOTON_WICED_REPO_PATH/build/demo_soft_ap-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO/libraries
-update lib $PHOTON_WICED_REPO_PATH/build/demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries
-update lib/FreeRTOS $PHOTON_WICED_REPO_PATH/build/demo_soft_ap-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO/libraries
-update lib/FreeRTOS $PHOTON_WICED_REPO_PATH/build/demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries
+update lib $PHOTON_WICED_REPO_PATH/build/demo.soft_ap-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO/libraries
+update lib $PHOTON_WICED_REPO_PATH/build/demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries
+update lib/FreeRTOS $PHOTON_WICED_REPO_PATH/build/demo.soft_ap-BCM9WCDUSI14-FreeRTOS-LwIP-SDIO/libraries
+update lib/FreeRTOS $PHOTON_WICED_REPO_PATH/build/demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries
 
 # Bootloader optimized build
 # pushd $PHOTON_WICED_REPO_PATH
@@ -44,4 +44,4 @@ update lib/FreeRTOS $PHOTON_WICED_REPO_PATH/build/demo_soft_ap-BCM9WCDUSI09-Free
 # ./make demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO $OPTS PARTICLE_FLASH_SPACE_OPTIMIZE=y
 # popd
 
-cp $PHOTON_WICED_REPO_PATH/build/demo_soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries/STM32F2xx.a lib/FreeRTOS/STM32F2xx_bootloader.a
+cp $PHOTON_WICED_REPO_PATH/build/demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/libraries/STM32F2xx.a lib/FreeRTOS/STM32F2xx_bootloader.a
