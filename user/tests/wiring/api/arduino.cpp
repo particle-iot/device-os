@@ -47,3 +47,26 @@ class ShowThatFlashStringHelperIsDistinctType {
 	}
 };
 
+test(character_analysis) {
+	isAlphaNumeric('c');
+	isAlpha('c');
+	isAscii('c');
+	isWhitespace('c');
+	isControl('c');
+	isDigit('c');
+	isGraph('c');
+	isLowerCase('c');
+	isPrintable('c');
+	isPunct('c');
+	isSpace('c');
+	isUpperCase('c');
+	isHexadecimalDigit('c');
+	toAscii('c');
+	toLowerCase('c');
+	toUpperCase('c');
+}
+
+test(Wire_setClock) {
+	Wire.setClock(4000000);
+	Wire.setSpeed(4000000);
+}
