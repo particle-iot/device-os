@@ -2,6 +2,7 @@
 
 #include "modem/mdm_hal.h"
 #include "cellular_hal.h"
+#include "cellular_internal.h"
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
 

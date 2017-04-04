@@ -17,7 +17,7 @@
  ******************************************************************************
  */
 
-#include "cellular_hal.h"
+#include "cellular_internal.h"
 
 #undef WARN
 #undef INFO
