@@ -13,8 +13,8 @@ void somefunc(SPISettings& s) {
 }
 
 test(has_min_and_max) {
-	min(0L, 3U);
-	max(0L, 3U);
+	min(0L, short(3));
+	max(0L, short(3));
 }
 
 test(has_sq) {
@@ -22,5 +22,28 @@ test(has_sq) {
 }
 
 test(abs) {
-	abs(5.0);
+	(void)abs(5.0);
 }
+
+// FlashStringHelper
+// construct, assign, copy, concat, +,
+test(String_FlashStringHelper) {
+	const __FlashStringHelper* flash = reinterpret_cast<const __FlashStringHelper*>("hello");
+
+	String s(flash);
+	s = flash;
+	String s2 = s + flash;
+	String s3 = String(flash);
+	s.concat(flash);
+}
+
+class ShowThatFlashStringHelperIsDistinctType {
+	void f(const char* s) {
+
+	}
+
+	void f(const __FlashStringHelper* s) {
+
+	}
+};
+
