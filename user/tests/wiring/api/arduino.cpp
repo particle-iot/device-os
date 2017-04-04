@@ -74,3 +74,11 @@ test(Wire_setClock) {
 test(SPI_usingInterrupt) {
 	SPI.usingInterrupt(3);
 }
+
+test(ifSerial) {
+	bool b = Serial;
+	if (Serial) {
+
+	}
+}
+
