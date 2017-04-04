@@ -1,3 +1,9 @@
+## 0.6.2-rc.1
+
+### ENHANCEMENT / BUG FIX
+
+- [[PR #1283]](https://github.com/spark/firmware/pull/1283) [[Implements #1278]](https://github.com/spark/firmware/issues/1278) Restores 0.6.0-style Arduino compatibility by default, full Arduino compatibility when including Arduino.h
+
 ## 0.6.1 (same as 0.6.1-rc.2)
 
 ### FEATURES
