@@ -26,7 +26,7 @@
 #include "net_hal.h"
 #include "inet_hal.h"
 #include "system_tick_hal.h"
-#include "cellular_internal.h"
+#include "cellular_hal_constants.h"
 
 #ifdef __cplusplus
 extern "C" {

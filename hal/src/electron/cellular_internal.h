@@ -17,106 +17,14 @@
   ******************************************************************************
  */
 
-#ifndef CELLULAR_HAL_MDM_H
-#define	CELLULAR_HAL_MDM_H
+#ifndef CELLULAR_INTERNAL_H
+#define	CELLULAR_INTERNAL_H
 
 #include "modem/enums_hal.h"
+#include "cellular_hal_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-typedef struct __attribute__((__packed__))  _CellularConfig_t {
-    uint16_t size;
-    NetworkConfig nw;
-} CellularConfig;
-
-typedef int cellular_result_t;
-
-typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
-
-typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);
-
-typedef enum { CELLULAR_NETPROV_TELEFONICA =   0,
-               CELLULAR_NETPROV_TWILIO     =   1,
-               CELLULAR_NETPROV_UNKNOWN    = 999 } CellularNetProv;
-
-// Network APNs
-#define CELLULAR_NETAPN_TELEFONICA              "spark.telefonica.com"
-#define CELLULAR_NETAPN_TWILIO                  "wireless.twilio.com"
-
-// Network Provider Keep Alive (seconds)
-#define CELLULAR_NETPROV_TELEFONICA_KEEPALIVE   (23*60)
-#define CELLULAR_NETPROV_TWILIO_KEEPALIVE       (23*60)
-
-#ifdef __cplusplus
-// Todo - is storing raw string pointers correct here? These will only be valid
-// If they are stored as constants in the application.
-struct CellularCredentials
-{
-    uint16_t size;
-    const char* apn = "";
-    const char* username = "";
-    const char* password = "";
-
-    CellularCredentials()
-    {
-        size = sizeof(*this);
-    }
-};
-#else
-typedef struct CellularCredentials CellularCredentials;
-#endif
-
-#ifdef __cplusplus
-struct CellularDevice
-{
-    uint16_t size;
-    char iccid[21];
-    char imei[16];
-
-    CellularDevice()
-    {
-        memset(this, 0, sizeof(*this));
-        size = sizeof(*this);
-    }
-};
-#else
-typedef struct CellularDevice CellularDevice;
-#endif
-
-#ifdef __cplusplus
-struct CellularSignalHal
-{
-    int rssi = 0;
-    int qual = 0;
-};
-#else
-typedef struct CellularSignalHal CellularSignalHal;
-#endif
-
-#ifdef __cplusplus
-struct CellularDataHal {
-    uint16_t size;
-    int cid;
-    int tx_session_offset;
-    int rx_session_offset;
-    int tx_total_offset;
-    int rx_total_offset;
-    int tx_session;
-    int rx_session;
-    int tx_total;
-    int rx_total;
-
-    CellularDataHal()
-    {
-        memset(this, 0, sizeof(*this));
-        cid = -1;
-        size = sizeof(*this);
-    }
-};
-#else
-typedef struct CellularDataHal CellularDataHal;
 #endif
 
 /**
@@ -157,5 +65,5 @@ cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reser
 }
 #endif
 
-#endif	/* CELLULAR_HAL_MDM_H */
+#endif	/* CELLULAR_INTERNAL_H */
 

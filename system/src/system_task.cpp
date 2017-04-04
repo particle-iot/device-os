@@ -37,7 +37,6 @@
 #include "rgbled.h"
 #include "service_debug.h"
 #include "cellular_hal.h"
-#include "cellular_internal.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
