@@ -162,6 +162,8 @@ public:
   void setBitOrder(uint8_t);
   void setDataMode(uint8_t);
 
+  static void usingInterrupt(uint8_t) {};
+
   int32_t beginTransaction();
   int32_t beginTransaction(const particle::__SPISettings& settings);
   void endTransaction();

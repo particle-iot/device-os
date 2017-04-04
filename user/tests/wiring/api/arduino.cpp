@@ -70,3 +70,7 @@ test(Wire_setClock) {
 	Wire.setClock(4000000);
 	Wire.setSpeed(4000000);
 }
+
+test(SPI_usingInterrupt) {
+	SPI.usingInterrupt(3);
+}
