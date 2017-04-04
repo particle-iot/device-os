@@ -26,6 +26,10 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
+#ifndef PARTICLE_WIRING_ARDUINO_COMPATIBILTY
+#define PARTICLE_WIRING_ARDUINO_COMPATIBILTY 0
+#endif
+
 #include "system_version.h"
 
 #ifdef SPARK_PLATFORM
