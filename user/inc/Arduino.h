@@ -2,9 +2,11 @@
 #ifndef ARDUINO_H
 #define	ARDUINO_H
 
-#ifndef PARTICLE_WIRING_ARDUINO_COMPATIBILTY
-#define PARTICLE_WIRING_ARDUINO_COMPATIBILTY 1
+#ifdef PARTICLE_WIRING_ARDUINO_COMPATIBILTY
+#undef PARTICLE_WIRING_ARDUINO_COMPATIBILTY
 #endif
+
+#define PARTICLE_WIRING_ARDUINO_COMPATIBILTY 1
 
 #include "Particle.h"
 
@@ -20,19 +22,11 @@
 #include <cmath>
 #endif // __cplusplus
 
-#if PARTICLE_WIRING_ARDUINO_TEMPLATES
-#ifdef min
-#undef min
-#endif
-
-#ifdef max
-#undef max
-#endif
-#endif  // #ifdef PARTICLE_WIRING_ARDUINO_TEMPLATES
-
 #include "avr/pgmspace.h"
 #include "spark_wiring_arduino_constants.h"
 #include "spark_wiring_arduino_binary.h"
+
+typedef particle::__SPISettings SPISettings;
 
 #undef F
 #define F(X) (reinterpret_cast<const __FlashStringHelper*>(X))
