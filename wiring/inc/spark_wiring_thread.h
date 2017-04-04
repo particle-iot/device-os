@@ -56,8 +56,9 @@ public:
 #define SINGLE_THREADED_BLOCK()
 #define WITH_LOCK(x)
 #define TRY_LOCK(x)
-
 #endif
+
+#if PLATFORM_THREADING
 
 class Thread
 {
@@ -227,6 +228,8 @@ public:
     void unlock() { os_mutex_recursive_unlock(handle_); }
 
 };
+
+#endif // PLATFORM_THREADING
 
 #endif  /* SPARK_WIRING_THREAD_H */
 

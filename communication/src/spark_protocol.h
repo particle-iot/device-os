@@ -30,7 +30,7 @@
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "events.h"
-#if PLATFORM_ID==6 || PLATOFRM_ID==8
+#if PLATFORM_ID==6 || PLATFORM_ID==8
 #include "wiced_security.h"
 #else
 #include "tropicssl/rsa.h"
