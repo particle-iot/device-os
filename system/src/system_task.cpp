@@ -290,7 +290,6 @@ void establish_cloud_connection()
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
         uint16_t electron_udp_port = PORT_COAPS;
         int electron_udp_keepalive = CELLULAR_NETPROV_TELEFONICA_KEEPALIVE;
-        DEBUG("NETPROV:%s", (cellular_network_provider_get(NULL)==CELLULAR_NETPROV_TWILIO)?"Twilio":"Telefonica");
         if (cellular_network_provider_get(NULL) == CELLULAR_NETPROV_TWILIO) {
             electron_udp_port = PORT_COAPS_TWILIO;
             electron_udp_keepalive = CELLULAR_NETPROV_TWILIO_KEEPALIVE;
