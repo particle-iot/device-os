@@ -40,7 +40,9 @@ private:
 public:
   TwoWire(HAL_I2C_Interface i2c);
   virtual ~TwoWire() {};
-
+  inline void setClock(uint32_t speed) {
+	  setSpeed(speed);
+  }
   void setSpeed(uint32_t);
   void enableDMAMode(bool);
   void stretchClock(bool);

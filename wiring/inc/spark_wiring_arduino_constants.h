@@ -68,20 +68,8 @@
 #define EULER       2.718281828459045235360287471352
 #endif
 
-#ifdef abs
-#undef abs
-#endif
-
 #ifndef abs
-#define abs(x)       ((x)>0?(x):-(x))
-#endif
-
-#ifndef constrain
-#define constrain(amt, low, high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
-#endif
-
-#ifndef round
-#define round(x)     ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#define abs(x) ((x)>0?(x):-(x))
 #endif
 
 #ifndef radians
@@ -95,6 +83,43 @@
 #ifndef sq
 #define sq(x)        ((x)*(x))
 #endif
+
+
+#if PARTICLE_WIRING_ARDUINO_TEMPLATES
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
+#ifdef constrain
+#undef constrain
+#endif
+
+#ifdef round
+#undef round
+#endif
+
+#else
+#ifndef min
+#define min(a,b) ((a)<(b)?(a):(b))
+#endif
+
+#ifndef max
+#define max(a,b) ((a)>(b)?(a):(b))
+#endif
+
+#ifndef constrain
+#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+#endif
+
+#ifndef round
+#define round(x)     ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#endif
+
+#endif  // #ifdef PARTICLE_WIRING_ARDUINO_TEMPLATES
 
 #ifndef lowByte
 #define lowByte(w)   ((uint8_t) ((w) & 0xff))

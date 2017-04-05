@@ -6,6 +6,8 @@ static volatile uint8_t DMA_Completed_Flag = 0;
 static uint8_t tempBuf[256];
 static uint8_t tempBuf1[256];
 
+using particle::__SPISettings;
+
 static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
 {
   memset(info, 0, sizeof(hal_spi_info_t));
@@ -13,14 +15,14 @@ static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
   HAL_SPI_Info(spi, info, nullptr);
 }
 
-static SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
+static __SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 {
   if (!info->enabled || info->default_settings)
-    return SPISettings();
-  return SPISettings(info->clock, info->bit_order, info->data_mode);
+    return __SPISettings();
+  return __SPISettings(info->clock, info->bit_order, info->data_mode);
 }
 
-static bool spiSettingsApplyCheck(SPIClass& spi, const SPISettings& settings, HAL_SPI_Interface interface = HAL_SPI_INTERFACE1)
+static bool spiSettingsApplyCheck(SPIClass& spi, const __SPISettings& settings, HAL_SPI_Interface interface = HAL_SPI_INTERFACE1)
 {
     hal_spi_info_t info;
     spi.beginTransaction(settings);
@@ -218,28 +220,28 @@ test(SPI_07_SPI_Settings_Are_Applied_In_Begin_Transaction)
 
     // Get current SPISettings
     hal_spi_info_t info;
-    SPISettings current, settings;
+    __SPISettings current, settings;
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     settings = spiSettingsFromSpiInfo(&info);
 
     // Configure SPI with default settings
-    SPI.beginTransaction(SPISettings());
+    SPI.beginTransaction(__SPISettings());
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     current = spiSettingsFromSpiInfo(&info);
     assertEqual(current, settings);
     SPI.endTransaction();
 
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
 
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
 
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings()));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings()));
 
     SPI.end();
 }
@@ -254,29 +256,29 @@ test(SPI_08_SPI1_Settings_Are_Applied_In_Begin_Transaction)
 
     // Get current SPISettings
     hal_spi_info_t info;
-    SPISettings current, settings;
+    __SPISettings current, settings;
 
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     settings = spiSettingsFromSpiInfo(&info);
 
     // Configure SPI with default settings
-    SPI1.beginTransaction(SPISettings());
+    SPI1.beginTransaction(__SPISettings());
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     current = spiSettingsFromSpiInfo(&info);
     assertEqual(current, settings);
     SPI1.endTransaction();
 
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
 
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
 
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(), HAL_SPI_INTERFACE2));
 
     SPI1.end();
 }
@@ -292,29 +294,29 @@ test(SPI_09_SPI2_Settings_Are_Applied_In_Begin_Transaction)
 
     // Get current SPISettings
     hal_spi_info_t info;
-    SPISettings current, settings;
+    __SPISettings current, settings;
 
     querySpiInfo(HAL_SPI_INTERFACE3, &info);
     settings = spiSettingsFromSpiInfo(&info);
 
     // Configure SPI with default settings
-    SPI2.beginTransaction(SPISettings());
+    SPI2.beginTransaction(__SPISettings());
     querySpiInfo(HAL_SPI_INTERFACE3, &info);
     current = spiSettingsFromSpiInfo(&info);
     assertEqual(current, settings);
     SPI2.endTransaction();
 
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
 
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
 
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(), HAL_SPI_INTERFACE3));
 
     SPI2.end();
 }
@@ -329,7 +331,7 @@ test(SPI_10_SPI_Begin_Transaction_Locks)
     SPI.begin();
     assertTrue(SPI.trylock());
     SPI.unlock();
-    SPI.beginTransaction(SPISettings());
+    SPI.beginTransaction(__SPISettings());
     assertFalse(SPI.trylock());
     SPI.endTransaction();
     assertTrue(SPI.trylock());
@@ -346,7 +348,7 @@ test(SPI_11_SPI1_Begin_Transaction_Locks)
     SPI1.begin();
     assertTrue(SPI1.trylock());
     SPI1.unlock();
-    SPI1.beginTransaction(SPISettings());
+    SPI1.beginTransaction(__SPISettings());
     assertFalse(SPI1.trylock());
     SPI1.endTransaction();
     assertTrue(SPI1.trylock());
@@ -364,7 +366,7 @@ test(SPI_12_SPI2_Begin_Transaction_Locks)
     SPI2.begin();
     assertTrue(SPI2.trylock());
     SPI2.unlock();
-    SPI2.beginTransaction(SPISettings());
+    SPI2.beginTransaction(__SPISettings());
     assertFalse(SPI2.trylock());
     SPI2.endTransaction();
     assertTrue(SPI2.trylock());

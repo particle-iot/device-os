@@ -470,16 +470,6 @@ USE_SWD=y
 and perform a clean build. For more details on SWD-only debugging
 see https://github.com/spark/firmware/pull/337
 
-
-## Compilation without Arduino Compatibility Support
-
-Arduino compatibility defines are included by default to support hundreds of libraries that have been ported from Arduino to Particle.  If those defines should cause an issue with your build, you may remove them by adding
-
-PARTICLE_NO_ARDUINO_COMPATIBILITY=y to the make command line. This requires a clean build.
-
-There should be no difference in FLASH or RAM allocation with or without these defines.
-
-
 ## Compilation without Cloud Support
 
 [Core only]
