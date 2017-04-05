@@ -1022,7 +1022,7 @@ static void tcp_write(Writer* w, const uint8_t *buf, size_t count) {
 static int tcp_read(Reader* r, uint8_t *buf, size_t count) {
     wiced_tcp_stream_t* tcp_stream = (wiced_tcp_stream_t*)r->state;
     int result = wiced_tcp_stream_read(tcp_stream, buf, count, WICED_NEVER_TIMEOUT);
-    return result==WICED_SUCCESS ? count : 0;
+    return result==WICED_SUCCESS ? count : (result < 0 ? result : -result);
 }
 
 static void tcp_stream_writer(Writer& w, wiced_tcp_stream_t* stream) {
@@ -1306,10 +1306,13 @@ class SimpleProtocolDispatcher
 {
     AllSoftAPCommands& commands_;
 
-    char readChar(Reader& reader) {
-        uint8_t c = 0;
-        reader.read(&c, 1);
-        return (char)c;
+    int readChar(Reader& reader, char* c) {
+        uint8_t tmp = 0;
+        int result = reader.read(&tmp, 1);
+        if (result >= 0) {
+            *c = tmp;
+        }
+        return result;
     }
 
     Command* commandForName(const char* name) {
@@ -1348,8 +1351,9 @@ public:
         int result = -1;
 
         while (idx<30) {
-            char c=readChar(reader);
-            if (!c || c=='\n')
+            char c = 0;
+            result = readChar(reader, &c);
+            if (!c || c=='\n' || result < 0)
                 break;
             name[idx++] = c;
         }
@@ -1357,8 +1361,9 @@ public:
         WPRINT_APP_INFO( ( "Fetched name '%s'\n", name ) );
 
         for (;;) {
-            char c=readChar(reader);
-            if (c=='\n')
+            char c = 0;
+            result = readChar(reader, &c);
+            if (c=='\n' || result < 0)
                 break;
             requestLength = requestLength * 10 + c-'0';
         }
@@ -1368,7 +1373,10 @@ public:
         // todo - keep reading until a \n\n is encountered.
         bool seenNewline = true;
         for (;;) {
-            char c=readChar(reader);
+            char c = 0;
+            result = readChar(reader, &c);
+            if (result < 0)
+                break;
             if (c=='\n') {
                 if (seenNewline)
                     break;
