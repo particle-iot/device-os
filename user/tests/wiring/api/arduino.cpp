@@ -121,5 +121,5 @@ test(bytes) {
 	bitSet(x,4);
 	bitClear(x,4);
 	(void)x;
-	bit(3);
+	(void)bit(3);
 }
