@@ -76,9 +76,50 @@ test(SPI_usingInterrupt) {
 }
 
 test(ifSerial) {
-	bool b = Serial;
 	if (Serial) {
 
 	}
 }
 
+test(pow) {
+	pow(3.0, 5.0);
+}
+
+test(map) {
+	map(1,2,3,4,5);
+}
+
+test(trigs) {
+	sin(0.5);
+	cos(0.5);
+	tan(0.5);
+}
+
+test(LED_BUILTIN) {
+	if (LED_BUILTIN>0) {
+
+	}
+}
+
+test(sqrt) {
+	sqrt(2.0);
+}
+
+test(word) {
+	if (word(2)>2) {
+
+	}
+}
+
+
+test(bytes) {
+	(void)(lowByte(0x0304));
+	(void)(highByte(0x0343));
+	int x = 0;
+	bitRead(x, 4);
+	bitWrite(x, 4, false);
+	bitSet(x,4);
+	bitClear(x,4);
+	(void)x;
+	bit(3);
+}
