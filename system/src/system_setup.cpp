@@ -321,11 +321,12 @@ void WiFiSetupConsole::handle(char c)
         memset(ssid, 0, sizeof(ssid));
         memset(password, 0, sizeof(password));
         memset(security_type_string, 0, sizeof(security_type_string));
+        security_ = WLAN_SEC_NOT_SET;
+        cipher_ = WLAN_CIPHER_NOT_SET;
 
 #if Wiring_WpaEnterprise == 1
         spark::WiFiAllocatedCredentials credentials;
         memset(eap_type_string, 0, sizeof(eap_type_string));
-        LOG(TRACE, "%d", sizeof(credentials));
 #else
         spark::WiFiCredentials credentials;
 #endif
@@ -334,24 +335,38 @@ void WiFiSetupConsole::handle(char c)
         print("SSID: ");
         read_line(ssid, 32);
 
-        // TODO: would be great if the network auto-detected the Security type
-        // The photon is scanning the network so could determine this.
-        do
+        wlan_scan([](WiFiAccessPoint* ap, void* ptr) {
+            if (ptr) {
+                WiFiSetupConsole* self = reinterpret_cast<WiFiSetupConsole*>(ptr);
+                if (ap) {
+                    if (!strncmp(self->ssid, ap->ssid, ap->ssidLength)) {
+                        self->security_ = ap->security;
+                        self->cipher_ = ap->cipher;
+                    }
+                }
+            }
+        }, this);
+
+        if (security_ == WLAN_SEC_NOT_SET)
         {
+            do
+            {
 #if Wiring_WpaEnterprise == 0
-            print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
-            read_line(security_type_string, 1);
-        }
-        while ('0' > security_type_string[0] || '3' < security_type_string[0]);
+                print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
+                read_line(security_type_string, 1);
+            }
+            while ('0' > security_type_string[0] || '3' < security_type_string[0]);
 #else
-            print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2, 4=WPA Enterprise, 5=WPA2 Enterprise: ");
-            read_line(security_type_string, 1);
-        }
-        while ('0' > security_type_string[0] || '5' < security_type_string[0]);
+                print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2, 4=WPA Enterprise, 5=WPA2 Enterprise: ");
+                read_line(security_type_string, 1);
+            }
+            while ('0' > security_type_string[0] || '5' < security_type_string[0]);
 #endif
+            security_ = (WLanSecurityType)(security_type_string[0] - '0');
+        }
 
 #if PLATFORM_ID<3
-        if ('1' == security_type_string[0])
+        if (security_ == WLAN_SEC_WEP)
         {
             print("\r\n ** Even though the CC3000 supposedly supports WEP,");
             print("\r\n ** we at Spark have never seen it work.");
@@ -359,21 +374,18 @@ void WiFiSetupConsole::handle(char c)
         }
 #endif
 
-        unsigned long security_type = security_type_string[0] - '0';
-
-        WLanSecurityCipher cipher = WLAN_CIPHER_NOT_SET;
-
-        if (security_type)
+        if (security_ != WLAN_SEC_UNSEC)
             password[0] = '1'; // non-empty password so security isn't set to None
 
         credentials.setSsid(ssid);
         credentials.setPassword(password);
-        credentials.setSecurity((WLanSecurityType)security_type);
-        credentials.setCipher(cipher);
+        credentials.setSecurity(security_);
+        credentials.setCipher(cipher_);
 
         // dry run
         creds = credentials.getHalCredentials();
-        if (this->config.connect_callback2(this->config.connect_callback_data, &creds, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED)
+        if (this->config.connect_callback2(this->config.connect_callback_data, &creds, true)==WLAN_SET_CREDENTIALS_CIPHER_REQUIRED ||
+            (cipher_ == WLAN_CIPHER_NOT_SET))
         {
             do
             {
@@ -382,21 +394,21 @@ void WiFiSetupConsole::handle(char c)
             }
             while ('1' > security_type_string[0] || '3' < security_type_string[0]);
             switch (security_type_string[0]-'0') {
-                case 1: cipher = WLAN_CIPHER_AES; break;
-                case 2: cipher = WLAN_CIPHER_TKIP; break;
-                case 3: cipher = WLAN_CIPHER_AES_TKIP; break;
+                case 1: cipher_ = WLAN_CIPHER_AES; break;
+                case 2: cipher_ = WLAN_CIPHER_TKIP; break;
+                case 3: cipher_ = WLAN_CIPHER_AES_TKIP; break;
             }
-            credentials.setCipher(cipher);
+            credentials.setCipher(cipher_);
         }
 
-        if (0 < security_type && security_type <= 3)
+        if (0 < security_ && security_ <= 3)
         {
             print("Password: ");
             read_line(password, sizeof(password) - 1);
             credentials.setPassword(password);
         }
 #if Wiring_WpaEnterprise == 1
-        else if (security_type >= 4)
+        else if (security_ >= 4)
         {
             do
             {

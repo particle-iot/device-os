@@ -123,6 +123,8 @@ private:
     char ssid[33];
     char password[65];
     char security_type_string[2];
+    WLanSecurityType security_ = WLAN_SEC_NOT_SET;
+    WLanSecurityCipher cipher_ = WLAN_CIPHER_NOT_SET;
 #if Wiring_WpaEnterprise == 1
     char eap_type_string[2];
     std::unique_ptr<char[]> tmp_;
