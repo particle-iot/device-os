@@ -888,6 +888,21 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
             }
         }
 
+        // We can only store a single enterprise access point
+        if (security & ENTERPRISE_ENABLED) {
+            for (unsigned i = 0; i < CONFIG_AP_LIST_SIZE; i++)
+            {
+                if (wifi_config->stored_ap_list[i].details.security & ENTERPRISE_ENABLED)
+                {
+                    if (replace < 0) {
+                        replace = i;
+                    } else {
+                        memset(&wifi_config->stored_ap_list[i], 0, sizeof(wiced_config_ap_entry_t));
+                    }
+                }
+            }
+        }
+
         if (replace < 0)
         {
             // shuffle all slots along
