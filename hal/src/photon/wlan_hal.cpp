@@ -269,13 +269,16 @@ bool check_enterprise_credentials(WLanCredentials* c)
         if (!c->password || c->password_len > 64 || c->password_len == 0)
             is_valid = false;
     } else if (c && c->eap_type == WLAN_EAP_TYPE_TLS) {
-        // if (c->inner_identity_len > 64 || c->inner_identity_len == 0)
-        //     is_valid = false;
         if (!c->client_certificate || c->client_certificate_len == 0 || !c->private_key || c->private_key_len == 0)
+            is_valid = false;
+        if (c->client_certificate_len > CERTIFICATE_SIZE || c->private_key_len > PRIVATE_KEY_SIZE)
             is_valid = false;
     } else {
         is_valid = false;
     }
+
+    if (is_valid && c->ca_certificate && c->ca_certificate_len > CERTIFICATE_SIZE)
+        is_valid = false;
 
     return is_valid;
 }
@@ -721,10 +724,10 @@ WLanSecurityType toSecurityType(wiced_security_t sec)
         return WLAN_SEC_UNSEC;
     if (sec & WEP_ENABLED)
         return WLAN_SEC_WEP;
-    if (sec & (WPA_SECURITY | ENTERPRISE_ENABLED))
-        return WLAN_SEC_WPA_ENTERPRISE;
-    if (sec & (WPA2_SECURITY | ENTERPRISE_ENABLED))
+    if ((sec & (WPA2_SECURITY | ENTERPRISE_ENABLED)) == (WPA2_SECURITY | ENTERPRISE_ENABLED))
         return WLAN_SEC_WPA2_ENTERPRISE;
+    if ((sec & (WPA_SECURITY | ENTERPRISE_ENABLED)) == (WPA_SECURITY | ENTERPRISE_ENABLED))
+        return WLAN_SEC_WPA_ENTERPRISE;
     if (sec & WPA_SECURITY)
         return WLAN_SEC_WPA;
     if (sec & WPA2_SECURITY)
@@ -955,8 +958,8 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
         return WLAN_INVALID_KEY_LENGTH;
     }
     // Check WPA/WPA2 password length
-    if ((wicedSecurity & WPA_SECURITY || wicedSecurity & WPA2_SECURITY) &&
-            (!password || passwordLen < WSEC_MIN_PSK_LEN || passwordLen > WSEC_MAX_PSK_LEN)) {
+    if ((wicedSecurity & WPA_SECURITY || wicedSecurity & WPA2_SECURITY) && !(wicedSecurity & ENTERPRISE_ENABLED) &&
+        (!password || passwordLen < WSEC_MIN_PSK_LEN || passwordLen > WSEC_MAX_PSK_LEN)) {
         return WLAN_INVALID_KEY_LENGTH;
     }
     if (flags & WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN) {
