@@ -214,7 +214,6 @@ template<typename Config> void SystemSetupConsole<Config>::print(const char *s)
     for (size_t i = 0; i < strlen(s); ++i)
     {
         serial.write(s[i]);
-        HAL_Delay_Milliseconds(1); // ridonkulous, but required
     }
 }
 
