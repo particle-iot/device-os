@@ -168,7 +168,4 @@ test(WIFI_06_restore_connection)
     }
 }
 
-Serial1LogHandler dbg(115200, LOG_LEVEL_ALL);
-
-
 #endif
