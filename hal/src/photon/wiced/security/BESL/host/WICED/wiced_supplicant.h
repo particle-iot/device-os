@@ -50,6 +50,7 @@ besl_result_t besl_supplicant_init                   ( supplicant_workspace_t* w
 besl_result_t besl_supplicant_deinit                 ( supplicant_workspace_t* workspace );
 besl_result_t besl_supplicant_start                  ( supplicant_workspace_t* workspace );
 besl_result_t besl_supplicant_wait_till_complete     ( supplicant_workspace_t* workspace );
+besl_result_t besl_supplicant_cancel                 ( supplicant_workspace_t* workspace, int32_t isr );
 besl_result_t supplicant_host_send_eap_tls_fragments ( supplicant_workspace_t* workspace, uint8_t* buffer, uint16_t length );
 besl_result_t supplicant_receive_eap_tls_packet      ( void* workspace_in, tls_packet_t** packet, uint32_t timeout );
 void          besl_supplicant_set_identity           ( supplicant_workspace_t* workspace, const char* eap_identity, uint32_t eap_identity_length );
@@ -71,9 +72,9 @@ wiced_result_t wiced_supplicant_enable_tls            ( supplicant_workspace_t* 
 wiced_result_t wiced_supplicant_start_tls             ( supplicant_workspace_t* supplicant, wiced_tls_endpoint_type_t type, wiced_tls_certificate_verification_t verification );
 wiced_result_t wiced_supplicant_start_tls_with_ciphers( supplicant_workspace_t* supplicant, wiced_tls_endpoint_type_t type, wiced_tls_certificate_verification_t verification, const cipher_suite_t* cipher_list[] );
 
-besl_result_t supplicant_peap_start                  ( supplicant_workspace_t* workspace );
-besl_result_t supplicant_peap_packet_set_data        ( besl_packet_t* packet, int32_t size );
-besl_result_t supplicant_process_peap_event           (supplicant_workspace_t* workspace, besl_packet_t packet);
+besl_result_t supplicant_peap_start                  (supplicant_workspace_t* workspace );
+besl_result_t supplicant_peap_packet_set_data        (besl_packet_t* packet, int32_t size );
+besl_result_t supplicant_process_peap_event          (supplicant_workspace_t* workspace, besl_packet_t packet);
 
 #ifdef __cplusplus
 } /*extern "C" */
