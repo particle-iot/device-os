@@ -566,24 +566,10 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
 
 bool FLASH_ClearFactoryResetModuleSlot(void)
 {
-    //Read the flash modules info from the dct area
-    const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
-
-    //Set slot 0 factory reset module elements to 0 without sector erase
-    FLASH_Unlock();
-
-    uint32_t address = (uint32_t)&flash_modules[FAC_RESET_SLOT];
-    uint32_t length = sizeof(platform_flash_modules_t) >> 2;
-
-    while(length--)
-    {
-        FLASH_ProgramWord(address, 0);
-        address += 4;
-    }
-
-    FLASH_Lock();
-
-    return true;
+    // FIXME: There's no function that acts as memset() for DCT
+    const char data[sizeof(platform_flash_modules_t)] = { 0 };
+    const size_t offs = FAC_RESET_SLOT * sizeof(platform_flash_modules_t) + DCT_FLASH_MODULES_OFFSET;
+    return (dct_write_app_data(data, offs, sizeof(data)) == 0);
 }
 
 bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
@@ -627,14 +613,12 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
 //This function called in bootloader to perform the memory update process
 void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    //Read the flash modules info from the dct area
-    const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
-    uint8_t flash_module_index = MAX_MODULES_SLOT;
-
     //slot 0 is reserved for factory reset module so start from flash_module_index = 1
-    for (flash_module_index = GEN_START_SLOT; flash_module_index < MAX_MODULES_SLOT; flash_module_index++)
+    for (size_t flash_module_index = GEN_START_SLOT; flash_module_index < MAX_MODULES_SLOT; flash_module_index++)
     {
-        if(flash_modules[flash_module_index].magicNumber == 0xABCD)
+        const size_t offs = flash_module_index * sizeof(platform_flash_modules_t) + DCT_FLASH_MODULES_OFFSET;
+        const platform_flash_modules_t* flash_module = (const platform_flash_modules_t*)dct_read_app_data(offs);
+        if(flash_module->magicNumber == 0xABCD)
         {
             //Turn On RGB_COLOR_MAGENTA toggling during flash updating
             if(flashModulesCallback)
@@ -643,27 +627,18 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
             }
 
             //Copy memory from source to destination based on flash device id
-            FLASH_CopyMemory(flash_modules[flash_module_index].sourceDeviceID,
-                             flash_modules[flash_module_index].sourceAddress,
-                             flash_modules[flash_module_index].destinationDeviceID,
-                             flash_modules[flash_module_index].destinationAddress,
-                             flash_modules[flash_module_index].length,
-                             flash_modules[flash_module_index].module_function,
-                             flash_modules[flash_module_index].flags);
+            FLASH_CopyMemory(flash_module->sourceDeviceID,
+                             flash_module->sourceAddress,
+                             flash_module->destinationDeviceID,
+                             flash_module->destinationAddress,
+                             flash_module->length,
+                             flash_module->module_function,
+                             flash_module->flags);
 
-            //Set all flash_modules[flash_module_index] elements to 0 without sector erase
-            FLASH_Unlock();
-
-            uint32_t address = (uint32_t)&flash_modules[flash_module_index];
-            uint32_t length = sizeof(platform_flash_modules_t) >> 2;
-
-            while(length--)
-            {
-                FLASH_ProgramWord(address, 0);
-                address += 4;
-            }
-
-            FLASH_Lock();
+            // Clear flash module info
+            // FIXME: There's no function that acts as memset() for DCT
+            const char data[sizeof(platform_flash_modules_t)] = { 0 };
+            dct_write_app_data(data, offs, sizeof(data));
 
             if(flashModulesCallback)
             {
