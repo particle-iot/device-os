@@ -22,13 +22,13 @@
 #include "dcd.h"
 #include "flash_storage_impl.h"
 
-template <typename Store, unsigned sectorSize, unsigned DCD1, unsigned DCD2>
-class UpdateDCD : public DCD<Store, sectorSize, DCD1, DCD2>
+template <typename Store, unsigned sectorSize, unsigned DCD1, unsigned DCD2, uint32_t(*calculateCRC)(const void* data, size_t len)>
+class UpdateDCD : public DCD<Store, sectorSize, DCD1, DCD2, calculateCRC>
 {
 public:
     static const unsigned oldFormatOffset = 7548;
 
-    using base = DCD<Store, sectorSize, DCD1, DCD2>;
+    using base = DCD<Store, sectorSize, DCD1, DCD2, calculateCRC>;
     using Sector = typename base::Sector;
 
     UpdateDCD()
@@ -52,7 +52,7 @@ public:
 
     void initializeFromSector(const uint8_t* oldSector, Sector newSector)
     {
-        this->writeSector(0, oldSector+oldFormatOffset, sectorSize-oldFormatOffset, NULL, newSector);
+        this->_writeSector(0, oldSector+oldFormatOffset, sectorSize-oldFormatOffset, NULL, newSector);
     }
 
     inline bool isCurrent(const uint8_t* sector)

@@ -100,6 +100,7 @@ DEFINES += BOOST_NO_AUTO_PTR
 ABS_INCLUDE_DIRS += $(BOOST_ROOT)
 LIB_DIRS += $(BOOST_ROOT)/stage/lib
 LIBS += boost_regex
+export DYLD_LIBRARY_PATH=$(BOOST_ROOT)/stage/lib
 
 CFLAGS += $(patsubst %,-I%,$(ABS_INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -fdata-sections -Wall
