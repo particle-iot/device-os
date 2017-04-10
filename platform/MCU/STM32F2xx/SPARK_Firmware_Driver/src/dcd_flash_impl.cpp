@@ -6,9 +6,13 @@
  * rather than rely upon global construction.
  */
 
-UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000>& dcd()
+uint32_t calculateCRC(const void* data, size_t len) {
+	return Compute_CRC32(reinterpret_cast<const uint8_t*>(data), len);
+}
+
+UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000, calculateCRC>& dcd()
 {
-	static UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000> dcd;
+	static UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000, calculateCRC> dcd;
 	return dcd;
 }
 
