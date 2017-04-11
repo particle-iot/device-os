@@ -331,8 +331,10 @@ void WiFiSetupConsole::handle(char c)
 #endif
         WLanCredentials creds;
 
-        print("SSID: ");
-        read_line(ssid, 32);
+        do {
+            print("SSID: ");
+            read_line(ssid, 32);
+        } while (strlen(ssid) == 0);
 
         wlan_scan([](WiFiAccessPoint* ap, void* ptr) {
             if (ptr) {
