@@ -93,6 +93,8 @@ bool network_clear_credentials(network_handle_t network, uint32_t flags, Network
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved);
 
+int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved);
+int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer, size_t buffer_len, void* reserved);
 /**
  * Disable automatic listening mode when no credentials are configured.
  */
