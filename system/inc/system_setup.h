@@ -28,6 +28,7 @@
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_platform.h"
 #include "wlan_hal.h"
+#include <memory>
 
 #if PLATFORM_ID>2
 #define SETUP_OVER_SERIAL1 1
