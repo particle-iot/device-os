@@ -13,14 +13,31 @@ const int TestBase = 4000;
 using std::string;
 using TestStore = RAMFlashStorage<TestBase, TestSectorCount, TestSectorSize>;
 
+unsigned int crc32b(const unsigned char* message, size_t length) {
+   int i, j;
+   uint32_t byte, crc, mask;
+
+   i = 0;
+   crc = 0xFFFFFFFF;
+   while (length--> 0) {
+      byte = message[i];            // Get next byte.
+      crc = crc ^ byte;
+      for (j = 7; j >= 0; j--) {    // Do eight times.
+         mask = -(crc & 1);
+         crc = (crc >> 1) ^ (0xEDB88320 & mask);
+      }
+      i = i + 1;
+   }
+   return ~crc;
+}
+
 uint32_t calcCrc(const void* address, size_t length) {
-	return 0x12345678;
+	return crc32b((const unsigned char*)address, length);
 }
 
 using TestDCDBase = DCD<TestStore, TestSectorSize, TestBase, TestBase+TestSectorSize, calcCrc>;
 
 class TestDCD : public TestDCDBase {
-
 	friend class DCDFixture;
 };
 
@@ -295,6 +312,13 @@ SCENARIO_METHOD(TestDCD, "dcd is uninitialized by default", "[dcd]") {
 	REQUIRE_FALSE(isInitialized());
 }
 
+SCENARIO_METHOD(TestDCD, "dcd can be initialized by writing", "[dcd]") {
+	// assume uninitialized
+	auto& dct = *this;
+	dct.write(23, "abcd", 4);
+	REQUIRE(dct.isInitialized());
+}
+
 SCENARIO_METHOD(TestDCD, "current sector","[dcd]") {
 
 	GIVEN("current sector") {
@@ -350,16 +374,24 @@ SCENARIO_METHOD(TestDCD, "upgrade v1 to v2 format", "[dcd]") {
     store.eraseSector(TestBase);
     store.eraseSector(TestBase+TestSectorSize);
     store.write(TestBase, &header, header.size());
-    store.write(TestBase+header.size(), "1234  78", 8);
+
+    uint8_t data[4096];
+
+    for (int i=0; i<4096; i++) {
+    		data[i] = random();
+    }
+
+    store.write(TestBase+header.size(), data, 4096);
     REQUIRE(currentVersion()==1);
 
     const uint8_t* result = read(0);
-    assertMemoryEqual(result, (const uint8_t*)"1234  78", 8);
+    assertMemoryEqual(result, data, 4096);
 
     // now rewrite, which will change it to sector v2 format
     write(4, "56", 2);
+    memmove(data+4, "56", 2);
     result = read(0);
-	assertMemoryEqual(result, (const uint8_t*)"12345678", 8);
+	assertMemoryEqual(result, data, 4096);
 
 	REQUIRE(currentVersion()==2);
 }
