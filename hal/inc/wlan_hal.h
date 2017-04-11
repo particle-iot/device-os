@@ -345,6 +345,9 @@ bool isWiFiPowersaveClockDisabled(void);
  */
 int wlan_restart();
 
+int wlan_set_hostname(const char* hostname, void* reserved);
+int wlan_get_hostname(char* buf, size_t buf_size, void* reserved);
+
 #ifdef	__cplusplus
 }
 #endif

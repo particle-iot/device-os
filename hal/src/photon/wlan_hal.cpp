@@ -54,6 +54,8 @@ uint64_t tls_host_get_time_ms_local() {
     return time_ms;
 }
 
+char* lwip_hostname_ptr = NULL;
+
 LOG_SOURCE_CATEGORY("hal.wlan");
 
 // dns.h includes a class member, which doesn't compile in C++
@@ -562,6 +564,36 @@ static wiced_result_t wlan_join() {
         }
     }
     return result;
+}
+
+int wlan_get_hostname(char* buf, size_t len, void* reserved)
+{
+    wiced_result_t result;
+    wiced_hostname_t hostname;
+
+    memset(&hostname, 0, sizeof(hostname));
+    memset(buf, 0, len);
+
+    result = wiced_network_get_hostname(&hostname);
+    if (result == WICED_SUCCESS)
+    {
+        if (hostname.value[0] != 0xff) {
+            size_t l = strnlen(hostname.value, HOSTNAME_SIZE);
+            if (len > l) {
+                memcpy(buf, hostname.value, l);
+            } else {
+                result = WICED_ERROR;
+            }
+        } else {
+            result = WICED_ERROR;
+        }
+    }
+    return (int)result;
+}
+
+int wlan_set_hostname(const char* hostname, void* reserved)
+{
+    return (int)wiced_network_set_hostname(hostname ? hostname : "");
 }
 
 /**

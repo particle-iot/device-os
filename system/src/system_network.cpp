@@ -195,4 +195,14 @@ void manage_ip_config()
     nif(0).update_config();
 }
 
+int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT(nif(network).set_hostname(hostname));
+}
+
+int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer, size_t buffer_len, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT(nif(network).get_hostname(buffer, buffer_len));
+}
+
 #endif
