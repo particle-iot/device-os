@@ -92,6 +92,8 @@ public:
         static const uint32_t SEAL_VALID_V1 = 0xEDA15E00;  // 005EA1ED;
         static const uint32_t SEAL_VALID_V2 = 0xEDA15E01;  // 015EA1ED;
 
+        static const size_t crc_data_start = 12;
+
         /**
          * Identifies the data in each page as a DCD page
          */
@@ -240,9 +242,7 @@ protected:
     void initialize(Sector sector)
     {
         erase(sector);
-        Header header;
-        header.make_valid_v2(computeSectorCRC(sector), 0);
-        write(sector, header);
+        _write_v2_header(sector, 0);
     }
 
     uint32_t computeSectorCRC(Sector sector) {
@@ -310,7 +310,7 @@ public:
 
     uint32_t computeCRC(const Header& header) {
     		const uint8_t* start = reinterpret_cast<const uint8_t*>(&header);
-    		const uint32_t preCRCDataSize = sizeof(uint32_t)*3;
+    		const uint32_t preCRCDataSize = Header::crc_data_start;
     		static_assert(offsetof(Header, flags)==preCRCDataSize, "expected flags to be at offset 12");
     		return calculateCRC(start+preCRCDataSize, sectorSize-preCRCDataSize);
     }
@@ -440,9 +440,19 @@ public:
         		counter = (existingHeader.flags.counter + 1) & 3;
         }
 
+        return _write_v2_header(newSector, counter);
+    }
+
+    Result _write_v2_header(Sector sector, uint8_t counter) {
+        Address destination = addressOf(sector);
         Header header;
-        header.make_valid_v2(computeSectorCRC(newSector), counter);
-        error = store.write(destination, &header, header.size());
+        header.make_valid_v2(0, counter);
+        const auto crc_data_start = Header::crc_data_start;
+        // write everything after the crc
+        Result error = store.write(destination+crc_data_start, ((const uint8_t*)&header)+crc_data_start, header.size()-crc_data_start);
+        if (error) return error;
+        header.crc = computeSectorCRC(sector);
+        error = store.write(destination, &header, crc_data_start);
         return error;
     }
 
