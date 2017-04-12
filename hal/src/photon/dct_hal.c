@@ -36,21 +36,10 @@ static wiced_dct_sdk_ver_t wiced_check_current_version() {
 
 const void* dct_read_app_data(uint32_t offset) {
     wiced_dct_sdk_ver_t ver = wiced_check_current_version();
-    if (ver == DCT_BOOTLOADER_SDK_CURRENT) {
-        return ((const void*)((uint32_t)wiced_dct_get_current_address(DCT_APP_SECTION) + offset));
-    } else {
-        return ((const void*)((uint32_t)wiced_dct_get_current_address(DCT_APP_SECTION) + offset - (sizeof(platform_dct_data_t) - sizeof(bootloader_dct_data_t))));
-    }
+    return ((const void*)((uint32_t)wiced_dct_get_current_address(DCT_APP_SECTION) + offset));
 }
 
 int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-    wiced_dct_sdk_ver_t ver = wiced_check_current_version();
-    if (ver != DCT_BOOTLOADER_SDK_CURRENT) {
-        // Do not write anything into DCT until firmware updates the DCT to the latest version
-        return 1;
-    }
-#endif
     int res = wiced_dct_write(data, DCT_APP_SECTION, offset, size);
 
     return res;
