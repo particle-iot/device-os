@@ -18,24 +18,7 @@ uint32_t crc32(uint8_t* pdata, unsigned int nbytes, uint32_t crc) {
    return crcres;
 }
 
-extern wiced_dct_sdk_ver_t wiced_dct_validate_and_determine_version(uint32_t device_start_address, uint32_t device_end_address, int *initial_write, int *sequence);
-
-static wiced_dct_sdk_ver_t wiced_check_current_version() {
-    uint32_t current = (uint32_t)wiced_dct_get_current_address(DCT_INTERNAL_SECTION);
-    uint32_t end = 0;
-    if (current == PLATFORM_DCT_COPY1_START_ADDRESS) {
-        end = PLATFORM_DCT_COPY1_END_ADDRESS;
-    } else if (current == PLATFORM_DCT_COPY2_START_ADDRESS) {
-        end = PLATFORM_DCT_COPY2_END_ADDRESS;
-    }
-    int sequence = 0;
-    wiced_dct_sdk_ver_t ver = wiced_dct_validate_and_determine_version(current, end, NULL, &sequence);
-
-    return ver;
-}
-
 const void* dct_read_app_data(uint32_t offset) {
-    wiced_dct_sdk_ver_t ver = wiced_check_current_version();
     return ((const void*)((uint32_t)wiced_dct_get_current_address(DCT_APP_SECTION) + offset));
 }
 
