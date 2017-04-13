@@ -126,3 +126,8 @@ void HAL_I2C1_ER_Handler(void)
 void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved)
 {
 }
+
+uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
+{
+  return 0;
+}

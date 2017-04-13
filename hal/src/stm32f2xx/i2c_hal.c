@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include "service_debug.h"
 #include "interrupts_hal.h"
+#include "delay_hal.h"
 
 #ifdef LOG_SOURCE_CATEGORY
 LOG_SOURCE_CATEGORY("hal.i2c")
@@ -776,6 +777,34 @@ void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int
 void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void), void* reserved)
 {
     i2cMap[i2c]->callback_onRequest = function;
+}
+
+uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
+{
+    if (HAL_I2C_Is_Enabled(i2c, NULL)) {
+        HAL_I2C_End(i2c, NULL);
+
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SDA_Pin, INPUT_PULLUP); //Turn SCA into high impedance input
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SCL_Pin, OUTPUT); //Turn SCL into a normal GPO
+        HAL_GPIO_Write(i2cMap[i2c]->I2C_SCL_Pin, 1); // Start idle HIGH
+
+        //Generate 9 pulses on SCL to tell slave to release the bus
+        for(int i=0; i <9; i++)
+        {
+            HAL_GPIO_Write(i2cMap[i2c]->I2C_SCL_Pin, 0);
+            HAL_Delay_Microseconds(100);
+            HAL_GPIO_Write(i2cMap[i2c]->I2C_SCL_Pin, 1);
+            HAL_Delay_Microseconds(100);
+        }
+
+        //Change SCL to be an input
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SCL_Pin, INPUT_PULLUP);
+
+        HAL_I2C_Begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->I2C_InitStructure.I2C_OwnAddress1 >> 1, NULL);
+        HAL_Delay_Milliseconds(50);
+        return 0;
+    }
+    return 1;
 }
 
 static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
