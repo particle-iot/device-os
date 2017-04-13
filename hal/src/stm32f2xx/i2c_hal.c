@@ -240,6 +240,20 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
 {
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
+#if PLATFORM_ID == 10
+    /*
+     * On Electron both I2C_INTERFACE1 and I2C_INTERFACE2 use the same peripheral - I2C1,
+     * but on different pins. We cannot enable both of them at the same time.
+     */
+    if (i2c == HAL_I2C_INTERFACE1 || i2c == HAL_I2C_INTERFACE2) {
+        HAL_I2C_Interface dependent = (i2c == HAL_I2C_INTERFACE1 ? HAL_I2C_INTERFACE2 : HAL_I2C_INTERFACE1);
+        if (HAL_I2C_Is_Enabled(dependent, NULL) == true) {
+            // Unfortunately we cannot return an error code here
+            return;
+        }
+    }
+#endif
+
     i2cMap[i2c]->rxBufferIndex = 0;
     i2cMap[i2c]->rxBufferLength = 0;
 
@@ -838,7 +852,18 @@ static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
  */
 void I2C1_ER_irq(void)
 {
+#if PLATFORM_ID == 10 // Electron
+    if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL))
+    {
+        HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE1);
+    }
+    else if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE2, NULL))
+    {
+        HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE2);
+    }
+#else
     HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE1);
+#endif
 }
 
 #if PLATFORM_ID == 10 // Electron
@@ -865,7 +890,7 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
      * The purpose is to make sure that both ADDR and STOPF flags are cleared if both are found set
      */
     uint32_t sr1 = I2C_ReadRegister(i2cMap[i2c]->I2C_Peripheral, I2C_Register_SR1);
-    
+
     /* EV4 */
     if (sr1 & I2C_EVENT_SLAVE_STOP_DETECTED)
     {
@@ -955,7 +980,18 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
  */
 void I2C1_EV_irq(void)
 {
+#if PLATFORM_ID == 10 // Electron
+    if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL))
+    {
+        HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE1);
+    }
+    else if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE2, NULL))
+    {
+        HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE2);
+    }
+#else
     HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE1);
+#endif
 }
 
 #if PLATFORM_ID == 10 // Electron
