@@ -1,4 +1,3 @@
-#include <algorithm>
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "i2c_helper.h"
@@ -10,12 +9,12 @@ test(0_I2C_scanBus) {
     // Scan I2C bus
     for (uint8_t addr = 0x01; addr < 0x7f; addr++) {
         ts1 = millis();
-        Wire.beginTransmission(addr);
-        int32_t err = Wire.endTransmission();
+        USE_WIRE.beginTransmission(addr);
+        int32_t err = USE_WIRE.endTransmission();
         ts2 = millis();
 
         if (err == 0) {
-            i2c::devices.push_back(addr);
+            i2c::devices.append(addr);
             DEBUG("I2C device @ 0x%02x", addr);
         } else if (err == 0x03) {
             // No one ACKed the address
