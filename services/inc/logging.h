@@ -435,7 +435,7 @@ static const char* const _log_category = NULL;
 
 #define PANIC(_code, _fmt, ...) \
         do { \
-            LOG(PANIC, _fmt, ##__VA_ARGS__); \
+            LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
             panic_(_code, NULL, HAL_Delay_Microseconds); \
         } while (0)
 
