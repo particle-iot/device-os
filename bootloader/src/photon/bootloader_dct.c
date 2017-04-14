@@ -10,17 +10,14 @@
 #define MODULAR_FIRMWARE 1
 #include "../../../hal/src/photon/ota_module_bounds.c"
 
-typedef const void* dct_read_app_data_func_t(uint32_t);
-typedef int dct_write_app_data_func_t(const void*, uint32_t, uint32_t);
-
-static dct_read_app_data_func_t* dct_read_app_data_func = NULL;
-static dct_write_app_data_func_t* dct_write_app_data_func = NULL;
+static const void*(*HAL_DCT_Read_App_Data)(uint32_t, void*) = NULL;
+static int(*HAL_DCT_Write_App_Data)(const void*, uint32_t, uint32_t, void*) = NULL;
 
 int load_dct_functions() {
     // Get module info
-    const module_info_t* const module = FLASH_ModuleInfo(FLASH_INTERNAL, module_system_part2.start_address);
+    const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, module_system_part2.start_address);
     if (!module || module->module_function != MODULE_FUNCTION_SYSTEM_PART || module->module_index != 2 ||
-        module->platform_id != PLATFORM_ID || module->module_version < 106 /* FIXME: 0.7.0-rc.1 */) {
+        module->platform_id != PLATFORM_ID || module->module_version < 107 /* 0.7.0-rc.1 */) {
         return -1;
     }
     // Check module boundaries
@@ -35,23 +32,23 @@ int load_dct_functions() {
         return -1;
     }
     // Get addresses of the DCT functions
-    void* const* const dynalib = (void* const*)((const char*)module + sizeof(module_info_t));
-    void* const* const dynalib_hal_core = dynalib[7];
-    dct_read_app_data_func = (dct_read_app_data_func_t*)dynalib_hal_core[33];
-    dct_write_app_data_func = (dct_write_app_data_func_t*)dynalib_hal_core[34];
+    void*** dynalib = (void***)((const char*)module + sizeof(module_info_t));
+    void** dynalib_hal_core = dynalib[7];
+    HAL_DCT_Read_App_Data = dynalib_hal_core[33];
+    HAL_DCT_Write_App_Data = dynalib_hal_core[34];
     return 0;
 }
 
 const void* dct_read_app_data(uint32_t offset) {
-    if (dct_read_app_data_func) {
-        return dct_read_app_data_func(offset);
+    if (HAL_DCT_Read_App_Data) {
+        return HAL_DCT_Read_App_Data(offset, NULL);
     }
     return NULL;
 }
 
 int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
-    if (dct_write_app_data_func) {
-        return dct_write_app_data_func(data, offset, size);
+    if (HAL_DCT_Write_App_Data) {
+        return HAL_DCT_Write_App_Data(data, offset, size, NULL);
     }
     return -1;
 }

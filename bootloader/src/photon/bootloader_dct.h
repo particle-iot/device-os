@@ -4,7 +4,7 @@
 #include "platforms.h"
 
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION /* FIMXE: PLATFORM_P1 */
-// Whether to load DCT functions dynamically or link them statically
+// Enable dynamic loading of the DCT functions
 #define LOAD_DCT_FUNCTIONS
 #endif
 
