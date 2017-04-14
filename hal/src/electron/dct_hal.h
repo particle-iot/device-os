@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "dct_hal_stm32f2xx.h"
 #include "dcd_flash.h"
 #include "dct.h"
 

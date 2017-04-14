@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+#include "dct_hal_stm32f2xx.h"
 #include "platform_dct.h"
 #include "platform_system_flags.h"
 #include "dct.h"
