@@ -30,6 +30,7 @@
 #include "core_hal.h"
 #include "deviceid_hal.h"
 #include "syshealth_hal.h"
+#include "dct_hal.h"
 #endif
 
 // WARNING
@@ -76,6 +77,9 @@ DYNALIB_FN(30, hal_core, HAL_Core_Led_Mirror_Pin, void(uint8_t, pin_t, uint32_t,
 DYNALIB_FN(31, hal_core, HAL_Core_Led_Mirror_Pin_Disable, void(uint8_t, uint8_t, void*))
 
 DYNALIB_FN(32, hal_core, HAL_Set_Event_Callback, void(HAL_Event_Callback, void*))
+
+DYNALIB_FN(33, hal_core, dct_read_app_data, const void*(uint32_t))
+DYNALIB_FN(34, hal_core, dct_write_app_data, int(const void*, uint32_t, uint32_t))
 
 DYNALIB_END(hal_core)
 
