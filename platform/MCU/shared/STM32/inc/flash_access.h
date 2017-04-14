@@ -50,7 +50,7 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
 bool FLASH_IsFactoryResetAvailable(void);
 bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
-void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
+bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);

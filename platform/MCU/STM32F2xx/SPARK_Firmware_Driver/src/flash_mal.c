@@ -75,6 +75,19 @@ inline static uint16_t InternalSectorToErase(uint32_t startAddress)
     return flashSector;
 }
 
+static bool ClearModuleSlots(size_t index, size_t count)
+{
+    // FIXME: There's no function that acts as memset() for DCT
+    const char data[sizeof(platform_flash_modules_t)] = { 0 };
+    for (size_t i = index; i < index + count; ++i) {
+        const size_t offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * i;
+        if (dct_write_app_data(data, offs, sizeof(data)) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 uint16_t FLASH_SectorToWriteProtect(flash_device_t device, uint32_t startAddress)
 {
 	uint16_t sector = 0;
@@ -566,10 +579,7 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
 
 bool FLASH_ClearFactoryResetModuleSlot(void)
 {
-    // FIXME: There's no function that acts as memset() for DCT
-    const char data[sizeof(platform_flash_modules_t)] = { 0 };
-    const size_t offs = FAC_RESET_SLOT * sizeof(platform_flash_modules_t) + DCT_FLASH_MODULES_OFFSET;
-    return (dct_write_app_data(data, offs, sizeof(data)) == 0);
+    return ClearModuleSlots(FAC_RESET_SLOT, 1);
 }
 
 bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
@@ -611,13 +621,23 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
 }
 
 //This function called in bootloader to perform the memory update process
-void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
+bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    //slot 0 is reserved for factory reset module so start from flash_module_index = 1
-    for (size_t flash_module_index = GEN_START_SLOT; flash_module_index < MAX_MODULES_SLOT; flash_module_index++)
+    // Copy module info from DCT (slot 0 is reserved for factory reset module)
+    const void* flash_modules_data = dct_read_app_data(sizeof(platform_flash_modules_t) * GEN_START_SLOT + DCT_FLASH_MODULES_OFFSET);
+    if (!flash_modules_data) {
+        return false;
+    }
+    const size_t slot_count = MAX_MODULES_SLOT - GEN_START_SLOT;
+    platform_flash_modules_t flash_modules[slot_count];
+    memcpy(flash_modules, flash_modules_data, sizeof(platform_flash_modules_t) * slot_count);
+    // Clear module info in DCT
+    if (!ClearModuleSlots(GEN_START_SLOT, slot_count)) {
+        return false;
+    }
+    for (size_t i = 0; i < slot_count; ++i)
     {
-        const size_t offs = flash_module_index * sizeof(platform_flash_modules_t) + DCT_FLASH_MODULES_OFFSET;
-        const platform_flash_modules_t* flash_module = (const platform_flash_modules_t*)dct_read_app_data(offs);
+        const platform_flash_modules_t* flash_module = &flash_modules[i];
         if(flash_module->magicNumber == 0xABCD)
         {
             //Turn On RGB_COLOR_MAGENTA toggling during flash updating
@@ -635,11 +655,6 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
                              flash_module->module_function,
                              flash_module->flags);
 
-            // Clear flash module info
-            // FIXME: There's no function that acts as memset() for DCT
-            const char data[sizeof(platform_flash_modules_t)] = { 0 };
-            dct_write_app_data(data, offs, sizeof(data));
-
             if(flashModulesCallback)
             {
                 //Turn Off RGB_COLOR_MAGENTA toggling
@@ -647,6 +662,7 @@ void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
             }
         }
     }
+    return true;
 }
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
