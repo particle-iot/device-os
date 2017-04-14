@@ -6,6 +6,7 @@
 #ifdef LOAD_DCT_FUNCTIONS
 
 #include "flash_mal.h"
+#include "usbd_dct_if.h"
 
 #define MODULAR_FIRMWARE 1
 #include "../../../hal/src/photon/ota_module_bounds.c"
@@ -13,7 +14,7 @@
 static const void*(*HAL_DCT_Read_App_Data)(uint32_t, void*) = NULL;
 static int(*HAL_DCT_Write_App_Data)(const void*, uint32_t, uint32_t, void*) = NULL;
 
-int load_dct_functions() {
+static int init_dct_functions() {
     // Get module info
     const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, module_system_part2.start_address);
     if (!module || module->module_function != MODULE_FUNCTION_SYSTEM_PART || module->module_index != 2 ||
@@ -39,16 +40,27 @@ int load_dct_functions() {
     return 0;
 }
 
+int load_dct_functions() {
+    if (init_dct_functions() != 0) {
+        DFU_Set_DCT_Enabled(false);
+        HAL_DCT_Read_App_Data = NULL;
+        HAL_DCT_Write_App_Data = NULL;
+        return -1;
+    }
+    DFU_Set_DCT_Enabled(true);
+    return 0;
+}
+
 const void* dct_read_app_data(uint32_t offset) {
     if (HAL_DCT_Read_App_Data) {
-        return HAL_DCT_Read_App_Data(offset, NULL);
+        return HAL_DCT_Read_App_Data(offset, NULL /* reserved */);
     }
     return NULL;
 }
 
 int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
     if (HAL_DCT_Write_App_Data) {
-        return HAL_DCT_Write_App_Data(data, offset, size, NULL);
+        return HAL_DCT_Write_App_Data(data, offset, size, NULL /* reserved */);
     }
     return -1;
 }

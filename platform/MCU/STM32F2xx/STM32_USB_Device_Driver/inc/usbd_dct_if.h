@@ -30,6 +30,8 @@ extern DFU_MAL_Prop_TypeDef DFU_DCT_cb;
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
+void DFU_Set_DCT_Enabled(uint8_t enabled);
+
 #endif /* __DCT_IF_MAL_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
