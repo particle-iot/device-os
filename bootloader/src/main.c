@@ -31,9 +31,13 @@
 #include "rgbled.h"
 #include "button.h"
 
-#if (PLATFORM_ID == 6) || (PLATFORM_ID == 10) || (PLATFORM_ID == 8)
-#include "led_signal.h"
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#include "bootloader_dct.h"
+#endif
+
+#if PLATFORM_ID == 6 || PLATFORM_ID == 10 || PLATFORM_ID == 8
 #define USE_LED_THEME
+#include "led_signal.h"
 #endif
 
 void platform_startup();
@@ -121,6 +125,11 @@ int main(void)
     //    Configure the MODE button
     //--------------------------------------------------------------------------
     Set_System();
+
+#ifdef LOAD_DCT_FUNCTIONS
+    load_dct_functions();
+#endif
+
     BUTTON_Init_Ext();
 
     //--------------------------------------------------------------------------
