@@ -9,7 +9,7 @@
 #endif
 
 #ifdef LOAD_DCT_FUNCTIONS
-int load_dct_functions();
+void reset_dct_functions();
 #endif
 
 #endif // BOOTLOADER_DCT_H

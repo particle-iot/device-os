@@ -67,23 +67,3 @@ uint16_t DCT_If_DeInit(void) {
 uint16_t DCT_If_CheckAdd(uint32_t Add) {
     return (Add<0x4000) ? MAL_OK : MAL_FAIL;
 }
-
-void DFU_Set_DCT_Enabled(uint8_t enabled) {
-    if (enabled) {
-        DFU_DCT_cb.pMAL_Init = DCT_If_Init;
-        DFU_DCT_cb.pMAL_DeInit = DCT_If_DeInit;
-        DFU_DCT_cb.pMAL_Erase = DCT_If_Erase;
-        DFU_DCT_cb.pMAL_Write = DCT_If_Write;
-        DFU_DCT_cb.pMAL_Read = DCT_If_Read;
-        DFU_DCT_cb.pMAL_Verify = DCT_If_Verify;
-        DFU_DCT_cb.pMAL_CheckAdd = DCT_If_CheckAdd;
-    } else {
-        DFU_DCT_cb.pMAL_Init = NULL;
-        DFU_DCT_cb.pMAL_DeInit = NULL;
-        DFU_DCT_cb.pMAL_Erase = NULL;
-        DFU_DCT_cb.pMAL_Write = NULL;
-        DFU_DCT_cb.pMAL_Read = NULL;
-        DFU_DCT_cb.pMAL_Verify = NULL;
-        DFU_DCT_cb.pMAL_CheckAdd = NULL;
-    }
-}

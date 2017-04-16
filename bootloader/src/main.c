@@ -125,11 +125,6 @@ int main(void)
     //    Configure the MODE button
     //--------------------------------------------------------------------------
     Set_System();
-
-#ifdef LOAD_DCT_FUNCTIONS
-    load_dct_functions();
-#endif
-
     BUTTON_Init_Ext();
 
     //--------------------------------------------------------------------------
@@ -395,6 +390,10 @@ int main(void)
          * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
          */
         FLASH_UpdateModules(flashModulesCallback);
+#ifdef LOAD_DCT_FUNCTIONS
+        // DCT functions may need to be reloaded after updating a system module
+        reset_dct_functions();
+#endif
 #else
         if (REFLASH_FROM_BACKUP == 1)
         {

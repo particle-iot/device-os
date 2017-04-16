@@ -474,7 +474,7 @@ void LED_Init(Led_TypeDef Led)
         const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
         const led_config_t* conf = (const led_config_t*)dct_read_app_data(offset);
 
-        if (conf->version != 0xff && conf->is_active && conf->is_pwm) {
+        if (conf && conf->version != 0xff && conf->is_active && conf->is_pwm) {
             //int32_t state = HAL_disable_irq();
             memcpy((void*)&HAL_Leds_Default[Led], (void*)conf, sizeof(led_config_t));
             //HAL_enable_irq(state);
@@ -815,9 +815,13 @@ inline void Load_SystemFlags_Impl(platform_system_flags_t* flags) __attribute__(
 inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
 {
     const void* flags_store = dct_read_app_data(0);
-    memcpy(flags, flags_store, sizeof(platform_system_flags_t));
-    flags->header[0] = 0xACC0;
-    flags->header[1] = 0x1ADE;
+    if (flags_store) {
+        memcpy(flags, flags_store, sizeof(platform_system_flags_t));
+        flags->header[0] = 0xACC0;
+        flags->header[1] = 0x1ADE;
+    } else {
+        memset(flags, 0xff, sizeof(platform_system_flags_t));
+    }
 }
 
 inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)  __attribute__((always_inline));

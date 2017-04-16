@@ -154,7 +154,7 @@ uint16_t MAL_DeInit(void)
 uint16_t MAL_Erase(uint32_t Idx, uint32_t Add)
 {
   uint32_t memIdx = Idx;
-
+  
   if(MAL_OK != MAL_CheckAdd(Idx, Add))
   {
     return MAL_FAIL;
@@ -197,7 +197,7 @@ uint16_t MAL_Erase(uint32_t Idx, uint32_t Add)
 uint16_t MAL_Write (uint32_t Idx, uint32_t Add, uint32_t Len)
 {
   uint32_t memIdx = Idx;
-
+  
   if(MAL_OK != MAL_CheckAdd(Idx, Add))
   {
     return MAL_FAIL;
@@ -259,7 +259,7 @@ uint16_t MAL_Write (uint32_t Idx, uint32_t Add, uint32_t Len)
 const uint8_t *MAL_Read (uint32_t Idx, uint32_t Add, uint32_t Len)
 {
   uint32_t memIdx = Idx;
-
+  
   if(MAL_OK != MAL_CheckAdd(Idx, Add))
   {
     return MAL_Buffer;
@@ -270,7 +270,15 @@ const uint8_t *MAL_Read (uint32_t Idx, uint32_t Add, uint32_t Len)
     /* Check if the command is supported */
     if (tMALTab[memIdx]->pMAL_Read != NULL)
     {
-      return tMALTab[memIdx]->pMAL_Read(Add, Len);
+      const uint8_t* data = tMALTab[memIdx]->pMAL_Read(Add, Len);
+      if (data != NULL)
+      {
+        return data;
+      }
+      else
+      {
+        return MAL_Buffer;
+      }
     }
     else
     {
@@ -294,7 +302,7 @@ const uint8_t *MAL_Read (uint32_t Idx, uint32_t Add, uint32_t Len)
 uint16_t MAL_GetStatus(uint32_t Idx, uint32_t Add , uint8_t Cmd, uint8_t *buffer)
 {
   uint32_t memIdx = Idx;
-
+  
   if(MAL_OK != MAL_CheckAdd(Idx, Add))
   {
     return MAL_FAIL;
@@ -329,10 +337,11 @@ static uint8_t MAL_CheckAdd(uint32_t Idx, uint32_t Add)
 {
   uint32_t memIdx = Idx;
 
-  if (tMALTab[memIdx]->pMAL_CheckAdd != NULL) {
+  if (tMALTab[memIdx]->pMAL_CheckAdd != NULL)
+  {
     return tMALTab[memIdx]->pMAL_CheckAdd(Add);
   }
-
+  
   return MAL_FAIL;
 }
 
