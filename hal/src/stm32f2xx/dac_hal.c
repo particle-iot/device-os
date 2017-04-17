@@ -63,7 +63,7 @@ static dac_state_t DAC_State[2] = {
  */
 static void HAL_DAC_Init()
 {
-    DAC_InitTypeDef DAC_InitStructure;
+    DAC_InitTypeDef DAC_InitStructure = {0};
 
     /* DAC Periph clock enable */
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
