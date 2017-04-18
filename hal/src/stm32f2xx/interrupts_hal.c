@@ -254,6 +254,16 @@ void HAL_Interrupts_Suspend(void) {
   exti_saved_state.ftsr = EXTI->FTSR;
 
   EXTI_DeInit();
+
+#if PLATFORM_ID == 10 // Electron
+  NVIC_ClearPendingIRQ(EXTI0_IRQn);
+#endif
+  NVIC_ClearPendingIRQ(EXTI1_IRQn);
+  NVIC_ClearPendingIRQ(EXTI2_IRQn);
+  NVIC_ClearPendingIRQ(EXTI3_IRQn);
+  NVIC_ClearPendingIRQ(EXTI4_IRQn);
+  NVIC_ClearPendingIRQ(EXTI9_5_IRQn);
+  NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
 }
 
 void HAL_Interrupts_Restore(void) {
