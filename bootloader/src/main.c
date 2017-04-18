@@ -392,7 +392,7 @@ int main(void)
         FLASH_UpdateModules(flashModulesCallback);
 #ifdef LOAD_DCT_FUNCTIONS
         // DCT functions may need to be reloaded after updating a system module
-        reset_dct_functions();
+        load_dct_functions();
 #endif
 #else
         if (REFLASH_FROM_BACKUP == 1)
