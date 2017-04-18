@@ -32,6 +32,7 @@
 #include "button.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#define LOAD_DCT_FUNCTIONS
 #include "bootloader_dct.h"
 #endif
 
