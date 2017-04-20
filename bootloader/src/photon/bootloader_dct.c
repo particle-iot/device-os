@@ -37,6 +37,10 @@ static const module_info_t* get_module_info(const module_bounds_t* bounds, uint1
     return module;
 }
 
+static inline bool check_module_addr(void* ptr, const module_info_t* module) {
+    return (ptr >= module->module_start_address && ptr < module->module_end_address);
+}
+
 static void init_dct_functions() {
     HAL_DCT_Read_App_Data = NULL;
     HAL_DCT_Write_App_Data = NULL;
@@ -50,11 +54,18 @@ static void init_dct_functions() {
     if (!part1 || part1->dependency.module_function != MODULE_FUNCTION_NONE) {
         return;
     }
-    // Get addresses of the DCT functions
+    // Get hal_core's dynalib table
     void*** dynalib = (void***)((const char*)part2 + sizeof(module_info_t));
     void** dynalib_hal_core = dynalib[DYNALIB_HAL_CORE_INDEX];
-    HAL_DCT_Read_App_Data = dynalib_hal_core[HAL_DCT_READ_APP_DATA_INDEX];
-    HAL_DCT_Write_App_Data = dynalib_hal_core[HAL_DCT_WRITE_APP_DATA_INDEX];
+    // Get addresses of the DCT functions
+    void* hal_dct_read_app_data_ptr = dynalib_hal_core[HAL_DCT_READ_APP_DATA_INDEX];
+    void* hal_dct_write_app_data_ptr = dynalib_hal_core[HAL_DCT_WRITE_APP_DATA_INDEX];
+    if (!check_module_addr(hal_dct_read_app_data_ptr, part2) ||
+            !check_module_addr(hal_dct_write_app_data_ptr, part2)) {
+        return;
+    }
+    HAL_DCT_Read_App_Data = hal_dct_read_app_data_ptr;
+    HAL_DCT_Write_App_Data = hal_dct_write_app_data_ptr;
 }
 
 void load_dct_functions() {
