@@ -128,7 +128,9 @@ public:
         initStatusData();
         // Set current theme
         LEDSignalThemeData t = { LED_SIGNAL_THEME_VERSION };
-        deserializeTheme(t, currentThemeData(), THEME_DATA_SIZE);
+        char theme[THEME_DATA_SIZE];
+
+        deserializeTheme(t, currentThemeData(theme, sizeof(theme)), THEME_DATA_SIZE);
         setTheme(t);
     }
 
@@ -266,16 +268,19 @@ private:
         }
     }
 
-    static const char* currentThemeData() {
+    static char* currentThemeData(char* buffer, size_t size) {
 #if HAL_PLATFORM_DCT
-        const char* d = (const char*)dct_read_app_data(DCT_LED_THEME_OFFSET);
+        const char* d = (const char*)dct_read_app_data_lock(DCT_LED_THEME_OFFSET);
         if (!d || *d != LED_SIGNAL_THEME_VERSION) { // Check if theme data is initialized in DCT
-            return (const char*)DEFAULT_THEME_DATA;
+            memcpy(buffer, DEFAULT_THEME_DATA, size);
+        } else {
+            memcpy(buffer, d + 1, size); // First byte is reserved for version number
         }
-        return d + 1; // First byte is reserved for version number
+        dct_read_app_data_unlock(DCT_LED_THEME_OFFSET);
 #else
-        return (const char*)DEFAULT_THEME_DATA;
+        memcpy(buffer, DEFAULT_THEME_DATA, size);
 #endif
+        return buffer;
     }
 
     static void serializeTheme(const LEDSignalThemeData& theme, char* data, size_t size) {

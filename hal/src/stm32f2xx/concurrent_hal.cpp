@@ -334,10 +334,10 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
-	if (HAL_IsISR())
-		return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
-	else
-		return xQueueSend(queue, item, delay)!=pdTRUE;
+    if (HAL_IsISR())
+        return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
+    else
+        return xQueueSend(queue, item, delay)!=pdTRUE;
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
@@ -497,12 +497,12 @@ int os_timer_is_active(os_timer_t timer, void* reserved)
 
 static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
 void __flash_acquire() {
-	if (HAL_IsISR()) {
-		PANIC(UsageFault, "Flash operation from IRQ");
-	}
-	flash_lock.lock();
+    if (HAL_IsISR()) {
+        PANIC(UsageFault, "Flash operation from IRQ");
+    }
+    flash_lock.lock();
 }
 
 void __flash_release() {
-	flash_lock.unlock();
+    flash_lock.unlock();
 }
