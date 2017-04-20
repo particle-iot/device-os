@@ -262,7 +262,8 @@ static void Init_Last_Reset_Info()
 
 static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
 {
-    uint32_t flags = *(uint32_t*)dct_read_app_data(DCT_FEATURE_FLAGS_OFFSET);
+    uint32_t flags = 0;
+    dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
     const bool cur_value = flags & flag;
     if (prev_value)
     {
@@ -285,7 +286,8 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
 
 static bool Read_Feature_Flag(uint32_t flag)
 {
-    const uint32_t flags = *(uint32_t*)dct_read_app_data(DCT_FEATURE_FLAGS_OFFSET);
+    uint32_t flags = 0;
+    dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
     return flags & flag;
 }
 
@@ -1222,8 +1224,8 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
         case FEATURE_WIFI_POWERSAVE_CLOCK:
         {
             wwd_set_wlan_sleep_clock_enabled(enabled);
-            const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
-            uint8_t current = (*data);
+            uint8_t current = 0;
+            dct_read_app_data_copy(DCT_RADIO_FLAGS_OFFSET, &current, sizeof(current));
             current &= 0xFC;
             if (!enabled) {
                 current |= 2;   // 0bxxxxxx10 to disable the clock, any other value to enable it.
@@ -1256,8 +1258,8 @@ bool HAL_Feature_Get(HAL_Feature feature)
         {
         		uint8_t value = false;
 #if HAL_PLATFORM_CLOUD_UDP
-        		const uint8_t* data = dct_read_app_data(DCT_CLOUD_TRANSPORT_OFFSET);
-        		value = *data==0xFF;		// default is to use UDP
+        		dct_read_app_data_copy(DCT_CLOUD_TRANSPORT_OFFSET, &value, sizeof(value));
+        		value = value==0xFF;		// default is to use UDP
 #endif
         		return value;
         }
@@ -1299,18 +1301,18 @@ static void BUTTON_Mirror_Init() {
 }
 
 static void BUTTON_Mirror_Persist(button_config_t* conf) {
-    const button_config_t* saved_config = (const button_config_t*)dct_read_app_data(DCT_MODE_BUTTON_MIRROR_OFFSET);
+    button_config_t saved_config;
+    dct_read_app_data_copy(DCT_MODE_BUTTON_MIRROR_OFFSET, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config->active == 0xFF || memcmp((void*)conf, (void*)saved_config, sizeof(button_config_t)))
+        if (saved_config.active == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(button_config_t)))
         {
             dct_write_app_data((void*)conf, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
         }
     } else {
-        if (saved_config->active != 0xFF) {
-            button_config_t tmp;
-            memset((void*)&tmp, 0xff, sizeof(button_config_t));
-            dct_write_app_data((void*)&tmp, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
+        if (saved_config.active != 0xFF) {
+            memset((void*)&saved_config, 0xff, sizeof(button_config_t));
+            dct_write_app_data((void*)&saved_config, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
         }
     }
 }
@@ -1445,18 +1447,18 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
 
 static void LED_Mirror_Persist(uint8_t led, led_config_t* conf) {
     const size_t offset = DCT_LED_MIRROR_OFFSET + ((led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-    const led_config_t* saved_config = (const led_config_t*)dct_read_app_data(offset);
+    led_config_t saved_config;
+    dct_read_app_data_copy(offset, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config->version == 0xFF || memcmp((void*)conf, (void*)saved_config, sizeof(led_config_t)))
+        if (saved_config.version == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(led_config_t)))
         {
             dct_write_app_data((void*)conf, offset, sizeof(led_config_t));
         }
     } else {
-        if (saved_config->version != 0xFF) {
-            led_config_t tmp;
-            memset((void*)&tmp, 0xff, sizeof(led_config_t));
-            dct_write_app_data((void*)&tmp, offset, sizeof(led_config_t));
+        if (saved_config.version != 0xFF) {
+            memset((void*)&saved_config, 0xff, sizeof(led_config_t));
+            dct_write_app_data((void*)&saved_config, offset, sizeof(led_config_t));
         }
     }
 }
