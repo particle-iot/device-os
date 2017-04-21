@@ -39,7 +39,7 @@
 /* Private define ------------------------------------------------------------*/
 #define DBGMCU_CR_SETTINGS      (DBGMCU_CR_DBG_SLEEP|DBGMCU_CR_DBG_STOP|DBGMCU_CR_DBG_STANDBY)
 #define DBGMCU_APB1FZ_SETTINGS  (DBGMCU_APB1_FZ_DBG_IWDG_STOP|DBGMCU_APB1_FZ_DBG_WWDG_STOP)
-#define SYSTEM_FLAGS_MAGIC_NUMBER 0x1adeacc0u
+#define SYSTEM_FLAGS_MAGIC_NUMBER 0x1ADEACC0u
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -869,6 +869,8 @@ inline void Load_SystemFlags_Impl(platform_system_flags_t* f)
 inline void Save_SystemFlags_Impl(const platform_system_flags_t* f)  __attribute__((always_inline));
 inline void Save_SystemFlags_Impl(const platform_system_flags_t* f)
 {
+    // FIXME: Should we check platform_system_flags_t::header to avoid updating of the system flags
+    // with uninitialized data or it's safer to preserve existing behavior?
     // Bootloader_Version_SysFlag, NVMEM_SPARK_Reset_SysFlag
     uint32_t v = (((uint32_t)f->NVMEM_SPARK_Reset_SysFlag & 0xffff) << 16) | ((uint32_t)f->Bootloader_Version_SysFlag & 0xffff);
     RTC_WriteBackupRegister(RTC_BKP_DR5, v);
