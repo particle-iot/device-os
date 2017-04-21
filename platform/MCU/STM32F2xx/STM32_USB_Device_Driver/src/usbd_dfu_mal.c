@@ -43,6 +43,8 @@
  #include "usbd_mem_if_template.h"
 #endif
 
+#include <string.h>
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -256,39 +258,19 @@ uint16_t MAL_Write (uint32_t Idx, uint32_t Add, uint32_t Len)
   * @param  Len: Number of data to be written (in bytes)
   * @retval Buffer pointer
   */
-const uint8_t *MAL_Read (uint32_t Idx, uint32_t Add, uint32_t Len)
+const uint8_t* MAL_Read(uint32_t Idx, uint32_t Add, uint32_t Len)
 {
-  uint32_t memIdx = Idx;
-  
-  if(MAL_OK != MAL_CheckAdd(Idx, Add))
+  if (Idx < MAX_USED_MEDIA && tMALTab[Idx]->pMAL_Read != NULL && MAL_CheckAdd(Idx, Add) == MAL_OK)
   {
-    return MAL_Buffer;
-  }
-
-  if (memIdx < MAX_USED_MEDIA)
-  {
-    /* Check if the command is supported */
-    if (tMALTab[memIdx]->pMAL_Read != NULL)
+    const uint8_t* data = tMALTab[Idx]->pMAL_Read(Add, Len);
+    if (data != NULL)
     {
-      const uint8_t* data = tMALTab[memIdx]->pMAL_Read(Add, Len);
-      if (data != NULL)
-      {
-        return data;
-      }
-      else
-      {
-        return MAL_Buffer;
-      }
-    }
-    else
-    {
-      return MAL_Buffer;
+      return data;
     }
   }
-  else
-  {
-    return MAL_Buffer;
-  }
+  // Fill DFU packet with zeros to make reading errors more apparent
+  memset(MAL_Buffer, 0x00, XFERSIZE);
+  return MAL_Buffer;
 }
 
 /**
