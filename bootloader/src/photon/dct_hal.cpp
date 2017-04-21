@@ -8,4 +8,4 @@
 #define CRC_TYPE uint32_t
 #endif
 
-#include "../hal/src/photon/dct_hal.c"
+#include "../hal/src/photon/dct_hal.cpp"
