@@ -33,7 +33,8 @@ void system_part2_pre_init() {
 
     HAL_Core_Config();
 
-    module_user_part_validated = HAL_Core_Validate_User_Module();
+    // Validate user module and bootloader
+    module_user_part_validated = HAL_Core_Validate_User_Module() && HAL_Core_Validate_Modules(1, NULL);
 
     if (is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();
