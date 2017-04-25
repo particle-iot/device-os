@@ -1,12 +1,14 @@
 #ifndef HAL_CELLULAR_EXCLUDE
 
+#include "modem/mdm_hal.h"
 #include "cellular_hal.h"
 #include "cellular_internal.h"
-#include "modem/mdm_hal.h"
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
 
 static CellularCredentials cellularCredentials;
+
+static CellularNetProv cellularNetProv = CELLULAR_NETPROV_TELEFONICA;
 
 static HAL_NET_Callbacks netCallbacks = { 0 };
 
@@ -83,6 +85,12 @@ cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* rese
 {
     if (strcmp(connect->apn,"") != 0 || strcmp(connect->username,"") != 0 || strcmp(connect->password,"") != 0 ) {
         CHECK_SUCCESS(electronMDM.join(connect->apn, connect->username, connect->password));
+    }
+    else if (cellularNetProv == CELLULAR_NETPROV_TELEFONICA) {
+        CHECK_SUCCESS(electronMDM.join(CELLULAR_NETAPN_TELEFONICA, NULL, NULL));
+    }
+    else if (cellularNetProv == CELLULAR_NETPROV_TWILIO) {
+        CHECK_SUCCESS(electronMDM.join(CELLULAR_NETAPN_TWILIO, NULL, NULL));
     }
     else {
         CHECK_SUCCESS(electronMDM.join());
@@ -288,6 +296,18 @@ cellular_result_t cellular_resume(void* reserved)
 {
     electronMDM.resume();
     return 0;
+}
+
+cellular_result_t cellular_imsi_to_network_provider(void* reserved)
+{
+    const DevStatus* status = electronMDM.getDevStatus();
+    cellularNetProv = detail::_cellular_imsi_to_network_provider(status->imsi);
+    return 0;
+}
+
+CellularNetProv cellular_network_provider_get(void* reserved)
+{
+    return cellularNetProv;
 }
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)
