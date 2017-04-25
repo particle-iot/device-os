@@ -26,10 +26,32 @@
  * For the data to be recognised as a valid page, the first 4 bytes must match
  * the expected watermark. After the watermark is a 4 byte status word.
  *
- * The v1 format is designated by the status seal with 00 in the lowest byte of
- * the 4 bit status word.
  * The layout comprises just the watermark (4 bytes) the status (4 bytes)
- * followed by application data.
+ * followed by application data. The status indicates if the page is to be written (SEAL_INIT), has been written
+ * (SEAL_VALID) or has been cleared (SEAL_CLEARED).
+ *
+ * The v2 format looks identical to the v1 format in the header, and application data.
+ * It adds a block of 16 bytes at the end of the sector. (In theory, the application data region is a few bytes smaller, but
+ * these offsets were never used in practice, so it's of no consequence.)
+ *
+ * When firmware is downgraded from v2 to v1 (or the two must co-exist), we must be
+ * careful the data remains readable to both sides.
+ *
+ * When the v2 implementation writes data, it discards the old page using a distinct code that is different
+ * from the v1 status of 0x00000000 (it clears just some of the bits in the valid header.) The CRC is computed independently from the header so that it is not invalidated
+ * by clearing the header. The v2 implementation will still consider the header as valid (just as if the status were unchanged)
+ * and instead relies on the CRC and the counter to determine which sector contains the lastest data.
+ *
+ * The v1 implementation copies the entire sector, which includes the v2 crc, but does this without updating the crc, meaning the
+ * v2 crc will be invalid.
+ * The v2 implementation can determine if the sector is written by v1, since the non-current sector will
+ * have a status flag of 0x00000000. In that case, it ignores the invalid CRC of the current sector
+ * since the other sector is explicitly marked invalid, meaning the current sector is the only one we have to use.
+ * When writing a new sector, the old v1 sector status is masked with 0x00FFFFFF (clear the top byte),
+ * while the new sector has a valid crc in place. This ensures the v1 code will see the newest sector written, while allowing
+ * the v2 code to fall back to the old sector if the new sector crc appears incorrect.
+ *
+ *
  *
  * The v2 format is designated by the seal with 01 in the lowest byte of the
  * status word. The format comprises the watermark, the status word, and then
