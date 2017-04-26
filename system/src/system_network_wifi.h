@@ -26,8 +26,6 @@
 
 class WiFiNetworkInterface : public ManagedIPNetworkInterface<WLanConfig, WiFiNetworkInterface>
 {
-    WLanConfig ip_config;
-
     static int wifi_add_profile_callback(void* data, const char *ssid, const char *password,
         unsigned long security_type, unsigned long cipher, bool dry_run)
     {
