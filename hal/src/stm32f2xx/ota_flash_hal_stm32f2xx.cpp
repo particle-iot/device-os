@@ -129,6 +129,15 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
                     break;
             }
         }
+
+        if (info->dependency2.module_function != MODULE_FUNCTION_NONE) {
+            if (info->dependency2.module_function == module->module_function &&
+                info->dependency2.module_index == module->module_index) {
+                valid = module->module_version >= info->dependency2.module_version;
+                if (!valid)
+                    break;
+            }
+        }
     }
     HAL_System_Info(&sysinfo, false, nullptr);
 
@@ -147,9 +156,22 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
         else {
             // deliberately not transitive, so we only check the first dependency
             // so only user->system_part_2 is checked
-            const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
-            const module_info_t* dependency = locate_module(dependency_bounds);
-            valid = dependency && (dependency->module_version>=module->dependency.module_version);
+            if (module->dependency.module_function != MODULE_FUNCTION_NONE) {
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
+                const module_info_t* dependency = locate_module(dependency_bounds);
+                valid = dependency && (dependency->module_version>=module->dependency.module_version);
+            } else {
+                valid = true;
+            }
+            // Validate dependency2
+            if (module->dependency2.module_function == MODULE_FUNCTION_NONE ||
+                (module->dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
+                valid = valid && true;
+            } else {
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index);
+                const module_info_t* dependency = locate_module(dependency_bounds);
+                valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
+            }
         }
 
         if (fullDeps && valid) {
