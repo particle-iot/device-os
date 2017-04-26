@@ -24,7 +24,9 @@ int uECC_verify(const uint8_t public_key[uECC_BYTES*2], const uint8_t hash[uECC_
     return 0;
 }
 
-// </stubbed>
+int32_t x509parse_key_ecc(wiced_tls_ecc_key_t * ecc, const unsigned char *key, uint32_t keylen, const unsigned char *pwd, uint32_t pwdlen) {
+    return 1;
+}
 
 #if 0
 wiced_result_t wiced_tcp_start_tls( wiced_tcp_socket_t* socket, wiced_tls_endpoint_type_t type, wiced_tls_certificate_verification_t verification )

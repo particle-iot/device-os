@@ -48,8 +48,13 @@ cp $PHOTON_WICED_REPO_PATH/build/demo.soft_ap-BCM9WCDUSI09-FreeRTOS-LwIP-SDIO/li
 
 # Split Lib_crypto_open.a into two separate libraries
 rm -f lib/Lib_crypto_open_part2.a
-rm -f des.o md4.o sha2.o x509parse.o md5.o
-arm-none-eabi-ar x lib/Lib_crypto_open.a des.o md4.o sha2.o x509parse.o md5.o
-arm-none-eabi-ar d lib/Lib_crypto_open.a des.o md4.o sha2.o x509parse.o md5.o
-arm-none-eabi-ar r lib/Lib_crypto_open_part2.a des.o md4.o sha2.o x509parse.o md5.o
-rm -f des.o md4.o sha2.o x509parse.o md5.o
+rm -f des.o md4.o sha2.o x509parse.o md5.o sha256.o
+arm-none-eabi-ar x lib/Lib_crypto_open.a des.o md4.o sha2.o x509parse.o md5.o sha256.o
+arm-none-eabi-ar d lib/Lib_crypto_open.a des.o md4.o sha2.o x509parse.o md5.o sha256.o
+arm-none-eabi-ar r lib/Lib_crypto_open_part2.a des.o md4.o sha2.o x509parse.o md5.o sha256.o
+rm -f des.o md4.o sha2.o x509parse.o md5.o sha256.o
+
+arm-none-eabi-objcopy --strip-symbols BESL.ARM_CM3.release.a.strip \
+                      --weaken-symbols BESL.ARM_CM3.release.a.weaken \
+                      --strip-unneeded \
+                      lib/BESL.ARM_CM3.release.a
