@@ -149,9 +149,9 @@ cellular_result_t cellular_resume(void* reserved);
 cellular_result_t cellular_imsi_to_network_provider(void* reserved);
 
 /**
- * Function for getting the cellular network provider currently set
+ * Function for getting the cellular network provider data currently set
  */
-CellularNetProv cellular_network_provider_get(void* reserved);
+const CellularNetProvData cellular_network_provider_data_get(void* reserved);
 
 #ifdef __cplusplus
 }

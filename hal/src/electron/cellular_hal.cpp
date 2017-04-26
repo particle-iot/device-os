@@ -86,14 +86,8 @@ cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* rese
     if (strcmp(connect->apn,"") != 0 || strcmp(connect->username,"") != 0 || strcmp(connect->password,"") != 0 ) {
         CHECK_SUCCESS(electronMDM.join(connect->apn, connect->username, connect->password));
     }
-    else if (cellularNetProv == CELLULAR_NETPROV_TELEFONICA) {
-        CHECK_SUCCESS(electronMDM.join(CELLULAR_NETAPN_TELEFONICA, NULL, NULL));
-    }
-    else if (cellularNetProv == CELLULAR_NETPROV_TWILIO) {
-        CHECK_SUCCESS(electronMDM.join(CELLULAR_NETAPN_TWILIO, NULL, NULL));
-    }
     else {
-        CHECK_SUCCESS(electronMDM.join());
+        CHECK_SUCCESS(electronMDM.join(CELLULAR_NET_PROVIDER_DATA[cellularNetProv].apn, NULL, NULL));
     }
     return 0;
 }
@@ -305,9 +299,9 @@ cellular_result_t cellular_imsi_to_network_provider(void* reserved)
     return 0;
 }
 
-CellularNetProv cellular_network_provider_get(void* reserved)
+const CellularNetProvData cellular_network_provider_data_get(void* reserved)
 {
-    return cellularNetProv;
+    return CELLULAR_NET_PROVIDER_DATA[cellularNetProv];
 }
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

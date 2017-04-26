@@ -37,17 +37,33 @@ typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param)
 
 typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);
 
-typedef enum { CELLULAR_NETPROV_TELEFONICA =   0,
-               CELLULAR_NETPROV_TWILIO     =   1,
-               CELLULAR_NETPROV_UNKNOWN    = 999 } CellularNetProv;
+#define DEFINE_NET_PROVIDER_DATA \
+    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_TELEFONICA, "spark.telefonica.com", (23*60), (5684) ),  \
+    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_TWILIO, "wireless.twilio.com", (23*60), (4500) ),  \
+    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_MAX, "", (0), (0) )
 
-// Network APNs
-#define CELLULAR_NETAPN_TELEFONICA              "spark.telefonica.com"
-#define CELLULAR_NETAPN_TWILIO                  "wireless.twilio.com"
+#define DEFINE_NET_PROVIDER( idx, apn, keepalive, port )  idx
+#ifdef __cplusplus
+enum CellularNetProv { DEFINE_NET_PROVIDER_DATA };
+#else
+typedef enum CellularNetProv CellularNetProv;
+#endif
 
-// Network Provider Keep Alive (seconds)
-#define CELLULAR_NETPROV_TELEFONICA_KEEPALIVE   (23*60)
-#define CELLULAR_NETPROV_TWILIO_KEEPALIVE       (23*60)
+#undef DEFINE_NET_PROVIDER
+#define DEFINE_NET_PROVIDER( idx, apn, keepalive, port )  { apn, keepalive, port }
+
+#ifdef __cplusplus
+struct CellularNetProvData {
+    const char* apn;
+    int keepalive;
+    uint16_t port;
+};
+#else
+typedef struct CellularNetProvData CellularNetProvData;
+#endif
+
+// CELLULAR_NET_PROVIDER_DATA[CELLULAR_NETPROV_MAX - 1] is the last provider record
+const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_DATA };
 
 #ifdef __cplusplus
 // Todo - is storing raw string pointers correct here? These will only be valid

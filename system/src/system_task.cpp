@@ -287,14 +287,9 @@ void establish_cloud_connection()
         }
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
-        uint16_t electron_udp_port = PORT_COAPS;
-        int electron_udp_keepalive = CELLULAR_NETPROV_TELEFONICA_KEEPALIVE;
-        if (cellular_network_provider_get(NULL) == CELLULAR_NETPROV_TWILIO) {
-            electron_udp_port = PORT_COAPS_TWILIO;
-            electron_udp_keepalive = CELLULAR_NETPROV_TWILIO_KEEPALIVE;
-        }
-        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, electron_udp_keepalive * 1000, nullptr, nullptr), (void)0);
-        spark_cloud_udp_port_set(electron_udp_port);
+        const CellularNetProvData provider_data = cellular_network_provider_data_get(NULL);
+        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), nullptr, nullptr), (void)0);
+        spark_cloud_udp_port_set(provider_data.port);
 #endif
         INFO("Cloud: connecting");
         system_notify_event(cloud_status, cloud_status_connecting);
