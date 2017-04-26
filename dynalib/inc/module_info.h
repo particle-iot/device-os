@@ -67,7 +67,7 @@ STATIC_ASSERT_MODULE_INFO_OFFSET(module_index, 15);
 STATIC_ASSERT_MODULE_INFO_OFFSET(dependency, 16);
 STATIC_ASSERT_MODULE_INFO_OFFSET(dependency2, 20);
 
-STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24);
+STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(void*) != 4);
 
 /**
  * Define the module function enum also as preprocessor symbols so we can
