@@ -449,11 +449,7 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
     int i = 0;
     if (flags & 1) {
         // Validate only that system-part that depends on bootloader passes dependency check
-#if PLATFORM_ID == 10
-        i = 3;
-#else
-        i = 1;
-#endif
+        i = 2;
     }
     do {
         bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++);
