@@ -62,9 +62,6 @@ struct CellularNetProvData {
 typedef struct CellularNetProvData CellularNetProvData;
 #endif
 
-// CELLULAR_NET_PROVIDER_DATA[CELLULAR_NETPROV_MAX - 1] is the last provider record
-const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_DATA };
-
 #ifdef __cplusplus
 // Todo - is storing raw string pointers correct here? These will only be valid
 // If they are stored as constants in the application.

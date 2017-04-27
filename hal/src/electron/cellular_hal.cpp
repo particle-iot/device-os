@@ -10,6 +10,9 @@ static CellularCredentials cellularCredentials;
 
 static CellularNetProv cellularNetProv = CELLULAR_NETPROV_TELEFONICA;
 
+// CELLULAR_NET_PROVIDER_DATA[CELLULAR_NETPROV_MAX - 1] is the last provider record
+const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_DATA };
+
 static HAL_NET_Callbacks netCallbacks = { 0 };
 
 void HAL_NET_notify_connected()
