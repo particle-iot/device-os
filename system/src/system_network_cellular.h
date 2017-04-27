@@ -61,6 +61,9 @@ protected:
         result = cellular_pdp_activate(savedCreds, NULL);
         if (result) { return; }
 
+        result = cellular_imsi_to_network_provider(NULL);
+        if (result) { return; }
+
         //DEBUG_D("savedCreds = %s %s %s\r\n", savedCreds->apn, savedCreds->username, savedCreds->password);
         result = cellular_gprs_attach(savedCreds, NULL);
         if (result) { return; }
