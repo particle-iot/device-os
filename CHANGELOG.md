@@ -1,5 +1,7 @@
 ## 0.6.2-rc.2
 
+### FEATURES
+
 - [[PR #1311]](https://github.com/spark/firmware/pull/1311) `[Implements CH1537] [Electron]` Added support for Twilio SIMs by default in system firmware.
 
 ### BUG FIX
