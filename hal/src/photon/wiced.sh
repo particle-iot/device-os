@@ -54,7 +54,7 @@ arm-none-eabi-ar d lib/Lib_crypto_open.a des.o md4.o sha2.o x509parse.o md5.o sh
 arm-none-eabi-ar r lib/Lib_crypto_open_part2.a des.o md4.o sha2.o x509parse.o md5.o sha256.o
 rm -f des.o md4.o sha2.o x509parse.o md5.o sha256.o
 
-arm-none-eabi-objcopy --strip-symbols BESL.ARM_CM3.release.a.strip \
-                      --weaken-symbols BESL.ARM_CM3.release.a.weaken \
+arm-none-eabi-objcopy --strip-symbols lib/BESL.ARM_CM3.release.a.strip \
+                      --weaken-symbols lib/BESL.ARM_CM3.release.a.weaken \
                       --strip-unneeded \
                       lib/BESL.ARM_CM3.release.a
