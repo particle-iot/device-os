@@ -520,6 +520,9 @@ bool MDMParser::_powerOn(void)
         goto failure;
     }
 
+    // Flush any on-boot URCs that can cause syncing issues later
+    waitFinalResp(NULL,NULL,200);
+
     // echo off
     sendFormated("AT E0\r\n");
     if(RESP_OK != waitFinalResp())
@@ -597,8 +600,8 @@ bool MDMParser::powerOn(const char* simpin)
             if (RESP_OK != waitFinalResp(_cbCPIN, &_dev.sim))
                 goto failure;
         } else if (_dev.sim != SIM_READY) {
-            system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-            while ((HAL_Timer_Get_Milli_Seconds() - start < 1000UL) && !_cancel_all_operations); // just wait
+            // wait for up to one second while looking for slow "+CPIN: READY" URCs
+            waitFinalResp(_cbCPIN, &_dev.sim, 1000);
         }
     }
     if (_dev.sim != SIM_READY) {

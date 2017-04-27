@@ -26,21 +26,11 @@
 #include "net_hal.h"
 #include "inet_hal.h"
 #include "system_tick_hal.h"
+#include "cellular_hal_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct __attribute__((__packed__))  _CellularConfig_t {
-    uint16_t size;
-    NetworkConfig nw;
-} CellularConfig;
-
-typedef int cellular_result_t;
-
-typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
-
-typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);
 
 /**
  * Power on and initialize the cellular module,
@@ -54,25 +44,6 @@ cellular_result_t  cellular_init(void* reserved);
  * Power off the cellular module.
  */
 cellular_result_t  cellular_off(void* reserved);
-
-#ifdef __cplusplus
-// Todo - is storing raw string pointers correct here? These will only be valid
-// If they are stored as constants in the application.
-struct CellularCredentials
-{
-    uint16_t size;
-    const char* apn = "";
-    const char* username = "";
-    const char* password = "";
-
-    CellularCredentials()
-    {
-        size = sizeof(*this);
-    }
-};
-#else
-typedef struct CellularCredentials CellularCredentials;
-#endif
 
 /**
  * Wait for the cellular module to register on the GSM network.
@@ -104,23 +75,6 @@ cellular_result_t  cellular_gprs_detach(void* reserved);
  */
 cellular_result_t  cellular_fetch_ipconfig(CellularConfig* config, void* reserved);
 
-#ifdef __cplusplus
-struct CellularDevice
-{
-    uint16_t size;
-    char iccid[21];
-    char imei[16];
-
-    CellularDevice()
-    {
-        memset(this, 0, sizeof(*this));
-        size = sizeof(*this);
-    }
-};
-#else
-typedef struct CellularDevice CellularDevice;
-#endif
-
 /**
  * Retrieve cellular module info, must be initialized first.
  */
@@ -148,16 +102,6 @@ bool cellular_sim_ready(void* reserved);
  */
 void cellular_cancel(bool cancel, bool calledFromISR, void* reserved);
 
-#ifdef __cplusplus
-struct CellularSignalHal
-{
-    int rssi = 0;
-    int qual = 0;
-};
-#else
-typedef struct CellularSignalHal CellularSignalHal;
-#endif
-
 /**
  * Retrieve cellular signal strength info
  */
@@ -168,30 +112,6 @@ cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
  */
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
                          system_tick_t timeout_ms, const char* format, ...);
-
-#ifdef __cplusplus
-struct CellularDataHal {
-    uint16_t size;
-    int cid;
-    int tx_session_offset;
-    int rx_session_offset;
-    int tx_total_offset;
-    int rx_total_offset;
-    int tx_session;
-    int rx_session;
-    int tx_total;
-    int rx_total;
-
-    CellularDataHal()
-    {
-        memset(this, 0, sizeof(*this));
-        cid = -1;
-        size = sizeof(*this);
-    }
-};
-#else
-typedef struct CellularDataHal CellularDataHal;
-#endif
 
 /**
  * Set cellular data usage info
@@ -222,6 +142,16 @@ cellular_result_t cellular_pause(void* reserved);
  * Resumes cellular modem serial communication
  */
 cellular_result_t cellular_resume(void* reserved);
+
+/**
+ * Set the cellular network provider based on the IMSI of the SIM card inserted
+ */
+cellular_result_t cellular_imsi_to_network_provider(void* reserved);
+
+/**
+ * Function for getting the cellular network provider data currently set
+ */
+const CellularNetProvData cellular_network_provider_data_get(void* reserved);
 
 #ifdef __cplusplus
 }

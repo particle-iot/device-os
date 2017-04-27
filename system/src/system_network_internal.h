@@ -376,8 +376,8 @@ public:
     void connect(bool listen_enabled=true) override
     {
         LOG_NETWORK_STATE();
-        INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
-                (int)listening(), (int)WLAN_SMART_CONFIG_START);
+        // INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
+        //        (int)listening(), (int)WLAN_SMART_CONFIG_START);
         if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;

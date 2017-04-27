@@ -29,6 +29,7 @@
 
 int Internet_Test(void);
 
+void spark_cloud_udp_port_set(uint16_t port);
 int spark_cloud_socket_connect(void);
 int spark_cloud_socket_disconnect(void);
 
