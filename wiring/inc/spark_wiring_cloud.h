@@ -35,8 +35,6 @@
 #include "system_mode.h"
 #include <functional>
 
-using particle::Flags;
-
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 
@@ -51,14 +49,14 @@ typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 #define	__XSTRING(x)	__STRING(x)	/* expand x, then stringify */
 #endif
 
-enum PublishFlag: uint8_t {
-    PUBLIC = PUBLISH_EVENT_FLAG_PUBLIC,
-    PRIVATE = PUBLISH_EVENT_FLAG_PRIVATE,
-    NO_ACK = PUBLISH_EVENT_FLAG_NO_ACK,
-    WITH_ACK = PUBLISH_EVENT_FLAG_WITH_ACK
-};
+struct PublishFlagType; // Tag type for Particle.publish() flags
+typedef particle::Flags<PublishFlagType, uint8_t> PublishFlags;
+typedef PublishFlags::FlagType PublishFlag;
 
-PARTICLE_DEFINE_FLAG_OPERATORS(PublishFlag)
+const PublishFlag PUBLIC(PUBLISH_EVENT_FLAG_PUBLIC);
+const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
+const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
+const PublishFlag WITH_ACK(PUBLISH_EVENT_FLAG_WITH_ACK);
 
 class CloudClass {
 
@@ -212,17 +210,17 @@ public:
       return _function(funcKey, std::bind(func, instance, _1));
     }
 
-    inline particle::Future<bool> publish(const char *eventName, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
+    inline particle::Future<bool> publish(const char *eventName, PublishFlags flags1 = PUBLIC, PublishFlags flags2 = PublishFlags())
     {
         return publish(eventName, NULL, flags1, flags2);
     }
 
-    inline particle::Future<bool> publish(const char *eventName, const char *eventData, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
+    inline particle::Future<bool> publish(const char *eventName, const char *eventData, PublishFlags flags1 = PUBLIC, PublishFlags flags2 = PublishFlags())
     {
         return publish(eventName, eventData, 60, flags1, flags2);
     }
 
-    inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, Flags<PublishFlag> flags1 = PUBLIC, Flags<PublishFlag> flags2 = Flags<PublishFlag>())
+    inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, PublishFlags flags1 = PUBLIC, PublishFlags flags2 = PublishFlags())
     {
         return publish_event(eventName, eventData, ttl, flags1 | flags2);
     }
@@ -335,7 +333,7 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, Flags<PublishFlag> flags);
+    static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags);
 
     static ProtocolFacade* sp()
     {
