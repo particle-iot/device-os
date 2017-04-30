@@ -72,3 +72,4 @@ PROVIDE ( dynalib_location_hal_can = system_part2_module_table + 56 );
 PROVIDE ( dynalib_location_hal_usb = system_part2_module_table + 60 );
 PROVIDE ( dynalib_location_hal_rgbled = system_part2_module_table + 64 );
 PROVIDE ( dynalib_location_hal_bootloader = system_part2_module_table + 68 );
+PROVIDE ( dynalib_location_system_module_part2 = system_part2_module_table + 72 );

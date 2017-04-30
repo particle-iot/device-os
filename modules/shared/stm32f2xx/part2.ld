@@ -113,6 +113,8 @@ SECTIONS
         *(COMMON)
         link_bss_end = .;
         _ebss = .;
+        . = ALIGN(., 4);
+        link_end_of_static_ram = .;
     }> SRAM AT> SRAM
 
     /*
