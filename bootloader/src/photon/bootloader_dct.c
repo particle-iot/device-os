@@ -8,10 +8,16 @@
 #define MODULAR_FIRMWARE 1
 #include "../../../hal/src/photon/ota_module_bounds.c"
 
-#define SYSTEM_PART2_MIN_MODULE_VERSION 107 // 0.7.0-rc.1
-#define DYNALIB_HAL_CORE_INDEX 7
-#define HAL_DCT_READ_APP_DATA_INDEX 33
-#define HAL_DCT_WRITE_APP_DATA_INDEX 34
+#define MIN_MODULE_VERSION_SYSTEM_PART2 107 // 0.7.0-rc.1
+#define DYNALIB_INDEX_SYSTEM_MODULE_PART1 2 // system_module_part1
+#define DYNALIB_INDEX_SYSTEM_MODULE_PART2 18 // system_module_part2
+#define DYNALIB_INDEX_HAL_CORE 7 // hal_core
+#define FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT 0 // module_system_part1_pre_init()
+#define FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT 0 // module_system_part2_pre_init()
+#define FUNC_INDEX_HAL_DCT_READ_APP_DATA 33 // HAL_DCT_Read_App_Data()
+#define FUNC_INDEX_HAL_DCT_WRITE_APP_DATA 34 // HAL_DCT_Write_App_Data()
+
+typedef void*(*module_pre_init_func)();
 
 static const void*(*HAL_DCT_Read_App_Data)(uint32_t, void*) = NULL;
 static int(*HAL_DCT_Write_App_Data)(const void*, uint32_t, uint32_t, void*) = NULL;
@@ -37,14 +43,22 @@ static const module_info_t* get_module_info(const module_bounds_t* bounds, uint1
     return module;
 }
 
-static inline bool check_module_addr(void* ptr, const module_info_t* module) {
-    return (ptr >= module->module_start_address && ptr < module->module_end_address);
+static const void* get_module_func(const module_info_t* module, size_t dynalib_index, size_t func_index) {
+    // Get dynalib table
+    void*** module_table = (void***)((const char*)module + sizeof(module_info_t));
+    void** dynalib = module_table[dynalib_index];
+    // Get function address
+    void* func = dynalib[func_index];
+    if (func < module->module_start_address || func >= module->module_end_address) {
+        return NULL;
+    }
+    return func;
 }
 
 static void init_dct_functions() {
     HAL_DCT_Read_App_Data = NULL;
     HAL_DCT_Write_App_Data = NULL;
-    const module_info_t* part2 = get_module_info(&module_system_part2, SYSTEM_PART2_MIN_MODULE_VERSION);
+    const module_info_t* part2 = get_module_info(&module_system_part2, MIN_MODULE_VERSION_SYSTEM_PART2);
     if (!part2) {
         return;
     }
@@ -54,18 +68,24 @@ static void init_dct_functions() {
     if (!part1 || part1->dependency.module_function != MODULE_FUNCTION_NONE) {
         return;
     }
-    // Get hal_core's dynalib table
-    void*** dynalib = (void***)((const char*)part2 + sizeof(module_info_t));
-    void** dynalib_hal_core = dynalib[DYNALIB_HAL_CORE_INDEX];
     // Get addresses of the DCT functions
-    void* hal_dct_read_app_data_ptr = dynalib_hal_core[HAL_DCT_READ_APP_DATA_INDEX];
-    void* hal_dct_write_app_data_ptr = dynalib_hal_core[HAL_DCT_WRITE_APP_DATA_INDEX];
-    if (!check_module_addr(hal_dct_read_app_data_ptr, part2) ||
-            !check_module_addr(hal_dct_write_app_data_ptr, part2)) {
+    const void* dct_read = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_HAL_DCT_READ_APP_DATA);
+    const void* dct_write = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_HAL_DCT_WRITE_APP_DATA);
+    if (!dct_read || !dct_write) {
         return;
     }
-    HAL_DCT_Read_App_Data = hal_dct_read_app_data_ptr;
-    HAL_DCT_Write_App_Data = hal_dct_write_app_data_ptr;
+    // Initialize static data of each module
+    module_pre_init_func part1_init = get_module_func(part1, DYNALIB_INDEX_SYSTEM_MODULE_PART1,
+            FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT);
+    module_pre_init_func part2_init = get_module_func(part2, DYNALIB_INDEX_SYSTEM_MODULE_PART2,
+            FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT);
+    if (!part1_init || !part2_init) {
+        return;
+    }
+    part1_init();
+    part2_init();
+    HAL_DCT_Read_App_Data = dct_read;
+    HAL_DCT_Write_App_Data = dct_write;
 }
 
 void load_dct_functions() {
