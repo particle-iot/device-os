@@ -204,3 +204,18 @@ int wlan_restart()
 {
   return -1;
 }
+
+int wlan_get_hostname(char* buf, size_t len, void* reserved)
+{
+    // Unsupported
+    if (buf) {
+        buf[0] = '\0';
+    }
+    return -1;
+}
+
+int wlan_set_hostname(const char* hostname, void* reserved)
+{
+    // Unsupported
+    return -1;
+}

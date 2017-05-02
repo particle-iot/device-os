@@ -168,4 +168,32 @@ test(WIFI_06_restore_connection)
     }
 }
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+
+test(WIFI_07_reset_hostname)
+{
+    assertEqual(WiFi.setHostname(NULL), 0);
+}
+
+test(WIFI_08_default_hostname_equals_device_id)
+{
+    String hostname = WiFi.hostname();
+    String devId = System.deviceID();
+    assertEqual(hostname, devId);
+}
+
+test(WIFI_09_custom_hostname_can_be_set)
+{
+    String hostname("testhostname");
+    assertEqual(WiFi.setHostname(hostname), 0);
+    assertEqual(WiFi.hostname(), hostname);
+}
+
+test(WIFI_10_restore_default_hostname)
+{
+    assertEqual(WiFi.setHostname(NULL), 0);
+}
+
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+
 #endif

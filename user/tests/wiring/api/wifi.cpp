@@ -193,4 +193,13 @@ test(api_wifi_get_credentials)
     }
 }
 
+test(api_wifi_hostname)
+{
+    String hostname;
+    const char shostname[] = "testhostname";
+    API_COMPILE(hostname = WiFi.hostname());
+    API_COMPILE(WiFi.setHostname(hostname));
+    API_COMPILE(WiFi.setHostname(shostname));
+}
+
 #endif

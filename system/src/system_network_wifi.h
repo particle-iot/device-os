@@ -209,5 +209,18 @@ public:
         wlan_set_error_count(count);
     }
 
+    virtual int set_hostname(const char* hostname) override
+    {
+        return wlan_set_hostname(hostname, NULL);
+    }
+
+    virtual int get_hostname(char* buf, size_t buf_len, bool noDefault) override
+    {
+        if (!noDefault) {
+            config_hostname();
+        }
+        return wlan_get_hostname(buf, buf_len, NULL);
+    }
+
 };
 
