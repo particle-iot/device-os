@@ -124,8 +124,6 @@ wiced_country_code_t fetch_country_code()
     wiced_country_code_t result =
         wiced_country_code_t(MK_CNTRY(code[0], code[1], hex_nibble(code[2])));
 
-    dct_read_app_data_unlock(DCT_COUNTRY_CODE_OFFSET);
-
     // if Japan explicitly configured, lower tx power for TELEC certification
     if (result == WICED_COUNTRY_JAPAN)
     {
@@ -137,6 +135,9 @@ wiced_country_code_t fetch_country_code()
     {
         result = WICED_COUNTRY_JAPAN;
     }
+
+    dct_read_app_data_unlock(DCT_COUNTRY_CODE_OFFSET);
+
     return result;
 }
 
@@ -371,6 +372,7 @@ int wlan_supplicant_start()
 
     const eap_config_t* eap_conf = (const eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
     if (!is_eap_configuration_valid(eap_conf)) {
+        dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
         return 1;
     }
     eap_type = eap_conf->type;
@@ -1274,10 +1276,8 @@ void wlan_set_ipaddress(const HAL_IPAddress* host, const HAL_IPAddress* netmask,
                         const HAL_IPAddress* gateway, const HAL_IPAddress* dns1,
                         const HAL_IPAddress* dns2, void* reserved)
 {
-    static_ip_config_t pconfig;
-    wlan_fetch_saved_ip_config(&pconfig);
     static_ip_config_t config;
-    memcpy(&config, &pconfig, sizeof(config));
+    wlan_fetch_saved_ip_config(&config);
     assign_if_set(config.host, host);
     assign_if_set(config.netmask, netmask);
     assign_if_set(config.gateway, gateway);
