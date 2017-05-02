@@ -43,6 +43,7 @@ extern "C" {
  *----------------------------------------------------------*/
 
 #define configNO_MALLOC                             ( 0 )
+#define configSUPPORT_STATIC_ALLOCATION             ( 1 )
 #define configUSE_NEWLIB_MALLOC_LOCK                ( 0 )
 #define configUSE_TIMERS                            ( 1 )
 #define configTIMER_TASK_PRIORITY                   ( 2 )
@@ -63,6 +64,9 @@ extern "C" {
 #define configIDLE_SHOULD_YIELD                     ( 1 )
 #ifndef configUSE_MUTEXES
 #define configUSE_MUTEXES                           ( 1 )
+#endif /* ifndef configUSE_MUTEXES */
+#ifndef configUSE_RECURSIVE_MUTEXES
+#define configUSE_RECURSIVE_MUTEXES                 ( 1 )
 #endif /* ifndef configUSE_MUTEXES */
 #define configUSE_COUNTING_SEMAPHORES               ( 1 )
 #define configFREE_TASKS_IN_IDLE                    ( 0 )
