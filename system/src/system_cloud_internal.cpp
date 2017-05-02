@@ -66,6 +66,8 @@ static void formatResetReasonEventData(int reason, uint32_t data, char *buf, siz
 
 static sock_handle_t sparkSocket = socket_handle_invalid();
 
+extern uint8_t feature_cloud_udp;
+
 ProtocolFacade* sp;
 
 /**
@@ -1358,7 +1360,7 @@ bool system_cloud_active()
         return false;
 
 #if HAL_PLATFORM_CLOUD_UDP
-    if (!HAL_Feature_Get(FEATURE_CLOUD_UDP))
+    if (!feature_cloud_udp)
 #endif
     {
         system_tick_t now = millis();

@@ -56,6 +56,7 @@ unsigned char wlan_profile_index;
 
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t SYSTEM_POWEROFF;
+uint8_t feature_cloud_udp = 0;
 
 static struct SetThreadCurrentFunctionPointers {
     SetThreadCurrentFunctionPointers() {
@@ -326,6 +327,7 @@ void establish_cloud_connection()
 int cloud_handshake()
 {
 	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+    feature_cloud_udp = (uint8_t)udp;
 	bool presence_announce = !udp;
 	int err = Spark_Handshake(presence_announce);
 	return err;
