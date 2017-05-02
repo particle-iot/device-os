@@ -1,7 +1,7 @@
 
 system_part3_start = 0x8060000;
 
-system_part3_ram_end = 0x2001D800 /* 0x20200000-10K */;
+system_part3_ram_end = 0x2001D800 - 1024 /* 0x20200000-11K */;
 system_part3_ram_start = 0x2001c000 /* end of SRAM - 16K */;
 
 system_part3_module_info_size = 24;

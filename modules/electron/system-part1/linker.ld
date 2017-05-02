@@ -5,7 +5,7 @@ MEMORY
  SRAM is located immediately below system-part2, whcih has a base address
  of 0x20200000-10K. 
 */
-    SRAM      (rwx) : ORIGIN = 0x20020000-6K-10K, LENGTH = 6K
+    SRAM      (rwx) : ORIGIN = 0x20020000-5K-11K, LENGTH = 5K
 }
 
 INCLUDE module_system_part1_export.ld
