@@ -138,6 +138,9 @@ wiced_result_t wiced_dct_restore_factory_reset  ( void );
 void*          wiced_dct_get_current_address    ( dct_section_t section );
 wiced_result_t wiced_erase_non_current_dct		(void);
 
+extern wiced_result_t wiced_dct_lock(void);
+extern wiced_result_t wiced_dct_unlock(void);
+
 #ifdef __cplusplus
 } /*extern "C" */
 #endif

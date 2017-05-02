@@ -217,9 +217,21 @@ STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
  * @param offset
  * @return
  */
-extern const void* dct_read_app_data(uint32_t offset);
+#if defined(MODULE_FUNCTION) && MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+# define DCT_DEPRECATE
+#else
+# define DCT_DEPRECATE __attribute__ ((deprecated))
+#endif
 
-extern int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
+const void* dct_read_app_data(uint32_t offset) DCT_DEPRECATE;
+
+#undef DCT_DEPRECATE
+
+int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size);
+const void* dct_read_app_data_lock(uint32_t offset);
+int dct_read_app_data_unlock(uint32_t offset);
+
+int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
 
 
 #ifdef	__cplusplus
