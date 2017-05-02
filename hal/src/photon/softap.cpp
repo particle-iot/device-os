@@ -525,9 +525,9 @@ int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext
     hex_decode(buf, len, hex_encoded_ciphertext);
 
     // reuse the hex encoded buffer
-    const uint8_t *key = fetch_device_private_key(1);
+    const uint8_t *key = fetch_device_private_key(1); // fetch and lock private key data
     int plaintext_len = decrypt_rsa(buf, key, (uint8_t*)plaintext, max_plaintext_len);
-    fetch_device_private_key(0);
+    fetch_device_private_key(0); // unlock private key data
     return plaintext_len;
 }
 
@@ -973,9 +973,11 @@ class SoftAPController {
         if (result == WICED_SUCCESS)
         {
             if (memcmp(&expected, soft_ap, sizeof(expected))) {
+                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
+            } else {
+                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
             }
-            wiced_dct_read_unlock( soft_ap, WICED_FALSE );
         }
         return result;
     }
