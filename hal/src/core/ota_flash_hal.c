@@ -77,7 +77,7 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
     parseServerAddressData(server_addr, buf, EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
 }
 
-void HAL_FLASH_Write_ServerAddress(uint8_t *buf)
+void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
 {
     FLASH_Write_ServerAddress_Data(buf);
 }
@@ -103,7 +103,7 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 }
 
 
-void HAL_FLASH_Write_ServerPublicKey(uint8_t *keyBuffer)
+void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
 {
     FLASH_Write_ServerPublicKey(keyBuffer);
 }

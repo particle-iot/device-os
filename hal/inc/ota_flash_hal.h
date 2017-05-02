@@ -196,9 +196,9 @@ STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
 #define EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH		(612)
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress *server_addr);
-void HAL_FLASH_Write_ServerAddress(uint8_t *buf);
+void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp);
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
-void HAL_FLASH_Write_ServerPublicKey(uint8_t *keyBuffer);
+void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp);
 
 typedef enum {
     /**

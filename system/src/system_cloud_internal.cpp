@@ -494,8 +494,8 @@ void SystemEvents(const char* name, const char* data)
             memcpy(&psk_buf, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
             memcpy(&server_addr_buf, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
         }
-        HAL_FLASH_Write_ServerPublicKey(psk_buf);
-        HAL_FLASH_Write_ServerAddress(server_addr_buf);
+        HAL_FLASH_Write_ServerPublicKey(psk_buf, udp);
+        HAL_FLASH_Write_ServerAddress(server_addr_buf, udp);
     }
 }
 

@@ -136,9 +136,9 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
     parseServerAddressData(server_addr, deviceConfig.server_key+offset);
 }
 
-void HAL_FLASH_Write_ServerAddress(uint8_t *buf)
+void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
 {
-    int offset = HAL_Feature_Get(FEATURE_CLOUD_UDP) ? SERVER_ADDRESS_OFFSET_EC : SERVER_ADDRESS_OFFSET;
+    int offset = (udp) ? SERVER_ADDRESS_OFFSET_EC : SERVER_ADDRESS_OFFSET;
     memcpy(&deviceConfig.server_key+offset, buf, SERVER_ADDRESS_SIZE);
 }
 
@@ -162,9 +162,8 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
     INFO("server key: %s", buf);
 }
 
-void HAL_FLASH_Write_ServerPublicKey(uint8_t *keyBuffer)
+void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
 {
-    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
     if (udp) {
         memcpy(&deviceConfig.server_key, keyBuffer, SERVER_PUBLIC_KEY_EC_SIZE);
     } else {

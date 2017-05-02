@@ -1218,7 +1218,7 @@ void FLASH_Read_ServerAddress_Data(void *buf)
 }
 
 // buf length must be at least EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH
-void FLASH_Write_ServerAddress_Data(uint8_t *buf)
+void FLASH_Write_ServerAddress_Data(const uint8_t *buf)
 {
     sFLASH_WriteBuffer(buf,
             EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS,
@@ -1234,7 +1234,7 @@ void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 }
 
 // keyBuffer length must be at least EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH
-void FLASH_Write_ServerPublicKey(uint8_t *keyBuffer)
+void FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer)
 {
     sFLASH_WriteBuffer(keyBuffer,
             EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS,
