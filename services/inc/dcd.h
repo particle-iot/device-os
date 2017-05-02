@@ -26,33 +26,43 @@
  * For the data to be recognised as a valid page, the first 4 bytes must match
  * the expected watermark. After the watermark is a 4 byte status word.
  *
- * The layout comprises just the watermark (4 bytes) the status (4 bytes)
+ * The v1 layout comprises just the watermark (4 bytes) the status (4 bytes)
  * followed by application data. The status indicates if the page is to be written (SEAL_INIT), has been written
  * (SEAL_VALID) or has been cleared (SEAL_CLEARED).
  *
  * The v2 format looks identical to the v1 format in the header, and application data.
- * It adds a block of 16 bytes at the end of the sector. (In theory, the application data region is a few bytes smaller, but
+ * It adds a block of 16 bytes at the end of the sector. (From a compatibility perspective,
+ * in theory, the application data region is a few bytes smaller, but
  * these offsets were never used in practice, so it's of no consequence.)
+ * The last data in the sector is the 4 byte CRC, which covers all data in the sector up to the CRC.
+ * (before writing the CRC, the sector is marked as sealed, and then the CRC for the entire sector is computed.)
+ * The data preceding the crc is a variable length block. The length is the first two bytes before the CRC.
+ * The contents of the block is determined by the version. for v2, there are 16 bytes reserved that are presently unused.
+ * (set to 0xFF)
  *
- * When firmware is downgraded from v2 to v1 (or the two must co-exist), we must be
- * careful the data remains readable to both sides.
+ * When firmware is downgraded from v2 to v1 (or the two must co-exist, such as with a newer bootloader
+ * and older firmware), we must be careful the data remains readable to both v1 and v2 versions of the code.
  *
  * When the v2 implementation writes data, it discards the old page using a distinct code that is different
  * from the v1 status of 0x00000000 (it clears just some of the bits in the valid header.) The CRC is computed independently from the header so that it is not invalidated
  * by clearing the header. The v2 implementation will still consider the header as valid (just as if the status were unchanged)
- * and instead relies on the CRC and the counter to determine which sector contains the lastest data.
+ * and instead relies on the CRC and the counter to determine which sector contains the latest data. The v1 implementation will not consider the old
+ * sector, and instead relies on the SEAL_VALID_V1 status being set.
  *
  * The v1 implementation copies the entire sector, which includes the v2 crc, but does this without updating the crc, meaning the
  * v2 crc will be invalid.
  * The v2 implementation can determine if the sector is written by v1, since the non-current sector will
  * have a status flag of 0x00000000. In that case, it ignores the invalid CRC of the current sector
  * since the other sector is explicitly marked invalid, meaning the current sector is the only one we have to use.
- * When writing a new sector, the old v1 sector status is masked with 0x00FFFFFF (clear the top byte),
- * while the new sector has a valid crc in place. This ensures the v1 code will see the newest sector written, while allowing
- * the v2 code to fall back to the old sector if the new sector crc appears incorrect.
+ *
+ * The sector crc is checked only when the other sector has a seal of SEAL_VALID or SEAL_INVALID_V2, and
+ * the current sector also has a seal with these values. This ensures the CRC is only used after one successful write.
+ *
+ * Todo - work through all the possible states of status and valid/invalid crc for the pair of sectors to
+ * determine the one that should be considered valid.
  *
  *
- *
+ * Old stuff...
  * The v2 format is designated by the seal with 01 in the lowest byte of the
  * status word. The format comprises the watermark, the status word, and then
  * a 32-bit crc followed by 8-bits of flags and 11 reserved bytes. The crc checksums the data
@@ -111,10 +121,10 @@ public:
         static const uint32_t SEAL_INIT = 0xFFFFFFFF;
         static const uint32_t SEAL_CLEARED = 0;
 
-        static const uint32_t SEAL_VALID_V1 = 0xEDA15E00;  // 005EA1ED;
-        static const uint32_t SEAL_VALID_V2 = 0xEDA15E01;  // 015EA1ED;
+        static const uint32_t SEAL_VALID = 0xEDA15E00;  // 005EA1ED;
+        static const uint32_t SEAL_INVALID_V2 = 0x69A00C00;
 
-        static const size_t crc_data_start = 12;
+        	static_assert((SEAL_VALID & SEAL_INVALID_V2)==SEAL_INVALID_V2, "SEAL_INVALID_V2 should be a subset of the 1 bits of SEAL_VALID");
 
         /**
          * Identifies the data in each page as a DCD page
@@ -122,51 +132,23 @@ public:
         uint32_t watermark;
 
         /**
-         * Marks the sector status, including the version number.
+         * Marks the sector status.
          */
         uint32_t seal;
 
-        uint32_t crc;
-
-        struct Flags {
-        		uint8_t counter : 2;
-        		uint8_t reserved : 6;
-        		uint8_t reserved2[3];
-        } flags;
-
-        uint32_t reserved[4];
-
         /**
-         * Returns the size of the header. This is determined dynamically from the data.
+         * Returns the size of the header. It is always 8 bytes.
          */
         size_t size() const {
-        		return versionSize(version());
+        		return sizeof(Header);
         }
-
-        static size_t versionSize(uint8_t version) {
-			switch (version) {
-			case 1: return sizeof(uint32_t)*2;
-			case 2: return sizeof(Header);
-			default: return 0;
-			}
-        }
-
-        uint8_t version() const {
-        		switch (seal) {
-        		case SEAL_VALID_V1: return 1;
-        		case SEAL_VALID_V2: return 2;
-        		default: return 0;
-        		}
-        }
-
 
         /**
          * Determines if the current header is valid.
-         * Note that this does not check the CRC.
          */
         bool isValid() const
         {
-            return watermark==WATERMARK && version()>0;
+            return watermark==WATERMARK && (seal==SEAL_VALID || seal==SEAL_INVALID_V2);
         }
 
         void initialize()
@@ -175,29 +157,64 @@ public:
             seal = SEAL_INIT;
         }
 
-        void make_valid_v1()
+        void make_valid()
         {
             watermark = WATERMARK;
-            seal = SEAL_VALID_V1;
-        }
-
-        void make_valid_v2(uint32_t crc, uint8_t counter)
-        {
-        		memset(this, 0, sizeof(*this));
-            watermark = WATERMARK;
-            seal = SEAL_VALID_V2;
-            this->crc = crc;
-            flags.counter = counter;
+            seal = SEAL_VALID;
         }
 
         void make_invalid()
         {
             watermark = WATERMARK;
-            seal = SEAL_CLEARED;
+            seal = SEAL_INVALID_V2;
+        }
+
+        uint8_t version() const {
+        		if (watermark!=WATERMARK) return 0;
+        		switch (seal) {
+        		case SEAL_VALID: return 1;
+        		case SEAL_INVALID_V2: return 2;
+        		return 0;
+        		}
         }
     };
 
-    const Address Length = sectorSize-sizeof(Header);
+    /**
+     * This struct is written to the end of the sector.
+     */
+    struct __attribute__((packed)) Footer {
+    		// add new members here.
+		uint32_t reserved[4];
+		struct Flags {
+				uint8_t counter : 2;
+				uint8_t reserved : 6;
+				uint8_t reserved2[3];
+		} flags;
+
+		uint8_t pad;
+		uint8_t version_flags;		// currently 0
+		uint16_t mysize;				// the size of the data block (end of sector - size is the start of the data block)
+		uint32_t crc;
+
+        void make_valid_v2(uint32_t crc, uint8_t counter)
+        {
+        		memset(this, 0, sizeof(*this));
+            this->crc = crc;
+            this->mysize = this->size();
+            flags.counter = counter;
+        }
+
+        size_t size() {
+        		return sizeof(*this);
+        }
+	};
+
+    /**
+     * The offset in each sector where the footer is written.
+     */
+    const size_t footer_offset = sectorSize-sizeof(Footer);
+
+    const Address Length = sectorSize-sizeof(Header)-sizeof(Footer);
     static const Sector Sector_0 = 0;
     static const Sector Sector_1 = 1;
     static const Sector Sector_Unknown = 255;
@@ -256,15 +273,25 @@ protected:
 		return header;
     }
 
+    const Footer& sectorFooter(Sector sector) {
+ 		const Footer& footer = *(const Footer*)store.dataAt(addressOf(sector));
+ 		return footer;
+    }
+
     void write(Sector sector, const Header& header)
     {
         store.write(addressOf(sector), &header, header.size());
     }
 
+    void write(Sector sector, const Footer& footer)
+    {
+    		store.write(addressOf(sector)+footer_offset, &footer, footer.size());
+    }
+
     void initialize(Sector sector)
     {
         erase(sector);
-        _write_v2_header(sector, 0);
+        _write_header(sector, 0);
     }
 
     uint32_t computeSectorCRC(Sector sector) {
@@ -275,6 +302,7 @@ protected:
     Sector currentSector() {
 		uint8_t version0 = version(Sector_0);
 		uint8_t version1 = version(Sector_1);
+
         uint8_t counter0=0, counter1=0;
         if (version0>=2 && version1>=2) {
             counter0 = sectorHeader(Sector_0).flags.counter;
@@ -436,7 +464,7 @@ public:
         const Header& existingHeader = *(reinterpret_cast<const Header*>(existing));
         Address destination = addressOf(newSector);
 
-        Address writeOffset = Header::versionSize(version);
+        Address writeOffset = sizeof(Header);
         Address readOffset = existingHeader.size();
 
         // write everything before the data that is changed
