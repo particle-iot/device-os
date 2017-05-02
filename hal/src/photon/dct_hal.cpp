@@ -8,9 +8,9 @@
 #include "hal_irq_flag.h"
 #include "atomic_flag_mutex.h"
 
-using DCDLock = AtomicFlagMutex<os_result_t, os_thread_yield>;
+using DCTLock = AtomicFlagMutex<os_result_t, os_thread_yield>;
 
-static DCDLock dcdLock;
+static DCTLock dctLock;
 
 extern uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
@@ -54,7 +54,10 @@ int dct_read_app_data_unlock(uint32_t offset)
 }
 
 const void* dct_read_app_data(uint32_t offset) {
-    return ((const void*)((uint32_t)wiced_dct_get_current_address(DCT_APP_SECTION) + offset));
+    wiced_dct_lock();
+    const char* ptr = ((const char*)wiced_dct_get_current_address(DCT_APP_SECTION) + offset);
+    wiced_dct_unlock();
+    return ptr;
 }
 
 int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
@@ -65,12 +68,12 @@ int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
 
 wiced_result_t wiced_dct_lock()
 {
-    dcdLock.lock();
+    dctLock.lock();
     return WICED_SUCCESS;
 }
 
 wiced_result_t wiced_dct_unlock()
 {
-    dcdLock.unlock();
+    dctLock.unlock();
     return WICED_SUCCESS;
 }
