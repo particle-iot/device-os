@@ -37,6 +37,8 @@
 #include "core_hal.h"
 #include "logging.h"
 #include "atomic_flag_mutex.h"
+#include "mutex.h"
+#include "service_debug.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 # include "wwd_rtos_interface.h"
@@ -505,4 +507,36 @@ void __flash_acquire() {
 
 void __flash_release() {
     flash_lock.unlock();
+}
+
+#define DCT_LOCK_TIMEOUT 10000
+
+static RecursiveMutex dctLock(DCT_LOCK_TIMEOUT);
+
+#ifdef DEBUG_BUILD
+static volatile int32_t dctLockCounter = 0;
+#endif
+
+int dct_lock(int write, void* reserved)
+{
+    SPARK_ASSERT(!HAL_IsISR());
+    int res = dctLock.lock();
+    SPARK_ASSERT(res);
+#ifdef DEBUG_BUILD
+    dctLockCounter++;
+    SPARK_ASSERT(!write || dctLockCounter == 1);
+#endif
+    return !res;
+}
+
+int dct_unlock(int write, void* reserved)
+{
+    SPARK_ASSERT(!HAL_IsISR());
+    int res = dctLock.unlock();
+    SPARK_ASSERT(res);
+#ifdef DEBUG_BUILD
+    dctLockCounter--;
+    SPARK_ASSERT(!write || dctLockCounter == 0);
+#endif
+    return !res;
 }
