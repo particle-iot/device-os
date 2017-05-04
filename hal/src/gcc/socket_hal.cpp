@@ -140,8 +140,6 @@ bool is_valid(ip::udp::socket& handle) {
 
 class TCPServer
 {
-	uint16_t _port;
-
 	ip::tcp::acceptor acceptor;
 
 	void accept_handler(const boost::system::error_code& error)
@@ -166,8 +164,7 @@ class TCPServer
 
 public:
 	TCPServer(uint16_t port)
-		: _port(port),
-		  acceptor(device_io_service, ip::tcp::endpoint(ip::tcp::v4(), port))
+		: acceptor(device_io_service, ip::tcp::endpoint(ip::tcp::v4(), port))
 	{
 		acceptor.non_blocking(true);
 	}
