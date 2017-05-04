@@ -18,164 +18,167 @@
 #ifndef SPARK_WIRING_FLAGS_H
 #define SPARK_WIRING_FLAGS_H
 
-#include <type_traits>
-
-// Helper macro defining global operators for a specified enum type T
-#define PARTICLE_DEFINE_FLAG_OPERATORS(T) \
-        inline __attribute__((unused)) ::particle::Flags<T> operator|(T flag1, T flag2) { \
-            return ::particle::Flags<T>(flag1) | flag2; \
-        } \
-        inline __attribute__((unused)) ::particle::Flags<T> operator|(T flag, ::particle::Flags<T> flags) { \
-            return flags | flag; \
-        } \
-        inline __attribute__((unused)) ::particle::Flags<T> operator&(T flag, ::particle::Flags<T> flags) { \
-            return flags & flag; \
-        } \
-        inline __attribute__((unused)) ::particle::Flags<T> operator^(T flag, ::particle::Flags<T> flags) { \
-            return flags ^ flag; \
-        }
-
 namespace particle {
 
-// Class storing or-combinations of enum values in a type-safe way
-template<typename T>
-class Flags {
+template<typename TagT, typename ValueT>
+class Flags;
+
+// Class storing a typed flag value
+template<typename TagT, typename ValueT = unsigned>
+class Flag {
 public:
-    typedef T EnumType;
-    typedef typename std::underlying_type<T>::type ValueType;
+    explicit Flag(ValueT val);
 
-    explicit Flags(ValueType val = 0);
-    Flags(T flag);
+    Flags<TagT, ValueT> operator|(Flag<TagT, ValueT> flag) const;
+    Flags<TagT, ValueT> operator|(Flags<TagT, ValueT> flags) const;
+    Flags<TagT, ValueT> operator&(Flags<TagT, ValueT> flags) const;
+    Flags<TagT, ValueT> operator^(Flags<TagT, ValueT> flags) const;
 
-    Flags<T> operator|(T flag) const;
-    Flags<T> operator|(Flags<T> flags) const;
-    Flags<T>& operator|=(T flag);
-    Flags<T>& operator|=(Flags<T> flags);
+    explicit operator ValueT() const;
 
-    Flags<T> operator&(T flag) const;
-    Flags<T> operator&(Flags<T> flags) const;
-    Flags<T>& operator&=(T flag);
-    Flags<T>& operator&=(Flags<T> flags);
-
-    Flags<T> operator^(T flag) const;
-    Flags<T> operator^(Flags<T> flags) const;
-    Flags<T>& operator^=(T flag);
-    Flags<T>& operator^=(Flags<T> flags);
-
-    Flags<T> operator~() const;
-
-    Flags<T>& operator=(ValueType val);
-
-    operator ValueType() const;
-    bool operator!() const;
-
-    ValueType value() const;
+    ValueT value() const;
 
 private:
-    ValueType val_;
+    ValueT val_;
+};
+
+// Class storing or-combinations of typed flag values
+template<typename TagT, typename ValueT = unsigned>
+class Flags {
+public:
+    typedef TagT TagType;
+    typedef ValueT ValueType;
+    typedef Flag<TagT, ValueT> FlagType;
+
+    Flags();
+    Flags(Flag<TagT, ValueT> flag);
+
+    Flags<TagT, ValueT> operator|(Flags<TagT, ValueT> flags) const;
+    Flags<TagT, ValueT>& operator|=(Flags<TagT, ValueT> flags);
+
+    Flags<TagT, ValueT> operator&(Flags<TagT, ValueT> flags) const;
+    Flags<TagT, ValueT>& operator&=(Flags<TagT, ValueT> flags);
+
+    Flags<TagT, ValueT> operator^(Flags<TagT, ValueT> flags) const;
+    Flags<TagT, ValueT>& operator^=(Flags<TagT, ValueT> flags);
+
+    Flags<TagT, ValueT> operator~() const;
+
+    explicit operator ValueT() const;
+    explicit operator bool() const;
+
+    ValueT value() const;
+
+private:
+    ValueT val_;
+
+    explicit Flags(ValueT val);
 };
 
 } // namespace particle
 
-template<typename T>
-inline particle::Flags<T>::Flags(ValueType val) :
+// particle::Flag<TagT, ValueT>
+template<typename TagT, typename ValueT>
+inline particle::Flag<TagT, ValueT>::Flag(ValueT val) :
         val_(val) {
 }
 
-template<typename T>
-inline particle::Flags<T>::Flags(T flag) :
-        val_((ValueType)flag) {
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flag<TagT, ValueT>::operator|(Flag<TagT, ValueT> flag) const {
+    return (Flags<TagT, ValueT>(*this) | flag);
 }
 
-template<typename T>
-inline particle::Flags<T> particle::Flags<T>::operator|(T flag) const {
-    return Flags<T>(val_ | (ValueType)flag);
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flag<TagT, ValueT>::operator|(Flags<TagT, ValueT> flags) const {
+    return (flags | *this);
 }
 
-template<typename T>
-inline particle::Flags<T> particle::Flags<T>::operator|(Flags<T> flags) const {
-    return Flags<T>(val_ | flags.val_);
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flag<TagT, ValueT>::operator&(Flags<TagT, ValueT> flags) const {
+    return (flags & *this);
 }
 
-template<typename T>
-inline particle::Flags<T>& particle::Flags<T>::operator|=(T flag) {
-    val_ |= (ValueType)flag;
-    return *this;
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flag<TagT, ValueT>::operator^(Flags<TagT, ValueT> flags) const {
+    return (flags ^ *this);
 }
 
-template<typename T>
-inline particle::Flags<T>& particle::Flags<T>::operator|=(Flags<T> flags) {
+template<typename TagT, typename ValueT>
+inline particle::Flag<TagT, ValueT>::operator ValueT() const {
+    return val_;
+}
+
+template<typename TagT, typename ValueT>
+inline ValueT particle::Flag<TagT, ValueT>::value() const {
+    return val_;
+}
+
+// particle::Flags<TagT, ValueT>
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>::Flags() :
+        val_(0) {
+}
+
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>::Flags(Flag<TagT, ValueT> flag) :
+        val_(flag.value()) {
+}
+
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>::Flags(ValueT val) :
+        val_(val) {
+}
+
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flags<TagT, ValueT>::operator|(Flags<TagT, ValueT> flags) const {
+    return Flags<TagT, ValueT>(val_ | flags.val_);
+}
+
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>& particle::Flags<TagT, ValueT>::operator|=(Flags<TagT, ValueT> flags) {
     val_ |= flags.val_;
     return *this;
 }
 
-template<typename T>
-inline particle::Flags<T> particle::Flags<T>::operator&(T flag) const {
-    return Flags<T>(val_ & (ValueType)flag);
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flags<TagT, ValueT>::operator&(Flags<TagT, ValueT> flags) const {
+    return Flags<TagT, ValueT>(val_ & flags.val_);
 }
 
-template<typename T>
-inline particle::Flags<T> particle::Flags<T>::operator&(Flags<T> flags) const {
-    return Flags<T>(val_ & flags.val_);
-}
-
-template<typename T>
-inline particle::Flags<T>& particle::Flags<T>::operator&=(T flag) {
-    val_ &= (ValueType)flag;
-    return *this;
-}
-
-template<typename T>
-inline particle::Flags<T>& particle::Flags<T>::operator&=(Flags<T> flags) {
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>& particle::Flags<TagT, ValueT>::operator&=(Flags<TagT, ValueT> flags) {
     val_ &= flags.val_;
     return *this;
 }
 
-template<typename T>
-inline particle::Flags<T> particle::Flags<T>::operator^(T flag) const {
-    return Flags<T>(val_ ^ (ValueType)flag);
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flags<TagT, ValueT>::operator^(Flags<TagT, ValueT> flags) const {
+    return Flags<TagT, ValueT>(val_ ^ flags.val_);
 }
 
-template<typename T>
-inline particle::Flags<T> particle::Flags<T>::operator^(Flags<T> flags) const {
-    return Flags<T>(val_ ^ flags.val_);
-}
-
-template<typename T>
-inline particle::Flags<T>& particle::Flags<T>::operator^=(T flag) {
-    val_ ^= (ValueType)flag;
-    return *this;
-}
-
-template<typename T>
-inline particle::Flags<T>& particle::Flags<T>::operator^=(Flags<T> flags) {
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>& particle::Flags<TagT, ValueT>::operator^=(Flags<TagT, ValueT> flags) {
     val_ ^= flags.val_;
     return *this;
 }
 
-template<typename T>
-inline particle::Flags<T> particle::Flags<T>::operator~() const {
-    return Flags<T>(~val_);
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT> particle::Flags<TagT, ValueT>::operator~() const {
+    return Flags<TagT, ValueT>(~val_);
 }
 
-template<typename T>
-inline particle::Flags<T>& particle::Flags<T>::operator=(ValueType val) {
-    val_ = val;
-    return *this;
-}
-
-template<typename T>
-inline particle::Flags<T>::operator ValueType() const {
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>::operator ValueT() const {
     return val_;
 }
 
-template<typename T>
-inline bool particle::Flags<T>::operator!() const {
-    return !val_;
+template<typename TagT, typename ValueT>
+inline particle::Flags<TagT, ValueT>::operator bool() const {
+    return val_;
 }
 
-template<typename T>
-inline typename particle::Flags<T>::ValueType particle::Flags<T>::value() const {
+template<typename TagT, typename ValueT>
+inline ValueT particle::Flags<TagT, ValueT>::value() const {
     return val_;
 }
 
