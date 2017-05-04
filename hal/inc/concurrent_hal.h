@@ -179,7 +179,6 @@ int os_mutex_trylock(os_mutex_t mutex);
 int os_mutex_unlock(os_mutex_t mutex);
 
 int os_mutex_recursive_create(os_mutex_recursive_t* mutex);
-int os_mutex_recursive_create_static(os_mutex_recursive_t* mutex);
 int os_mutex_recursive_destroy(os_mutex_recursive_t mutex);
 int os_mutex_recursive_lock(os_mutex_recursive_t mutex);
 int os_mutex_recursive_trylock(os_mutex_recursive_t mutex);
