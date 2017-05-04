@@ -414,7 +414,7 @@ static void process_isr_task_queue()
 }
 
 #if Wiring_SetupButtonUX
-extern void system_handle_button_click();
+extern void system_handle_button_clicks(bool isIsr);
 #endif
 
 void Spark_Idle_Events(bool force_events/*=false*/)
@@ -429,7 +429,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     if (!SYSTEM_POWEROFF) {
 
 #if Wiring_SetupButtonUX
-        system_handle_button_click();
+        system_handle_button_clicks(false /* isIsr */);
 #endif
         manage_serial_flasher();
 
@@ -586,4 +586,12 @@ uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void
     APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(application_thread_invoke(callback, data, reserved), 0);
     callback(data);
     return 0;
+}
+
+void cancel_connection()
+{
+    // Cancel current network connection attempt
+    network.connect_cancel(true);
+    // Abort cloud connection
+    Spark_Abort();
 }

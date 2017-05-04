@@ -42,6 +42,7 @@ void Spark_SetTime(unsigned long dateTime);
 void Spark_Process_Events();
 void Spark_Sleep();
 void Spark_Wake();
+void Spark_Abort();
 
 void system_set_time(time_t time, unsigned param, void* reserved);
 
