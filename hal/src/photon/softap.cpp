@@ -781,7 +781,7 @@ protected:
     void produce_response(Writer& writer, int result) {
         // fetch public key
         const int length = EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH;
-        const uint8_t* data = fetch_device_public_key(1);
+        const uint8_t* data = fetch_device_public_key(1); // fetch and lock public key data
         write_char(writer, '{');
         if (data) {
             writer.write("\"b\":\"");
@@ -797,7 +797,7 @@ protected:
             result = 1;
         }
 
-        fetch_device_public_key(0);
+        fetch_device_public_key(0); // unlock public key data
 
         write_json_int(writer, "r", result);
         write_char(writer, '}');
