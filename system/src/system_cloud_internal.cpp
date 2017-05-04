@@ -68,7 +68,7 @@ static sock_handle_t sparkSocket = socket_handle_invalid();
 
 ProtocolFacade* sp;
 
-static Flags<ParticleKeyErrorFlag> particle_key_errors;
+static uint32_t particle_key_errors;
 
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
@@ -678,7 +678,7 @@ void Spark_Protocol_Init(void)
             else {
                 memcpy(&pubkey, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
             }
-            particle_key_errors |= Flags<ParticleKeyErrorFlag>(PUBLIC_SERVER_KEY_BLANK);
+            particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
         }
 
         uint8_t id_length = HAL_device_ID(NULL, 0);
@@ -1076,7 +1076,7 @@ int spark_cloud_socket_connect()
         else {
             memcpy(&server_addr, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
         }
-        particle_key_errors |= Flags<ParticleKeyErrorFlag>(SERVER_ADDRESS_BLANK);
+        particle_key_errors |= SERVER_ADDRESS_BLANK;
     }
 	switch (server_addr.addr_type)
     {

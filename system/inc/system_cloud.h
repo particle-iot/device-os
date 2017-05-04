@@ -26,10 +26,6 @@
 #include <time.h>
 #include <stdint.h>
 
-#include "spark_wiring_flags.h"
-
-using particle::Flags;
-
 enum ParticleKeyErrorFlag: uint32_t
 {
   NO_ERROR                      = 0,
@@ -42,8 +38,6 @@ enum ParticleKeyErrorFlag: uint32_t
   PRIVATE_DEVICE_KEY_BLANK      = 64,
   PRIVATE_DEVICE_KEY_CORRUPTED  = 128
 };
-
-PARTICLE_DEFINE_FLAG_OPERATORS(ParticleKeyErrorFlag)
 
 typedef enum
 {
