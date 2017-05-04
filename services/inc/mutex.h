@@ -9,14 +9,14 @@
 # include "wwd_rtos_interface.h"
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
-class RecursiveMutex
+class StaticRecursiveMutex
 {
 public:
-    RecursiveMutex(uint32_t blockTime)
+    StaticRecursiveMutex(uint32_t blockTime = 0)
         : blockTime_{blockTime / portTICK_PERIOD_MS} {
         init();
     }
-    ~RecursiveMutex() {
+    ~StaticRecursiveMutex() {
         if (mutex_) {
             vSemaphoreDelete(mutex_);
         }

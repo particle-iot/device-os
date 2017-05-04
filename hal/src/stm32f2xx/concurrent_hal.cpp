@@ -511,7 +511,7 @@ void __flash_release() {
 
 #define DCT_LOCK_TIMEOUT 10000
 
-static RecursiveMutex dctLock(DCT_LOCK_TIMEOUT);
+static StaticRecursiveMutex dctLock(DCT_LOCK_TIMEOUT);
 
 #ifdef DEBUG_BUILD
 static volatile int32_t dctLockCounter = 0;
