@@ -110,31 +110,14 @@ void core_log(const char* msg, ...)
     va_end(args);
 }
 
-void makePinsInput() {
-    // Don't reinitialize pins on 26 pin model that are not mapped
-    // externally since it causes the Pi to lock up
-
-    // Raspberry Pi 2, 3, Zero, etc (40 pin connector)
-    const pin_t ioPinsNew[] = { D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, };
-    // Raspberry Pi 1 (26 pin connector)
-    const pin_t ioPinsOld[] = { D0, D1, D2, D3, D9, D10, D11, D12, };
-
-    int model, rev, mem, maker, warranty;
-    piBoardId(&model, &rev, &mem, &maker, &warranty);
-    if (model >= PI_MODEL_2) {
-        for (pin_t pin : ioPinsNew) {
-            HAL_Pin_Mode(pin, INPUT);
-        }
-    } else {
-        for (pin_t pin : ioPinsOld) {
-            HAL_Pin_Mode(pin, INPUT);
-        }
-    }
+void restorePins() {
+    // Make pins that were used during program back into inputs
+    HAL_GPIO_Restore_Pins(NULL);
 }
 
 void quit_forcefully(int signal) {
     INFO("Force quitting");
-    makePinsInput();
+    restorePins();
     // Exit by resending the terminate signal
     std::signal(signal, SIG_DFL);
     std::raise(signal);
@@ -202,9 +185,8 @@ char* bytes2hex(const uint8_t* buf, char* result, unsigned len)
 void HAL_Core_Config(void)
 {
     wiringPiSetupGpio();
-    // Put pins in a safe state now and at exit
-    atexit(makePinsInput);
-    makePinsInput();
+    // Put pins in a safe state at exit
+    atexit(restorePins);
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
