@@ -124,7 +124,7 @@ public:
         		return sizeof(Header);
         }
 
-        bool is_header() const {
+        bool isHeader() const {
         		return watermark==WATERMARK;
         }
 
@@ -135,7 +135,7 @@ public:
          */
         bool isValid() const
         {
-            return is_header() && seal==SEAL_VALID;
+            return isHeader() && seal==SEAL_VALID;
         }
 
         void initialize()
@@ -298,7 +298,7 @@ protected:
     }
 
     /**
-     * Creates the sector as a valid sector, with data initialized to 0xFF.
+     * Creates the s	ector as a valid sector, with data initialized to 0xFF.
      */
     Result initialize(Sector sector)
     {
@@ -428,7 +428,7 @@ public:
     }
 
     uint32_t computeCRC(const uint8_t* sectorStart) {
-    		return calculateCRC(sectorStart+sizeof(Header), sectorSize-sizeof(Header)-sizeof(uint32_t));
+    		return calculateCRC(sectorStart+sizeof(Header), sectorSize-sizeof(Header)-sizeof(typename Footer::crc_type));
     }
 
     /**
@@ -496,7 +496,7 @@ public:
         Sector current = currentValidSector();
         Sector newSector = alternateSectorTo(current);
         const uint8_t* existing = store.dataAt(addressOf(current));
-        Result error = this->_writeSector(offset, data, length, existing, newSector);
+        	Result error = this->_writeSector(offset, data, length, existing, newSector);
         if (error) return error;
 
 		Header header;
