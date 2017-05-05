@@ -20,13 +20,11 @@ uint32_t crc32(uint8_t* pdata, unsigned int nbytes, uint32_t crc) {
 
 int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size) {
     void* p = NULL;
-    int result = 0;
+    int result = -1;
     if (ptr && wiced_dct_read_lock(&p, WICED_FALSE, DCT_APP_SECTION, offset, 0) == WICED_SUCCESS) {
         memcpy(ptr, p, size);
-    } else {
-        result = 1;
+        result = wiced_dct_read_unlock(NULL, WICED_FALSE);
     }
-    wiced_dct_read_unlock(NULL, WICED_FALSE);
     return result;
 }
 

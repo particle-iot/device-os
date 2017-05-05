@@ -7,9 +7,7 @@
 namespace {
 
 StaticRecursiveMutex dctLock;
-
-dct_lock_func_t dctLockFunc = nullptr;
-dct_unlock_func_t dctUnlockFunc = nullptr;
+bool dctLockDisabled = false;
 
 #ifdef DEBUG_BUILD
 int dctLockCounter = 0;
@@ -18,8 +16,8 @@ int dctLockCounter = 0;
 } // namespace
 
 int dct_lock(int write) {
-    if (dctLockFunc) {
-        return dctLockFunc(write);
+    if (dctLockDisabled) {
+        return 0;
     }
     // Default implementation
     SPARK_ASSERT(!HAL_IsISR());
@@ -33,8 +31,8 @@ int dct_lock(int write) {
 }
 
 int dct_unlock(int write) {
-    if (dctUnlockFunc) {
-        return dctUnlockFunc(write);
+    if (dctLockDisabled) {
+        return 0;
     }
     // Default implementation
     SPARK_ASSERT(!HAL_IsISR());
@@ -47,7 +45,6 @@ int dct_unlock(int write) {
     return !ok;
 }
 
-void dct_set_lock_impl(dct_lock_func_t lock, dct_unlock_func_t unlock) {
-    dctLockFunc = lock;
-    dctUnlockFunc = unlock;
+void dct_set_lock_enabled(int enabled) {
+    dctLockDisabled = !enabled;
 }

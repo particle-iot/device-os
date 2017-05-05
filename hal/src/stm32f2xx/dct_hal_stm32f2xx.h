@@ -5,14 +5,10 @@
 extern "C" {
 #endif
 
-typedef int(*dct_lock_func_t)(int);
-typedef int(*dct_unlock_func_t)(int);
-
 int dct_lock(int write);
 int dct_unlock(int write);
 
-// Overrides default DCT locking implementation
-void dct_set_lock_impl(dct_lock_func_t lock, dct_unlock_func_t unlock);
+void dct_set_lock_enabled(int enabled);
 
 #ifdef __cplusplus
 } // extern "C"

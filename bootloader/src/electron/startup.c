@@ -17,7 +17,7 @@
  ******************************************************************************
  */
 
-#include "dcd_flash.h"
+#include "dct_hal.h"
 
 void platform_startup()
 {

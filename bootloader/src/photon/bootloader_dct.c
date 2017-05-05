@@ -22,11 +22,11 @@
 #define DYNALIB_INDEX_HAL_DCT 18 // hal_dct
 #define FUNC_INDEX_DCT_READ_APP_DATA 0 // dct_read_app_data()
 #define FUNC_INDEX_DCT_WRITE_APP_DATA 4 // dct_write_app_data()
-#define FUNC_INDEX_DCT_SET_LOCK_IMPL 5 // dct_set_lock_impl()
+#define FUNC_INDEX_DCT_SET_LOCK_ENABLED 5 // dct_set_lock_enabled()
 
 typedef const void*(*dct_read_app_data_func_t)(uint32_t);
 typedef int(*dct_write_app_data_func_t)(const void*, uint32_t, uint32_t);
-typedef void(*dct_set_lock_impl_func_t)(dct_lock_func_t, dct_unlock_func_t);
+typedef void(*dct_set_lock_enabled_func_t)(int);
 typedef void*(*module_pre_init_func_t)();
 
 static dct_read_app_data_func_t dct_read_app_data_func = NULL;
@@ -65,11 +65,6 @@ static const void* get_module_func(const module_info_t* module, size_t dynalib_i
     return func;
 }
 
-// Dummy implementation of the DCT lock/unlock callbacks
-static int dct_lock_unlock(int write) {
-    return 0;
-}
-
 static void init_dct_functions() {
     dct_read_app_data_func = NULL;
     dct_write_app_data_func = NULL;
@@ -86,8 +81,8 @@ static void init_dct_functions() {
     // Get addresses of the DCT functions
     dct_read_app_data_func_t dct_read = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_READ_APP_DATA);
     dct_write_app_data_func_t dct_write = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_WRITE_APP_DATA);
-    dct_set_lock_impl_func_t dct_set_lock_impl = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_SET_LOCK_IMPL);
-    if (!dct_read || !dct_write || !dct_set_lock_impl) {
+    dct_set_lock_enabled_func_t dct_set_lock_enabled = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_SET_LOCK_ENABLED);
+    if (!dct_read || !dct_write || !dct_set_lock_enabled) {
         return;
     }
     // Initialize static data of each module
@@ -100,8 +95,8 @@ static void init_dct_functions() {
     }
     part1_init();
     part2_init();
-    // Disable DCT locking
-    dct_set_lock_impl(dct_lock_unlock, dct_lock_unlock);
+    // Disable global DCT lock
+    dct_set_lock_enabled(0);
     dct_read_app_data_func = dct_read;
     dct_write_app_data_func = dct_write;
 }
