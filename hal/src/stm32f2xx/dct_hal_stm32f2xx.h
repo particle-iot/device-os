@@ -1,14 +1,18 @@
 #ifndef DCT_HAL_STM32F2XX_H
 #define DCT_HAL_STM32F2XX_H
 
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-const void* HAL_DCT_Read_App_Data(uint32_t offset, void* reserved);
-int HAL_DCT_Write_App_Data(const void* data, uint32_t offset, uint32_t size, void* reserved);
+typedef int(*dct_lock_func_t)(int);
+typedef int(*dct_unlock_func_t)(int);
+
+int dct_lock(int write);
+int dct_unlock(int write);
+
+// Overrides default DCT locking implementation
+void dct_set_lock_impl(dct_lock_func_t lock, dct_unlock_func_t unlock);
 
 #ifdef __cplusplus
 } // extern "C"

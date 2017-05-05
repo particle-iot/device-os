@@ -212,20 +212,8 @@ STATIC_ASSERT_FLAGS_OFFSET(FeaturesEnabled_SysFlag, 19);
 STATIC_ASSERT_FLAGS_OFFSET(RCC_CSR_SysFlag, 20);
 STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
 
-/**
- * Reads application data from the DCT area.
- * @param offset
- * @return
- */
-#if defined(MODULE_FUNCTION) && MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-# define DCT_DEPRECATE
-#else
-# define DCT_DEPRECATE __attribute__ ((deprecated))
-#endif
-
-const void* dct_read_app_data(uint32_t offset) DCT_DEPRECATE;
-
-#undef DCT_DEPRECATE
+// Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
+const void* dct_read_app_data(uint32_t offset);
 
 int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size);
 const void* dct_read_app_data_lock(uint32_t offset);
