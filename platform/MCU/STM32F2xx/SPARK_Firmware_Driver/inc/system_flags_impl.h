@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-void Load_SystemFlags_Impl(platform_system_flags_t* flags);
-void Save_SystemFlags_Impl(const platform_system_flags_t* flags);
+int Load_SystemFlags_Impl(platform_system_flags_t* flags);
+int Save_SystemFlags_Impl(const platform_system_flags_t* flags);
 
 #ifdef __cplusplus
 } // extern "C"

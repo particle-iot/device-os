@@ -6,8 +6,7 @@
 
 #define SYSTEM_FLAGS_MAGIC_NUMBER 0x1ADEACC0u
 
-void Load_SystemFlags_Impl(platform_system_flags_t* f)
-{
+int Load_SystemFlags_Impl(platform_system_flags_t* f) {
 /*
     System flags layout:
 
@@ -24,10 +23,10 @@ void Load_SystemFlags_Impl(platform_system_flags_t* f)
     if (v != SYSTEM_FLAGS_MAGIC_NUMBER) {
         // Fill flags structure with 0xff to preserve compatibility with existing code
         memset(f, 0xff, sizeof(platform_system_flags_t));
-        return;
+        f->header = SYSTEM_FLAGS_MAGIC_NUMBER;
+        return -1; // Not an error technically
     }
-    f->header[0] = SYSTEM_FLAGS_MAGIC_NUMBER & 0xffff;
-    f->header[1] = (SYSTEM_FLAGS_MAGIC_NUMBER >> 16) & 0xffff;
+    f->header = SYSTEM_FLAGS_MAGIC_NUMBER;
     // Bootloader_Version_SysFlag, NVMEM_SPARK_Reset_SysFlag
     v = RTC_ReadBackupRegister(RTC_BKP_DR5);
     f->Bootloader_Version_SysFlag = v & 0xffff;
@@ -49,12 +48,14 @@ void Load_SystemFlags_Impl(platform_system_flags_t* f)
     // RCC_CSR_SysFlag
     v = RTC_ReadBackupRegister(RTC_BKP_DR9);
     f->RCC_CSR_SysFlag = v;
+    return 0;
 }
 
-void Save_SystemFlags_Impl(const platform_system_flags_t* f)
-{
-    // FIXME: Should we check platform_system_flags_t::header to avoid updating of the system flags
-    // with uninitialized data or it's safer to preserve existing behavior?
+int Save_SystemFlags_Impl(const platform_system_flags_t* f) {
+    // Don't update system flags with uninitialized data
+    if (f->header != SYSTEM_FLAGS_MAGIC_NUMBER) {
+        return -1;
+    }
     // Bootloader_Version_SysFlag, NVMEM_SPARK_Reset_SysFlag
     uint32_t v = (((uint32_t)f->NVMEM_SPARK_Reset_SysFlag & 0xffff) << 16) | ((uint32_t)f->Bootloader_Version_SysFlag & 0xffff);
     RTC_WriteBackupRegister(RTC_BKP_DR5, v);
@@ -74,4 +75,5 @@ void Save_SystemFlags_Impl(const platform_system_flags_t* f)
     // Magic number
     v = SYSTEM_FLAGS_MAGIC_NUMBER;
     RTC_WriteBackupRegister(RTC_BKP_DR4, v);
+    return 0;
 }
