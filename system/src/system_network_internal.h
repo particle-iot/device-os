@@ -136,6 +136,9 @@ struct NetworkInterface
     virtual void update_config(bool force=false)=0;
     virtual void* config()=0;       // not really happy about lack of type
 
+    virtual int set_hostname(const char* hostname)=0;
+    virtual int get_hostname(char* buffer, size_t buffer_len, bool noDefault=false)=0;
+
 };
 
 
@@ -276,6 +279,7 @@ protected:
                 console.loop();
             }
 #if PLATFORM_THREADING
+            SystemISRTaskQueue.process();
             if (!APPLICATION_THREAD_CURRENT()) {
                 SystemThread.process();
             }
@@ -325,6 +329,15 @@ protected:
      * @param external_process_complete If some external process triggered exit of listen mode.
      */
     virtual void on_finalize_listening(bool external_process_complete)=0;
+
+    virtual void config_hostname() {
+        char hostname[33] = {0};
+        if (get_hostname(hostname, sizeof(hostname), true) || strlen(hostname) == 0)
+        {
+            String deviceId = spark_deviceID();
+            set_hostname(deviceId.c_str());
+        }
+    }
 
 public:
 
@@ -400,6 +413,7 @@ public:
             }
             else
             {
+                config_hostname();
                 LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
                 WLAN_CONNECTING = 1;
                 INFO("ARM_WLAN_WD 1");

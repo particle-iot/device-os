@@ -32,6 +32,13 @@
 #include "stm32f2xx.h"
 #include "interrupts_hal.h"
 #include <mutex>
+#include <atomic>
+#include "flash_acquire.h"
+#include "core_hal.h"
+#include "logging.h"
+#include "atomic_flag_mutex.h"
+#include "mutex.h"
+#include "service_debug.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 # include "wwd_rtos_interface.h"
@@ -329,10 +336,10 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
-	if (HAL_IsISR())
-		return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
-	else
-		return xQueueSend(queue, item, delay)!=pdTRUE;
+    if (HAL_IsISR())
+        return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
+    else
+        return xQueueSend(queue, item, delay)!=pdTRUE;
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
@@ -488,4 +495,48 @@ int os_timer_destroy(os_timer_t timer, void* reserved)
 int os_timer_is_active(os_timer_t timer, void* reserved)
 {
     return xTimerIsTimerActive(timer) != pdFALSE;
+}
+
+static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
+void __flash_acquire() {
+    if (HAL_IsISR()) {
+        PANIC(UsageFault, "Flash operation from IRQ");
+    }
+    flash_lock.lock();
+}
+
+void __flash_release() {
+    flash_lock.unlock();
+}
+
+#define DCT_LOCK_TIMEOUT 10000
+
+static StaticRecursiveMutex dctLock(DCT_LOCK_TIMEOUT);
+
+#ifdef DEBUG_BUILD
+static volatile int32_t dctLockCounter = 0;
+#endif
+
+int dct_lock(int write, void* reserved)
+{
+    SPARK_ASSERT(!HAL_IsISR());
+    int res = dctLock.lock();
+    SPARK_ASSERT(res);
+#ifdef DEBUG_BUILD
+    dctLockCounter++;
+    SPARK_ASSERT(!write || dctLockCounter == 1);
+#endif
+    return !res;
+}
+
+int dct_unlock(int write, void* reserved)
+{
+    SPARK_ASSERT(!HAL_IsISR());
+    int res = dctLock.unlock();
+    SPARK_ASSERT(res);
+#ifdef DEBUG_BUILD
+    dctLockCounter--;
+    SPARK_ASSERT(!write || dctLockCounter == 0);
+#endif
+    return !res;
 }

@@ -315,6 +315,9 @@ extern "C" {
 /* Enable IP address change notification */
 #define LWIP_NETIF_IP_CHANGE_CALLBACK (1)
 
+/* Enable hostname support */
+#define LWIP_NETIF_HOSTNAME           (1)
+
 /**
  * Debug printing
  * By default enable debug printing for debug build, but set level to off

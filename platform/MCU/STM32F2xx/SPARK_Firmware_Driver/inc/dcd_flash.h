@@ -23,7 +23,10 @@
 extern "C" {
 #endif
 
-const void* dct_read_app_data (uint32_t offset);
+const void* dct_read_app_data (uint32_t offset) __attribute__((deprecated));
+
+const void* dct_read_app_data_lock(uint32_t offset);
+int dct_read_app_data_unlock(uint32_t offset);
 int dct_write_app_data(const void* data, uint32_t offset, uint32_t size);
 void dcd_migrate_data();
 

@@ -126,8 +126,9 @@ int dns_resolve_query(const char* query)
     int result = dns_resolve_query_default(query);
     if (result<=0)
     {
-        const char* valid_queries = (const char*) dct_read_app_data(DCT_DNS_RESOLVE_OFFSET);
+        const char* valid_queries = (const char*) dct_read_app_data_lock(DCT_DNS_RESOLVE_OFFSET);
         result = resolve_dns_query(query, valid_queries);
+        dct_read_app_data_unlock(DCT_DNS_RESOLVE_OFFSET);
     }
     return result;
 }
@@ -524,7 +525,9 @@ int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext
     hex_decode(buf, len, hex_encoded_ciphertext);
 
     // reuse the hex encoded buffer
-    int plaintext_len = decrypt_rsa(buf, fetch_device_private_key(), (uint8_t*)plaintext, max_plaintext_len);
+    const uint8_t *key = fetch_device_private_key(1); // fetch and lock private key data
+    int plaintext_len = decrypt_rsa(buf, key, (uint8_t*)plaintext, max_plaintext_len);
+    fetch_device_private_key(0); // unlock private key data
     return plaintext_len;
 }
 
@@ -778,7 +781,7 @@ protected:
     void produce_response(Writer& writer, int result) {
         // fetch public key
         const int length = EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH;
-        const uint8_t* data = fetch_device_public_key();
+        const uint8_t* data = fetch_device_public_key(1); // fetch and lock public key data
         write_char(writer, '{');
         if (data) {
             writer.write("\"b\":\"");
@@ -793,6 +796,8 @@ protected:
         else {
             result = 1;
         }
+
+        fetch_device_public_key(0); // unlock public key data
 
         write_json_int(writer, "r", result);
         write_char(writer, '}');
@@ -899,17 +904,19 @@ extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
  * @return true if the device code was generated.
  */
 bool fetch_or_generate_device_code(wiced_ssid_t* SSID) {
-    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CODE_OFFSET);
+    const uint8_t* suffix = (const uint8_t*)dct_read_app_data_lock(DCT_DEVICE_CODE_OFFSET);
     int8_t c = (int8_t)*suffix;    // check out first byte
     bool generate = (!c || c<0);
     uint8_t* dest = SSID->value+SSID->length;
     SSID->length += DEVICE_CODE_LEN;
     if (generate) {
+        dct_read_app_data_unlock(DCT_DEVICE_CODE_OFFSET);
         random_code(dest, DEVICE_CODE_LEN);
         dct_write_app_data(dest, DCT_DEVICE_CODE_OFFSET, DEVICE_CODE_LEN);
     }
     else {
         memcpy(dest, suffix, DEVICE_CODE_LEN);
+        dct_read_app_data_unlock(DCT_DEVICE_CODE_OFFSET);
     }
     return generate;
 }
@@ -917,16 +924,18 @@ bool fetch_or_generate_device_code(wiced_ssid_t* SSID) {
 const int MAX_SSID_PREFIX_LEN = 25;
 
 bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
-    const uint8_t* prefix = (const uint8_t*)dct_read_app_data(DCT_SSID_PREFIX_OFFSET);
+    const uint8_t* prefix = (const uint8_t*)dct_read_app_data_lock(DCT_SSID_PREFIX_OFFSET);
     uint8_t len = *prefix;
     bool generate = (!len || len>MAX_SSID_PREFIX_LEN);
     if (generate) {
+        dct_read_app_data_unlock(DCT_SSID_PREFIX_OFFSET);
         strcpy((char*)SSID->value, "Photon");
         SSID->length = 6;
         dct_write_app_data(SSID, DCT_SSID_PREFIX_OFFSET, SSID->length+1);
     }
     else {
         memcpy(SSID, prefix, DCT_SSID_PREFIX_SIZE);
+        dct_read_app_data_unlock(DCT_SSID_PREFIX_OFFSET);
     }
     if (SSID->length>MAX_SSID_PREFIX_LEN)
         SSID->length = MAX_SSID_PREFIX_LEN;
@@ -964,9 +973,11 @@ class SoftAPController {
         if (result == WICED_SUCCESS)
         {
             if (memcmp(&expected, soft_ap, sizeof(expected))) {
+                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
+            } else {
+                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
             }
-            wiced_dct_read_unlock( soft_ap, WICED_FALSE );
         }
         return result;
     }

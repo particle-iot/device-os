@@ -136,7 +136,10 @@ CRC_TYPE wiced_dct_ota2_get_crc(uint32_t dct_start_addr, uint32_t dct_end_addr);
 
 wiced_result_t wiced_dct_restore_factory_reset  ( void );
 void*          wiced_dct_get_current_address    ( dct_section_t section );
-wiced_result_t wiced_erase_non_current_dct		(void);
+wiced_result_t wiced_erase_non_current_dct      (void);
+
+extern wiced_result_t wiced_dct_lock( int write );
+extern wiced_result_t wiced_dct_unlock( int write );
 
 #ifdef __cplusplus
 } /*extern "C" */

@@ -481,11 +481,12 @@ void LED_Init(Led_TypeDef Led)
     {
         // Load configuration from DCT
         const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-        const led_config_t* conf = (const led_config_t*)dct_read_app_data(offset);
+        led_config_t conf;
+        dct_read_app_data_copy(offset, &conf, sizeof(conf));
 
         if (conf && conf->version != 0xff && conf->is_active && conf->is_pwm) {
             //int32_t state = HAL_disable_irq();
-            memcpy((void*)&HAL_Leds_Default[Led], (void*)conf, sizeof(led_config_t));
+            memcpy((void*)&HAL_Leds_Default[Led], (void*)&conf, sizeof(led_config_t));
             //HAL_enable_irq(state);
         }
         else
