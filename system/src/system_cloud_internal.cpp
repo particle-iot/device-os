@@ -68,7 +68,7 @@ static sock_handle_t sparkSocket = socket_handle_invalid();
 
 ProtocolFacade* sp;
 
-static uint32_t particle_key_errors;
+static uint32_t particle_key_errors = NO_ERROR;
 
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
