@@ -287,22 +287,22 @@ protected:
  		return footer;
     }
 
-    void write(Sector sector, const Header& header)
+    Result write(Sector sector, const Header& header)
     {
-        store.write(addressOf(sector), &header, header.size());
+        return store.write(addressOf(sector), &header, header.size());
     }
 
-    void write(Sector sector, const Footer& footer)
+    Result write(Sector sector, const Footer& footer)
     {
-    		store.write(addressOf(sector)+footerOffset, &footer, footer.size());
+    		return store.write(addressOf(sector)+footerOffset, &footer, footer.size());
     }
 
     /**
      * Creates the sector as a valid sector, with data initialized to 0xFF.
      */
-    void initialize(Sector sector)
+    Result initialize(Sector sector)
     {
-        _writeSector(0, nullptr, 0, nullptr, sector);
+        return _writeSector(0, nullptr, 0, nullptr, sector);
     }
 
     /**
@@ -374,7 +374,7 @@ protected:
 				current = _currentSector(primaryCounter, secondaryCounter, primary, secondary);
 			}
 			else {
-				current = primary;			// can choose either
+				current = Sector_1;			// can choose either
 			}
     		}
 		else if (secondarySeal==Header::SEAL_INVALID_V2) {
@@ -501,7 +501,7 @@ public:
 
 		Header header;
 		header.makeInvalid();
-		error = store.write(addressOf(current), &header, header.size());
+        error = write(current, header);
         return error;
     }
 
@@ -555,6 +555,10 @@ public:
         typename Footer::crc_type crc = computeSectorCRC(newSector);
         writeOffset = sectorSize-sizeof(typename Footer::crc_type);
         error = store.write(destination+writeOffset, &crc, sizeof(crc));
+        if (error) return error;
+		Header header;
+		header.makeValid();
+        error = write(newSector, header);
         return error;
     }
 
