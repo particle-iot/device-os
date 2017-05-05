@@ -253,10 +253,10 @@ void IWDG_Reset_Enable(uint32_t msTimeout)
     Load_SystemFlags();
     // Old versions of the bootloader were storing system flags in DCT
     const size_t dctFlagOffs = DCT_SYSTEM_FLAGS_OFFSET + offsetof(platform_system_flags_t, IWDG_Enable_SysFlag);
-    const uint16_t* dctFlagPtr = dct_read_app_data(dctFlagOffs);
-    if (dctFlagPtr && *dctFlagPtr == 0xD001)
+    uint16_t dctFlag = 0;
+    if (dct_read_app_data_copy(dctFlagOffs, &dctFlag, sizeof(dctFlag)) == 0 && dctFlag == 0xD001)
     {
-        const uint16_t dctFlag = 0xFFFF;
+        dctFlag = 0xFFFF;
         dct_write_app_data(&dctFlag, dctFlagOffs, sizeof(dctFlag));
         SYSTEM_FLAG(IWDG_Enable_SysFlag) = 0xD001;
     }
@@ -480,11 +480,10 @@ void LED_Init(Led_TypeDef Led)
     if (Led >= LED_MIRROR_OFFSET)
     {
         // Load configuration from DCT
-        const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
         led_config_t conf;
-        dct_read_app_data_copy(offset, &conf, sizeof(conf));
-
-        if (conf && conf->version != 0xff && conf->is_active && conf->is_pwm) {
+        const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
+        if (dct_read_app_data_copy(offset, &conf, sizeof(conf)) == 0 && conf.version != 0xff &&
+                conf.is_active && conf.is_pwm) {
             //int32_t state = HAL_disable_irq();
             memcpy((void*)&HAL_Leds_Default[Led], (void*)&conf, sizeof(led_config_t));
             //HAL_enable_irq(state);
