@@ -89,6 +89,11 @@ extern void* link_end_of_static_ram;
 #define link_global_data_size ((size_t)&link_global_data_end - (size_t)&link_global_data_start)
 #define link_bss_size ((size_t)&link_bss_end - (size_t)&link_bss_location)
 
+/*
+ * Static data of this module is normally initialized by the startup code (e.g. startup_stm32f2xx.S),
+ * but on certain platforms we also need to initialize it separately in order to support dynamically
+ * loaded functions in the bootloader (see bootloader/src/photon/bootloader_dct.c).
+ */
 void* module_system_part2_pre_init() {
     if ((&link_global_data_start != &link_global_data_initial_values) && (link_global_data_size != 0)) {
         memcpy(&link_global_data_start, &link_global_data_initial_values, link_global_data_size);

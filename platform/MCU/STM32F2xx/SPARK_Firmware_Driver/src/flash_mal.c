@@ -565,10 +565,10 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
 bool FLASH_ClearFactoryResetModuleSlot(void)
 {
     // Mark slot as unused
-    const size_t dct_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * FAC_RESET_SLOT +
+    const size_t magic_num_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * FAC_RESET_SLOT +
             offsetof(platform_flash_modules_t, magicNumber);
-    const uint16_t magic_number = 0xffff;
-    return (dct_write_app_data(&magic_number, dct_offs, sizeof(magic_number)) == 0);
+    const uint16_t magic_num = 0xffff;
+    return (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) == 0);
 }
 
 bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
@@ -616,37 +616,39 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
     // Copy module info from DCT before updating any modules, since bootloader might load DCT
     // functions dynamically. FAC_RESET_SLOT is reserved for factory reset module
-    const size_t max_slot_count = MAX_MODULES_SLOT - GEN_START_SLOT;
-    platform_flash_modules_t flash_modules[max_slot_count];
-    size_t dct_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
-    size_t slot_count = 0;
-    for (size_t i = 0; i < max_slot_count; ++i) {
-        const platform_flash_modules_t* flash_module = dct_read_app_data(dct_offs);
-        if (!flash_module) {
+    const size_t max_module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
+    platform_flash_modules_t modules[max_module_count];
+    size_t module_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
+    size_t module_count = 0;
+    for (size_t i = 0; i < max_module_count; ++i) {
+        const size_t magic_num_offs = module_offs + offsetof(platform_flash_modules_t, magicNumber);
+        uint16_t magic_num = 0;
+        if (dct_read_app_data_copy(magic_num_offs, &magic_num, sizeof(magic_num)) != 0) {
             return false;
         }
-        if (flash_module->magicNumber == 0xabcd) {
-            memcpy(&flash_modules[slot_count], flash_module, sizeof(platform_flash_modules_t));
-            // Mark slot as unused
-            const uint16_t magic_number = 0xffff;
-            if (dct_write_app_data(&magic_number, dct_offs + offsetof(platform_flash_modules_t, magicNumber),
-                    sizeof(magic_number)) != 0) {
+        if (magic_num == 0xabcd) {
+            // Copy module info
+            if (dct_read_app_data_copy(module_offs, &modules[module_count], sizeof(platform_flash_modules_t)) != 0) {
                 return false;
             }
-            ++slot_count;
+            // Mark slot as unused
+            magic_num = 0xffff;
+            if (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) != 0) {
+                return false;
+            }
+            ++module_count;
         }
-        dct_offs += sizeof(platform_flash_modules_t);
+        module_offs += sizeof(platform_flash_modules_t);
     }
-    for (size_t i = 0; i < slot_count; ++i) {
-        const platform_flash_modules_t* flash_module = &flash_modules[i];
+    for (size_t i = 0; i < module_count; ++i) {
+        const platform_flash_modules_t* module = &modules[i];
         // Turn On RGB_COLOR_MAGENTA toggling during flash updating
         if (flashModulesCallback) {
             flashModulesCallback(true);
         }
         // Copy memory from source to destination based on flash device id
-        FLASH_CopyMemory(flash_module->sourceDeviceID, flash_module->sourceAddress,
-                flash_module->destinationDeviceID, flash_module->destinationAddress,
-                flash_module->length, flash_module->module_function, flash_module->flags);
+        FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+                module->destinationAddress, module->length, module->module_function, module->flags);
         // Turn Off RGB_COLOR_MAGENTA toggling
         if (flashModulesCallback) {
             flashModulesCallback(false);

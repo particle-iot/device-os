@@ -2,6 +2,7 @@
 
 #include "flash_mal.h"
 
+#include <string.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -14,13 +15,17 @@
 #define DYNALIB_INDEX_HAL_CORE 7 // hal_core
 #define FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT 0 // module_system_part1_pre_init()
 #define FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT 0 // module_system_part2_pre_init()
-#define FUNC_INDEX_HAL_DCT_READ_APP_DATA 33 // HAL_DCT_Read_App_Data()
-#define FUNC_INDEX_HAL_DCT_WRITE_APP_DATA 34 // HAL_DCT_Write_App_Data()
+#define FUNC_INDEX_DCT_READ_APP_DATA 33 // dct_read_app_data()
+#define FUNC_INDEX_DCT_WRITE_APP_DATA 34 // dct_write_app_data()
+#define FUNC_INDEX_DCT_SET_LOCK_CALLBACKS 35 // dct_set_lock_callbacks()
 
-typedef void*(*module_pre_init_func)();
+typedef void*(*dct_read_app_data_func_t)(uint32_t);
+typedef int(*dct_write_app_data_func_t)(const void*, uint32_t, uint32_t);
+typedef int(*dct_set_lock_callbacks_func_t)(int(*)(int), int(*)(int));
+typedef void*(*module_pre_init_func_t)();
 
-static const void*(*HAL_DCT_Read_App_Data)(uint32_t, void*) = NULL;
-static int(*HAL_DCT_Write_App_Data)(const void*, uint32_t, uint32_t, void*) = NULL;
+static dct_read_app_data_func_t dct_read_app_data_func = NULL;
+static dct_write_app_data_func_t dct_write_app_data_func = NULL;
 static uint8_t dct_funcs_inited = 0;
 
 static const module_info_t* get_module_info(const module_bounds_t* bounds, uint16_t min_version) {
@@ -55,9 +60,13 @@ static const void* get_module_func(const module_info_t* module, size_t dynalib_i
     return func;
 }
 
+static int dct_lock_unlock(int write) {
+    return 0;
+}
+
 static void init_dct_functions() {
-    HAL_DCT_Read_App_Data = NULL;
-    HAL_DCT_Write_App_Data = NULL;
+    dct_read_app_data_func = NULL;
+    dct_write_app_data_func = NULL;
     const module_info_t* part2 = get_module_info(&module_system_part2, MIN_MODULE_VERSION_SYSTEM_PART2);
     if (!part2) {
         return;
@@ -69,23 +78,26 @@ static void init_dct_functions() {
         return;
     }
     // Get addresses of the DCT functions
-    const void* dct_read = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_HAL_DCT_READ_APP_DATA);
-    const void* dct_write = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_HAL_DCT_WRITE_APP_DATA);
-    if (!dct_read || !dct_write) {
+    dct_read_app_data_func_t dct_read = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_DCT_READ_APP_DATA);
+    dct_write_app_data_func_t dct_write = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_DCT_WRITE_APP_DATA);
+    dct_set_lock_callbacks_func_t dct_set_lock_cb = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_DCT_SET_LOCK_CALLBACKS);
+    if (!dct_read || !dct_write || !dct_set_lock_cb) {
         return;
     }
     // Initialize static data of each module
-    module_pre_init_func part1_init = get_module_func(part1, DYNALIB_INDEX_SYSTEM_MODULE_PART1,
+    module_pre_init_func_t part1_init = get_module_func(part1, DYNALIB_INDEX_SYSTEM_MODULE_PART1,
             FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT);
-    module_pre_init_func part2_init = get_module_func(part2, DYNALIB_INDEX_SYSTEM_MODULE_PART2,
+    module_pre_init_func_t part2_init = get_module_func(part2, DYNALIB_INDEX_SYSTEM_MODULE_PART2,
             FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT);
     if (!part1_init || !part2_init) {
         return;
     }
     part1_init();
     part2_init();
-    HAL_DCT_Read_App_Data = dct_read;
-    HAL_DCT_Write_App_Data = dct_write;
+    // Set DCT locking callbacks
+    dct_set_lock_cb(dct_lock_unlock, dct_lock_unlock);
+    dct_read_app_data_func = dct_read;
+    dct_write_app_data_func = dct_write;
 }
 
 void load_dct_functions() {
@@ -97,8 +109,8 @@ const void* dct_read_app_data(uint32_t offset) {
         init_dct_functions();
         dct_funcs_inited = 1;
     }
-    if (HAL_DCT_Read_App_Data) {
-        return HAL_DCT_Read_App_Data(offset, NULL /* reserved */);
+    if (dct_read_app_data_func) {
+        return dct_read_app_data_func(offset);
     }
     return NULL;
 }
@@ -108,8 +120,25 @@ int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
         init_dct_functions();
         dct_funcs_inited = 1;
     }
-    if (HAL_DCT_Write_App_Data) {
-        return HAL_DCT_Write_App_Data(data, offset, size, NULL /* reserved */);
+    if (dct_write_app_data_func) {
+        return dct_write_app_data_func(data, offset, size);
     }
     return -1;
+}
+
+int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size) {
+    const void* data = dct_read_app_data(offset);
+    if (!data) {
+        return -1;
+    }
+    memcpy(ptr, data, size);
+    return 0;
+}
+
+const void* dct_read_app_data_lock(uint32_t offset) {
+    return dct_read_app_data(offset);
+}
+
+int dct_read_app_data_unlock(uint32_t offset) {
+    return 0;
 }
