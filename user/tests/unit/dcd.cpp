@@ -146,10 +146,10 @@ SCENARIO("DCD initialized returns 0xFF", "[dcd]")
     }
 }
 
-SCENARIO("DCD Length is SectorSize minus the header size", "[dcd]")
+SCENARIO("DCD Length is SectorSize minus the header size minus footer size", "[dcd]")
 {
     TestDCD dcd;
-    REQUIRE(dcd.Length == TestSectorSize-(8*sizeof(uint32_t)));
+    REQUIRE(dcd.Length == TestSectorSize-8-32);
 }
 
 SCENARIO("DCD can save data", "[dcd]")
@@ -254,13 +254,12 @@ TEST_CASE("initialized header has version 1", "[header]") {
 }
 
 SCENARIO_METHOD(TestDCD, "isCRCValid", "[dcd]") {
-	TestDCD dcd;
+	TestDCD& dcd = *this;
 	uint32_t crc = 0x1234ABCD;
 	GIVEN("calculateCRC is mocked") {
+		const uint8_t* start = store.dataAt(addressOf(Sector_0));
 		MockRepository mocks;
-		TestDCD::Header header;
-		const uint8_t* start = reinterpret_cast<const uint8_t*>(&header);
-		mocks.ExpectCallFunc(calcCrc).With((const void*)(start+12), 16000-12).Return(crc);
+		mocks.ExpectCallFunc(calcCrc).With((const void*)(start+8), 16000-12).Return(crc);
 
 		WHEN("the header has a different CRC") {
 			REQUIRE_FALSE(dcd.isCRCValid(Sector_0, 0x1234));
@@ -280,8 +279,9 @@ SCENARIO_METHOD(TestDCD, "initializing a sector initializes to 0xFF with a valid
     REQUIRE(isInitialized());
 }
 
-SCENARIO("writing data and then changing it on the fly invalidates the sector", "[dcd]") {
-	TestDCD dcd;
+SCENARIO_METHOD(TestDCD, "writing data and then changing it on the fly invalidates the sector", "[dcd]") {
+	TestDCD& dcd = *this;
+    REQUIRE(!isCRCValid(Sector_0));
     REQUIRE_FALSE(dcd.write(23, "abcdef", 6));
 	bool initialized = dcd.isInitialized();
     REQUIRE(initialized);
@@ -289,9 +289,7 @@ SCENARIO("writing data and then changing it on the fly invalidates the sector", 
 	MockRepository mocks;
 	uint32_t crc = 0xABCDABCD;
 	mocks.OnCallFunc(calcCrc).Return(crc);
-
-	initialized = (dcd.isInitialized());
-	REQUIRE_FALSE(initialized);
+	REQUIRE(!dcd.isCRCValid(Sector_0));
 }
 
 SCENARIO_METHOD(TestDCD, "dcd is uninitialized by default", "[dcd]") {
