@@ -9,6 +9,8 @@
 
 namespace {
 
+const uint32_t SYSTEM_FLAGS_MAGIC_NUMBER = 0x1adeacc0;
+
 // Class mocking STM32's RTC functions
 class RtcMocks {
 public:
@@ -32,36 +34,26 @@ private:
     std::map<uint32_t, uint32_t> bkpRegs_; // Backup registers
 };
 
-platform_system_flags loadSystemFlags() {
-    platform_system_flags flags;
-    std::memset(&flags, 0, sizeof(flags));
-    Load_SystemFlags_Impl(&flags);
-    return flags;
-}
-
-void saveSystemFlags(const platform_system_flags& flags) {
-    Save_SystemFlags_Impl(&flags);
-}
-
 template<typename T>
-void checkSystemFlagValue(T platform_system_flags::*flag, T val) {
+void checkSystemFlagValue(T platform_system_flags_t::*flag, T val) {
     const uint8_t fill = (uint8_t)~val; // Define a fill byte
-    platform_system_flags f1;
+    platform_system_flags_t f1;
     std::memset(&f1, fill, sizeof(f1));
-    saveSystemFlags(f1);
-    f1 = loadSystemFlags(); // Initialize header fields
-    platform_system_flags f2;
-    std::memcpy(&f2, &f1, sizeof(platform_system_flags));
+    f1.header = SYSTEM_FLAGS_MAGIC_NUMBER; // Initialize header data
+    REQUIRE(Save_SystemFlags_Impl(&f1) == 0);
+    platform_system_flags_t f2;
+    std::memcpy(&f2, &f1, sizeof(platform_system_flags_t));
     f2.*flag = val; // Set flag value
-    saveSystemFlags(f2);
-    f2 = loadSystemFlags();
+    REQUIRE(Save_SystemFlags_Impl(&f2) == 0);
+    std::memset(&f2, fill, sizeof(f2));
+    REQUIRE(Load_SystemFlags_Impl(&f2) == 0);
     REQUIRE((f2.*flag) == val); // Check flag value
     std::memset(&(f2.*flag), fill, sizeof(T)); // Reset flag field
-    REQUIRE((std::memcmp(&f1, &f2, sizeof(platform_system_flags)) == 0));
+    REQUIRE((std::memcmp(&f1, &f2, sizeof(platform_system_flags_t)) == 0));
 }
 
 template<typename T>
-void checkSystemFlag(T platform_system_flags::*flag) {
+void checkSystemFlag(T platform_system_flags_t::*flag) {
     const T minVal = std::numeric_limits<T>::min();
     checkSystemFlagValue(flag, minVal);
     const T maxVal = std::numeric_limits<T>::max();
@@ -70,16 +62,14 @@ void checkSystemFlag(T platform_system_flags::*flag) {
     checkSystemFlagValue(flag, avgVal);
 }
 
-const uint32_t SYSTEM_FLAGS_MAGIC_NUMBER = 0x1adeacc0;
-
 } // namespace
 
 TEST_CASE("System flags") {
     RtcMocks mocks;
     SECTION("default flag values") {
-        auto f = loadSystemFlags();
-        CHECK(f.header[0] == 0xffff);
-        CHECK(f.header[1] == 0xffff);
+        platform_system_flags_t f = { 0 };
+        CHECK(Load_SystemFlags_Impl(&f) != 0);
+        CHECK(f.header == SYSTEM_FLAGS_MAGIC_NUMBER);
         CHECK(f.Bootloader_Version_SysFlag == 0xffff);
         CHECK(f.NVMEM_SPARK_Reset_SysFlag == 0xffff);
         CHECK(f.FLASH_OTA_Update_SysFlag == 0xffff);
@@ -92,26 +82,23 @@ TEST_CASE("System flags") {
         CHECK(f.FeaturesEnabled_SysFlag == 0xff);
         CHECK(f.RCC_CSR_SysFlag == 0xffffffff);
     }
-    SECTION("header contains correct values when flags are initialized") {
-        platform_system_flags f;
-        f.header[0] = 0;
-        f.header[1] = 0;
-        saveSystemFlags(f);
-        f = loadSystemFlags();
-        CHECK(f.header[0] == (SYSTEM_FLAGS_MAGIC_NUMBER & 0xffff));
-        CHECK(f.header[1] == ((SYSTEM_FLAGS_MAGIC_NUMBER >> 16) & 0xffff));
+    SECTION("flags cannot be updated with uninitialized data") {
+        platform_system_flags_t f = { 0 };
+        CHECK(Save_SystemFlags_Impl(&f) != 0); // Invalid header field
+        f.header = SYSTEM_FLAGS_MAGIC_NUMBER;
+        CHECK(Save_SystemFlags_Impl(&f) == 0);
     }
-    SECTION("changing of a flag value doesn't affect other flags") {
-        checkSystemFlag(&platform_system_flags::Bootloader_Version_SysFlag);
-        checkSystemFlag(&platform_system_flags::NVMEM_SPARK_Reset_SysFlag);
-        checkSystemFlag(&platform_system_flags::FLASH_OTA_Update_SysFlag);
-        checkSystemFlag(&platform_system_flags::OTA_FLASHED_Status_SysFlag);
-        checkSystemFlag(&platform_system_flags::Factory_Reset_SysFlag);
-        checkSystemFlag(&platform_system_flags::IWDG_Enable_SysFlag);
-        checkSystemFlag(&platform_system_flags::dfu_on_no_firmware);
-        checkSystemFlag(&platform_system_flags::Factory_Reset_Done_SysFlag);
-        checkSystemFlag(&platform_system_flags::StartupMode_SysFlag);
-        checkSystemFlag(&platform_system_flags::FeaturesEnabled_SysFlag);
-        checkSystemFlag(&platform_system_flags::RCC_CSR_SysFlag);
+    SECTION("changing individual flag values") {
+        checkSystemFlag(&platform_system_flags_t::Bootloader_Version_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::NVMEM_SPARK_Reset_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::FLASH_OTA_Update_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::OTA_FLASHED_Status_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::Factory_Reset_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::IWDG_Enable_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::dfu_on_no_firmware);
+        checkSystemFlag(&platform_system_flags_t::Factory_Reset_Done_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::StartupMode_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::FeaturesEnabled_SysFlag);
+        checkSystemFlag(&platform_system_flags_t::RCC_CSR_SysFlag);
     }
 }
