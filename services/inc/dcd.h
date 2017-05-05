@@ -58,38 +58,19 @@
  * The sector crc is checked only when the other sector has a seal of SEAL_VALID or SEAL_INVALID_V2, and
  * the current sector also has a seal with these values. This ensures the CRC is only used after one successful write.
  *
- * Todo - work through all the possible states of status and valid/invalid crc for the pair of sectors to
- * determine the one that should be considered valid.
+ * Identifying the current valid sector:
  *
+ * v1 code:
+ * looks for a valid watermark and seal value equal to SEAL_VALID.  On invalidating a sector, the
+ * v1 code writes 0x0 to the seal, and v2 writes SEAL_INVALID_V2 - both of which are ignored in v1 code, so v1 code will only see
+ * a sector still marked as valid.
  *
- * Old stuff...
- * The v2 format is designated by the seal with 01 in the lowest byte of the
- * status word. The format comprises the watermark, the status word, and then
- * a 32-bit crc followed by 8-bits of flags and 11 reserved bytes. The crc checksums the data
- * immediately following the crc up to the end of the flash sector. (The data preceeding
- * the crc has already been validated, and this means we do not have to make provisions for
- * excluding the crc word from the crc check, as would be the case if we tried to apply the crc
- * to the entire sector.
+ * v2 code:
+ * looks for a sector with SEAL_VALID. When the other sector has a seal of SEAL_INVALID then the CRC is not checked (since this sector was written by v1 code) and assumed valid,
+ * otherwise the CRC is checked. When the CRC is invalid, the alternative sector is used if it has SEAL_VALID or SEAL_INVALID_V2
  *
- * When the sector format requires upgrading, then `formatInfo()` returns a structure with
- * the `upgradePending` field is set to non-zero value indicating the version of the upgrade. (0-based)
- *
- * The flash pages are erased at the latest opportunity (when data is written, the oldest page is cleared.)
- * The new data is written, followed by the non-changing data, and finally the crc and then the header.
- *
- * On startup, both pages are examined ot determine their current state.
- * - 0: erased: all erased page
- * - 1: v1:  avalid v1 page, with the seal intact
- * - 2: v2: a valid v2 page, with the crc matching the data.
- *
- * both pages are examined and the highest one is considered the current page to read from.
- * If both pages have the same version and are valid, then for v1 pages, the first one is chosen.
- * For v2, the counter values are compared, and if they differ by 1 (modulo 4) then the highest one is chosen
- * This allows for wrap-around. e.g. if the values are 0 and 3, the page with counter value 0 is
- * chosen since hti is 3+1 modulo 4. If both pages differ by more than 1 modulo 4 then the first one is chosen.
- *
- * When upgrading, the current valid v1 sector (if any) is written out to the spare sector
- * and that is used as the current valid sector going forward.
+ * Since writes are not atomic it is possible that there is more than one sector with SEAL_VALID (when the final write to invalidate the alternate sector does not succeed.)
+ * The v2 code checks the CRC of both and the counter and chooses the one that is most recent and valid. v1 code just chooses one, statically (iirc it's the 2nd sector).
  *
  * After the write operation, the sector is validated. If it is not valid, the write is reattempted up to 3 times.
  * If the write continues to fail a failure code is returned.
@@ -114,10 +95,10 @@ public:
     Store store;
 
     static const uint8_t latestVersion = 2;
+    static const uint32_t WATERMARK = 0x1E1C279A;   // 9A271C1E
 
     struct Header
     {
-        static const uint32_t WATERMARK = 0x1E1C279A;   // 9A271C1E
         static const uint32_t SEAL_INIT = 0xFFFFFFFF;
         static const uint32_t SEAL_CLEARED = 0;
 
@@ -137,18 +118,24 @@ public:
         uint32_t seal;
 
         /**
-         * Returns the size of the header. It is always 8 bytes.
+         * Return the size of the header. It is always 8 bytes.
          */
         size_t size() const {
         		return sizeof(Header);
         }
 
+        bool is_header() const {
+        		return watermark==WATERMARK;
+        }
+
         /**
-         * Determines if the current header is valid.
+         * Determine if the current header is valid. It is valid
+         * if the watermark equals WATERMARK and the seal either SEAL_VALID or
+         * SEAL_INVALID_V2
          */
         bool isValid() const
         {
-            return watermark==WATERMARK && (seal==SEAL_VALID || seal==SEAL_INVALID_V2);
+            return is_header() && seal==SEAL_VALID;
         }
 
         void initialize()
@@ -157,32 +144,23 @@ public:
             seal = SEAL_INIT;
         }
 
-        void make_valid()
+        void makeValid()
         {
             watermark = WATERMARK;
             seal = SEAL_VALID;
         }
 
-        void make_invalid()
+        void makeInvalid()
         {
             watermark = WATERMARK;
             seal = SEAL_INVALID_V2;
-        }
-
-        uint8_t version() const {
-        		if (watermark!=WATERMARK) return 0;
-        		switch (seal) {
-        		case SEAL_VALID: return 1;
-        		case SEAL_INVALID_V2: return 2;
-        		return 0;
-        		}
         }
     };
 
     /**
      * This struct is written to the end of the sector.
      */
-    struct __attribute__((packed)) Footer {
+    class __attribute__((packed)) Footer {
     		// add new members here.
 		uint32_t reserved[4];
 		struct Flags {
@@ -194,35 +172,67 @@ public:
 		uint8_t pad;
 		uint8_t version_flags;		// currently 0
 		uint16_t mysize;				// the size of the data block (end of sector - size is the start of the data block)
-		uint32_t crc;
+		uint32_t watermark;
+		uint32_t crc_;
+    public:
+		using crc_type = decltype(crc_);
 
-        void make_valid_v2(uint32_t crc, uint8_t counter)
+		void isValid() const {
+			return watermark==WATERMARK;
+		}
+
+		uint8_t counter() const {
+			return flags.counter;
+		}
+
+		void counter(uint8_t counter) {
+			flags.counter = counter;
+		}
+
+		void initialize() {
+			watermark = WATERMARK;
+			mysize = sizeof(this);
+		}
+
+        void makeValidV2(uint32_t crc, uint8_t counter)
         {
         		memset(this, 0, sizeof(*this));
-            this->crc = crc;
+            this->crc_ = crc;
+            this->watermark = WATERMARK;
             this->mysize = this->size();
             flags.counter = counter;
         }
 
-        size_t size() {
+        size_t size() const {
         		return sizeof(*this);
+        }
+
+        uint32_t crc() const {
+        		return crc_;
         }
 	};
 
     /**
      * The offset in each sector where the footer is written.
      */
-    const size_t footer_offset = sectorSize-sizeof(Footer);
+    const size_t footerOffset = sectorSize-sizeof(Footer);
 
+    /**
+     * The logical size of the data that can be stored.
+     */
     const Address Length = sectorSize-sizeof(Header)-sizeof(Footer);
+
     static const Sector Sector_0 = 0;
     static const Sector Sector_1 = 1;
     static const Sector Sector_Unknown = 255;
 
 protected:
+    /**
+     * Retrieve the address of a given sector.
+     */
     inline Address addressOf(Sector sector)
     {
-        return sector==Sector_0 ? DCD1 : DCD2;
+        return sector!=Sector_1 ? DCD1 : DCD2;
     }
 
     /**
@@ -256,25 +266,24 @@ protected:
     }
 
     /**
-     * Determine the version of the data at the given sector. If the
-     * data is not valid a version of 0 is returned.
+     * Determine if the given sector is valid. Does not check the CRC by default since this is done elsewhere.
      */
-    uint8_t version(Sector sector) {
+    bool isValid(Sector sector, bool checkCRC=false) {
     		const Header& header = sectorHeader(sector);
-        uint8_t version = header.version();
-        if (version==2 && !isCRCValid(header)) {
-        		version = 0;
+		bool valid = header.isValid();
+        if (valid && checkCRC) {
+        		valid = isCRCValid(sector);
         }
-        	return version;
+        	return valid;
     }
 
     const Header& sectorHeader(Sector sector) {
-		const Header& header = *(const Header*)store.dataAt(addressOf(sector));
+		const Header& header = *reinterpret_cast<const Header*>(store.dataAt(addressOf(sector)));
 		return header;
     }
 
     const Footer& sectorFooter(Sector sector) {
- 		const Footer& footer = *(const Footer*)store.dataAt(addressOf(sector));
+ 		const Footer& footer = *reinterpret_cast<const Footer*>(store.dataAt(addressOf(sector))+footerOffset);
  		return footer;
     }
 
@@ -285,35 +294,101 @@ protected:
 
     void write(Sector sector, const Footer& footer)
     {
-    		store.write(addressOf(sector)+footer_offset, &footer, footer.size());
+    		store.write(addressOf(sector)+footerOffset, &footer, footer.size());
     }
 
+    /**
+     * Creates the sector as a valid sector, with data initialized to 0xFF.
+     */
     void initialize(Sector sector)
     {
-        erase(sector);
-        _write_header(sector, 0);
+        _writeSector(0, nullptr, 0, nullptr, sector);
     }
 
+    /**
+     * Determine the CRC for a sector. The CRC checks all the data from after the header until the CRC, including the footer data.
+     */
     uint32_t computeSectorCRC(Sector sector) {
-    		const Header& flash = sectorHeader(sector);
-    		return computeCRC(flash);
+    		const uint8_t* data = store.dataAt(addressOf(sector));
+    		return computeCRC(data);
     }
 
+    /**
+     * Determines which sector is valid. The CRC is not checked.
+     */
+    Sector findValidSector() {
+		const Header& header0 = sectorHeader(Sector_0);
+		const Header& header1 = sectorHeader(Sector_1);
+
+		Sector primary;
+		if (header0.isValid()) {
+			primary = Sector_0;
+		}
+		else if (header1.isValid()) {
+			primary = Sector_1;
+		}
+		else {
+			primary = Sector_Unknown;
+		}
+    		return primary;
+    }
+
+    /**
+     * Determine the sector that contains the latest valid data. This sector is used to read data from and provide the basis of
+     * data when writing to the alternate sector.
+     *
+     */
     Sector currentSector() {
-		uint8_t version0 = version(Sector_0);
-		uint8_t version1 = version(Sector_1);
+    		const Sector primary = findValidSector();
+    		if (primary==Sector_Unknown)
+    			return Sector_Unknown;
 
-        uint8_t counter0=0, counter1=0;
-        if (version0>=2 && version1>=2) {
-            counter0 = sectorHeader(Sector_0).flags.counter;
-            counter1 = sectorHeader(Sector_1).flags.counter;
-        }
-        return _currentSector(version0, version1, counter0, counter1);
+    		// check the deeper validity of that sector, and see if it is the one
+    		// or if the backup sector should be used.
+    		const Sector secondary = alternateSectorTo(primary);
+    		const Header& secondaryHeader = sectorHeader(secondary);
+		const Footer& primaryFooter = sectorFooter(primary);
+		const Footer& secondaryFooter = sectorFooter(secondary);
+		Sector current = evaluateSectors(primary, secondary, secondaryHeader.seal, primaryFooter.counter(), secondaryFooter.counter());
+    		return current;
     }
 
-    uint8_t currentVersion() {
-    		Sector current = currentSector();
-    		return current==Sector_Unknown ? 0 : version(current);
+    /**
+     * Determine the current sector.
+     * @param primary	The sector that is known to be marked as valid
+     * @param secondary	The alternate sector
+     * @param secondarySeal	The seal of the secondary sector.
+     * @param primaryCounter	the counter of the primary sector. Only used when both primary and secondary sectors are valid and have valid CRCs
+     * @param
+     */
+    Sector evaluateSectors(Sector primary, Sector secondary, uint32_t secondarySeal, uint8_t primaryCounter, uint8_t secondaryCounter) {
+		Sector current;
+    		if (secondarySeal==Header::SEAL_VALID) {		// prefer the most recent counter if both valid CRC, else the one with the valid CRC else Sector_1
+			// choose the one with valid CRC if it exists
+			bool crcValidPrimary = isCRCValid(primary);
+			bool crcValidSecondary = isCRCValid(secondary);
+			if (crcValidPrimary ^ crcValidSecondary) {		// they are different, prefer the valid one
+				current = crcValidPrimary ? primary : secondary;
+			}
+			else if (crcValidPrimary) {				// both are valid
+				current = _currentSector(primaryCounter, secondaryCounter, primary, secondary);
+			}
+			else {
+				current = primary;			// can choose either
+			}
+    		}
+		else if (secondarySeal==Header::SEAL_INVALID_V2) {
+			// the current sector was written by V2 code so the CRC shoudl be valid.
+			// when the current CRC is not valid, then fallback to the secondary (which we assume is valid.)
+			// use primary sector if CRC checks out (no need to check the counter)
+			current = isCRCValid(primary) ? primary : secondary;
+		} else {
+			// assume current sector is valid since it was written by v1 code
+			current = primary;
+			// don't bother checking the CRC since we have nothing to fallback to and cannot be sure it was written by v2 code (maybe be an old v2 sector
+			// that was copied by v1 code without updating the CRC.)
+		}
+    		return current;
     }
 
     Sector alternateSectorTo(Sector sector)
@@ -324,25 +399,15 @@ protected:
     /**
      * Determines the sector that contains the current valid information
      */
-    Sector _currentSector(uint8_t version0, uint8_t version1, uint8_t count0=0, uint8_t count1=0)
+    Sector _currentSector(uint8_t count0, uint8_t count1, Sector sector0, Sector sector1)
     {
-        if (version0==version1) {
-            switch (version0) {
-            case 1: return Sector_1;
-            case 2: // determine the one that is most recent
-                if (((count0+1) & 3)==count1) {
-                    return Sector_1;
-                }
-                if (((count1+1) & 3)==count0) {
-                    return Sector_0;
-                }
-                return Sector_0;	// both are equally valid - could do a 50/50 random choice here
-            case 0: default: return Sector_Unknown;
-            }
-        }
-        else {
-            return version0 > version1 ? Sector_0 : Sector_1;
-        }
+		if (((count0+1) & 3)==count1) {
+			return sector1;
+		}
+		if (((count1+1) & 3)==count0) {
+			return sector0;
+		}
+		return sector0;	// both are equally valid - could do a 50/50 random choice here
     }
 
 public:
@@ -353,24 +418,17 @@ public:
         return isValid(Sector_1) || isValid(Sector_0);
     }
 
-    bool isCRCValid(const Header& header) {
-    		uint32_t actual = computeCRC(header);
-    		return actual==header.crc;
+    bool isCRCValid(Sector sector) {
+    		return isCRCValid(sector, sectorFooter(sector).crc());
     }
 
-    uint32_t computeCRC(const Header& header) {
-    		const uint8_t* start = reinterpret_cast<const uint8_t*>(&header);
-    		const uint32_t preCRCDataSize = Header::crc_data_start;
-    		static_assert(offsetof(Header, flags)==preCRCDataSize, "expected flags to be at offset 12");
-    		return calculateCRC(start+preCRCDataSize, sectorSize-preCRCDataSize);
+    bool isCRCValid(Sector sector, uint32_t expected) {
+    		uint32_t actual = computeCRC(store.dataAt(addressOf(sector)));
+    		return actual==expected;
     }
 
-    /**
-     * Determine if the sector is valid.
-     */
-    bool isValid(Sector sector)
-    {
-    		return version(sector) > 0;
+    uint32_t computeCRC(const uint8_t* sectorStart) {
+    		return calculateCRC(sectorStart+sizeof(Header), sectorSize-sizeof(Header)-sizeof(uint32_t));
     }
 
     /**
@@ -393,6 +451,9 @@ public:
         return error;
     }
 
+    /**
+     * Fetches a valid sector, initializing a sector if there is no valid one.
+     */
     Sector currentValidSector() {
     		Sector current = currentSector();
     		if (current==Sector_Unknown) {
@@ -435,15 +496,12 @@ public:
         Sector current = currentValidSector();
         Sector newSector = alternateSectorTo(current);
         const uint8_t* existing = store.dataAt(addressOf(current));
-        Result error = this->_writeSector(offset, data, length, existing, newSector, version);
+        Result error = this->_writeSector(offset, data, length, existing, newSector);
         if (error) return error;
 
-        const Header& previous = sectorHeader(current);
-        if (previous.version()==1) {
-        		Header header;
-        		header.make_invalid();
-        		error = store.write(addressOf(current), &header, previous.size());
-        }
+		Header header;
+		header.makeInvalid();
+		error = store.write(addressOf(current), &header, header.size());
         return error;
     }
 
@@ -456,14 +514,15 @@ public:
      * @param existing	A pointer to the existing sector
      * @param newSector	The new sector to write the data to
      */
-    Result _writeSector(const Address offset, const void* data, size_t length, const uint8_t* existing, Sector newSector, uint8_t version=2)
+    Result _writeSector(const Address offset, const void* data, size_t length, const uint8_t* existing, Sector newSector)
     {
         Result error = erase(newSector);
         if (error) return error;
 
         const Header& existingHeader = *(reinterpret_cast<const Header*>(existing));
-        Address destination = addressOf(newSector);
+        	const Footer& existingFooter = *(reinterpret_cast<const Footer*>(existing+footerOffset));
 
+		Address destination = addressOf(newSector);
         Address writeOffset = sizeof(Header);
         Address readOffset = existingHeader.size();
 
@@ -475,34 +534,44 @@ public:
             readOffset += offset;
         }
 
-        error = store.write(destination+writeOffset, data, length);
-        if (error) return error;
-        writeOffset += length;
-        readOffset += length;
+        if (length) {
+			error = store.write(destination+writeOffset, data, length);
+			if (error) return error;
+			writeOffset += length;
+			readOffset += length;
+        }
 
         if (existing) {
-            error = store.write(destination+writeOffset, existing+readOffset, sectorSize-writeOffset);
+            error = store.write(destination+writeOffset, existing+readOffset, sectorSize-writeOffset-sizeof(Footer));
             if (error) return error;
         }
 
         uint8_t counter = 0;
-        if (existingHeader.version()>=2) {
-        		counter = (existingHeader.flags.counter + 1) & 3;
+        if (existing) {
+        		counter = uint8_t((existingFooter.counter() + 1) & 3);
         }
-
-        return _write_v2_header(newSector, counter);
+        error = _write_v2_footer(newSector, existing ? &existingFooter : nullptr, counter);
+        if (error) return error;
+        typename Footer::crc_type crc = computeSectorCRC(newSector);
+        writeOffset = sectorSize-sizeof(typename Footer::crc_type);
+        error = store.write(destination+writeOffset, &crc, sizeof(crc));
+        return error;
     }
 
-    Result _write_v2_header(Sector sector, uint8_t counter) {
+    /**
+     * Write the footer to the sector, excluding the CRC.
+     */
+    Result _write_v2_footer(Sector sector, const Footer* existingFooter, uint8_t counter) {
         Address destination = addressOf(sector);
-        Header header;
-        header.make_valid_v2(0, counter);
-        const auto crc_data_start = Header::crc_data_start;
-        // write everything after the crc
-        Result error = store.write(destination+crc_data_start, ((const uint8_t*)&header)+crc_data_start, header.size()-crc_data_start);
-        if (error) return error;
-        header.crc = computeSectorCRC(sector);
-        error = store.write(destination, &header, crc_data_start);
+        Footer footer;
+        if (existingFooter) {
+        		footer = *existingFooter;
+        } else {
+            footer.initialize();
+        }
+        footer.counter(counter);
+        // write the footer
+        Result error = store.write(destination+footerOffset, reinterpret_cast<const uint8_t*>(&footer), footer.size()-sizeof(typename Footer::crc_type));
         return error;
     }
 
