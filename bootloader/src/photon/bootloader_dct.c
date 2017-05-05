@@ -6,22 +6,27 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "../../../hal/src/stm32f2xx/dct_hal_stm32f2xx.h"
+
 #define MODULAR_FIRMWARE 1
 #include "../../../hal/src/photon/ota_module_bounds.c"
 
 #define MIN_MODULE_VERSION_SYSTEM_PART2 107 // 0.7.0-rc.1
-#define DYNALIB_INDEX_SYSTEM_MODULE_PART1 2 // system_module_part1
-#define DYNALIB_INDEX_SYSTEM_MODULE_PART2 18 // system_module_part2
-#define DYNALIB_INDEX_HAL_CORE 7 // hal_core
-#define FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT 0 // module_system_part1_pre_init()
-#define FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT 0 // module_system_part2_pre_init()
-#define FUNC_INDEX_DCT_READ_APP_DATA 33 // dct_read_app_data()
-#define FUNC_INDEX_DCT_WRITE_APP_DATA 34 // dct_write_app_data()
-#define FUNC_INDEX_DCT_SET_LOCK_CALLBACKS 35 // dct_set_lock_callbacks()
 
-typedef void*(*dct_read_app_data_func_t)(uint32_t);
+#define DYNALIB_INDEX_SYSTEM_MODULE_PART1 2 // system_module_part1
+#define FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT 0 // module_system_part1_pre_init()
+
+#define DYNALIB_INDEX_SYSTEM_MODULE_PART2 19 // system_module_part2
+#define FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT 0 // module_system_part2_pre_init()
+
+#define DYNALIB_INDEX_HAL_DCT 18 // hal_dct
+#define FUNC_INDEX_DCT_READ_APP_DATA 0 // dct_read_app_data()
+#define FUNC_INDEX_DCT_WRITE_APP_DATA 4 // dct_write_app_data()
+#define FUNC_INDEX_DCT_SET_LOCK_IMPL 5 // dct_set_lock_impl()
+
+typedef const void*(*dct_read_app_data_func_t)(uint32_t);
 typedef int(*dct_write_app_data_func_t)(const void*, uint32_t, uint32_t);
-typedef int(*dct_set_lock_callbacks_func_t)(int(*)(int), int(*)(int));
+typedef void(*dct_set_lock_impl_func_t)(dct_lock_func_t, dct_unlock_func_t);
 typedef void*(*module_pre_init_func_t)();
 
 static dct_read_app_data_func_t dct_read_app_data_func = NULL;
@@ -60,6 +65,7 @@ static const void* get_module_func(const module_info_t* module, size_t dynalib_i
     return func;
 }
 
+// Dummy implementation of the DCT lock/unlock callbacks
 static int dct_lock_unlock(int write) {
     return 0;
 }
@@ -78,10 +84,10 @@ static void init_dct_functions() {
         return;
     }
     // Get addresses of the DCT functions
-    dct_read_app_data_func_t dct_read = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_DCT_READ_APP_DATA);
-    dct_write_app_data_func_t dct_write = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_DCT_WRITE_APP_DATA);
-    dct_set_lock_callbacks_func_t dct_set_lock_cb = get_module_func(part2, DYNALIB_INDEX_HAL_CORE, FUNC_INDEX_DCT_SET_LOCK_CALLBACKS);
-    if (!dct_read || !dct_write || !dct_set_lock_cb) {
+    dct_read_app_data_func_t dct_read = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_READ_APP_DATA);
+    dct_write_app_data_func_t dct_write = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_WRITE_APP_DATA);
+    dct_set_lock_impl_func_t dct_set_lock_impl = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_SET_LOCK_IMPL);
+    if (!dct_read || !dct_write || !dct_set_lock_impl) {
         return;
     }
     // Initialize static data of each module
@@ -94,8 +100,8 @@ static void init_dct_functions() {
     }
     part1_init();
     part2_init();
-    // Set DCT locking callbacks
-    dct_set_lock_cb(dct_lock_unlock, dct_lock_unlock);
+    // Disable DCT locking
+    dct_set_lock_impl(dct_lock_unlock, dct_lock_unlock);
     dct_read_app_data_func = dct_read;
     dct_write_app_data_func = dct_write;
 }

@@ -216,9 +216,6 @@ int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, un
 int os_timer_destroy(os_timer_t timer, void* reserved);
 int os_timer_is_active(os_timer_t timer, void* reserved);
 
-int dct_lock(int write, void* reserved);
-int dct_unlock(int write, void* reserved);
-
 #ifdef __cplusplus
 }
 #endif
