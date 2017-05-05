@@ -139,7 +139,7 @@ SCENARIO("DCD initialized returns 0xFF", "[dcd]")
     TestDCD dcd;
 
     const uint8_t* data = dcd.read(0);
-    for (unsigned i=0; i<dcd.Length; i++)
+    for (unsigned i=0; i<5; i++)
     {
         CAPTURE( i );
         REQUIRE(data[i] == 0xFFu);
@@ -184,8 +184,9 @@ SCENARIO("DCD can overwrite data", "[dcd]")
     TestDCD dcd;
 
     uint8_t expected[dcd.Length];
-    for (unsigned i=0; i<dcd.Length; i++)
+    for (unsigned i=0; i<dcd.Length; i++) {
         expected[i] = 0xFF;
+    }
     memmove(expected+23, "bbatman", 7);
 
     // overwrite data swapping a b to an a and vice versa
@@ -207,7 +208,7 @@ SCENARIO("DCD uses 2nd sector if both are valid v1 sectors", "[dcd]")
     TestStore& store = dcd.store;
 
     TestDCD::Header header;
-    header.make_valid_v1();
+    header.makeValid();
 
     // directly manipulate the flash to create desired state
     store.eraseSector(TestBase);
@@ -244,29 +245,15 @@ SCENARIO("DCD write is atomic if partial failure", "[dcd]")
     }
 }
 
-TEST_CASE("uninitialized header has version 0", "[header]") {
-	TestDCD dcd;
-	TestDCD::Header header;
-	REQUIRE(header.version()==0);
-}
-
 TEST_CASE("initialized header has version 1", "[header]") {
 	TestDCD dcd;
 	TestDCD::Header header;
-	header.make_valid_v1();
-	REQUIRE(header.version()==1);
+	header.makeValid();
+	REQUIRE(header.isValid());
+	REQUIRE(header.seal==0xEDA15E00);		// SEAL_VALID
 }
 
-TEST_CASE("initialized header has version 2", "[header]") {
-	TestDCD dcd;
-	TestDCD::Header header;
-	header.make_valid_v2(1234, 6);
-	REQUIRE(header.version()==2);
-	REQUIRE(header.crc==1234);
-	REQUIRE(header.flags.counter==2); // 6 modulo 4
-}
-
-SCENARIO("isCRCValid", "[dcd]") {
+SCENARIO_METHOD(TestDCD, "isCRCValid", "[dcd]") {
 	TestDCD dcd;
 	uint32_t crc = 0x1234ABCD;
 	GIVEN("calculateCRC is mocked") {
@@ -276,21 +263,20 @@ SCENARIO("isCRCValid", "[dcd]") {
 		mocks.ExpectCallFunc(calcCrc).With((const void*)(start+12), 16000-12).Return(crc);
 
 		WHEN("the header has a different CRC") {
-			header.crc = 0x1234;
-			REQUIRE_FALSE(dcd.isCRCValid(header));
+			REQUIRE_FALSE(dcd.isCRCValid(Sector_0, 0x1234));
 		}
 
 		WHEN("the header has the same CRC") {
-			header.crc = crc;
-			REQUIRE(dcd.isCRCValid(header));
+			REQUIRE(dcd.isCRCValid(Sector_0, crc));
 		}
 	}
 }
 
-SCENARIO_METHOD(TestDCD, "initializing a sector initializes to v2", "[dcd") {
+SCENARIO_METHOD(TestDCD, "initializing a sector initializes to 0xFF with a valid CRC", "[dcd") {
     REQUIRE_FALSE(isInitialized());
     initialize(Sector_0);
-    REQUIRE(version(Sector_0)==2);
+    REQUIRE(isCRCValid(Sector_0));
+    REQUIRE(!isCRCValid(Sector_1));
     REQUIRE(isInitialized());
 }
 
@@ -317,58 +303,47 @@ SCENARIO_METHOD(TestDCD, "dcd can be initialized by writing", "[dcd]") {
 	auto& dct = *this;
 	dct.write(23, "abcd", 4);
 	REQUIRE(dct.isInitialized());
+	REQUIRE(dct.isCRCValid(Sector_0));
 }
 
 SCENARIO_METHOD(TestDCD, "current sector","[dcd]") {
 
 	GIVEN("current sector") {
-
+		TestDCD& dcd = *this;
 		// these are needed to avoid a linker error on the Sector_xxx symbols from the DCD template
 		//const int Sector_Unknown = 255;
 		//const int Sector_0 = 0;
 		//const int Sector_1 = 1;
 
-		THEN("is Unknown when both are invalid") {
-			REQUIRE(_currentSector(0, 0)==Sector_Unknown);
+		THEN("is the sector with the highest count") {
+			REQUIRE(_currentSector(0, 1, Sector_0, Sector_1)==Sector_1);
+			REQUIRE(_currentSector(3, 0, Sector_0, Sector_1)==Sector_1);
+			REQUIRE(_currentSector(0, 3, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(1, 0, Sector_0, Sector_1)==Sector_0);
+
+			REQUIRE(_currentSector(0, 1, Sector_1, Sector_0)==Sector_0);
+			REQUIRE(_currentSector(3, 0, Sector_1, Sector_0)==Sector_0);
+			REQUIRE(_currentSector(0, 3, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(1, 0, Sector_1, Sector_0)==Sector_1);
 		}
 
-		THEN("is the sector with v1 when only one is v1") {
-			REQUIRE(_currentSector(0, 1)==Sector_1);
-			REQUIRE(_currentSector(1, 0)==Sector_0);
-		}
+		THEN("is the first sector when counts are not in sequence") {
+			REQUIRE(_currentSector(2, 0, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(0, 2, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(1, 3, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(3, 1, Sector_0, Sector_1)==Sector_0);
 
-		auto dcd = *this;
-		THEN("is Sector_1 when both are v1") {
-			REQUIRE(dcd._currentSector(1, 1)==Sector_1);
-		}
-
-		THEN("is the sector with v2 when only one is v2") {
-			REQUIRE(dcd._currentSector(0, 2)==Sector_1);
-			REQUIRE(dcd._currentSector(2, 0)==Sector_0);
-
-			REQUIRE(dcd._currentSector(1, 2)==Sector_1);
-			REQUIRE(dcd._currentSector(2, 1)==Sector_0);
-		}
-
-		THEN("is the sector with the highest count when both are v2") {
-			REQUIRE(dcd._currentSector(2, 2, 0, 1)==Sector_1);
-			REQUIRE(dcd._currentSector(2, 2, 3, 0)==Sector_1);
-			REQUIRE(dcd._currentSector(2, 2, 0, 3)==Sector_0);
-			REQUIRE(dcd._currentSector(2, 2, 1, 0)==Sector_0);
-		}
-
-		THEN("is sector 0 when both are v2 and the counts are not in sequence") {
-			REQUIRE(dcd._currentSector(2, 2, 2, 0)==Sector_0);
-			REQUIRE(dcd._currentSector(2, 2, 0, 2)==Sector_0);
-			REQUIRE(dcd._currentSector(2, 2, 1, 3)==Sector_0);
-			REQUIRE(dcd._currentSector(2, 2, 3, 1)==Sector_0);
+			REQUIRE(_currentSector(2, 0, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(0, 2, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(1, 3, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(3, 1, Sector_1, Sector_0)==Sector_1);
 		}
 	}
 }
 
 SCENARIO_METHOD(TestDCD, "upgrade v1 to v2 format", "[dcd]") {
     Header header;
-    header.make_valid_v1();
+    header.makeValid();
 
     // directly manipulate the flash to create desired state
     store.eraseSector(TestBase);
@@ -382,8 +357,7 @@ SCENARIO_METHOD(TestDCD, "upgrade v1 to v2 format", "[dcd]") {
     }
 
     store.write(TestBase+header.size(), data, 4096);
-    REQUIRE(currentVersion()==1);
-
+    REQUIRE(!this->isCRCValid(Sector_0));
     const uint8_t* result = read(0);
     assertMemoryEqual(result, data, 4096);
 
@@ -393,5 +367,6 @@ SCENARIO_METHOD(TestDCD, "upgrade v1 to v2 format", "[dcd]") {
     result = read(0);
 	assertMemoryEqual(result, data, 4096);
 
-	REQUIRE(currentVersion()==2);
+	//sector should have a valid CRC
+    REQUIRE(this->isCRCValid(Sector_1));
 }
