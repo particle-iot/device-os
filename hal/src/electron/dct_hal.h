@@ -19,6 +19,14 @@
 #pragma once
 
 #include "dct_hal_stm32f2xx.h"
-#include "dcd_flash.h"
 #include "dct.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void dcd_migrate_data();
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

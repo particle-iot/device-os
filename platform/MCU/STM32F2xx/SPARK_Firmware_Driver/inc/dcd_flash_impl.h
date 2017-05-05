@@ -17,7 +17,8 @@
  ******************************************************************************
  */
 
-#include "dcd_flash.h"
+#pragma once
+
 #include "dcd.h"
 #include "flash_storage_impl.h"
 
@@ -59,5 +60,3 @@ public:
         return sector[8]==0 && sector[9]==1;
     }
 };
-
-void dcd_migrate_data();
