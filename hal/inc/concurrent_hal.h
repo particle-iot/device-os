@@ -183,7 +183,9 @@ int os_semaphore_destroy(os_semaphore_t semaphore);
 int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool reserved);
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 
+#ifndef _GLIBCXX_HAS_GTHREADS
 #define _GLIBCXX_HAS_GTHREADS
+#endif
 #include <bits/gthr.h>
 
 /**

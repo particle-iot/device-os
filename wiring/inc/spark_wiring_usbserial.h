@@ -30,6 +30,7 @@
 #include "spark_wiring_stream.h"
 #include "usb_hal.h"
 #include "system_task.h"
+#include "concurrent_hal.h"
 
 class USBSerial : public Stream
 {

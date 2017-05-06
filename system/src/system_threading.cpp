@@ -30,6 +30,7 @@ ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idl
 /**
  * Implementation to support gthread's concurrency primitives.
  */
+#if EMBEDDED_TARGET == 1
 namespace std {
 
 #if 0
@@ -122,6 +123,7 @@ namespace std {
         __get_once_functor_lock_ptr() = __ptr;
     }
 }
+#endif
 
 static os_mutex_recursive_t usb_serial_mutex;
 
