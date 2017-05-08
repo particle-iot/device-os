@@ -340,7 +340,7 @@ void WiFiSetupConsole::handle(char c)
             if (ptr) {
                 WiFiSetupConsole* self = reinterpret_cast<WiFiSetupConsole*>(ptr);
                 if (ap) {
-                    if (ap->ssidLength && !strncmp(self->ssid, ap->ssid, ap->ssidLength)) {
+                    if (ap->ssidLength && !strncmp(self->ssid, ap->ssid, std::max((size_t)ap->ssidLength, (size_t)strlen(self->ssid)))) {
                         self->security_ = ap->security;
                         self->cipher_ = ap->cipher;
                     }
