@@ -45,7 +45,7 @@ TCPClient::TCPClient() : TCPClient(socket_handle_invalid())
 }
 
 TCPClient::TCPClient(sock_handle_t sock) :
-        d_(new Data(sock))
+        d_(std::make_shared<Data>(sock))
 {
   flush_buffer();
 }
