@@ -30,8 +30,8 @@ HAL_WICED_INCLUDE_DIRS +=   wiced/WWD
 HAL_WICED_INCLUDE_DIRS +=   libraries/utilities/linked_list
 
 ifeq "$(HAL_WICED_NETWORK)" "LwIP"
-HAL_WICED_INCLUDE_DIRS +=   wiced/network/LwIP/ver1.4.0.rc1/src/include \
-			    wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4 \
+HAL_WICED_INCLUDE_DIRS +=   wiced/network/LwIP/ver1.4.1/src/include \
+			    wiced/network/LwIP/ver1.4.1/src/include/ipv4 \
 			    wiced/network/LwIP/WWD/FreeRTOS
 endif
 ifeq "$(HAL_WICED_NETWORK)" "NetX"
