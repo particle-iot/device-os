@@ -67,11 +67,11 @@ typedef enum USBRequestResult {
 typedef struct USBRequest {
   size_t size; // Structure size
   int type; // Request type (as defined by USBRequestType enum)
-  uint16_t value; // wValue field
   char* data; // Data buffer
   size_t request_size; // Request size
   size_t reply_size; // Reply size (initialized to 0)
   int format; // Data format (as defined by DataFormat enum)
+  uint16_t value; // wValue field
 } USBRequest;
 
 // Callback invoked for USB requests that should be processed at application side
