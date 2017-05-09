@@ -132,15 +132,26 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 	return len;
 }
 
-size_t Messages::update_done(uint8_t* buf, message_id_t message_id, bool confirmable)
+size_t Messages::update_done(uint8_t* buf, message_id_t message_id, const uint8_t* result, size_t result_len, bool confirmable)
 {
+	size_t sz = 6;
 	buf[0] = confirmable ? 0x40 : 0x50; // confirmable/non-confirmable, no token
 	buf[1] = 0x03; // PUT
 	buf[2] = message_id >> 8;
 	buf[3] = message_id & 0xff;
 	buf[4] = 0xb1; // Uri-Path option of length 1
 	buf[5] = 'u';
-	return 6;
+	if (result && result_len) {
+		buf[sz++] = 0xff; // payload marker
+		memcpy(buf + sz, result, result_len);
+		sz += result_len;
+	}
+	return sz;
+}
+
+size_t Messages::update_done(uint8_t* buf, message_id_t message_id, bool confirmable)
+{
+	return update_done(buf, message_id, NULL, 0, confirmable);
 }
 
 size_t Messages::function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value, bool confirmable)
@@ -319,6 +330,18 @@ size_t Messages::event(uint8_t buf[], uint16_t message_id, const char *event_nam
   return p - buf;
 }
 
+size_t Messages::coded_ack(uint8_t* buf, uint8_t token, uint8_t code,
+                           uint8_t message_id_msb, uint8_t message_id_lsb,
+                           uint8_t* data, size_t data_len)
+{
+    size_t sz = Messages::coded_ack(buf, token, code, message_id_msb, message_id_lsb);
+    if (data && data_len) {
+        buf[sz++] = 0xff; // Payload marker
+        memcpy(buf + sz, data, data_len);
+        sz += data_len;
+    }
 
+    return sz;
+}
 
 }}

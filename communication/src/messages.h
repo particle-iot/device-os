@@ -53,6 +53,7 @@ public:
 			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len);
 
 	static size_t update_done(uint8_t* buf, message_id_t message_id, bool confirmable);
+  static size_t update_done(uint8_t* buf, message_id_t message_id, const uint8_t* result, size_t result_len, bool confirmable);
 
 	static const size_t function_return_size = 10;
 
@@ -121,6 +122,14 @@ public:
       buf[4] = token;
       return 5;
     }
+
+    static size_t coded_ack(uint8_t* buf,
+                            uint8_t token,
+                            uint8_t code,
+                            uint8_t message_id_msb,
+                            uint8_t message_id_lsb,
+                            uint8_t* data,
+                            size_t data_len);
 
     static inline size_t reset(unsigned char *buf,
                                          unsigned char message_id_msb,

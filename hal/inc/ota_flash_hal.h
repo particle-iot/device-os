@@ -113,6 +113,8 @@ uint16_t HAL_OTA_ChunkSize();
 
 flash_device_t HAL_OTA_FlashDevice();
 
+int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved);
+
 /**
  * Erase a region of flash in preparation for flashing content.
  * @param address   The start address to erase. Must be on a flash boundary.

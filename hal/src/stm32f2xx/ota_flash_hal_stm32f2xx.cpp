@@ -217,12 +217,24 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
+int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
+    hal_module_t module;
+
+    bool module_fetched = fetch_module(&module, &module_ota, userDepsOptional, flags);
+
+    if (mod) {
+        memcpy(mod, &module, sizeof(hal_module_t));
+    }
+
+    return (int)!module_fetched;
+}
+
 hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
 
-    bool module_fetched = fetch_module(&module, &module_ota, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
+    bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
 	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
