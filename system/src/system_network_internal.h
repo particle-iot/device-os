@@ -279,6 +279,7 @@ protected:
                 console.loop();
             }
 #if PLATFORM_THREADING
+            SystemISRTaskQueue.process();
             if (!APPLICATION_THREAD_CURRENT()) {
                 SystemThread.process();
             }

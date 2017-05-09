@@ -31,6 +31,9 @@
 #include "system_threading.h"
 
 #include "spark_wiring_system.h"
+#include "system_network_internal.h"
+#include "bytes2hexbuf.h"
+#include "system_update.h"
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
@@ -125,28 +128,13 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
   if (req->bmRequestTypeDirection == 0) {
     // Host -> Device
     switch (req->wIndex) {
-      case USB_REQUEST_RESET: {
-        // FIXME: We probably shouldn't reset from an ISR.
-        // The host will probably get an error that control request has timed out since we
-        // didn't respond to it.
-        System.reset(req->wValue);
-        break;
-      }
-
-      case USB_REQUEST_DFU_MODE: {
-        // FIXME: We probably shouldn't enter DFU mode from an ISR.
-        // The host will probably get an error that control request has timed out since we
-        // didn't respond to it.
-        System.dfu(false);
-        break;
-      }
-
-      case USB_REQUEST_LISTENING_MODE: {
-        // FIXME: We probably shouldn't enter listening mode from an ISR.
-        // The host will probably get an error that control request has timed out since we
-        // didn't respond to it.
-        system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
-        System.enterSafeMode();
+      // Process these requests on system thread
+      case USB_REQUEST_RESET:
+      case USB_REQUEST_DFU_MODE:
+      case USB_REQUEST_LISTENING_MODE:
+      case USB_REQUEST_SAFE_MODE:
+      case USB_REQUEST_MODULE_INFO: {
+        return enqueueRequest(req);
         break;
       }
 
@@ -180,11 +168,13 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
           req->wLength = 12;
         } else {
           // Return as string
-          String id = System.deviceID();
-          if (req->wLength < (id.length() + 1))
+          uint8_t deviceId[16];
+          int sz = HAL_device_ID(deviceId, sizeof(deviceId));
+          if (req->wLength < (sz * 2 + 1))
             return 1;
-          strncpy((char*)req->data, id.c_str(), req->wLength);
-          req->wLength = id.length() + 1;
+          bytes2hexbuf(deviceId, sz, (char*)req->data);
+          req->data[sz * 2] = '\0';
+          req->wLength = sz * 2 + 1;
         }
         break;
       }
@@ -200,6 +190,7 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
         break;
       }
 
+      case USB_REQUEST_MODULE_INFO:
       case USB_REQUEST_LOG_CONFIG:
       case USB_REQUEST_CUSTOM: {
         return fetchRequestResult(req);
@@ -242,6 +233,7 @@ uint8_t SystemControlInterface::enqueueRequest(HAL_USB_SetupRequest* req, DataFo
     return 1;
   }
   usbReq_.req.type = (USBRequestType)req->wIndex;
+  usbReq_.req.value = req->wValue;
   usbReq_.req.request_size = req->wLength;
   usbReq_.req.reply_size = 0;
   usbReq_.req.format = fmt;
@@ -292,15 +284,46 @@ void SystemControlInterface::setRequestResult(USBRequest* req, USBRequestResult 
 
 void SystemControlInterface::processSystemRequest(void* data) {
   USBRequest* req = static_cast<USBRequest*>(data);
+  USBRequestResult result = USB_REQUEST_RESULT_OK;
   switch (req->type) {
   // Handle requests that should be processed by the system modules here
+  case USB_REQUEST_RESET: {
+    System.reset(req->value);
+    break;
+  }
+
+  case USB_REQUEST_DFU_MODE: {
+    System.dfu(false);
+    break;
+  }
+
+  case USB_REQUEST_LISTENING_MODE: {
+    network.listen(req->value);
+    break;
+  }
+
+  case USB_REQUEST_SAFE_MODE: {
+    System.enterSafeMode();
+    break;
+  }
+
+  case USB_REQUEST_MODULE_INFO: {
+    BufferAppender appender((uint8_t*)req->data, USB_REQUEST_BUFFER_SIZE);
+    system_module_info(append_instance, &appender);
+    req->reply_size = appender.size();
+    break;
+  }
+
   default:
     if (usbReqAppHandler) {
       processAppRequest(data); // Forward request to the application thread
+      return;
     } else {
-      setRequestResult(req, USB_REQUEST_RESULT_ERROR);
+      result = USB_REQUEST_RESULT_ERROR;
     }
   }
+
+  setRequestResult(req, result);
 }
 
 void SystemControlInterface::processAppRequest(void* data) {
