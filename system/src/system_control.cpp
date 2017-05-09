@@ -31,8 +31,7 @@
 #include "system_threading.h"
 
 #include "spark_wiring_system.h"
-#include "spark_wiring_wifi.h"
-#include "spark_wiring_cellular.h"
+#include "system_network_internal.h"
 #include "bytes2hexbuf.h"
 #include "system_update.h"
 
@@ -299,13 +298,7 @@ void SystemControlInterface::processSystemRequest(void* data) {
   }
 
   case USB_REQUEST_LISTENING_MODE: {
-#if Wiring_WiFi
-    spark::WiFi.listen(req->value);
-#elif Wiring_Cellular
-    spark::Cellular.listen(req->value);
-#else
-    result = USB_REQUEST_RESULT_ERROR;
-#endif
+    network.listen(req->value);
     break;
   }
 
