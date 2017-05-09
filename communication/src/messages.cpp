@@ -132,7 +132,7 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 	return len;
 }
 
-size_t Messages::update_done(uint8_t* buf, message_id_t message_id, uint8_t* result, size_t result_len, bool confirmable)
+size_t Messages::update_done(uint8_t* buf, message_id_t message_id, const uint8_t* result, size_t result_len, bool confirmable)
 {
 	size_t sz = 6;
 	buf[0] = confirmable ? 0x40 : 0x50; // confirmable/non-confirmable, no token
