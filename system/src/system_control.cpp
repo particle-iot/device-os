@@ -169,7 +169,6 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
           req->wLength = 12;
         } else {
           // Return as string
-          String id = System.deviceID();
           uint8_t deviceId[16];
           int sz = HAL_device_ID(deviceId, sizeof(deviceId));
           if (req->wLength < (sz * 2 + 1))
@@ -300,13 +299,14 @@ void SystemControlInterface::processSystemRequest(void* data) {
   }
 
   case USB_REQUEST_LISTENING_MODE: {
-    setRequestResult(req, result);
 #if Wiring_WiFi
     spark::WiFi.listen(req->value);
 #elif Wiring_Cellular
     spark::Cellular.listen(req->value);
+#else
+    result = USB_REQUEST_RESULT_ERROR;
 #endif
-    return;
+    break;
   }
 
   case USB_REQUEST_SAFE_MODE: {
@@ -324,10 +324,10 @@ void SystemControlInterface::processSystemRequest(void* data) {
   default:
     if (usbReqAppHandler) {
       processAppRequest(data); // Forward request to the application thread
+      return;
     } else {
-      setRequestResult(req, USB_REQUEST_RESULT_ERROR);
+      result = USB_REQUEST_RESULT_ERROR;
     }
-    return;
   }
 
   setRequestResult(req, result);
