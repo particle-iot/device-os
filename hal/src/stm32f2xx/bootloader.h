@@ -17,7 +17,7 @@ extern "C" {
 bool bootloader_requires_update(const uint8_t* bootloader_image, uint32_t length);
 bool bootloader_update_if_needed();
 
-bool bootloader_update(const void* bootloader_image, unsigned length);
+int bootloader_update(const void* bootloader_image, unsigned length);
 
 
 #ifdef __cplusplus

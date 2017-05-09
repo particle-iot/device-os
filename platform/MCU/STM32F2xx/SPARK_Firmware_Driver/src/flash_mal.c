@@ -253,18 +253,18 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
     return false;
 }
 
-bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
                       uint32_t length, uint8_t module_function, uint8_t flags)
 {
     if (!FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length))
     {
-        return false;
+        return FLASH_ACCESS_RESULT_BADARG;
     }
 
     if (!FLASH_CheckValidAddressRange(destinationDeviceID, destinationAddress, length))
     {
-        return false;
+        return FLASH_ACCESS_RESULT_BADARG;
     }
 
 #ifndef USE_SERIAL_FLASH    // this predates the module system (early P1's using external flash for storage)
@@ -274,33 +274,33 @@ bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress
 
         if((flags & (MODULE_VERIFY_LENGTH|MODULE_VERIFY_CRC)) && (length < moduleLength+4))
         {
-            return false;
+            return FLASH_ACCESS_RESULT_BADARG;
         }
 
         const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress);
         if ((info->module_function != MODULE_FUNCTION_RESOURCE) && (info->platform_id != PLATFORM_ID))
         {
-            return false;
+            return FLASH_ACCESS_RESULT_BADARG;
         }
 
         // verify destination address
         if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && (((uint32_t)info->module_start_address) != destinationAddress))
         {
-            return false;
+            return FLASH_ACCESS_RESULT_BADARG;
         }
 
         if ((flags & MODULE_VERIFY_FUNCTION) && (info->module_function != module_function))
         {
-            return false;
+            return FLASH_ACCESS_RESULT_BADARG;
         }
 
         if ((flags & MODULE_VERIFY_CRC) && !FLASH_VerifyCRC32(sourceDeviceID, sourceAddress, moduleLength))
         {
-            return false;
+            return FLASH_ACCESS_RESULT_BADARG;
         }
     }
 #endif
-    return true;
+    return FLASH_ACCESS_RESULT_OK;
 }
 
 bool CopyFlashBlock(flash_device_t sourceDeviceID, uint32_t sourceAddress, flash_device_t destinationDeviceID, uint32_t destinationAddress, uint32_t length)
@@ -390,13 +390,13 @@ bool CopyFlashBlock(flash_device_t sourceDeviceID, uint32_t sourceAddress, flash
 	return success;
 }
 
-bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                      uint32_t length, uint8_t module_function, uint8_t flags)
+int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                     flash_device_t destinationDeviceID, uint32_t destinationAddress,
+                     uint32_t length, uint8_t module_function, uint8_t flags)
 {
-    if (!FLASH_CheckCopyMemory(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, length, module_function, flags))
+    if (FLASH_CheckCopyMemory(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, length, module_function, flags) != FLASH_ACCESS_RESULT_OK)
     {
-        return false;
+        return FLASH_ACCESS_RESULT_BADARG;
     }
 
     if (sourceDeviceID == FLASH_SERIAL)
@@ -414,12 +414,12 @@ bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     		if (blockLength>length)
     			blockLength = length;
     		if (!CopyFlashBlock(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, blockLength))
-    			return false;
+    			return FLASH_ACCESS_RESULT_ERROR;
     		length -= blockLength;
     		sourceAddress += blockLength;
     		destinationAddress += blockLength;
     }
-    return true;
+    return FLASH_ACCESS_RESULT_OK;
 }
 
 bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
@@ -570,10 +570,10 @@ bool FLASH_ClearFactoryResetModuleSlot(void)
     return (dct_write_app_data(data, offs, sizeof(data)) == 0);
 }
 
-bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
+int FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
 {
     platform_flash_modules_t flash_module;
-    bool restoreFactoryReset = false;
+    int restoreFactoryReset = FLASH_ACCESS_RESULT_ERROR;
 
     //Read the flash modules info from the dct area
     dct_read_app_data_copy(DCT_FLASH_MODULES_OFFSET + (FAC_RESET_SLOT * sizeof(flash_module)), &flash_module, sizeof(flash_module));
@@ -602,12 +602,12 @@ bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
 
 bool FLASH_IsFactoryResetAvailable(void)
 {
-    return FLASH_ApplyFactoryResetImage(FLASH_CheckCopyMemory);
+    return !FLASH_ApplyFactoryResetImage(FLASH_CheckCopyMemory);
 }
 
 bool FLASH_RestoreFromFactoryResetModuleSlot(void)
 {
-    return FLASH_ApplyFactoryResetImage(FLASH_CopyMemory);
+    return !FLASH_ApplyFactoryResetImage(FLASH_CopyMemory);
 }
 
 //This function called in bootloader to perform the memory update process

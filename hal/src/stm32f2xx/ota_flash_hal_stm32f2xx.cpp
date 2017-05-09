@@ -36,8 +36,14 @@
 #include "hal_platform.h"
 #include "hal_event.h"
 #include "service_debug.h"
+#include "spark_wiring_random.h"
+#include "delay_hal.h"
 
-#define OTA_CHUNK_SIZE          512
+#define OTA_CHUNK_SIZE                 (512)
+#define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
+#define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
+
+static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength);
 
 /**
  * Finds the location where a given module is stored. The module is identified
@@ -217,6 +223,44 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
+static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength)
+{
+    hal_update_complete_t result = HAL_UPDATE_ERROR;
+    uint32_t attempt = 0;
+    do {
+        int fres = FLASH_ACCESS_RESULT_ERROR;
+        if (attempt++ > 0) {
+            ATOMIC_BLOCK() {
+                // If it's not the first flashing attempt, try with interrupts disabled
+                bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
+            }
+        } else {
+            bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
+        }
+        if (fres == FLASH_ACCESS_RESULT_OK) {
+            // Validate bootloader
+            hal_module_t module;
+            bool module_fetched = fetch_module(&module, &module_bootloader, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
+            if (module_fetched && (module.validity_checked == module.validity_result)) {
+                result = HAL_UPDATE_APPLIED;
+                break;
+            }
+        }
+
+        if (fres == FLASH_ACCESS_RESULT_BADARG) {
+            // The bootloader is still intact, for some reason the module being copied has failed some checks.
+            result = HAL_UPDATE_ERROR;
+            break;
+        }
+
+        // Random backoff
+        system_tick_t period = random(BOOTLOADER_RANDOM_BACKOFF_MIN, BOOTLOADER_RANDOM_BACKOFF_MAX);
+        LOG_DEBUG(WARN, "Failed to flash bootloader. Retrying in %lu ms", period);
+        HAL_Delay_Milliseconds(period);
+    } while ((result == HAL_UPDATE_ERROR));
+    return result;
+}
+
 hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 {
     hal_module_t module;
@@ -231,8 +275,7 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 
         // bootloader is copied directly
         if (function==MODULE_FUNCTION_BOOTLOADER) {
-            if (bootloader_update((const void*)module_ota.start_address, moduleLength+4))
-                result = HAL_UPDATE_APPLIED;
+            result = flash_bootloader(&module, moduleLength);
         }
         else
         {
