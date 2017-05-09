@@ -1,9 +1,6 @@
 #ifndef I2C_REG_H_
 #define I2C_REG_H_
 
-#include <cstdint>
-#include <vector>
-
 // Some helper functions
 
 namespace i2c {
@@ -19,7 +16,7 @@ int32_t readRegister(uint8_t slaveAddress, uint8_t addr, uint8_t* buffer, uint8_
 int32_t readAddr(uint8_t slaveAddress, uint8_t* buffer, uint8_t len, bool stop);
 
 extern uint32_t errorCount;
-extern std::vector<uint8_t> devices;
+extern spark::Vector<uint8_t> devices;
 } // namespace i2c
 
 #endif // I2C_REG_H_

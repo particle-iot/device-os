@@ -35,4 +35,27 @@ test(WIRE_01_Wire_end_begin_end)
     assertTrue(pinAvailable(D1));
 }
 
+#if PLATFORM_ID == 10
+test(WIRE_02_Wire_and_Wire1_cannot_be_enabled_simultaneously_on_Electron)
+{
+    // Just in case disable both of them beforehand to enter a know state
+    Wire.end();
+    Wire1.end();
 
+    Wire.begin();
+    assertTrue(Wire.isEnabled());
+    Wire1.begin();
+    assertFalse(Wire1.isEnabled());
+
+    Wire.end();
+    assertFalse(Wire.isEnabled());
+
+    Wire1.begin();
+    assertTrue(Wire1.isEnabled());
+    Wire.begin();
+    assertFalse(Wire.isEnabled());
+
+    Wire1.end();
+    assertFalse(Wire1.isEnabled());
+}
+#endif // PLATFORM_ID == 10

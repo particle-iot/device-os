@@ -1,8 +1,8 @@
-#include <algorithm>
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "i2c_helper.h"
 #include "interferer.h"
+#include <algorithm>
 
 #define MCP23017_BASE_ADDRESS 0x20
 
@@ -50,7 +50,7 @@ test(1_I2C_MCP23017_doRequestControlNoStopReadNoStop) {
     // Perform single 4-byte read and end it with STOP
     i2c::readRegister(s_mcpAddress, 0x00, nullptr, 4, true, false);
 
-    Wire.end();
+    USE_WIRE.end();
 
     assertEqual(i2c::errorCount, 0);
 }
@@ -79,7 +79,7 @@ test(2_I2C_MCP23017_doRequestControlStopReadStop) {
     // and STOP after read
     i2c::readRegister(s_mcpAddress, 0x00, nullptr, 4, true, true);
 
-    Wire.end();
+    USE_WIRE.end();
 
     assertEqual(i2c::errorCount, 0);
 }
@@ -109,7 +109,7 @@ test(3_I2C_MCP23017_doRequestControlNoStopReadStop) {
     // and STOP after read
     i2c::readRegister(s_mcpAddress, 0x00, nullptr, 4, true, false);
 
-    Wire.end();
+    USE_WIRE.end();
 
     assertEqual(i2c::errorCount, 0);
 }
@@ -140,7 +140,7 @@ test(4_I2C_MCP23017_doRequestControlStopReadNoStop) {
     // and STOP after read
     i2c::readRegister(s_mcpAddress, 0x00, nullptr, 4, true, true);
 
-    Wire.end();
+    USE_WIRE.end();
 
     assertEqual(i2c::errorCount, 0);
 }
