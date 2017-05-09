@@ -1209,9 +1209,18 @@ void FLASH_End(void)
     BKP_WriteBackupRegister(BKP_DR10, 0x0005);
 }
 
+// buf length must be at least EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH
 void FLASH_Read_ServerAddress_Data(void *buf)
 {
     sFLASH_ReadBuffer(buf,
+            EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS,
+            EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
+}
+
+// buf length must be at least EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH
+void FLASH_Write_ServerAddress_Data(const uint8_t *buf)
+{
+    sFLASH_WriteBuffer(buf,
             EXTERNAL_FLASH_SERVER_DOMAIN_ADDRESS,
             EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
 }
@@ -1223,6 +1232,15 @@ void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
             EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS,
             EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
+
+// keyBuffer length must be at least EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH
+void FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer)
+{
+    sFLASH_WriteBuffer(keyBuffer,
+            EXTERNAL_FLASH_SERVER_PUBLIC_KEY_ADDRESS,
+            EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+}
+
 
 // keyBuffer length must be at least EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer)

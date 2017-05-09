@@ -201,7 +201,9 @@ void FLASH_End(void);
  * EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH bytes.
  */
 void FLASH_Read_ServerAddress_Data(void *server_addr);
+void FLASH_Write_ServerAddress_Data(const uint8_t *buf);
 void FLASH_Read_ServerPublicKey(uint8_t *keyBuffer);
+void FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer);
 void FLASH_Read_CorePrivateKey(uint8_t *keyBuffer);
 
 bool FACTORY_Flash_Reset(void);

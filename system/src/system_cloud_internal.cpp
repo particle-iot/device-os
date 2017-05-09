@@ -68,6 +68,8 @@ static sock_handle_t sparkSocket = socket_handle_invalid();
 
 ProtocolFacade* sp;
 
+static uint32_t particle_key_errors = NO_ERROR;
+
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
  * and communication dynalibs. (Not sure why - just an oversight.)
@@ -460,6 +462,7 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
 
 const char* CLAIM_EVENTS = "spark/device/claim/";
 const char* RESET_EVENT = "spark/device/reset";
+const char* KEY_RESTORE_EVENT = "spark/device/key/restore";
 
 void SystemEvents(const char* name, const char* data)
 {
@@ -475,6 +478,24 @@ void SystemEvents(const char* name, const char* data)
             else if (!strcmp("reboot", data))
                 System.reset();
         }
+    }
+    if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
+        // Restore PSK to DCT/DCD/FLASH
+        LOG(INFO,"Restoring Public Server Key and Server Address to flash");
+        bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+        unsigned char psk_buf[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];   // 320 (udp) vs 294 (tcp), allocate 320.
+        unsigned char server_addr_buf[EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH];
+        memset(&psk_buf, 0xff, sizeof(psk_buf));
+        memset(&server_addr_buf, 0xff, sizeof(server_addr_buf));
+        if (udp) {
+            memcpy(&psk_buf, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
+            memcpy(&server_addr_buf, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
+        } else {
+            memcpy(&psk_buf, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
+            memcpy(&server_addr_buf, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
+        }
+        HAL_FLASH_Write_ServerPublicKey(psk_buf, udp);
+        HAL_FLASH_Write_ServerAddress(server_addr_buf, udp);
     }
 }
 
@@ -565,6 +586,8 @@ void Spark_Protocol_Init(void)
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
 
+        particle_key_errors = NO_ERROR;
+
         // User code was run, so persist the current values stored in the comms lib.
         // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
         if (system_mode()!=SAFE_MODE) {
@@ -631,6 +654,8 @@ void Spark_Protocol_Init(void)
         // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+        memset(&pubkey, 0xff, sizeof(pubkey));
+        memset(&private_key, 0xff, sizeof(private_key));
 
         SparkKeys keys;
         keys.size = sizeof(keys);
@@ -643,6 +668,18 @@ void Spark_Protocol_Init(void)
         genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
         HAL_FLASH_Read_ServerPublicKey(pubkey);
+
+        // if public server key is erased, restore with a backup from system firmware
+        if (pubkey[0] == 0xff) {
+            LOG(WARN, "Public Server Key was blank, restoring.");
+            if (udp) {
+                memcpy(&pubkey, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
+            }
+            else {
+                memcpy(&pubkey, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
+            }
+            particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
+        }
 
         uint8_t id_length = HAL_device_ID(NULL, 0);
         uint8_t id[id_length];
@@ -742,6 +779,12 @@ int Spark_Handshake(bool presence_announce)
             spark_protocol_send_time_request(sp);
             Spark_Process_Events();
         }
+    }
+    if (particle_key_errors != NO_ERROR) {
+        char buf[sizeof(unsigned long)*8+1];
+        ultoa((unsigned long)particle_key_errors, buf, 10);
+        LOG(INFO,"Send event spark/device/key/error=%s", buf);
+        Particle.publish("spark/device/key/error", buf, 60, PRIVATE);
     }
     return err;
 }
@@ -940,11 +983,11 @@ int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddre
         {
         		if (!udp)
         		{
-				// DEBUG("INVALID_INTERNET_ADDRESS");
-				const char default_domain[] = "device.spark.io";
-				// Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
-				memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
-				// and fall through to domain name case
+    				// DEBUG("INVALID_INTERNET_ADDRESS");
+    				const char default_domain[] = "device.spark.io";
+    				// Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
+    				memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
+    				// and fall through to domain name case
         		}
         		else
         		{
@@ -1024,7 +1067,18 @@ int spark_cloud_socket_connect()
     ServerAddress server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     HAL_FLASH_Read_ServerAddress(&server_addr);
-    switch (server_addr.addr_type)
+    // if server address is erased, restore with a backup from system firmware
+    if (server_addr.addr_type == 0xff) {
+        LOG(WARN, "Public Server Address was blank, restoring.");
+        if (udp) {
+            memcpy(&server_addr, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
+        }
+        else {
+            memcpy(&server_addr, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
+        }
+        particle_key_errors |= SERVER_ADDRESS_BLANK;
+    }
+	switch (server_addr.addr_type)
     {
         case IP_ADDRESS:
             LOG(INFO,"Read Server Address = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);

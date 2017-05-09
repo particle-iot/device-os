@@ -26,6 +26,18 @@
 #include <time.h>
 #include <stdint.h>
 
+enum ParticleKeyErrorFlag: uint32_t
+{
+  NO_ERROR                      = 0,
+  PUBLIC_SERVER_KEY_BLANK       = 1,
+  PUBLIC_SERVER_KEY_CORRUPTED   = 2,
+  SERVER_ADDRESS_BLANK          = 4,
+  SERVER_ADDRESS_CORRUPTED      = 8,
+  PUBLIC_DEVICE_KEY_BLANK       = 16,
+  PUBLIC_DEVICE_KEY_CORRUPTED   = 32,
+  PRIVATE_DEVICE_KEY_BLANK      = 64,
+  PRIVATE_DEVICE_KEY_CORRUPTED  = 128
+};
 
 typedef enum
 {
@@ -179,6 +191,10 @@ ProtocolFacade* system_cloud_protocol_instance(void);
 
 int spark_set_connection_property(unsigned property_id, unsigned data, void* datap, void* reserved);
 
+extern const unsigned char backup_udp_public_server_key[91];
+extern const unsigned char backup_udp_public_server_address[22];
+extern const unsigned char backup_tcp_public_server_key[294];
+extern const unsigned char backup_tcp_public_server_address[18];
 
 #define SPARK_BUF_LEN                 600
 

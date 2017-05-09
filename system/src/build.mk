@@ -7,7 +7,7 @@
 TARGET_SRC_PATH = src
 
 # C source files included in this build.
-CSRC +=
+CSRC += $(call target_files,src/,*.c)
 
 # enumerate target cpp files
 CPPSRC += $(call target_files,src/,*.cpp)

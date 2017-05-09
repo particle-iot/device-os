@@ -284,6 +284,15 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
     parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
 }
 
+void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
+{
+    if (udp) {
+        dct_write_app_data(buf, DCT_ALT_SERVER_ADDRESS_OFFSET, DCT_ALT_SERVER_ADDRESS_SIZE );
+    } else {
+        dct_write_app_data(buf, DCT_SERVER_ADDRESS_OFFSET, DCT_SERVER_ADDRESS_SIZE);
+    }
+}
+
 bool HAL_OTA_Flashed_GetStatus(void)
 {
     return OTA_Flashed_GetStatus();
@@ -302,6 +311,15 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 	    copy_dct(keyBuffer, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
 	else
 		copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+}
+
+void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
+{
+    if (udp) {
+        dct_write_app_data(keyBuffer, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
+    } else {
+        dct_write_app_data(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+    }
 }
 
 int key_gen_random(void* p)

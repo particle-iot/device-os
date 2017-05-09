@@ -82,6 +82,11 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
     parseServerAddressData(server_addr, buf, EXTERNAL_FLASH_SERVER_DOMAIN_LENGTH);
 }
 
+void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
+{
+    FLASH_Write_ServerAddress_Data(buf);
+}
+
 uint32_t HAL_OTA_Flashed_Length(void)
 {
     return 0;
@@ -100,6 +105,12 @@ void HAL_OTA_Flashed_ResetStatus(void)
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
     FLASH_Read_ServerPublicKey(keyBuffer);
+}
+
+
+void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
+{
+    FLASH_Write_ServerPublicKey(keyBuffer);
 }
 
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
