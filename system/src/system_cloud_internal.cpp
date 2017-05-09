@@ -1167,11 +1167,12 @@ int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* mod
 
 int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* buf)
 {
+    using namespace particle::protocol;
     hal_module_t module;
 
     int result = Spark_Finish_Firmware_Update(file, flags, &module);
 
-    if (buf && (flags & (UPDATE_FLAG_SUCCESS | UPDATE_FLAG_VALIDATE_ONLY)) == (UPDATE_FLAG_SUCCESS | UPDATE_FLAG_VALIDATE_ONLY)) {
+    if (buf && (flags & (UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY)) == (UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY)) {
         formatOtaUpdateStatusEventData(flags, result, &module, (uint8_t*)buf, 255);
     }
 

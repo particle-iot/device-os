@@ -35,7 +35,6 @@ LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 #include "device_keys.h"
 #include "service_debug.h"
 #include "messages.h"
-#include "system_update.h"
 
 using namespace particle::protocol;
 
@@ -172,7 +171,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
       LOG(WARN,"received ERROR CoAPMessage");
       if (updating) {      // was updating but had an error, inform the client
         serial_dump("handle received message failed - aborting transfer");
-        callbacks.finish_firmware_update(file, UPDATE_FLAG_ERROR, NULL);
+        callbacks.finish_firmware_update(file, UpdateFlag::ERROR, NULL);
         updating = false;
       }
 
@@ -1132,7 +1131,7 @@ bool SparkProtocol::handle_chunk(msg& message)
                     LOG(INFO,"received all chunks");
                     reset_updating();
                     response_size = notify_update_done(msg_to_send, 0, 0);
-                    callbacks.finish_firmware_update(file, UPDATE_FLAG_SUCCESS, NULL);
+                    callbacks.finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
                 }
                 else {
                     if (response_size && 0 > blocking_send(msg_to_send, 18)) {
@@ -1208,7 +1207,7 @@ size_t SparkProtocol::notify_update_done(uint8_t* msg, token_t token, uint8_t co
 
     memset(buf, 0, sizeof(buf));
     if (code != ChunkReceivedCode::BAD) {
-        callbacks.finish_firmware_update(file, UPDATE_FLAG_SUCCESS | UPDATE_FLAG_VALIDATE_ONLY, buf);
+        callbacks.finish_firmware_update(file, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, buf);
         data_len = strnlen(buf, sizeof(buf) - 1);
     }
 
@@ -1249,7 +1248,7 @@ bool SparkProtocol::handle_update_done(msg& message)
     if (!missing) {
         LOG(INFO,"update done: all done!");
         reset_updating();
-        callbacks.finish_firmware_update(file, UPDATE_FLAG_SUCCESS, NULL);
+        callbacks.finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
     }
     else {
         updating = 2;       // flag that we are sending missing chunks.

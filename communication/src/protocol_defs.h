@@ -108,5 +108,12 @@ typedef std::function<int()> callback;
 const product_id_t UNDEFINED_PRODUCT_ID = product_id_t(-1);
 const product_firmware_version_t UNDEFINED_PRODUCT_VERSION = product_firmware_version_t(-1);
 
+namespace UpdateFlag {
+enum Enum {
+    ERROR         = 0x00,
+    SUCCESS       = 0x01,
+    VALIDATE_ONLY = 0x02
+};
+}
 
 }}

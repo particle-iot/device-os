@@ -20,7 +20,6 @@
 #include "chunked_transfer.h"
 #include "service_debug.h"
 #include "coap.h"
-#include "system_update.h"
 
 namespace particle { namespace protocol {
 
@@ -184,7 +183,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
                     INFO("received all chunks");
                     reset_updating();
                     response_size = notify_update_done(message, response, channel, 0, 0);
-                    callbacks->finish_firmware_update(file, UPDATE_FLAG_SUCCESS, NULL);
+                    callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
                 }
                 else
                 {
@@ -233,7 +232,7 @@ size_t ChunkedTransfer::notify_update_done(Message& msg, Message& response, Mess
 
     memset(buf, 0, sizeof(buf));
     if (code != ChunkReceivedCode::BAD) {
-        callbacks->finish_firmware_update(file, UPDATE_FLAG_SUCCESS | UPDATE_FLAG_VALIDATE_ONLY, buf);
+        callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, buf);
         data_len = strnlen(buf, sizeof(buf) - 1);
         if (data_len) {
             msgsz = ((data_len + 7) / 16) * 16;
@@ -284,7 +283,7 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
     {
         DEBUG("update done - all done!");
         reset_updating();
-        callbacks->finish_firmware_update(file, UPDATE_FLAG_SUCCESS, NULL);
+        callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
     }
     else
     {
