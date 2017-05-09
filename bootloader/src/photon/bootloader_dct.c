@@ -11,7 +11,7 @@
 #define MODULAR_FIRMWARE 1
 #include "../../../hal/src/photon/ota_module_bounds.c"
 
-#define MIN_MODULE_VERSION_SYSTEM_PART2 109 // 0.7.0-rc.1
+#define MIN_MODULE_VERSION_SYSTEM_PART2 200 // 0.7.0-rc.1
 
 #define DYNALIB_INDEX_SYSTEM_MODULE_PART1 2 // system_module_part1
 #define FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT 0 // module_system_part1_pre_init()
