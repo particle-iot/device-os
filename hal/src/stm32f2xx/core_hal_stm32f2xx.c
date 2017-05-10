@@ -433,7 +433,7 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
     const module_bounds_t* bounds = NULL;
     hal_module_t mod;
     bool module_fetched = false;
-    bool valid = true;
+    bool valid = false;
 
     // First verify bootloader module
     bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0);
