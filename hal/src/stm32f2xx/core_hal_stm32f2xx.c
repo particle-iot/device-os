@@ -406,7 +406,8 @@ bool HAL_Core_Validate_User_Module(void)
     bool valid = false;
     Load_SystemFlags();
 
-    if (!(SYSTEM_FLAG(StartupMode_SysFlag) & 1)) // Safe mode flag
+    const uint8_t flags = SYSTEM_FLAG(StartupMode_SysFlag);
+    if (flags == 0xff /* Old bootloader */ || !(flags & 1)) // Safe mode flag
     {
         //CRC verification Enabled by default
         if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
