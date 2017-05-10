@@ -134,7 +134,7 @@ test(WIFI_05_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
 
     uint32_t freeRam1 = System.freeMemory();
 
-    wlan_restart();
+    wlan_restart(NULL);
 
     Particle.connect();
     waitFor(Particle.connected, 10000);

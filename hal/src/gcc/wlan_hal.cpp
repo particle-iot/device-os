@@ -200,7 +200,7 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
 	return -1;
 }
 
-int wlan_restart()
+int wlan_restart(void* reserved)
 {
   return -1;
 }
