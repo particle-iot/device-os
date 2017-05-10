@@ -824,12 +824,16 @@ platform_system_flags_t system_flags;
 
 void Load_SystemFlags()
 {
+    const int state = HAL_disable_irq();
     Load_SystemFlags_Impl(&system_flags);
+    HAL_enable_irq(state);
 }
 
 void Save_SystemFlags()
 {
+    const int state = HAL_disable_irq();
     Save_SystemFlags_Impl(&system_flags);
+    HAL_enable_irq(state);
 }
 
 bool FACTORY_Flash_Reset(void)

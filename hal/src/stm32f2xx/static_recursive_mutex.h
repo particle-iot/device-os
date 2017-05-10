@@ -24,11 +24,12 @@ public:
         }
     }
 
-    bool lock() {
+    bool lock(unsigned timeout = 0) {
         if (!mutex_) {
             init();
         }
-        return (xSemaphoreTakeRecursive(mutex_, portMAX_DELAY) == pdTRUE);
+        const TickType_t t = (timeout > 0) ? (timeout / portTICK_PERIOD_MS) : portMAX_DELAY;
+        return (xSemaphoreTakeRecursive(mutex_, t) == pdTRUE);
     }
 
     bool unlock() {
