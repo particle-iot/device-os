@@ -500,84 +500,83 @@ int wlan_restart(void* reserved) {
 }
 
 /*
- * This is almost an exact copy-paste of wiced_join_ap.
  * We need to manually loop through the APs here in order to know when to start
  * WPA Enterprise supplicant.
  */
 static wiced_result_t wlan_join() {
-    unsigned int             a;
-    int                      retries;
-    wiced_config_ap_entry_t* ap;
-    wiced_result_t           result = WICED_NO_STORED_AP_IN_DCT;
-    char                     ssid_name[SSID_NAME_SIZE + 1];
+    int attempt = WICED_JOIN_RETRY_ATTEMPTS;
+    wiced_result_t result = WICED_ERROR;
+    platform_dct_wifi_config_t* wifi_config = NULL;
+    char ssid_name[SSID_NAME_SIZE + 1];
 
-    for ( retries = WICED_JOIN_RETRY_ATTEMPTS; retries != 0 && !wiced_network_up_cancel; --retries )
-    {
-        /* Try all stored APs */
-        for ( a = 0; a < CONFIG_AP_LIST_SIZE && !wiced_network_up_cancel; ++a )
-        {
-            /* Check if the entry is valid */
-            if (wiced_dct_read_lock((void**)&ap, WICED_FALSE, DCT_WIFI_CONFIG_SECTION,
-                                    (uint32_t) (OFFSETOF(platform_dct_wifi_config_t, stored_ap_list) +
-                                     a * sizeof(wiced_config_ap_entry_t) ),
-                                    sizeof(wiced_config_ap_entry_t)) != WICED_SUCCESS)
-            {
+    result = wiced_dct_read_lock((void**)&wifi_config, WICED_FALSE,
+                                 DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
+
+    if (result != WICED_SUCCESS) {
+        return result;
+    }
+
+    while (attempt-- && !wiced_network_up_cancel) {
+        for (unsigned i = 0; i < CONFIG_AP_LIST_SIZE; i++) {
+            const wiced_config_ap_entry_t& ap = wifi_config->stored_ap_list[i];
+
+            if (ap.details.SSID.length == 0) {
                 continue;
             }
 
-            if ( ap->details.SSID.length != 0 )
-            {
-                bool suppl = false;
-                bool join = true;
-                if (ap->details.security & ENTERPRISE_ENABLED) {
-                    if (!wlan_has_enterprise_credentials()) {
-                        // Workaround. If connecting not for the first time, for some reason authentication fails.
-                        // It works if we reset wireless module though
-                        // ¯\_(ツ)_/¯
-                        wlan_restart(NULL);
-                        // We need to start supplicant
-                        if (wlan_supplicant_start()) {
-                            // Early error
-                            wlan_restart(NULL);
-                            wlan_supplicant_cancel(0);
-                            wlan_supplicant_stop();
-                            result = WICED_ERROR;
-                            join = false;
-                        } else {
-                            suppl = true;
-                        }
-                    }
-                }
-
-                if (join) {
-                    memset(ssid_name, 0, sizeof(ssid_name));
-                    memcpy(ssid_name, ap->details.SSID.value, ap->details.SSID.length);
-                    LOG(INFO, "Joining %s", ssid_name);
-                    result = wiced_join_ap_specific( &ap->details, ap->security_key_length, ap->security_key );
-                }
-
-                if (suppl) {
-                    if (!result) {
-                        memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
-                    } else {
-                        // And another workaround here: in case of failed authentication we might get somewhat deadlocked
-                        // while stopping supplicant
-                        // ¯\_(ツ)_/¯
-                        wlan_restart(NULL);
+            bool suppl = false;
+            bool join = true;
+            if (ap.details.security & ENTERPRISE_ENABLED) {
+                if (!wlan_has_enterprise_credentials()) {
+                    // Workaround. If connecting not for the first time, for some reason authentication fails.
+                    // It works if we reset wireless module though
+                    // ¯\_(ツ)_/¯
+                    wlan_restart();
+                    // We need to start supplicant
+                    if (wlan_supplicant_start()) {
+                        // Early error
+                        wlan_restart();
                         wlan_supplicant_cancel(0);
+                        wlan_supplicant_stop();
+                        result = WICED_ERROR;
+                        join = false;
+                    } else {
+                        suppl = true;
                     }
-                    wlan_supplicant_stop();
                 }
             }
 
-            wiced_dct_read_unlock( (wiced_config_ap_entry_t*) ap, WICED_FALSE );
+            if (join) {
+                memset(ssid_name, 0, sizeof(ssid_name));
+                memcpy(ssid_name, ap.details.SSID.value, ap.details.SSID.length);
+                LOG(INFO, "Joining %s", ssid_name);
+                result = wiced_join_ap_specific((wiced_ap_info_t*)&ap.details, ap.security_key_length, ap.security_key);
+            }
 
-            if ( result == WICED_SUCCESS )
-            {
-                return result;
+            if (suppl) {
+                if (!result) {
+                    memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
+                } else {
+                    // And another workaround here: in case of failed authentication we might get somewhat deadlocked
+                    // while stopping supplicant
+                    // ¯\_(ツ)_/¯
+                    wlan_restart();
+                    wlan_supplicant_cancel(0);
+                }
+                wlan_supplicant_stop();
+            }
+
+            if (result == WICED_SUCCESS) {
+                break;
             }
         }
+        if (result == WICED_SUCCESS) {
+            break;
+        }
     }
+
+    wiced_dct_read_unlock(wifi_config, WICED_FALSE);
+
     return result;
 }
 
