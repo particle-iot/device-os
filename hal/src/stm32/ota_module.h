@@ -21,6 +21,10 @@
 
 #include "ota_flash_hal.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Checks if the minimum required dependencies for the given module are satisfied.
  * @param bounds    The bounds of the module to check.
@@ -28,5 +32,9 @@
  */
 bool validate_module_dependencies(const module_bounds_t* bounds, bool userPartOptional, bool fullDeps);
 const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index);
-bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags=0);
+bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags);
 const module_info_t* locate_module(const module_bounds_t* bounds);
+
+#ifdef __cplusplus
+}
+#endif

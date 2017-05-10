@@ -52,6 +52,7 @@
 #include "usart_hal.h"
 #include "deviceid_hal.h"
 #include "pinmap_impl.h"
+#include "ota_module.h"
 
 #if PLATFORM_ID==PLATFORM_P1
 #include "wwd_management.h"
@@ -427,6 +428,43 @@ bool HAL_Core_Validate_User_Module(void)
             while(1);//Device should reset before reaching this line
         }
     }
+    return valid;
+}
+
+bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
+{
+    const module_bounds_t* bounds = NULL;
+    hal_module_t mod;
+    bool module_fetched = false;
+    bool valid = false;
+
+    // First verify bootloader module
+    bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0);
+    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+
+    valid = module_fetched && (mod.validity_checked == mod.validity_result);
+
+    if (!valid) {
+        return valid;
+    }
+
+    // Now check system-parts
+    int i = 0;
+    if (flags & 1) {
+        // Validate only that system-part that depends on bootloader passes dependency check
+        i = 2;
+    }
+    do {
+        bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++);
+        if (bounds) {
+            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+            valid = module_fetched && (mod.validity_checked == mod.validity_result);
+        }
+        if (flags & 1) {
+            bounds = NULL;
+        }
+    } while(bounds != NULL && valid);
+
     return valid;
 }
 #endif
