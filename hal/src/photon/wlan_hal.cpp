@@ -720,14 +720,9 @@ wlan_result_t wlan_activate()
 wlan_result_t wlan_deactivate()
 {
     wlan_disconnect_now();
-    // FIXME:
-    // This was required for PR #1125 to reduce Wi-Fi power completely for Sleep stop mode
-    // however it introduced a new connectivity bug in LwIP that was unresolved in commit 87892a3837d4,
-    // which was reverted in commit 6b78d7662f62.  WICED should be updated to pull in a newer version of LwIP
-    // before this change is attempted again.
-    // wiced_result_t result = wiced_wlan_connectivity_deinit();
-    // return result;
-    return 0;
+
+    wiced_result_t result = wiced_wlan_connectivity_deinit();
+    return result;
 }
 
 wlan_result_t wlan_disconnect_now()
