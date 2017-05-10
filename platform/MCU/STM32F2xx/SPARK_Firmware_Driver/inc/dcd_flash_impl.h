@@ -17,7 +17,8 @@
  ******************************************************************************
  */
 
-#include "dcd_flash.h"
+#pragma once
+
 #include "dcd.h"
 #include "flash_storage_impl.h"
 
@@ -59,7 +60,3 @@ public:
         return sector[8]==0 && sector[9]==1;
     }
 };
-
-const void* dct_read_app_data (uint32_t offset);
-int dct_write_app_data(const void* data, uint32_t offset, uint32_t size);
-void dcd_migrate_data();

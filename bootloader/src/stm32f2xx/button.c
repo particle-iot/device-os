@@ -63,9 +63,9 @@ int BUTTON_Debounce() {
 }
 
 void BUTTON_Init_Ext() {
-    const button_config_t* conf = (const button_config_t*)dct_read_app_data(DCT_MODE_BUTTON_MIRROR_OFFSET);
+    const button_config_t* conf = (const button_config_t*)dct_read_app_data_lock(DCT_MODE_BUTTON_MIRROR_OFFSET);
 
-    if (conf->active == 0xAA && conf->debounce_time == 0xBBCC) {
+    if (conf && conf->active == 0xAA && conf->debounce_time == 0xBBCC) {
         //int32_t state = HAL_disable_irq();
         memcpy((void*)&HAL_Buttons[BUTTON1_MIRROR], (void*)conf, sizeof(button_config_t));
         HAL_Buttons[BUTTON1_MIRROR].active = 0;
@@ -73,6 +73,8 @@ void BUTTON_Init_Ext() {
         BUTTON_Init(BUTTON1_MIRROR, BUTTON_MODE_EXTI);
         //HAL_enable_irq(state);
     }
+
+    dct_read_app_data_unlock(DCT_MODE_BUTTON_MIRROR_OFFSET);
 
     if (BUTTON_Debounce())
         TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);

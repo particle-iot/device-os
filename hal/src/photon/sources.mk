@@ -43,8 +43,8 @@ HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/ThreadX/ver5.6 \
 endif
 ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
 HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/FreeRTOS/WWD/ARM_CM3 \
-			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/include \
-			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/GCC/ARM_CM3
+			    wiced/RTOS/FreeRTOS/ver9.0.0/Source/include \
+			    wiced/RTOS/FreeRTOS/ver9.0.0/Source/portable/GCC/ARM_CM3
 
 endif
 

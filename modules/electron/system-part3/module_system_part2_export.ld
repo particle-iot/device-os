@@ -42,7 +42,7 @@ min_heap_size = 16K;
  * Can be expanded or reduced as necessary. The heap dynamically expands from
  * it's static base to the heap top, which is the bottom of this module's static ram.
  */
-system_part2_ram_size = 6K;
+system_part2_ram_size = 7K;
 
 /* Place system part2 static RAM immediately below stack. */
 system_part2_ram_start = ALIGN( stack_start - system_part2_ram_size, 512);
@@ -69,3 +69,4 @@ PROVIDE ( dynalib_location_system_cloud = system_part2_module_table + 48 );
 PROVIDE ( dynalib_location_hal_concurrent = system_part2_module_table + 52 );
 PROVIDE ( dynalib_location_hal_can = system_part2_module_table + 56 );
 PROVIDE ( dynalib_location_hal_rgbled = system_part2_module_table + 60 );
+PROVIDE ( dynalib_location_hal_dct = system_part2_module_table + 64 );

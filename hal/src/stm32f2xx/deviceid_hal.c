@@ -52,8 +52,9 @@ unsigned HAL_Platform_ID()
 #ifndef HAL_DEVICE_ID_NO_DCT
 void HAL_save_device_id(uint32_t dct_offset)
 {
-    const char* saved_device_id = (const char*)dct_read_app_data(dct_offset);
-    if (*saved_device_id == 0xFF)
+    char saved_device_id = 0;
+    dct_read_app_data_copy(dct_offset, &saved_device_id, sizeof(saved_device_id));
+    if (saved_device_id == 0xFF)
     {
         uint8_t device_id[device_id_len];
         HAL_device_ID(device_id, sizeof(device_id));

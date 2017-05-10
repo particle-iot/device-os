@@ -33,6 +33,7 @@
 #include "rgbled_hal.h"
 #include "rgbled.h"
 #include "hal_irq_flag.h"
+#include "system_flags_impl.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -249,8 +250,16 @@ void SysTick_Configuration(void)
 
 void IWDG_Reset_Enable(uint32_t msTimeout)
 {
-    // XXX
     Load_SystemFlags();
+    // Old versions of the bootloader were storing system flags in DCT
+    const size_t dctFlagOffs = DCT_SYSTEM_FLAGS_OFFSET + offsetof(platform_system_flags_t, IWDG_Enable_SysFlag);
+    uint16_t dctFlag = 0;
+    if (dct_read_app_data_copy(dctFlagOffs, &dctFlag, sizeof(dctFlag)) == 0 && dctFlag == 0xD001)
+    {
+        dctFlag = 0xFFFF;
+        dct_write_app_data(&dctFlag, dctFlagOffs, sizeof(dctFlag));
+        SYSTEM_FLAG(IWDG_Enable_SysFlag) = 0xD001;
+    }
     if(SYSTEM_FLAG(IWDG_Enable_SysFlag) == 0xD001)
     {
         if (msTimeout == 0)
@@ -471,12 +480,12 @@ void LED_Init(Led_TypeDef Led)
     if (Led >= LED_MIRROR_OFFSET)
     {
         // Load configuration from DCT
+        led_config_t conf;
         const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-        const led_config_t* conf = (const led_config_t*)dct_read_app_data(offset);
-
-        if (conf->version != 0xff && conf->is_active && conf->is_pwm) {
+        if (dct_read_app_data_copy(offset, &conf, sizeof(conf)) == 0 && conf.version != 0xff &&
+                conf.is_active && conf.is_pwm) {
             //int32_t state = HAL_disable_irq();
-            memcpy((void*)&HAL_Leds_Default[Led], (void*)conf, sizeof(led_config_t));
+            memcpy((void*)&HAL_Leds_Default[Led], (void*)&conf, sizeof(led_config_t));
             //HAL_enable_irq(state);
         }
         else
@@ -811,31 +820,20 @@ void USB_Cable_Config (FunctionalState NewState)
     }
 }
 
-inline void Load_SystemFlags_Impl(platform_system_flags_t* flags) __attribute__((always_inline));
-inline void Load_SystemFlags_Impl(platform_system_flags_t* flags)
-{
-    const void* flags_store = dct_read_app_data(0);
-    memcpy(flags, flags_store, sizeof(platform_system_flags_t));
-    flags->header[0] = 0xACC0;
-    flags->header[1] = 0x1ADE;
-}
-
-inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)  __attribute__((always_inline));
-inline void Save_SystemFlags_Impl(const platform_system_flags_t* flags)
-{
-    dct_write_app_data(flags, 0, sizeof(*flags));
-}
-
 platform_system_flags_t system_flags;
 
 void Load_SystemFlags()
 {
+    const int state = HAL_disable_irq();
     Load_SystemFlags_Impl(&system_flags);
+    HAL_enable_irq(state);
 }
 
 void Save_SystemFlags()
 {
+    const int state = HAL_disable_irq();
     Save_SystemFlags_Impl(&system_flags);
+    HAL_enable_irq(state);
 }
 
 bool FACTORY_Flash_Reset(void)

@@ -119,6 +119,7 @@
 #define configUSE_RECURSIVE_MUTEXES  1
 #define configENABLE_BACKWARD_COMPATIBILITY 1
 #define configUSE_COUNTING_SEMAPHORES 1
+#define configSUPPORT_STATIC_ALLOCATION 1
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		0

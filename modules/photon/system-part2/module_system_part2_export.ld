@@ -42,7 +42,7 @@ min_heap_size = 16K;
  * Can be expanded or reduced as necessary. The heap dynamically expands from
  * it's static base to the heap top, which is the bottom of this module's static ram.
  */
-system_part2_ram_size = 42K;
+system_part2_ram_size = 46K;
 
 /* Place system part2 static RAM immediately below stack. */
 system_part2_ram_start = ALIGN( stack_start - system_part2_ram_size, 512);
@@ -72,3 +72,5 @@ PROVIDE ( dynalib_location_hal_can = system_part2_module_table + 56 );
 PROVIDE ( dynalib_location_hal_usb = system_part2_module_table + 60 );
 PROVIDE ( dynalib_location_hal_rgbled = system_part2_module_table + 64 );
 PROVIDE ( dynalib_location_hal_bootloader = system_part2_module_table + 68 );
+PROVIDE ( dynalib_location_hal_dct = system_part2_module_table + 72 );
+PROVIDE ( dynalib_location_system_module_part2 = system_part2_module_table + 76 );

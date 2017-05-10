@@ -19,10 +19,11 @@ static uint32_t led_signal_color(int signal, const uint8_t* data) {
 
 void get_led_theme_colors(uint32_t* firmware_update, uint32_t* safe_mode, uint32_t* dfu_mode) {
     // Check if theme data is initialized in DCT
-    const uint8_t* d = (const char*)dct_read_app_data(DCT_LED_THEME_OFFSET);
+    const uint8_t* d = (const uint8_t*)dct_read_app_data_lock(DCT_LED_THEME_OFFSET);
     if (d && *d == LED_SIGNAL_THEME_VERSION) {
         *firmware_update = led_signal_color(LED_SIGNAL_FIRMWARE_UPDATE, d);
         *safe_mode = led_signal_color(LED_SIGNAL_SAFE_MODE, d);
         *dfu_mode = led_signal_color(LED_SIGNAL_DFU_MODE, d);
     }
+    dct_read_app_data_unlock(DCT_LED_THEME_OFFSET);
 }

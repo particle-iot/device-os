@@ -8,13 +8,14 @@
 #ifndef DCT_HAL_H
 #define DCT_HAL_H
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
+#include "dct_hal_stm32f2xx.h"
 #include "platform_dct.h"
 #include "platform_system_flags.h"
 #include "dct.h"
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 typedef struct complete_dct {
     // 7548 bytes
@@ -25,12 +26,10 @@ typedef struct complete_dct {
 } complete_dct_t;
 
 STATIC_ASSERT(offset_application_dct, (offsetof(complete_dct_t, application)==7548) );
-
 STATIC_ASSERT(size_complete_dct, (sizeof(complete_dct_t)<=16384));
 
 #ifdef  __cplusplus
-}
+} // extern "C"
 #endif
 
-#endif  /* DCT_HAL_H */
-
+#endif /* DCT_HAL_H */

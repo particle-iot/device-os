@@ -121,7 +121,7 @@ static WPAEnterpriseContext eap_context;
  */
 wiced_country_code_t fetch_country_code()
 {
-    const uint8_t* code = (const uint8_t*)dct_read_app_data(DCT_COUNTRY_CODE_OFFSET);
+    const uint8_t* code = (const uint8_t*)dct_read_app_data_lock(DCT_COUNTRY_CODE_OFFSET);
 
     wiced_country_code_t result =
         wiced_country_code_t(MK_CNTRY(code[0], code[1], hex_nibble(code[2])));
@@ -137,12 +137,15 @@ wiced_country_code_t fetch_country_code()
     {
         result = WICED_COUNTRY_JAPAN;
     }
+
+    dct_read_app_data_unlock(DCT_COUNTRY_CODE_OFFSET);
+
     return result;
 }
 
 bool isWiFiPowersaveClockDisabled() {
-    const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
-    uint8_t current = (*data);
+    uint8_t current = 0;
+    dct_read_app_data_copy(DCT_RADIO_FLAGS_OFFSET, &current, sizeof(current));
     return ((current&3) == 0x2);
 }
 
@@ -185,9 +188,10 @@ wiced_result_t wlan_initialize_dct()
     return result;
 }
 
-const static_ip_config_t* wlan_fetch_saved_ip_config()
+static_ip_config_t* wlan_fetch_saved_ip_config(static_ip_config_t* config)
 {
-    return (const static_ip_config_t*)dct_read_app_data(DCT_IP_CONFIG_OFFSET);
+    dct_read_app_data_copy(DCT_IP_CONFIG_OFFSET, config, sizeof(static_ip_config_t));
+    return config;
 }
 
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
@@ -330,8 +334,9 @@ int wlan_has_enterprise_credentials()
     int has_credentials = 0;
 
     // TODO: For now we are using only 1 global eap configuration for all access points
-    const eap_config_t* eap_conf = (eap_config_t*)dct_read_app_data(DCT_EAP_CONFIG_OFFSET);
+    const eap_config_t* eap_conf = (eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
     has_credentials = (int)is_eap_configuration_valid(eap_conf);
+    dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
 
     return !has_credentials;
 }
@@ -365,10 +370,16 @@ int wlan_supplicant_start()
 {
     LOG(TRACE, "Starting supplicant");
     // Fetch configuration
-    const eap_config_t* eap_conf = (eap_config_t*)dct_read_app_data(DCT_EAP_CONFIG_OFFSET);
+    uint8_t eap_type = WLAN_EAP_TYPE_NONE;
+
+    const eap_config_t* eap_conf = (const eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
     if (!is_eap_configuration_valid(eap_conf)) {
+        dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
         return 1;
     }
+    eap_type = eap_conf->type;
+    dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
+
     wiced_result_t result = WICED_SUCCESS;
 
     eap_context.init();
@@ -378,10 +389,10 @@ int wlan_supplicant_start()
                                  DCT_SECURITY_SECTION, 0, sizeof(*sec));
 
     if (result == WICED_SUCCESS) {
-        if (eap_conf->type == WLAN_EAP_TYPE_PEAP) {
+        if (eap_type == WLAN_EAP_TYPE_PEAP) {
             // result = wiced_tls_init_identity(eap_context.tls_identity, NULL, 0, NULL, 0 );
             memset(eap_context.tls_identity, 0, sizeof(wiced_tls_identity_t));
-        } else if (eap_conf->type == WLAN_EAP_TYPE_TLS) {
+        } else if (eap_type == WLAN_EAP_TYPE_TLS) {
             result = wiced_tls_init_identity(eap_context.tls_identity,
                                              (const char*)sec->private_key,
                                              (uint32_t)strnlen((const char*)sec->private_key, PRIVATE_KEY_SIZE),
@@ -396,6 +407,8 @@ int wlan_supplicant_start()
 
     if (result != WICED_SUCCESS)
         return result;
+
+    eap_conf = (const eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
 
     wiced_tls_init_context(eap_context.tls_context, eap_context.tls_identity, NULL);
     if (eap_context.tls_session->length > 0) {
@@ -442,6 +455,8 @@ int wlan_supplicant_start()
         result = (wiced_result_t)besl_supplicant_start(eap_context.supplicant_workspace);
         LOG(TRACE, "Supplicant started %d", (int)result);
     }
+
+    dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
 
     if (result == 0) {
         eap_context.supplicant_running = true;
@@ -613,7 +628,8 @@ wlan_result_t wlan_connect_finalize()
         HAL_NET_notify_connected();
         wiced_ip_setting_t settings;
         wiced_ip_address_t dns;
-        const static_ip_config_t& ip_config = *wlan_fetch_saved_ip_config();
+        static_ip_config_t ip_config;
+        wlan_fetch_saved_ip_config(&ip_config);
 
         switch (IPAddressSource(ip_config.config_mode))
         {
@@ -657,7 +673,8 @@ int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
 
 WLanSelectAntenna_TypeDef fetch_antenna_selection()
 {
-    uint8_t result = *(const uint8_t*)dct_read_app_data(DCT_ANTENNA_SELECTION_OFFSET);
+    uint8_t result = 0;
+    dct_read_app_data_copy(DCT_ANTENNA_SELECTION_OFFSET, &result, sizeof(result));
     if (result==0xFF)
         result = ANT_INTERNAL;  // default
 
@@ -1291,9 +1308,8 @@ void wlan_set_ipaddress(const HAL_IPAddress* host, const HAL_IPAddress* netmask,
                         const HAL_IPAddress* gateway, const HAL_IPAddress* dns1,
                         const HAL_IPAddress* dns2, void* reserved)
 {
-    const static_ip_config_t* pconfig = wlan_fetch_saved_ip_config();
     static_ip_config_t config;
-    memcpy(&config, pconfig, sizeof(config));
+    wlan_fetch_saved_ip_config(&config);
     assign_if_set(config.host, host);
     assign_if_set(config.netmask, netmask);
     assign_if_set(config.gateway, gateway);

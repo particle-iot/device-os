@@ -31,9 +31,14 @@
 #include "rgbled.h"
 #include "button.h"
 
-#if (PLATFORM_ID == 6) || (PLATFORM_ID == 10) || (PLATFORM_ID == 8)
-#include "led_signal.h"
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#define LOAD_DCT_FUNCTIONS
+#include "bootloader_dct.h"
+#endif
+
+#if PLATFORM_ID == 6 || PLATFORM_ID == 10 || PLATFORM_ID == 8
 #define USE_LED_THEME
+#include "led_signal.h"
 #endif
 
 void platform_startup();
@@ -386,6 +391,10 @@ int main(void)
          * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
          */
         FLASH_UpdateModules(flashModulesCallback);
+#ifdef LOAD_DCT_FUNCTIONS
+        // DCT functions may need to be reloaded after updating a system module
+        load_dct_functions();
+#endif
 #else
         if (REFLASH_FROM_BACKUP == 1)
         {

@@ -148,4 +148,9 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+#ifndef mbedtls_sha256_context
+#define mbedtls_sha256_context sha2_context
+#endif // mbedtls_sha256_context
+
 #endif                /* sha2.h */

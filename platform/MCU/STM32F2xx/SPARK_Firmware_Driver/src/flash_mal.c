@@ -497,12 +497,11 @@ bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t
                                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                          uint32_t length, uint8_t function, uint8_t flags)
 {
-    //Read the flash modules info from the dct area
-    const platform_flash_modules_t* dct_app_data = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
     platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];
     uint8_t flash_module_index = MAX_MODULES_SLOT;
 
-    memcpy(flash_modules, dct_app_data, sizeof(flash_modules));
+    //Read the flash modules info from the dct area
+    dct_read_app_data_copy(DCT_FLASH_MODULES_OFFSET, flash_modules, sizeof(flash_modules));
 
     //fill up the next available modules slot and return true else false
     //slot 0 is reserved for factory reset module so start from flash_module_index = 1
@@ -538,27 +537,26 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
                                        flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                        uint32_t length, uint8_t function, uint8_t flags)
 {
+    platform_flash_modules_t flash_module;
+    platform_flash_modules_t flash_module_current;
+
     //Read the flash modules info from the dct area
-    const platform_flash_modules_t* dct_app_data = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
-    platform_flash_modules_t flash_modules[1];//slot 0 is factory reset module
+    dct_read_app_data_copy(DCT_FLASH_MODULES_OFFSET + (FAC_RESET_SLOT * sizeof(platform_flash_modules_t)), &flash_module_current, sizeof(flash_module_current));
+    flash_module = flash_module_current;
 
-    memcpy(flash_modules, dct_app_data, sizeof(flash_modules));
+    flash_module.sourceDeviceID = sourceDeviceID;
+    flash_module.sourceAddress = sourceAddress;
+    flash_module.destinationDeviceID = destinationDeviceID;
+    flash_module.destinationAddress = destinationAddress;
+    flash_module.length = length;
+    flash_module.magicNumber = 0x0FAC;
+    flash_module.module_function = function;
+    flash_module.flags = flags;
 
-    flash_modules[FAC_RESET_SLOT].sourceDeviceID = sourceDeviceID;
-    flash_modules[FAC_RESET_SLOT].sourceAddress = sourceAddress;
-    flash_modules[FAC_RESET_SLOT].destinationDeviceID = destinationDeviceID;
-    flash_modules[FAC_RESET_SLOT].destinationAddress = destinationAddress;
-    flash_modules[FAC_RESET_SLOT].length = length;
-    flash_modules[FAC_RESET_SLOT].magicNumber = 0x0FAC;
-    flash_modules[FAC_RESET_SLOT].module_function = function;
-    flash_modules[FAC_RESET_SLOT].flags = flags;
-
-    if(memcmp(flash_modules, dct_app_data, sizeof(flash_modules)) != 0)
+    if(memcmp(&flash_module, &flash_module_current, sizeof(flash_module)) != 0)
     {
         //Only write dct app data if factory reset module slot is different
-        dct_write_app_data(&flash_modules[FAC_RESET_SLOT],
-        						DCT_FLASH_MODULES_OFFSET,
-								sizeof(platform_flash_modules_t));
+        dct_write_app_data(&flash_module, DCT_FLASH_MODULES_OFFSET + (FAC_RESET_SLOT * sizeof(platform_flash_modules_t)), sizeof(platform_flash_modules_t));
     }
 
     return true;
@@ -566,28 +564,31 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
 
 bool FLASH_ClearFactoryResetModuleSlot(void)
 {
-    // FIXME: There's no function that acts as memset() for DCT
-    const char data[sizeof(platform_flash_modules_t)] = { 0 };
-    const size_t offs = FAC_RESET_SLOT * sizeof(platform_flash_modules_t) + DCT_FLASH_MODULES_OFFSET;
-    return (dct_write_app_data(data, offs, sizeof(data)) == 0);
+    // Mark slot as unused
+    const size_t magic_num_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * FAC_RESET_SLOT +
+            offsetof(platform_flash_modules_t, magicNumber);
+    const uint16_t magic_num = 0xffff;
+    return (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) == 0);
 }
 
 bool FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
 {
-    //Read the flash modules info from the dct area
-    const platform_flash_modules_t* flash_modules = (const platform_flash_modules_t*)dct_read_app_data(DCT_FLASH_MODULES_OFFSET);
+    platform_flash_modules_t flash_module;
     bool restoreFactoryReset = false;
 
-    if(flash_modules[FAC_RESET_SLOT].magicNumber == 0x0FAC)
+    //Read the flash modules info from the dct area
+    dct_read_app_data_copy(DCT_FLASH_MODULES_OFFSET + (FAC_RESET_SLOT * sizeof(flash_module)), &flash_module, sizeof(flash_module));
+
+    if(flash_module.magicNumber == 0x0FAC)
     {
         //Restore Factory Reset Firmware (slot 0 is factory reset module)
-        restoreFactoryReset = copy(flash_modules[FAC_RESET_SLOT].sourceDeviceID,
-                                               flash_modules[FAC_RESET_SLOT].sourceAddress,
-                                               flash_modules[FAC_RESET_SLOT].destinationDeviceID,
-                                               flash_modules[FAC_RESET_SLOT].destinationAddress,
-                                               flash_modules[FAC_RESET_SLOT].length,
-                                                flash_modules[FAC_RESET_SLOT].module_function,
-                                               flash_modules[FAC_RESET_SLOT].flags);
+        restoreFactoryReset = copy(flash_module.sourceDeviceID,
+                                   flash_module.sourceAddress,
+                                   flash_module.destinationDeviceID,
+                                   flash_module.destinationAddress,
+                                   flash_module.length,
+                                   flash_module.module_function,
+                                   flash_module.flags);
     }
     else
     {
@@ -611,42 +612,49 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
 }
 
 //This function called in bootloader to perform the memory update process
-void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
+bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    //slot 0 is reserved for factory reset module so start from flash_module_index = 1
-    for (size_t flash_module_index = GEN_START_SLOT; flash_module_index < MAX_MODULES_SLOT; flash_module_index++)
-    {
-        const size_t offs = flash_module_index * sizeof(platform_flash_modules_t) + DCT_FLASH_MODULES_OFFSET;
-        const platform_flash_modules_t* flash_module = (const platform_flash_modules_t*)dct_read_app_data(offs);
-        if(flash_module->magicNumber == 0xABCD)
-        {
-            //Turn On RGB_COLOR_MAGENTA toggling during flash updating
-            if(flashModulesCallback)
-            {
-                flashModulesCallback(true);
+    // Copy module info from DCT before updating any modules, since bootloader might load DCT
+    // functions dynamically. FAC_RESET_SLOT is reserved for factory reset module
+    const size_t max_module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
+    platform_flash_modules_t modules[max_module_count];
+    size_t module_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
+    size_t module_count = 0;
+    for (size_t i = 0; i < max_module_count; ++i) {
+        const size_t magic_num_offs = module_offs + offsetof(platform_flash_modules_t, magicNumber);
+        uint16_t magic_num = 0;
+        if (dct_read_app_data_copy(magic_num_offs, &magic_num, sizeof(magic_num)) != 0) {
+            return false;
+        }
+        if (magic_num == 0xabcd) {
+            // Copy module info
+            if (dct_read_app_data_copy(module_offs, &modules[module_count], sizeof(platform_flash_modules_t)) != 0) {
+                return false;
             }
-
-            //Copy memory from source to destination based on flash device id
-            FLASH_CopyMemory(flash_module->sourceDeviceID,
-                             flash_module->sourceAddress,
-                             flash_module->destinationDeviceID,
-                             flash_module->destinationAddress,
-                             flash_module->length,
-                             flash_module->module_function,
-                             flash_module->flags);
-
-            // Clear flash module info
-            // FIXME: There's no function that acts as memset() for DCT
-            const char data[sizeof(platform_flash_modules_t)] = { 0 };
-            dct_write_app_data(data, offs, sizeof(data));
-
-            if(flashModulesCallback)
-            {
-                //Turn Off RGB_COLOR_MAGENTA toggling
-                flashModulesCallback(false);
+            // Mark slot as unused
+            magic_num = 0xffff;
+            if (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) != 0) {
+                return false;
             }
+            ++module_count;
+        }
+        module_offs += sizeof(platform_flash_modules_t);
+    }
+    for (size_t i = 0; i < module_count; ++i) {
+        const platform_flash_modules_t* module = &modules[i];
+        // Turn On RGB_COLOR_MAGENTA toggling during flash updating
+        if (flashModulesCallback) {
+            flashModulesCallback(true);
+        }
+        // Copy memory from source to destination based on flash device id
+        FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+                module->destinationAddress, module->length, module->module_function, module->flags);
+        // Turn Off RGB_COLOR_MAGENTA toggling
+        if (flashModulesCallback) {
+            flashModulesCallback(false);
         }
     }
+    return true;
 }
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)

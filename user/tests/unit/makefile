@@ -19,6 +19,7 @@ COMMUNICATION=communication/
 WIRING=wiring/
 SYSTEM=system/
 HAL=hal/
+PLATFORM=platform/
 WIRING_SRC=$(WIRING)src/
 
 TARGETDIR=obj/
@@ -60,9 +61,11 @@ CPPSRC += $(call target_files,$(HAL)src/gcc,rgbled_hal.cpp)
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
 
+CSRC += $(call target_files,$(SRC_PATH),*.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,rgbled.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,debug.c)
 CSRC += $(call target_files,$(LIB_SERVICES)src,jsmn.c)
+CSRC += $(call target_files,$(PLATFORM)MCU/STM32F2xx/SPARK_Firmware_Driver/src,system_flags_impl.c)
 CPPSRC += $(call target_files,$(LIB_SERVICES)src,logging.cpp)
 CPPSRC += $(call target_files,$(LIB_SERVICES)src,system_error.cpp)
 CPPSRC += $(call target_files,$(LIB_SERVICES)src,led_service.cpp)
@@ -72,6 +75,7 @@ CPPSRC += $(call target_files,$(LIB_SERVICES)src,completion_handler.cpp)
 # Additional include directories, applied to objects built for this target.
 # todo - delegate this to a include.mk file in each repo so include dirs are better
 # encapsulated by their owning repo
+INCLUDE_DIRS += $(SRC_PATH)stubs
 INCLUDE_DIRS += $(LIB_SERVICES)inc
 INCLUDE_DIRS += $(WIRING)inc
 INCLUDE_DIRS += $(SYSTEM)inc
@@ -79,7 +83,8 @@ INCLUDE_DIRS += $(HAL)shared
 INCLUDE_DIRS += $(HAL)inc
 INCLUDE_DIRS += $(COMMUNICATION)src
 INCLUDE_DIRS += dynalib/inc
-INCLUDE_DIRS += platform/shared/inc
+INCLUDE_DIRS += $(PLATFORM)shared/inc
+INCLUDE_DIRS += $(PLATFORM)MCU/STM32F2xx/SPARK_Firmware_Driver/inc
 
 # prefix $(SRC_ROOT)
 ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS))
