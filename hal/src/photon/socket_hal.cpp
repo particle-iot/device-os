@@ -289,6 +289,12 @@ struct tcp_server_t : public wiced_tcp_server_t
      */
     wiced_result_t disconnect(wiced_tcp_socket_t* socket) {
         wiced_tcp_disconnect(socket);
+        // remove from client array as this socket is getting closed and
+        // subsequently destroyed
+	    int idx = index(socket);
+	    if (idx >= 0) {
+		  clients[idx] = NULL;
+	    }
         wiced_result_t result = wiced_tcp_server_disconnect_socket(this, socket);
         return result;
     }

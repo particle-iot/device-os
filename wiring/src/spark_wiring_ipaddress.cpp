@@ -55,7 +55,7 @@ IPAddress::IPAddress(const uint8_t* address)
     *this = address;
 }
 
-IPAddress::operator bool()
+IPAddress::operator bool() const
 {
 #if Wiring_IPv6
 #error handle me!
@@ -83,17 +83,17 @@ IPAddress& IPAddress::operator=(uint32_t ipv4)
     return *this;
 }
 
-bool IPAddress::operator==(uint32_t ipv4)
+bool IPAddress::operator==(uint32_t ipv4) const
 {
     return ipv4==address.ipv4;
 }
 
-bool IPAddress::operator==(const uint8_t* address)
+bool IPAddress::operator==(const uint8_t* address) const
 {
     return IPAddress(address)==*this;
 }
 
-bool IPAddress::operator==(const IPAddress& that)
+bool IPAddress::operator==(const IPAddress& that) const
 {
 #if 	HAL_IPv6
 	if (address.v!=that.address.v)
