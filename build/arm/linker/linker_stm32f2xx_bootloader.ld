@@ -15,7 +15,7 @@ INCLUDE module_user_memory.ld
 bootloader_ram_length = 16K;
 bootloader_ram_offset = 8K;
 bootloader_ram_origin = user_module_sram_origin + bootloader_ram_offset;
-ASSERT(bootloader_ram_offset + bootloader_ram_length + bootloader_ram_offset <= user_module_sram_length,
+ASSERT(bootloader_ram_offset + bootloader_ram_length <= user_module_sram_length,
     "Insufficient space for RAM region");
 
 MEMORY
