@@ -59,12 +59,12 @@
 extern "C" {
 #endif
 
-typedef enum system_error {
+typedef enum system_error_t {
     // SYSTEM_ERROR_NONE = 0,
     // SYSTEM_ERROR_UNKNOWN = -100,
     // ...
     SYSTEM_ERROR_ENUM_VALUES(SYSTEM_ERROR_)
-} system_error;
+} system_error_t;
 
 // Returns default error message
 const char* system_error_message(int error, void* reserved);

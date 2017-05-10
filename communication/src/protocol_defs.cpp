@@ -17,7 +17,7 @@
 
 #include "protocol_defs.h"
 
-system_error particle::protocol::toSystemError(ProtocolError error) {
+system_error_t particle::protocol::toSystemError(ProtocolError error) {
     switch (error) {
     case NO_ERROR:
         return SYSTEM_ERROR_NONE;

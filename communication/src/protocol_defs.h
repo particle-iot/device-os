@@ -55,7 +55,7 @@ enum ProtocolError
 };
 
 // Converts protocol error to system error code
-system_error toSystemError(ProtocolError error);
+system_error_t toSystemError(ProtocolError error);
 
 typedef uint16_t chunk_index_t;
 
