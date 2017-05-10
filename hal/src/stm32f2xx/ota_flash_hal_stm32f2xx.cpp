@@ -38,6 +38,8 @@
 #include "service_debug.h"
 #include "spark_wiring_random.h"
 #include "delay_hal.h"
+// For ATOMIC_BLOCK
+#include "spark_wiring_interrupts.h"
 
 #define OTA_CHUNK_SIZE                 (512)
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
