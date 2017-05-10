@@ -492,7 +492,7 @@ int wlan_supplicant_stop()
     return 0;
 }
 
-int wlan_restart() {
+int wlan_restart(void* reserved) {
     wiced_wlan_connectivity_deinit();
     wiced_wlan_connectivity_init();
 
@@ -534,11 +534,11 @@ static wiced_result_t wlan_join() {
                         // Workaround. If connecting not for the first time, for some reason authentication fails.
                         // It works if we reset wireless module though
                         // ¯\_(ツ)_/¯
-                        wlan_restart();
+                        wlan_restart(NULL);
                         // We need to start supplicant
                         if (wlan_supplicant_start()) {
                             // Early error
-                            wlan_restart();
+                            wlan_restart(NULL);
                             wlan_supplicant_cancel(0);
                             wlan_supplicant_stop();
                             result = WICED_ERROR;
@@ -563,7 +563,7 @@ static wiced_result_t wlan_join() {
                         // And another workaround here: in case of failed authentication we might get somewhat deadlocked
                         // while stopping supplicant
                         // ¯\_(ツ)_/¯
-                        wlan_restart();
+                        wlan_restart(NULL);
                         wlan_supplicant_cancel(0);
                     }
                     wlan_supplicant_stop();
@@ -1139,7 +1139,7 @@ void wlan_smart_config_init()
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
         wlan_disconnect_now();
-        wlan_restart();
+        wlan_restart(NULL);
         current_softap_handle = softap_start(&config);
     }
 }
@@ -1150,7 +1150,7 @@ bool wlan_smart_config_finalize()
     {
         softap_stop(current_softap_handle);
         wlan_disconnect_now();  // force a full refresh
-        wlan_restart();
+        wlan_restart(NULL);
         HAL_Delay_Milliseconds(5);
         wlan_activate();
         current_softap_handle = NULL;
