@@ -433,7 +433,7 @@ int wlan_supplicant_start()
         }
         if (eap_conf->type == WLAN_EAP_TYPE_PEAP) {
             supplicant_mschapv2_identity_t mschap_identity;
-            char mschap_password[32];
+            char mschap_password[sizeof(eap_conf->security_key) * 2];
 
             uint8_t*  password = (uint8_t*)eap_conf->security_key;
             uint8_t*  unicode  = (uint8_t*)mschap_password;
@@ -531,11 +531,11 @@ static wiced_result_t wlan_join() {
                     // Workaround. If connecting not for the first time, for some reason authentication fails.
                     // It works if we reset wireless module though
                     // ¯\_(ツ)_/¯
-                    wlan_restart();
+                    wlan_restart(NULL);
                     // We need to start supplicant
                     if (wlan_supplicant_start()) {
                         // Early error
-                        wlan_restart();
+                        wlan_restart(NULL);
                         wlan_supplicant_cancel(0);
                         wlan_supplicant_stop();
                         result = WICED_ERROR;
@@ -560,7 +560,7 @@ static wiced_result_t wlan_join() {
                     // And another workaround here: in case of failed authentication we might get somewhat deadlocked
                     // while stopping supplicant
                     // ¯\_(ツ)_/¯
-                    wlan_restart();
+                    wlan_restart(NULL);
                     wlan_supplicant_cancel(0);
                 }
                 wlan_supplicant_stop();
@@ -1046,30 +1046,30 @@ int wlan_set_enterprise_credentials(WLanCredentials* c)
     memset(eap_config, 0, sizeof(eap_config_t));
 
     if (c) {
-        if (c->client_certificate && c->client_certificate_len) {
+        if (c->client_certificate && c->client_certificate_len && c->client_certificate_len < sizeof(sec->certificate)) {
             memcpy(sec->certificate, c->client_certificate, c->client_certificate_len);
         }
-        if (c->private_key && c->private_key_len) {
+        if (c->private_key && c->private_key_len && c->private_key_len < sizeof(sec->private_key)) {
             memcpy(sec->private_key, c->private_key, c->private_key_len);
         }
     }
 
     if (c) {
         eap_config->type = (uint8_t)c->eap_type;
-        // FIXME length check
-        if (c->inner_identity && c->inner_identity_len) {
+
+        if (c->inner_identity && c->inner_identity_len && c->inner_identity_len <= sizeof(eap_config->inner_identity)) {
             memcpy(eap_config->inner_identity, c->inner_identity, c->inner_identity_len);
             eap_config->inner_identity_len = c->inner_identity_len;
         }
-        if (c->outer_identity && c->outer_identity_len) {
+        if (c->outer_identity && c->outer_identity_len && c->outer_identity_len <= sizeof(eap_config->outer_identity)) {
             memcpy(eap_config->outer_identity, c->outer_identity, c->outer_identity_len);
             eap_config->outer_identity_len = c->outer_identity_len;
         }
-        if (c->password && c->password_len) {
+        if (c->password && c->password_len && c->password_len <= sizeof(eap_config->security_key)) {
             memcpy(eap_config->security_key, c->password, c->password_len);
             eap_config->security_key_len = c->password_len;
         }
-        if (c->ca_certificate && c->ca_certificate_len) {
+        if (c->ca_certificate && c->ca_certificate_len && c->ca_certificate_len < sizeof(eap_config->ca_certificate)) {
             memcpy(eap_config->ca_certificate, c->ca_certificate, c->ca_certificate_len);
             eap_config->ca_certificate_len = c->ca_certificate_len;
         }
