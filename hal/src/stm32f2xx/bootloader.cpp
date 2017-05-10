@@ -7,19 +7,19 @@
 #include "bootloader_hal.h"
 
 #ifdef HAL_REPLACE_BOOTLOADER_OTA
-bool bootloader_update(const void* bootloader_image, unsigned length)
+int bootloader_update(const void* bootloader_image, unsigned length)
 {
     HAL_Bootloader_Lock(false);
-    bool result =  (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
+    int result = (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
         FLASH_INTERNAL, 0x8000000, length, MODULE_FUNCTION_BOOTLOADER,
         MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION));
     HAL_Bootloader_Lock(true);
     return result;
 }
 #else
-bool bootloader_update(const void*, unsigned)
+int bootloader_update(const void*, unsigned)
 {
-    return false;
+    return FLASH_ACCESS_RESULT_ERROR;
 }
 #endif // HAL_REPLACE_BOOTLOADER_OTA
 
