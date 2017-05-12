@@ -35,13 +35,27 @@ extern "C" {
 
 inline system_tick_t millis(void) { return HAL_Timer_Get_Milli_Seconds(); }
 inline unsigned long micros(void) { return HAL_Timer_Get_Micro_Seconds(); }
-void delay(unsigned long ms);
 inline void delayMicroseconds(unsigned int us) { HAL_Delay_Microseconds(us); }
 
 #ifdef __cplusplus
 }
 #endif
 
+void delay(unsigned long ms);
+
+#ifdef __cplusplus
+#include <chrono>
+
+inline void delay(std::chrono::duration<double> duration)
+{
+    delay(std::min(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count(), (int64_t)UINT32_MAX));
+}
+
+#if __cplusplus > 201103L
+// Allow writing delay(1.5s) in user code
+using namespace std::literals::chrono_literals;
+#endif
+#endif
 
 #endif	/* SPARK_WIRING_TICKS_H */
 
