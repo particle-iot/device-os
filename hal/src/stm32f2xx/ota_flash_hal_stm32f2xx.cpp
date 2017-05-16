@@ -256,10 +256,10 @@ static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t module
         if (attempt++ > 0) {
             ATOMIC_BLOCK() {
                 // If it's not the first flashing attempt, try with interrupts disabled
-                bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
+                fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
             }
         } else {
-            bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
+            fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
         }
         if (fres == FLASH_ACCESS_RESULT_OK) {
             // Validate bootloader
