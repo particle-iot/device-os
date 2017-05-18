@@ -34,7 +34,6 @@ extern volatile uint8_t WLAN_DELETE_PROFILES;
 extern volatile uint8_t WLAN_SMART_CONFIG_START;
 extern volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
 extern volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
-extern volatile uint8_t WLAN_SMART_CONFIG_STOP;
 extern volatile uint8_t WLAN_CAN_SHUTDOWN;
 
 extern volatile uint8_t SPARK_WLAN_RESET;
