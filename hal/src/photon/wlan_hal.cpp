@@ -535,7 +535,6 @@ static wiced_result_t wlan_join() {
                     // We need to start supplicant
                     if (wlan_supplicant_start()) {
                         // Early error
-                        wlan_restart(NULL);
                         wlan_supplicant_cancel(0);
                         wlan_supplicant_stop();
                         result = WICED_ERROR;
@@ -557,10 +556,6 @@ static wiced_result_t wlan_join() {
                 if (!result) {
                     memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
                 } else {
-                    // And another workaround here: in case of failed authentication we might get somewhat deadlocked
-                    // while stopping supplicant
-                    // ¯\_(ツ)_/¯
-                    wlan_restart(NULL);
                     wlan_supplicant_cancel(0);
                 }
                 wlan_supplicant_stop();
