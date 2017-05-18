@@ -263,33 +263,44 @@ static void Init_Last_Reset_Info()
 
 static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
 {
+    if (HAL_IsISR()) {
+        return -1; // DCT cannot be accessed from an ISR
+    }
     uint32_t flags = 0;
-    dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    if (result != 0) {
+        return result;
+    }
     const bool cur_value = flags & flag;
-    if (prev_value)
-    {
+    if (prev_value) {
         *prev_value = cur_value;
     }
-    if (cur_value != value)
-    {
-        if (value)
-        {
+    if (cur_value != value) {
+        if (value) {
             flags |= flag;
-        }
-        else
-        {
+        } else {
             flags &= ~flag;
         }
-        return dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
+        result = dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
+        if (result != 0) {
+            return result;
+        }
     }
     return 0;
 }
 
-static bool Read_Feature_Flag(uint32_t flag)
+static int Read_Feature_Flag(uint32_t flag, bool* value)
 {
+    if (HAL_IsISR()) {
+        return -1; // DCT cannot be accessed from an ISR
+    }
     uint32_t flags = 0;
-    dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
-    return flags & flag;
+    const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    if (result != 0) {
+        return result;
+    }
+    *value = flags & flag;
+    return 0;
 }
 
 /* Extern variables ----------------------------------------------------------*/
@@ -1258,8 +1269,7 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
         }
         case FEATURE_RESET_INFO:
         {
-            Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
-            return 0;
+            return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 
 #if PLATFORM_ID==PLATFORM_P1
@@ -1273,10 +1283,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
                 current |= 2;   // 0bxxxxxx10 to disable the clock, any other value to enable it.
             }
             dct_write_app_data(&current, DCT_RADIO_FLAGS_OFFSET, 1);
+            return 0;
         }
 #endif
-
-
     }
     return -1;
 }
@@ -1307,7 +1316,8 @@ bool HAL_Feature_Get(HAL_Feature feature)
         }
         case FEATURE_RESET_INFO:
         {
-            return Read_Feature_Flag(FEATURE_FLAG_RESET_INFO);
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
         }
     }
     return false;
