@@ -149,7 +149,6 @@ private:
     volatile uint8_t WLAN_DELETE_PROFILES;
     volatile uint8_t WLAN_SMART_CONFIG_START; // Set to 'true' when listening mode is pending
     volatile uint8_t WLAN_SMART_CONFIG_ACTIVE;
-    volatile uint8_t WLAN_SMART_CONFIG_STOP;
     volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
     volatile uint8_t WLAN_CONNECTED;
     volatile uint8_t WLAN_CONNECTING;
@@ -219,7 +218,6 @@ protected:
         LOG_NETWORK_STATE();
         WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
-        WLAN_SMART_CONFIG_STOP = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
         bool wlanStarted = SPARK_WLAN_STARTED;
 
@@ -508,7 +506,6 @@ public:
     {
         LOG_NETWORK_STATE();
         WLAN_SMART_CONFIG_FINISHED = 1;
-        WLAN_SMART_CONFIG_STOP = 1;
     }
 
     void notify_connected()
@@ -613,10 +610,10 @@ public:
         // 2. CC3000 established AP connection
         // 3. DHCP IP is configured
         // then send mDNS packet to stop external SmartConfig application
-        if ((WLAN_SMART_CONFIG_STOP == 1) && (WLAN_CONNECTED == 1))
+        if ((WLAN_SMART_CONFIG_FINISHED == 1) && (WLAN_CONNECTED == 1))
         {
             on_setup_cleanup();
-            WLAN_SMART_CONFIG_STOP = 0;
+            WLAN_SMART_CONFIG_FINISHED = 0;
         }
     }
 };
@@ -687,7 +684,6 @@ inline void NetworkStateLogger::dump() const {
     NETWORK_STATE_PRINTF("WLAN_DELETE_PROFILES: %d\r\n", (int)nif_.WLAN_DELETE_PROFILES);
     NETWORK_STATE_PRINTF("WLAN_SMART_CONFIG_START: %d\r\n", (int)nif_.WLAN_SMART_CONFIG_START);
     NETWORK_STATE_PRINTF("WLAN_SMART_CONFIG_ACTIVE: %d\r\n", (int)nif_.WLAN_SMART_CONFIG_ACTIVE);
-    NETWORK_STATE_PRINTF("WLAN_SMART_CONFIG_STOP: %d\r\n", (int)nif_.WLAN_SMART_CONFIG_STOP);
     NETWORK_STATE_PRINTF("WLAN_SMART_CONFIG_FINISHED: %d\r\n", (int)nif_.WLAN_SMART_CONFIG_FINISHED);
     NETWORK_STATE_PRINTF("WLAN_CONNECTED: %d\r\n", (int)nif_.WLAN_CONNECTED);
     NETWORK_STATE_PRINTF("WLAN_CONNECTING: %d\r\n", (int)nif_.WLAN_CONNECTING);
