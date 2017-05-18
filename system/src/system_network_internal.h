@@ -241,7 +241,7 @@ protected:
         system_notify_event(wifi_listen_begin, 0);
 
         /* Wait for SmartConfig/SerialConfig to finish */
-        while (network_listening(0, 0, NULL))
+        while (WLAN_SMART_CONFIG_ACTIVE && !WLAN_SMART_CONFIG_FINISHED && !WLAN_SERIAL_CONFIG_DONE)
         {
             if (WLAN_DELETE_PROFILES)
             {
@@ -374,7 +374,7 @@ public:
 
     bool listening() override
     {
-        return (WLAN_SMART_CONFIG_ACTIVE && !(WLAN_SMART_CONFIG_FINISHED || WLAN_SERIAL_CONFIG_DONE));
+        return (WLAN_SMART_CONFIG_START || WLAN_SMART_CONFIG_ACTIVE);
     }
 
     void set_listen_timeout(uint16_t timeout) override {
