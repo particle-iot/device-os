@@ -22,6 +22,8 @@
  */
 
 #include "concurrent_hal.h"
+
+#include "core_hal_stm32f2xx.h"
 #include "static_assert.h"
 #include "delay_hal.h"
 #include "FreeRTOS.h"
@@ -498,6 +500,9 @@ int os_timer_is_active(os_timer_t timer, void* reserved)
 
 static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
 void __flash_acquire() {
+    if (!rtos_started) {
+        return;
+    }
     if (HAL_IsISR()) {
         PANIC(UsageFault, "Flash operation from IRQ");
     }
@@ -505,5 +510,8 @@ void __flash_acquire() {
 }
 
 void __flash_release() {
+    if (!rtos_started) {
+        return;
+    }
     flash_lock.unlock();
 }

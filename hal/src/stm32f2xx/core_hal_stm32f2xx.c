@@ -294,6 +294,7 @@ static bool Read_Feature_Flag(uint32_t flag)
 
 /* Extern variables ----------------------------------------------------------*/
 
+volatile uint8_t rtos_started = 0;
 
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
@@ -780,6 +781,8 @@ void generate_key()
  */
 void application_start()
 {
+    rtos_started = 1;
+
     // one the key is sent to the cloud, this can be removed, since the key is fetched in
     // Spark_Protocol_init(). This is just a temporary measure while the key still needs
     // to be fetched via DFU.

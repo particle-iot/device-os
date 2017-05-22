@@ -1,5 +1,6 @@
 #include "dct_hal_stm32f2xx.h"
 
+#include "core_hal_stm32f2xx.h"
 #include "interrupts_hal.h"
 #include "static_recursive_mutex.h"
 #include "debug.h"
@@ -7,7 +8,6 @@
 namespace {
 
 StaticRecursiveMutex dctLock;
-volatile bool dctLockDisabled = false;
 
 #ifdef DEBUG_BUILD
 #define DCT_LOCK_TIMEOUT 10000
@@ -19,7 +19,7 @@ int dctLockCounter = 0;
 } // namespace
 
 int dct_lock(int write) {
-    if (dctLockDisabled) {
+    if (!rtos_started) {
         return 0;
     }
     SPARK_ASSERT(!HAL_IsISR());
@@ -33,7 +33,7 @@ int dct_lock(int write) {
 }
 
 int dct_unlock(int write) {
-    if (dctLockDisabled) {
+    if (!rtos_started) {
         return 0;
     }
     SPARK_ASSERT(!HAL_IsISR());
@@ -44,8 +44,4 @@ int dct_unlock(int write) {
     SPARK_ASSERT(dctLockCounter == 0 || !write);
 #endif
     return !ok;
-}
-
-void dct_set_lock_enabled(int enabled) {
-    dctLockDisabled = !enabled;
 }
