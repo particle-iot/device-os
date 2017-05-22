@@ -22,11 +22,9 @@
 #define DYNALIB_INDEX_HAL_DCT 18 // hal_dct
 #define FUNC_INDEX_DCT_READ_APP_DATA 0 // dct_read_app_data()
 #define FUNC_INDEX_DCT_WRITE_APP_DATA 4 // dct_write_app_data()
-#define FUNC_INDEX_DCT_SET_LOCK_ENABLED 5 // dct_set_lock_enabled()
 
 typedef const void*(*dct_read_app_data_func_t)(uint32_t);
 typedef int(*dct_write_app_data_func_t)(const void*, uint32_t, uint32_t);
-typedef void(*dct_set_lock_enabled_func_t)(int);
 typedef void*(*module_pre_init_func_t)();
 
 static dct_read_app_data_func_t dct_read_app_data_func = NULL;
@@ -81,22 +79,16 @@ static void init_dct_functions() {
     // Get addresses of the DCT functions
     dct_read_app_data_func_t dct_read = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_READ_APP_DATA);
     dct_write_app_data_func_t dct_write = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_WRITE_APP_DATA);
-    dct_set_lock_enabled_func_t dct_set_lock_enabled = get_module_func(part2, DYNALIB_INDEX_HAL_DCT, FUNC_INDEX_DCT_SET_LOCK_ENABLED);
-    if (!dct_read || !dct_write || !dct_set_lock_enabled) {
-        return;
-    }
-    // Initialize static data of each module
     module_pre_init_func_t part1_init = get_module_func(part1, DYNALIB_INDEX_SYSTEM_MODULE_PART1,
             FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT);
     module_pre_init_func_t part2_init = get_module_func(part2, DYNALIB_INDEX_SYSTEM_MODULE_PART2,
             FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT);
-    if (!part1_init || !part2_init) {
+    if (!dct_read || !dct_write || !part1_init || !part2_init) {
         return;
     }
+    // Initialize static data of each module
     part1_init();
     part2_init();
-    // Disable global DCT lock
-    dct_set_lock_enabled(0);
     dct_read_app_data_func = dct_read;
     dct_write_app_data_func = dct_write;
 }

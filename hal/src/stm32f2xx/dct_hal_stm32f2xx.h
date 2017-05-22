@@ -8,8 +8,6 @@ extern "C" {
 int dct_lock(int write);
 int dct_unlock(int write);
 
-void dct_set_lock_enabled(int enabled);
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
