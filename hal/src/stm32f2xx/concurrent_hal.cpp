@@ -32,6 +32,11 @@
 #include "stm32f2xx.h"
 #include "interrupts_hal.h"
 #include <mutex>
+#include <atomic>
+#include "flash_acquire.h"
+#include "core_hal.h"
+#include "logging.h"
+#include "atomic_flag_mutex.h"
 
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
@@ -469,4 +474,16 @@ int os_timer_destroy(os_timer_t timer, void* reserved)
 int os_timer_is_active(os_timer_t timer, void* reserved)
 {
     return xTimerIsTimerActive(timer) != pdFALSE;
+}
+
+static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
+void __flash_acquire() {
+	if (HAL_IsISR()) {
+		PANIC(UsageFault, "Flash operation from IRQ");
+	}
+	flash_lock.lock();
+}
+
+void __flash_release() {
+	flash_lock.unlock();
 }

@@ -20,7 +20,9 @@ make all > build.log || die "Problem building unit tests. Please see build.log"
 : ${TRAVIS_BUILD_NUMBER:="0"}
 
 # -r junit - use junit reporting
-$target_file -r junit -n "build_${TRAVIS_BUILD_NUMBER}" > obj/TEST-${TRAVIS_BUILD_NUMBER}.xml
+#$target_file -r junit -n "build_${TRAVIS_BUILD_NUMBER}" > obj/TEST-${TRAVIS_BUILD_NUMBER}.xml
+
+make run > obj/TEST-${TRAVIS_BUILD_NUMBER}.xml
 
 if [ "$?" == "0" ]; then
     echo Yay! Unit tests PASSED!    
