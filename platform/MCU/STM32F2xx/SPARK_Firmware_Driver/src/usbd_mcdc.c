@@ -143,7 +143,11 @@ static const uint8_t USBD_MCDC_CfgDesc[USBD_MCDC_CONFIG_DESC_SIZE] __ALIGN_END =
   0x02,                              /* bmAttributes: Bulk */
   LOBYTE(CDC_DATA_MAX_PACKET_SIZE),  /* wMaxPacketSize: */
   HIBYTE(CDC_DATA_MAX_PACKET_SIZE),
-  0x00,                              /* bInterval: ignore for Bulk transfer */
+#ifdef USE_USB_OTG_HS
+  0x10,                          /* bInterval: */
+#else
+  0xFF,                          /* bInterval: */
+#endif /* USE_USB_OTG_HS */
 
   /*Endpoint IN Descriptor*/
   0x07,   /* bLength: Endpoint Descriptor size */
