@@ -449,8 +449,6 @@ extern "C" void HAL_SysTick_Handler(void)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
         HAL_Notify_Button_State(0, false);
-        // LOG(INFO,"BUTTON PRESSED FOR LISTENING");
-        // TODO: this code is called repeatedly every 1ms while the button is held (from 3-8s) and should only be called once
         network.listen();
         HAL_Notify_Button_State(0, true);
     }
