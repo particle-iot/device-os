@@ -13,28 +13,25 @@ TlsCallbacks tlsCallbacks = {0};
 
 void* tls_host_malloc( const char* name, uint32_t size )
 {
-  return malloc((size_t)size);
+  if (tlsCallbacks.tls_host_malloc) {
+    return tlsCallbacks.tls_host_malloc(name, size);
+  }
+  return NULL;
 }
 
 void  tls_host_free  ( void* p )
 {
-  free(p);
+  if (tlsCallbacks.tls_host_free) {
+    tlsCallbacks.tls_host_free(p);
+  }
 }
 
 wiced_result_t wiced_crypto_get_random( void* buffer, uint16_t buffer_length )
 {
-  uint8_t* data = (uint8_t*)buffer;
-  while (buffer_length>=4)
-  {
-    *((uint32_t*)data) = HAL_RNG_GetRandomNumber();
-    data += 4;
-    buffer_length -= 4;
+  if (tlsCallbacks.wiced_crypto_get_random) {
+    return tlsCallbacks.wiced_crypto_get_random(buffer, buffer_length);
   }
-  while (buffer_length-->0)
-  {
-    *data++ = HAL_RNG_GetRandomNumber();
-  }
-  return WICED_SUCCESS;
+  return WICED_ERROR;
 }
 
 int tls_set_callbacks(TlsCallbacks cb) {

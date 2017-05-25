@@ -47,6 +47,8 @@
 #include "wiced_tls.h"
 #include "rtc_hal.h"
 #include "tls_callbacks.h"
+#include "tls_host_api.h"
+#include "wiced_crypto.h"
 
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
@@ -95,7 +97,10 @@ struct WPAEnterpriseContext {
     void init() {
         if (!initialized) {
             TlsCallbacks cb;
-            cb.tls_host_get_time_ms = tls_host_get_time_ms_local;
+            cb.tls_host_get_time_ms = tls_host_get_time_ms;
+            cb.tls_host_malloc = tls_host_malloc;
+            cb.tls_host_free = tls_host_free;
+            cb.wiced_crypto_get_random = wiced_crypto_get_random;
             tls_set_callbacks(cb);
             initialized = true;
             tls_session = (wiced_tls_session_t*)calloc(1, sizeof(wiced_tls_session_t));
@@ -526,6 +531,7 @@ static wiced_result_t wlan_join() {
 
             bool suppl = false;
             bool join = true;
+
             if (ap.details.security & ENTERPRISE_ENABLED) {
                 if (!wlan_has_enterprise_credentials()) {
                     // Workaround. If connecting not for the first time, for some reason authentication fails.
@@ -535,7 +541,6 @@ static wiced_result_t wlan_join() {
                     // We need to start supplicant
                     if (wlan_supplicant_start()) {
                         // Early error
-                        wlan_restart(NULL);
                         wlan_supplicant_cancel(0);
                         wlan_supplicant_stop();
                         result = WICED_ERROR;
@@ -557,13 +562,17 @@ static wiced_result_t wlan_join() {
                 if (!result) {
                     memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
                 } else {
-                    // And another workaround here: in case of failed authentication we might get somewhat deadlocked
-                    // while stopping supplicant
-                    // ¯\_(ツ)_/¯
-                    wlan_restart(NULL);
                     wlan_supplicant_cancel(0);
                 }
                 wlan_supplicant_stop();
+
+                if (!result) {
+                    // Workaround. After successfully authenticating to Enterprise access point, TCP/IP stack
+                    // gets into a weird state. Reinitializing LwIP etc mitigates the issue.
+                    // ¯\_(ツ)_/¯
+                    wiced_network_deinit();
+                    wiced_network_init();
+                }
             }
 
             if (result == WICED_SUCCESS) {
@@ -1266,10 +1275,12 @@ int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna)
 
 void wlan_connect_cancel(bool called_from_isr)
 {
-    LOG(TRACE, "connect cancel");
-    wiced_network_up_cancel = 1;
-    wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
-    wlan_supplicant_cancel((int)called_from_isr);
+    if (!wiced_network_up_cancel) {
+        LOG(TRACE, "connect cancel");
+        wiced_network_up_cancel = 1;
+        wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
+        wlan_supplicant_cancel((int)called_from_isr);
+    }
 }
 
 /**
