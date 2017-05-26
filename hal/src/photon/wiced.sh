@@ -1,3 +1,7 @@
+#!/bin/bash
+
+set -e
+
 # override PHOTON_WICED_REPO_PATH with your photon-wiced repo location, clean build with following:
 # PHOTON_WICED_REPO_PATH=/Users/particle/code/photon-wiced/ ./wiced.sh clean
 #
