@@ -365,10 +365,10 @@ void HAL_Core_Config(void)
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
 
-#if MODULAR_FIRMWARE
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
     // write protect system module parts if not already protected
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
-#endif
+#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 #ifdef HAS_SERIAL_FLASH
     //Initialize Serial Flash
@@ -380,7 +380,7 @@ void HAL_Core_Config(void)
 #endif
 }
 
-#if !MODULAR_FIRMWARE
+#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
 __attribute__((externally_visible, section(".early_startup.HAL_Core_Config"))) uint32_t startup = (uint32_t)&HAL_Core_Config;
 #endif
 
@@ -396,7 +396,7 @@ void HAL_Core_Setup(void) {
 
     HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
 
-#if !defined(MODULAR_FIRMWARE)
+#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();
 #endif
 }
@@ -412,7 +412,7 @@ void HAL_Core_Init(void) {
     HAL_Core_Init_finalize();
 }
 
-#if MODULAR_FIRMWARE
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
 bool HAL_Core_Validate_User_Module(void)
 {
