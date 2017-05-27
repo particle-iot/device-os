@@ -1,7 +1,7 @@
 #include "ota_flash_hal.h"
 #include "spark_macros.h"
 
-#if MODULAR_FIRMWARE
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
 const module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
 const module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000, MODULE_FUNCTION_SYSTEM_PART, 2, MODULE_STORE_MAIN};
@@ -17,6 +17,6 @@ const module_bounds_t module_factory = { 0x60000, 0x8080000, 0x80E0000, MODULE_F
 const module_bounds_t* module_bounds[] = { &module_bootloader, &module_user, &module_factory };
 
 const module_bounds_t module_ota = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD};
-#endif
+#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 const unsigned module_bounds_length = arraySize(module_bounds);
