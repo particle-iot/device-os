@@ -482,13 +482,14 @@ int wlan_supplicant_stop()
 {
     LOG(TRACE, "Stopping supplicant");
 
-    wiced_tls_deinit_context(eap_context.tls_context);
-    wiced_tls_deinit_root_ca_certificates();
-    wiced_tls_deinit_identity(eap_context.tls_identity);
     if (eap_context.supplicant_initialized) {
         besl_supplicant_deinit(eap_context.supplicant_workspace);
         eap_context.supplicant_initialized = false;
     }
+
+    wiced_tls_deinit_context(eap_context.tls_context);
+    wiced_tls_deinit_root_ca_certificates();
+    wiced_tls_deinit_identity(eap_context.tls_identity);
 
     eap_context.supplicant_running = false;
 
