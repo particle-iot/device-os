@@ -557,6 +557,9 @@ static wiced_result_t wlan_join() {
                 memcpy(ssid_name, ap.details.SSID.value, ap.details.SSID.length);
                 LOG(INFO, "Joining %s", ssid_name);
                 result = wiced_join_ap_specific((wiced_ap_info_t*)&ap.details, ap.security_key_length, ap.security_key);
+                if (result != WICED_SUCCESS) {
+                    LOG(ERROR, "wiced_join_ap_specific(), result: %d", (int)result);
+                }
             }
 
             if (suppl) {
