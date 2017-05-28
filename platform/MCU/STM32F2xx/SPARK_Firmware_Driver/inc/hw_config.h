@@ -98,6 +98,7 @@ extern led_config_t HAL_Leds_Default[];
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
+void SysTick_Disable(void);
 
 /**
  * Enables the WDT if the system flags allow it.
