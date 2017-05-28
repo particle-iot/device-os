@@ -268,3 +268,8 @@ int UDP::leaveMulticast(const IPAddress& ip)
     HAL_IPAddress address = ip.raw();
     return socket_leave_multicast(&address, _nif, 0);
 }
+
+bool UDP::isValid() 
+{
+  return _sock != socket_handle_invalid();
+}
