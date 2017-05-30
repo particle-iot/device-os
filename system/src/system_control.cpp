@@ -133,6 +133,7 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
       case USB_REQUEST_DFU_MODE:
       case USB_REQUEST_LISTENING_MODE:
       case USB_REQUEST_SAFE_MODE:
+        network.connect_cancel(true);
       case USB_REQUEST_MODULE_INFO: {
         return enqueueRequest(req);
         break;
