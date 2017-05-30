@@ -68,7 +68,7 @@ public:
 
 	virtual int command(ProtocolCommands::Enum command, uint32_t data) override
 	{
-		int result = 1;
+		int result = UNKNOWN;
 		switch (command)
 		{
 		case ProtocolCommands::SLEEP:
@@ -80,6 +80,11 @@ public:
 			break;
 		case ProtocolCommands::WAKE:
 			wake();
+			result = NO_ERROR;
+			break;
+		case ProtocolCommands::TERMINATE:
+			ack_handlers.clear();
+			result = NO_ERROR;
 			break;
 		}
 		return result;

@@ -1740,11 +1740,18 @@ inline void SparkProtocol::coded_ack(unsigned char *buf,
 
 int SparkProtocol::command(ProtocolCommands::Enum command, uint32_t data)
 {
-  if (command == ProtocolCommands::SLEEP || command == ProtocolCommands::DISCONNECT) {
-    return this->wait_confirmable();
+  int result = UNKNOWN;
+  switch (command) {
+  case ProtocolCommands::SLEEP:
+  case ProtocolCommands::DISCONNECT:
+    result = !this->wait_confirmable() ? NO_ERROR : UNKNOWN;
+    break;
+  case ProtocolCommands::TERMINATE:
+    ack_handlers.clear();
+    result = NO_ERROR;
+    break;
   }
-
-  return 0;
+  return result;
 }
 
 int SparkProtocol::wait_confirmable(uint32_t timeout)

@@ -187,7 +187,8 @@ namespace ProtocolCommands {
   enum Enum {
     SLEEP,
     WAKE,
-    DISCONNECT
+    DISCONNECT,
+    TERMINATE
   };
 };
 

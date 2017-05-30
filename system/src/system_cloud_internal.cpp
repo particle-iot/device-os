@@ -1084,6 +1084,9 @@ int spark_cloud_socket_disconnect(bool graceful)
         LOG_DEBUG(TRACE, "Close Attempt");
         retVal = socket_close(sparkSocket);
         LOG_DEBUG(TRACE, "socket_close()=%s", (retVal ? "fail":"success"));
+        if (!graceful) {
+            spark_protocol_command(sp, ProtocolCommands::TERMINATE, 0, nullptr);
+        }
         sparkSocket = socket_handle_invalid();
     }
     return retVal;
