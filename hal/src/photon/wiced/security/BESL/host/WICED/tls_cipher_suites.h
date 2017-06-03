@@ -28,6 +28,7 @@ extern "C" {
     #define USE_RSA_KEYSCHEME
     // XXX: Does not work with PEAP/MSCHAPv2, disabling for now
     // #define USE_DHE_RSA_KEYSCHEME
+    #define USE_DH_RSA_KEYSCHEME
 
     // #define USE_ECDH_ECDSA_KEYSCHEME
     // #define USE_ECDHE_ECDSA_KEYSCHEME

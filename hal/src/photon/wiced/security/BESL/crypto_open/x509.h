@@ -243,7 +243,7 @@ extern "C" {
      */
     int32_t x509parse_key_ecc(wiced_tls_ecc_key_t *ecc,
               const unsigned char *key, uint32_t keylen,
-              const unsigned char *pwd, uint32_t pwdlen);
+              const unsigned char *pwd, uint32_t pwdlen) __attribute__((weak));
 
     /**
      * \brief          Load and parse a private RSA key
