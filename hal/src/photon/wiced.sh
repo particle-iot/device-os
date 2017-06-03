@@ -33,6 +33,7 @@ popd
 
 # update headers
 update . $PHOTON_WICED_REPO_PATH
+update wiced $PHOTON_WICED_REPO_PATH/WICED
 
 
 # update platform libraries (any RTOS)
