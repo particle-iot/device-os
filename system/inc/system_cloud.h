@@ -26,6 +26,18 @@
 #include <time.h>
 #include <stdint.h>
 
+enum ParticleKeyErrorFlag: uint32_t
+{
+  NO_ERROR                      = 0,
+  PUBLIC_SERVER_KEY_BLANK       = 1,
+  PUBLIC_SERVER_KEY_CORRUPTED   = 2,
+  SERVER_ADDRESS_BLANK          = 4,
+  SERVER_ADDRESS_CORRUPTED      = 8,
+  PUBLIC_DEVICE_KEY_BLANK       = 16,
+  PUBLIC_DEVICE_KEY_CORRUPTED   = 32,
+  PRIVATE_DEVICE_KEY_BLANK      = 64,
+  PRIVATE_DEVICE_KEY_CORRUPTED  = 128
+};
 
 typedef enum
 {
@@ -179,30 +191,34 @@ ProtocolFacade* system_cloud_protocol_instance(void);
 
 int spark_set_connection_property(unsigned property_id, unsigned data, void* datap, void* reserved);
 
+extern const unsigned char backup_udp_public_server_key[91];
+extern const unsigned char backup_udp_public_server_address[22];
+extern const unsigned char backup_tcp_public_server_key[294];
+extern const unsigned char backup_tcp_public_server_address[18];
 
-#define SPARK_BUF_LEN			        600
+#define SPARK_BUF_LEN                 600
 
-//#define SPARK_SERVER_IP			        "54.235.79.249"
-#define SPARK_SERVER_PORT		        5683
-#define PORT_COAPS						(5684)
-#define SPARK_LOOP_DELAY_MILLIS		        1000    //1sec
-#define SPARK_RECEIVE_DELAY_MILLIS              10      //10ms
+//#define SPARK_SERVER_IP             "54.235.79.249"
+#define SPARK_SERVER_PORT             5683
+#define PORT_COAPS                    (5684)
+#define SPARK_LOOP_DELAY_MILLIS       1000    //1sec
+#define SPARK_RECEIVE_DELAY_MILLIS    10      //10ms
 
 #if PLATFORM_ID==10
-#define TIMING_FLASH_UPDATE_TIMEOUT             90000   //90sec
+#define TIMING_FLASH_UPDATE_TIMEOUT   90000   //90sec
 #else
-#define TIMING_FLASH_UPDATE_TIMEOUT             30000   //30sec
+#define TIMING_FLASH_UPDATE_TIMEOUT   30000   //30sec
 #endif
 
-#define USER_VAR_MAX_COUNT		        10
-#define USER_VAR_KEY_LENGTH		        12
+#define USER_VAR_MAX_COUNT            10
+#define USER_VAR_KEY_LENGTH           12
 
-#define USER_FUNC_MAX_COUNT		        4
-#define USER_FUNC_KEY_LENGTH		        12
-#define USER_FUNC_ARG_LENGTH		        64
+#define USER_FUNC_MAX_COUNT           4
+#define USER_FUNC_KEY_LENGTH          12
+#define USER_FUNC_ARG_LENGTH          64
 
-#define USER_EVENT_NAME_LENGTH		        64
-#define USER_EVENT_DATA_LENGTH		        64
+#define USER_EVENT_NAME_LENGTH        64
+#define USER_EVENT_DATA_LENGTH        64
 
 #ifdef __cplusplus
 }

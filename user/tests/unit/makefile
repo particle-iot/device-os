@@ -57,6 +57,7 @@ CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_led_signal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,timer_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,rgbled_hal.cpp)
+CPPSRC += $(call target_files,$(HAL)src/electron,cellular_internal.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
@@ -81,6 +82,7 @@ INCLUDE_DIRS += $(WIRING)inc
 INCLUDE_DIRS += $(SYSTEM)inc
 INCLUDE_DIRS += $(HAL)shared
 INCLUDE_DIRS += $(HAL)inc
+INCLUDE_DIRS += $(HAL)src/electron
 INCLUDE_DIRS += $(COMMUNICATION)src
 INCLUDE_DIRS += dynalib/inc
 INCLUDE_DIRS += $(PLATFORM)shared/inc

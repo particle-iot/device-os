@@ -26,14 +26,14 @@ void I2C_Slave_On_Request_Callback(void) {
     delayMicroseconds(random_range(0, 50000));
     memset(I2C_Slave_Tx_Buffer, 0, sizeof(I2C_Slave_Tx_Buffer));
     memcpy(I2C_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength);
-    Wire.write((const uint8_t*)I2C_Slave_Tx_Buffer, requestedLength);   
+    USE_WIRE.write((const uint8_t*)I2C_Slave_Tx_Buffer, requestedLength);   
 }
 
 void I2C_Slave_On_Receive_Callback(int) {
-    assertEqual(Wire.available(), TRANSFER_LENGTH_1);
+    assertEqual(USE_WIRE.available(), TRANSFER_LENGTH_1);
     int count = 0;
-    while(Wire.available()) {
-        I2C_Slave_Rx_Buffer[count++] = Wire.read();
+    while(USE_WIRE.available()) {
+        I2C_Slave_Rx_Buffer[count++] = USE_WIRE.read();
     }
     I2C_Slave_Rx_Buffer[count] = 0x00;
 
@@ -53,14 +53,14 @@ test(I2C_Master_Slave_Slave_Transfer)
 {
     Serial.println("This is Slave");
     Serial.blockOnOverrun(false);
-    Wire.begin(I2C_ADDRESS);
-    Wire.stretchClock(true);
-    Wire.onRequest(I2C_Slave_On_Request_Callback);
-    Wire.onReceive(I2C_Slave_On_Receive_Callback);
+    USE_WIRE.begin(I2C_ADDRESS);
+    USE_WIRE.stretchClock(true);
+    USE_WIRE.onRequest(I2C_Slave_On_Request_Callback);
+    USE_WIRE.onReceive(I2C_Slave_On_Receive_Callback);
 
     while(done == 0) {
         delay(100);
     }
 
-    Wire.end();
+    USE_WIRE.end();
 }

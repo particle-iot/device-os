@@ -98,7 +98,7 @@ inline particle::Error::Type particle::Error::type() const {
 }
 
 inline const char* particle::Error::message() const {
-    return (msg_ ? msg_ : system_error_message((system_error)type_, nullptr));
+    return (msg_ ? msg_ : system_error_message((system_error_t)type_, nullptr));
 }
 
 inline bool particle::Error::operator==(const Error& error) const {

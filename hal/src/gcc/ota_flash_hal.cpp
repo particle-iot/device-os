@@ -46,6 +46,11 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return 0;
 }
 
+int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+{
+  return 0;
+}
+
  hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 {
 	 fclose(output_file);
@@ -124,6 +129,9 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
 #define MAXIMUM_CLOUD_KEY_LEN (512)
 #define SERVER_ADDRESS_OFFSET (384)
 #define SERVER_ADDRESS_OFFSET_EC (192)
+#define SERVER_ADDRESS_SIZE (128)
+#define SERVER_PUBLIC_KEY_SIZE (294)
+#define SERVER_PUBLIC_KEY_EC_SIZE (320)
 
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
@@ -131,6 +139,12 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 	memset(server_addr, 0, sizeof(ServerAddress));
 	int offset = HAL_Feature_Get(FEATURE_CLOUD_UDP) ? SERVER_ADDRESS_OFFSET_EC : SERVER_ADDRESS_OFFSET;
     parseServerAddressData(server_addr, deviceConfig.server_key+offset);
+}
+
+void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
+{
+    int offset = (udp) ? SERVER_ADDRESS_OFFSET_EC : SERVER_ADDRESS_OFFSET;
+    memcpy(&deviceConfig.server_key+offset, buf, SERVER_ADDRESS_SIZE);
 }
 
 bool HAL_OTA_Flashed_GetStatus(void)
@@ -151,6 +165,15 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
     char buf[PUBLIC_KEY_LEN*2];
     bytes2hexbuf(keyBuffer, PUBLIC_KEY_LEN, buf);
     INFO("server key: %s", buf);
+}
+
+void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
+{
+    if (udp) {
+        memcpy(&deviceConfig.server_key, keyBuffer, SERVER_PUBLIC_KEY_EC_SIZE);
+    } else {
+        memcpy(&deviceConfig.server_key, keyBuffer, SERVER_PUBLIC_KEY_SIZE);
+    }
 }
 
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* generation)

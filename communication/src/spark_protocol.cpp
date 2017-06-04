@@ -196,7 +196,7 @@ bool SparkProtocol::event_loop(CoAPMessageType::Enum& message_type)
       LOG(WARN,"received ERROR CoAPMessage");
       if (updating) {      // was updating but had an error, inform the client
         serial_dump("handle received message failed - aborting transfer");
-        callbacks.finish_firmware_update(file, 0, NULL);
+        callbacks.finish_firmware_update(file, UpdateFlag::ERROR, NULL);
         updating = false;
       }
 
@@ -360,14 +360,6 @@ void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
   unsigned short message_id = next_message_id();
   size_t len = Messages::hello(buf+2, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version, false, nullptr, 0);
   wrap(buf, len);
-}
-
-void SparkProtocol::notify_update_done(uint8_t* buf)
-{
-    DEBUG("Sending UpdateDone");
-    unsigned short message_id = next_message_id();
-    size_t size = Messages::update_done(buf+2, message_id, false);
-    wrap(buf, size);
 }
 
 void SparkProtocol::key_changed(unsigned char *buf, unsigned char token)
@@ -1093,15 +1085,7 @@ bool SparkProtocol::handle_chunk(msg& message)
     last_chunk_millis = callbacks.millis();
 
     uint8_t* msg_to_send = message.response;
-    // send ACK
-    *msg_to_send = 0;
-    *(msg_to_send + 1) = 16;
-    empty_ack(msg_to_send + 2, queue[2], queue[3]);
-    if (0 > blocking_send(msg_to_send, 18))
-    {
-      // error
-      return false;
-    }
+
     LOG(INFO,"chunk");
     if (!this->updating) {
         LOG(WARN,"got chunk when not updating");
@@ -1126,6 +1110,20 @@ bool SparkProtocol::handle_chunk(msg& message)
         option++;
         payload += (queue[payload]&0xF)+1;  // increase by the size. todo handle > 11
     }
+
+    if (!fast_ota) {
+        // Send ACK
+        // Issue #1240: The firmware should not ACK every Chunk message in Fast OTA mode
+        *msg_to_send = 0;
+        *(msg_to_send + 1) = 16;
+        empty_ack(msg_to_send + 2, queue[2], queue[3]);
+        if (0 > blocking_send(msg_to_send, 18))
+        {
+          // error
+          return false;
+        }
+    }
+
     if (0xFF==queue[payload])
     {
         payload++;
@@ -1137,15 +1135,19 @@ bool SparkProtocol::handle_chunk(msg& message)
             return false;
         }
         uint32_t crc = callbacks.calculate_crc(chunk, file.chunk_size);
-        bool has_response = false;
+        size_t response_size = 0;
         bool crc_valid = (crc == given_crc);
         LOG(INFO,"chunk idx=%d crc=%d fast=%d updating=%d", chunk_index, crc_valid, fast_ota, updating);
         if (crc_valid)
         {
             callbacks.save_firmware_chunk(file, chunk, NULL);
-            if (!fast_ota || (updating!=2 && (true || (chunk_index & 32)==0))) {
+            //if (!fast_ota || (updating!=2 && (true || (chunk_index & 32)==0))) {
+            // Issue #1240:
+            // In Fast OTA mode, the firmware should not respond to every Chunk message
+            // (especially because they are NON confirmable messages).
+            if (!fast_ota) {
                 chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::OK);
-                has_response = true;
+                response_size = 18;
             }
             flag_chunk_received(chunk_index);
             if (updating==2) {                      // clearing up missed chunks at the end of fast OTA
@@ -1153,16 +1155,15 @@ bool SparkProtocol::handle_chunk(msg& message)
                 if (next_missed==NO_CHUNKS_MISSING) {
                     LOG(INFO,"received all chunks");
                     reset_updating();
-                    notify_update_done(msg_to_send);
-                    callbacks.finish_firmware_update(file, 1, NULL);
-                    has_response = true;
+                    response_size = notify_update_done(msg_to_send, 0, 0);
+                    callbacks.finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
                 }
                 else {
-                    if (has_response && 0 > blocking_send(msg_to_send, 18)) {
+                    if (response_size && 0 > blocking_send(msg_to_send, 18)) {
                         LOG(WARN,"send chunk response failed");
                         return false;
                     }
-                    has_response = false;
+                    response_size = 0;
 
                     if (next_missed>missed_chunk_index)
                         send_missing_chunks(MISSED_CHUNKS_TO_SEND);
@@ -1173,12 +1174,12 @@ bool SparkProtocol::handle_chunk(msg& message)
         else if (!fast_ota)
         {
             chunk_received(msg_to_send + 2, message.token, ChunkReceivedCode::BAD);
-            has_response = true;
+            response_size = 18;
             LOG(WARN,"chunk bad %d", chunk_index);
         }
         // fast OTA will request the chunk later
 
-        if (has_response && 0 > blocking_send(msg_to_send, 18))
+        if (response_size && 0 > blocking_send(msg_to_send, response_size))
         {
           // error
           return false;
@@ -1223,6 +1224,33 @@ void SparkProtocol::set_chunks_received(uint8_t value)
     	memset(queue+QUEUE_SIZE-bytes, value, bytes);
 }
 
+size_t SparkProtocol::notify_update_done(uint8_t* msg, token_t token, uint8_t code)
+{
+    size_t msgsz = 0;
+    char buf[255];
+    size_t data_len = 0;
+
+    memset(buf, 0, sizeof(buf));
+    if (code != ChunkReceivedCode::BAD) {
+        callbacks.finish_firmware_update(file, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, buf);
+        data_len = strnlen(buf, sizeof(buf) - 1);
+    }
+
+    if (code) {
+        // Send as ACK
+        msgsz = Messages::coded_ack(msg + 2, token, code, queue[2], queue[3], (uint8_t*)buf, data_len);
+    } else {
+        // Send as UpdateDone
+        unsigned short message_id = next_message_id();
+        msgsz = Messages::update_done(msg + 2, message_id, (uint8_t*)buf, data_len, false);
+    }
+
+    LOG(INFO, "Update done %02x", code);
+    LOG_DEBUG(TRACE, "%s", buf);
+
+    return wrap(msg, msgsz);
+}
+
 bool SparkProtocol::handle_update_done(msg& message)
 {
     // send ACK 2.04
@@ -1232,9 +1260,11 @@ bool SparkProtocol::handle_update_done(msg& message)
     *(msg_to_send + 1) = 16;
     chunk_index_t index = next_chunk_missing(0);
     bool missing = index!=NO_CHUNKS_MISSING;
-    coded_ack(msg_to_send + 2, message.token, missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK, queue[2], queue[3]);
     LOG(WARN,"update done: received, has missing chunks %d", missing);
-    if (0 > blocking_send(msg_to_send, 18))
+
+    size_t response_size = notify_update_done(msg_to_send, message.token,
+                                              missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK);
+    if (0 > blocking_send(msg_to_send, response_size))
     {
         // error
         return false;
@@ -1243,7 +1273,7 @@ bool SparkProtocol::handle_update_done(msg& message)
     if (!missing) {
         LOG(INFO,"update done: all done!");
         reset_updating();
-        callbacks.finish_firmware_update(file, 1, NULL);
+        callbacks.finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
     }
     else {
         updating = 2;       // flag that we are sending missing chunks.

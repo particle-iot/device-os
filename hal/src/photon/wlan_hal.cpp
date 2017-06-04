@@ -768,6 +768,10 @@ int wlan_connected_rssi()
     int32_t rssi = 0;
     if (wwd_wifi_get_rssi( &rssi ))
         rssi = 0;
+    else if (rssi > 0) {
+        // Constrain RSSI to -1dBm maximum
+        rssi = -1;
+    }
     return rssi;
 }
 

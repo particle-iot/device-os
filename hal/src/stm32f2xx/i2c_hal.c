@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include "service_debug.h"
 #include "interrupts_hal.h"
+#include "delay_hal.h"
 
 #ifdef LOG_SOURCE_CATEGORY
 LOG_SOURCE_CATEGORY("hal.i2c")
@@ -239,6 +240,20 @@ void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
 void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved)
 {
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+#if PLATFORM_ID == 10
+    /*
+     * On Electron both I2C_INTERFACE1 and I2C_INTERFACE2 use the same peripheral - I2C1,
+     * but on different pins. We cannot enable both of them at the same time.
+     */
+    if (i2c == HAL_I2C_INTERFACE1 || i2c == HAL_I2C_INTERFACE2) {
+        HAL_I2C_Interface dependent = (i2c == HAL_I2C_INTERFACE1 ? HAL_I2C_INTERFACE2 : HAL_I2C_INTERFACE1);
+        if (HAL_I2C_Is_Enabled(dependent, NULL) == true) {
+            // Unfortunately we cannot return an error code here
+            return;
+        }
+    }
+#endif
 
     i2cMap[i2c]->rxBufferIndex = 0;
     i2cMap[i2c]->rxBufferLength = 0;
@@ -764,6 +779,34 @@ void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(voi
     i2cMap[i2c]->callback_onRequest = function;
 }
 
+uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
+{
+    if (HAL_I2C_Is_Enabled(i2c, NULL)) {
+        HAL_I2C_End(i2c, NULL);
+
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SDA_Pin, INPUT_PULLUP); //Turn SCA into high impedance input
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SCL_Pin, OUTPUT); //Turn SCL into a normal GPO
+        HAL_GPIO_Write(i2cMap[i2c]->I2C_SCL_Pin, 1); // Start idle HIGH
+
+        //Generate 9 pulses on SCL to tell slave to release the bus
+        for(int i=0; i <9; i++)
+        {
+            HAL_GPIO_Write(i2cMap[i2c]->I2C_SCL_Pin, 0);
+            HAL_Delay_Microseconds(100);
+            HAL_GPIO_Write(i2cMap[i2c]->I2C_SCL_Pin, 1);
+            HAL_Delay_Microseconds(100);
+        }
+
+        //Change SCL to be an input
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SCL_Pin, INPUT_PULLUP);
+
+        HAL_I2C_Begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->I2C_InitStructure.I2C_OwnAddress1 >> 1, NULL);
+        HAL_Delay_Milliseconds(50);
+        return 0;
+    }
+    return 1;
+}
+
 static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
 {
     /* Useful for debugging, diable to save time */
@@ -838,7 +881,18 @@ static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
  */
 void I2C1_ER_irq(void)
 {
+#if PLATFORM_ID == 10 // Electron
+    if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL))
+    {
+        HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE1);
+    }
+    else if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE2, NULL))
+    {
+        HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE2);
+    }
+#else
     HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE1);
+#endif
 }
 
 #if PLATFORM_ID == 10 // Electron
@@ -865,7 +919,7 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
      * The purpose is to make sure that both ADDR and STOPF flags are cleared if both are found set
      */
     uint32_t sr1 = I2C_ReadRegister(i2cMap[i2c]->I2C_Peripheral, I2C_Register_SR1);
-    
+
     /* EV4 */
     if (sr1 & I2C_EVENT_SLAVE_STOP_DETECTED)
     {
@@ -955,7 +1009,18 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
  */
 void I2C1_EV_irq(void)
 {
+#if PLATFORM_ID == 10 // Electron
+    if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL))
+    {
+        HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE1);
+    }
+    else if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE2, NULL))
+    {
+        HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE2);
+    }
+#else
     HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE1);
+#endif
 }
 
 #if PLATFORM_ID == 10 // Electron

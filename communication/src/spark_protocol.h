@@ -259,7 +259,7 @@ class SparkProtocol
     void flag_chunk_received(chunk_index_t index);
     chunk_index_t next_chunk_missing(chunk_index_t index);
     int send_missing_chunks(int count);
-    void notify_update_done(uint8_t* buf);
+    size_t notify_update_done(uint8_t* msg, token_t token, uint8_t code);
 
     /**
      * Send a particular type of describe message.

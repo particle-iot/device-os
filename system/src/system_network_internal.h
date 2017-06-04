@@ -245,7 +245,7 @@ protected:
             {
                 // Get base color used for the listening mode indication
                 const LEDStatusData* status = led_signal_status(LED_SIGNAL_LISTENING_MODE, nullptr);
-                LEDStatus led(status ? status->color : RGB_COLOR_BLUE, LED_PRIORITY_IMPORTANT);
+                LEDStatus led(status ? status->color : RGB_COLOR_BLUE, LED_PRIORITY_CRITICAL);
                 led.setActive();
                 int toggle = 25;
                 while (toggle--)
@@ -387,8 +387,8 @@ public:
     void connect(bool listen_enabled=true) override
     {
         LOG_NETWORK_STATE();
-        INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
-                (int)listening(), (int)WLAN_SMART_CONFIG_START);
+        // INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
+        //        (int)listening(), (int)WLAN_SMART_CONFIG_START);
         if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;

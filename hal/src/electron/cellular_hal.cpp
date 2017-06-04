@@ -1,12 +1,17 @@
 #ifndef HAL_CELLULAR_EXCLUDE
 
+#include "modem/mdm_hal.h"
 #include "cellular_hal.h"
 #include "cellular_internal.h"
-#include "modem/mdm_hal.h"
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
 
 static CellularCredentials cellularCredentials;
+
+static CellularNetProv cellularNetProv = CELLULAR_NETPROV_TELEFONICA;
+
+// CELLULAR_NET_PROVIDER_DATA[CELLULAR_NETPROV_MAX - 1] is the last provider record
+const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_DATA };
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
@@ -103,7 +108,7 @@ cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* rese
         CHECK_SUCCESS(electronMDM.join(connect->apn, connect->username, connect->password));
     }
     else {
-        CHECK_SUCCESS(electronMDM.join());
+        CHECK_SUCCESS(electronMDM.join(CELLULAR_NET_PROVIDER_DATA[cellularNetProv].apn, NULL, NULL));
     }
     return 0;
 }
@@ -298,6 +303,18 @@ cellular_result_t cellular_resume(void* reserved)
 {
     electronMDM.resume();
     return 0;
+}
+
+cellular_result_t cellular_imsi_to_network_provider(void* reserved)
+{
+    const DevStatus* status = electronMDM.getDevStatus();
+    cellularNetProv = detail::_cellular_imsi_to_network_provider(status->imsi);
+    return 0;
+}
+
+const CellularNetProvData cellular_network_provider_data_get(void* reserved)
+{
+    return CELLULAR_NET_PROVIDER_DATA[cellularNetProv];
 }
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)
