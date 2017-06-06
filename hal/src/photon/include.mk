@@ -42,14 +42,13 @@ INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/include $(HAL_SRC_COREV2_PATH)/wiced/secu
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/libraries/crypto
 HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Supplicant_BESL.a
 HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/BESL.ARM_CM3.release.a
-HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Lib_crypto_open_part2.a
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
 
 # if hal is used as a make dependency (linked) then add linker commands
 ifneq (,$(HAL_LINK))
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
-HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Lib_crypto_open.a
+#HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Lib_crypto_open.a
 LINKER_DEPS=$(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
 # use our version of newlib nano
