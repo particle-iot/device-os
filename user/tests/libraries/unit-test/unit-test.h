@@ -451,7 +451,7 @@ class Test
   // allows for both ram/progmem based names
   class TestString : public Printable {
   public:
-    const uint32_t data;
+    const uintptr_t data;
     TestString(const char *_data);
     void read(void *destination, uint16_t offset, uint8_t length) const;
     uint16_t length() const;
