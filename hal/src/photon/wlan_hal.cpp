@@ -96,12 +96,6 @@ struct WPAEnterpriseContext {
 
     void init() {
         if (!initialized) {
-            TlsCallbacks cb;
-            cb.tls_host_get_time_ms = tls_host_get_time_ms;
-            cb.tls_host_malloc = tls_host_malloc;
-            cb.tls_host_free = tls_host_free;
-            cb.wiced_crypto_get_random = wiced_crypto_get_random;
-            tls_set_callbacks(cb);
             initialized = true;
             tls_session = (wiced_tls_session_t*)calloc(1, sizeof(wiced_tls_session_t));
             tls_context = (wiced_tls_context_t*)calloc(1, sizeof(wiced_tls_context_t));
@@ -400,9 +394,9 @@ int wlan_supplicant_start()
         } else if (eap_type == WLAN_EAP_TYPE_TLS) {
             result = wiced_tls_init_identity(eap_context.tls_identity,
                                              (const char*)sec->private_key,
-                                             (uint32_t)strnlen((const char*)sec->private_key, PRIVATE_KEY_SIZE),
+                                             (uint32_t)strnlen((const char*)sec->private_key, PRIVATE_KEY_SIZE) + 1,
                                              (const uint8_t*)sec->certificate,
-                                             (uint32_t)strnlen((const char*)sec->certificate, CERTIFICATE_SIZE));
+                                             (uint32_t)strnlen((const char*)sec->certificate, CERTIFICATE_SIZE) + 1);
         } else {
             result = WICED_ERROR;
         }
@@ -1054,13 +1048,7 @@ int wlan_set_enterprise_credentials(WLanCredentials* c)
         return 1;
     }
 
-    eap_config_t* eap_config = (eap_config_t*)malloc(sizeof(eap_config_t));
-    if (eap_config == NULL) {
-        free(sec);
-        return 1;
-    }
     memset(sec, 0, sizeof(*sec));
-    memset(eap_config, 0, sizeof(eap_config_t));
 
     if (c) {
         if (c->client_certificate && c->client_certificate_len && c->client_certificate_len < sizeof(sec->certificate)) {
@@ -1070,6 +1058,18 @@ int wlan_set_enterprise_credentials(WLanCredentials* c)
             memcpy(sec->private_key, c->private_key, c->private_key_len);
         }
     }
+
+    wiced_dct_write(sec, DCT_SECURITY_SECTION, 0, sizeof(platform_dct_security_t));
+    free(sec);
+
+    sec = NULL;
+
+    eap_config_t* eap_config = (eap_config_t*)malloc(sizeof(eap_config_t));
+    if (eap_config == NULL) {
+        free(sec);
+        return 1;
+    }
+    memset(eap_config, 0, sizeof(eap_config_t));
 
     if (c) {
         eap_config->type = (uint8_t)c->eap_type;
@@ -1098,10 +1098,8 @@ int wlan_set_enterprise_credentials(WLanCredentials* c)
     if (!result || c == NULL) {
         // Write
         LOG(INFO, "Writing EAP configuration");
-        wiced_dct_write(sec, DCT_SECURITY_SECTION, 0, sizeof(platform_dct_security_t));
         dct_write_app_data(eap_config, DCT_EAP_CONFIG_OFFSET, sizeof(eap_config_t));
     }
-    free(sec);
     free(eap_config);
 
     return result;

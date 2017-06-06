@@ -127,15 +127,15 @@ public:
     }
 
     virtual WiFiCredentials& setPrivateKey(const char* pkey) {
-        return setPrivateKey((const uint8_t*)pkey, strlen(pkey));
+        return setPrivateKey((const uint8_t*)pkey, strlen(pkey) + 1);
     }
 
     virtual WiFiCredentials& setClientCertificate(const char* cert) {
-        return setClientCertificate((const uint8_t*)cert, strlen(cert));
+        return setClientCertificate((const uint8_t*)cert, strlen(cert) + 1);
     }
 
     virtual WiFiCredentials& setRootCertificate(const char* cert) {
-        return setRootCertificate((const uint8_t*)cert, strlen(cert));
+        return setRootCertificate((const uint8_t*)cert, strlen(cert) + 1);
     }
 
     virtual WiFiCredentials& setChannel(int ch) {
@@ -264,15 +264,15 @@ public:
     }
 
     virtual WiFiCredentials& setPrivateKey(const char* pkey) {
-        return setPrivateKey((const uint8_t*)pkey, strlen(pkey));
+        return setPrivateKey((const uint8_t*)pkey, strlen(pkey) + 1);
     }
 
     virtual WiFiCredentials& setClientCertificate(const char* cert) {
-        return setClientCertificate((const uint8_t*)cert, strlen(cert));
+        return setClientCertificate((const uint8_t*)cert, strlen(cert) + 1);
     }
 
     virtual WiFiCredentials& setRootCertificate(const char* cert) {
-        return setRootCertificate((const uint8_t*)cert, strlen(cert));
+        return setRootCertificate((const uint8_t*)cert, strlen(cert) + 1);
     }
 
     virtual void reset() {

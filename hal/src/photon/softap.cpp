@@ -18,7 +18,7 @@
 #include "ota_flash_hal_stm32f2xx.h"
 #include "bytes2hexbuf.h"
 #include "spark_wiring_wifi_credentials.h"
-#include "wiced_security.h"
+#include "mbedtls/aes.h"
 
 #if SOFTAP_HTTP
 #include "http_server.h"
@@ -574,14 +574,14 @@ protected:
         const uint8_t* key = (const uint8_t*)ekey_.get();
         uint8_t* iv = (uint8_t*)ekey_.get() + block_size;
 
-        aes_context_t ctx = {0};
-        aes_setkey_dec(&ctx, key, 128);
+        mbedtls_aes_context ctx = {0};
+        mbedtls_aes_setkey_dec(&ctx, key, 128);
 
         uint8_t* bptr = (uint8_t*)pkey;
 
         for (uint8_t* ptr = (uint8_t*)pkey; ptr - pkey < len; ptr += block_size * 2) {
             hex_decode(buf, block_size, (const char*)ptr);
-            aes_crypt_cbc(&ctx, AES_DECRYPT, block_size, iv, buf, bptr);
+            mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, block_size, iv, buf, bptr);
             bptr += block_size;
         }
 
@@ -650,7 +650,7 @@ protected:
             // certificate
             if (t->type == JSMN_STRING) {
                 size_t len = json_unescape(str, strlen(str));
-                credentials.setClientCertificate((const uint8_t*)str, len);
+                credentials.setClientCertificate((const uint8_t*)str, len + 1);
             }
             break;
             case 9:
@@ -671,7 +671,7 @@ protected:
             // private key
             if (t->type == JSMN_STRING) {
                 size_t len = strlen(str);
-                credentials.setPrivateKey((const uint8_t*)str, len);
+                credentials.setPrivateKey((const uint8_t*)str, len + 1);
                 // Just in case set the password as well, as there is a check somewhere that will
                 // set security to Open if there is no password.
                 credentials.setPassword("1");
@@ -681,7 +681,7 @@ protected:
             // root ca
             if (t->type == JSMN_STRING) {
                 size_t len = json_unescape(str, strlen(str));
-                credentials.setRootCertificate((const uint8_t*)str, len);
+                credentials.setRootCertificate((const uint8_t*)str, len + 1);
             }
             break;
         }
