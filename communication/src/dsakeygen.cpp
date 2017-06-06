@@ -23,16 +23,24 @@
 
 #include <cstdlib>
 #include <cstdint>
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-#include "wiced_security.h"
-#include "crypto_open/bignum.h"
-#else
-#include "tropicssl/rsa.h"
-#endif
+
 #include "dsakeygen.h"
 #include "hal_platform.h"
+#include "protocol_selector.h"
 
 #if HAL_PLATFORM_CLOUD_TCP
+
+#ifdef USE_MBEDTLS
+#include "mbedtls/rsa.h"
+#include "mbedtls_compat.h"
+#else
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#  include "wiced_security.h"
+#  include "crypto_open/bignum.h"
+# else
+#  include "tropicssl/rsa.h"
+# endif
+#endif
 
 using namespace std;
 
@@ -166,6 +174,26 @@ public:
     }
 };
 
+#ifdef USE_MBEDTLS
+// mbedTLS-compatible wrapper for RNG callback exposed via API
+struct RNGCallbackData {
+    int32_t (*f_rng)(void*);
+    void *p_rng;
+};
+
+static int rngCallback(void* p, unsigned char* data, size_t size) {
+    RNGCallbackData* d = (RNGCallbackData*)p;
+    while (size >= 4) {
+        *((uint32_t*)data) = d->f_rng(d->p_rng);
+        data += 4;
+        size -= 4;
+    }
+    while (size-- > 0) {
+        *data++ = d->f_rng(d->p_rng);
+    }
+    return 0;
+}
+#endif
 
 /**
  * Returns 0 on success.
@@ -176,13 +204,20 @@ public:
 int gen_rsa_key(uint8_t* buffer, size_t max_length, int32_t (*f_rng) (void *), void *p_rng)
 {
     rsa_context rsa;
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-    rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, f_rng, p_rng);
-#else
-    rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, (int(*)(void*))f_rng, p_rng);
-#endif
 
+#ifdef USE_MBEDTLS
+    mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V15, 0);
+    RNGCallbackData d = { f_rng, p_rng };
+    int failure = mbedtls_rsa_gen_key(&rsa, rngCallback, &d, 1024, 65537);
+#else
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+    rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, f_rng, p_rng);
+# else
+    rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, (int(*)(void*))f_rng, p_rng);
+# endif
     int failure = rsa_gen_key(&rsa, 1024, 65537);
+#endif // USE_MBEDTLS
+
     if (!failure)
     {
         RSAPrivateKeyWriter().write_private_key(buffer, max_length, rsa);

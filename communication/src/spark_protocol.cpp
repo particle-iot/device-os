@@ -27,6 +27,10 @@
 LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 
 #include "spark_protocol.h"
+#include "protocol_selector.h"
+
+#if !PARTICLE_PROTOCOL
+
 #include "protocol_defs.h"
 #include "handshake.h"
 #include <string.h>
@@ -36,6 +40,11 @@ LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 #include "service_debug.h"
 #include "messages.h"
 
+#ifdef USE_MBEDTLS
+#include "mbedtls_compat.h"
+#include "mbedtls_util.h"
+#endif
+
 using namespace particle::protocol;
 
 #if 0
@@ -43,6 +52,17 @@ extern void serial_dump(const char* msg, ...);
 #else
 #define serial_dump(x, ...)
 #endif
+
+static inline size_t round_to_16(size_t len)
+{
+  if (len == 0)
+    return len;
+  size_t rem = len % 16;
+  if (rem != 0) {
+    len += 16 - rem;
+  }
+  return len;
+}
 
 static inline int message_padding_strip(uint8_t* buf, int len)
 {
@@ -130,7 +150,11 @@ int SparkProtocol::handshake(void)
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);
   const int len = 52+MAX_DEVICE_PUBLIC_KEY_LENGTH;
+#ifdef USE_MBEDTLS
+  err = mbedtls_rsa_pkcs1_encrypt(&rsa, mbedtls_default_rng, nullptr, MBEDTLS_RSA_PUBLIC, len, queue, queue + len);
+#else
   err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
+#endif
   rsa_free(&rsa);
 
   if (err) { LOG(ERROR,"RSA encrypt error %d", err); return err; }
@@ -347,8 +371,13 @@ CoAPMessageType::Enum
   unsigned char next_iv[16];
   memcpy(next_iv, buf, 16);
 
+#ifdef USE_MBEDTLS
+  mbedtls_aes_setkey_dec(&aes, key, 128);
+  mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_DECRYPT, round_to_16(length), iv_receive, buf, buf);
+#else
   aes_setkey_dec(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_DECRYPT, length, iv_receive, buf, buf);
+#endif
 
   memcpy(iv_receive, next_iv, 16);
 
@@ -1088,7 +1117,7 @@ bool SparkProtocol::handle_chunk(msg& message)
 
     LOG(INFO,"chunk");
     if (!this->updating) {
-        LOG(WARN,"got chunk when not updating");
+        //LOG(WARN,"got chunk when not updating");
         return true;
     }
 
@@ -1661,8 +1690,13 @@ unsigned char SparkProtocol::next_token()
 
 void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
+#ifdef USE_MBEDTLS
+  mbedtls_aes_setkey_enc(&aes, key, 128);
+  mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_ENCRYPT, round_to_16(length), iv_send, buf, buf);
+#else
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
+#endif
   memcpy(iv_send, buf, 16);
 }
 
@@ -1702,7 +1736,7 @@ void SparkProtocol::separate_response_with_payload(unsigned char *buf,
 
 int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
 {
-  unsigned char credentials[40];
+  unsigned char credentials[128];
   unsigned char hmac[20];
 
   if (0 != decipher_aes_credentials(core_private_key,
@@ -1810,3 +1844,5 @@ int SparkProtocol::wait_confirmable(uint32_t timeout)
 
   return (int)(!st);
 }
+
+#endif // !PARTICLE_PROTOCOL

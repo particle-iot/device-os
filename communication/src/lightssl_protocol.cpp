@@ -19,6 +19,8 @@
 
 #include "lightssl_protocol.h"
 
+#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+
 namespace particle { namespace protocol {
 int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data)
 {
@@ -66,3 +68,5 @@ int LightSSLProtocol::wait_confirmable(uint32_t timeout)
 
 
 }}
+
+#endif

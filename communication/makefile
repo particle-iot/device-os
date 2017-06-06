@@ -7,6 +7,6 @@ TARGET_TYPE = a
 
 BUILD_PATH_EXT=$(COMMUNICATION_BUILD_PATH_EXT)
 
-DEPENDENCIES = hal dynalib services wiring
+DEPENDENCIES = hal dynalib services wiring crypto
 
 include ../build/arm-tlm.mk

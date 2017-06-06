@@ -2,21 +2,17 @@
 LOG_SOURCE_CATEGORY("comm.lightssl")
 
 #include "protocol_selector.h"
-#if HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#include "lightssl_message_channel.h"
 
 #include "service_debug.h"
 #include "handshake.h"
 #include "device_keys.h"
 #include "message_channel.h"
 #include "buffer_message_channel.h"
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-#include "wiced_security.h"
-#include "crypto_open/bignum.h"
-#else
-#include "tropicssl/rsa.h"
-#include "tropicssl/aes.h"
-#endif
-#include "lightssl_message_channel.h"
+
+#include "mbedtls/rsa.h"
+#include "mbedtls_util.h"
 
 namespace particle
 {
@@ -75,8 +71,8 @@ namespace protocol
 				{
 					unsigned char next_iv[16];
 					memcpy(next_iv, buf, 16);
-					aes_setkey_dec(&aes, key, 128);
-					aes_crypt_cbc(&aes, AES_DECRYPT, packet_size, iv_receive, buf, buf);
+					mbedtls_aes_setkey_dec(&aes, key, 128);
+					mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_DECRYPT, packet_size, iv_receive, buf, buf);
 					memcpy(iv_receive, next_iv, 16);
 					message.set_length(packet_size-buf[packet_size-1]);
 				}
@@ -147,8 +143,8 @@ namespace protocol
 
 	void LightSSLMessageChannel::encrypt(unsigned char *buf, int length)
 	{
-		aes_setkey_enc(&aes, key, 128);
-		aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
+		mbedtls_aes_setkey_enc(&aes, key, 128);
+		mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_ENCRYPT, length, iv_send, buf, buf);
 		memcpy(iv_send, buf, 16);
 	}
 
@@ -167,11 +163,11 @@ namespace protocol
 		LOG(INFO,"Encrypting nonce");
 		extract_public_rsa_key(queue + 52, core_private_key);
 
-		rsa_context rsa;
+		mbedtls_rsa_context rsa;
 		init_rsa_context_with_public_key(&rsa, server_public_key);
 		const int len = 52 + MAX_DEVICE_PUBLIC_KEY_LENGTH;
-		err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
-		rsa_free(&rsa);
+		err = mbedtls_rsa_pkcs1_encrypt(&rsa, mbedtls_default_rng, nullptr, MBEDTLS_RSA_PUBLIC, len, queue, queue + len);
+		mbedtls_rsa_free(&rsa);
 
 		if (err)
 		{
@@ -274,4 +270,4 @@ namespace protocol
 }
 }
 
-#endif
+#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL

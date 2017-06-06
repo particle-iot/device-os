@@ -8,7 +8,7 @@ TARGET_SRC_PATH = src
 
 
 # C source files included in this build.
-CSRC += $(TARGET_SRC_PATH)/wiced_tls_host.c
+# CSRC +=
 
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
@@ -35,6 +35,12 @@ ASRC +=
 
 CPPFLAGS += -std=gnu++11
 
-CFLAGS += -DMBEDTLS_CONFIG_FILE="<mbedtls_config.h>"
+ifeq ($(PLATFORM_ID),6)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
+endif
+
+ifeq ($(PLATFORM_ID),8)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
+endif
 
 LOG_MODULE_CATEGORY = comm

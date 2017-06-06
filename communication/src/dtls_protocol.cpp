@@ -1,4 +1,7 @@
 #include "dtls_protocol.h"
+
+#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+
 #include "eckeygen.h"
 
 namespace particle { namespace protocol {
@@ -78,3 +81,5 @@ int DTLSProtocol::wait_confirmable(uint32_t timeout)
 
 
 }}
+
+#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
