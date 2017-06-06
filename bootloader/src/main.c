@@ -36,9 +36,12 @@
 #include "bootloader_dct.h"
 #endif
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 10 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
 #define USE_LED_THEME
 #include "led_signal.h"
+
+#define CHECK_FIRMWARE
+#include "module.h"
 #endif
 
 void platform_startup();
@@ -414,8 +417,19 @@ int main(void)
             // Initialize user application's Stack Pointer
             __set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
-            // Set IWDG Timeout to 5 secs based on platform specific system flags
-            IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+            uint8_t disable_iwdg = 0;
+#ifdef CHECK_FIRMWARE
+            // Pre-0.7.0 firmwares were expecting IWDG flag to be set in the DCT, now it's stored in
+            // the backup registers. As a workaround, we disable IWDG if an older firmware is detected
+            const uint16_t module_ver = get_main_module_version();
+            if (module_ver != 0 && module_ver < SYSTEM_MODULE_VERSION_0_7_0_RC1) {
+                disable_iwdg = 1;
+            }
+#endif
+            if (!disable_iwdg) {
+                // Set IWDG Timeout to 5 secs based on platform specific system flags
+                IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+            }
 
             SysTick_Disable();
             Jump_To_Application();
