@@ -33,7 +33,7 @@ static const module_info_t* get_module(uint8_t module_func, uint8_t module_index
     if (!module || module->module_version < min_version) {
         return NULL;
     }
-    if (!verify_module(module)) {
+    if (verify_module(module, bounds) != 0) {
         return NULL;
     }
     return module;

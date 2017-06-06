@@ -22,19 +22,17 @@ const module_info_t* get_module_info(const module_bounds_t* bounds) {
             module->module_index != bounds->module_index) {
         return NULL;
     }
+    return module;
+}
+
+int verify_module(const module_info_t* module, const module_bounds_t* bounds) {
     // Check module boundaries
     const uintptr_t startAddr = (uintptr_t)module->module_start_address;
     const uintptr_t endAddr = (uintptr_t)module->module_end_address;
     if (endAddr < startAddr || startAddr != bounds->start_address || endAddr > bounds->end_address) {
-        return NULL;
+        return -1;
     }
-    return module;
-}
-
-int verify_module(const module_info_t* module) {
     // Verify checksum
-    const uintptr_t startAddr = (uintptr_t)module->module_start_address;
-    const uintptr_t endAddr = (uintptr_t)module->module_end_address;
     if (!FLASH_VerifyCRC32(FLASH_INTERNAL, startAddr, endAddr - startAddr)) {
         return -1;
     }
