@@ -15,7 +15,7 @@ int verify_module(const module_info_t* module, const module_bounds_t* bounds);
 const void* get_module_func(const module_info_t* module, size_t dynalib_index, size_t func_index);
 
 // Returns version number of the main system module
-uint16_t get_main_module_version();
+int get_main_module_version();
 
 #ifdef __cplusplus
 } // extern "C"

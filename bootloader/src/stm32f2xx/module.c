@@ -51,13 +51,13 @@ const void* get_module_func(const module_info_t* module, size_t dynalib_index, s
     return func;
 }
 
-uint16_t get_main_module_version() {
+int get_main_module_version() {
     const module_info_t* module = get_module_info(&module_system_part2);
     if (!module) {
         // Monolithic firmware?
         module = get_module_info(&module_user_mono);
         if (!module) {
-            return 0;
+            return -1;
         }
     }
     return module->module_version;
