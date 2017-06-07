@@ -421,7 +421,7 @@ int main(void)
 #ifdef CHECK_FIRMWARE
             // Pre-0.7.0 firmwares were expecting IWDG flag to be set in the DCT, now it's stored in
             // the backup registers. As a workaround, we disable IWDG if an older firmware is detected
-            const uint16_t module_ver = get_main_module_version();
+            const int module_ver = get_main_module_version();
             if (module_ver >= 0 && module_ver < SYSTEM_MODULE_VERSION_0_7_0_RC1) {
                 disable_iwdg = 1;
             }
