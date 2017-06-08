@@ -1,17 +1,10 @@
 #include "bootloader_dct.h"
 
-#include "flash_mal.h"
+#include "module.h"
 
 #include <string.h>
-#include <stdint.h>
-#include <stddef.h>
 
-#include "../../../hal/src/stm32f2xx/dct_hal_stm32f2xx.h"
-
-#define MODULAR_FIRMWARE 1
-#include "../../../hal/src/photon/ota_module_bounds.c"
-
-#define MIN_MODULE_VERSION_SYSTEM_PART2 200 // 0.7.0-rc.1
+#define MIN_MODULE_VERSION_SYSTEM_PART2 SYSTEM_MODULE_VERSION_0_7_0_RC1
 
 #define DYNALIB_INDEX_SYSTEM_MODULE_PART1 2 // system_module_part1
 #define FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT 0 // module_system_part1_pre_init()
@@ -31,48 +24,31 @@ static dct_read_app_data_func_t dct_read_app_data_func = NULL;
 static dct_write_app_data_func_t dct_write_app_data_func = NULL;
 static uint8_t dct_funcs_inited = 0;
 
-static const module_info_t* get_module_info(const module_bounds_t* bounds, uint16_t min_version) {
-    const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
-    // Check primary module info
-    if (!module || module->platform_id != PLATFORM_ID || module->module_function != bounds->module_function ||
-            module->module_index != bounds->module_index || module->module_version < min_version) {
+static const module_info_t* get_module(uint8_t module_func, uint8_t module_index, uint16_t min_version) {
+    const module_bounds_t* bounds = get_module_bounds(module_func, module_index);
+    if (!bounds) {
         return NULL;
     }
-    // Check module boundaries
-    const uintptr_t startAddr = (uintptr_t)module->module_start_address;
-    const uintptr_t endAddr = (uintptr_t)module->module_end_address;
-    if (endAddr < startAddr || startAddr != bounds->start_address || endAddr > bounds->end_address) {
+    const module_info_t* module = get_module_info(bounds);
+    if (!module || module->module_version < min_version) {
         return NULL;
     }
-    // Verify checksum
-    if (!FLASH_VerifyCRC32(FLASH_INTERNAL, startAddr, endAddr - startAddr)) {
+    if (verify_module(module, bounds) != 0) {
         return NULL;
     }
     return module;
 }
 
-static const void* get_module_func(const module_info_t* module, size_t dynalib_index, size_t func_index) {
-    // Get dynalib table
-    void*** module_table = (void***)((const char*)module + sizeof(module_info_t));
-    void** dynalib = module_table[dynalib_index];
-    // Get function address
-    void* func = dynalib[func_index];
-    if (func < module->module_start_address || func >= module->module_end_address) {
-        return NULL;
-    }
-    return func;
-}
-
 static void init_dct_functions() {
     dct_read_app_data_func = NULL;
     dct_write_app_data_func = NULL;
-    const module_info_t* part2 = get_module_info(&module_system_part2, MIN_MODULE_VERSION_SYSTEM_PART2);
+    const module_info_t* part2 = get_module(MODULE_FUNCTION_SYSTEM_PART, 2, MIN_MODULE_VERSION_SYSTEM_PART2);
     if (!part2) {
         return;
     }
-    // Part2 should contain complete DCT implementation, but it's easy to introduce an additional
-    // dependency during development, so we require part1 to be consistent as well
-    const module_info_t* part1 = get_module_info(&module_system_part1, part2->dependency.module_version);
+    // At the time of writing, part2 contained a complete DCT implementation. Same time, it's easy to
+    // introduce an additional dependency during development, so we require part1 to be consistent as well
+    const module_info_t* part1 = get_module(MODULE_FUNCTION_SYSTEM_PART, 1, part2->dependency.module_version);
     if (!part1 || part1->dependency.module_function != MODULE_FUNCTION_NONE) {
         return;
     }
