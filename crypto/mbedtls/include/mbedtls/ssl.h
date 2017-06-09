@@ -109,6 +109,7 @@
 #define MBEDTLS_ERR_SSL_UNEXPECTED_RECORD                 -0x6700  /**< Record header looks valid but is not expected. */
 #define MBEDTLS_ERR_SSL_NON_FATAL                         -0x6680  /**< The alert message received indicates a non-fatal error. */
 #define MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH               -0x6600  /**< Couldn't set the hash for verifying CertificateVerify */
+#define MBEDTLS_ERR_SSL_NO_CERTIFICATE_TYPE_CHOSEN        -0x6500  /**< The server has no certificate types in common with the client */
 
 /*
  * Various constants
@@ -185,6 +186,12 @@
 #define MBEDTLS_SSL_PRESET_DEFAULT              0
 #define MBEDTLS_SSL_PRESET_SUITEB               2
 
+#define MBEDTLS_SSL_SEND_CERTIFICATE_DISABLED   0
+#define MBEDTLS_SSL_SEND_CERTIFICATE_ENABLED    1
+
+#define MBEDTLS_SSL_RECEIVE_CERTIFICATE_DISABLED    0
+#define MBEDTLS_SSL_RECEIVE_CERTIFICATE_ENABLED     1
+
 /*
  * Default range for DTLS retransmission timer value, in milliseconds.
  * RFC 6347 4.2.4.1 says from 1 second to 60 seconds.
@@ -217,6 +224,14 @@
  */
 #if !defined(MBEDTLS_SSL_MAX_CONTENT_LEN)
 #define MBEDTLS_SSL_MAX_CONTENT_LEN         16384   /**< Size of the input / output buffer */
+#endif
+
+/**
+ * Maximum length of queued handshake messages
+ * received out-of-sequence
+ */
+#if !defined(MBEDTLS_SSL_DTLS_HS_MAX_QUEUE_LEN)
+#define MBEDTLS_SSL_DTLS_HS_MAX_QUEUE_LEN   16384   /**< Maximum size of the out-of-sequence handshake queue */
 #endif
 
 /* \} name SECTION: Module settings */
@@ -330,6 +345,9 @@
 
 #define MBEDTLS_TLS_EXT_ALPN                        16
 
+#define MBEDTLS_TLS_EXT_CLIENT_CERTIFICATE_TYPE     19
+#define MBEDTLS_TLS_EXT_SERVER_CERTIFICATE_TYPE     20
+
 #define MBEDTLS_TLS_EXT_ENCRYPT_THEN_MAC            22 /* 0x16 */
 #define MBEDTLS_TLS_EXT_EXTENDED_MASTER_SECRET  0x0017 /* 23 */
 
@@ -338,6 +356,15 @@
 #define MBEDTLS_TLS_EXT_ECJPAKE_KKPP               256 /* experimental */
 
 #define MBEDTLS_TLS_EXT_RENEGOTIATION_INFO      0xFF01
+
+/**
+ * TLS Certificate Types
+ * See RFC 7250
+ */
+
+#define MBEDTLS_TLS_CERT_TYPE_NONE            -1
+#define MBEDTLS_TLS_CERT_TYPE_X509            0
+#define MBEDTLS_TLS_CERT_TYPE_RAW_PUBLIC_KEY  2
 
 /*
  * Size defines
@@ -536,6 +563,9 @@ typedef struct mbedtls_ssl_key_cert mbedtls_ssl_key_cert;
 #endif
 #if defined(MBEDTLS_SSL_PROTO_DTLS)
 typedef struct mbedtls_ssl_flight_item mbedtls_ssl_flight_item;
+#if defined(MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE)
+typedef struct mbedtls_ssl_hs_queue_item mbedtls_ssl_hs_queue_item;
+#endif
 #endif
 
 /*
@@ -748,6 +778,13 @@ struct mbedtls_ssl_config
 #endif
 #if defined(MBEDTLS_SSL_FALLBACK_SCSV) && defined(MBEDTLS_SSL_CLI_C)
     unsigned int fallback : 1;      /*!< is this a fallback?                */
+#endif
+
+    unsigned int send_certificate: 1;
+    unsigned int receive_certificate: 1;
+#if defined(MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT)
+    const int *server_certificate_type_list;
+    const int *client_certificate_type_list;
 #endif
 };
 
@@ -1782,6 +1819,13 @@ void mbedtls_ssl_conf_sig_hashes( mbedtls_ssl_config *conf,
                                   const int *hashes );
 #endif /* MBEDTLS_KEY_EXCHANGE__WITH_CERT__ENABLED */
 
+#if defined(MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT)
+void mbedtls_ssl_conf_client_certificate_types( mbedtls_ssl_config *conf,
+                                                const int *cert_types );
+void mbedtls_ssl_conf_server_certificate_types( mbedtls_ssl_config *conf,
+                                                const int *cert_types );
+#endif /* MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT */
+
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
 /**
  * \brief          Set the hostname to check against the received server
@@ -2111,6 +2155,9 @@ void mbedtls_ssl_conf_session_tickets( mbedtls_ssl_config *conf, int use_tickets
  */
 void mbedtls_ssl_conf_renegotiation( mbedtls_ssl_config *conf, int renegotiation );
 #endif /* MBEDTLS_SSL_RENEGOTIATION */
+
+void mbedtls_ssl_conf_certificate_send( mbedtls_ssl_config *conf, int send_certificate );
+void mbedtls_ssl_conf_certificate_receive( mbedtls_ssl_config *conf, int receive_certificate );
 
 /**
  * \brief          Prevent or allow legacy renegotiation.
