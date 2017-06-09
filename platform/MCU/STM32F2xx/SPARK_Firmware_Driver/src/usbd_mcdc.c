@@ -211,7 +211,7 @@ static uint8_t USBD_MCDC_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
   }
 #endif
   priv->configured = 1;
-  priv->rx_state = 1;
+  priv->rx_state = 0;
 
   USBD_MCDC_Start_Rx(pdev, priv);
 
@@ -474,8 +474,10 @@ static uint8_t  USBD_MCDC_DataOut(void* pdev, USBD_Composite_Class_Data* cls, ui
     return USBD_FAIL;
   }
 
-  uint32_t USB_Rx_Count = USBD_Last_Rx_Packet_size(pdev, epnum);
-  priv->rx_buffer_head = ring_wrap(priv->rx_buffer_length, priv->rx_buffer_head + USB_Rx_Count);
+  if (priv->rx_state) {
+    uint32_t USB_Rx_Count = USBD_Last_Rx_Packet_size(pdev, epnum);
+    priv->rx_buffer_head = ring_wrap(priv->rx_buffer_length, priv->rx_buffer_head + USB_Rx_Count);
+  }
 
   // Serial port is definitely open
   USBD_MCDC_Change_Open_State(pdev, priv, 1);
