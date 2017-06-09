@@ -75,4 +75,15 @@
 #pragma weak mbedtls_mpi_is_prime
 #pragma weak mbedtls_mpi_gen_prime
 
+// SHA256
+#if PLATFORM_ID == 10
+#pragma weak mbedtls_sha256_init
+#pragma weak mbedtls_sha256_free
+#pragma weak mbedtls_sha256_clone
+#pragma weak mbedtls_sha256_starts
+#pragma weak mbedtls_sha256_update
+#pragma weak mbedtls_sha256_finish
+#pragma weak mbedtls_sha256_process
+#endif
+
 #endif // MBEDTLS_WEAKEN

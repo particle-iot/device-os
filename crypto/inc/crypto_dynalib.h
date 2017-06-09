@@ -35,6 +35,9 @@
 #include "mbedtls/aes.h"
 #include "mbedtls/rsa.h"
 #include "mbedtls/sha1.h"
+#if PLATFORM_ID == 10
+#include "mbedtls/sha256.h"
+#endif
 #include "mbedtls/bignum.h"
 #include "mbedtls_util.h"
 #endif
@@ -118,6 +121,15 @@ DYNALIB_FN(63, crypto, mbedtls_mpi_gen_prime, int(mbedtls_mpi*, size_t, int, int
 // DYNALIB_FN(XX, crypto, mbedtls_rsa_check_pubkey, int(const mbedtls_rsa_context*))
 // DYNALIB_FN(XX, crypto, mbedtls_rsa_check_privkey, int(const mbedtls_rsa_context*))
 // DYNALIB_FN(XX, crypto, mbedtls_rsa_check_pub_priv, int(const mbedtls_rsa_context*, const mbedtls_rsa_context*))
+#if PLATFORM_ID == 10
+DYNALIB_FN(64, crypto, mbedtls_sha256_init, void(mbedtls_sha256_context*))
+DYNALIB_FN(65, crypto, mbedtls_sha256_free, void(mbedtls_sha256_context*))
+DYNALIB_FN(66, crypto, mbedtls_sha256_clone, void(mbedtls_sha256_context*, const mbedtls_sha256_context*))
+DYNALIB_FN(67, crypto, mbedtls_sha256_starts, void(mbedtls_sha256_context*, int))
+DYNALIB_FN(68, crypto, mbedtls_sha256_update, void(mbedtls_sha256_context*, const unsigned char*, size_t))
+DYNALIB_FN(69, crypto, mbedtls_sha256_finish, void(mbedtls_sha256_context*, unsigned char output[32]))
+DYNALIB_FN(70, crypto, mbedtls_sha256_process, void(mbedtls_sha256_context*, const unsigned char data[64]))
+#endif
 
 DYNALIB_END(crypto)
 
