@@ -35,7 +35,6 @@ LOG_SOURCE_CATEGORY("comm.dtls")
 #include <string.h>
 #include "dtls_session_persist.h"
 
-
 namespace particle { namespace protocol {
 
 
@@ -173,7 +172,7 @@ static void my_debug(void *ctx, int level,
 		const char *str )
 {
 #if PLATFORM_ID!=3
-	DEBUG_D("%s:%04d: %s\r", file, line, str);
+	DEBUG_D("%s:%04d: %s", file, line, str);
 #else
 	fprintf(stdout, "%s:%04d: %s", file, line, str);
 	fflush(stdout);
@@ -214,13 +213,12 @@ ProtocolError DTLSMessageChannel::init(
 	EXIT_ERROR(ret, "unable to config own cert");
 
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-#if MBEDTLS_VERSION_NUMBER < 0x02040000
-	// Newer mbedTLS automagically sets certificate types based on enabled ciphersuites
+
 	static int ssl_cert_types[] = { MBEDTLS_TLS_CERT_TYPE_RAW_PUBLIC_KEY, MBEDTLS_TLS_CERT_TYPE_NONE };
 	mbedtls_ssl_conf_client_certificate_types(&conf, ssl_cert_types);
 	mbedtls_ssl_conf_server_certificate_types(&conf, ssl_cert_types);
 	mbedtls_ssl_conf_certificate_receive(&conf, MBEDTLS_SSL_RECEIVE_CERTIFICATE_DISABLED);
-#endif // MBEDTLS_VERSION_NUMBER < 0x02040000
+
 	this->server_public = new uint8_t[server_public_len];
 	memcpy(this->server_public, server_public, server_public_len);
 	this->server_public_len = server_public_len;
@@ -529,15 +527,15 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 
 #include "sys/time.h"
 
-extern "C" unsigned long mbedtls_timing_hardclock()
-{
-	return HAL_Timer_Microseconds();
-}
-
-// todo - would prefer this was provided as a callback.
 extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
 {
-    uint32_t t = HAL_Timer_Milliseconds();  // get uptime in nanoseconds
+    mbedtls_callbacks_t* cb = mbedtls_get_callbacks(NULL);
+    uint32_t t = 0;
+    if (cb && cb->millis) {
+        t = cb->millis();
+    } else {
+        return -1;
+    }
     tv->tv_sec = t / 1000;  // convert to seconds
     tv->tv_usec = ( t % 1000 )*1000;  // get remaining microseconds
     return 0;  // return non-zero for error
