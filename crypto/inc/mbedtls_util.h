@@ -33,6 +33,7 @@ typedef struct {
     const int* (*mbedtls_md_list)(void);
     const mbedtls_md_info_t* (*mbedtls_md_info_from_string)(const char *md_name);
     const mbedtls_md_info_t* (*mbedtls_md_info_from_type)(mbedtls_md_type_t md_type);
+    uint32_t (*millis)(void);
 } mbedtls_callbacks_t;
 
 #ifdef  __cplusplus
@@ -40,6 +41,7 @@ extern "C" {
 #endif
 
 int mbedtls_set_callbacks(mbedtls_callbacks_t* callbacks, void* reserved);
+mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved);
 
 #ifdef  __cplusplus
 }
