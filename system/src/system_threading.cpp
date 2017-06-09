@@ -1,19 +1,15 @@
-
-
 #include "system_threading.h"
 #include "system_task.h"
 #include <time.h>
 #include <string.h>
 
-
 #if PLATFORM_THREADING
 
+// Using a smaller stack size for the system thread results in a stack overflow during cloud handshake
 #if HAL_PLATFORM_CLOUD_UDP
-// Electron uses larger stack size to workaround stack overflow problem that occurs during
-// handshake in multithreaded configuration
-#define THREAD_STACK_SIZE 4*1024
+#define THREAD_STACK_SIZE (4 * 1024) // Electron
 #else
-#define THREAD_STACK_SIZE 3*1024
+#define THREAD_STACK_SIZE (5 * 1024) // Photon
 #endif
 
 void system_thread_idle()
