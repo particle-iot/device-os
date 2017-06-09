@@ -20,6 +20,9 @@
 #include "mbedtls/x509_crt.h"
 #include "debug.h"
 #include "mbedtls_util.h"
+#include "timer_hal.h"
+
+LOG_SOURCE_CATEGORY("crypto.compat")
 
 struct MbedTlsCallbackInitializer {
     MbedTlsCallbackInitializer() {
@@ -29,6 +32,7 @@ struct MbedTlsCallbackInitializer {
         cb.mbedtls_md_list = mbedtls_md_list;
         cb.mbedtls_md_info_from_string = mbedtls_md_info_from_string;
         cb.mbedtls_md_info_from_type = mbedtls_md_info_from_type;
+        cb.millis = HAL_Timer_Get_Milli_Seconds;
         mbedtls_set_callbacks(&cb, NULL);
     }
 };
@@ -57,6 +61,23 @@ STATIC_ASSERT(wiced_x509_name_offset_3, offsetof(x509_name, next) == offsetof(mb
 // STATIC_ASSERT(wiced_rsa_context_size, sizeof(rsa_context) >= sizeof(mbedtls_rsa_context));
 
 wiced_tls_key_type_t type = TLS_RSA_KEY;
+
+void* tls_host_malloc( const char* name, uint32_t size)
+{
+    void* ptr = malloc(size);
+    return ptr;
+}
+
+void* tls_host_calloc( const char* name, size_t nelem, size_t elsize )
+{
+    void* ptr = calloc(nelem, elsize);
+    return ptr;
+}
+
+void tls_host_free(void* p)
+{
+    free(p);
+}
 
 // <stubbed>
 void sha4_starts(sha4_context* context, int32_t is384) {
@@ -577,7 +598,7 @@ static mbedtls_x509_crt* x509_to_mbedtls(x509_cert* wcrt, bool noalloc = false)
     }
 
     if (!noalloc) {
-        compat->crt = (mbedtls_x509_crt*)malloc(sizeof(mbedtls_x509_crt));
+        compat->crt = (mbedtls_x509_crt*)tls_host_malloc(__FUNCTION__, sizeof(mbedtls_x509_crt));
         if (compat->crt)  {
             compat->header = 0xdeadbeef;
             mbedtls_x509_crt_init(compat->crt);
@@ -592,7 +613,7 @@ static x509_cert* mbedtls_to_x509(mbedtls_x509_crt* c, x509_cert* crt)
 {
     // Fill subject and public_key
     mbedtls_rsa_context* pk = mbedtls_pk_rsa(c->pk);
-    rsa_context* wpk = (rsa_context*)malloc(sizeof(rsa_context));
+    rsa_context* wpk = (rsa_context*)tls_host_malloc(__FUNCTION__, sizeof(rsa_context));
     if (pk && wpk) {
         // Make a copy
         mbedtls_rsa_context pkcopy;
@@ -610,7 +631,7 @@ static x509_cert* mbedtls_to_x509_all(mbedtls_x509_crt* c, x509_cert* crt)
 {
     mbedtls_to_x509(c, crt);
     for(mbedtls_x509_crt* cc = c->next; cc != NULL; cc = cc->next) {
-        crt->next = (x509_cert*)calloc(1, sizeof(x509_cert));
+        crt->next = (x509_cert*)tls_host_calloc(__FUNCTION__, 1, sizeof(x509_cert));
         if (!crt->next)
             break;
         x509_compat_t* compat = (x509_compat_t*)crt->next;
@@ -636,7 +657,7 @@ int32_t x509_parse_certificate_data( x509_cert* crt, const unsigned char* p, uin
         } while(ret == 0 && total_len < len);
     }
 
-    if (ret == 0) {
+    if (total_len > 0) {
         mbedtls_to_x509_all(c, crt);
     }
 
@@ -651,7 +672,7 @@ int32_t x509_parse_certificate( x509_cert* chain, const uint8_t* buf, uint32_t b
         int32_t ret = mbedtls_x509_crt_parse(c, buf, buflen);
         if (ret == 0) {
             // Fill subject and public_key
-            mbedtls_to_x509(c, chain);
+            mbedtls_to_x509_all(c, chain);
         }
         return ret;
     }
@@ -676,7 +697,7 @@ int32_t x509_convert_pem_to_der( const unsigned char* pem_certificate, uint32_t 
     }
 
     if (total_len) {
-        uint8_t* der = (uint8_t*)malloc(total_len);
+        uint8_t* der = (uint8_t*)tls_host_malloc(__FUNCTION__, total_len);
         if (der) {
             *der_certificate = der;
             for (mbedtls_x509_crt* c = &crt; c != NULL; c = c->next) {
@@ -744,8 +765,8 @@ void x509_free(x509_cert * crtm)
                 rsa_free((rsa_context*)crt->public_key);
                 free(crt->public_key);
             }
-            mbedtls_x509_crt_free(c);
             memset(crt, 0, sizeof(x509_compat_t));
+            mbedtls_x509_crt_free(c);
             free(c);
         }
         if (crt != crtm) {

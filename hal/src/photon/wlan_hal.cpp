@@ -1285,7 +1285,7 @@ void wlan_connect_cancel(bool called_from_isr)
         LOG(TRACE, "connect cancel");
         wiced_network_up_cancel = 1;
         wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
-        wlan_supplicant_cancel((int)called_from_isr);
+        // wlan_supplicant_cancel((int)called_from_isr);
     }
 }
 
