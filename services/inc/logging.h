@@ -209,9 +209,6 @@ void log_printf(int level, const char *category, void *reserved, const char *fmt
 // Variant of the log_printf() function taking variable arguments via va_list
 void log_printf_v(int level, const char *category, void *reserved, const char *fmt, va_list args);
 
-// Variant of the log_printf() function for use in WICED
-void log_printf_wiced(const char *fmt, ...);
-
 // Encodes data in hex and writes resulting string to backend logger
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved);
 

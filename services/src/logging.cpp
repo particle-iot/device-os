@@ -174,13 +174,6 @@ void log_printf(int level, const char *category, void *reserved, const char *fmt
     va_end(args);
 }
 
-void log_printf_wiced(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    log_printf_v(1, "wiced", NULL, fmt, args);
-    va_end(args);
-}
-
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved) {
     const log_write_callback_type write_callback = log_write_callback;
     if (!size || (!write_callback && (!log_compat_callback || level < log_compat_level))) {
