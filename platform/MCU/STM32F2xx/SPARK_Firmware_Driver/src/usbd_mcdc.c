@@ -457,7 +457,6 @@ int USBD_MCDC_Start_Rx(void *pdev, USBD_MCDC_Instance_Data* priv)
   }
   if (!priv->rx_state) {
     priv->rx_state = 1;
-    DCD_SetEPStatus(pdev, priv->ep_out_data, USB_OTG_EP_RX_VALID);
   }
 
   DCD_EP_PrepareRx(pdev,
