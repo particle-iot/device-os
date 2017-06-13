@@ -5,12 +5,7 @@
 
 #if PLATFORM_THREADING
 
-// Using a smaller stack size for the system thread results in a stack overflow during cloud handshake
-#if HAL_PLATFORM_CLOUD_UDP
-#define THREAD_STACK_SIZE (4 * 1024) // Electron
-#else
-#define THREAD_STACK_SIZE (5 * 1024) // Photon
-#endif
+#define THREAD_STACK_SIZE (5 * 1024)
 
 void system_thread_idle()
 {
