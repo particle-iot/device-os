@@ -1,20 +1,20 @@
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*            Copyright (c) 1996-2012 by Express Logic Inc.               */ 
+/*                                                                        */ 
+/*  This software is copyrighted by and is the sole property of Express   */ 
+/*  Logic, Inc.  All rights, title, ownership, or other interests         */ 
+/*  in the software remain the property of Express Logic, Inc.  This      */ 
+/*  software may only be used in accordance with the corresponding        */ 
+/*  license agreement.  Any unauthorized use, duplication, transmission,  */ 
+/*  distribution, or disclosure of this software is expressly forbidden.  */ 
 /*                                                                        */
-/*            Copyright (c) 1996-2012 by Express Logic Inc.               */
-/*                                                                        */
-/*  This software is copyrighted by and is the sole property of Express   */
-/*  Logic, Inc.  All rights, title, ownership, or other interests         */
-/*  in the software remain the property of Express Logic, Inc.  This      */
-/*  software may only be used in accordance with the corresponding        */
-/*  license agreement.  Any unauthorized use, duplication, transmission,  */
-/*  distribution, or disclosure of this software is expressly forbidden.  */
-/*                                                                        */
-/*  This Copyright notice may not be removed or modified without prior    */
-/*  written consent of Express Logic, Inc.                                */
-/*                                                                        */
-/*  Express Logic, Inc. reserves the right to modify this software        */
-/*  without notice.                                                       */
-/*                                                                        */
+/*  This Copyright notice may not be removed or modified without prior    */ 
+/*  written consent of Express Logic, Inc.                                */ 
+/*                                                                        */ 
+/*  Express Logic, Inc. reserves the right to modify this software        */ 
+/*  without notice.                                                       */ 
+/*                                                                        */ 
 /*  Express Logic, Inc.                     info@expresslogic.com         */
 /*  11423 West Bernardo Court               http://www.expresslogic.com   */
 /*  San Diego, CA  92127                                                  */
@@ -24,50 +24,50 @@
 
 /**************************************************************************/
 /**************************************************************************/
-/**                                                                       */
+/**                                                                       */ 
 /** NetX Component                                                        */
 /**                                                                       */
-/**   Point-to-Point Protocol (PPP)                                       */
+/**   Point-to-Point Protocol (PPP)                                       */ 
 /**                                                                       */
 /**************************************************************************/
 /**************************************************************************/
 
 
-/**************************************************************************/
-/*                                                                        */
-/*  APPLICATION INTERFACE DEFINITION                       RELEASE        */
-/*                                                                        */
-/*    nx_ppp.h                                            PORTABLE C      */
-/*                                                           5.1          */
-/*  AUTHOR                                                                */
-/*                                                                        */
-/*    William E. Lamie, Express Logic, Inc.                               */
-/*                                                                        */
-/*  DESCRIPTION                                                           */
-/*                                                                        */
-/*    This file defines the NetX Point-to-Point Protocol (PPP)            */
-/*    component, including all data types and external references.        */
-/*    It is assumed that nx_api.h and nx_port.h have already been         */
+/**************************************************************************/ 
+/*                                                                        */ 
+/*  APPLICATION INTERFACE DEFINITION                       RELEASE        */ 
+/*                                                                        */ 
+/*    nx_ppp.h                                            PORTABLE C      */ 
+/*                                                           5.1          */ 
+/*  AUTHOR                                                                */ 
+/*                                                                        */ 
+/*    William E. Lamie, Express Logic, Inc.                               */ 
+/*                                                                        */ 
+/*  DESCRIPTION                                                           */ 
+/*                                                                        */ 
+/*    This file defines the NetX Point-to-Point Protocol (PPP)            */ 
+/*    component, including all data types and external references.        */ 
+/*    It is assumed that nx_api.h and nx_port.h have already been         */ 
 /*    included.                                                           */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
-/*    DATE              NAME                      DESCRIPTION             */
-/*                                                                        */
-/*  03-01-2006     William E. Lamie         Initial Version 5.0           */
-/*  07-15-2012     William E. Lamie         Modified comment(s), deferred */
-/*                                            processing to PPP thread,   */
-/*                                            eliminated semaphore and    */
-/*                                            mutex, simplified state     */
-/*                                            machine processing, added   */
-/*                                            DNS address, added support  */
-/*                                            for multiple interfaces,    */
-/*                                            and added new constants,    */
-/*                                            prototypes, and NX_PPP      */
-/*                                            information, resulting      */
-/*                                            in version 5.1              */
-/*                                                                        */
-/**************************************************************************/
+/*                                                                        */ 
+/*  RELEASE HISTORY                                                       */ 
+/*                                                                        */ 
+/*    DATE              NAME                      DESCRIPTION             */ 
+/*                                                                        */ 
+/*  03-01-2006     William E. Lamie         Initial Version 5.0           */ 
+/*  07-15-2012     William E. Lamie         Modified comment(s), deferred */ 
+/*                                            processing to PPP thread,   */ 
+/*                                            eliminated semaphore and    */ 
+/*                                            mutex, simplified state     */ 
+/*                                            machine processing, added   */ 
+/*                                            DNS address, added support  */ 
+/*                                            for multiple interfaces,    */ 
+/*                                            and added new constants,    */ 
+/*                                            prototypes, and NX_PPP      */ 
+/*                                            information, resulting      */ 
+/*                                            in version 5.1              */ 
+/*                                                                        */ 
+/**************************************************************************/ 
 
 #ifndef NX_PPP_H
 #define NX_PPP_H
@@ -82,7 +82,7 @@ extern   "C" {
 
 #endif
 
-
+  
 /* Define the PPP ID.  */
 
 #define NX_PPP_ID                                           0x50505020UL
@@ -104,7 +104,7 @@ extern   "C" {
 #define NX_PPP_SERIAL_BUFFER_SIZE                           NX_PPP_MRU*2
 #endif
 #define NX_PPP_SERIAL_BUFFER_ALERT_THRESHOLD                NX_PPP_SERIAL_BUFFER_SIZE/4
-
+  
 #ifndef NX_PPP_NAME_SIZE
 #define NX_PPP_NAME_SIZE                                    32
 #endif
@@ -141,12 +141,12 @@ extern   "C" {
 #define NX_PPP_DEBUG_LOG_SIZE                               50
 #endif
 
-#ifndef NX_PPP_DEBUG_FRAME_SIZE
+#ifndef NX_PPP_DEBUG_FRAME_SIZE         
 #define NX_PPP_DEBUG_FRAME_SIZE                             50
 #endif
 
 #ifndef NX_PPP_OPTION_MESSAGE_LENGTH
-#define NX_PPP_OPTION_MESSAGE_LENGTH                        64
+#define NX_PPP_OPTION_MESSAGE_LENGTH                        64              
 #endif
 
 #ifndef NX_PPP_MAX_LCP_PROTOCOL_RETRIES
@@ -173,7 +173,7 @@ extern   "C" {
 #define NX_PPP_PAP_PROTOCOL                                 0xC023
 #define NX_PPP_CHAP_PROTOCOL                                0xC223
 #define NX_PPP_DATA                                         0x0021
-
+            
 
 /* Define PPP LCP codes and action.   */
 
@@ -333,7 +333,7 @@ typedef struct NX_PPP_DEBUG_ENTRY_STRUCT
 
 /* Define the main PPP data structure.  */
 
-typedef struct NX_PPP_STRUCT
+typedef struct NX_PPP_STRUCT 
 {
 
     ULONG           nx_ppp_id;
@@ -353,8 +353,8 @@ typedef struct NX_PPP_STRUCT
     UINT            nx_ppp_chap_state;
     UINT            nx_ppp_ipcp_state;
 
-    UINT            nx_ppp_authenticated;
-    UINT            nx_ppp_generate_authentication_protocol;
+    UINT            nx_ppp_authenticated;    
+    UINT            nx_ppp_generate_authentication_protocol; 
     UINT            nx_ppp_verify_authentication_protocol;
     USHORT          nx_ppp_pap_enabled;
     USHORT          nx_ppp_chap_enabled;
@@ -471,7 +471,7 @@ typedef struct NX_PPP_STRUCT
     UINT            (*nx_ppp_chap_get_challenge_values)(CHAR *rand_value, CHAR *id, CHAR *name);
     UINT            (*nx_ppp_chap_get_responder_values)(CHAR *sys, CHAR *name, CHAR *secret);
     UINT            (*nx_ppp_chap_get_verification_values)(CHAR *sys, CHAR *name, CHAR *secret);
-    TX_EVENT_FLAGS_GROUP
+    TX_EVENT_FLAGS_GROUP  
                     nx_ppp_event;
     TX_TIMER        nx_ppp_timer;
     UCHAR           nx_ppp_serial_buffer[NX_PPP_SERIAL_BUFFER_SIZE];
@@ -492,12 +492,12 @@ typedef struct NX_PPP_STRUCT
     ULONG           nx_ppp_ip_packet_queue_count;
 
     TX_THREAD       nx_ppp_thread;
-    struct NX_PPP_STRUCT
+    struct NX_PPP_STRUCT 
                     *nx_ppp_created_next,
                     *nx_ppp_created_previous;
 
-    UCHAR           nx_ppp_naked_list[NX_PPP_OPTION_MESSAGE_LENGTH];
-    UCHAR           nx_ppp_peer_naked_list[NX_PPP_OPTION_MESSAGE_LENGTH];
+    UCHAR           nx_ppp_naked_list[NX_PPP_OPTION_MESSAGE_LENGTH]; 
+    UCHAR           nx_ppp_peer_naked_list[NX_PPP_OPTION_MESSAGE_LENGTH]; 
     UCHAR           nx_ppp_rejected_list[NX_PPP_OPTION_MESSAGE_LENGTH];
 
 #ifdef NX_PPP_DEBUG_LOG_ENABLE
@@ -513,9 +513,9 @@ typedef struct NX_PPP_STRUCT
 
 /* Application caller is present, perform API mapping.  */
 
-/* Determine if error checking is desired.  If so, map API functions
+/* Determine if error checking is desired.  If so, map API functions 
    to the appropriate error checking front-ends.  Otherwise, map API
-   functions to the core functions that actually perform the work.
+   functions to the core functions that actually perform the work. 
    Note: error checking is enabled by default.  */
 
 #ifdef NX_DISABLE_ERROR_CHECKING
@@ -529,7 +529,7 @@ typedef struct NX_PPP_STRUCT
 #define nx_ppp_delete                       _nx_ppp_delete
 #define nx_ppp_dns_address_get              _nx_ppp_dns_address_get
 #define nx_ppp_driver                       _nx_ppp_driver
-#define nx_ppp_interface_index_get          _nx_ppp_interface_index_get
+#define nx_ppp_interface_index_get          _nx_ppp_interface_index_get 
 #define nx_ppp_ip_address_assign            _nx_ppp_ip_address_assign
 #define nx_ppp_link_down_notify             _nx_ppp_link_down_notify
 #define nx_ppp_link_up_notify               _nx_ppp_link_up_notify
@@ -550,7 +550,7 @@ typedef struct NX_PPP_STRUCT
 #define nx_ppp_delete                       _nxe_ppp_delete
 #define nx_ppp_dns_address_get              _nx_ppp_dns_address_get
 #define nx_ppp_driver                       _nx_ppp_driver
-#define nx_ppp_interface_index_get          _nx_ppp_interface_index_get
+#define nx_ppp_interface_index_get          _nx_ppp_interface_index_get 
 #define nx_ppp_ip_address_assign            _nxe_ppp_ip_address_assign
 #define nx_ppp_link_down_notify             _nx_ppp_link_down_notify
 #define nx_ppp_link_up_notify               _nx_ppp_link_up_notify
@@ -566,12 +566,12 @@ typedef struct NX_PPP_STRUCT
 
 UINT    nx_ppp_byte_receive(NX_PPP *ppp_ptr, UCHAR byte);
 UINT    nx_ppp_chap_challenge(NX_PPP *ppp_ptr);
-UINT    nx_ppp_chap_enable(NX_PPP *ppp_ptr,
+UINT    nx_ppp_chap_enable(NX_PPP *ppp_ptr, 
                UINT (*get_challenge_values)(CHAR *rand_value, CHAR *id, CHAR *name),
                UINT (*get_responder_values)(CHAR *system, CHAR *name, CHAR *secret),
                UINT (*get_verification_values)(CHAR *system, CHAR *name, CHAR *secret));
-UINT    nx_ppp_create(NX_PPP *ppp_ptr, CHAR *name, NX_IP *ip_ptr,
-               VOID *stack_memory_ptr, ULONG stack_size, UINT thread_priority,
+UINT    nx_ppp_create(NX_PPP *ppp_ptr, CHAR *name, NX_IP *ip_ptr, 
+               VOID *stack_memory_ptr, ULONG stack_size, UINT thread_priority, 
                NX_PACKET_POOL *pool_ptr,
                void (*ppp_non_ppp_packet_handler)(NX_PACKET *packet_ptr),
                void (*ppp_byte_send)(UCHAR byte));
@@ -593,13 +593,13 @@ UINT    nx_ppp_status_get(NX_PPP *ppp_ptr, UINT *status_ptr);
 
 UINT    _nxe_ppp_byte_receive(NX_PPP *ppp_ptr, UCHAR byte);
 UINT    _nx_ppp_byte_receive(NX_PPP *ppp_ptr, UCHAR byte);
-UINT    _nxe_ppp_create(NX_PPP *ppp_ptr, CHAR *name, NX_IP *ip_ptr,
-               VOID *stack_memory_ptr, ULONG stack_size, UINT thread_priority,
+UINT    _nxe_ppp_create(NX_PPP *ppp_ptr, CHAR *name, NX_IP *ip_ptr, 
+               VOID *stack_memory_ptr, ULONG stack_size, UINT thread_priority, 
                NX_PACKET_POOL *pool_ptr,
                void (*ppp_non_ppp_packet_handler)(NX_PACKET *packet_ptr),
                void (*ppp_byte_send)(UCHAR byte));
-UINT    _nx_ppp_create(NX_PPP *ppp_ptr, CHAR *name, NX_IP *ip_ptr,
-               VOID *stack_memory_ptr, ULONG stack_size, UINT thread_priority,
+UINT    _nx_ppp_create(NX_PPP *ppp_ptr, CHAR *name, NX_IP *ip_ptr, 
+               VOID *stack_memory_ptr, ULONG stack_size, UINT thread_priority, 
                NX_PACKET_POOL *pool_ptr,
                void (*ppp_non_ppp_packet_handler)(NX_PACKET *packet_ptr),
                void (*ppp_byte_send)(UCHAR byte));
@@ -614,11 +614,11 @@ UINT    _nx_ppp_pap_enable(NX_PPP *ppp_ptr, UINT (*generate_login)(CHAR *name, C
                UINT (*verify_login)(CHAR *name, CHAR *password));
 UINT    _nxe_ppp_chap_challenge(NX_PPP *ppp_ptr);
 UINT    _nx_ppp_chap_challenge(NX_PPP *ppp_ptr);
-UINT    _nxe_ppp_chap_enable(NX_PPP *ppp_ptr,
+UINT    _nxe_ppp_chap_enable(NX_PPP *ppp_ptr, 
                UINT (*get_challenge_values)(CHAR *rand_value, CHAR *id, CHAR *name),
                UINT (*get_responder_values)(CHAR *system, CHAR *name, CHAR *secret),
                UINT (*get_verification_values)(CHAR *system, CHAR *name, CHAR *secret));
-UINT    _nx_ppp_chap_enable(NX_PPP *ppp_ptr,
+UINT    _nx_ppp_chap_enable(NX_PPP *ppp_ptr, 
                UINT (*get_challenge_values)(CHAR *rand_value, CHAR *id, CHAR *name),
                UINT (*get_responder_values)(CHAR *system, CHAR *name, CHAR *secret),
                UINT (*get_verification_values)(CHAR *system, CHAR *name, CHAR *secret));
@@ -669,7 +669,7 @@ void    _nx_ppp_packet_transmit(NX_PPP *ppp_ptr, NX_PACKET *packet_ptr);
 UINT    _nx_ppp_check_crc(NX_PACKET *packet_ptr);
 UINT    _nx_ppp_crc_append(NX_PACKET *packet_ptr, UCHAR crc[2]);
 void    _nx_ppp_debug_log_capture(NX_PPP *ppp_ptr, UCHAR packet_type, NX_PACKET *packet_ptr);
-void    _nx_ppp_hash_generator(unsigned char *hvalue,  unsigned char id,
+void    _nx_ppp_hash_generator(unsigned char *hvalue,  unsigned char id, 
                             unsigned char *secret,  unsigned char *rand_value);
 
 #endif
@@ -680,4 +680,4 @@ void    _nx_ppp_hash_generator(unsigned char *hvalue,  unsigned char id,
         }
 #endif
 
-#endif
+#endif  

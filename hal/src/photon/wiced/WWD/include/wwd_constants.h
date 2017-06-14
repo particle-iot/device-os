@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -42,7 +17,6 @@
 #define INCLUDED_WWD_CONSTANTS_H_
 
 #include <stdint.h>
-#include "wwd_wlioctl.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -89,6 +63,9 @@ extern int DIV_ROUND_UP (int m, /*@sef@*/ int n); /* LINT : This tells lint that
 #define WIFI_IE_OUI_LENGTH    (3)
 
 /** @cond !ADDTHIS*/
+#define WEP_ENABLED            0x0001
+#define TKIP_ENABLED           0x0002
+#define AES_ENABLED            0x0004
 #define SHARED_ENABLED     0x00008000
 #define WPA_SECURITY       0x00200000
 #define WPA2_SECURITY      0x00400000
@@ -97,17 +74,68 @@ extern int DIV_ROUND_UP (int m, /*@sef@*/ int n); /* LINT : This tells lint that
 #define IBSS_ENABLED       0x20000000
 /** @endcond */
 
+#define DSSS_PARAMETER_SET_LENGTH (1)
+
+#define HT_CAPABILITIES_IE_LENGTH (26)
+#define HT_OPERATION_IE_LENGTH    (22)
+
+#define RRM_CAPABILITIES_LEN (5)
+#define WL_RRM_RPT_VER      0
+#define WL_RRM_RPT_MAX_PAYLOAD  64
+#define WL_RRM_RPT_MIN_PAYLOAD  7
+#define WL_RRM_RPT_FALG_ERR 0
+#define WL_RRM_RPT_FALG_OK  1
+
+/* TLV defines */
+#define TLV_TAG_OFF        0    /* tag offset */
+#define TLV_LEN_OFF        1    /* length offset */
+#define TLV_HDR_LEN        2    /* header length */
+#define TLV_BODY_OFF        2    /* body offset */
+
+#define DOT11_NEIGHBOR_REP_IE_FIXED_LEN 13
+#define DOT11_MNG_NEIGHBOR_REP_ID       52  /* 11k & 11v Neighbor report id */
+
+/* Bitmap definitions for cap ie */
+#define DOT11_RRM_CAP_LINK      0
+#define DOT11_RRM_CAP_NEIGHBOR_REPORT   1
+#define DOT11_RRM_CAP_PARALLEL      2
+#define DOT11_RRM_CAP_REPEATED      3
+#define DOT11_RRM_CAP_BCN_PASSIVE   4
+#define DOT11_RRM_CAP_BCN_ACTIVE    5
+#define DOT11_RRM_CAP_BCN_TABLE     6
+#define DOT11_RRM_CAP_BCN_REP_COND  7
+#define DOT11_RRM_CAP_FM        8
+#define DOT11_RRM_CAP_CLM       9
+#define DOT11_RRM_CAP_NHM       10
+#define DOT11_RRM_CAP_SM        11
+#define DOT11_RRM_CAP_LCIM      12
+#define DOT11_RRM_CAP_LCIA      13
+#define DOT11_RRM_CAP_TSCM      14
+#define DOT11_RRM_CAP_TTSCM     15
+#define DOT11_RRM_CAP_AP_CHANREP    16
+#define DOT11_RRM_CAP_RMMIB     17
+/* bit18-bit26, not used for RRM_IOVAR */
+#define DOT11_RRM_CAP_MPTI      27
+#define DOT11_RRM_CAP_NBRTSFO       28
+#define DOT11_RRM_CAP_RCPI      29
+#define DOT11_RRM_CAP_RSNI      30
+#define DOT11_RRM_CAP_BSSAAD        31
+#define DOT11_RRM_CAP_BSSAAC        32
+#define DOT11_RRM_CAP_AI        33
+#define DOT11_RRM_CAP_LAST 34
+
 /** Enumeration of WICED interfaces. \n
  * @note The config interface is a virtual interface that shares the softAP interface
  */
 typedef enum
 {
-    WWD_STA_INTERFACE      = 0, /**< STA or Client Interface  */
-    WWD_AP_INTERFACE       = 1, /**< softAP Interface         */
-    WWD_P2P_INTERFACE      = 2, /**< P2P Interface         */
-    WWD_ETHERNET_INTERFACE = 3, /**< Ethernet Interface         */
+    WWD_STA_INTERFACE          = 0,         /**< STA or Client Interface                                                 */
+    WWD_AP_INTERFACE           = 1,         /**< softAP Interface                                                        */
+    WWD_P2P_INTERFACE          = 2,         /**< P2P Interface                                                           */
+    WWD_ETHERNET_INTERFACE     = 3,         /**< Ethernet Interface                                                      */
 
-    WWD_INTERFACE_MAX,       /** DO NOT USE - MUST BE LAST - used for counting interfaces */
+    WWD_INTERFACE_MAX,                      /** DO NOT USE - MUST BE LAST INTERFACE VALUE - used for counting interfaces */
+    WWD_INTERFACE_FORCE_32_BIT = 0x7fffffff /**< Exists only to force wwd_interface_t type to 32 bits                    */
 } wwd_interface_t;
 
 /**
@@ -148,6 +176,7 @@ typedef enum
 {
     WICED_SCAN_TYPE_ACTIVE              = 0x00,  /**< Actively scan a network by sending 802.11 probe(s)         */
     WICED_SCAN_TYPE_PASSIVE             = 0x01,  /**< Passively scan a network by listening for beacons from APs */
+    WICED_SCAN_TYPE_PNO                 = 0x02,  /**< Use preferred network offload to detect an AP */
     WICED_SCAN_TYPE_PROHIBITED_CHANNELS = 0x04   /**< Passively scan on channels not enabled by the country code */
 } wiced_scan_type_t;
 
@@ -273,6 +302,155 @@ typedef enum
     WICED_HT_MODE_HT_MIX    = 2         /**< HT20 mode is set for 2.4 band and HT40 is set for 5 GHz band */
 } wiced_ht_mode_t;
 
+typedef enum
+{
+    WICED_11N_SUPPORT_DISABLED = 0,
+    WICED_11N_SUPPORT_ENABLED  = 1,
+} wiced_11n_support_t;
+
+
+/* 802.11 Information Element Identification Numbers (as per section 8.4.2.1 of 802.11-2012) */
+typedef enum
+{
+    DOT11_IE_ID_SSID                                 = 0,
+    DOT11_IE_ID_SUPPORTED_RATES                      = 1,
+    DOT11_IE_ID_FH_PARAMETER_SET                     = 2,
+    DOT11_IE_ID_DSSS_PARAMETER_SET                   = 3,
+    DOT11_IE_ID_CF_PARAMETER_SET                     = 4,
+    DOT11_IE_ID_TIM                                  = 5,
+    DOT11_IE_ID_IBSS_PARAMETER_SET                   = 6,
+    DOT11_IE_ID_COUNTRY                              = 7,
+    DOT11_IE_ID_HOPPING_PATTERN_PARAMETERS           = 8,
+    DOT11_IE_ID_HOPPING_PATTERN_TABLE                = 9,
+    DOT11_IE_ID_REQUEST                              = 10,
+    DOT11_IE_ID_BSS_LOAD                             = 11,
+    DOT11_IE_ID_EDCA_PARAMETER_SET                   = 12,
+    DOT11_IE_ID_TSPEC                                = 13,
+    DOT11_IE_ID_TCLAS                                = 14,
+    DOT11_IE_ID_SCHEDULE                             = 15,
+    DOT11_IE_ID_CHALLENGE_TEXT                       = 16,
+    /* 17-31 Reserved */
+    DOT11_IE_ID_POWER_CONSTRAINT                     = 32,
+    DOT11_IE_ID_POWER_CAPABILITY                     = 33,
+    DOT11_IE_ID_TPC_REQUEST                          = 34,
+    DOT11_IE_ID_TPC_REPORT                           = 35,
+    DOT11_IE_ID_SUPPORTED_CHANNELS                   = 36,
+    DOT11_IE_ID_CHANNEL_SWITCH_ANNOUNCEMENT          = 37,
+    DOT11_IE_ID_MEASUREMENT_REQUEST                  = 38,
+    DOT11_IE_ID_MEASUREMENT_REPORT                   = 39,
+    DOT11_IE_ID_QUIET                                = 40,
+    DOT11_IE_ID_IBSS_DFS                             = 41,
+    DOT11_IE_ID_ERP                                  = 42,
+    DOT11_IE_ID_TS_DELAY                             = 43,
+    DOT11_IE_ID_TCLAS_PROCESSING                     = 44,
+    DOT11_IE_ID_HT_CAPABILITIES                      = 45,
+    DOT11_IE_ID_QOS_CAPABILITY                       = 46,
+    /* 47 Reserved */
+    DOT11_IE_ID_RSN                                  = 48,
+    /* 49 Reserved */
+    DOT11_IE_ID_EXTENDED_SUPPORTED_RATES             = 50,
+    DOT11_IE_ID_AP_CHANNEL_REPORT                    = 51,
+    DOT11_IE_ID_NEIGHBOR_REPORT                      = 52,
+    DOT11_IE_ID_RCPI                                 = 53,
+    DOT11_IE_ID_MOBILITY_DOMAIN                      = 54,
+    DOT11_IE_ID_FAST_BSS_TRANSITION                  = 55,
+    DOT11_IE_ID_TIMEOUT_INTERVAL                     = 56,
+    DOT11_IE_ID_RIC_DATA                             = 57,
+    DOT11_IE_ID_DSE_REGISTERED_LOCATION              = 58,
+    DOT11_IE_ID_SUPPORTED_OPERATING_CLASSES          = 59,
+    DOT11_IE_ID_EXTENDED_CHANNEL_SWITCH_ANNOUNCEMENT = 60,
+    DOT11_IE_ID_HT_OPERATION                         = 61,
+    DOT11_IE_ID_SECONDARY_CHANNEL_OFFSET             = 62,
+    DOT11_IE_ID_BSS_AVERAGE_ACCESS_DELAY             = 63,
+    DOT11_IE_ID_ANTENNA                              = 64,
+    DOT11_IE_ID_RSNI                                 = 65,
+    DOT11_IE_ID_MEASUREMENT_PILOT_TRANSMISSION       = 66,
+    DOT11_IE_ID_BSS_AVAILABLE_ADMISSION_CAPACITY     = 67,
+    DOT11_IE_ID_BSS_AC_ACCESS_DELAY                  = 68,
+    DOT11_IE_ID_TIME_ADVERTISEMENT                   = 69,
+    DOT11_IE_ID_RM_ENABLED_CAPABILITIES              = 70,
+    DOT11_IE_ID_MULTIPLE_BSSID                       = 71,
+    DOT11_IE_ID_20_40_BSS_COEXISTENCE                = 72,
+    DOT11_IE_ID_20_40_BSS_INTOLERANT_CHANNEL_REPORT  = 73,
+    DOT11_IE_ID_OVERLAPPING_BSS_SCAN_PARAMETERS      = 74,
+    DOT11_IE_ID_RIC_DESCRIPTOR                       = 75,
+    DOT11_IE_ID_MANAGEMENT_MIC                       = 76,
+    DOT11_IE_ID_EVENT_REQUEST                        = 78,
+    DOT11_IE_ID_EVENT_REPORT                         = 79,
+    DOT11_IE_ID_DIAGNOSTIC_REQUEST                   = 80,
+    DOT11_IE_ID_DIAGNOSTIC_REPORT                    = 81,
+    DOT11_IE_ID_LOCATION_PARAMETERS                  = 82,
+    DOT11_IE_ID_NONTRANSMITTED_BSSID_CAPABILITY      = 83,
+    DOT11_IE_ID_SSID_LIST                            = 84,
+    DOT11_IE_ID_MULTIPLE_BSSID_INDEX                 = 85,
+    DOT11_IE_ID_FMS_DESCRIPTOR                       = 86,
+    DOT11_IE_ID_FMS_REQUEST                          = 87,
+    DOT11_IE_ID_FMS_RESPONSE                         = 88,
+    DOT11_IE_ID_QOS_TRAFFIC_CAPABILITY               = 89,
+    DOT11_IE_ID_BSS_MAX_IDLE_PERIOD                  = 90,
+    DOT11_IE_ID_TFS_REQUEST                          = 91,
+    DOT11_IE_ID_TFS_RESPONSE                         = 92,
+    DOT11_IE_ID_WNM_SLEEP_MODE                       = 93,
+    DOT11_IE_ID_TIM_BROADCAST_REQUEST                = 94,
+    DOT11_IE_ID_TIM_BROADCAST_RESPONSE               = 95,
+    DOT11_IE_ID_COLLOCATED_INTERFERENCE_REPORT       = 96,
+    DOT11_IE_ID_CHANNEL_USAGE                        = 97,
+    DOT11_IE_ID_TIME_ZONE                            = 98,
+    DOT11_IE_ID_DMS_REQUEST                          = 99,
+    DOT11_IE_ID_DMS_RESPONSE                         = 100,
+    DOT11_IE_ID_LINK_IDENTIFIER                      = 101,
+    DOT11_IE_ID_WAKEUP_SCHEDULE                      = 102,
+    /* 103 Reserved */
+    DOT11_IE_ID_CHANNEL_SWITCH_TIMING                = 104,
+    DOT11_IE_ID_PTI_CONTROL                          = 105,
+    DOT11_IE_ID_TPU_BUFFER_STATUS                    = 106,
+    DOT11_IE_ID_INTERWORKING                         = 107,
+    DOT11_IE_ID_ADVERTISMENT_PROTOCOL                = 108,
+    DOT11_IE_ID_EXPEDITED_BANDWIDTH_REQUEST          = 109,
+    DOT11_IE_ID_QOS_MAP_SET                          = 110,
+    DOT11_IE_ID_ROAMING_CONSORTIUM                   = 111,
+    DOT11_IE_ID_EMERGENCY_ALERT_IDENTIFIER           = 112,
+    DOT11_IE_ID_MESH_CONFIGURATION                   = 113,
+    DOT11_IE_ID_MESH_ID                              = 114,
+    DOT11_IE_ID_MESH_LINK_METRIC_REPORT              = 115,
+    DOT11_IE_ID_CONGESTION_NOTIFICATION              = 116,
+    DOT11_IE_ID_MESH_PEERING_MANAGEMENT              = 117,
+    DOT11_IE_ID_MESH_CHANNEL_SWITCH_PARAMETERS       = 118,
+    DOT11_IE_ID_MESH_AWAKE_WINDOW                    = 119,
+    DOT11_IE_ID_BEACON_TIMING                        = 120,
+    DOT11_IE_ID_MCCAOP_SETUP_REQUEST                 = 121,
+    DOT11_IE_ID_MCCAOP_SETUP_REPLY                   = 122,
+    DOT11_IE_ID_MCCAOP_ADVERTISMENT                  = 123,
+    DOT11_IE_ID_MCCAOP_TEARDOWN                      = 124,
+    DOT11_IE_ID_GANN                                 = 125,
+    DOT11_IE_ID_RANN                                 = 126,
+    DOT11_IE_ID_EXTENDED_CAPABILITIES                = 127,
+    /* 128-129 Reserved */
+    DOT11_IE_ID_PREQ                                 = 130,
+    DOT11_IE_ID_PREP                                 = 131,
+    DOT11_IE_ID_PERR                                 = 132,
+    /* 133-136 Reserved */
+    DOT11_IE_ID_PXU                                  = 137,
+    DOT11_IE_ID_PXUC                                 = 138,
+    DOT11_IE_ID_AUTHENTICATED_MESH_PEERING_EXCHANGE  = 139,
+    DOT11_IE_ID_MIC                                  = 140,
+    DOT11_IE_ID_DESTINATION_URI                      = 141,
+    DOT11_IE_ID_U_APSD_COEXISTENCE                   = 142,
+    /* 143-173 Reserved */
+    DOT11_IE_ID_MCCAOP_ADVERTISMENT_OVERVIEW         = 174,
+    /* 175-220 Reserved */
+    DOT11_IE_ID_VENDOR_SPECIFIC                      = 221,
+    /* 222-255 Reserved */
+} dot11_ie_id_t;
+
+/* Protected Management Frame Capability */
+typedef enum
+{
+    MFP_NONE = 0,
+    MFP_CAPABLE,
+    MFP_REQUIRED
+} mfp_capability_t;
+
 #ifndef RESULT_ENUM
 #define RESULT_ENUM( prefix, name, value )  prefix ## name = (value)
 #endif /* ifndef RESULT_ENUM */
@@ -287,6 +465,7 @@ typedef enum
     RESULT_ENUM( prefix, PENDING,                         1 ),   /**< Pending */                           \
     RESULT_ENUM( prefix, TIMEOUT,                         2 ),   /**< Timeout */                           \
     RESULT_ENUM( prefix, BADARG,                          5 ),   /**< Bad Arguments */                     \
+    RESULT_ENUM( prefix, UNFINISHED,                     10 ),   /**< Operation not finished yet (maybe aborted) */ \
     RESULT_ENUM( prefix, PARTIAL_RESULTS,              1003 ),   /**< Partial results */                   \
     RESULT_ENUM( prefix, INVALID_KEY,                  1004 ),   /**< Invalid key */                       \
     RESULT_ENUM( prefix, DOES_NOT_EXIST,               1005 ),   /**< Does not exist */                    \
@@ -295,7 +474,6 @@ typedef enum
     RESULT_ENUM( prefix, IOCTL_FAIL,                   1008 ),   /**< IOCTL fail */                        \
     RESULT_ENUM( prefix, BUFFER_UNAVAILABLE_TEMPORARY, 1009 ),   /**< Buffer unavailable temporarily */    \
     RESULT_ENUM( prefix, BUFFER_UNAVAILABLE_PERMANENT, 1010 ),   /**< Buffer unavailable permanently */    \
-    RESULT_ENUM( prefix, WPS_PBC_OVERLAP,              1011 ),   /**< WPS PBC overlap */                   \
     RESULT_ENUM( prefix, CONNECTION_LOST,              1012 ),   /**< Connection lost */                   \
     RESULT_ENUM( prefix, OUT_OF_EVENT_HANDLER_SPACE,   1013 ),   /**< Cannot add extra event handler */    \
     RESULT_ENUM( prefix, SEMAPHORE_ERROR,              1014 ),   /**< Error manipulating a semaphore */    \
@@ -342,8 +520,15 @@ typedef enum
     RESULT_ENUM( prefix, SET_BLOCK_ACK_WINDOW_FAIL,    1055 ),   /**< Failed to set block ack window */ \
     RESULT_ENUM( prefix, DELAY_TOO_SHORT,              1056 ),   /**< Requested delay is too short */ \
     RESULT_ENUM( prefix, INVALID_INTERFACE,            1057 ),   /**< Invalid interface provided */ \
-    RESULT_ENUM( prefix, WEP_KEYLEN_BAD,               1058 ),   /**< WEP / WEP_SHARED key length must be 5 & 13 bytes */ \
-    RESULT_ENUM( prefix, HANDLER_ALREADY_REGISTERED,   1059 ),   /**< EAPOL handler already registered*/
+    RESULT_ENUM( prefix, WEP_KEYLEN_BAD,               1058 ),   /**< WEP / WEP_SHARED key length must be 5 or 13 bytes */ \
+    RESULT_ENUM( prefix, HANDLER_ALREADY_REGISTERED,   1059 ),   /**< EAPOL handler already registered */ \
+    RESULT_ENUM( prefix, AP_ALREADY_UP,                1060 ),   /**< Soft AP or P2P group owner already up */ \
+    RESULT_ENUM( prefix, EAPOL_KEY_PACKET_M1_TIMEOUT,  1061 ),   /**< Timeout occurred while waiting for EAPOL packet M1 from AP */ \
+    RESULT_ENUM( prefix, EAPOL_KEY_PACKET_M3_TIMEOUT,  1062 ),   /**< Timeout occurred while waiting for EAPOL packet M3 from AP, which may indicate incorrect WPA2/WPA passphrase */ \
+    RESULT_ENUM( prefix, EAPOL_KEY_PACKET_G1_TIMEOUT,  1063 ),   /**< Timeout occurred while waiting for EAPOL packet G1 from AP */ \
+    RESULT_ENUM( prefix, EAPOL_KEY_FAILURE,            1064 ),   /**< Unknown failure occurred during the EAPOL key handshake */ \
+    RESULT_ENUM( prefix, MALLOC_FAILURE,               1065 ),   /**< Memory allocation failure */ \
+    RESULT_ENUM( prefix, ACCESS_POINT_NOT_FOUND,       1066 ),   /**< Access point not found */
 
 
 /* These Enum result values are returned directly from the WLAN during an ioctl or iovar call.
@@ -453,9 +638,9 @@ typedef enum
  */
 
 #ifdef IL_BIGENDIAN
-#define MK_CNTRY( a, b, rev )  (((unsigned char)(b)) + (((unsigned char)(a))<<8) + (((unsigned char)(rev))<<24) )
+#define MK_CNTRY( a, b, rev )  (((unsigned char)(b)) + (((unsigned char)(a))<<8) + (((unsigned short)(rev))<<16))
 #else /* ifdef IL_BIGENDIAN */
-#define MK_CNTRY( a, b, rev )  (((unsigned char)(a)) + (((unsigned char)(b))<<8) + (((unsigned char)(rev))<<24) )
+#define MK_CNTRY( a, b, rev )  (((unsigned char)(a)) + (((unsigned char)(b))<<8) + (((unsigned short)(rev))<<16))
 #endif /* ifdef IL_BIGENDIAN */
 
 /* Suppress unused parameter warning */
@@ -592,13 +777,13 @@ typedef enum
     WICED_COUNTRY_ISRAEL                                          = MK_CNTRY( 'I', 'L', 0 ),             /* IL Israel */
     WICED_COUNTRY_ITALY                                           = MK_CNTRY( 'I', 'T', 0 ),             /* IT Italy */
     WICED_COUNTRY_JAMAICA                                         = MK_CNTRY( 'J', 'M', 0 ),             /* JM Jamaica */
-    WICED_COUNTRY_JAPAN                                           = MK_CNTRY( 'J', 'P', 2 ),             /* JP Japan */
+    WICED_COUNTRY_JAPAN                                           = MK_CNTRY( 'J', 'P', 0 ),             /* JP Japan */
     WICED_COUNTRY_JERSEY                                          = MK_CNTRY( 'J', 'E', 0 ),             /* JE Jersey */
     WICED_COUNTRY_JORDAN                                          = MK_CNTRY( 'J', 'O', 0 ),             /* JO Jordan */
     WICED_COUNTRY_KAZAKHSTAN                                      = MK_CNTRY( 'K', 'Z', 0 ),             /* KZ Kazakhstan */
     WICED_COUNTRY_KENYA                                           = MK_CNTRY( 'K', 'E', 0 ),             /* KE Kenya */
     WICED_COUNTRY_KIRIBATI                                        = MK_CNTRY( 'K', 'I', 0 ),             /* KI Kiribati */
-    WICED_COUNTRY_KOREA_REPUBLIC_OF                               = MK_CNTRY( 'K', 'R', 0 ),             /* KR Korea,_Republic_Of */
+    WICED_COUNTRY_KOREA_REPUBLIC_OF                               = MK_CNTRY( 'K', 'R', 1 ),             /* KR Korea,_Republic_Of */
     WICED_COUNTRY_KOSOVO                                          = MK_CNTRY( '0', 'A', 0 ),             /* 0A Kosovo */
     WICED_COUNTRY_KUWAIT                                          = MK_CNTRY( 'K', 'W', 0 ),             /* KW Kuwait */
     WICED_COUNTRY_KYRGYZSTAN                                      = MK_CNTRY( 'K', 'G', 0 ),             /* KG Kyrgyzstan */
@@ -706,6 +891,7 @@ typedef enum
     WICED_COUNTRY_UNITED_KINGDOM                                  = MK_CNTRY( 'G', 'B', 0 ),             /* GB United_Kingdom */
     WICED_COUNTRY_UNITED_STATES                                   = MK_CNTRY( 'U', 'S', 0 ),             /* US United_States */
     WICED_COUNTRY_UNITED_STATES_REV4                              = MK_CNTRY( 'U', 'S', 4 ),             /* US United_States Revision 4 */
+    WICED_COUNTRY_UNITED_STATES_REV931                            = MK_CNTRY( 'Q', '1', 931 ),           /* Q1 United_States Revision 931 */
     WICED_COUNTRY_UNITED_STATES_NO_DFS                            = MK_CNTRY( 'Q', '2', 0 ),             /* Q2 United_States_(No_DFS) */
     WICED_COUNTRY_UNITED_STATES_MINOR_OUTLYING_ISLANDS            = MK_CNTRY( 'U', 'M', 0 ),             /* UM United_States_Minor_Outlying_Islands */
     WICED_COUNTRY_URUGUAY                                         = MK_CNTRY( 'U', 'Y', 0 ),             /* UY Uruguay */
@@ -718,11 +904,22 @@ typedef enum
     WICED_COUNTRY_WALLIS_AND_FUTUNA                               = MK_CNTRY( 'W', 'F', 0 ),             /* WF Wallis_and_Futuna */
     WICED_COUNTRY_WEST_BANK                                       = MK_CNTRY( '0', 'C', 0 ),             /* 0C West_Bank */
     WICED_COUNTRY_WESTERN_SAHARA                                  = MK_CNTRY( 'E', 'H', 0 ),             /* EH Western_Sahara */
+    WICED_COUNTRY_WORLD_WIDE_XV_REV983                            = MK_CNTRY( 'X', 'V', 983 ),           /* Worldwide Locale Revision 983 */
     WICED_COUNTRY_WORLD_WIDE_XX                                   = MK_CNTRY( 'X', 'X', 0 ),             /* Worldwide Locale (passive Ch12-14) */
+    WICED_COUNTRY_WORLD_WIDE_XX_REV17                             = MK_CNTRY( 'X', 'X', 17 ),            /* Worldwide Locale (passive Ch12-14) Revision 17 */
     WICED_COUNTRY_YEMEN                                           = MK_CNTRY( 'Y', 'E', 0 ),             /* YE Yemen */
     WICED_COUNTRY_ZAMBIA                                          = MK_CNTRY( 'Z', 'M', 0 ),             /* ZM Zambia */
     WICED_COUNTRY_ZIMBABWE                                        = MK_CNTRY( 'Z', 'W', 0 ),             /* ZW Zimbabwe */
 } wiced_country_code_t;
+
+/* WICED Radio Resource Management Report Types */
+typedef enum
+{
+   WICED_RRM_CHLOAD_REPORT = 0,
+   WICED_RRM_NBR_LIST_REPORT,
+   WICED_RRM_BCN_REPORT,
+   WICED_LM_REPORT
+} wwd_rrm_report_type_t;
 
 /** @endcond */
 

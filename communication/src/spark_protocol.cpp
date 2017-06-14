@@ -27,6 +27,10 @@
 LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 
 #include "spark_protocol.h"
+#include "protocol_selector.h"
+
+#if !PARTICLE_PROTOCOL
+
 #include "protocol_defs.h"
 #include "handshake.h"
 #include <string.h>
@@ -36,6 +40,11 @@ LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 #include "service_debug.h"
 #include "messages.h"
 
+#ifdef USE_MBEDTLS
+#include "mbedtls_compat.h"
+#include "mbedtls_util.h"
+#endif
+
 using namespace particle::protocol;
 
 #if 0
@@ -43,6 +52,29 @@ extern void serial_dump(const char* msg, ...);
 #else
 #define serial_dump(x, ...)
 #endif
+
+static inline size_t round_to_16(size_t len)
+{
+  if (len == 0)
+    return len;
+  size_t rem = len % 16;
+  if (rem != 0) {
+    len += 16 - rem;
+  }
+  return len;
+}
+
+static inline int message_padding_strip(uint8_t* buf, int len)
+{
+  if (len > 0) {
+    int nopadlen = len - (int)buf[len - 1];
+    if (nopadlen < 0)
+      nopadlen = 0;
+    return nopadlen;
+  }
+
+  return 0;
+}
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using
@@ -118,7 +150,11 @@ int SparkProtocol::handshake(void)
   rsa_context rsa;
   init_rsa_context_with_public_key(&rsa, server_public_key);
   const int len = 52+MAX_DEVICE_PUBLIC_KEY_LENGTH;
+#ifdef USE_MBEDTLS
+  err = mbedtls_rsa_pkcs1_encrypt(&rsa, mbedtls_default_rng, nullptr, MBEDTLS_RSA_PUBLIC, len, queue, queue + len);
+#else
   err = rsa_pkcs1_encrypt(&rsa, RSA_PUBLIC, len, queue, queue + len);
+#endif
   rsa_free(&rsa);
 
   if (err) { LOG(ERROR,"RSA encrypt error %d", err); return err; }
@@ -335,8 +371,13 @@ CoAPMessageType::Enum
   unsigned char next_iv[16];
   memcpy(next_iv, buf, 16);
 
+#ifdef USE_MBEDTLS
+  mbedtls_aes_setkey_dec(&aes, key, 128);
+  mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_DECRYPT, round_to_16(length), iv_receive, buf, buf);
+#else
   aes_setkey_dec(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_DECRYPT, length, iv_receive, buf, buf);
+#endif
 
   memcpy(iv_receive, next_iv, 16);
 
@@ -1076,7 +1117,7 @@ bool SparkProtocol::handle_chunk(msg& message)
 
     LOG(INFO,"chunk");
     if (!this->updating) {
-        LOG(WARN,"got chunk when not updating");
+        //LOG(WARN,"got chunk when not updating");
         return true;
     }
 
@@ -1454,10 +1495,8 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
     case CoAPMessageType::DESCRIBE:
     {
         int desc_flags = DESCRIBE_ALL;
-        if (message.len > 8 && queue[8] <= DESCRIBE_ALL) {
+        if (message_padding_strip(queue, message.len) > 8 && queue[8] <= DESCRIBE_ALL) {
             desc_flags = queue[8];
-        } else if (message.len > 8) {
-            LOG(WARN, "Invalid DESCRIBE flags %02x", queue[8]);
         }
 
         if (!send_description(desc_flags, message)) {
@@ -1651,8 +1690,13 @@ unsigned char SparkProtocol::next_token()
 
 void SparkProtocol::encrypt(unsigned char *buf, int length)
 {
+#ifdef USE_MBEDTLS
+  mbedtls_aes_setkey_enc(&aes, key, 128);
+  mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_ENCRYPT, round_to_16(length), iv_send, buf, buf);
+#else
   aes_setkey_enc(&aes, key, 128);
   aes_crypt_cbc(&aes, AES_ENCRYPT, length, iv_send, buf, buf);
+#endif
   memcpy(iv_send, buf, 16);
 }
 
@@ -1692,7 +1736,7 @@ void SparkProtocol::separate_response_with_payload(unsigned char *buf,
 
 int SparkProtocol::set_key(const unsigned char *signed_encrypted_credentials)
 {
-  unsigned char credentials[40];
+  unsigned char credentials[128];
   unsigned char hmac[20];
 
   if (0 != decipher_aes_credentials(core_private_key,
@@ -1757,3 +1801,48 @@ inline void SparkProtocol::coded_ack(unsigned char *buf,
 
   encrypt(buf, 16);
 }
+
+int SparkProtocol::command(ProtocolCommands::Enum command, uint32_t data)
+{
+  int result = UNKNOWN;
+  switch (command) {
+  case ProtocolCommands::SLEEP:
+  case ProtocolCommands::DISCONNECT:
+    result = !this->wait_confirmable() ? NO_ERROR : UNKNOWN;
+    break;
+  case ProtocolCommands::TERMINATE:
+    ack_handlers.clear();
+    result = NO_ERROR;
+    break;
+  }
+  return result;
+}
+
+int SparkProtocol::wait_confirmable(uint32_t timeout)
+{
+  bool st = true;
+
+  if (ack_handlers.size() != 0) {
+    system_tick_t start = callbacks.millis();
+    LOG(INFO, "Waiting for Confirmed messages to be ACKed.");
+
+    while (((ack_handlers.size() != 0) && (callbacks.millis()-start)<timeout))
+    {
+      CoAPMessageType::Enum message;
+      st = event_loop(message);
+      if (!st)
+      {
+        LOG(WARN, "error receiving acknowledgements");
+        break;
+      }
+    }
+    LOG(INFO, "All Confirmed messages sent: %s",
+        (ack_handlers.size() != 0) ? "no" : "yes");
+
+    ack_handlers.clear();
+  }
+
+  return (int)(!st);
+}
+
+#endif // !PARTICLE_PROTOCOL

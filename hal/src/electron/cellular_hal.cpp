@@ -13,6 +13,8 @@ static CellularNetProv cellularNetProv = CELLULAR_NETPROV_TELEFONICA;
 // CELLULAR_NET_PROVIDER_DATA[CELLULAR_NETPROV_MAX - 1] is the last provider record
 const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_DATA };
 
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+
 static HAL_NET_Callbacks netCallbacks = { 0 };
 
 void HAL_NET_notify_connected()
@@ -42,6 +44,22 @@ void HAL_NET_notify_can_shutdown()
         netCallbacks.notify_can_shutdown();
     }
 }
+
+void HAL_NET_SetCallbacks(const HAL_NET_Callbacks* callbacks, void* reserved)
+{
+    netCallbacks.notify_connected = callbacks->notify_connected;
+    netCallbacks.notify_disconnected = callbacks->notify_disconnected;
+    netCallbacks.notify_dhcp = callbacks->notify_dhcp;
+    netCallbacks.notify_can_shutdown = callbacks->notify_can_shutdown;
+}
+
+#else
+
+void HAL_NET_SetCallbacks(const HAL_NET_Callbacks* callbacks, void* reserved)
+{
+}
+
+#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 cellular_result_t  cellular_on(void* reserved)
 {
@@ -147,14 +165,6 @@ bool cellular_sim_ready(void* reserved)
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInuS)
 {
     return 0;
-}
-
-void HAL_NET_SetCallbacks(const HAL_NET_Callbacks* callbacks, void* reserved)
-{
-    netCallbacks.notify_connected = callbacks->notify_connected;
-    netCallbacks.notify_disconnected = callbacks->notify_disconnected;
-    netCallbacks.notify_dhcp = callbacks->notify_dhcp;
-    netCallbacks.notify_can_shutdown = callbacks->notify_can_shutdown;
 }
 
 void cellular_cancel(bool cancel, bool calledFromISR, void*)

@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -42,6 +17,8 @@
 #define INCLUDED_WWD_STRUCTURES_H
 
 #include "wwd_constants.h"
+#include "wwd_wlioctl.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +29,7 @@ extern "C" {
  ******************************************************/
 
 #define SSID_NAME_SIZE        (32)
+#define HOSTNAME_SIZE         (32)
 
 /******************************************************
  *                    Constants
@@ -72,11 +50,12 @@ typedef volatile void*    host_mutex_pointer_t;
 typedef volatile void*    host_thread_pointer_t;
 
 typedef uint32_t          wwd_time_t;          /* Time value in milliseconds */
-typedef wl_bss_info_t     wiced_bss_info_t;
+typedef struct wl_bss_info_struct     wiced_bss_info_t;
 
-typedef edcf_acparam_t    wiced_edcf_ac_param_t;
-typedef wl_action_frame_t wiced_action_frame_t;
+typedef struct edcf_acparam    wiced_edcf_ac_param_t;
+typedef struct wl_action_frame wiced_action_frame_t;
 
+typedef struct wiced_event_header_struct wwd_event_header_t;
 /** @endcond */
 
 /******************************************************
@@ -116,7 +95,7 @@ typedef struct
 } wiced_packet_filter_t;
 
 /** @cond */
-typedef wl_pkt_filter_stats_t wiced_packet_filter_stats_t;
+typedef struct wl_pkt_filter_stats wiced_packet_filter_stats_t;
 /** @endcond */
 
 /**
@@ -146,6 +125,14 @@ typedef struct
 {
     uint8_t octet[6]; /**< Unique 6-byte MAC address */
 } wiced_mac_t;
+
+/**
+ * Structure for storing a null terminated network hostname
+ */
+typedef struct
+{
+    char value[ HOSTNAME_SIZE + 1 ];
+} wiced_hostname_t;
 
 /**
  * Structure for storing extended scan parameters
@@ -238,8 +225,141 @@ typedef struct
     wiced_mac_t   mac_list[1];   /**< Variable length array of MAC addresses */
 } wiced_maclist_t;
 
+typedef struct
+{
+    char     abbrev[3];
+    uint8_t  rev;
+    uint8_t  data[64];
+} wiced_country_info_t;
+
 #pragma pack()
 
+/* DSS Parameter Set */
+typedef struct
+{
+    uint8_t type;
+    uint8_t length;
+    uint8_t current_channel;
+} dsss_parameter_set_ie_t;
+
+/* In dongle firmware this is defined as ht_add_ie_t in 802.11.h. It has similar structure but different field names due to history.
+ * Wireshark reports this element as the HT information element. */
+typedef struct
+{
+    uint8_t       type;
+    uint8_t       length;
+    uint8_t       primary_channel;
+    uint8_t       ht_operation_subset_1;
+    uint16_t      ht_operation_subset_2;
+    uint16_t      ht_operation_subset_3;
+    uint8_t       rx_supported_mcs_set[16];
+} ht_operation_ie_t;
+
+
+/* 11k Radio resource capabilities bit information */
+typedef struct radio_resource_management_capability_debug_msg
+{
+    uint32_t value;
+    const char* string;
+} radio_resource_management_capability_debug_msg_t;
+
+/* 11k Radio resource capabilities */
+typedef struct
+{
+    uint8_t radio_resource_management[RRM_CAPABILITIES_LEN];
+} radio_resource_management_capability_ie_t;
+
+/* 11k Radio resource beacon request */
+typedef struct radio_resource_management_beacon_req
+{
+    uint8_t       bcn_mode;
+    int           duration;
+    int           channel;
+    wiced_mac_t   da;
+    uint16_t      random_int;
+    wlc_ssid_t    ssid;
+    uint16_t      repetitions;
+} radio_resource_management_beacon_req_t;
+
+/* 11k Radio resource management request */
+typedef struct radio_resource_management_req
+{
+    wiced_mac_t   da;
+    uint8_t       regulatory;
+    uint8_t       channel;
+    uint16_t      random_int;
+    uint16_t      duration;
+    uint16_t      repetitions;
+} radio_resource_management_req_t;
+
+/* 11k Radio resource management frame request */
+typedef struct radio_resource_management_framereq
+{
+    wiced_mac_t   da;
+    uint8_t       regulatory;
+    uint8_t       channel;
+    uint16_t      random_int;
+    uint16_t      duration;
+    wiced_mac_t   ta;
+    uint16_t      repetitions;
+} radio_resource_management_framereq_t;
+
+/* 11k Radio resource management statistics request */
+typedef struct radio_resource_management_statreq
+{
+    wiced_mac_t   da;
+    wiced_mac_t   peer;
+    uint16_t      random_int;
+    uint16_t      duration;
+    uint8_t       group_id;
+    uint16_t      repetitions;
+} radio_resource_management_statreq_t;
+
+/* 11k Radio resource statistics report */
+typedef struct
+{
+    uint16_t      version;
+    wiced_mac_t   sta_address;
+    uint32_t      timestamp;
+    uint16_t      flag;
+    uint16_t      length_of_payload;
+    unsigned char data[WL_RRM_RPT_MAX_PAYLOAD];
+} radio_resource_management_statrpt_t;
+
+/* 11k Neighbor Report element */
+typedef struct rrm_nbr_element
+{
+    uint8_t       id;
+    uint8_t       length;
+    wiced_mac_t   bssid;
+    uint32_t      bssid_info;
+    uint8_t       regulatory;
+    uint8_t       channel;
+    uint8_t       phytype;
+    uint8_t       pad;
+} radio_resource_management_nbr_element_t;
+
+typedef struct
+{
+    uint8_t mode;       /* 1 == target must not tx between recieving CSA and actually switching */
+                        /* 0 == target may tx between recieving CSA and actually switching */
+    uint8_t count;      /* count number of beacons before switching */
+    uint16_t chspec;    /* target chanspec */
+} wiced_chan_switch_t;
+
+typedef struct radio_resource_management_neight_report
+{
+  struct radio_resource_management_neight_report *link;
+  radio_resource_management_nbr_element_t nbr_elm;
+} radio_resource_management_neighbor_report_t;
+
+
+typedef struct wwd_rrm_report
+{
+  wwd_rrm_report_type_t      type;
+  uint32_t                   report_len;
+  uint8_t                   *report;
+} wwd_rrm_report_t;
 
 /******************************************************
  *                 Global Variables

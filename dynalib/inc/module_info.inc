@@ -105,7 +105,9 @@ extern char link_module_end;
 #error MODULE_DEPENDENCY not defined
 #endif
 
-#define MODULE_DEPENDENCY2 0,0,0
+#ifndef MODULE_DEPENDENCY2
+#error MODULE_DEPENDENCY2 not defined
+#endif
 
 #if PLATFORM_ID!=3
 __attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info"))))
@@ -119,7 +121,7 @@ const module_info_t module_info = {
     (uint8_t)(MODULE_FUNCTION), /* module function */
     (uint8_t)(MODULE_INDEX),    /* module index (part1 part2 etc..) */
     { MODULE_DEPENDENCY },
-    0
+    { MODULE_DEPENDENCY2 }
 };
 
 

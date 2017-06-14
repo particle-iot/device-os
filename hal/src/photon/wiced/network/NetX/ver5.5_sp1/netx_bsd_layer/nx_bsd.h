@@ -1,55 +1,55 @@
-/**************************************************************************/
-/*                                                                        */
-/*            Copyright (c) 1996-2013 by Express Logic Inc.               */
-/*                                                                        */
-/*  This software is copyrighted by and is the sole property of Express   */
-/*  Logic, Inc.  All rights, title, ownership, or other interests         */
-/*  in the software remain the property of Express Logic, Inc.  This      */
-/*  software may only be used in accordance with the corresponding        */
-/*  license agreement.  Any unauthorized use, duplication, transmission,  */
-/*  distribution, or disclosure of this software is expressly forbidden.  */
-/*                                                                        */
-/*  This Copyright notice may not be removed or modified without prior    */
-/*  written consent of Express Logic, Inc.                                */
-/*                                                                        */
-/*  Express Logic, Inc. reserves the right to modify this software        */
-/*  without notice.                                                       */
-/*                                                                        */
-/*  Express Logic, Inc.                                                   */
-/*  11423 West Bernardo Court               info@expresslogic.com         */
-/*  San Diego, CA  92127                    http://www.expresslogic.com   */
-/*                                                                        */
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*            Copyright (c) 1996-2013 by Express Logic Inc.               */ 
+/*                                                                        */ 
+/*  This software is copyrighted by and is the sole property of Express   */ 
+/*  Logic, Inc.  All rights, title, ownership, or other interests         */ 
+/*  in the software remain the property of Express Logic, Inc.  This      */ 
+/*  software may only be used in accordance with the corresponding        */ 
+/*  license agreement.  Any unauthorized use, duplication, transmission,  */ 
+/*  distribution, or disclosure of this software is expressly forbidden.  */ 
+/*                                                                        */ 
+/*  This Copyright notice may not be removed or modified without prior    */ 
+/*  written consent of Express Logic, Inc.                                */ 
+/*                                                                        */ 
+/*  Express Logic, Inc. reserves the right to modify this software        */ 
+/*  without notice.                                                       */ 
+/*                                                                        */ 
+/*  Express Logic, Inc.                                                   */ 
+/*  11423 West Bernardo Court               info@expresslogic.com         */ 
+/*  San Diego, CA  92127                    http://www.expresslogic.com   */ 
+/*                                                                        */ 
+/**************************************************************************/ 
 
 /**************************************************************************/
 /**************************************************************************/
+/**                                                                       */ 
+/** NetX Component                                                        */ 
 /**                                                                       */
-/** NetX Component                                                        */
-/**                                                                       */
-/** BSD 4.3 Socket API Compatible Interface to NetX Duo                   */
+/** BSD 4.3 Socket API Compatible Interface to NetX Duo                   */ 
 /**                                                                       */
 /**                                                                       */
 /**************************************************************************/
 /**************************************************************************/
 
-/**************************************************************************/
-/*                                                                        */
-/*  BSD DEFINITIONS                                        RELEASE        */
-/*                                                                        */
-/*    nxd_bsd.h                                           PORTABLE C      */
+/**************************************************************************/ 
+/*                                                                        */ 
+/*  BSD DEFINITIONS                                        RELEASE        */ 
+/*                                                                        */ 
+/*    nxd_bsd.h                                           PORTABLE C      */ 
 /*                                                          5.7.1         */
-/*  AUTHOR                                                                */
-/*                                                                        */
-/*    Express Logic, Inc.                                                 */
-/*                                                                        */
-/*  DESCRIPTION                                                           */
-/*                                                                        */
-/*    This file defines the constants, structures, etc... needed to       */
+/*  AUTHOR                                                                */ 
+/*                                                                        */ 
+/*    Express Logic, Inc.                                                 */ 
+/*                                                                        */ 
+/*  DESCRIPTION                                                           */ 
+/*                                                                        */ 
+/*    This file defines the constants, structures, etc... needed to       */ 
 /*    implement the BSD 4.3 Socket API Compatible Interface to NetX.      */
-/*                                                                        */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
+/*                                                                        */ 
+/*                                                                        */ 
+/*  RELEASE HISTORY                                                       */ 
+/*                                                                        */ 
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  04-30-2013     Yuxin Zhou               Initial Version 5.7.1         */
@@ -65,71 +65,71 @@
 #include "nx_packet.h"
 
 
-/* Define the print error macro for reporting source line number.
+/* Define the print error macro for reporting source line number.  
 
 #define NX_BSD_PRINT_ERRORS
 */
 
 /* Define the extended notification services for NetX BSD sockets. This requires
-   NetX v5.4 or later.
-
+   NetX v5.4 or later. 
+     
    Services include non blocking connect, accept, and disconnect notification.  Socket
    options include timed wait, linger, and error handling. See the BSD readme documentation
-   for more details.
+   for more details.  
 */
 #define NX_EXTENDED_BSD_SOCKET_SUPPORT
-
-
+ 
+                      
 /* Define configuration constants for the BSD compatibility layer.  Note that these can be overridden via -D or a #define somewhere else.  */
 
 #ifndef NX_BSD_TCP_WINDOW
 #define NX_BSD_TCP_WINDOW                   65535                   /* 64k is typical window size for 100Mb ethernet.                       */
-#endif
+#endif 
 
 #ifndef NX_BSD_SOCKFD_START
-#define NX_BSD_SOCKFD_START                 32                      /* Logical FD starting value.                                           */
+#define NX_BSD_SOCKFD_START                 32                      /* Logical FD starting value.                                           */ 
 #endif
 
-#ifndef NX_BSD_MAX_SOCKETS
+#ifndef NX_BSD_MAX_SOCKETS  
 #define NX_BSD_MAX_SOCKETS                  32                      /* Maximum number of total sockets available in the BSD layer. Note     */
-#endif                                                              /*   NOTE:  Must be multiple of 32!                                     */
+#endif                                                              /*   NOTE:  Must be multiple of 32!                                     */ 
 
 #ifndef NX_BSD_MAX_LISTEN_BACKLOG
-#define NX_BSD_MAX_LISTEN_BACKLOG           5                       /* Maximum listen backlog.                                              */
+#define NX_BSD_MAX_LISTEN_BACKLOG           5                       /* Maximum listen backlog.                                              */ 
 #endif
 
 #ifndef NX_CPU_TICKS_PER_SECOND
-#define NX_CPU_TICKS_PER_SECOND             100                     /* Number of timer ticks per second, default 10ms timer.                */
+#define NX_CPU_TICKS_PER_SECOND             100                     /* Number of timer ticks per second, default 10ms timer.                */  
 #endif
 
 #ifndef NX_MICROSECOND_PER_CPU_TICK
-#define NX_MICROSECOND_PER_CPU_TICK         10000                   /* Number of microseconds per timer interrupt, default 10ms.            */
+#define NX_MICROSECOND_PER_CPU_TICK         10000                   /* Number of microseconds per timer interrupt, default 10ms.            */ 
 #endif
-#define NX_BSD_TIMEOUT                      10
+#define NX_BSD_TIMEOUT                      10                    
 #ifndef NX_BSD_TIMEOUT
-#define NX_BSD_TIMEOUT                      (20*NX_CPU_TICKS_PER_SECOND)
+#define NX_BSD_TIMEOUT                      (20*NX_CPU_TICKS_PER_SECOND)      
                                                                     /* By default all internal NetX calls wait and block for 20 seconds.    */
 #endif
 
 /* Define configurable options for BSD extended options. */
 
-#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT
+#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT   
 
-#ifndef NX_BSD_TIMER_RATE
+#ifndef NX_BSD_TIMER_RATE                 
 #define NX_BSD_TIMER_RATE                   (1 * NX_CPU_TICKS_PER_SECOND)   /* Rate at which BSD timer runs.                                   */
-#endif
+#endif                                                                      
 
 /* This determines if the secondary sockets created from the master socket inherit
   the master socket socket options and socket flags. The default is enabled.  */
-#define NX_BSD_INHERIT_LISTENER_SOCKET_SETTINGS
+#define NX_BSD_INHERIT_LISTENER_SOCKET_SETTINGS 
 
 
 #endif /* NX_EXTENDED_BSD_SOCKET_SUPPORT */
-
+            
 /* Define BSD events */
 
-#define NX_BSD_RECEIVE_EVENT                ((ULONG) 0x00000001)    /* Event flag to signal a receive packet event                          */
-#define NX_BSD_SELECT_EVENT                 ((ULONG) 0x00008000)    /* Event flag to signal a thread is waiting in select                   */
+#define NX_BSD_RECEIVE_EVENT                ((ULONG) 0x00000001)    /* Event flag to signal a receive packet event                          */ 
+#define NX_BSD_SELECT_EVENT                 ((ULONG) 0x00008000)    /* Event flag to signal a thread is waiting in select                   */ 
 #define NX_BSD_ALL_EVENTS                   ((ULONG) 0xFFFFFFFF)    /* All event flag                                                       */
 #define NX_BSD_CONNECT_EVENT                ((ULONG) 0x00000002)
 #define NX_BSD_TIMER_EVENT                  ((ULONG) 0x00000010)    /* Event flag to singal a BSD 1 sec timer */
@@ -207,7 +207,7 @@
 #ifdef NX_BSD_PRINT_ERRORS
 #define NX_BSD_ERROR(status, line) printf(" NX BSD debug error message:, NX status: %x source line: %i \n", status, line)
 #else
-#define NX_BSD_ERROR(status, line)
+#define NX_BSD_ERROR(status, line) 
 #endif
 
 
@@ -218,7 +218,7 @@
 #define FIONREAD                            0x541B                  /* Read bytes available for the ioctl() command                         */
 #endif
 
-#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT
+#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT   
 
 #define F_GETFL                             3                       /* Get file descriptors                                                 */
 #define F_SETFL                             4                       /* Set a subset of file descriptors (e.g. O_NONBlOCK                    */
@@ -236,7 +236,7 @@
 #endif
 
 /* Define the maximum number of packets that can be queued on a UDP socket or RAW socket. */
-#ifndef NX_BSD_SOCKET_QUEUE_MAX
+#ifndef NX_BSD_SOCKET_QUEUE_MAX 
 #define NX_BSD_SOCKET_QUEUE_MAX 5
 #endif
 
@@ -380,7 +380,7 @@
 #define ENOTRECOVERABLE 131 /* State not recoverable */
 #define ERFKILL         132 /* Operation not possible due to RF-kill */
 
-#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT
+#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT   
 
 /* Define sock options */
 /* From socket.h in /usr/include/asm/socket.h and asm-generic/socket.h */
@@ -443,11 +443,11 @@
 #else /* ifdef SYS_TIME_H_AVAILABLE */
 
 #ifndef __time_t_defined
-typedef ULONG       time_t;
+typedef LONG       time_t;
 #endif
 
 #ifndef __suseconds_t_defined
-typedef ULONG       suseconds_t;
+typedef LONG       suseconds_t;
 #endif /* ifndef __suseconds_t_defined */
 
 struct timeval
@@ -468,11 +468,11 @@ struct sockaddr
 
 struct in_addr
 {
-    ULONG           s_addr;             /* Internet address (32 bits).                         */
+    ULONG           s_addr;             /* Internet address (32 bits).                         */        
 };
 
 #define in_addr_t   ULONG
-
+                                 
 /* Socket address, Internet style. */
 
 struct sockaddr_in
@@ -486,7 +486,7 @@ struct sockaddr_in
 
 
 typedef struct FD_SET_STRUCT                /* The select socket array manager.                                                             */
-{
+{ 
    INT                  fd_count;           /* How many are SET?                                                                            */
    ULONG                fd_array[(FD_SETSIZE + 31)/32]; /* Bit map of SOCKET Descriptors.                                                   */
 } fd_set;
@@ -503,13 +503,13 @@ typedef struct NX_BSD_SOCKET_SUSPEND_STRUCT
 } NX_BSD_SOCKET_SUSPEND;
 
 
-struct ip_mreq
+struct ip_mreq 
 {
     struct in_addr imr_multiaddr;     /* The IPv4 multicast address to join. */
     struct in_addr imr_interface;     /* The interface to use for this group. */
 };
 
-#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT
+#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT 
 
 /* Define additional BSD data structures for supporting socket options.  */
 
@@ -548,12 +548,12 @@ struct sock_winsize
 #define NX_BSD_SOCKET_ERROR                      (1 << 1)
 #define NX_BSD_SOCKET_CONNECTED                  (1 << 2)
 /* Disconnected from the stack. */
-#define NX_BSD_SOCKET_DISCONNECT_FROM_STACK      (1 << 3)
+#define NX_BSD_SOCKET_DISCONNECT_FROM_STACK      (1 << 3) 
 #define NX_BSD_SOCKET_SERVER_MASTER_SOCKET       (1 << 4)
 
 
 
-/* Define the internal management structure for the BSD layer.  */
+/* Define the internal management structure for the BSD layer.  */ 
 
 typedef struct NX_BSD_SOCKET_STRUCT
 {
@@ -589,17 +589,17 @@ typedef struct NX_BSD_SOCKET_STRUCT
     ULONG               nx_bsd_socket_local_bind_interface_index;
     ULONG               nx_bsd_socket_peer_ip;
 
-    /* For TCP/UDP, the local port is the port number this socket receives on.
+    /* For TCP/UDP, the local port is the port number this socket receives on. 
        For raw socket this field is not used. */
     USHORT              nx_bsd_socket_local_port;
     USHORT              nx_bsd_socket_peer_port;
 
-#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT
-
+#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT 
+   
     INT                 nx_bsd_option_reuseaddr_enabled;
     INT                 nx_bsd_option_non_blocking_enabled;
-    ULONG               nx_bsd_option_receive_timeout;
-    ULONG               nx_bsd_option_send_timeout;
+    ULONG               nx_bsd_option_receive_timeout;  
+    ULONG               nx_bsd_option_send_timeout;     
     INT                 nx_bsd_file_descriptor_flags;
 
 #endif  /* NX_EXTENDED_BSD_SOCKET_SUPPORT */
@@ -612,13 +612,13 @@ typedef struct NX_BSD_SOCKET_STRUCT
 /* Define the BSD function prototypes for use by the application.  */
 
 INT  accept(INT sockID, struct sockaddr *ClientAddress, INT *addressLength);
-INT  bsd_initialize(NX_IP *default_ip, NX_PACKET_POOL *default_pool, CHAR *bsd_thread_stack_area,
+INT  bsd_initialize(NX_IP *default_ip, NX_PACKET_POOL *default_pool, CHAR *bsd_thread_stack_area, 
                     ULONG bsd_thread_stack_size, UINT bsd_thread_priority);
 INT  bind(INT sockID, struct sockaddr *localAddress, INT addressLength);
 INT  connect(INT sockID, struct sockaddr *remoteAddress, INT addressLength);
 INT  getpeername(INT sockID, struct sockaddr *remoteAddress, INT *addressLength);
 INT  getsockname(INT sockID, struct sockaddr *localAddress, INT *addressLength);
-INT  ioctl(INT sockID, INT command, INT *result);
+INT  ioctl(INT sockID, INT command, INT *result); 
 in_addr_t inet_addr(const CHAR *buffer);
 CHAR *inet_ntoa(struct in_addr address_to_convert);
 INT  inet_aton(const CHAR *cp_arg, struct in_addr *addr);
@@ -630,7 +630,7 @@ INT  send(INT sockID, const CHAR *msg, INT msgLength, INT flags);
 INT  select(INT nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 INT  soc_close( INT sockID);
 INT  socket(INT protocolFamily, INT type, INT protocol);
-#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT
+#ifdef NX_EXTENDED_BSD_SOCKET_SUPPORT     
 INT  getsockopt(INT sockID, INT option_level, INT option_name, void *option_value, INT *option_length);
 INT  fcntl(INT sock_ID, UINT flag_type, UINT f_options);
 INT  setsockopt(INT sockID, INT option_level, INT option_name, const void *option_value, INT option_length);

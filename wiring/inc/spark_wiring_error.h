@@ -38,6 +38,7 @@ public:
 
     Error(Type type = UNKNOWN);
     Error(Type type, const char* msg);
+    explicit Error(const char* msg);
     Error(const Error& error);
     Error(Error&& error);
     ~Error();
@@ -51,6 +52,8 @@ public:
     bool operator!=(Type type) const;
 
     Error& operator=(Error error);
+
+    explicit operator bool() const;
 
 private:
     const char* msg_;
@@ -71,6 +74,10 @@ inline particle::Error::Error(Type type) :
 inline particle::Error::Error(Type type, const char* msg) :
         msg_(msg ? (const char*)strdup(msg) : nullptr),
         type_(type) {
+}
+
+inline particle::Error::Error(const char* msg) :
+        Error(UNKNOWN, msg) {
 }
 
 inline particle::Error::Error(const Error& error) :
@@ -113,6 +120,10 @@ inline bool particle::Error::operator!=(Type type) const {
 inline particle::Error& particle::Error::operator=(Error error) {
     swap(*this, error);
     return *this;
+}
+
+inline particle::Error::operator bool() const {
+    return type_ != NONE;
 }
 
 inline void particle::swap(Error& error1, Error& error2) {

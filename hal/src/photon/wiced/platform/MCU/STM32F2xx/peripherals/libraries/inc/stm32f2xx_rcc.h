@@ -2,20 +2,26 @@
   ******************************************************************************
   * @file    stm32f2xx_rcc.h
   * @author  MCD Application Team
-  * @version V1.0.0
-  * @date    18-April-2011
+  * @version V1.1.2
+  * @date    05-March-2012 
   * @brief   This file contains all the functions prototypes for the RCC firmware library.
   ******************************************************************************
   * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
   ******************************************************************************
   */
 
@@ -36,7 +42,7 @@
 
 /** @addtogroup RCC
   * @{
-  */
+  */ 
 
 /* Exported types ------------------------------------------------------------*/
 typedef struct
@@ -52,8 +58,8 @@ typedef struct
 /** @defgroup RCC_Exported_Constants
   * @{
   */
-
-/** @defgroup RCC_HSE_configuration
+  
+/** @defgroup RCC_HSE_configuration 
   * @{
   */
 #define RCC_HSE_OFF                      ((uint8_t)0x00)
@@ -63,9 +69,9 @@ typedef struct
                          ((HSE) == RCC_HSE_Bypass))
 /**
   * @}
-  */
-
-/** @defgroup RCC_PLL_Clock_Source
+  */ 
+  
+/** @defgroup RCC_PLL_Clock_Source 
   * @{
   */
 #define RCC_PLLSource_HSI                ((uint32_t)0x00000000)
@@ -76,14 +82,14 @@ typedef struct
 #define IS_RCC_PLLN_VALUE(VALUE) ((192 <= (VALUE)) && ((VALUE) <= 432))
 #define IS_RCC_PLLP_VALUE(VALUE) (((VALUE) == 2) || ((VALUE) == 4) || ((VALUE) == 6) || ((VALUE) == 8))
 #define IS_RCC_PLLQ_VALUE(VALUE) ((4 <= (VALUE)) && ((VALUE) <= 15))
-
+ 
 #define IS_RCC_PLLI2SN_VALUE(VALUE) ((192 <= (VALUE)) && ((VALUE) <= 432))
-#define IS_RCC_PLLI2SR_VALUE(VALUE) ((2 <= (VALUE)) && ((VALUE) <= 7))
+#define IS_RCC_PLLI2SR_VALUE(VALUE) ((2 <= (VALUE)) && ((VALUE) <= 7))   
 /**
   * @}
-  */
-
-/** @defgroup RCC_System_Clock_Source
+  */ 
+  
+/** @defgroup RCC_System_Clock_Source 
   * @{
   */
 #define RCC_SYSCLKSource_HSI             ((uint32_t)0x00000000)
@@ -94,8 +100,8 @@ typedef struct
                                       ((SOURCE) == RCC_SYSCLKSource_PLLCLK))
 /**
   * @}
-  */
-
+  */ 
+  
 /** @defgroup RCC_AHB_Clock_Source
   * @{
   */
@@ -115,8 +121,8 @@ typedef struct
                            ((HCLK) == RCC_SYSCLK_Div512))
 /**
   * @}
-  */
-
+  */ 
+  
 /** @defgroup RCC_APB1_APB2_Clock_Source
   * @{
   */
@@ -130,9 +136,9 @@ typedef struct
                            ((PCLK) == RCC_HCLK_Div16))
 /**
   * @}
-  */
-
-/** @defgroup RCC_Interrupt_Source
+  */ 
+  
+/** @defgroup RCC_Interrupt_Source 
   * @{
   */
 #define RCC_IT_LSIRDY                    ((uint8_t)0x01)
@@ -150,9 +156,9 @@ typedef struct
 #define IS_RCC_CLEAR_IT(IT) ((((IT) & (uint8_t)0x40) == 0x00) && ((IT) != 0x00))
 /**
   * @}
-  */
-
-/** @defgroup RCC_LSE_Configuration
+  */ 
+  
+/** @defgroup RCC_LSE_Configuration 
   * @{
   */
 #define RCC_LSE_OFF                      ((uint8_t)0x00)
@@ -162,8 +168,8 @@ typedef struct
                          ((LSE) == RCC_LSE_Bypass))
 /**
   * @}
-  */
-
+  */ 
+  
 /** @defgroup RCC_RTC_Clock_Source
   * @{
   */
@@ -233,22 +239,22 @@ typedef struct
                                       ((SOURCE) == RCC_RTCCLKSource_HSE_Div31))
 /**
   * @}
-  */
-
+  */ 
+  
 /** @defgroup RCC_I2S_Clock_Source
   * @{
   */
 #define RCC_I2S2CLKSource_PLLI2S             ((uint8_t)0x00)
 #define RCC_I2S2CLKSource_Ext                ((uint8_t)0x01)
 
-#define IS_RCC_I2SCLK_SOURCE(SOURCE) (((SOURCE) == RCC_I2S2CLKSource_PLLI2S) || ((SOURCE) == RCC_I2S2CLKSource_Ext))
+#define IS_RCC_I2SCLK_SOURCE(SOURCE) (((SOURCE) == RCC_I2S2CLKSource_PLLI2S) || ((SOURCE) == RCC_I2S2CLKSource_Ext))                                
 /**
   * @}
-  */
-
-/** @defgroup RCC_AHB1_Peripherals
+  */ 
+  
+/** @defgroup RCC_AHB1_Peripherals 
   * @{
-  */
+  */ 
 #define RCC_AHB1Periph_GPIOA             ((uint32_t)0x00000001)
 #define RCC_AHB1Periph_GPIOB             ((uint32_t)0x00000002)
 #define RCC_AHB1Periph_GPIOC             ((uint32_t)0x00000004)
@@ -276,11 +282,11 @@ typedef struct
 #define IS_RCC_AHB1_LPMODE_PERIPH(PERIPH) ((((PERIPH) & 0x81986E00) == 0x00) && ((PERIPH) != 0x00))
 /**
   * @}
-  */
-
-/** @defgroup RCC_AHB2_Peripherals
+  */ 
+  
+/** @defgroup RCC_AHB2_Peripherals 
   * @{
-  */
+  */  
 #define RCC_AHB2Periph_DCMI              ((uint32_t)0x00000001)
 #define RCC_AHB2Periph_CRYP              ((uint32_t)0x00000010)
 #define RCC_AHB2Periph_HASH              ((uint32_t)0x00000020)
@@ -289,20 +295,20 @@ typedef struct
 #define IS_RCC_AHB2_PERIPH(PERIPH) ((((PERIPH) & 0xFFFFFF0E) == 0x00) && ((PERIPH) != 0x00))
 /**
   * @}
-  */
-
-/** @defgroup RCC_AHB3_Peripherals
+  */ 
+  
+/** @defgroup RCC_AHB3_Peripherals 
   * @{
-  */
+  */ 
 #define RCC_AHB3Periph_FSMC               ((uint32_t)0x00000001)
 #define IS_RCC_AHB3_PERIPH(PERIPH) ((((PERIPH) & 0xFFFFFFFE) == 0x00) && ((PERIPH) != 0x00))
 /**
   * @}
-  */
-
-/** @defgroup RCC_APB1_Peripherals
+  */ 
+  
+/** @defgroup RCC_APB1_Peripherals 
   * @{
-  */
+  */ 
 #define RCC_APB1Periph_TIM2              ((uint32_t)0x00000001)
 #define RCC_APB1Periph_TIM3              ((uint32_t)0x00000002)
 #define RCC_APB1Periph_TIM4              ((uint32_t)0x00000004)
@@ -329,11 +335,11 @@ typedef struct
 #define IS_RCC_APB1_PERIPH(PERIPH) ((((PERIPH) & 0xC9013600) == 0x00) && ((PERIPH) != 0x00))
 /**
   * @}
-  */
-
-/** @defgroup RCC_APB2_Peripherals
+  */ 
+  
+/** @defgroup RCC_APB2_Peripherals 
   * @{
-  */
+  */ 
 #define RCC_APB2Periph_TIM1              ((uint32_t)0x00000001)
 #define RCC_APB2Periph_TIM8              ((uint32_t)0x00000002)
 #define RCC_APB2Periph_USART1            ((uint32_t)0x00000010)
@@ -352,8 +358,8 @@ typedef struct
 #define IS_RCC_APB2_RESET_PERIPH(PERIPH) ((((PERIPH) & 0xFFF8A6CC) == 0x00) && ((PERIPH) != 0x00))
 /**
   * @}
-  */
-
+  */ 
+  
 /** @defgroup RCC_MCO1_Clock_Source_Prescaler
   * @{
   */
@@ -368,14 +374,14 @@ typedef struct
 #define RCC_MCO1Div_5                    ((uint32_t)0x07000000)
 #define IS_RCC_MCO1SOURCE(SOURCE) (((SOURCE) == RCC_MCO1Source_HSI) || ((SOURCE) == RCC_MCO1Source_LSE) || \
                                    ((SOURCE) == RCC_MCO1Source_HSE) || ((SOURCE) == RCC_MCO1Source_PLLCLK))
-
+                                   
 #define IS_RCC_MCO1DIV(DIV) (((DIV) == RCC_MCO1Div_1) || ((DIV) == RCC_MCO1Div_2) || \
                              ((DIV) == RCC_MCO1Div_3) || ((DIV) == RCC_MCO1Div_4) || \
-                             ((DIV) == RCC_MCO1Div_5))
+                             ((DIV) == RCC_MCO1Div_5)) 
 /**
   * @}
-  */
-
+  */ 
+  
 /** @defgroup RCC_MCO2_Clock_Source_Prescaler
   * @{
   */
@@ -390,15 +396,15 @@ typedef struct
 #define RCC_MCO2Div_5                    ((uint32_t)0x38000000)
 #define IS_RCC_MCO2SOURCE(SOURCE) (((SOURCE) == RCC_MCO2Source_SYSCLK) || ((SOURCE) == RCC_MCO2Source_PLLI2SCLK)|| \
                                    ((SOURCE) == RCC_MCO2Source_HSE) || ((SOURCE) == RCC_MCO2Source_PLLCLK))
-
+                                   
 #define IS_RCC_MCO2DIV(DIV) (((DIV) == RCC_MCO2Div_1) || ((DIV) == RCC_MCO2Div_2) || \
                              ((DIV) == RCC_MCO2Div_3) || ((DIV) == RCC_MCO2Div_4) || \
-                             ((DIV) == RCC_MCO2Div_5))
+                             ((DIV) == RCC_MCO2Div_5))                             
 /**
   * @}
-  */
-
-/** @defgroup RCC_Flag
+  */ 
+  
+/** @defgroup RCC_Flag 
   * @{
   */
 #define RCC_FLAG_HSIRDY                  ((uint8_t)0x21)
@@ -424,14 +430,14 @@ typedef struct
 #define IS_RCC_CALIBRATION_VALUE(VALUE) ((VALUE) <= 0x1F)
 /**
   * @}
-  */
+  */ 
 
 /**
   * @}
-  */
+  */ 
 
 /* Exported macro ------------------------------------------------------------*/
-/* Exported functions --------------------------------------------------------*/
+/* Exported functions --------------------------------------------------------*/ 
 
 /* Function used to set the RCC clock configuration to the default reset state */
 void RCC_DeInit(void);
@@ -465,7 +471,7 @@ void RCC_GetClocksFreq(RCC_ClocksTypeDef* RCC_Clocks);
 void RCC_RTCCLKConfig(uint32_t RCC_RTCCLKSource);
 void RCC_RTCCLKCmd(FunctionalState NewState);
 void RCC_BackupResetCmd(FunctionalState NewState);
-void RCC_I2SCLKConfig(uint32_t RCC_I2SCLKSource);
+void RCC_I2SCLKConfig(uint32_t RCC_I2SCLKSource); 
 
 void RCC_AHB1PeriphClockCmd(uint32_t RCC_AHB1Periph, FunctionalState NewState);
 void RCC_AHB2PeriphClockCmd(uint32_t RCC_AHB2Periph, FunctionalState NewState);
@@ -500,10 +506,10 @@ void RCC_ClearITPendingBit(uint8_t RCC_IT);
 
 /**
   * @}
-  */
+  */ 
 
 /**
   * @}
-  */
+  */ 
 
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

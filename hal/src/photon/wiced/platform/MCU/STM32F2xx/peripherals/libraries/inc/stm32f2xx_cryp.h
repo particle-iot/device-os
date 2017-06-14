@@ -2,21 +2,27 @@
   ******************************************************************************
   * @file    stm32f2xx_cryp.h
   * @author  MCD Application Team
-  * @version V1.0.0
-  * @date    18-April-2011
+  * @version V1.1.2
+  * @date    05-March-2012 
   * @brief   This file contains all the functions prototypes for the Cryptographic
   *          processor(CRYP) firmware library.
   ******************************************************************************
   * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
   ******************************************************************************
   */
 
@@ -37,30 +43,30 @@
 
 /** @addtogroup CRYP
   * @{
-  */
+  */ 
 
 /* Exported types ------------------------------------------------------------*/
 
-/**
-  * @brief   CRYP Init structure definition
-  */
+/** 
+  * @brief   CRYP Init structure definition  
+  */ 
 typedef struct
 {
-  uint16_t CRYP_AlgoDir;   /*!< Encrypt or Decrypt. This parameter can be a
+  uint16_t CRYP_AlgoDir;   /*!< Encrypt or Decrypt. This parameter can be a 
                                 value of @ref CRYP_Algorithm_Direction */
-  uint16_t CRYP_AlgoMode;  /*!< TDES-ECB, TDES-CBC, DES-ECB, DES-CBC, AES-ECB,
+  uint16_t CRYP_AlgoMode;  /*!< TDES-ECB, TDES-CBC, DES-ECB, DES-CBC, AES-ECB, 
                                 AES-CBC, AES-CTR, AES-Key. This parameter can be
                                 a value of @ref CRYP_Algorithm_Mode */
   uint16_t CRYP_DataType;  /*!< 32-bit data, 16-bit data, bit data or bit-string.
-                                This parameter can be a value of @ref CRYP_Data_Type */
-  uint16_t CRYP_KeySize;   /*!< Used only in AES mode only : 128, 192 or 256 bit
-                                key length. This parameter can be a value of
+                                This parameter can be a value of @ref CRYP_Data_Type */ 
+  uint16_t CRYP_KeySize;   /*!< Used only in AES mode only : 128, 192 or 256 bit 
+                                key length. This parameter can be a value of 
                                 @ref CRYP_Key_Size_for_AES_only */
 }CRYP_InitTypeDef;
 
-/**
-  * @brief   CRYP Key(s) structure definition
-  */
+/** 
+  * @brief   CRYP Key(s) structure definition  
+  */ 
 typedef struct
 {
   uint32_t CRYP_Key0Left;  /*!< Key 0 Left  */
@@ -72,9 +78,9 @@ typedef struct
   uint32_t CRYP_Key3Left;  /*!< Key 3 left  */
   uint32_t CRYP_Key3Right; /*!< Key 3 Right */
 }CRYP_KeyInitTypeDef;
-/**
-  * @brief   CRYP Initialization Vectors (IV) structure definition
-  */
+/** 
+  * @brief   CRYP Initialization Vectors (IV) structure definition  
+  */ 
 typedef struct
 {
   uint32_t CRYP_IV0Left;  /*!< Init Vector 0 Left  */
@@ -83,9 +89,9 @@ typedef struct
   uint32_t CRYP_IV1Right; /*!< Init Vector 1 Right */
 }CRYP_IVInitTypeDef;
 
-/**
-  * @brief  CRYP context swapping structure definition
-  */
+/** 
+  * @brief  CRYP context swapping structure definition  
+  */ 
 typedef struct
 {
   /*!< Configuration */
@@ -113,7 +119,7 @@ typedef struct
   * @{
   */
 
-/** @defgroup CRYP_Algorithm_Direction
+/** @defgroup CRYP_Algorithm_Direction 
   * @{
   */
 #define CRYP_AlgoDir_Encrypt      ((uint16_t)0x0000)
@@ -123,9 +129,9 @@ typedef struct
 
 /**
   * @}
-  */
-
-/** @defgroup CRYP_Algorithm_Mode
+  */ 
+ 
+/** @defgroup CRYP_Algorithm_Mode 
   * @{
   */
 
@@ -153,9 +159,9 @@ typedef struct
                                    ((ALGOMODE) == CRYP_AlgoMode_AES_Key))
 /**
   * @}
-  */
-
-/** @defgroup CRYP_Data_Type
+  */ 
+ 
+/** @defgroup CRYP_Data_Type 
   * @{
   */
 #define CRYP_DataType_32b         ((uint16_t)0x0000)
@@ -165,12 +171,12 @@ typedef struct
 #define IS_CRYP_DATATYPE(DATATYPE) (((DATATYPE) == CRYP_DataType_32b) || \
                                     ((DATATYPE) == CRYP_DataType_16b)|| \
                                     ((DATATYPE) == CRYP_DataType_8b)|| \
-                                    ((DATATYPE) == CRYP_DataType_1b))
+                                    ((DATATYPE) == CRYP_DataType_1b))  
 /**
   * @}
   */
-
-/** @defgroup CRYP_Key_Size_for_AES_only
+                                     
+/** @defgroup CRYP_Key_Size_for_AES_only 
   * @{
   */
 #define CRYP_KeySize_128b         ((uint16_t)0x0000)
@@ -183,20 +189,20 @@ typedef struct
   * @}
   */
 
-/** @defgroup CRYP_flags_definition
+/** @defgroup CRYP_flags_definition 
   * @{
   */
-#define CRYP_FLAG_BUSY            ((uint8_t)0x10)  /*!< The CRYP core is currently
-                                                        processing a block of data
-                                                        or a key preparation (for
+#define CRYP_FLAG_BUSY            ((uint8_t)0x10)  /*!< The CRYP core is currently 
+                                                        processing a block of data 
+                                                        or a key preparation (for 
                                                         AES decryption). */
 #define CRYP_FLAG_IFEM            ((uint8_t)0x01)  /*!< Input Fifo Empty */
 #define CRYP_FLAG_IFNF            ((uint8_t)0x02)  /*!< Input Fifo is Not Full */
 #define CRYP_FLAG_INRIS           ((uint8_t)0x22)  /*!< Raw interrupt pending */
-#define CRYP_FLAG_OFNE            ((uint8_t)0x04)  /*!< Input Fifo service raw
+#define CRYP_FLAG_OFNE            ((uint8_t)0x04)  /*!< Input Fifo service raw 
                                                         interrupt status */
 #define CRYP_FLAG_OFFU            ((uint8_t)0x08)  /*!< Output Fifo is Full */
-#define CRYP_FLAG_OUTRIS          ((uint8_t)0x21)  /*!< Output Fifo service raw
+#define CRYP_FLAG_OUTRIS          ((uint8_t)0x21)  /*!< Output Fifo service raw 
                                                         interrupt status */
 
 #define IS_CRYP_GET_FLAG(FLAG) (((FLAG) == CRYP_FLAG_IFEM)  || \
@@ -210,7 +216,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup CRYP_interrupts_definition
+/** @defgroup CRYP_interrupts_definition 
   * @{
   */
 #define CRYP_IT_INI               ((uint8_t)0x01) /*!< IN Fifo Interrupt */
@@ -222,7 +228,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup CRYP_Encryption_Decryption_modes_definition
+/** @defgroup CRYP_Encryption_Decryption_modes_definition 
   * @{
   */
 #define MODE_ENCRYPT             ((uint8_t)0x01)
@@ -232,7 +238,7 @@ typedef struct
   * @}
   */
 
-/** @defgroup CRYP_DMA_transfer_requests
+/** @defgroup CRYP_DMA_transfer_requests 
   * @{
   */
 #define CRYP_DMAReq_DataIN             ((uint8_t)0x01)
@@ -240,11 +246,11 @@ typedef struct
 #define IS_CRYP_DMAREQ(DMAREQ) ((((DMAREQ) & (uint8_t)0xFC) == 0x00) && ((DMAREQ) != 0x00))
 /**
   * @}
-  */
+  */ 
 
 /**
   * @}
-  */
+  */ 
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions --------------------------------------------------------*/
@@ -299,7 +305,7 @@ ErrorStatus CRYP_AES_CTR(uint8_t Mode,
 
 /* High Level TDES functions **************************************************/
 ErrorStatus CRYP_TDES_ECB(uint8_t Mode,
-                           uint8_t Key[24],
+                           uint8_t Key[24], 
                            uint8_t *Input, uint32_t Ilength,
                            uint8_t *Output);
 
@@ -333,6 +339,6 @@ ErrorStatus CRYP_DES_CBC(uint8_t Mode,
 
 /**
   * @}
-  */
+  */ 
 
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -76,7 +76,7 @@
 
 #ifdef   __cplusplus
 
-/* Yes, C++ compiler is present.  Use standard C.  */
+/* Yes, C++ compiler is present.  Use standard C.  */ 
 extern   "C" {
 
 #endif
@@ -91,18 +91,18 @@ extern   "C" {
 #define NX_POP3_DEBUG_LEVEL_ALL      (4)
 
 
-/* Conversion between seconds and timer ticks. See tx_initialize_low_level.<asm>
-   for timer tick resolution before altering! */
+/* Conversion between seconds and timer ticks. See tx_initialize_low_level.<asm> 
+   for timer tick resolution before altering! */ 
 
 #define NX_POP3_MILLISECONDS_PER_TICK       10
 #define NX_POP3_TICKS_PER_SECOND            100
+        
 
-
-/* NX-POP3 API Error codes prefixed with MAX_NETX_ERROR_CONSTANT
+/* NX-POP3 API Error codes prefixed with MAX_NETX_ERROR_CONSTANT 
    to separate from NetX error codes.  */
 
 
-#define NX_POP3_CLIENT_ERROR_CONSTANT         0xB0
+#define NX_POP3_CLIENT_ERROR_CONSTANT         0xB0  
 
 #define NX_POP3_PARAM_ERROR                  (NX_POP3_CLIENT_ERROR_CONSTANT | 0x1) /* Invalid non pointer parameter passed    */
 #define NX_POP3_ILLEGAL_CLIENT_COMMAND       (NX_POP3_CLIENT_ERROR_CONSTANT | 0x2) /* Client command disallowed in current POP3 protocol state. */
@@ -112,16 +112,16 @@ extern   "C" {
 #define NX_POP3_BAD_SERVER_LIST_REPLY        (NX_POP3_CLIENT_ERROR_CONSTANT | 0x6) /* Client LIST command received reply with no message data. */
 #define NX_POP3_BAD_SERVER_RETR_REPLY        (NX_POP3_CLIENT_ERROR_CONSTANT | 0x7) /* Client RETR command received reply with no message data. */
 #define NX_POP3_RSET_REPLY_ERR               (NX_POP3_CLIENT_ERROR_CONSTANT | 0x8) /* Client RSET command received ERR from server. */
-#define NX_POP3_CANNOT_PARSE_REPLY           (NX_POP3_CLIENT_ERROR_CONSTANT | 0x9) /* Server reply appears to missing expected argument(s). */
-#define NX_POP3_SERVER_REJECTS_COMMAND       (NX_POP3_CLIENT_ERROR_CONSTANT | 0xA) /* Server responds to Client command with -ERR. */
-#define NX_POP3_FAILED_PACKET_EXTRACTION     (NX_POP3_CLIENT_ERROR_CONSTANT | 0xB) /* Mail data extraction from chained packets fails. */
-#define NX_POP3_MAIL_BUFFER_OVERRUN          (NX_POP3_CLIENT_ERROR_CONSTANT | 0xC) /* Mail data extraction has filled up mail buffer before extraction complete. */
-#define NX_POP3_PARAM_BUFFER_OVERRUN         (NX_POP3_CLIENT_ERROR_CONSTANT | 0xD) /* Client parameter (e.g. username/password) over runs memory. */
-#define NX_POP3_MAIL_SPOOL_ERROR             (NX_POP3_CLIENT_ERROR_CONSTANT | 0xE) /* Client mail spool callback is not successful. */
-#define NX_POP3_NULL_CURRENT_MAIL            (NX_POP3_CLIENT_ERROR_CONSTANT | 0xF) /* Client session current mail instance is null. */
+#define NX_POP3_CANNOT_PARSE_REPLY           (NX_POP3_CLIENT_ERROR_CONSTANT | 0x9) /* Server reply appears to missing expected argument(s). */   
+#define NX_POP3_SERVER_REJECTS_COMMAND       (NX_POP3_CLIENT_ERROR_CONSTANT | 0xA) /* Server responds to Client command with -ERR. */   
+#define NX_POP3_FAILED_PACKET_EXTRACTION     (NX_POP3_CLIENT_ERROR_CONSTANT | 0xB) /* Mail data extraction from chained packets fails. */   
+#define NX_POP3_MAIL_BUFFER_OVERRUN          (NX_POP3_CLIENT_ERROR_CONSTANT | 0xC) /* Mail data extraction has filled up mail buffer before extraction complete. */   
+#define NX_POP3_PARAM_BUFFER_OVERRUN         (NX_POP3_CLIENT_ERROR_CONSTANT | 0xD) /* Client parameter (e.g. username/password) over runs memory. */   
+#define NX_POP3_MAIL_SPOOL_ERROR             (NX_POP3_CLIENT_ERROR_CONSTANT | 0xE) /* Client mail spool callback is not successful. */   
+#define NX_POP3_NULL_CURRENT_MAIL            (NX_POP3_CLIENT_ERROR_CONSTANT | 0xF) /* Client session current mail instance is null. */   
 
 
-#define NX_POP3_SERVER_ERROR_CONSTANT             0xC0
+#define NX_POP3_SERVER_ERROR_CONSTANT             0xC0  
 
 #define NX_POP3_SERVER_PARAM_ERROR           (NX_POP3_SERVER_ERROR_CONSTANT | 0x1) /* Invalid non pointer parameter passed    */
 #define NX_POP3_ERROR_MAILDROP_NOT_FOUND     (NX_POP3_SERVER_ERROR_CONSTANT | 0x2) /* No maildrop found for current session Client. */
@@ -141,7 +141,7 @@ extern   "C" {
 /* Max size for Client command and Server reply text. */
 
 #define NX_POP3_MAX_SERVER_REPLY            512
-#define NX_POP3_MAX_CLIENT_COMMAND          150
+#define NX_POP3_MAX_CLIENT_COMMAND          150  
 
 /* Server replies */
 #define NX_POP3_POSITIVE_STATUS              "+OK"
@@ -168,13 +168,13 @@ extern   "C" {
 #define NX_POP3_COMMAND_RSET                "RSET"
 #define NX_POP3_COMMAND_NOOP                "NOOP"
 
-/* POP3 Session states enumerated.  */
-
+/* POP3 Session states enumerated.  */      
+                                             
 typedef enum  NX_POP3_SESSION_STATE_ENUM
 {
 
-    NX_POP3_SESSION_STATE_NONE,
-    NX_POP3_SESSION_STATE_AUTHORIZATION,
+    NX_POP3_SESSION_STATE_NONE,           
+    NX_POP3_SESSION_STATE_AUTHORIZATION, 
     NX_POP3_SESSION_STATE_TRANSACTION,
     NX_POP3_SESSION_STATE_UPDATE
 

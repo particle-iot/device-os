@@ -12,13 +12,15 @@ LIB_DIRS += $(dir $(LIB_DEPS))
 
 export COMPILE_LTO=y
 
+export BOOTLOADER_MODULE=1
+
 include ../build/platform-id.mk
 
 # Target this makefile is building.
 ifeq ("$(ARCH)","gcc")
 TARGET=none
 else
-TARGET=elf bin hex size
+TARGET=elf bin hex size lst
 endif
 
 

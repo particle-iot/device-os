@@ -13,6 +13,7 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/flash_mal.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usb_bsp.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usbd_usr.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usbd_composite.c
+CSRC += $(TARGET_SPARK_SRC_PATH)/system_flags_impl.c
 # Moved to hal, since the same symbols are also defined in the bootloader
 # CSRC += $(TARGET_SPARK_SRC_PATH)/usbd_desc.c
 ifeq ("$(PLATFORM_ID)","5")
@@ -32,9 +33,7 @@ CSRC += $(TARGET_SPARK_SRC_PATH)/usbd_mcdc.c
 CSRC += $(TARGET_SPARK_SRC_PATH)/usbd_mhid.c
 
 # C++ source files included in this build.
-ifeq ("$(PLATFORM_ID)","10")
-CPPSRC += $(TARGET_SPARK_SRC_PATH)/dcd_flash_impl.cpp
-endif
+CPPSRC +=
 
 # ASM source files included in this build.
 ASRC +=

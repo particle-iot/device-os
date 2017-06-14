@@ -1,20 +1,20 @@
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*            Copyright (c) 1996-2012 by Express Logic Inc.               */ 
+/*                                                                        */ 
+/*  This software is copyrighted by and is the sole property of Express   */ 
+/*  Logic, Inc.  All rights, title, ownership, or other interests         */ 
+/*  in the software remain the property of Express Logic, Inc.  This      */ 
+/*  software may only be used in accordance with the corresponding        */ 
+/*  license agreement.  Any unauthorized use, duplication, transmission,  */ 
+/*  distribution, or disclosure of this software is expressly forbidden.  */ 
 /*                                                                        */
-/*            Copyright (c) 1996-2012 by Express Logic Inc.               */
-/*                                                                        */
-/*  This software is copyrighted by and is the sole property of Express   */
-/*  Logic, Inc.  All rights, title, ownership, or other interests         */
-/*  in the software remain the property of Express Logic, Inc.  This      */
-/*  software may only be used in accordance with the corresponding        */
-/*  license agreement.  Any unauthorized use, duplication, transmission,  */
-/*  distribution, or disclosure of this software is expressly forbidden.  */
-/*                                                                        */
-/*  This Copyright notice may not be removed or modified without prior    */
-/*  written consent of Express Logic, Inc.                                */
-/*                                                                        */
-/*  Express Logic, Inc. reserves the right to modify this software        */
-/*  without notice.                                                       */
-/*                                                                        */
+/*  This Copyright notice may not be removed or modified without prior    */ 
+/*  written consent of Express Logic, Inc.                                */ 
+/*                                                                        */ 
+/*  Express Logic, Inc. reserves the right to modify this software        */ 
+/*  without notice.                                                       */ 
+/*                                                                        */ 
 /*  Express Logic, Inc.                     info@expresslogic.com         */
 /*  11423 West Bernardo Court               http://www.expresslogic.com   */
 /*  San Diego, CA  92127                                                  */
@@ -24,7 +24,7 @@
 
 /**************************************************************************/
 /**************************************************************************/
-/**                                                                       */
+/**                                                                       */ 
 /** ThreadX Component                                                     */
 /**                                                                       */
 /**   Application Interface (API)                                         */
@@ -33,70 +33,70 @@
 /**************************************************************************/
 
 
-/**************************************************************************/
-/*                                                                        */
-/*  APPLICATION INTERFACE DEFINITION                       RELEASE        */
-/*                                                                        */
-/*    tx_api.h                                            PORTABLE C      */
-/*                                                           5.6          */
-/*  AUTHOR                                                                */
-/*                                                                        */
-/*    William E. Lamie, Express Logic, Inc.                               */
-/*                                                                        */
-/*  DESCRIPTION                                                           */
-/*                                                                        */
-/*    This file defines the basic Application Interface (API) to the      */
-/*    high-performance ThreadX real-time kernel.  All service prototypes  */
-/*    and data structure definitions are defined in this file.            */
-/*    Please note that basic data type definitions and other architecture-*/
-/*    specific information is contained in the file tx_port.h.            */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
-/*    DATE              NAME                      DESCRIPTION             */
-/*                                                                        */
-/*  12-12-2005     William E. Lamie         Initial Version 5.0           */
-/*  04-02-2007     William E. Lamie         Modified comment(s), and      */
-/*                                            replaced UL constant        */
-/*                                            modifier with ULONG cast,   */
-/*                                            resulting in version 5.1    */
-/*  12-12-2008     William E. Lamie         Modified comment(s), and      */
-/*                                            added trace constants,      */
-/*                                            resulting in version 5.2    */
-/*  07-04-2009     William E. Lamie         Modified comment(s), and      */
-/*                                            changed the start of user   */
-/*                                            trace events to 4096,       */
-/*                                            resulting in version 5.3    */
-/*  12-12-2009     William E. Lamie         Modified comment(s), changed  */
-/*                                            the definition of TX_NULL   */
-/*                                            to a pointer type, added    */
-/*                                            TX_MEMSET macro, modified   */
-/*                                            priority-inheritance struct */
-/*                                            members in TX_THREAD,changed*/
-/*                                            user event comments, added  */
-/*                                            callback for tracking thread*/
-/*                                            scheduling, merged event    */
-/*                                            logging and MULTI run-time  */
-/*                                            error checking support,     */
-/*                                            changed type of all internal*/
-/*                                            structure members used for  */
-/*                                            counting to UINT, and added */
-/*                                            safety critical exception   */
-/*                                            logic, resulting in         */
-/*                                            version 5.4                 */
-/*  07-15-2011     William E. Lamie         Modified comment(s), added    */
-/*                                            defines for major/minor     */
-/*                                            version information, and    */
-/*                                            removed unused original     */
-/*                                            threshold mutex structure   */
-/*                                            member, resulting in        */
-/*                                            version 5.5                 */
-/*  11-01-2012     William E. Lamie         Modified comment(s), and      */
-/*                                            modified minor version      */
-/*                                            define, resulting in        */
-/*                                            version 5.6                 */
-/*                                                                        */
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*  APPLICATION INTERFACE DEFINITION                       RELEASE        */ 
+/*                                                                        */ 
+/*    tx_api.h                                            PORTABLE C      */ 
+/*                                                           5.6          */ 
+/*  AUTHOR                                                                */ 
+/*                                                                        */ 
+/*    William E. Lamie, Express Logic, Inc.                               */ 
+/*                                                                        */ 
+/*  DESCRIPTION                                                           */ 
+/*                                                                        */ 
+/*    This file defines the basic Application Interface (API) to the      */ 
+/*    high-performance ThreadX real-time kernel.  All service prototypes  */ 
+/*    and data structure definitions are defined in this file.            */ 
+/*    Please note that basic data type definitions and other architecture-*/ 
+/*    specific information is contained in the file tx_port.h.            */ 
+/*                                                                        */ 
+/*  RELEASE HISTORY                                                       */ 
+/*                                                                        */ 
+/*    DATE              NAME                      DESCRIPTION             */ 
+/*                                                                        */ 
+/*  12-12-2005     William E. Lamie         Initial Version 5.0           */ 
+/*  04-02-2007     William E. Lamie         Modified comment(s), and      */ 
+/*                                            replaced UL constant        */ 
+/*                                            modifier with ULONG cast,   */ 
+/*                                            resulting in version 5.1    */ 
+/*  12-12-2008     William E. Lamie         Modified comment(s), and      */ 
+/*                                            added trace constants,      */ 
+/*                                            resulting in version 5.2    */ 
+/*  07-04-2009     William E. Lamie         Modified comment(s), and      */ 
+/*                                            changed the start of user   */ 
+/*                                            trace events to 4096,       */ 
+/*                                            resulting in version 5.3    */ 
+/*  12-12-2009     William E. Lamie         Modified comment(s), changed  */ 
+/*                                            the definition of TX_NULL   */ 
+/*                                            to a pointer type, added    */ 
+/*                                            TX_MEMSET macro, modified   */ 
+/*                                            priority-inheritance struct */ 
+/*                                            members in TX_THREAD,changed*/ 
+/*                                            user event comments, added  */ 
+/*                                            callback for tracking thread*/ 
+/*                                            scheduling, merged event    */ 
+/*                                            logging and MULTI run-time  */ 
+/*                                            error checking support,     */ 
+/*                                            changed type of all internal*/ 
+/*                                            structure members used for  */ 
+/*                                            counting to UINT, and added */ 
+/*                                            safety critical exception   */ 
+/*                                            logic, resulting in         */ 
+/*                                            version 5.4                 */ 
+/*  07-15-2011     William E. Lamie         Modified comment(s), added    */ 
+/*                                            defines for major/minor     */ 
+/*                                            version information, and    */ 
+/*                                            removed unused original     */ 
+/*                                            threshold mutex structure   */ 
+/*                                            member, resulting in        */ 
+/*                                            version 5.5                 */ 
+/*  11-01-2012     William E. Lamie         Modified comment(s), and      */ 
+/*                                            modified minor version      */ 
+/*                                            define, resulting in        */ 
+/*                                            version 5.6                 */ 
+/*                                                                        */ 
+/**************************************************************************/ 
 
 #ifndef TX_API_H
 #define TX_API_H
@@ -121,9 +121,9 @@ extern   "C" {
 /* Define basic constants for the ThreadX kernel.  */
 
 
-/* Define the major/minor version information that can be used by the application
+/* Define the major/minor version information that can be used by the application 
    and the ThreadX source as well.  */
-
+   
 #define __PRODUCT_THREADX__
 #define __THREADX_MAJOR_VERSION         5
 #define __THREADX_MINOR_VERSION         6
@@ -163,7 +163,7 @@ extern   "C" {
 #define TX_READY                        0
 #define TX_COMPLETED                    1
 #define TX_TERMINATED                   2
-#define TX_SUSPENDED                    3
+#define TX_SUSPENDED                    3   
 #define TX_SLEEP                        4
 #define TX_QUEUE_SUSP                   5
 #define TX_SEMAPHORE_SUSP               6
@@ -224,42 +224,42 @@ extern   "C" {
 #endif
 
 
-/* Event numbers 0 through 4095 are reserved by Express Logic. Specific event assignments are:
-
-                                ThreadX events:     1-199
+/* Event numbers 0 through 4095 are reserved by Express Logic. Specific event assignments are: 
+                                
+                                ThreadX events:     1-199 
                                 FileX events:       200-299
                                 NetX events:        300-599
                                 USBX events:        600-999
-
-   User-defined event numbers start at 4096 and continue through 65535, as defined by the constants
-   TX_TRACE_USER_EVENT_START and TX_TRACE_USER_EVENT_END, respectively. User events should be based
+   
+   User-defined event numbers start at 4096 and continue through 65535, as defined by the constants 
+   TX_TRACE_USER_EVENT_START and TX_TRACE_USER_EVENT_END, respectively. User events should be based 
    on these constants in case the user event number assignment is changed in future releases.  */
 
-#define TX_TRACE_USER_EVENT_START       4096            /* I1, I2, I3, I4 are user defined           */
-#define TX_TRACE_USER_EVENT_END         65535           /* I1, I2, I3, I4 are user defined           */
+#define TX_TRACE_USER_EVENT_START       4096            /* I1, I2, I3, I4 are user defined           */  
+#define TX_TRACE_USER_EVENT_END         65535           /* I1, I2, I3, I4 are user defined           */ 
 
 
 /* Define event filters that can be used to selectively disable certain events or groups of events.  */
 
 #define TX_TRACE_ALL_EVENTS             0x000007FF      /* All ThreadX events                        */
-#define TX_TRACE_INTERNAL_EVENTS        0x00000001      /* ThreadX internal events                   */
-#define TX_TRACE_BLOCK_POOL_EVENTS      0x00000002      /* ThreadX Block Pool events                 */
-#define TX_TRACE_BYTE_POOL_EVENTS       0x00000004      /* ThreadX Byte Pool events                  */
-#define TX_TRACE_EVENT_FLAGS_EVENTS     0x00000008      /* ThreadX Event Flags events                */
-#define TX_TRACE_INTERRUPT_CONTROL_EVENT 0x00000010     /* ThreadX Interrupt Control events          */
-#define TX_TRACE_MUTEX_EVENTS           0x00000020      /* ThreadX Mutex events                      */
-#define TX_TRACE_QUEUE_EVENTS           0x00000040      /* ThreadX Queue events                      */
+#define TX_TRACE_INTERNAL_EVENTS        0x00000001      /* ThreadX internal events                   */ 
+#define TX_TRACE_BLOCK_POOL_EVENTS      0x00000002      /* ThreadX Block Pool events                 */ 
+#define TX_TRACE_BYTE_POOL_EVENTS       0x00000004      /* ThreadX Byte Pool events                  */ 
+#define TX_TRACE_EVENT_FLAGS_EVENTS     0x00000008      /* ThreadX Event Flags events                */ 
+#define TX_TRACE_INTERRUPT_CONTROL_EVENT 0x00000010     /* ThreadX Interrupt Control events          */ 
+#define TX_TRACE_MUTEX_EVENTS           0x00000020      /* ThreadX Mutex events                      */ 
+#define TX_TRACE_QUEUE_EVENTS           0x00000040      /* ThreadX Queue events                      */ 
 #define TX_TRACE_SEMAPHORE_EVENTS       0x00000080      /* ThreadX Semaphore events                  */
-#define TX_TRACE_THREAD_EVENTS          0x00000100      /* ThreadX Thread events                     */
-#define TX_TRACE_TIME_EVENTS            0x00000200      /* ThreadX Time events                       */
-#define TX_TRACE_TIMER_EVENTS           0x00000400      /* ThreadX Timer events                      */
-#define TX_TRACE_USER_EVENTS            0x80000000      /* ThreadX User Events                       */
+#define TX_TRACE_THREAD_EVENTS          0x00000100      /* ThreadX Thread events                     */ 
+#define TX_TRACE_TIME_EVENTS            0x00000200      /* ThreadX Time events                       */ 
+#define TX_TRACE_TIMER_EVENTS           0x00000400      /* ThreadX Timer events                      */ 
+#define TX_TRACE_USER_EVENTS            0x80000000      /* ThreadX User Events                       */ 
 
 
 /* Define the control block definitions for all system objects.  */
 
 
-/* Define the basic timer management structures.  These are the structures
+/* Define the basic timer management structures.  These are the structures 
    used to manage thread sleep, timeout, and user timer requests.  */
 
 /* Define the common internal timer control block.  */
@@ -304,7 +304,7 @@ typedef struct TX_TIMER_STRUCT
     TX_TIMER_INTERNAL   tx_timer_internal;
 
     /* Define the pointers for the created list.  */
-    struct TX_TIMER_STRUCT
+    struct TX_TIMER_STRUCT  
                         *tx_timer_created_next,
                         *tx_timer_created_previous;
 
@@ -336,7 +336,7 @@ typedef struct TX_TIMER_STRUCT
 typedef struct TX_THREAD_STRUCT
 {
     /* The first section of the control block contains critical
-       information that is referenced by the port-specific
+       information that is referenced by the port-specific 
        assembly language code.  Any changes in this section could
        necessitate changes in the assembly language.  */
 
@@ -349,45 +349,45 @@ typedef struct TX_THREAD_STRUCT
     ULONG               tx_thread_time_slice;           /* Current time-slice       */
     ULONG               tx_thread_new_time_slice;       /* New time-slice           */
 
-    /* Define pointers to the next and previous ready threads.  */
-    struct TX_THREAD_STRUCT
-                        *tx_thread_ready_next,
+    /* Define pointers to the next and previous ready threads.  */ 
+    struct TX_THREAD_STRUCT 
+                        *tx_thread_ready_next,      
                         *tx_thread_ready_previous;
 
-    /***************************************************************/
+    /***************************************************************/  
 
-    /* Define the first port extension in the thread control block. This
+    /* Define the first port extension in the thread control block. This 
        is typically defined to whitespace or a pointer type in tx_port.h.  */
     TX_THREAD_EXTENSION_0
-
+         
     const CHAR          *tx_thread_name;                /* Pointer to thread's name     */
     UINT                tx_thread_priority;             /* Priority of thread (0-1023)  */
     UINT                tx_thread_state;                /* Thread's execution state     */
     UINT                tx_thread_delayed_suspend;      /* Delayed suspend flag         */
     UINT                tx_thread_suspending;           /* Thread suspending flag       */
     UINT                tx_thread_preempt_threshold;    /* Preemption threshold         */
-
-    /* Define the thread schedule hook. The usage of this is port/application specific,
+    
+    /* Define the thread schedule hook. The usage of this is port/application specific, 
        but when used, the function pointer designated is called whenever the thread is
        scheduled and unscheduled.  */
     VOID                (*tx_thread_schedule_hook)(struct TX_THREAD_STRUCT *, ULONG);
 
     /* Nothing after this point is referenced by the target-specific
-       assembly language.  Hence, information after this point can
-       be added to the control block providing the complete system
+       assembly language.  Hence, information after this point can 
+       be added to the control block providing the complete system 
        is recompiled.  */
 
     /* Define the thread's entry point and input parameter.  */
     VOID                (*tx_thread_entry)(ULONG);
     ULONG               tx_thread_entry_parameter;
 
-    /* Define the thread's timer block.   This is used for thread
+    /* Define the thread's timer block.   This is used for thread 
        sleep and timeout requests.  */
     TX_TIMER_INTERNAL   tx_thread_timer;
 
     /* Define the thread's cleanup function and associated data.  This
-       is used to cleanup various data structures when a thread
-       suspension is lifted or terminated either by the user or
+       is used to cleanup various data structures when a thread 
+       suspension is lifted or terminated either by the user or 
        a timeout.  */
     VOID                (*tx_thread_suspend_cleanup)(struct TX_THREAD_STRUCT *);
     VOID                *tx_thread_suspend_control_block;
@@ -399,17 +399,17 @@ typedef struct TX_THREAD_STRUCT
     UINT                tx_thread_suspend_option;
     UINT                tx_thread_suspend_status;
 
-    /* Define the second port extension in the thread control block. This
+    /* Define the second port extension in the thread control block. This 
        is typically defined to whitespace or a pointer type in tx_port.h.  */
     TX_THREAD_EXTENSION_1
 
-    /* Define pointers to the next and previous threads in the
+    /* Define pointers to the next and previous threads in the 
        created list.  */
-    struct TX_THREAD_STRUCT
-                        *tx_thread_created_next,
+    struct TX_THREAD_STRUCT 
+                        *tx_thread_created_next,    
                         *tx_thread_created_previous;
 
-    /* Define the third port extension in the thread control block. This
+    /* Define the third port extension in the thread control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_THREAD_EXTENSION_2
 
@@ -417,10 +417,10 @@ typedef struct TX_THREAD_STRUCT
     VOID                *tx_thread_filex_ptr;
 
     /* Define the priority inheritance variables. These will be used
-       to manage priority inheritance changes applied to this thread
+       to manage priority inheritance changes applied to this thread 
        as a result of mutex get operations.  */
-    UINT                tx_thread_user_priority;
-    UINT                tx_thread_user_preempt_threshold;
+    UINT                tx_thread_user_priority;            
+    UINT                tx_thread_user_preempt_threshold;   
     UINT                tx_thread_inherit_priority;
     UINT                tx_thread_owned_mutex_count;
     struct TX_MUTEX_STRUCT
@@ -434,7 +434,7 @@ typedef struct TX_THREAD_STRUCT
     /* Define the number of times this thread suspends.  */
     ULONG               tx_thread_performance_suspend_count;
 
-    /* Define the number of times this thread is preempted by calling
+    /* Define the number of times this thread is preempted by calling 
        a ThreadX API service.  */
     ULONG               tx_thread_performance_solicited_preemption_count;
 
@@ -446,7 +446,7 @@ typedef struct TX_THREAD_STRUCT
     ULONG               tx_thread_performance_priority_inversion_count;
 
     /* Define the last thread pointer to preempt this thread.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT 
                         *tx_thread_performance_last_preempting_thread;
 
     /* Define the total number of times this thread was time-sliced.  */
@@ -469,18 +469,18 @@ typedef struct TX_THREAD_STRUCT
 
 #ifndef TX_DISABLE_NOTIFY_CALLBACKS
 
-    /* Define the application callback routine used to notify the application when
+    /* Define the application callback routine used to notify the application when 
        the thread is entered or exits.  */
     VOID                (*tx_thread_entry_exit_notify)(struct TX_THREAD_STRUCT *, UINT);
 #endif
 
-    /* Define the fourth port extension in the thread control block. This
+    /* Define the fourth port extension in the thread control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_THREAD_EXTENSION_3
 
-    /* Define the user extension field.  This typically is defined
-       to white space, but some ports of ThreadX may need to have
-       additional fields in the thread control block.  This is
+    /* Define the user extension field.  This typically is defined 
+       to white space, but some ports of ThreadX may need to have 
+       additional fields in the thread control block.  This is 
        defined in the file tx_port.h.  */
     TX_THREAD_USER_EXTENSION
 
@@ -518,13 +518,13 @@ typedef struct TX_BLOCK_POOL_STRUCT
 
     /* Define the block pool suspension list head along with a count of
        how many threads are suspended.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT  
                         *tx_block_pool_suspension_list;
     UINT                tx_block_pool_suspended_count;
 
     /* Define the created list next and previous pointers.  */
-    struct TX_BLOCK_POOL_STRUCT
-                        *tx_block_pool_created_next,
+    struct TX_BLOCK_POOL_STRUCT 
+                        *tx_block_pool_created_next,    
                         *tx_block_pool_created_previous;
 
 #ifdef TX_BLOCK_POOL_ENABLE_PERFORMANCE_INFO
@@ -542,7 +542,7 @@ typedef struct TX_BLOCK_POOL_STRUCT
     ULONG               tx_block_pool_performance_timeout_count;
 #endif
 
-    /* Define the port extension in the block pool control block. This
+    /* Define the port extension in the block pool control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_BLOCK_POOL_EXTENSION
 
@@ -582,18 +582,18 @@ typedef struct TX_BYTE_POOL_STRUCT
     /* This is used to mark the owner of the byte memory pool during
        a search.  If this value changes during the search, the local search
        pointer must be reset.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT  
                         *tx_byte_pool_owner;
 
     /* Define the byte pool suspension list head along with a count of
        how many threads are suspended.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT  
                         *tx_byte_pool_suspension_list;
     UINT                tx_byte_pool_suspended_count;
 
     /* Define the created list next and previous pointers.  */
-    struct TX_BYTE_POOL_STRUCT
-                        *tx_byte_pool_created_next,
+    struct TX_BYTE_POOL_STRUCT 
+                        *tx_byte_pool_created_next,    
                         *tx_byte_pool_created_previous;
 
 #ifdef TX_BYTE_POOL_ENABLE_PERFORMANCE_INFO
@@ -621,7 +621,7 @@ typedef struct TX_BYTE_POOL_STRUCT
     ULONG               tx_byte_pool_performance_timeout_count;
 #endif
 
-    /* Define the port extension in the byte pool control block. This
+    /* Define the port extension in the byte pool control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_BYTE_POOL_EXTENSION
 
@@ -639,7 +639,7 @@ typedef struct TX_EVENT_FLAGS_GROUP_STRUCT
     /* Define the event flags group's name.  */
     const CHAR          *tx_event_flags_group_name;
 
-    /* Define the actual current event flags in this group. A zero in a
+    /* Define the actual current event flags in this group. A zero in a 
        particular bit indicates the event flag is not set.  */
     ULONG               tx_event_flags_group_current;
 
@@ -649,13 +649,13 @@ typedef struct TX_EVENT_FLAGS_GROUP_STRUCT
 
     /* Define the event flags group suspension list head along with a count of
        how many threads are suspended.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT  
                         *tx_event_flags_group_suspension_list;
     UINT                tx_event_flags_group_suspended_count;
 
     /* Define the created list next and previous pointers.  */
-    struct TX_EVENT_FLAGS_GROUP_STRUCT
-                        *tx_event_flags_group_created_next,
+    struct TX_EVENT_FLAGS_GROUP_STRUCT 
+                        *tx_event_flags_group_created_next,    
                         *tx_event_flags_group_created_previous;
 
     /* Define the delayed clearing event flags.  */
@@ -678,12 +678,12 @@ typedef struct TX_EVENT_FLAGS_GROUP_STRUCT
 
 #ifndef TX_DISABLE_NOTIFY_CALLBACKS
 
-    /* Define the application callback routine used to notify the application when
+    /* Define the application callback routine used to notify the application when 
        an event flag is set.  */
     VOID                (*tx_event_flags_group_set_notify)(struct TX_EVENT_FLAGS_GROUP_STRUCT *);
 #endif
 
-    /* Define the port extension in the event flags group control block. This
+    /* Define the port extension in the event flags group control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_EVENT_FLAGS_GROUP_EXTENSION
 
@@ -717,13 +717,13 @@ typedef struct TX_MUTEX_STRUCT
 
     /* Define the mutex suspension list head along with a count of
        how many threads are suspended.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT  
                         *tx_mutex_suspension_list;
     UINT                tx_mutex_suspended_count;
 
     /* Define the created list next and previous pointers.  */
-    struct TX_MUTEX_STRUCT
-                        *tx_mutex_created_next,
+    struct TX_MUTEX_STRUCT 
+                        *tx_mutex_created_next,    
                         *tx_mutex_created_previous;
 
     /* Define the priority of the highest priority thread waiting for
@@ -731,8 +731,8 @@ typedef struct TX_MUTEX_STRUCT
     UINT                tx_mutex_highest_priority_waiting;
 
     /* Define the owned list next and previous pointers.  */
-    struct TX_MUTEX_STRUCT
-                        *tx_mutex_owned_next,
+    struct TX_MUTEX_STRUCT 
+                        *tx_mutex_owned_next,    
                         *tx_mutex_owned_previous;
 
 #ifdef TX_MUTEX_ENABLE_PERFORMANCE_INFO
@@ -756,7 +756,7 @@ typedef struct TX_MUTEX_STRUCT
     ULONG               tx_mutex_performance_priority_inheritance_count;
 #endif
 
-    /* Define the port extension in the mutex control block. This
+    /* Define the port extension in the mutex control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_MUTEX_EXTENSION
 
@@ -785,7 +785,7 @@ typedef struct TX_QUEUE_STRUCT
     UINT                tx_queue_enqueued;
     UINT                tx_queue_available_storage;
 
-    /* Define pointers that represent the start and end for the queue's
+    /* Define pointers that represent the start and end for the queue's 
        message area.  */
     ULONG               *tx_queue_start;
     ULONG               *tx_queue_end;
@@ -797,13 +797,13 @@ typedef struct TX_QUEUE_STRUCT
 
     /* Define the queue suspension list head along with a count of
        how many threads are suspended.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT  
                         *tx_queue_suspension_list;
     UINT                tx_queue_suspended_count;
 
     /* Define the created list next and previous pointers.  */
-    struct TX_QUEUE_STRUCT
-                        *tx_queue_created_next,
+    struct TX_QUEUE_STRUCT 
+                        *tx_queue_created_next,    
                         *tx_queue_created_previous;
 
 #ifdef TX_QUEUE_ENABLE_PERFORMANCE_INFO
@@ -830,12 +830,12 @@ typedef struct TX_QUEUE_STRUCT
 
 #ifndef TX_DISABLE_NOTIFY_CALLBACKS
 
-    /* Define the application callback routine used to notify the application when
+    /* Define the application callback routine used to notify the application when 
        the a message is sent to the queue.  */
     VOID                (*tx_queue_send_notify)(struct TX_QUEUE_STRUCT *);
 #endif
 
-    /* Define the port extension in the queue control block. This
+    /* Define the port extension in the queue control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_QUEUE_EXTENSION
 
@@ -859,13 +859,13 @@ typedef struct TX_SEMAPHORE_STRUCT
 
     /* Define the semaphore suspension list head along with a count of
        how many threads are suspended.  */
-    struct TX_THREAD_STRUCT
+    struct TX_THREAD_STRUCT  
                         *tx_semaphore_suspension_list;
     UINT                tx_semaphore_suspended_count;
 
     /* Define the created list next and previous pointers.  */
-    struct TX_SEMAPHORE_STRUCT
-                        *tx_semaphore_created_next,
+    struct TX_SEMAPHORE_STRUCT 
+                        *tx_semaphore_created_next,    
                         *tx_semaphore_created_previous;
 
 #ifdef TX_SEMAPHORE_ENABLE_PERFORMANCE_INFO
@@ -885,29 +885,29 @@ typedef struct TX_SEMAPHORE_STRUCT
 
 #ifndef TX_DISABLE_NOTIFY_CALLBACKS
 
-    /* Define the application callback routine used to notify the application when
+    /* Define the application callback routine used to notify the application when 
        the a semaphore is put.  */
     VOID                (*tx_semaphore_put_notify)(struct TX_SEMAPHORE_STRUCT *);
 #endif
 
-    /* Define the port extension in the semaphore control block. This
+    /* Define the port extension in the semaphore control block. This 
        is typically defined to whitespace in tx_port.h.  */
     TX_SEMAPHORE_EXTENSION
 
 } TX_SEMAPHORE;
 
 
-/* Define the system API mappings based on the error checking
-   selected by the user.  Note: this section is only applicable to
+/* Define the system API mappings based on the error checking 
+   selected by the user.  Note: this section is only applicable to 
    application source code, hence the conditional that turns off this
    stuff when the include file is processed by the ThreadX source. */
 
 #ifndef TX_SOURCE_CODE
 
 
-/* Determine if error checking is desired.  If so, map API functions
+/* Determine if error checking is desired.  If so, map API functions 
    to the appropriate error checking front-ends.  Otherwise, map API
-   functions to the core functions that actually perform the work.
+   functions to the core functions that actually perform the work. 
    Note: error checking is enabled by default.  */
 
 #ifdef TX_DISABLE_ERROR_CHECKING
@@ -1294,7 +1294,7 @@ UINT        _txe_block_pool_create(TX_BLOCK_POOL *pool_ptr, const CHAR *name_ptr
 #endif
 UINT        tx_block_pool_delete(TX_BLOCK_POOL *pool_ptr);
 UINT        tx_block_pool_info_get(TX_BLOCK_POOL *pool_ptr, const CHAR **name, ULONG *available_blocks,
-                    ULONG *total_blocks, TX_THREAD **first_suspended,
+                    ULONG *total_blocks, TX_THREAD **first_suspended, 
                     ULONG *suspended_count, TX_BLOCK_POOL **next_pool);
 UINT        tx_block_pool_performance_info_get(TX_BLOCK_POOL *pool_ptr, ULONG *allocates, ULONG *releases,
                     ULONG *suspensions, ULONG *timeouts);
@@ -1319,7 +1319,7 @@ UINT        _txe_byte_pool_create(TX_BYTE_POOL *pool_ptr, const CHAR *name_ptr, 
 #endif
 UINT        tx_byte_pool_delete(TX_BYTE_POOL *pool_ptr);
 UINT        tx_byte_pool_info_get(TX_BYTE_POOL *pool_ptr, const CHAR **name, ULONG *available_bytes,
-                    ULONG *fragments, TX_THREAD **first_suspended,
+                    ULONG *fragments, TX_THREAD **first_suspended, 
                     ULONG *suspended_count, TX_BYTE_POOL **next_pool);
 UINT        tx_byte_pool_performance_info_get(TX_BYTE_POOL *pool_ptr, ULONG *allocates, ULONG *releases,
                     ULONG *fragments_searched, ULONG *merges, ULONG *splits, ULONG *suspensions, ULONG *timeouts);
@@ -1341,13 +1341,13 @@ UINT        tx_event_flags_delete(TX_EVENT_FLAGS_GROUP *group_ptr);
 UINT        tx_event_flags_get(TX_EVENT_FLAGS_GROUP *group_ptr, ULONG requested_flags,
                     UINT get_option, ULONG *actual_flags_ptr, ULONG wait_option);
 UINT        tx_event_flags_info_get(TX_EVENT_FLAGS_GROUP *group_ptr, const CHAR **name, ULONG *current_flags,
-                    TX_THREAD **first_suspended, ULONG *suspended_count,
+                    TX_THREAD **first_suspended, ULONG *suspended_count, 
                     TX_EVENT_FLAGS_GROUP **next_group);
 UINT        tx_event_flags_performance_info_get(TX_EVENT_FLAGS_GROUP *group_ptr, ULONG *sets, ULONG *gets,
                     ULONG *suspensions, ULONG *timeouts);
 UINT        tx_event_flags_performance_system_info_get(ULONG *sets, ULONG *gets,
                     ULONG *suspensions, ULONG *timeouts);
-UINT        tx_event_flags_set(TX_EVENT_FLAGS_GROUP *group_ptr, ULONG flags_to_set,
+UINT        tx_event_flags_set(TX_EVENT_FLAGS_GROUP *group_ptr, ULONG flags_to_set, 
                     UINT set_option);
 UINT        tx_event_flags_set_notify(TX_EVENT_FLAGS_GROUP *group_ptr, VOID (*events_set_notify)(TX_EVENT_FLAGS_GROUP *));
 
@@ -1365,7 +1365,7 @@ UINT        _txe_mutex_create(TX_MUTEX *mutex_ptr, const CHAR *name_ptr, UINT in
 UINT        tx_mutex_delete(TX_MUTEX *mutex_ptr);
 UINT        tx_mutex_get(TX_MUTEX *mutex_ptr, ULONG wait_option);
 UINT        tx_mutex_info_get(TX_MUTEX *mutex_ptr, const CHAR **name, ULONG *count, TX_THREAD **owner,
-                    TX_THREAD **first_suspended, ULONG *suspended_count,
+                    TX_THREAD **first_suspended, ULONG *suspended_count, 
                     TX_MUTEX **next_mutex);
 UINT        tx_mutex_performance_info_get(TX_MUTEX *mutex_ptr, ULONG *puts, ULONG *gets,
                     ULONG *suspensions, ULONG *timeouts, ULONG *inversions, ULONG *inheritances);
@@ -1413,7 +1413,7 @@ UINT        _txe_semaphore_create(TX_SEMAPHORE *semaphore_ptr, const CHAR *name_
 UINT        tx_semaphore_delete(TX_SEMAPHORE *semaphore_ptr);
 UINT        tx_semaphore_get(TX_SEMAPHORE *semaphore_ptr, ULONG wait_option);
 UINT        tx_semaphore_info_get(TX_SEMAPHORE *semaphore_ptr, const CHAR **name, ULONG *current_value,
-                    TX_THREAD **first_suspended, ULONG *suspended_count,
+                    TX_THREAD **first_suspended, ULONG *suspended_count, 
                     TX_SEMAPHORE **next_semaphore);
 UINT        tx_semaphore_performance_info_get(TX_SEMAPHORE *semaphore_ptr, ULONG *puts, ULONG *gets,
                     ULONG *suspensions, ULONG *timeouts);
@@ -1426,21 +1426,21 @@ UINT        tx_semaphore_put_notify(TX_SEMAPHORE *semaphore_ptr, VOID (*semaphor
 #ifdef TX_DISABLE_ERROR_CHECKING
 UINT        _tx_thread_create(TX_THREAD *thread_ptr, const CHAR *name_ptr,
                     VOID (*entry_function)(ULONG), ULONG entry_input,
-                    VOID *stack_start, ULONG stack_size,
-                    UINT priority, UINT preempt_threshold,
+                    VOID *stack_start, ULONG stack_size, 
+                    UINT priority, UINT preempt_threshold, 
                     ULONG time_slice, UINT auto_start);
 #else
 #ifdef TX_ENABLE_MULTI_ERROR_CHECKING
 UINT        _txr_thread_create(TX_THREAD *thread_ptr, const CHAR *name_ptr,
                     VOID (*entry_function)(ULONG), ULONG entry_input,
-                    VOID *stack_start, ULONG stack_size,
-                    UINT priority, UINT preempt_threshold,
+                    VOID *stack_start, ULONG stack_size, 
+                    UINT priority, UINT preempt_threshold, 
                     ULONG time_slice, UINT auto_start, UINT thread_control_block_size);
 #else
 UINT        _txe_thread_create(TX_THREAD *thread_ptr, const CHAR *name_ptr,
                     VOID (*entry_function)(ULONG), ULONG entry_input,
-                    VOID *stack_start, ULONG stack_size,
-                    UINT priority, UINT preempt_threshold,
+                    VOID *stack_start, ULONG stack_size, 
+                    UINT priority, UINT preempt_threshold, 
                     ULONG time_slice, UINT auto_start, UINT thread_control_block_size);
 #endif
 #endif
@@ -1448,9 +1448,9 @@ UINT        tx_thread_delete(TX_THREAD *thread_ptr);
 UINT        tx_thread_entry_exit_notify(TX_THREAD *thread_ptr, VOID (*thread_entry_exit_notify)(TX_THREAD *, UINT));
 TX_THREAD  *tx_thread_identify(VOID);
 UINT        tx_thread_info_get(TX_THREAD *thread_ptr, const CHAR **name, UINT *state, ULONG *run_count,
-                    UINT *priority, UINT *preemption_threshold, ULONG *time_slice,
+                    UINT *priority, UINT *preemption_threshold, ULONG *time_slice, 
                     TX_THREAD **next_thread, TX_THREAD **next_suspended_thread);
-UINT        tx_thread_performance_info_get(TX_THREAD *thread_ptr, ULONG *resumptions, ULONG *suspensions,
+UINT        tx_thread_performance_info_get(TX_THREAD *thread_ptr, ULONG *resumptions, ULONG *suspensions, 
                     ULONG *solicited_preemptions, ULONG *interrupt_preemptions, ULONG *priority_inversions,
                     ULONG *time_slices, ULONG *relinquishes, ULONG *timeouts, ULONG *wait_aborts, TX_THREAD **last_preempted_by);
 UINT        tx_thread_performance_system_info_get(ULONG *resumptions, ULONG *suspensions,
@@ -1621,7 +1621,7 @@ UINT        tx_trace_user_event_insert(ULONG event_id, ULONG info_field_1, ULONG
 #error "TX_THREAD_ENABLE_PERFORMANCE_INFO must not be defined."
 #endif
 
-/* Ensure timer performance info enable is not defined.  */
+/* Ensure timer performance info enable is not defined.  */ 
 #ifdef TX_TIMER_ENABLE_PERFORMANCE_INFO
 #error "TX_TIMER_ENABLE_PERFORMANCE_INFO must not be defined."
 #endif

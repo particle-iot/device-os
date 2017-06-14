@@ -36,8 +36,16 @@
 #include "hal_platform.h"
 #include "hal_event.h"
 #include "service_debug.h"
+#include "spark_wiring_random.h"
+#include "delay_hal.h"
+// For ATOMIC_BLOCK
+#include "spark_wiring_interrupts.h"
 
-#define OTA_CHUNK_SIZE          512
+#define OTA_CHUNK_SIZE                 (512)
+#define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
+#define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
+
+static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength);
 
 /**
  * Finds the location where a given module is stored. The module is identified
@@ -129,6 +137,15 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
                     break;
             }
         }
+
+        if (info->dependency2.module_function != MODULE_FUNCTION_NONE) {
+            if (info->dependency2.module_function == module->module_function &&
+                info->dependency2.module_index == module->module_index) {
+                valid = module->module_version >= info->dependency2.module_version;
+                if (!valid)
+                    break;
+            }
+        }
     }
     HAL_System_Info(&sysinfo, false, nullptr);
 
@@ -147,9 +164,22 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
         else {
             // deliberately not transitive, so we only check the first dependency
             // so only user->system_part_2 is checked
-            const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
-            const module_info_t* dependency = locate_module(dependency_bounds);
-            valid = dependency && (dependency->module_version>=module->dependency.module_version);
+            if (module->dependency.module_function != MODULE_FUNCTION_NONE) {
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
+                const module_info_t* dependency = locate_module(dependency_bounds);
+                valid = dependency && (dependency->module_version>=module->dependency.module_version);
+            } else {
+                valid = true;
+            }
+            // Validate dependency2
+            if (module->dependency2.module_function == MODULE_FUNCTION_NONE ||
+                (module->dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
+                valid = valid && true;
+            } else {
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index);
+                const module_info_t* dependency = locate_module(dependency_bounds);
+                valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
+            }
         }
 
         if (fullDeps && valid) {
@@ -217,6 +247,44 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
+static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength)
+{
+    hal_update_complete_t result = HAL_UPDATE_ERROR;
+    uint32_t attempt = 0;
+    do {
+        int fres = FLASH_ACCESS_RESULT_ERROR;
+        if (attempt++ > 0) {
+            ATOMIC_BLOCK() {
+                // If it's not the first flashing attempt, try with interrupts disabled
+                fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
+            }
+        } else {
+            fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
+        }
+        if (fres == FLASH_ACCESS_RESULT_OK) {
+            // Validate bootloader
+            hal_module_t module;
+            bool module_fetched = fetch_module(&module, &module_bootloader, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
+            if (module_fetched && (module.validity_checked == module.validity_result)) {
+                result = HAL_UPDATE_APPLIED;
+                break;
+            }
+        }
+
+        if (fres == FLASH_ACCESS_RESULT_BADARG) {
+            // The bootloader is still intact, for some reason the module being copied has failed some checks.
+            result = HAL_UPDATE_ERROR;
+            break;
+        }
+
+        // Random backoff
+        system_tick_t period = random(BOOTLOADER_RANDOM_BACKOFF_MIN, BOOTLOADER_RANDOM_BACKOFF_MAX);
+        LOG_DEBUG(WARN, "Failed to flash bootloader. Retrying in %lu ms", period);
+        HAL_Delay_Milliseconds(period);
+    } while ((result == HAL_UPDATE_ERROR));
+    return result;
+}
+
 int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
     hal_module_t module;
 
@@ -243,8 +311,7 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 
         // bootloader is copied directly
         if (function==MODULE_FUNCTION_BOOTLOADER) {
-            if (bootloader_update((const void*)module_ota.start_address, moduleLength+4))
-                result = HAL_UPDATE_APPLIED;
+            result = flash_bootloader(&module, moduleLength);
         }
         else
         {
@@ -272,16 +339,16 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 }
 
 void copy_dct(void* target, uint16_t offset, uint16_t length) {
-    const void* data = dct_read_app_data(offset);
-    memcpy(target, data, length);
+    dct_read_app_data_copy(offset, target, length);
 }
 
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
 	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-    const void* data = dct_read_app_data(udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET);
+    const void* data = dct_read_app_data_lock(udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET);
     parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
+    dct_read_app_data_unlock(udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET);
 }
 
 void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
@@ -305,7 +372,8 @@ void HAL_OTA_Flashed_ResetStatus(void)
 
 void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
-    fetch_device_public_key();
+    fetch_device_public_key(1);
+    fetch_device_public_key(0);
 	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 	if (udp)
 	    copy_dct(keyBuffer, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
@@ -322,9 +390,9 @@ void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
     }
 }
 
-int key_gen_random(void* p)
+int32_t key_gen_random(void* p)
 {
-    return (int)HAL_RNG_GetRandomNumber();
+    return (int32_t)HAL_RNG_GetRandomNumber();
 }
 
 int key_gen_random_block(void* handle, uint8_t* data, size_t len)
@@ -375,7 +443,8 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
         		else
         			dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
 			// refetch and rewrite public key to ensure it is valid
-			fetch_device_public_key();
+			fetch_device_public_key(1);
+            fetch_device_public_key(0);
             generated = true;
         }
         hal_notify_event(HAL_EVENT_GENERATE_DEVICE_KEY, HAL_EVENT_FLAG_STOP, nullptr);
@@ -405,9 +474,10 @@ uint16_t HAL_Set_Claim_Code(const char* code)
         char c = '\0';
         dct_write_app_data(&c, DCT_CLAIM_CODE_OFFSET, 1);
         // now flag as claimed
-        const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
+        uint8_t claimed = 0;
+        dct_read_app_data_copy(DCT_DEVICE_CLAIMED_OFFSET, &claimed, sizeof(claimed));
         c = '1';
-        if (*claimed!=uint8_t(c))
+        if (claimed!=uint8_t(c))
         {
             dct_write_app_data(&c, DCT_DEVICE_CLAIMED_OFFSET, 1);
         }
@@ -417,10 +487,9 @@ uint16_t HAL_Set_Claim_Code(const char* code)
 
 uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
 {
-    const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_CLAIM_CODE_OFFSET);
     uint16_t result = 0;
     if (len>DCT_CLAIM_CODE_SIZE) {
-        memcpy(buffer, data, DCT_CLAIM_CODE_SIZE);
+        dct_read_app_data_copy(DCT_CLAIM_CODE_OFFSET, buffer, DCT_CLAIM_CODE_SIZE);
         buffer[DCT_CLAIM_CODE_SIZE] = 0;
     }
     else {
@@ -431,30 +500,46 @@ uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
 
 bool HAL_IsDeviceClaimed(void* reserved)
 {
-    const uint8_t* claimed = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CLAIMED_OFFSET);
-    return (*claimed)=='1';
+    uint8_t claimed = 0;
+    dct_read_app_data_copy(DCT_DEVICE_CLAIMED_OFFSET, &claimed, sizeof(claimed));
+    return (claimed)=='1';
 }
 
 
-const uint8_t* fetch_server_public_key()
+const uint8_t* fetch_server_public_key(uint8_t lock)
 {
-    return (const uint8_t*)dct_read_app_data(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_SERVER_PUBLIC_KEY_OFFSET : DCT_SERVER_PUBLIC_KEY_OFFSET);
+    if (lock) {
+        return (const uint8_t*)dct_read_app_data_lock(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_SERVER_PUBLIC_KEY_OFFSET : DCT_SERVER_PUBLIC_KEY_OFFSET);
+    } else {
+        dct_read_app_data_unlock(0);
+        return NULL;
+    }
 }
 
-const uint8_t* fetch_device_private_key()
+const uint8_t* fetch_device_private_key(uint8_t lock)
 {
-    return (const uint8_t*)dct_read_app_data(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET : DCT_DEVICE_PRIVATE_KEY_OFFSET);
+    if (lock) {
+        return (const uint8_t*)dct_read_app_data_lock(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET : DCT_DEVICE_PRIVATE_KEY_OFFSET);
+    } else {
+        dct_read_app_data_unlock(0);
+        return NULL;
+    }
 }
 
-const uint8_t* fetch_device_public_key()
+const uint8_t* fetch_device_public_key(uint8_t lock)
 {
+    if (!lock) {
+        dct_read_app_data_unlock(0);
+        return NULL;
+    }
+
     uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
     memset(pubkey, 0, sizeof(pubkey));
     bool udp = false;
 #if HAL_PLATFORM_CLOUD_UDP
     udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 #endif
-    const uint8_t* priv = fetch_device_private_key();
+    const uint8_t* priv = fetch_device_private_key(1);
     int error = 0;
 #if HAL_PLATFORM_CLOUD_UDP
     if (udp)
@@ -464,12 +549,14 @@ const uint8_t* fetch_device_public_key()
     if (!udp)
     		extract_public_rsa_key(pubkey, priv);
 #endif
+    fetch_device_private_key(0);
 
     int offset = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET : DCT_DEVICE_PUBLIC_KEY_OFFSET;
-    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data(offset);
+    const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data_lock(offset);
     if (!error && memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+        dct_read_app_data_unlock(offset);
         dct_write_app_data(pubkey, offset, DCT_DEVICE_PUBLIC_KEY_SIZE);
-        flash_pub_key = (const uint8_t*)dct_read_app_data(offset);
+        flash_pub_key = (const uint8_t*)dct_read_app_data_lock(offset);
     }
     return flash_pub_key;
 }

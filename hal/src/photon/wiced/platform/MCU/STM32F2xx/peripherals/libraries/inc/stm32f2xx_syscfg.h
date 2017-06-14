@@ -2,21 +2,27 @@
   ******************************************************************************
   * @file    stm32f2xx_syscfg.h
   * @author  MCD Application Team
-  * @version V1.0.0
-  * @date    18-April-2011
+  * @version V1.1.2
+  * @date    05-March-2012 
   * @brief   This file contains all the functions prototypes for the SYSCFG firmware
   *          library.
   ******************************************************************************
   * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
   ******************************************************************************
   */
 
@@ -37,18 +43,18 @@
 
 /** @addtogroup SYSCFG
   * @{
-  */
+  */ 
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
-
-/** @defgroup SYSCFG_Exported_Constants
+  
+/** @defgroup SYSCFG_Exported_Constants 
   * @{
-  */
+  */ 
 
-/** @defgroup SYSCFG_EXTI_Port_Sources
+/** @defgroup SYSCFG_EXTI_Port_Sources 
   * @{
-  */
+  */ 
 #define EXTI_PortSourceGPIOA       ((uint8_t)0x00)
 #define EXTI_PortSourceGPIOB       ((uint8_t)0x01)
 #define EXTI_PortSourceGPIOC       ((uint8_t)0x02)
@@ -58,7 +64,7 @@
 #define EXTI_PortSourceGPIOG       ((uint8_t)0x06)
 #define EXTI_PortSourceGPIOH       ((uint8_t)0x07)
 #define EXTI_PortSourceGPIOI       ((uint8_t)0x08)
-
+                                      
 #define IS_EXTI_PORT_SOURCE(PORTSOURCE) (((PORTSOURCE) == EXTI_PortSourceGPIOA) || \
                                         ((PORTSOURCE) == EXTI_PortSourceGPIOB) || \
                                         ((PORTSOURCE) == EXTI_PortSourceGPIOC) || \
@@ -67,15 +73,15 @@
                                         ((PORTSOURCE) == EXTI_PortSourceGPIOF) || \
                                         ((PORTSOURCE) == EXTI_PortSourceGPIOG) || \
                                         ((PORTSOURCE) == EXTI_PortSourceGPIOH) || \
-                                        ((PORTSOURCE) == EXTI_PortSourceGPIOI))
+                                        ((PORTSOURCE) == EXTI_PortSourceGPIOI)) 
 /**
   * @}
-  */
+  */ 
 
 
-/** @defgroup SYSCFG_EXTI_Pin_Sources
+/** @defgroup SYSCFG_EXTI_Pin_Sources 
   * @{
-  */
+  */ 
 #define EXTI_PinSource0            ((uint8_t)0x00)
 #define EXTI_PinSource1            ((uint8_t)0x01)
 #define EXTI_PinSource2            ((uint8_t)0x02)
@@ -110,50 +116,50 @@
                                        ((PINSOURCE) == EXTI_PinSource15))
 /**
   * @}
-  */
+  */ 
 
 
-/** @defgroup SYSCFG_Memory_Remap_Config
+/** @defgroup SYSCFG_Memory_Remap_Config 
   * @{
-  */
+  */ 
 #define SYSCFG_MemoryRemap_Flash       ((uint8_t)0x00)
 #define SYSCFG_MemoryRemap_SystemFlash ((uint8_t)0x01)
 #define SYSCFG_MemoryRemap_FSMC        ((uint8_t)0x02)
 #define SYSCFG_MemoryRemap_SRAM        ((uint8_t)0x03)
-
+   
 #define IS_SYSCFG_MEMORY_REMAP_CONFING(REMAP) (((REMAP) == SYSCFG_MemoryRemap_Flash) || \
                                                      ((REMAP) == SYSCFG_MemoryRemap_SystemFlash) || \
                                                      ((REMAP) == SYSCFG_MemoryRemap_SRAM) || \
                                                      ((REMAP) == SYSCFG_MemoryRemap_FSMC))
 /**
   * @}
-  */
+  */ 
 
 
-/** @defgroup SYSCFG_ETHERNET_Media_Interface
+/** @defgroup SYSCFG_ETHERNET_Media_Interface 
   * @{
-  */
-#define SYSCFG_ETH_MediaInterface_MII    ((uint32_t)0x00000000)
-#define SYSCFG_ETH_MediaInterface_RMII   ((uint32_t)0x00000001)
+  */ 
+#define SYSCFG_ETH_MediaInterface_MII    ((uint32_t)0x00000000) 
+#define SYSCFG_ETH_MediaInterface_RMII   ((uint32_t)0x00000001)                                       
 
 #define IS_SYSCFG_ETH_MEDIA_INTERFACE(INTERFACE) (((INTERFACE) == SYSCFG_ETH_MediaInterface_MII) || \
                                                 ((INTERFACE) == SYSCFG_ETH_MediaInterface_RMII))
 /**
   * @}
-  */
+  */ 
 
 /**
   * @}
-  */
+  */ 
 
 /* Exported macro ------------------------------------------------------------*/
-/* Exported functions --------------------------------------------------------*/
-
+/* Exported functions --------------------------------------------------------*/ 
+ 
 void SYSCFG_DeInit(void);
 void SYSCFG_MemoryRemapConfig(uint8_t SYSCFG_MemoryRemap);
 void SYSCFG_EXTILineConfig(uint8_t EXTI_PortSourceGPIOx, uint8_t EXTI_PinSourcex);
-void SYSCFG_ETH_MediaInterfaceConfig(uint32_t SYSCFG_ETH_MediaInterface);
-void SYSCFG_CompensationCellCmd(FunctionalState NewState);
+void SYSCFG_ETH_MediaInterfaceConfig(uint32_t SYSCFG_ETH_MediaInterface); 
+void SYSCFG_CompensationCellCmd(FunctionalState NewState); 
 FlagStatus SYSCFG_GetCompensationCellStatus(void);
 
 #ifdef __cplusplus
@@ -164,10 +170,10 @@ FlagStatus SYSCFG_GetCompensationCellStatus(void);
 
 /**
   * @}
-  */
+  */ 
 
 /**
   * @}
-  */
+  */ 
 
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

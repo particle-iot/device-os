@@ -41,9 +41,14 @@
             char* buf = (char*)malloc(bytes_left+1);
             if (buf) {
                 int len = bytes_left;
-                read((uint8_t*)buf, bytes_left);
+                int result = read((uint8_t*)buf, bytes_left);
                 buf[len] = 0;
                 bytes_left = 0;
+                if (result < 0) {
+                    // Error
+                    free(buf);
+                    buf = NULL;
+                }
             }
             return buf;
         }

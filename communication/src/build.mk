@@ -8,7 +8,7 @@ TARGET_SRC_PATH = src
 
 
 # C source files included in this build.
-CSRC +=
+# CSRC +=
 
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
@@ -29,12 +29,19 @@ CPPSRC += $(TARGET_SRC_PATH)/chunked_transfer.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/publisher.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_defs.cpp
+CPPSRC += $(TARGET_SRC_PATH)/mbedtls_communication.cpp
 
 # ASM source files included in this build.
 ASRC +=
 
 CPPFLAGS += -std=gnu++11
 
-CFLAGS += -DMBEDTLS_CONFIG_FILE="<mbedtls_config.h>"
+ifeq ($(PLATFORM_ID),6)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
+endif
+
+ifeq ($(PLATFORM_ID),8)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
+endif
 
 LOG_MODULE_CATEGORY = comm

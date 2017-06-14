@@ -143,7 +143,11 @@ static const uint8_t USBD_MCDC_CfgDesc[USBD_MCDC_CONFIG_DESC_SIZE] __ALIGN_END =
   0x02,                              /* bmAttributes: Bulk */
   LOBYTE(CDC_DATA_MAX_PACKET_SIZE),  /* wMaxPacketSize: */
   HIBYTE(CDC_DATA_MAX_PACKET_SIZE),
-  0x00,                              /* bInterval: ignore for Bulk transfer */
+#ifdef USE_USB_OTG_HS
+  0x10,                          /* bInterval: */
+#else
+  0xFF,                          /* bInterval: */
+#endif /* USE_USB_OTG_HS */
 
   /*Endpoint IN Descriptor*/
   0x07,   /* bLength: Endpoint Descriptor size */
@@ -159,7 +163,7 @@ static void USBD_MCDC_Change_Open_State(void* pdev, USBD_MCDC_Instance_Data* pri
   if (state != priv->serial_open) {
     USBD_Composite_Class_Data* cls = (USBD_Composite_Class_Data*)priv->cls;
     (void)cls;
-    LOG_DEBUG(TRACE, "[%s] USB Serial state: %d", priv->name, state);
+    //LOG_DEBUG(TRACE, "[%s] USB Serial state: %d", priv->name, state);
     if (state) {
       priv->tx_failed_counter = 0;
       // Also flush everything in TX buffer
@@ -207,7 +211,7 @@ static uint8_t USBD_MCDC_Init(void* pdev, USBD_Composite_Class_Data* cls, uint8_
   }
 #endif
   priv->configured = 1;
-  priv->rx_state = 1;
+  priv->rx_state = 0;
 
   USBD_MCDC_Start_Rx(pdev, priv);
 
@@ -453,7 +457,6 @@ int USBD_MCDC_Start_Rx(void *pdev, USBD_MCDC_Instance_Data* priv)
   }
   if (!priv->rx_state) {
     priv->rx_state = 1;
-    DCD_SetEPStatus(pdev, priv->ep_out_data, USB_OTG_EP_RX_VALID);
   }
 
   DCD_EP_PrepareRx(pdev,
@@ -470,8 +473,10 @@ static uint8_t  USBD_MCDC_DataOut(void* pdev, USBD_Composite_Class_Data* cls, ui
     return USBD_FAIL;
   }
 
-  uint32_t USB_Rx_Count = USBD_Last_Rx_Packet_size(pdev, epnum);
-  priv->rx_buffer_head = ring_wrap(priv->rx_buffer_length, priv->rx_buffer_head + USB_Rx_Count);
+  if (priv->rx_state) {
+    uint32_t USB_Rx_Count = USBD_Last_Rx_Packet_size(pdev, epnum);
+    priv->rx_buffer_head = ring_wrap(priv->rx_buffer_length, priv->rx_buffer_head + USB_Rx_Count);
+  }
 
   // Serial port is definitely open
   USBD_MCDC_Change_Open_State(pdev, priv, 1);
@@ -629,7 +634,7 @@ static uint16_t USBD_MCDC_Request_Handler(void* pdev, USBD_Composite_Class_Data*
       priv->linecoding.format = buf[4];
       priv->linecoding.paritytype = buf[5];
       priv->linecoding.datatype = buf[6];
-      LOG_DEBUG(TRACE, "[%s] SET_LINE_CODING %d", priv->name, priv->linecoding.bitrate);
+      //LOG_DEBUG(TRACE, "[%s] SET_LINE_CODING %d", priv->name, priv->linecoding.bitrate);
       break;
 
   case GET_LINE_CODING:
@@ -649,7 +654,7 @@ static uint16_t USBD_MCDC_Request_Handler(void* pdev, USBD_Composite_Class_Data*
       } else if ((priv->ctrl_line & CDC_DTR) == 0x00) {
         USBD_MCDC_Change_Open_State(pdev, priv, 0);
       }
-      LOG_DEBUG(TRACE, "[%s] SET_CONTROL_LINE_STATE DTR=%d RTS=%d", priv->name, priv->ctrl_line & CDC_DTR ? 1 : 0, priv->ctrl_line & CDC_RTS ? 1 : 0);
+      //LOG_DEBUG(TRACE, "[%s] SET_CONTROL_LINE_STATE DTR=%d RTS=%d", priv->name, priv->ctrl_line & CDC_DTR ? 1 : 0, priv->ctrl_line & CDC_RTS ? 1 : 0);
       break;
 
   case SEND_BREAK:

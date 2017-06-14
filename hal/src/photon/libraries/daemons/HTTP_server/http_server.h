@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this 
- * software may be used to endorse or promote products derived from this software 
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as 
- * incorporated in your product or device that incorporates Broadcom wireless connectivity 
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /**
@@ -64,6 +39,7 @@
 #include "wiced_tcpip.h"
 #include "wiced_rtos.h"
 #include "wiced_resource.h"
+#include "linked_list.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -120,6 +96,7 @@ extern "C" {
     ENTRY( MIME_TYPE_HAP_VERIFY,              "application/hap+verify"           ) \
     ENTRY( MIME_TYPE_TEXT_HTML,               "text/html"                        ) \
     ENTRY( MIME_TYPE_TEXT_PLAIN,              "text/plain"                       ) \
+    ENTRY( MIME_TYPE_TEXT_EVENT_STREAM,       "text/event-stream"                ) \
     ENTRY( MIME_TYPE_TEXT_CSS,                "text/css"                         ) \
     ENTRY( MIME_TYPE_IMAGE_PNG,               "image/png"                        ) \
     ENTRY( MIME_TYPE_IMAGE_GIF,               "image/gif"                        ) \
@@ -163,6 +140,8 @@ extern "C" {
                                           "Pragma: no-cache"
 #define CRLF                              "\r\n"
 #define CRLF_CRLF                         "\r\n\r\n"
+#define LFLF                              "\n\n"
+#define EVENT_STREAM_DATA                 "data: "
 
 /******************************************************
  *                   Enumerations
@@ -224,11 +203,6 @@ typedef enum
  *                 Type Definitions
  ******************************************************/
 
-/**
- * HTTP server socket callback
- */
-typedef wiced_result_t (*http_server_callback_t)( wiced_tcp_socket_t* socket, uint8_t** data, uint16_t* data_length );
-
 /******************************************************
  *                    Structures
  ******************************************************/
@@ -240,13 +214,21 @@ typedef struct
 {
     const uint8_t*            data;                         /* packet data in message body      */
     uint16_t                  message_data_length;          /* data length in current packet    */
-    uint16_t                  total_message_data_remaining; /* data yet to be consumed          */
+    uint32_t                  total_message_data_remaining; /* data yet to be consumed          */
     wiced_bool_t              chunked_transfer;             /* chunked data format              */
     wiced_packet_mime_type_t  mime_type;                    /* mime type                        */
     wiced_http_request_type_t request_type;                 /* GET, POST or PUT request         */
     wiced_tcp_socket_t*		  socket;						/* The socket to retrieve additional packets from */
     void*					  user;							/* additional storage. */
 } wiced_http_message_body_t;
+
+typedef struct wiced_http_page_s wiced_http_page_t;
+
+typedef struct
+{
+   wiced_http_page_t* page_found;
+   uint32_t           total_data_remaning;
+} wiced_http_request_info_t;
 
 /**
  * Workspace structure for HTTP server stream
@@ -260,12 +242,32 @@ typedef struct
     wiced_bool_t	cross_host_requests_enabled;
 } wiced_http_response_stream_t;
 
+typedef struct
+{
+    wiced_http_response_stream_t response;
+    wiced_http_request_info_t    request;
+} wiced_http_stream_t;
+
+/**
+ * HTTP server socket callback
+ */
+typedef wiced_result_t (*http_server_callback_t)( wiced_http_response_stream_t* stream, uint8_t** data, uint16_t* data_length );
+
+
 /**
  * Prototype for URL processor functions
  */
-typedef int32_t (*url_processor_t)(  const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data );
+typedef int32_t (*url_processor_t)(  const char* url_path, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data );
 
-typedef enum
+/**
+ * HTTP page list structure
+ * Request with content length more than MTU size is handled for RAW_DYNAMIC_URL_CONTENT and WICED_DYNAMIC_CONTENT type for now.
+ */
+struct wiced_http_page_s
+{
+    const char* url;                     /** String containing the path part of the URL of this page/file */
+    const char* mime_type;               /** String containing the MIME type of this page/file */
+    enum
     {
         WICED_STATIC_URL_CONTENT,              /** Page is constant data in memory addressable area */
         WICED_DYNAMIC_URL_CONTENT,             /** Page is dynamically generated by a @ref url_processor_t type function */
@@ -273,17 +275,7 @@ typedef enum
         WICED_RAW_STATIC_URL_CONTENT,          /** Same as @ref WICED_STATIC_URL_CONTENT but HTTP header must be supplied as part of the content */
         WICED_RAW_DYNAMIC_URL_CONTENT,         /** Same as @ref WICED_DYNAMIC_URL_CONTENT but HTTP header must be supplied as part of the content */
         WICED_RAW_RESOURCE_URL_CONTENT         /** Same as @ref WICED_RESOURCE_URL_CONTENT but HTTP header must be supplied as part of the content */
-    } url_content_type_t;                        /** The page type - this selects which part of the @url_content union will be used - also see above */
-
-
-/**
- * HTTP page list structure
- */
-typedef struct
-{
-    const char* url;                     /** String containing the path part of the URL of this page/file */
-    const char* mime_type;               /** String containing the MIME type of this page/file */
-    url_content_type_t url_content_type;                        /** The page type - this selects which part of the @url_content union will be used - also see above */
+    } url_content_type;                        /** The page type - this selects which part of the @url_content union will be used - also see above */
     union
     {
         struct                                 /* Used for WICED_DYNAMIC_URL_CONTENT and WICED_RAW_DYNAMIC_URL_CONTENT */
@@ -298,7 +290,7 @@ typedef struct
         } static_data;
         const resource_hnd_t* resource_data;   /* A Wiced Resource containing the page / file - Used for WICED_RESOURCE_URL_CONTENT and WICED_RAW_RESOURCE_URL_CONTENT */
     } url_content;
-} wiced_http_page_t;
+};
 
 /**
  * Workspace structure for HTTP server
@@ -307,25 +299,19 @@ typedef struct
  */
 typedef struct
 {
-    wiced_tcp_server_t       tcp_server;
-    wiced_thread_t           event_thread;
-    wiced_queue_t            event_queue;
-    wiced_worker_thread_t    worker_thread;
-    volatile wiced_bool_t    quit;
-    const wiced_http_page_t* page_database;
-    http_server_callback_t   receive_callback;
+    wiced_tcp_server_t            tcp_server;
+    wiced_thread_t                event_thread;
+    wiced_queue_t                 event_queue;
+    wiced_worker_thread_t         connect_thread;
+    volatile wiced_bool_t         quit;
+    const wiced_http_page_t*      page_database;
+    http_server_callback_t        receive_callback;
+    uint8_t*                      streams;
+    linked_list_t                 active_stream_list;
+    linked_list_t                 inactive_stream_list;
 } wiced_http_server_t;
 
-/**
- * Workspace structure for HTTPS server
- * Users should not access these values - they are provided here only
- * to provide the compiler with datatype size information allowing static declarations
- */
-typedef struct
-{
-    wiced_http_server_t          http_server;
-    wiced_tls_advanced_context_t tls_context;
-} wiced_https_server_t;
+typedef wiced_http_server_t wiced_https_server_t;
 
 /******************************************************
  *                 Global Variables
@@ -348,10 +334,12 @@ typedef struct
  * @param[in] max_sockets    Maximum number of sockets to be served simultaneously
  * @param[in] page_database  A list of web pages / files that will be served by the HTTP server. See @ref wiced_http_page_t for details and snippet apps for examples
  * @param[in] interface      Which network interface the HTTP server should listen on.
+ * @param[in] interface      Thread stack size
+ *
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_http_server_start( wiced_http_server_t* server, uint16_t port, uint16_t max_sockets, const wiced_http_page_t* page_database, wiced_interface_t interface, uint32_t url_processor_stack_size );
+wiced_result_t wiced_http_server_start( wiced_http_server_t* server, uint16_t port, uint16_t max_sockets, const wiced_http_page_t* page_database, wiced_interface_t interface, uint32_t http_thread_stack_size );
 
 /**
  *  Stop a HTTP server daemon (web server)
@@ -378,7 +366,7 @@ wiced_result_t wiced_http_server_stop( wiced_http_server_t* server );
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_https_server_start( wiced_https_server_t* server, uint16_t port, uint16_t max_sockets, const wiced_http_page_t* page_database, const char* server_cert, const char* server_key, wiced_interface_t interface, uint32_t url_processor_stack_size );
+wiced_result_t wiced_https_server_start( wiced_https_server_t* server, uint16_t port, uint16_t max_sockets, const wiced_http_page_t* page_database, wiced_tls_identity_t* identity, wiced_interface_t interface, uint32_t url_processor_stack_size );
 
 /**
  *  Stop a HTTPS server daemon (web server)
@@ -411,12 +399,11 @@ wiced_result_t wiced_http_server_deregister_callbacks( wiced_http_server_t* serv
 /**
  * Queue a disconnect request to the HTTP server
  *
- * @param[in] server               : HTTP server
- * @param[in] socket_to_disconnect : TCP socket to disconnect
+ * @param[in] stream : stream to disconnect
  *
  * @return @ref wiced_result_t
  */
-wiced_result_t wiced_http_server_queue_disconnect_request( wiced_http_server_t* server, wiced_tcp_socket_t* socket_to_disconnect );
+wiced_result_t wiced_http_response_stream_disconnect( wiced_http_response_stream_t* stream );
 
 /**
  * Initialise HTTP server stream
@@ -498,9 +485,48 @@ wiced_result_t wiced_http_response_stream_write_resource( wiced_http_response_st
  */
 wiced_result_t wiced_http_response_stream_flush( wiced_http_response_stream_t* stream );
 
+/**
+ * Disconnect all HTTP stream in a server
+ *
+ * @param[in] server   The structure workspace that was used with @ref wiced_http_server_start
+ *
+ * @return @ref wiced_result_t
+ */
+wiced_result_t wiced_http_disconnect_all_response_stream( wiced_https_server_t* server );
+
+/**
+ * Search for a parameter (key-value pair) in a URL query string and return a pointer to the value
+ *
+ * @param[in]  url_query       : URL query string
+ * @param[in]  parameter_key   : Key or name of the parameter to find in the URL query string
+ * @param[out] parameter_value : If the parameter with the given key is found, this pointer will point to the parameter value upon return; NULL otherwise
+ * @param[out] value_length    : This variable will contain the length of the parameter value upon return; 0 otherwise
+ *
+ * @return @ref wiced_result_t WICED_SUCCESS if found; WICED_NOT_FOUND if not found
+ */
+wiced_result_t wiced_http_get_query_parameter_value( const char* url_query, const char* parameter_key, char** parameter_value, uint32_t* value_length );
+
+/**
+ * Return the number of parameters found in the URL query string
+ *
+ * @param[in] url_query : URL query string
+ *
+ * @return parameter count
+ */
+uint32_t wiced_http_get_query_parameter_count( const char* url_query );
+
+/**
+ * Match a URL query string contains a parameter with the given parameter key and value
+ *
+ * @param[in]  url_query       : URL query string
+ * @param[in]  parameter_key   : NUL-terminated key or name of the parameter to find in the URL query string
+ * @param[out] parameter_value : NUL-terminated value of the parameter to find in the URL query string
+ *
+ * @return @ref wiced_result_t WICED_SUCCESS if matched; WICED_NOT_FOUND if matching parameter is not found
+ */
+wiced_result_t wiced_http_match_query_parameter( const char* url_query, const char* parameter_key, const char* parameter_value );
 
 /*static*/ wiced_packet_mime_type_t http_server_get_mime_type( const char* request_data );
-
 
 #ifdef __cplusplus
 } /* extern "C" */

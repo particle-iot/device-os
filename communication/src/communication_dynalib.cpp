@@ -1,13 +1,25 @@
 
 #include "spark_protocol_functions.h"
 #include "service_debug.h"
+#include "protocol_selector.h"
+
+#ifdef USE_MBEDTLS
+#else
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#  include "wiced_security.h"
+#  include "crypto_open/x509.h"
+#  include "crypto_open/bignum.h"
+#  include "micro-ecc/configuration.h"
+#  include "micro-ecc/uECC.h"
+#  include "tls_callbacks.h"
+# endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+#endif // USE_MBEDTLS
 
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
-#include "protocol_selector.h"
 #include "core_hal.h"
 
-#ifdef PARTICLE_PROTOCOL
+#if PARTICLE_PROTOCOL
 #include "lightssl_protocol.h"
 #include "dtls_protocol.h"
 #else
@@ -25,7 +37,7 @@ ProtocolFacade* create_protocol(ProtocolFactory factory)
 {
     	// if compile time only TCP, then that's the only option, otherwise
     	// choose between UDP and TCP
-#ifdef PARTICLE_PROTOCOL
+#if PARTICLE_PROTOCOL
 #if HAL_PLATFORM_CLOUD_UDP
     	if (factory==PROTOCOL_DTLS) {
     		DEBUG("creating DTLS protocol");

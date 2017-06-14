@@ -22,6 +22,8 @@
  */
 
 #include "concurrent_hal.h"
+
+#include "core_hal_stm32f2xx.h"
 #include "static_assert.h"
 #include "delay_hal.h"
 #include "FreeRTOS.h"
@@ -32,6 +34,16 @@
 #include "stm32f2xx.h"
 #include "interrupts_hal.h"
 #include <mutex>
+#include <atomic>
+#include "flash_acquire.h"
+#include "core_hal.h"
+#include "logging.h"
+#include "atomic_flag_mutex.h"
+#include "service_debug.h"
+
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+# include "wwd_rtos_interface.h"
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
@@ -125,13 +137,28 @@ os_result_t os_thread_join(os_thread_t thread)
 }
 
 /**
+ * Terminate thread.
+ * @param thread    The thread to terminate, or NULL to terminate current thread.
+ * @return 0 if the thread has successfully terminated. non-zero in case of an error.
+ */
+os_result_t os_thread_exit(os_thread_t thread)
+{
+    vTaskDelete(thread);
+    return 0;
+}
+
+/**
  * Cleans up resources used by a terminated thread.
  * @param thread    The thread to clean up.
  * @return 0 on success.
  */
 os_result_t os_thread_cleanup(os_thread_t thread)
 {
-    vTaskDelete(thread);
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+    if (!thread || os_thread_is_current(thread))
+        return 1;
+    host_rtos_delete_terminated_thread((host_thread_type_t*)&thread);
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
     return 0;
 }
 
@@ -310,10 +337,10 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
-	if (HAL_IsISR())
-		return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
-	else
-		return xQueueSend(queue, item, delay)!=pdTRUE;
+    if (HAL_IsISR())
+        return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
+    else
+        return xQueueSend(queue, item, delay)!=pdTRUE;
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
@@ -469,4 +496,22 @@ int os_timer_destroy(os_timer_t timer, void* reserved)
 int os_timer_is_active(os_timer_t timer, void* reserved)
 {
     return xTimerIsTimerActive(timer) != pdFALSE;
+}
+
+static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
+void __flash_acquire() {
+    if (!rtos_started) {
+        return;
+    }
+    if (HAL_IsISR()) {
+        PANIC(UsageFault, "Flash operation from IRQ");
+    }
+    flash_lock.lock();
+}
+
+void __flash_release() {
+    if (!rtos_started) {
+        return;
+    }
+    flash_lock.unlock();
 }

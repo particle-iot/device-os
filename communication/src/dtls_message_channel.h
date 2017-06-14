@@ -18,6 +18,10 @@
  */
 #pragma once
 
+#include "protocol_selector.h"
+
+#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+
 #include "service_debug.h"
 #include "device_keys.h"
 #include "message_channel.h"
@@ -151,3 +155,5 @@ private:
 
 
 }}
+
+#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL

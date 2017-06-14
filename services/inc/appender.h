@@ -62,12 +62,14 @@ inline bool append_instance(void* appender, const uint8_t* data, size_t length) 
 class BufferAppender : public Appender {
     uint8_t* buffer;
     uint8_t* end;
+    uint8_t* start;
 
 public:
 
     BufferAppender(uint8_t* start, size_t length) {
         this->buffer = start;
         this->end = start + length;
+        this->start = start;
     }
 
     bool append(const uint8_t* data, size_t length) {
@@ -85,7 +87,9 @@ public:
     bool append(char c) {
         return Appender::append(c);
     }
-
+    size_t size() {
+        return (buffer - start);
+    }
 
     const uint8_t* next() { return buffer; }
 };

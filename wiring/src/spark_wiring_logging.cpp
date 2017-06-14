@@ -31,13 +31,16 @@
 
 #include "spark_wiring_interrupts.h"
 
-#if defined(DEBUG_BUILD) && PLATFORM_ID != 3
-// When compiled with DEBUG_BUILD=y use ATOMIC_BLOCK
-# define LOG_WITH_LOCK(x) ATOMIC_BLOCK()
+// Uncomment to enable logging in interrupt handlers
+// #define LOG_FROM_ISR
+
+#if defined(LOG_FROM_ISR) && PLATFORM_ID != 3
+// When compiled with LOG_FROM_ISR defined use ATOMIC_BLOCK
+#define LOG_WITH_LOCK(x) ATOMIC_BLOCK()
 #else
 // Otherwise use mutex
-# define LOG_WITH_LOCK(x) WITH_LOCK(x)
-#endif // DEBUG_BUILD
+#define LOG_WITH_LOCK(x) WITH_LOCK(x)
+#endif
 
 namespace {
 
@@ -822,12 +825,11 @@ void spark::LogManager::resetSystemCallbacks() {
 }
 
 void spark::LogManager::logMessage(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved) {
-#ifndef DEBUG_BUILD
-    // No-op when DEBUG_BUILD=n
-    if (HAL_IsISR())
+#ifndef LOG_FROM_ISR
+    if (HAL_IsISR()) {
         return;
-#endif // DEBUG_BUILD
-
+    }
+#endif
     LogManager *that = instance();
     LOG_WITH_LOCK(that->mutex_) {
         for (LogHandler *handler: that->activeHandlers_) {
@@ -837,12 +839,11 @@ void spark::LogManager::logMessage(const char *msg, int level, const char *categ
 }
 
 void spark::LogManager::logWrite(const char *data, size_t size, int level, const char *category, void *reserved) {
-#ifndef DEBUG_BUILD
-    // No-op when DEBUG_BUILD=n
-    if (HAL_IsISR())
+#ifndef LOG_FROM_ISR
+    if (HAL_IsISR()) {
         return;
-#endif // DEBUG_BUILD
-
+    }
+#endif
     LogManager *that = instance();
     LOG_WITH_LOCK(that->mutex_) {
         for (LogHandler *handler: that->activeHandlers_) {
@@ -852,12 +853,11 @@ void spark::LogManager::logWrite(const char *data, size_t size, int level, const
 }
 
 int spark::LogManager::logEnabled(int level, const char *category, void *reserved) {
-#ifndef DEBUG_BUILD
-    // No-op when DEBUG_BUILD=n
-    if (HAL_IsISR())
+#ifndef LOG_FROM_ISR
+    if (HAL_IsISR()) {
         return 0;
-#endif // DEBUG_BUILD
-
+    }
+#endif
     LogManager *that = instance();
     int minLevel = LOG_LEVEL_NONE;
     LOG_WITH_LOCK(that->mutex_) {

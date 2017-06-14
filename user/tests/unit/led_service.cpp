@@ -585,7 +585,7 @@ TEST_CASE("LEDSystemTheme") {
             const LEDSignal s = (LEDSignal)i;
             t2.setColor(s, Color(i * 10, i * 10, i * 10));
             t2.setPattern(s, test::anyOf(LED_PATTERN_SOLID, LED_PATTERN_BLINK, LED_PATTERN_FADE));
-            t2.setPeriod(s, test::randomInt(0, 10000));
+            t2.setPeriod(s, test::randomInt(1000, 10000));
         }
         t2.apply();
         // Check current theme

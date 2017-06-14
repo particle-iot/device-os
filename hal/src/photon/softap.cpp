@@ -17,10 +17,88 @@
 #include "rng_hal.h"
 #include "ota_flash_hal_stm32f2xx.h"
 #include "bytes2hexbuf.h"
+#include "spark_wiring_wifi_credentials.h"
+#include "mbedtls/aes.h"
 
 #if SOFTAP_HTTP
 #include "http_server.h"
 #endif
+
+extern WLanSecurityType toSecurityType(wiced_security_t sec);
+
+// This is a copy-paste from spark_wiring_json.h
+static size_t json_unescape(char *json, size_t len) {
+    char *str = json; // Destination string
+    const char* const end = json + len; // End of the source string
+    const char *s1 = str; // Beginning of an unescaped sequence
+    const char *s = s1;
+    while (s != end) {
+        if (*s == '\\') {
+            if (s != s1) {
+                const size_t n = s - s1;
+                memmove(str, s1, n); // Shift preceeding characters
+                str += n;
+                s1 = s;
+            }
+            ++s;
+            if (s == end) {
+                return false; // Unexpected end of string
+            }
+            // if (*s == 'u') { // Arbitrary character, e.g. "\u001f"
+            //     ++s;
+            //     if (end - s < 4) {
+            //         return false; // Unexpected end of string
+            //     }
+            //     uint32_t u = 0; // Unicode code point or UTF-16 surrogate pair
+            //     if (!hexToInt(s, 4, &u)) {
+            //         return false; // Invalid escaped sequence
+            //     }
+            //     if (u <= 0x7f) { // Processing only code points within the basic latin block
+            //         *str = u;
+            //         ++str;
+            //         s1 += 6; // Skip escaped sequence
+            //     }
+            //     s += 4;
+            // } else {
+                switch (*s) {
+                case '"':
+                case '\\':
+                case '/':
+                    *str = *s;
+                    break;
+                case 'b': // Backspace
+                    *str = 0x08;
+                    break;
+                case 't': // Tab
+                    *str = 0x09;
+                    break;
+                case 'n': // Line feed
+                    *str = 0x0a;
+                    break;
+                case 'f': // Form feed
+                    *str = 0x0c;
+                    break;
+                case 'r': // Carriage return
+                    *str = 0x0d;
+                    break;
+                default:
+                    return false; // Invalid escaped sequence
+                }
+                ++str;
+                ++s;
+                s1 = s; // Skip escaped sequence
+            // }
+        } else {
+            ++s;
+        }
+    }
+    if (s != s1) {
+        const size_t n = s - s1;
+        memmove(str, s1, n); // Shift remaining characters
+        str += n;
+    }
+    return (str - json); // Update string length
+}
 
 int resolve_dns_query(const char* query, const char* table)
 {
@@ -48,8 +126,9 @@ int dns_resolve_query(const char* query)
     int result = dns_resolve_query_default(query);
     if (result<=0)
     {
-        const char* valid_queries = (const char*) dct_read_app_data(DCT_DNS_RESOLVE_OFFSET);
+        const char* valid_queries = (const char*) dct_read_app_data_lock(DCT_DNS_RESOLVE_OFFSET);
         result = resolve_dns_query(query, valid_queries);
+        dct_read_app_data_unlock(DCT_DNS_RESOLVE_OFFSET);
     }
     return result;
 }
@@ -446,7 +525,9 @@ int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext
     hex_decode(buf, len, hex_encoded_ciphertext);
 
     // reuse the hex encoded buffer
-    int plaintext_len = decrypt_rsa(buf, fetch_device_private_key(), (uint8_t*)plaintext, max_plaintext_len);
+    const uint8_t *key = fetch_device_private_key(1); // fetch and lock private key data
+    int plaintext_len = decrypt_rsa(buf, key, (uint8_t*)plaintext, max_plaintext_len);
+    fetch_device_private_key(0); // unlock private key data
     return plaintext_len;
 }
 
@@ -459,27 +540,23 @@ class ConfigureAPCommand : public JSONRequestCommand {
 	/**
 	 * Receives the data from parsing the json.
 	 */
-    ConfigureAP configureAP;
+    spark::WiFiAllocatedCredentials credentials;
 
-    static const char* KEY[5];
+    static const char* KEY[12];
     static const int OFFSET[];
     static const jsmntype_t TYPE[];
+
+    std::unique_ptr<char[]> ekey_;
 
     int decrypt_result;
 
     int save_credentials() {
-        // Write received credentials into DCT
-        WPRINT_APP_INFO( ( "saving AP credentials:\n" ) );
-        WPRINT_APP_INFO( ( "index: %d\n", (int)configureAP.index ) );
-        WPRINT_APP_INFO( ( "ssid: %s\n", configureAP.ssid ) );
-        WPRINT_APP_INFO( ( "passcode: %s\n", configureAP.passcode ) );
-        WPRINT_APP_INFO( ( "security: %d\n", (int)configureAP.security ) );
-        WPRINT_APP_INFO( ( "channel: %d\n", (int)configureAP.channel ) );
-
+        WLanCredentials creds = credentials.getHalCredentials();
+        if (creds.private_key && creds.private_key_len) {
+            creds.private_key_len = decrypt_private_key(creds.private_key, creds.private_key_len);
+        }
         return decrypt_result<0 ? decrypt_result :
-            add_wiced_wifi_credentials(configureAP.ssid, strlen(configureAP.ssid),
-                configureAP.passcode, strlen(configureAP.passcode),
-                    wiced_security_t(configureAP.security), configureAP.channel);
+            wlan_set_credentials(&creds);
     }
 
 protected:
@@ -488,37 +565,132 @@ protected:
         return true;
     }
 
-    virtual bool parsed_value(unsigned key, jsmntok_t* t, char* str) {
-        void* data = ((uint8_t*)&configureAP)+OFFSET[key];
+    int decrypt_private_key(const uint8_t* pkey, int len) {
+        if (!(ekey_ && pkey && len))
+            return 0;
 
-        if (!data) {
-            JSON_DEBUG( ( "no data\n" ) );
-            return false;
+        const size_t block_size = 16;
+        uint8_t buf[block_size];
+        const uint8_t* key = (const uint8_t*)ekey_.get();
+        uint8_t* iv = (uint8_t*)ekey_.get() + block_size;
+
+        mbedtls_aes_context ctx = {0};
+        mbedtls_aes_setkey_dec(&ctx, key, 128);
+
+        uint8_t* bptr = (uint8_t*)pkey;
+
+        for (uint8_t* ptr = (uint8_t*)pkey; ptr - pkey < len; ptr += block_size * 2) {
+            hex_decode(buf, block_size, (const char*)ptr);
+            mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, block_size, iv, buf, bptr);
+            bptr += block_size;
         }
-        if (key==1 && t->type==JSMN_STRING) {
-            strncpy((char*)data, str, sizeof(ConfigureAP::ssid)-1);
-            JSON_DEBUG( ( "copied value %s\n", (char*)str ) );
-        }
-        else if (key==2 && t->type==JSMN_STRING) {
+
+        decrypt_result = 1;
+
+        return (len / 2);
+    }
+
+    virtual bool parsed_value(unsigned key, jsmntok_t* t, char* str) {
+        std::unique_ptr<char[]> tmp;
+        switch(key) {
+            case 0:
+            // idx
+            break;
+            case 1:
+            // ssid
+            if (t->type == JSMN_STRING) {
+                credentials.setSsid(str);
+            }
+            break;
+            case 2:
+            // pwd
+            if (t->type == JSMN_STRING) {
 #define USE_PWD_ENCRYPTION 1
 #if USE_PWD_ENCRYPTION
-            decrypt_result = decrypt((char*)data, sizeof(ConfigureAP::passcode), str);
-            JSON_DEBUG( ( "Decrypted password %s\n", (char*)data));
-#else
-            strncpy((char*)data, str, sizeof(ConfigureAP::passcode)-1);
+                size_t len = strlen(str);
+                if (len / 2) {
+                    tmp.reset(new (std::nothrow) char[len / 2 + 1]);
+                    if (tmp) {
+                        memset(tmp.get(), 0, len / 2 + 1);
+                        decrypt_result = decrypt((char*)tmp.get(), len, str);
+                        JSON_DEBUG( ( "Decrypted password %s\n", (char*)tmp));
+                        str = tmp.get();
+                    }
+                }
 #endif
-        }
-        else {
-            int32_t value = atoi(str);
-            *((int32_t*)data) = value;
-            JSON_DEBUG( ( "copied number %s (%d)\n", (char*)str, (int)value ) );
+                credentials.setPassword(str);
+            }
+            break;
+            case 3:
+            // ch
+            credentials.setChannel(atoi(str));
+            break;
+            case 4:
+            // sec
+            // Why are we receiving WICED-specific security type here?
+            credentials.setSecurity((WLanSecurityType)toSecurityType((wiced_security_t)atoi(str)));
+            break;
+            case 5:
+            // eap
+            credentials.setEapType((WLanEapType)atoi(str));
+            break;
+            case 6:
+            // outer identity
+            if (t->type == JSMN_STRING) {
+                credentials.setOuterIdentity(str);
+            }
+            break;
+            case 7:
+            // inner identity
+            if (t->type == JSMN_STRING) {
+                credentials.setInnerIdentity(str);
+            }
+            break;
+            case 8:
+            // certificate
+            if (t->type == JSMN_STRING) {
+                size_t len = json_unescape(str, strlen(str));
+                credentials.setClientCertificate((const uint8_t*)str, len + 1);
+            }
+            break;
+            case 9:
+            // encryption key
+            if (t->type == JSMN_STRING) {
+                size_t len = strlen(str);
+                if (len / 2) {
+                    tmp.reset(new (std::nothrow) char[len / 2 + 1]);
+                    if (tmp) {
+                        memset(tmp.get(), 0, len / 2 + 1);
+                        decrypt_result = decrypt((char*)tmp.get(), len, str);
+                        ekey_ = std::move(tmp);
+                    }
+                }
+            }
+            break;
+            case 10:
+            // private key
+            if (t->type == JSMN_STRING) {
+                size_t len = strlen(str);
+                credentials.setPrivateKey((const uint8_t*)str, len + 1);
+                // Just in case set the password as well, as there is a check somewhere that will
+                // set security to Open if there is no password.
+                credentials.setPassword("1");
+            }
+            break;
+            case 11:
+            // root ca
+            if (t->type == JSMN_STRING) {
+                size_t len = json_unescape(str, strlen(str));
+                credentials.setRootCertificate((const uint8_t*)str, len + 1);
+            }
+            break;
         }
         return true;
     }
 
     int parse_request(Reader& reader) {
         decrypt_result = 0;
-        memset(&configureAP, 0, sizeof(configureAP));
+        credentials.reset();
         return parse_json_request(reader, KEY, TYPE, arraySize(KEY));
     }
 
@@ -532,15 +704,12 @@ protected:
 
 };
 
-const char* ConfigureAPCommand::KEY[5] = {"idx","ssid","pwd","ch","sec" };
-const int ConfigureAPCommand::OFFSET[] = {
-                            offsetof(ConfigureAP, index),
-                            offsetof(ConfigureAP, ssid),
-                            offsetof(ConfigureAP, passcode),
-                            offsetof(ConfigureAP, channel),
-                            offsetof(ConfigureAP, security)
-};
-const jsmntype_t ConfigureAPCommand::TYPE[] =  { JSMN_PRIMITIVE, JSMN_STRING, JSMN_STRING, JSMN_PRIMITIVE, JSMN_PRIMITIVE };
+const char* ConfigureAPCommand::KEY[12] = {"idx","ssid","pwd","ch","sec",
+                                           "eap","oi","ii","crt","ek","key","ca"};
+const jsmntype_t ConfigureAPCommand::TYPE[] = { JSMN_PRIMITIVE, JSMN_STRING, JSMN_STRING,
+                                                JSMN_PRIMITIVE, JSMN_PRIMITIVE, JSMN_PRIMITIVE,
+                                                JSMN_STRING, JSMN_STRING, JSMN_STRING,
+                                                JSMN_STRING, JSMN_STRING, JSMN_STRING };
 
 
 class ConnectAPCommand : public JSONCommand {
@@ -612,7 +781,7 @@ protected:
     void produce_response(Writer& writer, int result) {
         // fetch public key
         const int length = EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH;
-        const uint8_t* data = fetch_device_public_key();
+        const uint8_t* data = fetch_device_public_key(1); // fetch and lock public key data
         write_char(writer, '{');
         if (data) {
             writer.write("\"b\":\"");
@@ -627,6 +796,8 @@ protected:
         else {
             result = 1;
         }
+
+        fetch_device_public_key(0); // unlock public key data
 
         write_json_int(writer, "r", result);
         write_char(writer, '}');
@@ -733,17 +904,19 @@ extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
  * @return true if the device code was generated.
  */
 bool fetch_or_generate_device_code(wiced_ssid_t* SSID) {
-    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_CODE_OFFSET);
+    const uint8_t* suffix = (const uint8_t*)dct_read_app_data_lock(DCT_DEVICE_CODE_OFFSET);
     int8_t c = (int8_t)*suffix;    // check out first byte
     bool generate = (!c || c<0);
     uint8_t* dest = SSID->value+SSID->length;
     SSID->length += DEVICE_CODE_LEN;
     if (generate) {
+        dct_read_app_data_unlock(DCT_DEVICE_CODE_OFFSET);
         random_code(dest, DEVICE_CODE_LEN);
         dct_write_app_data(dest, DCT_DEVICE_CODE_OFFSET, DEVICE_CODE_LEN);
     }
     else {
         memcpy(dest, suffix, DEVICE_CODE_LEN);
+        dct_read_app_data_unlock(DCT_DEVICE_CODE_OFFSET);
     }
     return generate;
 }
@@ -751,16 +924,18 @@ bool fetch_or_generate_device_code(wiced_ssid_t* SSID) {
 const int MAX_SSID_PREFIX_LEN = 25;
 
 bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
-    const uint8_t* prefix = (const uint8_t*)dct_read_app_data(DCT_SSID_PREFIX_OFFSET);
+    const uint8_t* prefix = (const uint8_t*)dct_read_app_data_lock(DCT_SSID_PREFIX_OFFSET);
     uint8_t len = *prefix;
     bool generate = (!len || len>MAX_SSID_PREFIX_LEN);
     if (generate) {
+        dct_read_app_data_unlock(DCT_SSID_PREFIX_OFFSET);
         strcpy((char*)SSID->value, "Photon");
         SSID->length = 6;
         dct_write_app_data(SSID, DCT_SSID_PREFIX_OFFSET, SSID->length+1);
     }
     else {
         memcpy(SSID, prefix, DCT_SSID_PREFIX_SIZE);
+        dct_read_app_data_unlock(DCT_SSID_PREFIX_OFFSET);
     }
     if (SSID->length>MAX_SSID_PREFIX_LEN)
         SSID->length = MAX_SSID_PREFIX_LEN;
@@ -798,9 +973,11 @@ class SoftAPController {
         if (result == WICED_SUCCESS)
         {
             if (memcmp(&expected, soft_ap, sizeof(expected))) {
+                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
+            } else {
+                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
             }
-            wiced_dct_read_unlock( soft_ap, WICED_FALSE );
         }
         return result;
     }
@@ -856,7 +1033,7 @@ static void tcp_write(Writer* w, const uint8_t *buf, size_t count) {
 static int tcp_read(Reader* r, uint8_t *buf, size_t count) {
     wiced_tcp_stream_t* tcp_stream = (wiced_tcp_stream_t*)r->state;
     int result = wiced_tcp_stream_read(tcp_stream, buf, count, WICED_NEVER_TIMEOUT);
-    return result==WICED_SUCCESS ? count : 0;
+    return result==WICED_SUCCESS ? count : (result < 0 ? result : -result);
 }
 
 static void tcp_stream_writer(Writer& w, wiced_tcp_stream_t* stream) {
@@ -1100,7 +1277,7 @@ public:
         wiced_http_server_stop(&server);
     }
 
-    static int32_t handle_command(const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
+    static int32_t handle_command(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
         Command* cmd = (Command*)arg;
         Reader r;
         reader_from_http_body(&r, http_data);
@@ -1114,7 +1291,7 @@ public:
         return result;
     }
 
-    static int32_t handle_app_renderer(const char* url, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
+    static int32_t handle_app_renderer(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
     	    PageProvider* p = (PageProvider*)arg;
         Reader r;
         reader_from_http_body(&r, http_data);
@@ -1140,10 +1317,13 @@ class SimpleProtocolDispatcher
 {
     AllSoftAPCommands& commands_;
 
-    char readChar(Reader& reader) {
-        uint8_t c = 0;
-        reader.read(&c, 1);
-        return (char)c;
+    int readChar(Reader& reader, char* c) {
+        uint8_t tmp = 0;
+        int result = reader.read(&tmp, 1);
+        if (result >= 0) {
+            *c = tmp;
+        }
+        return result;
     }
 
     Command* commandForName(const char* name) {
@@ -1182,8 +1362,9 @@ public:
         int result = -1;
 
         while (idx<30) {
-            char c=readChar(reader);
-            if (!c || c=='\n')
+            char c = 0;
+            result = readChar(reader, &c);
+            if (!c || c=='\n' || result < 0)
                 break;
             name[idx++] = c;
         }
@@ -1191,8 +1372,9 @@ public:
         WPRINT_APP_INFO( ( "Fetched name '%s'\n", name ) );
 
         for (;;) {
-            char c=readChar(reader);
-            if (c=='\n')
+            char c = 0;
+            result = readChar(reader, &c);
+            if (c=='\n' || result < 0)
                 break;
             requestLength = requestLength * 10 + c-'0';
         }
@@ -1202,7 +1384,10 @@ public:
         // todo - keep reading until a \n\n is encountered.
         bool seenNewline = true;
         for (;;) {
-            char c=readChar(reader);
+            char c = 0;
+            result = readChar(reader, &c);
+            if (result < 0)
+                break;
             if (c=='\n') {
                 if (seenNewline)
                     break;

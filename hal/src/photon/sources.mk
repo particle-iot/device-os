@@ -27,11 +27,11 @@ HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/$(HAL_WICED_RTOS) \
 			    wiced/RTOS/$(HAL_WICED_RTOS)/WWD \
 			    wiced/RTOS/$(HAL_WICED_RTOS)/WICED
 HAL_WICED_INCLUDE_DIRS +=   wiced/WWD
-
+HAL_WICED_INCLUDE_DIRS +=   libraries/utilities/linked_list
 
 ifeq "$(HAL_WICED_NETWORK)" "LwIP"
-HAL_WICED_INCLUDE_DIRS +=   wiced/network/LwIP/ver1.4.0.rc1/src/include \
-			    wiced/network/LwIP/ver1.4.0.rc1/src/include/ipv4 \
+HAL_WICED_INCLUDE_DIRS +=   wiced/network/LwIP/ver1.4.1/src/include \
+			    wiced/network/LwIP/ver1.4.1/src/include/ipv4 \
 			    wiced/network/LwIP/WWD/FreeRTOS
 endif
 ifeq "$(HAL_WICED_NETWORK)" "NetX"
@@ -43,8 +43,8 @@ HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/ThreadX/ver5.6 \
 endif
 ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
 HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/FreeRTOS/WWD/ARM_CM3 \
-			    wiced/RTOS/FreeRTOS/ver7.5.2/Source/include \
-			    wiced/RTOS/FreeRTOS/ver7.5.2/Source/portable/GCC/ARM_CM3
+			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/include \
+			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/GCC/ARM_CM3
 
 endif
 

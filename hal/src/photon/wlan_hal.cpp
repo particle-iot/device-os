@@ -41,6 +41,22 @@
 #include "wwd_resources.h"
 #include "dct.h"
 #include "wwd_management.h"
+#include "wiced_tls.h"
+#include "wiced_utilities.h"
+#include "wiced_supplicant.h"
+#include "wiced_tls.h"
+#include "rtc_hal.h"
+#include "tls_callbacks.h"
+#include "tls_host_api.h"
+#include "wiced_crypto.h"
+
+uint64_t tls_host_get_time_ms_local() {
+    uint64_t time_ms;
+    wiced_time_get_utc_time_ms( (wiced_utc_time_ms_t*) &time_ms );
+    return time_ms;
+}
+
+char* lwip_hostname_ptr = NULL;
 
 LOG_SOURCE_CATEGORY("hal.wlan");
 
@@ -49,12 +65,62 @@ LOG_SOURCE_CATEGORY("hal.wlan");
 #include "dns.h"
 #undef class
 
+#ifndef EAP_DEFAULT_OUTER_IDENTITY
+#define EAP_DEFAULT_OUTER_IDENTITY "anonymous"
+#endif
+
+int wlan_clear_enterprise_credentials();
+int wlan_set_enterprise_credentials(WLanCredentials* c);
+
+struct WPAEnterpriseContext {
+    WPAEnterpriseContext() {
+        tls_session = nullptr;
+        tls_context = nullptr;
+        tls_identity = nullptr;
+        supplicant_workspace = nullptr;
+        initialized = false;
+        supplicant_running = false;
+        supplicant_initialized = false;
+    }
+
+    ~WPAEnterpriseContext() {
+        if (tls_session)
+            free(tls_session);
+        if (tls_context)
+            free(tls_context);
+        if (tls_identity)
+            free(tls_identity);
+        if (supplicant_workspace)
+            free(supplicant_workspace);
+    }
+
+    void init() {
+        if (!initialized) {
+            initialized = true;
+            tls_session = (wiced_tls_session_t*)calloc(1, sizeof(wiced_tls_session_t));
+            tls_context = (wiced_tls_context_t*)calloc(1, sizeof(wiced_tls_context_t));
+            tls_identity = (wiced_tls_identity_t*)calloc(1, sizeof(wiced_tls_identity_t));
+            supplicant_workspace = (supplicant_workspace_t*)calloc(1, sizeof(supplicant_workspace_t));
+        }
+    }
+
+    wiced_tls_session_t* tls_session;
+    wiced_tls_context_t* tls_context;
+    wiced_tls_identity_t* tls_identity;
+    supplicant_workspace_t* supplicant_workspace;
+    bool initialized;
+    bool supplicant_running;
+    bool supplicant_initialized;
+};
+
+static WPAEnterpriseContext eap_context;
+
 /**
  * Retrieves the country code from the DCT region.
  */
 wiced_country_code_t fetch_country_code()
 {
-    const uint8_t* code = (const uint8_t*)dct_read_app_data(DCT_COUNTRY_CODE_OFFSET);
+    const uint8_t* code = (const uint8_t*)dct_read_app_data_lock(DCT_COUNTRY_CODE_OFFSET);
 
     wiced_country_code_t result =
         wiced_country_code_t(MK_CNTRY(code[0], code[1], hex_nibble(code[2])));
@@ -70,12 +136,15 @@ wiced_country_code_t fetch_country_code()
     {
         result = WICED_COUNTRY_JAPAN;
     }
+
+    dct_read_app_data_unlock(DCT_COUNTRY_CODE_OFFSET);
+
     return result;
 }
 
 bool isWiFiPowersaveClockDisabled() {
-    const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
-    uint8_t current = (*data);
+    uint8_t current = 0;
+    dct_read_app_data_copy(DCT_RADIO_FLAGS_OFFSET, &current, sizeof(current));
     return ((current&3) == 0x2);
 }
 
@@ -118,9 +187,10 @@ wiced_result_t wlan_initialize_dct()
     return result;
 }
 
-const static_ip_config_t* wlan_fetch_saved_ip_config()
+static_ip_config_t* wlan_fetch_saved_ip_config(static_ip_config_t* config)
 {
-    return (const static_ip_config_t*)dct_read_app_data(DCT_IP_CONFIG_OFFSET);
+    dct_read_app_data_copy(DCT_IP_CONFIG_OFFSET, config, sizeof(static_ip_config_t));
+    return config;
 }
 
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
@@ -149,6 +219,8 @@ int wlan_clear_credentials()
                                  sizeof(*wifi_config));
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
     }
+
+    wlan_clear_enterprise_credentials();
     return result;
 }
 
@@ -191,6 +263,83 @@ int wlan_has_credentials()
     return !has_credentials;
 }
 
+bool check_enterprise_credentials(WLanCredentials* c)
+{
+    bool is_valid = true;
+    if (c && c->eap_type == WLAN_EAP_TYPE_PEAP) {
+        // Check if there is a username in inner_identity
+        if (!c->inner_identity || c->inner_identity_len > 64 || c->inner_identity_len == 0)
+            is_valid = false;
+        // Check if there is a stored password in security_key
+        if (!c->password || c->password_len > 64 || c->password_len == 0)
+            is_valid = false;
+    } else if (c && c->eap_type == WLAN_EAP_TYPE_TLS) {
+        if (!c->client_certificate || c->client_certificate_len == 0 || !c->private_key || c->private_key_len == 0)
+            is_valid = false;
+        if (c->client_certificate_len > CERTIFICATE_SIZE || c->private_key_len > PRIVATE_KEY_SIZE)
+            is_valid = false;
+    } else {
+        is_valid = false;
+    }
+
+    if (is_valid && c->ca_certificate && c->ca_certificate_len > CERTIFICATE_SIZE)
+        is_valid = false;
+
+    return is_valid;
+}
+
+bool is_eap_configuration_valid(const eap_config_t* eap_conf, platform_dct_security_t* sec = NULL)
+{
+    bool is_valid = true;
+    if (eap_conf && eap_conf->type == WLAN_EAP_TYPE_PEAP) {
+        // Check if there is a username in inner_identity
+        if (eap_conf->inner_identity_len > 64 || eap_conf->inner_identity_len == 0)
+            is_valid = false;
+        // Check if there is a stored password in security_key
+        if (eap_conf->security_key_len > 64 || eap_conf->security_key_len == 0)
+            is_valid = false;
+    } else if (eap_conf && eap_conf->type == WLAN_EAP_TYPE_TLS) {
+        // if (eap_conf->inner_identity_len > 64 || eap_conf->inner_identity_len == 0)
+        //     is_valid = false;
+
+        // Check if there is a client certificate and private key
+        wiced_result_t result = WICED_SUCCESS;
+        bool locked = false;
+        if (sec == NULL) {
+            result = wiced_dct_read_lock((void**)&sec, WICED_FALSE,
+                                         DCT_SECURITY_SECTION, 0, sizeof(*sec));
+            locked = true;
+        }
+        if (sec && result == WICED_SUCCESS) {
+            if (strnlen(sec->private_key, PRIVATE_KEY_SIZE) == 0)
+                is_valid = false;
+            if (strnlen(sec->certificate, CERTIFICATE_SIZE) == 0)
+                is_valid = false;
+        } else {
+            is_valid = false;
+        }
+        if (locked) {
+            wiced_dct_read_unlock(sec, WICED_FALSE);
+        }
+    } else {
+        is_valid = false;
+    }
+
+    return is_valid;
+}
+
+int wlan_has_enterprise_credentials()
+{
+    int has_credentials = 0;
+
+    // TODO: For now we are using only 1 global eap configuration for all access points
+    const eap_config_t* eap_conf = (eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
+    has_credentials = (int)is_eap_configuration_valid(eap_conf);
+    dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
+
+    return !has_credentials;
+}
+
 /**
  * Enable wlan and connect to a network.
  * @return
@@ -216,6 +365,258 @@ void wlan_connect_timeout(os_timer_t t)
     wlan_connect_cancel(false);
 }
 
+int wlan_supplicant_start()
+{
+    LOG(TRACE, "Starting supplicant");
+    // Fetch configuration
+    uint8_t eap_type = WLAN_EAP_TYPE_NONE;
+
+    const eap_config_t* eap_conf = (const eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
+    if (!is_eap_configuration_valid(eap_conf)) {
+        dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
+        return 1;
+    }
+    eap_type = eap_conf->type;
+    dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
+
+    wiced_result_t result = WICED_SUCCESS;
+
+    eap_context.init();
+
+    platform_dct_security_t* sec = NULL;
+    result = wiced_dct_read_lock((void**)&sec, WICED_FALSE,
+                                 DCT_SECURITY_SECTION, 0, sizeof(*sec));
+
+    if (result == WICED_SUCCESS) {
+        if (eap_type == WLAN_EAP_TYPE_PEAP) {
+            // result = wiced_tls_init_identity(eap_context.tls_identity, NULL, 0, NULL, 0 );
+            memset(eap_context.tls_identity, 0, sizeof(wiced_tls_identity_t));
+        } else if (eap_type == WLAN_EAP_TYPE_TLS) {
+            result = wiced_tls_init_identity(eap_context.tls_identity,
+                                             (const char*)sec->private_key,
+                                             (uint32_t)strnlen((const char*)sec->private_key, PRIVATE_KEY_SIZE) + 1,
+                                             (const uint8_t*)sec->certificate,
+                                             (uint32_t)strnlen((const char*)sec->certificate, CERTIFICATE_SIZE) + 1);
+        } else {
+            result = WICED_ERROR;
+        }
+    }
+
+    wiced_dct_read_unlock(sec, WICED_FALSE);
+
+    if (result != WICED_SUCCESS)
+        return result;
+
+    eap_conf = (const eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
+
+    wiced_tls_init_context(eap_context.tls_context, eap_context.tls_identity, NULL);
+    if (eap_context.tls_session->length > 0) {
+        memcpy(&eap_context.tls_context->session, eap_context.tls_session, sizeof(wiced_tls_session_t));
+    } else {
+        memset(&eap_context.tls_context->session, 0, sizeof(wiced_tls_session_t));
+    }
+
+    if (eap_conf->ca_certificate_len) {
+        wiced_tls_init_root_ca_certificates((const char*)eap_conf->ca_certificate, eap_conf->ca_certificate_len);
+    }
+
+    result = (wiced_result_t)besl_supplicant_init(eap_context.supplicant_workspace, (eap_type_t)eap_conf->type, WWD_STA_INTERFACE);
+    if ((besl_result_t)result == BESL_SUCCESS) {
+        eap_context.supplicant_initialized = true;
+        wiced_supplicant_enable_tls(eap_context.supplicant_workspace, eap_context.tls_context);
+        if (eap_conf->outer_identity_len) {
+            besl_supplicant_set_identity(eap_context.supplicant_workspace, (const char*)eap_conf->outer_identity, eap_conf->outer_identity_len);
+        } else {
+            // It's probably a good idea to set a default outer identity
+            besl_supplicant_set_identity(eap_context.supplicant_workspace, EAP_DEFAULT_OUTER_IDENTITY, strlen(EAP_DEFAULT_OUTER_IDENTITY));
+        }
+        if (eap_conf->type == WLAN_EAP_TYPE_PEAP) {
+            supplicant_mschapv2_identity_t mschap_identity;
+            char mschap_password[sizeof(eap_conf->security_key) * 2];
+
+            uint8_t*  password = (uint8_t*)eap_conf->security_key;
+            uint8_t*  unicode  = (uint8_t*)mschap_password;
+
+            for (int i = 0; i <= eap_conf->security_key_len; i++) {
+                *unicode++ = *password++;
+                *unicode++ = '\0';
+            }
+
+            mschap_identity.identity = (uint8_t*)eap_conf->inner_identity;
+            mschap_identity.identity_length = eap_conf->inner_identity_len;
+
+            mschap_identity.password = (uint8_t*)mschap_password;
+            mschap_identity.password_length = eap_conf->security_key_len * 2;
+
+            besl_supplicant_set_inner_identity(eap_context.supplicant_workspace, (eap_type_t)eap_conf->type, &mschap_identity);
+        }
+
+        result = (wiced_result_t)besl_supplicant_start(eap_context.supplicant_workspace);
+        LOG(TRACE, "Supplicant started %d", (int)result);
+    }
+
+    dct_read_app_data_unlock(DCT_EAP_CONFIG_OFFSET);
+
+    if (result == 0) {
+        eap_context.supplicant_running = true;
+    }
+
+    return result;
+}
+
+int wlan_supplicant_cancel(int isr)
+{
+    if (eap_context.supplicant_running) {
+        besl_supplicant_cancel(eap_context.supplicant_workspace, isr);
+    }
+    return 0;
+}
+
+int wlan_supplicant_stop()
+{
+    LOG(TRACE, "Stopping supplicant");
+
+    if (eap_context.supplicant_initialized) {
+        besl_supplicant_deinit(eap_context.supplicant_workspace);
+        eap_context.supplicant_initialized = false;
+    }
+
+    wiced_tls_deinit_context(eap_context.tls_context);
+    wiced_tls_deinit_root_ca_certificates();
+    wiced_tls_deinit_identity(eap_context.tls_identity);
+
+    eap_context.supplicant_running = false;
+
+    LOG(TRACE, "Supplicant stopped");
+
+    return 0;
+}
+
+int wlan_restart(void* reserved) {
+    wiced_wlan_connectivity_deinit();
+    wiced_wlan_connectivity_init();
+
+    return 0;
+}
+
+/*
+ * We need to manually loop through the APs here in order to know when to start
+ * WPA Enterprise supplicant.
+ */
+static wiced_result_t wlan_join() {
+    int attempt = WICED_JOIN_RETRY_ATTEMPTS;
+    wiced_result_t result = WICED_ERROR;
+    platform_dct_wifi_config_t* wifi_config = NULL;
+    char ssid_name[SSID_NAME_SIZE + 1];
+
+    result = wiced_dct_read_lock((void**)&wifi_config, WICED_FALSE,
+                                 DCT_WIFI_CONFIG_SECTION, 0, sizeof(*wifi_config));
+
+    if (result != WICED_SUCCESS) {
+        return result;
+    }
+
+    while (attempt-- && !wiced_network_up_cancel) {
+        for (unsigned i = 0; i < CONFIG_AP_LIST_SIZE; i++) {
+            const wiced_config_ap_entry_t& ap = wifi_config->stored_ap_list[i];
+
+            if (ap.details.SSID.length == 0) {
+                continue;
+            }
+
+            bool suppl = false;
+            bool join = true;
+
+            if (ap.details.security & ENTERPRISE_ENABLED) {
+                if (!wlan_has_enterprise_credentials()) {
+                    // Workaround. If connecting not for the first time, for some reason authentication fails.
+                    // It works if we reset wireless module though
+                    // ¯\_(ツ)_/¯
+                    wlan_restart(NULL);
+                    // We need to start supplicant
+                    if (wlan_supplicant_start()) {
+                        // Early error
+                        wlan_supplicant_cancel(0);
+                        wlan_supplicant_stop();
+                        result = WICED_ERROR;
+                        join = false;
+                    } else {
+                        suppl = true;
+                    }
+                }
+            }
+
+            if (join) {
+                memset(ssid_name, 0, sizeof(ssid_name));
+                memcpy(ssid_name, ap.details.SSID.value, ap.details.SSID.length);
+                LOG(INFO, "Joining %s", ssid_name);
+                result = wiced_join_ap_specific((wiced_ap_info_t*)&ap.details, ap.security_key_length, ap.security_key);
+                if (result != WICED_SUCCESS) {
+                    LOG(ERROR, "wiced_join_ap_specific(), result: %d", (int)result);
+                }
+            }
+
+            if (suppl) {
+                if (!result) {
+                    memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
+                } else {
+                    wlan_supplicant_cancel(0);
+                }
+                wlan_supplicant_stop();
+
+                if (!result) {
+                    // Workaround. After successfully authenticating to Enterprise access point, TCP/IP stack
+                    // gets into a weird state. Reinitializing LwIP etc mitigates the issue.
+                    // ¯\_(ツ)_/¯
+                    wiced_network_deinit();
+                    wiced_network_init();
+                }
+            }
+
+            if (result == WICED_SUCCESS) {
+                break;
+            }
+        }
+        if (result == WICED_SUCCESS) {
+            break;
+        }
+    }
+
+    wiced_dct_read_unlock(wifi_config, WICED_FALSE);
+
+    return result;
+}
+
+int wlan_get_hostname(char* buf, size_t len, void* reserved)
+{
+    wiced_result_t result;
+    wiced_hostname_t hostname;
+
+    memset(&hostname, 0, sizeof(hostname));
+    memset(buf, 0, len);
+
+    result = wiced_network_get_hostname(&hostname);
+    if (result == WICED_SUCCESS)
+    {
+        if (hostname.value[0] != 0xff) {
+            size_t l = strnlen(hostname.value, HOSTNAME_SIZE);
+            if (len > l) {
+                memcpy(buf, hostname.value, l);
+            } else {
+                result = WICED_ERROR;
+            }
+        } else {
+            result = WICED_ERROR;
+        }
+    }
+    return (int)result;
+}
+
+int wlan_set_hostname(const char* hostname, void* reserved)
+{
+    return (int)wiced_network_set_hostname(hostname ? hostname : "");
+}
+
 /**
  * Do what is needed to finalize the connection.
  * @return
@@ -227,13 +628,14 @@ wlan_result_t wlan_connect_finalize()
                     nullptr);
 
     // enable connection from stored profiles
-    wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
+    wlan_result_t result = (wlan_result_t)wlan_join();
     if (!result)
     {
         HAL_NET_notify_connected();
         wiced_ip_setting_t settings;
         wiced_ip_address_t dns;
-        const static_ip_config_t& ip_config = *wlan_fetch_saved_ip_config();
+        static_ip_config_t ip_config;
+        wlan_fetch_saved_ip_config(&ip_config);
 
         switch (IPAddressSource(ip_config.config_mode))
         {
@@ -269,6 +671,7 @@ wlan_result_t wlan_connect_finalize()
     {
         os_timer_destroy(cancel_timer, nullptr);
     }
+
     return result;
 }
 
@@ -276,7 +679,8 @@ int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna);
 
 WLanSelectAntenna_TypeDef fetch_antenna_selection()
 {
-    uint8_t result = *(const uint8_t*)dct_read_app_data(DCT_ANTENNA_SELECTION_OFFSET);
+    uint8_t result = 0;
+    dct_read_app_data_copy(DCT_ANTENNA_SELECTION_OFFSET, &result, sizeof(result));
     if (result==0xFF)
         result = ANT_INTERNAL;  // default
 
@@ -322,14 +726,9 @@ wlan_result_t wlan_activate()
 wlan_result_t wlan_deactivate()
 {
     wlan_disconnect_now();
-    // FIXME:
-    // This was required for PR #1125 to reduce Wi-Fi power completely for Sleep stop mode
-    // however it introduced a new connectivity bug in LwIP that was unresolved in commit 87892a3837d4,
-    // which was reverted in commit 6b78d7662f62.  WICED should be updated to pull in a newer version of LwIP
-    // before this change is attempted again.
-    // wiced_result_t result = wiced_wlan_connectivity_deinit();
-    // return result;
-    return 0;
+
+    wiced_result_t result = wiced_wlan_connectivity_deinit();
+    return result;
 }
 
 wlan_result_t wlan_disconnect_now()
@@ -388,6 +787,10 @@ WLanSecurityType toSecurityType(wiced_security_t sec)
         return WLAN_SEC_UNSEC;
     if (sec & WEP_ENABLED)
         return WLAN_SEC_WEP;
+    if ((sec & (WPA2_SECURITY | ENTERPRISE_ENABLED)) == (WPA2_SECURITY | ENTERPRISE_ENABLED))
+        return WLAN_SEC_WPA2_ENTERPRISE;
+    if ((sec & (WPA_SECURITY | ENTERPRISE_ENABLED)) == (WPA_SECURITY | ENTERPRISE_ENABLED))
+        return WLAN_SEC_WPA_ENTERPRISE;
     if (sec & WPA_SECURITY)
         return WLAN_SEC_WPA;
     if (sec & WPA2_SECURITY)
@@ -409,42 +812,45 @@ WLanSecurityCipher toCipherType(wiced_security_t sec)
  */
 wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
 {
-    malloc_transfer_to_curr_thread( malloced_scan_result );
-
-    SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
-    if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
+    if (malloced_scan_result != NULL)
     {
-        wiced_scan_result_t* record = &malloced_scan_result->ap_details;
-        info->count++;
-        if (!info->callback)
+        malloc_transfer_to_curr_thread( malloced_scan_result );
+
+        SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
+        if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
         {
-            if (record->SSID.length == info->ssid_len &&
-                !memcmp(record->SSID.value, info->ssid, info->ssid_len))
+            wiced_scan_result_t* record = &malloced_scan_result->ap_details;
+            info->count++;
+            if (!info->callback)
             {
-                info->security = record->security;
-                info->rssi = record->signal_strength;
+                if (record->SSID.length == info->ssid_len &&
+                    !memcmp(record->SSID.value, info->ssid, info->ssid_len))
+                {
+                    info->security = record->security;
+                    info->rssi = record->signal_strength;
+                }
+            }
+            else
+            {
+                WiFiAccessPoint data;
+                memcpy(data.ssid, record->SSID.value, record->SSID.length);
+                memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
+                data.ssidLength = record->SSID.length;
+                data.ssid[data.ssidLength] = 0;
+                data.security = toSecurityType(record->security);
+                data.cipher = toCipherType(record->security);
+                data.rssi = record->signal_strength;
+                data.channel = record->channel;
+                data.maxDataRate = record->max_data_rate;
+                info->callback(&data, info->callback_data);
             }
         }
         else
         {
-            WiFiAccessPoint data;
-            memcpy(data.ssid, record->SSID.value, record->SSID.length);
-            memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
-            data.ssidLength = record->SSID.length;
-            data.ssid[data.ssidLength] = 0;
-            data.security = toSecurityType(record->security);
-            data.cipher = toCipherType(record->security);
-            data.rssi = record->signal_strength;
-            data.channel = record->channel;
-            data.maxDataRate = record->max_data_rate;
-            info->callback(&data, info->callback_data);
+            wiced_rtos_set_semaphore(&info->complete);
         }
+        free( malloced_scan_result );
     }
-    else
-    {
-        wiced_rtos_set_semaphore(&info->complete);
-    }
-    free( malloced_scan_result );
     return WICED_SUCCESS;
 }
 
@@ -485,6 +891,12 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
             break;
         case WLAN_SEC_WPA2:
             result = WPA2_SECURITY;
+            break;
+        case WLAN_SEC_WPA_ENTERPRISE:
+            result = WPA_SECURITY | ENTERPRISE_ENABLED;
+            break;
+        case WLAN_SEC_WPA2_ENTERPRISE:
+            result = WPA2_SECURITY | ENTERPRISE_ENABLED;
             break;
     }
 
@@ -542,6 +954,21 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
             }
         }
 
+        // We can only store a single enterprise access point
+        if (security & ENTERPRISE_ENABLED) {
+            for (unsigned i = 0; i < CONFIG_AP_LIST_SIZE; i++)
+            {
+                if (wifi_config->stored_ap_list[i].details.security & ENTERPRISE_ENABLED)
+                {
+                    if (replace < 0) {
+                        replace = i;
+                    } else {
+                        memset(&wifi_config->stored_ap_list[i], 0, sizeof(wiced_config_ap_entry_t));
+                    }
+                }
+            }
+        }
+
         if (replace < 0)
         {
             // shuffle all slots along
@@ -594,8 +1021,8 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
         return WLAN_INVALID_KEY_LENGTH;
     }
     // Check WPA/WPA2 password length
-    if ((wicedSecurity & WPA_SECURITY || wicedSecurity & WPA2_SECURITY) &&
-            (!password || passwordLen < WSEC_MIN_PSK_LEN || passwordLen > WSEC_MAX_PSK_LEN)) {
+    if ((wicedSecurity & WPA_SECURITY || wicedSecurity & WPA2_SECURITY) && !(wicedSecurity & ENTERPRISE_ENABLED) &&
+        (!password || passwordLen < WSEC_MIN_PSK_LEN || passwordLen > WSEC_MAX_PSK_LEN)) {
         return WLAN_INVALID_KEY_LENGTH;
     }
     if (flags & WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN) {
@@ -604,18 +1031,115 @@ int wlan_set_credentials_internal(const char *ssid, uint16_t ssidLen, const char
     return add_wiced_wifi_credentials(ssid, ssidLen, password, passwordLen, wiced_security_t(wicedSecurity), channel);
 }
 
+int wlan_clear_enterprise_credentials() {
+    LOG(INFO, "Clearing enterprise credentials");
+
+    return !wlan_set_enterprise_credentials(NULL);
+}
+
+int wlan_set_enterprise_credentials(WLanCredentials* c)
+{
+    LOG(TRACE, "Trying to set EAP credentials");
+    if (c != NULL && !check_enterprise_credentials(c))
+        return 1;
+
+    platform_dct_security_t* sec = (platform_dct_security_t*)malloc(sizeof(platform_dct_security_t));
+    if (sec == NULL) {
+        return 1;
+    }
+
+    memset(sec, 0, sizeof(*sec));
+
+    if (c) {
+        if (c->client_certificate && c->client_certificate_len && c->client_certificate_len < sizeof(sec->certificate)) {
+            memcpy(sec->certificate, c->client_certificate, c->client_certificate_len);
+        }
+        if (c->private_key && c->private_key_len && c->private_key_len < sizeof(sec->private_key)) {
+            memcpy(sec->private_key, c->private_key, c->private_key_len);
+        }
+    }
+
+    wiced_dct_write(sec, DCT_SECURITY_SECTION, 0, sizeof(platform_dct_security_t));
+    free(sec);
+
+    sec = NULL;
+
+    eap_config_t* eap_config = (eap_config_t*)malloc(sizeof(eap_config_t));
+    if (eap_config == NULL) {
+        free(sec);
+        return 1;
+    }
+    memset(eap_config, 0, sizeof(eap_config_t));
+
+    if (c) {
+        eap_config->type = (uint8_t)c->eap_type;
+
+        if (c->inner_identity && c->inner_identity_len && c->inner_identity_len <= sizeof(eap_config->inner_identity)) {
+            memcpy(eap_config->inner_identity, c->inner_identity, c->inner_identity_len);
+            eap_config->inner_identity_len = c->inner_identity_len;
+        }
+        if (c->outer_identity && c->outer_identity_len && c->outer_identity_len <= sizeof(eap_config->outer_identity)) {
+            memcpy(eap_config->outer_identity, c->outer_identity, c->outer_identity_len);
+            eap_config->outer_identity_len = c->outer_identity_len;
+        }
+        if (c->password && c->password_len && c->password_len <= sizeof(eap_config->security_key)) {
+            memcpy(eap_config->security_key, c->password, c->password_len);
+            eap_config->security_key_len = c->password_len;
+        }
+        if (c->ca_certificate && c->ca_certificate_len && c->ca_certificate_len < sizeof(eap_config->ca_certificate)) {
+            memcpy(eap_config->ca_certificate, c->ca_certificate, c->ca_certificate_len);
+            eap_config->ca_certificate_len = c->ca_certificate_len;
+        }
+    }
+
+    int result = (int)(!is_eap_configuration_valid(eap_config, sec));
+    LOG(INFO, "EAP config valid: %d", !result);
+
+    if (!result || c == NULL) {
+        // Write
+        LOG(INFO, "Writing EAP configuration");
+        dct_write_app_data(eap_config, DCT_EAP_CONFIG_OFFSET, sizeof(eap_config_t));
+    }
+    free(eap_config);
+
+    return result;
+}
+
 int wlan_set_credentials(WLanCredentials* c)
 {
     // size v1: 28
     // added flags: size 32
+    // v3: wpa enterprise, version field, size 76
     int flags = 0;
+    int version = 1;
     if (c->size >= 32)
     {
+        version = 2;
         flags = c->flags;
     }
-    STATIC_ASSERT(wlan_credentials_size, sizeof(WLanCredentials)==32);
-    return wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len,
-                                         c->security, c->cipher, c->channel, flags);
+
+    if (c->size > 32) {
+        version = c->version;
+    }
+
+    (void)version;
+
+    STATIC_ASSERT(wlan_credentials_size, sizeof(WLanCredentials)==76);
+
+    int result = wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len,
+                                               c->security, c->cipher, c->channel, flags | WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN);
+    if (result == WICED_SUCCESS && version > 2 && c->eap_type != WLAN_EAP_TYPE_NONE) {
+        result = wlan_set_enterprise_credentials(c);
+    }
+
+    if (!result) {
+        // Save
+        LOG(INFO, "Saving credentials");
+        result = wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len,
+                                               c->security, c->cipher, c->channel, flags);
+    }
+
+    return result;
 }
 
 softap_handle current_softap_handle;
@@ -629,6 +1153,7 @@ void wlan_smart_config_init()
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
         wlan_disconnect_now();
+        wlan_restart(NULL);
         current_softap_handle = softap_start(&config);
     }
 }
@@ -639,6 +1164,7 @@ bool wlan_smart_config_finalize()
     {
         softap_stop(current_softap_handle);
         wlan_disconnect_now();  // force a full refresh
+        wlan_restart(NULL);
         HAL_Delay_Milliseconds(5);
         wlan_activate();
         current_softap_handle = NULL;
@@ -755,8 +1281,12 @@ int wlan_select_antenna_impl(WLanSelectAntenna_TypeDef antenna)
 
 void wlan_connect_cancel(bool called_from_isr)
 {
-    wiced_network_up_cancel = 1;
-    wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
+    if (!wiced_network_up_cancel) {
+        LOG(TRACE, "connect cancel");
+        wiced_network_up_cancel = 1;
+        wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
+        // wlan_supplicant_cancel((int)called_from_isr);
+    }
 }
 
 /**
@@ -789,9 +1319,8 @@ void wlan_set_ipaddress(const HAL_IPAddress* host, const HAL_IPAddress* netmask,
                         const HAL_IPAddress* gateway, const HAL_IPAddress* dns1,
                         const HAL_IPAddress* dns2, void* reserved)
 {
-    const static_ip_config_t* pconfig = wlan_fetch_saved_ip_config();
     static_ip_config_t config;
-    memcpy(&config, pconfig, sizeof(config));
+    wlan_fetch_saved_ip_config(&config);
     assign_if_set(config.host, host);
     assign_if_set(config.netmask, netmask);
     assign_if_set(config.gateway, gateway);

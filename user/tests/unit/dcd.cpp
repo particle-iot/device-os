@@ -4,6 +4,7 @@
 #include "flash_storage.h"
 #include "dcd.h"
 #include <string.h>
+#include "hippomocks.h"
 
 const int TestSectorSize = 16000;
 const int TestSectorCount = 2;
@@ -12,10 +13,38 @@ const int TestBase = 4000;
 using std::string;
 using TestStore = RAMFlashStorage<TestBase, TestSectorCount, TestSectorSize>;
 
-using TestDCD = DCD<TestStore, TestSectorSize, TestBase, TestBase+TestSectorSize>;
+unsigned int crc32b(const unsigned char* message, size_t length) {
+   int i, j;
+   uint32_t byte, crc, mask;
 
+   i = 0;
+   crc = 0xFFFFFFFF;
+   while (length--> 0) {
+      byte = message[i];            // Get next byte.
+      crc = crc ^ byte;
+      for (j = 7; j >= 0; j--) {    // Do eight times.
+         mask = -(crc & 1);
+         crc = (crc >> 1) ^ (0xEDB88320 & mask);
+      }
+      i = i + 1;
+   }
+   return ~crc;
+}
 
-unsigned sum(TestStore& store, unsigned start, unsigned length)
+uint32_t calcCrc(const void* address, size_t length) {
+	return crc32b((const unsigned char*)address, length);
+}
+
+using TestDCDBase = DCD<TestStore, TestSectorSize, TestBase, TestBase+TestSectorSize, calcCrc>;
+
+class TestDCD : public TestDCDBase {
+	friend class DCDFixture;
+};
+
+/**
+ * Utility method to sum a range of values.
+ */
+unsigned sum_bytes(TestStore& store, unsigned start, unsigned length)
 {
     const uint8_t* data = store.dataAt(start);
     unsigned sum = 0;
@@ -25,7 +54,6 @@ unsigned sum(TestStore& store, unsigned start, unsigned length)
     }
     return sum;
 }
-
 
 void assertMemoryEqual(const uint8_t* actual, const uint8_t* expected, size_t length)
 {
@@ -37,7 +65,6 @@ void assertMemoryEqual(const uint8_t* actual, const uint8_t* expected, size_t le
         index++;
     }
 }
-
 
 SCENARIO("RAMRlashStore provides pointer to data", "[ramflash]")
 {
@@ -53,7 +80,7 @@ SCENARIO("RAMRlashStore provides pointer to data", "[ramflash]")
 SCENARIO("RAMFlashStore is initially random", "[ramflash]")
 {
     TestStore store;
-    int fingerprint = sum(store, TestBase, TestSectorSize*TestSectorCount);
+    int fingerprint = sum_bytes(store, TestBase, TestSectorSize*TestSectorCount);
     REQUIRE(fingerprint != 0);      // not all 0's
     REQUIRE(fingerprint != (TestSectorSize*TestSectorCount)*0xFF);
 }
@@ -69,7 +96,7 @@ SCENARIO("RAMFlashStore can be erased","[ramflash]")
         CHECK(data[i] == 0xFF);
     }
 
-    int fingerprint = sum(store, TestBase+TestSectorSize, TestSectorSize);   // 2nd sector
+    int fingerprint = sum_bytes(store, TestBase+TestSectorSize, TestSectorSize);   // 2nd sector
     REQUIRE(fingerprint != 0);      // not all 0's
     REQUIRE(fingerprint == (TestSectorSize)*0xFF);
 }
@@ -112,17 +139,17 @@ SCENARIO("DCD initialized returns 0xFF", "[dcd]")
     TestDCD dcd;
 
     const uint8_t* data = dcd.read(0);
-    for (unsigned i=0; i<dcd.Length; i++)
+    for (unsigned i=0; i<5; i++)
     {
         CAPTURE( i );
         REQUIRE(data[i] == 0xFFu);
     }
 }
 
-SCENARIO("DCD Length is SectorSize minus 8", "[dcd]")
+SCENARIO("DCD Length is SectorSize minus the header size minus footer size", "[dcd]")
 {
     TestDCD dcd;
-    REQUIRE(dcd.Length == TestSectorSize-8);
+    REQUIRE(dcd.Length == TestSectorSize-8-32);
 }
 
 SCENARIO("DCD can save data", "[dcd]")
@@ -131,12 +158,12 @@ SCENARIO("DCD can save data", "[dcd]")
 
     uint8_t expected[dcd.Length];
     memset(expected, 0xFF, sizeof(expected));
-    memcpy(expected+23, "batman", 6);
+    memcpy(expected+13, "batman", 6);
 
     REQUIRE_FALSE(dcd.write(23, "batman", 6));
 
-    const uint8_t* data = dcd.read(0);
-    assertMemoryEqual(data, expected, dcd.Length);
+    const uint8_t* data = dcd.read(10);
+    assertMemoryEqual(data, expected, dcd.Length-10);
 }
 
 SCENARIO("DCD can write whole sector", "[dcd]")
@@ -157,8 +184,9 @@ SCENARIO("DCD can overwrite data", "[dcd]")
     TestDCD dcd;
 
     uint8_t expected[dcd.Length];
-    for (unsigned i=0; i<dcd.Length; i++)
+    for (unsigned i=0; i<dcd.Length; i++) {
         expected[i] = 0xFF;
+    }
     memmove(expected+23, "bbatman", 7);
 
     // overwrite data swapping a b to an a and vice versa
@@ -167,23 +195,28 @@ SCENARIO("DCD can overwrite data", "[dcd]")
 
     const uint8_t* data = dcd.read(0);
     assertMemoryEqual(data, expected, dcd.Length);
+
+    REQUIRE_FALSE(dcd.write(25, "batman", 6));
+    data = dcd.read(0);
+    memmove(expected+23, "bbbatman", 8);
+    assertMemoryEqual(data, expected, dcd.Length);
 }
 
-SCENARIO("DCD uses 2nd sector if both are valid", "[dcd]")
+SCENARIO("DCD uses 2nd sector if both are valid v1 sectors", "[dcd]")
 {
     TestDCD dcd;
     TestStore& store = dcd.store;
 
     TestDCD::Header header;
-    header.make_valid();
+    header.makeValid();
 
     // directly manipulate the flash to create desired state
     store.eraseSector(TestBase);
     store.eraseSector(TestBase+TestSectorSize);
-    store.write(TestBase, &header, sizeof(header));
-    store.write(TestBase+sizeof(header), "abcd", 4);
-    store.write(TestBase+TestSectorSize, &header, sizeof(header));
-    store.write(TestBase+TestSectorSize+sizeof(header), "1234", 4);
+    store.write(TestBase, &header, header.size());
+    store.write(TestBase+header.size(), "abcd", 4);
+    store.write(TestBase+TestSectorSize, &header, header.size());
+    store.write(TestBase+TestSectorSize+header.size(), "1234", 4);
 
     const uint8_t* result = dcd.read(0);
     assertMemoryEqual(result, (const uint8_t*)"1234", 4);
@@ -210,4 +243,128 @@ SCENARIO("DCD write is atomic if partial failure", "[dcd]")
         // last write is unsuccessful
         assertMemoryEqual(dcd.read(23), (const uint8_t*)"batman", 6);
     }
+}
+
+TEST_CASE("initialized header has version 1", "[header]") {
+	TestDCD dcd;
+	TestDCD::Header header;
+	header.makeValid();
+	REQUIRE(header.isValid());
+	REQUIRE(header.seal==0xEDA15E00);		// SEAL_VALID
+}
+
+SCENARIO_METHOD(TestDCD, "isCRCValid", "[dcd]") {
+	TestDCD& dcd = *this;
+	uint32_t crc = 0x1234ABCD;
+	GIVEN("calculateCRC is mocked") {
+		const uint8_t* start = store.dataAt(addressOf(Sector_0));
+		MockRepository mocks;
+		mocks.ExpectCallFunc(calcCrc).With((const void*)(start+8), 16000-12).Return(crc);
+
+		WHEN("the header has a different CRC") {
+			REQUIRE_FALSE(dcd.isCRCValid(Sector_0, 0x1234));
+		}
+
+		WHEN("the header has the same CRC") {
+			REQUIRE(dcd.isCRCValid(Sector_0, crc));
+		}
+	}
+}
+
+SCENARIO_METHOD(TestDCD, "initializing a sector initializes to 0xFF with a valid CRC", "[dcd") {
+    REQUIRE_FALSE(isInitialized());
+    initialize(Sector_0);
+    REQUIRE(isCRCValid(Sector_0));
+    REQUIRE(!isCRCValid(Sector_1));
+    REQUIRE(isInitialized());
+}
+
+SCENARIO_METHOD(TestDCD, "writing data and then changing it on the fly invalidates the sector", "[dcd]") {
+	TestDCD& dcd = *this;
+    REQUIRE(!isCRCValid(Sector_0));
+    REQUIRE_FALSE(dcd.write(23, "abcdef", 6));
+	bool initialized = dcd.isInitialized();
+    REQUIRE(initialized);
+	// emulate a change in the CRC
+	MockRepository mocks;
+	uint32_t crc = 0xABCDABCD;
+	mocks.OnCallFunc(calcCrc).Return(crc);
+	REQUIRE(!dcd.isCRCValid(Sector_0));
+}
+
+SCENARIO_METHOD(TestDCD, "dcd is uninitialized by default", "[dcd]") {
+	REQUIRE_FALSE(isInitialized());
+}
+
+SCENARIO_METHOD(TestDCD, "dcd can be initialized by writing", "[dcd]") {
+	// assume uninitialized
+	auto& dct = *this;
+	dct.write(23, "abcd", 4);
+	REQUIRE(dct.isInitialized());
+	REQUIRE(dct.isCRCValid(Sector_0));
+}
+
+SCENARIO_METHOD(TestDCD, "current sector","[dcd]") {
+
+	GIVEN("current sector") {
+		TestDCD& dcd = *this;
+		// these are needed to avoid a linker error on the Sector_xxx symbols from the DCD template
+		//const int Sector_Unknown = 255;
+		//const int Sector_0 = 0;
+		//const int Sector_1 = 1;
+
+		THEN("is the sector with the highest count") {
+			REQUIRE(_currentSector(0, 1, Sector_0, Sector_1)==Sector_1);
+			REQUIRE(_currentSector(3, 0, Sector_0, Sector_1)==Sector_1);
+			REQUIRE(_currentSector(0, 3, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(1, 0, Sector_0, Sector_1)==Sector_0);
+
+			REQUIRE(_currentSector(0, 1, Sector_1, Sector_0)==Sector_0);
+			REQUIRE(_currentSector(3, 0, Sector_1, Sector_0)==Sector_0);
+			REQUIRE(_currentSector(0, 3, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(1, 0, Sector_1, Sector_0)==Sector_1);
+		}
+
+		THEN("is the first sector when counts are not in sequence") {
+			REQUIRE(_currentSector(2, 0, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(0, 2, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(1, 3, Sector_0, Sector_1)==Sector_0);
+			REQUIRE(_currentSector(3, 1, Sector_0, Sector_1)==Sector_0);
+
+			REQUIRE(_currentSector(2, 0, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(0, 2, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(1, 3, Sector_1, Sector_0)==Sector_1);
+			REQUIRE(_currentSector(3, 1, Sector_1, Sector_0)==Sector_1);
+		}
+	}
+}
+
+SCENARIO_METHOD(TestDCD, "upgrade v1 to v2 format", "[dcd]") {
+    Header header;
+    header.makeValid();
+
+    // directly manipulate the flash to create desired state
+    store.eraseSector(TestBase);
+    store.eraseSector(TestBase+TestSectorSize);
+    store.write(TestBase, &header, header.size());
+
+    uint8_t data[4096];
+
+    for (int i=0; i<4096; i++) {
+    		data[i] = random();
+    }
+
+    store.write(TestBase+header.size(), data, 4096);
+    REQUIRE(!this->isCRCValid(Sector_0));
+    const uint8_t* result = read(0);
+    assertMemoryEqual(result, data, 4096);
+
+    // now rewrite, which will change it to sector v2 format
+    write(4, "56", 2);
+    memmove(data+4, "56", 2);
+    result = read(0);
+	assertMemoryEqual(result, data, 4096);
+
+	//sector should have a valid CRC
+    REQUIRE(this->isCRCValid(Sector_1));
 }

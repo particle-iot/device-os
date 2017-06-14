@@ -1,41 +1,17 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "platform_toolchain.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,15 +28,19 @@ extern uint32_t htobe32(uint32_t v);
 
 #else /* ifdef LINT */
 
+#if defined(WIN32) && !defined(ALWAYS_INLINE)
+#define ALWAYS_INLINE
+#endif
+
 #ifndef htobe16   /* This is defined in POSIX platforms */
-static inline uint16_t htobe16(uint16_t v)
+static inline ALWAYS_INLINE uint16_t htobe16(uint16_t v)
 {
     return (uint16_t)(((v&0x00FF) << 8) | ((v&0xFF00)>>8));
 }
 #endif /* ifndef htobe16 */
 
 #ifndef htobe32   /* This is defined in POSIX platforms */
-static inline uint32_t htobe32(uint32_t v)
+static inline ALWAYS_INLINE uint32_t htobe32(uint32_t v)
 {
     return (uint32_t)(((v&0x000000FF) << 24) | ((v&0x0000FF00) << 8) | ((v&0x00FF0000) >> 8) | ((v&0xFF000000) >> 24));
 }
@@ -86,11 +66,16 @@ static inline uint32_t htobe32(uint32_t v)
 
 #define WICED_VERIFY(x)                               {wiced_result_t res = (x); if (res != WICED_SUCCESS){return res;}}
 
+#define WICED_VERIFY_GOTO( expr, res_var, label )     {res_var = (expr); if (res_var != WICED_SUCCESS){goto label;}}
+
 #define MEMCAT(destination, source, source_length)    (void*)((uint8_t*)memcpy((destination),(source),(source_length)) + (source_length))
 
 #define MALLOC_OBJECT(name,object_type)               ((object_type*)malloc_named(name,sizeof(object_type)))
 
 #define OFFSET(type, member)                          ((uint32_t)&((type *)0)->member)
+
+#define ARRAY_SIZE(a)                                ( sizeof(a) / sizeof(a[0]) )
+#define ARRAY_POSITION( array, element_pointer )     ( ((uint32_t)element_pointer - (uint32_t)array) / sizeof(array[0]) )
 
 /* Macros for comparing MAC addresses */
 #define CMP_MAC( a, b )  (((((unsigned char*)a)[0])==(((unsigned char*)b)[0]))&& \
@@ -141,6 +126,7 @@ typedef enum
 
 #ifdef WICED_ENABLE_MALLOC_DEBUG
 #include "malloc_debug.h"
+extern void malloc_print_mallocs           ( void );
 #else
 #define calloc_named( name, nelems, elemsize) calloc ( nelems, elemsize )
 #define calloc_named_hideleak( name, nelems, elemsize )  calloc ( nelems, elemsize )
@@ -153,6 +139,8 @@ typedef enum
 #define malloc_leak_check( thread, global_flag )
 #define malloc_transfer_to_curr_thread( block )
 #define malloc_transfer_to_thread( block, thread )
+#define malloc_print_mallocs( void )
+#define malloc_debug_startup_finished( )
 #endif /* ifdef WICED_ENABLE_MALLOC_DEBUG */
 
 /* Define macros to assist operation on host MCUs that require aligned memory access */
@@ -183,6 +171,11 @@ typedef enum
 #define WICED_NEVER_TIMEOUT   (0xFFFFFFFF)
 #define WICED_WAIT_FOREVER    (0xFFFFFFFF)
 #define WICED_NO_WAIT         (0)
+#define FLOAT_TO_STRING_MAX_FRACTION_SUPPORTED      (6)
+
+/* size  ascii printable string for an ethernet address */
+#define WICED_ETHER_ADDR_STR_LEN 18
+#define WICED_ETHER_ADDR_LEN      6
 
 /******************************************************
  *                   Enumerations
@@ -287,7 +280,7 @@ uint32_t generic_string_to_unsigned( const char* str );
  * @return the number of characters successfully converted (including sign).  i.e. 0 = error
  *
  */
-uint8_t string_to_signed( const char* string, uint8_t str_length, int32_t* value_out, uint8_t is_hex );
+uint8_t string_to_signed( const char* string, uint16_t str_length, int32_t* value_out, uint8_t is_hex );
 
 
 /**
@@ -339,7 +332,7 @@ int is_digit_str( const char* str );
  *
  * @return    The hex character corresponding to the nibble
  */
-static inline char nibble_to_hexchar( uint8_t nibble )
+static inline ALWAYS_INLINE char nibble_to_hexchar( uint8_t nibble )
 {
     if (nibble > 9)
     {
@@ -360,7 +353,7 @@ static inline char nibble_to_hexchar( uint8_t nibble )
  *
  * @return    The hex character corresponding to the nibble
  */
-static inline char hexchar_to_nibble( char hexchar, uint8_t* nibble )
+static inline ALWAYS_INLINE char hexchar_to_nibble( char hexchar, uint8_t* nibble )
 {
     if ( ( hexchar >= '0' ) && ( hexchar <= '9' ) )
     {
@@ -391,7 +384,7 @@ static inline char hexchar_to_nibble( char hexchar, uint8_t* nibble )
  *
  * @return    A pointer to the character after the two hex characters added
  */
-static inline char* string_append_two_digit_hex_byte( char* string, uint8_t byte )
+static inline ALWAYS_INLINE char* string_append_two_digit_hex_byte( char* string, uint8_t byte )
 {
     *string = nibble_to_hexchar( ( byte & 0xf0 ) >> 4 );
     string++;
@@ -400,9 +393,82 @@ static inline char* string_append_two_digit_hex_byte( char* string, uint8_t byte
     return string;
 }
 
+/**
+ ******************************************************************************
+ * Convert WEP security key to the format used by WICED
+ *
+ * @param[out]    wep_key_ouput   The converted key
+ * @param[in]     wep_key_data    The WEP key to convert
+ * @param[in,out] wep_key_length  The length of the WEP key data. Upon return, the length of the converted WEP key
+ * @param[in]     wep_key_format  The current format of the WEP key
+ */
+void format_wep_keys( char* wep_key_output, const char* wep_key_data, uint8_t* wep_key_length, wep_key_format_t wep_key_format );
 
+/**
+ ******************************************************************************
+ * Length limited version of strstr. Adapted from bcmstrnstr in bcmutils.c
+ *
+ * @param     arg  The string to be searched.
+ * @param     arg  The length of the string to be searched.
+ * @param     arg  The string to be found.
+ * @param     arg  The length of the string to be found.
+ *
+ * @return    pointer to the found string if search successful, otherwise NULL
+ */
+char* strnstr( const char* s, uint16_t s_len, const char* substr, uint16_t substr_len );
 
-void format_wep_keys( char* wep_key_ouput, const char* wep_key_data, uint8_t* wep_key_length, wep_key_format_t wep_key_format );
+/**
+ ******************************************************************************
+ * Length limited version of strcasestr. Adapted from bcmstrnstr in bcmutils.c
+ *
+ * @param     arg  The string to be searched.
+ * @param     arg  The length of the string to be searched.
+ * @param     arg  The string to be found.
+ * @param     arg  The length of the string to be found.
+ *
+ * @return    pointer to the found string if search successful, otherwise NULL
+ */
+char* strncasestr( const char* s, uint16_t s_len, const char* substr, uint16_t substr_len );
+
+/**
+ ******************************************************************************
+ * Compare a string to a pattern containing wildcard character(s).
+ *
+ * @note: The following wildcard characters are supported:
+ *        \li '*' for matching zero or more characters
+ *        \li '?' for matching exactly one character
+ *
+ * @param[in] string   The target string to compare with with the pattern
+ * @param[in] length   The length of the target string
+ * @param[in] pattern  The NUL-terminated string pattern which contains wildcard character(s)
+ *
+ * @return    1 if the string matches the pattern; 0 otherwise.
+ */
+uint8_t match_string_with_wildcard_pattern( const char* string, uint32_t length, const char* pattern );
+
+/**
+ ******************************************************************************
+ * Convert ether address to a printable string
+ *
+ * @param[in] ea         Ethernet address to convert
+ * @param[in] buf        Buffer to write the ascii string into
+ * @param[in] buf_len  Length of the memory buf points to
+ *
+ * @return                   Pointer to buf if successful; "" if not successful due to buffer too short
+ */
+char* wiced_ether_ntoa( const uint8_t *ea, char *buf, uint8_t buf_len );
+
+/*
+ ******************************************************************************
+ * Float output into the char buffer
+ *
+ * @param     arg  Char buffer in which float value to be stored.
+ * @param     arg  Float value.
+ * @param     arg  Decimal resolution max support upto 6.
+ *
+* @return    Number of char printed in buffer. On error, returns 0.
+ */
+uint8_t float_to_string ( char* buffer, uint8_t buffer_len, float value, uint8_t resolution  );
 
 #ifdef __cplusplus
 } /*extern "C" */

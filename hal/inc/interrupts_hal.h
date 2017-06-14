@@ -134,7 +134,7 @@ inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
 #else
 #error "*** MCU architecture not supported by HAL_IsISR(). ***"
 #endif
-#endif
+#endif // defined(USE_STDPERIPH_DRIVER)
 
 
 #ifdef __cplusplus

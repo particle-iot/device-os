@@ -7,6 +7,11 @@
 extern "C" {
 #endif
 
+typedef enum {
+  FLASH_ACCESS_RESULT_OK             = 0,
+  FLASH_ACCESS_RESULT_BADARG         = 1,
+  FLASH_ACCESS_RESULT_ERROR          = 2
+} flash_access_result_t;
 
 /* MAL access layer for Internal/Serial Flash Routines */
 //New routines specific for BM09/BM14 flash usage
@@ -16,24 +21,24 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 bool FLASH_WriteProtectMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length, bool protect);
 bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
 
-typedef bool (*copymem_fn_t)(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                      uint32_t length, uint8_t module_function, uint8_t flags);
+typedef int (*copymem_fn_t)(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                            flash_device_t destinationDeviceID, uint32_t destinationAddress,
+                            uint32_t length, uint8_t module_function, uint8_t flags);
 
 
 /**
  * Determines if the memory copy can be performed.
  */
-bool FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                      uint32_t length, uint8_t module_function, uint8_t flags);
+int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
+                          uint32_t length, uint8_t module_function, uint8_t flags);
 
 /**
  * @param validateDestinationAddress checks if the destination address corresponds with the start address in the module
  */
-bool FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                      uint32_t length, uint8_t module_function, uint8_t flags);
+int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
+                     flash_device_t destinationDeviceID, uint32_t destinationAddress,
+                     uint32_t length, uint8_t module_function, uint8_t flags);
 
 bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
@@ -50,7 +55,7 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
 bool FLASH_IsFactoryResetAvailable(void);
 bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
-void FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
+bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);

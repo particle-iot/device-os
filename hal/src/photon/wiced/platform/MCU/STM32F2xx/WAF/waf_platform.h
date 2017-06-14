@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
@@ -57,7 +32,7 @@ extern "C" {
 #define PLATFORM_DCT_COPY2_START_SECTOR      ( FLASH_Sector_2  )
 #define PLATFORM_DCT_COPY2_START_ADDRESS     ( DCT2_START_ADDR )
 #define PLATFORM_DCT_COPY2_END_SECTOR        ( FLASH_Sector_2 )
-#define PLATFORM_DCT_COPY2_END_ADDRESS       ( DCT1_START_ADDR + DCT1_SIZE )
+#define PLATFORM_DCT_COPY2_END_ADDRESS       ( DCT2_START_ADDR + DCT1_SIZE )
 
 /* DEFAULT APPS (eg FR and OTA) need only be loaded once. */
 #define PLATFORM_DEFAULT_LOAD                ( WICED_FRAMEWORK_LOAD_ONCE )
@@ -94,8 +69,60 @@ void platform_erase_app_area    ( uint32_t physical_address, uint32_t size );
 platform_result_t platform_erase_flash       ( uint16_t start_sector, uint16_t end_sector );
 platform_result_t platform_write_flash_chunk ( uint32_t address, const void* data, uint32_t size );
 
-/* Factory reset required function (defined in platform.c) */
-wiced_bool_t platform_check_factory_reset( void );
+/* Check length of time the "Factory Reset" button is pressed
+ *
+ * NOTES: This is used for bootloader (PLATFORM_HAS_OTA) and ota2_bootloader.
+ *        You must at least call NoOS_setup_timing(); before calling this.
+ *
+ *        To change the button used for this test on your platform, change
+ *           platforms/<platform>/platform.h: PLATFORM_FACTORY_RESET_BUTTON_GPIO
+ *
+ *        To change the granularity of the timer (default 100us), change
+ *           platforms/<platform>/platform.h: PLATFORM_FACTORY_RESET_CHECK_PERIOD
+ *           NOTE: This also changes the "flashing" frequency of the LED)
+ *
+ *        To change the polarity of the button (default is pressed = low), change
+ *           platforms/<platform>/platform.h: PLATFORM_WICED_BUTTON_ACTIVE_VALUE
+ *           also, look at the gpio pin initialization below
+ *           platform_gpio_init( &platform_gpio_pins[ PLATFORM_FACTORY_RESET_BUTTON_GPIO ], INPUT_PULL_UP );
+ *
+ *        To change the LED used for this purpose, change
+ *           platforms/<platform>/platform.h: PLATFORM_FACTORY_RESET_LED_GPIO
+ *
+ *        To change the polarity of the LED (default is lit = high), change
+ *           platforms/<platform>/platform.h: PLATFORM_FACTORY_RESET_LED_ON_STATE
+ *
+ * USAGE for OTA support (see <Wiced-SDK>/WICED/platform/MCU/wiced_waf_common.c::wiced_waf_check_factory_reset() )
+ *            > 5 seconds - initiate Factory Reset
+ *
+ *      uint32_t    usecs_pressed;
+ *      usecs_pressed = platform_get_factory_reset_button_time (PLATFORM_FACTORY_RESET_TIMEOUT);
+ *      if (usecs_pressed >= PLATFORM_FACTORY_RESET_TIMEOUT)
+ *      {
+ *          //Factory Reset here
+ *      }
+ *
+ * USAGE for OTA2 support (Over The Air version 2 see <Wiced-SDK>/apps/waf/ota2_bootloader/ota2_bootloader.c). (Over The Air version 2).
+ *             ~5 seconds - start SoftAP
+ *            ~10 seconds - initiate Factory Reset
+ *
+ *      uint32_t    usecs_pressed;
+ *      usecs_pressed = platform_get_factory_reset_button_time (2 * PLATFORM_FACTORY_RESET_TIMEOUT);
+ *      if ((usecs_pressed >= 4000) & (usecs_pressed  <= 6000))
+ *      {
+ *          //about 5 seconds here
+ *      }
+ *      else if ((usecs_pressed >= 9000) & (usecs_pressed  <= 11000))
+ *      {
+ *          //about 10 seconds here
+ *      }
+ *
+ * param    max_time    - maximum time to wait
+ *
+ * returns  usecs button was held
+ *
+ */
+uint32_t  platform_get_factory_reset_button_time ( uint32_t max_time );
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -20,14 +20,14 @@
 
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+
 #include "service_debug.h"
 #include "handshake.h"
 #include "device_keys.h"
 #include "message_channel.h"
 #include "buffer_message_channel.h"
-#include "tropicssl/rsa.h"
-#include "tropicssl/aes.h"
+#include "mbedtls/aes.h"
 
 namespace particle
 {
@@ -62,7 +62,7 @@ private:
 	unsigned char iv_send[16];
 	unsigned char iv_receive[16];
 	unsigned char salt[8];
-	aes_context aes;
+	mbedtls_aes_context aes;
 
 	Callbacks callbacks;
 	message_id_t* counter;
@@ -71,6 +71,12 @@ public:
 
 	LightSSLMessageChannel()
 	{
+		mbedtls_aes_init(&aes);
+	}
+
+	~LightSSLMessageChannel()
+	{
+		mbedtls_aes_free(&aes);
 	}
 
 	virtual bool is_unreliable() override;
@@ -123,4 +129,4 @@ protected:
 }
 }
 
-#endif
+#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL

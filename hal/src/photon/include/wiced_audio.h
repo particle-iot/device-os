@@ -1,40 +1,16 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
 #include "wwd_constants.h"
+#include "platform_audio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -114,7 +90,7 @@ extern "C" {
  *                    Constants
  ******************************************************/
 
-#define MAX_NUM_AUDIO_DEVICES (3)
+#define MAX_NUM_AUDIO_DEVICES (4)
 
 /******************************************************
  *                   Enumerations
@@ -168,6 +144,7 @@ typedef struct
     uint32_t sample_rate;
     uint8_t  bits_per_sample;
     uint8_t  channels;
+    uint8_t  frame_size;
     uint8_t  volume;
 } wiced_audio_config_t;
 
@@ -177,14 +154,13 @@ typedef struct
  */
 typedef struct
 {
-    const char*    name;
-    void*          audio_device_driver_specific;
+    platform_audio_device_id_t  device_id;
+    void*                       audio_device_driver_specific;
     wiced_result_t (*audio_device_init)           ( void* device_data );
     wiced_result_t (*audio_device_deinit)         ( void* device_data );
     wiced_result_t (*audio_device_configure)      ( void* device_data, wiced_audio_config_t* config, uint32_t* mclk );
     wiced_result_t (*audio_device_start_streaming)( void* device_data );
-    wiced_result_t (*audio_device_pause)          ( void* device_data );
-    wiced_result_t (*audio_device_resume)         ( void* device_data );
+    wiced_result_t (*audio_device_stop_streaming) ( void* device_data );
     wiced_result_t (*audio_device_set_volume)     ( void* device_data, double decibles );
     wiced_result_t (*audio_device_set_treble)     ( void* device_data, uint8_t percentage );
     wiced_result_t (*audio_device_set_bass)       ( void* device_data, uint8_t percentage );
@@ -218,7 +194,7 @@ typedef struct
  *               Function Declarations
  ******************************************************/
 
-wiced_result_t wiced_audio_init                        ( const char* device_name, wiced_audio_session_ref* sh, uint16_t period_size );
+wiced_result_t wiced_audio_init                        ( const platform_audio_device_id_t device_1d, wiced_audio_session_ref* sh, uint16_t period_size );
 wiced_result_t wiced_audio_configure                   ( wiced_audio_session_ref sh, wiced_audio_config_t* config );
 wiced_result_t wiced_audio_create_buffer               ( wiced_audio_session_ref sh, uint16_t size, uint8_t* buffer_ptr, void*(*allocator)(uint16_t size));
 wiced_result_t wiced_audio_set_volume                  ( wiced_audio_session_ref sh, double volume_in_db );
@@ -236,8 +212,9 @@ wiced_result_t wiced_audio_get_current_buffer_weight   ( wiced_audio_session_ref
 
 /* Returns the latency of the audio system in audio frames */
 wiced_result_t wiced_audio_get_latency                 ( wiced_audio_session_ref sh, uint32_t* latency );
-wiced_result_t wiced_register_audio_device             ( const char* name, wiced_audio_device_interface_t* interface );
-
+wiced_result_t wiced_register_audio_device             ( const platform_audio_device_id_t device_id, wiced_audio_device_interface_t* interface );
+wiced_result_t wiced_audio_set_pll_fractional_divider  ( wiced_audio_session_ref sh, float value );
+wiced_result_t wiced_audio_update_period_size          ( wiced_audio_session_ref sh, uint16_t period_size );
 
 #ifdef __cplusplus
 } /* extern "C" */

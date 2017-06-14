@@ -52,7 +52,7 @@
 /*                                                                        */
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
-/*  09-21-2007     Janet Christiansen       Initial Version 1.0           */
+/*  09-21-2007     Janet Christiansen       Initial Version 1.0           */ 
 /*  04-22-2010     Janet Christiansen       Modified comment(s),          */
 /*                                          resulting in version 5.1      */
 /*                                                                        */
@@ -64,7 +64,7 @@
 
 #ifdef   __cplusplus
 
-/* Yes, C++ compiler is present.  Use standard C.  */
+/* Yes, C++ compiler is present.  Use standard C.  */ 
 extern   "C" {
 
 #endif
@@ -82,9 +82,9 @@ extern   "C" {
 #define NX_POP3_SERVER_DEBUG                         NX_POP3_DEBUG_LEVEL_NONE
 #endif
 
-/* Scheme for filtering messages during program execution.
+/* Scheme for filtering messages during program execution. 
 
-   printf() itself may need to be defined for the specific
+   printf() itself may need to be defined for the specific 
    processor that is running the application and communication
    available (e.g. serial port).  */
 
@@ -108,16 +108,16 @@ extern   "C" {
     }                                                               \
 }
 #endif /* NX_POP3_SERVER_DEBUG */
-
+  
 /* Enable print server packet and memory pool reserves feature.  */
 /*
-#define NX_POP3_PRINT_SERVER_RESERVES
+#define NX_POP3_PRINT_SERVER_RESERVES              
 */
 
 /* Set Net TCP print summary mutex timeout in ticks.  */
 
-#ifndef NX_POP3_SERVER_PRINT_TIMEOUT
-#define NX_POP3_SERVER_PRINT_TIMEOUT                 (1 * NX_POP3_TICKS_PER_SECOND)
+#ifndef NX_POP3_SERVER_PRINT_TIMEOUT            
+#define NX_POP3_SERVER_PRINT_TIMEOUT                 (1 * NX_POP3_TICKS_PER_SECOND)  
 #endif
 
 
@@ -126,13 +126,13 @@ extern   "C" {
 
 /* Set the POP3 server thread stack size.  */
 
-#ifndef NX_POP3_SERVER_THREAD_STACK_SIZE
+#ifndef NX_POP3_SERVER_THREAD_STACK_SIZE        
 #define NX_POP3_SERVER_THREAD_STACK_SIZE              4096
 #endif
 
 /* Set POP3 server thread priority.  */
 
-#ifndef NX_POP3_SERVER_THREAD_PRIORITY
+#ifndef NX_POP3_SERVER_THREAD_PRIORITY 
 #define NX_POP3_SERVER_THREAD_PRIORITY                2
 #endif
 
@@ -147,19 +147,19 @@ extern   "C" {
 /* Set POP3 server preemption threshold.  */
 
 #ifndef NX_POP3_SERVER_PREEMPTION_THRESHOLD
-#define NX_POP3_SERVER_PREEMPTION_THRESHOLD           NX_POP3_SERVER_THREAD_PRIORITY
+#define NX_POP3_SERVER_PREEMPTION_THRESHOLD           NX_POP3_SERVER_THREAD_PRIORITY  
 #endif
 
 
 /* Set the server session stack size.  */
 
-#ifndef NX_POP3_SERVER_SESSION_THREAD_STACK_SIZE
-#define NX_POP3_SERVER_SESSION_THREAD_STACK_SIZE      4096
+#ifndef NX_POP3_SERVER_SESSION_THREAD_STACK_SIZE        
+#define NX_POP3_SERVER_SESSION_THREAD_STACK_SIZE      4096 
 #endif
 
 /* Set POP3 server session thread priority.  */
 
-#ifndef NX_POP3_SERVER_SESSION_THREAD_PRIORITY
+#ifndef NX_POP3_SERVER_SESSION_THREAD_PRIORITY 
 #define NX_POP3_SERVER_SESSION_THREAD_PRIORITY        NX_POP3_SERVER_THREAD_PRIORITY
 #endif
 
@@ -167,7 +167,7 @@ extern   "C" {
 /* Set POP3 server session preemption threshold.  */
 
 #ifndef NX_POP3_SERVER_SESSION_PREEMPTION_THRESHOLD
-#define NX_POP3_SERVER_SESSION_PREEMPTION_THRESHOLD   NX_POP3_SERVER_SESSION_THREAD_PRIORITY
+#define NX_POP3_SERVER_SESSION_PREEMPTION_THRESHOLD   NX_POP3_SERVER_SESSION_THREAD_PRIORITY  
 #endif
 
 /* Set POP3 server session thread time slice.  */
@@ -196,7 +196,7 @@ extern   "C" {
 /* Set POP3 server byte pool mutex name.  */
 
 #ifndef NX_POP3_SERVER_BYTE_POOL_MUTEX_NAME
-#define NX_POP3_SERVER_BYTE_POOL_MUTEX_NAME            "POP3 Server bytepool mutex"
+#define NX_POP3_SERVER_BYTE_POOL_MUTEX_NAME            "POP3 Server bytepool mutex" 
 #endif
 
 
@@ -211,8 +211,8 @@ extern   "C" {
 
 /* Set port for POP3 server to listen on.  */
 
-#ifndef NX_POP3_SERVER_SESSION_PORT
-#define NX_POP3_SERVER_SESSION_PORT                    110
+#ifndef NX_POP3_SERVER_SESSION_PORT                       
+#define NX_POP3_SERVER_SESSION_PORT                    110     
 #endif
 
 
@@ -224,20 +224,20 @@ extern   "C" {
 
 /* Set TCP receive window size (maximum number of bytes in socket receive queue).  */
 
-#ifndef NX_POP3_SERVER_WINDOW_SIZE
+#ifndef NX_POP3_SERVER_WINDOW_SIZE   
 #define NX_POP3_SERVER_WINDOW_SIZE                     NX_POP3_SERVER_PACKET_SIZE
 #endif
 
 /* Set size of NetX POP3 server packet. Best if close to (less than) the device MTU.  */
 
 #ifndef NX_POP3_SERVER_PACKET_SIZE
-#define NX_POP3_SERVER_PACKET_SIZE                     1500
+#define NX_POP3_SERVER_PACKET_SIZE                     1500  
 #endif
 
 
 /* Set size of NetX POP3 server packet pool.  */
 
-#ifndef NX_POP3_SERVER_PACKET_POOL_SIZE
+#ifndef NX_POP3_SERVER_PACKET_POOL_SIZE    
 #define NX_POP3_SERVER_PACKET_POOL_SIZE                (20 * NX_POP3_SERVER_PACKET_SIZE)
 #endif
 
@@ -251,14 +251,14 @@ extern   "C" {
 
 /* Set timeout for server TCP socket send completion.  */
 
-#ifndef NX_POP3_SERVER_TCP_SOCKET_SEND_WAIT
-#define NX_POP3_SERVER_TCP_SOCKET_SEND_WAIT            (3  * NX_POP3_TICKS_PER_SECOND)
+#ifndef NX_POP3_SERVER_TCP_SOCKET_SEND_WAIT    
+#define NX_POP3_SERVER_TCP_SOCKET_SEND_WAIT            (3  * NX_POP3_TICKS_PER_SECOND)    
 #endif
 
 
 /* Set NetX IP helper thread stack size.  */
 
-#ifndef NX_POP3_SERVER_IP_THREAD_STACK_SIZE
+#ifndef NX_POP3_SERVER_IP_THREAD_STACK_SIZE   
 #define NX_POP3_SERVER_IP_THREAD_STACK_SIZE            2048
 #endif
 
@@ -277,21 +277,21 @@ extern   "C" {
 
 /* Set NetX POP3 server timeout wait between client commands.  */
 
-#ifndef NX_POP3_SERVER_TCP_RECEIVE_TIMEOUT
-#define NX_POP3_SERVER_TCP_RECEIVE_TIMEOUT             (5 * NX_POP3_TICKS_PER_SECOND)
+#ifndef NX_POP3_SERVER_TCP_RECEIVE_TIMEOUT              
+#define NX_POP3_SERVER_TCP_RECEIVE_TIMEOUT             (5 * NX_POP3_TICKS_PER_SECOND)  
 #endif
 
 /* Set Net TCP connection timeout in ticks.  */
 
-#ifndef NX_POP3_SERVER_CONNECTION_TIMEOUT
-#define NX_POP3_SERVER_CONNECTION_TIMEOUT              NX_WAIT_FOREVER
+#ifndef NX_POP3_SERVER_CONNECTION_TIMEOUT               
+#define NX_POP3_SERVER_CONNECTION_TIMEOUT              NX_WAIT_FOREVER 
 #endif
 
 
 /* Set Net TCP disconnect timeout in ticks.  */
 
-#ifndef NX_POP3_SERVER_DISCONNECT_TIMEOUT
-#define NX_POP3_SERVER_DISCONNECT_TIMEOUT              (10 * NX_POP3_TICKS_PER_SECOND)
+#ifndef NX_POP3_SERVER_DISCONNECT_TIMEOUT            
+#define NX_POP3_SERVER_DISCONNECT_TIMEOUT              (10 * NX_POP3_TICKS_PER_SECOND)  
 #endif
 
 
@@ -299,13 +299,13 @@ extern   "C" {
 
 /* Set the number of POP3 server sessions handling concurrent Client sessions.  */
 
-#ifndef  NX_POP3_MAX_SERVER_SESSIONS
-#define  NX_POP3_MAX_SERVER_SESSIONS                    1
+#ifndef  NX_POP3_MAX_SERVER_SESSIONS  
+#define  NX_POP3_MAX_SERVER_SESSIONS                    1 
 #endif
 
 /* Set the max number of Client maildrops on the POP3 Server.  */
 
-#ifndef NX_POP3_SERVER_MAX_MAILDROP_COUNT
+#ifndef NX_POP3_SERVER_MAX_MAILDROP_COUNT                 
 #define NX_POP3_SERVER_MAX_MAILDROP_COUNT               3
 #endif
 
@@ -333,7 +333,7 @@ extern   "C" {
 #endif
 
 /* Define the size of the buffer to contain the APOP string the server
-   sends to the Client (contains the process ID, local clock
+   sends to the Client (contains the process ID, local clock 
    time and domain name) and other characters (spaces, angle brackets).  */
 
 #ifndef NX_POP3_MAX_SERVER_APOP_STRING
@@ -355,11 +355,11 @@ extern   "C" {
 #endif
 
 
-/* Set server domain name as identifier in text replies to POP3 clients.
+/* Set server domain name as identifier in text replies to POP3 clients. 
    The default NetX POP3 server domain name is fictitious*/
 
 #ifndef NX_POP3_SERVER_DOMAIN
-#define NX_POP3_SERVER_DOMAIN                       "server.com"
+#define NX_POP3_SERVER_DOMAIN                       "server.com" 
 #endif
 
 
@@ -379,7 +379,7 @@ extern   "C" {
 
 
 /* The following configuration options do not effect the operation
-   of the POP3 Server.  The Server should not expect the POP3 Client
+   of the POP3 Server.  The Server should not expect the POP3 Client 
    to parse or read additional text in the Server replies other than
    the command arguments.  */
 
@@ -415,17 +415,17 @@ extern   "C" {
 /* Three digit server reply codes as bit fields so the server can prepare a bitmask
    of expected commands from the client.  */
 
-#define     NX_POP3_COMMAND_GREET_CODE          0x0000
-#define     NX_POP3_COMMAND_USER_CODE           0x0001
-#define     NX_POP3_COMMAND_APOP_CODE           0x0002
-#define     NX_POP3_COMMAND_PASS_CODE           0x0004
-#define     NX_POP3_COMMAND_STAT_CODE           0x0008
-#define     NX_POP3_COMMAND_LIST_CODE           0x0010
-#define     NX_POP3_COMMAND_RETR_CODE           0x0020
-#define     NX_POP3_COMMAND_DELE_CODE           0x0040
+#define     NX_POP3_COMMAND_GREET_CODE          0x0000 
+#define     NX_POP3_COMMAND_USER_CODE           0x0001 
+#define     NX_POP3_COMMAND_APOP_CODE           0x0002 
+#define     NX_POP3_COMMAND_PASS_CODE           0x0004 
+#define     NX_POP3_COMMAND_STAT_CODE           0x0008 
+#define     NX_POP3_COMMAND_LIST_CODE           0x0010 
+#define     NX_POP3_COMMAND_RETR_CODE           0x0020 
+#define     NX_POP3_COMMAND_DELE_CODE           0x0040 
 #define     NX_POP3_COMMAND_RSET_CODE           0x0080
 #define     NX_POP3_COMMAND_NOOP_CODE           0x0100
-#define     NX_POP3_COMMAND_QUIT_CODE           0x0200
+#define     NX_POP3_COMMAND_QUIT_CODE           0x0200 
 #define     NX_POP3_COMMAND_UNKNOWN_CODE        0xFFFF
 
 
@@ -506,7 +506,7 @@ typedef struct NX_POP3_SERVER_STRUCT
     ULONG                                   server_disconnection_requests;   /* Number of broken connections */
     TX_THREAD                               server_thread;                   /* POP3 server thread */
     UINT                                    server_closed;                   /* Status if server closed to any further client connections */
-    NX_POP3_SERVER_SESSION                  nx_pop3_server_session_list[NX_POP3_MAX_SERVER_SESSIONS];
+    NX_POP3_SERVER_SESSION                  nx_pop3_server_session_list[NX_POP3_MAX_SERVER_SESSIONS]; 
                                                                              /* Max number of active POP3 sessions servicing Client requests.  */
     NX_POP3_SERVER_MAILDROP                 client_maildrops[NX_POP3_SERVER_MAX_MAILDROP_COUNT];
                                                                              /* List for creating up to the max number of Client maildrops (header data only) */
@@ -516,9 +516,9 @@ typedef struct NX_POP3_SERVER_STRUCT
     UINT                                    bytepool_mutex_timeout;          /* Timeout value for byte pool mutex */
     UINT                                    (*nx_pop3_server_authentication_check)(NX_POP3_SERVER_SESSION *session_ptr, CHAR *name, CHAR *password,UINT *result);
                                                                              /* Pointer to sender authentication check function */
-    UINT                                    (*nx_pop3_server_get_clock_time)(CHAR *clock_time);
+    UINT                                    (*nx_pop3_server_get_clock_time)(CHAR *clock_time);  
                                                                              /* Pointer to get local clock time callback */
-    UINT                                    (*nx_pop3_server_get_process_ID)(CHAR *process_ID);
+    UINT                                    (*nx_pop3_server_get_process_ID)(CHAR *process_ID);  
                                                                              /* Pointer to get local process ID callback */
     UINT                                    (*nx_pop3_server_get_client_maildrop)(NX_POP3_SERVER_SESSION *session_ptr, CHAR *client_username, UINT *maildrop_found);
                                                                              /* Pointer to get session's Client maildrop callback */
@@ -534,10 +534,10 @@ typedef struct NX_POP3_SERVER_STRUCT
 
 
 
-#ifndef     NX_POP3_SOURCE_CODE
+#ifndef     NX_POP3_SOURCE_CODE     
 
 
-/* Define the system API mappings based on the error checking
+/* Define the system API mappings based on the error checking 
    selected by the user.   */
 
 /* Determine if error checking is desired.  If so, map API functions
@@ -604,9 +604,9 @@ typedef struct NX_POP3_SERVER_STRUCT
 
 #endif    /* NX_POP3_DISABLE_ERROR_CHECKING */
 
-UINT   nx_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID *stack_ptr,
-                             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold,
-                             UINT server_time_slice, UINT auto_start, NX_PACKET_POOL *packet_pool_ptr,
+UINT   nx_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID *stack_ptr, 
+                             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold, 
+                             UINT server_time_slice, UINT auto_start, NX_PACKET_POOL *packet_pool_ptr, 
                              TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout,
                              UINT (*get_clock_time)(CHAR *clock_time),
                              UINT (*get_process_ID)(CHAR *process_ID),
@@ -620,9 +620,9 @@ UINT    nx_pop3_server_delete(NX_POP3_SERVER *server_ptr);
 UINT    nx_pop3_server_get_time(NX_POP3_SERVER_SESSION *session_ptr, CHAR *clock_time);
 UINT    nx_pop3_server_get_PID(NX_POP3_SERVER_SESSION *session_ptr, CHAR *process_ID);
 UINT    nx_pop3_server_get_auth_check(NX_POP3_SERVER_SESSION *session_ptr, CHAR *username_ptr, CHAR *password_ptr, UINT *authenticated);
-UINT    nx_pop3_server_session_create(NX_POP3_SERVER *server_ptr, NX_POP3_SERVER_SESSION *session_ptr, UINT session_id,
-                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority,
-                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start);
+UINT    nx_pop3_server_session_create(NX_POP3_SERVER *server_ptr, NX_POP3_SERVER_SESSION *session_ptr, UINT session_id, 
+                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority, 
+                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start); 
 UINT    nx_pop3_server_session_delete(NX_POP3_SERVER_SESSION *session_ptr);
 UINT    nx_pop3_server_session_reinitialize(NX_POP3_SERVER_SESSION *session_ptr);
 UINT    nx_pop3_server_session_run(NX_POP3_SERVER_SESSION  *session_ptr);
@@ -646,9 +646,9 @@ UINT    nx_pop3_server_print_server_reserves(NX_POP3_SERVER *server_ptr);
 
 /* POP3 source code is being compiled, do not perform any API mapping.  */
 
-UINT    _nx_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID *stack_ptr,
-                             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold,
-                             UINT server_time_slice, UINT auto_start, NX_PACKET_POOL *packet_pool_ptr,
+UINT    _nx_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID *stack_ptr, 
+                             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold, 
+                             UINT server_time_slice, UINT auto_start, NX_PACKET_POOL *packet_pool_ptr, 
                              TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout,
                              UINT (*get_clock_time)(CHAR *clock_time),
                              UINT (*get_process_ID)(CHAR *process_ID),
@@ -658,9 +658,9 @@ UINT    _nx_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID *
                              UINT (*load_client_maildrop)(NX_POP3_SERVER  *server_ptr),
                              UINT (*get_mail_message_buffer)(NX_POP3_SERVER_SESSION *session_ptr, UINT mailitem_index, CHAR **buffer_ptr, UINT *bytes_extracted, UINT *bytes_remaining),
                              UINT (*delete_mail_on_file)(NX_POP3_SERVER_SESSION *session_ptr));
-UINT    _nxe_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID *stack_ptr,
-                             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold,
-                             UINT server_time_slice, UINT auto_start, NX_PACKET_POOL *packet_pool_ptr,
+UINT    _nxe_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID *stack_ptr, 
+                             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold, 
+                             UINT server_time_slice, UINT auto_start, NX_PACKET_POOL *packet_pool_ptr, 
                              TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout,
                              UINT (*get_clock_time)(CHAR *clock_time),
                              UINT (*get_process_ID)(CHAR *process_ID),
@@ -671,7 +671,7 @@ UINT    _nxe_pop3_server_create(NX_POP3_SERVER *server_ptr, NX_IP *ip_ptr, VOID 
                              UINT (*get_mail_message_buffer)(NX_POP3_SERVER_SESSION *session_ptr, UINT mailitem_index, CHAR **buffer_ptr, UINT *bytes_extracted, UINT *bytes_remaining),
                              UINT (*delete_mail_on_file)(NX_POP3_SERVER_SESSION *session_ptr));
 UINT    _nx_pop3_server_delete(NX_POP3_SERVER *server_ptr);
-UINT    _nxe_pop3_server_delete(NX_POP3_SERVER *server_ptr);
+UINT    _nxe_pop3_server_delete(NX_POP3_SERVER *server_ptr); 
 UINT    _nxe_pop3_server_session_reinitialize(NX_POP3_SERVER_SESSION *session_ptr);
 UINT    _nx_pop3_server_session_reinitialize(NX_POP3_SERVER_SESSION *session_ptr);
 UINT    _nx_pop3_server_get_time(NX_POP3_SERVER_SESSION *session_ptr, CHAR *clock_time);
@@ -684,12 +684,12 @@ UINT    _nx_pop3_server_start(NX_POP3_SERVER *server_ptr);
 UINT    _nxe_pop3_server_start(NX_POP3_SERVER *server_ptr);
 UINT    _nx_pop3_server_stop(NX_POP3_SERVER *server_ptr);
 UINT    _nxe_pop3_server_stop(NX_POP3_SERVER *server_ptr);
-UINT    _nx_pop3_server_session_create(NX_POP3_SERVER *server_ptr, NX_POP3_SERVER_SESSION *session_ptr, UINT session_id,
-                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority,
-                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start);
-UINT    _nxe_pop3_server_session_create(NX_POP3_SERVER *server_ptr, NX_POP3_SERVER_SESSION *session_ptr, UINT session_id,
-                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority,
-                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start);
+UINT    _nx_pop3_server_session_create(NX_POP3_SERVER *server_ptr, NX_POP3_SERVER_SESSION *session_ptr, UINT session_id, 
+                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority, 
+                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start); 
+UINT    _nxe_pop3_server_session_create(NX_POP3_SERVER *server_ptr, NX_POP3_SERVER_SESSION *session_ptr, UINT session_id, 
+                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority, 
+                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start); 
 UINT    _nxe_pop3_server_session_delete(NX_POP3_SERVER_SESSION *session_ptr);
 UINT    _nx_pop3_server_session_delete(NX_POP3_SERVER_SESSION *session_ptr);
 UINT    _nxe_pop3_server_session_run(NX_POP3_SERVER_SESSION  *session_ptr);

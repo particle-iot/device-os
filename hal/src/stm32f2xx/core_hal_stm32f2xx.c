@@ -52,6 +52,7 @@
 #include "usart_hal.h"
 #include "deviceid_hal.h"
 #include "pinmap_impl.h"
+#include "ota_module.h"
 
 #if PLATFORM_ID==PLATFORM_P1
 #include "wwd_management.h"
@@ -262,35 +263,49 @@ static void Init_Last_Reset_Info()
 
 static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
 {
-    uint32_t flags = *(uint32_t*)dct_read_app_data(DCT_FEATURE_FLAGS_OFFSET);
+    if (HAL_IsISR()) {
+        return -1; // DCT cannot be accessed from an ISR
+    }
+    uint32_t flags = 0;
+    int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    if (result != 0) {
+        return result;
+    }
     const bool cur_value = flags & flag;
-    if (prev_value)
-    {
+    if (prev_value) {
         *prev_value = cur_value;
     }
-    if (cur_value != value)
-    {
-        if (value)
-        {
+    if (cur_value != value) {
+        if (value) {
             flags |= flag;
-        }
-        else
-        {
+        } else {
             flags &= ~flag;
         }
-        return dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
+        result = dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
+        if (result != 0) {
+            return result;
+        }
     }
     return 0;
 }
 
-static bool Read_Feature_Flag(uint32_t flag)
+static int Read_Feature_Flag(uint32_t flag, bool* value)
 {
-    const uint32_t flags = *(uint32_t*)dct_read_app_data(DCT_FEATURE_FLAGS_OFFSET);
-    return flags & flag;
+    if (HAL_IsISR()) {
+        return -1; // DCT cannot be accessed from an ISR
+    }
+    uint32_t flags = 0;
+    const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    if (result != 0) {
+        return result;
+    }
+    *value = flags & flag;
+    return 0;
 }
 
 /* Extern variables ----------------------------------------------------------*/
 
+volatile uint8_t rtos_started = 0;
 
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
@@ -350,10 +365,10 @@ void HAL_Core_Config(void)
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
 
-#if MODULAR_FIRMWARE
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
     // write protect system module parts if not already protected
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
-#endif
+#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 #ifdef HAS_SERIAL_FLASH
     //Initialize Serial Flash
@@ -365,7 +380,7 @@ void HAL_Core_Config(void)
 #endif
 }
 
-#if !MODULAR_FIRMWARE
+#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
 __attribute__((externally_visible, section(".early_startup.HAL_Core_Config"))) uint32_t startup = (uint32_t)&HAL_Core_Config;
 #endif
 
@@ -381,7 +396,7 @@ void HAL_Core_Setup(void) {
 
     HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
 
-#if !defined(MODULAR_FIRMWARE)
+#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();
 #endif
 }
@@ -397,13 +412,15 @@ void HAL_Core_Init(void) {
     HAL_Core_Init_finalize();
 }
 
-#if MODULAR_FIRMWARE
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
 bool HAL_Core_Validate_User_Module(void)
 {
     bool valid = false;
+    Load_SystemFlags();
 
-    if (!(SYSTEM_FLAG(StartupMode_SysFlag) & 1)) // Safe mode flag
+    const uint8_t flags = SYSTEM_FLAG(StartupMode_SysFlag);
+    if (flags == 0xff /* Old bootloader */ || !(flags & 1)) // Safe mode flag
     {
         //CRC verification Enabled by default
         if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
@@ -423,6 +440,43 @@ bool HAL_Core_Validate_User_Module(void)
             while(1);//Device should reset before reaching this line
         }
     }
+    return valid;
+}
+
+bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
+{
+    const module_bounds_t* bounds = NULL;
+    hal_module_t mod;
+    bool module_fetched = false;
+    bool valid = false;
+
+    // First verify bootloader module
+    bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0);
+    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+
+    valid = module_fetched && (mod.validity_checked == mod.validity_result);
+
+    if (!valid) {
+        return valid;
+    }
+
+    // Now check system-parts
+    int i = 0;
+    if (flags & 1) {
+        // Validate only that system-part that depends on bootloader passes dependency check
+        i = 2;
+    }
+    do {
+        bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++);
+        if (bounds) {
+            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+            valid = module_fetched && (mod.validity_checked == mod.validity_result);
+        }
+        if (flags & 1) {
+            bounds = NULL;
+        }
+    } while(bounds != NULL && valid);
+
     return valid;
 }
 #endif
@@ -738,6 +792,8 @@ void generate_key()
  */
 void application_start()
 {
+    rtos_started = 1;
+
     // one the key is sent to the cloud, this can be removed, since the key is fetched in
     // Spark_Protocol_init(). This is just a temporary measure while the key still needs
     // to be fetched via DFU.
@@ -1213,25 +1269,23 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
         }
         case FEATURE_RESET_INFO:
         {
-            Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
-            return 0;
+            return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 
 #if PLATFORM_ID==PLATFORM_P1
         case FEATURE_WIFI_POWERSAVE_CLOCK:
         {
             wwd_set_wlan_sleep_clock_enabled(enabled);
-            const uint8_t* data = (const uint8_t*)dct_read_app_data(DCT_RADIO_FLAGS_OFFSET);
-            uint8_t current = (*data);
+            uint8_t current = 0;
+            dct_read_app_data_copy(DCT_RADIO_FLAGS_OFFSET, &current, sizeof(current));
             current &= 0xFC;
             if (!enabled) {
                 current |= 2;   // 0bxxxxxx10 to disable the clock, any other value to enable it.
             }
             dct_write_app_data(&current, DCT_RADIO_FLAGS_OFFSET, 1);
+            return 0;
         }
 #endif
-
-
     }
     return -1;
 }
@@ -1255,14 +1309,15 @@ bool HAL_Feature_Get(HAL_Feature feature)
         {
         		uint8_t value = false;
 #if HAL_PLATFORM_CLOUD_UDP
-        		const uint8_t* data = dct_read_app_data(DCT_CLOUD_TRANSPORT_OFFSET);
-        		value = *data==0xFF;		// default is to use UDP
+        		dct_read_app_data_copy(DCT_CLOUD_TRANSPORT_OFFSET, &value, sizeof(value));
+        		value = value==0xFF;		// default is to use UDP
 #endif
         		return value;
         }
         case FEATURE_RESET_INFO:
         {
-            return Read_Feature_Flag(FEATURE_FLAG_RESET_INFO);
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
         }
     }
     return false;
@@ -1298,18 +1353,18 @@ static void BUTTON_Mirror_Init() {
 }
 
 static void BUTTON_Mirror_Persist(button_config_t* conf) {
-    const button_config_t* saved_config = (const button_config_t*)dct_read_app_data(DCT_MODE_BUTTON_MIRROR_OFFSET);
+    button_config_t saved_config;
+    dct_read_app_data_copy(DCT_MODE_BUTTON_MIRROR_OFFSET, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config->active == 0xFF || memcmp((void*)conf, (void*)saved_config, sizeof(button_config_t)))
+        if (saved_config.active == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(button_config_t)))
         {
             dct_write_app_data((void*)conf, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
         }
     } else {
-        if (saved_config->active != 0xFF) {
-            button_config_t tmp;
-            memset((void*)&tmp, 0xff, sizeof(button_config_t));
-            dct_write_app_data((void*)&tmp, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
+        if (saved_config.active != 0xFF) {
+            memset((void*)&saved_config, 0xff, sizeof(button_config_t));
+            dct_write_app_data((void*)&saved_config, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
         }
     }
 }
@@ -1444,18 +1499,18 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
 
 static void LED_Mirror_Persist(uint8_t led, led_config_t* conf) {
     const size_t offset = DCT_LED_MIRROR_OFFSET + ((led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-    const led_config_t* saved_config = (const led_config_t*)dct_read_app_data(offset);
+    led_config_t saved_config;
+    dct_read_app_data_copy(offset, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config->version == 0xFF || memcmp((void*)conf, (void*)saved_config, sizeof(led_config_t)))
+        if (saved_config.version == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(led_config_t)))
         {
             dct_write_app_data((void*)conf, offset, sizeof(led_config_t));
         }
     } else {
-        if (saved_config->version != 0xFF) {
-            led_config_t tmp;
-            memset((void*)&tmp, 0xff, sizeof(led_config_t));
-            dct_write_app_data((void*)&tmp, offset, sizeof(led_config_t));
+        if (saved_config.version != 0xFF) {
+            memset((void*)&saved_config, 0xff, sizeof(led_config_t));
+            dct_write_app_data((void*)&saved_config, offset, sizeof(led_config_t));
         }
     }
 }

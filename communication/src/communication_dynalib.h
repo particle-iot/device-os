@@ -50,8 +50,8 @@ DYNALIB_FN(14, communication, spark_protocol_send_time_request, bool(ProtocolFac
 DYNALIB_FN(15, communication, spark_protocol_send_subscriptions, void(ProtocolFacade*, void*))
 
 #if !defined(PARTICLE_PROTOCOL) || HAL_PLATFORM_CLOUD_TCP
-DYNALIB_FN(16, communication, decrypt_rsa, int(const uint8_t*, const uint8_t*, uint8_t*, int))
-DYNALIB_FN(17, communication, gen_rsa_key, int(uint8_t*, size_t, int(*)(void*), void*))
+DYNALIB_FN(16, communication, decrypt_rsa, int(const uint8_t*, const uint8_t*, uint8_t*, int32_t))
+DYNALIB_FN(17, communication, gen_rsa_key, int(uint8_t*, size_t, int32_t(*)(void*), void*))
 DYNALIB_FN(18, communication, extract_public_rsa_key, void(uint8_t*, const uint8_t*))
 #define BASE_IDX 19 // Base index for all subsequent functions
 #else
@@ -60,7 +60,7 @@ DYNALIB_FN(18, communication, extract_public_rsa_key, void(uint8_t*, const uint8
 
 DYNALIB_FN(BASE_IDX + 0, communication, spark_protocol_remove_event_handlers, void(ProtocolFacade*, const char*, void*))
 
-#if defined(PARTICLE_PROTOCOL) && HAL_PLATFORM_CLOUD_UDP
+#if PARTICLE_PROTOCOL && HAL_PLATFORM_CLOUD_UDP
 DYNALIB_FN(BASE_IDX + 1, communication, gen_ec_key, int(uint8_t*, size_t, int(*)(void*, uint8_t*, size_t), void*))
 DYNALIB_FN(BASE_IDX + 2, communication, extract_public_ec_key, int(uint8_t*, size_t, const uint8_t*))
 #define BASE_IDX2 (BASE_IDX + 3)

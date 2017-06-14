@@ -39,11 +39,7 @@ send_out_req() {
 
 # Sends device-to-host request
 send_in_req() {
-  size_arg="-n $max_size"
-  if [ $1 ]; then
-    size_arg="-n $1"
-  fi
-  usbtool -v 0x$USB_VENDOR_ID -p 0x$USB_PRODUCT_ID $size_arg control in vendor device $usb_req $usb_val $usb_index
+  usbtool -v 0x$USB_VENDOR_ID -p 0x$USB_PRODUCT_ID -n $max_size control in vendor device $usb_req $usb_val $usb_index
 }
 
 # Prints current UNIX time with nanosecond precision
@@ -121,10 +117,6 @@ if [ $req_type == reqrep ] || [ $req_type == in ]; then
     while : ; do
       sleep 0.1
       data=$(send_in_req 2>/dev/null) && break
-      if [ $max_size != 0 ]; then
-        # Empty reply data seems to require some special handling
-        data=$(send_in_req 0 2>/dev/null) && break
-      fi
       less_than $(timestamp) $time_end || error "Request timeout"
     done
   else
@@ -134,7 +126,7 @@ if [ $req_type == reqrep ] || [ $req_type == in ]; then
 
   if [ "$data" ]; then
     # "0x61 0x62 0x63" -> "616263"
-    data=$(printf "$data" | sed 's/ //g;s/0x//g')
+    data=$(printf "$data" | tr -d ' \n' | sed 's/0x//g')
     if [ ! $hex_flag ]; then
       # "616263" -> "abc"
       data=$(printf "$data" | xxd -r -p)

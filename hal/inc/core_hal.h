@@ -120,6 +120,7 @@ extern "C" {
 void HAL_Core_Init(void);
 void HAL_Core_Config(void);
 bool HAL_Core_Validate_User_Module(void);
+bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved);
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration);
 void HAL_Core_Mode_Button_Reset(uint16_t button);
 void HAL_Core_System_Reset(void);

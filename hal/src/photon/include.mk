@@ -24,6 +24,7 @@ INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/api
 HAL_LIB_COREV2 = $(HAL_SRC_COREV2_PATH)/lib
 
 HAL_WICED_COMMON_LIBS = Lib_SPI_Flash_Library_$(PLATFORM_NET) Lib_HTTP_Server Lib_Wiced_RO_FS Lib_base64 Lib_Ring_Buffer Lib_TLV STM32F2xx_Peripheral_Libraries common_GCC
+HAL_WICED_COMMON_LIBS += Lib_Linked_List
 
 HAL_SHOULD_BE_COMMON = WICED Platform_$(PLATFORM_NET) Lib_DHCP_Server Lib_DNS Lib_DNS_Redirect_Daemon STM32F2xx STM32F2xx_Peripheral_Drivers
 HAL_LIB_RTOS = $(HAL_LIB_COREV2)/$(HAL_WICED_RTOS)
@@ -37,11 +38,17 @@ HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED
 HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_RTOS)/,$(addsuffix .a,$(HAL_WICED_RTOS_LIBS)))
 WICED_MCU = $(HAL_SRC_COREV2_PATH)/wiced/platform/MCU/STM32F2xx/GCC
 
+INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/host/WICED/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/crypto $(HAL_SRC_COREV2_PATH)/wiced/WWD/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/GCC/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/supplicant/ 
+INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/libraries/crypto
+HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Supplicant_BESL.a
+HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/BESL.ARM_CM3.release.a
+
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
 
 # if hal is used as a make dependency (linked) then add linker commands
 ifneq (,$(HAL_LINK))
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
+#HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Lib_crypto_open.a
 LINKER_DEPS=$(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
 # use our version of newlib nano

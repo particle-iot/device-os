@@ -1,20 +1,20 @@
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*            Copyright (c) 1996-2013 by Express Logic Inc.               */ 
+/*                                                                        */ 
+/*  This software is copyrighted by and is the sole property of Express   */ 
+/*  Logic, Inc.  All rights, title, ownership, or other interests         */ 
+/*  in the software remain the property of Express Logic, Inc.  This      */ 
+/*  software may only be used in accordance with the corresponding        */ 
+/*  license agreement.  Any unauthorized use, duplication, transmission,  */ 
+/*  distribution, or disclosure of this software is expressly forbidden.  */ 
 /*                                                                        */
-/*            Copyright (c) 1996-2013 by Express Logic Inc.               */
-/*                                                                        */
-/*  This software is copyrighted by and is the sole property of Express   */
-/*  Logic, Inc.  All rights, title, ownership, or other interests         */
-/*  in the software remain the property of Express Logic, Inc.  This      */
-/*  software may only be used in accordance with the corresponding        */
-/*  license agreement.  Any unauthorized use, duplication, transmission,  */
-/*  distribution, or disclosure of this software is expressly forbidden.  */
-/*                                                                        */
-/*  This Copyright notice may not be removed or modified without prior    */
-/*  written consent of Express Logic, Inc.                                */
-/*                                                                        */
-/*  Express Logic, Inc. reserves the right to modify this software        */
-/*  without notice.                                                       */
-/*                                                                        */
+/*  This Copyright notice may not be removed or modified without prior    */ 
+/*  written consent of Express Logic, Inc.                                */ 
+/*                                                                        */ 
+/*  Express Logic, Inc. reserves the right to modify this software        */ 
+/*  without notice.                                                       */ 
+/*                                                                        */ 
 /*  Express Logic, Inc.                     info@expresslogic.com         */
 /*  11423 West Bernardo Court               http://www.expresslogic.com   */
 /*  San Diego, CA  92127                                                  */
@@ -24,51 +24,51 @@
 
 /**************************************************************************/
 /**************************************************************************/
-/**                                                                       */
+/**                                                                       */ 
 /** NetX Component                                                        */
 /**                                                                       */
-/**   Internet Group Management Protocol (IGMP)                           */
-/**                                                                       */
+/**   Internet Group Management Protocol (IGMP)                           */ 
+/**                                                                       */ 
 /**************************************************************************/
 /**************************************************************************/
 
 
-/**************************************************************************/
-/*                                                                        */
-/*  COMPONENT DEFINITION                                   RELEASE        */
-/*                                                                        */
-/*    nx_igmp.h                                           PORTABLE C      */
-/*                                                           5.5          */
-/*  AUTHOR                                                                */
-/*                                                                        */
-/*    William E. Lamie, Express Logic, Inc.                               */
-/*                                                                        */
-/*  DESCRIPTION                                                           */
-/*                                                                        */
-/*    This file defines the NetX Internet Group Management Protocol (IGMP)*/
-/*    component, including all data types and external references.  It is */
-/*    assumed that nx_api.h and nx_port.h have already been included.     */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
-/*    DATE              NAME                      DESCRIPTION             */
-/*                                                                        */
-/*  12-12-2005     William E. Lamie         Initial Version 5.0           */
-/*  08-09-2007     William E. Lamie         Modified comment(s),          */
-/*                                            resulting in version 5.1    */
-/*  07-04-2009     William E. Lamie         Modified comment(s),          */
-/*                                            resulting in version 5.2    */
-/*  12-31-2009     Janet Christiansen       Added support for IGMPv2 e.g. */
+/**************************************************************************/ 
+/*                                                                        */ 
+/*  COMPONENT DEFINITION                                   RELEASE        */ 
+/*                                                                        */ 
+/*    nx_igmp.h                                           PORTABLE C      */ 
+/*                                                           5.5          */ 
+/*  AUTHOR                                                                */ 
+/*                                                                        */ 
+/*    William E. Lamie, Express Logic, Inc.                               */ 
+/*                                                                        */ 
+/*  DESCRIPTION                                                           */ 
+/*                                                                        */ 
+/*    This file defines the NetX Internet Group Management Protocol (IGMP)*/ 
+/*    component, including all data types and external references.  It is */ 
+/*    assumed that nx_api.h and nx_port.h have already been included.     */ 
+/*                                                                        */ 
+/*  RELEASE HISTORY                                                       */ 
+/*                                                                        */ 
+/*    DATE              NAME                      DESCRIPTION             */ 
+/*                                                                        */ 
+/*  12-12-2005     William E. Lamie         Initial Version 5.0           */ 
+/*  08-09-2007     William E. Lamie         Modified comment(s),          */ 
+/*                                            resulting in version 5.1    */ 
+/*  07-04-2009     William E. Lamie         Modified comment(s),          */ 
+/*                                            resulting in version 5.2    */ 
+/*  12-31-2009     Janet Christiansen       Added support for IGMPv2 e.g. */ 
 /*                                            sending leave group reports,*/
 /*                                            added multihome support,    */
-/*                                            removed internal debug logic*/
-/*                                            resulting in version 5.3    */
+/*                                            removed internal debug logic*/ 
+/*                                            resulting in version 5.3    */ 
 /*  06-30-2011     Yuxin Zhou               Modified comment(s),          */
 /*                                            resulting in version 5.4    */
 /*  04-30-2013     Yuxin Zhou               Modified comment(s),          */
 /*                                            resulting in version 5.5    */
-/*                                                                        */
-/**************************************************************************/
+/*                                                                        */ 
+/**************************************************************************/ 
 
 #ifndef NX_IGMP_H
 #define NX_IGMP_H
@@ -122,8 +122,8 @@
 #define NX_IGMP_MAX_RESP_TIME_MASK      0x00FF0000
 
 
-/* For IGMPv1 only, define the IGMP maximum delay time to 10 seconds as per RFC 1112.  This is achieved if
-   the slow NetX IP periodic thread timer executes every second (e.g. NX_IP_PERIODIC_RATE is set to 100)
+/* For IGMPv1 only, define the IGMP maximum delay time to 10 seconds as per RFC 1112.  This is achieved if 
+   the slow NetX IP periodic thread timer executes every second (e.g. NX_IP_PERIODIC_RATE is set to 100) 
    and the threadx timer interrupt occurs every 10 ms). */
 
 #define NX_IGMP_MAX_UPDATE_TIME         10
@@ -156,8 +156,8 @@
 
 typedef  struct NX_IGMP_HEADER_STRUCT
 {
-    /* Define the first 32-bit word of the IGMP header.  This word contains
-       the following information:
+    /* Define the first 32-bit word of the IGMP header.  This word contains 
+       the following information:  
 
             bits 31-28  IGMP 4-bit version (Version 1)
 
@@ -192,7 +192,7 @@ typedef  struct NX_IGMP_HEADER_STRUCT
 /* Define IGMP function prototypes.  */
 
 UINT  _nx_igmp_enable(NX_IP *ip_ptr);
-UINT  _nx_igmp_info_get(NX_IP *ip_ptr, ULONG *igmp_reports_sent, ULONG *igmp_queries_received,
+UINT  _nx_igmp_info_get(NX_IP *ip_ptr, ULONG *igmp_reports_sent, ULONG *igmp_queries_received, 
                             ULONG *igmp_checksum_errors, ULONG *current_groups_joined);
 UINT  _nx_igmp_loopback_disable(NX_IP *ip_ptr);
 UINT  _nx_igmp_loopback_enable(NX_IP *ip_ptr);
@@ -207,11 +207,11 @@ VOID  _nx_igmp_queue_process(NX_IP *ip_ptr);
 UINT  _nx_igmp_multicast_check(NX_IP *ip_ptr, ULONG group_address, NX_INTERFACE *nx_interface);
 
 
-/* Define error checking shells for API services.  These are only referenced by the
+/* Define error checking shells for API services.  These are only referenced by the 
    application.  */
 
 UINT  _nxe_igmp_enable(NX_IP *ip_ptr);
-UINT  _nxe_igmp_info_get(NX_IP *ip_ptr, ULONG *igmp_reports_sent, ULONG *igmp_queries_received,
+UINT  _nxe_igmp_info_get(NX_IP *ip_ptr, ULONG *igmp_reports_sent, ULONG *igmp_queries_received, 
                             ULONG *igmp_checksum_errors, ULONG *current_groups_joined);
 UINT  _nxe_igmp_loopback_disable(NX_IP *ip_ptr);
 UINT  _nxe_igmp_loopback_enable(NX_IP *ip_ptr);
@@ -227,7 +227,7 @@ UINT  _nxe_igmp_multicast_leave(NX_IP *ip_ptr, ULONG group_address);
    make them extern so other functions in the component can access them.  */
 
 #ifdef NX_IGMP_INIT
-#define IGMP_DECLARE
+#define IGMP_DECLARE 
 #else
 #define IGMP_DECLARE extern
 #endif

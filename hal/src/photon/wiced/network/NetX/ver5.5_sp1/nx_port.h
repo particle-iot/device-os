@@ -1,20 +1,20 @@
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*            Copyright (c) 1996-2011 by Express Logic Inc.               */ 
+/*                                                                        */ 
+/*  This software is copyrighted by and is the sole property of Express   */ 
+/*  Logic, Inc.  All rights, title, ownership, or other interests         */ 
+/*  in the software remain the property of Express Logic, Inc.  This      */ 
+/*  software may only be used in accordance with the corresponding        */ 
+/*  license agreement.  Any unauthorized use, duplication, transmission,  */ 
+/*  distribution, or disclosure of this software is expressly forbidden.  */ 
 /*                                                                        */
-/*            Copyright (c) 1996-2011 by Express Logic Inc.               */
-/*                                                                        */
-/*  This software is copyrighted by and is the sole property of Express   */
-/*  Logic, Inc.  All rights, title, ownership, or other interests         */
-/*  in the software remain the property of Express Logic, Inc.  This      */
-/*  software may only be used in accordance with the corresponding        */
-/*  license agreement.  Any unauthorized use, duplication, transmission,  */
-/*  distribution, or disclosure of this software is expressly forbidden.  */
-/*                                                                        */
-/*  This Copyright notice may not be removed or modified without prior    */
-/*  written consent of Express Logic, Inc.                                */
-/*                                                                        */
-/*  Express Logic, Inc. reserves the right to modify this software        */
-/*  without notice.                                                       */
-/*                                                                        */
+/*  This Copyright notice may not be removed or modified without prior    */ 
+/*  written consent of Express Logic, Inc.                                */ 
+/*                                                                        */ 
+/*  Express Logic, Inc. reserves the right to modify this software        */ 
+/*  without notice.                                                       */ 
+/*                                                                        */ 
 /*  Express Logic, Inc.                     info@expresslogic.com         */
 /*  11423 West Bernardo Court               http://www.expresslogic.com   */
 /*  San Diego, CA  92127                                                  */
@@ -24,7 +24,7 @@
 
 /**************************************************************************/
 /**************************************************************************/
-/**                                                                       */
+/**                                                                       */ 
 /** NetX Component                                                        */
 /**                                                                       */
 /**   Port Specific                                                       */
@@ -33,31 +33,31 @@
 /**************************************************************************/
 
 
-/**************************************************************************/
+/**************************************************************************/ 
+/*                                                                        */ 
+/*  PORT SPECIFIC C INFORMATION                            RELEASE        */ 
+/*                                                                        */ 
+/*    nx_port.h                                         Cortex-M3/GNU     */ 
+/*                                                           5.0          */ 
 /*                                                                        */
-/*  PORT SPECIFIC C INFORMATION                            RELEASE        */
-/*                                                                        */
-/*    nx_port.h                                         Cortex-M3/GNU     */
-/*                                                           5.0          */
-/*                                                                        */
-/*  AUTHOR                                                                */
-/*                                                                        */
-/*    William E. Lamie, Express Logic, Inc.                               */
-/*                                                                        */
-/*  DESCRIPTION                                                           */
-/*                                                                        */
-/*    This file contains data type definitions that make the NetX         */
-/*    real-time TCP/IP function identically on a variety of different     */
-/*    processor architectures.                                            */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
-/*    DATE              NAME                      DESCRIPTION             */
-/*                                                                        */
-/*  05-01-2011     William E. Lamie         Initial Cortex-M3 Support for */
-/*                                            GNU Version 5.0             */
-/*                                                                        */
-/**************************************************************************/
+/*  AUTHOR                                                                */ 
+/*                                                                        */ 
+/*    William E. Lamie, Express Logic, Inc.                               */ 
+/*                                                                        */ 
+/*  DESCRIPTION                                                           */ 
+/*                                                                        */ 
+/*    This file contains data type definitions that make the NetX         */ 
+/*    real-time TCP/IP function identically on a variety of different     */ 
+/*    processor architectures.                                            */ 
+/*                                                                        */ 
+/*  RELEASE HISTORY                                                       */ 
+/*                                                                        */ 
+/*    DATE              NAME                      DESCRIPTION             */ 
+/*                                                                        */ 
+/*  05-01-2011     William E. Lamie         Initial Cortex-M3 Support for */ 
+/*                                            GNU Version 5.0             */ 
+/*                                                                        */ 
+/**************************************************************************/ 
 
 #ifndef NX_PORT_H
 #define NX_PORT_H
@@ -67,7 +67,7 @@
 #ifdef NX_INCLUDE_USER_DEFINE_FILE
 
 
-/* Yes, include the user defines in nx_user.h. The defines in this file may
+/* Yes, include the user defines in nx_user.h. The defines in this file may 
    alternately be defined on the command line.  */
 
 #include "nx_user.h"
@@ -84,12 +84,12 @@
 #define NX_LITTLE_ENDIAN
 
 
-/* Define various constants for the port.  */
+/* Define various constants for the port.  */ 
 
 #ifndef NX_IP_PERIODIC_RATE
-#define NX_IP_PERIODIC_RATE 100             /* Default IP periodic rate of 1 second for
-                                               ports with 10ms timer interrupts.  This
-                                               value may be defined instead at the
+#define NX_IP_PERIODIC_RATE 100             /* Default IP periodic rate of 1 second for 
+                                               ports with 10ms timer interrupts.  This 
+                                               value may be defined instead at the 
                                                command line and this value will not be
                                                used.  */
 #endif

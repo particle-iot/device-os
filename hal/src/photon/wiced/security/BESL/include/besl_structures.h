@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 #pragma once
 
@@ -64,6 +39,7 @@ extern "C" {
 #define WPS_BESL_RESULT_LIST( prefix ) \
     RESULT_ENUM( prefix, SUCCESS,                                    0 ),   /**< Success */          \
     RESULT_ENUM( prefix, TIMEOUT,                                    2 ),   /**< Timeout */          \
+    RESULT_ENUM( prefix, BADARG,                                     5 ),   /**< Bad Arguments */    \
     RESULT_ENUM( prefix, UNPROCESSED,                             3001 ),   /**<  */                 \
     RESULT_ENUM( prefix, IN_PROGRESS,                             3002 ),   /**< In progress */      \
     RESULT_ENUM( prefix, COMPLETE,                                3003 ),   /**<   */ \
@@ -104,11 +80,66 @@ extern "C" {
     RESULT_ENUM( prefix, BUFFER_ALLOC_FAIL,                       3041 ),   /**<   */ \
     RESULT_ENUM( prefix, OTHER_ENROLLEE,                          3042 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_RECEIVED_INVALID_CREDENTIALS,      3043 ),   /**<   */ \
-    RESULT_ENUM( prefix, ERROR_HMAC_CHECK_FAIL,                   3044 ),   /**<   */
+    RESULT_ENUM( prefix, ERROR_HMAC_CHECK_FAIL,                   3044 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_UNABLE_TO_SET_WLAN_SECURITY,       3045 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_RUNT_WPS_PACKET,                   3046 ),   /**<   */
 
 #define TLS_RESULT_LIST( prefix ) \
     RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
     RESULT_ENUM( prefix, TIMEOUT,                                2 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR,                                  4 ),   /**<   */ \
+    RESULT_ENUM( prefix, RECEIVE_FAILED,                      5001 ),   /**<   */ \
+    RESULT_ENUM( prefix, ALERT_NO_CERTIFICATE,                5002 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_OUT_OF_MEMORY,                 5003 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_FEATURE_UNAVAILABLE,           5004 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_INPUT_DATA,                5005 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_INVALID_MAC,                   5006 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_INVALID_RECORD,                5007 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_INVALID_MODULUS_SIZE,          5008 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_UNKNOWN_CIPHER,                5009 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_NO_CIPHER_CHOSEN,              5010 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_NO_SESSION_FOUND,              5011 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_NO_CLIENT_CERTIFICATE,         5012 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_CERTIFICATE_TOO_LARGE,         5013 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_CERTIFICATE_REQUIRED,          5014 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_PRIVATE_KEY_REQUIRED,          5015 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_CA_CHAIN_REQUIRED,             5016 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_UNEXPECTED_MESSAGE,            5017 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_FATAL_ALERT_MESSAGE,           5018 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_PEER_VERIFY_FAILED,            5019 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_PEER_CLOSE_NOTIFY,             5020 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_CLIENT_HELLO,           5021 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_SERVER_HELLO,           5022 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_CERTIFICATE,            5023 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_CERTIFICATE_REQUEST,    5024 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_SERVER_KEY_EXCHANGE,    5025 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_SERVER_HELLO_DONE,      5026 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_CLIENT_KEY_EXCHANGE,    5027 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_CERTIFICATE_VERIFY,     5028 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_CHANGE_CIPHER_SPEC,     5029 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_BAD_HS_FINISHED,               5030 ),   /**<   */ \
+    RESULT_ENUM( prefix, HANDSHAKE_TIMEOUT,                   5031 ),   /**<   */ \
+    RESULT_ENUM( prefix, HANDSHAKE_ERROR,                     5032 ),   /**<   */ \
+    RESULT_ENUM( prefix, INIT_FAIL,                           5033 ),   /**<   */ \
+    RESULT_ENUM( prefix, BAD_MESSAGE,                         5034 ),   /**<   */ \
+    RESULT_ENUM( prefix, UNTRUSTED_CERTIFICATE,               5035 ),   /**<   */ \
+    RESULT_ENUM( prefix, EXPIRED_CERTIFICATE,                 5036 ),   /**<   */ \
+    RESULT_ENUM( prefix, CERTIFICATE_NAME_MISMATCH,           5037 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_DECRYPTION_FAIL,               5038 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_ENCRYPTION_FAIL,               5039 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_HMAC_CHECK_FAIL,               5040 ),   /**<   */ \
+    RESULT_ENUM( prefix, CERTIFICATE_REVOKED,                 5041 ),   /**<   */ \
+    RESULT_ENUM( prefix, NO_DATA,                             5042 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_UNSUPPORTED_EXTENSION,         5043 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_UNITIALIZED_CONTEXT,           5044 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_UNRECOGNIZED_SERVER_NAME,      5045 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_ILLEGAL_PARAMETER,             5046 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR_RECORD_OVERFLOW,               5047 ),   /**<   */
+
+#define DTLS_RESULT_LIST( prefix ) \
+    RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
+    RESULT_ENUM( prefix, TIMEOUT,                                2 ),   /**<   */ \
+    RESULT_ENUM( prefix, ERROR,                                  4 ),   /**<   */ \
     RESULT_ENUM( prefix, RECEIVE_FAILED,                      5001 ),   /**<   */ \
     RESULT_ENUM( prefix, ALERT_NO_CERTIFICATE,                5002 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_OUT_OF_MEMORY,                 5003 ),   /**<   */ \
@@ -167,7 +198,7 @@ extern "C" {
     RESULT_ENUM( prefix, UNPROCESSED,                         6008 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_CREATING_EAPOL_PACKET,         6009 ),   /**<   */ \
     RESULT_ENUM( prefix, ERROR_READING_BSSID,                 6010 ),   /**<   */ \
-    RESULT_ENUM( prefix, FAIL,                                6011 ),   /**<   */
+    RESULT_ENUM( prefix, RECEIVED_EAP_FAIL,                   6011 ),   /**<   */
 
 #define P2P_RESULT_LIST( prefix ) \
     RESULT_ENUM( prefix, SUCCESS,                                0 ),   /**<   */ \
@@ -261,6 +292,17 @@ typedef struct
 
 typedef struct
 {
+    uint8_t  type;
+} peap_header_t;
+
+typedef struct
+{
+    uint8_t  type;
+    uint8_t  data[1];
+} peap_packet_t;
+
+typedef struct
+{
     ether_header_t  ethernet;
     eapol_header_t  eapol;
     eap_header_t    eap;
@@ -289,6 +331,86 @@ typedef struct
     uint8_t               data[1]; // Data starts with a length of TLS data field or TLS data depending on the flags field
 } eap_tls_packet_t;
 
+typedef struct
+{
+    uint16_t     type;
+    uint16_t     length;
+    uint8_t      value[1];
+}avp_request_t;
+
+typedef struct
+{
+    uint16_t     type;
+    uint16_t     length;
+    uint16_t     status;
+}avp_result_t;
+
+typedef struct
+{
+    eap_header_t    header;
+    avp_request_t   avp[1];
+}peap_extention_request_t;
+
+typedef struct
+{
+    eap_header_t   header;
+    avp_result_t   avp[1];
+}peap_extention_response_t;
+
+typedef struct
+{
+    uint8_t     opcode;
+    uint8_t     id;
+    uint16_t    length;
+}mschapv2_header_t;
+
+typedef struct
+{
+    uint8_t     opcode;
+    uint8_t     id;
+    uint16_t    length;
+    uint8_t     data[1];
+}mschapv2_packet_t;
+
+typedef struct
+{
+    uint8_t     opcode;
+    uint8_t     id;
+    uint16_t    length;
+    uint8_t     value_size;
+    uint8_t     challenge[16];
+    uint8_t     name[1];
+}mschapv2_challenge_packet_t;
+
+typedef struct
+{
+    uint8_t     opcode;
+    uint8_t     id;
+    uint16_t    length;
+    uint8_t     value_size;
+    uint8_t     peer_challenge[16];
+    uint8_t     reserved[8];
+    uint8_t     nt_reponse[24];
+    uint8_t     flags;
+    uint8_t     name[1];
+}mschapv2_response_packet_t;
+
+typedef struct
+{
+    uint8_t     opcode;
+    uint8_t     id;
+    uint16_t    length;
+    uint8_t     message[1];
+}mschapv2_success_request_packet_t;
+
+typedef struct
+{
+    uint8_t     opcode;
+}mschapv2_success_response_packet_t;
+
+typedef mschapv2_success_request_packet_t mschapv2_failure_request_packet_t;
+
+typedef mschapv2_success_response_packet_t mschapv2_failure_response_packet_t;
 
 #pragma pack()
 

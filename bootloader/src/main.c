@@ -31,9 +31,17 @@
 #include "rgbled.h"
 #include "button.h"
 
-#if (PLATFORM_ID == 6) || (PLATFORM_ID == 10) || (PLATFORM_ID == 8)
-#include "led_signal.h"
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#define LOAD_DCT_FUNCTIONS
+#include "bootloader_dct.h"
+#endif
+
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
 #define USE_LED_THEME
+#include "led_signal.h"
+
+#define CHECK_FIRMWARE
+#include "module.h"
 #endif
 
 void platform_startup();
@@ -386,6 +394,10 @@ int main(void)
          * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
          */
         FLASH_UpdateModules(flashModulesCallback);
+#ifdef LOAD_DCT_FUNCTIONS
+        // DCT functions may need to be reloaded after updating a system module
+        load_dct_functions();
+#endif
 #else
         if (REFLASH_FROM_BACKUP == 1)
         {
@@ -405,8 +417,19 @@ int main(void)
             // Initialize user application's Stack Pointer
             __set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
-            // Set IWDG Timeout to 5 secs based on platform specific system flags
-            IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+            uint8_t disable_iwdg = 0;
+#ifdef CHECK_FIRMWARE
+            // Pre-0.7.0 firmwares were expecting IWDG flag to be set in the DCT, now it's stored in
+            // the backup registers. As a workaround, we disable IWDG if an older firmware is detected
+            const int module_ver = get_main_module_version();
+            if (module_ver >= 0 && module_ver < SYSTEM_MODULE_VERSION_0_7_0_RC1) {
+                disable_iwdg = 1;
+            }
+#endif
+            if (!disable_iwdg) {
+                // Set IWDG Timeout to 5 secs based on platform specific system flags
+                IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+            }
 
             SysTick_Disable();
             Jump_To_Application();

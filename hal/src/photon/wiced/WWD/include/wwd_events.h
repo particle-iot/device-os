@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -117,7 +92,7 @@ typedef enum
     WLC_E_IF                             =  54, /** I/F change (for wlan host notification) */
     WLC_E_P2P_DISC_LISTEN_COMPLETE       =  55, /** P2P Discovery listen state expires */
     WLC_E_RSSI                           =  56, /** indicate RSSI change based on configured levels */
-    WLC_E_PFN_SCAN_COMPLETE              =  57, /** PFN completed scan of network list */
+    WLC_E_PFN_BEST_BATCHING              =  57, /** PFN best network batching event */
     WLC_E_EXTLOG_MSG                     =  58,
     WLC_E_ACTION_FRAME                   =  59, /** Action frame reception */
     WLC_E_ACTION_FRAME_COMPLETE          =  60, /** Action frame Tx complete */
@@ -189,8 +164,20 @@ typedef enum
     WLC_E_TX_STAT_ERROR                  = 126, /** tx error indication */
     WLC_E_BCMC_CREDIT_SUPPORT            = 127, /** credit check for BCMC supported */
     WLC_E_PSTA_PRIMARY_INTF_IND          = 128, /** psta primary interface indication */
-    WLC_E_LAST                           = 129, /** highest val + 1 for range checking */
+    WLC_E_BT_WIFI_HANDOVER_REQ           = 130, /* Handover Request Initiated */
+    WLC_E_SPW_TXINHIBIT                  = 131, /* Southpaw TxInhibit notification */
+    WLC_E_FBT_AUTH_REQ_IND               = 132, /* FBT Authentication Request Indication */
+    WLC_E_RSSI_LQM                       = 133, /* Enhancement addition for WLC_E_RSSI */
+    WLC_E_PFN_GSCAN_FULL_RESULT          = 134, /* Full probe/beacon (IEs etc) results */
+    WLC_E_PFN_SWC                        = 135, /* Significant change in rssi of bssids being tracked */
+    WLC_E_AUTHORIZED                     = 136, /* a STA been authroized for traffic */
+    WLC_E_PROBREQ_MSG_RX                 = 137, /* probe req with wl_event_rx_frame_data_t header */
+    WLC_E_PFN_SCAN_COMPLETE              = 138, /* PFN completed scan of network list */
+    WLC_E_RMC_EVENT                      = 139, /* RMC Event */
+    WLC_E_DPSTA_INTF_IND                 = 140, /* DPSTA interface indication */
+    WLC_E_RRM                            = 141, /* RRM Event */
 
+    WLC_E_LAST                           = 142, /** highest val + 1 for range checking */
     WLC_E_FORCE_32_BIT                   = 0x7FFFFFFE  /** Force enum to be stored in 32 bit variable */
 } wwd_event_num_t;
 
@@ -222,22 +209,22 @@ typedef enum
     WLC_E_STATUS_CS_ABORT                 = 15,  /** abort channel select */
 
     /* for WLC_SUP messages */
-    WLC_SUP_DISCONNECTED                  = 0 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_CONNECTING                    = 1 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_IDREQUIRED                    = 2 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_AUTHENTICATING                = 3 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_AUTHENTICATED                 = 4 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_KEYXCHANGE                    = 5 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_KEYED                         = 6 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_TIMEOUT                       = 7 + WLC_SUP_STATUS_OFFSET,
-    WLC_SUP_LAST_BASIC_STATE              = 8 + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_DISCONNECTED                  = 0  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_CONNECTING                    = 1  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_IDREQUIRED                    = 2  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_AUTHENTICATING                = 3  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_AUTHENTICATED                 = 4  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_KEYXCHANGE                    = 5  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_KEYED                         = 6  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_TIMEOUT                       = 7  + WLC_SUP_STATUS_OFFSET,
+    WLC_SUP_LAST_BASIC_STATE              = 8  + WLC_SUP_STATUS_OFFSET,
     /* Extended supplicant authentication states */
-    WLC_SUP_KEYXCHANGE_WAIT_M1            = (int) WLC_SUP_AUTHENTICATED    + WLC_SUP_STATUS_OFFSET, /** Waiting   to receive handshake msg M1 */
-    WLC_SUP_KEYXCHANGE_PREP_M2            = (int) WLC_SUP_KEYXCHANGE       + WLC_SUP_STATUS_OFFSET, /** Preparing to send    handshake msg M2 */
-    WLC_SUP_KEYXCHANGE_WAIT_M3            = (int) WLC_SUP_LAST_BASIC_STATE + WLC_SUP_STATUS_OFFSET, /** Waiting   to receive handshake msg M3 */
-    WLC_SUP_KEYXCHANGE_PREP_M4            = 9                              + WLC_SUP_STATUS_OFFSET, /** Preparing to send    handshake msg M4 */
-    WLC_SUP_KEYXCHANGE_WAIT_G1            = 10                             + WLC_SUP_STATUS_OFFSET, /** Waiting   to receive handshake msg G1 */
-    WLC_SUP_KEYXCHANGE_PREP_G2            = 11                             + WLC_SUP_STATUS_OFFSET, /** Preparing to send    handshake msg G2 */
+    WLC_SUP_KEYXCHANGE_WAIT_M1            = WLC_SUP_AUTHENTICATED,      /** Waiting   to receive handshake msg M1 */
+    WLC_SUP_KEYXCHANGE_PREP_M2            = WLC_SUP_KEYXCHANGE,         /** Preparing to send    handshake msg M2 */
+    WLC_SUP_KEYXCHANGE_WAIT_M3            = WLC_SUP_LAST_BASIC_STATE,   /** Waiting   to receive handshake msg M3 */
+    WLC_SUP_KEYXCHANGE_PREP_M4            = 9  + WLC_SUP_STATUS_OFFSET, /** Preparing to send    handshake msg M4 */
+    WLC_SUP_KEYXCHANGE_WAIT_G1            = 10 + WLC_SUP_STATUS_OFFSET, /** Waiting   to receive handshake msg G1 */
+    WLC_SUP_KEYXCHANGE_PREP_G2            = 11 + WLC_SUP_STATUS_OFFSET, /** Preparing to send    handshake msg G2 */
 
     WLC_DOT11_SC_SUCCESS                  =  0 + WLC_DOT11_SC_STATUS_OFFSET,  /* Successful */
     WLC_DOT11_SC_FAILURE                  =  1 + WLC_DOT11_SC_STATUS_OFFSET,  /* Unspecified failure */
@@ -358,16 +345,32 @@ typedef enum
     WLC_E_REASON_FORCE_32_BIT     = 0x7FFFFFFE                     /** Force enum to be stored in 32 bit variable */
 } wwd_event_reason_t;
 
-
-
-
-typedef struct wiced_event_header_struct wwd_event_header_t;
-
 /**
  * Event handler prototype definition
+ *
+ * @param[out] wwd_event_header_t : wwd event header
+ * @param[out] uint8_t*           : event data
+ * @param[out] handler_user_data  : semaphore data
  */
 typedef void* (*wwd_event_handler_t)( const wwd_event_header_t* event_header, const uint8_t* event_data, /*@null@*/ void* handler_user_data );
 
+
+
+/*
+ * @param[in] wwd_rrm_report_type : Radio resource management report type
+ * @param[out] callback           : A callback when the RRM report is received
+ * @param[in]  rrm_req            : pointer to the radio resource management request data
+ * @param[out] report_ptr         : A pointer to the pointer that indicates where to put the next RRM report
+ * @param[in]  void *             : user data ( semaphore)
+ * @param[in]  interface          : WWD_STA_INTERFACE or WWD_AP_INTERFACE
+*/
+wwd_result_t wwd_wifi_rrm_request(   wwd_rrm_report_type_t                      report_type,
+                                     wwd_event_handler_t                        callback,
+                                     void*                                      rrm_req,
+                                     wwd_rrm_report_t**                         report_ptr,
+                                     void*                                      user_data,
+                                     wwd_interface_t                            interface
+                                  );
 /** @endcond */
 
 
@@ -375,9 +378,37 @@ typedef void* (*wwd_event_handler_t)( const wwd_event_header_t* event_header, co
  *  @{
  */
 
+/**
+ * Registers locally a handler to receive event callbacks.
+ * Does not notify Wi-Fi about event subscription change.
+ * Can be used to refresh local callbacks (e.g. after deep-sleep)
+ * if Wi-Fi is already notified about them.
+ *
+ * This function registers a callback handler to be notified when
+ * a particular event is received.
+ *
+ * Alternately the function clears callbacks for given event type.
+ *
+ * @note : Currently each event may only be registered to one handler
+ *         and there is a limit to the number of simultaneously registered
+ *         events
+ *
+ * @param  event_nums     The event types that are to trigger the handler
+ *                        See @ref wwd_event_num_t for available events.
+ *                        Must be defined in a global constant.
+ * @param handler_func   A function pointer to the new handler callback,
+ *                        or NULL if callbacks are to be disabled for the given event type
+ * @param handler_user_data  A pointer value which will be passed to the event handler function
+ *                            at the time an event is triggered (NULL is allowed)
+ *
+ * @return WWD_SUCCESS or Error code
+ */
+extern wwd_result_t wwd_management_set_event_handler_locally( /*@keep@*/ const wwd_event_num_t* event_nums, /*@null@*/ wwd_event_handler_t handler_func, /*@null@*/ /*@keep@*/ void* handler_user_data, wwd_interface_t interface );
+
 
 /**
  * Registers a handler to receive event callbacks.
+ * Subscribe locally and notify Wi-Fi about subscription.
  *
  * This function registers a callback handler to be notified when
  * a particular event is received.
@@ -402,9 +433,20 @@ extern wwd_result_t wwd_management_set_event_handler( /*@keep@*/ const wwd_event
 
 /** @cond */
 
+extern void*  wiced_rrm_report_handler ( const wwd_event_header_t* event_header, const uint8_t* event_data, /*@returned@*/ void* handler_user_data );
 
-
-
+/*
+* @param[out] result_ptr         : A pointer to the pointer that indicates where to put the next RRM report
+* @param[out] callback           : A callback when the RRM report is received
+* @param[out] wwd_rrm_report_t   : Pointer to RRM report data
+* @param[in] interface           : WWD_STA_INTERFACE or WWD_AP_INTERFACE
+*/
+wwd_result_t wiced_wifi_rrm_request(   wwd_rrm_report_type_t                        report_type,
+                                       wwd_event_handler_t                          callback,
+                                       void*                                        rrm_req,
+                                       wwd_rrm_report_t**                           report_ptr,
+                                       wwd_interface_t                              interface
+                                   );
 #pragma pack(1)
 struct wiced_event_header_struct
 {
@@ -416,7 +458,7 @@ struct wiced_event_header_struct
     uint32_t             auth_type;
     uint32_t             datalen;
     wiced_mac_t          addr;
-    wwd_interface_t      interface;
+    uint8_t              interface; /* Do not use wwd_interface_t here */
 };
 #pragma pack()
 

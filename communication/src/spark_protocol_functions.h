@@ -184,10 +184,12 @@ bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserve
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
 
 namespace ProtocolCommands {
-	enum Enum {
-		SLEEP,
-		WAKE
-	};
+  enum Enum {
+    SLEEP,
+    WAKE,
+    DISCONNECT,
+    TERMINATE
+  };
 };
 
 
@@ -202,7 +204,7 @@ int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd,
  * @return The number of plaintext bytes in the plain text buffer, or <0 on error.
  */
 extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
-        uint8_t* plaintext, int max_plaintext_len);
+        uint8_t* plaintext, int32_t max_plaintext_len);
 
 void extract_public_rsa_key(uint8_t* device_pubkey, const uint8_t* device_privkey);
 

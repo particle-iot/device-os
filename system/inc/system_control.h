@@ -55,7 +55,8 @@ typedef enum USBRequestType {
   USB_REQUEST_DFU_MODE = 50,
   USB_REQUEST_SAFE_MODE = 60,
   USB_REQUEST_LISTENING_MODE = 70,
-  USB_REQUEST_LOG_CONFIG = 80
+  USB_REQUEST_LOG_CONFIG = 80,
+  USB_REQUEST_MODULE_INFO = 90
 } USBRequestType;
 
 typedef enum USBRequestResult {
@@ -70,6 +71,7 @@ typedef struct USBRequest {
   size_t request_size; // Request size
   size_t reply_size; // Reply size (initialized to 0)
   int format; // Data format (as defined by DataFormat enum)
+  uint16_t value; // wValue field
 } USBRequest;
 
 // Callback invoked for USB requests that should be processed at application side

@@ -47,6 +47,20 @@ typedef struct _static_ip_config_t {
     dct_ip_address_v4_t dns2;
 } static_ip_config_t;
 
+typedef struct {
+  uint8_t type;
+  uint8_t inner_identity[64];
+  uint8_t inner_identity_len;
+  uint8_t outer_identity[64];
+  uint8_t outer_identity_len;
+  uint8_t security_key[64];
+  uint8_t security_key_len;
+  uint8_t ca_certificate[4*1024];
+  uint16_t ca_certificate_len;
+  uint8_t padding[2];
+} eap_config_t;
+
+STATIC_ASSERT(eap_config_size, sizeof(eap_config_t)==(196 + 4*1024 + 4));
 STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 
 #define DCT_SERVER_ADDRESS_SIZE  (128)
@@ -85,7 +99,8 @@ typedef struct __attribute__((packed)) application_dct {
     button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
     led_config_t led_mirror[4];          // LED mirroring configuration, to be used by bootloader
     uint8_t led_theme[64];               // LED signaling theme
-    uint8_t reserved2[435];
+    eap_config_t eap_config;             // WLAN EAP settings
+    uint8_t reserved2[272];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -116,6 +131,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_MODE_BUTTON_MIRROR_OFFSET (offsetof(application_dct_t, mode_button_mirror))
 #define DCT_LED_MIRROR_OFFSET (offsetof(application_dct_t, led_mirror))
 #define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
+#define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -142,6 +158,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_MODE_BUTTON_MIRROR_SIZE (sizeof(application_dct_t::mode_button_mirror))
 #define DCT_LED_MIRROR_SIZE (sizeof(application_dct_t::led_mirror))
 #define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
+#define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -178,9 +195,9 @@ STATIC_ASSERT_DCT_OFFSET(radio_flags, 3630 /* 3618 + 12 */);
 STATIC_ASSERT_DCT_OFFSET(mode_button_mirror, 3631 /* 3630 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(led_mirror, 3663 /* 3631 + 32 */);
 STATIC_ASSERT_DCT_OFFSET(led_theme, 3759 /* 3663 + 24 * 4 */);
-
-STATIC_ASSERT_DCT_OFFSET(reserved2, 3823 /* 3759 + 64 */);
-STATIC_ASSERT_DCT_OFFSET(end, 4258 /* always 4258 = 3823 + 435 */);
+STATIC_ASSERT_DCT_OFFSET(eap_config, 3823 /* 3759 + 64 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 8119 /* 3823 + (196 + 4*1024 + 4) */);
+STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8119 + 272 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
@@ -195,14 +212,14 @@ STATIC_ASSERT_FLAGS_OFFSET(FeaturesEnabled_SysFlag, 19);
 STATIC_ASSERT_FLAGS_OFFSET(RCC_CSR_SysFlag, 20);
 STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
 
-/**
- * Reads application data from the DCT area.
- * @param offset
- * @return
- */
-extern const void* dct_read_app_data(uint32_t offset);
+// Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
+const void* dct_read_app_data(uint32_t offset);
 
-extern int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
+int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size);
+const void* dct_read_app_data_lock(uint32_t offset);
+int dct_read_app_data_unlock(uint32_t offset);
+
+int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
 
 
 #ifdef	__cplusplus

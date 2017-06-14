@@ -50,10 +50,6 @@ extern uint32_t lastEvent;
 #define SET_LAST_EVENT(x) do {lastEvent = (x);} while(0)
 #define GET_LAST_EVENT(x) do { x = lastEvent; lastEvent = 0;} while(0)
 #define DUMP_STATE() do { \
-    DEBUG("\r\nWLAN_MANUAL_CONNECT=%d\r\nWLAN_DELETE_PROFILES=%d\r\nWLAN_SMART_CONFIG_START=%d\r\nWLAN_SMART_CONFIG_STOP=%d", \
-          WLAN_MANUAL_CONNECT,WLAN_DELETE_PROFILES,WLAN_SMART_CONFIG_START, WLAN_SMART_CONFIG_STOP); \
-    DEBUG("\r\nWLAN_SMART_CONFIG_FINISHED=%d\r\nWLAN_SERIAL_CONFIG_DONE=%d\r\nWLAN_CONNECTED=%d\r\nWLAN_DHCP=%d\r\nWLAN_CAN_SHUTDOWN=%d", \
-          WLAN_SMART_CONFIG_FINISHED,WLAN_SERIAL_CONFIG_DONE,WLAN_CONNECTED,WLAN_DHCP,WLAN_CAN_SHUTDOWN); \
     DEBUG("\r\nSPARK_WLAN_RESET=%d\r\nSPARK_WLAN_SLEEP=%d\r\nSPARK_WLAN_STARTED=%d\r\nSPARK_CLOUD_CONNECT=%d", \
            SPARK_WLAN_RESET,SPARK_WLAN_SLEEP,SPARK_WLAN_STARTED,SPARK_CLOUD_CONNECT); \
     DEBUG("\r\nSPARK_CLOUD_SOCKETED=%d\r\nSPARK_CLOUD_CONNECTED=%d\r\nSPARK_FLASH_UPDATE=%d\r\n", \
@@ -136,12 +132,16 @@ int wlan_has_credentials();
 #undef WLAN_SEC_WEP
 #undef WLAN_SEC_WPA
 #undef WLAN_SEC_WPA2
+#undef WLAN_SEC_WPA_ENTERPRISE
+#undef WLAN_SEC_WPA2_ENTERPRISE
 #endif
 typedef enum {
     WLAN_SEC_UNSEC = 0,
     WLAN_SEC_WEP,
     WLAN_SEC_WPA,
     WLAN_SEC_WPA2,
+    WLAN_SEC_WPA_ENTERPRISE,
+    WLAN_SEC_WPA2_ENTERPRISE,
     WLAN_SEC_NOT_SET = 0xFF
 } WLanSecurityType;
 
@@ -153,6 +153,29 @@ typedef enum {
     WLAN_CIPHER_AES_TKIP = 3   // OR of AES and TKIP
 } WLanSecurityCipher;
 
+typedef enum {
+    WLAN_EAP_TYPE_NONE         = 0,
+    WLAN_EAP_TYPE_IDENTITY     = 1   /* RFC 3748 */,
+    WLAN_EAP_TYPE_NOTIFICATION = 2   /* RFC 3748 */,
+    WLAN_EAP_TYPE_NAK          = 3   /* Response only, RFC 3748 */,
+    WLAN_EAP_TYPE_MD5          = 4,  /* RFC 3748 */
+    WLAN_EAP_TYPE_OTP          = 5   /* RFC 3748 */,
+    WLAN_EAP_TYPE_GTC          = 6,  /* RFC 3748 */
+    WLAN_EAP_TYPE_TLS          = 13  /* RFC 2716 */,
+    WLAN_EAP_TYPE_LEAP         = 17  /* Cisco proprietary */,
+    WLAN_EAP_TYPE_SIM          = 18  /* draft-haverinen-pppext-eap-sim-12.txt */,
+    WLAN_EAP_TYPE_TTLS         = 21  /* draft-ietf-pppext-eap-ttls-02.txt */,
+    WLAN_EAP_TYPE_AKA          = 23  /* draft-arkko-pppext-eap-aka-12.txt */,
+    WLAN_EAP_TYPE_PEAP         = 25  /* draft-josefsson-pppext-eap-tls-eap-06.txt */,
+    WLAN_EAP_TYPE_MSCHAPV2     = 26  /* draft-kamath-pppext-eap-mschapv2-00.txt */,
+    WLAN_EAP_TYPE_TLV          = 33  /* draft-josefsson-pppext-eap-tls-eap-07.txt */,
+    WLAN_EAP_TYPE_FAST         = 43  /* draft-cam-winget-eap-fast-00.txt */,
+    WLAN_EAP_TYPE_PAX          = 46, /* draft-clancy-eap-pax-04.txt */
+    WLAN_EAP_TYPE_EXPANDED_NAK = 253 /* RFC 3748 */,
+    WLAN_EAP_TYPE_WPS          = 254 /* Wireless Simple Config */,
+    WLAN_EAP_TYPE_PSK          = 255 /* EXPERIMENTAL - type not yet allocated draft-bersani-eap-psk-09 */
+} WLanEapType;
+
 typedef struct {
     unsigned size;           // the size of this structure. allows older clients to work with newer HAL.
     const char* ssid;
@@ -163,7 +186,30 @@ typedef struct {
     WLanSecurityCipher cipher;
     unsigned channel;
     unsigned flags;
+    // v2
+    uint8_t version;
+    // Additional parameters used with WLAN_SEC_WPA_ENTERPRISE or WLAN_SEC_WPA2_ENTERPRISE
+    // EAP type
+    WLanEapType eap_type;
+    // EAP inner identity
+    const char* inner_identity;
+    uint16_t inner_identity_len;
+    // EAP outer identity
+    const char* outer_identity;
+    uint16_t outer_identity_len;
+    // Private key (PEM or DER)
+    const uint8_t* private_key;
+    uint16_t private_key_len;
+    // Client certificate (PEM or DER)
+    const uint8_t* client_certificate;
+    uint16_t client_certificate_len;
+    // CA certificate (PEM or DER)
+    const uint8_t* ca_certificate;
+    uint16_t ca_certificate_len;
 } WLanCredentials;
+
+#define WLAN_CREDENTIALS_VERSION_3        (3)
+#define WLAN_CREDENTIALS_CURRENT_VERSION  (WLAN_CREDENTIALS_VERSION_3)
 
 #define WLAN_SET_CREDENTIALS_FLAGS_DRY_RUN  (1<<0)
 
@@ -289,6 +335,14 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data);
  * @return true if wi-fi powersave clock is enabled, false if disabled.
  */
 bool isWiFiPowersaveClockDisabled(void);
+
+/**
+ * Disables and then enables WLAN connectivity
+ */
+int wlan_restart(void* reserved);
+
+int wlan_set_hostname(const char* hostname, void* reserved);
+int wlan_get_hostname(char* buf, size_t buf_size, void* reserved);
 
 #ifdef	__cplusplus
 }

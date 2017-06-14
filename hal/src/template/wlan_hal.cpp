@@ -156,3 +156,23 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie)
 {
     return -1;
 }
+
+int wlan_restart(void* reserved)
+{
+    return -1;
+}
+
+int wlan_get_hostname(char* buf, size_t len, void* reserved)
+{
+    // Unsupported
+    if (buf) {
+        buf[0] = '\0';
+    }
+    return -1;
+}
+
+int wlan_set_hostname(const char* hostname, void* reserved)
+{
+    // Unsupported
+    return -1;
+}

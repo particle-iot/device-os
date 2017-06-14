@@ -7,7 +7,7 @@ const uint8_t Test::DONE_SKIP = 2;
 const uint8_t Test::DONE_PASS = 3;
 const uint8_t Test::DONE_FAIL = 4;
 
-Test::TestString::TestString(const char *_data) : data((uint32_t)_data) {}
+Test::TestString::TestString(const char *_data) : data((uintptr_t)_data) {}
 
 void Test::TestString::read(void *destination, uint16_t offset, uint8_t length) const
 {

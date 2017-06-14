@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -44,6 +19,7 @@
 #include <stddef.h>
 #include "crypto_structures.h"
 #include "besl_structures.h"
+#include "tls_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,18 +33,21 @@ extern "C" {
  *                    Constants
  ******************************************************/
 
-#define RSA_RAW         0
-#define RSA_MD2         2
-#define RSA_MD4         3
-#define RSA_MD5         4
-#define RSA_SHA1        5
-#define RSA_SHA256      6
+// XXX: Do NOT redefine these to incorrect values
+// They are already correctly defined in crypto_structures.h
 
-#define RSA_PUBLIC      0
-#define RSA_PRIVATE     1
+// #define RSA_RAW         0
+// #define RSA_MD2         2
+// #define RSA_MD4         3
+// #define RSA_MD5         4
+// #define RSA_SHA1        5
+// #define RSA_SHA256      6
 
-#define RSA_PKCS_V15    0
-#define RSA_PKCS_V21    1
+// #define RSA_PUBLIC      0
+// #define RSA_PRIVATE     1
+
+// #define RSA_PKCS_V15    0
+// #define RSA_PKCS_V21    1
 
 /******************************************************
  *                   Enumerations
@@ -187,17 +166,18 @@ void aes_crypt_cfb128( aes_context_t *ctx, aes_mode_type_t mode, uint32_t length
 int aes_crypt_ctr( aes_context_t *ctx, uint32_t length, const unsigned char iv[16], const unsigned char *input, unsigned char *output );
 
 /**
- * @brief            AES-CCM MAC calculation
+ * @brief               AES-CCM MAC calculation
  *
- * @param ctx        AES context
- * @param length     length of the input data
- * @param aad_length length of the additional associated data
- * @param nonce      the nonce to use
- * @param aad_input  the buffer containing the additional associated data
- * @param data_input buffer holding the input data
- * @param mac_output buffer which recieves the output MAC
+ * @param ctx           AES context
+ * @param length        length of the input data
+ * @param aad_length    length of the additional associated data
+ * @param nonce         the nonce to use
+ * @param nonce_length  length of nonce.
+ * @param aad_input     the buffer containing the additional associated data
+ * @param data_input    buffer holding the input data
+ * @param mac_output    buffer which recieves the output MAC
  */
-int aes_ccm_mac( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const unsigned char nonce[13], const unsigned char *aad_input, const unsigned char *data_input, unsigned char mac_output[8] );
+int aes_ccm_mac( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const unsigned char *nonce,int nonce_length, const unsigned char *aad_input, const unsigned char *data_input, unsigned char mac_output[8] );
 
 /**
  * @brief                   AES-CCM encryption
@@ -206,12 +186,13 @@ int aes_ccm_mac( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const
  * @param length            length of the input data
  * @param aad_length        length of the additional associated data
  * @param nonce             the nonce to use
+ * @param nonce_length      length of nonce.
  * @param aad_input         the buffer containing the additional associated data
  * @param plaintext_input   buffer holding the input data
  * @param ciphertext_output buffer which receives the output ciphertext
  * @param mac_output        buffer which recieves the output MAC
  */
-int aes_encrypt_ccm( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const unsigned char nonce[13], const unsigned char *aad_input, const unsigned char *plaintext_input, unsigned char *ciphertext_output, unsigned char mac_output[8] );
+int aes_encrypt_ccm( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const unsigned char *nonce, uint8_t nonce_length, const unsigned char *aad_input, const unsigned char *plaintext_input, unsigned char *ciphertext_output, unsigned char mac_output[8] );
 
 /**
  * @brief                   AES-CCM decryption
@@ -220,11 +201,12 @@ int aes_encrypt_ccm( aes_context_t *ctx, uint32_t length, uint32_t aad_length, c
  * @param length            length of the input data
  * @param aad_length        length of the additional associated data
  * @param nonce             the nonce to use
+ * @param nonce_length      length of nonce.
  * @param aad_input         the buffer containing the additional associated data
  * @param ciphertext_input  buffer holding the input data
  * @param plaintext_output  buffer which receives the output plaintext
  */
-int aes_decrypt_ccm( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const unsigned char nonce[13], const unsigned char *aad_input, const unsigned char *ciphertext_input, unsigned char *plaintext_output );
+int aes_decrypt_ccm( aes_context_t *ctx, uint32_t length, uint32_t aad_length,  const unsigned char *nonce, uint8_t nonce_length, const unsigned char *aad_input, const unsigned char *ciphertext_input, unsigned char *plaintext_output );
 
 
 /** @} */
@@ -977,6 +959,89 @@ int ed25519_sign_open( const unsigned char *message_data, size_t message_len, co
 /** @} */
 
 /*****************************************************************************/
+/** @addtogroup md4       MD4
+ *  @ingroup crypto
+ *
+ * MD4 functions
+ *
+ *  @{
+ */
+/*****************************************************************************/
+
+/**
+ * @brief          MD4 context setup
+ *
+ * @param ctx      context to be initialized
+ */
+void md4_starts( md4_context *ctx );
+
+/**
+ * @brief          MD4 process buffer
+ *
+ * @param ctx      MD4 context
+ * @param input    buffer holding the  data
+ * @param ilen     length of the input data
+ */
+void md4_update( md4_context *ctx, const unsigned char *input, int32_t ilen );
+
+/**
+ * @brief          MD4 final digest
+ *
+ * @param ctx      MD4 context
+ * @param output   MD4 checksum result
+ */
+void md4_finish( md4_context *ctx, unsigned char output[16] );
+
+/**
+ * @brief          Output = MD4( input buffer )
+ *
+ * @param input    buffer holding the  data
+ * @param ilen     length of the input data
+ * @param output   MD4 checksum result
+ */
+void md4( const unsigned char *input, int32_t ilen, unsigned char output[16] );
+
+/**
+ * @brief          MD4 HMAC context setup
+ *
+ * @param ctx      HMAC context to be initialized
+ * @param key      HMAC secret key
+ * @param keylen   length of the HMAC key
+ */
+void md4_hmac_starts( md4_context *ctx, const unsigned char *key, uint32_t keylen );
+
+/**
+ * @brief          MD4 HMAC process buffer
+ *
+ * @param ctx      HMAC context
+ * @param input    buffer holding the  data
+ * @param ilen     length of the input data
+ */
+void md4_hmac_update( md4_context *ctx, const unsigned char *input, uint32_t ilen );
+
+/**
+ * @brief          MD4 HMAC final digest
+ *
+ * @param ctx      HMAC context
+ * @param output   MD4 HMAC checksum result
+ */
+void md4_hmac_finish( md4_context *ctx, unsigned char output[16] );
+
+/**
+ * @brief          Output = HMAC-MD4( hmac key, input buffer )
+ *
+ * @param key      HMAC secret key
+ * @param keylen   length of the HMAC key
+ * @param input    buffer holding the  data
+ * @param ilen     length of the input data
+ * @param output   HMAC-MD4 result
+ */
+void md4_hmac( const unsigned char *key, int32_t keylen, const unsigned char *input, int32_t ilen, unsigned char output[16] );
+
+/** @} */
+
+
+/*****************************************************************************/
 /** @addtogroup md5       MD5
  *  @ingroup crypto
  *
@@ -1492,9 +1557,172 @@ void x509_free( x509_cert *crt );
 
 /** @} */
 
+/*****************************************************************************/
+/** @addtogroup 80211       802.11
+ *  @ingroup crypto
+ *
+ *  802.11 functions
+ *
+ *  @{
+ */
+/*****************************************************************************/
+
 extern besl_result_t besl_802_11_generate_pmk              ( const char* password, const unsigned char* ssid, int ssid_length, unsigned char* output );
 extern besl_result_t besl_802_11_generate_random_passphrase( char* passphrase, const int passphrase_length );
 
+/** @} */
+
+/*****************************************************************************/
+/** @addtogroup dhn       DHM
+ *  @ingroup crypto
+ *
+ *  Diffie-Hellman Key Exchange functions
+ *
+ *  @{
+ */
+/*****************************************************************************/
+
+/**
+ * @brief          Parse the ServerKeyExchange parameters
+ *
+ * @param ctx      DHM context
+ * @param p        &(start of input buffer)
+ * @param end      end of buffer
+ *
+ * @return         0 if successful, or an MYKROSSL_ERR_DHM_XXX error code
+ */
+int32_t dhm_read_params( dhm_context *ctx,
+                         const unsigned char **p,
+                         const unsigned char *end );
+
+/**
+ * @brief          Setup and write the ServerKeyExchange parameters
+ *
+ * @param ctx      DHM context
+ * @param s_size   private value size in bits
+ * @param output   destination buffer
+ * @param olen     number of chars written
+ * @param f_rng    RNG function
+ * @param p_rng    RNG parameter
+ *
+ * @note           This function assumes that ctx->P and ctx->G
+ *                 have already been properly set (for example
+ *                 using mpi_read_string or mpi_read_binary).
+ *
+ * @return         0 if successful, or an MYKROSSL_ERR_DHM_XXX error code
+ */
+int32_t dhm_make_params( dhm_context *ctx, int32_t s_size,
+                         unsigned char *output, int32_t *olen,
+                         int32_t (*f_rng)(void *), void *p_rng );
+
+/**
+ * @brief          Import the peer's public value G^Y
+ *
+ * @param ctx      DHM context
+ * @param input    input buffer
+ * @param ilen     size of buffer
+ *
+ * @return         0 if successful, or an MYKROSSL_ERR_DHM_XXX error code
+ */
+int32_t dhm_read_public( dhm_context *ctx,
+                         const unsigned char *input, int32_t ilen );
+
+/**
+ * @brief          Create own private value X and export G^X
+ *
+ * @param ctx      DHM context
+ * @param s_size   private value size in bits
+ * @param output   destination buffer
+ * @param olen     must be equal to ctx->P.len
+ * @param f_rng    RNG function
+ * @param p_rng    RNG parameter
+ *
+ * @return         0 if successful, or an MYKROSSL_ERR_DHM_XXX error code
+ */
+int32_t dhm_make_public( dhm_context *ctx, int32_t s_size,
+                         unsigned char *output, int32_t olen,
+                         int32_t (*f_rng)(void *), void *p_rng );
+
+/**
+ * @brief          Derive and export the shared secret (G^Y)^X mod P
+ *
+ * @param ctx      DHM context
+ * @param output   destination buffer
+ * @param olen     number of chars written
+ *
+ * @return         0 if successful, or an MYKROSSL_ERR_DHM_XXX error code
+ */
+int32_t dhm_calc_secret( dhm_context *ctx,
+                         unsigned char *output, uint32_t *olen );
+
+/*
+ * @brief          Free the components of a DHM key
+ */
+void dhm_free( dhm_context *ctx );
+
+int dh_tls_create_premaster_secret( void*          key_context,
+                                    uint8_t        is_ssl_3,
+                                    uint16_t       max_version,
+                                    uint8_t*       premaster_secret_out,
+                                    uint32_t*      pms_length_out,
+                                    int32_t        (*f_rng)(void *),
+                                    void*          p_rng,
+                                    uint8_t*       encrypted_output,
+                                    uint32_t*      encrypted_length_out );
+
+int dhm_tls_decode_premaster_secret( const uint8_t* data,
+                                     uint32_t       data_len,
+                                     const uint8_t* key_context,
+                                     uint8_t        is_ssl_3,
+                                     uint16_t       max_version,
+                                     uint8_t*       premaster_secret_out,
+                                     uint32_t       pms_buf_length,
+                                     uint32_t*      pms_length_out );
+
+
+
+int dhm_parse_server_key_exchange( ssl_context *ssl, const uint8_t* data, uint32_t data_length, tls_digitally_signed_signature_algorithm_t input_signature_algorithm);
+int dhm_create_server_key_exchange( ssl_context *ssl, uint8_t* data_out, uint32_t* data_buffer_length_out, tls_digitally_signed_signature_algorithm_t input_signature_algorithm );
+
+/**
+ * @brief          Checkup routine
+ *
+ * @return         0 if successful, or 1 if the test failed
+ */
+int32_t dhm_self_test( int32_t verbose );
+
+/** @} */
+
+/*****************************************************************************/
+/** @addtogroup microrng       MICRORNG
+ *  @ingroup crypto
+ *
+ *  microrang functions
+ *
+ *  @{
+ */
+/*****************************************************************************/
+
+/**
+ * @brief          MICRORNG initialization
+ *
+ * @param state    MICRORNG state to be initialized
+ *
+ * caller can optionally supply an entropy value
+ * in state that may be zero by default
+ */
+void microrng_init( microrng_state *state);
+
+/**
+ * @brief          MICRORNG rand function
+ *
+ * @param p_state  points to an MICRORNG state
+ *
+ * @return         A random int
+ */
+int32_t microrng_rand( void *p_state );
+
+/** @} */
 
 #ifdef __cplusplus
 } /*extern "C" */

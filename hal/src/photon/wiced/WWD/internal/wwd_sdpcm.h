@@ -1,36 +1,11 @@
 /*
- * Copyright (c) 2015 Broadcom
- * All rights reserved.
+ * Broadcom Proprietary and Confidential. Copyright 2016 Broadcom
+ * All Rights Reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * 3. Neither the name of Broadcom nor the names of other contributors to this
- * software may be used to endorse or promote products derived from this software
- * without specific prior written permission.
- *
- * 4. This software may not be used as a standalone product, and may only be used as
- * incorporated in your product or device that incorporates Broadcom wireless connectivity
- * products and solely for the purpose of enabling the functionalities of such Broadcom products.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT, ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * the contents of this file may not be disclosed to third parties, copied
+ * or duplicated in any form, in whole or in part, without the prior
+ * written permission of Broadcom Corporation.
  */
 
 /** @file
@@ -92,16 +67,18 @@ wiced_bool_t swap = WICED_FALSE;
  *             Function declarations
  ******************************************************/
 
-extern /*@null@*/ /*@exposed@*/ void* wwd_sdpcm_get_iovar_buffer      ( /*@special@*/ /*@out@*/ wiced_buffer_t* buffer, uint16_t data_length, const char* name )  /*@allocates *buffer@*/ /*@defines **buffer@*/;
-extern /*@null@*/ /*@exposed@*/ void* wwd_sdpcm_get_ioctl_buffer      ( /*@special@*/ /*@out@*/ wiced_buffer_t* buffer, uint16_t data_length ) /*@allocates *buffer@*/  /*@defines **buffer@*/;
-extern wwd_result_t                   wwd_sdpcm_send_ioctl            ( sdpcm_command_type_t type, uint32_t command, wiced_buffer_t send_buffer_hnd, /*@null@*/ /*@out@*/ wiced_buffer_t* response_buffer_hnd, wwd_interface_t interface ) /*@releases send_buffer_hnd@*/ ;
-extern wwd_result_t                   wwd_sdpcm_send_iovar            ( sdpcm_command_type_t type, /*@only@*/ wiced_buffer_t send_buffer_hnd, /*@special@*/ /*@out@*/ /*@null@*/ wiced_buffer_t* response_buffer_hnd, wwd_interface_t interface )  /*@allocates *response_buffer_hnd@*/  /*@defines **response_buffer_hnd@*/;
-extern void                           wwd_sdpcm_process_rx_packet     ( /*@only@*/ wiced_buffer_t buffer );
-extern wwd_result_t                   wwd_sdpcm_init                  ( void );
-extern void                           wwd_sdpcm_quit                  ( void ) /*@modifies internalState@*/;
-extern wwd_result_t                   wwd_sdpcm_get_packet_to_send    ( /*@out@*/ wiced_buffer_t* buffer );
-extern void                           wwd_sdpcm_update_credit         ( uint8_t* data );
-extern uint8_t                        wWd_sdpcm_get_available_credits ( void );
+extern /*@null@*/ /*@exposed@*/ void* wwd_sdpcm_get_iovar_buffer                    ( /*@special@*/ /*@out@*/ wiced_buffer_t* buffer, uint16_t data_length, const char* name )  /*@allocates *buffer@*/ /*@defines **buffer@*/;
+extern /*@null@*/ /*@exposed@*/ void* wwd_sdpcm_get_ioctl_buffer                    ( /*@special@*/ /*@out@*/ wiced_buffer_t* buffer, uint16_t data_length ) /*@allocates *buffer@*/  /*@defines **buffer@*/;
+extern wwd_result_t                   wwd_sdpcm_send_ioctl                          ( sdpcm_command_type_t type, uint32_t command, wiced_buffer_t send_buffer_hnd, /*@null@*/ /*@out@*/ wiced_buffer_t* response_buffer_hnd, wwd_interface_t interface ) /*@releases send_buffer_hnd@*/ ;
+extern wwd_result_t                   wwd_sdpcm_send_iovar                          ( sdpcm_command_type_t type, /*@only@*/ wiced_buffer_t send_buffer_hnd, /*@special@*/ /*@out@*/ /*@null@*/ wiced_buffer_t* response_buffer_hnd, wwd_interface_t interface )  /*@allocates *response_buffer_hnd@*/  /*@defines **response_buffer_hnd@*/;
+extern void                           wwd_sdpcm_process_rx_packet                   ( /*@only@*/ wiced_buffer_t buffer );
+extern wwd_result_t                   wwd_sdpcm_init                                ( void );
+extern void                           wwd_sdpcm_quit                                ( void ) /*@modifies internalState@*/;
+extern wwd_result_t                   wwd_sdpcm_get_packet_to_send                  ( /*@out@*/ wiced_buffer_t* buffer );
+extern void                           wwd_sdpcm_update_credit                       ( uint8_t* data );
+extern uint8_t                        wwd_sdpcm_get_available_credits               ( void );
+extern void                           wwd_update_host_interface_to_bss_index_mapping( wwd_interface_t interface, uint32_t bssid_index );
+
 
 /******************************************************
  *             Global variables

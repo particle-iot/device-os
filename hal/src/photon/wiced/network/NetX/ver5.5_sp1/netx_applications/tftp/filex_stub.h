@@ -53,10 +53,10 @@ UINT        fx_directory_create(FX_MEDIA *media_ptr, CHAR *directory_name);
 UINT        fx_directory_delete(FX_MEDIA *media_ptr, CHAR *directory_name);
 UINT        fx_directory_rename(FX_MEDIA *media_ptr, CHAR *old_directory_name, CHAR *new_directory_name);
 UINT        fx_directory_first_entry_find(FX_MEDIA *media_ptr, CHAR *directory_name);
-UINT        fx_directory_first_full_entry_find(FX_MEDIA *media_ptr, CHAR *directory_name, UINT *attributes,
+UINT        fx_directory_first_full_entry_find(FX_MEDIA *media_ptr, CHAR *directory_name, UINT *attributes, 
                 ULONG *size, UINT *year, UINT *month, UINT *day, UINT *hour, UINT *minute, UINT *second);
 UINT        fx_directory_next_entry_find(FX_MEDIA *media_ptr, CHAR *directory_name);
-UINT        fx_directory_next_full_entry_find(FX_MEDIA *media_ptr, CHAR *directory_name, UINT *attributes,
+UINT        fx_directory_next_full_entry_find(FX_MEDIA *media_ptr, CHAR *directory_name, UINT *attributes, 
                 ULONG *size, UINT *year, UINT *month, UINT *day, UINT *hour, UINT *minute, UINT *second);
 UINT        fx_directory_name_test(FX_MEDIA *media_ptr, CHAR *directory_name);
 UINT        fx_directory_information_get(FX_MEDIA *media_ptr, CHAR *directory_name, UINT *attributes, ULONG *size,
@@ -70,7 +70,7 @@ UINT        fx_file_delete(FX_MEDIA *media_ptr, CHAR *file_name);
 UINT        fx_file_rename(FX_MEDIA *media_ptr, CHAR *old_file_name, CHAR *new_file_name);
 UINT        fx_file_attributes_set(FX_MEDIA *media_ptr, CHAR *file_name, UINT attributes);
 UINT        fx_file_attributes_read(FX_MEDIA *media_ptr, CHAR *file_name, UINT *attributes_ptr);
-UINT        fx_file_open(FX_MEDIA *media_ptr, FX_FILE *file_ptr, CHAR *file_name,
+UINT        fx_file_open(FX_MEDIA *media_ptr, FX_FILE *file_ptr, CHAR *file_name, 
                 UINT open_type);
 UINT        fx_file_close(FX_FILE *file_ptr);
 UINT        fx_file_read(FX_FILE *file_ptr, VOID *buffer_ptr, ULONG request_size, ULONG *actual_size);

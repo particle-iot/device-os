@@ -26,12 +26,28 @@
 #ifndef __SPARK_PROTOCOL_H
 #define __SPARK_PROTOCOL_H
 
+#include "protocol_selector.h"
+
+#if !PARTICLE_PROTOCOL
+
 #include "protocol_defs.h"
 #include "spark_descriptor.h"
 #include "coap.h"
 #include "events.h"
-#include "tropicssl/rsa.h"
-#include "tropicssl/aes.h"
+#ifdef USE_MBEDTLS
+#include "mbedtls/rsa.h"
+#include "mbedtls/aes.h"
+#define aes_context mbedtls_aes_context
+#else
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#  include "wiced_security.h"
+#  include "crypto_open/bignum.h"
+#  define aes_context aes_context_t
+# else
+#  include "tropicssl/rsa.h"
+#  include "tropicssl/aes.h"
+# endif
+#endif
 #include "device_keys.h"
 #include "file_transfer.h"
 #include "spark_protocol_functions.h"
@@ -138,13 +154,17 @@ class SparkProtocol
 
     /********** Queue **********/
     const size_t QUEUE_SIZE;
+#if 0
     int queue_bytes_available();
     int queue_push(const char *src, int length);
     int queue_pop(char *dst, int length);
-
+#endif
     void set_handlers(CommunicationsHandlers& handlers) {
         this->handlers = handlers;
     }
+
+    int command(ProtocolCommands::Enum command, uint32_t data);
+    int wait_confirmable(uint32_t timeout=5000);
 
     /********** State Machine **********/
     ProtocolState::Enum state();
@@ -265,5 +285,11 @@ class SparkProtocol
 
     TimeSyncManager timesync_;
 };
+
+#ifdef USE_MBEDTLS
+#undef aes_context
+#endif
+
+#endif // !PARTICLE_PROTOCOL
 
 #endif // __SPARK_PROTOCOL_H

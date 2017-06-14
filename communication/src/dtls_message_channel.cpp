@@ -21,17 +21,19 @@
 LOG_SOURCE_CATEGORY("comm.dtls")
 
 #include "dtls_message_channel.h"
+
+#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+
 #include "protocol.h"
 #include "rng_hal.h"
 #include "mbedtls/error.h"
 #include "mbedtls/ssl_internal.h"
+#include "mbedtls_util.h"
+#include "mbedtls/version.h"
 #include "timer_hal.h"
 #include <stdio.h>
 #include <string.h>
 #include "dtls_session_persist.h"
-
-
-#if HAL_PLATFORM_CLOUD_UDP
 
 namespace particle { namespace protocol {
 
@@ -177,24 +179,6 @@ static void my_debug(void *ctx, int level,
 #endif
 }
 
-// todo - would like to make this a callback
-int dtls_rng(void* handle, uint8_t* data, const size_t len_)
-{
-	size_t len = len_;
-	while (len>=4)
-	{
-		*((uint32_t*)data) = HAL_RNG_GetRandomNumber();
-		data += 4;
-		len -= 4;
-	}
-	while (len-->0)
-	{
-		*data++ = HAL_RNG_GetRandomNumber();
-	}
-
-	return 0;
-}
-
 ProtocolError DTLSMessageChannel::init(
 		const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,
@@ -215,7 +199,7 @@ ProtocolError DTLSMessageChannel::init(
 
 	mbedtls_ssl_conf_handshake_timeout(&conf, 3000, 6000);
 
-	mbedtls_ssl_conf_rng(&conf, dtls_rng, this);
+	mbedtls_ssl_conf_rng(&conf, mbedtls_default_rng, nullptr); // todo - would like to make this a callback
 	mbedtls_ssl_conf_dbg(&conf, my_debug, nullptr);
 	mbedtls_ssl_conf_min_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
 
@@ -229,6 +213,7 @@ ProtocolError DTLSMessageChannel::init(
 	EXIT_ERROR(ret, "unable to config own cert");
 
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+
 	static int ssl_cert_types[] = { MBEDTLS_TLS_CERT_TYPE_RAW_PUBLIC_KEY, MBEDTLS_TLS_CERT_TYPE_NONE };
 	mbedtls_ssl_conf_client_certificate_types(&conf, ssl_cert_types);
 	mbedtls_ssl_conf_server_certificate_types(&conf, ssl_cert_types);
@@ -542,18 +527,18 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 
 #include "sys/time.h"
 
-extern "C" unsigned long mbedtls_timing_hardclock()
-{
-	return HAL_Timer_Microseconds();
-}
-
-// todo - would prefer this was provided as a callback.
 extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
 {
-    uint32_t t = HAL_Timer_Milliseconds();  // get uptime in nanoseconds
+    mbedtls_callbacks_t* cb = mbedtls_get_callbacks(NULL);
+    uint32_t t = 0;
+    if (cb && cb->millis) {
+        t = cb->millis();
+    } else {
+        return -1;
+    }
     tv->tv_sec = t / 1000;  // convert to seconds
     tv->tv_usec = ( t % 1000 )*1000;  // get remaining microseconds
     return 0;  // return non-zero for error
 } // end _gettimeofday()
 
-#endif
+#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL

@@ -65,7 +65,7 @@
 
 #ifdef   __cplusplus
 
-/* Yes, C++ compiler is present.  Use standard C.  */
+/* Yes, C++ compiler is present.  Use standard C.  */ 
 extern   "C" {
 
 #endif
@@ -74,7 +74,7 @@ extern   "C" {
 /* NX SMTP Client configurable options.  */
 
 /* Set the TCP socket window size. */
-
+    
 #ifndef NX_SMTP_CLIENT_TCP_WINDOW_SIZE
 #define NX_SMTP_CLIENT_TCP_WINDOW_SIZE         1460
 #endif
@@ -82,18 +82,18 @@ extern   "C" {
 /* Set timeout on Client packet allocation in ticks.  */
 
 #ifndef NX_SMTP_CLIENT_PACKET_TIMEOUT
-#define NX_SMTP_CLIENT_PACKET_TIMEOUT           (2 * NX_SMTP_TICKS_PER_SECOND)
+#define NX_SMTP_CLIENT_PACKET_TIMEOUT           (2 * NX_SMTP_TICKS_PER_SECOND)    
 #endif
 
 /* Set Client TCP connection timeout in seconds.  */
 
-#ifndef NX_SMTP_CLIENT_CONNECTION_TIMEOUT
+#ifndef NX_SMTP_CLIENT_CONNECTION_TIMEOUT     
 #define NX_SMTP_CLIENT_CONNECTION_TIMEOUT     (10 * NX_SMTP_TICKS_PER_SECOND)
 #endif
 
 /* Set Client TCP disconnect timeout in seconds.  */
 
-#ifndef NX_SMTP_CLIENT_DISCONNECT_TIMEOUT
+#ifndef NX_SMTP_CLIENT_DISCONNECT_TIMEOUT 
 #define NX_SMTP_CLIENT_DISCONNECT_TIMEOUT      (5 * NX_SMTP_TICKS_PER_SECOND)
 #endif
 
@@ -114,13 +114,13 @@ extern   "C" {
 /* Set Client timeout in seconds for waiting to receive server acceptance of client message data.  */
 
 #ifndef NX_SMTP_MESSAGE_TIMEOUT
-#define NX_SMTP_MESSAGE_TIMEOUT               (30 * NX_SMTP_TICKS_PER_SECOND)
+#define NX_SMTP_MESSAGE_TIMEOUT               (30 * NX_SMTP_TICKS_PER_SECOND) 
 #endif
 
 
 /* Set timeout for TCP socket send completion.  */
 
-#ifndef NX_SMTP_CLIENT_SEND_TIMEOUT
+#ifndef NX_SMTP_CLIENT_SEND_TIMEOUT     
 #define NX_SMTP_CLIENT_SEND_TIMEOUT            (5 * NX_SMTP_TICKS_PER_SECOND)
 #endif
 
@@ -137,7 +137,7 @@ extern   "C" {
 
 
 
-/* Define size of the buffer to extract the server challenge for authentication.
+/* Define size of the buffer to extract the server challenge for authentication.    
    There is no specific size here so 200 bytes is sufficient to cover all digest string handling.  */
 #ifndef NX_SMTP_SERVER_CHALLENGE_MAX_STRING
 #define NX_SMTP_SERVER_CHALLENGE_MAX_STRING     200
@@ -145,15 +145,15 @@ extern   "C" {
 
 
 /* Define size for handling data for authentication (LOGIN, PLAIN):
-   PLAIN requires rooms for authorization-id\0authentication-id\0passwd'.
-   The two bytes are for the NULL byte between the first two auth id and
+   PLAIN requires rooms for authorization-id\0authentication-id\0passwd'. 
+   The two bytes are for the NULL byte between the first two auth id and 
    between auth id and password. */
 
 #define NX_SMTP_CLIENT_AUTH_CHALLENGE_SIZE    (NX_SMTP_CLIENT_MAX_USERNAME + NX_SMTP_CLIENT_MAX_USERNAME + NX_SMTP_CLIENT_MAX_PASSWORD + 2)
 
 
 /* These define the states of the protocol state machine */
-
+                    
 #define   NX_SMTP_CLIENT_SESSION_STATE_AWAITING_REPLY       0xFFFFFFFF     /* Session state depends on outcome of current response handler.  */
 #define   NX_SMTP_CLIENT_SESSION_STATE_COMPLETED_NORMALLY   0xFFFFFFFE     /* No internal errors, session completed normally.  */
 #define   NX_SMTP_CLIENT_SESSION_STATE_ERROR                0xFFFFFFFD     /* Internal errors e.g. TCP send or receive fails; session terminated abnormally.  */
@@ -192,8 +192,8 @@ extern   "C" {
 #define NX_SMTP_COMMAND_QUIT                            "QUIT"
 
 /* List of common SMTP server reply codes */
-
-#define     NX_SMTP_CODE_GREETING_OK                       220
+                  
+#define     NX_SMTP_CODE_GREETING_OK                       220 
 #define     NX_SMTP_CODE_ACKNOWLEDGE_QUIT                  221
 #define     NX_SMTP_CODE_AUTHENTICATION_SUCCESSFUL         235
 #define     NX_SMTP_CODE_OK_TO_CONTINUE                    250
@@ -212,7 +212,7 @@ extern   "C" {
 #define     NX_SMTP_CODE_AUTH_REQUIRED                     530
 #define     NX_SMTP_CODE_AUTH_FAILED                       535
 #define     NX_SMTP_CODE_REQUESTED_ACTION_NOT_TAKEN        550
-#define     NX_SMTP_CODE_USER_NOT_LOCAL                    551
+#define     NX_SMTP_CODE_USER_NOT_LOCAL                    551 
 #define     NX_SMTP_CODE_OVERSIZE_MAIL_DATA                552
 #define     NX_SMTP_CODE_BAD_MAILBOX                       553
 #define     NX_SMTP_CODE_TRANSACTION_FAILED                554
@@ -222,7 +222,7 @@ extern   "C" {
 /* Common components of SMTP command messages */
 
 #define NX_SMTP_LINE_TERMINATOR                     "\r\n"
-#define NX_SMTP_EOM                                 "\r\n.\r\n"
+#define NX_SMTP_EOM                                 "\r\n.\r\n"   
 #define NX_SMTP_MESSAGE_ID                          "Message-ID"
 #define NX_SMTP_TO_STRING                           "To: "
 #define NX_SMTP_FROM_STRING                         "From: "
@@ -237,13 +237,13 @@ extern   "C" {
 
 
 
-/* Enumerated states of the protocol state machine. These MUST be in the
+/* Enumerated states of the protocol state machine. These MUST be in the 
    same order as the list of protocol states  in NX_SMTP_CLIENT_SESSION_STATES.  */
 
 typedef enum NX_SMTP_CLIENT_SESSION_STATE_ENUM
 {
-    NX_SMTP_CLIENT_SESSION_STATE_IDLE = 0,
-    NX_SMTP_CLIENT_SESSION_STATE_GREETING,
+    NX_SMTP_CLIENT_SESSION_STATE_IDLE = 0,      
+    NX_SMTP_CLIENT_SESSION_STATE_GREETING,      
     NX_SMTP_CLIENT_SESSION_STATE_EHLO,
     NX_SMTP_CLIENT_SESSION_STATE_HELO,
     NX_SMTP_CLIENT_SESSION_STATE_MAIL,
@@ -264,7 +264,7 @@ typedef enum NX_SMTP_CLIENT_SESSION_STATE_ENUM
 #define       NX_SMTP_CLIENT_REPLY_TO_UNKNOWN_PROMPT        1
 #define       NX_SMTP_CLIENT_REPLY_TO_USERNAME_PROMPT       2
 #define       NX_SMTP_CLIENT_REPLY_TO_PASSWORD_PROMPT       3
-#define       NX_SMTP_CLIENT_REPLY_SERVER_CHALLENGE_PROMPT  4
+#define       NX_SMTP_CLIENT_REPLY_SERVER_CHALLENGE_PROMPT  4   
 
 /* Common server challenges from the SMTP server. */
 
@@ -275,8 +275,8 @@ typedef enum NX_SMTP_CLIENT_SESSION_STATE_ENUM
 
 #define NX_SMTP_CLIENT_ID                       0x534D5450UL
 
-/* Conversion between seconds and timer ticks. See tx_initialize_low_level.<asm>
-   for timer tick resolution before altering! */
+/* Conversion between seconds and timer ticks. See tx_initialize_low_level.<asm> 
+   for timer tick resolution before altering! */ 
 
 #define NX_SMTP_MILLISECONDS_PER_TICK           10
 
@@ -292,7 +292,7 @@ typedef enum NX_SMTP_CLIENT_SESSION_STATE_ENUM
 typedef enum  NX_SMTP_SESSION_AUTHENTICATION_STATE_ENUM
 {
     NX_SMTP_NOT_AUTHENTICATED,
-    NX_SMTP_AUTHENTICATION_IN_PROGRESS,
+    NX_SMTP_AUTHENTICATION_IN_PROGRESS, 
     NX_SMTP_AUTHENTICATION_FAILED,
     NX_SMTP_AUTHENTICATION_SUCCEEDED
 
@@ -344,7 +344,7 @@ typedef struct NX_SMTP_CLIENT_MAIL_STRUCT
 typedef struct NX_SMTP_CLIENT_SESSION_STRUCT
 {
 
-    struct NX_SMTP_CLIENT_STRUCT            *nx_smtp_client_session_client_ptr;                  /* Pointer to Client this session belongs to.  */
+    struct NX_SMTP_CLIENT_STRUCT            *nx_smtp_client_session_client_ptr;                  /* Pointer to Client this session belongs to.  */    
     ULONG                                   nx_smtp_client_session_server_ip_address;            /* Server IP address   */
     USHORT                                  nx_smtp_client_session_server_port;                  /* Server port.  */
     NX_TCP_SOCKET                           nx_smtp_client_session_tcp_socket;                   /* Client NetX TCP socket.  */
@@ -388,9 +388,9 @@ typedef struct NX_SMTP_CLIENT_SESSION_STATES_STRUCT
 } NX_SMTP_CLIENT_SESSION_STATES;
 
 
-#ifndef     NX_SMTP_SOURCE_CODE
+#ifndef     NX_SMTP_SOURCE_CODE     
 
-/* Define the system API mappings based on the error checking
+/* Define the system API mappings based on the error checking 
    selected by the user.   */
 
 /* Determine if error checking is desired.  If so, map API functions
@@ -418,37 +418,37 @@ typedef struct NX_SMTP_CLIENT_SESSION_STATES_STRUCT
 
 
 /* Define the prototypes accessible to the application software.  */
-UINT    nx_smtp_client_create(NX_SMTP_CLIENT *client_ptr, NX_IP *ip_ptr, NX_PACKET_POOL *client_packet_pool_ptr,
+UINT    nx_smtp_client_create(NX_SMTP_CLIENT *client_ptr, NX_IP *ip_ptr, NX_PACKET_POOL *client_packet_pool_ptr, 
                               CHAR *username, CHAR *password, CHAR *from_address,
-                              CHAR *client_domain, UINT authentication_type,
+                              CHAR *client_domain, UINT authentication_type, 
                               ULONG server_address, UINT port);
 
 UINT    nx_smtp_client_delete(NX_SMTP_CLIENT *client_ptr);
-UINT    nx_smtp_mail_send(NX_SMTP_CLIENT *client_ptr, CHAR *recipient_address, UINT priority,
+UINT    nx_smtp_mail_send(NX_SMTP_CLIENT *client_ptr, CHAR *recipient_address, UINT priority, 
                           CHAR *subject, CHAR *mail_body, UINT mail_body_length);
-
+    
 
 #else  /*  NX_SMTP_SOURCE_CODE */
 
 
 /* SMTP source code is being compiled, do not perform any API mapping.  */
 
-UINT    _nx_smtp_client_create(NX_SMTP_CLIENT *client_ptr, NX_IP *ip_ptr, NX_PACKET_POOL *client_packet_pool_ptr,
+UINT    _nx_smtp_client_create(NX_SMTP_CLIENT *client_ptr, NX_IP *ip_ptr, NX_PACKET_POOL *client_packet_pool_ptr, 
                                CHAR *username, CHAR *password, CHAR *from_address,
-                               CHAR *client_domain, UINT authentication_type,
+                               CHAR *client_domain, UINT authentication_type, 
                                ULONG server_address, UINT port);
-UINT    _nxe_smtp_client_create(NX_SMTP_CLIENT *client_ptr, NX_IP *ip_ptr, NX_PACKET_POOL *client_packet_pool_ptr,
+UINT    _nxe_smtp_client_create(NX_SMTP_CLIENT *client_ptr, NX_IP *ip_ptr, NX_PACKET_POOL *client_packet_pool_ptr, 
                                 CHAR *username, CHAR *password, CHAR *from_address,
-                                CHAR *client_domain, UINT authentication_type,
+                                CHAR *client_domain, UINT authentication_type, 
                                 ULONG server_address, UINT port);
 
 UINT    _nx_smtp_client_delete(NX_SMTP_CLIENT *client_ptr);
 UINT    _nxe_smtp_client_delete(NX_SMTP_CLIENT *client_ptr);
 
-UINT    _nx_smtp_mail_send(NX_SMTP_CLIENT *client_ptr, CHAR *recipient_address, UINT priority,
+UINT    _nx_smtp_mail_send(NX_SMTP_CLIENT *client_ptr, CHAR *recipient_address, UINT priority, 
                            CHAR *subject, CHAR *mail_body, UINT mail_body_length);
 
-UINT    _nxe_smtp_mail_send(NX_SMTP_CLIENT *client_ptr, CHAR *recipient_address, UINT priority,
+UINT    _nxe_smtp_mail_send(NX_SMTP_CLIENT *client_ptr, CHAR *recipient_address, UINT priority, 
                             CHAR *subject, CHAR *mail_body, UINT mail_body_length);
 
 

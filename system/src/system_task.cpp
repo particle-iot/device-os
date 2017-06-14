@@ -57,6 +57,7 @@ unsigned char wlan_profile_index;
 
 volatile uint8_t Spark_Error_Count;
 volatile uint8_t SYSTEM_POWEROFF;
+uint8_t feature_cloud_udp = 0;
 
 static struct SetThreadCurrentFunctionPointers {
     SetThreadCurrentFunctionPointers() {
@@ -332,6 +333,7 @@ void establish_cloud_connection()
 int cloud_handshake()
 {
 	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+    feature_cloud_udp = (uint8_t)udp;
 	bool presence_announce = !udp;
 	int err = Spark_Handshake(presence_announce);
 	return err;
@@ -397,7 +399,7 @@ void manage_cloud_connection(bool force_events)
 {
     if (spark_cloud_flag_auto_connect() == 0)
     {
-        cloud_disconnect();
+        cloud_disconnect_graceful();
     }
     else // cloud connection is wanted
     {
@@ -526,8 +528,12 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
+void cloud_disconnect_graceful(bool closeSocket)
+{
+    cloud_disconnect(closeSocket, true);
+}
 
-void cloud_disconnect(bool closeSocket)
+void cloud_disconnect(bool closeSocket, bool graceful)
 {
 #ifndef SPARK_NO_CLOUD
 
@@ -541,7 +547,7 @@ void cloud_disconnect(bool closeSocket)
         }
 
         if (closeSocket)
-            spark_cloud_socket_disconnect();
+            spark_cloud_socket_disconnect(graceful);
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;

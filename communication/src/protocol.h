@@ -117,7 +117,6 @@ class Protocol
 	/**
 	 * Completion handlers for messages with confirmable delivery.
 	 */
-	CompletionHandlerMap<message_id_t> ack_handlers;
 	system_tick_t last_ack_handlers_update;
 
 	/**
@@ -153,6 +152,10 @@ public:
 
 
 protected:
+	/**
+	 * Completion handlers for messages with confirmable delivery.
+	 */
+	CompletionHandlerMap<message_id_t> ack_handlers;
 
 
 	void set_protocol_flags(int flags)
@@ -457,7 +460,7 @@ public:
 
 	system_tick_t millis() { return callbacks.millis(); }
 
-	virtual void command(ProtocolCommands::Enum command, uint32_t data)=0;
+	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
 
 };
 

@@ -53,11 +53,11 @@
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  09-24-2007     Janet Christiansen         Initial version 5.0         */
-/*  04-01-2010     Janet Christiansen         Modified comment(s),        */
+/*  04-01-2010     Janet Christiansen         Modified comment(s),        */ 
 /*                                              resulting in version 5.1  */
-/*  07-15-2011     Janet Christiansen         Modified comment(s),        */
+/*  07-15-2011     Janet Christiansen         Modified comment(s),        */ 
 /*                                              resulting in version 5.2  */
-/*                                                                        */
+/*                                                                        */ 
 /**************************************************************************/
 
 #ifndef NX_SMTP_SERVER_H
@@ -66,7 +66,7 @@
 
 #ifdef   __cplusplus
 
-/* Yes, C++ compiler is present.  Use standard C.  */
+/* Yes, C++ compiler is present.  Use standard C.  */ 
 extern   "C" {
 
 #endif
@@ -85,9 +85,9 @@ extern   "C" {
 #endif
 
 
-/* Scheme for filtering messages during program execution.
+/* Scheme for filtering messages during program execution. 
 
-   printf() itself may need to be defined for the specific
+   printf() itself may need to be defined for the specific 
    processor that is running the application and communication
    available (e.g. serial port).  */
 
@@ -114,15 +114,15 @@ extern   "C" {
 
 /* Enable print server session mail summary feature.  */
 /* #define NX_SMTP_PRINT_SERVER_MAIL_DATA  */
-
+  
 /* Enable print server packet and memory pool reserves feature.  */
 /* #define NX_SMTP_PRINT_SERVER_RESERVES  */
 
 
 /* Set Net TCP print summary mutex timeout in ticks.  */
 
-#ifndef NX_SMTP_SERVER_PRINT_TIMEOUT
-#define NX_SMTP_SERVER_PRINT_TIMEOUT                 (1 * NX_SMTP_TICKS_PER_SECOND)
+#ifndef NX_SMTP_SERVER_PRINT_TIMEOUT            
+#define NX_SMTP_SERVER_PRINT_TIMEOUT                 (1 * NX_SMTP_TICKS_PER_SECOND)  
 #endif
 
 
@@ -130,14 +130,14 @@ extern   "C" {
 
 /* Set SMTP server thread priority.  */
 
-#ifndef NX_SMTP_SERVER_THREAD_PRIORITY
+#ifndef NX_SMTP_SERVER_THREAD_PRIORITY 
 #define NX_SMTP_SERVER_THREAD_PRIORITY                2
 #endif
 
 
 /* Set the SMTP server thread stack size.  */
 
-#ifndef NX_SMTP_SERVER_THREAD_STACK_SIZE
+#ifndef NX_SMTP_SERVER_THREAD_STACK_SIZE        
 #define NX_SMTP_SERVER_THREAD_STACK_SIZE              4096
 #endif
 
@@ -152,19 +152,19 @@ extern   "C" {
 /* Set SMTP server preemption threshold.  */
 
 #ifndef NX_SMTP_SERVER_PREEMPTION_THRESHOLD
-#define NX_SMTP_SERVER_PREEMPTION_THRESHOLD           NX_SMTP_SERVER_THREAD_PRIORITY
+#define NX_SMTP_SERVER_PREEMPTION_THRESHOLD           NX_SMTP_SERVER_THREAD_PRIORITY  
 #endif
 
 
 /* Set the server session stack size.  */
 
-#ifndef NX_SMTP_SERVER_SESSION_THREAD_STACK_SIZE
-#define NX_SMTP_SERVER_SESSION_THREAD_STACK_SIZE      4096
+#ifndef NX_SMTP_SERVER_SESSION_THREAD_STACK_SIZE        
+#define NX_SMTP_SERVER_SESSION_THREAD_STACK_SIZE      4096 
 #endif
 
 /* Set SMTP server session thread priority.  */
 
-#ifndef NX_SMTP_SERVER_SESSION_THREAD_PRIORITY
+#ifndef NX_SMTP_SERVER_SESSION_THREAD_PRIORITY 
 #define NX_SMTP_SERVER_SESSION_THREAD_PRIORITY        NX_SMTP_SERVER_THREAD_PRIORITY
 #endif
 
@@ -172,7 +172,7 @@ extern   "C" {
 /* Set SMTP server session preemption threshold.  */
 
 #ifndef NX_SMTP_SERVER_SESSION_PREEMPTION_THRESHOLD
-#define NX_SMTP_SERVER_SESSION_PREEMPTION_THRESHOLD   NX_SMTP_SERVER_SESSION_THREAD_PRIORITY
+#define NX_SMTP_SERVER_SESSION_PREEMPTION_THRESHOLD   NX_SMTP_SERVER_SESSION_THREAD_PRIORITY  
 #endif
 
 /* Set SMTP server session thread time slice.  */
@@ -201,7 +201,7 @@ extern   "C" {
 /* Set SMTP server byte pool mutex name.  */
 
 #ifndef NX_SMTP_SERVER_BYTE_POOL_MUTEX_NAME
-#define NX_SMTP_SERVER_BYTE_POOL_MUTEX_NAME            "SMPT server bytepool mutex"
+#define NX_SMTP_SERVER_BYTE_POOL_MUTEX_NAME            "SMPT server bytepool mutex" 
 #endif
 
 
@@ -244,15 +244,15 @@ extern   "C" {
 
 /* Set port for SMTP server to listen on.  */
 
-#ifndef NX_SMTP_SERVER_SESSION_PORT
-#define NX_SMTP_SERVER_SESSION_PORT                    25
+#ifndef NX_SMTP_SERVER_SESSION_PORT                       
+#define NX_SMTP_SERVER_SESSION_PORT                    25     
 #endif
 
-/* Set server domain name as identifier in text replies to SMTP clients.
+/* Set server domain name as identifier in text replies to SMTP clients. 
    The default NetX SMTP server domain name is fictitious*/
 
 #ifndef NX_SMTP_SERVER_DOMAIN
-#define NX_SMTP_SERVER_DOMAIN                          "Server.com"
+#define NX_SMTP_SERVER_DOMAIN                          "Server.com" 
 #endif
 
 
@@ -264,7 +264,7 @@ extern   "C" {
 
 /* Set TCP receive window size (maximum number of bytes in socket receive queue).  */
 
-#ifndef NX_SMTP_SERVER_WINDOW_SIZE
+#ifndef NX_SMTP_SERVER_WINDOW_SIZE   
 #define NX_SMTP_SERVER_WINDOW_SIZE                     NX_SMTP_SERVER_PACKET_SIZE
 #endif
 
@@ -278,26 +278,26 @@ extern   "C" {
 /* Set size of NetX SMTP server packet. Best if close to the device MTU.  */
 
 #ifndef NX_SMTP_SERVER_PACKET_SIZE
-#define NX_SMTP_SERVER_PACKET_SIZE                     1500
+#define NX_SMTP_SERVER_PACKET_SIZE                     1500  
 #endif
 
 
 /* Set size of header data from network Frame, IP, TCP and NetX in bytes.  */
 
-#ifndef NX_SMTP_SERVER_PACKET_HEADER_SIZE
+#ifndef NX_SMTP_SERVER_PACKET_HEADER_SIZE       
 #define NX_SMTP_SERVER_PACKET_HEADER_SIZE              60
-#endif
+#endif    
 
 /* Set size of NetX SMTP server packet pool.  */
 
-#ifndef NX_SMTP_SERVER_PACKET_POOL_SIZE
+#ifndef NX_SMTP_SERVER_PACKET_POOL_SIZE    
 #define NX_SMTP_SERVER_PACKET_POOL_SIZE                (10 * NX_SMTP_SERVER_PACKET_SIZE)
 #endif
 
 
 /* Set NetX IP helper thread stack size.  */
 
-#ifndef NX_SMTP_SERVER_IP_STACK_SIZE
+#ifndef NX_SMTP_SERVER_IP_STACK_SIZE   
 #define NX_SMTP_SERVER_IP_STACK_SIZE                   2048
 #endif
 
@@ -315,28 +315,28 @@ extern   "C" {
 
 /* Set timeout for server TCP socket send completion.  */
 
-#ifndef NX_SMTP_SERVER_TCP_SOCKET_SEND_WAIT
-#define NX_SMTP_SERVER_TCP_SOCKET_SEND_WAIT            (3  * NX_SMTP_TICKS_PER_SECOND)
+#ifndef NX_SMTP_SERVER_TCP_SOCKET_SEND_WAIT    
+#define NX_SMTP_SERVER_TCP_SOCKET_SEND_WAIT            (3  * NX_SMTP_TICKS_PER_SECOND)    
 #endif
 
 
 /* Set NetX SMTP server timeout wait between client commands.  */
 
-#ifndef NX_SMTP_SERVER_TCP_RECEIVE_TIMEOUT
-#define NX_SMTP_SERVER_TCP_RECEIVE_TIMEOUT             (5 * NX_SMTP_TICKS_PER_SECOND)
+#ifndef NX_SMTP_SERVER_TCP_RECEIVE_TIMEOUT              
+#define NX_SMTP_SERVER_TCP_RECEIVE_TIMEOUT             (5 * NX_SMTP_TICKS_PER_SECOND)  
 #endif
 
 /* Set Net TCP connection timeout in ticks.  */
 
-#ifndef NX_SMTP_SERVER_CONNECTION_TIMEOUT
-#define NX_SMTP_SERVER_CONNECTION_TIMEOUT              NX_WAIT_FOREVER
+#ifndef NX_SMTP_SERVER_CONNECTION_TIMEOUT               
+#define NX_SMTP_SERVER_CONNECTION_TIMEOUT              NX_WAIT_FOREVER 
 #endif
 
 
 /* Set Net TCP disconnect timeout in ticks.  */
 
-#ifndef NX_SMTP_SERVER_DISCONNECT_TIMEOUT
-#define NX_SMTP_SERVER_DISCONNECT_TIMEOUT              (10 * NX_SMTP_TICKS_PER_SECOND)
+#ifndef NX_SMTP_SERVER_DISCONNECT_TIMEOUT            
+#define NX_SMTP_SERVER_DISCONNECT_TIMEOUT              (10 * NX_SMTP_TICKS_PER_SECOND)  
 #endif
 
 
@@ -344,12 +344,12 @@ extern   "C" {
 
 /* Set the number of SMTP server sessions handling concurrent client sessions.  */
 
-#ifndef  NX_SMTP_MAX_SERVER_SESSIONS
-#define  NX_SMTP_MAX_SERVER_SESSIONS                  1
+#ifndef  NX_SMTP_MAX_SERVER_SESSIONS  
+#define  NX_SMTP_MAX_SERVER_SESSIONS                  1 
 #endif
 
 /* Set SMTP session to require client authentication before receiving mail.  */
-
+ 
 #ifndef NX_SMTP_SERVER_AUTHENTICATION_REQUIRED
 #define NX_SMTP_SERVER_AUTHENTICATION_REQUIRED        NX_FALSE
 #endif
@@ -361,10 +361,10 @@ extern   "C" {
 #endif
 
 
-/* Set server limit on number of mail transactions allowed per client session.
+/* Set server limit on number of mail transactions allowed per client session. 
    Set to zero for no limit on mail transactions per session.  */
 
-#ifndef NX_SMTP_SERVER_SESSION_MAIL_LIMIT
+#ifndef NX_SMTP_SERVER_SESSION_MAIL_LIMIT  
 #define NX_SMTP_SERVER_SESSION_MAIL_LIMIT             10
 #endif
 
@@ -372,31 +372,31 @@ extern   "C" {
 /* Set server limit on number of recipients allowed per client mail transaction.  */
 /* RFC 2821 specifies a recipient buffer of at least 100 recipients.  */
 
-#ifndef NX_SMTP_SERVER_RECIPIENT_MAIL_LIMIT
+#ifndef NX_SMTP_SERVER_RECIPIENT_MAIL_LIMIT  
 #define NX_SMTP_SERVER_RECIPIENT_MAIL_LIMIT           100
 #endif
 
 
 /* SERVER text message macros for standard protocol messages to SMTP Clients.
-   The application code can substitute its own wording but the meaning should not be
+   The application code can substitute its own wording but the meaning should not be 
    significantly changed.  */
 
-#ifndef NX_SMTP_SERVER_OK
+#ifndef NX_SMTP_SERVER_OK                              
 #define NX_SMTP_SERVER_OK                             "OK"
 #endif
 
 
 /* Set the SMTP server greeting message.  */
 
-#ifndef NX_SMTP_SERVER_CONNECTION_MESSAGE
+#ifndef NX_SMTP_SERVER_CONNECTION_MESSAGE              
 #define NX_SMTP_SERVER_CONNECTION_MESSAGE              "Simple Mail Transfer Service Ready."
 #endif
 
 
-/* Set the SMTP server list of services when responding to client EHLO command.  */
+/* Set the SMTP server list of services when responding to client EHLO command.  */     
 
-#ifndef NX_SMTP_SERVER_SERVICES_MESSAGE
-#define NX_SMTP_SERVER_SERVICES_MESSAGE                "250 AUTH LOGIN\r\n"
+#ifndef NX_SMTP_SERVER_SERVICES_MESSAGE      
+#define NX_SMTP_SERVER_SERVICES_MESSAGE                "250 AUTH LOGIN\r\n" 
 #endif
 
 
@@ -458,7 +458,7 @@ extern   "C" {
 #ifndef NX_SMTP_SERVER_TRANSACTION_FAILED
 #define NX_SMTP_SERVER_TRANSACTION_FAILED              "Transaction failed; No data received."
 #endif
-
+    
 #ifndef NX_SMTP_SERVER_INTERNAL_SERVER_ERROR
 #define NX_SMTP_SERVER_INTERNAL_SERVER_ERROR           "Internal server error; no SMTP service available."
 #endif
@@ -519,7 +519,7 @@ extern   "C" {
 
 /* SMTP server reply codes in string format. Do not modify these! */
 
-#define     NX_SMTP_TEXT_CODE_GREETING_OK                       "220"
+#define     NX_SMTP_TEXT_CODE_GREETING_OK                       "220" 
 #define     NX_SMTP_TEXT_CODE_ACKNOWLEDGE_QUIT                  "221"
 #define     NX_SMTP_TEXT_CODE_AUTHENTICATION_SUCCESSFUL         "235"
 #define     NX_SMTP_TEXT_CODE_OK_TO_CONTINUE                    "250"
@@ -539,7 +539,7 @@ extern   "C" {
 #define     NX_SMTP_TEXT_CODE_AUTH_REQUIRED                     "530"
 #define     NX_SMTP_TEXT_CODE_AUTH_FAILED                       "535"
 #define     NX_SMTP_TEXT_CODE_REQUESTED_ACTION_NOT_TAKEN        "550"
-#define     NX_SMTP_TEXT_CODE_USER_NOT_LOCAL                    "551"
+#define     NX_SMTP_TEXT_CODE_USER_NOT_LOCAL                    "551" 
 #define     NX_SMTP_TEXT_CODE_OVERSIZE_MAIL_MESSAGE             "552"
 #define     NX_SMTP_TEXT_CODE_BAD_MAILBOX                       "553"
 #define     NX_SMTP_TEXT_CODE_TRANSACTION_FAILED                "554"
@@ -548,16 +548,16 @@ extern   "C" {
 /* Three digit server reply codes as bit fields so the server can prepare a bitmask
    of expected commands from the client.  */
 
-#define     NX_SMTP_COMMAND_GREET_CODE          0x0000
-#define     NX_SMTP_COMMAND_RSET_CODE           0x0001
-#define     NX_SMTP_COMMAND_EHLO_CODE           0x0002
-#define     NX_SMTP_COMMAND_HELO_CODE           0x0004
-#define     NX_SMTP_COMMAND_MAIL_CODE           0x0008
-#define     NX_SMTP_COMMAND_RCPT_CODE           0x0010
-#define     NX_SMTP_COMMAND_DATA_CODE           0x0020
+#define     NX_SMTP_COMMAND_GREET_CODE          0x0000 
+#define     NX_SMTP_COMMAND_RSET_CODE           0x0001 
+#define     NX_SMTP_COMMAND_EHLO_CODE           0x0002 
+#define     NX_SMTP_COMMAND_HELO_CODE           0x0004 
+#define     NX_SMTP_COMMAND_MAIL_CODE           0x0008 
+#define     NX_SMTP_COMMAND_RCPT_CODE           0x0010 
+#define     NX_SMTP_COMMAND_DATA_CODE           0x0020 
 #define     NX_SMTP_COMMAND_AUTH_CODE           0x0040
 #define     NX_SMTP_COMMAND_NOOP_CODE           0x0080
-#define     NX_SMTP_COMMAND_QUIT_CODE           0x0100
+#define     NX_SMTP_COMMAND_QUIT_CODE           0x0100 
 #define     NX_SMTP_COMMAND_UNKNOWN_CODE        0xFFFF
 
 
@@ -581,7 +581,7 @@ typedef struct NX_SMTP_SERVER_MAIL_STRUCT
     UINT                                    valid_recipients;            /* Total number of recipients in this mail */
     NX_SMTP_SERVER_RECIPIENT                *start_recipient_ptr;        /* Start of mail item's recipient list.  */
     NX_SMTP_SERVER_RECIPIENT                *current_recipient_ptr;      /* Current recipient in session mail transaction */
-    NX_SMTP_SERVER_RECIPIENT                *end_recipient_ptr;          /* End of mail item's recipient list.  */
+    NX_SMTP_SERVER_RECIPIENT                *end_recipient_ptr;          /* End of mail item's recipient list.  */    
     NX_SMTP_MESSAGE_SEGMENT                 *start_message_segment_ptr;  /* Pointer to first segment of mail message.  */
     NX_SMTP_MESSAGE_SEGMENT                 *current_message_segment_ptr;/* Pointer to current segment of mail message.  */
     NX_SMTP_MESSAGE_SEGMENT                 *end_message_segment_ptr;    /* Pointer to last segment of mail message.  */
@@ -642,7 +642,7 @@ typedef struct NX_SMTP_SERVER_STRUCT
     UINT                                    server_closed;                   /* Status if server closed to any further client connections */
     TX_MUTEX                                print_summary_mutex;             /* Server print summary mutex */
     UINT                                    print_summary_mutex_ptr_timeout; /* Timeout value for print summary mutex */
-    NX_SMTP_SERVER_SESSION                  nx_smtp_server_session_list[NX_SMTP_MAX_SERVER_SESSIONS];
+    NX_SMTP_SERVER_SESSION                  nx_smtp_server_session_list[NX_SMTP_MAX_SERVER_SESSIONS]; 
                                                                              /* SMTP server session array  */
     TX_BLOCK_POOL                           *blockpool_ptr;                  /* Pointer to server block pool */
     TX_MUTEX                                *blockpool_mutex_ptr;            /* Pointer to server block pool mutex */
@@ -654,17 +654,17 @@ typedef struct NX_SMTP_SERVER_STRUCT
     CHAR                                    *authentication_list;            /* Pointer to list of authentication types supported by server */
     UINT                                    (*server_authentication_check)(CHAR *name, CHAR *password,UINT *result);
                                                                              /* Pointer to sender authentication check function */
-    UINT                                    (*nx_smtp_server_mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr);
+    UINT                                    (*nx_smtp_server_mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr);  
                                                                              /* Pointer to mail spooler function */
 
 } NX_SMTP_SERVER;
 
 
 
-#ifndef     NX_SMTP_SOURCE_CODE
+#ifndef     NX_SMTP_SOURCE_CODE     
 
 
-/* Define the system API mappings based on the error checking
+/* Define the system API mappings based on the error checking 
    selected by the user.   */
 
 /* Determine if error checking is desired.  If so, map API functions
@@ -684,8 +684,8 @@ typedef struct NX_SMTP_SERVER_STRUCT
 #define nx_smtp_server_session_create           _nx_smtp_server_session_create
 #define nx_smtp_server_session_delete           _nx_smtp_server_session_delete
 #define nx_smtp_server_session_run              _nx_smtp_server_session_run
-#define nx_smtp_server_mail_create              _nx_smtp_server_mail_create
-#define nx_smtp_server_mail_add                 _nx_smtp_server_mail_add
+#define nx_smtp_server_mail_create              _nx_smtp_server_mail_create 
+#define nx_smtp_server_mail_add                 _nx_smtp_server_mail_add 
 #define nx_smtp_server_mail_delete              _nx_smtp_server_mail_delete
 #define nx_smtp_server_recipient_create         _nx_smtp_server_recipient_create
 #define nx_smtp_server_recipient_add            _nx_smtp_server_recipient_add
@@ -703,9 +703,9 @@ typedef struct NX_SMTP_SERVER_STRUCT
 #define nx_smtp_reply_to_quit                   _nx_smtp_reply_to_quit
 #define nx_smtp_reply_to_noop                   _nx_smtp_reply_to_noop
 #define nx_smtp_server_bytepool_memory_get      _nx_smtp_server_bytepool_memory_get
-#define nx_smtp_server_bytepool_memory_release  _nx_smtp_server_bytepool_memory_release
+#define nx_smtp_server_bytepool_memory_release  _nx_smtp_server_bytepool_memory_release 
 #define nx_smtp_server_blockpool_memory_get     _nx_smtp_server_blockpool_memory_get
-#define nx_smtp_server_blockpool_memory_release _nx_smtp_server_blockpool_memory_release
+#define nx_smtp_server_blockpool_memory_release _nx_smtp_server_blockpool_memory_release 
 #define nx_smtp_utility_send_server_response    _nx_smtp_utility_send_server_response
 #define nx_smtp_utility_parse_client_request    _nx_smtp_utility_parse_client_request
 #define nx_smtp_utility_parse_mailbox_address   _nx_smtp_utility_parse_mailbox_address
@@ -746,9 +746,9 @@ typedef struct NX_SMTP_SERVER_STRUCT
 #define nx_smtp_reply_to_quit                   _nxe_smtp_reply_to_quit
 #define nx_smtp_reply_to_noop                   _nxe_smtp_reply_to_noop
 #define nx_smtp_server_bytepool_memory_get      _nxe_smtp_server_bytepool_memory_get
-#define nx_smtp_server_bytepool_memory_release  _nxe_smtp_server_bytepool_memory_release
+#define nx_smtp_server_bytepool_memory_release  _nxe_smtp_server_bytepool_memory_release 
 #define nx_smtp_server_blockpool_memory_get     _nxe_smtp_server_blockpool_memory_get
-#define nx_smtp_server_blockpool_memory_release _nxe_smtp_server_blockpool_memory_release
+#define nx_smtp_server_blockpool_memory_release _nxe_smtp_server_blockpool_memory_release 
 #define nx_smtp_utility_send_server_response    _nxe_smtp_utility_send_server_response
 #define nx_smtp_utility_parse_client_request    _nxe_smtp_utility_parse_client_request
 #define nx_smtp_utility_login_authenticate      _nxe_smtp_utility_login_authenticate
@@ -761,17 +761,17 @@ typedef struct NX_SMTP_SERVER_STRUCT
 
 #endif    /* NX_SMTP_DISABLE_ERROR_CHECKING */
 
-UINT    nx_smtp_server_create(NX_SMTP_SERVER *server_ptr, CHAR *authentication_list, NX_IP *ip_ptr, VOID *stack_ptr,
+UINT    nx_smtp_server_create(NX_SMTP_SERVER *server_ptr, CHAR *authentication_list, NX_IP *ip_ptr, VOID *stack_ptr, 
             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold, UINT server_time_slice, UINT auto_start,
             NX_PACKET_POOL *packet_pool_ptr, UINT (*authentication_check)(CHAR *username, CHAR *password, UINT *result),
-            UINT (*mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr), TX_BLOCK_POOL *blockpool_ptr, TX_MUTEX *blockpool_mutex_ptr,
-            UINT blockpool_mutex_timeout, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout);
+            UINT (*mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr), TX_BLOCK_POOL *blockpool_ptr, TX_MUTEX *blockpool_mutex_ptr, 
+            UINT blockpool_mutex_timeout, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout); 
 UINT    nx_smtp_server_delete(NX_SMTP_SERVER *server_ptr);
 UINT    nx_smtp_server_start(NX_SMTP_SERVER *server_ptr);
 UINT    nx_smtp_server_stop(NX_SMTP_SERVER *server_ptr);
-UINT    nx_smtp_server_session_create(NX_SMTP_SERVER *server_ptr, NX_SMTP_SERVER_SESSION *session_ptr, UINT session_id,
-                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority,
-                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start);
+UINT    nx_smtp_server_session_create(NX_SMTP_SERVER *server_ptr, NX_SMTP_SERVER_SESSION *session_ptr, UINT session_id, 
+                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority, 
+                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start); 
 UINT    nx_smtp_server_session_delete(NX_SMTP_SERVER_SESSION *session_ptr);
 UINT    nx_smtp_server_session_run(NX_SMTP_SERVER_SESSION  *session_ptr);
 UINT    nx_smtp_server_mail_create(NX_SMTP_SERVER_SESSION *session_ptr, NX_SMTP_SERVER_MAIL **mail_ptr, CHAR *sender_mailbox, UINT priority);
@@ -801,7 +801,7 @@ UINT    nx_smtp_utility_parse_client_request(CHAR *buffer_ptr, UINT *protocol_co
 UINT    nx_smtp_utility_parse_mailbox_address(CHAR *start_buffer, CHAR *end_buffer, CHAR **mailbox_address, UINT addr_is_parameter);
 UINT    nx_smtp_utility_login_authenticate(NX_SMTP_SERVER_SESSION *session_ptr);
 UINT    nx_smtp_utility_spool_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);
-UINT    nx_smtp_utility_clear_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);
+UINT    nx_smtp_utility_clear_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);                                 
 UINT    nx_smtp_utility_print_server_mail(NX_SMTP_SERVER_MAIL *mail_ptr);
 UINT    nx_smtp_utility_print_server_reserves(NX_SMTP_SERVER *server_ptr);
 UINT    nx_smtp_utility_packet_data_extract(NX_PACKET *packet_ptr, VOID *buffer_start, ULONG buffer_length, ULONG *bytes_copied);
@@ -811,28 +811,28 @@ UINT    nx_smtp_utility_packet_data_extract(NX_PACKET *packet_ptr, VOID *buffer_
 
 /* SMTP source code is being compiled, do not perform any API mapping.  */
 
-UINT    _nxe_smtp_server_create(NX_SMTP_SERVER *server_ptr, CHAR *authentication_list, NX_IP *ip_ptr, VOID *stack_ptr,
+UINT    _nxe_smtp_server_create(NX_SMTP_SERVER *server_ptr, CHAR *authentication_list, NX_IP *ip_ptr, VOID *stack_ptr, 
             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold, UINT server_time_slice, UINT auto_start,
             NX_PACKET_POOL *packet_pool_ptr, UINT (*authentication_check)(CHAR *username, CHAR *password, UINT *result),
-            UINT (*mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr), TX_BLOCK_POOL *blockpool_ptr, TX_MUTEX *blockpool_mutex_ptr,
+            UINT (*mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr), TX_BLOCK_POOL *blockpool_ptr, TX_MUTEX *blockpool_mutex_ptr, 
             UINT blockpool_mutex_timeout, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout);
-UINT    _nx_smtp_server_create(NX_SMTP_SERVER *server_ptr, CHAR *authentication_list, NX_IP *ip_ptr, VOID *stack_ptr,
+UINT    _nx_smtp_server_create(NX_SMTP_SERVER *server_ptr, CHAR *authentication_list, NX_IP *ip_ptr, VOID *stack_ptr, 
             ULONG stack_size, UINT server_priority, UINT server_preempt_threshold, UINT server_time_slice, UINT auto_start,
             NX_PACKET_POOL *packet_pool_ptr, UINT (*authentication_check)(CHAR *username, CHAR *password, UINT *result),
-            UINT (*mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr), TX_BLOCK_POOL *blockpool_ptr, TX_MUTEX *blockpool_mutex_ptr,
-            UINT blockpool_mutex_timeout, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout);
-UINT    _nxe_smtp_server_delete(NX_SMTP_SERVER *server_ptr);
+            UINT (*mail_spooler)(NX_SMTP_SERVER_MAIL *mail_ptr), TX_BLOCK_POOL *blockpool_ptr, TX_MUTEX *blockpool_mutex_ptr, 
+            UINT blockpool_mutex_timeout, TX_BYTE_POOL *bytepool_ptr, TX_MUTEX *bytepool_mutex_ptr, UINT bytepool_mutex_timeout); 
+UINT    _nxe_smtp_server_delete(NX_SMTP_SERVER *server_ptr); 
 UINT    _nx_smtp_server_delete(NX_SMTP_SERVER *server_ptr);
 UINT    _nxe_smtp_server_start(NX_SMTP_SERVER *server_ptr);
 UINT    _nx_smtp_server_start(NX_SMTP_SERVER *server_ptr);
 UINT    _nxe_smtp_server_stop(NX_SMTP_SERVER *server_ptr);
 UINT    _nx_smtp_server_stop(NX_SMTP_SERVER *server_ptr);
-UINT    _nxe_smtp_server_session_create(NX_SMTP_SERVER *server_ptr, NX_SMTP_SERVER_SESSION *session_ptr, UINT session_id,
-                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority,
-                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start);
-UINT    _nx_smtp_server_session_create(NX_SMTP_SERVER *server_ptr, NX_SMTP_SERVER_SESSION *session_ptr, UINT session_id,
-                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority,
-                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start);
+UINT    _nxe_smtp_server_session_create(NX_SMTP_SERVER *server_ptr, NX_SMTP_SERVER_SESSION *session_ptr, UINT session_id, 
+                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority, 
+                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start); 
+UINT    _nx_smtp_server_session_create(NX_SMTP_SERVER *server_ptr, NX_SMTP_SERVER_SESSION *session_ptr, UINT session_id, 
+                                      VOID *session_stack_ptr, ULONG session_stack_size, UINT session_priority, 
+                                      UINT session_preempt_threshold, ULONG session_time_slice, UINT session_auto_start); 
 UINT    _nxe_smtp_server_session_delete(NX_SMTP_SERVER_SESSION *session_ptr);
 UINT    _nx_smtp_server_session_delete(NX_SMTP_SERVER_SESSION *session_ptr);
 UINT    _nxe_smtp_server_session_run(NX_SMTP_SERVER_SESSION  *session_ptr);
@@ -890,8 +890,8 @@ UINT    _nx_smtp_utility_login_authenticate(NX_SMTP_SERVER_SESSION *session_ptr)
 UINT    _nxe_smtp_utility_login_authenticate(NX_SMTP_SERVER_SESSION *session_ptr);
 UINT    _nx_smtp_utility_spool_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);
 UINT    _nxe_smtp_utility_spool_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);
-UINT    _nx_smtp_utility_clear_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);
-UINT    _nxe_smtp_utility_clear_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);
+UINT    _nx_smtp_utility_clear_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);                                 
+UINT    _nxe_smtp_utility_clear_session_mail(NX_SMTP_SERVER_SESSION *session_ptr);                                 
 UINT    _nxe_smtp_utility_print_server_mail(NX_SMTP_SERVER_MAIL *mail_ptr);
 UINT    _nx_smtp_utility_print_server_mail(NX_SMTP_SERVER_MAIL *mail_ptr);
 UINT    _nxe_smtp_utility_print_server_reserves(NX_SMTP_SERVER *server_ptr);

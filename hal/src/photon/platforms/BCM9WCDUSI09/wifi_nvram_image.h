@@ -55,10 +55,14 @@
  * Character array of NVRAM image
  */
 
+#if defined(PARTICLE) && PARTICLE
 #if !WIFI_NVRAM_LTXP
 static const char wifi_main_nvram_image[] =
 #else
 static const char wifi_ltxp_nvram_image[] =
+#endif
+#else
+static const char wifi_nvram_image[] =
 #endif
         "manfid=0x2d0"                                              "\x00"
         "prodid=0x492"                                              "\x00"
@@ -125,8 +129,8 @@ static const char wifi_ltxp_nvram_image[] =
         "rfreg033_cck=0x1f"                                         "\x00"
         "cckPwrIdxCorr=-8"                                          "\x00"
         "spuravoid_enable2g=1"                                      "\x00"
-		"edonthd=-70" 												"\x00"
-		"edoffthd=-76"												"\x00"
+                "edonthd=-70"                                                                                           "\x00"
+                "edoffthd=-76"                                                                                          "\x00"
         "\x00\x00";
 
 #else /* ifndef INCLUDED_NVRAM_IMAGE_H_ */
