@@ -1,3 +1,5 @@
+#include "platforms.h"
+
 #include <string.h>
 
 extern void** dynalib_location_user;
@@ -33,10 +35,20 @@ void system_part2_pre_init() {
 
     HAL_Core_Config();
 
-    // Validate user module and bootloader
-    module_user_part_validated = HAL_Core_Validate_User_Module() && HAL_Core_Validate_Modules(1, NULL);
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+    // Electron's firmware still contains an embedded bootloader image, so there's no need to
+    // check that dependency on the bootloader is satisfied
+    const bool bootloader_validated = true;
+#else
+    const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
+#endif
 
-    if (is_user_module_valid()) {
+    // Validate user module
+    if (bootloader_validated) {
+        module_user_part_validated = HAL_Core_Validate_User_Module();
+    }
+
+    if (bootloader_validated && is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();
         if (new_heap_top>sbrk_heap_top)
             sbrk_heap_top = new_heap_top;
