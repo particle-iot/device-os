@@ -1,3 +1,63 @@
+## 0.7.0-rc.1
+
+### FEATURES
+
+- [`[PR #1245]`](https://github.com/spark/firmware/pull/1245) `Particle.publish()` now able to use Future API
+- [`[PR #1289]`](https://github.com/spark/firmware/pull/1289) [`[Implements #914]`](https://github.com/spark/firmware/issues/914) `[Photon/P1]` WPA/WPA2 Enterprise support added (PEAP/MSCHAPv2 and EAP-TLS)! [Photon/P1] Automatic cipher/security detection when configuring WiFi settings over Serial.
+
+### ENHANCEMENTS
+
+- [`[PR #1242]`](https://github.com/spark/firmware/pull/1242) `[Photon/P1/Electron]` DFU transfer speeds increased! v100 bootloader is now 41% faster than v7 and 60% faster than the latest v11.
+- [`[PR #1236]`](https://github.com/spark/firmware/pull/1236) [`[Fixes #1201]`](https://github.com/spark/firmware/issues/1201) [`[Fixes #1194]`](https://github.com/spark/firmware/issues/1194) Added type-safe wrapper for enum-based flags for `Particle.publish()` which enables logical OR'ed flag combinations `PRIVATE | WITH_ACK`
+- [`[PR #1237]`](https://github.com/spark/firmware/pull/1237) Added `uint8_t val = RGB.brightness();` getter function.
+- [`[PR #1247]`](https://github.com/spark/firmware/pull/1247) Adds error checking to `WiFi.setCredentials()`, will return `true` if credentials has been stored successfully, or `false` otherwise.
+- [`[PR #1248]`](https://github.com/spark/firmware/pull/1248) Added an overload to `map()` function that takes `double` arguments.
+- [`[PR #1296]`](https://github.com/spark/firmware/pull/1296) `[Photon/P1]` Added support for setting a custom DNS hostname, default is device ID.
+- [`[PR #1260]`](https://github.com/spark/firmware/pull/1260) [`[Implements #1067]`](https://github.com/spark/firmware/issues/1067) Adds ability to interrupt the blinking cyan cloud connection with the SETUP/MODE button.
+- [`[PR #1271]`](https://github.com/spark/firmware/pull/1271) [`[Implements #1180]`](https://github.com/spark/firmware/issues/1180) `[Photon/P1]` Constrains `WiFi.RSSI()` to -1dBm max.
+- [`[PR #1270]`](https://github.com/spark/firmware/pull/1270) Removes `spark/device/ota_result` event and instead sends OTA'd module info as a payload in UpdateDone message, or as an ACK to UpdateDone.
+- [`[PR #1300]`](https://github.com/spark/firmware/pull/1300) Restores public server key and server address if missing
+- [`[PR #1325]`](https://github.com/spark/firmware/pull/1325) Use backup registers instead of DCT to store system flags to avoid chance of a DCT corruption.
+- [`[PR #1306]`](https://github.com/spark/firmware/pull/1306) Bootloader module dependency and integrity checks have been added to system-part2.  If they fail, the device is forced into safe mode and a new bootloader will be OTA transferred to the device.
+- [`[PR #1329]`](https://github.com/spark/firmware/pull/1329) Adds a verification and retry scheme to the bootloader flashing routine.
+- [`[PR #1330]`](https://github.com/spark/firmware/pull/1330) `[Electron]` Added CRC checking to the Electron DCD implementation so that write errors are detected. Added a critical section around flash operations and around DCD operations to make them thread safe.
+- [`[PR #1307]`](https://github.com/spark/firmware/pull/1307) `[Photon/P1]` New version of WICED adds CRC checking to the DCT implementation so that write errors are detected. Added a critical section around flash operations and around DCT operations to make them thread safe.
+- [`[PR #1269]`](https://github.com/spark/firmware/pull/1269) [`[Closes #1165]`](https://github.com/spark/firmware/issues/1165) Cloud connection can be closed gracefully allowing confirmable messages to reach the cloud before the connection is terminated
+
+
+### BUGFIX
+
+- [`[PR #1246]`](https://github.com/spark/firmware/pull/1246) Fixes possible corruption of event data in multi-threaded firmware
+- [`[PR #1234]`](https://github.com/spark/firmware/pull/1234) [`[Fixes #1139]`](https://github.com/spark/firmware/issues/1139) `[Electron]` `spark/hardware/max_binary` event was sent in error, adding 69 more bytes of data to handshake (full or session resume). Also fixes other preprocessor errors.
+- [`[PR #1236]`](https://github.com/spark/firmware/pull/1236) [`[Fixes #1201]`](https://github.com/spark/firmware/issues/1201) [`[Fixes #1194]`](https://github.com/spark/firmware/issues/1194) Sanitized `Particle.publish()` overloads.
+- [`[PR #1237]`](https://github.com/spark/firmware/pull/1237) Fixes potential memory leak and race condition issues in `RGB.onChange()` function.
+- [`[PR #1247]`](https://github.com/spark/firmware/pull/1247) Previously no null pointer checks on password argument of `WiFi.setCredentials()`.
+- [`[PR #1248]`](https://github.com/spark/firmware/pull/1248) [`[Fixes #1193]`](https://github.com/spark/firmware/issues/1193) Fixes divide by zero on incorrect parameters of `map()` function.
+- [`[PR #1254]`](https://github.com/spark/firmware/pull/1254) [`[Fixes #1241]`](https://github.com/spark/firmware/issues/1241) `WiFi.connecting()` was returning `false` while DHCP is resolving, will now remain `true`.
+- [`[PR #1296]`](https://github.com/spark/firmware/pull/1296) [`[Fixes #1251]`](https://github.com/spark/firmware/issues/1251) `[Photon/P1]` Default Wi-Fi DNS hostname changed to device ID, to avoid spaces in name which may cause issues.
+- [`[PR #1255]`](https://github.com/spark/firmware/pull/1255) [`[Fixes #1136]`](https://github.com/spark/firmware/issues/1136) `[Core]` Interrupts were disabled by default.
+- [`[PR #1259]`](https://github.com/spark/firmware/pull/1259) [`[Fixes #1176]`](https://github.com/spark/firmware/issues/1176)  Makes `System.sleep(mode, seconds)` a synchronous operation in multithreaded firmware. This ensures the device is in a well-defined state before entering sleep mode.
+- [`[PR #1315]`](https://github.com/spark/firmware/pull/1315) Fixes Particle Publish flag implicit conversion issue. e.g. `Particle.publish("event", "data", NO_ACK);` was previously changing event's TTL instead disabling acknowledgement of the event)
+- [`[PR #1316]`](https://github.com/spark/firmware/pull/1316) Fixes LED indication when network credentials are cleared by holding the SETUP button for >10 seconds.
+- [`[PR #1270]`](https://github.com/spark/firmware/pull/1270) [`[Fixes #1240]`](https://github.com/spark/firmware/issues/1240) TCP Firmware will not ACK every chunk in Fast OTA mode now.
+- [`[PR #1302]`](https://github.com/spark/firmware/pull/1302) [`[Fixes #1282]`](https://github.com/spark/firmware/issues/1282) `[Electron]` `Wire1` was not working correctly.
+- [`[PR #1326]`](https://github.com/spark/firmware/pull/1326) Renamed `system_error` enum to `system_error_t` to avoid conflicts with `std::system_error` class.
+- [`[PR #1286]`](https://github.com/spark/firmware/pull/1286) Improves stability of TCP server implementation: 1) Update server's list of clients on a client destruction (thanks @tlangmo!), 2) TCPClient now closes underlying socket on destruction.
+- [`[PR #1327]`](https://github.com/spark/firmware/pull/1327) [`[Fixes #1098]`](https://github.com/spark/firmware/issues/1098) [Photon/P1] Previously, when entering Sleep-stop mode: `System.sleep(D1, RISING, 60);` while in the process of making a Wi-Fi connection resulted in some parts of the radio still being initialized, consuming about 10-15mA more than normal.
+- [`[PR #1336]`](https://github.com/spark/firmware/pull/1336) Fixes an issue with Serial when receiving consecutive multiple 64-byte transmissions from Host
+- [`[PR #1337]`](https://github.com/spark/firmware/pull/1337) Fixed system attempting to enter listening mode every 1ms when the SETUP button is pressed.
+- [`[PR #1289]`](https://github.com/spark/firmware/pull/1289) Fixes a stack overlap with system-part2 static RAM on Photon/P1
+- [`[PR #1289]`](https://github.com/spark/firmware/pull/1289) Fixes a memory leak when Thread is terminated
+- [`[PR #1289]`](https://github.com/spark/firmware/pull/1289) Fixes a deadlock in SoftAP, when connection is terminated prematurely
+- [`[PR #1340]`](https://github.com/spark/firmware/pull/1340) `[Electron]` Fixes the monolithic build
+
+### INTERNAL
+
+- [`[PR #1313]`](https://github.com/spark/firmware/pull/1313) Compilation fixes for GCC platform
+- [`[PR #1323]`](https://github.com/spark/firmware/pull/1323) USB vendor requests should be executed on system thread instead of being processed in ISR.
+- [`[PR #1338]`](https://github.com/spark/firmware/pull/1338) Do not read or write feature flags from an ISR
+
+
 ## 0.6.2 (same as 0.6.2-rc.2)
 
 ### FEATURES
