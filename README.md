@@ -65,6 +65,12 @@ On the photon: Broadcom's WICED WiFi SDK.
 
 Unless stated elsewhere, file headers or otherwise, all files herein are licensed under an LGPLv3 license. For more information, please read the LICENSE file.
 
+Additionally, for Photon and P1 firmware (>= v0.7.0-rc.1) which use the Cypress WICED SDK, you agree to the terms of the [Cypress IoT Community License Agreement](https://community.cypress.com/terms-and-conditions!input.jspa?displayOnly=true).
+
+The guidelines of the Cypress Community License agreement allow individuals to sell and redistribute _compiled binaries_, referred to as `Software in object code format`, built with WICED as a part of their own developer applications, but _does not_ give any individuals permission to sell, redistribute, or share WICED source code without separate, explicit written permission from Cypress (which Particle has obtained).
+
+If you have questions about software licensing, please contact Particle [support](https://support.particle.io/).
+
 ### CONTRIBUTE
 
 Want to contribute to the Particle firmware project? Follow [this link](http://spark.github.io/#contributions) to find out how.
