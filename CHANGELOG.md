@@ -9,7 +9,6 @@
 
 - [`[PR #1242]`](https://github.com/spark/firmware/pull/1242) `[Photon/P1/Electron]` DFU transfer speeds increased! v100 bootloader is now 41% faster than v7 and 60% faster than the latest v11.
 - [`[PR #1236]`](https://github.com/spark/firmware/pull/1236) [`[Fixes #1201]`](https://github.com/spark/firmware/issues/1201) [`[Fixes #1194]`](https://github.com/spark/firmware/issues/1194) Added type-safe wrapper for enum-based flags for `Particle.publish()` which enables logical OR'ed flag combinations `PRIVATE | WITH_ACK`
-- [`[PR #1237]`](https://github.com/spark/firmware/pull/1237) Added `uint8_t val = RGB.brightness();` getter function.
 - [`[PR #1247]`](https://github.com/spark/firmware/pull/1247) Adds error checking to `WiFi.setCredentials()`, will return `true` if credentials has been stored successfully, or `false` otherwise.
 - [`[PR #1248]`](https://github.com/spark/firmware/pull/1248) Added an overload to `map()` function that takes `double` arguments.
 - [`[PR #1296]`](https://github.com/spark/firmware/pull/1296) `[Photon/P1]` Added support for setting a custom DNS hostname, default is device ID.
@@ -23,7 +22,6 @@
 - [`[PR #1330]`](https://github.com/spark/firmware/pull/1330) `[Electron]` Added CRC checking to the Electron DCD implementation so that write errors are detected. Added a critical section around flash operations and around DCD operations to make them thread safe.
 - [`[PR #1307]`](https://github.com/spark/firmware/pull/1307) `[Photon/P1]` New version of WICED adds CRC checking to the DCT implementation so that write errors are detected. Added a critical section around flash operations and around DCT operations to make them thread safe.
 - [`[PR #1269]`](https://github.com/spark/firmware/pull/1269) [`[Closes #1165]`](https://github.com/spark/firmware/issues/1165) Cloud connection can be closed gracefully allowing confirmable messages to reach the cloud before the connection is terminated
-
 
 ### BUGFIX
 
