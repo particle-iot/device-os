@@ -41,7 +41,9 @@ void ActiveObjectBase::start_thread()
 
 void ActiveObjectBase::run()
 {
-    std::lock_guard<std::mutex> lck (_start);
+    /* XXX: We shouldn't constantly hold a mutex. This breaks priority inhertiance mechanisms in FreeRTOS. */
+    /* It's not even used anywhere */
+    // std::lock_guard<std::mutex> lck (_start);
     started = true;
 
     uint32_t last_background_run = 0;
