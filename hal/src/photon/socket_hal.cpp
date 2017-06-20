@@ -32,6 +32,8 @@
 #include <vector>
 #include "lwip/api.h"
 #include "network_interface.h"
+#include "spark_wiring_thread.h"
+#include "spark_wiring_vector.h"
 
 wiced_result_t wiced_last_error( wiced_tcp_socket_t* socket);
 
@@ -208,13 +210,12 @@ public:
 struct tcp_server_t : public wiced_tcp_server_t
 {
     tcp_server_t() {
-        wiced_rtos_init_semaphore(&accept_lock);
-        wiced_rtos_set_semaphore(&accept_lock);
+        os_mutex_create(&accept_lock);
         memset(clients, 0, sizeof(clients));
     }
 
     ~tcp_server_t() {
-        wiced_rtos_deinit_semaphore(&accept_lock);
+        os_mutex_destroy(accept_lock);
     }
 
     /**
@@ -240,14 +241,14 @@ struct tcp_server_t : public wiced_tcp_server_t
     wiced_result_t accept(wiced_tcp_socket_t* socket) {
         wiced_result_t result;
         if ((result=wiced_tcp_accept(socket))==WICED_SUCCESS) {
-            wiced_rtos_get_semaphore(&accept_lock, WICED_WAIT_FOREVER);
+            os_mutex_lock(accept_lock);
 
             int idx = index(socket);
             if (idx>=0) {
                 clients[idx] = new tcp_server_client_t(this, socket);
-                to_accept.insert(to_accept.end(), idx);
+                to_accept.append(idx);
             }
-            wiced_rtos_set_semaphore(&accept_lock);
+            os_mutex_unlock(accept_lock);
         }
         return result;
     }
@@ -257,13 +258,13 @@ struct tcp_server_t : public wiced_tcp_server_t
      * @return The next client, or NULL
      */
     tcp_server_client_t* next_accept() {
-        wiced_rtos_get_semaphore(&accept_lock, WICED_WAIT_FOREVER);
+        os_mutex_lock(accept_lock);
         int index = -1;
         if (to_accept.size()) {
             index = *to_accept.begin();
-            to_accept.erase(to_accept.begin());
+            to_accept.removeAt(0);
         }
-        wiced_rtos_set_semaphore(&accept_lock);
+        os_mutex_unlock(accept_lock);
         return index>=0 ? clients[index] : NULL;
     }
 
@@ -273,12 +274,12 @@ struct tcp_server_t : public wiced_tcp_server_t
      * @return
      */
     wiced_result_t notify_disconnected(wiced_tcp_socket_t* socket) {
-        wiced_rtos_get_semaphore(&accept_lock, WICED_WAIT_FOREVER);
+        os_mutex_lock(accept_lock);
         int idx = index(socket);
         tcp_server_client_t* client = clients[idx];
         if (client)
             client->notify_disconnected();
-        wiced_rtos_set_semaphore(&accept_lock);
+        os_mutex_unlock(accept_lock);
         return WICED_SUCCESS;
     }
 
@@ -316,8 +317,8 @@ private:
     // for each server instance, maintain an associated tcp_server_client_t instance
     tcp_server_client_t* clients[WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS];
 
-    wiced_semaphore_t accept_lock;
-    std::vector<int> to_accept;
+    os_mutex_t accept_lock;
+    spark::Vector<int> to_accept;
 };
 
 void tcp_server_client_t::close() {
@@ -444,24 +445,6 @@ public:
 };
 
 /**
- * Lock/unlock a semaphore via RAII
- */
-class SemaphoreLock
-{
-    wiced_semaphore_t& sem;
-
-public:
-
-    SemaphoreLock(wiced_semaphore_t& sem_) : sem(sem_) {
-        wiced_rtos_get_semaphore(&sem, NEVER_TIMEOUT);
-    }
-
-    ~SemaphoreLock() {
-        wiced_rtos_set_semaphore(&sem);
-    }
-};
-
-/**
  * Maintains a singly linked list of sockets. Access to the list is not
  * made thread-safe - callers should use SocketListLock to correctly serialize
  * access to the list.
@@ -469,19 +452,16 @@ public:
 struct SocketList
 {
     socket_t* items;
-    wiced_semaphore_t semaphore;
+    Mutex mutex;
 
 public:
 
     SocketList() : items(NULL)
     {
-        wiced_rtos_init_semaphore(&semaphore);
-        wiced_rtos_set_semaphore(&semaphore);
     }
 
     ~SocketList()
     {
-        wiced_rtos_deinit_semaphore(&semaphore);
     }
 
     /**
@@ -550,11 +530,11 @@ public:
     friend class SocketListLock;
 };
 
-struct SocketListLock : SemaphoreLock
+struct SocketListLock : std::lock_guard<Mutex>
 {
     SocketListLock(SocketList& list) :
-        SemaphoreLock(list.semaphore)
-    {}
+        std::lock_guard<Mutex>(list.mutex)
+    {};
 };
 
 class ServerSocketList : public SocketList
