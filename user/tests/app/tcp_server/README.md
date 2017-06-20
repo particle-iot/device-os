@@ -1,4 +1,4 @@
-Flash server application to the device:
+Flash server application to the device (add USE_THREADING=y option to enable threading):
 $ cd ~/firmware/modules
 $ make -s all program-dfu PLATFORM=photon TEST=app/tcp_server
 
