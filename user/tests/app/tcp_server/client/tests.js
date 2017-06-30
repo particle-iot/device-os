@@ -9,7 +9,7 @@ const Promise = require('bluebird');
 const DEFAULT_PORT = test.DEFAULT_PORT;
 
 // Maximum number of TCP connections supported by the device (as defined by LwIP's MEMP_NUM_TCP_PCB option)
-const MAX_CONNECTIONS = 5;
+const MAX_CONNECTIONS = 10;
 // Maxumum number of TCP servers supported by the device (as defined by WICED_MAXIMUM_NUMBER_OF_SERVERS macro)
 const MAX_SERVERS = 5;
 
