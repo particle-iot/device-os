@@ -13,6 +13,7 @@ void log_printf_wiced(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     log_printf_v(LOG_LEVEL_TRACE, "wiced", nullptr /* reserved */, fmt, args);
+    log_write(LOG_LEVEL_TRACE, "wiced", "\r", 1 /* strlen("\r") */, nullptr /* reserved */);
     va_end(args);
 }
 
