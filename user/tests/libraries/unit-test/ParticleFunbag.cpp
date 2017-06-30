@@ -220,6 +220,10 @@ void unit_test_loop(bool runImmediately, bool runTest)
     }
 }
 
+bool SparkTestRunner::isPassed() const {
+    return (isComplete() && Test::failed == 0);
+}
+
 int SparkTestRunner::testStatusColor() {
     if (Test::failed>0)
         return RGB_COLOR_RED;

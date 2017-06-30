@@ -44,13 +44,15 @@ public:
 
     void begin();
 
-    bool isStarted() {
+    bool isStarted() const {
         return _state>=RUNNING;
     }
 
-    bool isComplete() {
+    bool isComplete() const {
         return _state==COMPLETE;
     }
+
+    bool isPassed() const;
 
     void start() {
         if (!isStarted())
@@ -759,7 +761,7 @@ template <> bool isMoreOrEqual<const char*>(const char* const &a, const char* co
 
 /** Create a test-once test, usually checked with assertXXXX.
     The test is assumed to pass unless failed or skipped. */
-#define test(name) struct test_ ## name : TestOnce { test_ ## name() : TestOnce(F(#name)) {}; void once(); } test_ ## name ## _instance; void test_ ## name :: once()
+#define test(name) struct test_ ## name : TestOnce { test_ ## name() : TestOnce(F(#name)) {}; void once(); static const char* test_name() { return #name; } } test_ ## name ## _instance; void test_ ## name :: once()
 
 #define test_f(fixture, name) struct test_ ## name : fixture { test_ ## name() : fixture(F(#name)) {}; void once(); } test_ ## name ## _instance; void test_ ## name :: once()
 
