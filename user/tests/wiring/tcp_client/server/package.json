@@ -1,0 +1,9 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "dependencies": {
+    "lodash": "^4.17.4"
+  }
+}
