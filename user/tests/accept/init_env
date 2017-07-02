@@ -10,6 +10,9 @@ warn() {
 
 error() {
   >&2 echo "Error: $1"
+  if [ -n $2 ]; then
+    exit $2
+  fi
   exit 1
 }
 
