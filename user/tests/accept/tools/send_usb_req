@@ -117,7 +117,7 @@ if [ $req_type == reqrep ] || [ $req_type == in ]; then
     while : ; do
       sleep 0.1
       data=$(send_in_req 2>/dev/null) && break
-      less_than $(timestamp) $time_end || error "Request timeout"
+      less_than $(timestamp) $time_end || error "Request timeout" 2
     done
   else
     # Send device-to-host request

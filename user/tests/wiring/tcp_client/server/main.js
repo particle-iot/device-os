@@ -1,18 +1,33 @@
+const async = require('async');
+const randomstring = require('randomstring');
 const net = require('net');
 const os = require('os');
 const exec = require('child_process').exec;
 const util = require('util');
 const _ = require('lodash');
 
-const DEFAULT_PORT = 1234;
+const ECHO_PORT = 2001;
+const DISCARD_PORT = 2002;
+const CHARGEN_PORT = 2003;
+
+const CHARGEN_PACKET_SIZE = 1024;
+
 const USB_REQUEST_TIMEOUT = 10000;
+
+class TimeoutError extends Error {
+  constructor(msg) {
+    super(msg ? msg : 'Timeout error');
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
 
 function hostAddress() {
   // Get first non-internal IPv4 address available
   const ifaces = os.networkInterfaces();
   for (const iface in ifaces) {
     const addrs = ifaces[iface];
-    for (var i = 0; i < addrs.length; ++i) {
+    for (let i = 0; i < addrs.length; ++i) {
       const addr = addrs[i];
       if (!addr.internal && addr.family == 'IPv4') {
         return addr.address;
@@ -20,17 +35,6 @@ function hostAddress() {
     }
   }
   throw new Error('Unable to determine host address');
-}
-
-function exit(err) {
-  if (_.isUndefined(err)) {
-    process.exit();
-  } else if (_.isError(err)) {
-    console.error('Error: %s', err.message);
-    process.exit(1);
-  } else {
-    process.exit(err);
-  }
 }
 
 function sendUsbRequest(req, callback) {
@@ -44,19 +48,18 @@ function sendUsbRequest(req, callback) {
       }
       const json = Buffer.from(stdout.trim(), 'hex').toString('utf8'); // Reply JSON data
       const rep = JSON.parse(json); // Reply object
-      if (callback) {
-        callback(null, rep);
-      }
+      callback(null, rep);
     } catch (err) {
-      if (callback) {
+      if (err.code == 2) {
+        callback(new TimeoutError());
+      } else {
         callback(err);
       }
     }
   });
 }
 
-function startServer(host, port, callback) {
-  // Simple echo server
+function startEchoServer(host, callback) {
   const server = net.createServer((sock) => {
     sock.on('data', (data) => {
       sock.write(data, (err) => {
@@ -66,23 +69,70 @@ function startServer(host, port, callback) {
       });
     });
     sock.on('error', (err) => {
-      console.log('Socket error: %s', err.message);
+      console.error('Socket error: %s', err.message);
       sock.destroy();
     });
   });
   const opts = {
     host: host,
-    port: port
+    port: ECHO_PORT
   };
   server.listen(opts, callback);
   return server;
 }
 
-function startTest(host, port, callback) {
+function startDiscardServer(host, callback) {
+  const server = net.createServer((sock) => {
+    sock.on('error', (err) => {
+      console.error('Socket error: %s', err.message);
+      sock.destroy();
+    });
+  });
+  const opts = {
+    host: host,
+    port: DISCARD_PORT
+  };
+  server.listen(opts, callback);
+  return server;
+}
+
+function startChargenServer(host, callback) {
+  const server = net.createServer((sock) => {
+    const writeCallback = (err) => {
+      if (err) {
+        sock.destroy(err);
+      }
+    };
+    const send = () => {
+      let data = null;
+      do {
+        data = randomstring.generate(CHARGEN_PACKET_SIZE);
+      } while (sock.write(data, writeCallback));
+    };
+    sock.on('drain', () => {
+      send();
+    });
+    sock.on('error', (err) => {
+      console.error('Socket error: %s', err.message);
+      sock.destroy();
+    });
+    send();
+  });
+  const opts = {
+    host: host,
+    port: CHARGEN_PORT
+  };
+  server.listen(opts, callback);
+  return server;
+}
+
+function startTest(host, callback) {
   const req = {
     cmd: 'start',
     host: host,
-    port: port
+    echoPort: ECHO_PORT,
+    discardPort: DISCARD_PORT,
+    chargenPort: CHARGEN_PORT
   };
   sendUsbRequest(req, callback);
 }
@@ -95,41 +145,59 @@ function getStatus(callback) {
 }
 
 // Parse command line arguments
-var host = null;
+let host = null;
 if (process.argv.length >= 3) {
   host = process.argv[2];
 } else {
   host = hostAddress();
 }
-var port = DEFAULT_PORT;
-if (process.argv.length >= 4) {
-  port = parseInt(process.argv[3]);
-}
 
-// Start server
-console.log('Server address: %s:%d', host, port);
-startServer(host, port, (err) => {
-  if (err) {
-    return exit(err);
-  }
-  console.log('Server started');
+console.log('Server address: %s', host);
+
+async.series([
+  // Start echo server
+  (callback) => {
+    startEchoServer(host, callback);
+  },
+  // Start discard server
+  (callback) => {
+    startDiscardServer(host, callback);
+  },
+  // Start chargen server
+  (callback) => {
+    startChargenServer(host, callback);
+  },
   // Start tests
-  console.log('Running tests...');
-  startTest(host, port, (err) => {
-    if (err) {
-      return exit(err);
-    }
-    // Wait until tests are finished
+  (callback) => {
+    startTest(host, callback);
+  },
+  // Wait until testing is finished
+  (callback) => {
+    console.log('Running tests...');
     setInterval(() => {
       getStatus((err, stat) => {
         if (err) {
-          return exit(err);
-        }
-        if (stat.done) {
-          console.log(stat.passed ? 'PASSED' : 'FAILED');
-          exit(stat.passed ? 0 : 1);
+          if (err instanceof TimeoutError) { // Ignore timeout errors
+            console.error('USB request timeout');
+          } else {
+            callback(err);
+          }
+        } else if (stat.done) {
+          if (stat.passed) {
+            callback();
+          } else {
+            callback(new Error('FAILED'));
+          }
         }
       });
     }, 1000);
-  });
-});
+  }], (err) => {
+    if (err) {
+      console.error(err.message);
+      process.exit(1);
+    } else {
+      console.log('PASSED');
+      process.exit();
+    }
+  }
+);
