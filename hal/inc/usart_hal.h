@@ -106,6 +106,11 @@
 #define SERIAL_HALF_DUPLEX            ((uint32_t)0x1000)
 #define SERIAL_HALF_DUPLEX_NO_ECHO    ((uint32_t)0x3000)
 
+#define SERIAL_OPEN_DRAIN             ((uint32_t)0x4000)
+#define SERIAL_HALF_DUPLEX_OPEN_DRAIN (SERIAL_HALF_DUPLEX | SERIAL_OPEN_DRAIN)
+
+#define SERIAL_TX_PULL_UP             ((uint32_t)0x8000)
+
 
 /* Exported types ------------------------------------------------------------*/
 typedef struct Ring_Buffer

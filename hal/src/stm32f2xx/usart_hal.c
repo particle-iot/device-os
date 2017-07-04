@@ -216,11 +216,35 @@ void HAL_USART_Configure_Transmit_Receive(HAL_USART_Serial serial, uint8_t trans
 void HAL_USART_Configure_Pin_Modes(HAL_USART_Serial serial, uint32_t config)
 {
 	if ((config & SERIAL_HALF_DUPLEX) == 0) {
+		// Full duplex with push-pull
 		HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
 		HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
-	} else {
+	} else if ((config & SERIAL_OPEN_DRAIN)) {
+		// Half-duplex with open drain
 		HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
 		HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_DRAIN);
+	} else {
+		// Half-duplex with push-pull
+		/* RM0033 24.3.10:
+		 * The TX pin is always released when no data is transmitted. Thus, it acts as a standard
+		 * I/O in idle or in reception. It means that the I/O must be configured so that TX is
+		 * configured as floating input (or output high open-drain) when not driven by the USART
+		 */
+		HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
+		HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+		if (config & SERIAL_TX_PULL_UP) {
+			// We ought to allow enabling pull-up or pull-down through HAL somehow
+			STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+			pin_t gpio_pin = PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_pin;
+			GPIO_TypeDef *gpio_port = PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral;
+			GPIO_InitTypeDef GPIO_InitStructure = {0};
+			GPIO_InitStructure.GPIO_Pin = gpio_pin;
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+			GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+			GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+			GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+			GPIO_Init(gpio_port, &GPIO_InitStructure);
+		}
 	}
 }
 
@@ -422,6 +446,7 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 		}
 	}
 
+	usartMap[serial]->usart_config = config;
 	if (config & SERIAL_HALF_DUPLEX) {
 		HAL_USART_Half_Duplex(serial, ENABLE);
 	}
@@ -435,7 +460,6 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 		USART_LINCmd(usartMap[serial]->usart_peripheral, ENABLE);
 	}
 
-	usartMap[serial]->usart_config = config;
 	usartMap[serial]->usart_enabled = true;
 	usartMap[serial]->usart_transmitting = false;
 
@@ -451,6 +475,10 @@ void HAL_USART_End(HAL_USART_Serial serial)
 
 	// Disable the USART
 	USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+
+	// Switch pins to INPUT
+	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
+	HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, INPUT);
 
 	// Disable LIN mode
 	USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
