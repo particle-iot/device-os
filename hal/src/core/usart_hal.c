@@ -206,11 +206,18 @@ void HAL_USART_Configure_Pin_Modes(HAL_USART_Serial serial, uint32_t config)
   if ((config & SERIAL_HALF_DUPLEX) == 0) {
     // Configure USART Tx as alternate function push-pull
     HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
-  } else {
-    // Configure USART Tx as alternate function open drain
+  } else if ((config & SERIAL_OPEN_DRAIN)) {
+    // Half-duplex with open drain
     HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_DRAIN);
+  } else {
+    // Half-duplex with push-pull
+    /* RM0008 27.3.10:
+     * TX is always released when no data is transmitted. Thus, it acts as a standard IO in idle
+     * or in reception. It means that the IO must be configured so that TX is configured as
+     * floating input (or output high open-drain) when not driven by the USART.
+     */
+    HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
   }
-
   // Remap USARTn to alternate pins EG. USART1 to pins TX/PB6, RX/PB7
   GPIO_PinRemapConfig(usartMap[serial]->usart_pin_remap, ENABLE);
 }
@@ -381,6 +388,7 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
   USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_RXNE, ENABLE);
   USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, ENABLE);
 
+  usartMap[serial]->usart_config = config;
   if (config & SERIAL_HALF_DUPLEX) {
     HAL_USART_Half_Duplex(serial, ENABLE);
   }
@@ -394,7 +402,6 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
     USART_LINCmd(usartMap[serial]->usart_peripheral, ENABLE);
   }
 
-  usartMap[serial]->usart_config = config;
   usartMap[serial]->usart_enabled = true;
   usartMap[serial]->usart_transmitting = false;
 }
@@ -406,6 +413,10 @@ void HAL_USART_End(HAL_USART_Serial serial)
 
   // Disable the USART
   USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+
+  // Switch pins to INPUT
+  HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
+  HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, INPUT);
 
   // Disable LIN mode
   USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
