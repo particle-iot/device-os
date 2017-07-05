@@ -173,24 +173,28 @@ async.series([
   },
   // Wait until testing is finished
   (callback) => {
+    const checkStatus = () => {
+      setTimeout(() => {
+        getStatus((err, stat) => {
+          if (err) {
+            if (err instanceof TimeoutError) { // Ignore timeout errors
+              console.error('USB request timeout');
+            } else {
+              return callback(err);
+            }
+          } else if (stat.done) {
+            if (stat.passed) {
+              return callback();
+            } else {
+              return callback(new Error('FAILED'));
+            }
+          }
+          checkStatus();
+        });
+      }, 1000);
+    };
     console.log('Running tests...');
-    setInterval(() => {
-      getStatus((err, stat) => {
-        if (err) {
-          if (err instanceof TimeoutError) { // Ignore timeout errors
-            console.error('USB request timeout');
-          } else {
-            callback(err);
-          }
-        } else if (stat.done) {
-          if (stat.passed) {
-            callback();
-          } else {
-            callback(new Error('FAILED'));
-          }
-        }
-      });
-    }, 1000);
+    checkStatus();
   }], (err) => {
     if (err) {
       console.error(err.message);
