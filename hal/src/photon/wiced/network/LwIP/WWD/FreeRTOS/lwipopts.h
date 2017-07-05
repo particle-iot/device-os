@@ -76,6 +76,14 @@ extern "C" {
  */
 #define MEMP_NUM_TCP_SEG               (TCP_SND_QUEUELEN+1)
 
+/**
+ * MEMP_NUM_TCP_PCB: the number of simulatenously active TCP connections.
+ * (requires the LWIP_TCP option)
+ *
+ * Particle fix: Increased to 10 (default is 5)
+ */
+#define MEMP_NUM_TCP_PCB               (10)
+
 /** STF 8
  * PBUF_POOL_SIZE: the number of buffers in the pbuf pool.
  *
