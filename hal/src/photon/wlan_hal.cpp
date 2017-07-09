@@ -48,7 +48,9 @@
 #include "rtc_hal.h"
 #include "tls_callbacks.h"
 #include "tls_host_api.h"
-#include "wiced_crypto.h"
+#include "core_hal.h"
+#include "wiced_security.h"
+#include "mbedtls_util.h"
 
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
@@ -69,6 +71,10 @@ LOG_SOURCE_CATEGORY("hal.wlan");
 #define EAP_DEFAULT_OUTER_IDENTITY "anonymous"
 #endif
 
+#ifndef WLAN_EAP_SAVE_TLS_SESSION
+#define WLAN_EAP_SAVE_TLS_SESSION 0
+#endif
+
 int wlan_clear_enterprise_credentials();
 int wlan_set_enterprise_credentials(WLanCredentials* c);
 
@@ -84,23 +90,43 @@ struct WPAEnterpriseContext {
     }
 
     ~WPAEnterpriseContext() {
-        if (tls_session)
-            free(tls_session);
-        if (tls_context)
-            free(tls_context);
-        if (tls_identity)
-            free(tls_identity);
-        if (supplicant_workspace)
-            free(supplicant_workspace);
+        deinit();
     }
 
-    void init() {
+    bool init() {
+        bool ret = initialized;
         if (!initialized) {
             initialized = true;
+#if WLAN_EAP_SAVE_TLS_SESSION
             tls_session = (wiced_tls_session_t*)calloc(1, sizeof(wiced_tls_session_t));
+#endif // WLAN_EAP_SAVE_TLS_SESSION
             tls_context = (wiced_tls_context_t*)calloc(1, sizeof(wiced_tls_context_t));
             tls_identity = (wiced_tls_identity_t*)calloc(1, sizeof(wiced_tls_identity_t));
             supplicant_workspace = (supplicant_workspace_t*)calloc(1, sizeof(supplicant_workspace_t));
+
+            ret = tls_context && tls_identity && supplicant_workspace;
+#if WLAN_EAP_SAVE_TLS_SESSION
+            ret = ret && tls_session;
+#endif // WLAN_EAP_SAVE_TLS_SESSION
+        }
+        return ret;
+    }
+
+    void deinit() {
+        if (initialized) {
+            initialized = false;
+            if (tls_session) {
+                free(tls_session);
+            }
+            if (tls_context) {
+                free(tls_context);
+            }
+            if (tls_identity) {
+                free(tls_identity);
+            }
+            if (supplicant_workspace) {
+                free(supplicant_workspace);
+            }
         }
     }
 
@@ -288,6 +314,21 @@ bool check_enterprise_credentials(WLanCredentials* c)
     return is_valid;
 }
 
+static size_t x509_get_pem_der_length(const uint8_t* p, size_t max_length)
+{
+    size_t len = strnlen((const char*)p, max_length - 1);
+    if (x509_cert_is_pem(p, len + 1)) {
+        // DER
+        len = mbedtls_x509_read_length(p, max_length * 3 / 4, 0);
+    } else {
+        // PEM
+        if (len > 0) {
+            len++; // include '\0'
+        }
+    }
+    return len;
+}
+
 bool is_eap_configuration_valid(const eap_config_t* eap_conf, platform_dct_security_t* sec = NULL)
 {
     bool is_valid = true;
@@ -311,10 +352,12 @@ bool is_eap_configuration_valid(const eap_config_t* eap_conf, platform_dct_secur
             locked = true;
         }
         if (sec && result == WICED_SUCCESS) {
-            if (strnlen(sec->private_key, PRIVATE_KEY_SIZE) == 0)
+            if (x509_get_pem_der_length((const uint8_t*)sec->private_key, PRIVATE_KEY_SIZE) == 0) {
                 is_valid = false;
-            if (strnlen(sec->certificate, CERTIFICATE_SIZE) == 0)
+            }
+            if (x509_get_pem_der_length((const uint8_t*)sec->certificate, CERTIFICATE_SIZE) == 0) {
                 is_valid = false;
+            }
         } else {
             is_valid = false;
         }
@@ -381,7 +424,11 @@ int wlan_supplicant_start()
 
     wiced_result_t result = WICED_SUCCESS;
 
-    eap_context.init();
+    result = eap_context.init() ? WICED_SUCCESS : WICED_ERROR;
+
+    if (result != WICED_SUCCESS) {
+        return result;
+    }
 
     platform_dct_security_t* sec = NULL;
     result = wiced_dct_read_lock((void**)&sec, WICED_FALSE,
@@ -392,11 +439,13 @@ int wlan_supplicant_start()
             // result = wiced_tls_init_identity(eap_context.tls_identity, NULL, 0, NULL, 0 );
             memset(eap_context.tls_identity, 0, sizeof(wiced_tls_identity_t));
         } else if (eap_type == WLAN_EAP_TYPE_TLS) {
+            uint32_t pkey_len = x509_get_pem_der_length((const uint8_t*)sec->private_key, PRIVATE_KEY_SIZE);
+            uint32_t cert_len = x509_get_pem_der_length((const uint8_t*)sec->certificate, CERTIFICATE_SIZE);
             result = wiced_tls_init_identity(eap_context.tls_identity,
                                              (const char*)sec->private_key,
-                                             (uint32_t)strnlen((const char*)sec->private_key, PRIVATE_KEY_SIZE) + 1,
+                                             pkey_len,
                                              (const uint8_t*)sec->certificate,
-                                             (uint32_t)strnlen((const char*)sec->certificate, CERTIFICATE_SIZE) + 1);
+                                             cert_len);
         } else {
             result = WICED_ERROR;
         }
@@ -410,11 +459,15 @@ int wlan_supplicant_start()
     eap_conf = (const eap_config_t*)dct_read_app_data_lock(DCT_EAP_CONFIG_OFFSET);
 
     wiced_tls_init_context(eap_context.tls_context, eap_context.tls_identity, NULL);
+#if WLAN_EAP_SAVE_TLS_SESSION
     if (eap_context.tls_session->length > 0) {
         memcpy(&eap_context.tls_context->session, eap_context.tls_session, sizeof(wiced_tls_session_t));
     } else {
         memset(&eap_context.tls_context->session, 0, sizeof(wiced_tls_session_t));
     }
+#else // !WLAN_EAP_SAVE_TLS_SESSION
+    memset(&eap_context.tls_context->session, 0, sizeof(wiced_tls_session_t));
+#endif // WLAN_EAP_SAVE_TLS_SESSION
 
     if (eap_conf->ca_certificate_len) {
         wiced_tls_init_root_ca_certificates((const char*)eap_conf->ca_certificate, eap_conf->ca_certificate_len);
@@ -476,16 +529,20 @@ int wlan_supplicant_stop()
 {
     LOG(TRACE, "Stopping supplicant");
 
-    if (eap_context.supplicant_initialized) {
-        besl_supplicant_deinit(eap_context.supplicant_workspace);
-        eap_context.supplicant_initialized = false;
+    if (eap_context.initialized) {
+        if (eap_context.supplicant_initialized) {
+            besl_supplicant_deinit(eap_context.supplicant_workspace);
+            eap_context.supplicant_initialized = false;
+        }
+
+        wiced_tls_deinit_context(eap_context.tls_context);
+        wiced_tls_deinit_root_ca_certificates();
+        wiced_tls_deinit_identity(eap_context.tls_identity);
     }
 
-    wiced_tls_deinit_context(eap_context.tls_context);
-    wiced_tls_deinit_root_ca_certificates();
-    wiced_tls_deinit_identity(eap_context.tls_identity);
-
     eap_context.supplicant_running = false;
+
+    eap_context.deinit();
 
     LOG(TRACE, "Supplicant stopped");
 
@@ -504,6 +561,8 @@ int wlan_restart(void* reserved) {
  * WPA Enterprise supplicant.
  */
 static wiced_result_t wlan_join() {
+    runtime_info_t info = {0};
+    info.size = sizeof(info);
     int attempt = WICED_JOIN_RETRY_ATTEMPTS;
     wiced_result_t result = WICED_ERROR;
     platform_dct_wifi_config_t* wifi_config = NULL;
@@ -529,11 +588,12 @@ static wiced_result_t wlan_join() {
 
             if (ap.details.security & ENTERPRISE_ENABLED) {
                 if (!wlan_has_enterprise_credentials()) {
-                    // Workaround. If connecting not for the first time, for some reason authentication fails.
-                    // It works if we reset wireless module though
-                    // ¯\_(ツ)_/¯
+                    // Workaround to avoid a sequence of errors (1006, 1025, 1055) resulting in a long
+                    // connection attempt
                     wlan_restart(NULL);
                     // We need to start supplicant
+                    HAL_Core_Runtime_Info(&info, NULL);
+                    LOG(TRACE, "Free RAM before suppl: %lu", info.freeheap);
                     if (wlan_supplicant_start()) {
                         // Early error
                         wlan_supplicant_cancel(0);
@@ -542,6 +602,8 @@ static wiced_result_t wlan_join() {
                         join = false;
                     } else {
                         suppl = true;
+                        HAL_Core_Runtime_Info(&info, NULL);
+                        LOG(TRACE, "Free RAM after suppl: %lu", info.freeheap);
                     }
                 }
             }
@@ -550,6 +612,8 @@ static wiced_result_t wlan_join() {
                 memset(ssid_name, 0, sizeof(ssid_name));
                 memcpy(ssid_name, ap.details.SSID.value, ap.details.SSID.length);
                 LOG(INFO, "Joining %s", ssid_name);
+                HAL_Core_Runtime_Info(&info, NULL);
+                LOG(TRACE, "Free RAM connect: %lu", info.freeheap);
                 result = wiced_join_ap_specific((wiced_ap_info_t*)&ap.details, ap.security_key_length, ap.security_key);
                 if (result != WICED_SUCCESS) {
                     LOG(ERROR, "wiced_join_ap_specific(), result: %d", (int)result);
@@ -558,11 +622,16 @@ static wiced_result_t wlan_join() {
 
             if (suppl) {
                 if (!result) {
+#if WLAN_EAP_SAVE_TLS_SESSION
                     memcpy(eap_context.tls_session, &eap_context.tls_context->session, sizeof(wiced_tls_session_t));
+#endif // WLAN_EAP_SAVE_TLS_SESSION
                 } else {
                     wlan_supplicant_cancel(0);
                 }
                 wlan_supplicant_stop();
+
+                HAL_Core_Runtime_Info(&info, NULL);
+                LOG(TRACE, "Free RAM after suppl stop: %lu", info.freeheap);
 
                 if (!result) {
                     // Workaround. After successfully authenticating to Enterprise access point, TCP/IP stack
@@ -571,6 +640,13 @@ static wiced_result_t wlan_join() {
                     wiced_network_deinit();
                     wiced_network_init();
                 }
+            }
+
+            if (result == (wiced_result_t)WWD_SET_BLOCK_ACK_WINDOW_FAIL) {
+                // Reset wireless module
+                wlan_restart(NULL);
+                HAL_Core_Runtime_Info(&info, NULL);
+                LOG(TRACE, "Free RAM after restart: %lu", info.freeheap);
             }
 
             if (result == WICED_SUCCESS) {
