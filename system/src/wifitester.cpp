@@ -145,36 +145,7 @@ struct varstring_t {
     char string[33];
 };
 
-#if Wiring_Cellular
-extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result) {
-	// could really do with a PLATFORM_NAME define.
-	strcpy(result->string, "Electron");
-
-    unsigned len = HAL_device_ID(NULL, 0);
-    uint8_t id[len];
-    HAL_device_ID(id, len);
-    uint32_t crc = HAL_Core_Compute_CRC32(id, len);
-
-    int idx = strlen(result->string);
-    char* s = result->string;
-    s[idx++] = '-';
-
-    for (int i=0; i<4; i++)
-    {
-    		uint8_t val = crc%36;
-    		char c;
-    		if (val<10)
-    			c = '0'+val;
-    		else
-    			c = 'A'+val-10;
-    		s[idx++] = c;
-    		crc /= 36;
-    }
-    s[idx] = 0;
-    result->len = idx;
-	return true;
-}
-#elif PLATFORM_ID>3
+#if PLATFORM_ID>3
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
 #else // PLATFORM <= 3
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result) {

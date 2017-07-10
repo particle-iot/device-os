@@ -457,8 +457,8 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         dct_write_app_data(&data_length, offset++, 1);
         break;
     case SYSTEM_CONFIG_SOFTAP_SUFFIX:
-        offset = DCT_DEVICE_ID_OFFSET;
-        length = DCT_DEVICE_ID_SIZE;
+        offset = DCT_DEVICE_CODE_OFFSET;
+        length = DCT_DEVICE_CODE_SIZE;
         break;
     case SYSTEM_CONFIG_SOFTAP_HOSTNAMES:
         break;

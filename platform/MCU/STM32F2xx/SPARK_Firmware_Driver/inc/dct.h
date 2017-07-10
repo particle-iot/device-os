@@ -62,7 +62,7 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t claim_code[63];             // claim code. no terminating null.
     uint8_t claimed[1];                 // 0,0xFF, not claimed. 1 claimed.
     uint8_t ssid_prefix[26];            // SSID prefix (25 chars max). First byte is length.
-    uint8_t device_id[6];               // 6 suffix characters (not null terminated))
+    uint8_t device_code[6];               // 6 suffix characters (not null terminated))
     uint8_t version_string[32];         // version string including date
     uint8_t dns_resolve[128];           // DNS names to resolve.
     uint8_t reserved1[64];
@@ -93,7 +93,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_CLAIM_CODE_OFFSET (offsetof(application_dct_t, claim_code))
 #define DCT_SSID_PREFIX_OFFSET (offsetof(application_dct_t, ssid_prefix))
 #define DCT_DNS_RESOLVE_OFFSET (offsetof(application_dct_t, dns_resolve))
-#define DCT_DEVICE_ID_OFFSET (offsetof(application_dct_t, device_id))
+#define DCT_DEVICE_CODE_OFFSET (offsetof(application_dct_t, device_code))
 #define DCT_DEVICE_CLAIMED_OFFSET (offsetof(application_dct_t, claimed))
 #define DCT_FLASH_MODULES_OFFSET (offsetof(application_dct_t, flash_modules))
 #define DCT_PRODUCT_STORE_OFFSET (offsetof(application_dct_t, product_store))
@@ -113,7 +113,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
 #define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix))
 #define DCT_DNS_RESOLVE_SIZE  (sizeof(application_dct_t::dns_resolve))
-#define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id))
+#define DCT_DEVICE_CODE_SIZE  (sizeof(application_dct_t::device_code))
 #define DCT_DEVICE_CLAIMED_SIZE  (sizeof(application_dct_t::claimed))
 #define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
 #define DCT_PRODUCT_STORE_SIZE  (sizeof(application_dct_t::product_store))
@@ -139,7 +139,7 @@ STATIC_ASSERT_DCT_OFFSET(country_code, 1758 /* 1634 + 124 */);
 STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1758 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(claimed, 1825 /* 1762 + 63 */ );
 STATIC_ASSERT_DCT_OFFSET(ssid_prefix, 1826 /* 1825 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(device_id, 1852 /* 1826 + 26 */);
+STATIC_ASSERT_DCT_OFFSET(device_code, 1852 /* 1826 + 26 */);
 STATIC_ASSERT_DCT_OFFSET(version_string, 1858 /* 1852 + 6 */);
 STATIC_ASSERT_DCT_OFFSET(dns_resolve, 1890 /* 1868 + 32 */);
 STATIC_ASSERT_DCT_OFFSET(reserved1, 2018 /* 1890 + 128 */);
