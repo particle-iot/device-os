@@ -2,6 +2,10 @@
 
 SYSTEM_MODE(MANUAL)
 
+#if USE_THREADING == 1
+SYSTEM_THREAD(ENABLED)
+#endif
+
 // Assertion macro to use in Errorable classes
 #define CHECK(_expr) \
         do { \
@@ -284,7 +288,8 @@ public:
         }
         addr_ = IPAddress();
         WiFi.connect();
-        if (!WiFi.ready()) {
+        if (!waitFor(WiFi.ready, 10000)) {
+            WiFi.disconnect();
             setError("Unable to connect to network");
             return false;
         }
