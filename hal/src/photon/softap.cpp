@@ -589,7 +589,7 @@ protected:
         decrypt_result = 1;
 
         return (len / 2);
-    }
+        }
 
     virtual bool parsed_value(unsigned key, jsmntok_t* t, char* str) {
         std::unique_ptr<char[]> tmp;
@@ -620,7 +620,7 @@ protected:
                 }
 #endif
                 credentials.setPassword(str);
-            }
+        }
             break;
             case 3:
             // ch
@@ -639,7 +639,7 @@ protected:
             // outer identity
             if (t->type == JSMN_STRING) {
                 credentials.setOuterIdentity(str);
-            }
+        }
             break;
             case 7:
             // inner identity
@@ -1260,7 +1260,7 @@ class SimpleProtocolDispatcher
         int result = reader.read(&tmp, 1);
         if (result >= 0) {
             *c = tmp;
-        }
+    }
         return result;
     }
 
