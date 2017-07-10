@@ -28,9 +28,9 @@
 #include "unit-test/unit-test.h"
 
 #if defined(STM32F2XX)
-static pin_t pin = D1;//pin under test
+static const pin_t pin = D1;//pin under test
 #else
-static pin_t pin = A1;//pin under test
+static const pin_t pin = A1;//pin under test
 #endif
 
 test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {

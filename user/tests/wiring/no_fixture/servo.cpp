@@ -28,9 +28,9 @@
 #include "unit-test/unit-test.h"
 
 #if defined(STM32F2XX)
-static pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
+static const pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
 #else
-static pin_t pin = A0, pin2 = A1;
+static const pin_t pin = A0, pin2 = A1;
 #endif
 
 test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {

@@ -97,10 +97,10 @@ test(WIFI_04_scan)
     assertMoreOrEqual(apsFound, 1);
 }
 
-
 test(WIFI_05_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
 {
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if (PLATFORM_ID == 6 || PLATFORM_ID == 8) && (PLATFORM_THREADING == 1 && USE_THREADING == 1)
+    /* This test should only be run with threading disabled */
     assertTrue(Particle.connected());
 
     Particle.disconnect();
@@ -153,8 +153,6 @@ test(WIFI_05_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
 
     uint32_t freeRam2 = System.freeMemory();
 
-    LOG(TRACE, "Finished");
-
     assertMoreOrEqual(freeRam2, freeRam1);
 #endif
 }
@@ -195,5 +193,26 @@ test(WIFI_10_restore_default_hostname)
 }
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+
+test(WIFI_11_scan_returns_zero_result_or_error_when_wifi_is_off)
+{
+    WiFiAccessPoint results[5];
+    WiFi.off();
+    uint32_t ms = millis();
+    while (WiFi.ready()) {
+        if (millis() - ms >= 10000) {
+            assertTrue(false);
+        }
+    }
+    assertLessOrEqual(WiFi.scan(results, 5), 0);
+}
+
+test(WIFI_12_restore_connection)
+{
+    if (!Particle.connected())
+    {
+        Particle.connect();
+    }
+}
 
 #endif
