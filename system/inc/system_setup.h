@@ -63,7 +63,7 @@ template<typename Config> class SystemSetupConsole
 {
 public:
     SystemSetupConsole(Config& config);
-    ~SystemSetupConsole() = default;
+    ~SystemSetupConsole();
     virtual void loop(void);
 protected:
     virtual void exit()=0;
@@ -85,7 +85,11 @@ protected:
 
 private:
     USBSerial serial;
-
+#if SETUP_OVER_SERIAL1
+    bool serial1Enabled;
+    uint8_t magicPos;                   // how far long the magic key we are
+    WiFiTester* tester;
+#endif
 };
 
 #if Wiring_WiFi
@@ -96,17 +100,11 @@ class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
 public:
     WiFiSetupConsole(WiFiSetupConsoleConfig& config);
     ~WiFiSetupConsole();
-    virtual void loop() override;
 
 protected:
     virtual void handle(char c) override;
     virtual void exit() override;
 private:
-#if SETUP_OVER_SERIAL1
-    bool serial1Enabled;
-    uint8_t magicPos;                   // how far long the magic key we are
-    WiFiTester* tester;
-#endif
     char ssid[33];
     char password[65];
     char security_type_string[2];
@@ -125,7 +123,7 @@ class CellularSetupConsole : public SystemSetupConsole<CellularSetupConsoleConfi
 
 public:
     CellularSetupConsole(CellularSetupConsoleConfig& config);
-    ~CellularSetupConsole() = default;
+    ~CellularSetupConsole();
 
     virtual void exit() override;
     virtual void handle(char c) override;
