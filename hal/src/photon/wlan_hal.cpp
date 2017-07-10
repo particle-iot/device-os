@@ -856,6 +856,10 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
 
 wiced_result_t sniff_security(SnifferInfo* info)
 {
+    if (!wiced_wlan_connectivity_initialized())
+    {
+        return WICED_ERROR;
+    }
 
     wiced_result_t result = wiced_rtos_init_semaphore(&info->complete);
     if (result != WICED_SUCCESS)
