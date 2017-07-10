@@ -45,6 +45,7 @@ ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
 HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/FreeRTOS/WWD/ARM_CM3 \
 			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/include \
 			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/GCC/ARM_CM3
+CSRC += $(HAL_SRC_PHOTON_PATH)/wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/MemMang/heap_4_lock.c
 
 endif
 

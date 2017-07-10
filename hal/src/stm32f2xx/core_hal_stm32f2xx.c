@@ -1236,11 +1236,9 @@ unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
 {
-    extern unsigned char _eheap[];
-    extern unsigned char *sbrk_heap_top;
-
     struct mallinfo heapinfo = mallinfo();
-    info->freeheap = _eheap-sbrk_heap_top + heapinfo.fordblks;
+    // fordblks  The total number of bytes in free blocks.
+    info->freeheap = heapinfo.fordblks;
 
     return 0;
 }
