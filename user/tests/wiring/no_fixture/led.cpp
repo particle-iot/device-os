@@ -251,4 +251,45 @@ test(LED_11_MirroringWorks) {
     RGB.control(false);
 }
 
-#endif
+namespace {
+
+// Handler class for RGB.onChange() that counts number of its instances
+class OnChangeHandler {
+public:
+    OnChangeHandler() {
+        ++s_count;
+    }
+
+    OnChangeHandler(const OnChangeHandler&) {
+        ++s_count;
+    }
+
+    ~OnChangeHandler() {
+        --s_count;
+    }
+
+    static unsigned instanceCount() {
+        return s_count;
+    }
+
+    void operator()(uint8_t r, uint8_t g, uint8_t b) {
+    }
+
+private:
+    static unsigned s_count;
+};
+
+unsigned OnChangeHandler::s_count = 0;
+
+} // namespace
+
+test(LED_12_NoLeakWhenOnChangeHandlerIsOverridden) {
+    RGB.onChange(OnChangeHandler());
+    assertEqual(OnChangeHandler::instanceCount(), 1);
+    RGB.onChange(OnChangeHandler());
+    assertEqual(OnChangeHandler::instanceCount(), 1); // Previous handler has been destroyed
+    RGB.onChange(nullptr);
+    assertEqual(OnChangeHandler::instanceCount(), 0); // Current handler has been destroyed
+}
+
+#endif // PLATFORM_ID >= 3
