@@ -30,6 +30,7 @@
 #include "spark_wiring_version.h"
 #include "string_convert.h"
 #include "system_cloud_internal.h"
+#include "deviceid_hal.h"
 
 #if 0 //MODULAR_FIRMWARE
 // The usual wiring implementations are dependent upon I2C, SPI and other global instances. Rewriting the GPIO functions to talk directly to the HAL
@@ -57,7 +58,15 @@ int32_t digitalRead(pin_t pin) {
 #include "wlan_hal.h"
 #endif
 
+
 #if Wiring_WiFi
+#define NETWORK WiFi
+#elif Wiring_Cellular
+#define NETWORK Cellular
+#endif
+
+#ifdef NETWORK
+
 using namespace spark;
 
 uint8_t serialAvailable();
@@ -85,11 +94,11 @@ const char cmd_ANT[] = "ANT";
 const char cmd_SET_PIN[] = "SET_PIN:";
 const char cmd_SET_PRODUCT[] = "SET_PRODUCT:";
 
-
+// This class should be factored out into a network neutral base, and subclasses for WiFi/Cellular
 
 void WiFiTester::setup(bool useSerial1) {
     this->useSerial1 = useSerial1;
-    WiFi.on();
+    NETWORK.on();
 
     cmd_index = 0;
     RGB.control(true);
@@ -107,7 +116,7 @@ void WiFiTester::setup(bool useSerial1) {
 
 void WiFiTester::loop(int c) {
 
-    if (WiFi.ready() && (dhcp_notices < 5)) {
+    if (NETWORK.ready() && (dhcp_notices < 5)) {
         serialPrintln(" DHCP DHCP DHCP ! DHCP DHCP DHCP ! DHCP DHCP DHCP !");
         RGB.color(255, 0, 255);
         HAL_GPIO_Write(D2, HIGH);
@@ -136,10 +145,39 @@ struct varstring_t {
     char string[33];
 };
 
-#if PLATFORM_ID>3
+#if Wiring_Cellular
+extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result) {
+	// could really do with a PLATFORM_NAME define.
+	strcpy(result->string, "Electron");
+
+    unsigned len = HAL_device_ID(NULL, 0);
+    uint8_t id[len];
+    HAL_device_ID(id, len);
+    uint32_t crc = HAL_Core_Compute_CRC32(id, len);
+
+    int idx = strlen(result->string);
+    char* s = result->string;
+    s[idx++] = '-';
+
+    for (int i=0; i<4; i++)
+    {
+    		uint8_t val = crc%36;
+    		char c;
+    		if (val<10)
+    			c = '0'+val;
+    		else
+    			c = 'A'+val-10;
+    		s[idx++] = c;
+    		crc /= 36;
+    }
+    s[idx] = 0;
+    result->len = idx;
+	return true;
+}
+#elif PLATFORM_ID>3
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
-#else
-bool fetch_or_generate_setup_ssid(varstring_t* result) {
+#else // PLATFORM <= 3
+extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result) {
     result->len = 4;
     strcpy(result->string, "CORE-1234");
     return true;
@@ -149,9 +187,11 @@ bool fetch_or_generate_setup_ssid(varstring_t* result) {
 void WiFiTester::printInfo() {
     String deviceID = Particle.deviceID();
 
+#if Wiring_WiFi
     WLanConfig ip_config;
     ip_config.size = sizeof(ip_config);
     wlan_fetch_ipconfig(&ip_config);
+
     uint8_t* addr = ip_config.nw.uaMacAddr;
     String macAddress;
     bool first = true;
@@ -161,19 +201,37 @@ void WiFiTester::printInfo() {
         first = false;
         macAddress += bytes2hex(addr++, 1);
     }
+#endif
 
     varstring_t serial;
     memset(&serial, 0, sizeof (serial));
     fetch_or_generate_setup_ssid(&serial);
     serial.string[serial.len] = 0;
 
-    String rssi(WiFi.RSSI());
-
     printItem("DeviceID", deviceID.c_str());
     printItem("Serial", strstr((const char*) serial.string, "-") + 1);
+#if Wiring_WiFi
+    String rssi(WiFi.RSSI());
     printItem("MAC", macAddress.c_str());
+#endif
+
+
+#if Wiring_Cellular
+    printItem("MAC", "00:00:00:00:00:00");   // needed by the sticker rig
+    CellularDevice dev;
+    cellular_device_info(&dev, NULL);
+    //printItem("IMEI", dev.imei);
+#endif
+
     printItem("SSID", serial.string);
+
+#if Wiring_WiFi
     printItem("RSSI", rssi.c_str());
+#else
+    // the sticker rig waits for the RSSI value
+    printItem("RSSI", "-50");
+#endif
+
 }
 
 #if WIFI_SCAN
@@ -306,8 +364,10 @@ void WiFiTester::checkWifiSerial(char c) {
             printInfo();
         }
         else if ((start = strstr(command, cmd_CLEAR))) {
-            if (WiFi.hasCredentials())
+#if Wiring_WiFi
+        		if (WiFi.hasCredentials())
                 WiFi.clearCredentials();
+#endif
         }
 #if WIFI_SCAN
         else if ((start = strstr(command, cmd_WIFI_SCAN))) {
@@ -457,6 +517,7 @@ void WiFiTester::tokenizeCommand(char *cmd, char* parts[], unsigned max_parts) {
 
 void WiFiTester::tester_connect(char *ssid, char *pass) {
 
+#if 0
     RGB.color(64, 64, 0);
 
     int auth = WPA2;
@@ -483,6 +544,7 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     //USERLED_SetRGBColor(0xFF00FF);		//purple
     //USERLED_On(LED_RGB);
     serialPrintln("  WIFI Connected?    ");
+#endif
 }
 
 #endif

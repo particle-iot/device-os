@@ -57,6 +57,7 @@ void loop_wifitester(int c);
 #define CERTIFICATE_SIZE        (4*1024)
 #endif
 
+// This can be changed to Serial for testing purposes
 #define SETUP_SERIAL Serial1
 
 int is_empty(const char *s) {
@@ -80,6 +81,14 @@ public:
     }
 };
 
+#if SETUP_OVER_SERIAL1
+inline bool setup_serial1() {
+	uint8_t value = 0;
+	system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
+	return value;
+}
+#endif
+
 template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
     : config(config_)
 {
@@ -88,10 +97,61 @@ template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config
     {
         serial.begin(9600);
     }
+#if SETUP_OVER_SERIAL1
+    serial1Enabled = false;
+    magicPos = 0;
+    if (setup_serial1()) {
+    		//WITH_LOCK(SETUP_SERIAL);
+    		SETUP_SERIAL.begin(9600);
+    }
+    this->tester = NULL;
+#endif
+}
+
+template <typename Config> SystemSetupConsole<Config>::~SystemSetupConsole()
+{
+#if SETUP_OVER_SERIAL1
+    delete this->tester;
+#endif
 }
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
+#if SETUP_OVER_SERIAL1
+    //TRY_LOCK(SETUP_SERIAL)
+    {
+    		if (setup_serial1()) {
+    			int c = -1;
+    			if (SETUP_SERIAL.available()) {
+    				c = SETUP_SERIAL.read();
+    			}
+    			if (SETUP_LISTEN_MAGIC) {
+    				static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
+    				if (!serial1Enabled) {
+    					if (c>=0) {
+    						if (c==magic_code[magicPos++]) {
+    							serial1Enabled = magicPos==sizeof(magic_code);
+    							if (serial1Enabled) {
+    								if (tester==NULL)
+    									tester = new WiFiTester();
+    								tester->setup(SETUP_OVER_SERIAL1);
+    							}
+    						}
+    						else {
+    							magicPos = 0;
+    						}
+    						c = -1;
+    					}
+    				}
+    				else {
+    					if (tester)
+    						tester->loop(c);
+    				}
+    			}
+    		}
+    	}
+#endif
+
     TRY_LOCK(serial)
     {
         if (serial.available())
@@ -202,7 +262,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     		}
     		else {
     			print("Sorry, claim code is not 63 characters long. Claim code unchanged.");
-    		}
+}
 		print("\r\n");
     }
 }
@@ -277,42 +337,6 @@ WiFiSetupConsole::~WiFiSetupConsole()
 #endif
 }
 
-void WiFiSetupConsole::loop()
-{
-#if SETUP_OVER_SERIAL1
-	if (setup_serial1()) {
-		int c = -1;
-		if (SETUP_SERIAL.available()) {
-			c = SETUP_SERIAL.read();
-		}
-		if (SETUP_LISTEN_MAGIC) {
-			static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
-			if (!serial1Enabled) {
-				if (c>=0) {
-					if (c==magic_code[magicPos++]) {
-						serial1Enabled = magicPos==sizeof(magic_code);
-						if (serial1Enabled) {
-							if (tester==NULL)
-								tester = new WiFiTester();
-							tester->setup(SETUP_OVER_SERIAL1);
-						}
-					}
-					else {
-						magicPos = 0;
-					}
-					c = -1;
-				}
-			}
-			else {
-				if (tester)
-					tester->loop(c);
-			}
-		}
-	}
-#endif
-    super::loop();
-}
-
 void WiFiSetupConsole::handle(char c)
 {
     if ('w' == c)
@@ -332,8 +356,8 @@ void WiFiSetupConsole::handle(char c)
         WLanCredentials creds;
 
         do {
-            print("SSID: ");
-            read_line(ssid, 32);
+        print("SSID: ");
+        read_line(ssid, 32);
         } while (strlen(ssid) == 0);
 
         wlan_scan([](WiFiAccessPoint* ap, void* ptr) {
@@ -350,13 +374,13 @@ void WiFiSetupConsole::handle(char c)
 
         if (security_ == WLAN_SEC_NOT_SET)
         {
-            do
-            {
+        do
+        {
 #if Wiring_WpaEnterprise == 0
-                print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
-                read_line(security_type_string, 1);
-            }
-            while ('0' > security_type_string[0] || '3' < security_type_string[0]);
+            print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
+            read_line(security_type_string, 1);
+        }
+        while ('0' > security_type_string[0] || '3' < security_type_string[0]);
 #else
                 print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2, 4=WPA Enterprise, 5=WPA2 Enterprise: ");
                 read_line(security_type_string, 1);
@@ -464,7 +488,7 @@ void WiFiSetupConsole::handle(char c)
                 print("Password: ");
                 read_line(password, sizeof(password) - 1);
                 credentials.setPassword(password);
-            }
+        }
 
             memset(tmp_.get(), 0, CERTIFICATE_SIZE);
             print("Outer identity (optional): ");
@@ -534,6 +558,10 @@ void WiFiSetupConsole::exit()
 
 CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
  : SystemSetupConsole(config)
+{
+}
+
+CellularSetupConsole::~CellularSetupConsole()
 {
 }
 
