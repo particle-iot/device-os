@@ -242,30 +242,13 @@ template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, 
 
 #if Wiring_WiFi
 
-inline bool setup_serial1() {
-	uint8_t value = 0;
-	system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
-	return value;
-}
-
 WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
-#if SETUP_OVER_SERIAL1
-    serial1Enabled = false;
-    magicPos = 0;
-    if (setup_serial1()) {
-    		SETUP_SERIAL.begin(9600);
-    }
-    this->tester = NULL;
-#endif
 }
 
 WiFiSetupConsole::~WiFiSetupConsole()
 {
-#if SETUP_OVER_SERIAL1
-    delete this->tester;
-#endif
 }
 
 void WiFiSetupConsole::handle(char c)
