@@ -58,6 +58,12 @@ const PublishFlag PRIVATE(PUBLISH_EVENT_FLAG_PRIVATE);
 const PublishFlag NO_ACK(PUBLISH_EVENT_FLAG_NO_ACK);
 const PublishFlag WITH_ACK(PUBLISH_EVENT_FLAG_WITH_ACK);
 
+// Test if the paramater a regular C "string" literal
+template <typename T>
+struct is_string_literal {
+    static constexpr bool value = std::is_array<T>::value && std::is_same<typename std::remove_extent<T>::type, char>::value;
+};
+
 class CloudClass {
 
 
@@ -66,7 +72,7 @@ public:
     template <typename T, class ... Types>
     static inline bool variable(const T &name, const Types& ... args)
     {
-        static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
+        static_assert(!is_string_literal<T>::value || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
             "\n\nIn Particle.variable, name must be " __XSTRING(USER_VAR_KEY_LENGTH) " characters or less\n\n");
 
         return _variable(name, args...);
@@ -175,10 +181,9 @@ public:
     template <typename T, class ... Types>
     static inline bool function(const T &name, Types ... args)
     {
-#if PLATFORM_ID!=3
-        static_assert(!IsStringLiteral(name) || sizeof(name) <= USER_FUNC_KEY_LENGTH + 1,
+        static_assert(!is_string_literal<T>::value || sizeof(name) <= USER_FUNC_KEY_LENGTH + 1,
             "\n\nIn Particle.function, name must be " __XSTRING(USER_FUNC_KEY_LENGTH) " characters or less\n\n");
-#endif
+
         return _function(name, args...);
     }
 
@@ -361,12 +366,6 @@ private:
     {
         const String* s = (const String*)var;
         return s->c_str();
-    }
-
-    // Test if the paramater a regular C "string" literal
-    template <typename T>
-    constexpr static bool IsStringLiteral(const T& param) {
-      return std::is_array<T>::value && std::is_same<typename std::remove_extent<T>::type, char>::value;
     }
 };
 
