@@ -7,6 +7,8 @@ extern void** dynalib_location_user;
 static bool module_user_part_validated = false;
 
 extern void malloc_enable(uint8_t);
+extern void malloc_set_heap_start(void*);
+extern void* malloc_heap_start();
 
 /**
  * Determines if the user module is present and valid.
@@ -16,11 +18,6 @@ bool is_user_module_valid()
 {
     return module_user_part_validated;
 }
-
-/**
- * The current start of heap.
- */
-extern void* sbrk_heap_top;
 
 /**
  * Global initialization function. Called after memory has been initialized in this module
@@ -50,8 +47,9 @@ void system_part2_pre_init() {
 
     if (bootloader_validated && is_user_module_valid()) {
         void* new_heap_top = module_user_pre_init();
-        if (new_heap_top>sbrk_heap_top)
-            sbrk_heap_top = new_heap_top;
+        if (new_heap_top>malloc_heap_start()) {
+            malloc_set_heap_start(new_heap_top);
+        }
     }
     else {
         // indicate to the system that it shouldn't run user code

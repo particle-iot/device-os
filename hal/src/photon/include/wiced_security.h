@@ -1555,6 +1555,8 @@ int32_t x509parse_verify( const x509_cert *crt,
  */
 void x509_free( x509_cert *crt );
 
+int32_t x509_cert_is_pem(const uint8_t* buf, size_t len);
+
 /** @} */
 
 /*****************************************************************************/

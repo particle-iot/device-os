@@ -37,6 +37,7 @@
 #include "spark_wiring_thread.h"
 #include "spark_wiring_wifi_credentials.h"
 #include "system_ymodem.h"
+#include "mbedtls_util.h"
 
 #if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
@@ -447,12 +448,26 @@ void WiFiSetupConsole::handle(char c)
                 memset(tmp_.get(), 0, CERTIFICATE_SIZE);
                 print("Client certificate in PEM format:\r\n");
                 read_multiline((char*)tmp_.get(), CERTIFICATE_SIZE - 1);
-                credentials.setClientCertificate((const char*)tmp_.get());
+                {
+                    uint8_t* der = NULL;
+                    size_t der_len = 0;
+                    if (!mbedtls_x509_crt_pem_to_der((const char*)tmp_.get(), strnlen(tmp_.get(), CERTIFICATE_SIZE - 1) + 1, &der, &der_len)) {
+                        credentials.setClientCertificate(der, der_len);
+                        free(der);
+                    }
+                }
 
                 memset(tmp_.get(), 0, CERTIFICATE_SIZE);
                 print("Private key in PEM format:\r\n");
                 read_multiline((char*)tmp_.get(), PRIVATE_KEY_SIZE - 1);
-                credentials.setPrivateKey((const char*)tmp_.get());
+                {
+                    uint8_t* der = NULL;
+                    size_t der_len = 0;
+                    if (!mbedtls_pk_pem_to_der((const char*)tmp_.get(), strnlen(tmp_.get(), PRIVATE_KEY_SIZE - 1) + 1, &der, &der_len)) {
+                        credentials.setPrivateKey(der, der_len);
+                        free(der);
+                    }
+                }
             } else {
                 // PEAP/MSCHAPv2
                 // Required:
@@ -484,7 +499,12 @@ void WiFiSetupConsole::handle(char c)
             print("Root CA in PEM format (optional):\r\n");
             read_multiline((char*)tmp_.get(), CERTIFICATE_SIZE - 1);
             if (strlen(tmp_.get()) && !is_empty(tmp_.get())) {
-                credentials.setRootCertificate((const char*)tmp_.get());
+                uint8_t* der = NULL;
+                size_t der_len = 0;
+                if (!mbedtls_x509_crt_pem_to_der((const char*)tmp_.get(), strnlen(tmp_.get(), CERTIFICATE_SIZE - 1) + 1, &der, &der_len)) {
+                    credentials.setRootCertificate(der, der_len);
+                    free(der);
+                }
             }
             tmp_.reset();
         }

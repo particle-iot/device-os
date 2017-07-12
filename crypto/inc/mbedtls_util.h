@@ -43,6 +43,10 @@ extern "C" {
 int mbedtls_set_callbacks(mbedtls_callbacks_t* callbacks, void* reserved);
 mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved);
 
+int mbedtls_x509_crt_pem_to_der(const char* pem_crt, size_t pem_len, uint8_t** der_crt, size_t* der_len);
+int mbedtls_pk_pem_to_der(const char* pem_key, size_t pem_len, uint8_t** der_key, size_t* der_len);
+int mbedtls_x509_read_length(const uint8_t* der, size_t len, int concatenated);
+
 #ifdef  __cplusplus
 }
 #endif

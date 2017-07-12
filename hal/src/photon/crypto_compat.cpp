@@ -585,12 +585,15 @@ void rsa_free( rsa_context *ctx )
 typedef struct {
     uint32_t header;
     mbedtls_x509_crt* crt;
+    uint8_t* orig_ptr;
+    uint32_t orig_len;
 } x509_compat_t;
 
 static mbedtls_x509_crt* x509_to_mbedtls(x509_cert* wcrt, bool noalloc = false)
 {
-    if (wcrt == NULL)
+    if (wcrt == NULL) {
         return NULL;
+    }
 
     x509_compat_t* compat = (x509_compat_t*)wcrt;
     if (compat->header == 0xdeadbeef && compat->crt) {
@@ -598,7 +601,8 @@ static mbedtls_x509_crt* x509_to_mbedtls(x509_cert* wcrt, bool noalloc = false)
     }
 
     if (!noalloc) {
-        compat->crt = (mbedtls_x509_crt*)tls_host_malloc(__FUNCTION__, sizeof(mbedtls_x509_crt));
+        memset(compat, 0, sizeof(*compat));
+        compat->crt = (mbedtls_x509_crt*)tls_host_calloc(__FUNCTION__, 1, sizeof(mbedtls_x509_crt));
         if (compat->crt)  {
             compat->header = 0xdeadbeef;
             mbedtls_x509_crt_init(compat->crt);
@@ -609,125 +613,156 @@ static mbedtls_x509_crt* x509_to_mbedtls(x509_cert* wcrt, bool noalloc = false)
     return NULL;
 }
 
-static x509_cert* mbedtls_to_x509(mbedtls_x509_crt* c, x509_cert* crt)
+static int mbedtls_to_x509(mbedtls_x509_crt* c, x509_cert* crt)
 {
+    int res = 0;
     // Fill subject and public_key
     mbedtls_rsa_context* pk = mbedtls_pk_rsa(c->pk);
-    rsa_context* wpk = (rsa_context*)tls_host_malloc(__FUNCTION__, sizeof(rsa_context));
-    if (pk && wpk) {
-        // Make a copy
-        mbedtls_rsa_context pkcopy;
-        mbedtls_rsa_init(&pkcopy, 0, 0);
-        mbedtls_rsa_copy(&pkcopy, pk);
-        rsa_mbedtls_to_wiced(&pkcopy, wpk);
-        crt->public_key = (wiced_tls_key_t*)wpk;
+    if (!crt->public_key && pk) {
+        rsa_context* wpk = (rsa_context*)tls_host_calloc(__FUNCTION__, 1, sizeof(rsa_context));
+        if (wpk) {
+            // Make a copy
+            mbedtls_rsa_context pkcopy;
+            mbedtls_rsa_init(&pkcopy, 0, 0);
+            mbedtls_rsa_copy(&pkcopy, pk);
+            rsa_mbedtls_to_wiced(&pkcopy, wpk);
+            crt->public_key = (wiced_tls_key_t*)wpk;
+        } else {
+            res = 1;
+        }
     }
     memcpy(&crt->subject, &c->subject, sizeof(mbedtls_x509_name));
 
-    return crt;
+    return res;
 }
 
-static x509_cert* mbedtls_to_x509_all(mbedtls_x509_crt* c, x509_cert* crt)
+static int mbedtls_to_x509_all(mbedtls_x509_crt* c, x509_cert* crt, int nonalloced)
 {
-    mbedtls_to_x509(c, crt);
+    int res = 0;
+    res = mbedtls_to_x509(c, crt);
+    if (nonalloced) {
+        x509_compat_t* compat = (x509_compat_t*)crt;
+        compat->orig_ptr = c->raw.p;
+        compat->orig_len = c->raw.len;
+    }
     for(mbedtls_x509_crt* cc = c->next; cc != NULL; cc = cc->next) {
         crt->next = (x509_cert*)tls_host_calloc(__FUNCTION__, 1, sizeof(x509_cert));
-        if (!crt->next)
+        if (!crt->next) {
+            if (nonalloced) {
+                cc->raw.p = NULL;
+                cc->raw.len = 0;
+            }
+            res = 1;
             break;
+        }
         x509_compat_t* compat = (x509_compat_t*)crt->next;
         compat->header = 0xdeadbeef;
         compat->crt = cc;
-        mbedtls_to_x509(cc, crt->next);
+        res = mbedtls_to_x509(cc, crt->next);
+        if (nonalloced) {
+            compat->orig_ptr = cc->raw.p;
+            compat->orig_len = cc->raw.len;
+        }
     }
 
-    return crt;
+    return res;
 }
 
-int32_t x509_parse_certificate_data( x509_cert* crt, const unsigned char* p, uint32_t len )
+static int32_t x509_parse_certificate_data_impl(x509_cert* crt, const unsigned char* p, uint32_t len, uint8_t force_alloc)
 {
     int32_t ret = -1;
     uint32_t total_len = 0;
     mbedtls_x509_crt* c = x509_to_mbedtls(crt);
     if (c) {
+        mbedtls_x509_crt* cc = c;
+        mbedtls_x509_crt* prev = NULL;
         do {
-            ret = mbedtls_x509_crt_parse_der(c, p + total_len, len - total_len);
+            if (cc->version != 0 && cc->next == NULL) {
+                cc->next = (mbedtls_x509_crt*)tls_host_calloc(__FUNCTION__, 1, sizeof(mbedtls_x509_crt));
+                if (cc->next == NULL) {
+                    ret = -1;
+                    break;
+                }
+                prev = cc;
+                cc = cc->next;
+                mbedtls_x509_crt_init(cc);
+            }
+            if (!force_alloc) {
+                cc->raw.p = (uint8_t*)p + total_len;
+                cc->raw.len = len - total_len;
+            }
+            ret = x509_crt_parse_der_core(cc, p + total_len, len - total_len);
             if (ret == 0) {
                 total_len += c->raw.len;
+            } else {
+                if (prev) {
+                    prev->next = NULL;
+                }
+                if (cc != c) {
+                    free(cc);
+                    cc = NULL;
+                }
             }
-        } while(ret == 0 && total_len < len);
+        } while(ret == 0 && total_len < len && cc);
     }
 
     if (total_len > 0) {
-        mbedtls_to_x509_all(c, crt);
+        ret = mbedtls_to_x509_all(c, crt, !force_alloc);
+    } else {
+        ret = 1;
     }
 
     return ret;
 }
 
-int32_t x509_parse_certificate( x509_cert* chain, const uint8_t* buf, uint32_t buflen )
+int32_t x509_parse_certificate_data(x509_cert* crt, const unsigned char* p, uint32_t len)
+{
+    int ret = x509_parse_certificate_data_impl(crt, p, len, 0);
+    return ret;
+}
+
+
+int32_t x509_cert_is_pem(const uint8_t* buf, size_t len)
+{
+    return !((len != 0 && buf[len - 1] == '\0' &&
+             strstr((const char *)buf, "-----BEGIN CERTIFICATE-----") != NULL));
+}
+
+int32_t x509_parse_certificate(x509_cert* chain, const uint8_t* buf, uint32_t buflen)
 {
     // PEM or DER
     mbedtls_x509_crt* c = x509_to_mbedtls(chain);
-    if (c) {
-        int32_t ret = mbedtls_x509_crt_parse(c, buf, buflen);
-        if (ret == 0) {
-            // Fill subject and public_key
-            mbedtls_to_x509_all(c, chain);
-        }
-        return ret;
-    }
-    return -1;
-}
-
-int32_t x509_convert_pem_to_der( const unsigned char* pem_certificate, uint32_t pem_certificate_length, const uint8_t** der_certificate, uint32_t* total_der_bytes )
-{
     int32_t ret = -1;
-    mbedtls_x509_crt crt;
-    mbedtls_x509_crt_init(&crt);
-    mbedtls_x509_crt_parse(&crt, pem_certificate, pem_certificate_length);
-
-    *der_certificate = NULL;
-    *total_der_bytes = 0;
-
-    size_t total_len = 0;
-    for (mbedtls_x509_crt* c = &crt; c != NULL; c = c->next) {
-        if (c->raw.p && c->raw.len) {
-            total_len += c->raw.len;
-        }
-    }
-
-    if (total_len) {
-        uint8_t* der = (uint8_t*)tls_host_malloc(__FUNCTION__, total_len);
-        if (der) {
-            *der_certificate = der;
-            for (mbedtls_x509_crt* c = &crt; c != NULL; c = c->next) {
-                if (c->raw.p && c->raw.len) {
-                    memcpy(der, c->raw.p, c->raw.len);
-                    der += c->raw.len;
-                }
+    if (c) {
+        if (x509_cert_is_pem(buf, buflen) != 0) {
+            // This is probably DER
+            ret = x509_parse_certificate_data_impl(chain, buf, buflen, 0);
+        } else {
+            // PEM
+            ret = mbedtls_x509_crt_parse(c, buf, buflen);
+            if (ret == 0) {
+                // Fill subject and public_key
+                ret = mbedtls_to_x509_all(c, chain, 0);
             }
-            *total_der_bytes = total_len;
-            ret = 0;
+        }
+        if (ret) {
+            x509_free(chain);
         }
     }
-
-    mbedtls_x509_crt_free(&crt);
-
     return ret;
 }
 
-uint32_t x509_read_cert_length( const uint8_t* der_certificate_data )
+int32_t x509_convert_pem_to_der(const unsigned char* pem_certificate, uint32_t pem_certificate_length, const uint8_t** der_certificate, uint32_t* total_der_bytes)
 {
-    size_t len;
-    unsigned char* p = (unsigned char*)der_certificate_data;
-    if (mbedtls_asn1_get_tag(&p, p + CERTIFICATE_SIZE / 2, &len, 0x30) == 0) {
-        return len + (p - der_certificate_data);
-    }
-
-    return 0;
+    return mbedtls_x509_crt_pem_to_der((const char*)pem_certificate, (size_t)pem_certificate_length, (uint8_t**)der_certificate, (size_t*)total_der_bytes);
 }
 
-int32_t x509parse_verify(const x509_cert *crt, const x509_cert *trust_ca, const char *cn, int32_t *flags)
+uint32_t x509_read_cert_length(const uint8_t* der_certificate_data )
+{
+    return mbedtls_x509_read_length(der_certificate_data, CERTIFICATE_SIZE * 3 / 4, 0);
+}
+
+int32_t x509parse_verify(const x509_cert* crt, const x509_cert* trust_ca, const char* cn, int32_t* flags)
 {
     mbedtls_x509_crt* c = x509_to_mbedtls((x509_cert*)crt, true);
     mbedtls_x509_crt* tca = x509_to_mbedtls((x509_cert*)trust_ca, true);
@@ -736,7 +771,7 @@ int32_t x509parse_verify(const x509_cert *crt, const x509_cert *trust_ca, const 
     return ret;
 }
 
-int32_t x509parse_key(rsa_context *rsa, const unsigned char *key, uint32_t keylen, const unsigned char *pwd, uint32_t pwdlen)
+int32_t x509parse_key(rsa_context* rsa, const unsigned char* key, uint32_t keylen, const unsigned char* pwd, uint32_t pwdlen)
 {
     mbedtls_pk_context pkctx;
     mbedtls_pk_init(&pkctx);
@@ -754,7 +789,7 @@ int32_t x509parse_key(rsa_context *rsa, const unsigned char *key, uint32_t keyle
     return ret;
 }
 
-void x509_free(x509_cert * crtm)
+void x509_free(x509_cert* crtm)
 {
     x509_cert* next = NULL;
     for (x509_cert* crt = crtm; crt != NULL; crt = next) {
@@ -765,9 +800,17 @@ void x509_free(x509_cert * crtm)
                 rsa_free((rsa_context*)crt->public_key);
                 free(crt->public_key);
             }
+            x509_compat_t* compat = (x509_compat_t*)crt;
+            if (compat->orig_ptr && compat->orig_ptr == c->raw.p) {
+                c->raw.p = NULL;
+                c->raw.len = 0;
+            }
             memset(crt, 0, sizeof(x509_compat_t));
+            if (next) {
+                c->next = NULL;
+            }
             mbedtls_x509_crt_free(c);
-            free(c);
+            tls_host_free(c);
         }
         if (crt != crtm) {
             free(crt);
