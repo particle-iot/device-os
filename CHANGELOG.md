@@ -1,3 +1,24 @@
+## 0.7.0-rc.2
+
+### ENHANCEMENTS
+
+- [`[PR #1357]`](https://github.com/spark/firmware/pull/1357) Expands the device code from 4 digits to 6 digits for Photon/P1/Electron platforms
+
+### BUGFIX
+
+- [`[PR #1346]`](https://github.com/spark/firmware/pull/1346) [`[Fixes #1344]`](https://github.com/spark/firmware/issues/1344) `[Photon/P1]` When using `SYSTEM_THREAD(ENABLED)` the TCPServer and WPA Enterprise connections were broken.
+- [`[PR #1354]`](https://github.com/spark/firmware/pull/1354) [`[Fixes #1062]`](https://github.com/spark/firmware/issues/1062) A call to `WiFi.scan()` when Wi-Fi module is off or not ready was resulting in a hard fault.
+- [`[PR #1357]`](https://github.com/spark/firmware/pull/1357) [`[Fixes #1348]`](https://github.com/spark/firmware/issues/1348) SoftAP SSID was not respecting the string's null terminator, 2 char SSID would appear as 4.
+- [`[PR #1355]`](https://github.com/spark/firmware/pull/1355) When using WPA Enterprise access point and constantly reconnecting to it, heap was becoming fragmented which resulted in inability to connect to the access point anymore. Also reduced overall heap usage.
+
+### INTERNAL
+
+- [`[PR #1342]`](https://github.com/spark/firmware/pull/1342) Removed the `firmware-docs` subtree from the `firmware` repo.  Docs updates are made directly to `docs` repo again.
+- [`[PR #1352]`](https://github.com/spark/firmware/pull/1352) Added test for `RGB.onChange()` handler leak
+- [`[PR #1358]`](https://github.com/spark/firmware/pull/1358) Updates minimal ARM gcc version required to 5.3.1
+- [`[PR #1359]`](https://github.com/spark/firmware/pull/1359) Fixes build with `PLATFORM=gcc` on OSX with clang's gcc wrapper
+
+
 ## 0.7.0-rc.1
 
 ### FEATURES
