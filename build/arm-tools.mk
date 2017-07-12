@@ -32,12 +32,11 @@ LDFLAGS += -flto -Os -fuse-linker-plugin
 endif
 
 # Check if the compiler version is the minimum required
-arm_gcc_version:=$(shell $(CC) --version | head -n 1)
-arm_gcc_version:=$(strip $(subst arm-none-eabi-gcc (GNU Tools for ARM Embedded Processors),,$(arm_gcc_version)))
-expected_version:=4.8.4
 quote="
 lt=\<
 dollar=$$
+arm_gcc_version:=$(strip $(shell $(CC) -dumpversion))
+expected_version:=5.3.1
 #$(info result $(shell test $(quote)$(arm_gcc_version)$(quote) $(lt) $(quote)$(expected_version)$(quote);echo $$?))
 ifeq ($(shell test $(quote)$(arm_gcc_version)$(quote) $(lt) $(quote)$(expected_version)$(quote); echo $$?),0)
      $(error "ARM gcc version $(expected_version) or later required, but found $(arm_gcc_version)")
