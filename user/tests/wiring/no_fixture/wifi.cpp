@@ -196,4 +196,25 @@ test(WIFI_10_restore_default_hostname)
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
+test(WIFI_11_scan_returns_zero_result_or_error_when_wifi_is_off)
+{
+    WiFiAccessPoint results[5];
+    WiFi.off();
+    uint32_t ms = millis();
+    while (WiFi.ready()) {
+        if (millis() - ms >= 10000) {
+            assertTrue(false);
+        }
+    }
+    assertLessOrEqual(WiFi.scan(results, 5), 0);
+}
+
+test(WIFI_12_restore_connection)
+{
+    if (!Particle.connected())
+    {
+        Particle.connect();
+    }
+}
+
 #endif

@@ -19,6 +19,7 @@
 #include "bytes2hexbuf.h"
 #include "spark_wiring_wifi_credentials.h"
 #include "mbedtls/aes.h"
+#include "device_code.h"
 
 #if SOFTAP_HTTP
 #include "http_server.h"
@@ -588,7 +589,7 @@ protected:
         decrypt_result = 1;
 
         return (len / 2);
-    }
+        }
 
     virtual bool parsed_value(unsigned key, jsmntok_t* t, char* str) {
         std::unique_ptr<char[]> tmp;
@@ -619,7 +620,7 @@ protected:
                 }
 #endif
                 credentials.setPassword(str);
-            }
+        }
             break;
             case 3:
             // ch
@@ -638,7 +639,7 @@ protected:
             // outer identity
             if (t->type == JSMN_STRING) {
                 credentials.setOuterIdentity(str);
-            }
+        }
             break;
             case 7:
             // inner identity
@@ -866,64 +867,9 @@ struct AllSoftAPCommands {
         connectAP(complete, softap_complete) {}
 };
 
-/**
- * Converts a given 32-bit value to a alphanumeric code
- * @param value     The value to convert
- * @param dest      The number of charactres
- * @param len
- */
-void bytesToCode(uint32_t value, char* dest, unsigned len) {
-    static const char* symbols = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-    while (len --> 0) {
-        *dest++ = symbols[value % 32];
-        value /= 32;
-    }
-}
-
-/**
- * Generates a random code.
- * @param dest
- * @param len   The length of the code, should be event.
- */
-void random_code(uint8_t* dest, unsigned len) {
-    unsigned value = HAL_RNG_GetRandomNumber();
-    bytesToCode(value, (char*)dest, len);
-}
-
-const int DEVICE_CODE_LEN = 4;
-
-STATIC_ASSERT(device_code_len_is_same_as_dct_storage, DEVICE_CODE_LEN<=DCT_DEVICE_CODE_SIZE);
-
-
-extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
-
-/**
- * Copies the device code to the destination, generating it if necessary.
- * @param dest      A buffer with room for at least 6 characters. The
- *  device code is copied here, without a null terminator.
- * @return true if the device code was generated.
- */
-bool fetch_or_generate_device_code(wiced_ssid_t* SSID) {
-    const uint8_t* suffix = (const uint8_t*)dct_read_app_data_lock(DCT_DEVICE_CODE_OFFSET);
-    int8_t c = (int8_t)*suffix;    // check out first byte
-    bool generate = (!c || c<0);
-    uint8_t* dest = SSID->value+SSID->length;
-    SSID->length += DEVICE_CODE_LEN;
-    if (generate) {
-        dct_read_app_data_unlock(DCT_DEVICE_CODE_OFFSET);
-        random_code(dest, DEVICE_CODE_LEN);
-        dct_write_app_data(dest, DCT_DEVICE_CODE_OFFSET, DEVICE_CODE_LEN);
-    }
-    else {
-        memcpy(dest, suffix, DEVICE_CODE_LEN);
-        dct_read_app_data_unlock(DCT_DEVICE_CODE_OFFSET);
-    }
-    return generate;
-}
-
 const int MAX_SSID_PREFIX_LEN = 25;
 
-bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
+bool fetch_or_generate_ssid_prefix(device_code_t* SSID) {
     const uint8_t* prefix = (const uint8_t*)dct_read_app_data_lock(DCT_SSID_PREFIX_OFFSET);
     uint8_t len = *prefix;
     bool generate = (!len || len>MAX_SSID_PREFIX_LEN);
@@ -942,13 +888,6 @@ bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
     return generate;
 }
 
-bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID) {
-    bool result = fetch_or_generate_ssid_prefix(SSID);
-    SSID->value[SSID->length++] = '-';
-    result |= fetch_or_generate_device_code(SSID);
-    return result;
-}
-
 extern "C" wiced_ip_setting_t device_init_ip_settings;
 
 /**
@@ -960,10 +899,9 @@ class SoftAPController {
 
     wiced_result_t setup_soft_ap_credentials() {
 
-
         wiced_config_soft_ap_t expected;
         memset(&expected, 0, sizeof(expected));
-        fetch_or_generate_setup_ssid(&expected.SSID);
+        fetch_or_generate_setup_ssid((device_code_t*)&expected.SSID);
 
         expected.channel = 11;
         expected.details_valid = WICED_TRUE;
@@ -1322,7 +1260,7 @@ class SimpleProtocolDispatcher
         int result = reader.read(&tmp, 1);
         if (result >= 0) {
             *c = tmp;
-        }
+    }
         return result;
     }
 

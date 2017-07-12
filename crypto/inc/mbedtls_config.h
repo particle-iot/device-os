@@ -2535,7 +2535,9 @@
 #include MBEDTLS_USER_CONFIG_FILE
 #endif
 
+#if !(PLATFORM_ID == 3 && defined(__clang__))
 #include "mbedtls_weaken.h"
+#endif // !(PLATFORM_ID == 3 && defined(__clang__))
 
 #endif /* MBEDTLS_CONFIG_H */
 
