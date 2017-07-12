@@ -24,20 +24,18 @@
 
 // Regression test for the WICED deadlock in sys_sem_new
 // See https://github.com/spark/firmware/pull/984
-Thread allocatorThread;
 test(CONCURRENT_01_semaphore_deadlock)
 {
     volatile bool run = true;
 
     // Call malloc in one thread
-    allocatorThread = Thread("allocator", [&]
+    Thread allocatorThread("allocator", [&]
     {
         while(run)
         {
             void *ptr = malloc(100);
             free(ptr);
         }
-        allocatorThread.dispose();
     });
 
     // Create WICED connections in one thread
@@ -51,6 +49,7 @@ test(CONCURRENT_01_semaphore_deadlock)
     run = false;
 
     // No assertion needed. If the test finishes there was no deadlock
+    allocatorThread.dispose();
 }
 
 #endif

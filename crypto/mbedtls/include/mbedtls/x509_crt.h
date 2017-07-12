@@ -173,6 +173,9 @@ extern const mbedtls_x509_crt_profile mbedtls_x509_crt_profile_suiteb;
 int mbedtls_x509_crt_parse_der( mbedtls_x509_crt *chain, const unsigned char *buf,
                         size_t buflen );
 
+int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *buf,
+                             size_t buflen );
+
 /**
  * \brief          Parse one or more certificates and add them
  *                 to the chained list. Parses permissively. If some

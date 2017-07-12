@@ -70,6 +70,7 @@
 
 extern void __malloc_lock(void* p);
 extern void __malloc_unlock(void* p);
+extern void* sbrk_heap_top;
 
 #define RARG struct _reent *reent_ptr,
 #define RONEARG struct _reent *reent_ptr
@@ -224,6 +225,16 @@ static uint8_t malloc_enabled = 0;
 #else
 static uint8_t malloc_enabled = 1;
 #endif
+
+void malloc_set_heap_start(void* addr)
+{
+    sbrk_heap_top = addr;
+}
+
+void* malloc_heap_start()
+{
+    return sbrk_heap_top;
+}
 
 void malloc_enable(uint8_t val)
 {
@@ -663,5 +674,3 @@ void empty_function_so_lib_isnt_empty_under_gcc_build()
 {
 }
 #endif
-
-

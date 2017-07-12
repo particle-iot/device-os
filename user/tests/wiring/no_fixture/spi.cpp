@@ -2,9 +2,11 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+#define SPI_BUF_SIZE 256
+
 static volatile uint8_t DMA_Completed_Flag = 0;
-static uint8_t tempBuf[256];
-static uint8_t tempBuf1[256];
+static uint8_t* tempBuf = nullptr;
+static uint8_t* tempBuf1 = nullptr;
 
 using particle::__SPISettings;
 
@@ -54,6 +56,14 @@ void assertClockDivider(unsigned reference, unsigned desired, uint8_t expected_d
     assertEqual(expected_clock, clock);
 }
 
+test(SPI_00_Allocate_Buffers)
+{
+    tempBuf = (uint8_t*)malloc(SPI_BUF_SIZE);
+    tempBuf1 = (uint8_t*)malloc(SPI_BUF_SIZE);
+
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
+}
+
 test(SPI_01_computeClockSpeed)
 {
     assertClockDivider(60*MHZ, 120*MHZ, SPI_CLOCK_DIV2, 30*MHZ);
@@ -68,37 +78,38 @@ test(SPI_01_computeClockSpeed)
 #if PLATFORM_ID != PLATFORM_SPARK_CORE
 test(SPI_02_SPI_DMA_Transfers_Work_Correctly)
 {
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
     SPI.begin();
     uint32_t m;
 
     DMA_Completed_Flag = 0;
-    SPI.transfer(tempBuf, 0, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI.transfer(tempBuf, 0, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
 
-    memset(tempBuf, 0xAA, sizeof(tempBuf));
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
     DMA_Completed_Flag = 0;
-    SPI.transfer(0, tempBuf, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI.transfer(0, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
-    for (const auto& v : tempBuf) {
-        assertNotEqual(v, 0xAA);
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
     }
 
-    memset(tempBuf, 0xAA, sizeof(tempBuf));
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
     DMA_Completed_Flag = 0;
-    SPI.transfer(tempBuf1, tempBuf, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI.transfer(tempBuf1, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
 
-    for (const auto& v : tempBuf) {
-        assertNotEqual(v, 0xAA);
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
     }
 
     SPI.end();
@@ -108,37 +119,38 @@ test(SPI_02_SPI_DMA_Transfers_Work_Correctly)
 #if Wiring_SPI1
 test(SPI_03_SPI1_DMA_Transfers_Work_Correctly)
 {
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
     SPI1.begin();
     uint32_t m;
 
     DMA_Completed_Flag = 0;
-    SPI1.transfer(tempBuf, 0, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI1.transfer(tempBuf, 0, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
 
-    memset(tempBuf, 0xAA, sizeof(tempBuf));
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
     DMA_Completed_Flag = 0;
-    SPI1.transfer(0, tempBuf, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI1.transfer(0, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
-    for (const auto& v : tempBuf) {
-        assertNotEqual(v, 0xAA);
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
     }
 
-    memset(tempBuf, 0xAA, sizeof(tempBuf));
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
     DMA_Completed_Flag = 0;
-    SPI1.transfer(tempBuf1, tempBuf, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI1.transfer(tempBuf1, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
 
-    for (const auto& v : tempBuf) {
-        assertNotEqual(v, 0xAA);
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
     }
 
     SPI1.end();
@@ -148,37 +160,38 @@ test(SPI_03_SPI1_DMA_Transfers_Work_Correctly)
 #if Wiring_SPI2
 test(SPI_04_SPI2_DMA_Transfers_Work_Correctly)
 {
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
     SPI2.begin();
     uint32_t m;
 
     DMA_Completed_Flag = 0;
-    SPI2.transfer(tempBuf, 0, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI2.transfer(tempBuf, 0, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
 
-    memset(tempBuf, 0xAA, sizeof(tempBuf));
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
     DMA_Completed_Flag = 0;
-    SPI2.transfer(0, tempBuf, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI2.transfer(0, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
-    for (const auto& v : tempBuf) {
-        assertNotEqual(v, 0xAA);
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
     }
 
-    memset(tempBuf, 0xAA, sizeof(tempBuf));
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
     DMA_Completed_Flag = 0;
-    SPI2.transfer(tempBuf1, tempBuf, sizeof(tempBuf), SPI_DMA_Completed_Callback);
+    SPI2.transfer(tempBuf1, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
     m = millis();
     while(!DMA_Completed_Flag) {
         assertLessOrEqual((millis() - m), 2000);
     }
 
-    for (const auto& v : tempBuf) {
-        assertNotEqual(v, 0xAA);
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
     }
 
     SPI2.end();
@@ -374,5 +387,18 @@ test(SPI_12_SPI2_Begin_Transaction_Locks)
     SPI2.end();
 }
 #endif // Wiring_SPI1
+
+test(SPI_13_Free_Buffers)
+{
+    if (tempBuf != nullptr) {
+        free(tempBuf);
+    }
+
+    if (tempBuf1 != nullptr) {
+        free(tempBuf1);
+    }
+
+    tempBuf = tempBuf1 = nullptr;
+}
 
 #endif // PLATFORM_THREADING

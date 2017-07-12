@@ -27,7 +27,7 @@
 #include "pwm_hal.h"
 #include "unit-test/unit-test.h"
 
-uint8_t pwm_pins[] = {
+const uint8_t pwm_pins[] = {
 
 #if (PLATFORM_ID == 0) // Core
         A0, A1, A4, A5, A6, A7, D0, D1

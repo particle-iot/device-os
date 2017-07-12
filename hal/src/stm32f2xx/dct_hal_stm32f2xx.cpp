@@ -10,7 +10,7 @@ namespace {
 StaticRecursiveMutex dctLock;
 
 #ifdef DEBUG_BUILD
-#define DCT_LOCK_TIMEOUT 10000
+#define DCT_LOCK_TIMEOUT 30000
 int dctLockCounter = 0;
 #else
 #define DCT_LOCK_TIMEOUT 0 // Wait indefinitely

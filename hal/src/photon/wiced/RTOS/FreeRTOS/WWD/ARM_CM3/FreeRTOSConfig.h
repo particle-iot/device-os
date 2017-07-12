@@ -104,6 +104,9 @@ extern "C" {
 /* Run a handler if a malloc fails - vApplicationMallocFailedHook */
 #define configUSE_MALLOC_FAILED_HOOK                ( 1 )
 
+#define configAPPLICATION_ALLOCATED_HEAP            ( 1 )
+#define configDYNAMIC_HEAP_SIZE                     ( 1 )
+
 
 #if defined( DEBUG ) && ( ! defined( UNIT_TESTER ) )
 #define configASSERT( expr )   wiced_assert( "FreeRTOS assert", expr )
