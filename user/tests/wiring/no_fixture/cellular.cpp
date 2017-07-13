@@ -353,12 +353,30 @@ test(BAND_SELECT_08_restore_defaults) {
     CellularBand band_set;
     band_set.band[0] = BAND_DEFAULT;
     band_set.count = 1;
+    int tries = 3;
     bool set_band_select_passes = Cellular.setBandSelect(band_set);
+    while (--tries > 0 && !set_band_select_passes) {
+        Cellular.off();
+        delay(5000);
+        Cellular.on();
+        delay(10000);
+        // retry 3 times, important that this passes to restore defaults
+        set_band_select_passes = Cellular.setBandSelect(band_set);
+    }
     // And set band select will pass
     assertEqual(set_band_select_passes, true);
     // And get band select will pass
     CellularBand band_sel;
+    tries = 3;
     bool get_band_select_passes = Cellular.getBandSelect(band_sel);
+    while (--tries > 0 && !get_band_select_passes) {
+        Cellular.off();
+        delay(5000);
+        Cellular.on();
+        delay(10000);
+        // retry 3 times, important that this passes to restore defaults
+        get_band_select_passes = Cellular.setBandSelect(band_sel);
+    }
     assertEqual(get_band_select_passes, true);
     // Then band select will be default
     bool band_select_default = !is_bands_selected_not_equal_to_default_bands(band_sel, band_avail);

@@ -26,6 +26,7 @@ test(THREAD_01_creation)
 test(THREAD_02_thread_doesnt_leak_memory)
 {
 	// 1024 less to account for fragmentation and other allocations
+	delay(1000);
 	assertMoreOrEqual(System.freeMemory(), s_ram_free_before - 1024);
 }
 
