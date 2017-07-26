@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+if [ ! $PLATFORM ]; then
+  echo 'PLATFORM is not defined, assuming Photon'
+  export PLATFORM=photon
+fi
+
+this_dir=$(cd $(dirname "$0") && pwd)
+test_dir=$(cd "$this_dir/../../../accept" && pwd)
+
+PATH="$test_dir/tools:$PATH"
+source "$test_dir/init_env"
+
+node "$this_dir/main.js"
