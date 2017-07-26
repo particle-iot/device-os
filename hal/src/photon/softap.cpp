@@ -22,8 +22,14 @@
 #include "device_code.h"
 
 #if SOFTAP_HTTP
-#include "http_server.h"
-#endif
+# include "http_server.h"
+
+# ifndef SOFTAP_HTTP_MAXIMUM_CONNECTIONS
+#  define SOFTAP_HTTP_MAXIMUM_CONNECTIONS 5
+# endif // SOFTAP_HTTP_MAXIMUM_CONNECTIONS
+
+# define SOFTAP_HTTP_MAXIMUM_URL_LENGTH 255
+#endif // SOFTAP_HTTP
 
 extern WLanSecurityType toSecurityType(wiced_security_t sec);
 
@@ -1181,11 +1187,124 @@ int writeHeader(void* cbArg, uint16_t flags, uint16_t responseCode, const char* 
 		   CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, http_server_get_mime_type(mimeType), header_list);
 }
 
+struct HTTPRequest {
+    char* url;
+    wiced_http_response_stream_t* stream;
+    uint8_t* buffer;
+    bool alloced;
+    size_t length;
+    size_t total_length;
+    // const char* url_query_string;
+
+    HTTPRequest()
+        : url{nullptr},
+          buffer{nullptr},
+          alloced{false} {
+        reset();
+    }
+
+    ~HTTPRequest() {
+        reset();
+    }
+
+    bool init(const char* u, wiced_http_response_stream_t* s, wiced_http_message_body_t* b) {
+        stream = s;
+        if (b->message_data_length != 0 && b->total_message_data_remaining == 0) {
+            url = nullptr;
+            // Single packet
+            total_length = length = b->message_data_length;
+            buffer = (uint8_t*)b->data;
+            alloced = false;
+        } else if (b->total_message_data_remaining) {
+            // Multi-packet
+            buffer = (uint8_t*)malloc(b->total_message_data_remaining + b->message_data_length);
+            if (buffer == nullptr) {
+                reset();
+                return false;
+            }
+            alloced = true;
+            length = b->message_data_length;
+            total_length = length + b->total_message_data_remaining;
+            if (length > 0) {
+                memcpy(buffer, b->data, length);
+            }
+
+            const size_t l = strlen(u) + 1;
+            url = (char*)calloc(1, std::min(l, (size_t)SOFTAP_HTTP_MAXIMUM_URL_LENGTH));
+            if (url == nullptr) {
+                reset();
+                return false;
+            }
+            memcpy(url, u, std::min(l, (size_t)SOFTAP_HTTP_MAXIMUM_URL_LENGTH - 1));
+        }
+
+        return true;
+    }
+
+    bool append(wiced_http_message_body_t* b) {
+        memcpy(buffer + length, b->data, b->message_data_length);
+        length += b->message_data_length;
+        return true;
+    }
+
+    bool matches(const char* u, wiced_http_response_stream_t* s, wiced_http_message_body_t* b) const {
+        if (s == nullptr || b == nullptr) {
+            return false;
+        }
+
+        if (stream == nullptr || s != stream) {
+            return false;
+        }
+
+        if ((b->message_data_length + b->total_message_data_remaining + length) != total_length) {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ready() const {
+        return !empty() && length == total_length;
+    }
+
+    void reset() {
+        if (buffer && alloced) {
+            free(buffer);
+        }
+        buffer = nullptr;
+        alloced = false;
+        stream = nullptr;
+        length = 0;
+        total_length = 0;
+        if (url) {
+            free(url);
+        }
+        url = nullptr;
+    }
+
+    Reader reader() {
+        Reader r;
+        reader_from_buffer(&r, buffer, length);
+        return r;
+    }
+
+    Writer writer() {
+        Writer w;
+        http_stream_writer(w, stream);
+        return w;
+    }
+
+    bool empty() const {
+        return (url == nullptr && stream == nullptr && buffer == nullptr && length == 0 && total_length == 0);
+    }
+};
 
 class HTTPDispatcher {
     wiced_http_server_t server;
 
     wiced_http_page_t page[10];
+
+    static HTTPRequest* reqs;
 
     void setCommand(unsigned index, Command& cmd) {
         page[index].url_content.dynamic_data.generator = handle_command;
@@ -1208,42 +1327,98 @@ public:
     }
 
     void start() {
-        wiced_http_server_start(&server, 80, 1, page, WICED_AP_INTERFACE, 1024*4);
+        reqs = new HTTPRequest[SOFTAP_HTTP_MAXIMUM_CONNECTIONS];
+        wiced_http_server_start(&server, 80, SOFTAP_HTTP_MAXIMUM_CONNECTIONS, page, WICED_AP_INTERFACE, 1024*4);
     }
 
     void stop() {
         wiced_http_server_stop(&server);
+        delete[] reqs;
+        reqs = nullptr;
     }
 
-    static int32_t handle_command(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
-        Command* cmd = (Command*)arg;
-        Reader r;
-        reader_from_http_body(&r, http_data);
-        wiced_http_response_stream_enable_chunked_transfer( stream );
-        stream->cross_host_requests_enabled = WICED_TRUE;
-        wiced_http_response_stream_write_header( stream, HTTP_200_TYPE, CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_JSON, nullptr);
-        Writer w;
-        http_stream_writer(w, stream);
-        int result = cmd->execute(r, w);
-        cleanup_http_body(http_data);
+    template <typename F>
+    static HTTPRequest* for_request(F&& f) {
+        if (reqs == nullptr) {
+            return nullptr;
+        }
+
+        for(HTTPRequest* r = reqs; r < reqs + SOFTAP_HTTP_MAXIMUM_CONNECTIONS; r++) {
+            if (f(r) == true) {
+                return r;
+            }
+        }
+
+        return nullptr;
+    }
+
+    static int32_t handle_request(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data, bool isCmd) {
+        int result = WICED_SUCCESS;
+        HTTPRequest* req = for_request([&](HTTPRequest* r) {
+            return r->matches(url, stream, http_data);
+        });
+        if (req == nullptr) {
+            req = for_request([&](HTTPRequest* r) {
+                if (r->empty()) {
+                    if (r->init(url, stream, http_data)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            if (req == nullptr) {
+                // Try to match stream only
+                req = for_request([&](HTTPRequest* r) {
+                    return r->stream == stream;
+                });
+                if (req == nullptr) {
+                    // Error
+                    wiced_http_response_stream_write_header(stream, HTTP_500_TYPE, NO_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_TEXT_HTML, nullptr);
+                    return WICED_ERROR;
+                }
+                // There shouldn't be two active connections with the same response stream, reuse
+                req->reset();
+            }
+        } else {
+            req->append(http_data);
+        }
+
+        if (req->ready()) {
+            // Process request
+            wiced_http_response_stream_enable_chunked_transfer(req->stream);
+            stream->cross_host_requests_enabled = WICED_TRUE;
+
+            Reader r = req->reader();
+            Writer w = req->writer();
+            if (isCmd) {
+                Command* cmd = (Command*)arg;
+                wiced_http_response_stream_write_header(req->stream, HTTP_200_TYPE, CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_JSON, nullptr);
+                result = cmd->execute(r, w);
+            } else {
+                PageProvider* p = (PageProvider*)arg;
+                if (p) {
+                    p(req->url ? req->url : url, &writeHeader, req->stream, &r, &w, nullptr);
+                }
+            }
+            // We need to deactivate chunked transfer mode here
+            // in order to signal to client that there'll be no more data: "0\r\n\r\n"
+            wiced_http_response_stream_disable_chunked_transfer(req->stream);
+            req->reset();
+        }
         return result;
     }
 
+    static int32_t handle_command(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
+        return handle_request(url, url_query_string, stream, arg, http_data, true);
+    }
+
     static int32_t handle_app_renderer(const char* url, const char* url_query_string, wiced_http_response_stream_t* stream, void* arg, wiced_http_message_body_t* http_data) {
-    	    PageProvider* p = (PageProvider*)arg;
-        Reader r;
-        reader_from_http_body(&r, http_data);
-        wiced_http_response_stream_enable_chunked_transfer( stream );
-        stream->cross_host_requests_enabled = WICED_TRUE;
-        Writer w;
-        http_stream_writer(w, stream);
-        if (p)
-        		p(url, &writeHeader, stream, &r, &w, nullptr);
-        cleanup_http_body(http_data);
-        return 0;
+        return handle_request(url, url_query_string, stream, arg, http_data, false);
     }
 
 };
+
+HTTPRequest* HTTPDispatcher::reqs = nullptr;
 #endif
 
 
