@@ -55,3 +55,15 @@ Then(/^Flashing operation should( not)? have (succeeded|failed)$/) do |neg, pass
       raise 'Application binary was flashed' unless @last_flash_result
     end
 end
+
+
+When(/^I compile the block:$/) do |text|
+  feature_path = File.dirname(@current_scenario.location.file)
+  @last_compile_command = Particle::Build.compile_block(text, feature_path)
+end
+
+Then(/^the compile fails with error "([^"]*)"$/) do |error|
+  raise "no previous compile job" unless @last_compile_command
+  expect(@last_compile_command.result).not_to eql(0)
+  expect($last_compile_command.stdout).to match(error)
+end

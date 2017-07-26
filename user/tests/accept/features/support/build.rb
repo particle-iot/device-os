@@ -39,6 +39,7 @@ module Particle
         incmd = 'yes'
         if flasher == 'ota' and !devid.nil?
           flasher = devid
+          # todo - we can use the --force flag to skip the interrogation over bandwidth use
           if Particle::Util.env_var('PLATFORM') == 'electron'
             bytes = Particle::Util.cellular_data_usage(File.size(bin_path))
             incmd = "echo #{bytes}"
@@ -54,6 +55,22 @@ module Particle
         sleep(2)
         return @last_flash_result
       end
+    end
+
+    def compile_block(block, feature_path)
+      path = File.join(feature_path, 'block.cpp')
+      content = %(
+        #include "Particle.h"
+        void block() {
+          #{block}
+        }
+      )
+      main_dir = File.join(__dir__, '..', '..', '..', '..', '..', '..', 'main')
+      makefile = File.join(main_dir, 'makefile')
+      File.write(path, content)
+      cmd = Util.shell_out("make -f #{makefile} -C #{feature_path} APPDIR=. TARGETDIR=.")
+      cmd.run_command
+      cmd
     end
   end
 end
