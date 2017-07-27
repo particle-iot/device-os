@@ -47,6 +47,11 @@ USER_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m$(LTO)/user
 USER_MEM=$(OUT)/user-part.bin
 USER_DIR=$(FIRMWARE)/modules/electron/user-part
 
+LISTEN_BIN=$(FIRMWARE_BUILD)/target/user-part/platform-$(PLATFORM_ID)-m$(LTO)/listen_mode.bin
+LISTEN_MEM=$(OUT)/listen_mode.bin
+LISTEN_DIR=$(FIRMWARE)/modules/electron/user-part
+
+
 PRODUCT_ID?=$(PLATFORM_ID)
 
 
@@ -89,6 +94,12 @@ user:
 	$(MAKE) -C $(USER_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) $(CLEAN) all
 	cp $(USER_BIN) $(USER_MEM)
 
+listen: 
+	@echo building listen mode app to $(LISTEN_MEM)
+	-rm $(LISTEN_MEM)
+	$(MAKE) -C $(LISTEN_DIR) PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) $(CLEAN) all TEST=app/listen_mode
+	cp $(LISTEN_BIN) $(LISTEN_MEM)
+
 system-full:
 	@echo building full modular system firmware to $(SYSTEM_MEM)
 	-rm $(SYSTEM_MEM)
@@ -99,10 +110,10 @@ system-full:
 	dd if=$(SYSTEM_PART2_BIN) bs=1k of=$(SYSTEM_MEM) seek=128 conv=notrunc
 	
 user-full: user
-	# the application image (tinker) is injected into the 2nd EEPROM page
-	dd if=$(USER_MEM) bs=1k of=$(DCT_MEM) seek=32 conv=notrunc
+listen-full: listen
 
-combined-full: setup bootloader dct user-full system-full user-full checks-full combined-build
+
+combined-full: setup bootloader dct user-full system-full user-full listen-full checks-full combined-build
 	
 combined-build:
 	@echo Building combined full image to $(COMBINED_MEM)
@@ -112,9 +123,9 @@ combined-build:
 	dd if=$(BOOTLOADER_MEM) bs=1k  of=$(COMBINED_MEM) conv=notrunc
 	dd if=$(DCT_MEM) bs=1k seek=16 of=$(COMBINED_MEM) conv=notrunc
 	dd if=$(SYSTEM_MEM) bs=1k seek=128 of=$(COMBINED_MEM) conv=notrunc
-	dd if=$(USER_MEM) bs=1k seek=512 of=$(COMBINED_MEM) conv=notrunc
+	dd if=$(LISTEN_MEM) bs=1k seek=512 of=$(COMBINED_MEM) conv=notrunc
 	# factory default firmware
-	dd if=$(USER_MEM) bs=1k seek=896 of=$(COMBINED_MEM) conv=notrunc
+	dd if=$(USER_MEM) bs=1k seek=640 of=$(COMBINED_MEM) conv=notrunc
 
 	# Generate combined.elf from combined.bin
 	${TOOLCHAIN_PREFIX}ld -b binary -r -o $(OUT)/temp.elf $(COMBINED_MEM)
@@ -143,7 +154,7 @@ checks-full: checks-common
 	$(call assert_filebyte,$(SYSTEM_MEM),262544,0$(PLATFORM_ID))
 
 
-.PHONY:  clean all bootloader dct  prep_dct write_version checks system-full
+.PHONY:  clean all bootloader dct listen-mode prep_dct write_version checks system-full
 
 DFU_USB_ID=2b04:d00a
 DFU_DCT = dfu-util -d $(DFU_USB_ID) -a 1 --dfuse-address
