@@ -18,4 +18,26 @@
  */
 
 #include "dct_hal.h"
+#include "dcd_flash.h"
 #include "dcd_flash_impl.h"
+
+UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000>& dcd()
+{
+	static UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000> dcd;
+    return dcd;
+}
+
+const void* dct_read_app_data (uint32_t offset)
+{
+    return dcd().read(offset);
+}
+
+int dct_write_app_data(const void* data, uint32_t offset, uint32_t size)
+{
+    return dcd().write(offset, data, size);
+}
+
+void dcd_migrate_data()
+{
+    dcd().migrate();
+}
