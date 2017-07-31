@@ -1332,6 +1332,14 @@
 //#define MBEDTLS_X509_RSASSA_PSS_SUPPORT
 
 /**
+ * \def MBEDTLS_X509_INFO_SUPPORT
+ *
+ * Enable mbedtls_x509_crt_info and mbedtls_x509_crt_verify_info functions
+ *
+ */
+// #define MBEDTLS_X509_INFO_SUPPORT
+
+/**
  * \def MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT
  *
  * Enable parsing and verification of raw public keys,
