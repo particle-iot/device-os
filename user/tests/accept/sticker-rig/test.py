@@ -8,6 +8,7 @@
 import serial
 import sys
 import time
+import array
 
 port = None
 if len(sys.argv) > 1:
@@ -22,23 +23,43 @@ if listen:
     l.close()
     time.sleep(5)
 
-ser = serial.Serial(port, 9600, timeout=1)
+# timeout changed from 1 to 5 seconds wait for slower responses from the device
+# occasionally it takes more than 1-3 seconds for the modem to power up.
+ser = serial.Serial(port, 9600, timeout=5)
 code = bytearray([0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0])
-ser.write(code)
+ser.flushInput()
+ser.flushOutput()
+
+# ser.write(code)
+# writing the entire magic byte array was resulting in only the first byte
+# being transmitted most of the time. Writing one byte at a time and flushing
+# the serial device seems to be working every time now.
+def writeBytes(data):
+    for index, item in enumerate(data, start=0):
+        ser.write(chr(item))
+        ser.flush()
+    # print(item)
+
+def s2ba(data):
+    return array.array('B',data)
 
 def echolines():
     result = ""
     while True:
         line = ser.readline()
         result += line.decode('ascii')
-#        print(line)
+        # print(line)
         if len(line)==0:
             break
     return result
 
+writeBytes(code)
 echolines()
-ser.write(b"INFO:;")
+writeBytes(s2ba("INFO:;"))
 info = echolines()
+
+# wait a bit before closing port to ensure all data is sent
+time.sleep(1)
 ser.close()
 
 failures = []
@@ -46,13 +67,11 @@ failures = []
 if info.find("RSSI:")==-1:
     failures += "Expected RSSI: in output"
 
-
 if len(failures)>0:
-    print("%d failures" % (len(failures)))
-    for f in failures:
-        print(f)
+    # print("%d failures" % (len(failures)))
+    # for f in failures:
+        # print(f)
+    print('Tests FAILED!!')
     sys.exit(1)
 else:
     print('Tests PASSED!!')
-
-
