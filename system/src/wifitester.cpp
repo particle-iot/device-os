@@ -293,16 +293,14 @@ void WiFiTester::checkWifiSerial(char c) {
         } else if ((start = strstr(command, cmd_DFU))) {
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
-            delay(100);
-            serialPrintln("resetting into DFU mode!");
+            delay(200);
 
             System.dfu();
         } else if ((start = strstr(command, cmd_RESET))) {
             //to trigger a factory reset:
-
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
-            delay(2000);
+            delay(200);
 
             System.factoryReset();
         } else if ((start = strstr(command, cmd_UNLOCK))) {
@@ -329,7 +327,7 @@ void WiFiTester::checkWifiSerial(char c) {
             serialPrintln("Rebooting... Rebooting... Rebooting...");
             serialPrintln("Rebooting... Rebooting... Rebooting...");
 
-            delay(1000);
+            delay(200);
             System.reset();
         } else if ((start = strstr(command, cmd_INFO))) {
             printInfo();
