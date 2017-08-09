@@ -27,7 +27,7 @@ START_OF_HTTP_PAGE_DATABASE(soft_ap_http_pages)
     { "/connect-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
     { "/public-key", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
     { "/set", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-	{ "/", "application/octet-stream", .url_content_type = WICED_RAW_DYNAMIC_URL_CONTENT },
+	{ "/*", "application/octet-stream", .url_content_type = WICED_RAW_DYNAMIC_URL_CONTENT },
 END_OF_HTTP_PAGE_DATABASE();
 
 extern void default_page_handler(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved);
