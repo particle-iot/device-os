@@ -23,9 +23,10 @@ if listen:
     l.close()
     time.sleep(5)
 
-# timeout changed from 1 to 5 seconds wait for slower responses from the device
-# occasionally it takes more than 1-3 seconds for the modem to power up.
-ser = serial.Serial(port, 9600, timeout=5)
+# Timeout changed from 1 to 20 seconds wait for slower responses from the device.
+# Occasionally it takes more than 1-3 seconds for the modem to power up, and much
+# longer if the modem is not present.
+ser = serial.Serial(port, 9600, timeout=20)
 code = bytearray([0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0])
 ser.flushInput()
 ser.flushOutput()
@@ -48,13 +49,32 @@ def echolines():
     while True:
         line = ser.readline()
         result += line.decode('ascii')
-        # print(line)
+        print(line)
         if len(line)==0:
+            break
+        # do not unconditionally wait for a serial timeout if we get the thing we're looking for
+        if line.find("GOOD DAY, WIFI TESTER AT YOUR SERVICE!!!")==0:
+            break
+        if line.find("POWER IS ON")==0:
+            break
+        if line.find("POWER FAILED TO TURN ON!!!")==0:
+            break
+        if line.find("RSSI:")==0:
             break
     return result
 
+# Write Magic Code to start the WiFi Tester
 writeBytes(code)
 echolines()
+
+# Power on (required for Electron)
+writeBytes(s2ba("POWER_ON:;"))
+power = echolines()
+if power.find("POWER IS ON")==-1:
+    print("Expected POWER IS ON in output")
+    print('Tests FAILED!!')
+    sys.exit(1)
+
 writeBytes(s2ba("INFO:;"))
 info = echolines()
 

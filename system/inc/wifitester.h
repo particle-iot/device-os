@@ -35,6 +35,7 @@ class WiFiTester
     unsigned cmd_index;
     static const unsigned cmd_length = 256;
     char command[cmd_length];
+    bool power_state = false;
 
 
     void checkWifiSerial(char c);
@@ -43,6 +44,7 @@ class WiFiTester
     void printItem(const char* name, const char* value);
     void tester_connect(char *ssid, char *pass);
     void tokenizeCommand(char *cmd, char* parts[], unsigned max_parts);
+    bool isPowerOn();
 
 public:
     WiFiTester() {
