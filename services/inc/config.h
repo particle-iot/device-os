@@ -23,19 +23,21 @@
 #define CONFIG_H_
 
 #if !defined(RELEASE_BUILD) && !defined(DEBUG_BUILD)
-#warning  "Defaulting to Release Build"
 #define RELEASE_BUILD
-#undef  DEBUG_BUILD
 #endif
 
-#ifndef LOG_INCLUDE_SOURCE_INFO
-// Do not enable source info in debug build for Electron
-#if defined(DEBUG_BUILD) && PLATFORM_ID != 10
-#define LOG_INCLUDE_SOURCE_INFO 1
+// Check if the GCC plugin is present
+#ifdef PARTICLE_GCC_PLUGIN
+#define PARTICLE_ATTRIBUTE(...) \
+        __attribute__((particle(__VA_ARGS__)))
 #else
+#define PARTICLE_ATTRIBUTE(...)
+#endif
+
+// Source info in log messages is disabled by default
+#ifndef LOG_INCLUDE_SOURCE_INFO
 #define LOG_INCLUDE_SOURCE_INFO 0
 #endif
-#endif // !defined(LOG_INCLUDE_SOURCE_INFO)
 
 #define MAX_SEC_WAIT_CONNECT            8       // Number of second a TCP, spark will wait
 #define MAX_FAILED_CONNECTS             2       // Number of time a connect can fail

@@ -169,6 +169,7 @@ typedef struct LogAttributes {
             unsigned has_time: 1;
             unsigned has_code: 1;
             unsigned has_details: 1;
+            unsigned has_id: 1;
             // <--- Add new attribute flag here
             unsigned has_end: 1; // Keep this field at the end of the structure
         };
@@ -179,6 +180,7 @@ typedef struct LogAttributes {
     uint32_t time; // Timestamp
     intptr_t code; // Status code
     const char *details; // Additional information
+    unsigned id; // Message ID
     // <--- Add new attribute field here
     char end[0]; // Keep this field at the end of the structure
 } LogAttributes;
@@ -194,7 +196,8 @@ typedef void (*log_write_callback_type)(const char *data, size_t size, int level
 typedef int (*log_enabled_callback_type)(int level, const char *category, void *reserved);
 
 // Generates log message
-void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...);
+void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...)
+        PARTICLE_ATTRIBUTE("log_function", 5); // 5th argument is a format string
 
 // Variant of the log_message() function taking variable arguments via va_list
 void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt,
