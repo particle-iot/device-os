@@ -57,7 +57,7 @@ extern "C" {
 #define configMINIMAL_STACK_SIZE                    ( ( unsigned short ) (250 / sizeof( portSTACK_TYPE )) ) /* size of idle thread stack */
 #define configMAX_TASK_NAME_LEN                     ( 16 )
 #ifndef configUSE_TRACE_FACILITY
-#define configUSE_TRACE_FACILITY                    ( 0 )
+#define configUSE_TRACE_FACILITY                    ( 1 )
 #endif /* configUSE_TRACE_FACILITY */
 #define configUSE_16_BIT_TICKS                      ( 0 )
 #define configIDLE_SHOULD_YIELD                     ( 1 )
