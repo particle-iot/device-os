@@ -34,6 +34,7 @@
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
 #include "system_update.h"
+#include "diagnostic.h"
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
@@ -143,8 +144,16 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
         return enqueueRequest(req, DATA_FORMAT_JSON);
       }
 
+      case USB_REQUEST_GET_DIAGNOSTIC: {
+        return enqueueRequest(req, DATA_FORMAT_BINARY, true);
+      }
       case USB_REQUEST_CUSTOM: {
         return enqueueRequest(req);
+      }
+
+      case USB_REQUEST_UPDATE_DIAGNOSTIC: {
+        DIAGNOSTIC_UPDATE();
+        break;
       }
 
       default: {
@@ -193,7 +202,8 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
 
       case USB_REQUEST_MODULE_INFO:
       case USB_REQUEST_LOG_CONFIG:
-      case USB_REQUEST_CUSTOM: {
+      case USB_REQUEST_CUSTOM:
+      case USB_REQUEST_GET_DIAGNOSTIC: {
         return fetchRequestResult(req);
       }
 
@@ -207,7 +217,7 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
   return 0;
 }
 
-uint8_t SystemControlInterface::enqueueRequest(HAL_USB_SetupRequest* req, DataFormat fmt) {
+uint8_t SystemControlInterface::enqueueRequest(HAL_USB_SetupRequest* req, DataFormat fmt, bool use_isr) {
   SPARK_ASSERT(req->bmRequestTypeDirection == 0); // Host to device
   if (usbReq_.active && !usbReq_.ready) {
     return 1; // // There is an active request already
@@ -229,9 +239,11 @@ uint8_t SystemControlInterface::enqueueRequest(HAL_USB_SetupRequest* req, DataFo
       return 0; // OK
     }
   }
-  // Schedule request for processing in the system thread's context
-  if (!SystemISRTaskQueue.enqueue(processSystemRequest, &usbReq_.req)) {
-    return 1;
+  if (!use_isr) {
+    // Schedule request for processing in the system thread's context
+    if (!SystemISRTaskQueue.enqueue(processSystemRequest, &usbReq_.req)) {
+      return 1;
+    }
   }
   usbReq_.req.type = (USBRequestType)req->wIndex;
   usbReq_.req.value = req->wValue;
@@ -240,6 +252,9 @@ uint8_t SystemControlInterface::enqueueRequest(HAL_USB_SetupRequest* req, DataFo
   usbReq_.req.format = fmt;
   usbReq_.ready = false;
   usbReq_.active = true;
+  if (use_isr) {
+    processSystemRequest(&usbReq_.req);
+  }
   return 0;
 }
 
@@ -311,6 +326,18 @@ void SystemControlInterface::processSystemRequest(void* data) {
     BufferAppender appender((uint8_t*)req->data, USB_REQUEST_BUFFER_SIZE);
     system_module_info(append_instance, &appender);
     req->reply_size = appender.size();
+    break;
+  }
+
+  case USB_REQUEST_GET_DIAGNOSTIC: {
+    if (req->value) {
+      req->reply_size = diagnostic_dump_current(req->data, USB_REQUEST_BUFFER_SIZE);
+    } else {
+      req->reply_size = diagnostic_dump_saved(req->data, USB_REQUEST_BUFFER_SIZE);
+    }
+    if (req->reply_size > USB_REQUEST_BUFFER_SIZE) {
+      req->reply_size = USB_REQUEST_BUFFER_SIZE;
+    }
     break;
   }
 

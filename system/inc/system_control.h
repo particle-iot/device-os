@@ -56,7 +56,9 @@ typedef enum USBRequestType {
   USB_REQUEST_SAFE_MODE = 60,
   USB_REQUEST_LISTENING_MODE = 70,
   USB_REQUEST_LOG_CONFIG = 80,
-  USB_REQUEST_MODULE_INFO = 90
+  USB_REQUEST_MODULE_INFO = 90,
+  USB_REQUEST_GET_DIAGNOSTIC = 100,
+  USB_REQUEST_UPDATE_DIAGNOSTIC = 101
 } USBRequestType;
 
 typedef enum USBRequestResult {
@@ -108,7 +110,7 @@ private:
 
   uint8_t handleVendorRequest(HAL_USB_SetupRequest* req);
 
-  uint8_t enqueueRequest(HAL_USB_SetupRequest* req, DataFormat fmt = DATA_FORMAT_BINARY);
+  uint8_t enqueueRequest(HAL_USB_SetupRequest* req, DataFormat fmt = DATA_FORMAT_BINARY, bool use_isr = false);
   uint8_t fetchRequestResult(HAL_USB_SetupRequest* req);
 
   static void processSystemRequest(void* data); // Called by SystemThread
