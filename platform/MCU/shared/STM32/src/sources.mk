@@ -11,7 +11,7 @@ TARGET_SHARED_SRC_PATH = $(PLATFORM_MCU_SHARED_STM32_PATH)/src
 # C source files included in this directory.
 CSRC += $(TARGET_SHARED_SRC_PATH)/hw_ticks.c
 CSRC += $(TARGET_SHARED_SRC_PATH)/hw_system_flags.c
-
+CSRC += $(TARGET_SHARED_SRC_PATH)/platform_diagnostic.c
 
 # C++ source files included in this build.
 CPPSRC +=
