@@ -15,10 +15,17 @@ typedef void* __gthread_t;
 typedef void* os_thread_t;
 typedef int32_t os_result_t;
 typedef uint8_t os_thread_prio_t;
+
+#ifdef __cplusplus
 /* Default priority is the same as the application thread */
 const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 2;
 const os_thread_prio_t OS_THREAD_PRIORITY_CRITICAL = 9;
 const size_t OS_THREAD_STACK_SIZE_DEFAULT = 3*1024;
+#else
+#define OS_THREAD_PRIORITY_DEFAULT ((os_thread_prio_t)2)
+#define OS_THREAD_PRIORITY_CRITICAL ((os_thread_prio_t)2)
+#define OS_THREAD_STACK_SIZE_DEFAULT ((size_t)3*1024)
+#endif
 
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;
@@ -27,6 +34,8 @@ typedef void* os_timer_t;
 
 typedef os_mutex_t __gthread_mutex_t;
 typedef os_mutex_recursive_t __gthread_recursive_mutex_t;
+
+typedef uint32_t os_unique_id_t;
 
 
 /**
