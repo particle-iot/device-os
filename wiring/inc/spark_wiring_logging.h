@@ -29,6 +29,7 @@
 #include "spark_wiring_thread.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_platform.h"
+#include "spark_wiring_diagnostic.h"
 
 #if Wiring_LogConfig
 #include "system_control.h"
@@ -732,6 +733,7 @@ inline spark::Logger::Logger(const char *name) :
 }
 
 inline void spark::Logger::trace(const char *fmt, ...) const {
+    _LOG_CHECKPOINT();
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_TRACE, fmt, args);
@@ -739,6 +741,7 @@ inline void spark::Logger::trace(const char *fmt, ...) const {
 }
 
 inline void spark::Logger::info(const char *fmt, ...) const {
+    _LOG_CHECKPOINT();
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_INFO, fmt, args);
@@ -746,6 +749,7 @@ inline void spark::Logger::info(const char *fmt, ...) const {
 }
 
 inline void spark::Logger::warn(const char *fmt, ...) const {
+    _LOG_CHECKPOINT();
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_WARN, fmt, args);
@@ -753,6 +757,7 @@ inline void spark::Logger::warn(const char *fmt, ...) const {
 }
 
 inline void spark::Logger::error(const char *fmt, ...) const {
+    _LOG_CHECKPOINT();
     va_list args;
     va_start(args, fmt);
     log(LOG_LEVEL_ERROR, fmt, args);
@@ -760,6 +765,7 @@ inline void spark::Logger::error(const char *fmt, ...) const {
 }
 
 inline void spark::Logger::log(const char *fmt, ...) const {
+    _LOG_CHECKPOINT();
     va_list args;
     va_start(args, fmt);
     log(DEFAULT_LEVEL, fmt, args);
