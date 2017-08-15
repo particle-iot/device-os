@@ -26,6 +26,8 @@ CFLAGS += -DINCLUDE_PLATFORM=1
 # platforms.h
 ifeq ($(PLATFORM_ID),3)
 INCLUDE_DIRS += $(PROJECT_ROOT)/platform/shared/inc
+INCLUDE_DIRS += $(PROJECT_ROOT)/platform/MCU/gcc/inc
+INCLUDE_DIRS += $(PROJECT_ROOT)/hal/src/gcc
 endif
 
 # gcc HAL is different for test driver and test subject
