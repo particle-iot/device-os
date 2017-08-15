@@ -146,7 +146,7 @@ typedef struct tskTaskControlBlock
 	StackType_t			*pxStack;			/*< Points to the start of the stack. */
 	char				pcTaskName[ configMAX_TASK_NAME_LEN ];/*< Descriptive name given to the task when created.  Facilitates debugging only. */ /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 
-	#if ( portSTACK_GROWTH > 0 )
+	#if ( portSTACK_GROWTH > 0 || configUSE_TRACE_FACILITY == 1 )
 		StackType_t		*pxEndOfStack;		/*< Points to the end of the stack on architectures where the stack grows up from low memory. */
 	#endif
 
@@ -501,7 +501,7 @@ static TCB_t *prvAllocateTCBAndStack( const uint16_t usStackDepth, StackType_t *
  */
 #if ( configUSE_TRACE_FACILITY == 1 )
 
-	static UBaseType_t prvListTaskWithinSingleList( TaskStatus_t *pxTaskStatusArray, List_t *pxList, eTaskState eState ) PRIVILEGED_FUNCTION;
+	static UBaseType_t prvListTaskWithinSingleList( TaskStatus_t *pxTaskStatusArray, List_t *pxList, eTaskState eState, BaseType_t ( * callback )( TaskStatus_t * const status, void* ptr ), void* ptr ) PRIVILEGED_FUNCTION;
 
 #endif
 
@@ -602,6 +602,9 @@ StackType_t *pxTopOfStack;
 
 			/* Check the alignment of the calculated top of stack is correct. */
 			configASSERT( ( ( ( portPOINTER_SIZE_TYPE ) pxTopOfStack & ( portPOINTER_SIZE_TYPE ) portBYTE_ALIGNMENT_MASK ) == 0UL ) );
+			#if ( configUSE_TRACE_FACILITY == 1 )
+				pxNewTCB->pxEndOfStack = pxTopOfStack;
+			#endif /* configUSE_TRACE_FACILITY == 1 */
 		}
 		#else /* portSTACK_GROWTH */
 		{
@@ -697,6 +700,7 @@ StackType_t *pxTopOfStack;
 			{
 				/* Add a counter into the TCB for tracing only. */
 				pxNewTCB->uxTCBNumber = uxTaskNumber;
+				pxNewTCB->uxTCBNumber = pxNewTCB->uxTaskNumber = uxTaskNumber;
 			}
 			#endif /* configUSE_TRACE_FACILITY */
 			traceTASK_CREATE( pxNewTCB );
@@ -1540,6 +1544,28 @@ StackType_t *pxTopOfStack;
 #endif /* ( ( INCLUDE_xTaskResumeFromISR == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) ) */
 /*-----------------------------------------------------------*/
 
+#if ( INCLUDE_vTaskGetStackInfo == 1 )
+
+    void vTaskGetStackInfo( TaskHandle_t pxTask, void** stack_ptr, void** start_stack_ptr, void** end_stack_ptr )
+    {
+    tskTCB* pxTCB;
+        taskENTER_CRITICAL();
+        pxTCB = ( tskTCB * ) pxTask;
+        *( (portSTACK_TYPE**) stack_ptr) = pxTCB->pxStack;
+    #if ( portSTACK_GROWTH > 0 || configUSE_TRACE_FACILITY == 1 )
+        *( (portSTACK_TYPE**) end_stack_ptr) = pxTCB->pxEndOfStack;
+    #else /* #if ( portSTACK_GROWTH > 0 ) */
+        *( (portSTACK_TYPE**) end_stack_ptr) = NULL;
+    #endif /* #if ( portSTACK_GROWTH > 0 ) */
+        *( (volatile portSTACK_TYPE**) start_stack_ptr) = pxTCB->pxTopOfStack;
+
+        taskEXIT_CRITICAL();
+        return;
+    }
+
+#endif /* INCLUDE_vTaskGetStackInfo */
+/*-----------------------------------------------------------*/
+
 void vTaskStartScheduler( void )
 {
 BaseType_t xReturn;
@@ -1832,34 +1858,34 @@ UBaseType_t uxTaskGetNumberOfTasks( void )
 
 #if ( configUSE_TRACE_FACILITY == 1 )
 
-	UBaseType_t uxTaskGetSystemState( TaskStatus_t * const pxTaskStatusArray, const UBaseType_t uxArraySize, uint32_t * const pulTotalRunTime )
+	UBaseType_t uxTaskGetSystemState( TaskStatus_t * const pxTaskStatusArray, const UBaseType_t uxArraySize, uint32_t * const pulTotalRunTime, BaseType_t ( * callback )( TaskStatus_t * const status, void* ptr ), void* ptr )
 	{
 	UBaseType_t uxTask = 0, uxQueue = configMAX_PRIORITIES;
 
 		vTaskSuspendAll();
 		{
 			/* Is there a space in the array for each task in the system? */
-			if( uxArraySize >= uxCurrentNumberOfTasks )
+			if( uxArraySize >= uxCurrentNumberOfTasks || callback != NULL )
 			{
 				/* Fill in an TaskStatus_t structure with information on each
 				task in the Ready state. */
 				do
 				{
 					uxQueue--;
-					uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), &( pxReadyTasksLists[ uxQueue ] ), eReady );
+					uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), &( pxReadyTasksLists[ uxQueue ] ), eReady, callback, ptr );
 
 				} while( uxQueue > ( UBaseType_t ) tskIDLE_PRIORITY ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
 
 				/* Fill in an TaskStatus_t structure with information on each
 				task in the Blocked state. */
-				uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), ( List_t * ) pxDelayedTaskList, eBlocked );
-				uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), ( List_t * ) pxOverflowDelayedTaskList, eBlocked );
+				uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), ( List_t * ) pxDelayedTaskList, eBlocked, callback, ptr );
+				uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), ( List_t * ) pxOverflowDelayedTaskList, eBlocked, callback, ptr );
 
 				#if( INCLUDE_vTaskDelete == 1 )
 				{
 					/* Fill in an TaskStatus_t structure with information on
 					each task that has been deleted but not yet cleaned up. */
-					uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), &xTasksWaitingTermination, eDeleted );
+					uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), &xTasksWaitingTermination, eDeleted, callback, ptr );
 				}
 				#endif
 
@@ -1867,7 +1893,7 @@ UBaseType_t uxTaskGetNumberOfTasks( void )
 				{
 					/* Fill in an TaskStatus_t structure with information on
 					each task in the Suspended state. */
-					uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), &xSuspendedTaskList, eSuspended );
+					uxTask += prvListTaskWithinSingleList( &( pxTaskStatusArray[ uxTask ] ), &xSuspendedTaskList, eSuspended, callback, ptr );
 				}
 				#endif
 
@@ -3177,7 +3203,7 @@ TCB_t *pxNewTCB;
 
 #if ( configUSE_TRACE_FACILITY == 1 )
 
-	static UBaseType_t prvListTaskWithinSingleList( TaskStatus_t *pxTaskStatusArray, List_t *pxList, eTaskState eState )
+	static UBaseType_t prvListTaskWithinSingleList( TaskStatus_t *pxTaskStatusArray, List_t *pxList, eTaskState eState, BaseType_t ( * callback )( TaskStatus_t * const status, void* ptr ), void* ptr )
 	{
 	volatile TCB_t *pxNextTCB, *pxFirstTCB;
 	UBaseType_t uxTask = 0;
@@ -3245,7 +3271,17 @@ TCB_t *pxNewTCB;
 				}
 				#endif
 
-				uxTask++;
+				if (callback == NULL)
+				{
+					uxTask++;
+				}
+				else
+				{
+					if (callback(pxTaskStatusArray, ptr) != 0)
+					{
+						break;
+					}
+				}
 
 			} while( pxNextTCB != pxFirstTCB );
 		}
