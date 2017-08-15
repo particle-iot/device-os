@@ -42,8 +42,11 @@ extern "C" {
  */
 #include "concurrent_hal_impl.h"
 
-
+#ifdef __cplusplus
 const os_thread_t OS_THREAD_INVALID_HANDLE = NULL;
+#else
+#define OS_THREAD_INVALID_HANDLE ((os_thread_t)NULL)
+#endif
 
 /**
  * The return type from a thread function.
@@ -128,6 +131,25 @@ os_result_t os_thread_cleanup(os_thread_t thread);
  */
 os_result_t os_thread_yield(void);
 
+os_unique_id_t os_thread_unique_id(os_thread_t thread);
+
+os_thread_t os_thread_current();
+
+typedef struct {
+  uint8_t reserved;
+
+  os_thread_t thread;
+  const char* name;
+  os_unique_id_t id;
+  void* stack;
+  void* stack_start;
+  void* stack_end;
+} os_thread_dump_info_t;
+
+typedef os_result_t (*os_thread_dump_callback_t)(os_thread_dump_info_t*, void*);
+
+os_result_t os_thread_dump(os_thread_t thread, os_thread_dump_callback_t callback, void* reserved);
+
 
 /**
  * Delays the current task until a specified time to set up periodic tasks
@@ -150,7 +172,11 @@ void os_condition_variable_wait(condition_variable_t var, void* lock);
 void os_condition_variable_notify_one(condition_variable_t var);
 void os_condition_variable_notify_all(condition_variable_t var);
 
+#ifdef __cplusplus
 const system_tick_t CONCURRENT_WAIT_FOREVER = (system_tick_t)-1;
+#else
+#define CONCURRENT_WAIT_FOREVER ((system_tick_t)-1)
+#endif
 
 int os_queue_create(os_queue_t* queue, size_t item_size, size_t item_count, void* reserved);
 /**
@@ -190,8 +216,13 @@ int os_semaphore_destroy(os_semaphore_t semaphore);
 int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool reserved);
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 
-#define _GLIBCXX_HAS_GTHREADS
+#ifndef _GLIBCXX_HAS_GTHREADS
+# define _GLIBCXX_HAS_GTHREADS
+#endif // _GLIBCXX_HAS_GTHREADS
+
+#ifdef __cplusplus
 #include <bits/gthr.h>
+#endif
 
 /**
  * Enables/disables pre-emptive context switching
