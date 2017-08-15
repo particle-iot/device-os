@@ -54,6 +54,7 @@
 #include "deviceid_hal.h"
 #include "pinmap_impl.h"
 #include "ota_module.h"
+#include "platform_diagnostic.h"
 
 #if PLATFORM_ID==PLATFORM_P1
 #include "wwd_management.h"
@@ -96,6 +97,9 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
     if (false) {
       (void)r0; (void)r1; (void)r2; (void)r3; (void)r12; (void)lr; (void)pc; (void)psr;
     }
+
+    // Better use LR here, as PC usually points to a wrong location
+    DIAGNOSTIC_CRASH_CHECKPOINT(lr);
 
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
@@ -1608,6 +1612,57 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
 
     LED_Mirror_Persist(led, &bootloader_conf);
 }
+
+extern const module_bounds_t module_system_part1;
+extern const module_bounds_t module_system_part2;
+#if PLATFORM_ID == 10
+extern const module_bounds_t module_system_part3;
+#endif // PLATFORM_ID == 10
+extern const module_bounds_t module_user;
+extern const module_bounds_t module_user_mono;
+
+int HAL_Core_Generate_Stacktrace(os_thread_dump_info_t* info, HAL_Stacktrace_Callback callback, void* ptr, void* reserved)
+{
+    if (info->stack_start == NULL || info->stack_end == NULL) {
+        return 1;
+    }
+
+    int count = 0;
+
+    for (uint32_t* sp = (uint32_t*)info->stack_start; sp <= (uint32_t*)info->stack_end; sp++) {
+        bool irq = (HAL_IsISR() && ((*sp == 0xfffffffd) ||
+                                    (*sp == 0xfffffff9) ||
+                                    (*sp == 0xfffffff1)));
+        // First check that the value on stack resembles an address in flash or a switch to interrupt context
+        if (((*sp & 0xff000000) == 0x08000000) || irq) {
+            // Then check whether the address belongs to system or user part module bounds
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+            if (irq ||
+                (*sp >= module_system_part1.start_address && *sp <= module_system_part1.end_address) ||
+                (*sp >= module_system_part2.start_address && *sp <= module_system_part2.end_address) ||
+# if PLATFORM_ID == 10
+                (*sp >= module_system_part3.start_address && *sp <= module_system_part3.end_address) ||
+# endif // PLATFORM_ID != 10
+                (*sp >= module_user.start_address && *sp <= module_user.end_address)) {
+#else
+            if (irq ||
+               (*sp >= module_user_mono.start_address && *sp <= module_user_mono.end_address)) {
+#endif // defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+                uint32_t* lr = (uint32_t*)(*sp - 1) - 1;
+                if (platform_is_branching_instruction(lr) || irq) {
+                    uint32_t addr = irq ? *sp : *sp - 3;
+                    // Callback
+                    if (callback(ptr, count, (uintptr_t)addr, info, NULL) != 0) {
+                        break;
+                    }
+                    ++count;
+                }
+            }
+        }
+    }
+    return count;
+}
+
 
 #if HAL_PLATFORM_CLOUD_UDP
 
