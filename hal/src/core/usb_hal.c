@@ -33,6 +33,8 @@
 #include "usb_prop.h"
 #include "delay_hal.h"
 #include "usb_settings.h"
+#include "deviceid_hal.h"
+#include "bytes2hexbuf.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -63,9 +65,6 @@ __IO uint8_t PrevXferComplete;
 /* Extern variables ----------------------------------------------------------*/
 extern volatile LINE_CODING linecoding;
 
-/* Private function prototypes -----------------------------------------------*/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
-
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
 /*******************************************************************************
  * Function Name  : SPARK_USB_Setup
@@ -92,18 +91,14 @@ void SPARK_USB_Setup(void)
  *******************************************************************************/
 void Get_SerialNum(void)
 {
-  uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
-
-  Device_Serial0 = *(uint32_t*)ID1;
-  Device_Serial1 = *(uint32_t*)ID2;
-  Device_Serial2 = *(uint32_t*)ID3;
-
-  Device_Serial0 += Device_Serial2;
-
-  if (Device_Serial0 != 0)
-  {
-    IntToUnicode (Device_Serial0, &USB_StringSerial[2] , 8);
-    IntToUnicode (Device_Serial1, &USB_StringSerial[18], 4);
+  uint8_t deviceId[16];
+  char deviceIdHex[sizeof(deviceId) * 2 + 1] = {0};
+  unsigned deviceIdLen = 0;
+  deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+  bytes2hexbuf(deviceId, deviceIdLen, deviceIdHex);
+  for (unsigned i = 2, pos = 0; i < USB_SIZ_STRING_SERIAL && pos < 2 * deviceIdLen; i += 2, pos++) {
+    USB_StringSerial[i] = deviceIdHex[pos];
+    USB_StringSerial[i + 1] = '\0';
   }
 }
 #endif
@@ -348,31 +343,3 @@ void USB_HID_Send_Report(void *pHIDReport, size_t reportSize)
   }
 }
 #endif
-
-/*******************************************************************************
- * Function Name  : HexToChar.
- * Description    : Convert Hex 32Bits value into char.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
-{
-  uint8_t idx = 0;
-
-  for( idx = 0 ; idx < len ; idx ++)
-  {
-    if( ((value >> 28)) < 0xA )
-    {
-      pbuf[ 2* idx] = (value >> 28) + '0';
-    }
-    else
-    {
-      pbuf[2* idx] = (value >> 28) + 'A' - 10;
-    }
-
-    value = value << 4;
-
-    pbuf[ 2* idx + 1] = 0;
-  }
-}

@@ -64,7 +64,7 @@
 #define USB_SIZ_STRING_LANGID                   4
 #define USB_SIZ_STRING_VENDOR                   38
 #define USB_SIZ_STRING_PRODUCT                  50
-#define USB_SIZ_STRING_SERIAL                   26
+#define USB_SIZ_STRING_SERIAL                   52
 
 #define STANDARD_ENDPOINT_DESC_SIZE             0x09
 
