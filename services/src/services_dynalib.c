@@ -30,4 +30,6 @@
 #include "led_service.h"
 #include "diagnostics.h"
 #include "printf_float.h"
+#define DIAGNOSTIC_SKIP_PLATFORM
+#include "diagnostic.h"
 #include "services_dynalib.h"

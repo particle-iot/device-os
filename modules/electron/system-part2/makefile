@@ -11,6 +11,8 @@ DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib rt-dynalib modules/electron/system-p
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 
+GLOBAL_DEFINES += DIAGNOSTIC_USE_CALLBACKS
+
 LIBS += $(MAKE_DEPENDENCIES)
 LIB_DEPS += $(COMMUNICATION_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP) $(CRYPTO_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
