@@ -1,0 +1,11 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "dependencies": {
+    "particle-diagnostic-parser": "^0.0.1",
+    "addr2line": "^0.0.3",
+    "cli-table": "^0.3.1"
+  }
+}
