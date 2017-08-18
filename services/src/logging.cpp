@@ -91,9 +91,13 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
     }
     char buf[LOG_MAX_STRING_LENGTH];
     if (msg_callback) {
-        const int n = vsnprintf(buf, sizeof(buf), fmt, args);
-        if (n > (int)sizeof(buf) - 1) {
-            buf[sizeof(buf) - 2] = '~';
+        if (fmt) { // Format string could be set to NULL by the GCC plugin
+            const int n = vsnprintf(buf, sizeof(buf), fmt, args);
+            if (n > (int)sizeof(buf) - 1) {
+                buf[sizeof(buf) - 2] = '~';
+            }
+        } else {
+            buf[0] = '\0';
         }
         msg_callback(buf, level, category, attr, 0);
     } else {
@@ -112,11 +116,13 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
         }
         log_compat_callback(buf);
         log_compat_callback(": ");
-        n = vsnprintf(buf, sizeof(buf), fmt, args);
-        if (n > (int)sizeof(buf) - 1) {
-            buf[sizeof(buf) - 2] = '~';
+        if (fmt) {
+            n = vsnprintf(buf, sizeof(buf), fmt, args);
+            if (n > (int)sizeof(buf) - 1) {
+                buf[sizeof(buf) - 2] = '~';
+            }
+            log_compat_callback(buf);
         }
-        log_compat_callback(buf);
         log_compat_callback("\r\n");
 #endif
     }
