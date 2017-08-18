@@ -6,8 +6,9 @@ START_YMODEM_FLASHER_SERIAL_SPEED=28800
 include $(COMMON_BUILD)/version.mk
 
 # Target and predefined message files
-TARGET_MESSAGE_FILE ?= $(BUILD_PATH_BASE)/messages/$(PLATFORM_NAME)/messages.json
-PREDEFINED_MESSAGE_FILE ?= $(PROJECT_ROOT)/messages/$(PLATFORM_NAME)/messages.json
+TARGET_MESSAGE_DIR = $(BUILD_PATH_BASE)/messages/$(BUILD_TARGET_PLATFORM)
+TARGET_MESSAGE_FILE = $(TARGET_MESSAGE_DIR)/messages.json
+PREDEF_MESSAGE_FILE ?= $(PROJECT_ROOT)/messages/$(PLATFORM_NAME)/messages.json
 
 # Path to the GCC plugin
 PLUGIN_PATH ?= $(PROJECT_ROOT)/misc/gcc-plugin/release/lib
@@ -15,7 +16,7 @@ PLUGIN_PATH ?= $(PROJECT_ROOT)/misc/gcc-plugin/release/lib
 ifeq ($(USE_PLUGIN),y)
     CFLAGS += -iplugindir=$(PLUGIN_PATH) -fplugin=particle_plugin \
         -fplugin-arg-particle_plugin-target-msg-file=$(TARGET_MESSAGE_FILE) \
-        -fplugin-arg-particle_plugin-predef-msg-file=$(PREDEFINED_MESSAGE_FILE)
+        -fplugin-arg-particle_plugin-predef-msg-file=$(PREDEF_MESSAGE_FILE)
 endif
 
 QUOTE='

@@ -293,7 +293,7 @@ $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 
 
 # Other Targets
-clean: clean_deps
+clean:: clean_deps
 	$(VERBOSE)$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)

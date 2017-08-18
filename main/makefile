@@ -79,6 +79,11 @@ else
 TARGET=elf bin lst hex size
 endif
 
+clean::
+	# Remove generated message files (non-modular build only)
+	$(VERBOSE)$(RM) $(TARGET_MESSAGE_FILE)
+	$(VERBOSE)$(RMDIR) $(TARGET_MESSAGE_DIR)
+
 include ../build/arm-tlm.mk
 
 endif
