@@ -50,10 +50,10 @@ public:
 
     void begin(void);
     void end(void);
+
+    using Print::write;
     virtual size_t write(uint8_t ch);
-    virtual size_t write(const uint8_t *buffer, size_t size){
-        return Print::write(buffer, size);
-    }
+
     virtual size_t writeKey(uint16_t k, uint16_t modifiers = 0);
     virtual size_t click(uint16_t k, uint16_t modifiers = 0);
     virtual size_t press(uint16_t k, uint16_t modifiers = 0);
