@@ -55,22 +55,22 @@ module Particle
         sleep(2)
         return @last_flash_result
       end
-    end
 
-    def compile_block(block, feature_path)
-      path = File.join(feature_path, 'block.cpp')
-      content = %(
+      def compile_block(block, feature_path)
+        path = File.join(feature_path, 'block.cpp')
+        content = %(
         #include "Particle.h"
         void block() {
           #{block}
         }
       )
-      main_dir = File.join(__dir__, '..', '..', '..', '..', '..', '..', 'main')
-      makefile = File.join(main_dir, 'makefile')
-      File.write(path, content)
-      cmd = Util.shell_out("make -f #{makefile} -C #{feature_path} APPDIR=. TARGETDIR=.")
-      cmd.run_command
-      cmd
+        main_dir = File.join(__dir__, '..', '..', '..', '..', '..', '..', 'main')
+        makefile = File.join(main_dir, 'makefile')
+        File.write(path, content)
+        cmd = Util.shell_out("make -f #{makefile} -C #{feature_path} APPDIR=. TARGETDIR=.")
+        cmd.run_command
+        cmd
+      end
     end
   end
 end
