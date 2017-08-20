@@ -20,7 +20,7 @@
 
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ ******************************************************************************
  */
 
 #ifndef __SPARK_WIRING_USBKEYBOARD_H
@@ -34,31 +34,34 @@
 
 typedef struct
 {
-  uint8_t reportId; // 0x02
-	uint8_t modifiers;
-	uint8_t reserved;
-	uint8_t keys[6];
+    uint8_t reportId; // 0x02
+    uint8_t modifiers;
+    uint8_t reserved;
+    uint8_t keys[6];
 } KeyReport;
 
 class USBKeyboard : public Print
 {
 private:
-	KeyReport keyReport;
+    KeyReport keyReport;
 
 public:
-	USBKeyboard(void);
+    USBKeyboard(void);
 
-	void begin(void);
-	void end(void);
-  virtual size_t write(uint8_t ch);
-	virtual size_t writeKey(uint16_t k, uint16_t modifiers = 0);
-  virtual size_t click(uint16_t k, uint16_t modifiers = 0);
-	virtual size_t press(uint16_t k, uint16_t modifiers = 0);
-	virtual size_t release(uint16_t k, uint16_t modifiers = 0);
-	virtual void releaseAll(void);
+    void begin(void);
+    void end(void);
+    virtual size_t write(uint8_t ch);
+    virtual size_t write(const uint8_t *buffer, size_t size){
+        return Print::write(buffer, size);
+    }
+    virtual size_t writeKey(uint16_t k, uint16_t modifiers = 0);
+    virtual size_t click(uint16_t k, uint16_t modifiers = 0);
+    virtual size_t press(uint16_t k, uint16_t modifiers = 0);
+    virtual size_t release(uint16_t k, uint16_t modifiers = 0);
+    virtual void releaseAll(void);
 
 private:
-  void sendReport();
+    void sendReport();
 };
 
 extern USBKeyboard& _fetch_usbkeyboard();
