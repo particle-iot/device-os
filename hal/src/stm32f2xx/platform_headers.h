@@ -8,10 +8,6 @@
 #ifndef PLATFORM_HEADERS_H
 #define	PLATFORM_HEADERS_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 // These headers contain platform-specific defines.
 #include "gpio_hal.h"
 #include "hw_config.h"
@@ -21,10 +17,6 @@ extern "C" {
 #include "modem/enums_hal.h"
 #endif
 #include "usb_settings.h"
-
-#ifdef	__cplusplus
-}
-#endif
 
 #endif	/* PLATFORM_HEADERS_H */
 

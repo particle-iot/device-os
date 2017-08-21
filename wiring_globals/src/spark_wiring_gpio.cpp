@@ -34,6 +34,7 @@
 #include "delay_hal.h"
 #include "pinmap_hal.h"
 #include "system_task.h"
+#include "pinmap_hal.h"
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
@@ -332,3 +333,14 @@ uint32_t pulseIn(pin_t pin, uint16_t value) {
 void setDACBufferred(pin_t pin, uint8_t state) {
   HAL_DAC_Enable_Buffer(pin, state);
 }
+
+
+pinD0_t D0;
+pinD1_t D1;
+pinD2_t D2;
+pinD3_t D3;
+pinD4_t D4;
+pinD5_t D5;
+pinD6_t D6;
+pinD7_t D7;
+
