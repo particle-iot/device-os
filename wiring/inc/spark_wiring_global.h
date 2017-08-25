@@ -23,3 +23,6 @@
 #else
 #define PARTICLE_DEPRECATED_API(_msg)
 #endif
+
+#define PARTICLE_DELETED_API(_msg) \
+        __attribute__((error(_msg)))

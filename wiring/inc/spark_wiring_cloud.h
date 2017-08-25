@@ -36,11 +36,12 @@
 #include "system_mode.h"
 #include <functional>
 
-#define PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE \
-        PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.publish() will require event scope to be specified explicitly.");
+#define PARTICLE_DELETED_API_DEFAULT_PUBLISH_SCOPE \
+        PARTICLE_DELETED_API("Beginning with the 0.8.0 release, Particle.publish() requires the event scope to be specified explicitly. Please specify PUBLIC or PRIVATE for the event scope.");
 
-#define PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE \
-        PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.subscribe() will require event scope to be specified explicitly.");
+#define PARTICLE_DELETED_API_DEFAULT_SUBSCRIBE_SCOPE \
+        PARTICLE_DELETED_API("Beginning with the 0.8.0 release, Particle.subscribe() requires the event scope to be specified explicitly. Please specify ALL_DEVICES or MY_DEVICES.");
+
 
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
@@ -238,9 +239,9 @@ public:
     }
 
     // Deprecated methods
-    particle::Future<bool> publish(const char* name) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data, int ttl) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
+    particle::Future<bool> publish(const char* name) PARTICLE_DELETED_API_DEFAULT_PUBLISH_SCOPE;
+    particle::Future<bool> publish(const char* name, const char* data) PARTICLE_DELETED_API_DEFAULT_PUBLISH_SCOPE;
+    particle::Future<bool> publish(const char* name, const char* data, int ttl) PARTICLE_DELETED_API_DEFAULT_PUBLISH_SCOPE;
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
@@ -277,10 +278,10 @@ public:
     }
 
     // Deprecated methods
-    bool subscribe(const char* name, EventHandler handler) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
-    bool subscribe(const char* name, wiring_event_handler_t handler) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
+    bool subscribe(const char* name, EventHandler handler) PARTICLE_DELETED_API_DEFAULT_SUBSCRIBE_SCOPE;
+    bool subscribe(const char* name, wiring_event_handler_t handler) PARTICLE_DELETED_API_DEFAULT_SUBSCRIBE_SCOPE;
     template<typename T>
-    bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
+    bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance) PARTICLE_DELETED_API_DEFAULT_SUBSCRIBE_SCOPE;
 
     void unsubscribe()
     {
@@ -391,28 +392,3 @@ private:
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;
 
-// Deprecated methods
-inline particle::Future<bool> CloudClass::publish(const char* name) {
-    return publish(name, PUBLIC);
-}
-
-inline particle::Future<bool> CloudClass::publish(const char* name, const char* data) {
-    return publish(name, data, PUBLIC);
-}
-
-inline particle::Future<bool> CloudClass::publish(const char* name, const char* data, int ttl) {
-    return publish(name, data, ttl, PUBLIC);
-}
-
-inline bool CloudClass::subscribe(const char* name, EventHandler handler) {
-    return subscribe(name, handler, ALL_DEVICES);
-}
-
-inline bool CloudClass::subscribe(const char* name, wiring_event_handler_t handler) {
-    return subscribe(name, handler, ALL_DEVICES);
-}
-
-template<typename T>
-inline bool CloudClass::subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance) {
-    return subscribe(name, handler, instance, ALL_DEVICES);
-}
