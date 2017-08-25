@@ -81,3 +81,17 @@ test(RANDOM_08_negative_range_values_are_within_range) {
 test(RANDOM_09_zero_crossing_range_values_are_within_range) {
     assertRandomRange(-10,10, 1000);
 }
+
+#if defined(PARTICLE_PROTOCOL) && PARTICLE_PROTOCOL == 0
+
+test(RANDOM_10_reseeded_from_cloud_on_reconnect) {
+    rand_value_set = false;
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 60000);
+    Particle.connect();
+    waitFor(Particle.connected, 60000);
+    delay(1000);
+    assertTrue(rand_value_set);
+}
+
+#endif // defined(PARTICLE_PROTOCOL) && PARTICLE_PROTOCOL == 0
