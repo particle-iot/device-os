@@ -74,6 +74,8 @@ ProtocolFacade* sp;
 
 static uint32_t particle_key_errors = NO_ERROR;
 
+void (*random_seed_from_cloud_handler)(unsigned int) = nullptr;
+
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
  * and communication dynalibs. (Not sure why - just an oversight.)
@@ -694,7 +696,7 @@ void Spark_Protocol_Init(void)
 
         CommunicationsHandlers handlers;
         handlers.size = sizeof(handlers);
-        handlers.random_seed_from_cloud = &random_seed_from_cloud;
+        handlers.random_seed_from_cloud = random_seed_from_cloud_handler;
         spark_protocol_communications_handlers(sp, &handlers);
     }
 }

@@ -24,6 +24,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "core_hal.h"
 #include "watchdog_hal.h"
 #include "gpio_hal.h"
@@ -353,6 +354,10 @@ void HAL_Core_Config(void)
     HAL_RTC_Configuration();
 
     HAL_RNG_Configuration();
+
+    // Initialize system-part2 stdlib PRNG with a seed from hardware PRNG
+    // in case some system code happens to use rand()
+    srand(HAL_RNG_GetRandomNumber());
 
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
