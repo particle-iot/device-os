@@ -56,7 +56,7 @@ module Particle
         return @last_flash_result
       end
 
-      def compile_block(block, feature_path)
+      def compile_block(block, feature_path, platform)
         path = File.join(feature_path, 'block.cpp')
         content = %(
         #include "Particle.h"
@@ -64,11 +64,13 @@ module Particle
           #{block}
         }
       )
-        main_dir = File.join(__dir__, '..', '..', '..', '..', '..', '..', 'main')
+        main_dir = File.join(__dir__, '..', '..', '..', '..','..','main')
         makefile = File.join(main_dir, 'makefile')
         File.write(path, content)
-        cmd = Util.shell_out("make -f #{makefile} -C #{feature_path} APPDIR=. TARGETDIR=.")
+        tmpdir =
+        cmd = Util.shell_out("make -f #{makefile} -C #{feature_path} APPDIR=#{feature_path} TARGETDIR=. PLATFORM=#{platform}")
         cmd.run_command
+        puts(cmd.command)
         cmd
       end
     end

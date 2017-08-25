@@ -57,13 +57,13 @@ Then(/^Flashing operation should( not)? have (succeeded|failed)$/) do |neg, pass
 end
 
 
-When(/^I compile the block:$/) do |text|
+When(/^I compile with platform "([^"]*)" the block:$/) do |platform, text|
   feature_path = File.dirname(@current_scenario.location.file)
-  @last_compile_command = Particle::Build.compile_block(text, feature_path)
+  @last_compile_command = Particle::Build.compile_block(text, feature_path, platform)
 end
 
 Then(/^the compile fails with error "([^"]*)"$/) do |error|
   raise "no previous compile job" unless @last_compile_command
-  expect(@last_compile_command.result).not_to eql(0)
-  expect($last_compile_command.stdout).to match(error)
+  expect(@last_compile_command.exitstatus).not_to eql(0)
+  expect(@last_compile_command.stderr).to match(error)
 end
