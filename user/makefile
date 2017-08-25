@@ -3,10 +3,9 @@ USER_MODULE_PATH=.
 
 BUILD_PATH_EXT = $(USER_BUILD_PATH_EXT)
 
+DEPENDENCIES = wiring system services communication hal
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 module_dir := $(dir $(mkfile_path))
-DEPENDENCIES = wiring system services communication hal
-
 include $(module_dir)../build/platform-id.mk
 
 ifeq ("","$(SPARK_NO_PLATFORM)")

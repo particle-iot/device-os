@@ -1,10 +1,14 @@
 
 MODULE=main
-MAIN_MODULE_PATH=.
 
-include ../build/platform-id.mk
-include ../build/top-level-module.mk
-include ../build/macros.mk
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+module_dir := $(dir $(mkfile_path))
+current_dir := $(patsubst %/,%,$(dir $(mkfile_path)))
+MAIN_MODULE_PATH:=$(module_dir)
+
+include $(module_dir)../build/platform-id.mk
+include $(module_dir)../build/top-level-module.mk
+include $(module_dir)../build/macros.mk
 
 ifeq ($(PLATFORM_ID),0)
 export COMPILE_LTO?=y
@@ -23,8 +27,8 @@ endif
 
 ifeq ($(MODULAR),y)
 
-PROJECT_ROOT = ..
-COMMON_BUILD=../build
+PROJECT_ROOT = $(current_dir)/..
+COMMON_BUILD=$(PROJECT_ROOT)/build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
 $(call check_modular)
 
@@ -79,6 +83,6 @@ else
 TARGET=elf bin lst hex size
 endif
 
-include ../build/arm-tlm.mk
+include $(current_dir)/../build/arm-tlm.mk
 
 endif
