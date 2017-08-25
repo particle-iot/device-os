@@ -14,7 +14,7 @@ test(WLAN_Test1_Lookup_IP_From_Hostname)
     HAL_IPAddress addr = { 0 };
     int result = inet_gethostbyname(hostname, strlen(hostname), &addr, 0 /* nif */, nullptr);
     assertEqual(addr.ipv4, spark_io);
-    assertMoreOrEqual(result, 0); // cc3000 returns >=0 on success
+    assertEqual(result, 0); // inet_gethostbyname returns 0 on success
 }
 
 test(WLAN_Test2_Ping_To_Symmetrical_Address)
