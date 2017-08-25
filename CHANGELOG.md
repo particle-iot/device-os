@@ -1,3 +1,14 @@
+## 0.7.0-rc.3
+
+### DEPRECATED API
+
+[`[PR #1365]`](https://github.com/spark/firmware/pull/1365) Beginning with 0.8.0 release, `Particle.publish()` and `Particle.subscribe()` methods will require event scope to be specified explicitly. Please update your apps now to include the event scope to avoid compilation errors in >=0.8.0.
+
+### BUGFIX
+
+[`[PR #1362]`](https://github.com/spark/firmware/pull/1362) [`[Fixes #1360]`](https://github.com/spark/firmware/issues/1360) Fixed SoftAP HTTP usage hard faulting in 0.7.0-rc.1 and 0.7.0-rc.2
+
+
 ## 0.7.0-rc.2
 
 ### ENHANCEMENTS

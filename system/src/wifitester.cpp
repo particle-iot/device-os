@@ -93,13 +93,18 @@ const char cmd_ANT[] = "ANT";
 #endif
 const char cmd_SET_PIN[] = "SET_PIN:";
 const char cmd_SET_PRODUCT[] = "SET_PRODUCT:";
+const char cmd_POWER_ON[] = "POWER_ON:";
 
 // This class should be factored out into a network neutral base, and subclasses for WiFi/Cellular
 
 void WiFiTester::setup(bool useSerial1) {
     this->useSerial1 = useSerial1;
-    NETWORK.on();
 
+#if Wiring_WiFi
+    // Only turn on Wi-Fi module by default.  Turning on Cellular without a modem present will create long delays.
+    NETWORK.on();
+    power_state = true;
+#endif
     cmd_index = 0;
     RGB.control(true);
     RGB.color(64, 0, 0);
@@ -155,6 +160,10 @@ extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result) {
 }
 #endif
 
+bool WiFiTester::isPowerOn() {
+    return power_state;
+}
+
 void WiFiTester::printInfo() {
     String deviceID = Particle.deviceID();
 
@@ -189,9 +198,14 @@ void WiFiTester::printInfo() {
 
 #if Wiring_Cellular
     printItem("MAC", "00:00:00:00:00:00");   // needed by the sticker rig
-    CellularDevice dev;
-    cellular_device_info(&dev, NULL);
-    //printItem("IMEI", dev.imei);
+
+    // GET ICCID and IMEI (Modem with power on required)
+    if (isPowerOn()) {
+        CellularDevice dev;
+        cellular_device_info(&dev, NULL);
+        printItem("ICCID", dev.iccid);
+        printItem("IMEI", dev.imei);
+    }
 #endif
 
     printItem("SSID", serial.string);
@@ -293,16 +307,14 @@ void WiFiTester::checkWifiSerial(char c) {
         } else if ((start = strstr(command, cmd_DFU))) {
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
-            delay(100);
-            serialPrintln("resetting into DFU mode!");
+            delay(200);
 
             System.dfu();
         } else if ((start = strstr(command, cmd_RESET))) {
             //to trigger a factory reset:
-
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
-            delay(2000);
+            delay(200);
 
             System.factoryReset();
         } else if ((start = strstr(command, cmd_UNLOCK))) {
@@ -329,8 +341,28 @@ void WiFiTester::checkWifiSerial(char c) {
             serialPrintln("Rebooting... Rebooting... Rebooting...");
             serialPrintln("Rebooting... Rebooting... Rebooting...");
 
-            delay(1000);
+            delay(200);
             System.reset();
+        } else if ((start = strstr(command, cmd_POWER_ON))) {
+            serialPrintln("Power on... Power on... Power on...");
+            serialPrintln("Power on... Power on... Power on...");
+
+#if Wiring_Cellular
+            delay(200);
+            cellular_result_t result = cellular_on(NULL);
+            if (result == 0) {
+                power_state = true;
+            } else {
+                power_state = false;
+            }
+#endif
+            // Respond for all platforms
+            if (isPowerOn()) {
+                serialPrintln("POWER IS ON");
+            } else {
+                serialPrintln("POWER FAILED TO TURN ON!!!");
+            }
+            delay(200);
         } else if ((start = strstr(command, cmd_INFO))) {
             printInfo();
         }
