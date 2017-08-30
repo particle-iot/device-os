@@ -25,11 +25,11 @@
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
-#include "wifitester.h"
+#include "spark_wiring_wifitester.h"
 #include "core_hal.h"
 #include "spark_wiring_version.h"
 #include "string_convert.h"
-#include "system_cloud_internal.h"
+#include "bytes2hexbuf.h"
 #include "deviceid_hal.h"
 
 #if 0 //MODULAR_FIRMWARE
@@ -175,11 +175,13 @@ void WiFiTester::printInfo() {
     uint8_t* addr = ip_config.nw.uaMacAddr;
     String macAddress;
     bool first = true;
+    char tmp[3] = {0};
     for (int m = 0; m < 6; m++) {
         if (!first)
             macAddress += ":";
         first = false;
-        macAddress += bytes2hex(addr++, 1);
+        bytes2hexbuf(addr, 1, tmp);
+        macAddress += tmp;
     }
 #endif
 
@@ -368,7 +370,7 @@ void WiFiTester::checkWifiSerial(char c) {
         }
         else if ((start = strstr(command, cmd_CLEAR))) {
 #if Wiring_WiFi
-        		if (WiFi.hasCredentials())
+                if (WiFi.hasCredentials())
                 WiFi.clearCredentials();
 #endif
         }
@@ -539,12 +541,12 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     WiFi.connect();
     WiFi.clearCredentials();
     //
-    //	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
-    //	wlan_connect(WLAN_SEC_WPA2, ssid, strlen(ssid), NULL, pass, strlen(pass));
-    //	WLAN_MANUAL_CONNECT = 0;
+    //  wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
+    //  wlan_connect(WLAN_SEC_WPA2, ssid, strlen(ssid), NULL, pass, strlen(pass));
+    //  WLAN_MANUAL_CONNECT = 0;
     //
-    //	RGBColor = 0xFF00FF;		//purple
-    //USERLED_SetRGBColor(0xFF00FF);		//purple
+    //  RGBColor = 0xFF00FF;        //purple
+    //USERLED_SetRGBColor(0xFF00FF);        //purple
     //USERLED_On(LED_RGB);
     serialPrintln("  WIFI Connected?    ");
 #endif

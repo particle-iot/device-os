@@ -75,6 +75,10 @@ enum LoggingFeature {
 };
 #endif
 
+enum WiFiTesterFeature {
+    FEATURE_WIFITESTER = 1
+};
+
 class SystemClass {
 public:
 
@@ -208,6 +212,8 @@ public:
 #if Wiring_LogConfig
     bool enableFeature(LoggingFeature feature);
 #endif
+
+    static bool enableFeature(const WiFiTesterFeature feature);
 
     String version()
     {

@@ -36,6 +36,7 @@
 #include "system_version.h"
 #include "system_control.h"
 #include "system_led_signal.h"
+#include "system_setup.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -84,6 +85,7 @@ DYNALIB_FN(BASE_IDX + 3, system, led_set_signal_theme, int(const LEDSignalThemeD
 DYNALIB_FN(BASE_IDX + 4, system, led_get_signal_theme, int(LEDSignalThemeData*, int, void*))
 DYNALIB_FN(BASE_IDX + 5, system, led_signal_status, const LEDStatusData*(int, void*))
 DYNALIB_FN(BASE_IDX + 6, system, led_pattern_period, uint16_t(int, int, void*))
+DYNALIB_FN(BASE_IDX + 7, system, system_set_tester_handlers, int(system_tester_handlers_t*, void*))
 
 DYNALIB_FN(BASE_IDX + 7, system, system_format_diag_data, int(const uint16_t*, size_t, unsigned, appender_fn, void*, void*))
 
