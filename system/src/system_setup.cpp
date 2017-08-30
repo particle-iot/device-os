@@ -43,8 +43,24 @@
 #define SETUP_LISTEN_MAGIC 1
 void loop_wifitester(int c);
 #include "spark_wiring_usartserial.h"
-#include "wifitester.h"
-#endif
+
+static system_tester_handlers_t s_tester_handlers = {0};
+
+int system_set_tester_handlers(system_tester_handlers_t* handlers, void* reserved) {
+    memset(&s_tester_handlers, 0, sizeof(s_tester_handlers));
+    if (handlers != nullptr) {
+        memcpy(&s_tester_handlers, handlers, std::min(static_cast<uint16_t>(sizeof(s_tester_handlers)), handlers->size));
+    }
+    return 0;
+}
+
+#else /* SETUP_OVER_SERIAL1 */
+
+int system_set_tester_handlers(system_tester_handlers_t* handlers, void* reserved) {
+    return 1;
+}
+
+#endif /* SETUP_OVER_SERIAL1 */
 
 #ifndef SETUP_LISTEN_MAGIC
 #define SETUP_LISTEN_MAGIC 0
@@ -84,9 +100,9 @@ public:
 
 #if SETUP_OVER_SERIAL1
 inline bool setup_serial1() {
-	uint8_t value = 0;
-	system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
-	return value;
+    uint8_t value = 0;
+    system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
+    return value;
 }
 #endif
 
@@ -102,17 +118,19 @@ template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config
     serial1Enabled = false;
     magicPos = 0;
     if (setup_serial1()) {
-    		//WITH_LOCK(SETUP_SERIAL);
-    		SETUP_SERIAL.begin(9600);
+            //WITH_LOCK(SETUP_SERIAL);
+            SETUP_SERIAL.begin(9600);
     }
-    this->tester = NULL;
+    this->tester = nullptr;
 #endif
 }
 
 template <typename Config> SystemSetupConsole<Config>::~SystemSetupConsole()
 {
 #if SETUP_OVER_SERIAL1
-    delete this->tester;
+    if (tester != nullptr && s_tester_handlers.destroy) {
+        s_tester_handlers.destroy(this->tester, nullptr);
+    }
 #endif
 }
 
@@ -121,36 +139,40 @@ template<typename Config> void SystemSetupConsole<Config>::loop(void)
 #if SETUP_OVER_SERIAL1
     //TRY_LOCK(SETUP_SERIAL)
     {
-    		if (setup_serial1()) {
-    			int c = -1;
-    			if (SETUP_SERIAL.available()) {
-    				c = SETUP_SERIAL.read();
-    			}
-    			if (SETUP_LISTEN_MAGIC) {
-    				static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
-    				if (!serial1Enabled) {
-    					if (c>=0) {
-    						if (c==magic_code[magicPos++]) {
-    							serial1Enabled = magicPos==sizeof(magic_code);
-    							if (serial1Enabled) {
-    								if (tester==NULL)
-    									tester = new WiFiTester();
-    								tester->setup(SETUP_OVER_SERIAL1);
-    							}
-    						}
-    						else {
-    							magicPos = 0;
-    						}
-    						c = -1;
-    					}
-    				}
-    				else {
-    					if (tester)
-    						tester->loop(c);
-    				}
-    			}
-    		}
-    	}
+        if (setup_serial1() && s_tester_handlers.size != 0) {
+            int c = -1;
+            if (SETUP_SERIAL.available()) {
+                c = SETUP_SERIAL.read();
+            }
+            if (SETUP_LISTEN_MAGIC) {
+                static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
+                if (!serial1Enabled) {
+                    if (c>=0) {
+                        if (c==magic_code[magicPos++]) {
+                            serial1Enabled = magicPos==sizeof(magic_code);
+                            if (serial1Enabled) {
+                                if (tester == nullptr && s_tester_handlers.create != nullptr) {
+                                    tester = s_tester_handlers.create(nullptr);
+                                }
+                                if (tester != nullptr && s_tester_handlers.setup) {
+                                    s_tester_handlers.setup(tester, SETUP_OVER_SERIAL1, nullptr);
+                                }
+                            }
+                        }
+                        else {
+                            magicPos = 0;
+                        }
+                        c = -1;
+                    }
+                }
+                else {
+                    if (tester != nullptr && s_tester_handlers.loop) {
+                        s_tester_handlers.loop(tester, c, nullptr);
+                    }
+                }
+            }
+        }
+    }
 #endif
 
     TRY_LOCK(serial)
@@ -246,25 +268,25 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('c' == c)
     {
-    		bool claimed = HAL_IsDeviceClaimed(nullptr);
-    		print("Device claimed: ");
-    		print(claimed ? "yes" : "no");
-    		print("\r\n");
+            bool claimed = HAL_IsDeviceClaimed(nullptr);
+            print("Device claimed: ");
+            print(claimed ? "yes" : "no");
+            print("\r\n");
     }
     else if ('C' == c)
     {
-    		char code[64];
-    		print("Enter 63-digit claim code: ");
-    		read_line(code, 63);
-    		if (strlen(code)==63) {
-    			HAL_Set_Claim_Code(code);
-    			print("Claim code set to: ");
-    			print(code);
-    		}
-    		else {
-    			print("Sorry, claim code is not 63 characters long. Claim code unchanged.");
+            char code[64];
+            print("Enter 63-digit claim code: ");
+            read_line(code, 63);
+            if (strlen(code)==63) {
+                HAL_Set_Claim_Code(code);
+                print("Claim code set to: ");
+                print(code);
+            }
+            else {
+                print("Sorry, claim code is not 63 characters long. Claim code unchanged.");
 }
-		print("\r\n");
+        print("\r\n");
     }
 }
 

@@ -8,6 +8,7 @@
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
+#include "spark_wiring_wifitester.h"
 
 #if Wiring_LogConfig
 extern bool(*log_process_config_request_callback)(char*, size_t, size_t, size_t*, DataFormat);
@@ -65,3 +66,8 @@ bool SystemClass::enableFeature(LoggingFeature) {
     return true;
 }
 #endif
+
+bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
+    SETUP_WIFITESTER_IMPL();
+    return true;
+}
