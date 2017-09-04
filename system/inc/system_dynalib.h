@@ -70,8 +70,8 @@ DYNALIB_FN(23, system, system_notify_time_changed, void(uint32_t, void*, void*))
 DYNALIB_FN(24, system, main_thread_current, uint8_t(void*))
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
-DYNALIB_FN(25, system, system_set_usb_request_app_handler, void(usb_request_app_handler_type, void*))
-DYNALIB_FN(26, system, system_set_usb_request_result, void(USBRequest*, int, void*))
+DYNALIB_FN(25, system, system_set_usb_request_app_handler, void(void*, void*)) // Deprecated
+DYNALIB_FN(26, system, system_set_usb_request_result, void(void*, int, void*)) // Deprecated
 #define BASE_IDX 27
 #else
 #define BASE_IDX 25
@@ -84,6 +84,13 @@ DYNALIB_FN(BASE_IDX + 3, system, led_set_signal_theme, int(const LEDSignalThemeD
 DYNALIB_FN(BASE_IDX + 4, system, led_get_signal_theme, int(LEDSignalThemeData*, int, void*))
 DYNALIB_FN(BASE_IDX + 5, system, led_signal_status, const LEDStatusData*(int, void*))
 DYNALIB_FN(BASE_IDX + 6, system, led_pattern_period, uint16_t(int, int, void*))
+
+// Control requests
+DYNALIB_FN(BASE_IDX + 7, system, system_ctrl_set_app_request_handler, int(ctrl_request_handler_fn, void*))
+DYNALIB_FN(BASE_IDX + 8, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
+DYNALIB_FN(BASE_IDX + 9, system, system_ctrl_free_reply_data, void(ctrl_request*, void*))
+DYNALIB_FN(BASE_IDX + 10, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
+DYNALIB_FN(BASE_IDX + 11, system, system_ctrl_set_result, void(ctrl_request*, int, void*))
 
 DYNALIB_END(system)
 
