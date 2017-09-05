@@ -68,14 +68,11 @@ typedef void(*ctrl_request_handler_fn)(ctrl_request* req);
 // Sets the application callback for control requests
 int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* reserved);
 
-// Allocates a buffer for reply data
-int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved);
-
-// Releases a buffer with reply data
-void system_ctrl_free_reply_data(ctrl_request* req, void* reserved);
-
 // Releases a buffer with request data
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved);
+
+// Allocates a buffer for reply data
+int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved);
 
 // Completes the processing of a request. The `result` argument specifies a result code as defined
 // by the `system_error_t` enum
