@@ -87,10 +87,9 @@ DYNALIB_FN(BASE_IDX + 6, system, led_pattern_period, uint16_t(int, int, void*))
 
 // Control requests
 DYNALIB_FN(BASE_IDX + 7, system, system_ctrl_set_app_request_handler, int(ctrl_request_handler_fn, void*))
-DYNALIB_FN(BASE_IDX + 8, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
-DYNALIB_FN(BASE_IDX + 9, system, system_ctrl_free_reply_data, void(ctrl_request*, void*))
-DYNALIB_FN(BASE_IDX + 10, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
-DYNALIB_FN(BASE_IDX + 11, system, system_ctrl_set_result, void(ctrl_request*, int, void*))
+DYNALIB_FN(BASE_IDX + 8, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
+DYNALIB_FN(BASE_IDX + 9, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
+DYNALIB_FN(BASE_IDX + 10, system, system_ctrl_set_result, void(ctrl_request*, int, void*))
 
 DYNALIB_END(system)
 

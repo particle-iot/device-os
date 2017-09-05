@@ -26,7 +26,7 @@ class ControlRequestChannel;
 // Base abstract class for a control request handler
 class ControlRequestHandler {
 public:
-    virtual void processRequest(ctrl_request* req) = 0;
+    virtual void processRequest(ctrl_request* req, ControlRequestChannel* channel) = 0;
 };
 
 // Base abstract class for a control request channel
@@ -34,9 +34,8 @@ class ControlRequestChannel {
 public:
     explicit ControlRequestChannel(ControlRequestHandler* handler);
 
-    virtual int allocReplyData(ctrl_request* req, size_t size) = 0;
-    virtual void freeReplyData(ctrl_request* req) = 0;
     virtual void freeRequestData(ctrl_request* req) = 0;
+    virtual int allocReplyData(ctrl_request* req, size_t size) = 0;
     virtual void setResult(ctrl_request* req, system_error_t result) = 0;
 
 protected:
