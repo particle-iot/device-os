@@ -200,7 +200,7 @@ public:
 
     IPAddress resolve(const char* name)
     {
-        HAL_IPAddress ip;
+        HAL_IPAddress ip = {0};
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL) != 0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }
