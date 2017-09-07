@@ -84,7 +84,7 @@ public:
             const char* stateName = nameForState((RunnerState)_state);
             if (isStarted())
                 updateLEDStatus();
-            Particle.publish("state", stateName);
+            Particle.publish("state", stateName, PRIVATE);
         }
     }
 

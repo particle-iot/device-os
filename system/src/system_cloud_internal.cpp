@@ -688,7 +688,7 @@ void Spark_Protocol_Init(void)
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
-        Particle.subscribe("spark", SystemEvents);
+        Particle.subscribe("spark", SystemEvents, MY_DEVICES);
 
         CommunicationsHandlers handlers;
         handlers.size = sizeof(handlers);

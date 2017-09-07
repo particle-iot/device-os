@@ -21,6 +21,8 @@
 #include "system_error.h"
 
 #ifdef __cplusplus
+// todo - services should not depend upon wiring, but rather move the vector
+// implementation down into services and make it available from wiring.
 #include "spark_wiring_vector.h"
 #include "system_tick_hal.h"
 

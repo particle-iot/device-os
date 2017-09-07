@@ -24,5 +24,11 @@
 #define PARTICLE_DEPRECATED_API(_msg)
 #endif
 
+// todo - need a feature for gcc compile vs arm-gcc
+#if PLATFORM_ID!=3
+#define ATTRIBUTE_ERROR(_msg) __attribute__((error(_msg)))
+#else
+#define ATTRIBUTE_ERROR(_msg)
+#endif
 #define PARTICLE_DELETED_API(_msg) \
-        __attribute__((error(_msg)))
+        ATTRIBUTE_ERROR(_msg)
