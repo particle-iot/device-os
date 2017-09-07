@@ -3,8 +3,9 @@ MODULE=main
 
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 module_dir := $(dir $(mkfile_path))
+# remove trailing slash
 current_dir := $(patsubst %/,%,$(dir $(mkfile_path)))
-MAIN_MODULE_PATH:=$(module_dir)
+MAIN_MODULE_PATH:=$(current_dir)
 
 include $(module_dir)../build/platform-id.mk
 include $(module_dir)../build/top-level-module.mk

@@ -3,7 +3,7 @@
 # to combine those objects into libraries or elf files.
 include $(COMMON_BUILD)/macros.mk
 
-SOURCE_PATH ?= $(MODULE_PATH)
+SOURCE_PATH ?= $(abspath $(MODULE_PATH))
 
 # import this module's symbols
 include $(MODULE_PATH)/import.mk

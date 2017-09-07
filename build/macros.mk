@@ -32,8 +32,10 @@ assert_filesize = $(call _assert_equal,"file $1",$2,$(shell echo $(call filesize
 
 assert_filebyte = $(call _assert_equal,"file $1 offset $2",$3,$(shell echo $(call filebyte,$1,$2)))
 
-# Recursive wildcard function - finds matching files in a directory tree
+# Recursive wildcard function - finds matching filses in a directory tree
 target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,$2))
+target_files_abs = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$1,$2))
+
 here_files = $(call wildcard,$(SOURCE_PATH)/$1$2)
 
 remove_slash = $(patsubst %/,%,$1)
