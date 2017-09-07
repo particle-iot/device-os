@@ -90,7 +90,7 @@ If you have questions about software licensing, please contact Particle [support
 
 **Questions / Concerns?**
 
- * Particle intends for this firmware to be commercially useful and safe for our community of makers and enterprises.  Please [Contact Us] if you have any questions or concerns, or if you require special licensing.
+ * Particle intends for this firmware to be commercially useful and safe for our community of makers and enterprises.  Please [Contact Us](https://support.particle.io/) if you have any questions or concerns, or if you require special licensing.
 
 _(Note!  This FAQ isn't meant to be legal advice, if you're unsure, please consult an attorney)_
 
