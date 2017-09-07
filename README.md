@@ -86,7 +86,7 @@ If you have questions about software licensing, please contact Particle [support
 
 **Why?**
 
-This license allows businesses to confidently build firmware and make devices without risk to their intellectual property, while at the same time helping the community benefit from non-proprietary contributions to the shared System Firmware.
+ * This license allows businesses to confidently build firmware and make devices without risk to their intellectual property, while at the same time helping the community benefit from non-proprietary contributions to the shared System Firmware.
 
 **Questions / Concerns?**
 
