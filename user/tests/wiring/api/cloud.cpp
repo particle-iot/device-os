@@ -92,33 +92,33 @@ test(api_spark_function) {
 
 test(api_spark_publish) {
     // Particle.publish(const char*, const char*, ...)
-    API_COMPILE(Particle.publish("event"));
+//    API_COMPILE(Particle.publish("event"));
     API_COMPILE(Particle.publish("event", PUBLIC));
     API_COMPILE(Particle.publish("event", PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish("event", PUBLIC | NO_ACK)); // traditional syntax
 
-    API_COMPILE(Particle.publish("event", "data"));
+//    API_COMPILE(Particle.publish("event", "data"));
     API_COMPILE(Particle.publish("event", "data", PUBLIC));
     API_COMPILE(Particle.publish("event", "data", PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish("event", "data", PUBLIC | NO_ACK));
 
-    API_COMPILE(Particle.publish("event", "data", 60));
+//    API_COMPILE(Particle.publish("event", "data", 60));
     API_COMPILE(Particle.publish("event", "data", 60, PUBLIC));
     API_COMPILE(Particle.publish("event", "data", 60, PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish("event", "data", 60, PUBLIC | NO_ACK));
 
     // Particle.publish(String, String, ...)
-    API_COMPILE(Particle.publish(String("event")));
+//    API_COMPILE(Particle.publish(String("event")));
     API_COMPILE(Particle.publish(String("event"), PUBLIC));
     API_COMPILE(Particle.publish(String("event"), PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish(String("event"), PUBLIC | NO_ACK));
 
-    API_COMPILE(Particle.publish(String("event"), String("data")));
+//    API_COMPILE(Particle.publish(String("event"), String("data")));
     API_COMPILE(Particle.publish(String("event"), String("data"), PUBLIC));
     API_COMPILE(Particle.publish(String("event"), String("data"), PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish(String("event"), String("data"), PUBLIC | NO_ACK));
 
-    API_COMPILE(Particle.publish(String("event"), String("data"), 60));
+//    API_COMPILE(Particle.publish(String("event"), String("data"), 60));
     API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC));
     API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC | NO_ACK));
@@ -128,14 +128,14 @@ test(api_spark_subscribe) {
 
     void (*handler)(const char *event_name, const char *data) = NULL;
 
-    API_COMPILE(Particle.subscribe("name", handler));
+    API_COMPILE(Particle.subscribe("name", handler, ALL_DEVICES));
 
     API_COMPILE(Particle.subscribe("name", handler, MY_DEVICES));
 
     API_COMPILE(Particle.subscribe("name", handler, "1234"));
 
 
-    API_COMPILE(Particle.subscribe(String("name"), handler));
+    API_COMPILE(Particle.subscribe(String("name"), handler, ALL_DEVICES));
 
     API_COMPILE(Particle.subscribe(String("name"), handler, MY_DEVICES));
 
@@ -146,7 +146,7 @@ test(api_spark_subscribe) {
         void handler(const char *event_name, const char *data) { }
     } myObj;
 
-    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj));
+    API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj, ALL_DEVICES));
 
     API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj, MY_DEVICES));
 
