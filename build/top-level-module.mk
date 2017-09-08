@@ -2,7 +2,7 @@
 
 # assume project is at top level directory if PROJECT_ROOT not specified
 # current_dir set in arm-tlk.mk
-PROJECT_ROOT ?= $(current_dir)/..
+PROJECT_ROOT ?= $(abspath $(current_dir)/..)
 # module_dir is optional, and will include final trailing slash
 MODULE_PATH?=$(abspath $(module_dir).)
 COMMON_BUILD=$(PROJECT_ROOT)/build
