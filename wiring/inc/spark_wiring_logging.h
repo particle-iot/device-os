@@ -607,17 +607,11 @@ private:
 #if Wiring_LogConfig
 
 /*!
-    \brief Performs processing of a configuration request.
+    \brief Performs processing of a control request.
 
-    \param buf Buffer.
-    \param reqData Buffer size.
-    \param reqSize Request data size.
-    \param repSize Reply data size.
-    \param fmt Data format.
-
-    \return `false` in case of error.
+    \param req Request handle.
 */
-bool logProcessConfigRequest(char *buf, size_t bufSize, size_t reqSize, size_t *repSize, DataFormat fmt);
+void logProcessControlRequest(ctrl_request* req);
 
 #endif // Wiring_LogConfig
 

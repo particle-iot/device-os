@@ -40,7 +40,8 @@
         (PROTOCOL, "Protocol error", -240), \
         (INTERNAL, "Internal error", -250), \
         (NO_MEMORY, "Memory allocation error", -260), \
-        (INVALID_ARGUMENT, "Invalid argument", -270)
+        (INVALID_ARGUMENT, "Invalid argument", -270), \
+        (BAD_DATA, "Invalid data format", -280)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
