@@ -21,6 +21,9 @@
 #include "spark_wiring_system.h"
 #include "debug.h"
 
+#include "system_update.h"
+#include "appender.h"
+
 #if SYSTEM_CONTROL_ENABLED
 
 namespace {
@@ -61,18 +64,33 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         break;
     }
     case CTRL_REQUEST_MODULE_INFO: {
-        // FIXME
+        const size_t bufSize = 1024;
+        if (allocReplyData(req, bufSize) != 0) {
+            setResult(req, SYSTEM_ERROR_NO_MEMORY);
+            return;
+        }
+        BufferAppender appender((uint8_t*)req->reply_data, req->reply_size);
+        system_module_info(append_instance, &appender);
+        req->reply_size = appender.size();
+        setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {
-            appReqHandler_(req); // FIXME
+            processAppRequest(req);
         } else {
             setResult(req, SYSTEM_ERROR_NOT_SUPPORTED);
         }
         break;
     }
+}
+
+void particle::SystemControl::processAppRequest(ctrl_request* req) {
+    // FIXME: Request leak may occur if underlying asynchronous event cannot be queued
+    APPLICATION_THREAD_CONTEXT_ASYNC(processAppRequest(req));
+    SPARK_ASSERT(appReqHandler_); // Checked in processRequest()
+    appReqHandler_(req);
 }
 
 particle::SystemControl* particle::SystemControl::instance() {

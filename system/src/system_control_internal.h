@@ -42,6 +42,8 @@ public:
 private:
     UsbControlRequestChannel usbReqChannel_;
     ctrl_request_handler_fn appReqHandler_;
+
+    void processAppRequest(ctrl_request* req);
 };
 
 } // namespace particle

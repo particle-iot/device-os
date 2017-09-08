@@ -357,6 +357,8 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
                 svcRep.status(ServiceReply::PENDING);
                 break;
             case State::DONE:
+                svcRep.size(req->ctrl.reply_size);
+                svcRep.result((system_error_t)req->result);
                 svcRep.status(ServiceReply::OK);
                 break;
             }
