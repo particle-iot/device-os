@@ -15,8 +15,8 @@ overridedir=$(HAL_SRC_GCC_PATH)
 # Use files from the template unless they are overridden by files in the
 # gcc folder. Also manually exclude some files that have changed from c->cpp.
 
-CSRC += $(call target_files,$(templatedir)/,*.c)
-CPPSRC += $(call target_files,$(templatedir)/,*.cpp)
+CSRC += $(call target_files_rel,$(templatedir)/,*.c)
+CPPSRC += $(call target_files_rel,$(templatedir)/,*.cpp)
 
 # find the overridden list of files (without extension)
 overrides_abs = $(call rwildcard,$(overridedir)/,*.cpp)
