@@ -38,6 +38,11 @@ rel_source_path=$(patsubst $(SOURCE_PATH)/%,%,$(abspath $1))
 # The directory can be absolute or relative and files are returned relative to SOURCE_PATH
 target_files = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$(call rel_source_path,$1)/,$2))
 
+# Recursive wildcard function - finds matching filses in a directory tree relative to $(SOURCE_PATH) so outputs can be mapped to BUILD_TARGET
+# The directory is taken relative SOURCE_PATH
+target_files_rel = $(patsubst $(SOURCE_PATH)/%,%,$(call rwildcard,$(SOURCE_PATH)/$1,$2))
+
+
 here_files = $(patsubst $(SOURCE_PATH)/%,%,$(call wildcard,$(SOURCE_PATH)/$(call rel_source_path,$1)/$2))
 
 remove_slash = $(patsubst %/,%,$1)
