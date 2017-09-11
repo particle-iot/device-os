@@ -27,5 +27,6 @@
 #include "logging.h"
 #include "system_error.h"
 #include "led_service.h"
+#define DIAGNOSTIC_SKIP_PLATFORM
+#include "diagnostic.h"
 #include "services_dynalib.h"
-

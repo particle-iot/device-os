@@ -40,6 +40,10 @@
 #include "logging.h"
 #include "atomic_flag_mutex.h"
 #include "service_debug.h"
+#include <malloc.h>
+#include "timer_hal.h"
+
+extern "C" void vTaskGetStackInfo( TaskHandle_t pxTask, void** stack_ptr, void** start_stack_ptr, void** end_stack_ptr );
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 # include "wwd_rtos_interface.h"
@@ -66,6 +70,11 @@ static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same siz
 #define _CREATE_NAME_TYPE const signed char
 #endif
 
+typedef struct {
+    os_thread_dump_callback_t callback;
+    os_thread_t thread;
+    void* data;
+} os_thread_dump_helper_t;
 
 /**
  * Creates a new thread.
@@ -98,6 +107,41 @@ bool os_thread_is_current(os_thread_t thread)
     return thread==xTaskGetCurrentTaskHandle();
 }
 
+os_unique_id_t os_thread_unique_id(os_thread_t thread)
+{
+    return (os_unique_id_t)uxTaskGetTaskNumber(thread);
+}
+
+os_thread_t os_thread_current()
+{
+    return xTaskGetCurrentTaskHandle();
+}
+
+static BaseType_t os_thread_dump_helper(TaskStatus_t* const status, void* data)
+{
+    os_thread_dump_helper_t* h = (os_thread_dump_helper_t*)data;
+    os_thread_dump_info_t info = {0};
+    info.thread = status->xHandle;
+    info.name = status->pcTaskName;
+    info.id = status->xTaskNumber;
+    vTaskGetStackInfo(status->xHandle, &info.stack, &info.stack_start, &info.stack_end);
+    if (h->callback && (h->thread == OS_THREAD_INVALID_HANDLE || h->thread == status->xHandle)) {
+        return (BaseType_t)h->callback(&info, h->data);
+    }
+
+    return 0;
+}
+
+os_result_t os_thread_dump(os_thread_t thread, os_thread_dump_callback_t callback, void* ptr)
+{
+    TaskStatus_t status = {0};
+    os_thread_dump_helper_t data = {callback, thread, ptr};
+    // vTaskSuspendAll();
+    uxTaskGetSystemState(&status, 1, nullptr, os_thread_dump_helper, (void*)&data);
+    // xTaskResumeAll();
+
+    return 0;
+}
 
 os_result_t os_thread_yield(void)
 {

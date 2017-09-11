@@ -15,14 +15,14 @@ AR = $(GCC_ARM_PATH)$(GCC_PREFIX)gcc-ar
 #
 
 # C compiler flags
-CFLAGS +=  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb
+CFLAGS +=  -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -mthumb -fomit-frame-pointer
 
 # C++ specific flags
 CPPFLAGS += -fno-exceptions -fno-rtti -fcheck-new
 
 CONLYFLAGS +=
 
-ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb
+ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m3 -mthumb -fomit-frame-pointer
 
 LDFLAGS += -nostartfiles -Xlinker --gc-sections
 
