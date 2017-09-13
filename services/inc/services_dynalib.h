@@ -67,7 +67,11 @@ DYNALIB_FN(33, services, led_set_update_enabled, void(int, void*))
 DYNALIB_FN(34, services, led_update_enabled, int(void*))
 DYNALIB_FN(35, services, led_update, void(system_tick_t, LEDStatusData*, void*))
 
+DYNALIB_FN(36, services, diag_register_source, int(const diag_source*, void*))
+DYNALIB_FN(37, services, diag_enum_sources, void(diag_enum_callback, size_t*, void*, void*))
+DYNALIB_FN(38, services, diag_get_source, int(uint16_t, const diag_source**, void*))
+DYNALIB_FN(39, services, diag_reset, void(void*))
+
 DYNALIB_END(services)
 
 #endif	/* SERVICES_DYNALIB_H */
-

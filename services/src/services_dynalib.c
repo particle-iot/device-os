@@ -21,11 +21,12 @@
  */
 
 #define DYNALIB_EXPORT
+
 #include "rgbled.h"
 #include "debug.h"
 #include "jsmn.h"
 #include "logging.h"
 #include "system_error.h"
 #include "led_service.h"
+#include "diagnostics.h"
 #include "services_dynalib.h"
-
