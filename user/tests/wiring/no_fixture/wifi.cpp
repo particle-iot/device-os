@@ -42,12 +42,12 @@ test(WIFI_02_resolve_4_levels)
 
 void checkIPAddress(const char* name, const IPAddress& address)
 {
-    if (address.version()==0 || address[0]==0)
+    if (address.version()==0 || !address)
     {
         Serial.print("address failed:");
         Serial.println(name);
         assertNotEqual(address.version(), 0);
-        assertNotEqual(address[0], 0);
+        assertNotEqual(address, 0);
     }
 }
 
@@ -64,12 +64,8 @@ void checkEtherAddress(const uint8_t* address)
 test(WIFI_03_config)
 {
     checkIPAddress("local", WiFi.localIP());
-
-// WICED doesn't report DHCP or DNS server
-#if PLATFORM_ID!=6 && PLATFORM_ID!=8
     checkIPAddress("dnsServer", WiFi.dnsServerIP());
     checkIPAddress("dhcpServer", WiFi.dhcpServerIP());
-#endif
     checkIPAddress("gateway", WiFi.gatewayIP());
 
     uint8_t ether[6];
