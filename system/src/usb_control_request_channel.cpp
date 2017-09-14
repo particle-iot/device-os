@@ -170,7 +170,8 @@ particle::UsbControlRequestChannel::UsbControlRequestChannel(ControlRequestHandl
         activeReqList_(nullptr),
         freeReqList_(nullptr),
         freeBufList_(nullptr),
-        lastReqId_(USB_REQUEST_INVALID_ID) {
+        lastReqId_(USB_REQUEST_INVALID_ID),
+        curTxReq_(nullptr) {
     // Initialize timer
     if (os_timer_create(&timer_, USB_REQUEST_HOST_TIMEOUT, timeout, this, true /* one_shot */, nullptr /* reserved */) != 0) {
         LOG(ERROR, "Unable to initialize a timer");
@@ -203,11 +204,13 @@ particle::UsbControlRequestChannel::UsbControlRequestChannel(ControlRequestHandl
         }
     }
     HAL_USB_Set_Vendor_Request_Callback(halVendorRequestCallback, this);
+    HAL_USB_Set_Vendor_Request_State_Callback(halVendorRequestStateCallback, this);
 }
 
 particle::UsbControlRequestChannel::~UsbControlRequestChannel() {
     if (reqs_) {
         HAL_USB_Set_Vendor_Request_Callback(nullptr, nullptr);
+        HAL_USB_Set_Vendor_Request_State_Callback(nullptr, nullptr);
     }
 }
 
@@ -257,6 +260,37 @@ int particle::UsbControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, si
         }
     }
     return SYSTEM_ERROR_NONE;
+}
+
+void particle::UsbControlRequestChannel::freeReplyData(ctrl_request* ctrlReq) {
+    const auto req = (Request*)ctrlReq;
+    char* data = nullptr;
+    ATOMIC_BLOCK() {
+        // Check if the request uses a preallocated buffer
+        if (req->repBuf) {
+            req->repBuf->next = freeBufList_;
+            freeBufList_ = req->repBuf;
+            req->repBuf = nullptr;
+        } else {
+            data = req->ctrl.reply_data;
+        }
+        req->ctrl.reply_size = 0;
+    }
+    // Free a dynamically allocated buffer
+    delete[] data;
+
+    // FIXME: should the request be removed from the activeReqList_ here?
+    for(Request* r = activeReqList_, *prev = nullptr; r != nullptr; r = r->next) {
+        if (r == req) {
+            if (prev) {
+                prev->next = r->next;
+            } else {
+                activeReqList_ = r->next;
+            }
+        }
+    }
+    req->next = freeReqList_;
+    freeReqList_ = req;
 }
 
 void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, system_error_t result) {
@@ -426,6 +460,7 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
         } else {
             // Provide a buffer to the HAL
             halReq->data = (uint8_t*)req->ctrl.reply_data;
+            curTxReq_ = req;
         }
         return true;
     }
@@ -508,10 +543,6 @@ void particle::UsbControlRequestChannel::allocRequestBuffer(void* data) {
     }
 }
 
-void particle::UsbControlRequestChannel::freeReplyData(void* data) {
-    delete[] static_cast<char*>(data);
-}
-
 void particle::UsbControlRequestChannel::timeout(os_timer_t timer) {
     // TODO
 }
@@ -561,6 +592,27 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestCallback(HAL_USB_Set
         } else {
             ok = d->processVendorRequest(req);
         }
+    }
+    return (ok ? 0 : 1);
+}
+
+uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_USB_VendorRequestState state, void* data) {
+    const auto d = static_cast<UsbControlRequestChannel*>(data);
+    bool ok = false;
+    switch (state) {
+    case HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED: {
+        if (d->curTxReq_) {
+            d->freeReplyData(reinterpret_cast<ctrl_request*>(d->curTxReq_));
+            d->curTxReq_ = nullptr;
+        }
+        break;
+    }
+    case HAL_USB_VENDOR_REQUEST_STATE_RESET: {
+        // TODO: Deinitialize all requests in activeReqList_
+        break;
+    }
+    default:
+    break;
     }
     return (ok ? 0 : 1);
 }
