@@ -30,8 +30,9 @@ public:
     SystemControl();
 
     int setAppRequestHandler(ctrl_request_handler_fn handler);
-    void freeRequestData(ctrl_request* req);
     int allocReplyData(ctrl_request* req, size_t size);
+    void freeReplyData(ctrl_request* req);
+    void freeRequestData(ctrl_request* req);
     void setResult(ctrl_request* req, system_error_t result);
 
     // ControlRequestHandler
@@ -53,12 +54,18 @@ inline int particle::SystemControl::setAppRequestHandler(ctrl_request_handler_fn
     return 0;
 }
 
-inline void particle::SystemControl::freeRequestData(ctrl_request* req) {
-    usbReqChannel_.freeRequestData(req);
+inline int particle::SystemControl::allocReplyData(ctrl_request* req, size_t size) {
+    // At the moment, USB is the only supported channel for control requests, so all API calls are
+    // simply forwarded to the channel implementation
+    return usbReqChannel_.allocReplyData(req, size);
 }
 
-inline int particle::SystemControl::allocReplyData(ctrl_request* req, size_t size) {
-    return usbReqChannel_.allocReplyData(req, size);
+inline void particle::SystemControl::freeReplyData(ctrl_request* req) {
+    usbReqChannel_.freeReplyData(req);
+}
+
+inline void particle::SystemControl::freeRequestData(ctrl_request* req) {
+    usbReqChannel_.freeRequestData(req);
 }
 
 inline void particle::SystemControl::setResult(ctrl_request* req, system_error_t result) {

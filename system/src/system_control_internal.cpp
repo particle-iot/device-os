@@ -70,7 +70,11 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
             return;
         }
         BufferAppender appender((uint8_t*)req->reply_data, req->reply_size);
-        system_module_info(append_instance, &appender);
+        if (!system_module_info(append_instance, &appender)) {
+            freeReplyData(req);
+            setResult(req, SYSTEM_ERROR_UNKNOWN);
+            return;
+        }
         req->reply_size = appender.size();
         setResult(req, SYSTEM_ERROR_NONE);
         break;
@@ -102,12 +106,16 @@ int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* r
     return SystemControl::instance()->setAppRequestHandler(handler);
 }
 
-void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
-    SystemControl::instance()->freeRequestData(req);
-}
-
 int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved) {
     return SystemControl::instance()->allocReplyData(req, size);
+}
+
+void system_ctrl_free_reply_data(ctrl_request* req, void* reserved) {
+    SystemControl::instance()->freeReplyData(req);
+}
+
+void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
+    SystemControl::instance()->freeRequestData(req);
 }
 
 void system_ctrl_set_result(ctrl_request* req, int result, void* reserved) {
@@ -121,11 +129,14 @@ int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* r
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
-}
-
 int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+void system_ctrl_free_reply_data(ctrl_request* req, void* reserved) {
+}
+
+void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 }
 
 void system_ctrl_set_result(ctrl_request* req, int result, void* reserved) {
