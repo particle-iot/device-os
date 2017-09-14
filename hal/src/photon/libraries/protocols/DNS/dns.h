@@ -60,6 +60,14 @@ extern "C" {
  */
 wiced_result_t dns_client_add_server_address          ( wiced_ip_address_t address );
 
+/** Retrieves the IP address of a DNS server from the list used by the DNS client
+ *
+ * @param[in]  idx     : Index of the requested DNS server in the list used by the DNS client
+ * @param[out] address : Receives the IP address of a configured DNS server
+ *
+ * @return @ref wiced_result_t
+ */
+wiced_result_t dns_client_get_server_address          ( int idx, wiced_ip_address_t* address );
 
 /** Wipes out the list of DNS servers used by the DNS client
  *
