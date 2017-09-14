@@ -137,10 +137,10 @@ inline void yield() {
 #endif
 
 #ifndef cbi
-#define cbi(sfr, bit) ((sfr) &= ~_BV(bit))
+#define cbi(sfr, bitmask) ((*(sfr)) &= ~(bitmask))
 #endif
 #ifndef sbi
-#define sbi(sfr, bit) ((sfr) |= _BV(bit))
+#define sbi(sfr, bitmask) ((*(sfr)) |= (bitmask))
 #endif
 
 // XXX
