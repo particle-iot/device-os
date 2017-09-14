@@ -61,6 +61,7 @@ public:
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual int allocReplyData(ctrl_request* ctrlReq, size_t size) override;
     virtual void setResult(ctrl_request* ctrlReq, system_error_t result) override;
+    virtual void freeReplyData(ctrl_request* ctrlReq) override;
 
 private:
     // Request state
@@ -99,6 +100,8 @@ private:
     Request* freeReqList_; // List of unused request objects
     Buffer* freeBufList_; // List of unused preallocated buffers
     uint16_t lastReqId_; // Last request ID
+    /* A request with reply data currently being processed by the USB subsystem */
+    Request* curTxReq_;
 
     bool processServiceRequest(HAL_USB_SetupRequest* halReq);
     bool processVendorRequest(HAL_USB_SetupRequest* req);
@@ -107,9 +110,9 @@ private:
 
     static void invokeRequestHandler(void* data);
     static void allocRequestBuffer(void* data);
-    static void freeReplyData(void* data);
 
     static uint8_t halVendorRequestCallback(HAL_USB_SetupRequest* req, void* data);
+    static uint8_t halVendorRequestStateCallback(HAL_USB_VendorRequestState state, void* data);
 };
 
 } // namespace particle

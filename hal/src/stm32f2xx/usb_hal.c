@@ -65,19 +65,36 @@ extern uint32_t USBD_OTG_EP1OUT_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 static void (*LineCoding_BitRate_Handler)(uint32_t bitRate) = NULL;
 static uint8_t USB_Configured = 0;
 
+typedef enum {
+    USB_IN_SETUP_REQUEST_STATE_NONE = 0,
+    USB_IN_SETUP_REQUEST_STATE_TX = 1,
+    USB_IN_SETUP_REQUEST_STATE_RX = 2
+} USB_InSetupRequestState;
+
 static uint8_t USB_SetupRequest_Data[USBD_EP0_MAX_PACKET_SIZE];
 static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
-static uint8_t USB_InSetupRequest = 0;
+static volatile uint32_t USB_InSetupCounter = 0;
+static volatile USB_InSetupRequestState USB_InSetupRequest = USB_IN_SETUP_REQUEST_STATE_NONE;
 static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;
 static void* USB_Vendor_Request_Ptr = NULL;
+static HAL_USB_Vendor_Request_State_Callback USB_Vendor_Request_State_Callback = NULL;
+static void* USB_Vendor_Request_State_Ptr = NULL;
 static USBD_Class_cb_TypeDef* USB_Composite_Instance = NULL;
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
+
+#define USB_VENDOR_REQUEST_TIMEOUT 1000
 
 void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p)
 {
     USB_Vendor_Request_Callback = cb;
     USB_Vendor_Request_Ptr = p;
+}
+
+void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Callback cb, void* p)
+{
+    USB_Vendor_Request_State_Callback = cb;
+    USB_Vendor_Request_State_Ptr = p;
 }
 
 uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
@@ -103,6 +120,7 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
             // Setup request with data stage
             if (req->bmRequest & 0x80) {
                 // Device -> Host
+                USB_InSetupRequest = USB_IN_SETUP_REQUEST_STATE_TX;
                 if (req->wLength <= USBD_EP0_MAX_PACKET_SIZE)
                     USB_SetupRequest.data = USB_SetupRequest_Data;
                 else
@@ -123,7 +141,7 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
                 }
             } else {
                 // Host -> Device
-                USB_InSetupRequest = 1;
+                USB_InSetupRequest = USB_IN_SETUP_REQUEST_STATE_RX;
                 if (req->wLength <= USBD_EP0_MAX_PACKET_SIZE) {
                     // Use internal buffer
                     USB_SetupRequest.data = USB_SetupRequest_Data;
@@ -147,8 +165,14 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
         }
     } else if (dataStage && USB_InSetupRequest) {
         // Data stage completed
-        USB_InSetupRequest = 0;
-        ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
+        if (USB_InSetupRequest == USB_IN_SETUP_REQUEST_STATE_RX) {
+            ret = USB_Vendor_Request_Callback(&USB_SetupRequest, USB_Vendor_Request_Ptr);
+        } else if (USB_InSetupRequest == USB_IN_SETUP_REQUEST_STATE_TX && USB_Vendor_Request_State_Callback) {
+            USB_Vendor_Request_State_Callback(HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED, USB_Vendor_Request_State_Ptr);
+            ret = USBD_OK;
+        }
+        USB_InSetupRequest = USB_IN_SETUP_REQUEST_STATE_NONE;
+        USB_InSetupCounter = 0;
     } else {
         ret = USBD_FAIL;
     }
@@ -157,6 +181,61 @@ uint8_t HAL_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage)
 }
 
 #endif // USB_VENDOR_REQUEST_ENABLE
+
+static void HAL_USB_Handle_State_Change(void* reserved) {
+#ifdef USB_VENDOR_REQUEST_ENABLE
+    if (USB_Vendor_Request_State_Callback) {
+        USB_Vendor_Request_State_Callback(HAL_USB_VENDOR_REQUEST_STATE_RESET, USB_Vendor_Request_State_Ptr);
+    }
+    USB_InSetupRequest = USB_IN_SETUP_REQUEST_STATE_NONE;
+    USB_InSetupCounter = 0;
+#endif // USB_VENDOR_REQUEST_ENABLE
+}
+
+
+void USBD_USR_Init(void)
+{
+}
+
+void USBD_USR_DeviceReset(uint8_t speed)
+{
+    HAL_USB_Handle_State_Change(NULL);
+}
+
+void USBD_USR_DeviceConfigured(void)
+{
+}
+
+void USBD_USR_DeviceSuspended(void)
+{
+}
+
+void USBD_USR_DeviceResumed(void)
+{
+}
+
+void USBD_USR_DeviceConnected (void)
+{
+}
+
+void USBD_USR_DeviceDisconnected(void)
+{
+    // We cannot rely on this callback to detect host disconnection, as VBUS sensing is not enabled
+    // on most of our devices. A somewhat better option is timeout in HAL_USB_Vendor_Interface_SOF.
+    HAL_USB_Handle_State_Change(NULL);
+}
+
+void HAL_USB_Vendor_Interface_SOF(void* pdev)
+{
+#ifdef USB_VENDOR_REQUEST_ENABLE
+    if (USB_InSetupRequest != USB_IN_SETUP_REQUEST_STATE_NONE) {
+        ++USB_InSetupCounter;
+        if (USB_InSetupCounter >= USB_VENDOR_REQUEST_TIMEOUT) {
+            HAL_USB_Handle_State_Change(NULL);
+        }
+    }
+#endif // USB_VENDOR_REQUEST_ENABLE
+}
 
 #if defined (USB_CDC_ENABLE) || defined (USB_HID_ENABLE)
 
@@ -346,7 +425,7 @@ void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reser
     if (!usbUsartMap[serial].data || !usbUsartMap[serial].cls) {
         HAL_USB_USART_Init(serial, NULL);
     }
-    
+
     if (!usbUsartMap[serial].registered) {
         if (USBD_Composite_Get_State(usbUsartMap[serial].cls) == false) {
             // Detach, change state, re-attach
