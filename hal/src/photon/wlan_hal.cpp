@@ -52,6 +52,9 @@
 #include "wiced_security.h"
 #include "mbedtls_util.h"
 #include "system_error.h"
+#ifdef LWIP_DHCP
+#include "lwip/dhcp.h"
+#endif // LWIP_DHCP
 
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
@@ -1319,6 +1322,19 @@ void wlan_fetch_ipconfig(WLanConfig* config)
 
         if (wiced_ip_get_gateway_address(ifup, &addr)==WICED_SUCCESS)
             setAddress(&addr, config->nw.aucDefaultGateway);
+
+        if (dns_client_get_server_address(0, &addr)==WICED_SUCCESS) {
+            setAddress(&addr, config->nw.aucDNSServer);
+
+        // LwIP-specific
+#ifdef LWIP_DHCP
+        auto netif = IP_HANDLE(ifup);
+        auto dhcp = netif.dhcp;
+        if (dhcp && dhcp->server_ip_addr.addr != IP_ADDR_ANY->addr) {
+            HAL_IPV4_SET(&config->nw.aucDHCPServer, ntohl(dhcp->server_ip_addr.addr));
+        }
+#endif // LWIP_DHCP
+        }
     }
 
     wiced_mac_t my_mac_address;
