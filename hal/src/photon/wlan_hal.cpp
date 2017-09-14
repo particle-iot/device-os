@@ -1320,6 +1320,7 @@ void wlan_fetch_ipconfig(WLanConfig* config)
 
         if (dns_client_get_server_address(0, &addr)==WICED_SUCCESS) {
             setAddress(&addr, config->nw.aucDNSServer);
+        }
 
         // LwIP-specific
 #ifdef LWIP_DHCP
@@ -1329,7 +1330,6 @@ void wlan_fetch_ipconfig(WLanConfig* config)
             HAL_IPV4_SET(&config->nw.aucDHCPServer, ntohl(dhcp->server_ip_addr.addr));
         }
 #endif // LWIP_DHCP
-        }
     }
 
     wiced_mac_t my_mac_address;
