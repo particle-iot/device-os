@@ -17,108 +17,135 @@
 
 #pragma once
 
+#include "spark_wiring_error.h"
 #include "spark_wiring_global.h"
+
 #include "diagnostics.h"
+
+#include <atomic>
 
 namespace particle {
 
-class DiagnosticData {
+class AbstractDiagnosticData {
 protected:
-    DiagnosticData(uint16_t id, diag_source_type type);
+    AbstractDiagnosticData(uint16_t id, diag_data_type type);
+    AbstractDiagnosticData(uint16_t id, const char* name, diag_data_type type);
 
-    virtual int get(char* data, size_t* size) = 0;
-    virtual void reset();
+    virtual int get(char* data, size_t& size) = 0;
 
 private:
     diag_source d_;
 
-    static int getCallback(const diag_source* src, char* data, size_t* size);
-    static void resetCallback(const diag_source* src);
+    static int callback(const diag_source* src, int cmd, void* data);
 };
 
-class ScalarDiagnosticData: public DiagnosticData {
+class AbstractIntegerDiagnosticData: public AbstractDiagnosticData {
 protected:
-    explicit ScalarDiagnosticData(uint16_t id);
+    explicit AbstractIntegerDiagnosticData(uint16_t id, const char* name = nullptr);
 
-    virtual int get(int32_t* val) = 0;
-
-    virtual int get(char* data, size_t* size) override; // DiagnosticData
-};
-
-template<typename T>
-class SimpleScalarDiagnosticData: public ScalarDiagnosticData {
-public:
-    explicit SimpleScalarDiagnosticData(uint16_t id, T val = T());
-
-    void setValue(T val);
-    T value() const;
-
-protected:
-    virtual int get(int32_t* val) override; // ScalarDiagnosticData
+    virtual int get(int32_t& val) = 0;
 
 private:
-    volatile T val_;
+    virtual int get(char* data, size_t& size) override; // AbstractDiagnosticData
 };
+
+class IntegerDiagnosticData: public AbstractIntegerDiagnosticData {
+public:
+    explicit IntegerDiagnosticData(uint16_t id, int32_t val = 0);
+    IntegerDiagnosticData(uint16_t id, const char* name, int32_t val = 0);
+
+    int32_t operator++();
+    int32_t operator++(int);
+    int32_t operator--();
+    int32_t operator--(int);
+
+    int32_t operator+=(int32_t val);
+    int32_t operator-=(int32_t val);
+    int32_t operator&=(int32_t val);
+    int32_t operator|=(int32_t val);
+    int32_t operator^=(int32_t val);
+
+    IntegerDiagnosticData& operator=(int32_t val);
+    operator int32_t() const;
+
+private:
+    std::atomic<int32_t> val_;
+
+    virtual int get(int32_t& val) override; // AbstractIntegerDiagnosticData
+};
+
+const uint16_t DIAGNOSTIC_DATA_USER_ID = DIAG_SOURCE_USER;
 
 } // namespace particle
 
-inline particle::DiagnosticData::DiagnosticData(uint16_t id, diag_source_type type) :
-        d_{ sizeof(diag_source), id, type, this, getCallback, resetCallback } {
+inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, diag_data_type type) :
+        AbstractDiagnosticData(id, nullptr, type) {
+}
+
+inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, const char* name, diag_data_type type) :
+        d_{ sizeof(diag_source), id, type, name, 0 /* flags */, this, callback } {
     diag_register_source(&d_, nullptr);
 }
 
-inline void particle::DiagnosticData::reset() {
-    // Default implementation does nothing
+inline particle::AbstractIntegerDiagnosticData::AbstractIntegerDiagnosticData(uint16_t id, const char* name) :
+        AbstractDiagnosticData(id, name, DIAG_DATA_TYPE_INTEGER) {
 }
 
-inline int particle::DiagnosticData::getCallback(const diag_source* src, char* data, size_t* size) {
-    const auto d = static_cast<DiagnosticData*>(src->data);
-    return d->get(data, size);
+inline particle::IntegerDiagnosticData::IntegerDiagnosticData(uint16_t id, int32_t val) :
+        IntegerDiagnosticData(id, nullptr, val) {
 }
 
-inline void particle::DiagnosticData::resetCallback(const diag_source* src) {
-    const auto d = static_cast<DiagnosticData*>(src->data);
-    return d->reset();
-}
-
-inline particle::ScalarDiagnosticData::ScalarDiagnosticData(uint16_t id) :
-        DiagnosticData(id, DIAG_SOURCE_TYPE_SCALAR) {
-}
-
-inline int particle::ScalarDiagnosticData::get(char* data, size_t* size) {
-    if (!data) {
-        *size = sizeof(int32_t);
-        return SYSTEM_ERROR_NONE;
-    }
-    if (*size < sizeof(int32_t)) {
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-    const int ret = get((int32_t*)data);
-    if (ret != SYSTEM_ERROR_NONE) {
-        return ret;
-    }
-    *size = sizeof(int32_t);
-    return SYSTEM_ERROR_NONE;
-}
-
-template<typename T>
-inline particle::SimpleScalarDiagnosticData<T>::SimpleScalarDiagnosticData(uint16_t id, T val) :
-        ScalarDiagnosticData(id),
+inline particle::IntegerDiagnosticData::IntegerDiagnosticData(uint16_t id, const char* name, int32_t val) :
+        AbstractIntegerDiagnosticData(id, name),
         val_(val) {
 }
 
-template<typename T>
-inline void particle::SimpleScalarDiagnosticData<T>::setValue(T val) {
-    val_ = val;
+inline int32_t particle::IntegerDiagnosticData::operator++() {
+    return (val_.fetch_add(1, std::memory_order_relaxed) + 1);
 }
 
-template<typename T>
-inline T particle::SimpleScalarDiagnosticData<T>::value() const {
-    return val_;
+inline int32_t particle::IntegerDiagnosticData::operator++(int) {
+    return val_.fetch_add(1, std::memory_order_relaxed);
 }
 
-template<typename T>
-inline int particle::SimpleScalarDiagnosticData<T>::get(int32_t* val) {
-    *val = val_;
+inline int32_t particle::IntegerDiagnosticData::operator--() {
+    return (val_.fetch_sub(1, std::memory_order_relaxed) - 1);
+}
+
+inline int32_t particle::IntegerDiagnosticData::operator--(int) {
+    return val_.fetch_sub(1, std::memory_order_relaxed);
+}
+
+inline int32_t particle::IntegerDiagnosticData::operator+=(int32_t val) {
+    return (val_.fetch_add(val, std::memory_order_relaxed) + val);
+}
+
+inline int32_t particle::IntegerDiagnosticData::operator-=(int32_t val) {
+    return (val_.fetch_sub(val, std::memory_order_relaxed) - val);
+}
+
+inline int32_t particle::IntegerDiagnosticData::operator&=(int32_t val) {
+    return (val_.fetch_and(val, std::memory_order_relaxed) & val);
+}
+
+inline int32_t particle::IntegerDiagnosticData::operator|=(int32_t val) {
+    return (val_.fetch_or(val, std::memory_order_relaxed) | val);
+}
+
+inline int32_t particle::IntegerDiagnosticData::operator^=(int32_t val) {
+    return (val_.fetch_xor(val, std::memory_order_relaxed) ^ val);
+}
+
+inline particle::IntegerDiagnosticData& particle::IntegerDiagnosticData::operator=(int32_t val) {
+    val_.store(val, std::memory_order_relaxed);
+    return *this;
+}
+
+inline particle::IntegerDiagnosticData::operator int32_t() const {
+    return val_.load(std::memory_order_relaxed);
+}
+
+inline int particle::IntegerDiagnosticData::get(int32_t& val) {
+    val = val_.load(std::memory_order_relaxed);
     return SYSTEM_ERROR_NONE;
 }

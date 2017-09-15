@@ -17,47 +17,52 @@
 
 #pragma once
 
-#include "system_error.h"
-
 #include <stdint.h>
 #include <stddef.h>
+
+// System data source IDs
+#define DIAG_SOURCE_INVALID 0 // Invalid source ID
+#define DIAG_SOURCE_USER 1024 // Base value for application-specific source IDs
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// System data sources
-typedef enum diag_source_id {
-    DIAG_SOURCE_ID_INVALID = 0 // Invalid source ID
-} diag_source_id;
-
 // Data types
-typedef enum diag_source_type {
-    DIAG_SOURCE_TYPE_SCALAR = 1,
-    DIAG_SOURCE_TYPE_COUNTER = 2,
-    DIAG_SOURCE_TYPE_ENUM = 3,
-    DIAG_SOURCE_TYPE_STRING = 4
-} diag_source_type;
+typedef enum diag_data_type {
+    DIAG_DATA_TYPE_INTEGER = 1 // 32-bit integer
+} diag_data_type;
+
+// Data source commands
+typedef enum diag_source_cmd {
+    DIAG_SOURCE_CMD_GET = 1 // Get current value
+} diag_source_cmd;
 
 typedef struct diag_source diag_source;
 
-typedef int(*diag_get_callback)(const diag_source* src, char* data, size_t* size);
-typedef void(*diag_reset_callback)(const diag_source* src);
-typedef void(*diag_enum_callback)(const diag_source* src);
+typedef int(*diag_source_cmd_callback)(const diag_source* src, int cmd, void* data);
+typedef void(*diag_enum_sources_callback)(const diag_source* src, void* data);
 
 typedef struct diag_source {
     size_t size; // Size of this structure
     uint16_t id; // Source ID
     uint16_t type; // Data type
+    const char* name; // Source name
+    uint32_t flags; // Reserved (should be set to 0)
     void* data; // User data
-    diag_get_callback get;
-    diag_reset_callback reset;
+    diag_source_cmd_callback callback; // Source callback
 } diag_source;
 
+typedef struct diag_source_get_cmd_data {
+    size_t size; // Size of this structure
+    char* data;
+    size_t data_size;
+} diag_source_get_cmd_data;
+
 int diag_register_source(const diag_source* src, void* reserved);
-void diag_enum_sources(diag_enum_callback callback, size_t* count, void* data, void* reserved);
+int diag_enum_sources(diag_enum_sources_callback callback, size_t* count, void* data, void* reserved);
 int diag_get_source(uint16_t id, const diag_source** src, void* reserved);
-void diag_reset(void* reserved);
+int diag_init(void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"
