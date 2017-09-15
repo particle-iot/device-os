@@ -62,7 +62,9 @@ bool fetch_or_generate_device_code(device_code_t* SSID) {
     }
     else {
         memcpy(dest, suffix, DEVICE_CODE_LEN);
-        code_length = strnlen((char*)dest, DEVICE_CODE_LEN);
+        // prior to 0.7.0-rc.3 the device code was 4 digits
+        // termination character is just unwritten flash, 0xFF
+        code_length = (dest[4]>127 || dest[4]<32) ? 4 : DEVICE_CODE_LEN;
         dct_read_app_data_unlock(DCT_DEVICE_CODE_OFFSET);
     }
     SSID->length += code_length;
