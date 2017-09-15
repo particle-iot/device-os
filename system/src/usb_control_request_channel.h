@@ -36,8 +36,8 @@ namespace particle {
 const size_t USB_REQUEST_POOL_SIZE = 2;
 
 // Settings of the request buffer pool
-const size_t USB_REQUEST_PREALLOC_BUFFER_SIZE = 256;
-const size_t USB_REQUEST_PREALLOC_BUFFER_COUNT = 2;
+const size_t USB_REQUEST_PREALLOC_BUFFER_SIZE = 128;
+const size_t USB_REQUEST_PREALLOC_BUFFER_COUNT = 4;
 
 // Maximum size of the payload data
 const size_t USB_REQUEST_MAX_PAYLOAD_SIZE = 65535;
@@ -76,7 +76,7 @@ private:
     // Preallocated buffer
     struct Buffer {
         char data[USB_REQUEST_PREALLOC_BUFFER_SIZE]; // Buffer data
-        Buffer* next; // Next entry in the pool
+        Buffer* next; // Next element in a list
     };
 
     // Request data
@@ -87,7 +87,8 @@ private:
         system_tick_t time; // State timestamp
         Buffer* reqBuf; // Preallocated request buffer
         Buffer* repBuf; // Preallocated reply buffer
-        Request* next; // Next entry in the pool
+        Request* prev; // Previous element in a list
+        Request* next; // Next element in a list
         int result; // Result code
         uint16_t id; // Request ID
     };
@@ -98,13 +99,16 @@ private:
 
     Request* activeReqList_; // List of active requests
     Request* freeReqList_; // List of unused request objects
+    Request* curReq_; // A request currently being processed by the USB subsystem
     Buffer* freeBufList_; // List of unused preallocated buffers
     uint16_t lastReqId_; // Last request ID
-    /* A request with reply data currently being processed by the USB subsystem */
-    Request* curTxReq_;
 
     bool processServiceRequest(HAL_USB_SetupRequest* halReq);
     bool processVendorRequest(HAL_USB_SetupRequest* req);
+
+    Buffer* takeBuffer();
+    void releaseBuffer(Buffer* buf);
+    void releaseRequest(Request* req);
 
     static void timeout(os_timer_t timer);
 

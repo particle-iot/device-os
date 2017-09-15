@@ -26,6 +26,8 @@
 
 #if SYSTEM_CONTROL_ENABLED
 
+LOG_SOURCE_CATEGORY("system.ctrl");
+
 namespace {
 
 using namespace particle;

@@ -66,8 +66,8 @@ public:
             id_(USB_REQUEST_INVALID_ID) {
     }
 
-    ServiceReply& status(Status status) {
-        status_ = (uint16_t)status;
+    ServiceReply& status(uint16_t status) {
+        status_ = status;
         return *this;
     }
 
@@ -77,14 +77,14 @@ public:
         return *this;
     }
 
-    ServiceReply& size(size_t size) {
+    ServiceReply& size(uint32_t size) {
         size_ = size;
         flags_ |= FieldFlag::SIZE;
         return *this;
     }
 
-    ServiceReply& result(system_error_t result) {
-        result_ = (uint32_t)result;
+    ServiceReply& result(uint32_t result) {
+        result_ = result;
         flags_ |= FieldFlag::RESULT;
         return *this;
     }
@@ -169,9 +169,9 @@ particle::UsbControlRequestChannel::UsbControlRequestChannel(ControlRequestHandl
         timer_(OS_TIMER_INVALID_HANDLE),
         activeReqList_(nullptr),
         freeReqList_(nullptr),
+        curReq_(nullptr),
         freeBufList_(nullptr),
-        lastReqId_(USB_REQUEST_INVALID_ID),
-        curTxReq_(nullptr) {
+        lastReqId_(USB_REQUEST_INVALID_ID) {
     // Initialize timer
     if (os_timer_create(&timer_, USB_REQUEST_HOST_TIMEOUT, timeout, this, true /* one_shot */, nullptr /* reserved */) != 0) {
         LOG(ERROR, "Unable to initialize a timer");
@@ -187,6 +187,7 @@ particle::UsbControlRequestChannel::UsbControlRequestChannel(ControlRequestHandl
         Request* const req = reqs_.get() + i;
         req->ctrl.size = sizeof(ctrl_request);
         req->channel = this;
+        req->prev = (i != 0) ? req - 1 : nullptr;
         req->next = (i != USB_REQUEST_POOL_SIZE - 1) ? req + 1 : nullptr;
     }
     freeReqList_ = reqs_.get();
@@ -214,87 +215,57 @@ particle::UsbControlRequestChannel::~UsbControlRequestChannel() {
     }
 }
 
-void particle::UsbControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) {
-    const auto req = (Request*)ctrlReq;
-    char* data = nullptr;
-    ATOMIC_BLOCK() {
-        // Check if the request uses a preallocated buffer
-        if (req->reqBuf) {
-            req->reqBuf->next = freeBufList_;
-            freeBufList_ = req->reqBuf;
-            req->reqBuf = nullptr;
-        } else {
-            data = req->ctrl.request_data;
-        }
-        req->ctrl.request_data = nullptr;
-        req->ctrl.request_size = 0;
-    }
-    // Free a dynamically allocated buffer
-    delete[] data;
-}
-
 int particle::UsbControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {
+    if (ctrlReq->reply_data) {
+        freeReplyData(ctrlReq);
+    }
     const auto req = (Request*)ctrlReq;
     // Try to use a preallocated buffer
-    Buffer* buf = nullptr;
-    if (size <= USB_REQUEST_PREALLOC_BUFFER_SIZE) {
-        ATOMIC_BLOCK() {
-            buf = freeBufList_;
-            if (buf) {
-                freeBufList_ = buf->next;
-                req->ctrl.reply_data = buf->data;
-                req->ctrl.reply_size = size;
-                req->repBuf = buf;
-            }
-        }
-    }
-    if (!buf) {
+    if (size <= USB_REQUEST_PREALLOC_BUFFER_SIZE && (req->repBuf = takeBuffer())) {
+        req->ctrl.reply_data = req->repBuf.data;
+    } else {
         // Allocate the buffer dynamically
-        char* data = new(std::nothrow) char[size];
-        if (!data) {
+        req->ctrl.reply_data = new(std::nothrow) char[size];
+        if (!req->ctrl.reply_data) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        ATOMIC_BLOCK() {
-            req->ctrl.reply_data = data;
-            req->ctrl.reply_size = size;
-        }
     }
+    req->ctrl.reply_size = size;
     return SYSTEM_ERROR_NONE;
 }
 
 void particle::UsbControlRequestChannel::freeReplyData(ctrl_request* ctrlReq) {
     const auto req = (Request*)ctrlReq;
-    char* data = nullptr;
-    ATOMIC_BLOCK() {
-        // Check if the request uses a preallocated buffer
-        if (req->repBuf) {
-            req->repBuf->next = freeBufList_;
-            freeBufList_ = req->repBuf;
-            req->repBuf = nullptr;
-        } else {
-            data = req->ctrl.reply_data;
-        }
-        req->ctrl.reply_size = 0;
+    if (req->repBuf) {
+        // Release a preallocated buffer
+        releaseBuffer(req->repBuf);
+        req->repBuf = nullptr;
+    } else {
+        // Free a dynamically allocated buffer
+        delete[] req->ctrl.reply_data;
     }
-    // Free a dynamically allocated buffer
-    delete[] data;
+    req->ctrl.reply_data = nullptr;
+    req->ctrl.reply_size = 0;
+}
 
-    // FIXME: should the request be removed from the activeReqList_ here?
-    for(Request* r = activeReqList_, *prev = nullptr; r != nullptr; r = r->next) {
-        if (r == req) {
-            if (prev) {
-                prev->next = r->next;
-            } else {
-                activeReqList_ = r->next;
-            }
-        }
+void particle::UsbControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) {
+    const auto req = (Request*)ctrlReq;
+    if (req->reqBuf) {
+        // Release a preallocated buffer
+        releaseBuffer(req->reqBuf);
+        req->reqBuf = nullptr;
+    } else {
+        // Free a dynamically allocated buffer
+        delete[] req->ctrl.request_data;
     }
-    req->next = freeReqList_;
-    freeReqList_ = req;
+    req->ctrl.request_data = nullptr;
+    req->ctrl.request_size = 0;
 }
 
 void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, system_error_t result) {
-    freeRequestData(ctrlReq);
+    if (ctrlReq->request_data) {
+        freeRequestData(ctrlReq);
+    }
     const auto req = (Request*)ctrlReq;
     ATOMIC_BLOCK() {
         req->result = result;
@@ -304,7 +275,7 @@ void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, system
 }
 
 bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequest* halReq) {
-    switch (halReq->bRequest) {
+    switch (halReq->bRequest) { // Service request type
     // INIT
     case ServiceRequestType::INIT: {
         if (halReq->wLength < MIN_WLENGTH || !halReq->data) {
@@ -320,44 +291,49 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
         req->reqBuf = nullptr;
         req->ctrl.request_size = halReq->wValue; // Size of the payload data
         if (req->ctrl.request_size == 0) {
+            // The request has no payload data, invoke the request handler
             if (!SystemISRTaskQueue.enqueue(invokeRequestHandler, req)) {
                 return ServiceReply().status(ServiceReply::BUSY).encode(halReq); // Device is busy
             }
-            req->state = State::PROCESSING; // The request has no payload data
             req->ctrl.request_data = nullptr;
+            req->state = State::PROCESSING;
+            status = ServiceReply::OK;
+        } else if (req->ctrl.request_size <= USB_REQUEST_PREALLOC_BUFFER_SIZE && freeBufList_) {
+            req->reqBuf = freeBufList_;
+            req->ctrl.request_data = req->reqBuf->data;
+            req->state = State::WAIT_DATA; // Device is ready to receive payload data
             status = ServiceReply::OK;
         } else {
-            if (req->ctrl.request_size <= USB_REQUEST_PREALLOC_BUFFER_SIZE) {
-                req->reqBuf = freeBufList_;
+            // Allocate the buffer dynamically
+            if (!SystemISRTaskQueue.enqueue(allocRequestBuffer, req)) {
+                return ServiceReply().status(ServiceReply::BUSY).encode(halReq); // Device is busy
             }
-            if (req->reqBuf) {
-                req->state = State::WAIT_DATA; // Device is ready to receive payload data
-                req->ctrl.request_data = req->reqBuf->data;
-                status = ServiceReply::OK;
-            } else {
-                if (!SystemISRTaskQueue.enqueue(allocRequestBuffer, req)) {
-                    return ServiceReply().status(ServiceReply::BUSY).encode(halReq); // Device is busy
-                }
-                req->state = State::ALLOC_PENDING; // Request buffer needs to be allocated dynamically
-                req->ctrl.request_data = nullptr;
-                status = ServiceReply::PENDING;
-            }
+            req->ctrl.request_data = nullptr;
+            req->state = State::ALLOC_PENDING;
+            status = ServiceReply::PENDING;
         }
-        // Initialize remaining request data
+        // Initialize remaining fields
+        req->ctrl.type = halReq->wIndex; // Request type
         req->ctrl.reply_data = nullptr;
         req->ctrl.reply_size = 0;
-        req->ctrl.type = halReq->wIndex;
         req->repBuf = nullptr;
-        req->time = now();
         req->result = SYSTEM_ERROR_NONE;
+        req->time = now();
         req->id = ++lastReqId_;
         // Update pools
         freeReqList_ = req->next;
+        if (freeReqList_) {
+            freeReqList_->prev = nullptr;
+        }
         if (req->reqBuf) {
             freeBufList_ = req->reqBuf->next;
         }
         // Update list of active requests
+        if (activeReqList_) {
+            activeReqList_->prev = req;
+        }
         req->next = activeReqList_;
+        req->prev = nullptr;
         activeReqList_ = req;
         // Reply to the host
         return ServiceReply().id(req->id).status(status).encode(halReq);
@@ -375,31 +351,36 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
             }
             req = req->next;
         }
-        ServiceReply svcRep;
+        ServiceReply rep;
         if (req) {
             switch (req->state) {
             case State::ALLOC_PENDING:
-                svcRep.status(ServiceReply::PENDING);
+                rep.status(ServiceReply::PENDING);
                 break;
             case State::ALLOC_FAILED:
-                svcRep.status(ServiceReply::NO_MEMORY);
+                rep.status(ServiceReply::NO_MEMORY);
                 break;
             case State::WAIT_DATA:
-                svcRep.status(ServiceReply::OK);
+                rep.status(ServiceReply::OK);
                 break;
             case State::PROCESSING:
-                svcRep.status(ServiceReply::PENDING);
+                rep.status(ServiceReply::PENDING);
                 break;
             case State::DONE:
-                svcRep.size(req->ctrl.reply_size);
-                svcRep.result((system_error_t)req->result);
-                svcRep.status(ServiceReply::OK);
+                if (req->ctrl.reply_size > 0) {
+                    rep.size(req->ctrl.reply_size);
+                }
+                rep.result(req->result);
+                rep.status(ServiceReply::OK);
                 break;
             }
+            if (req->state == State::ALLOC_FAILED || (req->state == State::DONE && req->ctrl.reply_size == 0)) {
+                releaseRequest(req);
+            }
         } else {
-            svcRep.status(ServiceReply::NOT_FOUND);
+            rep.status(ServiceReply::NOT_FOUND);
         }
-        return svcRep.encode(halReq);
+        return rep.encode(halReq);
     }
     // SEND
     case ServiceRequestType::SEND: {
@@ -524,6 +505,43 @@ bool particle::UsbControlRequestChannel::processVendorRequest(HAL_USB_SetupReque
     return true;
 }
 
+particle::UsbControlRequestChannel::Buffer* particle::UsbControlRequestChannel::takeBuffer() {
+    ATOMIC_BLOCK() {
+        if (freeBufList_) {
+            Buffer* const buf = freeBufList_;
+            freeBufList_ = buf->next;
+            return buf;
+        }
+    }
+    return nullptr;
+}
+
+void particle::UsbControlRequestChannel::releaseBuffer(Buffer* buf) {
+    ATOMIC_BLOCK() {
+        buf->next = freeBufList_;
+        freeBufList_ = buf;
+    }
+}
+
+void particle::UsbControlRequestChannel::releaseRequest(Request* req) {
+    ATOMIC_BLOCK() {
+        if (req->prev) {
+            req->prev->next = req->next;
+        } else {
+            activeReqList_ = req->next;
+        }
+        if (req->next) {
+            req->next->prev = req->prev;
+        }
+        if (freeReqList_) {
+            freeReqList_->prev = req;
+        }
+        req->prev = nullptr;
+        req->next = freeReqList_;
+        freeReqList_ = req;
+    }
+}
+
 void particle::UsbControlRequestChannel::invokeRequestHandler(void* data) {
     const auto req = static_cast<Request*>(data);
     ControlRequestHandler* const handler = req->channel->handler();
@@ -597,8 +615,9 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestCallback(HAL_USB_Set
 }
 
 uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_USB_VendorRequestState state, void* data) {
-    const auto d = static_cast<UsbControlRequestChannel*>(data);
+    // const auto d = static_cast<UsbControlRequestChannel*>(data);
     bool ok = false;
+/*
     switch (state) {
     case HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED: {
         if (d->curTxReq_) {
@@ -614,5 +633,6 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_US
     default:
     break;
     }
+*/
     return (ok ? 0 : 1);
 }
