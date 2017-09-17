@@ -27,15 +27,15 @@ namespace {
 
 using namespace spark;
 
-class DiagnosticManager {
+class Diagnostics {
 public:
-    DiagnosticManager() :
-            inited_(false) {
+    Diagnostics() :
+            enabled_(0) { // The service is disabled initially
         srcs_.reserve(32);
     }
 
     int registerSource(const diag_source* src) {
-        if (inited_) {
+        if (enabled_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         const int index = indexForId(src->id);
@@ -49,7 +49,7 @@ public:
     }
 
     int enumSources(diag_enum_sources_callback callback, size_t* count, void* data) {
-        if (!inited_) {
+        if (!enabled_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         if (callback) {
@@ -64,7 +64,7 @@ public:
     }
 
     int getSource(uint16_t id, const diag_source** src) {
-        if (!inited_) {
+        if (!enabled_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         const int index = indexForId(id);
@@ -77,17 +77,26 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
-    int init() {
-        if (inited_) {
-            return SYSTEM_ERROR_INVALID_STATE;
+    int command(int cmd, void* data) {
+        switch (cmd) {
+#if PLATFORM_ID == 3
+        case DIAG_CMD_RESET:
+            srcs_.clear();
+            enabled_ = 0;
+            break;
+#endif
+        case DIAG_CMD_ENABLE:
+            enabled_ = 1;
+            break;
+        default:
+            return SYSTEM_ERROR_NOT_SUPPORTED;
         }
-        inited_ = true;
         return SYSTEM_ERROR_NONE;
     }
 
 private:
     Vector<const diag_source*> srcs_;
-    bool inited_;
+    volatile uint8_t enabled_;
 
     int indexForId(uint16_t id) const {
         return std::distance(srcs_.begin(), std::lower_bound(srcs_.begin(), srcs_.end(), id,
@@ -97,22 +106,22 @@ private:
     }
 };
 
-DiagnosticManager g_diagManager;
+Diagnostics g_diag;
 
 } // namespace
 
 int diag_register_source(const diag_source* src, void* reserved) {
-    return g_diagManager.registerSource(src);
+    return g_diag.registerSource(src);
 }
 
 int diag_enum_sources(diag_enum_sources_callback callback, size_t* count, void* data, void* reserved) {
-    return g_diagManager.enumSources(callback, count, data);
+    return g_diag.enumSources(callback, count, data);
 }
 
 int diag_get_source(uint16_t id, const diag_source** src, void* reserved) {
-    return g_diagManager.getSource(id, src);
+    return g_diag.getSource(id, src);
 }
 
-int diag_init(void* reserved) {
-    return g_diagManager.init();
+int diag_service_cmd(int cmd, void* data, void* reserved) {
+    return g_diag.command(cmd, data);
 }

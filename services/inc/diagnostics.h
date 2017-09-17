@@ -33,10 +33,13 @@ typedef enum diag_data_type {
     DIAG_DATA_TYPE_INTEGER = 1 // 32-bit integer
 } diag_data_type;
 
-// Data source commands
-typedef enum diag_source_cmd {
-    DIAG_SOURCE_CMD_GET = 1 // Get current value
-} diag_source_cmd;
+// Data source and service commands
+typedef enum diag_cmd {
+    DIAG_CMD_RESET = 1,
+    DIAG_CMD_ENABLE = 2,
+    DIAG_CMD_DISABLE = 3,
+    DIAG_CMD_GET = 4
+} diag_cmd;
 
 typedef struct diag_source diag_source;
 
@@ -55,14 +58,14 @@ typedef struct diag_source {
 
 typedef struct diag_source_get_cmd_data {
     size_t size; // Size of this structure
-    char* data;
-    size_t data_size;
+    void* data; // Data buffer
+    size_t data_size; // Buffer size
 } diag_source_get_cmd_data;
 
 int diag_register_source(const diag_source* src, void* reserved);
 int diag_enum_sources(diag_enum_sources_callback callback, size_t* count, void* data, void* reserved);
 int diag_get_source(uint16_t id, const diag_source** src, void* reserved);
-int diag_init(void* reserved);
+int diag_service_cmd(int cmd, void* data, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"
