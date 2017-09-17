@@ -26,12 +26,17 @@
 
 namespace particle {
 
-class AbstractDiagnosticData {
-protected:
-    AbstractDiagnosticData(uint16_t id, diag_data_type type);
-    AbstractDiagnosticData(uint16_t id, const char* name, diag_data_type type);
+// Base abstract class for a diagnostic data source
+class DiagnosticData {
+public:
+    DiagnosticData(const DiagnosticData&) = delete;
+    DiagnosticData& operator=(const DiagnosticData&) = delete;
 
-    virtual int get(char* data, size_t& size) = 0;
+protected:
+    DiagnosticData(uint16_t id, diag_data_type type);
+    DiagnosticData(uint16_t id, const char* name, diag_data_type type);
+
+    virtual int get(void* data, size_t& size) = 0;
 
 private:
     diag_source d_;
@@ -39,113 +44,252 @@ private:
     static int callback(const diag_source* src, int cmd, void* data);
 };
 
-class AbstractIntegerDiagnosticData: public AbstractDiagnosticData {
+// Base abstract class for an integer diagnostic data source
+class IntegerDiagnosticData: public DiagnosticData {
 protected:
-    explicit AbstractIntegerDiagnosticData(uint16_t id, const char* name = nullptr);
+    explicit IntegerDiagnosticData(uint16_t id, const char* name = nullptr);
 
     virtual int get(int32_t& val) = 0;
 
 private:
-    virtual int get(char* data, size_t& size) override; // AbstractDiagnosticData
+    virtual int get(void* data, size_t& size) override; // DiagnosticData
 };
 
-class IntegerDiagnosticData: public AbstractIntegerDiagnosticData {
+class SimpleIntegerDiagnosticData: public IntegerDiagnosticData {
 public:
-    explicit IntegerDiagnosticData(uint16_t id, int32_t val = 0);
-    IntegerDiagnosticData(uint16_t id, const char* name, int32_t val = 0);
+    explicit SimpleIntegerDiagnosticData(uint16_t id, int32_t val = 0);
+    SimpleIntegerDiagnosticData(uint16_t id, const char* name, int32_t val = 0);
 
     int32_t operator++();
     int32_t operator++(int);
     int32_t operator--();
     int32_t operator--(int);
-
     int32_t operator+=(int32_t val);
     int32_t operator-=(int32_t val);
-    int32_t operator&=(int32_t val);
-    int32_t operator|=(int32_t val);
-    int32_t operator^=(int32_t val);
 
-    IntegerDiagnosticData& operator=(int32_t val);
+    SimpleIntegerDiagnosticData& operator=(int32_t val);
+    operator int32_t() const;
+
+private:
+    int32_t val_;
+
+    virtual int get(int32_t& val) override; // IntegerDiagnosticData
+};
+
+template<typename T>
+class SimpleEnumDiagnosticData: public IntegerDiagnosticData {
+public:
+    explicit SimpleEnumDiagnosticData(uint16_t id, T val);
+    SimpleEnumDiagnosticData(uint16_t id, const char* name, T val);
+
+    SimpleEnumDiagnosticData& operator=(T val);
+    operator T() const;
+
+private:
+    int32_t val_;
+
+    virtual int get(int32_t& val) override; // IntegerDiagnosticData
+};
+
+class AtomicIntegerDiagnosticData: public IntegerDiagnosticData {
+public:
+    explicit AtomicIntegerDiagnosticData(uint16_t id, int32_t val = 0);
+    AtomicIntegerDiagnosticData(uint16_t id, const char* name, int32_t val = 0);
+
+    int32_t operator++();
+    int32_t operator++(int);
+    int32_t operator--();
+    int32_t operator--(int);
+    int32_t operator+=(int32_t val);
+    int32_t operator-=(int32_t val);
+
+    AtomicIntegerDiagnosticData& operator=(int32_t val);
     operator int32_t() const;
 
 private:
     std::atomic<int32_t> val_;
 
-    virtual int get(int32_t& val) override; // AbstractIntegerDiagnosticData
+    virtual int get(int32_t& val) override; // IntegerDiagnosticData
+};
+
+template<typename T>
+class AtomicEnumDiagnosticData: public IntegerDiagnosticData {
+public:
+    explicit AtomicEnumDiagnosticData(uint16_t id, T val);
+    AtomicEnumDiagnosticData(uint16_t id, const char* name, T val);
+
+    AtomicEnumDiagnosticData& operator=(T val);
+    operator T() const;
+
+private:
+    std::atomic<int32_t> val_;
+
+    virtual int get(int32_t& val) override; // IntegerDiagnosticData
 };
 
 const uint16_t DIAGNOSTIC_DATA_USER_ID = DIAG_SOURCE_USER;
 
 } // namespace particle
 
-inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, diag_data_type type) :
-        AbstractDiagnosticData(id, nullptr, type) {
+inline particle::DiagnosticData::DiagnosticData(uint16_t id, diag_data_type type) :
+        DiagnosticData(id, nullptr, type) {
 }
 
-inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, const char* name, diag_data_type type) :
-        d_{ sizeof(diag_source), id, type, name, 0 /* flags */, this, callback } {
+inline particle::DiagnosticData::DiagnosticData(uint16_t id, const char* name, diag_data_type type) :
+        d_{ sizeof(diag_source), id, (uint16_t)type, name, 0 /* flags */, this, callback } {
     diag_register_source(&d_, nullptr);
 }
 
-inline particle::AbstractIntegerDiagnosticData::AbstractIntegerDiagnosticData(uint16_t id, const char* name) :
-        AbstractDiagnosticData(id, name, DIAG_DATA_TYPE_INTEGER) {
+inline particle::IntegerDiagnosticData::IntegerDiagnosticData(uint16_t id, const char* name) :
+        DiagnosticData(id, name, DIAG_DATA_TYPE_INTEGER) {
 }
 
-inline particle::IntegerDiagnosticData::IntegerDiagnosticData(uint16_t id, int32_t val) :
-        IntegerDiagnosticData(id, nullptr, val) {
+inline particle::SimpleIntegerDiagnosticData::SimpleIntegerDiagnosticData(uint16_t id, int32_t val) :
+        SimpleIntegerDiagnosticData(id, nullptr, val) {
 }
 
-inline particle::IntegerDiagnosticData::IntegerDiagnosticData(uint16_t id, const char* name, int32_t val) :
-        AbstractIntegerDiagnosticData(id, name),
+inline particle::SimpleIntegerDiagnosticData::SimpleIntegerDiagnosticData(uint16_t id, const char* name, int32_t val) :
+        IntegerDiagnosticData(id, name),
         val_(val) {
 }
 
-inline int32_t particle::IntegerDiagnosticData::operator++() {
+inline int32_t particle::SimpleIntegerDiagnosticData::operator++() {
+    return ++val_;
+}
+
+inline int32_t particle::SimpleIntegerDiagnosticData::operator++(int) {
+    return val_++;
+}
+
+inline int32_t particle::SimpleIntegerDiagnosticData::operator--() {
+    return --val_;
+}
+
+inline int32_t particle::SimpleIntegerDiagnosticData::operator--(int) {
+    return val_--;
+}
+
+inline int32_t particle::SimpleIntegerDiagnosticData::operator+=(int32_t val) {
+    return (val_ += val);
+}
+
+inline int32_t particle::SimpleIntegerDiagnosticData::operator-=(int32_t val) {
+    return (val_ -= val);
+}
+
+inline particle::SimpleIntegerDiagnosticData& particle::SimpleIntegerDiagnosticData::operator=(int32_t val) {
+    val_ = val;
+    return *this;
+}
+
+inline particle::SimpleIntegerDiagnosticData::operator int32_t() const {
+    return val_;
+}
+
+inline int particle::SimpleIntegerDiagnosticData::get(int32_t& val) {
+    val = val_;
+    return SYSTEM_ERROR_NONE;
+}
+
+template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>::SimpleEnumDiagnosticData(uint16_t id, T val) :
+        SimpleEnumDiagnosticData(id, nullptr, val) {
+}
+
+template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>::SimpleEnumDiagnosticData(uint16_t id, const char* name, T val) :
+        IntegerDiagnosticData(id, name),
+        val_(val) {
+}
+
+template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>& particle::SimpleEnumDiagnosticData<T>::operator=(T val) {
+    val_ = (int32_t)val;
+    return *this;
+}
+
+template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>::operator T() const {
+    return (T)val_;
+}
+
+template<typename T>
+inline int particle::SimpleEnumDiagnosticData<T>::get(int32_t& val) {
+    val = val_;
+    return SYSTEM_ERROR_NONE;
+}
+
+inline particle::AtomicIntegerDiagnosticData::AtomicIntegerDiagnosticData(uint16_t id, int32_t val) :
+        AtomicIntegerDiagnosticData(id, nullptr, val) {
+}
+
+inline particle::AtomicIntegerDiagnosticData::AtomicIntegerDiagnosticData(uint16_t id, const char* name, int32_t val) :
+        IntegerDiagnosticData(id, name),
+        val_(val) {
+}
+
+inline int32_t particle::AtomicIntegerDiagnosticData::operator++() {
     return (val_.fetch_add(1, std::memory_order_relaxed) + 1);
 }
 
-inline int32_t particle::IntegerDiagnosticData::operator++(int) {
+inline int32_t particle::AtomicIntegerDiagnosticData::operator++(int) {
     return val_.fetch_add(1, std::memory_order_relaxed);
 }
 
-inline int32_t particle::IntegerDiagnosticData::operator--() {
+inline int32_t particle::AtomicIntegerDiagnosticData::operator--() {
     return (val_.fetch_sub(1, std::memory_order_relaxed) - 1);
 }
 
-inline int32_t particle::IntegerDiagnosticData::operator--(int) {
+inline int32_t particle::AtomicIntegerDiagnosticData::operator--(int) {
     return val_.fetch_sub(1, std::memory_order_relaxed);
 }
 
-inline int32_t particle::IntegerDiagnosticData::operator+=(int32_t val) {
+inline int32_t particle::AtomicIntegerDiagnosticData::operator+=(int32_t val) {
     return (val_.fetch_add(val, std::memory_order_relaxed) + val);
 }
 
-inline int32_t particle::IntegerDiagnosticData::operator-=(int32_t val) {
+inline int32_t particle::AtomicIntegerDiagnosticData::operator-=(int32_t val) {
     return (val_.fetch_sub(val, std::memory_order_relaxed) - val);
 }
 
-inline int32_t particle::IntegerDiagnosticData::operator&=(int32_t val) {
-    return (val_.fetch_and(val, std::memory_order_relaxed) & val);
-}
-
-inline int32_t particle::IntegerDiagnosticData::operator|=(int32_t val) {
-    return (val_.fetch_or(val, std::memory_order_relaxed) | val);
-}
-
-inline int32_t particle::IntegerDiagnosticData::operator^=(int32_t val) {
-    return (val_.fetch_xor(val, std::memory_order_relaxed) ^ val);
-}
-
-inline particle::IntegerDiagnosticData& particle::IntegerDiagnosticData::operator=(int32_t val) {
+inline particle::AtomicIntegerDiagnosticData& particle::AtomicIntegerDiagnosticData::operator=(int32_t val) {
     val_.store(val, std::memory_order_relaxed);
     return *this;
 }
 
-inline particle::IntegerDiagnosticData::operator int32_t() const {
+inline particle::AtomicIntegerDiagnosticData::operator int32_t() const {
     return val_.load(std::memory_order_relaxed);
 }
 
-inline int particle::IntegerDiagnosticData::get(int32_t& val) {
+inline int particle::AtomicIntegerDiagnosticData::get(int32_t& val) {
+    val = val_.load(std::memory_order_relaxed);
+    return SYSTEM_ERROR_NONE;
+}
+
+template<typename T>
+inline particle::AtomicEnumDiagnosticData<T>::AtomicEnumDiagnosticData(uint16_t id, T val) :
+        AtomicEnumDiagnosticData(id, nullptr, val) {
+}
+
+template<typename T>
+inline particle::AtomicEnumDiagnosticData<T>::AtomicEnumDiagnosticData(uint16_t id, const char* name, T val) :
+        IntegerDiagnosticData(id, name),
+        val_(val) {
+}
+
+template<typename T>
+inline particle::AtomicEnumDiagnosticData<T>& particle::AtomicEnumDiagnosticData<T>::operator=(T val) {
+    val_.store((int32_t)val, std::memory_order_relaxed);
+    return *this;
+}
+
+template<typename T>
+inline particle::AtomicEnumDiagnosticData<T>::operator T() const {
+    return (T)val_.load(std::memory_order_relaxed);
+}
+
+template<typename T>
+inline int particle::AtomicEnumDiagnosticData<T>::get(int32_t& val) {
     val = val_.load(std::memory_order_relaxed);
     return SYSTEM_ERROR_NONE;
 }

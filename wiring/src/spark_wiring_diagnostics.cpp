@@ -17,10 +17,10 @@
 
 #include "spark_wiring_diagnostics.h"
 
-int particle::AbstractDiagnosticData::callback(const diag_source* src, int cmd, void* data) {
-    const auto d = static_cast<AbstractDiagnosticData*>(src->data);
+int particle::DiagnosticData::callback(const diag_source* src, int cmd, void* data) {
+    const auto d = static_cast<DiagnosticData*>(src->data);
     switch (cmd) {
-    case DIAG_SOURCE_CMD_GET: {
+    case DIAG_CMD_GET: {
         const auto cmdData = static_cast<diag_source_get_cmd_data*>(data);
         return d->get(cmdData->data, cmdData->size);
     }
@@ -29,7 +29,7 @@ int particle::AbstractDiagnosticData::callback(const diag_source* src, int cmd, 
     }
 }
 
-int particle::AbstractIntegerDiagnosticData::get(char* data, size_t& size) {
+int particle::IntegerDiagnosticData::get(void* data, size_t& size) {
     if (!data) {
         size = sizeof(int32_t);
         return SYSTEM_ERROR_NONE;
