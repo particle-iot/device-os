@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// System data source IDs
+// System data sources
 #define DIAG_SOURCE_INVALID 0 // Invalid source ID
 #define DIAG_SOURCE_USER 1024 // Base value for application-specific source IDs
 
@@ -29,9 +29,9 @@ extern "C" {
 #endif
 
 // Data types
-typedef enum diag_data_type {
-    DIAG_DATA_TYPE_INTEGER = 1 // 32-bit integer
-} diag_data_type;
+typedef enum diag_type {
+    DIAG_TYPE_INT = 1 // 32-bit integer
+} diag_type;
 
 // Data source and service commands
 typedef enum diag_cmd {

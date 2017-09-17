@@ -29,12 +29,17 @@ namespace particle {
 // Base abstract class for a diagnostic data source
 class DiagnosticData {
 public:
+    // Convenience methods invoking the getter callback
+    static int get(uint16_t id, void* data, size_t& size);
+    static int get(const diag_source* src, void* data, size_t& size);
+
+    // This class is non-copyable
     DiagnosticData(const DiagnosticData&) = delete;
     DiagnosticData& operator=(const DiagnosticData&) = delete;
 
 protected:
-    DiagnosticData(uint16_t id, diag_data_type type);
-    DiagnosticData(uint16_t id, const char* name, diag_data_type type);
+    DiagnosticData(uint16_t id, diag_type type);
+    DiagnosticData(uint16_t id, const char* name, diag_type type);
 
     virtual int get(void* data, size_t& size) = 0;
 
@@ -44,8 +49,15 @@ private:
     static int callback(const diag_source* src, int cmd, void* data);
 };
 
-// Base abstract class for an integer diagnostic data source
+// Base abstract class for a data source containing an integer value
 class IntegerDiagnosticData: public DiagnosticData {
+public:
+    typedef int32_t IntType; // Underlying integer type
+
+    // Convenience methods invoking the getter callback
+    static int get(uint16_t id, int32_t& val);
+    static int get(const diag_source* src, int32_t& val);
+
 protected:
     explicit IntegerDiagnosticData(uint16_t id, const char* name = nullptr);
 
@@ -76,21 +88,6 @@ private:
     virtual int get(int32_t& val) override; // IntegerDiagnosticData
 };
 
-template<typename T>
-class SimpleEnumDiagnosticData: public IntegerDiagnosticData {
-public:
-    explicit SimpleEnumDiagnosticData(uint16_t id, T val);
-    SimpleEnumDiagnosticData(uint16_t id, const char* name, T val);
-
-    SimpleEnumDiagnosticData& operator=(T val);
-    operator T() const;
-
-private:
-    int32_t val_;
-
-    virtual int get(int32_t& val) override; // IntegerDiagnosticData
-};
-
 class AtomicIntegerDiagnosticData: public IntegerDiagnosticData {
 public:
     explicit AtomicIntegerDiagnosticData(uint16_t id, int32_t val = 0);
@@ -113,8 +110,27 @@ private:
 };
 
 template<typename T>
+class SimpleEnumDiagnosticData: public IntegerDiagnosticData {
+public:
+    typedef T EnumType;
+
+    explicit SimpleEnumDiagnosticData(uint16_t id, T val);
+    SimpleEnumDiagnosticData(uint16_t id, const char* name, T val);
+
+    SimpleEnumDiagnosticData& operator=(T val);
+    operator T() const;
+
+private:
+    int32_t val_;
+
+    virtual int get(int32_t& val) override; // IntegerDiagnosticData
+};
+
+template<typename T>
 class AtomicEnumDiagnosticData: public IntegerDiagnosticData {
 public:
+    typedef T EnumType;
+
     explicit AtomicEnumDiagnosticData(uint16_t id, T val);
     AtomicEnumDiagnosticData(uint16_t id, const char* name, T val);
 
@@ -131,17 +147,17 @@ const uint16_t DIAGNOSTIC_DATA_USER_ID = DIAG_SOURCE_USER;
 
 } // namespace particle
 
-inline particle::DiagnosticData::DiagnosticData(uint16_t id, diag_data_type type) :
+inline particle::DiagnosticData::DiagnosticData(uint16_t id, diag_type type) :
         DiagnosticData(id, nullptr, type) {
 }
 
-inline particle::DiagnosticData::DiagnosticData(uint16_t id, const char* name, diag_data_type type) :
-        d_{ sizeof(diag_source), id, (uint16_t)type, name, 0 /* flags */, this, callback } {
+inline particle::DiagnosticData::DiagnosticData(uint16_t id, const char* name, diag_type type) :
+        d_{ sizeof(diag_source) /* size */, id, (uint16_t)type, name, 0 /* flags */, this /* data */, callback } {
     diag_register_source(&d_, nullptr);
 }
 
 inline particle::IntegerDiagnosticData::IntegerDiagnosticData(uint16_t id, const char* name) :
-        DiagnosticData(id, name, DIAG_DATA_TYPE_INTEGER) {
+        DiagnosticData(id, name, DIAG_TYPE_INT) {
 }
 
 inline particle::SimpleIntegerDiagnosticData::SimpleIntegerDiagnosticData(uint16_t id, int32_t val) :
@@ -187,34 +203,6 @@ inline particle::SimpleIntegerDiagnosticData::operator int32_t() const {
 }
 
 inline int particle::SimpleIntegerDiagnosticData::get(int32_t& val) {
-    val = val_;
-    return SYSTEM_ERROR_NONE;
-}
-
-template<typename T>
-inline particle::SimpleEnumDiagnosticData<T>::SimpleEnumDiagnosticData(uint16_t id, T val) :
-        SimpleEnumDiagnosticData(id, nullptr, val) {
-}
-
-template<typename T>
-inline particle::SimpleEnumDiagnosticData<T>::SimpleEnumDiagnosticData(uint16_t id, const char* name, T val) :
-        IntegerDiagnosticData(id, name),
-        val_(val) {
-}
-
-template<typename T>
-inline particle::SimpleEnumDiagnosticData<T>& particle::SimpleEnumDiagnosticData<T>::operator=(T val) {
-    val_ = (int32_t)val;
-    return *this;
-}
-
-template<typename T>
-inline particle::SimpleEnumDiagnosticData<T>::operator T() const {
-    return (T)val_;
-}
-
-template<typename T>
-inline int particle::SimpleEnumDiagnosticData<T>::get(int32_t& val) {
     val = val_;
     return SYSTEM_ERROR_NONE;
 }
@@ -267,6 +255,34 @@ inline int particle::AtomicIntegerDiagnosticData::get(int32_t& val) {
 }
 
 template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>::SimpleEnumDiagnosticData(uint16_t id, T val) :
+        SimpleEnumDiagnosticData(id, nullptr, val) {
+}
+
+template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>::SimpleEnumDiagnosticData(uint16_t id, const char* name, T val) :
+        IntegerDiagnosticData(id, name),
+        val_((int32_t)val) {
+}
+
+template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>& particle::SimpleEnumDiagnosticData<T>::operator=(T val) {
+    val_ = (int32_t)val;
+    return *this;
+}
+
+template<typename T>
+inline particle::SimpleEnumDiagnosticData<T>::operator T() const {
+    return (T)val_;
+}
+
+template<typename T>
+inline int particle::SimpleEnumDiagnosticData<T>::get(int32_t& val) {
+    val = val_;
+    return SYSTEM_ERROR_NONE;
+}
+
+template<typename T>
 inline particle::AtomicEnumDiagnosticData<T>::AtomicEnumDiagnosticData(uint16_t id, T val) :
         AtomicEnumDiagnosticData(id, nullptr, val) {
 }
@@ -274,7 +290,7 @@ inline particle::AtomicEnumDiagnosticData<T>::AtomicEnumDiagnosticData(uint16_t 
 template<typename T>
 inline particle::AtomicEnumDiagnosticData<T>::AtomicEnumDiagnosticData(uint16_t id, const char* name, T val) :
         IntegerDiagnosticData(id, name),
-        val_(val) {
+        val_((int32_t)val) {
 }
 
 template<typename T>

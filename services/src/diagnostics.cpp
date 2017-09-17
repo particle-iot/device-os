@@ -80,8 +80,12 @@ public:
     int command(int cmd, void* data) {
         switch (cmd) {
 #if PLATFORM_ID == 3
+        // The RESET and DISABLE commands are used only for testing purposes
         case DIAG_CMD_RESET:
             srcs_.clear();
+            enabled_ = 0;
+            break;
+        case DIAG_CMD_DISABLE:
             enabled_ = 0;
             break;
 #endif
