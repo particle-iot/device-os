@@ -23,7 +23,7 @@
 #define USE_MBEDTLS // Use mbedTLS for all platforms
 
 #ifndef PARTICLE_PROTOCOL
-#if HAL_PLATFORM_CLOUD_UDP
+#if PLATFORM_ID>2
 #define PARTICLE_PROTOCOL 1
 #else
 #define PARTICLE_PROTOCOL 0
