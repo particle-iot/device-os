@@ -539,6 +539,11 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     return result;
 }
 
+bool system_metrics(appender_fn appender, void* append_data, uint32_t page, void* reserved) {
+	// todo - use the JSON Reporter here.
+	return true;
+};
+
 bool append_system_version_info(Appender* appender)
 {
     bool result = appender->append("system firmware version: " stringify(SYSTEM_VERSION_STRING)

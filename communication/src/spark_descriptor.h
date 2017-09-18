@@ -92,7 +92,17 @@ struct SparkDescriptor
      */
     uint32_t (*app_state_selector_info)(SparkAppStateSelector::Enum selector, SparkAppStateUpdate::Enum operation, uint32_t data, void* reserved);
 
-    void* reserved[2];      // add a few additional pointers
+    /**
+     * Append metrics to the given appender.
+     * @param appender	The appender function to call with the "append" data and the string to append
+     * @param append		Opaque data to be passed to appender
+     * @param page		A key to select which metrics data to output. Presently unused and should be 0, which means the default metrics.
+     * @param reserved	For future expansion.
+     * @return
+     */
+    bool (*append_metrics)(appender_fn appender, void* append, uint32_t page, void* reserved);
+
+    void* reserved[1];      // add a few additional pointers
 };
 
 STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);
