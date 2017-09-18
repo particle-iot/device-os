@@ -161,78 +161,87 @@ public:
     }
 };
 
-enum class TestEnum {
-    ONE,
-    TWO,
-    THREE
-};
-
-template<typename DiagnosticDataT>
+template<typename LockingPolicyT>
 void testInt(DiagService& diag) {
-    DiagnosticDataT d(1);
+    using IntType = typename IntegerDiagnosticData<LockingPolicyT>::IntType;
+
+    IntegerDiagnosticData<LockingPolicyT> d(1);
     diag.enabled(true);
 
-    SECTION("operator=(); operator int32_t()") {
-        CHECK(d == 0);
+    SECTION("operator=(IntType)") {
         CHECK((d = 1) == 1);
-        CHECK(d == 1);
+        CHECK((d = 2) == 2);
+    }
+
+    SECTION("operator IntType()") {
+        d = 1;
+        IntType val = d;
+        CHECK(val == 1);
+        d = 2;
+        val = d;
+        CHECK(val == 2);
     }
 
     SECTION("operator++()") {
         CHECK(++d == 1);
         CHECK(++d == 2);
-        CHECK(++d == 3);
-        CHECK(d == 3);
+        CHECK(d == 2);
     }
 
     SECTION("operator++(int)") {
         CHECK(d++ == 0);
         CHECK(d++ == 1);
-        CHECK(d++ == 2);
-        CHECK(d == 3);
+        CHECK(d == 2);
     }
 
     SECTION("operator--()") {
         CHECK(--d == -1);
         CHECK(--d == -2);
-        CHECK(--d == -3);
-        CHECK(d == -3);
+        CHECK(d == -2);
     }
 
     SECTION("operator--(int)") {
         CHECK(d-- == 0);
         CHECK(d-- == -1);
-        CHECK(d-- == -2);
-        CHECK(d == -3);
+        CHECK(d == -2);
     }
 
-    SECTION("operator+=()") {
+    SECTION("operator+=(IntType)") {
         CHECK((d += 1) == 1);
         CHECK((d += 2) == 3);
-        CHECK((d += 3) == 6);
-        CHECK(d == 6);
+        CHECK(d == 3);
     }
 
-    SECTION("operator-=()") {
+    SECTION("operator-=(IntType)") {
         CHECK((d -= 1) == -1);
         CHECK((d -= 2) == -3);
-        CHECK((d -= 3) == -6);
-        CHECK(d == -6);
+        CHECK(d == -3);
     }
 }
 
-template<typename DiagnosticDataT>
+template<typename LockingPolicyT>
 void testEnum(DiagService& diag) {
-    DiagnosticDataT d(1, TestEnum::ONE);
+    enum Enum {
+        ZERO,
+        ONE,
+        TWO
+    };
+
+    EnumDiagnosticData<Enum, LockingPolicyT> d(1, ZERO);
     diag.enabled(true);
 
-    SECTION("operator T()") {
-        CHECK(d == TestEnum::ONE);
+    SECTION("operator=(EnumT)") {
+        CHECK((d = ONE) == ONE);
+        CHECK((d = TWO) == TWO);
     }
 
-    SECTION("operator=()") {
-        CHECK((d = TestEnum::ONE) == TestEnum::ONE);
-        CHECK((d = TestEnum::TWO) == TestEnum::TWO);
+    SECTION("operator EnumT()") {
+        d = ONE;
+        Enum val = d;
+        CHECK(val == ONE);
+        d = TWO;
+        val = d;
+        CHECK(val == TWO);
     }
 }
 
@@ -242,17 +251,12 @@ TEST_CASE("Service API") {
     DiagService diag;
 
     SECTION("diag_register_source()") {
-        SECTION("data sources can be registered only when the service is in its initial disabled state") {
+        SECTION("fails if the service is not in its initial disabled state") {
             auto d1 = DiagSource(1);
             CHECK(diag_register_source(&d1, nullptr) == 0);
             diag.enabled(true);
             auto d2 = DiagSource(2);
             CHECK(diag_register_source(&d1, nullptr) == SYSTEM_ERROR_INVALID_STATE);
-        }
-
-        SECTION("no data sources are registered initially") {
-            diag.enabled(true);
-            CHECK(diag.sources().empty());
         }
 
         SECTION("registers a new data source") {
@@ -282,7 +286,7 @@ TEST_CASE("Service API") {
             }
         }
 
-        SECTION("attempt to register a data source with a duplicate ID fails") {
+        SECTION("fails to register a data source with a duplicate ID") {
             auto d1 = DiagSource(1);
             CHECK(diag_register_source(&d1, nullptr) == 0);
             auto d2 = DiagSource(1);
@@ -295,7 +299,7 @@ TEST_CASE("Service API") {
         auto d2 = DiagSource(2).add();
         auto d3 = DiagSource(3).add();
 
-        SECTION("the service needs to be enabled before enumerating data sources") {
+        SECTION("fails if the service is not enabled") {
             EnumSourcesCallback cb;
             size_t count = 0;
             CHECK(diag_enum_sources(cb.func(), &count, cb.data(), nullptr) == SYSTEM_ERROR_INVALID_STATE);
@@ -311,14 +315,14 @@ TEST_CASE("Service API") {
             CHECK(count == 3);
         }
 
-        SECTION("the callback argument is optional") {
+        SECTION("accepts NULL as the callback argument") {
             diag.enabled(true);
             size_t count = 0;
             CHECK(diag_enum_sources(nullptr /* callback */, &count, nullptr /* data */, nullptr) == 0);
             CHECK(count == 3);
         }
 
-        SECTION("the count argument is optional") {
+        SECTION("accepts NULL as the count argument") {
             diag.enabled(true);
             EnumSourcesCallback cb;
             CHECK(diag_enum_sources(cb.func(), nullptr /* count */, cb.data(), nullptr) == 0);
@@ -330,12 +334,12 @@ TEST_CASE("Service API") {
         auto d2 = DiagSource(2).add();
         auto d3 = DiagSource(3).add();
 
-        SECTION("the service needs to be enabled before retrieving a registered data source") {
+        SECTION("fails if the service is not enabled") {
             const diag_source* d = nullptr;
             CHECK(diag_get_source(1, &d, nullptr) == SYSTEM_ERROR_INVALID_STATE);
         }
 
-        SECTION("retrieves a data source handle for a given ID") {
+        SECTION("returns a data source handle for a given ID") {
             diag.enabled(true);
             const diag_source* d = nullptr;
             CHECK(diag_get_source(d2.id(), &d, nullptr) == 0);
@@ -344,7 +348,7 @@ TEST_CASE("Service API") {
             CHECK(diag_get_source(4, &d, nullptr) == SYSTEM_ERROR_NOT_FOUND);
         }
 
-        SECTION("the handle argument is optional") {
+        SECTION("accepts NULL as the handle argument") {
             diag.enabled(true);
             CHECK(diag_get_source(d3.id(), nullptr /* src */, nullptr) == 0);
             CHECK(diag_get_source(4, nullptr, nullptr) == SYSTEM_ERROR_NOT_FOUND);
@@ -361,7 +365,7 @@ TEST_CASE("Service API") {
 TEST_CASE("Wiring API") {
     DiagService diag;
 
-    SECTION("DiagnosticData") {
+    SECTION("AbstractDiagnosticData") {
         SECTION("get()") {
             auto d1 = DiagSource(1).type(DIAG_TYPE_INT).get([](GetData d) {
                 return d.setInt(1234);
@@ -375,76 +379,70 @@ TEST_CASE("Wiring API") {
             SECTION("can access a data source by ID") {
                 int32_t val = 0;
                 size_t size = sizeof(val);
-                CHECK(DiagnosticData::get(1, &val, size) == 0);
+                CHECK(AbstractDiagnosticData::get(1, &val, size) == 0);
                 CHECK(val == 1234);
                 CHECK(size == sizeof(val));
             }
 
-            SECTION("can access a data source via its handle") {
+            SECTION("can access a data source via handle") {
                 int32_t val = 0;
                 size_t size = sizeof(val);
-                CHECK(DiagnosticData::get(&d1, &val, size) == 0);
+                CHECK(AbstractDiagnosticData::get(&d1, &val, size) == 0);
                 CHECK(val == 1234);
                 CHECK(size == sizeof(val));
             }
 
-            SECTION("the data argument is optional") {
+            SECTION("accepts NULL as the data argument") {
                 size_t size = 0;
-                CHECK(DiagnosticData::get(1, nullptr /* data */, size) == 0);
+                CHECK(AbstractDiagnosticData::get(1, nullptr /* data */, size) == 0);
                 CHECK(size == sizeof(int32_t));
             }
 
-            SECTION("getter errors are forwarded to the caller code") {
+            SECTION("forwards getter errors to the caller code") {
                 int32_t val = 0;
                 size_t size = sizeof(val);
-                CHECK(DiagnosticData::get(&d2, &val, size) == SYSTEM_ERROR_UNKNOWN);
+                CHECK(AbstractDiagnosticData::get(&d2, &val, size) == SYSTEM_ERROR_UNKNOWN);
+            }
+        }
+    }
+
+    SECTION("AbstractIntegerDiagnosticData") {
+        SECTION("get()") {
+            auto d1 = DiagSource(1).type(DIAG_TYPE_INT).get([](GetData d) {
+                return d.setInt(1234);
+            }).add();
+            auto d2 = DiagSource(2).type(DIAG_TYPE_INT).get([](GetData) {
+                return SYSTEM_ERROR_UNKNOWN;
+            }).add();
+
+            diag.enabled(true);
+
+            SECTION("can access a data source by ID") {
+                int32_t val = 0;
+                CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+                CHECK(val == 1234);
+            }
+
+            SECTION("can access a data source via handle") {
+                int32_t val = 0;
+                CHECK(AbstractIntegerDiagnosticData::get(&d1, val) == 0);
+                CHECK(val == 1234);
+            }
+
+            SECTION("forwards getter errors to the caller code") {
+                int32_t val = 0;
+                CHECK(AbstractIntegerDiagnosticData::get(&d2, val) == SYSTEM_ERROR_UNKNOWN);
             }
         }
     }
 
     SECTION("IntegerDiagnosticData") {
-        SECTION("get()") {
-            auto d1 = DiagSource(1).type(DIAG_TYPE_INT).get([](GetData d) {
-                return d.setInt(1234);
-            }).add();
-            auto d2 = DiagSource(2).type(DIAG_TYPE_INT).get([](GetData) {
-                return SYSTEM_ERROR_UNKNOWN;
-            }).add();
-
-            diag.enabled(true);
-
-            SECTION("can access a data source by ID") {
-                int32_t val = 0;
-                CHECK(IntegerDiagnosticData::get(1, val) == 0);
-                CHECK(val == 1234);
-            }
-
-            SECTION("can access a data source via its handle") {
-                int32_t val = 0;
-                CHECK(IntegerDiagnosticData::get(&d1, val) == 0);
-                CHECK(val == 1234);
-            }
-
-            SECTION("getter errors are forwarded to the caller code") {
-                int32_t val = 0;
-                CHECK(IntegerDiagnosticData::get(&d2, val) == SYSTEM_ERROR_UNKNOWN);
-            }
-        }
+        testInt<NoLockingPolicy>(diag);
+        testInt<AtomicLockingPolicy>(diag);
     }
 
-    SECTION("SimpleIntegerDiagnosticData") {
-        testInt<SimpleIntegerDiagnosticData>(diag);
-    }
-
-    SECTION("AtomicIntegerDiagnosticData") {
-        testInt<AtomicIntegerDiagnosticData>(diag);
-    }
-
-    SECTION("SimpleEnumDiagnosticData") {
-        testEnum<SimpleEnumDiagnosticData<TestEnum>>(diag);
-    }
-
-    SECTION("AtomicEnumDiagnosticData") {
-        testEnum<AtomicEnumDiagnosticData<TestEnum>>(diag);
+    SECTION("EnumDiagnosticData") {
+        testEnum<NoLockingPolicy>(diag);
+        testEnum<AtomicLockingPolicy>(diag);
     }
 }

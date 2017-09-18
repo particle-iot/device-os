@@ -19,7 +19,7 @@
 
 #include "debug.h"
 
-int particle::DiagnosticData::get(uint16_t id, void* data, size_t& size) {
+int particle::AbstractDiagnosticData::get(uint16_t id, void* data, size_t& size) {
     const diag_source* src = nullptr;
     const int ret = diag_get_source(id, &src, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
@@ -28,7 +28,7 @@ int particle::DiagnosticData::get(uint16_t id, void* data, size_t& size) {
     return get(src, data, size);
 }
 
-int particle::DiagnosticData::get(const diag_source* src, void* data, size_t& size) {
+int particle::AbstractDiagnosticData::get(const diag_source* src, void* data, size_t& size) {
     SPARK_ASSERT(src && src->callback);
     diag_source_get_cmd_data d = { sizeof(diag_source_get_cmd_data), data, size };
     const int ret = src->callback(src, DIAG_CMD_GET, &d);
@@ -38,8 +38,8 @@ int particle::DiagnosticData::get(const diag_source* src, void* data, size_t& si
     return ret;
 }
 
-int particle::DiagnosticData::callback(const diag_source* src, int cmd, void* data) {
-    const auto d = static_cast<DiagnosticData*>(src->data);
+int particle::AbstractDiagnosticData::callback(const diag_source* src, int cmd, void* data) {
+    const auto d = static_cast<AbstractDiagnosticData*>(src->data);
     switch (cmd) {
     case DIAG_CMD_GET: {
         const auto cmdData = static_cast<diag_source_get_cmd_data*>(data);
@@ -50,7 +50,7 @@ int particle::DiagnosticData::callback(const diag_source* src, int cmd, void* da
     }
 }
 
-int particle::IntegerDiagnosticData::get(uint16_t id, int32_t& val) {
+int particle::AbstractIntegerDiagnosticData::get(uint16_t id, IntType& val) {
     const diag_source* src = nullptr;
     const int ret = diag_get_source(id, &src, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
@@ -59,23 +59,23 @@ int particle::IntegerDiagnosticData::get(uint16_t id, int32_t& val) {
     return get(src, val);
 }
 
-int particle::IntegerDiagnosticData::get(const diag_source* src, int32_t& val) {
+int particle::AbstractIntegerDiagnosticData::get(const diag_source* src, IntType& val) {
     SPARK_ASSERT(src->type == DIAG_TYPE_INT);
-    size_t size = sizeof(val);
-    return DiagnosticData::get(src, &val, size);
+    size_t size = sizeof(IntType);
+    return AbstractDiagnosticData::get(src, &val, size);
 }
 
-int particle::IntegerDiagnosticData::get(void* data, size_t& size) {
+int particle::AbstractIntegerDiagnosticData::get(void* data, size_t& size) {
     if (!data) {
-        size = sizeof(int32_t);
+        size = sizeof(IntType);
         return SYSTEM_ERROR_NONE;
     }
-    if (size < sizeof(int32_t)) {
+    if (size < sizeof(IntType)) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    const int ret = get(*(int32_t*)data);
+    const int ret = get(*(IntType*)data);
     if (ret == SYSTEM_ERROR_NONE) {
-        size = sizeof(int32_t);
+        size = sizeof(IntType);
     }
     return ret;
 }

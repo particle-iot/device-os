@@ -46,6 +46,7 @@
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"
+#include "diagnostics.h"
 #include "spark_wiring_power.h"
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_interrupts.h"
@@ -651,6 +652,9 @@ void app_setup_and_loop(void)
 #if Wiring_Cellular == 1
     system_power_management_init();
 #endif
+
+    // Enable diagnostics
+    diag_service_cmd(DIAG_CMD_ENABLE, nullptr, nullptr);
 
     DEBUG("Hello from Particle!");
     String s = spark_deviceID();

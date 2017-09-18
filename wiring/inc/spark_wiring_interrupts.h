@@ -75,6 +75,19 @@ public:
 
 #define ATOMIC_BLOCK() 	for (bool __todo=true; __todo;) for (AtomicSection __as; __todo; __todo=false)
 
+// Class implementing a locking policy based on critical sections
+class AtomicLockingPolicy {
+protected:
+    void lock() const {
+        state_ = HAL_disable_irq();
+    }
 
+    void unlock() const {
+        HAL_enable_irq(state_);
+    }
+
+private:
+    mutable int state_;
+};
 
 #endif /* SPARK_WIRING_INTERRUPTS_H_ */
