@@ -649,6 +649,7 @@ void Spark_Protocol_Init(void)
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
         descriptor.append_system_info = system_module_info;
+        descriptor.append_metrics = system_metrics;
         descriptor.call_event_handler = invokeEventHandler;
 #if HAL_PLATFORM_CLOUD_UDP
         descriptor.app_state_selector_info = compute_cloud_state_checksum;

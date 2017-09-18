@@ -1494,8 +1494,8 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
   {
     case CoAPMessageType::DESCRIBE:
     {
-        int desc_flags = DESCRIBE_ALL;
-        if (message_padding_strip(queue, message.len) > 8 && queue[8] <= DESCRIBE_ALL) {
+        int desc_flags = DESCRIBE_DEFAULT;
+        if (message_padding_strip(queue, message.len) > 8 && queue[8] <= DESCRIBE_MAX) {
             desc_flags = queue[8];
         }
 

@@ -89,9 +89,11 @@ namespace ChunkReceivedCode {
 }
 
 enum DescriptionType {
-    DESCRIBE_SYSTEM = 1<<0,            // modules
-    DESCRIBE_APPLICATION = 1<<1,       // functions and variables
-    DESCRIBE_ALL = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION
+    DESCRIBE_SYSTEM = 1<<0,            	// modules
+    DESCRIBE_APPLICATION = 1<<1,       	// functions and variables
+	DESCRIBE_METRICS = 1<<2,				// metrics/diagnostics
+    DESCRIBE_DEFAULT = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION,
+	DESCRIBE_MAX = (1<<3)-1
 };
 
 namespace Connection

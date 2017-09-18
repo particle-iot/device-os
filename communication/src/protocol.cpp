@@ -57,8 +57,8 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	{
 		// 4 bytes header, 1 byte token, 2 bytes location path
 		// 2 bytes optional single character location path for describe flags
-		int descriptor_type = DESCRIBE_ALL;
-		if (message.length()>8 && queue[8] <= DESCRIBE_ALL) {
+		int descriptor_type = DESCRIBE_DEFAULT;
+		if (message.length()>8 && queue[8] <= DESCRIBE_MAX) {
 			descriptor_type = queue[8];
 		} else if (message.length() > 8) {
 			LOG(WARN, "Invalid DESCRIBE flags %02x", queue[8]);
@@ -471,13 +471,24 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	{
 		if (has_content)
 			appender.append(',');
+		has_content = true;
 		descriptor.append_system_info(append_instance, &appender, nullptr);
 	}
+
+	if (descriptor.append_metrics && (desc_flags & DESCRIBE_METRICS))
+	{
+		if (has_content)
+			appender.append(',');
+		has_content = true;
+		descriptor.append_metrics(append_instance, &appender, 0, nullptr);
+	}
+
 	appender.append('}');
 	int msglen = appender.next() - (uint8_t*) buf;
 	message.set_length(msglen);
-	LOG(INFO,"Sending %s%s describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-											  desc_flags & DESCRIBE_APPLICATION ? "A" : "");
+	LOG(INFO,"Sending '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
+											  desc_flags & DESCRIBE_APPLICATION ? "A" : "",
+											  desc_flags & DESCRIBE_METRICS ? "M" : "");
 	ProtocolError error = channel.send(message);
 	if (error==NO_ERROR && descriptor.app_state_selector_info)
 	{
