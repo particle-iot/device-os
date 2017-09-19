@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include "debug.h"
 
+extern "C" void* __dso_handle;
 void *__dso_handle;
 
 extern "C" {
