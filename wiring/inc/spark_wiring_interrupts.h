@@ -77,17 +77,17 @@ public:
 
 // Class implementing a locking policy based on critical sections
 class AtomicLockingPolicy {
-protected:
-    void lock() const {
+public:
+    void lock() {
         state_ = HAL_disable_irq();
     }
 
-    void unlock() const {
+    void unlock() {
         HAL_enable_irq(state_);
     }
 
 private:
-    mutable int state_;
+    int state_;
 };
 
 #endif /* SPARK_WIRING_INTERRUPTS_H_ */

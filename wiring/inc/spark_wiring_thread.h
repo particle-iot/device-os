@@ -24,8 +24,6 @@
 #ifndef SPARK_WIRING_THREAD_H
 #define SPARK_WIRING_THREAD_H
 
-#include <utility>
-
 #if PLATFORM_THREADING
 
 #include "concurrent_hal.h"
@@ -235,11 +233,11 @@ public:
 
 // Class implementing a dummy locking policy
 class NoLockingPolicy {
-protected:
-    void lock() const {
+public:
+    void lock() {
     }
 
-    void unlock() const {
+    void unlock() {
     }
 };
 
