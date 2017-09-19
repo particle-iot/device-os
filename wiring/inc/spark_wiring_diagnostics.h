@@ -169,7 +169,7 @@ inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, dia
 }
 
 inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, const char* name, diag_type type) :
-        d_{ sizeof(diag_source) /* size */, id, (uint16_t)type, name, 0 /* flags */, this /* data */, callback } {
+        d_{ sizeof(diag_source), 0 /* flags */, id, (uint16_t)type, name, this /* data */, callback } {
     diag_register_source(&d_, nullptr);
 }
 
@@ -184,7 +184,7 @@ inline int particle::AbstractDiagnosticData::get(uint16_t id, void* data, size_t
 
 inline int particle::AbstractDiagnosticData::get(const diag_source* src, void* data, size_t& size) {
     SPARK_ASSERT(src && src->callback);
-    diag_source_get_cmd_data d = { sizeof(diag_source_get_cmd_data), data, size };
+    diag_source_get_cmd_data d = { sizeof(diag_source_get_cmd_data), 0 /* reserved */, data, size };
     const int ret = src->callback(src, DIAG_SOURCE_CMD_GET, &d);
     if (ret == SYSTEM_ERROR_NONE) {
         size = d.data_size;
