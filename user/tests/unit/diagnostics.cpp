@@ -169,8 +169,13 @@ void testInt(DiagService& diag) {
     diag.enabled(true);
 
     SECTION("operator=(IntType)") {
-        CHECK((d = 1) == 1);
-        CHECK((d = 2) == 2);
+        CHECK(&(d = 1) == &d);
+        IntType val = -1;
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == 1);
+        CHECK(&(d = 2) == &d);
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == 2);
     }
 
     SECTION("operator IntType()") {
@@ -227,12 +232,19 @@ void testEnum(DiagService& diag) {
         TWO
     };
 
+    using IntType = typename EnumDiagnosticData<Enum, LockingPolicyT>::IntType;
+
     EnumDiagnosticData<Enum, LockingPolicyT> d(1, ZERO);
     diag.enabled(true);
 
     SECTION("operator=(EnumT)") {
-        CHECK((d = ONE) == ONE);
-        CHECK((d = TWO) == TWO);
+        CHECK(&(d = ONE) == &d);
+        IntType val = -1;
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == ONE);
+        CHECK(&(d = TWO) == &d);
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == TWO);
     }
 
     SECTION("operator EnumT()") {
