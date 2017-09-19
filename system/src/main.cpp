@@ -653,8 +653,8 @@ void app_setup_and_loop(void)
     system_power_management_init();
 #endif
 
-    // Enable diagnostics
-    diag_service_cmd(DIAG_CMD_ENABLE, nullptr, nullptr);
+    // Start the diagnostics service
+    diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);
 
     DEBUG("Hello from Particle!");
     String s = spark_deviceID();

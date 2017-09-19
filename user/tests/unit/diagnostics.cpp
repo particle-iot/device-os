@@ -123,7 +123,7 @@ private:
     static int callback(const diag_source* src, int cmd, void* data) {
         const auto d = static_cast<Data*>(src->data);
         switch (cmd) {
-        case DIAG_CMD_GET: {
+        case DIAG_SOURCE_CMD_GET: {
             if (!d->get) {
                 return SYSTEM_ERROR_NOT_SUPPORTED;
             }
@@ -142,11 +142,11 @@ public:
     }
 
     ~DiagService() {
-        REQUIRE(diag_service_cmd(DIAG_CMD_RESET, nullptr, nullptr) == 0);
+        REQUIRE(diag_command(DIAG_SERVICE_CMD_RESET, nullptr, nullptr) == 0);
     }
 
-    void enabled(bool enabled) {
-        REQUIRE(diag_service_cmd(enabled ? DIAG_CMD_ENABLE : DIAG_CMD_DISABLE, nullptr, nullptr) == 0);
+    void start() {
+        REQUIRE(diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr) == 0);
     }
 
     static std::vector<const diag_source*> sources() {
@@ -166,7 +166,7 @@ void testInt(DiagService& diag) {
     using IntType = typename IntegerDiagnosticData<LockingPolicyT>::IntType;
 
     IntegerDiagnosticData<LockingPolicyT> d(1);
-    diag.enabled(true);
+    diag.start();
 
     SECTION("operator=(IntType)") {
         CHECK(&(d = 1) == &d);
@@ -235,7 +235,7 @@ void testEnum(DiagService& diag) {
     using IntType = typename EnumDiagnosticData<Enum, LockingPolicyT>::IntType;
 
     EnumDiagnosticData<Enum, LockingPolicyT> d(1, ZERO);
-    diag.enabled(true);
+    diag.start();
 
     SECTION("operator=(EnumT)") {
         CHECK(&(d = ONE) == &d);
@@ -263,10 +263,10 @@ TEST_CASE("Service API") {
     DiagService diag;
 
     SECTION("diag_register_source()") {
-        SECTION("fails if the service is not in its initial disabled state") {
+        SECTION("fails if the service is not in its initial stopped state") {
             auto d1 = DiagSource(1);
             CHECK(diag_register_source(&d1, nullptr) == 0);
-            diag.enabled(true);
+            diag.start();
             auto d2 = DiagSource(2);
             CHECK(diag_register_source(&d1, nullptr) == SYSTEM_ERROR_INVALID_STATE);
         }
@@ -274,7 +274,7 @@ TEST_CASE("Service API") {
         SECTION("registers a new data source") {
             auto d1 = DiagSource(1);
             CHECK(diag_register_source(&d1, nullptr) == 0);
-            diag.enabled(true);
+            diag.start();
             auto all = diag.sources();
             REQUIRE(all.size() == 1);
             CHECK(all.front()->id == d1.id());
@@ -290,7 +290,7 @@ TEST_CASE("Service API") {
                 REQUIRE(diag_register_source(&sources.back(), nullptr) == 0);
                 ids.insert(id);
             }
-            diag.enabled(true);
+            diag.start();
             auto all = diag.sources();
             REQUIRE(all.size() == sources.size());
             for (const diag_source* d: all) {
@@ -311,14 +311,14 @@ TEST_CASE("Service API") {
         auto d2 = DiagSource(2).add();
         auto d3 = DiagSource(3).add();
 
-        SECTION("fails if the service is not enabled") {
+        SECTION("fails if the service is not started") {
             EnumSourcesCallback cb;
             size_t count = 0;
             CHECK(diag_enum_sources(cb.func(), &count, cb.data(), nullptr) == SYSTEM_ERROR_INVALID_STATE);
         }
 
         SECTION("enumerates all registered data sources") {
-            diag.enabled(true);
+            diag.start();
             EnumSourcesCallback cb([=](const diag_source* d) {
                 REQUIRE((d->id == d1.id() || d->id == d2.id() || d->id == d3.id()));
             });
@@ -328,14 +328,14 @@ TEST_CASE("Service API") {
         }
 
         SECTION("accepts NULL as the callback argument") {
-            diag.enabled(true);
+            diag.start();
             size_t count = 0;
             CHECK(diag_enum_sources(nullptr /* callback */, &count, nullptr /* data */, nullptr) == 0);
             CHECK(count == 3);
         }
 
         SECTION("accepts NULL as the count argument") {
-            diag.enabled(true);
+            diag.start();
             EnumSourcesCallback cb;
             CHECK(diag_enum_sources(cb.func(), nullptr /* count */, cb.data(), nullptr) == 0);
         }
@@ -346,13 +346,13 @@ TEST_CASE("Service API") {
         auto d2 = DiagSource(2).add();
         auto d3 = DiagSource(3).add();
 
-        SECTION("fails if the service is not enabled") {
+        SECTION("fails if the service is not started") {
             const diag_source* d = nullptr;
             CHECK(diag_get_source(1, &d, nullptr) == SYSTEM_ERROR_INVALID_STATE);
         }
 
         SECTION("returns a data source handle for a given ID") {
-            diag.enabled(true);
+            diag.start();
             const diag_source* d = nullptr;
             CHECK(diag_get_source(d2.id(), &d, nullptr) == 0);
             REQUIRE(d != nullptr);
@@ -361,15 +361,15 @@ TEST_CASE("Service API") {
         }
 
         SECTION("accepts NULL as the handle argument") {
-            diag.enabled(true);
+            diag.start();
             CHECK(diag_get_source(d3.id(), nullptr /* src */, nullptr) == 0);
             CHECK(diag_get_source(4, nullptr, nullptr) == SYSTEM_ERROR_NOT_FOUND);
         }
     }
 
-    SECTION("diag_service_cmd()") {
-        SECTION("can be used to enable the diagnostics service") {
-            CHECK(diag_service_cmd(DIAG_CMD_ENABLE, nullptr, nullptr) == 0);
+    SECTION("diag_command()") {
+        SECTION("can be used to start the diagnostics service") {
+            CHECK(diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr) == 0);
         }
     }
 }
@@ -386,7 +386,7 @@ TEST_CASE("Wiring API") {
                 return SYSTEM_ERROR_UNKNOWN;
             }).add();
 
-            diag.enabled(true);
+            diag.start();
 
             SECTION("can access a data source by ID") {
                 int32_t val = 0;
@@ -427,7 +427,7 @@ TEST_CASE("Wiring API") {
                 return SYSTEM_ERROR_UNKNOWN;
             }).add();
 
-            diag.enabled(true);
+            diag.start();
 
             SECTION("can access a data source by ID") {
                 int32_t val = 0;

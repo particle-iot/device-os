@@ -33,13 +33,16 @@ typedef enum diag_type {
     DIAG_TYPE_INT = 1 // 32-bit integer
 } diag_type;
 
-// Data source and service commands
-typedef enum diag_cmd {
-    DIAG_CMD_RESET = 1,
-    DIAG_CMD_ENABLE = 2,
-    DIAG_CMD_DISABLE = 3,
-    DIAG_CMD_GET = 4
-} diag_cmd;
+// Data source commands
+typedef enum diag_source_cmd {
+    DIAG_SOURCE_CMD_GET = 1 // Get current data
+} diag_source_cmd;
+
+// Service commands
+typedef enum diag_service_cmd {
+    DIAG_SERVICE_CMD_RESET = 1, // Reset the service (this command is used only for testing purposes)
+    DIAG_SERVICE_CMD_START = 2 // Start the service
+} diag_service_cmd;
 
 typedef struct diag_source diag_source;
 
@@ -62,10 +65,20 @@ typedef struct diag_source_get_cmd_data {
     size_t data_size; // Buffer size
 } diag_source_get_cmd_data;
 
+// Registers a new data source. Note that in order for the data source to be registered, the service
+// needs to be in its initial stopped state
 int diag_register_source(const diag_source* src, void* reserved);
+
+// Enumerates all registered data sources. The `callback` and `count` arguments can be set to NULL.
+// This function returns an error if the service is not started
 int diag_enum_sources(diag_enum_sources_callback callback, size_t* count, void* data, void* reserved);
+
+// Retrieves a registered data source with a given ID. This function returns an error if the service
+// is not started
 int diag_get_source(uint16_t id, const diag_source** src, void* reserved);
-int diag_service_cmd(int cmd, void* data, void* reserved);
+
+// Issues a service command
+int diag_command(int cmd, void* data, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

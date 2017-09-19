@@ -30,7 +30,7 @@ using namespace spark;
 class Diagnostics {
 public:
     int registerSource(const diag_source* src) {
-        if (enabled_) {
+        if (started_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         const int index = indexForId(src->id);
@@ -44,7 +44,7 @@ public:
     }
 
     int enumSources(diag_enum_sources_callback callback, size_t* count, void* data) {
-        if (!enabled_) {
+        if (!started_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         if (callback) {
@@ -59,7 +59,7 @@ public:
     }
 
     int getSource(uint16_t id, const diag_source** src) {
-        if (!enabled_) {
+        if (!started_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         const int index = indexForId(id);
@@ -75,17 +75,13 @@ public:
     int command(int cmd, void* data) {
         switch (cmd) {
 #if PLATFORM_ID == 3
-        // The RESET and DISABLE commands are used only for testing purposes
-        case DIAG_CMD_RESET:
+        case DIAG_SERVICE_CMD_RESET:
             srcs_.clear();
-            enabled_ = 0;
-            break;
-        case DIAG_CMD_DISABLE:
-            enabled_ = 0;
+            started_ = 0;
             break;
 #endif
-        case DIAG_CMD_ENABLE:
-            enabled_ = 1;
+        case DIAG_SERVICE_CMD_START:
+            started_ = 1;
             break;
         default:
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -100,10 +96,10 @@ public:
 
 private:
     Vector<const diag_source*> srcs_;
-    volatile uint8_t enabled_;
+    volatile uint8_t started_;
 
     Diagnostics() :
-            enabled_(0) { // The service is disabled initially
+            started_(0) { // The service is stopped initially
         srcs_.reserve(32);
     }
 
@@ -129,6 +125,6 @@ int diag_get_source(uint16_t id, const diag_source** src, void* reserved) {
     return Diagnostics::instance()->getSource(id, src);
 }
 
-int diag_service_cmd(int cmd, void* data, void* reserved) {
+int diag_command(int cmd, void* data, void* reserved) {
     return Diagnostics::instance()->command(cmd, data);
 }
