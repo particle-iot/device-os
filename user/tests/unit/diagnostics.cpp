@@ -65,8 +65,8 @@ public:
 
     explicit DiagSource(uint16_t id = DIAG_SOURCE_INVALID) :
             d_(new Data) {
-        d_->src = { sizeof(diag_source) /* size */, id, DIAG_TYPE_INT, nullptr /* name */, 0 /* flags */,
-                d_.get() /* data */, callback };
+        d_->src = { sizeof(diag_source), 0 /* flags */, id, DIAG_TYPE_INT, nullptr /* name */, d_.get() /* data */,
+                callback };
     }
 
     DiagSource& id(uint16_t id) {
