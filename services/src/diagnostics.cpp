@@ -29,11 +29,6 @@ using namespace spark;
 
 class Diagnostics {
 public:
-    Diagnostics() :
-            enabled_(0) { // The service is disabled initially
-        srcs_.reserve(32);
-    }
-
     int registerSource(const diag_source* src) {
         if (enabled_) {
             return SYSTEM_ERROR_INVALID_STATE;
@@ -98,9 +93,19 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    static Diagnostics* instance() {
+        static Diagnostics diag;
+        return &diag;
+    }
+
 private:
     Vector<const diag_source*> srcs_;
     volatile uint8_t enabled_;
+
+    Diagnostics() :
+            enabled_(0) { // The service is disabled initially
+        srcs_.reserve(32);
+    }
 
     int indexForId(uint16_t id) const {
         return std::distance(srcs_.begin(), std::lower_bound(srcs_.begin(), srcs_.end(), id,
@@ -110,22 +115,20 @@ private:
     }
 };
 
-Diagnostics g_diag;
-
 } // namespace
 
 int diag_register_source(const diag_source* src, void* reserved) {
-    return g_diag.registerSource(src);
+    return Diagnostics::instance()->registerSource(src);
 }
 
 int diag_enum_sources(diag_enum_sources_callback callback, size_t* count, void* data, void* reserved) {
-    return g_diag.enumSources(callback, count, data);
+    return Diagnostics::instance()->enumSources(callback, count, data);
 }
 
 int diag_get_source(uint16_t id, const diag_source** src, void* reserved) {
-    return g_diag.getSource(id, src);
+    return Diagnostics::instance()->getSource(id, src);
 }
 
 int diag_service_cmd(int cmd, void* data, void* reserved) {
-    return g_diag.command(cmd, data);
+    return Diagnostics::instance()->command(cmd, data);
 }
