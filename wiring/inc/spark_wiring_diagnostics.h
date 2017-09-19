@@ -185,7 +185,7 @@ inline int particle::AbstractDiagnosticData::get(uint16_t id, void* data, size_t
 inline int particle::AbstractDiagnosticData::get(const diag_source* src, void* data, size_t& size) {
     SPARK_ASSERT(src && src->callback);
     diag_source_get_cmd_data d = { sizeof(diag_source_get_cmd_data), data, size };
-    const int ret = src->callback(src, DIAG_CMD_GET, &d);
+    const int ret = src->callback(src, DIAG_SOURCE_CMD_GET, &d);
     if (ret == SYSTEM_ERROR_NONE) {
         size = d.data_size;
     }
@@ -195,7 +195,7 @@ inline int particle::AbstractDiagnosticData::get(const diag_source* src, void* d
 inline int particle::AbstractDiagnosticData::callback(const diag_source* src, int cmd, void* data) {
     const auto d = static_cast<AbstractDiagnosticData*>(src->data);
     switch (cmd) {
-    case DIAG_CMD_GET: {
+    case DIAG_SOURCE_CMD_GET: {
         const auto cmdData = static_cast<diag_source_get_cmd_data*>(data);
         return d->get(cmdData->data, cmdData->data_size);
     }
