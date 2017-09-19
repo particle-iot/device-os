@@ -45,6 +45,8 @@ LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 #include "mbedtls_util.h"
 #endif
 
+#include "communication_diagnostic.h"
+
 using namespace particle::protocol;
 
 #if 0
@@ -535,6 +537,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
       uint16_t currentMinute = uint16_t(callbacks.millis()>>16);
       if (currentMinute==lastMinute) {      // == handles millis() overflow
           if (eventsThisMinute==255) {
+              g_rateLimitedEventsCounter++;
               handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
               return false;
           }
@@ -558,6 +561,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
     if (now - recent_event_ticks[evt_tick_idx] < 1000)
     {
       // exceeded allowable burst of 4 events per second
+      g_rateLimitedEventsCounter++;
       handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
       return false;
     }

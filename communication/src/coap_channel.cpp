@@ -20,6 +20,7 @@
 #include "coap_channel.h"
 #include "service_debug.h"
 #include "messages.h"
+#include "communication_diagnostic.h"
 
 namespace particle { namespace protocol {
 
@@ -47,6 +48,7 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 
 void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
+	g_unacknowledgedMessageCounter++;
 	msg.notify_timeout();
 	if (msg.is_request())
 		channel.command(MessageChannel::CLOSE);

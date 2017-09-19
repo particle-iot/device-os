@@ -66,6 +66,9 @@ typedef enum diag_service_cmd {
     DIAG_SERVICE_CMD_START = 2 // Start the service
 } diag_service_cmd;
 
+#define DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES_NAME   "cloud.unacked"
+#define DIAG_ID_CLOUD_RATE_LIMITED_EVENTS_NAME       "cloud.ratelimed"
+
 typedef struct diag_source diag_source;
 
 typedef int(*diag_source_cmd_callback)(const diag_source* src, int cmd, void* data);
