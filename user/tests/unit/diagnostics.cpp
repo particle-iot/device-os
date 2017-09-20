@@ -12,7 +12,7 @@ using namespace particle;
 
 class EnumSourcesCallback {
 public:
-    typedef std::function<void(const diag_source*)> Func;
+    typedef std::function<int(const diag_source*)> Func;
 
     explicit EnumSourcesCallback(Func func = nullptr) :
             func_(std::move(func)) {
@@ -29,12 +29,10 @@ public:
 private:
     Func func_;
 
-    static void callback(const diag_source* src, void* data) {
+    static int callback(const diag_source* src, void* data) {
         assert(data);
         const auto d = static_cast<EnumSourcesCallback*>(data);
-        if (d->func_) {
-            d->func_(src);
-        }
+        return (d->func_ ? d->func_(src) : 0);
     }
 };
 
@@ -52,7 +50,7 @@ public:
             *(int32_t*)d_->data = val;
         }
         d_->data_size = sizeof(int32_t);
-        return SYSTEM_ERROR_NONE;
+        return 0;
     }
 
 private:
@@ -153,6 +151,7 @@ public:
         std::vector<const diag_source*> srcs;
         EnumSourcesCallback cb([&srcs](const diag_source* src) {
             srcs.push_back(src);
+            return 0;
         });
         size_t count = 0;
         REQUIRE(diag_enum_sources(cb.func(), &count, cb.data(), nullptr) == 0);
@@ -321,10 +320,20 @@ TEST_CASE("Service API") {
             diag.start();
             EnumSourcesCallback cb([=](const diag_source* d) {
                 REQUIRE((d->id == d1.id() || d->id == d2.id() || d->id == d3.id()));
+                return 0;
             });
             size_t count = 0;
             CHECK(diag_enum_sources(cb.func(), &count, cb.data(), nullptr) == 0);
             CHECK(count == 3);
+        }
+
+        SECTION("forwards callback errors to the caller code") {
+            diag.start();
+            EnumSourcesCallback cb([=](const diag_source* d) {
+                return SYSTEM_ERROR_UNKNOWN;
+            });
+            size_t count = 0;
+            CHECK(diag_enum_sources(cb.func(), &count, cb.data(), nullptr) == SYSTEM_ERROR_UNKNOWN);
         }
 
         SECTION("accepts NULL as the callback argument") {
