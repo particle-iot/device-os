@@ -49,7 +49,10 @@ public:
         }
         if (callback) {
             for (const diag_source* src: srcs_) {
-                callback(src, data);
+                const int ret = callback(src, data);
+                if (ret != SYSTEM_ERROR_NONE) {
+                    return ret;
+                }
             }
         }
         if (count) {

@@ -47,7 +47,7 @@ typedef enum diag_service_cmd {
 typedef struct diag_source diag_source;
 
 typedef int(*diag_source_cmd_callback)(const diag_source* src, int cmd, void* data);
-typedef void(*diag_enum_sources_callback)(const diag_source* src, void* data);
+typedef int(*diag_enum_sources_callback)(const diag_source* src, void* data);
 
 typedef struct diag_source {
     uint16_t size; // Size of this structure
