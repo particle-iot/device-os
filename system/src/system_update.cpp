@@ -24,6 +24,7 @@
 #include "spark_wiring_rgb.h"
 #include "spark_wiring_led.h"
 #include "spark_wiring_usbserial.h"
+#include "spark_wiring_diagnostics.h"
 #include "ota_flash_hal.h"
 #include "core_hal.h"
 #include "delay_hal.h"
@@ -540,8 +541,8 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
 }
 
 bool system_metrics(appender_fn appender, void* append_data, uint32_t page, void* reserved) {
-	// todo - use the JSON Reporter here.
-	return true;
+    const int ret = system_format_diag_data(nullptr, 0, 0, appender, append_data, nullptr);
+    return (ret == 0 ? true : false);
 };
 
 bool append_system_version_info(Appender* appender)
@@ -553,4 +554,70 @@ bool append_system_version_info(Appender* appender)
     "\n");
 
     return result;
+}
+
+namespace {
+
+using namespace particle;
+
+bool formatDiagSourceError(const char* name, int error, AppendJson* json) {
+    return json->write_attribute(name) &&
+            json->write('{') &&
+            json->write_value("e", error) &&
+            json->write('}');
+}
+
+int formatDiagSourceData(const diag_source* src, void* append) {
+    if (!src->name) {
+        return 0; // TODO: Use ID as a data source name
+    }
+    const auto json = static_cast<AppendJson*>(append);
+    switch (src->type) {
+    case DIAG_TYPE_INT: {
+        AbstractIntegerDiagnosticData::IntType val = 0;
+        const int ret = AbstractIntegerDiagnosticData::get(src, val);
+        if ((ret == 0 && !json->write_value(src->name, val)) ||
+                (ret != 0 && !formatDiagSourceError(src->name, ret, json))) {
+            return SYSTEM_ERROR_TOO_LARGE;
+        }
+        break;
+    }
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return 0;
+}
+
+} // namespace
+
+int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
+        void* reserved) {
+    AppendJson json(append, append_data);
+    if (!json.write('{')) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    if (id) {
+        // Dump specified data sources
+        for (size_t i = 0; i < count; ++i) {
+            const diag_source* src = nullptr;
+            int ret = diag_get_source(id[i], &src, nullptr);
+            if (ret != 0) {
+                return ret;
+            }
+            ret = formatDiagSourceData(src, &json);
+            if (ret != 0) {
+                return ret;
+            }
+        }
+    } else {
+        // Dump all data sources
+        const int ret = diag_enum_sources(formatDiagSourceData, nullptr, &json, nullptr);
+        if (ret != 0) {
+            return ret;
+        }
+    }
+    if (!json.write('}')) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    return 0;
 }

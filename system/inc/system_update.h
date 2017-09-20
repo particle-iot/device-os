@@ -145,6 +145,19 @@ void system_pending_shutdown();
 int system_set_flag(system_flag_t flag, uint8_t value, void* reserved);
 int system_get_flag(system_flag_t flag, uint8_t* value,void* reserved);
 
+/**
+ * Formats the diagnostic data using an appender function.
+ *
+ * @param id Array of data source IDs. This argument can be set to NULL to format all registered data sources.
+ * @param count Number of data source IDs in the array.
+ * @param flags Formatting flags.
+ * @param append Appender function.
+ * @param append_data Opaque data passed to the appender function.
+ * @param reserved Reserved argument (should be set to NULL).
+ */
+int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
+        void* reserved);
+
 #ifdef __cplusplus
 }
 #endif
