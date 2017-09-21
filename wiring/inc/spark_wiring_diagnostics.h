@@ -159,9 +159,6 @@ using SimpleEnumDiagnosticData = EnumDiagnosticData<EnumT, NoLockingPolicy>;
 template<typename EnumT>
 using AtomicEnumDiagnosticData = EnumDiagnosticData<EnumT, AtomicLockingPolicy>;
 
-// Base value for application-specific data source IDs
-const uint16_t DIAGNOSTIC_DATA_USER_ID = DIAG_SOURCE_USER;
-
 } // namespace particle
 
 inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, diag_type type) :

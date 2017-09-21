@@ -61,7 +61,7 @@ class DiagSource {
 public:
     typedef std::function<int(GetData)> GetFunc; // Getter function
 
-    explicit DiagSource(uint16_t id = DIAG_SOURCE_INVALID) :
+    explicit DiagSource(uint16_t id = DIAG_ID_INVALID) :
             d_(new Data) {
         d_->src = { sizeof(diag_source), 0 /* flags */, id, DIAG_TYPE_INT, nullptr /* name */, d_.get() /* data */,
                 callback };

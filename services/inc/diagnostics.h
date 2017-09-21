@@ -20,13 +20,35 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// System data sources
-#define DIAG_SOURCE_INVALID 0 // Invalid source ID
-#define DIAG_SOURCE_USER 1024 // Base value for application-specific source IDs
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// System data sources
+typedef enum diag_id {
+    DIAG_ID_INVALID = 0, // Invalid source ID
+    DIAG_ID_SYSTEM_LAST_RESET_REASON = 1, // sys.lastReset
+    DIAG_ID_SYSTEM_FREE_MEMORY = 2, // sys.freeMem
+    DIAG_ID_SYSTEM_BATTERY_CHARGE = 3, // sys.battCharge
+    DIAG_ID_SYSTEM_SYSTEM_LOOPS = 4, // sys.loops
+    DIAG_ID_SYSTEM_APPLICATION_LOOPS = 5, // sys.appLoops
+    DIAG_ID_SYSTEM_UPTIME = 6, // sys.uptime
+    DIAG_ID_NETWORK_CONNECTION_STATUS = 8, // net.status
+    DIAG_ID_NETWORK_CONNECTION_ERROR_CODE = 9, // net.error
+    DIAG_ID_NETWORK_DISCONNECTS = 12, // net.disconn
+    DIAG_ID_NETWORK_IPV4_ADDRESS = 15, // net.ipAddr
+    DIAG_ID_NETWORK_IPV4_GATEWAY = 16, // net.ipGateway
+    DIAG_ID_NETWORK_FLAGS = 17, // net.flags
+    DIAG_ID_NETWORK_COUNTRY_CODE = 18, // net.country
+    DIAG_ID_NETWORK_RSSI = 19, // net.rssi
+    DIAG_ID_CLOUD_CONNECTION_STATUS = 10, // cloud.status
+    DIAG_ID_CLOUD_CONNECTION_ERROR_CODE = 13, // cloud.error
+    DIAG_ID_CLOUD_DISCONNECTS = 14, // cloud.disconn
+    DIAG_ID_CLOUD_REPEATED_MESSAGES = 21, // cloud.protoRepeat
+    DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES = 22, // cloud.protoUnack
+    DIAG_ID_CLOUD_RATE_LIMITED_EVENTS = 20, // cloud.rateLimited
+    DIAG_ID_USER = 32768 // Base value for application-specific source IDs
+} diag_id;
 
 // Data types
 typedef enum diag_type {
