@@ -393,10 +393,8 @@ public:
     bool newline() { return true; /*return write("\r\n");*/ }
 
     bool write_value(const char* name, int value) {
-        char buf[10];
-        itoa(value, buf, 10);
         return write_attribute(name) &&
-               write(buf) &&
+               write(value) &&
                next();
     }
 
@@ -407,6 +405,11 @@ public:
 
     bool write(char c) {
         return fn(data, (const uint8_t*)&c, 1);
+    }
+
+    bool write(int value) {
+        char buf[12];
+        return write(itoa(value, buf, 10));
     }
 
     bool write(const char* string) {
@@ -563,8 +566,10 @@ using namespace particle;
 bool formatDiagSourceError(const char* name, int error, AppendJson* json) {
     return json->write_attribute(name) &&
             json->write('{') &&
-            json->write_value("e", error) &&
-            json->write('}');
+            json->write_attribute("err") &&
+            json->write(error) &&
+            json->write('}') &&
+            json->next();
 }
 
 int formatDiagSourceData(const diag_source* src, void* append) {
@@ -616,7 +621,7 @@ int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, ap
             return ret;
         }
     }
-    if (!json.write('}')) {
+    if (!json.end_list() || !json.write('}')) { // TODO: Use spark::JSONWriter
         return SYSTEM_ERROR_TOO_LARGE;
     }
     return 0;
