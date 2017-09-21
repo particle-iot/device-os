@@ -59,3 +59,8 @@ system_tick_t HAL_Timer_Get_Milli_Seconds(void)
     // review - wiced_time_get_time()) ??
     return GetSystem1MsTick();
 }
+
+system_tick_t HAL_Timer_Get_Seconds(void)
+{
+    return GetSystem1sTick();
+}
