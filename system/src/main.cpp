@@ -53,6 +53,7 @@
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_led.h"
+#include "spark_wiring_diagnostics.h"
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -626,9 +627,23 @@ private:
     }
 };
 
+class UptimeDiagnosticData: public AbstractIntegerDiagnosticData {
+public:
+    UptimeDiagnosticData() :
+            AbstractIntegerDiagnosticData(DIAG_ID_SYSTEM_UPTIME, "sys.uptime") {
+    }
+
+    virtual int get(IntType& val) override {
+        val = HAL_Timer_Get_Seconds();
+        return 0; // OK
+    }
+};
+
 // Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
 // global variable allows to register a handler for HAL events early
 HALEventHandler halEventHandler;
+
+UptimeDiagnosticData uptimeDiagData;
 
 } // namespace
 
