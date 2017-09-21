@@ -6,7 +6,15 @@
 #define ABS(x) (x >= 0 ? x : -x)
 #endif
 
-void assert_micros_millis(system_tick_t duration)
+namespace {
+
+inline system_tick_t seconds() {
+    return HAL_Timer_Get_Seconds();
+}
+
+} // namespace
+
+void assert_ticks(system_tick_t duration)
 {
 #if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Just in case
@@ -14,27 +22,37 @@ void assert_micros_millis(system_tick_t duration)
 #endif
     system_tick_t last = millis();
     system_tick_t end = last + duration;
+    system_tick_t elapsed = 0;
 
     system_tick_t last_micros = micros();
+    system_tick_t last_seconds = seconds();
 
     do
     {
         system_tick_t now = millis();
         system_tick_t now_micros = micros();
+        system_tick_t now_seconds = seconds();
 
         assertMoreOrEqual(now, last);
         assertMoreOrEqual(now_micros, last_micros);
+        assertMoreOrEqual(now_seconds, last_seconds);
+
         // micros always at least (millis()*1000)
         // even with overflow
         assertMoreOrEqual(now_micros, now*1000);
 
+        // seconds should not wrap along with millis
+        elapsed += now - last;
+        assertMoreOrEqual(now_seconds, elapsed / 1000);
+
         last = now;
         last_micros = now_micros;
+        last_seconds = now_seconds;
     }
     while (last<end);
 }
 
-void assert_micros_millis_interrupts(system_tick_t duration)
+void assert_ticks_interrupts(system_tick_t duration)
 {
 #if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Enable some high priority interrupt to run interference
@@ -55,15 +73,21 @@ void assert_micros_millis_interrupts(system_tick_t duration)
 #endif
 
     system_tick_t last = millis();
-    system_tick_t last_micros = micros();
     system_tick_t end = last + duration;
+    system_tick_t elapsed = 0;
+
+    system_tick_t last_micros = micros();
+    system_tick_t last_seconds = seconds();
+
     do
     {
         system_tick_t now = millis();
         system_tick_t now_micros = micros();
+        system_tick_t now_seconds = seconds();
 
         assertMoreOrEqual(now, last);
         assertMoreOrEqual(now_micros, last_micros);
+        assertMoreOrEqual(now_seconds, last_seconds);
         // micros always at least (millis()*1000)
         // even with overflow
         assertMoreOrEqual(now_micros, now*1000);
@@ -71,11 +95,17 @@ void assert_micros_millis_interrupts(system_tick_t duration)
         assertTrue(((int32_t)now - (int32_t)last) <= 1);
         // 1ms micros() advancement
         assertTrue(((int32_t)now_micros - (int32_t)last_micros) <= 1000);
+        // 1s seconds() advancement
+        assertTrue(((int32_t)now_seconds - (int32_t)last_seconds) <= 1);
         // at most 1.5ms difference between micros() and millis()
         assertTrue(ABS((int32_t)now_micros - (int32_t)now*1000) <= 1500);
 
+        elapsed += now - last;
+        assertMoreOrEqual(now_seconds, elapsed / 1000);
+
         last = now;
         last_micros = now_micros;
+        last_seconds = now_seconds;
     }
     while (last<end);
 
@@ -89,13 +119,13 @@ void assert_micros_millis_interrupts(system_tick_t duration)
 
 test(TICKS_00_millis_micros_baseline_test)
 {
-    #define ONE_SECOND 1*1000
+    #define THREE_SECONDS 3*1000
     system_tick_t start = millis();
-    delay(ONE_SECOND);
-    assertMoreOrEqual(millis()-start,ONE_SECOND);
+    delay(THREE_SECONDS);
+    assertMoreOrEqual(millis()-start,THREE_SECONDS);
     start = micros();
-    delayMicroseconds(ONE_SECOND);
-    assertMoreOrEqual(micros()-start,ONE_SECOND);
+    delayMicroseconds(THREE_SECONDS);
+    assertMoreOrEqual(micros()-start,THREE_SECONDS);
 }
 
 #if !MODULAR_FIRMWARE
@@ -107,7 +137,7 @@ test(TICKS_01_millis_and_micros_rollover)
     __advance_system1MsTick(system_tick_t(-5000), 3000);
     #define TEN_SECONDS 10*1000
     system_tick_t start = millis();
-    assert_micros_millis(TEN_SECONDS);
+    assert_ticks(TEN_SECONDS);
     assertMoreOrEqual(millis()-start,TEN_SECONDS);
 }
 #endif
@@ -116,7 +146,7 @@ test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
 {
     #define TWO_MINUTES 2*60*1000
     system_tick_t start = millis();
-    assert_micros_millis_interrupts(TWO_MINUTES);
+    assert_ticks_interrupts(TWO_MINUTES);
     assertMoreOrEqual(millis()-start,TWO_MINUTES);
 }
 
@@ -124,6 +154,6 @@ test(TICKS_03_millis_and_micros_monotonically_increases)
 {
     #define TWO_MINUTES 2*60*1000
     system_tick_t start = millis();
-    assert_micros_millis(TWO_MINUTES);
+    assert_ticks(TWO_MINUTES);
     assertMoreOrEqual(millis()-start,TWO_MINUTES);
 }

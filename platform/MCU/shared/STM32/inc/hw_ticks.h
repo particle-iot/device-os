@@ -56,6 +56,12 @@ system_tick_t GetSystem1MsTick();
  */
 system_tick_t GetSystem1UsTick();
 
+/**
+ * Fetch the current seconds count.
+ * @return the number of seconds since the device was powered on or woken up from sleep.
+ * Automatically wraps around when above UINT_MAX.
+ */
+system_tick_t GetSystem1sTick();
 
 /**
  * Testing method that simulates advancing the time forward.

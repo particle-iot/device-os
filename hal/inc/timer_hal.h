@@ -46,6 +46,11 @@ extern "C" {
 system_tick_t HAL_Timer_Get_Micro_Seconds(void);
 system_tick_t HAL_Timer_Get_Milli_Seconds(void);
 
+/**
+ * Returns the number of seconds since the device was powered on or woken up from sleep.
+ */
+system_tick_t HAL_Timer_Get_Seconds(void);
+
 #define HAL_Timer_Microseconds HAL_Timer_Get_Micro_Seconds
 #define HAL_Timer_Milliseconds HAL_Timer_Get_Milli_Seconds
 

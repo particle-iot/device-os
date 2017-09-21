@@ -35,6 +35,16 @@ static volatile system_tick_t system_millis = 0;
 static volatile system_tick_t system_millis_clock = 0;
 
 /**
+ * The number of milliseconds passed since the beginning of the current second.
+ */
+static volatile system_tick_t system_second_millis = 0;
+
+/**
+ * The current second counter value.
+ */
+static volatile system_tick_t system_seconds = 0;
+
+/**
  * Increment the millisecond tick counter.
  */
 void System1MsTick(void)
@@ -42,7 +52,11 @@ void System1MsTick(void)
 	int is = __get_PRIMASK();
 	__disable_irq();
 
-    system_millis++;
+    ++system_millis;
+    if (++system_second_millis == 1000) {
+        ++system_seconds;
+        system_second_millis = 0;
+    }
     system_millis_clock = DWT->CYCCNT;
 
     if ((is & 1) == 0) {
@@ -81,13 +95,31 @@ system_tick_t GetSystem1UsTick()
 
     base_millis = system_millis;
     base_clock = system_millis_clock;
-    
+
     system_tick_t elapsed_since_millis = ((DWT->CYCCNT-base_clock) / SYSTEM_US_TICKS);
 
     if ((is & 1) == 0) {
         __enable_irq();
     }
     return (base_millis * 1000) + elapsed_since_millis;
+}
+
+system_tick_t GetSystem1sTick()
+{
+    system_tick_t seconds = 0;
+    system_tick_t millis = 0;
+
+    const int is = __get_PRIMASK();
+    __disable_irq();
+
+    seconds = system_seconds;
+    millis = system_second_millis + (DWT->CYCCNT - system_millis_clock) / SYSTEM_US_TICKS / 1000;
+
+    if ((is & 1) == 0) {
+        __enable_irq();
+    }
+
+    return (seconds + millis / 1000);
 }
 
 /**
@@ -102,5 +134,3 @@ void __advance_system1MsTick(system_tick_t millis, system_tick_t micros_from_rol
 void SysTick_Disable() {
     SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
 }
-
-
