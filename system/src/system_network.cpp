@@ -18,6 +18,8 @@
  */
 
 #include "spark_wiring_ticks.h"
+#include "spark_wiring_diagnostics.h"
+#include "spark_wiring_fixed_point.h"
 #include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"
@@ -40,6 +42,7 @@ volatile uint8_t SPARK_WLAN_STARTED;
 
 #if Wiring_WiFi
 #include "system_network_wifi.h"
+#include "spark_wiring_wifi.h"
 WiFiNetworkInterface wifi;
 ManagedNetworkInterface& network = wifi;
 inline NetworkInterface& nif(network_interface_t _nif) { return wifi; }
@@ -48,6 +51,7 @@ inline NetworkInterface& nif(network_interface_t _nif) { return wifi; }
 
 #if Wiring_Cellular
 #include "system_network_cellular.h"
+#include "spark_wiring_cellular.h"
 CellularNetworkInterface cellular;
 ManagedNetworkInterface& network = cellular;
 inline NetworkInterface& nif(network_interface_t _nif) { return cellular; }
@@ -59,6 +63,40 @@ inline NetworkInterface& nif(network_interface_t _nif) { return cellular; }
 #endif
 
 #if Wiring_Network
+
+namespace {
+
+using namespace particle;
+using namespace spark;
+
+class RssiDiagnosticData: public AbstractIntegerDiagnosticData {
+public:
+    RssiDiagnosticData() :
+            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_RSSI, "net.rssi") {
+    }
+
+    virtual int get(IntType& val) {
+        int rssi = 0;
+#if Wiring_WiFi
+        rssi = WiFi.RSSI();
+#elif Wiring_Cellular
+        const CellularSignal sig = Cellular.RSSI();
+        rssi = sig.rssi;
+#else
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif
+        if (rssi >= 0) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        // TODO: FixedPointQ should have a constructor taking an integer value
+        val = FixedPointSQ<8, 8>((float)rssi).value();
+        return SYSTEM_ERROR_NONE;
+    }
+};
+
+RssiDiagnosticData g_rssiDiagData;
+
+} // namespace
 
 void HAL_WLAN_notify_simple_config_done()
 {
