@@ -119,13 +119,19 @@ void assert_ticks_interrupts(system_tick_t duration)
 
 test(TICKS_00_millis_micros_baseline_test)
 {
-    #define THREE_SECONDS 3*1000
-    system_tick_t start = millis();
-    delay(THREE_SECONDS);
-    assertMoreOrEqual(millis()-start,THREE_SECONDS);
-    start = micros();
-    delayMicroseconds(THREE_SECONDS);
-    assertMoreOrEqual(micros()-start,THREE_SECONDS);
+    const system_tick_t DELAY = 3 * 1000;
+    system_tick_t startMillis = millis();
+    system_tick_t startMicros = micros();
+    system_tick_t startSeconds = seconds();
+    delay(DELAY);
+    assertMoreOrEqual(millis() - startMillis, DELAY);
+    assertMoreOrEqual(micros() - startMicros, DELAY * 1000);
+    assertMoreOrEqual(seconds() - startSeconds, DELAY / 1000);
+    startMillis = millis();
+    startMicros = micros();
+    delayMicroseconds(DELAY);
+    assertMoreOrEqual(millis() - startMillis, DELAY / 1000);
+    assertMoreOrEqual(micros() - startMicros, DELAY);
 }
 
 #if !MODULAR_FIRMWARE
