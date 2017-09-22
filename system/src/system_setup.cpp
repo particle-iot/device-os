@@ -77,8 +77,13 @@ class StreamAppender : public Appender
 public:
     StreamAppender(Stream& stream) : stream_(stream) {}
 
-    bool append(const uint8_t* data, size_t length) {
-        return stream_.write(data, length)==length;
+    virtual bool append(const uint8_t* data, size_t length) override {
+        return append(&stream_, data, length);
+    }
+
+    static bool append(void* appender, const uint8_t* data, size_t length) { // appender_fn
+        const auto stream = static_cast<Stream*>(appender);
+        return (stream->write(data, length) == length);
     }
 };
 
@@ -265,6 +270,11 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     			print("Sorry, claim code is not 63 characters long. Claim code unchanged.");
 }
 		print("\r\n");
+    }
+    else if ('d' == c)
+    {
+        system_format_diag_data(nullptr, 0, 0, StreamAppender::append, &serial, nullptr);
+        print("\r\n");
     }
 }
 
