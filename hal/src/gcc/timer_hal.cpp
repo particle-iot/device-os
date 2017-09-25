@@ -4,27 +4,24 @@
 
 namespace {
 
-const auto startMicros = boost::posix_time::microsec_clock::universal_time();
-const auto startSeconds = boost::posix_time::second_clock::universal_time();
+const auto start = boost::posix_time::microsec_clock::universal_time();
 
 } // namespace
 
 system_tick_t HAL_Timer_Get_Micro_Seconds(void)
 {
     auto now = boost::posix_time::microsec_clock::universal_time();
-    auto diff = now - startMicros;
+    auto diff = now - start;
     return diff.total_microseconds();
 }
 
 system_tick_t HAL_Timer_Get_Milli_Seconds(void)
 {
-    auto now = boost::posix_time::microsec_clock::universal_time();
-    auto diff = now - startMicros;
-    return diff.total_milliseconds();
+    return hal_timer_millis(nullptr);
 }
 
-system_tick_t HAL_Timer_Get_Seconds(void)
+uint64_t hal_timer_millis(void* reserved)
 {
-    const auto now = boost::posix_time::second_clock::universal_time();
-    return (now - startSeconds).total_seconds();
+    const auto now = boost::posix_time::microsec_clock::universal_time();
+    return (now - start).total_milliseconds();
 }

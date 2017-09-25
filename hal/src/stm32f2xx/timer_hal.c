@@ -60,7 +60,7 @@ system_tick_t HAL_Timer_Get_Milli_Seconds(void)
     return GetSystem1MsTick();
 }
 
-system_tick_t HAL_Timer_Get_Seconds(void)
+uint64_t hal_timer_millis(void* reserved)
 {
-    return GetSystem1sTick();
+    return GetSystem1MsTick();
 }
