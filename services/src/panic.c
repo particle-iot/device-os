@@ -5,6 +5,7 @@
  *      Author: david_s5
  */
 
+#define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
 #include <stdint.h>
 #include "spark_macros.h"
 #include "panic.h"

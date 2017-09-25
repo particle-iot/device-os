@@ -24,6 +24,7 @@
 // TODO: Move synchronization macros to some header file
 #if PLATFORM_ID != 3
 
+#define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
 #include "spark_wiring_interrupts.h"
 
 #define LED_SERVICE_DECLARE_LOCK(name)
