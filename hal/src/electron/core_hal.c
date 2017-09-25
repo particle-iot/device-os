@@ -45,6 +45,8 @@ extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
+void SysTickChain();
+
 #if 0
 IDX[x] = added IRQ handler
 00 [ ] _estack
@@ -147,67 +149,6 @@ IDX[x] = added IRQ handler
 96 [ ] HASH_RNG_IRQHandler               // Hash and Rng
 #endif
 
-// Reset_Handler defined in startup_stm32f2xx.s (index 1)
-const unsigned NMI_Handler_Idx                      = 2;
-const unsigned HardFault_Handler_Idx                = 3;
-const unsigned MemManage_Handler_Idx                = 4;
-const unsigned BusFault_Handler_Idx                 = 5;
-const unsigned UsageFault_Handler_Idx               = 6;
-const unsigned SVC_Handler_Idx                      = 11;
-const unsigned DebugMon_Handler_Idx                 = 12;
-const unsigned PendSV_Handler_Idx                   = 14;
-const unsigned SysTick_Handler_Idx                  = 15;
-const unsigned EXTI0_IRQHandler_Idx                 = 22;
-const unsigned EXTI1_IRQHandler_Idx                 = 23;
-const unsigned EXTI2_IRQHandler_Idx                 = 24;
-const unsigned EXTI3_IRQHandler_Idx                 = 25;
-const unsigned EXTI4_IRQHandler_Idx                 = 26;
-const unsigned DMA1_Stream2_IRQHandler_Idx          = 29;
-const unsigned ADC_IRQHandler_Idx                   = 34;
-const unsigned CAN1_TX_IRQHandler_Idx               = 35;
-const unsigned CAN1_RX0_IRQHandler_Idx              = 36;
-const unsigned CAN1_RX1_IRQHandler_Idx              = 37;
-const unsigned CAN1_SCE_IRQHandler_Idx              = 38;
-const unsigned EXTI9_5_IRQHandler_Idx               = 39;
-const unsigned TIM1_BRK_TIM9_IRQHandler_Idx         = 40;
-const unsigned TIM1_UP_TIM10_IRQHandler_Idx         = 41;
-const unsigned TIM1_TRG_COM_TIM11_IRQHandler_Idx    = 42;
-const unsigned TIM1_CC_IRQHandler_Idx               = 43;
-const unsigned TIM2_IRQHandler_Idx                  = 44;
-const unsigned TIM3_IRQHandler_Idx                  = 45;
-const unsigned TIM4_IRQHandler_Idx                  = 46;
-const unsigned I2C1_EV_IRQHandler_Idx               = 47;
-const unsigned I2C1_ER_IRQHandler_Idx               = 48;
-const unsigned USART1_IRQHandler_Idx                = 53;
-const unsigned USART2_IRQHandler_Idx                = 54;
-const unsigned USART3_IRQHandler_Idx                = 55;
-const unsigned EXTI15_10_IRQHandler_Idx             = 56;
-const unsigned RTC_Alarm_IRQHandler_Idx             = 57;
-const unsigned OTG_FS_WKUP_IRQHandler_Idx           = 58;
-const unsigned TIM8_BRK_TIM12_IRQHandler_Idx        = 59;
-const unsigned TIM8_UP_TIM13_IRQHandler_Idx         = 60;
-const unsigned TIM8_TRG_COM_TIM14_IRQHandler_Idx    = 61;
-const unsigned TIM8_CC_IRQHandler_Idx               = 62;
-const unsigned DMA1_Stream7_IRQHandler_Idx          = 63;
-const unsigned TIM5_IRQHandler_Idx                  = 66;
-const unsigned UART4_IRQHandler_Idx                 = 68;
-const unsigned UART5_IRQHandler_Idx                 = 69;
-const unsigned TIM6_DAC_IRQHandler_Idx              = 70;
-const unsigned TIM7_IRQHandler_Idx                  = 71;
-const unsigned DMA2_Stream2_IRQHandler_Idx          = 74;
-const unsigned CAN2_TX_IRQHandler_Idx               = 79;
-const unsigned CAN2_RX0_IRQHandler_Idx              = 80;
-const unsigned CAN2_RX1_IRQHandler_Idx              = 81;
-const unsigned CAN2_SCE_IRQHandler_Idx              = 82;
-const unsigned OTG_FS_IRQHandler_Idx                = 83;
-const unsigned DMA2_Stream5_IRQHandler_Idx          = 84;
-const unsigned I2C3_EV_IRQHandler_Idx               = 88;
-const unsigned I2C3_ER_IRQHandler_Idx               = 89;
-const unsigned OTG_HS_EP1_OUT_IRQHandler_Idx        = 90;
-const unsigned OTG_HS_EP1_IN_IRQHandler_Idx         = 91;
-const unsigned OTG_HS_WKUP_IRQHandler_Idx           = 92;
-const unsigned OTG_HS_IRQHandler_Idx                = 93;
-
 /* Extern variables ---------------------------------------------------------*/
 /**
  * Updated by HAL_1Ms_Tick()
@@ -230,73 +171,20 @@ void HAL_Core_Setup_override_interrupts(void)
 {
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs                          = (uint32_t*)&link_ram_interrupt_vectors_location;
-    isrs[NMI_Handler_Idx]                   = (uint32_t)NMI_Handler;
-    isrs[HardFault_Handler_Idx]             = (uint32_t)HardFault_Handler;
-    isrs[MemManage_Handler_Idx]             = (uint32_t)MemManage_Handler;
-    isrs[BusFault_Handler_Idx]              = (uint32_t)BusFault_Handler;
-    isrs[UsageFault_Handler_Idx]            = (uint32_t)UsageFault_Handler;
-    isrs[SVC_Handler_Idx]                   = (uint32_t)SVC_Handler;
-    isrs[DebugMon_Handler_Idx]              = (uint32_t)DebugMon_Handler;
-    isrs[PendSV_Handler_Idx]                = (uint32_t)PendSV_Handler;
-    isrs[SysTick_Handler_Idx]               = (uint32_t)SysTickOverride;
-    isrs[EXTI0_IRQHandler_Idx]              = (uint32_t)EXTI0_IRQHandler;
-    isrs[EXTI1_IRQHandler_Idx]              = (uint32_t)EXTI1_IRQHandler;
-    isrs[EXTI2_IRQHandler_Idx]              = (uint32_t)EXTI2_IRQHandler;
-    isrs[EXTI3_IRQHandler_Idx]              = (uint32_t)EXTI3_IRQHandler;
-    isrs[EXTI4_IRQHandler_Idx]              = (uint32_t)EXTI4_IRQHandler;
-    isrs[ADC_IRQHandler_Idx]                = (uint32_t)ADC_irq;
-    isrs[CAN1_TX_IRQHandler_Idx]            = (uint32_t)CAN1_TX_irq;
-    isrs[CAN1_RX0_IRQHandler_Idx]           = (uint32_t)CAN1_RX0_irq;
-    isrs[CAN1_RX1_IRQHandler_Idx]           = (uint32_t)CAN1_RX1_irq;
-    isrs[CAN1_SCE_IRQHandler_Idx]           = (uint32_t)CAN1_SCE_irq;
-    isrs[EXTI9_5_IRQHandler_Idx]            = (uint32_t)EXTI9_5_IRQHandler;
-    isrs[TIM1_BRK_TIM9_IRQHandler_Idx]      = (uint32_t)TIM1_BRK_TIM9_irq;
-    isrs[TIM1_UP_TIM10_IRQHandler_Idx]      = (uint32_t)TIM1_UP_TIM10_irq;
-    isrs[TIM1_TRG_COM_TIM11_IRQHandler_Idx] = (uint32_t)TIM1_TRG_COM_TIM11_irq;
-    isrs[TIM1_CC_IRQHandler_Idx]            = (uint32_t)TIM1_CC_irq;
-    isrs[TIM2_IRQHandler_Idx]               = (uint32_t)TIM2_irq;
-    isrs[TIM3_IRQHandler_Idx]               = (uint32_t)TIM3_irq;
-    isrs[TIM4_IRQHandler_Idx]               = (uint32_t)TIM4_irq;
-    isrs[USART1_IRQHandler_Idx]             = (uint32_t)HAL_USART1_Handler;
-    isrs[USART2_IRQHandler_Idx]             = (uint32_t)HAL_USART2_Handler;
-    isrs[USART3_IRQHandler_Idx]             = (uint32_t)HAL_USART3_Handler;
-#ifdef USE_USB_OTG_FS
-    isrs[OTG_FS_WKUP_IRQHandler_Idx]        = (uint32_t)OTG_FS_WKUP_irq;
-#endif
-    isrs[TIM8_BRK_TIM12_IRQHandler_Idx]     = (uint32_t)TIM8_BRK_TIM12_irq;
-    isrs[TIM8_UP_TIM13_IRQHandler_Idx]      = (uint32_t)TIM8_UP_TIM13_irq;
-    isrs[TIM8_TRG_COM_TIM14_IRQHandler_Idx] = (uint32_t)TIM8_TRG_COM_TIM14_irq;
-    isrs[TIM8_CC_IRQHandler_Idx]            = (uint32_t)TIM8_CC_irq;
-    isrs[TIM5_IRQHandler_Idx]               = (uint32_t)TIM5_irq;
-    isrs[UART4_IRQHandler_Idx]              = (uint32_t)HAL_USART4_Handler;
-    isrs[UART5_IRQHandler_Idx]              = (uint32_t)HAL_USART5_Handler;
-    isrs[TIM6_DAC_IRQHandler_Idx]           = (uint32_t)TIM6_DAC_irq;
-    isrs[DMA2_Stream2_IRQHandler_Idx]       = (uint32_t)DMA2_Stream2_irq_override;
-    isrs[TIM7_IRQHandler_Idx]               = (uint32_t)TIM7_override;  // WICED uses this for a JTAG watchdog handler
-    isrs[CAN2_TX_IRQHandler_Idx]            = (uint32_t)CAN2_TX_irq;
-    isrs[CAN2_RX0_IRQHandler_Idx]           = (uint32_t)CAN2_RX0_irq;
-    isrs[CAN2_RX1_IRQHandler_Idx]           = (uint32_t)CAN2_RX1_irq;
-    isrs[CAN2_SCE_IRQHandler_Idx]           = (uint32_t)CAN2_SCE_irq;
-#ifdef USE_USB_OTG_FS
-    isrs[OTG_FS_IRQHandler_Idx]             = (uint32_t)OTG_FS_irq;
-#elif defined USE_USB_OTG_HS
-    isrs[OTG_HS_EP1_OUT_IRQHandler_Idx]     = (uint32_t)OTG_HS_EP1_OUT_irq;
-    isrs[OTG_HS_EP1_IN_IRQHandler_Idx]      = (uint32_t)OTG_HS_EP1_IN_irq;
-    isrs[OTG_HS_WKUP_IRQHandler_Idx]        = (uint32_t)OTG_HS_WKUP_irq;
-    isrs[OTG_HS_IRQHandler_Idx]             = (uint32_t)OTG_HS_irq;
-#endif
-    isrs[EXTI15_10_IRQHandler_Idx]          = (uint32_t)EXTI15_10_IRQHandler;
-    isrs[I2C1_EV_IRQHandler_Idx]            = (uint32_t)I2C1_EV_irq;
-    isrs[I2C1_ER_IRQHandler_Idx]            = (uint32_t)I2C1_ER_irq;
-    isrs[I2C3_EV_IRQHandler_Idx]            = (uint32_t)I2C3_EV_irq;
-    isrs[I2C3_ER_IRQHandler_Idx]            = (uint32_t)I2C3_ER_irq;
-    isrs[DMA1_Stream7_IRQHandler_Idx]       = (uint32_t)DMA1_Stream7_irq;
-    isrs[DMA2_Stream5_IRQHandler_Idx]       = (uint32_t)DMA2_Stream5_irq;
-    isrs[DMA1_Stream2_IRQHandler_Idx]       = (uint32_t)DMA1_Stream2_irq;
-
-    isrs[RTC_Alarm_IRQHandler_Idx]          = (uint32_t)RTC_Alarm_irq;
     SCB->VTOR = (unsigned long)isrs;
 }
+
+void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
+    uint32_t handler = ((const uint32_t*)&link_interrupt_vectors_location)[IRQN_TO_IDX(irqn)];
+
+    if (irqn == SysTick_IRQn) {
+        handler = (uint32_t)SysTickChain;
+    }
+
+    volatile uint32_t* isrs = (volatile uint32_t*)SCB->VTOR;
+    isrs[IRQN_TO_IDX(irqn)] = handler;
+}
+
 
 static TaskHandle_t  app_thread_handle;
 #define APPLICATION_STACK_SIZE 6144
@@ -344,21 +232,20 @@ int main(void)
     return 0;
 }
 
+void SysTickChain()
+{
+    SysTick_Handler();
+    SysTickOverride();
+}
+
 /**
  * Called by HAL_Core_Init() to pre-initialize any low level hardware before
  * the main loop runs.
  */
 void HAL_Core_Init_finalize(void)
 {
-}
-
-void SysTickChain()
-{
-    void (*chain)(void) = (void (*)(void))((uint32_t*)&link_interrupt_vectors_location)[SysTick_Handler_Idx];
-
-    chain();
-
-    SysTickOverride();
+    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+    isrs[IRQN_TO_IDX(SysTick_IRQn)] = (uint32_t)SysTickChain;
 }
 
 void HAL_1Ms_Tick()
@@ -375,8 +262,6 @@ void HAL_1Ms_Tick()
  */
 void HAL_Core_Setup_finalize(void)
 {
-    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
-    isrs[SysTick_Handler_Idx] = (uint32_t)SysTickChain;
     // retained memory is critical for efficient data use on the electron
     HAL_Feature_Set(FEATURE_RETAINED_MEMORY, ENABLE);
 }
@@ -629,3 +514,8 @@ void USART6_IRQHandler(void)        {__ASM("bkpt 0");}
 void DCMI_IRQHandler(void)          {__ASM("bkpt 0");}
 void CRYP_IRQHandler(void)          {__ASM("bkpt 0");}
 void HASH_RNG_IRQHandler(void)      {__ASM("bkpt 0");}
+
+void OTG_HS_EP1_OUT_irq(void)       {__ASM("bkpt 0");}
+void OTG_HS_EP1_IN_irq(void)        {__ASM("bkpt 0");}
+void OTG_HS_WKUP_irq(void)          {__ASM("bkpt 0");}
+void OTG_HS_irq(void)               {__ASM("bkpt 0");}
