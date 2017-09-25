@@ -5,7 +5,7 @@
 
 #include <cstdlib>
 
-void assert_micros_millis(int duration)
+void assert_micros_millis(int duration, bool overflow = false)
 {
 #if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Just in case
@@ -22,9 +22,11 @@ void assert_micros_millis(int duration)
         system_tick_t now_millis = millis();
         system_tick_t now_micros = micros();
 
-        assertMoreOrEqual(now_millis_64, last_millis_64);
-        assertMoreOrEqual(now_millis, last_millis);
-        assertMoreOrEqual(now_micros, last_micros);
+        if (!overflow) {
+            assertMoreOrEqual(now_millis_64, last_millis_64);
+            assertMoreOrEqual(now_millis, last_millis);
+            assertMoreOrEqual(now_micros, last_micros);
+        }
 
         // micros always at least (millis()*1000)
         // even with overflow
@@ -125,7 +127,7 @@ test(TICKS_00_millis_micros_baseline_test)
     assertMoreOrEqual(micros() - startMicros, DELAY);
 }
 
-#if !MODULAR_FIRMWARE
+#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
 // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
 #include "hw_ticks.h"
 test(TICKS_01_millis_and_micros_rollover)
@@ -133,9 +135,9 @@ test(TICKS_01_millis_and_micros_rollover)
     // this places the micros counter 3 seconds from rollover and the system ticks 5 seconds
     __advance_system1MsTick((uint64_t)-5000, 3000);
     #define TEN_SECONDS 10*1000
-    system_tick_t start = millis();
-    assert_micros_millis(TEN_SECONDS);
-    assertMoreOrEqual(millis()-start,TEN_SECONDS);
+    const uint64_t start = System.millis();
+    assert_micros_millis(TEN_SECONDS, true /* overflow */);
+    assertMoreOrEqual(System.millis() - start, TEN_SECONDS);
 }
 #endif
 

@@ -12,7 +12,7 @@
 
 static const uint32_t maxPulseSamples = 100;
 static const uint32_t minimumFrequency = 100;
- 
+
 uint8_t pwm_pins[] = {
 
 #if defined(STM32F2XX)
@@ -22,7 +22,7 @@ uint8_t pwm_pins[] = {
 #endif
 };
 
-static pin_t pin = pwm_pins[0];
+// static pin_t pin = pwm_pins[0];
 
 template <typename F> void for_all_pwm_pins(F callback)
 {

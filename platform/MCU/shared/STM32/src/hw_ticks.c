@@ -102,6 +102,7 @@ void __advance_system1MsTick(uint64_t millis, system_tick_t micros_from_rollover
     __disable_irq();
 
     DWT->CYCCNT = UINT_MAX - (micros_from_rollover * SYSTEM_US_TICKS);
+    system_millis_clock = DWT->CYCCNT;
     system_millis = millis;
 
     if ((is & 1) == 0) {
