@@ -70,7 +70,6 @@ extern "C" {
 #define SYSTEM_VERSION_053RC3
 #define SYSTEM_VERSION_053
 #define SYSTEM_VERSION_054
-#define SYSTEM_VERSION_054RC1
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {

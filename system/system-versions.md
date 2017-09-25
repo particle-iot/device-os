@@ -24,6 +24,7 @@
 | 19 | 0.5.3-rc.2 | (Core, Photon, P1, Electron)
 | 20 | 0.5.3-rc.3 | (Core, Photon, P1, Electron)
 | 21 | 0.5.3 |      (Core, Photon, P1, Electron)
+| 22 | 0.5.4 |      (Core, Photon, P1, Electron)
 -------------
 
 To find out the release version of system firmware currently installed, in listening mode,
