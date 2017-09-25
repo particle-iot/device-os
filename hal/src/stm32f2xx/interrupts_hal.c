@@ -293,3 +293,31 @@ void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
     userISR_Handle(data);
   }
 }
+
+int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved)
+{
+  if (irqn < NonMaskableInt_IRQn || irqn > HASH_RNG_IRQn) {
+    return 1;
+  }
+
+  int32_t state = HAL_disable_irq();
+  volatile uint32_t* isrs = (volatile uint32_t*)SCB->VTOR;
+
+  if (handler == NULL && (flags & HAL_DIRECT_INTERRUPT_FLAG_RESTORE)) {
+    // Restore
+    HAL_Core_Restore_Interrupt(irqn);
+  } else {
+    isrs[IRQN_TO_IDX(irqn)] = (uint32_t)handler;
+  }
+
+  if (flags & HAL_DIRECT_INTERRUPT_FLAG_DISABLE) {
+    // Disable
+    NVIC_DisableIRQ(irqn);
+  } else if (flags & HAL_DIRECT_INTERRUPT_FLAG_ENABLE) {
+    NVIC_EnableIRQ(irqn);
+  }
+
+  HAL_enable_irq(state);
+
+  return 0;
+}
