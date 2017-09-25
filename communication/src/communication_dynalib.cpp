@@ -17,6 +17,7 @@
 
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
+#define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
 #include "core_hal.h"
 
 #if PARTICLE_PROTOCOL
