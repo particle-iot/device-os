@@ -29,7 +29,12 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
+#if !defined(SPARK_NO_PLATFORM) && !defined(INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS)
 #include "interrupts_irq.h"
+#else
+typedef int32_t IRQn_Type;
+typedef int32_t hal_irq_t;
+#endif // SPARK_NO_PLATFORM
 #include "hal_irq_flag.h"
 
 /* Exported types ------------------------------------------------------------*/
@@ -40,6 +45,15 @@ typedef enum InterruptMode {
 } InterruptMode;
 
 typedef void (*HAL_InterruptHandler)(void* data);
+
+typedef void (*HAL_Direct_Interrupt_Handler)(void);
+
+typedef enum {
+  HAL_DIRECT_INTERRUPT_FLAG_NONE    = 0x00,
+  HAL_DIRECT_INTERRUPT_FLAG_RESTORE = 0x01,
+  HAL_DIRECT_INTERRUPT_FLAG_DISABLE = 0x02,
+  HAL_DIRECT_INTERRUPT_FLAG_ENABLE  = 0x04
+} HAL_Direct_Interrupt_Flags;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -88,6 +102,8 @@ void HAL_Interrupts_Trigger(uint16_t pin, void* reserved);
 uint8_t HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallback* callback, HAL_InterruptCallback* previous, void* reserved);
 uint8_t HAL_Get_System_Interrupt_Handler(hal_irq_t irq, HAL_InterruptCallback* callback, void* reserved);
 void HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved);
+
+int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved);
 
 #ifdef USE_STDPERIPH_DRIVER
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD)

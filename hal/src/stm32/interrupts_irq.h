@@ -14,6 +14,28 @@ extern "C" {
 
 #include "static_assert.h"
 
+#ifdef USE_STDPERIPH_DRIVER
+
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD)
+#include "stm32f10x.h"
+#else
+#include "stm32f2xx.h"
+#endif
+
+typedef struct {
+  IRQn_Type irq;
+  void (*handler)(void);
+} HAL_InterruptOverrideEntry;
+
+extern const HAL_InterruptOverrideEntry hal_interrupt_overrides[];
+
+#define IRQN_TO_IDX(irqn) ((int)irqn + 16)
+
+void HAL_Core_Restore_Interrupt(IRQn_Type irqn);
+#else
+typedef int32_t IRQn_Type;
+#endif // USE_STDPERIPH_DRIVER
+
 typedef enum hal_irq_t {
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD)
     __All_irq = 0,
