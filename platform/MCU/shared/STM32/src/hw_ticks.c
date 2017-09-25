@@ -26,23 +26,13 @@
 /**
  * The current millisecond counter value.
  */
-static volatile system_tick_t system_millis = 0;
+static volatile uint64_t system_millis = 0;
 
 /**
  * The system clock value at last time system_millis was updated. This is updated
  * after system_millis is incremented.
  */
 static volatile system_tick_t system_millis_clock = 0;
-
-/**
- * The number of milliseconds passed since the beginning of the current second.
- */
-static volatile system_tick_t system_second_millis = 0;
-
-/**
- * The current second counter value.
- */
-static volatile system_tick_t system_seconds = 0;
 
 /**
  * Increment the millisecond tick counter.
@@ -53,10 +43,6 @@ void System1MsTick(void)
 	__disable_irq();
 
     ++system_millis;
-    if (++system_second_millis == 1000) {
-        ++system_seconds;
-        system_second_millis = 0;
-    }
     system_millis_clock = DWT->CYCCNT;
 
     if ((is & 1) == 0) {
@@ -68,16 +54,19 @@ void System1MsTick(void)
  * Fetches the current millisecond tick counter.
  * @return
  */
-system_tick_t GetSystem1MsTick()
+uint64_t GetSystem1MsTick()
 {
+    uint64_t millis = 0;
+
     int is = __get_PRIMASK();
     __disable_irq();
 
-    system_tick_t millis = system_millis + (DWT->CYCCNT-system_millis_clock) / SYSTEM_US_TICKS / 1000;
+    millis = system_millis + (DWT->CYCCNT - system_millis_clock) / SYSTEM_US_TICKS / 1000;
 
     if ((is & 1) == 0) {
         __enable_irq();
     }
+
 	return millis;
 }
 
@@ -104,31 +93,20 @@ system_tick_t GetSystem1UsTick()
     return (base_millis * 1000) + elapsed_since_millis;
 }
 
-system_tick_t GetSystem1sTick()
+/**
+ * Testing method that simulates advancing the time forward.
+ */
+void __advance_system1MsTick(uint64_t millis, system_tick_t micros_from_rollover)
 {
-    system_tick_t seconds = 0;
-    system_tick_t millis = 0;
-
     const int is = __get_PRIMASK();
     __disable_irq();
 
-    seconds = system_seconds;
-    millis = system_second_millis + (DWT->CYCCNT - system_millis_clock) / SYSTEM_US_TICKS / 1000;
+    DWT->CYCCNT = UINT_MAX - (micros_from_rollover * SYSTEM_US_TICKS);
+    system_millis = millis;
 
     if ((is & 1) == 0) {
         __enable_irq();
     }
-
-    return (seconds + millis / 1000);
-}
-
-/**
- * Testing method that simulates advancing the time forward.
- */
-void __advance_system1MsTick(system_tick_t millis, system_tick_t micros_from_rollover)
-{
-    DWT->CYCCNT = UINT_MAX-(micros_from_rollover*SYSTEM_US_TICKS);   // 10 seconds before rollover
-    system_millis = millis;
 }
 
 void SysTick_Disable() {

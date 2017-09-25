@@ -48,9 +48,9 @@ void System1UsTick(void);
 /**
  * Fetch the current milliseconds count.
  * @return the number of milliseconds since the device was powered on or woken up from
- * sleep. Automatically wraps around when above UINT_MAX;
+ * sleep.
  */
-system_tick_t GetSystem1MsTick();
+uint64_t GetSystem1MsTick();
 
 /**
  * Fetch the current microseconds count.

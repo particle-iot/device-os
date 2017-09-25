@@ -54,7 +54,7 @@ system_tick_t HAL_Timer_Get_Milli_Seconds(void)
   return 0;
 }
 
-system_tick_t HAL_Timer_Get_Seconds(void)
+uint64_t hal_timer_millis(void* reserved)
 {
   return 0;
 }

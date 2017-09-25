@@ -634,16 +634,16 @@ public:
     }
 
     virtual int get(IntType& val) override {
-        val = HAL_Timer_Get_Seconds();
+        val = System.uptime();
         return 0; // OK
     }
 };
 
 // Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
 // global variable allows to register a handler for HAL events early
-HALEventHandler halEventHandler;
+HALEventHandler g_halEventHandler;
 
-UptimeDiagnosticData uptimeDiagData;
+UptimeDiagnosticData g_uptimeDiagData;
 
 } // namespace
 
