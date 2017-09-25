@@ -60,6 +60,9 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler);
  */
 bool detachSystemInterrupt(hal_irq_t irq);
 
+bool attachInterruptDirect(IRQn_Type irq, HAL_Direct_Interrupt_Handler handler, bool enable = true);
+bool detachInterruptDirect(IRQn_Type irq, bool disable = true);
+
 
 class AtomicSection {
 	int prev;
