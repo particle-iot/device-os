@@ -101,6 +101,7 @@ INCLUDE_DIRS += $(PLATFORM)MCU/STM32F2xx/SPARK_Firmware_Driver/inc
 # prefix $(SRC_ROOT)
 ABS_INCLUDE_DIRS += $(patsubst %,$(SRC_ROOT)/%,$(INCLUDE_DIRS))
 
+DEFINES += SPARK_NO_PLATFORM
 
 ifeq ("$(BOOST_ROOT)","")
 $(error BOOST_ROOT not defined)
