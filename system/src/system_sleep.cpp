@@ -32,6 +32,7 @@
 #include "spark_wiring_fuel.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_platform.h"
+#include "system_power.h"
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
 # include "parser.h"
@@ -135,6 +136,7 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
                 network_disconnect(0, 0, NULL);
                 network_off(0, 0, 0, NULL);
             }
+            system_power_management_sleep();
             HAL_Core_Enter_Standby_Mode(seconds, nullptr);
             break;
 
@@ -143,6 +145,7 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
             network_disconnect(0,0,NULL);
             network_off(0, 0, 0, NULL);
             sleep_fuel_gauge();
+            system_power_management_sleep();
             HAL_Core_Enter_Standby_Mode(seconds, nullptr);
             break;
 #endif
@@ -174,6 +177,7 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
 
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
+    system_power_management_sleep();
     HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
     led_set_update_enabled(1, nullptr); // Enable background LED updates
 

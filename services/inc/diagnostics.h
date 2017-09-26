@@ -33,6 +33,7 @@ typedef enum diag_id {
     DIAG_ID_SYSTEM_SYSTEM_LOOPS = 4, // sys.loops
     DIAG_ID_SYSTEM_APPLICATION_LOOPS = 5, // sys.appLoops
     DIAG_ID_SYSTEM_UPTIME = 6, // sys.uptime
+    DIAG_ID_SYSTEM_BATTERY_STATE = 7, // sys.battState
     DIAG_ID_NETWORK_CONNECTION_STATUS = 8, // net.status
     DIAG_ID_NETWORK_CONNECTION_ERROR_CODE = 9, // net.error
     DIAG_ID_NETWORK_DISCONNECTS = 12, // net.disconn
