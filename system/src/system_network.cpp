@@ -87,7 +87,7 @@ public:
         if (rssi >= 0) {
             return SYSTEM_ERROR_UNKNOWN;
         }
-        val = (rssi << 8); // Convert to the Q8.8 fixed point format
+        val = ((unsigned)rssi & 0xff) << 8; // Convert to the Q8.8 fixed point format
         return SYSTEM_ERROR_NONE;
     }
 };
