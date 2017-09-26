@@ -19,7 +19,6 @@
 
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_diagnostics.h"
-#include "spark_wiring_fixed_point.h"
 #include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"
@@ -88,8 +87,7 @@ public:
         if (rssi >= 0) {
             return SYSTEM_ERROR_UNKNOWN;
         }
-        // TODO: FixedPointQ should have a constructor taking an integer value
-        val = FixedPointSQ<8, 8>((float)rssi).value();
+        val = (rssi << 8); // Convert to the Q8.8 fixed point format
         return SYSTEM_ERROR_NONE;
     }
 };
