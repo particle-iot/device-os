@@ -1,0 +1,4 @@
+#include "spark_wiring_diagnostics.h"
+
+extern particle::SimpleIntegerDiagnosticData g_rateLimitedEventsCounter;
+extern particle::SimpleIntegerDiagnosticData g_unacknowledgedMessageCounter;
