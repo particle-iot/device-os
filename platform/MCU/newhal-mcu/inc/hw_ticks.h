@@ -53,6 +53,12 @@ void System1UsTick(void);
 system_tick_t GetSystem1MsTick();
 
 /**
+ * Fetches the milliseconds counter. This function is similar to GetSystem1MsTick() but
+ * returns a 64-bit value.
+ */
+uint64_t GetSystem1MsTick64();
+
+/**
  * Fetch the current microseconds count.
  * @return the number of microseconds since the device was powered on or woken up from
  * sleep. Automatically wraps around when above UINT_MAX;

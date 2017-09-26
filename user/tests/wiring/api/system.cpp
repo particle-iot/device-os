@@ -242,3 +242,14 @@ test(system_mode_button)
     API_COMPILE(System.disableButtonMirror());
     API_COMPILE(System.disableButtonMirror(false));
 }
+
+test(system_uptime_millis) {
+    uint64_t u64 = 0;
+    unsigned u = 0;
+
+    API_COMPILE(u64 = System.millis());
+    API_COMPILE(u = System.uptime());
+
+    (void)u64;
+    (void)u;
+}

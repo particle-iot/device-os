@@ -301,6 +301,15 @@ public:
         HAL_Core_Button_Mirror_Pin_Disable((uint8_t)bootloader, 0, NULL);
     }
 
+    // This function is similar to the global millis() but returns a 64-bit value
+    static uint64_t millis() {
+        return hal_timer_millis(nullptr);
+    }
+
+    static unsigned uptime() {
+        return (hal_timer_millis(nullptr) / 1000);
+    }
+
 private:
 
     static inline uint8_t get_flag(system_flag_t flag)

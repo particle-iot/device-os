@@ -36,18 +36,23 @@
 
 /* Exported macros -----------------------------------------------------------*/
 
+#define HAL_Timer_Microseconds HAL_Timer_Get_Micro_Seconds
+#define HAL_Timer_Milliseconds HAL_Timer_Get_Milli_Seconds
+
 /* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
 system_tick_t HAL_Timer_Get_Micro_Seconds(void);
 system_tick_t HAL_Timer_Get_Milli_Seconds(void);
 
-#define HAL_Timer_Microseconds HAL_Timer_Get_Micro_Seconds
-#define HAL_Timer_Milliseconds HAL_Timer_Get_Milli_Seconds
+/**
+ * Returns the number of milliseconds passed since the device was last reset. This function is
+ * similar to HAL_Timer_Get_Milli_Seconds() but returns a 64-bit value.
+ */
+uint64_t hal_timer_millis(void* reserved);
 
 #ifdef __cplusplus
 }
