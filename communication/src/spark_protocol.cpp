@@ -510,12 +510,7 @@ int SparkProtocol::variable_value(unsigned char *buf,
 
 inline bool is_system(const char* event_name) {
     // if there were a strncmpi this would be easier!
-    char prefix[6];
-    if (!*event_name || strlen(event_name)<5)
-        return false;
-    memcpy(prefix, event_name, 5);
-    prefix[5] = '\0';
-    return !strcasecmp(prefix, "spark");
+    return !strncasecmp(event_name, "spark", 5);
 }
 
 // Returns true on success, false on sending timeout or rate-limiting failure
