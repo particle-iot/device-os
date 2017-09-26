@@ -93,8 +93,8 @@ public:
     }
 
     static Diagnostics* instance() {
-        static Diagnostics diag;
-        return &diag;
+        static Diagnostics* diag = new Diagnostics();
+        return diag;
     }
 
 private:
