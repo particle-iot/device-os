@@ -25,6 +25,7 @@
  */
 
 #include "spark_wiring_fuel.h"
+#include <mutex>
 
 FuelGauge::FuelGauge(bool _lock) :
     lock_(_lock)
