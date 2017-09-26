@@ -48,6 +48,7 @@ The I2C address of BQ24195 is 0x6B
 
 
 #include "spark_wiring_power.h"
+#include <mutex>
 
 PMIC::PMIC(bool _lock) :
     lock_(_lock)
