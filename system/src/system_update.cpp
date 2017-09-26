@@ -543,11 +543,6 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     return result;
 }
 
-bool system_metrics(appender_fn appender, void* append_data, uint32_t page, void* reserved) {
-    const int ret = system_format_diag_data(nullptr, 0, 0, appender, append_data, nullptr);
-    return (ret == 0 ? true : false);
-};
-
 bool append_system_version_info(Appender* appender)
 {
     bool result = appender->append("system firmware version: " stringify(SYSTEM_VERSION_STRING)
@@ -593,11 +588,7 @@ int formatDiagSourceData(const diag_source* src, void* append) {
     return 0;
 }
 
-} // namespace
-
-int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
-        void* reserved) {
-    AppendJson json(append, append_data);
+int format_diag_data(AppendJson& json, const uint16_t* id, size_t count, unsigned flags) {
     if (!json.write('{')) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
@@ -626,3 +617,21 @@ int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, ap
     }
     return 0;
 }
+
+} // namespace
+
+
+int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
+        void* reserved) {
+    AppendJson json(append, append_data);
+    return format_diag_data(json, id, count, flags);
+}
+
+bool system_metrics(appender_fn appender, void* append_data, uint32_t page, void* reserved) {
+	AppendJson json(appender, append_data);
+	bool result = json.write("{\"d\":");
+    const int ret = system_format_diag_data(nullptr, 0, 0, appender, append_data, nullptr);
+    result &= json.write("}");
+    result &= (ret == 0);
+    return result;
+};
