@@ -54,11 +54,16 @@ void System1MsTick(void)
  * Fetches the current millisecond tick counter.
  * @return
  */
-uint64_t GetSystem1MsTick()
+system_tick_t GetSystem1MsTick()
+{
+    return GetSystem1MsTick64();
+}
+
+uint64_t GetSystem1MsTick64()
 {
     uint64_t millis = 0;
 
-    int is = __get_PRIMASK();
+    const int is = __get_PRIMASK();
     __disable_irq();
 
     millis = system_millis + (DWT->CYCCNT - system_millis_clock) / SYSTEM_US_TICKS / 1000;
