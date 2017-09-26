@@ -50,8 +50,6 @@ typedef enum diag_id {
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs
 } diag_id;
 
-#define DIAG_ID_SYSTEM_BATTERY_CHARGE_NAME "sys.batcharge"
-
 // Data types
 typedef enum diag_type {
     DIAG_TYPE_INT = 1 // 32-bit integer

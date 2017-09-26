@@ -28,7 +28,7 @@ int BatteryChargeDiagnosticData::get(IntType& val) {
 using namespace particle;
 using namespace particle::power;
 
-BatteryChargeDiagnosticData g_batteryCharge(DIAG_ID_SYSTEM_BATTERY_CHARGE, DIAG_ID_SYSTEM_BATTERY_CHARGE_NAME);
+BatteryChargeDiagnosticData g_batteryCharge(DIAG_ID_SYSTEM_BATTERY_CHARGE, "sys.battCharge");
 
 /*******************************************************************************
  * Function Name  : Power_Management_Handler
