@@ -32,6 +32,7 @@
 #include "service_debug.h"
 #include "interrupts_hal.h"
 #include "delay_hal.h"
+#include "concurrent_hal.h"
 
 #ifdef LOG_SOURCE_CATEGORY
 LOG_SOURCE_CATEGORY("hal.i2c")
@@ -129,6 +130,8 @@ typedef struct STM32_I2C_Info {
     volatile bool ackFailure;
     volatile uint8_t prevEnding;
     uint8_t clkStretchingEnabled;
+
+    os_mutex_recursive_t mutex;
 } STM32_I2C_Info;
 
 /*
@@ -136,10 +139,10 @@ typedef struct STM32_I2C_Info {
  */
 STM32_I2C_Info I2C_MAP[TOTAL_I2C] =
 {
-        { I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, D0, D1, GPIO_AF_I2C1 }
+        { I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, D0, D1, GPIO_AF_I2C1, .mutex = NULL }
 #if PLATFORM_ID == 10 // Electron
-       ,{ I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, C4, C5, GPIO_AF_I2C1 }
-       ,{ I2C3, &RCC->APB1ENR, RCC_APB1Periph_I2C3, I2C3_ER_IRQn, I2C3_EV_IRQn, PM_SDA_UC, PM_SCL_UC, GPIO_AF_I2C3 }
+       ,{ I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, C4, C5, GPIO_AF_I2C1, .mutex = NULL }
+       ,{ I2C3, &RCC->APB1ENR, RCC_APB1Periph_I2C3, I2C3_ER_IRQn, I2C3_EV_IRQn, PM_SDA_UC, PM_SCL_UC, GPIO_AF_I2C3, .mutex = NULL }
 #endif
 };
 
@@ -195,6 +198,18 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     }
 #endif
 
+#if PLATFORM_ID == 10
+    // For now we only enable this for PMIC I2C bus
+    if (i2c == HAL_I2C_INTERFACE3) {
+        os_thread_scheduling(false, NULL);
+        if (i2cMap[i2c]->mutex == NULL) {
+            os_mutex_recursive_create(&i2cMap[i2c]->mutex);
+        }
+        HAL_I2C_Acquire(i2c, NULL);
+        os_thread_scheduling(true, NULL);
+    }
+#endif // PLATFORM_ID == 10
+
     i2cMap[i2c]->I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
     i2cMap[i2c]->I2C_Enabled = false;
 
@@ -211,11 +226,14 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     i2cMap[i2c]->prevEnding = I2C_ENDING_UNKNOWN;
 
     i2cMap[i2c]->clkStretchingEnabled = 1;
+    HAL_I2C_Release(i2c, NULL);
 }
 
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     i2cMap[i2c]->I2C_ClockSpeed = speed;
+    HAL_I2C_Release(i2c, NULL);
 }
 
 void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved)
@@ -225,6 +243,7 @@ void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved)
 
 void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     if(stretch == true)
     {
         I2C_StretchClockCmd(i2cMap[i2c]->I2C_Peripheral, ENABLE);
@@ -235,10 +254,12 @@ void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
     }
 
     i2cMap[i2c]->clkStretchingEnabled = stretch;
+    HAL_I2C_Release(i2c, NULL);
 }
 
 void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if PLATFORM_ID == 10
@@ -250,6 +271,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
         HAL_I2C_Interface dependent = (i2c == HAL_I2C_INTERFACE1 ? HAL_I2C_INTERFACE2 : HAL_I2C_INTERFACE1);
         if (HAL_I2C_Is_Enabled(dependent, NULL) == true) {
             // Unfortunately we cannot return an error code here
+            HAL_I2C_Release(i2c, NULL);
             return;
         }
     }
@@ -324,20 +346,24 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     I2C_Init(i2cMap[i2c]->I2C_Peripheral, &i2cMap[i2c]->I2C_InitStructure);
 
     i2cMap[i2c]->I2C_Enabled = true;
+    HAL_I2C_Release(i2c, NULL);
 }
 
 void HAL_I2C_End(HAL_I2C_Interface i2c, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     if(i2cMap[i2c]->I2C_Enabled != false)
     {
         I2C_Cmd(i2cMap[i2c]->I2C_Peripheral, DISABLE);
 
         i2cMap[i2c]->I2C_Enabled = false;
     }
+    HAL_I2C_Release(i2c, NULL);
 }
 
 uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     uint8_t bytesRead = 0;
     int state;
 
@@ -362,7 +388,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
 
@@ -373,7 +399,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
 
@@ -406,7 +432,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
 
         /* Ensure ackFailure flag is cleared */
         i2cMap[i2c]->ackFailure = false;
-
+        HAL_I2C_Release(i2c, NULL);
         return 0;
     }
 
@@ -428,7 +454,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
 
@@ -449,7 +475,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
 
@@ -488,7 +514,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
             {
                 /* SW Reset the I2C Peripheral */
                 HAL_I2C_SoftwareReset(i2c);
-
+                HAL_I2C_Release(i2c, NULL);
                 return 0;
             }
 
@@ -502,7 +528,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
 
@@ -514,7 +540,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
 
@@ -550,7 +576,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
         i2cMap[i2c]->prevEnding = I2C_ENDING_STOP;
@@ -563,7 +589,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
     }
@@ -571,12 +597,14 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     // set rx buffer iterator vars
     i2cMap[i2c]->rxBufferIndex = 0;
     i2cMap[i2c]->rxBufferLength = bytesRead;
+    HAL_I2C_Release(i2c, NULL);
 
     return bytesRead;
 }
 
 void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     // indicate that we are transmitting
     i2cMap[i2c]->transmitting = 1;
     // set address of targeted slave
@@ -584,10 +612,12 @@ void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, void* re
     // reset tx buffer iterator vars
     i2cMap[i2c]->txBufferIndex = 0;
     i2cMap[i2c]->txBufferLength = 0;
+    HAL_I2C_Release(i2c, NULL);
 }
 
 uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     if (i2cMap[i2c]->prevEnding != I2C_ENDING_START)
     {
         /* While the I2C Bus is busy */
@@ -595,7 +625,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 1;
         }
 
@@ -606,7 +636,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 2;
         }
     }
@@ -632,7 +662,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
 
         /* Ensure ackFailure flag is cleared */
         i2cMap[i2c]->ackFailure = false;
-
+        HAL_I2C_Release(i2c, NULL);
         return 3;
     }
 
@@ -640,7 +670,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
     {
         /* SW Reset the I2C Peripheral */
         HAL_I2C_SoftwareReset(i2c);
-
+        HAL_I2C_Release(i2c, NULL);
         return 31;
     }
 
@@ -662,7 +692,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 5;
         }
 
@@ -679,7 +709,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 6;
         }
         i2cMap[i2c]->prevEnding = I2C_ENDING_STOP;
@@ -695,7 +725,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         {
             /* SW Reset the I2C Peripheral */
             HAL_I2C_SoftwareReset(i2c);
-
+            HAL_I2C_Release(i2c, NULL);
             return 7;
         }
     }
@@ -706,18 +736,21 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
 
     // indicate that we are done transmitting
     i2cMap[i2c]->transmitting = 0;
+    HAL_I2C_Release(i2c, NULL);
 
     return 0;
 }
 
 uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     if(i2cMap[i2c]->transmitting)
     {
         // in master/slave transmitter mode
         // don't bother if buffer is full
         if(i2cMap[i2c]->txBufferLength >= BUFFER_LENGTH)
         {
+            HAL_I2C_Release(i2c, NULL);
             return 0;
         }
         // put byte in tx buffer
@@ -725,17 +758,21 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved)
         // update amount in buffer
         i2cMap[i2c]->txBufferLength = i2cMap[i2c]->txBufferIndex;
     }
-
+    HAL_I2C_Release(i2c, NULL);
     return 1;
 }
 
 int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved)
 {
-    return i2cMap[i2c]->rxBufferLength - i2cMap[i2c]->rxBufferIndex;
+    HAL_I2C_Acquire(i2c, NULL);
+    int32_t available = i2cMap[i2c]->rxBufferLength - i2cMap[i2c]->rxBufferIndex;
+    HAL_I2C_Release(i2c, NULL);
+    return available;
 }
 
 int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     int value = -1;
 
     // get each successive byte on each call
@@ -743,19 +780,20 @@ int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved)
     {
         value = i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxBufferIndex++];
     }
-
+    HAL_I2C_Release(i2c, NULL);
     return value;
 }
 
 int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c, void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     int value = -1;
 
     if(i2cMap[i2c]->rxBufferIndex < i2cMap[i2c]->rxBufferLength)
     {
         value = i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxBufferIndex];
     }
-
+    HAL_I2C_Release(i2c, NULL);
     return value;
 }
 
@@ -766,21 +804,29 @@ void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved)
 
 bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c, void* reserved)
 {
-    return i2cMap[i2c]->I2C_Enabled;
+    HAL_I2C_Acquire(i2c, NULL);
+    bool en = i2cMap[i2c]->I2C_Enabled;
+    HAL_I2C_Release(i2c, NULL);
+    return en;
 }
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int), void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     i2cMap[i2c]->callback_onReceive = function;
+    HAL_I2C_Release(i2c, NULL);
 }
 
 void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void), void* reserved)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     i2cMap[i2c]->callback_onRequest = function;
+    HAL_I2C_Release(i2c, NULL);
 }
 
 uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
 {
+    HAL_I2C_Acquire(i2c, NULL);
     if (HAL_I2C_Is_Enabled(i2c, NULL)) {
         HAL_I2C_End(i2c, NULL);
 
@@ -802,8 +848,10 @@ uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
 
         HAL_I2C_Begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->I2C_InitStructure.I2C_OwnAddress1 >> 1, NULL);
         HAL_Delay_Milliseconds(50);
+        HAL_I2C_Release(i2c, NULL);
         return 0;
     }
+    HAL_I2C_Release(i2c, NULL);
     return 1;
 }
 
@@ -1034,6 +1082,24 @@ void I2C3_EV_irq(void)
     HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE3);
 }
 #endif
+
+int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
+{
+    os_mutex_recursive_t mutex = i2cMap[i2c]->mutex;
+    if (mutex) {
+        return os_mutex_recursive_lock(mutex);
+    }
+    return -1;
+}
+
+int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
+{
+    os_mutex_recursive_t mutex = i2cMap[i2c]->mutex;
+    if (mutex) {
+        return os_mutex_recursive_unlock(mutex);
+    }
+    return -1;
+}
 
 // On the Photon/P1 the I2C interface selector was added after the first release.
 // So these compatibility functions are needed for older firmware

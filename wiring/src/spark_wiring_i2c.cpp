@@ -205,3 +205,13 @@ void TwoWire::reset()
 {
   HAL_I2C_Reset(_i2c, 0, NULL);
 }
+
+bool TwoWire::lock()
+{
+  return HAL_I2C_Acquire(_i2c, NULL) == 0;
+}
+
+bool TwoWire::unlock()
+{
+  return HAL_I2C_Release(_i2c, NULL) == 0;
+}

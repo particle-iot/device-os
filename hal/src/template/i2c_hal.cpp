@@ -131,3 +131,13 @@ uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
 {
   return 0;
 }
+
+int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
+{
+    return -1;
+}
+
+int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
+{
+    return -1;
+}
