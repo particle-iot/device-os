@@ -30,6 +30,7 @@
 #include "spark_wiring_version.h"
 #include "string_convert.h"
 #include "system_cloud_internal.h"
+#include "deviceid_hal.h"
 
 #if 0 //MODULAR_FIRMWARE
 // The usual wiring implementations are dependent upon I2C, SPI and other global instances. Rewriting the GPIO functions to talk directly to the HAL
@@ -57,7 +58,15 @@ int32_t digitalRead(pin_t pin) {
 #include "wlan_hal.h"
 #endif
 
+
 #if Wiring_WiFi
+#define NETWORK WiFi
+#elif Wiring_Cellular
+#define NETWORK Cellular
+#endif
+
+#ifdef NETWORK
+
 using namespace spark;
 
 uint8_t serialAvailable();
@@ -84,13 +93,18 @@ const char cmd_ANT[] = "ANT";
 #endif
 const char cmd_SET_PIN[] = "SET_PIN:";
 const char cmd_SET_PRODUCT[] = "SET_PRODUCT:";
+const char cmd_POWER_ON[] = "POWER_ON:";
 
-
+// This class should be factored out into a network neutral base, and subclasses for WiFi/Cellular
 
 void WiFiTester::setup(bool useSerial1) {
     this->useSerial1 = useSerial1;
-    WiFi.on();
 
+#if Wiring_WiFi
+    // Only turn on Wi-Fi module by default.  Turning on Cellular without a modem present will create long delays.
+    NETWORK.on();
+    power_state = true;
+#endif
     cmd_index = 0;
     RGB.control(true);
     RGB.color(64, 0, 0);
@@ -107,7 +121,7 @@ void WiFiTester::setup(bool useSerial1) {
 
 void WiFiTester::loop(int c) {
 
-    if (WiFi.ready() && (dhcp_notices < 5)) {
+    if (NETWORK.ready() && (dhcp_notices < 5)) {
         serialPrintln(" DHCP DHCP DHCP ! DHCP DHCP DHCP ! DHCP DHCP DHCP !");
         RGB.color(255, 0, 255);
         HAL_GPIO_Write(D2, HIGH);
@@ -138,20 +152,26 @@ struct varstring_t {
 
 #if PLATFORM_ID>3
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
-#else
-bool fetch_or_generate_setup_ssid(varstring_t* result) {
+#else // PLATFORM <= 3
+extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result) {
     result->len = 4;
     strcpy(result->string, "CORE-1234");
     return true;
 }
 #endif
 
+bool WiFiTester::isPowerOn() {
+    return power_state;
+}
+
 void WiFiTester::printInfo() {
     String deviceID = Particle.deviceID();
 
+#if Wiring_WiFi
     WLanConfig ip_config;
     ip_config.size = sizeof(ip_config);
     wlan_fetch_ipconfig(&ip_config);
+
     uint8_t* addr = ip_config.nw.uaMacAddr;
     String macAddress;
     bool first = true;
@@ -161,19 +181,42 @@ void WiFiTester::printInfo() {
         first = false;
         macAddress += bytes2hex(addr++, 1);
     }
+#endif
 
     varstring_t serial;
     memset(&serial, 0, sizeof (serial));
     fetch_or_generate_setup_ssid(&serial);
     serial.string[serial.len] = 0;
 
-    String rssi(WiFi.RSSI());
-
     printItem("DeviceID", deviceID.c_str());
     printItem("Serial", strstr((const char*) serial.string, "-") + 1);
+#if Wiring_WiFi
+    String rssi(WiFi.RSSI());
     printItem("MAC", macAddress.c_str());
+#endif
+
+
+#if Wiring_Cellular
+    printItem("MAC", "00:00:00:00:00:00");   // needed by the sticker rig
+
+    // GET ICCID and IMEI (Modem with power on required)
+    if (isPowerOn()) {
+        CellularDevice dev;
+        cellular_device_info(&dev, NULL);
+        printItem("ICCID", dev.iccid);
+        printItem("IMEI", dev.imei);
+    }
+#endif
+
     printItem("SSID", serial.string);
+
+#if Wiring_WiFi
     printItem("RSSI", rssi.c_str());
+#else
+    // the sticker rig waits for the RSSI value
+    printItem("RSSI", "-50");
+#endif
+
 }
 
 #if WIFI_SCAN
@@ -264,16 +307,14 @@ void WiFiTester::checkWifiSerial(char c) {
         } else if ((start = strstr(command, cmd_DFU))) {
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
-            delay(100);
-            serialPrintln("resetting into DFU mode!");
+            delay(200);
 
             System.dfu();
         } else if ((start = strstr(command, cmd_RESET))) {
             //to trigger a factory reset:
-
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
-            delay(2000);
+            delay(200);
 
             System.factoryReset();
         } else if ((start = strstr(command, cmd_UNLOCK))) {
@@ -300,14 +341,36 @@ void WiFiTester::checkWifiSerial(char c) {
             serialPrintln("Rebooting... Rebooting... Rebooting...");
             serialPrintln("Rebooting... Rebooting... Rebooting...");
 
-            delay(1000);
+            delay(200);
             System.reset();
+        } else if ((start = strstr(command, cmd_POWER_ON))) {
+            serialPrintln("Power on... Power on... Power on...");
+            serialPrintln("Power on... Power on... Power on...");
+
+#if Wiring_Cellular
+            delay(200);
+            cellular_result_t result = cellular_on(NULL);
+            if (result == 0) {
+                power_state = true;
+            } else {
+                power_state = false;
+            }
+#endif
+            // Respond for all platforms
+            if (isPowerOn()) {
+                serialPrintln("POWER IS ON");
+            } else {
+                serialPrintln("POWER FAILED TO TURN ON!!!");
+            }
+            delay(200);
         } else if ((start = strstr(command, cmd_INFO))) {
             printInfo();
         }
         else if ((start = strstr(command, cmd_CLEAR))) {
-            if (WiFi.hasCredentials())
+#if Wiring_WiFi
+        		if (WiFi.hasCredentials())
                 WiFi.clearCredentials();
+#endif
         }
 #if WIFI_SCAN
         else if ((start = strstr(command, cmd_WIFI_SCAN))) {
@@ -457,6 +520,7 @@ void WiFiTester::tokenizeCommand(char *cmd, char* parts[], unsigned max_parts) {
 
 void WiFiTester::tester_connect(char *ssid, char *pass) {
 
+#if 0
     RGB.color(64, 64, 0);
 
     int auth = WPA2;
@@ -483,6 +547,7 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     //USERLED_SetRGBColor(0xFF00FF);		//purple
     //USERLED_On(LED_RGB);
     serialPrintln("  WIFI Connected?    ");
+#endif
 }
 
 #endif

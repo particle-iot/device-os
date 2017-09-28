@@ -1,3 +1,9 @@
+## v0.5.4
+
+### ENHANCEMENTS
+
+- [`[PR #1353]`](https://github.com/spark/firmware/pull/1353) Sticker Rig support added for Electron manufacturing.  6-Digit device setup code added.  Firmware reset enabled on Electron.
+
 ## v0.5.3 (same as v0.5.3-rc.3)
 
 ### ENHANCEMENTS

@@ -16,6 +16,7 @@
 #include "core_hal.h"
 #include "rng_hal.h"
 #include "ota_flash_hal_stm32f2xx.h"
+#include "device_code.h"
 
 #if SOFTAP_HTTP
 #include "http_server.h"
@@ -498,7 +499,7 @@ protected:
         if (key==1 && t->type==JSMN_STRING) {
             strncpy((char*)data, str, sizeof(ConfigureAP::ssid)-1);
             JSON_DEBUG( ( "copied value %s\n", (char*)str ) );
-        }
+    }
         else if (key==2 && t->type==JSMN_STRING) {
 #define USE_PWD_ENCRYPTION 1
 #if USE_PWD_ENCRYPTION
@@ -507,12 +508,12 @@ protected:
 #else
             strncpy((char*)data, str, sizeof(ConfigureAP::passcode)-1);
 #endif
-        }
+            }
         else {
             int32_t value = atoi(str);
             *((int32_t*)data) = value;
             JSON_DEBUG( ( "copied number %s (%d)\n", (char*)str, (int)value ) );
-        }
+            }
         return true;
     }
 
@@ -704,62 +705,9 @@ struct AllSoftAPCommands {
         connectAP(complete, softap_complete) {}
 };
 
-/**
- * Converts a given 32-bit value to a alphanumeric code
- * @param value     The value to convert
- * @param dest      The number of charactres
- * @param len
- */
-void bytesToCode(uint32_t value, char* dest, unsigned len) {
-    static const char* symbols = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-    while (len --> 0) {
-        *dest++ = symbols[value % 32];
-        value /= 32;
-    }
-}
-
-/**
- * Generates a random code.
- * @param dest
- * @param len   The length of the code, should be event.
- */
-void random_code(uint8_t* dest, unsigned len) {
-    unsigned value = HAL_RNG_GetRandomNumber();
-    bytesToCode(value, (char*)dest, len);
-}
-
-const int DEVICE_ID_LEN = 4;
-
-STATIC_ASSERT(device_id_len_is_same_as_dct_storage, DEVICE_ID_LEN<=DCT_DEVICE_ID_SIZE);
-
-
-extern "C" bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID);
-
-/**
- * Copies the device ID to the destination, generating it if necessary.
- * @param dest      A buffer with room for at least 6 characters. The
- *  device ID is copied here, without a null terminator.
- * @return true if the device ID was generated.
- */
-bool fetch_or_generate_device_id(wiced_ssid_t* SSID) {
-    const uint8_t* suffix = (const uint8_t*)dct_read_app_data(DCT_DEVICE_ID_OFFSET);
-    int8_t c = (int8_t)*suffix;    // check out first byte
-    bool generate = (!c || c<0);
-    uint8_t* dest = SSID->value+SSID->length;
-    SSID->length += DEVICE_ID_LEN;
-    if (generate) {
-        random_code(dest, DEVICE_ID_LEN);
-        dct_write_app_data(dest, DCT_DEVICE_ID_OFFSET, DEVICE_ID_LEN);
-    }
-    else {
-        memcpy(dest, suffix, DEVICE_ID_LEN);
-    }
-    return generate;
-}
-
 const int MAX_SSID_PREFIX_LEN = 25;
 
-bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
+bool fetch_or_generate_ssid_prefix(device_code_t* SSID) {
     const uint8_t* prefix = (const uint8_t*)dct_read_app_data(DCT_SSID_PREFIX_OFFSET);
     uint8_t len = *prefix;
     bool generate = (!len || len>MAX_SSID_PREFIX_LEN);
@@ -776,13 +724,6 @@ bool fetch_or_generate_ssid_prefix(wiced_ssid_t* SSID) {
     return generate;
 }
 
-bool fetch_or_generate_setup_ssid(wiced_ssid_t* SSID) {
-    bool result = fetch_or_generate_ssid_prefix(SSID);
-    SSID->value[SSID->length++] = '-';
-    result |= fetch_or_generate_device_id(SSID);
-    return result;
-}
-
 extern "C" wiced_ip_setting_t device_init_ip_settings;
 
 /**
@@ -794,10 +735,9 @@ class SoftAPController {
 
     wiced_result_t setup_soft_ap_credentials() {
 
-
         wiced_config_soft_ap_t expected;
         memset(&expected, 0, sizeof(expected));
-        fetch_or_generate_setup_ssid(&expected.SSID);
+        fetch_or_generate_setup_ssid((device_code_t*)&expected.SSID);
 
         expected.channel = 11;
         expected.details_valid = WICED_TRUE;
@@ -809,8 +749,8 @@ class SoftAPController {
             if (memcmp(&expected, soft_ap, sizeof(expected))) {
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
             }
-            wiced_dct_read_unlock( soft_ap, WICED_FALSE );
-        }
+                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
+            }
         return result;
     }
 

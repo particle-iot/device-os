@@ -457,8 +457,10 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         dct_write_app_data(&data_length, offset++, 1);
         break;
     case SYSTEM_CONFIG_SOFTAP_SUFFIX:
-        offset = DCT_DEVICE_ID_OFFSET;
-        length = DCT_DEVICE_ID_SIZE;
+        offset = DCT_DEVICE_CODE_OFFSET;
+        // copy the string with a zero terminator if less than the maximum width
+        data_length = std::min(DCT_DEVICE_CODE_SIZE, data_length+1);
+        length = data_length;
         break;
     case SYSTEM_CONFIG_SOFTAP_HOSTNAMES:
         break;
