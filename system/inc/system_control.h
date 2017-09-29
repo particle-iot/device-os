@@ -54,12 +54,13 @@ typedef enum ctrl_request_type {
 
 // Control request data
 typedef struct ctrl_request {
-    size_t size; // Size of this structure
+    uint16_t size; // Size of this structure
+    uint16_t type; // Request type
     char* request_data; // Request data
     size_t request_size; // Size of the request data
     char* reply_data; // Reply data
     size_t reply_size; // Size of the reply data
-    uint16_t type; // Request type
+    void* channel; // Request channel (used internally)
 } ctrl_request;
 
 // Callback invoked for control requests that should be processed in the application thread

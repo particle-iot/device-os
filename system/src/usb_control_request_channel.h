@@ -19,39 +19,27 @@
 
 #include "system_control.h"
 #include "control_request_handler.h"
+#include "active_object.h"
 
 #include "usb_hal.h"
-#include "concurrent_hal.h"
-
-#include "system_error.h"
-
-#include <memory>
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
 namespace particle {
 
-// Size of the request object pool. This parameter limits the maximum number of asynchronous
-// requests that can be processed concurrently
-const size_t USB_REQUEST_POOL_SIZE = 2;
-
-// Settings of the request buffer pool
-const size_t USB_REQUEST_PREALLOC_BUFFER_SIZE = 128;
-const size_t USB_REQUEST_PREALLOC_BUFFER_COUNT = 4;
+// Maximum number of asynchronous requests that can be active at the same time
+const size_t USB_REQUEST_MAX_ACTIVE_COUNT = 4;
 
 // Maximum size of the payload data
 const size_t USB_REQUEST_MAX_PAYLOAD_SIZE = 65535;
 
-// Time given to the host to start sending request data or receiving reply data
-const unsigned USB_REQUEST_HOST_TIMEOUT = 1000;
+// Maximum size of a request buffer that can be allocated from the memory pool
+const size_t USB_REQUEST_MAX_POOLED_BUFFER_SIZE = 64;
 
 // Invalid request ID
 const uint16_t USB_REQUEST_INVALID_ID = 0;
 
-static_assert(USB_REQUEST_POOL_SIZE > 0, "The request object pool cannot be empty");
-static_assert(USB_REQUEST_PREALLOC_BUFFER_SIZE > 0, "Size of a preallocated buffer should be greater than zero");
-
-// Class implementing the protocol for asynchronous USB requests
+// Class implementing the asynchronous USB request protocol
 class UsbControlRequestChannel: public ControlRequestChannel {
 public:
     explicit UsbControlRequestChannel(ControlRequestHandler* handler);
@@ -65,57 +53,53 @@ public:
 
 private:
     // Request state
-    enum State {
+    enum RequestState {
         ALLOC_PENDING, // Buffer allocation is pending
         ALLOC_FAILED, // Buffer allocation failed
-        WAIT_DATA, // Waiting for the host to send payload data
-        PROCESSING, // Request is being processed by the handler
+        RECV_PAYLOAD, // Waiting for the host to send payload data
+        PENDING, // Request is being processed by the handler
         DONE // Request processing is completed
     };
 
-    // Preallocated buffer
-    struct Buffer {
-        char data[USB_REQUEST_PREALLOC_BUFFER_SIZE]; // Buffer data
-        Buffer* next; // Next element in a list
+    // Request flags
+    enum RequestFlag {
+        POOLED_REQ_DATA = 0x01, // Request buffer is allocated from the pool
+        POOLED_REP_DATA = 0x02 // Reply buffer is allocated from the pool
+    };
+
+    struct Request;
+
+    // ISR task data
+    struct RequestTask: ISRTaskQueue::Task {
+        Request* req;
     };
 
     // Request data
-    struct Request {
-        ctrl_request ctrl; // Control request data (should be the first field in this structure)
-        UsbControlRequestChannel* channel; // Request channel
-        State state; // Request state
-        system_tick_t time; // State timestamp
-        Buffer* reqBuf; // Preallocated request buffer
-        Buffer* repBuf; // Preallocated reply buffer
+    struct Request: ctrl_request {
+        RequestTask task; // ISR task data
         Request* prev; // Previous element in a list
         Request* next; // Next element in a list
         int result; // Result code
         uint16_t id; // Request ID
+        uint8_t state; // Request state
+        uint8_t flags; // Request flags
     };
 
-    std::unique_ptr<Request[]> reqs_; // Request pool
-    std::unique_ptr<Buffer[]> bufs_; // Buffer pool
-    os_timer_t timer_;
-
-    Request* activeReqList_; // List of active requests
-    Request* freeReqList_; // List of unused request objects
+    Request* activeReqs_; // List of active requests
     Request* curReq_; // A request currently being processed by the USB subsystem
-    Buffer* freeBufList_; // List of unused preallocated buffers
+    uint16_t activeReqCount_; // Number of active requests
     uint16_t lastReqId_; // Last request ID
 
     bool processServiceRequest(HAL_USB_SetupRequest* halReq);
-    bool processVendorRequest(HAL_USB_SetupRequest* req);
+    bool processVendorRequest(HAL_USB_SetupRequest* halReq);
+    void freeActiveRequest(Request* req);
+    void freeRequest(Request* req);
 
-    Buffer* takeBuffer();
-    void releaseBuffer(Buffer* buf);
-    void releaseRequest(Request* req);
+    static void invokeRequestHandler(ISRTaskQueue::Task* isrTask);
+    static void allocRequestData(ISRTaskQueue::Task* isrTask);
+    static void freeRequest(ISRTaskQueue::Task* isrTask);
 
-    static void timeout(os_timer_t timer);
-
-    static void invokeRequestHandler(void* data);
-    static void allocRequestBuffer(void* data);
-
-    static uint8_t halVendorRequestCallback(HAL_USB_SetupRequest* req, void* data);
+    static uint8_t halVendorRequestCallback(HAL_USB_SetupRequest* halReq, void* data);
     static uint8_t halVendorRequestStateCallback(HAL_USB_VendorRequestState state, void* data);
 };
 
