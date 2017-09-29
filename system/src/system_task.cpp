@@ -38,6 +38,7 @@
 #include "service_debug.h"
 #include "cellular_hal.h"
 #include "system_power.h"
+#include "simple_pool_allocator.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -69,7 +70,8 @@ static struct SetThreadCurrentFunctionPointers {
                                              nullptr, nullptr);
     }
 } s_SetThreadCurrentFunctionPointersInitializer;
-ISRTaskQueue SystemISRTaskQueue(4);
+
+ISRTaskQueue SystemISRTaskQueue;
 
 void Network_Setup(bool threaded)
 {
@@ -605,4 +607,25 @@ void cancel_connection()
     network.connect_cancel(true);
     // Abort cloud connection
     Spark_Abort();
+}
+
+namespace {
+
+// Memory pool for small and short-lived allocations
+SimpleAllocedPool g_memPool(512);
+
+} // namespace
+
+void* system_pool_alloc(size_t size, void* reserved) {
+    void *ptr = nullptr;
+    ATOMIC_BLOCK() {
+        ptr = g_memPool.allocate(size);
+    }
+    return ptr;
+}
+
+void system_pool_free(void* ptr, void* reserved) {
+    ATOMIC_BLOCK() {
+        g_memPool.deallocate(ptr);
+    }
 }

@@ -446,23 +446,23 @@ public:
  */
 class ISRTaskQueue {
 public:
-    typedef void(*TaskFunc)(void*);
+    struct Task;
+    typedef void(*TaskFunc)(Task*);
 
-    explicit ISRTaskQueue(size_t size);
-    ~ISRTaskQueue();
-
-    bool enqueue(TaskFunc func, void* data = nullptr); // Called from an ISR
-    bool process(); // Called from the primary thread
-
-private:
     struct Task {
         TaskFunc func;
-        void* data;
-        Task* next;
+        Task* next; // Next element in the queue
     };
 
-    Task* tasks_;
-    Task* availTask_; // Task pool
-    Task* firstTask_; // Task queue
+    ISRTaskQueue() :
+            firstTask_(nullptr),
+            lastTask_(nullptr) {
+    }
+
+    void enqueue(Task* task);
+    bool process();
+
+private:
+    Task* firstTask_;
     Task* lastTask_;
 };

@@ -95,6 +95,9 @@ DYNALIB_FN(BASE_IDX + 10, system, system_ctrl_free_reply_data, void(ctrl_request
 DYNALIB_FN(BASE_IDX + 11, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
 DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_set_result, void(ctrl_request*, int, void*))
 
+DYNALIB_FN(BASE_IDX + 12, system, system_pool_alloc, void*(size_t, void*))
+DYNALIB_FN(BASE_IDX + 13, system, system_pool_free, void(void*, void*))
+
 DYNALIB_END(system)
 
 #undef BASE_IDX
