@@ -17,13 +17,13 @@
 
 #pragma once
 
-#include "system_control.h"
-#include "control_request_handler.h"
-#include "active_object.h"
-
 #include "usb_hal.h"
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
+
+#include "system_control.h"
+#include "control_request_handler.h"
+#include "active_object.h"
 
 namespace particle {
 

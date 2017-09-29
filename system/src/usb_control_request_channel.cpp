@@ -17,6 +17,8 @@
 
 #include "usb_control_request_channel.h"
 
+#ifdef USB_VENDOR_REQUEST_ENABLE
+
 #include "system_task.h"
 #include "system_threading.h"
 
@@ -625,3 +627,5 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_US
     }
     return 0;
 }
+
+#endif // defined(USB_VENDOR_REQUEST_ENABLE)
