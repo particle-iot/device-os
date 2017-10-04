@@ -29,9 +29,20 @@ private:
     virtual int get(IntType& val) override; // AbstractIntegerDiagnosticData
 };
 
+typedef enum {
+    BATTERY_STATE_UNKNOWN = 0,
+    BATTERY_STATE_NOT_CHARGING = 1,
+    BATTERY_STATE_CHARGING = 2,
+    BATTERY_STATE_CHARGED = 3,
+    BATTERY_STATE_DISCHARGING = 4,
+    BATTERY_STATE_FAULT = 5
+} BatteryState;
+
 } } // particle::power
 
 extern particle::power::BatteryChargeDiagnosticData g_batteryCharge;
+extern particle::SimpleEnumDiagnosticData<particle::power::BatteryState> g_batteryState;
 
 void system_power_management_init();
 void system_power_management_update();
+void system_power_management_sleep(bool sleep = true);
