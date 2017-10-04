@@ -84,9 +84,16 @@
 
 #include "stdio.h"
 
+#include "spark_wiring_arduino.h"
+
+#ifndef PARTICLE_NO_GLOBAL_NAMESPACE
 using namespace spark;
 using namespace particle;
-
-#include "spark_wiring_arduino.h"
+#else
+namespace particle {
+// TODO: Move all public APIs to the `particle` namespace
+using namespace spark;
+}
+#endif // defined(PARTICLE_NO_GLOBAL_NAMESPACE)
 
 #endif /* APPLICATION_H_ */
