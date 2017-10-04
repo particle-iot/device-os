@@ -52,6 +52,7 @@
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_led.h"
 #include "spark_wiring_diagnostics.h"
+#include "spark_wiring_system.h"
 #include "system_power.h"
 
 #if PLATFORM_ID == 3
@@ -538,7 +539,7 @@ private:
 class UptimeDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
     UptimeDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_SYSTEM_UPTIME, "sys.uptime") {
+            AbstractIntegerDiagnosticData(DIAG_ID_SYSTEM_UPTIME, DIAG_NAME_SYSTEM_UPTIME) {
     }
 
     virtual int get(IntType& val) override {

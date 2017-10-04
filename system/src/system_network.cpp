@@ -71,7 +71,7 @@ using namespace spark;
 class RssiDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
     RssiDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_RSSI, "net.rssi") {
+            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_RSSI, DIAG_NAME_NETWORK_RSSI) {
     }
 
     virtual int get(IntType& val) {

@@ -629,9 +629,8 @@ int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, ap
 
 bool system_metrics(appender_fn appender, void* append_data, uint32_t page, void* reserved) {
 	AppendJson json(appender, append_data);
-	bool result = json.write("{\"d\":");
+	bool result = json.write("\"d\":");
     const int ret = system_format_diag_data(nullptr, 0, 0, appender, append_data, nullptr);
-    result &= json.write("}");
     result &= (ret == 0);
     return result;
 };
