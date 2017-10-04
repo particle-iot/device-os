@@ -37,6 +37,7 @@
 #include "rgbled.h"
 #include "service_debug.h"
 #include "cellular_hal.h"
+#include "system_power.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -448,6 +449,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         system_pending_shutdown();
     }
     system_shutdown_if_needed();
+
+#if Wiring_Cellular == 1
+    system_power_management_update();
+#endif
 }
 
 /*

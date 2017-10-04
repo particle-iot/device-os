@@ -67,6 +67,9 @@ public:
   void onReceive(void (*)(int));
   void onRequest(void (*)(void));
 
+  bool lock();
+  bool unlock();
+
   inline size_t write(unsigned long n) { return write((uint8_t)n); }
   inline size_t write(long n) { return write((uint8_t)n); }
   inline size_t write(unsigned int n) { return write((uint8_t)n); }
