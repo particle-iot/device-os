@@ -31,6 +31,8 @@
 #include "channel.h"
 #include "concurrent_hal.h"
 
+namespace particle {
+
 /**
  * Configuratino data for an active object.
  */
@@ -436,9 +438,11 @@ public:
 
 };
 
+#else
 
+namespace particle {
 
-#endif // PLATFORM_THREADING
+#endif // !PLATFORM_THREADING
 
 /**
  * This class implements a queue of asynchronous calls that can be scheduled from an ISR and then
@@ -466,3 +470,5 @@ private:
     Task* firstTask_; // Task queue
     Task* lastTask_;
 };
+
+} // namespace particle

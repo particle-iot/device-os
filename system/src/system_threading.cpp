@@ -3,6 +3,8 @@
 #include <time.h>
 #include <string.h>
 
+using namespace particle;
+
 #if PLATFORM_THREADING
 
 #define THREAD_STACK_SIZE (5 * 1024)
