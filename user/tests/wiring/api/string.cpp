@@ -116,6 +116,12 @@ test(api_string) {
     // operator const char*()
     API_COMPILE(cstr = s);
 
+    // split
+    API_COMPILE(s.split(","));
+    API_COMPILE(s.split(",").hasNext());
+    API_COMPILE(s.split(",").next());
+
+
     // Mute unused variable warnings
     (void)b;
     (void)c;

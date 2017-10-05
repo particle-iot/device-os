@@ -31,6 +31,7 @@
 #include <limits.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 #include "string_convert.h"
 
 //These are very crude implementations - will refine later
@@ -832,6 +833,39 @@ String String::format(const char* fmt, ...)
         result.len = n;
     }
     return result;
+}
+
+/*********************************************/
+/*  Split                                    */
+/*********************************************/
+
+StringSplitHelper String::split(const char* delimiter) const
+{
+    return StringSplitHelper(*this, delimiter);
+}
+
+StringSplitHelper String::split(const String& delimiter) const
+{
+    return split(delimiter.c_str());
+}
+
+StringSplitHelper::StringSplitHelper(const String& str, const char* delimiter)
+    : strCopy(str), delimiter(delimiter), token(nullptr), state(nullptr)
+{
+    // strtok_r modifies its first argument
+    token = strtok_r(const_cast<char*>(strCopy.c_str()), delimiter, &state);
+}
+
+bool StringSplitHelper::hasNext()
+{
+    return token != nullptr;
+}
+
+String StringSplitHelper::next()
+{
+    String ret(token);
+    token = strtok_r(nullptr, delimiter, &state);
+    return ret;
 }
 
 std::ostream& operator << ( std::ostream& os, const String& value ) {

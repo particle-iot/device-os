@@ -47,6 +47,9 @@ class __FlashStringHelper;
 // result objects are assumed to be writable by subsequent concatenations.
 class StringSumHelper;
 
+// Saves the state of the string split operation
+class StringSplitHelper;
+
 // The string class
 class String
 {
@@ -195,6 +198,10 @@ public:
 
         static String format(const char* format, ...);
 
+	// split
+	StringSplitHelper split(const char* delimiter) const;
+	StringSplitHelper split(const String& delimiter) const;
+
 protected:
 	char *buffer;	        // the actual char array
 	unsigned int capacity;  // the array length minus one (for the '\0')
@@ -229,6 +236,19 @@ public:
 	StringSumHelper(unsigned int num) : String(num) {}
 	StringSumHelper(long num) : String(num) {}
 	StringSumHelper(unsigned long num) : String(num) {}
+};
+
+class StringSplitHelper
+{
+public:
+    StringSplitHelper(const String& str, const char* delimiter);
+    bool hasNext();
+    String next();
+private:
+    String strCopy;
+    const char* delimiter;
+    const char* token;
+    char* state;
 };
 
 #include <ostream>

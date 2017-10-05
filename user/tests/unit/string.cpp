@@ -77,3 +77,55 @@ TEST_CASE("Can format a string using printf like syntax") {
 TEST_CASE("Can convert a string to lowercase") {
     REQUIRE(String("In LOWERCAse").toLowerCase()==String("in lowercase"));
 }
+
+TEST_CASE("Can split a string") {
+    auto parts = String("setting=123").split("=");
+    REQUIRE(parts.hasNext()==true);
+    REQUIRE(parts.next()==String("setting"));
+    REQUIRE(parts.hasNext()==true);
+    REQUIRE(parts.next()==String("123"));
+    REQUIRE(parts.hasNext()==false);
+    REQUIRE(parts.next()==String(""));
+}
+
+TEST_CASE("When delimiter is not found split returns the whole string") {
+    auto parts = String("fullstring").split(",");
+    REQUIRE(parts.hasNext()==true);
+    REQUIRE(parts.next()==String("fullstring"));
+    REQUIRE(parts.hasNext()==false);
+    REQUIRE(parts.next()==String(""));
+}
+
+TEST_CASE("When string is empty split returns no parts") {
+    auto parts = String().split(",");
+    REQUIRE(parts.hasNext()==false);
+    REQUIRE(parts.next()==String(""));
+}
+
+TEST_CASE("Split does not modify the original string") {
+    String str("setting=123");
+    auto parts = str.split("=");
+    parts.next();
+    parts.next();
+    REQUIRE(str==String("setting=123"));
+}
+
+TEST_CASE("Split is reentrant") {
+    String str("first=1,second=2");
+    String allNames;
+    String allValues;
+
+    auto settings = str.split(",");
+    while (settings.hasNext()) {
+        String setting = settings.next();
+        auto parts = setting.split("=");
+        String name = parts.next();
+        String value = parts.next();
+
+        allNames += name;
+        allValues += value;
+    }
+
+    REQUIRE(allNames=="firstsecond");
+    REQUIRE(allValues=="12");
+}
