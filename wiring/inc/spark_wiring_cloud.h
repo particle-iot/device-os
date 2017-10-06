@@ -325,12 +325,6 @@ public:
     static bool disconnected(void) { return !connected(); }
     static void connect(void) {
         spark_cloud_flag_connect();
-        if (system_thread_get_state(nullptr)==spark::feature::DISABLED &&
-            SystemClass::mode() == SEMI_AUTOMATIC)
-        {
-            // Particle.connect() should be blocking in SEMI_AUTOMATIC mode when threading is disabled
-            waitUntil(connected);
-        }
     }
     static void disconnect(void) { spark_cloud_flag_disconnect(); }
     static void process(void) {
