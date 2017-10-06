@@ -100,7 +100,7 @@ struct SparkDescriptor
      * @param reserved	For future expansion.
      * @return
      */
-    bool (*append_metrics)(appender_fn appender, void* append, uint32_t page, void* reserved);
+    bool (*append_metrics)(appender_fn appender, void* append, uint32_t flags, uint32_t page, void* reserved);
 
     void* reserved[1];      // add a few additional pointers
 };
