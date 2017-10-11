@@ -2,6 +2,8 @@
 
 #include "system_control.h"
 
+#include "hippomocks.h"
+
 #include <boost/optional.hpp>
 
 #include <string>
@@ -9,14 +11,10 @@
 
 namespace test {
 
-class SystemControlMock;
+class SystemControl;
 
-// Control request
 class ControlRequest: public ctrl_request {
 public:
-    ControlRequest(uint16_t type, SystemControlMock* channel);
-    ControlRequest(uint16_t type, std::string data, SystemControlMock* channel);
-
     void freeRequestData();
     std::string requestData() const;
     bool hasRequestData() const;
@@ -35,31 +33,24 @@ public:
     ControlRequest& operator=(const ControlRequest&) = delete;
 
 private:
-    std::string reqData_;
-    std::string repData_;
+    std::string reqData_, repData_;
     boost::optional<int> result_;
+
+    ControlRequest(uint16_t type, std::string data, SystemControl* channel);
+
+    friend class SystemControl;
 };
 
-// Class mocking the system control API
-class SystemControlMock {
+class SystemControl {
 public:
-    SystemControlMock();
-    ~SystemControlMock();
+    explicit SystemControl(MockRepository* mocks);
 
     std::shared_ptr<ControlRequest> makeRequest(uint16_t type, std::string data = std::string());
-
-private:
-    struct Data;
-    std::unique_ptr<Data> d_;
 };
 
 } // namespace test
 
-inline test::ControlRequest::ControlRequest(uint16_t type, SystemControlMock* channel) :
-        ControlRequest(type, std::string(), channel) {
-}
-
-inline test::ControlRequest::ControlRequest(uint16_t type, std::string data, SystemControlMock* channel) :
+inline test::ControlRequest::ControlRequest(uint16_t type, std::string data, SystemControl* channel) :
         ctrl_request{ sizeof(ctrl_request), type, nullptr, 0, nullptr, 0, channel },
         reqData_(std::move(data)) {
     if (!reqData_.empty()) {
@@ -115,6 +106,29 @@ inline bool test::ControlRequest::hasResult() const {
     return (bool)result_;
 }
 
-inline std::shared_ptr<test::ControlRequest> test::SystemControlMock::makeRequest(uint16_t type, std::string data) {
-    return std::make_shared<ControlRequest>(type, std::move(data), this);
+inline test::SystemControl::SystemControl(MockRepository* mocks) {
+    // system_ctrl_alloc_reply_data()
+    mocks->OnCallFunc(system_ctrl_alloc_reply_data).Do([](ctrl_request* req, size_t size, void* reserved) {
+        const auto r = static_cast<ControlRequest*>(req);
+        return r->allocReplyData(size);
+    });
+    // system_ctrl_free_reply_data()
+    mocks->OnCallFunc(system_ctrl_free_reply_data).Do([](ctrl_request* req, void* reserved) {
+        const auto r = static_cast<ControlRequest*>(req);
+        r->freeReplyData();
+    });
+    // system_ctrl_free_request_data()
+    mocks->OnCallFunc(system_ctrl_free_request_data).Do([](ctrl_request* req, void* reserved) {
+        const auto r = static_cast<ControlRequest*>(req);
+        r->freeRequestData();
+    });
+    // system_ctrl_set_result()
+    mocks->OnCallFunc(system_ctrl_set_result).Do([](ctrl_request* req, int result, void* reserved) {
+        const auto r = static_cast<ControlRequest*>(req);
+        r->setResult(result);
+    });
+}
+
+inline std::shared_ptr<test::ControlRequest> test::SystemControl::makeRequest(uint16_t type, std::string data) {
+    return std::shared_ptr<ControlRequest>(new ControlRequest(type, std::move(data), this));
 }

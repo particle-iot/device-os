@@ -26,6 +26,7 @@
 
 #include "spark_wiring_interrupts.h"
 
+#include "test_malloc.h"
 #include "bytes2hexbuf.h"
 #include "debug.h"
 
@@ -191,7 +192,7 @@ int particle::UsbControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, si
         req->flags |= RequestFlag::POOLED_REP_DATA;
     } else {
         // Allocate the buffer dynamically
-        req->reply_data = (char*)malloc(size);
+        req->reply_data = (char*)t_malloc(size);
         if (!req->reply_data) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
@@ -208,7 +209,7 @@ void particle::UsbControlRequestChannel::freeReplyData(ctrl_request* ctrlReq) {
         req->flags &= ~RequestFlag::POOLED_REP_DATA;
     } else {
         // Free a dynamically allocated buffer
-        free(req->reply_data);
+        t_free(req->reply_data);
     }
     req->reply_data = nullptr;
     req->reply_size = 0;
@@ -222,7 +223,7 @@ void particle::UsbControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) 
         req->flags &= ~RequestFlag::POOLED_REQ_DATA;
     } else {
         // Free a dynamically allocated buffer
-        free(req->request_data);
+        t_free(req->request_data);
     }
     req->request_data = nullptr;
     req->request_size = 0;
@@ -533,7 +534,7 @@ void particle::UsbControlRequestChannel::invokeRequestHandler(ISRTaskQueue::Task
 void particle::UsbControlRequestChannel::allocRequestData(ISRTaskQueue::Task* isrTask) {
     const auto task = static_cast<RequestTask*>(isrTask);
     auto req = task->req;
-    req->request_data = (char*)malloc(req->request_size); // FIXME: volatile?
+    req->request_data = (char*)t_malloc(req->request_size); // FIXME: volatile?
     ATOMIC_BLOCK() {
         if (req->state == RequestState::ALLOC_PENDING) {
             if (req->request_data) {
@@ -545,7 +546,7 @@ void particle::UsbControlRequestChannel::allocRequestData(ISRTaskQueue::Task* is
         }
     }
     if (req) { // Request has been cancelled
-        free(req->request_data);
+        t_free(req->request_data);
         system_pool_free(req, nullptr);
     }
 }

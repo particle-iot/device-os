@@ -4,12 +4,14 @@
 #include "spark_wiring_logging.h"
 #include "service_debug.h"
 
-#include "stubs/system_control_mock.h"
+#include "mocks/control.h"
 
 #include "tools/catch.h"
 #include "tools/string.h"
 #include "tools/stream.h"
 #include "tools/random.h"
+
+#include "hippomocks.h"
 
 #include <boost/optional/optional.hpp>
 #include <boost/optional/optional_io.hpp>
@@ -428,10 +430,14 @@ private:
 };
 
 // Convenience wrapper for spark::logProcessControlRequest()
-class LogControlMock: public test::SystemControlMock {
+class LogControl {
 public:
+    LogControl() :
+            ctrl_(&mocks_) {
+    }
+
     bool config(const std::string &req, std::string* rep = nullptr) {
-        const auto r = makeRequest(CTRL_REQUEST_LOG_CONFIG, req);
+        const auto r = ctrl_.makeRequest(CTRL_REQUEST_LOG_CONFIG, req);
         logProcessControlRequest(r.get());
         REQUIRE(r->hasResult());
         if (rep) {
@@ -439,6 +445,10 @@ public:
         }
         return (r->result() == SYSTEM_ERROR_NONE);
     }
+
+private:
+    MockRepository mocks_;
+    test::SystemControl ctrl_;
 };
 
 std::string fileName(const std::string &path) {
@@ -989,7 +999,7 @@ TEST_CASE("Message formatting") {
 }
 
 TEST_CASE("Configuration requests") {
-    LogControlMock logControl;
+    LogControl logControl;
     NamedOutputStreamFactory streamFactory;
     NamedLogHandlerFactory handlerFactory;
 
