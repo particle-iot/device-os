@@ -96,6 +96,7 @@ DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_set_result, void(ctrl_request*, in
 
 DYNALIB_FN(BASE_IDX + 13, system, system_pool_alloc, void*(size_t, void*))
 DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
+DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
 
 DYNALIB_END(system)
 
