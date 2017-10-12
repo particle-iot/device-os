@@ -598,10 +598,34 @@ void HAL_Core_Enter_Safe_Mode(void* reserved)
     HAL_Core_System_Reset_Ex(RESET_REASON_SAFE_MODE, 0, NULL);
 }
 
-void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
+int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
 {
-    if (!((wakeUpPin < TOTAL_PINS) && (wakeUpPin >= 0) && (edgeTriggerMode <= FALLING)) && seconds <= 0)
-        return;
+    // Initial sanity check
+    if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {
+        return -1;
+    }
+
+    // Validate pins and modes
+    if ((pins_count > 0 && pins == NULL) || (pins_count > 0 && mode_count == 0) || (mode_count > 0 && mode == NULL)) {
+        return -1;
+    }
+
+    for (unsigned i = 0; i < pins_count; i++) {
+        if (pins[i] >= TOTAL_PINS) {
+            return -1;
+        }
+    }
+
+    for (unsigned i = 0; i < mode_count; i++) {
+        switch(mode[i]) {
+            case RISING:
+            case FALLING:
+            case CHANGE:
+                break;
+            default:
+                return -1;
+        }
+    }
 
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
@@ -624,9 +648,10 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
     // Suspend all EXTI interrupts
     HAL_Interrupts_Suspend();
 
-    /* Configure EXTI Interrupt : wake-up from stop mode using pin interrupt */
-    if ((wakeUpPin < TOTAL_PINS) && (edgeTriggerMode <= FALLING))
-    {
+    for (unsigned i = 0; i < pins_count; i++) {
+        pin_t wakeUpPin = pins[i];
+        InterruptMode edgeTriggerMode = (i < mode_count) ? mode[i] : mode[mode_count - 1];
+
         PinMode wakeUpPinMode = INPUT;
         /* Set required pinMode based on edgeTriggerMode */
         switch(edgeTriggerMode)
@@ -680,8 +705,11 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
     HAL_Core_Execute_Stop_Mode();
 
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
-        /* Detach the Interrupt pin */
-        HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
+        for (unsigned i = 0; i < pins_count; i++) {
+            pin_t wakeUpPin = pins[i];
+            /* Detach the Interrupt pin */
+            HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
+        }
     }
 
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
@@ -700,6 +728,14 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
     SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
 
     HAL_USB_Attach();
+
+    return 0;
+}
+
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
+{
+    InterruptMode m = (InterruptMode)edgeTriggerMode;
+    HAL_Core_Enter_Stop_Mode_Ext(&wakeUpPin, 1, &m, 1, seconds, NULL);
 }
 
 void HAL_Core_Execute_Stop_Mode(void)

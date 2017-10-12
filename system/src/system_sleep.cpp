@@ -153,9 +153,9 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
     return 0;
 }
 
-int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved));
     // If we're connected to the cloud, make sure all
     // confirmable UDP messages are sent before sleeping
     if (spark_cloud_flag_connected()) {
@@ -177,8 +177,8 @@ int system_sleep_pin_impl(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long sec
 
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
-    system_power_management_sleep();
-    HAL_Core_Enter_Stop_Mode(wakeUpPin, edgeTriggerMode, seconds);
+	system_power_management_sleep();
+    HAL_Core_Enter_Stop_Mode_Ext(pins, pins_count, modes, modes_count, seconds, nullptr);
     led_set_update_enabled(1, nullptr); // Enable background LED updates
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
@@ -212,11 +212,18 @@ void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds
 {
     // Cancel current connection attempt to unblock the system thread
     network.connect_cancel(true);
-    system_sleep_pin_impl(wakeUpPin, edgeTriggerMode, seconds, param, reserved);
+    InterruptMode m = (InterruptMode)edgeTriggerMode;
+    system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
 }
 
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
     network.connect_cancel(true);
     system_sleep_impl(sleepMode, seconds, param, reserved);
+}
+
+int32_t system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
+{
+    network.connect_cancel(true);
+    return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }
