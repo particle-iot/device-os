@@ -70,7 +70,43 @@ test(system_sleep)
     API_COMPILE(System.sleep(A0, FALLING, 20, SLEEP_NETWORK_STANDBY));
     API_COMPILE(System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY, 20));
 
+    // Multi-pin variants
+    {
+        /*
+         * wakeup pins: std::initializer_list<pin_t>
+         * trigger mode: single InterruptMode
+         */
+        API_COMPILE(System.sleep({D0, D1}, RISING));
 
+        /*
+         * wakeup pins: std::initializer_list<pin_t>
+         * trigger mode: std::initializer_list<InterruptMode>
+         */
+        API_COMPILE(System.sleep({D0, D1}, {RISING, FALLING}));
+
+        const pin_t pins_array[] = {D0, D1};
+        const InterruptMode mode_array[] = {RISING, FALLING};
+
+        /*
+         * wakeup pins: pin_t* + size_t
+         * trigger mode: single InterruptMode
+         */
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, 20));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, SLEEP_NETWORK_STANDBY));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, 20, SLEEP_NETWORK_STANDBY));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, SLEEP_NETWORK_STANDBY, 20));
+
+        /*
+         * wakeup pins: pin_t* + size_t
+         * trigger mode: InterruptMode* + size_t
+         */
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array)));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20, SLEEP_NETWORK_STANDBY));
+        API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY, 20));
+    }
 }
 
 test(system_mode) {
