@@ -34,7 +34,7 @@ public:
     int allocReplyData(ctrl_request* req, size_t size);
     void freeReplyData(ctrl_request* req);
     void freeRequestData(ctrl_request* req);
-    void setResult(ctrl_request* req, system_error_t result);
+    void setResult(ctrl_request* req, int result);
 
     // ControlRequestHandler
     virtual void processRequest(ctrl_request* req, ControlRequestChannel* channel) override;
@@ -70,7 +70,7 @@ inline void particle::SystemControl::freeRequestData(ctrl_request* req) {
     channel->freeRequestData(req);
 }
 
-inline void particle::SystemControl::setResult(ctrl_request* req, system_error_t result) {
+inline void particle::SystemControl::setResult(ctrl_request* req, int result) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     channel->setResult(req, result);
 }

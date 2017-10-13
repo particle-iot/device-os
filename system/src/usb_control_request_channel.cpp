@@ -229,7 +229,7 @@ void particle::UsbControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) 
     req->request_size = 0;
 }
 
-void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, system_error_t result) {
+void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, int result) {
     auto req = static_cast<Request*>(ctrlReq);
     if (req->request_data) {
         freeRequestData(req);

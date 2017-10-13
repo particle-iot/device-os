@@ -18,17 +18,53 @@
 #include "system_control_internal.h"
 
 #include "system_network_internal.h"
+#include "system_update.h"
+
 #include "spark_wiring_system.h"
+
+#include "appender.h"
 #include "debug.h"
 
-#include "system_update.h"
-#include "appender.h"
+#include <algorithm>
+#include <limits>
 
 #if SYSTEM_CONTROL_ENABLED
 
 namespace {
 
 using namespace particle;
+
+typedef int(*ReplyFormatterCallback)(appender_fn append, void* appendData, void* userData);
+
+int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* userData = nullptr,
+        size_t maxSize = std::numeric_limits<size_t>::max()) {
+    size_t bufSize = std::min((size_t)128, maxSize); // Initial size of the reply buffer
+    for (;;) {
+        int ret = system_ctrl_alloc_reply_data(req, bufSize, nullptr);
+        if (ret != 0) {
+            system_ctrl_free_reply_data(req, nullptr);
+            return ret;
+        }
+        BufferAppender2 appender(req->reply_data, bufSize);
+        ret = callback(append_instance, &appender, userData);
+        if (ret != 0) {
+            system_ctrl_free_reply_data(req, nullptr);
+            return ret;
+        }
+        const size_t size = appender.dataSize();
+        if (size > maxSize) {
+            system_ctrl_free_reply_data(req, nullptr);
+            return SYSTEM_ERROR_TOO_LARGE;
+        }
+        if (size > bufSize) {
+            // Increase the buffer size and format the data once again
+            bufSize = std::min(size + size / 16, maxSize);
+            continue;
+        }
+        req->reply_size = size;
+        return 0; // OK
+    }
+}
 
 SystemControl g_systemControl;
 
@@ -64,19 +100,28 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         break;
     }
     case CTRL_REQUEST_MODULE_INFO: {
-        const size_t bufSize = 1024;
-        if (allocReplyData(req, bufSize) != 0) {
-            setResult(req, SYSTEM_ERROR_NO_MEMORY);
-            return;
+        struct Formatter {
+            static int callback(appender_fn append, void* appendData, void* userData) {
+                return (system_module_info(append, appendData) ? 0 : SYSTEM_ERROR_UNKNOWN);
+            }
+        };
+        const int ret = formatReplyData(req, Formatter::callback);
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_DIAG_INFO: {
+        if (req->request_size > 0) {
+            // TODO: Querying a part of the diagnostic data is not supported
+            setResult(req, SYSTEM_ERROR_NOT_SUPPORTED);
+        } else {
+            struct Formatter {
+                static int callback(appender_fn append, void* appendData, void* userData) {
+                    return system_format_diag_data(nullptr, 0, 0, append, appendData, nullptr);
+                }
+            };
+            const int ret = formatReplyData(req, Formatter::callback);
+            setResult(req, ret);
         }
-        BufferAppender appender((uint8_t*)req->reply_data, req->reply_size);
-        if (!system_module_info(append_instance, &appender)) {
-            freeReplyData(req);
-            setResult(req, SYSTEM_ERROR_UNKNOWN);
-            return;
-        }
-        req->reply_size = appender.size();
-        setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
     default:
@@ -122,7 +167,7 @@ void system_ctrl_set_result(ctrl_request* req, int result, void* reserved) {
     SystemControl::instance()->setResult(req, (system_error_t)result);
 }
 
-#else // SYSTEM_CONTROL_ENABLED
+#else // !SYSTEM_CONTROL_ENABLED
 
 // System API
 int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* reserved) {

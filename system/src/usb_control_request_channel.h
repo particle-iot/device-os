@@ -49,7 +49,7 @@ public:
     virtual int allocReplyData(ctrl_request* ctrlReq, size_t size) override;
     virtual void freeReplyData(ctrl_request* ctrlReq) override;
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
-    virtual void setResult(ctrl_request* ctrlReq, system_error_t result) override;
+    virtual void setResult(ctrl_request* ctrlReq, int result) override;
 
 private:
     // Request state

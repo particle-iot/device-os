@@ -28,13 +28,13 @@
 #include <string.h>
 
 #ifdef	__cplusplus
+
+#include <algorithm>
+
 extern "C" {
 #endif
 
-
 typedef bool (*appender_fn)(void* appender, const uint8_t* data, size_t length);
-
-
 
 #ifdef	__cplusplus
 }
@@ -94,7 +94,46 @@ public:
     const uint8_t* next() { return buffer; }
 };
 
-#endif
+namespace particle {
+
+// Buffer appender that never fails and stores an actual size of the data
+class BufferAppender2: public Appender {
+public:
+    BufferAppender2(char* buf, size_t size) :
+            buf_(buf),
+            bufSize_(size),
+            dataSize_(0) {
+    }
+
+    virtual bool append(const uint8_t* data, size_t size) override {
+        if (dataSize_ < bufSize_) {
+            const size_t n = std::min(size, bufSize_ - dataSize_);
+            memcpy(buf_ + dataSize_, data, n);
+        }
+        dataSize_ += size;
+        return true;
+    }
+
+    char* buffer() const {
+        return buf_;
+    }
+
+    size_t bufferSize() const {
+        return bufSize_;
+    }
+
+    size_t dataSize() const {
+        return dataSize_;
+    }
+
+private:
+    char* const buf_;
+    const size_t bufSize_;
+    size_t dataSize_;
+};
+
+} // namespace particle
+
+#endif // defined(__cplusplus)
 
 #endif	/* APPENDER_H */
-

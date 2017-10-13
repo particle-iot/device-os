@@ -49,7 +49,8 @@ typedef enum ctrl_request_type {
     CTRL_REQUEST_SAFE_MODE = 60,
     CTRL_REQUEST_LISTENING_MODE = 70,
     CTRL_REQUEST_LOG_CONFIG = 80,
-    CTRL_REQUEST_MODULE_INFO = 90
+    CTRL_REQUEST_MODULE_INFO = 90,
+    CTRL_REQUEST_DIAG_INFO = 100
 } ctrl_request_type;
 
 // Control request data
