@@ -28,16 +28,13 @@
 #include <string.h>
 
 #ifdef	__cplusplus
-
-#include <algorithm>
-
 extern "C" {
 #endif
 
 typedef bool (*appender_fn)(void* appender, const uint8_t* data, size_t length);
 
 #ifdef	__cplusplus
-}
+} // extern "C"
 
 /**
  * OO version of the appender function.
@@ -107,7 +104,10 @@ public:
 
     virtual bool append(const uint8_t* data, size_t size) override {
         if (dataSize_ < bufSize_) {
-            const size_t n = std::min(size, bufSize_ - dataSize_);
+            size_t n = bufSize_ - dataSize_;
+            if (size < n) {
+                n = size;
+            }
             memcpy(buf_ + dataSize_, data, n);
         }
         dataSize_ += size;
