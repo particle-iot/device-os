@@ -5,19 +5,28 @@
 #include <algorithm>
 #include <cstring>
 
-// test::Allocator
+test::Allocator::Allocator(size_t padding) :
+        allocSize_(0),
+        padding_(padding),
+        failed_(false) {
+}
+
 void* test::Allocator::malloc(size_t size) {
     const std::lock_guard<std::recursive_mutex> lock(mutex_);
+    if (allocLimit_ && allocSize_ + size > *allocLimit_) {
+        return nullptr;
+    }
     Buffer buf(size, padding_);
     void* const ptr = buf.data();
     alloc_.insert(std::make_pair(ptr, std::move(buf)));
+    allocSize_ += size;
     return ptr;
 }
 
 void* test::Allocator::calloc(size_t n, size_t size) {
     const std::lock_guard<std::recursive_mutex> lock(mutex_);
     size *= n;
-    void* const ptr = malloc(size);
+    void* const ptr = this->malloc(size);
     if (ptr) {
         memset(ptr, 0, size);
     }
@@ -35,10 +44,10 @@ void* test::Allocator::realloc(void* ptr, size_t size) {
             }
             origSize = it->second.size();
         }
-        void* const newPtr = malloc(size);
+        void* const newPtr = this->malloc(size);
         if (newPtr && ptr) {
             memcpy(newPtr, ptr, std::min(size, origSize)); // Copy user data from the original buffer
-            free(ptr);
+            this->free(ptr);
         }
         return newPtr;
     } catch (const std::exception& e) {
@@ -69,6 +78,7 @@ void test::Allocator::free(void* ptr) {
         alloc_.erase(it);
         const bool ok = f.buffer.isPaddingValid();
         free_.insert(std::make_pair(ptr, std::move(f)));
+        allocSize_ -= f.buffer.size();
         if (!ok) {
             throw std::runtime_error("Buffer overflow detected");
         }
@@ -76,13 +86,6 @@ void test::Allocator::free(void* ptr) {
         CATCH_WARN("test::Allocator: " << e.what());
         failed_ = true;
     }
-}
-
-void test::Allocator::reset() {
-    const std::lock_guard<std::recursive_mutex> lock(mutex_);
-    alloc_.clear();
-    free_.clear();
-    failed_ = false;
 }
 
 void test::Allocator::check() {
@@ -102,7 +105,32 @@ void test::Allocator::check() {
     }
 }
 
-// test::DefaultAllocator
+void test::Allocator::reset() {
+    const std::lock_guard<std::recursive_mutex> lock(mutex_);
+    alloc_.clear();
+    free_.clear();
+    allocLimit_ = boost::none;
+    allocSize_ = 0;
+    failed_ = false;
+}
+
+size_t test::Allocator::allocSize() const {
+    const std::lock_guard<std::recursive_mutex> lock(mutex_);
+    return allocSize_;
+}
+
+test::Allocator& test::Allocator::allocLimit(size_t size) {
+    const std::lock_guard<std::recursive_mutex> lock(mutex_);
+    allocLimit_ = size;
+    return *this;
+}
+
+test::Allocator& test::Allocator::noAllocLimit() {
+    const std::lock_guard<std::recursive_mutex> lock(mutex_);
+    allocLimit_ = boost::none;
+    return *this;
+}
+
 test::Allocator* test::DefaultAllocator::instance() {
     static Allocator alloc;
     return &alloc;
