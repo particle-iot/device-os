@@ -34,9 +34,9 @@ namespace {
 
 using namespace particle;
 
-typedef int(*ReplyFormatterCallback)(appender_fn append, void* appendData, void* userData);
+typedef int(*ReplyFormatterCallback)(Appender*, void* data);
 
-int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* userData = nullptr,
+int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* data = nullptr,
         size_t maxSize = std::numeric_limits<size_t>::max()) {
     size_t bufSize = std::min((size_t)128, maxSize); // Initial size of the reply buffer
     for (;;) {
@@ -46,7 +46,7 @@ int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* us
             return ret;
         }
         BufferAppender2 appender(req->reply_data, bufSize);
-        ret = callback(append_instance, &appender, userData);
+        ret = callback(&appender, data);
         if (ret != 0) {
             system_ctrl_free_reply_data(req, nullptr);
             return ret;
@@ -101,22 +101,27 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     }
     case CTRL_REQUEST_MODULE_INFO: {
         struct Formatter {
-            static int callback(appender_fn append, void* appendData, void* userData) {
-                return (system_module_info(append, appendData) ? 0 : SYSTEM_ERROR_UNKNOWN);
+            static int callback(Appender* appender, void* data) {
+                if (!appender->append('{') ||
+                        !system_module_info(append_instance, appender) ||
+                        !appender->append('}')) {
+                    return SYSTEM_ERROR_UNKNOWN;
+                }
+                return 0;
             }
         };
         const int ret = formatReplyData(req, Formatter::callback);
         setResult(req, ret);
         break;
     }
-    case CTRL_REQUEST_DIAG_INFO: {
+    case CTRL_REQUEST_DIAGNOSTIC_INFO: {
         if (req->request_size > 0) {
             // TODO: Querying a part of the diagnostic data is not supported
             setResult(req, SYSTEM_ERROR_NOT_SUPPORTED);
         } else {
             struct Formatter {
-                static int callback(appender_fn append, void* appendData, void* userData) {
-                    return system_format_diag_data(nullptr, 0, 0, append, appendData, nullptr);
+                static int callback(Appender* appender, void* data) {
+                    return system_format_diag_data(nullptr, 0, 0, append_instance, appender, nullptr);
                 }
             };
             const int ret = formatReplyData(req, Formatter::callback);

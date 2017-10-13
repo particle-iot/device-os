@@ -463,7 +463,7 @@ bool particle::UsbControlRequestChannel::processVendorRequest(HAL_USB_SetupReque
             break;
         }
         case CTRL_REQUEST_SYSTEM_VERSION: {
-            const size_t n = sizeof(PP_STR(SYSTEM_VERSION_STRING));
+            const size_t n = sizeof(PP_STR(SYSTEM_VERSION_STRING)) - 1; // Excluding term. null
             if (req->wLength < n) {
                 return false;
             }

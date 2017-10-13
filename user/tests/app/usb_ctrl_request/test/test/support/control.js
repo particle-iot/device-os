@@ -33,7 +33,6 @@ function waitForStatus(dev, id, status) {
   return sendCheckRequest(dev, id).then((serviceRep) => {
     const curStatus = serviceRep.status;
     if (curStatus == proto.Status.PENDING) {
-      console.log('PENDING');
       return Promise.delay(CHECK_INTERVAL).then(() => {
         return waitForStatus(dev, id, status);
       });
@@ -46,15 +45,21 @@ function waitForStatus(dev, id, status) {
 
 // Request types (see `ctrl_request_type` enum defined in the system firmware)
 export const RequestType = {
-  APP_CUSTOM: 10, // Application-specific request (asynchronous)
+  APP_CUSTOM: 10, // Application-specific request
   DEVICE_ID: 20, // Get device ID (low-level request)
-  SYSTEM_VERSION: 30 // Get firmware version (low-level request)
+  SYSTEM_VERSION: 30, // Get firmware version (low-level request)
+  MODULE_INFO: 90, // Get module info
+  DIAGNOSTIC_INFO: 100 // Get diagnostic info
 };
 
 // Result codes (see `system_error_t` enum defined in the system firmware)
 export const Result = {
   OK: 0
 };
+
+// Maximum number of concurrent requests supported by the device (see `USB_REQUEST_MAX_ACTIVE_COUNT`
+// parameter defined in the system firmware)
+export const MAX_ACTIVE_REQUESTS = 4;
 
 // Sends an asynchronous request
 export function sendRequest(dev, type, reqData) {

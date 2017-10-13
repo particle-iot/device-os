@@ -78,14 +78,6 @@ export class Device {
     });
   }
 
-  set encoding(encoding) {
-    this._encoding = encoding;
-  }
-
-  get encoding() {
-    return this._encoding;
-  }
-
   get usbDevice() {
     return this._usbDev;
   }
@@ -93,19 +85,23 @@ export class Device {
 
 export function enumDevices() {
   return new Promise((resolve, reject) => {
-    const devs = [];
-    const usbDevs = usb.getDeviceList();
-    for (let usbDev of usbDevs) {
-      const descr = usbDev.deviceDescriptor;
-      const idVendor = descr.idVendor.toString(16);
-      const idProduct = descr.idProduct.toString(16);
-      for (let regex of usbIdRegex) {
-        if (idVendor.match(regex.idVendor) && idProduct.match(regex.idProduct)) {
-          devs.push(new Device(usbDev));
-          break;
+    try {
+      const devs = [];
+      const usbDevs = usb.getDeviceList();
+      for (let usbDev of usbDevs) {
+        const descr = usbDev.deviceDescriptor;
+        const idVendor = descr.idVendor.toString(16);
+        const idProduct = descr.idProduct.toString(16);
+        for (let regex of usbIdRegex) {
+          if (idVendor.match(regex.idVendor) && idProduct.match(regex.idProduct)) {
+            devs.push(new Device(usbDev));
+            break;
+          }
         }
       }
+      resolve(devs);
+    } catch (err) {
+      reject(new UsbError(err));
     }
-    resolve(devs);
   });
 }
