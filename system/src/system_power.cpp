@@ -28,8 +28,8 @@ int BatteryChargeDiagnosticData::get(IntType& val) {
 using namespace particle;
 using namespace particle::power;
 
-BatteryChargeDiagnosticData g_batteryCharge(DIAG_ID_SYSTEM_BATTERY_CHARGE, "sys.battCharge");
-SimpleEnumDiagnosticData<BatteryState> g_batteryState(DIAG_ID_SYSTEM_BATTERY_STATE, "sys.battState", BATTERY_STATE_UNKNOWN);
+BatteryChargeDiagnosticData g_batteryCharge(DIAG_ID_SYSTEM_BATTERY_CHARGE, DIAG_NAME_SYSTEM_BATTERY_CHARGE);
+SimpleEnumDiagnosticData<BatteryState> g_batteryState(DIAG_ID_SYSTEM_BATTERY_STATE, DIAG_NAME_SYSTEM_BATTERY_STATE, BATTERY_STATE_UNKNOWN);
 
 static bool s_lowBattEventEnabled = true;
 static system_tick_t s_possibleFaultTimestamp = 0;
