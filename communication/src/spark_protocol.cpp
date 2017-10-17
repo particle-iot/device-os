@@ -389,7 +389,9 @@ CoAPMessageType::Enum
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 {
   unsigned short message_id = next_message_id();
-  size_t len = Messages::hello(buf+2, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version, false, nullptr, 0);
+  uint8_t flags = newly_upgraded ? 1 : 0;
+  // diagnostics are not supported in this protocol implementation.
+  size_t len = Messages::hello(buf+2, message_id, flags, PLATFORM_ID, product_id, product_firmware_version, false, nullptr, 0);
   wrap(buf, len);
 }
 

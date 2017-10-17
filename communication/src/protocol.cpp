@@ -317,7 +317,9 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	size_t len = build_hello(message, was_ota_upgrade_successful);
+	uint8_t flags = was_ota_upgrade_successful ? 1 : 0;
+	flags |= 2;		// diagnostics support
+	size_t len = build_hello(message, flags);
 	message.set_length(len);
 	message.set_confirm_received(true);
 	last_message_millis = callbacks.millis();
