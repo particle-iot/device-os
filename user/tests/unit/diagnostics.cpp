@@ -160,11 +160,12 @@ public:
     }
 };
 
-template<typename LockingPolicyT>
+template<template<typename ValueT, typename KeyT> class StorageT, typename ConcurrencyT>
 void testInt(DiagService& diag) {
-    using IntType = typename IntegerDiagnosticData<LockingPolicyT>::IntType;
+    using DiagnosticData = IntegerDiagnosticData<StorageT, ConcurrencyT>;
+    using IntType = typename DiagnosticData::IntType;
 
-    IntegerDiagnosticData<LockingPolicyT> d(1);
+    DiagnosticData d(1);
     diag.start();
 
     SECTION("operator=(IntType)") {
@@ -223,7 +224,7 @@ void testInt(DiagService& diag) {
     }
 }
 
-template<typename LockingPolicyT>
+template<template<typename ValueT, typename KeyT> class StorageT, typename ConcurrencyT>
 void testEnum(DiagService& diag) {
     enum Enum {
         ZERO,
@@ -231,9 +232,10 @@ void testEnum(DiagService& diag) {
         TWO
     };
 
-    using IntType = typename EnumDiagnosticData<Enum, LockingPolicyT>::IntType;
+    using DiagnosticData = EnumDiagnosticData<Enum, StorageT, ConcurrencyT>;
+    using IntType = typename DiagnosticData::IntType;
 
-    EnumDiagnosticData<Enum, LockingPolicyT> d(1, ZERO);
+    DiagnosticData d(1, ZERO);
     diag.start();
 
     SECTION("operator=(EnumT)") {
@@ -458,12 +460,12 @@ TEST_CASE("Wiring API") {
     }
 
     SECTION("IntegerDiagnosticData") {
-        testInt<NoLockingPolicy>(diag);
-        testInt<AtomicLockingPolicy>(diag);
+        testInt<NonPersistentStorage, NoConcurrency>(diag);
+        testInt<NonPersistentStorage, AtomicConcurrency>(diag);
     }
 
     SECTION("EnumDiagnosticData") {
-        testEnum<NoLockingPolicy>(diag);
-        testEnum<AtomicLockingPolicy>(diag);
+        testEnum<NonPersistentStorage, NoConcurrency>(diag);
+        testEnum<NonPersistentStorage, AtomicConcurrency>(diag);
     }
 }
