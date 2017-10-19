@@ -19,21 +19,25 @@
 
 #include "spark_wiring_thread.h"
 #include "spark_wiring_interrupts.h"
-#include "spark_wiring_error.h"
 #include "spark_wiring_global.h"
 
 #include "diagnostics.h"
+#include "system_error.h"
+#include "util.h"
 #include "debug.h"
 
-#include <mutex>
+#include <functional>
 #include <atomic>
+#include <type_traits>
 
 namespace particle {
+
+typedef decltype(diag_source::id) DiagnosticDataId;
 
 // Base abstract class for a diagnostic data source
 class AbstractDiagnosticData {
 public:
-    static int get(uint16_t id, void* data, size_t& size);
+    static int get(DiagnosticDataId id, void* data, size_t& size);
     static int get(const diag_source* src, void* data, size_t& size);
 
     // This class is non-copyable
@@ -41,8 +45,8 @@ public:
     AbstractDiagnosticData& operator=(const AbstractDiagnosticData&) = delete;
 
 protected:
-    AbstractDiagnosticData(uint16_t id, diag_type type);
-    AbstractDiagnosticData(uint16_t id, const char* name, diag_type type);
+    AbstractDiagnosticData(DiagnosticDataId id, diag_type type);
+    AbstractDiagnosticData(DiagnosticDataId id, const char* name, diag_type type);
 
     virtual int get(void* data, size_t& size) = 0;
 
@@ -57,11 +61,11 @@ class AbstractIntegerDiagnosticData: public AbstractDiagnosticData {
 public:
     typedef int32_t IntType; // Underlying integer type
 
-    static int get(uint16_t id, IntType& val);
+    static int get(DiagnosticDataId id, IntType& val);
     static int get(const diag_source* src, IntType& val);
 
 protected:
-    explicit AbstractIntegerDiagnosticData(uint16_t id, const char* name = nullptr);
+    explicit AbstractIntegerDiagnosticData(DiagnosticDataId id, const char* name = nullptr);
 
     virtual int get(IntType& val) = 0;
 
@@ -69,110 +73,351 @@ private:
     virtual int get(void* data, size_t& size) override; // AbstractDiagnosticData
 };
 
-template<typename LockingPolicyT>
-class IntegerDiagnosticData:
-        public AbstractIntegerDiagnosticData,
-        private LockingPolicyT {
+// Non-persistent storage policy
+template<typename ValueT, typename KeyT>
+class NonPersistentStorage {
 public:
-    explicit IntegerDiagnosticData(uint16_t id, IntType val = 0);
-    IntegerDiagnosticData(uint16_t id, const char* name, IntType val = 0);
+    explicit NonPersistentStorage(ValueT val, KeyT) :
+            val_(std::move(val)) {
+    }
 
-    IntType operator++();
-    IntType operator++(int);
-    IntType operator--();
-    IntType operator--(int);
-    IntType operator+=(IntType val);
-    IntType operator-=(IntType val);
+    ValueT& value() {
+        return val_;
+    }
 
-    IntegerDiagnosticData<LockingPolicyT>& operator=(IntType val);
-    operator IntType() const;
+    const ValueT& value() const {
+        return val_;
+    }
+
+    void save() {
+    }
 
 private:
-    IntType val_;
+    ValueT val_;
+};
 
-    virtual int get(IntType& val) override; // AbstractIntegerDiagnosticData
+#if Wiring_RetainedMemory
+
+// Storage policy using a retained memory section
+template<typename KeyT, KeyT key>
+struct RetainedStorage {
+    template<typename ValueT, typename>
+    class Type {
+    public:
+        explicit Type(ValueT val, KeyT) {
+            const size_t check = checksum();
+            if (s_check != check) {
+                s_val = std::move(val);
+                s_check = check;
+            }
+        }
+
+        ValueT& value() {
+            return s_val;
+        }
+
+        const ValueT& value() const {
+            return s_val;
+        }
+
+        void save() {
+            s_check = checksum();
+        }
+
+    private:
+        static PARTICLE_RETAINED size_t s_check;
+        static PARTICLE_RETAINED ValueT s_val;
+
+        static size_t checksum() {
+            size_t h = 0;
+            combineHash(h, key);
+            combineHash(h, s_val);
+            return h;
+        }
+    };
+};
+
+#endif // Wiring_RetainedMemory
+
+template<template<typename ValueT, typename KeyT> class StorageT = NonPersistentStorage,
+        typename ConcurrencyT = NoConcurrency>
+class IntegerDiagnosticData:
+        public AbstractIntegerDiagnosticData,
+        private StorageT<AbstractIntegerDiagnosticData::IntType, DiagnosticDataId>,
+        private ConcurrencyT {
+public:
+    typedef StorageT<IntType, DiagnosticDataId> StorageType;
+    typedef ConcurrencyT ConcurrencyType;
+
+    explicit IntegerDiagnosticData(DiagnosticDataId id, IntType val = 0) :
+            IntegerDiagnosticData(id, nullptr, val) {
+    }
+
+    IntegerDiagnosticData(DiagnosticDataId id, const char* name, IntType val = 0) :
+            AbstractIntegerDiagnosticData(id, name),
+            StorageType(val, id) {
+    }
+
+    IntType operator++() {
+        const auto lock = this->lock();
+        const IntType v = ++this->value();
+        this->save();
+        this->unlock(lock);
+        return v;
+    }
+
+    IntType operator++(int) {
+        const auto lock = this->lock();
+        const IntType v = this->value()++;
+        this->save();
+        this->unlock(lock);
+        return v;
+    }
+
+    IntType operator--() {
+        const auto lock = this->lock();
+        const IntType v = --this->value();
+        this->save();
+        this->unlock(lock);
+        return v;
+    }
+
+    IntType operator--(int) {
+        const auto lock = this->lock();
+        const IntType v = this->value()--;
+        this->save();
+        this->unlock(lock);
+        return v;
+    }
+
+    IntType operator+=(IntType val) {
+        const auto lock = this->lock();
+        const IntType v = (this->value() += val);
+        this->save();
+        this->unlock(lock);
+        return v;
+    }
+
+    IntType operator-=(IntType val) {
+        const auto lock = this->lock();
+        const IntType v = (this->value() -= val);
+        this->save();
+        this->unlock(lock);
+        return v;
+    }
+
+    IntegerDiagnosticData& operator=(IntType val) {
+        const auto lock = this->lock();
+        this->value() = val;
+        this->save();
+        this->unlock(lock);
+        return *this;
+    }
+
+    operator IntType() const {
+        const auto lock = this->lock();
+        const IntType v = this->value();
+        this->unlock(lock);
+        return v;
+    }
+
+private:
+    virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
+        const auto lock = this->lock();
+        val = this->value();
+        this->unlock(lock);
+        return SYSTEM_ERROR_NONE;
+    }
 };
 
 template<>
-class IntegerDiagnosticData<AtomicLockingPolicy>: public AbstractIntegerDiagnosticData {
+class IntegerDiagnosticData<NonPersistentStorage, AtomicConcurrency>: public AbstractIntegerDiagnosticData {
 public:
-    explicit IntegerDiagnosticData(uint16_t id, IntType val = 0);
-    IntegerDiagnosticData(uint16_t id, const char* name, IntType val = 0);
+    typedef AtomicConcurrency ConcurrencyType;
 
-    IntType operator++();
-    IntType operator++(int);
-    IntType operator--();
-    IntType operator--(int);
-    IntType operator+=(IntType val);
-    IntType operator-=(IntType val);
+    explicit IntegerDiagnosticData(DiagnosticDataId id, IntType val = 0) :
+            IntegerDiagnosticData(id, nullptr, val) {
+    }
 
-    IntegerDiagnosticData<AtomicLockingPolicy>& operator=(IntType val);
-    operator IntType() const;
+    IntegerDiagnosticData(DiagnosticDataId id, const char* name, IntType val = 0) :
+            AbstractIntegerDiagnosticData(id, name),
+            val_(val) {
+    }
+
+    IntType operator++() {
+        return (val_.fetch_add(1, std::memory_order_relaxed) + 1);
+    }
+
+    IntType operator++(int) {
+        return val_.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    IntType operator--() {
+        return (val_.fetch_sub(1, std::memory_order_relaxed) - 1);
+    }
+
+    IntType operator--(int) {
+        return val_.fetch_sub(1, std::memory_order_relaxed);
+    }
+
+    IntType operator+=(IntType val) {
+        return (val_.fetch_add(val, std::memory_order_relaxed) + val);
+    }
+
+    IntType operator-=(IntType val) {
+        return (val_.fetch_sub(val, std::memory_order_relaxed) - val);
+    }
+
+    IntegerDiagnosticData& operator=(IntType val) {
+        val_.store(val, std::memory_order_relaxed);
+        return *this;
+    }
+
+    operator IntType() const {
+        return val_.load(std::memory_order_relaxed);
+    }
 
 private:
     std::atomic<IntType> val_;
 
-    virtual int get(IntType& val) override; // AbstractIntegerDiagnosticData
+    virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
+        val = val_.load(std::memory_order_relaxed);
+        return SYSTEM_ERROR_NONE;
+    }
 };
 
-template<typename EnumT, typename LockingPolicyT>
+template<typename EnumT, template<typename ValueT, typename KeyT> class StorageT = NonPersistentStorage,
+        typename ConcurrencyT = NoConcurrency>
 class EnumDiagnosticData:
         public AbstractIntegerDiagnosticData,
-        private LockingPolicyT {
+        private StorageT<AbstractIntegerDiagnosticData::IntType, DiagnosticDataId>,
+        private ConcurrencyT {
 public:
     typedef EnumT EnumType;
+    typedef StorageT<IntType, DiagnosticDataId> StorageType;
+    typedef ConcurrencyT ConcurrencyType;
 
-    EnumDiagnosticData(uint16_t id, EnumT val);
-    EnumDiagnosticData(uint16_t id, const char* name, EnumT val);
+    EnumDiagnosticData(DiagnosticDataId id, EnumT val) :
+            EnumDiagnosticData(id, nullptr, val) {
+    }
 
-    EnumDiagnosticData<EnumT, LockingPolicyT>& operator=(EnumT val);
-    operator EnumT() const;
+    EnumDiagnosticData(DiagnosticDataId id, const char* name, EnumT val) :
+            AbstractIntegerDiagnosticData(id, name),
+            StorageType((IntType)val, id) {
+    }
+
+    EnumDiagnosticData& operator=(EnumT val) {
+        const auto lock = this->lock();
+        this->value() = (IntType)val;
+        this->save();
+        this->unlock(lock);
+        return *this;
+    }
+
+    operator EnumT() const {
+        const auto lock = this->lock();
+        const EnumT v = (EnumT)this->value();
+        this->unlock(lock);
+        return v;
+    }
 
 private:
-    IntType val_;
-
-    virtual int get(IntType& val) override; // AbstractIntegerDiagnosticData
+    virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
+        const auto lock = this->lock();
+        val = this->value();
+        this->unlock(lock);
+        return SYSTEM_ERROR_NONE;
+    }
 };
 
 template<typename EnumT>
-class EnumDiagnosticData<EnumT, AtomicLockingPolicy>: public AbstractIntegerDiagnosticData {
+class EnumDiagnosticData<EnumT, NonPersistentStorage, AtomicConcurrency>: public AbstractIntegerDiagnosticData {
 public:
     typedef EnumT EnumType;
+    typedef AtomicConcurrency ConcurrencyType;
 
-    EnumDiagnosticData(uint16_t id, EnumT val);
-    EnumDiagnosticData(uint16_t id, const char* name, EnumT val);
+    EnumDiagnosticData(DiagnosticDataId id, EnumT val) :
+            EnumDiagnosticData(id, nullptr, val) {
+    }
 
-    EnumDiagnosticData<EnumT, AtomicLockingPolicy>& operator=(EnumT val);
-    operator EnumT() const;
+    EnumDiagnosticData(DiagnosticDataId id, const char* name, EnumT val) :
+            AbstractIntegerDiagnosticData(id, name),
+            val_((IntType)val) {
+    }
+
+    EnumDiagnosticData& operator=(EnumT val) {
+        val_.store((IntType)val, std::memory_order_relaxed);
+        return *this;
+    }
+
+    operator EnumT() const {
+        return (EnumT)val_.load(std::memory_order_relaxed);
+    }
 
 private:
     std::atomic<IntType> val_;
 
-    virtual int get(IntType& val) override; // AbstractIntegerDiagnosticData
+    virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
+        val = val_.load(std::memory_order_relaxed);
+        return SYSTEM_ERROR_NONE;
+    }
 };
 
 // Convenience typedefs
-typedef IntegerDiagnosticData<NoLockingPolicy> SimpleIntegerDiagnosticData;
-typedef IntegerDiagnosticData<AtomicLockingPolicy> AtomicIntegerDiagnosticData;
+typedef IntegerDiagnosticData<NonPersistentStorage, NoConcurrency> SimpleIntegerDiagnosticData;
+typedef IntegerDiagnosticData<NonPersistentStorage, AtomicConcurrency> AtomicIntegerDiagnosticData;
 
 template<typename EnumT>
-using SimpleEnumDiagnosticData = EnumDiagnosticData<EnumT, NoLockingPolicy>;
+using SimpleEnumDiagnosticData = EnumDiagnosticData<EnumT, NonPersistentStorage, NoConcurrency>;
 
 template<typename EnumT>
-using AtomicEnumDiagnosticData = EnumDiagnosticData<EnumT, AtomicLockingPolicy>;
+using AtomicEnumDiagnosticData = EnumDiagnosticData<EnumT, NonPersistentStorage, AtomicConcurrency>;
 
-} // namespace particle
+#if Wiring_RetainedMemory
 
-inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, diag_type type) :
+template<DiagnosticDataId id, typename ConcurrencyT = NoConcurrency>
+class RetainedIntegerDiagnosticData:
+        public IntegerDiagnosticData<RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT> {
+public:
+    using BaseType = IntegerDiagnosticData<RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT>;
+    using typename BaseType::IntType;
+
+    explicit RetainedIntegerDiagnosticData(IntType val = 0) :
+            BaseType(id, val) {
+    }
+
+    explicit RetainedIntegerDiagnosticData(const char* name, IntType val = 0) :
+            BaseType(id, name, val) {
+    }
+};
+
+template<typename EnumT, DiagnosticDataId id, typename ConcurrencyT = NoConcurrency>
+class RetainedEnumDiagnosticData:
+        public EnumDiagnosticData<EnumT, RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT> {
+public:
+    using BaseType = EnumDiagnosticData<EnumT, RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT>;
+
+    explicit RetainedEnumDiagnosticData(EnumT val) :
+            BaseType(id, val) {
+    }
+
+    RetainedEnumDiagnosticData(const char* name, EnumT val) :
+            BaseType(id, name, val) {
+    }
+};
+
+#endif // Wiring_RetainedMemory
+
+inline AbstractDiagnosticData::AbstractDiagnosticData(DiagnosticDataId id, diag_type type) :
         AbstractDiagnosticData(id, nullptr, type) {
 }
 
-inline particle::AbstractDiagnosticData::AbstractDiagnosticData(uint16_t id, const char* name, diag_type type) :
+inline AbstractDiagnosticData::AbstractDiagnosticData(DiagnosticDataId id, const char* name, diag_type type) :
         d_{ sizeof(diag_source), 0 /* flags */, id, (uint16_t)type, name, this /* data */, callback } {
     diag_register_source(&d_, nullptr);
 }
 
-inline int particle::AbstractDiagnosticData::get(uint16_t id, void* data, size_t& size) {
+inline int AbstractDiagnosticData::get(DiagnosticDataId id, void* data, size_t& size) {
     const diag_source* src = nullptr;
     const int ret = diag_get_source(id, &src, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
@@ -181,7 +426,7 @@ inline int particle::AbstractDiagnosticData::get(uint16_t id, void* data, size_t
     return get(src, data, size);
 }
 
-inline int particle::AbstractDiagnosticData::get(const diag_source* src, void* data, size_t& size) {
+inline int AbstractDiagnosticData::get(const diag_source* src, void* data, size_t& size) {
     SPARK_ASSERT(src && src->callback);
     diag_source_get_cmd_data d = { sizeof(diag_source_get_cmd_data), 0 /* reserved */, data, size };
     const int ret = src->callback(src, DIAG_SOURCE_CMD_GET, &d);
@@ -191,7 +436,7 @@ inline int particle::AbstractDiagnosticData::get(const diag_source* src, void* d
     return ret;
 }
 
-inline int particle::AbstractDiagnosticData::callback(const diag_source* src, int cmd, void* data) {
+inline int AbstractDiagnosticData::callback(const diag_source* src, int cmd, void* data) {
     const auto d = static_cast<AbstractDiagnosticData*>(src->data);
     switch (cmd) {
     case DIAG_SOURCE_CMD_GET: {
@@ -203,11 +448,11 @@ inline int particle::AbstractDiagnosticData::callback(const diag_source* src, in
     }
 }
 
-inline particle::AbstractIntegerDiagnosticData::AbstractIntegerDiagnosticData(uint16_t id, const char* name) :
+inline AbstractIntegerDiagnosticData::AbstractIntegerDiagnosticData(DiagnosticDataId id, const char* name) :
         AbstractDiagnosticData(id, name, DIAG_TYPE_INT) {
 }
 
-inline int particle::AbstractIntegerDiagnosticData::get(uint16_t id, IntType& val) {
+inline int AbstractIntegerDiagnosticData::get(DiagnosticDataId id, IntType& val) {
     const diag_source* src = nullptr;
     const int ret = diag_get_source(id, &src, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
@@ -216,13 +461,13 @@ inline int particle::AbstractIntegerDiagnosticData::get(uint16_t id, IntType& va
     return get(src, val);
 }
 
-inline int particle::AbstractIntegerDiagnosticData::get(const diag_source* src, IntType& val) {
+inline int AbstractIntegerDiagnosticData::get(const diag_source* src, IntType& val) {
     SPARK_ASSERT(src->type == DIAG_TYPE_INT);
     size_t size = sizeof(IntType);
     return AbstractDiagnosticData::get(src, &val, size);
 }
 
-inline int particle::AbstractIntegerDiagnosticData::get(void* data, size_t& size) {
+inline int AbstractIntegerDiagnosticData::get(void* data, size_t& size) {
     if (!data) {
         size = sizeof(IntType);
         return SYSTEM_ERROR_NONE;
@@ -237,195 +482,4 @@ inline int particle::AbstractIntegerDiagnosticData::get(void* data, size_t& size
     return ret;
 }
 
-template<typename LockingPolicyT>
-inline particle::IntegerDiagnosticData<LockingPolicyT>::IntegerDiagnosticData(uint16_t id, IntType val) :
-        IntegerDiagnosticData(id, nullptr, val) {
-}
-
-template<typename LockingPolicyT>
-inline particle::IntegerDiagnosticData<LockingPolicyT>::IntegerDiagnosticData(uint16_t id, const char* name, IntType val) :
-        AbstractIntegerDiagnosticData(id, name),
-        val_(val) {
-}
-
-template<typename LockingPolicyT>
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<LockingPolicyT>::operator++() {
-    const auto lock = this->lock();
-    const auto val = ++val_;
-    this->unlock(lock);
-    return val;
-}
-
-template<typename LockingPolicyT>
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<LockingPolicyT>::operator++(int) {
-    const auto lock = this->lock();
-    const auto v = val_++;
-    this->unlock(lock);
-    return v;
-}
-
-template<typename LockingPolicyT>
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<LockingPolicyT>::operator--() {
-    const auto lock = this->lock();
-    const auto v = --val_;
-    this->unlock(lock);
-    return v;
-}
-
-template<typename LockingPolicyT>
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<LockingPolicyT>::operator--(int) {
-    const auto lock = this->lock();
-    const auto v = val_--;
-    this->unlock(lock);
-    return v;
-}
-
-template<typename LockingPolicyT>
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<LockingPolicyT>::operator+=(IntType val) {
-    const auto lock = this->lock();
-    const auto v = (val_ += val);
-    this->unlock(lock);
-    return v;
-}
-
-template<typename LockingPolicyT>
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<LockingPolicyT>::operator-=(IntType val) {
-    const auto lock = this->lock();
-    const auto v = (val_ -= val);
-    this->unlock(lock);
-    return v;
-}
-
-template<typename LockingPolicyT>
-inline particle::IntegerDiagnosticData<LockingPolicyT>& particle::IntegerDiagnosticData<LockingPolicyT>::operator=(IntType val) {
-    const auto lock = this->lock();
-    val_ = val;
-    this->unlock(lock);
-    return *this;
-}
-
-template<typename LockingPolicyT>
-inline particle::IntegerDiagnosticData<LockingPolicyT>::operator IntType() const {
-    const auto lock = this->lock();
-    const auto v = val_;
-    this->unlock(lock);
-    return v;
-}
-
-template<typename LockingPolicyT>
-inline int particle::IntegerDiagnosticData<LockingPolicyT>::get(IntType& val) {
-    const auto lock = this->lock();
-    val = val_;
-    this->unlock(lock);
-    return SYSTEM_ERROR_NONE;
-}
-
-inline particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::IntegerDiagnosticData(uint16_t id, IntType val) :
-        IntegerDiagnosticData(id, nullptr, val) {
-}
-
-inline particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::IntegerDiagnosticData(uint16_t id, const char* name, IntType val) :
-        AbstractIntegerDiagnosticData(id, name),
-        val_(val) {
-}
-
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator++() {
-    return (val_.fetch_add(1, std::memory_order_relaxed) + 1);
-}
-
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator++(int) {
-    return val_.fetch_add(1, std::memory_order_relaxed);
-}
-
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator--() {
-    return (val_.fetch_sub(1, std::memory_order_relaxed) - 1);
-}
-
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator--(int) {
-    return val_.fetch_sub(1, std::memory_order_relaxed);
-}
-
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator+=(IntType val) {
-    return (val_.fetch_add(val, std::memory_order_relaxed) + val);
-}
-
-inline particle::AbstractIntegerDiagnosticData::IntType particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator-=(IntType val) {
-    return (val_.fetch_sub(val, std::memory_order_relaxed) - val);
-}
-
-inline particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>& particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator=(IntType val) {
-    val_.store(val, std::memory_order_relaxed);
-    return *this;
-}
-
-inline particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::operator IntType() const {
-    return val_.load(std::memory_order_relaxed);
-}
-
-inline int particle::IntegerDiagnosticData<particle::AtomicLockingPolicy>::get(IntType& val) {
-    val = val_.load(std::memory_order_relaxed);
-    return SYSTEM_ERROR_NONE;
-}
-
-template<typename EnumT, typename LockingPolicyT>
-inline particle::EnumDiagnosticData<EnumT, LockingPolicyT>::EnumDiagnosticData(uint16_t id, EnumT val) :
-        EnumDiagnosticData(id, nullptr, val) {
-}
-
-template<typename EnumT, typename LockingPolicyT>
-inline particle::EnumDiagnosticData<EnumT, LockingPolicyT>::EnumDiagnosticData(uint16_t id, const char* name, EnumT val) :
-        AbstractIntegerDiagnosticData(id, name),
-        val_((IntType)val) {
-}
-
-template<typename EnumT, typename LockingPolicyT>
-inline particle::EnumDiagnosticData<EnumT, LockingPolicyT>& particle::EnumDiagnosticData<EnumT, LockingPolicyT>::operator=(EnumT val) {
-    const auto lock = this->lock();
-    val_ = (IntType)val;
-    this->unlock(lock);
-    return *this;
-}
-
-template<typename EnumT, typename LockingPolicyT>
-inline particle::EnumDiagnosticData<EnumT, LockingPolicyT>::operator EnumT() const {
-    const auto lock = this->lock();
-    const auto v = (EnumT)val_;
-    this->unlock(lock);
-    return v;
-}
-
-template<typename EnumT, typename LockingPolicyT>
-inline int particle::EnumDiagnosticData<EnumT, LockingPolicyT>::get(IntType& val) {
-    const auto lock = this->lock();
-    val = (EnumT)val_;
-    this->unlock(lock);
-    return SYSTEM_ERROR_NONE;
-}
-
-template<typename EnumT>
-inline particle::EnumDiagnosticData<EnumT, particle::AtomicLockingPolicy>::EnumDiagnosticData(uint16_t id, EnumT val) :
-        EnumDiagnosticData(id, nullptr, val) {
-}
-
-template<typename EnumT>
-inline particle::EnumDiagnosticData<EnumT, particle::AtomicLockingPolicy>::EnumDiagnosticData(uint16_t id, const char* name, EnumT val) :
-        AbstractIntegerDiagnosticData(id, name),
-        val_((IntType)val) {
-}
-
-template<typename EnumT>
-inline particle::EnumDiagnosticData<EnumT, particle::AtomicLockingPolicy>& particle::EnumDiagnosticData<EnumT, particle::AtomicLockingPolicy>::operator=(EnumT val) {
-    val_.store((IntType)val, std::memory_order_relaxed);
-    return *this;
-}
-
-template<typename EnumT>
-inline particle::EnumDiagnosticData<EnumT, particle::AtomicLockingPolicy>::operator EnumT() const {
-    return (EnumT)val_.load(std::memory_order_relaxed);
-}
-
-template<typename EnumT>
-inline int particle::EnumDiagnosticData<EnumT, particle::AtomicLockingPolicy>::get(IntType& val) {
-    val = val_.load(std::memory_order_relaxed);
-    return SYSTEM_ERROR_NONE;
-}
+} // namespace particle

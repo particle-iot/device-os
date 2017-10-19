@@ -233,8 +233,8 @@ public:
 
 namespace particle {
 
-// Class implementing a dummy locking policy
-class NoLockingPolicy {
+// Class implementing a dummy concurrency policy
+class NoConcurrency {
 public:
     struct Lock {
     };

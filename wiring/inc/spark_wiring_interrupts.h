@@ -77,8 +77,8 @@ public:
 
 namespace particle {
 
-// Class implementing a locking policy based on critical sections
-class AtomicLockingPolicy {
+// Class implementing a concurrency policy based on critical sections
+class AtomicConcurrency {
 public:
     int lock() const {
         return HAL_disable_irq();

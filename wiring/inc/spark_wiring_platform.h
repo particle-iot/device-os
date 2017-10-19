@@ -52,6 +52,7 @@
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
 #define Wiring_WpaEnterprise 1
+#define Wiring_RetainedMemory 1
 #endif
 
 #if PLATFORM_ID==7
@@ -74,6 +75,7 @@
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
 #define Wiring_WpaEnterprise 1
+#define Wiring_RetainedMemory 1
 #endif
 
 #if PLATFORM_ID==9      // ethernet
@@ -88,7 +90,6 @@
 #define Wiring_Serial5 1
 #define Wiring_SPI1 1
 #define Wiring_SPI2 1
-
 #define Wiring_Wire1 1
 #define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
 #define Wiring_SetupButtonUX 1
@@ -96,6 +97,7 @@
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
+#define Wiring_RetainedMemory 1
 #endif
 
 #ifndef Wiring_SPI1
@@ -156,6 +158,10 @@
 
 #ifndef Wiring_WpaEnterprise
 #define Wiring_WpaEnterprise 0
+#endif
+
+#ifndef Wiring_RetainedMemory
+#define Wiring_RetainedMemory 0
 #endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */

@@ -17,23 +17,23 @@
 
 #pragma once
 
-#include "spark_wiring_platform.h"
+#include <functional>
 
-#if Wiring_RetainedMemory
+namespace particle {
 
-#include "platform_headers.h"
+namespace detail {
 
-#if defined(PARTICLE_USER_MODULE)
-#define PARTICLE_RETAINED retained
-#else
-#define PARTICLE_RETAINED retained_system
-#endif
+inline void combineHash(size_t& seed, size_t value) {
+    seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
 
-#endif // Wiring_RetainedMemory
+} // namespace particle::detail
 
-#if defined(PARTICLE_USER_MODULE) && !defined(PARTICLE_USING_DEPRECATED_API)
-#define PARTICLE_DEPRECATED_API(_msg) \
-        __attribute__((deprecated(_msg " Define PARTICLE_USING_DEPRECATED_API macro to avoid this warning.")))
-#else
-#define PARTICLE_DEPRECATED_API(_msg)
-#endif
+template<typename T>
+inline void combineHash(size_t& seed, const T& value) {
+    // The implementation is based on boost::hash_combine()
+    std::hash<T> hash;
+    detail::combineHash(seed, hash(value));
+}
+
+} // namespace particle
