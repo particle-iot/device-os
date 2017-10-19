@@ -137,6 +137,14 @@ struct RetainedStorage {
     };
 };
 
+template<typename KeyT, KeyT key>
+template<typename ValueT, typename T>
+size_t RetainedStorage<KeyT, key>::Type<ValueT, T>::s_check = 0;
+
+template<typename KeyT, KeyT key>
+template<typename ValueT, typename T>
+ValueT RetainedStorage<KeyT, key>::Type<ValueT, T>::s_val = ValueT();
+
 #endif // Wiring_RetainedMemory
 
 template<template<typename ValueT, typename KeyT> class StorageT = NonPersistentStorage,
@@ -389,6 +397,11 @@ public:
     explicit RetainedIntegerDiagnosticData(const char* name, IntType val = 0) :
             BaseType(id, name, val) {
     }
+
+    RetainedIntegerDiagnosticData& operator=(IntType val) {
+        BaseType::operator=(val);
+        return *this;
+    }
 };
 
 template<typename EnumT, DiagnosticDataId id, typename ConcurrencyT = NoConcurrency>
@@ -403,6 +416,11 @@ public:
 
     RetainedEnumDiagnosticData(const char* name, EnumT val) :
             BaseType(id, name, val) {
+    }
+
+    RetainedEnumDiagnosticData& operator=(EnumT val) {
+        BaseType::operator=(val);
+        return *this;
     }
 };
 
