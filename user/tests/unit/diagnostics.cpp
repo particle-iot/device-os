@@ -160,10 +160,46 @@ public:
     }
 };
 
-template<template<typename ValueT, typename KeyT> class StorageT, typename ConcurrencyT>
-void testInt(DiagService& diag) {
-    using DiagnosticData = IntegerDiagnosticData<StorageT, ConcurrencyT>;
-    using IntType = typename DiagnosticData::IntType;
+// Dummy storage for persistent diagnostic data
+template<typename ValueT>
+class NonPersistentStorage {
+public:
+    typedef ValueT ValueType;
+
+    NonPersistentStorage() :
+            val_(ValueT()),
+            storedVal_(ValueT()) {
+    }
+
+    void init(const ValueT& val) {
+        val_ = val;
+        storedVal_ = val;
+    }
+
+    void update() {
+        storedVal_ = val_;
+    }
+
+    ValueT& value() {
+        return val_;
+    }
+
+    const ValueT& value() const {
+        return val_;
+    }
+
+    operator ValueT() const {
+        return storedVal_;
+    }
+
+private:
+    ValueT val_, storedVal_;
+};
+
+template<template<typename ConcurrencyT> class DiagnosticDataT, typename ConcurrencyT>
+void testIntegerDiagnosticData(DiagService& diag) {
+    using IntType = AbstractIntegerDiagnosticData::IntType;
+    using DiagnosticData = DiagnosticDataT<ConcurrencyT>;
 
     DiagnosticData d(1);
     diag.start();
@@ -224,16 +260,89 @@ void testInt(DiagService& diag) {
     }
 }
 
-template<template<typename ValueT, typename KeyT> class StorageT, typename ConcurrencyT>
-void testEnum(DiagService& diag) {
+template<template<typename StorageT, typename ConcurrencyT> class DiagnosticDataT, typename ConcurrencyT>
+void testPersistentIntegerDiagnosticData(DiagService& diag) {
+    using IntType = AbstractIntegerDiagnosticData::IntType;
+    using DiagnosticData = DiagnosticDataT<NonPersistentStorage<IntType>, ConcurrencyT>;
+
+    NonPersistentStorage<IntType> s;
+    DiagnosticData d(&s, 1);
+    diag.start();
+
+    SECTION("operator=(IntType)") {
+        CHECK(&(d = 1) == &d);
+        IntType val = -1;
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == 1);
+        CHECK(s == 1);
+        CHECK(&(d = 2) == &d);
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == 2);
+        CHECK(s == 2);
+    }
+
+    SECTION("operator IntType()") {
+        d = 1;
+        IntType val = d;
+        CHECK(val == 1);
+        d = 2;
+        val = d;
+        CHECK(val == 2);
+    }
+
+    SECTION("operator++()") {
+        CHECK(++d == 1);
+        CHECK(++d == 2);
+        CHECK(d == 2);
+        CHECK(s == 2);
+    }
+
+    SECTION("operator++(int)") {
+        CHECK(d++ == 0);
+        CHECK(d++ == 1);
+        CHECK(d == 2);
+        CHECK(s == 2);
+    }
+
+    SECTION("operator--()") {
+        CHECK(--d == -1);
+        CHECK(--d == -2);
+        CHECK(d == -2);
+        CHECK(s == -2);
+    }
+
+    SECTION("operator--(int)") {
+        CHECK(d-- == 0);
+        CHECK(d-- == -1);
+        CHECK(d == -2);
+        CHECK(s == -2);
+    }
+
+    SECTION("operator+=(IntType)") {
+        CHECK((d += 1) == 1);
+        CHECK((d += 2) == 3);
+        CHECK(d == 3);
+        CHECK(s == 3);
+    }
+
+    SECTION("operator-=(IntType)") {
+        CHECK((d -= 1) == -1);
+        CHECK((d -= 2) == -3);
+        CHECK(d == -3);
+        CHECK(s == -3);
+    }
+}
+
+template<template<typename EnumT, typename ConcurrencyT> class DiagnosticDataT, typename ConcurrencyT>
+void testEnumDiagnosticData(DiagService& diag) {
     enum Enum {
         ZERO,
         ONE,
         TWO
     };
 
-    using DiagnosticData = EnumDiagnosticData<Enum, StorageT, ConcurrencyT>;
-    using IntType = typename DiagnosticData::IntType;
+    using IntType = AbstractIntegerDiagnosticData::IntType;
+    using DiagnosticData = DiagnosticDataT<Enum, ConcurrencyT>;
 
     DiagnosticData d(1, ZERO);
     diag.start();
@@ -246,6 +355,43 @@ void testEnum(DiagService& diag) {
         CHECK(&(d = TWO) == &d);
         CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
         CHECK(val == TWO);
+    }
+
+    SECTION("operator EnumT()") {
+        d = ONE;
+        Enum val = d;
+        CHECK(val == ONE);
+        d = TWO;
+        val = d;
+        CHECK(val == TWO);
+    }
+}
+
+template<template<typename EnumT, typename StorageT, typename ConcurrencyT> class DiagnosticDataT, typename ConcurrencyT>
+void testPersistentEnumDiagnosticData(DiagService& diag) {
+    enum Enum {
+        ZERO,
+        ONE,
+        TWO
+    };
+
+    using IntType = AbstractIntegerDiagnosticData::IntType;
+    using DiagnosticData = DiagnosticDataT<Enum, NonPersistentStorage<IntType>, ConcurrencyT>;
+
+    NonPersistentStorage<IntType> s;
+    DiagnosticData d(&s, 1, ZERO);
+    diag.start();
+
+    SECTION("operator=(EnumT)") {
+        CHECK(&(d = ONE) == &d);
+        IntType val = -1;
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == ONE);
+        CHECK(s == ONE);
+        CHECK(&(d = TWO) == &d);
+        CHECK(AbstractIntegerDiagnosticData::get(1, val) == 0);
+        CHECK(val == TWO);
+        CHECK(s == TWO);
     }
 
     SECTION("operator EnumT()") {
@@ -460,12 +606,22 @@ TEST_CASE("Wiring API") {
     }
 
     SECTION("IntegerDiagnosticData") {
-        testInt<NonPersistentStorage, NoConcurrency>(diag);
-        testInt<NonPersistentStorage, AtomicConcurrency>(diag);
+        testIntegerDiagnosticData<IntegerDiagnosticData, NoConcurrency>(diag);
+        testIntegerDiagnosticData<IntegerDiagnosticData, AtomicConcurrency>(diag);
+    }
+
+    SECTION("PersistentIntegerDiagnosticData") {
+        testPersistentIntegerDiagnosticData<PersistentIntegerDiagnosticData, NoConcurrency>(diag);
+        // testPersistentIntegerDiagnosticData<PersistentIntegerDiagnosticData, AtomicConcurrency>(diag);
     }
 
     SECTION("EnumDiagnosticData") {
-        testEnum<NonPersistentStorage, NoConcurrency>(diag);
-        testEnum<NonPersistentStorage, AtomicConcurrency>(diag);
+        testEnumDiagnosticData<EnumDiagnosticData, NoConcurrency>(diag);
+        testEnumDiagnosticData<EnumDiagnosticData, AtomicConcurrency>(diag);
+    }
+
+    SECTION("PersistentEnumDiagnosticData") {
+        testPersistentEnumDiagnosticData<PersistentEnumDiagnosticData, NoConcurrency>(diag);
+        // testPersistentEnumDiagnosticData<PersistentEnumDiagnosticData, AtomicConcurrency>(diag);
     }
 }

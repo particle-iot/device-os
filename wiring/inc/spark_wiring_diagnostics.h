@@ -26,9 +26,7 @@
 #include "util.h"
 #include "debug.h"
 
-#include <functional>
 #include <atomic>
-#include <type_traits>
 
 namespace particle {
 
@@ -73,176 +71,90 @@ private:
     virtual int get(void* data, size_t& size) override; // AbstractDiagnosticData
 };
 
-// Non-persistent storage policy
-template<typename ValueT, typename KeyT>
-class NonPersistentStorage {
-public:
-    explicit NonPersistentStorage(ValueT val, KeyT) :
-            val_(std::move(val)) {
-    }
-
-    ValueT& value() {
-        return val_;
-    }
-
-    const ValueT& value() const {
-        return val_;
-    }
-
-    void save() {
-    }
-
-private:
-    ValueT val_;
-};
-
-#if Wiring_RetainedMemory
-
-// Storage policy using a retained memory section
-template<typename KeyT, KeyT key>
-struct RetainedStorage {
-    template<typename ValueT, typename>
-    class Type {
-    public:
-        explicit Type(ValueT val, KeyT) {
-            const size_t check = checksum();
-            if (s_check != check) {
-                s_val = std::move(val);
-                s_check = check;
-            }
-        }
-
-        ValueT& value() {
-            return s_val;
-        }
-
-        const ValueT& value() const {
-            return s_val;
-        }
-
-        void save() {
-            s_check = checksum();
-        }
-
-    private:
-        static PARTICLE_RETAINED size_t s_check;
-        static PARTICLE_RETAINED ValueT s_val;
-
-        static size_t checksum() {
-            size_t h = 0;
-            combineHash(h, key);
-            combineHash(h, s_val);
-            return h;
-        }
-    };
-};
-
-template<typename KeyT, KeyT key>
-template<typename ValueT, typename T>
-size_t RetainedStorage<KeyT, key>::Type<ValueT, T>::s_check = 0;
-
-template<typename KeyT, KeyT key>
-template<typename ValueT, typename T>
-ValueT RetainedStorage<KeyT, key>::Type<ValueT, T>::s_val = ValueT();
-
-#endif // Wiring_RetainedMemory
-
-template<template<typename ValueT, typename KeyT> class StorageT = NonPersistentStorage,
-        typename ConcurrencyT = NoConcurrency>
+template<typename ConcurrencyT = NoConcurrency>
 class IntegerDiagnosticData:
         public AbstractIntegerDiagnosticData,
-        private StorageT<AbstractIntegerDiagnosticData::IntType, DiagnosticDataId>,
         private ConcurrencyT {
 public:
-    typedef StorageT<IntType, DiagnosticDataId> StorageType;
-    typedef ConcurrencyT ConcurrencyType;
-
     explicit IntegerDiagnosticData(DiagnosticDataId id, IntType val = 0) :
             IntegerDiagnosticData(id, nullptr, val) {
     }
 
     IntegerDiagnosticData(DiagnosticDataId id, const char* name, IntType val = 0) :
             AbstractIntegerDiagnosticData(id, name),
-            StorageType(val, id) {
+            val_(val) {
     }
 
     IntType operator++() {
-        const auto lock = this->lock();
-        const IntType v = ++this->value();
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = ++val_;
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator++(int) {
-        const auto lock = this->lock();
-        const IntType v = this->value()++;
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = val_++;
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator--() {
-        const auto lock = this->lock();
-        const IntType v = --this->value();
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = --val_;
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator--(int) {
-        const auto lock = this->lock();
-        const IntType v = this->value()--;
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = val_--;
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator+=(IntType val) {
-        const auto lock = this->lock();
-        const IntType v = (this->value() += val);
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = (val_ += val);
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator-=(IntType val) {
-        const auto lock = this->lock();
-        const IntType v = (this->value() -= val);
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = (val_ -= val);
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntegerDiagnosticData& operator=(IntType val) {
-        const auto lock = this->lock();
-        this->value() = val;
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        val_ = val;
+        ConcurrencyT::unlock(lock);
         return *this;
     }
 
     operator IntType() const {
-        const auto lock = this->lock();
-        const IntType v = this->value();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = val_;
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
 private:
+    IntType val_;
+
     virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
-        const auto lock = this->lock();
-        val = this->value();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        val = val_;
+        ConcurrencyT::unlock(lock);
         return SYSTEM_ERROR_NONE;
     }
 };
 
 template<>
-class IntegerDiagnosticData<NonPersistentStorage, AtomicConcurrency>: public AbstractIntegerDiagnosticData {
+class IntegerDiagnosticData<AtomicConcurrency>: public AbstractIntegerDiagnosticData {
 public:
-    typedef AtomicConcurrency ConcurrencyType;
-
     explicit IntegerDiagnosticData(DiagnosticDataId id, IntType val = 0) :
             IntegerDiagnosticData(id, nullptr, val) {
     }
@@ -294,16 +206,101 @@ private:
     }
 };
 
-template<typename EnumT, template<typename ValueT, typename KeyT> class StorageT = NonPersistentStorage,
-        typename ConcurrencyT = NoConcurrency>
+template<typename StorageT, typename ConcurrencyT = NoConcurrency>
+class PersistentIntegerDiagnosticData:
+        public AbstractIntegerDiagnosticData,
+        private ConcurrencyT {
+public:
+    PersistentIntegerDiagnosticData(StorageT* storage, DiagnosticDataId id, IntType val = 0) :
+            PersistentIntegerDiagnosticData(storage, id, nullptr, val) {
+    }
+
+    PersistentIntegerDiagnosticData(StorageT* storage, DiagnosticDataId id, const char* name, IntType val = 0) :
+            AbstractIntegerDiagnosticData(id, name),
+            storage_(storage) {
+        storage_->init(val);
+    }
+
+    IntType operator++() {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = ++storage_->value();
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator++(int) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = storage_->value()++;
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator--() {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = --storage_->value();
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator--(int) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = storage_->value()--;
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator+=(IntType val) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = (storage_->value() += val);
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator-=(IntType val) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = (storage_->value() -= val);
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    PersistentIntegerDiagnosticData& operator=(IntType val) {
+        const auto lock = ConcurrencyT::lock();
+        storage_->value() = val;
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return *this;
+    }
+
+    operator IntType() const {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = storage_->value();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+private:
+    StorageT* storage_;
+
+    virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
+        const auto lock = ConcurrencyT::lock();
+        val = storage_->value();
+        ConcurrencyT::unlock(lock);
+        return SYSTEM_ERROR_NONE;
+    }
+};
+
+template<typename EnumT, typename ConcurrencyT = NoConcurrency>
 class EnumDiagnosticData:
         public AbstractIntegerDiagnosticData,
-        private StorageT<AbstractIntegerDiagnosticData::IntType, DiagnosticDataId>,
         private ConcurrencyT {
 public:
     typedef EnumT EnumType;
-    typedef StorageT<IntType, DiagnosticDataId> StorageType;
-    typedef ConcurrencyT ConcurrencyType;
 
     EnumDiagnosticData(DiagnosticDataId id, EnumT val) :
             EnumDiagnosticData(id, nullptr, val) {
@@ -311,38 +308,38 @@ public:
 
     EnumDiagnosticData(DiagnosticDataId id, const char* name, EnumT val) :
             AbstractIntegerDiagnosticData(id, name),
-            StorageType((IntType)val, id) {
+            val_((IntType)val) {
     }
 
     EnumDiagnosticData& operator=(EnumT val) {
-        const auto lock = this->lock();
-        this->value() = (IntType)val;
-        this->save();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        val_ = (IntType)val;
+        ConcurrencyT::unlock(lock);
         return *this;
     }
 
     operator EnumT() const {
-        const auto lock = this->lock();
-        const EnumT v = (EnumT)this->value();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        const EnumT v = (EnumT)val_;
+        ConcurrencyT::unlock(lock);
         return v;
     }
 
 private:
+    IntType val_;
+
     virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
-        const auto lock = this->lock();
-        val = this->value();
-        this->unlock(lock);
+        const auto lock = ConcurrencyT::lock();
+        val = (IntType)val_;
+        ConcurrencyT::unlock(lock);
         return SYSTEM_ERROR_NONE;
     }
 };
 
 template<typename EnumT>
-class EnumDiagnosticData<EnumT, NonPersistentStorage, AtomicConcurrency>: public AbstractIntegerDiagnosticData {
+class EnumDiagnosticData<EnumT, AtomicConcurrency>: public AbstractIntegerDiagnosticData {
 public:
     typedef EnumT EnumType;
-    typedef AtomicConcurrency ConcurrencyType;
 
     EnumDiagnosticData(DiagnosticDataId id, EnumT val) :
             EnumDiagnosticData(id, nullptr, val) {
@@ -371,60 +368,102 @@ private:
     }
 };
 
+template<typename EnumT, typename StorageT, typename ConcurrencyT = NoConcurrency>
+class PersistentEnumDiagnosticData:
+        public AbstractIntegerDiagnosticData,
+        private ConcurrencyT {
+public:
+    typedef EnumT EnumType;
+    typedef typename StorageT::ValueType ValueType;
+
+    PersistentEnumDiagnosticData(StorageT* storage, DiagnosticDataId id, EnumT val) :
+            PersistentEnumDiagnosticData(storage, id, nullptr, val) {
+    }
+
+    PersistentEnumDiagnosticData(StorageT* storage, DiagnosticDataId id, const char* name, EnumT val) :
+            AbstractIntegerDiagnosticData(id, name),
+            storage_(storage) {
+        storage_->init((ValueType)val);
+    }
+
+    PersistentEnumDiagnosticData& operator=(EnumT val) {
+        const auto lock = ConcurrencyT::lock();
+        storage_->value() = (ValueType)val;
+        storage_->update();
+        ConcurrencyT::unlock(lock);
+        return *this;
+    }
+
+    operator EnumT() const {
+        const auto lock = ConcurrencyT::lock();
+        const EnumT v = (EnumT)storage_->value();
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+private:
+    StorageT* storage_;
+
+    virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
+        const auto lock = ConcurrencyT::lock();
+        val = (IntType)storage_->value();
+        ConcurrencyT::unlock(lock);
+        return SYSTEM_ERROR_NONE;
+    }
+};
+
+template<typename ValueT, DiagnosticDataId id>
+class RetainedDiagnosticDataStorage {
+public:
+    typedef ValueT ValueType;
+
+    void init(ValueT val) {
+        const size_t check = checksum();
+        if (check_ != check) {
+            val_ = std::move(val);
+            check_ = check;
+        }
+    }
+
+    void update() {
+        check_ = checksum();
+    }
+
+    ValueT& value() {
+        return val_;
+    }
+
+    const ValueT& value() const {
+        return val_;
+    }
+
+private:
+    ValueT val_;
+    size_t check_;
+
+    size_t checksum() const {
+        size_t h = 0;
+        combineHash(h, id);
+        combineHash(h, (typename UnderlyingType<ValueT>::Type)val_);
+        return h;
+    }
+};
+
 // Convenience typedefs
-typedef IntegerDiagnosticData<NonPersistentStorage, NoConcurrency> SimpleIntegerDiagnosticData;
-typedef IntegerDiagnosticData<NonPersistentStorage, AtomicConcurrency> AtomicIntegerDiagnosticData;
+typedef IntegerDiagnosticData<NoConcurrency> SimpleIntegerDiagnosticData;
+typedef IntegerDiagnosticData<AtomicConcurrency> AtomicIntegerDiagnosticData;
+
+template<DiagnosticDataId id>
+using RetainedIntegerDiagnosticDataStorage = RetainedDiagnosticDataStorage<AbstractIntegerDiagnosticData::IntType, id>;
 
 template<typename EnumT>
-using SimpleEnumDiagnosticData = EnumDiagnosticData<EnumT, NonPersistentStorage, NoConcurrency>;
+using SimpleEnumDiagnosticData = EnumDiagnosticData<EnumT, NoConcurrency>;
 
 template<typename EnumT>
-using AtomicEnumDiagnosticData = EnumDiagnosticData<EnumT, NonPersistentStorage, AtomicConcurrency>;
+using AtomicEnumDiagnosticData = EnumDiagnosticData<EnumT, AtomicConcurrency>;
 
-#if Wiring_RetainedMemory
-
-template<DiagnosticDataId id, typename ConcurrencyT = NoConcurrency>
-class RetainedIntegerDiagnosticData:
-        public IntegerDiagnosticData<RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT> {
-public:
-    using BaseType = IntegerDiagnosticData<RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT>;
-    using typename BaseType::IntType;
-
-    explicit RetainedIntegerDiagnosticData(IntType val = 0) :
-            BaseType(id, val) {
-    }
-
-    explicit RetainedIntegerDiagnosticData(const char* name, IntType val = 0) :
-            BaseType(id, name, val) {
-    }
-
-    RetainedIntegerDiagnosticData& operator=(IntType val) {
-        BaseType::operator=(val);
-        return *this;
-    }
-};
-
-template<typename EnumT, DiagnosticDataId id, typename ConcurrencyT = NoConcurrency>
-class RetainedEnumDiagnosticData:
-        public EnumDiagnosticData<EnumT, RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT> {
-public:
-    using BaseType = EnumDiagnosticData<EnumT, RetainedStorage<DiagnosticDataId, id>::template Type, ConcurrencyT>;
-
-    explicit RetainedEnumDiagnosticData(EnumT val) :
-            BaseType(id, val) {
-    }
-
-    RetainedEnumDiagnosticData(const char* name, EnumT val) :
-            BaseType(id, name, val) {
-    }
-
-    RetainedEnumDiagnosticData& operator=(EnumT val) {
-        BaseType::operator=(val);
-        return *this;
-    }
-};
-
-#endif // Wiring_RetainedMemory
+template<typename EnumT, DiagnosticDataId id>
+using RetainedEnumDiagnosticDataStorage = RetainedDiagnosticDataStorage<EnumT, id>;
 
 inline AbstractDiagnosticData::AbstractDiagnosticData(DiagnosticDataId id, diag_type type) :
         AbstractDiagnosticData(id, nullptr, type) {
