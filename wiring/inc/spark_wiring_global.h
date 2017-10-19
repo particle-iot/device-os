@@ -17,20 +17,6 @@
 
 #pragma once
 
-#include "spark_wiring_platform.h"
-
-#if Wiring_RetainedMemory
-
-#include "platform_headers.h"
-
-#if defined(PARTICLE_USER_MODULE)
-#define PARTICLE_RETAINED retained
-#else
-#define PARTICLE_RETAINED retained_system
-#endif
-
-#endif // Wiring_RetainedMemory
-
 #if defined(PARTICLE_USER_MODULE) && !defined(PARTICLE_USING_DEPRECATED_API)
 #define PARTICLE_DEPRECATED_API(_msg) \
         __attribute__((deprecated(_msg " Define PARTICLE_USING_DEPRECATED_API macro to avoid this warning.")))
