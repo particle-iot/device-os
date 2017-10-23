@@ -26,6 +26,7 @@
 
 #include "spark_wiring_fuel.h"
 #include <mutex>
+#include "spark_wiring_power.h"
 
 FuelGauge::FuelGauge(bool _lock) :
     lock_(_lock)
@@ -83,6 +84,31 @@ float FuelGauge::getSoC() {
 
 	readRegister(SOC_REGISTER, MSB, LSB);
 	return detail::_getSoC(MSB, LSB);
+}
+
+float FuelGauge::getNormalizedSoC() {
+    std::lock_guard<FuelGauge> l(*this);
+    PMIC power(true);
+
+    const float soc = getSoC() / 100.0f;
+    const float termV = ((float)power.getChargeVoltageValue()) / 1000.0f;
+    const float magicVoltageDiff = 0.1f;
+    const float reference100PercentV = 4.2f;
+    const float referenceMaxV = std::max(reference100PercentV, termV) - magicVoltageDiff;
+
+    const float magicError = 0.05f;
+    const float maxCharge = (1.0f - (reference100PercentV - referenceMaxV)) - magicError;
+    const float minCharge = 0.2f; // 20%
+
+    float normalized = (soc - minCharge) * (1.0f / (maxCharge - minCharge)) + 0.0f;
+    // Clamp at [0.0, 1.0]
+    if (normalized < 0.0f) {
+        normalized = 0.0f;
+    } else if (normalized > 1.0f) {
+        normalized = 1.0f;
+    }
+
+    return normalized * 100.0f;
 }
 
 // Return the version number of the chip
