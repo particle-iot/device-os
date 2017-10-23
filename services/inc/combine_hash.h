@@ -18,20 +18,8 @@
 #pragma once
 
 #include <functional>
-#include <type_traits>
 
 namespace particle {
-
-// Wrapper for std::underlying_type that falls back to the original type if it is not an enum
-template<typename T, typename EnableT = void>
-struct UnderlyingType {
-    typedef T Type;
-};
-
-template<typename T>
-struct UnderlyingType<T, typename std::enable_if<std::is_enum<T>::value>::type> {
-    typedef typename std::underlying_type<T>::type Type;
-};
 
 template<typename T>
 inline void combineHash(size_t& seed, const T& value) {
