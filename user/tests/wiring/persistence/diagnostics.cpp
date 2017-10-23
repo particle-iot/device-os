@@ -1,14 +1,6 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-#define RETAINED_INTEGER_DIAGNOSTIC_DATA(_name, _id, _val, _concur) \
-        retained RetainedIntegerDiagnosticDataStorage storage##_id; \
-        PersistentIntegerDiagnosticData<decltype(storage##_id), _concur> _name(storage##_id, _id, _val);
-
-#define RETAINED_ENUM_DIAGNOSTIC_DATA(_name, _id, _val, _concur) \
-        retained RetainedEnumDiagnosticDataStorage<decltype(_val)> storage##_id; \
-        PersistentEnumDiagnosticData<decltype(_val), decltype(storage##_id), _concur> _name(storage##_id, _id, _val);
-
 namespace {
 
 using namespace particle;
@@ -34,15 +26,15 @@ enum Enum {
 
 const unsigned MAGIC = 0x12345678;
 
-RETAINED_INTEGER_DIAGNOSTIC_DATA(int1, INT_1, 1, NoConcurrency);
-RETAINED_INTEGER_DIAGNOSTIC_DATA(int2, INT_2, 2, NoConcurrency);
-RETAINED_INTEGER_DIAGNOSTIC_DATA(int3, INT_3, 3, AtomicConcurrency);
-RETAINED_INTEGER_DIAGNOSTIC_DATA(int4, INT_4, 4, AtomicConcurrency);
+PARTICLE_RETAINED_INTEGER_DIAGNOSTIC_DATA(int1, INT_1, "int1", 1); // NoConcurrency
+PARTICLE_RETAINED_INTEGER_DIAGNOSTIC_DATA(int2, INT_2, "int2", 2); // NoConcurrency
+PARTICLE_RETAINED_INTEGER_DIAGNOSTIC_DATA(int3, INT_3, "int3", 3, AtomicConcurrency);
+PARTICLE_RETAINED_INTEGER_DIAGNOSTIC_DATA(int4, INT_4, "int4", 4, AtomicConcurrency);
 
-RETAINED_ENUM_DIAGNOSTIC_DATA(enum1, ENUM_1, ONE, NoConcurrency);
-RETAINED_ENUM_DIAGNOSTIC_DATA(enum2, ENUM_2, TWO, NoConcurrency);
-RETAINED_ENUM_DIAGNOSTIC_DATA(enum3, ENUM_3, THREE, AtomicConcurrency);
-RETAINED_ENUM_DIAGNOSTIC_DATA(enum4, ENUM_4, FOUR, AtomicConcurrency);
+PARTICLE_RETAINED_ENUM_DIAGNOSTIC_DATA(enum1, ENUM_1, "enum1", ONE); // NoConcurrency
+PARTICLE_RETAINED_ENUM_DIAGNOSTIC_DATA(enum2, ENUM_2, "enum2", TWO); // NoConcurrency
+PARTICLE_RETAINED_ENUM_DIAGNOSTIC_DATA(enum3, ENUM_3, "enum3", THREE, AtomicConcurrency);
+PARTICLE_RETAINED_ENUM_DIAGNOSTIC_DATA(enum4, ENUM_4, "enum4", FOUR, AtomicConcurrency);
 
 retained unsigned magic;
 

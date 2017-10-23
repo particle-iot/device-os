@@ -17,6 +17,12 @@
 
 #pragma once
 
+#if defined(PARTICLE_USER_MODULE)
+#define PARTICLE_RETAINED retained
+#else
+#define PARTICLE_RETAINED retained_system
+#endif
+
 #if defined(PARTICLE_USER_MODULE) && !defined(PARTICLE_USING_DEPRECATED_API)
 #define PARTICLE_DEPRECATED_API(_msg) \
         __attribute__((deprecated(_msg " Define PARTICLE_USING_DEPRECATED_API macro to avoid this warning.")))
