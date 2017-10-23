@@ -266,7 +266,7 @@ void testPersistentIntegerDiagnosticData(DiagService& diag) {
     using DiagnosticData = DiagnosticDataT<NonPersistentStorage<IntType>, ConcurrencyT>;
 
     NonPersistentStorage<IntType> s;
-    DiagnosticData d(&s, 1);
+    DiagnosticData d(s, 1);
     diag.start();
 
     SECTION("operator=(IntType)") {
@@ -379,7 +379,7 @@ void testPersistentEnumDiagnosticData(DiagService& diag) {
     using DiagnosticData = DiagnosticDataT<Enum, NonPersistentStorage<IntType>, ConcurrencyT>;
 
     NonPersistentStorage<IntType> s;
-    DiagnosticData d(&s, 1, ZERO);
+    DiagnosticData d(s, 1, ZERO);
     diag.start();
 
     SECTION("operator=(EnumT)") {
