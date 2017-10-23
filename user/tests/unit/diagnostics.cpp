@@ -171,12 +171,12 @@ public:
             storedVal_(ValueT()) {
     }
 
-    void init(const ValueT& val) {
+    void init(DiagnosticDataId id, const ValueT& val) {
         val_ = val;
         storedVal_ = val;
     }
 
-    void update() {
+    void update(DiagnosticDataId id) {
         storedVal_ = val_;
     }
 
