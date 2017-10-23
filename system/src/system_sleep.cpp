@@ -178,9 +178,9 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
 #endif
 
     led_set_update_enabled(0, nullptr); // Disable background LED updates
-    LED_Off(LED_RGB);
+    LED_Off(LED_RGB);    
 	system_power_management_sleep();
-    HAL_Core_Enter_Stop_Mode_Ext(pins, pins_count, modes, modes_count, seconds, nullptr);
+    int ret = HAL_Core_Enter_Stop_Mode_Ext(pins, pins_count, modes, modes_count, seconds, nullptr);
     led_set_update_enabled(1, nullptr); // Enable background LED updates
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
@@ -204,7 +204,7 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     if (spark_cloud_flag_connected()) {
         Spark_Wake();
     }
-    return 0;
+    return ret;
 }
 
 /**
