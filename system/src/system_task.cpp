@@ -449,10 +449,6 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         system_pending_shutdown();
     }
     system_shutdown_if_needed();
-
-#if Wiring_Cellular == 1
-    system_power_management_update();
-#endif
 }
 
 /*
