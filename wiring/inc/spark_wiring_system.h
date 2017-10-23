@@ -36,6 +36,7 @@
 #include "core_hal.h"
 #include "system_user.h"
 #include "system_version.h"
+#include "spark_wiring_flags.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
 #define SYSTEM_HW_TICKS 1
@@ -49,25 +50,13 @@
 
 class Stream;
 
-class SleepNetworkFlag
-{
-public:
-    typedef uint8_t flag_t;
-    inline SleepNetworkFlag(SystemSleepNetwork f) : SleepNetworkFlag(static_cast<flag_t>(f)) {}
+struct SleepOptionFlagType; // Tag type for System.sleep() flags
+typedef particle::Flags<SleepOptionFlagType, uint32_t> SleepOptionFlags;
+typedef SleepOptionFlags::FlagType SleepOptionFlag;
 
-    inline SleepNetworkFlag(flag_t flag) : flag_(flag) {}
-
-    inline explicit operator flag_t() const { return flag_; }
-
-    inline flag_t flag() const { return flag_; }
-
-private:
-    flag_t flag_;
-};
-
-// Bring the system enum into global scope
-const SleepNetworkFlag SLEEP_NETWORK_OFF(SystemSleepNetwork::Off);
-const SleepNetworkFlag SLEEP_NETWORK_STANDBY(SystemSleepNetwork::Standby);
+const SleepOptionFlag SLEEP_NETWORK_OFF(static_cast<uint32_t>(SystemSleepOption::NetworkOff));
+const SleepOptionFlag SLEEP_NETWORK_STANDBY(static_cast<uint32_t>(SystemSleepOption::NetworkStandby));
+const SleepOptionFlag SLEEP_DISABLE_WKP_PIN(static_cast<uint32_t>(SystemSleepOption::DisableWkpPin));
 
 #if Wiring_LogConfig
 enum LoggingFeature {
@@ -121,14 +110,14 @@ public:
     }
 #endif
 
-    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepNetworkFlag flag=SLEEP_NETWORK_OFF);
-    inline static void sleep(Spark_Sleep_TypeDef sleepMode, SleepNetworkFlag flag, long seconds=0) {
+    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
+    inline static void sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) {
         sleep(sleepMode, seconds, flag);
     }
 
     inline static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
-    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepNetworkFlag flag=SLEEP_NETWORK_OFF);
-    inline static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepNetworkFlag flag, long seconds=0) {
+    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
+    inline static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds=0) {
         sleep(wakeUpPin, edgeTriggerMode, seconds, flag);
     }
 
