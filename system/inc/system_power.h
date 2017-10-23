@@ -55,5 +55,4 @@ extern particle::SimpleEnumDiagnosticData<particle::power::battery_state_t> g_ba
 extern particle::SimpleEnumDiagnosticData<particle::power::power_source_t> g_powerSource;
 
 void system_power_management_init();
-void system_power_management_update();
 void system_power_management_sleep(bool sleep = true);
