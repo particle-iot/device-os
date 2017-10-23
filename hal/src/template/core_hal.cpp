@@ -91,6 +91,11 @@ void HAL_Core_Execute_Standby_Mode(void)
 {
 }
 
+int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
+{
+    return -1;
+}
+
 /**
  * @brief  Computes the 32-bit CRC of a given buffer of byte data.
  * @param  pBuffer: pointer to the buffer containing the data to be computed
