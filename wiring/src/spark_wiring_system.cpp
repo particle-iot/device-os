@@ -41,14 +41,14 @@ void SystemClass::reset(uint32_t data)
     HAL_Core_System_Reset_Ex(RESET_REASON_USER, data, nullptr);
 }
 
-void SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepNetworkFlag network)
+void SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
 {
-    system_sleep(sleepMode, seconds, network.flag(), NULL);
+    system_sleep(sleepMode, seconds, flags.value(), NULL);
 }
 
-void SystemClass::sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds, SleepNetworkFlag network)
+void SystemClass::sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds, SleepOptionFlags flags)
 {
-    system_sleep_pin(wakeUpPin, edgeTriggerMode, seconds, network.flag(), NULL);
+    system_sleep_pin(wakeUpPin, edgeTriggerMode, seconds, flags.value(), NULL);
 }
 
 uint32_t SystemClass::freeMemory()
