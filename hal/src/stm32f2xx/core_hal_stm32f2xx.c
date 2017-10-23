@@ -59,6 +59,8 @@
 #include "wlan_hal.h"
 #endif
 
+extern char link_heap_location, link_heap_location_end;
+
 #define STOP_MODE_EXIT_CONDITION_PIN 0x01
 #define STOP_MODE_EXIT_CONDITION_RTC 0x02
 
@@ -1239,6 +1241,21 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     struct mallinfo heapinfo = mallinfo();
     // fordblks  The total number of bytes in free blocks.
     info->freeheap = heapinfo.fordblks;
+    if (offsetof(runtime_info_t, total_init_heap) + sizeof(info->total_init_heap) <= info->size) {
+        info->total_init_heap = (uint32_t)(&link_heap_location_end - &link_heap_location);
+    }
+
+    if (offsetof(runtime_info_t, total_heap) + sizeof(info->total_heap) <= info->size) {
+        info->total_heap = heapinfo.arena;
+    }
+
+    if (offsetof(runtime_info_t, max_used_heap) + sizeof(info->max_used_heap) <= info->size) {
+        info->max_used_heap = heapinfo.usmblks;
+    }
+
+    if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
+        info->user_static_ram = info->total_init_heap - info->total_heap;
+    }
 
     return 0;
 }
