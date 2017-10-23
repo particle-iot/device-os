@@ -337,10 +337,14 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
-    if (HAL_IsISR())
-        return xQueueSendFromISR(queue, item, nullptr)!=pdTRUE;
-    else
+    if (HAL_IsISR()) {
+        BaseType_t woken = pdFALSE;
+        int res = xQueueSendFromISR(queue, item, &woken) != pdTRUE;
+        portYIELD_FROM_ISR(woken);
+        return res;
+    } else {
         return xQueueSend(queue, item, delay)!=pdTRUE;
+    }
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
