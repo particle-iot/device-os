@@ -23,7 +23,8 @@
 
 #include "diagnostics.h"
 #include "system_error.h"
-#include "util.h"
+#include "combine_hash.h"
+#include "underlying_type.h"
 #include "debug.h"
 
 #include <atomic>
