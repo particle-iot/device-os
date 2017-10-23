@@ -64,7 +64,7 @@ public:
     bool enableBuck(void);
     bool disableBuck(void);
     bool setInputCurrentLimit(uint16_t current);
-    byte getInputCurrentLimit(void);
+    uint16_t getInputCurrentLimit(void);
     bool setInputVoltageLimit(uint16_t voltage);
     byte getInputVoltageLimit(void);
 
@@ -91,6 +91,7 @@ public:
     //Charge Voltage Control Register
     bool setChargeVoltage(uint16_t voltage);
     byte getChargeVoltage();
+    uint16_t getChargeVoltageValue();
 
     //CHARGE_TIMER_CONTROL_REGISTER
     byte readChargeTermRegister();
@@ -102,6 +103,10 @@ public:
     //Thermal Regulation Control Register
     bool setThermalRegulation();
     byte getThermalRegulation();
+
+    // Recharge threshold
+    uint16_t getRechargeThreshold();
+    bool setRechargeThreshold(uint16_t voltage);
 
     //Misc Operation Control Register
     byte readOpControlRegister();
