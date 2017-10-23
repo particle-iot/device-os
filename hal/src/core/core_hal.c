@@ -386,7 +386,7 @@ void HAL_Core_Execute_Stop_Mode(void)
     HAL_enable_irq(state);
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved)
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
     // Configure RTC wake-up
     if (seconds > 0) {
