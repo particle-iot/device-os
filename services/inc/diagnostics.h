@@ -45,6 +45,8 @@ constexpr const char* DIAG_NAME_CLOUD_DISCONNECTS = "cloud:disconn";
 constexpr const char* DIAG_NAME_CLOUD_REPEATED_MESSAGES = "coap:resend";
 constexpr const char* DIAG_NAME_CLOUD_UNACKNOWLEDGED_MESSAGES = "coap:unack";
 constexpr const char* DIAG_NAME_CLOUD_RATE_LIMITED_EVENTS = "pub:limit";
+constexpr const char* DIAG_NAME_SYSTEM_TOTAL_RAM = "sys:tram";
+constexpr const char* DIAG_NAME_SYSTEM_USED_RAM = "sys:uram";
 
 #endif
 
@@ -72,6 +74,8 @@ typedef enum diag_id {
     DIAG_ID_CLOUD_REPEATED_MESSAGES = 21, // coap:resend
     DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES = 22, // coap:unack
     DIAG_ID_CLOUD_RATE_LIMITED_EVENTS = 20, // pub:throttle
+    DIAG_ID_SYSTEM_TOTAL_RAM = 25, // sys:tram
+    DIAG_ID_SYSTEM_USED_RAM = 26, // sys:uram
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs
 } diag_id;
 
