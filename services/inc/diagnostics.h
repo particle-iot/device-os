@@ -31,6 +31,7 @@ constexpr const char* DIAG_NAME_SYSTEM_SYSTEM_LOOPS = "sys:loop";
 constexpr const char* DIAG_NAME_SYSTEM_APPLICATION_LOOPS = "app:loop";
 constexpr const char* DIAG_NAME_SYSTEM_UPTIME = "sys:uptime";
 constexpr const char* DIAG_NAME_SYSTEM_BATTERY_STATE = "batt:state";
+constexpr const char* DIAG_NAME_SYSTEM_POWER_SOURCE = "pwr:src";
 constexpr const char* DIAG_NAME_NETWORK_CONNECTION_STATUS = "net:stat";
 constexpr const char* DIAG_NAME_NETWORK_CONNECTION_ERROR_CODE = "net:err";
 constexpr const char* DIAG_NAME_NETWORK_DISCONNECTS = "net:dx";
@@ -64,6 +65,9 @@ typedef enum diag_id {
     DIAG_ID_SYSTEM_APPLICATION_LOOPS = 5, // app:loops
     DIAG_ID_SYSTEM_UPTIME = 6, // sys:uptime
     DIAG_ID_SYSTEM_BATTERY_STATE = 7, // batt:state
+    // FIXME: id
+    DIAG_ID_SYSTEM_POWER_SOURCE = 32000, // pwr::src
+    // /FIXME
     DIAG_ID_NETWORK_CONNECTION_STATUS = 8, // net:stat
     DIAG_ID_NETWORK_CONNECTION_ERROR_CODE = 9, // net:error
     DIAG_ID_NETWORK_DISCONNECTS = 12, // net:disconn
