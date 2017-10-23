@@ -86,7 +86,7 @@ test(system_sleep)
 
         const pin_t pins_array[] = {D0, D1};
         const InterruptMode mode_array[] = {RISING, FALLING};
-
+    
         /*
          * wakeup pins: pin_t* + size_t
          * trigger mode: single InterruptMode
@@ -107,6 +107,16 @@ test(system_sleep)
         API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20, SLEEP_NETWORK_STANDBY));
         API_COMPILE(System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY, 20));
     }
+
+	// SLEEP_DISABLE_WKP_PIN
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN, 60));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN));
+
+    // Flags OR-ing
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY, 60));
+    API_COMPILE(System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY));
 }
 
 test(system_mode) {
