@@ -136,13 +136,19 @@ int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved);
  */
 void HAL_Notify_Button_State(uint8_t button, uint8_t state);
 
+typedef enum {
+    HAL_STANDBY_MODE_FLAG_NONE = 0,
+    HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN = 1
+} hal_standby_mode_flag_t;
+
 void HAL_Core_Enter_Safe_Mode(void* reserved);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
 int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);
 void HAL_Core_Execute_Stop_Mode(void);
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved);
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
 void HAL_Core_Execute_Standby_Mode(void);
+void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
 typedef enum _BootloaderFlag_t {

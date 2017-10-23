@@ -244,7 +244,7 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
     return -1;
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, void* reserved)
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
     MSG("Standby mode not implemented.");
 }
