@@ -179,6 +179,10 @@ typedef struct runtime_info_t {
     uint16_t flags;             /* reserved, set to 0. */
     uint32_t freeheap;          /* Amount of guaranteed heap memory available. */
     uint32_t system_version;
+    uint32_t total_init_heap;
+    uint32_t total_heap;
+    uint32_t max_used_heap; // The "highwater mark" for allocated space—that is, the maximum amount of space that was ever allocated.
+    uint32_t user_static_ram;
 } runtime_info_t;
 
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved);
