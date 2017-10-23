@@ -165,8 +165,23 @@ void countdown(int c) {
     }
 }
 
+const char* getPinName(pin_t pin) {
+    for (unsigned i = 0; i < pinCount; i++) {
+        if (pins[i] == pin) {
+            return pin_names[i];
+        }
+    }
+    return "UNKNOWN";
+}
+
 void loop() {
     waitUntil(Serial.isConnected);
+    SleepResult r = System.sleepResult();
+    if (r.wokenUpByPin()) {
+        Serial.printlnf("The device was woken up by pin %s %lu", getPinName(r.pin()), r.pin());
+    } else if (r.wokenUpByRtc()) {
+        Serial.printlnf("The device was woken up by RTC");
+    }
     Serial.println("Press any key to enter STOP mode");
     Serial.println("You should be able to wake up your device using any of these pins:");
     for (unsigned i = 0; i < sizeof(pins)/sizeof(*pins); i++) {
