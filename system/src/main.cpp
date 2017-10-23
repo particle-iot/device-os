@@ -548,11 +548,45 @@ public:
     }
 };
 
+class RunTimeInfoDiagnosticData: public AbstractIntegerDiagnosticData {
+public:
+    typedef IntType(*func_t)(const runtime_info_t&);
+    RunTimeInfoDiagnosticData(uint16_t id, const char* name, func_t f) :
+            AbstractIntegerDiagnosticData(id, name),
+            f_(f) {
+    }
+
+    virtual int get(IntType& val) override {
+        runtime_info_t info = {0};
+        info.size = sizeof(info);
+        if (HAL_Core_Runtime_Info(&info, nullptr) == 0) {
+            val = f_(info);
+            return SYSTEM_ERROR_NONE;
+        }
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+private:
+    func_t f_;
+};
+
 // Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
 // global variable allows to register a handler for HAL events early
 HALEventHandler g_halEventHandler;
 
 UptimeDiagnosticData g_uptimeDiagData;
+
+RunTimeInfoDiagnosticData g_totalRamDiagData(DIAG_ID_SYSTEM_TOTAL_RAM, DIAG_NAME_SYSTEM_TOTAL_RAM,
+    [](const runtime_info_t& info) -> RunTimeInfoDiagnosticData::IntType {
+        return info.total_init_heap;
+    }
+);
+
+RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_SYSTEM_USED_RAM,
+    [](const runtime_info_t& info) -> RunTimeInfoDiagnosticData::IntType {
+        return (info.total_init_heap - info.freeheap);
+    }
+);
 
 } // namespace
 
