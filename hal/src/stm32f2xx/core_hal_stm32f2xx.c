@@ -55,6 +55,7 @@
 #include "pinmap_impl.h"
 #include "ota_module.h"
 #include "hal_event.h"
+#include "system_error.h"
 
 #if PLATFORM_ID==PLATFORM_P1
 #include "wwd_management.h"
@@ -603,17 +604,17 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
 {
     // Initial sanity check
     if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {
-        return -1;
+        return SYSTEM_ERROR_NOT_ALLOWED;
     }
 
     // Validate pins and modes
     if ((pins_count > 0 && pins == NULL) || (pins_count > 0 && mode_count == 0) || (mode_count > 0 && mode == NULL)) {
-        return -1;
+        return SYSTEM_ERROR_NOT_ALLOWED;
     }
 
     for (unsigned i = 0; i < pins_count; i++) {
         if (pins[i] >= TOTAL_PINS) {
-            return -1;
+            return SYSTEM_ERROR_NOT_ALLOWED;
         }
     }
 
@@ -624,7 +625,7 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
             case CHANGE:
                 break;
             default:
-                return -1;
+                return SYSTEM_ERROR_NOT_ALLOWED;
         }
     }
 
@@ -705,15 +706,24 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
 
     HAL_Core_Execute_Stop_Mode();
 
+    int32_t reason = SYSTEM_ERROR_UNKNOWN;
+
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
+        STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
         for (unsigned i = 0; i < pins_count; i++) {
             pin_t wakeUpPin = pins[i];
+            if (EXTI_GetITStatus(PIN_MAP[wakeUpPin].gpio_pin) != RESET) {
+                reason = i + 1;
+            }
             /* Detach the Interrupt pin */
             HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
         }
     }
 
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
+        if (NVIC_GetPendingIRQ(RTC_Alarm_IRQn)) {
+            reason = 0;
+        }
         // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
 
         // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
@@ -730,7 +740,7 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
 
     HAL_USB_Attach();
 
-    return 0;
+    return reason;
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
@@ -784,8 +794,8 @@ void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
 {
     if ((flags & HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN) == 0) {
-        /* Enable WKUP pin */
-        PWR_WakeUpPinCmd(ENABLE);
+    /* Enable WKUP pin */
+    PWR_WakeUpPinCmd(ENABLE);
     } else {
         /* Disable WKUP pin */
         PWR_WakeUpPinCmd(DISABLE);
