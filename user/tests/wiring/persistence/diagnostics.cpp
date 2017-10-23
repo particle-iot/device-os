@@ -3,11 +3,11 @@
 
 #define RETAINED_INTEGER_DIAGNOSTIC_DATA(_name, _id, _val, _concur) \
         retained RetainedIntegerDiagnosticDataStorage storage##_id; \
-        PersistentIntegerDiagnosticData<decltype(storage##_id), _concur> _name(&storage##_id, _id, _val);
+        PersistentIntegerDiagnosticData<decltype(storage##_id), _concur> _name(storage##_id, _id, _val);
 
 #define RETAINED_ENUM_DIAGNOSTIC_DATA(_name, _id, _val, _concur) \
         retained RetainedEnumDiagnosticDataStorage<decltype(_val)> storage##_id; \
-        PersistentEnumDiagnosticData<decltype(_val), decltype(storage##_id), _concur> _name(&storage##_id, _id, _val);
+        PersistentEnumDiagnosticData<decltype(_val), decltype(storage##_id), _concur> _name(storage##_id, _id, _val);
 
 namespace {
 

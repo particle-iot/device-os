@@ -214,85 +214,85 @@ class PersistentIntegerDiagnosticData:
         public AbstractIntegerDiagnosticData,
         private ConcurrencyT {
 public:
-    PersistentIntegerDiagnosticData(StorageT* storage, DiagnosticDataId id, IntType val = 0) :
+    PersistentIntegerDiagnosticData(StorageT& storage, DiagnosticDataId id, IntType val = 0) :
             PersistentIntegerDiagnosticData(storage, id, nullptr, val) {
     }
 
-    PersistentIntegerDiagnosticData(StorageT* storage, DiagnosticDataId id, const char* name, IntType val = 0) :
+    PersistentIntegerDiagnosticData(StorageT& storage, DiagnosticDataId id, const char* name, IntType val = 0) :
             AbstractIntegerDiagnosticData(id, name),
             storage_(storage) {
-        storage_->init(id, val);
+        storage_.init(id, val);
     }
 
     IntType operator++() {
         const auto lock = ConcurrencyT::lock();
-        const IntType v = ++storage_->value();
-        storage_->update(id());
+        const IntType v = ++storage_.value();
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator++(int) {
         const auto lock = ConcurrencyT::lock();
-        const IntType v = storage_->value()++;
-        storage_->update(id());
+        const IntType v = storage_.value()++;
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator--() {
         const auto lock = ConcurrencyT::lock();
-        const IntType v = --storage_->value();
-        storage_->update(id());
+        const IntType v = --storage_.value();
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator--(int) {
         const auto lock = ConcurrencyT::lock();
-        const IntType v = storage_->value()--;
-        storage_->update(id());
+        const IntType v = storage_.value()--;
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator+=(IntType val) {
         const auto lock = ConcurrencyT::lock();
-        const IntType v = (storage_->value() += val);
-        storage_->update(id());
+        const IntType v = (storage_.value() += val);
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return v;
     }
 
     IntType operator-=(IntType val) {
         const auto lock = ConcurrencyT::lock();
-        const IntType v = (storage_->value() -= val);
-        storage_->update(id());
+        const IntType v = (storage_.value() -= val);
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return v;
     }
 
     PersistentIntegerDiagnosticData& operator=(IntType val) {
         const auto lock = ConcurrencyT::lock();
-        storage_->value() = val;
-        storage_->update(id());
+        storage_.value() = val;
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return *this;
     }
 
     operator IntType() const {
         const auto lock = ConcurrencyT::lock();
-        const IntType v = storage_->value();
+        const IntType v = storage_.value();
         ConcurrencyT::unlock(lock);
         return v;
     }
 
 private:
-    StorageT* storage_;
+    StorageT& storage_;
 
     virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
         const auto lock = ConcurrencyT::lock();
-        val = storage_->value();
+        val = storage_.value();
         ConcurrencyT::unlock(lock);
         return SYSTEM_ERROR_NONE;
     }
@@ -379,37 +379,37 @@ public:
     typedef EnumT EnumType;
     typedef typename StorageT::ValueType ValueType;
 
-    PersistentEnumDiagnosticData(StorageT* storage, DiagnosticDataId id, EnumT val) :
+    PersistentEnumDiagnosticData(StorageT& storage, DiagnosticDataId id, EnumT val) :
             PersistentEnumDiagnosticData(storage, id, nullptr, val) {
     }
 
-    PersistentEnumDiagnosticData(StorageT* storage, DiagnosticDataId id, const char* name, EnumT val) :
+    PersistentEnumDiagnosticData(StorageT& storage, DiagnosticDataId id, const char* name, EnumT val) :
             AbstractIntegerDiagnosticData(id, name),
             storage_(storage) {
-        storage_->init(id, (ValueType)val);
+        storage_.init(id, (ValueType)val);
     }
 
     PersistentEnumDiagnosticData& operator=(EnumT val) {
         const auto lock = ConcurrencyT::lock();
-        storage_->value() = (ValueType)val;
-        storage_->update(id());
+        storage_.value() = (ValueType)val;
+        storage_.update(id());
         ConcurrencyT::unlock(lock);
         return *this;
     }
 
     operator EnumT() const {
         const auto lock = ConcurrencyT::lock();
-        const EnumT v = (EnumT)storage_->value();
+        const EnumT v = (EnumT)storage_.value();
         ConcurrencyT::unlock(lock);
         return v;
     }
 
 private:
-    StorageT* storage_;
+    StorageT& storage_;
 
     virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
         const auto lock = ConcurrencyT::lock();
-        val = (IntType)storage_->value();
+        val = (IntType)storage_.value();
         ConcurrencyT::unlock(lock);
         return SYSTEM_ERROR_NONE;
     }
