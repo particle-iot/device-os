@@ -37,6 +37,7 @@
 #include "system_user.h"
 #include "system_version.h"
 #include "spark_wiring_flags.h"
+#include <limits>
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
 #define SYSTEM_HW_TICKS 1
@@ -68,11 +69,41 @@ enum WiFiTesterFeature {
     FEATURE_WIFITESTER = 1
 };
 
+enum WakeupReason {
+    WAKEUP_REASON_NONE = 0,
+    WAKEUP_REASON_PIN = 1,
+    WAKEUP_REASON_RTC = 2,
+    WAKEUP_REASON_PIN_OR_RTC = 3
+};
+
+struct SleepResult {
+    SleepResult() {}
+    SleepResult(WakeupReason r, system_error_t e, pin_t p = std::numeric_limits<pin_t>::max());
+    SleepResult(int ret, const pin_t* pins, size_t pinsSize);
+
+    WakeupReason reason() const;
+    bool wokenUpByRtc() const;
+    bool wokenUpByPin() const;
+
+    pin_t pin() const;
+    bool rtc() const;
+    system_error_t error() const;
+
+private:
+    WakeupReason reason_ = WAKEUP_REASON_NONE;
+    system_error_t err_ = SYSTEM_ERROR_UNKNOWN;
+    pin_t pin_ = std::numeric_limits<pin_t>::max();
+};
+
 class SystemClass {
 public:
 
     SystemClass(System_Mode_TypeDef mode = DEFAULT) {
         set_system_mode(mode);
+        if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
+            // Woken up from standby mode
+            sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
+        }
     }
 
     static System_Mode_TypeDef mode(void) {
@@ -110,64 +141,66 @@ public:
     }
 #endif
 
-    static void sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
-    inline static void sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) {
-        sleep(sleepMode, seconds, flag);
+    
+    static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
+    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) {
+        return sleep(sleepMode, seconds, flag);
     }
 
-    inline static void sleep(long seconds) { sleep(SLEEP_MODE_WLAN, seconds); }
-    static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
-    inline static void sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds=0) {
-        sleep(wakeUpPin, edgeTriggerMode, seconds, flag);
+    inline static SleepResult sleep(long seconds) { return sleep(SLEEP_MODE_WLAN, seconds); }
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF) {
+        return sleepPinImpl(&wakeUpPin, 1, &edgeTriggerMode, 1, seconds, flag);
+    }
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds=0) {
+        return sleep(wakeUpPin, edgeTriggerMode, seconds, flag);
     }
 
     /*
      * wakeup pins: std::initializer_list<pin_t>
      * trigger mode: single InterruptMode
      */
-    inline static void sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
         // This will only work in C++14
-        // static_assert(pins.size() > 0, "Provided pin list is empty");
-        system_sleep_pins(pins.begin(), pins.size(), &edgeTriggerMode, 1, seconds, flag.value(), nullptr);
+        // static_assert(pins.size() > 0, "Provided pin list is empty");    
+        return sleepPinImpl(pins.begin(), pins.size(), &edgeTriggerMode, 1, seconds, flag);
     }
-    inline static void sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
-        sleep(pins, edgeTriggerMode, seconds, flag);
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, edgeTriggerMode, seconds, flag);
     }
     /*
      * wakeup pins: std::initializer_list<pin_t>
      * trigger mode: std::initializer_list<InterruptMode>
      */
-    inline static void sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
         // This will only work in C++14
         // static_assert(pins.size() > 0, "Provided pin list is empty");
         // static_assert(edgeTriggerMode.size() > 0, "Provided InterruptMode list is empty");
-
-        system_sleep_pins(pins.begin(), pins.size(), edgeTriggerMode.begin(), edgeTriggerMode.size(), seconds, flag.value(), nullptr);
+        return sleepPinImpl(pins.begin(), pins.size(), edgeTriggerMode.begin(), edgeTriggerMode.size(), seconds, flag);
     }
-    inline static void sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
-        sleep(pins, edgeTriggerMode, seconds, flag);
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, edgeTriggerMode, seconds, flag);
     }
 
     /*
      * wakeup pins: pin_t* + size_t
      * trigger mode: single InterruptMode
      */
-    inline static void sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
-        system_sleep_pins(pins, pinsSize, &edgeTriggerMode, 1, seconds, flag.value(), nullptr);
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleepPinImpl(pins, pinsSize, &edgeTriggerMode, 1, seconds, flag);
     }
-    inline static void sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
-        sleep(pins, pinsSize, edgeTriggerMode, seconds, flag);
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, pinsSize, edgeTriggerMode, seconds, flag);
     }
 
     /*
      * wakeup pins: pin_t* + size_t
      * trigger mode: InterruptMode* + size_t
      */
-    inline static void sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
-        system_sleep_pins(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag.value(), nullptr);
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleepPinImpl(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag);
     }
-    inline static void sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, long seconds = 0) {
-        sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag);
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag);
     }
 
     static String deviceID(void) { return spark_deviceID(); }
@@ -320,7 +353,6 @@ public:
         return get_flag(flag) != 0;
     }
 
-
     inline int resetReason() const
     {
         int reason = RESET_REASON_NONE;
@@ -333,6 +365,30 @@ public:
         uint32_t data = 0;
         HAL_Core_Get_Last_Reset_Info(nullptr, &data, nullptr);
         return data;
+    }
+
+    inline WakeupReason wakeUpReason() const {
+        return sleepResult_.reason();
+    }
+
+    inline bool wokenUpByPin() const {
+        return sleepResult_.wokenUpByPin();
+    }
+
+    inline bool wokenUpByRtc() const {
+        return sleepResult_.wokenUpByRtc();
+    }
+
+    inline pin_t wakeUpPin() const {
+        return sleepResult_.pin();
+    }
+
+    inline SleepResult sleepResult() const {
+        return sleepResult_;
+    }
+
+    inline system_error_t sleepError() const {
+        return sleepResult_.error();
     }
 
     void buttonMirror(pin_t pin, InterruptMode mode, bool bootloader=false) const
@@ -355,6 +411,7 @@ public:
     }
 
 private:
+    SleepResult sleepResult_;
 
     static inline uint8_t get_flag(system_flag_t flag)
     {
@@ -368,7 +425,7 @@ private:
         system_set_flag(flag, value, nullptr);
     }
 
-
+    static SleepResult sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags);
 };
 
 extern SystemClass System;
