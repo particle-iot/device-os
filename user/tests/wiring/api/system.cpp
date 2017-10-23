@@ -108,17 +108,16 @@ test(system_sleep)
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20, SLEEP_NETWORK_STANDBY); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY, 20); (void)r; });
+		// SLEEP_DISABLE_WKP_PIN
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN, 60); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN); (void)r;});
+
+		// Flags OR-ing
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY, 60); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY); (void)r;});
     }
-	// SLEEP_DISABLE_WKP_PIN
-    API_COMPILE({ SleepResult r = Sleep.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN)});
-    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN, 60)});
-    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN)});
-
-    // Flags OR-ing
-    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY)});
-    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY, 60)});
-    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY)});
-
     API_COMPILE({
         SleepResult r;
         (void)r.reason();

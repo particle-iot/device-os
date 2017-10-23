@@ -92,12 +92,6 @@ SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     }
 }
 
-SleepResult::SleepResult(WakeupReason r, system_error_t e, pin_t p)
-    : reason_(r),
-      err_(e),
-      pin_(p) {
-}
-
 WakeupReason SleepResult::reason() const {
     return reason_;
 }

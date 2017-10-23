@@ -95,6 +95,13 @@ private:
     pin_t pin_ = std::numeric_limits<pin_t>::max();
 };
 
+inline SleepResult::SleepResult(WakeupReason r, system_error_t e, pin_t p)
+    : reason_(r),
+      err_(e),
+      pin_(p) {
+}
+
+
 class SystemClass {
 public:
 
