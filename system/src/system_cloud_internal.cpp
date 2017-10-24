@@ -553,10 +553,12 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_app_crc = compute_describe_app_checksum();
 			});
+            break;
 		case SparkAppStateSelector::DESCRIBE_SYSTEM:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_system_crc = compute_describe_system_checksum();
 			});
+            break;
 		}
 	}
 	else if (operation==SparkAppStateUpdate::PERSIST && stateSelector==SparkAppStateSelector::SUBSCRIPTIONS)
