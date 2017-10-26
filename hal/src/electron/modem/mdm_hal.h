@@ -446,6 +446,16 @@ public:
         return waitFinalResp((_CALLBACKPTR)cb, (void*)param, timeout_ms);
     }
 
+    /** Send AT command and wait for a response.
+        \param cmd command string (CRLF terminated)
+        \param cb the optional callback function
+        \param param the optional callback function parameter
+        \param timeout the response timeout in milliseconds
+        \sa send
+        \sa waitFinalResp
+    */
+    int command(const char* cmd, _CALLBACKPTR cb = NULL, void* param = NULL, system_tick_t timeout = 10000);
+
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.

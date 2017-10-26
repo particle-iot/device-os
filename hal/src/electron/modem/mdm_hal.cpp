@@ -376,6 +376,15 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
     return WAIT;
 }
 
+int MDMParser::command(const char* cmd, _CALLBACKPTR cb, void* param, system_tick_t timeout)
+{
+    LOCK();
+    send(cmd, strlen(cmd));
+    const int ret = waitFinalResp(cb, param, timeout);
+    UNLOCK();
+    return ret;
+}
+
 int MDMParser::_cbString(int type, const char* buf, int len, char* str)
 {
     if (str && (type == TYPE_UNKNOWN)) {
