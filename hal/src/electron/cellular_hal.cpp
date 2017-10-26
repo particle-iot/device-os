@@ -197,9 +197,7 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
     va_start(args, format);
     vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
-    electronMDM.sendFormated(buf);
-
-    return electronMDM.waitFinalResp((MDMParser::_CALLBACKPTR)cb, (void*)param, timeout_ms);
+    return electronMDM.command(buf, cb, param, timeout_ms);
 }
 
 cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
