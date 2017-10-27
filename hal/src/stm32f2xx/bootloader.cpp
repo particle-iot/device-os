@@ -44,11 +44,13 @@ bool bootloader_requires_update(const uint8_t* bootloader_image, uint32_t length
         return false;
 
     const uint32_t VERSION_OFFSET = 0x184+10;
+    const unsigned BOOTLOADER_0_7_0 = 13; // Module version of the bootloader shipped with 0.7.0
 
     uint16_t current_version = *(uint16_t*)(0x8000000+VERSION_OFFSET);
     uint16_t available_version = *(uint16_t*)(bootloader_image+VERSION_OFFSET);
 
-    bool requires_update = current_version<available_version;
+    // Downgrading from 0.7.0 requires a bootloader downgrade
+    bool requires_update = (current_version < available_version || current_version >= BOOTLOADER_0_7_0);
     return requires_update;
 }
 
