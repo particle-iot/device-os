@@ -249,7 +249,7 @@ void HAL_Core_Config(void)
     // where WICED isn't ready for a SysTick until after main() has been called to
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
-    
+
 #if MODULAR_FIRMWARE
     // write protect system module parts if not already protected
     FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
@@ -278,7 +278,9 @@ void HAL_Core_Setup(void) {
 
     HAL_Core_Setup_finalize();
 
-    bootloader_update_if_needed();
+    if (bootloader_update_if_needed()) {
+        HAL_Core_System_Reset();
+    }
     HAL_Bootloader_Lock(true);
 
 #if !defined(MODULAR_FIRMWARE)
@@ -443,7 +445,7 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
          * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
          * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
          * or Event modes) using the EXTI_Init() function.
-         * 
+         *
          */
         HAL_RTC_Cancel_UnixAlarm();
         HAL_RTC_Set_UnixAlarm((time_t) seconds);
