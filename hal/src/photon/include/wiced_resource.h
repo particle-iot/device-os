@@ -93,6 +93,11 @@ typedef struct
     /*@shared@*/ const char* filename;
 } filesystem_resource_handle_t;
 
+typedef struct
+{
+    const char* data;
+    unsigned long size;
+} compressed_resource_handle_t;
 
 typedef enum
 {
@@ -114,6 +119,7 @@ typedef struct
         filesystem_resource_handle_t fs;
         memory_resource_handle_t     mem;
         void*                        external_storage_context;
+        compressed_resource_handle_t comp;
     } val;
 } resource_hnd_t;
 
