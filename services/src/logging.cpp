@@ -94,6 +94,7 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
         }
         msg_callback(buf, level, category, attr, 0);
     } else {
+#if 0
         // Using compatibility callback
         const char* const levelName = log_level_name(level, 0);
         int n = 0;
@@ -114,6 +115,7 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
         }
         log_compat_callback(buf);
         log_compat_callback("\r\n");
+#endif
     }
 }
 
@@ -132,6 +134,7 @@ void log_write(int level, const char *category, const char *data, size_t size, v
     if (write_callback) {
         write_callback(data, size, level, category, 0);
     } else if (log_compat_callback && level >= log_compat_level) {
+#if 0
         // Compatibility callback expects null-terminated strings
         if (!data[size - 1]) {
             log_compat_callback(data);
@@ -146,6 +149,7 @@ void log_write(int level, const char *category, const char *data, size_t size, v
                 offs += n;
             } while (offs < size);
         }
+#endif
     }
 }
 
