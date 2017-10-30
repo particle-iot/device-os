@@ -145,6 +145,12 @@
    functions (such as tdefl_compress_mem_to_heap() and tinfl_decompress_mem_to_heap()) won't work. */
 /*#define MINIZ_NO_MALLOC */
 
+#define MINIZ_NO_STDIO
+#define MINIZ_NO_ARCHIVE_APIS
+#define MINIZ_NO_TIME
+#define MINIZ_NO_ZLIB_APIS
+#define MINIZ_NO_MALLOC
+
 #if defined(__TINYC__) && (defined(__linux) || defined(__linux__))
 /* TODO: Work around "error: include file 'sys\utime.h' when compiling with tcc on Linux */
 #define MINIZ_NO_TIME
@@ -639,7 +645,7 @@ enum
     TDEFL_MAX_HUFF_SYMBOLS_0 = 288,
     TDEFL_MAX_HUFF_SYMBOLS_1 = 32,
     TDEFL_MAX_HUFF_SYMBOLS_2 = 19,
-    TDEFL_LZ_DICT_SIZE = 32768,
+    TDEFL_LZ_DICT_SIZE = 1024,
     TDEFL_LZ_DICT_SIZE_MASK = TDEFL_LZ_DICT_SIZE - 1,
     TDEFL_MIN_MATCH_LEN = 3,
     TDEFL_MAX_MATCH_LEN = 258
@@ -797,7 +803,7 @@ tinfl_decompressor *tinfl_decompressor_alloc();
 void tinfl_decompressor_free(tinfl_decompressor *pDecomp);
 
 /* Max size of LZ dictionary. */
-#define TINFL_LZ_DICT_SIZE 32768
+#define TINFL_LZ_DICT_SIZE 1024
 
 /* Return status. */
 typedef enum {
