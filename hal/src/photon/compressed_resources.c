@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include "debug.h"
 
-resource_result_t platform_read_external_resource( const resource_hnd_t* resource, uint32_t offset, uint32_t maxsize, uint32_t* size, void* buffer ) {
+__attribute__((weak)) resource_result_t platform_read_external_resource( const resource_hnd_t* resource, uint32_t offset, uint32_t maxsize, uint32_t* size, void* buffer ) {
     static size_t in_pos = 0;
     static tinfl_decompressor* inflator = NULL;
     tinfl_status status = TINFL_STATUS_FAILED;
