@@ -31,7 +31,7 @@ DYNALIB_BEGIN(wifi_resource)
 DYNALIB_FN(0, wifi_resource, wwd_firmware_image_resource, const resource_hnd_t*(void))
 DYNALIB_FN(1, wifi_resource, wwd_nvram_image_resource, const resource_hnd_t*(void))
 DYNALIB_FN(2, wifi_resource, wwd_select_nvram_image_resource, int(uint8_t, void*))
-
+DYNALIB_FN(3, wifi_resource, resource_read, resource_result_t(const resource_hnd_t*, uint32_t, uint32_t, uint32_t*, void*))
 DYNALIB_END(wifi_resource)
 
 
