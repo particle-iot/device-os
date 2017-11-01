@@ -94,8 +94,8 @@ protected:
         return ret;
     }
 
-    void on_now() override {
-        cellular_on(NULL);
+    int on_now() override {
+        return cellular_on(NULL);
     }
 
     void off_now() override {

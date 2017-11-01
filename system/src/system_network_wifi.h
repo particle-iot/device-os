@@ -128,7 +128,7 @@ protected:
         wlan_disconnect_now();
     }
 
-    void on_now() override { wlan_activate(); }
+    int on_now() override { return wlan_activate(); }
     void off_now() override { wlan_deactivate(); }
 
     void on_setup_cleanup() override { wlan_smart_config_cleanup(); }

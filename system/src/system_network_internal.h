@@ -111,6 +111,7 @@ public:
 
     NetworkDiagnostics() :
             status_(DIAG_ID_NETWORK_CONNECTION_STATUS, "net:stat", OFF),
+            connCount_(DIAG_ID_NETWORK_CONNECTION_ATTEMPTS, "net::connAttempts"),
             disconnCount_(DIAG_ID_NETWORK_DISCONNECTS, "net:disconn"),
             disconnReason_(DIAG_ID_NETWORK_DISCONNECTION_REASON, "net:disconnReason"),
             lastError_(DIAG_ID_NETWORK_CONNECTION_ERROR_CODE, "net:err") {
@@ -118,6 +119,16 @@ public:
 
     NetworkDiagnostics& status(Status status) {
         status_ = status;
+        return *this;
+    }
+
+    NetworkDiagnostics& connectionAttempt() {
+        ++connCount_;
+        return *this;
+    }
+
+    NetworkDiagnostics& resetConnectionAttempts() {
+        connCount_ = 0;
         return *this;
     }
 
@@ -140,6 +151,7 @@ public:
 
 private:
     AtomicEnumDiagnosticData<Status> status_;
+    AtomicIntegerDiagnosticData connCount_;
     AtomicIntegerDiagnosticData disconnCount_;
     SimpleIntegerDiagnosticData disconnReason_;
     SimpleIntegerDiagnosticData lastError_;
@@ -373,7 +385,7 @@ protected:
     virtual int connect_finalize()=0;
     virtual void disconnect_now()=0;
 
-    virtual void on_now()=0;
+    virtual int on_now()=0;
     virtual void off_now()=0;
 
     /**
@@ -470,11 +482,13 @@ public:
                 WLAN_CONNECTING = 1;
                 INFO("ARM_WLAN_WD 1");
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
-                NetworkDiagnostics::instance()->status(NetworkDiagnostics::CONNECTING);
+                const auto diag = NetworkDiagnostics::instance();
+                diag->status(NetworkDiagnostics::CONNECTING);
                 system_notify_event(network_status, network_status_connecting);
+                diag->connectionAttempt();
                 const int ret = connect_finalize();
                 if (ret != 0) {
-                    NetworkDiagnostics::instance()->lastError(ret);
+                    diag->lastError(ret);
                 }
             }
         }
@@ -493,22 +507,23 @@ public:
             WLAN_DHCP_PENDING = 0;
 
             cloud_disconnect();
+            const auto diag = NetworkDiagnostics::instance();
             if (was_connected) {
-                const auto d = NetworkDiagnostics::instance();
+                diag->resetConnectionAttempts();
                 if (reason != NETWORK_DISCONNECT_REASON_NONE) {
-                    d->disconnectionReason(reason);
+                    diag->disconnectionReason(reason);
                     if (reason == NETWORK_DISCONNECT_REASON_ERROR) {
-                        d->disconnectedUnexpectedly();
+                        diag->disconnectedUnexpectedly();
                     }
                 }
-                d->status(NetworkDiagnostics::DISCONNECTING);
+                diag->status(NetworkDiagnostics::DISCONNECTING);
                 // "Disconnecting" event is generated only for a successfully established connection
                 system_notify_event(network_status, network_status_disconnecting);
             }
             disconnect_now();
             config_clear();
             if (was_connected || was_connecting) {
-                NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTED);
+                diag->status(NetworkDiagnostics::DISCONNECTED);
                 system_notify_event(network_status, network_status_disconnected);
             }
             LED_SIGNAL_STOP(NETWORK_CONNECTED);
@@ -532,15 +547,19 @@ public:
         LOG_NETWORK_STATE();
         if (!SPARK_WLAN_STARTED)
         {
-            NetworkDiagnostics::instance()->status(NetworkDiagnostics::TURNING_ON);
+            const auto diag = NetworkDiagnostics::instance();
+            diag->status(NetworkDiagnostics::TURNING_ON);
             system_notify_event(network_status, network_status_powering_on);
             config_clear();
-            on_now();
+            const int ret = on_now();
+            if (ret != 0) {
+                diag->lastError(ret);
+            }
             update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
-            NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTED);
+            diag->status(NetworkDiagnostics::DISCONNECTED);
             system_notify_event(network_status, network_status_on);
         }
     }
@@ -552,7 +571,8 @@ public:
         {
             disconnect(NETWORK_DISCONNECT_REASON_NETWORK_OFF);
 
-            NetworkDiagnostics::instance()->status(NetworkDiagnostics::TURNING_OFF);
+            const auto diag = NetworkDiagnostics::instance();
+            diag->status(NetworkDiagnostics::TURNING_OFF);
             system_notify_event(network_status, network_status_powering_off);
             off_now();
 
@@ -568,7 +588,7 @@ public:
             WLAN_CONNECTING = 0;
             WLAN_SERIAL_CONFIG_DONE = 1;
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
-            NetworkDiagnostics::instance()->status(NetworkDiagnostics::OFF);
+            diag->status(NetworkDiagnostics::OFF);
             system_notify_event(network_status, network_status_off);
         }
     }
@@ -601,12 +621,13 @@ public:
         if (WLAN_CONNECTING || WLAN_CONNECTED) {
             // This code is executed only in case of an unsolicited disconnection, since the disconnect() method
             // resets the WLAN_CONNECTING and WLAN_CONNECTED flags prior to closing the connection
+            const auto diag = NetworkDiagnostics::instance();
             if (WLAN_CONNECTED) {
-                NetworkDiagnostics::instance()->disconnectedUnexpectedly();
+                diag->disconnectedUnexpectedly();
                 // "Disconnecting" event is generated only for a successfully established connection
                 system_notify_event(network_status, network_status_disconnecting);
             }
-            NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTED);
+            diag->status(NetworkDiagnostics::DISCONNECTED);
             // "Connecting" event should be always followed by either "connected" or "disconnected" event
             system_notify_event(network_status, network_status_disconnected);
         }
@@ -633,6 +654,7 @@ public:
         WLAN_CONNECTING = 0;
         WLAN_DHCP_PENDING = 0;
         LED_SIGNAL_STOP(NETWORK_DHCP);
+        const auto diag = NetworkDiagnostics::instance();
         if (dhcp)
         {
             // notify_dhcp() is called even in case of static IP configuration, so here we notify
@@ -643,7 +665,7 @@ public:
             WLAN_LISTEN_ON_FAILED_CONNECT = false;
             LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);
             LED_SIGNAL_STOP(NETWORK_CONNECTING);
-            NetworkDiagnostics::instance()->status(NetworkDiagnostics::CONNECTED);
+            diag->status(NetworkDiagnostics::CONNECTED);
             system_notify_event(network_status, network_status_connected);
         }
         else
@@ -656,7 +678,7 @@ public:
                 INFO("DHCP fail, ARM_WLAN_WD 4");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
             }
-            NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTED);
+            diag->status(NetworkDiagnostics::DISCONNECTED);
             // "Connecting" event should be always followed by either "connected" or "disconnected" event
             system_notify_event(network_status, network_status_disconnected);
         }

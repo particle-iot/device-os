@@ -75,6 +75,7 @@ typedef enum diag_id {
     DIAG_ID_NETWORK_FLAGS = 17, // net:flags
     DIAG_ID_NETWORK_COUNTRY_CODE = 18, // net:cntry
     DIAG_ID_NETWORK_RSSI = 19, // net:rssi
+    DIAG_ID_NETWORK_CONNECTION_ATTEMPTS = 27, // net:connatts
     DIAG_ID_NETWORK_DISCONNECTION_REASON = 28, // net:disconnrsn
     DIAG_ID_NETWORK_SIGNAL_STRENGTH_VALUE = 37, // net:sigstrv
     DIAG_ID_NETWORK_SIGNAL_STRENGTH = 33, // net:sigstr
