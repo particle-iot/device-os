@@ -98,7 +98,7 @@ protected:
     {
         notify_cannot_shutdown();
         /* If WiFi module is connected, disconnect it */
-        network_disconnect(0, 0, NULL);
+        network_disconnect(0, NETWORK_DISCONNECT_REASON_LISTENING, NULL);
 
         /* If WiFi module is powered off, turn it on */
         network_on(0, 0, 0, NULL);
@@ -118,9 +118,9 @@ protected:
         Set_NetApp_Timeout();
     }
 
-    void connect_finalize() override
+    int connect_finalize() override
     {
-        wlan_connect_finalize();
+        return wlan_connect_finalize();
     }
 
     void disconnect_now() override

@@ -85,17 +85,17 @@ String spark_deviceID(void);
 extern "C" {
 #endif
 
-enum cloud_disconnect_reason {
-    CLOUD_DISCONNECT_REASON_OTHER = 0,
+typedef enum cloud_disconnect_reason {
+    CLOUD_DISCONNECT_REASON_NONE = 0,
     CLOUD_DISCONNECT_REASON_ERROR = 1
-};
+} cloud_disconnect_reason;
 
 #if PLATFORM_ID!=3
 String spark_deviceID(void);
 #endif
 
-void cloud_disconnect(bool closeSocket=true, bool graceful=false, int reason = CLOUD_DISCONNECT_REASON_OTHER);
-void cloud_disconnect_graceful(bool closeSocket=true, int reason = CLOUD_DISCONNECT_REASON_OTHER);
+void cloud_disconnect(bool closeSocket=true, bool graceful=false, int reason = CLOUD_DISCONNECT_REASON_NONE);
+void cloud_disconnect_graceful(bool closeSocket=true, int reason = CLOUD_DISCONNECT_REASON_NONE);
 
 class String;
 

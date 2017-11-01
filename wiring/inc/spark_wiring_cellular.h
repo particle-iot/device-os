@@ -55,7 +55,7 @@ public:
     }
 
     void disconnect() {
-        network_disconnect(*this, 0, NULL);
+        network_disconnect(*this, NETWORK_DISCONNECT_REASON_USER, NULL);
     }
 
     void setCredentials(const char* apn) {
