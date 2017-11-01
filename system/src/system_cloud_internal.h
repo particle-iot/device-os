@@ -22,6 +22,8 @@
 
 #include "system_cloud.h"
 
+#include "spark_wiring_diagnostics.h"
+
 /**
  * Functions for managing the cloud connection, performing cloud operations
  * and system upgrades.
@@ -85,6 +87,27 @@ extern ProtocolFacade* sp;
  * @return
  */
 bool system_cloud_active();
+
+namespace particle {
+
+class CloudDiagnostics {
+public:
+    CloudDiagnostics() :
+            disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, DIAG_NAME_CLOUD_DISCONNECTS) {
+    }
+
+    CloudDiagnostics& disconnectedUnexpectedly() {
+        ++disconnCount_;
+        return *this;
+    }
+
+    static CloudDiagnostics* instance();
+
+private:
+    SimpleIntegerDiagnosticData disconnCount_;
+};
+
+} // namespace particle
 
 
 #endif	/* SYSTEM_CLOUD_INTERNAL_H */
