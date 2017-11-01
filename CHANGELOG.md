@@ -1,3 +1,14 @@
+## 0.6.3
+
+### ENHANCEMENTS
+
+- Downgrade bootloader when downgrading from 0.7.0 or newer. [#1416](https://github.com/spark/firmware/pull/1416)
+
+### BUGFIXES
+
+- [KRACK WPA2 security fix](https://github.com/spark/firmware/pull/1419)
+
+
 ## 0.6.2 (same as 0.6.2-rc.2)
 
 ### FEATURES
