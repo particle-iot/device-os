@@ -3,5 +3,5 @@
 
 sudo add-apt-repository -y ppa:terry.guo/gcc-arm-embedded &&
 sudo apt-get -qq update &&
-sudo apt-get -qq install  "gcc-arm-none-eabi" &&
+sudo apt-get -qq install  "gcc-arm-none-eabi-4_9-2015q3" &&
 arm-none-eabi-gcc --version ;
