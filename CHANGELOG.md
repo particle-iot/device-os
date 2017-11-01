@@ -1,3 +1,13 @@
+## v0.5.5
+
+### ENHANCEMENTS
+
+- Downgrade bootloader when downgrading from 0.7.0 or newer. [#1417](https://github.com/spark/firmware/pull/1417)
+
+### BUGFIXES
+
+- [KRACK WPA2 security fix](https://github.com/spark/firmware/pull/1418)
+
 ## v0.5.4
 
 ### ENHANCEMENTS
