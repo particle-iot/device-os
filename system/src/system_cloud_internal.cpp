@@ -53,9 +53,10 @@
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
+using particle::CloudDiagnostics;
+
 #ifndef SPARK_NO_CLOUD
 
-using particle::CloudDiagnostics;
 using particle::LEDStatus;
 
 int userVarType(const char *varKey);
