@@ -93,7 +93,7 @@ namespace particle {
 class CloudDiagnostics {
 public:
     CloudDiagnostics() :
-            disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, DIAG_NAME_CLOUD_DISCONNECTS) {
+            disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, "cloud:disconn") {
     }
 
     CloudDiagnostics& disconnectedUnexpectedly() {

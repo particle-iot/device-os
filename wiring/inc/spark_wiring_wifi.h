@@ -139,7 +139,7 @@ public:
     }
 
     void disconnect(void) {
-        network_disconnect(*this, 0, NULL);
+        network_disconnect(*this, NETWORK_DISCONNECT_REASON_USER, NULL);
     }
 
     bool connecting(void) {

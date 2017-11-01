@@ -51,31 +51,31 @@ protected:
     void connect_finalize_impl() {
         cellular_result_t result = -1;
         result = cellular_init(NULL);
-        if (result) { return; }
+        if (result) { return result; }
 
         result = cellular_register(NULL);
-        if (result) { return; }
+        if (result) { return result; }
 
         CellularCredentials* savedCreds;
         savedCreds = cellular_credentials_get(NULL);
         result = cellular_pdp_activate(savedCreds, NULL);
-        if (result) { return; }
+        if (result) { return result; }
 
         result = cellular_imsi_to_network_provider(NULL);
-        if (result) { return; }
+        if (result) { return result; }
 
         //DEBUG_D("savedCreds = %s %s %s\r\n", savedCreds->apn, savedCreds->username, savedCreds->password);
         result = cellular_gprs_attach(savedCreds, NULL);
-        if (result) { return; }
+        if (result) { return result; }
 
         HAL_NET_notify_connected();
         HAL_NET_notify_dhcp(true);
     }
 
-    void connect_finalize() override {
+    int connect_finalize() override {
         ATOMIC_BLOCK() { connecting = true; }
 
-        connect_finalize_impl();
+        int ret = connect_finalize_impl();
 
         bool require_resume = false;
 
@@ -90,7 +90,10 @@ protected:
         }
         if (require_resume) {
             cellular_cancel(false, HAL_IsISR(), NULL);
+            ret = SYSTEM_ERROR_ABORTED; // FIXME: Return a HAL-specific error code
         }
+
+        return ret;
     }
 
     void on_now() override {
