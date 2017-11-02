@@ -514,7 +514,7 @@ public:
                 diag->resetConnectionAttempts();
                 if (reason != NETWORK_DISCONNECT_REASON_NONE) {
                     diag->disconnectionReason(reason);
-                    if (reason == NETWORK_DISCONNECT_REASON_ERROR) {
+                    if (reason == NETWORK_DISCONNECT_REASON_ERROR || reason == NETWORK_DISCONNECT_REASON_RESET) {
                         diag->disconnectedUnexpectedly();
                     }
                 }

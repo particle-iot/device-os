@@ -47,7 +47,8 @@ typedef enum network_disconnect_reason {
     NETWORK_DISCONNECT_REASON_USER = 2, // Disconnected at the user's request
     NETWORK_DISCONNECT_REASON_NETWORK_OFF = 3, // Disconnected due to the network shutdown
     NETWORK_DISCONNECT_REASON_LISTENING = 4, // Disconnected due to the listening mode
-    NETWORK_DISCONNECT_REASON_SLEEP = 5 // Disconnected due to the sleep mode
+    NETWORK_DISCONNECT_REASON_SLEEP = 5, // Disconnected due to the sleep mode
+    NETWORK_DISCONNECT_REASON_RESET = 6 // Disconnected to recover from cloud connection errors
 } network_disconnect_reason;
 
 /**
