@@ -105,6 +105,11 @@ wlan_result_t wlan_connected_rssi()
     return 0;
 }
 
+int wlan_connected_info(void* reserved, wlan_connected_info_t* inf, void* reserved1)
+{
+    return -1;
+}
+
 int wlan_set_credentials(WLanCredentials* c)
 {
   return -1;
