@@ -1232,7 +1232,7 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
     if (sparkSocket==socket)
     {
-        cloud_disconnect(false);
+        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
     }
 }
 
@@ -1459,7 +1459,7 @@ bool system_cloud_active()
         if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
         {
         	WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
-        	cloud_disconnect(false);
+        	cloud_disconnect(false); // TODO: Do we need to specify a reason of the disconnection here?
             return false;
         }
     }

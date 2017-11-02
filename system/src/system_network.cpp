@@ -288,7 +288,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved)
 {
 	nif(network).connect_cancel(true);
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).disconnect(reason));
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).disconnect((network_disconnect_reason)reason));
 }
 
 bool network_ready(network_handle_t network, uint32_t param, void* reserved)

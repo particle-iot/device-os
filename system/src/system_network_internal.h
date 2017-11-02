@@ -111,9 +111,9 @@ public:
 
     NetworkDiagnostics() :
             status_(DIAG_ID_NETWORK_CONNECTION_STATUS, "net:stat", TURNED_OFF),
-            connCount_(DIAG_ID_NETWORK_CONNECTION_ATTEMPTS, "net::connAttempts"),
+            disconnReason_(DIAG_ID_NETWORK_DISCONNECTION_REASON, "net:disconnReason", NETWORK_DISCONNECT_REASON_NONE),
             disconnCount_(DIAG_ID_NETWORK_DISCONNECTS, "net:disconn"),
-            disconnReason_(DIAG_ID_NETWORK_DISCONNECTION_REASON, "net:disconnReason"),
+            connCount_(DIAG_ID_NETWORK_CONNECTION_ATTEMPTS, "net::connAttempts"),
             lastError_(DIAG_ID_NETWORK_CONNECTION_ERROR_CODE, "net:err") {
     }
 
@@ -132,7 +132,7 @@ public:
         return *this;
     }
 
-    NetworkDiagnostics& disconnectionReason(int reason) {
+    NetworkDiagnostics& disconnectionReason(network_disconnect_reason reason) {
         disconnReason_ = reason;
         return *this;
     }
@@ -150,10 +150,12 @@ public:
     static NetworkDiagnostics* instance();
 
 private:
+    // Some of the diagnostic data sources use the synchronization since they can be updated from
+    // the networking service thread
     AtomicEnumDiagnosticData<Status> status_;
-    AtomicIntegerDiagnosticData connCount_;
+    AtomicEnumDiagnosticData<network_disconnect_reason> disconnReason_;
     AtomicIntegerDiagnosticData disconnCount_;
-    SimpleIntegerDiagnosticData disconnReason_;
+    SimpleIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData lastError_;
 };
 
@@ -177,7 +179,7 @@ struct NetworkInterface
     /**
      * Force a manual disconnct.
      */
-    virtual void disconnect(int reason) = 0;
+    virtual void disconnect(network_disconnect_reason reason) = 0;
 
     /**
      * @return {@code true} if this connection was manually taken down.
@@ -287,7 +289,7 @@ protected:
         WLAN_SERIAL_CONFIG_DONE = 0;
         bool wlanStarted = SPARK_WLAN_STARTED;
 
-        cloud_disconnect();
+        cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
 
         if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
             LED_SIGNAL_START(LISTENING_MODE, NORMAL);
@@ -494,7 +496,7 @@ public:
         }
     }
 
-    void disconnect(int reason = NETWORK_DISCONNECT_REASON_NONE) override
+    void disconnect(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_NONE) override
     {
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
@@ -506,7 +508,7 @@ public:
             WLAN_CONNECTED = 0;
             WLAN_DHCP_PENDING = 0;
 
-            cloud_disconnect();
+            cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
             const auto diag = NetworkDiagnostics::instance();
             if (was_connected) {
                 diag->resetConnectionAttempts();
@@ -617,12 +619,14 @@ public:
     void notify_disconnected()
     {
         LOG_NETWORK_STATE();
-        cloud_disconnect(false); // don't close the socket on the callback since this causes a lockup on the Core
+        // Don't close the socket on the callback since this causes a lockup on the Core
+        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
         if (WLAN_CONNECTING || WLAN_CONNECTED) {
             // This code is executed only in case of an unsolicited disconnection, since the disconnect() method
             // resets the WLAN_CONNECTING and WLAN_CONNECTED flags prior to closing the connection
             const auto diag = NetworkDiagnostics::instance();
             if (WLAN_CONNECTED) {
+                diag->disconnectionReason(NETWORK_DISCONNECT_REASON_ERROR);
                 diag->disconnectedUnexpectedly();
                 // "Disconnecting" event is generated only for a successfully established connection
                 system_notify_event(network_status, network_status_disconnecting);
