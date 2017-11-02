@@ -75,7 +75,7 @@ typedef enum diag_id {
     DIAG_ID_NETWORK_FLAGS = 17, // net:flags
     DIAG_ID_NETWORK_COUNTRY_CODE = 18, // net:cntry
     DIAG_ID_NETWORK_RSSI = 19, // net:rssi
-    DIAG_ID_NETWORK_CONNECTION_ATTEMPTS = 27, // net:connatts
+    DIAG_ID_NETWORK_CONNECTION_ATTEMPTS = 27, // net:connatt
     DIAG_ID_NETWORK_DISCONNECTION_REASON = 28, // net:disconnrsn
     DIAG_ID_NETWORK_SIGNAL_STRENGTH_VALUE = 37, // net:sigstrv
     DIAG_ID_NETWORK_SIGNAL_STRENGTH = 33, // net:sigstr
@@ -88,6 +88,7 @@ typedef enum diag_id {
     DIAG_ID_CLOUD_REPEATED_MESSAGES = 21, // coap:resend
     DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES = 22, // coap:unack
     DIAG_ID_CLOUD_RATE_LIMITED_EVENTS = 20, // pub:throttle
+    DIAG_ID_CLOUD_CONNECTION_ATTEMPTS = 29, // cloud:connatt
     DIAG_ID_SYSTEM_TOTAL_RAM = 25, // sys:tram
     DIAG_ID_SYSTEM_USED_RAM = 26, // sys:uram
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs
