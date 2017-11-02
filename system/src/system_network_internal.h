@@ -100,7 +100,7 @@ namespace particle {
 class NetworkDiagnostics {
 public:
     enum Status {
-        OFF = 0,
+        TURNED_OFF = 0,
         TURNING_ON = 1,
         DISCONNECTED = 2,
         CONNECTING = 3,
@@ -110,7 +110,7 @@ public:
     };
 
     NetworkDiagnostics() :
-            status_(DIAG_ID_NETWORK_CONNECTION_STATUS, "net:stat", OFF),
+            status_(DIAG_ID_NETWORK_CONNECTION_STATUS, "net:stat", TURNED_OFF),
             connCount_(DIAG_ID_NETWORK_CONNECTION_ATTEMPTS, "net::connAttempts"),
             disconnCount_(DIAG_ID_NETWORK_DISCONNECTS, "net:disconn"),
             disconnReason_(DIAG_ID_NETWORK_DISCONNECTION_REASON, "net:disconnReason"),
@@ -588,7 +588,7 @@ public:
             WLAN_CONNECTING = 0;
             WLAN_SERIAL_CONFIG_DONE = 1;
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
-            diag->status(NetworkDiagnostics::OFF);
+            diag->status(NetworkDiagnostics::TURNED_OFF);
             system_notify_event(network_status, network_status_off);
         }
     }

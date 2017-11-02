@@ -87,7 +87,9 @@ extern "C" {
 
 typedef enum cloud_disconnect_reason {
     CLOUD_DISCONNECT_REASON_NONE = 0,
-    CLOUD_DISCONNECT_REASON_ERROR = 1
+    CLOUD_DISCONNECT_REASON_ERROR = 1,
+    CLOUD_DISCONNECT_REASON_USER = 2,
+    CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT = 3
 } cloud_disconnect_reason;
 
 #if PLATFORM_ID!=3

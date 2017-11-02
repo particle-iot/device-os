@@ -297,7 +297,10 @@ void establish_cloud_connection()
         spark_cloud_udp_port_set(provider_data.port);
 #endif
         INFO("Cloud: connecting");
+        const auto diag = CloudDiagnostics::instance();
+        diag->status(CloudDiagnostics::CONNECTING);
         system_notify_event(cloud_status, cloud_status_connecting);
+        diag->connectionAttempt();
         int connect_result = spark_cloud_socket_connect();
         if (connect_result >= 0)
         {
@@ -311,6 +314,7 @@ void establish_cloud_connection()
             WARN("Cloud socket connection failed: %d", connect_result);
             SPARK_CLOUD_SOCKETED = 0;
 
+            diag->status(CloudDiagnostics::DISCONNECTED);
             // "Connecting" event should be followed by either "connected" or "disconnected" event
             system_notify_event(cloud_status, cloud_status_disconnected);
 
@@ -382,6 +386,7 @@ void handle_cloud_connection(bool force_events)
                 INFO("Cloud connected");
                 SPARK_CLOUD_CONNECTED = 1;
                 cloud_failed_connection_attempts = 0;
+                CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
                 system_notify_event(cloud_status, cloud_status_connected);
                 if (system_mode() == SAFE_MODE) {
                     LED_SIGNAL_START(SAFE_MODE, BACKGROUND); // Connected to the cloud while in safe mode
@@ -544,11 +549,14 @@ void cloud_disconnect(bool closeSocket, bool graceful, int reason)
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
         INFO("Cloud: disconnecting");
+        const auto diag = CloudDiagnostics::instance();
         if (SPARK_CLOUD_CONNECTED)
         {
+            diag->resetConnectionAttempts();
             if (reason == CLOUD_DISCONNECT_REASON_ERROR) {
-                CloudDiagnostics::instance()->disconnectedUnexpectedly();
+                diag->disconnectedUnexpectedly();
             }
+            diag->status(CloudDiagnostics::DISCONNECTING);
             // "Disconnecting" event is generated only for a successfully established connection (including handshake)
             system_notify_event(cloud_status, cloud_status_disconnecting);
         }
@@ -565,6 +573,7 @@ void cloud_disconnect(bool closeSocket, bool graceful, int reason)
         LED_SIGNAL_STOP(CLOUD_CONNECTING);
 
         INFO("Cloud: disconnected");
+        diag->status(CloudDiagnostics::DISCONNECTED);
         system_notify_event(cloud_status, cloud_status_disconnected);
     }
     Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set.

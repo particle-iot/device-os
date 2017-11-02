@@ -92,8 +92,32 @@ namespace particle {
 
 class CloudDiagnostics {
 public:
+    enum Status {
+        DISCONNECTED = 0,
+        CONNECTING = 1,
+        CONNECTED = 2,
+        DISCONNECTING = 3
+    };
+
     CloudDiagnostics() :
+            status_(DIAG_ID_CLOUD_CONNECTION_STATUS, "cloud:stat", DISCONNECTED),
+            connCount_(DIAG_ID_CLOUD_CONNECTION_ATTEMPTS, "cloud:connAttempts"),
             disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, "cloud:disconn") {
+    }
+
+    CloudDiagnostics& status(Status status) {
+        status_ = status;
+        return *this;
+    }
+
+    CloudDiagnostics& connectionAttempt() {
+        ++connCount_;
+        return *this;
+    }
+
+    CloudDiagnostics& resetConnectionAttempts() {
+        connCount_ = 0;
+        return *this;
     }
 
     CloudDiagnostics& disconnectedUnexpectedly() {
@@ -104,6 +128,8 @@ public:
     static CloudDiagnostics* instance();
 
 private:
+    SimpleEnumDiagnosticData<Status> status_;
+    SimpleIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData disconnCount_;
 };
 
