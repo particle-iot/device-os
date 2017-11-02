@@ -39,7 +39,8 @@
         (NETWORK, "Network error", -230), \
         (PROTOCOL, "Protocol error", -240), \
         (INTERNAL, "Internal error", -250), \
-        (NO_MEMORY, "Memory allocation error", -260)
+        (NO_MEMORY, "Memory allocation error", -260), \
+        (INVALID_ARGUMENT, "Invalid argument", -270)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
