@@ -37,6 +37,7 @@
 #include "concurrent_hal.h"
 #include <mutex>
 #include "net_hal.h"
+#include <limits>
 
 std::recursive_mutex mdm_mutex;
 
@@ -864,8 +865,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         sendFormated("AT+CSQ\r\n");
         if (RESP_OK == waitFinalResp(_cbCSQ, &_net)) {
             ok = true;
-            status.rssi = _net.rssi;
-            status.qual = _net.qual;
+            status = _net;
         }
     }
     UNLOCK();
@@ -1072,6 +1072,23 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
         if (sscanf(buf, "\r\n+CSQ: %d,%d",&a,&b) == 2) {
             if (a != 99) status->rssi = -113 + 2*a;  // 0: -113 1: -111 ... 30: -53 dBm with 2 dBm steps
             if ((b != 99) && (b < (int)sizeof(_qual))) status->qual = _qual[b];  //
+
+            switch (status->act) {
+            case ACT_GSM:
+            case ACT_EDGE:
+                status->rxlev = (a != 99) ? (2 * a) : a;
+                status->rxqual = b;
+                break;
+            case ACT_UTRAN:
+                status->rscp = (a != 99) ? (status->rssi + 116) : 255;
+                status->ecno = (b != 99) ? std::min((7 + (7 - b) * 6), 44) : 255;
+                break;
+            default:
+                // Unknown access tecnhology
+                status->asu = std::numeric_limits<int32_t>::min();
+                status->aqual = std::numeric_limits<int32_t>::min();
+                break;
+            }
         }
     }
     return WAIT;
