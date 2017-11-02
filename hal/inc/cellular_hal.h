@@ -105,7 +105,7 @@ void cellular_cancel(bool cancel, bool calledFromISR, void* reserved);
 /**
  * Retrieve cellular signal strength info
  */
-cellular_result_t cellular_signal(CellularSignalHal &signal, void* reserved);
+cellular_result_t cellular_signal(CellularSignalHal* signal, cellular_signal_t* reserved);
 
 /**
  * Send an AT command and wait for response, optionally specify a callback function to parse the results
