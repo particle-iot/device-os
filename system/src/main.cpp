@@ -54,6 +54,7 @@
 #include "spark_wiring_diagnostics.h"
 #include "spark_wiring_system.h"
 #include "system_power.h"
+#include "spark_wiring_wifi.h"
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -194,30 +195,16 @@ private:
 
 /* displays RSSI value on system LED */
 void system_display_rssi() {
-    /*   signal strength (u-Blox Sara U2 and G3 modules)
-     *   0: < -105 dBm
-     *   1: < -93 dBm
-     *   2: < -81 dBm
-     *   3: < -69 dBm
-     *   4: < - 57 dBm
-     *   5: >= -57 dBm
-     */
-    int rssi = 0;
     int bars = 0;
 #if Wiring_WiFi == 1
-    rssi = WiFi.RSSI();
+    auto sig = WiFi.RSSI();
 #elif Wiring_Cellular == 1
-    CellularSignal sig = Cellular.RSSI();
-    rssi = sig.rssi;
+    auto sig = Cellular.RSSI();
 #endif
-    if (rssi < 0) {
-        if (rssi >= -57) bars = 5;
-        else if (rssi > -68) bars = 4;
-        else if (rssi > -80) bars = 3;
-        else if (rssi > -92) bars = 2;
-        else if (rssi > -104) bars = 1;
+    if (sig.getStrength() >= 0) {
+        bars = std::round(sig.getStrength() / 20.0f);
     }
-    DEBUG("RSSI: %ddB BARS: %d\r\n", rssi, bars);
+    DEBUG("RSSI: %ddBm BARS: %d\r\n", (int)(sig.getStrengthValue() / 100.0f), bars);
 
     static LEDCounterStatus ledCounter(LED_PRIORITY_IMPORTANT);
     ledCounter.start(bars);
