@@ -72,10 +72,10 @@ typedef enum diag_id {
     DIAG_ID_NETWORK_FLAGS = 17, // net:flags
     DIAG_ID_NETWORK_COUNTRY_CODE = 18, // net:cntry
     DIAG_ID_NETWORK_SIGNAL_STRENGTH_VALUE = 19, // net:sigstrv
-    DIAG_ID_NETWORK_SIGNAL_STRENGTH = 27, // net:sigstr
-    DIAG_ID_NETWORK_SIGNAL_QUALITY = 28, // net:sigqual
-    DIAG_ID_NETWORK_SIGNAL_QUALITY_VALUE = 29, // net:sigqualv
-    DIAG_ID_NETWORK_ACCESS_TECNHOLOGY = 30, // net:at
+    DIAG_ID_NETWORK_SIGNAL_STRENGTH = 33, // net:sigstr
+    DIAG_ID_NETWORK_SIGNAL_QUALITY = 34, // net:sigqual
+    DIAG_ID_NETWORK_SIGNAL_QUALITY_VALUE = 35, // net:sigqualv
+    DIAG_ID_NETWORK_ACCESS_TECNHOLOGY = 36, // net:at
     DIAG_ID_CLOUD_CONNECTION_STATUS = 10, // cloud:stat
     DIAG_ID_CLOUD_CONNECTION_ERROR_CODE = 13, // cloud:error
     DIAG_ID_CLOUD_DISCONNECTS = 14, // cloud:dx
