@@ -149,7 +149,7 @@ namespace spark {
 
         wlan_connected_info_t info = {0};
         int r = wlan_connected_info(nullptr, &info, nullptr);
-        if (r != 0) {
+        if (r == 0) {
             sig.fromConnectedInfo(info);
             return sig;
         }

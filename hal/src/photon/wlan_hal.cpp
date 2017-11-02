@@ -867,7 +867,7 @@ int wlan_connected_info(void* reserved, wlan_connected_info_t* inf, void* reserv
     inf->snr = (rssi - noise) * 100;
     inf->noise = noise * 100;
 
-    inf->strength = std::min(std::max(2 * (inf->rssi + 100), 0L), 100L) * 65535 / 100;
+    inf->strength = std::min(std::max(2 * (rssi + 100), 0L), 100L) * 65535 / 100;
     inf->quality = std::min(std::max(inf->snr / 100 - 9, 0L), 31L) * 65535 / 31;
     return ret;
 }

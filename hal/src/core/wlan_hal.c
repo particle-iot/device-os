@@ -207,11 +207,11 @@ int wlan_connected_info(void* reserved, wlan_connected_info_t* inf, void* reserv
         return SYSTEM_ERROR_UNKNOWN;
     }
 
-    inf->rssi = rssi;
+    inf->rssi = rssi * 100;
     inf->snr = INT_MIN;
     inf->noise = INT_MIN;
 
-    inf->strength = MIN(MAX(2 * (inf->rssi + 100), 0L), 100L) * 65535 / 100;
+    inf->strength = MIN(MAX(2 * (rssi + 100), 0L), 100L) * 65535 / 100;
     inf->quality = INT_MIN;
     return ret;
 }
