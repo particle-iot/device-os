@@ -23,6 +23,7 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_signal.h"
 #include <string.h>
 
 #if Wiring_Cellular
@@ -33,14 +34,27 @@
 /*
  * CellularSignal
  */
-class CellularSignal : public Printable {
+class CellularSignal : public particle::Signal, public Printable {
 public:
     int rssi = 0;
     int qual = 0;
 
-    CellularSignal() { /* n/a */ }
+    CellularSignal() {}
+    CellularSignal(const cellular_signal_t& sig);
+    virtual ~CellularSignal() {};
+
+    bool fromHalCellularSignal(const cellular_signal_t& sig);
+
+    virtual hal_net_access_tech_t getAccessTechnology() const;
+    virtual float getStrength() const;
+    virtual float getStrengthValue() const;
+    virtual float getQuality() const;
+    virtual float getQualityValue() const;
 
     virtual size_t printTo(Print& p) const;
+
+private:
+    cellular_signal_t sig_ = {0};
 };
 
 /*
