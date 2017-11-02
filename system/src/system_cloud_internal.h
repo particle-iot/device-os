@@ -101,8 +101,10 @@ public:
 
     CloudDiagnostics() :
             status_(DIAG_ID_CLOUD_CONNECTION_STATUS, "cloud:stat", DISCONNECTED),
+            disconnReason_(DIAG_ID_CLOUD_DISCONNECTION_REASON, "cloud:disconnReason", CLOUD_DISCONNECT_REASON_NONE),
+            disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, "cloud:disconn"),
             connCount_(DIAG_ID_CLOUD_CONNECTION_ATTEMPTS, "cloud:connAttempts"),
-            disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, "cloud:disconn") {
+            lastError_(DIAG_ID_CLOUD_CONNECTION_ERROR_CODE, "cloud:err") {
     }
 
     CloudDiagnostics& status(Status status) {
@@ -120,17 +122,31 @@ public:
         return *this;
     }
 
+    CloudDiagnostics& disconnectionReason(cloud_disconnect_reason reason) {
+        disconnReason_ = reason;
+        return *this;
+    }
+
     CloudDiagnostics& disconnectedUnexpectedly() {
         ++disconnCount_;
+        return *this;
+    }
+
+    CloudDiagnostics& lastError(int error) {
+        lastError_ = error;
         return *this;
     }
 
     static CloudDiagnostics* instance();
 
 private:
-    SimpleEnumDiagnosticData<Status> status_;
-    SimpleIntegerDiagnosticData connCount_;
+    // Some of the diagnostic data sources use the synchronization since they can be updated from
+    // the networking service thread
+    AtomicEnumDiagnosticData<Status> status_;
+    AtomicEnumDiagnosticData<cloud_disconnect_reason> disconnReason_;
     SimpleIntegerDiagnosticData disconnCount_;
+    SimpleIntegerDiagnosticData connCount_;
+    SimpleIntegerDiagnosticData lastError_;
 };
 
 } // namespace particle

@@ -89,6 +89,7 @@ typedef enum diag_id {
     DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES = 22, // coap:unack
     DIAG_ID_CLOUD_RATE_LIMITED_EVENTS = 20, // pub:throttle
     DIAG_ID_CLOUD_CONNECTION_ATTEMPTS = 29, // cloud:connatt
+    DIAG_ID_CLOUD_DISCONNECTION_REASON = 30, // cloud:disconnrsn
     DIAG_ID_SYSTEM_TOTAL_RAM = 25, // sys:tram
     DIAG_ID_SYSTEM_USED_RAM = 26, // sys:uram
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs

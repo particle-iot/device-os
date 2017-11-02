@@ -311,6 +311,9 @@ void establish_cloud_connection()
         }
         else
         {
+            // TODO: Update the last error diagnostic via CloudDiagnostics::lastError(). Currently,
+            // the last error diagnostic is used only for communication errors since we cannot mix
+            // HAL and communication error codes without specifying the category of an error
             WARN("Cloud socket connection failed: %d", connect_result);
             SPARK_CLOUD_SOCKETED = 0;
 
@@ -379,6 +382,8 @@ void handle_cloud_connection(bool force_events)
                     // allow time for the LED to be flashed
                     while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
                 }
+                const auto diag = CloudDiagnostics::instance();
+                diag->lastError(err);
                 cloud_disconnect();
             }
             else
@@ -408,7 +413,7 @@ void manage_cloud_connection(bool force_events)
 {
     if (spark_cloud_flag_auto_connect() == 0)
     {
-        cloud_disconnect_graceful();
+        cloud_disconnect_graceful(true, CLOUD_DISCONNECT_REASON_USER);
     }
     else // cloud connection is wanted
     {
@@ -537,12 +542,12 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
-void cloud_disconnect_graceful(bool closeSocket, int reason)
+void cloud_disconnect_graceful(bool closeSocket, cloud_disconnect_reason reason)
 {
     cloud_disconnect(closeSocket, true, reason);
 }
 
-void cloud_disconnect(bool closeSocket, bool graceful, int reason)
+void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason reason)
 {
 #ifndef SPARK_NO_CLOUD
 
@@ -553,8 +558,11 @@ void cloud_disconnect(bool closeSocket, bool graceful, int reason)
         if (SPARK_CLOUD_CONNECTED)
         {
             diag->resetConnectionAttempts();
-            if (reason == CLOUD_DISCONNECT_REASON_ERROR) {
-                diag->disconnectedUnexpectedly();
+            if (reason != CLOUD_DISCONNECT_REASON_NONE) {
+                diag->disconnectionReason(reason);
+                if (reason == CLOUD_DISCONNECT_REASON_ERROR) {
+                    diag->disconnectedUnexpectedly();
+                }
             }
             diag->status(CloudDiagnostics::DISCONNECTING);
             // "Disconnecting" event is generated only for a successfully established connection (including handshake)
