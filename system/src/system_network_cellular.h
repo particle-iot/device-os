@@ -48,7 +48,7 @@ protected:
 
     virtual void connect_init() override { /* n/a */ }
 
-    void connect_finalize_impl() {
+    int connect_finalize_impl() {
         cellular_result_t result = -1;
         result = cellular_init(NULL);
         if (result) { return result; }
@@ -70,6 +70,8 @@ protected:
 
         HAL_NET_notify_connected();
         HAL_NET_notify_dhcp(true);
+
+        return 0;
     }
 
     int connect_finalize() override {
