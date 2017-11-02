@@ -84,7 +84,7 @@ private:
 };
 
 template <size_t M, size_t N>
-using FixedPointSQ = FixedPointQ<true, M, N>;
+using FixedPointSQ = FixedPointQ<true, M - 1, N>;
 
 template <size_t M, size_t N>
 using FixedPointUQ = FixedPointQ<false, M, N>;
