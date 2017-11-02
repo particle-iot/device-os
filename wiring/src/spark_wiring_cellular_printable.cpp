@@ -20,8 +20,61 @@
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_print.h"
 #include "string.h"
+#include <limits>
 
 #if Wiring_Cellular
+
+CellularSignal::CellularSignal(const cellular_signal_t& sig)
+    : sig_(sig)
+{
+}
+
+bool CellularSignal::fromHalCellularSignal(const cellular_signal_t& sig)
+{
+    sig_ = sig;
+    return true;
+}
+
+hal_net_access_tech_t CellularSignal::getAccessTechnology() const
+{
+    return static_cast<hal_net_access_tech_t>(sig_.rat);
+}
+
+float CellularSignal::getStrength() const
+{
+    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.strength > 0) {
+        return (float)sig_.strength / 65535.0f * 100.0f;
+    }
+
+    return -1.0f;
+}
+
+float CellularSignal::getStrengthValue() const
+{
+    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.rssi != std::numeric_limits<int32_t>::min()) {
+        return (float)sig_.rssi / 100.0f;
+    }
+
+    return 0.0f;
+}
+
+float CellularSignal::getQuality() const
+{
+    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.quality > 0) {
+        return (float)sig_.quality / 65535.0f * 100.0f;
+    }
+
+    return -1.0f;
+}
+
+float CellularSignal::getQualityValue() const
+{
+    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.qual != std::numeric_limits<int32_t>::min()) {
+        return (float)sig_.qual / 100.0f;
+    }
+
+    return 0.0f;
+}
 
 size_t CellularSignal::printTo(Print& p) const
 {
