@@ -57,7 +57,7 @@ static void network_suspend() {
     wakeupState.wifiConnected = wakeupState.cloud || network_ready(0, 0, NULL) || network_connecting(0, 0, NULL);
 #ifndef SPARK_NO_CLOUD
     // disconnect the cloud now, and clear the auto connect status
-    spark_cloud_socket_disconnect();
+    network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
     spark_cloud_flag_disconnect();
 #endif
     network_off(0, 0, 0, NULL);
