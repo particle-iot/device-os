@@ -774,7 +774,7 @@
  *
  * Requires: MBEDTLS_BIGNUM_C
  */
-#define MBEDTLS_GENPRIME
+//#define MBEDTLS_GENPRIME
 
 /**
  * \def MBEDTLS_FS_IO
@@ -1997,6 +1997,14 @@
  * This modules translates between OIDs and internal values.
  */
 #define MBEDTLS_OID_C
+
+/**
+ * \def MBEDTLS_OID_OPTIMIZE_STRINGS
+ *
+ * Remove unused functions from oid.c that cause unused strings to get pulled in
+ *
+ */
+#define MBEDTLS_OID_OPTIMIZE_STRINGS
 
 /**
  * \def MBEDTLS_PADLOCK_C

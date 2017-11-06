@@ -509,7 +509,7 @@ TEST_CASE("Message logging") {
         log.checkNext().messageEquals("error").levelEquals(LOG_LEVEL_ERROR);
     }
 }
-
+/*
 TEST_CASE("Message logging (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_ALL);
     SECTION("default attributes") {
@@ -535,7 +535,7 @@ TEST_CASE("Message logging (compatibility callback)") {
         check(log.stream()).endsWith(s.substr(0, LOG_MAX_STRING_LENGTH - 2) + "~\r\n");
     }
 }
-
+*/
 TEST_CASE("Direct logging") {
     DefaultLogHandler log(LOG_LEVEL_ALL);
     SECTION("write") {
@@ -585,7 +585,7 @@ TEST_CASE("Direct logging") {
 #endif
     }
 }
-
+/*
 // Copy-pase of above test case with DefaultLogHandler replaced with CompatLogHandler
 TEST_CASE("Direct logging (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_ALL);
@@ -636,7 +636,7 @@ TEST_CASE("Direct logging (compatibility callback)") {
 #endif
     }
 }
-
+*/
 TEST_CASE("Basic filtering") {
     SECTION("warn") {
         DefaultLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
@@ -657,7 +657,7 @@ TEST_CASE("Basic filtering") {
         check(log.stream()).isEmpty();
     }
 }
-
+/*
 TEST_CASE("Basic filtering (compatibility callback)") {
     CompatLogHandler log(LOG_LEVEL_WARN); // TRACE and INFO should be filtered out
     CHECK((!LOG_ENABLED(TRACE) && !LOG_ENABLED(INFO) && LOG_ENABLED(WARN) && LOG_ENABLED(ERROR)));
@@ -690,7 +690,7 @@ TEST_CASE("Basic filtering (compatibility callback)") {
         check(log.stream()).endsWith("ERROR: message\r\nprint,printf,00");
     }
 }
-
+*/
 TEST_CASE("Scoped category") {
     DefaultLogHandler log(LOG_LEVEL_ALL);
     CHECK(LOG_THIS_CATEGORY() == SOURCE_CATEGORY);

@@ -128,6 +128,8 @@ inline void store_char(uint16_t c, Ring_Buffer *buffer)
 static uint8_t HAL_USART_Calculate_Word_Length(uint32_t config, uint8_t noparity);
 static uint32_t HAL_USART_Calculate_Data_Bits_Mask(uint32_t config);
 static uint8_t HAL_USART_Validate_Config(uint32_t config);
+static void HAL_USART_Configure_Transmit_Receive(HAL_USART_Serial serial, uint8_t transmit, uint8_t receive);
+static void HAL_USART_Configure_Pin_Modes(HAL_USART_Serial serial, uint32_t config);
 
 uint8_t HAL_USART_Calculate_Word_Length(uint32_t config, uint8_t noparity)
 {
@@ -171,6 +173,9 @@ uint8_t HAL_USART_Validate_Config(uint32_t config)
 	if ((config & SERIAL_PARITY) == (SERIAL_PARITY_EVEN | SERIAL_PARITY_ODD))
 		return 0;
 
+	if ((config & SERIAL_HALF_DUPLEX) && (config & LIN_MODE))
+		return 0;
+
 	if (config & LIN_MODE)
 	{
 		// Either Master or Slave mode
@@ -189,6 +194,58 @@ uint8_t HAL_USART_Validate_Config(uint32_t config)
 	}
 
 	return 1;
+}
+
+void HAL_USART_Configure_Transmit_Receive(HAL_USART_Serial serial, uint8_t transmit, uint8_t receive)
+{
+	uint32_t toset = 0;
+	if (transmit) {
+		toset |= ((uint32_t)USART_CR1_TE);
+	}
+	if (receive) {
+		toset |= ((uint32_t)USART_CR1_RE);
+	}
+	uint32_t tmp = usartMap[serial]->usart_peripheral->CR1;
+	if ((tmp & ((uint32_t)(USART_CR1_TE | USART_CR1_RE))) != toset) {
+		tmp &= ~((uint32_t)(USART_CR1_TE | USART_CR1_RE));
+		tmp |= toset;
+		usartMap[serial]->usart_peripheral->CR1 = tmp;
+	}
+}
+
+void HAL_USART_Configure_Pin_Modes(HAL_USART_Serial serial, uint32_t config)
+{
+	if ((config & SERIAL_HALF_DUPLEX) == 0) {
+		// Full duplex with push-pull
+		HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
+		HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+	} else if ((config & SERIAL_OPEN_DRAIN)) {
+		// Half-duplex with open drain
+		HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
+		HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_DRAIN);
+	} else {
+		// Half-duplex with push-pull
+		/* RM0033 24.3.10:
+		 * The TX pin is always released when no data is transmitted. Thus, it acts as a standard
+		 * I/O in idle or in reception. It means that the I/O must be configured so that TX is
+		 * configured as floating input (or output high open-drain) when not driven by the USART
+		 */
+		HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
+		HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+		if (config & SERIAL_TX_PULL_UP) {
+			// We ought to allow enabling pull-up or pull-down through HAL somehow
+			STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+			pin_t gpio_pin = PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_pin;
+			GPIO_TypeDef *gpio_port = PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral;
+			GPIO_InitTypeDef GPIO_InitStructure = {0};
+			GPIO_InitStructure.GPIO_Pin = gpio_pin;
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+			GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+			GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+			GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+			GPIO_Init(gpio_port, &GPIO_InitStructure);
+		}
+	}
 }
 
 void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
@@ -241,9 +298,9 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 
 	USART_DeInit(usartMap[serial]->usart_peripheral);
 
-	// Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
-	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, AF_OUTPUT_PUSHPULL);
-	HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
+	usartMap[serial]->usart_enabled = false;
+
+	HAL_USART_Configure_Pin_Modes(serial, config);
 
 	// Enable USART Clock
 	*usartMap[serial]->usart_apbReg |=  usartMap[serial]->usart_clock_en;
@@ -389,6 +446,13 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 		}
 	}
 
+	usartMap[serial]->usart_config = config;
+	if (config & SERIAL_HALF_DUPLEX) {
+		HAL_USART_Half_Duplex(serial, ENABLE);
+	}
+
+	USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TC, DISABLE);
+
 	// Enable the USART
 	USART_Cmd(usartMap[serial]->usart_peripheral, ENABLE);
 
@@ -396,7 +460,6 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 		USART_LINCmd(usartMap[serial]->usart_peripheral, ENABLE);
 	}
 
-	usartMap[serial]->usart_config = config;
 	usartMap[serial]->usart_enabled = true;
 	usartMap[serial]->usart_transmitting = false;
 
@@ -412,6 +475,10 @@ void HAL_USART_End(HAL_USART_Serial serial)
 
 	// Disable the USART
 	USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+
+	// Switch pins to INPUT
+	HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
+	HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, INPUT);
 
 	// Disable LIN mode
 	USART_LINCmd(usartMap[serial]->usart_peripheral, DISABLE);
@@ -552,7 +619,26 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
 
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 {
+	if (HAL_USART_Is_Enabled(serial)) {
+		USART_Cmd(usartMap[serial]->usart_peripheral, DISABLE);
+	}
+
+	if (Enable) {
+		usartMap[serial]->usart_config |= SERIAL_HALF_DUPLEX;
+	} else {
+		usartMap[serial]->usart_config &= ~(SERIAL_HALF_DUPLEX);
+	}
+	HAL_USART_Configure_Pin_Modes(serial, usartMap[serial]->usart_config);
+
+	// These bits need to be cleared according to the reference manual
+	usartMap[serial]->usart_peripheral->CR2 &= ~(USART_CR2_LINEN | USART_CR2_CLKEN);
+  	usartMap[serial]->usart_peripheral->CR3 &= ~(USART_CR3_IREN | USART_CR3_SCEN);
 	USART_HalfDuplexCmd(usartMap[serial]->usart_peripheral, Enable ? ENABLE : DISABLE);
+
+
+	if (HAL_USART_Is_Enabled(serial)) {
+		USART_Cmd(usartMap[serial]->usart_peripheral, ENABLE);
+	}
 }
 
 void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved)
@@ -588,6 +674,15 @@ static void HAL_USART_Handler(HAL_USART_Serial serial)
 		store_char(c, usartMap[serial]->usart_rx_buffer);
 	}
 
+	uint8_t noecho = (usartMap[serial]->usart_config & (SERIAL_HALF_DUPLEX | SERIAL_HALF_DUPLEX_NO_ECHO)) == (SERIAL_HALF_DUPLEX | SERIAL_HALF_DUPLEX_NO_ECHO);
+
+	if(USART_GetITStatus(usartMap[serial]->usart_peripheral, USART_IT_TC) != RESET) {
+		if (noecho) {
+			USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TC, DISABLE);
+			HAL_USART_Configure_Transmit_Receive(serial, 0, 1);
+		}
+	}
+
 	if(USART_GetITStatus(usartMap[serial]->usart_peripheral, USART_IT_TXE) != RESET)
 	{
 		// Write byte to the transmit data register
@@ -595,9 +690,15 @@ static void HAL_USART_Handler(HAL_USART_Serial serial)
 		{
 			// Buffer empty, so disable the USART Transmit interrupt
 			USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TXE, DISABLE);
+			if (noecho) {
+				USART_ITConfig(usartMap[serial]->usart_peripheral, USART_IT_TC, ENABLE);
+			}
 		}
 		else
 		{
+			if (noecho) {
+				HAL_USART_Configure_Transmit_Receive(serial, 1, 0);
+			}
 			// There is more data in the output buffer. Send the next byte
 			USART_SendData(usartMap[serial]->usart_peripheral, usartMap[serial]->usart_tx_buffer->buffer[usartMap[serial]->usart_tx_buffer->tail++]);
 			usartMap[serial]->usart_tx_buffer->tail %= SERIAL_BUFFER_SIZE;

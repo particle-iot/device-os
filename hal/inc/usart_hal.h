@@ -102,6 +102,15 @@
 #define LIN_SLAVE_10B  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE  | LIN_BREAK_10B)
 #define LIN_SLAVE_11B  (uint32_t)(((uint32_t)SERIAL_8N1) | LIN_MODE_SLAVE  | LIN_BREAK_11B)
 
+// Half-duplex
+#define SERIAL_HALF_DUPLEX            ((uint32_t)0x1000)
+#define SERIAL_HALF_DUPLEX_NO_ECHO    ((uint32_t)0x3000)
+
+#define SERIAL_OPEN_DRAIN             ((uint32_t)0x4000)
+#define SERIAL_HALF_DUPLEX_OPEN_DRAIN (SERIAL_HALF_DUPLEX | SERIAL_OPEN_DRAIN)
+
+#define SERIAL_TX_PULL_UP             ((uint32_t)0x8000)
+
 
 /* Exported types ------------------------------------------------------------*/
 typedef struct Ring_Buffer
