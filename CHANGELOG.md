@@ -1,3 +1,16 @@
+## 0.7.0-rc.4
+
+### ENHANCEMENTS
+
+ - USART Half-duplex enhancements [#1308](https://github.com/spark/firmware/pull/1380)
+
+### BUGFIX
+
+ - KRACK WPA2 security bugfix [#1420](https://github.com/spark/firmware/pull/1420)
+ - Monolithic build linker error [#1370](https://github.com/spark/firmware/pull/1370)
+ - 4-digit serial numbers had additional characters [#1380](https://github.com/spark/firmware/pull/1380)
+ 
+
 ## 0.7.0-rc.3
 
 ### DEPRECATED API
