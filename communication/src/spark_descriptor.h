@@ -96,6 +96,7 @@ struct SparkDescriptor
      * Append metrics to the given appender.
      * @param appender	The appender function to call with the "append" data and the string to append
      * @param append		Opaque data to be passed to appender
+     * @param flags		0x01 - append as binary daata, otherwise append as json
      * @param page		A key to select which metrics data to output. Presently unused and should be 0, which means the default metrics.
      * @param reserved	For future expansion.
      * @return
