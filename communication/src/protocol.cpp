@@ -317,7 +317,9 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	size_t len = build_hello(message, was_ota_upgrade_successful);
+	uint8_t flags = was_ota_upgrade_successful ? 1 : 0;
+	flags |= 2;		// diagnostics support
+	size_t len = build_hello(message, flags);
 	message.set_length(len);
 	message.set_confirm_received(true);
 	last_message_millis = callbacks.millis();
@@ -415,6 +417,18 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	size_t desc = Messages::description(buf, msg_id, token);
 
 	BufferAppender appender(buf + desc, message.capacity());
+
+	// diagnostics must be requested in isolation to be a binary packet
+	if (descriptor.append_metrics && (desc_flags == DESCRIBE_METRICS))
+	{
+		appender.append(char(0));	// null byte means binary data
+		appender.append(char(DESCRIBE_METRICS)); 									// uint16 describes the type of binary packet
+		appender.append(char(0));	//
+		const int flags = 1;		// binary
+		const int page = 0;
+		descriptor.append_metrics(append_instance, &appender, flags, page, nullptr);
+	}
+	else {
 	appender.append("{");
 	bool has_content = false;
 
@@ -484,6 +498,7 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	}
 
 	appender.append('}');
+	}
 	int msglen = appender.next() - (uint8_t*) buf;
 	message.set_length(msglen);
 	LOG(INFO,"Sending '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",

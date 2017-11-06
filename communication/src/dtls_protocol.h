@@ -58,13 +58,13 @@ public:
 	          const SparkCallbacks &callbacks,
 	          const SparkDescriptor &descriptor) override;
 
-	size_t build_hello(Message& message, bool ota_updated) override
+	size_t build_hello(Message& message, uint8_t flags) override
 	{
 		product_details_t deets;
 		deets.size = sizeof(deets);
 		get_product_details(deets);
 		size_t len = Messages::hello(message.buf(), 0,
-				ota_updated, PLATFORM_ID, deets.product_id,
+				flags, PLATFORM_ID, deets.product_id,
 				deets.product_version, true,
 				device_id, sizeof(device_id));
 		return len;

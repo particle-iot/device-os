@@ -29,8 +29,57 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 #include "system_task.h"
 #include "system_tick_hal.h"
 #include <string.h>
+#include <limits>
 
 #if Wiring_WiFi
+
+WiFiSignal::WiFiSignal(const wlan_connected_info_t& inf)
+    : inf_(inf) {
+}
+
+WiFiSignal::operator int8_t() const {
+    return this->rssi;
+}
+
+bool WiFiSignal::fromConnectedInfo(const wlan_connected_info_t& inf) {
+    inf_ = inf;
+    this->rssi = inf_.rssi != std::numeric_limits<int32_t>::min() ? inf_.rssi / 100 : 2;
+    this->qual = inf_.snr != std::numeric_limits<int32_t>::min() ? inf_.snr / 100 : 0;
+    return true;
+}
+
+hal_net_access_tech_t WiFiSignal::getAccessTechnology() const {
+    return NET_ACCESS_TECHNOLOGY_WIFI;
+}
+
+float WiFiSignal::getStrength() const {
+    if (inf_.strength != std::numeric_limits<int32_t>::min()) {
+        return inf_.strength / 65535.0f * 100.0f;
+    }
+    return -1.0f;
+}
+
+float WiFiSignal::getStrengthValue() const {
+    if (inf_.rssi != std::numeric_limits<int32_t>::min()) {
+        return inf_.rssi / 100.0f;
+    }
+    return 0.0f;
+}
+
+float WiFiSignal::getQuality() const {
+    if (inf_.quality != std::numeric_limits<int32_t>::min()) {
+        return inf_.quality / 65535.0f * 100.0f;
+    }
+    return -1.0f;
+}
+
+float WiFiSignal::getQualityValue() const {
+    if (inf_.snr != std::numeric_limits<int32_t>::min()) {
+        return inf_.snr / 100.0f;
+    }
+    return 0.0f;
+}
+
 
 namespace spark {
 
@@ -92,18 +141,23 @@ namespace spark {
         return apList.start();
     }
 
-    int8_t WiFiClass::RSSI() {
-        if (!network_ready(*this, 0, NULL))
-            return 0;
-
-        system_tick_t _functionStart = millis();
-        while ((millis() - _functionStart) < 1000) {
-            int rv = wlan_connected_rssi();
-            if (rv != 0)
-                return (rv);
+    WiFiSignal WiFiClass::RSSI() {
+        WiFiSignal sig;
+        if (!network_ready(*this, 0, NULL)) {
+            return sig;
         }
-        return (2);
+
+        wlan_connected_info_t info = {0};
+        int r = wlan_connected_info(nullptr, &info, nullptr);
+        if (r == 0) {
+            sig.fromConnectedInfo(info);
+            return sig;
+        }
+
+        sig.rssi = 2;
+        return sig;
     }
+
 
 /********************************* Bug Notice *********************************
 On occasion, "wlan_ioctl_get_scan_results" only returns a single bad entry

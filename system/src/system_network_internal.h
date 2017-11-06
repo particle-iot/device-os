@@ -29,6 +29,7 @@
 #include "system_network.h"
 #include "system_threading.h"
 #include "system_mode.h"
+#include "system_power.h"
 
 using namespace particle;
 
@@ -276,6 +277,9 @@ protected:
                 }
                 console.loop();
             }
+#if Wiring_Cellular == 1
+            system_power_management_update();
+#endif
 #if PLATFORM_THREADING
             SystemISRTaskQueue.process();
             if (!APPLICATION_THREAD_CURRENT()) {

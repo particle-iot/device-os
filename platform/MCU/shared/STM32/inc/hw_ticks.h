@@ -21,16 +21,15 @@
 
 #pragma once
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
-
 #include "platform_config.h"
 #include "system_tick_hal.h"
 
-#define SYSTEM_US_TICKS		(SystemCoreClock / 1000000)//cycles per microsecond
+#define SYSTEM_US_TICKS     (SystemCoreClock / 1000000)//cycles per microsecond
 #define SYSTEM_TICK_COUNTER     (DWT->CYCCNT)
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 /**
  * Increment the millisecond tick counter.
@@ -50,17 +49,22 @@ void System1UsTick(void);
 system_tick_t GetSystem1MsTick();
 
 /**
+ * Fetches the milliseconds counter. This function is similar to GetSystem1MsTick() but
+ * returns a 64-bit value.
+ */
+uint64_t GetSystem1MsTick64();
+
+/**
  * Fetch the current microseconds count.
  * @return the number of microseconds since the device was powered on or woken up from
  * sleep. Automatically wraps around when above UINT_MAX;
  */
 system_tick_t GetSystem1UsTick();
 
-
 /**
  * Testing method that simulates advancing the time forward.
  */
-void __advance_system1MsTick(system_tick_t millis, system_tick_t micros_from_rollover);
+void __advance_system1MsTick(uint64_t millis, system_tick_t micros_from_rollover);
 
 void SysTick_Disable();
 

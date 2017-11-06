@@ -37,6 +37,7 @@
 #include "rgbled.h"
 #include "service_debug.h"
 #include "cellular_hal.h"
+#include "system_power.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -47,6 +48,7 @@
 
 using spark::Network;
 using particle::LEDStatus;
+using particle::CloudDiagnostics;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
@@ -448,6 +450,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         system_pending_shutdown();
     }
     system_shutdown_if_needed();
+
+#if Wiring_Cellular == 1
+    system_power_management_update();
+#endif
 }
 
 /*
@@ -528,12 +534,12 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
-void cloud_disconnect_graceful(bool closeSocket)
+void cloud_disconnect_graceful(bool closeSocket, int reason)
 {
-    cloud_disconnect(closeSocket, true);
+    cloud_disconnect(closeSocket, true, reason);
 }
 
-void cloud_disconnect(bool closeSocket, bool graceful)
+void cloud_disconnect(bool closeSocket, bool graceful, int reason)
 {
 #ifndef SPARK_NO_CLOUD
 
@@ -542,6 +548,9 @@ void cloud_disconnect(bool closeSocket, bool graceful)
         INFO("Cloud: disconnecting");
         if (SPARK_CLOUD_CONNECTED)
         {
+            if (reason == CLOUD_DISCONNECT_REASON_ERROR) {
+                CloudDiagnostics::instance()->disconnectedUnexpectedly();
+            }
             // "Disconnecting" event is generated only for a successfully established connection (including handshake)
             system_notify_event(cloud_status, cloud_status_disconnecting);
         }

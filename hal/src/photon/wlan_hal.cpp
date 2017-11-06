@@ -51,6 +51,7 @@
 #include "core_hal.h"
 #include "wiced_security.h"
 #include "mbedtls_util.h"
+#include "system_error.h"
 
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
@@ -843,6 +844,32 @@ int wlan_connected_rssi()
         rssi = -1;
     }
     return rssi;
+}
+
+int wlan_connected_info(void* reserved, wlan_connected_info_t* inf, void* reserved1)
+{
+    system_error_t ret = SYSTEM_ERROR_NONE;
+    int32_t rssi = 0;
+    int32_t noise = 0;
+
+    if (inf == nullptr) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (wwd_wifi_get_rssi(&rssi) != WWD_SUCCESS) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    if (wwd_wifi_get_noise(&noise) != WWD_SUCCESS) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    inf->rssi = rssi * 100;
+    inf->snr = (rssi - noise) * 100;
+    inf->noise = noise * 100;
+
+    inf->strength = std::min(std::max(2 * (rssi + 100), 0L), 100L) * 65535 / 100;
+    inf->quality = std::min(std::max(inf->snr / 100 - 9, 0L), 31L) * 65535 / 31;
+    return ret;
 }
 
 struct SnifferInfo

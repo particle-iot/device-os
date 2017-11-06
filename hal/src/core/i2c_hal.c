@@ -681,3 +681,13 @@ void I2C1_EV_irq(void)
 {
     HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE1);
 }
+
+int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
+{
+    return -1;
+}
+
+int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
+{
+    return -1;
+}

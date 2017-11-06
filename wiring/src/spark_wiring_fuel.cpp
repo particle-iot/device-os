@@ -25,10 +25,21 @@
  */
 
 #include "spark_wiring_fuel.h"
+#include <mutex>
 
-FuelGauge::FuelGauge()
+FuelGauge::FuelGauge(bool _lock) :
+    lock_(_lock)
 {
+    if (lock_) {
+        lock();
+    }
+}
 
+FuelGauge::~FuelGauge()
+{
+    if (lock_) {
+        unlock();
+    }
 }
 
 boolean FuelGauge::begin()
@@ -146,7 +157,7 @@ void FuelGauge::quickStart() {
 }
 
 void FuelGauge::sleep() {
-
+    std::lock_guard<FuelGauge> l(*this);
 	byte MSB = 0;
 	byte LSB = 0;
 
@@ -157,7 +168,7 @@ void FuelGauge::sleep() {
 }
 
 void FuelGauge::wakeup() {
-
+    std::lock_guard<FuelGauge> l(*this);
 	byte MSB = 0;
 	byte LSB = 0;
 
@@ -175,6 +186,7 @@ void FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
 
 
 void FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
+    std::lock_guard<FuelGauge> l(*this);
 #if Wiring_Wire3
 	Wire3.beginTransmission(MAX17043_ADDRESS);
     Wire3.write(startAddress);
@@ -187,6 +199,7 @@ void FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
 }
 
 void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
+    std::lock_guard<FuelGauge> l(*this);
 #if Wiring_Wire3
 	Wire3.beginTransmission(MAX17043_ADDRESS);
     Wire3.write(address);
@@ -194,4 +207,18 @@ void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
     Wire3.write(LSB);
     Wire3.endTransmission(true);
 #endif
+}
+
+bool FuelGauge::lock() {
+#if Wiring_Wire3
+    return Wire3.lock();
+#endif
+    return false;
+}
+
+bool FuelGauge::unlock() {
+#if Wiring_Wire3
+    return Wire3.unlock();
+#endif
+    return false;
 }

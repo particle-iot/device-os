@@ -489,12 +489,18 @@ void PWR_EnterSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry)
   if(PWR_STOPEntry == PWR_STOPEntry_WFI)
   {
     /* Request Wait For Interrupt */
+    __DSB();
     __WFI();
+    __NOP();
+    __ISB();
   }
   else
   {
     /* Request Wait For Event */
+    __DSB();
     __WFE();
+    __NOP();
+    __ISB();
   }
   /* Reset SLEEPDEEP bit of Cortex System Control Register */
   SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP_Msk);
@@ -527,6 +533,7 @@ void PWR_EnterSTANDBYMode(void)
   __force_stores();
 #endif
   /* Request Wait For Interrupt */
+  __DSB();
   __WFI();
 }
 

@@ -32,8 +32,10 @@ namespace spark {
             return sig;
         }
 
-        CellularSignalHal sig_hal;
-        if (cellular_signal(sig_hal, NULL) != 0) {
+        CellularSignalHal sig_hal = {0};
+        cellular_signal_t sigext = {0};
+        sigext.size = sizeof(sigext);
+        if (cellular_signal(&sig_hal, &sigext) != 0) {
             sig.rssi = 1;
             return sig;
         }
@@ -42,6 +44,7 @@ namespace spark {
         if (sig.rssi == 0) {
             sig.rssi = 2;
         }
+        sig.fromHalCellularSignal(sigext);
         return sig;
     }
 

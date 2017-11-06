@@ -59,3 +59,8 @@ system_tick_t HAL_Timer_Get_Milli_Seconds(void)
     // review - wiced_time_get_time()) ??
     return GetSystem1MsTick();
 }
+
+uint64_t hal_timer_millis(void* reserved)
+{
+    return GetSystem1MsTick64();
+}

@@ -98,15 +98,35 @@ struct CellularDevice
 typedef struct CellularDevice CellularDevice;
 #endif
 
-#ifdef __cplusplus
-struct CellularSignalHal
+typedef struct
 {
-    int rssi = 0;
-    int qual = 0;
-};
-#else
-typedef struct CellularSignalHal CellularSignalHal;
-#endif
+    int rssi;
+    int qual;
+} CellularSignalHal;
+
+typedef struct
+{
+    uint16_t size;
+    uint16_t version;
+    uint8_t rat;
+    union {
+      int32_t rssi; // Generic accessor, GSM
+      int32_t rscp; // UMTS
+      int32_t rsrq; // LTE
+    };
+    // In % mapped to [0, 65535]
+    int32_t strength;
+
+    union {
+      int32_t qual; // Generic accessor
+      int32_t ber;  // GSM
+      int32_t bep;  // EDGE
+      int32_t ecno; // UMTS
+      int32_t rsrp; // LTE
+    };
+    // In % mapped to [0, 65535]
+    int32_t quality;
+} cellular_signal_t;
 
 #ifdef __cplusplus
 struct CellularDataHal {

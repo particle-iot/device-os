@@ -45,6 +45,8 @@ LOG_SOURCE_CATEGORY("comm.sparkprotocol")
 #include "mbedtls_util.h"
 #endif
 
+#include "communication_diagnostic.h"
+
 using namespace particle::protocol;
 
 #if 0
@@ -387,7 +389,9 @@ CoAPMessageType::Enum
 void SparkProtocol::hello(unsigned char *buf, bool newly_upgraded)
 {
   unsigned short message_id = next_message_id();
-  size_t len = Messages::hello(buf+2, message_id, newly_upgraded, PLATFORM_ID, product_id, product_firmware_version, false, nullptr, 0);
+  uint8_t flags = newly_upgraded ? 1 : 0;
+  // diagnostics are not supported in this protocol implementation.
+  size_t len = Messages::hello(buf+2, message_id, flags, PLATFORM_ID, product_id, product_firmware_version, false, nullptr, 0);
   wrap(buf, len);
 }
 
@@ -508,12 +512,7 @@ int SparkProtocol::variable_value(unsigned char *buf,
 
 inline bool is_system(const char* event_name) {
     // if there were a strncmpi this would be easier!
-    char prefix[6];
-    if (!*event_name || strlen(event_name)<5)
-        return false;
-    memcpy(prefix, event_name, 5);
-    prefix[5] = '\0';
-    return !strcasecmp(prefix, "spark");
+    return !strncasecmp(event_name, "spark", 5);
 }
 
 // Returns true on success, false on sending timeout or rate-limiting failure
@@ -535,6 +534,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
       uint16_t currentMinute = uint16_t(callbacks.millis()>>16);
       if (currentMinute==lastMinute) {      // == handles millis() overflow
           if (eventsThisMinute==255) {
+              g_rateLimitedEventsCounter++;
               handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
               return false;
           }
@@ -558,6 +558,7 @@ bool SparkProtocol::send_event(const char *event_name, const char *data, int ttl
     if (now - recent_event_ticks[evt_tick_idx] < 1000)
     {
       // exceeded allowable burst of 4 events per second
+      g_rateLimitedEventsCounter++;
       handler.setError(SYSTEM_ERROR_LIMIT_EXCEEDED);
       return false;
     }

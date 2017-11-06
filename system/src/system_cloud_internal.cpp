@@ -53,6 +53,8 @@
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
+using particle::CloudDiagnostics;
+
 #ifndef SPARK_NO_CLOUD
 
 using particle::LEDStatus;
@@ -275,8 +277,7 @@ void Spark_Process_Events()
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
         WARN("Communication loop error, closing cloud socket");
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
+        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
     }
     else
     {
@@ -1229,8 +1230,7 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
     if (sparkSocket==socket)
     {
-        SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_SOCKETED = 0;
+        cloud_disconnect(false);
     }
 }
 
@@ -1380,6 +1380,11 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
 
 #endif
 
+namespace {
+
+CloudDiagnostics g_cloudDiagnostics;
+
+} // namespace
 
 inline void concat_nibble(String& result, uint8_t nibble)
 {
@@ -1478,4 +1483,8 @@ void Spark_Abort() {
 #ifndef SPARK_NO_CLOUD
     cloud_socket_aborted = true;
 #endif
+}
+
+CloudDiagnostics* CloudDiagnostics::instance() {
+    return &g_cloudDiagnostics;
 }

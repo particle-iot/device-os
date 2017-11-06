@@ -25,6 +25,7 @@
 #include "messages.h"
 
 #include "completion_handler.h"
+#include "communication_diagnostic.h"
 
 namespace particle
 {
@@ -92,8 +93,10 @@ public:
 	{
 		bool is_system_event = is_system(event_name);
 		bool rate_limited = is_rate_limited(is_system_event, time);
-		if (rate_limited)
+		if (rate_limited) {
+			g_rateLimitedEventsCounter++;
 			return BANDWIDTH_EXCEEDED;
+		}
 
 		Message message;
 		channel.create(message);

@@ -36,6 +36,33 @@
 #include "inet_hal.h"
 #include "spark_wiring_wifi_credentials.h"
 #include <string.h>
+#include "spark_wiring_signal.h"
+
+class WiFiSignal : public particle::Signal {
+public:
+    // In order to be compatible with CellularSignal
+    int rssi = 0;
+    int qual = 0;
+
+    WiFiSignal() {}
+    WiFiSignal(const wlan_connected_info_t& inf);
+    virtual ~WiFiSignal() {};
+
+    operator int8_t() const;
+
+    bool fromConnectedInfo(const wlan_connected_info_t& sig);
+
+    virtual hal_net_access_tech_t getAccessTechnology() const;
+    virtual float getStrength() const;
+    virtual float getStrengthValue() const;
+    virtual float getQuality() const;
+    virtual float getQualityValue() const;
+
+    // virtual size_t printTo(Print& p) const;
+
+private:
+    wlan_connected_info_t inf_ = {0};
+};
 
 class IPAddress;
 
@@ -98,7 +125,7 @@ public:
         return (const char *) wifi_config()->uaSSID;
     }
 
-    int8_t RSSI();
+    WiFiSignal RSSI();
     uint32_t ping(IPAddress remoteIP) {
         return ping(remoteIP, 5);
     }

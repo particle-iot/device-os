@@ -30,6 +30,7 @@ CPPSRC += $(TARGET_SRC_PATH)/coap_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/publisher.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_defs.cpp
 CPPSRC += $(TARGET_SRC_PATH)/mbedtls_communication.cpp
+CPPSRC += $(TARGET_SRC_PATH)/communication_diagnostic.cpp
 
 # ASM source files included in this build.
 ASRC +=

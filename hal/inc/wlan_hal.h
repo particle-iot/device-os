@@ -123,6 +123,22 @@ wlan_result_t wlan_deactivate();
  */
 int wlan_connected_rssi();
 
+typedef struct {
+    uint16_t size;
+    uint16_t version;
+
+    int32_t rssi;
+    // In % mapped to [0, 65535]
+    int32_t strength;
+
+    int32_t snr;
+    int32_t noise;
+    // In % mapped to [0, 65535]
+    int32_t quality;
+} wlan_connected_info_t;
+
+int wlan_connected_info(void* reserved, wlan_connected_info_t* inf, void* reserved1);
+
 int wlan_clear_credentials();
 int wlan_has_credentials();
 

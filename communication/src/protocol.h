@@ -184,7 +184,7 @@ protected:
 	 */
 	ProtocolError hello_response();
 
-	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful)=0;
+	virtual size_t build_hello(Message& message, uint8_t flags)=0;
 
 	/**
 	 * Send a Ping message over the channel.

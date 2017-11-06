@@ -37,7 +37,10 @@
 #include "spark_macros.h"
 #include "security.h"
 #include "evnt_handler.h"
-
+#include "timer_hal.h"
+#include <sys/param.h>
+#include "system_error.h"
+#include <limits.h>
 
 /* Smart Config Prefix */
 static char aucCC3000_prefix[] = {'T', 'T', 'T'};
@@ -166,24 +169,51 @@ wlan_result_t wlan_disconnect_now()
 
 int wlan_connected_rssi()
 {
-    tNetappIpconfigRetArgs config;
-    netapp_ipconfig((void*)&config);
-
     int _returnValue = 0;
-    int l;
-    for (l=0; l<16; l++)
-    {
-        char wlan_scan_results_table[50];
-        if(wlan_ioctl_get_scan_results(0, (unsigned char*)wlan_scan_results_table) != 0)
-            return(1);
-        if (wlan_scan_results_table[0] == 0)
-            break;
-        if (!strcmp(wlan_scan_results_table+12, config.uaSSID)) {
-            _returnValue = ((wlan_scan_results_table[8] >> 1) - 127);
+
+    system_tick_t _functionStart = HAL_Timer_Get_Milli_Seconds();
+    while ((HAL_Timer_Get_Milli_Seconds() - _functionStart) < 1000) {
+        tNetappIpconfigRetArgs config;
+        netapp_ipconfig((void*)&config);
+        int l;
+        for (l=0; l<16; l++)
+        {
+            char wlan_scan_results_table[50];
+            if(wlan_ioctl_get_scan_results(0, (unsigned char*)wlan_scan_results_table) != 0) {
+                _returnValue = 1;
+                break;
+            }
+            if (wlan_scan_results_table[0] == 0)
+                break;
+            if (!strcmp(wlan_scan_results_table+12, config.uaSSID)) {
+                _returnValue = ((wlan_scan_results_table[8] >> 1) - 127);
+                break;
+            }
+        }
+        if (_returnValue != 0) {
             break;
         }
     }
     return _returnValue;
+}
+
+int wlan_connected_info(void* reserved, wlan_connected_info_t* inf, void* reserved1)
+{
+    system_error_t ret = SYSTEM_ERROR_NONE;
+
+    int32_t rssi = wlan_connected_rssi();
+    if (rssi >= 0) {
+        // Error
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    inf->rssi = rssi * 100;
+    inf->snr = INT_MIN;
+    inf->noise = INT_MIN;
+
+    inf->strength = MIN(MAX(2 * (rssi + 100), 0L), 100L) * 65535 / 100;
+    inf->quality = INT_MIN;
+    return ret;
 }
 
 netapp_pingreport_args_t ping_report;

@@ -1,40 +1,49 @@
+#include "spark_wiring_system.h"
 
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-#ifndef ABS
-#define ABS(x) (x >= 0 ? x : -x)
-#endif
+#include <cstdlib>
 
-void assert_micros_millis(system_tick_t duration)
+void assert_micros_millis(int duration, bool overflow = false)
 {
 #if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Just in case
     NVIC_DisableIRQ(TIM4_IRQn);
 #endif
-    system_tick_t last = millis();
-    system_tick_t end = last + duration;
 
+    system_tick_t last_millis_64 = System.millis();
+    system_tick_t last_millis = millis();
     system_tick_t last_micros = micros();
 
     do
     {
-        system_tick_t now = millis();
+        system_tick_t now_millis_64 = System.millis();
+        system_tick_t now_millis = millis();
         system_tick_t now_micros = micros();
 
-        assertMoreOrEqual(now, last);
-        assertMoreOrEqual(now_micros, last_micros);
+        if (!overflow) {
+            assertMoreOrEqual(now_millis_64, last_millis_64);
+            assertMoreOrEqual(now_millis, last_millis);
+            assertMoreOrEqual(now_micros, last_micros);
+        }
+
         // micros always at least (millis()*1000)
         // even with overflow
-        assertMoreOrEqual(now_micros, now*1000);
+        assertMoreOrEqual(now_micros, now_millis * 1000);
+        // at most 1ms difference between millis() and lower 32 bits of System.millis()
+        assertTrue(std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull)) <= 1);
 
-        last = now;
+        duration -= now_millis - last_millis;
+
+        last_millis_64 = now_millis_64;
+        last_millis = now_millis;
         last_micros = now_micros;
     }
-    while (last<end);
+    while (duration > 0);
 }
 
-void assert_micros_millis_interrupts(system_tick_t duration)
+void assert_micros_millis_interrupts(int duration)
 {
 #if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Enable some high priority interrupt to run interference
@@ -54,30 +63,40 @@ void assert_micros_millis_interrupts(system_tick_t duration)
     });
 #endif
 
-    system_tick_t last = millis();
+    system_tick_t last_millis_64 = System.millis();
+    system_tick_t last_millis = millis();
     system_tick_t last_micros = micros();
-    system_tick_t end = last + duration;
+
     do
     {
-        system_tick_t now = millis();
+        system_tick_t now_millis_64 = System.millis();
+        system_tick_t now_millis = millis();
         system_tick_t now_micros = micros();
 
-        assertMoreOrEqual(now, last);
+        assertMoreOrEqual(now_millis_64, last_millis_64);
+        assertMoreOrEqual(now_millis, last_millis);
         assertMoreOrEqual(now_micros, last_micros);
+
         // micros always at least (millis()*1000)
         // even with overflow
-        assertMoreOrEqual(now_micros, now*1000);
+        assertMoreOrEqual(now_micros, now_millis * 1000);
         // 1ms millis() advancement
-        assertTrue(((int32_t)now - (int32_t)last) <= 1);
+        assertTrue(((int64_t)now_millis_64 - (int64_t)last_millis_64) <= 1);
+        assertTrue(((int32_t)now_millis - (int32_t)last_millis) <= 1);
         // 1ms micros() advancement
         assertTrue(((int32_t)now_micros - (int32_t)last_micros) <= 1000);
         // at most 1.5ms difference between micros() and millis()
-        assertTrue(ABS((int32_t)now_micros - (int32_t)now*1000) <= 1500);
+        assertTrue(std::abs((int32_t)now_micros - (int32_t)now_millis * 1000) <= 1500);
+        // at most 1ms difference between millis() and lower 32 bits of System.millis()
+        assertTrue(std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull)) <= 1);
 
-        last = now;
+        duration -= now_millis - last_millis;
+
+        last_millis_64 = now_millis_64;
+        last_millis = now_millis;
         last_micros = now_micros;
     }
-    while (last<end);
+    while (duration > 0);
 
 #if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     NVIC_DisableIRQ(TIM4_IRQn);
@@ -89,26 +108,36 @@ void assert_micros_millis_interrupts(system_tick_t duration)
 
 test(TICKS_00_millis_micros_baseline_test)
 {
-    #define ONE_SECOND 1*1000
-    system_tick_t start = millis();
-    delay(ONE_SECOND);
-    assertMoreOrEqual(millis()-start,ONE_SECOND);
-    start = micros();
-    delayMicroseconds(ONE_SECOND);
-    assertMoreOrEqual(micros()-start,ONE_SECOND);
+    const unsigned DELAY = 3 * 1000;
+    // delay()
+    uint64_t startMillis64 = System.millis();
+    system_tick_t startMillis = millis();
+    system_tick_t startMicros = micros();
+    delay(DELAY);
+    assertMoreOrEqual(System.millis() - startMillis64, DELAY);
+    assertMoreOrEqual(millis() - startMillis, DELAY);
+    assertMoreOrEqual(micros() - startMicros, DELAY * 1000);
+    // delayMicroseconds()
+    startMillis64 = System.millis();
+    startMillis = millis();
+    startMicros = micros();
+    delayMicroseconds(DELAY);
+    assertMoreOrEqual(System.millis() - startMillis64, DELAY / 1000);
+    assertMoreOrEqual(millis() - startMillis, DELAY / 1000);
+    assertMoreOrEqual(micros() - startMicros, DELAY);
 }
 
-#if !MODULAR_FIRMWARE
+#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
 // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
 #include "hw_ticks.h"
 test(TICKS_01_millis_and_micros_rollover)
 {
-    // this places the micros counter 2 seconds from rollover and the systemm ticks 3 seconds
-    __advance_system1MsTick(system_tick_t(-5000), 3000);
+    // this places the micros counter 3 seconds from rollover and the system ticks 5 seconds
+    __advance_system1MsTick((uint64_t)-5000, 3000);
     #define TEN_SECONDS 10*1000
-    system_tick_t start = millis();
-    assert_micros_millis(TEN_SECONDS);
-    assertMoreOrEqual(millis()-start,TEN_SECONDS);
+    const uint64_t start = System.millis();
+    assert_micros_millis(TEN_SECONDS, true /* overflow */);
+    assertMoreOrEqual(System.millis() - start, TEN_SECONDS);
 }
 #endif
 

@@ -361,16 +361,58 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
     return result;
 }
 
-class AppendJson
-{
+
+class AppendBase {
+
     appender_fn fn;
     void* data;
 
+protected:
+
+    template<typename T> inline bool writeDirect(const T& value) {
+		return fn(data, (const uint8_t*)&value, sizeof(value));
+	}
+
 public:
 
-    AppendJson(appender_fn fn, void* data) {
+    AppendBase(appender_fn fn, void* data) {
         this->fn = fn; this->data = data;
     }
+
+    bool write(const char* string) const {
+        return fn(data, (const uint8_t*)string, strlen(string));
+    }
+
+    bool write(char* string) const {
+        return fn(data, (const uint8_t*)string, strlen(string));
+    }
+
+    bool write(char c) {
+        return writeDirect(c);
+    }
+};
+
+
+class AppendData : public AppendBase {
+public:
+	AppendData(appender_fn fn, void* data) : AppendBase(fn, data) {}
+
+    bool write(uint16_t value) {
+    		return writeDirect(value);
+    }
+
+    bool write(int32_t value) {
+    		return writeDirect(value);
+    }
+
+};
+
+
+class AppendJson : public AppendBase
+{
+	using super = AppendBase;
+public:
+	AppendJson(appender_fn fn, void* data) : AppendBase(fn, data) {}
 
     bool write_quoted(const char* value) {
         return write('"') &&
@@ -403,8 +445,6 @@ public:
                write_quoted("");
     }
 
-    bool write(char c) {
-        return fn(data, (const uint8_t*)&c, 1);
     }
 
     bool write(int value) {
@@ -412,9 +452,14 @@ public:
         return write(itoa(value, buf, 10));
     }
 
-    bool write(const char* string) {
-        return fn(data, (const uint8_t*)string, strlen(string));
+    inline bool write(char c) {
+    		return super::write(c);
     }
+
+    inline bool write(const char* c) {
+    		return super::write(c);
+    }
+
 
     bool next() { return write(',') && newline(); }
 
@@ -432,6 +477,7 @@ public:
         return write_string(kv->key, kv->value);
     }
 };
+
 
 const char* module_function_string(module_function_t func) {
     switch (func) {
@@ -626,3 +672,169 @@ int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, ap
     }
     return 0;
 }
+template <typename T>
+class AbstractDiagnosticsFormatter {
+
+
+protected:
+
+	inline T& formatter() {
+		return formatter(this);
+	}
+
+	static inline T& formatter(void* fmt) {
+		return *reinterpret_cast<T*>(fmt);
+	}
+
+	static int formatSourceData(const diag_source* src, void* fmt) {
+		return formatter(fmt).formatSource(src);
+	}
+
+	int formatSource(const diag_source* src) {
+		T& fmt = formatter();
+		if (!fmt.isSourceOk(src)) {
+			return 0;
+		}
+	    switch (src->type) {
+	    case DIAG_TYPE_INT: {
+	        AbstractIntegerDiagnosticData::IntType val = 0;
+	        const int ret = AbstractIntegerDiagnosticData::get(src, val);
+	        if ((ret == 0 && !fmt.formatSourceInt(src, val)) || (ret != 0 && !fmt.formatSourceError(src, ret))) {
+	            return SYSTEM_ERROR_TOO_LARGE;
+	        }
+	        break;
+	    }
+	    default:
+	        return SYSTEM_ERROR_NOT_SUPPORTED;
+	    }
+	    return 0;
+	}
+
+	static int formatSources(T& formatter, const uint16_t* id, size_t count, unsigned flags) {
+	    if (!formatter.openDocument()) {
+			return SYSTEM_ERROR_TOO_LARGE;
+	    }
+		if (id) {
+			// Dump specified data sources
+			for (size_t i = 0; i < count; ++i) {
+				const diag_source* src = nullptr;
+				int ret = diag_get_source(id[i], &src, nullptr);
+				if (ret != 0) {
+					return ret;
+				}
+				ret = formatter.formatSource(src);
+				if (ret != 0) {
+					return ret;
+				}
+			}
+		} else {
+			// Dump all data sources
+			const int ret = diag_enum_sources(formatSourceData, nullptr, &formatter, nullptr);
+			if (ret != 0) {
+				return ret;
+			}
+		}
+		if (!formatter.closeDocument()) {
+			return SYSTEM_ERROR_TOO_LARGE;
+		}
+		return 0;
+	}
+
+public:
+
+	int format(const uint16_t* id, size_t count, unsigned flags) {
+		return formatSources(formatter(this), id, count, flags);
+	}
+};
+
+
+class JsonDiagnosticsFormatter : public AbstractDiagnosticsFormatter<JsonDiagnosticsFormatter> {
+
+	AppendJson& json;
+
+public:
+	JsonDiagnosticsFormatter(AppendJson& appender_) : json(appender_) {}
+
+	inline bool openDocument() {
+	    return json.write('{');
+	}
+
+	inline bool closeDocument() {
+		return json.end_list() && json.write('}'); // TODO: Use spark::JSONWriter
+	}
+
+	bool formatSourceError(const diag_source* src, int error) {
+	    return json.write_attribute(src->name) &&
+	            json.write('{') &&
+	            json.write_attribute("err") &&
+	            json.write(error) &&
+	            json.write('}') &&
+	            json.next();
+	}
+
+	inline bool isSourceOk(const diag_source* src) {
+	    return (src->name);
+	}
+
+	inline bool formatSourceInt(const diag_source* src, AbstractIntegerDiagnosticData::IntType val) {
+		return json.write_value(src->name, val);
+	}
+};
+
+
+class BinaryDiagnosticsFormatter : public AbstractDiagnosticsFormatter<BinaryDiagnosticsFormatter> {
+
+	AppendData& data;
+
+	using value = AbstractIntegerDiagnosticData::IntType;
+	using id = typeof(diag_source::id);
+
+public:
+	BinaryDiagnosticsFormatter(AppendData& appender_) : data(appender_) {}
+
+
+	inline bool openDocument() {
+		return data.write(uint16_t(sizeof(id))) && data.write(uint16_t(sizeof(value)));
+	}
+
+	inline bool closeDocument() {
+		return true;
+	}
+
+	bool formatSourceError(const diag_source* src, int error) {
+		return true;
+	}
+
+	inline bool isSourceOk(const diag_source* src) {
+	    return true;
+	}
+
+	inline bool formatSourceInt(const diag_source* src, AbstractIntegerDiagnosticData::IntType val) {
+		return data.write(src->id) && data.write(val);
+	}
+
+};
+
+
+} // namespace
+
+
+
+int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
+        void* reserved) {
+	if (flags & 1) {
+		AppendData data(append, append_data);
+		BinaryDiagnosticsFormatter fmt(data);
+	    return fmt.format(id, count, flags);
+	}
+	else {
+	    AppendJson json(append, append_data);
+	    JsonDiagnosticsFormatter fmt(json);
+	    return fmt.format(id, count, flags);
+	}
+}
+
+bool system_metrics(appender_fn appender, void* append_data, uint32_t flags, uint32_t page, void* reserved) {
+    const int ret = system_format_diag_data(nullptr, 0, flags, appender, append_data, nullptr);
+    return ret == 0;
+};
