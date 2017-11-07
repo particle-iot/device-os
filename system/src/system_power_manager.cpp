@@ -347,7 +347,7 @@ void PowerManager::handlePossibleFaultLoop() {
 }
 
 void PowerManager::logStat(uint8_t stat, uint8_t fault) {
-#if defined(DEBUG_BUILD)
+#if defined(DEBUG_BUILD) && 0
   uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
   uint8_t chrg_stat = (stat >> 4) & 0x03; // 0 – Not Charging, 1 – Pre-charge (<VBATLOWV), 2 – Fast Charging, 3 – Charge Termination Done
   bool dpm_stat = stat & 0x08;   // 0 – Not DPM, 1 – VINDPM or IINDPM
