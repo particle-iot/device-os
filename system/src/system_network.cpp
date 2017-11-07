@@ -124,6 +124,30 @@ public:
     }
 };
 
+class NetworkRssiDiagnosticData: public AbstractIntegerDiagnosticData {
+public:
+    NetworkRssiDiagnosticData() :
+            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_RSSI, DIAG_NAME_NETWORK_RSSI) {
+    }
+
+    virtual int get(IntType& val) {
+        const Signal* sig = s_signalCache.getSignal();
+        if (sig == nullptr) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getStrength() < 0) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to signed Q8.8
+        FixedPointSQ<8, 8> str(sig->getStrengthValue());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+};
+
 class SignalStrengthValueDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
     SignalStrengthValueDiagnosticData() :
@@ -219,6 +243,9 @@ SignalStrengthValueDiagnosticData g_signalStrengthValueDiagData;
 SignalQualityDiagnosticData g_signalQualityDiagData;
 SignalQualityValueDiagnosticData g_signalQualityValueDiagData;
 NetworkAccessTechnologyDiagnosticData g_networkAccessTechnologyDiagData;
+//
+NetworkRssiDiagnosticData g_networkRssiDiagData;
+//
 
 } // namespace
 

@@ -39,6 +39,7 @@ constexpr const char* DIAG_NAME_NETWORK_IPV4_ADDRESS = "net:ip:addr";
 constexpr const char* DIAG_NAME_NETWORK_IPV4_GATEWAY = "net.ip:gw";
 constexpr const char* DIAG_NAME_NETWORK_FLAGS = "net:flags";
 constexpr const char* DIAG_NAME_NETWORK_COUNTRY_CODE = "net:cntry";
+constexpr const char* DIAG_NAME_NETWORK_RSSI = "net:rssi";
 constexpr const char* DIAG_NAME_NETWORK_SIGNAL_STRENGTH = "net:sigstr";
 constexpr const char* DIAG_NAME_NETWORK_SIGNAL_STRENGTH_VALUE = "net:sigstrv";
 constexpr const char* DIAG_NAME_NETWORK_SIGNAL_QUALITY = "net:sigqual";
@@ -73,7 +74,8 @@ typedef enum diag_id {
     DIAG_ID_NETWORK_IPV4_GATEWAY = 16, // net.ip:gw
     DIAG_ID_NETWORK_FLAGS = 17, // net:flags
     DIAG_ID_NETWORK_COUNTRY_CODE = 18, // net:cntry
-    DIAG_ID_NETWORK_SIGNAL_STRENGTH_VALUE = 19, // net:sigstrv
+    DIAG_ID_NETWORK_RSSI = 19, // net:rssi
+    DIAG_ID_NETWORK_SIGNAL_STRENGTH_VALUE = 37, // net:sigstrv
     DIAG_ID_NETWORK_SIGNAL_STRENGTH = 33, // net:sigstr
     DIAG_ID_NETWORK_SIGNAL_QUALITY = 34, // net:sigqual
     DIAG_ID_NETWORK_SIGNAL_QUALITY_VALUE = 35, // net:sigqualv
