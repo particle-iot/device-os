@@ -273,11 +273,20 @@ bool PMIC::setInputCurrentLimit(uint16_t current) {
  * Input          :
  * Return         :
  *******************************************************************************/
-byte PMIC::getInputCurrentLimit(void) {
-
-    //TODO
-    return 1;
-
+uint16_t PMIC::getInputCurrentLimit(void) {
+    static const uint16_t mapping[] = {
+        100,
+        150,
+        500,
+        900,
+        1200,
+        1500,
+        2000,
+        3000
+    };
+    byte raw = readInputSourceRegister();
+    raw &= 0x03;
+    return mapping[raw];
 }
 
 /*******************************************************************************
@@ -606,10 +615,22 @@ BIT
  * Input          :
  * Return         :
  *******************************************************************************/
-//TO DO: Return more meaningful value
+
 byte PMIC::getChargeVoltage(void) {
 
     return readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER);
+}
+
+uint16_t PMIC::getChargeVoltageValue() {
+    byte raw = getChargeVoltage();
+    unsigned baseVoltage = 16;
+    unsigned v = 3504;
+    for (unsigned i = 0; i < 6; i++) {
+        byte b = (raw >> (i + 2)) & 0x01;
+        v += ((unsigned)b) * baseVoltage;
+        baseVoltage *= 2;
+    }
+    return v;
 }
 
 /*******************************************************************************
@@ -808,6 +829,24 @@ byte PMIC::readOpControlRegister(void) {
 
     return readRegister(MISC_CONTROL_REGISTER);
 
+}
+
+uint16_t PMIC::getRechargeThreshold() {
+    return ((readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER) & 0x01) == 0 ? 100 : 300);
+}
+
+bool PMIC::setRechargeThreshold(uint16_t voltage) {
+    switch (voltage) {
+        case 300:
+            writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER) | 0x01);
+            break;
+        case 100:
+        default:
+            writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER) & 0xfe);
+            break;
+    }
+
+    return true;
 }
 
 /*

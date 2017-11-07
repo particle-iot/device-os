@@ -58,6 +58,7 @@ class FuelGauge {
     boolean begin();
     float getVCell();
     float getSoC();
+    float getNormalizedSoC();
     int getVersion();
     byte getCompensateValue();
     byte getAlertThreshold();

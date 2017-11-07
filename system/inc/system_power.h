@@ -35,14 +35,24 @@ typedef enum {
     BATTERY_STATE_CHARGING = 2,
     BATTERY_STATE_CHARGED = 3,
     BATTERY_STATE_DISCHARGING = 4,
-    BATTERY_STATE_FAULT = 5
-} BatteryState;
+    BATTERY_STATE_FAULT = 5,
+    BATTERY_STATE_DISCONNECTED = 6
+} battery_state_t;
+
+typedef enum {
+    POWER_SOURCE_UNKNOWN = 0,
+    POWER_SOURCE_VIN = 1,
+    POWER_SOURCE_USB_HOST = 2,
+    POWER_SOURCE_USB_ADAPTER = 3,
+    POWER_SOURCE_USB_OTG = 4,
+    POWER_SOURCE_BATTERY = 5
+} power_source_t;
 
 } } // particle::power
 
 extern particle::power::BatteryChargeDiagnosticData g_batteryCharge;
-extern particle::SimpleEnumDiagnosticData<particle::power::BatteryState> g_batteryState;
+extern particle::SimpleEnumDiagnosticData<particle::power::battery_state_t> g_batteryState;
+extern particle::SimpleEnumDiagnosticData<particle::power::power_source_t> g_powerSource;
 
 void system_power_management_init();
-void system_power_management_update();
 void system_power_management_sleep(bool sleep = true);
