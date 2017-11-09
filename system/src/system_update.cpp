@@ -731,8 +731,12 @@ public:
 		return true;
 	}
 
+	/**
+	 *
+	 */
 	bool formatSourceError(const diag_source* src, int error) {
-		return true;
+		static_assert(sizeof(src->id)==2, "expected diagnostic id to be 16-bits");
+		return data.write(decltype(src->id)(src->id | 1<<15)) && data.write(int32_t(error));
 	}
 
 	inline bool isSourceOk(const diag_source* src) {
