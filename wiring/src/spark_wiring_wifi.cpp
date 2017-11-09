@@ -53,28 +53,28 @@ hal_net_access_tech_t WiFiSignal::getAccessTechnology() const {
 }
 
 float WiFiSignal::getStrength() const {
-    if (inf_.strength != std::numeric_limits<int32_t>::min()) {
+    if (inf_.size != 0 && inf_.strength >= 0) {
         return inf_.strength / 65535.0f * 100.0f;
     }
     return -1.0f;
 }
 
 float WiFiSignal::getStrengthValue() const {
-    if (inf_.rssi != std::numeric_limits<int32_t>::min()) {
+    if (inf_.size != 0 && inf_.rssi != std::numeric_limits<int32_t>::min()) {
         return inf_.rssi / 100.0f;
     }
     return 0.0f;
 }
 
 float WiFiSignal::getQuality() const {
-    if (inf_.quality != std::numeric_limits<int32_t>::min()) {
+    if (inf_.size != 0 && inf_.quality >= 0) {
         return inf_.quality / 65535.0f * 100.0f;
     }
     return -1.0f;
 }
 
 float WiFiSignal::getQualityValue() const {
-    if (inf_.snr != std::numeric_limits<int32_t>::min()) {
+    if (inf_.size != 0 && inf_.snr != std::numeric_limits<int32_t>::min()) {
         return inf_.snr / 100.0f;
     }
     return 0.0f;
@@ -148,6 +148,7 @@ namespace spark {
         }
 
         wlan_connected_info_t info = {0};
+        info.size = sizeof(info);
         int r = wlan_connected_info(nullptr, &info, nullptr);
         if (r == 0) {
             sig.fromConnectedInfo(info);

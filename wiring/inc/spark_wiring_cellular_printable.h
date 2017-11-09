@@ -26,7 +26,7 @@
 #include "spark_wiring_signal.h"
 #include <string.h>
 
-#if Wiring_Cellular
+#if Wiring_Cellular || defined(UNIT_TEST)
 
 #include "cellular_hal.h"
 #include "modem/enums_hal.h"
@@ -142,6 +142,6 @@ bool operator==(const CellularBand& lhs,const T& rhs) {
     return false;
 }
 
-#endif // Wiring_Cellular
+#endif // Wiring_Cellular || defined(UNIT_TEST)
 
 #endif // __SPARK_WIRING_CELLULAR_PRINTABLE_H
