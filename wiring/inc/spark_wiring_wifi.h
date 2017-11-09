@@ -41,7 +41,7 @@
 class WiFiSignal : public particle::Signal {
 public:
     // In order to be compatible with CellularSignal
-    int rssi = 0;
+    int rssi = 2;
     int qual = 0;
 
     WiFiSignal() {}
