@@ -54,7 +54,7 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
 {
     stop();
       int rv = 0;
-      if(Network.ready())
+      if(Network.from(nif).ready())
       {
         IPAddress ip_addr;
 
@@ -221,7 +221,7 @@ TCPClient::operator bool()
    return (status()!=0);
 }
 
-IPAddress TCPClient::remoteIP()
+IPAddress TCPClient::remoteIP() const
 {
     return d_->remoteIP;
 }

@@ -561,7 +561,7 @@ bool MDMParser::powerOn(const char* simpin)
         goto failure;
 
     /* The ATI command is undocumented, and in practice the response
-     * time varies greatly. On inital power-on of the module, ATI
+     * time varies greatly. On initial power-on of the module, ATI
      * will respond with "OK" before a device type number, which
      * requires wasting time in a for() loop to solve.
      * Instead, use AT+CGMM and _dev.model for future use of module identification.

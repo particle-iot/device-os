@@ -36,6 +36,7 @@
 #include "hal_dynalib_can.h"
 #include "hal_dynalib_rgbled.h"
 #include "hal_dynalib_dct.h"
+#include "hal_dynalib_wlan_ap.h"
 
 #ifndef HAL_USB_EXCLUDE
 #include "hal_dynalib_usb.h"

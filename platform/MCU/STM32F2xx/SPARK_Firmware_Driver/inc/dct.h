@@ -18,10 +18,6 @@
  */
 #pragma once
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include "platform_system_flags.h"
 #include "platform_flash_modules.h"
@@ -30,6 +26,7 @@ extern "C" {
 #include "hw_config.h"  // for button_config_t
 #include "rgbled_hal_impl.h" // for led_config_t
 #include <stdio.h>
+#include "wlan_hal.h"
 
 #define MAX_MODULES_SLOT    5 //Max modules
 #define FAC_RESET_SLOT      0 //Factory reset module index
@@ -86,21 +83,22 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t reserved1[64];
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
-    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT]; //100 bytes
+    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
     uint16_t product_store[12];
     uint8_t antenna_selection;           // 0xFF is uninitialized
-    uint8_t cloud_transport;             // 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
-    uint8_t alt_device_public_key[128];  // alternative device public key
-    uint8_t alt_device_private_key[192]; // alternative device private key
+    uint8_t cloud_transport;				// 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
+    uint8_t alt_device_public_key[128];	// alternative device public key
+    uint8_t alt_device_private_key[192];	// alternative device private key
     uint8_t alt_server_public_key[192];
-    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
+    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
     uint8_t device_id[12];                               // the STM32 device ID
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
     button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
     led_config_t led_mirror[4];          // LED mirroring configuration, to be used by bootloader
     uint8_t led_theme[64];               // LED signaling theme
     eap_config_t eap_config;             // WLAN EAP settings
-    uint8_t reserved2[272];
+    WLanCredentialsPersist ap_credentials;
+    uint8_t reserved2[168];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -132,6 +130,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_MIRROR_OFFSET (offsetof(application_dct_t, led_mirror))
 #define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
 #define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
+#define DCT_AP_CREDENTIALS_OFFSET (offsetof(application_dct_t, ap_credentials))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -159,6 +158,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_MIRROR_SIZE (sizeof(application_dct_t::led_mirror))
 #define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
 #define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
+#define DCT_AP_CREDENTIALS_SIZE 	(sizeof(application_dct_t::ap_credentials))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -196,8 +196,9 @@ STATIC_ASSERT_DCT_OFFSET(mode_button_mirror, 3631 /* 3630 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(led_mirror, 3663 /* 3631 + 32 */);
 STATIC_ASSERT_DCT_OFFSET(led_theme, 3759 /* 3663 + 24 * 4 */);
 STATIC_ASSERT_DCT_OFFSET(eap_config, 3823 /* 3759 + 64 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 8119 /* 3823 + (196 + 4*1024 + 4) */);
-STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8119 + 272 */);
+STATIC_ASSERT_DCT_OFFSET(ap_credentials, 8119 /* 3823 + (196 + 4*1024 + 4) */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 8223 /* 8119 + 104 */);
+STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8223 + 168 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
@@ -211,6 +212,12 @@ STATIC_ASSERT_FLAGS_OFFSET(StartupMode_SysFlag, 18);
 STATIC_ASSERT_FLAGS_OFFSET(FeaturesEnabled_SysFlag, 19);
 STATIC_ASSERT_FLAGS_OFFSET(RCC_CSR_SysFlag, 20);
 STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
+
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 
 // Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
 const void* dct_read_app_data(uint32_t offset);

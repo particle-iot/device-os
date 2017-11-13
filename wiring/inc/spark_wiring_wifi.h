@@ -59,7 +59,7 @@ public:
     virtual float getQualityValue() const;
 
     // virtual size_t printTo(Print& p) const;
-
+    
 private:
     wlan_connected_info_t inf_ = {0};
 };
@@ -70,9 +70,9 @@ namespace spark {
 
 class WiFiClass : public NetworkClass
 {
-    void setIPAddressSource(IPAddressSource source) {
+	void setIPAddressSource(IPAddressSource source) {
         wlan_set_ipaddress_source(source, true, NULL);
-    }
+	}
 
 public:
     WiFiClass() {}
@@ -281,6 +281,26 @@ public:
 };
 
 extern WiFiClass WiFi;
+
+class WiFiCommon : public NetworkClass {
+
+};
+
+#if Wiring_WiFi_AP
+class WiFiAPClass : public WiFiCommon
+{
+
+    operator network_handle_t() {
+		return 1;
+	}
+
+};
+
+extern WiFiAPClass AP;
+
+
+#endif      // Wiring_WiFi_AP
+
 
 }   // namespace Spark
 

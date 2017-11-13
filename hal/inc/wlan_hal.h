@@ -161,6 +161,7 @@ typedef enum {
     WLAN_SEC_NOT_SET = 0xFF
 } WLanSecurityType;
 
+STATIC_ASSERT(WLanSecurityType_size, sizeof(WLanSecurityType)==1);
 
 typedef enum {
     WLAN_CIPHER_NOT_SET = 0,
@@ -168,6 +169,8 @@ typedef enum {
     WLAN_CIPHER_TKIP = 2,
     WLAN_CIPHER_AES_TKIP = 3   // OR of AES and TKIP
 } WLanSecurityCipher;
+
+STATIC_ASSERT(WLanSecurityType_size, sizeof(WLanSecurityCipher)==1);
 
 typedef enum {
     WLAN_EAP_TYPE_NONE         = 0,
@@ -223,6 +226,18 @@ typedef struct {
     const uint8_t* ca_certificate;
     uint16_t ca_certificate_len;
 } WLanCredentials;
+
+
+typedef struct __attribute__((packed)) {
+    uint16_t size;           // the size of this structure. allows older clients to work with newer HAL.
+    char ssid[33];
+    char password[65];
+    WLanSecurityType security;
+    WLanSecurityCipher cipher;
+    uint8_t channel;
+    uint8_t flags;
+} WLanCredentialsPersist;
+
 
 #define WLAN_CREDENTIALS_VERSION_3        (3)
 #define WLAN_CREDENTIALS_CURRENT_VERSION  (WLAN_CREDENTIALS_VERSION_3)
@@ -328,6 +343,11 @@ typedef struct WiFiAccessPoint {
    }
 #endif
 } WiFiAccessPoint;
+
+// v1 - size 56
+// STATIC_ASSERT(WiFiAccessPoint_size_mismatch, sizeof(WiFiAccessPoint)==56);
+// v2 - added passcode field.
+STATIC_ASSERT(WiFiAccessPoint_size_mismatch, sizeof(WiFiAccessPoint)==(56));
 
 typedef void (*wlan_scan_result_t)(WiFiAccessPoint* ap, void* cookie);
 

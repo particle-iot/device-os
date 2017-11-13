@@ -240,7 +240,7 @@ struct tcp_server_t : public wiced_tcp_server_t
 
     wiced_result_t accept(wiced_tcp_socket_t* socket) {
         wiced_result_t result;
-        if ((result=wiced_tcp_accept(socket))==WICED_SUCCESS) {
+        if ((result=wiced_tcp_server_accept(this, socket))==WICED_SUCCESS) {
             os_mutex_lock(accept_lock);
 
             int idx = index(socket);
@@ -338,6 +338,7 @@ tcp_server_client_t::~tcp_server_client_t() {
 class socket_t
 {
     uint8_t type;
+    network_interface_t nif;
     bool closed;
 
 public:
@@ -365,17 +366,23 @@ public:
         dispose();
     }
 
+    	uint8_t get_nif() { return nif; }
     uint8_t get_type() { return type; }
     bool is_type(socket_type_t t) { return t==type; }
-    void set_type(socket_type_t t) { type = t; }
+    void set_type(network_interface_t nif, socket_type_t t) {
+    		this->nif = nif;
+    		type = t;
+    }
 
-   void set_server(tcp_server_t* server) {
-        type = TCP_SERVER;
+    void clear_type() { type = NONE; }
+
+   void set_server(network_interface_t nif, tcp_server_t* server) {
+        set_type(nif, TCP_SERVER);
         s.tcp_server = server;
     }
 
-    void set_client(tcp_server_client_t* client) {
-        type = TCP_CLIENT;
+    void set_client(network_interface_t nif, tcp_server_client_t* client) {
+        set_type(nif, TCP_CLIENT);
         s.tcp_client = client;
     }
 
@@ -567,9 +574,12 @@ public:
  */
 static ServerSocketList servers;
 static SocketList clients;
+static ServerSocketList ap_servers;
+static SocketList ap_clients;
 
 SocketList& list_for(socket_t* socket) {
-    return (socket->get_type()==socket_t::TCP_SERVER) ? servers : clients;
+	return socket->get_nif() ? ((socket->get_type()==socket_t::TCP_SERVER) ? ap_servers : ap_clients)
+     : ((socket->get_type()==socket_t::TCP_SERVER) ? servers : clients);
 }
 
 void add_socket(socket_t* socket) {
@@ -597,9 +607,10 @@ inline tcp_server_t* server(socket_t* socket) { return is_server(socket) ? socke
 
 wiced_result_t socket_t::notify_disconnected(wiced_tcp_socket_t*, void* socket) {
     if (socket && 0) {
+    		auto& list = list_for((socket_t*)socket);
         // replace with unique_lock once the multithreading changes have been incorporated
-        SocketListLock lock(clients);
-        if (exists_socket((socket_t*)socket)) {
+        SocketListLock lock(list);
+        if (list.exists((socket_t*)socket)) {
             tcp_socket_t* tcp_socket = tcp((socket_t*)socket);
             if (tcp_socket)
                 tcp_socket->notify_disconnected();
@@ -669,10 +680,20 @@ void close_all(SocketList& list)
     list.close_all();
 }
 
-void socket_close_all()
+SocketList& client_list(network_interface_t type)
 {
-    close_all(clients);
-    close_all(servers);
+	return type ? ap_clients : clients;
+}
+
+SocketList& server_list(network_interface_t type)
+{
+	return type ? ap_servers : servers;
+}
+
+void socket_close_all(uint8_t type)
+{
+	close_all(client_list(type));
+	close_all(server_list(type));
 }
 
 #define SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr) \
@@ -867,7 +888,7 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
         delete server; server = NULL;
     }
     else {
-        socket->set_server(server);
+        socket->set_server(nif, server);
         SocketListLock lock(list_for(socket));
         add_socket(socket);
     }
@@ -883,18 +904,18 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
 sock_result_t socket_accept(sock_handle_t sock)
 {
     sock_result_t result = SOCKET_INVALID;
-    socket_t* socket = from_handle(sock);
-    if (is_open(socket) && is_server(socket)) {
-        tcp_server_t* server = socket->s.tcp_server;
+    socket_t* server_socket = from_handle(sock);
+    if (is_open(server_socket) && is_server(server_socket)) {
+        tcp_server_t* server = server_socket->s.tcp_server;
         tcp_server_client_t* client = server->next_accept();
         if (client) {
-            socket_t* socket = new socket_t();
-            socket->set_client(client);
+            socket_t* client_socket = new socket_t();
+            client_socket->set_client(server_socket->get_nif(), client);
             {
-                SocketListLock lock(list_for(socket));
-                add_socket(socket);
+                SocketListLock lock(list_for(client_socket));
+                add_socket(client_socket);
             }
-            result = (sock_result_t)socket;
+            result = (sock_result_t)client_socket;
         }
     }
     return result;
@@ -954,7 +975,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
     socket_t* socket = new socket_t();
     if (socket) {
         wiced_result_t wiced_result;
-        socket->set_type((protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP));
+        socket->set_type(nif, (protocol==IPPROTO_UDP ? socket_t::UDP : socket_t::TCP));
         if (protocol==IPPROTO_TCP) {
             wiced_result = wiced_tcp_create_socket(tcp(socket), wiced_wlan_interface(nif));
         }
@@ -962,7 +983,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
             wiced_result = wiced_udp_create_socket(udp(socket), port, wiced_wlan_interface(nif));
         }
         if (wiced_result!=WICED_SUCCESS) {
-            socket->set_type(socket_t::NONE);
+            socket->clear_type();
             delete socket;
             result = as_sock_result(wiced_result);
         }

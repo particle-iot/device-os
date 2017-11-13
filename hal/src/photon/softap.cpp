@@ -20,9 +20,10 @@
 #include "spark_wiring_wifi_credentials.h"
 #include "mbedtls/aes.h"
 #include "device_code.h"
+#include "wlan_internal.h"
 
 #if SOFTAP_HTTP
-# include "http_server.h"
+#include "http_server.h"
 
 # ifndef SOFTAP_HTTP_MAXIMUM_CONNECTIONS
 #  define SOFTAP_HTTP_MAXIMUM_CONNECTIONS 5
@@ -30,8 +31,6 @@
 
 # define SOFTAP_HTTP_MAXIMUM_URL_LENGTH 255
 #endif // SOFTAP_HTTP
-
-extern WLanSecurityType toSecurityType(wiced_security_t sec);
 
 // This is a copy-paste from spark_wiring_json.h
 static size_t json_unescape(char *json, size_t len) {
@@ -635,7 +634,7 @@ protected:
             case 4:
             // sec
             // Why are we receiving WICED-specific security type here?
-            credentials.setSecurity((WLanSecurityType)toSecurityType((wiced_security_t)atoi(str)));
+            credentials.setSecurity((WLanSecurityType)wlan_to_security_type((wiced_security_t)atoi(str)));
             break;
             case 5:
             // eap
@@ -658,7 +657,7 @@ protected:
             if (t->type == JSMN_STRING) {
                 size_t len = json_unescape(str, strlen(str));
                 credentials.setClientCertificate((const uint8_t*)str, len + 1);
-            }
+        }
             break;
             case 9:
             // encryption key
@@ -894,8 +893,6 @@ bool fetch_or_generate_ssid_prefix(device_code_t* SSID) {
     return generate;
 }
 
-extern "C" wiced_ip_setting_t device_init_ip_settings;
-
 /**
  * Manages the soft access point.
  */
@@ -903,27 +900,28 @@ class SoftAPController {
     wiced_semaphore_t complete;
     dns_redirector_t dns_redirector;
 
-    wiced_result_t setup_soft_ap_credentials() {
+    void fetch_soft_ap_credentials(wiced_config_soft_ap_t* creds)
+    {
+        memset(creds, 0, sizeof(*creds));
+        fetch_or_generate_setup_ssid((device_code_t*)&creds->SSID);
+        creds->channel = 11;
+        creds->details_valid = WICED_TRUE;
+    }
 
-        wiced_config_soft_ap_t expected;
-        memset(&expected, 0, sizeof(expected));
-        fetch_or_generate_setup_ssid((device_code_t*)&expected.SSID);
-
-        expected.channel = 11;
-        expected.details_valid = WICED_TRUE;
-
-        wiced_config_soft_ap_t* soft_ap;
-        wiced_result_t result = wiced_dct_read_lock( (void**) &soft_ap, WICED_FALSE, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t) );
-        if (result == WICED_SUCCESS)
-        {
-            if (memcmp(&expected, soft_ap, sizeof(expected))) {
-                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
-                result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
-            } else {
-                wiced_dct_read_unlock( soft_ap, WICED_FALSE );
-            }
-        }
-        return result;
+    /**
+     * Bring up the AP interface. When wiced_network_up() is called later, the interface isn't touched
+     * since it's already up.
+     *
+     * The key difference doing it with wwd_wifi_start_up() compted to
+     * just calling wiced_network_ip() is that the AP settings are set directly
+     * rather than being read from the DCT. The DCT settings are then used for the persistent AP
+     * mode settings, and soft AP uses transient settings.
+     */
+    wiced_result_t start_ap()
+    {
+		wiced_config_soft_ap_t soft_ap;
+		fetch_soft_ap_credentials(&soft_ap);
+		return wlan_ap_up(soft_ap, &device_init_ip_settings);
     }
 
 public:
@@ -935,8 +933,7 @@ public:
     wiced_result_t start() {
         wiced_result_t result;
         if (!(result=wiced_rtos_init_semaphore(&complete)))
-            if (!(result=setup_soft_ap_credentials()))
-                if (!(result=wiced_network_up( WICED_AP_INTERFACE, WICED_USE_INTERNAL_DHCP_SERVER, &device_init_ip_settings )))
+        		if (!(result=start_ap()))
                     if (!(result=wiced_dns_redirector_start( &dns_redirector, WICED_AP_INTERFACE )))
                         result = WICED_SUCCESS;
         return result;
@@ -1391,7 +1388,7 @@ public:
             Reader r = req->reader();
             Writer w = req->writer();
             if (isCmd) {
-                Command* cmd = (Command*)arg;
+        Command* cmd = (Command*)arg;
                 wiced_http_response_stream_write_header(req->stream, HTTP_200_TYPE, CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, MIME_TYPE_JSON, nullptr);
                 result = cmd->execute(r, w);
             } else {

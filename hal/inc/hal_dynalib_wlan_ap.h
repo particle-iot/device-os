@@ -1,10 +1,6 @@
 /**
  ******************************************************************************
- * @file    wlan_internal.h
- * @authors Matthew McGowan
- * @date    19 January 2015
- ******************************************************************************
-  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2016 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -21,34 +17,22 @@
  ******************************************************************************
  */
 
-#ifndef WLAN_INTERNAL_H
-#define	WLAN_INTERNAL_H
+#pragma once
 
-#include "wiced.h"
-#include "wlan_hal.h"
+#include "hal_platform.h"
+#include "dynalib.h"
 
-#ifdef __cplusplus
+#if HAL_PLATFORM_WIFI_AP
 
-wiced_result_t wlan_ap_up(wiced_config_soft_ap_t& creds, const wiced_ip_setting_t* device_init_ip_settings);
-
-extern "C" {
+#ifdef DYNALIB_EXPORT
+#include "wlan_ap_hal.h"
 #endif
 
-wiced_result_t wlan_initialize_dct();
+DYNALIB_BEGIN(hal_wlan_ap)
+DYNALIB_FN(0, hal_wlan_ap, wlan_ap_has_credentials, wlan_result_t(void*))
+DYNALIB_FN(1, hal_wlan_ap, wlan_ap_set_credentials, wlan_result_t(WLanCredentials*,void*))
+DYNALIB_FN(2, hal_wlan_ap, wlan_ap_get_credentials, wlan_result_t(WiFiAccessPoint*,void*))
+DYNALIB_FN(3, hal_wlan_ap, wlan_ap_get_state, wlan_result_t(uint8_t*,void*))
+DYNALIB_END(hal_wlan_ap)
 
-wiced_security_t wlan_to_wiced_security(WLanSecurityType sec, WLanSecurityCipher cipher);
-
-WLanSecurityType wlan_to_security_type(wiced_security_t sec);
-WLanSecurityCipher wlan_to_cipherer_type(wiced_security_t sec);
-
-extern const wiced_ip_setting_t device_init_ip_settings;
-
-
-#ifdef __cplusplus
-}
 #endif
-
-
-
-#endif	/* WLAN_INTERNAL_H */
-

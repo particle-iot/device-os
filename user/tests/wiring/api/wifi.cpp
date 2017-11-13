@@ -202,4 +202,29 @@ test(api_wifi_hostname)
     API_COMPILE(WiFi.setHostname(shostname));
 }
 
+test(api_wifi_ap_credentials)
+{
+	bool result;
+	API_COMPILE(result=AP.hasCredentials());
+	API_COMPILE(AP.clearCredentials());
+
+	API_COMPILE(AP.setCredentials("ssid"));
+	API_COMPILE(AP.setCredentials("ssid", "password"));
+	API_COMPILE(AP.setCredentials("ssid", "password", WPA2));
+	API_COMPILE(AP.setCredentials("ssid", 4, "password", 8, WPA2, WLAN_CIPHER_AES));
+	(void)result;
+}
+
+test(api_wifi_ap_state)
+{
+	bool state;
+	API_COMPILE(state=AP.ready());
+	API_COMPILE(AP.on());
+	API_COMPILE(AP.off());
+	(void)state;
+}
+
+
+
+
 #endif

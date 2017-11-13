@@ -39,7 +39,7 @@ public:
 
     TCPServerClient(sock_handle_t sock) : TCPClient(sock) {}
 
-    virtual IPAddress remoteIP() override
+    virtual IPAddress remoteIP() const override
     {
         sock_peer_t peer;
         memset(&peer, 0, sizeof(peer));

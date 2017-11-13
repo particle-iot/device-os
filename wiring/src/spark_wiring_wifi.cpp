@@ -184,6 +184,12 @@ the same way.
 
     WiFiClass WiFi;
     NetworkClass& Network = WiFi;
+
+#if Wiring_WiFi_AP
+    WiFiAPClass AP;
+#endif
+
+
 }
 
 #endif

@@ -171,7 +171,6 @@ private:
 protected:
 
     volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
-    virtual network_interface_t network_interface() override { return 0; }
     virtual void start_listening()=0;
 
     void start_listening_timer_create() {
@@ -285,7 +284,7 @@ protected:
 #endif
             if (is_start_listening_timeout()) {
                 start_listening_timeout();
-            }
+        }
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
 
@@ -303,7 +302,7 @@ protected:
         }
         else if (!wlanStarted) {
             off();
-        }
+    }
     }
 
     virtual void on_start_listening()=0;
@@ -339,6 +338,8 @@ protected:
     }
 
 public:
+
+    virtual network_interface_t network_interface() override { return 0; }
 
     virtual void get_ipconfig(IPConfig* config)=0;
 
@@ -407,9 +408,9 @@ public:
                     listen();
                 }
                 else if (was_sleeping) {
-                    disconnect();
+                        disconnect();
+                    }
                 }
-            }
             else
             {
                 config_hostname();
@@ -444,11 +445,11 @@ public:
             config_clear();
             if (was_connected || was_connecting) {
                 system_notify_event(network_status, network_status_disconnected);
-            }
+        }
             LED_SIGNAL_STOP(NETWORK_CONNECTED);
             LED_SIGNAL_STOP(NETWORK_DHCP);
             LED_SIGNAL_STOP(NETWORK_CONNECTING);
-        }
+    }
     }
 
     bool ready() override
@@ -532,18 +533,18 @@ public:
             if (WLAN_CONNECTED) {
                 // "Disconnecting" event is generated only for a successfully established connection
                 system_notify_event(network_status, network_status_disconnecting);
-            }
+          }
             // "Connecting" event should be always followed by either "connected" or "disconnected" event
             system_notify_event(network_status, network_status_disconnected);
         }
         // Do not enable WLAN watchdog if WiFi.disconnect() has been called or smart config is active
         if (!WLAN_DISCONNECT && !WLAN_SMART_CONFIG_ACTIVE) {
             INFO("ARM_WLAN_WD 3");
-            ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
+                ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
             // Keep blinking green if automatic reconnection is pending
         } else {
             LED_SIGNAL_STOP(NETWORK_CONNECTING);
-        }
+            }
 
         LED_SIGNAL_STOP(NETWORK_CONNECTED);
         LED_SIGNAL_STOP(NETWORK_DHCP);
@@ -580,7 +581,7 @@ public:
             } else {
                 INFO("DHCP fail, ARM_WLAN_WD 4");
                 ARM_WLAN_WD(DISCONNECT_TO_RECONNECT);
-            }
+        }
 
             // "Connecting" event should be always followed by either "connected" or "disconnected" event
             system_notify_event(network_status, network_status_disconnected);
@@ -624,27 +625,27 @@ extern ManagedNetworkInterface& network;
 template <typename Config, typename C>
 class ManagedIPNetworkInterface : public ManagedNetworkInterface
 {
-    Config ip_config;
+	Config ip_config;
 
 public:
 
     void get_ipconfig(IPConfig* config) override
     {
-        update_config(true);
-        memcpy(config, this->config(), config->size);
+    		update_config(true);
+    		memcpy(config, this->config(), config->size);
     }
 
     void update_config(bool force=false) override
     {
-        // todo - IPv6 may not set this field.
+    		// todo - IPv6 may not set this field.
         bool fetched_config = ip_config.nw.aucIP.ipv4!=0;
         if (ready() || force)
         {
             if (!fetched_config || force)
             {
-                memset(&ip_config, 0, sizeof(ip_config));
-                ip_config.size = sizeof(ip_config);
-                reinterpret_cast<C*>(this)->fetch_ipconfig(&ip_config);
+            		memset(&ip_config, 0, sizeof(ip_config));
+            		ip_config.size = sizeof(ip_config);
+            		reinterpret_cast<C*>(this)->fetch_ipconfig(&ip_config);
             }
         }
         else if (fetched_config)
@@ -702,4 +703,4 @@ inline void NetworkStateLogger::dump() const {
 #undef NETWORK_STATE_PRINTF
 #endif // defined(DEBUG_NETWORK_STATE)
 
-#endif  /* SYSTEM_NETWORK_INTERNAL_H */
+#endif	/* SYSTEM_NETWORK_INTERNAL_H */

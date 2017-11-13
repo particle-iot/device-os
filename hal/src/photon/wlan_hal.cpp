@@ -143,6 +143,13 @@ struct WPAEnterpriseContext {
 static WPAEnterpriseContext eap_context;
 
 /**
+ * These asserts mean that a network_interface_t value from the upper layers directly
+ * maps to the values used by WICED (by a happy coincidence.)
+ */
+static_assert(WWD_STA_INTERFACE==0, "expected STA interface to be value 0");
+static_assert(WWD_AP_INTERFACE==1, "expected AP interface to be value 0");
+
+/**
  * Retrieves the country code from the DCT region.
  */
 wiced_country_code_t fetch_country_code()
@@ -184,7 +191,7 @@ bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
     {
         if (!wifi_config->device_configured)
         {
-            memset(wifi_config, 0, sizeof(*wifi_config));
+        memset(wifi_config, 0, sizeof(*wifi_config));
         }
         wifi_config->country_code = country;
         wifi_config->device_configured = WICED_TRUE;
@@ -722,8 +729,8 @@ wlan_result_t wlan_connect_finalize()
                 to_wiced_ip_address(settings.netmask, ip_config.netmask);
                 to_wiced_ip_address(settings.gateway, ip_config.gateway);
                 result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_STATIC_IP, &settings);
-                if (!result)
-                {
+            if (!result)
+            {
                     if (to_wiced_ip_address(dns, ip_config.dns1))
                         dns_client_add_server_address(dns);
                     if (to_wiced_ip_address(dns, ip_config.dns2))
@@ -791,7 +798,7 @@ wlan_result_t wlan_activate()
 	}
 #endif
 
-	wlan_initialize_dct();
+    wlan_initialize_dct();
     wlan_result_t result = wiced_wlan_connectivity_init();
     if (!result)
         wiced_network_register_link_callback(HAL_NET_notify_connected, HAL_NET_notify_disconnected,
@@ -810,7 +817,7 @@ wlan_result_t wlan_deactivate()
 
 wlan_result_t wlan_disconnect_now()
 {
-    socket_close_all();
+    socket_close_all(WICED_STA_INTERFACE);
     wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
     HAL_NET_notify_disconnected();
@@ -884,7 +891,7 @@ struct SnifferInfo
     int count;
 };
 
-WLanSecurityType toSecurityType(wiced_security_t sec)
+WLanSecurityType wlan_to_security_type(wiced_security_t sec)
 {
     if (sec==WICED_SECURITY_OPEN)
         return WLAN_SEC_UNSEC;
@@ -901,7 +908,7 @@ WLanSecurityType toSecurityType(wiced_security_t sec)
     return WLAN_SEC_NOT_SET;
 }
 
-WLanSecurityCipher toCipherType(wiced_security_t sec)
+WLanSecurityCipher wlan_to_cipherer_type(wiced_security_t sec)
 {
     if (sec & AES_ENABLED)
         return WLAN_CIPHER_AES;
@@ -917,42 +924,42 @@ wiced_result_t sniffer( wiced_scan_handler_result_t* malloced_scan_result )
 {
     if (malloced_scan_result != NULL)
     {
-        malloc_transfer_to_curr_thread( malloced_scan_result );
+    malloc_transfer_to_curr_thread( malloced_scan_result );
 
-        SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
-        if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
+    SnifferInfo* info = (SnifferInfo*)malloced_scan_result->user_data;
+    if ( malloced_scan_result->status == WICED_SCAN_INCOMPLETE )
+    {
+        wiced_scan_result_t* record = &malloced_scan_result->ap_details;
+        info->count++;
+        if (!info->callback)
         {
-            wiced_scan_result_t* record = &malloced_scan_result->ap_details;
-            info->count++;
-            if (!info->callback)
+            if (record->SSID.length == info->ssid_len &&
+                !memcmp(record->SSID.value, info->ssid, info->ssid_len))
             {
-                if (record->SSID.length == info->ssid_len &&
-                    !memcmp(record->SSID.value, info->ssid, info->ssid_len))
-                {
-                    info->security = record->security;
-                    info->rssi = record->signal_strength;
-                }
-            }
-            else
-            {
-                WiFiAccessPoint data;
-                memcpy(data.ssid, record->SSID.value, record->SSID.length);
-                memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
-                data.ssidLength = record->SSID.length;
-                data.ssid[data.ssidLength] = 0;
-                data.security = toSecurityType(record->security);
-                data.cipher = toCipherType(record->security);
-                data.rssi = record->signal_strength;
-                data.channel = record->channel;
-                data.maxDataRate = record->max_data_rate;
-                info->callback(&data, info->callback_data);
+                info->security = record->security;
+                info->rssi = record->signal_strength;
             }
         }
         else
         {
-            wiced_rtos_set_semaphore(&info->complete);
+            WiFiAccessPoint data;
+            memcpy(data.ssid, record->SSID.value, record->SSID.length);
+            memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
+            data.ssidLength = record->SSID.length;
+            data.ssid[data.ssidLength] = 0;
+            data.security = wlan_to_security_type(record->security);
+            data.cipher = wlan_to_cipherer_type(record->security);
+            data.rssi = record->signal_strength;
+            data.channel = record->channel;
+            data.maxDataRate = record->max_data_rate;
+            info->callback(&data, info->callback_data);
         }
-        free( malloced_scan_result );
+    }
+    else
+    {
+        wiced_rtos_set_semaphore(&info->complete);
+    }
+    free( malloced_scan_result );
     }
     return WICED_SUCCESS;
 }
@@ -979,10 +986,9 @@ wiced_result_t sniff_security(SnifferInfo* info)
 }
 
 /**
- * Converts the given the current security credentials.
+ * Converts a WLanSecurityType and WLanSecurityCipher to a combined wiced_security_t value.
  */
-wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityType sec,
-                            WLanSecurityCipher cipher)
+wiced_security_t wlan_to_wiced_security(WLanSecurityType sec, WLanSecurityCipher cipher)
 {
     int result = 0;
     switch (sec)
@@ -1011,6 +1017,17 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
         result |= AES_ENABLED;
     if (cipher & WLAN_CIPHER_TKIP)
         result |= TKIP_ENABLED;
+	return wiced_security_t(result);
+}
+
+
+/**
+ * Converts the given security credentials to a `wiced_security_t` type. If the cipher isn't specified, the network
+ * is scanned to determine the cipher.
+ */
+static wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityType sec, WLanSecurityCipher cipher)
+{
+    int result = wlan_to_wiced_security(sec, cipher);
 
     if (sec==WLAN_SEC_NOT_SET ||    // security not set, or WPA/WPA2 and cipher not set
         ((result & (WPA_SECURITY | WPA2_SECURITY) && (cipher == WLAN_CIPHER_NOT_SET))))
@@ -1031,7 +1048,7 @@ wiced_security_t toSecurity(const char* ssid, unsigned ssid_len, WLanSecurityTyp
     return wiced_security_t(result);
 }
 
-bool equals_ssid(const char* ssid, wiced_ssid_t& current)
+static bool equals_ssid(const char* ssid, wiced_ssid_t& current)
 {
     return (strlen(ssid)==current.length) && !memcmp(ssid, current.value, current.length);
 }
@@ -1145,7 +1162,7 @@ int wlan_clear_enterprise_credentials() {
 }
 
 int wlan_set_enterprise_credentials(WLanCredentials* c)
-{
+    {
     LOG(TRACE, "Trying to set EAP credentials");
     if (c != NULL && !check_enterprise_credentials(c))
         return 1;
@@ -1243,15 +1260,23 @@ int wlan_set_credentials(WLanCredentials* c)
         // Save
         LOG(INFO, "Saving credentials");
         result = wlan_set_credentials_internal(c->ssid, c->ssid_len, c->password, c->password_len,
-                                               c->security, c->cipher, c->channel, flags);
-    }
+                                         c->security, c->cipher, c->channel, flags);
+}
 
     return result;
 }
 
 softap_handle current_softap_handle;
 
-void wlan_smart_config_init()
+/**
+ * Determines if the AP network is used for listening mode.
+ */
+inline uint8_t wlan_listening()
+{
+	return current_softap_handle!=nullptr;
+}
+
+void wlan_smart_config_init() 
 {
 
     wifi_creds_changed = false;
@@ -1259,7 +1284,7 @@ void wlan_smart_config_init()
     {
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
-        wlan_disconnect_now();
+        //wlan_disconnect_now();
         wlan_restart(NULL);
         current_softap_handle = softap_start(&config);
     }
@@ -1390,10 +1415,10 @@ void wlan_connect_cancel(bool called_from_isr)
 {
     if (!wiced_network_up_cancel) {
         LOG(TRACE, "connect cancel");
-        wiced_network_up_cancel = 1;
-        wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
+    wiced_network_up_cancel = 1;
+    wwd_wifi_join_cancel(called_from_isr ? WICED_TRUE : WICED_FALSE);
         // wlan_supplicant_cancel((int)called_from_isr);
-    }
+}
 }
 
 /**
@@ -1483,8 +1508,8 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
             memcpy(data.bssid, (uint8_t*)&record->BSSID, 6);
             data.ssidLength = record->SSID.length;
             data.ssid[data.ssidLength] = 0;
-            data.security = toSecurityType(record->security);
-            data.cipher = toCipherType(record->security);
+            data.security = wlan_to_security_type(record->security);
+            data.cipher = wlan_to_cipherer_type(record->security);
             data.rssi = record->signal_strength;
             data.channel = record->channel;
             data.maxDataRate = record->max_data_rate;

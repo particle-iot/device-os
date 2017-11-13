@@ -5,6 +5,15 @@
 #include "inet_hal.h"
 
 /**
+ * These symbols are always defined. The value is either 0 or 1 to indicate if the feature is supported.
+ *
+ * Wiring_WiFi          - platforms that support WiFi
+ * Wiring_WiFi_AP       - platforms that support SoftAP mode
+ * Wiring_IPv6          - platforms that support IPv6
+ * Wiring_SPI1          - platforms that support a 2nd SPI interface
+ */
+
+/**
  *  This header file maps platform ID to compile-time switches for the Wiring API.
  */
 
@@ -52,6 +61,7 @@
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
 #define Wiring_WpaEnterprise 1
+#define Wiring_WiFi_AP 1
 #endif
 
 #if PLATFORM_ID==7
@@ -74,6 +84,7 @@
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
 #define Wiring_WpaEnterprise 1
+#define Wiring_WiFi_AP 1
 #endif
 
 #if PLATFORM_ID==9      // ethernet
@@ -156,6 +167,10 @@
 
 #ifndef Wiring_WpaEnterprise
 #define Wiring_WpaEnterprise 0
+#endif
+
+#ifndef Wiring_WiFi_AP
+#define Wiring_WiFi_AP 0
 #endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */

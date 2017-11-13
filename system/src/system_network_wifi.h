@@ -136,7 +136,7 @@ protected:
 
 
 public:
-
+    static const network_interface_t INTERFACE_ID = 0;
 
     virtual void start_listening() override
     {

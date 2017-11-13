@@ -58,14 +58,14 @@ public:
 	virtual uint8_t connected();
 	virtual operator bool();
 
-        virtual IPAddress remoteIP();
+	virtual IPAddress remoteIP() const;
 
 	friend class TCPServer;
 
 	using Print::write;
 
 protected:
-        inline sock_handle_t sock_handle() { return d_->sock; }
+        inline sock_handle_t sock_handle() const { return d_->sock; }
 
 private:
     struct Data {

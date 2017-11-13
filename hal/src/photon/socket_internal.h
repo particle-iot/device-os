@@ -24,7 +24,7 @@
 #ifndef SOCKET_INTERNAL_H
 #define	SOCKET_INTERNAL_H
 
-void socket_close_all();
+void socket_close_all(uint8_t type);
 
 #endif	/* SOCKET_INTERNAL_H */
 
