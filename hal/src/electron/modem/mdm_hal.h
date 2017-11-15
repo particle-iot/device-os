@@ -412,6 +412,9 @@ public:
     */
     int sendFormated(const char* format, ...);
 
+    /** This method is similar to sendFormated() but takes the formatting arguments as va_list */
+    int sendFormattedWithArgs(const char* format, va_list args);
+
     /** callback function for #waitFinalResp with void* as argument
         \param type the #getLine response
         \param buf the parsed line
@@ -447,14 +450,16 @@ public:
     }
 
     /** Send AT command and wait for a response.
-        \param cmd command string (CRLF terminated)
+        \param fmt the format string (CRLF terminated)
+        \param args the formatting arguments
         \param cb the optional callback function
         \param param the optional callback function parameter
         \param timeout the response timeout in milliseconds
-        \sa send
+        \sa sendFormated
         \sa waitFinalResp
     */
-    int command(const char* cmd, _CALLBACKPTR cb = NULL, void* param = NULL, system_tick_t timeout = 10000);
+    int sendCommandWithArgs(const char* fmt, va_list args, _CALLBACKPTR cb = NULL, void* param = NULL,
+            system_tick_t timeout = 10000);
 
 protected:
     /** Write bytes to the physical interface. This function should be
