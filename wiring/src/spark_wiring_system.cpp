@@ -68,6 +68,6 @@ bool SystemClass::enableFeature(LoggingFeature) {
 #endif
 
 bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
-    SETUP_WIFITESTER_IMPL();
+    WiFiTester::init();
     return true;
 }
