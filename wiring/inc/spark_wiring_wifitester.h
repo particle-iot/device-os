@@ -63,49 +63,9 @@ public:
     int32_t serialRead();
     void serialPrintln(const char* s);
     void serialPrint(const char* s);
+
+    static void init();
 };
-
-#if defined(SETUP_OVER_SERIAL1) && SETUP_OVER_SERIAL1 == 1
-
-#define SETUP_WIFITESTER_IMPL() \
-    { \
-        system_tester_handlers_t handlers = {0}; \
-        handlers.version = 1; \
-        handlers.size = sizeof(handlers); \
-        handlers.create = [](void* reserved) -> void* { \
-            return new WiFiTester(); \
-        }; \
-        handlers.destroy = [](void* tester, void* reserved) -> int { \
-            WiFiTester* t = reinterpret_cast<WiFiTester*>(tester); \
-            if (t != nullptr) { \
-                delete t; \
-                return 0; \
-            } \
-            return 1; \
-        }; \
-        handlers.setup = [](void* tester, bool useSerial1, void* reserved) -> int { \
-            WiFiTester* t = reinterpret_cast<WiFiTester*>(tester); \
-            if (t != nullptr) { \
-                t->setup(useSerial1); \
-                return 0; \
-            } \
-            return 1; \
-        }; \
-        handlers.loop = [](void* tester, int c, void* reserved) -> int { \
-            WiFiTester* t = reinterpret_cast<WiFiTester*>(tester); \
-            if (t != nullptr) { \
-                t->loop(c); \
-                return 0; \
-            } \
-            return 1; \
-        }; \
-        system_set_tester_handlers(&handlers, nullptr); \
-    }
-#else
-#define SETUP_WIFITESTER_IMPL()
-#endif
-
-#define SETUP_WIFITESTER() STARTUP(SETUP_WIFITESTER_IMPL())
 
 #endif /* __cplusplus */
 
