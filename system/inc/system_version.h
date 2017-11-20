@@ -64,7 +64,6 @@ extern "C" {
 #define SYSTEM_VERSION_v080RC1  0x00080001
 #define SYSTEM_VERSION  SYSTEM_VERSION_v080RC1
 
-#define SYSTEM_VERSION_v070RC5  0x00070005
 /**
  * For Library/App creators. Can be used to ensure features/api's are present.
  * Add a new define for every XYZRCN or final XYZ release.
