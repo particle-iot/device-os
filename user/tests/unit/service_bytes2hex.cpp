@@ -1,6 +1,7 @@
 #include "catch.hpp"
 
 #include "bytes2hexbuf.h"
+#include <cstring>
 
 TEST_CASE("bytes2hex_lower_") {
 	SECTION("bytes are converted to lowercase hex") {
