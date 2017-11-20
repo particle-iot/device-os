@@ -49,7 +49,7 @@ static void init_dct_functions() {
     // At the time of writing, part2 contained a complete DCT implementation. Same time, it's easy to
     // introduce an additional dependency during development, so we require part1 to be consistent as well
     const module_info_t* part1 = get_module(MODULE_FUNCTION_SYSTEM_PART, 1, part2->dependency.module_version);
-    if (!part1 || part1->dependency.module_function != MODULE_FUNCTION_NONE) {
+    if (!part1) {
         return;
     }
     // Get addresses of the DCT functions
