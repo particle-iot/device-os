@@ -162,7 +162,7 @@ uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
     char deviceIdHex[sizeof(deviceId) * 2 + 1] = {0};
     unsigned deviceIdLen = 0;
     deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
-    bytes2hexbuf(deviceId, deviceIdLen, deviceIdHex);
+    bytes2hexbuf_lower_case(deviceId, deviceIdLen, deviceIdHex);
     USBD_GetString (deviceIdHex, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
