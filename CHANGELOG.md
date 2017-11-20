@@ -1,3 +1,11 @@
+## 0.7.0-rc.5
+
+### BUGFIX
+
+ - The device ID is output in lowercase in DFU mode. [#1432](https://github.com/spark/firmware/issues/1432)
+ - increase the DTLS buffer from 768 to 800 bytes, so that the system describe message is sent.
+ - remove rigid dependency check in bootloader that was causing DCT functions to not load in 0.8.0-rc.1 [#1436](https://github.com/spark/firmware/pull/1436)
+
 ## 0.7.0-rc.4
 
 ### ENHANCEMENTS
