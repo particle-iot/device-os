@@ -1,5 +1,5 @@
 
-VERSION_STRING = 0.7.0
+VERSION_STRING = 0.7.0-rc.5
 
 # PRODUCT_FIRMWARE_VERSION reported by default
 # FIXME: Unclear if this is used, PRODUCT_FIRMWARE_VERSION defaults to 65535 every release
