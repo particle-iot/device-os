@@ -1,6 +1,6 @@
 
 MODULE=crypto
-COMMUNICATION_MODULE_PATH=.
+CRYPTO_MODULE_PATH=.
 
 # Target this makefile is building.
 TARGET_TYPE = a

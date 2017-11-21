@@ -12,8 +12,6 @@ DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib rt-dynalib modules/photon/system-par
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 
-GLOBAL_DEFINES += CRYPTO_PART1_SIZE_OPTIMIZATIONS
-
 # dependent on hal lib only for the wwd_nvmem_resource, which is managed specifically in build.mk
 LIBS += $(filter-out hal,$(MAKE_DEPENDENCIES))
 LIB_DEPS += $(COMMUNICATION_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP) $(CRYPTO_LIB_DEP)

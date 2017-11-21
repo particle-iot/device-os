@@ -40,14 +40,19 @@ int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
 }
 
 #if !defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) && PLATFORM_ID != 0
+
+// At least millis should be provided
+static mbedtls_callbacks_t s_callbacks = {0};
+
 __attribute__((weak)) int mbedtls_set_callbacks(mbedtls_callbacks_t* callbacks, void* reserved)
 {
+    memcpy(&s_callbacks, callbacks, sizeof(mbedtls_callbacks_t));
     return 0;
 }
 
 __attribute__((weak)) mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved)
 {
-    return NULL;
+    return &s_callbacks;
 }
 #endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) || PLATFORM_ID == 0
 
