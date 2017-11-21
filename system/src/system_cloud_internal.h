@@ -100,11 +100,11 @@ public:
     };
 
     CloudDiagnostics() :
-            status_(DIAG_ID_CLOUD_CONNECTION_STATUS, "cloud:stat", DISCONNECTED),
-            disconnReason_(DIAG_ID_CLOUD_DISCONNECTION_REASON, "cloud:disconnReason", CLOUD_DISCONNECT_REASON_NONE),
-            disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, "cloud:disconn"),
-            connCount_(DIAG_ID_CLOUD_CONNECTION_ATTEMPTS, "cloud:connAttempts"),
-            lastError_(DIAG_ID_CLOUD_CONNECTION_ERROR_CODE, "cloud:err") {
+            status_(DIAG_ID_CLOUD_CONNECTION_STATUS, DIAG_NAME_CLOUD_CONNECTION_STATUS, DISCONNECTED),
+            disconnReason_(DIAG_ID_CLOUD_DISCONNECTION_REASON, DIAG_NAME_CLOUD_DISCONNECTION_REASON, CLOUD_DISCONNECT_REASON_NONE),
+            disconnCount_(DIAG_ID_CLOUD_DISCONNECTS, DIAG_NAME_CLOUD_DISCONNECTS),
+            connCount_(DIAG_ID_CLOUD_CONNECTION_ATTEMPTS, DIAG_NAME_CLOUD_CONNECTION_ATTEMPTS),
+            lastError_(DIAG_ID_CLOUD_CONNECTION_ERROR_CODE, DIAG_NAME_CLOUD_CONNECTION_ERROR_CODE) {
     }
 
     CloudDiagnostics& status(Status status) {
