@@ -86,8 +86,7 @@ DYNALIB_FN(BASE_IDX + 4, system, led_get_signal_theme, int(LEDSignalThemeData*, 
 DYNALIB_FN(BASE_IDX + 5, system, led_signal_status, const LEDStatusData*(int, void*))
 DYNALIB_FN(BASE_IDX + 6, system, led_pattern_period, uint16_t(int, int, void*))
 DYNALIB_FN(BASE_IDX + 7, system, system_set_tester_handlers, int(system_tester_handlers_t*, void*))
-
-DYNALIB_FN(BASE_IDX + 7, system, system_format_diag_data, int(const uint16_t*, size_t, unsigned, appender_fn, void*, void*))
+DYNALIB_FN(BASE_IDX + 8, system, system_format_diag_data, int(const uint16_t*, size_t, unsigned, appender_fn, void*, void*))
 
 DYNALIB_END(system)
 
