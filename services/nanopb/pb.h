@@ -28,7 +28,7 @@
 /* #define PB_FIELD_32BIT 1 */
 
 /* Disable support for error messages in order to save some code space. */
-/* #define PB_NO_ERRMSG 1 */
+#define PB_NO_ERRMSG 1
 
 /* Disable support for custom streams (support only memory buffers). */
 /* #define PB_BUFFER_ONLY 1 */
