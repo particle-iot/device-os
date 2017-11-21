@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "system_tick_hal.h"
 #include "spark_wiring_diagnostics.h"
 
 namespace particle { namespace power {

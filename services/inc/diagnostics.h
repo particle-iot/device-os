@@ -112,7 +112,7 @@ typedef struct diag_source diag_source;
 typedef int(*diag_source_cmd_callback)(const diag_source* src, int cmd, void* data);
 typedef int(*diag_enum_sources_callback)(const diag_source* src, void* data);
 
-typedef struct diag_source {
+struct diag_source {
     uint16_t size; // Size of this structure
     uint16_t flags; // Source flags
     uint16_t id; // Source ID
@@ -120,7 +120,7 @@ typedef struct diag_source {
     const char* name; // Source name
     void* data; // User data
     diag_source_cmd_callback callback; // Source callback
-} diag_source;
+};
 
 typedef struct diag_source_get_cmd_data {
     uint16_t size; // Size of this structure

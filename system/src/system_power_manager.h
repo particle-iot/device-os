@@ -1,6 +1,7 @@
 #include "system_power.h"
 #include <cstdint>
 #include "system_tick_hal.h"
+#include "concurrent_hal.h"
 
 namespace particle { namespace power {
 

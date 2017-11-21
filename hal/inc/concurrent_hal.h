@@ -201,7 +201,9 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 #endif // _GLIBCXX_HAS_GTHREADS
 
 #ifdef __cplusplus
+#if PLATFORM_ID!=3
 #include <bits/gthr.h>
+#endif
 #endif
 
 /**
