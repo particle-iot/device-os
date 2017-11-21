@@ -99,6 +99,7 @@ namespace particle {
 
 class NetworkDiagnostics {
 public:
+    // Note: Use odd numbers to encode transitional states
     enum Status {
         TURNED_OFF = 0,
         TURNING_ON = 1,
@@ -106,7 +107,7 @@ public:
         CONNECTING = 3,
         CONNECTED = 4,
         DISCONNECTING = 5,
-        TURNING_OFF = 6
+        TURNING_OFF = 7
     };
 
     NetworkDiagnostics() :
