@@ -92,6 +92,7 @@ namespace particle {
 
 class CloudDiagnostics {
 public:
+    // Note: Use odd numbers to encode transitional states
     enum Status {
         DISCONNECTED = 0,
         CONNECTING = 1,
