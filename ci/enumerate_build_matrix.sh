@@ -93,6 +93,10 @@ do
         c=n
         if [[ "$p" = "core" ]]; then
            c=y
+           # skip debug build since it overflows
+           if [[ "$db" = "y" ]]; then
+               continue
+           fi
         fi
         echo
         echo '-----------------------------------------------------------------------'
