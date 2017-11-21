@@ -83,7 +83,11 @@ public:
         return ok==true ? &CellularData::this_type_does_not_support_comparisons : 0;
     }
 };
+
+#ifndef UNIT_TEST
+
 // Bjorn Karlsson's Safe Bool Idiom - http://www.artima.com/cppsource/safebool.html
+// Note: clang, which we use for unit tests on Mac, doesn't consider this idiom a valid C++ code
 template <typename T>
 bool operator!=(const CellularData& lhs,const T& rhs) {
     lhs.this_type_does_not_support_comparisons();
@@ -94,6 +98,8 @@ bool operator==(const CellularData& lhs,const T& rhs) {
     lhs.this_type_does_not_support_comparisons();
     return false;
 }
+
+#endif // defined(UNIT_TEST)
 
 /*
  * CellularBand
@@ -131,6 +137,9 @@ public:
         return false;
     }
 };
+
+#ifndef UNIT_TEST
+
 template <typename T>
 bool operator!=(const CellularBand& lhs,const T& rhs) {
     lhs.this_type_does_not_support_comparisons();
@@ -141,6 +150,8 @@ bool operator==(const CellularBand& lhs,const T& rhs) {
     lhs.this_type_does_not_support_comparisons();
     return false;
 }
+
+#endif // defined(UNIT_TEST)
 
 #endif // Wiring_Cellular || defined(UNIT_TEST)
 
