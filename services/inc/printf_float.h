@@ -1,5 +1,7 @@
 #pragma once
 
+#if PLATFORM_ID != 3
+
 #include <stdio.h>
 
 // Taken from nano-vfprintf_local.h
@@ -54,3 +56,5 @@ _printf_float (struct _reent *data,
 #ifdef __cplusplus
 }
 #endif
+
+#endif // PLATFORM_ID != 3
