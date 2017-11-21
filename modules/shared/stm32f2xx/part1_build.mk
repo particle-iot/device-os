@@ -42,3 +42,16 @@ CSRC += $(call target_files,$(SYSTEM_PART1_MODULE_SRC_PATH),*.c)
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
+
+ifeq ($(PLATFORM_ID),6)
+USE_PRINTF_FLOAT ?= y
+endif
+
+ifeq ($(PLATFORM_ID),8)
+USE_PRINTF_FLOAT ?= y
+endif
+
+# Export _printf_float from system-part1 on Photon and P1
+ifeq ("$(USE_PRINTF_FLOAT)","y")
+LDFLAGS += -u _printf_float
+endif
