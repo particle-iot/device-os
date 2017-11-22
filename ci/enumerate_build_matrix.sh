@@ -12,7 +12,7 @@ set -x # be noisy + log everything that is happening in the script
 
 function runmake()
 {
-	make -s  all $*
+	make -s clean all $*
 }
 
 MAKE=runmake
@@ -134,3 +134,5 @@ echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM="photon" COMPILE_LTO="n" MINIMAL=y
 	testcase
 fi
+
+checkFailures || exit 1

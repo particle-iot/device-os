@@ -3,12 +3,21 @@ GREEN="\033[32m"
 RED="\033[31m"
 NO_COLOR="\033[0m"
 
+function checkFailures {
+if [[ $HAS_FAILURES == 1 ]]; then
+   echo "Ruh roh. Failed tests."
+   return 1
+fi
+return 0
+}
+
 function testcase {
 	if [ $? -eq 0 ]; then
 	  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
 	  return 0
 	else
 	  echo -e "$RED ✗ FAILED $NO_COLOR"
+	  export HAS_FAILURES=1
 	  return 1
 	fi
 }
