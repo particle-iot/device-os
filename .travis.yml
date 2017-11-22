@@ -7,7 +7,7 @@ install:
   - buildpack/scripts/build-image
 
 script:
-  - buildpak/scripts/run-tests-in-container
+  - buildpack/scripts/run-tests-in-container
   - buildpack/scripts/push-image
 
   # - 'if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
@@ -32,13 +32,14 @@ stages:
 
 env:
   matrix:
-    - BUILD_PLATFORM=unit-test photon
+    - BUILD_PLATFORM=unit-test
+    - BUILD_PLATFORM=photon
         # BUILD_PLATFORM=core
         # BUILD_PLATFORM=photon
         # BUILD_PLATFORM=p1
     - BUILD_PLATFORM=electron
         # BUILD_PLATFORM=newhal
-        # BUILD_PLATFORM=gcc
+    - BUILD_PLATFORM=gcc
 
   # matrix:
   # - UNIT_TEST=y

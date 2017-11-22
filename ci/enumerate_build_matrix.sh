@@ -33,6 +33,9 @@ filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM 
 filterPlatform PLATFORM_BOOTLOADER
 
+echo "runing matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER"
+
+
 # set current working dir
 cd main
 
