@@ -1,5 +1,12 @@
 sudo: required
+
+# setting the language to bash speeds up builds compared to the default since there is no ruby installation
 language: bash
+
+cache:
+  ccache: true
+  directories:
+    $HOME/.ci/boost
 
 services:
   - docker
@@ -25,24 +32,12 @@ script:
 
 #after_success: ./ci/update-gh-pages.sh
 
-
-stages:
-  - prep
-  - build_image
-  - test
-  - name: deploy
-    if: tag IS present
-
 env:
   matrix:
-    - BUILD_PLATFORM=unit-test
-    - BUILD_PLATFORM=photon
-        # BUILD_PLATFORM=core
-        # BUILD_PLATFORM=photon
-        # BUILD_PLATFORM=p1
+    - BUILD_PLATFORM=unit-test gcc
+    - BUILD_PLATFORM=photon p1
+    - BUILD_PLATFORM=core newhal
     - BUILD_PLATFORM=electron
-        # BUILD_PLATFORM=newhal
-    - BUILD_PLATFORM=gcc
 
   # matrix:
   # - UNIT_TEST=y
