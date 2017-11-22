@@ -1,0 +1,1 @@
+mkdir buildpack && wget https://api.github.com/repos/spark/firmware-buildpack-builder/tarball/feature/go_faster_stripes -O - | tar -xz -C buildpack --strip-components 1
