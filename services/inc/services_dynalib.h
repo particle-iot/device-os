@@ -95,6 +95,8 @@ DYNALIB_FN(BASE_IDX + 9, services, pb_encode_submessage, bool(pb_ostream_t*, con
 
 // Decoding
 DYNALIB_FN(BASE_IDX + 10, services, pb_decode_noinit, bool(pb_istream_t*, const pb_field_t[], void*))
+DYNALIB_FN(BASE_IDX + 11, services, pb_read, bool(pb_istream_t*, pb_byte_t*, size_t))
+DYNALIB_FN(BASE_IDX + 12, services, pb_encode_string, bool(pb_ostream_t*, const pb_byte_t*, size_t))
 
 DYNALIB_END(services)
 
