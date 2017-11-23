@@ -1,0 +1,15 @@
+syntax = "proto3";
+package particle.ctrl;
+
+import "nanopb.proto";
+
+enum WiFiAntenna {
+    NONE = 0;
+    INTERNAL = 1;
+    EXTERNAL = 2;
+    AUTO = 3;
+}
+
+message WiFiAntennaConfiguration {
+    WiFiAntenna antenna = 1;
+}
