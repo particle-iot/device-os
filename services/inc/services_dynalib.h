@@ -86,7 +86,7 @@ DYNALIB_FN(BASE_IDX + 1, services, pb_ostream_free, bool(pb_ostream_t*, void*))
 DYNALIB_FN(BASE_IDX + 2, services, pb_istream_init, pb_istream_t*(void*))
 DYNALIB_FN(BASE_IDX + 3, services, pb_istream_free, bool(pb_istream_t*, void*))
 DYNALIB_FN(BASE_IDX + 4, services, pb_ostream_from_buffer_ex, bool(pb_ostream_t*, pb_byte_t*, size_t, void*))
-DYNALIB_FN(BASE_IDX + 5, services, pb_istream_from_buffer_ex, bool(pb_istream_t*, pb_byte_t*, size_t, void*))
+DYNALIB_FN(BASE_IDX + 5, services, pb_istream_from_buffer_ex, bool(pb_istream_t*, const pb_byte_t*, size_t, void*))
 // Encoding
 DYNALIB_FN(BASE_IDX + 6, services, pb_encode, bool(pb_ostream_t*, const pb_field_t[], const void*))
 DYNALIB_FN(BASE_IDX + 7, services, pb_get_encoded_size, bool(size_t*, const pb_field_t[], const void*))
