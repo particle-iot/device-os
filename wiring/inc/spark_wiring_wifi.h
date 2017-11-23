@@ -225,6 +225,10 @@ public:
         return wlan_select_antenna(antenna);
     }
 
+    WLanSelectAntenna_TypeDef getAntenna() {
+        return wlan_get_antenna(nullptr);
+    }
+
     IPAddress resolve(const char* name)
     {
         HAL_IPAddress ip;

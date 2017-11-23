@@ -66,7 +66,11 @@ extern uint32_t lastEvent;
 
 typedef enum
 {
-  ANT_INTERNAL = 0, ANT_EXTERNAL = 1, ANT_AUTO = 3
+  ANT_INTERNAL = 0,
+  ANT_EXTERNAL = 1,
+  ANT_AUTO = 3,
+  // Error
+  ANT_NONE = 0xff
 } WLanSelectAntenna_TypeDef;
 
 typedef int wlan_result_t;
@@ -277,6 +281,8 @@ void HAL_WLAN_notify_simple_config_done();
  * Select the Wi-Fi antenna.
  */
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna);
+
+WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved);
 
 /**
  * Cancel a previous call to any blocking wifi connect method.

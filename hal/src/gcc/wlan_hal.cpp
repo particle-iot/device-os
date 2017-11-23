@@ -167,6 +167,12 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
     return 0;
 }
 
+WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved)
+{
+    return ANT_NONE;
+}
+
+
 bool fetch_or_generate_setup_ssid(void* SSID)
 {
     return false;

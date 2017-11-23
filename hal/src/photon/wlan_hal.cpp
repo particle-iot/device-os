@@ -783,6 +783,11 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
     return wiced_wlan_connectivity_initialized() ? wlan_refresh_antenna() : 0;
 }
 
+WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved)
+{
+    return fetch_antenna_selection();
+}
+
 wlan_result_t wlan_activate()
 {
 #if PLATFORM_ID==PLATFORM_P1
