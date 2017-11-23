@@ -213,6 +213,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         }
         break;
     }
+#if Wiring_WiFi == 1
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
         particle_ctrl_WiFiAntennaConfiguration conf = {};
         WLanSelectAntenna_TypeDef ant = wlan_get_antenna(nullptr);
@@ -257,6 +258,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, r);
         break;
     }
+#endif // Wiring_WiFi
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {
