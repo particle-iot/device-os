@@ -30,6 +30,9 @@
 
 #if SYSTEM_CONTROL_ENABLED
 
+#include "nanopb_misc.h"
+#include "control/control.pb.h"
+
 namespace {
 
 using namespace particle;
@@ -67,6 +70,87 @@ int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* da
 }
 
 SystemControl g_systemControl;
+
+int encodeReplyMessage(ctrl_request* req, const pb_field_t* fields, const void* src) {
+    pb_ostream_t* stream = nullptr;
+    size_t sz = 0;
+    int ret = SYSTEM_ERROR_UNKNOWN;
+
+    // Calculate size
+    bool res = pb_get_encoded_size(&sz, particle_ctrl_WiFiAntennaConfiguration_fields, src);
+    if (!res) {
+        goto cleanup;
+    }
+
+    // Allocate reply data
+    ret = system_ctrl_alloc_reply_data(req, sz, nullptr);
+    if (ret != SYSTEM_ERROR_NONE) {
+        goto cleanup;
+    }
+    ret = SYSTEM_ERROR_UNKNOWN;
+
+    // Allocate ostream
+    stream = pb_ostream_init(nullptr);
+    if (stream == nullptr) {
+        ret = SYSTEM_ERROR_NO_MEMORY;
+        goto cleanup;
+    }
+
+    res = pb_ostream_from_buffer_ex(stream, (pb_byte_t*)req->reply_data, req->reply_size, nullptr);
+    if (!res) {
+        goto cleanup;
+    }
+
+    res = pb_encode(stream, fields, src);
+    if (res) {
+        ret = SYSTEM_ERROR_NONE;
+    }
+
+cleanup:
+    if (stream != nullptr) {
+        pb_ostream_free(stream, nullptr);
+    }
+    if (ret != SYSTEM_ERROR_NONE) {
+        system_ctrl_free_reply_data(req, nullptr);
+    }
+    return ret;
+}
+
+int decodeRequestMessage(ctrl_request* req, const pb_field_t* fields, void* dst) {
+    pb_istream_t* stream = nullptr;
+    int ret = SYSTEM_ERROR_UNKNOWN;
+    bool res = false;
+
+    if (req->request_size == 0) {
+        // Nothing to decode
+        ret = SYSTEM_ERROR_BAD_DATA;
+        goto cleanup;
+    }
+
+    stream = pb_istream_init(nullptr);
+    if (stream == nullptr) {
+        ret = SYSTEM_ERROR_NO_MEMORY;
+        goto cleanup;
+    }
+
+    res = pb_istream_from_buffer_ex(stream, (const pb_byte_t*)req->request_data, req->request_size, nullptr);
+    if (!res) {
+        goto cleanup;
+    }
+
+    res = pb_decode_noinit(stream, fields, dst);
+    if (res) {
+        ret = SYSTEM_ERROR_NONE;
+    } else {
+        ret = SYSTEM_ERROR_BAD_DATA;
+    }
+
+cleanup:
+    if (stream != nullptr) {
+        pb_istream_free(stream, nullptr);
+    }
+    return ret;
+}
 
 } // namespace
 
@@ -127,6 +211,50 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
             const int ret = formatReplyData(req, Formatter::callback);
             setResult(req, ret);
         }
+        break;
+    }
+    case CTRL_REQUEST_WIFI_GET_ANTENNA: {
+        particle_ctrl_WiFiAntennaConfiguration conf = {};
+        WLanSelectAntenna_TypeDef ant = wlan_get_antenna(nullptr);
+        // Re-map
+        switch (ant) {
+            case ANT_INTERNAL:
+                conf.antenna = particle_ctrl_WiFiAntenna_INTERNAL;
+            break;
+            case ANT_EXTERNAL:
+                conf.antenna = particle_ctrl_WiFiAntenna_EXTERNAL;
+            break;
+            case ANT_AUTO:
+                conf.antenna = particle_ctrl_WiFiAntenna_AUTO;
+            break;
+        }
+        setResult(req, encodeReplyMessage(req, particle_ctrl_WiFiAntennaConfiguration_fields, &conf));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_SET_ANTENNA: {
+        particle_ctrl_WiFiAntennaConfiguration conf = {};
+        int r = decodeRequestMessage(req, particle_ctrl_WiFiAntennaConfiguration_fields, &conf);
+        WLanSelectAntenna_TypeDef ant = ANT_NONE;
+        if (r == SYSTEM_ERROR_NONE) {
+            // Re-map
+            switch (conf.antenna) {
+                case particle_ctrl_WiFiAntenna_INTERNAL:
+                    ant = ANT_INTERNAL;
+                break;
+                case particle_ctrl_WiFiAntenna_EXTERNAL:
+                    ant = ANT_EXTERNAL;
+                break;
+                case particle_ctrl_WiFiAntenna_AUTO:
+                    ant = ANT_AUTO;
+                break;
+            }
+            if (ant != ANT_NONE) {
+                r = wlan_select_antenna(ant) == 0 ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_UNKNOWN;
+            } else {
+                r = SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+        }
+        setResult(req, r);
         break;
     }
     default:
