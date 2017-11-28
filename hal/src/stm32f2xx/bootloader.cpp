@@ -50,7 +50,13 @@ bool bootloader_requires_update(const uint8_t* bootloader_image, uint32_t length
     uint16_t available_version = *(uint16_t*)(bootloader_image+VERSION_OFFSET);
 
     // Downgrading from 0.7.0 requires a bootloader downgrade
-    bool requires_update = (current_version < available_version || current_version >= BOOTLOADER_0_7_0);
+    // NB: The bootloader may be in a different module, and consequently
+    // may be a different version than what is expected
+    // replace the bootloader only when the replacement is less than 0.7.0 (since 0.7.0 bootloaders do not support DCT in DFU mode, with older system firmware.)
+    // the installed bootloader is older that the available bootloader
+    // or the installed bootloader
+    bool requires_update = (current_version < available_version ||
+    		(current_version >= BOOTLOADER_0_7_0)) && available_version < BOOTLOADER_0_7_0;
     return requires_update;
 }
 
