@@ -2,6 +2,7 @@ syntax = "proto3";
 package particle.ctrl;
 
 import "nanopb.proto";
+import "common.proto";
 
 enum WiFiAntenna {
     ANTENNA_NONE = 0;
@@ -64,48 +65,3 @@ message WiFiAccessPoint {
 message WiFiAccessPointList {
     repeated WiFiAccessPoint aps = 1;
 }
-
-message IPAddress {
-    enum Protocol {
-        NONE = 0;
-        IPv4 = 1;
-        IPv6 = 2;
-    }
-    Protocol protocol = 1;
-    bytes address = 2;
-}
-
-message IPConfiguration {
-    enum Type {
-        NONE = 0;
-        DHCP = 1;
-        STATIC = 2;
-    }
-    Type type = 1;
-    IPAddress address = 2;
-    IPAddress netmask = 3;
-    IPAddress gateway = 4;
-    IPAddress dhcp_server = 5;
-    string hostname = 6;
-}
-
-message DNSConfiguration {
-    IPAddress server = 1;
-}
-
-// CTRL_REQUEST_NETWORK_SET_CONFIGURATION = 121 (H->D)
-// CTRL_REQUEST_NETWORK_GET_CONFIGURATION = 120 (D->H)
-message NetworkConfiguration {
-    int32 interface = 1;
-    bool state = 2;
-    string name = 3;
-    bytes mac = 4 [(nanopb).max_size = 6, (nanopb).fixed_length = true];
-    IPConfiguration ipconfig = 5;
-    repeated DNSConfiguration dnsconfig = 7;
-}
-
-// CTRL_REQUEST_NETWORK_GET_CONFIGURATION = 120 (H->D)
-message GetNetworkConfigurationRequest {
-    int32 interface = 1;
-}
-
