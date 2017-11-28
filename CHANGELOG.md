@@ -1,3 +1,9 @@
+## 0.6.4
+
+### BUGFIXES
+
+- Downgrade bootloader functionality in 0.6.3 would enter an infinite loop after flashing system part 1 0.7.0-rc.X using OTA/serial. `particle flash --usb`/DFU was not affected.
+
 ## 0.6.3
 
 ### ENHANCEMENTS

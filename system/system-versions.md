@@ -36,6 +36,7 @@
 | 107 | 0.6.2-rc.2 |         (Core, Photon, P1, Electron) |
 | 108 | 0.6.2 |              (Core, Photon, P1, Electron) |
 | 109 | 0.6.3 |              (Photon, P1, Electron) |
+| 101 | 0.6.4 |              (Electron) |
 
 To find out the release version of system firmware currently installed, in listening mode,
 connect to serial and send `v` to print the release version string.
