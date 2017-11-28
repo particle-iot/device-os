@@ -1410,12 +1410,30 @@ void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reser
     dct_write_app_data(&c, DCT_IP_CONFIG_OFFSET+offsetof(static_ip_config_t, config_mode), 1);
 }
 
+IPAddressSource wlan_get_ipaddress_source(void* reserved)
+{
+    static_ip_config_t config = {};
+    wlan_fetch_saved_ip_config(&config);
+    switch(static_cast<IPAddressSource>(config.config_mode)) {
+        case STATIC_IP:
+            return STATIC_IP;
+        default:
+            return DYNAMIC_IP;
+    }
+}
+
 void assign_if_set(dct_ip_address_v4_t& dct_address, const HAL_IPAddress* address)
 {
     if (address && is_ipv4(address))
     {
             dct_address = address->ipv4;
     }
+}
+
+void dct_ip_to_hal_ip(const dct_ip_address_v4_t& dct_ip, HAL_IPAddress& hal_ip)
+{
+    hal_ip.v = 4;
+    hal_ip.ipv4 = static_cast<decltype(hal_ip.ipv4)>(dct_ip);
 }
 
 /**
@@ -1431,7 +1449,7 @@ void wlan_set_ipaddress(const HAL_IPAddress* host, const HAL_IPAddress* netmask,
                         const HAL_IPAddress* gateway, const HAL_IPAddress* dns1,
                         const HAL_IPAddress* dns2, void* reserved)
 {
-    static_ip_config_t config;
+    static_ip_config_t config = {};
     wlan_fetch_saved_ip_config(&config);
     assign_if_set(config.host, host);
     assign_if_set(config.netmask, netmask);
@@ -1439,6 +1457,26 @@ void wlan_set_ipaddress(const HAL_IPAddress* host, const HAL_IPAddress* netmask,
     assign_if_set(config.dns1, dns1);
     assign_if_set(config.dns2, dns2);
     dct_write_app_data(&config, DCT_IP_CONFIG_OFFSET, sizeof(config));
+}
+
+int wlan_get_ipaddress(IPConfig* conf, void* reserved)
+{
+    if (conf == nullptr) {
+        return 1;
+    }
+
+    static_ip_config_t config = {};
+    wlan_fetch_saved_ip_config(&config);
+    if (config.config_mode != STATIC_IP) {
+        return 1;
+    }
+
+    dct_ip_to_hal_ip(config.host, conf->nw.aucIP);
+    dct_ip_to_hal_ip(config.netmask, conf->nw.aucSubnetMask);
+    dct_ip_to_hal_ip(config.gateway, conf->nw.aucDefaultGateway);
+    dct_ip_to_hal_ip(config.dns1, conf->nw.aucDNSServer);
+
+    return 0;
 }
 
 int wlan_scan(wlan_scan_result_t callback, void* cookie)
