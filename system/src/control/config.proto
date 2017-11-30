@@ -82,3 +82,12 @@ message GetServerProtocolRequest {
 message GetServerProtocolReply {
   ServerProtocolType protocol = 1; // Protocol type
 }
+
+// CTRL_REQUEST_SET_SOFTAP_SSID: 240
+message SetSoftApSsidRequest {
+  string prefix = 1 [(nanopb).max_size = 32];
+  string suffix = 2 [(nanopb).max_size = 16];
+}
+
+message SetSoftApSsidReply {
+}

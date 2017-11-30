@@ -246,6 +246,11 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
+    case CTRL_REQUEST_FACTORY_RESET: {
+        System.factoryReset();
+        setResult(req, SYSTEM_ERROR_NONE);
+        break;
+    }
     case CTRL_REQUEST_DFU_MODE: {
         System.dfu(false);
         setResult(req, SYSTEM_ERROR_NONE);
@@ -460,6 +465,26 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
             pbRep.protocol = particle_ctrl_ServerProtocolType_TCP_PROTOCOL;
         }
         const int ret = encodeReplyMessage(req, particle_ctrl_GetServerProtocolReply_fields, &pbRep);
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_START_NYAN_SIGNAL: {
+        Spark_Signal(true, 0, nullptr);
+        setResult(req, SYSTEM_ERROR_NONE);
+        break;
+    }
+    case CTRL_REQUEST_STOP_NYAN_SIGNAL: {
+        Spark_Signal(false, 0, nullptr);
+        setResult(req, SYSTEM_ERROR_NONE);
+        break;
+    }
+    case CTRL_REQUEST_SET_SOFTAP_SSID: {
+        particle_ctrl_SetSoftApSsidRequest pbReq = {};
+        int ret = decodeRequestMessage(req, particle_ctrl_SetSoftApSsidRequest_fields, &pbReq);
+        if (ret == 0 && (!System.set(SYSTEM_CONFIG_SOFTAP_PREFIX, pbReq.prefix) ||
+                !System.set(SYSTEM_CONFIG_SOFTAP_SUFFIX, pbReq.suffix))) {
+            ret = SYSTEM_ERROR_UNKNOWN;
+        }
         setResult(req, ret);
         break;
     }
