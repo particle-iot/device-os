@@ -17,8 +17,12 @@
 
 #include "system_control_internal.h"
 
+#if SYSTEM_CONTROL_ENABLED
+
 #include "system_network_internal.h"
 #include "system_update.h"
+
+#include "ota_flash_hal_stm32f2xx.h"
 
 #include "spark_wiring_system.h"
 
@@ -27,11 +31,12 @@
 
 #include <algorithm>
 #include <limits>
-
-#if SYSTEM_CONTROL_ENABLED
+#include <cstdio>
 
 #include "nanopb_misc.h"
+#include "control/common.pb.h"
 #include "control/control.pb.h"
+#include "control/config.pb.h"
 
 namespace {
 
@@ -77,7 +82,7 @@ int encodeReplyMessage(ctrl_request* req, const pb_field_t* fields, const void* 
     int ret = SYSTEM_ERROR_UNKNOWN;
 
     // Calculate size
-    bool res = pb_get_encoded_size(&sz, particle_ctrl_WiFiAntennaConfiguration_fields, src);
+    bool res = pb_get_encoded_size(&sz, fields, src);
     if (!res) {
         goto cleanup;
     }
@@ -151,6 +156,81 @@ cleanup:
     }
     return ret;
 }
+
+// Helper classes for working with nanopb's string fields
+struct EncodedString {
+    const char* data;
+    size_t size;
+
+    explicit EncodedString(pb_callback_t* cb, const char* data = nullptr, size_t size = 0) :
+            data(data),
+            size(size) {
+        cb->arg = this;
+        cb->funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+            const auto str = (const EncodedString*)*arg;
+            if (str->data && str->size > 0 && (!pb_encode_tag_for_field(strm, field) ||
+                    !pb_encode_string(strm, (const uint8_t*)str->data, str->size))) {
+                return false;
+            }
+            return true;
+        };
+    }
+};
+
+struct DecodedString {
+    const char* data;
+    size_t size;
+
+    explicit DecodedString(pb_callback_t* cb) :
+            data(nullptr),
+            size(0) {
+        cb->arg = this;
+        cb->funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
+            const size_t n = strm->bytes_left;
+            if (n > 0) {
+                const auto str = (DecodedString*)*arg;
+                str->data = (const char*)strm->state;
+                str->size = n;
+            }
+            return pb_read(strm, nullptr, n);
+        };
+    }
+};
+
+// Class storing a null-terminated string
+struct DecodedCString {
+    const char* data;
+    size_t size;
+
+    explicit DecodedCString(pb_callback_t* cb) :
+            data(nullptr),
+            size(0) {
+        cb->arg = this;
+        cb->funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
+            const size_t n = strm->bytes_left;
+            if (n > 0) {
+                const auto buf = (char*)malloc(n + 1);
+                if (!buf) {
+                    return false;
+                }
+                memcpy(buf, strm->state, n);
+                buf[n] = '\0';
+                const auto str = (DecodedCString*)*arg;
+                str->data = buf;
+                str->size = n;
+            }
+            return pb_read(strm, nullptr, n);
+        };
+    }
+
+    ~DecodedCString() {
+        free((char*)data);
+    }
+
+    // This class is non-copyable
+    DecodedCString(const DecodedCString&) = delete;
+    DecodedCString& operator=(const DecodedCString&) = delete;
+};
 
 } // namespace
 
@@ -259,6 +339,106 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         break;
     }
 #endif // Wiring_WiFi
+    case CTRL_REQUEST_SET_CLAIM_CODE: {
+        particle_ctrl_SetClaimCodeRequest pbReq = {};
+        int ret = decodeRequestMessage(req, particle_ctrl_SetClaimCodeRequest_fields, &pbReq);
+        if (ret == 0) {
+            ret = HAL_Set_Claim_Code(pbReq.code);
+        }
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_IS_CLAIMED: {
+        const int ret = (HAL_IsDeviceClaimed(nullptr) ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_NOT_FOUND);
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_SET_SECURITY_KEY: {
+        particle_ctrl_SetSecurityKeyRequest pbReq = {};
+        DecodedString pbKey(&pbReq.data);
+        int ret = decodeRequestMessage(req, particle_ctrl_SetSecurityKeyRequest_fields, &pbReq);
+        if (ret == 0) {
+            ret = store_security_key_data((security_key_type)pbReq.type, pbKey.data, pbKey.size);
+        }
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_GET_SECURITY_KEY: {
+        particle_ctrl_GetSecurityKeyRequest pbReq = {};
+        int ret = decodeRequestMessage(req, particle_ctrl_GetSecurityKeyRequest_fields, &pbReq);
+        if (ret == 0) {
+            particle_ctrl_GetSecurityKeyReply pbRep = {};
+            EncodedString pbKey(&pbRep.data);
+            ret = lock_security_key_data((security_key_type)pbReq.type, &pbKey.data, &pbKey.size);
+            if (ret == 0) {
+                ret = encodeReplyMessage(req, particle_ctrl_GetSecurityKeyReply_fields, &pbRep);
+                unlock_security_key_data((security_key_type)pbReq.type);
+            }
+        }
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_SET_SERVER_ADDRESS: {
+        particle_ctrl_SetServerAddressRequest pbReq = {};
+        int ret = decodeRequestMessage(req, particle_ctrl_SetServerAddressRequest_fields, &pbReq);
+        if (ret == 0) {
+            ServerAddress addr = {};
+            // Check if the address string contains an IP address
+            unsigned n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+            if (sscanf(pbReq.address, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) == 4) {
+                addr.addr_type = IP_ADDRESS;
+                addr.ip = ((n1 & 0xff) << 24) | ((n2 & 0xff) << 16) | ((n3 & 0xff) << 8) | (n4 & 0xff);
+            } else {
+                const size_t n = strlen(pbReq.address);
+                if (n < sizeof(ServerAddress::domain)) {
+                    addr.addr_type = DOMAIN_NAME;
+                    addr.length = n;
+                    memcpy(addr.domain, pbReq.address, n);
+                } else {
+                    ret = SYSTEM_ERROR_TOO_LARGE;
+                }
+            }
+            if (ret == 0) {
+                addr.port = pbReq.port;
+                ret = store_server_address((server_protocol_type)pbReq.protocol, &addr);
+            }
+        }
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_GET_SERVER_ADDRESS: {
+        particle_ctrl_GetServerAddressRequest pbReq = {};
+        int ret = decodeRequestMessage(req, particle_ctrl_GetServerAddressRequest_fields, &pbReq);
+        if (ret == 0) {
+            ServerAddress addr = {};
+            ret = load_server_address((server_protocol_type)pbReq.protocol, &addr);
+            if (ret == 0) {
+                if (addr.addr_type == IP_ADDRESS) {
+                    const unsigned n1 = (addr.ip >> 24) & 0xff,
+                            n2 = (addr.ip >> 16) & 0xff,
+                            n3 = (addr.ip >> 8) & 0xff,
+                            n4 = addr.ip & 0xff;
+                    const int n = snprintf(addr.domain, sizeof(addr.domain), "%u.%u.%u.%u", n1, n2, n3, n4);
+                    if (n > 0 && (size_t)n < sizeof(addr.domain)) {
+                        addr.length = n;
+                    } else {
+                        ret = SYSTEM_ERROR_TOO_LARGE;
+                    }
+                }
+                if (ret == 0) {
+                    particle_ctrl_GetServerAddressReply pbRep = {};
+                    EncodedString pbAddr(&pbRep.address, addr.domain, addr.length);
+                    pbRep.port = addr.port;
+                    ret = encodeReplyMessage(req, particle_ctrl_GetServerAddressReply_fields, &pbRep);
+                }
+            }
+        }
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_SET_SERVER_PROTOCOL: {
+        break;
+    }
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {
