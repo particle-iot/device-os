@@ -384,6 +384,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         if (ret == 0) {
             ServerAddress addr = {};
             // Check if the address string contains an IP address
+            // TODO: Move IP address parsing/encoding to separate functions
             unsigned n1 = 0, n2 = 0, n3 = 0, n4 = 0;
             if (sscanf(pbReq.address, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) == 4) {
                 addr.addr_type = IP_ADDRESS;
@@ -437,6 +438,29 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         break;
     }
     case CTRL_REQUEST_SET_SERVER_PROTOCOL: {
+        particle_ctrl_SetServerProtocolRequest pbReq = {};
+        int ret = decodeRequestMessage(req, particle_ctrl_SetServerProtocolRequest_fields, &pbReq);
+        if (ret == 0) {
+            bool udpEnabled = false;
+            if (pbReq.protocol == particle_ctrl_ServerProtocolType_TCP_PROTOCOL ||
+                    (udpEnabled = (pbReq.protocol == particle_ctrl_ServerProtocolType_UDP_PROTOCOL))) {
+                ret = HAL_Feature_Set(FEATURE_CLOUD_UDP, udpEnabled);
+            } else {
+                ret = SYSTEM_ERROR_NOT_SUPPORTED;
+            }
+        }
+        setResult(req, ret);
+        break;
+    }
+    case CTRL_REQUEST_GET_SERVER_PROTOCOL: {
+        particle_ctrl_GetServerProtocolReply pbRep = {};
+        if (HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+            pbRep.protocol = particle_ctrl_ServerProtocolType_UDP_PROTOCOL;
+        } else {
+            pbRep.protocol = particle_ctrl_ServerProtocolType_TCP_PROTOCOL;
+        }
+        const int ret = encodeReplyMessage(req, particle_ctrl_GetServerProtocolReply_fields, &pbRep);
+        setResult(req, ret);
         break;
     }
     default:
