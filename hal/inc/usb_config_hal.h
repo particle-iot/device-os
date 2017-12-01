@@ -54,7 +54,7 @@
 # endif
 #endif
 
-#if PLATFORM_ID == 3 || PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10 || defined(UNIT_TEST)
 # define USB_VENDOR_REQUEST_ENABLE
 #endif
 
