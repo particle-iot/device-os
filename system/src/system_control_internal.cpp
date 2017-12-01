@@ -22,6 +22,7 @@
 
 #include "spark_wiring_system.h"
 #include "spark_wiring_vector.h"
+#include "spark_wiring_cellular.h"
 
 #include "appender.h"
 #include "debug.h"
@@ -154,7 +155,6 @@ cleanup:
 }
 
 int protoIpFromHal(particle_ctrl_IPAddress* ip, const HAL_IPAddress* sip) {
-    //ip->address.arg = (void*)sip;
 #if HAL_IPv6
     if (sip->v == 4) {
         ip->protocol = particle_ctrl_IPAddress_Protocol_IPv4;
@@ -176,14 +176,18 @@ int protoIpFromHal(particle_ctrl_IPAddress* ip, const HAL_IPAddress* sip) {
     return 0;
 }
 
+#if Wiring_WiFi
 int halIpFromProto(particle_ctrl_IPAddress* ip, HAL_IPAddress* halip) {
     if (ip->protocol == particle_ctrl_IPAddress_Protocol_IPv4) {
+#if HAL_IPv6
         halip->v = 4;
+#endif
         if (ip->address.size == sizeof(halip->ipv4)) {
             memcpy(&halip->ipv4, ip->address.bytes, sizeof(halip->ipv4));
         }
+    }
 #if HAL_IPv6
-    } else if (ip->protocol == particle_ctrl_IPAddress_Protocol_IPv6) {
+    else if (ip->protocol == particle_ctrl_IPAddress_Protocol_IPv6) {
         halip->v = 6;
         if (ip->address.size == sizeof(halip->ipv6)) {
             memcpy(&halip->ipv6, ip->address.bytes, sizeof(halip->ipv6));
@@ -192,6 +196,7 @@ int halIpFromProto(particle_ctrl_IPAddress* ip, HAL_IPAddress* halip) {
 #endif
     return 0;
 }
+#endif // Wiring_WiFi
 
 template<typename T>
 struct ProtoDecodeBytesLengthHelper {
@@ -316,30 +321,30 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     }
 #if Wiring_WiFi == 1
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
-        particle_ctrl_WiFiAntennaConfiguration conf = {};
+        particle_ctrl_WiFiGetAntennaReply reply = {};
         WLanSelectAntenna_TypeDef ant = wlan_get_antenna(nullptr);
         // Re-map
         switch (ant) {
             case ANT_INTERNAL:
-                conf.antenna = particle_ctrl_WiFiAntenna_INTERNAL;
+                reply.antenna = particle_ctrl_WiFiAntenna_INTERNAL;
             break;
             case ANT_EXTERNAL:
-                conf.antenna = particle_ctrl_WiFiAntenna_EXTERNAL;
+                reply.antenna = particle_ctrl_WiFiAntenna_EXTERNAL;
             break;
             case ANT_AUTO:
-                conf.antenna = particle_ctrl_WiFiAntenna_AUTO;
+                reply.antenna = particle_ctrl_WiFiAntenna_AUTO;
             break;
         }
-        setResult(req, encodeReplyMessage(req, particle_ctrl_WiFiAntennaConfiguration_fields, &conf));
+        setResult(req, encodeReplyMessage(req, particle_ctrl_WiFiGetAntennaReply_fields, &reply));
         break;
     }
     case CTRL_REQUEST_WIFI_SET_ANTENNA: {
-        particle_ctrl_WiFiAntennaConfiguration conf = {};
-        int r = decodeRequestMessage(req, particle_ctrl_WiFiAntennaConfiguration_fields, &conf);
+        particle_ctrl_WiFiSetAntennaRequest request = {};
+        int r = decodeRequestMessage(req, particle_ctrl_WiFiSetAntennaRequest_fields, &request);
         WLanSelectAntenna_TypeDef ant = ANT_NONE;
         if (r == SYSTEM_ERROR_NONE) {
             // Re-map
-            switch (conf.antenna) {
+            switch (request.antenna) {
                 case particle_ctrl_WiFiAntenna_INTERNAL:
                     ant = ANT_INTERNAL;
                 break;
@@ -367,7 +372,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
             spark::Vector<particle_ctrl_WiFiAccessPoint>& aps = *static_cast<spark::Vector<particle_ctrl_WiFiAccessPoint>*>(ptr);
             if (aps.append(particle_ctrl_WiFiAccessPoint())) {
                 particle_ctrl_WiFiAccessPoint& ap = aps.last();
-                strncpy(ap.ssid, sap->ssid, sizeof(sap->ssid));
+                strncpy(ap.ssid, sap->ssid, sizeof(sap->ssid) - 1);
                 memcpy(ap.bssid, sap->bssid, sizeof(sap->bssid));
                 ap.security = (particle_ctrl_WiFiSecurityType)sap->security;
                 ap.cipher = (particle_ctrl_WiFiSecurityCipher)sap->cipher;
@@ -377,9 +382,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
             }
         }, &aps);
         if (ret >= 0) {
-            particle_ctrl_WiFiAccessPointList aplist = {};
-            aplist.aps.arg = (void*)&aps;
-            aplist.aps.funcs.encode = [](pb_ostream_t* stream, const pb_field_t* field, void* const* arg) -> bool {
+            const auto aplistEncoder = [](pb_ostream_t* stream, const pb_field_t* field, void* const* arg) -> bool {
                 const spark::Vector<particle_ctrl_WiFiAccessPoint>& aps = *static_cast<const spark::Vector<particle_ctrl_WiFiAccessPoint>*>(*arg);
                 for (const auto& ap: aps) {
                     // Encode tag
@@ -394,33 +397,45 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
 
                 return true;
             };
-            setResult(req, encodeReplyMessage(req, particle_ctrl_WiFiAccessPointList_fields, &aplist));
+
+            if (req->type == CTRL_REQUEST_WIFI_SCAN) {
+                particle_ctrl_WiFiScanReply reply = {};
+                reply.list.aps.arg = (void*)&aps;
+                reply.list.aps.funcs.encode = aplistEncoder;
+                setResult(req, encodeReplyMessage(req, particle_ctrl_WiFiScanReply_fields, &reply));
+            } else {
+                particle_ctrl_WiFiGetCredentialsReply reply = {};
+                reply.list.aps.arg = (void*)&aps;
+                reply.list.aps.funcs.encode = aplistEncoder;
+                setResult(req, encodeReplyMessage(req, particle_ctrl_WiFiGetCredentialsReply_fields, &reply));
+            }
         } else {
             setResult(req, SYSTEM_ERROR_UNKNOWN);
         }
         break;
     }
     case CTRL_REQUEST_WIFI_SET_CREDENTIALS: {
-        particle_ctrl_WiFiAccessPoint ap = {};
+        particle_ctrl_WiFiSetCredentialsRequest request = {};
+
         WLanCredentials credentials = {};
         credentials.size = sizeof(credentials);
         credentials.version = WLAN_CREDENTIALS_CURRENT_VERSION;
 
-        ProtoDecodeBytesLengthHelper<unsigned> h1(&ap.password, (const void**)&credentials.password, &credentials.password_len);
-        ProtoDecodeBytesLengthHelper<uint16_t> h2(&ap.inner_identity, (const void**)&credentials.inner_identity, &credentials.inner_identity_len);
-        ProtoDecodeBytesLengthHelper<uint16_t> h3(&ap.outer_identity, (const void**)&credentials.outer_identity, &credentials.outer_identity_len);
-        ProtoDecodeBytesLengthHelper<uint16_t> h4(&ap.private_key, (const void**)&credentials.private_key, &credentials.private_key_len);
-        ProtoDecodeBytesLengthHelper<uint16_t> h5(&ap.client_certificate, (const void**)&credentials.client_certificate, &credentials.client_certificate_len);
-        ProtoDecodeBytesLengthHelper<uint16_t> h6(&ap.ca_certificate, (const void**)&credentials.ca_certificate, &credentials.ca_certificate_len);
+        ProtoDecodeBytesLengthHelper<unsigned> h1(&request.ap.password, (const void**)&credentials.password, &credentials.password_len);
+        ProtoDecodeBytesLengthHelper<uint16_t> h2(&request.ap.inner_identity, (const void**)&credentials.inner_identity, &credentials.inner_identity_len);
+        ProtoDecodeBytesLengthHelper<uint16_t> h3(&request.ap.outer_identity, (const void**)&credentials.outer_identity, &credentials.outer_identity_len);
+        ProtoDecodeBytesLengthHelper<uint16_t> h4(&request.ap.private_key, (const void**)&credentials.private_key, &credentials.private_key_len);
+        ProtoDecodeBytesLengthHelper<uint16_t> h5(&request.ap.client_certificate, (const void**)&credentials.client_certificate, &credentials.client_certificate_len);
+        ProtoDecodeBytesLengthHelper<uint16_t> h6(&request.ap.ca_certificate, (const void**)&credentials.ca_certificate, &credentials.ca_certificate_len);
 
-        int r = decodeRequestMessage(req, particle_ctrl_WiFiAccessPoint_fields, &ap);
+        int r = decodeRequestMessage(req, particle_ctrl_WiFiSetCredentialsRequest_fields, &request);
 
-        credentials.ssid = ap.ssid;
-        credentials.ssid_len = strnlen(ap.ssid, sizeof(ap.ssid) - 1);
-        credentials.security = static_cast<WLanSecurityType>(ap.security);
-        credentials.cipher = static_cast<WLanSecurityCipher>(ap.cipher);
-        credentials.channel = ap.channel;
-        credentials.eap_type = static_cast<WLanEapType>(ap.eap_type);
+        credentials.ssid = request.ap.ssid;
+        credentials.ssid_len = strnlen(request.ap.ssid, sizeof(request.ap.ssid) - 1);
+        credentials.security = static_cast<WLanSecurityType>(request.ap.security);
+        credentials.cipher = static_cast<WLanSecurityCipher>(request.ap.cipher);
+        credentials.channel = request.ap.channel;
+        credentials.eap_type = static_cast<WLanEapType>(request.ap.eap_type);
 
         if (r == SYSTEM_ERROR_NONE) {
             r = wlan_set_credentials(&credentials) == 0 ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_UNKNOWN;
@@ -434,23 +449,21 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     }
 #endif // Wiring_WiFi
     case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
-        particle_ctrl_GetNetworkConfigurationRequest netreq = {};
-        int r = decodeRequestMessage(req, particle_ctrl_GetNetworkConfigurationRequest_fields, &netreq);
-
-        if (r == SYSTEM_ERROR_NONE && netreq.interface == 1) {
-            particle_ctrl_NetworkConfiguration conf = {};
-#if Wiring_WiFi == 1
-            conf.interface = 1;
-            WLanConfig* wlanconf = static_cast<WLanConfig*>(network.config());
-            IPConfig sipconf = {};
-            const bool ready = network.ready();
-            conf.state = ready ? particle_ctrl_NetworkState_UP : particle_ctrl_NetworkState_DOWN;
+        particle_ctrl_NetworkGetConfigurationRequest request = {};
+        int r = decodeRequestMessage(req, particle_ctrl_NetworkGetConfigurationRequest_fields, &request);
+        if (r == SYSTEM_ERROR_NONE && request.interface == 1) {
+            particle_ctrl_NetworkGetConfigurationReply reply = {};
+            auto& conf = reply.config;
             auto& ipconfig = conf.ipconfig;
             auto& dnsconfig = conf.dnsconfig;
 
-            char tmp[255] = {};
-            wlan_get_hostname(tmp, sizeof(tmp), nullptr);
-            EncodedString hostnameEncoder(&conf.ipconfig.hostname, tmp, strlen(tmp));
+            conf.interface = 1;
+#if Wiring_WiFi == 1
+            IPConfig sipconf = {};
+
+            char hostname[255] = {};
+            wlan_get_hostname(hostname, sizeof(hostname), nullptr);
+            EncodedString hostnameEncoder(&ipconfig.hostname, hostname, strlen(hostname));
 
             switch (wlan_get_ipaddress_source(nullptr)) {
                 case STATIC_IP:
@@ -461,38 +474,66 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
                     break;
             }
 
-            // Stored configuration
-            if ((!ready || netreq.stored)) {
-                if (ipconfig.type == particle_ctrl_IPConfiguration_Type_STATIC) {
-                    if (wlan_get_ipaddress(&sipconf, nullptr) == 0) {
-                        protoIpFromHal(&ipconfig.address, &sipconf.nw.aucIP);
-                        protoIpFromHal(&ipconfig.netmask, &sipconf.nw.aucSubnetMask);
-                        protoIpFromHal(&ipconfig.gateway, &sipconf.nw.aucDefaultGateway);
+            if (ipconfig.type == particle_ctrl_IPConfiguration_Type_STATIC) {
+                if (wlan_get_ipaddress(&sipconf, nullptr) == 0) {
+                    protoIpFromHal(&ipconfig.address, &sipconf.nw.aucIP);
+                    protoIpFromHal(&ipconfig.netmask, &sipconf.nw.aucSubnetMask);
+                    protoIpFromHal(&ipconfig.gateway, &sipconf.nw.aucDefaultGateway);
 
-                        // DNS
-                        dnsconfig.servers.arg = (void*)&sipconf;
-                        dnsconfig.servers.funcs.encode = [](pb_ostream_t* stream, const pb_field_t* field, void* const* arg) -> bool {
-                            const IPConfig& sipconf = *static_cast<const IPConfig*>(*arg);
-                            particle_ctrl_IPAddress ip = {};
-                            protoIpFromHal(&ip, &sipconf.nw.aucDNSServer);
+                    // DNS
+                    dnsconfig.servers.arg = (void*)&sipconf;
+                    dnsconfig.servers.funcs.encode = [](pb_ostream_t* stream, const pb_field_t* field, void* const* arg) -> bool {
+                        const IPConfig& sipconf = *static_cast<const IPConfig*>(*arg);
+                        particle_ctrl_IPAddress ip = {};
+                        protoIpFromHal(&ip, &sipconf.nw.aucDNSServer);
 
-                            // Encode tag
-                            if (!pb_encode_tag_for_field(stream, field)) {
-                                return false;
-                            }
+                        // Encode tag
+                        if (!pb_encode_tag_for_field(stream, field)) {
+                            return false;
+                        }
 
-                            if (!pb_encode_submessage(stream, particle_ctrl_IPAddress_fields, &ip)) {
-                                return false;
-                            }
+                        if (!pb_encode_submessage(stream, particle_ctrl_IPAddress_fields, &ip)) {
+                            return false;
+                        }
 
-                            return true;
-                        };
-                    }
+                        return true;
+                    };
                 }
             }
+#elif Wiring_Cellular == 1
+            ipconfig.type = particle_ctrl_IPConfiguration_Type_DHCP;
+            (void)dnsconfig;
+#else
+            r = SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // Wiring_WiFi == 1
+            if (r == SYSTEM_ERROR_NONE) {
+                r = encodeReplyMessage(req, particle_ctrl_NetworkGetConfigurationReply_fields, &reply);
+            }
+        }
+        setResult(req, r);
+        break;
+    }
+    case CTRL_REQUEST_NETWORK_GET_STATUS: {
+        particle_ctrl_NetworkGetStatusRequest request = {};
+        int r = decodeRequestMessage(req, particle_ctrl_NetworkGetStatusRequest_fields, &request);
+
+        if (r == SYSTEM_ERROR_NONE && request.interface == 1) {
+            particle_ctrl_NetworkGetStatusReply reply = {};
+            auto& conf = reply.config;
+            auto& ipconfig = conf.ipconfig;
+            auto& dnsconfig = conf.dnsconfig;
+
+            conf.interface = 1;
+            conf.state = network.ready() ? particle_ctrl_NetworkState_UP : particle_ctrl_NetworkState_DOWN;
+#if Wiring_WiFi == 1
+            WLanConfig* wlanconf = static_cast<WLanConfig*>(network.config());
+
+            char hostname[255] = {};
+            wlan_get_hostname(hostname, sizeof(hostname), nullptr);
+            EncodedString hostnameEncoder(&ipconfig.hostname, hostname, strlen(hostname));
 
             // Running configuration
-            if (wlanconf != nullptr && ready && !netreq.stored) {
+            if (wlanconf != nullptr && network.ready()) {
                 memcpy(conf.mac.bytes, wlanconf->nw.uaMacAddr, sizeof(wlanconf->nw.uaMacAddr));
                 conf.mac.size = sizeof(wlanconf->nw.uaMacAddr);
                 protoIpFromHal(&ipconfig.address, &wlanconf->nw.aucIP);
@@ -518,21 +559,18 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
                 };
             }
 #elif Wiring_Cellular == 1
-            ipconfig.type = particle_ctrl_IPConfiguration_Type_DHCP;
             CellularConfig* cellconf = static_cast<CellularConfig*>(network.config());
-            conf.interface = 1;
-            const bool ready = network.ready();
             conf.state = network.ready() ? particle_ctrl_NetworkState_UP : particle_ctrl_NetworkState_DOWN;
-            auto& ipconfig = conf.ipconfig;
+            (void)dnsconfig;
 
-            if (ready && cellconf != nullptr) {
-                protoIpFromHal(&ipconfig.address, &wlanconf->nw.aucIP);
+            if (network.ready() && cellconf != nullptr) {
+                protoIpFromHal(&ipconfig.address, &cellconf->nw.aucIP);
             }
 #else
             r = SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
             if (r == SYSTEM_ERROR_NONE) {
-                r = encodeReplyMessage(req, particle_ctrl_NetworkConfiguration_fields, &conf);
+                r = encodeReplyMessage(req, particle_ctrl_NetworkGetStatusReply_fields, &reply);
             }
         }
         setResult(req, r);
@@ -541,7 +579,8 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     case CTRL_REQUEST_NETWORK_SET_CONFIGURATION: {
         int r = SYSTEM_ERROR_NONE;
 #if Wiring_WiFi == 1
-        particle_ctrl_NetworkConfiguration netconf = {};
+        particle_ctrl_NetworkSetConfigurationRequest request = {};
+        auto& netconf = request.config;
 
         DecodedString hostname(&netconf.ipconfig.hostname);
 
@@ -566,23 +605,19 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
             return false;
         };
 
-        r = decodeRequestMessage(req, particle_ctrl_NetworkConfiguration_fields, &netconf);
+        r = decodeRequestMessage(req, particle_ctrl_NetworkSetConfigurationRequest_fields, &request);
 
         halIpFromProto(&netconf.ipconfig.address, &host);
         halIpFromProto(&netconf.ipconfig.netmask, &netmask);
         halIpFromProto(&netconf.ipconfig.gateway, &gateway);
 
-        bool needRestart = false;
-
         if (r == SYSTEM_ERROR_NONE) {
             if (netconf.ipconfig.type == particle_ctrl_IPConfiguration_Type_DHCP) {
                 /* r = */wlan_set_ipaddress_source(DYNAMIC_IP, true, nullptr);
-                needRestart = true;
             } else if (netconf.ipconfig.type == particle_ctrl_IPConfiguration_Type_STATIC) {
                 /* r = */wlan_set_ipaddress(&host, &netmask, &gateway, &dns.servers[0], &dns.servers[1], nullptr);
                 if (r == SYSTEM_ERROR_NONE) {
                     /* r = */wlan_set_ipaddress_source(STATIC_IP, true, nullptr);
-                    needRestart = true;
                 }
             }
             if (r == SYSTEM_ERROR_NONE) {
@@ -600,11 +635,6 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         r = SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
         setResult(req, r);
-
-        if (needRestart && r == SYSTEM_ERROR_NONE) {
-            network_disconnect(0, 0, nullptr);
-            network_connect(0, 0, 0, nullptr);
-        }
         break;
     }
     default:
