@@ -54,6 +54,7 @@ int lock_security_key_data(security_key_type type, const char** data, size_t* si
 void unlock_security_key_data(security_key_type type);
 int store_security_key_data(security_key_type type, const char* data, size_t size);
 
+// TODO: Update HAL_Set_System_Config() and implement HAL_Get_System_Config()
 int load_server_address(server_protocol_type type, ServerAddress* addr);
 int store_server_address(server_protocol_type type, const ServerAddress* addr);
 
