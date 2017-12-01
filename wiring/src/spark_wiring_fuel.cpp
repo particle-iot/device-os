@@ -98,7 +98,7 @@ float FuelGauge::getNormalizedSoC() {
 
     const float magicError = 0.05f;
     const float maxCharge = (1.0f - (reference100PercentV - referenceMaxV)) - magicError;
-    const float minCharge = 0.2f; // 20%
+    const float minCharge = 0.0f; // 0%
 
     float normalized = (soc - minCharge) * (1.0f / (maxCharge - minCharge)) + 0.0f;
     // Clamp at [0.0, 1.0]
