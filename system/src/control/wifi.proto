@@ -4,17 +4,66 @@ package particle.ctrl;
 import "nanopb.proto";
 import "common.proto";
 
+//
+// Requests
+//
+
+// CTRL_REQUEST_WIFI_GET_ANTENNA = 111
+message WiFiGetAntennaRequest {
+}
+
+message WiFiGetAntennaReply {
+    WiFiAntenna antenna = 1;
+}
+
+// CTRL_REQUEST_WIFI_SET_ANTENNA = 110
+message WiFiSetAntennaRequest {
+    WiFiAntenna antenna = 1;
+}
+
+message WiFiSetAntennaReply {
+}
+
+// CTRL_REQUEST_WIFI_SCAN = 112
+message WiFiScanRequest {
+}
+
+message WiFiScanReply {
+    WiFiAccessPointList list = 1;
+}
+
+// CTRL_REQUEST_WIFI_GET_CREDENTIALS = 114
+message WiFiGetCredentialsRequest {
+}
+
+message WiFiGetCredentialsReply {
+    WiFiAccessPointList list = 1;
+}
+
+// CTRL_REQUEST_WIFI_SET_CREDENTIALS = 113
+message WiFiSetCredentialsRequest {
+    WiFiAccessPoint ap = 1;
+}
+
+message WiFiSetCredentialsReply {
+}
+
+// CTRL_REQUEST_WIFI_CLEAR_CREDENTIALS = 115
+message WiFiClearCredentialsRequest {
+}
+
+message WiFiClearCredentialsReply {
+}
+
+//
+// Data types
+//
+
 enum WiFiAntenna {
     ANTENNA_NONE = 0;
     INTERNAL = 1;
     EXTERNAL = 2;
     AUTO = 3;
-}
-
-// CTRL_REQUEST_WIFI_SET_ANTENNA = 110 (H->D)
-// CTRL_REQUEST_WIFI_GET_ANTENNA = 111 (D->H)
-message WiFiAntennaConfiguration {
-    WiFiAntenna antenna = 1;
 }
 
 enum WiFiSecurityType {
@@ -40,7 +89,6 @@ enum EapType {
     PEAP = 25;
 }
 
-// CTRL_REQUEST_WIFI_SET_CREDENTIALS = 113 (H->D)
 message WiFiAccessPoint {
     string ssid = 1 [(nanopb).max_size = 33];
     bytes bssid = 2 [(nanopb).max_size = 6, (nanopb).fixed_length = true];
@@ -60,8 +108,6 @@ message WiFiAccessPoint {
     bytes ca_certificate = 14;
 }
 
-// CTRL_REQUEST_WIFI_SCAN = 112 (D->H)
-// CTRL_REQUEST_WIFI_GET_CREDENTIALS = 114 (D->H)
 message WiFiAccessPointList {
     repeated WiFiAccessPoint aps = 1;
 }
