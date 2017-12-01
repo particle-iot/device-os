@@ -1,0 +1,113 @@
+syntax = "proto3";
+package particle.ctrl;
+
+import "nanopb.proto";
+import "common.proto";
+
+//
+// Requests
+//
+
+// CTRL_REQUEST_WIFI_GET_ANTENNA = 111
+message WiFiGetAntennaRequest {
+}
+
+message WiFiGetAntennaReply {
+    WiFiAntenna antenna = 1;
+}
+
+// CTRL_REQUEST_WIFI_SET_ANTENNA = 110
+message WiFiSetAntennaRequest {
+    WiFiAntenna antenna = 1;
+}
+
+message WiFiSetAntennaReply {
+}
+
+// CTRL_REQUEST_WIFI_SCAN = 112
+message WiFiScanRequest {
+}
+
+message WiFiScanReply {
+    WiFiAccessPointList list = 1;
+}
+
+// CTRL_REQUEST_WIFI_GET_CREDENTIALS = 114
+message WiFiGetCredentialsRequest {
+}
+
+message WiFiGetCredentialsReply {
+    WiFiAccessPointList list = 1;
+}
+
+// CTRL_REQUEST_WIFI_SET_CREDENTIALS = 113
+message WiFiSetCredentialsRequest {
+    WiFiAccessPoint ap = 1;
+}
+
+message WiFiSetCredentialsReply {
+}
+
+// CTRL_REQUEST_WIFI_CLEAR_CREDENTIALS = 115
+message WiFiClearCredentialsRequest {
+}
+
+message WiFiClearCredentialsReply {
+}
+
+//
+// Data types
+//
+
+enum WiFiAntenna {
+    ANTENNA_NONE = 0;
+    INTERNAL = 1;
+    EXTERNAL = 2;
+    AUTO = 3;
+}
+
+enum WiFiSecurityType {
+    UNSEC = 0;
+    WEP = 1;
+    WPA = 2;
+    WPA2 = 3;
+    WPA_ENTERPRISE = 4;
+    WPA2_ENTERPRISE = 5;
+    UNKNOWN = 255;
+}
+
+enum WiFiSecurityCipher {
+    CIPHER_NONE = 0;
+    AES = 1;
+    TKIP = 2;
+    AES_TKIP = 3;
+}
+
+enum EapType {
+    EAP_TYPE_NONE = 0;
+    TLS = 13;
+    PEAP = 25;
+}
+
+message WiFiAccessPoint {
+    string ssid = 1 [(nanopb).max_size = 33];
+    bytes bssid = 2 [(nanopb).max_size = 6, (nanopb).fixed_length = true];
+    WiFiSecurityType security = 3;
+    WiFiSecurityCipher cipher = 4;
+    uint32 channel = 5;
+    int32 max_data_rate = 6;
+    int32 rssi = 7;
+
+    // Credentials
+    string password = 8;
+    EapType eap_type = 9;
+    string inner_identity = 10;
+    string outer_identity = 11;
+    bytes private_key = 12;
+    bytes client_certificate = 13;
+    bytes ca_certificate = 14;
+}
+
+message WiFiAccessPointList {
+    repeated WiFiAccessPoint aps = 1;
+}

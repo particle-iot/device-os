@@ -552,6 +552,17 @@ void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmas
 {
 }
 
+IPAddressSource wlan_get_ipaddress_source(void* reserved)
+{
+    return DYNAMIC_IP;
+}
+
+int wlan_get_ipaddress(IPConfig* conf, void* reserved)
+{
+    // Unsupported
+    return -1;
+}
+
 typedef struct CC3000ScanResult {
     uint32_t networks;
     uint32_t status;
