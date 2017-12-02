@@ -243,9 +243,11 @@ void FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
 		MSB = _i2c->read();
 		LSB = _i2c->read();
 	}
+#if ( SYSTEM_VERSION >=  0x00060000 )
 	else { // e.g. since FuelGauge::begin() wasn't called
 		Log.error("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
 	}
+#endif
 }
 
 void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
@@ -257,9 +259,11 @@ void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
 		_i2c->write(LSB);
 		_i2c->endTransmission(true);
 	}
+#if ( SYSTEM_VERSION >=  0x00060000 )
 	else { // e.g. since FuelGauge::begin() wasn't called
 		Log.error("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
 	}
+#endif
 }
 
 bool FuelGauge::lock() {
@@ -267,7 +271,9 @@ bool FuelGauge::lock() {
 		return _i2c->lock();
 	}
 	else { // e.g. since FuelGauge::begin() wasn't called
+#if ( SYSTEM_VERSION >=  0x00060000 )
 		Log.error("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
+#endif
 		return false;
 	}
 }
@@ -277,7 +283,9 @@ bool FuelGauge::unlock() {
 		return _i2c->unlock();
 	}
 	else { // e.g. since FuelGauge::begin() wasn't called
+#if ( SYSTEM_VERSION >=  0x00060000 )
 		Log.error("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
+#endif
 		return false;
 	}
 }
