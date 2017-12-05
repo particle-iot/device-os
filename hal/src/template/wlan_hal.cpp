@@ -157,6 +157,16 @@ void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmas
 {
 }
 
+IPAddressSource wlan_get_ipaddress_source(void* reserved)
+{
+    return DYNAMIC_IP;
+}
+
+int wlan_get_ipaddress(IPConfig* conf, void* reserved)
+{
+    return -1;
+}
+
 int wlan_scan(wlan_scan_result_t callback, void* cookie)
 {
     return -1;

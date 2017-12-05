@@ -300,6 +300,8 @@ typedef enum {
  */
 void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved);
 
+IPAddressSource wlan_get_ipaddress_source(void* reserved);
+
 /**
  * Sets the IP Addresses to use when the device is in static IP mode.
  * @param device
@@ -312,6 +314,8 @@ void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reser
 void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
         const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved);
 
+
+int wlan_get_ipaddress(IPConfig* conf, void* reserved);
 
 
 typedef struct WiFiAccessPoint {

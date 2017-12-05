@@ -25,3 +25,5 @@ gen_proto() {
 gen_proto "${DIR}/common.proto"
 gen_proto "${DIR}/control.proto"
 gen_proto "${DIR}/config.proto"
+gen_proto "${DIR}/wifi.proto"
+gen_proto "${DIR}/network.proto"

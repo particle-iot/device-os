@@ -1,0 +1,72 @@
+syntax = "proto3";
+package particle.ctrl;
+
+import "nanopb.proto";
+import "common.proto";
+
+//
+// Requests
+//
+
+// CTRL_REQUEST_NETWORK_GET_STATUS = 122
+message NetworkGetStatusRequest {
+    int32 interface = 1;
+}
+
+message NetworkGetStatusReply {
+    NetworkConfiguration config = 1;
+}
+
+// CTRL_REQUEST_NETWORK_GET_CONFIGURATION = 120
+message NetworkGetConfigurationRequest {
+    int32 interface = 1;
+}
+
+message NetworkGetConfigurationReply {
+    NetworkConfiguration config = 1;
+}
+
+// CTRL_REQUEST_NETWORK_SET_CONFIGURATION = 121
+message NetworkSetConfigurationRequest {
+    NetworkConfiguration config = 1;
+}
+
+message NetworkSetConfigurationReply {
+}
+
+//
+// Data types
+//
+
+enum NetworkState {
+    NETWORK_STATUS_NONE = 0;
+    DOWN = 1;
+    UP = 2;
+}
+
+message IPConfiguration {
+    enum Type {
+        NONE = 0;
+        DHCP = 1;
+        STATIC = 2;
+    }
+    Type type = 1;
+    IPAddress address = 2;
+    IPAddress netmask = 3;
+    IPAddress gateway = 4;
+    IPAddress dhcp_server = 5;
+    string hostname = 6;
+}
+
+message DNSConfiguration {
+    repeated IPAddress servers = 1;
+}
+
+message NetworkConfiguration {
+    int32 interface = 1;
+    NetworkState state = 2;
+    string name = 3;
+    bytes mac = 4 [(nanopb).max_size = 6];
+    IPConfiguration ipconfig = 5;
+    DNSConfiguration dnsconfig = 6;
+}
