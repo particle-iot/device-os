@@ -1,0 +1,4 @@
+syntax = "proto3";
+package particle.ctrl;
+
+import public "nanopb.proto";
