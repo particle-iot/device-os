@@ -4,3 +4,4 @@ package particle.ctrl;
 import public "common.proto";
 import public "wifi.proto";
 import public "network.proto";
+import public "config.proto";

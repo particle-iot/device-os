@@ -14,16 +14,19 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-NANOPB_PATH="${DIR}/../../../services/nanopb"
+FIRMWARE_ROOT_DIR="${DIR}/../../../.."
+
+PROTO_DIR="${FIRMWARE_ROOT_DIR}/control"
+NANOPB_PATH="${FIRMWARE_ROOT_DIR}/services/nanopb"
 PROTOC_NANOPB_PLUGIN="${NANOPB_PATH}/generator/protoc-gen-nanopb"
-PROTOC_INCLUDE_PATH="-I${DIR} -I${NANOPB_PATH}/generator -I${NANOPB_PATH}/generator/proto"
+PROTOC_INCLUDE_PATH="-I${PROTO_DIR} -I${NANOPB_PATH}/generator -I${NANOPB_PATH}/generator/proto"
 
 gen_proto() {
   protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$1"
 }
 
-gen_proto "${DIR}/common.proto"
-gen_proto "${DIR}/control.proto"
-gen_proto "${DIR}/config.proto"
-gen_proto "${DIR}/wifi.proto"
-gen_proto "${DIR}/network.proto"
+gen_proto "${PROTO_DIR}/common.proto"
+gen_proto "${PROTO_DIR}/control.proto"
+gen_proto "${PROTO_DIR}/config.proto"
+gen_proto "${PROTO_DIR}/wifi.proto"
+gen_proto "${PROTO_DIR}/network.proto"
