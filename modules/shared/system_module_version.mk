@@ -11,7 +11,7 @@ RELEASE_064_MODULE_VERSION=110
 
 ifneq (,$(filter $(PLATFORM_ID),10))
 # make system part1 dependent upon 0.6.4 so that the bootloader is not repeatedly upgraded
-SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_SYSTEM_PART},2,${RELEASE_064_MODULE_VERSION}
+SYSTEM_PART3_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_SYSTEM_PART},2,${RELEASE_064_MODULE_VERSION}
 endif
 
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
