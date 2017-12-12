@@ -116,6 +116,39 @@ with these releases.
 - [`[PR #1338]`](https://github.com/spark/firmware/pull/1338) Do not read or write feature flags from an ISR
 
 
+## 0.6.4
+
+### BUGFIXES
+
+- Downgrade bootloader functionality in 0.6.3 would enter an infinite loop after flashing system part 1 0.7.0-rc.X using OTA/serial. `particle flash --usb`/DFU was not affected.
+
+## 0.6.3
+
+### ENHANCEMENTS
+
+- Downgrade bootloader when downgrading from 0.7.0 or newer. [#1416](https://github.com/spark/firmware/pull/1416)
+
+### BUGFIXES
+
+- [KRACK WPA2 security fix](https://github.com/spark/firmware/pull/1419)
+
+
+## 0.6.4
+
+### BUGFIXES
+
+- Downgrade bootloader functionality in 0.6.3 would enter an infinite loop after flashing system part 1 0.7.0-rc.X using OTA/serial. `particle flash --usb`/DFU was not affected.
+
+## 0.6.3
+
+### ENHANCEMENTS
+
+- Downgrade bootloader when downgrading from 0.7.0 or newer. [#1416](https://github.com/spark/firmware/pull/1416)
+
+### BUGFIXES
+
+- [KRACK WPA2 security fix](https://github.com/spark/firmware/pull/1419)
+
 ## 0.6.2 (same as 0.6.2-rc.2)
 
 ### FEATURES
