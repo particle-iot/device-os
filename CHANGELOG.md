@@ -1,3 +1,10 @@
+## 0.7.0-rc.6
+
+### BUGFIX
+
+- [Electron] Add dependency in system-part-1 on 0.6.4 system-part-3 to prevent upgrades from 0.6.3 or earlier to avoid incompatibilties
+with these releases.
+
 ## 0.7.0-rc.5
 
 ### BUGFIX

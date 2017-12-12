@@ -43,7 +43,7 @@ cd ../modules
 # convenient place to grab binaries for github release
 BINARIES_OUT=../build/releases/$VERSION
 mkdir -p $BINARIES_OUT
-	
+
 OUT_CORE=../build/target/main/platform-$PLATFORM_ID-lto
 OUT=../build/releases/release-$VERSION-p$PLATFORM_ID
 mkdir -p $OUT
