@@ -1,1 +1,1 @@
-if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi
+if [ ! -z "$DOCKER_HUB_USERNAME" ]; then docker login --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi
