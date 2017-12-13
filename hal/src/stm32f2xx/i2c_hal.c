@@ -188,9 +188,11 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
         i2cMap[i2c] = &I2C_MAP[I2C1_D0_D1];
     }
 #if PLATFORM_ID == 10 // Electron
-    else if(i2c == HAL_I2C_INTERFACE2)
+    if(i2c == HAL_I2C_INTERFACE2 || i2c == HAL_I2C_INTERFACE1)
     {
-        i2cMap[i2c] = &I2C_MAP[I2C3_C4_C5];
+    	   // these are co-dependent so initialize both
+       i2cMap[HAL_I2C_INTERFACE1] = &I2C_MAP[I2C1_D0_D1];
+       i2cMap[HAL_I2C_INTERFACE2] = &I2C_MAP[I2C3_C4_C5];
     }
     else if(i2c == HAL_I2C_INTERFACE3)
     {
