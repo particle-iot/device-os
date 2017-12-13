@@ -31,4 +31,4 @@ endif
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
-BOOTLOADER_VERSION ?= 101
+BOOTLOADER_VERSION ?= 200
