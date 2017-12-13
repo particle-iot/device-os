@@ -1,3 +1,28 @@
+## 0.8.0-rc.1
+
+## FEATURES
+
+- Low-latency interrupt handlers [#1394] (https://github.com/spark/firmware/pull/1394)
+- [Electron] Reworked power management [#1412](https://github.com/spark/firmware/pull/1412)
+- Battery State diagnostics [#1398](https://github.com/spark/firmware/pull/1398)
+- Battery charge diagnostics [#1395](https://github.com/spark/firmware/pull/1395)
+- RAM usage diagnostic sources data [#1411](https://github.com/spark/firmware/pull/1411)
+- Network Signal Quality/Strength rework and diagnostics [#1423](https://github.com/spark/firmware/pull/1423)
+- System uptime diagnoatics [#1393](https://github.com/spark/firmware/pull/1393)
+- Diagnostics for unacked messages and rate limited events [#1391](https://github.com/spark/firmware/pull/1391)
+- Network and Cloud diagnostics [#1424](https://github.com/spark/firmware/pull/1424)
+- Diagnostics service [#1390](https://github.com/spark/firmware/pull/1390)
+
+## ENHANCEMENTS
+
+- [Photon/P1] Wi-FI firmware compression [#1421](https://github.com/spark/firmware/pull/1421)
+- [Photon/P1] Moves Wi-Fi tester into application module [#1378](https://github.com/spark/firmware/pull/1378)
+
+## BUGFIXES
+
+- Cloud random seed not working [#1312](https://github.com/spark/firmware/issues/1312)
+- [Electron] Error handling in the data usage API [#1435](https://github.com/spark/firmware/pull/1435)
+
 ## 0.7.0-rc.6
 
 ### BUGFIX
