@@ -1087,18 +1087,22 @@ void I2C3_EV_irq(void)
 
 int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
 {
-    os_mutex_recursive_t mutex = i2cMap[i2c]->mutex;
-    if (mutex) {
-        return os_mutex_recursive_lock(mutex);
+    if (!HAL_IsISR()) {
+        os_mutex_recursive_t mutex = i2cMap[i2c]->mutex;
+        if (mutex) {
+            return os_mutex_recursive_lock(mutex);
+        }
     }
     return -1;
 }
 
 int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
 {
-    os_mutex_recursive_t mutex = i2cMap[i2c]->mutex;
-    if (mutex) {
-        return os_mutex_recursive_unlock(mutex);
+    if (!HAL_IsISR()) {
+        os_mutex_recursive_t mutex = i2cMap[i2c]->mutex;
+        if (mutex) {
+            return os_mutex_recursive_unlock(mutex);
+        }
     }
     return -1;
 }
