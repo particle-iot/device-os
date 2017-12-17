@@ -34,7 +34,7 @@
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
 #include "system_update.h"
-#include "diagnostic.h"
+#include "tracer_service.h"
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
@@ -144,15 +144,15 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
         return enqueueRequest(req, DATA_FORMAT_JSON);
       }
 
-      case USB_REQUEST_GET_DIAGNOSTIC: {
+      case USB_REQUEST_GET_TRACE: {
         return enqueueRequest(req, DATA_FORMAT_BINARY, true);
       }
       case USB_REQUEST_CUSTOM: {
         return enqueueRequest(req);
       }
 
-      case USB_REQUEST_UPDATE_DIAGNOSTIC: {
-        DIAGNOSTIC_UPDATE();
+      case USB_REQUEST_UPDATE_TRACE: {
+        TRACER_UPDATE();
         break;
       }
 
@@ -203,7 +203,7 @@ uint8_t SystemControlInterface::handleVendorRequest(HAL_USB_SetupRequest* req) {
       case USB_REQUEST_MODULE_INFO:
       case USB_REQUEST_LOG_CONFIG:
       case USB_REQUEST_CUSTOM:
-      case USB_REQUEST_GET_DIAGNOSTIC: {
+      case USB_REQUEST_GET_TRACE: {
         return fetchRequestResult(req);
       }
 
@@ -329,11 +329,11 @@ void SystemControlInterface::processSystemRequest(void* data) {
     break;
   }
 
-  case USB_REQUEST_GET_DIAGNOSTIC: {
+  case USB_REQUEST_GET_TRACE: {
     if (req->value) {
-      req->reply_size = diagnostic_dump_current(req->data, USB_REQUEST_BUFFER_SIZE);
+      req->reply_size = tracer_dump_current(req->data, USB_REQUEST_BUFFER_SIZE);
     } else {
-      req->reply_size = diagnostic_dump_saved(req->data, USB_REQUEST_BUFFER_SIZE);
+      req->reply_size = tracer_dump_saved(req->data, USB_REQUEST_BUFFER_SIZE);
     }
     if (req->reply_size > USB_REQUEST_BUFFER_SIZE) {
       req->reply_size = USB_REQUEST_BUFFER_SIZE;

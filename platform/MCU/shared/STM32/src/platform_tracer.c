@@ -1,4 +1,4 @@
-#include "platform_diagnostic.h"
+#include "platform_tracer.h"
 
 __attribute__((__noinline__)) void* platform_get_current_pc(void)
 {

@@ -66,8 +66,6 @@ DYNALIB_FN(32, services, led_set_status_active, void(LEDStatusData*, int, void*)
 DYNALIB_FN(33, services, led_set_update_enabled, void(int, void*))
 DYNALIB_FN(34, services, led_update_enabled, int(void*))
 DYNALIB_FN(35, services, led_update, void(system_tick_t, LEDStatusData*, void*))
-DYNALIB_FN(36, services, diagnostic_set_callbacks, int(diagnostic_callbacks_t*, void*))
-DYNALIB_FN(37, services, diagnostic_save_checkpoint_, int(diagnostic_checkpoint_t*, uint32_t, void*))
 
 DYNALIB_FN(36, services, diag_register_source, int(const diag_source*, void*))
 DYNALIB_FN(37, services, diag_enum_sources, int(diag_enum_sources_callback, size_t*, void*, void*))
@@ -76,7 +74,13 @@ DYNALIB_FN(39, services, diag_command, int(int, void*, void*))
 // Export only on Photon and P1
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 DYNALIB_FN(40, services, _printf_float, int(struct _reent*, struct _prt_data_t*, FILE*, int(*pfunc)(struct _reent* , FILE*, const char*, size_t), va_list*))
+#define BASE_IDX 41
+#else
+#define BASE_IDX 40
 #endif
+
+DYNALIB_FN(BASE_IDX + 0, services, tracer_set_callbacks, int(tracer_callbacks_t*, void*))
+DYNALIB_FN(BASE_IDX + 1, services, tracer_save_checkpoint_, int(tracer_checkpoint_t*, uint32_t, void*))
 
 DYNALIB_END(services)
 

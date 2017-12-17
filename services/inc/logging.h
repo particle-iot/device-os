@@ -125,7 +125,7 @@
 #include "panic.h"
 #include "config.h"
 #include "preprocessor.h"
-#include "diagnostic.h"
+#include "tracer_service.h"
 
 // NOTE: This header defines various string constants. Ensure identical strings defined in different
 // translation units get merged during linking (may require enabled optimizations)
@@ -337,7 +337,7 @@ static const char* const _log_category = NULL;
 #define LOG_C(_level, _category, _fmt, ...) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                DIAGNOSTIC_CHECKPOINT(); \
+                TRACER_CHECKPOINT(); \
                 _LOG_ATTR_INIT(_attr); \
                 log_message(LOG_LEVEL_##_level, _category, &_attr, NULL, _fmt, ##__VA_ARGS__); \
             } \
@@ -346,7 +346,7 @@ static const char* const _log_category = NULL;
 #define LOG_ATTR_C(_level, _category, _attrs, _fmt, ...) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                DIAGNOSTIC_CHECKPOINT(); \
+                TRACER_CHECKPOINT(); \
                 _LOG_ATTR_INIT(_attr); \
                 PP_FOR_EACH(_LOG_ATTR_SET, _attr, PP_ARGS(_attrs)); \
                 log_message(LOG_LEVEL_##_level, _category, &_attr, NULL, _fmt, ##__VA_ARGS__); \
@@ -356,7 +356,7 @@ static const char* const _log_category = NULL;
 #define LOG_WRITE_C(_level, _category, _data, _size) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                DIAGNOSTIC_CHECKPOINT(); \
+                TRACER_CHECKPOINT(); \
                 log_write(LOG_LEVEL_##_level, _category, _data, _size, NULL); \
             } \
         } while (0)
@@ -364,7 +364,7 @@ static const char* const _log_category = NULL;
 #define LOG_PRINT_C(_level, _category, _str) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                DIAGNOSTIC_CHECKPOINT(); \
+                TRACER_CHECKPOINT(); \
                 const char* const _s = _str; \
                 log_write(LOG_LEVEL_##_level, _category, _s, strlen(_s), NULL); \
             } \
@@ -373,7 +373,7 @@ static const char* const _log_category = NULL;
 #define LOG_PRINTF_C(_level, _category, _fmt, ...) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
-                DIAGNOSTIC_CHECKPOINT(); \
+                TRACER_CHECKPOINT(); \
                 log_printf(LOG_LEVEL_##_level, _category, NULL, _fmt, ##__VA_ARGS__); \
             } \
         } while (0)
@@ -438,7 +438,7 @@ static const char* const _log_category = NULL;
 
 #define PANIC(_code, _fmt, ...) \
         do { \
-            DIAGNOSTIC_PANIC_CHECKPOINT(); \
+            TRACER_PANIC_CHECKPOINT(); \
             LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
             panic_(_code, NULL, HAL_Delay_Microseconds); \
         } while (0)

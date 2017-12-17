@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PLATFORM_DIAGNOSTIC_H
-#define PLATFORM_DIAGNOSTIC_H
+#ifndef PLATFORM_TRACER_H
+#define PLATFORM_TRACER_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -45,4 +45,4 @@ inline void* platform_get_return_address(int idx) {
 }
 #endif
 
-#endif // PLATFORM_DIAGNOSTIC_H
+#endif // PLATFORM_TRACER_H

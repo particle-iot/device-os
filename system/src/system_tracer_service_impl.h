@@ -15,18 +15,18 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SYSTEM_DIAGNOSTIC_IMPL_H
-#define SYSTEM_DIAGNOSTIC_IMPL_H
+#ifndef SYSTEM_TRACER_SERVICE_IMPL_H
+#define SYSTEM_TRACER_SERVICE_IMPL_H
 
-#ifndef DIAGNOSTIC_LOCATION_EXTERNAL_DEFINES
-#include "platform_diagnostic.h"
-#endif // DIAGNOSTIC_LOCATION_EXTERNAL_DEFINES
+#ifndef TRACER_LOCATION_EXTERNAL_DEFINES
+#include "platform_tracer.h"
+#endif // TRACER_LOCATION_EXTERNAL_DEFINES
 
 #include <inttypes.h>
 #include <type_traits>
 #include "spark_wiring_json.h"
 
-namespace particle { namespace diagnostic {
+namespace particle { namespace tracer {
 
 /**
  * Default constraints on maximum size
@@ -162,7 +162,7 @@ struct __attribute__((packed)) ThreadEntry {
     size = calculateSize();
   }
 
-  void updateCheckpoint(diagnostic_checkpoint_t* chkpt) {
+  void updateCheckpoint(tracer_checkpoint_t* chkpt) {
     if (chkpt != nullptr) {
       address_checkpoint = 1;
       textual_checkpoint = chkpt->type == CHECKPOINT_TYPE_TEXTUAL;
@@ -234,14 +234,14 @@ struct ThreadEntryIterator {
 
 static_assert(std::is_pod<ThreadEntry>::value, "ThreadEntry should be a POD");
 
-class DiagnosticService {
+class TracerService {
 public:
-  static DiagnosticService* instance();
+  static TracerService* instance();
 
   bool isValid() const;
-  diagnostic_error_t insertCheckpoint(os_thread_t thread, diagnostic_checkpoint_t* chkpt);
-  diagnostic_error_t insertCheckpoint(os_thread_dump_info_t* info, diagnostic_checkpoint_t* chkpt, bool stacktrace, bool keep = true);
-  diagnostic_error_t insertCheckpoint(os_unique_id_t thread, diagnostic_checkpoint_t* chkpt);
+  tracer_error_t insertCheckpoint(os_thread_t thread, tracer_checkpoint_t* chkpt);
+  tracer_error_t insertCheckpoint(os_thread_dump_info_t* info, tracer_checkpoint_t* chkpt, bool stacktrace, bool keep = true);
+  tracer_error_t insertCheckpoint(os_unique_id_t thread, tracer_checkpoint_t* chkpt);
   bool unmarkAll();
   bool removeUnmarked();
   bool cleanStacktraces();
@@ -257,10 +257,10 @@ public:
   bool frozen() const;
 
 protected:
-  DiagnosticService();
-  DiagnosticService(uint8_t* location, size_t sz);
+  TracerService();
+  TracerService(uint8_t* location, size_t sz);
 
-  static size_t size(diagnostic_checkpoint_t* chkpt);
+  static size_t size(tracer_checkpoint_t* chkpt);
 
   void initialize();
   bool valid() const;
@@ -269,7 +269,7 @@ protected:
   size_t dump(uint8_t* location, size_t dsize, char* out, size_t sz) const;
   bool allocate(ThreadEntry* th, uint8_t* ptr, size_t available, size_t needed);
 
-  bool setThreadCheckpoint(ThreadEntry* h, diagnostic_checkpoint_t* chkpt);
+  bool setThreadCheckpoint(ThreadEntry* h, tracer_checkpoint_t* chkpt);
 
   ThreadEntry* first() const;
   ThreadEntry* last(bool initialized = false) const;
@@ -282,15 +282,15 @@ protected:
 
   uint8_t* location_ = nullptr;
   const size_t size_ = 0;
-  uint8_t savedData_[DIAGNOSTIC_LOCATION_SIZE];
+  uint8_t savedData_[TRACER_LOCATION_SIZE];
   bool savedAvailable_ = false;
   bool frozen_ = false;
 };
 
-inline DiagnosticService::DiagnosticService() : DiagnosticService((uint8_t*)DIAGNOSTIC_LOCATION_BEGIN, DIAGNOSTIC_LOCATION_SIZE) {
+inline TracerService::TracerService() : TracerService((uint8_t*)TRACER_LOCATION_BEGIN, TRACER_LOCATION_SIZE) {
 }
 
-inline DiagnosticService::DiagnosticService(uint8_t* location, size_t sz)
+inline TracerService::TracerService(uint8_t* location, size_t sz)
     : location_{location},
       size_{sz} {
   uintptr_t st = lock(true);
@@ -302,12 +302,12 @@ inline DiagnosticService::DiagnosticService(uint8_t* location, size_t sz)
   unlock(true, st);
 }
 
-inline DiagnosticService* DiagnosticService::instance() {
-  static DiagnosticService service;
+inline TracerService* TracerService::instance() {
+  static TracerService service;
   return &service;
 }
 
-inline bool DiagnosticService::isValid() const {
+inline bool TracerService::isValid() const {
   uintptr_t st = lock(true);
   bool v = valid();
   unlock(true, st);
@@ -315,31 +315,31 @@ inline bool DiagnosticService::isValid() const {
   return v;
 }
 
-inline diagnostic_error_t DiagnosticService::insertCheckpoint(os_thread_t thread, diagnostic_checkpoint_t* chkpt) {
+inline tracer_error_t TracerService::insertCheckpoint(os_thread_t thread, tracer_checkpoint_t* chkpt) {
   if (frozen_) {
-    return DIAGNOSTIC_ERROR_FROZEN;
+    return TRACER_ERROR_FROZEN;
   }
   os_unique_id_t id = os_thread_unique_id(thread);
   return insertCheckpoint(id, chkpt);
 }
 
-inline diagnostic_error_t DiagnosticService::insertCheckpoint(os_unique_id_t thread, diagnostic_checkpoint_t* chkpt) {
+inline tracer_error_t TracerService::insertCheckpoint(os_unique_id_t thread, tracer_checkpoint_t* chkpt) {
   if (frozen_) {
-    return DIAGNOSTIC_ERROR_FROZEN;
+    return TRACER_ERROR_FROZEN;
   }
   ThreadEntry* h = findThread(thread);
   if (h == nullptr) {
-      return DIAGNOSTIC_ERROR_NO_THREAD_ENTRY;
+      return TRACER_ERROR_NO_THREAD_ENTRY;
   }
 
   bool result = setThreadCheckpoint(h, chkpt);
 
-  return result ? DIAGNOSTIC_ERROR_NONE : DIAGNOSTIC_ERROR;
+  return result ? TRACER_ERROR_NONE : TRACER_ERROR;
 }
 
-inline diagnostic_error_t DiagnosticService::insertCheckpoint(os_thread_dump_info_t* info, diagnostic_checkpoint_t* chkpt, bool stacktrace, bool keep) {
+inline tracer_error_t TracerService::insertCheckpoint(os_thread_dump_info_t* info, tracer_checkpoint_t* chkpt, bool stacktrace, bool keep) {
   if (frozen_) {
-    return DIAGNOSTIC_ERROR_FROZEN;
+    return TRACER_ERROR_FROZEN;
   }
   ThreadEntry* th = findThread(info->id);
   bool res = false;
@@ -354,13 +354,13 @@ inline diagnostic_error_t DiagnosticService::insertCheckpoint(os_thread_dump_inf
   } else {
     // Insert new at the end
     if (freeSpace() < (sizeof(ThreadEntry) + size(chkpt) + strnlen(info->name, maxThreadNameLength) + 1)) {
-      return DIAGNOSTIC_ERROR_NO_SPACE;
+      return TRACER_ERROR_NO_SPACE;
     }
 
     th = last();
 
     if (th == nullptr) {
-      return DIAGNOSTIC_ERROR;
+      return TRACER_ERROR;
     }
 
     th->id = info->id;
@@ -401,10 +401,10 @@ inline diagnostic_error_t DiagnosticService::insertCheckpoint(os_thread_dump_inf
 
   th->updateSize();
 
-  return res ? DIAGNOSTIC_ERROR_NONE : DIAGNOSTIC_ERROR;
+  return res ? TRACER_ERROR_NONE : TRACER_ERROR;
 }
 
-inline bool DiagnosticService::unmarkAll() {
+inline bool TracerService::unmarkAll() {
   if (frozen_) {
     return false;
   }
@@ -415,7 +415,7 @@ inline bool DiagnosticService::unmarkAll() {
   return true;
 }
 
-inline bool DiagnosticService::removeUnmarked() {
+inline bool TracerService::removeUnmarked() {
   if (frozen_) {
     return false;
   }
@@ -438,7 +438,7 @@ inline bool DiagnosticService::removeUnmarked() {
   return true;
 }
 
-inline bool DiagnosticService::cleanStacktraces() {
+inline bool TracerService::cleanStacktraces() {
   if (frozen_) {
     return false;
   }
@@ -459,7 +459,7 @@ inline bool DiagnosticService::cleanStacktraces() {
   return true;
 }
 
-inline uintptr_t DiagnosticService::lock(bool irq) {
+inline uintptr_t TracerService::lock(bool irq) {
   if (!HAL_IsISR() && !irq) {
     os_thread_scheduling(false, nullptr);
   } else {
@@ -469,7 +469,7 @@ inline uintptr_t DiagnosticService::lock(bool irq) {
   return 0;
 }
 
-inline void DiagnosticService::unlock(bool irq, uintptr_t st) {
+inline void TracerService::unlock(bool irq, uintptr_t st) {
   if (!HAL_IsISR() && !irq) {
     os_thread_scheduling(true, nullptr);
   } else {
@@ -477,18 +477,18 @@ inline void DiagnosticService::unlock(bool irq, uintptr_t st) {
   }
 }
 
-inline size_t DiagnosticService::dumpCurrent(char* out, size_t sz) const {
+inline size_t TracerService::dumpCurrent(char* out, size_t sz) const {
   return dump(location_, size_, out, sz);
 }
 
-inline size_t DiagnosticService::dumpSaved(char* out, size_t sz) const {
+inline size_t TracerService::dumpSaved(char* out, size_t sz) const {
   if (savedAvailable_ == true) {
     return dump((uint8_t*)savedData_, sizeof(savedData_), out, sz);
   }
   return 0;
 }
 
-inline void DiagnosticService::updateCrc() {
+inline void TracerService::updateCrc() {
   if (frozen_) {
     return;
   }
@@ -496,7 +496,7 @@ inline void DiagnosticService::updateCrc() {
   *crc = computeCrc();
 }
 
-inline size_t DiagnosticService::size(diagnostic_checkpoint_t* chkpt) {
+inline size_t TracerService::size(tracer_checkpoint_t* chkpt) {
   size_t sz = 0;
 
   if (chkpt) {
@@ -508,30 +508,30 @@ inline size_t DiagnosticService::size(diagnostic_checkpoint_t* chkpt) {
   return sz;
 }
 
-inline void DiagnosticService::freeze(bool val) {
+inline void TracerService::freeze(bool val) {
   frozen_ = val;
 }
 
-inline bool DiagnosticService::frozen() const {
+inline bool TracerService::frozen() const {
   return frozen_;
 }
 
-inline void DiagnosticService::initialize() {
+inline void TracerService::initialize() {
   memset(location_, 0, size_);
   updateCrc();
 }
 
-inline bool DiagnosticService::valid() const {
+inline bool TracerService::valid() const {
   uint32_t crc = *reinterpret_cast<uint32_t*>(location_);
   return (crc == computeCrc());
 }
 
-inline uint32_t DiagnosticService::computeCrc() const {
+inline uint32_t TracerService::computeCrc() const {
   return HAL_Core_Compute_CRC32((const uint8_t*)(location_ + sizeof(uint32_t)),
                                 size_ - sizeof(uint32_t));
 }
 
-inline size_t DiagnosticService::dump(uint8_t* location, size_t dsize, char* out, size_t sz) const {
+inline size_t TracerService::dump(uint8_t* location, size_t dsize, char* out, size_t sz) const {
   char tmp[sizeof(uintptr_t) * 2 + 4] = {0};
   spark::JSONBufferWriter writer(out, sz - 1);
 
@@ -578,7 +578,7 @@ inline size_t DiagnosticService::dump(uint8_t* location, size_t dsize, char* out
   return writer.dataSize();
 }
 
-inline bool DiagnosticService::allocate(ThreadEntry* th, uint8_t* ptr, size_t available, size_t needed) {
+inline bool TracerService::allocate(ThreadEntry* th, uint8_t* ptr, size_t available, size_t needed) {
   if (available >= needed) {
     memmove(ptr + needed, ptr + available,
             (uint8_t*)(location_ + size_) - (ptr + available));
@@ -603,7 +603,7 @@ inline bool DiagnosticService::allocate(ThreadEntry* th, uint8_t* ptr, size_t av
   return false;
 }
 
-inline bool DiagnosticService::setThreadCheckpoint(ThreadEntry* h, diagnostic_checkpoint_t* chkpt) {
+inline bool TracerService::setThreadCheckpoint(ThreadEntry* h, tracer_checkpoint_t* chkpt) {
   if (h == nullptr) {
     return false;
   }
@@ -624,13 +624,13 @@ inline bool DiagnosticService::setThreadCheckpoint(ThreadEntry* h, diagnostic_ch
   return true;
 }
 
-inline ThreadEntry* DiagnosticService::first() const {
+inline ThreadEntry* TracerService::first() const {
   // Never returns null
   ThreadEntry* h = (ThreadEntry*)((uint8_t*)(location_) + sizeof(uint32_t));
   return h;
 }
 
-inline ThreadEntry* DiagnosticService::last(bool initialized) const {
+inline ThreadEntry* TracerService::last(bool initialized) const {
   ThreadEntry* l = first();
   ThreadEntry* prev = l;
   for (ThreadEntry* h = l; h != nullptr; h = next(h)) {
@@ -652,7 +652,7 @@ inline ThreadEntry* DiagnosticService::last(bool initialized) const {
   return l;
 }
 
-inline ThreadEntry* DiagnosticService::next(ThreadEntry* t) const {
+inline ThreadEntry* TracerService::next(ThreadEntry* t) const {
   if (t == nullptr || !t->initialized()) {
     return nullptr;
   }
@@ -665,7 +665,7 @@ inline ThreadEntry* DiagnosticService::next(ThreadEntry* t) const {
   return nullptr;
 }
 
-inline ThreadEntry* DiagnosticService::findThread(os_unique_id_t th) const {
+inline ThreadEntry* TracerService::findThread(os_unique_id_t th) const {
   for(ThreadEntry* h = first(); h != nullptr && h->initialized(); h = next(h)) {
     if (h->id == th) {
       return h;
@@ -675,7 +675,7 @@ inline ThreadEntry* DiagnosticService::findThread(os_unique_id_t th) const {
   return nullptr;
 }
 
-inline bool DiagnosticService::isThreadEntry(uint8_t* ptr) const {
+inline bool TracerService::isThreadEntry(uint8_t* ptr) const {
   if (ptr >= ((uint8_t*)location_ + sizeof(uint32_t)) &&
       ptr < ((uint8_t*)(location_ + size_) - sizeof(ThreadEntry))) {
 
@@ -685,7 +685,7 @@ inline bool DiagnosticService::isThreadEntry(uint8_t* ptr) const {
   return false;
 }
 
-inline size_t DiagnosticService::freeSpace() const {
+inline size_t TracerService::freeSpace() const {
   ThreadEntry* t = last(true);
   if (t == nullptr) {
     t = first();
@@ -700,6 +700,6 @@ inline size_t DiagnosticService::freeSpace() const {
   return 0;
 }
 
-} } // namespace particle::diagnostic
+} } // namespace particle::tracer
 
-#endif // SYSTEM_DIAGNOSTIC_IMPL_H
+#endif // SYSTEM_TRACER_SERVICE_IMPL_H

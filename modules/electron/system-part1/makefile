@@ -13,7 +13,7 @@ DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib services hal
 # rebuild if the linker specs change for other modules
 DEPENDENCIES += modules/electron/user-part modules/electron/system-part2 modules/electron/system-part3
 
-GLOBAL_DEFINES += DIAGNOSTIC_USE_CALLBACKS2
+GLOBAL_DEFINES += TRACER_USE_CALLBACKS2
 
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk

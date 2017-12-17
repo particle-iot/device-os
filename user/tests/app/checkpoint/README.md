@@ -14,7 +14,7 @@ $ particle publish hardfault --private
 $ particle publish panic --private
 $ particle publish deadlock --private
 
-$ Run some commands to get last or current diagnostic info or force a full stacktrace dump of currently running threads:
+$ Run some commands to get last or current trace data or force a full stacktrace dump of currently running threads:
 $ ./cli get
 $ ./cli getlast
 $ ./cli update

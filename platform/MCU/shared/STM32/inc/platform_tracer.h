@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PLATFORM_DIAGNOSTIC_H
-#define PLATFORM_DIAGNOSTIC_H
+#ifndef PLATFORM_TRACER_H
+#define PLATFORM_TRACER_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -47,22 +47,22 @@ inline bool platform_is_branching_instruction(void* ptr)
 
 #if defined(STM32F2XX)
 
-#define PLATFORM_DIAGNOSTIC_ENABLED 1
+#define PLATFORM_TRACER_ENABLED 1
 
 extern char link_global_retained_system_end;
 extern char link_global_retained_system_end_section;
 
-#define DIAGNOSTIC_LOCATION_BEGIN (&link_global_retained_system_end)
-#define DIAGNOSTIC_LOCATION_END (&link_global_retained_system_end_section)
+#define TRACER_LOCATION_BEGIN (&link_global_retained_system_end)
+#define TRACER_LOCATION_END (&link_global_retained_system_end_section)
 // Due to the fact that we need DIAGNOSTIC_LOCATION_SIZE to be a constexpr, and a
 // difference between two pointers is not constexpr, we define DIAGNOSTIC_LOCATION_SIZE manually here
 // and verify that we fit using an assert in linker file
 #if PLATFORM_ID != 10
-# define DIAGNOSTIC_LOCATION_SIZE 1024
+# define TRACER_LOCATION_SIZE 1024
 #else
-# define DIAGNOSTIC_LOCATION_SIZE 804
+# define TRACER_LOCATION_SIZE 804
 #endif
 
 #endif
 
-#endif // PLATFORM_DIAGNOSTIC_H
+#endif // PLATFORM_TRACER_H

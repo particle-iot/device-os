@@ -37,7 +37,7 @@
 #include "system_control.h"
 #include "system_led_signal.h"
 #include "system_setup.h"
-#include "diagnostic.h"
+#include "tracer_service.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -88,9 +88,9 @@ DYNALIB_FN(BASE_IDX + 5, system, led_signal_status, const LEDStatusData*(int, vo
 DYNALIB_FN(BASE_IDX + 6, system, led_pattern_period, uint16_t(int, int, void*))
 DYNALIB_FN(BASE_IDX + 7, system, system_set_tester_handlers, int(system_tester_handlers_t*, void*))
 DYNALIB_FN(BASE_IDX + 8, system, system_format_diag_data, int(const uint16_t*, size_t, unsigned, appender_fn, void*, void*))
-DYNALIB_FN(BASE_IDX + 9, system, diagnostic_save_checkpoint, int(diagnostic_checkpoint_t*, uint32_t, void*))
-DYNALIB_FN(BASE_IDX + 10, system, diagnostic_dump_saved, size_t(char*, size_t))
-DYNALIB_FN(BASE_IDX + 11, system, diagnostic_dump_current, size_t(char*, size_t))
+DYNALIB_FN(BASE_IDX + 9, system, tracer_save_checkpoint, int(tracer_checkpoint_t*, uint32_t, void*))
+DYNALIB_FN(BASE_IDX + 10, system, tracer_dump_saved, size_t(char*, size_t))
+DYNALIB_FN(BASE_IDX + 11, system, tracer_dump_current, size_t(char*, size_t))
 DYNALIB_END(system)
 
 #undef BASE_IDX

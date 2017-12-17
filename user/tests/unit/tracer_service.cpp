@@ -5,18 +5,18 @@
 
 #include "hippomocks.h"
 
-#define DIAGNOSTIC_LOCATION_SIZE 1024
-static uint8_t s_diagnostic_area[DIAGNOSTIC_LOCATION_SIZE] = {0};
+#define TRACER_LOCATION_SIZE 1024
+static uint8_t s_tracer_area[TRACER_LOCATION_SIZE] = {0};
 
-#define DIAGNOSTIC_LOCATION_BEGIN (&s_diagnostic_area[0])
-#define DIAGNOSTIC_LOCATION_END (&s_diagnostic_area[0] + DIAGNOSTIC_LOCATION_SIZE)
+#define TRACER_LOCATION_BEGIN (&s_tracer_area[0])
+#define TRACER_LOCATION_END (&s_tracer_area[0] + TRACER_LOCATION_SIZE)
 
 #include "concurrent_hal.h"
 #include "core_hal.h"
 
-#define DIAGNOSTIC_LOCATION_EXTERNAL_DEFINES
-#include "diagnostic.h"
-#include "diagnostic_impl.h"
+#define TRACER_LOCATION_EXTERNAL_DEFINES
+#include "tracer_service.h"
+#include "system_tracer_service_impl.h"
 
 int HAL_disable_irq()
 {
@@ -46,12 +46,12 @@ os_unique_id_t os_thread_unique_id(os_thread_t th) {
 
 namespace {
 
-using namespace particle::diagnostic;
+using namespace particle::tracer;
 
-class DiagnosticTestService : public DiagnosticService {
+class TracerTestService : public TracerService {
 public:
-  DiagnosticTestService()
-      : DiagnosticService(s_diagnostic_area, sizeof(s_diagnostic_area)) {
+  TracerTestService()
+      : TracerService(s_tracer_area, sizeof(s_tracer_area)) {
 
   }
 
@@ -95,7 +95,7 @@ public:
     return initialize();
   }
 
-  static size_t psize(diagnostic_checkpoint_t* chkpt) {
+  static size_t psize(tracer_checkpoint_t* chkpt) {
     return size(chkpt);
   }
 
@@ -129,8 +129,8 @@ const char* s_thread_names[] = {
 };
 
 struct ThreadEntryValidator {
-  ThreadEntryValidator(ThreadEntry* th, os_thread_dump_info_t* info, diagnostic_checkpoint_t* chkpt) {
-    const size_t checkpointSize = DiagnosticTestService::psize(chkpt);
+  ThreadEntryValidator(ThreadEntry* th, os_thread_dump_info_t* info, tracer_checkpoint_t* chkpt) {
+    const size_t checkpointSize = TracerTestService::psize(chkpt);
     const size_t stacktraceSize = th->stacktraceSize();
     value = (
         th != nullptr && chkpt != nullptr &&
@@ -204,8 +204,8 @@ private:
 
 } // namespace
 
-TEST_CASE("DiagnosticService") {
-  DiagnosticTestService diag;
+TEST_CASE("TracerService") {
+  TracerTestService tracer;
 
   std::vector<os_thread_dump_info_t> threads;
   for(unsigned i = 0; i < 16; i++) {
@@ -222,89 +222,89 @@ TEST_CASE("DiagnosticService") {
   }
 
   SECTION("constructed") {
-    REQUIRE(diag.isValid() == true);
-    REQUIRE(diag.pfreeSpace() == (DIAGNOSTIC_LOCATION_SIZE - sizeof(uint32_t)));
-    auto f = diag.pfirst();
-    REQUIRE((uint8_t*)f == ((uint8_t*)DIAGNOSTIC_LOCATION_BEGIN + sizeof(uint32_t)));
+    REQUIRE(tracer.isValid() == true);
+    REQUIRE(tracer.pfreeSpace() == (TRACER_LOCATION_SIZE - sizeof(uint32_t)));
+    auto f = tracer.pfirst();
+    REQUIRE((uint8_t*)f == ((uint8_t*)TRACER_LOCATION_BEGIN + sizeof(uint32_t)));
     REQUIRE(f->initialized() == false);
-    REQUIRE(diag.plast() == diag.pfirst());
-    REQUIRE(diag.plast(true) == nullptr);
-    REQUIRE(diag.psavedAvailable() == false);
+    REQUIRE(tracer.plast() == tracer.pfirst());
+    REQUIRE(tracer.plast(true) == nullptr);
+    REQUIRE(tracer.psavedAvailable() == false);
   }
 
   SECTION("long thread name and long textual checkpoint get truncated") {
     threads[0].name = "this a very long thread name that should be truncated";
-    diagnostic_checkpoint_t chkpt = {0};
+    tracer_checkpoint_t chkpt = {0};
     chkpt.type = CHECKPOINT_TYPE_TEXTUAL;
     chkpt.text = "this is a very long checkpoint that should be truncated 12345678901234567890-=1234551235";
     chkpt.instruction = (void*)0xdeadbeef;
-    auto result = diag.insertCheckpoint(&threads[0], &chkpt, false);
-    diag.updateCrc();
-    REQUIRE(result == DIAGNOSTIC_ERROR_NONE);
-    auto f = diag.pfirst();
+    auto result = tracer.insertCheckpoint(&threads[0], &chkpt, false);
+    tracer.updateCrc();
+    REQUIRE(result == TRACER_ERROR_NONE);
+    auto f = tracer.pfirst();
     REQUIRE(ThreadEntryValidator(f, &threads[0], &chkpt) == true);
     REQUIRE(strlen(f->name()) == maxThreadNameLength);
     REQUIRE(strlen(f->checkpointText()) == maxTextualCheckpointLength);
   }
 
   SECTION("insert thread entry with an instruction checkpoint") {
-    diagnostic_checkpoint_t chkpt = {0};
+    tracer_checkpoint_t chkpt = {0};
     chkpt.type = CHECKPOINT_TYPE_INSTRUCTION_ADDRESS;
     chkpt.instruction = (void*)0xdeadbeef;
-    auto result = diag.insertCheckpoint(&threads[0], &chkpt, false);
-    diag.updateCrc();
-    REQUIRE(result == DIAGNOSTIC_ERROR_NONE);
-    auto f = diag.pfirst();
+    auto result = tracer.insertCheckpoint(&threads[0], &chkpt, false);
+    tracer.updateCrc();
+    REQUIRE(result == TRACER_ERROR_NONE);
+    auto f = tracer.pfirst();
     REQUIRE(ThreadEntryValidator(f, &threads[0], &chkpt) == true);
-    REQUIRE(diag.pfreeSpace() == (DIAGNOSTIC_LOCATION_SIZE - sizeof(uint32_t) - f->size));
+    REQUIRE(tracer.pfreeSpace() == (TRACER_LOCATION_SIZE - sizeof(uint32_t) - f->size));
 
     SECTION("update thread entry with a textual checkpoint") {
-      diagnostic_checkpoint_t chkpt = {0};
+      tracer_checkpoint_t chkpt = {0};
       chkpt.type = CHECKPOINT_TYPE_TEXTUAL;
       chkpt.instruction = (void*)0xdeadcafe;
       chkpt.text = "a test string";
-      auto result = diag.insertCheckpoint(&threads[0], &chkpt, false);
-      diag.updateCrc();
-      REQUIRE(result == DIAGNOSTIC_ERROR_NONE);
-      auto f = diag.pfirst();
+      auto result = tracer.insertCheckpoint(&threads[0], &chkpt, false);
+      tracer.updateCrc();
+      REQUIRE(result == TRACER_ERROR_NONE);
+      auto f = tracer.pfirst();
       REQUIRE(ThreadEntryValidator(f, &threads[0], &chkpt) == true);
-      REQUIRE(diag.pfreeSpace() == (DIAGNOSTIC_LOCATION_SIZE - sizeof(uint32_t) - f->size));
+      REQUIRE(tracer.pfreeSpace() == (TRACER_LOCATION_SIZE - sizeof(uint32_t) - f->size));
     }
 
     SECTION("insert maximum number of thread entries") {
-      diagnostic_checkpoint_t chkpt = {0};
+      tracer_checkpoint_t chkpt = {0};
       chkpt.type = CHECKPOINT_TYPE_TEXTUAL;
       chkpt.instruction = (void*)0xdeadbeef;
       chkpt.text = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       bool result = true;
       int i = 1;
       while (result && i < 16) {
-        result = diag.insertCheckpoint(&threads[i], &chkpt, false) == DIAGNOSTIC_ERROR_NONE;
+        result = tracer.insertCheckpoint(&threads[i], &chkpt, false) == TRACER_ERROR_NONE;
         if (result) {
           i++;
         }
       }
-      diag.updateCrc();
+      tracer.updateCrc();
       REQUIRE(i > 1);
-      REQUIRE(diag.pfreeSpace() < diag.psize(&chkpt) + sizeof(ThreadEntry));
+      REQUIRE(tracer.pfreeSpace() < tracer.psize(&chkpt) + sizeof(ThreadEntry));
       // Count number of threads
       int count = 0;
-      for(ThreadEntry* t = diag.pfirst(); t != nullptr && t->initialized(); t = diag.pnext(t)) {
+      for(ThreadEntry* t = tracer.pfirst(); t != nullptr && t->initialized(); t = tracer.pnext(t)) {
         count++;
       }
       REQUIRE(count == i);
 
       SECTION("unmark and remove all entries") {
-        diag.unmarkAll();
-        diag.removeUnmarked();
-        REQUIRE(diag.pfreeSpace() == DIAGNOSTIC_LOCATION_SIZE - sizeof(uint32_t));
+        tracer.unmarkAll();
+        tracer.removeUnmarked();
+        REQUIRE(tracer.pfreeSpace() == TRACER_LOCATION_SIZE - sizeof(uint32_t));
       }
     }
 
     SECTION("unmark single entry and remove it") {
-      diag.unmarkAll();
-      diag.removeUnmarked();
-      REQUIRE(diag.pfreeSpace() == DIAGNOSTIC_LOCATION_SIZE - sizeof(uint32_t));
+      tracer.unmarkAll();
+      tracer.removeUnmarked();
+      REQUIRE(tracer.pfreeSpace() == TRACER_LOCATION_SIZE - sizeof(uint32_t));
     }
   }
 
@@ -312,13 +312,13 @@ TEST_CASE("DiagnosticService") {
     StacktraceGenerator gen(5);
     StacktraceMocks mocks_(gen);
     for (auto& th : threads) {
-      REQUIRE(diag.insertCheckpoint(&th, nullptr, true) == DIAGNOSTIC_ERROR_NONE);
+      REQUIRE(tracer.insertCheckpoint(&th, nullptr, true) == TRACER_ERROR_NONE);
     }
-    diag.updateCrc();
-    REQUIRE(diag.isValid() == true);
+    tracer.updateCrc();
+    REQUIRE(tracer.isValid() == true);
 
     for (auto& th : threads) {
-      auto f = diag.pfindThread(th.id);
+      auto f = tracer.pfindThread(th.id);
       REQUIRE(f != nullptr);
       auto stacktrace = gen.stacktraces[th.thread];
       REQUIRE(f->count == stacktrace.size());
@@ -332,7 +332,7 @@ TEST_CASE("DiagnosticService") {
     StacktraceGenerator gen(5);
     StacktraceMocks mocks_(gen);
 
-    diagnostic_checkpoint_t chkpt = {0};
+    tracer_checkpoint_t chkpt = {0};
     chkpt.type = CHECKPOINT_TYPE_TEXTUAL;
     chkpt.instruction = (void*)0xdeadcafe;
     chkpt.text = "a test string";
@@ -341,16 +341,16 @@ TEST_CASE("DiagnosticService") {
 
     for (auto& th : threads) {
       if (th.id == id) {
-        REQUIRE(diag.insertCheckpoint(&th, &chkpt, true) == DIAGNOSTIC_ERROR_NONE);
+        REQUIRE(tracer.insertCheckpoint(&th, &chkpt, true) == TRACER_ERROR_NONE);
       } else {
-        REQUIRE(diag.insertCheckpoint(&th, nullptr, true) == DIAGNOSTIC_ERROR_NONE);
+        REQUIRE(tracer.insertCheckpoint(&th, nullptr, true) == TRACER_ERROR_NONE);
       }
     }
-    diag.updateCrc();
-    REQUIRE(diag.isValid() == true);
+    tracer.updateCrc();
+    REQUIRE(tracer.isValid() == true);
 
     for (auto& th : threads) {
-      auto f = diag.pfindThread(th.id);
+      auto f = tracer.pfindThread(th.id);
       REQUIRE(f != nullptr);
       auto stacktrace = gen.stacktraces[th.thread];
       REQUIRE(f->count == stacktrace.size());

@@ -54,7 +54,7 @@
 #include "deviceid_hal.h"
 #include "pinmap_impl.h"
 #include "ota_module.h"
-#include "platform_diagnostic.h"
+#include "tracer_service.h"
 
 #if PLATFORM_ID==PLATFORM_P1
 #include "wwd_management.h"
@@ -99,7 +99,7 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
     }
 
     // Better use LR here, as PC usually points to a wrong location
-    DIAGNOSTIC_CRASH_CHECKPOINT(lr);
+    TRACER_CRASH_CHECKPOINT(lr);
 
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes

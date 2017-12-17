@@ -29,7 +29,7 @@
 #include "spark_wiring_thread.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_platform.h"
-#include "spark_wiring_diagnostic.h"
+#include "spark_wiring_tracer.h"
 
 #if Wiring_LogConfig
 #include "system_control.h"
