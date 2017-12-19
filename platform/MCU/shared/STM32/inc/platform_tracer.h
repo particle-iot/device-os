@@ -63,6 +63,8 @@ extern char link_global_retained_system_end_section;
 # define TRACER_LOCATION_SIZE 804
 #endif
 
+#define TRACER_LOCATION_DEFINITION() uint8_t retained_system __g_tracer_backup_sram_data[TRACER_LOCATION_SIZE];
+
 #endif
 
 #endif // PLATFORM_TRACER_H

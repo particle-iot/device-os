@@ -3,7 +3,7 @@
 {
     link_global_retained_system_initial_values = LOADADDR( .backup_system ); /* This is the location in flash of the initial values of retained global variables */
     link_global_retained_system_start = .;
-    *(.retained_system*)
+    KEEP(*(.retained_system*))
     link_global_retained_system_end = .;
     . = ORIGIN(BACKUPSRAM_SYSTEM) + LENGTH(BACKUPSRAM_SYSTEM);
     link_global_retained_system_end_section = .;

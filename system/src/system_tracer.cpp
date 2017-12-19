@@ -21,7 +21,12 @@
 #include "tracer_service.h"
 
 #if defined(PLATFORM_TRACER_ENABLED)
+#include "platform_headers.h"
 #include "system_tracer_service_impl.h"
+
+#ifdef TRACER_LOCATION_DEFINITION
+TRACER_LOCATION_DEFINITION()
+#endif
 
 using namespace particle::tracer;
 

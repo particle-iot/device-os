@@ -24,6 +24,8 @@
 
 #include <inttypes.h>
 #include <type_traits>
+#include <cstdlib>
+#include "service_debug.h"
 #include "spark_wiring_json.h"
 
 namespace particle { namespace tracer {
@@ -282,12 +284,12 @@ protected:
 
   uint8_t* location_ = nullptr;
   const size_t size_ = 0;
-  uint8_t savedData_[TRACER_LOCATION_SIZE];
+  uint8_t* savedData_;
   bool savedAvailable_ = false;
   bool frozen_ = false;
 };
 
-inline TracerService::TracerService() : TracerService((uint8_t*)TRACER_LOCATION_BEGIN, TRACER_LOCATION_SIZE) {
+inline TracerService::TracerService() : TracerService((uint8_t*)TRACER_LOCATION_BEGIN, (TRACER_LOCATION_END - TRACER_LOCATION_BEGIN)) {
 }
 
 inline TracerService::TracerService(uint8_t* location, size_t sz)
@@ -296,6 +298,8 @@ inline TracerService::TracerService(uint8_t* location, size_t sz)
   uintptr_t st = lock(true);
   if (valid()) {
     savedAvailable_ = true;
+    savedData_ = (uint8_t*)malloc(size_);
+    SPARK_ASSERT(savedData_ != nullptr);
     memcpy(savedData_, location_, size_);
   }
   initialize();
@@ -483,7 +487,7 @@ inline size_t TracerService::dumpCurrent(char* out, size_t sz) const {
 
 inline size_t TracerService::dumpSaved(char* out, size_t sz) const {
   if (savedAvailable_ == true) {
-    return dump((uint8_t*)savedData_, sizeof(savedData_), out, sz);
+    return dump((uint8_t*)savedData_, size_, out, sz);
   }
   return 0;
 }
