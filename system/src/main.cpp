@@ -55,6 +55,7 @@
 #include "spark_wiring_system.h"
 #include "system_power.h"
 #include "spark_wiring_wifi.h"
+#include "system_monitor_internal.h"
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -589,6 +590,11 @@ void app_setup_and_loop(void)
     system_part2_post_init();
     HAL_Core_Init();
     main_thread_current(NULL);
+
+#if SYSTEM_MONITOR_ENABLED
+    SystemMonitor::instance()->init();
+#endif /* SYSTEM_MONITOR_ENABLED */
+
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
 
@@ -632,6 +638,9 @@ void app_setup_and_loop(void)
     if (threaded)
     {
         SystemThread.start();
+        SystemThread.invoke_async(FFL([](){
+            system_monitor_enable(os_thread_current(), 0, nullptr);
+        }));
         ApplicationThread.start();
     }
     else
