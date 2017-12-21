@@ -30,4 +30,6 @@
 #include "led_service.h"
 #include "diagnostics.h"
 #include "printf_float.h"
+#define SYSTEM_MONITOR_SKIP_PLATFORM
+#include "monitor_service.h"
 #include "services_dynalib.h"
