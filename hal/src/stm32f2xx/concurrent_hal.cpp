@@ -105,6 +105,14 @@ os_result_t os_thread_yield(void)
     return 0;
 }
 
+os_thread_t os_thread_current()
+{
+    if (!HAL_IsISR()) {
+        return xTaskGetCurrentTaskHandle();
+    }
+    return OS_THREAD_INVALID_HANDLE;
+}
+
 /**
  * Determines if the thread stack is still within the allocated region.
  * @param thread    The thread to check
@@ -518,4 +526,25 @@ void __flash_release() {
         return;
     }
     flash_lock.unlock();
+}
+
+os_result_t os_thread_storage_set(os_thread_t thread, int idx, void* data, void* reserved)
+{
+#if configNUM_THREAD_LOCAL_STORAGE_POINTERS > 0
+    if (idx >= 0 && idx < configNUM_THREAD_LOCAL_STORAGE_POINTERS) {
+        vTaskSetThreadLocalStoragePointer(thread, (BaseType_t)idx, data);
+        return 0;
+    }
+#endif /* configNUM_THREAD_LOCAL_STORAGE_POINTERS > 0 */
+    return 1;
+}
+
+void* os_thread_storage_get(os_thread_t thread, int idx, void* reserved)
+{
+#if configNUM_THREAD_LOCAL_STORAGE_POINTERS > 0
+    if (idx >= 0 && idx < configNUM_THREAD_LOCAL_STORAGE_POINTERS) {
+        return pvTaskGetThreadLocalStoragePointer(thread, (BaseType_t)idx);
+    }
+#endif /* configNUM_THREAD_LOCAL_STORAGE_POINTERS > 0 */
+    return nullptr;
 }
