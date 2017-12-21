@@ -129,3 +129,107 @@ test(SYSTEM_05_button_mirror_disable)
     System.disableButtonMirror(false);
 }
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
+
+bool oomEventReceived = false;
+size_t oomSizeReceived = 0;
+void handle_oom(system_event_t event, int param, void*) {
+	Serial.printlnf("got event %d %d", event, param);
+	if (out_of_memory==event) {
+		oomEventReceived = true;
+		oomSizeReceived = param;
+	}
+};
+
+void register_oom() {
+	oomEventReceived = false;
+	oomSizeReceived = 0;
+	System.on(out_of_memory, handle_oom);
+}
+
+void unregister_oom() {
+	System.off(out_of_memory, handle_oom);
+}
+
+
+test(SYSTEM_06_out_of_memory)
+{
+	const size_t size = 1024*1024*1024;
+	register_oom();
+	malloc(size);
+	Particle.process();
+	unregister_oom();
+
+	assertTrue(oomEventReceived);
+	assertEqual(oomSizeReceived, size);
+}
+
+test(SYSTEM_07_fragmented_heap) {
+	struct block {
+		char data[20];
+		block* next;
+	};
+	register_oom();
+
+	block* next = nullptr;
+
+	// exhaust memory
+	for (;;) {
+		block* b = new block();
+		if (!b) {
+			break;
+		} else {
+			b->next = next;
+			next = b;
+		}
+	}
+
+	assertTrue(oomEventReceived);
+	assertEqual(oomSizeReceived, sizeof(block));
+
+	runtime_info_t info;
+	info.size = sizeof(info);
+	HAL_Core_Runtime_Info(&info, nullptr);
+
+	// we can't really say about the free heap but the block size should be less
+	assertLessOrEqual(info.largest_free_block_heap, sizeof(block));
+	size_t low_heap = info.freeheap;
+
+	// free every 2nd block
+	block* head = next;
+	int count = 0;
+	for (;head;) {
+		block* free = head->next;
+		if (free) {
+			// skip the next block
+			head->next = free->next;
+			delete free;
+			count++;
+			head = head->next;
+		} else {
+			head = nullptr;
+		}
+	}
+
+	HAL_Core_Runtime_Info(&info, nullptr);
+	const size_t half_fragment_block_size = info.largest_free_block_heap;
+	const size_t half_fragment_free = info.freeheap;
+
+	unregister_oom();
+	register_oom();
+	block* b = new block[2];  // no room for 2 blocks
+	delete b;
+
+	// free the remaining blocks
+	for (;next;) {
+		block* b = next;
+		next = b->next;
+		delete b;
+	}
+
+	assertMoreOrEqual(half_fragment_block_size, sizeof(block));
+	assertLessOrEqual(half_fragment_block_size, 2*sizeof(block)+8 /* 8 byte overhead */);
+	assertMoreOrEqual(half_fragment_free, low_heap+(sizeof(block)*count));
+
+	assertTrue(oomEventReceived);
+	assertEqual(oomSizeReceived, sizeof(block)*2);
+}

@@ -209,7 +209,7 @@ st-flash: combined-full
 	st-flash write $(COMBINED_MEM) 0x8000000
 
 openocd-flash: 
-	openocd -f $(OPENOCD_HOME)/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $(COMBINED_MEM) 0x08000000 reset exit"
+	openocd -f $(OPENOCD_HOME)/tcl/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/tcl/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $(COMBINED_MEM) 0x08000000 reset exit"
 
 checks-common:
 	$(call assert_filesize,$(BOOTLOADER_MEM),16384)
