@@ -74,7 +74,12 @@ DYNALIB_FN(39, services, diag_command, int(int, void*, void*))
 // Export only on Photon and P1
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 DYNALIB_FN(40, services, _printf_float, int(struct _reent*, struct _prt_data_t*, FILE*, int(*pfunc)(struct _reent* , FILE*, const char*, size_t), va_list*))
+#define BASE_IDX 41
+#else
+#define BASE_IDX 40
 #endif
+
+DYNALIB_FN(BASE_IDX + 0, services, system_monitor_set_callbacks, int(system_monitor_callbacks_t*, void*))
 
 DYNALIB_END(services)
 
