@@ -37,6 +37,7 @@
 #include "system_control.h"
 #include "system_led_signal.h"
 #include "system_setup.h"
+#include "system_monitor.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -87,6 +88,14 @@ DYNALIB_FN(BASE_IDX + 5, system, led_signal_status, const LEDStatusData*(int, vo
 DYNALIB_FN(BASE_IDX + 6, system, led_pattern_period, uint16_t(int, int, void*))
 DYNALIB_FN(BASE_IDX + 7, system, system_set_tester_handlers, int(system_tester_handlers_t*, void*))
 DYNALIB_FN(BASE_IDX + 8, system, system_format_diag_data, int(const uint16_t*, size_t, unsigned, appender_fn, void*, void*))
+DYNALIB_FN(BASE_IDX + 9, system, system_monitor_enable, int(os_thread_t, system_tick_t, void*))
+DYNALIB_FN(BASE_IDX + 10, system, system_monitor_disable, int(os_thread_t, void*))
+DYNALIB_FN(BASE_IDX + 11, system, system_monitor_kick, int(os_thread_t, void* reserved))
+DYNALIB_FN(BASE_IDX + 12, system, system_monitor_kick_current, int(void* reserved))
+DYNALIB_FN(BASE_IDX + 13, system, system_monitor_get_thread_timeout, system_tick_t(os_thread_t, void*))
+DYNALIB_FN(BASE_IDX + 14, system, system_monitor_set_thread_timeout, int(os_thread_t, system_tick_t, void*))
+DYNALIB_FN(BASE_IDX + 15, system, system_monitor_get_max_sleep_time, system_tick_t(void*, void*))
+DYNALIB_FN(BASE_IDX + 16, system, system_monitor_configure, int(system_monitor_configuration_t*, void*))
 
 DYNALIB_END(system)
 
