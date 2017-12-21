@@ -25,7 +25,9 @@
 
 /* Includes -----------------------------------------------------------------*/
 #include "watchdog_hal.h"
+#include "platform_config.h"
 #include "wiced.h"
+#include "monitor_service.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -50,5 +52,10 @@ bool HAL_watchdog_reset_flagged()
 
 void HAL_Notify_WDT()
 {
-    platform_watchdog_kick();
+    // platform_watchdog_kick();
 }
+
+// platform_result_t platform_watchdog_kick(void) {
+//     SYSTEM_MONITOR_KICK_CURRENT();
+//     return 0;
+// }
