@@ -28,5 +28,6 @@ void ApplicationWatchdog::loop()
 	}
 }
 
+spark::WatchdogClass Watchdog;
 
 #endif
