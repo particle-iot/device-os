@@ -130,6 +130,9 @@ test(SYSTEM_05_button_mirror_disable)
 }
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
 
+#if PLATFORM_ID!=0
+// platform supports out of memory notifiation
+
 bool oomEventReceived = false;
 size_t oomSizeReceived = 0;
 void handle_oom(system_event_t event, int param, void*) {
@@ -233,3 +236,5 @@ test(SYSTEM_07_fragmented_heap) {
 	assertTrue(oomEventReceived);
 	assertEqual(oomSizeReceived, sizeof(block)*2);
 }
+
+#endif
