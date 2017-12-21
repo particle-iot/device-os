@@ -30,6 +30,7 @@
 #include "module_info.h"
 #include "flash_mal.h"
 #include "delay_hal.h"
+#include "stm32f2xx_wwdg.h"
 #include <stdint.h>
 
 /**
@@ -54,6 +55,9 @@ const unsigned CAN2_TX_IRQHandler_Idx               = 79;
 const unsigned CAN2_RX0_IRQHandler_Idx              = 80;
 const unsigned CAN2_RX1_IRQHandler_Idx              = 81;
 const unsigned CAN2_SCE_IRQHandler_Idx              = 82;
+const unsigned WWDG_IRQHandler_Idx                  = WWDG_IRQn + 16;
+
+extern void WWDG_IRQHandler(void);
 /**
  * Updated by HAL_1Ms_Tick()
  */
@@ -81,6 +85,7 @@ void HAL_Core_Setup_override_interrupts(void) {
     isrs[CAN2_RX0_IRQHandler_Idx]           = (uint32_t)CAN2_RX0_irq;
     isrs[CAN2_RX1_IRQHandler_Idx]           = (uint32_t)CAN2_RX1_irq;
     isrs[CAN2_SCE_IRQHandler_Idx]           = (uint32_t)CAN2_SCE_irq;
+    isrs[WWDG_IRQHandler_Idx]               = (uint32_t)WWDG_IRQHandler;
     SCB->VTOR = (unsigned long)isrs;
 }
 

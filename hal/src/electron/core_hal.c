@@ -64,7 +64,7 @@ IDX[x] = added IRQ handler
 14 [x] PendSV_Handler
 15 [x] SysTick_Handler
                                          // External Interrupts ----------------
-16 [ ] WWDG_IRQHandler                   // Window WatchDog
+16 [x] WWDG_IRQHandler                   // Window WatchDog
 17 [ ] PVD_IRQHandler                    // PVD through EXTI Line detection
 18 [ ] TAMP_STAMP_IRQHandler             // Tamper and TimeStamps through the EXTI line
 19 [ ] RTC_WKUP_IRQHandler               // RTC Wakeup through the EXTI line
@@ -595,7 +595,6 @@ void EXTI15_10_IRQHandler(void)
  * them for debugging purposes to break on entry and let us know
  * which interrupt we are not currently handling.
  */
-void WWDG_IRQHandler(void)          {__ASM("bkpt 0");}
 void PVD_IRQHandler(void)           {__ASM("bkpt 0");}
 void TAMP_STAMP_IRQHandler(void)    {__ASM("bkpt 0");}
 void RTC_WKUP_IRQHandler(void)      {__ASM("bkpt 0");}
