@@ -38,6 +38,7 @@
 #include <mutex>
 #include "net_hal.h"
 #include <limits>
+#include "monitor_service.h"
 
 std::recursive_mutex mdm_mutex;
 
@@ -368,7 +369,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
             if (type == TYPE_ABORTED)
                 return RESP_ABORTED; // This means the current command was ABORTED, so retry your command if critical.
         }
-        // relax a bit
+        SYSTEM_MONITOR_KICK_CURRENT();
         HAL_Delay_Milliseconds(10);
     }
     while (!TIMEOUT(start, timeout_ms) && !_cancel_all_operations);
@@ -793,9 +794,16 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
                 goto failure;
             // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM and GPRS)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+            system_tick_t wd_timeout = SYSTEM_MONITOR_GET_TIMEOUT_CURRENT();
             while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-                while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations); // just wait
+                system_tick_t wd_last = 0;
+                while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations) {
+                    if (wd_timeout > 0 && (HAL_Timer_Get_Milli_Seconds() - wd_last) > (wd_timeout / 2)) {
+                        SYSTEM_MONITOR_KICK_CURRENT();
+                        wd_last = HAL_Timer_Get_Milli_Seconds();
+                    }
+                }
                 //HAL_Delay_Milliseconds(15000);
             }
             if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");

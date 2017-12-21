@@ -52,6 +52,7 @@
 #include "wiced_security.h"
 #include "mbedtls_util.h"
 #include "system_error.h"
+#include "monitor_service.h"
 
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
@@ -75,6 +76,18 @@ LOG_SOURCE_CATEGORY("hal.wlan");
 #ifndef WLAN_EAP_SAVE_TLS_SESSION
 #define WLAN_EAP_SAVE_TLS_SESSION 0
 #endif
+
+#ifndef DEFAULT_JOIN_ATTEMPT_TIMEOUT
+#define DEFAULT_JOIN_ATTEMPT_TIMEOUT (7000)
+#endif /* DEFAULT_JOIN_ATTEMPT_TIMEOUT */
+
+#ifndef EAPOL_PACKET_TIMEOUT
+#define EAPOL_PACKET_TIMEOUT (5000)
+#endif /* EAPOL_PACKET_TIMEOUT */
+
+#ifndef SUPPLICANT_HANDSHAKE_ATTEMPT_TIMEOUT
+#define SUPPLICANT_HANDSHAKE_ATTEMPT_TIMEOUT (30000)
+#endif /* SUPPLICANT_HANDSHAKE_ATTEMPT_TIMEOUT */
 
 int wlan_clear_enterprise_credentials();
 int wlan_set_enterprise_credentials(WLanCredentials* c);
@@ -222,7 +235,7 @@ static_ip_config_t* wlan_fetch_saved_ip_config(static_ip_config_t* config)
 
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
 {
-    wiced_watchdog_kick();
+    //wiced_watchdog_kick();
     return 0;
 }
 
@@ -521,6 +534,7 @@ int wlan_supplicant_start()
 int wlan_supplicant_cancel(int isr)
 {
     if (eap_context.supplicant_running) {
+        SYSTEM_MONITOR_MODIFY_TIMEOUT(EAPOL_PACKET_TIMEOUT * 4 / 3);
         besl_supplicant_cancel(eap_context.supplicant_workspace, isr);
     }
     return 0;
@@ -532,6 +546,7 @@ int wlan_supplicant_stop()
 
     if (eap_context.initialized) {
         if (eap_context.supplicant_initialized) {
+            SYSTEM_MONITOR_MODIFY_TIMEOUT(SUPPLICANT_HANDSHAKE_ATTEMPT_TIMEOUT * 4 / 3);
             besl_supplicant_deinit(eap_context.supplicant_workspace);
             eap_context.supplicant_initialized = false;
         }
@@ -578,6 +593,7 @@ static wiced_result_t wlan_join() {
 
     while (attempt-- && !wiced_network_up_cancel) {
         for (unsigned i = 0; i < CONFIG_AP_LIST_SIZE; i++) {
+            SYSTEM_MONITOR_KICK_CURRENT();
             const wiced_config_ap_entry_t& ap = wifi_config->stored_ap_list[i];
 
             if (ap.details.SSID.length == 0) {
@@ -615,7 +631,11 @@ static wiced_result_t wlan_join() {
                 LOG(INFO, "Joining %s", ssid_name);
                 HAL_Core_Runtime_Info(&info, NULL);
                 LOG(TRACE, "Free RAM connect: %lu", info.freeheap);
-                result = wiced_join_ap_specific((wiced_ap_info_t*)&ap.details, ap.security_key_length, ap.security_key);
+
+                {
+                    SYSTEM_MONITOR_MODIFY_TIMEOUT((!suppl ? DEFAULT_JOIN_ATTEMPT_TIMEOUT : SUPPLICANT_HANDSHAKE_ATTEMPT_TIMEOUT) * 4 / 3);
+                    result = wiced_join_ap_specific((wiced_ap_info_t*)&ap.details, ap.security_key_length, ap.security_key);
+                }
                 if (result != WICED_SUCCESS) {
                     LOG(ERROR, "wiced_join_ap_specific(), result: %d", (int)result);
                 }
@@ -635,6 +655,7 @@ static wiced_result_t wlan_join() {
                 LOG(TRACE, "Free RAM after suppl stop: %lu", info.freeheap);
 
                 if (!result) {
+                    SYSTEM_MONITOR_KICK_CURRENT();
                     // Workaround. After successfully authenticating to Enterprise access point, TCP/IP stack
                     // gets into a weird state. Reinitializing LwIP etc mitigates the issue.
                     // ¯\_(ツ)_/¯
@@ -644,6 +665,7 @@ static wiced_result_t wlan_join() {
             }
 
             if (result == (wiced_result_t)WWD_SET_BLOCK_ACK_WINDOW_FAIL) {
+                SYSTEM_MONITOR_KICK_CURRENT();
                 // Reset wireless module
                 wlan_restart(NULL);
                 HAL_Core_Runtime_Info(&info, NULL);

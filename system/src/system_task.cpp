@@ -423,7 +423,7 @@ extern void system_handle_button_clicks(bool isIsr);
 
 void Spark_Idle_Events(bool force_events/*=false*/)
 {
-    HAL_Notify_WDT();
+    SYSTEM_MONITOR_KICK_CURRENT();
 
     ON_EVENT_DELTA();
     spark_loop_total_millis = 0;
@@ -467,7 +467,7 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
 
     while (1)
     {
-        HAL_Notify_WDT();
+        SYSTEM_MONITOR_KICK_CURRENT();
 
         system_tick_t elapsed_millis = HAL_Timer_Get_Milli_Seconds() - start_millis;
 
