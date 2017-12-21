@@ -229,6 +229,35 @@
     #error "Unknown PLATFORM_ID"
 #endif
 
+#include "watchdog_hal.h"
+
+#define PLATFORM_WATCHDOG_COUNT                     (2)
+
+// WWDG
+// NOTE: not parenthesis
+#define PLATFORM_WATCHDOG_DEFAULT                   0
+// IWDG
+// NOTE: not parenthesis
+#define PLATFORM_WATCHDOG_INDEPENDENT               1
+
+// WWDG
+#define PLATFORM_WATCHDOG_0_CAPABILITIES             (HAL_WATCHDOG_CAPABILITY_WINDOWED | \
+                                                     HAL_WATCHDOG_CAPABILITY_RECONFIGURABLE | \
+                                                     HAL_WATCHDOG_CAPABILITY_NOTIFY | \
+                                                     HAL_WATCHDOG_CAPABILITY_CPU_RESET | \
+                                                     HAL_WATCHDOG_CAPABILITY_STOPPABLE)
+#define PLATFORM_WATCHDOG_0_MIN_PERIOD_US            (137UL) // 136.53us
+#define PLATFORM_WATCHDOG_0_MAX_PERIOD_US            (69910UL) // 69.91ms
+
+// IWDG
+#define PLATFORM_WATCHDOG_1_CAPABILITIES             (HAL_WATCHDOG_CAPABILITY_INDEPENDENT | \
+                                                     HAL_WATCHDOG_CAPABILITY_CPU_RESET |\
+                                                     HAL_WATCHDOG_CAPABILITY_RECONFIGURABLE)
+#define PLATFORM_WATCHDOG_1_MIN_PERIOD_US            (125UL) // 125us
+#define PLATFORM_WATCHDOG_1_MAX_PERIOD_US            (32700000UL) // 32.7s
+
+
+
 /* Exported functions ------------------------------------------------------- */
 
 #endif /* __PLATFORM_CONFIG_H */
