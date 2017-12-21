@@ -30,6 +30,7 @@
 #include "module_info.h"
 #include "flash_mal.h"
 #include "delay_hal.h"
+#include "stm32f2xx_wwdg.h"
 #include <stdint.h>
 
 void SysTickChain();
@@ -41,6 +42,8 @@ extern char link_interrupt_vectors_location;
 
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
+
+extern void WWDG_IRQHandler(void);
 
 const HAL_InterruptOverrideEntry hal_interrupt_overrides[] = {
     {HardFault_IRQn, HardFault_Handler},
@@ -56,7 +59,8 @@ const HAL_InterruptOverrideEntry hal_interrupt_overrides[] = {
     {CAN2_TX_IRQn, CAN2_TX_irq},
     {CAN2_RX0_IRQn, CAN2_RX0_irq},
     {CAN2_RX1_IRQn, CAN2_RX1_irq},
-    {CAN2_SCE_IRQn, CAN2_SCE_irq}
+    {CAN2_SCE_IRQn, CAN2_SCE_irq},
+    {WWDG_IRQn, WWDG_IRQHandler}
 };
 
 /**
