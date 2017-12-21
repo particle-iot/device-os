@@ -479,6 +479,19 @@ void system_part2_post_init()
 {
 }
 
+void handle_out_of_memory(size_t requested) {
+	static bool recurse = false;
+	if (recurse) {
+        PANIC(OutOfHeap,"Out Of Heap");
+        abort();
+	}
+	else {
+		recurse = true;
+		system_notify_event(out_of_memory, requested);
+		recurse = false;
+	}
+}
+
 namespace {
 
 // LED status shown during device key generation
@@ -516,6 +529,10 @@ private:
                 status.setActive(false);
             }
             break;
+        }
+        case HAL_EVENT_OUT_OF_MEMORY: {
+        		handle_out_of_memory(flags);
+        		break;
         }
         default:
             break;

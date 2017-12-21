@@ -183,6 +183,7 @@ typedef struct runtime_info_t {
     uint32_t total_heap;
     uint32_t max_used_heap; // The "highwater mark" for allocated space—that is, the maximum amount of space that was ever allocated.
     uint32_t user_static_ram;
+    uint32_t largest_free_block_heap;
 } runtime_info_t;
 
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved);
@@ -254,7 +255,9 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
  * HAL event type.
  */
 typedef enum {
-    HAL_EVENT_GENERATE_DEVICE_KEY = 10 // Fired when HAL attempts to generate device keys
+	HAL_EVENT_OUT_OF_MEMORY = 1,		   // flags are set to the size of the memory block requested.
+	HAL_EVENT_GENERATE_DEVICE_KEY = 10 // Fired when HAL attempts to generate device keys
+
 } HAL_Event;
 
 /**

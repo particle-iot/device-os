@@ -87,8 +87,8 @@ err_t            raw_send       (struct raw_pcb *pcb, struct pbuf *p);
 
 /* The following functions are the lower layer interface to RAW. */
 u8_t             raw_input      (struct pbuf *p, struct netif *inp);
-#define raw_init() /* Compatibility define, not init needed. */
-#define raw_deinit() /* Compatibility define, deinit not needed. */
+void             raw_init       (void); /* Initialize this module */
+void             raw_deinit     (void); /* Deinitialize this module */
 
 #ifdef __cplusplus
 }

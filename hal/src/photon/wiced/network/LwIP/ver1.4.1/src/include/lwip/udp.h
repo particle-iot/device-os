@@ -155,7 +155,7 @@ err_t            udp_send_chksum(struct udp_pcb *pcb, struct pbuf *p,
 void             udp_input      (struct pbuf *p, struct netif *inp);
 
 void             udp_init       (void);
-#define          udp_deinit()   /* Compatibility define, deinit not needed. */
+void             udp_deinit     (void);
 
 #if UDP_DEBUG
 void udp_debug_print(struct udp_hdr *udphdr);

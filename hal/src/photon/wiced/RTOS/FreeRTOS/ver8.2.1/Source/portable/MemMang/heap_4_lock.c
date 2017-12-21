@@ -184,6 +184,45 @@ void* malloc_heap_start()
     return ucHeap;
 }
 
+size_t pvPortLargestFreeBlock()
+{
+	size_t largest = 0;
+	BlockLink_t *pxBlock;
+
+	if ( malloc_enabled == 0 )
+    {
+        return largest;
+    }
+
+    __malloc_lock(NULL);
+    {
+        /* If this is the first call to malloc then the heap will require
+        initialisation to setup the list of free blocks. */
+        if( pxEnd == NULL )
+        {
+            prvHeapInit();
+        }
+        else
+        {
+            mtCOVERAGE_TEST_MARKER();
+        }
+
+		/* Traverse the list from the start (lowest address) block until
+		one of adequate size is found. */
+		pxBlock = xStart.pxNextFreeBlock;
+		while( ( pxBlock->pxNextFreeBlock != NULL ) )
+		{
+			if (pxBlock->xBlockSize>largest)
+			{
+				largest = pxBlock->xBlockSize;
+			}
+			pxBlock = pxBlock->pxNextFreeBlock;
+		}
+    }
+    __malloc_unlock(NULL);
+    return largest;
+}
+
 void *pvPortMalloc( size_t xWantedSize )
 {
 BlockLink_t *pxBlock, *pxPreviousBlock, *pxNewBlockLink;
@@ -324,8 +363,8 @@ void *pvReturn = NULL;
     {
         if( pvReturn == NULL )
         {
-            extern void vApplicationMallocFailedHook( void );
-            vApplicationMallocFailedHook();
+            extern void vApplicationMallocFailedHook( size_t );
+            vApplicationMallocFailedHook(xWantedSize-xHeapStructSize);
         }
         else
         {

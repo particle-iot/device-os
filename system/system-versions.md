@@ -46,6 +46,7 @@
 | 101 | 300 | 0.8.0-rc.1 |         (Photon, P1, Electron) |
 
 
+
 To find out the release version of system firmware currently installed, in listening mode,
 connect to serial and send `v` to print the release version string.
 

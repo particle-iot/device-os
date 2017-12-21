@@ -54,6 +54,7 @@
 #include "deviceid_hal.h"
 #include "pinmap_impl.h"
 #include "ota_module.h"
+#include "hal_event.h"
 
 #if PLATFORM_ID==PLATFORM_P1
 #include "wwd_management.h"
@@ -1243,6 +1244,8 @@ unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
     return SystemCoreClock;
 }
 
+extern size_t pvPortLargestFreeBlock();
+
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
 {
     struct mallinfo heapinfo = mallinfo();
@@ -1264,7 +1267,16 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
         info->user_static_ram = info->total_init_heap - info->total_heap;
     }
 
+    if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {
+    		info->largest_free_block_heap = pvPortLargestFreeBlock();
+    }
+
     return 0;
+}
+
+void vApplicationMallocFailedHook(size_t xWantedSize)
+{
+	hal_notify_event(HAL_EVENT_OUT_OF_MEMORY, xWantedSize, 0);
 }
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled)
