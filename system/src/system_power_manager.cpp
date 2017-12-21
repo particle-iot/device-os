@@ -27,7 +27,7 @@ PowerManager* PowerManager::instance() {
 }
 
 void PowerManager::init() {
-  os_thread_create(&thread_, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr,
+  os_thread_create(&thread_, "pwr", OS_THREAD_PRIORITY_CRITICAL - 1, &PowerManager::loop, nullptr,
 #if defined(DEBUG_BUILD)
     4 * 1024);
 #else
