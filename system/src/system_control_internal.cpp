@@ -78,23 +78,27 @@ particle::SystemControl::SystemControl() :
 void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
     switch (req->type) {
     case CTRL_REQUEST_RESET: {
-        System.reset();
-        setResult(req, SYSTEM_ERROR_NONE);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            System.reset();
+        });
         break;
     }
     case CTRL_REQUEST_FACTORY_RESET: {
-        System.factoryReset();
-        setResult(req, SYSTEM_ERROR_NONE);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            System.factoryReset();
+        });
         break;
     }
     case CTRL_REQUEST_DFU_MODE: {
-        System.dfu(false);
-        setResult(req, SYSTEM_ERROR_NONE);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            System.dfu(false);
+        });
         break;
     }
     case CTRL_REQUEST_SAFE_MODE: {
-        System.enterSafeMode();
-        setResult(req, SYSTEM_ERROR_NONE);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            System.enterSafeMode();
+        });
         break;
     }
     case CTRL_REQUEST_START_LISTENING: {
@@ -227,7 +231,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         break;
     }
     case CTRL_REQUEST_FINISH_FIRMWARE_UPDATE: {
-        setResult(req, control::finishFirmwareUpdateRequest(req));
+        control::finishFirmwareUpdateRequest(req);
         break;
     }
     case CTRL_REQUEST_CANCEL_FIRMWARE_UPDATE: {
