@@ -50,6 +50,12 @@ int cancelFirmwareUpdate() {
     return ret;
 }
 
+void finishFirmwareUpdate(int result, void* data) {
+    if (g_desc) {
+        Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::SUCCESS, nullptr);
+    }
+}
+
 } // namespace
 
 int prepareFirmwareUpdateRequest(ctrl_request* req) {
@@ -88,28 +94,34 @@ int prepareFirmwareUpdateRequest(ctrl_request* req) {
     return 0;
 }
 
-int finishFirmwareUpdateRequest(ctrl_request* req) {
+void finishFirmwareUpdateRequest(ctrl_request* req) {
     particle_ctrl_FinishFirmwareUpdateRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_FinishFirmwareUpdateRequest_fields, &pbReq);
     if (ret != 0) {
-        return ret;
+        goto done;
     }
     if (!g_desc) {
-        return SYSTEM_ERROR_INVALID_STATE;
+        ret = SYSTEM_ERROR_INVALID_STATE;
+        goto done;
     }
     if (g_desc->chunk_address != g_desc->file_address + g_desc->file_length) {
-        cancelFirmwareUpdate();
-        return SYSTEM_ERROR_INVALID_STATE;
+        ret = SYSTEM_ERROR_INVALID_STATE;
+        goto cancel;
     }
-    unsigned flags = UpdateFlag::SUCCESS;
-    if (pbReq.validate_only) {
-        flags |= UpdateFlag::VALIDATE_ONLY;
-    }
-    ret = Spark_Finish_Firmware_Update(*g_desc, flags, nullptr);
+    // Validate the firmware binary
+    ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, nullptr);
     if (ret != 0) {
-        return ret;
+        goto cancel;
     }
-    return 0;
+    if (!pbReq.validate_only) {
+        // Reply to the host and apply the update
+        system_ctrl_set_result(req, ret, finishFirmwareUpdate, nullptr, nullptr);
+        return;
+    }
+cancel:
+    cancelFirmwareUpdate();
+done:
+    system_ctrl_set_result(req, ret, nullptr, nullptr, nullptr);
 }
 
 int cancelFirmwareUpdateRequest(ctrl_request* req) {

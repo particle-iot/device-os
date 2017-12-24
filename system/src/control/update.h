@@ -24,7 +24,7 @@ namespace particle {
 namespace control {
 
 int prepareFirmwareUpdateRequest(ctrl_request* req);
-int finishFirmwareUpdateRequest(ctrl_request* req);
+void finishFirmwareUpdateRequest(ctrl_request* req);
 int cancelFirmwareUpdateRequest(ctrl_request* req);
 int saveFirmwareChunkRequest(ctrl_request* req);
 
