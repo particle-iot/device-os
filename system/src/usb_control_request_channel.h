@@ -48,7 +48,7 @@ public:
     // ControlRequestChannel
     virtual int allocReplyData(ctrl_request* ctrlReq, size_t size) override;
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
-    virtual void setResult(ctrl_request* ctrlReq, int result) override;
+    virtual void setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data) override;
 
 private:
     // Request state
@@ -77,6 +77,8 @@ private:
         RequestTask task; // ISR task data
         Request* prev; // Previous element in a list
         Request* next; // Next element in a list
+        ctrl_completion_handler_fn handler; // Completion handler
+        void* handlerData; // Completion handler data
         int result; // Result code
         uint16_t id; // Request ID
         uint8_t state; // Request state
@@ -90,12 +92,12 @@ private:
 
     bool processServiceRequest(HAL_USB_SetupRequest* halReq);
     bool processVendorRequest(HAL_USB_SetupRequest* halReq);
-    void freeActiveRequest(Request* req);
-    void freeRequest(Request* req);
+    void finishActiveRequest(Request* req);
+    void finishRequest(Request* req);
 
     static void invokeRequestHandler(ISRTaskQueue::Task* isrTask);
     static void allocRequestData(ISRTaskQueue::Task* isrTask);
-    static void freeRequest(ISRTaskQueue::Task* isrTask);
+    static void finishRequest(ISRTaskQueue::Task* isrTask);
 
     static uint8_t halVendorRequestCallback(HAL_USB_SetupRequest* halReq, void* data);
     static uint8_t halVendorRequestStateCallback(HAL_USB_VendorRequestState state, void* data);

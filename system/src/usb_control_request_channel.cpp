@@ -211,11 +211,14 @@ void particle::UsbControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) 
     req->request_size = 0;
 }
 
-void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, int result) {
+void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler,
+        void* data) {
     auto req = static_cast<Request*>(ctrlReq);
     if (req->request_data) {
         freeRequestData(req);
     }
+    req->handler = handler;
+    req->handlerData = data;
     ATOMIC_BLOCK() {
         if (req->state == RequestState::PENDING) {
             req->result = result;
@@ -224,7 +227,7 @@ void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, int re
         }
     }
     if (req) { // Request has been cancelled
-        freeRequest(req);
+        finishRequest(req);
     }
 }
 
@@ -250,8 +253,11 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
         req->reply_size = 0;
         req->channel = this;
         req->task.req = req;
-        req->flags = 0;
+        req->handler = nullptr;
+        req->handlerData = nullptr;
+        req->result = SYSTEM_ERROR_UNKNOWN;
         req->id = ++lastReqId_;
+        req->flags = 0;
         // Check if the request has payload data
         ServiceReply::Status status = ServiceReply::ERROR;
         if (req->request_size == 0) {
@@ -306,7 +312,7 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
                 break;
             case RequestState::ALLOC_FAILED:
                 rep.status(ServiceReply::NO_MEMORY);
-                freeActiveRequest(req);
+                finishActiveRequest(req);
                 break;
             case RequestState::RECV_PAYLOAD:
                 rep.status(ServiceReply::OK);
@@ -320,7 +326,7 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
                 if (req->reply_size > 0) {
                     rep.size(req->reply_size);
                 } else {
-                    freeActiveRequest(req);
+                    curReq_ = req;
                 }
                 break;
             }
@@ -406,11 +412,14 @@ bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequ
             if (!req) {
                 return ServiceReply().status(ServiceReply::NOT_FOUND).encode(halReq);
             }
-            freeActiveRequest(req);
+            // Set a result code that will be passed to the request completion handler
+            req->result = SYSTEM_ERROR_CANCELLED;
+            finishActiveRequest(req);
         } else {
             // Cancel all requests
             while (activeReqs_) {
-                freeActiveRequest(activeReqs_);
+                activeReqs_->result = SYSTEM_ERROR_CANCELLED;
+                finishActiveRequest(activeReqs_);
             }
         }
         return ServiceReply().status(ServiceReply::OK).encode(halReq);
@@ -466,7 +475,7 @@ bool particle::UsbControlRequestChannel::processVendorRequest(HAL_USB_SetupReque
     return true;
 }
 
-void particle::UsbControlRequestChannel::freeActiveRequest(Request* req) {
+void particle::UsbControlRequestChannel::finishActiveRequest(Request* req) {
     // Update list of active requests
     if (req->next) {
         req->next->prev = req->prev;
@@ -486,19 +495,26 @@ void particle::UsbControlRequestChannel::freeActiveRequest(Request* req) {
             system_pool_free(req->request_data, nullptr);
             req->request_data = nullptr;
         }
-        if (!req->request_data && !req->reply_data) {
+        if (!req->request_data && !req->reply_data && !req->handler) {
             system_pool_free(req, nullptr);
         } else {
             // Free the request data asynchronously
-            req->task.func = freeRequest;
+            req->task.func = finishRequest;
             SystemISRTaskQueue.enqueue(&req->task);
         }
     }
 }
 
-void particle::UsbControlRequestChannel::freeRequest(Request* req) {
-    freeRequestData(req);
-    allocReplyData(req, 0);
+void particle::UsbControlRequestChannel::finishRequest(Request* req) {
+    if (req->request_data) {
+        freeRequestData(req);
+    }
+    if (req->reply_data) {
+        allocReplyData(req, 0);
+    }
+    if (req->handler) {
+        req->handler(req->result, req->handlerData);
+    }
     system_pool_free(req, nullptr);
 }
 
@@ -529,11 +545,11 @@ void particle::UsbControlRequestChannel::allocRequestData(ISRTaskQueue::Task* is
     }
 }
 
-void particle::UsbControlRequestChannel::freeRequest(ISRTaskQueue::Task* isrTask) {
+void particle::UsbControlRequestChannel::finishRequest(ISRTaskQueue::Task* isrTask) {
     const auto task = static_cast<RequestTask*>(isrTask);
     const auto req = task->req;
     const auto channel = static_cast<UsbControlRequestChannel*>(req->channel);
-    channel->freeRequest(req);
+    channel->finishRequest(req);
 }
 
 /*
@@ -588,7 +604,9 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_US
     switch (state) {
     case HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED: {
         if (channel->curReq_) {
-            channel->freeActiveRequest(channel->curReq_);
+            // Set a result code that will be passed to the request completion handler
+            channel->curReq_->result = SYSTEM_ERROR_NONE;
+            channel->finishActiveRequest(channel->curReq_);
             channel->curReq_ = nullptr;
         }
         break;
@@ -596,7 +614,8 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_US
     case HAL_USB_VENDOR_REQUEST_STATE_RESET: {
         // Cancel all requests
         while (channel->activeReqs_) {
-            channel->freeActiveRequest(channel->activeReqs_);
+            channel->activeReqs_->result = SYSTEM_ERROR_ABORTED;
+            channel->finishActiveRequest(channel->activeReqs_);
         }
         channel->curReq_ = nullptr;
         break;

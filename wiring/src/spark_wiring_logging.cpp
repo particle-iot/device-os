@@ -98,28 +98,29 @@ using namespace spark;
 class JSONRequestHandler {
 public:
     static void process(ctrl_request* ctrlReq) {
+        // TODO: Refactor this code once we introduce a high-level API for the control requests
         const JSONValue jsonReq = JSONValue::parse(ctrlReq->request_data, ctrlReq->request_size);
         if (!jsonReq.isValid()) {
-            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_BAD_DATA, nullptr); // Parsing error
+            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_BAD_DATA, nullptr, nullptr, nullptr); // Parsing error
             return;
         }
         Request req;
         if (!parseRequest(jsonReq, &req)) {
-            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_BAD_DATA, nullptr);
+            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_BAD_DATA, nullptr, nullptr, nullptr);
             return;
         }
         const size_t replyBufSize = 256;
         if (system_ctrl_alloc_reply_data(ctrlReq, replyBufSize, nullptr) != 0) {
-            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_NO_MEMORY, nullptr);
+            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_NO_MEMORY, nullptr, nullptr, nullptr);
             return;
         }
         JSONBufferWriter writer(ctrlReq->reply_data, ctrlReq->reply_size);
         if (!processRequest(req, writer)) {
-            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_UNKNOWN, nullptr); // FIXME
+            system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_UNKNOWN, nullptr, nullptr, nullptr); // FIXME
             return;
         }
         ctrlReq->reply_size = writer.dataSize();
-        system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_NONE, nullptr);
+        system_ctrl_set_result(ctrlReq, SYSTEM_ERROR_NONE, nullptr, nullptr, nullptr);
     }
 
 private:

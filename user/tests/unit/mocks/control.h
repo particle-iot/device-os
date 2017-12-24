@@ -23,7 +23,7 @@ public:
     std::string replyData() const;
     bool hasReplyData() const;
 
-    void setResult(int result);
+    void setResult(int result, ctrl_completion_handler_fn handler = nullptr, void* data = nullptr);
     int result() const;
     bool hasResult() const;
 
@@ -92,8 +92,11 @@ inline bool test::ControlRequest::hasReplyData() const {
     return (reply_size > 0);
 }
 
-inline void test::ControlRequest::setResult(int result) {
+inline void test::ControlRequest::setResult(int result, ctrl_completion_handler_fn handler, void* data) {
     result_ = result;
+    if (handler) {
+        handler(SYSTEM_ERROR_NONE, data);
+    }
 }
 
 inline int test::ControlRequest::result() const {
@@ -116,9 +119,10 @@ inline test::SystemControl::SystemControl(MockRepository* mocks) {
         r->freeRequestData();
     });
     // system_ctrl_set_result()
-    mocks->OnCallFunc(system_ctrl_set_result).Do([](ctrl_request* req, int result, void* reserved) {
+    mocks->OnCallFunc(system_ctrl_set_result).Do([](ctrl_request* req, int result, ctrl_completion_handler_fn handler,
+            void* data, void* reserved) {
         const auto r = static_cast<ControlRequest*>(req);
-        r->setResult(result);
+        r->setResult(result, handler, data);
     });
 }
 

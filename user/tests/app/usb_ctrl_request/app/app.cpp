@@ -31,12 +31,13 @@ void loop() {
         if (g_reqs.at(i).time <= millis()) {
             // Echo the request data back to the host
             const Request r = g_reqs.takeAt(i);
+            int result = SYSTEM_ERROR_NONE;
             if (system_ctrl_alloc_reply_data(r.req, r.req->request_size, nullptr) == 0) {
                 memcpy(r.req->reply_data, r.req->request_data, r.req->request_size);
-                system_ctrl_set_result(r.req, SYSTEM_ERROR_NONE, nullptr);
             } else {
-                system_ctrl_set_result(r.req, SYSTEM_ERROR_NO_MEMORY, nullptr);
+                result = SYSTEM_ERROR_NO_MEMORY;
             }
+            system_ctrl_set_result(r.req, result, nullptr, nullptr, nullptr);
         } else {
             ++i;
         }

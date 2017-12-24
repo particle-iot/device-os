@@ -11,5 +11,5 @@ int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved)
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 }
 
-void system_ctrl_set_result(ctrl_request* req, int result, void* reserved) {
+void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
 }

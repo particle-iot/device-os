@@ -166,7 +166,7 @@ bool __backup_ram_was_valid() { return false; }
 
 // Default handler for CTRL_REQUEST_APP_CUSTOM requests
 void __attribute((weak)) ctrl_request_custom_handler(ctrl_request* req) {
-    system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr);
+    system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
 }
 
 #if Wiring_LogConfig
@@ -182,7 +182,7 @@ static void ctrl_request_handler(ctrl_request* req) {
         if (log_process_ctrl_request_callback) {
             log_process_ctrl_request_callback(req);
         } else {
-            system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr);
+            system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
         }
         break;
     }
@@ -192,7 +192,7 @@ static void ctrl_request_handler(ctrl_request* req) {
         break;
     }
     default:
-        system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr);
+        system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
         break;
     }
 }
