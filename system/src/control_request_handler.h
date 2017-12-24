@@ -35,7 +35,6 @@ public:
     explicit ControlRequestChannel(ControlRequestHandler* handler);
 
     virtual int allocReplyData(ctrl_request* req, size_t size) = 0;
-    virtual void freeReplyData(ctrl_request* req) = 0;
     virtual void freeRequestData(ctrl_request* req) = 0;
     virtual void setResult(ctrl_request* req, int result) = 0;
 

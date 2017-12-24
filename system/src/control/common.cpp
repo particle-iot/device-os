@@ -51,7 +51,7 @@ cleanup:
         pb_ostream_free(stream, nullptr);
     }
     if (ret != SYSTEM_ERROR_NONE) {
-        system_ctrl_free_reply_data(req, nullptr);
+        system_ctrl_alloc_reply_data(req, 0, nullptr);
     }
     return ret;
 }

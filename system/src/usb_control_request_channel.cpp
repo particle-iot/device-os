@@ -183,36 +183,18 @@ particle::UsbControlRequestChannel::~UsbControlRequestChannel() {
 
 int particle::UsbControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {
     const auto req = static_cast<Request*>(ctrlReq);
-    if (req->reply_data) {
-        freeReplyData(req);
-    }
-    // Try to allocate the buffer from the pool
-    if (size <= USB_REQUEST_MAX_POOLED_BUFFER_SIZE &&
-            (req->reply_data = (char*)system_pool_alloc(size, nullptr))) {
-        req->flags |= RequestFlag::POOLED_REP_DATA;
-    } else {
-        // Allocate the buffer dynamically
-        req->reply_data = (char*)t_malloc(size);
-        if (!req->reply_data) {
+    if (size > 0) {
+        const auto data = (char*)t_realloc(req->reply_data, size);
+        if (!data) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
+        req->reply_data = data;
+    } else {
+        t_free(req->reply_data);
+        req->reply_data = nullptr;
     }
     req->reply_size = size;
     return SYSTEM_ERROR_NONE;
-}
-
-void particle::UsbControlRequestChannel::freeReplyData(ctrl_request* ctrlReq) {
-    const auto req = static_cast<Request*>(ctrlReq);
-    if (req->flags & RequestFlag::POOLED_REP_DATA) {
-        // Release a pooled buffer
-        system_pool_free(req->reply_data, nullptr);
-        req->flags &= ~RequestFlag::POOLED_REP_DATA;
-    } else {
-        // Free a dynamically allocated buffer
-        t_free(req->reply_data);
-    }
-    req->reply_data = nullptr;
-    req->reply_size = 0;
 }
 
 void particle::UsbControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) {
@@ -504,10 +486,6 @@ void particle::UsbControlRequestChannel::freeActiveRequest(Request* req) {
             system_pool_free(req->request_data, nullptr);
             req->request_data = nullptr;
         }
-        if (req->reply_data && (req->flags & RequestFlag::POOLED_REP_DATA)) {
-            system_pool_free(req->reply_data, nullptr);
-            req->reply_data = nullptr;
-        }
         if (!req->request_data && !req->reply_data) {
             system_pool_free(req, nullptr);
         } else {
@@ -520,7 +498,7 @@ void particle::UsbControlRequestChannel::freeActiveRequest(Request* req) {
 
 void particle::UsbControlRequestChannel::freeRequest(Request* req) {
     freeRequestData(req);
-    freeReplyData(req);
+    allocReplyData(req, 0);
     system_pool_free(req, nullptr);
 }
 

@@ -32,7 +32,6 @@ public:
     int setAppRequestHandler(ctrl_request_handler_fn handler);
 
     int allocReplyData(ctrl_request* req, size_t size);
-    void freeReplyData(ctrl_request* req);
     void freeRequestData(ctrl_request* req);
     void setResult(ctrl_request* req, int result);
 
@@ -58,11 +57,6 @@ inline int particle::SystemControl::setAppRequestHandler(ctrl_request_handler_fn
 inline int particle::SystemControl::allocReplyData(ctrl_request* req, size_t size) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     return channel->allocReplyData(req, size);
-}
-
-inline void particle::SystemControl::freeReplyData(ctrl_request* req) {
-    const auto channel = static_cast<ControlRequestChannel*>(req->channel);
-    channel->freeReplyData(req);
 }
 
 inline void particle::SystemControl::freeRequestData(ctrl_request* req) {
