@@ -18,10 +18,13 @@
 #pragma once
 
 #include "system_control.h"
+
+#if SYSTEM_CONTROL_ENABLED
+
 #include "control_request_handler.h"
 #include "usb_control_request_channel.h"
 
-#if SYSTEM_CONTROL_ENABLED
+#include "debug.h"
 
 namespace particle {
 
@@ -32,8 +35,9 @@ public:
     int setAppRequestHandler(ctrl_request_handler_fn handler);
 
     int allocReplyData(ctrl_request* req, size_t size);
+    void freeReplyData(ctrl_request* req);
     void freeRequestData(ctrl_request* req);
-    void setResult(ctrl_request* req, int result);
+    void setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler = nullptr, void* data = nullptr);
 
     // ControlRequestHandler
     virtual void processRequest(ctrl_request* req, ControlRequestChannel* channel) override;
@@ -59,14 +63,19 @@ inline int particle::SystemControl::allocReplyData(ctrl_request* req, size_t siz
     return channel->allocReplyData(req, size);
 }
 
+inline void particle::SystemControl::freeReplyData(ctrl_request* req) {
+    SPARK_ASSERT(allocReplyData(req, 0) == 0);
+}
+
 inline void particle::SystemControl::freeRequestData(ctrl_request* req) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     channel->freeRequestData(req);
 }
 
-inline void particle::SystemControl::setResult(ctrl_request* req, int result) {
+inline void particle::SystemControl::setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler,
+        void* data) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
-    channel->setResult(req, result);
+    channel->setResult(req, result, handler, data);
 }
 
 #endif // SYSTEM_CONTROL_ENABLED

@@ -505,7 +505,7 @@ TEST_CASE("UsbControlRequestChannel") {
             auto rep = channel.serviceReply();
             CHECK(rep.status() == ServiceReply::OK);
         }
-        SECTION("retrieves expected fields for a completed empty request") {
+        SECTION("retrieves expected fields for a request without reply data") {
             system_error_t result = SYSTEM_ERROR_UNKNOWN;
             channel.requestHandler([=](ctrl_request* req, ControlRequestChannel* ch) {
                 ch->setResult(req, result);
@@ -523,7 +523,7 @@ TEST_CASE("UsbControlRequestChannel") {
             rep = channel.serviceReply();
             CHECK(rep.status() == ServiceReply::NOT_FOUND);
         }
-        SECTION("retrieves expected fields for a completed non-empty request") {
+        SECTION("retrieves expected fields for a request with non-empty reply data") {
             size_t size = 1024;
             system_error_t result = SYSTEM_ERROR_UNKNOWN;
             channel.requestHandler([=](ctrl_request* req, ControlRequestChannel* ch) {
@@ -544,6 +544,21 @@ TEST_CASE("UsbControlRequestChannel") {
             CHECK(rep.status() == ServiceReply::OK);
             CHECK(rep.result() == result);
             CHECK(rep.size() == size);
+        }
+        SECTION("causes the completion handler to be invoked for a request without reply data") {
+            bool called = false;
+            channel.requestHandler([&called](ctrl_request* req, ControlRequestChannel* ch) {
+                ch->setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+                    *static_cast<bool*>(data) = true;
+                }, &called);
+            });
+            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
+            uint16_t id = channel.serviceReply().id();
+            CHECK(processNextTask());
+            CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
+            CHECK_FALSE(called); // Completion handler should be called asynchronously
+            CHECK(processNextTask());
+            CHECK(called);
         }
     }
 
@@ -633,6 +648,28 @@ TEST_CASE("UsbControlRequestChannel") {
             // Check status
             CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
             CHECK(channel.serviceReply().status() == ServiceReply::NOT_FOUND);
+        }
+        SECTION("causes the completion handler to be invoked for a request with non-empty reply data") {
+            size_t size = 1024;
+            bool called = false;
+            channel.requestHandler([=, &called](ctrl_request* req, ControlRequestChannel* ch) {
+                REQUIRE(ch->allocReplyData(req, size) == 0);
+                ch->setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+                    *static_cast<bool*>(data) = true;
+                }, &called);
+            });
+            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
+            uint16_t id = channel.serviceReply().id();
+            CHECK(processNextTask());
+            CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
+            // The CHECK request should not cause the completion handler to be invoked for a request
+            // with non-empty reply data
+            CHECK_FALSE(processNextTask());
+            CHECK_FALSE(called);
+            CHECK(channel.serviceRequest(ServiceRequest::RECV).id(id).size(size).send());
+            CHECK_FALSE(called); // Completion handler should be called asynchronously
+            CHECK(processNextTask());
+            CHECK(called);
         }
         SECTION("fails when the request cannot be not found") {
             uint16_t id = 1234;

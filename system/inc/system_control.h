@@ -93,6 +93,10 @@ typedef struct ctrl_request {
 // Callback invoked for control requests that should be processed in the application thread
 typedef void(*ctrl_request_handler_fn)(ctrl_request* req);
 
+// Completion handler callback for a control request. The `result` argument will be set to 0 if
+// the sender of a request has received the reply successfully
+typedef void(*ctrl_completion_handler_fn)(int result, void* data);
+
 // Sets the application callback for control requests
 int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* reserved);
 
@@ -104,8 +108,10 @@ int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved)
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved);
 
 // Completes the processing of a request. The `result` argument specifies a result code as defined
-// by the `system_error_t` enum
-void system_ctrl_set_result(ctrl_request* req, int result, void* reserved);
+// by the `system_error_t` enum. The function also takes an optional callback that will be invoked
+// once the sender of the request has received the reply successfully, or an error has occured
+// while sending the reply
+void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 

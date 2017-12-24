@@ -36,7 +36,7 @@ public:
 
     virtual int allocReplyData(ctrl_request* req, size_t size) = 0;
     virtual void freeRequestData(ctrl_request* req) = 0;
-    virtual void setResult(ctrl_request* req, int result) = 0;
+    virtual void setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler = nullptr, void* data = nullptr) = 0;
 
 protected:
     ControlRequestHandler* handler() const;
