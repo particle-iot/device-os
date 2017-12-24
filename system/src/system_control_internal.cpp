@@ -28,6 +28,7 @@
 #include "control/network.h"
 #include "control/wifi.h"
 #include "control/config.h"
+#include "control/update.h"
 
 namespace {
 
@@ -219,6 +220,22 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     }
     case CTRL_REQUEST_SET_SOFTAP_SSID: {
         setResult(req, control::config::handleSetSoftapSsidRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_PREPARE_FIRMWARE_UPDATE: {
+        setResult(req, control::prepareFirmwareUpdateRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_FINISH_FIRMWARE_UPDATE: {
+        setResult(req, control::finishFirmwareUpdateRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_CANCEL_FIRMWARE_UPDATE: {
+        setResult(req, control::cancelFirmwareUpdateRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_SAVE_FIRMWARE_CHUNK: {
+        setResult(req, control::saveFirmwareChunkRequest(req));
         break;
     }
     default:
