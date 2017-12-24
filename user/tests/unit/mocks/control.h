@@ -20,7 +20,6 @@ public:
     bool hasRequestData() const;
 
     int allocReplyData(size_t size);
-    void freeReplyData();
     std::string replyData() const;
     bool hasReplyData() const;
 
@@ -74,16 +73,15 @@ inline bool test::ControlRequest::hasRequestData() const {
 }
 
 inline int test::ControlRequest::allocReplyData(size_t size) {
-    repData_.resize(size);
-    reply_data = &repData_.front();
+    if (size > 0) {
+        repData_.resize(size);
+        reply_data = &repData_.front();
+    } else {
+        repData_ = std::string();
+        reply_data = nullptr;
+    }
     reply_size = size;
     return SYSTEM_ERROR_NONE;
-}
-
-inline void test::ControlRequest::freeReplyData() {
-    repData_ = std::string();
-    reply_data = nullptr;
-    reply_size = 0;
 }
 
 inline std::string test::ControlRequest::replyData() const {
@@ -111,11 +109,6 @@ inline test::SystemControl::SystemControl(MockRepository* mocks) {
     mocks->OnCallFunc(system_ctrl_alloc_reply_data).Do([](ctrl_request* req, size_t size, void* reserved) {
         const auto r = static_cast<ControlRequest*>(req);
         return r->allocReplyData(size);
-    });
-    // system_ctrl_free_reply_data()
-    mocks->OnCallFunc(system_ctrl_free_reply_data).Do([](ctrl_request* req, void* reserved) {
-        const auto r = static_cast<ControlRequest*>(req);
-        r->freeReplyData();
     });
     // system_ctrl_free_request_data()
     mocks->OnCallFunc(system_ctrl_free_request_data).Do([](ctrl_request* req, void* reserved) {

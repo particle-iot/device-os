@@ -42,18 +42,18 @@ int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* da
     for (;;) {
         int ret = system_ctrl_alloc_reply_data(req, bufSize, nullptr);
         if (ret != 0) {
-            system_ctrl_free_reply_data(req, nullptr);
+            system_ctrl_alloc_reply_data(req, 0, nullptr);
             return ret;
         }
         BufferAppender2 appender(req->reply_data, bufSize);
         ret = callback(&appender, data);
         if (ret != 0) {
-            system_ctrl_free_reply_data(req, nullptr);
+            system_ctrl_alloc_reply_data(req, 0, nullptr);
             return ret;
         }
         const size_t size = appender.dataSize();
         if (size > maxSize) {
-            system_ctrl_free_reply_data(req, nullptr);
+            system_ctrl_alloc_reply_data(req, 0, nullptr);
             return SYSTEM_ERROR_TOO_LARGE;
         }
         if (size > bufSize) {
@@ -269,10 +269,6 @@ int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved)
     return SystemControl::instance()->allocReplyData(req, size);
 }
 
-void system_ctrl_free_reply_data(ctrl_request* req, void* reserved) {
-    SystemControl::instance()->freeReplyData(req);
-}
-
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
     SystemControl::instance()->freeRequestData(req);
 }
@@ -290,9 +286,6 @@ int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* r
 
 int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-void system_ctrl_free_reply_data(ctrl_request* req, void* reserved) {
 }
 
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {

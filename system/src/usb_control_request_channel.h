@@ -47,7 +47,6 @@ public:
 
     // ControlRequestChannel
     virtual int allocReplyData(ctrl_request* ctrlReq, size_t size) override;
-    virtual void freeReplyData(ctrl_request* ctrlReq) override;
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result) override;
 
@@ -63,8 +62,7 @@ private:
 
     // Request flags
     enum RequestFlag {
-        POOLED_REQ_DATA = 0x01, // Request buffer is allocated from the pool
-        POOLED_REP_DATA = 0x02 // Reply buffer is allocated from the pool
+        POOLED_REQ_DATA = 0x01 // Request buffer is allocated from the pool
     };
 
     struct Request;
