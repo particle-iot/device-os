@@ -96,10 +96,13 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
-    case CTRL_REQUEST_LISTENING_MODE: {
-        // FIXME: Any non-empty request is interpreted as the "stop" command
-        const bool stop = (req->request_size > 0);
-        network.listen(stop);
+    case CTRL_REQUEST_START_LISTENING: {
+        network.listen();
+        setResult(req, SYSTEM_ERROR_NONE);
+        break;
+    }
+    case CTRL_REQUEST_STOP_LISTENING: {
+        network.listen(true /* stop */);
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
