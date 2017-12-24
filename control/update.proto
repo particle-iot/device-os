@@ -1,0 +1,36 @@
+syntax = "proto3";
+package particle.ctrl;
+
+import "common.proto";
+
+// CTRL_REQUEST_PREPARE_FIRMWARE_UPDATE (250)
+message PrepareFirmwareUpdateRequest {
+  uint32 size = 1;
+}
+
+message PrepareFirmwareUpdateReply {
+  uint32 chunk_size = 1;
+}
+
+// CTRL_REQUEST_FINISH_FIRMWARE_UPDATE (251)
+message FinishFirmwareUpdateRequest {
+  bool validate_only = 1;
+}
+
+message FinishFirmwareUpdateReply {
+}
+
+// CTRL_REQUEST_CANCEL_FIRMWARE_UPDATE (252)
+message CancelFirmwareUpdateRequest {
+}
+
+message CancelFirmwareUpdateReply {
+}
+
+// CTRL_REQUEST_SAVE_FIRMWARE_CHUNK (253)
+message SaveFirmwareChunkRequest {
+  bytes data = 1;
+}
+
+message SaveFirmwareChunkReply {
+}
