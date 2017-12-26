@@ -27,10 +27,10 @@ extern "C" {
 
 
 #if PLATFORM_ID<9
-    #define HAL_PLATFORM_WIFI 1
-	#if PLATFORM_ID>3
-	#define HAL_PLATFORM_WIFI_AP 1
-#endif
+  #define HAL_PLATFORM_WIFI 1
+  #if PLATFORM_ID>3
+    #define HAL_PLATFORM_WIFI_AP 1
+  #endif
 #endif
 
 
@@ -40,10 +40,10 @@ extern "C" {
 #endif
 
 #if PLATFORM_ID==10 || PLATFORM_ID==3
-	#define HAL_PLATFORM_CLOUD_UDP 1
-		#define HAL_PLATFORM_CLOUD_TCP 1
+  #define HAL_PLATFORM_CLOUD_UDP 1
+    #define HAL_PLATFORM_CLOUD_TCP 1
 #else
-	#define HAL_PLATFORM_CLOUD_TCP 1
+  #define HAL_PLATFORM_CLOUD_TCP 1
 #endif
 
 #ifndef HAL_PLATFORM_WIFI

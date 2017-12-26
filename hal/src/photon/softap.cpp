@@ -141,7 +141,7 @@ int dns_resolve_query(const char* query)
 
 bool is_device_claimed()
 {
-	return HAL_IsDeviceClaimed(nullptr);
+    return HAL_IsDeviceClaimed(nullptr);
 }
 
 
@@ -184,8 +184,8 @@ protected:
             jsmntok_t* prev = tokens;
             tokens = (jsmntok_t*)realloc(tokens, sizeof(jsmntok_t) * n);
             if (!tokens) {
-            		free(prev);
-            		return nullptr;
+                free(prev);
+                return nullptr;
             }
             ret = jsmn_parse(&parser, js, strlen(js), tokens, n, NULL);
         }
@@ -286,17 +286,17 @@ class JSONRequestCommand : public JSONCommand {
 
 protected:
 
-	/**
-	 * Template method allowing subclasses to handle the parsed json keys.
-	 * @param index The index into the array of keys passed to parse_json_requet of the key that has been matched.
-	 */
+    /**
+     * Template method allowing subclasses to handle the parsed json keys.
+     * @param index The index into the array of keys passed to parse_json_requet of the key that has been matched.
+     */
     virtual bool parsed_key(unsigned index)=0;
 
     /**
      * Template methods allowing subclasses to handle the parsed JSON values.
-     * @param index	the key index this value belongs to
-     * @param t		the jsmn token
-     * @param value	The string value.
+     * @param index the key index this value belongs to
+     * @param t     the jsmn token
+     * @param value The string value.
      *
      * Note that the t and value parameters have a lifetime only for the duration of the method.
      * They should not be stored for later use.
@@ -304,79 +304,79 @@ protected:
     virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value)=0;
 
     int parse_json_request(Reader& reader, const char* const keys[], const jsmntype_t types[], unsigned count) {
-
         int result = -1;
-    		char* js = reader.fetch_as_string();
+        char* js = reader.fetch_as_string();
         if (js)
         {
-			jsmntok_t *tokens = json_tokenise(js);
-			if (tokens)
-			{
-				enum parse_state { START, KEY, VALUE, SKIP, STOP };
+            jsmntok_t *tokens = json_tokenise(js);
+            if (tokens)
+            {
+                enum parse_state { START, KEY, VALUE, SKIP, STOP };
 
-				parse_state state = START;
-				jsmntype_t expected_type = JSMN_OBJECT;
+                parse_state state = START;
+                jsmntype_t expected_type = JSMN_OBJECT;
 
-				result = 0;
-				int key = -1;
+                result = 0;
+                int key = -1;
 
-				for (size_t i = 0, j = 1; j > 0; i++, j--)
-				{
-					jsmntok_t *t = &tokens[i];
-					if (t->type == JSMN_ARRAY || t->type == JSMN_OBJECT)
-						j += t->size * 2;
+                for (size_t i = 0, j = 1; j > 0; i++, j--)
+                {
+                    jsmntok_t *t = &tokens[i];
+                    if (t->type == JSMN_ARRAY || t->type == JSMN_OBJECT) {
+                        j += t->size * 2;
+                    }
 
-					switch (state)
-					{
-						case START:
-							state = KEY;
-							break;
+                    switch (state)
+                    {
+                        case START:
+                            state = KEY;
+                            break;
 
-						case KEY:
-							state = VALUE;
-							key = -1;
-							for (size_t i = 0; i < count; i++)
-							{
-								if (json_token_streq(js, t, keys[i]))
-								{
-									expected_type = types[i];
-									if (parsed_key(i)) {
-										key = i;
-										JSON_DEBUG( ( "key: %s %d %d\n", keys[i], i, (int)expected_type ) );
-									}
-								}
-							}
-							if (key==-1) {
-								JSON_DEBUG( ( "unknown key: %s\n", json_token_tostr(js, t) ) );
-								result = -1;
-							}
-							break;
+                        case KEY:
+                            state = VALUE;
+                            key = -1;
+                            for (size_t i = 0; i < count; i++)
+                            {
+                                if (json_token_streq(js, t, keys[i]))
+                                {
+                                    expected_type = types[i];
+                                    if (parsed_key(i)) {
+                                        key = i;
+                                        JSON_DEBUG( ( "key: %s %d %d\n", keys[i], i, (int)expected_type ) );
+                                    }
+                                }
+                            }
+                            if (key==-1) {
+                                JSON_DEBUG( ( "unknown key: %s\n", json_token_tostr(js, t) ) );
+                                result = -1;
+                            }
+                            break;
 
-						case VALUE:
-							if (key!=-1) {
-								if (t->type != expected_type) {
-									result = -1;
-									JSON_DEBUG( ( "type mismatch\n" ) );
-								}
-								else {
-									char *str = json_token_tostr(js, t);
-									if (!parsed_value(key, t, str))
-										result = -1;
-								}
-							}
-							state = KEY;
-							break;
+                        case VALUE:
+                            if (key!=-1) {
+                                if (t->type != expected_type) {
+                                    result = -1;
+                                    JSON_DEBUG( ( "type mismatch\n" ) );
+                                }
+                                else {
+                                    char *str = json_token_tostr(js, t);
+                                    if (!parsed_value(key, t, str))
+                                        result = -1;
+                                }
+                            }
+                            state = KEY;
+                            break;
 
-						case STOP: // Just consume the tokens
-							break;
+                        case STOP: // Just consume the tokens
+                            break;
 
-						default:
-							result = -1;
-					}
-				}
-				free(tokens);
-			}
-			free(js);
+                        default:
+                            result = -1;
+                    }
+                }
+                free(tokens);
+            }
+            free(js);
         }
         return result;
     }
@@ -543,9 +543,9 @@ int decrypt(char* plaintext, int max_plaintext_len, char* hex_encoded_ciphertext
  */
 class ConfigureAPCommand : public JSONRequestCommand {
 
-	/**
-	 * Receives the data from parsing the json.
-	 */
+    /**
+     * Receives the data from parsing the json.
+     */
     spark::WiFiAllocatedCredentials credentials;
 
     static const char* KEY[12];
@@ -813,8 +813,8 @@ protected:
 
 class SetValueCommand  : public JSONRequestCommand {
 
-	static const unsigned MAX_KEY_LEN = 3;
-	static const unsigned MAX_VALUE_LEN = 64;
+    static const unsigned MAX_KEY_LEN = 3;
+    static const unsigned MAX_VALUE_LEN = 64;
 
     static const char* const KEY[2];
     static const jsmntype_t TYPE[2];
@@ -829,15 +829,16 @@ protected:
     }
 
     inline void assign(char* target, const char* value, unsigned len) {
-    		strncpy(target, value, len);
-    		target[len-1] = '\0';
+        strncpy(target, value, len);
+        target[len-1] = '\0';
     }
 
     virtual bool parsed_value(unsigned index, jsmntok_t* t, char* value) {
-        if (index==0)     // key
-        		assign(this->key, value, MAX_KEY_LEN);
-        else
-        		assign(this->value, value, MAX_VALUE_LEN);
+        if (index==0) {     // key
+            assign(this->key, value, MAX_KEY_LEN);
+        } else {
+            assign(this->value, value, MAX_VALUE_LEN);
+        }
         return true;
     }
 
@@ -919,9 +920,9 @@ class SoftAPController {
      */
     wiced_result_t start_ap()
     {
-		wiced_config_soft_ap_t soft_ap;
-		fetch_soft_ap_credentials(&soft_ap);
-		return wlan_ap_up(soft_ap, &device_init_ip_settings);
+        wiced_config_soft_ap_t soft_ap;
+        fetch_soft_ap_credentials(&soft_ap);
+        return wlan_ap_up(soft_ap, &device_init_ip_settings);
     }
 
 public:
@@ -932,10 +933,13 @@ public:
 
     wiced_result_t start() {
         wiced_result_t result;
-        if (!(result=wiced_rtos_init_semaphore(&complete)))
-        		if (!(result=start_ap()))
-                    if (!(result=wiced_dns_redirector_start( &dns_redirector, WICED_AP_INTERFACE )))
-                        result = WICED_SUCCESS;
+        if (!(result=wiced_rtos_init_semaphore(&complete))) {
+            if (!(result=start_ap())) {
+                if (!(result=wiced_dns_redirector_start( &dns_redirector, WICED_AP_INTERFACE ))) {
+                    result = WICED_SUCCESS;
+                }
+            }
+        }
         return result;
     }
 
@@ -1111,13 +1115,13 @@ extern "C" wiced_http_page_t soft_ap_http_pages[];
 extern const char* SOFT_AP_MSG;
 extern "C" void default_page_handler(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved)
 {
-	if (strcmp(url,"/index")) {
-		cb(cbArg, 0, 404, 0, 0);	// not found
-	}
-	else {
-		Header h("Location: /hello\r\n");
-		cb(cbArg, 0, 301, "text/plain", &h);
-	}
+    if (strcmp(url,"/index")) {
+        cb(cbArg, 0, 404, 0, 0);    // not found
+    }
+    else {
+        Header h("Location: /hello\r\n");
+        cb(cbArg, 0, 301, "text/plain", &h);
+    }
 }
 
 
@@ -1136,52 +1140,52 @@ static void http_stream_writer(Writer& w, wiced_http_response_stream_t* stream) 
  */
 http_status_codes_t status_from_code(uint16_t response)
 {
-	switch (response) {
-	case 200:
-		return HTTP_200_TYPE;
-	case 204:
-		return HTTP_204_TYPE;
-	case 207:
-		return HTTP_207_TYPE;
-	case 301:
-		return HTTP_301_TYPE;
-	case 400:
-	default:
-		return HTTP_400_TYPE;
-	case 403:
-		return HTTP_403_TYPE;
-	case 404:
-		return HTTP_404_TYPE;
-	case 405:
-		return HTTP_405_TYPE;
-	case 406:
-		return HTTP_406_TYPE;
-	case 412:
-		return HTTP_412_TYPE;
-	case 415:
-		return HTTP_415_TYPE;
-	case 429:
-		return HTTP_429_TYPE;
-	case 444:
-		return HTTP_444_TYPE;
-	case 470:
-		return HTTP_470_TYPE;
-	case 500:
-		return HTTP_500_TYPE;
-	case 504:
-		return HTTP_504_TYPE;
-	}
+    switch (response) {
+    case 200:
+        return HTTP_200_TYPE;
+    case 204:
+        return HTTP_204_TYPE;
+    case 207:
+        return HTTP_207_TYPE;
+    case 301:
+        return HTTP_301_TYPE;
+    case 400:
+    default:
+        return HTTP_400_TYPE;
+    case 403:
+        return HTTP_403_TYPE;
+    case 404:
+        return HTTP_404_TYPE;
+    case 405:
+        return HTTP_405_TYPE;
+    case 406:
+        return HTTP_406_TYPE;
+    case 412:
+        return HTTP_412_TYPE;
+    case 415:
+        return HTTP_415_TYPE;
+    case 429:
+        return HTTP_429_TYPE;
+    case 444:
+        return HTTP_444_TYPE;
+    case 470:
+        return HTTP_470_TYPE;
+    case 500:
+        return HTTP_500_TYPE;
+    case 504:
+        return HTTP_504_TYPE;
+    }
 }
 
 int writeHeader(void* cbArg, uint16_t flags, uint16_t responseCode, const char* mimeType, Header* header)
 {
-	const char* header_list = nullptr;
-	if (header && header->size) {
-		header_list = header->header_list;
-	}
+    const char* header_list = nullptr;
+    if (header && header->size) {
+        header_list = header->header_list;
+    }
 
    return wiced_http_response_stream_write_header( (wiced_http_response_stream_t*)cbArg, status_from_code(responseCode),
-		   CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, http_server_get_mime_type(mimeType), header_list);
+           CHUNKED_CONTENT_LENGTH, HTTP_CACHE_DISABLED, http_server_get_mime_type(mimeType), header_list);
 }
 
 struct HTTPRequest {

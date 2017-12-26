@@ -59,7 +59,7 @@ public:
     virtual float getQualityValue() const;
 
     // virtual size_t printTo(Print& p) const;
-    
+
 private:
     wlan_connected_info_t inf_ = {0};
 };
@@ -70,9 +70,9 @@ namespace spark {
 
 class WiFiClass : public NetworkClass
 {
-	void setIPAddressSource(IPAddressSource source) {
+    void setIPAddressSource(IPAddressSource source) {
         wlan_set_ipaddress_source(source, true, NULL);
-	}
+    }
 
 public:
     WiFiClass() {}
@@ -109,16 +109,16 @@ public:
     }
 
     IPAddress dnsServerIP() {
-    	return IPAddress(wifi_config()->nw.aucDNSServer);
+        return IPAddress(wifi_config()->nw.aucDNSServer);
     }
 
     IPAddress dhcpServerIP() {
-    	return IPAddress(wifi_config()->nw.aucDHCPServer);
+        return IPAddress(wifi_config()->nw.aucDHCPServer);
     }
 
     uint8_t* BSSID(uint8_t* bssid) {
-    		memcpy(bssid, wifi_config()->BSSID, 6);
-    		return bssid;
+        memcpy(bssid, wifi_config()->BSSID, 6);
+        return bssid;
     }
 
     const char *SSID() {
@@ -291,8 +291,8 @@ class WiFiAPClass : public WiFiCommon
 {
 
     operator network_handle_t() {
-		return 1;
-	}
+        return 1;
+    }
 
 };
 

@@ -56,10 +56,10 @@ static_assert(1==WiFiAPNetworkInterface::INTERFACE_ID, "expected AP interface to
 
 inline NetworkInterface& nif(network_interface_t _nif) {
 #if Wiring_WiFi_AP
-	if (_nif==1)
-		return ap;
+    if (_nif==1)
+        return ap;
 #endif
-	return wifi;
+    return wifi;
 }
 
 #define Wiring_Network 1

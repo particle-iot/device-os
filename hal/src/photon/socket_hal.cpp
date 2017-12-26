@@ -292,10 +292,10 @@ struct tcp_server_t : public wiced_tcp_server_t
         wiced_tcp_disconnect(socket);
         // remove from client array as this socket is getting closed and
         // subsequently destroyed
-	    int idx = index(socket);
-	    if (idx >= 0) {
-		  clients[idx] = NULL;
-	    }
+        int idx = index(socket);
+        if (idx >= 0) {
+            clients[idx] = NULL;
+        }
         wiced_result_t result = wiced_tcp_server_disconnect_socket(this, socket);
         return result;
     }
@@ -366,12 +366,12 @@ public:
         dispose();
     }
 
-    	uint8_t get_nif() { return nif; }
+    uint8_t get_nif() { return nif; }
     uint8_t get_type() { return type; }
     bool is_type(socket_type_t t) { return t==type; }
     void set_type(network_interface_t nif, socket_type_t t) {
-    		this->nif = nif;
-    		type = t;
+        this->nif = nif;
+        type = t;
     }
 
     void clear_type() { type = NONE; }
@@ -504,13 +504,13 @@ public:
     bool remove(socket_t* item)
     {
         bool removed = false;
-		if (items==item) {
-			items = item->next;
-			removed = true;
-		}
+        if (items==item) {
+            items = item->next;
+            removed = true;
+        }
         else
         {
-			socket_t* current = items;
+            socket_t* current = items;
             while (current) {
                 if (current->next==item) {
                     current->next = item->next;
@@ -578,7 +578,7 @@ static ServerSocketList ap_servers;
 static SocketList ap_clients;
 
 SocketList& list_for(socket_t* socket) {
-	return socket->get_nif() ? ((socket->get_type()==socket_t::TCP_SERVER) ? ap_servers : ap_clients)
+    return socket->get_nif() ? ((socket->get_type()==socket_t::TCP_SERVER) ? ap_servers : ap_clients)
      : ((socket->get_type()==socket_t::TCP_SERVER) ? servers : clients);
 }
 
@@ -607,7 +607,7 @@ inline tcp_server_t* server(socket_t* socket) { return is_server(socket) ? socke
 
 wiced_result_t socket_t::notify_disconnected(wiced_tcp_socket_t*, void* socket) {
     if (socket && 0) {
-    		auto& list = list_for((socket_t*)socket);
+        auto& list = list_for((socket_t*)socket);
         // replace with unique_lock once the multithreading changes have been incorporated
         SocketListLock lock(list);
         if (list.exists((socket_t*)socket)) {
@@ -682,18 +682,18 @@ void close_all(SocketList& list)
 
 SocketList& client_list(network_interface_t type)
 {
-	return type ? ap_clients : clients;
+    return type ? ap_clients : clients;
 }
 
 SocketList& server_list(network_interface_t type)
 {
-	return type ? ap_servers : servers;
+    return type ? ap_servers : servers;
 }
 
 void socket_close_all(uint8_t type)
 {
-	close_all(client_list(type));
-	close_all(server_list(type));
+    close_all(client_list(type));
+    close_all(server_list(type));
 }
 
 #define SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr) \
@@ -827,8 +827,9 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
             bytes_read = read_packet_and_dispose(server_client->packet, buffer, len, server_client->get_socket(), _timeout);
         }
     }
-    if (bytes_read<0)
-    		DEBUG("socket_receive on %d returned %d", sd, bytes_read);
+    if (bytes_read<0) {
+        DEBUG("socket_receive on %d returned %d", sd, bytes_read);
+    }
     return bytes_read;
 }
 

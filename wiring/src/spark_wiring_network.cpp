@@ -9,7 +9,7 @@ NetworkClass& NetworkClass::from(network_interface_t nif)
 {
 #if Wiring_WiFi_AP
     if (nif==1)
-      return AP;
+        return AP;
 #endif
     return Network;
 }

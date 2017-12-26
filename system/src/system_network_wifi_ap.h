@@ -32,13 +32,13 @@ extern WiFiNetworkInterface wifi;
 // todo - rename NetworkInterface to NetworkClientInterface and make a simpler base class that doesn't have the client methods.
 class WiFiAPNetworkInterface : public NetworkInterface
 {
-	bool _ready;
+    bool _ready;
 
 public:
     static const network_interface_t INTERFACE_ID = 1;
 
     virtual network_interface_t network_interface() {
-    		return INTERFACE_ID;
+        return INTERFACE_ID;
     }
 
     /**
@@ -53,10 +53,10 @@ public:
      */
     virtual void on() override
     {
-    		wifi.on();
-    		wlan_ap_enabled(true, nullptr);
-    		_ready = true;
-    		// todo - fetch current state from the HAL
+        wifi.on();
+        wlan_ap_enabled(true, nullptr);
+        _ready = true;
+        // todo - fetch current state from the HAL
     }
 
     /**
@@ -64,8 +64,8 @@ public:
      */
     virtual void off(bool disconnect_cloud=false) override
     {
-    		wlan_ap_enabled(false, nullptr);
-    		_ready = false;
+        wlan_ap_enabled(false, nullptr);
+        _ready = false;
     }
 
     /**
@@ -81,7 +81,7 @@ public:
      */
     virtual bool connecting() override
     {
-    		return false;
+        return false;
     }
 
     /**
@@ -107,16 +107,16 @@ public:
      */
     virtual bool manual_disconnect() override
     {
-    		return false;
+        return false;
     }
 
-	virtual void set_listen_timeout(uint16_t timeout) {
+    virtual void set_listen_timeout(uint16_t timeout) {
 
-	}
+    }
 
-	virtual uint16_t get_listen_timeout() {
-		return 0;
-	}
+    virtual uint16_t get_listen_timeout() {
+        return 0;
+    }
 
     /**
      * Begin WPA enrollment.
@@ -131,7 +131,7 @@ public:
     }
     virtual bool listening() override
     {
-    		return false;
+        return false;
     }
 
     /**
@@ -143,12 +143,12 @@ public:
 
     virtual bool ready()  override
     {
-    		return _ready;
+        return _ready;
     }
 
     virtual bool clear_credentials() override
     {
-    		return !wlan_ap_set_credentials(nullptr, nullptr);
+        return !wlan_ap_set_credentials(nullptr, nullptr);
     }
 
     /**
@@ -156,12 +156,12 @@ public:
      */
     virtual bool has_credentials() override
     {
-    		return wlan_ap_has_credentials(nullptr)==0;
+        return wlan_ap_has_credentials(nullptr)==0;
     }
 
     virtual int set_credentials(NetworkCredentials* creds) override
     {
-		return creds ? wlan_ap_set_credentials(creds, nullptr) : -1;
+        return creds ? wlan_ap_set_credentials(creds, nullptr) : -1;
     }
 
     virtual void config_clear() override
@@ -174,14 +174,14 @@ public:
 
     virtual void* config() override
     {
-    		return nullptr;
+        return nullptr;
     }
 
     virtual int set_hostname(const char* hostname) {
-    		return 0;
+        return 0;
     }
     virtual int get_hostname(char* buffer, size_t buffer_len, bool noDefault=false) {
-    		return 0;
+        return 0;
     }
 
 };

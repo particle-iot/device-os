@@ -27,16 +27,16 @@
 
 test(api_wifi_config)
 {
-	IPAddress address;
-	uint8_t* ether = nullptr;
-	String ssid;
-	API_COMPILE(ssid=WiFi.SSID());
-	API_COMPILE(address=WiFi.localIP());
-	API_COMPILE(address=WiFi.dnsServerIP());
-	API_COMPILE(address=WiFi.dhcpServerIP());
-	API_COMPILE(address=WiFi.gatewayIP());
-	API_COMPILE(ether=WiFi.macAddress(ether));
-	API_COMPILE(ether=WiFi.BSSID(ether));
+    IPAddress address;
+    uint8_t* ether = nullptr;
+    String ssid;
+    API_COMPILE(ssid=WiFi.SSID());
+    API_COMPILE(address=WiFi.localIP());
+    API_COMPILE(address=WiFi.dnsServerIP());
+    API_COMPILE(address=WiFi.dhcpServerIP());
+    API_COMPILE(address=WiFi.gatewayIP());
+    API_COMPILE(ether=WiFi.macAddress(ether));
+    API_COMPILE(ether=WiFi.BSSID(ether));
 }
 
 test(api_wifi_resolve)
@@ -204,24 +204,24 @@ test(api_wifi_hostname)
 
 test(api_wifi_ap_credentials)
 {
-	bool result;
-	API_COMPILE(result=AP.hasCredentials());
-	API_COMPILE(AP.clearCredentials());
+    bool result;
+    API_COMPILE(result=AP.hasCredentials());
+    API_COMPILE(AP.clearCredentials());
 
-	API_COMPILE(AP.setCredentials("ssid"));
-	API_COMPILE(AP.setCredentials("ssid", "password"));
-	API_COMPILE(AP.setCredentials("ssid", "password", WPA2));
-	API_COMPILE(AP.setCredentials("ssid", 4, "password", 8, WPA2, WLAN_CIPHER_AES));
-	(void)result;
+    API_COMPILE(AP.setCredentials("ssid"));
+    API_COMPILE(AP.setCredentials("ssid", "password"));
+    API_COMPILE(AP.setCredentials("ssid", "password", WPA2));
+    API_COMPILE(AP.setCredentials("ssid", 4, "password", 8, WPA2, WLAN_CIPHER_AES));
+    (void)result;
 }
 
 test(api_wifi_ap_state)
 {
-	bool state;
-	API_COMPILE(state=AP.ready());
-	API_COMPILE(AP.on());
-	API_COMPILE(AP.off());
-	(void)state;
+    bool state;
+    API_COMPILE(state=AP.ready());
+    API_COMPILE(AP.on());
+    API_COMPILE(AP.off());
+    (void)state;
 }
 
 

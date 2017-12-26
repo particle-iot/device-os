@@ -61,7 +61,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part2_mo
     DYNALIB_TABLE_NAME(hal_bootloader),
     DYNALIB_TABLE_NAME(hal_dct),
     DYNALIB_TABLE_NAME(system_module_part2),
-	DYNALIB_TABLE_NAME(hal_wlan_ap),
+    DYNALIB_TABLE_NAME(hal_wlan_ap),
 };
 
 #include "system_part2_loader.c"

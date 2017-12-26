@@ -83,14 +83,14 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t reserved1[64];
     uint8_t server_public_key[768];     // 4096 bits
     uint8_t padding[2];                 // align to 4 byte boundary
-    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];//100 bytes
+    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT]; //100 bytes
     uint16_t product_store[12];
     uint8_t antenna_selection;           // 0xFF is uninitialized
-    uint8_t cloud_transport;				// 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
-    uint8_t alt_device_public_key[128];	// alternative device public key
-    uint8_t alt_device_private_key[192];	// alternative device private key
+    uint8_t cloud_transport;             // 0xFF is uninitialized meaning platform default (TCP for Photon, UDP for Electron). 0 is TCP on Electron.
+    uint8_t alt_device_public_key[128];  // alternative device public key
+    uint8_t alt_device_private_key[192]; // alternative device private key
     uint8_t alt_server_public_key[192];
-    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
+    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
     uint8_t device_id[12];                               // the STM32 device ID
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
     button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
