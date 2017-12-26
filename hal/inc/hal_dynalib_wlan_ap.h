@@ -33,6 +33,7 @@ DYNALIB_FN(0, hal_wlan_ap, wlan_ap_has_credentials, wlan_result_t(void*))
 DYNALIB_FN(1, hal_wlan_ap, wlan_ap_set_credentials, wlan_result_t(WLanCredentials*,void*))
 DYNALIB_FN(2, hal_wlan_ap, wlan_ap_get_credentials, wlan_result_t(WiFiAccessPoint*,void*))
 DYNALIB_FN(3, hal_wlan_ap, wlan_ap_get_state, wlan_result_t(uint8_t*,void*))
+DYNALIB_FN(4, hal_wlan_ap, wlan_ap_enabled, int(uint8_t, void*))
 DYNALIB_END(hal_wlan_ap)
 
 #endif
