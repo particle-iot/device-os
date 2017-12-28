@@ -586,7 +586,7 @@ void add_socket(socket_t* socket) {
     if (socket) {
         list_for(socket).add(socket);
     }
-    }
+}
 
 /**
  * Determines if the given socket still exists in the list of current sockets.
@@ -685,7 +685,7 @@ SocketList& client_list(network_interface_t type)
     return type ? ap_clients : clients;
 }
 
-SocketList& server_list(network_interface_t type)
+ServerSocketList& server_list(network_interface_t type)
 {
     return type ? ap_servers : servers;
 }
@@ -840,6 +840,9 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
  */
 wiced_result_t server_connected(wiced_tcp_socket_t* s, void* pv)
 {
+    network_interface_t nif = (network_interface_t)(pv);
+    auto& servers = server_list(nif);
+
     SocketListLock lock(servers);
     tcp_server_t* server = servers.server_for_socket(s);
     wiced_result_t result = WICED_ERROR;
@@ -864,6 +867,9 @@ wiced_result_t server_received(wiced_tcp_socket_t* socket, void* pv)
  */
 wiced_result_t server_disconnected(wiced_tcp_socket_t* s, void* pv)
 {
+    network_interface_t nif = (network_interface_t)(pv);
+    auto& servers = server_list(nif);
+
     SocketListLock lock(servers);
     tcp_server_t* server = servers.server_for_socket(s);
     wiced_result_t result = WICED_ERROR;
@@ -882,7 +888,7 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
     wiced_result_t result = WICED_OUT_OF_HEAP_SPACE;
     if (socket && server) {
         result = wiced_tcp_server_start(server, wiced_wlan_interface(nif),
-            port, WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS, server_connected, server_received, server_disconnected, NULL);
+            port, WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS, server_connected, server_received, server_disconnected, (void*)nif);
     }
     if (result!=WICED_SUCCESS) {
         delete socket; socket = NULL;
