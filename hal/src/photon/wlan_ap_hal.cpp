@@ -91,9 +91,11 @@ static wiced_result_t set_ap_credentials(const wiced_config_soft_ap_t& creds)
         // check if there is a change and only write then.
         if (memcmp(&creds, dct_creds, sizeof(creds)))
         {
+            unread_ap_credentials(dct_creds);
             result = write_ap_credentials(&creds);
+        } else {
+            unread_ap_credentials(dct_creds);
         }
-        unread_ap_credentials(dct_creds);
     }
     else
     {
