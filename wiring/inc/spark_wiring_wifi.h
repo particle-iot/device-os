@@ -289,7 +289,7 @@ class WiFiCommon : public NetworkClass {
 #if Wiring_WiFi_AP
 class WiFiAPClass : public WiFiCommon
 {
-
+public:
     operator network_handle_t() {
         return 1;
     }
