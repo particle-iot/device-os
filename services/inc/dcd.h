@@ -135,7 +135,7 @@ public:
          */
         bool isValid() const
         {
-            return isHeader() && seal==SEAL_VALID;
+            return isHeader() && (seal==SEAL_VALID || seal == SEAL_INVALID_V2);
         }
 
         void initialize()
@@ -177,7 +177,7 @@ public:
     public:
 		using crc_type = decltype(crc_);
 
-		void isValid() const {
+		bool isValid() const {
 			return watermark==WATERMARK;
 		}
 
@@ -423,8 +423,11 @@ public:
     }
 
     bool isCRCValid(Sector sector, uint32_t expected) {
-    		uint32_t actual = computeCRC(store.dataAt(addressOf(sector)));
-    		return actual==expected;
+        if (sectorFooter(sector).isValid()) {
+            uint32_t actual = computeCRC(store.dataAt(addressOf(sector)));
+            return actual==expected;
+        }
+        return false;
     }
 
     uint32_t computeCRC(const uint8_t* sectorStart) {
@@ -547,10 +550,10 @@ public:
         }
 
         uint8_t counter = 0;
-        if (existing) {
-        		counter = uint8_t((existingFooter.counter() + 1) & 3);
+        if (existing && existingFooter.isValid()) {
+            counter = uint8_t((existingFooter.counter() + 1) & 3);
         }
-        error = _write_v2_footer(newSector, existing ? &existingFooter : nullptr, counter);
+        error = _write_v2_footer(newSector, (existing && existingFooter.isValid()) ? &existingFooter : nullptr, counter);
         if (error) return error;
         typename Footer::crc_type crc = computeSectorCRC(newSector);
         writeOffset = sectorSize-sizeof(typename Footer::crc_type);
@@ -569,7 +572,7 @@ public:
         Address destination = addressOf(sector);
         Footer footer;
         if (existingFooter) {
-        		footer = *existingFooter;
+            footer = *existingFooter;
         } else {
             footer.initialize();
         }
