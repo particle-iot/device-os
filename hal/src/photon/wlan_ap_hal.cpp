@@ -123,7 +123,7 @@ static void copy_from_wlan_credentials(wiced_config_soft_ap_t& ap_creds, WLanCre
         cipher = WLAN_CIPHER_AES;
 
     ap_creds.security = wlan_to_wiced_security(security_type, cipher);
-    ap_creds.details_valid = WICED_TRUE;
+    ap_creds.details_valid = CONFIG_VALIDITY_VALUE;
 }
 
 static void copy_to_wifi_access_point(WiFiAccessPoint& dest, wiced_config_soft_ap_t& source)
@@ -220,8 +220,11 @@ int wlan_ap_has_credentials(void* reserved)
     wiced_result_t result = read_ap_credentials(&dct_creds);
     if (result == WICED_SUCCESS)
     {
-        if (!dct_creds->details_valid)
-            result = WICED_ERROR;       // no details
+        if (dct_creds->details_valid != CONFIG_VALIDITY_VALUE) {
+            // Invalid settings
+            result = WICED_ERROR;
+        }
+
         unread_ap_credentials(dct_creds);
     }
     return result;
