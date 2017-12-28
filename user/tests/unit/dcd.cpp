@@ -5,6 +5,7 @@
 #include "dcd.h"
 #include <string.h>
 #include "hippomocks.h"
+#include <random>
 
 const int TestSectorSize = 16000;
 const int TestSectorCount = 2;
@@ -256,16 +257,20 @@ TEST_CASE("initialized header has version 1", "[header]") {
 SCENARIO_METHOD(TestDCD, "isCRCValid", "[dcd]") {
 	TestDCD& dcd = *this;
 	uint32_t crc = 0x1234ABCD;
+
+    REQUIRE_FALSE(isInitialized());
+    initialize(Sector_0);
+
 	GIVEN("calculateCRC is mocked") {
 		const uint8_t* start = store.dataAt(addressOf(Sector_0));
 		MockRepository mocks;
-		mocks.ExpectCallFunc(calcCrc).With((const void*)(start+8), 16000-12).Return(crc);
+		mocks.ExpectCallFunc(calcCrc).With((const void*)(start+sizeof(Header)), TestSectorSize-sizeof(Header)-sizeof(typename Footer::crc_type)).Return(crc);
 
-		WHEN("the header has a different CRC") {
+		WHEN("the footer has a different CRC") {
 			REQUIRE_FALSE(dcd.isCRCValid(Sector_0, 0x1234));
 		}
 
-		WHEN("the header has the same CRC") {
+		WHEN("the footer has the same CRC") {
 			REQUIRE(dcd.isCRCValid(Sector_0, crc));
 		}
 	}
@@ -367,4 +372,74 @@ SCENARIO_METHOD(TestDCD, "upgrade v1 to v2 format", "[dcd]") {
 
 	//sector should have a valid CRC
     REQUIRE(this->isCRCValid(Sector_1));
+
+    // Footer should be valid
+    const auto& footer = sectorFooter(currentSector());
+    REQUIRE(footer.isValid());
+}
+
+static void fillRandom(uint8_t* data, size_t size) {
+    static std::random_device r;
+    static std::default_random_engine rnd(r());
+
+    for (uint32_t* ptr = (uint32_t*)data; (uint32_t*)ptr < (uint32_t*)(data + size); ptr++) {
+        *ptr = rnd();
+    }
+}
+
+SCENARIO_METHOD(TestDCD, "secondary (invalid_v2) sector is selected as valid if primary (valid) is lost", "[dcd]") {
+    // Erase both sectors
+    store.eraseSector(TestBase);
+    store.eraseSector(TestBase + TestSectorSize);
+
+    // Generate some random data
+    uint8_t temp[TestSectorSize / 2] = {};
+    fillRandom(temp, sizeof(temp));
+
+    // DCD is unitialized, both sectors are invalid
+    REQUIRE(!isInitialized());
+    REQUIRE(!isValid(Sector_0));
+    REQUIRE(!isValid(Sector_1));
+
+    // Write random data. This should end up in Sector_0
+    REQUIRE(write(0, temp, sizeof(temp)) == DCD_SUCCESS);
+    REQUIRE(isValid(Sector_0));
+
+    // Validate data
+    assertMemoryEqual(read(0), temp, sizeof(temp));
+
+    // Write same data
+    // This will cause a sector switch
+    REQUIRE(write(0, temp, sizeof(temp)) == DCD_SUCCESS);
+    // Both sectors should be valid
+    REQUIRE(isValid(Sector_0));
+    REQUIRE(isValid(Sector_1));
+
+    // The data should be in Sector_1
+    REQUIRE(currentSector() == Sector_1);
+    // Validate data
+    assertMemoryEqual(read(0), temp, sizeof(temp));
+
+    // Erase second sector, imitating a write/erase failure that was not caught during a write operation itself
+    store.eraseSector(TestBase + TestSectorSize);
+
+    // DCD should be initialized, only Sector_0 should be valid
+    REQUIRE(isInitialized());
+    REQUIRE(isValid(Sector_0));
+    REQUIRE(!isValid(Sector_1));
+
+    // Change only first 8 bytes
+    fillRandom(temp, sizeof(uint32_t) * 2);
+
+    // Write these modified 8 bytes
+    REQUIRE(write(0, temp, sizeof(uint32_t) * 2) == DCD_SUCCESS);
+    REQUIRE(isInitialized());
+    // The data should have ended up in Sector_1
+    REQUIRE(currentSector() == Sector_1);
+    // Both sectors should be valid
+    REQUIRE(isValid(Sector_0));
+    REQUIRE(isValid(Sector_1));
+
+    // Validate data
+    assertMemoryEqual(read(0), temp, sizeof(temp));
 }
