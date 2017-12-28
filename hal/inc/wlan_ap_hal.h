@@ -20,10 +20,18 @@
 
 #include "wlan_hal.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 wlan_result_t wlan_ap_has_credentials(void* reserved);
 wlan_result_t wlan_ap_set_credentials(WLanCredentials* wlan_creds, void* reserved);
 wlan_result_t wlan_ap_get_credentials(WiFiAccessPoint* wap, void* reserved);
 wlan_result_t wlan_ap_get_state(uint8_t* state, void* reserved);
 int wlan_ap_enabled(uint8_t enabled, void* reserved);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif /* WLAN_AP_HAL_H */
