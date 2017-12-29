@@ -23,10 +23,15 @@ namespace particle {
 
 namespace control {
 
-int prepareFirmwareUpdateRequest(ctrl_request* req);
+int startFirmwareUpdateRequest(ctrl_request* req);
 void finishFirmwareUpdateRequest(ctrl_request* req);
 int cancelFirmwareUpdateRequest(ctrl_request* req);
-int saveFirmwareChunkRequest(ctrl_request* req);
+int saveFirmwareDataRequest(ctrl_request* req);
+
+int describeStorageRequest(ctrl_request* req);
+int loadStorageDataRequest(ctrl_request* req);
+int saveStorageDataRequest(ctrl_request* req);
+int clearStorageSectionRequest(ctrl_request* req);
 
 } // namespace particle::control
 

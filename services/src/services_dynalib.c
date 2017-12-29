@@ -30,5 +30,4 @@
 #include "led_service.h"
 #include "diagnostics.h"
 #include "printf_float.h"
-#include "nanopb_misc.h"
 #include "services_dynalib.h"

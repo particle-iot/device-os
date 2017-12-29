@@ -25,6 +25,18 @@
 
 #include "dynalib.h"
 
+#ifdef DYNALIB_EXPORT
+#include "nanopb_misc.h"
+#include <stdint.h>
+#ifdef PB_WITHOUT_64BIT
+#define pb_int64_t int32_t
+#define pb_uint64_t uint32_t
+#else
+#define pb_int64_t int64_t
+#define pb_uint64_t uint64_t
+#endif
+#endif // defined(DYNALIB_EXPORT)
+
 DYNALIB_BEGIN(services)
 
 DYNALIB_FN(0, services, LED_SetRGBColor, void(uint32_t))
@@ -87,16 +99,16 @@ DYNALIB_FN(BASE_IDX + 2, services, pb_istream_init, pb_istream_t*(void*))
 DYNALIB_FN(BASE_IDX + 3, services, pb_istream_free, bool(pb_istream_t*, void*))
 DYNALIB_FN(BASE_IDX + 4, services, pb_ostream_from_buffer_ex, bool(pb_ostream_t*, pb_byte_t*, size_t, void*))
 DYNALIB_FN(BASE_IDX + 5, services, pb_istream_from_buffer_ex, bool(pb_istream_t*, const pb_byte_t*, size_t, void*))
-// Encoding
+// Encoding/decoding
 DYNALIB_FN(BASE_IDX + 6, services, pb_encode, bool(pb_ostream_t*, const pb_field_t[], const void*))
 DYNALIB_FN(BASE_IDX + 7, services, pb_get_encoded_size, bool(size_t*, const pb_field_t[], const void*))
 DYNALIB_FN(BASE_IDX + 8, services, pb_encode_tag_for_field, bool(pb_ostream_t*, const pb_field_t*))
 DYNALIB_FN(BASE_IDX + 9, services, pb_encode_submessage, bool(pb_ostream_t*, const pb_field_t[], const void*))
-
-// Decoding
 DYNALIB_FN(BASE_IDX + 10, services, pb_decode_noinit, bool(pb_istream_t*, const pb_field_t[], void*))
 DYNALIB_FN(BASE_IDX + 11, services, pb_read, bool(pb_istream_t*, pb_byte_t*, size_t))
 DYNALIB_FN(BASE_IDX + 12, services, pb_encode_string, bool(pb_ostream_t*, const pb_byte_t*, size_t))
+DYNALIB_FN(BASE_IDX + 13, services, pb_encode_tag, bool(pb_ostream_t*, pb_wire_type_t, uint32_t))
+DYNALIB_FN(BASE_IDX + 14, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
 
 DYNALIB_END(services)
 

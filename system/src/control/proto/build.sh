@@ -22,7 +22,11 @@ PROTOC_NANOPB_PLUGIN="${NANOPB_PATH}/generator/protoc-gen-nanopb"
 PROTOC_INCLUDE_PATH="-I${PROTO_DIR} -I${NANOPB_PATH}/generator -I${NANOPB_PATH}/generator/proto"
 
 gen_proto() {
-  protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$1"
+  src_proto="$1"
+  dest_h=$(basename "$src_proto" .proto).pb.h
+  if [[ $src_proto -nt $DIR/$dest_h ]]; then
+    protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$src_proto"
+  fi
 }
 
 gen_proto "${PROTO_DIR}/common.proto"
@@ -30,4 +34,4 @@ gen_proto "${PROTO_DIR}/control.proto"
 gen_proto "${PROTO_DIR}/config.proto"
 gen_proto "${PROTO_DIR}/wifi.proto"
 gen_proto "${PROTO_DIR}/network.proto"
-gen_proto "${PROTO_DIR}/update.proto"
+gen_proto "${PROTO_DIR}/storage.proto"

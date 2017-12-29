@@ -28,7 +28,7 @@
 #include "control/network.h"
 #include "control/wifi.h"
 #include "control/config.h"
-#include "control/update.h"
+#include "control/storage.h"
 
 namespace {
 
@@ -226,8 +226,8 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, control::config::handleSetSoftapSsidRequest(req));
         break;
     }
-    case CTRL_REQUEST_PREPARE_FIRMWARE_UPDATE: {
-        setResult(req, control::prepareFirmwareUpdateRequest(req));
+    case CTRL_REQUEST_START_FIRMWARE_UPDATE: {
+        setResult(req, control::startFirmwareUpdateRequest(req));
         break;
     }
     case CTRL_REQUEST_FINISH_FIRMWARE_UPDATE: {
@@ -238,8 +238,24 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, control::cancelFirmwareUpdateRequest(req));
         break;
     }
-    case CTRL_REQUEST_SAVE_FIRMWARE_CHUNK: {
-        setResult(req, control::saveFirmwareChunkRequest(req));
+    case CTRL_REQUEST_SAVE_FIRMWARE_DATA: {
+        setResult(req, control::saveFirmwareDataRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_DESCRIBE_STORAGE: {
+        setResult(req, control::describeStorageRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_LOAD_STORAGE_DATA: {
+        setResult(req, control::loadStorageDataRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_SAVE_STORAGE_DATA: {
+        setResult(req, control::saveStorageDataRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_CLEAR_STORAGE_SECTION: {
+        setResult(req, control::clearStorageSectionRequest(req));
         break;
     }
     default:
