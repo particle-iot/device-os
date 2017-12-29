@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#pragma once
+
 #include "eeprom_emulation.h"
 #include "flash_storage_impl.h"
 
@@ -27,57 +29,3 @@ constexpr size_t EEPROM_SectorSize1 = 16*1024;
 constexpr size_t EEPROM_SectorSize2 = 64*1024;
 
 using FlashEEPROM = EEPROMEmulation<InternalFlashStore, EEPROM_SectorBase1, EEPROM_SectorSize1, EEPROM_SectorBase2, EEPROM_SectorSize2>;
-
-FlashEEPROM flashEEPROM;
-
-
-extern "C" {
-
-void HAL_EEPROM_Init(void)
-{
-  flashEEPROM.init();
-}
-
-uint8_t HAL_EEPROM_Read(uint32_t index)
-{
-  uint8_t value = 0xFF;
-  flashEEPROM.get(index, value);
-  return value;
-}
-
-void HAL_EEPROM_Write(uint32_t index, uint8_t data)
-{
-  flashEEPROM.put(index, data);
-}
-
-size_t HAL_EEPROM_Length()
-{
-  return flashEEPROM.capacity();
-}
-
-void HAL_EEPROM_Get(uint32_t index, void *data, size_t length)
-{
-    flashEEPROM.get(index, data, length);
-}
-
-void HAL_EEPROM_Put(uint32_t index, const void *data, size_t length)
-{
-    flashEEPROM.put(index, data, length);
-}
-
-void HAL_EEPROM_Clear()
-{
-    flashEEPROM.clear();
-}
-
-bool HAL_EEPROM_Has_Pending_Erase()
-{
-    return flashEEPROM.hasPendingErase();
-}
-
-void HAL_EEPROM_Perform_Pending_Erase()
-{
-    flashEEPROM.performPendingErase();
-}
-
-}

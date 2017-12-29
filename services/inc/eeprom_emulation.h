@@ -226,7 +226,7 @@ public:
 
     // Returns number of bytes that can be stored in EEPROM
     // The actual capacity is set to 50% of the records that fit in the smallest page
-    constexpr size_t capacity() const
+    static constexpr size_t capacity()
     {
         return SmallestPageSize / sizeof(Record) / 2;
     }
