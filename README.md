@@ -11,7 +11,7 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 
 # Resources
 
-- [Latest Release](http://github.com/spark/firmware/releases/)
+- [Latest Release](http://github.com/particle-iot/firmware/releases/)
 - [Changelog](CHANGELOG.md)
 
 
@@ -33,9 +33,9 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 - [Photon SoftAP Protocol](hal/src/photon/soft-ap.md)
 - [WiFi Tester Firmware](user/applications/wifitester/readme.md)
 - [Testing](user/tests/readme.md)
-- [API Changes Checklist](http://github.com/spark/firmware/wiki/Firmware-API-Changes-Checklist)
-- [Firmware Release Checklist](http://github.com/spark/firmware/wiki/Firmware-Release-Checklist)
-- [System describe message](https://github.com/spark/firmware/wiki/Module-descriptor-format)
+- [API Changes Checklist](http://github.com/particle-iot/firmware/wiki/Firmware-API-Changes-Checklist)
+- [Firmware Release Checklist](http://github.com/particle-iot/firmware/wiki/Firmware-Release-Checklist)
+- [System describe message](https://github.com/particle-iot/firmware/wiki/Module-descriptor-format)
 - [build test suite](build/test/readme.md)
 - [System Threading](system/system-threading.md)
 - [system versions and releases](system/system-versions.md)

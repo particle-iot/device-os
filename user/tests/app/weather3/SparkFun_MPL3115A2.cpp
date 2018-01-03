@@ -7,7 +7,7 @@
 
  This library allows an Arduino to read from the MPL3115A2 low-cost high-precision pressure sensor.
 
- If you have feature suggestions or need support please use the github support page: https://github.com/sparkfun/MPL3115A2_Breakout
+ If you have feature suggestions or need support please use the github support page: https://github.com/particle-iotfun/MPL3115A2_Breakout
 
  Hardware Setup: The MPL3115A2 lives on the I2C bus. Attach the SDA pin to A4, SCL to A5. Use inline 10k resistors
  if you have a 5V board. If you are using the SparkFun breakout board you *do not* need 4.7k pull-up resistors

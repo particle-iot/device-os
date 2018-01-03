@@ -5,6 +5,6 @@ ifeq ("$(git_branch)","develop")
        $(error Please note the develop branch contains untested, unreleased code. \
         We recommend using the 'release/stable' branch which contains the latest released firmware code. \
         To build the develop branch, please see the the build documentation at \
-        https://github.com/spark/firmware/blob/develop/docs/build.md#building-the-develop-branch)
+        https://github.com/particle-iot/firmware/blob/develop/docs/build.md#building-the-develop-branch)
     endif
 endif

@@ -27,7 +27,7 @@ namespace std {
 	/**
 	 * Imlementation of conditional varaible in terms of the HAL. This has
 	 * a potential race condition due to the placement of the critical section,
-	 * so has been commented out. https://github.com/spark/firmware/pull/614#discussion-diff-39882530
+	 * so has been commented out. https://github.com/particle-iot/firmware/pull/614#discussion-diff-39882530
 	 */
     condition_variable::~condition_variable()
     {

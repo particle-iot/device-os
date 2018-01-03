@@ -386,7 +386,7 @@ test(BAND_SELECT_08_restore_defaults) {
 #define LOREM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut elit nec mi bibendum mollis. Nam nec nisl mi. Donec dignissim iaculis purus, ut condimentum arcu semper quis. Phasellus efficitur ut arcu ac dignissim. In interdum sem id dictum luctus. Ut nec mattis sem. Nullam in aliquet lacus. Donec egestas nisi volutpat lobortis sodales. Aenean elementum magna ipsum, vitae pretium tellus lacinia eu. Phasellus commodo nisi at quam tincidunt, tempor gravida mauris facilisis. Duis tristique ligula ac pulvinar consectetur. Cras aliquam, leo ut eleifend molestie, arcu odio semper odio, quis sollicitudin metus libero et lorem. Donec venenatis congue commodo. Vivamus mattis elit metus, sed fringilla neque viverra eu. Phasellus leo urna, elementum vel pharetra sit amet, auctor non sapien. Phasellus at justo ac augue rutrum vulputate. In hac habitasse platea dictumst. Pellentesque nibh eros, placerat id laoreet sed, dapibus efficitur augue. Praesent pretium diam ac sem varius fermentum. Nunc suscipit dui risus sed"
 
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
-    // https://github.com/spark/firmware/issues/1104
+    // https://github.com/particle-iot/firmware/issues/1104
     const char request[] =
         "POST /post HTTP/1.1\r\n"
         "Host: httpbin.org\r\n"
@@ -443,7 +443,7 @@ static int atCallback(int type, const char* buf, int len, int* lines) {
 }
 
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
-    // https://github.com/spark/firmware/issues/1138
+    // https://github.com/particle-iot/firmware/issues/1138
     int lines = 0;
     int ret = -99999;
     // Disconnected from the Cloud so we are not dealing with any other command responses

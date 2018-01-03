@@ -23,7 +23,7 @@
 #if PLATFORM_ID == 6
 
 // Regression test for the WICED deadlock in sys_sem_new
-// See https://github.com/spark/firmware/pull/984
+// See https://github.com/particle-iot/firmware/pull/984
 test(CONCURRENT_01_semaphore_deadlock)
 {
     volatile bool run = true;

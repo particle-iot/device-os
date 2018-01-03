@@ -470,7 +470,7 @@ USE_SWD=y
 ```
 
 and perform a clean build. For more details on SWD-only debugging
-see https://github.com/spark/firmware/pull/337
+see https://github.com/particle-iot/firmware/pull/337
 
 ## Compilation without Cloud Support
 

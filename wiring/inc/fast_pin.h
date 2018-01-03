@@ -30,7 +30,7 @@ extern "C" {
 #include "pinmap_hal.h"
 
 /* Disabling USE_BIT_BAND since bitbanding is much slower! as per comment
- * by @pkourany on PR: https://github.com/spark/firmware/pull/556 */
+ * by @pkourany on PR: https://github.com/particle-iot/firmware/pull/556 */
 #define USE_BIT_BAND 0
 
 #if USE_BIT_BAND

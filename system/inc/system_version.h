@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 /**
- * This file is referenced from https://github.com/spark/firmware/wiki/Firmware-Release-Checklist
+ * This file is referenced from https://github.com/particle-iot/firmware/wiki/Firmware-Release-Checklist
  */
 
 #define SYSTEM_VERSION_v040     0x00040000

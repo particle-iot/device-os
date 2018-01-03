@@ -146,7 +146,7 @@ test(4_I2C_MCP23017_doRequestControlStopReadNoStop) {
 }
 
 /*
- * Tests for https://github.com/spark/firmware/issues/1042
+ * Tests for https://github.com/particle-iot/firmware/issues/1042
  */
 test(5_I2C_MCP23017_HighPriorityInterruptsDoNotInterfere) {
     if (s_skip) {
@@ -173,7 +173,7 @@ test(5_I2C_MCP23017_HighPriorityInterruptsDoNotInterfere) {
 }
 
 /*
- * Tests for https://github.com/spark/firmware/issues/1042
+ * Tests for https://github.com/particle-iot/firmware/issues/1042
  */
 test(6_I2C_MCP23017_NastyThreadDisablingContextSwitchingDoesNotInterfere) {
     if (s_skip) {
@@ -200,7 +200,7 @@ test(6_I2C_MCP23017_NastyThreadDisablingContextSwitchingDoesNotInterfere) {
 }
 
 /*
- * Tests for https://github.com/spark/firmware/issues/1042
+ * Tests for https://github.com/particle-iot/firmware/issues/1042
  */
 test(7_I2C_MCP23017_HighPriorityInterruptsAndNastyThreadDisablingContextSwitchingDoNotInterfere) {
     if (s_skip) {

@@ -1,4 +1,4 @@
-# This file is used by https://github.com/spark/firmware-buildpack-builder to
+# This file is used by https://github.com/particle-iot/firmware-buildpack-builder to
 # build Docker images containing all toolchains and sources nessesary for
 # compilation.
 #

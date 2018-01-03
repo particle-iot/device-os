@@ -4,7 +4,7 @@
 ```
 **Important:** Please sanitize/remove any confidential info like usernames, passwords, org names, product names/ids, access tokens, client ids/secrets, or anything else you don't wish to share.
 
-Please Read and Sign the Contributor License Agreement ([Info here](https://github.com/spark/firmware/blob/develop/CONTRIBUTING.md)).
+Please Read and Sign the Contributor License Agreement ([Info here](https://github.com/particle-iot/firmware/blob/develop/CONTRIBUTING.md)).
 
 You may also delete this submission notes header if you'd like. Thank you for contributing!
 ```
@@ -46,7 +46,7 @@ Links to the Community, Docs, Other Issues, etc..
 ### Completeness
 
 - [x] User is totes amazing for contributing!
-- [ ] Contributor has signed CLA ([Info here](https://github.com/spark/firmware/blob/develop/CONTRIBUTING.md))
+- [ ] Contributor has signed CLA ([Info here](https://github.com/particle-iot/firmware/blob/develop/CONTRIBUTING.md))
 - [ ] Problem and Solution clearly stated
 - [ ] Run unit/integration/application tests on device
 - [ ] Added documentation

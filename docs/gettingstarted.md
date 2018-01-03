@@ -22,11 +22,11 @@ Open up a terminal window, navigate to your destination directory and type the f
 
 (Make sure you have git installed on your machine!)
 
-* `git clone https://github.com/spark/firmware.git`
+* `git clone https://github.com/particle-iot/firmware.git`
 
 **Method 2:** Download the zipped files directly from the GitHub website
 
-* [`develop` branch firmware](https://github.com/spark/firmware/archive/develop.zip)
+* [`develop` branch firmware](https://github.com/particle-iot/firmware/archive/develop.zip)
 
 #### How do we *build* these repositories?
 
