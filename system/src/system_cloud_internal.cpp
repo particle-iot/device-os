@@ -1104,8 +1104,13 @@ int spark_cloud_socket_connect()
     ip_address_error = determine_connection_address(ip_addr, port, server_addr, udp);
     if (!ip_address_error)
     {
-    		uint8_t local_port_offset = (PLATFORM_ID==3) ? 100 : 0;
-        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port+local_port_offset, NIF_DEFAULT);
+#if PLATFORM_ID == 3
+        // Use ephemeral port
+        uint16_t bport = 0;
+#else
+        uint16_t bport = port;
+#endif
+        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, bport, NIF_DEFAULT);
         DEBUG("socketed udp=%d, sparkSocket=%d, %d", udp, sparkSocket, socket_handle_valid(sparkSocket));
     }
 
