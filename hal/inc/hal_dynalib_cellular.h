@@ -68,6 +68,8 @@ DYNALIB_FN(27, hal_cellular, cellular_pause, cellular_result_t(void*))
 DYNALIB_FN(28, hal_cellular, cellular_resume, cellular_result_t(void*))
 DYNALIB_FN(29, hal_cellular, cellular_imsi_to_network_provider, cellular_result_t(void*))
 DYNALIB_FN(30, hal_cellular, cellular_network_provider_data_get, const CellularNetProvData(void*))
+DYNALIB_FN(31, hal_cellular, cellular_lock, int(void*))
+DYNALIB_FN(32, hal_cellular, cellular_unlock, void(void*))
 DYNALIB_END(hal_cellular)
 
 #endif  // PLATFORM_ID == 10

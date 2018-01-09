@@ -314,4 +314,15 @@ const CellularNetProvData cellular_network_provider_data_get(void* reserved)
     return CELLULAR_NET_PROVIDER_DATA[cellularNetProv];
 }
 
+int cellular_lock(void* reserved)
+{
+    electronMDM.lock();
+    return 0;
+}
+
+void cellular_unlock(void* reserved)
+{
+    electronMDM.unlock();
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

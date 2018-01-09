@@ -404,6 +404,16 @@ int MDMParser::sendCommandWithArgs(const char* fmt, va_list args, _CALLBACKPTR c
     return ret;
 }
 
+void MDMParser::lock()
+{
+    mdm_mutex.lock();
+}
+
+void MDMParser::unlock()
+{
+    mdm_mutex.unlock();
+}
+
 int MDMParser::_cbString(int type, const char* buf, int len, char* str)
 {
     if (str && (type == TYPE_UNKNOWN)) {
