@@ -461,6 +461,12 @@ public:
     int sendCommandWithArgs(const char* fmt, va_list args, _CALLBACKPTR cb = NULL, void* param = NULL,
             system_tick_t timeout = 10000);
 
+    /** Acquires the modem lock. */
+    void lock();
+
+    /** Releases the modem lock. */
+    void unlock();
+
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.
@@ -501,12 +507,7 @@ protected:
         \param index the index of the received SMS
     */
     void SMSreceived(int index);
-protected:
-    // for rtos over riding by useing Rtos<MDMxx>
-    //! override the lock in a rtos system
-    virtual void lock(void)        { }
-    //! override the unlock in a rtos system
-    virtual void unlock(void)      { }
+
 protected:
     // parsing callbacks for different AT commands and their parameter arguments
     static int _cbString(int type, const char* buf, int len, char* str);
