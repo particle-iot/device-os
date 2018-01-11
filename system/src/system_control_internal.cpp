@@ -238,24 +238,28 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, control::cancelFirmwareUpdateRequest(req));
         break;
     }
-    case CTRL_REQUEST_SAVE_FIRMWARE_DATA: {
-        setResult(req, control::saveFirmwareDataRequest(req));
+    case CTRL_REQUEST_FIRMWARE_UPDATE_DATA: {
+        setResult(req, control::firmwareUpdateDataRequest(req));
         break;
     }
     case CTRL_REQUEST_DESCRIBE_STORAGE: {
         setResult(req, control::describeStorageRequest(req));
         break;
     }
-    case CTRL_REQUEST_LOAD_STORAGE_DATA: {
-        setResult(req, control::loadStorageDataRequest(req));
+    case CTRL_REQUEST_READ_SECTION_DATA: {
+        setResult(req, control::readSectionDataRequest(req));
         break;
     }
-    case CTRL_REQUEST_SAVE_STORAGE_DATA: {
-        setResult(req, control::saveStorageDataRequest(req));
+    case CTRL_REQUEST_WRITE_SECTION_DATA: {
+        setResult(req, control::writeSectionDataRequest(req));
         break;
     }
-    case CTRL_REQUEST_CLEAR_STORAGE_SECTION: {
-        setResult(req, control::clearStorageSectionRequest(req));
+    case CTRL_REQUEST_CLEAR_SECTION_DATA: {
+        setResult(req, control::clearSectionDataRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_SECTION_DATA_SIZE: {
+        setResult(req, control::getSectionDataSizeRequest(req));
         break;
     }
     default:
