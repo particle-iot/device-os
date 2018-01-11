@@ -64,27 +64,29 @@ struct Section;
 // Description of a storage
 struct Storage {
     uint8_t type;
-    uint8_t index;
-    uint16_t flags;
+    uint8_t flags;
     const Section* sections;
     uint8_t sectionCount;
 };
 
-// Section IO callbacks
+// IO callbacks
 typedef int(*sectionRead)(char* data, size_t size, uintptr_t address);
 typedef int(*sectionWrite)(const char* data, size_t size, uintptr_t address);
 typedef int(*sectionClear)(uintptr_t address, size_t size);
+typedef int(*sectionGetSize)(uintptr_t address, size_t size, size_t& dataSize);
 
 // Description of a storage section
 struct Section {
     uint8_t type;
-    uint8_t index;
-    uint16_t flags;
+    uint8_t firmwareModuleType;
+    uint8_t firmwareModuleIndex;
+    uint8_t flags;
     uint32_t address;
     uint32_t size;
     sectionRead read;
     sectionWrite write;
     sectionClear clear;
+    sectionGetSize getSize;
 };
 
 // Internal flash
@@ -98,6 +100,26 @@ int internalFlashWrite(const char* data, size_t size, uintptr_t address) {
 
 int internalFlashClear(uintptr_t address, size_t size) {
     return InternalFlashStore::erase(address, size);
+}
+
+int getFirmwareModuleSize(uintptr_t address, size_t maxSize, size_t& moduleSize) {
+    const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, address);
+    if (!module) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    // Check module boundaries
+    const uintptr_t startAddr = (uintptr_t)module->module_start_address;
+    const uintptr_t endAddr = (uintptr_t)module->module_end_address;
+    const size_t size = endAddr - startAddr;
+    if (endAddr < startAddr || size > maxSize) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    // Verify checksum
+    if (!FLASH_VerifyCRC32(FLASH_INTERNAL, address, size)) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    moduleSize = size + 4; // Include CRC
+    return 0;
 }
 
 // DCT/DCD
@@ -127,39 +149,39 @@ int eepromClear(uintptr_t address, size_t size) {
 
 const Section INTERNAL_STORAGE_SECTIONS[] = {
     // Bootloader
-    { particle_ctrl_SectionType_BOOTLOADER, 0, 0, module_bootloader.start_address, module_bootloader.maximum_size, internalFlashRead, nullptr, nullptr },
+    { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_BOOTLOADER, 0, 0, module_bootloader.start_address, module_bootloader.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
 #if MODULAR_FIRMWARE
     // System part 1
-    { particle_ctrl_SectionType_SYSTEM_FIRMWARE, 0, 0, module_system_part1.start_address, module_system_part1.maximum_size, internalFlashRead, nullptr, nullptr },
+    { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_SYSTEM_PART, 1, 0, module_system_part1.start_address, module_system_part1.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
     // System part 2
-    { particle_ctrl_SectionType_SYSTEM_FIRMWARE, 1, 0, module_system_part2.start_address, module_system_part2.maximum_size, internalFlashRead, nullptr, nullptr },
+    { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_SYSTEM_PART, 2, 0, module_system_part2.start_address, module_system_part2.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     // System part 3 (Electron)
-    { particle_ctrl_SectionType_SYSTEM_FIRMWARE, 2, 0, module_system_part3.start_address, module_system_part3.maximum_size, internalFlashRead, nullptr, nullptr },
+    { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_SYSTEM_PART, 3, 0, module_system_part3.start_address, module_system_part3.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
 #endif
     // User part
-    { particle_ctrl_SectionType_USER_FIRMWARE, 0, 0, module_user.start_address, module_user.maximum_size, internalFlashRead, nullptr, nullptr },
+    { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_USER_PART, 0, 0, module_user.start_address, module_user.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
     // OTA backup
-    { particle_ctrl_SectionType_OTA_BACKUP, 0, 0, module_ota.start_address, module_ota.maximum_size, internalFlashRead, nullptr, nullptr },
+    { particle_ctrl_SectionType_OTA_BACKUP, 0, 0, 0, module_ota.start_address, module_ota.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
     // Factory backup
-    { particle_ctrl_SectionType_FACTORY_BACKUP, 0, particle_ctrl_SectionFlag_NEED_CLEAR, module_factory.start_address, module_factory.maximum_size, internalFlashRead, internalFlashWrite, internalFlashClear },
+    { particle_ctrl_SectionType_FACTORY_BACKUP, 0, 0, particle_ctrl_SectionFlag_NEED_CLEAR, module_factory.start_address, module_factory.maximum_size, internalFlashRead, internalFlashWrite, internalFlashClear, getFirmwareModuleSize },
 #else // MODULAR_FIRMWARE
     // Monolithic firmware
-    { particle_ctrl_SectionType_MONO_FIRMWARE, 0, 0, module_user_mono.start_address, module_user_mono.maximum_size, internalFlashRead, nullptr, nullptr },
+    { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_MONO_FIRMWARE, 0, 0, module_user_mono.start_address, module_user_mono.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
     // Factory backup (monolithic firmware)
-    { particle_ctrl_SectionType_FACTORY_BACKUP, 0, particle_ctrl_SectionFlag_NEED_CLEAR, module_factory_mono.start_address, module_factory_mono.maximum_size, internalFlashRead, internalFlashWrite, internalFlashClear },
+    { particle_ctrl_SectionType_FACTORY_BACKUP, 0, 0, particle_ctrl_SectionFlag_NEED_CLEAR, module_factory_mono.start_address, module_factory_mono.maximum_size, internalFlashRead, internalFlashWrite, internalFlashClear, getFirmwareModuleSize },
 #endif // !MODULAR_FIRMWARE
     // DCT/DCD
-    { particle_ctrl_SectionType_CONFIG, 0, 0, 0, sizeof(application_dct_t), configRead, configWrite, nullptr },
+    { particle_ctrl_SectionType_CONFIG, 0, 0, 0, 0, sizeof(application_dct_t), configRead, configWrite, nullptr, nullptr },
     // EEPROM
-    { particle_ctrl_SectionType_EEPROM, 0, 0, 0, FlashEEPROM::capacity(), eepromRead, eepromWrite, eepromClear }
+    { particle_ctrl_SectionType_EEPROM, 0, 0, 0, 0, FlashEEPROM::capacity(), eepromRead, eepromWrite, eepromClear, nullptr }
 };
 
 const size_t INTERNAL_STORAGE_SECTION_COUNT = sizeof(INTERNAL_STORAGE_SECTIONS) / sizeof(INTERNAL_STORAGE_SECTIONS[0]);
 
 const Storage STORAGE[] = {
     // Internal flash
-    { particle_ctrl_StorageType_INTERNAL, 0, 0, INTERNAL_STORAGE_SECTIONS, INTERNAL_STORAGE_SECTION_COUNT }
+    { particle_ctrl_StorageType_INTERNAL, 0, INTERNAL_STORAGE_SECTIONS, INTERNAL_STORAGE_SECTION_COUNT }
 };
 
 const size_t STORAGE_COUNT = sizeof(STORAGE) / sizeof(STORAGE[0]);
@@ -266,10 +288,10 @@ int cancelFirmwareUpdateRequest(ctrl_request* req) {
     return cancelFirmwareUpdate();
 }
 
-int saveFirmwareDataRequest(ctrl_request* req) {
-    particle_ctrl_SaveFirmwareDataRequest pbReq = {};
+int firmwareUpdateDataRequest(ctrl_request* req) {
+    particle_ctrl_FirmwareUpdateDataRequest pbReq = {};
     DecodedString pbData(&pbReq.data);
-    int ret = decodeRequestMessage(req, particle_ctrl_SaveFirmwareDataRequest_fields, &pbReq);
+    int ret = decodeRequestMessage(req, particle_ctrl_FirmwareUpdateDataRequest_fields, &pbReq);
     if (ret != 0) {
         return ret;
     }
@@ -297,7 +319,6 @@ int describeStorageRequest(ctrl_request* req) {
             const Storage& storage = STORAGE[i];
             particle_ctrl_DescribeStorageReply_Storage pbStorage = {};
             pbStorage.type = (particle_ctrl_StorageType)storage.type;
-            pbStorage.index = storage.index;
             pbStorage.flags = storage.flags;
             pbStorage.sections.arg = const_cast<Storage*>(&storage);
             pbStorage.sections.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
@@ -306,17 +327,24 @@ int describeStorageRequest(ctrl_request* req) {
                     const Section& section = storage->sections[i];
                     particle_ctrl_DescribeStorageReply_Section pbSection = {};
                     pbSection.type = (particle_ctrl_SectionType)section.type;
-                    pbSection.index = section.index;
                     pbSection.size = section.size;
                     pbSection.flags = section.flags;
                     if (section.read) {
-                        pbSection.flags |= particle_ctrl_SectionFlag_READABLE;
+                        pbSection.flags |= particle_ctrl_SectionFlag_CAN_READ;
                     }
                     if (section.write) {
-                        pbSection.flags |= particle_ctrl_SectionFlag_WRITABLE;
+                        pbSection.flags |= particle_ctrl_SectionFlag_CAN_WRITE;
                     }
                     if (section.clear) {
-                        pbSection.flags |= particle_ctrl_SectionFlag_CLEARABLE;
+                        pbSection.flags |= particle_ctrl_SectionFlag_CAN_CLEAR;
+                    }
+                    if (section.getSize) {
+                        pbSection.flags |= particle_ctrl_SectionFlag_CAN_GET_SIZE;
+                    }
+                    if (section.type == particle_ctrl_SectionType_FIRMWARE) {
+                        auto& pbFirmwareModule = pbSection.firmware_module;
+                        pbFirmwareModule.type = (particle_ctrl_FirmwareModuleType)section.firmwareModuleType;
+                        pbFirmwareModule.index = section.firmwareModuleIndex;
                     }
                     if (!pb_encode_tag_for_field(strm, field)) {
                         return false;
@@ -343,9 +371,9 @@ int describeStorageRequest(ctrl_request* req) {
     return 0;
 }
 
-int loadStorageDataRequest(ctrl_request* req) {
-    particle_ctrl_LoadStorageDataRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_LoadStorageDataRequest_fields, &pbReq);
+int readSectionDataRequest(ctrl_request* req) {
+    particle_ctrl_ReadSectionDataRequest pbReq = {};
+    int ret = decodeRequestMessage(req, particle_ctrl_ReadSectionDataRequest_fields, &pbReq);
     if (ret != 0) {
         return ret;
     }
@@ -370,7 +398,7 @@ int loadStorageDataRequest(ctrl_request* req) {
         goto cleanup;
     }
     if (!pb_ostream_from_buffer_ex(strm, (pb_byte_t*)req->reply_data, req->reply_size, nullptr) ||
-            !pb_encode_tag(strm, PB_WT_STRING, particle_ctrl_LoadStorageDataReply_data_tag) ||
+            !pb_encode_tag(strm, PB_WT_STRING, particle_ctrl_ReadSectionDataReply_data_tag) ||
             !pb_encode_varint(strm, pbReq.size) || // String length
             repBufSize - strm->bytes_written < pbReq.size) {
         ret = SYSTEM_ERROR_INTERNAL;
@@ -390,10 +418,10 @@ cleanup:
     return ret;
 }
 
-int saveStorageDataRequest(ctrl_request* req) {
-    particle_ctrl_SaveStorageDataRequest pbReq = {};
+int writeSectionDataRequest(ctrl_request* req) {
+    particle_ctrl_WriteSectionDataRequest pbReq = {};
     DecodedString pbData(&pbReq.data);
-    int ret = decodeRequestMessage(req, particle_ctrl_SaveStorageDataRequest_fields, &pbReq);
+    int ret = decodeRequestMessage(req, particle_ctrl_WriteSectionDataRequest_fields, &pbReq);
     if (ret != 0) {
         return ret;
     }
@@ -414,9 +442,9 @@ int saveStorageDataRequest(ctrl_request* req) {
     return 0;
 }
 
-int clearStorageSectionRequest(ctrl_request* req) {
-    particle_ctrl_ClearStorageSectionRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_ClearStorageSectionRequest_fields, &pbReq);
+int clearSectionDataRequest(ctrl_request* req) {
+    particle_ctrl_ClearSectionDataRequest pbReq = {};
+    int ret = decodeRequestMessage(req, particle_ctrl_ClearSectionDataRequest_fields, &pbReq);
     if (ret != 0) {
         return ret;
     }
@@ -428,6 +456,33 @@ int clearStorageSectionRequest(ctrl_request* req) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     ret = section->clear(section->address, section->size);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int getSectionDataSizeRequest(ctrl_request* req) {
+    particle_ctrl_GetSectionDataSizeRequest pbReq = {};
+    int ret = decodeRequestMessage(req, particle_ctrl_GetSectionDataSizeRequest_fields, &pbReq);
+    if (ret != 0) {
+        return ret;
+    }
+    const Section* section = storageSection(pbReq.storage, pbReq.section);
+    if (!section) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    if (!section->getSize) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    size_t size = 0;
+    ret = section->getSize(section->address, section->size, size);
+    if (ret != 0) {
+        return ret;
+    }
+    particle_ctrl_GetSectionDataSizeReply pbRep = {};
+    pbRep.size = size;
+    ret = encodeReplyMessage(req, particle_ctrl_GetSectionDataSizeReply_fields, &pbRep);
     if (ret != 0) {
         return ret;
     }
