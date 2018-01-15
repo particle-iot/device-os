@@ -13,6 +13,9 @@ const CONFIGURE_AP_DEFAULT_BODY_SIZE = 400;
 const DEFAULT_HTTP_HOST = '192.168.0.1';
 const DEFAULT_HTTP_PORT = 80;
 const DEFAULT_HTTP_ECHO_PATH = '/echo';
+const DEFAULT_HTTP_QUERY_ECHO_PATH = '/query';
+
+const HTTP_MAX_URL_LENGTH = 100;
 
 class HttpEchoClient extends Client {
   constructor(host, port, path) {
@@ -119,8 +122,34 @@ class HttpEchoClient extends Client {
   }
 }
 
+class HttpQueryEchoClient extends HttpEchoClient {
+  constructor(host, port, path) {
+    super(host, port, path || DEFAULT_HTTP_QUERY_ECHO_PATH);
+  }
+
+  echo(size, close) {
+    // 400 (average configure-ap request size) to 12k (certiticate + ca + hex-encoded private key)
+    const len = !_.isUndefined(size) ? size : HTTP_MAX_URL_LENGTH - this._path.length - 2;
+    const str = randomstring.generate(len);
+    // NB: SoftAP page database uses application/octet-stream for all the requests for some reason
+    const req = `GET ${this._path}?${str} HTTP/1.1\r\n` +
+                `Host: ${this._host}\r\n` +
+                `User-Agent: HttpQueryEchoClient/1.0.0\r\n` +
+                `Accept: text/plain\r\n` +
+                `Content-Length: 0\r\n` +
+                `${close ? 'Connection: Close' : 'Connection: Keep-Alive'}\r\n` +
+                `\r\n`;
+    return this.write(req)
+      .then(() => {
+        this._echoStr = str;
+        return this.read(len);
+      });
+  }
+}
+
 module.exports = {
   DEFAULT_HTTP_PORT: DEFAULT_HTTP_PORT,
   DEFAULT_HTTP_ECHO_PATH: DEFAULT_HTTP_ECHO_PATH,
-  HttpEchoClient: HttpEchoClient
+  HttpEchoClient: HttpEchoClient,
+  HttpQueryEchoClient: HttpQueryEchoClient
 };
