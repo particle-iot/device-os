@@ -59,7 +59,7 @@ STATIC_ASSERT_FIELD_ORDER(LogAttributes, time, code);
 // LogAttributes::details
 STATIC_ASSERT_FIELD_SIZE(LogAttributes, details, sizeof(const char*));
 STATIC_ASSERT_FIELD_ORDER(LogAttributes, code, details);
-// LogAttributes::details
+// LogAttributes::id
 STATIC_ASSERT_FIELD_SIZE(LogAttributes, id, sizeof(unsigned));
 STATIC_ASSERT_FIELD_ORDER(LogAttributes, details, id);
 // LogAttributes::end
