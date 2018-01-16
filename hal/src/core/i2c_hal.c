@@ -601,7 +601,7 @@ static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
  * @param  None
  * @retval None
  */
-void I2C1_ER_irq(void)
+void HAL_I2C1_ER_Handler(void)
 {
     HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE1);
 }
@@ -677,7 +677,7 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
  * @param  None
  * @retval None
  */
-void I2C1_EV_irq(void)
+void HAL_I2C1_EV_Handler(void)
 {
     HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE1);
 }
