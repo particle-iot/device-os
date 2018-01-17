@@ -34,6 +34,7 @@
 #include "rgbled.h"
 #include "hal_irq_flag.h"
 #include "system_flags_impl.h"
+#include "periph_lock.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -972,6 +973,8 @@ void Bootloader_Update_Version(uint16_t bootloaderVersion)
  */
 uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 {
+    periph_lock();
+
     /* Hardware CRC32 calculation */
     uint32_t i, j;
     uint32_t Data;
@@ -1008,6 +1011,8 @@ uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
     }
 
     Data ^= 0xFFFFFFFF;
+
+    periph_unlock();
 
     return Data;
 }
