@@ -36,9 +36,11 @@
 #include <mutex>
 #include <atomic>
 #include "flash_acquire.h"
+#include "periph_lock.h"
 #include "core_hal.h"
 #include "logging.h"
 #include "atomic_flag_mutex.h"
+#include "static_recursive_mutex.h"
 #include "service_debug.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
@@ -66,6 +68,11 @@ static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same siz
 #define _CREATE_NAME_TYPE const signed char
 #endif
 
+namespace {
+
+StaticRecursiveMutex g_periphMutex;
+
+} // namespace
 
 /**
  * Creates a new thread.
@@ -518,4 +525,18 @@ void __flash_release() {
         return;
     }
     flash_lock.unlock();
+}
+
+void periph_lock() {
+    if (!rtos_started) {
+        return;
+    }
+    g_periphMutex.lock();
+}
+
+void periph_unlock() {
+    if (!rtos_started) {
+        return;
+    }
+    g_periphMutex.unlock();
 }
