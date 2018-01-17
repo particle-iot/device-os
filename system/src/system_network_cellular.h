@@ -83,6 +83,8 @@ protected:
             // ensure after connection exits the cancel flag is cleared if it was set during connection
             if (connect_cancelled) {
                 require_resume = true;
+                // This flag needs to be reset, otherwise the next connect_cancel() will do nothing
+                connect_cancelled = false;
             }
             connecting = false;
         }
