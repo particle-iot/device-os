@@ -94,14 +94,14 @@ none:
 	;
 
 st-flash: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
-	@echo Flashing $< using st-flash to address $(PLATFORM_DFU)
-	st-flash write $< $(PLATFORM_DFU)
+	@echo Flashing $(lastword $^) using st-flash to address $(PLATFORM_DFU)
+	st-flash write $(lastword $^) $(PLATFORM_DFU)
 
 ifneq ("$(OPENOCD_HOME)","")
 
 program-openocd: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
-	@echo Flashing $< using openocd to address $(PLATFORM_DFU)
-	$(OPENOCD_HOME)/openocd -f $(OPENOCD_HOME)/tcl/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/tcl/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $< $(PLATFORM_DFU) reset exit"
+	@echo Flashing $(lastword $^) using openocd to address $(PLATFORM_DFU)
+	$(OPENOCD_HOME)/openocd -f $(OPENOCD_HOME)/tcl/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/tcl/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $(lastword $^) $(PLATFORM_DFU) reset exit"
 
 endif
 
@@ -120,13 +120,13 @@ else
 endif
 endif
 	@echo Flashing using dfu:
-	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $<
+	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
 
 # Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
 program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
-	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
+	$(CURL) -X PUT -F file=@$(lastword $^) -F file_type=binary $(CLOUD_FLASH_URL)
 
 program-serial: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 ifdef START_YMODEM_FLASHER_SERIAL_SPEED
@@ -141,7 +141,7 @@ else
 	sleep 1
 	@echo Flashing using serial ymodem protocol:
 # Got some issue currently in getting 'sz' working
-	sz -b -v --ymodem $< > $(PARTICLE_SERIAL_DEV) < $(PARTICLE_SERIAL_DEV)
+	sz -b -v --ymodem $(lastword $^) > $(PARTICLE_SERIAL_DEV) < $(PARTICLE_SERIAL_DEV)
 endif
 endif
 
