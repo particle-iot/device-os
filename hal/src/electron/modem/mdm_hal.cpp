@@ -2335,7 +2335,7 @@ void MDMElectronSerial::pause()
     rxPause();
 }
 
-void MDMElectronSerial::resume()
+void MDMElectronSerial::resumeRecv()
 {
     LOCK();
     rxResume();
