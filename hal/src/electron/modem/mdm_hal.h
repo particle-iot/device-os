@@ -603,7 +603,7 @@ public:
     }
 
     void pause();
-    void resume();
+    void resumeRecv();
 
 protected:
     /** Write bytes to the physical interface.

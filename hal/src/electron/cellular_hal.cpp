@@ -305,7 +305,7 @@ cellular_result_t cellular_pause(void* reserved)
 
 cellular_result_t cellular_resume(void* reserved)
 {
-    electronMDM.resume();
+    electronMDM.resumeRecv();
     return 0;
 }
 
