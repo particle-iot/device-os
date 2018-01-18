@@ -27,6 +27,8 @@
 #ifndef __PINMAP_HAL_H
 #define __PINMAP_HAL_H
 
+#include "pinmap_defs.h"
+
 /* Includes ------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,30 +36,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Exported types ------------------------------------------------------------*/
-
-typedef uint16_t pin_t;
-
-typedef enum PinMode {
-  INPUT,
-  OUTPUT,
-  INPUT_PULLUP,
-  INPUT_PULLDOWN,
-  AF_OUTPUT_PUSHPULL, //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
-  AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
-  AN_INPUT,           //Used internally for ADC Input
-  AN_OUTPUT,          //Used internally for DAC Output
-  PIN_MODE_NONE=0xFF
-} PinMode;
-
-typedef enum {
-    PF_NONE,
-    PF_DIO,
-    PF_TIMER,
-    PF_ADC,
-  PF_DAC
-} PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 
@@ -94,6 +72,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 #define FIRST_ANALOG_PIN 10
 
+#ifndef __cplusplus
 #define D0 0
 #define D1 1
 #define D2 2
@@ -102,6 +81,17 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define D5 5
 #define D6 6
 #define D7 7
+#else
+extern class pinD0_t : public particle::pin::DigitalPin<0>{} D0;
+extern class pinD1_t : public particle::pin::DigitalPin<1>{} D1;
+extern class pinD2_t : public particle::pin::DigitalPin<2>{} D2;
+extern class pinD3_t : public particle::pin::DigitalPin<3>{} D3;
+extern class pinD4_t : public particle::pin::DigitalPin<4>{} D4;
+extern class pinD5_t : public particle::pin::DigitalPin<5>{} D5;
+extern class pinD6_t : public particle::pin::DigitalPin<6>{} D6;
+extern class pinD7_t : public particle::pin::DigitalPin<7>{} D7;
+
+#endif
 
 // todo - this is corev1 specific, needs to go in a conditional define
 
