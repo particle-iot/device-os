@@ -24,12 +24,12 @@
  */
 
 #ifndef WATCHDOG_HAL_H
-#define	WATCHDOG_HAL_H
+#define WATCHDOG_HAL_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -50,14 +50,6 @@ void HAL_Notify_WDT();
 #define HAL_WATCHDOG_CAPABILITY_NOTIFY           (0x10)
 // Watchdog timer can be stopped
 #define HAL_WATCHDOG_CAPABILITY_STOPPABLE        (0x20)
-
-#define HAL_WATCHDOG_GET_PARAM_IMPL1(wd, param)     PLATFORM_WATCHDOG_ ## wd ## _ ## param
-#define HAL_WATCHDOG_GET_PARAM_IMPL2(wd, param)     HAL_WATCHDOG_GET_PARAM_IMPL1(wd, param)
-#define HAL_WATCHDOG_GET_PARAM(wd, param)           HAL_WATCHDOG_GET_PARAM_IMPL2(wd, param)
-
-#define HAL_WATCHDOG_GET_CAPABILITIES(wd)           (HAL_WATCHDOG_GET_PARAM(wd, CAPABILITIES))
-#define HAL_WATCHDOG_GET_MIN_PERIOD(wd)             (HAL_WATCHDOG_GET_PARAM(wd, MIN_PERIOD_US))
-#define HAL_WATCHDOG_GET_MAX_PERIOD(wd)             (HAL_WATCHDOG_GET_PARAM(wd, MAX_PERIOD_US))
 
 typedef struct {
     uint16_t size;
@@ -81,19 +73,52 @@ typedef struct {
     void* notify_arg;
 } hal_watchdog_config_t;
 
+typedef struct {
+    uint16_t size;
+    uint16_t version;
+
+    uint32_t capabilities;
+    uint32_t capabilities_required;
+
+    uint32_t min_period_us;
+    uint32_t max_period_us;
+} hal_watchdog_info_t;
+
+/**
+ * Queries the capabilities of a specific hardware watchdog
+ */
+int hal_watchdog_query(int idx, hal_watchdog_info_t* info, void* reserved);
+
+/**
+ * Starts hardware watchdog (optionally configures it if conf is provided)
+ */
 int hal_watchdog_start(int idx, hal_watchdog_config_t* conf, void* reserved);
 
+/**
+ * Configures specified hardware watchdog
+ */
 int hal_watchdog_configure(int idx, hal_watchdog_config_t* conf, void* reserved);
 
+/**
+ * Stops specified hardware watchdog
+ */
 int hal_watchdog_stop(int idx, void* reserved);
 
+/**
+ * Retrieves running status of specified watchdog
+ */
 int hal_watchdog_get_status(int idx, hal_watchdog_status_t* status, void* reserved);
 
+/**
+ * Kicks specified watchdog, or all of them if idx = -1
+ */
 int hal_watchdog_kick(int idx, void* reserved);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* WATCHDOG_HAL_H */
+#include "watchdog_hal_impl.h"
+
+#endif /* WATCHDOG_HAL_H */
 

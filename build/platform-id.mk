@@ -120,8 +120,6 @@ PLATFORM_MCU=gcc
 PLATFORM_NET=gcc
 ARCH=gcc
 PRODUCT_DESC=GCC xcompile
-# explicitly exclude platform headers
-SPARK_NO_PLATFORM=1
 DEFAULT_PRODUCT_ID=3
 endif
 

@@ -41,6 +41,8 @@
 // For ATOMIC_BLOCK
 #include "spark_wiring_interrupts.h"
 
+#include "monitor_service.h"
+
 #define OTA_CHUNK_SIZE                 (512)
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
@@ -238,12 +240,17 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
+    // Erase of 128k sector may take up to 4 seconds
+    // Worst case scenario we may be erasing 2 128k sectors
+    SYSTEM_MONITOR_EXPECT_STALL(8100);
     FLASH_Begin(address, length);
     return true;
 }
 
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
+    // Every write operation takes 100us at most
+    SYSTEM_MONITOR_EXPECT_STALL(10 + (length / 4 * 100) / 1000);
     return FLASH_Update(pBuffer, address, length);
 }
 
@@ -311,6 +318,9 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 
         // bootloader is copied directly
         if (function==MODULE_FUNCTION_BOOTLOADER) {
+            // Erase: 2400ms max
+            // Every write operation takes 100us at most
+            SYSTEM_MONITOR_EXPECT_STALL(2500 + (moduleLength / 4 * 100) / 1000);
             result = flash_bootloader(&module, moduleLength);
         }
         else

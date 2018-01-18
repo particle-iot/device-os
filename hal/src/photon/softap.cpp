@@ -20,6 +20,7 @@
 #include "spark_wiring_wifi_credentials.h"
 #include "mbedtls/aes.h"
 #include "device_code.h"
+#include "monitor_service.h"
 
 #if SOFTAP_HTTP
 # include "http_server.h"
@@ -918,6 +919,10 @@ class SoftAPController {
         {
             if (memcmp(&expected, soft_ap, sizeof(expected))) {
                 wiced_dct_read_unlock( soft_ap, WICED_FALSE );
+                // Erase of 16kB sector may take up to 800ms according to the datasheet
+                // 1 write operation takes at most 100us
+                // (16384 / 4) * 100us = 409ms
+                SYSTEM_MONITOR_EXPECT_STALL(1500);
                 result = wiced_dct_write(&expected, DCT_WIFI_CONFIG_SECTION, OFFSETOF(platform_dct_wifi_config_t, soft_ap_settings), sizeof(wiced_config_soft_ap_t));
             } else {
                 wiced_dct_read_unlock( soft_ap, WICED_FALSE );

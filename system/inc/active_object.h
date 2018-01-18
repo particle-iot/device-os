@@ -30,6 +30,7 @@
 
 #include "channel.h"
 #include "concurrent_hal.h"
+#include "monitor_service.h"
 
 /**
  * Configuratino data for an active object.
@@ -142,7 +143,27 @@ protected:
 
     void wait_complete()
     {
+#if SYSTEM_MONITOR_ENABLED == 1
+        // Perhaps there should be a system monitor feature flag that makes
+        // this method "blocking" again (thread_timeout_ms = CONCURRENT_WAIT_FOREVER)
+        auto thread_timeout_ms = system_monitor_get_timeout_current(nullptr);
+        thread_timeout_ms /= 2;
+        if (thread_timeout_ms == 0) {
+            thread_timeout_ms = CONCURRENT_WAIT_FOREVER;
+        }
+
+        int result = 0;
+
+        do {
+            SYSTEM_MONITOR_KICK_CURRENT();
+            result = os_semaphore_take(complete, thread_timeout_ms, false);
+            if (result == 0) {
+                break;
+            }
+        } while (result != 0);
+#else
         os_semaphore_take(complete, CONCURRENT_WAIT_FOREVER, false);
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */
     }
 
 public:

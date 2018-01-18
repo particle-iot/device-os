@@ -21,9 +21,24 @@
 #include "hal_irq_flag.h"
 #include "stm32f2xx_wwdg.h"
 #include "stm32f2xx_iwdg.h"
+#include "timer_hal.h"
 
-#define HAL_WATCHDOG_WWDG 0
-#define HAL_WATCHDOG_IWDG 1
+#define HAL_WATCHDOG_WWDG (0)
+#define HAL_WATCHDOG_IWDG (1)
+
+#define HAL_WATCHDOG_WWDG_CAPABILITIES             (HAL_WATCHDOG_CAPABILITY_WINDOWED | \
+                                                     HAL_WATCHDOG_CAPABILITY_RECONFIGURABLE | \
+                                                     HAL_WATCHDOG_CAPABILITY_NOTIFY | \
+                                                     HAL_WATCHDOG_CAPABILITY_CPU_RESET | \
+                                                     HAL_WATCHDOG_CAPABILITY_STOPPABLE)
+#define HAL_WATCHDOG_WWDG_MIN_PERIOD_US            (137UL) // 136.53us
+#define HAL_WATCHDOG_WWDG_MAX_PERIOD_US            (69910UL) // 69.91ms
+
+#define HAL_WATCHDOG_IWDG_CAPABILITIES             (HAL_WATCHDOG_CAPABILITY_INDEPENDENT | \
+                                                     HAL_WATCHDOG_CAPABILITY_CPU_RESET |\
+                                                     HAL_WATCHDOG_CAPABILITY_RECONFIGURABLE)
+#define HAL_WATCHDOG_IWDG_MIN_PERIOD_US            (125UL) // 125us
+#define HAL_WATCHDOG_IWDG_MAX_PERIOD_US            (32700000UL) // 32.7s
 
 typedef struct {
     uint8_t running;
@@ -33,9 +48,10 @@ typedef struct {
     uint32_t counter;
     void (*notify)(void*);
     void* notify_arg;
+    uint32_t last_kick;
 } hal_watchdog_runtime_info_t;
 
-static hal_watchdog_runtime_info_t s_watchdogs[PLATFORM_WATCHDOG_COUNT] = {};
+static hal_watchdog_runtime_info_t s_watchdogs[HAL_WATCHDOG_COUNT] = {};
 
 static uint32_t next_power_of_two(uint32_t v) {
     v--;
@@ -46,6 +62,26 @@ static uint32_t next_power_of_two(uint32_t v) {
     v |= v >> 16;
     v++;
     return v;
+}
+
+int hal_watchdog_query(int idx, hal_watchdog_info_t* info, void* reserved) {
+    if (info == NULL) {
+        return -1;
+    }
+
+    if (idx == HAL_WATCHDOG_WWDG) {
+        info->capabilities = info->capabilities_required = HAL_WATCHDOG_WWDG_CAPABILITIES;
+        info->min_period_us = HAL_WATCHDOG_WWDG_MIN_PERIOD_US;
+        info->max_period_us = HAL_WATCHDOG_WWDG_MAX_PERIOD_US;
+        return 0;
+    } else if (idx == HAL_WATCHDOG_IWDG) {
+        info->capabilities = info->capabilities_required = HAL_WATCHDOG_IWDG_CAPABILITIES;
+        info->min_period_us = HAL_WATCHDOG_IWDG_MIN_PERIOD_US;
+        info->max_period_us = HAL_WATCHDOG_IWDG_MAX_PERIOD_US;
+        return 0;
+    }
+
+    return -1;
 }
 
 int hal_watchdog_configure(int idx, hal_watchdog_config_t* conf, void* reserved) {
@@ -194,11 +230,17 @@ int hal_watchdog_configure(int idx, hal_watchdog_config_t* conf, void* reserved)
         return -1;
     }
 
+    info->capabilities = conf->capabilities;
+
     return 0;
 }
 
 int hal_watchdog_start(int idx, hal_watchdog_config_t* conf, void* reserved) {
     hal_watchdog_runtime_info_t* info = &s_watchdogs[idx];
+
+    if (info->running == 1) {
+        return -1;
+    }
 
     if (idx == HAL_WATCHDOG_WWDG) {
         if (conf != NULL) {
@@ -209,6 +251,8 @@ int hal_watchdog_start(int idx, hal_watchdog_config_t* conf, void* reserved) {
         WWDG_EnableIT();
         // Enable watchdog
         WWDG->CR |= WWDG_CR_WDGA;
+        // Maximum priority
+        NVIC_SetPriority(WWDG_IRQn, 0);
         NVIC_EnableIRQ(WWDG_IRQn);
         info->running = 1;
     } else if (idx == HAL_WATCHDOG_IWDG) {
@@ -231,11 +275,13 @@ int hal_watchdog_stop(int idx, void* reserved) {
 
     WWDG_DeInit();
 
+    s_watchdogs[idx].running = 0;
+
     return 0;
 }
 
 int hal_watchdog_get_status(int idx, hal_watchdog_status_t* status, void* reserved) {
-    if (idx >= PLATFORM_WATCHDOG_COUNT) {
+    if (idx >= HAL_WATCHDOG_COUNT) {
         return -1;
     }
 
@@ -254,11 +300,13 @@ int hal_watchdog_get_status(int idx, hal_watchdog_status_t* status, void* reserv
 }
 
 int hal_watchdog_kick(int idx, void* reserved) {
-    if (idx == HAL_WATCHDOG_WWDG || idx < 0) {
+    if ((idx == HAL_WATCHDOG_WWDG || idx < 0) && s_watchdogs[HAL_WATCHDOG_WWDG].running) {
         WWDG_SetCounter(0x40 | s_watchdogs[HAL_WATCHDOG_WWDG].counter);
+        s_watchdogs[HAL_WATCHDOG_WWDG].last_kick = HAL_Timer_Get_Milli_Seconds();
     }
-    if (idx == HAL_WATCHDOG_IWDG || idx < 0) {
+    if ((idx == HAL_WATCHDOG_IWDG || idx < 0) && s_watchdogs[HAL_WATCHDOG_IWDG].running) {
         IWDG_ReloadCounter();
+        s_watchdogs[HAL_WATCHDOG_IWDG].last_kick = HAL_Timer_Get_Milli_Seconds();
     }
 
     return 0;

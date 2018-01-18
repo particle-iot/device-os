@@ -52,10 +52,8 @@ bool HAL_watchdog_reset_flagged()
 
 void HAL_Notify_WDT()
 {
-    // platform_watchdog_kick();
 }
 
 // platform_result_t platform_watchdog_kick(void) {
-//     SYSTEM_MONITOR_KICK_CURRENT();
 //     return 0;
 // }

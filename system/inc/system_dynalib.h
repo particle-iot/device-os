@@ -96,6 +96,9 @@ DYNALIB_FN(BASE_IDX + 13, system, system_monitor_get_thread_timeout, system_tick
 DYNALIB_FN(BASE_IDX + 14, system, system_monitor_set_thread_timeout, int(os_thread_t, system_tick_t, void*))
 DYNALIB_FN(BASE_IDX + 15, system, system_monitor_get_max_sleep_time, system_tick_t(void*, void*))
 DYNALIB_FN(BASE_IDX + 16, system, system_monitor_configure, int(system_monitor_configuration_t*, void*))
+DYNALIB_FN(BASE_IDX + 17, system, system_monitor_suspend, int(system_tick_t, void*))
+DYNALIB_FN(BASE_IDX + 18, system, system_monitor_resume, int(void*))
+DYNALIB_FN(BASE_IDX + 19, system, system_monitor_sleep, int(bool, system_tick_t, void*))
 
 DYNALIB_END(system)
 

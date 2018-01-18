@@ -33,6 +33,7 @@ typedef struct {
 
     union {
         uint32_t flags;
+        uint32_t enabled : 1;
         uint32_t iwdg : 1;
     };
 } system_monitor_configuration_t;
@@ -70,6 +71,15 @@ system_tick_t system_monitor_get_max_sleep_time(void* reserved, void* reserved1)
 
 // Updates monitoring settings
 int system_monitor_configure(system_monitor_configuration_t* conf, void* reserved);
+
+// Suspend hardware watchdogs for a period of time
+int system_monitor_suspend(system_tick_t timeout, void* reserved);
+
+// Resume normal operation
+int system_monitor_resume(void* reserved);
+
+// Notify system monitor that the device is going into a sleep mode
+int system_monitor_sleep(bool state, system_tick_t timeout_ms, void* reserved);
 
 #ifdef __cplusplus
 }

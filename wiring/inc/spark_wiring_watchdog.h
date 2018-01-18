@@ -23,9 +23,9 @@
 #include "delay_hal.h"
 #include "timer_hal.h"
 #include "system_task.h"
+#include "system_monitor.h"
 
 #if PLATFORM_THREADING
-#include "system_monitor.h"
 
 class ApplicationWatchdog
 {
@@ -91,12 +91,15 @@ public:
 
 };
 
+#if SYSTEM_MONITOR_ENABLED == 1
+
 namespace spark {
 
 const system_tick_t DEFAULT_WATCHDOG_TIMEOUT = 1000;
 
 enum WatchdogFeature {
-    WATCHDOG_FEATURE_IWDG = 0x01
+    WATCHDOG_FEATURE = 0x01,
+    WATCHDOG_FEATURE_IWDG = 0x02
 };
 
 class WatchdogClass {
@@ -151,6 +154,9 @@ public:
         if (feature == WATCHDOG_FEATURE_IWDG) {
             config.iwdg = 1;
         }
+        if (feature == WATCHDOG_FEATURE) {
+            config.enabled = 1;
+        }
         return system_monitor_configure(&config, nullptr) == 0;
     }
 };
@@ -159,9 +165,15 @@ public:
 
 extern spark::WatchdogClass Watchdog;
 
+#define WATCHDOG_MODIFY_TIMEOUT(timeout) SYSTEM_MONITOR_MODIFY_TIMEOUT(timeout)
+
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */
+
 inline void application_checkin() {
     SPARK_ASSERT(application_thread_current(nullptr));
+#if SYSTEM_MONITOR_ENABLED == 1
     spark::WatchdogClass::kick();
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */
     ApplicationWatchdog::checkin();
 }
 

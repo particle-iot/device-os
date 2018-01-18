@@ -19,6 +19,7 @@
 #define SYSTEM_MONITOR_INTERNAL_H
 
 #include "system_monitor.h"
+#include "watchdog_hal.h"
 #include <atomic>
 
 namespace particle {
@@ -39,10 +40,13 @@ public:
     system_tick_t getMaximumSleepTime() const;
     int configure(system_monitor_configuration_t* conf);
 
-    void sleep(bool state = true);
-    void wakeup() {
-        sleep(false);
+    int sleep(bool state = true);
+    int wakeup() {
+        return sleep(false);
     }
+
+    int suspend(system_tick_t timeout = 0);
+    int resume();
 
 protected:
     SystemMonitor();
@@ -57,17 +61,58 @@ protected:
         std::atomic<system_tick_t> last;
     };
 
+    enum EventType {
+        MONITOR_EVENT_TYPE_NONE = 0,
+        MONITOR_EVENT_TYPE_SLEEP,
+        MONITOR_EVENT_TYPE_SUSPEND,
+        MONITOR_EVENT_TYPE_RESUME
+    };
+
+    struct Event {
+        Event() = default;
+        Event(EventType type, void* data);
+        ~Event();
+
+        void notify();
+        void wait();
+        void clear();
+
+        EventType type = MONITOR_EVENT_TYPE_NONE;
+        os_semaphore_t sem = nullptr;
+        void* data = nullptr;
+    };
+
+    using SleepEventData = bool*;
+    using SuspendEventData = system_tick_t*;
+    using ResumeEventData = void*;
+
 private:
     bool watchdogInit();
+    bool watchdogConfigure(int idx, system_tick_t period_us, bool ifGreater = false, bool closest = true);
+    bool watchdogStart(int idx);
+    bool watchdogStop(int idx);
+    bool watchdogSuspend(int idx, system_tick_t timeout);
+    bool watchdogResume(int idx);
     void watchdogKick();
+    hal_watchdog_info_t watchdogInfo(int idx, bool& ok) const;
+    hal_watchdog_status_t watchdogStatus(int idx, bool& ok) const;
+
+    void postEvent(EventType type, void* data);
+    void handleEvent(Event& event);
+
+    void sleepImpl(bool state, system_tick_t timeout = 0);
+    void suspendImpl(bool state, system_tick_t timeout = 0);
 
 private:
     os_thread_t thread_ = {};
     os_queue_t queue_ = {};
     ThreadEntry entries_[SYSTEM_MONITOR_MAX_THREADS] = {};
     system_tick_t tickRate_ = 0;
+    bool enabled_ = false;
     bool initialized_ = false;
     bool independentEnabled_ = false;
+    int suspendRefCount_ = 0;
+    bool manualReset_ = true;
 };
 
 } /* namespace particle */

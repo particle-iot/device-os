@@ -55,6 +55,22 @@ int system_monitor_set_timeout_current_(system_tick_t timeout, void* reserved) {
     return 1;
 }
 
+int system_monitor_suspend_(system_tick_t timeout, void* reserved) {
+    if (s_callbacks.system_monitor_suspend != nullptr) {
+        return s_callbacks.system_monitor_suspend(timeout, reserved);
+    }
+
+    return 1;
+}
+
+int system_monitor_resume_(void* reserved) {
+    if (s_callbacks.system_monitor_resume != nullptr) {
+        return s_callbacks.system_monitor_resume(reserved);
+    }
+
+    return 1;
+}
+
 #endif /* defined(SYSTEM_MONITOR_USE_CALLBACKS) */
 
 #if defined(SYSTEM_MONITOR_USE_CALLBACKS2)
@@ -89,6 +105,22 @@ system_tick_t system_monitor_get_timeout_current__(void* reserved) {
 int system_monitor_set_timeout_current__(system_tick_t timeout, void* reserved) {
     if (s_callbacks2.system_monitor_set_timeout_current != nullptr) {
         return s_callbacks2.system_monitor_set_timeout_current(timeout, reserved);
+    }
+
+    return 1;
+}
+
+int system_monitor_suspend__(system_tick_t timeout, void* reserved) {
+    if (s_callbacks2.system_monitor_suspend != nullptr) {
+        return s_callbacks2.system_monitor_suspend(timeout, reserved);
+    }
+
+    return 1;
+}
+
+int system_monitor_resume__(void* reserved) {
+    if (s_callbacks2.system_monitor_resume != nullptr) {
+        return s_callbacks2.system_monitor_resume(reserved);
     }
 
     return 1;

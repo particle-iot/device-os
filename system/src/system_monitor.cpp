@@ -62,4 +62,18 @@ int system_monitor_set_timeout_current(system_tick_t timeout, void* reserved) {
     return system_monitor_set_thread_timeout(os_thread_current(), timeout, reserved);
 }
 
+int system_monitor_suspend(system_tick_t timeout, void* reserved) {
+    return SystemMonitor::instance()->suspend(timeout);
+}
+
+int system_monitor_resume(void* reserved) {
+    return SystemMonitor::instance()->resume();
+}
+
+int system_monitor_sleep(bool state, system_tick_t timeout_ms, void* reserved) {
+    // TODO
+    (void)timeout_ms;
+    return SystemMonitor::instance()->sleep(state);
+}
+
 #endif /* PLATFORM_THREADING */

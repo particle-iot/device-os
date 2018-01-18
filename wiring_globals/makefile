@@ -7,6 +7,6 @@ TARGET_TYPE = a
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 
 # the only true dependency is Wiring, the others are transitive dependencies
-DEPENDENCIES = wiring hal services system platform communication
+DEPENDENCIES = wiring hal services system platform communication dynalib
 
 include ../build/arm-tlm.mk

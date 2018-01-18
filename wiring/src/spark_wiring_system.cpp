@@ -71,3 +71,9 @@ bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
     WiFiTester::init();
     return true;
 }
+
+#if SYSTEM_MONITOR_ENABLED == 1
+bool SystemClass::enableFeature(spark::WatchdogFeature feature) {
+    return Watchdog.enableFeature(feature);
+}
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */

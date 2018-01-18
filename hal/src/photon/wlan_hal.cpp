@@ -219,9 +219,14 @@ wiced_result_t wlan_initialize_dct()
     if (result == WICED_SUCCESS)
     {
         // the storage may not have been initialized, so device_configured will be 0xFF
-        if (initialize_dct(wifi_config))
+        if (initialize_dct(wifi_config)) {
+            // Erase of 16kB sector may take up to 800ms according to the datasheet
+            // 1 write operation takes at most 100us
+            // (16384 / 4) * 100us = 409ms
+            SYSTEM_MONITOR_EXPECT_STALL(1300);
             result = wiced_dct_write((const void*)wifi_config, DCT_WIFI_CONFIG_SECTION, 0,
                                      sizeof(*wifi_config));
+        }
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
     }
     return result;
@@ -255,6 +260,10 @@ int wlan_clear_credentials()
     if (!result)
     {
         memset(wifi_config->stored_ap_list, 0, sizeof(wifi_config->stored_ap_list));
+        // Erase of 16kB sector may take up to 800ms according to the datasheet
+        // 1 write operation takes at most 100us
+        // (16384 / 4) * 100us = 409ms
+        SYSTEM_MONITOR_EXPECT_STALL(1300);
         result = wiced_dct_write((const void*)wifi_config, DCT_WIFI_CONFIG_SECTION, 0,
                                  sizeof(*wifi_config));
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
@@ -754,6 +763,7 @@ wlan_result_t wlan_connect_finalize()
                 break;
             default:
                 INFO("Bringing WiFi interface up with DHCP");
+                SYSTEM_MONITOR_MODIFY_TIMEOUT(WICED_DHCP_IP_ADDRESS_RESOLUTION_TIMEOUT + 100);
                 result = wiced_network_up(WICED_STA_INTERFACE, WICED_USE_EXTERNAL_DHCP_SERVER, NULL);
                 break;
         }
@@ -1124,8 +1134,14 @@ wiced_result_t add_wiced_wifi_credentials(const char *ssid, uint16_t ssidLen, co
         }
         entry.details.security = security;
         entry.details.channel = channel;
-        result = wiced_dct_write((const void*)wifi_config, DCT_WIFI_CONFIG_SECTION, 0,
-                                 sizeof(*wifi_config));
+        // Erase of 16kB sector may take up to 800ms according to the datasheet
+        // 1 write operation takes at most 100us
+        // (16384 / 4) * 100us = 409ms
+        {
+            SYSTEM_MONITOR_EXPECT_STALL(1300);
+            result = wiced_dct_write((const void*)wifi_config, DCT_WIFI_CONFIG_SECTION, 0,
+                                     sizeof(*wifi_config));
+        }
         if (!result)
             wifi_creds_changed = true;
         wiced_dct_read_unlock(wifi_config, WICED_TRUE);
@@ -1187,8 +1203,13 @@ int wlan_set_enterprise_credentials(WLanCredentials* c)
             memcpy(sec->private_key, c->private_key, c->private_key_len);
         }
     }
-
-    wiced_dct_write(sec, DCT_SECURITY_SECTION, 0, sizeof(platform_dct_security_t));
+    // Erase of 16kB sector may take up to 800ms according to the datasheet
+    // 1 write operation takes at most 100us
+    // (16384 / 4) * 100us = 409ms
+    {
+        SYSTEM_MONITOR_EXPECT_STALL(1300);
+        wiced_dct_write(sec, DCT_SECURITY_SECTION, 0, sizeof(platform_dct_security_t));
+    }
     free(sec);
 
     sec = NULL;
@@ -1282,6 +1303,7 @@ void wlan_smart_config_init()
         softap_config config;
         config.softap_complete = HAL_WLAN_notify_simple_config_done;
         wlan_disconnect_now();
+        SYSTEM_MONITOR_KICK_CURRENT();
         wlan_restart(NULL);
         current_softap_handle = softap_start(&config);
     }
@@ -1293,6 +1315,7 @@ bool wlan_smart_config_finalize()
     {
         softap_stop(current_softap_handle);
         wlan_disconnect_now();  // force a full refresh
+        SYSTEM_MONITOR_KICK_CURRENT();
         wlan_restart(NULL);
         HAL_Delay_Milliseconds(5);
         wlan_activate();
