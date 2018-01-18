@@ -1330,36 +1330,47 @@ bool SparkProtocol::function_result(const void* result, SparkReturnType::Enum, u
 bool SparkProtocol::handle_function_call(msg& message)
 {
     // copy the function key
-    char function_key[13];
-    memset(function_key, 0, 13);
-    int function_key_length = queue[7] & 0x0F;
-    memcpy(function_key, queue + 8, function_key_length);
+    char function_key[MAX_FUNCTION_KEY_LENGTH+1];
+    memset(function_key, 0, MAX_FUNCTION_KEY_LENGTH+1);
+
+    uint8_t queue_offset = 8;
+    size_t function_key_length = queue[7] & 0x0F;
+    if (function_key_length == MAX_OPTION_DELTA_LENGTH+1)
+    {
+        function_key_length = MAX_OPTION_DELTA_LENGTH+1 + queue[8];
+        queue_offset++;
+    }
+    // else if (function_key_length == MAX_OPTION_DELTA_LENGTH+2)
+    // {
+    //     // MAX_OPTION_DELTA_LENGTH+2 not supported and not required for function_key_length
+    // }
+    memcpy(function_key, queue + queue_offset, function_key_length);
 
     // How long is the argument?
-    size_t q_index = 8 + function_key_length;
-    size_t query_length = queue[q_index] & 0x0F;
-    if (13 == query_length)
+    size_t q_index = queue_offset + function_key_length;
+    size_t function_arg_length = queue[q_index] & 0x0F;
+    if (function_arg_length == MAX_OPTION_DELTA_LENGTH+1)
     {
-      ++q_index;
-      query_length = 13 + queue[q_index];
+        ++q_index;
+        function_arg_length = MAX_OPTION_DELTA_LENGTH+1 + queue[q_index];
     }
-    else if (14 == query_length)
+    else if (function_arg_length + MAX_OPTION_DELTA_LENGTH+2)
     {
-      ++q_index;
-      query_length = queue[q_index] << 8;
-      ++q_index;
-      query_length |= queue[q_index];
-      query_length += 269;
+        ++q_index;
+        function_arg_length = queue[q_index] << 8;
+        ++q_index;
+        function_arg_length |= queue[q_index];
+        function_arg_length += 269;
     }
 
     bool has_function = false;
 
     // allocated memory bounds check
-    if (MAX_FUNCTION_ARG_LENGTH > query_length)
+    if (function_arg_length <= MAX_FUNCTION_ARG_LENGTH)
     {
         // save a copy of the argument
-        memcpy(function_arg, queue + q_index + 1, query_length);
-        function_arg[query_length] = 0; // null terminate string
+        memcpy(function_arg, queue + q_index + 1, function_arg_length);
+        function_arg[function_arg_length] = 0; // null terminate string
         has_function = true;
     }
 
@@ -1370,8 +1381,8 @@ bool SparkProtocol::handle_function_call(msg& message)
     coded_ack(msg_to_send + 2, has_function ? 0x00 : RESPONSE_CODE(4,00), queue[2], queue[3]);
     if (0 > blocking_send(msg_to_send, 18))
     {
-      // error
-      return false;
+        // error
+        return false;
     }
 
     // call the given user function
@@ -1511,13 +1522,19 @@ bool SparkProtocol::handle_message(msg& message, token_t token, CoAPMessageType:
     case CoAPMessageType::VARIABLE_REQUEST:
     {
       // copy the variable key
-      int variable_key_length = queue[7] & 0x0F;
-      if (12 < variable_key_length)
-        variable_key_length = 12;
+      int queue_offset = 8;
+      size_t variable_key_length = queue[7] & 0x0F;
+      if (variable_key_length == MAX_OPTION_DELTA_LENGTH+1) {
+          variable_key_length = MAX_OPTION_DELTA_LENGTH+1 + queue[8];
+          queue_offset++;
+      }
+      if (variable_key_length > MAX_VARIABLE_KEY_LENGTH) {
+          variable_key_length = MAX_VARIABLE_KEY_LENGTH;
+      }
 
-      char variable_key[13];
-      memcpy(variable_key, queue + 8, variable_key_length);
-      memset(variable_key + variable_key_length, 0, 13 - variable_key_length);
+      char variable_key[MAX_VARIABLE_KEY_LENGTH+1];
+      memcpy(variable_key, queue + queue_offset, variable_key_length);
+      memset(variable_key + variable_key_length, 0, MAX_VARIABLE_KEY_LENGTH+1 - variable_key_length);
 
       queue[0] = 0;
       queue[1] = 16; // default buffer length

@@ -73,7 +73,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 
 	case CoAPMessageType::VARIABLE_REQUEST:
 	{
-		char variable_key[13];
+		char variable_key[MAX_VARIABLE_KEY_LENGTH+1];
 		variables.decode_variable_request(variable_key, message);
 		return variables.handle_variable_request(variable_key, message,
 				channel, token, msg_id,

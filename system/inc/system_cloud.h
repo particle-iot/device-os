@@ -221,15 +221,22 @@ extern const unsigned char backup_tcp_public_server_address[18];
 #define TIMING_FLASH_UPDATE_TIMEOUT   30000   //30sec
 #endif
 
-#define USER_VAR_MAX_COUNT            10
-#define USER_VAR_KEY_LENGTH           12
+#define USER_VAR_MAX_COUNT            (10)  // FIXME: NOT USED
+#define USER_FUNC_MAX_COUNT           (4)   // FIXME: NOT USED
 
-#define USER_FUNC_MAX_COUNT           4
-#define USER_FUNC_KEY_LENGTH          12
-#define USER_FUNC_ARG_LENGTH          64
-
-#define USER_EVENT_NAME_LENGTH        64
-#define USER_EVENT_DATA_LENGTH        64
+#if PLATFORM_ID<2
+    #define USER_FUNC_ARG_LENGTH      (64)  // FIXME: NOT USED
+    #define USER_VAR_KEY_LENGTH       (12)
+    #define USER_FUNC_KEY_LENGTH      (12)
+    #define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
+    #define USER_EVENT_DATA_LENGTH    (64)  // FIXME: NOT USED
+#else
+    #define USER_FUNC_ARG_LENGTH      (622) // FIXME: NOT USED
+    #define USER_VAR_KEY_LENGTH       (64)
+    #define USER_FUNC_KEY_LENGTH      (64)
+    #define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
+    #define USER_EVENT_DATA_LENGTH    (622) // FIXME: NOT USED
+#endif
 
 #ifdef __cplusplus
 }

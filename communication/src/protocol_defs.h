@@ -60,14 +60,23 @@ system_error_t toSystemError(ProtocolError error);
 typedef uint16_t chunk_index_t;
 
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
-const chunk_index_t MAX_CHUNKS = 65535;
-const size_t MISSED_CHUNKS_TO_SEND = 50;
-const size_t MAX_FUNCTION_ARG_LENGTH = 64;
-const size_t MAX_FUNCTION_KEY_LENGTH = 12;
-const size_t MAX_VARIABLE_KEY_LENGTH = 12;
-const size_t MAX_EVENT_NAME_LENGTH = 64;
-const size_t MAX_EVENT_DATA_LENGTH = 64;
-const size_t MAX_EVENT_TTL_SECONDS = 16777215;
+const chunk_index_t MAX_CHUNKS        = 65535;
+const size_t MISSED_CHUNKS_TO_SEND    = 50;
+const size_t MAX_EVENT_TTL_SECONDS    = 16777215;
+const size_t MAX_OPTION_DELTA_LENGTH  = 12;
+#if PLATFORM_ID<2
+    const size_t MAX_FUNCTION_ARG_LENGTH = 64;
+    const size_t MAX_FUNCTION_KEY_LENGTH = 12;
+    const size_t MAX_VARIABLE_KEY_LENGTH = 12;
+    const size_t MAX_EVENT_NAME_LENGTH   = 64;
+    const size_t MAX_EVENT_DATA_LENGTH   = 255;
+#else
+    const size_t MAX_FUNCTION_ARG_LENGTH = 622;
+    const size_t MAX_FUNCTION_KEY_LENGTH = 64;
+    const size_t MAX_VARIABLE_KEY_LENGTH = 64;
+    const size_t MAX_EVENT_NAME_LENGTH   = 64;
+    const size_t MAX_EVENT_DATA_LENGTH   = 622;
+#endif
 
 // Timeout in milliseconds given to receive an acknowledgement for a published event
 const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
