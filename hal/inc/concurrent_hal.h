@@ -131,6 +131,25 @@ os_result_t os_thread_cleanup(os_thread_t thread);
  */
 os_result_t os_thread_yield(void);
 
+os_unique_id_t os_thread_unique_id(os_thread_t thread);
+
+os_thread_t os_thread_current();
+
+typedef struct {
+  uint8_t reserved;
+
+  os_thread_t thread;
+  const char* name;
+  os_unique_id_t id;
+  void* stack;
+  void* stack_start;
+  void* stack_end;
+} os_thread_dump_info_t;
+
+typedef os_result_t (*os_thread_dump_callback_t)(os_thread_dump_info_t*, void*);
+
+os_result_t os_thread_dump(os_thread_t thread, os_thread_dump_callback_t callback, void* reserved);
+
 /**
  * Delays the current task until a specified time to set up periodic tasks
  * @param previousWakeTime The time the thread last woke up.  May not be NULL.
@@ -201,7 +220,7 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 #endif // _GLIBCXX_HAS_GTHREADS
 
 #ifdef __cplusplus
-#if PLATFORM_ID!=3
+#if PLATFORM_ID != 3
 #include <bits/gthr.h>
 #endif
 #endif

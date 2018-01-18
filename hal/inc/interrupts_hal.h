@@ -105,7 +105,7 @@ void HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved);
 
 int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved);
 
-#ifdef USE_STDPERIPH_DRIVER
+#if defined(USE_STDPERIPH_DRIVER) && !defined(INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS)
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD)
 #include "stm32f10x.h"
 #elif defined(STM32F2XX)

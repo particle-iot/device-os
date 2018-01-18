@@ -14,3 +14,4 @@ typedef void* condition_variable_t;
 typedef void* os_semaphore_t;
 typedef void* os_mutex_recursive_t;
 typedef struct timespec __gthread_time_t;
+typedef uintptr_t os_unique_id_t;

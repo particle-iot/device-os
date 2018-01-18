@@ -112,6 +112,7 @@ typedef enum System_Reset_Reason
 #include "watchdog_hal.h"
 #include "core_subsys_hal.h"
 #include "interrupts_hal.h"
+#include "concurrent_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -268,6 +269,9 @@ typedef enum {
 typedef void(*HAL_Event_Callback)(int event, int flags, void* data);
 
 void HAL_Set_Event_Callback(HAL_Event_Callback callback, void* reserved);
+
+typedef int (*HAL_Stacktrace_Callback)(void* ptr, int idx, uintptr_t addr, os_thread_dump_info_t* info, void* reserved);
+int HAL_Core_Generate_Stacktrace(os_thread_dump_info_t* info, HAL_Stacktrace_Callback callback, void* ptr, void* reserved);
 
 #ifdef __cplusplus
 }

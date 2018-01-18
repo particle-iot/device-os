@@ -234,3 +234,5 @@ ASSERT ( ORIGIN(SRAM) == system_part2_ram_start, "ORIGIN of SRAM should be equal
 ASSERT ( LENGTH(SRAM) == ( system_part2_ram_size + stack_size ), "LENGTH of SRAM should be equal to system_static_ram_size plus stack_size. Adjust by hand to obtain the correct address and length. ");
 
 ASSERT ( (link_bss_end - link_global_data_start) <= system_part2_ram_size, "Insufficient room for .data and .bss sections" )
+
+ASSERT( link_global_retained_system_end <= (ORIGIN(BACKUPSRAM_SYSTEM) + LENGTH(BACKUPSRAM_SYSTEM)), "system backup SRAM region overflow" )
