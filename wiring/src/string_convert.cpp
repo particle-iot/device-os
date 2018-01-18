@@ -9,7 +9,7 @@
 #define BUFSIZE (sizeof(long) * 8 + 1)
 
 //utility function used by ultoa()
-void str_reverse(char* buffer){
+__attribute__((weak)) void str_reverse(char* buffer){
 	char *i, *j;
 	char c;
 	i=buffer;
@@ -27,7 +27,7 @@ void str_reverse(char* buffer){
 
 
 //convert long to string
-char *ltoa(long N, char *str, int base)
+__attribute__((weak)) char *ltoa(long N, char *str, int base)
 {
       int i = 2;
       long uarg;
@@ -64,7 +64,7 @@ char *ltoa(long N, char *str, int base)
 }
 
 //convert unsigned long to string
-char* ultoa(unsigned long a, char* buffer, int radix, char pad){
+__attribute__((weak)) char* ultoa(unsigned long a, char* buffer, int radix, char pad){
 	if(radix<2 || radix>36){
 		return NULL;
 	}
@@ -94,7 +94,7 @@ char* ultoa(unsigned long a, char* buffer, int radix, char pad){
 	return buffer;
 }
 
-char* itoa(int a, char* buffer, int radix){
+__attribute__((weak)) char* itoa(int a, char* buffer, int radix){
 	if(a<0){
 		*buffer = '-';
 		unsigned v = a==INT_MIN ? ((unsigned)INT_MAX+1) : -a;

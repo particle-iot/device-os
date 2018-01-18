@@ -21,6 +21,8 @@ SYSTEM=system/
 HAL=hal/
 PLATFORM=platform/
 WIRING_SRC=$(WIRING)src/
+WIRING_GLOBALS=wiring_globals/
+WIRING_GLOBALS_SRC=${WIRING_GLOBALS}src
 
 TARGETDIR=obj/
 TARGET=runner
@@ -53,8 +55,11 @@ CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_character.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_led.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_diagnostics.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_cellular_printable.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_i2c.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),spark_wiring_wifi.cpp)
 CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
+CPPSRC += $(call target_files,$(WIRING_SRC),string_convert.cpp)
+CPPSRC += $(call target_files,$(WIRING_GLOBALS_SRC),wiring_globals_i2c.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
@@ -73,6 +78,7 @@ CPPSRC += $(call target_files,$(HAL)src/gcc,usb_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,deviceid_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,interrupts_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/electron,cellular_internal.cpp)
+CPPSRC += $(call target_files,$(HAL)src/template,i2c_hal.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
