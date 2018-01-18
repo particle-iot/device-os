@@ -32,6 +32,8 @@ inline void* platform_get_current_pc(void) {
 #define __SW_RETURN_ADDRESS(i) case i: return __builtin_return_address(i)
 
 inline void* platform_get_return_address(int idx) {
+    // XXX: switch/case is intentional. DO NOT change to simple __builtin_return_address(idx)
+    // __builtin_return_address() needs to take a constant here, otherwise GCC is not happy
     switch(idx) {
         __SW_RETURN_ADDRESS(0);
         __SW_RETURN_ADDRESS(1);

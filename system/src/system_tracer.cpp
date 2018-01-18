@@ -64,8 +64,10 @@ int tracer_save_checkpoint(tracer_checkpoint_t* chkpt, uint32_t flags, void* res
     os_thread_t thread = os_thread_current();
     os_unique_id_t id = os_thread_unique_id(thread);
 
+    // We are always blocking interrupts instead of os thread scheduling here
+    // because tracer_save_checkpoint() may be called from an interrupt handler
     // bool isr = HAL_IsISR();
-    bool isr = true;
+    const bool isr = true;
 
     uintptr_t st = TracerService::lock(isr);
     auto tracer = TracerService::instance();
@@ -107,9 +109,11 @@ int tracer_save_checkpoint(tracer_checkpoint_t* chkpt, uint32_t flags, void* res
     return 0;
 }
 
-size_t tracer_dump_current(char* buf, size_t bufSize) {
+size_t tracer_dump_current(char* buf, size_t bufSize, void* reserved) {
+    // We are always blocking interrupts instead of os thread scheduling here
+    // because tracer_save_checkpoint() may be called from an interrupt handler
     // bool isr = HAL_IsISR();
-    bool isr = true;
+    const bool isr = true;
     uintptr_t st = TracerService::lock(isr);
     auto tracer = TracerService::instance();
     size_t sz = tracer->dumpCurrent(buf, bufSize);
@@ -118,7 +122,7 @@ size_t tracer_dump_current(char* buf, size_t bufSize) {
     return sz;
 }
 
-size_t tracer_dump_saved(char* buf, size_t bufSize) {
+size_t tracer_dump_saved(char* buf, size_t bufSize, void* reserved) {
     auto tracer = TracerService::instance();
     size_t sz = tracer->dumpSaved(buf, bufSize);
 

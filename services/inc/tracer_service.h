@@ -71,8 +71,8 @@ int tracer_set_callbacks_(tracer_callbacks_t* cb, void* reserved);
 int tracer_save_checkpoint(tracer_checkpoint_t* chkpt, uint32_t flags, void* reserved);
 int tracer_save_checkpoint_(tracer_checkpoint_t* chkpt, uint32_t flags, void* reserved);
 int tracer_save_checkpoint__(tracer_checkpoint_t* chkpt, uint32_t flags, void* reserved);
-size_t tracer_dump_saved(char* buf, size_t bufSize);
-size_t tracer_dump_current(char* buf, size_t bufSize);
+size_t tracer_dump_saved(char* buf, size_t bufSize, void* reserved);
+size_t tracer_dump_current(char* buf, size_t bufSize, void* reserved);
 
 #ifdef __cplusplus
 }

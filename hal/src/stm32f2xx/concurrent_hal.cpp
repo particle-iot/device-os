@@ -134,11 +134,12 @@ static BaseType_t os_thread_dump_helper(TaskStatus_t* const status, void* data)
 
 os_result_t os_thread_dump(os_thread_t thread, os_thread_dump_callback_t callback, void* ptr)
 {
+    // NOTE: callback is executed with thread scheduling disabled
+    // returning anything other than 0 in the callback will prevent further callback invocations,
+    // stopping iteration over the threads.
     TaskStatus_t status = {0};
     os_thread_dump_helper_t data = {callback, thread, ptr};
-    // vTaskSuspendAll();
     uxTaskGetSystemState(&status, 1, nullptr, os_thread_dump_helper, (void*)&data);
-    // xTaskResumeAll();
 
     return 0;
 }

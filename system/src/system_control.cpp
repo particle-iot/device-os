@@ -331,9 +331,9 @@ void SystemControlInterface::processSystemRequest(void* data) {
 
   case USB_REQUEST_GET_TRACE: {
     if (req->value) {
-      req->reply_size = tracer_dump_current(req->data, USB_REQUEST_BUFFER_SIZE);
+      req->reply_size = tracer_dump_current(req->data, USB_REQUEST_BUFFER_SIZE, nullptr);
     } else {
-      req->reply_size = tracer_dump_saved(req->data, USB_REQUEST_BUFFER_SIZE);
+      req->reply_size = tracer_dump_saved(req->data, USB_REQUEST_BUFFER_SIZE, nullptr);
     }
     if (req->reply_size > USB_REQUEST_BUFFER_SIZE) {
       req->reply_size = USB_REQUEST_BUFFER_SIZE;
