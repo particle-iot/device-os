@@ -30,6 +30,7 @@
 #include "system_threading.h"
 #include "system_mode.h"
 #include "system_power.h"
+#include "monitor_service.h"
 
 using namespace particle;
 
@@ -242,6 +243,7 @@ protected:
         /* Wait for SmartConfig/SerialConfig to finish */
         while (WLAN_SMART_CONFIG_ACTIVE && !WLAN_SMART_CONFIG_FINISHED && !WLAN_SERIAL_CONFIG_DONE)
         {
+            SYSTEM_MONITOR_KICK_CURRENT();
             if (WLAN_DELETE_PROFILES)
             {
                 // Get base color used for the listening mode indication

@@ -5,7 +5,7 @@
  *      Author: david_s5
  */
 
-#define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
+// #define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
 #include <stdint.h>
 #include "spark_macros.h"
 #include "panic.h"
@@ -16,7 +16,7 @@
 #include "interrupts_hal.h"
 #include "hal_platform.h"
 #include "core_hal.h"
-
+#include "monitor_service.h"
 
 #define LOOPSPERMSEC 5483
 
@@ -39,6 +39,10 @@ static const flash_codes_t flash_codes[] = {
 
 void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uint32_t))
 {
+        // FIXME:
+        // Suspend indefinitely
+        SYSTEM_MONITOR_SUSPEND(0);
+
         HAL_disable_irq();
         // Flush any serial message to help the poor bugger debug this;
         flash_codes_t pcd = flash_codes[code];

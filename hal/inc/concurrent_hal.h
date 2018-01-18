@@ -131,6 +131,8 @@ os_result_t os_thread_cleanup(os_thread_t thread);
  */
 os_result_t os_thread_yield(void);
 
+os_thread_t os_thread_current(void);
+
 /**
  * Delays the current task until a specified time to set up periodic tasks
  * @param previousWakeTime The time the thread last woke up.  May not be NULL.
@@ -228,6 +230,12 @@ typedef enum os_timer_change_t
 int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, unsigned period, unsigned block, void* reserved);
 int os_timer_destroy(os_timer_t timer, void* reserved);
 int os_timer_is_active(os_timer_t timer, void* reserved);
+
+/**
+ * Thread local storage
+ */
+os_result_t os_thread_storage_set(os_thread_t thread, int idx, void* data, void* reserved);
+void* os_thread_storage_get(os_thread_t thread, int idx, void* reserved);
 
 #ifdef __cplusplus
 }

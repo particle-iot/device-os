@@ -19,6 +19,7 @@
 
 #include "flash_mal.h"
 #include "string.h"
+#include "monitor_service.h"
 
 /**
  * Implements access to the internal flash, providing the interface expected by dcd.h
@@ -28,6 +29,8 @@ class InternalFlashStore
 public:
     int eraseSector(unsigned address)
     {
+        // Erase of 64kB sector may take up to 2400ms according to the datasheet
+        SYSTEM_MONITOR_EXPECT_STALL(2500);
         return !FLASH_EraseMemory(FLASH_INTERNAL, address, 1);
     }
 
@@ -39,6 +42,9 @@ public:
         FLASH_Unlock();
         FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
 
+        // Allow up to 1700ms: 1 write operation takes at most 100us
+        // (65536 / 4) * 100us = 1648.4ms
+        SYSTEM_MONITOR_EXPECT_STALL(500);
         while (data_ptr < end_ptr)
         {
             FLASH_Status status;

@@ -36,6 +36,7 @@
 #include "core_hal.h"
 #include "system_user.h"
 #include "system_version.h"
+#include "spark_wiring_watchdog.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
 #define SYSTEM_HW_TICKS 1
@@ -214,6 +215,10 @@ public:
 #endif
 
     static bool enableFeature(const WiFiTesterFeature feature);
+
+#if SYSTEM_MONITOR_ENABLED == 1
+    static bool enableFeature(spark::WatchdogFeature feature);
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */
 
     String version()
     {

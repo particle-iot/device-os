@@ -25,11 +25,14 @@
 
 #include "inet_hal.h"
 #include "wiced_tcpip.h"
+#include "monitor_service.h"
 
 int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, network_interface_t nif, void* reserved)
 {
     wiced_ip_address_t address;
-    wiced_result_t result = wiced_hostname_lookup (hostname, &address, 5000);
+    const uint32_t timeout = 5000;
+    SYSTEM_MONITOR_MODIFY_TIMEOUT(timeout * 4 / 3);
+    wiced_result_t result = wiced_hostname_lookup (hostname, &address, timeout);
     if (result == WICED_SUCCESS) {
     		HAL_IPV4_SET(out_ip_addr, GET_IPV4_ADDRESS(address));
     }
@@ -46,6 +49,7 @@ int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTr
 
     int count = 0;
     for (int i=0; i<nTries; i++) {
+        SYSTEM_MONITOR_MODIFY_TIMEOUT(ping_timeout * 4 / 3);
         wiced_result_t     status = wiced_ping(WICED_STA_INTERFACE, &ping_target_ip, ping_timeout, &elapsed_ms);
         if (status==WICED_SUCCESS)
             count++;

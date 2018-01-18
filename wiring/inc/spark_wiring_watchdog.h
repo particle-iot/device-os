@@ -22,9 +22,10 @@
 #include "spark_wiring_thread.h"
 #include "delay_hal.h"
 #include "timer_hal.h"
+#include "system_task.h"
+#include "system_monitor.h"
 
 #if PLATFORM_THREADING
-
 
 class ApplicationWatchdog
 {
@@ -90,7 +91,91 @@ public:
 
 };
 
-inline void application_checkin() { ApplicationWatchdog::checkin(); }
+#if SYSTEM_MONITOR_ENABLED == 1
+
+namespace spark {
+
+const system_tick_t DEFAULT_WATCHDOG_TIMEOUT = 1000;
+
+enum WatchdogFeature {
+    WATCHDOG_FEATURE = 0x01,
+    WATCHDOG_FEATURE_IWDG = 0x02
+};
+
+class WatchdogClass {
+public:
+    // Enables monitoring for the calling thread with a specified period
+    static bool enable(system_tick_t timeout = DEFAULT_WATCHDOG_TIMEOUT) {
+        return system_monitor_enable(os_thread_current(), timeout, nullptr) == 0;
+    }
+    // Disable monitoring for the calling thread
+    static bool disable() {
+        return system_monitor_disable(os_thread_current(), nullptr) == 0;
+    }
+
+    // Reports that the calling thread is alive
+    static bool kick() {
+        return system_monitor_kick(os_thread_current(), nullptr) == 0;
+    }
+
+    // Gets the timeout for the calling thread. Returns 0 if monitoring is not
+    // enabled for the calling thread.
+    static system_tick_t getTimeout() {
+        return getTimeout(os_thread_current());
+    }
+    // Gets the timeout for a specified thread. Returns 0 if monitoring is not
+    // enabled for the specified thread.
+    static system_tick_t getTimeout(os_thread_t thread) {
+        return system_monitor_get_thread_timeout(thread, nullptr);
+    }
+    // Changes the timeout for the calling thread. Returns false if monitoring is not
+    // enabled for the calling thread.
+    static bool setTimeout(system_tick_t timeout) {
+        return setTimeout(os_thread_current(), timeout);
+    }
+    // Changes the timeout for the specified thread. Returns false if monitoring is not
+    // enabled for the specified thread.
+    static bool setTimeout(os_thread_t thread, system_tick_t timeout) {
+        return system_monitor_set_thread_timeout(thread, timeout, nullptr) == 0;
+    }
+
+    // Returns maximum amount of time the device may sleep, or 0 if indefinitely
+    static system_tick_t getMaximumSleepTime() {
+        return system_monitor_get_max_sleep_time(nullptr, nullptr);
+    }
+
+    // There should be the same System.enableFeature() overload for convenience
+    // WatchdogFeature:
+    // - WATCHDOG_FEATURE_IWDG - enables IWDG (independent watchdog)
+    static bool enableFeature(WatchdogFeature feature) {
+        system_monitor_configuration_t config = {};
+        config.size = sizeof(config);
+        // config.version = 0;
+        if (feature == WATCHDOG_FEATURE_IWDG) {
+            config.iwdg = 1;
+        }
+        if (feature == WATCHDOG_FEATURE) {
+            config.enabled = 1;
+        }
+        return system_monitor_configure(&config, nullptr) == 0;
+    }
+};
+
+} /* namespace spark */
+
+extern spark::WatchdogClass Watchdog;
+
+#define WATCHDOG_MODIFY_TIMEOUT(timeout) SYSTEM_MONITOR_MODIFY_TIMEOUT(timeout)
+
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */
+
+inline void application_checkin() {
+    SPARK_ASSERT(application_thread_current(nullptr));
+#if SYSTEM_MONITOR_ENABLED == 1
+    spark::WatchdogClass::kick();
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */
+    ApplicationWatchdog::checkin();
+}
 
 #else
 

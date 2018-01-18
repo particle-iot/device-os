@@ -28,5 +28,8 @@ void ApplicationWatchdog::loop()
 	}
 }
 
+#if SYSTEM_MONITOR_ENABLED == 1
+spark::WatchdogClass Watchdog;
+#endif /* SYSTEM_MONITOR_ENABLED == 1 */
 
 #endif

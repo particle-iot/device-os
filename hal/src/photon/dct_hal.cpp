@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "monitor_service.h"
+
 extern uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
 // Compatibility crc32 function for WICED
@@ -48,6 +50,10 @@ const void* dct_read_app_data(uint32_t offset) {
 }
 
 int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
+    // Erase of 16kB sector may take up to 800ms according to the datasheet
+    // 1 write operation takes at most 100us
+    // (16384 / 4) * 100us = 409ms
+    SYSTEM_MONITOR_EXPECT_STALL(1300);
     return wiced_dct_write(data, DCT_APP_SECTION, offset, size);
 }
 

@@ -37,6 +37,7 @@
 #include "events.h"
 #include "deviceid_hal.h"
 #include "system_mode.h"
+#include "monitor_service.h"
 
 extern void (*random_seed_from_cloud_handler)(unsigned int);
 
@@ -186,6 +187,7 @@ void spark_process(void)
     if (system_thread_get_state(NULL) && APPLICATION_THREAD_CURRENT())
     {
         ApplicationThread.process();
+        SYSTEM_MONITOR_KICK_CURRENT();
         return;
     }
 #endif
