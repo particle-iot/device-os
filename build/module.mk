@@ -82,7 +82,8 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC
 CLOUD_FLASH_URL ?= https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
 
 # All Target
-all: prepare $(TARGET) postbuild
+
+all: prepare $(MAKE_DEPENDENCIES) $(TARGET) postbuild
 
 prepare:
 ifeq ($(USE_PLUGIN),y)
@@ -100,13 +101,13 @@ exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
 
-st-flash: $(TARGET_BASE).bin
+st-flash: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing $< using st-flash to address $(PLATFORM_DFU)
 	st-flash write $< $(PLATFORM_DFU)
 
 ifneq ("$(OPENOCD_HOME)","")
 
-program-openocd: $(TARGET_BASE).bin
+program-openocd: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing $< using openocd to address $(PLATFORM_DFU)
 	$(OPENOCD_HOME)/openocd -f $(OPENOCD_HOME)/tcl/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/tcl/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $< $(PLATFORM_DFU) reset exit"
 
@@ -114,7 +115,7 @@ endif
 
 # Program the core using dfu-util. The core should have been placed
 # in bootloader mode before invoking 'make program-dfu'
-program-dfu: $(TARGET_BASE).dfu
+program-dfu: $(MAKE_DEPENDENCIES) $(TARGET_BASE).dfu
 ifdef START_DFU_FLASHER_SERIAL_SPEED
 # PARTICLE_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
 #ifndef PARTICLE_SERIAL_DEV
@@ -131,11 +132,11 @@ endif
 
 # Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
-program-cloud: $(TARGET_BASE).bin
+program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
 	$(CURL) -X PUT -F file=@$< -F file_type=binary $(CLOUD_FLASH_URL)
 
-program-serial: $(TARGET_BASE).bin
+program-serial: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 ifdef START_YMODEM_FLASHER_SERIAL_SPEED
 # Program core/photon using serial ymodem flasher.
 # Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
@@ -223,14 +224,14 @@ endif
 	$(call echo,)
 
 
-$(TARGET_BASE).elf : build_dependencies $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
+$(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
 	$(call echo,'Building target: $@')
 	$(call echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CCACHE) $(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
 	$(call echo,)
 
-$(TARGET_BASE)$(EXECUTABLE_EXTENSION) : build_dependencies $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
+$(TARGET_BASE)$(EXECUTABLE_EXTENSION) : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
 	$(call echo,'Building target: $@')
 	$(call echo,'Invoking: GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
