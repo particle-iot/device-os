@@ -20,6 +20,8 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+#if PLATFORM_THREADING
+
 #if PLATFORM_ID == 6
 
 // Regression test for the WICED deadlock in sys_sem_new
@@ -52,4 +54,37 @@ test(CONCURRENT_01_semaphore_deadlock)
     allocatorThread.dispose();
 }
 
-#endif
+#endif // PLATFORM_ID == 6
+
+test(CONCURRENT_02_crc32_is_thread_safe) {
+    const unsigned TEST_DURATION = 1000; // 1 second
+    const size_t DATA_SIZE = 1024;
+    // Allocate a buffer and fill it with random data
+    std::unique_ptr<uint8_t[]> data(new uint8_t[DATA_SIZE]);
+    for (size_t i = 0; i < DATA_SIZE; ++i) {
+        data[i] = random(256);
+    }
+    const uint32_t validCrc = HAL_Core_Compute_CRC32(data.get(), DATA_SIZE);
+    // Spawn a couple of threads doing parallel CRC computations
+    bool ok = false;
+    system_tick_t timeStart = 0;
+    const auto threadFn = [&]() {
+        do {
+            const uint32_t crc = HAL_Core_Compute_CRC32(data.get(), DATA_SIZE);
+            if (crc != validCrc) {
+                ok = false;
+                break;
+            }
+        } while (millis() - timeStart < TEST_DURATION);
+    };
+    ok = true;
+    timeStart = millis();
+    Thread thread1("thread1", threadFn);
+    Thread thread2("thread2", threadFn);
+    // Wait until the threads finish
+    thread1.join();
+    thread2.join();
+    assertTrue(ok);
+}
+
+#endif // PLATFORM_THREADING
