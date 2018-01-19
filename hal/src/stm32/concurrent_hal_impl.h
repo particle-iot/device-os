@@ -2,6 +2,8 @@
 #ifndef CONCURRENT_HAL_IMPL_H
 #define	CONCURRENT_HAL_IMPL_H
 
+#define OS_TIMER_INVALID_HANDLE NULL
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

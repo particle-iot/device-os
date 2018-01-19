@@ -94,6 +94,17 @@ uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void
  */
 void cancel_connection();
 
+/**
+ * Allocates memory from a pool designed for small and short-lived allocations. This function can
+ * be called from an ISR.
+ */
+void* system_pool_alloc(size_t size, void* reserved);
+
+/**
+ * Frees the memory allocated with system_pool_alloc(). This function can be called from an ISR.
+ */
+void system_pool_free(void* ptr, void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1308,6 +1308,12 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return 0;
         }
 #endif
+#if HAL_PLATFORM_CLOUD_UDP
+        case FEATURE_CLOUD_UDP: {
+            const uint8_t data = (enabled ? 0xff : 0x00);
+            return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
+        }
+#endif // HAL_PLATFORM_CLOUD_UDP
     }
     return -1;
 }

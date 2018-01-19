@@ -41,7 +41,11 @@
 //     -std=c++0x
 
 class __FlashStringHelper;
+
+// This macro makes Hippomocks unhappy
+#ifndef UNIT_TEST
 #define F(X) (X)
+#endif
 
 // An inherited class for holding the result of a concatenation.  These
 // result objects are assumed to be writable by subsequent concatenations.

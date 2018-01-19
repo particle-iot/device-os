@@ -207,3 +207,13 @@ int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
 {
     return 0;
 }
+
+#ifdef USB_VENDOR_REQUEST_ENABLE
+
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p) {
+}
+
+void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Callback cb, void* p) {
+}
+
+#endif // defined(USB_VENDOR_REQUEST_ENABLE)

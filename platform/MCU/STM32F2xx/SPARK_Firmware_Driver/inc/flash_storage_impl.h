@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#pragma once
+
 #include "flash_mal.h"
 #include "string.h"
 
@@ -26,12 +28,16 @@
 class InternalFlashStore
 {
 public:
-    int eraseSector(unsigned address)
+    static int eraseSector(unsigned address)
     {
-        return !FLASH_EraseMemory(FLASH_INTERNAL, address, 1);
+        return erase(address, 1);
     }
 
-    int write(const unsigned offset, const void* data, const unsigned size)
+    static int erase(unsigned address, unsigned size) {
+        return (FLASH_EraseMemory(FLASH_INTERNAL, address, size) ? 0 : -1);
+    }
+
+    static int write(const unsigned offset, const void* data, const unsigned size)
     {
         const uint8_t* data_ptr = (const uint8_t*)data;
         const uint8_t* end_ptr  = data_ptr+size;
@@ -69,12 +75,12 @@ public:
         return (memcmp(dataAt(offset), data, size)) ? -1 : 0;
     }
 
-    const uint8_t* dataAt(unsigned address)
+    static const uint8_t* dataAt(unsigned address)
     {
         return (const uint8_t*)address;
     }
 
-    int read(unsigned offset, void* data, unsigned size)
+    static int read(unsigned offset, void* data, unsigned size)
     {
         memcpy(data, dataAt(offset), size);
         return 0;

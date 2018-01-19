@@ -77,6 +77,9 @@ DYNALIB_FN(26, hal_wlan, wlan_restart, int(void*))
 DYNALIB_FN(27, hal_wlan, wlan_set_hostname, int(const char*, void*))
 DYNALIB_FN(28, hal_wlan, wlan_get_hostname, int(char*, size_t, void*))
 DYNALIB_FN(29, hal_wlan, wlan_connected_info, int(void*, wlan_connected_info_t*, void*))
+DYNALIB_FN(30, hal_wlan, wlan_get_antenna, WLanSelectAntenna_TypeDef(void*))
+DYNALIB_FN(31, hal_wlan, wlan_get_ipaddress, int(IPConfig*, void*))
+DYNALIB_FN(32, hal_wlan, wlan_get_ipaddress_source, IPAddressSource(void*))
 DYNALIB_END(hal_wlan)
 
 #endif  // PLATFORM_ID != 10

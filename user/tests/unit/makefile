@@ -59,11 +59,19 @@ CPPSRC += $(call target_files,$(SYSTEM)src/,system_utilities.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_mode.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_string_interpolate.cpp)
 CPPSRC += $(call target_files,$(SYSTEM)src/,system_led_signal.cpp)
+CPPSRC += $(call target_files,$(SYSTEM)src/,active_object.cpp)
+CPPSRC += $(call target_files,$(SYSTEM)src/,usb_control_request_channel.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,filesystem.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,device_config.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,core_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,timer_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,rgbled_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,wlan_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,net_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,delay_hal.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,usb_hal.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,deviceid_hal.cpp)
+CPPSRC += $(call target_files,$(HAL)src/gcc,interrupts_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/electron,cellular_internal.cpp)
 
 # Paths to dependent projects, referenced from root of this project
@@ -88,6 +96,7 @@ INCLUDE_DIRS += $(SRC_PATH)stubs
 INCLUDE_DIRS += $(LIB_SERVICES)inc
 INCLUDE_DIRS += $(WIRING)inc
 INCLUDE_DIRS += $(SYSTEM)inc
+INCLUDE_DIRS += $(SYSTEM)src
 INCLUDE_DIRS += $(HAL)shared
 INCLUDE_DIRS += $(HAL)inc
 INCLUDE_DIRS += $(HAL)src/electron
@@ -112,7 +121,7 @@ endif
 DEFINES += UNIT_TEST BOOST_NO_AUTO_PTR USE_STDPERIPH_DRIVER
 ABS_INCLUDE_DIRS += $(BOOST_ROOT)
 LIB_DIRS += $(BOOST_ROOT)/stage/lib
-LIBS += boost_regex boost_system boost_thread
+LIBS += boost_program_options boost_regex boost_system boost_thread
 export DYLD_LIBRARY_PATH=$(BOOST_ROOT)/stage/lib
 
 CFLAGS += $(patsubst %,-I%,$(ABS_INCLUDE_DIRS)) -I.

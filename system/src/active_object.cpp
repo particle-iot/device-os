@@ -82,77 +82,33 @@ void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
 
 #endif // PLATFORM_THREADING
 
-ISRTaskQueue::ISRTaskQueue(size_t size) :
-        tasks_(nullptr),
-        availTask_(nullptr),
-        firstTask_(nullptr),
-        lastTask_(nullptr) {
-    if (size) {
-        // Initialize pool of task objects
-        tasks_ = new(std::nothrow) Task[size];
-        if (tasks_) {
-            for (size_t i = 0; i < size; ++i) {
-                Task* t = tasks_ + i;
-                if (i != size - 1) {
-                    t->next = t + 1;
-                } else {
-                    t->next = nullptr;
-                }
-            }
-        }
-        availTask_ = tasks_;
-    }
-}
-
-ISRTaskQueue::~ISRTaskQueue() {
-    delete[] tasks_;
-}
-
-bool ISRTaskQueue::enqueue(TaskFunc func, void* data) {
-    SPARK_ASSERT(func && HAL_IsISR());
-    ATOMIC_BLOCK() { // Prevent preemption of the current ISR
-        // Take task object from the pool
-        Task* t = availTask_;
-        if (!t) {
-            return false;
-        }
-        availTask_ = t->next;
-        // Initialize task object
-        t->func = func;
-        t->data = data;
-        t->next = nullptr;
+void ISRTaskQueue::enqueue(Task* task) {
+    ATOMIC_BLOCK() {
         // Add task object to the queue
         if (lastTask_) {
-            lastTask_->next = t;
+            lastTask_->next = task;
         } else { // The queue is empty
-            firstTask_ = t;
+            firstTask_ = task;
         }
-        lastTask_ = t;
+        task->next = nullptr;
+        lastTask_ = task;
     }
-    return true;
 }
 
 bool ISRTaskQueue::process() {
-    SPARK_ASSERT(!HAL_IsISR());
-    TaskFunc func = nullptr;
-    void* data = nullptr;
+    Task* task = nullptr;
     ATOMIC_BLOCK() {
         // Take task object from the queue
-        Task *t = firstTask_;
-        if (!t) {
+        if (!firstTask_) {
             return false;
         }
-        firstTask_ = firstTask_->next;
+        task = firstTask_;
+        firstTask_ = task->next;
         if (!firstTask_) {
             lastTask_ = nullptr;
         }
-        func = t->func;
-        data = t->data;
-        // Return task object to the pool
-        t->next = availTask_;
-        availTask_ = t;
     }
     // Invoke task function
-    func(data);
+    task->func(task);
     return true;
 }

@@ -41,6 +41,8 @@
 // For ATOMIC_BLOCK
 #include "spark_wiring_interrupts.h"
 
+#include <memory>
+
 #define OTA_CHUNK_SIZE                 (512)
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
@@ -602,4 +604,162 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         dct_write_app_data(data, offset, length>data_length ? data_length : length);
 
     return length;
+}
+
+namespace {
+
+bool dctAddressForKeyType(security_key_type type, size_t* offset, size_t* size) {
+    size_t offs = 0;
+    size_t n = 0;
+    switch (type) {
+#if HAL_PLATFORM_CLOUD_TCP
+    case TCP_DEVICE_PRIVATE_KEY:
+        offs = DCT_DEVICE_PRIVATE_KEY_OFFSET;
+        n = DCT_DEVICE_PRIVATE_KEY_SIZE;
+        break;
+    case TCP_DEVICE_PUBLIC_KEY:
+        offs = DCT_DEVICE_PUBLIC_KEY_OFFSET;
+        n = DCT_DEVICE_PUBLIC_KEY_SIZE;
+        break;
+    case TCP_SERVER_PUBLIC_KEY:
+        offs = DCT_SERVER_PUBLIC_KEY_OFFSET;
+        n = DCT_SERVER_PUBLIC_KEY_SIZE;
+        break;
+#endif // HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_UDP
+    case UDP_DEVICE_PRIVATE_KEY:
+        offs = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
+        n = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+        break;
+    case UDP_DEVICE_PUBLIC_KEY:
+        offs = DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET;
+        n = DCT_ALT_DEVICE_PUBLIC_KEY_SIZE;
+        break;
+    case UDP_SERVER_PUBLIC_KEY:
+        offs = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
+        n = DCT_ALT_SERVER_PUBLIC_KEY_SIZE;
+        break;
+#endif // HAL_PLATFORM_CLOUD_UDP
+    default:
+        return false;
+    }
+    if (offset) {
+        *offset = offs;
+    }
+    if (size) {
+        *size = n;
+    }
+    return true;
+}
+
+bool dctAddressForProtocolType(server_protocol_type type, size_t* offset, size_t* size) {
+    size_t offs = 0;
+    size_t n = 0;
+    switch (type) {
+#if HAL_PLATFORM_CLOUD_TCP
+    case TCP_SERVER_PROTOCOL:
+        offs = DCT_SERVER_ADDRESS_OFFSET;
+        n = DCT_SERVER_ADDRESS_SIZE;
+        break;
+#endif // HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_UDP
+    case UDP_SERVER_PROTOCOL:
+        offs = DCT_ALT_SERVER_ADDRESS_OFFSET;
+        n = DCT_ALT_SERVER_ADDRESS_SIZE;
+        break;
+#endif // HAL_PLATFORM_CLOUD_UDP
+    default:
+        return false;
+    }
+    if (offset) {
+        *offset = offs;
+    }
+    if (size) {
+        *size = n;
+    }
+    return true;
+}
+
+} // namespace
+
+int lock_security_key_data(security_key_type type, const char** data, size_t* size) {
+    // TODO: Ensure missing public keys are extracted from private keys (fetch_device_public_key() is
+    // currently broken on Electron)
+    size_t offs = 0;
+    size_t n = 0;
+    if (!dctAddressForKeyType(type, &offs, &n)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    const char* d = (const char*)dct_read_app_data_lock(offs);
+    if (!d) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    if (data) {
+        *data = d;
+    }
+    if (size) {
+        *size = n; // TODO: Return actual size of the key data?
+    }
+    return 0;
+}
+
+void unlock_security_key_data(security_key_type type) {
+    size_t offs = 0;
+    if (dctAddressForKeyType(type, &offs, nullptr)) {
+        dct_read_app_data_unlock(offs);
+    }
+}
+
+int store_security_key_data(security_key_type type, const char* data, size_t size) {
+    size_t offs = 0;
+    size_t maxSize = 0;
+    if (!dctAddressForKeyType(type, &offs, &maxSize)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    if (size > maxSize) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    const std::unique_ptr<char[]> buf(new(std::nothrow) char[maxSize]);
+    if (!buf) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    memcpy(buf.get(), data, size);
+    memset(buf.get() + size, 0xff, maxSize - size);
+    return dct_write_app_data(buf.get(), offs, maxSize);
+}
+
+int load_server_address(server_protocol_type type, ServerAddress* addr) {
+    size_t offs = 0;
+    size_t size = 0;
+    if (!dctAddressForProtocolType(type, &offs, &size)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    const auto data = (const uint8_t*)dct_read_app_data_lock(offs);
+    if (!data) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    parseServerAddressData(addr, data, size);
+    dct_read_app_data_unlock(offs);
+    if (addr->addr_type == INVALID_INTERNET_ADDRESS) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    return 0;
+}
+
+int store_server_address(server_protocol_type type, const ServerAddress* addr) {
+    size_t offs = 0;
+    size_t maxSize = 0;
+    if (!dctAddressForProtocolType(type, &offs, &maxSize)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    const std::unique_ptr<uint8_t[]> buf(new(std::nothrow) uint8_t[maxSize]);
+    if (!buf) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    memset(buf.get(), 0xff, maxSize);
+    const int ret = encodeServerAddressData(addr, buf.get(), maxSize);
+    if (ret < 0) {
+        return ret;
+    }
+    return dct_write_app_data(buf.get(), offs, maxSize);
 }

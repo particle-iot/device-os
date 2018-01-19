@@ -301,7 +301,14 @@ static uint8_t USBD_DataInStage(USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
         }
         else
         {
-          if((pdev->dev.class_cb->EP0_TxSent != NULL)&&
+          uint8_t ret = USBD_OK;
+          if (pdev->dev.usr_cb && pdev->dev.usr_cb->ControlRequest &&
+              (pdev->dev.device_status == USB_OTG_CONFIGURED))
+          {
+            ret = pdev->dev.usr_cb->ControlRequest(NULL, 1);
+          }
+
+          if(ret != USBD_OK && (pdev->dev.class_cb->EP0_TxSent != NULL)&&
              (pdev->dev.device_status == USB_OTG_CONFIGURED))
           {
             pdev->dev.class_cb->EP0_TxSent(pdev);

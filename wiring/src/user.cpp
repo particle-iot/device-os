@@ -164,43 +164,38 @@ bool __backup_ram_was_valid() { return false; }
 
 #endif
 
-#if Wiring_LogConfig
-// Callback invoked to process USB request for logging configuration
-bool(*log_process_config_request_callback)(char*, size_t, size_t, size_t*, DataFormat) = nullptr;
-#endif
-
-#ifdef USB_VENDOR_REQUEST_ENABLE
-
-// Synchronous handler for customizable requests (USBRequestType::USB_REQUEST_CUSTOM)
-bool __attribute((weak)) usb_request_custom_handler(char* buf, size_t buf_size, size_t req_size, size_t* rep_size) {
-    return false;
+// Default handler for CTRL_REQUEST_APP_CUSTOM requests
+void __attribute((weak)) ctrl_request_custom_handler(ctrl_request* req) {
+    system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
 }
 
-bool usb_request_app_handler(USBRequest* req, void* reserved) {
+#if Wiring_LogConfig
+// Callback invoked to process a logging configuration request
+void(*log_process_ctrl_request_callback)(ctrl_request* req) = nullptr;
+#endif
+
+// Application handler for control requests
+static void ctrl_request_handler(ctrl_request* req) {
     switch (req->type) {
 #if Wiring_LogConfig
-    case USB_REQUEST_LOG_CONFIG: {
-        if (!log_process_config_request_callback || !log_process_config_request_callback(req->data, USB_REQUEST_BUFFER_SIZE,
-                req->request_size, &req->reply_size, (DataFormat)req->format)) {
-            return false;
+    case CTRL_REQUEST_LOG_CONFIG: {
+        if (log_process_ctrl_request_callback) {
+            log_process_ctrl_request_callback(req);
+        } else {
+            system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
         }
-        system_set_usb_request_result(req, USB_REQUEST_RESULT_OK, nullptr);
-        return true;
+        break;
     }
 #endif
-    case USB_REQUEST_CUSTOM: {
-        if (!usb_request_custom_handler(req->data, USB_REQUEST_BUFFER_SIZE, req->request_size, &req->reply_size)) {
-            return false;
-        }
-        system_set_usb_request_result(req, USB_REQUEST_RESULT_OK, nullptr);
-        return true;
+    case CTRL_REQUEST_APP_CUSTOM: {
+        ctrl_request_custom_handler(req);
+        break;
     }
     default:
-        return false; // Unsupported request type
+        system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
+        break;
     }
 }
-
-#endif // USB_VENDOR_REQUEST_ENABLE
 
 void module_user_init_hook()
 {
@@ -227,7 +222,6 @@ void module_user_init_hook()
     // Register the random_seed_from_cloud handler
     spark_set_random_seed_from_cloud_handler(&random_seed_from_cloud, nullptr);
 
-#ifdef USB_VENDOR_REQUEST_ENABLE
-    system_set_usb_request_app_handler(usb_request_app_handler, nullptr);
-#endif
+    // Register application handler for the control requests
+    system_ctrl_set_app_request_handler(ctrl_request_handler, nullptr);
 }
