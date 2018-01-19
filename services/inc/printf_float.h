@@ -2,6 +2,7 @@
 
 #if PLATFORM_ID != 3
 
+#include <stdarg.h>
 #include <stdio.h>
 
 // Taken from nano-vfprintf_local.h

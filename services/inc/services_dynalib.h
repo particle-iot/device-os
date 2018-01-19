@@ -86,29 +86,29 @@ DYNALIB_FN(39, services, diag_command, int(int, void*, void*))
 // Export only on Photon and P1
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 DYNALIB_FN(40, services, _printf_float, int(struct _reent*, struct _prt_data_t*, FILE*, int(*pfunc)(struct _reent* , FILE*, const char*, size_t), va_list*))
-# define BASE_IDX 41
-#else
-# define BASE_IDX 40
-#endif
 
 // Nanopb
 // Helper functions
-DYNALIB_FN(BASE_IDX + 0, services, pb_ostream_init, pb_ostream_t*(void*))
-DYNALIB_FN(BASE_IDX + 1, services, pb_ostream_free, bool(pb_ostream_t*, void*))
-DYNALIB_FN(BASE_IDX + 2, services, pb_istream_init, pb_istream_t*(void*))
-DYNALIB_FN(BASE_IDX + 3, services, pb_istream_free, bool(pb_istream_t*, void*))
-DYNALIB_FN(BASE_IDX + 4, services, pb_ostream_from_buffer_ex, bool(pb_ostream_t*, pb_byte_t*, size_t, void*))
-DYNALIB_FN(BASE_IDX + 5, services, pb_istream_from_buffer_ex, bool(pb_istream_t*, const pb_byte_t*, size_t, void*))
+DYNALIB_FN(41, services, pb_ostream_init, pb_ostream_t*(void*))
+DYNALIB_FN(42, services, pb_ostream_free, bool(pb_ostream_t*, void*))
+DYNALIB_FN(43, services, pb_istream_init, pb_istream_t*(void*))
+DYNALIB_FN(44, services, pb_istream_free, bool(pb_istream_t*, void*))
+DYNALIB_FN(45, services, pb_ostream_from_buffer_ex, bool(pb_ostream_t*, pb_byte_t*, size_t, void*))
+DYNALIB_FN(46, services, pb_istream_from_buffer_ex, bool(pb_istream_t*, const pb_byte_t*, size_t, void*))
 // Encoding/decoding
-DYNALIB_FN(BASE_IDX + 6, services, pb_encode, bool(pb_ostream_t*, const pb_field_t[], const void*))
-DYNALIB_FN(BASE_IDX + 7, services, pb_get_encoded_size, bool(size_t*, const pb_field_t[], const void*))
-DYNALIB_FN(BASE_IDX + 8, services, pb_encode_tag_for_field, bool(pb_ostream_t*, const pb_field_t*))
-DYNALIB_FN(BASE_IDX + 9, services, pb_encode_submessage, bool(pb_ostream_t*, const pb_field_t[], const void*))
-DYNALIB_FN(BASE_IDX + 10, services, pb_decode_noinit, bool(pb_istream_t*, const pb_field_t[], void*))
-DYNALIB_FN(BASE_IDX + 11, services, pb_read, bool(pb_istream_t*, pb_byte_t*, size_t))
-DYNALIB_FN(BASE_IDX + 12, services, pb_encode_string, bool(pb_ostream_t*, const pb_byte_t*, size_t))
-DYNALIB_FN(BASE_IDX + 13, services, pb_encode_tag, bool(pb_ostream_t*, pb_wire_type_t, uint32_t))
-DYNALIB_FN(BASE_IDX + 14, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
+DYNALIB_FN(47, services, pb_encode, bool(pb_ostream_t*, const pb_field_t[], const void*))
+DYNALIB_FN(48, services, pb_get_encoded_size, bool(size_t*, const pb_field_t[], const void*))
+DYNALIB_FN(49, services, pb_encode_tag_for_field, bool(pb_ostream_t*, const pb_field_t*))
+DYNALIB_FN(50, services, pb_encode_submessage, bool(pb_ostream_t*, const pb_field_t[], const void*))
+DYNALIB_FN(51, services, pb_decode_noinit, bool(pb_istream_t*, const pb_field_t[], void*))
+DYNALIB_FN(52, services, pb_read, bool(pb_istream_t*, pb_byte_t*, size_t))
+DYNALIB_FN(53, services, pb_encode_string, bool(pb_ostream_t*, const pb_byte_t*, size_t))
+DYNALIB_FN(54, services, pb_encode_tag, bool(pb_ostream_t*, pb_wire_type_t, uint32_t))
+DYNALIB_FN(55, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
+# define BASE_IDX 56
+#else
+# define BASE_IDX 40
+#endif
 
 DYNALIB_END(services)
 
