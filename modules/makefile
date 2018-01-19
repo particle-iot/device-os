@@ -11,6 +11,8 @@ current_dir := $(patsubst %/,%,$(dir $(mkfile_path)))
 COMMON_BUILD=$(PROJECT_ROOT)/build
 BUILD_PATH_BASE=$(COMMON_BUILD)/target
 
+MODULAR_FIRMWARE=y
+
 include $(PROJECT_ROOT)/build/verbose.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 include $(PROJECT_ROOT)/build/macros.mk
@@ -48,7 +50,12 @@ endif
 makefiles = $(foreach module,$(projects),$(and $(strip $(subst $(MODULE_EXCLUDE),,$(notdir $(module)))),$(wildcard $(module)/makefile)))
 $(info $(makefiles))
 
-all $(INVOKEDGOALS): make_deps
+clean::
+	# Remove generated message files
+	$(VERBOSE)$(RM) $(TARGET_MESSAGE_FILE)
+	$(VERBOSE)$(RMDIR) $(TARGET_MESSAGE_DIR)
+
+all $(INVOKEDGOALS):: make_deps
 
 UPDATE_ZERO = $(BUILD_PATH)/update-zero-$(VERSION_STRING)-p$(PLATFORM_ID).bin
 MODULAR_DIR=.

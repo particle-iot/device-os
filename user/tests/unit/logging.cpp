@@ -62,6 +62,9 @@ public:
         if (attr.has_details) {
             detail_ = attr.details;
         }
+        if (attr.has_id) {
+            id_ = attr.id;
+        }
     }
 
     const LogMessage& messageEquals(const std::string &msg) const {
@@ -101,6 +104,16 @@ public:
     }
 
     // Additional attributes
+    const LogMessage& idEquals(unsigned id) const {
+        CHECK(id_ == id);
+        return *this;
+    }
+
+    const LogMessage& hasId(bool yes = true) const {
+        CHECK((bool)id_ == yes);
+        return *this;
+    }
+
     const LogMessage& codeEquals(intptr_t code) const {
         CHECK(code_ == code);
         return *this;
@@ -129,6 +142,7 @@ private:
     boost::optional<std::string> msg_, cat_, file_, func_, detail_;
     boost::optional<intptr_t> code_;
     boost::optional<uint32_t> time_;
+    boost::optional<unsigned> id_;
     boost::optional<int> line_;
     LogLevel level_;
 };
@@ -477,10 +491,10 @@ TEST_CASE("Message logging") {
     }
     SECTION("additional attributes") {
         LOG(INFO, "info");
-        log.checkNext().hasCode(false).hasDetails(false); // No additional attributes
-        LOG_ATTR(INFO, (code = -1, details = "details"), "info");
+        log.checkNext().hasId(false).hasCode(false).hasDetails(false); // No additional attributes
+        LOG_ATTR(INFO, (id = -1, code = -1, details = "details"), "info");
         log.checkNext().messageEquals("info").levelEquals(LOG_LEVEL_INFO).categoryEquals(LOG_THIS_CATEGORY()).fileEquals(SOURCE_FILE)
-                .codeEquals(-1).detailsEquals("details");
+                .idEquals(-1).codeEquals(-1).detailsEquals("details");
     }
     SECTION("message formatting") {
         std::string s = "";
@@ -868,7 +882,8 @@ TEST_CASE("Miscellaneous") {
         CHECK_LOG_ATTR_FLAG(has_time, 0x08);
         CHECK_LOG_ATTR_FLAG(has_code, 0x10);
         CHECK_LOG_ATTR_FLAG(has_details, 0x20);
-        CHECK_LOG_ATTR_FLAG(has_end, 0x40);
+        CHECK_LOG_ATTR_FLAG(has_id, 0x40);
+        CHECK_LOG_ATTR_FLAG(has_end, 0x80);
     }
 }
 

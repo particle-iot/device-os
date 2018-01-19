@@ -169,6 +169,7 @@ typedef struct LogAttributes {
             unsigned has_time: 1;
             unsigned has_code: 1;
             unsigned has_details: 1;
+            unsigned has_id: 1;
             // <--- Add new attribute flag here
             unsigned has_end: 1; // Keep this field at the end of the structure
         };
@@ -179,6 +180,7 @@ typedef struct LogAttributes {
     uint32_t time; // Timestamp
     intptr_t code; // Status code
     const char *details; // Additional information
+    unsigned id; // Message ID
     // <--- Add new attribute field here
     char end[0]; // Keep this field at the end of the structure
 } LogAttributes;
@@ -194,7 +196,8 @@ typedef void (*log_write_callback_type)(const char *data, size_t size, int level
 typedef int (*log_enabled_callback_type)(int level, const char *category, void *reserved);
 
 // Generates log message
-void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...);
+void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...)
+        PARTICLE_ATTRIBUTE("log_function", 5); // 5th argument is a format string
 
 // Variant of the log_message() function taking variable arguments via va_list
 void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt,
@@ -254,63 +257,51 @@ extern void HAL_Delay_Microseconds(uint32_t delay);
 #define LOG_MODULE_CATEGORY NULL
 #endif
 
-#ifdef __cplusplus
-
-// Module category
-template<typename T>
-struct _LogCategoryWrapper {
-    static const char* name() {
-        return LOG_MODULE_CATEGORY;
-    }
-};
-
-struct _LogGlobalCategory;
-typedef _LogCategoryWrapper<_LogGlobalCategory> _LogCategory;
-
-// Source file category
-#define LOG_SOURCE_CATEGORY(_name) \
-        template<> \
-        struct _LogCategoryWrapper<_LogGlobalCategory> { \
-            static const char* name() { \
-                return _name; \
-            } \
-        };
-
-// Scoped category
-#define LOG_CATEGORY(_name) \
-        struct _LogCategory { \
-            static const char* name() { \
-                return _name; \
-            } \
-        }
-
-// Expands to current category name
-#define LOG_THIS_CATEGORY() _LogCategory::name()
-
-#else // !defined(__cplusplus)
-
-// weakref allows to have different implementations of the same function in different translation
-// units if target function is declared as static
-static const char* _log_source_category() __attribute__((weakref("_log_source_category_impl"), unused));
-
-// Source file category
-#define LOG_SOURCE_CATEGORY(_name) \
-        static const char* _log_source_category_impl() { \
-            return _name; \
-        }
-
-// Dummy constant shadowed when scoped category is defined
+// Dummy constant shadowed when a scoped category is defined
 static const char* const _log_category = NULL;
 
-// Scoped category
+#if defined(__cplusplus) && __cplusplus >= 201103
+// C++11 supports categories defined as class members
+#define LOG_CATEGORY(_name) \
+        static constexpr const char* _log_category = _name
+#else
 #define LOG_CATEGORY(_name) \
         static const char* const _log_category = _name
+#endif
+
+#ifndef __APPLE__
+
+#ifdef __cplusplus
+// `weakref` attribute expects a mangled function name
+#define _LOG_SOURCE_CATEGORY_IMPL "_ZL25_log_source_category_implv"
+#else
+#define _LOG_SOURCE_CATEGORY_IMPL "_log_source_category_impl"
+#endif
+
+// `weakref` can be used to provide different implementations of the same function in different
+// translation units if target function is declared as static
+static const char* _log_source_category() __attribute__((weakref(_LOG_SOURCE_CATEGORY_IMPL), unused));
+
+// Source file category
+#define LOG_SOURCE_CATEGORY(_name) \
+        static inline const char* _log_source_category_impl() { \
+            return _name; \
+        }
 
 // Expands to current category name
 #define LOG_THIS_CATEGORY() \
         (_log_category ? _log_category : (_log_source_category ? _log_source_category() : LOG_MODULE_CATEGORY))
 
-#endif // !defined(__cplusplus)
+#else // defined(__APPLE__)
+
+// Source categories are not supported on macOS, since the linker on this platform doesn't support
+// static target symbols used with the `weakref` attribute
+#define LOG_SOURCE_CATEGORY(_name)
+
+#define LOG_THIS_CATEGORY() \
+        (_log_category ? _log_category : LOG_MODULE_CATEGORY)
+
+#endif
 
 #if LOG_INCLUDE_SOURCE_INFO
 #define _LOG_ATTR_SET_SOURCE_INFO(_attr) \

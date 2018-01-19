@@ -1,0 +1,3 @@
+[submodule "misc/gcc-plugin"]
+	path = misc/gcc-plugin
+	url = https://github.com/particle-iot/gcc-plugin.git
