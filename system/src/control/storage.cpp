@@ -150,7 +150,7 @@ int eepromClear(uintptr_t address, size_t size) {
 const Section INTERNAL_STORAGE_SECTIONS[] = {
     // Bootloader
     { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_BOOTLOADER, 0, 0, module_bootloader.start_address, module_bootloader.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
-#if MODULAR_FIRMWARE
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
     // System part 1
     { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_SYSTEM_PART, 1, 0, module_system_part1.start_address, module_system_part1.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
     // System part 2
@@ -165,12 +165,12 @@ const Section INTERNAL_STORAGE_SECTIONS[] = {
     { particle_ctrl_SectionType_OTA_BACKUP, 0, 0, 0, module_ota.start_address, module_ota.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
     // Factory backup
     { particle_ctrl_SectionType_FACTORY_BACKUP, 0, 0, particle_ctrl_SectionFlag_NEED_CLEAR, module_factory.start_address, module_factory.maximum_size, internalFlashRead, internalFlashWrite, internalFlashClear, getFirmwareModuleSize },
-#else // MODULAR_FIRMWARE
+#else // defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
     // Monolithic firmware
     { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_MONO_FIRMWARE, 0, 0, module_user_mono.start_address, module_user_mono.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
     // Factory backup (monolithic firmware)
     { particle_ctrl_SectionType_FACTORY_BACKUP, 0, 0, particle_ctrl_SectionFlag_NEED_CLEAR, module_factory_mono.start_address, module_factory_mono.maximum_size, internalFlashRead, internalFlashWrite, internalFlashClear, getFirmwareModuleSize },
-#endif // !MODULAR_FIRMWARE
+#endif // !(defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE)
     // DCT/DCD
     { particle_ctrl_SectionType_CONFIG, 0, 0, 0, 0, sizeof(application_dct_t), configRead, configWrite, nullptr, nullptr },
     // EEPROM
