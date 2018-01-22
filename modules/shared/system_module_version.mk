@@ -11,6 +11,7 @@ ifneq (,$(filter $(PLATFORM_ID),6 8))
 ifeq ($(shell test $(SYSTEM_PART2_MODULE_VERSION) -ge $(RELEASE_080_MODULE_VERSION_BASE); echo $$?),0)
 # If this is >= 0.8.x release, Photon and P1 system-part1
 # needs to have a dependency on system-part2 of at least 0.7.0-rc.4
+
 # in order to ensure the device remains online during OTA or Ymodem upgrade
 # when trasitioning from uncompressed to compressed wifi firmware. 
 SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_SYSTEM_PART},2,${RELEASE_070_RC5_MODULE_VERSION}
