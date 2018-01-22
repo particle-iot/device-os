@@ -361,7 +361,7 @@ void *pvReturn = NULL;
 
     #if( configUSE_MALLOC_FAILED_HOOK == 1 )
     {
-        if( pvReturn == NULL && (xWantedSize-xHeapStructSize)>0)
+        if( pvReturn == NULL && (xWantedSize > 0))
         {
             extern void vApplicationMallocFailedHook( size_t );
             vApplicationMallocFailedHook(xWantedSize-xHeapStructSize);
