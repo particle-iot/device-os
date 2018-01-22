@@ -74,6 +74,8 @@ ProtocolFacade* sp;
 
 static uint32_t particle_key_errors = NO_ERROR;
 
+void (*random_seed_from_cloud_handler)(unsigned int) = nullptr;
+
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
  * and communication dynalibs. (Not sure why - just an oversight.)
@@ -551,10 +553,12 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_app_crc = compute_describe_app_checksum();
 			});
+            break;
 		case SparkAppStateSelector::DESCRIBE_SYSTEM:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_system_crc = compute_describe_system_checksum();
 			});
+            break;
 		}
 	}
 	else if (operation==SparkAppStateUpdate::PERSIST && stateSelector==SparkAppStateSelector::SUBSCRIPTIONS)
@@ -694,7 +698,7 @@ void Spark_Protocol_Init(void)
 
         CommunicationsHandlers handlers;
         handlers.size = sizeof(handlers);
-        handlers.random_seed_from_cloud = &random_seed_from_cloud;
+        handlers.random_seed_from_cloud = random_seed_from_cloud_handler;
         spark_protocol_communications_handlers(sp, &handlers);
     }
 }
@@ -1102,8 +1106,13 @@ int spark_cloud_socket_connect()
     ip_address_error = determine_connection_address(ip_addr, port, server_addr, udp);
     if (!ip_address_error)
     {
-    		uint8_t local_port_offset = (PLATFORM_ID==3) ? 100 : 0;
-        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, port+local_port_offset, NIF_DEFAULT);
+#if PLATFORM_ID == 3
+        // Use ephemeral port
+        uint16_t bport = 0;
+#else
+        uint16_t bport = port;
+#endif
+        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, bport, NIF_DEFAULT);
         DEBUG("socketed udp=%d, sparkSocket=%d, %d", udp, sparkSocket, socket_handle_valid(sparkSocket));
     }
 
@@ -1230,7 +1239,7 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
     if (sparkSocket==socket)
     {
-        cloud_disconnect(false);
+        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
     }
 }
 
@@ -1457,7 +1466,7 @@ bool system_cloud_active()
         if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
         {
         	WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
-        	cloud_disconnect(false);
+        	cloud_disconnect(false); // TODO: Do we need to specify a reason of the disconnection here?
             return false;
         }
     }

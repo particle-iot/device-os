@@ -22,7 +22,7 @@
 #include "string.h"
 #include <limits>
 
-#if Wiring_Cellular
+#if Wiring_Cellular || defined(UNIT_TEST)
 
 CellularSignal::CellularSignal(const cellular_signal_t& sig)
     : sig_(sig)
@@ -42,7 +42,7 @@ hal_net_access_tech_t CellularSignal::getAccessTechnology() const
 
 float CellularSignal::getStrength() const
 {
-    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.strength > 0) {
+    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.strength >= 0) {
         return (float)sig_.strength / 65535.0f * 100.0f;
     }
 
@@ -60,7 +60,7 @@ float CellularSignal::getStrengthValue() const
 
 float CellularSignal::getQuality() const
 {
-    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.quality > 0) {
+    if (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE && sig_.quality >= 0) {
         return (float)sig_.quality / 65535.0f * 100.0f;
     }
 
@@ -110,4 +110,4 @@ size_t CellularBand::printTo(Print& p) const
     return n;
 }
 
-#endif // Wiring_Cellular
+#endif // Wiring_Cellular || defined(UNIT_TEST)

@@ -496,8 +496,10 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 											  desc_flags & DESCRIBE_APPLICATION ? "A" : "",
 											  desc_flags & DESCRIBE_METRICS ? "M" : "");
 	ProtocolError error = channel.send(message);
-	if (error==NO_ERROR && descriptor.app_state_selector_info)
+	if (error==NO_ERROR && descriptor.app_state_selector_info &&
+            (desc_flags & DESCRIBE_APPLICATION || desc_flags & DESCRIBE_SYSTEM))
 	{
+        this->channel.command(Channel::SAVE_SESSION);
 		if (desc_flags & DESCRIBE_APPLICATION)
 		{
 			// have sent the describe message to the cloud so update the crc
@@ -508,6 +510,7 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 			// have sent the describe message to the cloud so update the crc
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
 		}
+        this->channel.command(Channel::LOAD_SESSION);
 	}
 	return error;
 }

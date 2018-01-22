@@ -214,14 +214,34 @@ int MDMParser::send(const char* buf, int len)
 }
 
 int MDMParser::sendFormated(const char* format, ...) {
-    if (_cancel_all_operations) return 0;
-
-    char buf[MAX_SIZE];
     va_list args;
     va_start(args, format);
-    int len = vsnprintf(buf,sizeof(buf), format, args);
+    const int ret = sendFormattedWithArgs(format, args);
     va_end(args);
-    return send(buf, len);
+    return ret;
+}
+
+int MDMParser::sendFormattedWithArgs(const char* format, va_list args) {
+    if (_cancel_all_operations) {
+        return 0;
+    }
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+    char buf[128];
+    int n = vsnprintf(buf, sizeof(buf), format, args);
+    if (n >= 0) {
+        if ((size_t)n < sizeof(buf)) {
+            n = send(buf, n);
+        } else {
+            char buf[n + 1]; // Use larger buffer
+            n = vsnprintf(buf, sizeof(buf), format, argsCopy);
+            if (n >= 0) {
+                n = send(buf, n);
+            }
+        }
+    }
+    va_end(argsCopy);
+    return n;
 }
 
 int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
@@ -374,6 +394,25 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
     while (!TIMEOUT(start, timeout_ms) && !_cancel_all_operations);
 
     return WAIT;
+}
+
+int MDMParser::sendCommandWithArgs(const char* fmt, va_list args, _CALLBACKPTR cb, void* param, system_tick_t timeout)
+{
+    LOCK();
+    sendFormattedWithArgs(fmt, args);
+    const int ret = waitFinalResp(cb, param, timeout);
+    UNLOCK();
+    return ret;
+}
+
+void MDMParser::lock()
+{
+    mdm_mutex.lock();
+}
+
+void MDMParser::unlock()
+{
+    mdm_mutex.unlock();
 }
 
 int MDMParser::_cbString(int type, const char* buf, int len, char* str)
@@ -2352,7 +2391,7 @@ void MDMElectronSerial::pause()
     rxPause();
 }
 
-void MDMElectronSerial::resume()
+void MDMElectronSerial::resumeRecv()
 {
     LOCK();
     rxResume();

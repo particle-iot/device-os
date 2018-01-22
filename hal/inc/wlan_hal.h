@@ -66,7 +66,11 @@ extern uint32_t lastEvent;
 
 typedef enum
 {
-  ANT_INTERNAL = 0, ANT_EXTERNAL = 1, ANT_AUTO = 3
+  ANT_INTERNAL = 0,
+  ANT_EXTERNAL = 1,
+  ANT_AUTO = 3,
+  // Error
+  ANT_NONE = 0xff
 } WLanSelectAntenna_TypeDef;
 
 typedef int wlan_result_t;
@@ -278,6 +282,8 @@ void HAL_WLAN_notify_simple_config_done();
  */
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna);
 
+WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved);
+
 /**
  * Cancel a previous call to any blocking wifi connect method.
  * @param called_from_isr - set to true if this is being called from an ISR.
@@ -294,6 +300,8 @@ typedef enum {
  */
 void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved);
 
+IPAddressSource wlan_get_ipaddress_source(void* reserved);
+
 /**
  * Sets the IP Addresses to use when the device is in static IP mode.
  * @param device
@@ -306,6 +314,8 @@ void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reser
 void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
         const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved);
 
+
+int wlan_get_ipaddress(IPConfig* conf, void* reserved);
 
 
 typedef struct WiFiAccessPoint {

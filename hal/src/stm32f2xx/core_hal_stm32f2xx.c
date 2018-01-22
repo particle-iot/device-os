@@ -24,6 +24,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "core_hal.h"
 #include "watchdog_hal.h"
 #include "gpio_hal.h"
@@ -354,6 +355,10 @@ void HAL_Core_Config(void)
 
     HAL_RNG_Configuration();
 
+    // Initialize system-part2 stdlib PRNG with a seed from hardware PRNG
+    // in case some system code happens to use rand()
+    srand(HAL_RNG_GetRandomNumber());
+
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
@@ -393,7 +398,9 @@ void HAL_Core_Setup(void) {
 
     HAL_Core_Setup_finalize();
 
-    bootloader_update_if_needed();
+    if (bootloader_update_if_needed()) {
+        HAL_Core_System_Reset();
+    }
     HAL_Bootloader_Lock(true);
 
     HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
@@ -1301,6 +1308,12 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return 0;
         }
 #endif
+#if HAL_PLATFORM_CLOUD_UDP
+        case FEATURE_CLOUD_UDP: {
+            const uint8_t data = (enabled ? 0xff : 0x00);
+            return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
+        }
+#endif // HAL_PLATFORM_CLOUD_UDP
     }
     return -1;
 }

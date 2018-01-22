@@ -3,6 +3,8 @@
 
 #include "buffer.h"
 
+#include <boost/optional.hpp>
+
 #include <unordered_map>
 #include <mutex>
 
@@ -16,6 +18,10 @@ public:
     void* calloc(size_t n, size_t size);
     void* realloc(void* ptr, size_t size);
     void free(void* ptr);
+
+    size_t allocSize() const;
+    Allocator& allocLimit(size_t size);
+    Allocator& noAllocLimit();
 
     void check();
 
@@ -33,10 +39,11 @@ private:
 
     std::unordered_map<void*, Buffer> alloc_;
     std::unordered_map<void*, FreedBuffer> free_;
-    size_t padding_;
+    boost::optional<size_t> allocLimit_;
+    size_t allocSize_, padding_;
     bool failed_;
 
-    std::recursive_mutex mutex_;
+    mutable std::recursive_mutex mutex_;
 };
 
 class DefaultAllocator {
@@ -56,14 +63,6 @@ private:
 
 } // namespace test
 
-// test::Allocator
-inline test::Allocator::Allocator(size_t padding) :
-        padding_(padding),
-        failed_(false) {
-    reset();
-}
-
-// test::DefaultAllocator
 inline void* test::DefaultAllocator::malloc(size_t size) {
     return instance()->malloc(size);
 }

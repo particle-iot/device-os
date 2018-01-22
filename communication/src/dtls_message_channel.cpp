@@ -348,9 +348,9 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_
 				sessionPersist.out_ctr[4],sessionPersist.out_ctr[5],sessionPersist.out_ctr[6],
 				sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
 		sessionPersist.make_persistent();
-		uint32_t actual = sessionPersist.application_state_checksum(this->callbacks.calculate_crc);
-		LOG(INFO,"app state crc: %x, expected: %x", actual, app_state_crc);
-		if (actual==app_state_crc) {
+		const uint32_t cached = sessionPersist.application_state_checksum(this->callbacks.calculate_crc);
+		LOG(INFO,"app state crc: cached: %x, actual: %x", (unsigned)cached, (unsigned)app_state_crc);
+		if (cached==app_state_crc) {
 			LOG(WARN,"skipping hello message");
 			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
 		}

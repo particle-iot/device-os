@@ -31,6 +31,7 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
+STARTUP(System.enableFeature(FEATURE_WIFITESTER));
 
 SYSTEM_MODE(AUTOMATIC);
 

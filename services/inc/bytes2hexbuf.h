@@ -20,8 +20,17 @@
 
 static inline char ascii_nibble(uint8_t nibble) {
     char hex_digit = nibble + 48;
-    if (57 < hex_digit)
+    if (57 < hex_digit) {
         hex_digit += 7;
+    }
+    return hex_digit;
+}
+
+static inline char ascii_nibble_lower_case(uint8_t nibble) {
+    char hex_digit = nibble + 48;
+    if (57 < hex_digit) {
+        hex_digit += 39;
+    }
     return hex_digit;
 }
 
@@ -31,17 +40,32 @@ static inline char* concat_nibble(char* p, uint8_t nibble)
     return p;
 }
 
+static inline char* concat_nibble_lower_case(char* p, uint8_t nibble)
+{
+    *p++ = ascii_nibble_lower_case(nibble);
+    return p;
+}
+
 static inline char* bytes2hexbuf(const uint8_t* buf, unsigned len, char* out)
 {
     unsigned i;
     char* result = out;
     for (i = 0; i < len; ++i)
     {
-        concat_nibble(out, (buf[i] >> 4));
-        out++;
-        concat_nibble(out, (buf[i] & 0xF));
-        out++;
+        out = concat_nibble(out, (buf[i] >> 4));
+        out = concat_nibble(out, (buf[i] & 0xF));
     }
     return result;
 }
 
+static inline char* bytes2hexbuf_lower_case(const uint8_t* buf, unsigned len, char* out)
+{
+    unsigned i;
+    char* result = out;
+    for (i = 0; i < len; ++i)
+    {
+        out = concat_nibble_lower_case(out, (buf[i] >> 4));
+        out = concat_nibble_lower_case(out, (buf[i] & 0xF));
+    }
+    return result;
+}

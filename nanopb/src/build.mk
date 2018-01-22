@@ -1,0 +1,13 @@
+TARGET_NANOPB_SRC_PATH = $(NANOPB_MODULE_PATH)/src
+TARGET_NANOPB_SRC_LIB_PATH = $(NANOPB_MODULE_PATH)/nanopb
+
+CPPSRC += $(call target_files,$(TARGET_NANOPB_SRC_PATH),*.cpp)
+CSRC += $(call target_files,$(TARGET_NANOPB_SRC_PATH),*.c)
+# nanopb
+CSRC += $(TARGET_NANOPB_SRC_LIB_PATH)/pb_common.c
+CSRC += $(TARGET_NANOPB_SRC_LIB_PATH)/pb_decode.c
+CSRC += $(TARGET_NANOPB_SRC_LIB_PATH)/pb_encode.c
+
+CPPFLAGS += -std=gnu++11
+
+LOG_MODULE_CATEGORY = nanopb

@@ -55,7 +55,7 @@ public:
     }
 
     void disconnect() {
-        network_disconnect(*this, 0, NULL);
+        network_disconnect(*this, NETWORK_DISCONNECT_REASON_USER, NULL);
     }
 
     void setCredentials(const char* apn) {
@@ -131,6 +131,16 @@ public:
         HAL_IPAddress ip;
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL)<0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);
+    }
+
+    void lock()
+    {
+        cellular_lock(nullptr);
+    }
+
+    void unlock()
+    {
+        cellular_unlock(nullptr);
     }
 };
 

@@ -55,9 +55,10 @@ static void network_suspend() {
 #endif
     wakeupState.wifi = !SPARK_WLAN_SLEEP;
     wakeupState.wifiConnected = wakeupState.cloud || network_ready(0, 0, NULL) || network_connecting(0, 0, NULL);
+    // Disconnect the cloud and the network
+    network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
 #ifndef SPARK_NO_CLOUD
-    // disconnect the cloud now, and clear the auto connect status
-    spark_cloud_socket_disconnect();
+    // Clear the auto connect status
     spark_cloud_flag_disconnect();
 #endif
     network_off(0, 0, 0, NULL);
@@ -133,7 +134,7 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
         case SLEEP_MODE_DEEP:
             if (network_sleep_flag(param))
             {
-                network_disconnect(0, 0, NULL);
+                network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
                 network_off(0, 0, 0, NULL);
             }
             system_power_management_sleep();
@@ -142,7 +143,7 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
 
 #if Wiring_SetupButtonUX
         case SLEEP_MODE_SOFTPOWEROFF:
-            network_disconnect(0,0,NULL);
+            network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
             network_off(0, 0, 0, NULL);
             sleep_fuel_gauge();
             system_power_management_sleep();

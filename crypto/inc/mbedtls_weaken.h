@@ -76,7 +76,6 @@
 #pragma weak mbedtls_mpi_gen_prime
 
 // SHA256
-#if PLATFORM_ID == 10
 #pragma weak mbedtls_sha256_init
 #pragma weak mbedtls_sha256_free
 #pragma weak mbedtls_sha256_clone
@@ -84,6 +83,66 @@
 #pragma weak mbedtls_sha256_update
 #pragma weak mbedtls_sha256_finish
 #pragma weak mbedtls_sha256_process
+
+// RSA
+#pragma weak mbedtls_rsa_check_pubkey
+#pragma weak mbedtls_rsa_check_privkey
+#pragma weak mbedtls_rsa_check_pub_priv
+
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+// MD4
+#pragma weak mbedtls_md4_init
+#pragma weak mbedtls_md4_free
+#pragma weak mbedtls_md4_clone
+#pragma weak mbedtls_md4_starts
+#pragma weak mbedtls_md4_update
+#pragma weak mbedtls_md4_finish
+#pragma weak mbedtls_md4
+#pragma weak mbedtls_md4_process
+
+// MD5
+#pragma weak mbedtls_md5_init
+#pragma weak mbedtls_md5_free
+#pragma weak mbedtls_md5_clone
+#pragma weak mbedtls_md5_starts
+#pragma weak mbedtls_md5_update
+#pragma weak mbedtls_md5_finish
+#pragma weak mbedtls_md5_process
+#pragma weak mbedtls_md5
+
+// DES
+#pragma weak mbedtls_des_init
+#pragma weak mbedtls_des_free
+#pragma weak mbedtls_des3_init
+#pragma weak mbedtls_des3_free
+// #pragma weak mbedtls_des_key_set_parity
+#pragma weak mbedtls_des_setkey_enc
+#pragma weak mbedtls_des_setkey_dec
+// #pragma weak mbedtls_des3_set3key_enc
+#pragma weak mbedtls_des3_set3key_dec
+#pragma weak mbedtls_des_crypt_ecb
+#pragma weak mbedtls_des_crypt_cbc
+#pragma weak mbedtls_des3_crypt_ecb
+#pragma weak mbedtls_des3_crypt_cbc
+#pragma weak mbedtls_des_setkey
+
+// MD
+#pragma weak mbedtls_md_list
+#pragma weak mbedtls_md_info_from_string
+#pragma weak mbedtls_md_info_from_type
+#pragma weak mbedtls_md_init
+#pragma weak mbedtls_md_free
+#pragma weak mbedtls_md_setup
+// #pragma weak mbedtls_md_clone
+#pragma weak mbedtls_md_starts
+// #pragma weak mbedtls_md_finish
+#pragma weak mbedtls_md
+#pragma weak mbedtls_md_hmac_starts
+#pragma weak mbedtls_md_hmac_update
+#pragma weak mbedtls_md_hmac_finish
+// #pragma weak mbedtls_md_hmac_reset
+#pragma weak mbedtls_md_hmac
+
 #endif
 
 #endif // MBEDTLS_WEAKEN

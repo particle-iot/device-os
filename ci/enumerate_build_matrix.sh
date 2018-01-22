@@ -6,6 +6,8 @@
 # Stops executing and returns exit 1 if any of them fail
 ############
 
+. ./ci/functions.sh
+
 set -x # be noisy + log everything that is happening in the script
 
 function runmake()
@@ -14,9 +16,6 @@ function runmake()
 }
 
 MAKE=runmake
-GREEN="\033[32m"
-RED="\033[31m"
-NO_COLOR="\033[0m"
 
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
@@ -25,39 +24,38 @@ PLATFORM=( core photon P1 electron )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
 PLATFORM_BOOTLOADER=( core photon electron )
 SPARK_CLOUD=( y n )
-# TODO: Once FIRM-161 is fixed, change APP to this: APP=( "" tinker product_id_and_version )
-APP=( "" tinker )
+APP=( "" tinker product_id_and_version)
 TEST=( wiring/api wiring/no_fixture )
 
 MODULAR_PLATFORM=( photon P1 electron)
+
+filterPlatform PLATFORM 
+filterPlatform MODULAR_PLATFORM 
+filterPlatform PLATFORM_BOOTLOADER
+
+echo "runing matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER"
+
 
 # set current working dir
 cd main
 
 # Newhal Build
+if platform newhal; then
 echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM="newhal" COMPILE_LTO="n"
 HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
-if [[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]]; then
-  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-else
-  echo -e "$RED ✗ FAILED $NO_COLOR"
-  exit 1
+[[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]]; 
+testcase
 fi
 
 # GCC Build
+if platform gcc; then
 echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM=gcc
-if [[ "$?" -eq 0 ]]; then
-  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-else
-  echo -e "$RED ✗ FAILED $NO_COLOR"
-  exit 1
+testcase
 fi
-
-
 
 
 # COMPILE_LTO required on the Core for wiring/no_fixture to fit
@@ -68,12 +66,7 @@ do
     echo
     echo '-----------------------------------------------------------------------'
     $MAKE  PLATFORM="$p" COMPILE_LTO="n" TEST="$t"
-    if [[ "$?" -eq 0 ]]; then
-      echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-    else
-      echo -e "$RED ✗ FAILED $NO_COLOR"
-      exit 1
-    fi
+	testcase
   done
 done
 
@@ -93,26 +86,19 @@ do
         c=n
         if [[ "$p" = "core" ]]; then
            c=y
+	   # core debug build overflows at present
+           if [[ "$db" = "y" ]]; then
+               continue
+        fi
         fi
         echo
         echo '-----------------------------------------------------------------------'
         if [[ "$app" = "" ]]; then
           $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
-          if [[ "$?" -eq 0 ]]; then
-            echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-          else
-            echo -e "$RED ✗ FAILED $NO_COLOR"
-            exit 1
-          fi
         else
           $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
-          if [[ "$?" -eq 0 ]]; then
-            echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-          else
-            echo -e "$RED ✗ FAILED $NO_COLOR"
-            exit 1
           fi
-        fi
+		testcase
       done
     done
   done
@@ -124,12 +110,7 @@ do
   echo
   echo '-----------------------------------------------------------------------'
   $MAKE PLATFORM="$p"
-  if [[ "$?" -eq 0 ]]; then
-      echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-    else
-      echo -e "$RED ✗ FAILED $NO_COLOR"
-      exit 1
-  fi
+  testcase
 done
 
 cd ../modules
@@ -142,22 +123,16 @@ do
     echo
     echo '-----------------------------------------------------------------------'
     $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="n"
-    if [[ "$?" -eq 0 ]]; then
-      echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-    else
-      echo -e "$RED ✗ FAILED $NO_COLOR"
-      exit 1
-    fi
+	testcase
   done
 done
 
 # Photon minimal build
+if platform photon; then
 echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM="photon" COMPILE_LTO="n" MINIMAL=y
-if [[ "$?" -eq 0 ]]; then
-  echo -e "$GREEN ✓ SUCCESS $NO_COLOR"
-else
-  echo -e "$RED ✗ FAILED $NO_COLOR"
-  exit 1
+	testcase
 fi
+
+checkFailures || exit 1

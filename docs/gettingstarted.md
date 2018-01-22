@@ -55,6 +55,12 @@ The [makefile documentation](build.md) describes the build options supported and
 * You get `make: *** No targets specified and no makefile found.  Stop.`
   Solution: `cd firmware/main`
 
+* GCC does not know what an .ino file is, so your application is empty.
+  Solution: rename yourapp.ino file to yourapp.cpp
+
+* GCC shows errors for Particle specific commands.
+  Solution: #include "application.h"
+
 Please issue a pull request if you come across similar issues/fixes that trip you up.
 
 ### Navigating the code base

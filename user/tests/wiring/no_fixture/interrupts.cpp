@@ -98,7 +98,7 @@ test(INTERRUPTS_02_detached_handler_is_destroyed)
 
 test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 {
-#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX)
+#if /* defined(STM32F10X_MD) || defined(STM32F10X_HD) || */ defined(STM32F2XX)
 	volatile bool cont = false;
 	attachSystemInterrupt(SysInterrupt_SysTick, [&] {
 		assertTrue(HAL_IsISR());
@@ -112,3 +112,98 @@ test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 	assertFalse(HAL_WillPreempt(SysTick_IRQn, NonMaskableInt_IRQn));
 #endif
 }
+
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+test(INTERRUPTS_04_attachInterruptDirect) {
+	const pin_t pin = D1;
+	const IRQn_Type irqn = EXTI9_5_IRQn;
+	auto pinmap = HAL_Pin_Map();
+	static const uint16_t exti_line = pinmap[pin].gpio_pin;
+	static volatile bool attachInterruptHandler = false;
+	static volatile bool attachInterruptDirectHandler = false;
+
+	pinMode(pin, INPUT_PULLUP);
+	attachInterrupt(pin, (wiring_interrupt_handler_t)[](void) -> void {
+		attachInterruptHandler = true;
+	}, FALLING);
+
+	// Trigger
+	pinMode(pin, INPUT_PULLDOWN);
+	EXTI_GenerateSWInterrupt(exti_line);
+	pinMode(pin, INPUT_PULLUP);
+
+	// attachInterrupt handler should have been called
+	assertTrue(attachInterruptHandler == true);
+	attachInterruptHandler = false;
+
+	// attach a direct handler
+	bool res = attachInterruptDirect(irqn, []() {
+		attachInterruptDirectHandler = true;
+		EXTI_ClearFlag(exti_line);
+	});
+	assertTrue(res);
+
+	// Trigger
+	pinMode(pin, INPUT_PULLDOWN);
+	EXTI_GenerateSWInterrupt(exti_line);
+	pinMode(pin, INPUT_PULLUP);
+
+	// Only a direct handler should have been called
+	assertTrue(attachInterruptDirectHandler == true);
+	assertFalse(attachInterruptHandler == true);
+	attachInterruptDirectHandler = false;
+	attachInterruptHandler = false;
+
+	// Detach, restore previous handler, do not disable
+	res = detachInterruptDirect(irqn, false);
+	assertTrue(res);
+
+	// Trigger
+	pinMode(pin, INPUT_PULLDOWN);
+	EXTI_GenerateSWInterrupt(exti_line);
+	pinMode(pin, INPUT_PULLUP);
+
+	// attachInterrupt handler should have been called
+	assertTrue(attachInterruptHandler == true);
+	assertFalse(attachInterruptDirectHandler == true);
+	attachInterruptDirectHandler = false;
+	attachInterruptHandler = false;
+
+	// attach a direct handler
+	res = attachInterruptDirect(irqn, []() {
+		attachInterruptDirectHandler = true;
+		EXTI_ClearFlag(exti_line);
+	});
+	assertTrue(res);
+
+	// Trigger
+	pinMode(pin, INPUT_PULLDOWN);
+	EXTI_GenerateSWInterrupt(exti_line);
+	pinMode(pin, INPUT_PULLUP);
+
+	// Only a direct handler should have been called
+	assertTrue(attachInterruptDirectHandler == true);
+	assertFalse(attachInterruptHandler == true);
+	attachInterruptDirectHandler = false;
+	attachInterruptHandler = false;
+
+	// Detach, restore previous handler, _disable_
+	res = detachInterruptDirect(irqn);
+	assertTrue(res);
+
+	// Trigger
+	pinMode(pin, INPUT_PULLDOWN);
+	EXTI_GenerateSWInterrupt(exti_line);
+	pinMode(pin, INPUT_PULLUP);
+
+	// Not handler should have been called as IRQ should be disabled
+	assertTrue(attachInterruptHandler == false);
+	assertTrue(attachInterruptDirectHandler == false);
+}
+
+test(INTERRUPTS_04_attachInterruptDirect_1) {
+	const pin_t pin = D1;
+
+	detachInterrupt(pin);
+}
+#endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION

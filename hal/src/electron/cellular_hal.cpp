@@ -4,9 +4,6 @@
 #include "cellular_hal.h"
 #include "cellular_internal.h"
 #include "system_error.h"
-#include <limits>
-#include <cmath>
-#include "net_hal.h"
 
 #define CHECK_SUCCESS(x) { if (!(x)) return -1; }
 
@@ -182,104 +179,24 @@ void cellular_cancel(bool cancel, bool calledFromISR, void*)
 
 cellular_result_t cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalext)
 {
-    // % * 100, see 3GPP TS 45.008 8.2.4
-    // 0.14%, 0.28%, 0.57%, 1.13%, 2.26%, 4.53%, 9.05%, 18.10%
-    static const uint16_t berMapping[] = {14, 28, 57, 113, 226, 453, 905, 1810};
-
-    cellular_result_t res = SYSTEM_ERROR_NONE;
     if (signal == nullptr && signalext == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+
     NetStatus status;
-    CHECK_SUCCESS(electronMDM.getSignalStrength(status));
-    if (signal != nullptr) {
-        signal->rssi = status.rssi;
-        signal->qual = status.qual;
-    }
+    bool r = electronMDM.getSignalStrength(status);
 
-    if (signalext != nullptr) {
-        switch (status.act) {
-        case ACT_GSM:
-            signalext->rat = NET_ACCESS_TECHNOLOGY_GSM;
-            break;
-        case ACT_EDGE:
-            signalext->rat = NET_ACCESS_TECHNOLOGY_EDGE;
-            break;
-        case ACT_UTRAN:
-            signalext->rat = NET_ACCESS_TECHNOLOGY_UTRAN;
-            break;
-        default:
-            signalext->rat = NET_ACCESS_TECHNOLOGY_NONE;
-            break;
-        }
-        switch (status.act) {
-        case ACT_GSM:
-        case ACT_EDGE:
-            // Convert to dBm [-111, -48], see 3GPP TS 45.008 8.1.4
-            // Reported multiplied by 100
-            signalext->rssi = ((status.rxlev != 99) ? status.rxlev - 111 : -111) * 100;
-
-            // NOTE: From u-blox AT Command Reference manual:
-            // SARA-U260-00S / SARA-U270-00S / SARA-U270-00X / SARA-U280-00S / LISA-U200-00S /
-            // LISA-U200-01S / LISA-U200-02S / LISA-U200-52S / LISA-U200-62S / LISA-U230 / LISA-U260 /
-            // LISA-U270 / LISA-U1
-            // The <qual> parameter is not updated in GPRS and EGPRS packet transfer mode
-            if (status.act == ACT_GSM) {
-                // Convert to BER (% * 100), see 3GPP TS 45.008 8.2.4
-                signalext->ber = (status.rxqual != 99) ? berMapping[status.rxqual] : std::numeric_limits<int32_t>::min();
-            } else /* status.act == ACT_EDGE */ {
-                // Convert to MEAN_BEP level first
-                // See u-blox AT Reference Manual:
-                // In 2G RAT EGPRS packet transfer mode indicates the Mean Bit Error Probability (BEP) of a radio
-                // block. 3GPP TS 45.008 [148] specifies the range 0-31 for the Mean BEP which is mapped to
-                // the range 0-7 of <qual>
-                int bepLevel = (status.rxqual != 99) ? (7 - status.rxqual) * 31 / 7 : std::numeric_limits<int32_t>::min();
-                // Convert to log10(MEAN_BEP) multiplied by 100, see 3GPP TS 45.008 10.2.3.3
-                // Uses QPSK table
-                signalext->bep = bepLevel >= 0 ? (-(bepLevel - 31) * 10 - 3.7) : bepLevel;
-            }
-
-            // RSSI in % [0, 100] based on [-111, -48] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rxlev != 99) ? status.rxlev * 65535 / 63 : std::numeric_limits<int32_t>::min();
-            // Quality based on RXQUAL in % [0, 100] mapped to [0, 65535] integer range
-            signalext->quality = (status.rxqual != 99) ? (7 - status.rxqual) * 65535 / 7 : std::numeric_limits<int32_t>::min();
-            break;
-        case ACT_UTRAN:
-            // Convert to dBm [-121, -25], see 3GPP TS 25.133 9.1.1.3
-            // Reported multiplied by 100
-            signalext->rscp = ((status.rscp != 255) ? status.rscp - 116 : -121) * 100;
-            // Convert to Ec/Io (dB) [-24.5, 0], see 3GPP TS 25.133 9.1.2.3
-            // Report multiplied by 100
-            signalext->ecno = (status.ecno != 255) ? status.ecno * 50 - 2450 : -2450;
-
-            // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rscp != 255) ? (status.rscp + 5) * 65535 / 96 : std::numeric_limits<int32_t>::min();
-            // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
-            signalext->quality = (status.ecno != 255) ? status.ecno * 65535 / 49 : std::numeric_limits<int32_t>::min();
-            break;
-        default:
-            res = SYSTEM_ERROR_UNKNOWN;
-            signalext->rssi = std::numeric_limits<int32_t>::min();
-            signalext->qual = std::numeric_limits<int32_t>::min();
-            signalext->strength = 0;
-            signalext->quality = 0;
-            break;
-        }
-    }
-    return res;
+    return detail::cellular_signal_impl(signal, signalext, r, status);
 }
 
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
                           system_tick_t timeout_ms, const char* format, ...)
 {
-    char buf[256];
     va_list args;
     va_start(args, format);
-    vsnprintf(buf, sizeof(buf), format, args);
+    const int ret = electronMDM.sendCommandWithArgs(format, args, cb, param, timeout_ms);
     va_end(args);
-    electronMDM.sendFormated(buf);
-
-    return electronMDM.waitFinalResp((MDMParser::_CALLBACKPTR)cb, (void*)param, timeout_ms);
+    return ret;
 }
 
 cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
@@ -385,7 +302,7 @@ cellular_result_t cellular_pause(void* reserved)
 
 cellular_result_t cellular_resume(void* reserved)
 {
-    electronMDM.resume();
+    electronMDM.resumeRecv();
     return 0;
 }
 
@@ -399,6 +316,17 @@ cellular_result_t cellular_imsi_to_network_provider(void* reserved)
 const CellularNetProvData cellular_network_provider_data_get(void* reserved)
 {
     return CELLULAR_NET_PROVIDER_DATA[cellularNetProv];
+}
+
+int cellular_lock(void* reserved)
+{
+    electronMDM.lock();
+    return 0;
+}
+
+void cellular_unlock(void* reserved)
+{
+    electronMDM.unlock();
 }
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

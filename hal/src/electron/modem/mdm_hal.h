@@ -412,6 +412,9 @@ public:
     */
     int sendFormated(const char* format, ...);
 
+    /** This method is similar to sendFormated() but takes the formatting arguments as va_list */
+    int sendFormattedWithArgs(const char* format, va_list args);
+
     /** callback function for #waitFinalResp with void* as argument
         \param type the #getLine response
         \param buf the parsed line
@@ -445,6 +448,24 @@ public:
     {
         return waitFinalResp((_CALLBACKPTR)cb, (void*)param, timeout_ms);
     }
+
+    /** Send AT command and wait for a response.
+        \param fmt the format string (CRLF terminated)
+        \param args the formatting arguments
+        \param cb the optional callback function
+        \param param the optional callback function parameter
+        \param timeout the response timeout in milliseconds
+        \sa sendFormated
+        \sa waitFinalResp
+    */
+    int sendCommandWithArgs(const char* fmt, va_list args, _CALLBACKPTR cb = NULL, void* param = NULL,
+            system_tick_t timeout = 10000);
+
+    /** Acquires the modem lock. */
+    void lock();
+
+    /** Releases the modem lock. */
+    void unlock();
 
 protected:
     /** Write bytes to the physical interface. This function should be
@@ -486,12 +507,7 @@ protected:
         \param index the index of the received SMS
     */
     void SMSreceived(int index);
-protected:
-    // for rtos over riding by useing Rtos<MDMxx>
-    //! override the lock in a rtos system
-    virtual void lock(void)        { }
-    //! override the unlock in a rtos system
-    virtual void unlock(void)      { }
+
 protected:
     // parsing callbacks for different AT commands and their parameter arguments
     static int _cbString(int type, const char* buf, int len, char* str);
@@ -603,7 +619,7 @@ public:
     }
 
     void pause();
-    void resume();
+    void resumeRecv();
 
 protected:
     /** Write bytes to the physical interface.

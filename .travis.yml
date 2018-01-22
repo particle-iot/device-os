@@ -1,21 +1,44 @@
 sudo: required
+
+# setting the language to bash speeds up builds compared to the default since there is no ruby installation
+language: bash
+
+cache:
+  ccache: true
+  directories:
+    $HOME/.ci/boost
+
 services:
   - docker
+
 install:
-  - 'if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
-  - wget https://github.com/spark/firmware-buildpack-builder/archive/master.tar.gz -O - | tar -xz -C ../ --strip-components 1
-  - ../scripts/build-image
+  - scripts/docker-hub-login
+  - scripts/fetch-buildpack
+  - buildpack/scripts/build-image
 
 script:
-  - ../scripts/run-tests-in-container
+  - buildpack/scripts/run-tests-in-container
+  - buildpack/scripts/push-image
+
+  # - 'if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
+  # - wget https://api.github.com/repos/spark/firmware-buildpack-builder/tarball/feature/go_faster_stripes -O - | tar -xz -C ../ --strip-components 1
+  # - ../scripts/build-image
+
+#script:
+  # - ../scripts/run-tests-in-container
   # - 'if [ "${UNIT_TEST}" = "y" ]; then ./ci/unit_tests.sh; else cd $DIR && make -s clean all DEBUG_BUILD=$DEBUG_BUILD PLATFORM=$PLATFORM COMPILE_LTO=$COMPILE_LTO TEST=$TEST SPARK_CLOUD=$SPARK_CLOUD APP=$APP; fi'
   # TODO - ./ci/integration_tests.sh
   # TODO  - ./ci/test_memory_available_with_real_core.sh
 
 #after_success: ./ci/update-gh-pages.sh
-after_success: ../scripts/push-image
 
 env:
+  matrix:
+    - BUILD_PLATFORM=unit-test gcc
+    - BUILD_PLATFORM=photon p1
+    - BUILD_PLATFORM=core newhal
+    - BUILD_PLATFORM=electron
+
   # matrix:
   # - UNIT_TEST=y
   # - DIR=main    TEST=wiring/api        PLATFORM=photon COMPILE_LTO=n

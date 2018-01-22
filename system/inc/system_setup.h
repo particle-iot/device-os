@@ -50,8 +50,6 @@ typedef int (*ConnectCallback2)(void* data,
                                 bool dry_run);
 
 
-class WiFiTester;
-
 struct SystemSetupConsoleConfig
 {
 
@@ -99,7 +97,8 @@ private:
 #if SETUP_OVER_SERIAL1
     bool serial1Enabled;
     uint8_t magicPos;                   // how far long the magic key we are
-    WiFiTester* tester;
+    // Opaque pointer
+    void* tester;
 #endif
 };
 
@@ -150,3 +149,22 @@ public:
 };
 
 #endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+typedef struct {
+    uint16_t version;
+    uint16_t size;
+    void* (*create)(void* reserved);
+    int   (*destroy)(void* tester, void* reserved);
+    int   (*setup)(void* tester, bool useSerial1, void* reserved);
+    int   (*loop)(void* tester, int c, void* reserved);
+} system_tester_handlers_t;
+
+int system_set_tester_handlers(system_tester_handlers_t* handlers, void* reserved);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

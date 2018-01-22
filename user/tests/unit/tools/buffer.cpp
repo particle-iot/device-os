@@ -6,14 +6,25 @@
 
 // test::Buffer
 test::Buffer::Buffer(size_t size, size_t padding) :
-        d_(size + padding * 2, 0),
-        p_(randomBytes(padding)) { // Generate padding bytes
-    memcpy(&d_.front(), p_.data(), padding);
-    memcpy(&d_.front() + padding, randomBytes(size).data(), size); // Initialize buffer with random data
-    memcpy(&d_.front() + padding + size, p_.data(), padding);
+        data_(size + padding * 2, 0),
+        padding_(randomBytes(padding)), // Generate padding bytes
+        readPos_(0) {
+    memcpy(&data_.front(), padding_.data(), padding);
+    memcpy(&data_.front() + padding, randomBytes(size).data(), size); // Initialize buffer with random data
+    memcpy(&data_.front() + padding + size, padding_.data(), padding);
+}
+
+test::Buffer::Buffer(const std::string& data, size_t padding) :
+        Buffer(data.size(), padding) {
+    memcpy(&data_.front() + padding, data.data(), data.size());
+}
+
+test::Buffer::Buffer(const char* data, size_t size, size_t padding) :
+        Buffer(size, padding) {
+    memcpy(&data_.front() + padding, data, size);
 }
 
 bool test::Buffer::isPaddingValid() const {
-    return memcmp(d_.data(), p_.data(), p_.size()) == 0 &&
-            memcmp(d_.data() + d_.size() - p_.size(), p_.data(), p_.size()) == 0;
+    return memcmp(data_.data(), padding_.data(), padding_.size()) == 0 &&
+            memcmp(data_.data() + data_.size() - padding_.size(), padding_.data(), padding_.size()) == 0;
 }

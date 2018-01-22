@@ -138,4 +138,9 @@ test(api_cellular_resolve) {
     (void)ip;
 }
 
+test(api_cellular_lock_unlock) {
+    API_COMPILE(Cellular.lock());
+    API_COMPILE(Cellular.unlock());
+}
+
 #endif

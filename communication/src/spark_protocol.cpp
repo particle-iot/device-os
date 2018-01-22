@@ -511,8 +511,7 @@ int SparkProtocol::variable_value(unsigned char *buf,
 }
 
 inline bool is_system(const char* event_name) {
-    // if there were a strncmpi this would be easier!
-    return !strncasecmp(event_name, "spark", 5);
+    return !strncmp(event_name, "spark/", 6);
 }
 
 // Returns true on success, false on sending timeout or rate-limiting failure

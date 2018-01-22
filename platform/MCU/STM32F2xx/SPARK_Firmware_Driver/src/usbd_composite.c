@@ -35,6 +35,8 @@
 
 LOG_SOURCE_CATEGORY("usb.composite")
 
+extern void HAL_USB_Vendor_Interface_SOF(void* pdev);
+
 #define USBD_COMPOSITE_USRSTR_BASE 0x09
 
 static USBD_Composite_Class_Data s_Class_Entries[USBD_COMPOSITE_MAX_CLASSES] = { {0} };
@@ -275,6 +277,8 @@ static uint8_t USBD_Composite_SOF(void *pdev) {
       c->cb->SOF(pdev, c);
     }
   }
+
+  HAL_USB_Vendor_Interface_SOF(pdev);
 
   return USBD_OK;
 }

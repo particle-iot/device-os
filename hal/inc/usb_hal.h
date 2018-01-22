@@ -64,7 +64,22 @@ typedef struct HAL_USB_SetupRequest {
   uint8_t* data;
 } HAL_USB_SetupRequest;
 
+typedef enum {
+  HAL_USB_VENDOR_REQUEST_STATE_NONE = 0,
+  /* HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED state indicates that the data stage of
+   * a Device->Host request has completed and the buffer that was supplied by the vendor
+   * request callback can be safely freed.
+   */
+  HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED = 1,
+  /* HAL_USB_VENDOR_REQUEST_STATE_RESET state indicates that any resources used for handling
+   * vendor requests may be safely freed, as either the host has disconnected or sent a
+   * reset command on the bus.
+   */
+  HAL_USB_VENDOR_REQUEST_STATE_RESET = 2
+} HAL_USB_VendorRequestState;
+
 typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req, void* p);
+typedef uint8_t (*HAL_USB_Vendor_Request_State_Callback)(HAL_USB_VendorRequestState state, void* p);
 #endif // USB_VENDOR_REQUEST_ENABLE
 
     /* USB Config : IMR_MSK */
@@ -143,6 +158,7 @@ void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p);
+void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Callback cb, void* p);
 #endif
 
 #if defined(USB_CDC_ENABLE) || defined(USB_HID_ENABLE)

@@ -50,12 +50,16 @@ namespace detail {
 }
 
 class FuelGauge {
-
+  private: 
+  
+	TwoWire *_i2c = NULL;
+	
   public:
 
     FuelGauge(bool _lock = false);
     ~FuelGauge();
-    boolean begin();
+    boolean begin();				// will assume Wire3 for Electron, otherwise Wire
+	boolean begin(TwoWire & i2c);	// for dedicated selection of I2C interface
     float getVCell();
     float getSoC();
     float getNormalizedSoC();

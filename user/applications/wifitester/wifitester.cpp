@@ -22,7 +22,7 @@
  */
 
 #include "application.h"
-#include "wifitester.h"
+#include "spark_wiring_wifitester.h"
 
 SYSTEM_MODE(MANUAL);
 

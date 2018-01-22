@@ -41,7 +41,7 @@
 class WiFiSignal : public particle::Signal {
 public:
     // In order to be compatible with CellularSignal
-    int rssi = 0;
+    int rssi = 2;
     int qual = 0;
 
     WiFiSignal() {}
@@ -139,7 +139,7 @@ public:
     }
 
     void disconnect(void) {
-        network_disconnect(*this, 0, NULL);
+        network_disconnect(*this, NETWORK_DISCONNECT_REASON_USER, NULL);
     }
 
     bool connecting(void) {
@@ -223,6 +223,10 @@ public:
 
     int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
         return wlan_select_antenna(antenna);
+    }
+
+    WLanSelectAntenna_TypeDef getAntenna() {
+        return wlan_get_antenna(nullptr);
     }
 
     IPAddress resolve(const char* name)

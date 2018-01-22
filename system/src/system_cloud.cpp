@@ -38,6 +38,7 @@
 #include "deviceid_hal.h"
 #include "system_mode.h"
 
+extern void (*random_seed_from_cloud_handler)(unsigned int);
 
 #ifndef SPARK_NO_CLOUD
 
@@ -205,4 +206,13 @@ int spark_set_connection_property(unsigned property_id, unsigned data, void* dat
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, datap, reserved));
     return spark_protocol_set_connection_property(sp, property_id, data, datap, reserved);
+}
+
+int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved)
+{
+#ifndef SPARK_NO_CLOUD
+    random_seed_from_cloud_handler = handler;
+#endif // SPARK_NO_CLOUD
+
+    return 0;
 }

@@ -129,6 +129,8 @@ void core_log(const char* msg, ...)
 
 const char* eeprom_bin = "eeprom.bin";
 
+#ifndef UNIT_TEST
+
 extern "C" int main(int argc, char* argv[])
 {
     log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
@@ -151,6 +153,8 @@ class GCCStartup {
 };
 
 static GCCStartup startup;
+
+#endif // !defined(UNIT_TEST)
 
 inline char* concat_nibble(char* result, uint8_t nibble)
 {
@@ -379,6 +383,8 @@ bool HAL_Feature_Get(HAL_Feature feature)
 #endif
         		return value;
         }
+        default:
+            break;
     }
     return false;
 }

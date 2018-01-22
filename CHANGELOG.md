@@ -1,3 +1,43 @@
+## 0.8.0-rc.1
+
+## FEATURES
+
+- Low-latency interrupt handlers [#1394] (https://github.com/spark/firmware/pull/1394)
+- [Electron] Reworked power management [#1412](https://github.com/spark/firmware/pull/1412)
+- Battery State diagnostics [#1398](https://github.com/spark/firmware/pull/1398)
+- Battery charge diagnostics [#1395](https://github.com/spark/firmware/pull/1395)
+- RAM usage diagnostic sources data [#1411](https://github.com/spark/firmware/pull/1411)
+- Network Signal Quality/Strength rework and diagnostics [#1423](https://github.com/spark/firmware/pull/1423)
+- System uptime diagnoatics [#1393](https://github.com/spark/firmware/pull/1393)
+- Diagnostics for unacked messages and rate limited events [#1391](https://github.com/spark/firmware/pull/1391)
+- Network and Cloud diagnostics [#1424](https://github.com/spark/firmware/pull/1424)
+- Diagnostics service [#1390](https://github.com/spark/firmware/pull/1390)
+
+## ENHANCEMENTS
+
+- [Photon/P1] Wi-FI firmware compression [#1421](https://github.com/spark/firmware/pull/1421)
+- [Photon/P1] Moves Wi-Fi tester into application module [#1378](https://github.com/spark/firmware/pull/1378)
+
+## BUGFIXES
+
+- Cloud random seed not working [#1312](https://github.com/spark/firmware/issues/1312)
+- [Electron] Error handling in the data usage API [#1435](https://github.com/spark/firmware/pull/1435)
+
+## 0.7.0-rc.6
+
+### BUGFIX
+
+- [Electron] Add dependency in system-part-1 on 0.6.4 system-part-3 to prevent upgrades from 0.6.3 or earlier to avoid incompatibilties
+with these releases.
+
+## 0.7.0-rc.5
+
+### BUGFIX
+
+ - The device ID is output in lowercase in DFU mode. [#1432](https://github.com/spark/firmware/issues/1432)
+ - increase the DTLS buffer from 768 to 800 bytes, so that the system describe message is sent.
+ - remove rigid dependency check in bootloader that was causing DCT functions to not load in 0.8.0-rc.1 [#1436](https://github.com/spark/firmware/pull/1436)
+
 ## 0.7.0-rc.4
 
 ### ENHANCEMENTS
@@ -100,6 +140,39 @@
 - [`[PR #1323]`](https://github.com/spark/firmware/pull/1323) USB vendor requests should be executed on system thread instead of being processed in ISR.
 - [`[PR #1338]`](https://github.com/spark/firmware/pull/1338) Do not read or write feature flags from an ISR
 
+
+## 0.6.4
+
+### BUGFIXES
+
+- Downgrade bootloader functionality in 0.6.3 would enter an infinite loop after flashing system part 1 0.7.0-rc.X using OTA/serial. `particle flash --usb`/DFU was not affected.
+
+## 0.6.3
+
+### ENHANCEMENTS
+
+- Downgrade bootloader when downgrading from 0.7.0 or newer. [#1416](https://github.com/spark/firmware/pull/1416)
+
+### BUGFIXES
+
+- [KRACK WPA2 security fix](https://github.com/spark/firmware/pull/1419)
+
+
+## 0.6.4
+
+### BUGFIXES
+
+- Downgrade bootloader functionality in 0.6.3 would enter an infinite loop after flashing system part 1 0.7.0-rc.X using OTA/serial. `particle flash --usb`/DFU was not affected.
+
+## 0.6.3
+
+### ENHANCEMENTS
+
+- Downgrade bootloader when downgrading from 0.7.0 or newer. [#1416](https://github.com/spark/firmware/pull/1416)
+
+### BUGFIXES
+
+- [KRACK WPA2 security fix](https://github.com/spark/firmware/pull/1419)
 
 ## 0.6.2 (same as 0.6.2-rc.2)
 
