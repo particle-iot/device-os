@@ -91,7 +91,13 @@ private:
     uint16_t lastReqId_; // Last request ID
 
     bool processServiceRequest(HAL_USB_SetupRequest* halReq);
+    bool processInitRequest(HAL_USB_SetupRequest* halReq);
+    bool processCheckRequest(HAL_USB_SetupRequest* halReq);
+    bool processSendRequest(HAL_USB_SetupRequest* halReq);
+    bool processRecvRequest(HAL_USB_SetupRequest* halReq);
+    bool processResetRequest(HAL_USB_SetupRequest* halReq);
     bool processVendorRequest(HAL_USB_SetupRequest* halReq);
+
     void finishActiveRequest(Request* req);
     void finishRequest(Request* req);
 

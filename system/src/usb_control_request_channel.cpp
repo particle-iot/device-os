@@ -231,204 +231,221 @@ void particle::UsbControlRequestChannel::setResult(ctrl_request* ctrlReq, int re
     }
 }
 
+// Note: This method is called from an ISR
 bool particle::UsbControlRequestChannel::processServiceRequest(HAL_USB_SetupRequest* halReq) {
     switch (halReq->bRequest) { // Service request type
-    // INIT
-    case ServiceRequestType::INIT: {
-        if (halReq->wLength < MIN_WLENGTH || !halReq->data) {
-            return false; // Unexpected length of the data stage
-        }
-        if (activeReqCount_ >= USB_REQUEST_MAX_ACTIVE_COUNT) {
-            return ServiceReply().status(ServiceReply::BUSY).encode(halReq); // Too many active requests
-        }
-        // Allocate a request object from the pool
-        const auto req = (Request*)system_pool_alloc(sizeof(Request), nullptr);
-        if (!req) {
-            return ServiceReply().status(ServiceReply::NO_MEMORY).encode(halReq); // Memory allocation error
-        }
-        req->size = sizeof(ctrl_request);
-        req->type = halReq->wIndex; // Request type
-        req->request_size = halReq->wValue; // Size of the payload data
-        req->reply_data = nullptr;
-        req->reply_size = 0;
-        req->channel = this;
-        req->task.req = req;
-        req->handler = nullptr;
-        req->handlerData = nullptr;
-        req->result = SYSTEM_ERROR_UNKNOWN;
-        req->id = ++lastReqId_;
-        req->flags = 0;
-        // Check if the request has payload data
-        ServiceReply::Status status = ServiceReply::ERROR;
-        if (req->request_size == 0) {
-            // The request has no payload data, invoke the request handler
-            req->task.func = invokeRequestHandler;
-            SystemISRTaskQueue.enqueue(&req->task);
-            req->request_data = nullptr;
-            req->state = RequestState::PENDING;
-            status = ServiceReply::OK;
-        } else if (req->request_size <= USB_REQUEST_MAX_POOLED_BUFFER_SIZE &&
-                (req->request_data = (char*)system_pool_alloc(req->request_size, nullptr))) {
-            // Device is ready to receive payload data
-            req->flags |= RequestFlag::POOLED_REQ_DATA;
-            req->state = RequestState::RECV_PAYLOAD; // TODO: Start a timer
-            status = ServiceReply::OK;
-        } else {
-            // The buffer needs to be allocated asynchronously
-            req->task.func = allocRequestData;
-            SystemISRTaskQueue.enqueue(&req->task);
-            req->request_data = nullptr;
-            req->state = RequestState::ALLOC_PENDING;
-            status = ServiceReply::PENDING;
-        }
-        // Update list of active requests
-        req->prev = nullptr;
-        req->next = activeReqs_;
-        if (activeReqs_) {
-            activeReqs_->prev = req;
-        }
-        activeReqs_ = req;
-        ++activeReqCount_;
-        // Reply to the host
-        return ServiceReply().id(req->id).status(status).encode(halReq);
-    }
-    // CHECK
-    case ServiceRequestType::CHECK: {
-        if (halReq->wLength < MIN_WLENGTH || !halReq->data) {
-            return false; // Unexpected length of the data stage
-        }
-        const uint16_t id = halReq->wIndex; // Request ID
-        Request* req = activeReqs_;
-        for (; req; req = req->next) {
-            if (req->id == id) {
-                break;
-            }
-        }
-        ServiceReply rep;
-        if (req) {
-            switch (req->state) {
-            case RequestState::ALLOC_PENDING:
-                rep.status(ServiceReply::PENDING);
-                break;
-            case RequestState::ALLOC_FAILED:
-                rep.status(ServiceReply::NO_MEMORY);
-                finishActiveRequest(req);
-                break;
-            case RequestState::RECV_PAYLOAD:
-                rep.status(ServiceReply::OK);
-                break;
-            case RequestState::PENDING:
-                rep.status(ServiceReply::PENDING);
-                break;
-            case RequestState::DONE:
-                rep.result(req->result);
-                rep.status(ServiceReply::OK);
-                if (req->reply_size > 0) {
-                    rep.size(req->reply_size);
-                } else {
-                    curReq_ = req;
-                }
-                break;
-            }
-        } else {
-            rep.status(ServiceReply::NOT_FOUND);
-        }
-        return rep.encode(halReq);
-    }
-    // SEND
-    case ServiceRequestType::SEND: {
-        const uint16_t id = halReq->wIndex; // Request ID
-        const uint16_t size = halReq->wLength; // Payload size
-        Request* req = activeReqs_;
-        for (; req; req = req->next) {
-            if (req->id == id) {
-                break;
-            }
-        }
-        if (!req || // Request not found
-                req->state != RequestState::RECV_PAYLOAD || // Invalid request state
-                req->request_size != size) { // Unexpected size
-            return false;
-        }
-        if (size <= MIN_WLENGTH) {
-            // Use an internal buffer provided by the HAL
-            if (!halReq->data) {
-                return false;
-            }
-            memcpy(req->request_data, halReq->data, size);
-        } else if (!halReq->data) {
-            // Provide a buffer to the HAL
-            halReq->data = (uint8_t*)req->request_data;
-            return true;
-        }
-        // Invoke the request handler
-        req->task.func = invokeRequestHandler;
-        SystemISRTaskQueue.enqueue(&req->task);
-        req->state = RequestState::PENDING;
-        return true;
-    }
-    // RECV
-    case ServiceRequestType::RECV: {
-        const uint16_t id = halReq->wIndex; // Request ID
-        const uint16_t size = halReq->wLength; // Payload size
-        Request* req = activeReqs_;
-        for (; req; req = req->next) {
-            if (req->id == id) {
-                break;
-            }
-        }
-        if (!req || // Request not found
-                req->state != RequestState::DONE || // Invalid request state
-                req->reply_size != size || size == 0) { // Unexpected size
-            return false;
-        }
-        if (size <= MIN_WLENGTH) {
-            // Use an internal buffer provided by the HAL
-            if (!halReq->data) {
-                return false;
-            }
-            memcpy(halReq->data, req->reply_data, size);
-        } else {
-            // Provide a buffer to the HAL
-            halReq->data = (uint8_t*)req->reply_data;
-        }
-        curReq_ = req;
-        return true;
-    }
-    // RESET
-    case ServiceRequestType::RESET: {
-        if (halReq->wLength < MIN_WLENGTH || !halReq->data) {
-            return false; // Unexpected length of the data stage
-        }
-        const uint16_t id = halReq->wIndex; // Request ID
-        if (id != USB_REQUEST_INVALID_ID) {
-            // Cancel request with a specified ID
-            Request* req = activeReqs_;
-            for (; req; req = req->next) {
-                if (req->id == id) {
-                    break;
-                }
-            }
-            if (!req) {
-                return ServiceReply().status(ServiceReply::NOT_FOUND).encode(halReq);
-            }
-            // Set a result code that will be passed to the request completion handler
-            req->result = SYSTEM_ERROR_CANCELLED;
-            finishActiveRequest(req);
-        } else {
-            // Cancel all requests
-            while (activeReqs_) {
-                activeReqs_->result = SYSTEM_ERROR_CANCELLED;
-                finishActiveRequest(activeReqs_);
-            }
-        }
-        return ServiceReply().status(ServiceReply::OK).encode(halReq);
-    }
+    case ServiceRequestType::INIT:
+        return processInitRequest(halReq);
+    case ServiceRequestType::CHECK:
+        return processCheckRequest(halReq);
+    case ServiceRequestType::SEND:
+        return processSendRequest(halReq);
+    case ServiceRequestType::RECV:
+        return processRecvRequest(halReq);
+    case ServiceRequestType::RESET:
+        return processResetRequest(halReq);
     default:
         return false; // Unknown request type
     }
 }
 
+// Note: This method is called from an ISR
+bool particle::UsbControlRequestChannel::processInitRequest(HAL_USB_SetupRequest* halReq) {
+    if (halReq->wLength < MIN_WLENGTH || !halReq->data) {
+        return false; // Unexpected length of the data stage
+    }
+    if (activeReqCount_ >= USB_REQUEST_MAX_ACTIVE_COUNT) {
+        return ServiceReply().status(ServiceReply::BUSY).encode(halReq); // Too many active requests
+    }
+    // Allocate a request object from the pool
+    const auto req = (Request*)system_pool_alloc(sizeof(Request), nullptr);
+    if (!req) {
+        return ServiceReply().status(ServiceReply::NO_MEMORY).encode(halReq); // Memory allocation error
+    }
+    req->size = sizeof(ctrl_request);
+    req->type = halReq->wIndex; // Request type
+    req->request_size = halReq->wValue; // Size of the payload data
+    req->reply_data = nullptr;
+    req->reply_size = 0;
+    req->channel = this;
+    req->task.req = req;
+    req->handler = nullptr;
+    req->handlerData = nullptr;
+    req->result = SYSTEM_ERROR_UNKNOWN;
+    req->id = ++lastReqId_;
+    req->flags = 0;
+    // Check if the request has payload data
+    ServiceReply::Status status = ServiceReply::ERROR;
+    if (req->request_size == 0) {
+        // The request has no payload data, invoke the request handler
+        req->task.func = invokeRequestHandler;
+        SystemISRTaskQueue.enqueue(&req->task);
+        req->request_data = nullptr;
+        req->state = RequestState::PENDING;
+        status = ServiceReply::OK;
+    } else if (req->request_size <= USB_REQUEST_MAX_POOLED_BUFFER_SIZE &&
+            (req->request_data = (char*)system_pool_alloc(req->request_size, nullptr))) {
+        // Device is ready to receive payload data
+        req->flags |= RequestFlag::POOLED_REQ_DATA;
+        req->state = RequestState::RECV_PAYLOAD; // TODO: Start a timer
+        status = ServiceReply::OK;
+    } else {
+        // The buffer needs to be allocated asynchronously
+        req->task.func = allocRequestData;
+        SystemISRTaskQueue.enqueue(&req->task);
+        req->request_data = nullptr;
+        req->state = RequestState::ALLOC_PENDING;
+        status = ServiceReply::PENDING;
+    }
+    // Update list of active requests
+    req->prev = nullptr;
+    req->next = activeReqs_;
+    if (activeReqs_) {
+        activeReqs_->prev = req;
+    }
+    activeReqs_ = req;
+    ++activeReqCount_;
+    // Reply to the host
+    return ServiceReply().id(req->id).status(status).encode(halReq);
+}
+
+// Note: This method is called from an ISR
+bool particle::UsbControlRequestChannel::processCheckRequest(HAL_USB_SetupRequest* halReq) {
+    if (halReq->wLength < MIN_WLENGTH || !halReq->data) {
+        return false; // Unexpected length of the data stage
+    }
+    const uint16_t id = halReq->wIndex; // Request ID
+    Request* req = activeReqs_;
+    for (; req; req = req->next) {
+        if (req->id == id) {
+            break;
+        }
+    }
+    ServiceReply rep;
+    if (req) {
+        switch (req->state) {
+        case RequestState::ALLOC_PENDING:
+            rep.status(ServiceReply::PENDING);
+            break;
+        case RequestState::ALLOC_FAILED:
+            rep.status(ServiceReply::NO_MEMORY);
+            finishActiveRequest(req);
+            break;
+        case RequestState::RECV_PAYLOAD:
+            rep.status(ServiceReply::OK);
+            break;
+        case RequestState::PENDING:
+            rep.status(ServiceReply::PENDING);
+            break;
+        case RequestState::DONE:
+            rep.result(req->result);
+            rep.status(ServiceReply::OK);
+            if (req->reply_size > 0) {
+                rep.size(req->reply_size);
+            } else {
+                curReq_ = req;
+            }
+            break;
+        }
+    } else {
+        rep.status(ServiceReply::NOT_FOUND);
+    }
+    return rep.encode(halReq);
+}
+
+// Note: This method is called from an ISR
+bool particle::UsbControlRequestChannel::processSendRequest(HAL_USB_SetupRequest* halReq) {
+    const uint16_t id = halReq->wIndex; // Request ID
+    const uint16_t size = halReq->wLength; // Payload size
+    Request* req = activeReqs_;
+    for (; req; req = req->next) {
+        if (req->id == id) {
+            break;
+        }
+    }
+    if (!req || // Request not found
+            req->state != RequestState::RECV_PAYLOAD || // Invalid request state
+            req->request_size != size) { // Unexpected size
+        return false;
+    }
+    if (size <= MIN_WLENGTH) {
+        // Use an internal buffer provided by the HAL
+        if (!halReq->data) {
+            return false;
+        }
+        memcpy(req->request_data, halReq->data, size);
+    } else if (!halReq->data) {
+        // Provide a buffer to the HAL
+        halReq->data = (uint8_t*)req->request_data;
+        return true;
+    }
+    // Invoke the request handler
+    req->task.func = invokeRequestHandler;
+    SystemISRTaskQueue.enqueue(&req->task);
+    req->state = RequestState::PENDING;
+    return true;
+}
+
+// Note: This method is called from an ISR
+bool particle::UsbControlRequestChannel::processRecvRequest(HAL_USB_SetupRequest* halReq) {
+    const uint16_t id = halReq->wIndex; // Request ID
+    const uint16_t size = halReq->wLength; // Payload size
+    Request* req = activeReqs_;
+    for (; req; req = req->next) {
+        if (req->id == id) {
+            break;
+        }
+    }
+    if (!req || // Request not found
+            req->state != RequestState::DONE || // Invalid request state
+            req->reply_size != size || size == 0) { // Unexpected size
+        return false;
+    }
+    if (size <= MIN_WLENGTH) {
+        // Use an internal buffer provided by the HAL
+        if (!halReq->data) {
+            return false;
+        }
+        memcpy(halReq->data, req->reply_data, size);
+    } else {
+        // Provide a buffer to the HAL
+        halReq->data = (uint8_t*)req->reply_data;
+    }
+    curReq_ = req;
+    return true;
+}
+
+// Note: This method is called from an ISR
+bool particle::UsbControlRequestChannel::processResetRequest(HAL_USB_SetupRequest* halReq) {
+    if (halReq->wLength < MIN_WLENGTH || !halReq->data) {
+        return false; // Unexpected length of the data stage
+    }
+    const uint16_t id = halReq->wIndex; // Request ID
+    if (id != USB_REQUEST_INVALID_ID) {
+        // Cancel request with a specified ID
+        Request* req = activeReqs_;
+        for (; req; req = req->next) {
+            if (req->id == id) {
+                break;
+            }
+        }
+        if (!req) {
+            return ServiceReply().status(ServiceReply::NOT_FOUND).encode(halReq);
+        }
+        // Set a result code that will be passed to the request completion handler
+        req->result = SYSTEM_ERROR_CANCELLED;
+        finishActiveRequest(req);
+    } else {
+        // Cancel all requests
+        while (activeReqs_) {
+            activeReqs_->result = SYSTEM_ERROR_CANCELLED;
+            finishActiveRequest(activeReqs_);
+        }
+    }
+    return ServiceReply().status(ServiceReply::OK).encode(halReq);
+}
+
+// Note: This method is called from an ISR
 bool particle::UsbControlRequestChannel::processVendorRequest(HAL_USB_SetupRequest* req) {
     // In case of a "raw" USB vendor request, the `bRequest` field should be set to the ASCII code
     // of the character 'P' (0x50), and `wIndex` should contain a request type as defined by the
@@ -475,6 +492,7 @@ bool particle::UsbControlRequestChannel::processVendorRequest(HAL_USB_SetupReque
     return true;
 }
 
+// Note: This method is called from an ISR
 void particle::UsbControlRequestChannel::finishActiveRequest(Request* req) {
     // Update list of active requests
     if (req->next) {
@@ -518,6 +536,7 @@ void particle::UsbControlRequestChannel::finishRequest(Request* req) {
     system_pool_free(req, nullptr);
 }
 
+// Note: This method is called from an ISR
 void particle::UsbControlRequestChannel::invokeRequestHandler(ISRTaskQueue::Task* isrTask) {
     const auto task = static_cast<RequestTask*>(isrTask);
     const auto req = task->req;
@@ -525,6 +544,7 @@ void particle::UsbControlRequestChannel::invokeRequestHandler(ISRTaskQueue::Task
     channel->handler()->processRequest(req, channel);
 }
 
+// Note: This method is called from an ISR
 void particle::UsbControlRequestChannel::allocRequestData(ISRTaskQueue::Task* isrTask) {
     const auto task = static_cast<RequestTask*>(isrTask);
     auto req = task->req;
@@ -545,6 +565,7 @@ void particle::UsbControlRequestChannel::allocRequestData(ISRTaskQueue::Task* is
     }
 }
 
+// Note: This method is called from an ISR
 void particle::UsbControlRequestChannel::finishRequest(ISRTaskQueue::Task* isrTask) {
     const auto task = static_cast<RequestTask*>(isrTask);
     const auto req = task->req;
@@ -599,6 +620,7 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestCallback(HAL_USB_Set
     return (ok ? 0 : 1);
 }
 
+// Note: This method is called from an ISR
 uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_USB_VendorRequestState state, void* data) {
     const auto channel = static_cast<UsbControlRequestChannel*>(data);
     switch (state) {
