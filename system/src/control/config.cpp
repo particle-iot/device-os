@@ -43,7 +43,9 @@ int handleSetClaimCodeRequest(ctrl_request* req) {
 }
 
 int handleIsClaimedRequest(ctrl_request* req) {
-    const int ret = (HAL_IsDeviceClaimed(nullptr) ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_NOT_FOUND);
+    particle_ctrl_IsClaimedReply pbRep = {};
+    pbRep.claimed = HAL_IsDeviceClaimed(nullptr);
+    const int ret = encodeReplyMessage(req, particle_ctrl_IsClaimedReply_fields, &pbRep);
     return ret;
 }
 
