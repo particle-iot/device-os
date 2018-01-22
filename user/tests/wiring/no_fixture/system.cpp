@@ -234,7 +234,20 @@ test(SYSTEM_07_fragmented_heap) {
 	assertMoreOrEqual(half_fragment_free, low_heap+(sizeof(block)*count));
 
 	assertTrue(oomEventReceived);
-	assertEqual(oomSizeReceived, sizeof(block)*2);
+	assertMoreOrEqual(oomSizeReceived, sizeof(block)*2);
 }
+
+test(SYSTEM_08_out_of_memory_not_raised_for_0_size_malloc)
+{
+	const size_t size = 0;
+	register_oom();
+	malloc(size);
+	Particle.process();
+	unregister_oom();
+
+	assertFalse(oomEventReceived);
+}
+
+
 
 #endif
