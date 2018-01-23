@@ -29,8 +29,18 @@
 #include "spark_wiring_power.h"
 
 FuelGauge::FuelGauge(bool _lock) :
-    lock_(_lock)
+#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION)
+    FuelGauge(Wire3, _lock)
+#else
+    FuelGauge(Wire, _lock)
+#endif /* (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION) */
 {
+}
+
+FuelGauge::FuelGauge(TwoWire& i2c, bool _lock)
+    : i2c_(i2c),
+      lock_(_lock) {
+
     if (lock_) {
         lock();
     }
@@ -45,28 +55,10 @@ FuelGauge::~FuelGauge()
 
 boolean FuelGauge::begin()
 {
-#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION) // what PRODUCT_ID will E0 get?
-	return this->begin(Wire3);  // with Electron the fuel gauge will be attached to Wire3
-#else                                             
-   return this->begin(Wire);   // otherwise we assume it to be on default Wire
-#endif
-}
- 
-boolean FuelGauge::begin(TwoWire& i2c)
-{
-	_i2c = &i2c;
-	/* as per comment of Mat pointers will always be initialzed 
-	//if (_i2c) { 
-	*/
-
-    if (!_i2c->isEnabled()) 
-		_i2c->begin();
-    return _i2c->isEnabled();
-
-	/*
-	//}
-	//return 0;
-	*/
+    if (!i2c_.isEnabled()) {
+		i2c_.begin();
+    }
+    return i2c_.isEnabled();
 }
 
 namespace detail {
@@ -233,51 +225,28 @@ void FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
 
 void FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
     std::lock_guard<FuelGauge> l(*this);
-	
-	if (_i2c) { 
-		_i2c->beginTransmission(MAX17043_ADDRESS);
-		_i2c->write(startAddress);
-		_i2c->endTransmission(true);
+    i2c_.beginTransmission(MAX17043_ADDRESS);
+    i2c_.write(startAddress);
+    i2c_.endTransmission(true);
 
-		_i2c->requestFrom(MAX17043_ADDRESS, 2, true);
-		MSB = _i2c->read();
-		LSB = _i2c->read();
-	}
-	else { // e.g. since FuelGauge::begin() wasn't called
-		DEBUG("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
-	}
+    i2c_.requestFrom(MAX17043_ADDRESS, 2, true);
+    MSB = i2c_.read();
+    LSB = i2c_.read();
 }
 
 void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
     std::lock_guard<FuelGauge> l(*this);
-	if (_i2c) { 
-		_i2c->beginTransmission(MAX17043_ADDRESS);
-		_i2c->write(address);
-		_i2c->write(MSB);
-		_i2c->write(LSB);
-		_i2c->endTransmission(true);
-	}
-	else { // e.g. since FuelGauge::begin() wasn't called
-		DEBUG("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
-	}
+    i2c_.beginTransmission(MAX17043_ADDRESS);
+    i2c_.write(address);
+    i2c_.write(MSB);
+    i2c_.write(LSB);
+    i2c_.endTransmission(true);
 }
 
 bool FuelGauge::lock() {
-	if (_i2c) { 
-		return _i2c->lock();
-	}
-	else { // e.g. since FuelGauge::begin() wasn't called
-		DEBUG("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
-		return false;
-	}
+    return i2c_.lock();
 }
 
 bool FuelGauge::unlock() {
-	if (_i2c) { 
-		return _i2c->unlock();
-	}
-	else { // e.g. since FuelGauge::begin() wasn't called
-		DEBUG("I2C interface not initialized! Has FuelGauge::begin() been called earlier?");
-		return false;
-	}
+	return i2c_.unlock();
 }
