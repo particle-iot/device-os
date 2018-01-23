@@ -51,7 +51,6 @@ system_part2_ram_end = stack_start;
 system_heap_end = system_part3_ram_start;
 
 ASSERT ( system_part2_ram_start == system_part3_ram_end, "electron system part3 static ram should come immediately before system part2 static ram" ) ;
-ASSERT ( (link_heap_location_end <= system_part3_ram_start), "the heap should come immediately before part3 static ram") ;
 
 PROVIDE ( dynalib_location_hal = system_part2_module_table + 0 );
 PROVIDE ( dynalib_location_rt = system_part2_module_table + 4 );
