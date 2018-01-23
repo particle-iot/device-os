@@ -72,8 +72,7 @@ SECTIONS
 
     /* Heap comes immediately after system-part1 */
     link_heap_location = ALIGN(system_part1_module_ram_end, 4);
-
-    link_heap_location_end = ORIGIN(SRAM);
+    link_heap_location_end = system_heap_end;
 
     padding_length = ALIGN(system_part2_ram_start - ORIGIN(SRAM), 512);
 
