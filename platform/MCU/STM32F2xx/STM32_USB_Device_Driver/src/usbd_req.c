@@ -152,6 +152,7 @@ USBD_Status  USBD_StdDevReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
   {
     if (pdev->dev.usr_cb && pdev->dev.usr_cb->ControlRequest)
     {
+      // Handle vendor request
       ret = pdev->dev.usr_cb->ControlRequest(req, 0);
       if ((req->wLength == 0) && (ret == USBD_OK))
       {

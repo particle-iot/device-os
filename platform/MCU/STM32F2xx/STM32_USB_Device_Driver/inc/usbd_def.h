@@ -103,6 +103,8 @@
 #define USB_FEATURE_REMOTE_WAKEUP                          1
 #define USB_FEATURE_TEST_MODE                              2
 
+#define USB_REQ_DATA_STAGE_COMPLETED                       1
+
 /**
   * @}
   */
