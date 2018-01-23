@@ -81,9 +81,4 @@ SCENARIO("System version info is retrieved", "[system,version]") {
 volatile uint8_t SPARK_CLOUD_CONNECT;
 volatile uint8_t SPARK_WLAN_SLEEP;
 
-int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
-{
-    return -1;
-}
-
 SystemClass System;
