@@ -1031,7 +1031,7 @@ StackType_t *pxTopOfStack;
 			#endif
 
 			#if ( INCLUDE_vTaskDelete == 1 )
-				else if( pxStateList == &xTasksWaitingTermination )
+				else if( pxStateList == &xTasksWaitingTermination || pxTCB->pxStack == NULL)
 				{
 					/* The task being queried is referenced from the deleted
 					tasks list. */
@@ -3339,6 +3339,7 @@ TCB_t *pxNewTCB;
 			vPortFreeAligned( pxTCB->pxStack );
 		}
 		#endif
+		pxTCB->pxStack = NULL;
 
 		vPortFree( pxTCB );
 	}
