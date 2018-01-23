@@ -139,7 +139,11 @@ os_result_t os_thread_join(os_thread_t thread)
     }
     return 0;
 #else
-    return -1;
+    while (eTaskGetState(thread) != eDeleted)
+    {
+        HAL_Delay_Milliseconds(10);
+    }
+    return 0;
 #endif
 }
 
