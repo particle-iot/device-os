@@ -31,7 +31,7 @@
  * And the device attempts to connect to the Cloud
  * Then the device overcomes this socket obstacle and connects to the Cloud
  */
-void disconnect_from_cloud(system_tick_t timeout)
+void disconnect_from_cloud(system_tick_t timeout, bool detach = false)
 {
     Particle.disconnect();
     waitFor(Particle.disconnected, timeout);
@@ -39,6 +39,10 @@ void disconnect_from_cloud(system_tick_t timeout)
     Cellular.disconnect();
     // Avoids some sort of race condition in AUTOMATIC mode
     delay(1000);
+
+    if (detach) {
+        Cellular.command(timeout, "AT+COPS=2\r\n");
+    }
 }
 void connect_to_cloud(system_tick_t timeout)
 {
@@ -201,7 +205,7 @@ bool is_band_available(CellularBand& band_avail, MDM_Band band)
  */
 test(BAND_SELECT_01_more_than_three_band_options_available_on_any_electron) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // When we request how many band options are available
     int num = how_many_band_options_are_available();
     // Then the device returns at least 3 options
@@ -217,7 +221,7 @@ test(BAND_SELECT_01_more_than_three_band_options_available_on_any_electron) {
  */
 test(BAND_SELECT_02_iterate_through_the_available_bands_and_check_that_they_are_set) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
     CellularBand band_avail;
     get_list_of_bands_available(band_avail);
@@ -239,7 +243,7 @@ test(BAND_SELECT_02_iterate_through_the_available_bands_and_check_that_they_are_
  */
 test(BAND_SELECT_03_iterate_through_the_available_bands_as_strings_and_check_that_they_are_set) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
     CellularBand band_avail;
     get_list_of_bands_available(band_avail);
@@ -259,7 +263,7 @@ test(BAND_SELECT_03_iterate_through_the_available_bands_as_strings_and_check_tha
  */
 test(BAND_SELECT_04_trying_to_set_an_invalid_band_will_fail) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // When we set an invalid band
     CellularBand band_set;
     band_set.band[0] = (MDM_Band)1337;
@@ -276,7 +280,7 @@ test(BAND_SELECT_04_trying_to_set_an_invalid_band_will_fail) {
  */
 test(BAND_SELECT_05_trying_to_set_an_invalid_band_as_a_string_will_fail) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // When we set an invalid band as a string
     bool set_band_select_fails = Cellular.setBandSelect("1337");
     // Then set band select will fail
@@ -291,7 +295,7 @@ test(BAND_SELECT_05_trying_to_set_an_invalid_band_as_a_string_will_fail) {
  */
 test(BAND_SELECT_06_trying_to_set_an_unavailable_band_will_fail) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
     CellularBand band_avail;
     get_list_of_bands_available(band_avail);
@@ -317,7 +321,7 @@ test(BAND_SELECT_06_trying_to_set_an_unavailable_band_will_fail) {
  */
 test(BAND_SELECT_07_setting_non_defaults) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
     CellularBand band_avail;
     get_list_of_bands_available(band_avail);
@@ -345,7 +349,7 @@ test(BAND_SELECT_07_setting_non_defaults) {
  */
 test(BAND_SELECT_08_restore_defaults) {
     // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
+    disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
     CellularBand band_avail;
     get_list_of_bands_available(band_avail);
@@ -360,6 +364,8 @@ test(BAND_SELECT_08_restore_defaults) {
         delay(5000);
         Cellular.on();
         delay(10000);
+        // Given the device is currently disconnected from the Cloud
+        disconnect_from_cloud(30*1000, true);
         // retry 3 times, important that this passes to restore defaults
         set_band_select_passes = Cellular.setBandSelect(band_set);
     }
@@ -368,12 +374,16 @@ test(BAND_SELECT_08_restore_defaults) {
     // And get band select will pass
     CellularBand band_sel;
     tries = 3;
+    // Given the device is currently disconnected from the Cloud
+    disconnect_from_cloud(30*1000, true);
     bool get_band_select_passes = Cellular.getBandSelect(band_sel);
     while (--tries > 0 && !get_band_select_passes) {
         Cellular.off();
         delay(5000);
         Cellular.on();
         delay(10000);
+        // Given the device is currently disconnected from the Cloud
+        disconnect_from_cloud(30*1000, true);
         // retry 3 times, important that this passes to restore defaults
         get_band_select_passes = Cellular.setBandSelect(band_sel);
     }
@@ -381,6 +391,12 @@ test(BAND_SELECT_08_restore_defaults) {
     // Then band select will be default
     bool band_select_default = !is_bands_selected_not_equal_to_default_bands(band_sel, band_avail);
     assertEqual(band_select_default, true);
+}
+
+test(BAND_SELECT_09_restore_connection) {
+    // Allow network registration
+    Cellular.command(30000, "AT+COPS=0\r\n");
+    connect_to_cloud(6*60*1000);
 }
 
 #define LOREM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut elit nec mi bibendum mollis. Nam nec nisl mi. Donec dignissim iaculis purus, ut condimentum arcu semper quis. Phasellus efficitur ut arcu ac dignissim. In interdum sem id dictum luctus. Ut nec mattis sem. Nullam in aliquet lacus. Donec egestas nisi volutpat lobortis sodales. Aenean elementum magna ipsum, vitae pretium tellus lacinia eu. Phasellus commodo nisi at quam tincidunt, tempor gravida mauris facilisis. Duis tristique ligula ac pulvinar consectetur. Cras aliquam, leo ut eleifend molestie, arcu odio semper odio, quis sollicitudin metus libero et lorem. Donec venenatis congue commodo. Vivamus mattis elit metus, sed fringilla neque viverra eu. Phasellus leo urna, elementum vel pharetra sit amet, auctor non sapien. Phasellus at justo ac augue rutrum vulputate. In hac habitasse platea dictumst. Pellentesque nibh eros, placerat id laoreet sed, dapibus efficitur augue. Praesent pretium diam ac sem varius fermentum. Nunc suscipit dui risus sed"
