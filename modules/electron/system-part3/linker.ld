@@ -30,3 +30,5 @@ INCLUDE module_system_part2_export.ld
 INCLUDE module_user_export.ld
 
 INCLUDE ../../shared/stm32f2xx/part2.ld
+
+ASSERT ( (link_heap_location_end <= system_part3_ram_start), "the heap should come immediately before part3 static ram") ;
