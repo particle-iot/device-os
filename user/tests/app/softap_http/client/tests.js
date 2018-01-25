@@ -12,7 +12,7 @@ const Promise = require('bluebird');
 const MAX_CONNECTIONS = 10;
 
 // Maximum number of HTTP connections supported
-const MAX_HTTP_CONNECTIONS = 5;
+const MAX_HTTP_CONNECTIONS = 10;
 
 exports.EchoTest = (test) => {
   const client = test.newClient(EchoClient);
