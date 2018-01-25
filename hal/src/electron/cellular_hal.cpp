@@ -329,4 +329,11 @@ void cellular_unlock(void* reserved)
     electronMDM.unlock();
 }
 
+void cellular_set_power_mode(int mode, void* reserved)
+{
+    if (mode >= 0 && mode <= 3) {
+        electronMDM.setPowerMode(mode);
+    }
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

@@ -172,6 +172,7 @@ MDMParser::MDMParser(void)
     _attached  = false;
     _attached_urc = false; // updated by GPRS detached/attached URC,
                            // used to notify system of prolonged GPRS detach.
+    _power_mode = 1; // default power mode is AT+UPSV=1
     _cancel_all_operations = false;
     sms_cb = NULL;
     memset(_sockets, 0, sizeof(_sockets));
@@ -181,6 +182,10 @@ MDMParser::MDMParser(void)
     _debugLevel = 3;
     _debugTime = HAL_Timer_Get_Milli_Seconds();
 #endif
+}
+
+void MDMParser::setPowerMode(int mode) {
+    _power_mode = mode;
 }
 
 void MDMParser::cancel(void) {
@@ -699,11 +704,13 @@ bool MDMParser::init(DevStatus* status)
         goto failure;
     // enable power saving
     if (_dev.lpm != LPM_DISABLED) {
-         // enable power saving (requires flow control, cts at least)
-        sendFormated("AT+UPSV=1\r\n");
+        // enable power saving (requires flow control, cts at least)
+        sendFormated("AT+UPSV=%d\r\n", _power_mode);
         if (RESP_OK != waitFinalResp())
             goto failure;
-        _dev.lpm = LPM_ACTIVE;
+        if (_power_mode != 0) {
+            _dev.lpm = LPM_ACTIVE;
+        }
     }
     // Setup SMS in text mode
     sendFormated("AT+CMGF=1\r\n");
