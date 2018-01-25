@@ -163,6 +163,13 @@ int cellular_lock(void* reserved);
  */
 void cellular_unlock(void* reserved);
 
+/**
+ * Sets the power mode used, bound to 0-3.
+ *
+ * mode is volatile and will default to 1 on system reset/boot.
+ */
+void cellular_set_power_mode(int mode, void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

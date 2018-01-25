@@ -46,6 +46,9 @@ public:
     //! get static instance
     static MDMParser* getInstance() { return inst; };
 
+    /* Used to set the power mode used in MDMParser::init() */
+    void setPowerMode(int mode);
+
     /* Used to cancel all operations */
     void cancel(void);
 
@@ -578,6 +581,7 @@ protected:
     bool _activated;
     bool _attached;
     bool _attached_urc;
+    int _power_mode;
     volatile bool _cancel_all_operations;
 #ifdef MDM_DEBUG
     int _debugLevel;
