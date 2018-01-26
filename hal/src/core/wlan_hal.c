@@ -75,6 +75,8 @@ unsigned char NVMEM_Spark_File_Data[NVMEM_SPARK_FILE_SIZE];
 
 void recreate_spark_nvmem_file();
 
+void Clear_NetApp_Dhcp();
+
 
 int wlan_clear_credentials()
 {

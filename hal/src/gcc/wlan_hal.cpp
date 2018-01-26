@@ -90,10 +90,6 @@ void Set_NetApp_Timeout(void)
 {
 }
 
-void Clear_NetApp_Dhcp(void)
-{
-}
-
 wlan_result_t wlan_disconnect_now()
 {
     INFO("Virtual WLAN disconnected");

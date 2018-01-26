@@ -64,6 +64,9 @@ extern uint32_t lastEvent;
 #define ON_EVENT_DELTA()
 #endif
 
+/**
+ * Describes the antenna selection to be used with the primary radio for devices with multiple antennae.
+ */
 typedef enum
 {
   ANT_INTERNAL = 0,
@@ -90,37 +93,62 @@ STATIC_ASSERT(WLanConfigSize, sizeof(WLanConfig)==WLanConfig_Size_V2);
 
 
 /**
- * Connect start the wireless connection.
+ * Begin establishing the wireless connection. This is provided as a convenience for platforms to do any steps required
+ * prior to connected to a configured AP.  wlan_connect_finalize() will be called to finalize the connection.
+ *
  */
 wlan_result_t  wlan_connect_init();
 
 /**
- * Finalize the connection by connecting to stored profiles.
+ * Finalize the connection by connecting to an AP previously stored with wlan_set_credentials().
+ * The notification handlers HAL_NET_notify_connected, HAL_NET_notify_disconnected must be set up to receive
+ * asynchronous events from the wifi hardware when a connection to an AP is established and lost respectively.
  */
 wlan_result_t  wlan_connect_finalize();
 
-
+/**
+ * Determines if a request has been made to reset the wifi credentials. On platforms that use the Particle bootloader,
+ * this is done by issuing a "full reset" command.
+ */
 bool wlan_reset_credentials_store_required();
+
+/**
+ * Removes all stored AP credentials by calling wlan_clear_credentials() and clears the wlan_reset_credentials_store_required() flag.
+ */
 wlan_result_t  wlan_reset_credentials_store();
 
+/**
+ * This function exists primarily as a throwback to early system firmware.
+ * It is called between wlan_connect_init() and wlan_connect_finalize()
+ * and gives the platform an opportunity to set any network timeouts required.
+ * This will most likely be phased out since it is subsumed by the wlan_connect_init() function.
+ */
 void Set_NetApp_Timeout();
-void Clear_NetApp_Dhcp();
 
+/**
+ * Brings down the primary networking interface, while maintaining power to the WiFi hardware.
+ * All open sockets are closed and when the operation is complete, the HAL_NET_notify_disconnected() function is called,
+ * either directly, as a result of bringing down the connection.
+ */
 wlan_result_t wlan_disconnect_now();
 
 /**
- * Enable wifi without connecting.
+ * Enable the wifi hardware without connecting.
  */
 wlan_result_t wlan_activate();
 
 /**
- * Disable wifi.
+ * Disable wifi. The wifi hardware should be powered down to save power.
+ * This may be called when the AP is still connected, so implementations should call wlan_disconnect_now() to take down
+ * the network first, before shutting off the wifi hardware.
  */
 wlan_result_t wlan_deactivate();
 
 
 
 /**
+ * Determines the strength of the signal of the connected AP.
+ *
  * @return <0 for a valid signal strength, in db.
  *         0 for rssi not found (caller could retry)
  *         >0 for an error
@@ -239,23 +267,34 @@ typedef struct {
 #define WLAN_INVALID_KEY_LENGTH (-4)
 
 /**
- *
- * @param credentials
+ * Adds credentials for an AP that this device will connect to. The credentials are stored persistently.
+ * If the storage for WiFi credentials is full, these credentials
+ * should take precedence can replace previously set credentials, typically the oldest.
+ * @param credentials	The credentials to store persistently.
  * @return 0 on success.
+ *
+ * Note that if the device is already connected to an AP, that connection remains, even if the credentials for that AP were removed.
  */
 int wlan_set_credentials(WLanCredentials* credentials);
 
 /**
- * Initialize smart config mode.
+ * Initialize smart config/SoftAP mode. This is used to put the device in setup mode so that it can pair with the mobile
+ * app to be provided with credentials.
  */
 void wlan_smart_config_init();
-void wlan_smart_config_cleanup();
-
-void wlan_set_error_count(uint32_t error_count);
-
 
 /**
- * Finalize after profiles established.
+ * This is invoked after setup is done.
+ */
+void wlan_smart_config_cleanup();
+
+/**
+ * This is obsolete and is not used.
+ */
+void wlan_set_error_count(uint32_t error_count);
+
+/**
+ * Finalize and exit setup mode after profiles established.
  * @return true the wifi profiles were changed
  */
 bool wlan_smart_config_finalize();
@@ -270,10 +309,14 @@ void wlan_fetch_ipconfig(WLanConfig* config);
  */
 void wlan_setup();
 
-void welan_set_error_count();
-
+/**
+ *
+ */
 void SPARK_WLAN_SmartConfigProcess();
 
+/**
+ *
+ */
 void HAL_WLAN_notify_simple_config_done();
 
 
