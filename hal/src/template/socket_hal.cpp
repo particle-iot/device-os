@@ -86,6 +86,11 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
     return 0;
 }
 
+sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, system_tick_t timeout, void* reserved)
+{
+    return 0;
+}
+
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size)
 {
     return 0;

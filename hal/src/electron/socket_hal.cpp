@@ -102,6 +102,12 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
     return electronMDM.socketSend(sd, (const char*)buffer, len);
 }
 
+sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, system_tick_t timeout, void* reserved)
+{
+    /* NOTE: non-blocking mode and timeouts are not supported */
+    return socket_send(sd, buffer, len);
+}
+
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size)
 {
     const uint8_t* addr_data = addr->sa_data;

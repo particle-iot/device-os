@@ -187,6 +187,12 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
     return send(sd, buffer, len, 0);
 }
 
+sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, system_tick_t timeout, void* reserved)
+{
+    /* NOTE: non-blocking mode and timeouts are not supported */
+    return socket_send(sd, buffer, len);
+}
+
 sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size)
 {
     return sendto(sd, buffer, len, flags, (sockaddr*)addr, addr_size);

@@ -309,6 +309,11 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
     }
 }
 
+sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, system_tick_t timeout, void* reserved)
+{
+    /* NOTE: non-blocking mode and timeouts are not supported */
+    return socket_send(sd, buffer, len);
+}
 
 sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port)
 {
