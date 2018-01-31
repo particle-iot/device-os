@@ -2,7 +2,7 @@ sudo: required
 services:
   - docker
 install:
-  - 'if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
+  - 'if [ ! -z "$DOCKER_HUB_USERNAME" ]; then docker login --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
   - wget https://github.com/spark/firmware-buildpack-builder/archive/master.tar.gz -O - | tar -xz -C ../ --strip-components 1
   - ../scripts/build-image
 
