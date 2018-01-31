@@ -110,12 +110,30 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
 
 size_t TCPClient::write(uint8_t b)
 {
-        return write(&b, 1);
+    return write(&b, 1, SOCKET_WAIT_FOREVER);
 }
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
-        return status() ? socket_send(d_->sock, buffer, size) : -1;
+    return write(buffer, size, SOCKET_WAIT_FOREVER);
+}
+
+size_t TCPClient::write(uint8_t b, system_tick_t timeout)
+{
+    return write(&b, 1, timeout);
+}
+
+size_t TCPClient::write(const uint8_t *buffer, size_t size, system_tick_t timeout)
+{
+    int ret = status() ? socket_send_ex(d_->sock, buffer, size, 0, timeout, nullptr) : -1;
+    if (ret < 0) {
+        setWriteError(ret);
+    }
+
+    /*
+     * FIXME: We should not be returning negative numbers here
+     */
+    return ret;
 }
 
 int TCPClient::bufferCount()
@@ -186,7 +204,8 @@ void TCPClient::flush()
 
 void TCPClient::stop()
 {
-  DEBUG("sock %d closesocket", d_->sock);
+  // This log line pollutes the log too much
+  // DEBUG("sock %d closesocket", d_->sock);
 
   if (isOpen(d_->sock))
       socket_close(d_->sock);
