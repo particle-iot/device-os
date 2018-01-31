@@ -118,6 +118,19 @@ TCPClient TCPServer::available()
     return _client;
 }
 
+size_t TCPServer::write(uint8_t b, system_tick_t timeout)
+{
+    return write(&b, sizeof(b), timeout);
+}
+
+size_t TCPServer::write(const uint8_t *buf, size_t size, system_tick_t timeout)
+{
+    _client.clearWriteError();
+    size_t ret = _client.write(buf, size, timeout);
+    setWriteError(_client.getWriteError());
+    return ret;
+}
+
 size_t TCPServer::write(uint8_t b)
 {
     return write(&b, 1);
@@ -125,5 +138,5 @@ size_t TCPServer::write(uint8_t b)
 
 size_t TCPServer::write(const uint8_t *buffer, size_t size)
 {
-    return _client.write(buffer, size);
+    return write(buffer, size, SOCKET_WAIT_FOREVER);
 }
