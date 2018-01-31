@@ -175,10 +175,13 @@ public:
 
     wiced_tcp_socket_t* get_socket() { return socket; }
 
-    wiced_result_t write(const void* buffer, size_t len, bool flush=false) {
+    wiced_result_t write(const void* buffer, size_t len, size_t* bytes_written, uint32_t flags, system_tick_t timeout, bool flush=false) {
         wiced_result_t result = WICED_TCPIP_INVALID_SOCKET;
         if (socket) {
-            result = wiced_tcp_send_buffer(socket, buffer, uint16_t(len));
+            wiced_tcp_send_flags_t wiced_flags = timeout == 0 ? WICED_TCP_SEND_FLAG_NONBLOCK : WICED_TCP_SEND_FLAG_NONE;
+            uint16_t bytes_sent = (uint16_t)len;
+            result = wiced_tcp_send_buffer_ex(socket, buffer, &bytes_sent, wiced_flags, timeout);
+            *bytes_written = bytes_sent;
         }
         return result;
     }
@@ -984,20 +987,32 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
  */
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 {
+    return socket_send_ex(sd, buffer, len, 0, SOCKET_WAIT_FOREVER);
+}
+
+sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, system_tick_t timeout, void* reserved)
+{
     sock_result_t result = SOCKET_INVALID;
     socket_t* socket = from_handle(sd);
+
+    uint16_t bytes_sent = 0;
+
     if (is_open(socket)) {
         wiced_result_t wiced_result = WICED_TCPIP_INVALID_SOCKET;
         if (is_tcp(socket)) {
-            wiced_result = wiced_tcp_send_buffer(tcp(socket), buffer, uint16_t(len));
+            wiced_tcp_send_flags_t wiced_flags = timeout == 0 ? WICED_TCP_SEND_FLAG_NONBLOCK : WICED_TCP_SEND_FLAG_NONE;
+            bytes_sent = (uint16_t)len;
+            wiced_result = wiced_tcp_send_buffer_ex(tcp(socket), buffer, &bytes_sent, wiced_flags, timeout);
         }
         else if (is_client(socket)) {
             tcp_server_client_t* server_client = client(socket);
-            wiced_result = server_client->write(buffer, len);
+            size_t written = 0;
+            wiced_result = server_client->write(buffer, len, &written, flags, timeout);
+            bytes_sent = (uint16_t)written;
         }
         if (!wiced_result)
             DEBUG("Write %d bytes to socket %d result=%d", (int)len, (int)sd, wiced_result);
-        result = wiced_result ? as_sock_result(wiced_result) : len;
+        result = wiced_result ? as_sock_result(wiced_result) : bytes_sent;
     }
     return result;
 }
