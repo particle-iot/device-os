@@ -116,6 +116,7 @@ extern wiced_result_t wiced_wifi_cooee( wiced_cooee_workspace_t* workspace );
 
 /* TLS helper function to do TCP without involving TLS context */
 wiced_result_t network_tcp_send_packet( wiced_tcp_socket_t* socket, wiced_packet_t*  packet );
+wiced_result_t network_tcp_send_buffer( wiced_tcp_socket_t* socket, const void* buffer, uint16_t* length, wiced_tcp_send_flags_t flags, uint32_t timeout );
 wiced_result_t network_tcp_receive( wiced_tcp_socket_t* socket, wiced_packet_t** packet, uint32_t timeout );
 wiced_result_t network_udp_receive( wiced_udp_socket_t* socket, wiced_packet_t** packet, uint32_t timeout );
 
