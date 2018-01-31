@@ -987,7 +987,7 @@ sock_handle_t socket_create(uint8_t family, uint8_t type, uint8_t protocol, uint
  */
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 {
-    return socket_send_ex(sd, buffer, len, 0, SOCKET_WAIT_FOREVER);
+    return socket_send_ex(sd, buffer, len, 0, SOCKET_WAIT_FOREVER, nullptr);
 }
 
 sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, system_tick_t timeout, void* reserved)
