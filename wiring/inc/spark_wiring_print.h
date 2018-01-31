@@ -30,6 +30,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h> // for uint8_t
+#include "system_tick_hal.h"
 
 #include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"
@@ -65,6 +66,9 @@ class Print
       return write((const uint8_t *)str, strlen(str));
     }
     virtual size_t write(const uint8_t *buffer, size_t size);
+
+    virtual size_t write(uint8_t b, system_tick_t timeout) { return write(b); }
+    virtual size_t write(const uint8_t *buf, size_t size, system_tick_t timeout) { return write(buf, size); }
 
     size_t print(const char[]);
     size_t print(char);
