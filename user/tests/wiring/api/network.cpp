@@ -63,3 +63,15 @@ test(api_udp_direct) {
 
     API_COMPILE(udp.receivePacket(new uint8_t[5], 5));
 }
+
+test(api_tcpserver_write_timeout) {
+    TCPServer server(1000);
+    API_COMPILE(server.write(0xff, 123456));
+    API_COMPILE(server.write((const uint8_t*)&server, sizeof(server), 123456));
+}
+
+test(api_tcpclient_write_timeout) {
+    TCPClient client;
+    API_COMPILE(client.write(0xff, 123456));
+    API_COMPILE(client.write((const uint8_t*)&client, sizeof(client), 123456));
+}
