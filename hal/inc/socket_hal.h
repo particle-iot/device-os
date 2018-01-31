@@ -37,6 +37,8 @@
 extern "C" {
 #endif
 
+#define SOCKET_WAIT_FOREVER (0xffffffff)
+
 typedef struct _sockaddr_t
 {
     uint16_t   sa_family;
@@ -49,6 +51,7 @@ typedef int32_t sock_result_t;
 
 static const uint8_t SOCKET_STATUS_INACTIVE = 1;
 static const uint8_t SOCKET_STATUS_ACTIVE = 0;
+
 
 uint8_t socket_active_status(sock_handle_t socket);
 
@@ -68,6 +71,8 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
 sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t len, uint32_t flags, sockaddr_t* address, socklen_t* addr_size);
 
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len);
+
+sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, system_tick_t timeout, void* reserved);
 
 /**
  *
