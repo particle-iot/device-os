@@ -270,6 +270,12 @@ extern "C" {
  */
 #define LWIP_SO_RCVTIMEO               (1)
 
+/**
+ * LWIP_SO_SNDTIMEO==1: Enable send timeout for sockets/netconns and
+ * SO_SNDTIMEO processing.
+ */
+#define LWIP_SO_SNDTIMEO               (1)
+
 
 /**
  * LWIP_IGMP==1: Turn on IGMP module.

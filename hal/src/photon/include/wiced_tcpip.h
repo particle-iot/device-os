@@ -102,6 +102,11 @@ typedef enum
     WICED_TCP_SHUT_RDWR = 3,
 } wiced_tcp_shutdown_flags_t;
 
+typedef enum
+{
+    WICED_TCP_SEND_FLAG_NONE     = 0x00,
+    WICED_TCP_SEND_FLAG_NONBLOCK = 0x01
+} wiced_tcp_send_flags_t;
 
 /**
  * Packet type for network packet allocation requests.
@@ -440,6 +445,22 @@ wiced_result_t wiced_tcp_receive( wiced_tcp_socket_t* socket, wiced_packet_t** p
  * @return @ref wiced_result_t
  */
 wiced_result_t wiced_tcp_send_buffer( wiced_tcp_socket_t* socket, const void* buffer, uint16_t buffer_length );
+
+/** Send a memory buffer of TCP data
+ *
+ *  Sends a memory buffer containing TCP data to the remote host.
+ *  This is not limited by packet sizes.
+ *
+ * @param[in,out] socket        : A pointer to an open socket handle.
+ * @param[in]     buffer        : The memory buffer to send
+ * @param[in,out] buffer_length : A pointer to a variable holding the number of bytes in the buffer to send.
+ *                                This variable will be set to the actual number of bytes sent.
+ * @param[in]     flags         : ORed wiced_tcp_send_flags_t
+ * @param[in]     timeout       : Timeout value in milliseconds or WICED_NEVER_TIMEOUT
+ *
+ * @return @ref wiced_result_t
+ */
+wiced_result_t wiced_tcp_send_buffer_ex( wiced_tcp_socket_t* socket, const void* buffer, uint16_t* buffer_length, wiced_tcp_send_flags_t flags, uint32_t timeout );
 
 /** @} */
 /*****************************************************************************/
