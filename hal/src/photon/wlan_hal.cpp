@@ -52,6 +52,8 @@
 #include "wiced_security.h"
 #include "mbedtls_util.h"
 
+#include "tls_cipher_suites.h"
+
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
     wiced_time_get_utc_time_ms( (wiced_utc_time_ms_t*) &time_ms );
@@ -408,9 +410,13 @@ void wlan_connect_timeout(os_timer_t t)
     wlan_connect_cancel(false);
 }
 
+extern tls_version_num_t tls_maximum_version;
+
 int wlan_supplicant_start()
 {
     LOG(TRACE, "Starting supplicant");
+    tls_maximum_version = TLS1_1;
+
     // Fetch configuration
     uint8_t eap_type = WLAN_EAP_TYPE_NONE;
 
