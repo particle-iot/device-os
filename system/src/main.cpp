@@ -407,6 +407,10 @@ void manage_safe_mode()
     }
 }
 
+bool semi_automatic_connecting(bool threaded) {
+    return system_mode() == SEMI_AUTOMATIC && !threaded && spark_cloud_flag_auto_connect() && !spark_cloud_flag_connected();
+}
+
 void app_loop(bool threaded)
 {
     DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
@@ -414,10 +418,15 @@ void app_loop(bool threaded)
         Spark_Idle();
 
     static uint8_t SPARK_WIRING_APPLICATION = 0;
+    do {
     if(threaded || SPARK_WLAN_SLEEP || !spark_cloud_flag_auto_connect() || spark_cloud_flag_connected() || SPARK_WIRING_APPLICATION || (system_mode()!=AUTOMATIC))
     {
         if(threaded || !SPARK_FLASH_UPDATE)
         {
+                if (semi_automatic_connecting(threaded)) {
+                    break;
+                }
+
             if ((SPARK_WIRING_APPLICATION != 1))
             {
                 //Execute user application setup only once
@@ -428,7 +437,10 @@ void app_loop(bool threaded)
 #if !(defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE)
                 _post_loop();
 #endif
+                    if (semi_automatic_connecting(threaded)) {
+                        break;
             }
+                }
 
             //Execute user application loop
             DECLARE_SYS_HEALTH(ENTERED_Loop);
@@ -441,6 +453,7 @@ void app_loop(bool threaded)
             }
         }
     }
+    } while(false);
 #if PLATFORM_ID == 3 && SUSPEND_APPLICATION_THREAD_LOOP_COUNT
     // Suspend thread execution for some minimum time on every Nth loop iteration in order to workaround
     // 100% CPU usage on the virtual device platform

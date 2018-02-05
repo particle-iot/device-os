@@ -31,6 +31,9 @@
 #include "usb_pwr.h"
 #include "dfu_mal.h"
 #include "core_hal.h"
+#include "deviceid_hal.h"
+#include "bytes2hexbuf.h"
+#include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -42,7 +45,6 @@ uint8_t DeviceStatus[6];
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-static void IntToUnicode(uint32_t value, uint8_t* pbuf, uint8_t len);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -87,6 +89,16 @@ void HAL_DFU_USB_Init(void)
     USB_Init();
 }
 
+const int device_id_len = 12;
+/* Read the STM32 Device electronic signature */
+unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
+{
+    if (dest!=NULL && destLen!=0) {
+        memcpy(dest, (char*)ID1, destLen<device_id_len ? destLen : device_id_len);
+    }
+    return device_id_len;
+}
+
 /*******************************************************************************
  * Function Name  : Get_SerialNum.
  * Description    : Create the serial number string descriptor.
@@ -95,47 +107,18 @@ void HAL_DFU_USB_Init(void)
  *******************************************************************************/
 void Get_SerialNum(void)
 {
-    uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
+  uint8_t deviceId[16];
+  char deviceIdHex[sizeof(deviceId) * 2 + 1] = {0};
+  unsigned deviceIdLen = 0;
+  deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+  bytes2hexbuf(deviceId, deviceIdLen, deviceIdHex);
 
-    Device_Serial0 = *(uint32_t*)ID1;
-    Device_Serial1 = *(uint32_t*)ID2;
-    Device_Serial2 = *(uint32_t*)ID3;
-
-    Device_Serial0 += Device_Serial2;
-
-    if (Device_Serial0 != 0)
-    {
-        IntToUnicode(Device_Serial0, &DFU_StringSerial[2], 8);
-        IntToUnicode(Device_Serial1, &DFU_StringSerial[18], 4);
-    }
+  for (unsigned i = 2, pos = 0; i < DFU_SIZ_STRING_SERIAL && pos < 2 * deviceIdLen; i += 2, pos++) {
+	DFU_StringSerial[i] = deviceIdHex[pos];
+	DFU_StringSerial[i + 1] = '\0';
+  }
 }
 
-/*******************************************************************************
- * Function Name  : HexToChar.
- * Description    : Convert Hex 32Bits value into char.
- * Input          : None.
- * Return         : None.
- *******************************************************************************/
-static void IntToUnicode(uint32_t value, uint8_t* pbuf, uint8_t len)
-{
-    uint8_t idx = 0;
-
-    for (idx = 0; idx < len; idx++)
-    {
-        if (((value >> 28)) < 0xA)
-        {
-            pbuf[2 * idx] = (value >> 28) + '0';
-        }
-        else
-        {
-            pbuf[2 * idx] = (value >> 28) + 'A' - 10;
-        }
-
-        value = value << 4;
-
-        pbuf[2 * idx + 1] = 0;
-    }
-}
 
 void platform_startup()
 {

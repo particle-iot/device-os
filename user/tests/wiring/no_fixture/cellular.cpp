@@ -117,6 +117,12 @@ test(CELLULAR_05_resolve) {
     checkIPAddress("www.google.com", Cellular.resolve("www.google.com"));
 }
 
+test(CELLULAR_06_resolve) {
+    connect_to_cloud(6*60*1000);
+    IPAddress addr = Cellular.resolve("this.is.not.a.real.host");
+    assertEqual(addr, 0);
+}
+
 int how_many_band_options_are_available(void)
 {
     CellularBand band_avail;

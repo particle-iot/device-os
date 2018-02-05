@@ -5,10 +5,14 @@ const _ = require('lodash');
 
 const Client = client.Client;
 const EchoClient = httpclient.HttpEchoClient;
+const QueryEchoClient = httpclient.HttpQueryEchoClient;
 const Promise = require('bluebird');
 
 // Maximum number of TCP connections supported by the device (as defined by LwIP's MEMP_NUM_TCP_PCB option)
-const MAX_CONNECTIONS = 5;
+const MAX_CONNECTIONS = 10;
+
+// Maximum number of HTTP connections supported
+const MAX_HTTP_CONNECTIONS = 10;
 
 exports.EchoTest = (test) => {
   const client = test.newClient(EchoClient);
@@ -20,6 +24,17 @@ exports.EchoTest = (test) => {
     return client.echo();
   });
 };
+
+exports.QueryStringTest = (test) => {
+  const client = test.newClient(QueryEchoClient);
+
+  // Connect to softap http server
+  return client.connect()
+  // Send random request with query string and receive it back
+  .then(() => {
+    return client.echo();
+  });
+}
 
 exports.MultipleEchoTest = (test) => {
   const client = test.newClient(EchoClient);
@@ -58,12 +73,23 @@ exports.MaxConnectionsTest = (test) => {
         // Ignore error silently
       });
   })
-  // Check that all connections work as expected
+  // Check that MAX_HTTP_CONNECTIONS connections work as expected
   .then(() => {
-    return Promise.each(clients, (client) => {
+    return Promise.each(clients.slice(0, MAX_HTTP_CONNECTIONS), (client) => {
       return client.echo();
     });
   })
+  // Close MAX_HTTP_CONNECTIONS and check that remaining work
+  .then(() => {
+    return Promise.each(clients.slice(0, MAX_HTTP_CONNECTIONS), (client) => {
+      return client.disconnect();
+    });
+  })
+  .then(() => {
+    return Promise.each(clients.slice(MAX_HTTP_CONNECTIONS), (client) => {
+      return client.echo();
+    });
+  });
 }
 
 exports.ExtraConnectionTest = (test) => {
@@ -97,9 +123,20 @@ exports.ExtraConnectionTest = (test) => {
     return extraClientPromise;
   })
   .then(() => {
-    // Check that all connections work as expected
+    // Check that MAX_HTTP_CONNECTIONS connections work as expected
     clients.push(extraClient);
-    return Promise.each(clients, (client) => {
+    return Promise.each(clients.slice(0, MAX_HTTP_CONNECTIONS), (client) => {
+      return client.echo();
+    });
+  })
+  // Close MAX_HTTP_CONNECTIONS and check that remaining work
+  .then(() => {
+    return Promise.each(clients.slice(0, MAX_HTTP_CONNECTIONS), (client) => {
+      return client.disconnect();
+    });
+  })
+  .then(() => {
+    return Promise.each(clients.slice(MAX_HTTP_CONNECTIONS), (client) => {
       return client.echo();
     });
   });

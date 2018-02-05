@@ -42,7 +42,7 @@
 #define DFU_SIZ_STRING_LANGID           4
 #define DFU_SIZ_STRING_VENDOR           38
 #define DFU_SIZ_STRING_PRODUCT          20
-#define DFU_SIZ_STRING_SERIAL           26
+#define DFU_SIZ_STRING_SERIAL           52
 #define DFU_SIZ_STRING_INTERFACE0       98		/* Flash Bank 0 */
 #define DFU_SIZ_STRING_INTERFACE1       98		/* SPI Flash */
 

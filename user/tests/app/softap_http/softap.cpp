@@ -59,6 +59,11 @@ static void softap_request_handler(const char* url, ResponseCallback* cb, void* 
                 writer->write(s_buffer, bread);
             }
         } while(bread > 0);
+    }
+    else if (!strncmp(url, "/query?", 7)) {
+        cb(arg, 0, 200, "text/plain", nullptr);
+        const char* query = url + 7;
+        writer->write((const uint8_t*)query, strlen(query));
     } else {
         if (strcmp(url, "/index") == 0) {
             Header h("Location: /index.html\r\n");

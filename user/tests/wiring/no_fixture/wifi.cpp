@@ -25,7 +25,7 @@
 test(WIFI_01_resolve_3_levels)
 {
     IPAddress address = WiFi.resolve("pool.ntp.org");
-    assertNotEqual(address[0], 0);
+    assertNotEqual(address, 0);
 
     // ensure the version field is set
     assertNotEqual(address.version(), 0);
@@ -37,7 +37,12 @@ test(WIFI_01_resolve_3_levels)
 test(WIFI_02_resolve_4_levels)
 {
     IPAddress address = WiFi.resolve("north-america.pool.ntp.org");
-    assertNotEqual(address[0], 0);
+    assertNotEqual(address, 0);
+}
+
+test(WIFI_03_resolve) {
+    IPAddress addr = WiFi.resolve("this.is.not.a.real.host");
+    assertEqual(addr, 0);
 }
 
 void checkIPAddress(const char* name, const IPAddress& address)
@@ -61,7 +66,7 @@ void checkEtherAddress(const uint8_t* address)
     assertNotEqual(sum, 0);
 }
 
-test(WIFI_03_config)
+test(WIFI_04_config)
 {
     checkIPAddress("local", WiFi.localIP());
     checkIPAddress("dnsServer", WiFi.dnsServerIP());
@@ -86,14 +91,14 @@ test(WIFI_03_config)
     assertTrue(!memcmp(ether, ether2, 6))
 }
 
-test(WIFI_04_scan)
+test(WIFI_05_scan)
 {
     spark::Vector<WiFiAccessPoint> aps(20);
     int apsFound = WiFi.scan(aps.data(), 20);
     assertMoreOrEqual(apsFound, 1);
 }
 
-test(WIFI_05_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
+test(WIFI_06_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
 {
 #if (PLATFORM_ID == 6 || PLATFORM_ID == 8) && (PLATFORM_THREADING == 1 && USE_THREADING == 1)
     /* This test should only be run with threading disabled */
@@ -153,7 +158,7 @@ test(WIFI_05_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
 #endif
 }
 
-test(WIFI_06_restore_connection)
+test(WIFI_07_restore_connection)
 {
     set_system_mode(AUTOMATIC);
     if (!Particle.connected())
@@ -164,33 +169,33 @@ test(WIFI_06_restore_connection)
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 
-test(WIFI_07_reset_hostname)
+test(WIFI_08_reset_hostname)
 {
     assertEqual(WiFi.setHostname(NULL), 0);
 }
 
-test(WIFI_08_default_hostname_equals_device_id)
+test(WIFI_09_default_hostname_equals_device_id)
 {
     String hostname = WiFi.hostname();
     String devId = System.deviceID();
     assertEqual(hostname, devId);
 }
 
-test(WIFI_09_custom_hostname_can_be_set)
+test(WIFI_10_custom_hostname_can_be_set)
 {
     String hostname("testhostname");
     assertEqual(WiFi.setHostname(hostname), 0);
     assertEqual(WiFi.hostname(), hostname);
 }
 
-test(WIFI_10_restore_default_hostname)
+test(WIFI_11_restore_default_hostname)
 {
     assertEqual(WiFi.setHostname(NULL), 0);
 }
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
-test(WIFI_11_scan_returns_zero_result_or_error_when_wifi_is_off)
+test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
 {
     WiFiAccessPoint results[5];
     WiFi.off();
@@ -203,7 +208,7 @@ test(WIFI_11_scan_returns_zero_result_or_error_when_wifi_is_off)
     assertLessOrEqual(WiFi.scan(results, 5), 0);
 }
 
-test(WIFI_12_restore_connection)
+test(WIFI_13_restore_connection)
 {
     if (!Particle.connected())
     {

@@ -25,7 +25,7 @@
 # include "http_server.h"
 
 # ifndef SOFTAP_HTTP_MAXIMUM_CONNECTIONS
-#  define SOFTAP_HTTP_MAXIMUM_CONNECTIONS 5
+#  define SOFTAP_HTTP_MAXIMUM_CONNECTIONS (10)
 # endif // SOFTAP_HTTP_MAXIMUM_CONNECTIONS
 
 # define SOFTAP_HTTP_MAXIMUM_URL_LENGTH 255
@@ -1397,7 +1397,19 @@ public:
             } else {
                 PageProvider* p = (PageProvider*)arg;
                 if (p) {
-                    p(req->url ? req->url : url, &writeHeader, req->stream, &r, &w, nullptr);
+                    char* baseurl = (char*)(req->url ? req->url : url);
+                    if (baseurl != nullptr) {
+                        const size_t baseurl_len = strlen(baseurl);
+                        // Restore full query string
+                        if (url_query_string != nullptr &&
+                            strlen(url_query_string) && url_query_string == (baseurl + baseurl_len + 1)) {
+                            baseurl[baseurl_len] = '?';
+                            p(baseurl, &writeHeader, req->stream, &r, &w, nullptr);
+                            baseurl[baseurl_len] = '\0';
+                        } else {
+                            p(baseurl, &writeHeader, req->stream, &r, &w, nullptr);
+                        }
+                    }
                 }
             }
             // We need to deactivate chunked transfer mode here
