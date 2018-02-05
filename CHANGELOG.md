@@ -1,3 +1,15 @@
+## 0.7.0-rc.7
+
+### BUGFIX
+
+- [Photon] Regression with SoftAP and URL-encoded form query [#1432](https://github.com/spark/firmware/issues/1432)
+- Particle.connect() hard blocking since 0.6.1-rc.1 [#1399](https://github.com/spark/firmware/issues/1399)
+- [Electron] Cellular resolve does not return 0 / false when it receives bad DNS resolution related to bad cell service [#1304](https://github.com/spark/firmware/issues/1304) 
+- [Core] Use the device ID as the USB serial number [#1367](https://github.com/spark/firmware/issues/1367) 
+- [Electron] Fix heap bounds for system part 1 [#1478](https://github.com/particle-iot/firmware/pull/1478)
+- [Electron] connect_cancel() fix [#1464](https://github.com/particle-iot/firmware/pull/1464) 
+- Fixed shadowing of `write(const unint_8_t*, sizte_t)` in USBKeyboard [#1372](https://github.com/particle-iot/firmware/pull/1372)
+
 ## 0.7.0-rc.6
 
 ### BUGFIX
