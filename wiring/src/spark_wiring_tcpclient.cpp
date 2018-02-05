@@ -125,6 +125,7 @@ size_t TCPClient::write(uint8_t b, system_tick_t timeout)
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size, system_tick_t timeout)
 {
+    clearWriteError();
     int ret = status() ? socket_send_ex(d_->sock, buffer, size, 0, timeout, nullptr) : -1;
     if (ret < 0) {
         setWriteError(ret);
