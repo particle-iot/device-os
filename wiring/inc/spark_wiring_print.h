@@ -67,9 +67,6 @@ class Print
     }
     virtual size_t write(const uint8_t *buffer, size_t size);
 
-    virtual size_t write(uint8_t b, system_tick_t timeout) { return write(b); }
-    virtual size_t write(const uint8_t *buf, size_t size, system_tick_t timeout) { return write(buf, size); }
-
     size_t print(const char[]);
     size_t print(char);
     size_t print(unsigned char, int = DEC);
