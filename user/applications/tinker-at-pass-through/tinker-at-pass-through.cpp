@@ -31,9 +31,7 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-// ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, INFO_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
-// All system debugging info output on TX pin at 115200 baud
-Serial1DebugOutput debugOutput(115200, ALL_LEVEL);
+Serial1LogHandler logHandler(LOG_LEVEL_ALL); // for full debugging
 
 SYSTEM_MODE(AUTOMATIC);
 
