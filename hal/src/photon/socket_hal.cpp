@@ -867,6 +867,7 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
     }
     if (result!=WICED_SUCCESS) {
         delete socket; socket = NULL;
+        server->close();
         delete server; server = NULL;
     }
     else {
