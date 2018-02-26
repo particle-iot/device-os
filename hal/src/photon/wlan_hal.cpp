@@ -706,6 +706,8 @@ wlan_result_t wlan_connect_finalize()
     os_timer_create(&cancel_timer, 60000, &wlan_connect_timeout, nullptr, false /* oneshot */,
                     nullptr);
 
+    /* Prevents DHCP from being started asynchronously in WICED link_up callback */
+    wiced_network_down(WICED_STA_INTERFACE);
     // enable connection from stored profiles
     wlan_result_t result = (wlan_result_t)wlan_join();
     if (!result)
