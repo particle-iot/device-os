@@ -521,13 +521,15 @@ public:
 
     void close_all()
     {
-        socket_t* current = items;
-        while (current) {
-            socket_t* next = current->next;
-            delete current;
-            current = next;
+        int count = 0;
+        for (socket_t* current = items; current != nullptr; current = current->next) {
+            count++;
+            /* NOTE: socket object should NOT be deleted here. It may only be closed.
+             * It's up to the socket 'user' to invoke socket_close() to cleanup its resources
+             */
+            current->close();
         }
-        items = NULL;
+        LOG(TRACE, "%x socket list: %d active sockets closed", this, count);
     }
 
     friend class SocketListLock;
