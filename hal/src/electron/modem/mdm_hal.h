@@ -33,9 +33,9 @@
 /* Include for debug capabilty */
 #define MDM_DEBUG
 
-#define SARA_R4 // FIXME
+#define UBLOX_SARA_R4 // FIXME
 
-#ifdef SARA_R4
+#ifdef UBLOX_SARA_R4
 // SARA-R4 modules don't support hardware flow control
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0
 #else
@@ -535,6 +535,7 @@ protected:
     static int _cbCNUM(int type, const char* buf, int len, char* num);
     static int _cbUACTIND(int type, const char* buf, int len, int* i);
     static int _cbUDOPN(int type, const char* buf, int len, char* mccmnc);
+    static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
     // sockets
     static int _cbCMIP(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUPSND(int type, const char* buf, int len, int* act);

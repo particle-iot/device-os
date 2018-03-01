@@ -50,15 +50,15 @@ std::recursive_mutex mdm_mutex;
 #define MAX_SIZE        1024  //!< max expected messages (used with RX)
 #define USO_MAX_WRITE   1024  //!< maximum number of bytes to write to socket (used with TX)
 
-#ifdef SARA_R4
+#ifndef UBLOX_SARA_R4
 // The number of milliseconds to keep the RESET_N pin low in order to reset the module
+#define RESET_N_LOW_TIME 100
+#else
 #define RESET_N_LOW_TIME 10000 // SARA-R4: 10s
 // Enable hex mode for socket operations. SARA-R410M-01B has a bug which causes truncation of
 // data read from a socket if the data contains a null byte
 #define SOCKET_HEX_MODE
-#else
-#define RESET_N_LOW_TIME 100
-#endif
+#endif // defined(UBLOX_SARA_R4)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -376,7 +376,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                         r = sscanf(cmd, "%s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r >= 2) {
                         Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
-                                   !strcmp(s, "CGREG:") ? &_net.psd : NULL;
+                                   !strcmp(s, "CGREG:") ? &_net.psd :
+                                   !strcmp(s, "CEREG:") ? &_net.eps : NULL;
                         if (reg) {
                             // network status
                             if      (a == 0) *reg = REG_NONE;     // 0: not registered, home network
@@ -396,6 +397,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                                 else if (d == 4) _net.act = ACT_UTRAN;    // 4: UTRAN with HSDPA availability
                                 else if (d == 5) _net.act = ACT_UTRAN;    // 5: UTRAN with HSUPA availability
                                 else if (d == 6) _net.act = ACT_UTRAN;    // 6: UTRAN with HSDPA and HSUPA availability
+                                else if (d == 7) _net.act = ACT_LTE;      // 7: LTE
+                                else if (d == 8) _net.act = ACT_LTE_CAT_M1; // 8: LTE Cat M1
+                                else if (d == 9) _net.act = ACT_LTE_CAT_NB1; // 9: LTE Cat NB1
                             }
                         }
                     }
@@ -845,7 +849,8 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
-        if (checkNetStatus() == false) {
+        bool ok = false;
+        if (!(ok = checkNetStatus())) {
 #ifdef DEBUG_BUILD
             // List all supported RATs (for debugging purposes)
             sendFormated("AT+URAT=?\r\n");
@@ -853,13 +858,7 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
             sendFormated("AT+URAT?\r\n");
             waitFinalResp();
 #endif
-#ifdef SARA_R4
-            // Set up the EPS network registration URC
-            sendFormated("AT+CEREG=2\r\n");
-            if (waitFinalResp() != RESP_OK) {
-                goto failure;
-            }
-#else // !defined(SARA_R4)
+#ifndef UBLOX_SARA_R4
             // setup the GPRS network registration URC (Unsolicited Response Code)
             // 0: (default value and factory-programmed value): network registration URC disabled
             // 1: network registration URC enabled
@@ -874,23 +873,30 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
             sendFormated("AT+CREG=2\r\n");
             if (RESP_OK != waitFinalResp())
                 goto failure;
-#endif
+#else
+            // Set up the EPS network registration URC
+            sendFormated("AT+CEREG=2\r\n");
+            if (waitFinalResp() != RESP_OK) {
+                goto failure;
+            }
+#endif // defined(UBLOX_SARA_R4)
             // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM and GPRS)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-            while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
+            while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
                 while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations); // just wait
                 //HAL_Delay_Milliseconds(15000);
             }
             if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
             if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
+            if (_net.eps == REG_DENIED) MDM_ERROR("EPS Registration Denied\r\n");
             // if (_net.csd == REG_DENIED || _net.psd == REG_DENIED) {
             //     sendFormated("AT+CEER\r\n");
             //     waitFinalResp();
             // }
         }
         UNLOCK();
-        return REG_OK(_net.csd) && REG_OK(_net.psd);
+        return ok;
     }
 failure:
     UNLOCK();
@@ -904,7 +910,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     memset(&_net, 0, sizeof(_net));
     _net.lac = 0xFFFF;
     _net.ci = 0xFFFFFFFF;
-
+#ifndef UBLOX_SARA_R4
     // check registration
     sendFormated("AT+CREG?\r\n");
     waitFinalResp();     // don't fail as service could be not subscribed
@@ -912,8 +918,12 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     // check PSD registration
     sendFormated("AT+CGREG?\r\n");
     waitFinalResp(); // don't fail as service could be not subscribed
-
-    if (REG_OK(_net.csd) || REG_OK(_net.psd))
+#else
+    // check EPS registration
+    sendFormated("AT+CEREG?\r\n");
+    waitFinalResp();
+#endif // defined(UBLOX_SARA_R4)
+    if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps))
     {
         sendFormated("AT+COPS?\r\n");
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net))
@@ -932,11 +942,15 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         memcpy(status, &_net, sizeof(NetStatus));
     }
     // don't return true until fully registered
+#ifndef UBLOX_SARA_R4
     ok = REG_OK(_net.csd) && REG_OK(_net.psd);
+#else
+    ok = REG_OK(_net.eps);
+#endif
     UNLOCK();
     return ok;
 failure:
-    //unlock();
+    UNLOCK();
     return false;
 }
 
@@ -1282,6 +1296,7 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::join ] = = = = = = = = = = = = = = = =");
         _ip = NOIP;
+#ifndef UBLOX_SARA_R4
         int a = 0;
         bool force = false; // If we are already connected, don't force a reconnect.
 
@@ -1368,7 +1383,12 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
         sendFormated("AT+UPSND=" PROFILE ",0\r\n");
         if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
             goto failure;
-
+#else // !defined(UBLOX_SARA_R4)
+        // Get local IP address associated with the default profile
+        sendFormated("AT+CGPADDR=1\r\n");
+        if (RESP_OK != waitFinalResp(_cbCGPADDR, &_ip))
+            goto failure;
+#endif
         UNLOCK();
         _attached = true;  // GPRS
         return _ip;
@@ -1383,6 +1403,18 @@ int MDMParser::_cbUDOPN(int type, const char* buf, int len, char* mccmnc)
     if ((type == TYPE_PLUS) && mccmnc) {
         if (sscanf(buf, "\r\n+UDOPN: 0,\"%[^\"]\"", mccmnc) == 1)
             ;
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
+    if (type == TYPE_PLUS && ip) {
+        int cid, a, b, c, d;
+        // +CGPADDR: <cid>,<PDP_addr>
+        // TODO: IPv6
+        if (sscanf(buf, "\r\n+CGPADDR: %d,%d.%d.%d.%d", &cid, &a, &b, &c, &d) == 5) {
+            *ip = IPADR(a, b, c, d);
+        }
     }
     return WAIT;
 }
