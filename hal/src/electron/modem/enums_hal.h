@@ -48,11 +48,12 @@ typedef struct {
 //! Registration Status
 typedef enum { REG_UNKNOWN, REG_DENIED, REG_NONE, REG_HOME, REG_ROAMING } Reg;
 //! Access Technology
-typedef enum { ACT_UNKNOWN, ACT_GSM, ACT_EDGE, ACT_UTRAN, ACT_CDMA } AcT;
+typedef enum { ACT_UNKNOWN, ACT_GSM, ACT_EDGE, ACT_UTRAN, ACT_CDMA, ACT_LTE, ACT_LTE_CAT_M1, ACT_LTE_CAT_NB1 } AcT;
 //! Network Status
 typedef struct {
     Reg csd;        //!< CSD Registration Status (Circuit Switched Data)
     Reg psd;        //!< PSD Registration status (Packet Switched Data)
+    Reg eps;        //!< EPS registration status (Evolved Packet System)
     AcT act;        //!< Access Technology
     int rssi;       //!< Received Signal Strength Indication (in dBm, range -113..-53)
     int qual;       //!< In UMTS RAT indicates the Energy per Chip/Noise ratio in dB levels
