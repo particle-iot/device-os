@@ -33,7 +33,14 @@
 /* Include for debug capabilty */
 #define MDM_DEBUG
 
+#define SARA_R4 // FIXME
+
+#ifdef SARA_R4
+// SARA-R4 modules don't support hardware flow control
+#define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0
+#else
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 1
+#endif
 
 /** basic modem parser class
 */
