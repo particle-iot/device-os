@@ -49,6 +49,17 @@ std::recursive_mutex mdm_mutex;
 #define PROFILE         "0"   //!< this is the psd profile used
 #define MAX_SIZE        1024  //!< max expected messages (used with RX)
 #define USO_MAX_WRITE   1024  //!< maximum number of bytes to write to socket (used with TX)
+
+#ifdef SARA_R4
+// The number of milliseconds to keep the RESET_N pin low in order to reset the module
+#define RESET_N_LOW_TIME 10000 // SARA-R4: 10s
+// Enable hex mode for socket operations. SARA-R410M-01B has a bug which causes truncation of
+// data read from a socket if the data contains a null byte
+#define SOCKET_HEX_MODE
+#else
+#define RESET_N_LOW_TIME 100
+#endif
+
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
 //! test if it is a socket is ok to use
@@ -485,7 +496,7 @@ void MDMParser::reset(void)
 {
     MDM_INFO("[ Modem reset ]");
     HAL_GPIO_Write(RESET_UC, 0);
-    HAL_Delay_Milliseconds(100);
+    HAL_Delay_Milliseconds(RESET_N_LOW_TIME);
     HAL_GPIO_Write(RESET_UC, 1);
 }
 
@@ -538,7 +549,7 @@ bool MDMParser::_powerOn(void)
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
         HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
 
-        // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms
+        // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
         HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
 
@@ -835,6 +846,20 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
         if (checkNetStatus() == false) {
+#ifdef DEBUG_BUILD
+            // List all supported RATs (for debugging purposes)
+            sendFormated("AT+URAT=?\r\n");
+            waitFinalResp();
+            sendFormated("AT+URAT?\r\n");
+            waitFinalResp();
+#endif
+#ifdef SARA_R4
+            // Set up the EPS network registration URC
+            sendFormated("AT+CEREG=2\r\n");
+            if (waitFinalResp() != RESP_OK) {
+                goto failure;
+            }
+#else // !defined(SARA_R4)
             // setup the GPRS network registration URC (Unsolicited Response Code)
             // 0: (default value and factory-programmed value): network registration URC disabled
             // 1: network registration URC enabled
@@ -849,6 +874,7 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
             sendFormated("AT+CREG=2\r\n");
             if (RESP_OK != waitFinalResp())
                 goto failure;
+#endif
             // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM and GPRS)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             while (!checkNetStatus(status) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
