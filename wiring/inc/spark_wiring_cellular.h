@@ -65,7 +65,7 @@ public:
         setCredentials("", username, password);
     }
     void setCredentials(const char* apn, const char* username, const char* password) {
-        // todo
+        cellular_credentials_set(apn, username, password, nullptr);
     }
 
     void listen(bool begin=true) {

@@ -50,15 +50,18 @@ std::recursive_mutex mdm_mutex;
 #define MAX_SIZE        1024  //!< max expected messages (used with RX)
 #define USO_MAX_WRITE   1024  //!< maximum number of bytes to write to socket (used with TX)
 
-#ifndef UBLOX_SARA_R4
+#ifdef UBLOX_SARA_R4
 // The number of milliseconds to keep the RESET_N pin low in order to reset the module
-#define RESET_N_LOW_TIME 100
-#else
 #define RESET_N_LOW_TIME 10000 // SARA-R4: 10s
+// PDP context used to configure the default EPS bearer when registering in an LTE network
+// Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
+#define PDP_CONTEXT 1
 // Enable hex mode for socket operations. SARA-R410M-01B has a bug which causes truncation of
 // data read from a socket if the data contains a null byte
 #define SOCKET_HEX_MODE
-#endif // defined(UBLOX_SARA_R4)
+#else
+#define RESET_N_LOW_TIME 100
+#endif // !defined(UBLOX_SARA_R4)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -468,31 +471,51 @@ int MDMParser::_cbInt(int type, const char* buf, int len, int* val)
 // ----------------------------------------------------------------
 
 bool MDMParser::connect(
-            const char* simpin,
             const char* apn, const char* username,
             const char* password, Auth auth)
 {
-    bool ok = powerOn(simpin);
-    if (!ok)
-        return false;
-    ok = init();
+    bool ok = registerNet(apn);
 #ifdef MDM_DEBUG
-    if (_debugLevel >= 1) dumpDevStatus(&_dev);
+    if (_debugLevel >= 1) {
+        dumpNetStatus(&_net);
+    }
 #endif
-    if (!ok)
+    if (!ok) {
         return false;
-    ok = registerNet();
+    }
+    ok = pdp(apn);
+/*
 #ifdef MDM_DEBUG
-    if (_debugLevel >= 1) dumpNetStatus(&_net);
+    if (_debugLevel >= 1) {
+        dumpNetStatus(&_net);
+    }
 #endif
-    if (!ok)
+*/
+    if (!ok) {
         return false;
-    MDM_IP ip = join(apn,username,password,auth);
+    }
+    const MDM_IP ip = join(apn, username, password, auth);
 #ifdef MDM_DEBUG
-    if (_debugLevel >= 1) dumpIp(ip);
+    if (_debugLevel >= 1) {
+        dumpIp(ip);
+    }
 #endif
-    if (ip == NOIP)
+    if (ip == NOIP) {
         return false;
+    }
+    HAL_NET_notify_connected();
+    HAL_NET_notify_dhcp(true);
+    return true;
+}
+
+bool MDMParser::disconnect() {
+    if (!deactivate()) {
+        return false;
+    }
+    if (!detach()) {
+        return false;
+    }
+    HAL_NET_notify_disconnected();
     return true;
 }
 
@@ -842,7 +865,7 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
     return WAIT;
 }
 
-bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
+bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
 {
     LOCK();
     if (_init && _pwr) {
@@ -851,14 +874,20 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
         // commands as they will knock us off the cellular network.
         bool ok = false;
         if (!(ok = checkNetStatus())) {
-#ifdef DEBUG_BUILD
-            // List all supported RATs (for debugging purposes)
+#ifdef MDM_DEBUG
+            // List all supported RATs
             sendFormated("AT+URAT=?\r\n");
             waitFinalResp();
             sendFormated("AT+URAT?\r\n");
             waitFinalResp();
-#endif
-#ifndef UBLOX_SARA_R4
+#endif // defined(MDM_DEBUG)
+#ifdef UBLOX_SARA_R4
+            // Set up the EPS network registration URC
+            sendFormated("AT+CEREG=2\r\n");
+            if (waitFinalResp() != RESP_OK) {
+                goto failure;
+            }
+#else
             // setup the GPRS network registration URC (Unsolicited Response Code)
             // 0: (default value and factory-programmed value): network registration URC disabled
             // 1: network registration URC enabled
@@ -873,13 +902,7 @@ bool MDMParser::registerNet(NetStatus* status /*= NULL*/, system_tick_t timeout_
             sendFormated("AT+CREG=2\r\n");
             if (RESP_OK != waitFinalResp())
                 goto failure;
-#else
-            // Set up the EPS network registration URC
-            sendFormated("AT+CEREG=2\r\n");
-            if (waitFinalResp() != RESP_OK) {
-                goto failure;
-            }
-#endif // defined(UBLOX_SARA_R4)
+#endif // !defined(UBLOX_SARA_R4)
             // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM and GPRS)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
@@ -910,7 +933,11 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     memset(&_net, 0, sizeof(_net));
     _net.lac = 0xFFFF;
     _net.ci = 0xFFFFFFFF;
-#ifndef UBLOX_SARA_R4
+#ifdef UBLOX_SARA_R4
+    // check EPS registration
+    sendFormated("AT+CEREG?\r\n");
+    waitFinalResp();
+#else
     // check registration
     sendFormated("AT+CREG?\r\n");
     waitFinalResp();     // don't fail as service could be not subscribed
@@ -918,11 +945,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     // check PSD registration
     sendFormated("AT+CGREG?\r\n");
     waitFinalResp(); // don't fail as service could be not subscribed
-#else
-    // check EPS registration
-    sendFormated("AT+CEREG?\r\n");
-    waitFinalResp();
-#endif // defined(UBLOX_SARA_R4)
+#endif // !defined(UBLOX_SARA_R4)
     if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps))
     {
         sendFormated("AT+COPS?\r\n");
@@ -941,11 +964,11 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     if (status) {
         memcpy(status, &_net, sizeof(NetStatus));
     }
+#ifdef UBLOX_SARA_R4
     // don't return true until fully registered
-#ifndef UBLOX_SARA_R4
-    ok = REG_OK(_net.csd) && REG_OK(_net.psd);
-#else
     ok = REG_OK(_net.eps);
+#else
+    ok = REG_OK(_net.csd) && REG_OK(_net.psd);
 #endif
     UNLOCK();
     return ok;
@@ -1296,7 +1319,13 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::join ] = = = = = = = = = = = = = = = =");
         _ip = NOIP;
-#ifndef UBLOX_SARA_R4
+#ifdef UBLOX_SARA_R4
+        // Get local IP address associated with the default profile
+        sendFormated("AT+CGPADDR=%d\r\n", PDP_CONTEXT);
+        if (waitFinalResp(_cbCGPADDR, &_ip) != RESP_OK) {
+            goto failure;
+        }
+#else
         int a = 0;
         bool force = false; // If we are already connected, don't force a reconnect.
 
@@ -1383,12 +1412,7 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
         sendFormated("AT+UPSND=" PROFILE ",0\r\n");
         if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
             goto failure;
-#else // !defined(UBLOX_SARA_R4)
-        // Get local IP address associated with the default profile
-        sendFormated("AT+CGPADDR=1\r\n");
-        if (RESP_OK != waitFinalResp(_cbCGPADDR, &_ip))
-            goto failure;
-#endif
+#endif // !defined(UBLOX_SARA_R4)
         UNLOCK();
         _attached = true;  // GPRS
         return _ip;
@@ -1484,13 +1508,13 @@ bool MDMParser::reconnect(void)
     return ok;
 }
 
-// TODO - refactor disconnect() and detach()
-// disconnect() can be called before detach() but not vice versa or
-// disconnect() will ERROR because its PDP context will already be
+// TODO - refactor deactivate() and detach()
+// deactivate() can be called before detach() but not vice versa or
+// deactivate() will ERROR because its PDP context will already be
 // deactivated.
 // _attached and _activated flags are currently associated inversely
 // to what's happening.  When refactoring, consider combining...
-bool MDMParser::disconnect(void)
+bool MDMParser::deactivate(void)
 {
     bool ok = false;
     bool continue_cancel = false;
@@ -1500,7 +1524,7 @@ bool MDMParser::disconnect(void)
             continue_cancel = true;
             resume(); // make sure we can use the AT parser
         }
-        MDM_INFO("\r\n[ Modem::disconnect ] = = = = = = = = = = = = =");
+        MDM_INFO("\r\n[ Modem::deactivate ] = = = = = = = = = = = = =");
         if (_ip != NOIP) {
             /* Deactivates the PDP context assoc. with this profile
              * ensuring that no additional data is sent or received
@@ -1529,7 +1553,7 @@ bool MDMParser::detach(void)
             resume(); // make sure we can use the AT parser
         }
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
-        // if (_ip != NOIP) {  // if we disconnect() first we won't have an IP
+        // if (_ip != NOIP) {  // if we deactivate() first we won't have an IP
             /* Detach from the GPRS network and conserve network resources. */
             /* Any active PDP context will also be deactivated. */
             sendFormated("AT+CGATT=0\r\n");
