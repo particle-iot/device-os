@@ -882,6 +882,12 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
             waitFinalResp();
 #endif // defined(MDM_DEBUG)
 #ifdef UBLOX_SARA_R4
+            // Get current context settings
+            sendFormated("AT+CGDCONT?\r\n");
+            CGDCONTparam ctx = {};
+            if (waitFinalResp(_cbCGDCONT, &ctx) != RESP_OK) {
+                goto failure;
+            }
             // Set up the EPS network registration URC
             sendFormated("AT+CEREG=2\r\n");
             if (waitFinalResp() != RESP_OK) {
@@ -1440,6 +1446,11 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
             *ip = IPADR(a, b, c, d);
         }
     }
+    return WAIT;
+}
+
+int MDMParser::_cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
+    // TODO
     return WAIT;
 }
 
