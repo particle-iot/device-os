@@ -71,6 +71,16 @@ cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* rese
 cellular_result_t  cellular_gprs_detach(void* reserved);
 
 /**
+ * Register in the network and establish a PSD connection.
+ */
+cellular_result_t cellular_connect(void* reserved);
+
+/**
+ * Close the PSD connection.
+ */
+cellular_result_t cellular_disconnect(void* reserved);
+
+/**
  * Fetch the ip configuration.
  */
 cellular_result_t  cellular_fetch_ipconfig(CellularConfig* config, void* reserved);

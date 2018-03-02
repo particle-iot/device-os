@@ -14,6 +14,26 @@ static CellularNetProv cellularNetProv = CELLULAR_NETPROV_TELEFONICA;
 // CELLULAR_NET_PROVIDER_DATA[CELLULAR_NETPROV_MAX - 1] is the last provider record
 const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_DATA };
 
+namespace
+{
+
+const char* defaultOrUserApn(const CellularCredentials& cred)
+{
+    if ((cred.apn && *cred.apn) || (cred.username && *cred.username) || (cred.password && *cred.password)) {
+        // Use user-provided APN
+        return cred.apn;
+    } else {
+        // Determine APN based on IMSI
+        auto ret = cellular_imsi_to_network_provider(nullptr);
+        if (ret != 0) {
+            return cred.apn;
+        }
+        return CELLULAR_NET_PROVIDER_DATA[cellularNetProv].apn;
+    }
+}
+
+} // namespace
+
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
 static HAL_NET_Callbacks netCallbacks = { 0 };
@@ -99,18 +119,18 @@ cellular_result_t  cellular_pdp_activate(CellularCredentials* connect, void* res
 
 cellular_result_t  cellular_pdp_deactivate(void* reserved)
 {
-    CHECK_SUCCESS(electronMDM.disconnect());
+    CHECK_SUCCESS(electronMDM.deactivate());
     return 0;
 }
 
 cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* reserved)
 {
-    if (strcmp(connect->apn,"") != 0 || strcmp(connect->username,"") != 0 || strcmp(connect->password,"") != 0 ) {
-        CHECK_SUCCESS(electronMDM.join(connect->apn, connect->username, connect->password));
-    }
-    else {
-        CHECK_SUCCESS(electronMDM.join(CELLULAR_NET_PROVIDER_DATA[cellularNetProv].apn, NULL, NULL));
-    }
+    const auto apn = defaultOrUserApn(*connect);
+    CHECK_SUCCESS(electronMDM.join(apn, connect->username, connect->password));
+    // These callbacks have been invoked in the system code previously, moving them to HAL for consistency
+    // and backward compatibility
+    HAL_NET_notify_connected();
+    HAL_NET_notify_dhcp(true);
     return 0;
 }
 
@@ -118,6 +138,25 @@ cellular_result_t  cellular_gprs_detach(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.detach());
     HAL_NET_notify_disconnected();
+    return 0;
+}
+
+cellular_result_t cellular_connect(void* reserved)
+{
+    const auto& cred = cellularCredentials;
+#ifdef LTE_ONLY
+    // TODO: Look for an APN based on IMSI for LTE providers as well
+    const auto apn = cred.apn;
+#else
+    const auto apn = defaultOrUserApn(cred);
+#endif
+    CHECK_SUCCESS(electronMDM.connect(apn, cred.username, cred.password));
+    return 0;
+}
+
+cellular_result_t cellular_disconnect(void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.disconnect());
     return 0;
 }
 
@@ -144,6 +183,7 @@ cellular_result_t cellular_fetch_ipconfig(CellularConfig* config, void* reserved
 
 cellular_result_t cellular_credentials_set(const char* apn, const char* username, const char* password, void* reserved)
 {
+    // TODO: Store the credentials persistently in the module's NVM or DCT similarly to WLAN HAL
     cellularCredentials.apn = apn;
     cellularCredentials.username = username;
     cellularCredentials.password = password;

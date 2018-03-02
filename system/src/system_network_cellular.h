@@ -48,36 +48,10 @@ protected:
 
     virtual void connect_init() override { /* n/a */ }
 
-    int connect_finalize_impl() {
-        cellular_result_t result = -1;
-        result = cellular_init(NULL);
-        if (result) { return result; }
-
-        result = cellular_register(NULL);
-        if (result) { return result; }
-
-        CellularCredentials* savedCreds;
-        savedCreds = cellular_credentials_get(NULL);
-        result = cellular_pdp_activate(savedCreds, NULL);
-        if (result) { return result; }
-
-        result = cellular_imsi_to_network_provider(NULL);
-        if (result) { return result; }
-
-        //DEBUG_D("savedCreds = %s %s %s\r\n", savedCreds->apn, savedCreds->username, savedCreds->password);
-        result = cellular_gprs_attach(savedCreds, NULL);
-        if (result) { return result; }
-
-        HAL_NET_notify_connected();
-        HAL_NET_notify_dhcp(true);
-
-        return 0;
-    }
-
     int connect_finalize() override {
         ATOMIC_BLOCK() { connecting = true; }
 
-        int ret = connect_finalize_impl();
+        int ret = cellular_connect(nullptr);
 
         bool require_resume = false;
 
@@ -99,18 +73,24 @@ protected:
     }
 
     int on_now() override {
-        return cellular_on(NULL);
+        cellular_result_t ret = cellular_on(nullptr);
+        if (ret != 0) {
+            return ret;
+        }
+        ret = cellular_init(nullptr);
+        if (ret != 0) {
+            return ret;
+        }
+        return 0;
     }
 
     void off_now() override {
-        cellular_pdp_deactivate(NULL);
-        cellular_gprs_detach(NULL);
-        cellular_off(NULL);
+        cellular_disconnect(nullptr);
+        cellular_off(nullptr);
     }
 
     void disconnect_now() override {
-        cellular_pdp_deactivate(NULL);
-        cellular_gprs_detach(NULL);
+        cellular_disconnect(nullptr);
     }
 
 public:

@@ -38,6 +38,8 @@
 #ifdef UBLOX_SARA_R4
 // SARA-R4 modules don't support hardware flow control
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0
+// SARA-R410 is the only LTE-capable module supported by the HAL at the moment
+#define LTE_ONLY
 #else
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 1
 #endif
@@ -62,17 +64,18 @@ public:
     /* User to resume all operations */
     void resume(void);
 
-    /** Combined Init, checkNetStatus, join suitable for simple applications
-        \param simpin a optional pin of the SIM card
+    /** Register in the network and establish a PSD connection.
         \param apn  the of the network provider e.g. "internet" or "apn.provider.com"
         \param username is the user name text string for the authentication phase
         \param password is the password text string for the authentication phase
         \param auth is the authentication mode (CHAP,PAP,NONE or DETECT)
         \return true if successful, false otherwise
     */
-    bool connect(const char* simpin = NULL,
-            const char* apn = NULL, const char* username = NULL,
+    bool connect(const char* apn = NULL, const char* username = NULL,
             const char* password = NULL, Auth auth = AUTH_DETECT);
+
+    /** Close the PSD connection. */
+    bool disconnect();
 
     /**
      * Used to issue a hardware reset of the modem
@@ -104,7 +107,7 @@ public:
         \param timeout_ms -1 blocking, else non blocking timeout in ms
         \return true if successful and connected to network, false otherwise
     */
-    bool registerNet(NetStatus* status = NULL, system_tick_t timeout_ms = 300000);
+    bool registerNet(const char* apn = nullptr, NetStatus* status = NULL, system_tick_t timeout_ms = 300000);
 
     /** check if the network is available
         \param status an optional structure to with network information
@@ -173,7 +176,7 @@ public:
     /** deregister (detach) the MT from the GPRS service.
         \return true if successful, false otherwise
     */
-    bool disconnect(void);
+    bool deactivate(void);
 
     bool reconnect(void);
 
