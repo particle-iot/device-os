@@ -34,6 +34,8 @@
 #include "mdmapn_hal.h"
 #include "stm32f2xx.h"
 #include "service_debug.h"
+#include "bytes2hexbuf.h"
+#include "hex_to_bytes.h"
 #include "concurrent_hal.h"
 #include <mutex>
 #include "net_hal.h"
@@ -51,17 +53,20 @@ std::recursive_mutex mdm_mutex;
 #define USO_MAX_WRITE   1024  //!< maximum number of bytes to write to socket (used with TX)
 
 #ifdef UBLOX_SARA_R4
-// The number of milliseconds to keep the RESET_N pin low in order to reset the module
+// Number of milliseconds to keep the RESET_N pin low in order to reset the module
 #define RESET_N_LOW_TIME 10000 // SARA-R4: 10s
-// PDP context used to configure the default EPS bearer when registering in an LTE network
+// ID of the PDP context used to configure the default EPS bearer when registering in an LTE network
 // Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
 #define PDP_CONTEXT 1
-// Enable hex mode for socket operations. SARA-R410M-01B has a bug which causes truncation of
+// Enable hex mode for socket commands. SARA-R410M-01B has a bug which causes truncation of
 // data read from a socket if the data contains a null byte
 #define SOCKET_HEX_MODE
 #else
 #define RESET_N_LOW_TIME 100
 #endif // !defined(UBLOX_SARA_R4)
+
+// Timeout for socket write operations
+#define SOCKET_WRITE_TIMEOUT 30000
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -774,6 +779,13 @@ bool MDMParser::init(DevStatus* status)
     sendFormated("AT+CIMI\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.imsi))
         goto failure;
+#ifdef SOCKET_HEX_MODE
+    // Enable hex mode for socket commands
+    sendFormated("AT+UDCONF=1,1\r\n");
+    if (waitFinalResp() != RESP_OK) {
+        goto failure;
+    }
+#endif
     if (status)
         memcpy(status, &_dev, sizeof(DevStatus));
     UNLOCK();
@@ -870,6 +882,12 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
     LOCK();
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
+/*
+        sendFormated("AT+COPS=2\r\n");
+        waitFinalResp();
+        sendFormated("AT+COPS=0\r\n");
+        waitFinalResp();
+*/
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
         bool ok = false;
@@ -1450,8 +1468,7 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
 }
 
 int MDMParser::_cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
-    // TODO
-    return WAIT;
+    return WAIT; // TODO
 }
 
 int MDMParser::_cbCMIP(int type, const char* buf, int len, MDM_IP* ip)
@@ -1845,6 +1862,7 @@ bool MDMParser::socketFree(int socket)
 int MDMParser::socketSend(int socket, const char * buf, int len)
 {
     //DEBUG_D("socketSend(%d,,%d)\r\n", socket,len);
+#ifndef SOCKET_HEX_MODE
     int cnt = len;
     while (cnt > 0) {
         int blk = USO_MAX_WRITE;
@@ -1876,6 +1894,57 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
     }
     UNLOCK();
     return (len - cnt);
+#else
+    char data[256]; // The data is written in chunks
+    int bytesLeft = len;
+    while (bytesLeft > 0) {
+        LOCK();
+        if (!ISSOCKET(socket)) {
+            goto error;
+        }
+        // Maximum number of bytes that can be written via single +USOWR command
+        size_t chunkSize = bytesLeft;
+        if (chunkSize > USO_MAX_WRITE / 2) { // Half the maximum size in binary mode
+            chunkSize = USO_MAX_WRITE / 2;
+        }
+        // Write command prefix
+        const int prefixSize = snprintf(data, sizeof(data), "AT+USOWR=%d,%u,\"", _sockets[socket].handle,
+                (unsigned)chunkSize);
+        if (prefixSize < 0 || prefixSize > (int)sizeof(data)) {
+            goto error;
+        }
+        if (send(data, prefixSize) != prefixSize) {
+            goto error;
+        }
+        // Write hex data
+        do {
+            size_t n = chunkSize;
+            if (n > sizeof(data) / 2) {
+                n = sizeof(data) / 2;
+            }
+            bytes2hexbuf_lower_case((const uint8_t*)buf, n, data);
+            const size_t hexSize = n * 2;
+            if (send(data, hexSize) != (int)hexSize) {
+                goto error;
+            }
+            buf += n;
+            bytesLeft -= n;
+            chunkSize -= n;
+        } while (chunkSize > 0);
+        // Write command suffix
+        if (send("\"\r\n", 3) != 3) {
+            goto error;
+        }
+        if (waitFinalResp(nullptr, nullptr, SOCKET_WRITE_TIMEOUT) != RESP_OK) {
+            goto error;
+        }
+        UNLOCK();
+    }
+    return (len - bytesLeft);
+error:
+    UNLOCK();
+    return MDM_SOCKET_ERROR;
+#endif // defined(SOCKET_HEX_MODE)
 }
 
 int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, int len)
@@ -1933,6 +2002,7 @@ int MDMParser::socketReadable(int socket)
 
 int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
 {
+#ifndef SOCKET_HEX_MODE
     if ((type == TYPE_PLUS) && param) {
         int sz, sk;
         if ((sscanf(buf, "\r\n+USORD: %d,%d,", &sk, &sz) == 2) &&
@@ -1944,17 +2014,31 @@ int MDMParser::_cbUSORD(int type, const char* buf, int len, USORDparam* param)
         }
     }
     return WAIT;
+#else
+    if (type == TYPE_PLUS && param) {
+        int socket, size;
+        if (sscanf(buf, "\r\n+USORD: %d,%d,", &socket, &size) == 2 &&
+                (buf[len - size * 2 - 2] == '\"') && (buf[len - 1] == '\"')) {
+            particle::hexToBytes(buf + len - size - 1, param->buf, size);
+            param->len = size;
+        } else {
+            param->len = 0;
+        }
+    }
+    return WAIT;
+#endif // defined(SOCKET_HEX_MODE)
 }
 
 int MDMParser::socketRecv(int socket, char* buf, int len)
 {
-    int cnt = 0;
 /*
     DEBUG_D("socketRecv(%d,%d)\r\n", socket, len);
 #ifdef MDM_DEBUG
     memset(buf, '\0', len);
 #endif
 */
+#ifndef SOCKET_HEX_MODE
+    int cnt = 0;
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     while (len) {
         // DEBUG_D("socketRecv: LEN: %d\r\n", len);
@@ -2021,6 +2105,49 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
     UNLOCK();
     // DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
     return cnt;
+#else
+    system_tick_t timeStart = HAL_Timer_Get_Milli_Seconds();
+    int bytesLeft = len;
+    while (bytesLeft > 0) {
+        LOCK();
+        if (!ISSOCKET(socket) || !_sockets[socket].connected) {
+            goto error;
+        }
+        int bytesAvail = socketReadable(socket);
+        if (bytesAvail > 0) {
+            size_t chunkSize = bytesAvail;
+            if (chunkSize > (size_t)bytesLeft) {
+                chunkSize = bytesLeft;
+            }
+            if (chunkSize > MAX_SIZE / 4) {
+                chunkSize = MAX_SIZE / 4; // Leave some space for URCs
+            }
+            sendFormated("AT+USORD=%d,%d\r\n", _sockets[socket].handle, chunkSize);
+            USORDparam param = {};
+            param.buf = buf;
+            if (waitFinalResp(_cbUSORD, &param) != RESP_OK) {
+                goto error;
+            }
+            buf += param.len;
+            bytesLeft -= param.len;
+            _sockets[socket].pending -= param.len;
+        } else if (bytesAvail == 0) {
+            if (TIMEOUT(timeStart, _sockets[socket].timeout_ms)) {
+                goto error;
+            }
+            if (waitFinalResp(nullptr, nullptr, 0) != WAIT) { // Process URCs
+                goto error;
+            }
+        } else {
+            goto error;
+        }
+        UNLOCK();
+    }
+    return (len - bytesLeft);
+error:
+    UNLOCK();
+    return MDM_SOCKET_ERROR;
+#endif // defined(SOCKET_HEX_MODE)
 }
 
 int MDMParser::_cbUSORF(int type, const char* buf, int len, USORFparam* param)
