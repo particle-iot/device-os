@@ -127,10 +127,10 @@ typedef uint32_t MDM_IP;
 #define NOIP ((MDM_IP)0) //!< No IP address
 // IP number formating and conversion
 #define IPSTR           "%d.%d.%d.%d"
-#define IPNUM(ip)       ((ip)>>24)&0xff, \
-                        ((ip)>>16)&0xff, \
-                        ((ip)>> 8)&0xff, \
-                        ((ip)>> 0)&0xff
+#define IPNUM(ip)       (int)(((ip)>>24)&0xff), \
+                        (int)(((ip)>>16)&0xff), \
+                        (int)(((ip)>> 8)&0xff), \
+                        (int)(((ip)>> 0)&0xff)
 #define IPADR(a,b,c,d) ((((uint32_t)(a))<<24) | \
                         (((uint32_t)(b))<<16) | \
                         (((uint32_t)(c))<< 8) | \
