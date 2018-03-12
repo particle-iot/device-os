@@ -34,7 +34,7 @@
 #include "mbedtls/rsa.h"
 #include "mbedtls_compat.h"
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 #  include "wiced_security.h"
 #  include "crypto_open/bignum.h"
 # else
@@ -210,7 +210,7 @@ int gen_rsa_key(uint8_t* buffer, size_t max_length, int32_t (*f_rng) (void *), v
     RNGCallbackData d = { f_rng, p_rng };
     int failure = mbedtls_rsa_gen_key(&rsa, rngCallback, &d, 1024, 65537);
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
     rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, f_rng, p_rng);
 # else
     rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, (int(*)(void*))f_rng, p_rng);

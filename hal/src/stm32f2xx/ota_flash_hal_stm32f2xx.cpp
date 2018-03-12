@@ -203,7 +203,11 @@ bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
     uint32_t endAddress = startAddress + length;
 
 #ifdef USE_SERIAL_FLASH
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress <= 0x200000)
+#else
     if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress <= 0x100000)
+#endif
     {
         return true;
     }
@@ -287,10 +291,29 @@ static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t module
     return result;
 }
 
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
-    hal_module_t module;
+static void select_ota_bounds(uint32_t file_address, uint32_t file_length, module_bounds_t *bounds)
+{
+    if(file_address>HAL_OTA_FlashAddress() && file_address<(HAL_OTA_FlashAddress()+HAL_OTA_FlashLength())) // The image isn't stored from the start of the OTA region
+    {
+        bounds->start_address = file_address;
+        bounds->end_address = file_address + file_length;
+        bounds->maximum_size = file_length;
+        bounds->module_function = MODULE_FUNCTION_NONE;
+        bounds->module_index = 0;
+        bounds->store = MODULE_STORE_SCRATCHPAD;
+    }
+    else {
+        memcpy(bounds, &module_ota, sizeof(module_bounds_t)); // Default OTA bounds
+    }
+}
 
-    bool module_fetched = fetch_module(&module, &module_ota, userDepsOptional, flags);
+int HAL_FLASH_OTA_Validate(uint32_t file_address, uint32_t file_length, hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
+    hal_module_t module;
+    module_bounds_t bounds;
+    
+    select_ota_bounds(file_address, file_length, &bounds);
+
+    bool module_fetched = fetch_module(&module, &bounds, userDepsOptional, flags);
 
     if (mod) {
         memcpy(mod, &module, sizeof(hal_module_t));
@@ -299,13 +322,16 @@ int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_vali
     return (int)!module_fetched;
 }
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length, hal_module_t* mod)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
+    module_bounds_t bounds;
 
-    bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
+    select_ota_bounds(file_address, file_length, &bounds);
+
+    bool module_fetched = !HAL_FLASH_OTA_Validate(file_address, file_length, &module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
+    DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
         uint32_t moduleLength = module_length(module.info);
@@ -317,7 +343,12 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
         }
         else
         {
-            if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address,
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+            flash_device_t flash_device = FLASH_SERIAL;
+#else
+            flash_device_t flash_device = FLASH_INTERNAL;
+#endif
+            if (FLASH_AddToNextAvailableModulesSlot(flash_device, bounds.start_address,
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
                 (moduleLength + 4),//+4 to copy the CRC too
                 function,
@@ -331,7 +362,7 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
     }
     else
     {
-    		WARN("OTA module not applied");
+            WARN("OTA module not applied");
     }
     if (mod)
     {
@@ -347,7 +378,7 @@ void copy_dct(void* target, uint16_t offset, uint16_t length) {
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
-	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
     const void* data = dct_read_app_data_lock(udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET);
     parseServerAddressData(server_addr, (const uint8_t*)data, DCT_SERVER_ADDRESS_SIZE);
     dct_read_app_data_unlock(udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET);
@@ -376,11 +407,11 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 {
     fetch_device_public_key(1);
     fetch_device_public_key(0);
-	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-	if (udp)
-	    copy_dct(keyBuffer, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
-	else
-		copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
+    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+    if (udp)
+        copy_dct(keyBuffer, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
+    else
+        copy_dct(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
 }
 
 void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
@@ -399,17 +430,17 @@ int32_t key_gen_random(void* p)
 
 int key_gen_random_block(void* handle, uint8_t* data, size_t len)
 {
-	while (len>=4)
-	{
-		*((uint32_t*)data) = HAL_RNG_GetRandomNumber();
-		data += 4;
-		len -= 4;
-	}
-	while (len-->0)
-	{
-		*data++ = HAL_RNG_GetRandomNumber();
-	}
-	return 0;
+    while (len>=4)
+    {
+        *((uint32_t*)data) = HAL_RNG_GetRandomNumber();
+        data += 4;
+        len -= 4;
+    }
+    while (len-->0)
+    {
+        *data++ = HAL_RNG_GetRandomNumber();
+    }
+    return 0;
 }
 
 
@@ -424,28 +455,28 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     bool generated = false;
     bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
     if (udp)
-    		copy_dct(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+            copy_dct(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
     else
-    		copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+            copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
     genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
     if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
         hal_notify_event(HAL_EVENT_GENERATE_DEVICE_KEY, HAL_EVENT_FLAG_START, nullptr);
         int error  = 1;
 #if HAL_PLATFORM_CLOUD_UDP
         if (udp)
-        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL);
+                error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL);
 #endif
 #if HAL_PLATFORM_CLOUD_TCP
-		if (!udp)
-			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
+        if (!udp)
+            error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
 #endif
         if (!error) {
-        		if (udp)
-        			dct_write_app_data(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
-        		else
-        			dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-			// refetch and rewrite public key to ensure it is valid
-			fetch_device_public_key(1);
+                if (udp)
+                    dct_write_app_data(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+                else
+                    dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
+            // refetch and rewrite public key to ensure it is valid
+            fetch_device_public_key(1);
             fetch_device_public_key(0);
             generated = true;
         }

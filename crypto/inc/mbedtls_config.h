@@ -21,7 +21,7 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 #include "mbedtls_config_photon.h"
 #else
 
@@ -2549,4 +2549,4 @@
 
 #endif /* MBEDTLS_CONFIG_H */
 
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88

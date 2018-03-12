@@ -31,12 +31,12 @@
 #include "rgbled.h"
 #include "button.h"
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 #define LOAD_DCT_FUNCTIONS
 #include "bootloader_dct.h"
 #endif
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10 || PLATFORM_ID == 88
 #define USE_LED_THEME
 #include "led_signal.h"
 
@@ -137,6 +137,38 @@ int main(void)
     SysTick_Configuration();
 
     platform_startup();
+	
+#if PLATFORM_ID == 88
+    Load_ExtraSystemFlags();
+	
+    if(EXTRA_SYSTEM_FLAG(wiced_application) == 0x5AA5)	// WICED application available
+    {
+        if(BUTTON_GetState(BUTTON1) != BUTTON1_PRESSED)
+        {
+    	    SysTick_Disable();
+
+            __asm( "MOV LR,        #0xFFFFFFFF" );
+            __asm( "MOV R1,        #0x01000000" );
+            __asm( "MSR APSR_nzcvq,     R1" );
+            __asm( "MOV R1,        #0x00000000" );
+            __asm( "MSR PRIMASK,   R1" );
+            __asm( "MSR FAULTMASK, R1" );
+            __asm( "MSR BASEPRI,   R1" );
+            __asm( "MSR CONTROL,   R1" );
+
+            ApplicationAddress = 0x08010000;
+            JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+            JumpAddress |= 0x00000001; /* Last bit of jump address indicates whether destination is Thumb or ARM code */
+            __asm volatile ("BX %0" : : "r" (JumpAddress) );
+        }
+        else
+        {
+            // Jump to run DFU directly.
+        }
+    }
+    else	// Run Particle application by default
+    {
+#endif
 
     USE_SYSTEM_FLAGS = 1;
 
@@ -422,7 +454,7 @@ int main(void)
             // Pre-0.7.0 firmwares were expecting IWDG flag to be set in the DCT, now it's stored in
             // the backup registers. As a workaround, we disable IWDG if an older firmware is detected
             const int module_ver = get_main_module_version();
-            if (module_ver >= 0 && module_ver < SYSTEM_MODULE_VERSION_0_7_0_RC1) {
+            if (module_ver >= 0 && module_ver < SYSTEM_MODULE_VERSION_0_3_2) {
                 disable_iwdg = 1;
             }
 #endif
@@ -448,6 +480,10 @@ int main(void)
     FACTORY_RESET_MODE = 0;  // ensure the LED is slow flashing (100)
     OTA_FLASH_AVAILABLE = 0; //   |
     REFLASH_FROM_BACKUP = 0; //   |
+	
+#if PLATFORM_ID == 88
+    }
+#endif
 
     LED_SetRGBColor(DFUModeColor);
 

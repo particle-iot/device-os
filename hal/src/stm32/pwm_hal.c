@@ -239,6 +239,14 @@ uint32_t HAL_PWM_Base_Clock(uint16_t pin)
     {
         return SystemCoreClock / 2;
     }
+#if PLATFORM_ID == 88 // Duo
+    else if(pin_info->timer_peripheral == TIM2 ||
+            pin_info->timer_peripheral == TIM13 ||
+            pin_info->timer_peripheral == TIM14)
+    {
+        return SystemCoreClock / 2;
+    }
+#endif
     else
     {
         return SystemCoreClock;
@@ -388,6 +396,18 @@ void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint32_t pwm_frequency)
     {
         GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM8);
         RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+    }
+#endif
+#if PLATFORM_ID == 88 // Duo
+    else if (pin_info->timer_peripheral == TIM13)
+    {
+        GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM13);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
+    }
+    else if (pin_info->timer_peripheral == TIM14)
+    {
+        GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM14);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
     }
 #endif
 

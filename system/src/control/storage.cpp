@@ -40,14 +40,17 @@
 // Make sure platform-specific requests, such as CTRL_REQUEST_DESCRIBE_STORAGE, are updated for a
 // newly introduced platform
 #if PLATFORM_ID != PLATFORM_PHOTON_PRODUCTION && \
+    PLATFORM_ID != PLATFORM_DUO_PRODUCTION && \
     PLATFORM_ID != PLATFORM_P1 && \
     PLATFORM_ID != PLATFORM_ELECTRON_PRODUCTION
 #error "Unsupported platform"
 #endif
 
 // TODO: Add support for external flash (available if HAS_SERIAL_FLASH macro is defined)
+#if PLATFORM_ID != PLATFORM_DUO_PRODUCTION
 #ifdef USE_SERIAL_FLASH
 #error "External flash is not supported"
+#endif
 #endif
 
 namespace particle {

@@ -38,7 +38,7 @@
 #include "mbedtls/sha256.h"
 #include "mbedtls/bignum.h"
 #include "mbedtls_util.h"
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 #include "mbedtls/md4.h"
 #include "mbedtls/md5.h"
 #include "mbedtls/des.h"
@@ -131,7 +131,7 @@ DYNALIB_FN(70, crypto, mbedtls_sha256_process, void(mbedtls_sha256_context*, con
 DYNALIB_FN(71, crypto, mbedtls_rsa_check_pubkey, int(const mbedtls_rsa_context*))
 DYNALIB_FN(72, crypto, mbedtls_rsa_check_privkey, int(const mbedtls_rsa_context*))
 DYNALIB_FN(73, crypto, mbedtls_rsa_check_pub_priv, int(const mbedtls_rsa_context*, const mbedtls_rsa_context*))
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 // MD4
 DYNALIB_FN(74, crypto, mbedtls_md4_init, void(mbedtls_md4_context*))
 DYNALIB_FN(75, crypto, mbedtls_md4_free, void(mbedtls_md4_context*))
@@ -186,7 +186,7 @@ DYNALIB_FN(113, crypto, mbedtls_md, int(const mbedtls_md_info_t*, const unsigned
 //DYNALIB_FN(XXX, crypto, mbedtls_md_clone, int(mbedtls_md_context_t*, const mbedtls_md_context_t*))
 //DYNALIB_FN(XXX, crypto, mbedtls_md_finish, int(mbedtls_md_context_t*, unsigned char*))
 //DYNALIB_FN(XXX, crypto, mbedtls_md_hmac_reset, int(mbedtls_md_context_t*))
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 DYNALIB_END(crypto)
 
 #ifdef	__cplusplus

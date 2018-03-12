@@ -33,6 +33,12 @@
 #include "system_cloud_internal.h"
 #include "system_network.h"
 #include "system_ymodem.h"
+#if (PLATFORM_ID==88) 
+#include "hw_config.h"
+#ifdef START_AVRDUDE_FLASHER_SERIAL_SPEED
+#include "system_avrdude.h"
+#endif
+#endif
 #include "system_task.h"
 #include "module_info.h"
 #include "spark_protocol_functions.h"
@@ -49,8 +55,15 @@ static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
 #ifdef START_YMODEM_FLASHER_SERIAL_SPEED
 static uint32_t start_ymodem_flasher_serial_speed = START_YMODEM_FLASHER_SERIAL_SPEED;
 #endif
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+static uint32_t start_avrdude_flasher_serial_speed  = START_AVRDUDE_FLASHER_SERIAL_SPEED;
+#endif
 
 ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update_Handler = NULL;
+
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+avrdude_serial_flash_update_handler Avrdude_Serial_Flash_Update_Handler = NULL;
+#endif
 
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
@@ -125,6 +138,13 @@ void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler h
     Ymodem_Serial_Flash_Update_Handler = handler;
 }
 
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+void set_avrdude_serial_flash_update_handle(avrdude_serial_flash_update_handler handler)
+{
+    Avrdude_Serial_Flash_Update_Handler = handler;
+}
+#endif
+
 void set_start_dfu_flasher_serial_speed(uint32_t speed)
 {
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
@@ -138,6 +158,13 @@ void set_start_ymodem_flasher_serial_speed(uint32_t speed)
     start_ymodem_flasher_serial_speed = speed;
 #endif
 }
+
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+void set_start_avrdude_flasher_serial_speed(uint32_t speed)
+{
+    start_avrdude_flasher_serial_speed = speed;
+}
+#endif
 
 bool system_firmwareUpdate(Stream* stream, void* reserved)
 {
@@ -178,6 +205,48 @@ bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
     return status;
 }
 
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+bool system_avrdudeFileTransfer(system_file_transfer_t* tx, void* reserved)
+{
+    bool status = false;
+    Stream* serialObj = tx->stream;
+
+    if (NULL != Avrdude_Serial_Flash_Update_Handler)
+    {
+        status = Avrdude_Serial_Flash_Update_Handler(serialObj, tx->descriptor, NULL);
+        SPARK_FLASH_UPDATE = 0;
+        TimingFlashUpdateTimeout = 0;
+
+        if (status == true)
+        {
+            if (tx->descriptor.store==FileTransfer::Store::FIRMWARE) {
+                //serialObj->println("Restarting system to apply firmware update...");
+                HAL_Delay_Milliseconds(100);
+                HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
+            }
+        }
+        else
+        {
+            //serialObj->println("Firmware update fail");
+        }
+    }
+    else
+    {
+        //serialObj->println("Firmware update using this terminal is not supported!");
+        //serialObj->println("Add #include \"Ymodem/Ymodem.h\" to your sketch and try again.");
+    }
+    return status;
+}
+
+bool system_avrdudeFirmwareUpdate(Stream* stream, void* reserved)
+{
+    system_file_transfer_t tx;
+    tx.descriptor.store = FileTransfer::Store::FIRMWARE;
+    tx.stream = stream;
+    return system_avrdudeFileTransfer(&tx);
+}
+#endif
+
 void system_lineCodingBitRateHandler(uint32_t bitrate)
 {
 // todo - ideally the system should post a reset pending event before
@@ -195,6 +264,26 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
     if (!network_listening(0, 0, NULL) && bitrate == start_ymodem_flasher_serial_speed)
     {
         network_listen(0, 0, 0);
+    }
+#endif
+#if (PLATFORM_ID==88) && defined (RESET_AVRDUDE_FLASHER_SERIAL_SPEED)
+    if((bitrate == RESET_AVRDUDE_FLASHER_SERIAL_SPEED) && (HAL_Timer_Get_Milli_Seconds() > 10000) ) // Delay to skip the plug-in trigged interrupt
+    {
+        EXTRA_SYSTEM_FLAG(arduino_upload) = 0xAABB;
+        Save_ExtraSystemFlags();
+
+        HAL_USB_Detach();
+        NVIC_SystemReset();
+    }
+#endif
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+    if(bitrate == start_avrdude_flasher_serial_speed)
+    {
+        set_avrdude_serial_flash_update_handle(Avrdude_Serial_Flash_Update);
+        RGB.control(true);
+        RGB.color(RGB_COLOR_MAGENTA);
+        SPARK_FLASH_UPDATE = 4;
+        TimingFlashUpdateTimeout = 0;
     }
 #endif
 }
@@ -224,6 +313,14 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
             file.file_length = HAL_OTA_FlashLength();
         }
     }
+#if (PLATFORM_ID==88) 
+    else if(file.store==FileTransfer::Store::SYSTEM)
+    {
+        // address is absolute to the external flash.
+        file.file_address = file.chunk_address;
+    }
+#endif
+	
     int result = 0;
     if (flags & 1) {
         // only check address
@@ -321,14 +418,14 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     hal_module_t mod;
 
     if ((flags & (UpdateFlag::VALIDATE_ONLY | UpdateFlag::SUCCESS)) == (UpdateFlag::VALIDATE_ONLY | UpdateFlag::SUCCESS)) {
-        res = HAL_FLASH_OTA_Validate(module ? (hal_module_t*)module : &mod, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
+        res = HAL_FLASH_OTA_Validate(file.file_address, file.file_length, module ? (hal_module_t*)module : &mod, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
         return res;
     }
 
     if (flags & UpdateFlag::SUCCESS) {    // update successful
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
-            hal_update_complete_t result = HAL_FLASH_End(module ? (hal_module_t*)module : &mod);
+            hal_update_complete_t result = HAL_FLASH_End(file.file_address, file.file_length, module ? (hal_module_t*)module : &mod);
             system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
             res = (result == HAL_UPDATE_ERROR);
 
@@ -338,6 +435,12 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
                 system_pending_shutdown();
             }
         }
+#if (PLATFORM_ID==88) 
+        else if(file.store==FileTransfer::Store::SYSTEM)
+        {
+            system_pending_shutdown();
+        }
+#endif
     }
     else
     {
@@ -353,7 +456,11 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
     TimingFlashUpdateTimeout = 0;
     int result = -1;
     system_notify_event(firmware_update, firmware_update_progress, &file);
+#if (PLATFORM_ID==88) 
+    if (file.store==FileTransfer::Store::FIRMWARE || file.store==FileTransfer::Store::SYSTEM)
+#else
     if (file.store==FileTransfer::Store::FIRMWARE)
+#endif
     {
         result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size, NULL);
         LED_Toggle(LED_RGB);

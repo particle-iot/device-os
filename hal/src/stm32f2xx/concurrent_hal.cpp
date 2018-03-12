@@ -43,9 +43,9 @@
 #include "static_recursive_mutex.h"
 #include "service_debug.h"
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 # include "wwd_rtos_interface.h"
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
@@ -165,11 +165,11 @@ os_result_t os_thread_exit(os_thread_t thread)
  */
 os_result_t os_thread_cleanup(os_thread_t thread)
 {
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
     if (!thread || os_thread_is_current(thread))
         return 1;
     host_rtos_delete_terminated_thread((host_thread_type_t*)&thread);
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
     return 0;
 }
 

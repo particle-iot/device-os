@@ -113,6 +113,7 @@ common are listed here:
 | photon   | 6           |
 | p1       | 8           |
 | electron | 10          |
+| duo      | 88          |
 
 The platform is specified on the command line as
 

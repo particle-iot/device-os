@@ -88,6 +88,20 @@ DYNALIB_FN(BASE_IDX + 6, system, led_pattern_period, uint16_t(int, int, void*))
 DYNALIB_FN(BASE_IDX + 7, system, system_set_tester_handlers, int(system_tester_handlers_t*, void*))
 DYNALIB_FN(BASE_IDX + 8, system, system_format_diag_data, int(const uint16_t*, size_t, unsigned, appender_fn, void*, void*))
 
+#if PLATFORM_ID == 88
+DYNALIB_FN(BASE_IDX + 9, system, ble_setup_set_state, void(spark::feature::State, void*))
+DYNALIB_FN(BASE_IDX + 10, system, ble_setup_get_state, spark::feature::State(void*))
+
+// Control requests
+DYNALIB_FN(BASE_IDX + 11, system, system_ctrl_set_app_request_handler, int(ctrl_request_handler_fn, void*))
+DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
+DYNALIB_FN(BASE_IDX + 13, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
+DYNALIB_FN(BASE_IDX + 14, system, system_ctrl_set_result, void(ctrl_request*, int, ctrl_completion_handler_fn, void*, void*))
+
+DYNALIB_FN(BASE_IDX + 15, system, system_pool_alloc, void*(size_t, void*))
+DYNALIB_FN(BASE_IDX + 16, system, system_pool_free, void(void*, void*))
+DYNALIB_FN(BASE_IDX + 17, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
+#else
 // Control requests
 DYNALIB_FN(BASE_IDX + 9, system, system_ctrl_set_app_request_handler, int(ctrl_request_handler_fn, void*))
 DYNALIB_FN(BASE_IDX + 10, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
@@ -97,7 +111,7 @@ DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_set_result, void(ctrl_request*, in
 DYNALIB_FN(BASE_IDX + 13, system, system_pool_alloc, void*(size_t, void*))
 DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
 DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
-
+#endif
 
 DYNALIB_END(system)
 

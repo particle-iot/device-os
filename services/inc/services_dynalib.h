@@ -83,8 +83,8 @@ DYNALIB_FN(36, services, diag_register_source, int(const diag_source*, void*))
 DYNALIB_FN(37, services, diag_enum_sources, int(diag_enum_sources_callback, size_t*, void*, void*))
 DYNALIB_FN(38, services, diag_get_source, int(uint16_t, const diag_source**, void*))
 DYNALIB_FN(39, services, diag_command, int(int, void*, void*))
-// Export only on Photon and P1
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+// Export only on Photon and P1, Duo
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 DYNALIB_FN(40, services, _printf_float, int(struct _reent*, struct _prt_data_t*, FILE*, int(*pfunc)(struct _reent* , FILE*, const char*, size_t), va_list*))
 
 // Nanopb

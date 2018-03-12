@@ -105,3 +105,19 @@ spark::feature::State system_thread_get_state(void*)
 }
 
 #endif
+
+#if PLATFORM_ID == 88
+
+static volatile spark::feature::State ble_setup_enable = spark::feature::DISABLED;
+
+void ble_setup_set_state(spark::feature::State state, void*)
+{
+    ble_setup_enable = state;
+}
+
+spark::feature::State ble_setup_get_state(void*)
+{
+    return ble_setup_enable;
+}
+
+#endif

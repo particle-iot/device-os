@@ -32,7 +32,7 @@
 #include "mbedtls_compat.h"
 #include "mbedtls_util.h"
 #else
-# if PLATFORM_ID != 6 && PLATFORM_ID != 8
+# if PLATFORM_ID != 6 && PLATFORM_ID != 8 && PLATFORM_ID != 88
 #  define rsa_mode_t int
 #  define rsa_hash_id_t int
 # endif
@@ -72,7 +72,7 @@ int decipher_aes_credentials(const unsigned char *private_key,
   int ret = mbedtls_rsa_pkcs1_decrypt(&rsa, mbedtls_default_rng, nullptr, MBEDTLS_RSA_PRIVATE, &len, ciphertext,
                               aes_credentials, 40);
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
   int32_t len = 128;
 # else
   int len = 128;
@@ -123,7 +123,7 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 #endif
 
-#if !defined(USE_MBEDTLS) && (PLATFORM_ID == 6 || PLATFORM_ID == 8)
+#if !defined(USE_MBEDTLS) && (PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88)
   rsa->length = 256;
 #else
   rsa->len = 256;
@@ -147,7 +147,7 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 #endif
 
-#if !defined(USE_MBEDTLS) && (PLATFORM_ID == 6 || PLATFORM_ID == 8)
+#if !defined(USE_MBEDTLS) && (PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88)
   rsa->length = 128;
 #else
   rsa->len = 128;

@@ -93,7 +93,7 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t alt_device_public_key[128];  // alternative device public key
     uint8_t alt_device_private_key[192]; // alternative device private key
     uint8_t alt_server_public_key[192];
-    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
+    uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE];		// server address info
     uint8_t device_id[12];                               // the STM32 device ID
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
     button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
@@ -101,6 +101,9 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t led_theme[64];               // LED signaling theme
     eap_config_t eap_config;             // WLAN EAP settings
     uint8_t reserved2[272];
+#if PLATFORM_ID == 88
+    extra_platform_system_flags_t extra_system_flags; // Try Appending it after the application dct so that its offset can be permanent.
+#endif
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -132,6 +135,9 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_MIRROR_OFFSET (offsetof(application_dct_t, led_mirror))
 #define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
 #define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
+#if PLATFORM_ID == 88
+#define DCT_EXTRA_SYSTEM_FLAGS_OFFSET (offsetof(application_dct_t, extra_system_flags))
+#endif
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -159,6 +165,9 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_MIRROR_SIZE (sizeof(application_dct_t::led_mirror))
 #define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
 #define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
+#if PLATFORM_ID == 88
+#define DCT_EXTRA_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::extra_system_flags))
+#endif
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -197,7 +206,12 @@ STATIC_ASSERT_DCT_OFFSET(led_mirror, 3663 /* 3631 + 32 */);
 STATIC_ASSERT_DCT_OFFSET(led_theme, 3759 /* 3663 + 24 * 4 */);
 STATIC_ASSERT_DCT_OFFSET(eap_config, 3823 /* 3759 + 64 */);
 STATIC_ASSERT_DCT_OFFSET(reserved2, 8119 /* 3823 + (196 + 4*1024 + 4) */);
+#if PLATFORM_ID == 88
+STATIC_ASSERT_DCT_OFFSET(extra_system_flags, 8391 /* 8119 + 272 */);
+STATIC_ASSERT_DCT_OFFSET(end, 8423 /* 8391 + 32 */);
+#else
 STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8119 + 272 */);
+#endif
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);

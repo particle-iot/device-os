@@ -30,6 +30,9 @@
 #include "core_hal.h"
 #include "deviceid_hal.h"
 #include "syshealth_hal.h"
+#if PLATFORM_ID == 88
+#include "device_name.h"
+#endif
 #endif
 
 // WARNING
@@ -68,16 +71,28 @@ DYNALIB_FN(22, hal_core, HAL_Set_System_Config, int(hal_system_config_t, const v
 DYNALIB_FN(23, hal_core, HAL_Core_Enter_Safe_Mode, void(void*))
 DYNALIB_FN(24, hal_core, HAL_Feature_Get, bool(HAL_Feature))
 DYNALIB_FN(25, hal_core, HAL_Feature_Set, int(HAL_Feature, bool))
+#if PLATFORM_ID == 88
+DYNALIB_FN(26, hal_core, HAL_Local_Name, void(local_name_t*))
+DYNALIB_FN(27, hal_core, HAL_Core_System_Reset_Ex, void(int, uint32_t, void*))
+DYNALIB_FN(28, hal_core, HAL_Core_Get_Last_Reset_Info, int(int*, uint32_t*, void*))
+DYNALIB_FN(29, hal_core, HAL_Core_Button_Mirror_Pin, void(uint16_t, InterruptMode, uint8_t, uint8_t, void*))
+DYNALIB_FN(30, hal_core, HAL_Core_Button_Mirror_Pin_Disable, void(uint8_t, uint8_t, void*))
+DYNALIB_FN(31, hal_core, HAL_Core_Led_Mirror_Pin, void(uint8_t, pin_t, uint32_t, uint8_t, void*))
+DYNALIB_FN(32, hal_core, HAL_Core_Led_Mirror_Pin_Disable, void(uint8_t, uint8_t, void*))
+DYNALIB_FN(33, hal_core, HAL_Set_Event_Callback, void(HAL_Event_Callback, void*))
+DYNALIB_FN(34, hal_core, HAL_Core_Enter_Stop_Mode_Ext, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, void*))
+DYNALIB_FN(35, hal_core, HAL_Core_Execute_Standby_Mode_Ext, void(uint32_t, void*))
+#else
 DYNALIB_FN(26, hal_core, HAL_Core_System_Reset_Ex, void(int, uint32_t, void*))
 DYNALIB_FN(27, hal_core, HAL_Core_Get_Last_Reset_Info, int(int*, uint32_t*, void*))
 DYNALIB_FN(28, hal_core, HAL_Core_Button_Mirror_Pin, void(uint16_t, InterruptMode, uint8_t, uint8_t, void*))
 DYNALIB_FN(29, hal_core, HAL_Core_Button_Mirror_Pin_Disable, void(uint8_t, uint8_t, void*))
 DYNALIB_FN(30, hal_core, HAL_Core_Led_Mirror_Pin, void(uint8_t, pin_t, uint32_t, uint8_t, void*))
 DYNALIB_FN(31, hal_core, HAL_Core_Led_Mirror_Pin_Disable, void(uint8_t, uint8_t, void*))
-
 DYNALIB_FN(32, hal_core, HAL_Set_Event_Callback, void(HAL_Event_Callback, void*))
 DYNALIB_FN(33, hal_core, HAL_Core_Enter_Stop_Mode_Ext, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, void*))
 DYNALIB_FN(34, hal_core, HAL_Core_Execute_Standby_Mode_Ext, void(uint32_t, void*))
+#endif
 
 DYNALIB_END(hal_core)
 

@@ -34,6 +34,10 @@
 #include "hal_dynalib_concurrent.h"
 #include "hal_dynalib_cellular.h"
 #include "hal_dynalib_can.h"
+#if PLATFORM_ID == 88 // Duo
+#include "hal_dynalib_hci_usart.h"
+#include "hal_dynalib_btstack.h"
+#endif
 #include "hal_dynalib_rgbled.h"
 #include "hal_dynalib_dct.h"
 

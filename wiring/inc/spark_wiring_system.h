@@ -441,6 +441,10 @@ extern SystemClass System;
 
 #define SYSTEM_THREAD(state) STARTUP(system_thread_set_state(spark::feature::state, NULL));
 
+#if PLATFORM_ID == 88
+#define BLE_SETUP(state) STARTUP(ble_setup_set_state(spark::feature::state, NULL));
+#endif
+
 #define waitFor(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
 #define waitUntil(condition) System.waitCondition([]{ return (condition)(); })
 

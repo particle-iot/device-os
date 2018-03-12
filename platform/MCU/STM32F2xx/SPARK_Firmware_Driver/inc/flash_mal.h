@@ -67,14 +67,24 @@ extern "C" {
 
 #ifdef MODULAR_FIRMWARE
     #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
-    #ifndef USER_FIRMWARE_IMAGE_SIZE
-    #error USER_FIRMWARE_IMAGE_SIZE not defined
-    #else
-    #define FIRMWARE_IMAGE_SIZE  USER_FIRMWARE_IMAGE_SIZE
-    #endif
 
-    #ifndef USER_FIRMWARE_IMAGE_LOCATION
+#ifndef USER_FIRMWARE_IMAGE_LOCATION
     #error USER_FIRMWARE_IMAGE_LOCATION not defined
+#endif
+
+#ifndef USER_FIRMWARE_IMAGE_SIZE
+    #error USER_FIRMWARE_IMAGE_SIZE not defined
+#endif
+
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+    #define FIRMWARE_IMAGE_SIZE                     0x80000 // 512K
+	
+    #define EXTERNAL_FLASH_OTA_ADDRESS  			((uint32_t)0xC0000) // 768K reserved for user or WICED application usage
+    #define EXTERNAL_FLASH_FAC_ADDRESS  			((uint32_t)(EXTERNAL_FLASH_OTA_ADDRESS+FIRMWARE_IMAGE_SIZE))
+    #define EXTERNAL_FLASH_WIFI_FIRMWARE_ADDRESS  	((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS+USER_FIRMWARE_IMAGE_SIZE))
+#else
+    #ifdef USER_FIRMWARE_IMAGE_SIZE
+        #define FIRMWARE_IMAGE_SIZE  USER_FIRMWARE_IMAGE_SIZE
     #endif
 
     #if (PLATFORM_ID==10)
@@ -84,6 +94,7 @@ extern "C" {
         #define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
         #define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
     #endif
+#endif
 
 #else
 #ifdef COMBINED_FIRMWARE_IMAGE
@@ -132,8 +143,13 @@ extern "C" {
 #   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
 #endif
 
+#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
+/* Bootloader Flash regions that needs to be protected: 0x08000000 - 0x08007FFF */
+#define BOOTLOADER_FLASH_PAGES      (OB_WRP_Sector_0 | OB_WRP_Sector_1)
+#else
 /* Bootloader Flash regions that needs to be protected: 0x08000000 - 0x08003FFF */
 #define BOOTLOADER_FLASH_PAGES      (OB_WRP_Sector_0)
+#endif
 
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors);
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors);

@@ -26,7 +26,7 @@ extern "C" {
 
 
 
-#if PLATFORM_ID<9
+#if PLATFORM_ID<9 || PLATFORM_ID==88
     #define HAL_PLATFORM_WIFI 1
 #endif
 
@@ -58,7 +58,7 @@ extern "C" {
 #define HAL_PLATFORM_CLOUD_TCP 0
 #endif
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10 || PLATFORM_ID == 88
 #define HAL_PLATFORM_DCT 1
 #else
 #define HAL_PLATFORM_DCT 0

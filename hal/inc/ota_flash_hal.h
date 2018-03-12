@@ -113,7 +113,7 @@ uint16_t HAL_OTA_ChunkSize();
 
 flash_device_t HAL_OTA_FlashDevice();
 
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved);
+int HAL_FLASH_OTA_Validate(uint32_t file_address, uint32_t file_length, hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved);
 
 /**
  * Erase a region of flash in preparation for flashing content.
@@ -134,7 +134,7 @@ typedef enum {
     HAL_UPDATE_APPLIED
 } hal_update_complete_t;
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* module);
+hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length, hal_module_t* module);
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
 uint32_t HAL_FLASH_ModuleLength(uint32_t address);

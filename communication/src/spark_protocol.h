@@ -39,7 +39,7 @@
 #include "mbedtls/aes.h"
 #define aes_context mbedtls_aes_context
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
+# if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 #  include "wiced_security.h"
 #  include "crypto_open/bignum.h"
 #  define aes_context aes_context_t

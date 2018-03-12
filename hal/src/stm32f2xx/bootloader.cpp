@@ -6,6 +6,7 @@
 #include "module_info.h"
 #include "bootloader_hal.h"
 
+
 #ifdef HAL_REPLACE_BOOTLOADER_OTA
 int bootloader_update(const void* bootloader_image, unsigned length)
 {

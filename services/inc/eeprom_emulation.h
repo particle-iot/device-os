@@ -173,6 +173,9 @@ public:
     // Call at boot
     void init()
     {
+#if PLATFORM_ID == 88 // Duo
+        store.init();
+#endif
         updateActivePage();
 
         if(getActivePage() == LogicalPage::NoPage)
@@ -323,8 +326,14 @@ public:
     // Get the current status of a page (empty, active, being copied, ...)
     uint32_t readPageStatus(LogicalPage page)
     {
+#if PLATFORM_ID == 88 // Duo
+        PageHeader header;
+        store.dataAt(getPageBegin(page), &header, sizeof(PageHeader));
+        return header.status;
+#else
         PageHeader *header = (PageHeader *) store.dataAt(getPageBegin(page));
         return header->status;
+#endif
     }
 
     // Update the status of a page
@@ -507,7 +516,13 @@ public:
         // Walk through record list
         while(address < endAddress)
         {
+#if PLATFORM_ID == 88 // Duo
+        	Record _record;
+            const Record &record = _record;
+            store.dataAt(address, &_record, sizeof(Record));
+#else
             const Record &record = *(const Record *) store.dataAt(address);
+#endif
 
             // Yield record and potentially break early
             if(f(address, record))
@@ -597,7 +612,13 @@ public:
             {
                 if(addressOffset != 0) {
                     Address address = baseAddress + addressOffset;
+#if PLATFORM_ID == 88 // Duo
+                    Record _record;
+                    const Record &record = _record;
+                    store.dataAt(address, &_record, sizeof(Record));
+#else
                     const Record &record = *(const Record *) store.dataAt(address);
+#endif
 
                     // Yield record
                     f(address, record);
@@ -615,6 +636,19 @@ public:
     // during page erase
     bool verifyPage(LogicalPage page)
     {
+#if PLATFORM_ID == 88 // Duo
+        uint8_t temp;
+    	Address begin = getPageBegin(page);
+        Address end = getPageEnd(page);
+        while(begin < end)
+        {
+        	store.read(begin++, &temp, 1);
+            if(temp != FLASH_ERASED)
+            {
+                return false;
+            }
+        }
+#else
         const uint8_t *begin = store.dataAt(getPageBegin(page));
         const uint8_t *end = store.dataAt(getPageEnd(page));
         while(begin < end)
@@ -624,6 +658,7 @@ public:
                 return false;
             }
         }
+#endif
 
         return true;
     }

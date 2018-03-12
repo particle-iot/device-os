@@ -20,6 +20,17 @@
 #pragma once
 
 #include "eeprom_emulation.h"
+#if PLATFORM_ID == 88 // Duo
+#include "sflash_storage_impl.h"
+
+constexpr uintptr_t EEPROM_SectorBase1 = 0x000B8000;
+constexpr uintptr_t EEPROM_SectorBase2 = 0x000BC000;
+
+constexpr size_t EEPROM_SectorSize1 = 16*1024;
+constexpr size_t EEPROM_SectorSize2 = 16*1024;
+
+using FlashEEPROM = EEPROMEmulation<SerialFlashStore, EEPROM_SectorBase1, EEPROM_SectorSize1, EEPROM_SectorBase2, EEPROM_SectorSize2>;
+#else
 #include "flash_storage_impl.h"
 
 constexpr uintptr_t EEPROM_SectorBase1 = 0x0800C000;
@@ -29,3 +40,5 @@ constexpr size_t EEPROM_SectorSize1 = 16*1024;
 constexpr size_t EEPROM_SectorSize2 = 64*1024;
 
 using FlashEEPROM = EEPROMEmulation<InternalFlashStore, EEPROM_SectorBase1, EEPROM_SectorSize1, EEPROM_SectorBase2, EEPROM_SectorSize2>;
+#endif
+

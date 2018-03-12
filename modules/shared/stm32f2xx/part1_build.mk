@@ -24,6 +24,11 @@ LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/../../shared/stm32f2xx/part1.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/../../shared/stm32f2xx/part1_vtor_module.ld
 
+ifeq ("$(PLATFORM_ID)","88")
+DEP_LIBS = $(HAL_LIB_COREV2)/STM32F2xx_Peripheral_Libraries.a
+LINKER_DEPS += $(DEP_LIBS)
+LDFLAGS += -Wl,--whole-archive $(DEP_LIBS) -Wl,--no-whole-archive
+endif
 
 LDFLAGS += --specs=nano.specs -lnosys
 LDFLAGS += $(WIFI_MODULE_WICED_LIB_FILES)
@@ -48,6 +53,10 @@ USE_PRINTF_FLOAT ?= y
 endif
 
 ifeq ($(PLATFORM_ID),8)
+USE_PRINTF_FLOAT ?= y
+endif
+
+ifeq ($(PLATFORM_ID),88)
 USE_PRINTF_FLOAT ?= y
 endif
 

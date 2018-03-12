@@ -122,6 +122,7 @@ bool USARTSerial::breakRx() {
 }
 
 #ifndef SPARK_WIRING_NO_USART_SERIAL
+
 // Preinstantiate Objects //////////////////////////////////////////////////////
 #if ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE))
 static Ring_Buffer serial1_rx_buffer;
@@ -147,5 +148,17 @@ USARTSerial& __fetch_global_Serial1()
 	return serial1;
 }
 
+#if PLATFORM_ID == 88 // Duo
+static Ring_Buffer serial2_rx_buffer;
+static Ring_Buffer serial2_tx_buffer;
+
+USARTSerial& __fetch_global_Serial2()
+{
+    static USARTSerial serial2(HAL_USART_SERIAL2, &serial2_rx_buffer, &serial2_tx_buffer);
+    return serial2;
+}
+#else
 // optional Serial2 is instantiated from libraries/Serial2/Serial2.h
+#endif
+
 #endif

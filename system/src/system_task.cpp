@@ -44,6 +44,10 @@
 #include "spark_wiring_constants.h"
 #include "spark_wiring_cloud.h"
 #include "system_threading.h"
+#if PLATFORM_ID==88
+#include "hw_config.h"
+#include "spark_wiring_hciserial.h"
+#endif
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
 
@@ -102,6 +106,32 @@ void manage_serial_flasher()
     {
         system_firmwareUpdate(&Serial);
     }
+#if (PLATFORM_ID==88) && defined (START_AVRDUDE_FLASHER_SERIAL_SPEED)
+    else if(SPARK_FLASH_UPDATE == 4 || EXTRA_SYSTEM_FLAG(arduino_upload) == 0xAABB)
+    {
+        if(EXTRA_SYSTEM_FLAG(arduino_upload) == 0xAABB)
+        {
+            EXTRA_SYSTEM_FLAG(arduino_upload) = 0;
+            Save_ExtraSystemFlags();
+        }
+        if(SPARK_FLASH_UPDATE != 4) // Reset by arduino avrdude 1200bps touch, must followed by uploading progress.
+        {
+            LED_SetRGBColor(RGB_COLOR_MAGENTA);
+            LED_On(LED_RGB);
+            system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
+            while(SPARK_FLASH_UPDATE != 4)
+            {
+                if( (HAL_Timer_Get_Milli_Seconds() - start_millis) > 10000 ) // Wait for 10 seconds to reset if arduino do not begin the uploading progress.
+                {
+                    USB_Cable_Config(DISABLE);
+                    NVIC_SystemReset();
+                }
+            }
+        }
+
+        system_avrdudeFirmwareUpdate(&Serial);
+    }
+#endif
 }
 
 /**
@@ -139,6 +169,13 @@ void manage_network_connection()
         }
     }
 }
+
+#if PLATFORM_ID == 88
+void manage_ble_event()
+{
+    HAL_HCI_USART_receiveEvent();
+}
+#endif
 
 #ifndef SPARK_NO_CLOUD
 
@@ -461,6 +498,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_ip_config();
 
         CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+
+#if PLATFORM_ID==88
+        manage_ble_event();
+#endif
     }
     else
     {

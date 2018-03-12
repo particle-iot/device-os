@@ -89,7 +89,7 @@
 #pragma weak mbedtls_rsa_check_privkey
 #pragma weak mbedtls_rsa_check_pub_priv
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 88
 // MD4
 #pragma weak mbedtls_md4_init
 #pragma weak mbedtls_md4_free

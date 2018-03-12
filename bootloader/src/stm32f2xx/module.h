@@ -3,7 +3,11 @@
 #include "module_info.h"
 #include "ota_flash_hal.h"
 
+#if PLATFORM_ID == 88
+#define SYSTEM_MODULE_VERSION_0_3_2 10
+#else
 #define SYSTEM_MODULE_VERSION_0_7_0_RC1 200 // 0.7.0-rc.1
+#endif
 
 #ifdef __cplusplus
 extern "C" {

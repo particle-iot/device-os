@@ -194,6 +194,9 @@ uint32_t Manifest_State = Manifest_complete;
 static uint32_t wBlockNum = 0, wlength = 0;
 static uint32_t Pointer = APP_DEFAULT_ADD;  /* Base Address to Erase, Program or Read */
 static __IO uint32_t  usbd_dfu_AltSet = 0;
+#if PLATFORM_ID == 88
+volatile uint8_t init_transfer = 0;
+#endif
 
 extern uint8_t MAL_Buffer[];
 
@@ -618,6 +621,7 @@ static uint8_t  EP0_TxSent (void  *pdev)
         Pointer += MAL_Buffer[2] << 8;
         Pointer += MAL_Buffer[3] << 16;
         Pointer += MAL_Buffer[4] << 24;
+
         uint16_t status = MAL_Erase(usbd_dfu_AltSet, Pointer);
         if (status != MAL_OK) {
           /* Call the error management function (command will be nacked) */
@@ -642,6 +646,24 @@ static uint8_t  EP0_TxSent (void  *pdev)
     {
       /* Decode the required address */
       Addr = ((wBlockNum - 2) * XFERSIZE) + Pointer;
+	  
+#if PLATFORM_ID == 88
+      if( (init_transfer==1) && (usbd_dfu_AltSet==0) && (Addr==0x08010000 || Addr==0x08020000 || Addr==0x08040000) )
+      {
+        uint32_t first_word = *(uint32_t *)MAL_Buffer;
+        if( (first_word > 0x20000000) && (first_word <= 0x20020000) )
+        {
+          if(Addr == 0x08010000)
+            EXTRA_SYSTEM_FLAG(wiced_application) = 0x5AA5;
+          else 
+            EXTRA_SYSTEM_FLAG(wiced_application) = 0x1234;
+
+          Save_ExtraSystemFlags();
+        }
+      }
+	  
+      init_transfer = 0;
+#endif
 
       /* Preform the write operation */
       uint16_t status = MAL_Write(usbd_dfu_AltSet, Addr, wlength);
@@ -1024,6 +1046,9 @@ void DFU_LeaveDFUMode(void *pdev)
   */
 static uint8_t  *USBD_DFU_GetCfgDesc (uint8_t speed, uint16_t *length)
 {
+#if PLATFORM_ID == 88
+  init_transfer = 1;
+#endif
   *length = sizeof (usbd_dfu_CfgDesc);
   return usbd_dfu_CfgDesc;
 }

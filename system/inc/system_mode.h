@@ -47,6 +47,11 @@ void system_thread_set_state(spark::feature::State feature, void* reserved);
 spark::feature::State system_thread_get_state(void*);
 uint16_t system_button_pushed_duration(uint8_t button, void* reserved);
 
+#if PLATFORM_ID == 88
+void ble_setup_set_state(spark::feature::State state, void*);
+spark::feature::State ble_setup_get_state(void*);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
