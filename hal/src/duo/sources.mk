@@ -2,19 +2,16 @@
 HAL_SRC_STM32F2XX_PATH = $(TARGET_HAL_PATH)/src/stm32f2xx
 HAL_SRC_STM32_PATH = $(TARGET_HAL_PATH)/src/stm32
 HAL_SRC_DUO_PATH = $(TARGET_HAL_PATH)/src/duo
+HAL_SRC_DUO_PATH_WICED = $(TARGET_HAL_PATH)/src/photon
 
 # private includes - WICED is not exposed to the HAL clients
 
 HAL_WICED_INCLUDE_DIRS +=   include
-HAL_WICED_INCLUDE_DIRS +=   platforms/$(PLATFORM_NET)
 HAL_WICED_INCLUDE_DIRS +=   libraries/daemons/DNS_redirect \
                 libraries/daemons/HTTP_server \
                 libraries/protocols/DNS \
-                libraries/utilities/ring_buffer \
-                libraries/btstack/port   \
-                libraries/btstack/src    \
-                libraries/btstack/src/ble  \
-                libraries/btstack/src/classic
+                libraries/utilities/ring_buffer
+
 HAL_WICED_INCLUDE_DIRS +=   wiced wiced/internal
 HAL_WICED_INCLUDE_DIRS +=   wiced/network/$(HAL_WICED_NETWORK) \
                 wiced/network/$(HAL_WICED_NETWORK)/WWD \
@@ -50,17 +47,23 @@ ifeq "$(HAL_WICED_RTOS)" "FreeRTOS"
 HAL_WICED_INCLUDE_DIRS +=   wiced/RTOS/FreeRTOS/WWD/ARM_CM3 \
 			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/include \
 			    wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/GCC/ARM_CM3
-CSRC += $(HAL_SRC_DUO_PATH)/wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/MemMang/heap_4_lock.c
+CSRC += $(HAL_SRC_DUO_PATH_WICED)/wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/MemMang/heap_4_lock.c
 
 endif
 
 
 
-INCLUDE_DIRS += $(addprefix $(HAL_SRC_DUO_PATH)/,$(sort $(HAL_WICED_INCLUDE_DIRS)))
-INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_DUO_PATH)/wiced/security,*.h))
-INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_DUO_PATH)/wiced/WWD,*.h))
+INCLUDE_DIRS += $(addprefix $(HAL_SRC_DUO_PATH_WICED)/,$(sort $(HAL_WICED_INCLUDE_DIRS)))
+INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_DUO_PATH_WICED)/wiced/security,*.h))
+INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_DUO_PATH_WICED)/wiced/WWD,*.h))
 INCLUDE_DIRS += $(HAL_SRC_STM32F2XX_PATH)
 INCLUDE_DIRS += $(HAL_SRC_STM32_PATH)
+
+INCLUDE_DIRS += platforms/$(PLATFORM_NET)
+INCLUDE_DIRS += libraries/btstack/port   \
+                libraries/btstack/src    \
+                libraries/btstack/src/ble  \
+                libraries/btstack/src/classic
 
 CSRC += $(call target_files,$(HAL_SRC_DUO_PATH)/,*.c)
 CPPSRC += $(call target_files,$(HAL_SRC_DUO_PATH)/,*.cpp)

@@ -5,6 +5,7 @@
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 HAL_SRC_COREV2_PATH = $(TARGET_HAL_PATH)/src/duo
+HAL_SRC_COREV2_PATH_WICED = $(TARGET_HAL_PATH)/src/photon
 HAL_INCL_STM32F2XX_PATH = $(TARGET_HAL_PATH)/src/stm32f2xx
 HAL_INCL_STM32_PATH = $(TARGET_HAL_PATH)/src/stm32
 
@@ -36,10 +37,10 @@ endif
 
 HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED_COMMON_LIBS)))
 HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_RTOS)/,$(addsuffix .a,$(HAL_WICED_RTOS_LIBS)))
-WICED_MCU = $(HAL_SRC_COREV2_PATH)/wiced/platform/MCU/STM32F2xx/GCC
+WICED_MCU = $(HAL_SRC_COREV2_PATH_WICED)/wiced/platform/MCU/STM32F2xx/GCC
 
-INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/host/WICED/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/crypto $(HAL_SRC_COREV2_PATH)/wiced/WWD/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/GCC/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/supplicant/ 
-INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/libraries/crypto
+INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH_WICED)/include $(HAL_SRC_COREV2_PATH_WICED)/wiced/security/BESL/host/WICED/ $(HAL_SRC_COREV2_PATH_WICED)/wiced/security/BESL/include $(HAL_SRC_COREV2_PATH_WICED)/wiced/security/BESL $(HAL_SRC_COREV2_PATH_WICED)/wiced/security/BESL/crypto $(HAL_SRC_COREV2_PATH_WICED)/wiced/WWD/include/ $(HAL_SRC_COREV2_PATH_WICED)/wiced/platform/include/ $(HAL_SRC_COREV2_PATH_WICED)/wiced/platform/GCC/ $(HAL_SRC_COREV2_PATH_WICED)/wiced/security/BESL/supplicant/ 
+INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH_WICED)/libraries/crypto
 HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Supplicant_BESL.a
 HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/BESL.ARM_CM3.release.a
 
