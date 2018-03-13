@@ -67,6 +67,8 @@ std::recursive_mutex mdm_mutex;
 
 // Timeout for socket write operations
 #define SOCKET_WRITE_TIMEOUT 30000
+// Timeout for +COPS command
+#define COPS_TIMEOUT 60000
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -882,12 +884,6 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
     LOCK();
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
-/*
-        sendFormated("AT+COPS=2\r\n");
-        waitFinalResp();
-        sendFormated("AT+COPS=0\r\n");
-        waitFinalResp();
-*/
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
         bool ok = false;
@@ -900,11 +896,31 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
             waitFinalResp();
 #endif // defined(MDM_DEBUG)
 #ifdef UBLOX_SARA_R4
-            // Get current context settings
+            // Get default context settings
             sendFormated("AT+CGDCONT?\r\n");
             CGDCONTparam ctx = {};
             if (waitFinalResp(_cbCGDCONT, &ctx) != RESP_OK) {
                 goto failure;
+            }
+            // TODO: SARA-R410-01B modules come preconfigured with AT&T's APN ("broadband"), which may
+            // cause network registration issues with MVNO providers and third party SIM cards. As a
+            // workaround the code below sets a blank APN if it detects that the current context is
+            // configured to use the dual stack IPv4/IPv6 capability ("IPV4V6"), which is the case for
+            // the factory default settings. Ideally, setting of a default APN should be based on IMSI
+            if (strcmp(ctx.type, "IP") != 0 || strcmp(ctx.apn, apn ? apn : "") != 0) {
+                // Stop the network registration and update the context settings
+                sendFormated("AT+COPS=2\r\n");
+                if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
+                    goto failure;
+                }
+                sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
+                if (waitFinalResp() != RESP_OK) {
+                    goto failure;
+                }
+                sendFormated("AT+COPS=0\r\n");
+                if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
+                    goto failure;
+                }
             }
             // Set up the EPS network registration URC
             sendFormated("AT+CEREG=2\r\n");
@@ -1468,7 +1484,20 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
 }
 
 int MDMParser::_cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
-    return WAIT; // TODO
+    if (type == TYPE_PLUS || type == TYPE_UNKNOWN) {
+        buf = (const char*)memchr(buf, '+', len); // Skip leading new line characters
+        if (buf) {
+            int id;
+            CGDCONTparam p = {};
+            static_assert(sizeof(p.type) == 8 && sizeof(p.apn) == 32, "The format string below needs to be updated accordingly");
+            if (sscanf(buf, "+CGDCONT: %d,\"%7[^,],\"%31[^,],", &id, p.type, p.apn) == 3 && id == PDP_CONTEXT) {
+                p.type[strlen(p.type) - 1] = '\0'; // Trim trailing quote character
+                p.apn[strlen(p.apn) - 1] = '\0';
+                *param = p;
+            }
+        }
+    }
+    return WAIT;
 }
 
 int MDMParser::_cbCMIP(int type, const char* buf, int len, MDM_IP* ip)
