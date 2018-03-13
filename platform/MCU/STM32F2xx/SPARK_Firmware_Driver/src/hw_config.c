@@ -872,21 +872,6 @@ void Save_SystemFlags()
     HAL_enable_irq(state);
 }
 
-#if PLATFORM_ID == 88
-extra_platform_system_flags_t extra_system_flags;
-
-void Load_ExtraSystemFlags()
-{
-    const void* extra_flags_store = dct_read_app_data(DCT_EXTRA_SYSTEM_FLAGS_OFFSET);
-    memcpy(&extra_system_flags, extra_flags_store, sizeof(extra_platform_system_flags_t));
-}
-
-void Save_ExtraSystemFlags()
-{
-    dct_write_app_data(&extra_system_flags, DCT_EXTRA_SYSTEM_FLAGS_OFFSET, sizeof(extra_platform_system_flags_t));
-}
-#endif
-
 bool FACTORY_Flash_Reset(void)
 {
     bool success;

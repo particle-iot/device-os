@@ -135,15 +135,6 @@ void Load_SystemFlags(void);
 void Save_SystemFlags(void);
 extern platform_system_flags_t system_flags;
 
-#if PLATFORM_ID == 88
-#define EXTRA_SYSTEM_FLAG(x) (extra_system_flags.x)
-
-extern extra_platform_system_flags_t extra_system_flags;
-
-void Load_ExtraSystemFlags(void);
-void Save_ExtraSystemFlags(void);
-#endif
-
 bool FACTORY_Flash_Reset(void);
 void BACKUP_Flash_Reset(void);
 void OTA_Flash_Reset(void);

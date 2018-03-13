@@ -39,14 +39,6 @@ typedef struct __attribute__((packed)) platform_system_flags {
     uint16_t reserved[4];
 } platform_system_flags_t;
 
-#if PLATFORM_ID == 88
-typedef struct extra_platform_system_flags {
-    uint16_t wiced_application;
-    uint16_t arduino_upload;
-    uint16_t reserved[14];
-} extra_platform_system_flags_t;
-#endif
-
 STATIC_ASSERT(platform_system_flags_size_changed, sizeof(platform_system_flags_t) == 32);
 
 #ifdef	__cplusplus
