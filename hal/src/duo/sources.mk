@@ -52,18 +52,19 @@ CSRC += $(HAL_SRC_DUO_PATH_WICED)/wiced/RTOS/FreeRTOS/ver8.2.1/Source/portable/M
 endif
 
 
+HAL_DUO_INCLUDE_DIRS += platforms/$(PLATFORM_NET)
+HAL_DUO_INCLUDE_DIRS += libraries/btstack/port   \
+                libraries/btstack/src    \
+                libraries/btstack/src/ble  \
+                libraries/btstack/src/classic
+
 
 INCLUDE_DIRS += $(addprefix $(HAL_SRC_DUO_PATH_WICED)/,$(sort $(HAL_WICED_INCLUDE_DIRS)))
+INCLUDE_DIRS += $(addprefix $(HAL_SRC_DUO_PATH)/,$(sort $(HAL_DUO_INCLUDE_DIRS)))
 INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_DUO_PATH_WICED)/wiced/security,*.h))
 INCLUDE_DIRS += $(dir $(call rwildcard,$(HAL_SRC_DUO_PATH_WICED)/wiced/WWD,*.h))
 INCLUDE_DIRS += $(HAL_SRC_STM32F2XX_PATH)
 INCLUDE_DIRS += $(HAL_SRC_STM32_PATH)
-
-INCLUDE_DIRS += platforms/$(PLATFORM_NET)
-INCLUDE_DIRS += libraries/btstack/port   \
-                libraries/btstack/src    \
-                libraries/btstack/src/ble  \
-                libraries/btstack/src/classic
 
 CSRC += $(call target_files,$(HAL_SRC_DUO_PATH)/,*.c)
 CPPSRC += $(call target_files,$(HAL_SRC_DUO_PATH)/,*.cpp)
