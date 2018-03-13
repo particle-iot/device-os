@@ -96,7 +96,7 @@ TCPClient TCPServer::available()
 
     if((!Network.from(_nif).ready()) || (_sock == SOCKET_INVALID))
     {
-        _sock = SOCKET_INVALID;
+        stop();
         _client = *s_invalid_client;
         return _client;
     }
