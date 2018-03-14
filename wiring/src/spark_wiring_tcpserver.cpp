@@ -138,5 +138,5 @@ size_t TCPServer::write(uint8_t b)
 
 size_t TCPServer::write(const uint8_t *buffer, size_t size)
 {
-    return write(buffer, size, SOCKET_WAIT_FOREVER);
+    return write(buffer, size, SPARK_WIRING_TCPCLIENT_DEFAULT_SEND_TIMEOUT);
 }
