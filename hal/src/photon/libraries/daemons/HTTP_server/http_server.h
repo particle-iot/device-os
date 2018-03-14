@@ -127,6 +127,7 @@ extern "C" {
 #define HTTP_HEADER_444                   "HTTP/1.1 444"
 #define HTTP_HEADER_470                   "HTTP/1.1 470 Connection Authorization Required"
 #define HTTP_HEADER_500                   "HTTP/1.1 500 Internal Server Error"
+#define HTTP_HEADER_503                   "HTTP/1.1 503 Service Unavailable"
 #define HTTP_HEADER_504                   "HTTP/1.1 504 Not Able to Connect"
 #define HTTP_HEADER_CONTENT_LENGTH        "Content-Length: "
 #define HTTP_HEADER_CONTENT_TYPE          "Content-Type: "
@@ -136,6 +137,7 @@ extern "C" {
 #define HTTP_HEADER_KEEP_ALIVE            "Connection: Keep-Alive"
 #define HTTP_HEADER_XHR					  "Access-Control-Allow-Origin: *"
 #define HTTP_HEADER_CLOSE                 "Connection: close"
+#define HTTP_HEADER_RETRY_AFTER_1_SECOND  "Retry-After: 1"
 #define NO_CACHE_HEADER                   "Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0\r\n"\
                                           "Pragma: no-cache"
 #define CRLF                              "\r\n"
@@ -185,6 +187,7 @@ typedef enum
     HTTP_444_TYPE,
     HTTP_470_TYPE,
     HTTP_500_TYPE,
+    HTTP_503_TYPE,
     HTTP_504_TYPE
 } http_status_codes_t;
 

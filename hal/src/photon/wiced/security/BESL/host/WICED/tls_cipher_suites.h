@@ -26,8 +26,7 @@ extern "C" {
 
     /* Default supported key schemes */
     #define USE_RSA_KEYSCHEME
-    // XXX: Does not work with PEAP/MSCHAPv2, disabling for now
-    // #define USE_DHE_RSA_KEYSCHEME
+    #define USE_DHE_RSA_KEYSCHEME
     #define USE_DH_RSA_KEYSCHEME
 
     // #define USE_ECDH_ECDSA_KEYSCHEME
@@ -56,8 +55,8 @@ extern "C" {
     #define X509_SUPPORT_MD5
     #define X509_SUPPORT_SHA1
     #define X509_SUPPORT_SHA256
-    // #define X509_SUPPORT_SHA384
-    // #define X509_SUPPORT_SHA512
+    #define X509_SUPPORT_SHA384
+    #define X509_SUPPORT_SHA512
 
 #endif /* #ifndef WICED_USE_CUSTOM_CIPHER_SUITES */
 
