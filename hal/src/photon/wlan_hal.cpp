@@ -744,6 +744,12 @@ wlan_result_t wlan_connect_finalize()
     {
         wiced_network_down(WICED_STA_INTERFACE);
     }
+
+    if (result == WICED_SUCCESS) {
+        /* Just in case set STA interface as default */
+        netif_set_default(wiced_ip_handle[WICED_STA_INTERFACE]);
+    }
+
     // DHCP happens synchronously
     HAL_NET_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
@@ -814,7 +820,7 @@ wlan_result_t wlan_deactivate()
 
 wlan_result_t wlan_disconnect_now()
 {
-    socket_close_all();
+    /* socket_close_all(); */
     wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
     HAL_NET_notify_disconnected();
