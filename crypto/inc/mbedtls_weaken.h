@@ -143,6 +143,14 @@
 // #pragma weak mbedtls_md_hmac_reset
 #pragma weak mbedtls_md_hmac
 
+#pragma weak mbedtls_sha512_init
+#pragma weak mbedtls_sha512_free
+#pragma weak mbedtls_sha512_clone
+#pragma weak mbedtls_sha512_starts
+#pragma weak mbedtls_sha512_update
+#pragma weak mbedtls_sha512_finish
+#pragma weak mbedtls_sha512_process
+
 #endif
 
 #endif // MBEDTLS_WEAKEN
