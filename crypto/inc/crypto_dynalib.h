@@ -43,6 +43,7 @@
 #include "mbedtls/md5.h"
 #include "mbedtls/des.h"
 #include "mbedtls/asn1.h"
+#include "mbedtls/sha512.h"
 #endif
 #endif
 #endif // USE_MBEDTLS
@@ -186,6 +187,14 @@ DYNALIB_FN(113, crypto, mbedtls_md, int(const mbedtls_md_info_t*, const unsigned
 //DYNALIB_FN(XXX, crypto, mbedtls_md_clone, int(mbedtls_md_context_t*, const mbedtls_md_context_t*))
 //DYNALIB_FN(XXX, crypto, mbedtls_md_finish, int(mbedtls_md_context_t*, unsigned char*))
 //DYNALIB_FN(XXX, crypto, mbedtls_md_hmac_reset, int(mbedtls_md_context_t*))
+
+DYNALIB_FN(114, crypto, mbedtls_sha512_init, void(mbedtls_sha512_context*))
+DYNALIB_FN(115, crypto, mbedtls_sha512_free, void(mbedtls_sha512_context*))
+DYNALIB_FN(116, crypto, mbedtls_sha512_clone, void(mbedtls_sha512_context*, const mbedtls_sha512_context*))
+DYNALIB_FN(117, crypto, mbedtls_sha512_starts, void(mbedtls_sha512_context*, int))
+DYNALIB_FN(118, crypto, mbedtls_sha512_update, void(mbedtls_sha512_context*, const unsigned char*, size_t))
+DYNALIB_FN(119, crypto, mbedtls_sha512_finish, void(mbedtls_sha512_context*, unsigned char output[64]))
+DYNALIB_FN(120, crypto, mbedtls_sha512_process, void(mbedtls_sha512_context*, const unsigned char data[128]))
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 DYNALIB_END(crypto)
 

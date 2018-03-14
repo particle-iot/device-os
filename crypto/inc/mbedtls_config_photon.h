@@ -2238,7 +2238,7 @@
  *
  * This module adds support for SHA-384 and SHA-512.
  */
-// #define MBEDTLS_SHA512_C
+#define MBEDTLS_SHA512_C
 
 /**
  * \def MBEDTLS_SSL_CACHE_C
