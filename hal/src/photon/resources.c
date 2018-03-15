@@ -2,16 +2,24 @@
 #include "wiced_resource.h"
 #include "wwd_resources.h"
 
+#if PLATFORM_ID == 88
+#include "wifi_nvram_image.h"
+#else
 #define WIFI_NVRAM_LTXP 1
 #include "wifi_nvram_image.h"
 #undef WIFI_NVRAM_LTXP
 #undef INCLUDED_NVRAM_IMAGE_H_
 #include "wifi_nvram_image.h"
+#endif
 
 
 static const resource_hnd_t wifi_nvram_resources[] = {
-		{ RESOURCE_IN_MEMORY, sizeof( wifi_main_nvram_image ), {.mem = { (const char *) wifi_main_nvram_image }}},
-		{ RESOURCE_IN_MEMORY, sizeof( wifi_ltxp_nvram_image ), {.mem = { (const char *) wifi_ltxp_nvram_image }}}
+#if PLATFORM_ID == 88
+        { RESOURCE_IN_MEMORY, sizeof( wifi_nvram_image ), {.mem = { (const char *) wifi_nvram_image }}}
+#else
+        { RESOURCE_IN_MEMORY, sizeof( wifi_main_nvram_image ), {.mem = { (const char *) wifi_main_nvram_image }}},
+        { RESOURCE_IN_MEMORY, sizeof( wifi_ltxp_nvram_image ), {.mem = { (const char *) wifi_ltxp_nvram_image }}}
+#endif
 };
 
 
@@ -41,6 +49,12 @@ const resource_hnd_t* wwd_nvram_image_resource(void)
  */
 int wwd_select_nvram_image_resource(uint8_t index, void* reserved)
 {
-    wifi_nvram_resource_index = index;
+#if PLATFORM_ID == 88
+    if (index < 1) {
+#else
+    if (index < 2) {
+#endif
+        wifi_nvram_resource_index = index;
+    }
     return 0;
 }

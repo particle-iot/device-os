@@ -69,6 +69,9 @@ INCLUDE_DIRS += $(HAL_SRC_STM32_PATH)
 CSRC += $(call target_files,$(HAL_SRC_DUO_PATH)/,*.c)
 CPPSRC += $(call target_files,$(HAL_SRC_DUO_PATH)/,*.cpp)
 
+CSRC += $(call target_files,$(HAL_SRC_DUO_PATH_WICED)/,*.c)
+CPPSRC += $(call target_files,$(HAL_SRC_DUO_PATH_WICED)/,*.cpp)
+
 CSRC += $(call target_files,$(HAL_SRC_STM32F2XX_PATH)/,*.c)
 CPPSRC += $(call target_files,$(HAL_SRC_STM32F2XX_PATH)/,*.cpp)
 

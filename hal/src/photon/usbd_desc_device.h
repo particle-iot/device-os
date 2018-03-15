@@ -37,6 +37,8 @@
 
 #if PLATFORM_ID==PLATFORM_P1
 #define USBD_PRODUCT_STRING             "P1"
+#elif PLATFORM_ID==PLATFORM_DUO_PRODUCTION
+#define USBD_PRODUCT_STRING             "Duo"
 #else
 #define USBD_PRODUCT_STRING             "Photon"
 #endif

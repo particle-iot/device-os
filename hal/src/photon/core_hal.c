@@ -130,6 +130,9 @@ void HAL_Core_Setup_finalize(void)
     isrs[IRQN_TO_IDX(SysTick_IRQn)] = (uint32_t)SysTickChain;
 
 #ifdef MODULAR_FIRMWARE
+#if PLATFORM_ID == 88
+    // Unnecessary
+#else
     const uint32_t app_backup = 0x800C000;
     // when unpacking from the combined image, we have the default application image stored
     // in the eeprom region.
@@ -143,6 +146,7 @@ void HAL_Core_Setup_finalize(void)
             }
             LED_SetRGBColor(RGB_COLOR_WHITE);
         }
+#endif
 #endif
 }
 

@@ -82,26 +82,10 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
             // the suffix ends at module_end, and the crc starts after module end
             target->crc = (module_info_crc_t*)module_end;
             target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
-#if PLATFORM_ID == 88
-            // Duo: disable the module dependency validation so that we can OTA update 
-            // system-part1 and system-part2 at the same time.
-            target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
-            if(bounds->store != MODULE_STORE_MAIN)
-            {
-                if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_SERIAL, bounds->start_address, module_length(target->info)))
-                    target->validity_result |= MODULE_VALIDATION_INTEGRITY;
-            }
-            else
-            {
-                if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
-                    target->validity_result |= MODULE_VALIDATION_INTEGRITY;
-            }
-#else
             if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL))
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
             if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
                 target->validity_result |= MODULE_VALIDATION_INTEGRITY;
-#endif
         }
         else
             target->info = NULL;

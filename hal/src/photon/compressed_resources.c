@@ -4,6 +4,24 @@
 #include <stddef.h>
 #include "debug.h"
 
+#if PLATFORM_ID == 88
+
+#include "spi_flash.h"
+#include "flash_mal.h"
+
+__attribute__((weak)) resource_result_t platform_read_external_resource( const resource_hnd_t* resource, uint32_t offset, uint32_t maxsize, uint32_t* size, void* buffer ) {
+
+	uint32_t address = EXTERNAL_FLASH_WIFI_FIRMWARE_ADDRESS + offset;
+
+	sFLASH_ReadBuffer(buffer, address, maxsize);
+
+	*size = maxsize;
+
+    return RESOURCE_SUCCESS;
+}
+
+#else
+	
 __attribute__((weak)) resource_result_t platform_read_external_resource( const resource_hnd_t* resource, uint32_t offset, uint32_t maxsize, uint32_t* size, void* buffer ) {
     static size_t in_pos = 0;
     static tinfl_decompressor* inflator = NULL;
@@ -59,3 +77,5 @@ cleanup:
     in_pos = 0;
     return res;
 }
+
+#endif

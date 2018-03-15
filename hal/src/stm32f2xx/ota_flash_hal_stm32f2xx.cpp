@@ -291,29 +291,10 @@ static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t module
     return result;
 }
 
-static void select_ota_bounds(uint32_t file_address, uint32_t file_length, module_bounds_t *bounds)
-{
-    if(file_address>HAL_OTA_FlashAddress() && file_address<(HAL_OTA_FlashAddress()+HAL_OTA_FlashLength())) // The image isn't stored from the start of the OTA region
-    {
-        bounds->start_address = file_address;
-        bounds->end_address = file_address + file_length;
-        bounds->maximum_size = file_length;
-        bounds->module_function = MODULE_FUNCTION_NONE;
-        bounds->module_index = 0;
-        bounds->store = MODULE_STORE_SCRATCHPAD;
-    }
-    else {
-        memcpy(bounds, &module_ota, sizeof(module_bounds_t)); // Default OTA bounds
-    }
-}
-
-int HAL_FLASH_OTA_Validate(uint32_t file_address, uint32_t file_length, hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
+int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
     hal_module_t module;
-    module_bounds_t bounds;
-    
-    select_ota_bounds(file_address, file_length, &bounds);
 
-    bool module_fetched = fetch_module(&module, &bounds, userDepsOptional, flags);
+    bool module_fetched = fetch_module(&module, &module_ota, userDepsOptional, flags);
 
     if (mod) {
         memcpy(mod, &module, sizeof(hal_module_t));
@@ -322,15 +303,12 @@ int HAL_FLASH_OTA_Validate(uint32_t file_address, uint32_t file_length, hal_modu
     return (int)!module_fetched;
 }
 
-hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length, hal_module_t* mod)
+hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 {
     hal_module_t module;
     hal_update_complete_t result = HAL_UPDATE_ERROR;
-    module_bounds_t bounds;
 
-    select_ota_bounds(file_address, file_length, &bounds);
-
-    bool module_fetched = !HAL_FLASH_OTA_Validate(file_address, file_length, &module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
+    bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
     DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
@@ -348,7 +326,7 @@ hal_update_complete_t HAL_FLASH_End(uint32_t file_address, uint32_t file_length,
 #else
             flash_device_t flash_device = FLASH_INTERNAL;
 #endif
-            if (FLASH_AddToNextAvailableModulesSlot(flash_device, bounds.start_address,
+            if (FLASH_AddToNextAvailableModulesSlot(flash_device, module_ota.start_address,
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
                 (moduleLength + 4),//+4 to copy the CRC too
                 function,
