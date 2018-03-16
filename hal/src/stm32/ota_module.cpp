@@ -84,8 +84,20 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
             target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
             if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL))
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
-            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
-                target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+#if PLATFORM_ID == 88
+            if(bounds->store != MODULE_STORE_MAIN)
+            {
+                if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_SERIAL, bounds->start_address, module_length(target->info)))
+                    target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+            }
+            else
+            {
+#endif
+                if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
+                    target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+#if PLATFORM_ID == 88
+            }
+#endif
         }
         else
             target->info = NULL;
