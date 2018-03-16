@@ -230,10 +230,6 @@ private:
     volatile uint8_t WLAN_DHCP_PENDING;
     volatile uint8_t WLAN_CAN_SHUTDOWN;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-    volatile uint8_t WLAN_OTA_UPDATE_FINISHED;
-#endif
-
 #if PLATFORM_ID == 10 // Electron
     volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
 #else
@@ -249,7 +245,6 @@ private:
 protected:
 
     volatile uint8_t WLAN_SERIAL_CONFIG_DONE;
-    volatile uint8_t WLAN_SMART_CONFIG_STOP;
     virtual network_interface_t network_interface() override { return 0; }
     virtual void start_listening()=0;
 
@@ -299,9 +294,6 @@ protected:
         WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
         WLAN_SERIAL_CONFIG_DONE = 0;
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-        WLAN_OTA_UPDATE_FINISHED = 0;
-#endif
         bool wlanStarted = SPARK_WLAN_STARTED;
 
         cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
@@ -384,14 +376,6 @@ protected:
         system_notify_event(wifi_listen_end, millis()-start);
 
         WLAN_SMART_CONFIG_ACTIVE = 0;
-		
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-        if(WLAN_OTA_UPDATE_FINISHED)
-        {
-            return; // Do not try connecting to the AP if the above loop exits because of OTA updating finished.
-        }
-#endif
-
         if (has_credentials()) {
             connect();
         }
@@ -467,11 +451,7 @@ public:
 
     bool listening() override
     {
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-        return ((WLAN_SMART_CONFIG_START || WLAN_SMART_CONFIG_ACTIVE) && (!WLAN_OTA_UPDATE_FINISHED));
-#else
         return (WLAN_SMART_CONFIG_START || WLAN_SMART_CONFIG_ACTIVE);
-#endif
     }
 
     void set_listen_timeout(uint16_t timeout) override {
@@ -731,13 +711,6 @@ public:
     {
         WLAN_CAN_SHUTDOWN = 0;
     }
-	
-#if PLATFORM_ID == PLATFORM_DUO_PRODUCTION
-    void notify_ota_update_completed()
-    {
-        WLAN_OTA_UPDATE_FINISHED = 1;
-    }
-#endif
 
 
     void listen_loop() override

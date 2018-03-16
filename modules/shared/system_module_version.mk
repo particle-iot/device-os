@@ -7,7 +7,7 @@ SYSTEM_PART3_MODULE_VERSION ?= 300
 RELEASE_080_MODULE_VERSION_BASE ?= 300
 RELEASE_070_RC5_MODULE_VERSION ?= 204
 
-ifneq (,$(filter $(PLATFORM_ID),6 8))
+ifneq (,$(filter $(PLATFORM_ID),6 8 88))
 ifeq ($(shell test $(SYSTEM_PART2_MODULE_VERSION) -ge $(RELEASE_080_MODULE_VERSION_BASE); echo $$?),0)
 # If this is >= 0.8.x release, Photon and P1 system-part1
 # needs to have a dependency on system-part2 of at least 0.7.0-rc.4
