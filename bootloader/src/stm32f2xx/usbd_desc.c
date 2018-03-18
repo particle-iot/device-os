@@ -36,15 +36,6 @@
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
 
-#if PLATFORM_ID==PLATFORM_DUO_PRODUCTION
-
-#define USBD_LANGID_STRING              0x0409  //U.S. English
-#define USBD_MANUFACTURER_STRING        "RedBear"
-
-#define USBD_PRODUCT_NAME               "Duo"
-
-#else
-	
 #define USBD_LANGID_STRING              0x0409  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Particle"
 
@@ -52,12 +43,11 @@
 # define USBD_PRODUCT_NAME              "Electron"
 #elif PLATFORM_ID == 8
 # define USBD_PRODUCT_NAME              "P1"
+#elif PLATFORM_ID == 88
+#define USBD_PRODUCT_NAME               "Duo"
 #else
 # define USBD_PRODUCT_NAME              "Photon"
 #endif
-
-#endif
-
 #define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"
 #define USBD_CONFIGURATION_STRING       "DFU"
 #define USBD_INTERFACE_STRING           "DFU"
