@@ -199,32 +199,6 @@ filesize=`stat -f%z $1`
 endif
 endif
 
-# Should manually copy the wiring/inc/avr/pgmspace.h and hal/src/stm32/bits/gthr_default.h
-ifdef EXPORT_ARDUINO
-define extract_compile_flags_and_header_files
-	$(VERBOSE)if [ "$1" == "application.o" ]; then \
-	$(VERBOSE)echo DEFINES:  $(sort $(filter -D%, $2)) && \
-	$(VERBOSE)echo INCLUDES: $(sort $(filter -I%, $2)) && \
-	$(VERBOSE)echo CFLAGS:   $(filter-out -D% -I%, $2) && \
-	$(VERBOSE)echo CPPFLAGS: $3 && \
-	$(VERBOSE)$(MKDIR) $(dir $@)firmware/user && \
-	$(VERBOSE)cp --parents $(foreach path, $(patsubst -I%,%,$(sort $(filter -I%, $2))), $(if $(wildcard $(path)/*.h),$(addsuffix /*.h,$(path)),)) $(dir $@)firmware/user; \
-	fi
-endef
-define extract_link_flags
-	$(VERBOSE)if [ "$1" == "user-part.elf" ]; then \
-	$(VERBOSE)echo CFLAGS:  $(filter-out -D% -I%, $2) && \
-	$(VERBOSE)echo PATH:    $(filter -L%, $3) && \
-	$(VERBOSE)echo LDFLAGS: $(filter-out -L%, $3); \
-	fi
-endef
-else
-define extract_compile_flags_and_header_files
-endef
-define extract_link_flags
-endef
-endif
-
 # Create a bin file from ELF file
 %.bin : %.elf
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
@@ -247,7 +221,6 @@ $(TARGET_BASE).elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
 	$(call echo,'Invoking: ARM GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CCACHE) $(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
-	$(call extract_link_flags,$(notdir $@),$(CFLAGS),$(LDFLAGS))
 	$(call echo,)
 
 $(TARGET_BASE)$(EXECUTABLE_EXTENSION) : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
@@ -289,7 +262,6 @@ $(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.c
 # CPP compiler to build .o from .cpp in $(BUILD_DIR)
 # Note: Calls standard $(CC) - gcc will invoke g++ as appropriate
 $(BUILD_PATH)/%.o : $(SOURCE_PATH)/%.cpp
-	$(call extract_compile_flags_and_header_files,$(notdir $@),$(CFLAGS),$(CPPFLAGS))
 	$(build_CPP_file)
 
 define build_LIB_files
