@@ -23,18 +23,18 @@ test(sleep_0_device_wakes_from_deep_sleep_with_short_sleep_time)
 
         /**
          * Issue #1447 "WKP/A7 ignores pinMode after waking from deep sleep"
-         * A7/WKP pin must be jumpered to D6 because
+         * A7/WKP pin must be jumpered to D7 because
          * digitalWrite(A7) will be equal to digitalRead(A7) despite this issue.
          */
-        Serial.println("SETUP: Make sure to jumper A7/WKP pin to D6 pin.");
+        Serial.println("SETUP: Make sure to jumper A7/WKP pin to D7 pin.");
         pinMode(A7, OUTPUT);
-        pinMode(D6, INPUT);
+        pinMode(D7, INPUT);
         digitalWrite(A7, HIGH);
         delay(1);
-        assertEqual((int)digitalRead(D6), (int)HIGH);
+        assertEqual((int)digitalRead(D7), (int)HIGH);
         digitalWrite(A7, LOW);
         delay(1);
-        assertEqual((int)digitalRead(D6), (int)LOW);
+        assertEqual((int)digitalRead(D7), (int)LOW);
         // Issue #1447
     } else {
         Serial.println("Publishing 10 messages, see them at 'particle subscribe mine'");
