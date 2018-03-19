@@ -45,8 +45,7 @@
 #include "spark_wiring_cloud.h"
 #include "system_threading.h"
 #if PLATFORM_ID==88
-#include "hw_config.h"
-#include "spark_wiring_hciserial.h"
+#include "hci_usart_hal.h"
 #endif
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"

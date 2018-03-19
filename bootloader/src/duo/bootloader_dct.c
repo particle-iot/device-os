@@ -9,10 +9,10 @@
 #define DYNALIB_INDEX_SYSTEM_MODULE_PART1 2 // system_module_part1
 #define FUNC_INDEX_MODULE_SYSTEM_PART1_PRE_INIT 0 // module_system_part1_pre_init()
 
-#define DYNALIB_INDEX_SYSTEM_MODULE_PART2 21 // system_module_part2
+#define DYNALIB_INDEX_SYSTEM_MODULE_PART2 20 // system_module_part2
 #define FUNC_INDEX_MODULE_SYSTEM_PART2_PRE_INIT 0 // module_system_part2_pre_init()
 
-#define DYNALIB_INDEX_HAL_DCT 20 // hal_dct
+#define DYNALIB_INDEX_HAL_DCT 19 // hal_dct
 #define FUNC_INDEX_DCT_READ_APP_DATA 0 // dct_read_app_data()
 #define FUNC_INDEX_DCT_WRITE_APP_DATA 4 // dct_write_app_data()
 

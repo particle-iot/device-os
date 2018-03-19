@@ -103,7 +103,6 @@
 #define Wiring_IPv6 0
 #define Wiring_SPI1 1
 #define Wiring_Serial2 1
-#define Wiring_Serial6 1
 #define Wiring_USBSerial1 1
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
