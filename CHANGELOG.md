@@ -1,3 +1,50 @@
+## 0.8.0-rc.2
+
+### FEATURES
+
+- USB request handlers [#1444](https://github.com/particle-iot/firmware/pull/1444)
+- Out of heap system event and heap fragmentation detection [#1452](https://github.com/particle-iot/firmware/pull/1452)
+- Network and cloud diagnostics [#1424](https://github.com/particle-iot/firmware/pull/1424)
+- [Photon/P1] TCPClient: non-blocking, blocking, blocking with timeout writes support [#1485](https://github.com/particle-iot/firmware/pull/1485)
+- [Electron] adds UPSV handling to cellular_hal [#1480](https://github.com/particle-iot/firmware/pull/1480)
+
+### ENHANCEMENTS
+
+- Serialize access to the CRC peripheral (STM32F2xx) [#1465](https://github.com/particle-iot/firmware/pull/1465)
+- System.sleep() wake up reason [#1410](https://github.com/particle-iot/firmware/pull/1410)
+- System.sleep(): support for multiple wake up pins [#1405](https://github.com/particle-iot/firmware/pull/1405)
+- Disable WKP pin waking device up from `SLEEP_MODE_DEEP` [#1409](https://github.com/particle-iot/firmware/pull/1409)
+- [Photon/P1] Increase maximum supported number of simultaneously active TCP connections [#1350](https://github.com/particle-iot/firmware/pull/1350)
+- [Photon/P1] WiFi.dnsServerIP()/WiFi.dhcpServerIP() support [#1386](https://github.com/particle-iot/firmware/pull/1386)
+- Generalize FuelGauge to also use alternative I2C interfaces. [#1443](https://github.com/particle-iot/firmware/pull/1443)
+- Firmware update and access to internal flash via USB requests [#1456](https://github.com/particle-iot/firmware/pull/1456)
+- Added docs on local build setup [#1374](https://github.com/particle-iot/firmware/pull/1374)
+- Use 'using std::**' instead of define * std::* [#1258](https://github.com/particle-iot/firmware/pull/1258)
+- Only remake $(TARGET_BASE).elf el al. if necessary [#1223](https://github.com/particle-iot/firmware/pull/1223)
+
+### BUGFIXES
+
+- [Electron] Fix heap bounds build for system part1 [#1478](https://github.com/particle-iot/firmware/pull/1478)
+- [Electron] Guard cellular_command() with a global lock [#1415](https://github.com/particle-iot/firmware/pull/1415)
+- [Electron] Fix caching of the description CRCs in the backup RAM [#1413](https://github.com/particle-iot/firmware/pull/1413)
+- [Electron] connect_cancel() fix [#1464](https://github.com/particle-iot/firmware/pull/1464)
+- [Electron] DCD fixes [#1454](https://github.com/particle-iot/firmware/pull/1454)
+- [Electron] moves some newlib functions into part1 [#1471](https://github.com/particle-iot/firmware/pull/1471)
+- [Core] Fixes I2C slave mode [#1309](https://github.com/particle-iot/firmware/pull/1309)
+- [Virtual] Fixes virtual device running with UDP protocol [#1462](https://github.com/particle-iot/firmware/pull/1462)
+- Fix usage of an incorrect prerequisite name in program-* targets [#1463](https://github.com/particle-iot/firmware/pull/1463)
+- Fixed shadowing of write(const unint_8_t*, sizte_t) in USBKeyboard [#1372](https://github.com/particle-iot/firmware/pull/1372)
+
+### INTERNAL
+
+- Fixes some 0.8.0-rc.2 tests [#1476](https://github.com/particle-iot/firmware/pull/1476)
+- fixes the unit test build [#1474](https://github.com/particle-iot/firmware/pull/1474)
+- IS_CLAIMED request fixes [#1472](https://github.com/particle-iot/firmware/pull/1472)
+- Documents low level USB request completion notifications [#1475](https://github.com/particle-iot/firmware/pull/1475)
+- [Electron] Flash size optimizations [#1469](https://github.com/particle-iot/firmware/pull/1469)
+- Minor refactoring of the USB protocol implementation [#1473](https://github.com/particle-iot/firmware/pull/1473)
+
+
 ## 0.7.0-rc.7
 
 ### BUGFIX

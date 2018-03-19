@@ -43,8 +43,12 @@
 | 100 | 203 | 0.7.0-rc.4 |         (Core, Photon, P1, Electron) |
 | 101 | 204 | 0.7.0-rc.5 |         (Core, Photon, P1, Electron) |
 | 101 | 205 | 0.7.0-rc.6 |         (Core, Photon, P1, Electron) |
-| 101 | 300 | 0.8.0-rc.1 |         (Photon, P1, Electron) |
+| 101 | 206 | 0.7.0-rc.7 |         (Core, Photon, P1, Electron) |
+| 101 (200) | 300 | 0.8.0-rc.1 |         (Photon, P1, Electron) |
+| 101 | 300 | 0.8.0-rc.2 |         (Photon, P1, Electron) |
 
+For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader 
+in the 0.8.x line should be v201.  
 
 
 To find out the release version of system firmware currently installed, in listening mode,
