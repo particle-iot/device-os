@@ -33,9 +33,6 @@
 #include "system_cloud_internal.h"
 #include "system_network.h"
 #include "system_ymodem.h"
-#if (PLATFORM_ID==88) 
-#include "hw_config.h"
-#endif
 #include "system_task.h"
 #include "module_info.h"
 #include "spark_protocol_functions.h"
@@ -227,7 +224,6 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
             file.file_length = HAL_OTA_FlashLength();
         }
     }
-	
     int result = 0;
     if (flags & 1) {
         // only check address
