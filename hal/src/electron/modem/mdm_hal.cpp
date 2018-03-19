@@ -60,7 +60,7 @@ std::recursive_mutex mdm_mutex;
 #define PDP_CONTEXT 1
 // Enable hex mode for socket commands. SARA-R410M-01B has a bug which causes truncation of
 // data read from a socket if the data contains a null byte
-#define SOCKET_HEX_MODE
+// #define SOCKET_HEX_MODE
 #else
 #define RESET_N_LOW_TIME 100
 #endif // !defined(UBLOX_SARA_R4)
@@ -1632,11 +1632,15 @@ MDM_IP MDMParser::gethostbyname(const char* host)
     if (sscanf(host, IPSTR, &a,&b,&c,&d) == 4)
         ip = IPADR(a,b,c,d);
     else {
+        // FIXME
+        ip = IPADR(34, 203, 200, 250); // UDP
+/*
         LOCK();
         sendFormated("AT+UDNSRN=0,\"%s\"\r\n", host);
         if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, 30*1000))
             ip = NOIP;
         UNLOCK();
+*/
     }
     return ip;
 }
