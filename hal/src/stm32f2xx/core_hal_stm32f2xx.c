@@ -333,6 +333,8 @@ void HAL_Core_Config(void)
 
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_BKPSRAM, ENABLE);
 
+    /* Disable WKP pin */
+    PWR_WakeUpPinCmd(DISABLE);
 
     //Wiring pins default to inputs
 #if !defined(USE_SWD_JTAG) && !defined(USE_SWD)
