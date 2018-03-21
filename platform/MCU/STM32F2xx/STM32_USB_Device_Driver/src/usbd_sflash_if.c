@@ -31,16 +31,16 @@ uint16_t sFLASH_If_CheckAdd(uint32_t Add);
 /* Private variables ---------------------------------------------------------*/
 DFU_MAL_Prop_TypeDef DFU_sFlash_cb =
 {
-    sFLASH_IF_STRING,
-    sFLASH_If_Init,
-    sFLASH_If_DeInit,
-    sFLASH_If_Erase,
-    sFLASH_If_Write,
-    sFLASH_If_Read,
-    sFLASH_If_Verify,
-    sFLASH_If_CheckAdd,
-    0, /* Erase Time in ms */
-    0  /* Programming Time in ms */
+        sFLASH_IF_STRING,
+        sFLASH_If_Init,
+        sFLASH_If_DeInit,
+        sFLASH_If_Erase,
+        sFLASH_If_Write,
+        sFLASH_If_Read,
+        sFLASH_If_Verify,
+        sFLASH_If_CheckAdd,
+        0, /* Erase Time in ms */
+        0  /* Programming Time in ms */
 };
 
 /* Private functions ---------------------------------------------------------*/

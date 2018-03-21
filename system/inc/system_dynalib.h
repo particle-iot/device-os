@@ -91,27 +91,20 @@ DYNALIB_FN(BASE_IDX + 8, system, system_format_diag_data, int(const uint16_t*, s
 #if PLATFORM_ID == 88
 DYNALIB_FN(BASE_IDX + 9, system, ble_setup_set_state, void(spark::feature::State, void*))
 DYNALIB_FN(BASE_IDX + 10, system, ble_setup_get_state, spark::feature::State(void*))
-
-// Control requests
-DYNALIB_FN(BASE_IDX + 11, system, system_ctrl_set_app_request_handler, int(ctrl_request_handler_fn, void*))
-DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
-DYNALIB_FN(BASE_IDX + 13, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
-DYNALIB_FN(BASE_IDX + 14, system, system_ctrl_set_result, void(ctrl_request*, int, ctrl_completion_handler_fn, void*, void*))
-
-DYNALIB_FN(BASE_IDX + 15, system, system_pool_alloc, void*(size_t, void*))
-DYNALIB_FN(BASE_IDX + 16, system, system_pool_free, void(void*, void*))
-DYNALIB_FN(BASE_IDX + 17, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
+#define BASE_IDX2 11
 #else
-// Control requests
-DYNALIB_FN(BASE_IDX + 9, system, system_ctrl_set_app_request_handler, int(ctrl_request_handler_fn, void*))
-DYNALIB_FN(BASE_IDX + 10, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
-DYNALIB_FN(BASE_IDX + 11, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
-DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_set_result, void(ctrl_request*, int, ctrl_completion_handler_fn, void*, void*))
+#define BASE_IDX2 9	
+#endif // PLATFORM_ID == 88
 
-DYNALIB_FN(BASE_IDX + 13, system, system_pool_alloc, void*(size_t, void*))
-DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
-DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
-#endif
+// Control requests
+DYNALIB_FN(BASE_IDX2 + 0, system, system_ctrl_set_app_request_handler, int(ctrl_request_handler_fn, void*))
+DYNALIB_FN(BASE_IDX2 + 1, system, system_ctrl_alloc_reply_data, int(ctrl_request*, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 2, system, system_ctrl_free_request_data, void(ctrl_request*, void*))
+DYNALIB_FN(BASE_IDX2 + 3, system, system_ctrl_set_result, void(ctrl_request*, int, ctrl_completion_handler_fn, void*, void*))
+
+DYNALIB_FN(BASE_IDX2 + 4, system, system_pool_alloc, void*(size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 5, system, system_pool_free, void(void*, void*))
+DYNALIB_FN(BASE_IDX2 + 6, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
 
 DYNALIB_END(system)
 

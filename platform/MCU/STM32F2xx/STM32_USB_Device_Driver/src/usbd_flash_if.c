@@ -47,7 +47,7 @@ uint16_t FLASH_If_CheckAdd(uint32_t Add);
 
 /* Private variables ---------------------------------------------------------*/
 DFU_MAL_Prop_TypeDef DFU_Flash_cb =
-{
+  {
     FLASH_IF_STRING,
     FLASH_If_Init,
     FLASH_If_DeInit,
@@ -58,7 +58,7 @@ DFU_MAL_Prop_TypeDef DFU_Flash_cb =
     FLASH_If_CheckAdd,
     0, /* Erase Time in ms */
     0  /* Programming Time in ms */
-};
+  };
 
 /* Private functions ---------------------------------------------------------*/
 
