@@ -795,34 +795,6 @@ bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint
     return false;
 }
 
-bool FLASH_InvalidCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
-{
-    if(flashDeviceID == FLASH_INTERNAL && length > 0)
-    {
-        FLASH_Unlock();
-
-        FLASH_ProgramWord(startAddress + length, 0);
-
-        FLASH_Lock();
-
-        return true;
-    }
-    else if(flashDeviceID == FLASH_SERIAL && length > 0)
-    {
-#ifdef USE_SERIAL_FLASH
-        /* Initialize SPI Flash */
-        sFLASH_Init();
-
-        uint8_t serialFlashData[4] = {0x00};
-        sFLASH_WriteBuffer(serialFlashData, startAddress + length, 4);
-
-        return true;
-#endif
-    }
-
-    return false;
-}
-
 void FLASH_ClearFlags(void)
 {
     /* Clear All pending flags */
