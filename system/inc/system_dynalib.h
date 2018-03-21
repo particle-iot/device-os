@@ -91,9 +91,9 @@ DYNALIB_FN(BASE_IDX + 8, system, system_format_diag_data, int(const uint16_t*, s
 #if PLATFORM_ID == 88
 DYNALIB_FN(BASE_IDX + 9, system, ble_setup_set_state, void(spark::feature::State, void*))
 DYNALIB_FN(BASE_IDX + 10, system, ble_setup_get_state, spark::feature::State(void*))
-#define BASE_IDX2 11
+#define BASE_IDX2 (BASE_IDX + 11)
 #else
-#define BASE_IDX2 9	
+#define BASE_IDX2 (BASE_IDX + 9)	
 #endif // PLATFORM_ID == 88
 
 // Control requests
