@@ -6,4 +6,8 @@ WIFI_MODULE_WICED_LIB_FILES = $(HAL_LIB_COREV2)/resources.a $(HAL_LIB_DIR)/src/p
 # WIFI_MODULE_WICED_LIB_FILES += $(HAL_LIB_COREV2)/Lib_base64.a
 # endif
 LINKER_DEPS += $(WIFI_MODULE_WICED_LIB_FILES)
+
+CPPSRC += $(call target_files,$(PROJECT_ROOT)/modules/photon/system-part1/src,*.cpp)
+CSRC += $(call target_files,$(PROJECT_ROOT)/modules/photon/system-part1/src,*.c)
+
 include $(SHARED_MODULAR)/part1_build.mk
