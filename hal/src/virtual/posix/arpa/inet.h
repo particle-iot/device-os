@@ -15,15 +15,23 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SOCKET_HAL_H
-#define SOCKET_HAL_H
+/**
+ * @file
+ * @brief
+ *  This is a POSIX wrapper for inet_hal
+ */
 
-#include "hal_platform.h"
+#ifndef ARPA_INET_H
+#define ARPA_INET_H
 
-#if defined(HAL_USE_SOCKET_HAL_COMPAT) && HAL_USE_SOCKET_HAL_COMPAT == 1
-#include "socket_hal_compat.h"
-#else
-#include "socket_hal_posix.h"
-#endif /* HAL_USE_SOCKET_HAL_COMPAT */
+#include "inet_hal.h"
 
-#endif /* SOCKET_HAL_H */
+#define inet_addr(cp) inet_inet_addr(cp)
+#define inet_aton(cp, pin) inet_inet_aton(cp, pin)
+#define inet_network(cp) inet_inet_network(cp)
+#define inet_ntoa(in) inet_inet_ntoa(in)
+#define inet_ntoa_r(in, buf, size) inet_inet_ntoa_r(in, buf, size)
+#define inet_ntop(af, src, dst, size) inet_inet_ntop(af, src, dst, size)
+#define inet_pton(af, src, dst) inet_inet_pton(af, src, dst)
+
+#endif /* ARPA_INET_H */

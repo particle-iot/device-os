@@ -64,6 +64,13 @@ extern "C" {
 #define HAL_PLATFORM_DCT 0
 #endif
 
+#ifndef HAL_USE_SOCKET_HAL_COMPAT
+#define HAL_USE_SOCKET_HAL_COMPAT (1)
+#endif /* HAL_USE_SOCKET_HAL_COMPAT */
+
+#ifndef HAL_USE_INET_HAL_COMPAT
+#define HAL_USE_INET_HAL_COMPAT (1)
+#endif /* HAL_USE_INET_HAL_COMPAT */
 
 #ifdef	__cplusplus
 }

@@ -15,15 +15,38 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SOCKET_HAL_H
-#define SOCKET_HAL_H
+/**
+ * @file
+ * @brief
+ *  This file defines the implementation details for POSIX-compatible netdb_hal for virtual platform.
+ */
 
-#include "hal_platform.h"
+#ifndef NETDB_HAL_IMPL_H
+#define NETDB_HAL_IMPL_H
 
-#if defined(HAL_USE_SOCKET_HAL_COMPAT) && HAL_USE_SOCKET_HAL_COMPAT == 1
-#include "socket_hal_compat.h"
-#else
-#include "socket_hal_posix.h"
-#endif /* HAL_USE_SOCKET_HAL_COMPAT */
+#include <lwip/netdb.h>
 
-#endif /* SOCKET_HAL_H */
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+/**
+ * @addtogroup netdb_hal_impl
+ *
+ * @brief
+ *   This module provides implementation details for POSIX-compatible netdb_hal for virtual platform.
+ *
+ * @{
+ *
+ */
+
+/**
+ * @}
+ *
+ */
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* NETDB_HAL_IMPL_H */
