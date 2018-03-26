@@ -97,7 +97,7 @@ _(Note!  This FAQ isn't meant to be legal advice, if you're unsure, please consu
 
 ### CONTRIBUTE
 
-Want to contribute to the Particle firmware project? Follow [this link](http://spark.github.io/#contributions) to find out how.
+Want to contribute to the Particle firmware project? Follow [this link](CONTRIBUTING.md) to find out how.
 
 ### CONNECT
 
