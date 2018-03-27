@@ -35,7 +35,7 @@ script:
 env:
   matrix:
     - BUILD_PLATFORM=unit-test gcc
-    - BUILD_PLATFORM=photon p1
+    - BUILD_PLATFORM=photon p1 duo
     - BUILD_PLATFORM=core newhal
     - BUILD_PLATFORM=electron
 
