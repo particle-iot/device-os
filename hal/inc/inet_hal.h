@@ -22,8 +22,10 @@
 
 #if defined(HAL_USE_INET_HAL_COMPAT) && HAL_USE_INET_HAL_COMPAT == 1
 #include "inet_hal_compat.h"
-#else
+#endif /* defined(HAL_USE_INET_HAL_COMPAT) && HAL_USE_INET_HAL_COMPAT == 1 */
+
+#if defined(HAL_USE_INET_HAL_POSIX) && HAL_USE_INET_HAL_POSIX == 1
 #include "inet_hal_posix.h"
-#endif /* HAL_USE_INET_HAL_COMPAT */
+#endif /* defined(HAL_USE_INET_HAL_POSIX) && HAL_USE_INET_HAL_POSIX == 1 */
 
 #endif /* INET_HAL_H */

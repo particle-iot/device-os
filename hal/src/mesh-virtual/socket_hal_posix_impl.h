@@ -18,20 +18,35 @@
 /**
  * @file
  * @brief
- *  This is a POSIX wrapper for inet_hal
+ *  This file defines the implementation details for POSIX-compatible socket_hal for mesh-virtual platform.
  */
 
-#ifndef ARPA_INET_H
-#define ARPA_INET_H
+#ifndef SOCKET_HAL_POSIX_IMPL_H
+#define SOCKET_HAL_POSIX_IMPL_H
 
-#include "inet_hal.h"
+#include <lwip/sockets.h>
 
-#define inet_addr(cp) inet_inet_addr(cp)
-#define inet_aton(cp, pin) inet_inet_aton(cp, pin)
-#define inet_network(cp) inet_inet_network(cp)
-#define inet_ntoa(in) inet_inet_ntoa(in)
-#define inet_ntoa_r(in, buf, size) inet_inet_ntoa_r(in, buf, size)
-#define inet_ntop(af, src, dst, size) inet_inet_ntop(af, src, dst, size)
-#define inet_pton(af, src, dst) inet_inet_pton(af, src, dst)
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-#endif /* ARPA_INET_H */
+/**
+ * @addtogroup socket_hal_posix_impl
+ *
+ * @brief
+ *   This module provides implementation details for POSIX-compatible socket_hal for mesh-virtual platform.
+ *
+ * @{
+ *
+ */
+
+/**
+ * @}
+ *
+ */
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* SOCKET_HAL_POSIX_IMPL_H */

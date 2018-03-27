@@ -18,10 +18,10 @@
 /**
  * @file
  * @brief
- *  This file implements POSIX-compatible socket_hal for virtual platform.
+ *  This file implements POSIX-compatible socket_hal for mesh-virtual platform.
  */
 
-/* socket_hal_impl.h should get included from socket_hal.h automagically */
+/* socket_hal_posix_impl.h should get included from socket_hal.h automagically */
 #include "socket_hal.h"
 
 int sock_accept(int s, struct sockaddr* addr, socklen_t* addrlen) {

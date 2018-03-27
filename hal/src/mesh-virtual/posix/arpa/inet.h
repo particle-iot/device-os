@@ -18,35 +18,20 @@
 /**
  * @file
  * @brief
- *  This file defines the implementation details for POSIX-compatible netdb_hal for virtual platform.
+ *  This is a POSIX wrapper for inet_hal_posix
  */
 
-#ifndef NETDB_HAL_IMPL_H
-#define NETDB_HAL_IMPL_H
+#ifndef ARPA_INET_H
+#define ARPA_INET_H
 
-#include <lwip/netdb.h>
+#include "inet_hal.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+#define inet_addr(cp) inet_inet_addr(cp)
+#define inet_aton(cp, pin) inet_inet_aton(cp, pin)
+#define inet_network(cp) inet_inet_network(cp)
+#define inet_ntoa(in) inet_inet_ntoa(in)
+#define inet_ntoa_r(in, buf, size) inet_inet_ntoa_r(in, buf, size)
+#define inet_ntop(af, src, dst, size) inet_inet_ntop(af, src, dst, size)
+#define inet_pton(af, src, dst) inet_inet_pton(af, src, dst)
 
-/**
- * @addtogroup netdb_hal_impl
- *
- * @brief
- *   This module provides implementation details for POSIX-compatible netdb_hal for virtual platform.
- *
- * @{
- *
- */
-
-/**
- * @}
- *
- */
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif /* NETDB_HAL_IMPL_H */
+#endif /* ARPA_INET_H */

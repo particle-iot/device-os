@@ -18,10 +18,10 @@
 /**
  * @file
  * @brief
- *  This file implements POSIX-compatible inet_hal for virtual platform.
+ *  This file implements POSIX-compatible inet_hal for mesh-virtual platform.
  */
 
-/* inet_hal_impl.h should get included from inet_hal.h automagically */
+/* inet_hal_posix_impl.h should get included from inet_hal.h automagically */
 #include "inet_hal.h"
 #include <lwip/sockets.h>
 

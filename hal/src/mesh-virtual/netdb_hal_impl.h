@@ -18,23 +18,23 @@
 /**
  * @file
  * @brief
- *  This file defines the implementation details for POSIX-compatible inet_hal for virtual platform.
+ *  This file defines the implementation details for POSIX-compatible netdb_hal for mesh-virtual platform.
  */
 
-#ifndef INET_HAL_IMPL_H
-#define INET_HAL_IMPL_H
+#ifndef NETDB_HAL_IMPL_H
+#define NETDB_HAL_IMPL_H
 
-#include <lwip/inet.h>
+#include <lwip/netdb.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 /**
- * @addtogroup inet_hal_impl
+ * @addtogroup netdb_hal_impl
  *
  * @brief
- *   This module provides implementation details for POSIX-compatible inet_hal for virtual platform.
+ *   This module provides implementation details for POSIX-compatible netdb_hal for mesh-virtual platform.
  *
  * @{
  *
@@ -49,4 +49,4 @@ extern "C" {
 }
 #endif /* __cplusplus */
 
-#endif /* INET_HAL_IMPL_H */
+#endif /* NETDB_HAL_IMPL_H */

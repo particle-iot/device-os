@@ -24,7 +24,7 @@
 #ifndef SOCKET_HAL_POSIX_H
 #define SOCKET_HAL_POSIX_H
 
-#include "socket_hal_impl.h"
+#include "socket_hal_posix_impl.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -18,23 +18,23 @@
 /**
  * @file
  * @brief
- *  This file defines the implementation details for POSIX-compatible socket_hal for virtual platform.
+ *  This file defines the implementation details for POSIX-compatible inet_hal for mesh-virtual platform.
  */
 
-#ifndef SOCKET_HAL_IMPL_H
-#define SOCKET_HAL_IMPL_H
+#ifndef INET_HAL_POSIX_IMPL_H
+#define INET_HAL_POSIX_IMPL_H
 
-#include <lwip/sockets.h>
+#include <lwip/inet.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 /**
- * @addtogroup socket_hal_impl
+ * @addtogroup inet_hal_posix_impl
  *
  * @brief
- *   This module provides implementation details for POSIX-compatible socket_hal for virtual platform.
+ *   This module provides implementation details for POSIX-compatible inet_hal for mesh-virtual platform.
  *
  * @{
  *
@@ -49,4 +49,4 @@ extern "C" {
 }
 #endif /* __cplusplus */
 
-#endif /* SOCKET_HAL_IMPL_H */
+#endif /* INET_HAL_POSIX_IMPL_H */

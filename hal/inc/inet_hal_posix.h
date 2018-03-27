@@ -24,7 +24,7 @@
 #ifndef INET_HAL_POSIX_H
 #define INET_HAL_POSIX_H
 
-#include "inet_hal_impl.h"
+#include "inet_hal_posix_impl.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -18,7 +18,7 @@
 /**
  * @file
  * @brief
- *  This is a POSIX wrapper for socket_hal
+ *  This is a POSIX wrapper for socket_hal_posix
  */
 
 #ifndef SYS_SOCKET_H

@@ -72,6 +72,14 @@ extern "C" {
 #define HAL_USE_INET_HAL_COMPAT (1)
 #endif /* HAL_USE_INET_HAL_COMPAT */
 
+#ifndef HAL_USE_SOCKET_HAL_POSIX
+#define HAL_USE_SOCKET_HAL_POSIX (0)
+#endif /* HAL_USE_SOCKET_HAL_POSIX */
+
+#ifndef HAL_USE_INET_HAL_POSIX
+#define HAL_USE_INET_HAL_POSIX (0)
+#endif /* HAL_USE_INET_HAL_POSIX */
+
 #ifdef	__cplusplus
 }
 #endif
