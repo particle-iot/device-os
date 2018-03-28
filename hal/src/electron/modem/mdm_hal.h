@@ -539,8 +539,10 @@ protected:
     static int _cbUACTIND(int type, const char* buf, int len, int* i);
     static int _cbUDOPN(int type, const char* buf, int len, char* mccmnc);
     static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
+#ifdef UBLOX_SARA_R4
     struct CGDCONTparam { char type[8]; char apn[32]; };
     static int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param);
+#endif
     // sockets
     static int _cbCMIP(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUPSND(int type, const char* buf, int len, int* act);

@@ -41,6 +41,10 @@
 #include "net_hal.h"
 #include <limits>
 
+#ifdef UBLOX_SARA_R4
+#include "dns_client.h"
+#endif
+
 std::recursive_mutex mdm_mutex;
 
 /* Private typedef ----------------------------------------------------------*/
@@ -1483,6 +1487,7 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
     return WAIT;
 }
 
+#ifdef UBLOX_SARA_R4
 int MDMParser::_cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
     if (type == TYPE_PLUS || type == TYPE_UNKNOWN) {
         buf = (const char*)memchr(buf, '+', len); // Skip leading new line characters
@@ -1499,6 +1504,7 @@ int MDMParser::_cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* para
     }
     return WAIT;
 }
+#endif // defined(UBLOX_SARA_R4)
 
 int MDMParser::_cbCMIP(int type, const char* buf, int len, MDM_IP* ip)
 {
@@ -1627,22 +1633,27 @@ bool MDMParser::detach(void)
 
 MDM_IP MDMParser::gethostbyname(const char* host)
 {
+#ifndef UBLOX_SARA_R4
     MDM_IP ip = NOIP;
     int a,b,c,d;
     if (sscanf(host, IPSTR, &a,&b,&c,&d) == 4)
         ip = IPADR(a,b,c,d);
     else {
-        // FIXME
-        ip = IPADR(34, 203, 200, 250); // UDP
-/*
         LOCK();
         sendFormated("AT+UDNSRN=0,\"%s\"\r\n", host);
         if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, 30*1000))
             ip = NOIP;
         UNLOCK();
-*/
     }
     return ip;
+#else
+    // L0.0.00.00.05.05 firmware doesn't support +UDNSRN command, so we have to use our own DNS client
+    LOCK();
+    MDM_IP addr = NOIP;
+    particle::getHostByName(host, &addr);
+    UNLOCK();
+    return addr;
+#endif // defined(UBLOX_SARA_R4)
 }
 
 // ----------------------------------------------------------------
@@ -1722,6 +1733,8 @@ int MDMParser::_socketSocket(int socket, IpProtocol ipproto, int port)
         // sending port can only be set on 2G/3G modules
         if (port != -1) {
             sendFormated("AT+USOCR=17,%d\r\n", port);
+        } else {
+            sendFormated("AT+USOCR=17\r\n");
         }
     } else /*(ipproto == MDM_IPPROTO_TCP)*/ {
         sendFormated("AT+USOCR=6\r\n");
