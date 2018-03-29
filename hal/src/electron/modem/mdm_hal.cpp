@@ -72,7 +72,7 @@ std::recursive_mutex mdm_mutex;
 // Timeout for socket write operations
 #define SOCKET_WRITE_TIMEOUT 30000
 // Timeout for +COPS command
-#define COPS_TIMEOUT 60000
+#define COPS_TIMEOUT (3 * 60 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -735,7 +735,12 @@ bool MDMParser::init(DevStatus* status)
 {
     LOCK();
     MDM_INFO("\r\n[ Modem::init ] = = = = = = = = = = = = = = =");
-
+#ifdef UBLOX_SARA_R4
+    // TODO: Without this delay, some commands, such as +CIMI, may return a SIM failure error.
+    // This probably has something to do with the SIM initialization. Should we check the SIM
+    // status via +USIMSTAT in addition to +CPIN?
+    HAL_Delay_Milliseconds(250);
+#endif
     // Returns the product serial number, IMEI (International Mobile Equipment Identity)
     sendFormated("AT+CGSN\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.imei))
@@ -893,9 +898,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
         bool ok = false;
         if (!(ok = checkNetStatus())) {
 #ifdef MDM_DEBUG
-            // List all supported RATs
-            sendFormated("AT+URAT=?\r\n");
-            waitFinalResp();
+            // Show enabled RATs
             sendFormated("AT+URAT?\r\n");
             waitFinalResp();
 #endif // defined(MDM_DEBUG)
@@ -921,10 +924,11 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                 if (waitFinalResp() != RESP_OK) {
                     goto failure;
                 }
-                sendFormated("AT+COPS=0\r\n");
-                if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
-                    goto failure;
-                }
+            }
+            // Make sure automatic network registration is enabled
+            sendFormated("AT+COPS=0\r\n");
+            if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
+                goto failure;
             }
             // Set up the EPS network registration URC
             sendFormated("AT+CEREG=2\r\n");
@@ -1369,6 +1373,8 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
         if (waitFinalResp(_cbCGPADDR, &_ip) != RESP_OK) {
             goto failure;
         }
+        // FIXME: The existing code seems to use `_activated` and `_attached` flags kind of interchangeably
+        _activated = true;
 #else
         int a = 0;
         bool force = false; // If we are already connected, don't force a reconnect.
@@ -1462,7 +1468,7 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
         return _ip;
     }
 failure:
-    unlock();
+    UNLOCK();
     return NOIP;
 }
 
@@ -1589,6 +1595,7 @@ bool MDMParser::deactivate(void)
         }
         MDM_INFO("\r\n[ Modem::deactivate ] = = = = = = = = = = = = =");
         if (_ip != NOIP) {
+#ifndef UBLOX_SARA_R4
             /* Deactivates the PDP context assoc. with this profile
              * ensuring that no additional data is sent or received
              * by the device. */
@@ -1598,6 +1605,12 @@ bool MDMParser::deactivate(void)
                 ok = true;
                 _attached = false;
             }
+#else
+            // The default context cannot be deactivated
+            _ip = NOIP;
+            _attached = false;
+            ok = true;
+#endif // defined(UBLOX_SARA_R4)
         }
     }
     if (continue_cancel) cancel();
@@ -1616,6 +1629,7 @@ bool MDMParser::detach(void)
             resume(); // make sure we can use the AT parser
         }
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
+#ifndef UBLOX_SARA_R4
         // if (_ip != NOIP) {  // if we deactivate() first we won't have an IP
             /* Detach from the GPRS network and conserve network resources. */
             /* Any active PDP context will also be deactivated. */
@@ -1625,6 +1639,16 @@ bool MDMParser::detach(void)
                 _activated = false;
             }
         // }
+#else
+        // TODO: There's no GPRS service in LTE, although the GRPS detach command still disables
+        // the PSD connection. For now let's unregister from the network entirely, since the
+        // behavior of the detach command in relation to LTE is not documented
+        sendFormated("AT+COPS=2\r\n");
+        if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) == RESP_OK) {
+            _activated = false;
+            ok = true;
+        }
+#endif
     }
     if (continue_cancel) cancel();
     UNLOCK();
@@ -1647,7 +1671,8 @@ MDM_IP MDMParser::gethostbyname(const char* host)
     }
     return ip;
 #else
-    // L0.0.00.00.05.05 firmware doesn't support +UDNSRN command, so we have to use our own DNS client
+    // Current uBlox firmware (L0.0.00.00.05.05) doesn't support +UDNSRN command, so we have to
+    // use our own DNS client
     LOCK();
     MDM_IP addr = NOIP;
     particle::getHostByName(host, &addr);

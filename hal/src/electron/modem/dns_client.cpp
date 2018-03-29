@@ -322,6 +322,9 @@ int recvDnsResponse(UdpSocket* sock, DnsQuery* q) {
         answer.type = ntohs(answer.type);
         answer.len = ntohs(answer.len);
         if (answer.cls == DNS_RRCLASS_IN && answer.type == DNS_RRTYPE_A && answer.len == 4) {
+            if (packetSize - offs < 4) {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
             uint32_t addr = 0;
             memcpy(&addr, q->buf.get() + offs, 4);
             q->addr = ntohl(addr);
@@ -378,6 +381,7 @@ int sendDnsQuery(UdpSocket* sock, DnsQuery* q) {
 
 int getHostByName(const char* name, MDM_IP* addr) {
     SPARK_ASSERT(name && addr);
+    LOG_DEBUG(TRACE, "Resolving domain name: %s", name);
     if (!name[0]) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -420,7 +424,7 @@ int getHostByName(const char* name, MDM_IP* addr) {
                 return ret;
             }
             if (q.addr != NOIP) {
-                LOG_DEBUG(TRACE, "Received DNS response: " IPSTR, IPNUM(q.addr));
+                LOG_DEBUG(TRACE, "Received DNS response, address: " IPSTR, IPNUM(q.addr));
                 *addr = q.addr;
                 return 0; // OK
             }
