@@ -48,6 +48,10 @@
 #include "bytes2hexbuf.h"
 #include "system_event.h"
 
+#if HAL_USE_SOCKET_HAL_POSIX
+#include "netdb_hal.h"
+#endif /* HAL_USE_SOCKET_HAL_POSIX */
+
 #include <stdio.h>
 #include <stdint.h>
 
@@ -66,7 +70,11 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
 static int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
 static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size);
 
+#if !HAL_USE_SOCKET_HAL_POSIX
 static sock_handle_t sparkSocket = socket_handle_invalid();
+#else
+static int sparkSocket = -1;
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
 extern uint8_t feature_cloud_udp;
 
@@ -75,6 +83,13 @@ ProtocolFacade* sp;
 static uint32_t particle_key_errors = NO_ERROR;
 
 void (*random_seed_from_cloud_handler)(unsigned int) = nullptr;
+
+#if HAL_USE_SOCKET_HAL_POSIX
+#define socket_handle_valid(x) (x >= 0)
+/* FIXME */
+#define socket_active_status(x) SOCKET_STATUS_ACTIVE
+#define socket_handle_invalid(x) (-1)
+#endif /* HAL_USE_SOCKET_HAL_POSIX */
 
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
@@ -287,8 +302,13 @@ void Spark_Process_Events()
     }
 }
 
+#if !HAL_USE_SOCKET_HAL_POSIX
 void decode_endpoint(const sockaddr_t& socket_addr, IPAddress& ip, uint16_t& port)
+#else
+void decode_endpoint(const sockaddr& socket_addr, IPAddress& ip, uint16_t& port)
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 {
+#if !HAL_USE_SOCKET_HAL_POSIX
 	// assume IPv4 for now.
 	ip.set_ipv4(
 			socket_addr.sa_data[2],
@@ -297,10 +317,29 @@ void decode_endpoint(const sockaddr_t& socket_addr, IPAddress& ip, uint16_t& por
 			socket_addr.sa_data[5]
 	);
 	port = socket_addr.sa_data[0] << 8 | socket_addr.sa_data[1];
+#else
+    if (socket_addr.sa_family == AF_INET) {
+        sockaddr_in* in = (sockaddr_in*)(&socket_addr);
+        port = ntohs(in->sin_port);
+        ip = (uint8_t*)&(in->sin_addr.s_addr);
+    }
+#if Wiring_IPv6
+    else if (socket_addr.sa_family == AF_INET6) {
+        sockaddr_in6* in = (sockaddr_in6*)(&socket_addr);
+        port = ntohs(in->sin6_port);
+        /* FIXME: IPAddress does not support setting IPv6 addresses */
+    }
+#endif /* Wiring_IPv6 */
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 }
 
+#if !HAL_USE_SOCKET_HAL_POSIX
 void encode_endpoint(sockaddr_t& tSocketAddr, const IPAddress& ip_addr, const uint16_t port)
+#else
+void encode_endpoint(sockaddr& tSocketAddr, const IPAddress& ip_addr, const uint16_t port)
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 {
+#if !HAL_USE_SOCKET_HAL_POSIX
     // the destination port
     tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
     tSocketAddr.sa_data[1] = (port & 0x00FF);
@@ -309,6 +348,30 @@ void encode_endpoint(sockaddr_t& tSocketAddr, const IPAddress& ip_addr, const ui
     tSocketAddr.sa_data[3] = ip_addr[1];
     tSocketAddr.sa_data[4] = ip_addr[2];
     tSocketAddr.sa_data[5] = ip_addr[3];
+#else
+    if (ip_addr.version() == 4) {
+        sockaddr_in* in = (sockaddr_in*)(&tSocketAddr);
+        in->sin_family = AF_INET;
+        in->sin_port = htons(port);
+        in->sin_addr.s_addr = htonl(ip_addr.raw().ipv4);
+    }
+#if Wiring_IPv6
+    else if (ip_addr.version == 6) {
+        sockaddr_in6* in = (sockaddr_in6*)(&tSocketAddr);
+        in->sin6_family = AF_INET6;
+        in->sin6_port = htons(port);
+        uint32_t tmp;
+        tmp = htonl(ip_addr.raw().ipv6[0]);
+        memcpy(in->sin6_addr.s6_addr, &tmp, sizeof(tmp));
+        tmp = htonl(ip_addr.raw().ipv6[1]);
+        memcpy(in->sin6_addr.s6_addr + 4, &tmp, sizeof(tmp));
+        tmp = htonl(ip_addr.raw().ipv6[2]);
+        memcpy(in->sin6_addr.s6_addr + 8, &tmp, sizeof(tmp));
+        tmp = htonl(ip_addr.raw().ipv6[3]);
+        memcpy(in->sin6_addr.s6_addr + 12, &tmp, sizeof(tmp));
+    }
+#endif /* Wiring_IPv6 */
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 }
 
 volatile bool cloud_socket_aborted = false;
@@ -325,7 +388,11 @@ struct SessionConnection
 	/**
 	 * The previously used address.
 	 */
+#if !HAL_USE_SOCKET_HAL_POSIX
 	sockaddr_t address;
+#else
+    sockaddr address;
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
 	/**
 	 * The checksum of the server address data that was used
@@ -346,7 +413,11 @@ int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
         return -1;
     }
     DEBUG("send %d", buflen);
+#if !HAL_USE_SOCKET_HAL_POSIX
 	return socket_sendto(sparkSocket, buf, buflen, 0, &cloud_endpoint.address, sizeof(cloud_endpoint.address));
+#else
+    return sock_sendto(sparkSocket, buf, buflen, 0, (const sockaddr*)&cloud_endpoint.address, sizeof(cloud_endpoint.address));
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 }
 
 int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
@@ -358,18 +429,25 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
         return -1;
     }
 
+#if !HAL_USE_SOCKET_HAL_POSIX
     sockaddr_t addr;
     socklen_t size = sizeof(addr);
 	int received = socket_receivefrom(sparkSocket, buf, buflen, 0, &addr, &size);
+#else
+    sockaddr addr = {};
+    socklen_t size = sizeof(addr);
+    int received = sock_recvfrom(sparkSocket, buf, buflen, 0, &addr, &size);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
 	if (received!=0) {
 		DEBUG("received %d", received);
 	}
 	if (received>0)
     {
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && !HAL_USE_SOCKET_HAL_POSIX
     		// filter out by destination IP and port
     		// todo - IPv6 will need to change this
+            // XXX: with POSIX socket_hal, this is done by "connecting" the socket
     		if (memcmp(&addr.sa_data, &cloud_endpoint.address.sa_data, 6)) {
     			// ignore the packet if from a different source
     			received = 0;
@@ -402,8 +480,12 @@ int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
         return -1;
     }
 
+#if !HAL_USE_SOCKET_HAL_POSIX
     // send returns negative numbers on error
     int bytes_sent = socket_send(sparkSocket, buf, buflen);
+#else
+    int bytes_sent = sock_send(sparkSocket, buf, buflen, 0);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
     return bytes_sent;
 }
 
@@ -422,7 +504,11 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen, void* reserved)
     //no delay between successive socket_receive() calls for cloud
     //not connected or ota flash in process or on last data receipt
     {
+#if !HAL_USE_SOCKET_HAL_POSIX
         spark_receive_last_bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
+#else
+        spark_receive_last_bytes_received = sock_recv(sparkSocket, buf, buflen, 0);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
         //spark_receive_last_request_millis = millis();
     }
 
@@ -869,19 +955,28 @@ size_t system_interpolate(const char* var, size_t var_len, char* buf, size_t buf
 
 int Internet_Test(void)
 {
-    long testSocket;
+#if !HAL_USE_SOCKET_HAL_POSIX
+    sock_handle_t testSocket;
     sockaddr_t testSocketAddr;
     int testResult = 0;
     DEBUG("Internet test socket");
     testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53, NIF_DEFAULT);
     DEBUG("socketed testSocket=%d", testSocket);
-
+#else
+    int testSocket;
+    sockaddr testSocketAddr = {};
+    int testResult = 0;
+    DEBUG("Internet test socket");
+    testSocket = sock_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    DEBUG("socketed testSocket=%d", testSocket);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
     if (testSocket < 0)
     {
         return -1;
     }
 
+#if !HAL_USE_SOCKET_HAL_POSIX
     // the family is always AF_INET
     testSocketAddr.sa_family = AF_INET;
 
@@ -894,10 +989,22 @@ int Internet_Test(void)
     testSocketAddr.sa_data[3] = 8;
     testSocketAddr.sa_data[4] = 8;
     testSocketAddr.sa_data[5] = 8;
+#else
+    {
+        sockaddr_in* in = (sockaddr_in*)&testSocketAddr;
+        in->sin_family = AF_INET;
+        in->sin_port = htons(53);
+        inet_inet_pton(AF_INET, "8.8.8.8", &in->sin_addr.s_addr);
+    }
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
     uint32_t ot = HAL_NET_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
     DEBUG("Connect Attempt");
+#if !HAL_USE_SOCKET_HAL_POSIX
     testResult = socket_connect(testSocket, &testSocketAddr, sizeof (testSocketAddr));
+#else
+    testResult = sock_connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
     DEBUG("socket_connect()=%s", (testResult ? "fail":"success"));
     HAL_NET_SetNetWatchDog(ot);
 
@@ -908,7 +1015,11 @@ int Internet_Test(void)
     DEBUG("send()=%d", rc);
 #endif
     DEBUG("Close");
+#if !HAL_USE_SOCKET_HAL_POSIX
     socket_close(testSocket);
+#else
+    sock_close(testSocket);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
     //if connection fails, testResult returns -1
     return testResult;
@@ -1011,15 +1122,33 @@ int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddre
                 // DEBUG("PORT READ AS:%d", port);
             }
 
-            char buf[96];
+            char buf[96] = {};
             system_string_interpolate(server_addr.domain, buf, sizeof(buf), system_interpolate);
-            int attempts = 3;
             int rv = 0;
+#if !HAL_USE_SOCKET_HAL_POSIX
+            int attempts = 3;
             while (!ip_addr && attempts-->0)
             {
                 rv = inet_gethostbyname(buf, strnlen(buf, 96), &ip_addr.raw(), NIF_DEFAULT, NULL);
                 HAL_Delay_Milliseconds(1);
             }
+#else
+            {
+                addrinfo* res = nullptr;
+                rv = netdb_getaddrinfo(buf, nullptr, nullptr, &res);
+                if (rv == 0) {
+                    /* FIXME: for now only the first record is examined. no IPv6 as well */
+                    if (res != nullptr) {
+                        if (res->ai_family == AF_INET) {
+                            ip_addr = (uint8_t*)&(((sockaddr_in*)res->ai_addr)->sin_addr.s_addr);
+                        } else {
+                            rv = -1;
+                        }
+                        netdb_freeaddrinfo(res);
+                    }
+                }
+            }
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
             ip_address_error = rv;
             if (ip_address_error) {
                 ERROR("Cloud: unable to resolve IP for %s", buf);
@@ -1106,21 +1235,43 @@ int spark_cloud_socket_connect()
     ip_address_error = determine_connection_address(ip_addr, port, server_addr, udp);
     if (!ip_address_error)
     {
-#if PLATFORM_ID == 3
+#if PLATFORM_ID == 3 || PLATFORM_ID == 20
         // Use ephemeral port
         uint16_t bport = 0;
 #else
         uint16_t bport = port;
 #endif
+#if !HAL_USE_SOCKET_HAL_POSIX
         sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, bport, NIF_DEFAULT);
+#else
+        sparkSocket = sock_socket(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP);
+        if (sparkSocket >= 0) {
+            if (udp) {
+                /* FIXME: use sockaddr_in6 */
+                sockaddr_in in = {};
+                in.sin_family = AF_INET;
+                in.sin_port = htons(bport);
+                in.sin_addr.s_addr = INADDR_ANY;
+                if (sock_bind(sparkSocket, (const sockaddr*)&in, sizeof(in))) {
+                    LOG(TRACE, "Failed to bind cloud connection socket to port %u", port);
+                    sock_close(sparkSocket);
+                    sparkSocket = -1;
+                }
+            }
+        }
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
         DEBUG("socketed udp=%d, sparkSocket=%d, %d", udp, sparkSocket, socket_handle_valid(sparkSocket));
     }
 
 	if (socket_handle_valid(sparkSocket))
 	{
+#if !HAL_USE_SOCKET_HAL_POSIX
         sockaddr_t tSocketAddr;
         // the family is always AF_INET
         tSocketAddr.sa_family = AF_INET;
+#else
+        sockaddr tSocketAddr = {};
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
         encode_endpoint(tSocketAddr, ip_addr, port);
 		DEBUG("connection attempt to %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
@@ -1132,11 +1283,16 @@ int spark_cloud_socket_connect()
         		cloud_endpoint.server_address_checksum = compute_session_checksum(server_addr);
         		rv = 0;
         }
-        else
 #endif
-        {
+        if (!udp || HAL_USE_SOCKET_HAL_POSIX) {
 			uint32_t ot = HAL_NET_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
+#if !HAL_USE_SOCKET_HAL_POSIX
 			rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
+#else
+            /* NOTE: we also connect UDP socket here in order to automagically filter
+             * on source address and port */
+            rv = sock_connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 			if (rv)
 				ERROR("connection failed to %d.%d.%d.%d:%d, code=%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port, rv);
 			else
@@ -1163,7 +1319,11 @@ int spark_cloud_socket_disconnect(bool graceful)
 #endif
         if (graceful) {
             // Only TCP sockets can be half-closed
+#if !HAL_USE_SOCKET_HAL_POSIX
             retVal = socket_shutdown(sparkSocket, SHUT_WR);
+#else
+            retVal = sock_shutdown(sparkSocket, SHUT_WR);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
             if (!retVal) {
                 LOG_DEBUG(TRACE, "Half-closed cloud socket");
                 if (!spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr)) {
@@ -1179,12 +1339,20 @@ int spark_cloud_socket_disconnect(bool graceful)
             }
         }
         LOG_DEBUG(TRACE, "Close Attempt");
+#if !HAL_USE_SOCKET_HAL_POSIX
         retVal = socket_close(sparkSocket);
+#else
+        retVal = sock_close(sparkSocket);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
         LOG_DEBUG(TRACE, "socket_close()=%s", (retVal ? "fail":"success"));
         if (!graceful) {
             spark_protocol_command(sp, ProtocolCommands::TERMINATE, 0, nullptr);
         }
+#if !HAL_USE_SOCKET_HAL_POSIX
         sparkSocket = socket_handle_invalid();
+#else
+        sparkSocket = -1;
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
     }
     return retVal;
 }
@@ -1214,7 +1382,7 @@ void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramStrin
     if (freeParamString)
         delete paramString;
     // run the cloud return on the system thread again
-    SYSTEM_THREAD_CONTEXT_ASYNC(callback((const void*)result, SparkReturnType::INT));
+    SYSTEM_THREAD_CONTEXT_ASYNC(callback((const void*)long(result), SparkReturnType::INT));
     callback((const void*)long(result), SparkReturnType::INT);
 }
 
@@ -1237,7 +1405,7 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
 
 void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
-    if (sparkSocket==socket)
+    if ((sock_handle_t)sparkSocket==socket)
     {
         cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
     }
@@ -1417,7 +1585,22 @@ String bytes2hex(const uint8_t* buf, unsigned len)
 void Multicast_Presence_Announcement(void)
 {
 #ifndef SPARK_NO_CLOUD
-    long multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
+#if !HAL_USE_SOCKET_HAL_POSIX
+    sock_handle_t multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
+#else
+    int multicast_socket = sock_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (multicast_socket >= 0) {
+        sockaddr_in in = {};
+        in.sin_family = AF_INET;
+        in.sin_port = htons(5683);
+        in.sin_addr.s_addr = INADDR_ANY;
+        if (sock_bind(multicast_socket, (const sockaddr*)&in, sizeof(in))) {
+            LOG(TRACE, "Failed to bind socket");
+            sock_close(multicast_socket);
+            multicast_socket = -1;
+        }
+    }
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
     if (!socket_handle_valid(multicast_socket)) {
         DEBUG("socket_handle_valid() = %d", socket_handle_valid(multicast_socket));
         return;
@@ -1429,6 +1612,7 @@ void Multicast_Presence_Announcement(void)
     HAL_device_ID(id, id_length);
     spark_protocol_presence_announcement(sp, announcement, id);
 
+#if !HAL_USE_SOCKET_HAL_POSIX
     // create multicast address 224.0.1.187 port 5683
     sockaddr_t addr;
     addr.sa_family = AF_INET;
@@ -1438,15 +1622,28 @@ void Multicast_Presence_Announcement(void)
     addr.sa_data[3] = 0x00;
     addr.sa_data[4] = 0x01;
     addr.sa_data[5] = 0xbb; // IP LSB
-
+#else
+    sockaddr_in addr = {};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(5683);
+    inet_inet_pton(AF_INET, "224.0.1.187", &addr.sin_addr.s_addr);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
     //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
     //for (int i = 3; i > 0; i--)
     {
         DEBUG("socket_sendto()");
+#if !HAL_USE_SOCKET_HAL_POSIX
         socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof (sockaddr_t));
+#else
+        sock_sendto(multicast_socket, announcement, sizeof(announcement), 0, (const sockaddr*)&addr, sizeof(addr));
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
     }
     DEBUG("socket_close(multicast_socket)");
+#if !HAL_USE_SOCKET_HAL_POSIX
     socket_close(multicast_socket);
+#else
+    sock_close(multicast_socket);
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 #endif
 }
 

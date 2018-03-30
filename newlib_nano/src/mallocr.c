@@ -1,4 +1,4 @@
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=20
 /*
  * Copyright (c) 2012, 2013 ARM Ltd
  * All rights reserved.

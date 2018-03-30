@@ -76,6 +76,10 @@ ifeq ("$(PLATFORM)","xenon")
 PLATFORM_ID=14
 endif
 
+ifeq ("$(PLATFORM)","mesh-virtual")
+PLATFORM_ID=20
+endif
+
 ifeq ("$(PLATFORM)","newhal")
 PLATFORM_ID=60000
 endif
@@ -291,8 +295,19 @@ PLATFORM_DYNALIB_MODULES=$(PLATFORM)
 ARM_CPU=cortex-m4
 endif
 
-
-
+ifeq ("$(PLATFORM_ID)","20")
+PLATFORM=mesh-virtual
+PLATFORM_NAME=mesh-virtual
+PLATFORM_MCU=gcc
+PLATFORM_NET=mesh-virtual
+ARCH=gcc
+PRODUCT_DESC=Mesh Virtual Platform
+# explicitly exclude platform headers
+DEFAULT_PRODUCT_ID=20
+PLATFORM_THREADING=1
+PLATFORM_FREERTOS=posix
+PLATFORM_LWIP=posix
+endif
 
 ifeq ("$(PLATFORM_ID)","60000")
 PLATFORM=newhal

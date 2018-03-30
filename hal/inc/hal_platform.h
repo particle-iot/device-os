@@ -64,6 +64,14 @@ extern "C" {
 #define HAL_PLATFORM_DCT 0
 #endif
 
+#if PLATFORM_ID == 20
+#define HAL_USE_SOCKET_HAL_COMPAT (1)
+#define HAL_USE_SOCKET_HAL_POSIX (1)
+
+#define HAL_USE_INET_HAL_COMPAT (1)
+#define HAL_USE_INET_HAL_POSIX (1)
+#endif /* PLATFORM_ID == 20 */
+
 #ifndef HAL_USE_SOCKET_HAL_COMPAT
 #define HAL_USE_SOCKET_HAL_COMPAT (1)
 #endif /* HAL_USE_SOCKET_HAL_COMPAT */

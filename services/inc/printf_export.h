@@ -1,6 +1,6 @@
 #pragma once
 
-#if PLATFORM_ID != 3
+#if PLATFORM_ID != 3 && PLATFORM_ID != 20
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -65,4 +65,4 @@ int _svfprintf_r(struct _reent *, FILE *, const char *, va_list) _ATTRIBUTE ((__
 }
 #endif
 
-#endif // PLATFORM_ID != 3
+#endif // PLATFORM_ID != 3 && PLATFORM_ID != 20

@@ -144,7 +144,7 @@ static inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2)
 inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#elif PLATFORM_ID==3
+#elif PLATFORM_ID==3 || PLATFORM_ID==20
 inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }

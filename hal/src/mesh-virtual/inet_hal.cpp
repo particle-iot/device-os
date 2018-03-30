@@ -55,5 +55,5 @@ const char* inet_inet_ntop(int af, const void* src, char* dst, socklen_t size) {
 }
 
 int inet_inet_pton(int af, const char* src, void* dst) {
-  return lwip_inet_pton(af, src, dst, size);
+  return lwip_inet_pton(af, src, dst);
 }

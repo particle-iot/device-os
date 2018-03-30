@@ -20,12 +20,12 @@
 
 #include "hal_platform.h"
 
-#if defined(HAL_USE_SOCKET_HAL_COMPAT) && HAL_USE_SOCKET_HAL_COMPAT == 1
-#include "socket_hal_compat.h"
-#endif /* defined(HAL_USE_SOCKET_HAL_COMPAT) && HAL_USE_SOCKET_HAL_COMPAT == 1 */
-
 #if defined(HAL_USE_SOCKET_HAL_POSIX) && HAL_USE_SOCKET_HAL_POSIX == 1
 #include "socket_hal_posix.h"
 #endif /* defined(HAL_USE_SOCKET_HAL_POSIX) && HAL_USE_SOCKET_HAL_POSIX == 1 */
+
+#if defined(HAL_USE_SOCKET_HAL_COMPAT) && HAL_USE_SOCKET_HAL_COMPAT == 1
+#include "socket_hal_compat.h"
+#endif /* defined(HAL_USE_SOCKET_HAL_COMPAT) && HAL_USE_SOCKET_HAL_COMPAT == 1 */
 
 #endif /* SOCKET_HAL_H */

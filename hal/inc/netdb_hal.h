@@ -30,6 +30,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#ifndef EAI_SYSTEM
+#define EAI_SYSTEM 254
+#endif /* EAI_SYSTEM */
+
 /**
  * Gets the IPv4 address for the given hostname.
  *

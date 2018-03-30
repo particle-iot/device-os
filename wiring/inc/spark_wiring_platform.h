@@ -98,6 +98,13 @@
 #define Wiring_LogConfig 1
 #endif
 
+#if PLATFORM_ID==20      // mesh-virtual
+#define Wiring_WiFi 1
+#define Wiring_IPv6 0
+#define Wiring_SPI1 1
+#define Wiring_LogConfig 1 // for testing purposes
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif

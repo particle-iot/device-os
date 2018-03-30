@@ -5,7 +5,7 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x8060000
 
-LIB_DEPENDENCIES = nanopb services-dynalib rt-dynalib platform
+LIB_DEPENDENCIES = third_party/nanopb services-dynalib rt-dynalib platform
 MAKE_DEPENDENCIES = $(LIB_DEPENDENCIES) 
 
 DEPENDENCIES = $(MAKE_DEPENDENCIES) dynalib services hal
