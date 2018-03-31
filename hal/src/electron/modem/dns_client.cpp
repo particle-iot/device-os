@@ -74,7 +74,7 @@ const size_t MAX_NAME_LENGTH = 255;
 // Maximum number of retries
 const unsigned MAX_RETRIES = 3;
 // Buffer size
-const size_t BUFFER_SIZE = 1024;
+const size_t BUFFER_SIZE = 512; // See RFC 1035 – 4.2.1. UDP usage
 
 // DNS protocol flags
 const unsigned DNS_FLAG1_RD = 0x01;
