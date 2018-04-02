@@ -59,7 +59,7 @@ const HAL_InterruptOverrideEntry hal_interrupt_overrides[] = {
 #if PLATFORM_ID == 88
     {CAN2_SCE_IRQn, CAN2_SCE_irq},
     {USART6_IRQn, HAL_USART6_Handler}
-#elase
+#else
     {CAN2_SCE_IRQn, CAN2_SCE_irq}
 #endif
 };
