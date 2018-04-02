@@ -56,7 +56,12 @@ const HAL_InterruptOverrideEntry hal_interrupt_overrides[] = {
     {CAN2_TX_IRQn, CAN2_TX_irq},
     {CAN2_RX0_IRQn, CAN2_RX0_irq},
     {CAN2_RX1_IRQn, CAN2_RX1_irq},
+#if PLATFORM_ID == 88
+    {CAN2_SCE_IRQn, CAN2_SCE_irq},
+    {USART6_IRQn, HAL_USART6_Handler}
+#elase
     {CAN2_SCE_IRQn, CAN2_SCE_irq}
+#endif
 };
 
 /**
