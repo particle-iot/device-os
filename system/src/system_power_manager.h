@@ -10,6 +10,7 @@ static const system_tick_t DEFAULT_FAULT_WINDOW = 1000;
 static const uint32_t DEFAULT_FAULT_COUNT_THRESHOLD = 5;
 static const system_tick_t DEFAULT_FAULT_SUPPRESSION_PERIOD = 60000;
 static const system_tick_t DEFAULT_QUEUE_WAIT = 1000;
+static const system_tick_t DEFAULT_POWER_MANAGEMENT_THREAD_MAX_INITIALIZATION_TIME = 60000;
 
 class PowerManager {
 public:

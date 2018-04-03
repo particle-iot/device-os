@@ -27,13 +27,22 @@ PowerManager* PowerManager::instance() {
 }
 
 void PowerManager::init() {
-  os_thread_create(&thread_, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr,
+  os_semaphore_t sem;
+  os_semaphore_create(&sem, 1, 0);
+  SPARK_ASSERT(sem != nullptr);
+
+  os_thread_create(&thread_, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, (void*)sem,
 #if defined(DEBUG_BUILD)
     4 * 1024);
 #else
     512);
 #endif // defined(DEBUIG_BUILD)
   SPARK_ASSERT(thread_ != nullptr);
+
+  /* Wait for power management thread to go through initial initialization */
+  int res = os_semaphore_take(sem, DEFAULT_POWER_MANAGEMENT_THREAD_MAX_INITIALIZATION_TIME, false);
+  SPARK_ASSERT(res == 0);
+  os_semaphore_destroy(sem);
 }
 
 void PowerManager::update() {
@@ -174,6 +183,13 @@ void PowerManager::loop(void* arg) {
     LOG_DEBUG(INFO, "State of Charge: %-6.2f%%", fuel.getSoC());
     LOG_DEBUG(INFO, "Battery Voltage: %-4.2fV", fuel.getVCell());
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
+
+    /* Immediately update state */
+    self->handleUpdate();
+
+    /* Notify system thread */
+    os_semaphore_t sem = (os_semaphore_t)arg;
+    os_semaphore_give(sem, false);
   }
 
   uint32_t tmp;
