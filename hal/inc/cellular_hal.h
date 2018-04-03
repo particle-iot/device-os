@@ -170,6 +170,10 @@ void cellular_unlock(void* reserved);
  */
 void cellular_set_power_mode(int mode, void* reserved);
 
+bool cellular_rx_readable(void);
+char cellular_getc(void);
+void cellular_putc(int c);
+
 #ifdef __cplusplus
 }
 #endif

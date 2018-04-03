@@ -625,6 +625,14 @@ public:
     void pause();
     void resumeRecv();
 
+    void* rxpipe() {
+        return &_pipeRx;
+    }
+
+    void* txpipe() {
+        return &_pipeTx;
+    }
+
 protected:
     /** Write bytes to the physical interface.
         \param buf the buffer to write

@@ -336,4 +336,26 @@ void cellular_set_power_mode(int mode, void* reserved)
     }
 }
 
+#ifdef putc
+#undef putc
+#endif
+
+#ifdef getc
+#undef getc
+#endif
+
+bool cellular_rx_readable(void) {
+    return electronMDM.readable();
+}
+
+char cellular_getc(void) {
+    char c = electronMDM.getc();
+    electronMDM.resume();
+    return c;
+}
+
+void cellular_putc(int c) {
+    electronMDM.putc(c);
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)
