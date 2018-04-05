@@ -674,7 +674,7 @@ spark::LogManager::LogManager() {
     handlerFactory_ = DefaultLogHandlerFactory::instance();
     streamFactory_ = DefaultOutputStreamFactory::instance();
 #endif
-    output_active_ = false;
+    outputActive_ = false;
 }
 
 spark::LogManager::~LogManager() {
@@ -892,11 +892,11 @@ int spark::LogManager::logEnabled(int level, const char *category, void *reserve
 }
 
 inline bool spark::LogManager::isActive() const {
-    return output_active_;
+    return outputActive_;
 }
 
-inline void spark::LogManager::setActive(bool output_active) {
-    output_active_ = output_active;
+inline void spark::LogManager::setActive(bool outputActive) {
+    outputActive_ = outputActive;
 }
 
 #if Wiring_LogConfig
