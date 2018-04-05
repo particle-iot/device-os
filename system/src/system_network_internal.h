@@ -666,6 +666,7 @@ public:
             // final connection state for both dynamic and static IP configurations
             INFO("CLR_WLAN_WD 1, DHCP success");
             CLR_WLAN_WD();
+            update_config(true);
             WLAN_CONNECTED = 1;
             WLAN_LISTEN_ON_FAILED_CONNECT = false;
             LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);

@@ -403,7 +403,9 @@ int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
     }
 
     // send returns negative numbers on error
-    int bytes_sent = socket_send(sparkSocket, buf, buflen);
+    /* Use hard-coded default 20s timeout here for now.
+     * Ideally it should come from communication library */
+    int bytes_sent = socket_send_ex(sparkSocket, buf, buflen, 0, 20000, nullptr);
     return bytes_sent;
 }
 

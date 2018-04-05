@@ -32,7 +32,6 @@
 #include "inet_hal.h"
 #include "spark_macros.h"
 
-
 using namespace spark;
 
 static bool inline isOpen(sock_handle_t sd)
@@ -76,7 +75,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
         {
           sockaddr_t tSocketAddr;
           d_->sock = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, port, nif);
-          DEBUG("socket=%d",d_->sock);
+          LOG(TRACE, "TCPClient socket=%x", d_->sock);
 
           if (socket_handle_valid(d_->sock))
           {
@@ -110,12 +109,12 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
 
 size_t TCPClient::write(uint8_t b)
 {
-    return write(&b, 1, SOCKET_WAIT_FOREVER);
+    return write(&b, 1, SPARK_WIRING_TCPCLIENT_DEFAULT_SEND_TIMEOUT);
 }
 
 size_t TCPClient::write(const uint8_t *buffer, size_t size)
 {
-    return write(buffer, size, SOCKET_WAIT_FOREVER);
+    return write(buffer, size, SPARK_WIRING_TCPCLIENT_DEFAULT_SEND_TIMEOUT);
 }
 
 size_t TCPClient::write(uint8_t b, system_tick_t timeout)

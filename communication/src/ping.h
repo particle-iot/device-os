@@ -44,10 +44,6 @@ public:
 				// timed out, disconnect
 				return PING_TIMEOUT;
 			}
-			else
-			{
-				expecting_ping_ack = false;
-			}
 		}
 		else
 		{
