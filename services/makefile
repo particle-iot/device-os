@@ -6,5 +6,6 @@ SERVICES_MODULE_PATH=.
 TARGET_TYPE = a
 BUILD_PATH_EXT=$(SERVICES_BUILD_PATH_EXT)
 DEPENDENCIES = hal wiring third_party/nanopb dynalib
+MAKE_DEPENDENCIES = third_party/nanopb
 
 include ../build/arm-tlm.mk
