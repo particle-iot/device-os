@@ -35,6 +35,8 @@
 #include <memory>
 
 #define TCPCLIENT_BUF_MAX_SIZE  128
+/* 30 seconds */
+#define SPARK_WIRING_TCPCLIENT_DEFAULT_SEND_TIMEOUT (30000)
 
 class TCPClient : public Client {
 

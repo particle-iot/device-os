@@ -96,7 +96,7 @@ TCPClient TCPServer::available()
 
     if((!Network.from(_nif).ready()) || (_sock == SOCKET_INVALID))
     {
-        _sock = SOCKET_INVALID;
+        stop();
         _client = *s_invalid_client;
         return _client;
     }
@@ -138,5 +138,5 @@ size_t TCPServer::write(uint8_t b)
 
 size_t TCPServer::write(const uint8_t *buffer, size_t size)
 {
-    return write(buffer, size, SOCKET_WAIT_FOREVER);
+    return write(buffer, size, SPARK_WIRING_TCPCLIENT_DEFAULT_SEND_TIMEOUT);
 }

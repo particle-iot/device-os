@@ -74,7 +74,6 @@ const sock_handle_t SOCKET_INVALID = (sock_handle_t)-1;
 #define WICED_SOCKET_ARRAY socket
 #endif
 
-
 /**
  * Manages reading from a tcp packet.
  */
@@ -161,7 +160,8 @@ class tcp_server_client_t {
 
     wiced_tcp_socket_t* socket;
     tcp_server_t* server;
-    volatile bool closed;
+    volatile bool closed_externally;
+    bool closed;
 
 public:
     tcp_packet_t packet;
@@ -169,7 +169,8 @@ public:
     tcp_server_client_t(tcp_server_t* server, wiced_tcp_socket_t* socket) {
         this->socket = socket;
         this->server = server;
-        this->closed = 0;
+        this->closed = false;
+        this->closed_externally = false;
         memset(&packet, 0, sizeof(packet));
     }
 
@@ -177,7 +178,7 @@ public:
 
     wiced_result_t write(const void* buffer, size_t len, size_t* bytes_written, uint32_t flags, system_tick_t timeout, bool flush=false) {
         wiced_result_t result = WICED_TCPIP_INVALID_SOCKET;
-        if (socket) {
+        if (socket && !isClosed()) {
             wiced_tcp_send_flags_t wiced_flags = timeout == 0 ? WICED_TCP_SEND_FLAG_NONBLOCK : WICED_TCP_SEND_FLAG_NONE;
             uint16_t bytes_sent = (uint16_t)len;
             result = wiced_tcp_send_buffer_ex(socket, buffer, &bytes_sent, wiced_flags, timeout);
@@ -187,10 +188,7 @@ public:
     }
 
     bool isClosed() {
-        if (closed) {
-            close();
-        }
-        return closed;
+        return closed || closed_externally;
     }
 
     void close();
@@ -204,7 +202,7 @@ public:
         // flag that this is closed, but don't clean up, since this call is on the
         // wiced networking worker thread. we want all calls to be on one thread, so service
         // the close on the enxt call to isClosed() by the client.
-        closed = true;
+        closed_externally = true;
     }
 
     ~tcp_server_client_t();
@@ -213,12 +211,12 @@ public:
 struct tcp_server_t : public wiced_tcp_server_t
 {
     tcp_server_t() {
-        os_mutex_create(&accept_lock);
+        os_mutex_recursive_create(&accept_lock);
         memset(clients, 0, sizeof(clients));
     }
 
     ~tcp_server_t() {
-        os_mutex_destroy(accept_lock);
+        os_mutex_recursive_destroy(accept_lock);
     }
 
     /**
@@ -244,14 +242,14 @@ struct tcp_server_t : public wiced_tcp_server_t
     wiced_result_t accept(wiced_tcp_socket_t* socket) {
         wiced_result_t result;
         if ((result=wiced_tcp_accept(socket))==WICED_SUCCESS) {
-            os_mutex_lock(accept_lock);
+            os_mutex_recursive_lock(accept_lock);
 
             int idx = index(socket);
             if (idx>=0) {
                 clients[idx] = new tcp_server_client_t(this, socket);
                 to_accept.append(idx);
             }
-            os_mutex_unlock(accept_lock);
+            os_mutex_recursive_unlock(accept_lock);
         }
         return result;
     }
@@ -261,13 +259,13 @@ struct tcp_server_t : public wiced_tcp_server_t
      * @return The next client, or NULL
      */
     tcp_server_client_t* next_accept() {
-        os_mutex_lock(accept_lock);
+        os_mutex_recursive_lock(accept_lock);
         int index = -1;
         if (to_accept.size()) {
             index = *to_accept.begin();
             to_accept.removeAt(0);
         }
-        os_mutex_unlock(accept_lock);
+        os_mutex_recursive_unlock(accept_lock);
         return index>=0 ? clients[index] : NULL;
     }
 
@@ -277,12 +275,12 @@ struct tcp_server_t : public wiced_tcp_server_t
      * @return
      */
     wiced_result_t notify_disconnected(wiced_tcp_socket_t* socket) {
-        os_mutex_lock(accept_lock);
+        os_mutex_recursive_lock(accept_lock);
         int idx = index(socket);
         tcp_server_client_t* client = clients[idx];
         if (client)
             client->notify_disconnected();
-        os_mutex_unlock(accept_lock);
+        os_mutex_recursive_unlock(accept_lock);
         return WICED_SUCCESS;
     }
 
@@ -292,6 +290,7 @@ struct tcp_server_t : public wiced_tcp_server_t
      * @return
      */
     wiced_result_t disconnect(wiced_tcp_socket_t* socket) {
+        os_mutex_recursive_lock(accept_lock);
         wiced_tcp_disconnect(socket);
         // remove from client array as this socket is getting closed and
         // subsequently destroyed
@@ -300,10 +299,12 @@ struct tcp_server_t : public wiced_tcp_server_t
 		  clients[idx] = NULL;
 	    }
         wiced_result_t result = wiced_tcp_server_disconnect_socket(this, socket);
+        os_mutex_recursive_unlock(accept_lock);
         return result;
     }
 
     void close() {
+        os_mutex_recursive_lock(accept_lock);
         // close all clients first
         for (int i=0; i<WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS; i++) {
             tcp_server_client_t* client = clients[i];
@@ -313,6 +314,7 @@ struct tcp_server_t : public wiced_tcp_server_t
             }
         }
         wiced_tcp_server_stop(this);
+        os_mutex_recursive_unlock(accept_lock);
     }
 
 
@@ -320,28 +322,29 @@ private:
     // for each server instance, maintain an associated tcp_server_client_t instance
     tcp_server_client_t* clients[WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS];
 
-    os_mutex_t accept_lock;
+    os_mutex_recursive_t accept_lock;
     spark::Vector<int> to_accept;
 };
 
 void tcp_server_client_t::close() {
-    if (socket && server) {
-        server->disconnect(socket);
-        server = NULL;
-        socket = NULL;
+    if (!closed) {
+        closed = true;
+        if (socket && server) {
+            server->disconnect(socket);
+            server = nullptr;
+        }
     }
-    packet.dispose_packet();
 }
 
-
 tcp_server_client_t::~tcp_server_client_t() {
-    close();
+    packet.dispose_packet();
 }
 
 class socket_t
 {
     uint8_t type;
     bool closed;
+    os_mutex_recursive_t mutex_ = nullptr;
 
 public:
 
@@ -362,10 +365,12 @@ public:
 
     socket_t() {
         memset(this, 0, sizeof(*this));
+        os_mutex_recursive_create(&mutex_);
     }
 
     ~socket_t() {
         dispose();
+        os_mutex_recursive_destroy(mutex_);
     }
 
     uint8_t get_type() { return type; }
@@ -445,6 +450,14 @@ public:
    }
 
    bool isOpen() { return !closed && is_inner_open(); }
+
+   void lock() {
+       os_mutex_recursive_lock(mutex_);
+   }
+
+   void unlock() {
+       os_mutex_recursive_unlock(mutex_);
+   }
 };
 
 /**
@@ -527,6 +540,7 @@ public:
             /* NOTE: socket object should NOT be deleted here. It may only be closed.
              * It's up to the socket 'user' to invoke socket_close() to cleanup its resources
              */
+            std::lock_guard<socket_t> lk(*current);
             current->close();
         }
         LOG(TRACE, "%x socket list: %d active sockets closed", this, count);
@@ -661,7 +675,9 @@ sock_handle_t socket_dispose(sock_handle_t handle) {
     if (socket_handle_valid(handle)) {
         socket_t* socket = from_handle(handle);
         SocketList& list = list_for(socket);
+        /* IMPORTANT: SocketListLock is acquired first */
         SocketListLock lock(list);
+        std::lock_guard<socket_t> lk(*socket);
         if (list.remove(socket))
             delete socket;
     }
@@ -708,6 +724,7 @@ sock_result_t socket_connect(sock_handle_t sd, const sockaddr_t *addr, long addr
     socket_t* socket = from_handle(sd);
     tcp_socket_t* tcp_socket = tcp(socket);
     if (tcp_socket) {
+        std::lock_guard<socket_t> lk(*socket);
         result = wiced_tcp_bind(tcp_socket, WICED_ANY_PORT);
         if (result==WICED_SUCCESS) {
             // WICED callbacks are broken
@@ -801,6 +818,7 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     sock_result_t bytes_read = -1;
     socket_t* socket = from_handle(sd);
     if (is_open(socket)) {
+        std::lock_guard<socket_t> lk(*socket);
         if (is_tcp(socket)) {
             tcp_socket_t* tcp_socket = tcp(socket);
             tcp_packet_t& packet = tcp_socket->packet;
@@ -868,9 +886,15 @@ sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
             port, WICED_MAXIMUM_NUMBER_OF_SERVER_SOCKETS, server_connected, server_received, server_disconnected, NULL);
     }
     if (result!=WICED_SUCCESS) {
-        delete socket; socket = NULL;
-        server->close();
-        delete server; server = NULL;
+        if (socket) {
+            delete socket;
+            socket = NULL;
+        }
+        if (server) {
+            server->close();
+            delete server;
+            server = NULL;
+        }
     }
     else {
         socket->set_server(server);
@@ -891,6 +915,7 @@ sock_result_t socket_accept(sock_handle_t sock)
     sock_result_t result = SOCKET_INVALID;
     socket_t* socket = from_handle(sock);
     if (is_open(socket) && is_server(socket)) {
+        std::lock_guard<socket_t> lk(*socket);
         tcp_server_t* server = socket->s.tcp_server;
         tcp_server_client_t* client = server->next_accept();
         if (client) {
@@ -927,6 +952,10 @@ sock_result_t socket_close(sock_handle_t sock)
     sock_result_t result = WICED_SUCCESS;
     socket_t* socket = from_handle(sock);
     if (socket) {
+        {
+            std::lock_guard<socket_t> lk(*socket);
+            socket->close();
+        }
         socket_dispose(sock);
         LOG_DEBUG(TRACE, "socket closed %x", int(sock));
     }
@@ -938,6 +967,7 @@ sock_result_t socket_shutdown(sock_handle_t sd, int how)
     sock_result_t result = WICED_ERROR;
     socket_t* socket = from_handle(sd);
     if (socket && is_open(socket) && is_tcp(socket)) {
+        std::lock_guard<socket_t> lk(*socket);
         result = wiced_tcp_close_shutdown(tcp(socket), (wiced_tcp_shutdown_flags_t)how);
         LOG_DEBUG(TRACE, "socket shutdown %x %x", sd, how);
     }
@@ -1001,6 +1031,7 @@ sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len
     uint16_t bytes_sent = 0;
 
     if (is_open(socket)) {
+        std::lock_guard<socket_t> lk(*socket);
         wiced_result_t wiced_result = WICED_TCPIP_INVALID_SOCKET;
         if (is_tcp(socket)) {
             wiced_tcp_send_flags_t wiced_flags = timeout == 0 ? WICED_TCP_SEND_FLAG_NONBLOCK : WICED_TCP_SEND_FLAG_NONE;
@@ -1026,6 +1057,7 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
     socket_t* socket = from_handle(sd);
     wiced_result_t result = WICED_INVALID_SOCKET;
     if (is_open(socket) && is_udp(socket)) {
+        std::lock_guard<socket_t> lk(*socket);
         SOCKADDR_TO_PORT_AND_IPADDR(addr, addr_data, port, ip_addr);
         uint16_t available = 0;
         wiced_packet_t* packet = NULL;
@@ -1049,6 +1081,7 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
     volatile wiced_result_t result = WICED_INVALID_SOCKET;
     uint16_t read_len = 0;
     if (is_open(socket) && is_udp(socket)) {
+        std::lock_guard<socket_t> lk(*socket);
         wiced_packet_t* packet = NULL;
         // UDP receive timeout changed to 0 sec so as not to block
         if ((result=wiced_udp_receive(udp(socket), &packet, WICED_NO_WAIT))==WICED_SUCCESS) {
@@ -1106,15 +1139,20 @@ wiced_result_t wiced_last_error( wiced_tcp_socket_t* socket)
 
 sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved)
 {
-    tcp_server_client_t* c = client(from_handle(sd));
     sock_result_t result = WICED_INVALID_SOCKET;
-    if (c && peer)
-    {
-        wiced_tcp_socket_t* wiced_sock = c->get_socket();
-        wiced_ip_address_t ip;
-        result = wiced_tcp_server_peer( wiced_sock, &ip, &peer->port);
-        if (result==WICED_SUCCESS) {
-            peer->address.ipv4 = GET_IPV4_ADDRESS(ip);
+    socket_t* socket = from_handle(sd);
+
+    if (socket) {
+        std::lock_guard<socket_t> lk(*socket);
+        tcp_server_client_t* c = client(from_handle(sd));
+        if (c && peer)
+        {
+            wiced_tcp_socket_t* wiced_sock = c->get_socket();
+            wiced_ip_address_t ip;
+            result = wiced_tcp_server_peer( wiced_sock, &ip, &peer->port);
+            if (result==WICED_SUCCESS) {
+                peer->address.ipv4 = GET_IPV4_ADDRESS(ip);
+            }
         }
     }
     return result;
