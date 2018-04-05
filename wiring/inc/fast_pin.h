@@ -132,7 +132,7 @@ inline int32_t pinReadFast(pin_t _pin)
 {
 	return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
-#elif PLATFORM_ID==3
+#elif PLATFORM_ID==3 || PLATFORM_ID == 20
 
 // make them unresolved symbols so attempted use will result in a linker error
 void pinResetFast(pin_t _pin);
