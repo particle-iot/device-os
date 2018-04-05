@@ -577,7 +577,7 @@ private:
 
     Vector<LogHandler*> activeHandlers_;
 
-    volatile bool output_active_;
+    bool outputActive_;
 
 #if Wiring_LogConfig
     Vector<FactoryHandler> factoryHandlers_;
