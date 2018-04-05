@@ -21,6 +21,8 @@
 #include <string>
 #include <stdexcept>
 #include <cstring>
+#include <map>
+#include <vector>
 #include "filesystem.h"
 #include "spark_protocol_functions.h"
 
@@ -53,6 +55,7 @@ struct Configuration
     std::string periph_directory;
     uint16_t log_level = 0;
     ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
+    std::vector<std::string> usart_map;
 };
 
 
@@ -65,6 +68,7 @@ struct DeviceConfig
     uint8_t device_key[1024];
     uint8_t server_key[1024];
     ProtocolFactory protocol;
+    std::map<int, std::string> usart_map;
 
     size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen);
 
@@ -77,6 +81,15 @@ struct DeviceConfig
         if (dest)
             memcpy(dest, device_id, destLen);
         return 12;
+    }
+
+    std::string getUsartMapping(int serial) {
+      auto it = usart_map.find(serial);
+      if (it != usart_map.end()) {
+        return it->second;
+      }
+
+      return std::string();
     }
 
     ProtocolFactory get_protocol() { return protocol; }

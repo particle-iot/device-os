@@ -26,6 +26,7 @@
 
 #include "boost_program_options_wrap.h"
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace po = boost::program_options;
 
@@ -95,6 +96,7 @@ public:
             ("server_key,sk", po::value<string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
             ("state,s", po::value<string>(&config.periph_directory)->default_value("state"), "the directory where device state and peripherals is stored")
 			("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
+            ("tty,t", po::value<std::vector<std::string> >(&config.usart_map), "local tty to HAL USART mapping: \"idx:ttyname\"")
 			;
 
         command_line_options.add(program_options).add(device_options);
@@ -203,5 +205,17 @@ void DeviceConfig::read(Configuration& configuration)
     setLoggerLevel(LoggerOutputLevel(NO_LOG_LEVEL-configuration.log_level));
 
     this->protocol = configuration.protocol;
+
+    /* parse USART mapping */
+    for (const auto& m: configuration.usart_map) {
+        std::vector<std::string> tokens;
+        boost::split(tokens, m, boost::is_any_of(":"));
+        if (tokens.size() != 2) {
+            throw std::invalid_argument(std::string("Expected local tty to HAL USART mapping to be in the \"idx:tty\" format, got '") + m + "'");
+        }
+        int idx = std::stoi(tokens[0]);
+        this->usart_map.insert({idx, tokens[1]});
+        LOG(INFO, "Mapping USART %d to %s", idx, tokens[1].c_str());
+    }
 }
 
