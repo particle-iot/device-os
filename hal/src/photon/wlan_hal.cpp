@@ -1278,6 +1278,8 @@ void wlan_smart_config_init()
         wlan_disconnect_now();
         wlan_restart(NULL);
         current_softap_handle = softap_start(&config);
+        /* FIXME: particle-iot/photon-wiced#29 */
+        netif_set_default(wiced_ip_handle[WICED_AP_INTERFACE]);
     }
 }
 
