@@ -15,6 +15,7 @@
 #include "mbedtls/md5.h"
 #include "mbedtls/md4.h"
 #include "mbedtls/sha256.h"
+#include "mbedtls/sha512.h"
 #include "mbedtls/des.h"
 #include "mbedtls/x509.h"
 #include "mbedtls/x509_crt.h"
@@ -44,6 +45,8 @@ STATIC_ASSERT(wiced_sha1_context_size, sizeof(sha1_context) >= sizeof(mbedtls_sh
 STATIC_ASSERT(wiced_sha1_context_size_md, sizeof(sha1_context) >= sizeof(mbedtls_md_context_t));
 STATIC_ASSERT(wiced_sha2_context_size, sizeof(sha2_context) >= sizeof(mbedtls_sha256_context));
 STATIC_ASSERT(wiced_sha2_context_size_md, sizeof(sha2_context) >= sizeof(mbedtls_md_context_t));
+STATIC_ASSERT(wiced_sha4_context_size, sizeof(sha4_context) >= sizeof(mbedtls_sha512_context));
+STATIC_ASSERT(wiced_sha4_context_size_md, sizeof(sha4_context) >= sizeof(mbedtls_md_context_t));
 STATIC_ASSERT(wiced_md5_context_size, sizeof(md5_context) >= sizeof(mbedtls_md5_context));
 STATIC_ASSERT(wiced_md5_context_size_md, sizeof(md5_context) >= sizeof(mbedtls_md_context_t));
 STATIC_ASSERT(wiced_md4_context_size, sizeof(md4_context) >= sizeof(mbedtls_md4_context));
@@ -79,16 +82,24 @@ void tls_host_free(void* p)
     free(p);
 }
 
-// <stubbed>
+/* SHA-384/SHA-512 */
 void sha4_starts(sha4_context* context, int32_t is384) {
-
+    mbedtls_sha512_starts((mbedtls_sha512_context*)context, is384);
 }
+
 void sha4_update(sha4_context* context, const unsigned char* input_data, int32_t input_len) {
-
+    mbedtls_sha512_update((mbedtls_sha512_context*)context, input_data, input_len);
 }
+
 void sha4_finish(sha4_context* context, unsigned char hash_output[64]) {
-
+    mbedtls_sha512_finish((mbedtls_sha512_context*)context, hash_output);
 }
+
+void sha4(const unsigned char *input, uint32_t ilen, unsigned char output[64], int32_t is384)
+{
+    mbedtls_sha512(input, ilen, output, is384);
+}
+
 int uECC_sign(const uint8_t private_key[uECC_BYTES], const uint8_t message_hash[uECC_BYTES], uint8_t signature[uECC_BYTES*2]) {
     return 0;
 }
@@ -383,6 +394,21 @@ int32_t mpi_cmp_int(const mpi *X, int32_t z)
 uint32_t mpi_size(const mpi *X)
 {
     return mbedtls_mpi_size((const mbedtls_mpi*)X);
+}
+
+int32_t mpi_grow(mpi *X, int32_t nblimbs)
+{
+    return mbedtls_mpi_grow((mbedtls_mpi*)X, nblimbs);
+}
+
+int32_t mpi_lset(mpi *X, int32_t z)
+{
+    return mbedtls_mpi_lset((mbedtls_mpi*)X, z);
+}
+
+int32_t mpi_shift_r(mpi *X, int32_t count)
+{
+    return mbedtls_mpi_shift_r((mbedtls_mpi*)X, count);
 }
 
 static mbedtls_md_type_t to_mbedtls_md_type(int32_t hash_id)
