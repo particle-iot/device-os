@@ -32,7 +32,8 @@ public:
     void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr)
     {
         if (active) {
-            // Fail if we are allowed to re-enter this logging handler, as the count won't increase
+            // Fail if we are allowed to re-enter this logging handler,
+            // as the count won't increase to 10.  It will remain pinned to 5.
             count--;
             return;
         }
@@ -40,7 +41,7 @@ public:
 
         // Serial.printlnf("logMessage: %d", count); // DEBUG
         if (count++ >= 5) {
-            Log.info("force re-entry into this logMessage function");
+            Log.info("attempt re-entry into this logMessage function: %d", count); // DEBUG
         }
 
         active = false;
@@ -64,4 +65,27 @@ test(LOGGING_01_recursive_log_handling)
     }
     recursiveLogger.removeHandler();
     assertEqual(recursiveLogger.getCount(), 10);
+}
+test(LOGGING_02_multiple_recursive_log_handling)
+{
+    Serial.println("IF THIS HANGS HERE, THE TEST FAILED!");
+    RecursiveLogger recursiveLogger1;
+    RecursiveLogger recursiveLogger2;
+    RecursiveLogger recursiveLogger3;
+    RecursiveLogger recursiveLogger4;
+    recursiveLogger1.addHandler();
+    recursiveLogger2.addHandler();
+    recursiveLogger3.addHandler();
+    recursiveLogger4.addHandler();
+    for (int x=0; x<10; x++) {
+        Log.info("recursive logging %lu", millis());
+    }
+    recursiveLogger1.removeHandler();
+    recursiveLogger2.removeHandler();
+    recursiveLogger3.removeHandler();
+    recursiveLogger4.removeHandler();
+    assertEqual(recursiveLogger1.getCount(), 10);
+    assertEqual(recursiveLogger2.getCount(), 10);
+    assertEqual(recursiveLogger3.getCount(), 10);
+    assertEqual(recursiveLogger4.getCount(), 10);
 }
