@@ -674,6 +674,7 @@ spark::LogManager::LogManager() {
     handlerFactory_ = DefaultLogHandlerFactory::instance();
     streamFactory_ = DefaultOutputStreamFactory::instance();
 #endif
+    outputActive_ = false;
 }
 
 spark::LogManager::~LogManager() {
@@ -839,9 +840,15 @@ void spark::LogManager::logMessage(const char *msg, int level, const char *categ
 #endif
     LogManager *that = instance();
     LOG_WITH_LOCK(that->mutex_) {
+        // prevent re-entry
+        if (that->isActive()) {
+            return;
+        }
+        that->setActive(true);
         for (LogHandler *handler: that->activeHandlers_) {
             handler->message(msg, (LogLevel)level, category, *attr);
         }
+        that->setActive(false);
     }
 }
 
@@ -853,9 +860,15 @@ void spark::LogManager::logWrite(const char *data, size_t size, int level, const
 #endif
     LogManager *that = instance();
     LOG_WITH_LOCK(that->mutex_) {
+        // prevent re-entry
+        if (that->isActive()) {
+            return;
+        }
+        that->setActive(true);
         for (LogHandler *handler: that->activeHandlers_) {
             handler->write(data, size, (LogLevel)level, category);
         }
+        that->setActive(false);
     }
 }
 
@@ -876,6 +889,14 @@ int spark::LogManager::logEnabled(int level, const char *category, void *reserve
         }
     }
     return (level >= minLevel);
+}
+
+inline bool spark::LogManager::isActive() const {
+    return outputActive_;
+}
+
+inline void spark::LogManager::setActive(bool outputActive) {
+    outputActive_ = outputActive;
 }
 
 #if Wiring_LogConfig
