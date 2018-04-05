@@ -436,7 +436,13 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
 #else
     sockaddr addr = {};
     socklen_t size = sizeof(addr);
-    int received = sock_recvfrom(sparkSocket, buf, buflen, 0, &addr, &size);
+    int received = sock_recvfrom(sparkSocket, buf, buflen, MSG_DONTWAIT, &addr, &size);
+    if (received < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            /* Not an error */
+            received = 0;
+        }
+    }
 #endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
 	if (received!=0) {
@@ -507,7 +513,13 @@ int Spark_Receive(unsigned char *buf, uint32_t buflen, void* reserved)
 #if !HAL_USE_SOCKET_HAL_POSIX
         spark_receive_last_bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
 #else
-        spark_receive_last_bytes_received = sock_recv(sparkSocket, buf, buflen, 0);
+        spark_receive_last_bytes_received = sock_recv(sparkSocket, buf, buflen, MSG_DONTWAIT);
+        if (spark_receive_last_bytes_received < 0) {
+            if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                /* Not an error */
+                spark_receive_last_bytes_received = 0;
+            }
+        }
 #endif /* !HAL_USE_SOCKET_HAL_POSIX */
         //spark_receive_last_request_millis = millis();
     }
@@ -1301,6 +1313,7 @@ int spark_cloud_socket_connect()
 			HAL_NET_SetNetWatchDog(ot);
         }
     }
+
     if (rv)     // error - prevent socket leaks
         spark_cloud_socket_disconnect(false);
     return rv;
