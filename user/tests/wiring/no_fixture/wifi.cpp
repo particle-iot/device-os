@@ -98,10 +98,16 @@ test(WIFI_05_scan)
     assertMoreOrEqual(apsFound, 1);
 }
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+
 test(WIFI_06_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
 {
-#if (PLATFORM_ID == 6 || PLATFORM_ID == 8) && (PLATFORM_THREADING == 1 && USE_THREADING == 1)
     /* This test should only be run with threading disabled */
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        skip();
+        return;
+    }
+
     assertTrue(Particle.connected());
 
     Particle.disconnect();
@@ -155,8 +161,9 @@ test(WIFI_06_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
     uint32_t freeRam2 = System.freeMemory();
 
     assertMoreOrEqual(freeRam2, freeRam1);
-#endif
 }
+
+#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
 test(WIFI_07_restore_connection)
 {
