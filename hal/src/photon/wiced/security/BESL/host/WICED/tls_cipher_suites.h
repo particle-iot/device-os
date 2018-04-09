@@ -26,7 +26,8 @@ extern "C" {
 
     /* Default supported key schemes */
     #define USE_RSA_KEYSCHEME
-    #define USE_DHE_RSA_KEYSCHEME
+    /* Still broken */
+    // #define USE_DHE_RSA_KEYSCHEME
     #define USE_DH_RSA_KEYSCHEME
 
     // #define USE_ECDH_ECDSA_KEYSCHEME
