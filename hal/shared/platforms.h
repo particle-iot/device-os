@@ -34,6 +34,9 @@
 #define PLATFORM_P1                         8
 #define PLATFORM_ETHERNET_PROTO             9
 #define PLATFORM_ELECTRON_PRODUCTION        10
+#define PLATFORM_ARGON						12
+#define PLATFORM_BORON						13
+#define PLATFORM_XENON						14
 #define PLATFORM_NEWHAL                     60000
 
 #endif	/* PLATFORMS_H */

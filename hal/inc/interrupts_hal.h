@@ -6,7 +6,7 @@
  * @date    12-Sept-2014
  * @brief
  ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2013-2018 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -27,6 +27,7 @@
 #ifndef __INTERRUPTS_HAL_H
 #define __INTERRUPTS_HAL_H
 
+#include "platforms.h"
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
 #if !defined(SPARK_NO_PLATFORM) && !defined(INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS)
@@ -144,6 +145,11 @@ inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
 #elif PLATFORM_ID==3
+inline bool HAL_IsISR() { return false; }
+inline int32_t HAL_ServicedIRQn() { return 0; }
+inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
+#elif PLATFORM_ID==PLATFORM_XENON
+// todo - move these to separate include files within the hal/platform folders
 inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
