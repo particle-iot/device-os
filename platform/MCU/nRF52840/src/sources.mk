@@ -7,6 +7,7 @@
 TARGET_NEW_HAL_MCU_SRC = $(PLATFORM_MCU_PATH)/src
 
 CSRC += $(TARGET_NEW_HAL_MCU_SRC)/hw_config.c
+CSRC += $(TARGET_NEW_HAL_MCU_SRC)/flash_mal.c
 
 # C++ source files included in this build.
 CPPSRC +=
