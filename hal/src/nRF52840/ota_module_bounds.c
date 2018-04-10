@@ -1,7 +1,7 @@
 #include "ota_flash_hal.h"
 #include "spark_macros.h"
 
-const module_bounds_t module_bootloader = { 0x4000, 0x8000000, 0x8004000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
+const module_bounds_t module_bootloader = { 0x4000, 0x00fc000, 0x0010000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
 
 // Modular firmware
 const module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
