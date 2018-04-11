@@ -75,7 +75,7 @@ __HeapLimit:
     .align 2
     .globl __isr_vector
 __isr_vector:
-    .long   __StackTop                  /* Top of Stack */
+    .long   _estack                  /* Top of Stack */
     .long   Reset_Handler
     .long   NMI_Handler
     .long   HardFault_Handler
@@ -229,7 +229,7 @@ Reset_Handler:
  *
  * All addresses must be aligned to 4 bytes boundary.
  */
-    ldr r1, =__etext
+    ldr r1, =_sidata
     ldr r2, =__data_start__
     ldr r3, =__bss_start__
 
@@ -254,6 +254,10 @@ Reset_Handler:
  *
  * All addresses must be aligned to 4 bytes boundary.
  */
+/* Enable by default */
+#ifndef __STARTUP_CLEAR_BSS
+#define __STARTUP_CLEAR_BSS 1
+#endif
 #ifdef __STARTUP_CLEAR_BSS
     ldr r1, =__bss_start__
     ldr r2, =__bss_end__

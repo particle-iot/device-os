@@ -41,7 +41,7 @@ SECTIONS
     .text :
     {
         . = ALIGN(4);
-        __etext = .;
+        _etext = .;
 
         *(.text)                   /* remaining code */
         *(.text.*)                   /* remaining code */
@@ -68,7 +68,7 @@ SECTIONS
         link_constructors_end = .;
 
         . = ALIGN(4);
-      _etext = .;
+        __etext = .;
         /* This is used by the startup in order to initialize the .data secion */
 
     } >APP_FLASH
@@ -98,7 +98,7 @@ SECTIONS
 
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
-     _edata = . ;
+        _edata = . ;
     } >RAM AT>APP_FLASH
 
     INCLUDE backup_ram_system.ld
@@ -118,7 +118,8 @@ SECTIONS
 
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
-     _ebss = . ;
+        _ebss = . ;
+        __bss_end__ = _ebss;
     } >RAM
 
     PROVIDE ( end = _ebss );
