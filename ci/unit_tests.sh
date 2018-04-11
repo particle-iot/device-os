@@ -6,6 +6,19 @@ cd $ci_dir
 
 . test_setup.sh
 
+pushd ../communication/tests/catch
+make all run
+result=$?
+popd
+
+if [ "$result" == "0" ]; then
+    echo Yay! Communication Unit tests PASSED!
+else
+    echo Bummer. Communication Unit tests FAILED.
+    exit 1
+fi
+
+
 cd $testDir/unit || die "Hey where's the ./unit directory?"
 
 # clear out target directory
@@ -14,7 +27,6 @@ cd $testDir/unit || die "Hey where's the ./unit directory?"
 target_file=obj/runner
 
 make all > build.log || die "Problem building unit tests. Please see build.log"
-
 [ -f "$target_file" ] || die "Couldn't find the unit test executable"
 
 : ${TRAVIS_BUILD_NUMBER:="0"}

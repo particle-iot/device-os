@@ -29,7 +29,7 @@ class AbstractProtocol : public Protocol
 public:
 	AbstractProtocol(MessageChannel& channel) : Protocol(channel) {}
 
-	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful)
+	virtual size_t build_hello(Message& message, uint8_t flags)
 	{
 		return 0;
 	}
@@ -42,6 +42,10 @@ public:
 		Protocol::init(callbacks, descriptor);
 	}
 
+	virtual int command(ProtocolCommands::Enum command, uint32_t data)
+	{
+		return 0;
+	}
 };
 
 SCENARIO("default product co-ordinates are set")
@@ -211,8 +215,8 @@ void verify_event_type_with_flags(int flags, CoAPType::Enum coapType)
 	};
 	When(Method(channel,send)).Do(validate_event);
 
-	Publisher publisher;
-	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0);
+	Publisher publisher(nullptr);
+	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0, particle::CompletionHandler());
 
 	Verify(Method(channel,send));
 }

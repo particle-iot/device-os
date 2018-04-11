@@ -57,9 +57,9 @@ public:
 		return channel->create(msg, size);
 	}
 
-	virtual ProtocolError establish() override
+	virtual ProtocolError establish(uint32_t& flags, uint32_t app_state_crc) override
 	{
-		return channel->establish();
+		return channel->establish(flags, app_state_crc);
 	}
 
 	virtual ProtocolError response(Message& original, Message& response, size_t required) override

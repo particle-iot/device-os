@@ -15,7 +15,7 @@ include $(DEPS_INCLUDE_SCRIPTS)
 
 include $(COMMON_BUILD)/module-defaults.mk
 
-include $(call rwildcard,$(MODULE_PATH)/,build.mk)
+include $(call rwildcard,$(MODULE_BUILD_PATH)/,build.mk)
 
 # add trailing slash
 ifneq ("$(TARGET_PATH)","$(dir $(TARGET_PATH))")

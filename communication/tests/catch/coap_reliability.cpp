@@ -407,7 +407,7 @@ SCENARIO("a CoAPMessage can be created with the message buffer part of the alloc
 	REQUIRE(msg.length()==0);
 	REQUIRE(msg.capacity()==sizeof(buf));
 
-	for (int i=0; i<sizeof(buf); i++)
+	for (unsigned i=0; i<sizeof(buf); i++)
 		buf[i] = rand();
 
 	msg.set_length(sizeof(buf));
@@ -424,7 +424,7 @@ SCENARIO("a CoAPMessage can be created with the message buffer part of the alloc
 	const uint8_t* data = coapmsg->get_data();
 	REQUIRE(data!=nullptr);
 
-	for (int i=0; i<sizeof(buf); i++) {
+	for (unsigned i=0; i<sizeof(buf); i++) {
 		INFO( "checking coapmsg buffer index " << i);
 		if (data[i]!=buf[i])
 			FAIL("buffer content is different");
@@ -864,7 +864,8 @@ SCENARIO("sending a message and re-establishing the connection clears existing m
 			AND_WHEN("the connection is re-established")
 			{
 				When(Method(mock,establish)).Return(NO_ERROR);
-				channel.establish();
+				uint32_t flags;
+				channel.establish(flags, 0);
 				THEN("the message store is cleared")
 				{
 					REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);		// message has been sent and registered
@@ -962,6 +963,7 @@ SCENARIO("receiving a message first retrieves from the channel and then passes t
 				REQUIRE(cm!=nullptr);
 				REQUIRE(cm->get_timeout()==CoAPMessage::MAX_TRANSMIT_SPAN + 234);
 			}
+			(void)result;
 		}
 	}
 }

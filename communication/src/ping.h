@@ -33,7 +33,13 @@ public:
 	}
 
 	/**
-	 * Handle ping messages
+	 * Handle ping messages. This function should be called frequently as part of the main processing loop.
+	 * @param millis_since_last_message	The number of ms since the last message was received from the cloud.
+	 * @param ping a callback that sends a ping message to the cloud (and resets the millis_since_last_message.)
+	 * When a ping has not been sent, and the time elapsed between the last message sent is greater than the ping interval,
+	 * the ping() callback is invoked. This should send a message to the cloud and elicit a response.
+	 * When a ping has been sent and the time since the last message is greater than the ping_timeout
+	 * then the PING_TIMEOUT response is given.
 	 */
 	template <typename Callback> ProtocolError process(system_tick_t millis_since_last_message, Callback ping)
 	{
@@ -43,6 +49,10 @@ public:
 			{
 				// timed out, disconnect
 				return PING_TIMEOUT;
+			}
+			else
+			{
+				expecting_ping_ack = false;
 			}
 		}
 		else

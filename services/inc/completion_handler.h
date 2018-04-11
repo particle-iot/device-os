@@ -21,7 +21,7 @@
 #include "system_error.h"
 
 #ifdef __cplusplus
-#include "spark_wiring_vector.h"
+#include "light_vector.h"
 #include "system_tick_hal.h"
 
 #include <limits>

@@ -17,9 +17,9 @@
  ******************************************************************************
  */
 
+#include "coap_channel.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
-#include "coap_channel.h"
 
 using namespace particle::protocol;
 
