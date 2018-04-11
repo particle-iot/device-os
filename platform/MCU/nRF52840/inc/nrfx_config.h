@@ -2977,4 +2977,7 @@
 #define NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
 #endif
 
+/* Legacy config */
+#include "sdk_config.h"
+
 #endif // NRFX_CONFIG_H__

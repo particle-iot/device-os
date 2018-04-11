@@ -29,13 +29,13 @@
 
 #include "platforms.h"
 /* Includes ------------------------------------------------------------------*/
-#include "pinmap_hal.h"
 #if !defined(SPARK_NO_PLATFORM) && !defined(INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS)
 #include "interrupts_irq.h"
 #else
 typedef int32_t IRQn_Type;
 typedef int32_t hal_irq_t;
 #endif // SPARK_NO_PLATFORM
+#include "pinmap_hal.h"
 #include "hal_irq_flag.h"
 
 /* Exported types ------------------------------------------------------------*/

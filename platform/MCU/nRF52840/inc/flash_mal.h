@@ -53,17 +53,17 @@ extern "C" {
 
 /* Internal Flash memory address where various firmwares are located */
 #ifndef INTERNAL_FLASH_START
-#define INTERNAL_FLASH_START        ((uint32_t)0x08000000)
+#define INTERNAL_FLASH_START        ((uint32_t)0x00000000)
 #endif
 
 //Bootloader firmware at the start of internal flash
 #define USB_DFU_ADDRESS             INTERNAL_FLASH_START
-//Main firmware begin address after 128KB (4 x 16K + 64K) from start of flash
-#define CORE_FW_ADDRESS             ((uint32_t)0x08020000)
+//Main firmware begin address after 256KB from start of flash
+#define CORE_FW_ADDRESS             ((uint32_t)0x00040000)
 #define APP_START_MASK              ((uint32_t)0x2FF10000)
 
 /* Internal Flash page size */
-#define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
+#define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x1000) //4K (256 sectors of 4K each used by main firmware)
 
 #ifdef MODULAR_FIRMWARE
     #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART

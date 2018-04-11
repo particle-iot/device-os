@@ -320,6 +320,12 @@ ifeq ("$(STM32_DEVICE)","STM32F2XX")
     PLATFORM_THREADING=1
 endif
 
+ifeq ("$(STM32_DEVICE)","nRF52840")
+	# FIXME: This is not an STM32 device
+    PLATFORM_THREADING=1
+endif
+
+
 ifeq ("$(PLATFORM_MCU)","")
 $(error PLATFORM_MCU not defined. Check platform id $(PLATFORM_ID))
 endif

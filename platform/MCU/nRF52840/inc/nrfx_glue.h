@@ -77,7 +77,7 @@ extern "C" {
  *
  * @param expression  Expression to evaluate.
  */
-#define NRFX_STATIC_ASSERT(expression)  STATIC_ASSERT(expression)
+#define NRFX_STATIC_ASSERT(expression)  PARTICLE_STATIC_ASSERT(expression)
 
 //------------------------------------------------------------------------------
 

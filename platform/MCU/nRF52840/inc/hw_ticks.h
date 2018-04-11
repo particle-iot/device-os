@@ -20,20 +20,15 @@
 
 #pragma once
 
+#include "platform_config.h"
+#include "system_tick_hal.h"
+
+#define SYSTEM_US_TICKS         (SystemCoreClock / 1000000) //cycles per microsecond
+#define SYSTEM_TICK_COUNTER     (DWT->CYCCNT)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * The number of ticks per microsecond of the system counter.
- * SYSTEM_TICK_COUNTER
- */
-#define SYSTEM_US_TICKS		100     // cycles per microsecond
-
-/**
- * Should return a value from a system counter.
- */
-#define SYSTEM_TICK_COUNTER     0
 
 /**
  * Increment the millisecond tick counter.

@@ -32,6 +32,8 @@
 #error "PLATFORM_ID not defined"
 #endif
 
+#include "nrf52840.h"
+
 //LEDs
 // TODO - map to Xenon hardware
 #define LEDn                                4

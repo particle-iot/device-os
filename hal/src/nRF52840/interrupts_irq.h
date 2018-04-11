@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
-typedef int32_t IRQn_Type;
+#ifdef USE_STDPERIPH_DRIVER
+#include "nrf52840.h"
+#endif /* USE_STDPERIPH_DRIVER */
 
 typedef enum hal_irq_t {
     __Last_irq = 0

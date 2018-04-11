@@ -13,7 +13,7 @@
 #include "flash_mal.h"
 #include <stdint.h>
 #include <stdbool.h>
-
+#include "hw_ticks.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -25,10 +25,6 @@ typedef enum
 {
 	BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1
 } ButtonMode_TypeDef;
-
-
-inline void Set_System() {}
-inline void SysTick_Configuration() {}
 
 
 
@@ -56,16 +52,17 @@ inline void OTA_Flashed_ResetStatus() {}
 inline bool OTA_Flash_Reset() { return false; }
 inline bool FACTORY_Flash_Reset() { return 0; }
 inline void BACKUP_Flash_Reset() {}
-inline void NVIC_SystemReset() {}
 inline void Finish_Update() {}
 inline void Bootloader_Update_Version(int version) {}
 
 
 
 #define __IO volatile
-inline void __set_MSP(uint32_t v) {}
 inline void IWDG_Reset_Enable(int count) {}
 inline void SysTick_Disable() {}
 
 inline void Save_Reset_Syndrome() {}
 
+void Set_System(void);
+void NVIC_Configuration(void);
+void SysTick_Configuration(void);
