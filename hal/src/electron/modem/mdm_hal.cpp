@@ -311,8 +311,20 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                         else CLR_GPRS_TIMEOUT(); // else if re-attached clear WDT.
                     }
                 // Socket Specific Command ---------------------------------
+                // +USORD: <socket>,<length>
+                } else if ((sscanf(cmd, "USORD: %d,%d", &a, &b) == 2)) {
+                    int socket = _findSocket(a);
+                    DEBUG_D("Socket %d: handle %d has %d bytes pending\r\n", socket, a, b);
+                    if (socket != MDM_SOCKET_ERROR)
+                        _sockets[socket].pending = b;
                 // +UUSORD: <socket>,<length>
                 } else if ((sscanf(cmd, "UUSORD: %d,%d", &a, &b) == 2)) {
+                    int socket = _findSocket(a);
+                    DEBUG_D("Socket %d: handle %d has %d bytes pending\r\n", socket, a, b);
+                    if (socket != MDM_SOCKET_ERROR)
+                        _sockets[socket].pending = b;
+                // +USORF: <socket>,<length>
+                } else if ((sscanf(cmd, "USORF: %d,%d", &a, &b) == 2)) {
                     int socket = _findSocket(a);
                     DEBUG_D("Socket %d: handle %d has %d bytes pending\r\n", socket, a, b);
                     if (socket != MDM_SOCKET_ERROR)
@@ -1764,6 +1776,12 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         buf += blk;
         cnt -= blk;
     }
+    LOCK();
+    if (_sockets[socket].pending == 0) {
+        sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
+        waitFinalResp(NULL, NULL, 10*1000);
+    }
+    UNLOCK();
     return (len - cnt);
 }
 
@@ -1794,6 +1812,12 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         buf += blk;
         cnt -= blk;
     }
+    LOCK();
+    if (_sockets[socket].pending == 0) {
+        sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
+        waitFinalResp(NULL, NULL, 10*1000);
+    }
+    UNLOCK();
     return (len - cnt);
 }
 
@@ -1862,7 +1886,7 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
                         if (blk > available)    // only read up to the amount available. When 0,
                             blk = available;// skip reading and check timeout.
                         if (blk > 0) {
-                            DEBUG_D("socketRecv: _cbUSORD\r\n");
+                            // DEBUG_D("socketRecv: _cbUSORD\r\n");
                             sendFormated("AT+USORD=%d,%d\r\n",_sockets[socket].handle, blk);
                             USORDparam param;
                             param.buf = buf;
@@ -1896,6 +1920,12 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
             return MDM_SOCKET_ERROR;
         }
     }
+    LOCK();
+    if (_sockets[socket].pending == 0) {
+        sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
+        waitFinalResp(NULL, NULL, 10*1000);
+    }
+    UNLOCK();
     // DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
     return cnt;
 }
@@ -1921,17 +1951,19 @@ int MDMParser::_cbUSORF(int type, const char* buf, int len, USORFparam* param)
 int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int len)
 {
     int cnt = 0;
-    //DEBUG_D("socketRecvFrom(%d,,%d)\r\n", socket, len);
+
+    // DEBUG_D("socketRecvFrom(%d,,%d)\r\n", socket, len);
 #ifdef MDM_DEBUG
     memset(buf, '\0', len);
 #endif
+
     system_tick_t start = HAL_Timer_Get_Milli_Seconds();
     while (len) {
         int blk = MAX_SIZE; // still need space for headers and unsolicited commands
         if (len < blk) blk = len;
         bool ok = false;
         {
-                LOCK();
+            LOCK();
             if (ISSOCKET(socket)) {
                 if (blk > 0) {
                     sendFormated("AT+USORF=%d,%d\r\n",_sockets[socket].handle, blk);
@@ -1962,7 +1994,13 @@ int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int 
             return MDM_SOCKET_ERROR;
         }
     }
-    //DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
+    LOCK();
+    if (_sockets[socket].pending == 0) {
+        sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
+        waitFinalResp(NULL, NULL, 10*1000);
+    }
+    UNLOCK();
+    // DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
     return cnt;
 }
 
