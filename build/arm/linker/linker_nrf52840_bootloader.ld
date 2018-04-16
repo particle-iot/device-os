@@ -21,7 +21,7 @@ _Minimum_Stack_Size = 0x1400;
 bootloader_ram_origin = 0x20000008;
 bootloader_ram_length = 0x3fff8;
 
-bootloader_flash_length = 16K;
+bootloader_flash_length = 32K;
 bootloader_flash_origin = 0x100000 - bootloader_flash_length;
 
 

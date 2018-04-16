@@ -132,9 +132,15 @@ __isr_vector:
     .long   RTC2_IRQHandler
     .long   I2S_IRQHandler
     .long   FPU_IRQHandler
+    .long   USBD_IRQHandler
+    .long   UARTE1_IRQHandler
+    .long   QSPI_IRQHandler
+    .long   CRYPTOCELL_IRQHandler
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
+    .long   PWM3_IRQHandler
     .long   0                           /*Reserved */
+    .long   SPIM3_IRQHandler
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
@@ -199,13 +205,6 @@ __isr_vector:
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
-    .long   0                           /*Reserved */
-    .long   0                           /*Reserved */
-    .long   0                           /*Reserved */
-    .long   0                           /*Reserved */
-    .long   0                           /*Reserved */
-    .long   0                           /*Reserved */
-
     .size __isr_vector, . - __isr_vector
 
 /* Reset Handler */
@@ -408,5 +407,11 @@ Default_Handler:
     IRQ  RTC2_IRQHandler
     IRQ  I2S_IRQHandler
     IRQ  FPU_IRQHandler
+    IRQ  USBD_IRQHandler
+    IRQ  UARTE1_IRQHandler
+    IRQ  QSPI_IRQHandler
+    IRQ  CRYPTOCELL_IRQHandler
+    IRQ  PWM3_IRQHandler
+    IRQ  SPIM3_IRQHandler
 
   .end
