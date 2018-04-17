@@ -67,6 +67,7 @@ private:
     mutable wiring_thread_fn_t *wrapper = NULL;
     os_thread_fn_t func_ = NULL;
     void* func_param_ = NULL;
+    bool started_ = false;
     bool exited_ = false;
 
 public:
@@ -79,6 +80,7 @@ public:
           func_param_(function_param)
     {
         os_thread_create(&handle, name, priority, &Thread::run, this, stack_size);
+        while (!started_) os_thread_yield();
     }
 
     Thread(const char *name, wiring_thread_fn_t function,
@@ -88,6 +90,7 @@ public:
         if(function) {
             wrapper = new wiring_thread_fn_t(function);
             os_thread_create(&handle, name, priority, &Thread::run, this, stack_size);
+            while (!started_) os_thread_yield();
         }
     }
 
@@ -148,6 +151,7 @@ public:
             this->func_ = rhs.func_;
             this->func_param_ = rhs.func_param_;
             this->exited_ = rhs.exited_;
+            this->started_ = rhs.started_;
             rhs.handle = OS_THREAD_INVALID_HANDLE;
             rhs.wrapper = NULL;
         }
@@ -158,6 +162,7 @@ private:
 
     static os_thread_return_t run(void* param) {
         Thread* th = (Thread*)param;
+        th->started_ = true;
         if (th->func_) {
             (*(th->func_))(th->func_param_);
         } else if (th->wrapper) {
