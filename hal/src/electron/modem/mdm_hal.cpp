@@ -616,17 +616,14 @@ bool MDMParser::_powerOn(void)
         // Determine type of the modem
         sendFormated("AT+CGMM\r\n");
         waitFinalResp(_cbCGMM, &_dev);
-    }
-
-    if (_dev.dev == DEV_UNKNOWN) {
-        MDM_ERROR("Unknown modem type");
-    }
-    if (_dev.dev != DEV_SARA_R410) { // SARA-R410 doesn't support hardware flow control
-        // Reinitialize the serial with hardware flow control enabled
-        MDM_INFO("Enabling hardware flow control");
-        electronMDM.begin(115200, true /* hwFlowControl */);
-        purge();
-        _dev.lpm = LPM_ENABLED;
+        if (_dev.dev == DEV_UNKNOWN) {
+            MDM_ERROR("Unknown modem type");
+        } else if (_dev.dev != DEV_SARA_R410) { // SARA-R410 doesn't support hardware flow control
+            // Reinitialize the serial with hardware flow control enabled
+            MDM_INFO("Enabling RTS/CTS flow control");
+            electronMDM.begin(115200, true /* hwFlowControl */);
+            _dev.lpm = LPM_ENABLED;
+        }
     }
 
     if (continue_cancel) {
