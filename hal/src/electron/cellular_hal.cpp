@@ -125,7 +125,7 @@ cellular_result_t  cellular_pdp_deactivate(void* reserved)
 
 cellular_result_t  cellular_gprs_attach(CellularCredentials* connect, void* reserved)
 {
-    const auto apn = defaultOrUserApn(*connect);
+    const char* const apn = defaultOrUserApn(*connect);
     CHECK_SUCCESS(electronMDM.join(apn, connect->username, connect->password));
     // These callbacks have been invoked in the system code previously, moving them to HAL for consistency
     // and backward compatibility
@@ -143,13 +143,13 @@ cellular_result_t  cellular_gprs_detach(void* reserved)
 
 cellular_result_t cellular_connect(void* reserved)
 {
-    const auto& cred = cellularCredentials;
-#ifdef LTE_ONLY
-    // TODO: Look for an APN based on IMSI for LTE providers as well
-    const auto apn = cred.apn;
-#else
-    const auto apn = defaultOrUserApn(cred);
-#endif
+    const CellularCredentials& cred = cellularCredentials;
+    const char* apn = cred.apn;
+    const DevStatus* const status = electronMDM.getDevStatus();
+    if (status->dev != DEV_SARA_R410) {
+        // TODO: Look for an APN based on IMSI for LTE providers as well
+        apn = defaultOrUserApn(cred);
+    }
     CHECK_SUCCESS(electronMDM.connect(apn, cred.username, cred.password));
     return 0;
 }

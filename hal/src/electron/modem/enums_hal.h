@@ -27,7 +27,7 @@
 // ----------------------------------------------------------------
 //! MT Device Types
 typedef enum { DEV_UNKNOWN, DEV_SARA_G350, DEV_LISA_U200, DEV_LISA_C200,
-               DEV_SARA_U260, DEV_SARA_U270, DEV_LEON_G200 } Dev;
+               DEV_SARA_U260, DEV_SARA_U270, DEV_LEON_G200, DEV_SARA_R410 } Dev;
 //! SIM Status
 typedef enum { SIM_UNKNOWN, SIM_MISSING, SIM_PIN, SIM_READY } Sim;
 //! SIM Status

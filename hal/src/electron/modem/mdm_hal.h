@@ -33,17 +33,6 @@
 /* Include for debug capabilty */
 #define MDM_DEBUG
 
-#define UBLOX_SARA_R4 // FIXME
-
-#ifdef UBLOX_SARA_R4
-// SARA-R4 modules don't support hardware flow control
-#define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0
-// SARA-R410 is the only LTE-capable module supported by the HAL at the moment
-#define LTE_ONLY
-#else
-#define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 1
-#endif
-
 /** basic modem parser class
 */
 class MDMParser
@@ -526,7 +515,7 @@ protected:
     static int _cbString(int type, const char* buf, int len, char* str);
     static int _cbInt(int type, const char* buf, int len, int* val);
     // device
-    static int _cbATI(int type, const char* buf, int len, Dev* dev);
+    static int _cbCGMM(int type, const char* buf, int len, DevStatus* s);
     static int _cbCPIN(int type, const char* buf, int len, Sim* sim);
     static int _cbCCID(int type, const char* buf, int len, char* ccid);
     // network
@@ -539,10 +528,8 @@ protected:
     static int _cbUACTIND(int type, const char* buf, int len, int* i);
     static int _cbUDOPN(int type, const char* buf, int len, char* mccmnc);
     static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
-#ifdef UBLOX_SARA_R4
     struct CGDCONTparam { char type[8]; char apn[32]; };
     static int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param);
-#endif
     // sockets
     static int _cbCMIP(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUPSND(int type, const char* buf, int len, int* act);

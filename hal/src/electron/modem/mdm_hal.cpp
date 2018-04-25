@@ -33,6 +33,7 @@
 #include "gpio_hal.h"
 #include "mdmapn_hal.h"
 #include "stm32f2xx.h"
+#include "dns_client.h"
 #include "service_debug.h"
 #include "bytes2hexbuf.h"
 #include "hex_to_bytes.h"
@@ -40,10 +41,6 @@
 #include <mutex>
 #include "net_hal.h"
 #include <limits>
-
-#ifdef UBLOX_SARA_R4
-#include "dns_client.h"
-#endif
 
 std::recursive_mutex mdm_mutex;
 
@@ -56,18 +53,13 @@ std::recursive_mutex mdm_mutex;
 #define MAX_SIZE        1024  //!< max expected messages (used with RX)
 #define USO_MAX_WRITE   1024  //!< maximum number of bytes to write to socket (used with TX)
 
-#ifdef UBLOX_SARA_R4
-// Number of milliseconds to keep the RESET_N pin low in order to reset the module
-#define RESET_N_LOW_TIME 10000 // SARA-R4: 10s
 // ID of the PDP context used to configure the default EPS bearer when registering in an LTE network
 // Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
 #define PDP_CONTEXT 1
+
 // Enable hex mode for socket commands. SARA-R410M-01B has a bug which causes truncation of
 // data read from a socket if the data contains a null byte
 // #define SOCKET_HEX_MODE
-#else
-#define RESET_N_LOW_TIME 100
-#endif // !defined(UBLOX_SARA_R4)
 
 // Timeout for socket write operations
 #define SOCKET_WRITE_TIMEOUT 30000
@@ -533,8 +525,12 @@ bool MDMParser::disconnect() {
 void MDMParser::reset(void)
 {
     MDM_INFO("[ Modem reset ]");
+    unsigned delay = 100;
+    if (_dev.dev == DEV_UNKNOWN || _dev.dev == DEV_SARA_R410) {
+        delay = 10000; // SARA-R4: 10s
+    }
     HAL_GPIO_Write(RESET_UC, 0);
-    HAL_Delay_Milliseconds(RESET_N_LOW_TIME);
+    HAL_Delay_Milliseconds(delay);
     HAL_GPIO_Write(RESET_UC, 1);
 }
 
@@ -557,12 +553,9 @@ bool MDMParser::_powerOn(void)
     PIN_MAP_PARSER[RESET_UC].gpio_peripheral->BSRRL = PIN_MAP_PARSER[RESET_UC].gpio_pin;
     HAL_Pin_Mode(RESET_UC, OUTPUT);
 
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-    _dev.lpm = LPM_ENABLED;
-#else
-    HAL_Pin_Mode(RTS_UC, OUTPUT);
-    HAL_GPIO_Write(RTS_UC, 0); // VERY IMPORTANT FOR CORRECT OPERATION W/O HW FLOW CONTROL!!
-#endif
+    // The UART power saving mode depends on hardware flow control which is disabled initially
+    _dev.lpm = LPM_DISABLED;
+    _dev.dev = DEV_UNKNOWN;
 
     HAL_Pin_Mode(LVLOE_UC, OUTPUT);
     HAL_GPIO_Write(LVLOE_UC, 0);
@@ -571,7 +564,7 @@ bool MDMParser::_powerOn(void)
         MDM_INFO("[ ElectronSerialPipe::begin ] = = = = = = = =");
 
         /* Instantiate the USART3 hardware */
-        electronMDM.begin(115200);
+        electronMDM.begin(115200, false /* hwFlowControl */);
 
         /* Initialize only once */
         _init = true;
@@ -619,6 +612,21 @@ bool MDMParser::_powerOn(void)
     }
     if (i < 0) {
         MDM_ERROR("[ No Reply from Modem ]\r\n");
+    } else {
+        // Determine type of the modem
+        sendFormated("AT+CGMM\r\n");
+        waitFinalResp(_cbCGMM, &_dev);
+    }
+
+    if (_dev.dev == DEV_UNKNOWN) {
+        MDM_ERROR("Unknown modem type");
+    }
+    if (_dev.dev != DEV_SARA_R410) { // SARA-R410 doesn't support hardware flow control
+        // Reinitialize the serial with hardware flow control enabled
+        MDM_INFO("Enabling hardware flow control");
+        electronMDM.begin(115200, true /* hwFlowControl */);
+        purge();
+        _dev.lpm = LPM_ENABLED;
     }
 
     if (continue_cancel) {
@@ -735,12 +743,12 @@ bool MDMParser::init(DevStatus* status)
 {
     LOCK();
     MDM_INFO("\r\n[ Modem::init ] = = = = = = = = = = = = = = =");
-#ifdef UBLOX_SARA_R4
-    // TODO: Without this delay, some commands, such as +CIMI, may return a SIM failure error.
-    // This probably has something to do with the SIM initialization. Should we check the SIM
-    // status via +USIMSTAT in addition to +CPIN?
-    HAL_Delay_Milliseconds(250);
-#endif
+    if (_dev.dev == DEV_SARA_R410) {
+        // TODO: Without this delay, some commands, such as +CIMI, may return a SIM failure error.
+        // This probably has something to do with the SIM initialization. Should we check the SIM
+        // status via +USIMSTAT in addition to +CPIN?
+        HAL_Delay_Milliseconds(250);
+    }
     // Returns the product serial number, IMEI (International Mobile Equipment Identity)
     sendFormated("AT+CGSN\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.imei))
@@ -754,10 +762,6 @@ bool MDMParser::init(DevStatus* status)
     // get the manufacturer
     sendFormated("AT+CGMI\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.manu))
-        goto failure;
-    // get the model identification
-    sendFormated("AT+CGMM\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _dev.model))
         goto failure;
     // get the version
     sendFormated("AT+CGMR\r\n");
@@ -837,12 +841,12 @@ bool MDMParser::powerOff(void)
             }
         }
     }
+
+    // Close serial connection
+    electronMDM.end();
+
     HAL_Pin_Mode(PWR_UC, INPUT);
     HAL_Pin_Mode(RESET_UC, INPUT);
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-#else
-    HAL_Pin_Mode(RTS_UC, INPUT);
-#endif
     HAL_Pin_Mode(LVLOE_UC, INPUT);
 
     if (continue_cancel) cancel();
@@ -850,15 +854,27 @@ bool MDMParser::powerOff(void)
     return ok;
 }
 
-int MDMParser::_cbATI(int type, const char* buf, int len, Dev* dev)
+int MDMParser::_cbCGMM(int type, const char* buf, int len, DevStatus* s)
 {
-    if ((type == TYPE_UNKNOWN) && dev) {
-        if      (strstr(buf, "SARA-G350")) *dev = DEV_SARA_G350;
-        else if (strstr(buf, "LISA-U200")) *dev = DEV_LISA_U200;
-        else if (strstr(buf, "LISA-C200")) *dev = DEV_LISA_C200;
-        else if (strstr(buf, "SARA-U260")) *dev = DEV_SARA_U260;
-        else if (strstr(buf, "SARA-U270")) *dev = DEV_SARA_U270;
-        else if (strstr(buf, "LEON-G200")) *dev = DEV_LEON_G200;
+    if (type == TYPE_UNKNOWN && s) {
+        static_assert(sizeof(DevStatus::model) == 16, "The format string below needs to be updated accordingly");
+        if (sscanf(buf, "\r\n%15s\r\n", s->model) == 1) {
+            if (strstr(s->model, "SARA-G350")) {
+                s->dev = DEV_SARA_G350;
+            } else if (strstr(s->model, "LISA-U200")) {
+                s->dev = DEV_LISA_U200;
+            } else if (strstr(s->model, "LISA-C200")) {
+                s->dev = DEV_LISA_C200;
+            } else if (strstr(s->model, "SARA-U260")) {
+                s->dev = DEV_SARA_U260;
+            } else if (strstr(s->model, "SARA-U270")) {
+                s->dev = DEV_SARA_U270;
+            } else if (strstr(s->model, "LEON-G200")) {
+                s->dev = DEV_LEON_G200;
+            } else if (strstr(s->model, "SARA-R410")) {
+                s->dev = DEV_SARA_R410;
+            }
+        }
     }
     return WAIT;
 }
@@ -902,55 +918,55 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
             sendFormated("AT+URAT?\r\n");
             waitFinalResp();
 #endif // defined(MDM_DEBUG)
-#ifdef UBLOX_SARA_R4
-            // Get default context settings
-            sendFormated("AT+CGDCONT?\r\n");
-            CGDCONTparam ctx = {};
-            if (waitFinalResp(_cbCGDCONT, &ctx) != RESP_OK) {
-                goto failure;
-            }
-            // TODO: SARA-R410-01B modules come preconfigured with AT&T's APN ("broadband"), which may
-            // cause network registration issues with MVNO providers and third party SIM cards. As a
-            // workaround the code below sets a blank APN if it detects that the current context is
-            // configured to use the dual stack IPv4/IPv6 capability ("IPV4V6"), which is the case for
-            // the factory default settings. Ideally, setting of a default APN should be based on IMSI
-            if (strcmp(ctx.type, "IP") != 0 || strcmp(ctx.apn, apn ? apn : "") != 0) {
-                // Stop the network registration and update the context settings
-                sendFormated("AT+COPS=2\r\n");
+            if (_dev.dev == DEV_SARA_R410) {
+                // Get default context settings
+                sendFormated("AT+CGDCONT?\r\n");
+                CGDCONTparam ctx = {};
+                if (waitFinalResp(_cbCGDCONT, &ctx) != RESP_OK) {
+                    goto failure;
+                }
+                // TODO: SARA-R410-01B modules come preconfigured with AT&T's APN ("broadband"), which may
+                // cause network registration issues with MVNO providers and third party SIM cards. As a
+                // workaround the code below sets a blank APN if it detects that the current context is
+                // configured to use the dual stack IPv4/IPv6 capability ("IPV4V6"), which is the case for
+                // the factory default settings. Ideally, setting of a default APN should be based on IMSI
+                if (strcmp(ctx.type, "IP") != 0 || strcmp(ctx.apn, apn ? apn : "") != 0) {
+                    // Stop the network registration and update the context settings
+                    sendFormated("AT+COPS=2\r\n");
+                    if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
+                        goto failure;
+                    }
+                    sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
+                    if (waitFinalResp() != RESP_OK) {
+                        goto failure;
+                    }
+                }
+                // Make sure automatic network registration is enabled
+                sendFormated("AT+COPS=0\r\n");
                 if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
                     goto failure;
                 }
-                sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
+                // Set up the EPS network registration URC
+                sendFormated("AT+CEREG=2\r\n");
                 if (waitFinalResp() != RESP_OK) {
                     goto failure;
                 }
+            } else {
+                // setup the GPRS network registration URC (Unsolicited Response Code)
+                // 0: (default value and factory-programmed value): network registration URC disabled
+                // 1: network registration URC enabled
+                // 2: network registration and location information URC enabled
+                sendFormated("AT+CGREG=2\r\n");
+                if (RESP_OK != waitFinalResp())
+                    goto failure;
+                // setup the network registration URC (Unsolicited Response Code)
+                // 0: (default value and factory-programmed value): network registration URC disabled
+                // 1: network registration URC enabled
+                // 2: network registration and location information URC enabled
+                sendFormated("AT+CREG=2\r\n");
+                if (RESP_OK != waitFinalResp())
+                    goto failure;
             }
-            // Make sure automatic network registration is enabled
-            sendFormated("AT+COPS=0\r\n");
-            if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
-                goto failure;
-            }
-            // Set up the EPS network registration URC
-            sendFormated("AT+CEREG=2\r\n");
-            if (waitFinalResp() != RESP_OK) {
-                goto failure;
-            }
-#else
-            // setup the GPRS network registration URC (Unsolicited Response Code)
-            // 0: (default value and factory-programmed value): network registration URC disabled
-            // 1: network registration URC enabled
-            // 2: network registration and location information URC enabled
-            sendFormated("AT+CGREG=2\r\n");
-            if (RESP_OK != waitFinalResp())
-                goto failure;
-            // setup the network registration URC (Unsolicited Response Code)
-            // 0: (default value and factory-programmed value): network registration URC disabled
-            // 1: network registration URC enabled
-            // 2: network registration and location information URC enabled
-            sendFormated("AT+CREG=2\r\n");
-            if (RESP_OK != waitFinalResp())
-                goto failure;
-#endif // !defined(UBLOX_SARA_R4)
             // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM and GPRS)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
@@ -981,19 +997,19 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     memset(&_net, 0, sizeof(_net));
     _net.lac = 0xFFFF;
     _net.ci = 0xFFFFFFFF;
-#ifdef UBLOX_SARA_R4
-    // check EPS registration
-    sendFormated("AT+CEREG?\r\n");
-    waitFinalResp();
-#else
-    // check registration
-    sendFormated("AT+CREG?\r\n");
-    waitFinalResp();     // don't fail as service could be not subscribed
+    if (_dev.dev == DEV_SARA_R410) {
+        // check EPS registration
+        sendFormated("AT+CEREG?\r\n");
+        waitFinalResp();
+    } else {
+        // check registration
+        sendFormated("AT+CREG?\r\n");
+        waitFinalResp();     // don't fail as service could be not subscribed
 
-    // check PSD registration
-    sendFormated("AT+CGREG?\r\n");
-    waitFinalResp(); // don't fail as service could be not subscribed
-#endif // !defined(UBLOX_SARA_R4)
+        // check PSD registration
+        sendFormated("AT+CGREG?\r\n");
+        waitFinalResp(); // don't fail as service could be not subscribed
+    }
     if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps))
     {
         sendFormated("AT+COPS?\r\n");
@@ -1012,12 +1028,12 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     if (status) {
         memcpy(status, &_net, sizeof(NetStatus));
     }
-#ifdef UBLOX_SARA_R4
     // don't return true until fully registered
-    ok = REG_OK(_net.eps);
-#else
-    ok = REG_OK(_net.csd) && REG_OK(_net.psd);
-#endif
+    if (_dev.dev == DEV_SARA_R410) {
+        ok = REG_OK(_net.eps);
+    } else {
+        ok = REG_OK(_net.csd) && REG_OK(_net.psd);
+    }
     UNLOCK();
     return ok;
 failure:
@@ -1367,102 +1383,102 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::join ] = = = = = = = = = = = = = = = =");
         _ip = NOIP;
-#ifdef UBLOX_SARA_R4
-        // Get local IP address associated with the default profile
-        sendFormated("AT+CGPADDR=%d\r\n", PDP_CONTEXT);
-        if (waitFinalResp(_cbCGPADDR, &_ip) != RESP_OK) {
-            goto failure;
-        }
-        // FIXME: The existing code seems to use `_activated` and `_attached` flags kind of interchangeably
-        _activated = true;
-#else
-        int a = 0;
-        bool force = false; // If we are already connected, don't force a reconnect.
-
-        // perform GPRS attach
-        sendFormated("AT+CGATT=1\r\n");
-        if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000))
-            goto failure;
-
-        // Check the if the PSD profile is activated (a=1)
-        sendFormated("AT+UPSND=" PROFILE ",8\r\n");
-        if (RESP_OK != waitFinalResp(_cbUPSND, &a))
-            goto failure;
-        if (a == 1) {
-            _activated = true; // PDP activated
-            if (force) {
-                // deactivate the PSD profile if it is already activated
-                sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-                if (RESP_OK != waitFinalResp(NULL,NULL,40*1000))
-                    goto failure;
-                a = 0;
+        if (_dev.dev == DEV_SARA_R410) {
+            // Get local IP address associated with the default profile
+            sendFormated("AT+CGPADDR=%d\r\n", PDP_CONTEXT);
+            if (waitFinalResp(_cbCGPADDR, &_ip) != RESP_OK) {
+                goto failure;
             }
-        }
-        if (a == 0) {
-            bool ok = false;
-            _activated = false; // PDP deactived
-            // try to lookup the apn settings from our local database by mccmnc
-            const char* config = NULL;
-            if (!apn && !username && !password)
-                config = apnconfig(_dev.imsi);
+            // FIXME: The existing code seems to use `_activated` and `_attached` flags kind of interchangeably
+            _activated = true;
+        } else {
+            int a = 0;
+            bool force = false; // If we are already connected, don't force a reconnect.
 
-            // Set up the dynamic IP address assignment.
-            sendFormated("AT+UPSD=" PROFILE ",7,\"0.0.0.0\"\r\n");
-            if (RESP_OK != waitFinalResp())
+            // perform GPRS attach
+            sendFormated("AT+CGATT=1\r\n");
+            if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000))
                 goto failure;
 
-            do {
-                if (config) {
-                    apn      = _APN_GET(config);
-                    username = _APN_GET(config);
-                    password = _APN_GET(config);
-                    DEBUG_D("Testing APN Settings(\"%s\",\"%s\",\"%s\")\r\n", apn, username, password);
-                }
-                // Set up the APN
-                if (apn && *apn) {
-                    sendFormated("AT+UPSD=" PROFILE ",1,\"%s\"\r\n", apn);
-                    if (RESP_OK != waitFinalResp())
+            // Check the if the PSD profile is activated (a=1)
+            sendFormated("AT+UPSND=" PROFILE ",8\r\n");
+            if (RESP_OK != waitFinalResp(_cbUPSND, &a))
+                goto failure;
+            if (a == 1) {
+                _activated = true; // PDP activated
+                if (force) {
+                    // deactivate the PSD profile if it is already activated
+                    sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
+                    if (RESP_OK != waitFinalResp(NULL,NULL,40*1000))
                         goto failure;
+                    a = 0;
                 }
-                if (username && *username) {
-                    sendFormated("AT+UPSD=" PROFILE ",2,\"%s\"\r\n", username);
-                    if (RESP_OK != waitFinalResp())
-                        goto failure;
-                }
-                if (password && *password) {
-                    sendFormated("AT+UPSD=" PROFILE ",3,\"%s\"\r\n", password);
-                    if (RESP_OK != waitFinalResp())
-                        goto failure;
-                }
-                // try different Authentication Protocols
-                // 0 = none
-                // 1 = PAP (Password Authentication Protocol)
-                // 2 = CHAP (Challenge Handshake Authentication Protocol)
-                for (int i = AUTH_NONE; i <= AUTH_CHAP && !ok; i ++) {
-                    if ((auth == AUTH_DETECT) || (auth == i)) {
-                        // Set up the Authentication Protocol
-                        sendFormated("AT+UPSD=" PROFILE ",6,%d\r\n", i);
+            }
+            if (a == 0) {
+                bool ok = false;
+                _activated = false; // PDP deactived
+                // try to lookup the apn settings from our local database by mccmnc
+                const char* config = NULL;
+                if (!apn && !username && !password)
+                    config = apnconfig(_dev.imsi);
+
+                // Set up the dynamic IP address assignment.
+                sendFormated("AT+UPSD=" PROFILE ",7,\"0.0.0.0\"\r\n");
+                if (RESP_OK != waitFinalResp())
+                    goto failure;
+
+                do {
+                    if (config) {
+                        apn      = _APN_GET(config);
+                        username = _APN_GET(config);
+                        password = _APN_GET(config);
+                        DEBUG_D("Testing APN Settings(\"%s\",\"%s\",\"%s\")\r\n", apn, username, password);
+                    }
+                    // Set up the APN
+                    if (apn && *apn) {
+                        sendFormated("AT+UPSD=" PROFILE ",1,\"%s\"\r\n", apn);
                         if (RESP_OK != waitFinalResp())
                             goto failure;
-                        // Activate the PSD profile and make connection
-                        sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
-                        if (RESP_OK == waitFinalResp(NULL,NULL,150*1000)) {
-                            _activated = true; // PDP activated
-                            ok = true;
+                    }
+                    if (username && *username) {
+                        sendFormated("AT+UPSD=" PROFILE ",2,\"%s\"\r\n", username);
+                        if (RESP_OK != waitFinalResp())
+                            goto failure;
+                    }
+                    if (password && *password) {
+                        sendFormated("AT+UPSD=" PROFILE ",3,\"%s\"\r\n", password);
+                        if (RESP_OK != waitFinalResp())
+                            goto failure;
+                    }
+                    // try different Authentication Protocols
+                    // 0 = none
+                    // 1 = PAP (Password Authentication Protocol)
+                    // 2 = CHAP (Challenge Handshake Authentication Protocol)
+                    for (int i = AUTH_NONE; i <= AUTH_CHAP && !ok; i ++) {
+                        if ((auth == AUTH_DETECT) || (auth == i)) {
+                            // Set up the Authentication Protocol
+                            sendFormated("AT+UPSD=" PROFILE ",6,%d\r\n", i);
+                            if (RESP_OK != waitFinalResp())
+                                goto failure;
+                            // Activate the PSD profile and make connection
+                            sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
+                            if (RESP_OK == waitFinalResp(NULL,NULL,150*1000)) {
+                                _activated = true; // PDP activated
+                                ok = true;
+                            }
                         }
                     }
+                } while (!ok && config && *config); // maybe use next setting ?
+                if (!ok) {
+                    MDM_ERROR("Your modem APN/password/username may be wrong\r\n");
+                    goto failure;
                 }
-            } while (!ok && config && *config); // maybe use next setting ?
-            if (!ok) {
-                MDM_ERROR("Your modem APN/password/username may be wrong\r\n");
-                goto failure;
             }
+            //Get local IP address
+            sendFormated("AT+UPSND=" PROFILE ",0\r\n");
+            if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
+                goto failure;
         }
-        //Get local IP address
-        sendFormated("AT+UPSND=" PROFILE ",0\r\n");
-        if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
-            goto failure;
-#endif // !defined(UBLOX_SARA_R4)
         UNLOCK();
         _attached = true;  // GPRS
         return _ip;
@@ -1493,7 +1509,6 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
     return WAIT;
 }
 
-#ifdef UBLOX_SARA_R4
 int MDMParser::_cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
     if (type == TYPE_PLUS || type == TYPE_UNKNOWN) {
         buf = (const char*)memchr(buf, '+', len); // Skip leading new line characters
@@ -1510,7 +1525,6 @@ int MDMParser::_cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* para
     }
     return WAIT;
 }
-#endif // defined(UBLOX_SARA_R4)
 
 int MDMParser::_cbCMIP(int type, const char* buf, int len, MDM_IP* ip)
 {
@@ -1595,22 +1609,22 @@ bool MDMParser::deactivate(void)
         }
         MDM_INFO("\r\n[ Modem::deactivate ] = = = = = = = = = = = = =");
         if (_ip != NOIP) {
-#ifndef UBLOX_SARA_R4
-            /* Deactivates the PDP context assoc. with this profile
-             * ensuring that no additional data is sent or received
-             * by the device. */
-            sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-            if (RESP_OK == waitFinalResp()) {
+            if (_dev.dev == DEV_SARA_R410) {
+                // The default context cannot be deactivated
                 _ip = NOIP;
-                ok = true;
                 _attached = false;
+                ok = true;
+            } else {
+                /* Deactivates the PDP context assoc. with this profile
+                 * ensuring that no additional data is sent or received
+                 * by the device. */
+                sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
+                if (RESP_OK == waitFinalResp()) {
+                    _ip = NOIP;
+                    ok = true;
+                    _attached = false;
+                }
             }
-#else
-            // The default context cannot be deactivated
-            _ip = NOIP;
-            _attached = false;
-            ok = true;
-#endif // defined(UBLOX_SARA_R4)
         }
     }
     if (continue_cancel) cancel();
@@ -1629,26 +1643,26 @@ bool MDMParser::detach(void)
             resume(); // make sure we can use the AT parser
         }
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
-#ifndef UBLOX_SARA_R4
-        // if (_ip != NOIP) {  // if we deactivate() first we won't have an IP
-            /* Detach from the GPRS network and conserve network resources. */
-            /* Any active PDP context will also be deactivated. */
-            sendFormated("AT+CGATT=0\r\n");
-            if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000)) {
-                ok = true;
+        if (_dev.dev == DEV_SARA_R410) {
+            // TODO: There's no GPRS service in LTE, although the GRPS detach command still disables
+            // the PSD connection. For now let's unregister from the network entirely, since the
+            // behavior of the detach command in relation to LTE is not documented
+            sendFormated("AT+COPS=2\r\n");
+            if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) == RESP_OK) {
                 _activated = false;
+                ok = true;
             }
-        // }
-#else
-        // TODO: There's no GPRS service in LTE, although the GRPS detach command still disables
-        // the PSD connection. For now let's unregister from the network entirely, since the
-        // behavior of the detach command in relation to LTE is not documented
-        sendFormated("AT+COPS=2\r\n");
-        if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) == RESP_OK) {
-            _activated = false;
-            ok = true;
+        } else {
+            // if (_ip != NOIP) {  // if we deactivate() first we won't have an IP
+                /* Detach from the GPRS network and conserve network resources. */
+                /* Any active PDP context will also be deactivated. */
+                sendFormated("AT+CGATT=0\r\n");
+                if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000)) {
+                    ok = true;
+                    _activated = false;
+                }
+            // }
         }
-#endif
     }
     if (continue_cancel) cancel();
     UNLOCK();
@@ -1657,28 +1671,25 @@ bool MDMParser::detach(void)
 
 MDM_IP MDMParser::gethostbyname(const char* host)
 {
-#ifndef UBLOX_SARA_R4
     MDM_IP ip = NOIP;
-    int a,b,c,d;
-    if (sscanf(host, IPSTR, &a,&b,&c,&d) == 4)
-        ip = IPADR(a,b,c,d);
-    else {
-        LOCK();
-        sendFormated("AT+UDNSRN=0,\"%s\"\r\n", host);
-        if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, 30*1000))
-            ip = NOIP;
-        UNLOCK();
-    }
-    return ip;
-#else
-    // Current uBlox firmware (L0.0.00.00.05.05) doesn't support +UDNSRN command, so we have to
-    // use our own DNS client
     LOCK();
-    MDM_IP addr = NOIP;
-    particle::getHostByName(host, &addr);
+    if (_dev.dev == DEV_SARA_R410) {
+        // Current uBlox firmware (L0.0.00.00.05.05) doesn't support +UDNSRN command, so we have to
+        // use our own DNS client
+        particle::getHostByName(host, &ip);
+    } else {
+        int a,b,c,d;
+        if (sscanf(host, IPSTR, &a,&b,&c,&d) == 4) {
+            ip = IPADR(a,b,c,d);
+        } else {
+            sendFormated("AT+UDNSRN=0,\"%s\"\r\n", host);
+            if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, 30*1000)) {
+                ip = NOIP;
+            }
+        }
+    }
     UNLOCK();
-    return addr;
-#endif // defined(UBLOX_SARA_R4)
+    return ip;
 }
 
 // ----------------------------------------------------------------
