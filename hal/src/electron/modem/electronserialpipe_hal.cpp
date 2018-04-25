@@ -26,17 +26,98 @@
 #include "gpio_hal.h"
 #include "mdm_hal.h"
 
-static USART_InitTypeDef USART_InitStructure;
-
 ElectronSerialPipe::ElectronSerialPipe(int rxSize, int txSize) :
     _pipeRx( rxSize ),
     _pipeTx( txSize ),
-    pause_(false)
+    baud_(0),
+    pause_(false),
+    hwFlowCtrl_(false)
 {
 }
 
 ElectronSerialPipe::~ElectronSerialPipe(void)
 {
+    end();
+}
+
+void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
+{
+    //HAL_USART_Begin(HAL_USART_SERIAL3, baud);
+    //USART_DeInit(USART3);
+    end();
+
+    hwFlowCtrl_ = hwFlowCtrl;
+    baud_ = baud;
+
+    if (hwFlowCtrl) {
+        // Configure USART RTS and CTS as alternate function push-pull
+        HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
+        HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
+    } else {
+        HAL_Pin_Mode(RTS_UC, OUTPUT);
+        HAL_GPIO_Write(RTS_UC, 0); // VERY IMPORTANT FOR CORRECT OPERATION W/O HW FLOW CONTROL!!
+    }
+    // Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
+    HAL_Pin_Mode(RXD_UC, AF_OUTPUT_PUSHPULL);
+    HAL_Pin_Mode(TXD_UC, AF_OUTPUT_PUSHPULL);
+
+    // Enable USART Clock
+    RCC->APB1ENR |= RCC_APB1Periph_USART3;
+
+    // Connect USART pins to AFx
+    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (hwFlowCtrl) {
+        GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
+        GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, PIN_MAP[CTS_UC].gpio_pin_source, GPIO_AF_USART3);
+    }
+    GPIO_PinAFConfig(PIN_MAP[RXD_UC].gpio_peripheral, PIN_MAP[RXD_UC].gpio_pin_source, GPIO_AF_USART3);
+    GPIO_PinAFConfig(PIN_MAP[TXD_UC].gpio_peripheral, PIN_MAP[TXD_UC].gpio_pin_source, GPIO_AF_USART3);
+
+    // NVIC Configuration
+    NVIC_InitTypeDef NVIC_InitStructure = {};
+    // Enable the USART Interrupt
+    NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    // USART default configuration
+    // USART configured as follow:
+    // - BaudRate = (set baudRate as 9600 baud)
+    // - Word Length = 8 Bits
+    // - One Stop Bit
+    // - No parity
+    // - Hardware flow control disabled for Serial1/2/4/5
+    // - Hardware flow control enabled (RTS and CTS signals) for Serial3
+    // - Receive and transmit enabled
+    USART_InitTypeDef USART_InitStructure = {};
+    USART_InitStructure.USART_BaudRate = baud;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_InitStructure.USART_HardwareFlowControl = hwFlowCtrl ? USART_HardwareFlowControl_RTS_CTS :
+            USART_HardwareFlowControl_None;
+
+    // Configure USART
+    USART_Init(USART3, &USART_InitStructure);
+
+    // Enable the USART
+    USART_Cmd(USART3, ENABLE);
+
+    // Enable USART Receive and Transmit interrupts
+    USART_ITConfig(USART3, USART_IT_TXE, ENABLE);
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+}
+
+void ElectronSerialPipe::end()
+{
+    if (baud_ == 0) {
+        return;
+    }
+
     // wait for transmission of outgoing data
     while (_pipeTx.readable())
     {
@@ -54,7 +135,7 @@ ElectronSerialPipe::~ElectronSerialPipe(void)
     USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
     USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
 
-    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_InitTypeDef NVIC_InitStructure = {};
 
     // Disable the USART Interrupt
     NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
@@ -65,74 +146,16 @@ ElectronSerialPipe::~ElectronSerialPipe(void)
     // Disable USART Clock
     RCC->APB1ENR &= ~RCC_APB1Periph_USART3;
 
-    // clear any received data
-    // ... should be handled with ~Pipe deconstructor
-}
+    if (!hwFlowCtrl_) {
+        HAL_Pin_Mode(RTS_UC, INPUT);
+    }
 
-void ElectronSerialPipe::begin(unsigned int baud)
-{
-    //HAL_USART_Begin(HAL_USART_SERIAL3, baud);
-    USART_DeInit(USART3);
-
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-    // Configure USART RTS and CTS as alternate function push-pull
-    HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
-#endif
-    // Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
-    HAL_Pin_Mode(RXD_UC, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(TXD_UC, AF_OUTPUT_PUSHPULL);
-
-    // Enable USART Clock
-    RCC->APB1ENR |= RCC_APB1Periph_USART3;
-
-    // Connect USART pins to AFx
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-    GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
-    GPIO_PinAFConfig(PIN_MAP[CTS_UC].gpio_peripheral, PIN_MAP[CTS_UC].gpio_pin_source, GPIO_AF_USART3);
-#endif
-    GPIO_PinAFConfig(PIN_MAP[RXD_UC].gpio_peripheral, PIN_MAP[RXD_UC].gpio_pin_source, GPIO_AF_USART3);
-    GPIO_PinAFConfig(PIN_MAP[TXD_UC].gpio_peripheral, PIN_MAP[TXD_UC].gpio_pin_source, GPIO_AF_USART3);
-
-    // NVIC Configuration
-    NVIC_InitTypeDef NVIC_InitStructure;
-    // Enable the USART Interrupt
-    NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
-
-    // USART default configuration
-    // USART configured as follow:
-    // - BaudRate = (set baudRate as 9600 baud)
-    // - Word Length = 8 Bits
-    // - One Stop Bit
-    // - No parity
-    // - Hardware flow control disabled for Serial1/2/4/5
-    // - Hardware flow control enabled (RTS and CTS signals) for Serial3
-    // - Receive and transmit enabled
-    USART_InitStructure.USART_BaudRate = baud;
-    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-    USART_InitStructure.USART_StopBits = USART_StopBits_1;
-    USART_InitStructure.USART_Parity = USART_Parity_No;
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
-#endif
-
-    // Configure USART
-    USART_Init(USART3, &USART_InitStructure);
-
-    // Enable the USART
-    USART_Cmd(USART3, ENABLE);
-
-    // Enable USART Receive and Transmit interrupts
-    USART_ITConfig(USART3, USART_IT_TXE, ENABLE);
-    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+    // clear any pending data
+    _pipeTx.done();
+    _pipeRx.done();
+    baud_ = 0;
+    hwFlowCtrl_ = false;
+    pause_ = false;
 }
 
 // tx channel
@@ -227,26 +250,23 @@ void ElectronSerialPipe::rxIrqBuf(void)
 
 void ElectronSerialPipe::rxResume(void)
 {
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-    if (pause_) {
+    if (hwFlowCtrl_ && pause_) {
         pause_ = false;
         HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
         STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
         GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
     }
-#endif
-
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
 }
 
 void ElectronSerialPipe::rxPause(void)
 {
-#if USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS
-    pause_ = true;
-    HAL_Pin_Mode(RTS_UC, OUTPUT);
-    HAL_GPIO_Write(RTS_UC, 1);
+    if (hwFlowCtrl_ && !pause_) {
+        pause_ = true;
+        HAL_Pin_Mode(RTS_UC, OUTPUT);
+        HAL_GPIO_Write(RTS_UC, 1);
+    }
     USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
-#endif
 }
 
 /*******************************************************************************
