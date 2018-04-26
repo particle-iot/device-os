@@ -20,3 +20,7 @@
 	path = third_party/mbedtls/mbedtls
 	url = ../mbedtls.git
 	branch = particle-mbedtls-2.4.2
+[submodule "third_party/nanopb/nanopb"]
+	path = third_party/nanopb/nanopb
+	url = ../nanopb.git
+	branch = particle-nanopb-0.3.9
