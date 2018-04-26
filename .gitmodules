@@ -12,3 +12,7 @@
 	path = third_party/lwip/lwip-contrib
 	url = ../lwip-contrib.git
 	branch = master
+[submodule "third_party/freertos/freertos"]
+	path = third_party/freertos/freertos
+	url = ../freertos.git
+	branch = particle
