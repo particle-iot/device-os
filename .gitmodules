@@ -16,3 +16,7 @@
 	path = third_party/freertos/freertos
 	url = ../freertos.git
 	branch = particle
+[submodule "third_party/mbedtls/mbedtls"]
+	path = third_party/mbedtls/mbedtls
+	url = ../mbedtls.git
+	branch = particle-mbedtls-2.4.2
