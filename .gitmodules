@@ -24,3 +24,6 @@
 	path = third_party/nanopb/nanopb
 	url = ../nanopb.git
 	branch = particle-nanopb-0.3.9
+[submodule "third_party/openthread/openthread"]
+	path = third_party/openthread/openthread
+	url = ../openthread.git
