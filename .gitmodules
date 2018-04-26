@@ -4,3 +4,11 @@
 [submodule "third_party/nrf5_sdk/nrf5_sdk"]
 	path = third_party/nrf5_sdk/nrf5_sdk
 	url = ../nrf5_sdk.git
+[submodule "third_party/lwip/lwip"]
+	path = third_party/lwip/lwip
+	url = ../lwip.git
+	branch = particle
+[submodule "third_party/lwip/lwip-contrib"]
+	path = third_party/lwip/lwip-contrib
+	url = ../lwip-contrib.git
+	branch = master
