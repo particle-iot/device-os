@@ -393,7 +393,7 @@ void Usart::onReadComplete(const boost::system::error_code& ec, std::size_t byte
 void Usart::onOverflowReadComplete(const boost::system::error_code& ec, std::size_t bytes) {
   if (!ec) {
     std::lock_guard<std::mutex> lk(mutex_);
-    // LOG(WARN, "UART RX buffer overflow");
+    LOG(WARN, "UART RX buffer overflow");
     inRead_ = false;
     doRead();
   } else {

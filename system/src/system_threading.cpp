@@ -5,7 +5,11 @@
 
 #if PLATFORM_THREADING
 
+#if PLATFORM_ID != 20
 #define THREAD_STACK_SIZE (5 * 1024)
+#else
+#define THREAD_STACK_SIZE (8 * 1024 * 1024)
+#endif
 
 void system_thread_idle()
 {

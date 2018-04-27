@@ -9,6 +9,7 @@ ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_MESH_VIRTUAL_PATH)
 INCLUDE_DIRS += $(HAL_SRC_MESH_VIRTUAL_PATH)/lwip
 INCLUDE_DIRS += $(HAL_SRC_MESH_VIRTUAL_PATH)/freertos
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip
 endif
 
 HAL_DEPS = third_party/lwip third_party/freertos

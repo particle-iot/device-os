@@ -7,7 +7,8 @@ SERVICES_DEPS = third_party/nanopb
 SERVICES_DEPS_INCLUDE_SCRIPTS =$(foreach module,$(SERVICES_DEPS),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(SERVICES_DEPS_INCLUDE_SCRIPTS)
 
+ifneq ($(filter services,$(LIBS)),)
 SERVICES_LIB_DEP += $(NANOPB_LIB_DEP)
 LIBS += $(notdir $(SERVICES_DEPS))
 LIB_DIRS += $(NANOPB_LIB_DIR)
-
+endif

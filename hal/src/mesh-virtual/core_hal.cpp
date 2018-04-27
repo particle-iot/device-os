@@ -43,6 +43,9 @@
 #include "eeprom_file.h"
 #include "eeprom_hal.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 using std::cout;
 
 static LoggerOutputLevel log_level = NO_LOG_LEVEL;
@@ -131,6 +134,14 @@ const char* eeprom_bin = "eeprom.bin";
 
 #ifndef UNIT_TEST
 
+extern "C" void application_task_start(void* arg)
+{
+    app_setup_and_loop();
+}
+
+static TaskHandle_t app_thread_handle;
+#define APPLICATION_STACK_SIZE (8*1024*1024)
+
 extern "C" int main(int argc, char* argv[])
 {
     log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
@@ -140,7 +151,11 @@ extern "C" int main(int argc, char* argv[])
     		if (exists_file(eeprom_bin)) {
     			GCC_EEPROM_Load(eeprom_bin);
     		}
-			app_setup_and_loop();
+
+            xTaskCreate(application_task_start, "app_thread",
+                        APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ),
+                        nullptr, 2, &app_thread_handle);
+            vTaskStartScheduler();
 	}
     return 0;
 }

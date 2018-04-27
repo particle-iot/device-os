@@ -18,8 +18,9 @@ typedef int32_t os_result_t;
 typedef uint8_t os_thread_prio_t;
 /* Default priority is the same as the application thread */
 const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 2;
+const os_thread_prio_t OS_THREAD_PRIORITY_NETWORK = OS_THREAD_PRIORITY_DEFAULT;
 const os_thread_prio_t OS_THREAD_PRIORITY_CRITICAL = 9;
-const size_t OS_THREAD_STACK_SIZE_DEFAULT = 3*1024;
+const size_t OS_THREAD_STACK_SIZE_DEFAULT = 8388608;
 
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;

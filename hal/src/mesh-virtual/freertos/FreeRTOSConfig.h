@@ -130,7 +130,7 @@
 #define configUSE_TIMERS                (1)
 #define configTIMER_TASK_PRIORITY                   ( 2 )
 #define configTIMER_QUEUE_LENGTH                    ( 5 )
-#define configTIMER_TASK_STACK_DEPTH                ( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
+#define configTIMER_TASK_STACK_DEPTH                ( configMINIMAL_STACK_SIZE * 2 )
 
 
 /* Set the following definitions to 1 to include the API function, or zero
@@ -145,20 +145,6 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelay              1
 #define INCLUDE_eTaskGetState           1
 
-/* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
-(lowest) to 0 (1?) (highest). */
-#define configKERNEL_INTERRUPT_PRIORITY         0xF0
-/* !!!! configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to zero !!!!
-See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY    0x20
-
-
-/* This is the value being used as per the ST library which permits 16
-priority values, 0 to 15.  This must correspond to the
-configKERNEL_INTERRUPT_PRIORITY setting.  Here 15 corresponds to the lowest
-NVIC value of 255. */
-#define configLIBRARY_KERNEL_INTERRUPT_PRIORITY 15
-
 /* Enable stack overflow detection for debug builds (see rtos_hook.cpp) */
 #ifdef DEBUG_BUILD
 # define configCHECK_FOR_STACK_OVERFLOW 2
@@ -168,6 +154,7 @@ NVIC value of 255. */
 #define vPortSVCHandler SVC_Handler
 #define xPortSysTickHandler SysTick_Handler
 
+#define configSTACK_DEPTH_TYPE size_t
 
 #endif /* FREERTOS_CONFIG_H */
 

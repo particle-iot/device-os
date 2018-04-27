@@ -32,11 +32,81 @@
 #include <lwip/tcpip.h>
 #include <mutex>
 #include <lwip/netifapi.h>
-extern "C" {
-#include <netif/tapif.h>
-}
+#include "ppp_client.h"
+#include "usart_hal.h"
+#include "concurrent_hal.h"
 
-static netif tap0 = {};
+using namespace particle::net::ppp;
+
+namespace {
+class UsartDataChannel : public DataChannel {
+public:
+  UsartDataChannel(HAL_USART_Serial serial, uint32_t baudrate = 115200)
+      : serial_(serial),
+        baudrate_(baudrate) {
+    HAL_USART_Init(serial_, &rx_, &tx_);
+    HAL_USART_Begin(serial_, baudrate);
+  }
+
+  virtual int readSome(char* data, size_t size) {
+    size_t pos = 0;
+    while (HAL_USART_Available_Data(serial_) > 0 && pos < size) {
+      char c = HAL_USART_Read_Data(serial_);
+      data[pos++] = c;
+    }
+    return pos;
+  }
+
+  virtual int writeSome(const char* data, size_t size) override {
+    size_t pos = 0;
+    while (HAL_USART_Available_Data_For_Write(serial_) > 0 && pos < size) {
+      HAL_USART_Write_NineBitData(serial_, data[pos++]);
+    }
+    return pos;
+  }
+
+  virtual int waitEvent(unsigned flags, unsigned timeout = 0) override {
+    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    unsigned retFlags = 0;
+    do {
+      if (flags & READABLE) {
+        if (HAL_USART_Available_Data(serial_) > 0) {
+          retFlags |= READABLE;
+        }
+      }
+      if (flags & WRITABLE) {
+        if (HAL_USART_Available_Data_For_Write(serial_) > 0) {
+          retFlags |= WRITABLE;
+        }
+      }
+      if (flags && retFlags == 0 && timeout > 0) {
+        os_thread_yield();
+      }
+    } while (flags && retFlags == 0 && HAL_Timer_Get_Milli_Seconds() - now < timeout);
+
+    return retFlags;
+  }
+
+private:
+  HAL_USART_Serial serial_;
+  uint32_t baudrate_;
+  Ring_Buffer rx_;
+  Ring_Buffer tx_;
+};
+
+} /* anonymous */
+
+static Client* s_client = nullptr;
+static UsartDataChannel* s_datachannel = nullptr;
+
+static void s_ppp_client_event_handler(Client* c, uint64_t ev, void* ctx) {
+  if (ev == Client::EVENT_UP) {
+    HAL_NET_notify_connected();
+    HAL_NET_notify_dhcp(true);
+  } else {
+    HAL_NET_notify_disconnected();
+  }
+}
 
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
 {
@@ -66,12 +136,17 @@ wlan_result_t wlan_activate() {
       tcpip_init([](void* arg) {
         LOG(TRACE, "LwIP started");
       }, /* &sem */ nullptr);
-      netifapi_netif_add(&tap0, nullptr, nullptr, nullptr, nullptr, tapif_init, tcpip_input);
-      LOCK_TCPIP_CORE();
-      netif_create_ip6_linklocal_address(&tap0, 1);
-      UNLOCK_TCPIP_CORE();
-      netifapi_netif_set_default(&tap0);
+      /* FIXME */
+      HAL_Delay_Milliseconds(1000);
+
+      s_client = new Client();
+      s_datachannel = new UsartDataChannel(HAL_USART_SERIAL1);
+      s_client->setDataChannel(s_datachannel);
+      s_client->setNotifyCallback(&s_ppp_client_event_handler, nullptr);
+      s_client->start();
+      s_client->notifyEvent(Client::EVENT_LOWER_UP);
     });
+
     return 0;
 }
 
@@ -96,13 +171,7 @@ wlan_result_t wlan_reset_credentials_store()
  */
 wlan_result_t wlan_connect_finalize()
 {
-    netifapi_netif_set_up(&tap0);
-    netifapi_dhcp_start(&tap0);
-    // enable connection from stored profiles
-    HAL_Delay_Milliseconds(5000);
-    HAL_NET_notify_connected();
-    INFO("Virtual WLAN connected");
-    HAL_NET_notify_dhcp(true);
+    s_client->connect();
     return 0;
 }
 
@@ -113,8 +182,7 @@ void Set_NetApp_Timeout(void)
 
 wlan_result_t wlan_disconnect_now()
 {
-    netifapi_netif_set_down(&tap0);
-    INFO("Virtual WLAN disconnected");
+    s_client->disconnect();
     return 0;
 }
 
