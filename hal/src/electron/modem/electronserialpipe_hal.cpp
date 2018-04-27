@@ -118,13 +118,6 @@ void ElectronSerialPipe::end()
         return;
     }
 
-    // wait for transmission of outgoing data
-    while (_pipeTx.readable())
-    {
-        char c = _pipeTx.getc();
-        USART_SendData(USART3, c);
-    }
-
     // Disable the USART
     USART_Cmd(USART3, DISABLE);
 
@@ -146,9 +139,12 @@ void ElectronSerialPipe::end()
     // Disable USART Clock
     RCC->APB1ENR &= ~RCC_APB1Periph_USART3;
 
-    if (!hwFlowCtrl_) {
-        HAL_Pin_Mode(RTS_UC, INPUT);
+    if (hwFlowCtrl_) {
+        HAL_Pin_Mode(CTS_UC, INPUT);
     }
+    HAL_Pin_Mode(RTS_UC, INPUT);
+    HAL_Pin_Mode(RXD_UC, INPUT);
+    HAL_Pin_Mode(TXD_UC, INPUT);
 
     // clear any pending data
     _pipeTx.done();

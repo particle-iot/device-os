@@ -553,9 +553,8 @@ bool MDMParser::_powerOn(void)
     PIN_MAP_PARSER[RESET_UC].gpio_peripheral->BSRRL = PIN_MAP_PARSER[RESET_UC].gpio_pin;
     HAL_Pin_Mode(RESET_UC, OUTPUT);
 
-    // The UART power saving mode depends on hardware flow control which is disabled initially
-    _dev.lpm = LPM_DISABLED;
     _dev.dev = DEV_UNKNOWN;
+    _dev.lpm = LPM_ENABLED;
 
     HAL_Pin_Mode(LVLOE_UC, OUTPUT);
     HAL_GPIO_Write(LVLOE_UC, 0);
@@ -563,8 +562,11 @@ bool MDMParser::_powerOn(void)
     if (!_init) {
         MDM_INFO("[ ElectronSerialPipe::begin ] = = = = = = = =");
 
-        /* Instantiate the USART3 hardware */
-        electronMDM.begin(115200, false /* hwFlowControl */);
+        // Here we initialize the UART with hardware flow control enabled, even though some of
+        // the modems don't support it (SARA-R4 at the time of writing). It is assumed that the
+        // modem still keeps the CTS pin in a correct state even if doesn't support the CTS/RTS
+        // flow control
+        electronMDM.begin(115200, true /* hwFlowControl */);
 
         /* Initialize only once */
         _init = true;
@@ -618,11 +620,11 @@ bool MDMParser::_powerOn(void)
         waitFinalResp(_cbCGMM, &_dev);
         if (_dev.dev == DEV_UNKNOWN) {
             MDM_ERROR("Unknown modem type");
-        } else if (_dev.dev != DEV_SARA_R410) { // SARA-R410 doesn't support hardware flow control
-            // Reinitialize the serial with hardware flow control enabled
-            MDM_INFO("Enabling RTS/CTS flow control");
-            electronMDM.begin(115200, true /* hwFlowControl */);
-            _dev.lpm = LPM_ENABLED;
+        } else if (_dev.dev == DEV_SARA_R410) {
+            // SARA-R410 doesn't support hardware flow control, reinitialize the UART
+            electronMDM.begin(115200, false /* hwFlowControl */);
+            // Power saving modes defined by the +UPSV command are not supported
+            _dev.lpm = LPM_DISABLED;
         }
     }
 
