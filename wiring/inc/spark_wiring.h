@@ -25,6 +25,8 @@
 
 #ifndef SPARK_WIRING_H
 #define SPARK_WIRING_H
+/* Important that interrupts_hal.h is included first */
+#include "interrupts_hal.h"
 #include "pinmap_hal.h"
 #include "gpio_hal.h"
 #include "adc_hal.h"

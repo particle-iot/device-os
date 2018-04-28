@@ -105,6 +105,12 @@
 #define Wiring_LogConfig 1 // for testing purposes
 #endif
 
+#if PLATFORM_ID==14      // Xenon
+#define Wiring_WiFi 1    /* FIXME */
+#define Wiring_SPI1 1
+#define Wiring_LogConfig 1
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
