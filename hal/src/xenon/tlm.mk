@@ -1,6 +1,5 @@
 # this is included in the top-level-module makefile to provide
 # HAL-specific defines
 
-DEPENDENCIES += newlib_nano
-
-CPPFLAGS += -std=gnu++11
+DEPENDENCIES += communication newlib_nano third_party/freertos third_party/lwip
+MAKE_DEPENDENCIES += third_party/freertos third_party/lwip

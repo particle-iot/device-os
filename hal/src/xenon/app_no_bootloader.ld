@@ -76,7 +76,7 @@ SECTIONS
     {
         link_module_start = .;
         link_interrupt_vectors_location = .;
-        KEEP(*(.interrupt_vector_table))            /* interrupt vector table */
+        KEEP(*(.isr_vector))            /* interrupt vector table */
         link_interrupt_vectors_location_end = .;
     }>APP_FLASH  AT> APP_FLASH
 
@@ -159,21 +159,25 @@ SECTIONS
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
+        __data_start__ = _sdata;
         *(.data*)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _edata = . ;
+        __data_end__ = _sdata;
     }> SRAM AT> APP_FLASH
 
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
         _sbss = ALIGN(., 4);
+        __bss_start__ = _sbss;
         *(.bss*)
         *(COMMON)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         _ebss = . ;
+        __bss_end__ = _ebss;
     }> SRAM AT> SRAM
 
     INCLUDE backup_ram_user.ld

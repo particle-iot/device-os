@@ -4,7 +4,7 @@
 
 
 /* location of the module_info block */
-mono_module_info = 0x8020184 ;
+mono_module_info = APP_CODE_BASE + 0x200;
 
 /**
  * End of the module info block.
