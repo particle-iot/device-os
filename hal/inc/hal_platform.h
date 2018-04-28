@@ -64,6 +64,12 @@ extern "C" {
 #define HAL_PLATFORM_DCT 0
 #endif
 
+/* Argon, Boron and Xenon */
+#if PLATFORM_ID == 12 || PLATFORM_ID == 13 || PLATFORM_ID == 14
+#define HAL_USE_SOCKET_HAL_POSIX (1)
+#define HAL_USE_INET_HAL_POSIX   (1)
+#endif /* PLATFORM_ID == 12 || PLATFORM_ID == 13 || PLATFORM_ID == 14 */
+
 #if PLATFORM_ID == 20
 #define HAL_USE_SOCKET_HAL_COMPAT (1)
 #define HAL_USE_SOCKET_HAL_POSIX (1)
