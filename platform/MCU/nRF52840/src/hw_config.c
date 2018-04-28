@@ -100,3 +100,8 @@ void Get_RGB_LED_Values(uint16_t* values)
 {
     /* FIXME */
 }
+
+void Toggle_User_LED()
+{
+    /* FIXME */
+}
