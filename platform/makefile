@@ -12,6 +12,6 @@ DEPENDENCIES = services hal dynalib
 include ../build/platform-id.mk
 
 PLATFORM_MCU_PATH ?= $(PLATFORM_MODULE_PATH)/MCU/$(PLATFORM_MCU)
-include $(PLATFORM_MCU_PATH)/tlm.mk
+-include $(PLATFORM_MCU_PATH)/tlm.mk
 
 include ../build/arm-tlm.mk
