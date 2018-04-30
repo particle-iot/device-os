@@ -84,5 +84,7 @@ void UI_Timer_Configure(void);
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
+uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
+void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
 extern button_config_t HAL_Buttons[];

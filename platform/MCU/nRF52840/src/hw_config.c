@@ -210,3 +210,20 @@ uint8_t BUTTON_GetState(Button_TypeDef Button)
 {
     return nrf_gpio_pin_read(HAL_Buttons[Button].pin);
 }
+
+/**
+ * @brief  Returns the selected Button Debounced Time.
+ * @param  Button: Specifies the Button to be checked.
+ *   This parameter can be one of following parameters:
+ *     @arg BUTTON1: Button1
+ * @retval Button Debounced time in millisec.
+ */
+uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
+{
+    return HAL_Buttons[Button].debounce_time;
+}
+
+void BUTTON_ResetDebouncedState(Button_TypeDef Button)
+{
+    HAL_Buttons[Button].debounce_time = 0;
+}
