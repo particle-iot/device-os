@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "hw_ticks.h"
+#include "rgbled.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -84,5 +85,7 @@ void UI_Timer_Configure(void);
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
+
+void LED_Init(Led_TypeDef Led);
 
 extern button_config_t HAL_Buttons[];
