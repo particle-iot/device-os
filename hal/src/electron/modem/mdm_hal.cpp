@@ -1753,7 +1753,7 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         cnt -= blk;
     }
     LOCK();
-    if (_sockets[socket].pending == 0) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
         waitFinalResp(NULL, NULL, 10*1000);
     }
@@ -1789,7 +1789,7 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         cnt -= blk;
     }
     LOCK();
-    if (_sockets[socket].pending == 0) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
         waitFinalResp(NULL, NULL, 10*1000);
     }
@@ -1897,7 +1897,7 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         }
     }
     LOCK();
-    if (_sockets[socket].pending == 0) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
         waitFinalResp(NULL, NULL, 10*1000);
     }
@@ -1971,7 +1971,7 @@ int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int 
         }
     }
     LOCK();
-    if (_sockets[socket].pending == 0) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
         waitFinalResp(NULL, NULL, 10*1000);
     }
