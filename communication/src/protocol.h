@@ -292,9 +292,9 @@ public:
 		pinger.init(interval, timeout);
 	}
 
-	void set_keepalive(system_tick_t interval)
+	void set_keepalive(system_tick_t interval, keepalive_source_t source)
 	{
-		pinger.set_interval(interval);
+		pinger.set_interval(interval, source);
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)
