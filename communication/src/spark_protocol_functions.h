@@ -183,6 +183,15 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved=NULL);
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
 
+typedef struct {
+	size_t size;				// size of this structure
+	uint32_t flags;				// for now 0, may be used to influence the details retrieved
+	uint16_t current_size;
+	uint16_t maximum_size;
+} spark_protocol_describe_data;
+
+int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* limits, void* reserved);
+
 namespace ProtocolCommands {
   enum Enum {
     SLEEP,

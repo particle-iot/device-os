@@ -403,21 +403,8 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	return error;
 }
 
-
-/**
- * Produces and transmits a describe message.
- * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
- */
-ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int desc_flags)
+void Protocol::build_describe_message(Appender& appender, int desc_flags)
 {
-	Message message;
-	channel.create(message);
-	uint8_t* buf = message.buf();
-	message.set_id(msg_id);
-	size_t desc = Messages::description(buf, msg_id, token);
-
-	BufferAppender appender(buf + desc, message.capacity());
-
 	// diagnostics must be requested in isolation to be a binary packet
 	if (descriptor.append_metrics && (desc_flags == DESCRIBE_METRICS))
 	{
@@ -490,6 +477,24 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 		}
 		appender.append('}');
 	}
+}
+
+/**
+ * Produces and transmits a describe message.
+ * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
+ */
+ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int desc_flags)
+{
+	Message message;
+	channel.create(message);
+	uint8_t* buf = message.buf();
+	message.set_id(msg_id);
+	size_t desc = Messages::description(buf, msg_id, token);
+
+	BufferAppender appender(buf + desc, message.capacity());
+
+	build_describe_message(appender, desc_flags);
+
 	int msglen = appender.next() - (uint8_t*) buf;
 	message.set_length(msglen);
 	LOG(INFO,"Sending '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
@@ -539,6 +544,15 @@ uint32_t Protocol::ChunkedTransferCallbacks::calculate_crc(const unsigned char *
 system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 {
 	return callbacks->millis();
+}
+
+int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
+{
+	data->maximum_size = 768;  // a conservative guess based on dtls and lightssl encryption overhead and the CoAP data
+	BufferAppender2 appender(nullptr,  0);	// don't need to store the data, just count the size
+	build_describe_message(appender, data->flags);
+	data->current_size = appender.dataSize();
+	return 0;
 }
 
 

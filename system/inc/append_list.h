@@ -18,10 +18,12 @@
 
 #pragma once
 
+#include "logging.h"
+
 /**
  * A simple append-only list. The elements are never deallocated.
  */
-
+// todo - perhaps replace this with our vector implementation?
 template <typename T> class append_list
 {
     uint8_t count;
@@ -34,8 +36,10 @@ template <typename T> class append_list
             return false;
 
         T* new_store = (T*)realloc(store, sizeof(T)*capacity);
-        if (new_store)
+        if (new_store) {
             store = new_store;
+            this->capacity = capacity;
+        }
         return new_store!=NULL;
     }
 
@@ -44,19 +48,26 @@ public:
     append_list(unsigned block=5) : count(0), capacity(0), block_size(block), store(NULL) {}
 
     T* add() {
-        T* result = NULL;
-        if (add(T())) {
-            result = &store[count-1];
+    	return add(T());
+    }
+
+    T* add(const T& item) {
+        bool space = (count<capacity || expand(count+block_size));
+        T* result = nullptr;
+        if (space) {
+        	result = store + count;
+            store[count++] = item;
         }
         return result;
     }
 
-    bool add(const T& item) {
-        bool space = (count<capacity || expand(count+block_size));
-        if (space) {
-            store[count++] = item;
-        }
-        return space;
+    bool removeAt(unsigned int i) {
+    	if (i<count) {
+			T* const p = store + i;
+			memmove(p, p + 1, count - i - 1);
+			count--;
+    	}
+        return true;
     }
 
     T& operator[](unsigned index) { return store[index]; }

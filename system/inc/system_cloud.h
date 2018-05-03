@@ -152,6 +152,14 @@ typedef struct spark_variable_t
     const void* (*update)(const char* nane, Spark_Data_TypeDef type, const void* var, void* reserved);
 } spark_variable_t;
 
+/**
+ * @brief Register a new variable.
+ * @param varKey	The name of the variable. The length should be between 1 and USER_VAR_KEY_LENGTH bytes.
+ * @param userVar	A pointer to the memory for the variable.
+ * @param userVarType	The type of the variable.
+ * @param extra		Additional registration details.
+ * 		update	A function used to case a variable value to be computed. If defined, this is called when the variable's value is retrieved.
+ */
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra);
 
 /**
