@@ -339,7 +339,7 @@ system_tick_t spark_protocol_time_last_synced(SparkProtocol* protocol, time_t* t
     return protocol->time_last_synced(tm);
 }
 
-int spark_protocol_get_describe_data(ProtocolFacade* protocol, int flags, spark_protocol_describe_data* limits, void* reserved) {
+int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved) {
 	return -1;
 }
 
