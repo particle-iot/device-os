@@ -180,12 +180,12 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
 }
 
 int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
-                                           unsigned data, void* datap, void* reserved)
+                                           unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
     if (property_id == particle::protocol::Connection::PING)
     {
-        protocol->set_keepalive(data);
+        protocol->set_keepalive(data, conn_prop->keepalive_source);
     }
     return 0;
 }
@@ -311,7 +311,7 @@ void spark_protocol_get_product_details(SparkProtocol* protocol, product_details
 }
 
 int spark_protocol_set_connection_property(SparkProtocol* protocol, unsigned property_id,
-                                           unsigned data, void* datap, void* reserved)
+                                           unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
     return 0;
 }
