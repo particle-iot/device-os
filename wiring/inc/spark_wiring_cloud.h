@@ -336,8 +336,11 @@ public:
 #if HAL_PLATFORM_CLOUD_UDP
     static void keepAlive(unsigned sec)
     {
+        particle::protocol::connection_properties_t conn_prop = {0};
+        conn_prop.size = sizeof(conn_prop);
+        conn_prop.keepalive_source = particle::protocol::KeepAliveSource::USER;
         CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING,
-                                               sec * 1000, particle::protocol::KeepAliveSource::USER, nullptr),
+                                               sec * 1000, &conn_prop, nullptr),
                  (void)0);
     }
 #endif
