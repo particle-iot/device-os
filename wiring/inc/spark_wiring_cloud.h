@@ -337,7 +337,7 @@ public:
     static void keepAlive(unsigned sec)
     {
         CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING,
-                                               sec * 1000, nullptr, nullptr),
+                                               sec * 1000, particle::protocol::KeepAliveSource::USER, nullptr),
                  (void)0);
     }
 #endif

@@ -289,7 +289,7 @@ void establish_cloud_connection()
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
         const CellularNetProvData provider_data = cellular_network_provider_data_get(NULL);
-        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), nullptr, nullptr), (void)0);
+        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), particle::protocol::KeepAliveSource::SYSTEM, nullptr), (void)0);
         spark_cloud_udp_port_set(provider_data.port);
 #endif
         INFO("Cloud: connecting");

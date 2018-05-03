@@ -202,10 +202,10 @@ String spark_deviceID(void)
     return bytes2hex(id, len);
 }
 
-int spark_set_connection_property(unsigned property_id, unsigned data, void* datap, void* reserved)
+int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::keepalive_source_t source, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, datap, reserved));
-    return spark_protocol_set_connection_property(sp, property_id, data, datap, reserved);
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, source, reserved));
+    return spark_protocol_set_connection_property(sp, property_id, data, source, reserved);
 }
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved)
