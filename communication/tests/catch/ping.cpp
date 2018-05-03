@@ -62,6 +62,59 @@ SCENARIO("ping requests and responses are managed")
 			REQUIRE(callback_called);
 		}
 
+		THEN("The ping interval can be updated by the SYSTEM")
+		{
+			pinger.set_interval(30000, KeepAliveSource::SYSTEM);
+			REQUIRE(pinger.process(15001, []{return IO_ERROR;})==NO_ERROR);
+			REQUIRE(!pinger.is_expecting_ping_ack());
+
+			bool callback_called = false;
+			REQUIRE(pinger.process(30001, [&]()->ProtocolError{callback_called = true; return NO_ERROR;})==NO_ERROR);
+			REQUIRE(pinger.is_expecting_ping_ack());
+			REQUIRE(callback_called);
+		}
+
+		THEN("The ping interval can be updated by the USER")
+		{
+			pinger.set_interval(30000, KeepAliveSource::USER);
+			REQUIRE(pinger.process(15001, []{return IO_ERROR;})==NO_ERROR);
+			REQUIRE(!pinger.is_expecting_ping_ack());
+
+			bool callback_called = false;
+			REQUIRE(pinger.process(30001, [&]()->ProtocolError{callback_called = true; return NO_ERROR;})==NO_ERROR);
+			REQUIRE(pinger.is_expecting_ping_ack());
+			REQUIRE(callback_called);
+		}
+
+		THEN("The ping interval can be updated by the SYSTEM and then the USER")
+		{
+			pinger.set_interval(30000, KeepAliveSource::SYSTEM);
+			REQUIRE(pinger.process(15001, []{return IO_ERROR;})==NO_ERROR);
+			REQUIRE(!pinger.is_expecting_ping_ack());
+
+			pinger.set_interval(60000, KeepAliveSource::USER);
+			REQUIRE(pinger.process(30001, []{return IO_ERROR;})==NO_ERROR);
+			REQUIRE(!pinger.is_expecting_ping_ack());
+
+			bool callback_called = false;
+			REQUIRE(pinger.process(60001, [&]()->ProtocolError{callback_called = true; return NO_ERROR;})==NO_ERROR);
+			REQUIRE(pinger.is_expecting_ping_ack());
+			REQUIRE(callback_called);
+		}
+
+		THEN("The ping interval can be updated by the USER but then not the SYSTEM")
+		{
+			pinger.set_interval(30000, KeepAliveSource::USER);
+			REQUIRE(pinger.process(15001, []{return IO_ERROR;})==NO_ERROR);
+			REQUIRE(!pinger.is_expecting_ping_ack());
+
+			pinger.set_interval(60000, KeepAliveSource::SYSTEM);
+
+			bool callback_called = false;
+			REQUIRE(pinger.process(30001, [&]()->ProtocolError{callback_called = true; return NO_ERROR;})==NO_ERROR);
+			REQUIRE(pinger.is_expecting_ping_ack());
+			REQUIRE(callback_called);
+		}
 	}
 
 
