@@ -18,8 +18,10 @@ _Minimum_Stack_Size = 0x1400;
 /* ASSERT(bootloader_ram_offset + bootloader_ram_length <= user_module_sram_length, */
 /*     "Insufficient space for RAM region"); */
 
-bootloader_ram_origin = 0x20000008;
-bootloader_ram_length = 0x3fff8;
+INCLUDE softdevice.ld
+
+bootloader_ram_origin = 0x20000000 + APP_RAM_BASE;
+bootloader_ram_length = 0x20000;
 
 bootloader_flash_length = 32K;
 bootloader_flash_origin = 0x100000 - bootloader_flash_length;

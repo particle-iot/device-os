@@ -33,58 +33,44 @@
 #endif
 
 #include "nrf52840.h"
+#include "nrfx_types.h"
+#include "nrf_gpio.h"
+#include "nrf_gpiote.h"
+#include "nrf_rtc.h"
 
 //LEDs
 // TODO - map to Xenon hardware
 #define LEDn                                4
-#define LED_MIRROR_SUPPORTED                1
-#define LED1_GPIO_AF_TIM                    0                       //User Led
-#define LED1_GPIO_PIN                       GPIO_Pin_13             //User Led
-#define LED1_GPIO_PIN_SOURCE                GPIO_PinSource13        //User Led
-#define LED1_GPIO_PORT                      GPIOA                   //User Led
-#define LED1_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //User Led
-#define LED1_GPIO_MODE                      GPIO_Mode_OUT           //User Led
-#define LED_BLUE                            LED2
-#define LED2_GPIO_AF_TIM                    GPIO_AF_TIM2            //BLUE Led
-#define LED2_GPIO_PIN                       GPIO_Pin_3              //BLUE Led
-#define LED2_GPIO_PIN_SOURCE                GPIO_PinSource3         //BLUE Led
-#define LED2_GPIO_PORT                      GPIOA                   //BLUE Led
-#define LED2_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //BLUE Led
-#define LED2_GPIO_MODE                      GPIO_Mode_AF            //BLUE Led
-#define LED_RED                             LED3
-#define LED3_GPIO_AF_TIM                    GPIO_AF_TIM2            //RED Led
-#define LED3_GPIO_PIN                       GPIO_Pin_1              //RED Led
-#define LED3_GPIO_PIN_SOURCE                GPIO_PinSource1         //RED Led
-#define LED3_GPIO_PORT                      GPIOA                   //RED Led
-#define LED3_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //RED Led
-#define LED3_GPIO_MODE                      GPIO_Mode_AF            //RED Led
-#define LED_GREEN                           LED4
-#define LED4_GPIO_AF_TIM                    GPIO_AF_TIM2            //GREEN Led
-#define LED4_GPIO_PIN                       GPIO_Pin_2              //GREEN Led
-#define LED4_GPIO_PIN_SOURCE                GPIO_PinSource2         //GREEN Led
-#define LED4_GPIO_PORT                      GPIOA                   //GREEN Led
-#define LED4_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //GREEN Led
-#define LED4_GPIO_MODE                      GPIO_Mode_AF            //GREEN Led
+#define LED_MIRROR_SUPPORTED                0
+#define LED1_GPIO_PIN                       42                      //User Led
+#define LED1_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //User Led
+#define LED_BLUE                            LED2                    //BLUE Led
+#define LED2_GPIO_PIN                       15                      //BLUE Led
+#define LED2_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //BLUE Led
+#define LED_RED                             LED3                    //RED Led
+#define LED3_GPIO_PIN                       13                      //RED Led
+#define LED3_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //RED Led
+#define LED_GREEN                           LED4                    //GREEN Led
+#define LED4_GPIO_PIN                       14                      //GREEN Led
+#define LED4_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //GREEN Led
 
 //Push Buttons
 #define BUTTONn                             1
-#define BUTTON1_GPIO_PIN                    GPIO_Pin_7
-#define BUTTON1_GPIO_PORT                   GPIOC
-#define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
-#define BUTTON1_GPIO_MODE                   GPIO_Mode_IN
-#define BUTTON1_GPIO_PUPD                   GPIO_PuPd_UP
+#define BUTTON1_GPIO_PIN                    11
+#define BUTTON1_GPIO_MODE                   NRF_GPIO_PIN_DIR_INPUT
+#define BUTTON1_GPIO_PUPD                   NRF_GPIO_PIN_PULLUP
 #define BUTTON1_PRESSED                     0x00
-#define BUTTON1_EXTI_LINE                   EXTI_Line7
-#define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
-#define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource7
-#define BUTTON1_EXTI_IRQn                   EXTI9_5_IRQn
-#define BUTTON1_EXTI_IRQ_HANDLER            EXTI9_5_IRQHandler
-#define BUTTON1_EXTI_IRQ_PRIORITY           7
-#define BUTTON1_EXTI_IRQ_INDEX              39
-#define BUTTON1_EXTI_TRIGGER                EXTI_Trigger_Falling
-#define BUTTON1_MIRROR_SUPPORTED            1
+#define BUTTON1_GPIOTE_EVENT_IN             NRF_GPIOTE_EVENTS_IN_0
+#define BUTTON1_GPIOTE_EVENT_CHANNEL        0
+#define BUTTON1_GPIOTE_INT_MASK             NRF_GPIOTE_INT_IN0_MASK
+#define BUTTON1_GPIOTE_IRQn                 GPIOTE_IRQn
+#define BUTTON1_GPIOTE_IRQ_HANDLER          GPIOTE_IRQHandler
+#define BUTTON1_GPIOTE_IRQ_PRIORITY         7
+#define BUTTON1_GPIOTE_IRQ_INDEX            22
+#define BUTTON1_GPIOTE_TRIGGER              NRF_GPIOTE_POLARITY_HITOLO
+#define BUTTON1_MIRROR_SUPPORTED            0
 
-#define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */
+#define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
 // todo - add this later #define FLASH_UPDATE_MODULES
@@ -104,15 +90,7 @@
 #define RTC_WKUP_IRQ_PRIORITY               4       //RTC Seconds Interrupt
 #define USART1_IRQ_PRIORITY                 5       //USART1 Interrupt
 #define USART2_IRQ_PRIORITY                 5       //USART2 Interrupt
-#define TIM2_IRQ_PRIORITY                   6       //TIM2 CC Interrupt(Button Use)
-//BUTTON1_EXTI_IRQ_PRIORITY                 7       //Mode Button Interrupt
-#define EXTI15_10_IRQ_PRIORITY              8       //User Interrupt
-#define EXTI9_5_IRQ_PRIORITY                9       //User Interrupt
-#define EXTI0_IRQ_PRIORITY                  10      //User Interrupt
-#define EXTI1_IRQ_PRIORITY                  10      //User Interrupt
-#define EXTI2_IRQ_PRIORITY                  10      //User Interrupt
-#define EXTI3_IRQ_PRIORITY                  10      //User Interrupt
-#define EXTI4_IRQ_PRIORITY                  10      //User Interrupt
+#define RTC0_IRQ_PRIORITY                   5       //RTC0 Interrupt
 #define SYSTICK_IRQ_PRIORITY                13      //CORTEX_M3 Systick Interrupt
 #define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
 #define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt

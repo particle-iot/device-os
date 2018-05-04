@@ -10,7 +10,8 @@ Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
 */
 
 /* higher address of the user mode stack */
-_estack = 0x20040000;   /* end of 256K SRAM */
+/* end of 256K SRAM - backup sram pages */
+_estack = 0x20040000 - LENGTH(BACKUPSRAM) - LENGTH(BACKUPSRAM_SYSTEM);
 
 /* include the sections management sub-script for FLASH mode */
 
