@@ -19,12 +19,12 @@
  * This ensures that we do not redefine it
  */
 #define NO_STATIC_ASSERT
-#include "hw_config.h"
 #include "usbd_device.h"
 #include "usbd_dfu.h"
 #include "usbd_dfu_mal.h"
 /* Important! Needs to be included before other headers */
 #include "logging.h"
+#include "hw_config.h"
 #include "dfu_hal.h"
 #include "usbd_wcid.h"
 
