@@ -15,6 +15,10 @@
 #include <stdbool.h>
 #include "hw_ticks.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
@@ -52,7 +56,7 @@ inline void OTA_Flashed_ResetStatus() {}
 inline bool OTA_Flash_Reset() { return false; }
 inline bool FACTORY_Flash_Reset() { return 0; }
 inline void BACKUP_Flash_Reset() {}
-inline void Finish_Update() {}
+void Finish_Update();
 inline void Bootloader_Update_Version(int version) {}
 
 
@@ -66,3 +70,7 @@ inline void Save_Reset_Syndrome() {}
 void Set_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

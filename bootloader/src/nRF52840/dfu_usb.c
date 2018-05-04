@@ -14,9 +14,3 @@ uint8_t is_application_valid(uint32_t address)
 #endif
 }
 
-void HAL_DFU_USB_Init(void) {
-    while(1);
-}
-
-void DFU_Check_Reset(void) {
-}

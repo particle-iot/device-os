@@ -54,7 +54,7 @@ typedef struct module_info_t {
     module_dependency_t dependency2;
 } module_info_t;
 
-#define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected || sizeof(void*)!=4)
+#define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected || sizeof(void*)!=4)
 
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_start_address, 0);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_end_address, 4);
@@ -67,7 +67,7 @@ STATIC_ASSERT_MODULE_INFO_OFFSET(module_index, 15);
 STATIC_ASSERT_MODULE_INFO_OFFSET(dependency, 16);
 STATIC_ASSERT_MODULE_INFO_OFFSET(dependency2, 20);
 
-STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(void*) != 4);
+PARTICLE_STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(void*) != 4);
 
 /**
  * Define the module function enum also as preprocessor symbols so we can

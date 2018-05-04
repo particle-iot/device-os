@@ -2977,6 +2977,10 @@
 #define NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
 #endif
 
+#ifndef NRF_DRV_USBD_ERRATA_ENABLE
+#define NRF_DRV_USBD_ERRATA_ENABLE (1)
+#endif
+
 /* Legacy config */
 #include "sdk_config.h"
 

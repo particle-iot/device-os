@@ -41,4 +41,45 @@
 #define CLOCK_CONFIG_LOG_ENABLED 0
 #endif /* CLOCK_CONFIG_LOG_ENABLED */
 
+#ifndef USBD_ENABLED
+#define USBD_ENABLED 1
+#endif
+
+// <o> USBD_CONFIG_IRQ_PRIORITY  - Interrupt priority
+ 
+
+// <i> Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
+// <0=> 0 (highest) 
+// <1=> 1 
+// <2=> 2 
+// <3=> 3 
+// <4=> 4 
+// <5=> 5 
+// <6=> 6 
+// <7=> 7 
+
+#ifndef USBD_CONFIG_IRQ_PRIORITY
+#define USBD_CONFIG_IRQ_PRIORITY 7
+#endif
+
+// <o> USBD_CONFIG_DMASCHEDULER_MODE  - USBD SMA scheduler working scheme
+ 
+// <0=> Prioritized access 
+// <1=> Round Robin 
+
+#ifndef USBD_CONFIG_DMASCHEDULER_MODE
+#define USBD_CONFIG_DMASCHEDULER_MODE 0
+#endif
+
+
+// <e> USBD_CONFIG_LOG_ENABLED - Enable logging in the module
+//==========================================================
+#ifndef USBD_CONFIG_LOG_ENABLED
+#define USBD_CONFIG_LOG_ENABLED 0
+#endif
+
+#ifndef NRF_LOG_DEBUG
+#define NRF_LOG_DEBUG(format, ...)
+#endif
+
 #endif /* NRF_SDK_CONFIG_H */

@@ -20,9 +20,9 @@ extern "C" {
 #define PARTICLE_STATIC_ASSERT(name,condition) typedef char assert_##name[(condition)?0:-1]
 #endif
 
-#ifndef STATIC_ASSERT
+#if !defined(STATIC_ASSERT) && !defined(NO_STATIC_ASSERT)
 #define STATIC_ASSERT(name, condition) PARTICLE_STATIC_ASSERT(name, condition)
-#endif /* STATIC_ASSERT */
+#endif /* !defined(STATIC_ASSERT) && !defined(NO_STATIC_ASSERT) */
 
 #ifdef	__cplusplus
 }
