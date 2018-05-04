@@ -20,6 +20,7 @@
 #include "nrf52840.h"
 #include "logging.h"
 #include "hw_config.h"
+#include "button.h"
 
 extern void Timing_Decrement(void);
 
@@ -117,3 +118,19 @@ void SysTick_Handler(void)
     System1MsTick();
     Timing_Decrement();
 }
+
+void GPIOTE_IRQHandler(void)
+{
+    BUTTON_Irq_Handler();
+}
+
+void RTC0_IRQHandler(void)
+{
+    if (nrf_rtc_event_pending(NRF_RTC0, NRF_RTC_EVENT_TICK))
+    {
+        nrf_rtc_event_clear(NRF_RTC0, NRF_RTC_EVENT_TICK);
+
+        BUTTON_Debounce();
+    }
+}
+

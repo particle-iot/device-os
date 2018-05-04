@@ -18,3 +18,5 @@ CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/usbd/nrf_drv_usbd.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic/nrf_atomic.c
 
 CFLAGS += -Wno-unused-but-set-variable
+
+CFLAGS += -DCONFIG_GPIO_AS_PINRESET
