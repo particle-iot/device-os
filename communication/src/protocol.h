@@ -35,6 +35,7 @@ class Protocol
 	 * todo - move this into the message channel?
 	 */
 	system_tick_t last_message_millis;
+	system_tick_t cloud_connected_millis;
 
 	/**
 	 * The product_id represented by this device. set_product_id()
@@ -383,6 +384,8 @@ public:
 		return success;
 	}
 
+	void build_describe_message(Appender& appender, int desc_flags);
+
 	inline bool add_event_handler(const char *event_name, EventHandler handler)
 	{
 		return add_event_handler(event_name, handler, NULL,
@@ -462,6 +465,7 @@ public:
 
 	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
 
+	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 };
 
 }

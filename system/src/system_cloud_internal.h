@@ -75,8 +75,8 @@ struct User_Func_Lookup_Table_t
 };
 
 
-User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey);
-User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey);
+User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* userVarData, Spark_Data_TypeDef userVarType, spark_variable_t* extra);
+User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const cloud_function_descriptor* desc);
 
 extern ProtocolFacade* sp;
 

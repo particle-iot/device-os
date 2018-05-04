@@ -206,6 +206,12 @@ system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* 
     return protocol->time_last_synced(tm);
 }
 
+int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved)
+{
+	return protocol->get_describe_data(data, reserved);
+}
+
+
 #else // !PARTICLE_PROTOCOL
 
 #include "spark_protocol.h"
@@ -332,5 +338,10 @@ system_tick_t spark_protocol_time_last_synced(SparkProtocol* protocol, time_t* t
     (void)reserved;
     return protocol->time_last_synced(tm);
 }
+
+int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved) {
+	return -1;
+}
+
 
 #endif

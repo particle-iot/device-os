@@ -133,16 +133,7 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
     User_Var_Lookup_Table_t* item = NULL;
     if (NULL != userVar && NULL != varKey && strlen(varKey)<=USER_VAR_KEY_LENGTH)
     {
-        if ((item=find_var_by_key_or_add(varKey))!=NULL)
-        {
-            item->userVar = userVar;
-            item->userVarType = userVarType;
-            if (extra) {
-                item->update = extra->update;
-            }
-            memset(item->userVarKey, 0, USER_VAR_KEY_LENGTH);
-            memcpy(item->userVarKey, varKey, USER_VAR_KEY_LENGTH);
-        }
+    	item=find_var_by_key_or_add(varKey, userVar, userVarType, extra);
     }
     return item!=NULL;
 }

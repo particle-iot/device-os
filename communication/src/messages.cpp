@@ -307,7 +307,7 @@ size_t Messages::event(uint8_t buf[], uint16_t message_id, const char *event_nam
   *p++ = 0xb1; // one-byte Uri-Path option
   *p++ = event_type;
 
-  size_t name_data_len = strnlen(event_name, 63);
+  size_t name_data_len = strnlen(event_name, MAX_EVENT_NAME_LENGTH);
   p += event_name_uri_path(p, event_name, name_data_len);
 
   if (60 != ttl)
@@ -320,7 +320,7 @@ size_t Messages::event(uint8_t buf[], uint16_t message_id, const char *event_nam
 
   if (NULL != data)
   {
-    name_data_len = strnlen(data, 255);
+    name_data_len = strnlen(data, MAX_EVENT_DATA_LENGTH);
 
     *p++ = 0xff;
     memcpy(p, data, name_data_len);

@@ -105,11 +105,45 @@ User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
     return NULL;
 }
 
+template<typename T> T* add_if_sufficient_describe(append_list<T>& list, const char* name, const char* itemType, const T& value) {
+	T* result = list.add(value);
+	if (result) {
+		spark_protocol_describe_data data;
+		data.size = sizeof(data);
+		data.flags = particle::protocol::DESCRIBE_APPLICATION;
+		if (!spark_protocol_get_describe_data(spark_protocol_instance(), &data, nullptr)) {
+			if (data.maximum_size<data.current_size) {
+				list.removeAt(list.size()-1);
+				result = nullptr;
+			}
+		}
+		else {
+			INFO("get describe data unsupported");
+		}
+	}
+	if (!result) {
+		ERROR("Cannot add %s named %d: insufficient storage", itemType, name);
+	}
+	return result;
+}
 
-User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey)
+User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)
 {
+	User_Var_Lookup_Table_t item = { .userVar = userVar, .userVarType = userVarType, 0, 0};
+	if (extra) {
+		item.update = extra->update;
+	}
+	memcpy(item.userVarKey, varKey, USER_VAR_KEY_LENGTH);
+
     User_Var_Lookup_Table_t* result = find_var_by_key(varKey);
-    return result ? result : vars.add();
+
+    if (!result) {
+    	result = add_if_sufficient_describe(vars, varKey, "variable", item);
+    }
+    else {
+    	*result = item;
+    }
+    return result;
 }
 
 User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
@@ -124,10 +158,21 @@ User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
     return NULL;
 }
 
-User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey)
+User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const cloud_function_descriptor* desc)
 {
+	User_Func_Lookup_Table_t item = {0};
+	item.pUserFunc = desc->fn;
+	item.pUserFuncData = desc->data;
+    memcpy(item.userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
+
     User_Func_Lookup_Table_t* result = find_func_by_key(funcKey);
-    return result ? result : funcs.add();
+    if (result) {
+    	*result = item;
+    }
+    else {
+    	result = add_if_sufficient_describe(funcs, funcKey, "function", item);
+    }
+    return result;
 }
 
 int call_raw_user_function(void* data, const char* param, void* reserved)
@@ -220,13 +265,7 @@ bool spark_function_internal(const cloud_function_descriptor* desc, void* reserv
     User_Func_Lookup_Table_t* item = NULL;
     if (NULL != desc->fn && NULL != desc->funcKey && strlen(desc->funcKey)<=USER_FUNC_KEY_LENGTH)
     {
-        if ((item=find_func_by_key(desc->funcKey)) || (item = funcs.add()))
-        {
-            item->pUserFunc = desc->fn;
-            item->pUserFuncData = desc->data;
-            memset(item->userFuncKey, 0, USER_FUNC_KEY_LENGTH);
-            memcpy(item->userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
-        }
+        item=find_func_by_key_or_add(desc->funcKey, desc);
     }
     return item!=NULL;
 }

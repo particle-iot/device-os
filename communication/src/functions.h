@@ -37,67 +37,79 @@ class Functions
 
     ProtocolError function_result(MessageChannel& channel, const void* result, SparkReturnType::Enum, token_t token)
     {
-    		Message message;
-    		channel.create(message, Messages::function_return_size);
+        Message message;
+        channel.create(message, Messages::function_return_size);
         size_t length = Messages::function_return(message.buf(), 0, token, long(result), channel.is_unreliable());
         message.set_length(length);
         return channel.send(message);
     }
 
 public:
-	ProtocolError handle_function_call(token_t token, message_id_t message_id, Message& message, MessageChannel& channel,
-		    int (*call_function)(const char *function_key, const char *arg, SparkDescriptor::FunctionResultCallback callback, void* reserved))
-	{
-	    // copy the function key
-	    char function_key[13];
-	    memset(function_key, 0, 13);
-	    uint8_t* queue = message.buf();
-	    size_t function_key_length = queue[7] & 0x0F;
-	    memcpy(function_key, queue + 8, function_key_length);
+    ProtocolError handle_function_call(token_t token, message_id_t message_id, Message& message, MessageChannel& channel,
+            int (*call_function)(const char *function_key, const char *arg, SparkDescriptor::FunctionResultCallback callback, void* reserved))
+    {
+        // copy the function key
+        char function_key[MAX_FUNCTION_KEY_LENGTH+1];
+        memset(function_key, 0, MAX_FUNCTION_KEY_LENGTH+1);
+        uint8_t* queue = message.buf();
+        uint8_t queue_offset = 8;
+        size_t function_key_length = queue[7] & 0x0F;
+        if (function_key_length == MAX_OPTION_DELTA_LENGTH+1)
+        {
+            function_key_length = MAX_OPTION_DELTA_LENGTH+1 + queue[8];
+            queue_offset++;
+        }
+        // else if (function_key_length == MAX_OPTION_DELTA_LENGTH+2)
+        // {
+        //     // MAX_OPTION_DELTA_LENGTH+2 not supported and not required for function_key_length
+        // }
+        memcpy(function_key, queue + queue_offset, function_key_length);
 
-	    // How long is the argument?
-	    size_t q_index = 8 + function_key_length;
-	    size_t query_length = queue[q_index] & 0x0F;
-	    if (13 == query_length)
-	    {
-	      ++q_index;
-	      query_length = 13 + queue[q_index];
-	    }
-	    else if (14 == query_length)
-	    {
-	      ++q_index;
-	      query_length = queue[q_index] << 8;
-	      ++q_index;
-	      query_length |= queue[q_index];
-	      query_length += 269;
-	    }
+        // How long is the argument?
+        size_t q_index = queue_offset + function_key_length;
+        size_t function_arg_length = queue[q_index] & 0x0F;
+        if (function_arg_length == MAX_OPTION_DELTA_LENGTH+1)
+        {
+            ++q_index;
+            function_arg_length = MAX_OPTION_DELTA_LENGTH+1 + queue[q_index];
+        }
+        else if (function_arg_length == MAX_OPTION_DELTA_LENGTH+2)
+        {
+            ++q_index;
+            function_arg_length = queue[q_index] << 8;
+            ++q_index;
+            function_arg_length |= queue[q_index];
+            function_arg_length += 269;
+        }
 
-	    bool has_function = false;
+        bool has_function = false;
 
-	    // allocated memory bounds check
-	    if (MAX_FUNCTION_ARG_LENGTH > query_length)
-	    {
-	        // save a copy of the argument
-	        memcpy(function_arg, queue + q_index + 1, query_length);
-	        function_arg[query_length] = 0; // null terminate string
-	        has_function = true;
-	    }
+        // allocated memory bounds check
+        if (function_arg_length <= MAX_FUNCTION_ARG_LENGTH)
+        {
+            // save a copy of the argument
+            memcpy(function_arg, queue + q_index + 1, function_arg_length);
+            function_arg[function_arg_length] = 0; // null terminate string
+            has_function = true;
+        }
 
-	    Message response;
-	    channel.response(message, response, 16);
-	    // send ACK
-	    size_t response_length = Messages::coded_ack(response.buf(), has_function ? 0x00 : RESPONSE_CODE(4,00), 0, 0);
-	    response.set_id(message_id);
-	    response.set_length(response_length);
-	    ProtocolError error = channel.send(response);
-	    if (error) return error;
+        Message response;
+        channel.response(message, response, 16);
+        // send ACK
+        size_t response_length = Messages::coded_ack(response.buf(), has_function ? 0x00 : RESPONSE_CODE(4,00), 0, 0);
+        response.set_id(message_id);
+        response.set_length(response_length);
+        ProtocolError error = channel.send(response);
+        if (error) {
+            return error;
+        }
 
-	    // call the given user function
-	    auto callback = [=,&channel] (const void* result, SparkReturnType::Enum resultType )
-	    		{ return this->function_result(channel, result, resultType, token); };
-	    call_function(function_key, function_arg, callback, NULL);
-	    return NO_ERROR;
-	}
+        // call the given user function
+        auto callback = [=,&channel] (const void* result, SparkReturnType::Enum resultType )
+            { return this->function_result(channel, result, resultType, token); };
+        call_function(function_key, function_arg, callback, NULL);
+        return NO_ERROR;
+    }
 };
 
 
