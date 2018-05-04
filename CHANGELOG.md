@@ -1,3 +1,14 @@
+## 0.8.0-rc.4
+
+### ENHANCEMENTS
+
+- [Electron/Photon/P1] Increase Device OS API argument lengths. More data in Functions, Variables, Publish, Subscribe... oh my! [#1537](https://github.com/particle-iot/firmware/pull/1537)
+
+### BUGFIXES
+
+- [Electron] `Particle.keepAlive()` API was broken since v0.6.2-rc.2 firmware on Electron where the System would override an early set User ping interval.  This required a workaround of updating the keepAlive after the System made a connection to the Cloud.  See issue #1482 for workaround. [#1536](https://github.com/particle-iot/firmware/pull/1536)
+- [Electron] Fixes missing URCs for received data during TX or RX socket operations. This caused the modem not to be able to receive further data properly until it re-connected to the Cloud which it would do automatically but usually after a short or longer period of time. [#1530](https://github.com/particle-iot/firmware/pull/1530)
+
 ## 0.8.0-rc.3
 
 ### ENHANCEMENTS
