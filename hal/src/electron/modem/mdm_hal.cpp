@@ -142,21 +142,20 @@ void MDMParser::_debugPrint(int level, const char* color, const char* format, ..
 {
     if (_debugLevel >= level)
     {
-        va_list args;
-        va_start (args, format);
         if (color) DEBUG_D(color);
-        DEBUG_D(format, args);
+        va_list args;
+        va_start(args, format);
+        log_printf_v(LOG_LEVEL_TRACE, LOG_THIS_CATEGORY(), nullptr, format, args);
+        va_end(args);
         if (color) DEBUG_D(DEF);
-        va_end (args);
         DEBUG_D("\r\n");
     }
 }
-// Warning: Do not use these for anything other than constant char messages,
-// they will yield incorrect values for integers.  Use DEBUG_D() instead.
-#define MDM_ERROR(...)  do {_debugPrint(0, RED, __VA_ARGS__);}while(0)
-#define MDM_INFO(...)   do {_debugPrint(1, GRE, __VA_ARGS__);}while(0)
-#define MDM_TRACE(...)  do {_debugPrint(2, DEF, __VA_ARGS__);}while(0)
-#define MDM_TEST(...)   do {_debugPrint(3, CYA, __VA_ARGS__);}while(0)
+
+#define MDM_ERROR(_fmt, ...)  do {_debugPrint(0, RED, _fmt, ##__VA_ARGS__);}while(0)
+#define MDM_INFO(_fmt, ...)   do {_debugPrint(1, GRE, _fmt, ##__VA_ARGS__);}while(0)
+#define MDM_TRACE(_fmt, ...)  do {_debugPrint(2, DEF, _fmt, ##__VA_ARGS__);}while(0)
+#define MDM_TEST(_fmt, ...)   do {_debugPrint(3, CYA, _fmt, ##__VA_ARGS__);}while(0)
 
 #else
 
@@ -620,11 +619,14 @@ bool MDMParser::_powerOn(void)
         waitFinalResp(_cbCGMM, &_dev);
         if (_dev.dev == DEV_UNKNOWN) {
             MDM_ERROR("Unknown modem type");
-        } else if (_dev.dev == DEV_SARA_R410) {
-            // SARA-R410 doesn't support hardware flow control, reinitialize the UART
-            electronMDM.begin(115200, false /* hwFlowControl */);
-            // Power saving modes defined by the +UPSV command are not supported
-            _dev.lpm = LPM_DISABLED;
+        } else {
+            MDM_TRACE("Modem type: %d", (int)_dev.dev);
+            if (_dev.dev == DEV_SARA_R410) {
+                // SARA-R410 doesn't support hardware flow control, reinitialize the UART
+                electronMDM.begin(115200, false /* hwFlowControl */);
+                // Power saving modes defined by the +UPSV command are not supported
+                _dev.lpm = LPM_DISABLED;
+            }
         }
     }
 

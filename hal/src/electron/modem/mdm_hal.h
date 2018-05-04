@@ -588,7 +588,7 @@ protected:
 #ifdef MDM_DEBUG
     int _debugLevel;
     system_tick_t _debugTime;
-    void _debugPrint(int level, const char* color, const char* format, ...);
+    void _debugPrint(int level, const char* color, const char* format, ...) __attribute__((format(printf, 4, 5)));
 #endif
 };
 
