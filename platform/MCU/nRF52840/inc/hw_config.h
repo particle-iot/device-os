@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "hw_ticks.h"
+#include "rgbled.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,6 +91,8 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
+
+void LED_Init(Led_TypeDef Led);
 
 extern button_config_t HAL_Buttons[];
 
