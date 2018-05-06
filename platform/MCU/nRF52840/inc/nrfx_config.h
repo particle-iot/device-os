@@ -2978,9 +2978,38 @@
 #define NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
 #endif
 
+
 #ifndef NRF_DRV_USBD_ERRATA_ENABLE
 #define NRF_DRV_USBD_ERRATA_ENABLE (1)
 #endif
+
+
+#ifndef NRF_FSTORAGE_ENABLED
+#define NRF_FSTORAGE_ENABLED 1
+#endif
+
+// <i> Common settings to all fstorage implementations
+//==========================================================
+// <q> NRF_FSTORAGE_PARAM_CHECK_DISABLED  - Disable user input validation
+
+
+// <i> If selected, use ASSERT to validate user input.
+// <i> This effectively removes user input validation in production code.
+// <i> Recommended setting: OFF, only enable this setting if size is a major concern.
+
+#ifndef NRF_FSTORAGE_PARAM_CHECK_DISABLED
+#define NRF_FSTORAGE_PARAM_CHECK_DISABLED 0
+#endif
+
+#ifndef NRF_LOG_ENABLED
+#define NRF_LOG_ENABLED 0
+#endif
+
+// <q> CRC32_ENABLED  - crc32 - CRC32 calculation routines
+#ifndef CRC32_ENABLED
+#define CRC32_ENABLED 1
+#endif
+
 
 /* Legacy config */
 #include "sdk_config.h"

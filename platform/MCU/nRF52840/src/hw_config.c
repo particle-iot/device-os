@@ -33,6 +33,8 @@
 
 #include "rgbled.h"
 #include "rgbled_hal_impl.h"
+#include "flash_hal.h"
+#include "crc32.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -136,6 +138,8 @@ void Set_System(void)
 
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+
+    hal_flash_init();
 }
 
 void Reset_System(void) {
@@ -383,4 +387,27 @@ uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
 void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 {
     HAL_Buttons[Button].debounce_time = 0;
+}
+
+platform_system_flags_t system_flags;
+
+void Load_SystemFlags()
+{
+    //
+}
+
+void Save_SystemFlags()
+{
+    //
+}
+
+/**
+ * @brief  Computes the 32-bit CRC of a given buffer of byte data.
+ * @param  pBuffer: pointer to the buffer containing the data to be computed
+ * @param  BufferSize: Size of the buffer to be computed
+ * @retval 32-bit CRC
+ */
+uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
+{
+    return crc32_compute((uint8_t*)pBuffer, bufferSize, NULL);
 }

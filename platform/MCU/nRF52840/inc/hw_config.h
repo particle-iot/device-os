@@ -7,6 +7,7 @@
  */
 
 #include "platform_config.h"
+#include "platform_system_flags.h"
 #include "module_info.h"
 #include "module_info_hal.h"
 #include "flash_device_hal.h"
@@ -43,7 +44,10 @@ typedef struct {
     nrf_gpiote_polarity_t int_trigger;
     uint16_t              nvic_irqn;
     uint16_t              nvic_irq_prio;
+    uint8_t               padding[12];
 } button_config_t;
+
+extern button_config_t HAL_Buttons[];
 
 extern uint8_t USE_SYSTEM_FLAGS;
 extern uint16_t tempFlag;
@@ -51,7 +55,6 @@ extern uint16_t tempFlag;
 /**
  * Access to named system flags.
  */
-#define SYSTEM_FLAG(flag)       tempFlag
 
 #define RESET                   0
 #define RCC_FLAG_IWDGRST        0
@@ -59,8 +62,10 @@ extern uint16_t tempFlag;
 inline int RCC_GetFlagStatus(int reg) { return RESET; }
 inline void RCC_ClearFlag() {}
 
-inline void Load_SystemFlags() {}
-inline void Save_SystemFlags() {}
+#define SYSTEM_FLAG(x) (system_flags.x)
+void Load_SystemFlags(void);
+void Save_SystemFlags(void);
+extern platform_system_flags_t system_flags;
 
 // these are functions used by the bootloader
 
@@ -95,7 +100,7 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
 void LED_Init(Led_TypeDef Led);
 
-extern button_config_t HAL_Buttons[];
+uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
 #ifdef __cplusplus
 }

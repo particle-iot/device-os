@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ ******************************************************************************
+ *  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -13,31 +14,19 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************
  */
+#pragma once
 
-#ifndef NRF_LOG_H
-#define NRF_LOG_H
+#include "dct_hal_nrf52840.h"
+#include "dct.h"
 
-#include "nrfx_log.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#ifndef NRF_LOG_MODULE_REGISTER
-#define NRF_LOG_MODULE_REGISTER()
-#endif /* NRF_LOG_MODULE_REGISTER */
+void dcd_migrate_data();
 
-#ifndef NRF_LOG_INFO
-#define NRF_LOG_INFO(...)
-#endif /* NRF_LOG_INFO */
-
-#ifndef NRF_LOG_WARNING
-#define NRF_LOG_WARNING(...)
-#endif /* NRF_LOG_WARNING */
-
-#ifndef NRF_LOG_DEBUG
-#define NRF_LOG_DEBUG(...)
-#endif /* NRF_LOG_DEBUG */
-
-#ifndef NRF_LOG_ERROR
-#define NRF_LOG_ERROR(...)
-#endif /* NRF_LOG_ERROR */
-
-#endif /* NRF_LOG_H */
+#ifdef __cplusplus
+} // extern "C"
+#endif
