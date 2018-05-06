@@ -30,8 +30,8 @@
 #include "hw_config.h"
 #include "flash_device_hal.h"
 #include "flash_hal.h"
-//#include "module_info.h"
-//#include "module_info_hal.h"
+#include "module_info.h"
+#include "module_info_hal.h"
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -54,7 +54,7 @@ extern "C" {
 
 /* Internal Flash memory address where various firmwares are located */
 #ifndef INTERNAL_FLASH_START
-#define INTERNAL_FLASH_START        ((uint32_t)0x08000000)
+#define INTERNAL_FLASH_START        ((uint32_t)0x00000000)
 #endif
 
 //Bootloader firmware at the start of internal flash
@@ -64,7 +64,7 @@ extern "C" {
 #define APP_START_MASK              ((uint32_t)0x2FF10000)
 
 /* Internal Flash page size */
-#define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
+#define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x1000) //4K (256 sectors of 4K each used by main firmware)
 
 #ifdef MODULAR_FIRMWARE
     #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
