@@ -24,7 +24,6 @@ CFLAGS += -Wno-unused-but-set-variable
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/fstorage/nrf_fstorage.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/fstorage/nrf_fstorage_nvmc.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/experimental_section_vars/nrf_section_iter.c
-CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic/nrf_atomic.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/crc32/crc32.c
 
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
