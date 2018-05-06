@@ -39,7 +39,7 @@ typedef struct __attribute__((packed)) platform_system_flags {
     uint16_t reserved[4];
 } platform_system_flags_t;
 
-STATIC_ASSERT(platform_system_flags_size_changed, sizeof(platform_system_flags_t) == 32);
+PARTICLE_STATIC_ASSERT(platform_system_flags_size_changed, sizeof(platform_system_flags_t) == 32);
 
 #ifdef	__cplusplus
 }
