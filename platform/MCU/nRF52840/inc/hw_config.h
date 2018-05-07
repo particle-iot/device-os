@@ -62,12 +62,9 @@ extern platform_system_flags_t system_flags;
 // these are functions used by the bootloader
 
 inline void OTA_Finished_ResetStatus() {}
-inline void OTA_Flashed_ResetStatus() {}
 inline bool OTA_Flash_Reset() { return false; }
 inline bool FACTORY_Flash_Reset() { return 0; }
 inline void BACKUP_Flash_Reset() {}
-void Finish_Update();
-inline void Bootloader_Update_Version(int version) {}
 
 #define __IO volatile
 inline void IWDG_Reset_Enable(int count) {}
@@ -87,6 +84,14 @@ uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
 void LED_Init(Led_TypeDef Led);
+
+bool OTA_Flashed_GetStatus(void);
+void OTA_Flashed_ResetStatus(void);
+
+void Finish_Update(void);
+
+uint16_t Bootloader_Get_Version(void);
+void Bootloader_Update_Version(uint16_t bootloaderVersion);
 
 uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 

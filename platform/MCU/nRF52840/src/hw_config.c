@@ -402,6 +402,31 @@ void Save_SystemFlags()
 	dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, sizeof(platform_system_flags_t));
 }
 
+bool OTA_Flashed_GetStatus(void)
+{
+    if(system_flags.OTA_FLASHED_Status_SysFlag == 0x0001)
+        return true;
+    else
+        return false;
+}
+
+void OTA_Flashed_ResetStatus(void)
+{
+    system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
+    Save_SystemFlags();
+}
+
+uint16_t Bootloader_Get_Version(void)
+{
+    return system_flags.Bootloader_Version_SysFlag;
+}
+
+void Bootloader_Update_Version(uint16_t bootloaderVersion)
+{
+    system_flags.Bootloader_Version_SysFlag = bootloaderVersion;
+    Save_SystemFlags();
+}
+
 /**
  * @brief  Computes the 32-bit CRC of a given buffer of byte data.
  * @param  pBuffer: pointer to the buffer containing the data to be computed
