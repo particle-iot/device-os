@@ -724,7 +724,8 @@ const uint8_t* NrfDevice::getString(SetupRequest* r, uint16_t* len) {
       return getUnicodeString(USBD_INTERFACE_STRING, sizeof(USBD_INTERFACE_STRING) - 1, len);
     }
     case STRING_IDX_MSFT: {
-      return getUnicodeString(USBD_MsftStrDesc, sizeof(USBD_MsftStrDesc), len);
+      /* No conversion to UTF-16 */
+      return getUnicodeString(USBD_MsftStrDesc, sizeof(USBD_MsftStrDesc), len, true);
     }
     default: {
       if (drv_) {
