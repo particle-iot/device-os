@@ -5,16 +5,16 @@
 namespace {
 
 uint32_t calculateCRC(const void* data, size_t len) {
-    return 0;//Compute_CRC32(reinterpret_cast<const uint8_t*>(data), len);
+    return Compute_CRC32(reinterpret_cast<const uint8_t*>(data), len);
 }
 
 /**
  * The DCD is called before constructors have executed (from HAL_Core_Config) so we need to manually construct
  * rather than rely upon global construction.
  */
-UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000, calculateCRC>& dcd()
+UpdateDCD<InternalFlashStore, 16*1024, 0x000F0000, 0x000F4000, calculateCRC>& dcd()
 {
-    static UpdateDCD<InternalFlashStore, 16*1024, 0x8004000, 0x8008000, calculateCRC> dcd;
+    static UpdateDCD<InternalFlashStore, 16*1024, 0x000F0000, 0x000F4000, calculateCRC> dcd;
     return dcd;
 }
 

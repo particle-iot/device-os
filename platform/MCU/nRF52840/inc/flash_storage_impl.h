@@ -34,42 +34,21 @@ public:
     }
 
     static int erase(unsigned address, unsigned size) {
-        return 0;//(FLASH_EraseMemory(FLASH_INTERNAL, address, size) ? 0 : -1);
+        return (FLASH_EraseMemory(FLASH_INTERNAL, address, size) ? 0 : -1);
     }
 
     static int write(const unsigned offset, const void* data, const unsigned size)
     {
-        const uint8_t* data_ptr = (const uint8_t*)data;
-        const uint8_t* end_ptr  = data_ptr+size;
-        unsigned destination = offset;
+        int status = hal_flash_write(offset, data, size);
 
-        while (data_ptr < end_ptr)
+        if (status == 0)
         {
-            //FLASH_Status status;
-            //const int max_tries = 10;
-            //int tries = 0;
-
-            if ( !(destination & 0x03) && (end_ptr - data_ptr >= 4))  // have a whole word to write
-            {
-                //while ((FLASH_COMPLETE != (status = FLASH_ProgramWord(destination, *(const uint32_t*)data_ptr))) && (tries++ < max_tries));
-                destination += 4;
-                data_ptr += 4;
-            }
-            else if ( !(destination & 0x01) && (end_ptr - data_ptr >= 2))  // have a half word to write
-            {
-                //while ((FLASH_COMPLETE != (status = FLASH_ProgramHalfWord(destination, *(const uint16_t*)data_ptr))) && (tries++ < max_tries));
-                destination += 2;
-                data_ptr += 2;
-            }
-            else
-            {
-                //while ((FLASH_COMPLETE != (status = FLASH_ProgramByte(destination, *data_ptr))) && (tries++ < max_tries));
-                destination++;
-                data_ptr++;
-            }
-
+            return (memcmp(dataAt(offset), data, size)) ? -1 : 0;
         }
-        return 0;//(memcmp(dataAt(offset), data, size)) ? -1 : 0;
+        else
+        {
+        	return -1;
+        }
     }
 
     static const uint8_t* dataAt(unsigned address)

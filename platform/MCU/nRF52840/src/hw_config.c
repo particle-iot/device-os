@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include "hw_config.h"
+#include "dct.h"
 #include "nrf52840.h"
 #include "service_debug.h"
 /* This is a legacy header */
@@ -393,12 +394,12 @@ platform_system_flags_t system_flags;
 
 void Load_SystemFlags()
 {
-    //
+	dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &system_flags, sizeof(platform_system_flags_t));
 }
 
 void Save_SystemFlags()
 {
-    //
+	dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, sizeof(platform_system_flags_t));
 }
 
 /**
