@@ -8,6 +8,7 @@
 
 #include "platform_config.h"
 #include "platform_system_flags.h"
+#include "hw_system_flags.h"
 #include "module_info.h"
 #include "module_info_hal.h"
 #include "flash_device_hal.h"
@@ -52,15 +53,6 @@ extern button_config_t HAL_Buttons[];
 extern uint8_t USE_SYSTEM_FLAGS;
 extern uint16_t tempFlag;
 
-/**
- * Access to named system flags.
- */
-
-#define RESET                   0
-#define RCC_FLAG_IWDGRST        0
-
-inline int RCC_GetFlagStatus(int reg) { return RESET; }
-inline void RCC_ClearFlag() {}
 
 #define SYSTEM_FLAG(x) (system_flags.x)
 void Load_SystemFlags(void);
@@ -98,7 +90,6 @@ void LED_Init(Led_TypeDef Led);
 
 uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
-void Save_Reset_Syndrome();
 
 #ifdef __cplusplus
 }

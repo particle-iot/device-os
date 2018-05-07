@@ -22,16 +22,24 @@
 
 #pragma once
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "hw_config.h"
+#include <stdint.h>
+
+#define SET                     1
+#define RESET                   0
+
+#define RCC_FLAG_IWDGRST        0
+
 
 void Save_Reset_Syndrome();
+uint8_t RCC_GetFlagStatus(uint8_t flag);
+void RCC_ClearFlag(void);
 
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
