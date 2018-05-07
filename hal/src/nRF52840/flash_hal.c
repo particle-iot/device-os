@@ -64,27 +64,50 @@ int hal_flash_init(void)
     return (ret_code == NRF_SUCCESS) ? 0 : -1;
 }
 
-int hal_flash_write(uint32_t addr, void const * data_buf, uint32_t data_size)
+int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 {
     uint32_t ret_code;
+    uint8_t head_size = 4 - (addr & 0x03);
+    uint32_t head = *(uint32_t *)((addr & 0x03));
+    uint8_t * head_buf = (uint8_t *)&head;
+    uint8_t tail_size = (data_size >= head_size) ? ((data_size - head_size) & 0x03) : 0;
+    uint32_t tail = 0xFFFFFFFF;
+    uint8_t * tail_buf = (uint8_t *)&tail;
 
     NRF_LOG_INFO("nrf_fstorage_write(addr=%p, src=%p, len=%d bytes), queue usage: %d",
                   addr, data_buf, data_size, m_flash_operations_pending);
 
-    //lint -save -e611 (Suspicious cast)
-    ret_code = nrf_fstorage_write(&m_fs, addr, data_buf, data_size, NULL);
-    //lint -restore
+    memcpy(&head_buf[addr & 0x03], data_buf, (data_size > head_size) ? head_size : data_size);
+    memcpy(tail_buf, &data_buf[data_size - tail_size], tail_size);
 
-    if ((NRF_LOG_ENABLED) && (ret_code == NRF_SUCCESS))
+    if (head_size)
     {
-        m_flash_operations_pending++;
-    }
-    else
-    {
-        NRF_LOG_WARNING("nrf_fstorage_write() failed with error 0x%x.", ret_code);
+        ret_code = nrf_fstorage_write(&m_fs, addr & 0x03, head_buf, 4, NULL);
+        if (ret_code)
+        {
+            return -1;
+        }
     }
 
-    return (ret_code == NRF_SUCCESS) ? 0 : -1;
+    if ((data_size > head_size) && (data_size - head_size - tail_size))
+    {
+        ret_code = nrf_fstorage_write(&m_fs, (addr & 0x03) + 4, &data_buf[head_size], data_size - head_size - tail_size, NULL);
+        if (ret_code)
+        {
+            return -2;
+        }
+    }
+
+    if (tail_size)
+    {
+        ret_code = nrf_fstorage_write(&m_fs, addr + data_size - tail_size, tail_buf, 4, NULL);
+        if (ret_code)
+        {
+            return -3;
+        }
+    }
+    
+    return 0;
 }
 
 int hal_flash_erase_sector(uint32_t addr, uint32_t num_sectors)
@@ -110,7 +133,7 @@ int hal_flash_erase_sector(uint32_t addr, uint32_t num_sectors)
     return (ret_code == NRF_SUCCESS) ? 0 : -1;
 }
 
-int hal_flash_read(uint32_t addr, void * data_buf, uint32_t data_size)
+int hal_flash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
 {
     uint32_t ret_code = nrf_fstorage_read(&m_fs, addr, data_buf, data_size);
 
