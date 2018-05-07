@@ -77,13 +77,9 @@ inline void BACKUP_Flash_Reset() {}
 void Finish_Update();
 inline void Bootloader_Update_Version(int version) {}
 
-
-
 #define __IO volatile
 inline void IWDG_Reset_Enable(int count) {}
 inline void SysTick_Disable() {}
-
-inline void Save_Reset_Syndrome() {}
 
 void Set_System(void);
 void Reset_System(void);
@@ -101,6 +97,8 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 void LED_Init(Led_TypeDef Led);
 
 uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
+
+void Save_Reset_Syndrome();
 
 #ifdef __cplusplus
 }
