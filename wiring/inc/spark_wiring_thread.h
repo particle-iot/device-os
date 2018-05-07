@@ -67,8 +67,8 @@ private:
     mutable wiring_thread_fn_t *wrapper = NULL;
     os_thread_fn_t func_ = NULL;
     void* func_param_ = NULL;
-    bool started_ = false;
-    bool exited_ = false;
+    volatile bool started_ = false;
+    volatile bool exited_ = false;
 
 public:
     Thread() : handle(OS_THREAD_INVALID_HANDLE) {}
