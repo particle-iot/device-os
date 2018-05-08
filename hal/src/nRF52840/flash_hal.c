@@ -67,42 +67,63 @@ int hal_flash_init(void)
 int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 {
     uint32_t ret_code;
-    uint8_t head_size = 4 - (addr & 0x03);
-    uint32_t head = *(uint32_t *)((addr & 0x03));
-    uint8_t * head_buf = (uint8_t *)&head;
-    uint8_t tail_size = (data_size >= head_size) ? ((data_size - head_size) & 0x03) : 0;
-    uint32_t tail = 0xFFFFFFFF;
-    uint8_t * tail_buf = (uint8_t *)&tail;
+    uint16_t index = 0;
 
-    NRF_LOG_INFO("nrf_fstorage_write(addr=%p, src=%p, len=%d bytes), queue usage: %d",
-                  addr, data_buf, data_size, m_flash_operations_pending);
+    uint16_t copy_size;
+    uint32_t copy_data;
+    uint8_t *copy_data_buf = (uint8_t *)&copy_data;
 
-    memcpy(&head_buf[addr & 0x03], data_buf, (data_size > head_size) ? head_size : data_size);
-    memcpy(tail_buf, &data_buf[data_size - tail_size], tail_size);
-
-    if (head_size)
+    // write head part
+    copy_size = 4 - (addr & 0x03);
+    copy_data = *(uint32_t *)ADDR_ALIGN_WORD(addr);
+    memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
+    if (copy_size)
     {
-        ret_code = nrf_fstorage_write(&m_fs, addr & 0x03, head_buf, 4, NULL);
+        LOG_DEBUG("write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
+        ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr), copy_data_buf, 4, NULL);
         if (ret_code)
         {
+            LOG_ERROR("ret_code: %d", ret_code);
             return -1;
         }
     }
 
-    if ((data_size > head_size) && (data_size - head_size - tail_size))
+    index += copy_size;
+    if (index >= data_size)
     {
-        ret_code = nrf_fstorage_write(&m_fs, (addr & 0x03) + 4, &data_buf[head_size], data_size - head_size - tail_size, NULL);
-        if (ret_code)
-        {
-            return -2;
-        }
+        return 0;
     }
 
-    if (tail_size)
+    // write middle part
+    if (data_size - index > 4)
     {
-        ret_code = nrf_fstorage_write(&m_fs, addr + data_size - tail_size, tail_buf, 4, NULL);
+        LOG_DEBUG("write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+        uint8_t offset = 0;
+        do {
+            memcpy(copy_data_buf, &data_buf[index], 4);
+            ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr) + 4 + offset, copy_data_buf, 4, NULL);
+            if (ret_code)
+            {
+                LOG_ERROR("ret_code: %d", ret_code);
+                return -2;
+            }
+            index += 4;
+            offset += 4;
+        } while (data_size - index > 4);
+    }
+
+    // write tail part
+    copy_size = data_size - index;
+    copy_data = 0xFFFFFFFF;
+    memcpy(copy_data_buf, &data_buf[index], copy_size);
+
+    if (copy_size)
+    {
+        LOG_DEBUG("write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
+        ret_code = nrf_fstorage_write(&m_fs, addr + data_size - copy_size, copy_data_buf, 4, NULL);
         if (ret_code)
         {
+            LOG_ERROR("ret_code: %d", ret_code);
             return -3;
         }
     }
@@ -135,9 +156,10 @@ int hal_flash_erase_sector(uint32_t addr, uint32_t num_sectors)
 
 int hal_flash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
 {
-    uint32_t ret_code = nrf_fstorage_read(&m_fs, addr, data_buf, data_size);
+    uint8_t *dest_data = (uint8_t *)(addr);
+    memcpy(data_buf, dest_data, data_size);
 
-    return (ret_code == NRF_SUCCESS) ? 0 : -1;
+    return 0;
 }
 
 int hal_flash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_size)
