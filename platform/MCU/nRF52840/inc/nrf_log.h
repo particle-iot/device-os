@@ -24,20 +24,41 @@
 #define NRF_LOG_MODULE_REGISTER()
 #endif /* NRF_LOG_MODULE_REGISTER */
 
-#ifndef NRF_LOG_INFO
-#define NRF_LOG_INFO(...)
-#endif /* NRF_LOG_INFO */
+#ifndef NRF_LOG_ERROR_STRING_GET
+#define NRF_LOG_ERROR_STRING_GET(code) ""
+#endif
 
-#ifndef NRF_LOG_WARNING
-#define NRF_LOG_WARNING(...)
-#endif /* NRF_LOG_WARNING */
+// DBG_DEV_SRC option: 
+// 0 => disable debug log
+// 1 => use USB Virtual UART
+// 2 => use RTT
+#define DBG_DEV_SRC_NONE        0
+#define DBG_DEV_SRC_UART        1
+#define DBG_DEV_SRC_USB         2
+#define DBG_DEV_SRC_RTT         3
 
-#ifndef NRF_LOG_DEBUG
+#ifndef DBG_DEV_SRC
+#define DBG_DEV_SRC             DBG_DEV_SRC_NONE
+#endif
+
+
+#if DBG_DEV_SRC == DBG_DEV_SRC_NONE
+#define NRF_LOG_INIT()
 #define NRF_LOG_DEBUG(...)
-#endif /* NRF_LOG_DEBUG */
-
-#ifndef NRF_LOG_ERROR
+#define NRF_LOG_INFO(...)
+#define NRF_LOG_WARNING(...)
 #define NRF_LOG_ERROR(...)
-#endif /* NRF_LOG_ERROR */
+#define NRF_LOG_PRINT(...)
+#else
+#define NRF_LOG_INIT()                  dbg_log_init()
+#define NRF_LOG_DEBUG(F, ...)           dbg_log_print(F "\r\n",  ##__VA_ARGS__)
+#define NRF_LOG_INFO(F, ...)            dbg_log_print("[info]" F "\r\n",  ##__VA_ARGS__)
+#define NRF_LOG_WARNING(F, ...)         dbg_log_print("[WARN!!!]" F "\r\n",  ##__VA_ARGS__)
+#define NRF_LOG_ERROR(F, ...)           dbg_log_print("[ERROR!!!]" F "\r\n",  ##__VA_ARGS__)
+#define NRF_LOG_PRINT(F, ...)           dbg_log_print( F ,  ##__VA_ARGS__)
+#endif
+
+void dbg_log_init(void);
+void dbg_log_print(char * format_msg, ...);
 
 #endif /* NRF_LOG_H */
