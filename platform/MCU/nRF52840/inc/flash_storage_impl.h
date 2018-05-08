@@ -39,7 +39,7 @@ public:
 
     static int write(const unsigned offset, const void* data, const unsigned size)
     {
-        int status = hal_flash_write(offset, data, size);
+        int status = hal_flash_write(offset, (const uint8_t *)data, size);
 
         if (status == 0)
         {

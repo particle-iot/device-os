@@ -390,7 +390,7 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
     HAL_Buttons[Button].debounce_time = 0;
 }
 
-platform_system_flags_t system_flags;
+platform_system_flags_t system_flags __attribute__((aligned (4)));
 
 void Load_SystemFlags()
 {
