@@ -45,7 +45,7 @@ struct SparkKeys
   unsigned char *core_public;
 };
 
-STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(SparkKeys_size, sizeof(SparkKeys)==16 || sizeof(void*)!=4);
 
 enum ProtocolFactory
 {
@@ -118,7 +118,7 @@ struct SparkCallbacks
 	// size == 52
 };
 
-STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*13));
+PARTICLE_STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*13));
 
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
@@ -136,7 +136,7 @@ typedef struct CommunicationsHandlers {
 } CommunicationsHandlers;
 
 
-STATIC_ASSERT(CommunicationHandlers_size, sizeof(CommunicationsHandlers)==8 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(CommunicationHandlers_size, sizeof(CommunicationsHandlers)==8 || sizeof(void*)!=4);
 
 typedef struct {
     uint16_t size;
@@ -145,7 +145,7 @@ typedef struct {
     uint16_t reserved;  // make the padding explicit
 } product_details_t;
 
-STATIC_ASSERT(product_details_size, sizeof(product_details_t)==8);
+PARTICLE_STATIC_ASSERT(product_details_size, sizeof(product_details_t)==8);
 
 
 void spark_protocol_communications_handlers(ProtocolFacade* protocol, CommunicationsHandlers* handlers);

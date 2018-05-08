@@ -13,6 +13,8 @@ typedef enum hal_irq_t {
     __Last_irq = 0
 } hal_irq_t;
 
+#define IRQN_TO_IDX(irqn) ((int)irqn + 16)
+
 #ifdef  __cplusplus
 }
 #endif

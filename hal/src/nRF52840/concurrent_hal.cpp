@@ -24,6 +24,7 @@
 #include "concurrent_hal.h"
 
 // #include "core_hal_stm32f2xx.h"
+#define NO_STATIC_ASSERT
 #include "static_assert.h"
 #include "delay_hal.h"
 #include "FreeRTOS.h"

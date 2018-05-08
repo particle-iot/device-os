@@ -21,6 +21,7 @@
 #define __PLATFORM_CONFIG_H
 
 #include "platforms.h"
+#include "logging.h"
 
 // STM32 Device electronic signature
 // Factory-programmed 12 byte unique device ID

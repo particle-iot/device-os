@@ -81,6 +81,7 @@ inline void SysTick_Disable() {}
 inline void Save_Reset_Syndrome() {}
 
 void Set_System(void);
+void Reset_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
 

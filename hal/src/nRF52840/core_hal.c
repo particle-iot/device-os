@@ -5,6 +5,11 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "hw_config.h"
+#include "syshealth_hal.h"
+#include "nrf_mbr.h"
+#include "nrf_sdm.h"
+#include "nrf_sdh.h"
 
 volatile uint8_t rtos_started = 0;
 
@@ -14,6 +19,16 @@ void HardFault_Handler(void);
 void MemManage_Handler(void);
 void BusFault_Handler(void);
 void UsageFault_Handler(void);
+
+void SysTick_Handler(void);
+void SysTickOverride(void);
+
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info);
+void app_error_handler_bare(uint32_t err);
+
+extern char link_interrupt_vectors_location;
+extern char link_ram_interrupt_vectors_location;
+extern char link_ram_interrupt_vectors_location_end;
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
 {
@@ -75,6 +90,24 @@ void HardFault_Handler(void)
     );
 }
 
+void app_error_fault_handler(uint32_t _id, uint32_t _pc, uint32_t _info)
+{
+    volatile uint32_t id = _id;
+    volatile uint32_t pc = _pc;
+    volatile uint32_t info = _info;
+    (void)id; (void)pc; (void)info;
+    PANIC(HardFault,"HardFault");
+    while(1) {
+    }
+}
+
+void app_error_handler_bare(uint32_t error_code)
+{
+    PANIC(HardFault,"HardFault");
+    while(1) {
+    }
+}
+
 void MemManage_Handler(void)
 {
     /* Go to infinite loop when Memory Manage exception occurs */
@@ -107,8 +140,67 @@ void vApplicationMallocFailedHook(size_t xWantedSize)
     hal_notify_event(HAL_EVENT_OUT_OF_MEMORY, xWantedSize, 0);
 }
 
+void SysTickOverride(void)
+{
+    System1MsTick();
+
+    /* Handle short and generic tasks for the device HAL on 1ms ticks */
+    // HAL_1Ms_Tick();
+
+    HAL_SysTick_Handler();
+
+    // HAL_System_Interrupt_Trigger(SysInterrupt_SysTick, NULL);
+}
+
+void SysTickChain()
+{
+    SysTick_Handler();
+    SysTickOverride();
+}
+
+/**
+ * Called by HAL_Core_Init() to pre-initialize any low level hardware before
+ * the main loop runs.
+ */
+void HAL_Core_Init_finalize(void)
+{
+    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+    isrs[IRQN_TO_IDX(SysTick_IRQn)] = (uint32_t)SysTickChain;
+}
+
 void HAL_Core_Init(void)
 {
+    HAL_Core_Init_finalize();
+}
+
+void HAL_Core_Config_systick_configuration(void) {
+    // SysTick_Configuration();
+    // sd_nvic_EnableIRQ(SysTick_IRQn);
+    // dcd_migrate_data();
+}
+
+/**
+ * Called by HAL_Core_Config() to allow the HAL implementation to override
+ * the interrupt table if required.
+ */
+void HAL_Core_Setup_override_interrupts(void)
+{
+    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+    /* Set MBR to forward interrupts to application */
+    *((volatile uint32_t*)0x20000000) = (uint32_t)isrs;
+    /* Reset SoftDevice vector address */
+    *((volatile uint32_t*)0x20000004) = 0xFFFFFFFF;
+
+    SCB->VTOR = 0x0;
+
+    /* Init softdevice */
+    sd_mbr_command_t com = {SD_MBR_COMMAND_INIT_SD, };
+    uint32_t ret = sd_mbr_command(&com);
+    SPARK_ASSERT(ret == NRF_SUCCESS);
+    /* Forward unhandled interrupts to the application */
+    sd_softdevice_vector_table_base_set((uint32_t)isrs);
+    /* Enable softdevice */
+    nrf_sdh_enable_request();
 }
 
 
@@ -121,10 +213,35 @@ void HAL_Core_Init(void)
  *******************************************************************************/
 void HAL_Core_Config(void)
 {
+    DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
+
+#ifdef DFU_BUILD_ENABLE
+    USE_SYSTEM_FLAGS = 1;
+#endif
+
+    /* Forward interrupts */
+    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
+    uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
+    SCB->VTOR = (uint32_t)isrs;
+
+    Set_System();
+
+#ifdef DFU_BUILD_ENABLE
+    Load_SystemFlags();
+#endif
+
+    // TODO: Use current LED theme
+    LED_SetRGBColor(RGB_COLOR_WHITE);
+    LED_On(LED_RGB);
 }
 
 void HAL_Core_Setup(void)
 {
+    HAL_Core_Setup_override_interrupts();
+    /* DOES NOT DO ANYTHING
+     * SysTick is enabled within FreeRTOS
+     */
+    HAL_Core_Config_systick_configuration();
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)

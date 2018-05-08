@@ -36,15 +36,15 @@
 
 /* Exported macros ------------------------------------------------------------*/
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "usb_config_hal.h"
 
 #ifdef USE_STDPERIPH_DRIVER
 // this is one way to determine if the platform module is being used or not
 #include "hw_config.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #ifdef USB_VENDOR_REQUEST_ENABLE

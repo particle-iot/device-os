@@ -8,6 +8,18 @@ SOURCE_PATH ?= $(MODULE_PATH)
 # import this module's symbols
 include $(MODULE_PATH)/import.mk
 
+# FIXME: find a better place for this
+ifneq (,$(filter $(PLATFORM_ID),12 13 14))
+ifneq ("$(BOOTLOADER_MODULE)","1")
+export SOFTDEVICE_PRESENT=y
+CFLAGS += -DSOFTDEVICE_PRESENT
+ASFLAGS += -DSOFTDEVICE_PRESENT
+export SOFTDEVICE_VARIANT=s140
+CFLAGS += -D$(shell echo $(SOFTDEVICE_VARIANT) | tr a-z A-Z)
+PLATFORM_FREERTOS =
+endif
+endif
+
 # pull in the include.mk files from each dependency, and make them relative to
 # the dependency module directory
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)

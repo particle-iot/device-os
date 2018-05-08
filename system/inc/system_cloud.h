@@ -106,7 +106,7 @@ class String;
 #if defined(PLATFORM_ID)
 
 #if PLATFORM_ID!=3 && PLATFORM_ID != 20
-STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
+PARTICLE_STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 #endif
 
 #endif
@@ -116,7 +116,7 @@ const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 0x1;
 const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 0x2;
 const uint32_t PUBLISH_EVENT_FLAG_WITH_ACK = 0x8;
 
-STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
+PARTICLE_STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
 
 typedef void (*EventHandler)(const char* name, const char* data);
 
@@ -144,7 +144,7 @@ struct  cloud_function_descriptor {
      }
 };
 
-STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
 
 typedef struct spark_variable_t
 {

@@ -62,6 +62,9 @@ extern "C" {
 
 /* #include <nrf_assert.h> */
 
+#ifndef NO_STATIC_ASSERT
+#define NO_STATIC_ASSERT
+#endif /* NO_STATIC_ASSERT */
 #include "static_assert.h"
 #include "service_debug.h"
 

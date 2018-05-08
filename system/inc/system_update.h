@@ -39,7 +39,7 @@ struct system_file_transfer_t {
     FileTransfer::Descriptor descriptor;
 };
 
-STATIC_ASSERT(system_file_transfer_size, sizeof(system_file_transfer_t)==sizeof(FileTransfer::Descriptor)+8 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(system_file_transfer_size, sizeof(system_file_transfer_t)==sizeof(FileTransfer::Descriptor)+8 || sizeof(void*)!=4);
 
 bool system_fileTransfer(system_file_transfer_t* transfer, void* reserved=NULL);
 

@@ -88,7 +88,7 @@ typedef struct __attribute__((__packed__))  _WLanConfig_t {
 #define WLanConfig_Size_V1   (sizeof(NetworkConfig)+2+33)
 #define WLanConfig_Size_V2   (WLanConfig_Size_V1+6)
 
-STATIC_ASSERT(WLanConfigSize, sizeof(WLanConfig)==WLanConfig_Size_V2);
+PARTICLE_STATIC_ASSERT(WLanConfigSize, sizeof(WLanConfig)==WLanConfig_Size_V2);
 
 
 

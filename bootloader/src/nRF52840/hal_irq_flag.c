@@ -1,14 +1,14 @@
 #include "nrf52840.h"
+#include "nrf_nvic.h"
 
 int HAL_disable_irq()
 {
-  int is = __get_PRIMASK();
-  __disable_irq();
-  return is;
+    uint8_t st = 0;
+    sd_nvic_critical_region_enter(&st);
+    return st;
 }
 
 void HAL_enable_irq(int is) {
-    if ((is & 1) == 0) {
-        __enable_irq();
-    }
+    uint8_t st = (uint8_t)is;
+    sd_nvic_critical_region_exit(st);
 }

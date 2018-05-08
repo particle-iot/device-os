@@ -89,6 +89,17 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#ifdef SOFTDEVICE_PRESENT
+#include "nrf_soc.h"
+#endif
+#include "app_util_platform.h"
+
+/*-----------------------------------------------------------
+ * Possible configurations for system timer
+ */
+#define FREERTOS_USE_RTC      0 /**< Use real time clock for the system */
+#define FREERTOS_USE_SYSTICK  1 /**< Use SysTick timer for system */
+
 /* Library includes. */
 
 /*-----------------------------------------------------------
@@ -106,7 +117,7 @@
 #define configUSE_PREEMPTION        1
 #define configUSE_IDLE_HOOK         0
 #define configUSE_TICK_HOOK         0
-#define configCPU_CLOCK_HZ          ( ( unsigned long ) 64000000 )
+#define configCPU_CLOCK_HZ          ( SystemCoreClock )
 #define configTICK_RATE_HZ          ( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES        ( 10 )
 #define configMINIMAL_STACK_SIZE    ( ( unsigned short ) 128 )
@@ -119,6 +130,7 @@
 #define configUSE_RECURSIVE_MUTEXES  1
 #define configENABLE_BACKWARD_COMPATIBILITY 1
 #define configUSE_COUNTING_SEMAPHORES 1
+#define configTICK_SOURCE FREERTOS_USE_SYSTICK
 
 #define configAPPLICATION_ALLOCATED_HEAP ( 1 )
 #define configDYNAMIC_HEAP_SIZE     ( 1 )
@@ -146,19 +158,23 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelay              1
 #define INCLUDE_eTaskGetState           1
 
-/* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
-(lowest) to 0 (1?) (highest). */
-#define configKERNEL_INTERRUPT_PRIORITY         0xF0
+/* The lowest interrupt priority that can be used in a call to a "set priority"
+function. */
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY         0xf
+
+/* The highest interrupt priority that can be used by any interrupt service
+routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT CALL
+INTERRUPT SAFE FREERTOS API FUNCTIONS FROM ANY INTERRUPT THAT HAS A HIGHER
+PRIORITY THAN THIS! (higher priorities are lower numeric values. */
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY _PRIO_APP_HIGH
+
+
+/* Interrupt priorities used by the kernel port layer itself.  These are generic
+to all Cortex-M ports, and do not rely on any particular library functions. */
+#define configKERNEL_INTERRUPT_PRIORITY                 configLIBRARY_LOWEST_INTERRUPT_PRIORITY
 /* !!!! configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to zero !!!!
 See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY    0x20
-
-
-/* This is the value being used as per the ST library which permits 16
-priority values, 0 to 15.  This must correspond to the
-configKERNEL_INTERRUPT_PRIORITY setting.  Here 15 corresponds to the lowest
-NVIC value of 255. */
-#define configLIBRARY_KERNEL_INTERRUPT_PRIORITY 15
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY            configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY
 
 /* Enable stack overflow detection for debug builds (see rtos_hook.cpp) */
 #ifdef DEBUG_BUILD
@@ -167,7 +183,42 @@ NVIC value of 255. */
 
 #define xPortPendSVHandler PendSV_Handler
 #define vPortSVCHandler SVC_Handler
-#define xPortSysTickHandler SysTick_Handler
+// #define xPortSysTickHandler SysTick_Handler
 
+/*-----------------------------------------------------------
+ * Settings that are generated automatically
+ * basing on the settings above
+ */
+#if (configTICK_SOURCE == FREERTOS_USE_SYSTICK)
+    // do not define configSYSTICK_CLOCK_HZ for SysTick to be configured automatically
+    // to CPU clock source
+    #define xPortSysTickHandler     SysTick_Handler
+#elif (configTICK_SOURCE == FREERTOS_USE_RTC)
+    #define configSYSTICK_CLOCK_HZ  ( 32768UL )
+    #define xPortSysTickHandler     RTC1_IRQHandler
+#else
+    #error  Unsupported configTICK_SOURCE value
+#endif
+
+/* Code below should be only used by the compiler, and not the assembler. */
+#if !(defined(__ASSEMBLY__) || defined(__ASSEMBLER__))
+    #include "nrf.h"
+    #include "nrf_assert.h"
+
+    /* This part of definitions may be problematic in assembly - it uses definitions from files that are not assembly compatible. */
+    /* Cortex-M specific definitions. */
+    #ifdef __NVIC_PRIO_BITS
+        /* __BVIC_PRIO_BITS will be specified when CMSIS is being used. */
+        #define configPRIO_BITS             __NVIC_PRIO_BITS
+    #else
+        #error "This port requires __NVIC_PRIO_BITS to be defined"
+    #endif
+
+    /* Access to current system core clock is required only if we are ticking the system by systimer */
+    #if (configTICK_SOURCE == FREERTOS_USE_SYSTICK)
+        #include <stdint.h>
+        extern uint32_t SystemCoreClock;
+    #endif
+#endif /* !assembler */
 
 #endif /* FREERTOS_CONFIG_H */

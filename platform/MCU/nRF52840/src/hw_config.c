@@ -24,6 +24,8 @@
 /* This is a legacy header */
 #include "nrf_drv_power.h"
 
+#include "nrf_nvic.h"
+
 #ifdef SOFTDEVICE_PRESENT
 #include "nrf_sdh.h"
 #include "nrf_sdh_soc.h"
@@ -100,6 +102,7 @@ static void DWT_Init(void)
  */
 void Set_System(void)
 {
+#ifndef SOFTDEVICE_PRESENT
     ret_code_t ret = nrf_drv_clock_init();
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
@@ -117,6 +120,7 @@ void Set_System(void)
 
     ret = nrf_drv_power_init(NULL);
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
+#endif /* SOFTDEVICE_PRESENT */
 
     DWT_Init();
 
@@ -134,6 +138,36 @@ void Set_System(void)
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 }
 
+void Reset_System(void) {
+    __DSB();
+
+    sd_nvic_DisableIRQ(SysTick_IRQn);
+    SysTick_Disable();
+
+    sd_nvic_ClearPendingIRQ(SysTick_IRQn);
+    sd_nvic_SetPriority(SysTick_IRQn, 0);
+
+    sd_nvic_DisableIRQ(RTC0_IRQn);
+
+    uint32_t mask = NRF_RTC_INT_TICK_MASK     |
+                NRF_RTC_INT_OVERFLOW_MASK |
+                NRF_RTC_INT_COMPARE0_MASK |
+                NRF_RTC_INT_COMPARE1_MASK |
+                NRF_RTC_INT_COMPARE2_MASK |
+                NRF_RTC_INT_COMPARE3_MASK;
+
+    nrf_rtc_task_trigger(NRF_RTC0, NRF_RTC_TASK_STOP);
+
+    nrf_rtc_int_disable(NRF_RTC0, mask);
+    nrf_rtc_event_disable(NRF_RTC0, mask);
+    nrf_rtc_event_clear(NRF_RTC0, mask);
+
+    sd_nvic_ClearPendingIRQ(RTC0_IRQn);
+    sd_nvic_SetPriority(RTC0_IRQn, 0);
+
+    __DSB();
+}
+
 void SysTick_Configuration(void) {
     /* Setup SysTick Timer for 1 msec interrupts */
     if (SysTick_Config(SystemCoreClock / 1000))
@@ -145,7 +179,7 @@ void SysTick_Configuration(void) {
     }
 
     /* Configure the SysTick Handler Priority: Preemption priority and subpriority */
-    NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);   //OLD: NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x03, 0x00)
+    sd_nvic_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);   //OLD: sd_nvic_EncodePriority(sd_nvic_GetPriorityGrouping(), 0x03, 0x00)
 }
 
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
@@ -190,7 +224,7 @@ void Get_RGB_LED_Values(uint16_t* values)
 }
 
 void Finish_Update() {
-    NVIC_SystemReset();
+    sd_nvic_SystemReset();
 }
 
 void UI_Timer_Configure(void)
@@ -291,14 +325,14 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
         BUTTON_EXTI_Config(Button, ENABLE);
 
-        NVIC_SetPriority(HAL_Buttons[Button].nvic_irqn, HAL_Buttons[Button].nvic_irq_prio);
-        NVIC_ClearPendingIRQ(HAL_Buttons[Button].nvic_irqn);
-        NVIC_EnableIRQ(HAL_Buttons[Button].nvic_irqn);
+        sd_nvic_SetPriority(HAL_Buttons[Button].nvic_irqn, HAL_Buttons[Button].nvic_irq_prio);
+        sd_nvic_ClearPendingIRQ(HAL_Buttons[Button].nvic_irqn);
+        sd_nvic_EnableIRQ(HAL_Buttons[Button].nvic_irqn);
 
         /* Enable the RTC0 NVIC Interrupt */
-        NVIC_SetPriority(RTC0_IRQn, RTC0_IRQ_PRIORITY);
-        NVIC_ClearPendingIRQ(RTC0_IRQn);
-        NVIC_EnableIRQ(RTC0_IRQn);
+        sd_nvic_SetPriority(RTC0_IRQn, RTC0_IRQ_PRIORITY);
+        sd_nvic_ClearPendingIRQ(RTC0_IRQn);
+        sd_nvic_EnableIRQ(RTC0_IRQn);
     }
 }
 
@@ -349,9 +383,4 @@ uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
 void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 {
     HAL_Buttons[Button].debounce_time = 0;
-}
-
-void Toggle_User_LED()
-{
-    /* FIXME */
 }

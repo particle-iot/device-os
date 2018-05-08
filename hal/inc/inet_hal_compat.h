@@ -51,14 +51,14 @@ typedef struct __attribute__((__packed__)) _HAL_IPAddress_t  {
 
 #define HAL_IPV4_SET(paddress, value)  ((paddress)->v = 4); ((paddress)->ipv4 = value)
 
-STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==17);
+PARTICLE_STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==17);
 #else
 typedef struct __attribute__((__packed__)) _HAL_IPAddress_t {
     union {
         uint32_t ipv4;
     };
 } HAL_IPAddress;
-STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==4);
+PARTICLE_STATIC_ASSERT(HAL_IPAddress_size, sizeof(HAL_IPAddress)==4);
 #define HAL_IPV4_SET(paddress, value)  (paddress->ipv4 = value)
 
 #endif
@@ -80,7 +80,7 @@ typedef struct __attribute__((__packed__)) _NetworkConfig_t {
     HAL_IPAddress aucDNSServer;      // byte 0 is MSB, byte 3 is LSB
     uint8_t uaMacAddr[6];
 } NetworkConfig;
-STATIC_ASSERT(NetworkConfig_size, sizeof(HAL_IPAddress)*5+6);
+PARTICLE_STATIC_ASSERT(NetworkConfig_size, sizeof(HAL_IPAddress)*5+6);
 
 
 typedef struct __attribute__((__packed__))  _IPConfig_t {

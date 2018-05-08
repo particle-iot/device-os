@@ -14,6 +14,7 @@ ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_INCL_NRF52840_PATH)
 INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/lwip
 INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/freertos
+INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/openthread
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip
 endif
 

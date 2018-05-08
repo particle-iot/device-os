@@ -14,6 +14,13 @@ ifneq ("$(PLATFORM_FREERTOS)","")
 TARGET_FREERTOS_PORT_PATH = $(TARGET_FREERTOS_SRC_PATH)/portable/GCC/$(PLATFORM_FREERTOS)
 endif
 
+# FIXME
+ifeq ($(SOFTDEVICE_PRESENT),y)
+CSRC += $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/external/freertos/portable/GCC/nrf52/port.c
+CSRC += $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/external/freertos/portable/CMSIS/nrf52/port_cmsis.c
+CSRC += $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/external/freertos/portable/CMSIS/nrf52/port_cmsis_systick.c
+endif
+
 ifneq ("$(TARGET_FREERTOS_PORT_PATH)","")
 CSRC += $(call target_files,$(TARGET_FREERTOS_PORT_PATH)/,*.c)
 endif

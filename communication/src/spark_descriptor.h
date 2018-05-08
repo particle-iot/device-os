@@ -106,4 +106,4 @@ struct SparkDescriptor
     void* reserved[1];      // add a few additional pointers
 };
 
-STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);

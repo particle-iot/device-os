@@ -50,7 +50,7 @@ typedef enum eSystemHealth_ {
 
 #if PLATFORM_ID!=3 && PLATFORM_ID!=20
 // gcc enums are at least an int wide
-STATIC_ASSERT(system_health_16_bits, sizeof(eSystemHealth)==2);
+PARTICLE_STATIC_ASSERT(system_health_16_bits, sizeof(eSystemHealth)==2);
 #endif
 
 eSystemHealth HAL_Get_Sys_Health();

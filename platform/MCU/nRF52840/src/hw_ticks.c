@@ -21,6 +21,7 @@
 
 
 #include "hw_ticks.h"
+#include "nrf_nvic.h"
 #include <limits.h>
 
 /**
@@ -39,15 +40,13 @@ static volatile system_tick_t system_millis_clock = 0;
  */
 void System1MsTick(void)
 {
-    int is = __get_PRIMASK();
-    __disable_irq();
+    uint8_t is = 0;
+    sd_nvic_critical_region_enter(&is);
 
     ++system_millis;
     system_millis_clock = DWT->CYCCNT;
 
-    if ((is & 1) == 0) {
-        __enable_irq();
-    }
+    sd_nvic_critical_region_exit(is);
 }
 
 /**
@@ -63,14 +62,12 @@ uint64_t GetSystem1MsTick64()
 {
     uint64_t millis = 0;
 
-    const int is = __get_PRIMASK();
-    __disable_irq();
+    uint8_t is = 0;
+    sd_nvic_critical_region_enter(&is);
 
     millis = system_millis + (DWT->CYCCNT - system_millis_clock) / SYSTEM_US_TICKS / 1000;
 
-    if ((is & 1) == 0) {
-        __enable_irq();
-    }
+    sd_nvic_critical_region_exit(is);
 
     return millis;
 }
@@ -84,17 +81,15 @@ system_tick_t GetSystem1UsTick()
     system_tick_t base_millis;
     system_tick_t base_clock;
 
-    int is = __get_PRIMASK();
-    __disable_irq();
+    uint8_t is = 0;
+    sd_nvic_critical_region_enter(&is);
 
     base_millis = system_millis;
     base_clock = system_millis_clock;
 
     system_tick_t elapsed_since_millis = ((DWT->CYCCNT-base_clock) / SYSTEM_US_TICKS);
 
-    if ((is & 1) == 0) {
-        __enable_irq();
-    }
+    sd_nvic_critical_region_exit(is);
     return (base_millis * 1000) + elapsed_since_millis;
 }
 
@@ -103,16 +98,14 @@ system_tick_t GetSystem1UsTick()
  */
 void __advance_system1MsTick(uint64_t millis, system_tick_t micros_from_rollover)
 {
-    const int is = __get_PRIMASK();
-    __disable_irq();
+    uint8_t is = 0;
+    sd_nvic_critical_region_enter(&is);
 
     DWT->CYCCNT = UINT_MAX - (micros_from_rollover * SYSTEM_US_TICKS);
     system_millis_clock = DWT->CYCCNT;
     system_millis = millis;
 
-    if ((is & 1) == 0) {
-        __enable_irq();
-    }
+    sd_nvic_critical_region_exit(is);
 }
 
 void SysTick_Disable() {

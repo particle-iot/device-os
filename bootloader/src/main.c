@@ -414,8 +414,6 @@ int main(void)
             // Jump to user application
             JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
             Jump_To_Application = (pFunction) JumpAddress;
-            // Initialize user application's Stack Pointer
-            __set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
             uint8_t disable_iwdg = 0;
 #ifdef CHECK_FIRMWARE
@@ -431,7 +429,10 @@ int main(void)
                 IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
             }
 
-            SysTick_Disable();
+            Reset_System();
+
+            // Initialize user application's Stack Pointer
+            __set_MSP(*(__IO uint32_t*) ApplicationAddress);
             Jump_To_Application();
         }
         else
