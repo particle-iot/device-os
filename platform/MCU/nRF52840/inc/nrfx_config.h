@@ -230,7 +230,7 @@
 // <e> NRFX_GPIOTE_ENABLED - nrfx_gpiote - GPIOTE peripheral driver
 //==========================================================
 #ifndef NRFX_GPIOTE_ENABLED
-#define NRFX_GPIOTE_ENABLED 1
+#define NRFX_GPIOTE_ENABLED 0
 #endif
 // <o> NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS - Number of lower power input pins
 #ifndef NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS
@@ -1468,7 +1468,8 @@
 
 
 #ifndef NRFX_RTC0_ENABLED
-#define NRFX_RTC0_ENABLED 1
+#define NRFX_RTC0_ENABLED 0 // FIXME: Even if this is set to 1, it won't issue the error at linkage.
+                            // We have implemented the RTC0_IRQHandler in nrf_it.c.
 #endif
 
 // <q> NRFX_RTC1_ENABLED  - Enable RTC1 instance
@@ -2975,6 +2976,10 @@
 
 #ifndef NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED
 #define NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
+#endif
+
+#ifndef NRF_DRV_USBD_ERRATA_ENABLE
+#define NRF_DRV_USBD_ERRATA_ENABLE (1)
 #endif
 
 /* Legacy config */

@@ -2,7 +2,7 @@
 #include "dfu_hal.h"
 
 #ifndef APP_START_MASK
-#define APP_START_MASK              ((uint32_t)0x2FF10000)
+#define APP_START_MASK              ((uint32_t)0x2FFC0000)
 #endif /* APP_START_MASK */
 
 uint8_t is_application_valid(uint32_t address)
@@ -14,9 +14,3 @@ uint8_t is_application_valid(uint32_t address)
 #endif
 }
 
-void HAL_DFU_USB_Init(void) {
-    while(1);
-}
-
-void DFU_Check_Reset(void) {
-}
