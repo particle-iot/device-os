@@ -347,6 +347,7 @@ endif
 ifeq ("$(STM32_DEVICE)","nRF52840")
 	# FIXME: This is not an STM32 device
     PLATFORM_THREADING=1
+    PLATFORM_DFU ?= 0x30000
 endif
 
 
