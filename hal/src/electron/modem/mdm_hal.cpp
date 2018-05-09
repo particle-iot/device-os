@@ -566,8 +566,6 @@ bool MDMParser::_powerOn(void)
         // modem still keeps the CTS pin in a correct state even if doesn't support the CTS/RTS
         // flow control
         electronMDM.begin(115200, true /* hwFlowControl */);
-
-        /* Initialize only once */
         _init = true;
     }
 
@@ -617,16 +615,11 @@ bool MDMParser::_powerOn(void)
         // Determine type of the modem
         sendFormated("AT+CGMM\r\n");
         waitFinalResp(_cbCGMM, &_dev);
-        if (_dev.dev == DEV_UNKNOWN) {
-            MDM_ERROR("Unknown modem type");
-        } else {
-            MDM_TRACE("Modem type: %d", (int)_dev.dev);
-            if (_dev.dev == DEV_SARA_R410) {
-                // SARA-R410 doesn't support hardware flow control, reinitialize the UART
-                electronMDM.begin(115200, false /* hwFlowControl */);
-                // Power saving modes defined by the +UPSV command are not supported
-                _dev.lpm = LPM_DISABLED;
-            }
+        if (_dev.dev == DEV_SARA_R410) {
+            // SARA-R410 doesn't support hardware flow control, reinitialize the UART
+            electronMDM.begin(115200, false /* hwFlowControl */);
+            // Power saving modes defined by the +UPSV command are not supported
+            _dev.lpm = LPM_DISABLED;
         }
     }
 
@@ -723,6 +716,10 @@ bool MDMParser::powerOn(const char* simpin)
         if (_dev.sim == SIM_MISSING) {
             MDM_ERROR("SIM not inserted\r\n");
         }
+        goto failure;
+    }
+    if (_dev.dev == DEV_UNKNOWN) {
+        MDM_ERROR("Unknown modem type");
         goto failure;
     }
 
@@ -831,6 +828,8 @@ bool MDMParser::powerOff(void)
                 // todo - add if these are automatically done on power down
                 //_activated = false;
                 //_attached = false;
+                // Give the modem some time to switch off cleanly
+                HAL_Delay_Milliseconds(1000);
                 ok = true;
                 break;
             }
@@ -845,6 +844,7 @@ bool MDMParser::powerOff(void)
 
     // Close serial connection
     electronMDM.end();
+    _init = false;
 
     HAL_Pin_Mode(PWR_UC, INPUT);
     HAL_Pin_Mode(RESET_UC, INPUT);
@@ -908,7 +908,7 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
 bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
 {
     LOCK();
-    if (_init && _pwr) {
+    if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
@@ -1381,7 +1381,7 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
                               const char* password /*= NULL*/, Auth auth /*= AUTH_DETECT*/)
 {
     LOCK();
-    if (_init && _pwr) {
+    if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
         MDM_INFO("\r\n[ Modem::join ] = = = = = = = = = = = = = = = =");
         _ip = NOIP;
         if (_dev.dev == DEV_SARA_R410) {
