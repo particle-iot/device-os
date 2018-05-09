@@ -30,7 +30,7 @@ class InternalFlashStore
 public:
     static int eraseSector(unsigned address)
     {
-        return erase(address, 1);
+        return erase(address, 16*1024);
     }
 
     static int erase(unsigned address, unsigned size) {
