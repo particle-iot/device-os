@@ -8,8 +8,6 @@
 #include "app_error.h"
 
 #include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
 #include "sdk_config.h"
 
 
@@ -35,7 +33,7 @@ static void qspi_handler(nrfx_qspi_evt_t event, void * p_context)
     m_finished = true;
 }
 
-static void configure_memory()
+static int configure_memory()
 {
     uint8_t temporary = 0x40;
     uint32_t err_code;
@@ -50,18 +48,29 @@ static void configure_memory()
 
     // Send reset enable
     err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
-    APP_ERROR_CHECK(err_code);
+    if (err_code)
+    {
+        return -1;
+    }
 
     // Send reset command
     cinstr_cfg.opcode = QSPI_STD_CMD_RST;
     err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
-    APP_ERROR_CHECK(err_code);
+    if (err_code)
+    {
+        return -2;
+    }
 
     // Switch to qspi mode
     cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
     cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_2B;
     err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, &temporary, NULL);
-    APP_ERROR_CHECK(err_code);
+    if (err_code)
+    {
+        return -3;
+    }
+
+    return 0;
 }
 
 int hal_exflash_init(void)
@@ -73,19 +82,26 @@ int hal_exflash_init(void)
     APP_ERROR_CHECK(err_code);
     NRF_LOG_INFO("QSPI example started.");
 
-    configure_memory();
+    if (configure_memory())
+    {
+        return -1;
+    }
 
-    return (err_code == NRF_SUCCESS) ? 0 : -1;
+    return 0;
 }
 
 int hal_exflash_write(uint32_t addr, void const * data_buf, uint32_t data_size)
 {
     uint32_t err_code = nrfx_qspi_write(data_buf, data_size, addr);
-    APP_ERROR_CHECK(err_code);
+    if (err_code)
+    {
+        return -1;
+    }
+
     WAIT_FOR_PERIPH();
     NRF_LOG_INFO("Process of writing data start");
 
-    return (err_code == NRF_SUCCESS) ? 0 : -1;
+    return 0;
 }
 
 int hal_exflash_erase_sector(uint32_t start_addr, uint32_t num_sectors)
@@ -96,13 +112,16 @@ int hal_exflash_erase_sector(uint32_t start_addr, uint32_t num_sectors)
     for (int i = 0; i < num_sectors; i++)
     {
         err_code = nrfx_qspi_erase(NRF_QSPI_ERASE_LEN_4KB, start_addr);
-        APP_ERROR_CHECK(err_code);
+        if (err_code)
+        {
+            return -1;
+        }
         WAIT_FOR_PERIPH();
     }
 
     NRF_LOG_INFO("Process of erasing first block start");
 
-    return (err_code == NRF_SUCCESS) ? 0 : -1;
+    return 0;
 }
 
 int hal_exflash_erase_block(uint32_t start_addr, uint32_t num_blocks)
@@ -113,22 +132,29 @@ int hal_exflash_erase_block(uint32_t start_addr, uint32_t num_blocks)
     for (int i = 0; i < num_blocks; i++)
     {
         err_code = nrfx_qspi_erase(NRF_QSPI_ERASE_LEN_64KB, start_addr);
-        APP_ERROR_CHECK(err_code);
+        if (err_code)
+        {
+            return -1;
+        }
         WAIT_FOR_PERIPH();
     }
 
     NRF_LOG_INFO("Process of erasing first block start");
 
-    return (err_code == NRF_SUCCESS) ? 0 : -1;
+    return 0;
 }
 
 int hal_exflash_read(uint32_t addr, void * data_buf, uint32_t data_size)
 {
-    uint32_t err_code = nrfx_qspi_read(data_buf, data_size, addr);;
+    uint32_t err_code = nrfx_qspi_read(data_buf, data_size, addr);
+    if (err_code)
+    {
+        return -1;
+    }
     WAIT_FOR_PERIPH();
     NRF_LOG_INFO("Data read");
 
-    return (err_code == NRF_SUCCESS) ? 0 : -1;
+    return 0;
 }
 
 int hal_exflash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_size)
