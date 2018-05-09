@@ -862,16 +862,12 @@ int MDMParser::_cbCGMM(int type, const char* buf, int len, DevStatus* s)
         if (sscanf(buf, "\r\n%15s\r\n", s->model) == 1) {
             if (strstr(s->model, "SARA-G350")) {
                 s->dev = DEV_SARA_G350;
-            } else if (strstr(s->model, "LISA-U200")) {
-                s->dev = DEV_LISA_U200;
-            } else if (strstr(s->model, "LISA-C200")) {
-                s->dev = DEV_LISA_C200;
             } else if (strstr(s->model, "SARA-U260")) {
                 s->dev = DEV_SARA_U260;
             } else if (strstr(s->model, "SARA-U270")) {
                 s->dev = DEV_SARA_U270;
-            } else if (strstr(s->model, "LEON-G200")) {
-                s->dev = DEV_LEON_G200;
+            } else if (strstr(s->model, "SARA-U201")) {
+                s->dev = DEV_SARA_U201;
             } else if (strstr(s->model, "SARA-R410")) {
                 s->dev = DEV_SARA_R410;
             }
@@ -2530,7 +2526,7 @@ bool MDMParser::setDebug(int level)
 void MDMParser::dumpDevStatus(DevStatus* status)
 {
     MDM_INFO("\r\n[ Modem::devStatus ] = = = = = = = = = = = = = =");
-    const char* txtDev[] = { "Unknown", "SARA-G350", "LISA-U200", "LISA-C200", "SARA-U260", "SARA-U270", "LEON-G200" };
+    const char* txtDev[] = { "Unknown", "SARA-G350", "SARA-U260", "SARA-U270", "SARA-U201", "SARA-R410" };
     if (status->dev < sizeof(txtDev)/sizeof(*txtDev) && (status->dev != DEV_UNKNOWN))
         DEBUG_D("  Device:       %s\r\n", txtDev[status->dev]);
     const char* txtLpm[] = { "Disabled", "Enabled", "Active" };
