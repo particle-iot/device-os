@@ -186,7 +186,8 @@
  *
  * Uncomment to get errors on using deprecated functions.
  */
-#define MBEDTLS_DEPRECATED_REMOVED
+// needed for mbedtls_sha1_starts et al. which were deprecated since 2.7 for functions ending _ret.
+//#define MBEDTLS_DEPRECATED_REMOVED
 
 /* \} name SECTION: System support */
 
