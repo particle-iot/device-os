@@ -58,9 +58,9 @@ int hal_flash_init(void)
 int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 {
     uint32_t ret_code;
-    uint16_t index = 0;
+    uint32_t index = 0;
 
-    uint16_t copy_size;
+    uint32_t copy_size;
     uint32_t copy_data;
     uint8_t *copy_data_buf = (uint8_t *)&copy_data;
 
@@ -89,7 +89,7 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
     if (data_size - index > 4)
     {
         NRF_LOG_DEBUG("write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
-        uint8_t offset = 0;
+        uint32_t offset = 0;
         do {
             memcpy(copy_data_buf, &data_buf[index], 4);
             ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr) + 4 + offset, copy_data_buf, 4, NULL);
