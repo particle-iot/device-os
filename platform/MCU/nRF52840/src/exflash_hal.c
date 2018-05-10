@@ -17,21 +17,6 @@
 
 #define CEIL_DIV(A, B)          (((A) + (B) - 1) / (B))
 
-#define WAIT_FOR_PERIPH() do { \
-        while (!m_finished) {} \
-        m_finished = false;    \
-    } while (0)
-
-
-static volatile bool m_finished = false;
-
-
-static void qspi_handler(nrfx_qspi_evt_t event, void * p_context)
-{
-    UNUSED_PARAMETER(event);
-    UNUSED_PARAMETER(p_context);
-    m_finished = true;
-}
 
 static int configure_memory()
 {
@@ -76,9 +61,32 @@ static int configure_memory()
 int hal_exflash_init(void)
 {
     uint32_t err_code = NRF_SUCCESS;
-    nrfx_qspi_config_t config = NRFX_QSPI_DEFAULT_CONFIG;
+    nrfx_qspi_config_t config = {
+        .xip_offset  = NRFX_QSPI_CONFIG_XIP_OFFSET,
+        .pins = {
+           .sck_pin     = QSPI_FLASH_SCK_PIN,
+           .csn_pin     = QSPI_FLASH_CSN_PIN,
+           .io0_pin     = QSPI_FLASH_IO0_PIN,
+           .io1_pin     = QSPI_FLASH_IO1_PIN,
+           .io2_pin     = QSPI_FLASH_IO2_PIN,
+           .io3_pin     = QSPI_FLASH_IO3_PIN,
+        },
+        .irq_priority   = (uint8_t)QSPI_FLASH_IRQ_PRIORITY,
+        .prot_if = {
+            .readoc     = (nrf_qspi_readoc_t)NRFX_QSPI_CONFIG_READOC,
+            .writeoc    = (nrf_qspi_writeoc_t)NRFX_QSPI_CONFIG_WRITEOC,
+            .addrmode   = (nrf_qspi_addrmode_t)NRFX_QSPI_CONFIG_ADDRMODE,
+            .dpmconfig  = false,
+        },
+        .phy_if = {
+            .sck_freq   = (nrf_qspi_frequency_t)NRFX_QSPI_CONFIG_FREQUENCY,
+            .sck_delay  = (uint8_t)NRFX_QSPI_CONFIG_SCK_DELAY,
+            .spi_mode   = (nrf_qspi_spi_mode_t)NRFX_QSPI_CONFIG_MODE,
+            .dpmen      = false
+        },
+    };
 
-    err_code = nrfx_qspi_init(&config, qspi_handler, NULL);
+    err_code = nrfx_qspi_init(&config, NULL, NULL);
     if (err_code)
     {
         return -1;
@@ -101,7 +109,7 @@ int hal_exflash_write(uint32_t addr, void const * data_buf, uint32_t data_size)
         return -1;
     }
 
-    WAIT_FOR_PERIPH();
+    while(nrfx_qspi_mem_busy_check());
     NRF_LOG_INFO("Process of writing data start");
 
     return 0;
@@ -111,7 +119,6 @@ int hal_exflash_erase_sector(uint32_t start_addr, uint32_t num_sectors)
 {
     uint32_t err_code = NRF_SUCCESS;
 
-    m_finished = false;
     for (int i = 0; i < num_sectors; i++)
     {
         err_code = nrfx_qspi_erase(NRF_QSPI_ERASE_LEN_4KB, start_addr);
@@ -119,7 +126,7 @@ int hal_exflash_erase_sector(uint32_t start_addr, uint32_t num_sectors)
         {
             return -1;
         }
-        WAIT_FOR_PERIPH();
+        while(nrfx_qspi_mem_busy_check());
     }
 
     NRF_LOG_INFO("Process of erasing first block start");
@@ -131,7 +138,6 @@ int hal_exflash_erase_block(uint32_t start_addr, uint32_t num_blocks)
 {
     uint32_t err_code = NRF_SUCCESS;
 
-    m_finished = false;
     for (int i = 0; i < num_blocks; i++)
     {
         err_code = nrfx_qspi_erase(NRF_QSPI_ERASE_LEN_64KB, start_addr);
@@ -139,7 +145,7 @@ int hal_exflash_erase_block(uint32_t start_addr, uint32_t num_blocks)
         {
             return -1;
         }
-        WAIT_FOR_PERIPH();
+        while(nrfx_qspi_mem_busy_check());
     }
 
     NRF_LOG_INFO("Process of erasing first block start");
@@ -154,7 +160,7 @@ int hal_exflash_read(uint32_t addr, void * data_buf, uint32_t data_size)
     {
         return -1;
     }
-    WAIT_FOR_PERIPH();
+    while(nrfx_qspi_mem_busy_check());
     NRF_LOG_INFO("Data read");
 
     return 0;
