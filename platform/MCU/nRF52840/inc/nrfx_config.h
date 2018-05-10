@@ -1483,7 +1483,7 @@
 
 
 #ifndef NRFX_RTC2_ENABLED
-#define NRFX_RTC2_ENABLED 1
+#define NRFX_RTC2_ENABLED 0
 #endif
 
 // <o> NRFX_RTC_MAXIMUM_LATENCY_US - Maximum possible time[us] in highest priority interrupt
