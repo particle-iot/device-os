@@ -87,6 +87,7 @@ struct CellularDevice
     uint16_t size;
     char iccid[21];
     char imei[16];
+    int dev;
 
     CellularDevice()
     {
