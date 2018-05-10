@@ -15,7 +15,7 @@
 
 
 #define CEIL_DIV(A, B)              (((A) + (B) - 1) / (B))
-#define ADDR_ALIGN_WORD(addr)       (addr & 0xFFFFFFFC)
+#define ADDR_ALIGN_WORD(addr)       ((addr) & 0xFFFFFFFC)
 
 
 static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt);

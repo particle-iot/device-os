@@ -74,6 +74,17 @@
 #define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
+
+// QSPI Flash
+#define QSPI_FLASH_SCK_PIN                  19
+#define QSPI_FLASH_CSN_PIN                  17
+#define QSPI_FLASH_IO0_PIN                  20
+#define QSPI_FLASH_IO1_PIN                  21
+#define QSPI_FLASH_IO2_PIN                  22
+#define QSPI_FLASH_IO3_PIN                  23
+#define QSPI_FLASH_IRQ_PRIORITY             7
+
+
 // todo - add this later #define FLASH_UPDATE_MODULES
 
 //NVIC Priorities based on NVIC_PriorityGroup_4

@@ -121,17 +121,17 @@ bool DcdMal::validate(uintptr_t addr, size_t len) {
 }
 
 int DcdMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
-	if (!validate(addr, len)) {
-		return 1;
-	}
+    if (!validate(addr, len)) {
+        return 1;
+    }
 
     return dct_read_app_data_copy(addr, buf, len);
 }
 
 int DcdMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
-	if (!validate(addr, len)) {
-		return 1;
-	}
+    if (!validate(addr, len)) {
+        return 1;
+    }
 
     return dct_write_app_data( (const void*)buf, addr, len );
 }
@@ -176,35 +176,35 @@ bool ExternalFlashMal::validate(uintptr_t addr, size_t len) {
 }
 
 int ExternalFlashMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
-	if (!validate(addr, len)) {
-		return 1;
-	}
+    if (!validate(addr, len)) {
+        return 1;
+    }
 
     return hal_exflash_read(addr, buf, len);
 }
 
 int ExternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
-	if (!validate(addr, len)) {
-		return 1;
-	}
+    if (!validate(addr, len)) {
+        return 1;
+    }
 
-	return hal_exflash_write(addr, buf, len);
+    return hal_exflash_write(addr, buf, len);
 }
 
 int ExternalFlashMal::erase(uintptr_t addr, size_t len) {
-	if (!validate(addr, len)) {
-		return 1;
-	}
+    if (!validate(addr, len)) {
+        return 1;
+    }
 
-	(void)len;
+    (void)len;
     return hal_exflash_erase_sector(addr, 1);
 }
 
 int ExternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
-  status->bwPollTimeout[0] = status->bwPollTimeout[1] = status->bwPollTimeout[2] = 0;
-  return 0;
+    status->bwPollTimeout[0] = status->bwPollTimeout[1] = status->bwPollTimeout[2] = 0;
+    return 0;
 }
 
 const char* ExternalFlashMal::getString() {
-  return EXTERNAL_FLASH_IF_STRING;
+    return EXTERNAL_FLASH_IF_STRING;
 }

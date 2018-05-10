@@ -6,17 +6,16 @@
 #include "nrf_delay.h"
 #include "app_util_platform.h"
 #include "app_error.h"
-
+#include "hw_config.h"
 #include "nrf_log.h"
 #include "sdk_config.h"
-
 
 #define QSPI_STD_CMD_WRSR       0x01
 #define QSPI_STD_CMD_RSTEN      0x66
 #define QSPI_STD_CMD_RST        0x99
 
-#define CEIL_DIV(A, B)          (((A) + (B) - 1) / (B))
-
+#define CEIL_DIV(A, B)              (((A) + (B) - 1) / (B))
+#define ADDR_ALIGN_WORD(addr)       ((addr) & 0xFFFFFFFC)
 
 static int configure_memory()
 {
@@ -101,16 +100,122 @@ int hal_exflash_init(void)
     return 0;
 }
 
-int hal_exflash_write(uint32_t addr, void const * data_buf, uint32_t data_size)
+int hal_exflash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 {
-    uint32_t err_code = nrfx_qspi_write(data_buf, data_size, addr);
-    if (err_code)
+    uint32_t ret_code;
+    uint32_t index = 0;
+
+    uint32_t copy_size;
+    uint32_t copy_data;
+    uint8_t *copy_data_buf = (uint8_t *)&copy_data;
+
+    // write head part
+    copy_size = 4 - (addr & 0x03);
+    copy_data = *(uint32_t *)ADDR_ALIGN_WORD(addr);
+    memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
+    if (copy_size)
+    {
+        NRF_LOG_DEBUG("write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
+        ret_code = nrfx_qspi_write(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
+        if (ret_code)
+        {
+            NRF_LOG_ERROR("ret_code: %d", ret_code);
+            return -1;
+        }
+    }
+
+    index += copy_size;
+    if (index >= data_size)
+    {
+        return 0;
+    }
+
+    // write middle part
+    if (data_size - index > 4)
+    {
+        NRF_LOG_DEBUG("write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+        uint32_t offset = 0;
+        do {
+            memcpy(copy_data_buf, &data_buf[index], 4);
+            ret_code = nrfx_qspi_write(copy_data_buf, 4, ADDR_ALIGN_WORD(addr) + 4 + offset);
+            if (ret_code)
+            {
+                NRF_LOG_ERROR("ret_code: %d", ret_code);
+                return -2;
+            }
+            index += 4;
+            offset += 4;
+        } while (data_size - index > 4);
+    }
+
+    // write tail part
+    copy_size = data_size - index;
+    copy_data = 0xFFFFFFFF;
+    memcpy(copy_data_buf, &data_buf[index], copy_size);
+
+    if (copy_size)
+    {
+        NRF_LOG_DEBUG("write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
+        ret_code = nrfx_qspi_write(copy_data_buf, 4, addr + data_size - copy_size);
+        if (ret_code)
+        {
+            NRF_LOG_ERROR("ret_code: %d", ret_code);
+            return -3;
+        }
+    }
+
+    return 0;
+}
+
+int hal_exflash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
+{
+    uint32_t ret_code;
+    uint32_t index = 0;
+
+    uint32_t copy_size;
+    uint32_t copy_data;
+    uint8_t *copy_data_buf = (uint8_t *)&copy_data;
+
+    // read head part
+    copy_size = 4 - (addr & 0x03);
+    ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
+    if (ret_code)
     {
         return -1;
     }
+    memcpy(data_buf, &copy_data_buf[addr & 0x03], (data_size > copy_size) ? copy_size : data_size);
+    index += copy_size;
+    if (index >= data_size)
+    {
+        return 0;
+    }
 
-    while(nrfx_qspi_mem_busy_check());
-    NRF_LOG_INFO("Process of writing data start");
+    // read middle part
+    if (data_size - index > 4)
+    {
+        NRF_LOG_DEBUG("read middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+        uint32_t offset = 0;
+        do {
+            ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr + 4 + offset));
+            if (ret_code)
+            {
+                return -2;
+            }
+            memcpy(&data_buf[index], copy_data_buf, 4);
+            index += 4;
+            offset += 4;
+        } while (data_size - index > 4);
+    }
+
+    // read tail part
+    copy_size = data_size - index;
+    copy_data = 0;
+    ret_code = nrfx_qspi_read(copy_data_buf, 4, addr + data_size - copy_size);
+    if (ret_code)
+    {
+        return -3;
+    }
+    memcpy(&data_buf[index], copy_data_buf, copy_size);
 
     return 0;
 }
@@ -126,7 +231,6 @@ int hal_exflash_erase_sector(uint32_t start_addr, uint32_t num_sectors)
         {
             return -1;
         }
-        while(nrfx_qspi_mem_busy_check());
     }
 
     NRF_LOG_INFO("Process of erasing first block start");
@@ -145,23 +249,9 @@ int hal_exflash_erase_block(uint32_t start_addr, uint32_t num_blocks)
         {
             return -1;
         }
-        while(nrfx_qspi_mem_busy_check());
     }
 
     NRF_LOG_INFO("Process of erasing first block start");
-
-    return 0;
-}
-
-int hal_exflash_read(uint32_t addr, void * data_buf, uint32_t data_size)
-{
-    uint32_t err_code = nrfx_qspi_read(data_buf, data_size, addr);
-    if (err_code)
-    {
-        return -1;
-    }
-    while(nrfx_qspi_mem_busy_check());
-    NRF_LOG_INFO("Data read");
 
     return 0;
 }
