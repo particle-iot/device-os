@@ -1858,8 +1858,9 @@ bool MDMParser::socketConnect(int socket, const MDM_IP& ip, int port)
     if (ISSOCKET(socket) && (!_sockets[socket].connected)) {
         DEBUG_D("socketConnect(%d,port:%d)\r\n", socket,port);
         sendFormated("AT+USOCO=%d,\"" IPSTR "\",%d\r\n", _sockets[socket].handle, IPNUM(ip), port);
-        if (RESP_OK == waitFinalResp())
+        if (RESP_OK == waitFinalResp(nullptr, nullptr, 120000)) { // SARA-U2: < 20s, SARA-R4: < 120s
             ok = _sockets[socket].connected = true;
+        }
     }
     UNLOCK();
     return ok;
