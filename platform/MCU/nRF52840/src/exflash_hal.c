@@ -79,7 +79,10 @@ int hal_exflash_init(void)
     nrfx_qspi_config_t config = NRFX_QSPI_DEFAULT_CONFIG;
 
     err_code = nrfx_qspi_init(&config, qspi_handler, NULL);
-    APP_ERROR_CHECK(err_code);
+    if (err_code)
+    {
+        return -1;
+    }
     NRF_LOG_INFO("QSPI example started.");
 
     if (configure_memory())

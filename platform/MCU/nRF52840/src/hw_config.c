@@ -35,6 +35,7 @@
 #include "rgbled.h"
 #include "rgbled_hal_impl.h"
 #include "flash_hal.h"
+#include "exflash_hal.h"
 #include "crc32.h"
 
 uint8_t USE_SYSTEM_FLAGS;
@@ -141,6 +142,7 @@ void Set_System(void)
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
     hal_flash_init();
+    hal_exflash_init();
 }
 
 void Reset_System(void) {

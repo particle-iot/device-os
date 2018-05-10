@@ -19,7 +19,9 @@
 
 /* Important! Needs to be included before other headers */
 #include "logging.h"
-#include "nrf_nvmc.h"
+#include "flash_hal.h"
+#include "exflash_hal.h"
+#include "dct.h"
 
 using namespace particle::usbd::dfu::mal;
 
@@ -35,57 +37,52 @@ InternalFlashMal::~InternalFlashMal() {
 }
 
 int InternalFlashMal::init() {
-  return 0;
+    return 0;
 }
 
 int InternalFlashMal::deInit() {
-  return 0;
+    return 0;
 }
 
 bool InternalFlashMal::validate(uintptr_t addr, size_t len) {
-  uintptr_t end = addr + len;
-  if (addr >= 0x100000 || end > 0x100000) {
-    return false;
-  }
+    uintptr_t end = addr + len;
+    if ((addr >= INTERNAL_FLASH_START_ADD && addr < INTERNAL_FLASH_END_ADDR) &&
+        (end >= INTERNAL_FLASH_START_ADD && end < INTERNAL_FLASH_END_ADDR))
+    {
+        return true;
+    }
 
-  return true;
+    return false;
 }
 
 int InternalFlashMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
-  if (!validate(addr, len)) {
-    return 1;
-  }
+    if (!validate(addr, len)) {
+        return 1;
+    }
 
-  memcpy(buf, (void*)addr, len);
-  return 0;
+    memcpy(buf, (void*)addr, len);
+    return 0;
 }
 
 int InternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
-  if (!validate(addr, len)) {
-    return 1;
-  }
-
-  size_t fullWords = len / sizeof(uintptr_t);
-  size_t totalWords = (len + sizeof(uintptr_t) - 1) / sizeof(uintptr_t);
-  nrf_nvmc_write_words(addr, (const uint32_t*)buf, fullWords);
-  if (totalWords > fullWords) {
-    uint32_t w = 0xffffffff;
-    for (unsigned i = 0; i < (totalWords * sizeof(uintptr_t) - len); i++) {
-      ((uint8_t*)&w)[i] = buf[fullWords * sizeof(uintptr_t) + i];
+    if (!validate(addr, len)) {
+        return 1;
     }
-    nrf_nvmc_write_word(addr + fullWords * sizeof(uintptr_t), w);
-  }
-  return 0;
+
+    if (hal_flash_write(addr, buf, len) == 0)
+        return 0;
+    else
+        return 1;
 }
 
 int InternalFlashMal::erase(uintptr_t addr, size_t len) {
-  if (!validate(addr, len)) {
-    return 1;
-  }
+    if (!validate(addr, len)) {
+        return 1;
+    }
 
-  nrf_nvmc_page_erase(addr);
-  (void)len;
-  return 0;
+    hal_flash_erase_sector(addr, 1);
+    (void)len;
+    return 0;
 }
 
 int InternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
@@ -94,12 +91,7 @@ int InternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::Dfuse
 }
 
 const char* InternalFlashMal::getString() {
-  /* 12K MBR (read-only)
-   * 192K softdevice area
-   * 197 * 4K normal flash
-   * 32K bootloader (read-only)
-   */
-  return "@Internal Flash   /0x00000000/3*004Ka,48*004Kg,197*004Kg,8*004Ka";
+  return INTERNAL_FLASH_IF_STRING;
 }
 
 DcdMal::DcdMal()
@@ -110,36 +102,51 @@ DcdMal::~DcdMal() {
 }
 
 int DcdMal::init() {
-  return dfu::detail::errUNKNOWN;
+    return 0;
 }
 
 int DcdMal::deInit() {
-  return dfu::detail::errUNKNOWN;
+    return 0;
 }
 
 bool DcdMal::validate(uintptr_t addr, size_t len) {
-  return true;
+    uintptr_t end = addr + len;
+    if ((addr >= DCD_START_ADD && addr < DCD_END_ADDR) &&
+        (end >= DCD_START_ADD && end < DCD_END_ADDR))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 int DcdMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
-  return dfu::detail::errUNKNOWN;
+	if (!validate(addr, len)) {
+		return 1;
+	}
+
+    return dct_read_app_data_copy(addr, buf, len);
 }
 
 int DcdMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
-  return dfu::detail::errUNKNOWN;
+	if (!validate(addr, len)) {
+		return 1;
+	}
+
+    return dct_write_app_data( (const void*)buf, addr, len );
 }
 
 int DcdMal::erase(uintptr_t addr, size_t len) {
-  return dfu::detail::errUNKNOWN;
+    return 0;
 }
 
 int DcdMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
-  status->bwPollTimeout[0] = status->bwPollTimeout[1] = status->bwPollTimeout[2] = 0;
-  return dfu::detail::errUNKNOWN;
+    status->bwPollTimeout[0] = status->bwPollTimeout[1] = status->bwPollTimeout[2] = 0;
+    return 0;
 }
 
 const char* DcdMal::getString() {
-  return "@DCD Flash   /0x00000000/01*016Kg";
+    return DCD_IF_STRING;
 }
 
 ExternalFlashMal::ExternalFlashMal()
@@ -150,35 +157,54 @@ ExternalFlashMal::~ExternalFlashMal() {
 }
 
 int ExternalFlashMal::init() {
-  return dfu::detail::errUNKNOWN;
+    return 0;
 }
 
 int ExternalFlashMal::deInit() {
-  return dfu::detail::errUNKNOWN;
+    return 0;
 }
 
 bool ExternalFlashMal::validate(uintptr_t addr, size_t len) {
-  return true;
+    uintptr_t end = addr + len;
+    if ((addr >= EXTERNAL_FLASH_START_ADD && addr < EXTERNAL_FLASH_END_ADDR) &&
+        (end >= EXTERNAL_FLASH_START_ADD && end < EXTERNAL_FLASH_END_ADDR))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 int ExternalFlashMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
-  return dfu::detail::errUNKNOWN;
+	if (!validate(addr, len)) {
+		return 1;
+	}
+
+    return hal_exflash_read(addr, buf, len);
 }
 
 int ExternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
-  return dfu::detail::errUNKNOWN;
+	if (!validate(addr, len)) {
+		return 1;
+	}
+
+	return hal_exflash_write(addr, buf, len);
 }
 
 int ExternalFlashMal::erase(uintptr_t addr, size_t len) {
-  return dfu::detail::errUNKNOWN;
+	if (!validate(addr, len)) {
+		return 1;
+	}
+
+	(void)len;
+    return hal_exflash_erase_sector(addr, 1);
 }
 
 int ExternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
   status->bwPollTimeout[0] = status->bwPollTimeout[1] = status->bwPollTimeout[2] = 0;
-  return dfu::detail::errUNKNOWN;
+  return 0;
 }
 
 const char* ExternalFlashMal::getString() {
-  /* 4M */
-  return "@External Flash   /0x00000000/4096*001Kg";
+  return EXTERNAL_FLASH_IF_STRING;
 }
