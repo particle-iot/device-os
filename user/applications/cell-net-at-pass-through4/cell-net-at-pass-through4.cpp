@@ -53,12 +53,10 @@ NetStatus _net;
 struct CGDCONTparam { char type[8]; char apn[32]; };
 
 bool cellularRegisterEPS();
-bool cellularRegisterGPRS();
 bool cellularCheckRegisterEPS();
-bool cellularCheckRegisterGPRS();
 void updateRegistrationStatus();
-bool cellularDisableEPSandGPRSreg();
-void cellularStopEPSandGPRSstatusUpdates();
+bool cellularDisableEPSreg();
+void cellularStopEPSstatusUpdates();
 bool cellularSetAPN(const char* apn);
 void showHelp();
 
@@ -132,7 +130,7 @@ int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
 
 STARTUP(cellular_at_response_handler_set(serial_at_response_out, NULL, NULL));
 
-bool connectEPSandGPRS() {
+bool connectEPS() {
     memset(&_net, 0, sizeof(_net));
     cellular_result_t result = -1;
     Serial.print("Connecting to the cellular network: ");
@@ -143,7 +141,6 @@ bool connectEPSandGPRS() {
     else {
         cellularSetAPN("");
         cellularRegisterEPS();
-        cellularRegisterGPRS();
         updateRegistrationTime = millis();
         return true;
     }
@@ -172,7 +169,7 @@ void setup()
         RGB_BLUE;
 
         // Ensure we are disconnected from the network
-        if (!cellularDisableEPSandGPRSreg()) {
+        if (!cellularDisableEPSreg()) {
             RGB_RED;
         }
     }
@@ -215,14 +212,14 @@ void loop()
                 assist = false;
             }
             else if(cmd == ":con;" || cmd == ":CON;") {
-                // START THE EPS and GPRS CONNECTION PROCESS
-                if (!connectEPSandGPRS()) {
+                // START THE EPS CONNECTION PROCESS
+                if (!connectEPS()) {
                     RGB_RED;
                 }
             }
             else if(cmd == ":dis;" || cmd == ":DIS;") {
-                // STOP polling the EPS and GPRS status
-                if (!cellularDisableEPSandGPRSreg()) {
+                // STOP polling the EPS status
+                if (!cellularDisableEPSreg()) {
                     RGB_RED;
                 } else {
                     RGB_BLUE;
@@ -260,7 +257,7 @@ void loop()
         }
     } // END if (Serial.available() > 0)
 
-    // Update EPS and GPRS registration status every 5 seconds for 2 minutes
+    // Update EPS registration status every 5 seconds for 2 minutes
     if (millis() - updateRegistrationTime < 2*60*1000UL) {
         if (millis() - lastUpdate > 5000UL) {
             lastUpdate = millis();
@@ -273,47 +270,20 @@ void loop()
 }
 
 void updateRegistrationStatus() {
-    if (cellularCheckRegisterEPS() && cellularCheckRegisterGPRS()) {
+    if (cellularCheckRegisterEPS()) {
         RGB_GREEN;
-        cellularStopEPSandGPRSstatusUpdates();
-        // DEBUG("EPS & GPRS - EPS: %d PSD: %d", REG_OK(_net.eps), REG_OK(_net.psd));
-    }
-    else if (cellularCheckRegisterEPS()) {
-        RGB_MAGENTA;
-        // DEBUG("EPS ONLY - EPS: %d & PSD: %d", REG_OK(_net.eps), REG_OK(_net.psd));
-    }
-    else if (cellularCheckRegisterGPRS()) {
-        RGB_YELLOW;
-        // DEBUG("GPRS ONLY - EPS: %d & PSD: %d", REG_OK(_net.eps), REG_OK(_net.psd));
+        cellularStopEPSstatusUpdates();
+        // DEBUG("EPS: %d", REG_OK(_net.eps));
     }
 }
 
 bool cellularRegisterEPS()
 {
-    // system_tick_t start = millis();
-    // DEBUG_D("\r\n[ cellularRegisterEPS ] = = = = = = = = = = = = = =\r\n");
-    if (!cellularCheckRegisterEPS()) Cellular.command("AT+CEREG=2\r\n");
-    // while (!cellularCheckRegisterGSM() && !TIMEOUT(start, (5*60*1000) )) {
-    //     system_tick_t start = millis();
-    //     while (millis() - start < 15000UL); // just wait
-    // }
-    // if (_net.csd == REG_DENIED) DEBUG_D("CSD Registration Denied\r\n");
-    // DEBUG("%d", REG_OK(_net.csd));
-    return REG_OK(_net.eps);
-}
+    if (!cellularCheckRegisterEPS()) {
+        Cellular.command("AT+CEREG=2\r\n");
+    }
 
-bool cellularRegisterGPRS()
-{
-    // system_tick_t start = millis();
-    // DEBUG_D("\r\n[ cellularRegisterGPRS ] = = = = = = = = = = = = = =\r\n");
-    if (!cellularCheckRegisterGPRS()) Cellular.command("AT+CGREG=2\r\n");
-    // while (!cellularCheckRegisterGPRS() && !TIMEOUT(start, (5*60*1000) )) {
-    //     system_tick_t start = millis();
-    //     while (millis() - start < 15000UL); // just wait
-    // }
-    // if (_net.psd == REG_DENIED) DEBUG_D("PSD Registration Denied\r\n");
-    // DEBUG("%d", REG_OK(_net.psd));
-    return REG_OK(_net.psd);
+    return REG_OK(_net.eps);
 }
 
 bool cellularCheckRegisterEPS()
@@ -322,21 +292,15 @@ bool cellularCheckRegisterEPS()
     return REG_OK(_net.eps);
 }
 
-bool cellularCheckRegisterGPRS()
+void cellularStopEPSstatusUpdates()
 {
-    Cellular.command("AT+CGREG?\r\n");
-    return REG_OK(_net.psd);
-}
-
-void cellularStopEPSandGPRSstatusUpdates()
-{
-    // Update the timer such that it won't attempt to poll for EPS and GPRS status
+    // Update the timer such that it won't attempt to poll for EPS status
     updateRegistrationTime = millis() - 2*60*1000UL;
 }
 
-bool cellularDisableEPSandGPRSreg()
+bool cellularDisableEPSreg()
 {
-    cellularStopEPSandGPRSstatusUpdates();
+    cellularStopEPSstatusUpdates();
     return (RESP_OK == Cellular.command(COPS_TIMEOUT, "AT+COPS=2\r\n"));
 }
 
@@ -377,7 +341,7 @@ void showHelp() {
                    "\r\n[:echo0;  ] AT command echo OFF"
                    "\r\n[:assist1;] turns on ESCAPE and BACKSPACE keyboard assistance (default)"
                    "\r\n[:assist0;] turns off ESCAPE and BACKSPACE keyboard assistance"
-                   "\r\n[:con;    ] Start the EPS and GPRS connection process, LED=GREEN (GPRS & EPS), MAGENTA (EPS), YELLOW (GPRS)"
-                   "\r\n[:dis;    ] Network disconnect and stop polling the EPS and GPRS status (default), LED=BLUE"
+                   "\r\n[:con;    ] Start the EPS connection process, LED=GREEN (EPS)"
+                   "\r\n[:dis;    ] Network disconnect and stop polling the EPS status (default), LED=BLUE"
                    "\r\n[:help;   ] show this help menu\r\n");
 }
