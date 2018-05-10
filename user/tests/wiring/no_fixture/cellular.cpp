@@ -23,6 +23,19 @@
 
 #if Wiring_Cellular == 1
 
+/**
+ * Returns current modem type:
+ * DEV_UNKNOWN, DEV_SARA_G350, DEV_SARA_U260, DEV_SARA_U270, DEV_SARA_U201, DEV_SARA_R410
+ */
+int cellular_modem_type() {
+    CellularDevice device;
+    memset(&device, 0, sizeof(device));
+    device.size = sizeof(device);
+    cellular_device_info(&device, NULL);
+
+    return device.dev;
+}
+
 /* Scenario: The device will connect to the Cloud even when all
  *           TCP socket types are consumed
  *
@@ -203,6 +216,7 @@ bool is_band_available(CellularBand& band_avail, MDM_Band band)
     }
     return false;
 }
+bool skip_r410 = false;
 /* Scenario: More than 3 band options should be available from any Electron
  *
  * Given the device is currently disconnected from the Cloud
@@ -210,6 +224,11 @@ bool is_band_available(CellularBand& band_avail, MDM_Band band)
  * Then the device returns at least 3 options
  */
 test(BAND_SELECT_01_more_than_three_band_options_available_on_any_electron) {
+    if (cellular_modem_type() == DEV_SARA_R410) {
+        skip_r410 = true;
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // When we request how many band options are available
@@ -226,6 +245,10 @@ test(BAND_SELECT_01_more_than_three_band_options_available_on_any_electron) {
  * Then all bands matched
  */
 test(BAND_SELECT_02_iterate_through_the_available_bands_and_check_that_they_are_set) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
@@ -248,6 +271,10 @@ test(BAND_SELECT_02_iterate_through_the_available_bands_and_check_that_they_are_
  * Then all bands matched
  */
 test(BAND_SELECT_03_iterate_through_the_available_bands_as_strings_and_check_that_they_are_set) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
@@ -268,6 +295,10 @@ test(BAND_SELECT_03_iterate_through_the_available_bands_as_strings_and_check_tha
  * Then set band select will fail
  */
 test(BAND_SELECT_04_trying_to_set_an_invalid_band_will_fail) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // When we set an invalid band
@@ -285,6 +316,10 @@ test(BAND_SELECT_04_trying_to_set_an_invalid_band_will_fail) {
  * Then set band select will fail
  */
 test(BAND_SELECT_05_trying_to_set_an_invalid_band_as_a_string_will_fail) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // When we set an invalid band as a string
@@ -300,6 +335,10 @@ test(BAND_SELECT_05_trying_to_set_an_invalid_band_as_a_string_will_fail) {
  * Then set band select will fail
  */
 test(BAND_SELECT_06_trying_to_set_an_unavailable_band_will_fail) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
@@ -326,6 +365,10 @@ test(BAND_SELECT_06_trying_to_set_an_unavailable_band_will_fail) {
  * Then band select will not be default
  */
 test(BAND_SELECT_07_setting_non_defaults) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
@@ -354,6 +397,10 @@ test(BAND_SELECT_07_setting_non_defaults) {
  * Then band select will be default
  */
 test(BAND_SELECT_08_restore_defaults) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000, true);
     // Given the list of available bands
@@ -400,6 +447,10 @@ test(BAND_SELECT_08_restore_defaults) {
 }
 
 test(BAND_SELECT_09_restore_connection) {
+    if (skip_r410) {
+        skip();
+        return;
+    }
     // Allow network registration
     Cellular.command(30000, "AT+COPS=0\r\n");
     connect_to_cloud(6*60*1000);
@@ -465,6 +516,12 @@ static int atCallback(int type, const char* buf, int len, int* lines) {
 }
 
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
+    // TODO: Add back this test when SARA R410 supports HW Flow Control?
+    if (skip_r410) {
+        Serial.println("TODO: Add back this test when SARA R410 supports HW Flow Control?");
+        skip();
+        return;
+    }
     // https://github.com/spark/firmware/issues/1138
     int lines = 0;
     int ret = -99999;

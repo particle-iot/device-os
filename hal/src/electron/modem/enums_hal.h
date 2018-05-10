@@ -26,11 +26,30 @@
 // Types
 // ----------------------------------------------------------------
 //! MT Device Types
-typedef enum { DEV_UNKNOWN, DEV_SARA_G350, DEV_SARA_U260, DEV_SARA_U270, DEV_SARA_U201, DEV_SARA_R410 } Dev;
+typedef enum {
+    DEV_UNKNOWN   = 0,
+    DEV_SARA_G350 = 1,
+    DEV_LISA_U200 = 2,
+    DEV_LISA_C200 = 3,
+    DEV_SARA_U260 = 4,
+    DEV_SARA_U270 = 5,
+    DEV_LEON_G200 = 6,
+    DEV_SARA_U201 = 7,
+    DEV_SARA_R410 = 8
+} Dev;
 //! SIM Status
-typedef enum { SIM_UNKNOWN, SIM_MISSING, SIM_PIN, SIM_READY } Sim;
+typedef enum {
+    SIM_UNKNOWN = 0,
+    SIM_MISSING = 1,
+    SIM_PIN     = 2,
+    SIM_READY   = 3
+} Sim;
 //! SIM Status
-typedef enum { LPM_DISABLED, LPM_ENABLED, LPM_ACTIVE } Lpm;
+typedef enum {
+    LPM_DISABLED = 0,
+    LPM_ENABLED  = 1,
+    LPM_ACTIVE   = 2
+} Lpm;
 //! Device status
 typedef struct {
     Dev dev;            //!< Device Type
@@ -45,9 +64,24 @@ typedef struct {
     char ver[16];       //!< Software Version
 } DevStatus;
 //! Registration Status
-typedef enum { REG_UNKNOWN, REG_DENIED, REG_NONE, REG_HOME, REG_ROAMING } Reg;
+typedef enum {
+    REG_UNKNOWN = 0,
+    REG_DENIED  = 1,
+    REG_NONE    = 2,
+    REG_HOME    = 3,
+    REG_ROAMING = 4
+} Reg;
 //! Access Technology
-typedef enum { ACT_UNKNOWN, ACT_GSM, ACT_EDGE, ACT_UTRAN, ACT_CDMA, ACT_LTE, ACT_LTE_CAT_M1, ACT_LTE_CAT_NB1 } AcT;
+typedef enum {
+    ACT_UNKNOWN     = 0,
+    ACT_GSM         = 1,
+    ACT_EDGE        = 2,
+    ACT_UTRAN       = 3,
+    ACT_CDMA        = 4,
+    ACT_LTE         = 5,
+    ACT_LTE_CAT_M1  = 6,
+    ACT_LTE_CAT_NB1 = 7
+} AcT;
 //! Network Status
 typedef struct {
     Reg csd;        //!< CSD Registration Status (Circuit Switched Data)
@@ -140,14 +174,22 @@ typedef uint32_t MDM_IP;
 // Device
 // ----------------------------------------------------------------
 
-typedef enum { AUTH_NONE, AUTH_PAP, AUTH_CHAP, AUTH_DETECT } Auth;
+typedef enum {
+    AUTH_NONE   = 0,
+    AUTH_PAP    = 1,
+    AUTH_CHAP   = 2,
+    AUTH_DETECT = 3
+} Auth;
 
 // ----------------------------------------------------------------
 // Sockets
 // ----------------------------------------------------------------
 
 //! Type of IP protocol
-typedef enum { MDM_IPPROTO_TCP = 0, MDM_IPPROTO_UDP = 1 } IpProtocol;
+typedef enum {
+    MDM_IPPROTO_TCP = 0,
+    MDM_IPPROTO_UDP = 1
+} IpProtocol;
 
 //! Socket error return codes
 #define MDM_SOCKET_ERROR    (-1)
