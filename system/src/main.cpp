@@ -204,7 +204,7 @@ void system_display_rssi() {
     if (sig.getStrength() >= 0) {
         bars = std::round(sig.getStrength() / 20.0f);
     }
-    DEBUG("RSSI: %ddBm BARS: %d\r\n", (int)(sig.getStrengthValue() / 100.0f), bars);
+    DEBUG("RSSI: %ddBm BARS: %d\r\n", (int)(sig.getStrengthValue()), bars);
 
     static LEDCounterStatus ledCounter(LED_PRIORITY_IMPORTANT);
     ledCounter.start(bars);

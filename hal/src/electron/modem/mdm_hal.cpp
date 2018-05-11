@@ -1265,6 +1265,12 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
                 status->rscp = (a != 99) ? (status->rssi + 116) : 255;
                 status->ecno = (b != 99) ? std::min((7 + (7 - b) * 6), 44) : 255;
                 break;
+            case ACT_LTE:
+            case ACT_LTE_CAT_M1:
+            case ACT_LTE_CAT_NB1:
+                status->rsrp = (a != 99) ? (a * 97)/31 : 255; // [0,31] -> [0,97]
+                status->rsrq = (b != 99) ? (b * 34)/7 : 255;  // [0, 7] -> [0,34]
+                break;
             default:
                 // Unknown access tecnhology
                 status->asu = std::numeric_limits<int32_t>::min();

@@ -113,7 +113,7 @@ typedef struct
     union {
       int32_t rssi; // Generic accessor, GSM
       int32_t rscp; // UMTS
-      int32_t rsrq; // LTE
+      int32_t rsrp; // LTE
     };
     // In % mapped to [0, 65535]
     int32_t strength;
@@ -123,7 +123,7 @@ typedef struct
       int32_t ber;  // GSM
       int32_t bep;  // EDGE
       int32_t ecno; // UMTS
-      int32_t rsrp; // LTE
+      int32_t rsrq; // LTE
     };
     // In % mapped to [0, 65535]
     int32_t quality;

@@ -95,14 +95,14 @@ typedef struct {
     union {
         int rxlev;  //!< GSM RAT: RXLEV ([0, 63], 99), see 3GPP TS 45.008 subclause 8.1.4
         int rscp;   //!< UMTS RAT: RSCP ([-5, 91], 255), see 3GPP TS 25.133 subclause 9.1.1.3
-        int rsrp;   //!< LTE RAT: RSRP ([0, 95], 255), see 3GPP TS 36.133 subclause 9.1.7
+        int rsrp;   //!< LTE RAT: RSRP ([0, 95], 255), see 3GPP TS 36.133 subclause 9.1.4
         int asu;    //!< Abstract accessor
     };
 
     union {
         int rxqual; //!< GSM RAT: RXQUAL ([0, 7], 99), see 3GPP TS 45.008 subclause 8.2.4
         int ecno;   //!< UMTS RAT: ECNO ([0, 49], 255), see 3GPP TS 25.133 subclause 9.1.2.3
-        int rsrq;   //!< LTE RAT: RSRQ ([0, 97], 255), see 3GPP TS 36.133 subclause 9.1.4
+        int rsrq;   //!< LTE RAT: RSRQ ([0, 97], 255), see 3GPP TS 36.133 subclause 9.1.7
         int aqual;  //!< Abstract accessor
     };
 
