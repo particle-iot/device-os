@@ -78,10 +78,6 @@
 #define USBD_CONFIG_LOG_ENABLED 0
 #endif
 
-#ifndef NRF_LOG_DEBUG
-#define NRF_LOG_DEBUG(format, ...)
-#endif
-
 #ifdef SOFTDEVICE_PRESENT
 
 #ifndef NRF_SDH_SOC_ENABLED
