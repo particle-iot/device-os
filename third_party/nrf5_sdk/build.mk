@@ -6,6 +6,7 @@ TARGET_NRF5_SDK_NRFX_SRC_PATH = $(TARGET_NRF5_SDK_SRC_PATH)/modules/nrfx
 TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH = $(TARGET_NRF5_SDK_SRC_PATH)/integration/nrfx
 TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH = $(TARGET_NRF5_SDK_SRC_PATH)/components/drivers_nrf
 TARGET_NRF5_SDK_SOFTDEVICE_SRC_PATH = $(TARGET_NRF5_SDK_SRC_PATH)/components/softdevice
+TARGET_NRF5_SDK_EXTERNAL_SRC_PATH = $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/external
 
 # C source files included in this build.
 CSRC += $(call target_files,$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/drivers/src/,*.c)
@@ -43,3 +44,8 @@ else
 CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/nrf_soc_nosd/nrf_soc.c
 CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/nrf_soc_nosd/nrf_nvic.c
 endif
+
+#ifeq ($(DEBUG_BUILD),y)
+CSRC += \
+	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c
+#endif

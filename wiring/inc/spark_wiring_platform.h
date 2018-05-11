@@ -109,6 +109,9 @@
 #define Wiring_WiFi 1    /* FIXME */
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1
+//#ifdef DEBUG_BUILD
+#define Wiring_Rtt 1
+//#endif
 #endif
 
 #ifndef Wiring_SPI1
@@ -169,6 +172,10 @@
 
 #ifndef Wiring_WpaEnterprise
 #define Wiring_WpaEnterprise 0
+#endif
+
+#ifndef Wiring_Rtt
+#define Wiring_Rtt 0
 #endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
