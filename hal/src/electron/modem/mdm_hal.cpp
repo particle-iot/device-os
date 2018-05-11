@@ -477,11 +477,13 @@ bool MDMParser::connect(
             const char* password, Auth auth)
 {
     bool ok = registerNet(apn);
+/*
 #ifdef MDM_DEBUG
     if (_debugLevel >= 1) {
         dumpNetStatus(&_net);
     }
 #endif
+*/
     if (!ok) {
         return false;
     }
@@ -497,11 +499,13 @@ bool MDMParser::connect(
         return false;
     }
     const MDM_IP ip = join(apn, username, password, auth);
+/*
 #ifdef MDM_DEBUG
     if (_debugLevel >= 1) {
         dumpIp(ip);
     }
 #endif
+*/
     if (ip == NOIP) {
         return false;
     }
@@ -2533,7 +2537,8 @@ bool MDMParser::setDebug(int level)
 void MDMParser::dumpDevStatus(DevStatus* status)
 {
     MDM_INFO("\r\n[ Modem::devStatus ] = = = = = = = = = = = = = =");
-    const char* txtDev[] = { "Unknown", "SARA-G350", "SARA-U260", "SARA-U270", "SARA-U201", "SARA-R410" };
+    const char* txtDev[] = { "Unknown", "SARA-G350", "LISA-U200", "LISA-C200", "SARA-U260",
+                                "SARA-U270", "LEON-G200", "SARA-U201", "SARA-R410" };
     if (status->dev < sizeof(txtDev)/sizeof(*txtDev) && (status->dev != DEV_UNKNOWN))
         DEBUG_D("  Device:       %s\r\n", txtDev[status->dev]);
     const char* txtLpm[] = { "Disabled", "Enabled", "Active" };
