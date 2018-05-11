@@ -30,7 +30,7 @@
 #define DCD_IF_STRING                   "@DCD Flash   /0x00000000/1*016Ke";
 
 #define EXTERNAL_FLASH_START_ADD        0x00000000
-#define EXTERNAL_FLASH_END_ADDR         0x00200000
+#define EXTERNAL_FLASH_END_ADDR         0x00400000
 #define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x00000000/1024*004Kg";
 
 

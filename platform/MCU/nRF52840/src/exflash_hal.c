@@ -111,7 +111,11 @@ int hal_exflash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_siz
 
     // write head part
     copy_size = 4 - (addr & 0x03);
-    copy_data = *(uint32_t *)ADDR_ALIGN_WORD(addr);
+    ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
+    if (ret_code)
+    {
+        return -1;
+    }
     memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
     if (copy_size)
     {
