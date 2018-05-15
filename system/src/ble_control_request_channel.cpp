@@ -19,7 +19,11 @@
 
 #if HAS_BLE_CONTROL_REQUEST_CHANNEL
 
+extern "C" {
+
 #include "platform-softdevice.h"
+
+}
 
 #include "logging.h"
 

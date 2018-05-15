@@ -50,7 +50,10 @@ endif
 CSRC += \
 	$(call target_files,$(TARGET_NRF5_SDK_LIBRARIES_PATH)/fifo/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic_flags/,*.c) \
-	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/timer/app_timer_freertos.c
+	$(call target_files,$(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic_fifo/,*.c) \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/timer/app_timer_freertos.c \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/fstorage/nrf_fstorage.c \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/fstorage/nrf_fstorage_sd.c
 
 # BLE
 CSRC += \

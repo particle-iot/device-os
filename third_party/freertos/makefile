@@ -11,7 +11,7 @@ DEPENDENCIES = hal platform services
 
 # FIXME
 ifeq ($(SOFTDEVICE_PRESENT),y)
-DEPENDENCIES += third_party/nrf5_sdk
+DEPENDENCIES += services third_party/nrf5_sdk
 endif
 
 PROJECT_ROOT ?= ../..

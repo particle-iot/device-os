@@ -1428,15 +1428,14 @@
 #endif
 
 // <q> NRFX_RTC1_ENABLED  - Enable RTC1 instance
-
-
+// FIXME: The app_timer library, which some other modules of the nRF SDK depend on, requires using an
+// RTC as the tick source in FreeRTOS-enabled configurations. By default, FreeRTOS uses RTC1
 #ifndef NRFX_RTC1_ENABLED
 #define NRFX_RTC1_ENABLED 0
 #endif
 
 // <q> NRFX_RTC2_ENABLED  - Enable RTC2 instance
-
-
+// RTC2 is used by OpenThread
 #ifndef NRFX_RTC2_ENABLED
 #define NRFX_RTC2_ENABLED 0
 #endif
@@ -1752,9 +1751,9 @@
 // </e>
 
 // <q> NRFX_SPIM3_NRF52840_ANOMALY_198_WORKAROUND_ENABLED  - Enables nRF52840 anomaly 198 workaround for SPIM3.
- 
 
-// <i> See more in the Errata document located at 
+
+// <i> See more in the Errata document located at
 // <i> https://infocenter.nordicsemi.com/
 
 #ifndef NRFX_SPIM3_NRF52840_ANOMALY_198_WORKAROUND_ENABLED
