@@ -152,7 +152,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags)
 {
-	uint32_t endAddress = sourceAddress + length;
+    uint32_t endAddress = sourceAddress + length;
 
     if (FLASH_CheckCopyMemory(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, length, module_function, flags) != FLASH_ACCESS_RESULT_OK)
     {
@@ -185,46 +185,46 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     uint8_t data_buf[MAX_COPY_LENGTH];
     uint32_t copy_len = 0;
 
-	/* Program source to destination */
-	while (sourceAddress < endAddress)
-	{
-		copy_len = (endAddress - sourceAddress) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (endAddress - sourceAddress);
+    /* Program source to destination */
+    while (sourceAddress < endAddress)
+    {
+        copy_len = (endAddress - sourceAddress) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (endAddress - sourceAddress);
 
-		// Read data from source memory address
-		if (sourceDeviceID == FLASH_SERIAL)
-		{
-			if (hal_exflash_read(sourceAddress, data_buf, copy_len))
-			{
-				return FLASH_ACCESS_RESULT_ERROR;
-			}
-		}
-		else
-		{
-			if (hal_flash_read(sourceAddress, data_buf, copy_len))
-			{
-				return FLASH_ACCESS_RESULT_ERROR;
-			}
-		}
+        // Read data from source memory address
+        if (sourceDeviceID == FLASH_SERIAL)
+        {
+            if (hal_exflash_read(sourceAddress, data_buf, copy_len))
+            {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+        }
+        else
+        {
+            if (hal_flash_read(sourceAddress, data_buf, copy_len))
+            {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+        }
 
-		// Program data to destination memory address
-		if (sourceDeviceID == FLASH_SERIAL)
-		{
-			if (hal_exflash_write(destinationAddress, data_buf, copy_len))
-			{
-				return FLASH_ACCESS_RESULT_ERROR;
-			}
-		}
-		else
-		{
-			if (hal_flash_write(destinationAddress, data_buf, copy_len))
-			{
-				return FLASH_ACCESS_RESULT_ERROR;
-			}
-		}
+        // Program data to destination memory address
+        if (sourceDeviceID == FLASH_SERIAL)
+        {
+            if (hal_exflash_write(destinationAddress, data_buf, copy_len))
+            {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+        }
+        else
+        {
+            if (hal_flash_write(destinationAddress, data_buf, copy_len))
+            {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+        }
 
-		sourceAddress += copy_len;
-		destinationAddress += copy_len;
-	}
+        sourceAddress += copy_len;
+        destinationAddress += copy_len;
+    }
 
     return FLASH_ACCESS_RESULT_OK;
 }
@@ -289,7 +289,7 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 
         if (memcmp(src_buf, dest_buf, copy_len))
         {
-        	/* Failed comparison check */
+            /* Failed comparison check */
             return false;
         }
 
@@ -484,8 +484,8 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
         return module_info;
     }
 #ifdef USE_SERIAL_FLASH
-	else if(flashDeviceID == FLASH_SERIAL)
-	{
+    else if(flashDeviceID == FLASH_SERIAL)
+    {
         uint8_t serialFlashData[4];
         uint32_t first_word = 0;
 
@@ -501,7 +501,7 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
 
         return &ex_module_info;
 #endif
-	}
+    }
 
     return NULL;
 }
@@ -565,29 +565,29 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
         }
     }
 #ifdef USE_SERIAL_FLASH
-	else if(flashDeviceID == FLASH_SERIAL && length > 0)
+    else if(flashDeviceID == FLASH_SERIAL && length > 0)
     {
-    	uint8_t serialFlashData[4];
-    	hal_flash_read((startAddress + length), serialFlashData, 4);
-    	uint32_t expectedCRC = (uint32_t)(serialFlashData[3] | (serialFlashData[2] << 8) | (serialFlashData[1] << 16) | (serialFlashData[0] << 24));
+        uint8_t serialFlashData[4];
+        hal_flash_read((startAddress + length), serialFlashData, 4);
+        uint32_t expectedCRC = (uint32_t)(serialFlashData[3] | (serialFlashData[2] << 8) | (serialFlashData[1] << 16) | (serialFlashData[0] << 24));
 
-    	uint32_t endAddress = startAddress + length;
-    	uint8_t  len = 0;
-    	uint32_t computedCRC = 0xFFFFFFFF;
+        uint32_t endAddress = startAddress + length;
+        uint8_t  len = 0;
+        uint32_t computedCRC = 0xFFFFFFFF;
 
-    	do {
-    		len = (length - 4) >= 4 ? 4 : length;
-			hal_flash_read(startAddress, serialFlashData, len);
+        do {
+            len = (length - 4) >= 4 ? 4 : length;
+            hal_flash_read(startAddress, serialFlashData, len);
 
-			computedCRC = Compute_CRC32(serialFlashData, len, &computedCRC);
+            computedCRC = Compute_CRC32(serialFlashData, len, &computedCRC);
 
-			startAddress += len;
-    	} while (startAddress < endAddress);
+            startAddress += len;
+        } while (startAddress < endAddress);
 
-		if (expectedCRC == computedCRC)
-		{
-			return true;
-		}
+        if (expectedCRC == computedCRC)
+        {
+            return true;
+        }
 #endif
     }
 
@@ -602,26 +602,26 @@ void FLASH_ClearFlags(void)
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors)
 {
     // TBD
-	return;
+    return;
 }
 
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 {
     // TBD
-	return;
+    return;
 }
 
 void FLASH_Erase(void)
 {
     // This is too dangerous.
     //FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
-	return;
+    return;
 }
 
 void FLASH_Backup(uint32_t FLASH_Address)
 {
     // TBD
-	return;
+    return;
 }
 
 void FLASH_Restore(uint32_t FLASH_Address)
