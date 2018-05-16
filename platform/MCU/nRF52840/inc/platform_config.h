@@ -76,6 +76,9 @@
 
 
 // QSPI Flash
+#if PLATFORM_ID == PLATFORM_ARGON || \
+    PLATFORM_ID == PLATFORM_BORON || \
+    PLATFORM_ID == PLATFORM_XENON
 #define QSPI_FLASH_SCK_PIN                  19
 #define QSPI_FLASH_CSN_PIN                  17
 #define QSPI_FLASH_IO0_PIN                  20
@@ -83,6 +86,11 @@
 #define QSPI_FLASH_IO2_PIN                  22
 #define QSPI_FLASH_IO3_PIN                  23
 #define QSPI_FLASH_IRQ_PRIORITY             7
+
+#define USE_SERIAL_FLASH
+#define sFLASH_PAGESIZE                     0x1000 /* 4096 bytes sector size that needs to be erased */
+#define sFLASH_PAGECOUNT                    1024   /* 4MByte storage */
+#endif
 
 
 // todo - add this later #define FLASH_UPDATE_MODULES

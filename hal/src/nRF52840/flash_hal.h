@@ -8,9 +8,6 @@ extern "C" {
 #endif
 
 
-#define INTERNAL_FLASH_SECTOR_SIZE    (4 * 1024)
-
-
 typedef void (*flash_op_callback_t)(void * p_buf);
 
 

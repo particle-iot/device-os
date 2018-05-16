@@ -8,9 +8,6 @@
 extern "C" {
 #endif
 
-#define EXFLASH_SECTOR_SIZE     (4 * 1024)
-#define EXFLASH_BLOCK_SIZE      (64 * 1024)
-
 
 int hal_exflash_init(void);
 int hal_exflash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size);

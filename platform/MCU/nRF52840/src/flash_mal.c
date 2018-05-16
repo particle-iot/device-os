@@ -34,7 +34,7 @@
 #include "exflash_hal.h"
 
 
-#define CEIL_DIV(A, B)		(((A) + (B) - 1) / (B))
+#define CEIL_DIV(A, B)        (((A) + (B) - 1) / (B))
 
 #define MAX_COPY_LENGTH     256
 
@@ -48,15 +48,12 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
-        return startAddress >= 0x0 && endAddress <= 0x100000;
+        return startAddress >= 0x00000000 && endAddress <= 0x100000;
     }
     else if (flashDeviceID == FLASH_SERIAL)
     {
-#ifdef USE_SERIAL_FLASH // TODO update address
-        if (startAddress < 0x4000 || endAddress >= 0x100000)
-        {
-            return false;
-        }
+#ifdef USE_SERIAL_FLASH
+        return startAddress >= 0x00000000 && endAddress <= 0x400000;
 #else
         return false;
 #endif
@@ -78,24 +75,28 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         return false;
     }
 
-    if (flashDeviceID == FLASH_SERIAL)
+    if (flashDeviceID == FLASH_INTERNAL)
     {
-        numSectors = CEIL_DIV(length, EXFLASH_SECTOR_SIZE);
-        if (hal_exflash_erase_sector(startAddress, numSectors))
-        {
-            return false;
-        }
-    }
-    else
-    {
-        numSectors = CEIL_DIV(length, INTERNAL_FLASH_SECTOR_SIZE);
-        if (hal_flash_erase_sector(startAddress, numSectors))
-        {
-            return false;
-        }
-    }
+        numSectors = CEIL_DIV(length, INTERNAL_FLASH_PAGE_SIZE);
 
-    return true;
+        if (hal_flash_erase_sector(startAddress, numSectors) != 0)
+        {
+            return false;
+        }
+    }
+#ifdef USE_SERIAL_FLASH
+    else if (flashDeviceID == FLASH_SERIAL)
+    {
+        numSectors = CEIL_DIV(length, sFLASH_PAGESIZE);
+
+        if (hal_exflash_erase_sector(startAddress, numSectors) != 0)
+        {
+            return false;
+        }
+    }
+#endif
+
+    return false;
 }
 
 int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
@@ -112,8 +113,7 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return FLASH_ACCESS_RESULT_BADARG;
     }
 
-#ifndef USE_SERIAL_FLASH    // this predates the module system (early P1's using external flash for storage)
-    if ((sourceDeviceID == FLASH_INTERNAL) && (flags & MODULE_VERIFY_MASK))
+    if (flags & MODULE_VERIFY_MASK)
     {
         uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
 
@@ -144,7 +144,7 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             return FLASH_ACCESS_RESULT_BADARG;
         }
     }
-#endif
+
     return FLASH_ACCESS_RESULT_OK;
 }
 
@@ -152,81 +152,79 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags)
 {
+	uint32_t endAddress = sourceAddress + length;
+
     if (FLASH_CheckCopyMemory(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, length, module_function, flags) != FLASH_ACCESS_RESULT_OK)
     {
         return FLASH_ACCESS_RESULT_BADARG;
     }
 
-    // initialize flash
-//    if (sourceDeviceID == FLASH_SERIAL || destinationDeviceID == FLASH_SERIAL)
-//    {
-//        hal_exflash_init();
-//    }
-//
-//    if (sourceDeviceID == FLASH_INTERNAL || destinationDeviceID == FLASH_INTERNAL)
-//    {
-//        hal_flash_init();
-//    }
-
     // erase sectors
     uint16_t sector_num;
     if (destinationDeviceID == FLASH_SERIAL)
     {
-        sector_num = CEIL_DIV(length, EXFLASH_SECTOR_SIZE);
+        sector_num = CEIL_DIV(length, sFLASH_PAGESIZE);
         if (hal_exflash_erase_sector(destinationAddress, sector_num))
+        {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+    }
+    else if (destinationDeviceID == FLASH_INTERNAL)
+    {
+        sector_num = CEIL_DIV(length, INTERNAL_FLASH_PAGE_SIZE);
+        if (hal_flash_erase_sector(destinationAddress, sector_num))
         {
             return FLASH_ACCESS_RESULT_ERROR;
         }
     }
     else
     {
-        sector_num = CEIL_DIV(length, INTERNAL_FLASH_SECTOR_SIZE);
-        if (hal_flash_erase_sector(destinationAddress, sector_num))
-        {
-            return FLASH_ACCESS_RESULT_ERROR;
-        }
+        return FLASH_ACCESS_RESULT_BADARG;
     }
 
-    // memory copy
     uint8_t data_buf[MAX_COPY_LENGTH];
-    uint16_t index = 0;
-    uint16_t copy_len;
+    uint32_t copy_len = 0;
 
-    for (int i = 0; i < length;)
-    {
-        copy_len = (length - i) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : length - i;
-        if (sourceDeviceID == FLASH_SERIAL)
-        {
-            if (hal_exflash_read(sourceAddress + index, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
-        else
-        {
-            if (hal_flash_read(sourceAddress + index, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
+	/* Program source to destination */
+	while (sourceAddress < endAddress)
+	{
+		copy_len = (endAddress - sourceAddress) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (endAddress - sourceAddress);
 
-        if (sourceDeviceID == FLASH_SERIAL)
-        {
-            if (hal_exflash_write(destinationAddress + index, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
-        else
-        {
-            if (hal_flash_write(destinationAddress + index, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
+		// Read data from source memory address
+		if (sourceDeviceID == FLASH_SERIAL)
+		{
+			if (hal_exflash_read(sourceAddress, data_buf, copy_len))
+			{
+				return FLASH_ACCESS_RESULT_ERROR;
+			}
+		}
+		else
+		{
+			if (hal_flash_read(sourceAddress, data_buf, copy_len))
+			{
+				return FLASH_ACCESS_RESULT_ERROR;
+			}
+		}
 
-        index += copy_len;
-    }
+		// Program data to destination memory address
+		if (sourceDeviceID == FLASH_SERIAL)
+		{
+			if (hal_exflash_write(destinationAddress, data_buf, copy_len))
+			{
+				return FLASH_ACCESS_RESULT_ERROR;
+			}
+		}
+		else
+		{
+			if (hal_flash_write(destinationAddress, data_buf, copy_len))
+			{
+				return FLASH_ACCESS_RESULT_ERROR;
+			}
+		}
+
+		sourceAddress += copy_len;
+		destinationAddress += copy_len;
+	}
 
     return FLASH_ACCESS_RESULT_OK;
 }
@@ -235,6 +233,8 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                          uint32_t length)
 {
+    uint32_t endAddress = sourceAddress + length;
+
     // check address range
     if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true)
     {
@@ -246,51 +246,42 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return false;
     }
 
-    // initialize flash
-//    if (sourceDeviceID == FLASH_SERIAL || destinationDeviceID == FLASH_SERIAL)
-//    {
-//        hal_exflash_init();
-//    }
-//
-//    if (sourceDeviceID == FLASH_INTERNAL || destinationDeviceID == FLASH_INTERNAL)
-//    {
-//        hal_flash_init();
-//    }
-
-   // memory copy
     uint8_t src_buf[MAX_COPY_LENGTH];
     uint8_t dest_buf[MAX_COPY_LENGTH];
-    uint16_t index = 0;
-    uint16_t copy_len;
+    uint32_t copy_len = 0;
 
-    for (int i = 0; i < length;)
+    /* Program source to destination */
+    while (sourceAddress < endAddress)
     {
-        copy_len = (length - i) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : length - i;
+        copy_len = (endAddress - sourceAddress) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (endAddress - sourceAddress);
+
+        // Read data from source memory address
         if (sourceDeviceID == FLASH_SERIAL)
         {
-            if (hal_exflash_read(sourceAddress + index, src_buf, copy_len))
+            if (hal_exflash_read(sourceAddress, src_buf, copy_len))
             {
                 return false;
             }
         }
         else
         {
-            if (hal_flash_read(sourceAddress + index, src_buf, copy_len))
+            if (hal_flash_read(sourceAddress, src_buf, copy_len))
             {
                 return false;
             }
         }
 
+        // Read data from destination memory address
         if (sourceDeviceID == FLASH_SERIAL)
         {
-            if (hal_exflash_read(destinationAddress + index, dest_buf, copy_len))
+            if (hal_exflash_read(destinationAddress, dest_buf, copy_len))
             {
                 return false;
             }
         }
         else
         {
-            if (hal_flash_read(destinationAddress + index, dest_buf, copy_len))
+            if (hal_flash_read(destinationAddress, dest_buf, copy_len))
             {
                 return false;
             }
@@ -298,10 +289,12 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 
         if (memcmp(src_buf, dest_buf, copy_len))
         {
+        	/* Failed comparison check */
             return false;
         }
 
-        index += copy_len;
+        sourceAddress += copy_len;
+        destinationAddress += copy_len;
     }
 
     /* Passed comparison check */
@@ -385,7 +378,7 @@ bool FLASH_ClearFactoryResetModuleSlot(void)
 
     const uint16_t magic_num = 0xffff;
     return (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) == 0);
-	return 0;
+    return 0;
 }
 
 int FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
@@ -475,17 +468,40 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
 {
+#ifdef USE_SERIAL_FLASH
+    static module_info_t ex_module_info;
+#endif
+
     if(flashDeviceID == FLASH_INTERNAL)
     {
         if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
         {
-            startAddress += 0x184;
+            startAddress += 0x200;
         }
 
         const module_info_t* module_info = (const module_info_t*)startAddress;
 
         return module_info;
     }
+#ifdef USE_SERIAL_FLASH
+	else if(flashDeviceID == FLASH_SERIAL)
+	{
+        uint8_t serialFlashData[4];
+        uint32_t first_word = 0;
+
+        hal_flash_read(startAddress, serialFlashData, 4);
+        first_word = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
+        if ((first_word & APP_START_MASK) == 0x20000000)
+        {
+            startAddress += 0x200;
+        }
+
+        memset((uint8_t *)&ex_module_info, 0x00, sizeof(module_info_t));
+        hal_flash_read(startAddress, (uint8_t *)&ex_module_info, sizeof(module_info_t));
+
+        return &ex_module_info;
+#endif
+	}
 
     return NULL;
 }
@@ -514,13 +530,25 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
     return 0;
 }
 
+uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress)
+{
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+
+    if (module_info != NULL)
+    {
+        return module_info->module_version;
+    }
+
+    return 0;
+}
+
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
     const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
 
     return (module_info != NULL
             && ((uint32_t)(module_info->module_start_address) == expectedAddress)
-            && ((uint32_t)(module_info->module_end_address)<=0x8100000)
+            && ((uint32_t)(module_info->module_end_address)<=0x100000)
             && (module_info->platform_id==PLATFORM_ID));
 }
 
@@ -529,12 +557,38 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
     if(flashDeviceID == FLASH_INTERNAL && length > 0)
     {
         uint32_t expectedCRC = __REV((*(__IO uint32_t*) (startAddress + length)));
-        uint32_t computedCRC = Compute_CRC32((uint8_t*)startAddress, length);
+        uint32_t computedCRC = Compute_CRC32((uint8_t*)startAddress, length, NULL);
 
         if (expectedCRC == computedCRC)
         {
             return true;
         }
+    }
+#ifdef USE_SERIAL_FLASH
+	else if(flashDeviceID == FLASH_SERIAL && length > 0)
+    {
+    	uint8_t serialFlashData[4];
+    	hal_flash_read((startAddress + length), serialFlashData, 4);
+    	uint32_t expectedCRC = (uint32_t)(serialFlashData[3] | (serialFlashData[2] << 8) | (serialFlashData[1] << 16) | (serialFlashData[0] << 24));
+
+    	uint32_t endAddress = startAddress + length;
+    	uint8_t  len = 0;
+    	uint32_t computedCRC = 0xFFFFFFFF;
+
+    	do {
+    		len = (length - 4) >= 4 ? 4 : length;
+			hal_flash_read(startAddress, serialFlashData, len);
+
+			computedCRC = Compute_CRC32(serialFlashData, len, &computedCRC);
+
+			startAddress += len;
+    	} while (startAddress < endAddress);
+
+		if (expectedCRC == computedCRC)
+		{
+			return true;
+		}
+#endif
     }
 
     return false;
@@ -542,39 +596,39 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
 
 void FLASH_ClearFlags(void)
 {
-    /* Clear All pending flags */
+    return;
 }
 
 void FLASH_WriteProtection_Enable(uint32_t FLASH_Sectors)
 {
-    // no need
+    // TBD
+	return;
 }
 
 void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
 {
-    // no need
+    // TBD
+	return;
 }
 
 void FLASH_Erase(void)
 {
     // This is too dangerous.
     //FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
+	return;
 }
 
 void FLASH_Backup(uint32_t FLASH_Address)
 {
-#ifdef USE_SERIAL_FLASH
-    FLASH_CopyMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FLASH_SERIAL, FLASH_Address, FIRMWARE_IMAGE_SIZE, 0, 0);
-#else
-    //Don't have enough space in Internal Flash to save a Backup copy of the firmware
-#endif
+    // TBD
+	return;
 }
 
 void FLASH_Restore(uint32_t FLASH_Address)
 {
 #ifdef USE_SERIAL_FLASH
     //CRC verification Disabled by default
-    FLASH_CopyMemory(FLASH_SERIAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE, 0, 0);
+    //FLASH_CopyMemory(FLASH_SERIAL, FLASH_Address, FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE, 0, 0);
 #else
     //commented below since FIRMWARE_IMAGE_SIZE != Actual factory firmware image size
     //FLASH_CopyMemory(FLASH_INTERNAL, FLASH_Address, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE, true);
@@ -607,13 +661,6 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 
 void FLASH_End(void)
 {
-#ifdef USE_SERIAL_FLASH
-    system_flags.FLASH_OTA_Update_SysFlag = 0x0005;
-    Save_SystemFlags();
-
-    RTC_WriteBackupRegister(RTC_BKP_DR10, 0x0005);
-#else
     //FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
-#endif
 }
 

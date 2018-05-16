@@ -5,7 +5,7 @@
 namespace {
 
 uint32_t calculateCRC(const void* data, size_t len) {
-    return Compute_CRC32(reinterpret_cast<const uint8_t*>(data), len);
+    return Compute_CRC32(reinterpret_cast<const uint8_t*>(data), len, NULL);
 }
 
 /**
@@ -53,10 +53,4 @@ int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
     const int result = dcd().write(offset, data, size);
     dct_unlock(1);
     return result;
-}
-
-void dcd_migrate_data() {
-    dct_lock(1);
-    dcd().migrate();
-    dct_unlock(1);
 }

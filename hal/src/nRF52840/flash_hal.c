@@ -1,9 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
+#include "flash_mal.h"
 #include "flash_hal.h"
-#include "sdk_common.h"
 #include "nrfx_config.h"
 #include "nrf_log.h"
 
@@ -151,15 +150,15 @@ int hal_flash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
 int hal_flash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_size)
 {
     #define MAX_COPY_LENGTH 256
-    if ((src_addr % INTERNAL_FLASH_SECTOR_SIZE) ||
-        (dest_addr % INTERNAL_FLASH_SECTOR_SIZE) ||
+    if ((src_addr % INTERNAL_FLASH_PAGE_SIZE) ||
+        (dest_addr % INTERNAL_FLASH_PAGE_SIZE) ||
         (data_size & 0x3))
     {
         return -1;
     }
 
     // erase sectors
-    uint16_t sector_num = CEIL_DIV(data_size, INTERNAL_FLASH_SECTOR_SIZE);
+    uint16_t sector_num = CEIL_DIV(data_size, INTERNAL_FLASH_PAGE_SIZE);
     if (hal_flash_erase_sector(dest_addr, sector_num))
     {
         return -2;
@@ -167,12 +166,12 @@ int hal_flash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_s
 
     // memory copy
     uint8_t data_buf[MAX_COPY_LENGTH];
-    uint16_t index = 0;
-    uint16_t copy_len;
+    uint32_t index = 0;
+    uint16_t copy_len = 0;
 
-    for (int i = 0; i < data_size;)
+    for (index = 0; index < data_size; index += copy_len)
     {
-        copy_len = (data_size - i) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : data_size - i;
+        copy_len = (data_size - index) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (data_size - index);
         if (hal_flash_read(src_addr + index, data_buf, copy_len))
         {
             return -3;
@@ -182,8 +181,6 @@ int hal_flash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_s
         {
             return -4;
         }
-
-        index += copy_len;
     }
 
     return 0;

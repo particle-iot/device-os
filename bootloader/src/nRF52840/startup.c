@@ -21,7 +21,7 @@
 
 void platform_startup()
 {
-	dcd_migrate_data();
+
 }
 
 /* Define caddr_t as char* */

@@ -18,14 +18,22 @@
  */
 #pragma once
 
+#include <stdint.h>
+#include "stddef.h"
 #include "dct_hal_nrf52840.h"
-#include "dct.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void dcd_migrate_data();
+// Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
+const void* dct_read_app_data(uint32_t offset);
+
+int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size);
+const void* dct_read_app_data_lock(uint32_t offset);
+int dct_read_app_data_unlock(uint32_t offset);
+
+int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
 
 #ifdef __cplusplus
 } // extern "C"

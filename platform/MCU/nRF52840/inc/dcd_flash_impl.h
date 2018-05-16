@@ -26,33 +26,11 @@ template <typename Store, unsigned sectorSize, unsigned DCD1, unsigned DCD2, uin
 class UpdateDCD : public DCD<Store, sectorSize, DCD1, DCD2, calculateCRC>
 {
 public:
-    static const unsigned oldFormatOffset = 7548;
-
     using base = DCD<Store, sectorSize, DCD1, DCD2, calculateCRC>;
     using Sector = typename base::Sector;
 
     UpdateDCD()
     {
-    }
-
-    void migrate()
-    {
-        if (!this->isInitialized()) {
-            // copy data from the old layout
-            const uint8_t* sector0 = this->store.dataAt(DCD1);
-            const uint8_t* sector1 = this->store.dataAt(DCD2);
-
-            Sector init;
-            if (isCurrent(sector0))
-                initializeFromSector(sector0, base::Sector_1);
-            else if (isCurrent(sector1))
-                initializeFromSector(sector1, base::Sector_0);
-        }
-    }
-
-    void initializeFromSector(const uint8_t* oldSector, Sector newSector)
-    {
-        this->_writeSector(0, oldSector+oldFormatOffset, sectorSize-oldFormatOffset, NULL, newSector);
     }
 
     inline bool isCurrent(const uint8_t* sector)
