@@ -63,8 +63,8 @@ void RttOutputStream::close() {
 size_t RttOutputStream::write(const uint8_t* data, size_t size) {
     size_t written = 0;
     if (open_) {
+        unsigned retries = 0;
         while (written < size) {
-            unsigned retries = 0;
             const unsigned n = SEGGER_RTT_WriteNoLock(0 /* BufferIndex */, data + written, size - written);
             if (n > 0) {
                 written += n;
