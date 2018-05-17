@@ -130,6 +130,7 @@ int hal_flash_erase_sector(uint32_t addr, uint32_t num_sectors)
     DEBUG("nrf_fstorage_erase(addr=0x%p, len=%d pages)", addr, num_sectors);
 
     //lint -save -e611 (Suspicious cast)
+    addr = (addr / INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE; // Address must be aligned to a page boundary.
     ret_code = nrf_fstorage_erase(&m_fs, addr, num_sectors, NULL);
     //lint -restore
 

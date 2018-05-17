@@ -46,8 +46,8 @@ int InternalFlashMal::deInit() {
 
 bool InternalFlashMal::validate(uintptr_t addr, size_t len) {
     uintptr_t end = addr + len;
-    if ((addr >= INTERNAL_FLASH_START_ADD && addr < INTERNAL_FLASH_END_ADDR) &&
-        (end >= INTERNAL_FLASH_START_ADD && end < INTERNAL_FLASH_END_ADDR))
+    if ((addr >= INTERNAL_FLASH_START_ADD && addr <= INTERNAL_FLASH_END_ADDR) &&
+        (end >= INTERNAL_FLASH_START_ADD && end <= INTERNAL_FLASH_END_ADDR))
     {
         return true;
     }
@@ -80,9 +80,12 @@ int InternalFlashMal::erase(uintptr_t addr, size_t len) {
         return 1;
     }
 
-    hal_flash_erase_sector(addr, 1);
     (void)len;
-    return 0;
+
+    if (hal_flash_erase_sector(addr, 1) == 0)
+        return 0;
+    else
+        return 1;
 }
 
 int InternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
@@ -111,8 +114,8 @@ int DcdMal::deInit() {
 
 bool DcdMal::validate(uintptr_t addr, size_t len) {
     uintptr_t end = addr + len;
-    if ((addr >= DCD_START_ADD && addr < DCD_END_ADDR) &&
-        (end >= DCD_START_ADD && end < DCD_END_ADDR))
+    if ((addr >= DCD_START_ADD && addr <= DCD_END_ADDR) &&
+        (end >= DCD_START_ADD && end <= DCD_END_ADDR))
     {
         return true;
     }
@@ -166,8 +169,8 @@ int ExternalFlashMal::deInit() {
 
 bool ExternalFlashMal::validate(uintptr_t addr, size_t len) {
     uintptr_t end = addr + len;
-    if ((addr >= EXTERNAL_FLASH_START_ADD && addr < EXTERNAL_FLASH_END_ADDR) &&
-        (end >= EXTERNAL_FLASH_START_ADD && end < EXTERNAL_FLASH_END_ADDR))
+    if ((addr >= EXTERNAL_FLASH_START_ADD && addr <= EXTERNAL_FLASH_END_ADDR) &&
+        (end >= EXTERNAL_FLASH_START_ADD && end <= EXTERNAL_FLASH_END_ADDR))
     {
         return true;
     }

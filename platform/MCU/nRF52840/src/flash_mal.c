@@ -83,6 +83,8 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         {
             return false;
         }
+
+        return true;
     }
 #ifdef USE_SERIAL_FLASH
     else if (flashDeviceID == FLASH_SERIAL)
@@ -93,6 +95,8 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         {
             return false;
         }
+
+        return true;
     }
 #endif
 
