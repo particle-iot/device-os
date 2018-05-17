@@ -32,7 +32,6 @@ extern "C" {
 #include "nrf_sdh_soc.h"
 #include "nrf_ble_qwr.h"
 #include "ble_advertising.h"
-#include "app_timer.h"
 
 #include <cstdlib>
 
@@ -88,10 +87,10 @@ const unsigned APP_ADV_INTERVAL = MSEC_TO_UNITS(40, UNIT_0_625_MS); // 40 ms
 const unsigned APP_ADV_DURATION = MSEC_TO_UNITS(180000, UNIT_10_MS); // 180 sec
 
 // Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update() is called
-const unsigned FIRST_CONN_PARAMS_UPDATE_DELAY = APP_TIMER_TICKS(5000); // 5 sec
+// const unsigned FIRST_CONN_PARAMS_UPDATE_DELAY = APP_TIMER_TICKS(5000); // 5 sec
 
 // Time between each call to sd_ble_gap_conn_param_update() after the first call
-const unsigned NEXT_CONN_PARAMS_UPDATE_DELAY = APP_TIMER_TICKS(30000); // 30 sec
+// const unsigned NEXT_CONN_PARAMS_UPDATE_DELAY = APP_TIMER_TICKS(30000); // 30 sec
 
 // Number of attempts before giving up the connection parameter negotiation
 const unsigned MAX_CONN_PARAMS_UPDATE_COUNT = 3;
@@ -559,6 +558,8 @@ void BleControlRequestChannel::bleEventHandler(const ble_evt_t* event) {
 }
 
 int BleControlRequestChannel::initConnParam() {
+    // TODO: ble_conn_params depends on app_timer module
+/*
     // Initialize the connection parameters module
     ble_conn_params_init_t init = {};
     init.p_conn_params = nullptr;
@@ -574,6 +575,7 @@ int BleControlRequestChannel::initConnParam() {
         LOG(ERROR, "ble_conn_params_init() failed: %u", (unsigned)ret);
         return -1;
     }
+*/
     return 0;
 }
 

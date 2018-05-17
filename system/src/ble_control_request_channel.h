@@ -24,6 +24,8 @@
 #include "system_control.h"
 #include "control_request_handler.h"
 
+#undef STATIC_ASSERT // FIXME
+
 #include "nrf_ble_gatt.h"
 #include "ble_advertising.h"
 #include "ble_conn_params.h"

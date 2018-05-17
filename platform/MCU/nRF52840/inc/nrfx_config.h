@@ -1417,7 +1417,7 @@
 // <e> NRFX_RTC_ENABLED - nrfx_rtc - RTC peripheral driver
 //==========================================================
 #ifndef NRFX_RTC_ENABLED
-#define NRFX_RTC_ENABLED 0
+#define NRFX_RTC_ENABLED 1
 #endif
 // <q> NRFX_RTC0_ENABLED  - Enable RTC0 instance
 
@@ -1428,10 +1428,8 @@
 #endif
 
 // <q> NRFX_RTC1_ENABLED  - Enable RTC1 instance
-// FIXME: The app_timer library, which some other modules of the nRF SDK depend on, requires using an
-// RTC as the tick source in FreeRTOS-enabled configurations. By default, FreeRTOS uses RTC1
 #ifndef NRFX_RTC1_ENABLED
-#define NRFX_RTC1_ENABLED 0
+#define NRFX_RTC1_ENABLED 1
 #endif
 
 // <q> NRFX_RTC2_ENABLED  - Enable RTC2 instance
