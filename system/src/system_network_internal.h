@@ -287,6 +287,8 @@ protected:
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
         static particle::system::BleControlRequestChannel chan(nullptr);
+        chan.init();
+        chan.startAdvert();
 
         LOG_NETWORK_STATE();
         WLAN_SMART_CONFIG_ACTIVE = 1;

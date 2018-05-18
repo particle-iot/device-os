@@ -84,7 +84,13 @@ const unsigned CONN_SUP_TIMEOUT = MSEC_TO_UNITS(4000, UNIT_10_MS); // 4 sec
 const unsigned APP_ADV_INTERVAL = MSEC_TO_UNITS(40, UNIT_0_625_MS); // 40 ms
 
 // Advertising duration in 10 ms units
-const unsigned APP_ADV_DURATION = MSEC_TO_UNITS(180000, UNIT_10_MS); // 180 sec
+const unsigned APP_ADV_DURATION = MSEC_TO_UNITS(60000, UNIT_10_MS); // 180 sec
+
+// Advertising interval in 0.625 ms units
+const unsigned APP_ADV_INTERVAL_SLOW = MSEC_TO_UNITS(1000, UNIT_0_625_MS);
+
+// Advertising duration in 10 ms units
+const unsigned APP_ADV_DURATION_SLOW = MSEC_TO_UNITS(180000, UNIT_10_MS);
 
 // Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update() is called
 // const unsigned FIRST_CONN_PARAMS_UPDATE_DELAY = APP_TIMER_TICKS(5000); // 5 sec
@@ -594,6 +600,9 @@ int BleControlRequestChannel::initAdvert() {
     init.config.ble_adv_fast_enabled = true;
     init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
     init.config.ble_adv_fast_timeout = APP_ADV_DURATION;
+    init.config.ble_adv_slow_enabled = true;
+    init.config.ble_adv_slow_interval = APP_ADV_INTERVAL_SLOW;
+    init.config.ble_adv_slow_timeout = APP_ADV_DURATION_SLOW;
     init.evt_handler = advertEventHandler;
     const uint32_t ret = ble_advertising_init(&g_advert, &init);
     if (ret != NRF_SUCCESS) {
@@ -747,12 +756,13 @@ int BleControlRequestChannel::initGap() {
 }
 
 int BleControlRequestChannel::initBle() {
+    ret_code_t ret = 0;
     // Request to enable SoftDevice
-    ret_code_t ret = nrf_sdh_enable_request();
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "nrf_sdh_enable_request() failed: %u", (unsigned)ret);
-        return -1;
-    }
+    //ret_code_t ret = nrf_sdh_enable_request();
+    //if (ret != NRF_SUCCESS) {
+    //    LOG(ERROR, "nrf_sdh_enable_request() failed: %u", (unsigned)ret);
+    //    return -1;
+    //}
     // Configure the BLE stack using default settings
     uint32_t ramStart = 0; // Start address of the application RAM
     ret = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ramStart);
@@ -796,6 +806,10 @@ void BleControlRequestChannel::advertEventHandler(ble_adv_evt_t event) {
     case BLE_ADV_EVT_FAST:
         g_advertActive = true;
         LOG(TRACE, "Fast advertising mode started");
+        break;
+    case BLE_ADV_EVT_SLOW:
+        g_advertActive = true;
+        LOG(TRACE, "Slow advertising mode started");
         break;
     case BLE_ADV_EVT_IDLE:
         g_advertActive = false;
