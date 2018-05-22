@@ -17,4 +17,27 @@
 
 #pragma once
 
-#include "sdk_config.h"
+// This configuration overrides the defaults defined in the following files of the nRF SDK:
+//
+// modules/nrfx/templates/nRF52840/nrfx_config.h
+// config/nrf52840/config/sdk_config.h
+
+#define NRFX_GPIOTE_ENABLED 0
+
+#define NRFX_RTC0_ENABLED 0 // Used by SoftDevice
+#define NRFX_RTC1_ENABLED 1
+#define NRFX_RTC2_ENABLED 0 // FIXME: Used by OpenThread
+
+#define NRFX_ADC_ENABLED 0
+
+#define NRFX_SPIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
+#define NRFX_PWM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
+#define NRFX_SPIS_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
+#define NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
+
+#define CLOCK_ENABLED 1
+
+#define POWER_ENABLED 1
+
+#define USBD_ENABLED 1
+#define NRF_DRV_USBD_ERRATA_ENABLE 1

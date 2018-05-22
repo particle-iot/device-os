@@ -46,6 +46,7 @@ CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/nrf_soc_nosd/nrf_soc.c
 CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/nrf_soc_nosd/nrf_nvic.c
 endif
 
+ifeq ("$(SOFTDEVICE_PRESENT)","y")
 # Libraries
 CSRC += \
 	$(call target_files,$(TARGET_NRF5_SDK_LIBRARIES_PATH)/fifo/,*.c) \
@@ -66,3 +67,4 @@ CSRC += \
 CSRC += \
 	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c
 #endif
+endif
