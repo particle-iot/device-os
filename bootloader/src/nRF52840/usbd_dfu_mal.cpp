@@ -69,10 +69,11 @@ int InternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
         return 1;
     }
 
-    if (hal_flash_write(addr, buf, len) == 0)
-        return 0;
-    else
+    if (hal_flash_write(addr, buf, len) != 0) {
         return 1;
+    }
+
+    return 0;
 }
 
 int InternalFlashMal::erase(uintptr_t addr, size_t len) {
@@ -82,10 +83,11 @@ int InternalFlashMal::erase(uintptr_t addr, size_t len) {
 
     (void)len;
 
-    if (hal_flash_erase_sector(addr, 1) == 0)
-        return 0;
-    else
+    if (hal_flash_erase_sector(addr, 1) != 0) {
         return 1;
+    }
+
+    return 0;
 }
 
 int InternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
