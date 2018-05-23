@@ -88,7 +88,7 @@ int hal_exflash_init(void)
     {
         return -1;
     }
-    DEBUG("QSPI example started.");
+    LOG_DEBUG(TRACE, "QSPI example started.");
 
     if (configure_memory())
     {
@@ -117,12 +117,11 @@ int hal_exflash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_siz
     memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
     if (copy_size)
     {
-        DEBUG("write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
+        LOG_DEBUG(TRACE, "write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
         ret_code = nrfx_qspi_write(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
         if (ret_code)
         {
-            // FIXME: Use ERROR() when logging is accomplished for nRF52840.
-            DEBUG("ret_code: %d", ret_code);
+            LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
             return -1;
         }
     }
@@ -136,15 +135,14 @@ int hal_exflash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_siz
     // write middle part
     if (data_size - index > 4)
     {
-        DEBUG("write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+        LOG_DEBUG(TRACE, "write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
         uint32_t offset = 0;
         do {
             memcpy(copy_data_buf, &data_buf[index], 4);
             ret_code = nrfx_qspi_write(copy_data_buf, 4, ADDR_ALIGN_WORD(addr) + 4 + offset);
             if (ret_code)
             {
-                // FIXME: Use ERROR() when logging is accomplished for nRF52840.
-                DEBUG("ret_code: %d", ret_code);
+                LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
                 return -2;
             }
             index += 4;
@@ -159,12 +157,11 @@ int hal_exflash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_siz
 
     if (copy_size)
     {
-        DEBUG("write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
+        LOG_DEBUG(TRACE, "write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
         ret_code = nrfx_qspi_write(copy_data_buf, 4, addr + data_size - copy_size);
         if (ret_code)
         {
-            // FIXME: Use ERROR() when logging is accomplished for nRF52840.
-            DEBUG("ret_code: %d", ret_code);
+            LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
             return -3;
         }
     }
@@ -198,7 +195,7 @@ int hal_exflash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
     // read middle part
     if (data_size - index > 4)
     {
-        DEBUG("read middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+        LOG_DEBUG(TRACE, "read middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
         uint32_t offset = 0;
         do {
             ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr + 4 + offset));
@@ -238,7 +235,7 @@ int hal_exflash_erase_sector(uint32_t start_addr, uint32_t num_sectors)
         }
     }
 
-    DEBUG("Process of erasing first block start");
+    LOG_DEBUG(TRACE, "Process of erasing first block start");
 
     return 0;
 }
@@ -256,7 +253,7 @@ int hal_exflash_erase_block(uint32_t start_addr, uint32_t num_blocks)
         }
     }
 
-    DEBUG("Process of erasing first block start");
+    LOG_DEBUG(TRACE, "Process of erasing first block start");
 
     return 0;
 }
