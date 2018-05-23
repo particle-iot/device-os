@@ -1,12 +1,47 @@
 #include "dct_hal_nrf52840.h"
 
+#include "core_hal_nrf52840.h"
+#include "interrupts_hal.h"
+#include "static_recursive_mutex.h"
+#include "debug.h"
+
+namespace {
+
+StaticRecursiveMutex dctLock;
+
+#ifdef DEBUG_BUILD
+#define DCT_LOCK_TIMEOUT 30000
+int dctLockCounter = 0;
+#else
+#define DCT_LOCK_TIMEOUT 0 // Wait indefinitely
+#endif
+
+} // namespace
 
 int dct_lock(int write) {
-    // TODO: Implement this function for system firmware.
-    return 0;
+    if (!rtos_started) {
+        return 0;
+    }
+    SPARK_ASSERT(!HAL_IsISR());
+    const bool ok = dctLock.lock(DCT_LOCK_TIMEOUT);
+    SPARK_ASSERT(ok);
+#ifdef DEBUG_BUILD
+    ++dctLockCounter;
+    SPARK_ASSERT(dctLockCounter == 1 || !write);
+#endif
+    return !ok;
 }
 
 int dct_unlock(int write) {
-    // TODO: Implement this function for system firmware.
-    return 0;
+    if (!rtos_started) {
+        return 0;
+    }
+    SPARK_ASSERT(!HAL_IsISR());
+    const bool ok = dctLock.unlock();
+    SPARK_ASSERT(ok);
+#ifdef DEBUG_BUILD
+    --dctLockCounter;
+    SPARK_ASSERT(dctLockCounter == 0 || !write);
+#endif
+    return !ok;
 }
