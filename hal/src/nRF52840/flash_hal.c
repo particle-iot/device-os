@@ -15,9 +15,15 @@
 #define ADDR_ALIGN_WORD(addr)       ((addr) & 0xFFFFFFFC)
 
 
+typedef enum {
+    FS_OP_STATE_IDLE,
+    FS_OP_STATE_BUSY,
+    FS_OP_STATE_ERROR
+} fs_op_state_t;
+
+static volatile fs_op_state_t       fs_op_state = FS_OP_STATE_IDLE;
+
 static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt);
-
-
 nrf_fstorage_t m_fs =
 {
     .evt_handler = fstorage_evt_handler,
@@ -33,13 +39,13 @@ static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
         LOG_DEBUG(ERROR, "*** Flash %s FAILED! (0x%x): addr=%p, len=0x%x bytes",
                       (p_evt->id == NRF_FSTORAGE_EVT_WRITE_RESULT) ? "write" : "erase",
                       p_evt->result, p_evt->addr, p_evt->len);
+        *(fs_op_state_t *)p_evt->p_param = FS_OP_STATE_ERROR;
     }
-
+    
     if (p_evt->p_param)
     {
-        //lint -save -e611 (Suspicious cast)
-        ((flash_op_callback_t)(p_evt->p_param))((void*)p_evt->p_src);
-        //lint -restore
+        LOG_DEBUG(INFO, "fs_op_busy = false!");
+        *(fs_op_state_t *)p_evt->p_param = FS_OP_STATE_IDLE;
     }
 }
 
@@ -61,6 +67,11 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
     uint32_t copy_data;
     uint8_t *copy_data_buf = (uint8_t *)&copy_data;
 
+    if (fs_op_state != FS_OP_STATE_IDLE)
+    {
+        return -1;
+    }
+
     // write head part
     copy_size = 4 - (addr & 0x03);
     copy_data = *(uint32_t *)ADDR_ALIGN_WORD(addr);
@@ -68,11 +79,18 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
     if (copy_size)
     {
         LOG_DEBUG(TRACE, "write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
-        ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr), copy_data_buf, 4, NULL);
+        fs_op_state = FS_OP_STATE_BUSY; //should before calling nrf_fstorage_write
+        ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr), copy_data_buf, 4,  (fs_op_state_t *)&fs_op_state);
         if (ret_code)
         {
-            LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
-            return -1;
+            fs_op_state = FS_OP_STATE_IDLE;
+            return -2;
+        }
+        while (fs_op_state == FS_OP_STATE_BUSY);
+        if (fs_op_state == FS_OP_STATE_ERROR)
+        {
+            fs_op_state = FS_OP_STATE_IDLE;
+            return -3;
         }
     }
 
@@ -89,12 +107,20 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
         uint32_t offset = 0;
         do {
             memcpy(copy_data_buf, &data_buf[index], 4);
-            ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr) + 4 + offset, copy_data_buf, 4, NULL);
+            fs_op_state = FS_OP_STATE_BUSY;
+            ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr) + 4 + offset, copy_data_buf, 4, (fs_op_state_t *)&fs_op_state);
             if (ret_code)
             {
-                LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
-                return -2;
+                fs_op_state = FS_OP_STATE_IDLE;
+                return -4;
             }
+            while (fs_op_state == FS_OP_STATE_BUSY);
+            if (fs_op_state == FS_OP_STATE_ERROR)
+            {
+                fs_op_state = FS_OP_STATE_IDLE;
+                return -5;
+            }
+
             index += 4;
             offset += 4;
         } while (data_size - index > 4);
@@ -108,11 +134,18 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
     if (copy_size)
     {
         LOG_DEBUG(TRACE, "write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
-        ret_code = nrf_fstorage_write(&m_fs, addr + data_size - copy_size, copy_data_buf, 4, NULL);
+        fs_op_state = FS_OP_STATE_BUSY; //should before calling nrf_fstorage_write
+        ret_code = nrf_fstorage_write(&m_fs, addr + data_size - copy_size, copy_data_buf, 4,  (fs_op_state_t *)&fs_op_state);
         if (ret_code)
         {
-            LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
-            return -3;
+            fs_op_state = FS_OP_STATE_IDLE;
+            return -6;
+        }
+        while (fs_op_state == FS_OP_STATE_BUSY);
+        if (fs_op_state == FS_OP_STATE_ERROR)
+        {
+            fs_op_state = FS_OP_STATE_IDLE;
+            return -7;
         }
     }
     
@@ -125,17 +158,27 @@ int hal_flash_erase_sector(uint32_t addr, uint32_t num_sectors)
 
     LOG_DEBUG(TRACE, "nrf_fstorage_erase(addr=0x%p, len=%d pages)", addr, num_sectors);
 
-    //lint -save -e611 (Suspicious cast)
-    addr = (addr / INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE; // Address must be aligned to a page boundary.
-    ret_code = nrf_fstorage_erase(&m_fs, addr, num_sectors, NULL);
-    //lint -restore
-
-    if (ret_code)
+    if (fs_op_state != FS_OP_STATE_IDLE)
     {
-        LOG_DEBUG(ERROR, "nrf_fstorage_erase() failed with error 0x%x.", ret_code);
+        return -1;
     }
 
-    return (ret_code == NRF_SUCCESS) ? 0 : -1;
+    addr = (addr / INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE; // Address must be aligned to a page boundary.
+    fs_op_state = FS_OP_STATE_BUSY; //should before calling nrf_fstorage_erase 
+    ret_code = nrf_fstorage_erase(&m_fs, addr, num_sectors,  (fs_op_state_t *)&fs_op_state);
+    if (ret_code)
+    {
+        fs_op_state = FS_OP_STATE_IDLE;
+        return -2;
+    }
+    while (fs_op_state == FS_OP_STATE_BUSY);
+    if (fs_op_state == FS_OP_STATE_ERROR)
+    {
+        fs_op_state = FS_OP_STATE_IDLE;
+        return -3;
+    }
+
+    return 0;
 }
 
 int hal_flash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
