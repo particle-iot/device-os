@@ -30,9 +30,11 @@
 #include "control/config.h"
 #include "control/storage.h"
 
-namespace {
+namespace particle {
 
-using namespace particle;
+namespace system {
+
+namespace {
 
 typedef int(*ReplyFormatterCallback)(Appender*, void* data);
 
@@ -68,14 +70,24 @@ int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* da
 
 SystemControl g_systemControl;
 
-} // namespace
+} // particle::system::
 
-particle::SystemControl::SystemControl() :
-        usbReqChannel_(this),
+SystemControl::SystemControl() :
+#ifdef USB_VENDOR_REQUEST_ENABLE
+        usbChannel_(this),
+#endif
+#if BLE_ENABLED
+        bleChannel_(this),
+#endif
         appReqHandler_(nullptr) {
+#if BLE_ENABLED
+    if (bleChannel_.init() != 0) {
+        LOG(ERROR, "Unable to initialize BLE control request channel");
+    }
+#endif
 }
 
-void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
+void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
     switch (req->type) {
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
@@ -273,32 +285,36 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     }
 }
 
-void particle::SystemControl::processAppRequest(ctrl_request* req) {
+void SystemControl::processAppRequest(ctrl_request* req) {
     // FIXME: Request leak may occur if underlying asynchronous event cannot be queued
     APPLICATION_THREAD_CONTEXT_ASYNC(processAppRequest(req));
     SPARK_ASSERT(appReqHandler_); // Checked in processRequest()
     appReqHandler_(req);
 }
 
-particle::SystemControl* particle::SystemControl::instance() {
+SystemControl* SystemControl::instance() {
     return &g_systemControl;
 }
 
+} // particle::system
+
+} // particle
+
 // System API
 int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* reserved) {
-    return SystemControl::instance()->setAppRequestHandler(handler);
+    return particle::system::SystemControl::instance()->setAppRequestHandler(handler);
 }
 
 int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved) {
-    return SystemControl::instance()->allocReplyData(req, size);
+    return particle::system::SystemControl::instance()->allocReplyData(req, size);
 }
 
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
-    SystemControl::instance()->freeRequestData(req);
+    particle::system::SystemControl::instance()->freeRequestData(req);
 }
 
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
-    SystemControl::instance()->setResult(req, result, handler, data);
+    particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
 #else // !SYSTEM_CONTROL_ENABLED

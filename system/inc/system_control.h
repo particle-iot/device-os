@@ -18,16 +18,15 @@
 #pragma once
 
 #include "usb_hal.h"
+#include "ble_hal.h"
 
 #include "system_error.h"
 
 #include <stdint.h>
 #include <stddef.h>
 
-// By default, the control requests functionality is available only if the platform supports USB
-// vendor requests, since, at the moment, it's the only control interface supported by the system
 #ifndef SYSTEM_CONTROL_ENABLED
-#ifdef USB_VENDOR_REQUEST_ENABLE
+#if defined(USB_VENDOR_REQUEST_ENABLE) || BLE_ENABLED
 #define SYSTEM_CONTROL_ENABLED 1
 #else
 #define SYSTEM_CONTROL_ENABLED 0

@@ -40,15 +40,6 @@ const auto SLOW_ADVERT_INTERVAL = MSEC_TO_UNITS(1000, UNIT_0_625_MS); // Slow mo
 const auto FAST_ADVERT_TIMEOUT = MSEC_TO_UNITS(180000, UNIT_10_MS); // Fast mode
 const auto SLOW_ADVERT_TIMEOUT = 0; // Advertise indefinitely (slow mode)
 
-// Size of the ATT opcode field in bytes
-const auto ATT_OPCODE_SIZE = 1;
-
-// Size of the ATT handle field in bytes
-const auto ATT_HANDLE_SIZE = 2;
-
-// Maximum size of an attribute's value in bytes
-const auto MAX_ATTR_VALUE_SIZE = NRF_SDH_BLE_GATT_MAX_MTU_SIZE - ATT_OPCODE_SIZE - ATT_HANDLE_SIZE;
-
 // Minimum acceptable connection interval in 1.25 ms units
 const auto MIN_CONN_INTERVAL = MSEC_TO_UNITS(20, UNIT_1_25_MS);
 
@@ -82,12 +73,12 @@ struct Service {
     ble_uuid_t uuid;
     uint16_t handle;
     Char chars[BLE_MAX_CHAR_COUNT];
-    size_t charCount;
+    uint16_t charCount;
 };
 
 struct Profile {
     Service services[BLE_MAX_SERVICE_COUNT];
-    size_t serviceCount;
+    uint16_t serviceCount;
     ble_event_callback callback;
     void* userData;
 };
@@ -299,7 +290,7 @@ int initTxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     attr.p_attr_md = &attrMd;
     attr.init_len = 1;
     attr.init_offs = 0;
-    attr.max_len = MAX_ATTR_VALUE_SIZE;
+    attr.max_len = BLE_MAX_ATTR_VALUE_SIZE;
     const uint32_t ret = sd_ble_gatts_characteristic_add(serviceHandle, &charMd, &attr, &chr->handles);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
@@ -331,7 +322,7 @@ int initRxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     attr.p_attr_md = &attrMd;
     attr.init_len = 1;
     attr.init_offs = 0;
-    attr.max_len = MAX_ATTR_VALUE_SIZE;
+    attr.max_len = BLE_MAX_ATTR_VALUE_SIZE;
     const uint32_t ret = sd_ble_gatts_characteristic_add(serviceHandle, &charMd, &attr, &chr->handles);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
@@ -556,7 +547,7 @@ int ble_get_char_param(uint16_t conn_handle, uint16_t char_handle, ble_char_para
     return 0;
 }
 
-int ble_set_char_value(uint16_t conn_handle, uint16_t char_handle, const char* data, size_t size, unsigned flags, void* reserved) {
+int ble_set_char_value(uint16_t conn_handle, uint16_t char_handle, const char* data, uint16_t size, unsigned flags, void* reserved) {
     if (flags & BLE_SET_CHAR_VALUE_FLAG_NOTIFY) {
         // Update value of the attribute and send a notification
         uint16_t n = size;
@@ -593,11 +584,11 @@ int ble_get_conn_param(uint16_t conn_handle, ble_conn_param* param, void* reserv
         return BLE_ERROR_INVALID_PARAM;
     }
     const uint16_t mtu = nrf_ble_gatt_eff_mtu_get(&g_gatt, conn_handle);
-    if (mtu == 0 || mtu <= ATT_OPCODE_SIZE + ATT_HANDLE_SIZE) {
+    if (mtu == 0 || mtu <= BLE_ATT_OPCODE_SIZE + BLE_ATT_HANDLE_SIZE) {
         LOG(ERROR, "nrf_ble_gatt_eff_mtu_get() failed");
         return BLE_ERROR_UNKNOWN;
     }
-    param->max_char_value_size = mtu - ATT_OPCODE_SIZE - ATT_HANDLE_SIZE;
+    param->max_char_value_size = mtu - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
     return 0;
 }
 

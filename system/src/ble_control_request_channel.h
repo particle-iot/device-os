@@ -17,21 +17,17 @@
 
 #pragma once
 
-#include "ble_hal.h"
-
-#if HAS_BLE_CONTROL_REQUEST_CHANNEL
-
 #include "system_control.h"
+
+#if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+
 #include "control_request_handler.h"
 
-#undef STATIC_ASSERT // FIXME
-
-#include "nrf_ble_gatt.h"
-#include "ble_advertising.h"
-#include "ble_conn_params.h"
-#include "ble.h"
-
 #include "app_fifo.h"
+
+#include <memory>
+
+static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
 
 namespace particle {
 
@@ -46,9 +42,7 @@ public:
     int init();
     void destroy();
 
-    int startAdvert();
-    void stopAdvert();
-
+    // TODO: Use a separate thread for the BLE channel loop
     int run();
 
     // ControlRequestChannel
@@ -56,64 +50,56 @@ public:
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
-    // FIXME
-    bool advertActive() const;
-    bool connected() const;
-
 private:
     // Request data
-    struct Req: ctrl_request {
-        Req* next; // Next request
+    struct Request: ctrl_request {
+        Request* next; // Next request
         int result; // Result code
         uint16_t id; // Request ID
     };
 
-    Req* pendingReqs_; // Pending requests
-    Req* readyReqs_; // Completed requests
+    Request* pendingReqs_; // Pending requests
+    Request* readyReqs_; // Completed requests
 
-    Req* recvReq_;
+    Request* sendReq_;
+    std::unique_ptr<uint8_t[]> sendBuf_;
+    size_t sendPos_;
+    bool headerSent_;
+
+    Request* recvReq_;
+    std::unique_ptr<uint8_t[]> recvBuf_;
     app_fifo_t recvFifo_;
-    uint8_t* recvBuf_;
-    size_t recvDataPos_;
+    size_t recvPos_;
+    bool headerRecvd_;
 
-    bool recvHeader_;
+    uint16_t sendCharHandle_;
+    uint16_t recvCharHandle_;
 
-    Req* sendReq_;
-    uint8_t* sendBuf_;
-    size_t sendDataPos_;
-    bool sendHeader_;
+    volatile uint16_t connHandle_;
+    volatile uint16_t maxCharValSize_;
+    volatile bool notifEnabled_;
+    volatile bool writable_;
 
-    int recvNext();
     int sendNext();
+    int receiveNext();
 
-    void onConnect(const ble_evt_t* event);
-    void onDisconnect(const ble_evt_t* event);
-    void onWrite(const ble_evt_t* event);
-    void onTxComplete(const ble_evt_t* event);
-    void bleEventHandler(const ble_evt_t* event);
+    void connected(const ble_connected_event_data& event);
+    void disconnected(const ble_disconnected_event_data& event);
+    void connParamChanged(const ble_conn_param_changed_event_data& event);
+    void charParamChanged(const ble_char_param_changed_event_data& event);
+    void dataSent(const ble_data_sent_event_data& event);
+    void dataReceived(const ble_data_received_event_data& event);
 
-    int initConnParam();
-    int initAdvert();
-    int initTxChar();
-    int initRxChar();
-    int initServices();
-    int initGatt();
-    int initGap();
-    int initBle();
+    int initProfile();
 
-    static void bleEventHandler(const ble_evt_t* event, void* data);
-    static void connParamEventHandler(ble_conn_params_evt_t* event);
-    static void connParamErrorHandler(uint32_t error);
-    static void advertEventHandler(ble_adv_evt_t event);
-    static void gattEventHandler(nrf_ble_gatt_t* gatt, const nrf_ble_gatt_evt_t* event);
-    static void qwrErrorHandler(uint32_t error);
+    static void processBleEvent(int event, const void* eventData, void* userData);
 
-    static Req* allocReq(size_t size = 0);
-    static Req* freeReq(Req* req);
+    static Request* allocRequest(size_t size = 0);
+    static Request* freeRequest(Request* req);
 };
 
 } // particle::system
 
 } // particle
 
-#endif // HAS_BLE_CONTROL_REQUEST_CHANNEL
+#endif // SYSTEM_CONTROL_ENABLED && BLE_ENABLED

@@ -19,6 +19,8 @@
 
 #include "ble_hal_impl.h"
 
+#include "system_error.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -27,21 +29,17 @@
 // API version
 #define BLE_API_VERSION 1
 
-#ifndef HAS_BLE_CONTROL_REQUEST_CHANNEL
-#define HAS_BLE_CONTROL_REQUEST_CHANNEL 1
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // BLE error codes
 typedef enum ble_error {
-    BLE_ERROR_UNKNOWN = -1,
-    BLE_ERROR_INVALID_PARAM = -2,
-    BLE_ERROR_INVALID_STATE = -3,
-    BLE_ERROR_NO_MEMORY = -4,
-    BLE_ERROR_BUSY = -5
+    BLE_ERROR_UNKNOWN = SYSTEM_ERROR_UNKNOWN,
+    BLE_ERROR_INVALID_PARAM = SYSTEM_ERROR_INVALID_ARGUMENT,
+    BLE_ERROR_INVALID_STATE = SYSTEM_ERROR_INVALID_STATE,
+    BLE_ERROR_NO_MEMORY = SYSTEM_ERROR_NO_MEMORY,
+    BLE_ERROR_BUSY = SYSTEM_ERROR_BUSY
 } ble_error;
 
 // BLE events
@@ -79,14 +77,14 @@ typedef struct ble_uuid {
 typedef struct ble_char {
     ble_uuid uuid;
     uint16_t type; // See `ble_char_type` enum
-    uint16_t handle;
+    uint16_t handle; // TODO: Use typedefs for all handle types defined by the HAL
 } ble_char;
 
 // Service
 typedef struct ble_service {
     ble_uuid uuid;
     ble_char* chars;
-    size_t char_count;
+    uint16_t char_count;
 } ble_service;
 
 // BLE_EVENT_CONNECTED event data
@@ -120,7 +118,7 @@ typedef struct ble_data_received_event_data {
     uint16_t conn_handle;
     uint16_t char_handle;
     const char* data;
-    size_t size;
+    uint16_t size;
 } ble_data_received_event_data;
 
 // Event handler callback
@@ -129,10 +127,9 @@ typedef void(*ble_event_callback)(int event, const void* event_data, void* user_
 // Profile
 typedef struct ble_profile {
     uint16_t version; // API version
-    uint16_t reserved;
-    const char* device_name;
+    uint16_t service_count;
     ble_service* services;
-    size_t service_count;
+    const char* device_name;
     ble_event_callback callback;
     void* user_data;
 } ble_profile;
@@ -159,7 +156,7 @@ int ble_start_advert(void* reserved);
 void ble_stop_advert(void* reserved);
 
 int ble_get_char_param(uint16_t conn_handle, uint16_t char_handle, ble_char_param* param, void* reserved);
-int ble_set_char_value(uint16_t conn_handle, uint16_t char_handle, const char* data, size_t size, unsigned flags, void* reserved);
+int ble_set_char_value(uint16_t conn_handle, uint16_t char_handle, const char* data, uint16_t size, unsigned flags, void* reserved);
 
 int ble_get_conn_param(uint16_t conn_handle, ble_conn_param* param, void* reserved);
 void ble_disconnect(uint16_t conn_handle, void* reserved);

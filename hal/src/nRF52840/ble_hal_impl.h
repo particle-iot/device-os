@@ -18,12 +18,40 @@
 #pragma once
 
 #include "ble_types.h" // For BLE_CONN_HANDLE_INVALID
+#include "ble_gatt.h"
 
+#include "sdk_config.h"
+
+#if !defined(NRF_SDH_BLE_GATT_MAX_MTU_SIZE) || (NRF_SDH_BLE_GATT_MAX_MTU_SIZE == 0)
+#error "NRF_SDH_BLE_GATT_MAX_MTU_SIZE is not defined"
+#endif
+
+// TODO: Move to an appropriate platform header
+#ifndef BLE_ENABLED
+#define BLE_ENABLED 1
+#endif
+
+// Invalid connection handle
 // TODO: Prefix all BLE HAL definitions with "hal_"
 #define BLE_INVALID_CONN_HANDLE BLE_CONN_HANDLE_INVALID
+
+// Invalid attribute handle
+#define BLE_INVALID_ATTR_HANDLE BLE_GATT_HANDLE_INVALID
+
+// Maximum number of peripheral connections
+#define BLE_MAX_PERIPH_CONN_COUNT NRF_SDH_BLE_PERIPHERAL_LINK_COUNT
 
 // Maximum number of services per profile
 #define BLE_MAX_SERVICE_COUNT 1
 
 // Maximum number of characteristics per service
 #define BLE_MAX_CHAR_COUNT 4
+
+// Size of the ATT opcode field in bytes
+#define BLE_ATT_OPCODE_SIZE 1
+
+// Size of the ATT handle field in bytes
+#define BLE_ATT_HANDLE_SIZE 2
+
+// Maximum size of an attribute's value in bytes
+#define BLE_MAX_ATTR_VALUE_SIZE (NRF_SDH_BLE_GATT_MAX_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)

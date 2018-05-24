@@ -32,7 +32,7 @@
 #include "system_mode.h"
 #include "system_power.h"
 
-#include "ble_control_request_channel.h"
+#include "ble_hal.h"
 
 using namespace particle;
 
@@ -286,10 +286,6 @@ protected:
 
     template<typename T> void start_listening(SystemSetupConsole<T>& console)
     {
-        static particle::system::BleControlRequestChannel chan(nullptr);
-        chan.init();
-        chan.startAdvert();
-
         LOG_NETWORK_STATE();
         WLAN_SMART_CONFIG_ACTIVE = 1;
         WLAN_SMART_CONFIG_FINISHED = 0;
@@ -305,6 +301,9 @@ protected:
             // mode blocks an application code from running
             LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
         }
+
+        // Start advertising
+        ble_start_advert(nullptr);
 
         on_start_listening();
         start_listening_timer_create();
@@ -362,6 +361,9 @@ protected:
             }
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
+
+        // Stop advertising
+        ble_stop_advert(nullptr);
 
         LED_SIGNAL_STOP(LISTENING_MODE);
 
