@@ -29,6 +29,7 @@
 #include "control/wifi.h"
 #include "control/config.h"
 #include "control/storage.h"
+#include "control/mesh.h"
 
 namespace particle {
 
@@ -272,6 +273,54 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_GET_SECTION_DATA_SIZE: {
         setResult(req, control::getSectionDataSizeRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_AUTH: {
+        setResult(req, ctrl::mesh::auth(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_CREATE_NETWORK: {
+        setResult(req, ctrl::mesh::createNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_START_COMMISSIONER: {
+        setResult(req, ctrl::mesh::startCommissioner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_STOP_COMMISSIONER: {
+        setResult(req, ctrl::mesh::stopCommissioner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_PREPARE_JOINER: {
+        setResult(req, ctrl::mesh::prepareJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_ADD_JOINER: {
+        setResult(req, ctrl::mesh::addJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_REMOVE_JOINER: {
+        setResult(req, ctrl::mesh::removeJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_JOIN_NETWORK: {
+        ctrl::mesh::joinNetwork(req);
+        break;
+    }
+    case CTRL_REQUEST_MESH_LEAVE_NETWORK: {
+        setResult(req, ctrl::mesh::leaveNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_GET_NETWORK_INFO: {
+        setResult(req, ctrl::mesh::getNetworkInfo(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_SCAN_NETWORKS: {
+        setResult(req, ctrl::mesh::scanNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_TEST: { // FIXME
+        setResult(req, ctrl::mesh::test(req));
         break;
     }
     default:
