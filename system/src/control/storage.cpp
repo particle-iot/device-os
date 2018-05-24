@@ -22,15 +22,18 @@
 #include "system_update.h"
 #include "common.h"
 
+#if PLATFORM_ID != 14
 #include "ota_flash_hal_stm32f2xx.h"
+#include "flash_storage_impl.h"
+#include "eeprom_emulation_impl.h"
+#include "dct.h"
+#endif
+
 #include "eeprom_hal.h"
 
 #include "protocol_defs.h" // For UpdateFlag enum
 #include "nanopb_misc.h"
 
-#include "flash_storage_impl.h"
-#include "eeprom_emulation_impl.h"
-#include "dct.h"
 #include "platforms.h"
 
 #include "storage.pb.h"
@@ -41,7 +44,8 @@
 // newly introduced platform
 #if PLATFORM_ID != PLATFORM_PHOTON_PRODUCTION && \
     PLATFORM_ID != PLATFORM_P1 && \
-    PLATFORM_ID != PLATFORM_ELECTRON_PRODUCTION
+    PLATFORM_ID != PLATFORM_ELECTRON_PRODUCTION && \
+    PLATFORM_ID != 14
 #error "Unsupported platform"
 #endif
 
@@ -53,6 +57,8 @@
 namespace particle {
 
 namespace control {
+
+#if PLATFORM_ID != 14
 
 using namespace protocol;
 using namespace common;
@@ -488,6 +494,46 @@ int getSectionDataSizeRequest(ctrl_request* req) {
     }
     return 0;
 }
+
+#else // PLATFORM_ID == 14
+
+// TODO
+int startFirmwareUpdateRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+void finishFirmwareUpdateRequest(ctrl_request*) {
+}
+
+int cancelFirmwareUpdateRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int firmwareUpdateDataRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int describeStorageRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int readSectionDataRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int writeSectionDataRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int clearSectionDataRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int getSectionDataSizeRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif
 
 } // namespace particle::control
 

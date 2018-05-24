@@ -24,14 +24,21 @@
 #include <cstdio>
 
 #include "core_hal.h"
-#include "ota_flash_hal_stm32f2xx.h"
 #include "system_cloud_internal.h"
 
+#if PLATFORM_ID != 14
+#include "ota_flash_hal_stm32f2xx.h"
+#endif
+
 namespace particle {
+
 namespace control {
+
 namespace config {
 
 using namespace particle::control::common;
+
+#if PLATFORM_ID != 14
 
 int handleSetClaimCodeRequest(ctrl_request* req) {
     particle_ctrl_SetClaimCodeRequest pbReq = {};
@@ -180,6 +187,59 @@ int handleSetSoftapSsidRequest(ctrl_request* req) {
     return ret;
 }
 
-} } } /* namespace particle::control::config */
+#else // PLATFORM_ID == 14
 
-#endif /* #if SYSTEM_CONTROL_ENABLED */
+// TODO
+int handleSetClaimCodeRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleIsClaimedRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetSecurityKeyRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleGetSecurityKeyRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetServerAddressRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleGetServerAddressRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetServerProtocolRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleGetServerProtocolRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleStartNyanRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleStopNyanRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetSoftapSsidRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif
+
+} // particle::control::config
+
+} // particle::control
+
+} // particle
+
+#endif // SYSTEM_CONTROL_ENABLED
