@@ -220,11 +220,6 @@ void processGattEvent(nrf_ble_gatt_t* gatt, const nrf_ble_gatt_evt_t* event) {
     }
 }
 
-// FIXME: Move to appropriate place
-void processSocEvent(uint32_t sys_evt, void *p_context) {
-    // PlatformSoftdeviceSocEvtHandler(sys_evt);
-}
-
 int halError(uint32_t error) {
     switch (error) {
     case NRF_ERROR_NO_MEM:
@@ -455,8 +450,6 @@ int ble_init(void* reserved) {
     }
     // Register a handler for BLE events
     NRF_SDH_BLE_OBSERVER(bleObserver, BLE_OBSERVER_PRIO, processBleEvent, nullptr);
-    // Register a handler for SOC events
-    NRF_SDH_SOC_OBSERVER(socObserver, NRF_SDH_SOC_STACK_OBSERVER_PRIO, processSocEvent, nullptr);
     return 0;
 }
 
@@ -540,7 +533,7 @@ int ble_get_char_param(uint16_t conn_handle, uint16_t char_handle, ble_char_para
     val.offset = 0;
     const uint32_t ret = sd_ble_gatts_value_get(conn_handle, chr->handles.cccd_handle, &val);
     if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gatts_value_get() failed: %u", (unsigned)ret);
+        // LOG(ERROR, "sd_ble_gatts_value_get() failed: %u", (unsigned)ret);
         return halError(ret);
     }
     param->notif_enabled = ble_srv_is_notification_enabled(val.p_value);

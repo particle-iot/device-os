@@ -143,6 +143,7 @@ int BleControlRequestChannel::run() {
         if (ret != 0) {
             LOG(ERROR, "Connection error");
             ble_disconnect(connHandle_, nullptr);
+            connHandle_ = BLE_INVALID_CONN_HANDLE;
             return ret;
         }
     }
@@ -310,6 +311,7 @@ void BleControlRequestChannel::connParamChanged(const ble_conn_param_changed_eve
     } else {
         LOG(ERROR, "Unable to get connection parameters");
         ble_disconnect(connHandle_, nullptr);
+        connHandle_ = BLE_INVALID_CONN_HANDLE;
     }
 }
 
@@ -323,6 +325,7 @@ void BleControlRequestChannel::charParamChanged(const ble_char_param_changed_eve
         } else {
             LOG(ERROR, "Unable to get characteristic parameters");
             ble_disconnect(connHandle_, nullptr);
+            connHandle_ = BLE_INVALID_CONN_HANDLE;
         }
     }
 }
@@ -340,11 +343,14 @@ void BleControlRequestChannel::dataReceived(const ble_data_received_event_data& 
         if (ret != NRF_SUCCESS) {
             LOG(ERROR, "app_fifo_write() failed: %u", (unsigned)ret);
             ble_disconnect(connHandle_, nullptr);
+            connHandle_ = BLE_INVALID_CONN_HANDLE;
         }
         if (size != event.size) {
             LOG(ERROR, "Incomplete write, increase buffer size");
             ble_disconnect(connHandle_, nullptr);
+            connHandle_ = BLE_INVALID_CONN_HANDLE;
         }
+        LOG(TRACE, "%u bytes received", (unsigned)event.size);
     }
 }
 
@@ -375,7 +381,7 @@ int BleControlRequestChannel::initProfile() {
     // Initialize profile
     ble_profile profile = {};
     profile.version = BLE_API_VERSION;
-    profile.device_name = "Xenon"; // FIXME
+    profile.device_name = "RealXenon"; // FIXME
     profile.services = services;
     profile.service_count = sizeof(services) / sizeof(services[0]);
     profile.callback = processBleEvent;

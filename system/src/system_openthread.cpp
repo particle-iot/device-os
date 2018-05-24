@@ -17,8 +17,10 @@
 
 #include "system_openthread.h"
 
-#include "logging.h"
 #include "system_error.h"
+#include "logging.h"
+
+#include "openthread-core-config.h"
 
 #include "openthread/openthread.h"
 #include "openthread/thread.h"
@@ -26,6 +28,14 @@
 #include "openthread/commissioner.h"
 #include "openthread/joiner.h"
 #include "openthread/platform.h"
+
+extern "C" {
+
+#include "openthread/platform-softdevice.h"
+
+}
+
+#include "nrf_sdh_soc.h"
 
 #define CHECK_THREAD(_expr) \
         do { \
@@ -179,11 +189,29 @@ void threadStateChanged(uint32_t flags, void* data) {
     }
 }
 
+otInstance* allocInstance() {
+#if OPENTHREAD_ENABLE_MULTIPLE_INSTANCES
+    size_t size = 0;
+    otInstanceInit(nullptr, &size);
+    void* const buf = calloc(1, size);
+    if (!buf) {
+        return nullptr;
+    }
+    return otInstanceInit(buf, &size);
+#else
+    return otInstanceInitSingle();
+#endif
+}
+
+void processSocEvent(uint32_t event, void* data) {
+    PlatformSoftdeviceSocEvtHandler(event);
+}
+
 } // particle::system::
 
 int threadInit() {
     PlatformInit(0, nullptr);
-    otInstance* const thread = otInstanceInitSingle();
+    otInstance* const thread = allocInstance();
     if (!thread) {
         LOG(ERROR, "Unable to initialize OpenThread");
         return SYSTEM_ERROR_UNKNOWN;
@@ -203,6 +231,8 @@ int threadInit() {
         LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(thread));
         LOG(INFO, "802.15.4 PAN ID: 0x%04x", (unsigned)otLinkGetPanId(thread));
     }
+    // Register a handler for SOC events
+    NRF_SDH_SOC_OBSERVER(socObserver, NRF_SDH_SOC_STACK_OBSERVER_PRIO, processSocEvent, nullptr);
     g_thread = thread;
     return 0;
 }

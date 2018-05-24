@@ -42,6 +42,10 @@ public:
     void freeRequestData(ctrl_request* req);
     void setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler = nullptr, void* data = nullptr);
 
+    // TODO: Use a separate thread for the BLE channel loop
+    int init();
+    int run();
+
     // ControlRequestHandler
     virtual void processRequest(ctrl_request* req, ControlRequestChannel* channel) override;
 

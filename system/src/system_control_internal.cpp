@@ -81,11 +81,23 @@ SystemControl::SystemControl() :
         bleChannel_(this),
 #endif
         appReqHandler_(nullptr) {
+}
+
+int SystemControl::init() {
 #if BLE_ENABLED
-    if (bleChannel_.init() != 0) {
-        LOG(ERROR, "Unable to initialize BLE control request channel");
+    const int ret = bleChannel_.init();
+    if (ret != 0) {
+        return ret;
     }
 #endif
+    return 0;
+}
+
+int SystemControl::run() {
+#if BLE_ENABLED
+    return bleChannel_.run();
+#endif
+    return 0;
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
