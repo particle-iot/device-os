@@ -17,6 +17,8 @@
 
 #include "mesh.h"
 
+#if SYSTEM_CONTROL_ENABLED
+
 #include "system_openthread.h"
 
 #include "common.h"
@@ -382,3 +384,5 @@ int test(ctrl_request* req) {
 } // particle::ctrl
 
 } // particle
+
+#endif // SYSTEM_CONTROL_ENABLED

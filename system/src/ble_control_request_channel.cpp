@@ -19,6 +19,8 @@
 
 #if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
 
+LOG_SOURCE_CATEGORY("system.ctrl.ble");
+
 namespace particle {
 
 namespace system {
@@ -44,7 +46,10 @@ const unsigned RECV_CHAR_UUID = 0x0004;
 const unsigned SEND_BUF_SIZE = BLE_MAX_ATTR_VALUE_SIZE;
 
 // Size of the buffer for request data
-const unsigned RECV_BUF_SIZE = BLE_MAX_ATTR_VALUE_SIZE * 4;
+const unsigned RECV_BUF_SIZE = 512; // Should be a power of two
+
+static_assert(SEND_BUF_SIZE >= BLE_MAX_ATTR_VALUE_SIZE && RECV_BUF_SIZE >= BLE_MAX_ATTR_VALUE_SIZE,
+        "Invalid buffer size");
 
 struct __attribute__((packed)) RequestHeader {
     uint16_t id;
@@ -221,9 +226,11 @@ int BleControlRequestChannel::sendNext() {
         writable_ = false; // Retry later
         return 0;
     }
-    if (ret != 0) {
+    if (ret != size) {
+        LOG(ERROR, "ble_set_char_value() failed: %d", ret);
         return ret;
     }
+    LOG_DEBUG(TRACE, "%u bytes sent", (unsigned)size);
     sendPos_ += dataSize;
     if (sendPos_ == sendReq_->reply_size) {
         freeRequest(sendReq_);
@@ -350,7 +357,7 @@ void BleControlRequestChannel::dataReceived(const ble_data_received_event_data& 
             ble_disconnect(connHandle_, nullptr);
             connHandle_ = BLE_INVALID_CONN_HANDLE;
         }
-        LOG(TRACE, "%u bytes received", (unsigned)event.size);
+        LOG_DEBUG(TRACE, "%u bytes received", (unsigned)event.size);
     }
 }
 
@@ -362,28 +369,27 @@ int BleControlRequestChannel::initProfile() {
         return ret;
     }
     // Characteristics
-    ble_char sendChar = {};
+    ble_char chars[2] = {};
+    ble_char& sendChar = chars[0];
     sendChar.uuid.type = uuidType;
     sendChar.uuid.uuid = SEND_CHAR_UUID;
     sendChar.type = BLE_CHAR_TYPE_TX;
-    ble_char recvChar = {};
+    ble_char& recvChar = chars[1];
     recvChar.uuid.type = uuidType;
     recvChar.uuid.uuid = RECV_CHAR_UUID;
     recvChar.type = BLE_CHAR_TYPE_RX;
-    ble_char chars[] = { sendChar, recvChar };
     // Services
     ble_service ctrlService = {};
     ctrlService.uuid.type = uuidType;
     ctrlService.uuid.uuid = CTRL_SERVICE_UUID;
     ctrlService.chars = chars;
     ctrlService.char_count = sizeof(chars) / sizeof(chars[0]);
-    ble_service services[] = { ctrlService };
     // Initialize profile
     ble_profile profile = {};
     profile.version = BLE_API_VERSION;
     profile.device_name = "RealXenon"; // FIXME
-    profile.services = services;
-    profile.service_count = sizeof(services) / sizeof(services[0]);
+    profile.services = &ctrlService;
+    profile.service_count = 1;
     profile.callback = processBleEvent;
     profile.user_data = this;
     ret = ble_init_profile(&profile, nullptr);
