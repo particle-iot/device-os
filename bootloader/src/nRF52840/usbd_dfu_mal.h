@@ -20,6 +20,20 @@
 
 #include "usbd_dfu.h"
 
+
+#define INTERNAL_FLASH_START_ADD        0x00000000
+#define INTERNAL_FLASH_END_ADDR         0x00100000
+#define INTERNAL_FLASH_IF_STRING        "@Internal Flash   /0x00000000/1*004Ka,47*004Kg,192*004Kg,4*004Kg,4*004Kg,8*004Ka";
+
+#define DCD_START_ADD                   0x00000000
+#define DCD_END_ADDR                    0x00004000
+#define DCD_IF_STRING                   "@DCD Flash   /0x00000000/1*016Ke";
+
+#define EXTERNAL_FLASH_START_ADD        0x00000000
+#define EXTERNAL_FLASH_END_ADDR         0x00400000
+#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x00000000/1024*004Kg";
+
+
 namespace particle { namespace usbd { namespace dfu { namespace mal {
 
 namespace dfu = ::particle::usbd::dfu;

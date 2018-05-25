@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include "hw_config.h"
+#include "dct.h"
 #include "nrf52840.h"
 #include "service_debug.h"
 /* This is a legacy header */
@@ -33,6 +34,11 @@
 
 #include "rgbled.h"
 #include "rgbled_hal_impl.h"
+
+#include "flash_hal.h"
+#include "exflash_hal.h"
+
+#include "crc32.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -102,7 +108,6 @@ static void DWT_Init(void)
  */
 void Set_System(void)
 {
-#ifndef SOFTDEVICE_PRESENT
     ret_code_t ret = nrf_drv_clock_init();
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
@@ -120,11 +125,10 @@ void Set_System(void)
 
     ret = nrf_drv_power_init(NULL);
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
-#endif /* SOFTDEVICE_PRESENT */
 
     DWT_Init();
 
-    /* Configure RTC0 for BUTTON-DEBOUNCE usage */
+    /* Configure RTC1 for BUTTON-DEBOUNCE usage */
     UI_Timer_Configure();
 
     /* Configure the LEDs and set the default states */
@@ -136,18 +140,17 @@ void Set_System(void)
 
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+
+    hal_flash_init();
+    hal_exflash_init();
 }
 
 void Reset_System(void) {
     __DSB();
 
-    sd_nvic_DisableIRQ(SysTick_IRQn);
     SysTick_Disable();
 
-    sd_nvic_ClearPendingIRQ(SysTick_IRQn);
-    sd_nvic_SetPriority(SysTick_IRQn, 0);
-
-    sd_nvic_DisableIRQ(RTC0_IRQn);
+    sd_nvic_DisableIRQ(RTC1_IRQn);
 
     uint32_t mask = NRF_RTC_INT_TICK_MASK     |
                 NRF_RTC_INT_OVERFLOW_MASK |
@@ -156,14 +159,14 @@ void Reset_System(void) {
                 NRF_RTC_INT_COMPARE2_MASK |
                 NRF_RTC_INT_COMPARE3_MASK;
 
-    nrf_rtc_task_trigger(NRF_RTC0, NRF_RTC_TASK_STOP);
+    nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_STOP);
 
-    nrf_rtc_int_disable(NRF_RTC0, mask);
-    nrf_rtc_event_disable(NRF_RTC0, mask);
-    nrf_rtc_event_clear(NRF_RTC0, mask);
+    nrf_rtc_int_disable(NRF_RTC1, mask);
+    nrf_rtc_event_disable(NRF_RTC1, mask);
+    nrf_rtc_event_clear(NRF_RTC1, mask);
 
-    sd_nvic_ClearPendingIRQ(RTC0_IRQn);
-    sd_nvic_SetPriority(RTC0_IRQn, 0);
+    sd_nvic_ClearPendingIRQ(RTC1_IRQn);
+    sd_nvic_SetPriority(RTC1_IRQn, 0);
 
     __DSB();
 }
@@ -229,13 +232,13 @@ void Finish_Update() {
 
 void UI_Timer_Configure(void)
 {
-    nrf_rtc_prescaler_set(NRF_RTC0, RTC_FREQ_TO_PRESCALER(UI_TIMER_FREQUENCY));
+    nrf_rtc_prescaler_set(NRF_RTC1, RTC_FREQ_TO_PRESCALER(UI_TIMER_FREQUENCY));
 
-    nrf_rtc_event_clear(NRF_RTC0, NRF_RTC_EVENT_TICK);
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
 
-    nrf_rtc_event_enable(NRF_RTC0, NRF_RTC_EVENT_TICK);
+    nrf_rtc_event_enable(NRF_RTC1, NRF_RTC_EVENT_TICK);
 
-    nrf_rtc_task_trigger(NRF_RTC0, NRF_RTC_TASK_START);
+    nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_START);
 }
 
 static void RGB_PWM_Config(void)
@@ -320,8 +323,8 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        /* Disable RTC0 tick Interrupt */
-        nrf_rtc_int_disable(NRF_RTC0, NRF_RTC_INT_TICK_MASK);
+        /* Disable RTC1 tick Interrupt */
+        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
 
         BUTTON_EXTI_Config(Button, ENABLE);
 
@@ -329,10 +332,10 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
         sd_nvic_ClearPendingIRQ(HAL_Buttons[Button].nvic_irqn);
         sd_nvic_EnableIRQ(HAL_Buttons[Button].nvic_irqn);
 
-        /* Enable the RTC0 NVIC Interrupt */
-        sd_nvic_SetPriority(RTC0_IRQn, RTC0_IRQ_PRIORITY);
-        sd_nvic_ClearPendingIRQ(RTC0_IRQn);
-        sd_nvic_EnableIRQ(RTC0_IRQn);
+        /* Enable the RTC1 NVIC Interrupt */
+        sd_nvic_SetPriority(RTC1_IRQn, RTC1_IRQ_PRIORITY);
+        sd_nvic_ClearPendingIRQ(RTC1_IRQn);
+        sd_nvic_EnableIRQ(RTC1_IRQn);
     }
 }
 
@@ -383,4 +386,52 @@ uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
 void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 {
     HAL_Buttons[Button].debounce_time = 0;
+}
+
+platform_system_flags_t system_flags;
+
+void Load_SystemFlags()
+{
+    dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &system_flags, sizeof(platform_system_flags_t));
+}
+
+void Save_SystemFlags()
+{
+    dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, sizeof(platform_system_flags_t));
+}
+
+bool OTA_Flashed_GetStatus(void)
+{
+    if(system_flags.OTA_FLASHED_Status_SysFlag == 0x0001)
+        return true;
+    else
+        return false;
+}
+
+void OTA_Flashed_ResetStatus(void)
+{
+    system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
+    Save_SystemFlags();
+}
+
+uint16_t Bootloader_Get_Version(void)
+{
+    return system_flags.Bootloader_Version_SysFlag;
+}
+
+void Bootloader_Update_Version(uint16_t bootloaderVersion)
+{
+    system_flags.Bootloader_Version_SysFlag = bootloaderVersion;
+    Save_SystemFlags();
+}
+
+/**
+ * @brief  Computes the 32-bit CRC of a given buffer of byte data.
+ * @param  pBuffer: pointer to the buffer containing the data to be computed
+ * @param  BufferSize: Size of the buffer to be computed
+ * @retval 32-bit CRC
+ */
+uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize, uint32_t const *p_crc)
+{
+    return crc32_compute((uint8_t*)pBuffer, bufferSize, p_crc);
 }

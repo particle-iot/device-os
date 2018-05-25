@@ -1277,7 +1277,7 @@
 // <4=> Read4IO
 
 #ifndef NRFX_QSPI_CONFIG_READOC
-#define NRFX_QSPI_CONFIG_READOC 0
+#define NRFX_QSPI_CONFIG_READOC 4
 #endif
 
 // <o> NRFX_QSPI_CONFIG_WRITEOC  - Number of data lines and opcode used for writing.
@@ -1288,7 +1288,7 @@
 // <3=> PP4IO
 
 #ifndef NRFX_QSPI_CONFIG_WRITEOC
-#define NRFX_QSPI_CONFIG_WRITEOC 0
+#define NRFX_QSPI_CONFIG_WRITEOC 3
 #endif
 
 // <o> NRFX_QSPI_CONFIG_ADDRMODE  - Addressing mode.
@@ -1329,52 +1329,7 @@
 // <15=> 32MHz/16
 
 #ifndef NRFX_QSPI_CONFIG_FREQUENCY
-#define NRFX_QSPI_CONFIG_FREQUENCY 15
-#endif
-
-// <s> NRFX_QSPI_PIN_SCK - SCK pin value.
-#ifndef NRFX_QSPI_PIN_SCK
-#define NRFX_QSPI_PIN_SCK NRF_QSPI_PIN_NOT_CONNECTED
-#endif
-
-// <s> NRFX_QSPI_PIN_CSN - CSN pin value.
-#ifndef NRFX_QSPI_PIN_CSN
-#define NRFX_QSPI_PIN_CSN NRF_QSPI_PIN_NOT_CONNECTED
-#endif
-
-// <s> NRFX_QSPI_PIN_IO0 - IO0 pin value.
-#ifndef NRFX_QSPI_PIN_IO0
-#define NRFX_QSPI_PIN_IO0 NRF_QSPI_PIN_NOT_CONNECTED
-#endif
-
-// <s> NRFX_QSPI_PIN_IO1 - IO1 pin value.
-#ifndef NRFX_QSPI_PIN_IO1
-#define NRFX_QSPI_PIN_IO1 NRF_QSPI_PIN_NOT_CONNECTED
-#endif
-
-// <s> NRFX_QSPI_PIN_IO2 - IO2 pin value.
-#ifndef NRFX_QSPI_PIN_IO2
-#define NRFX_QSPI_PIN_IO2 NRF_QSPI_PIN_NOT_CONNECTED
-#endif
-
-// <s> NRFX_QSPI_PIN_IO3 - IO3 pin value.
-#ifndef NRFX_QSPI_PIN_IO3
-#define NRFX_QSPI_PIN_IO3 NRF_QSPI_PIN_NOT_CONNECTED
-#endif
-
-// <o> NRFX_QSPI_CONFIG_IRQ_PRIORITY  - Interrupt priority
-
-// <0=> 0 (highest)
-// <1=> 1
-// <2=> 2
-// <3=> 3
-// <4=> 4
-// <5=> 5
-// <6=> 6
-// <7=> 7
-
-#ifndef NRFX_QSPI_CONFIG_IRQ_PRIORITY
-#define NRFX_QSPI_CONFIG_IRQ_PRIORITY 7
+#define NRFX_QSPI_CONFIG_FREQUENCY 0
 #endif
 
 // </e>
@@ -1462,7 +1417,7 @@
 // <e> NRFX_RTC_ENABLED - nrfx_rtc - RTC peripheral driver
 //==========================================================
 #ifndef NRFX_RTC_ENABLED
-#define NRFX_RTC_ENABLED 1
+#define NRFX_RTC_ENABLED 0
 #endif
 // <q> NRFX_RTC0_ENABLED  - Enable RTC0 instance
 
@@ -1476,7 +1431,7 @@
 
 
 #ifndef NRFX_RTC1_ENABLED
-#define NRFX_RTC1_ENABLED 1
+#define NRFX_RTC1_ENABLED 0
 #endif
 
 // <q> NRFX_RTC2_ENABLED  - Enable RTC2 instance
@@ -2978,9 +2933,46 @@
 #define NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
 #endif
 
+
 #ifndef NRF_DRV_USBD_ERRATA_ENABLE
 #define NRF_DRV_USBD_ERRATA_ENABLE (1)
 #endif
+
+
+#ifndef NRF_FSTORAGE_ENABLED
+#define NRF_FSTORAGE_ENABLED 1
+#endif
+
+#define NRF_FSTORAGE_SD_MAX_WRITE_SIZE (4096)
+
+#define NRF_FSTORAGE_SD_QUEUE_SIZE (4)
+
+#define NRF_FSTORAGE_SD_MAX_RETRIES 8
+
+#define NRF_ATFIFO_CONFIG_LOG_ENABLED 0
+
+// <i> Common settings to all fstorage implementations
+//==========================================================
+// <q> NRF_FSTORAGE_PARAM_CHECK_DISABLED  - Disable user input validation
+
+
+// <i> If selected, use ASSERT to validate user input.
+// <i> This effectively removes user input validation in production code.
+// <i> Recommended setting: OFF, only enable this setting if size is a major concern.
+
+#ifndef NRF_FSTORAGE_PARAM_CHECK_DISABLED
+#define NRF_FSTORAGE_PARAM_CHECK_DISABLED 0
+#endif
+
+#ifndef NRF_LOG_ENABLED
+#define NRF_LOG_ENABLED 0
+#endif
+
+// <q> CRC32_ENABLED  - crc32 - CRC32 calculation routines
+#ifndef CRC32_ENABLED
+#define CRC32_ENABLED 1
+#endif
+
 
 /* Legacy config */
 #include "sdk_config.h"

@@ -74,6 +74,25 @@
 #define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
+
+// QSPI Flash
+#if PLATFORM_ID == PLATFORM_ARGON || \
+    PLATFORM_ID == PLATFORM_BORON || \
+    PLATFORM_ID == PLATFORM_XENON
+#define QSPI_FLASH_SCK_PIN                  19
+#define QSPI_FLASH_CSN_PIN                  17
+#define QSPI_FLASH_IO0_PIN                  20
+#define QSPI_FLASH_IO1_PIN                  21
+#define QSPI_FLASH_IO2_PIN                  22
+#define QSPI_FLASH_IO3_PIN                  23
+#define QSPI_FLASH_IRQ_PRIORITY             7
+
+#define USE_SERIAL_FLASH
+#define sFLASH_PAGESIZE                     0x1000 /* 4096 bytes sector size that needs to be erased */
+#define sFLASH_PAGECOUNT                    1024   /* 4MByte storage */
+#endif
+
+
 // todo - add this later #define FLASH_UPDATE_MODULES
 
 //NVIC Priorities based on NVIC_PriorityGroup_4
@@ -91,7 +110,7 @@
 #define RTC_WKUP_IRQ_PRIORITY               4       //RTC Seconds Interrupt
 #define USART1_IRQ_PRIORITY                 5       //USART1 Interrupt
 #define USART2_IRQ_PRIORITY                 5       //USART2 Interrupt
-#define RTC0_IRQ_PRIORITY                   5       //RTC0 Interrupt
+#define RTC1_IRQ_PRIORITY                   5       //RTC1 Interrupt
 #define SYSTICK_IRQ_PRIORITY                13      //CORTEX_M3 Systick Interrupt
 #define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
 #define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt

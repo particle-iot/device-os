@@ -16,22 +16,27 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
+#pragma once
 
-#include "dct_hal.h"
+#include <stdint.h>
+#include <stddef.h>
 
-void platform_startup()
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-}
+// Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
+const void* dct_read_app_data(uint32_t offset);
 
-/* Define caddr_t as char* */
-#include <sys/types.h>
-#include <errno.h>
-#include <malloc.h>
-/* Define abort() */
-#include <stdlib.h>
+int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size);
+const void* dct_read_app_data_lock(uint32_t offset);
+int dct_read_app_data_unlock(uint32_t offset);
 
-__attribute__((used)) caddr_t _sbrk(int incr)
-{
-   return 0;
-}
+int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
+
+int dct_lock(int write);
+int dct_unlock(int write);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

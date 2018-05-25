@@ -15,10 +15,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-int dct_lock(int write) {
-    return 0;
-}
+#ifndef NRF_LOG_INSTANCE_H
+#define NRF_LOG_INSTANCE_H
 
-int dct_unlock(int write) {
-    return 0;
-}
+#define NRF_LOG_INSTANCE_PTR_DECLARE(_p_name)
+#define NRF_LOG_INSTANCE_REGISTER(_module_name, _inst_name, info_color, debug_color, _initial_lvl, compiled_lvl)
+#define NRF_LOG_INSTANCE_PTR_INIT(_p_name, _module_name, _inst_name)
+
+#endif /* NRF_LOG_INSTANCE_H */

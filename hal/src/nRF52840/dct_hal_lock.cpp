@@ -15,10 +15,41 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "dct_hal.h"
+#include "interrupts_hal.h"
+#include "static_recursive_mutex.h"
+
+namespace {
+
+#ifdef DEBUG_BUILD
+#define DCT_LOCK_TIMEOUT 30000
+int dctLockCounter = 0;
+#else
+#define DCT_LOCK_TIMEOUT 0 // Wait indefinitely
+#endif
+
+StaticRecursiveMutex dctLock;
+
+} // namespace
+
 int dct_lock(int write) {
-    return 0;
+    SPARK_ASSERT(!HAL_IsISR());
+    const bool ok = dctLock.lock(DCT_LOCK_TIMEOUT);
+    SPARK_ASSERT(ok);
+#ifdef DEBUG_BUILD
+    ++dctLockCounter;
+    SPARK_ASSERT(dctLockCounter == 1 || !write);
+#endif
+    return !ok;
 }
 
 int dct_unlock(int write) {
-    return 0;
+    SPARK_ASSERT(!HAL_IsISR());
+    const bool ok = dctLock.unlock();
+    SPARK_ASSERT(ok);
+#ifdef DEBUG_BUILD
+    --dctLockCounter;
+    SPARK_ASSERT(dctLockCounter == 0 || !write);
+#endif
+    return !ok;
 }

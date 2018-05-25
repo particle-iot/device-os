@@ -29,6 +29,7 @@
 
 #include "hw_config.h"
 #include "flash_device_hal.h"
+#include "flash_hal.h"
 #include "module_info.h"
 #include "module_info_hal.h"
 

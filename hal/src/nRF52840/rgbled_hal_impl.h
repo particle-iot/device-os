@@ -49,6 +49,7 @@ typedef struct led_config_t {
         };
         uint8_t flags;
     };
+    uint8_t padding[14];
 } led_config_t;
 
 #ifdef  __cplusplus

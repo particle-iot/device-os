@@ -78,10 +78,6 @@
 #define USBD_CONFIG_LOG_ENABLED 0
 #endif
 
-#ifndef NRF_LOG_DEBUG
-#define NRF_LOG_DEBUG(format, ...)
-#endif
-
 #ifdef SOFTDEVICE_PRESENT
 
 #ifndef NRF_SDH_SOC_ENABLED
@@ -109,7 +105,7 @@
 #endif
 
 #ifndef NRF_SDH_DISPATCH_MODEL
-#define NRF_SDH_DISPATCH_MODEL 2
+#define NRF_SDH_DISPATCH_MODEL NRF_SDH_DISPATCH_MODEL_INTERRUPT
 #endif
 
 #ifndef NRF_SDH_CLOCK_LF_SRC

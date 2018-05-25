@@ -17,21 +17,24 @@
  ******************************************************************************
  */
 
-#include "dct_hal.h"
+#pragma once
 
-void platform_startup()
+#include "dcd.h"
+#include "flash_storage_impl.h"
+
+template <typename Store, unsigned sectorSize, unsigned DCD1, unsigned DCD2, uint32_t(*calculateCRC)(const void* data, size_t len)>
+class UpdateDCD : public DCD<Store, sectorSize, DCD1, DCD2, calculateCRC>
 {
+public:
+    using base = DCD<Store, sectorSize, DCD1, DCD2, calculateCRC>;
+    using Sector = typename base::Sector;
 
-}
+    UpdateDCD()
+    {
+    }
 
-/* Define caddr_t as char* */
-#include <sys/types.h>
-#include <errno.h>
-#include <malloc.h>
-/* Define abort() */
-#include <stdlib.h>
-
-__attribute__((used)) caddr_t _sbrk(int incr)
-{
-   return 0;
-}
+    inline bool isCurrent(const uint8_t* sector)
+    {
+        return sector[8]==0 && sector[9]==1;
+    }
+};

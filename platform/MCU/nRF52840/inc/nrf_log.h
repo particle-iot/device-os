@@ -19,17 +19,27 @@
 #define NRF_LOG_H
 
 #include "nrfx_log.h"
+#include "logging.h"
 
 #ifndef NRF_LOG_MODULE_REGISTER
 #define NRF_LOG_MODULE_REGISTER()
 #endif /* NRF_LOG_MODULE_REGISTER */
 
-#ifndef NRF_LOG_INFO
-#define NRF_LOG_INFO(a, b, c)
-#endif /* NRF_LOG_INFO */
+#ifndef NRF_LOG_ERROR_STRING_GET
+#define NRF_LOG_ERROR_STRING_GET(code) ""
+#endif
 
-#ifndef NRF_LOG_WARNING
-#define NRF_LOG_WARNING(a, b, c)
-#endif /* NRF_LOG_WARNING */
+
+#define NRF_LOG_INIT()
+#define NRF_LOG_DEBUG(...)            LOG_DEBUG(TRACE, __VA_ARGS__)
+#define NRF_LOG_INFO(...)             LOG_DEBUG(INFO, __VA_ARGS__)
+#define NRF_LOG_WARNING(...)          LOG_DEBUG(WARN, __VA_ARGS__)
+#define NRF_LOG_ERROR(...)            LOG_DEBUG(ERROR, __VA_ARGS__)
+
+#define NRF_LOG_INST_ERROR(p_inst, ...)         NRF_LOG_ERROR(__VA_ARGS__)
+#define NRF_LOG_INST_WARNING(p_inst, ...)       NRF_LOG_WARNING(__VA_ARGS__)
+#define NRF_LOG_INST_INFO(p_inst, ...)          NRF_LOG_INFO(__VA_ARGS__)
+#define NRF_LOG_INST_DEBUG(p_inst, ...)         NRF_LOG_DEBUG(__VA_ARGS__)
+
 
 #endif /* NRF_LOG_H */
