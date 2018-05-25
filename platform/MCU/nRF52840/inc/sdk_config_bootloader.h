@@ -24,9 +24,7 @@
 
 #define NRFX_GPIOTE_ENABLED 0
 
-#define NRFX_RTC0_ENABLED 0 // Used by SoftDevice
-#define NRFX_RTC1_ENABLED 1
-#define NRFX_RTC2_ENABLED 0 // FIXME: Used by OpenThread
+#define NRFX_RTC_ENABLED 0
 
 #define NRFX_ADC_ENABLED 0
 
@@ -41,3 +39,6 @@
 
 #define USBD_ENABLED 1
 #define NRF_DRV_USBD_ERRATA_ENABLE 1
+
+#define NRF_FSTORAGE_ENABLED 1
+#define CRC32_ENABLED 1
