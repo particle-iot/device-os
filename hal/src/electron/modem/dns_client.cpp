@@ -56,6 +56,9 @@
 #include "dns_client.h"
 
 #include "mdm_hal.h"
+#include <stdio.h>
+#include "timer_hal.h"
+#include "delay_hal.h"
 #include "system_error.h"
 
 #include <memory>
