@@ -51,7 +51,7 @@
 
 // TODO: Add support for external flash (available if HAS_SERIAL_FLASH macro is defined)
 #ifdef USE_SERIAL_FLASH
-#error "External flash is not supported"
+#pragma message("External flash is not supported")
 #endif
 
 namespace particle {
