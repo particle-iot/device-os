@@ -27,8 +27,6 @@
 #include <nrf_mbr.h>
 #include <nrf_sdm.h>
 #include <nrf_sdh.h>
-#include "flash_hal.h"
-#include "exflash_hal.h"
 
 volatile uint8_t rtos_started = 0;
 
@@ -240,6 +238,10 @@ void HAL_Core_Config(void)
 
     Set_System();
 
+#ifdef DFU_BUILD_ENABLE
+    Load_SystemFlags();
+#endif
+
     // TODO: Use current LED theme
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
@@ -252,13 +254,6 @@ void HAL_Core_Setup(void)
      * SysTick is enabled within FreeRTOS
      */
     HAL_Core_Config_systick_configuration();
-
-    hal_flash_init();
-    hal_exflash_init();
-
-#ifdef DFU_BUILD_ENABLE
-    Load_SystemFlags();
-#endif
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)

@@ -35,10 +35,8 @@
 #include "rgbled.h"
 #include "rgbled_hal_impl.h"
 
-#ifndef SOFTDEVICE_PRESENT
 #include "flash_hal.h"
 #include "exflash_hal.h"
-#endif /* SOFTDEVICE_PRESENT */
 
 #include "crc32.h"
 
@@ -143,13 +141,8 @@ void Set_System(void)
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
-#ifndef SOFTDEVICE_PRESENT
-    /* XXX: only if this is a non-SoftDevice build
-     * For SoftDevice builds this needs to happen later when SoftDevice has been initialized
-     */
     hal_flash_init();
     hal_exflash_init();
-#endif /* SOFTDEVICE_PRESENT */
 }
 
 void Reset_System(void) {
