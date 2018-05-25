@@ -152,21 +152,38 @@ void Reset_System(void) {
 
     sd_nvic_DisableIRQ(RTC1_IRQn);
 
-    uint32_t mask = NRF_RTC_INT_TICK_MASK     |
-                NRF_RTC_INT_OVERFLOW_MASK |
-                NRF_RTC_INT_COMPARE0_MASK |
-                NRF_RTC_INT_COMPARE1_MASK |
-                NRF_RTC_INT_COMPARE2_MASK |
-                NRF_RTC_INT_COMPARE3_MASK;
+    const uint32_t evtMask = RTC_EVTEN_COMPARE3_Msk |
+                             RTC_EVTEN_COMPARE2_Msk |
+                             RTC_EVTEN_COMPARE1_Msk |
+                             RTC_EVTEN_COMPARE0_Msk |
+                             RTC_EVTEN_OVRFLW_Msk   |
+                             RTC_EVTEN_TICK_Msk;
+
+    const uint32_t intMask = NRF_RTC_INT_TICK_MASK     |
+                             NRF_RTC_INT_OVERFLOW_MASK |
+                             NRF_RTC_INT_COMPARE0_MASK |
+                             NRF_RTC_INT_COMPARE1_MASK |
+                             NRF_RTC_INT_COMPARE2_MASK |
+                             NRF_RTC_INT_COMPARE3_MASK;
 
     nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_STOP);
 
-    nrf_rtc_int_disable(NRF_RTC1, mask);
-    nrf_rtc_event_disable(NRF_RTC1, mask);
-    nrf_rtc_event_clear(NRF_RTC1, mask);
+    /* NOTE: the second argument is a mask */
+    nrf_rtc_int_disable(NRF_RTC1, intMask);
+    nrf_rtc_event_disable(NRF_RTC1, evtMask);
+
+    /* NOTE: the second argument is an event (nrf_rtc_event_t) */
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_OVERFLOW);
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_0);
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_1);
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_2);
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_3);
 
     sd_nvic_ClearPendingIRQ(RTC1_IRQn);
     sd_nvic_SetPriority(RTC1_IRQn, 0);
+
+    nrf_rtc_prescaler_set(NRF_RTC1, 0);
 
     __DSB();
 }
@@ -233,11 +250,10 @@ void Finish_Update() {
 void UI_Timer_Configure(void)
 {
     nrf_rtc_prescaler_set(NRF_RTC1, RTC_FREQ_TO_PRESCALER(UI_TIMER_FREQUENCY));
-
+    /* NOTE: the second argument is an event (nrf_rtc_event_t) */
     nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
-
-    nrf_rtc_event_enable(NRF_RTC1, NRF_RTC_EVENT_TICK);
-
+    /* NOTE: the second argument is a mask */
+    nrf_rtc_event_enable(NRF_RTC1, RTC_EVTEN_TICK_Msk);
     nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_START);
 }
 
