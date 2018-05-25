@@ -7,7 +7,7 @@ TARGET_TYPE = a
 BUILD_PATH_EXT=$(FREERTOS_BUILD_PATH_EXT)
 
 # depends only on headers. Will it work?
-DEPENDENCIES = hal platform
+DEPENDENCIES = hal platform services
 
 # FIXME
 ifeq ($(SOFTDEVICE_PRESENT),y)
