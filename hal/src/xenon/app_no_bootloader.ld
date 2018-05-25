@@ -345,12 +345,6 @@ SECTIONS
 
 }
 
-SECTIONS
-{
-  __start_ot_flash_data = ORIGIN(APP_FLASH) + LENGTH(APP_FLASH);
-  __stop_ot_flash_data = __start_ot_flash_data + OPENTHREAD_STORAGE_LENGTH;
-}
-
 /* Declare libc Heap to start at end of allocated RAM */
 
 PROVIDE( _heap = link_stack_end );
@@ -368,6 +362,10 @@ PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
 PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
 PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
+
+PROVIDE( __start_ot_flash_data   = ORIGIN( OPENTHREAD_STORAGE ));
+PROVIDE( __length_ot_flash_data  = LENGTH( OPENTHREAD_STORAGE ));
+PROVIDE( __stop_ot_flash_data    = ORIGIN( OPENTHREAD_STORAGE ) + LENGTH( OPENTHREAD_STORAGE ));
 
 PROVIDE( VTOR_Length = interrupt_vectors_length );
 

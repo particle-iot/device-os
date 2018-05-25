@@ -150,7 +150,7 @@
  * The page number of settings.
  *
  */
-#define SETTINGS_CONFIG_PAGE_NUM                                4
+#define SETTINGS_CONFIG_PAGE_NUM                                (utilsFlashGetSize() / SETTINGS_CONFIG_PAGE_SIZE)
 
 /**
  * @def OPENTHREAD_CONFIG_MBEDTLS_HEAP_SIZE
