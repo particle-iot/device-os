@@ -37,7 +37,7 @@ env:
     - BUILD_PLATFORM=unit-test gcc
     - BUILD_PLATFORM=photon p1
     - BUILD_PLATFORM=core newhal
-    - BUILD_PLATFORM=electron
+    - BUILD_PLATFORM=electron xenon
 
   # matrix:
   # - UNIT_TEST=y
@@ -115,5 +115,4 @@ env:
   - secure: A83drTFobkGvgrPNwGwNS3ZSHX35iNELjH6W9h07pw/n1YSssBHxtLF8aVAEwfIF1VyUoHvQ4HYLNd+9RMyo162xxiWne+/4/gSFyUJNi11w3YX5bwodKPl7OwEO/YnJgHYk8YAAfdnZT4470Fpt6ytcOhEhMsB/IFeepMUiZZA=
 
 notifications:
-  slack:
-    secure: VJ+tAeUzLkz4aMAshQ9ohXZb/1+DQ31kDpcZYDS5PZuXOujx57rzOBg4SKxB2awcmNS2JWlSMQRQtNUzfS15YNuLqgWVj57EQAy99QKsEvccOMELIwbpLtEyEInK5WrUk6vk9ymhk6MBT5+3JiQ4bAs5yvIxm+k8YCakV9QlnH4=
+    slack: s:uyDgDeY2Sric20NcE50P11QS
