@@ -135,7 +135,7 @@
 #define configAPPLICATION_ALLOCATED_HEAP ( 1 )
 #define configDYNAMIC_HEAP_SIZE     ( 1 )
 #define configUSE_MALLOC_FAILED_HOOK ( 1 )
-#define configSUPPORT_STATIC_ALLOCATION ( 0 )
+#define configSUPPORT_STATIC_ALLOCATION ( 1 )
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES       0

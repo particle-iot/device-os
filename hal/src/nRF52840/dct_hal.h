@@ -19,8 +19,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "stddef.h"
-#include "dct_hal_nrf52840.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +33,9 @@ const void* dct_read_app_data_lock(uint32_t offset);
 int dct_read_app_data_unlock(uint32_t offset);
 
 int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
+
+int dct_lock(int write);
+int dct_unlock(int write);
 
 #ifdef __cplusplus
 } // extern "C"
