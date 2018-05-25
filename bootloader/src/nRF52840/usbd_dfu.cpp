@@ -218,7 +218,7 @@ int DfuClassDriver::handleDfuUpload(SetupRequest* req) {
         uintptr_t addr = ((req_.wValue - 2) * USBD_DFU_TRANSFER_SIZE) + address_;
         auto ret = currentMal()->read(transferBuf_, addr, req_.wLength);
         if (ret != detail::OK) {
-          setError((detail::DfuDeviceStatus)ret);
+          setError(detail::errUNKNOWN);
         } else {
           setState(detail::dfuUPLOAD_IDLE);
           dev_->setupReply(req, transferBuf_, req_.wLength);
@@ -445,7 +445,7 @@ int DfuClassDriver::inDone(uint8_t ep, unsigned status) {
               uintptr_t addr = *((uint32_t*)(transferBuf_ + 1));
               auto ret = currentMal()->erase(addr, 0);
               if (ret != detail::OK) {
-                setError((detail::DfuDeviceStatus)ret);
+                setError(detail::errUNKNOWN);
               } else {
                 setState(detail::dfuDNLOAD_IDLE);
                 setStatus(detail::OK);
@@ -478,7 +478,7 @@ int DfuClassDriver::inDone(uint8_t ep, unsigned status) {
         uintptr_t addr = ((req_.wValue - 2) * USBD_DFU_TRANSFER_SIZE) + address_;
         auto ret = currentMal()->write(transferBuf_, addr, req_.wLength);
         if (ret != detail::OK) {
-          setError((detail::DfuDeviceStatus)ret);
+          setError(detail::errUNKNOWN);
         } else {
           setState(detail::dfuDNLOAD_IDLE);
           setStatus(detail::OK);
