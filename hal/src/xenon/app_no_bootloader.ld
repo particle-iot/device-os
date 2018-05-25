@@ -347,8 +347,8 @@ SECTIONS
 
 SECTIONS
 {
-  __stop_ot_flash_data = ORIGIN(APP_FLASH) + LENGTH(APP_FLASH);
-  __start_ot_flash_data = __stop_ot_flash_data - OPENTHREAD_STORAGE_LENGTH;
+  __start_ot_flash_data = ORIGIN(APP_FLASH) + LENGTH(APP_FLASH);
+  __stop_ot_flash_data = __start_ot_flash_data + OPENTHREAD_STORAGE_LENGTH;
 }
 
 /* Declare libc Heap to start at end of allocated RAM */
