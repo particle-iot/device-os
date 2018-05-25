@@ -18,8 +18,8 @@ void BUTTON_Check_Irq(uint16_t button)
     /* Disable button Interrupt */
     BUTTON_EXTI_Config(button, DISABLE);
 
-    /* Enable RTC0 tick interrupt */
-    nrf_rtc_int_enable(NRF_RTC0, NRF_RTC_INT_TICK_MASK);
+    /* Enable RTC1 tick interrupt */
+    nrf_rtc_int_enable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
 }
 
 void BUTTON_Check_State(uint16_t button, uint8_t pressed)
@@ -45,8 +45,8 @@ int BUTTON_Debounce()
     int pressed = HAL_Buttons[BUTTON1].active;
     if (pressed == 0)
     {
-        /* Disable RTC0 tick Interrupt */
-        nrf_rtc_int_disable(NRF_RTC0, NRF_RTC_INT_TICK_MASK);
+        /* Disable RTC1 tick Interrupt */
+        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
     }
 
     return pressed;
@@ -55,7 +55,7 @@ int BUTTON_Debounce()
 void BUTTON_Init_Ext()
 {
     if (BUTTON_Debounce())
-        nrf_rtc_int_enable(NRF_RTC0, NRF_RTC_INT_TICK_MASK);
+        nrf_rtc_int_enable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
 }
 
 uint8_t BUTTON_Is_Pressed(Button_TypeDef button)

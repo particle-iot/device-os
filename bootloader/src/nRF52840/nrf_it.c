@@ -124,11 +124,11 @@ void GPIOTE_IRQHandler(void)
     BUTTON_Irq_Handler();
 }
 
-void RTC0_IRQHandler(void)
+void RTC1_IRQHandler(void)
 {
-    if (nrf_rtc_event_pending(NRF_RTC0, NRF_RTC_EVENT_TICK))
+    if (nrf_rtc_event_pending(NRF_RTC1, NRF_RTC_EVENT_TICK))
     {
-        nrf_rtc_event_clear(NRF_RTC0, NRF_RTC_EVENT_TICK);
+        nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
 
         BUTTON_Debounce();
     }
