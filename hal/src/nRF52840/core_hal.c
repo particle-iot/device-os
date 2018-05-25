@@ -1,15 +1,34 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "core_hal.h"
 #include "service_debug.h"
-#include "nrf52840.h"
+#include <nrf52840.h>
 #include "hal_event.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "semphr.h"
+#include <FreeRTOS.h>
+#include <task.h>
+#include <semphr.h>
 #include "hw_config.h"
 #include "syshealth_hal.h"
-#include "nrf_mbr.h"
-#include "nrf_sdm.h"
-#include "nrf_sdh.h"
+#include <nrf_mbr.h>
+#include <nrf_sdm.h>
+#include <nrf_sdh.h>
+#include "flash_hal.h"
+#include "exflash_hal.h"
 
 volatile uint8_t rtos_started = 0;
 
@@ -135,11 +154,6 @@ void UsageFault_Handler(void)
     }
 }
 
-void vApplicationMallocFailedHook(size_t xWantedSize)
-{
-    hal_notify_event(HAL_EVENT_OUT_OF_MEMORY, xWantedSize, 0);
-}
-
 void SysTickOverride(void)
 {
     System1MsTick();
@@ -226,10 +240,6 @@ void HAL_Core_Config(void)
 
     Set_System();
 
-#ifdef DFU_BUILD_ENABLE
-    Load_SystemFlags();
-#endif
-
     // TODO: Use current LED theme
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
@@ -242,6 +252,13 @@ void HAL_Core_Setup(void)
      * SysTick is enabled within FreeRTOS
      */
     HAL_Core_Config_systick_configuration();
+
+    hal_flash_init();
+    hal_exflash_init();
+
+#ifdef DFU_BUILD_ENABLE
+    Load_SystemFlags();
+#endif
 }
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)

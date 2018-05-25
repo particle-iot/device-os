@@ -8,7 +8,7 @@
 #include "nrf_fstorage_sd.h"
 #else
 #include "nrf_fstorage_nvmc.h"
-#endif
+#endif /* SOFTDEVICE_PRESENT */
 
 
 #define CEIL_DIV(A, B)              (((A) + (B) - 1) / (B))
@@ -41,7 +41,7 @@ static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
                       p_evt->result, p_evt->addr, p_evt->len);
         *(fs_op_state_t *)p_evt->p_param = FS_OP_STATE_ERROR;
     }
-    
+
     if (p_evt->p_param)
     {
         LOG_DEBUG(INFO, "fs_op_busy = false!");
@@ -51,9 +51,15 @@ static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
 
 int hal_flash_init(void)
 {
+#ifndef SOFTDEVICE_PRESENT
     uint32_t ret_code = nrf_fstorage_init(&m_fs, &nrf_fstorage_nvmc, NULL);
     LOG_DEBUG(TRACE, "m_fs, range: 0x%x ~ 0x%x, erase size: %d", m_fs.start_addr, m_fs.end_addr, m_fs.p_flash_info->erase_unit);
     LOG_DEBUG(TRACE, "init nrf_fstorage_nvmc %s", ret_code == 0 ? "OK" : "FAILED!");
+#else
+    uint32_t ret_code = nrf_fstorage_init(&m_fs, &nrf_fstorage_sd, NULL);
+    LOG_DEBUG(TRACE, "m_fs, range: 0x%x ~ 0x%x, erase size: %d", m_fs.start_addr, m_fs.end_addr, m_fs.p_flash_info->erase_unit);
+    LOG_DEBUG(TRACE, "init nrf_fstorage_sd %s", ret_code == 0 ? "OK" : "FAILED!");
+#endif /* SOFTDEVICE_PRESENT */
 
     return (ret_code == NRF_SUCCESS) ? 0 : -1;
 }
@@ -148,7 +154,7 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
             return -7;
         }
     }
-    
+
     return 0;
 }
 
