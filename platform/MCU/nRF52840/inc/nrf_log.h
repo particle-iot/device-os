@@ -30,12 +30,16 @@
 #endif
 
 
-#define NRF_LOG_INIT()                LOG_ENABLED(ALL)
-#define NRF_LOG_DEBUG(...)            LOG_DEBUG(DEBUG, ...)
-#define NRF_LOG_INFO(...)             LOG_DEBUG(INFO, ...)
-#define NRF_LOG_WARNING(...)          LOG_DEBUG(WARN, ...)
-#define NRF_LOG_ERROR(...)            LOG_DEBUG(ERROR, ...)
-#define NRF_LOG_PRINT(...)            LOG_DEBUG(TRACE, ...)
+#define NRF_LOG_INIT()
+#define NRF_LOG_DEBUG(...)            LOG_DEBUG(TRACE, __VA_ARGS__)
+#define NRF_LOG_INFO(...)             LOG_DEBUG(INFO, __VA_ARGS__)
+#define NRF_LOG_WARNING(...)          LOG_DEBUG(WARN, __VA_ARGS__)
+#define NRF_LOG_ERROR(...)            LOG_DEBUG(ERROR, __VA_ARGS__)
+
+#define NRF_LOG_INST_ERROR(p_inst, ...)         NRF_LOG_ERROR(__VA_ARGS__)
+#define NRF_LOG_INST_WARNING(p_inst, ...)       NRF_LOG_WARNING(__VA_ARGS__)
+#define NRF_LOG_INST_INFO(p_inst, ...)          NRF_LOG_INFO(__VA_ARGS__)
+#define NRF_LOG_INST_DEBUG(p_inst, ...)         NRF_LOG_DEBUG(__VA_ARGS__)
 
 
 #endif /* NRF_LOG_H */

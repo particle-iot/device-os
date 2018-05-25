@@ -62,8 +62,8 @@ typedef struct {
   uint8_t padding[2];
 } eap_config_t;
 
-STATIC_ASSERT(eap_config_size, sizeof(eap_config_t)==(196 + 4*1024 + 4));
-STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
+PARTICLE_STATIC_ASSERT(eap_config_size, sizeof(eap_config_t)==(196 + 4*1024 + 4));
+PARTICLE_STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 
 #define DCT_SERVER_ADDRESS_SIZE  (128)
 
@@ -162,8 +162,8 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
 #define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
 
-#define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
-#define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
+#define STATIC_ASSERT_DCT_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
+#define STATIC_ASSERT_FLAGS_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
 
 /**
  * Assert offsets. These ensure that the layout in flash isn't inadvertently changed.

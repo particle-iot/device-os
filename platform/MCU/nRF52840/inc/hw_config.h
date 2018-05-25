@@ -68,7 +68,7 @@ inline void BACKUP_Flash_Reset() {}
 
 #define __IO volatile
 inline void IWDG_Reset_Enable(int count) {}
-inline void SysTick_Disable() {}
+void SysTick_Disable();
 
 void Set_System(void);
 void Reset_System(void);

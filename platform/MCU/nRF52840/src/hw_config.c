@@ -34,8 +34,12 @@
 
 #include "rgbled.h"
 #include "rgbled_hal_impl.h"
+
+#ifndef SOFTDEVICE_PRESENT
 #include "flash_hal.h"
 #include "exflash_hal.h"
+#endif /* SOFTDEVICE_PRESENT */
+
 #include "crc32.h"
 
 uint8_t USE_SYSTEM_FLAGS;
@@ -106,7 +110,6 @@ static void DWT_Init(void)
  */
 void Set_System(void)
 {
-#ifndef SOFTDEVICE_PRESENT
     ret_code_t ret = nrf_drv_clock_init();
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
@@ -124,11 +127,10 @@ void Set_System(void)
 
     ret = nrf_drv_power_init(NULL);
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
-#endif /* SOFTDEVICE_PRESENT */
 
     DWT_Init();
 
-    /* Configure RTC0 for BUTTON-DEBOUNCE usage */
+    /* Configure RTC1 for BUTTON-DEBOUNCE usage */
     UI_Timer_Configure();
 
     /* Configure the LEDs and set the default states */
@@ -141,20 +143,21 @@ void Set_System(void)
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
+#ifndef SOFTDEVICE_PRESENT
+    /* XXX: only if this is a non-SoftDevice build
+     * For SoftDevice builds this needs to happen later when SoftDevice has been initialized
+     */
     hal_flash_init();
     hal_exflash_init();
+#endif /* SOFTDEVICE_PRESENT */
 }
 
 void Reset_System(void) {
     __DSB();
 
-    sd_nvic_DisableIRQ(SysTick_IRQn);
     SysTick_Disable();
 
-    sd_nvic_ClearPendingIRQ(SysTick_IRQn);
-    sd_nvic_SetPriority(SysTick_IRQn, 0);
-
-    sd_nvic_DisableIRQ(RTC0_IRQn);
+    sd_nvic_DisableIRQ(RTC1_IRQn);
 
     uint32_t mask = NRF_RTC_INT_TICK_MASK     |
                 NRF_RTC_INT_OVERFLOW_MASK |
@@ -163,14 +166,14 @@ void Reset_System(void) {
                 NRF_RTC_INT_COMPARE2_MASK |
                 NRF_RTC_INT_COMPARE3_MASK;
 
-    nrf_rtc_task_trigger(NRF_RTC0, NRF_RTC_TASK_STOP);
+    nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_STOP);
 
-    nrf_rtc_int_disable(NRF_RTC0, mask);
-    nrf_rtc_event_disable(NRF_RTC0, mask);
-    nrf_rtc_event_clear(NRF_RTC0, mask);
+    nrf_rtc_int_disable(NRF_RTC1, mask);
+    nrf_rtc_event_disable(NRF_RTC1, mask);
+    nrf_rtc_event_clear(NRF_RTC1, mask);
 
-    sd_nvic_ClearPendingIRQ(RTC0_IRQn);
-    sd_nvic_SetPriority(RTC0_IRQn, 0);
+    sd_nvic_ClearPendingIRQ(RTC1_IRQn);
+    sd_nvic_SetPriority(RTC1_IRQn, 0);
 
     __DSB();
 }
@@ -236,13 +239,13 @@ void Finish_Update() {
 
 void UI_Timer_Configure(void)
 {
-    nrf_rtc_prescaler_set(NRF_RTC0, RTC_FREQ_TO_PRESCALER(UI_TIMER_FREQUENCY));
+    nrf_rtc_prescaler_set(NRF_RTC1, RTC_FREQ_TO_PRESCALER(UI_TIMER_FREQUENCY));
 
-    nrf_rtc_event_clear(NRF_RTC0, NRF_RTC_EVENT_TICK);
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
 
-    nrf_rtc_event_enable(NRF_RTC0, NRF_RTC_EVENT_TICK);
+    nrf_rtc_event_enable(NRF_RTC1, NRF_RTC_EVENT_TICK);
 
-    nrf_rtc_task_trigger(NRF_RTC0, NRF_RTC_TASK_START);
+    nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_START);
 }
 
 static void RGB_PWM_Config(void)
@@ -327,8 +330,8 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        /* Disable RTC0 tick Interrupt */
-        nrf_rtc_int_disable(NRF_RTC0, NRF_RTC_INT_TICK_MASK);
+        /* Disable RTC1 tick Interrupt */
+        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
 
         BUTTON_EXTI_Config(Button, ENABLE);
 
@@ -336,10 +339,10 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
         sd_nvic_ClearPendingIRQ(HAL_Buttons[Button].nvic_irqn);
         sd_nvic_EnableIRQ(HAL_Buttons[Button].nvic_irqn);
 
-        /* Enable the RTC0 NVIC Interrupt */
-        sd_nvic_SetPriority(RTC0_IRQn, RTC0_IRQ_PRIORITY);
-        sd_nvic_ClearPendingIRQ(RTC0_IRQn);
-        sd_nvic_EnableIRQ(RTC0_IRQn);
+        /* Enable the RTC1 NVIC Interrupt */
+        sd_nvic_SetPriority(RTC1_IRQn, RTC1_IRQ_PRIORITY);
+        sd_nvic_ClearPendingIRQ(RTC1_IRQn);
+        sd_nvic_EnableIRQ(RTC1_IRQn);
     }
 }
 

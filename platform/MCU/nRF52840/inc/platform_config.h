@@ -110,7 +110,7 @@
 #define RTC_WKUP_IRQ_PRIORITY               4       //RTC Seconds Interrupt
 #define USART1_IRQ_PRIORITY                 5       //USART1 Interrupt
 #define USART2_IRQ_PRIORITY                 5       //USART2 Interrupt
-#define RTC0_IRQ_PRIORITY                   5       //RTC0 Interrupt
+#define RTC1_IRQ_PRIORITY                   5       //RTC1 Interrupt
 #define SYSTICK_IRQ_PRIORITY                13      //CORTEX_M3 Systick Interrupt
 #define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
 #define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt

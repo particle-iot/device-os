@@ -1417,7 +1417,7 @@
 // <e> NRFX_RTC_ENABLED - nrfx_rtc - RTC peripheral driver
 //==========================================================
 #ifndef NRFX_RTC_ENABLED
-#define NRFX_RTC_ENABLED 1
+#define NRFX_RTC_ENABLED 0
 #endif
 // <q> NRFX_RTC0_ENABLED  - Enable RTC0 instance
 
@@ -1431,7 +1431,7 @@
 
 
 #ifndef NRFX_RTC1_ENABLED
-#define NRFX_RTC1_ENABLED 1
+#define NRFX_RTC1_ENABLED 0
 #endif
 
 // <q> NRFX_RTC2_ENABLED  - Enable RTC2 instance
@@ -2942,6 +2942,14 @@
 #ifndef NRF_FSTORAGE_ENABLED
 #define NRF_FSTORAGE_ENABLED 1
 #endif
+
+#define NRF_FSTORAGE_SD_MAX_WRITE_SIZE (4096)
+
+#define NRF_FSTORAGE_SD_QUEUE_SIZE (4)
+
+#define NRF_FSTORAGE_SD_MAX_RETRIES 8
+
+#define NRF_ATFIFO_CONFIG_LOG_ENABLED 0
 
 // <i> Common settings to all fstorage implementations
 //==========================================================
