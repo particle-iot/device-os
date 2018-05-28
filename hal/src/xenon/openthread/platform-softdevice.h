@@ -56,6 +56,10 @@ typedef struct
     uint16_t lfClkAccuracyPpm;   /**< Clock accuracy in ppm unit. */
 } PlatformSoftdeviceRaalConfigParams;
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 /**
  * Function for processing SoftDevice SoC events.
  *
@@ -67,5 +71,9 @@ void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId);
  *
  */
 void PlatformSoftdeviceRaalConfig(const PlatformSoftdeviceRaalConfigParams *aConfig);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif  // PLATFORM_SOFTDEVICE_H_
