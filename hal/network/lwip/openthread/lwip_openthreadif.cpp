@@ -73,7 +73,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
 
   /* Register OpenThread receive callback */
   otIp6SetReceiveCallback(ot_, otReceiveCb, this);
-  otIp6SetReceiveFilterEnabled(ot_, false);
+  otIp6SetReceiveFilterEnabled(ot_, true);
 
   /* Register OpenThread state changed callback */
   otSetStateChangedCallback(ot_, otStateChangedCb, this);

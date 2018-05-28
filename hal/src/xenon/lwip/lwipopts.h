@@ -60,6 +60,8 @@ extern "C" {
 #define LWIP_COMPAT_MUTEX               0
 #define LWIP_FREERTOS_CHECK_CORE_LOCKING (1)
 
+#define LWIP_TCPIP_CORE_LOCKING_INPUT 1
+
 /**
  * SYS_LIGHTWEIGHT_PROT==1: enable inter-task protection (and task-vs-interrupt
  * protection) for certain critical regions during buffer allocation, deallocation
