@@ -200,12 +200,6 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 # define _GLIBCXX_HAS_GTHREADS
 #endif // _GLIBCXX_HAS_GTHREADS
 
-#ifdef __cplusplus
-#if PLATFORM_ID!=3
-#include <bits/gthr.h>
-#endif
-#endif
-
 /**
  * Enables/disables pre-emptive context switching
  */
@@ -233,5 +227,10 @@ int os_timer_is_active(os_timer_t timer, void* reserved);
 }
 #endif
 
+#ifdef __cplusplus
+#if PLATFORM_ID!=3
+#include <bits/gthr.h>
+#endif /* PLATFORM_ID!=3 */
+#endif /* __cplusplus */
 
 #endif	/* CONCURRENCY_HAL_H */

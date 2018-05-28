@@ -1,17 +1,20 @@
-
-#include "concurrent_hal.h"
-
 /**
  * This file allows us to inject the appropriate implementation of mutexes and other
  * concurrency primitives that aren't supported natively by GCC ARM.
  */
 #ifndef GTHR_DEFAULT_H
-#define	GTHR_DEFAULT_H
+#define GTHR_DEFAULT_H
+
+#include "concurrent_hal.h"
 
 #define PARTICLE_GTHREAD_INCLUDED 1
 
+#ifdef __cplusplus
+
+#include <atomic>
+
 typedef int __gthread_key_t;
-typedef int __gthread_once_t;
+typedef std::atomic_flag __gthread_once_t;
 
 
 #define _GLIBCXX_UNUSED __attribute__((unused))
@@ -23,8 +26,11 @@ __gthread_active_p (void)
 }
 
 static inline int
-__gthread_once (__gthread_once_t *__once _GLIBCXX_UNUSED, void (*__func) (void) _GLIBCXX_UNUSED)
+__gthread_once (__gthread_once_t* once, void (*func) (void))
 {
+  if (once->test_and_set(std::memory_order_relaxed) == false) {
+    func();
+  }
   return 0;
 }
 
@@ -100,10 +106,10 @@ __gthread_recursive_mutex_destroy (__gthread_recursive_mutex_t *__mutex)
   return os_mutex_recursive_destroy(*__mutex);
 }
 
-#define __GTHREAD_ONCE_INIT 0
+#define __GTHREAD_ONCE_INIT ATOMIC_FLAG_INIT
 #define __GTHREAD_MUTEX_INIT_FUNCTION(mx)  os_mutex_create(mx)
 #define __GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION(mx) os_mutex_recursive_create(mx)
 
+#endif /* __cplusplus */
 
-#endif	/* GTHR_DEFAULT_H */
-
+#endif  /* GTHR_DEFAULT_H */
