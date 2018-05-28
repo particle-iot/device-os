@@ -7,7 +7,7 @@ TARGET_TYPE = a
 BUILD_PATH_EXT=$(NRF_802154_BUILD_PATH_EXT)
 
 # depends only on headers. Will it work?
-DEPENDENCIES = hal platform services third_party/nrf5_sdk
+DEPENDENCIES = dynalib hal platform services third_party/nrf5_sdk
 
 PROJECT_ROOT ?= ../..
 include ../../build/arm-tlm.mk
