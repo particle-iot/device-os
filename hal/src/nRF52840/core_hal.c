@@ -24,6 +24,7 @@
 #include <semphr.h>
 #include "hw_config.h"
 #include "syshealth_hal.h"
+#include "rng_hal.h"
 #include <nrf_mbr.h>
 #include <nrf_sdm.h>
 #include <nrf_sdh.h>
@@ -114,8 +115,8 @@ void app_error_fault_handler(uint32_t _id, uint32_t _pc, uint32_t _info)
     volatile uint32_t info = _info;
     (void)id; (void)pc; (void)info;
     PANIC(HardFault,"HardFault");
-    while(1) {
-    }
+    // while(1) {
+    // }
 }
 
 void app_error_handler_bare(uint32_t error_code)
@@ -237,6 +238,8 @@ void HAL_Core_Config(void)
     SCB->VTOR = (uint32_t)isrs;
 
     Set_System();
+
+    HAL_RNG_Configuration();
 
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
@@ -432,12 +435,11 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
 
 bool HAL_Feature_Get(HAL_Feature feature)
 {
-    return false;
-}
+    if (feature == FEATURE_CLOUD_UDP) {
+        return true;
+    }
 
-int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned length)
-{
-    return -1;
+    return false;
 }
 
 int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
@@ -481,3 +483,14 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
         return 0xFF;
     return 0xFFFF;
 }
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+    return -1;
+}
+
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+    return -1;
+}
+
