@@ -113,7 +113,11 @@ int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handle
 #include "stm32f2xx.h"
 #endif // defined(STM32F10X_MD) || defined(STM32F10X_HD)
 
-#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX)
+#ifdef nRF52840
+#include <nrf52840.h>
+#endif /* nRF52840 */
+
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX) || defined(nRF52840)
 inline bool HAL_IsISR()
 {
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
@@ -145,11 +149,6 @@ inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
 #elif PLATFORM_ID==3 || PLATFORM_ID==20
-inline bool HAL_IsISR() { return false; }
-inline int32_t HAL_ServicedIRQn() { return 0; }
-inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#elif PLATFORM_ID==PLATFORM_XENON
-// todo - move these to separate include files within the hal/platform folders
 inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
