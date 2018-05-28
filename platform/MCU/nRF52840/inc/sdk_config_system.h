@@ -40,6 +40,8 @@
 
 #define POWER_ENABLED 1
 
+#define RNG_ENABLED 1
+
 #define USBD_ENABLED 1
 #define NRF_DRV_USBD_ERRATA_ENABLE 1
 
@@ -57,6 +59,8 @@
 #define BLE_ADVERTISING_ENABLED 1
 
 #define APP_FIFO_ENABLED 1
+
+#define NRF_QUEUE_ENABLED 1
 
 //#ifdef DEBUG_BUILD
 #define SEGGER_RTT_CONFIG_DEFAULT_MODE 1 // Do not block, output as much as fits

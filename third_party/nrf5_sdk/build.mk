@@ -17,6 +17,7 @@ CSRC += $(call target_files,$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/soc/,*.c)
 CSRC += $(TARGET_NRF5_SDK_NRFX_SRC_PATH)/mdk/system_nrf52840.c
 CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_clock.c
 CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_power.c
+CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_rng.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARY_UTIL_PATH)/app_util_platform.c
 CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/usbd/nrf_drv_usbd.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic/nrf_atomic.c
@@ -32,6 +33,7 @@ CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/fstorage/nrf_fstorage_nvmc.c
 endif
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/experimental_section_vars/nrf_section_iter.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/crc32/crc32.c
+CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/queue/nrf_queue.c
 
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 
