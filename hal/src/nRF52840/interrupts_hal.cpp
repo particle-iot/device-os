@@ -66,16 +66,6 @@ void HAL_EXTI_Handler(uint8_t EXTI_Line)
 {
 }
 
-
-int HAL_disable_irq()
-{
-    return 0;
-}
-
-void HAL_enable_irq(int is)
-{
-}
-
 int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved)
 {
     return 1;
