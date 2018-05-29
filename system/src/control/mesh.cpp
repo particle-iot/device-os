@@ -75,6 +75,9 @@ const unsigned DEFAULT_CHANNEL = 11;
 // Timeout in seconds after which a joiner is automatically removed from the commissioner's list
 const unsigned JOINER_TIMEOUT = 120;
 
+// Minimum size of the joining device credential
+const size_t JOINER_PASSWORD_MIN_SIZE = 6;
+
 // Maximum size of the joining device credential
 const size_t JOINER_PASSWORD_MAX_SIZE = 32;
 
@@ -85,7 +88,7 @@ const char* const VENDOR_SW_VERSION = PP_STR(SYSTEM_VERSION_STRING);
 const char* const VENDOR_DATA = "";
 
 // Current joining device credential
-char g_joinPwd[JOINER_PASSWORD_MAX_SIZE] = {};
+char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
 // TODO: Implement a thread-safe system API for pseudo-random number generation
 class Random {
@@ -194,6 +197,7 @@ int createNetwork(ctrl_request* req) {
         Vector<uint64_t> extPanIds;
         Vector<uint16_t> panIds;
         int error;
+        bool done;
     };
     ActiveScanResult actScan = {};
     if (!actScan.extPanIds.reserve(4) || !actScan.panIds.reserve(4)) {
@@ -202,6 +206,10 @@ int createNetwork(ctrl_request* req) {
     CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, 0 /* aScanDuration */,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ActiveScanResult*)data;
+        if (!result) {
+            scan->done = true;
+            return;
+        }
         uint64_t extPanId = 0;
         static_assert(sizeof(result->mExtendedPanId) == sizeof(extPanId), "");
         memcpy(&extPanId, &result->mExtendedPanId, sizeof(extPanId));
@@ -217,6 +225,10 @@ int createNetwork(ctrl_request* req) {
             }
         }
     }, &actScan));
+    do {
+        // FIXME: Move OpenThread's loop to a separate thread
+        threadProcess();
+    } while (!actScan.done);
     if (actScan.error != 0) {
         return actScan.error;
     }
@@ -330,11 +342,11 @@ int prepareJoiner(ctrl_request* req) {
     bytes2hexbuf_lower_case((const uint8_t*)&eui64, sizeof(eui64), eui64Str);
     // Generate joining device credential
     Random rand;
-    rand.genBase32(g_joinPwd, sizeof(g_joinPwd));
+    rand.genBase32(g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
     // Encode a reply
     PB(PrepareJoinerReply) pbRep = {};
     EncodedString eEuiStr(&pbRep.eui64, eui64Str, sizeof(eui64Str));
-    EncodedString eJoinPwd(&pbRep.password, g_joinPwd, sizeof(g_joinPwd));
+    EncodedString eJoinPwd(&pbRep.password, g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
     ret = encodeReplyMessage(req, PB(PrepareJoinerReply_fields), &pbRep);
     if (ret != 0) {
         return ret;
@@ -355,7 +367,8 @@ int addJoiner(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
-    if (dEui64Str.size != sizeof(otExtAddress) * 2) {
+    if (dEui64Str.size != sizeof(otExtAddress) * 2 || dJoinPwd.size < JOINER_PASSWORD_MIN_SIZE ||
+            dJoinPwd.size > JOINER_PASSWORD_MAX_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Add joiner
