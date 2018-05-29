@@ -63,7 +63,8 @@ typedef enum ble_set_char_value_flag {
 // TODO: Provide an API for custom characteristics and permissions
 typedef enum ble_char_type {
     BLE_CHAR_TYPE_TX = 1,
-    BLE_CHAR_TYPE_RX = 2
+    BLE_CHAR_TYPE_RX = 2,
+    BLE_CHAR_TYPE_VAL = 3
 } ble_char_type;
 
 // 16-bit UUID
@@ -78,6 +79,8 @@ typedef struct ble_char {
     ble_uuid uuid;
     uint16_t type; // See `ble_char_type` enum
     uint16_t handle; // TODO: Use typedefs for all handle types defined by the HAL
+    const char* data; // Initial value
+    uint16_t size;
 } ble_char;
 
 // Service

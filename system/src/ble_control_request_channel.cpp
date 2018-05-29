@@ -28,6 +28,9 @@ namespace system {
 
 namespace {
 
+// Device setup protocol version
+const unsigned PROTOCOL_VERSION = 0x01;
+
 // Vendor-specific base UUID: 6FA9xxxx-5C4E-48A8-94F4-8030546F36FC
 const uint8_t BASE_UUID[16] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x00, 0x00, 0xa9, 0x6f };
 
@@ -370,12 +373,19 @@ int BleControlRequestChannel::initProfile() {
         return ret;
     }
     // Characteristics
-    ble_char chars[2] = {};
-    ble_char& sendChar = chars[0];
+    ble_char chars[3] = {};
+    ble_char& verChar = chars[0]; // Protocol version
+    verChar.uuid.type = uuidType;
+    verChar.uuid.uuid = VERSION_CHAR_UUID;
+    verChar.type = BLE_CHAR_TYPE_VAL;
+    const char charVal = PROTOCOL_VERSION;
+    verChar.data = &charVal;
+    verChar.size = sizeof(charVal);
+    ble_char& sendChar = chars[1]; // TX
     sendChar.uuid.type = uuidType;
     sendChar.uuid.uuid = SEND_CHAR_UUID;
     sendChar.type = BLE_CHAR_TYPE_TX;
-    ble_char& recvChar = chars[1];
+    ble_char& recvChar = chars[2]; // RX
     recvChar.uuid.type = uuidType;
     recvChar.uuid.uuid = RECV_CHAR_UUID;
     recvChar.type = BLE_CHAR_TYPE_RX;

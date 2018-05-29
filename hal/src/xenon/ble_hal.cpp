@@ -327,6 +327,37 @@ int initRxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     return 0;
 }
 
+int initValChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
+    if (!halChar->data || halChar->size == 0) {
+        LOG(ERROR, "Characteristic value is not specified");
+        return BLE_ERROR_INVALID_PARAM;
+    }
+    // Characteristic UUID
+    chr->uuid.type = halChar->uuid.type;
+    chr->uuid.uuid = halChar->uuid.uuid;
+    // Characteristic metadata
+    ble_gatts_char_md_t charMd = {};
+    charMd.char_props.read = 1;
+    // Value attribute metadata
+    ble_gatts_attr_md_t attrMd = {};
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.read_perm);
+    attrMd.vloc = BLE_GATTS_VLOC_STACK;
+    // Value attribute
+    ble_gatts_attr_t attr = {};
+    attr.p_uuid = &chr->uuid;
+    attr.p_attr_md = &attrMd;
+    attr.p_value = (uint8_t*)halChar->data;
+    attr.init_len = halChar->size;
+    attr.max_len = halChar->size;
+    const uint32_t ret = sd_ble_gatts_characteristic_add(serviceHandle, &charMd, &attr, &chr->handles);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
+        return halError(ret);
+    }
+    halChar->handle = chr->handles.value_handle;
+    return 0;
+}
+
 int initChars(ble_service* halService, Service* service) {
     if (halService->char_count > BLE_MAX_CHAR_COUNT) {
         LOG(ERROR, "Maximum number of characteristics exceeded");
@@ -335,26 +366,27 @@ int initChars(ble_service* halService, Service* service) {
     for (size_t i = 0; i < halService->char_count; ++i) {
         ble_char& halChar = halService->chars[i];
         Char& chr = service->chars[i];
+        int ret = BLE_ERROR_UNKNOWN;
         switch (halChar.type) {
         case BLE_CHAR_TYPE_TX: {
-            const int ret = initTxChar(service->handle, &halChar, &chr);
-            if (ret != 0) {
-                LOG(ERROR, "Unable to initialize TX characteristic");
-                return ret;
-            }
+            ret = initTxChar(service->handle, &halChar, &chr);
             break;
         }
         case BLE_CHAR_TYPE_RX: {
-            const int ret = initRxChar(service->handle, &halChar, &chr);
-            if (ret != 0) {
-                LOG(ERROR, "Unable to initialize RX characteristic");
-                return ret;
-            }
+            ret = initRxChar(service->handle, &halChar, &chr);
+            break;
+        }
+        case BLE_CHAR_TYPE_VAL: {
+            ret = initValChar(service->handle, &halChar, &chr);
             break;
         }
         default:
             LOG(ERROR, "Invalid characteristic type: %d", (int)halChar.type);
             return BLE_ERROR_INVALID_PARAM;
+        }
+        if (ret != 0) {
+            LOG(ERROR, "Unable to initialize characteristic");
+            return ret;
         }
     }
     service->charCount = halService->char_count;
