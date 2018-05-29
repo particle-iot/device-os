@@ -236,15 +236,21 @@ int createNetwork(ctrl_request* req) {
     CHECK_THREAD(otThreadSetExtendedPanId(thread, (const uint8_t*)&extPanId));
     // Set network name
     CHECK_THREAD(otThreadSetNetworkName(thread, dName.data));
-    // TODO: Generate a mesh-local prefix? See section 11.1 of the Thread spec
-    // Update PSKc
-    uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
-    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
-    CHECK_THREAD(otThreadSetPSKc(thread, pskc));
+    // Generate mesh-local prefix (see section 3 of RFC 4193)
+    uint8_t prefix[OT_MESH_LOCAL_PREFIX_SIZE] = {
+            0xfd, // Prefix, L
+            0x00, 0x00, 0x00, 0x00, 0x00, // Global ID
+            0x00, 0x00 }; // Subnet ID
+    rand.gen((char*)prefix + 1, 5); // Generate global ID
+    CHECK_THREAD(otThreadSetMeshLocalPrefix(thread, prefix));
     // Generate master key
     otMasterKey key = {};
     rand.genRandom((char*)&key, sizeof(key));
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
+    // Set PSKc
+    uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
+    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
+    CHECK_THREAD(otThreadSetPSKc(thread, pskc));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
@@ -407,6 +413,7 @@ void joinNetwork(ctrl_request* req) {
         } else {
             LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
         }
+        memset(g_joinPwd, 0, sizeof(g_joinPwd));
         system_ctrl_set_result(req, ret, nullptr, nullptr, nullptr);
     };
     tRet = otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
