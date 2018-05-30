@@ -454,7 +454,14 @@ int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool rese
 
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
 {
-    return xSemaphoreGive(semaphore)!=pdTRUE;
+    if (!HAL_IsISR()) {
+        return xSemaphoreGive(semaphore)!=pdTRUE;
+    } else {
+        BaseType_t woken = pdFALSE;
+        int res = xSemaphoreGiveFromISR(semaphore, &woken) != pdTRUE;
+        portYIELD_FROM_ISR(woken);
+        return res;
+    }
 }
 
 /**

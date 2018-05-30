@@ -38,6 +38,7 @@ typedef uint8_t os_thread_prio_t;
 #define OS_THREAD_PRIORITY_CRITICAL (9)
 #define OS_THREAD_PRIORITY_NETWORK  (8)
 #define OS_THREAD_STACK_SIZE_DEFAULT (3*1024)
+#define OS_THREAD_STACK_SIZE_DEFAULT_NETWORK (8*1024)
 
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;
