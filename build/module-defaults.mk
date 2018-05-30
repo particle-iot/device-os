@@ -98,6 +98,8 @@ else
 LDFLAGS += $(patsubst %,-l%,$(LIBS))
 endif
 
+LDFLAGS += $(LIBS_EXT_END)
+
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
 
