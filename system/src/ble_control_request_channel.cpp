@@ -15,11 +15,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("system.ctrl.ble");
+
 #include "ble_control_request_channel.h"
 
 #if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
-
-LOG_SOURCE_CATEGORY("system.ctrl.ble");
 
 namespace particle {
 
