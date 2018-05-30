@@ -18,16 +18,15 @@
 #pragma once
 
 #include "usb_hal.h"
+#include "ble_hal.h"
 
 #include "system_error.h"
 
 #include <stdint.h>
 #include <stddef.h>
 
-// By default, the control requests functionality is available only if the platform supports USB
-// vendor requests, since, at the moment, it's the only control interface supported by the system
 #ifndef SYSTEM_CONTROL_ENABLED
-#ifdef USB_VENDOR_REQUEST_ENABLE
+#if defined(USB_VENDOR_REQUEST_ENABLE) || BLE_ENABLED
 #define SYSTEM_CONTROL_ENABLED 1
 #else
 #define SYSTEM_CONTROL_ENABLED 0
@@ -81,7 +80,20 @@ typedef enum ctrl_request_type {
     CTRL_REQUEST_READ_SECTION_DATA = 261,
     CTRL_REQUEST_WRITE_SECTION_DATA = 262,
     CTRL_REQUEST_CLEAR_SECTION_DATA = 263,
-    CTRL_REQUEST_GET_SECTION_DATA_SIZE = 264
+    CTRL_REQUEST_GET_SECTION_DATA_SIZE = 264,
+    // Mesh networking
+    CTRL_REQUEST_MESH_AUTH = 1001,
+    CTRL_REQUEST_MESH_CREATE_NETWORK = 1002,
+    CTRL_REQUEST_MESH_START_COMMISSIONER = 1003,
+    CTRL_REQUEST_MESH_STOP_COMMISSIONER = 1004,
+    CTRL_REQUEST_MESH_PREPARE_JOINER = 1005,
+    CTRL_REQUEST_MESH_ADD_JOINER = 1006,
+    CTRL_REQUEST_MESH_REMOVE_JOINER = 1007,
+    CTRL_REQUEST_MESH_JOIN_NETWORK = 1008,
+    CTRL_REQUEST_MESH_LEAVE_NETWORK = 1009,
+    CTRL_REQUEST_MESH_GET_NETWORK_INFO = 1010,
+    CTRL_REQUEST_MESH_SCAN_NETWORKS = 1011,
+    CTRL_REQUEST_MESH_TEST = 1111 // FIXME
 } ctrl_request_type;
 
 // Control request data

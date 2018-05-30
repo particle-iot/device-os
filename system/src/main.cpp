@@ -56,6 +56,10 @@
 #include "system_power.h"
 #include "spark_wiring_wifi.h"
 
+// FIXME
+#include "system_openthread.h"
+#include "system_control_internal.h"
+
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
 #include <thread>
@@ -642,6 +646,11 @@ void app_setup_and_loop(void)
             LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
         }
     }
+
+    // FIXME: Move BLE and Thread initialization to an appropriate place
+    ble_init(nullptr);
+    system::threadInit();
+    system::SystemControl::instance()->init();
 
     manage_safe_mode();
 

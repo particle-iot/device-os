@@ -29,10 +29,13 @@
 #include "control/wifi.h"
 #include "control/config.h"
 #include "control/storage.h"
+#include "control/mesh.h"
+
+namespace particle {
+
+namespace system {
 
 namespace {
-
-using namespace particle;
 
 typedef int(*ReplyFormatterCallback)(Appender*, void* data);
 
@@ -68,14 +71,36 @@ int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* da
 
 SystemControl g_systemControl;
 
-} // namespace
+} // particle::system::
 
-particle::SystemControl::SystemControl() :
-        usbReqChannel_(this),
+SystemControl::SystemControl() :
+#ifdef USB_VENDOR_REQUEST_ENABLE
+        usbChannel_(this),
+#endif
+#if BLE_ENABLED
+        bleChannel_(this),
+#endif
         appReqHandler_(nullptr) {
 }
 
-void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
+int SystemControl::init() {
+#if BLE_ENABLED
+    const int ret = bleChannel_.init();
+    if (ret != 0) {
+        return ret;
+    }
+#endif
+    return 0;
+}
+
+int SystemControl::run() {
+#if BLE_ENABLED
+    return bleChannel_.run();
+#endif
+    return 0;
+}
+
+void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
     switch (req->type) {
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
@@ -262,6 +287,54 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, control::getSectionDataSizeRequest(req));
         break;
     }
+    case CTRL_REQUEST_MESH_AUTH: {
+        setResult(req, ctrl::mesh::auth(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_CREATE_NETWORK: {
+        setResult(req, ctrl::mesh::createNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_START_COMMISSIONER: {
+        setResult(req, ctrl::mesh::startCommissioner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_STOP_COMMISSIONER: {
+        setResult(req, ctrl::mesh::stopCommissioner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_PREPARE_JOINER: {
+        setResult(req, ctrl::mesh::prepareJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_ADD_JOINER: {
+        setResult(req, ctrl::mesh::addJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_REMOVE_JOINER: {
+        setResult(req, ctrl::mesh::removeJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_JOIN_NETWORK: {
+        ctrl::mesh::joinNetwork(req);
+        break;
+    }
+    case CTRL_REQUEST_MESH_LEAVE_NETWORK: {
+        setResult(req, ctrl::mesh::leaveNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_GET_NETWORK_INFO: {
+        setResult(req, ctrl::mesh::getNetworkInfo(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_SCAN_NETWORKS: {
+        setResult(req, ctrl::mesh::scanNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_TEST: { // FIXME
+        setResult(req, ctrl::mesh::test(req));
+        break;
+    }
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {
@@ -273,32 +346,36 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     }
 }
 
-void particle::SystemControl::processAppRequest(ctrl_request* req) {
+void SystemControl::processAppRequest(ctrl_request* req) {
     // FIXME: Request leak may occur if underlying asynchronous event cannot be queued
     APPLICATION_THREAD_CONTEXT_ASYNC(processAppRequest(req));
     SPARK_ASSERT(appReqHandler_); // Checked in processRequest()
     appReqHandler_(req);
 }
 
-particle::SystemControl* particle::SystemControl::instance() {
+SystemControl* SystemControl::instance() {
     return &g_systemControl;
 }
 
+} // particle::system
+
+} // particle
+
 // System API
 int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* reserved) {
-    return SystemControl::instance()->setAppRequestHandler(handler);
+    return particle::system::SystemControl::instance()->setAppRequestHandler(handler);
 }
 
 int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved) {
-    return SystemControl::instance()->allocReplyData(req, size);
+    return particle::system::SystemControl::instance()->allocReplyData(req, size);
 }
 
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
-    SystemControl::instance()->freeRequestData(req);
+    particle::system::SystemControl::instance()->freeRequestData(req);
 }
 
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
-    SystemControl::instance()->setResult(req, result, handler, data);
+    particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
 #else // !SYSTEM_CONTROL_ENABLED

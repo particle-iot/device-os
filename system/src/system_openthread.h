@@ -17,4 +17,18 @@
 
 #pragma once
 
-#include "sdk_config.h"
+#include "openthread/types.h"
+
+namespace particle {
+
+namespace system {
+
+int threadInit();
+
+void threadProcess();
+
+otInstance* threadInstance();
+
+} // particle::system
+
+} // particle

@@ -32,6 +32,12 @@
 #include "system_mode.h"
 #include "system_power.h"
 
+#include "ble_hal.h"
+
+// FIXME
+#include "system_openthread.h"
+#include "system_control_internal.h"
+
 using namespace particle;
 
 enum eWanTimings
@@ -300,6 +306,9 @@ protected:
             LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
         }
 
+        // Start advertising
+        ble_start_advert(nullptr);
+
         on_start_listening();
         start_listening_timer_create();
 
@@ -354,8 +363,16 @@ protected:
             if (is_start_listening_timeout()) {
                 start_listening_timeout();
             }
+
+            // FIXME
+            system::SystemControl::instance()->run();
+            system::threadProcess();
+
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
+
+        // Stop advertising
+        ble_stop_advert(nullptr);
 
         LED_SIGNAL_STOP(LISTENING_MODE);
 

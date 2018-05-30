@@ -17,4 +17,30 @@
 
 #pragma once
 
-#include "sdk_config.h"
+#include "system_control.h"
+
+namespace particle {
+
+namespace ctrl {
+
+namespace mesh {
+
+int auth(ctrl_request* req);
+int createNetwork(ctrl_request* req);
+int startCommissioner(ctrl_request* req);
+int stopCommissioner(ctrl_request* req);
+int prepareJoiner(ctrl_request* req);
+int addJoiner(ctrl_request* req);
+int removeJoiner(ctrl_request* req);
+void joinNetwork(ctrl_request* req);
+int leaveNetwork(ctrl_request* req);
+int getNetworkInfo(ctrl_request* req);
+int scanNetworks(ctrl_request* req);
+
+int test(ctrl_request* req); // FIXME
+
+} // particle::ctrl::mesh
+
+} // particle::ctrl
+
+} // particle

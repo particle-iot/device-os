@@ -17,4 +17,38 @@
 
 #pragma once
 
-#include "sdk_config.h"
+#include <cstdint>
+
+namespace particle
+{
+
+inline int hexToNibble(char c)
+{
+    if (c >= '0' && c <= '9') {
+        return (c - '0');
+    } else if (c >= 'a' && c <= 'f') {
+        return (c - 'a' + 0x0a);
+    } else if (c >= 'A' && c <= 'F') {
+        return (c - 'A' + 0x0a);
+    }
+    return -1;
+}
+
+inline size_t hexToBytes(const char* src, char* dest, size_t size)
+{
+    size_t n = 0;
+    while (n < size) {
+        const int h = hexToNibble(*src++);
+        if (h < 0) {
+            break;
+        }
+        const int l = hexToNibble(*src++);
+        if (l < 0) {
+            break;
+        }
+        *dest++ = ((unsigned)h << 4) | (unsigned)l;
+    }
+    return n;
+}
+
+} // namespace particle
