@@ -17,25 +17,20 @@
 
 #include "system_openthread.h"
 
+#if HAL_PLATFORM_OPENTHREAD
+
 #include "system_error.h"
+#include "service_debug.h"
 #include "logging.h"
 
-#include "openthread-core-config.h"
+#include <openthread-core-config.h>
 
-#include "openthread/openthread.h"
-#include "openthread/thread.h"
-#include "openthread/instance.h"
-#include "openthread/commissioner.h"
-#include "openthread/joiner.h"
-#include "openthread/platform.h"
-
-extern "C" {
-
-#include "openthread/platform-softdevice.h"
-
-}
-
-#include "nrf_sdh_soc.h"
+#include <openthread/openthread.h>
+#include <openthread/thread.h>
+#include <openthread/instance.h>
+#include <openthread/commissioner.h>
+#include <openthread/joiner.h>
+#include <openthread/platform.h>
 
 #define CHECK_THREAD(_expr) \
         do { \
@@ -46,15 +41,13 @@ extern "C" {
             } \
         } while (false)
 
-LOG_SOURCE_CATEGORY("system.ot")
+LOG_SOURCE_CATEGORY("system.ot");
 
 namespace particle {
 
 namespace system {
 
 namespace {
-
-otInstance* g_thread = nullptr;
 
 int systemError(otError error) {
     switch (error) {
@@ -189,65 +182,34 @@ void threadStateChanged(uint32_t flags, void* data) {
     }
 }
 
-otInstance* allocInstance() {
-#if OPENTHREAD_ENABLE_MULTIPLE_INSTANCES
-    size_t size = 0;
-    otInstanceInit(nullptr, &size);
-    void* const buf = calloc(1, size);
-    if (!buf) {
-        return nullptr;
-    }
-    return otInstanceInit(buf, &size);
-#else
-    return otInstanceInitSingle();
-#endif
-}
-
-void processSocEvent(uint32_t event, void* data) {
-    PlatformSoftdeviceSocEvtHandler(event);
-}
-
 } // particle::system::
 
 int threadInit() {
-    PlatformInit(0, nullptr);
-    otInstance* const thread = allocInstance();
-    if (!thread) {
-        LOG(ERROR, "Unable to initialize OpenThread");
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-    LOG(INFO, "OpenThread version: %s", otGetVersionString());
-    CHECK_THREAD(otSetStateChangedCallback(thread, threadStateChanged, thread));
-    otLinkModeConfig mode = {};
-    mode.mRxOnWhenIdle = true;
-    mode.mSecureDataRequests = true;
-    mode.mDeviceType = true;
-    mode.mNetworkData = true;
-    CHECK_THREAD(otThreadSetLinkMode(thread, mode));
-    if (otDatasetIsCommissioned(thread)) {
-        CHECK_THREAD(otIp6SetEnabled(thread, true));
-        CHECK_THREAD(otThreadSetEnabled(thread, true));
-        LOG(INFO, "Network name: %s", otThreadGetNetworkName(thread));
-        LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(thread));
-        LOG(INFO, "802.15.4 PAN ID: 0x%04x", (unsigned)otLinkGetPanId(thread));
-    }
-    // Register a handler for SOC events
-    NRF_SDH_SOC_OBSERVER(socObserver, NRF_SDH_SOC_STACK_OBSERVER_PRIO, processSocEvent, nullptr);
-    g_thread = thread;
-    return 0;
-}
+    return ot_init([](otInstance* thread) -> int {
+        CHECK_THREAD(otSetStateChangedCallback(thread, threadStateChanged, thread));
 
-void threadProcess() {
-    if (g_thread) {
-        otTaskletsProcess(g_thread);
-        PlatformProcessDrivers(g_thread);
-    }
-}
+        otLinkModeConfig mode = {};
+        mode.mRxOnWhenIdle = true;
+        mode.mSecureDataRequests = true;
+        mode.mDeviceType = true;
+        mode.mNetworkData = true;
+        CHECK_THREAD(otThreadSetLinkMode(thread, mode));
 
-otInstance* threadInstance() {
-    return g_thread;
+        /* FIXME: this should be handled by the system_network */
+        if (otDatasetIsCommissioned(thread)) {
+            CHECK_THREAD(otIp6SetEnabled(thread, true));
+            CHECK_THREAD(otThreadSetEnabled(thread, true));
+            LOG(INFO, "Network name: %s", otThreadGetNetworkName(thread));
+            LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(thread));
+            LOG(INFO, "802.15.4 PAN ID: 0x%04x", (unsigned)otLinkGetPanId(thread));
+        }
+
+        return 0;
+    }, nullptr);
 }
 
 } // particle::system
 
 } // particle
+
+#endif /* HAL_PLATFORM_OPENTHREAD */
