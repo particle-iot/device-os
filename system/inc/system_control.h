@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+// TODO: Move this feature macro to a platform-specific header
 #ifndef SYSTEM_CONTROL_ENABLED
 #if defined(USB_VENDOR_REQUEST_ENABLE) || BLE_ENABLED
 #define SYSTEM_CONTROL_ENABLED 1

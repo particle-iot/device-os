@@ -67,9 +67,9 @@ typedef enum ble_char_type {
     BLE_CHAR_TYPE_VAL = 3
 } ble_char_type;
 
-// 16-bit UUID
+// UUID
 typedef struct ble_uuid {
-    uint8_t type;
+    uint8_t type; // UUID type obtained via ble_add_base_uuid()
     uint8_t reserved;
     uint16_t uuid;
 } ble_uuid;

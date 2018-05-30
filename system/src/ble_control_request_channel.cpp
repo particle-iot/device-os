@@ -159,30 +159,6 @@ int BleControlRequestChannel::run() {
     return 0;
 }
 
-int BleControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {
-    const auto req = static_cast<Request*>(ctrlReq);
-    if (size > 0) {
-        const auto data = (char*)realloc(req->reply_data, size);
-        if (!data) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        req->reply_data = data;
-        req->reply_size = size;
-    } else {
-        free(req->reply_data);
-        req->reply_data = nullptr;
-        req->reply_size = 0;
-    }
-    return 0;
-}
-
-void BleControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) {
-    const auto req = static_cast<Request*>(ctrlReq);
-    free(req->request_data);
-    req->request_data = nullptr;
-    req->request_size = 0;
-}
-
 void BleControlRequestChannel::setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) {
     // FIXME: Synchronization
     // TODO: Completion handling
