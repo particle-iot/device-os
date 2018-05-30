@@ -119,10 +119,24 @@ void sys_unlock_tcpip_core(void);
 #define MEMP_MEM_INIT                 1
 
 /**
+ * MEM_ALIGNMENT: should be set to the alignment of the CPU
+ *    4 byte alignment -> #define MEM_ALIGNMENT 4
+ *    2 byte alignment -> #define MEM_ALIGNMENT 2
+ */
+#define MEM_ALIGNMENT                  (4)
+
+/**
+ * Use Malloc from LibC - saves code space
+ */
+#define MEM_LIBC_MALLOC                (1)
+
+
+/**
  * MEM_SIZE: the size of the heap memory. If the application will send
  * a lot of data that needs to be copied, this should be set high.
  */
-#define MEM_SIZE                        (4 * 1024)
+/* FIXME */
+#define MEM_SIZE                        (10 * 1024)
 
 /**
  * MEMP_OVERFLOW_CHECK: memp overflow protection reserves a configurable
@@ -133,19 +147,19 @@ void sys_unlock_tcpip_core(void);
  *    MEMP_OVERFLOW_CHECK >= 2 checks each element in every pool every time
  *      memp_malloc() or memp_free() is called (useful but slow!)
  */
-#define MEMP_OVERFLOW_CHECK             0
+#define MEMP_OVERFLOW_CHECK             defined(DEBUG_BUILD)
 
 /**
  * MEMP_SANITY_CHECK==1: run a sanity check after each memp_free() to make
  * sure that there are no cycles in the linked lists.
  */
-#define MEMP_SANITY_CHECK               0
+#define MEMP_SANITY_CHECK               defined(DEBUG_BUILD)
 
 /**
  * MEM_SANITY_CHECK==1: run a sanity check after each mem_free() to make
  * sure that the linked list of heap elements is not corrupted.
  */
-#define MEM_SANITY_CHECK                0
+#define MEM_SANITY_CHECK                defined(DEBUG_BUILD)
 
 /**
  * MEM_USE_POOLS==1: Use an alternative to malloc() by allocating from a set
@@ -153,6 +167,7 @@ void sys_unlock_tcpip_core(void);
  * the smallest pool that can provide the length needed is returned.
  * To use this, MEMP_USE_CUSTOM_POOLS also has to be enabled.
  */
+/* FIXME: we should later switch to using pools */
 #define MEM_USE_POOLS                   0
 
 /**
