@@ -57,12 +57,13 @@ otInstance* allocInstance() {
 }
 
 void ot_process(void* arg) {
+    otInstance* thread = (otInstance*)arg;
     while (true) {
         os_semaphore_take(s_threadSem, CONCURRENT_WAIT_FOREVER, false);
         {
             std::lock_guard<ThreadLock> lk(ThreadLock());
-            otTaskletsProcess(ot_get_instance());
-            PlatformProcessDrivers(ot_get_instance());
+            otTaskletsProcess(thread);
+            PlatformProcessDrivers(thread);
         }
     }
     os_thread_exit(nullptr);
