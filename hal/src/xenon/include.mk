@@ -17,6 +17,7 @@ INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/freertos
 INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/openthread
 INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/mbedtls
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/openthread
 endif
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
