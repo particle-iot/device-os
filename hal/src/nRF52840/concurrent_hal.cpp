@@ -36,12 +36,11 @@
 #include "interrupts_hal.h"
 #include <mutex>
 #include <atomic>
-// #include "flash_acquire.h"
-// #include "periph_lock.h"
+#include "flash_acquire.h"
+#include "periph_lock.h"
 #include "core_hal.h"
 #include "logging.h"
-#include "atomic_flag_mutex.h"
-// #include "static_recursive_mutex.h"
+#include "static_recursive_mutex.h"
 #include "service_debug.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
@@ -71,7 +70,8 @@ static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same siz
 
 namespace {
 
-// StaticRecursiveMutex g_periphMutex;
+StaticRecursiveMutex g_periphMutex;
+StaticRecursiveMutex g_flashMutex;
 
 } // namespace
 
@@ -521,37 +521,21 @@ int os_timer_is_active(os_timer_t timer, void* reserved)
     return xTimerIsTimerActive(timer) != pdFALSE;
 }
 
-/* FIXME */
-#if 0
-static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
 void __flash_acquire() {
-    if (!rtos_started) {
-        return;
-    }
     if (HAL_IsISR()) {
         PANIC(UsageFault, "Flash operation from IRQ");
     }
-    flash_lock.lock();
+    g_flashMutex.lock();
 }
 
 void __flash_release() {
-    if (!rtos_started) {
-        return;
-    }
-    flash_lock.unlock();
+    g_flashMutex.unlock();
 }
 
 void periph_lock() {
-    if (!rtos_started) {
-        return;
-    }
     g_periphMutex.lock();
 }
 
 void periph_unlock() {
-    if (!rtos_started) {
-        return;
-    }
     g_periphMutex.unlock();
 }
-#endif /* if 0 FIXME */
