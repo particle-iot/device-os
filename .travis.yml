@@ -33,11 +33,15 @@ script:
 #after_success: ./ci/update-gh-pages.sh
 
 env:
+  # FIXME: Other platforms are currently probably broken
   matrix:
-    - BUILD_PLATFORM=unit-test gcc
-    - BUILD_PLATFORM=photon p1
-    - BUILD_PLATFORM=core newhal
-    - BUILD_PLATFORM=electron xenon
+    - BUILD_PLATFORM=xenon
+
+  # matrix:
+  #   - BUILD_PLATFORM=unit-test gcc
+  #   - BUILD_PLATFORM=photon p1
+  #   - BUILD_PLATFORM=core newhal
+  #   - BUILD_PLATFORM=electron xenon
 
   # matrix:
   # - UNIT_TEST=y
