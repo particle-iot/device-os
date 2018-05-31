@@ -29,5 +29,5 @@
 #endif
 
 // Include default configuration files (TODO: Copy to the platform directory?)
-#include "../../../../third_party/nrf5_sdk/nrf5_sdk/modules/nrfx/templates/nRF52840/nrfx_config.h"
-#include "../../../../third_party/nrf5_sdk/nrf5_sdk/config/nrf52840/config/sdk_config.h"
+#include "nrf5_sdk/modules/nrfx/templates/nRF52840/nrfx_config.h"
+#include "nrf5_sdk/config/nrf52840/config/sdk_config.h"
