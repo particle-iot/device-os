@@ -115,8 +115,8 @@ void app_error_fault_handler(uint32_t _id, uint32_t _pc, uint32_t _info)
     volatile uint32_t info = _info;
     (void)id; (void)pc; (void)info;
     PANIC(HardFault,"HardFault");
-    // while(1) {
-    // }
+    while(1) {
+    }
 }
 
 void app_error_handler_bare(uint32_t error_code)
@@ -239,6 +239,8 @@ void HAL_Core_Config(void)
 
     Set_System();
 
+    HAL_Core_Setup_override_interrupts();
+
     HAL_RNG_Configuration();
 
 #ifdef DFU_BUILD_ENABLE
@@ -252,7 +254,6 @@ void HAL_Core_Config(void)
 
 void HAL_Core_Setup(void)
 {
-    HAL_Core_Setup_override_interrupts();
     /* DOES NOT DO ANYTHING
      * SysTick is enabled within FreeRTOS
      */
