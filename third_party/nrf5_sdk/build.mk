@@ -65,8 +65,8 @@ CSRC += \
 	$(TARGET_NRF5_SDK_BLE_SRC_PATH)/common/ble_srv_common.c \
 	$(TARGET_NRF5_SDK_BLE_SRC_PATH)/common/ble_advdata.c
 
-#ifeq ($(DEBUG_BUILD),y)
+ifeq ($(DEBUG_BUILD),y)
 CSRC += \
 	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c
-#endif
+endif
 endif
