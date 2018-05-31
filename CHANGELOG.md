@@ -1,3 +1,12 @@
+## 0.8.0-rc.6
+
+**Note:** This is primarily a MFG. release for SARA-R410 LTE modules. The changes do touch code used on other Electron based platforms, but no other features or fixes are relevant for U260, U270, U201, or G350 modems.  This code has been tested on-device for all mentioned modem types with passing results.  Please let us know if you find any issues.
+
+### INTERNAL
+
+- [Electron] Fixes monolithic build [#1543](https://github.com/particle-iot/firmware/pull/1543)
+- [Electron] fixes sticker-rig issue with POWER_ON command [#1544](https://github.com/particle-iot/firmware/pull/1544)
+
 ## 0.8.0-rc.5
 
 **Note:** This is primarily a MFG. release for SARA-R410 LTE modules. The changes do touch code used on other Electron based platforms, but no other features or fixes are relevant for U260, U270, U201, or G350 modems.  This code has been tested on-device for all mentioned modem types with passing results.  Please let us know if you find any issues.
