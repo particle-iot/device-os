@@ -23,6 +23,7 @@
 
 #include "common.h"
 
+#include "concurrent_hal.h"
 #include "rng_hal.h"
 
 #include "logging.h"
@@ -43,16 +44,21 @@
 
 #include "proto/mesh.pb.h"
 
+#include <mutex>
 #include <cstdlib>
 
 #define CHECK_THREAD(_expr) \
-    do { \
-        const auto ret = _expr; \
-        if (ret != OT_ERROR_NONE) { \
-            LOG(ERROR, #_expr " failed: %d", (int)ret); \
-            return SYSTEM_ERROR_UNKNOWN; \
-        } \
-    } while (false)
+        do { \
+            const auto ret = _expr; \
+            if (ret != OT_ERROR_NONE) { \
+                LOG(ERROR, #_expr " failed: %d", (int)ret); \
+                return SYSTEM_ERROR_UNKNOWN; \
+            } \
+        } while (false)
+
+#define THREAD_LOCK(_name) \
+        ThreadLock _name##Mutex; \
+        std::unique_lock<ThreadLock> _name(_name##Mutex)
 
 #define PB(_name) particle_ctrl_mesh_##_name
 
@@ -123,7 +129,7 @@ public:
         }
     }
 
-    static void genRandom(char* data, size_t size) {
+    static void genSecure(char* data, size_t size) {
         while (size > 0) {
             const uint32_t v = HAL_RNG_GetRandomNumber();
             const size_t n = std::min(size, sizeof(v));
@@ -140,6 +146,7 @@ private:
 } // particle::ctrl::mesh::
 
 int auth(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -168,6 +175,7 @@ int auth(ctrl_request* req) {
 }
 
 int createNetwork(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -225,10 +233,12 @@ int createNetwork(ctrl_request* req) {
             }
         }
     }, &actScan));
-    do {
-        // FIXME: Move OpenThread's loop to a separate thread
-        threadProcess();
-    } while (!actScan.done);
+    // FIXME: Split the code into a couple of functions running asynchronously
+    lock.unlock();
+    while (!actScan.done) {
+        os_thread_yield();
+    }
+    lock.lock();
     if (actScan.error != 0) {
         return actScan.error;
     }
@@ -257,7 +267,7 @@ int createNetwork(ctrl_request* req) {
     CHECK_THREAD(otThreadSetMeshLocalPrefix(thread, prefix));
     // Generate master key
     otMasterKey key = {};
-    rand.genRandom((char*)&key, sizeof(key));
+    rand.genSecure((char*)&key, sizeof(key));
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
     // Set PSKc
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
@@ -282,6 +292,7 @@ int createNetwork(ctrl_request* req) {
 }
 
 int startCommissioner(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -295,6 +306,7 @@ int startCommissioner(ctrl_request* req) {
 }
 
 int stopCommissioner(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -307,6 +319,7 @@ int stopCommissioner(ctrl_request* req) {
 }
 
 int prepareJoiner(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -355,6 +368,7 @@ int prepareJoiner(ctrl_request* req) {
 }
 
 int addJoiner(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -379,6 +393,7 @@ int addJoiner(ctrl_request* req) {
 }
 
 int removeJoiner(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -401,6 +416,7 @@ int removeJoiner(ctrl_request* req) {
 }
 
 void joinNetwork(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         system_ctrl_set_result(req, SYSTEM_ERROR_INVALID_STATE, nullptr, nullptr, nullptr);
@@ -438,6 +454,7 @@ void joinNetwork(ctrl_request* req) {
 }
 
 int leaveNetwork(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -453,6 +470,7 @@ int leaveNetwork(ctrl_request* req) {
 }
 
 int getNetworkInfo(ctrl_request* req) {
+    THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
