@@ -16,11 +16,14 @@
  */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("system.ctrl.ble");
+
+LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "ble_control_request_channel.h"
 
 #if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+
+#include "preprocessor.h"
 
 namespace particle {
 
@@ -350,21 +353,26 @@ int BleControlRequestChannel::initProfile() {
     }
     // Characteristics
     ble_char chars[3] = {};
-    ble_char& verChar = chars[0]; // Protocol version
+    // Protocol version
+    ble_char& verChar = chars[0];
     verChar.uuid.type = uuidType;
     verChar.uuid.uuid = VERSION_CHAR_UUID;
     verChar.type = BLE_CHAR_TYPE_VAL;
     const char charVal = PROTOCOL_VERSION;
     verChar.data = &charVal;
     verChar.size = sizeof(charVal);
-    ble_char& sendChar = chars[1]; // TX
+    // TX
+    ble_char& sendChar = chars[1];
     sendChar.uuid.type = uuidType;
     sendChar.uuid.uuid = SEND_CHAR_UUID;
     sendChar.type = BLE_CHAR_TYPE_TX;
-    ble_char& recvChar = chars[2]; // RX
+    sendChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
+    // RX
+    ble_char& recvChar = chars[2];
     recvChar.uuid.type = uuidType;
     recvChar.uuid.uuid = RECV_CHAR_UUID;
     recvChar.type = BLE_CHAR_TYPE_RX;
+    recvChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
     // Services
     ble_service ctrlService = {};
     ctrlService.uuid.type = uuidType;
@@ -374,9 +382,10 @@ int BleControlRequestChannel::initProfile() {
     // Initialize profile
     ble_profile profile = {};
     profile.version = BLE_API_VERSION;
-    profile.device_name = "RealXenon"; // FIXME
+    profile.device_name = PP_STR(PLATFORM_NAME); // TODO: Setup code?
     profile.services = &ctrlService;
     profile.service_count = 1;
+    profile.flags = BLE_PROFILE_FLAG_ENABLE_PAIRING;
     profile.callback = processBleEvent;
     profile.user_data = this;
     ret = ble_init_profile(&profile, nullptr);

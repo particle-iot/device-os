@@ -67,6 +67,7 @@ NRF_BLE_GATT_DEF(g_gatt);
 struct Char {
     ble_uuid_t uuid;
     ble_gatts_char_handles_t handles;
+    uint16_t flags;
 };
 
 struct Service {
@@ -79,12 +80,15 @@ struct Service {
 struct Profile {
     Service services[BLE_MAX_SERVICE_COUNT];
     uint16_t serviceCount;
+    uint16_t flags;
     ble_event_callback callback;
     void* userData;
 };
 
 // Current profile
 Profile g_profile = {};
+
+static_assert(NRF_SDH_BLE_PERIPHERAL_LINK_COUNT == 1, "Multiple simultaneous peripheral connections are not supported");
 
 const Char* findChar(uint16_t handle) {
     for (size_t i = 0; i < g_profile.serviceCount; ++i) {
@@ -116,11 +120,37 @@ void processBleEvent(const ble_evt_t* event, void* data) {
         break;
     }
     case BLE_GAP_EVT_SEC_PARAMS_REQUEST: {
-        // Pairing is not supported
-        const uint32_t ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle,
-                BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, nullptr, nullptr);
+        const auto conn = event->evt.gap_evt.conn_handle;
+        uint32_t ret = 0;
+        if (g_profile.flags & BLE_PROFILE_FLAG_ENABLE_PAIRING) {
+            // const ble_gap_sec_params_t& peerParam = event->evt.gap_evt.params.sec_params_request.peer_params;
+            // Local security parameters
+            ble_gap_sec_params_t param = {};
+            param.bond = 0; // No bonding
+            param.mitm = 0; // No MITM protection
+            param.lesc = 0; // TODO: LE Secure Connections
+            param.oob = 0; // No out of band data
+            param.io_caps = BLE_GAP_IO_CAPS_NONE; // No IO capabilities
+            param.min_key_size = 7;
+            param.max_key_size = 16;
+            // Security key set
+            ble_gap_sec_keyset_t keyset = {};
+            ret = sd_ble_gap_sec_params_reply(conn, BLE_GAP_SEC_STATUS_SUCCESS, &param, &keyset);
+        } else {
+            // Pairing is not supported
+            ret = sd_ble_gap_sec_params_reply(conn, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, nullptr, nullptr);
+        }
         if (ret != NRF_SUCCESS) {
             LOG(ERROR, "sd_ble_gap_sec_params_reply() failed: %u", (unsigned)ret);
+        }
+        break;
+    }
+    case BLE_GAP_EVT_AUTH_STATUS: {
+        const auto status = event->evt.gap_evt.params.auth_status.auth_status;
+        if (status == BLE_GAP_SEC_STATUS_SUCCESS) {
+            LOG(TRACE, "Authentication succeeded");
+        } else {
+            LOG(WARN, "Authentication failed, status: %d", (int)status);
         }
         break;
     }
@@ -187,7 +217,7 @@ void processBleEvent(const ble_evt_t* event, void* data) {
         break;
     }
     default:
-        LOG_DEBUG(TRACE, "Unhandled BLE event: %u", (unsigned)event->header.evt_id);
+        // LOG_DEBUG(TRACE, "Unhandled BLE event: %u", (unsigned)event->header.evt_id);
         break;
     }
 }
@@ -206,7 +236,7 @@ void processAdvertEvent(ble_adv_evt_t event) {
         g_profile.callback(BLE_EVENT_ADVERT_STOPPED, nullptr, g_profile.userData);
         break;
     default:
-        LOG_DEBUG(TRACE, "Unhandled advertising event: %u", (unsigned)event);
+        // LOG_DEBUG(TRACE, "Unhandled advertising event: %u", (unsigned)event);
         break;
     }
 }
@@ -217,6 +247,8 @@ void processGattEvent(nrf_ble_gatt_t* gatt, const nrf_ble_gatt_evt_t* event) {
         ble_conn_param_changed_event_data d = {};
         d.conn_handle = event->conn_handle;
         g_profile.callback(BLE_EVENT_CONN_PARAM_CHANGED, &d, g_profile.userData);
+    } else {
+        // LOG_DEBUG(TRACE, "Unhandled GATT event: %u", (unsigned)event->evt_id);
     }
 }
 
@@ -258,6 +290,14 @@ int initAdvert() {
     return 0;
 }
 
+void setSecurityMode(ble_gap_conn_sec_mode_t* secMode, uint16_t charFlags) {
+    if (charFlags & BLE_CHAR_FLAG_REQUIRE_PAIRING) {
+        BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(secMode); // Require encryption, but not MITM protection
+    } else {
+        BLE_GAP_CONN_SEC_MODE_SET_OPEN(secMode); // No protection
+    }
+}
+
 int initTxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     // Characteristic UUID
     chr->uuid.type = halChar->uuid.type;
@@ -265,7 +305,7 @@ int initTxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     // CCCD metadata (Client Characteristic Configuration Descriptor)
     ble_gatts_attr_md_t cccdMd = {};
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccdMd.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccdMd.write_perm);
+    setSecurityMode(&cccdMd.write_perm, halChar->flags);
     cccdMd.vloc = BLE_GATTS_VLOC_STACK;
     // Characteristic metadata
     ble_gatts_char_md_t charMd = {};
@@ -273,8 +313,8 @@ int initTxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     charMd.p_cccd_md = &cccdMd;
     // Value attribute metadata
     ble_gatts_attr_md_t attrMd = {};
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.write_perm);
+    setSecurityMode(&attrMd.read_perm, halChar->flags);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attrMd.write_perm);
     attrMd.vloc = BLE_GATTS_VLOC_STACK;
     attrMd.rd_auth = 0;
     attrMd.wr_auth = 0;
@@ -283,14 +323,13 @@ int initTxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     ble_gatts_attr_t attr = {};
     attr.p_uuid = &chr->uuid;
     attr.p_attr_md = &attrMd;
-    attr.init_len = 1;
-    attr.init_offs = 0;
     attr.max_len = BLE_MAX_ATTR_VALUE_SIZE;
     const uint32_t ret = sd_ble_gatts_characteristic_add(serviceHandle, &charMd, &attr, &chr->handles);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
         return halError(ret);
     }
+    chr->flags = halChar->flags;
     halChar->handle = chr->handles.value_handle;
     return 0;
 }
@@ -305,8 +344,8 @@ int initRxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     charMd.char_props.write_wo_resp = 1;
     // Value attribute metadata
     ble_gatts_attr_md_t attrMd = {};
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attrMd.read_perm);
+    setSecurityMode(&attrMd.write_perm, halChar->flags);
     attrMd.vloc = BLE_GATTS_VLOC_STACK;
     attrMd.rd_auth = 0;
     attrMd.wr_auth = 0;
@@ -315,14 +354,13 @@ int initRxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     ble_gatts_attr_t attr = {};
     attr.p_uuid = &chr->uuid;
     attr.p_attr_md = &attrMd;
-    attr.init_len = 1;
-    attr.init_offs = 0;
     attr.max_len = BLE_MAX_ATTR_VALUE_SIZE;
     const uint32_t ret = sd_ble_gatts_characteristic_add(serviceHandle, &charMd, &attr, &chr->handles);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
         return halError(ret);
     }
+    chr->flags = halChar->flags;
     halChar->handle = chr->handles.value_handle;
     return 0;
 }
@@ -340,8 +378,11 @@ int initValChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     charMd.char_props.read = 1;
     // Value attribute metadata
     ble_gatts_attr_md_t attrMd = {};
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.read_perm);
+    setSecurityMode(&attrMd.read_perm, halChar->flags);
     attrMd.vloc = BLE_GATTS_VLOC_STACK;
+    attrMd.rd_auth = 0;
+    attrMd.wr_auth = 0;
+    attrMd.vlen = 1;
     // Value attribute
     ble_gatts_attr_t attr = {};
     attr.p_uuid = &chr->uuid;
@@ -354,14 +395,22 @@ int initValChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
         LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
         return halError(ret);
     }
+    chr->flags = halChar->flags;
     halChar->handle = chr->handles.value_handle;
     return 0;
 }
 
-int initChars(ble_service* halService, Service* service) {
+int initService(ble_service* halService, Service* service) {
     if (halService->char_count > BLE_MAX_CHAR_COUNT) {
         LOG(ERROR, "Maximum number of characteristics exceeded");
         return BLE_ERROR_INVALID_PARAM;
+    }
+    service->uuid.type = halService->uuid.type;
+    service->uuid.uuid = halService->uuid.uuid;
+    const uint32_t ret = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY, &service->uuid, &service->handle);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gatts_service_add() failed: %u", (unsigned)ret);
+        return halError(ret);
     }
     for (size_t i = 0; i < halService->char_count; ++i) {
         ble_char& halChar = halService->chars[i];
@@ -385,7 +434,7 @@ int initChars(ble_service* halService, Service* service) {
             return BLE_ERROR_INVALID_PARAM;
         }
         if (ret != 0) {
-            LOG(ERROR, "Unable to initialize characteristic");
+            LOG(ERROR, "Unable to initialize characteristic, type: %d", (int)halChar.type);
             return ret;
         }
     }
@@ -401,20 +450,14 @@ int initProfile(ble_profile* halProfile) {
     for (size_t i = 0; i < halProfile->service_count; ++i) {
         ble_service& halService = halProfile->services[i];
         Service& service = g_profile.services[i];
-        service.uuid.type = halService.uuid.type;
-        service.uuid.uuid = halService.uuid.uuid;
-        const uint32_t ret = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY, &service.uuid, &service.handle);
-        if (ret != NRF_SUCCESS) {
-            LOG(ERROR, "sd_ble_gatts_service_add() failed: %u", (unsigned)ret);
-            return halError(ret);
-        }
-        const int halRet = initChars(&halService, &service);
-        if (halRet != 0) {
-            LOG(ERROR, "Unable to initialize service characteristics");
-            return halRet;
+        const int ret = initService(&halService, &service);
+        if (ret != 0) {
+            LOG(ERROR, "Unable to initialize service");
+            return ret;
         }
     }
     g_profile.serviceCount = halProfile->service_count;
+    g_profile.flags = halProfile->flags;
     g_profile.callback = halProfile->callback;
     g_profile.userData = halProfile->user_data;
     return 0;

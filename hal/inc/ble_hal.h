@@ -54,6 +54,16 @@ typedef enum ble_event {
     BLE_EVENT_DATA_RECEIVED = 8
 } ble_event;
 
+// Profile flags
+typedef enum ble_profile_flag {
+    BLE_PROFILE_FLAG_ENABLE_PAIRING = 0x01
+} ble_profile_flag;
+
+// Characteristic flags
+typedef enum ble_char_flag {
+    BLE_CHAR_FLAG_REQUIRE_PAIRING = 0x01
+} ble_char_flag;
+
 // Flags for ble_set_char_value()
 typedef enum ble_set_char_value_flag {
     BLE_SET_CHAR_VALUE_FLAG_NOTIFY = 0x01
@@ -81,6 +91,7 @@ typedef struct ble_char {
     uint16_t handle; // TODO: Use typedefs for all handle types defined by the HAL
     const char* data; // Initial value
     uint16_t size;
+    uint16_t flags;
 } ble_char;
 
 // Service
@@ -130,6 +141,8 @@ typedef void(*ble_event_callback)(int event, const void* event_data, void* user_
 // Profile
 typedef struct ble_profile {
     uint16_t version; // API version
+    uint16_t reserved;
+    uint16_t flags;
     uint16_t service_count;
     ble_service* services;
     const char* device_name;

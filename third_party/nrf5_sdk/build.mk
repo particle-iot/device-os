@@ -59,11 +59,9 @@ CSRC += \
 
 # BLE
 CSRC += \
-	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/nrf_ble_qwr/,*.c) \
+	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/common/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/nrf_ble_gatt/,*.c) \
-	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_advertising/,*.c) \
-	$(TARGET_NRF5_SDK_BLE_SRC_PATH)/common/ble_srv_common.c \
-	$(TARGET_NRF5_SDK_BLE_SRC_PATH)/common/ble_advdata.c
+	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_advertising/,*.c)
 
 ifeq ($(DEBUG_BUILD),y)
 CSRC += \
