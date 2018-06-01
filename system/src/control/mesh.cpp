@@ -161,7 +161,7 @@ int createNetwork(ctrl_request* req) {
         Vector<uint64_t> extPanIds;
         Vector<uint16_t> panIds;
         int result;
-        bool done;
+        volatile bool done;
     };
     ActiveScanResult actScan = {};
     if (!actScan.extPanIds.reserve(4) || !actScan.panIds.reserve(4)) {
@@ -481,7 +481,7 @@ int scanNetworks(ctrl_request* req) {
     struct ScanResult {
         Vector<Network> networks;
         int result;
-        bool done;
+        volatile bool done;
     };
     ScanResult scan = {};
     CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, SCAN_DURATION,
