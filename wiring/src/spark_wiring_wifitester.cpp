@@ -309,14 +309,14 @@ void WiFiTester::checkWifiSerial(char c) {
         } else if ((start = strstr(command, cmd_DFU))) {
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
             serialPrintln("DFU mode! DFU mode! DFU mode! DFU mode! DFU mode! DFU mode!");
-            delay(200);
+            HAL_Delay_Milliseconds(200);
 
             System.dfu();
         } else if ((start = strstr(command, cmd_RESET))) {
             //to trigger a factory reset:
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
             serialPrintln("factory reset! factory reset! factory reset! factory reset!");
-            delay(200);
+            HAL_Delay_Milliseconds(200);
 
             System.factoryReset();
         } else if ((start = strstr(command, cmd_UNLOCK))) {
@@ -343,14 +343,14 @@ void WiFiTester::checkWifiSerial(char c) {
             serialPrintln("Rebooting... Rebooting... Rebooting...");
             serialPrintln("Rebooting... Rebooting... Rebooting...");
 
-            delay(200);
+            HAL_Delay_Milliseconds(200);
             System.reset();
         } else if ((start = strstr(command, cmd_POWER_ON))) {
             serialPrintln("Power on... Power on... Power on...");
             serialPrintln("Power on... Power on... Power on...");
 
 #if Wiring_Cellular
-            delay(200);
+            HAL_Delay_Milliseconds(200);
             cellular_result_t result = cellular_on(NULL);
             if (result == 0) {
                 power_state = true;
@@ -364,7 +364,7 @@ void WiFiTester::checkWifiSerial(char c) {
             } else {
                 serialPrintln("POWER FAILED TO TURN ON!!!");
             }
-            delay(200);
+            HAL_Delay_Milliseconds(200);
         } else if ((start = strstr(command, cmd_INFO))) {
             printInfo();
         }
