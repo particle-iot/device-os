@@ -21,6 +21,8 @@
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
 #include <openthread/message.h>
+#include <openthread/ip6.h>
+#include <openthread/dhcp6_client.h>
 
 #ifdef __cplusplus
 
@@ -49,9 +51,15 @@ protected:
   void input(otMessage* message);
   void stateChanged(uint32_t flags);
 
+  void refreshIpAddresses();
+
 private:
   netif netif_ = {};
   otInstance* ot_ = nullptr;
+  otNetifAddress slaacAddresses_[OPENTHREAD_CONFIG_NUM_SLAAC_ADDRESSES] = {};
+#if OPENTHREAD_ENABLE_DHCP6_CLIENT
+  otDhcpAddress dhcpAddresses_[OPENTHREAD_CONFIG_NUM_DHCP_PREFIXES];
+#endif // OPENTHREAD_ENABLE_DHCP6_CLIENT
 };
 
 } } // namespace particle::net

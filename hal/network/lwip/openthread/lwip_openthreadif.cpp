@@ -27,6 +27,8 @@
 #include <openthread/thread.h>
 #include <algorithm>
 #include "service_debug.h"
+#include "ot_api.h"
+#include <mutex>
 
 using namespace particle::net;
 
@@ -49,6 +51,7 @@ int otNetifAddressStateToIp6AddrState(const otNetifAddress* addr) {
 OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     : ot_(ot) {
 
+  std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
   if (!ot_) {
 #if !defined(OPENTHREAD_ENABLE_MULTIPLE_INSTANCES) || OPENTHREAD_ENABLE_MULTIPLE_INSTANCES == 0
     ot_ = otInstanceInitSingle();
@@ -101,6 +104,9 @@ err_t OpenThreadNetif::initCb(netif* netif) {
 /* LwIP netif output_ip6 callback */
 err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr) {
   auto self = static_cast<OpenThreadNetif*>(netif->state);
+
+  std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+
   // LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes", self, p->tot_len);
   auto msg = otIp6NewMessage(self->ot_, true);
   if (msg == nullptr) {
@@ -128,6 +134,8 @@ err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr
 /* OpenThread receive callback */
 void OpenThreadNetif::otReceiveCb(otMessage* msg, void* ctx) {
   auto self = static_cast<OpenThreadNetif*>(ctx);
+
+  std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
 
   // LOG(TRACE, "otReceiveCb: new message %x", msg);
 
@@ -270,6 +278,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
   }
   if (flags & OT_CHANGED_THREAD_NETDATA) {
     LOG(TRACE, "OT_CHANGED_THREAD_NETDATA");
+    refreshIpAddresses();
   }
   if (flags & OT_CHANGED_THREAD_CHILD_ADDED) {
     LOG(TRACE, "OT_CHANGED_THREAD_CHILD_ADDED");
@@ -312,12 +321,26 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
   }
 }
 
+void OpenThreadNetif::refreshIpAddresses() {
+  otIp6SlaacUpdate(ot_, slaacAddresses_, sizeof(slaacAddresses_) / sizeof(slaacAddresses_[0]),
+                   otIp6CreateRandomIid, nullptr);
+
+  /* FIXME */
+#if OPENTHREAD_ENABLE_DHCP6_SERVER
+  otDhcp6ServerUpdate(ot_);
+#endif // OPENTHREAD_ENABLE_DHCP6_SERVER
+
+#if OPENTHREAD_ENABLE_DHCP6_CLIENT
+  otDhcp6ClientUpdate(ot_, dhcpAddresses_, sizeof(dhcpAddresses_) / sizeof(dhcpAddresses_[0]), nullptr);
+#endif // OPENTHREAD_ENABLE_DHCP6_CLIENT
+}
+
 void OpenThreadNetif::input(otMessage* msg) {
   if (!(netif_is_up(interface()) && netif_is_link_up(interface()))) {
     return;
   }
   uint16_t len = otMessageGetLength(msg);
-  // LOG(TRACE, "OpenThreadNetif(%x): input() length %u", this, len);
+  LOG(TRACE, "OpenThreadNetif(%x): input() length %u", this, len);
   auto p = pbuf_alloc(PBUF_IP, len, PBUF_POOL);
   if (p) {
     uint16_t written = 0;
