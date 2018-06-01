@@ -24,11 +24,11 @@
 #include "common.h"
 
 #include "concurrent_hal.h"
-#include "rng_hal.h"
 
 #include "logging.h"
 #include "bytes2hexbuf.h"
 #include "hex_to_bytes.h"
+#include "random.h"
 #include "preprocessor.h"
 
 #include "spark_wiring_vector.h"
@@ -95,53 +95,6 @@ const char* const VENDOR_DATA = "";
 
 // Current joining device credential
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
-
-// TODO: Implement a thread-safe system API for pseudo-random number generation
-class Random {
-public:
-    Random() :
-            seed_(HAL_RNG_GetRandomNumber()) {
-    }
-
-    template<typename T>
-    T gen() {
-        T val = 0;
-        gen((char*)&val, sizeof(val));
-        return val;
-    }
-
-    void gen(char* data, size_t size) {
-        while (size > 0) {
-            const int v = rand_r(&seed_);
-            const size_t n = std::min(size, sizeof(v));
-            memcpy(data, &v, n);
-            data += n;
-            size -= n;
-        }
-    }
-
-    void genBase32(char* str, size_t size) {
-        static const char alpha[32] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-                'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '2', '3', '4', '5', '6', '7' }; // RFC 4648
-        for (size_t i = 0; i < size; ++i) {
-            const auto ai = gen<size_t>() % sizeof(alpha);
-            str[i] = alpha[ai];
-        }
-    }
-
-    static void genSecure(char* data, size_t size) {
-        while (size > 0) {
-            const uint32_t v = HAL_RNG_GetRandomNumber();
-            const size_t n = std::min(size, sizeof(v));
-            memcpy(data, &v, n);
-            data += n;
-            size -= n;
-        }
-    }
-
-private:
-    unsigned seed_;
-};
 
 } // particle::ctrl::mesh::
 

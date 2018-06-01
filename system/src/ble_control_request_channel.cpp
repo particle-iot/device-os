@@ -23,6 +23,8 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
 
+#include "device_code.h"
+
 #include "preprocessor.h"
 
 namespace particle {
@@ -382,7 +384,13 @@ int BleControlRequestChannel::initProfile() {
     // Initialize profile
     ble_profile profile = {};
     profile.version = BLE_API_VERSION;
-    profile.device_name = PP_STR(PLATFORM_NAME); // TODO: Setup code?
+    char devName[32] = {};
+    ret = get_device_name(devName, sizeof(devName));
+    if (ret < 0) {
+        LOG(ERROR, "Unable to get device name");
+        return ret;
+    }
+    profile.device_name = devName;
     profile.services = &ctrlService;
     profile.service_count = 1;
     profile.flags = BLE_PROFILE_FLAG_ENABLE_PAIRING;
