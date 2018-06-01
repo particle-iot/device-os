@@ -25,11 +25,11 @@
 
 #include "concurrent_hal.h"
 
-#include "logging.h"
 #include "bytes2hexbuf.h"
 #include "hex_to_bytes.h"
 #include "random.h"
 #include "preprocessor.h"
+#include "logging.h"
 
 #include "spark_wiring_vector.h"
 
@@ -86,6 +86,9 @@ const size_t JOINER_PASSWORD_MIN_SIZE = 6;
 
 // Maximum size of the joining device credential
 const size_t JOINER_PASSWORD_MAX_SIZE = 32;
+
+// Time in milliseconds to spend scanning each channel
+const unsigned SCAN_DURATION = 0; // Use Thread's default timeout
 
 // Vendor data
 const char* const VENDOR_NAME = "Particle";
@@ -157,18 +160,21 @@ int createNetwork(ctrl_request* req) {
     struct ActiveScanResult {
         Vector<uint64_t> extPanIds;
         Vector<uint16_t> panIds;
-        int error;
+        int result;
         bool done;
     };
     ActiveScanResult actScan = {};
     if (!actScan.extPanIds.reserve(4) || !actScan.panIds.reserve(4)) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, 0 /* aScanDuration */,
+    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, SCAN_DURATION,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ActiveScanResult*)data;
         if (!result) {
             scan->done = true;
+            return;
+        }
+        if (scan->result != 0) {
             return;
         }
         uint64_t extPanId = 0;
@@ -176,24 +182,24 @@ int createNetwork(ctrl_request* req) {
         memcpy(&extPanId, &result->mExtendedPanId, sizeof(extPanId));
         if (!scan->extPanIds.contains(extPanId)) {
             if (!scan->extPanIds.append(extPanId)) {
-                scan->error = SYSTEM_ERROR_NO_MEMORY;
+                scan->result = SYSTEM_ERROR_NO_MEMORY;
             }
         }
         const uint16_t panId = result->mPanId;
         if (!scan->panIds.contains(panId)) {
             if (!scan->panIds.append(panId)) {
-                scan->error = SYSTEM_ERROR_NO_MEMORY;
+                scan->result = SYSTEM_ERROR_NO_MEMORY;
             }
         }
     }, &actScan));
-    // FIXME: Split the code into a couple of functions running asynchronously
+    // FIXME: Make this handler asynchronous
     lock.unlock();
     while (!actScan.done) {
         os_thread_yield();
     }
     lock.lock();
-    if (actScan.error != 0) {
-        return actScan.error;
+    if (actScan.result != 0) {
+        return actScan.result;
     }
     // Generate PAN ID
     Random rand;
@@ -447,7 +453,7 @@ int getNetworkInfo(ctrl_request* req) {
     }
     char extPanIdStr[OT_EXT_PAN_ID_SIZE * 2] = {};
     bytes2hexbuf_lower_case(extPanId, OT_EXT_PAN_ID_SIZE, extPanIdStr);
-    // Enode a reply
+    // Encode a reply
     PB(GetNetworkInfoReply) pbRep = {};
     EncodedString eName(&pbRep.network.name, name, strlen(name));
     EncodedString eExtPanIdStr(&pbRep.network.ext_pan_id, extPanIdStr, sizeof(extPanIdStr));
@@ -461,7 +467,83 @@ int getNetworkInfo(ctrl_request* req) {
 }
 
 int scanNetworks(ctrl_request* req) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    if (!thread) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    struct Network {
+        char name[OT_NETWORK_NAME_MAX_SIZE + 1]; // Network name (null-terminated)
+        char extPanId[OT_EXT_PAN_ID_SIZE * 2]; // Extended PAN ID in hex
+        uint16_t panId; // PAN ID
+        uint8_t channel; // Channel number
+    };
+    struct ScanResult {
+        Vector<Network> networks;
+        int result;
+        bool done;
+    };
+    ScanResult scan = {};
+    CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, SCAN_DURATION,
+            [](otActiveScanResult* result, void* data) {
+        const auto scan = (ScanResult*)data;
+        if (!result) {
+            scan->done = true;
+            return;
+        }
+        if (scan->result != 0) {
+            return;
+        }
+        Network network = {};
+        // Network name
+        static_assert(sizeof(result->mNetworkName) <= sizeof(Network::name), "");
+        memcpy(&network.name, &result->mNetworkName, sizeof(result->mNetworkName));
+        // Extended PAN ID
+        static_assert(sizeof(result->mExtendedPanId) * 2 == sizeof(Network::extPanId), "");
+        bytes2hexbuf_lower_case((const uint8_t*)&result->mExtendedPanId, sizeof(result->mExtendedPanId), network.extPanId);
+        // PAN ID
+        network.panId = result->mPanId;
+        // Channel number
+        network.channel = result->mChannel;
+        if (!scan->networks.append(std::move(network))) {
+            scan->result = SYSTEM_ERROR_NO_MEMORY;
+        }
+    }, &scan));
+    // FIXME: Make this handler asynchronous
+    lock.unlock();
+    while (!scan.done) {
+        os_thread_yield();
+    }
+    lock.lock();
+    if (scan.result != 0) {
+        return scan.result;
+    }
+    // Encode a reply
+    PB(ScanNetworksReply) pbRep = {};
+    pbRep.networks.arg = &scan;
+    pbRep.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+        const auto scan = (const ScanResult*)*arg;
+        for (int i = 0; i < scan->networks.size(); ++i) {
+            const Network& network = scan->networks.at(i);
+            PB(NetworkInfo) pbNetwork = {};
+            EncodedString eName(&pbNetwork.name, network.name, strlen(network.name));
+            EncodedString eExtPanId(&pbNetwork.ext_pan_id, network.extPanId, sizeof(network.extPanId));
+            pbNetwork.pan_id = network.panId;
+            pbNetwork.channel = network.channel;
+            if (!pb_encode_tag_for_field(strm, field)) {
+                return false;
+            }
+            if (!pb_encode_submessage(strm, PB(NetworkInfo_fields), &pbNetwork)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    const int ret = encodeReplyMessage(req, PB(ScanNetworksReply_fields), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
 }
 
 int test(ctrl_request* req) {
