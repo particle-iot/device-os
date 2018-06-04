@@ -60,16 +60,18 @@ int mbedtls_sha256_starts_ret(mbedtls_sha256_context * ctx, int is224)
         ctx->mode = CRYS_HASH_SHA256_mode;
     }
 
-    CC310_OPERATION_NO_RESULT(CRYS_HASH_Init(&ctx->user_context, ctx->mode));
+    int ret = 0;
+    CC310_OPERATION(CRYS_HASH_Init(&ctx->user_context, ctx->mode), ret);
 
-    return 0;
+    return ret;
 }
 
 int mbedtls_sha256_update_ret(mbedtls_sha256_context * ctx, const unsigned char * input, size_t ilen)
 {
-    CC310_OPERATION_NO_RESULT(CRYS_HASH_Update(&ctx->user_context, (unsigned char *)input, ilen));
+    int ret = 0;
+    CC310_OPERATION(CRYS_HASH_Update(&ctx->user_context, (unsigned char *)input, ilen), ret);
 
-    return 0;
+    return ret;
 }
 
 int mbedtls_sha256_finish_ret(mbedtls_sha256_context * ctx, unsigned char output[32])
@@ -78,7 +80,9 @@ int mbedtls_sha256_finish_ret(mbedtls_sha256_context * ctx, unsigned char output
 
     memset(result, 0, sizeof(result));
 
-    CC310_OPERATION_NO_RESULT(CRYS_HASH_Finish(&ctx->user_context, result));
+    int ret = 0;
+
+    CC310_OPERATION(CRYS_HASH_Finish(&ctx->user_context, result), ret);
 
     uint8_t size = CRYS_HASH_SHA256_DIGEST_SIZE_IN_BYTES;
 
@@ -89,14 +93,40 @@ int mbedtls_sha256_finish_ret(mbedtls_sha256_context * ctx, unsigned char output
 
     memcpy(output, result, size);
 
-    return 0;
+    return ret;
 }
 
 int mbedtls_internal_sha256_process(mbedtls_sha256_context *ctx, const unsigned char data[64])
 {
-    mbedtls_sha256_update(ctx, data, 64);
-
-    return 0;
+    return mbedtls_sha256_update_ret(ctx, data, 64);
 }
+
+#if !defined(MBEDTLS_DEPRECATED_REMOVED)
+void mbedtls_sha256_update( mbedtls_sha256_context *ctx,
+                            const unsigned char *input,
+                            size_t ilen )
+{
+    mbedtls_sha256_update_ret( ctx, input, ilen );
+}
+
+void mbedtls_sha256_starts( mbedtls_sha256_context *ctx,
+                            int is224 )
+{
+    mbedtls_sha256_starts_ret( ctx, is224 );
+}
+
+void mbedtls_sha256_process( mbedtls_sha256_context *ctx,
+                             const unsigned char data[64] )
+{
+    mbedtls_internal_sha256_process( ctx, data );
+}
+
+void mbedtls_sha256_finish( mbedtls_sha256_context *ctx,
+                            unsigned char output[32] )
+{
+    mbedtls_sha256_finish_ret( ctx, output );
+}
+
+#endif /* !defined(MBEDTLS_DEPRECATED_REMOVED) */
 
 #endif /* MBEDTLS_SHA256_ALT */

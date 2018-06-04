@@ -31,8 +31,10 @@
 #include "mbedtls_config_platform.h"
 #endif /* PLATFORM_ID < 12 || PLATFORM_ID == 60000 */
 
-#if !(PLATFORM_ID == 3 && defined(__clang__))
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
 #include "mbedtls_weaken.h"
-#endif // !(PLATFORM_ID == 3 && defined(__clang__))
+#endif /* PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10 */
+#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 #endif /* MBEDTLS_CONFIG_H */
