@@ -27,6 +27,10 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "preprocessor.h"
 
+#ifndef PAIRING_ENABLED
+#define PAIRING_ENABLED 1
+#endif
+
 namespace particle {
 
 namespace system {
@@ -368,13 +372,17 @@ int BleControlRequestChannel::initProfile() {
     sendChar.uuid.type = uuidType;
     sendChar.uuid.uuid = SEND_CHAR_UUID;
     sendChar.type = BLE_CHAR_TYPE_TX;
+#if PAIRING_ENABLED
     sendChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
+#endif
     // RX
     ble_char& recvChar = chars[2];
     recvChar.uuid.type = uuidType;
     recvChar.uuid.uuid = RECV_CHAR_UUID;
     recvChar.type = BLE_CHAR_TYPE_RX;
+#if PAIRING_ENABLED
     recvChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
+#endif
     // Services
     ble_service ctrlService = {};
     ctrlService.uuid.type = uuidType;
@@ -393,7 +401,9 @@ int BleControlRequestChannel::initProfile() {
     profile.device_name = devName;
     profile.services = &ctrlService;
     profile.service_count = 1;
+#if PAIRING_ENABLED
     profile.flags = BLE_PROFILE_FLAG_ENABLE_PAIRING;
+#endif
     profile.callback = processBleEvent;
     profile.user_data = this;
     ret = ble_init_profile(&profile, nullptr);
