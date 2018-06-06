@@ -16,17 +16,29 @@
  */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("system.ctrl.ble");
+
+LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "ble_control_request_channel.h"
 
 #if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+
+#include "device_code.h"
+
+#include "preprocessor.h"
+
+#ifndef PAIRING_ENABLED
+#define PAIRING_ENABLED 1
+#endif
 
 namespace particle {
 
 namespace system {
 
 namespace {
+
+// Device setup protocol version
+const unsigned PROTOCOL_VERSION = 0x01;
 
 // Vendor-specific base UUID: 6FA9xxxx-5C4E-48A8-94F4-8030546F36FC
 const uint8_t BASE_UUID[16] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x00, 0x00, 0xa9, 0x6f };
@@ -154,30 +166,6 @@ int BleControlRequestChannel::run() {
         }
     }
     return 0;
-}
-
-int BleControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {
-    const auto req = static_cast<Request*>(ctrlReq);
-    if (size > 0) {
-        const auto data = (char*)realloc(req->reply_data, size);
-        if (!data) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        req->reply_data = data;
-        req->reply_size = size;
-    } else {
-        free(req->reply_data);
-        req->reply_data = nullptr;
-        req->reply_size = 0;
-    }
-    return 0;
-}
-
-void BleControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) {
-    const auto req = static_cast<Request*>(ctrlReq);
-    free(req->request_data);
-    req->request_data = nullptr;
-    req->request_size = 0;
 }
 
 void BleControlRequestChannel::setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) {
@@ -370,15 +358,31 @@ int BleControlRequestChannel::initProfile() {
         return ret;
     }
     // Characteristics
-    ble_char chars[2] = {};
-    ble_char& sendChar = chars[0];
+    ble_char chars[3] = {};
+    // Protocol version
+    ble_char& verChar = chars[0];
+    verChar.uuid.type = uuidType;
+    verChar.uuid.uuid = VERSION_CHAR_UUID;
+    verChar.type = BLE_CHAR_TYPE_VAL;
+    const char charVal = PROTOCOL_VERSION;
+    verChar.data = &charVal;
+    verChar.size = sizeof(charVal);
+    // TX
+    ble_char& sendChar = chars[1];
     sendChar.uuid.type = uuidType;
     sendChar.uuid.uuid = SEND_CHAR_UUID;
     sendChar.type = BLE_CHAR_TYPE_TX;
-    ble_char& recvChar = chars[1];
+#if PAIRING_ENABLED
+    sendChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
+#endif
+    // RX
+    ble_char& recvChar = chars[2];
     recvChar.uuid.type = uuidType;
     recvChar.uuid.uuid = RECV_CHAR_UUID;
     recvChar.type = BLE_CHAR_TYPE_RX;
+#if PAIRING_ENABLED
+    recvChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
+#endif
     // Services
     ble_service ctrlService = {};
     ctrlService.uuid.type = uuidType;
@@ -388,9 +392,18 @@ int BleControlRequestChannel::initProfile() {
     // Initialize profile
     ble_profile profile = {};
     profile.version = BLE_API_VERSION;
-    profile.device_name = "RealXenon"; // FIXME
+    char devName[32] = {};
+    ret = get_device_name(devName, sizeof(devName));
+    if (ret < 0) {
+        LOG(ERROR, "Unable to get device name");
+        return ret;
+    }
+    profile.device_name = devName;
     profile.services = &ctrlService;
     profile.service_count = 1;
+#if PAIRING_ENABLED
+    profile.flags = BLE_PROFILE_FLAG_ENABLE_PAIRING;
+#endif
     profile.callback = processBleEvent;
     profile.user_data = this;
     ret = ble_init_profile(&profile, nullptr);

@@ -15,19 +15,31 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "control_request_handler.h"
 
-// Do not define Particle's STATIC_ASSERT() to avoid conflicts with the nRF SDK's own macro
-#define NO_STATIC_ASSERT
+#include <cstdlib>
 
-#include "module_info.h"
+namespace particle {
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-#include "sdk_config_bootloader.h"
-#else
-#include "sdk_config_system.h"
-#endif
+int ControlRequestChannel::allocReplyData(ctrl_request* req, size_t size) {
+    if (size > 0) {
+        const auto data = (char*)realloc(req->reply_data, size);
+        if (!data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        req->reply_data = data;
+    } else {
+        free(req->reply_data);
+        req->reply_data = nullptr;
+    }
+    req->reply_size = size;
+    return 0;
+}
 
-// Include default configuration files (TODO: Copy to the platform directory?)
-#include "nrf5_sdk/modules/nrfx/templates/nRF52840/nrfx_config.h"
-#include "nrf5_sdk/config/nrf52840/config/sdk_config.h"
+void ControlRequestChannel::freeRequestData(ctrl_request* req) {
+    free(req->request_data);
+    req->request_data = nullptr;
+    req->request_size = 0;
+}
+
+} // particle

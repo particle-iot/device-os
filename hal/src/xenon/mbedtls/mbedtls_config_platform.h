@@ -232,7 +232,7 @@
  * "Steering data does not include this device"
  * otJoinerStart() failed: 23
  */
-#define MBEDTLS_AES_ALT
+//#define MBEDTLS_AES_ALT
 #define MBEDTLS_ECP_ALT
 #define MBEDTLS_SHA256_ALT
 

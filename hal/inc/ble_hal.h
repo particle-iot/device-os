@@ -54,6 +54,16 @@ typedef enum ble_event {
     BLE_EVENT_DATA_RECEIVED = 8
 } ble_event;
 
+// Profile flags
+typedef enum ble_profile_flag {
+    BLE_PROFILE_FLAG_ENABLE_PAIRING = 0x01
+} ble_profile_flag;
+
+// Characteristic flags
+typedef enum ble_char_flag {
+    BLE_CHAR_FLAG_REQUIRE_PAIRING = 0x01
+} ble_char_flag;
+
 // Flags for ble_set_char_value()
 typedef enum ble_set_char_value_flag {
     BLE_SET_CHAR_VALUE_FLAG_NOTIFY = 0x01
@@ -63,12 +73,13 @@ typedef enum ble_set_char_value_flag {
 // TODO: Provide an API for custom characteristics and permissions
 typedef enum ble_char_type {
     BLE_CHAR_TYPE_TX = 1,
-    BLE_CHAR_TYPE_RX = 2
+    BLE_CHAR_TYPE_RX = 2,
+    BLE_CHAR_TYPE_VAL = 3
 } ble_char_type;
 
-// 16-bit UUID
+// UUID
 typedef struct ble_uuid {
-    uint8_t type;
+    uint8_t type; // UUID type obtained via ble_add_base_uuid()
     uint8_t reserved;
     uint16_t uuid;
 } ble_uuid;
@@ -78,6 +89,9 @@ typedef struct ble_char {
     ble_uuid uuid;
     uint16_t type; // See `ble_char_type` enum
     uint16_t handle; // TODO: Use typedefs for all handle types defined by the HAL
+    const char* data; // Initial value
+    uint16_t size;
+    uint16_t flags;
 } ble_char;
 
 // Service
@@ -127,6 +141,8 @@ typedef void(*ble_event_callback)(int event, const void* event_data, void* user_
 // Profile
 typedef struct ble_profile {
     uint16_t version; // API version
+    uint16_t reserved;
+    uint16_t flags;
     uint16_t service_count;
     ble_service* services;
     const char* device_name;

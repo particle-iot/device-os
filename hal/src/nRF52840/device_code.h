@@ -17,17 +17,22 @@
 
 #pragma once
 
-// Do not define Particle's STATIC_ASSERT() to avoid conflicts with the nRF SDK's own macro
-#define NO_STATIC_ASSERT
+#include <stdint.h>
+#include <stddef.h>
 
-#include "module_info.h"
-
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-#include "sdk_config_bootloader.h"
-#else
-#include "sdk_config_system.h"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-// Include default configuration files (TODO: Copy to the platform directory?)
-#include "nrf5_sdk/modules/nrfx/templates/nRF52840/nrfx_config.h"
-#include "nrf5_sdk/config/nrf52840/config/sdk_config.h"
+typedef struct device_code_t {
+    uint8_t length;
+    uint8_t value[32];
+} device_code_t;
+
+bool fetch_or_generate_setup_ssid(device_code_t* code);
+
+int get_device_name(char* buf, size_t size);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

@@ -46,8 +46,6 @@ public:
     int run();
 
     // ControlRequestChannel
-    virtual int allocReplyData(ctrl_request* ctrlReq, size_t size) override;
-    virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
 private:

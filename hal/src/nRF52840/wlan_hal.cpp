@@ -187,8 +187,3 @@ int wlan_set_hostname(const char* hostname, void* reserved)
     // Unsupported
     return -1;
 }
-
-extern "C" bool fetch_or_generate_setup_ssid(void* SSID)
-{
-    return false;
-}

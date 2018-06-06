@@ -69,6 +69,8 @@ _Minimum_Stack_Size = 0x1400;
 /* higher address of the user mode stack */
 _estack = ORIGIN(SRAM)+LENGTH(SRAM);
 
+/* TODO: Below sections are required by the Nordic SDK and were copy-pasted from a BLE example code.
+Consider revising them, especially for modular builds */
 SECTIONS
 {
   . = ALIGN(4);

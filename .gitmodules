@@ -1,6 +1,6 @@
 [submodule "proto"]
 	path = proto
-	url = https://github.com/particle-iot/firmware-protobuf.git
+	url = ../firmware-protobuf.git
 [submodule "third_party/nrf5_sdk/nrf5_sdk"]
 	path = third_party/nrf5_sdk/nrf5_sdk
 	url = ../nrf5_sdk.git

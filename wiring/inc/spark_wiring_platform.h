@@ -109,9 +109,9 @@
 #define Wiring_WiFi 1    /* FIXME */
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1
-//#ifdef DEBUG_BUILD
+#ifdef DEBUG_BUILD
 #define Wiring_Rtt 1
-//#endif
+#endif
 #endif
 
 #ifndef Wiring_SPI1

@@ -17,17 +17,28 @@
 
 #pragma once
 
-// Do not define Particle's STATIC_ASSERT() to avoid conflicts with the nRF SDK's own macro
-#define NO_STATIC_ASSERT
+#include <cctype>
 
-#include "module_info.h"
+namespace particle {
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-#include "sdk_config_bootloader.h"
-#else
-#include "sdk_config_system.h"
-#endif
+inline char* toUpperCase(char* str, size_t n) {
+    char* s = str;
+    char* const s2 = str + n;
+    while (s != s2) {
+        *s = std::toupper(*s);
+        ++s;
+    }
+    return str;
+}
 
-// Include default configuration files (TODO: Copy to the platform directory?)
-#include "nrf5_sdk/modules/nrfx/templates/nRF52840/nrfx_config.h"
-#include "nrf5_sdk/config/nrf52840/config/sdk_config.h"
+inline char* toLowerCase(char* str, size_t n) {
+    char* s = str;
+    char* const s2 = str + n;
+    while (s != s2) {
+        *s = std::tolower(*s);
+        ++s;
+    }
+    return str;
+}
+
+} // particle
