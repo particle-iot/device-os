@@ -23,6 +23,9 @@
 
 //#include <lwip/debug.h>
 
+#include "concurrent_hal.h"
+
+
 #include "lwip_logging.h"
 
 #ifdef __cplusplus
@@ -56,6 +59,8 @@ extern "C" {
 
 #define LWIP_COMPAT_MUTEX               0
 #define LWIP_FREERTOS_CHECK_CORE_LOCKING (1)
+
+#define LWIP_TCPIP_CORE_LOCKING_INPUT 1
 
 /**
  * SYS_LIGHTWEIGHT_PROT==1: enable inter-task protection (and task-vs-interrupt
@@ -114,10 +119,24 @@ void sys_unlock_tcpip_core(void);
 #define MEMP_MEM_INIT                 1
 
 /**
+ * MEM_ALIGNMENT: should be set to the alignment of the CPU
+ *    4 byte alignment -> #define MEM_ALIGNMENT 4
+ *    2 byte alignment -> #define MEM_ALIGNMENT 2
+ */
+#define MEM_ALIGNMENT                  (4)
+
+/**
+ * Use Malloc from LibC - saves code space
+ */
+#define MEM_LIBC_MALLOC                (1)
+
+
+/**
  * MEM_SIZE: the size of the heap memory. If the application will send
  * a lot of data that needs to be copied, this should be set high.
  */
-#define MEM_SIZE                        (4 * 1024)
+/* FIXME */
+#define MEM_SIZE                        (10 * 1024)
 
 /**
  * MEMP_OVERFLOW_CHECK: memp overflow protection reserves a configurable
@@ -128,19 +147,19 @@ void sys_unlock_tcpip_core(void);
  *    MEMP_OVERFLOW_CHECK >= 2 checks each element in every pool every time
  *      memp_malloc() or memp_free() is called (useful but slow!)
  */
-#define MEMP_OVERFLOW_CHECK             0
+#define MEMP_OVERFLOW_CHECK             defined(DEBUG_BUILD)
 
 /**
  * MEMP_SANITY_CHECK==1: run a sanity check after each memp_free() to make
  * sure that there are no cycles in the linked lists.
  */
-#define MEMP_SANITY_CHECK               0
+#define MEMP_SANITY_CHECK               defined(DEBUG_BUILD)
 
 /**
  * MEM_SANITY_CHECK==1: run a sanity check after each mem_free() to make
  * sure that the linked list of heap elements is not corrupted.
  */
-#define MEM_SANITY_CHECK                0
+#define MEM_SANITY_CHECK                defined(DEBUG_BUILD)
 
 /**
  * MEM_USE_POOLS==1: Use an alternative to malloc() by allocating from a set
@@ -148,6 +167,7 @@ void sys_unlock_tcpip_core(void);
  * the smallest pool that can provide the length needed is returned.
  * To use this, MEMP_USE_CUSTOM_POOLS also has to be enabled.
  */
+/* FIXME: we should later switch to using pools */
 #define MEM_USE_POOLS                   0
 
 /**
@@ -1147,21 +1167,21 @@ void sys_unlock_tcpip_core(void);
  * The stack size value itself is platform-dependent, but is passed to
  * sys_thread_new() when the thread is created.
  */
-#define TCPIP_THREAD_STACKSIZE          0
+#define TCPIP_THREAD_STACKSIZE          4096
 
 /**
  * TCPIP_THREAD_PRIO: The priority assigned to the main tcpip thread.
  * The priority value itself is platform-dependent, but is passed to
  * sys_thread_new() when the thread is created.
  */
-#define TCPIP_THREAD_PRIO               1
+#define TCPIP_THREAD_PRIO               OS_THREAD_PRIORITY_NETWORK
 
 /**
  * TCPIP_MBOX_SIZE: The mailbox size for the tcpip thread messages
  * The queue size value itself is platform-dependent, but is passed to
  * sys_mbox_new() when tcpip_init is called.
  */
-#define TCPIP_MBOX_SIZE                 0
+#define TCPIP_MBOX_SIZE                 10
 
 /**
  * Define this to something that triggers a watchdog. This is called from
@@ -1198,42 +1218,42 @@ void sys_unlock_tcpip_core(void);
  * The stack size value itself is platform-dependent, but is passed to
  * sys_thread_new() when the thread is created.
  */
-#define DEFAULT_THREAD_STACKSIZE        0
+#define DEFAULT_THREAD_STACKSIZE        OS_THREAD_STACK_SIZE_DEFAULT
 
 /**
  * DEFAULT_THREAD_PRIO: The priority assigned to any other lwIP thread.
  * The priority value itself is platform-dependent, but is passed to
  * sys_thread_new() when the thread is created.
  */
-#define DEFAULT_THREAD_PRIO             1
+#define DEFAULT_THREAD_PRIO             OS_THREAD_PRIORITY_DEFAULT
 
 /**
  * DEFAULT_RAW_RECVMBOX_SIZE: The mailbox size for the incoming packets on a
  * NETCONN_RAW. The queue size value itself is platform-dependent, but is passed
  * to sys_mbox_new() when the recvmbox is created.
  */
-#define DEFAULT_RAW_RECVMBOX_SIZE       0
+#define DEFAULT_RAW_RECVMBOX_SIZE       10
 
 /**
  * DEFAULT_UDP_RECVMBOX_SIZE: The mailbox size for the incoming packets on a
  * NETCONN_UDP. The queue size value itself is platform-dependent, but is passed
  * to sys_mbox_new() when the recvmbox is created.
  */
-#define DEFAULT_UDP_RECVMBOX_SIZE       0
+#define DEFAULT_UDP_RECVMBOX_SIZE       10
 
 /**
  * DEFAULT_TCP_RECVMBOX_SIZE: The mailbox size for the incoming packets on a
  * NETCONN_TCP. The queue size value itself is platform-dependent, but is passed
  * to sys_mbox_new() when the recvmbox is created.
  */
-#define DEFAULT_TCP_RECVMBOX_SIZE       0
+#define DEFAULT_TCP_RECVMBOX_SIZE       10
 
 /**
  * DEFAULT_ACCEPTMBOX_SIZE: The mailbox size for the incoming connections.
  * The queue size value itself is platform-dependent, but is passed to
  * sys_mbox_new() when the acceptmbox is created.
  */
-#define DEFAULT_ACCEPTMBOX_SIZE         0
+#define DEFAULT_ACCEPTMBOX_SIZE         10
 
 /*
    ----------------------------------------------

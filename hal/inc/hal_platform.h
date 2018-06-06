@@ -24,8 +24,6 @@
 extern "C" {
 #endif
 
-
-
 #if PLATFORM_ID<9
     #define HAL_PLATFORM_WIFI 1
 #endif
@@ -68,6 +66,7 @@ extern "C" {
 #if PLATFORM_ID == 12 || PLATFORM_ID == 13 || PLATFORM_ID == 14
 #define HAL_USE_SOCKET_HAL_POSIX (1)
 #define HAL_USE_INET_HAL_POSIX   (1)
+#define HAL_PLATFORM_OPENTHREAD  (1)
 #endif /* PLATFORM_ID == 12 || PLATFORM_ID == 13 || PLATFORM_ID == 14 */
 
 #if PLATFORM_ID == 20
@@ -93,6 +92,10 @@ extern "C" {
 #ifndef HAL_USE_INET_HAL_POSIX
 #define HAL_USE_INET_HAL_POSIX (0)
 #endif /* HAL_USE_INET_HAL_POSIX */
+
+#ifndef HAL_PLATFORM_OPENTHREAD
+#define HAL_PLATFORM_OPENTHREAD (0)
+#endif /* HAL_PLATFORM_OPENTHREAD */
 
 #ifdef	__cplusplus
 }

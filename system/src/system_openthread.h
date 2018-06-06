@@ -17,7 +17,11 @@
 
 #pragma once
 
-#include "openthread/types.h"
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_OPENTHREAD
+
+#include "ot_api.h"
 
 namespace particle {
 
@@ -25,10 +29,14 @@ namespace system {
 
 int threadInit();
 
-void threadProcess();
+using ThreadLock = ::particle::net::ot::ThreadLock;
 
-otInstance* threadInstance();
+inline otInstance* threadInstance() {
+    return ot_get_instance();
+}
 
 } // particle::system
 
 } // particle
+
+#endif /* HAL_PLATFORM_OPENTHREAD */

@@ -649,7 +649,9 @@ void app_setup_and_loop(void)
 
     // FIXME: Move BLE and Thread initialization to an appropriate place
     ble_init(nullptr);
+#if HAL_PLATFORM_OPENTHREAD
     system::threadInit();
+#endif /* HAL_PLATFORM_OPENTHREAD */
     system::SystemControl::instance()->init();
 
     manage_safe_mode();

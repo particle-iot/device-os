@@ -355,9 +355,9 @@ void nrf5AlarmInit(void)
     }
 
     // Setup RTC timer.
-    NVIC_SetPriority(RTC_IRQN, RTC_IRQ_PRIORITY);
-    NVIC_ClearPendingIRQ(RTC_IRQN);
-    NVIC_EnableIRQ(RTC_IRQN);
+    sd_nvic_SetPriority(RTC_IRQN, RTC_IRQ_PRIORITY);
+    sd_nvic_ClearPendingIRQ(RTC_IRQN);
+    sd_nvic_EnableIRQ(RTC_IRQN);
 
     nrf_rtc_prescaler_set(RTC_INSTANCE, 0);
 
@@ -390,9 +390,9 @@ void nrf5AlarmDeinit(void)
     nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_OVRFLW_Msk);
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
 
-    NVIC_DisableIRQ(RTC_IRQN);
-    NVIC_ClearPendingIRQ(RTC_IRQN);
-    NVIC_SetPriority(RTC_IRQN, 0);
+    sd_nvic_DisableIRQ(RTC_IRQN);
+    sd_nvic_ClearPendingIRQ(RTC_IRQN);
+    sd_nvic_SetPriority(RTC_IRQN, 0);
 
     nrf_drv_clock_lfclk_release();
 }

@@ -131,6 +131,7 @@
 #define configENABLE_BACKWARD_COMPATIBILITY 1
 #define configUSE_COUNTING_SEMAPHORES 1
 #define configTICK_SOURCE FREERTOS_USE_SYSTICK
+//#define configTICK_SOURCE FREERTOS_USE_RTC
 
 #define configAPPLICATION_ALLOCATED_HEAP ( 1 )
 #define configDYNAMIC_HEAP_SIZE     ( 1 )
@@ -220,5 +221,18 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
         extern uint32_t SystemCoreClock;
     #endif
 #endif /* !assembler */
+
+/** Implementation note:  Use this with caution and set this to 1 ONLY for debugging
+ * ----------------------------------------------------------
+     * Set the value of configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG to below for enabling or disabling RTOS tick auto correction:
+     * 0. This is default. If the RTC tick interrupt is masked for more than 1 tick by higher priority interrupts, then most likely
+     *    one or more RTC ticks are lost. The tick interrupt inside RTOS will detect this and make a correction needed. This is needed
+     *    for the RTOS internal timers to be more accurate.
+     * 1. The auto correction for RTOS tick is disabled even though few RTC tick interrupts were lost. This feature is desirable when debugging
+     *    the RTOS application and stepping though the code. After stepping when the application is continued in debug mode, the auto-corrections of
+     *    RTOS tick might cause asserts. Setting configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG to 1 will make RTC and RTOS go out of sync but could be
+     *    convenient for debugging.
+     */
+#define configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG     0
 
 #endif /* FREERTOS_CONFIG_H */

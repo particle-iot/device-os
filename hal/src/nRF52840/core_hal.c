@@ -24,6 +24,7 @@
 #include <semphr.h>
 #include "hw_config.h"
 #include "syshealth_hal.h"
+#include "rng_hal.h"
 #include <nrf_mbr.h>
 #include <nrf_sdm.h>
 #include <nrf_sdh.h>
@@ -238,6 +239,10 @@ void HAL_Core_Config(void)
 
     Set_System();
 
+    HAL_Core_Setup_override_interrupts();
+
+    HAL_RNG_Configuration();
+
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
@@ -249,7 +254,6 @@ void HAL_Core_Config(void)
 
 void HAL_Core_Setup(void)
 {
-    HAL_Core_Setup_override_interrupts();
     /* DOES NOT DO ANYTHING
      * SysTick is enabled within FreeRTOS
      */
@@ -432,12 +436,11 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
 
 bool HAL_Feature_Get(HAL_Feature feature)
 {
-    return false;
-}
+    if (feature == FEATURE_CLOUD_UDP) {
+        return true;
+    }
 
-int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned length)
-{
-    return -1;
+    return false;
 }
 
 int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
@@ -481,3 +484,14 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
         return 0xFF;
     return 0xFFFF;
 }
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+    return -1;
+}
+
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+    return -1;
+}
+

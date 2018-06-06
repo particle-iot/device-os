@@ -7,7 +7,7 @@ TARGET_TYPE = a
 BUILD_PATH_EXT=$(OPENTHREAD_BUILD_PATH_EXT)
 
 # depends only on headers. Will it work?
-DEPENDENCIES = dynalib hal platform services crypto
+DEPENDENCIES = crypto dynalib hal platform services
 
 ifeq ($(PLATFORM_OPENTHREAD),nrf52840)
 DEPENDENCIES += third_party/nrf5_sdk

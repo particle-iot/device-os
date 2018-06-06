@@ -40,8 +40,16 @@
 #include "platform-nrf5.h"
 #include <nrf_drv_clock.h>
 #include <nrf.h>
+#if SOFTDEVICE_PRESENT
+#include <nrf_sdh_soc.h>
+#include "softdevice.h"
+#endif /* SOFTDEVICE_PRESENT */
 
 #include <openthread/config.h>
+
+static void processSocEvent(uint32_t event, void* data) {
+    PlatformSoftdeviceSocEvtHandler(event);
+}
 
 void PlatformInit(int argc, char *argv[])
 {
@@ -80,6 +88,10 @@ void PlatformInit(int argc, char *argv[])
     nrf5CryptoInit();
     nrf5RadioInit();
     nrf5TempInit();
+
+#if SOFTDEVICE_PRESENT
+    NRF_SDH_SOC_OBSERVER(socObserver, NRF_SDH_SOC_STACK_OBSERVER_PRIO, processSocEvent, NULL);
+#endif /* SOFTDEVICE_PRESENT */
 }
 
 void PlatformDeinit(void)

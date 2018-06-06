@@ -3,6 +3,7 @@
 #include <string.h>
 #include "flash_mal.h"
 #include "flash_hal.h"
+#include "flash_acquire.h"
 
 #ifdef SOFTDEVICE_PRESENT
 #include "nrf_fstorage_sd.h"
@@ -51,6 +52,7 @@ static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
 
 int hal_flash_init(void)
 {
+    __flash_acquire();
 #ifndef SOFTDEVICE_PRESENT
     uint32_t ret_code = nrf_fstorage_init(&m_fs, &nrf_fstorage_nvmc, NULL);
     LOG_DEBUG(TRACE, "m_fs, range: 0x%x ~ 0x%x, erase size: %d", m_fs.start_addr, m_fs.end_addr, m_fs.p_flash_info->erase_unit);
@@ -61,11 +63,15 @@ int hal_flash_init(void)
     LOG_DEBUG(TRACE, "init nrf_fstorage_sd %s", ret_code == 0 ? "OK" : "FAILED!");
 #endif /* SOFTDEVICE_PRESENT */
 
+    __flash_release();
     return (ret_code == NRF_SUCCESS) ? 0 : -1;
 }
 
 int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 {
+    __flash_acquire();
+
+    int ret = 0;
     uint32_t ret_code;
     uint32_t index = 0;
 
@@ -75,7 +81,8 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 
     if (fs_op_state != FS_OP_STATE_IDLE)
     {
-        return -1;
+        ret = -1;
+        goto hal_flash_write_done;
     }
 
     // write head part
@@ -90,20 +97,23 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
         if (ret_code)
         {
             fs_op_state = FS_OP_STATE_IDLE;
-            return -2;
+            ret = -2;
+            goto hal_flash_write_done;
         }
         while (fs_op_state == FS_OP_STATE_BUSY);
         if (fs_op_state == FS_OP_STATE_ERROR)
         {
             fs_op_state = FS_OP_STATE_IDLE;
-            return -3;
+            ret = -3;
+            goto hal_flash_write_done;
         }
     }
 
     index += copy_size;
     if (index >= data_size)
     {
-        return 0;
+        ret = 0;
+        goto hal_flash_write_done;
     }
 
     // write middle part
@@ -118,13 +128,15 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
             if (ret_code)
             {
                 fs_op_state = FS_OP_STATE_IDLE;
-                return -4;
+                ret = -4;
+                goto hal_flash_write_done;
             }
             while (fs_op_state == FS_OP_STATE_BUSY);
             if (fs_op_state == FS_OP_STATE_ERROR)
             {
                 fs_op_state = FS_OP_STATE_IDLE;
-                return -5;
+                ret = -5;
+                goto hal_flash_write_done;
             }
 
             index += 4;
@@ -145,28 +157,36 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
         if (ret_code)
         {
             fs_op_state = FS_OP_STATE_IDLE;
-            return -6;
+            ret = -6;
+            goto hal_flash_write_done;
         }
         while (fs_op_state == FS_OP_STATE_BUSY);
         if (fs_op_state == FS_OP_STATE_ERROR)
         {
             fs_op_state = FS_OP_STATE_IDLE;
-            return -7;
+            ret = -7;
+            goto hal_flash_write_done;
         }
     }
 
-    return 0;
+hal_flash_write_done:
+    __flash_release();
+    return ret;
 }
 
 int hal_flash_erase_sector(uint32_t addr, uint32_t num_sectors)
 {
+    __flash_acquire();
+
+    int ret = 0;
     uint32_t ret_code = 0;
 
     LOG_DEBUG(TRACE, "nrf_fstorage_erase(addr=0x%p, len=%d pages)", addr, num_sectors);
 
     if (fs_op_state != FS_OP_STATE_IDLE)
     {
-        return -1;
+        ret = -1;
+        goto hal_flash_erase_sector_done;
     }
 
     addr = (addr / INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE; // Address must be aligned to a page boundary.
@@ -175,16 +195,20 @@ int hal_flash_erase_sector(uint32_t addr, uint32_t num_sectors)
     if (ret_code)
     {
         fs_op_state = FS_OP_STATE_IDLE;
-        return -2;
+        ret = -2;
+        goto hal_flash_erase_sector_done;
     }
     while (fs_op_state == FS_OP_STATE_BUSY);
     if (fs_op_state == FS_OP_STATE_ERROR)
     {
         fs_op_state = FS_OP_STATE_IDLE;
-        return -3;
+        ret = -3;
+        goto hal_flash_erase_sector_done;
     }
 
-    return 0;
+hal_flash_erase_sector_done:
+    __flash_release();
+    return ret;
 }
 
 int hal_flash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
@@ -197,19 +221,24 @@ int hal_flash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
 
 int hal_flash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_size)
 {
+    __flash_acquire();
+    int ret = 0;
+
     #define MAX_COPY_LENGTH 256
     if ((src_addr % INTERNAL_FLASH_PAGE_SIZE) ||
         (dest_addr % INTERNAL_FLASH_PAGE_SIZE) ||
         (data_size & 0x3))
     {
-        return -1;
+        ret = -1;
+        goto hal_flash_copy_sector_done;
     }
 
     // erase sectors
     uint16_t sector_num = CEIL_DIV(data_size, INTERNAL_FLASH_PAGE_SIZE);
     if (hal_flash_erase_sector(dest_addr, sector_num))
     {
-        return -2;
+        ret = -2;
+        goto hal_flash_copy_sector_done;
     }
 
     // memory copy
@@ -222,14 +251,18 @@ int hal_flash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_s
         copy_len = (data_size - index) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (data_size - index);
         if (hal_flash_read(src_addr + index, data_buf, copy_len))
         {
-            return -3;
+            ret = -3;
+            goto hal_flash_copy_sector_done;
         }
 
         if (hal_flash_write(dest_addr + index, data_buf, copy_len))
         {
-            return -4;
+            ret = -4;
+            goto hal_flash_copy_sector_done;
         }
     }
 
-    return 0;
+hal_flash_copy_sector_done:
+    __flash_release();
+    return ret;
 }

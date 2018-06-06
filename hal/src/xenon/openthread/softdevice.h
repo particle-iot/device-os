@@ -51,4 +51,14 @@
     _Pragma("GCC diagnostic pop")
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
 #endif  // SOFTDEVICE_H_

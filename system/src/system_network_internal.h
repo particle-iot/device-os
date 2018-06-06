@@ -35,7 +35,6 @@
 #include "ble_hal.h"
 
 // FIXME
-#include "system_openthread.h"
 #include "system_control_internal.h"
 
 using namespace particle;
@@ -366,7 +365,6 @@ protected:
 
             // FIXME
             system::SystemControl::instance()->run();
-            system::threadProcess();
 
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out

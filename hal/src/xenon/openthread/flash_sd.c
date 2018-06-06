@@ -42,6 +42,8 @@
 #include "platform-nrf5.h"
 #include "softdevice.h"
 
+#include "flash_acquire.h"
+
 #define FLASH_PAGE_SIZE  4096
 #define FLASH_TIMEOUT    1000
 
@@ -81,6 +83,8 @@ void nrf5SdSocFlashProcess(uint32_t aEvtId)
 
 static otError sdFlashSingleWrite(uint32_t aAddress, uint8_t *aData, uint32_t aSize)
 {
+    __flash_acquire();
+
     uint32_t retval;
     uint32_t startTime = otPlatAlarmMilliGetNow();
 
@@ -109,11 +113,14 @@ static otError sdFlashSingleWrite(uint32_t aAddress, uint8_t *aData, uint32_t aS
 
     sFlashStatus = FLASH_STATUS_IDLE;
 
+    __flash_release();
     return nrf5SdErrorToOtError(retval);
 }
 
 otError nrf5FlashPageErase(uint32_t aAddress)
 {
+    __flash_acquire();
+
     uint32_t retval;
     uint32_t startTime = otPlatAlarmMilliGetNow();
 
@@ -142,6 +149,7 @@ otError nrf5FlashPageErase(uint32_t aAddress)
 
     sFlashStatus = FLASH_STATUS_IDLE;
 
+    __flash_release();
     return nrf5SdErrorToOtError(retval);
 }
 

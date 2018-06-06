@@ -18,6 +18,7 @@
 #ifndef HAL_NETWORK_LIP_PPP_NCP_H
 #define HAL_NETWORK_LIP_PPP_NCP_H
 
+#include "concurrent_hal.h"
 #include <cstdint>
 extern "C" {
 #include <netif/ppp/ppp.h>

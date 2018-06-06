@@ -226,7 +226,16 @@
  * Uncomment a macro to enable alternate implementation of the corresponding
  * module.
  */
-//#define MBEDTLS_AES_ALT
+
+/* FIXME: Disabling CC310 hardware-acceleration for now due to an issue joining
+ * a Thread network:
+ * "Steering data does not include this device"
+ * otJoinerStart() failed: 23
+ */
+#define MBEDTLS_AES_ALT
+#define MBEDTLS_ECP_ALT
+#define MBEDTLS_SHA256_ALT
+
 //#define MBEDTLS_ARC4_ALT
 //#define MBEDTLS_BLOWFISH_ALT
 //#define MBEDTLS_CAMELLIA_ALT
@@ -237,7 +246,6 @@
 //#define MBEDTLS_MD5_ALT
 //#define MBEDTLS_RIPEMD160_ALT
 //#define MBEDTLS_SHA1_ALT
-//#define MBEDTLS_SHA256_ALT
 //#define MBEDTLS_SHA512_ALT
 
 /**
