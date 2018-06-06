@@ -22,40 +22,40 @@ typedef std::atomic_flag __gthread_once_t;
 static inline int
 __gthread_active_p (void)
 {
-  return 0;
+    return 0;
 }
 
 static inline int
 __gthread_once (__gthread_once_t* once, void (*func) (void))
 {
-  if (once->test_and_set(std::memory_order_relaxed) == false) {
-    func();
-  }
-  return 0;
+    if (once->test_and_set(std::memory_order_relaxed) == false) {
+        func();
+    }
+    return 0;
 }
 
 static inline int _GLIBCXX_UNUSED
 __gthread_key_create (__gthread_key_t *__key _GLIBCXX_UNUSED, void (*__func) (void *) _GLIBCXX_UNUSED)
 {
-  return 0;
+    return 0;
 }
 
 static int _GLIBCXX_UNUSED
 __gthread_key_delete (__gthread_key_t __key _GLIBCXX_UNUSED)
 {
-  return 0;
+    return 0;
 }
 
 static inline void *
 __gthread_getspecific (__gthread_key_t __key _GLIBCXX_UNUSED)
 {
-  return 0;
+    return 0;
 }
 
 static inline int
 __gthread_setspecific (__gthread_key_t __key _GLIBCXX_UNUSED, const void *__v _GLIBCXX_UNUSED)
 {
-  return 0;
+    return 0;
 }
 
 static inline int
@@ -85,25 +85,25 @@ __gthread_mutex_unlock (__gthread_mutex_t *__mutex)
 static inline int
 __gthread_recursive_mutex_lock (__gthread_recursive_mutex_t *__mutex)
 {
-  return os_mutex_recursive_lock(*__mutex);
+    return os_mutex_recursive_lock(*__mutex);
 }
 
 static inline int
 __gthread_recursive_mutex_trylock (__gthread_recursive_mutex_t *__mutex)
 {
-  return os_mutex_recursive_trylock(*__mutex);
+    return os_mutex_recursive_trylock(*__mutex);
 }
 
 static inline int
 __gthread_recursive_mutex_unlock (__gthread_recursive_mutex_t *__mutex)
 {
-  return os_mutex_recursive_unlock(*__mutex);
+    return os_mutex_recursive_unlock(*__mutex);
 }
 
 static inline int
 __gthread_recursive_mutex_destroy (__gthread_recursive_mutex_t *__mutex)
 {
-  return os_mutex_recursive_destroy(*__mutex);
+    return os_mutex_recursive_destroy(*__mutex);
 }
 
 #define __GTHREAD_ONCE_INIT ATOMIC_FLAG_INIT
