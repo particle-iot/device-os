@@ -263,5 +263,6 @@ int hal_flash_copy_sector(uint32_t src_addr, uint32_t dest_addr, uint32_t data_s
     }
 
 hal_flash_copy_sector_done:
+    __flash_release();
     return ret;
 }
