@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HW20POC_LWIP_OPENTHREAD_IF
-#define HW20POC_LWIP_OPENTHREAD_IF
+#ifndef LWIP_OPENTHREAD_IF_H
+#define LWIP_OPENTHREAD_IF_H
 
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
@@ -30,35 +30,35 @@ namespace particle { namespace net {
 
 class OpenThreadNetif {
 public:
-  OpenThreadNetif(otInstance* ot = nullptr);
-  ~OpenThreadNetif();
+    OpenThreadNetif(otInstance* ot = nullptr);
+    ~OpenThreadNetif();
 
-  /* LwIP netif init callback */
-  static err_t initCb(netif *netif);
-  /* LwIP netif output_ip6 callback */
-  static err_t outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr);
+    /* LwIP netif init callback */
+    static err_t initCb(netif *netif);
+    /* LwIP netif output_ip6 callback */
+    static err_t outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr);
 
-  /* OpenThread receive callback */
-  static void otReceiveCb(otMessage* msg, void* ctx);
-  /* OpenThread state changed callback */
-  static void otStateChangedCb(uint32_t flags, void* ctx);
+    /* OpenThread receive callback */
+    static void otReceiveCb(otMessage* msg, void* ctx);
+    /* OpenThread state changed callback */
+    static void otStateChangedCb(uint32_t flags, void* ctx);
 
-  netif* interface();
+    netif* interface();
 
-  otInstance* getOtInstance();
+    otInstance* getOtInstance();
 
 protected:
-  void input(otMessage* message);
-  void stateChanged(uint32_t flags);
+    void input(otMessage* message);
+    void stateChanged(uint32_t flags);
 
-  void refreshIpAddresses();
+    void refreshIpAddresses();
 
 private:
-  netif netif_ = {};
-  otInstance* ot_ = nullptr;
-  otNetifAddress slaacAddresses_[OPENTHREAD_CONFIG_NUM_SLAAC_ADDRESSES] = {};
+    netif netif_ = {};
+    otInstance* ot_ = nullptr;
+    otNetifAddress slaacAddresses_[OPENTHREAD_CONFIG_NUM_SLAAC_ADDRESSES] = {};
 #if OPENTHREAD_ENABLE_DHCP6_CLIENT
-  otDhcpAddress dhcpAddresses_[OPENTHREAD_CONFIG_NUM_DHCP_PREFIXES];
+    otDhcpAddress dhcpAddresses_[OPENTHREAD_CONFIG_NUM_DHCP_PREFIXES];
 #endif // OPENTHREAD_ENABLE_DHCP6_CLIENT
 };
 
@@ -75,4 +75,4 @@ extern "C" {
 }
 #endif /* __cplusplus */
 
-#endif /* HW20POC_LWIP_OPENTHREAD_IF */
+#endif /* LWIP_OPENTHREAD_IF_H */
