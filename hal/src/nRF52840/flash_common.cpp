@@ -18,6 +18,9 @@
 #include "flash_common.h"
 #include <cstring>
 #include <algorithm>
+
+// Do not define Particle's STATIC_ASSERT() to avoid conflicts with the nRF SDK's own macro
+#define NO_STATIC_ASSERT
 #include "module_info.h"
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
