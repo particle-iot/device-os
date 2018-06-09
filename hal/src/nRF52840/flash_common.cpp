@@ -69,7 +69,7 @@ static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size
                                 hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)
 {
     if (size > 0) {
-        uint32_t tmp;
+        uint32_t tmp __attribute__((aligned(4)));
         const uintptr_t addr_aligned = ADDR_ALIGN_WORD(addr);
         /* Read in the data from the flash to keep the unaffected unaligned bytes intact */
         if (read_func(addr_aligned, (uint8_t*)&tmp, sizeof(tmp))) {
