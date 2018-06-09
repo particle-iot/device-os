@@ -1,4 +1,6 @@
 #include "button.h"
+#include <nrf_rtc.h>
+
 
 void BUTTON_Irq_Handler(void)
 {

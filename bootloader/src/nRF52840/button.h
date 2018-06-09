@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "hw_config.h"
+#include "button_hal.h"
 
 void BUTTON_Init_Ext();
 uint8_t BUTTON_Is_Pressed(Button_TypeDef button);

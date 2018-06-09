@@ -17,7 +17,8 @@
 
 #include "nrf_it.h"
 #include <stdbool.h>
-#include "nrf52840.h"
+#include <nrf52840.h>
+#include <nrf_rtc.h>
 #include "logging.h"
 #include "hw_config.h"
 #include "button.h"
