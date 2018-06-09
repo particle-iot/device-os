@@ -318,7 +318,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     DEBUG_D("New SMS at index %d\r\n", a);
                     if (sms_cb) SMSreceived(a);
                 }
-                else if ((sscanf(cmd, "CIEV: 9,%d", &a) == 1)) {
+                // TODO: This should include other LTE devices,
+                // perhaps adding _net.act < 7
+                else if ((_dev.dev != DEV_SARA_R410) && (sscanf(cmd, "CIEV: 9,%d", &a) == 1)) {
                     DEBUG_D("CIEV matched: 9,%d\r\n", a);
                     // Wait until the system is attached before attempting to act on GPRS detach
                     if (_attached) {
