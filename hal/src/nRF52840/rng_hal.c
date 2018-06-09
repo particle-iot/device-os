@@ -22,7 +22,7 @@
 #include "nrf_drv_rng.h"
 
 void HAL_RNG_Configuration() {
-    const auto ret = nrf_drv_rng_init(nullptr);
+    const uint32_t ret = nrf_drv_rng_init(NULL);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "nrf_drv_rng_init() failed: %d", (int)ret);
     }
