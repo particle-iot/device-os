@@ -62,6 +62,16 @@
 
 #define NRF_QUEUE_ENABLED 1
 
+// <4=> Read4IO
+#define NRFX_QSPI_CONFIG_READOC 4
+
+// <3=> PP4IO
+#define NRFX_QSPI_CONFIG_WRITEOC 3
+
+// <0=> 32MHz/1
+// Ze fastest!
+#define NRFX_QSPI_CONFIG_FREQUENCY 0
+
 #ifdef DEBUG_BUILD
 #define SEGGER_RTT_CONFIG_DEFAULT_MODE 1 // Do not block, output as much as fits
 #define SEGGER_RTT_CONFIG_BUFFER_SIZE_UP 16384
