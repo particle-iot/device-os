@@ -13,8 +13,9 @@
 
 
 #define CEIL_DIV(A, B)              (((A) + (B) - 1) / (B))
+#define IS_WORD_ALIGNED(value)      (((value) & 0x03) == 0)
 #define ADDR_ALIGN_WORD(addr)       ((addr) & 0xFFFFFFFC)
-
+#define MASS_DATA_BUFFER_SIZE       256
 
 typedef enum {
     FS_OP_STATE_IDLE,
@@ -73,11 +74,6 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 
     int ret = 0;
     uint32_t ret_code;
-    uint32_t index = 0;
-
-    uint32_t copy_size;
-    uint32_t copy_data;
-    uint8_t *copy_data_buf = (uint8_t *)&copy_data;
 
     if (fs_op_state != FS_OP_STATE_IDLE)
     {
@@ -85,90 +81,111 @@ int hal_flash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
         goto hal_flash_write_done;
     }
 
-    // write head part
-    copy_size = 4 - (addr & 0x03);
-    copy_data = *(uint32_t *)ADDR_ALIGN_WORD(addr);
-    memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
-    if (copy_size)
+    if (IS_WORD_ALIGNED(addr) && IS_WORD_ALIGNED((uint32_t)data_buf) && IS_WORD_ALIGNED(data_size))
     {
-        LOG_DEBUG(TRACE, "write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
-        fs_op_state = FS_OP_STATE_BUSY; //should before calling nrf_fstorage_write
-        ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr), copy_data_buf, 4,  (fs_op_state_t *)&fs_op_state);
+        fs_op_state = FS_OP_STATE_BUSY; //should call it before nrf_fstorage_write
+        ret_code = nrf_fstorage_write(&m_fs, addr, data_buf, data_size,  (fs_op_state_t *)&fs_op_state);
         if (ret_code)
         {
             fs_op_state = FS_OP_STATE_IDLE;
             ret = -2;
             goto hal_flash_write_done;
         }
-        while (fs_op_state == FS_OP_STATE_BUSY);
-        if (fs_op_state == FS_OP_STATE_ERROR)
+    }
+    else
+    {
+        uint32_t index = 0;
+        uint32_t copy_size;
+        uint32_t copy_data;
+        uint8_t *copy_data_buf = (uint8_t *)&copy_data;
+        uint8_t mass_data_buf[MASS_DATA_BUFFER_SIZE];
+
+        // write head part
+        copy_size = 4 - (addr & 0x03);
+        copy_data = *(uint32_t *)ADDR_ALIGN_WORD(addr);
+        memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
+        if (copy_size)
         {
-            fs_op_state = FS_OP_STATE_IDLE;
-            ret = -3;
-            goto hal_flash_write_done;
-        }
-    }
-
-    index += copy_size;
-    if (index >= data_size)
-    {
-        ret = 0;
-        goto hal_flash_write_done;
-    }
-
-    // write middle part
-    if (data_size - index > 4)
-    {
-        LOG_DEBUG(TRACE, "write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
-        uint32_t offset = 0;
-        do {
-            memcpy(copy_data_buf, &data_buf[index], 4);
-            fs_op_state = FS_OP_STATE_BUSY;
-            ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr) + 4 + offset, copy_data_buf, 4, (fs_op_state_t *)&fs_op_state);
+            LOG_DEBUG(TRACE, "write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
+            fs_op_state = FS_OP_STATE_BUSY; //should before calling nrf_fstorage_write
+            ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr), copy_data_buf, 4,  (fs_op_state_t *)&fs_op_state);
             if (ret_code)
             {
                 fs_op_state = FS_OP_STATE_IDLE;
-                ret = -4;
+                ret = -3;
                 goto hal_flash_write_done;
             }
             while (fs_op_state == FS_OP_STATE_BUSY);
             if (fs_op_state == FS_OP_STATE_ERROR)
             {
                 fs_op_state = FS_OP_STATE_IDLE;
-                ret = -5;
+                ret = -4;
                 goto hal_flash_write_done;
             }
+        }
 
-            index += 4;
-            offset += 4;
-        } while (data_size - index > 4);
-    }
-
-    // write tail part
-    copy_size = data_size - index;
-    copy_data = 0xFFFFFFFF;
-    memcpy(copy_data_buf, &data_buf[index], copy_size);
-
-    if (copy_size)
-    {
-        LOG_DEBUG(TRACE, "write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
-        fs_op_state = FS_OP_STATE_BUSY; //should before calling nrf_fstorage_write
-        ret_code = nrf_fstorage_write(&m_fs, addr + data_size - copy_size, copy_data_buf, 4,  (fs_op_state_t *)&fs_op_state);
-        if (ret_code)
+        index += copy_size;
+        if (index >= data_size)
         {
-            fs_op_state = FS_OP_STATE_IDLE;
-            ret = -6;
+            ret = 0;
             goto hal_flash_write_done;
         }
-        while (fs_op_state == FS_OP_STATE_BUSY);
-        if (fs_op_state == FS_OP_STATE_ERROR)
+
+        // write middle part
+        uint8_t tail_size = (data_size - index > 4) ? (data_size - index) % 4 : data_size - index;
+        if (data_size - index > 4)
         {
-            fs_op_state = FS_OP_STATE_IDLE;
-            ret = -7;
-            goto hal_flash_write_done;
+            LOG_DEBUG(TRACE, "write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+            uint32_t offset = 0;
+            do {
+                copy_size = ((data_size - index - tail_size) > MASS_DATA_BUFFER_SIZE) ? MASS_DATA_BUFFER_SIZE : (data_size - index - tail_size);
+                memcpy(mass_data_buf, &data_buf[index], copy_size);
+                fs_op_state = FS_OP_STATE_BUSY;
+                ret_code = nrf_fstorage_write(&m_fs, ADDR_ALIGN_WORD(addr) + 4 + offset, mass_data_buf, copy_size, (fs_op_state_t *)&fs_op_state);
+                if (ret_code)
+                {
+                    fs_op_state = FS_OP_STATE_IDLE;
+                    ret = -5;
+                    goto hal_flash_write_done;
+                }
+                while (fs_op_state == FS_OP_STATE_BUSY);
+                if (fs_op_state == FS_OP_STATE_ERROR)
+                {
+                    fs_op_state = FS_OP_STATE_IDLE;
+                    ret = -6;
+                    goto hal_flash_write_done;
+                }
+                index += copy_size;
+                offset += copy_size;
+            } while (data_size > index + 4);
+        }
+
+        // write tail part
+        copy_size = data_size - index;
+        copy_data = 0xFFFFFFFF;
+        memcpy(copy_data_buf, &data_buf[index], copy_size);
+
+        if (copy_size)
+        {
+            LOG_DEBUG(TRACE, "write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
+            fs_op_state = FS_OP_STATE_BUSY; //should before calling nrf_fstorage_write
+            ret_code = nrf_fstorage_write(&m_fs, addr + data_size - copy_size, copy_data_buf, 4,  (fs_op_state_t *)&fs_op_state);
+            if (ret_code)
+            {
+                fs_op_state = FS_OP_STATE_IDLE;
+                ret = -7;
+                goto hal_flash_write_done;
+            }
+            while (fs_op_state == FS_OP_STATE_BUSY);
+            if (fs_op_state == FS_OP_STATE_ERROR)
+            {
+                fs_op_state = FS_OP_STATE_IDLE;
+                ret = -8;
+                goto hal_flash_write_done;
+            }
         }
     }
-
+ 
 hal_flash_write_done:
     __flash_release();
     return ret;

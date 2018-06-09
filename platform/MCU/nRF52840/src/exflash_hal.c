@@ -7,12 +7,15 @@
 #include "app_util_platform.h"
 #include "app_error.h"
 #include "hw_config.h"
+#include "logging.h"
 
-#define QSPI_STD_CMD_WRSR       0x01
-#define QSPI_STD_CMD_RSTEN      0x66
-#define QSPI_STD_CMD_RST        0x99
+#define QSPI_STD_CMD_WRSR           0x01
+#define QSPI_STD_CMD_RSTEN          0x66
+#define QSPI_STD_CMD_RST            0x99
+#define MASS_DATA_BUFFER_SIZE       256
 
 #define CEIL_DIV(A, B)              (((A) + (B) - 1) / (B))
+#define IS_WORD_ALIGNED(value)      (((value) & 0x03) == 0)
 #define ADDR_ALIGN_WORD(addr)       ((addr) & 0xFFFFFFFC)
 
 static int configure_memory()
@@ -100,126 +103,168 @@ int hal_exflash_init(void)
 
 int hal_exflash_write(uint32_t addr, const uint8_t * data_buf, uint32_t data_size)
 {
+    int ret = 0;
     uint32_t ret_code;
-    uint32_t index = 0;
-
-    uint32_t copy_size;
-    uint32_t copy_data;
-    uint8_t *copy_data_buf = (uint8_t *)&copy_data;
-
-    // write head part
-    copy_size = 4 - (addr & 0x03);
-    ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
-    if (ret_code)
+    
+    if (IS_WORD_ALIGNED(addr) && IS_WORD_ALIGNED((uint32_t)data_buf) && IS_WORD_ALIGNED(data_size))
     {
-        return -1;
-    }
-    memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
-    if (copy_size)
-    {
-        LOG_DEBUG(TRACE, "write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
-        ret_code = nrfx_qspi_write(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
+        ret_code = nrfx_qspi_write(data_buf, data_size, ADDR_ALIGN_WORD(addr));
         if (ret_code)
         {
-            LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
-            return -1;
+            ret = -1;
+            goto write_done;
         }
     }
-
-    index += copy_size;
-    if (index >= data_size)
+    else
     {
-        return 0;
-    }
+        uint32_t index = 0;
+        uint32_t copy_size;
+        uint32_t copy_data;
+        uint8_t *copy_data_buf = (uint8_t *)&copy_data;
+        uint8_t mass_data_buf[MASS_DATA_BUFFER_SIZE];
 
-    // write middle part
-    if (data_size - index > 4)
-    {
-        LOG_DEBUG(TRACE, "write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
-        uint32_t offset = 0;
-        do {
-            memcpy(copy_data_buf, &data_buf[index], 4);
-            ret_code = nrfx_qspi_write(copy_data_buf, 4, ADDR_ALIGN_WORD(addr) + 4 + offset);
+        // write head part
+        copy_size = 4 - (addr & 0x03);
+        ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
+        if (ret_code)
+        {
+            ret = -2;
+            goto write_done;
+        }
+        memcpy(&copy_data_buf[addr & 0x03], data_buf, (data_size > copy_size) ? copy_size : data_size);
+        if (copy_size)
+        {
+            LOG_DEBUG(TRACE, "write head, addr: 0x%x, head size: %d", ADDR_ALIGN_WORD(addr), copy_size);
+            ret_code = nrfx_qspi_write(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
             if (ret_code)
             {
                 LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
-                return -2;
+                ret = -2;
+                goto write_done;
             }
-            index += 4;
-            offset += 4;
-        } while (data_size - index > 4);
-    }
+        }
 
-    // write tail part
-    copy_size = data_size - index;
-    copy_data = 0xFFFFFFFF;
-    memcpy(copy_data_buf, &data_buf[index], copy_size);
-
-    if (copy_size)
-    {
-        LOG_DEBUG(TRACE, "write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
-        ret_code = nrfx_qspi_write(copy_data_buf, 4, addr + data_size - copy_size);
-        if (ret_code)
+        index += copy_size;
+        if (index >= data_size)
         {
-            LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
-            return -3;
+            ret = 0;
+            goto write_done;
+        }
+
+        // write middle part
+        uint8_t tail_size = (data_size - index > 4) ? (data_size - index) % 4 : data_size - index;
+        if (data_size - index > 4)
+        {
+            LOG_DEBUG(TRACE, "write middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+            uint32_t offset = 0;
+            do {
+                copy_size = ((data_size - index - tail_size) > MASS_DATA_BUFFER_SIZE) ? MASS_DATA_BUFFER_SIZE : (data_size - index - tail_size);
+                memcpy(mass_data_buf, &data_buf[index], copy_size);
+                ret_code = nrfx_qspi_write(mass_data_buf, copy_size, ADDR_ALIGN_WORD(addr) + 4 + offset);
+                if (ret_code)
+                {
+                    ret = -2;
+                    goto write_done;
+                }
+                index += copy_size;
+                offset += copy_size;
+            } while (data_size > index + 4);
+        }
+
+        // write tail part
+        copy_size = data_size - index;
+        copy_data = 0xFFFFFFFF;
+        memcpy(copy_data_buf, &data_buf[index], copy_size);
+
+        if (copy_size)
+        {
+            LOG_DEBUG(TRACE, "write tail, addr: 0x%x, tail size: %d", addr + data_size - copy_size, copy_size);
+            ret_code = nrfx_qspi_write(copy_data_buf, 4, addr + data_size - copy_size);
+            if (ret_code)
+            {
+                LOG_DEBUG(ERROR, "ret_code: %d", ret_code);
+                ret = -2;
+                goto write_done;
+            }
         }
     }
 
-    return 0;
+write_done:
+    return ret;
 }
 
 int hal_exflash_read(uint32_t addr, uint8_t * data_buf, uint32_t data_size)
 {
+    int ret = 0;
     uint32_t ret_code;
-    uint32_t index = 0;
 
-    uint32_t copy_size;
-    uint32_t copy_data;
-    uint8_t *copy_data_buf = (uint8_t *)&copy_data;
-
-    // read head part
-    copy_size = 4 - (addr & 0x03);
-    ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
-    if (ret_code)
+    if (IS_WORD_ALIGNED(addr) && IS_WORD_ALIGNED((uint32_t)data_buf) && IS_WORD_ALIGNED(data_size))
     {
-        return -1;
+        ret_code = nrfx_qspi_read(data_buf, data_size, addr);
+        if (ret_code)
+        {
+            ret = -1;
+            goto read_done;
+        }
     }
-    memcpy(data_buf, &copy_data_buf[addr & 0x03], (data_size > copy_size) ? copy_size : data_size);
-    index += copy_size;
-    if (index >= data_size)
+    else
     {
-        return 0;
-    }
+        uint32_t index = 0;
+        uint32_t copy_size;
+        uint32_t copy_data;
+        uint8_t *copy_data_buf = (uint8_t *)&copy_data;
+        uint8_t mass_data_buf[MASS_DATA_BUFFER_SIZE];
 
-    // read middle part
-    if (data_size - index > 4)
-    {
-        LOG_DEBUG(TRACE, "read middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
-        uint32_t offset = 0;
-        do {
-            ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr + 4 + offset));
-            if (ret_code)
-            {
-                return -2;
-            }
-            memcpy(&data_buf[index], copy_data_buf, 4);
-            index += 4;
-            offset += 4;
-        } while (data_size - index > 4);
-    }
+        // read head part
+        copy_size = 4 - (addr & 0x03);
+        ret_code = nrfx_qspi_read(copy_data_buf, 4, ADDR_ALIGN_WORD(addr));
+        if (ret_code)
+        {
+            ret = -2;
+            goto read_done;
+        }
+        memcpy(data_buf, &copy_data_buf[addr & 0x03], (data_size > copy_size) ? copy_size : data_size);
+        index += copy_size;
+        if (index >= data_size)
+        {
+            ret = 0;
+            goto read_done;
+        }
 
-    // read tail part
-    copy_size = data_size - index;
-    copy_data = 0;
-    ret_code = nrfx_qspi_read(copy_data_buf, 4, addr + data_size - copy_size);
-    if (ret_code)
-    {
-        return -3;
-    }
-    memcpy(&data_buf[index], copy_data_buf, copy_size);
+        // read middle part
+        uint8_t tail_size = (data_size - index > 4) ? (data_size - index) % 4 : data_size - index;
+        if (data_size - index > 4)
+        {
+            LOG_DEBUG(TRACE, "read middle, addr: 0x%x, size: %d", ADDR_ALIGN_WORD(addr) + 4, data_size - index);
+            uint32_t offset = 0;
+            do {
+                copy_size = ((data_size - index - tail_size) > MASS_DATA_BUFFER_SIZE) ? MASS_DATA_BUFFER_SIZE : (data_size - index - tail_size);
+                ret_code = nrfx_qspi_read(mass_data_buf, copy_size, ADDR_ALIGN_WORD(addr + 4 + offset));
+                if (ret_code)
+                {
+                    ret = -3;
+                    goto read_done;
+                }
+                memcpy(&data_buf[index], mass_data_buf, copy_size);
+                index += copy_size;
+                offset += copy_size;
+            } while (data_size - index > 4);
+        }
 
-    return 0;
+        // read tail part
+        copy_size = data_size - index;
+        copy_data = 0;
+        ret_code = nrfx_qspi_read(copy_data_buf, 4, addr + data_size - copy_size);
+        if (ret_code)
+        {
+            ret = -4;
+            goto read_done;
+        }
+        memcpy(&data_buf[index], copy_data_buf, copy_size);
+    }
+ 
+read_done:
+    return ret;
 }
 
 int hal_exflash_erase_sector(uint32_t start_addr, uint32_t num_sectors)
