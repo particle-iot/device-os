@@ -138,6 +138,9 @@ int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_
         for (size_t bytes_left = total_bytes_to_copy; bytes_left > 0;) {
             const size_t bytes_to_copy = std::min(bytes_left, (size_t)FLASH_OPERATION_TEMP_BLOCK_SIZE);
 
+            /* Copy data into the temporary buffer */
+            memcpy(temp_buf, data_buf, bytes_to_copy);
+
             if (write_func(addr, temp_buf, bytes_to_copy)) {
                 return -1;
             }

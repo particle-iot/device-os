@@ -34,6 +34,8 @@
 #define QSPI_STD_CMD_RSTEN          0x66
 #define QSPI_STD_CMD_RST            0x99
 
+#define WAIT_COMPLETION() while(nrfx_qspi_mem_busy_check() != NRF_SUCCESS);
+
 static int configure_memory()
 {
     uint8_t temporary = 0x40;
@@ -132,7 +134,7 @@ int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size)
     hal_exflash_lock();
     int ret = hal_flash_common_write(addr, data_buf, data_size,
                                      &perform_write, &hal_flash_common_dummy_read);
-
+    WAIT_COMPLETION();
     hal_exflash_unlock();
     return ret;
 }
@@ -156,6 +158,8 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size)
             if (ret != NRF_SUCCESS) {
                 goto hal_exflash_read_done;
             }
+
+            WAIT_COMPLETION();
 
             /* Move the data if necessary */
             if (dst_aligned != data_buf || src_aligned != addr) {
@@ -193,6 +197,8 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size)
             goto hal_exflash_read_done;
         }
 
+        WAIT_COMPLETION();
+
         const unsigned offset_front = addr - src_aligned;
 
         memcpy(data_buf, tmpbuf + offset_front, data_size);
@@ -219,10 +225,12 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_
         {
             goto erase_common_done;
         }
+
+        WAIT_COMPLETION();
     }
 
-    LOG_DEBUG(TRACE, "Erased %lu %lukB blocks starting from %" PRIxPTR,
-              num_blocks, block_length / 1024, start_addr);
+    // LOG_DEBUG(TRACE, "Erased %lu %lukB blocks starting from %" PRIxPTR,
+    //           num_blocks, block_length / 1024, start_addr);
 
 erase_common_done:
     hal_exflash_unlock();

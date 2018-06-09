@@ -119,7 +119,7 @@ int hal_flash_erase_sector(uintptr_t addr, size_t num_sectors)
     int ret = 0;
     uint32_t ret_code = 0;
 
-    LOG_DEBUG(TRACE, "nrf_fstorage_erase(addr=0x%p, len=%d pages)", addr, num_sectors);
+    // LOG_DEBUG(TRACE, "nrf_fstorage_erase(addr=0x%p, len=%d pages)", addr, num_sectors);
 
     if (fs_op_state != FS_OP_STATE_IDLE)
     {
