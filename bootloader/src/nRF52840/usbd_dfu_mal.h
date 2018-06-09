@@ -31,7 +31,7 @@
 
 #define EXTERNAL_FLASH_START_ADD        0x00000000
 #define EXTERNAL_FLASH_END_ADDR         0x00400000
-#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x00000000/1024*004Kg";
+#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x80000000/1024*004Kg";
 
 
 namespace particle { namespace usbd { namespace dfu { namespace mal {
@@ -81,6 +81,9 @@ public:
   virtual int erase(uintptr_t addr, size_t len) override;
   virtual int getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) override;
   virtual const char* getString() override;
+
+private:
+  const uintptr_t offset_ = 0x80000000;
 };
 
 } } } } /* namespace particle::usbd::dfu::mal */

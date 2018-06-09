@@ -170,6 +170,16 @@ int ExternalFlashMal::deInit() {
 }
 
 bool ExternalFlashMal::validate(uintptr_t addr, size_t len) {
+    if (addr < offset_) {
+        /* NOTE: due to a bug in dfu-util in handling 0 addresses we map
+         * the offset the external flash addresses by 0x80000000
+         */
+        return false;
+    }
+
+    /* Remove the offset */
+    addr -= offset_;
+
     uintptr_t end = addr + len;
     if ((addr >= EXTERNAL_FLASH_START_ADD && addr <= EXTERNAL_FLASH_END_ADDR) &&
         (end >= EXTERNAL_FLASH_START_ADD && end <= EXTERNAL_FLASH_END_ADDR))
@@ -185,7 +195,7 @@ int ExternalFlashMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
         return 1;
     }
 
-    return hal_exflash_read(addr, buf, len);
+    return hal_exflash_read(addr - offset_, buf, len);
 }
 
 int ExternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
@@ -193,7 +203,7 @@ int ExternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
         return 1;
     }
 
-    return hal_exflash_write(addr, buf, len);
+    return hal_exflash_write(addr - offset_, buf, len);
 }
 
 int ExternalFlashMal::erase(uintptr_t addr, size_t len) {
@@ -202,7 +212,7 @@ int ExternalFlashMal::erase(uintptr_t addr, size_t len) {
     }
 
     (void)len;
-    return hal_exflash_erase_sector(addr, 1);
+    return hal_exflash_erase_sector(addr - offset_, 1);
 }
 
 int ExternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {

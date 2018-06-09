@@ -38,6 +38,7 @@ int DfuClassDriver::init(unsigned cfgIdx) {
   setStatus(detail::OK);
 
   reset();
+  address_ = 0;
 
   for (auto m : mal_) {
     if (m) {
