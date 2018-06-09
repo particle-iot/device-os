@@ -54,23 +54,87 @@ typedef enum PinMode {
 typedef enum {
     PF_NONE,
     PF_DIO,
-    PF_TIMER,
+    PF_TIMER,   // same as PF_PWM for NRF52, for compatibility in wiring layer
     PF_ADC,
-  PF_DAC
+    PF_DAC,
+    PF_UART,
+    PF_PWM
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 
-typedef struct STM32_Pin_Info  STM32_Pin_Info;
+#ifdef PLATFORM_ID
 
+#endif
+
+#if PLATFORM_ID == 14 // Xenon
+typedef struct NRF5x_Pin_Info  NRF5x_Pin_Info;
+NRF5x_Pin_Info* HAL_Pin_Map(void);
+#else
+typedef struct STM32_Pin_Info  STM32_Pin_Info;
 STM32_Pin_Info* HAL_Pin_Map(void);
+#endif
 
 /* Exported macros -----------------------------------------------------------*/
 
 /*
 * Pin mapping. Borrowed from Wiring
 */
-#if PLATFORM_ID!=3
+#if PLATFORM_ID == 14 // Xenon
+#define TOTAL_PINS          24
+#define TOTAL_ANALOG_PINS   6
+#define FIRST_ANALOG_PIN    10
+
+// digital pins
+#define D0      0
+#define D1      1
+#define D2      2
+#define D3      3
+#define D4      4
+#define D5      5
+#define D6      6
+#define D7      7
+#define D8      8
+#define D9      9
+#define D10     10
+
+// analog pins
+#define A0      14
+#define A1      15
+#define A2      16
+#define A3      17
+#define A4      18
+#define A5      19
+
+// uart pins
+#define RX      0
+#define TX      1
+
+// button pin
+#define BTN     20
+
+// RGB LED pins
+#define RGBR    21
+#define RGBG    22
+#define RGBB    23
+
+// SPI pins
+#define SCK     13
+#define MISO    12
+#define MOSI    11
+
+// I2C pins
+#define SDA     2
+#define SCL     3
+
+// WKP pin on Xenon
+#define WKP     8    // TODO
+#define A7      A5   // TODO
+
+#define LSBFIRST 0
+#define MSBFIRST 1
+
+#elif PLATFORM_ID != 3
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 47
 #elif PLATFORM_ID == 8 // P1

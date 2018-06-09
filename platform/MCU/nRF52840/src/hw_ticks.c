@@ -22,6 +22,7 @@
 
 #include "hw_ticks.h"
 #include <limits.h>
+#include "nrf.h"
 
 /**
  * The current millisecond counter value.
