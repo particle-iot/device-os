@@ -186,6 +186,9 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
     if (property_id == particle::protocol::Connection::PING)
     {
         protocol->set_keepalive(data, conn_prop->keepalive_source);
+    } else if (property_id == particle::protocol::Connection::FAST_OTA)
+    {
+        protocol->set_fast_ota(data);
     }
     return 0;
 }

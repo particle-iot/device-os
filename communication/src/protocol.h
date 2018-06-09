@@ -297,6 +297,11 @@ public:
 		pinger.set_interval(interval, source);
 	}
 
+	void set_fast_ota(unsigned data)
+	{
+		chunkedTransfer.set_fast_ota(data);
+	}
+
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);

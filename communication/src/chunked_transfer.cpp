@@ -33,6 +33,16 @@ ProtocolError ChunkedTransfer::handle_update_begin(
     if (actual_len >= 20 && queue[7] == 0xFF)
     {
         flags = decode_uint8(queue + 8);
+
+        if (fast_ota_override) {
+            if (fast_ota_value) {
+                flags |= (1<<0); // enabled
+            } else {
+                flags &= ~(1<<0); // disabled
+            }
+            DEBUG("Fast OTA: %s", fast_ota_value?"enabled":"disabled");
+        }
+
         file.chunk_size = decode_uint16(queue + 9);
         file.file_length = decode_uint32(queue + 11);
         file.store = FileTransfer::Store::Enum(decode_uint8(queue + 15));

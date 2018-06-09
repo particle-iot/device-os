@@ -100,7 +100,8 @@ namespace Connection
 {
 enum Enum
 {
-    PING = 0
+    PING = 0,
+    FAST_OTA = 1
 };
 }
 
