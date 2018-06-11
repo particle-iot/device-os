@@ -82,6 +82,9 @@ private:
 
 	Callbacks* callbacks;
 
+	bool fast_ota_override;
+	bool fast_ota_value;
+
 protected:
 
 	unsigned chunk_bitmap_size()
@@ -110,7 +113,7 @@ protected:
 public:
 
 	ChunkedTransfer() :
-			updating(false), callbacks(nullptr)
+			updating(false), callbacks(nullptr), fast_ota_override(false), fast_ota_value(true)
 	{
 	}
 
@@ -135,6 +138,12 @@ public:
 	ProtocolError send_missing_chunks(MessageChannel& channel, size_t count);
 
 	ProtocolError idle(MessageChannel& channel);
+
+	void set_fast_ota(unsigned data)
+	{
+		fast_ota_value = (data > 0) ? true : false;
+		fast_ota_override = true;
+	}
 
 	bool is_updating()
 	{
