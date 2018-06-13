@@ -26,12 +26,25 @@
 
 #include "deviceid_hal.h"
 #include <stddef.h>
+#include "nrf52840.h"
+#include <string.h>
+
+#define NORDIC_DEVICE_PREFIX        0xe00fce68
+
+#ifndef MIN
+# define MIN(a,b) (((a)<(b))?(a):(b))
+#endif
+
+// 32 bit prefix and 64 bit unique device identifier
+static const unsigned device_id_len = 12;
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
+    uint32_t device_id[3] = {NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1], NORDIC_DEVICE_PREFIX};
+
     if (dest!=NULL && destLen>0)
-        *dest = 0;
-    return 0;
+        memcpy(dest, (char*)device_id, MIN(destLen, device_id_len));
+    return device_id_len;
 }
 
 unsigned HAL_Platform_ID()
