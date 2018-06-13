@@ -66,6 +66,9 @@ typedef void (*HAL_SPI_Select_UserCallback)(uint8_t);
 
 #define SPI_DEFAULT_SS          ((uint16_t)(-1))
 
+#define LSBFIRST                0
+#define MSBFIRST                1
+
 /* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus

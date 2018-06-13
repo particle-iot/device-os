@@ -1,23 +1,18 @@
-/**
- ******************************************************************************
- * @file    pinmap_impl.h
- * @authors Eugene
- * @version V1.0.0
- * @date    13-3-2018
- * @brief
- ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation, either
-  version 3 of the License, or (at your option) any later version.
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef PINMAP_IMPL_H
@@ -31,13 +26,13 @@ extern "C" {
 #include "pinmap_hal.h"
 
 typedef struct NRF5x_Pin_Info {
-    PinFunction     pin_function;
-    uint8_t         gpio_port;      // port0: 0; port: 1;
-    uint8_t         gpio_pin;       // range: 0~31;
-    PinMode         pin_mode;       // status
-    uint8_t         adc_channel;
-    uint8_t         pwm_instance;   // 4 instances on nRF52, range: 0~3
-    uint8_t         pwm_channel;    // 4 channels in each instance, range: 0~3
+    uint8_t     gpio_port;      // port0: 0; port: 1;
+    uint8_t     gpio_pin;       // range: 0~31;
+    PinMode     pin_mode;       // GPIO pin mode
+    PinFunction pin_func;       
+    uint8_t     adc_channel;
+    uint8_t     pwm_instance;   // 4 instances on nRF52, range: 0~3
+    uint8_t     pwm_channel;    // 4 channels in each instance, range: 0~3
 } NRF5x_Pin_Info;
 
 #define NRF_PORT_NONE       ((uint8_t)(0xFF))
