@@ -147,7 +147,8 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size)
     {
         const uintptr_t src_aligned = ADDR_ALIGN_WORD(addr);
         uint8_t* dst_aligned = (uint8_t*)ADDR_ALIGN_WORD_RIGHT((uintptr_t)data_buf);
-        const size_t size_aligned = ADDR_ALIGN_WORD((data_size - (dst_aligned - data_buf)));
+        const size_t unaligned_bytes = MIN(data_size, (size_t)(dst_aligned - data_buf));
+        const size_t size_aligned = ADDR_ALIGN_WORD(data_size - unaligned_bytes);
 
         if (size_aligned > 0) {
             /* Read-out the aligned portion into an aligned address in the buffer
@@ -227,6 +228,8 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_
         }
 
         WAIT_COMPLETION();
+
+        start_addr += block_length;
     }
 
     // LOG_DEBUG(TRACE, "Erased %lu %lukB blocks starting from %" PRIxPTR,
@@ -249,6 +252,7 @@ int hal_exflash_erase_block(uintptr_t start_addr, size_t num_blocks)
 
 int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data_size)
 {
+    hal_exflash_lock();
     int ret = -1;
     if ((src_addr % sFLASH_PAGESIZE) ||
         (dest_addr % sFLASH_PAGESIZE) ||
