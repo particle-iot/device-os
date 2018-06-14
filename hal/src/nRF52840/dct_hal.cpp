@@ -40,7 +40,7 @@ public:
     }
 
     ssize_t read(size_t offset, uint8_t* buffer, size_t size) {
-        std::lock_guard<FsLock> lk(FsLock(fs));
+        FsLock lk(fs_);
         open(LFS_O_RDONLY);
         ssize_t r = seek(offset);
         if (r < 0) {
@@ -53,7 +53,7 @@ public:
     }
 
     ssize_t write(size_t offset, const uint8_t* buffer, size_t size) {
-        std::lock_guard<FsLock> lk(FsLock(fs_));
+        FsLock lk(fs_);
 
         open(LFS_O_WRONLY);
 
@@ -73,9 +73,6 @@ public:
             }
             bytes_written += r;
         }
-
-        // r = lfs_file_sync(lfs(), &file_);
-        // LOG_DEBUG(ERROR, "Failed to sync DCD write: %d", r);
 
         if (r < 0) {
             close();
@@ -104,8 +101,7 @@ private:
     }
 
     ssize_t seek(size_t offset) {
-        lfs_file_seek(lfs(), &file_, offset, LFS_SEEK_SET);
-        return lfs_file_sync(lfs(), &file_);
+        return lfs_file_seek(lfs(), &file_, offset, LFS_SEEK_SET);
     }
 
     void init() {
@@ -115,7 +111,7 @@ private:
 
         LOG_DEBUG(INFO, "Filesystem mounted");
 
-        std::lock_guard<FsLock> lk(FsLock(fs_));
+        FsLock lk(fs_);
 
         int r = lfs_mkdir(lfs(), "/sys");
         SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
@@ -136,10 +132,9 @@ private:
         if (flags & LFS_O_CREAT) {
             LOG_DEBUG(INFO, "Initializing empty DCT");
             /* Fill with 0xff for compatibility with raw flash DCD */
-            uint8_t tmp[256];
-            memset(tmp, 0xff, sizeof(tmp));
+            uint8_t tmp = 0xff;
             for (unsigned offset = 0; offset < sizeof(application_dct_t);) {
-                r = lfs_file_write(lfs(), &file_, tmp, std::min(sizeof(tmp), sizeof(application_dct_t) - offset));
+                r = lfs_file_write(lfs(), &file_, &tmp, sizeof(tmp));
                 SPARK_ASSERT(r > 0);
                 offset += r;
             }
@@ -149,7 +144,7 @@ private:
     }
 
     void deinit() {
-        std::lock_guard<FsLock> lk(FsLock(fs_));
+        FsLock lk(fs_);
 
         lfs_file_close(lfs(), &file_);
         filesystem_unmount(fs_);

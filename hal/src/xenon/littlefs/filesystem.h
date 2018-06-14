@@ -64,13 +64,14 @@ int filesystem_unlock(filesystem_t* fs);
 
 namespace particle { namespace fs {
 
-/**
- * Convenience struct meeting BasicLockable requirements for
- * use with std::lock_guard/unique_lock/scoped_lock
- */
 struct FsLock {
     FsLock(filesystem_t* fs)
             : fs_(fs) {
+        lock();
+    }
+
+    ~FsLock() {
+        unlock();
     }
 
     void lock() {
