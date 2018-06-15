@@ -240,7 +240,7 @@ private:
   uintptr_t address_ = 0;
   detail::DfuseCommand dfuseCmd_;
   particle::usbd::SetupRequest req_;
-  uint8_t transferBuf_[USBD_DFU_TRANSFER_SIZE];
+  uint8_t transferBuf_[USBD_DFU_TRANSFER_SIZE] __attribute__((aligned(4)));
 
   DfuMal* mal_[USBD_DFU_MAX_CONFIGURATIONS] = {};
 

@@ -47,3 +47,13 @@
 #define CRC32_ENABLED 1
 
 #define NRF_QUEUE_ENABLED 1
+
+// <4=> Read4IO
+#define NRFX_QSPI_CONFIG_READOC 4
+
+// <3=> PP4IO
+#define NRFX_QSPI_CONFIG_WRITEOC 3
+
+// <0=> 32MHz/1
+// Ze fastest!
+#define NRFX_QSPI_CONFIG_FREQUENCY 0
