@@ -85,7 +85,7 @@ otError nrf5SdErrorToOtError(uint32_t aSdError)
 
 void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId)
 {
-    nrf5SdSocFlashProcess(aEvtId);
+    // nrf5SdSocFlashProcess(aEvtId);
     nrf_raal_softdevice_soc_evt_handler(aEvtId);
 }
 

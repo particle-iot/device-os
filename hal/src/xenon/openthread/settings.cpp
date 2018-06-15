@@ -1,29 +1,18 @@
 /*
- *  Copyright (c) 2016, The OpenThread Authors.
- *  All rights reserved.
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
  *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *  3. Neither the name of the copyright holder nor the
- *     names of its contributors may be used to endorse or promote products
- *     derived from this software without specific prior written permission.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
  *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,400 +21,64 @@
  *
  */
 
-#include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include "utils/wrap_string.h"
+
+#include "service_debug.h"
 
 #include <openthread-core-config.h>
+#include <openthread/platform/settings.h>
+#include <openthread/types.h>
 
-#include "openthread/platform/settings.h"
-#include "openthread/types.h"
+#include "tlv_file.h"
 
-#include "code_utils.h"
+namespace {
 
-#include "flash.h"
+particle::services::settings::TlvFile s_settingsFile("/sys/openthread.dat");
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+} /* anonymous */
 
-enum
+void otPlatSettingsInit(otInstance* aInstance)
 {
-    kBlockAddBeginFlag    = 0x1,
-    kBlockAddCompleteFlag = 0x02,
-    kBlockDeleteFlag      = 0x04,
-    kBlockIndex0Flag      = 0x08,
-};
-
-enum
-{
-    kSettingsFlagSize      = 4,
-    kSettingsBlockDataSize = 255,
-
-    kSettingsInSwap = 0xbe5cc5ef,
-    kSettingsInUse  = 0xbe5cc5ee,
-    kSettingsNotUse = 0xbe5cc5ec,
-};
-
-OT_TOOL_PACKED_BEGIN
-struct settingsBlock
-{
-    uint16_t key;
-    uint16_t flag;
-    uint16_t length;
-    uint16_t reserved;
-} OT_TOOL_PACKED_END;
-
-static uint32_t sSettingsBaseAddress;
-static uint32_t sSettingsUsedSize;
-
-static uint16_t getAlignLength(uint16_t length)
-{
-    return (length + 3) & 0xfffc;
+    SPARK_ASSERT(s_settingsFile.init() == 0);
 }
 
-static void setSettingsFlag(uint32_t aBase, uint32_t aFlag)
-{
-    utilsFlashWrite(aBase, reinterpret_cast<uint8_t *>(&aFlag), sizeof(aFlag));
-}
-
-static void initSettings(uint32_t aBase, uint32_t aFlag)
-{
-    uint32_t address      = aBase;
-    uint32_t settingsSize = SETTINGS_CONFIG_PAGE_NUM > 1 ? SETTINGS_CONFIG_PAGE_SIZE * SETTINGS_CONFIG_PAGE_NUM / 2
-                                                         : SETTINGS_CONFIG_PAGE_SIZE;
-
-    while (address < (aBase + settingsSize))
-    {
-        utilsFlashErasePage(address);
-        utilsFlashStatusWait(1000);
-        address += SETTINGS_CONFIG_PAGE_SIZE;
-    }
-
-    setSettingsFlag(aBase, aFlag);
-}
-
-static uint32_t swapSettingsBlock(otInstance *aInstance)
-{
-    uint32_t oldBase      = sSettingsBaseAddress;
-    uint32_t swapAddress  = oldBase;
-    uint32_t usedSize     = sSettingsUsedSize;
-    uint8_t  pageNum      = SETTINGS_CONFIG_PAGE_NUM;
-    uint32_t settingsSize = pageNum > 1 ? SETTINGS_CONFIG_PAGE_SIZE * pageNum / 2 : SETTINGS_CONFIG_PAGE_SIZE;
-
-    (void)aInstance;
-
-    otEXPECT(pageNum > 1);
-
-    sSettingsBaseAddress =
-        (swapAddress == SETTINGS_CONFIG_BASE_ADDRESS) ? (swapAddress + settingsSize) : SETTINGS_CONFIG_BASE_ADDRESS;
-
-    initSettings(sSettingsBaseAddress, static_cast<uint32_t>(kSettingsInSwap));
-    sSettingsUsedSize = kSettingsFlagSize;
-    swapAddress += kSettingsFlagSize;
-
-    while (swapAddress < (oldBase + usedSize))
-    {
-        OT_TOOL_PACKED_BEGIN
-        struct addSettingsBlock
-        {
-            struct settingsBlock block;
-            uint8_t              data[kSettingsBlockDataSize];
-        } OT_TOOL_PACKED_END addBlock;
-        bool                 valid = true;
-
-        utilsFlashRead(swapAddress, reinterpret_cast<uint8_t *>(&addBlock.block), sizeof(struct settingsBlock));
-        swapAddress += sizeof(struct settingsBlock);
-
-        if (!(addBlock.block.flag & kBlockAddCompleteFlag) && (addBlock.block.flag & kBlockDeleteFlag))
-        {
-            uint32_t address = swapAddress + getAlignLength(addBlock.block.length);
-
-            while (address < (oldBase + usedSize))
-            {
-                struct settingsBlock block;
-
-                utilsFlashRead(address, reinterpret_cast<uint8_t *>(&block), sizeof(block));
-
-                if (!(block.flag & kBlockAddCompleteFlag) && (block.flag & kBlockDeleteFlag) &&
-                    !(block.flag & kBlockIndex0Flag) && (block.key == addBlock.block.key))
-                {
-                    valid = false;
-                    break;
-                }
-
-                address += (getAlignLength(block.length) + sizeof(struct settingsBlock));
-            }
-
-            if (valid)
-            {
-                utilsFlashRead(swapAddress, addBlock.data, getAlignLength(addBlock.block.length));
-                utilsFlashWrite(sSettingsBaseAddress + sSettingsUsedSize, reinterpret_cast<uint8_t *>(&addBlock),
-                                getAlignLength(addBlock.block.length) + sizeof(struct settingsBlock));
-                sSettingsUsedSize += (sizeof(struct settingsBlock) + getAlignLength(addBlock.block.length));
-            }
-        }
-        else if (addBlock.block.flag == 0xff)
-        {
-            break;
-        }
-
-        swapAddress += getAlignLength(addBlock.block.length);
-    }
-
-    setSettingsFlag(sSettingsBaseAddress, static_cast<uint32_t>(kSettingsInUse));
-    setSettingsFlag(oldBase, static_cast<uint32_t>(kSettingsNotUse));
-
-exit:
-    return settingsSize - sSettingsUsedSize;
-}
-
-static otError addSetting(otInstance *   aInstance,
-                          uint16_t       aKey,
-                          bool           aIndex0,
-                          const uint8_t *aValue,
-                          uint16_t       aValueLength)
-{
-    otError error = OT_ERROR_NONE;
-    OT_TOOL_PACKED_BEGIN
-    struct addSettingsBlock
-    {
-        struct settingsBlock block;
-        uint8_t              data[kSettingsBlockDataSize];
-    } OT_TOOL_PACKED_END addBlock;
-    uint32_t settingsSize = SETTINGS_CONFIG_PAGE_NUM > 1 ? SETTINGS_CONFIG_PAGE_SIZE * SETTINGS_CONFIG_PAGE_NUM / 2
-                                                         : SETTINGS_CONFIG_PAGE_SIZE;
-
-    addBlock.block.flag = 0xff;
-    addBlock.block.key  = aKey;
-
-    if (aIndex0)
-    {
-        addBlock.block.flag &= (~kBlockIndex0Flag);
-    }
-
-    addBlock.block.flag &= (~kBlockAddBeginFlag);
-    addBlock.block.length = aValueLength;
-
-    if ((sSettingsUsedSize + getAlignLength(addBlock.block.length) + sizeof(struct settingsBlock)) >= settingsSize)
-    {
-        otEXPECT_ACTION(swapSettingsBlock(aInstance) >=
-                            (getAlignLength(addBlock.block.length) + sizeof(struct settingsBlock)),
-                        error = OT_ERROR_NO_BUFS);
-    }
-
-    utilsFlashWrite(sSettingsBaseAddress + sSettingsUsedSize, reinterpret_cast<uint8_t *>(&addBlock.block),
-                    sizeof(struct settingsBlock));
-
-    memset(addBlock.data, 0xff, kSettingsBlockDataSize);
-    memcpy(addBlock.data, aValue, addBlock.block.length);
-
-    utilsFlashWrite(sSettingsBaseAddress + sSettingsUsedSize + sizeof(struct settingsBlock),
-                    reinterpret_cast<uint8_t *>(addBlock.data), getAlignLength(addBlock.block.length));
-
-    addBlock.block.flag &= (~kBlockAddCompleteFlag);
-    utilsFlashWrite(sSettingsBaseAddress + sSettingsUsedSize, reinterpret_cast<uint8_t *>(&addBlock.block),
-                    sizeof(struct settingsBlock));
-    sSettingsUsedSize += (sizeof(struct settingsBlock) + getAlignLength(addBlock.block.length));
-
-exit:
-    return error;
-}
-
-// settings API
-void otPlatSettingsInit(otInstance *aInstance)
-{
-    uint8_t  index;
-    uint32_t settingsSize = SETTINGS_CONFIG_PAGE_NUM > 1 ? SETTINGS_CONFIG_PAGE_SIZE * SETTINGS_CONFIG_PAGE_NUM / 2
-                                                         : SETTINGS_CONFIG_PAGE_SIZE;
-
-    (void)aInstance;
-
-    sSettingsBaseAddress = SETTINGS_CONFIG_BASE_ADDRESS;
-
-    utilsFlashInit();
-
-    for (index = 0; index < 2; index++)
-    {
-        uint32_t blockFlag;
-
-        sSettingsBaseAddress += settingsSize * index;
-        utilsFlashRead(sSettingsBaseAddress, reinterpret_cast<uint8_t *>(&blockFlag), sizeof(blockFlag));
-
-        if (blockFlag == kSettingsInUse)
-        {
-            break;
-        }
-    }
-
-    if (index == 2)
-    {
-        initSettings(sSettingsBaseAddress, static_cast<uint32_t>(kSettingsInUse));
-    }
-
-    sSettingsUsedSize = kSettingsFlagSize;
-
-    while (sSettingsUsedSize < settingsSize)
-    {
-        struct settingsBlock block;
-
-        utilsFlashRead(sSettingsBaseAddress + sSettingsUsedSize, reinterpret_cast<uint8_t *>(&block), sizeof(block));
-
-        if (!(block.flag & kBlockAddBeginFlag))
-        {
-            sSettingsUsedSize += (getAlignLength(block.length) + sizeof(struct settingsBlock));
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
-otError otPlatSettingsBeginChange(otInstance *aInstance)
-{
-    (void)aInstance;
+otError otPlatSettingsBeginChange(otInstance* aInstance) {
     return OT_ERROR_NONE;
 }
 
-otError otPlatSettingsCommitChange(otInstance *aInstance)
-{
-    (void)aInstance;
-    return OT_ERROR_NONE;
+otError otPlatSettingsCommitChange(otInstance* aInstance) {
+    return s_settingsFile.sync() == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
 }
 
-otError otPlatSettingsAbandonChange(otInstance *aInstance)
-{
-    (void)aInstance;
-    return OT_ERROR_NONE;
+otError otPlatSettingsAbandonChange(otInstance* aInstance) {
+    return OT_ERROR_NOT_IMPLEMENTED;
 }
 
-otError otPlatSettingsGet(otInstance *aInstance, uint16_t aKey, int aIndex, uint8_t *aValue, uint16_t *aValueLength)
-{
-    otError  error       = OT_ERROR_NOT_FOUND;
-    uint32_t address     = sSettingsBaseAddress + kSettingsFlagSize;
-    uint16_t valueLength = 0;
-    int      index       = 0;
-
-    (void)aInstance;
-
-    while (address < (sSettingsBaseAddress + sSettingsUsedSize))
-    {
-        struct settingsBlock block;
-
-        utilsFlashRead(address, reinterpret_cast<uint8_t *>(&block), sizeof(block));
-
-        if (block.key == aKey)
-        {
-            if (!(block.flag & kBlockIndex0Flag))
-            {
-                index = 0;
-            }
-
-            if (!(block.flag & kBlockAddCompleteFlag) && (block.flag & kBlockDeleteFlag))
-            {
-                if (index == aIndex)
-                {
-                    uint16_t readLength = block.length;
-
-                    // only perform read if an input buffer was passed in
-                    if (aValue != NULL && aValueLength != NULL)
-                    {
-                        // adjust read length if input buffer length is smaller
-                        if (readLength > *aValueLength)
-                        {
-                            readLength = *aValueLength;
-                        }
-
-                        utilsFlashRead(address + sizeof(struct settingsBlock), aValue, readLength);
-                    }
-
-                    valueLength = block.length;
-                    error       = OT_ERROR_NONE;
-                }
-
-                index++;
-            }
-        }
-
-        address += (getAlignLength(block.length) + sizeof(struct settingsBlock));
+otError otPlatSettingsGet(otInstance* aInstance, uint16_t aKey, int aIndex, uint8_t* aValue, uint16_t* aValueLength) {
+    int r = s_settingsFile.get(aKey, aValue, *aValueLength, aIndex);
+    if (r >= 0) {
+        *aValueLength = (uint16_t)r;
+        return OT_ERROR_NONE;
     }
 
-    if (aValueLength != NULL)
-    {
-        *aValueLength = valueLength;
-    }
-
-    return error;
+    return OT_ERROR_NOT_FOUND;
 }
 
-otError otPlatSettingsSet(otInstance *aInstance, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength)
-{
-    return addSetting(aInstance, aKey, true, aValue, aValueLength);
+otError otPlatSettingsSet(otInstance* aInstance, uint16_t aKey, const uint8_t* aValue, uint16_t aValueLength) {
+    return s_settingsFile.set(aKey, aValue, aValueLength) == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
 }
 
-otError otPlatSettingsAdd(otInstance *aInstance, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength)
-{
-    uint16_t length;
-    bool     index0;
-
-    index0 = (otPlatSettingsGet(aInstance, aKey, 0, NULL, &length) == OT_ERROR_NOT_FOUND ? true : false);
-    return addSetting(aInstance, aKey, index0, aValue, aValueLength);
+otError otPlatSettingsAdd(otInstance *aInstance, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength) {
+    uint8_t index = otPlatSettingsGet(aInstance, aKey, 0, nullptr, 0) == OT_ERROR_NONE ? 1 : 0;
+    return s_settingsFile.set(aKey, aValue, aValueLength, index) == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
 }
 
-otError otPlatSettingsDelete(otInstance *aInstance, uint16_t aKey, int aIndex)
-{
-    otError  error   = OT_ERROR_NOT_FOUND;
-    uint32_t address = sSettingsBaseAddress + kSettingsFlagSize;
-    int      index   = 0;
-
-    (void)aInstance;
-
-    while (address < (sSettingsBaseAddress + sSettingsUsedSize))
-    {
-        struct settingsBlock block;
-
-        utilsFlashRead(address, reinterpret_cast<uint8_t *>(&block), sizeof(block));
-
-        if (block.key == aKey)
-        {
-            if (!(block.flag & kBlockIndex0Flag))
-            {
-                index = 0;
-            }
-
-            if (!(block.flag & kBlockAddCompleteFlag) && (block.flag & kBlockDeleteFlag))
-            {
-                if (aIndex == index || aIndex == -1)
-                {
-                    error = OT_ERROR_NONE;
-                    block.flag &= (~kBlockDeleteFlag);
-                    utilsFlashWrite(address, reinterpret_cast<uint8_t *>(&block), sizeof(block));
-                }
-
-                if (index == 1 && aIndex == 0)
-                {
-                    block.flag &= (~kBlockIndex0Flag);
-                    utilsFlashWrite(address, reinterpret_cast<uint8_t *>(&block), sizeof(block));
-                }
-
-                index++;
-            }
-        }
-
-        address += (getAlignLength(block.length) + sizeof(struct settingsBlock));
-    }
-
-    return error;
+otError otPlatSettingsDelete(otInstance *aInstance, uint16_t aKey, int aIndex) {
+    return s_settingsFile.del(aKey, aIndex) == 0 ? OT_ERROR_NONE : OT_ERROR_NOT_FOUND;
 }
 
-void otPlatSettingsWipe(otInstance *aInstance)
-{
-    initSettings(sSettingsBaseAddress, static_cast<uint32_t>(kSettingsInUse));
+void otPlatSettingsWipe(otInstance* aInstance) {
+    s_settingsFile.purge();
     otPlatSettingsInit(aInstance);
 }
-
-#ifdef __cplusplus
-};
-#endif

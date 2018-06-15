@@ -86,7 +86,7 @@ filesystem_t s_instance = {};
 } /* anonymous */
 
 int filesystem_mount(filesystem_t* fs) {
-    std::lock_guard<FsLock> lk(FsLock(fs));
+    FsLock lk(fs);
     int ret = 0;
 
     if (fs->state) {
@@ -131,7 +131,7 @@ int filesystem_mount(filesystem_t* fs) {
 }
 
 int filesystem_unmount(filesystem_t* fs) {
-    std::lock_guard<FsLock> lk(FsLock(fs));
+    FsLock lk(fs);
 
     int ret = 0;
 
