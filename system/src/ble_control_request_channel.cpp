@@ -28,7 +28,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "preprocessor.h"
 
 #ifndef PAIRING_ENABLED
-#define PAIRING_ENABLED 1
+#define PAIRING_ENABLED 0
 #endif
 
 namespace particle {
