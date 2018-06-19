@@ -288,11 +288,13 @@ int TlvFile::open() {
         return r;
     }
 
+    open_ = true;
+    FileFooter footer = {};
+
     if (!validate()) {
-        return SYSTEM_ERROR_NONE;
+        goto open_done;
     }
 
-    FileFooter footer = {};
     footer.magick = TLV_FILE_MAGICK;
     footer.size = 0;
 
@@ -312,6 +314,7 @@ int TlvFile::open() {
 open_done:
     if (r) {
         lfs_file_close(lfs(), &file_);
+        open_ = false;
     }
     return r;
 }
