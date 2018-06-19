@@ -29,7 +29,7 @@
 #include "dfu_hal.h"
 #include "hw_config.h"
 #include "rgbled.h"
-#include "button.h"
+#include "button_hal.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 #define LOAD_DCT_FUNCTIONS

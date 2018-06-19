@@ -33,7 +33,7 @@ typedef struct {
     uint16_t              event_in;
     uint16_t              event_channel;
     uint16_t              int_mask;
-    nrf_gpiote_polarity_t int_trigger;
+    uint16_t              interrupt_mode;
     uint16_t              nvic_irqn;
     uint16_t              nvic_irq_prio;
     uint8_t               padding[12];
