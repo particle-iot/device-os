@@ -54,8 +54,7 @@
 #define sFLASH_PAGECOUNT                    1024   /* 4MByte storage */
 #endif
 
-
-// todo - add this later #define FLASH_UPDATE_MODULES
+#define FLASH_UPDATE_MODULES
 
 //NVIC Priorities based on NVIC_PriorityGroup_4
 #define SDIO_IRQ_PRIORITY                   0       //??? BCM43362 SDIO Interrupt
