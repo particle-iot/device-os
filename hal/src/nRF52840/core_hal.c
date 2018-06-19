@@ -28,6 +28,7 @@
 #include <nrf_mbr.h>
 #include <nrf_sdm.h>
 #include <nrf_sdh.h>
+#include <nrf_rtc.h>
 #include "button_hal.h"
 #include "hal_platform.h"
 #include "dct.h"
@@ -160,6 +161,21 @@ void UsageFault_Handler(void)
     }
 }
 
+void GPIOTE_IRQHandler(void)
+{
+    BUTTON_Irq_Handler();
+}
+
+void RTC1_IRQHandler(void)
+{
+    if (nrf_rtc_event_pending(NRF_RTC1, NRF_RTC_EVENT_TICK))
+    {
+        nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
+
+        BUTTON_Debounce();
+    }
+}
+
 void SysTickOverride(void)
 {
     System1MsTick();
@@ -287,6 +303,26 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 
 void HAL_Core_Mode_Button_Reset(uint16_t button)
 {
+    HAL_Buttons[button].debounce_time = 0x00;
+
+    if (HAL_Buttons[BUTTON1].active + HAL_Buttons[BUTTON1_MIRROR].active == 0) {
+        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
+    }
+
+    HAL_Notify_Button_State((Button_TypeDef)button, false);
+
+    /* Enable Button Interrupt */
+    if (button != BUTTON1_MIRROR) {
+        BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
+    } else {
+        HAL_InterruptExtraConfiguration irqConf = {0};
+        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
+        irqConf.IRQChannelPreemptionPriority = 0;
+        irqConf.IRQChannelSubPriority = 0;
+        irqConf.keepHandler = 1;
+        irqConf.keepPriority = 1;
+        HAL_Interrupts_Attach(HAL_Buttons[button].pin, NULL, NULL, HAL_Buttons[button].interrupt_mode, &irqConf);
+    }
 }
 
 void HAL_Core_System_Reset(void)
@@ -354,7 +390,7 @@ int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
  */
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 {
-    return 0;
+    return Compute_CRC32(pBuffer, bufferSize, NULL);
 }
 
 uint16_t HAL_Core_Mode_Button_Pressed_Time()
