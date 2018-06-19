@@ -205,6 +205,17 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
  */
 void os_thread_scheduling(bool enabled, void* reserved);
 
+typedef enum {
+    OS_SCHEDULER_STATE_NOT_STARTED = 0,
+    OS_SCHEDULER_STATE_RUNNING     = 1,
+    OS_SCHEDULER_STATE_SUSPENDED   = 2
+} os_scheduler_state_t;
+
+/**
+ * Get task scheduler state.
+ */
+os_scheduler_state_t os_scheduler_get_state(void* reserved);
+
 /**
  * Create a new timer. Returns 0 on success.
  */

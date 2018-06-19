@@ -435,6 +435,11 @@ void os_thread_scheduling(bool enabled, void* reserved)
         vTaskSuspendAll();
 }
 
+os_scheduler_state_t os_scheduler_get_state(void* reserved)
+{
+    return (os_scheduler_state_t)xTaskGetSchedulerState();
+}
+
 int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initial)
 {
     *semaphore = xSemaphoreCreateCounting( ( max ), ( initial ) );
