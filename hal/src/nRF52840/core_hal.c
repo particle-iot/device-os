@@ -332,12 +332,15 @@ void HAL_Core_System_Reset(void)
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
 {
+/*
+    // FIXME: This currently causes a hard fault
     if (HAL_Feature_Get(FEATURE_RESET_INFO))
     {
         // Save reset info to backup registers
         HAL_Core_Write_Backup_Register(BKP_DR_02, reason);
         HAL_Core_Write_Backup_Register(BKP_DR_03, data);
     }
+*/
     HAL_Core_System_Reset();
 }
 
