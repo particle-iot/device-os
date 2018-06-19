@@ -60,6 +60,10 @@
 #include "system_openthread.h"
 #include "system_control_internal.h"
 
+#if HAL_PLATFORM_FILESYSTEM
+#include "filesystem.h"
+#endif /* HAL_PLATFORM_FILESYSTEM */
+
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
 #include <thread>
@@ -638,6 +642,10 @@ void app_setup_and_loop(void)
     DEBUG("Hello from Particle!");
     String s = spark_deviceID();
     INFO("Device %s started", s.c_str());
+
+#if HAL_PLATFORM_FILESYSTEM
+    filesystem_dump_info(filesystem_get_instance(nullptr));
+#endif /* HAL_PLATFORM_FILESYSTEM */
 
     if (LOG_ENABLED(TRACE)) {
         int reason = RESET_REASON_NONE;
