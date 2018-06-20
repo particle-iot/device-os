@@ -34,6 +34,7 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud_internal.h"
+#include "system_cloud_connection.h"
 #include "system_sleep.h"
 #include "system_threading.h"
 #include "system_user.h"
@@ -63,6 +64,10 @@
 #if HAL_PLATFORM_FILESYSTEM
 #include "filesystem.h"
 #endif /* HAL_PLATFORM_FILESYSTEM */
+
+#if HAL_PLATFORM_LWIP
+#include <lwip/tcpip.h>
+#endif /* HAL_PLATFORM_LWIP */
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -654,6 +659,12 @@ void app_setup_and_loop(void)
             LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
         }
     }
+
+#if HAL_PLATFORM_LWIP
+    tcpip_init([](void* arg) {
+        LOG(TRACE, "LwIP started");
+    }, /* &sem */ nullptr);
+#endif /* HAL_PLATFORM_LWIP */
 
     // FIXME: Move BLE and Thread initialization to an appropriate place
     ble_init(nullptr);

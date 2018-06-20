@@ -22,6 +22,7 @@
 #include "system_task.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
+#include "system_cloud_connection.h"
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"

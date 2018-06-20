@@ -47,19 +47,22 @@
 #include "dtls_session_persist.h"
 #include "bytes2hexbuf.h"
 #include "system_event.h"
-
-#if HAL_USE_SOCKET_HAL_POSIX
-#include "netdb_hal.h"
-#endif /* HAL_USE_SOCKET_HAL_POSIX */
+#include "system_cloud_connection.h"
 
 #include <stdio.h>
 #include <stdint.h>
 
-#define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
-
 using particle::CloudDiagnostics;
 
 #ifndef SPARK_NO_CLOUD
+
+extern uint8_t feature_cloud_udp;
+extern volatile bool cloud_socket_aborted;
+
+static volatile uint32_t lastCloudEvent = 0;
+uint32_t particle_key_errors = NO_ERROR;
+
+const int CLAIM_CODE_SIZE = 63;
 
 using particle::LEDStatus;
 
@@ -70,26 +73,9 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
 static int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
 static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size);
 
-#if !HAL_USE_SOCKET_HAL_POSIX
-static sock_handle_t sparkSocket = socket_handle_invalid();
-#else
-static int sparkSocket = -1;
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-
-extern uint8_t feature_cloud_udp;
-
 ProtocolFacade* sp;
 
-static uint32_t particle_key_errors = NO_ERROR;
-
 void (*random_seed_from_cloud_handler)(unsigned int) = nullptr;
-
-#if HAL_USE_SOCKET_HAL_POSIX
-#define socket_handle_valid(x) (x >= 0)
-/* FIXME */
-#define socket_active_status(x) SOCKET_STATUS_ACTIVE
-#define socket_handle_invalid(x) (-1)
-#endif /* HAL_USE_SOCKET_HAL_POSIX */
 
 /**
  * This is necessary since spark_protocol_instance() was defined in both system_cloud
@@ -284,249 +270,6 @@ void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handler
     }
 }
 
-volatile uint32_t lastCloudEvent = 0;
-
-/**
- * This is the internal function called by the background loop to pump cloud events.
- */
-void Spark_Process_Events()
-{
-    if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
-    {
-        WARN("Communication loop error, closing cloud socket");
-        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
-    }
-    else
-    {
-        lastCloudEvent = millis();
-    }
-}
-
-#if !HAL_USE_SOCKET_HAL_POSIX
-void decode_endpoint(const sockaddr_t& socket_addr, IPAddress& ip, uint16_t& port)
-#else
-void decode_endpoint(const sockaddr& socket_addr, IPAddress& ip, uint16_t& port)
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-{
-#if !HAL_USE_SOCKET_HAL_POSIX
-	// assume IPv4 for now.
-	ip.set_ipv4(
-			socket_addr.sa_data[2],
-			socket_addr.sa_data[3],
-			socket_addr.sa_data[4],
-			socket_addr.sa_data[5]
-	);
-	port = socket_addr.sa_data[0] << 8 | socket_addr.sa_data[1];
-#else
-    if (socket_addr.sa_family == AF_INET) {
-        sockaddr_in* in = (sockaddr_in*)(&socket_addr);
-        port = ntohs(in->sin_port);
-        ip = (uint8_t*)&(in->sin_addr.s_addr);
-    }
-#if Wiring_IPv6
-    else if (socket_addr.sa_family == AF_INET6) {
-        sockaddr_in6* in = (sockaddr_in6*)(&socket_addr);
-        port = ntohs(in->sin6_port);
-        /* FIXME: IPAddress does not support setting IPv6 addresses */
-    }
-#endif /* Wiring_IPv6 */
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-}
-
-#if !HAL_USE_SOCKET_HAL_POSIX
-void encode_endpoint(sockaddr_t& tSocketAddr, const IPAddress& ip_addr, const uint16_t port)
-#else
-void encode_endpoint(sockaddr& tSocketAddr, const IPAddress& ip_addr, const uint16_t port)
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-{
-#if !HAL_USE_SOCKET_HAL_POSIX
-    // the destination port
-    tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
-    tSocketAddr.sa_data[1] = (port & 0x00FF);
-
-    tSocketAddr.sa_data[2] = ip_addr[0];
-    tSocketAddr.sa_data[3] = ip_addr[1];
-    tSocketAddr.sa_data[4] = ip_addr[2];
-    tSocketAddr.sa_data[5] = ip_addr[3];
-#else
-    if (ip_addr.version() == 4) {
-        sockaddr_in* in = (sockaddr_in*)(&tSocketAddr);
-        in->sin_family = AF_INET;
-        in->sin_port = htons(port);
-        in->sin_addr.s_addr = htonl(ip_addr.raw().ipv4);
-    }
-#if Wiring_IPv6
-    else if (ip_addr.version == 6) {
-        sockaddr_in6* in = (sockaddr_in6*)(&tSocketAddr);
-        in->sin6_family = AF_INET6;
-        in->sin6_port = htons(port);
-        uint32_t tmp;
-        tmp = htonl(ip_addr.raw().ipv6[0]);
-        memcpy(in->sin6_addr.s6_addr, &tmp, sizeof(tmp));
-        tmp = htonl(ip_addr.raw().ipv6[1]);
-        memcpy(in->sin6_addr.s6_addr + 4, &tmp, sizeof(tmp));
-        tmp = htonl(ip_addr.raw().ipv6[2]);
-        memcpy(in->sin6_addr.s6_addr + 8, &tmp, sizeof(tmp));
-        tmp = htonl(ip_addr.raw().ipv6[3]);
-        memcpy(in->sin6_addr.s6_addr + 12, &tmp, sizeof(tmp));
-    }
-#endif /* Wiring_IPv6 */
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-}
-
-volatile bool cloud_socket_aborted = false;
-
-#if HAL_PLATFORM_CLOUD_UDP
-struct Endpoint
-{
-	IPAddress address;
-	uint16_t port;
-};
-
-struct SessionConnection
-{
-	/**
-	 * The previously used address.
-	 */
-#if !HAL_USE_SOCKET_HAL_POSIX
-	sockaddr_t address;
-#else
-    sockaddr address;
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-
-	/**
-	 * The checksum of the server address data that was used
-	 * to derive the connection address.
-	 */
-	uint32_t server_address_checksum;
-};
-
-
-SessionConnection cloud_endpoint;
-
-int Spark_Send_UDP(const unsigned char* buf, uint32_t buflen, void* reserved)
-{
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
-    {
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
-        //break from any blocking loop
-        return -1;
-    }
-    DEBUG("send %d", buflen);
-#if !HAL_USE_SOCKET_HAL_POSIX
-	return socket_sendto(sparkSocket, buf, buflen, 0, &cloud_endpoint.address, sizeof(cloud_endpoint.address));
-#else
-    return sock_sendto(sparkSocket, buf, buflen, 0, (const sockaddr*)&cloud_endpoint.address, sizeof(cloud_endpoint.address));
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-}
-
-int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
-{
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
-    {
-        //break from any blocking loop
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
-        return -1;
-    }
-
-#if !HAL_USE_SOCKET_HAL_POSIX
-    sockaddr_t addr;
-    socklen_t size = sizeof(addr);
-	int received = socket_receivefrom(sparkSocket, buf, buflen, 0, &addr, &size);
-#else
-    sockaddr addr = {};
-    socklen_t size = sizeof(addr);
-    int received = sock_recvfrom(sparkSocket, buf, buflen, MSG_DONTWAIT, &addr, &size);
-    if (received < 0) {
-        if (errno == EWOULDBLOCK || errno == EAGAIN) {
-            /* Not an error */
-            received = 0;
-        }
-    }
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-
-	if (received!=0) {
-		DEBUG("received %d", received);
-	}
-	if (received>0)
-    {
-#if PLATFORM_ID!=3 && !HAL_USE_SOCKET_HAL_POSIX
-    		// filter out by destination IP and port
-    		// todo - IPv6 will need to change this
-            // XXX: with POSIX socket_hal, this is done by "connecting" the socket
-    		if (memcmp(&addr.sa_data, &cloud_endpoint.address.sa_data, 6)) {
-    			// ignore the packet if from a different source
-    			received = 0;
-    		    DEBUG("received from a different address %d.%d.%d.%d:%d",
-    		    		cloud_endpoint.address.sa_data[2],
-				cloud_endpoint.address.sa_data[3],
-				cloud_endpoint.address.sa_data[4],
-				cloud_endpoint.address.sa_data[5],
-				((cloud_endpoint.address.sa_data[0]<<8)+cloud_endpoint.address.sa_data[1])
-    		    );
-
-    		}
-#endif
-    }
-    return received;
-}
-
-
-#endif
-
-
-
-// Returns number of bytes sent or -1 if an error occurred
-int Spark_Send(const unsigned char *buf, uint32_t buflen, void* reserved)
-{
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
-    {
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
-        //break from any blocking loop
-        return -1;
-    }
-
-#if !HAL_USE_SOCKET_HAL_POSIX
-    // send returns negative numbers on error
-    int bytes_sent = socket_send(sparkSocket, buf, buflen);
-#else
-    int bytes_sent = sock_send(sparkSocket, buf, buflen, 0);
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-    return bytes_sent;
-}
-
-// Returns number of bytes received or -1 if an error occurred
-int Spark_Receive(unsigned char *buf, uint32_t buflen, void* reserved)
-{
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted)
-    {
-        //break from any blocking loop
-        DEBUG("SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || spark_cloud_socket_closed() || cloud_socket_aborted");
-        return -1;
-    }
-
-    static int spark_receive_last_bytes_received = 0;
-//    static volatile system_tick_t spark_receive_last_request_millis = 0;
-    //no delay between successive socket_receive() calls for cloud
-    //not connected or ota flash in process or on last data receipt
-    {
-#if !HAL_USE_SOCKET_HAL_POSIX
-        spark_receive_last_bytes_received = socket_receive(sparkSocket, buf, buflen, 0);
-#else
-        spark_receive_last_bytes_received = sock_recv(sparkSocket, buf, buflen, MSG_DONTWAIT);
-        if (spark_receive_last_bytes_received < 0) {
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                /* Not an error */
-                spark_receive_last_bytes_received = 0;
-            }
-        }
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-        //spark_receive_last_request_millis = millis();
-    }
-
-    return spark_receive_last_bytes_received;
-}
-
 int numUserFunctions(void)
 {
     return funcs.size();
@@ -610,13 +353,13 @@ int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
 	if (type==SparkCallbacks::PERSIST_SESSION)
 	{
-		static_assert(sizeof(SessionPersistOpaque::connection)>=sizeof(cloud_endpoint),"connection space in session is not large enough");
+		static_assert(sizeof(SessionPersistOpaque::connection)>=sizeof(g_system_cloud_session_data),"connection space in session is not large enough");
 
 		// save the current connection to the persisted session
 		SessionPersistOpaque* persist = (SessionPersistOpaque*)buffer;
 		if (persist->is_valid())
 		{
-			memcpy(persist->connection_data(), &cloud_endpoint, sizeof(cloud_endpoint));
+			memcpy(persist->connection_data(), &g_system_cloud_session_data, sizeof(g_system_cloud_session_data));
 		}
 		return HAL_System_Backup_Save(0, buffer, length, nullptr);
 	}
@@ -678,229 +421,12 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 	}
 	return 0;
 }
-#endif
-
-
-void Spark_Protocol_Init(void)
-{
-	system_cloud_protocol_instance();
-
-    if (!spark_protocol_is_initialized(sp))
-    {
-        product_details_t info;
-        info.size = sizeof(info);
-        spark_protocol_get_product_details(sp, &info);
-
-        particle_key_errors = NO_ERROR;
-
-        // User code was run, so persist the current values stored in the comms lib.
-        // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
-        if (system_mode()!=SAFE_MODE) {
-            HAL_SetProductStore(PRODUCT_STORE_ID, info.product_id);
-            HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);
-        }
-        else {      // user code was not executed, use previously persisted values
-            info.product_id = HAL_GetProductStore(PRODUCT_STORE_ID);
-            info.product_version = HAL_GetProductStore(PRODUCT_STORE_VERSION);
-            if (info.product_id!=0xFFFF)
-                spark_protocol_set_product_id(sp, info.product_id);
-            if (info.product_version!=0xFFFF)
-                spark_protocol_set_product_firmware_version(sp, info.product_version);
-        }
-
-        const bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-
-        SparkCallbacks callbacks;
-        memset(&callbacks, 0, sizeof(callbacks));
-        callbacks.size = sizeof(callbacks);
-        callbacks.protocolFactory = udp ? PROTOCOL_DTLS : PROTOCOL_LIGHTSSL;
-#if HAL_PLATFORM_CLOUD_UDP
-        if (udp)
-        {
-            callbacks.send = Spark_Send_UDP;
-            callbacks.receive = Spark_Receive_UDP;
-            callbacks.transport_context = &cloud_endpoint;
-            callbacks.save = Spark_Save;
-            callbacks.restore = Spark_Restore;
-        }
-        else
-#endif
-        {
-        		callbacks.send = Spark_Send;
-        		callbacks.receive = Spark_Receive;
-        		callbacks.transport_context = nullptr;
-        }
-		callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
-        //callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
-        callbacks.finish_firmware_update = finish_ota_firmware_update;
-        callbacks.calculate_crc = HAL_Core_Compute_CRC32;
-        callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
-        callbacks.signal = Spark_Signal;
-        callbacks.millis = HAL_Timer_Get_Milli_Seconds;
-        callbacks.set_time = system_set_time;
-
-        SparkDescriptor descriptor;
-        memset(&descriptor, 0, sizeof(descriptor));
-        descriptor.size = sizeof(descriptor);
-        descriptor.num_functions = numUserFunctions;
-        descriptor.get_function_key = getUserFunctionKey;
-        descriptor.call_function = userFuncSchedule;
-        descriptor.num_variables = numUserVariables;
-        descriptor.get_variable_key = getUserVariableKey;
-        descriptor.variable_type = wrapVarTypeInEnum;
-        descriptor.get_variable = getUserVar;
-        descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
-        descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
-        descriptor.append_system_info = system_module_info;
-        descriptor.append_metrics = system_metrics;
-        descriptor.call_event_handler = invokeEventHandler;
-#if HAL_PLATFORM_CLOUD_UDP
-        descriptor.app_state_selector_info = compute_cloud_state_checksum;
-#endif
-        // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
-        unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
-        unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-        memset(&pubkey, 0xff, sizeof(pubkey));
-        memset(&private_key, 0xff, sizeof(private_key));
-
-        SparkKeys keys;
-        keys.size = sizeof(keys);
-        keys.server_public = pubkey;
-        keys.core_private = private_key;
-
-        // ensure the private key is read first since the public key may be derived from it.
-        private_key_generation_t genspec;
-        genspec.size = sizeof(genspec);
-        genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
-        HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
-        HAL_FLASH_Read_ServerPublicKey(pubkey);
-
-        // if public server key is erased, restore with a backup from system firmware
-        if (pubkey[0] == 0xff) {
-            LOG(WARN, "Public Server Key was blank, restoring.");
-            if (udp) {
-                memcpy(&pubkey, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
-            }
-            else {
-                memcpy(&pubkey, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
-            }
-            particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
-        }
-
-        uint8_t id_length = HAL_device_ID(NULL, 0);
-        uint8_t id[id_length];
-        HAL_device_ID(id, id_length);
-        spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
-
-        Particle.subscribe("spark", SystemEvents);
-
-        CommunicationsHandlers handlers;
-        handlers.size = sizeof(handlers);
-        handlers.random_seed_from_cloud = random_seed_from_cloud_handler;
-        spark_protocol_communications_handlers(sp, &handlers);
-    }
-}
+#endif /* HAL_PLATFORM_CLOUD_UDP */
 
 void system_set_time(time_t time, unsigned param, void*)
 {
     HAL_RTC_Set_UnixTime(time);
     system_notify_event(time_changed, time_changed_sync);
-}
-
-const int CLAIM_CODE_SIZE = 63;
-
-int Spark_Handshake(bool presence_announce)
-{
-    cloud_socket_aborted = false; // Clear cancellation flag for socket operations
-	LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
-    int err = spark_protocol_handshake(sp);
-    if (!err)
-    {
-        char buf[CLAIM_CODE_SIZE + 1];
-        if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
-        {
-            LOG(INFO,"Send spark/device/claim/code event");
-            Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
-        }
-
-        // open up for possibility of retrieving multiple ID datums
-        if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
-            LOG(INFO,"Send spark/device/ident/0 event");
-            Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
-        }
-
-        bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION || !defined(MODULAR_FIRMWARE)
-        ultoa(HAL_OTA_FlashLength(), buf, 10);
-        LOG(INFO,"Send spark/hardware/max_binary event");
-        Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
-#endif
-
-        uint32_t chunkSize = HAL_OTA_ChunkSize();
-        if (chunkSize!=512 || !udp) {
-            ultoa(chunkSize, buf, 10);
-            LOG(INFO,"spark/hardware/ota_chunk_size event");
-            Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
-        }
-        if (system_mode()==SAFE_MODE) {
-            LOG(INFO,"Send spark/device/safemode event");
-            Particle.publish("spark/device/safemode","", 60, PRIVATE);
-        }
-#if defined(SPARK_SUBSYSTEM_EVENT_NAME)
-        if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
-        {
-            LOG(INFO,"Send spark/" SPARK_SUBSYSTEM_EVENT_NAME " event");
-            Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
-        }
-#endif
-        uint8_t flag = 0;
-        if (system_get_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, &flag, nullptr) == 0 && flag)
-        {
-            system_set_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, 0, nullptr); // Publish the reset info only once
-            int reason = RESET_REASON_NONE;
-            uint32_t data = 0;
-            if (HAL_Core_Get_Last_Reset_Info(&reason, &data, nullptr) == 0 && reason != RESET_REASON_NONE)
-            {
-                char buf[64];
-                formatResetReasonEventData(reason, data, buf, sizeof(buf));
-                LOG(INFO,"Send spark/device/last_reset event");
-                Particle.publish("spark/device/last_reset", buf, 60, PRIVATE);
-            }
-        }
-
-        if (presence_announce) {
-            Multicast_Presence_Announcement();
-        }
-        LOG(INFO,"Send subscriptions");
-        spark_protocol_send_subscriptions(sp);
-        // important this comes at the end since it requires a response from the cloud.
-        spark_protocol_send_time_request(sp);
-        Spark_Process_Events();
-    }
-    if (err==particle::protocol::SESSION_RESUMED)
-    {
-        LOG(INFO,"cloud connected from existing session.");
-        err = 0;
-        if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
-            spark_protocol_send_time_request(sp);
-            Spark_Process_Events();
-        }
-    }
-    if (particle_key_errors != NO_ERROR) {
-        char buf[sizeof(unsigned long)*8+1];
-        ultoa((unsigned long)particle_key_errors, buf, 10);
-        LOG(INFO,"Send event spark/device/key/error=%s", buf);
-        Particle.publish("spark/device/key/error", buf, 60, PRIVATE);
-    }
-    return err;
-}
-
-// Returns true if all's well or
-//         false on error, meaning we're probably disconnected
-
-inline bool Spark_Communication_Loop(void)
-{
-    return spark_protocol_event_loop(sp);
 }
 
 namespace {
@@ -952,7 +478,7 @@ void Spark_Signal(bool on, unsigned, void*)
     ledCloudSignal.setActive(on);
 }
 
-size_t system_interpolate(const char* var, size_t var_len, char* buf, size_t buf_len)
+size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len, char* buf, size_t buf_len)
 {
 	if (var_len==2 && memcmp("id", var, 2)==0)
 	{
@@ -963,411 +489,6 @@ size_t system_interpolate(const char* var, size_t var_len, char* buf, size_t buf
 		}
 	}
 	return 0;
-}
-
-int Internet_Test(void)
-{
-#if !HAL_USE_SOCKET_HAL_POSIX
-    sock_handle_t testSocket;
-    sockaddr_t testSocketAddr;
-    int testResult = 0;
-    DEBUG("Internet test socket");
-    testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53, NIF_DEFAULT);
-    DEBUG("socketed testSocket=%d", testSocket);
-#else
-    int testSocket;
-    sockaddr testSocketAddr = {};
-    int testResult = 0;
-    DEBUG("Internet test socket");
-    testSocket = sock_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    DEBUG("socketed testSocket=%d", testSocket);
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-
-    if (testSocket < 0)
-    {
-        return -1;
-    }
-
-#if !HAL_USE_SOCKET_HAL_POSIX
-    // the family is always AF_INET
-    testSocketAddr.sa_family = AF_INET;
-
-    // the destination port: 53
-    testSocketAddr.sa_data[0] = 0;
-    testSocketAddr.sa_data[1] = 53;
-
-    // the destination IP address: 8.8.8.8
-    testSocketAddr.sa_data[2] = 8;
-    testSocketAddr.sa_data[3] = 8;
-    testSocketAddr.sa_data[4] = 8;
-    testSocketAddr.sa_data[5] = 8;
-#else
-    {
-        sockaddr_in* in = (sockaddr_in*)&testSocketAddr;
-        in->sin_family = AF_INET;
-        in->sin_port = htons(53);
-        inet_inet_pton(AF_INET, "8.8.8.8", &in->sin_addr.s_addr);
-    }
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-
-    uint32_t ot = HAL_NET_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-    DEBUG("Connect Attempt");
-#if !HAL_USE_SOCKET_HAL_POSIX
-    testResult = socket_connect(testSocket, &testSocketAddr, sizeof (testSocketAddr));
-#else
-    testResult = sock_connect(testSocket, &testSocketAddr, sizeof(testSocketAddr));
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-    DEBUG("socket_connect()=%s", (testResult ? "fail":"success"));
-    HAL_NET_SetNetWatchDog(ot);
-
-#if defined(SEND_ON_CLOSE)
-    DEBUG("Send Attempt");
-    char c = 0;
-    int rc = send(testSocket, &c, 1, 0);
-    DEBUG("send()=%d", rc);
-#endif
-    DEBUG("Close");
-#if !HAL_USE_SOCKET_HAL_POSIX
-    socket_close(testSocket);
-#else
-    sock_close(testSocket);
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-
-    //if connection fails, testResult returns -1
-    return testResult;
-}
-
-#if HAL_PLATFORM_CLOUD_UDP
-uint32_t compute_session_checksum(ServerAddress& addr)
-{
-	uint32_t checksum = HAL_Core_Compute_CRC32((uint8_t*)&addr, sizeof(addr));
-	return checksum;
-}
-
-
-/**
- * Determines if the existing session is valid and contains a valid ip_address and port
- */
-int determine_session_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr)
-{
-	SessionPersistOpaque persist;
-	if (Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr)==sizeof(persist) && persist.is_valid())
-	{
-		SessionConnection* connection = (SessionConnection*)persist.connection_data();
-		if (connection->server_address_checksum==compute_session_checksum(server_addr))
-		{
-			IPAddress addr; uint16_t p;
-			decode_endpoint(connection->address, addr, p);
-			if (addr && p)
-			{
-				ip_addr = addr;
-                // FIXME: the current session could be moved instead of discarded if the ports differ.
-                if (port == p) {
-                    DEBUG("using IP/port from session");
-                    return 0;
-                }
-                else {
-                    // discard the session
-                    persist.invalidate();
-                    Spark_Save(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr);
-                    INFO("connection port mismatch - discarded session");
-                    return -1;
-                }
-			}
-		}
-		else
-		{
-			// discard the session
-			persist.invalidate();
-			Spark_Save(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr);
-			INFO("connection checksum mismatch - discarded session");
-		}
-	}
-	return -1;
-}
-#endif
-
-/**
- */
-int determine_connection_address(IPAddress& ip_addr, uint16_t& port, ServerAddress& server_addr, bool udp)
-{
-#if HAL_PLATFORM_CLOUD_UDP
-	// todo - how to determine if the underlying connection has changed so that we invalidate the existing session?
-	// for now, the user will have to manually reset the connection (e.g. by powering off the device.)
-	if (udp && !determine_session_connection_address(ip_addr, port, server_addr)) {
-		return 0;
-	}
-#endif
-
-	bool ip_address_error = false;
-    switch (server_addr.addr_type)
-    {
-        case IP_ADDRESS:
-            // DEBUG("IP_ADDRESS");
-            ip_addr = server_addr.ip;
-            if (server_addr.port!=0 && server_addr.port!=65535)
-            		port = server_addr.port;
-            break;
-
-        default:
-        case INVALID_INTERNET_ADDRESS:
-        {
-        		if (!udp)
-        		{
-    				// DEBUG("INVALID_INTERNET_ADDRESS");
-    				const char default_domain[] = "device.spark.io";
-    				// Make sure we copy the NULL terminator, so subsequent strlen() calls on server_addr.domain return the correct length
-    				memcpy(server_addr.domain, default_domain, strlen(default_domain) + 1);
-    				// and fall through to domain name case
-        		}
-        		else
-        		{
-        			ip_address_error = true;
-        			break;
-        		}
-        }
-
-        case DOMAIN_NAME:
-            // DEBUG("DOMAIN_NAME");
-            if (server_addr.port!=0 && server_addr.port!=65535) {
-                port = server_addr.port;
-                // DEBUG("PORT READ AS:%d", port);
-            }
-
-            char buf[96] = {};
-            system_string_interpolate(server_addr.domain, buf, sizeof(buf), system_interpolate);
-            int rv = 0;
-#if !HAL_USE_SOCKET_HAL_POSIX
-            int attempts = 3;
-            while (!ip_addr && attempts-->0)
-            {
-                rv = inet_gethostbyname(buf, strnlen(buf, 96), &ip_addr.raw(), NIF_DEFAULT, NULL);
-                HAL_Delay_Milliseconds(1);
-            }
-#else
-            {
-                addrinfo* res = nullptr;
-                rv = netdb_getaddrinfo(buf, nullptr, nullptr, &res);
-                if (rv == 0) {
-                    /* FIXME: for now only the first record is examined. no IPv6 as well */
-                    if (res != nullptr) {
-                        if (res->ai_family == AF_INET) {
-                            ip_addr = (uint8_t*)&(((sockaddr_in*)res->ai_addr)->sin_addr.s_addr);
-                        } else {
-                            rv = -1;
-                        }
-                        netdb_freeaddrinfo(res);
-                    }
-                }
-            }
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-            ip_address_error = rv;
-            if (ip_address_error) {
-                ERROR("Cloud: unable to resolve IP for %s", buf);
-            }
-            else {
-                INFO("Resolved host %s to %s", buf, String(ip_addr).c_str());
-            }
-    }
-
-#if PLATFORM_ID<3
-    // workaround for CC3000
-    if (ip_address_error)
-    {
-        const WLanConfig* config = (WLanConfig*)network_config(0, 0, NULL);
-        if (config && (config->nw.aucDNSServer.ipv4==((76<<24) | (83<<16) | (0<<8) | 0 ))) {
-            // fallback to the default when the CC3000 DNS goes awol. see issue #139
-            ip_addr.clear();
-            ip_address_error = false;
-        }
-    }
-#endif
-
-	return ip_address_error;
-}
-
-uint16_t cloud_udp_port = PORT_COAPS; // default Particle Cloud UDP port
-
-void spark_cloud_udp_port_set(uint16_t port)
-{
-    cloud_udp_port = port;
-}
-
-// Same return value as connect(), -1 on error
-int spark_cloud_socket_connect()
-{
-    DEBUG("sparkSocket Now =%d", sparkSocket);
-
-    // Close Original
-    spark_cloud_socket_disconnect(false);
-
-    const bool udp =
-#if HAL_PLATFORM_CLOUD_UDP
-    (HAL_Feature_Get(FEATURE_CLOUD_UDP));
-#else
-    false;
-#endif
-
-    uint16_t port = SPARK_SERVER_PORT;
-    if (udp) {
-        port = cloud_udp_port;
-    }
-
-    ServerAddress server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    HAL_FLASH_Read_ServerAddress(&server_addr);
-    // if server address is erased, restore with a backup from system firmware
-    if (server_addr.addr_type == 0xff) {
-        LOG(WARN, "Public Server Address was blank, restoring.");
-        if (udp) {
-            memcpy(&server_addr, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
-        }
-        else {
-            memcpy(&server_addr, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
-        }
-        particle_key_errors |= SERVER_ADDRESS_BLANK;
-    }
-	switch (server_addr.addr_type)
-    {
-        case IP_ADDRESS:
-            LOG(INFO,"Read Server Address = type:%d,domain:%s,ip: %d.%d.%d.%d, port: %d", server_addr.addr_type, server_addr.domain, IPNUM(server_addr.ip), server_addr.port);
-            break;
-
-        case DOMAIN_NAME:
-            LOG(INFO,"Read Server Address = type:%d,domain:%s", server_addr.addr_type, server_addr.domain);
-            break;
-
-        default:
-            LOG(WARN,"Read Server Address = type:%d,defaulting to device.spark.io", server_addr.addr_type);
-    }
-
-    bool ip_address_error = false;
-    IPAddress ip_addr;
-    int rv = -1;
-    ip_address_error = determine_connection_address(ip_addr, port, server_addr, udp);
-    if (!ip_address_error)
-    {
-#if PLATFORM_ID == 3 || PLATFORM_ID == 20
-        // Use ephemeral port
-        uint16_t bport = 0;
-#else
-        uint16_t bport = port;
-#endif
-#if !HAL_USE_SOCKET_HAL_POSIX
-        sparkSocket = socket_create(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP, bport, NIF_DEFAULT);
-#else
-        sparkSocket = sock_socket(AF_INET, udp ? SOCK_DGRAM : SOCK_STREAM, udp ? IPPROTO_UDP : IPPROTO_TCP);
-        if (sparkSocket >= 0) {
-            if (udp) {
-                /* FIXME: use sockaddr_in6 */
-                sockaddr_in in = {};
-                in.sin_family = AF_INET;
-                in.sin_port = htons(bport);
-                in.sin_addr.s_addr = INADDR_ANY;
-                if (sock_bind(sparkSocket, (const sockaddr*)&in, sizeof(in))) {
-                    LOG(TRACE, "Failed to bind cloud connection socket to port %u", port);
-                    sock_close(sparkSocket);
-                    sparkSocket = -1;
-                }
-            }
-        }
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-        DEBUG("socketed udp=%d, sparkSocket=%d, %d", udp, sparkSocket, socket_handle_valid(sparkSocket));
-    }
-
-	if (socket_handle_valid(sparkSocket))
-	{
-#if !HAL_USE_SOCKET_HAL_POSIX
-        sockaddr_t tSocketAddr;
-        // the family is always AF_INET
-        tSocketAddr.sa_family = AF_INET;
-#else
-        sockaddr tSocketAddr = {};
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-
-        encode_endpoint(tSocketAddr, ip_addr, port);
-		DEBUG("connection attempt to %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
-
-#if HAL_PLATFORM_CLOUD_UDP
-        if (udp)
-        {
-        		memcpy(&cloud_endpoint.address, &tSocketAddr, sizeof(cloud_endpoint));
-        		cloud_endpoint.server_address_checksum = compute_session_checksum(server_addr);
-        		rv = 0;
-        }
-#endif
-        if (!udp || HAL_USE_SOCKET_HAL_POSIX) {
-			uint32_t ot = HAL_NET_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-#if !HAL_USE_SOCKET_HAL_POSIX
-			rv = socket_connect(sparkSocket, &tSocketAddr, sizeof (tSocketAddr));
-#else
-            /* NOTE: we also connect UDP socket here in order to automagically filter
-             * on source address and port */
-            rv = sock_connect(sparkSocket, &tSocketAddr, sizeof(tSocketAddr));
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-			if (rv)
-				ERROR("connection failed to %d.%d.%d.%d:%d, code=%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port, rv);
-			else
-				INFO("connected to cloud %d.%d.%d.%d:%d", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], port);
-
-			HAL_NET_SetNetWatchDog(ot);
-        }
-    }
-
-    if (rv)     // error - prevent socket leaks
-        spark_cloud_socket_disconnect(false);
-    return rv;
-}
-
-int spark_cloud_socket_disconnect(bool graceful)
-{
-    int retVal = 0;
-    if (socket_handle_valid(sparkSocket))
-    {
-#if defined(SEND_ON_CLOSE)
-        LOG_DEBUG(TRACE, "Send Attempt");
-        char c = 0;
-        int rc = send(sparkSocket, &c, 1, 0);
-        LOG_DEBUG(TRACE, "send()=%d", rc);
-#endif
-        if (graceful) {
-            // Only TCP sockets can be half-closed
-#if !HAL_USE_SOCKET_HAL_POSIX
-            retVal = socket_shutdown(sparkSocket, SHUT_WR);
-#else
-            retVal = sock_shutdown(sparkSocket, SHUT_WR);
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-            if (!retVal) {
-                LOG_DEBUG(TRACE, "Half-closed cloud socket");
-                if (!spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr)) {
-                    // Wait for an error (which means that the server closed our connection).
-                    system_tick_t start = millis();
-                    while (millis() - start < 5000) {
-                        if (!Spark_Communication_Loop())
-                            break;
-                    }
-                }
-            } else {
-                spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr);
-            }
-        }
-        LOG_DEBUG(TRACE, "Close Attempt");
-#if !HAL_USE_SOCKET_HAL_POSIX
-        retVal = socket_close(sparkSocket);
-#else
-        retVal = sock_close(sparkSocket);
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-        LOG_DEBUG(TRACE, "socket_close()=%s", (retVal ? "fail":"success"));
-        if (!graceful) {
-            spark_protocol_command(sp, ProtocolCommands::TERMINATE, 0, nullptr);
-        }
-#if !HAL_USE_SOCKET_HAL_POSIX
-        sparkSocket = socket_handle_invalid();
-#else
-        sparkSocket = -1;
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-    }
-    return retVal;
 }
 
 int userVarType(const char *varKey)
@@ -1414,34 +535,6 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     userFuncScheduleImpl(item, paramString, false, callback);
 #endif
     return 0;
-}
-
-void HAL_NET_notify_socket_closed(sock_handle_t socket)
-{
-    if ((sock_handle_t)sparkSocket==socket)
-    {
-        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
-    }
-}
-
-inline uint8_t spark_cloud_socket_closed()
-{
-    uint8_t closed = socket_active_status(sparkSocket) == SOCKET_STATUS_INACTIVE;
-
-    if (closed)
-    {
-        DEBUG("socket_active_status(sparkSocket=%d)==SOCKET_STATUS_INACTIVE", sparkSocket);
-    }
-    if (closed && sparkSocket != socket_handle_invalid())
-    {
-        DEBUG("!!!!!!closed && sparkSocket(%d) != SOCKET_INVALID", sparkSocket);
-    }
-    if (!socket_handle_valid(sparkSocket))
-    {
-        DEBUG("Not valid: socket_handle_valid(sparkSocket) = %d", socket_handle_valid(sparkSocket));
-        closed = true;
-    }
-    return closed;
 }
 
 int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* module, uint8_t *buf, size_t size)
@@ -1562,13 +655,260 @@ static void formatResetReasonEventData(int reason, uint32_t data, char *buf, siz
     }
 }
 
-#else // SPARK_NO_CLOUD
-
-void HAL_NET_notify_socket_closed(sock_handle_t socket)
+bool system_cloud_active()
 {
+#ifndef SPARK_NO_CLOUD
+    const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
+    if (!SPARK_CLOUD_SOCKETED)
+        return false;
+
+#if HAL_PLATFORM_CLOUD_UDP
+    if (!feature_cloud_udp)
+#endif
+    {
+        system_tick_t now = millis();
+        if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
+        {
+            WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
+            cloud_disconnect(false); // TODO: Do we need to specify a reason of the disconnection here?
+            return false;
+        }
+    }
+#endif
+    return true;
 }
 
+void Spark_Protocol_Init(void)
+{
+    system_cloud_protocol_instance();
+
+    if (!spark_protocol_is_initialized(sp))
+    {
+        product_details_t info;
+        info.size = sizeof(info);
+        spark_protocol_get_product_details(sp, &info);
+
+        particle_key_errors = NO_ERROR;
+
+        // User code was run, so persist the current values stored in the comms lib.
+        // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
+        if (system_mode()!=SAFE_MODE) {
+            HAL_SetProductStore(PRODUCT_STORE_ID, info.product_id);
+            HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);
+        }
+        else {      // user code was not executed, use previously persisted values
+            info.product_id = HAL_GetProductStore(PRODUCT_STORE_ID);
+            info.product_version = HAL_GetProductStore(PRODUCT_STORE_VERSION);
+            if (info.product_id!=0xFFFF)
+                spark_protocol_set_product_id(sp, info.product_id);
+            if (info.product_version!=0xFFFF)
+                spark_protocol_set_product_firmware_version(sp, info.product_version);
+        }
+
+        const bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+
+        SparkCallbacks callbacks;
+        memset(&callbacks, 0, sizeof(callbacks));
+        callbacks.size = sizeof(callbacks);
+        callbacks.protocolFactory = udp ? PROTOCOL_DTLS : PROTOCOL_LIGHTSSL;
+#if HAL_PLATFORM_CLOUD_UDP
+        if (udp)
+        {
+            callbacks.send = Spark_Send_UDP;
+            callbacks.receive = Spark_Receive_UDP;
+            callbacks.transport_context = &g_system_cloud_session_data;
+            callbacks.save = Spark_Save;
+            callbacks.restore = Spark_Restore;
+        }
+        else
 #endif
+        {
+                callbacks.send = Spark_Send;
+                callbacks.receive = Spark_Receive;
+                callbacks.transport_context = nullptr;
+        }
+        callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
+        //callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
+        callbacks.finish_firmware_update = finish_ota_firmware_update;
+        callbacks.calculate_crc = HAL_Core_Compute_CRC32;
+        callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
+        callbacks.signal = Spark_Signal;
+        callbacks.millis = HAL_Timer_Get_Milli_Seconds;
+        callbacks.set_time = system_set_time;
+
+        SparkDescriptor descriptor;
+        memset(&descriptor, 0, sizeof(descriptor));
+        descriptor.size = sizeof(descriptor);
+        descriptor.num_functions = numUserFunctions;
+        descriptor.get_function_key = getUserFunctionKey;
+        descriptor.call_function = userFuncSchedule;
+        descriptor.num_variables = numUserVariables;
+        descriptor.get_variable_key = getUserVariableKey;
+        descriptor.variable_type = wrapVarTypeInEnum;
+        descriptor.get_variable = getUserVar;
+        descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
+        descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
+        descriptor.append_system_info = system_module_info;
+        descriptor.append_metrics = system_metrics;
+        descriptor.call_event_handler = invokeEventHandler;
+#if HAL_PLATFORM_CLOUD_UDP
+        descriptor.app_state_selector_info = compute_cloud_state_checksum;
+#endif
+        // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
+        unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+        unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
+        memset(&pubkey, 0xff, sizeof(pubkey));
+        memset(&private_key, 0xff, sizeof(private_key));
+
+        SparkKeys keys;
+        keys.size = sizeof(keys);
+        keys.server_public = pubkey;
+        keys.core_private = private_key;
+
+        // ensure the private key is read first since the public key may be derived from it.
+        private_key_generation_t genspec;
+        genspec.size = sizeof(genspec);
+        genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
+        HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
+        HAL_FLASH_Read_ServerPublicKey(pubkey);
+
+        // if public server key is erased, restore with a backup from system firmware
+        if (pubkey[0] == 0xff) {
+            LOG(WARN, "Public Server Key was blank, restoring.");
+            if (udp) {
+                memcpy(&pubkey, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
+            }
+            else {
+                memcpy(&pubkey, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
+            }
+            particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
+        }
+
+        uint8_t id_length = HAL_device_ID(NULL, 0);
+        uint8_t id[id_length];
+        HAL_device_ID(id, id_length);
+        spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
+
+        Particle.subscribe("spark", SystemEvents);
+
+        CommunicationsHandlers handlers;
+        handlers.size = sizeof(handlers);
+        handlers.random_seed_from_cloud = random_seed_from_cloud_handler;
+        spark_protocol_communications_handlers(sp, &handlers);
+    }
+}
+
+int Spark_Handshake(bool presence_announce)
+{
+    cloud_socket_aborted = false; // Clear cancellation flag for socket operations
+    LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
+    int err = spark_protocol_handshake(sp);
+    if (!err)
+    {
+        char buf[CLAIM_CODE_SIZE + 1];
+        if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
+        {
+            LOG(INFO,"Send spark/device/claim/code event");
+            Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
+        }
+
+        // open up for possibility of retrieving multiple ID datums
+        if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
+            LOG(INFO,"Send spark/device/ident/0 event");
+            Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
+        }
+
+        bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION || !defined(MODULAR_FIRMWARE)
+        ultoa(HAL_OTA_FlashLength(), buf, 10);
+        LOG(INFO,"Send spark/hardware/max_binary event");
+        Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
+#endif
+
+        uint32_t chunkSize = HAL_OTA_ChunkSize();
+        if (chunkSize!=512 || !udp) {
+            ultoa(chunkSize, buf, 10);
+            LOG(INFO,"spark/hardware/ota_chunk_size event");
+            Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+        }
+        if (system_mode()==SAFE_MODE) {
+            LOG(INFO,"Send spark/device/safemode event");
+            Particle.publish("spark/device/safemode","", 60, PRIVATE);
+        }
+#if defined(SPARK_SUBSYSTEM_EVENT_NAME)
+        if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
+        {
+            LOG(INFO,"Send spark/" SPARK_SUBSYSTEM_EVENT_NAME " event");
+            Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
+        }
+#endif
+        uint8_t flag = 0;
+        if (system_get_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, &flag, nullptr) == 0 && flag)
+        {
+            system_set_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, 0, nullptr); // Publish the reset info only once
+            int reason = RESET_REASON_NONE;
+            uint32_t data = 0;
+            if (HAL_Core_Get_Last_Reset_Info(&reason, &data, nullptr) == 0 && reason != RESET_REASON_NONE)
+            {
+                char buf[64];
+                formatResetReasonEventData(reason, data, buf, sizeof(buf));
+                LOG(INFO,"Send spark/device/last_reset event");
+                Particle.publish("spark/device/last_reset", buf, 60, PRIVATE);
+            }
+        }
+
+        if (presence_announce) {
+            Multicast_Presence_Announcement();
+        }
+        LOG(INFO,"Send subscriptions");
+        spark_protocol_send_subscriptions(sp);
+        // important this comes at the end since it requires a response from the cloud.
+        spark_protocol_send_time_request(sp);
+        Spark_Process_Events();
+    }
+    if (err==particle::protocol::SESSION_RESUMED)
+    {
+        LOG(INFO,"cloud connected from existing session.");
+        err = 0;
+        if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
+            spark_protocol_send_time_request(sp);
+            Spark_Process_Events();
+        }
+    }
+    if (particle_key_errors != NO_ERROR) {
+        char buf[sizeof(unsigned long)*8+1];
+        ultoa((unsigned long)particle_key_errors, buf, 10);
+        LOG(INFO,"Send event spark/device/key/error=%s", buf);
+        Particle.publish("spark/device/key/error", buf, 60, PRIVATE);
+    }
+    return err;
+}
+
+// Returns true if all's well or
+//         false on error, meaning we're probably disconnected
+
+bool Spark_Communication_Loop(void)
+{
+    return spark_protocol_event_loop(sp);
+}
+
+/**
+ * This is the internal function called by the background loop to pump cloud events.
+ */
+void Spark_Process_Events()
+{
+    if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
+    {
+        WARN("Communication loop error, closing cloud socket");
+        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
+    }
+    else
+    {
+        lastCloudEvent = millis();
+    }
+}
+
+#endif // SPARK_NO_CLOUD
 
 namespace {
 
@@ -1595,95 +935,6 @@ String bytes2hex(const uint8_t* buf, unsigned len)
     return result;
 }
 
-void Multicast_Presence_Announcement(void)
-{
-#ifndef SPARK_NO_CLOUD
-#if !HAL_USE_SOCKET_HAL_POSIX
-    sock_handle_t multicast_socket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
-#else
-    int multicast_socket = sock_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (multicast_socket >= 0) {
-        sockaddr_in in = {};
-        in.sin_family = AF_INET;
-        in.sin_port = htons(5683);
-        in.sin_addr.s_addr = INADDR_ANY;
-        if (sock_bind(multicast_socket, (const sockaddr*)&in, sizeof(in))) {
-            LOG(TRACE, "Failed to bind socket");
-            sock_close(multicast_socket);
-            multicast_socket = -1;
-        }
-    }
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-    if (!socket_handle_valid(multicast_socket)) {
-        DEBUG("socket_handle_valid() = %d", socket_handle_valid(multicast_socket));
-        return;
-    }
-
-    unsigned char announcement[19];
-    uint8_t id_length = HAL_device_ID(NULL, 0);
-    uint8_t id[id_length];
-    HAL_device_ID(id, id_length);
-    spark_protocol_presence_announcement(sp, announcement, id);
-
-#if !HAL_USE_SOCKET_HAL_POSIX
-    // create multicast address 224.0.1.187 port 5683
-    sockaddr_t addr;
-    addr.sa_family = AF_INET;
-    addr.sa_data[0] = 0x16; // port MSB
-    addr.sa_data[1] = 0x33; // port LSB
-    addr.sa_data[2] = 0xe0; // IP MSB
-    addr.sa_data[3] = 0x00;
-    addr.sa_data[4] = 0x01;
-    addr.sa_data[5] = 0xbb; // IP LSB
-#else
-    sockaddr_in addr = {};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(5683);
-    inet_inet_pton(AF_INET, "224.0.1.187", &addr.sin_addr.s_addr);
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-    //why loop here? Uncommenting this leads to SOS(HardFault Exception) on local cloud
-    //for (int i = 3; i > 0; i--)
-    {
-        DEBUG("socket_sendto()");
-#if !HAL_USE_SOCKET_HAL_POSIX
-        socket_sendto(multicast_socket, announcement, 19, 0, &addr, sizeof (sockaddr_t));
-#else
-        sock_sendto(multicast_socket, announcement, sizeof(announcement), 0, (const sockaddr*)&addr, sizeof(addr));
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-    }
-    DEBUG("socket_close(multicast_socket)");
-#if !HAL_USE_SOCKET_HAL_POSIX
-    socket_close(multicast_socket);
-#else
-    sock_close(multicast_socket);
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
-#endif
-}
-
-
-bool system_cloud_active()
-{
-#ifndef SPARK_NO_CLOUD
-	const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
-    if (!SPARK_CLOUD_SOCKETED)
-        return false;
-
-#if HAL_PLATFORM_CLOUD_UDP
-    if (!feature_cloud_udp)
-#endif
-    {
-        system_tick_t now = millis();
-        if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
-        {
-        	WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
-        	cloud_disconnect(false); // TODO: Do we need to specify a reason of the disconnection here?
-            return false;
-        }
-    }
-#endif
-    return true;
-}
-
 void Spark_Sleep(void)
 {
 #ifndef SPARK_NO_CLOUD
@@ -1695,12 +946,6 @@ void Spark_Wake(void)
 {
 #ifndef SPARK_NO_CLOUD
 	spark_protocol_command(sp, ProtocolCommands::WAKE);
-#endif
-}
-
-void Spark_Abort() {
-#ifndef SPARK_NO_CLOUD
-    cloud_socket_aborted = true;
 #endif
 }
 
