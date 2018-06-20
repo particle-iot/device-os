@@ -6,22 +6,22 @@
 
 button_config_t HAL_Buttons[] = {
     {
-        .active = 0,
-        .pin = BUTTON1_GPIO_PIN,
-        .mode = BUTTON1_GPIO_MODE,
-        .pupd = BUTTON1_GPIO_PUPD,
-        .debounce_time = 0,
+        .active         = 0,
+        .pin            = BUTTON1_GPIO_PIN,
+        .mode           = BUTTON1_GPIO_MODE,
+        .pupd           = BUTTON1_GPIO_PUPD,
+        .debounce_time  = 0,
 
-        .event_in = BUTTON1_GPIOTE_EVENT_IN,
-        .event_channel = BUTTON1_GPIOTE_EVENT_CHANNEL,
-        .int_mask = BUTTON1_GPIOTE_INT_MASK,
-        .interrupt_mode = FALLING,
-        .nvic_irqn = BUTTON1_GPIOTE_IRQn,
-        .nvic_irq_prio = BUTTON1_GPIOTE_IRQ_PRIORITY
+        .event_in       = BUTTON1_GPIOTE_EVENT_IN,
+        .event_channel  = BUTTON1_GPIOTE_EVENT_CHANNEL,
+        .int_mask       = BUTTON1_GPIOTE_INT_MASK,
+        .interrupt_mode = BUTTON1_GPIOTE_INTERRUPT_MODE,
+        .nvic_irqn      = BUTTON1_GPIOTE_IRQn,
+        .nvic_irq_prio  = BUTTON1_GPIOTE_IRQ_PRIORITY
     },
     {
-        .active = 0,
-        .debounce_time = 0
+        .active         = 0,
+        .debounce_time  = 0
     }
 };
 /**
