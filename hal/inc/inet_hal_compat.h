@@ -34,11 +34,13 @@ extern "C" {
 #include <stdbool.h>
 #include "static_assert.h"
 
+#ifndef HAL_IPv6
 #if PLATFORM_ID>=4 && PLATFORM_ID<=8
 #define HAL_IPv6 1
 #else
 #define HAL_IPv6 0
 #endif
+#endif /* HAL_IPv6 */
 
 #if HAL_IPv6
 typedef struct __attribute__((__packed__)) _HAL_IPAddress_t  {
