@@ -113,7 +113,22 @@ err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr
 
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
 
-    // LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes", self, p->tot_len);
+    ip_addr_t src = {};
+    ip_addr_t dst = {};
+    struct ip6_hdr* ip6hdr = (struct ip6_hdr *)p->payload;
+    ip_addr_copy_from_ip6_packed(dst, ip6hdr->dest);
+    ip_addr_copy_from_ip6_packed(src, ip6hdr->src);
+
+    char tmp[IP6ADDR_STRLEN_MAX] = {0};
+    char tmp1[IP6ADDR_STRLEN_MAX] = {0};
+
+    ipaddr_ntoa_r(&src, tmp, sizeof(tmp));
+    ipaddr_ntoa_r(&dst, tmp1, sizeof(tmp1));
+
+    ip6_select_source_address_ext(netif, addr);
+
+    LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes (%s -> %s)", self, p->tot_len, tmp, tmp1);
+
     auto msg = otIp6NewMessage(self->ot_, true);
     if (msg == nullptr) {
         LOG(TRACE, "out of memory");
@@ -190,7 +205,12 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         for (const auto* addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
             ip6_addr_t ip6addr = {};
             otNetifAddressToIp6Addr(addr, ip6addr);
-            ip6_addr_assign_zone(&ip6addr, IP6_UNICAST, interface());
+            if (addr->mScopeOverrideValid) {
+                /* FIXME: we should use custom scopes */
+                ip6_addr_set_zone(&ip6addr, netif_get_index(interface()));
+            } else {
+                ip6_addr_assign_zone(&ip6addr, IP6_UNICAST, interface());
+            }
             const auto state = otNetifAddressStateToIp6AddrState(addr);
 
             int idx = netif_get_ip6_addr_match(interface(), &ip6addr);
@@ -232,6 +252,12 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
                 netif_add_ip6_address(interface(), &ip6addr, &idx);
                 if (idx >= 0) {
                     netif_ip6_addr_set_state(interface(), idx, state);
+                    if (addr->mScopeOverrideValid) {
+                        /* FIXME: we should use custom scopes */
+                        ip6_addr_set_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), netif_get_index(interface()));
+                    } else {
+                        ip6_addr_assign_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), IP6_UNICAST, interface());
+                    }
                 }
                 char tmp[IP6ADDR_STRLEN_MAX] = {0};
                 ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
