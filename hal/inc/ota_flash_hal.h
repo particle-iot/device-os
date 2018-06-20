@@ -185,9 +185,9 @@ typedef struct __attribute__ ((__packed__)) ServerAddress_ {
   uint8_t padding[60];
 } ServerAddress;
 
-STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
-STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
-STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
+PARTICLE_STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
+PARTICLE_STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
+PARTICLE_STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
 
 
 /* Length in bytes of DER-encoded 2048-bit RSA public key */

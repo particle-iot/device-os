@@ -98,6 +98,8 @@ int handleGetConfigurationRequest(ctrl_request* req) {
         (void)dnsconfig;
 #else
         r = SYSTEM_ERROR_NOT_SUPPORTED;
+        (void)ipconfig;
+        (void)dnsconfig;
 #endif // Wiring_WiFi == 1
         if (r == SYSTEM_ERROR_NONE) {
             r = encodeReplyMessage(req, particle_ctrl_NetworkGetConfigurationReply_fields, &reply);
@@ -161,6 +163,8 @@ int handleGetStatusRequest(ctrl_request* req) {
         }
 #else
         r = SYSTEM_ERROR_NOT_SUPPORTED;
+        (void)ipconfig;
+        (void)dnsconfig;
 #endif
         if (r == SYSTEM_ERROR_NONE) {
             r = encodeReplyMessage(req, particle_ctrl_NetworkGetStatusReply_fields, &reply);
