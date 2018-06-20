@@ -296,28 +296,21 @@ int prepareJoiner(ctrl_request* req) {
     }
     // Parse request
     PB(PrepareJoinerRequest) pbReq = {};
-    DecodedCString dName(&pbReq.network.name);
-    DecodedCString dExtPanIdStr(&pbReq.network.ext_pan_id);
     int ret = decodeRequestMessage(req, PB(PrepareJoinerRequest_fields), &pbReq);
     if (ret != 0) {
         return ret;
     }
-    if (dName.size == 0 || dName.size > OT_NETWORK_NAME_MAX_SIZE) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
     // Disable Thread
     CHECK_THREAD(otThreadSetEnabled(thread, false));
     CHECK_THREAD(otIp6SetEnabled(thread, false));
-    // Set network name
-    CHECK_THREAD(otThreadSetNetworkName(thread, dName.data));
-    // Set channel
-    CHECK_THREAD(otLinkSetChannel(thread, pbReq.network.channel));
+    // Clear master key (invalidates active and pending datasets)
+    otMasterKey key = {};
+    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
+    // Erase persistent data
+    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
     // Set PAN ID
+    // https://github.com/openthread/openthread/pull/613
     CHECK_THREAD(otLinkSetPanId(thread, pbReq.network.pan_id));
-    // Set extended PAN ID
-    uint8_t extPanId[OT_EXT_PAN_ID_SIZE] = {};
-    hexToBytes(dExtPanIdStr.data, (char*)&extPanId, OT_EXT_PAN_ID_SIZE);
-    CHECK_THREAD(otThreadSetExtendedPanId(thread, extPanId));
     // Get factory-assigned EUI-64
     otExtAddress eui64 = {}; // OT_EXT_ADDRESS_SIZE
     otLinkGetFactoryAssignedIeeeEui64(thread, &eui64);
@@ -431,7 +424,7 @@ int leaveNetwork(ctrl_request* req) {
     }
     // Disable Thread protocol
     CHECK_THREAD(otThreadSetEnabled(thread, false));
-    // Clear master key (invalidates datasets in non-volatile memory)
+    // Clear master key (invalidates active and pending datasets)
     otMasterKey key = {};
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
     // Erase persistent data
