@@ -34,6 +34,18 @@ extern "C" {
 #define EAI_SYSTEM 254
 #endif /* EAI_SYSTEM */
 
+#ifndef EAI_BADFLAGS
+#define EAI_BADFLAGS (-1)
+#endif /* EAI_BADFLAGS */
+
+#ifndef NI_NUMERICHOST
+#define NI_NUMERICHOST AI_NUMERICHOST
+#endif /* NI_NUMERICHOST */
+
+#ifndef NI_NUMERICSERV
+#define NI_NUMERICSERV AI_NUMERICSERV
+#endif /* NI_NUMERICHOST */
+
 /**
  * Gets the IPv4 address for the given hostname.
  *
