@@ -52,13 +52,17 @@ public:
         }
     }
 
-    void genBase32(char* str, size_t size) {
+    void genAlpha(char* data, size_t dataSize, const char* alpha, size_t alphaSize) {
+        for (size_t i = 0; i < dataSize; ++i) {
+            const auto ai = gen<size_t>() % alphaSize;
+            data[i] = alpha[ai];
+        }
+    }
+
+    void genBase32(char* data, size_t size) {
         static const char alpha[32] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '2', '3', '4', '5', '6', '7' }; // RFC 4648
-        for (size_t i = 0; i < size; ++i) {
-            const auto ai = gen<size_t>() % sizeof(alpha);
-            str[i] = alpha[ai];
-        }
+        genAlpha(data, size, alpha, sizeof(alpha));
     }
 
     static void genSecure(char* data, size_t size) {

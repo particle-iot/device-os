@@ -99,6 +99,17 @@ const char* const VENDOR_DATA = "";
 // Current joining device credential
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
+class Random: public particle::Random {
+public:
+    void genBase32Thread(char* data, size_t size) {
+        // base32-thread isn't really defined anywhere, but otbr-commissioner explicitly forbids using
+        // I, O, Q and Z in the joiner passphrase
+        static const char alpha[32] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S',
+                'T', 'U', 'V', 'W', 'X', 'Y', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+        genAlpha(data, size, alpha, sizeof(alpha));
+    }
+};
+
 } // particle::ctrl::mesh::
 
 int auth(ctrl_request* req) {
@@ -314,7 +325,7 @@ int prepareJoiner(ctrl_request* req) {
     bytes2hexbuf_lower_case((const uint8_t*)&eui64, sizeof(eui64), eui64Str);
     // Generate joining device credential
     Random rand;
-    rand.genBase32(g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
+    rand.genBase32Thread(g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
     // Encode a reply
     PB(PrepareJoinerReply) pbRep = {};
     EncodedString eEuiStr(&pbRep.eui64, eui64Str, sizeof(eui64Str));
