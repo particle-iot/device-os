@@ -105,6 +105,5 @@ int32_t HAL_ADC_Read(uint16_t pin)
  */
 void HAL_ADC_DMA_Init()
 {
-    uint32_t err_code = nrfx_saadc_init(&saadc_config, analog_in_event_handler);
-    SPARK_ASSERT(err_code == NRF_SUCCESS);
+    nrfx_saadc_init(&saadc_config, analog_in_event_handler);
 }
