@@ -31,7 +31,8 @@ extern "C" {
 #define FILESYSTEM_READ_SIZE    (256)
 
 #define FILESYSTEM_BLOCK_SIZE   (sFLASH_PAGESIZE)
-#define FILESYSTEM_BLOCK_COUNT  (sFLASH_PAGECOUNT)
+/* XXX: Using half of the external flash for now */
+#define FILESYSTEM_BLOCK_COUNT  (sFLASH_PAGECOUNT / 2)
 #define FILESYSTEM_LOOKAHEAD    (128)
 
 /* FIXME */
