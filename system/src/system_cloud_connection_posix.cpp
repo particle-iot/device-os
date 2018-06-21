@@ -63,6 +63,8 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG;
             hints.ai_family = saddrCache->sa_family;
             hints.ai_protocol = protocol;
+            /* FIXME: */
+            hints.ai_socktype = hints.ai_protocol == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
 
             if (!netdb_getaddrinfo(tmphost, tmpserv, &hints, &info)) {
                 type = CLOUD_SERVER_ADDRESS_TYPE_CACHED;
@@ -87,6 +89,8 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 /* XXX: IPv4-only */
                 hints.ai_family = AF_INET;
                 hints.ai_protocol = protocol;
+                /* FIXME: */
+                hints.ai_socktype = hints.ai_protocol == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
 
                 char tmphost[INET_ADDRSTRLEN] = {};
                 char tmpserv[8] = {};
@@ -106,14 +110,16 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 struct addrinfo hints = {};
                 hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
                 hints.ai_protocol = protocol;
+                /* FIXME: */
+                hints.ai_socktype = hints.ai_protocol == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
 
                 char tmphost[sizeof(address->domain) + 32] = {};
                 char tmpserv[8] = {};
                 /* FIXME: this should probably be moved into system_cloud_internal */
                 system_string_interpolate(address->domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
                 snprintf(tmpserv, sizeof(tmpserv), "%u", address->port);
-
-                netdb_getaddrinfo(address->domain, tmphost, &hints, &info);
+                LOG(TRACE, "Resolving %s:%s", tmphost, tmpserv);
+                netdb_getaddrinfo(tmphost, tmpserv, &hints, &info);
                 type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
                 break;
             }
@@ -130,7 +136,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         /* Iterate over all the addresses and attempt to connect */
         int s = sock_socket(a->ai_family, a->ai_socktype, a->ai_protocol);
         if (s < 0) {
-            LOG(ERROR, "Cloud socket failed, family=%d, type=%d, protocol=%d, errno=%d", s, a->ai_family, a->ai_socktype, a->ai_protocol, errno);
+            LOG(ERROR, "Cloud socket failed, family=%d, type=%d, protocol=%d, errno=%d", a->ai_family, a->ai_socktype, a->ai_protocol, errno);
             continue;
         }
 
@@ -138,29 +144,30 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
 
         char serverHost[INET6_ADDRSTRLEN] = {};
         uint16_t serverPort = 0;
-        inet_inet_ntop(a->ai_family, a->ai_addr, serverHost, sizeof(serverHost));
         switch (a->ai_family) {
             case AF_INET: {
-                serverPort = ((sockaddr_in*)a->ai_addr)->sin_port;
+                inet_inet_ntop(a->ai_family, &((sockaddr_in*)a->ai_addr)->sin_addr, serverHost, sizeof(serverHost));
+                serverPort = ntohs(((sockaddr_in*)a->ai_addr)->sin_port);
                 break;
             }
             case AF_INET6: {
-                serverPort = ((sockaddr_in6*)a->ai_addr)->sin6_port;
+                inet_inet_ntop(a->ai_family, &((sockaddr_in6*)a->ai_addr)->sin6_addr, serverHost, sizeof(serverHost));
+                serverPort = ntohs(((sockaddr_in6*)a->ai_addr)->sin6_port);
                 break;
             }
         }
-        LOG(INFO, "Cloud socket=%d, connecting to %s:%u", serverHost, serverPort);
+        LOG(INFO, "Cloud socket=%d, connecting to %s:%u", s, serverHost, serverPort);
 
         /* FIXME: timeout for TCP */
         /* NOTE: we do this for UDP sockets as well in order to automagically filter
          * on source address and port and perform a bind() */
         r = sock_connect(s, a->ai_addr, a->ai_addrlen);
         if (r) {
-            LOG(ERROR, "Cloud socket=%d, failed to connect to %s:%u, errno=%d", serverHost, serverPort, errno);
+            LOG(ERROR, "Cloud socket=%d, failed to connect to %s:%u, errno=%d", s, serverHost, serverPort, errno);
             sock_close(s);
             continue;
         }
-        LOG(TRACE, "Cloud socket=%d, connected to %s:%u", serverHost, serverPort);
+        LOG(TRACE, "Cloud socket=%d, connected to %s:%u", s, serverHost, serverPort);
 
         /* If we got here, we are most likely connected, however keep track of current addrinfo list
          * in order to try the next address if application layer fails to establish the connection
@@ -275,7 +282,7 @@ int system_multicast_announce_presence(void* reserved)
 int system_cloud_is_connected(void* reserved)
 {
     /* FIXME */
-    return s_state.socket >= 0;
+    return s_state.socket >= 0 ? 0 : -1;
 }
 
 #endif /* HAL_USE_SOCKET_HAL_POSIX */

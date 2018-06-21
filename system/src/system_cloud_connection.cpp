@@ -174,7 +174,7 @@ int spark_cloud_socket_disconnect(bool graceful)
 
 uint8_t spark_cloud_socket_closed()
 {
-    return !!system_cloud_is_connected(nullptr);
+    return system_cloud_is_connected(nullptr);
 }
 
 void Spark_Abort() {
