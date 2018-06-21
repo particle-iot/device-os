@@ -16,23 +16,29 @@
  */
 
 #include "deviceid_hal.h"
-#include <stddef.h>
+
+#include "str_util.h"
+
 #include "nrf52840.h"
-#include <string.h>
-#include <sys/param.h>
 
-#define NORDIC_DEVICE_PREFIX        0x68ce0fe0
+#include <algorithm>
 
-// 32 bit prefix and 64 bit unique device identifier
-static const unsigned device_id_len = 12;
+namespace {
+
+using namespace particle;
+
+const uint32_t DEVICE_ID_PREFIX = 0x68ce0fe0;
+
+} // namespace
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
-    uint32_t device_id[3] = {NORDIC_DEVICE_PREFIX, NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1]};
-
-    if (dest!=NULL && destLen>0)
-        memcpy(dest, (char*)device_id, MIN(destLen, device_id_len));
-    return device_id_len;
+    const uint32_t id[3] = { DEVICE_ID_PREFIX, NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1] };
+    static_assert(sizeof(id) == HAL_DEVICE_ID_SIZE, "");
+    if (dest && destLen > 0) {
+        memcpy(dest, id, std::min(destLen, sizeof(id)));
+    }
+    return HAL_DEVICE_ID_SIZE;
 }
 
 unsigned HAL_Platform_ID()
@@ -43,4 +49,23 @@ unsigned HAL_Platform_ID()
 int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved)
 {
     return -1;
+}
+
+int hal_get_device_serial_number(char* str, size_t size, void* reserved)
+{
+    char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
+    //
+    // TODO: Retrieve the serial number from the OTP memory
+    //
+    if (!isPrintable(serial, sizeof(serial))) {
+        return -1;
+    }
+    if (str) {
+        memcpy(str, serial, std::min(size, sizeof(serial)));
+        // Ensure the output is null-terminated
+        if (sizeof(serial) < size) {
+            str[sizeof(serial)] = '\0';
+        }
+    }
+    return HAL_DEVICE_SERIAL_NUMBER_SIZE;
 }

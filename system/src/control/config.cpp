@@ -20,15 +20,25 @@
 #if SYSTEM_CONTROL_ENABLED
 
 #include "common.h"
-#include "config.pb.h"
-#include <cstdio>
-
-#include "core_hal.h"
 #include "system_cloud_internal.h"
 
-#if PLATFORM_ID != 14
+#include "deviceid_hal.h"
+#include "core_hal.h"
+
+#include "bytes2hexbuf.h"
+
+#if HAL_PLATFORM_OPENTHREAD
+#include "ota_flash_hal_impl.h"
+#else
 #include "ota_flash_hal_stm32f2xx.h"
 #endif
+
+#include "config.pb.h"
+
+#include <cstdio>
+
+#define PB(_name) particle_ctrl_##_name
+#define PB_FIELDS(_name) particle_ctrl_##_name##_fields
 
 namespace particle {
 
@@ -38,7 +48,35 @@ namespace config {
 
 using namespace particle::control::common;
 
-#if PLATFORM_ID != 14
+int getDeviceId(ctrl_request* req) {
+    uint8_t id[HAL_DEVICE_ID_SIZE] = {};
+    const auto n = HAL_device_ID(id, sizeof(id));
+    if (n != HAL_DEVICE_ID_SIZE) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    PB(GetDeviceIdReply) pbRep = {};
+    static_assert(sizeof(pbRep.id) >= sizeof(id) * 2, "");
+    bytes2hexbuf_lower_case(id, sizeof(id), pbRep.id);
+    const int ret = encodeReplyMessage(req, PB_FIELDS(GetDeviceIdReply), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int getSerialNumber(ctrl_request* req) {
+    PB(GetSerialNumberReply) pbRep = {};
+    static_assert(sizeof(pbRep.serial) >= HAL_DEVICE_SERIAL_NUMBER_SIZE, "");
+    int ret = hal_get_device_serial_number(pbRep.serial, sizeof(pbRep.serial), nullptr);
+    if (ret < 0) {
+        return ret;
+    }
+    ret = encodeReplyMessage(req, PB_FIELDS(GetSerialNumberReply), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
 
 int handleSetClaimCodeRequest(ctrl_request* req) {
     particle_ctrl_SetClaimCodeRequest pbReq = {};
@@ -55,6 +93,18 @@ int handleIsClaimedRequest(ctrl_request* req) {
     const int ret = encodeReplyMessage(req, particle_ctrl_IsClaimedReply_fields, &pbRep);
     return ret;
 }
+
+int handleStartNyanRequest(ctrl_request* req) {
+    Spark_Signal(true, 0, nullptr);
+    return SYSTEM_ERROR_NONE;
+}
+
+int handleStopNyanRequest(ctrl_request* req) {
+    Spark_Signal(false, 0, nullptr);
+    return SYSTEM_ERROR_NONE;
+}
+
+#if !HAL_PLATFORM_OPENTHREAD
 
 int handleSetSecurityKeyRequest(ctrl_request* req) {
     particle_ctrl_SetSecurityKeyRequest pbReq = {};
@@ -167,16 +217,6 @@ int handleGetServerProtocolRequest(ctrl_request* req) {
     return ret;
 }
 
-int handleStartNyanRequest(ctrl_request* req) {
-    Spark_Signal(true, 0, nullptr);
-    return SYSTEM_ERROR_NONE;
-}
-
-int handleStopNyanRequest(ctrl_request* req) {
-    Spark_Signal(false, 0, nullptr);
-    return SYSTEM_ERROR_NONE;
-}
-
 int handleSetSoftapSsidRequest(ctrl_request* req) {
     particle_ctrl_SetSoftApSsidRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetSoftApSsidRequest_fields, &pbReq);
@@ -187,17 +227,9 @@ int handleSetSoftapSsidRequest(ctrl_request* req) {
     return ret;
 }
 
-#else // PLATFORM_ID == 14
+#else // HAL_PLATFORM_OPENTHREAD
 
 // TODO
-int handleSetClaimCodeRequest(ctrl_request*) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int handleIsClaimedRequest(ctrl_request*) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
 int handleSetSecurityKeyRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
@@ -219,14 +251,6 @@ int handleSetServerProtocolRequest(ctrl_request*) {
 }
 
 int handleGetServerProtocolRequest(ctrl_request*) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int handleStartNyanRequest(ctrl_request*) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int handleStopNyanRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

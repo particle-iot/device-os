@@ -23,6 +23,9 @@ namespace particle {
 namespace control {
 namespace config {
 
+int getDeviceId(ctrl_request* req);
+int getSerialNumber(ctrl_request* req);
+
 int handleSetClaimCodeRequest(ctrl_request* req);
 int handleIsClaimedRequest(ctrl_request* req);
 int handleSetSecurityKeyRequest(ctrl_request* req);
