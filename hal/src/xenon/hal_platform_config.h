@@ -40,4 +40,7 @@
 
 #define HAL_PLATFORM_BLE         (1)
 
+/* XXX: */
+#define HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL (20000)
+
 #endif  /* HAL_PLATFORM_CONFIG_H */
