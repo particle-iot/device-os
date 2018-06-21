@@ -29,7 +29,8 @@ extern "C" {
 #if /*PLATFORM_ID==6 || PLATFORM_ID==8 ||*/ PLATFORM_ID==10
 #define HAL_REPLACE_BOOTLOADER
 #endif
-#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10
+#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10 || PLATFORM_ID==14
+// TODO: Move to hal_platform.h
 #define HAL_REPLACE_BOOTLOADER_OTA
 #endif
 #endif
