@@ -48,7 +48,7 @@ otError otPlatSettingsBeginChange(otInstance* aInstance) {
 }
 
 otError otPlatSettingsCommitChange(otInstance* aInstance) {
-    return s_settingsFile.sync() == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
+    return OT_ERROR_NONE;
 }
 
 otError otPlatSettingsAbandonChange(otInstance* aInstance) {
@@ -62,20 +62,23 @@ otError otPlatSettingsGet(otInstance* aInstance, uint16_t aKey, int aIndex, uint
         return OT_ERROR_NONE;
     }
 
+
     return OT_ERROR_NOT_FOUND;
 }
 
 otError otPlatSettingsSet(otInstance* aInstance, uint16_t aKey, const uint8_t* aValue, uint16_t aValueLength) {
-    return s_settingsFile.set(aKey, aValue, aValueLength) == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
+    int r = s_settingsFile.set(aKey, aValue, aValueLength, -1);
+    return r == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
 }
 
 otError otPlatSettingsAdd(otInstance *aInstance, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength) {
-    uint8_t index = otPlatSettingsGet(aInstance, aKey, 0, nullptr, 0) == OT_ERROR_NONE ? 1 : 0;
-    return s_settingsFile.set(aKey, aValue, aValueLength, index) == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
+    int r = s_settingsFile.add(aKey, aValue, aValueLength);
+    return r == 0 ? OT_ERROR_NONE : OT_ERROR_FAILED;
 }
 
 otError otPlatSettingsDelete(otInstance *aInstance, uint16_t aKey, int aIndex) {
-    return s_settingsFile.del(aKey, aIndex) == 0 ? OT_ERROR_NONE : OT_ERROR_NOT_FOUND;
+    int r = s_settingsFile.del(aKey, aIndex);
+    return r == 0 ? OT_ERROR_NONE : OT_ERROR_NOT_FOUND;
 }
 
 void otPlatSettingsWipe(otInstance* aInstance) {

@@ -43,7 +43,7 @@ public:
     ssize_t size();
 
     ssize_t get(uint16_t key, uint8_t* value, uint16_t length, int index = 0);
-    int set(uint16_t key, const uint8_t* value, uint16_t length, uint8_t index = 0);
+    int set(uint16_t key, const uint8_t* value, uint16_t length, int index = -1);
     int add(uint16_t key, const uint8_t* value, uint16_t length);
     int del(uint16_t key, int index = -1);
 
@@ -61,8 +61,7 @@ private:
         uint16_t magick;
         uint16_t key;
         uint16_t length;
-        uint8_t index;
-        uint8_t reserved;
+        uint16_t reserved;
     } __attribute__((__packed__));
     static_assert(sizeof(TlvHeader) == sizeof(uint32_t) * 2, "sizeof(TlvHeader) != 8");
 

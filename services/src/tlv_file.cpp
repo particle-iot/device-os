@@ -127,7 +127,7 @@ ssize_t TlvFile::get(uint16_t key, uint8_t* value, uint16_t length, int index) {
         const size_t toRead = std::min(length, dataSize);
         if (toRead) {
             ret = seek(pos + sizeof(TlvHeader));
-            if (ret > 0) {
+            if (ret >= 0) {
                 ret = read(value, toRead);
             }
         }
@@ -136,7 +136,7 @@ ssize_t TlvFile::get(uint16_t key, uint8_t* value, uint16_t length, int index) {
     return ret;
 }
 
-int TlvFile::set(uint16_t key, const uint8_t* value, uint16_t length, uint8_t index) {
+int TlvFile::set(uint16_t key, const uint8_t* value, uint16_t length, int index) {
     FsLock lk(fs_);
 
     if (!open_) {
@@ -149,8 +149,18 @@ int TlvFile::set(uint16_t key, const uint8_t* value, uint16_t length, uint8_t in
         return ret;
     }
 
+    return add(key, value, length);
+}
+
+int TlvFile::add(uint16_t key, const uint8_t* value, uint16_t length) {
+    FsLock lk(fs_);
+
+    if (!open_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
     FileFooter footer;
-    ret = readFooter(footer);
+    int ret = readFooter(footer);
     if (ret < 0) {
         return ret;
     }
@@ -160,10 +170,15 @@ int TlvFile::set(uint16_t key, const uint8_t* value, uint16_t length, uint8_t in
         return pos;
     }
 
+    ret = seek(pos);
+    if (ret < 0) {
+        return ret;
+    }
+
     TlvHeader header = {};
+    header.magick = TLV_HEADER_MAGICK;
     header.key = key;
     header.length = length;
-    header.index = index;
 
     /* Write entry header */
     ret = write((const uint8_t*)&header, sizeof(header));
@@ -184,16 +199,6 @@ int TlvFile::set(uint16_t key, const uint8_t* value, uint16_t length, uint8_t in
     }
 
     return sync();
-}
-
-int TlvFile::add(uint16_t key, const uint8_t* value, uint16_t length) {
-    FsLock lk(fs_);
-
-    if (!open_) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-
-    return set(key, value, length, 0);
 }
 
 int TlvFile::del(uint16_t key, int index) {
@@ -231,35 +236,47 @@ int TlvFile::del(uint16_t key, int index) {
             size_t wpos = pos;
             size_t rpos = wpos + sizeof(TlvHeader) + dataSize;
 
-            for (; rpos < (fileSize - sizeof(FileFooter)) && ret == 0; ++wpos, ++rpos) {
+            ret = seek(wpos);
+            if (ret < 0) {
+                break;
+            }
+
+            ret = lfs_file_seek(lfs(), &f, rpos, LFS_SEEK_SET);
+            if (ret < 0) {
+                break;
+            }
+
+            for (; rpos < footer.size && ret > 0; ++wpos, ++rpos) {
                 uint8_t tmp;
                 ret = lfs_file_read(lfs(), &f, &tmp, sizeof(tmp));
-                if (ret) {
+                if (ret < 0) {
                     break;
                 }
 
                 ret = write(&tmp, sizeof(tmp));
-                if (ret) {
+                if (ret < 0) {
                     break;
                 }
             }
 
-            if (!ret) {
+            if (ret > 0) {
                 /* Write footer */
                 footer.size -= sizeof(TlvHeader) + dataSize;
                 ret = write((const uint8_t*)&footer, sizeof(footer));
-                if (ret) {
+                if (ret < 0) {
                     break;
                 }
                 /* Truncate */
-                ret = lfs_file_truncate(lfs(), &file_, fileSize - sizeof(TlvHeader) + dataSize);
-                if (ret) {
+                ret = lfs_file_truncate(lfs(), &file_, fileSize - (sizeof(TlvHeader) + dataSize));
+                if (ret < 0) {
                     break;
                 }
                 ret = sync();
             }
 
             lfs_file_close(lfs(), &f);
+
+            break;
         }
 
 
@@ -300,7 +317,12 @@ int TlvFile::open() {
 
     /* Validation failed, create anew */
     r = lfs_file_truncate(lfs(), &file_, 0);
-    if (r) {
+    if (r < 0) {
+        goto open_done;
+    }
+
+    r = seek(0);
+    if (r < 0) {
         goto open_done;
     }
 
@@ -348,11 +370,13 @@ int TlvFile::close() {
 int TlvFile::mkdir(char* dir) {
     int ret = SYSTEM_ERROR_NONE;
 
-    if (dir == nullptr || *dir == '\0' || *dir == '/') {
+    const size_t sz = strlen(dir);
+
+    if (dir == nullptr || *dir == '\0' || (*dir == '/' && sz == 1)) {
         return ret;
     }
 
-    for (char* p = strchr(dir + 1, '/'); p != nullptr && *p != '\0' && ret == 0; p = strchr(p + 1, '/')) {
+    for (char* p = strchrnul(dir + 1, '/'); p != nullptr && (size_t)(p - dir) <= sz && ret == 0; p = strchrnul(p + 1, '/')) {
         *p = '\0';
 
         struct lfs_info info;
@@ -423,25 +447,45 @@ ssize_t TlvFile::find(uint16_t key, int index, uint16_t* dataSize) {
         return r;
     }
 
+    ssize_t candidatePos = -1;
+    int candidateIdx = -1;
+    uint16_t candidateSize = 0;
+
     TlvHeader header;
-    for (ssize_t pos = seek(0); pos >= 0 && pos < (ssize_t)footer.size; pos += sizeof(TlvHeader) + header.length) {
+    for (ssize_t pos = 0; pos >= 0 && (pos + sizeof(TlvHeader)) <= footer.size;) {
+        r = seek(pos);
+        if (r < 0) {
+            return r;
+        }
+
         ssize_t rd = read((uint8_t*)&header, sizeof(header));
         if (rd < (ssize_t)sizeof(TlvHeader)) {
             return SYSTEM_ERROR_BAD_DATA;
         }
 
         if (header.magick != TLV_HEADER_MAGICK) {
-            header.length = 0;
+            /* Attempt to recover */
+            pos += sizeof(uint16_t);
             continue;
         }
 
-        if (header.key == key && (index < 0 || header.index == index)) {
-            /* Found it! */
-            if (dataSize) {
-                *dataSize = header.length;
+        if (header.key == key) {
+            candidatePos = pos;
+            ++candidateIdx;
+            candidateSize = header.length;
+            if (index >= 0 && candidateIdx >= index) {
+                break;
             }
-            return pos;
         }
+
+        pos += sizeof(TlvHeader) + header.length;
+    }
+
+    if ((index >= 0 && candidateIdx == index) || (index < 0 && candidateIdx >= 0)) {
+        if (dataSize) {
+            *dataSize = candidateSize;
+        }
+        return candidatePos;
     }
 
     return SYSTEM_ERROR_NOT_FOUND;
