@@ -29,6 +29,7 @@
 #include "service_debug.h"
 #include "ot_api.h"
 #include <mutex>
+#include <lwip/dns.h>
 
 using namespace particle::net;
 
@@ -86,6 +87,14 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
 
     /* Register OpenThread state changed callback */
     otSetStateChangedCallback(ot_, otStateChangedCb, this);
+
+    {
+        LOCK_TCPIP_CORE();
+        ip_addr_t dns;
+        ipaddr_aton("fdaa:bb:1::1", &dns);
+        dns_setserver(0, &dns);
+        UNLOCK_TCPIP_CORE();
+    }
 }
 
 OpenThreadNetif::~OpenThreadNetif() {
@@ -124,8 +133,6 @@ err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr
 
     ipaddr_ntoa_r(&src, tmp, sizeof(tmp));
     ipaddr_ntoa_r(&dst, tmp1, sizeof(tmp1));
-
-    ip6_select_source_address_ext(netif, addr);
 
     LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes (%s -> %s)", self, p->tot_len, tmp, tmp1);
 
@@ -355,7 +362,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
 
 void OpenThreadNetif::refreshIpAddresses() {
     otIp6SlaacUpdate(ot_, slaacAddresses_, sizeof(slaacAddresses_) / sizeof(slaacAddresses_[0]),
-                                     otIp6CreateRandomIid, nullptr);
+                     otIp6CreateRandomIid, nullptr);
 
     /* FIXME */
 #if OPENTHREAD_ENABLE_DHCP6_SERVER
@@ -396,4 +403,36 @@ netif* OpenThreadNetif::interface() {
 
 otInstance* OpenThreadNetif::getOtInstance() {
     return ot_;
+}
+
+int OpenThreadNetif::up() {
+    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+    LOG(INFO, "Bringing OpenThreadNetif up");
+    LOG(INFO, "Network name: %s", otThreadGetNetworkName(ot_));
+    LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(ot_));
+    LOG(INFO, "802.15.4 PAN ID: 0x%04x", (unsigned)otLinkGetPanId(ot_));
+    int r = 0;
+    if ((r = otIp6SetEnabled(ot_, true)) != OT_ERROR_NONE) {
+        return r;
+    }
+    if ((r = otThreadSetEnabled(ot_, true)) != OT_ERROR_NONE) {
+        return r;
+    }
+
+    return r;
+}
+
+int OpenThreadNetif::down() {
+    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+    LOG(INFO, "Bringing OpenThreadNetif down");
+    int r = 0;
+
+    if ((r = otThreadSetEnabled(ot_, false)) != OT_ERROR_NONE) {
+        return r;
+    }
+    if ((r = otIp6SetEnabled(ot_, false)) != OT_ERROR_NONE) {
+        return r;
+    }
+
+    return r;
 }

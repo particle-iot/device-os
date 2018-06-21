@@ -69,10 +69,10 @@ template<typename Config> class SystemSetupConsole
 {
 public:
     SystemSetupConsole(Config& config);
-    ~SystemSetupConsole();
+    virtual ~SystemSetupConsole();
     virtual void loop(void);
 protected:
-    virtual void exit()=0;
+    virtual void exit();
     /**
      * Handle a character received over serial.
      */
@@ -102,6 +102,8 @@ private:
 #endif
 };
 
+template class SystemSetupConsole<SystemSetupConsoleConfig>;
+
 #if Wiring_WiFi
 class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
 {
@@ -109,7 +111,7 @@ class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
 
 public:
     WiFiSetupConsole(WiFiSetupConsoleConfig& config);
-    ~WiFiSetupConsole();
+    virtual ~WiFiSetupConsole();
 
 protected:
     virtual void handle(char c) override;
@@ -142,13 +144,13 @@ class CellularSetupConsole : public SystemSetupConsole<CellularSetupConsoleConfi
 
 public:
     CellularSetupConsole(CellularSetupConsoleConfig& config);
-    ~CellularSetupConsole();
+    virtual ~CellularSetupConsole();
 
     virtual void exit() override;
     virtual void handle(char c) override;
 };
 
-#endif
+#endif /* Wiring_Cellular */
 
 #ifdef __cplusplus
 extern "C" {

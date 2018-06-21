@@ -18,6 +18,7 @@
 #ifndef LWIP_OPENTHREAD_IF_H
 #define LWIP_OPENTHREAD_IF_H
 
+#include <openthread-core-config.h>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
 #include <openthread/message.h>
@@ -46,6 +47,9 @@ public:
     netif* interface();
 
     otInstance* getOtInstance();
+
+    int up();
+    int down();
 
 protected:
     void input(otMessage* message);

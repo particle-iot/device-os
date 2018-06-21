@@ -206,6 +206,12 @@ void SystemSetupConsole<Config>::cleanup()
 }
 
 template <typename Config>
+void SystemSetupConsole<Config>::exit()
+{
+    network.listen(true);
+}
+
+template <typename Config>
 bool SystemSetupConsole<Config>::handle_peek(char c)
 {
     if (YModem::SOH == c || YModem::STX == c)
@@ -625,6 +631,5 @@ void CellularSetupConsole::handle(char c)
     else
         super::handle(c);
 }
-
 
 #endif

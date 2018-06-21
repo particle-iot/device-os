@@ -22,13 +22,13 @@
 
 #define HAL_PLATFORM_DCT (1)
 
-/* FIXME: this should be temporary */
-#define HAL_PLATFORM_WIFI (1)
 #define HAL_USE_SOCKET_HAL_COMPAT (1)
 #define HAL_USE_INET_HAL_COMPAT (1)
 
 #define HAL_USE_SOCKET_HAL_POSIX (1)
 #define HAL_USE_INET_HAL_POSIX (1)
+
+#define HAL_PLATFORM_MESH (1)
 
 #define HAL_PLATFORM_OPENTHREAD (1)
 

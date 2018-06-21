@@ -58,6 +58,15 @@ inline NetworkInterface& nif(network_interface_t _nif) { return cellular; }
 #define Wiring_Network 1
 #endif
 
+#if Wiring_Mesh
+#include "system_network_mesh.h"
+#include "spark_wiring_mesh.h"
+MeshNetworkInterface mesh;
+ManagedNetworkInterface& network = mesh;
+inline NetworkInterface& nif(network_interface_t _nif) { return mesh; }
+#define Wiring_Network 1
+#endif /* Wiring_Mesh */
+
 #ifndef Wiring_Network
 #define Wiring_Network 0
 #endif
@@ -94,6 +103,8 @@ private:
     CellularSignal sig_;
 #elif Wiring_WiFi
     WiFiSignal sig_;
+#elif Wiring_Mesh
+    MeshSignal sig_;
 #endif
     system_tick_t ts_ = 0;
 };
