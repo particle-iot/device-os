@@ -132,6 +132,8 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         LOG(ERROR, "Failed to determine server address");
     }
 
+    LOG(TRACE, "Address type: %d", type);
+
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
         /* Iterate over all the addresses and attempt to connect */
         int s = sock_socket(a->ai_family, a->ai_socktype, a->ai_protocol);

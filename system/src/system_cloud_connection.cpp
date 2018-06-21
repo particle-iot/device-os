@@ -66,7 +66,9 @@ int SessionConnection::load(const ServerAddress& addr)
 
     SessionPersistOpaque persist;
 
-    if (Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr) == sizeof(persist) && persist.is_valid()) {
+    int r = Spark_Restore(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr);
+
+    if (r == sizeof(persist) && persist.is_valid()) {
         SessionConnection* connection = (SessionConnection*)persist.connection_data();
         if (connection->server_address_checksum == compute_session_checksum(addr) &&
             connection->address.ss_family != AF_UNSPEC) {
@@ -75,9 +77,15 @@ int SessionConnection::load(const ServerAddress& addr)
             LOG(INFO, "Loaded cloud server address and port from session data");
         } else {
             /* Invalidate */
+            LOG(ERROR, "Address checksum %08x, expected %08x", connection->server_address_checksum, compute_session_checksum(addr));
+            LOG(ERROR, "Address family %lu", connection->address.ss_family);
             discard();
             return -1;
         }
+    } else {
+        LOG(ERROR, "Failed to loaded session data from persistent storage");
+        discard();
+        return -1;
     }
     return -1;
 }
@@ -87,6 +95,7 @@ int SessionConnection::discard()
     LOG(INFO, "Discarding session data");
     using particle::protocol::SessionPersistOpaque;
     SessionPersistOpaque persist;
+    memset(this, 0, sizeof(*this));
     return Spark_Save(&persist, sizeof(persist), SparkCallbacks::PERSIST_SESSION, nullptr);
 }
 
