@@ -62,26 +62,16 @@ public:
             close();
             return r;
         }
-        size_t bytes_written;
-        for (bytes_written = 0; bytes_written < size;) {
-            ssize_t r = lfs_file_write(lfs(), &file_, buffer + bytes_written, size - bytes_written/* std::min(size - bytes_written, (size_t)FILESYSTEM_PROG_SIZE) */);
-            if (r < 0) {
-                /* Error */
-                LOG_DEBUG(ERROR, "Failed to write to DCD: %d", r);
-                close();
-                return r;
-            }
-            bytes_written += r;
-        }
 
+        r = lfs_file_write(lfs(), &file_, buffer, size);
         if (r < 0) {
-            close();
-            return r;
+            /* Error */
+            LOG_DEBUG(ERROR, "Failed to write to DCD: %d", r);
         }
 
         close();
 
-        return bytes_written;
+        return r;
     }
 
 
