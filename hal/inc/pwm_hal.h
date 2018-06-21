@@ -63,6 +63,7 @@ void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value);
 void HAL_PWM_UpdateDutyCycle_Ext(uint16_t pin, uint32_t value);
 uint8_t HAL_PWM_Get_Resolution(uint16_t pin);
 void HAL_PWM_Set_Resolution(uint16_t pin, uint8_t resolution);
+void HAL_PWM_Reset_Pin(uint16_t pin);
 
 #ifdef __cplusplus
 }

@@ -22,6 +22,7 @@
 #include "pinmap_impl.h"
 
 #define NRF5X_PWM_COUNT                     4
+#define PWM_CHANNEL_NUM                     4
 #define MAX_PWM_COUNTERTOP                  0x7FFF    // 15bit
 #define DEFAULT_PWM_FREQ                    500       // 500Hz
 #define MAX_PWM_FREQ                        500000    // 500kHz, base clock 16MHz, resolution value 16
@@ -30,7 +31,7 @@
 #define MIN_PWM_PERIOD_US                   250000    // 250ms
 
 typedef struct {
-    volatile nrf_pwm_values_common_t        duty_hwu;    // duty 
+    nrf_pwm_values_common_t                 duty_hwu;    // duty 
     nrf_pwm_clk_t                           pwm_clock;   // for base clock, base clock and period_hwu decide the period time
     uint16_t                                period_hwu;  // period hardware unit, for top value
 } pwm_setting_t;
@@ -42,7 +43,7 @@ typedef struct NRF5x_PWM_Info {
 
     bool                                    enabled;
     uint32_t                                frequency;
-    volatile nrf_pwm_values_individual_t    seq_value;
+    nrf_pwm_values_individual_t             seq_value;
 } NRF5x_PWM_Info;
 
 NRF5x_PWM_Info PWM_MAP[NRF5X_PWM_COUNT] = {
@@ -124,7 +125,7 @@ int uninit_pwm_pin(uint16_t pin)
     PIN_MAP[pin].pin_func = PF_NONE;
 
     // reconfigure pwm
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < PWM_CHANNEL_NUM; i++)
     {
         if (PWM_MAP[pwm_num].nrf_pins[i] != NRFX_PWM_PIN_NOT_USED)
         {
@@ -252,6 +253,16 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency)
     return 0;
 }
 
+void HAL_PWM_Reset_Pin(uint16_t pin)
+{
+    if (pin >= TOTAL_PINS)
+    {
+        return;
+    }
+
+    uninit_pwm_pin(pin);
+}
+
 /*
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%.
  * default PWM frequent is set at 500 Hz
@@ -324,6 +335,11 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
 
 uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin)
 {
+    if (pin >= TOTAL_PINS)    
+    {
+        return 0;
+    } 
+
     NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     uint8_t pwm_num = pin_info->pwm_instance;
     if (pwm_num == PWM_INSTANCE_NONE)
@@ -336,6 +352,11 @@ uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin)
 
 uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin)
 {
+    f (pin >= TOTAL_PINS)    
+    {
+        return 0;
+    } 
+
     NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     uint8_t pwm_num = pin_info->pwm_instance;
     uint8_t pwm_channel = pin_info->pwm_channel;
