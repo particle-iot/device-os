@@ -137,6 +137,13 @@ void app_error_handler_bare(uint32_t error_code)
     }
 }
 
+void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
+{
+    PANIC(HardFault,"HardFault");
+    while(1) {
+    }
+}
+
 void MemManage_Handler(void)
 {
     /* Go to infinite loop when Memory Manage exception occurs */
