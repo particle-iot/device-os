@@ -31,7 +31,7 @@
 #define MIN_PWM_PERIOD_US                   250000    // 250ms
 
 typedef struct {
-    nrf_pwm_values_common_t                 duty_hwu;    // duty 
+    nrf_pwm_values_common_t                 duty_hwu;    // duty
     nrf_pwm_clk_t                           pwm_clock;   // for base clock, base clock and period_hwu decide the period time
     uint16_t                                period_hwu;  // period hardware unit, for top value
 } pwm_setting_t;
@@ -84,17 +84,17 @@ static bool get_pwm_clock_setting(uint32_t value, uint32_t frequency, pwm_settin
         NRF_PWM_CLK_1MHz, NRF_PWM_CLK_500kHz, NRF_PWM_CLK_250kHz, NRF_PWM_CLK_125kHz
     };
 
-    for(uint16_t div = 1; div <= 128 ; div <<= 1) 
+    for(uint16_t div = 1; div <= 128 ; div <<= 1)
     {
         if (MAX_PWM_COUNTERTOP >= period_hwu)
         {
             p_setting->duty_hwu   = duty_hwu;
             p_setting->period_hwu = period_hwu;
             p_setting->pwm_clock  = nrf_pwm_clk_buf[nrf_pwm_clk_index];
-    
+
             return true;
         }
-        
+
         period_hwu >>= 1;
         duty_hwu >>= 1;
         nrf_pwm_clk_index++;
@@ -241,7 +241,7 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency)
         .repeats         = 0,
         .end_delay       = 0
     };
-        
+
 
     ret_code = nrfx_pwm_simple_playback(&PWM_MAP[pwm_num].pwm, &seq, 1, NRFX_PWM_FLAG_LOOP);
     if (ret_code)
@@ -297,14 +297,14 @@ void HAL_PWM_Write_Ext(uint16_t pin, uint32_t value)
  * @brief Should take an integer within the limits of set resolution (8-bit or 16-bit)
  * and create a PWM signal with a duty cycle from 0-100%
  * and a specified frequency.
- * 
- * frequency range: 4Hz ~ 500KHz, frequency higher than 500KHz will adjust to 500KHz, 
+ *
+ * frequency range: 4Hz ~ 500KHz, frequency higher than 500KHz will adjust to 500KHz,
  *                 frequency lower than 4Hz will adjust to 4Hz
  */
 void HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint32_t value, uint32_t pwm_frequency)
 {
     if ((pin >= TOTAL_PINS)            ||
-        (pwm_frequency > MAX_PWM_FREQ) || 
+        (pwm_frequency > MAX_PWM_FREQ) ||
         (pwm_frequency < MIN_PWM_FREQ) ||
         (value > MAX_PWM_COUNTERTOP))
     {
@@ -335,10 +335,10 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
 
 uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin)
 {
-    if (pin >= TOTAL_PINS)    
+    if (pin >= TOTAL_PINS)
     {
         return 0;
-    } 
+    }
 
     NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     uint8_t pwm_num = pin_info->pwm_instance;
@@ -352,10 +352,10 @@ uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin)
 
 uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin)
 {
-    f (pin >= TOTAL_PINS)    
+    if (pin >= TOTAL_PINS)
     {
         return 0;
-    } 
+    }
 
     NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     uint8_t pwm_num = pin_info->pwm_instance;
