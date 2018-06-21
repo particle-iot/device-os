@@ -74,6 +74,21 @@ int32_t key_gen_random(void* p)
     return (int32_t)HAL_RNG_GetRandomNumber();
 }
 
+int key_gen_random_block(void* handle, uint8_t* data, size_t len)
+{
+    while (len>=4)
+    {
+        *((uint32_t*)data) = HAL_RNG_GetRandomNumber();
+        data += 4;
+        len -= 4;
+    }
+    while (len-->0)
+    {
+        *data++ = HAL_RNG_GetRandomNumber();
+    }
+    return 0;
+}
+
 int fetch_device_private_key_ex(uint8_t *key_buf, uint16_t length)
 {
     return dct_read_app_data_copy(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET : DCT_DEVICE_PRIVATE_KEY_OFFSET,
