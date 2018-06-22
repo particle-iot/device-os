@@ -43,6 +43,7 @@
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
+#include "spark_wiring_mesh.h"
 #include "spark_wiring_character.h"
 #include "spark_wiring_random.h"
 #include "spark_wiring_system.h"

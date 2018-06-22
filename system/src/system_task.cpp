@@ -22,6 +22,7 @@
 #include "system_task.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
+#include "system_cloud_connection.h"
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"
@@ -300,6 +301,8 @@ void establish_cloud_connection()
         const CellularNetProvData provider_data = cellular_network_provider_data_get(NULL);
         CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), nullptr, nullptr), (void)0);
         spark_cloud_udp_port_set(provider_data.port);
+#elif defined(HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL)
+        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL, nullptr, nullptr), (void)0);
 #endif
         INFO("Cloud: connecting");
         const auto diag = CloudDiagnostics::instance();

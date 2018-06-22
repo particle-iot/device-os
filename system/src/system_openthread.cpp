@@ -195,10 +195,7 @@ int threadInit() {
         mode.mNetworkData = true;
         CHECK_THREAD(otThreadSetLinkMode(thread, mode));
 
-        /* FIXME: this should be handled by the system_network */
         if (otDatasetIsCommissioned(thread)) {
-            CHECK_THREAD(otIp6SetEnabled(thread, true));
-            CHECK_THREAD(otThreadSetEnabled(thread, true));
             LOG(INFO, "Network name: %s", otThreadGetNetworkName(thread));
             LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(thread));
             LOG(INFO, "802.15.4 PAN ID: 0x%04x", (unsigned)otLinkGetPanId(thread));

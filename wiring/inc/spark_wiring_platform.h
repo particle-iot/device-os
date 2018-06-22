@@ -106,7 +106,8 @@
 #endif
 
 #if PLATFORM_ID==14      // Xenon
-#define Wiring_WiFi 1    /* FIXME */
+/* FIXME: */
+#define Wiring_Mesh 1
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1
 #ifdef DEBUG_BUILD
@@ -167,7 +168,7 @@
 #endif
 
 #ifndef Wiring_IPv6
-#define Wiring_IPv6 0
+#define Wiring_IPv6 HAL_IPv6
 #endif
 
 #ifndef Wiring_WpaEnterprise

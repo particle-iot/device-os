@@ -21,36 +21,25 @@
 #define	SYSTEM_CLOUD_INTERNAL_H
 
 #include "system_cloud.h"
-
+#include "ota_flash_hal.h"
+#include "socket_hal.h"
 #include "spark_wiring_diagnostics.h"
 
-/**
- * Functions for managing the cloud connection, performing cloud operations
- * and system upgrades.
- */
-
-int Internet_Test(void);
-
-void spark_cloud_udp_port_set(uint16_t port);
-int spark_cloud_socket_connect(void);
-int spark_cloud_socket_disconnect(bool graceful=true);
+void Spark_Signal(bool on, unsigned, void*);
+void Spark_SetTime(unsigned long dateTime);
+void Spark_Sleep();
+void Spark_Wake();
+int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved);
+int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved);
 
 void Spark_Protocol_Init(void);
 int Spark_Handshake(bool presence_announce);
 bool Spark_Communication_Loop(void);
-void Multicast_Presence_Announcement(void);
-void Spark_Signal(bool on, unsigned, void*);
-void Spark_SetTime(unsigned long dateTime);
 void Spark_Process_Events();
-void Spark_Sleep();
-void Spark_Wake();
-void Spark_Abort();
 
 void system_set_time(time_t time, unsigned param, void* reserved);
 
 String bytes2hex(const uint8_t* buf, unsigned len);
-
-uint8_t spark_cloud_socket_closed();
 
 bool spark_function_internal(const cloud_function_descriptor* desc, void* reserved);
 int call_raw_user_function(void* data, const char* param, void* reserved);
@@ -79,14 +68,6 @@ User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey);
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey);
 
 extern ProtocolFacade* sp;
-
-
-/**
- * regular async update to check that the cloud has been serviced recently.
- * After 15 seconds of inactivity, the LED status is changed to
- * @return
- */
-bool system_cloud_active();
 
 namespace particle {
 
@@ -152,6 +133,14 @@ private:
 
 } // namespace particle
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len, char* buf, size_t buf_len);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif	/* SYSTEM_CLOUD_INTERNAL_H */
-

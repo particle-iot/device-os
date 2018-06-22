@@ -331,7 +331,7 @@ void sys_unlock_tcpip_core(void);
  * MEMP_NUM_NETDB: the number of concurrently running lwip_addrinfo() calls
  * (before freeing the corresponding memory using lwip_freeaddrinfo()).
  */
-#define MEMP_NUM_NETDB                  1
+#define MEMP_NUM_NETDB                  10
 
 /**
  * MEMP_NUM_LOCALHOSTLIST: the number of host entries in the local host list
