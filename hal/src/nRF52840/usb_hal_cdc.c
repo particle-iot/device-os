@@ -145,7 +145,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             uint8_t data = 0;
             uint16_t size = 0;
 
-            LOG_DEBUG(DEBUG, "APP_USBD_CDC_ACM_USER_EVT_TX_DONE");
+            LOG_DEBUG(TRACE, "APP_USBD_CDC_ACM_USER_EVT_TX_DONE");
 
             while ((size < SEND_SIZE) && (app_fifo_get(&m_usb_instance.tx_fifo, &data) == NRF_SUCCESS))
             {
@@ -171,7 +171,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
         {
             ret_code_t ret;
-            LOG_DEBUG(DEBUG, "Bytes waiting: %d", app_usbd_cdc_acm_bytes_stored(p_cdc_acm));
+            LOG_DEBUG(TRACE, "Bytes waiting: %d", app_usbd_cdc_acm_bytes_stored(p_cdc_acm));
             do
             {
                 if (io_pending)
@@ -206,10 +206,10 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
     switch (event)
     {
         case APP_USBD_EVT_DRV_SUSPEND:
-            LOG_DEBUG(DEBUG, "APP_USBD_EVT_DRV_SUSPEND");
+            LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_SUSPEND");
             break;
         case APP_USBD_EVT_DRV_RESUME:
-            LOG_DEBUG(DEBUG, "APP_USBD_EVT_DRV_RESUME");
+            LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_RESUME");
             break;
         case APP_USBD_EVT_STARTED: 
             // triggered by app_usbd_start()
@@ -298,7 +298,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
     }
     else
     {
-        LOG_DEBUG(DEBUG, "No USB power detection enabled\r\nStarting USB now");
+        LOG_DEBUG(TRACE, "No USB power detection enabled\r\nStarting USB now");
 
         app_usbd_enable();
         app_usbd_start();
