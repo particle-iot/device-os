@@ -16,9 +16,8 @@
  */
 
 #include "deviceid_hal.h"
-
+#include "exflash_hal.h"
 #include "str_util.h"
-
 #include "nrf52840.h"
 
 #include <algorithm>
@@ -54,10 +53,11 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
 int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 {
     char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
-    //
-    // TODO: Retrieve the serial number from the OTP memory
-    //
-    if (!isPrintable(serial, sizeof(serial))) {
+
+    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, 0,
+                                     (uint8_t*)serial, HAL_DEVICE_SERIAL_NUMBER_SIZE);
+
+    if (r != 0 || !isPrintable(serial, sizeof(serial))) {
         return -1;
     }
     if (str) {
