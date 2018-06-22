@@ -21,8 +21,8 @@
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
-Ring_Buffer uart_tx_buffer[64];
-Ring_Buffer uart_rx_buffer[64];
+Ring_Buffer uart_tx_buffer;
+Ring_Buffer uart_rx_buffer;
 
 
 /* executes once at startup */
@@ -30,14 +30,14 @@ void setup() {
     // uint32_t config = SERIAL_STOP_BITS_1 | SERIAL_PARITY_EVEN | SERIAL_DATA_BITS_8 | SERIAL_FLOW_CONTROL_RTS_CTS;
     uint32_t config = 0;
 
-    HAL_USART_Init(HAL_USART_SERIAL1, uart_rx_buffer, uart_tx_buffer);
+    HAL_USART_Init(HAL_USART_SERIAL1, &uart_rx_buffer, &uart_tx_buffer);
     HAL_USART_BeginConfig(HAL_USART_SERIAL1, 115200, config, NULL);
 }
 
 /* executes continuously after setup() runs */
 void loop() {
     uint8_t data;
-    
+
     if (HAL_USART_Available_Data(HAL_USART_SERIAL1))
     {
         data = HAL_USART_Read_Data(HAL_USART_SERIAL1);
