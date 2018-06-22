@@ -171,7 +171,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
         {
             ret_code_t ret;
-            LOG_DEBUG(TRACE, "Bytes waiting: %d", app_usbd_cdc_acm_bytes_stored(p_cdc_acm));
+            
             do
             {
                 if (io_pending)

@@ -84,6 +84,12 @@ void Set_System(void)
 
     DWT_Init();
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    // FIXME: Have to initialize USB before softdevice enabled,  
+    // otherwise USB module won't recevie power event
+    HAL_USB_Init();
+#endif
+
     /* Configure the LEDs and set the default states */
     int LEDx;
     for(LEDx = 0; LEDx < LEDn; ++LEDx)
