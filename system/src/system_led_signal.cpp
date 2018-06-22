@@ -128,7 +128,11 @@ public:
         initStatusData();
         // Set current theme
         LEDSignalThemeData t = { LED_SIGNAL_THEME_VERSION };
+#if HAL_PLATFORM_DCT
+        char theme[DCT_LED_THEME_SIZE];
+#else
         char theme[THEME_DATA_SIZE];
+#endif /* HAL_PLATFORM_DCT */
 
         deserializeTheme(t, currentThemeData(theme, sizeof(theme)), THEME_DATA_SIZE);
         setTheme(t);
@@ -176,11 +180,10 @@ public:
 #if HAL_PLATFORM_DCT
             if (flags & LED_SIGNAL_FLAG_SAVE_THEME) {
                 // Serialize theme data and write it to DCT
-                char data[THEME_DATA_SIZE];
-                serializeTheme(*theme, data, sizeof(data));
-                const uint8_t version = LED_SIGNAL_THEME_VERSION;
-                dct_write_app_data(&version, DCT_LED_THEME_OFFSET, 1); // Write version
-                dct_write_app_data(data, DCT_LED_THEME_OFFSET + 1, sizeof(data)); // Write theme data
+                char data[DCT_LED_THEME_SIZE];
+                serializeTheme(*theme, data + 1, sizeof(data) - 1);
+                data[0] = LED_SIGNAL_THEME_VERSION;
+                dct_write_app_data(data, DCT_LED_THEME_OFFSET, sizeof(data)); // Write theme data
             }
 #endif
             return true;
@@ -270,13 +273,13 @@ private:
 
     static char* currentThemeData(char* buffer, size_t size) {
 #if HAL_PLATFORM_DCT
-        const char* d = (const char*)dct_read_app_data_lock(DCT_LED_THEME_OFFSET);
-        if (!d || *d != LED_SIGNAL_THEME_VERSION) { // Check if theme data is initialized in DCT
-            memcpy(buffer, DEFAULT_THEME_DATA, size);
+        int r = dct_read_app_data_copy(DCT_LED_THEME_OFFSET, buffer, size);
+        if (r || buffer[0] != LED_SIGNAL_THEME_VERSION) { // Check if theme data is initialized in DCT
+            memcpy(buffer, DEFAULT_THEME_DATA, THEME_DATA_SIZE);
         } else {
-            memcpy(buffer, d + 1, size); // First byte is reserved for version number
+            // First byte is reserved for version number
+            ++buffer;
         }
-        dct_read_app_data_unlock(DCT_LED_THEME_OFFSET);
 #else
         memcpy(buffer, DEFAULT_THEME_DATA, size);
 #endif

@@ -30,3 +30,6 @@
 [submodule "third_party/nrf_802154/nrf_802154"]
 	path = third_party/nrf_802154/nrf_802154
 	url = ../../NordicSemiconductor/nRF-IEEE-802.15.4-radio-driver.git
+[submodule "third_party/littlefs/littlefs"]
+	path = third_party/littlefs/littlefs
+	url = ../littlefs.git

@@ -29,22 +29,20 @@ extern "C" {
 
 void *operator new(size_t size)
 {
-    return malloc(size);
+    return nullptr;
 }
 
 void *operator new[](size_t size)
 {
-    return malloc(size);
+    return nullptr;
 }
 
 void operator delete(void *p)
 {
-    free(p);
 }
 
 void operator delete[](void *p)
 {
-    free(p);
 }
 
 
@@ -77,8 +75,8 @@ void _exit(int status) {
 
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() {
-  PANIC(PureVirtualCall,"Call on pure virtual");
-  while (1);
+    PANIC(PureVirtualCall,"Call on pure virtual");
+    while (1);
 }
 
 /* Provide default implemenation for __cxa_guard_acquire() and
@@ -89,14 +87,16 @@ int __cxa_guard_acquire(__guard *g) {return !*(char *)(g);};
 void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
 void __cxa_guard_abort (__guard *) {};
 
-/*
+int __cxa_atexit(void (*f)(void *), void *p, void *d) {
+    return 0;
+}
+
 int _write(int file, char *ptr, int len) { return 0; }
 int _read(int file, char *ptr, int len) { return 0; }
 int _close(int file) { return 0; }
 int _lseek(int file, int ptr, int dir) { return 0; }
 int _fstat(int file, void *sbuf) { return 0; }
 int _isatty(int file) { return 0; }
-*/
 
 } /* extern "C" */
 
