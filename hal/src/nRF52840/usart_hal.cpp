@@ -29,15 +29,15 @@
 #define UART_BUFF_SIZE              (SERIAL_BUFFER_SIZE * 2)
 
 // only support even parity(SERIAL_PARITY_EVEN)
-#define IS_PARITY_VALID(config)     (((config & SERIAL_PARITY) == SERIAL_PARITY_EVEN) || ((config & SERIAL_PARITY) == 0))
+#define IS_PARITY_VALID(config)     (((config & SERIAL_PARITY) == SERIAL_PARITY_EVEN) || ((config & SERIAL_PARITY) == SERIAL_PARITY_NO))
 #define IS_PARITY_ENABLED(config)   (((config & SERIAL_PARITY) == SERIAL_PARITY_EVEN) ? true : false)
 // only support both CTS and RTS(SERIAL_FLOW_CONTROL_RTS_CTS)
-#define IS_HWFC_VALID(config)       (((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS_CTS) || ((config & SERIAL_FLOW_CONTROL) == 0))
+#define IS_HWFC_VALID(config)       (((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS_CTS) || ((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_NONE))
 #define IS_HWFC_ENABLED(config)     (((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS_CTS) ? true : false)
 // only support one stop bit 
-#define IS_STOP_BITS_VALID(config)  ((config & SERIAL_STOP_BITS) == 0)
+#define IS_STOP_BITS_VALID(config)  ((config & SERIAL_STOP_BITS) == SERIAL_STOP_BITS_1)
 // only support one 8 data bits
-#define IS_DATA_BITS_VALID(config)  ((config & SERIAL_DATA_BITS) == 0)
+#define IS_DATA_BITS_VALID(config)  ((config & SERIAL_DATA_BITS) == SERIAL_DATA_BITS_8)
 
 typedef struct {
     nrf_drv_uart_t          *instance;
