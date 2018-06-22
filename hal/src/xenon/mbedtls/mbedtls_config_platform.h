@@ -227,12 +227,7 @@
  * module.
  */
 
-/* FIXME: Disabling CC310 hardware-acceleration for now due to an issue joining
- * a Thread network:
- * "Steering data does not include this device"
- * otJoinerStart() failed: 23
- */
-//#define MBEDTLS_AES_ALT
+#define MBEDTLS_AES_ALT
 #define MBEDTLS_ECP_ALT
 #define MBEDTLS_SHA256_ALT
 
