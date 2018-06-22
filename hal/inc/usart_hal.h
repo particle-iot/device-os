@@ -28,9 +28,10 @@
 #define __USART_HAL_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /* Includes ------------------------------------------------------------------*/
-#include "pinmap_hal.h"
+// #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
 #if PLATFORM_ID == 10 // Electron

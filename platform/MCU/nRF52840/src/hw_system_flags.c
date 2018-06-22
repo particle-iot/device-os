@@ -1,6 +1,7 @@
 
 #include "hw_system_flags.h"
 #include "hw_config.h"
+#include "nrf.h"
 
 void Save_Reset_Syndrome()
 {

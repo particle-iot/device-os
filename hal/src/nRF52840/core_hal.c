@@ -24,12 +24,20 @@
 #include <semphr.h>
 #include "hw_config.h"
 #include "syshealth_hal.h"
-#include "rng_hal.h"
+#include <nrfx_types.h>
 #include <nrf_mbr.h>
 #include <nrf_sdm.h>
 #include <nrf_sdh.h>
+#include <nrf_rtc.h>
+#include "button_hal.h"
+#include "hal_platform.h"
+#include "dct.h"
+#include "rng_hal.h"
 
+#define BACKUP_REGISTER_NUM        10
+int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
 volatile uint8_t rtos_started = 0;
+
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -153,6 +161,21 @@ void UsageFault_Handler(void)
     }
 }
 
+void GPIOTE_IRQHandler(void)
+{
+    BUTTON_Irq_Handler();
+}
+
+void RTC1_IRQHandler(void)
+{
+    if (nrf_rtc_event_pending(NRF_RTC1, NRF_RTC_EVENT_TICK))
+    {
+        nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
+
+        BUTTON_Debounce();
+    }
+}
+
 void SysTickOverride(void)
 {
     System1MsTick();
@@ -214,6 +237,8 @@ void HAL_Core_Setup_override_interrupts(void)
     sd_softdevice_vector_table_base_set((uint32_t)isrs);
     /* Enable softdevice */
     nrf_sdh_enable_request();
+    /* Wait until softdevice enabled*/
+    while(!nrf_sdh_is_enabled());
 }
 
 
@@ -262,23 +287,65 @@ void HAL_Core_Setup(void)
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {
-    return false;
+    bool pressedState = false;
+
+    if(BUTTON_GetDebouncedTime(BUTTON1) >= pressedMillisDuration)
+    {
+        pressedState = true;
+    }
+    if(BUTTON_GetDebouncedTime(BUTTON1_MIRROR) >= pressedMillisDuration)
+    {
+        pressedState = true;
+    }
+
+    return pressedState;
 }
 
 void HAL_Core_Mode_Button_Reset(uint16_t button)
 {
+    HAL_Buttons[button].debounce_time = 0x00;
+
+    if (HAL_Buttons[BUTTON1].active + HAL_Buttons[BUTTON1_MIRROR].active == 0) {
+        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
+    }
+
+    HAL_Notify_Button_State((Button_TypeDef)button, false);
+
+    /* Enable Button Interrupt */
+    if (button != BUTTON1_MIRROR) {
+        BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
+    } else {
+        HAL_InterruptExtraConfiguration irqConf = {0};
+        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
+        irqConf.IRQChannelPreemptionPriority = 0;
+        irqConf.IRQChannelSubPriority = 0;
+        irqConf.keepHandler = 1;
+        irqConf.keepPriority = 1;
+        HAL_Interrupts_Attach(HAL_Buttons[button].pin, NULL, NULL, HAL_Buttons[button].interrupt_mode, &irqConf);
+    }
 }
 
 void HAL_Core_System_Reset(void)
 {
+    NVIC_SystemReset();
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
 {
+    if (HAL_Feature_Get(FEATURE_RESET_INFO))
+    {
+        // Save reset info to backup registers
+        HAL_Core_Write_Backup_Register(BKP_DR_02, reason);
+        HAL_Core_Write_Backup_Register(BKP_DR_03, data);
+    }
+    HAL_Core_System_Reset();
 }
 
 void HAL_Core_Factory_Reset(void)
 {
+    system_flags.Factory_Reset_SysFlag = 0xAAAA;
+    Save_SystemFlags();
+    HAL_Core_System_Reset_Ex(RESET_REASON_FACTORY_RESET, 0, NULL);
 }
 
 void HAL_Core_Enter_Safe_Mode(void* reserved)
@@ -323,18 +390,7 @@ int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
  */
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 {
-    return 0;
-}
-
-// todo find a technique that allows accessor functions to be inlined while still keeping
-// hardware independence.
-bool HAL_watchdog_reset_flagged()
-{
-    return false;
-}
-
-void HAL_Notify_WDT()
-{
+    return Compute_CRC32(pBuffer, bufferSize, NULL);
 }
 
 uint16_t HAL_Core_Mode_Button_Pressed_Time()
@@ -349,7 +405,7 @@ void HAL_Bootloader_Lock(bool lock)
 
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 {
-    return 1;
+    return SystemCoreClock;
 }
 
 
@@ -427,33 +483,120 @@ int main(void)
     return 0;
 }
 
+static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
+{
+    if (HAL_IsISR()) {
+        return -1; // DCT cannot be accessed from an ISR
+    }
+    uint32_t flags = 0;
+    int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    if (result != 0) {
+        return result;
+    }
+    const bool cur_value = flags & flag;
+    if (prev_value) {
+        *prev_value = cur_value;
+    }
+    if (cur_value != value) {
+        if (value) {
+            flags |= flag;
+        } else {
+            flags &= ~flag;
+        }
+        result = dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
+        if (result != 0) {
+            return result;
+        }
+    }
+    return 0;
+}
 
+static int Read_Feature_Flag(uint32_t flag, bool* value)
+{
+    if (HAL_IsISR()) {
+        return -1; // DCT cannot be accessed from an ISR
+    }
+    uint32_t flags = 0;
+    const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    if (result != 0) {
+        return result;
+    }
+    *value = flags & flag;
+    return 0;
+}
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled)
 {
+   switch (feature)
+    {
+        case FEATURE_RETAINED_MEMORY:
+        {
+            // TODO: Switch on backup SRAM clock
+            // Switch on backup power regulator, so that it survives the deep sleep mode,
+            // software and hardware reset. Power must be supplied to VIN or VBAT to retain SRAM values.
+            return -1;
+        }
+        case FEATURE_RESET_INFO:
+        {
+            // TODO FEATURE_FLAG_RESET_INFO is in Feature_Flag
+            #define FEATURE_FLAG_RESET_INFO 0x01
+            return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
+        }
+#if HAL_PLATFORM_CLOUD_UDP
+        case FEATURE_CLOUD_UDP: 
+        {
+            const uint8_t data = (enabled ? 0xff : 0x00);
+            return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
+        }
+#endif // HAL_PLATFORM_CLOUD_UDP
+    }
+
     return -1;
 }
 
 bool HAL_Feature_Get(HAL_Feature feature)
 {
-    if (feature == FEATURE_CLOUD_UDP) {
-        return true;
+    switch (feature)
+    {
+        case FEATURE_CLOUD_UDP:
+        {
+            return true;
+        }
+        case FEATURE_RESET_INFO:
+        {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
+        }
     }
-
     return false;
 }
 
 int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
 {
-    return -1;
+    if ((BKP_DR == 0) || (BKP_DR > BACKUP_REGISTER_NUM))
+    {
+        return -1;
+    }
+
+    return BKP_DR - 1;
 }
 
 void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data)
 {
+    int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
+    if (BKP_DR_Index != -1)
+    {
+        backup_register[BKP_DR_Index] = Data;
+    }
 }
 
 uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR)
 {
+    int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
+    if (BKP_DR_Index != -1)
+    {
+        return backup_register[BKP_DR_Index];
+    }
     return 0xFFFFFFFF;
 }
 
@@ -480,9 +623,14 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
 
 uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 {
-    if (flag==BOOTLOADER_FLAG_STARTUP_MODE)
-        return 0xFF;
-    return 0xFFFF;
+    switch (flag) 
+    {
+        case BOOTLOADER_FLAG_VERSION:
+            return SYSTEM_FLAG(Bootloader_Version_SysFlag);
+        case BOOTLOADER_FLAG_STARTUP_MODE:
+            return SYSTEM_FLAG(StartupMode_SysFlag);
+    }
+    return 0;
 }
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)

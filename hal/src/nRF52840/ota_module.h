@@ -1,12 +1,5 @@
 /**
- ******************************************************************************
- * @file    watchdog_hal.h
- * @author  Matthew McGowan
- * @version V1.0.0
- * @date    25-Sept-2014
- * @brief
- ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,23 +16,25 @@
  ******************************************************************************
  */
 
-#ifndef WATCHDOG_HAL_H
-#define	WATCHDOG_HAL_H
 
-#include <stdint.h>
-#include <stdbool.h>
+#pragma once
 
-#ifdef	__cplusplus
+#include "ota_flash_hal.h"
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-void HAL_Watchdog_Init(uint32_t timeout_tick_ms);
-bool HAL_watchdog_reset_flagged();
-void HAL_Notify_WDT();
+/**
+ * Checks if the minimum required dependencies for the given module are satisfied.
+ * @param bounds    The bounds of the module to check.
+ * @return {@code true} if the dependencies are satisfied, {@code false} otherwise.
+ */
+bool validate_module_dependencies(const module_bounds_t* bounds, bool userPartOptional, bool fullDeps);
+const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index);
+bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags);
+const module_info_t* locate_module(const module_bounds_t* bounds);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-
-#endif	/* WATCHDOG_HAL_H */
-

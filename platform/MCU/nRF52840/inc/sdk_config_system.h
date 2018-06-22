@@ -79,3 +79,17 @@
 #define SEGGER_RTT_CONFIG_BUFFER_SIZE_DOWN 16
 #define SEGGER_RTT_CONFIG_MAX_NUM_DOWN_BUFFERS 2
 #endif
+
+#define NRFX_PRS_ENABLED        1
+#define NRFX_UART_ENABLED       0
+#define NRFX_UARTE_ENABLED      1
+#define NRFX_LPCOMP_ENABLED     0
+#define NRFX_SPIS_ENABLED       0
+#define NRFX_TWI_ENABLED        0
+#define NRFX_TWIM_ENABLED       0
+#define NRFX_TWIS_ENABLED       0
+
+#define NRFX_SPI_ENABLED        0
+#define NRFX_SPIM_ENABLED       1
+#define SPI1_ENABLED            1
+#define SPI1_USE_EASY_DMA       1

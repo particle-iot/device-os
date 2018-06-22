@@ -20,25 +20,21 @@
 #ifndef RGBLED_HAL_IMPL_H_
 #define RGBLED_HAL_IMPL_H_
 
-#include <nrf52840.h>
-#include "nrf_gpio.h"
-#include "nrf_pwm.h"
-
+#include <stdint.h>
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
 
 typedef struct led_config_t {
-    uint8_t version;             // Struct version
-    uint16_t pin;                // GPIO pin
+    uint8_t             version;            // Struct version
+    uint16_t            pin;                // GPIO pin
     union {
-        uint16_t clk;              // GPIO clock identifier
-        uint16_t hal_pin;          // HAL pin number
+        uint16_t        clk;                // GPIO clock identifier
+        uint16_t        hal_pin;            // HAL pin number
     };
     union {
-        nrf_gpio_pin_dir_t mode; // GPIO mode
-        uint16_t hal_mode;         // HAL mode
+        uint16_t        hal_mode;           // HAL mode
     };
     union {
         struct {

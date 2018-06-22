@@ -33,44 +33,6 @@
 #error "PLATFORM_ID not defined"
 #endif
 
-#include "nrf52840.h"
-#include "nrfx_types.h"
-#include "nrf_gpio.h"
-#include "nrf_gpiote.h"
-#include "nrf_rtc.h"
-
-//LEDs
-// TODO - map to Xenon hardware
-#define LEDn                                4
-#define LED_MIRROR_SUPPORTED                0
-#define LED1_GPIO_PIN                       42                      //User Led
-#define LED1_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //User Led
-#define LED_BLUE                            LED2                    //BLUE Led
-#define LED2_GPIO_PIN                       15                      //BLUE Led
-#define LED2_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //BLUE Led
-#define LED_RED                             LED3                    //RED Led
-#define LED3_GPIO_PIN                       13                      //RED Led
-#define LED3_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //RED Led
-#define LED_GREEN                           LED4                    //GREEN Led
-#define LED4_GPIO_PIN                       14                      //GREEN Led
-#define LED4_GPIO_MODE                      NRF_GPIO_PIN_DIR_OUTPUT //GREEN Led
-
-//Push Buttons
-#define BUTTONn                             1
-#define BUTTON1_GPIO_PIN                    11
-#define BUTTON1_GPIO_MODE                   NRF_GPIO_PIN_DIR_INPUT
-#define BUTTON1_GPIO_PUPD                   NRF_GPIO_PIN_PULLUP
-#define BUTTON1_PRESSED                     0x00
-#define BUTTON1_GPIOTE_EVENT_IN             NRF_GPIOTE_EVENTS_IN_0
-#define BUTTON1_GPIOTE_EVENT_CHANNEL        0
-#define BUTTON1_GPIOTE_INT_MASK             NRF_GPIOTE_INT_IN0_MASK
-#define BUTTON1_GPIOTE_IRQn                 GPIOTE_IRQn
-#define BUTTON1_GPIOTE_IRQ_HANDLER          GPIOTE_IRQHandler
-#define BUTTON1_GPIOTE_IRQ_PRIORITY         7
-#define BUTTON1_GPIOTE_IRQ_INDEX            22
-#define BUTTON1_GPIOTE_TRIGGER              NRF_GPIOTE_POLARITY_HITOLO
-#define BUTTON1_MIRROR_SUPPORTED            0
-
 #define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 

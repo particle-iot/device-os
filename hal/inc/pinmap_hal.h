@@ -30,6 +30,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <stdint.h>
+#include "platforms.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,23 +55,109 @@ typedef enum PinMode {
 typedef enum {
     PF_NONE,
     PF_DIO,
-    PF_TIMER,
+    PF_TIMER, 
     PF_ADC,
-  PF_DAC
+    PF_DAC,
+    PF_UART,
+    PF_PWM,
+    PF_SPI
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 
-typedef struct STM32_Pin_Info  STM32_Pin_Info;
+#ifdef PLATFORM_ID
 
+#endif
+
+#if PLATFORM_ID == PLATFORM_XENON 
+typedef struct NRF5x_Pin_Info  NRF5x_Pin_Info;
+NRF5x_Pin_Info* HAL_Pin_Map(void);
+#else
+typedef struct STM32_Pin_Info  STM32_Pin_Info;
 STM32_Pin_Info* HAL_Pin_Map(void);
+#endif
 
 /* Exported macros -----------------------------------------------------------*/
 
 /*
 * Pin mapping. Borrowed from Wiring
 */
-#if PLATFORM_ID!=3
+#if PLATFORM_ID == PLATFORM_XENON 
+#define TOTAL_PINS          31
+#define TOTAL_ANALOG_PINS   6
+#define FIRST_ANALOG_PIN    D14
+
+// digital pins
+#define D0          0   
+#define D1          1
+#define D2          2
+#define D3          3
+#define D4          4
+#define D5          5
+#define D6          6
+#define D7          7
+#define D8          8
+#define D9          9
+#define D10         10
+#define D11         11
+#define D12         12
+#define D13         13
+#define D14         14
+#define D15         15
+#define D16         16
+#define D17         17
+#define D18         18
+#define D19         19
+
+// button pin
+#define BTN         20
+
+// RGB LED pins
+#define RGBR        21
+#define RGBG        22
+#define RGBB        23
+
+#define BATT        24
+#define PWR         25
+#define CHG         26
+#define NFC_PIN1    27
+#define NFC_PIN2    28
+#define ANTSW1      29
+#define ANTSW2      30
+
+// analog pins
+#define A0          D19
+#define A1          D18
+#define A2          D17
+#define A3          D16
+#define A4          D15
+#define A5          D14
+
+// SPI pins
+#define SCK         D13
+#define MISO        D11
+#define MOSI        D12
+
+// I2C pins
+#define SDA         D0
+#define SCL         D1
+
+// uart pins
+#define TX          D9
+#define RX          D10
+#define CTS         D3
+#define RTS         D2
+
+#define TX1         D4
+#define RX1         D5
+#define CTS1        D6
+#define RTS1        D8
+
+// WKP pin on Xenon
+#define WKP         D8   // FIXME: 
+#define A7          A5   // FIXME: A7 is used in spark_wiring_wifitester.cpp
+
+#elif PLATFORM_ID != 3
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 47
 #elif PLATFORM_ID == 8 // P1

@@ -54,3 +54,4 @@ build/target/
 build/cores/
 hal/soft-ap/.idea/
 cmake-build-debug
+.vscode
