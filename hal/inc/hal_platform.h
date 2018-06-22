@@ -67,6 +67,7 @@ extern "C" {
 #define HAL_USE_SOCKET_HAL_POSIX (1)
 #define HAL_USE_INET_HAL_POSIX   (1)
 #define HAL_PLATFORM_OPENTHREAD  (1)
+#define HAL_PLATFORM_FILESYSTEM  (1)
 #endif /* PLATFORM_ID == 12 || PLATFORM_ID == 13 || PLATFORM_ID == 14 */
 
 #if PLATFORM_ID == 20
