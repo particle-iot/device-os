@@ -30,9 +30,16 @@
 #include "logging.h"
 #include "flash_common.h"
 
-#define QSPI_STD_CMD_WRSR           0x01
-#define QSPI_STD_CMD_RSTEN          0x66
-#define QSPI_STD_CMD_RST            0x99
+enum qspi_cmds_t {
+    QSPI_STD_CMD_WRSR    = 0x01,
+    QSPI_STD_CMD_RSTEN   = 0x66,
+    QSPI_STD_CMD_RST     = 0x99,
+    QSPI_MX25_CMD_ENSO   = 0xb1,
+    QSPI_MX25_CMD_EXSO   = 0xc1,
+    QSPI_MX25_CMD_WRSCUR = 0x2f
+};
+
+static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
 
 #define WAIT_COMPLETION() while(nrfx_qspi_mem_busy_check() != NRF_SUCCESS);
 
@@ -78,6 +85,14 @@ static int configure_memory()
 
 static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     return nrfx_qspi_write(data, size, addr);
+}
+
+static int enter_secure_otp() {
+    return nrfx_qspi_cinstr_quick_send(QSPI_MX25_CMD_ENSO, 1, NULL);
+}
+
+static int exit_secure_otp() {
+    return nrfx_qspi_cinstr_quick_send(QSPI_MX25_CMD_EXSO, 1, NULL);
 }
 
 int hal_exflash_init(void)
@@ -290,6 +305,97 @@ int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data
     ret = 0;
 
 hal_exflash_copy_sector_done:
+    hal_exflash_unlock();
+    return ret;
+}
+
+int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr,
+                             uint8_t* data_buf, size_t data_size)
+{
+    /* The only special sector we have on MX25L3233F is OTP */
+    if (sp != HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
+        return -1;
+    }
+
+    /* Validate bounds */
+    if (addr + data_size > MX25_OTP_SECTOR_SIZE) {
+        return -2;
+    }
+
+    hal_exflash_lock();
+
+    /* Enter Secure OTP mode */
+    int ret = enter_secure_otp();
+    if (ret) {
+        ret = -3;
+        goto hal_exflash_read_special_done;
+    }
+
+    ret = hal_exflash_read(addr, data_buf, data_size);
+
+hal_exflash_read_special_done:
+    /* Exit Secure OTP mode */
+    exit_secure_otp();
+    hal_exflash_unlock();
+    return ret;
+}
+
+int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr,
+                              const uint8_t* data_buf, size_t data_size)
+{
+    /* The only special sector we have on MX25L3233F is OTP */
+    if (sp != HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
+        return -1;
+    }
+
+    /* Validate bounds */
+    if (addr + data_size > MX25_OTP_SECTOR_SIZE) {
+        return -1;
+    }
+
+    hal_exflash_lock();
+
+    /* Enter Secure OTP mode */
+    int ret = enter_secure_otp();
+    if (ret) {
+        goto hal_exflash_write_special_done;
+    }
+
+    ret = hal_exflash_write(addr, data_buf, data_size);
+
+hal_exflash_write_special_done:
+    /* Exit Secure OTP mode */
+    exit_secure_otp();
+    hal_exflash_unlock();
+    return ret;
+}
+
+int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size)
+{
+    /* We only support OTP sector and since it's One Time Programmable, we can't erase it */
+    return -1;
+}
+
+int hal_exflash_execute_command(hal_exflash_command_t cmd, const uint8_t* data,
+                                uint8_t* result, size_t size)
+{
+    /* This is the only command we support for now */
+    if (cmd != HAL_EXFLASH_COMMAND_LOCK_OTP) {
+        return -1;
+    }
+
+    (void)data;
+    (void)result;
+    (void)size;
+
+    hal_exflash_lock();
+
+    /* Secured OTP Indicator bit (4K-bit Secured OTP)
+     * 1 = factory lock
+     */
+    uint8_t v = 0x01;
+    int ret = nrfx_qspi_cinstr_quick_send(QSPI_MX25_CMD_WRSCUR, 2, &v);
+
     hal_exflash_unlock();
     return ret;
 }
