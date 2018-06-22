@@ -31,8 +31,8 @@ typedef enum {
 } hal_exflash_special_sector_t;
 
 typedef enum {
-    HAL_EXFLASH_COMMAND_NONE     = 0,
-    HAL_EXFLASH_COMMAND_LOCK_OTP = 1
+    HAL_EXFLASH_COMMAND_NONE            = 0,
+    HAL_EXFLASH_COMMAND_LOCK_ENTIRE_OTP = 1
 } hal_exflash_command_t;
 
 int hal_exflash_init(void);
@@ -45,7 +45,7 @@ int hal_exflash_copy_sector(uintptr_t src_addr, size_t dest_addr, size_t data_si
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size);
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size);
 int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size);
-int hal_exflash_execute_command(hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size);
+int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size);
 
 #ifdef __cplusplus
 } // extern "C"

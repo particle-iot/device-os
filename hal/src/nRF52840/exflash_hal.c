@@ -376,11 +376,11 @@ int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, s
     return -1;
 }
 
-int hal_exflash_execute_command(hal_exflash_command_t cmd, const uint8_t* data,
-                                uint8_t* result, size_t size)
+int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd,
+                                const uint8_t* data, uint8_t* result, size_t size)
 {
     /* This is the only command we support for now */
-    if (cmd != HAL_EXFLASH_COMMAND_LOCK_OTP) {
+    if (sp != HAL_EXFLASH_SPECIAL_SECTOR_OTP || cmd != HAL_EXFLASH_COMMAND_LOCK_ENTIRE_OTP) {
         return -1;
     }
 
@@ -392,6 +392,7 @@ int hal_exflash_execute_command(hal_exflash_command_t cmd, const uint8_t* data,
 
     /* Secured OTP Indicator bit (4K-bit Secured OTP)
      * 1 = factory lock
+     * This will block the whole OTP region.
      */
     uint8_t v = 0x01;
     int ret = nrfx_qspi_cinstr_quick_send(QSPI_MX25_CMD_WRSCUR, 2, &v);
