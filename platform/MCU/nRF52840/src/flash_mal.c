@@ -211,7 +211,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         }
 
         // Program data to destination memory address
-        if (sourceDeviceID == FLASH_SERIAL)
+        if (destinationDeviceID == FLASH_SERIAL)
         {
             if (hal_exflash_write(destinationAddress, data_buf, copy_len))
             {
@@ -473,7 +473,7 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
 {
 #ifdef USE_SERIAL_FLASH
-    static module_info_t ex_module_info;
+    static module_info_t ex_module_info; // FIXME: This is not thread-safe
 #endif
 
     if(flashDeviceID == FLASH_INTERNAL)
@@ -493,7 +493,7 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
         uint8_t serialFlashData[4];
         uint32_t first_word = 0;
 
-        hal_flash_read(startAddress, serialFlashData, 4);
+        hal_exflash_read(startAddress, serialFlashData, 4);
         first_word = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
         if ((first_word & APP_START_MASK) == 0x20000000)
         {
@@ -501,7 +501,7 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
         }
 
         memset((uint8_t *)&ex_module_info, 0x00, sizeof(module_info_t));
-        hal_flash_read(startAddress, (uint8_t *)&ex_module_info, sizeof(module_info_t));
+        hal_exflash_read(startAddress, (uint8_t *)&ex_module_info, sizeof(module_info_t));
 
         return &ex_module_info;
 #endif
@@ -571,17 +571,20 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
 #ifdef USE_SERIAL_FLASH
     else if(flashDeviceID == FLASH_SERIAL && length > 0)
     {
-        uint8_t serialFlashData[4];
-        hal_flash_read((startAddress + length), serialFlashData, 4);
+        uint8_t serialFlashData[4]; // FIXME: Use XIP or a larger buffer
+        hal_exflash_read((startAddress + length), serialFlashData, 4);
         uint32_t expectedCRC = (uint32_t)(serialFlashData[3] | (serialFlashData[2] << 8) | (serialFlashData[1] << 16) | (serialFlashData[0] << 24));
 
         uint32_t endAddress = startAddress + length;
-        uint8_t  len = 0;
-        uint32_t computedCRC = 0xFFFFFFFF;
+        uint32_t len = 0;
+        uint32_t computedCRC = 0;
 
         do {
-            len = (length - 4) >= 4 ? 4 : length;
-            hal_flash_read(startAddress, serialFlashData, len);
+            len = endAddress - startAddress;
+            if (len > sizeof(serialFlashData)) {
+                len = sizeof(serialFlashData);
+            }
+            hal_exflash_read(startAddress, serialFlashData, len);
 
             computedCRC = Compute_CRC32(serialFlashData, len, &computedCRC);
 
@@ -654,17 +657,16 @@ void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
 
 int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 {
+    int ret = -1;
 #ifdef USE_SERIAL_FLASH
-    hal_exflash_write(address, pBuffer, bufferSize);
+    ret = hal_exflash_write(address, pBuffer, bufferSize);
 #else
-    hal_flash_write(address, pBuffer, bufferSize);
+    ret = hal_flash_write(address, pBuffer, bufferSize);
 #endif
-
-    return 0;
+    return ret;
 }
 
 void FLASH_End(void)
 {
     //FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
 }
-

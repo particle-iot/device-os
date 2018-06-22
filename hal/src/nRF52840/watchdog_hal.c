@@ -21,9 +21,8 @@
 #include "nrfx_wdt.h"
 #include "logging.h"
 
-#define DEFAULT_WATCHDOG_TIMEOUT        5000
 static nrfx_wdt_channel_id m_channel_id;
-static bool watch_dog_initialized = false;
+static volatile bool watch_dog_initialized = false;
 
 /**
  * @brief WDT events handler.
@@ -41,11 +40,9 @@ bool HAL_watchdog_reset_flagged(void)
 
 void HAL_Notify_WDT()
 {
-    if (watch_dog_initialized == false)
-    {
-        HAL_Watchdog_Init(DEFAULT_WATCHDOG_TIMEOUT);
+    if (watch_dog_initialized) {
+        nrfx_wdt_channel_feed(m_channel_id);
     }
-    nrfx_wdt_channel_feed(m_channel_id);
 }
 
 void HAL_Watchdog_Init(uint32_t timeout_tick_ms)
@@ -61,11 +58,11 @@ void HAL_Watchdog_Init(uint32_t timeout_tick_ms)
 
     if (watch_dog_initialized == false)
     {
-        watch_dog_initialized = true;
         ret_code = nrfx_wdt_init(&config, wdt_event_handler);
         SPARK_ASSERT(ret_code == NRF_SUCCESS);
         ret_code = nrfx_wdt_channel_alloc(&m_channel_id);
         SPARK_ASSERT(ret_code == NRF_SUCCESS);
         nrfx_wdt_enable();
-    } 
+        watch_dog_initialized = true;
+    }
 }

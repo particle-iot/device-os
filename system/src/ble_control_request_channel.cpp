@@ -28,7 +28,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "preprocessor.h"
 
 #ifndef PAIRING_ENABLED
-#define PAIRING_ENABLED 1
+#define PAIRING_ENABLED 0
 #endif
 
 namespace particle {
@@ -59,7 +59,7 @@ const unsigned RECV_CHAR_UUID = 0x0004;
 const unsigned SEND_BUF_SIZE = BLE_MAX_ATTR_VALUE_SIZE;
 
 // Size of the buffer for request data
-const unsigned RECV_BUF_SIZE = 512; // Should be a power of two
+const unsigned RECV_BUF_SIZE = 1024; // Should be a power of two
 
 static_assert(SEND_BUF_SIZE >= BLE_MAX_ATTR_VALUE_SIZE && RECV_BUF_SIZE >= BLE_MAX_ATTR_VALUE_SIZE,
         "Invalid buffer size");
