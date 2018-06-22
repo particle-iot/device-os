@@ -17,6 +17,9 @@
 
 #include "device_code.h"
 
+#include "deviceid_hal.h"
+
+#include "str_util.h"
 #include "random.h"
 #include "preprocessor.h"
 #include "debug.h"
@@ -25,7 +28,6 @@
 
 #include <algorithm>
 #include <cstring>
-#include <cctype>
 
 namespace {
 
@@ -41,15 +43,25 @@ const auto SETUP_CODE_SIZE = DCT_DEVICE_CODE_SIZE;
 const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
 
 int getDeviceSetupCode(char* code) {
-    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
-    if (ret < 0) {
-        return ret;
-    }
-    if (!isprint((unsigned char)code[0])) {
-        Random().genBase32(code, DCT_DEVICE_CODE_SIZE);
-        ret = dct_write_app_data(code, SETUP_CODE_DCT_OFFSET, SETUP_CODE_SIZE);
+    // First, retrieve the serial number
+    char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
+    int ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
+    if (ret >= (int)SETUP_CODE_SIZE && (size_t)ret <= sizeof(serial)) {
+        // Use last characters of the serial number as the setup code
+        memcpy(code, &serial[ret - SETUP_CODE_SIZE], SETUP_CODE_SIZE);
+    } else {
+        // Fall back to the DCT
+        ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
         if (ret < 0) {
             return ret;
+        }
+        if (!isPrintable(code, SETUP_CODE_SIZE)) {
+            // Generate a random code
+            Random().genBase32(code, SETUP_CODE_SIZE);
+            ret = dct_write_app_data(code, SETUP_CODE_DCT_OFFSET, SETUP_CODE_SIZE);
+            if (ret < 0) {
+                return ret;
+            }
         }
     }
     return 0;
@@ -78,7 +90,7 @@ int get_device_name(char* buf, size_t size) {
     }
     size_t nameSize = (unsigned char)dctName[0]; // First byte is the length
     char* const name = &dctName[1];
-    if (nameSize == 0 || nameSize > DEVICE_NAME_MAX_SIZE || !isprint((unsigned char)name[0])) {
+    if (nameSize == 0 || nameSize > DEVICE_NAME_MAX_SIZE || !isPrintable(name, nameSize)) {
         // Get device setup code
         char code[SETUP_CODE_SIZE] = {};
         ret = getDeviceSetupCode(code);

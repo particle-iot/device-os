@@ -29,6 +29,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
+// Size of the device ID in the binary form
+#define HAL_DEVICE_ID_SIZE 12
+
+// Size of the device's serial number
+#define HAL_DEVICE_SERIAL_NUMBER_SIZE 15
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -62,6 +68,11 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
  * done automatically by the system on startup.
  */
 void HAL_save_device_id(uint32_t offset);
+
+/**
+ * Get the device's serial number.
+ */
+int hal_get_device_serial_number(char* str, size_t size, void* reserved);
 
 #ifdef	__cplusplus
 }

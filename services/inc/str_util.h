@@ -17,28 +17,44 @@
 
 #pragma once
 
+#include <cstring>
 #include <cctype>
 
 namespace particle {
 
 inline char* toUpperCase(char* str, size_t n) {
-    char* s = str;
-    char* const s2 = str + n;
-    while (s != s2) {
-        *s = std::toupper(*s);
-        ++s;
+    for (size_t i = 0; i < n; ++i) {
+        str[i] = std::toupper((unsigned char)str[i]);
     }
     return str;
 }
 
+inline char* toUpperCase(char* str) {
+    return toUpperCase(str, std::strlen(str));
+}
+
 inline char* toLowerCase(char* str, size_t n) {
-    char* s = str;
-    char* const s2 = str + n;
-    while (s != s2) {
-        *s = std::tolower(*s);
-        ++s;
+    for (size_t i = 0; i < n; ++i) {
+        str[i] = std::tolower((unsigned char)str[i]);
     }
     return str;
+}
+
+inline char* toLowerCase(char* str) {
+    return toLowerCase(str, std::strlen(str));
+}
+
+inline bool isPrintable(const char* str, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        if (!std::isprint((unsigned char)str[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool isPrintable(const char* str) {
+    return isPrintable(str, std::strlen(str));
 }
 
 } // particle

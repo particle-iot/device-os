@@ -99,6 +99,17 @@ const char* const VENDOR_DATA = "";
 // Current joining device credential
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
+class Random: public particle::Random {
+public:
+    void genBase32Thread(char* data, size_t size) {
+        // base32-thread isn't really defined anywhere, but otbr-commissioner explicitly forbids using
+        // I, O, Q and Z in the joiner passphrase
+        static const char alpha[32] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S',
+                'T', 'U', 'V', 'W', 'X', 'Y', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+        genAlpha(data, size, alpha, sizeof(alpha));
+    }
+};
+
 } // particle::ctrl::mesh::
 
 int auth(ctrl_request* req) {
@@ -285,28 +296,21 @@ int prepareJoiner(ctrl_request* req) {
     }
     // Parse request
     PB(PrepareJoinerRequest) pbReq = {};
-    DecodedCString dName(&pbReq.network.name);
-    DecodedCString dExtPanIdStr(&pbReq.network.ext_pan_id);
     int ret = decodeRequestMessage(req, PB(PrepareJoinerRequest_fields), &pbReq);
     if (ret != 0) {
         return ret;
     }
-    if (dName.size == 0 || dName.size > OT_NETWORK_NAME_MAX_SIZE) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
     // Disable Thread
     CHECK_THREAD(otThreadSetEnabled(thread, false));
     CHECK_THREAD(otIp6SetEnabled(thread, false));
-    // Set network name
-    CHECK_THREAD(otThreadSetNetworkName(thread, dName.data));
-    // Set channel
-    CHECK_THREAD(otLinkSetChannel(thread, pbReq.network.channel));
+    // Clear master key (invalidates active and pending datasets)
+    otMasterKey key = {};
+    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
+    // Erase persistent data
+    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
     // Set PAN ID
+    // https://github.com/openthread/openthread/pull/613
     CHECK_THREAD(otLinkSetPanId(thread, pbReq.network.pan_id));
-    // Set extended PAN ID
-    uint8_t extPanId[OT_EXT_PAN_ID_SIZE] = {};
-    hexToBytes(dExtPanIdStr.data, (char*)&extPanId, OT_EXT_PAN_ID_SIZE);
-    CHECK_THREAD(otThreadSetExtendedPanId(thread, extPanId));
     // Get factory-assigned EUI-64
     otExtAddress eui64 = {}; // OT_EXT_ADDRESS_SIZE
     otLinkGetFactoryAssignedIeeeEui64(thread, &eui64);
@@ -314,7 +318,7 @@ int prepareJoiner(ctrl_request* req) {
     bytes2hexbuf_lower_case((const uint8_t*)&eui64, sizeof(eui64), eui64Str);
     // Generate joining device credential
     Random rand;
-    rand.genBase32(g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
+    rand.genBase32Thread(g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
     // Encode a reply
     PB(PrepareJoinerReply) pbRep = {};
     EncodedString eEuiStr(&pbRep.eui64, eui64Str, sizeof(eui64Str));
@@ -420,7 +424,7 @@ int leaveNetwork(ctrl_request* req) {
     }
     // Disable Thread protocol
     CHECK_THREAD(otThreadSetEnabled(thread, false));
-    // Clear master key (invalidates datasets in non-volatile memory)
+    // Clear master key (invalidates active and pending datasets)
     otMasterKey key = {};
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
     // Erase persistent data

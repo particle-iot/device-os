@@ -30,6 +30,7 @@
 #include "control/config.h"
 #include "control/storage.h"
 #include "control/mesh.h"
+#include "control/cloud.h"
 
 namespace particle {
 
@@ -102,6 +103,14 @@ int SystemControl::run() {
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
     switch (req->type) {
+    case CTRL_REQUEST_DEVICE_ID: {
+        setResult(req, control::config::getDeviceId(req));
+        break;
+    }
+    case CTRL_REQUEST_SERIAL_NUMBER: {
+        setResult(req, control::config::getSerialNumber(req));
+        break;
+    }
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
             System.reset();
@@ -285,6 +294,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_GET_SECTION_DATA_SIZE: {
         setResult(req, control::getSectionDataSizeRequest(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_CLOUD_CONNECTION_STATUS: {
+        setResult(req, ctrl::cloud::getConnectionStatus(req));
         break;
     }
     case CTRL_REQUEST_MESH_AUTH: {
