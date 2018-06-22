@@ -88,6 +88,12 @@ struct Profile {
 // Current profile
 Profile g_profile = {};
 
+// Current connection handle
+volatile uint16_t g_connHandle = BLE_CONN_HANDLE_INVALID;
+
+// Advertising mode flag
+volatile bool g_advertEnabled = false;
+
 static_assert(NRF_SDH_BLE_PERIPHERAL_LINK_COUNT == 1, "Multiple simultaneous peripheral connections are not supported");
 
 const Char* findChar(uint16_t handle) {
@@ -107,13 +113,15 @@ void processBleEvent(const ble_evt_t* event, void* data) {
     switch (event->header.evt_id) {
     case BLE_GAP_EVT_CONNECTED: {
         LOG(TRACE, "Connected");
+        g_connHandle = event->evt.gap_evt.conn_handle;
         ble_connected_event_data d = {};
-        d.conn_handle = event->evt.gap_evt.conn_handle;
+        d.conn_handle = g_connHandle;
         g_profile.callback(BLE_EVENT_CONNECTED, &d, g_profile.userData);
         break;
     }
     case BLE_GAP_EVT_DISCONNECTED: {
         LOG(TRACE, "Disconnected");
+        g_connHandle = BLE_CONN_HANDLE_INVALID;
         ble_disconnected_event_data d = {};
         d.conn_handle = event->evt.gap_evt.conn_handle;
         g_profile.callback(BLE_EVENT_DISCONNECTED, &d, g_profile.userData);
@@ -225,8 +233,17 @@ void processBleEvent(const ble_evt_t* event, void* data) {
 void processAdvertEvent(ble_adv_evt_t event) {
     switch (event) {
     case BLE_ADV_EVT_FAST:
-        LOG(TRACE, "Fast advertising mode started");
-        g_profile.callback(BLE_EVENT_ADVERT_STARTED, nullptr, g_profile.userData);
+        // TODO: Automatic restarting of the advertising mode can be disabled by setting
+        // `ble_adv_on_disconnect_disabled` to `true` during initialization of the advertising module
+        if (!g_advertEnabled) {
+            const uint32_t ret = sd_ble_gap_adv_stop(g_advert.adv_handle);
+            if (ret != NRF_SUCCESS) {
+                LOG(ERROR, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
+            }
+        } else {
+            LOG(TRACE, "Fast advertising mode started");
+            g_profile.callback(BLE_EVENT_ADVERT_STARTED, nullptr, g_profile.userData);
+        }
         break;
     case BLE_ADV_EVT_SLOW:
         LOG(TRACE, "Slow advertising mode started");
@@ -573,19 +590,23 @@ int ble_init_profile(ble_profile* profile, void* reserved) {
 }
 
 int ble_start_advert(void* reserved) {
-    const uint32_t ret = ble_advertising_start(&g_advert, BLE_ADV_MODE_FAST);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "ble_advertising_start() failed: %u", (unsigned)ret);
-        return halError(ret);
-    }
+    g_advertEnabled = true;
+    if (g_connHandle == BLE_CONN_HANDLE_INVALID) {
+        const uint32_t ret = ble_advertising_start(&g_advert, BLE_ADV_MODE_FAST);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "ble_advertising_start() failed: %u", (unsigned)ret);
+            return halError(ret);
+        }
+    } // else: Advertising will be restarted automatically when the client disconnects
     return 0;
 }
 
 void ble_stop_advert(void* reserved) {
-    if (g_advert.initialized) {
+    g_advertEnabled = false;
+    if (g_advert.initialized && g_connHandle == BLE_CONN_HANDLE_INVALID) {
         const uint32_t ret = sd_ble_gap_adv_stop(g_advert.adv_handle);
         if (ret != NRF_SUCCESS) {
-            LOG(WARN, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
+            LOG(ERROR, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
         }
     }
 }

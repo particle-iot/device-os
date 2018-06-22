@@ -68,6 +68,7 @@ extern "C" {
 #define HAL_USE_INET_HAL_POSIX   (1)
 #define HAL_PLATFORM_OPENTHREAD  (1)
 #define HAL_PLATFORM_FILESYSTEM  (1)
+#define HAL_PLATFORM_BLE         (1)
 #endif /* PLATFORM_ID == 12 || PLATFORM_ID == 13 || PLATFORM_ID == 14 */
 
 #if PLATFORM_ID == 20
@@ -97,6 +98,10 @@ extern "C" {
 #ifndef HAL_PLATFORM_OPENTHREAD
 #define HAL_PLATFORM_OPENTHREAD (0)
 #endif /* HAL_PLATFORM_OPENTHREAD */
+
+#ifndef HAL_PLATFORM_BLE
+#define HAL_PLATFORM_BLE (0)
+#endif /* HAL_PLATFORM_BLE */
 
 #ifdef	__cplusplus
 }

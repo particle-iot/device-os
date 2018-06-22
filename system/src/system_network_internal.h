@@ -362,10 +362,10 @@ protected:
             if (is_start_listening_timeout()) {
                 start_listening_timeout();
             }
-
-            // FIXME
+#if HAL_PLATFORM_BLE
+            // TODO: Process BLE channel events in a separate thread
             system::SystemControl::instance()->run();
-
+#endif
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
 

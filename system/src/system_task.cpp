@@ -466,6 +466,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     {
         system_pending_shutdown();
     }
+#if HAL_PLATFORM_BLE
+    // TODO: Process BLE channel events in a separate thread
+    system::SystemControl::instance()->run();
+#endif
     system_shutdown_if_needed();
 }
 
