@@ -97,11 +97,11 @@ private:
     void init() {
         fs_ = filesystem_get_instance(nullptr);
         SPARK_ASSERT(fs_);
+
+        FsLock lk(fs_);
         SPARK_ASSERT(!filesystem_mount(fs_));
 
         LOG_DEBUG(INFO, "Filesystem mounted");
-
-        FsLock lk(fs_);
 
         int r = lfs_mkdir(lfs(), "/sys");
         SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));

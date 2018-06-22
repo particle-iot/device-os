@@ -56,6 +56,7 @@ typedef struct {
 int filesystem_mount(filesystem_t* fs);
 int filesystem_unmount(filesystem_t* fs);
 filesystem_t* filesystem_get_instance(void* reserved);
+int filesystem_dump_info(filesystem_t* fs);
 
 int filesystem_lock(filesystem_t* fs);
 int filesystem_unlock(filesystem_t* fs);
