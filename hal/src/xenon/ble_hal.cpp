@@ -34,7 +34,7 @@ namespace {
 
 // Advertising interval in 0.625 ms units
 const auto FAST_ADVERT_INTERVAL = MSEC_TO_UNITS(40, UNIT_0_625_MS); // Fast mode
-const auto SLOW_ADVERT_INTERVAL = MSEC_TO_UNITS(1000, UNIT_0_625_MS); // Slow mode
+const auto SLOW_ADVERT_INTERVAL = MSEC_TO_UNITS(500, UNIT_0_625_MS); // Slow mode
 
 // Advertising duration in 10 ms units (fast mode)
 const auto FAST_ADVERT_TIMEOUT = MSEC_TO_UNITS(180000, UNIT_10_MS); // Fast mode

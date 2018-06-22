@@ -1,24 +1,50 @@
 #include "ota_flash_hal.h"
 #include "spark_macros.h"
 
-const module_bounds_t module_bootloader = { 0x4000, 0x00fc000, 0x0010000, MODULE_FUNCTION_BOOTLOADER, 0, MODULE_STORE_MAIN };
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+#error "Modular firmware is not supported"
+#endif
 
-// Modular firmware
-const module_bounds_t module_system_part1 = { 0x40000, 0x8020000, 0x8060000, MODULE_FUNCTION_SYSTEM_PART, 1, MODULE_STORE_MAIN };
-const module_bounds_t module_system_part2 = { 0x40000, 0x8060000, 0x80A0000, MODULE_FUNCTION_SYSTEM_PART, 2, MODULE_STORE_MAIN };
-const module_bounds_t module_user = { 0x20000, 0x80A0000, 0x80C0000, MODULE_FUNCTION_USER_PART, 1, MODULE_STORE_MAIN };
-const module_bounds_t module_factory = { 0x20000, 0x80E0000, 0x8100000, MODULE_FUNCTION_USER_PART, 1, MODULE_STORE_FACTORY };
-const module_bounds_t module_ota = { 0x40000, 0x80C0000, 0x8100000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD };
+// Bootloader
+const module_bounds_t module_bootloader = {
+        .maximum_size = 0x00008000, // bootloader_flash_length
+        .start_address = 0x000f8000, // bootloader_flash_origin
+        .end_address = 0x00100000,
+        .module_function = MODULE_FUNCTION_BOOTLOADER,
+        .module_index = 0,
+        .store = MODULE_STORE_MAIN
+    };
 
 // Monolithic firmware
-const module_bounds_t module_user_mono = { 0x60000, 0x8020000, 0x8080000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_MAIN };
-const module_bounds_t module_factory_mono = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_FACTORY };
-const module_bounds_t module_ota_mono = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD };
+const module_bounds_t module_user_mono = {
+        .maximum_size = 0x000bc000, // 1M - APP_CODE_BASE - OPENTHREAD_STORAGE_LENGTH - LENGTH(DCT1_FLASH) - LENGTH(DCT2_FLASH) - bootloader_flash_length
+        .start_address = 0x00030000, // APP_CODE_BASE
+        .end_address = 0x000ec000,
+        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+        .module_index = 0,
+        .store = MODULE_STORE_MAIN
+    };
 
-#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-const module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_user, &module_factory };
-#else
-const module_bounds_t* module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono };
-#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
+// Factory firmware
+const module_bounds_t module_factory_mono = {
+        .maximum_size = 0x000bc000, // module_user_mono.maximum_size
+        .start_address = 0x12200000, // XIP start address (0x12000000) + 2M
+        .end_address = 0x122bc000,
+        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+        .module_index = 0,
+        .store = MODULE_STORE_FACTORY
+    };
+
+// OTA region
+const module_bounds_t module_ota = {
+        .maximum_size = 0x000bc000, // module_user_mono.maximum_size
+        .start_address = 0x122bc000, // module_factory_mono.end_address
+        .end_address = 0x12378000,
+        .module_function = MODULE_FUNCTION_NONE,
+        .module_index = 0,
+        .store = MODULE_STORE_SCRATCHPAD
+    };
+
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono };
 
 const unsigned module_bounds_length = arraySize(module_bounds);

@@ -239,7 +239,7 @@ bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
     uint32_t endAddress = startAddress + length;
 
 #ifdef USE_SERIAL_FLASH
-    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress <= 0x100000)
+    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress <= 0x400000)
     {
         return true;
     }
@@ -353,7 +353,7 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
         }
         else
         {
-            if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address,
+            if (FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS,
                 FLASH_INTERNAL, uint32_t(module.info->module_start_address),
                 (moduleLength + 4),//+4 to copy the CRC too
                 function,

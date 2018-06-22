@@ -50,6 +50,8 @@
 #define NRF_SDH_BLE_ENABLED 1
 #define NRF_SDH_BLE_VS_UUID_COUNT 2 // 1 base UUID is reserved for the system
 #define NRF_SDH_BLE_PERIPHERAL_LINK_COUNT 1
+#define NRF_SDH_BLE_GAP_DATA_LENGTH 251 // Requested BLE GAP data length to be negotiated
+#define NRF_SDH_BLE_GATT_MAX_MTU_SIZE 247 // Static maximum MTU size
 
 #define NRF_FSTORAGE_ENABLED 1
 #define CRC32_ENABLED 1

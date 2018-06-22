@@ -332,12 +332,15 @@ void HAL_Core_System_Reset(void)
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
 {
+/*
+    // FIXME: This currently causes a hard fault
     if (HAL_Feature_Get(FEATURE_RESET_INFO))
     {
         // Save reset info to backup registers
         HAL_Core_Write_Backup_Register(BKP_DR_02, reason);
         HAL_Core_Write_Backup_Register(BKP_DR_03, data);
     }
+*/
     HAL_Core_System_Reset();
 }
 
@@ -390,6 +393,7 @@ int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
  */
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
 {
+    // TODO: Use the peripheral lock?
     return Compute_CRC32(pBuffer, bufferSize, NULL);
 }
 
@@ -543,7 +547,7 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 #if HAL_PLATFORM_CLOUD_UDP
-        case FEATURE_CLOUD_UDP: 
+        case FEATURE_CLOUD_UDP:
         {
             const uint8_t data = (enabled ? 0xff : 0x00);
             return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
@@ -623,7 +627,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
 
 uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
 {
-    switch (flag) 
+    switch (flag)
     {
         case BOOTLOADER_FLAG_VERSION:
             return SYSTEM_FLAG(Bootloader_Version_SysFlag);

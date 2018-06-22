@@ -20,9 +20,10 @@
 #if SYSTEM_CONTROL_ENABLED
 
 #include "system_update.h"
+#include "system_network.h"
 #include "common.h"
 
-#if PLATFORM_ID != 14
+#if PLATFORM_ID != PLATFORM_XENON
 #include "ota_flash_hal_stm32f2xx.h"
 #include "flash_storage_impl.h"
 #include "eeprom_emulation_impl.h"
@@ -45,7 +46,7 @@
 #if PLATFORM_ID != PLATFORM_PHOTON_PRODUCTION && \
     PLATFORM_ID != PLATFORM_P1 && \
     PLATFORM_ID != PLATFORM_ELECTRON_PRODUCTION && \
-    PLATFORM_ID != 14
+    PLATFORM_ID != PLATFORM_XENON
 #error "Unsupported platform"
 #endif
 
@@ -58,12 +59,12 @@ namespace particle {
 
 namespace control {
 
-#if PLATFORM_ID != 14
-
 using namespace protocol;
 using namespace common;
 
 namespace {
+
+#if PLATFORM_ID != PLATFORM_XENON
 
 struct Section;
 
@@ -192,8 +193,6 @@ const Storage STORAGE[] = {
 
 const size_t STORAGE_COUNT = sizeof(STORAGE) / sizeof(STORAGE[0]);
 
-std::unique_ptr<FileTransfer::Descriptor> g_desc;
-
 const Section* storageSection(unsigned storageIndex, unsigned sectionIndex) {
     if (storageIndex >= STORAGE_COUNT) {
         return nullptr;
@@ -204,6 +203,10 @@ const Section* storageSection(unsigned storageIndex, unsigned sectionIndex) {
     }
     return &storage.sections[sectionIndex];
 }
+
+#endif // PLATFORM_ID != PLATFORM_XENON
+
+std::unique_ptr<FileTransfer::Descriptor> g_desc;
 
 int cancelFirmwareUpdate() {
     int ret = 0;
@@ -218,7 +221,11 @@ int cancelFirmwareUpdate() {
 
 void finishFirmwareUpdate(int result, void* data) {
     if (g_desc) {
-        Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::SUCCESS, nullptr);
+        const int ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::SUCCESS, nullptr);
+        if (ret != 0) {
+            LOG(ERROR, "Spark_Finish_Firmware_Update() failed");
+        }
+        g_desc.reset();
     }
 }
 
@@ -241,7 +248,7 @@ int startFirmwareUpdateRequest(ctrl_request* req) {
     }
     g_desc->file_length = pbReq.size;
     g_desc->store = FileTransfer::Store::FIRMWARE;
-    g_desc->chunk_size = 4096; // TODO: Determine depending on free RAM
+    g_desc->chunk_size = 1024; // TODO: Determine depending on free RAM?
     g_desc->file_address = 0;
     g_desc->chunk_address = 0;
     ret = Spark_Prepare_For_Firmware_Update(*g_desc, 0, nullptr);
@@ -280,8 +287,17 @@ void finishFirmwareUpdateRequest(ctrl_request* req) {
         goto cancel;
     }
     if (!pbReq.validate_only) {
+#if PLATFORM_ID == PLATFORM_XENON
+        // FIXME: The BLE request channel doesn't support completion handling, so the client won't
+        // have a chance to receive the reply
+        finishFirmwareUpdate(0, nullptr);
+        // Exit the listening loop
+        network_listen(0, NETWORK_LISTEN_EXIT, nullptr);
+        goto done;
+#else
         // Reply to the host and apply the update
         system_ctrl_set_result(req, ret, finishFirmwareUpdate, nullptr, nullptr);
+#endif
         return;
     }
 cancel:
@@ -317,6 +333,8 @@ int firmwareUpdateDataRequest(ctrl_request* req) {
     g_desc->chunk_address += g_desc->chunk_size;
     return 0;
 }
+
+#if PLATFORM_ID != PLATFORM_XENON
 
 int describeStorageRequest(ctrl_request* req) {
     particle_ctrl_DescribeStorageReply pbRep = {};
@@ -495,23 +513,9 @@ int getSectionDataSizeRequest(ctrl_request* req) {
     return 0;
 }
 
-#else // PLATFORM_ID == 14
+#else // PLATFORM_ID == PLATFORM_XENON
 
 // TODO
-int startFirmwareUpdateRequest(ctrl_request*) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-void finishFirmwareUpdateRequest(ctrl_request*) {
-}
-
-int cancelFirmwareUpdateRequest(ctrl_request*) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int firmwareUpdateDataRequest(ctrl_request*) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
 
 int describeStorageRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -533,7 +537,7 @@ int getSectionDataSizeRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-#endif
+#endif // PLATFORM_ID == PLATFORM_XENON
 
 } // namespace particle::control
 
