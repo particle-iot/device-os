@@ -109,10 +109,18 @@ void HAL_USB_Detach()
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config)
 {
+    if (config == NULL)
+    {
+        return;
+    }
+
+    usb_uart_init(config->rx_buffer, config->rx_buffer_size, config->tx_buffer, config->tx_buffer_size);
 }
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved)
 {
+    usb_uart_set_baudrate(baud);
+    HAL_USB_Attach();
 }
 
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial)
