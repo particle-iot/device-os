@@ -40,7 +40,7 @@ typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);
 #define DEFINE_NET_PROVIDER_DATA \
     DEFINE_NET_PROVIDER( CELLULAR_NETPROV_TELEFONICA, "spark.telefonica.com", (23*60), (5684) ),  \
     DEFINE_NET_PROVIDER( CELLULAR_NETPROV_TWILIO, "wireless.twilio.com", (23*60), (4500) ),  \
-    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_KORE, "", (30), (5684) ),  \
+    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_KORE, "", (23*60), (5684) ),  \
     DEFINE_NET_PROVIDER( CELLULAR_NETPROV_MAX, "", (0), (0) )
 
 #define DEFINE_NET_PROVIDER( idx, apn, keepalive, port )  idx
