@@ -84,6 +84,7 @@ private:
 
 	bool fast_ota_override;
 	bool fast_ota_value;
+	bool first_chunk_received;
 
 protected:
 
@@ -113,7 +114,8 @@ protected:
 public:
 
 	ChunkedTransfer() :
-			updating(false), callbacks(nullptr), fast_ota_override(false), fast_ota_value(true)
+			updating(false), callbacks(nullptr), fast_ota_override(false),
+			fast_ota_value(true), first_chunk_received(false)
 	{
 	}
 
@@ -127,6 +129,7 @@ public:
 		reset_updating();
 		bitmap = nullptr;
 		last_chunk_millis = 0;
+		first_chunk_received = false;
 	}
 
 	ProtocolError handle_update_begin(token_t token, Message& message, MessageChannel& channel);
@@ -154,6 +157,7 @@ public:
 	{
 		updating = false;
 		last_chunk_millis = 0;    // this is used for the time latency also
+		first_chunk_received = false;
 	}
 
 	void cancel();

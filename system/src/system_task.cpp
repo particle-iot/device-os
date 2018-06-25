@@ -310,7 +310,7 @@ void establish_cloud_connection()
         cellular_device_info(&device, NULL);
         if (device.dev == 8/*DEV_SARA_R410*/) {
             DEBUG("Device is SARA_R410, disabling Fast OTA!");
-            CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::FAST_OTA, 0/*disabled*/, nullptr, nullptr), (void)0);
+            CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::FAST_OTA, 1/*disabled*/, nullptr, nullptr), (void)0);
         }
 #endif
         INFO("Cloud: connecting");

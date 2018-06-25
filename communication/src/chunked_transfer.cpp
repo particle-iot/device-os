@@ -111,6 +111,7 @@ ProtocolError ChunkedTransfer::handle_update_begin(
 ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
         MessageChannel& channel)
 {
+    first_chunk_received = true;
     last_chunk_millis = callbacks->millis();
 
     Message response;
@@ -349,9 +350,10 @@ ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel,
 ProtocolError ChunkedTransfer::idle(MessageChannel& channel)
 {
     system_tick_t millis_since_last_chunk = callbacks->millis() - last_chunk_millis;
-    if (3000 < millis_since_last_chunk)
+    if (first_chunk_received && 3000 < millis_since_last_chunk)
     {
-        if (updating == 2)
+        // Check for timeout on initial update phase "updating = 1", and successive phases "updating =2".
+        if (updating > 0)
         {    // send missing chunks
             WARN("timeout - resending missing chunks");
             Message message;

@@ -61,7 +61,7 @@ typedef uint16_t chunk_index_t;
 
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
 const chunk_index_t MAX_CHUNKS        = 65535;
-const size_t MISSED_CHUNKS_TO_SEND    = 50;
+const size_t MISSED_CHUNKS_TO_SEND    = 40;
 const size_t MAX_EVENT_TTL_SECONDS    = 16777215;
 const size_t MAX_OPTION_DELTA_LENGTH  = 12;
 #if PLATFORM_ID<2
