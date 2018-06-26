@@ -37,6 +37,9 @@ namespace system {
 
 namespace {
 
+// Particle's company ID
+const unsigned COMPANY_ID = 0x0662;
+
 // Device setup protocol version
 const unsigned PROTOCOL_VERSION = 0x01;
 
@@ -389,6 +392,12 @@ int BleControlRequestChannel::initProfile() {
     ctrlService.uuid.uuid = CTRL_SERVICE_UUID;
     ctrlService.chars = chars;
     ctrlService.char_count = sizeof(chars) / sizeof(chars[0]);
+    // Manufacturer-specific data
+    const uint16_t platformId = PLATFORM_ID;
+    ble_manuf_data manufData = {};
+    manufData.company_id = COMPANY_ID;
+    manufData.data = (const char*)&platformId;
+    manufData.size = sizeof(platformId);
     // Initialize profile
     ble_profile profile = {};
     profile.version = BLE_API_VERSION;
@@ -404,6 +413,7 @@ int BleControlRequestChannel::initProfile() {
 #if PAIRING_ENABLED
     profile.flags = BLE_PROFILE_FLAG_ENABLE_PAIRING;
 #endif
+    profile.manuf_data = &manufData;
     profile.callback = processBleEvent;
     profile.user_data = this;
     ret = ble_init_profile(&profile, nullptr);

@@ -271,6 +271,8 @@ void processGattEvent(nrf_ble_gatt_t* gatt, const nrf_ble_gatt_evt_t* event) {
 
 int halError(uint32_t error) {
     switch (error) {
+    case NRF_ERROR_INVALID_STATE:
+        return BLE_ERROR_INVALID_STATE;
     case NRF_ERROR_NO_MEM:
         return BLE_ERROR_NO_MEMORY;
     default:
@@ -278,7 +280,7 @@ int halError(uint32_t error) {
     }
 }
 
-int initAdvert() {
+int initAdvert(const ble_manuf_data* halManufData) {
     // Service UUIDs
     ble_uuid_t svcUuids[BLE_MAX_SERVICE_COUNT] = {};
     for (size_t i = 0; i < g_profile.serviceCount; ++i) {
@@ -286,6 +288,13 @@ int initAdvert() {
     }
     // Initialize the advertising module
     ble_advertising_init_t init = {};
+    ble_advdata_manuf_data_t manufData = {};
+    if (halManufData) {
+        manufData.company_identifier = halManufData->company_id;
+        manufData.data.p_data = (uint8_t*)halManufData->data;
+        manufData.data.size = halManufData->size;
+        init.advdata.p_manuf_specific_data = &manufData;
+    }
     init.advdata.name_type = BLE_ADVDATA_FULL_NAME;
     init.advdata.include_appearance = false;
     init.advdata.flags = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
@@ -581,7 +590,7 @@ int ble_init_profile(ble_profile* profile, void* reserved) {
         LOG(ERROR, "Unable to initialize profile");
         return ret;
     }
-    ret = initAdvert();
+    ret = initAdvert(profile->manuf_data);
     if (ret != 0) {
         LOG(ERROR, "Unable to initialize advertising module");
         return ret;

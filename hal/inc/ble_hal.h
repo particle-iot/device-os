@@ -101,6 +101,13 @@ typedef struct ble_service {
     uint16_t char_count;
 } ble_service;
 
+// Manufacturer-specific data
+typedef struct ble_manuf_data {
+    uint16_t company_id;
+    uint16_t size;
+    const char* data;
+} ble_manuf_data;
+
 // BLE_EVENT_CONNECTED event data
 typedef struct ble_connected_event_data {
     uint16_t conn_handle;
@@ -146,6 +153,7 @@ typedef struct ble_profile {
     uint16_t service_count;
     ble_service* services;
     const char* device_name;
+    const ble_manuf_data* manuf_data;
     ble_event_callback callback;
     void* user_data;
 } ble_profile;
