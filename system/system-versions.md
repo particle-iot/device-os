@@ -44,6 +44,8 @@
 | 101 | 204 | 0.7.0-rc.5 |         (Core, Photon, P1, Electron) |
 | 101 | 205 | 0.7.0-rc.6 |         (Core, Photon, P1, Electron) |
 | 101 | 300 | 0.8.0-rc.1 |         (Photon, P1, Electron) |
+| 200 | 300 | 0.8.0-rc.1 |         (Xenon) |
+| 200 | 301 | 0.8.0-rc.2 |         (Xenon) |
 
 
 

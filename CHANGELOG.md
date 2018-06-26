@@ -1,3 +1,15 @@
+## 0.8.0-rc.2-xenon
+
+### FEATURES
+
+- [Xenon] GPIO HAL [#136](https://github.com/particle-iot/firmware-private/pull/136)
+
+
+## 0.8.0-rc.1-xenon
+
+- [Xenon] First cut of the "silver" mesh firmware release for manufacturing!
+
+
 ## 0.7.0-rc.7
 
 ### BUGFIX
