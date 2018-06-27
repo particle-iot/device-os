@@ -26,11 +26,6 @@
 #error "NRF_SDH_BLE_GATT_MAX_MTU_SIZE is not defined"
 #endif
 
-// TODO: Move to an appropriate platform header
-#ifndef BLE_ENABLED
-#define BLE_ENABLED 1
-#endif
-
 // Invalid connection handle
 // TODO: Prefix all BLE HAL definitions with "hal_"
 #define BLE_INVALID_CONN_HANDLE BLE_CONN_HANDLE_INVALID

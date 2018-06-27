@@ -21,7 +21,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "ble_control_request_channel.h"
 
-#if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+#if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE
 
 #include "device_code.h"
 
@@ -495,4 +495,4 @@ BleControlRequestChannel::Request* BleControlRequestChannel::freeRequest(Request
 
 } // particle
 
-#endif // SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+#endif // SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE

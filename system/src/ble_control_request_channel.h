@@ -19,9 +19,11 @@
 
 #include "system_control.h"
 
-#if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+#if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE
 
 #include "control_request_handler.h"
+
+#include "ble_hal.h"
 
 #include "app_fifo.h"
 
@@ -100,4 +102,4 @@ private:
 
 } // particle
 
-#endif // SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+#endif // SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE

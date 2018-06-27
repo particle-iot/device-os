@@ -78,14 +78,14 @@ SystemControl::SystemControl() :
 #ifdef USB_VENDOR_REQUEST_ENABLE
         usbChannel_(this),
 #endif
-#if BLE_ENABLED
+#if HAL_PLATFORM_BLE
         bleChannel_(this),
 #endif
         appReqHandler_(nullptr) {
 }
 
 int SystemControl::init() {
-#if BLE_ENABLED
+#if HAL_PLATFORM_BLE
     const int ret = bleChannel_.init();
     if (ret != 0) {
         return ret;
@@ -95,7 +95,7 @@ int SystemControl::init() {
 }
 
 int SystemControl::run() {
-#if BLE_ENABLED
+#if HAL_PLATFORM_BLE
     return bleChannel_.run();
 #endif
     return 0;

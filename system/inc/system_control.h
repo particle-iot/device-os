@@ -18,16 +18,15 @@
 #pragma once
 
 #include "usb_hal.h"
-#include "ble_hal.h"
+#include "hal_platform.h"
 
 #include "system_error.h"
 
 #include <stdint.h>
 #include <stddef.h>
 
-// TODO: Move this feature macro to a platform-specific header
 #ifndef SYSTEM_CONTROL_ENABLED
-#if defined(USB_VENDOR_REQUEST_ENABLE) || BLE_ENABLED
+#if defined(USB_VENDOR_REQUEST_ENABLE) || HAL_PLATFORM_BLE
 #define SYSTEM_CONTROL_ENABLED 1
 #else
 #define SYSTEM_CONTROL_ENABLED 0
