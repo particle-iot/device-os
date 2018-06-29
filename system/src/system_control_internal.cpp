@@ -94,11 +94,10 @@ int SystemControl::init() {
     return 0;
 }
 
-int SystemControl::run() {
+void SystemControl::run() {
 #if HAL_PLATFORM_BLE
-    return bleChannel_.run();
+    bleChannel_.run();
 #endif
-    return 0;
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {

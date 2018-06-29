@@ -38,7 +38,7 @@
 
 #define HAL_IPv6 (1)
 
-#define HAL_PLATFORM_BLE         (1)
+#define HAL_PLATFORM_BLE (1)
 
 /* XXX: */
 #define HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL (20000)

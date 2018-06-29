@@ -44,7 +44,7 @@ public:
 
     // TODO: Use a separate thread for the BLE channel loop
     int init();
-    int run();
+    void run();
 
     // ControlRequestHandler
     virtual void processRequest(ctrl_request* req, ControlRequestChannel* channel) override;

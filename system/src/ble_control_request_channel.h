@@ -25,6 +25,7 @@
 
 #include "ble_hal.h"
 
+#include "mbedtls/ccm.h"
 #include "app_fifo.h"
 
 #include <memory>
@@ -45,43 +46,51 @@ public:
     void destroy();
 
     // TODO: Use a separate thread for the BLE channel loop
-    int run();
+    void run();
 
-    // ControlRequestChannel
+    // Reimplemented from `ControlRequestChannel`
+    virtual int allocReplyData(ctrl_request* ctrlReq, size_t size) override;
+    virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
 private:
     // Request data
     struct Request: ctrl_request {
         Request* next; // Next request
+        char* reqBuf; // Request data
+        char* repBuf; // Reply data
         int result; // Result code
         uint16_t id; // Request ID
     };
 
-    Request* pendingReqs_; // Pending requests
     Request* readyReqs_; // Completed requests
 
     Request* sendReq_;
-    std::unique_ptr<uint8_t[]> sendBuf_;
-    size_t sendPos_;
-    bool headerSent_;
+    size_t sendOffs_;
 
-    Request* recvReq_;
     std::unique_ptr<uint8_t[]> recvBuf_;
     app_fifo_t recvFifo_;
-    size_t recvPos_;
-    bool headerRecvd_;
+    Request* recvReq_;
+    size_t recvOffs_;
+
+    mbedtls_ccm_context aesCcm_;
+    uint32_t reqCount_;
+    uint32_t repCount_;
 
     uint16_t sendCharHandle_;
     uint16_t recvCharHandle_;
+    uint16_t connHandle_;
 
-    volatile uint16_t connHandle_;
+    volatile uint16_t halConnHandle_;
     volatile uint16_t maxCharValSize_;
     volatile bool notifEnabled_;
     volatile bool writable_;
 
     int sendNext();
     int receiveNext();
+
+    int parseRequest(Request* req);
+    int encodeReply(Request* req);
 
     void connected(const ble_connected_event_data& event);
     void disconnected(const ble_disconnected_event_data& event);
@@ -91,11 +100,12 @@ private:
     void dataReceived(const ble_data_received_event_data& event);
 
     int initProfile();
+    int initAesCcm();
+
+    Request* allocRequest(size_t size);
+    Request* freeRequest(Request* req);
 
     static void processBleEvent(int event, const void* eventData, void* userData);
-
-    static Request* allocRequest(size_t size = 0);
-    static Request* freeRequest(Request* req);
 };
 
 } // particle::system
