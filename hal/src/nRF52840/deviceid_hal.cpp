@@ -18,6 +18,9 @@
 #include "deviceid_hal.h"
 #include "exflash_hal.h"
 #include "str_util.h"
+#include "random.h"
+#include "dct.h"
+
 #include "nrf52840.h"
 
 #include <algorithm>
@@ -27,6 +30,18 @@ namespace {
 using namespace particle;
 
 const uint32_t DEVICE_ID_PREFIX = 0x68ce0fe0;
+
+const uintptr_t SERIAL_NUMBER_OTP_ADDRESS = 0x00000000;
+const uintptr_t DEVICE_SECRET_OTP_ADDRESS = 0x00000010;
+
+bool isInitialized(const char* data, size_t size) {
+    for (size_t i = 0; i < size; ++i) {
+        if ((unsigned char)data[i] != 0xff) {
+            return true;
+        }
+    }
+    return false;
+}
 
 } // namespace
 
@@ -54,7 +69,7 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 {
     char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
 
-    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, 0,
+    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, SERIAL_NUMBER_OTP_ADDRESS,
                                      (uint8_t*)serial, HAL_DEVICE_SERIAL_NUMBER_SIZE);
 
     if (r != 0 || !isPrintable(serial, sizeof(serial))) {
@@ -68,4 +83,33 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
         }
     }
     return HAL_DEVICE_SERIAL_NUMBER_SIZE;
+}
+
+int hal_get_device_secret(char* data, size_t size, void* reserved)
+{
+    // Check if the device secret data is initialized in the DCT
+    char secret[HAL_DEVICE_SECRET_SIZE] = {};
+    static_assert(sizeof(secret) == DCT_DEVICE_SECRET_SIZE, "");
+    int ret = dct_read_app_data_copy(DCT_DEVICE_SECRET_OFFSET, secret, sizeof(secret));
+    if (ret < 0) {
+        return ret;
+    }
+    if (!isInitialized(secret, sizeof(secret))) {
+        // Check the OTP memory
+        ret = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, DEVICE_SECRET_OTP_ADDRESS, (uint8_t*)secret, sizeof(secret));
+        if (ret < 0) {
+            return ret;
+        }
+        if (!isInitialized(secret, sizeof(secret))) {
+            // Generate random data
+            Random::genSecure(secret, sizeof(secret));
+        }
+        // Update the DCT
+        ret = dct_write_app_data(secret, DCT_DEVICE_SECRET_OFFSET, sizeof(secret));
+        if (ret < 0) {
+            return ret;
+        }
+    }
+    memcpy(data, secret, std::min(size, sizeof(secret)));
+    return HAL_DEVICE_SECRET_SIZE;
 }
