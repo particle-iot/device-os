@@ -1,3 +1,10 @@
+## 0.8.0-rc.3-xenon
+
+### BUGFIX
+
+- [Xenon] Fixes SOS 10 when external flash is erased, WiFiTester disabled.
+
+
 ## 0.8.0-rc.2-xenon
 
 ### FEATURES
