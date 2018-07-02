@@ -335,6 +335,11 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
         return;
     }
 
+    if (m_uart_map[serial].enabled)
+    {
+        uart_uninit(serial);
+    }
+
     m_uart_map[serial].uart_config = config;
     uart_init(serial, baud); 
     m_uart_map[serial].enabled = true;
