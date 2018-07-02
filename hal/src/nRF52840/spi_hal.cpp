@@ -22,10 +22,10 @@
 #include "logging.h"
 #include "interrupts_hal.h"
 
-#define DEFALUT_SPI_MODE        SPI_MODE_MASTER
-#define DEFALUT_DATA_MODE       SPI_MODE3
-#define DEFALUT_BIT_ORDER       MSBFIRST
-#define DEFALUT_SPI_CLOCK       SPI_CLOCK_DIV256
+#define DEFAULT_SPI_MODE        SPI_MODE_MASTER
+#define DEFAULT_DATA_MODE       SPI_MODE3
+#define DEFAULT_BIT_ORDER       MSBFIRST
+#define DEFAULT_SPI_CLOCK       SPI_CLOCK_DIV256
 
 typedef struct {
     const nrf_drv_spi_t                 *instance;
@@ -40,8 +40,6 @@ typedef struct {
     uint8_t                             bit_order;
     uint32_t                            clock;
 
-    uint8_t                             tx_buffer[1];
-    uint8_t                             rx_buffer[1];
     volatile HAL_SPI_DMA_UserCallback   user_callback;
 
     bool                                enabled;
@@ -153,9 +151,8 @@ static int spi_tx_rx(HAL_SPI_Interface spi, uint8_t *tx_buf, uint8_t *rx_buf, ui
     m_spi_map[spi].transmitting = true;
     m_spi_map[spi].transfer_length = size;
     err_code = nrf_drv_spi_transfer(m_spi_map[spi].instance, tx_buf, size, rx_buf, size);
-    SPARK_ASSERT(err_code == NRF_SUCCESS);
 
-    return size;
+    return err_code ? 0 : size;
 }
 
 static void spi_transfer_cancel(HAL_SPI_Interface spi)
@@ -173,10 +170,10 @@ void HAL_SPI_Init(HAL_SPI_Interface spi)
     // Default: SPI_MODE_MASTER, SPI_MODE3, MSBFIRST, 16MHZ
     m_spi_map[spi].enabled = false;
     m_spi_map[spi].transmitting = false;   
-    m_spi_map[spi].spi_mode = DEFALUT_SPI_MODE;
-    m_spi_map[spi].bit_order = DEFALUT_BIT_ORDER;
-    m_spi_map[spi].data_mode = DEFALUT_DATA_MODE; 
-    m_spi_map[spi].clock = DEFALUT_SPI_CLOCK;
+    m_spi_map[spi].spi_mode = DEFAULT_SPI_MODE;
+    m_spi_map[spi].bit_order = DEFAULT_BIT_ORDER;
+    m_spi_map[spi].data_mode = DEFAULT_DATA_MODE; 
+    m_spi_map[spi].clock = DEFAULT_SPI_CLOCK;
     m_spi_map[spi].user_callback = NULL;
     m_spi_map[spi].transfer_length = 0;
 }
@@ -247,18 +244,21 @@ void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
 
 uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
 {
+    uint8_t tx_buffer __attribute__((__aligned__(4)));
+    uint8_t rx_buffer __attribute__((__aligned__(4)));
+
     // Wait for SPI transfer finished
     while(m_spi_map[spi].transmitting);
 
-    m_spi_map[spi].tx_buffer[0] = data;
+    tx_buffer = data;
 
     m_spi_map[spi].user_callback = NULL;
-    spi_tx_rx(spi, m_spi_map[spi].tx_buffer, m_spi_map[spi].rx_buffer, 1);
+    spi_tx_rx(spi, &tx_buffer, &rx_buffer, 1);
 
     // Wait for SPI transfer finished
     while(m_spi_map[spi].transmitting);
 
-    return m_spi_map[spi].rx_buffer[0];
+    return rx_buffer;
 }
 
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
@@ -299,10 +299,10 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
         {
             info->clock = 0;
         }
-        info->default_settings = ((m_spi_map[spi].spi_mode == DEFALUT_SPI_MODE) ||
-                                  (m_spi_map[spi].bit_order == DEFALUT_BIT_ORDER) ||
-                                  (m_spi_map[spi].data_mode == DEFALUT_DATA_MODE) ||
-                                  (m_spi_map[spi].clock == DEFALUT_SPI_CLOCK));
+        info->default_settings = ((m_spi_map[spi].spi_mode == DEFAULT_SPI_MODE) ||
+                                  (m_spi_map[spi].bit_order == DEFAULT_BIT_ORDER) ||
+                                  (m_spi_map[spi].data_mode == DEFAULT_DATA_MODE) ||
+                                  (m_spi_map[spi].clock == DEFAULT_SPI_CLOCK));
         info->enabled = m_spi_map[spi].enabled;
         info->mode = m_spi_map[spi].spi_mode;
         info->bit_order = m_spi_map[spi].bit_order;
@@ -352,9 +352,9 @@ int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t
 {
     if (set_default)
     {
-        m_spi_map[spi].data_mode = DEFALUT_DATA_MODE;
-        m_spi_map[spi].bit_order = DEFALUT_BIT_ORDER;
-        m_spi_map[spi].clock = DEFALUT_SPI_CLOCK;        
+        m_spi_map[spi].data_mode = DEFAULT_DATA_MODE;
+        m_spi_map[spi].bit_order = DEFAULT_BIT_ORDER;
+        m_spi_map[spi].clock = DEFAULT_SPI_CLOCK;        
     }
     else
     {
