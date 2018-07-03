@@ -37,7 +37,6 @@
 #include "app_fifo.h"
 #include "usb_hal_cdc.h"
 #include "logging.h"
-#include "hw_ticks.h"
 
 /**
  * @brief Enable power USB detection
@@ -78,7 +77,10 @@ typedef struct {
     app_fifo_t              rx_fifo;
     app_fifo_t              tx_fifo;
 
+    volatile bool           com_opened;
     volatile bool           transmitting;
+    volatile bool           rx_ovf;
+
     // USB CDC 
     uint32_t                baudrate;       // just for compatibility, no need baudrate configuration on nRF52
 } usb_instance_t;
@@ -89,7 +91,7 @@ static usb_instance_t m_usb_instance = {0};
 #define SEND_SIZE NRF_DRV_USBD_EPSIZE   
 static char         m_rx_buffer[READ_SIZE];  
 static char         m_tx_buffer[SEND_SIZE];
- 
+
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                                     app_usbd_cdc_acm_user_event_t event);
 /**
@@ -129,6 +131,12 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
     {
         case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
         {
+            // reset buffer state
+            m_usb_instance.com_opened = true;
+            m_usb_instance.rx_ovf = false;
+            app_fifo_flush(&m_usb_instance.tx_fifo);
+            app_fifo_flush(&m_usb_instance.rx_fifo);
+
             ret_code_t ret;
             /*Setup first transfer*/
             ret = app_usbd_cdc_acm_read(&m_app_cdc_acm, m_rx_buffer, READ_SIZE);
@@ -136,16 +144,25 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             {
                 io_pending = true;
             }
+            LOG_DEBUG(TRACE, "com open!");
         }
         break;
         case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:
+            m_usb_instance.com_opened = false;
+            LOG_DEBUG(TRACE, "com close!!! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
             break;
         case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
         {
             uint8_t data = 0;
             uint16_t size = 0;
 
-            LOG_DEBUG(TRACE, "APP_USBD_CDC_ACM_USER_EVT_TX_DONE");
+            if (m_usb_instance.com_opened == false)
+            {
+                m_usb_instance.transmitting = false;
+                LOG_DEBUG(TRACE, "tx done, but com close!!! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
+                
+                return;
+            }
 
             while ((size < SEND_SIZE) && (app_fifo_get(&m_usb_instance.tx_fifo, &data) == NRF_SUCCESS))
             {
@@ -171,12 +188,16 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
         {
             ret_code_t ret;
-            
+
             do
             {
                 if (io_pending)
                 {
-                    app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0]);
+                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0]))
+                    {
+                        m_usb_instance.rx_ovf = true;
+                        LOG_DEBUG(TRACE, "ERROR!!! rx overflow!!!");
+                    }
                     io_pending = false;
                 }
 
@@ -186,7 +207,11 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                                             READ_SIZE);
                 if (ret == NRF_SUCCESS)    
                 {
-                    app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0]);
+                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0]))
+                    {
+                        m_usb_instance.rx_ovf = true;
+                        LOG_DEBUG(TRACE, "ERROR!!! rx overflow!!!");
+                    }
                 }  
                 else if (ret == NRF_ERROR_IO_PENDING)
                 {
@@ -311,9 +336,15 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
 
 int usb_uart_send(uint8_t data[], uint16_t size)
 {
-    uint32_t ret;
-    uint16_t pre_send_size = 0;
-    uint8_t  pre_send_data = 0;
+    if (!m_usb_instance.com_opened)
+    {
+        return 0;
+    }
+
+    if ((__get_PRIMASK() & 1))
+    {
+        return 0;
+    }
 
     for (int i = 0; i < size; i++)
     {
@@ -322,7 +353,12 @@ int usb_uart_send(uint8_t data[], uint16_t size)
         app_fifo_put(&m_usb_instance.tx_fifo, data[i]);
     }
 
-    if (m_usb_instance.transmitting == false)
+    uint32_t ret;
+    uint16_t pre_send_size = 0;
+    uint8_t  pre_send_data = 0;
+
+    // trigger first transmitting
+    if (!m_usb_instance.transmitting)
     {
         while ((pre_send_size < SEND_SIZE) && (app_fifo_get(&m_usb_instance.tx_fifo, &pre_send_data) == NRF_SUCCESS))
         {
@@ -364,6 +400,9 @@ void usb_hal_attach(void)
         app_usbd_enable();
     }
     app_usbd_start();
+
+    m_usb_instance.rx_ovf = 0;
+    m_usb_instance.com_opened = false;
 }
 
 void usb_hal_detach(void)
@@ -427,5 +466,5 @@ bool usb_hal_is_enabled(void)
 
 bool usb_hal_is_connected(void)
 {
-    return app_usbd_active_check();
+    return m_usb_instance.com_opened;
 }
