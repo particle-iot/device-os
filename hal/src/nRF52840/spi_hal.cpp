@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 #include "nrf_gpio.h"
-#include "nrf_drv_spi.h"
+#include "nrfx_spim.h"
 #include "spi_hal.h"
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
@@ -28,7 +28,7 @@
 #define DEFAULT_SPI_CLOCK       SPI_CLOCK_DIV256
 
 typedef struct {
-    const nrf_drv_spi_t                 *instance;
+    const nrfx_spim_t                   *instance;
     app_irq_priority_t                  priority;
     uint8_t                             ss_pin;
     uint8_t                             sck_pin;
@@ -47,17 +47,17 @@ typedef struct {
     uint16_t                            transfer_length;
 } nrf5x_spi_info_t;
 
-static const nrf_drv_spi_t m_spi1 = NRF_DRV_SPI_INSTANCE(1);  
-static const nrf_drv_spi_t m_spi2 = NRF_DRV_SPI_INSTANCE(2);  
+static const nrfx_spim_t m_spi2 = NRFX_SPIM_INSTANCE(2);  
+static const nrfx_spim_t m_spi3 = NRFX_SPIM_INSTANCE(3);  
 static nrf5x_spi_info_t m_spi_map[TOTAL_SPI] = {
-    {&m_spi1, APP_IRQ_PRIORITY_LOWEST, NRF_DRV_SPI_PIN_NOT_USED, SCK, MOSI, MISO},
-    {&m_spi2, APP_IRQ_PRIORITY_LOWEST, NRF_DRV_SPI_PIN_NOT_USED, D2, D3, D4},
+    {&m_spi2, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO},
+    {&m_spi3, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},
 };
 
-static void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
-                              void *                    p_context)
+static void spi_event_handler(nrfx_spim_evt_t const * p_event,
+                              void *                  p_context)
 {
-    if (p_event->type == NRF_DRV_SPI_EVENT_DONE)
+    if (p_event->type == NRFX_SPIM_EVENT_DONE)
     {
         int spi = (int)p_context;
         m_spi_map[spi].transmitting = false;
@@ -69,31 +69,44 @@ static void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
     }
 }
 
-static inline nrf_drv_spi_frequency_t get_nrf_spi_frequency(uint8_t clock_div)
+static inline nrf_spim_frequency_t get_nrf_spi_frequency(HAL_SPI_Interface spi, uint8_t clock_div)
 {
     switch (clock_div)
     {
         case SPI_CLOCK_DIV2: 
-        case SPI_CLOCK_DIV4: 
+            if (spi == HAL_SPI_INTERFACE2)
+            {
+                return NRF_SPIM_FREQ_32M;
+            }
+        case SPI_CLOCK_DIV4:
+            if (spi == HAL_SPI_INTERFACE2)
+            {
+                return NRF_SPIM_FREQ_16M;
+            }
         case SPI_CLOCK_DIV8: 
-            return NRF_DRV_SPI_FREQ_8M;
+            return NRF_SPIM_FREQ_8M;
         case SPI_CLOCK_DIV16: 
-            return NRF_DRV_SPI_FREQ_4M;
+            return NRF_SPIM_FREQ_4M;
         case SPI_CLOCK_DIV32:
-            return NRF_DRV_SPI_FREQ_2M;
+            return NRF_SPIM_FREQ_2M;
         case SPI_CLOCK_DIV64: 
-            return NRF_DRV_SPI_FREQ_1M;
+            return NRF_SPIM_FREQ_1M;
         case SPI_CLOCK_DIV128: 
-            return NRF_DRV_SPI_FREQ_500K;
+            return NRF_SPIM_FREQ_500K;
         case SPI_CLOCK_DIV256:
-            return NRF_DRV_SPI_FREQ_250K;
-        default: 
-            return NRF_DRV_SPI_FREQ_8M;
+            return NRF_SPIM_FREQ_250K;
     }
+
+    return NRF_SPIM_FREQ_8M;
 }
 
 static inline uint8_t get_nrf_pin_num(uint8_t pin)
 {
+    if (pin >= TOTAL_PINS)
+    {
+        return NRFX_SPIM_PIN_NOT_USED;
+    }
+
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 }
@@ -101,20 +114,19 @@ static inline uint8_t get_nrf_pin_num(uint8_t pin)
 static void spi_init(HAL_SPI_Interface spi)
 {
     uint32_t err_code;
-    static const nrf_drv_spi_mode_t nrf_spi_mode[4] = {NRF_DRV_SPI_MODE_0, NRF_DRV_SPI_MODE_1, NRF_DRV_SPI_MODE_2, NRF_DRV_SPI_MODE_3};
-    nrf_drv_spi_config_t spi_config = {
-        .sck_pin      = get_nrf_pin_num(m_spi_map[spi].sck_pin),
-        .mosi_pin     = get_nrf_pin_num(m_spi_map[spi].mosi_pin),
-        .miso_pin     = get_nrf_pin_num(m_spi_map[spi].miso_pin),
-        .ss_pin       = get_nrf_pin_num(m_spi_map[spi].ss_pin),
-        .irq_priority = m_spi_map[spi].priority,
-        .orc          = 0xFF,
-        .frequency    = get_nrf_spi_frequency(m_spi_map[spi].clock),
-        .mode         = nrf_spi_mode[m_spi_map[spi].data_mode],
-        .bit_order    = (m_spi_map[spi].bit_order == MSBFIRST) ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST
-    };
+    static const nrf_spim_mode_t nrf_spi_mode[4] = {NRF_SPIM_MODE_0, NRF_SPIM_MODE_1, NRF_SPIM_MODE_2, NRF_SPIM_MODE_3};
+    nrfx_spim_config_t spi_config = NRFX_SPIM_DEFAULT_CONFIG;
+    spi_config.sck_pin      = get_nrf_pin_num(m_spi_map[spi].sck_pin);
+    spi_config.mosi_pin     = get_nrf_pin_num(m_spi_map[spi].mosi_pin);
+    spi_config.miso_pin     = get_nrf_pin_num(m_spi_map[spi].miso_pin);
+    spi_config.ss_pin       = get_nrf_pin_num(m_spi_map[spi].ss_pin);
+    spi_config.irq_priority = m_spi_map[spi].priority;
+    spi_config.orc          = 0xFF;
+    spi_config.frequency    = get_nrf_spi_frequency(spi, m_spi_map[spi].clock);
+    spi_config.mode         = nrf_spi_mode[m_spi_map[spi].data_mode];
+    spi_config.bit_order    = (m_spi_map[spi].bit_order == MSBFIRST) ? NRF_SPIM_BIT_ORDER_MSB_FIRST : NRF_SPIM_BIT_ORDER_LSB_FIRST;
 
-    err_code = nrf_drv_spi_init(m_spi_map[spi].instance, &spi_config, spi_event_handler, (void *)((int)spi));
+    err_code = nrfx_spim_init(m_spi_map[spi].instance, &spi_config, spi_event_handler, (void *)((int)spi));
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 
     // Set pin function
@@ -127,7 +139,7 @@ static void spi_init(HAL_SPI_Interface spi)
 
 static void spi_uninit(HAL_SPI_Interface spi)
 {
-    nrf_drv_spi_uninit(m_spi_map[spi].instance);
+    nrfx_spim_uninit(m_spi_map[spi].instance);
 
     // Set pin function
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
@@ -150,14 +162,22 @@ static int spi_tx_rx(HAL_SPI_Interface spi, uint8_t *tx_buf, uint8_t *rx_buf, ui
     uint32_t err_code;
     m_spi_map[spi].transmitting = true;
     m_spi_map[spi].transfer_length = size;
-    err_code = nrf_drv_spi_transfer(m_spi_map[spi].instance, tx_buf, size, rx_buf, size);
+
+    nrfx_spim_xfer_desc_t const spim_xfer_desc =
+    {
+        .p_tx_buffer = tx_buf,
+        .tx_length   = size,
+        .p_rx_buffer = rx_buf,
+        .rx_length   = size,
+    };
+    err_code = nrfx_spim_xfer(m_spi_map[spi].instance, &spim_xfer_desc, 0);
 
     return err_code ? 0 : size;
 }
 
 static void spi_transfer_cancel(HAL_SPI_Interface spi)
 {
-    nrf_drv_spi_abort(m_spi_map[spi].instance);
+    nrfx_spim_abort(m_spi_map[spi].instance);
 }
 
 void HAL_SPI_Init(HAL_SPI_Interface spi)
@@ -186,7 +206,7 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved)
 {
-    if (m_spi_map[spi].ss_pin != NRF_DRV_SPI_PIN_NOT_USED)
+    if (m_spi_map[spi].ss_pin != NRFX_SPIM_PIN_NOT_USED)
     {
         ss_pin_uninit(spi);
     }
