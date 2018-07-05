@@ -22,13 +22,17 @@
 #if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE
 
 #include "control_request_handler.h"
+#include "simple_pool_allocator.h"
+#include "atomic_intrusive_queue.h"
+
+#include "linked_buffer.h"
 
 #include "ble_hal.h"
 
-#include "mbedtls/ccm.h"
-#include "app_fifo.h"
+#include "spark_wiring_thread.h"
 
 #include <memory>
+#include <atomic>
 
 static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
 
@@ -45,7 +49,6 @@ public:
     int init();
     void destroy();
 
-    // TODO: Use a separate thread for the BLE channel loop
     void run();
 
     // Reimplemented from `ControlRequestChannel`
@@ -54,59 +57,99 @@ public:
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
 private:
+    class AesCcmCipher;
+
+    struct Buffer: LinkedBuffer<> {
+        char* data;
+        size_t size;
+    };
+
     // Request data
     struct Request: ctrl_request {
         Request* next; // Next request
-        char* reqBuf; // Request data
-        char* repBuf; // Reply data
+        char* reqBuf; // Request buffer (assembled from multiple input buffers)
+        Buffer* repBuf; // Reply buffer (allocated as a single output buffer)
         int result; // Result code
+        unsigned connId; // Connection ID
         uint16_t id; // Request ID
     };
 
-    Request* readyReqs_; // Completed requests
+    IntrusiveQueue<Request> readyReqs_; // Completed requests
+    Mutex readyReqsLock_;
 
-    Request* sendReq_;
-    size_t sendOffs_;
+    AtomicIntrusiveQueue<Buffer> inBufs_; // Packets received from the client (input buffers)
+    IntrusiveQueue<Buffer> outBufs_; // Packets to be sent to the client (output buffers)
+    IntrusiveQueue<Buffer> readInBufs_; // "Consumed" input buffers (see read() function)
+    size_t inBufSize_; // Total size of all consumed input buffers
 
-    std::unique_ptr<uint8_t[]> recvBuf_;
-    app_fifo_t recvFifo_;
-    Request* recvReq_;
-    size_t recvOffs_;
+    Request* curReq_; // A request being received
+    size_t reqBufSize_; // Size of the request buffer
+    size_t reqBufOffs_; // Offset in the request buffer
 
-    mbedtls_ccm_context aesCcm_;
-    uint32_t reqCount_;
-    uint32_t repCount_;
+    std::unique_ptr<char[]> packetBuf_; // Intermediate buffer for BLE packet data
+    size_t packetSize_; // Size of the pending BLE packet
 
-    uint16_t sendCharHandle_;
-    uint16_t recvCharHandle_;
-    uint16_t connHandle_;
+    std::unique_ptr<AesCcmCipher> aesCcm_; // AES cipher
 
-    volatile uint16_t halConnHandle_;
-    volatile uint16_t maxCharValSize_;
-    volatile bool notifEnabled_;
-    volatile bool writable_;
+    AtomicAllocedPool pool_; // Pool allocator
 
-    int sendNext();
-    int receiveNext();
+    uint16_t connHandle_; // Connection handle used by the processing thread
+    volatile uint16_t curConnHandle_; // Current connection handle
 
-    int parseRequest(Request* req);
-    int encodeReply(Request* req);
+    unsigned connId_; // Last connection ID known to the processing thread
+    std::atomic<unsigned> curConnId_; // Current connection ID
 
-    void connected(const ble_connected_event_data& event);
-    void disconnected(const ble_disconnected_event_data& event);
-    void connParamChanged(const ble_conn_param_changed_event_data& event);
-    void charParamChanged(const ble_char_param_changed_event_data& event);
-    void dataSent(const ble_data_sent_event_data& event);
-    void dataReceived(const ble_data_received_event_data& event);
+    volatile uint16_t maxPacketSize_; // Maximum number of bytes that can be written to the TX characteristic
+    volatile bool notifEnabled_; // Set to `true` if the client is subscribed to the notifications
+    volatile bool writable_; // Set to `true` if the TX characteristic is writable
+
+    uint16_t sendCharHandle_; // TX characteristic handle
+    uint16_t recvCharHandle_; // RX characteristic handle
+
+    int initChannel();
+    void resetChannel();
+
+    int receiveRequest();
+    int sendReply();
+    int sendPacket();
+
+    bool readAll(char* data, size_t size);
+    size_t readSome(char* data, size_t size);
+    void sendBuffer(Buffer* buf);
+
+    int connected(const ble_connected_event_data& event);
+    int disconnected(const ble_disconnected_event_data& event);
+    int connParamChanged(const ble_conn_param_changed_event_data& event);
+    int charParamChanged(const ble_char_param_changed_event_data& event);
+    int dataSent(const ble_data_sent_event_data& event);
+    int dataReceived(const ble_data_received_event_data& event);
 
     int initProfile();
-    int initAesCcm();
+    int initAesCcmCipher();
 
-    Request* allocRequest(size_t size);
-    Request* freeRequest(Request* req);
+    int allocRequest(size_t size, Request** req);
+    static void freeRequest(Request* req);
+
+    static int reallocBuffer(size_t size, Buffer** buf);
+    static void freeBuffer(Buffer* buf);
+
+    int allocPooledBuffer(size_t size, Buffer** buf);
+    void freePooledBuffer(Buffer* buf);
 
     static void processBleEvent(int event, const void* eventData, void* userData);
 };
+
+inline void BleControlRequestChannel::sendBuffer(Buffer* buf) {
+    outBufs_.pushBack(buf);
+}
+
+inline void BleControlRequestChannel::freeBuffer(Buffer* buf) {
+    freeLinkedBuffer(buf);
+}
+
+inline void BleControlRequestChannel::freePooledBuffer(Buffer* buf) {
+    freeLinkedBuffer(buf, &pool_);
+}
 
 } // particle::system
 
