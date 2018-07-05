@@ -1,13 +1,40 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
 #include <cstdint>
-#include <stddef.h>
+#include <cstddef>
+
+#include "spark_wiring_interrupts.h"
+
+#include "allocator.h"
+#include "system_error.h"
 
 #ifndef SIMPLE_POOL_PREFER_SMALLER_BLOCK
 #define SIMPLE_POOL_PREFER_SMALLER_BLOCK (1)
 #endif
 
-class SimpleBasePool {
+class SimpleBasePool: public particle::SimpleAllocator {
 public:
-    void* allocate(size_t size) {
+    virtual void* alloc(size_t size) override {
+        if (!begin_) {
+            return nullptr;
+        }
         void* p = nullptr;
         const size_t alignedSize = aligned(sizeof(BlockHeader) + size);
         if ((size_ - (ptr_ - begin_)) >= alignedSize) {
@@ -51,7 +78,7 @@ public:
         return p;
     }
 
-    void deallocate(void* p) {
+    virtual void free(void* p) override {
         if (p == nullptr) {
             return;
         }
@@ -82,13 +109,30 @@ public:
         shrink();
     }
 
-    virtual ~SimpleBasePool() = default;
+    // FIXME: This API is here for compatibility with the existing system code and unit tests
+    void* allocate(size_t size) {
+        return this->alloc(size);
+    }
+
+    void deallocate(void* p) {
+        this->free(p);
+    }
 
 protected:
-    SimpleBasePool(void* location, size_t size) :
-        begin_(reinterpret_cast<uint8_t*>(location)),
-        size_(size),
-        ptr_(begin_) {
+    SimpleBasePool() {
+        reset();
+    }
+
+    SimpleBasePool(void* location, size_t size) {
+        reset(static_cast<uint8_t*>(location), size);
+    }
+
+    void reset(uint8_t* data = nullptr, size_t size = 0) {
+        begin_ = data;
+        ptr_ = data;
+        size_ = size;
+        freeList_ = nullptr;
+        freeListEnd_ = nullptr;
     }
 
     uint8_t* begin_;
@@ -155,5 +199,35 @@ class SimpleStaticPool : public SimpleBasePool {
 public:
     SimpleStaticPool(void* ptr, size_t size) :
         SimpleBasePool(ptr, size) {
+    }
+};
+
+class AtomicAllocedPool: public SimpleBasePool {
+public:
+    virtual ~AtomicAllocedPool() {
+        delete[] SimpleBasePool::begin_;
+    }
+
+    int init(size_t size) {
+        const auto p = new(std::nothrow) uint8_t[size];
+        if (!p) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        SimpleBasePool::reset(p, size);
+        return 0;
+    }
+
+    virtual void* alloc(size_t size) override {
+        void* p = nullptr;
+        ATOMIC_BLOCK() {
+            p = SimpleBasePool::alloc(size);
+        }
+        return p;
+    }
+
+    virtual void free(void* ptr) override {
+        ATOMIC_BLOCK() {
+            SimpleBasePool::free(ptr);
+        }
     }
 };
