@@ -349,7 +349,7 @@ int initTxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     ble_gatts_attr_t attr = {};
     attr.p_uuid = &chr->uuid;
     attr.p_attr_md = &attrMd;
-    attr.max_len = BLE_MAX_ATTR_VALUE_SIZE;
+    attr.max_len = BLE_MAX_ATTR_VALUE_PACKET_SIZE;
     const uint32_t ret = sd_ble_gatts_characteristic_add(serviceHandle, &charMd, &attr, &chr->handles);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
@@ -380,7 +380,7 @@ int initRxChar(uint16_t serviceHandle, ble_char* halChar, Char* chr) {
     ble_gatts_attr_t attr = {};
     attr.p_uuid = &chr->uuid;
     attr.p_attr_md = &attrMd;
-    attr.max_len = BLE_MAX_ATTR_VALUE_SIZE;
+    attr.max_len = BLE_MAX_ATTR_VALUE_PACKET_SIZE;
     const uint32_t ret = sd_ble_gatts_characteristic_add(serviceHandle, &charMd, &attr, &chr->handles);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_characteristic_add() failed: %u", (unsigned)ret);
@@ -682,11 +682,11 @@ int ble_get_conn_param(uint16_t conn_handle, ble_conn_param* param, void* reserv
         return BLE_ERROR_INVALID_PARAM;
     }
     const uint16_t mtu = nrf_ble_gatt_eff_mtu_get(&g_gatt, conn_handle);
-    if (mtu == 0 || mtu <= BLE_ATT_OPCODE_SIZE + BLE_ATT_HANDLE_SIZE) {
+    if (mtu < BLE_MIN_ATT_MTU_SIZE) {
         LOG(ERROR, "nrf_ble_gatt_eff_mtu_get() failed");
         return BLE_ERROR_UNKNOWN;
     }
-    param->max_char_value_size = mtu - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
+    param->att_mtu_size = mtu;
     return 0;
 }
 
