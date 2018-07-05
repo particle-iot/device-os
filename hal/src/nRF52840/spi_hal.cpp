@@ -50,8 +50,8 @@ typedef struct {
 static const nrfx_spim_t m_spi2 = NRFX_SPIM_INSTANCE(2);  
 static const nrfx_spim_t m_spi3 = NRFX_SPIM_INSTANCE(3);  
 static nrf5x_spi_info_t m_spi_map[TOTAL_SPI] = {
-    {&m_spi2, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO},
-    {&m_spi3, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},
+    {&m_spi3, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO},
+    {&m_spi2, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},
 };
 
 static void spi_event_handler(nrfx_spim_evt_t const * p_event,
@@ -74,12 +74,12 @@ static inline nrf_spim_frequency_t get_nrf_spi_frequency(HAL_SPI_Interface spi, 
     switch (clock_div)
     {
         case SPI_CLOCK_DIV2: 
-            if (spi == HAL_SPI_INTERFACE2)
+            if (spi == HAL_SPI_INTERFACE1)
             {
                 return NRF_SPIM_FREQ_32M;
             }
         case SPI_CLOCK_DIV4:
-            if (spi == HAL_SPI_INTERFACE2)
+            if (spi == HAL_SPI_INTERFACE1)
             {
                 return NRF_SPIM_FREQ_16M;
             }
