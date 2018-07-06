@@ -48,7 +48,11 @@ inline BufferT* allocLinkedBuffer(size_t size, SimpleAllocator* alloc) {
 
 template<typename BufferT, typename EnableT = typename std::enable_if<std::is_trivially_copyable<BufferT>::value>::type>
 inline BufferT* reallocLinkedBuffer(BufferT* buf, size_t size, Allocator* alloc) {
-    return (BufferT*)alloc->realloc(buf, size + detail::alignedSize(sizeof(BufferT)));
+    const auto b = (BufferT*)alloc->realloc(buf, size + detail::alignedSize(sizeof(BufferT)));
+    if (!buf && b) {
+        new(b) BufferT();
+    }
+    return b;
 }
 
 template<typename BufferT>

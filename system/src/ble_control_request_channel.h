@@ -57,6 +57,8 @@ public:
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
 private:
+    class HandshakeHandler;
+    class JpakeHandler;
     class AesCcmCipher;
 
     struct Buffer: LinkedBuffer<> {
@@ -90,6 +92,7 @@ private:
     size_t packetSize_; // Size of the pending BLE packet
 
     std::unique_ptr<AesCcmCipher> aesCcm_; // AES cipher
+    std::unique_ptr<JpakeHandler> jpake_; // JPAKE handshake handler
 
     AtomicAllocedPool pool_; // Pool allocator
 
@@ -125,7 +128,8 @@ private:
     int dataReceived(const ble_data_received_event_data& event);
 
     int initProfile();
-    int initAesCcmCipher();
+    int initAesCcm();
+    int initJpake();
 
     int allocRequest(size_t size, Request** req);
     static void freeRequest(Request* req);
