@@ -24,6 +24,8 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE
 
 #include "device_code.h"
+
+#include "timer_hal.h"
 #include "deviceid_hal.h"
 
 #include "endian.h"
@@ -107,10 +109,13 @@ const size_t HANDSHAKE_HEADER_SIZE = sizeof(HandshakeHeader);
 // Maximum size of the payload data in a handshake packet
 const size_t MAX_HANDSHAKE_PAYLOAD_SIZE = MBEDTLS_SSL_MAX_CONTENT_LEN; // FIXME: Use a smaller buffer
 
-// Size of the JPAKE passphrase in bytes
+// Handshake timeout in milliseconds
+const unsigned HANDSHAKE_TIMEOUT = 10000;
+
+// Size of the ECJ-PAKE passphrase in bytes
 const size_t JPAKE_PASSPHRASE_SIZE = 10;
 
-// Size of the JPAKE's shared secret in bytes
+// Size of the ECJ-PAKE's shared secret in bytes
 const size_t JPAKE_SHARED_SECRET_SIZE = 32;
 
 // Size of the cipher's key in bytes
@@ -473,6 +478,7 @@ BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handle
         reqBufSize_(0),
         reqBufOffs_(0),
         packetSize_(0),
+        connStartTime_(0),
         connHandle_(BLE_INVALID_CONN_HANDLE),
         curConnHandle_(BLE_INVALID_CONN_HANDLE),
         connId_(0),
@@ -550,6 +556,14 @@ void BleControlRequestChannel::run() {
                 goto error;
             }
         }
+        // TODO: The handshake handler doesn't perform verification of the shared secret. For now,
+        // we require the client to send its first request within the handshake timeout, and use
+        // the authentication tag of that request to verify the key exchange
+        if (connStartTime_ != 0 && HAL_Timer_Get_Milli_Seconds() - connStartTime_ >= HANDSHAKE_TIMEOUT) {
+            LOG(ERROR, "Handshake timeout");
+            ret = SYSTEM_ERROR_TIMEOUT;
+            goto error;
+        }
         // Send BLE notification packet
         ret = sendPacket();
         if (ret != 0) {
@@ -609,6 +623,7 @@ int BleControlRequestChannel::initChannel() {
     if (ret != 0) {
         goto error;
     }
+    connStartTime_ = HAL_Timer_Get_Milli_Seconds() + 1;
     return 0;
 error:
     resetChannel();
@@ -634,6 +649,7 @@ void BleControlRequestChannel::resetChannel() {
     reqBufOffs_ = 0;
     inBufSize_ = 0;
     packetSize_ = 0;
+    connStartTime_ = 0;
 }
 
 int BleControlRequestChannel::receiveRequest() {
@@ -677,6 +693,8 @@ int BleControlRequestChannel::receiveRequest() {
     curReq_ = nullptr;
     reqBufSize_ = 0;
     reqBufOffs_ = 0;
+    // Reset handshake timer (see notes in the run() method)
+    connStartTime_ = 0;
     return 0;
 }
 

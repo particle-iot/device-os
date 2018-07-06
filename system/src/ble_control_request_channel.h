@@ -92,7 +92,9 @@ private:
     size_t packetSize_; // Size of the pending BLE packet
 
     std::unique_ptr<AesCcmCipher> aesCcm_; // AES cipher
-    std::unique_ptr<JpakeHandler> jpake_; // JPAKE handshake handler
+    std::unique_ptr<JpakeHandler> jpake_; // J-PAKE handshake handler
+
+    system_tick_t connStartTime_;
 
     AtomicAllocedPool pool_; // Pool allocator
 
