@@ -161,11 +161,6 @@ void UsageFault_Handler(void)
     }
 }
 
-void GPIOTE_IRQHandler(void)
-{
-    BUTTON_Irq_Handler();
-}
-
 void RTC1_IRQHandler(void)
 {
     if (nrf_rtc_event_pending(NRF_RTC1, NRF_RTC_EVENT_TICK))
@@ -241,6 +236,19 @@ void HAL_Core_Setup_override_interrupts(void)
     while(!nrf_sdh_is_enabled());
 }
 
+void HAL_Core_Restore_Interrupt(IRQn_Type irqn) 
+{
+    uint32_t handler = ((const uint32_t*)&link_interrupt_vectors_location)[IRQN_TO_IDX(irqn)];
+
+    // Special chain handler
+    if (irqn == SysTick_IRQn) 
+    {
+        handler = (uint32_t)SysTickChain;
+    } 
+
+    volatile uint32_t* isrs = (volatile uint32_t*)SCB->VTOR;
+    isrs[IRQN_TO_IDX(irqn)] = handler;
+}
 
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
@@ -261,6 +269,9 @@ void HAL_Core_Config(void)
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     SCB->VTOR = (uint32_t)isrs;
+
+    // GPIOTE initialization
+    HAL_Interrupts_Init();
 
     Set_System();
 

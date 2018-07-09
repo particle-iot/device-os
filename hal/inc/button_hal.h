@@ -21,6 +21,7 @@ typedef enum {
 } ButtonMode_TypeDef;
 
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
+void BUTTON_Uninit();
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);

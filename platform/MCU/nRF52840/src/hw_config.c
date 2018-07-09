@@ -141,14 +141,7 @@ void Reset_System(void) {
 
     nrf_rtc_prescaler_set(NRF_RTC1, 0);
 
-    for (int i = 0; i < BUTTONn; i++)
-    {
-        sd_nvic_DisableIRQ(GPIOTE_IRQn);
-        sd_nvic_ClearPendingIRQ(GPIOTE_IRQn);
-        sd_nvic_SetPriority(GPIOTE_IRQn, 0);
-        nrf_gpiote_int_disable(HAL_Buttons[i].int_mask);
-        nrf_gpiote_te_default(HAL_Buttons[i].event_channel);
-    }
+    BUTTON_Uninit();
 
     __DSB();
 }

@@ -35,6 +35,8 @@ typedef struct NRF5x_Pin_Info {
     uint8_t     pwm_channel;    // 4 channels in each instance, range: 0~3
 } NRF5x_Pin_Info;
 
+#define PIN_INVALID         ((uint8_t)(0xFF))
+
 #define NRF_PORT_NONE       ((uint8_t)(0xFF))
 #define NRF_PORT_0          ((uint8_t)(0))
 #define NRF_PORT_1          ((uint8_t)(1))
