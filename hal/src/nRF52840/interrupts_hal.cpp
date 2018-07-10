@@ -198,20 +198,16 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
 
 void HAL_Interrupts_Enable_All(void)
 {
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint8_t nrf_pin;
-
-    for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
-    {
-        if (m_exti_channels[i].pin != PIN_INVALID)
-        {
-            nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[m_exti_channels[i].pin].gpio_port, PIN_MAP[m_exti_channels[i].pin].gpio_pin);
-            nrfx_gpiote_in_event_enable(nrf_pin, true);
-        }
-    }
+    sd_nvic_ClearPendingIRQ(GPIOTE_IRQn);
+    sd_nvic_EnableIRQ(GPIOTE_IRQn);
 }
 
 void HAL_Interrupts_Disable_All(void)
+{
+    sd_nvic_DisableIRQ(GPIOTE_IRQn);
+}
+
+void HAL_Interrupts_Suspend(void)
 {
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint8_t nrf_pin;
@@ -226,14 +222,19 @@ void HAL_Interrupts_Disable_All(void)
     }
 }
 
-void HAL_Interrupts_Suspend(void)
-{
-    // TODO:
-}
-
 void HAL_Interrupts_Restore(void)
 {
-    // TODO:
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    uint8_t nrf_pin;
+
+    for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
+    {
+        if (m_exti_channels[i].pin != PIN_INVALID)
+        {
+            nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[m_exti_channels[i].pin].gpio_port, PIN_MAP[m_exti_channels[i].pin].gpio_pin);
+            nrfx_gpiote_in_event_enable(nrf_pin, true);
+        }
+    }
 }
 
 int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved)
