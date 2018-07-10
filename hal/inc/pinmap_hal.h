@@ -61,7 +61,8 @@ typedef enum {
     PF_DAC,
     PF_UART,
     PF_PWM,
-    PF_SPI
+    PF_SPI,
+    PF_I2C
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
