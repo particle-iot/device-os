@@ -140,7 +140,7 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
     }
     else if (err_code == NRFX_ERROR_INVALID_STATE)
     {
-        // Change interrupt handler
+        // This pin is used by GPIOTE, Change interrupt handler if necessary
         if (config->keepHandler == false)
         {
             for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
@@ -173,6 +173,7 @@ void HAL_Interrupts_Detach(uint16_t pin)
 
 void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
+    // FIXME: since we have handler paramter in HAL_Interrupts_Attach, do we need keepHandler here?
     // Just for compatibility
     (void)keepHandler;
 
