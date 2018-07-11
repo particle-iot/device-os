@@ -44,6 +44,7 @@
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
 #include "usb_hal.h"
+#include "button_hal.h"
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"

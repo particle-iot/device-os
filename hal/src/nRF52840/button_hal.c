@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "button_hal.h"
 #include <nrf_rtc.h>
 #include <nrf_nvic.h>
@@ -56,6 +73,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
         /* Disable RTC0 tick Interrupt */
         nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
 
+        HAL_Pin_Mode(HAL_Buttons[Button].pin, BUTTON1_GPIO_MODE);
         BUTTON_EXTI_Config(Button, ENABLE);
 
         /* Enable the RTC0 NVIC Interrupt */
@@ -91,8 +109,6 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
  */
 uint8_t BUTTON_GetState(Button_TypeDef Button)
 {
-    HAL_Pin_Mode(HAL_Buttons[Button].pin, INPUT_PULLUP);
-
     return HAL_GPIO_Read(HAL_Buttons[Button].pin);
 }
 
@@ -141,28 +157,4 @@ int BUTTON_Debounce()
     }
 
     return pressed;
-}
-
-void BUTTON_Init_Ext()
-{
-    if (BUTTON_Debounce())
-        nrf_rtc_int_enable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
-}
-
-uint8_t BUTTON_Is_Pressed(Button_TypeDef button)
-{
-    return HAL_Buttons[button].active;
-}
-
-uint16_t BUTTON_Pressed_Time(Button_TypeDef button)
-{
-    return HAL_Buttons[button].debounce_time;
-}
-
-void BUTTON_Uninit()
-{
-    for (int i = 0; i < BUTTONn; i++)
-    {
-        HAL_Interrupts_Detach(HAL_Buttons[i].pin);
-    }
 }

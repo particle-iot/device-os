@@ -86,6 +86,31 @@
     #error "Unknown PLATFORM_ID"
 #endif
 
+#ifdef SOFTDEVICE_PRESENT
+//Push Buttons in Device OS, use interrupt HAL
+#define BUTTON1_GPIO_PIN                    20
+#define BUTTON1_GPIO_MODE                   INPUT_PULLUP
+#define BUTTON1_GPIOTE_INTERRUPT_MODE       FALLING
+#define BUTTON1_PRESSED                     0x00
+#define BUTTON1_MIRROR_SUPPORTED            0
+#else
+//Push Buttons in Bootloader, use the lowest level GPIOTE driver
+#define BUTTON1_GPIO_PIN                    11
+#define BUTTON1_GPIO_MODE                   NRF_GPIO_PIN_DIR_INPUT
+#define BUTTON1_GPIO_PUPD                   NRF_GPIO_PIN_PULLUP
+#define BUTTON1_PRESSED                     0x00
+#define BUTTON1_GPIOTE_EVENT_IN             NRF_GPIOTE_EVENTS_IN_0
+#define BUTTON1_GPIOTE_EVENT_CHANNEL        0
+#define BUTTON1_GPIOTE_INT_MASK             NRF_GPIOTE_INT_IN0_MASK
+#define BUTTON1_GPIOTE_INTERRUPT_MODE       FALLING
+#define BUTTON1_GPIOTE_IRQn                 GPIOTE_IRQn
+#define BUTTON1_GPIOTE_IRQ_HANDLER          GPIOTE_IRQHandler
+#define BUTTON1_GPIOTE_IRQ_PRIORITY         7
+#define BUTTON1_GPIOTE_IRQ_INDEX            22
+#define BUTTON1_GPIOTE_TRIGGER              NRF_GPIOTE_POLARITY_HITOLO
+#define BUTTON1_MIRROR_SUPPORTED            0
+#endif 
+
 /* Exported functions ------------------------------------------------------- */
 
 #endif /* __PLATFORM_CONFIG_H */
