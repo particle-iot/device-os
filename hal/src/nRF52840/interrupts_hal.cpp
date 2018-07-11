@@ -17,23 +17,23 @@
 
 #include "interrupts_hal.h"
 #include "interrupts_irq.h"
-#include "sdk_config_system.h"
 #include "nrfx_gpiote.h"
 #include "pinmap_impl.h"
 #include "logging.h"
 #include "nrf_nvic.h"
+#include "gpio_hal.h"
 
 // 8 high accuracy GPIOTE channels
 #define GPIOTE_CHANNEL_NUM              8
 // 8 low accuracy port event channels
 #define PORT_EVENT_CHANNEL_NUM          NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS
 // Prioritize the use of high accuracy channels automatically
-#define EXIT_CHANNEL_NUM                (GPIOTE_CHANNEL_NUM + PORT_EVENT_CHANNEL_NUM)
+#define EXTI_CHANNEL_NUM                (GPIOTE_CHANNEL_NUM + PORT_EVENT_CHANNEL_NUM)
 
 static struct {
     uint8_t                 pin;  
     HAL_InterruptCallback   interrupt_callback;
-} m_exti_channels[EXIT_CHANNEL_NUM] = {{0}};
+} m_exti_channels[EXTI_CHANNEL_NUM] = {{0}};
 
 extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
@@ -44,7 +44,7 @@ static void gpiote_interrupt_handler(nrfx_gpiote_pin_t int_nrf_pin, nrf_gpiote_p
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint8_t src_nrf_pin;
 
-    for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
+    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
     {
         if (m_exti_channels[i].pin == PIN_INVALID)
         {
@@ -67,7 +67,7 @@ static void gpiote_interrupt_handler(nrfx_gpiote_pin_t int_nrf_pin, nrf_gpiote_p
 
 void HAL_Interrupts_Init(void)
 {
-    for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
+    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
     {
         m_exti_channels[i].pin = PIN_INVALID;
     }
@@ -78,7 +78,7 @@ void HAL_Interrupts_Init(void)
     sd_nvic_EnableIRQ(GPIOTE_IRQn);
 }
 
-static nrfx_gpiote_in_config_t get_gpiote_config(InterruptMode mode, bool hi_accu)
+static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mode, bool hi_accu)
 {
     nrfx_gpiote_in_config_t in_config = {
         .sense = NRF_GPIOTE_POLARITY_TOGGLE,
@@ -88,19 +88,32 @@ static nrfx_gpiote_in_config_t get_gpiote_config(InterruptMode mode, bool hi_acc
         .skip_gpio_setup = false,
     };
 
+    // The GPIO configuration is ignored as long as the pin is controlled by GPIOTE.
+    // Configure the GPIOTE pull configuration according to GPIO pull configuration 
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    switch (PIN_MAP[pin].pin_mode)
+    {
+        case INPUT:
+            in_config.pull = NRF_GPIO_PIN_NOPULL;
+            break;
+        case INPUT_PULLUP:
+            in_config.pull = NRF_GPIO_PIN_PULLUP;
+            break;
+        case INPUT_PULLDOWN:
+            in_config.pull = NRF_GPIO_PIN_PULLDOWN;
+            break;
+    }
+
     switch (mode)
     {
         case CHANGE:  
             in_config.sense = NRF_GPIOTE_POLARITY_TOGGLE; 
-            in_config.pull = NRF_GPIO_PIN_PULLUP;
             break;
         case RISING:  
             in_config.sense = NRF_GPIOTE_POLARITY_LOTOHI; 
-            in_config.pull = NRF_GPIO_PIN_PULLDOWN;
             break;
         case FALLING: 
             in_config.sense = NRF_GPIOTE_POLARITY_HITOLO; 
-            in_config.pull = NRF_GPIO_PIN_PULLUP;
             break;
     }
 
@@ -114,19 +127,19 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
 
     nrfx_gpiote_in_config_t in_config;
 
-    in_config = get_gpiote_config(mode, true);
+    in_config = get_gpiote_config(pin, mode, true);
     uint32_t err_code = nrfx_gpiote_in_init(nrf_pin, &in_config, gpiote_interrupt_handler);
     if (err_code == NRFX_ERROR_NO_MEM)
     {
         // High accuracy channels have been used up, use low accuracy channels
-        in_config = get_gpiote_config(mode, false);
+        in_config = get_gpiote_config(pin, mode, false);
         err_code = nrfx_gpiote_in_init(nrf_pin, &in_config, gpiote_interrupt_handler);
     }
 
     if (err_code == NRF_SUCCESS)
     {
         // Add interrupt handler
-        for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
+        for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
         {
             if (m_exti_channels[i].pin == PIN_INVALID)
             {
@@ -140,18 +153,17 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
     }
     else if (err_code == NRFX_ERROR_INVALID_STATE)
     {
-        // This pin is used by GPIOTE, Change interrupt handler if necessary
-        if (config->keepHandler == false)
-        {
-            for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
-            {
-                if (m_exti_channels[i].pin == pin)
-                {
-                    m_exti_channels[i].interrupt_callback.handler = handler;
-                    m_exti_channels[i].interrupt_callback.data = data;
+        // TODO: handler keepHandler
 
-                    break;
-                }
+        // This pin is used by GPIOTE, Change interrupt handler if necessary
+        for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
+        {
+            if (m_exti_channels[i].pin == pin)
+            {
+                m_exti_channels[i].interrupt_callback.handler = handler;
+                m_exti_channels[i].interrupt_callback.data = data;
+
+                break;
             }
         }
     }
@@ -173,11 +185,10 @@ void HAL_Interrupts_Detach(uint16_t pin)
 
 void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
-    // FIXME: since we have handler paramter in HAL_Interrupts_Attach, do we need keepHandler here?
-    // Just for compatibility
+    // TODO
     (void)keepHandler;
 
-    for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
+    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
     {
         if (m_exti_channels[i].pin == pin)
         {
@@ -195,6 +206,9 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
 
     nrfx_gpiote_in_event_disable(nrf_pin);
     nrfx_gpiote_in_uninit(nrf_pin);
+
+    // Restore pin mode
+    HAL_Pin_Mode(pin, PIN_MAP[pin].pin_mode);
 }
 
 void HAL_Interrupts_Enable_All(void)
@@ -213,7 +227,7 @@ void HAL_Interrupts_Suspend(void)
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint8_t nrf_pin;
 
-    for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
+    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
     {
         if (m_exti_channels[i].pin != PIN_INVALID)
         {
@@ -228,7 +242,7 @@ void HAL_Interrupts_Restore(void)
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint8_t nrf_pin;
 
-    for (int i = 0; i < EXIT_CHANNEL_NUM; i++)
+    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
     {
         if (m_exti_channels[i].pin != PIN_INVALID)
         {
@@ -240,7 +254,7 @@ void HAL_Interrupts_Restore(void)
 
 int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved)
 {
-    if (irqn < NonMaskableInt_IRQn || irqn > I2S_IRQn) 
+    if (irqn < NonMaskableInt_IRQn || irqn > SPIM3_IRQn) 
     {
         return 1;
     }

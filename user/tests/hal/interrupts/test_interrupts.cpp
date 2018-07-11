@@ -40,6 +40,8 @@ void setup() {
     config.keepHandler = false;
 
     int data = 123;
+    
+    HAL_Pin_Mode(D2, INPUT_PULLUP);
     HAL_Interrupts_Attach(D2, attach_interrupt_handler, (void *)data, CHANGE, &config);    
 }
 
