@@ -246,7 +246,7 @@ void HAL_Core_Restore_Interrupt(IRQn_Type irqn)
         handler = (uint32_t)SysTickChain;
     } 
 
-    volatile uint32_t* isrs = (volatile uint32_t*)SCB->VTOR;
+    volatile uint32_t* isrs = (volatile uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[IRQN_TO_IDX(irqn)] = handler;
 }
 
