@@ -21,7 +21,7 @@
 #include "application.h"
 #include "cellular_hal.h"
 
-Serial1LogHandler logHandler(LOG_LEVEL_ALL); // for full debugging
+Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL); // for full debugging
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
