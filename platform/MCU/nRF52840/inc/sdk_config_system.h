@@ -17,13 +17,15 @@
 
 #pragma once
 
+#include "app_util_platform.h"
+
 // This configuration overrides the defaults defined in the following files of the nRF SDK:
 //
 // modules/nrfx/templates/nRF52840/nrfx_config.h
 // config/nrf52840/config/sdk_config.h
 
 #define NRFX_GPIOTE_ENABLED                             1
-#define GPIOTE_CONFIG_IRQ_PRIORITY                      7
+#define GPIOTE_CONFIG_IRQ_PRIORITY                      APP_IRQ_PRIORITY_HIGH
 #define NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS      8
 
 #define NRFX_RTC_ENABLED  0
