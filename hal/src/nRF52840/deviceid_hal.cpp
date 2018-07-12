@@ -34,15 +34,6 @@ const uint32_t DEVICE_ID_PREFIX = 0x68ce0fe0;
 const uintptr_t SERIAL_NUMBER_OTP_ADDRESS = 0x00000000;
 const uintptr_t DEVICE_SECRET_OTP_ADDRESS = 0x00000010;
 
-bool isInitialized(const char* data, size_t size) {
-    for (size_t i = 0; i < size; ++i) {
-        if ((unsigned char)data[i] != 0xff) {
-            return true;
-        }
-    }
-    return false;
-}
-
 } // namespace
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
@@ -94,15 +85,15 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
     if (ret < 0) {
         return ret;
     }
-    if (!isInitialized(secret, sizeof(secret))) {
+    if (!isPrintable(secret, sizeof(secret))) {
         // Check the OTP memory
         ret = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, DEVICE_SECRET_OTP_ADDRESS, (uint8_t*)secret, sizeof(secret));
         if (ret < 0) {
             return ret;
         }
-        if (!isInitialized(secret, sizeof(secret))) {
+        if (!isPrintable(secret, sizeof(secret))) {
             // Generate random data
-            Random::genSecure(secret, sizeof(secret));
+            Random().genBase32(secret, sizeof(secret));
         }
         // Update the DCT
         ret = dct_write_app_data(secret, DCT_DEVICE_SECRET_OFFSET, sizeof(secret));
