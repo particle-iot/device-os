@@ -85,24 +85,8 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
         .pull = NRF_GPIO_PIN_NOPULL,
         .is_watcher = false,
         .hi_accuracy = hi_accu,
-        .skip_gpio_setup = false,
+        .skip_gpio_setup = true,
     };
-
-    // The GPIO configuration is ignored as long as the pin is controlled by GPIOTE.
-    // Configure the GPIOTE pull configuration according to GPIO pull configuration 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    switch (PIN_MAP[pin].pin_mode)
-    {
-        case INPUT:
-            in_config.pull = NRF_GPIO_PIN_NOPULL;
-            break;
-        case INPUT_PULLUP:
-            in_config.pull = NRF_GPIO_PIN_PULLUP;
-            break;
-        case INPUT_PULLDOWN:
-            in_config.pull = NRF_GPIO_PIN_PULLDOWN;
-            break;
-    }
 
     switch (mode)
     {
@@ -206,9 +190,6 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
 
     nrfx_gpiote_in_event_disable(nrf_pin);
     nrfx_gpiote_in_uninit(nrf_pin);
-
-    // Restore pin mode
-    HAL_Pin_Mode(pin, PIN_MAP[pin].pin_mode);
 }
 
 void HAL_Interrupts_Enable_All(void)
