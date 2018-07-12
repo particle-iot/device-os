@@ -21,8 +21,12 @@
 #include "interrupts_hal.h"
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
-Serial1LogHandler logHandler(115200);
+// Serial1LogHandler logHandler(115200);
 
+static void common_interrupt_handler(void *data)
+{
+    
+}
 
 static void attach_interrupt_handler(void *data)
 {
@@ -41,6 +45,15 @@ void setup() {
 
     int data = 123;
     
+    for (int i = 0; i < 19; i++)
+    {
+        HAL_Pin_Mode(i, INPUT_PULLUP);
+        HAL_Interrupts_Attach(i, common_interrupt_handler, (void *)data, CHANGE, &config);    
+    }
+
+    HAL_Interrupts_Detach(2);    
+    HAL_Interrupts_Detach(7);    
+
     HAL_Pin_Mode(D2, INPUT_PULLUP);
     HAL_Interrupts_Attach(D2, attach_interrupt_handler, (void *)data, CHANGE, &config);    
 }

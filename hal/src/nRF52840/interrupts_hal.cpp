@@ -39,29 +39,16 @@ extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
-static void gpiote_interrupt_handler(nrfx_gpiote_pin_t int_nrf_pin, nrf_gpiote_polarity_t action)
+static void gpiote_interrupt_handler(nrfx_gpiote_pin_t nrf_pin, nrf_gpiote_polarity_t action)
 {
+    uint8_t pin = NRF_PIN_LOOKUP_TABLE[nrf_pin];
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint8_t src_nrf_pin;
 
-    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
+    HAL_InterruptHandler user_isr_handle = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler;
+    void *data = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data;
+    if (user_isr_handle)
     {
-        if (m_exti_channels[i].pin == PIN_INVALID)
-        {
-            continue;
-        }
-        src_nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[m_exti_channels[i].pin].gpio_port, PIN_MAP[m_exti_channels[i].pin].gpio_pin);
-        if (src_nrf_pin == int_nrf_pin)
-        {
-            HAL_InterruptHandler user_isr_handle = m_exti_channels[i].interrupt_callback.handler;
-            void *data = m_exti_channels[i].interrupt_callback.data;
-            if (user_isr_handle)
-            {
-                user_isr_handle(data);
-            }
-
-            break;
-        }
+        user_isr_handle(data);
     }
 }
 
@@ -130,6 +117,7 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
                 m_exti_channels[i].pin = pin;
                 m_exti_channels[i].interrupt_callback.handler = handler;
                 m_exti_channels[i].interrupt_callback.data = data;
+                PIN_MAP[pin].exti_channel = i;
 
                 break;
             }
@@ -172,24 +160,22 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
     // TODO
     (void)keepHandler;
 
-    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    if (PIN_MAP[pin].exti_channel == EXTI_CHANNEL_NONE)
     {
-        if (m_exti_channels[i].pin == pin)
-        {
-            m_exti_channels[i].pin = PIN_INVALID;
-            m_exti_channels[i].interrupt_callback.handler = NULL;
-            m_exti_channels[i].interrupt_callback.data = NULL;
-
-            break;
-        }
+        return;
     }
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
-    PIN_MAP[pin].pin_func = PF_NONE;
+    m_exti_channels[PIN_MAP[pin].exti_channel].pin = PIN_INVALID;
+    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
+    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
+    PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
 
+    uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     nrfx_gpiote_in_event_disable(nrf_pin);
     nrfx_gpiote_in_uninit(nrf_pin);
+
+    PIN_MAP[pin].pin_func = PF_NONE;
 }
 
 void HAL_Interrupts_Enable_All(void)
