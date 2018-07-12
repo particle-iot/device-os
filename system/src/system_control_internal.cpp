@@ -110,6 +110,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::getSerialNumber(req));
         break;
     }
+    case CTRL_REQUEST_SYSTEM_VERSION: {
+        setResult(req, control::config::getSystemVersion(req));
+        break;
+    }
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
             System.reset();
