@@ -40,6 +40,25 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #define PAIRING_ENABLED 0
 #endif
 
+#undef DEBUG // Legacy logging macro
+
+#if DEBUG_CHANNEL
+#define DEBUG(_fmt, ...) \
+        do { \
+            LOG_PRINTF(TRACE, _fmt "\r\n", ##__VA_ARGS__); \
+        } while (false)
+
+#define DEBUG_DUMP(_data, _size) \
+        do { \
+            LOG_PRINT(TRACE, "> "); \
+            LOG_DUMP(TRACE, _data, _size); \
+            LOG_PRINTF(TRACE, " (%u bytes)\r\n", (unsigned)(_size)); \
+        } while (false)
+#else
+#define DEBUG(...)
+#define DEBUG_DUMP(...)
+#endif
+
 namespace particle {
 
 namespace system {
@@ -107,15 +126,15 @@ const size_t REPLY_HEADER_SIZE = sizeof(ReplyHeader);
 const size_t HANDSHAKE_HEADER_SIZE = sizeof(HandshakeHeader);
 
 // Maximum size of the payload data in a handshake packet
-const size_t MAX_HANDSHAKE_PAYLOAD_SIZE = MBEDTLS_SSL_MAX_CONTENT_LEN; // FIXME: Use a smaller buffer
+const size_t MAX_HANDSHAKE_PAYLOAD_SIZE = 512;
 
 // Handshake timeout in milliseconds
-const unsigned HANDSHAKE_TIMEOUT = 10000;
+const unsigned HANDSHAKE_TIMEOUT = 15000;
 
-// Size of the ECJ-PAKE passphrase in bytes
+// Size of the J-PAKE passphrase in bytes
 const size_t JPAKE_PASSPHRASE_SIZE = 10;
 
-// Size of the ECJ-PAKE's shared secret in bytes
+// Size of the J-PAKE's shared secret in bytes
 const size_t JPAKE_SHARED_SECRET_SIZE = 32;
 
 // Size of the cipher's key in bytes
@@ -173,6 +192,7 @@ protected:
             }
             size_ = littleEndianToNative(h.size);
             if (size_ == 0 || size_ > MAX_HANDSHAKE_PAYLOAD_SIZE) {
+                LOG_DEBUG(WARN, "Too large handshake packet");
                 return SYSTEM_ERROR_TOO_LARGE;
             }
             offs_ = 0;
@@ -229,7 +249,6 @@ private:
 
 class BleControlRequestChannel::JpakeHandler: public HandshakeHandler {
 public:
-
     explicit JpakeHandler(BleControlRequestChannel* channel) :
             HandshakeHandler(channel),
             ctx_(),
@@ -473,6 +492,11 @@ private:
 
 BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handler) :
         ControlRequestChannel(handler),
+#if DEBUG_CHANNEL
+        allocReqCount_(0),
+        heapBufCount_(0),
+        poolBufCount_(0),
+#endif
         inBufSize_(0),
         curReq_(nullptr),
         reqBufSize_(0),
@@ -495,6 +519,9 @@ BleControlRequestChannel::~BleControlRequestChannel() {
 }
 
 int BleControlRequestChannel::init() {
+    // Make sure we have a copy of the device secret in the DCT, so that it can be easily extracted
+    // via dfu-util for testing purposes
+    hal_get_device_secret(nullptr, 0, nullptr);
     // Initialize the BLE profile
     int ret = initProfile();
     if (ret != 0) {
@@ -519,15 +546,19 @@ void BleControlRequestChannel::run() {
     int ret = 0;
     const auto connId = curConnId_.load(std::memory_order_acquire);
     if (connId_ != connId) {
+        const auto prevConnHandle = connHandle_;
+        connHandle_ = curConnHandle_;
+        connId_ = connId;
         // Reset channel state
         resetChannel();
-        connId_ = connId;
-        connHandle_ = curConnHandle_;
-        if (connHandle_ != BLE_INVALID_CONN_HANDLE) { // Connected
+        if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
+            LOG(TRACE, "Connected");
             ret = initChannel();
             if (ret != 0) {
                 goto error;
             }
+        } else if (prevConnHandle != BLE_INVALID_CONN_HANDLE) {
+            LOG(TRACE, "Disconnected");
         }
     }
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
@@ -535,6 +566,7 @@ void BleControlRequestChannel::run() {
             // Process handshake packets
             ret = jpake_->run();
             if (ret < 0) {
+                LOG(ERROR, "Handshake failed");
                 goto error;
             }
             if (ret == JpakeHandler::DONE) {
@@ -543,6 +575,7 @@ void BleControlRequestChannel::run() {
                     goto error;
                 }
                 jpake_.reset();
+                LOG(TRACE, "Handshake done");
             }
         } else {
             // Serialize next reply and enqueue it for sending
@@ -623,7 +656,7 @@ int BleControlRequestChannel::initChannel() {
     if (ret != 0) {
         goto error;
     }
-    connStartTime_ = HAL_Timer_Get_Milli_Seconds() + 1;
+    connStartTime_ = HAL_Timer_Get_Milli_Seconds();
     return 0;
 error:
     resetChannel();
@@ -688,6 +721,7 @@ int BleControlRequestChannel::receiveRequest() {
     memcpy(&rh, p + MESSAGE_HEADER_SIZE, REQUEST_HEADER_SIZE);
     curReq_->id = littleEndianToNative(rh.id); // Request ID
     curReq_->type = littleEndianToNative(rh.type); // Request type
+    LOG(TRACE, "Received a request message, ID: %u", (unsigned)curReq_->id);
     // Process request
     handler()->processRequest(curReq_, this);
     curReq_ = nullptr;
@@ -737,6 +771,7 @@ int BleControlRequestChannel::sendReply() {
         // Enqueue the reply buffer for sending
         outBufs_.pushBack(req->repBuf);
         req->repBuf = nullptr;
+        LOG(TRACE, "Enqueued a reply message for sending, ID: %u", (unsigned)req->id);
     }
     freeRequest(req);
     return ret;
@@ -775,7 +810,8 @@ int BleControlRequestChannel::sendPacket() {
         LOG(ERROR, "ble_set_char_value() failed: %d", ret);
         return ret;
     }
-    LOG_DEBUG(TRACE, "%u bytes sent", (unsigned)packetSize_);
+    DEBUG("Sent BLE packet");
+    DEBUG_DUMP(packetBuf_.get(), packetSize_);
     packetSize_ = 0;
     return 0;
 }
@@ -791,22 +827,25 @@ bool BleControlRequestChannel::readAll(char* data, size_t size) {
         return false; // Wait for more data
     }
     // Copy data to the destination buffer
-    inBufSize_ -= size;
-    while (size > 0) {
+    DEBUG("Reading %u bytes", (unsigned)size);
+    size_t offs = 0;
+    while (offs < size) {
         buf = readInBufs_.front();
         SPARK_ASSERT(buf);
-        const size_t n = std::min(size, buf->size);
-        memcpy(data, buf->data, n);
-        buf->data += n;
+        const size_t n = std::min(size - offs, buf->size);
+        memcpy(data + offs, buf->data, n);
         buf->size -= n;
         if (buf->size == 0) {
-            // Free a drained buffer
+            // Free the drained buffer
             readInBufs_.popFront();
             freePooledBuffer(buf);
+        } else {
+            buf->data += n;
         }
-        data += n;
-        size -= n;
+        offs += n;
     }
+    inBufSize_ -= size;
+    DEBUG_DUMP(data, size);
     return true;
 }
 
@@ -819,8 +858,10 @@ size_t BleControlRequestChannel::readSome(char* data, size_t size) {
     if (inBufSize_ < size) {
         size = inBufSize_;
     }
-    const bool ok = readAll(data, size);
-    SPARK_ASSERT(ok);
+    if (size > 0) {
+        const bool ok = readAll(data, size);
+        SPARK_ASSERT(ok);
+    }
     return size;
 }
 
@@ -894,12 +935,14 @@ int BleControlRequestChannel::dataSent(const ble_data_sent_event_data& event) {
 
 int BleControlRequestChannel::dataReceived(const ble_data_received_event_data& event) {
     if (event.char_handle == recvCharHandle_) {
-        LOG_DEBUG(TRACE, "%u bytes received", (unsigned)event.size);
+        DEBUG("Received BLE packet");
+        DEBUG_DUMP(event.data, event.size);
         Buffer* buf = nullptr;
         const int ret = allocPooledBuffer(event.size, &buf);
         if (ret != 0) {
             return ret;
         }
+        memcpy(buf->data, event.data, event.size);
         inBufs_.pushBack(buf);
     }
     return 0;
@@ -1038,8 +1081,13 @@ int BleControlRequestChannel::allocRequest(size_t size, Request** req) {
         r->request_data = r->reqBuf + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE;
     }
     r->request_size = size;
+    r->connId = connId_;
     r->channel = this;
     *req = r.release(); // Transfer ownership
+#if DEBUG_CHANNEL
+    const auto count = ++allocReqCount_;
+    DEBUG("Allocated a request object (count: %u)", (unsigned)count);
+#endif
     return 0;
 }
 
@@ -1048,6 +1096,10 @@ void BleControlRequestChannel::freeRequest(Request* req) {
         freeBuffer(req->repBuf);
         delete[] req->reqBuf;
         delete req;
+#if DEBUG_CHANNEL
+        const auto count = --allocReqCount_;
+        DEBUG("Freed a request object (count: %u)", (unsigned)count);
+#endif
     }
 }
 
@@ -1058,8 +1110,24 @@ int BleControlRequestChannel::reallocBuffer(size_t size, Buffer** buf) {
     }
     b->data = linkedBufferData(b);
     b->size = size;
+#if DEBUG_CHANNEL
+    if (!*buf) {
+        const auto count = ++heapBufCount_;
+        DEBUG("Allocated a buffer, size: %u (count: %u)", (unsigned)size, (unsigned)count);
+    }
+#endif
     *buf = b;
     return 0;
+}
+
+void BleControlRequestChannel::freeBuffer(Buffer* buf) {
+    if (buf) {
+        freeLinkedBuffer(buf);
+#if DEBUG_CHANNEL
+        const auto count = --heapBufCount_;
+        DEBUG("Freed a buffer (count: %u)", (unsigned)count);
+#endif
+    }
 }
 
 int BleControlRequestChannel::allocPooledBuffer(size_t size, Buffer** buf) {
@@ -1070,7 +1138,21 @@ int BleControlRequestChannel::allocPooledBuffer(size_t size, Buffer** buf) {
     b->data = linkedBufferData(b);
     b->size = size;
     *buf = b;
+#if DEBUG_CHANNEL
+    const auto count = ++poolBufCount_;
+    DEBUG("Allocated a pooled buffer, size: %u (count: %u)", (unsigned)size, (unsigned)count);
+#endif
     return 0;
+}
+
+void BleControlRequestChannel::freePooledBuffer(Buffer* buf) {
+    if (buf) {
+        freeLinkedBuffer(buf, &pool_);
+#if DEBUG_CHANNEL
+        const auto count = --poolBufCount_;
+        DEBUG("Freed a pooled buffer (count: %u)", (unsigned)count);
+#endif
+    }
 }
 
 // Note: This method is called from an ISR

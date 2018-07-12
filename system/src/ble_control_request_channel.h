@@ -34,6 +34,10 @@
 #include <memory>
 #include <atomic>
 
+#ifndef DEBUG_CHANNEL
+#define DEBUG_CHANNEL 0
+#endif
+
 static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
 
 namespace particle {
@@ -76,6 +80,11 @@ private:
         uint16_t id; // Request ID
     };
 
+#if DEBUG_CHANNEL
+    std::atomic<unsigned> allocReqCount_;
+    std::atomic<unsigned> heapBufCount_;
+    std::atomic<unsigned> poolBufCount_;
+#endif
     IntrusiveQueue<Request> readyReqs_; // Completed requests
     Mutex readyReqsLock_;
 
@@ -134,10 +143,10 @@ private:
     int initJpake();
 
     int allocRequest(size_t size, Request** req);
-    static void freeRequest(Request* req);
+    void freeRequest(Request* req);
 
-    static int reallocBuffer(size_t size, Buffer** buf);
-    static void freeBuffer(Buffer* buf);
+    int reallocBuffer(size_t size, Buffer** buf);
+    void freeBuffer(Buffer* buf);
 
     int allocPooledBuffer(size_t size, Buffer** buf);
     void freePooledBuffer(Buffer* buf);
@@ -147,14 +156,6 @@ private:
 
 inline void BleControlRequestChannel::sendBuffer(Buffer* buf) {
     outBufs_.pushBack(buf);
-}
-
-inline void BleControlRequestChannel::freeBuffer(Buffer* buf) {
-    freeLinkedBuffer(buf);
-}
-
-inline void BleControlRequestChannel::freePooledBuffer(Buffer* buf) {
-    freeLinkedBuffer(buf, &pool_);
 }
 
 } // particle::system
