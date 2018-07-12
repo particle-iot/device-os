@@ -17,6 +17,7 @@ INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/freertos
 INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/openthread
 INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/mbedtls
 INCLUDE_DIRS += $(HAL_SRC_INCL_PATH)/littlefs
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/api
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/openthread
 endif

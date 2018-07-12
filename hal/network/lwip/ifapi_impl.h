@@ -15,38 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/**
- * @file
- * @brief
- *  This file defines the implementation details for POSIX-compatible socket_hal for mesh-virtual platform.
- */
+#ifndef NETWORK_LWIP_IFAPI_IMPL_H
+#define NETWORK_LWIP_IFAPI_IMPL_H
 
-#ifndef SOCKET_HAL_POSIX_IMPL_H
-#define SOCKET_HAL_POSIX_IMPL_H
+#include "socket_hal_posix.h"
 
-#include <lwip/sockets.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-/**
- * @addtogroup socket_hal_posix_impl
- *
- * @brief
- *   This module provides implementation details for POSIX-compatible socket_hal for mesh-virtual platform.
- *
- * @{
- *
- */
-
-/**
- * @}
- *
- */
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif /* SOCKET_HAL_POSIX_IMPL_H */
+#endif /* NETWORK_LWIP_IFAPI_IMPL_H */
