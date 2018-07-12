@@ -166,15 +166,14 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
         return;
     }
 
-    m_exti_channels[PIN_MAP[pin].exti_channel].pin = PIN_INVALID;
-    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
-    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
-    PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
-
     uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     nrfx_gpiote_in_event_disable(nrf_pin);
     nrfx_gpiote_in_uninit(nrf_pin);
 
+    m_exti_channels[PIN_MAP[pin].exti_channel].pin = PIN_INVALID;
+    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
+    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
+    PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
     PIN_MAP[pin].pin_func = PF_NONE;
 }
 
