@@ -132,7 +132,7 @@ const size_t MAX_HANDSHAKE_PAYLOAD_SIZE = 512;
 const unsigned HANDSHAKE_TIMEOUT = 15000;
 
 // Size of the J-PAKE passphrase in bytes
-const size_t JPAKE_PASSPHRASE_SIZE = 10;
+const size_t JPAKE_PASSPHRASE_SIZE = 15;
 
 // Size of the J-PAKE's shared secret in bytes
 const size_t JPAKE_SHARED_SECRET_SIZE = 32;
