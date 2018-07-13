@@ -37,6 +37,7 @@ typedef enum HAL_SPI_Interface {
 #if PLATFORM_ID == 10 // Electron
    ,HAL_SPI_INTERFACE3 = 2     //maps to SPI3 (pins: C3, C2, C1)
 #endif
+    ,TOTAL_SPI
 } HAL_SPI_Interface;
 
 typedef enum
