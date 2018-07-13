@@ -29,10 +29,10 @@ extern "C" {
 #include "platform_flash_modules.h"
 #include "static_assert.h"
 #include "stddef.h"     // for offsetof in C
-#include "rgbled_hal_impl.h" // for led_config_t
+#include "rgbled_hal.h" // for led_config_t
 #include <stdio.h>
 #include "dct_hal.h"
-#include "button_hal_impl.h"
+#include "button_hal.h"
 
 #define MAX_MODULES_SLOT    5 //Max modules
 #define FAC_RESET_SLOT      0 //Factory reset module index

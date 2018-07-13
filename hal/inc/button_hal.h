@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef _BUTTON_HAL_H
 #define _BUTTON_HAL_H
 
@@ -21,6 +38,7 @@ typedef enum {
 } ButtonMode_TypeDef;
 
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
+void BUTTON_Uninit();
 void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
 uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);

@@ -1,7 +1,25 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef _BUTTON_HAL_IMPL_H
 #define _BUTTON_HAL_IMPL_H
 
 #include "nrfx_types.h"
+#include "nrf52840.h"
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
 
@@ -9,22 +27,7 @@
 extern "C" {
 #endif
 
-//Push Buttons
-#define BUTTON1_GPIO_PIN                    11
-#define BUTTON1_GPIO_MODE                   NRF_GPIO_PIN_DIR_INPUT
-#define BUTTON1_GPIO_PUPD                   NRF_GPIO_PIN_PULLUP
-#define BUTTON1_PRESSED                     0x00
-#define BUTTON1_GPIOTE_EVENT_IN             NRF_GPIOTE_EVENTS_IN_0
-#define BUTTON1_GPIOTE_EVENT_CHANNEL        0
-#define BUTTON1_GPIOTE_INT_MASK             NRF_GPIOTE_INT_IN0_MASK
-#define BUTTON1_GPIOTE_INTERRUPT_MODE       FALLING
-#define BUTTON1_GPIOTE_IRQn                 GPIOTE_IRQn
-#define BUTTON1_GPIOTE_IRQ_HANDLER          GPIOTE_IRQHandler
-#define BUTTON1_GPIOTE_IRQ_PRIORITY         7
-#define BUTTON1_GPIOTE_IRQ_INDEX            22
-#define BUTTON1_GPIOTE_TRIGGER              NRF_GPIOTE_POLARITY_HITOLO
-#define BUTTON1_MIRROR_SUPPORTED            0
-
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 typedef struct {
     uint16_t              pin;
     nrf_gpio_pin_dir_t    mode;
@@ -39,6 +42,15 @@ typedef struct {
     uint16_t              nvic_irq_prio;
     uint8_t               padding[12];
 } button_config_t;
+#else
+typedef struct {
+    uint16_t              pin;
+    uint8_t               interrupt_mode;
+    volatile uint8_t      active;
+    volatile uint16_t     debounce_time;
+    uint8_t               padding[26];
+} button_config_t;
+#endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
 
 #ifdef __cplusplus
 }

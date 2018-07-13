@@ -33,7 +33,10 @@ typedef struct NRF5x_Pin_Info {
     uint8_t     adc_channel;
     uint8_t     pwm_instance;   // 4 instances on nRF52, range: 0~3
     uint8_t     pwm_channel;    // 4 channels in each instance, range: 0~3
+    uint8_t     exti_channel;   // 16 channels
 } NRF5x_Pin_Info;
+
+#define PIN_INVALID         ((uint8_t)(0xFF))
 
 #define NRF_PORT_NONE       ((uint8_t)(0xFF))
 #define NRF_PORT_0          ((uint8_t)(0))
@@ -43,6 +46,8 @@ typedef struct NRF5x_Pin_Info {
 #define ADC_CHANNEL_NONE    CHANNEL_NONE
 #define DAC_CHANNEL_NONE    CHANNEL_NONE
 #define PWM_INSTANCE_NONE   ((uint8_t)(0xFF))
+#define PWM_CHANNEL_NONE    CHANNEL_NONE
+#define EXTI_CHANNEL_NONE   CHANNEL_NONE
 
 extern NRF5x_Pin_Info* HAL_Pin_Map(void);
 
