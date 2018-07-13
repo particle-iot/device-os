@@ -24,16 +24,23 @@
 #include <openthread/message.h>
 #include <openthread/ip6.h>
 #include <openthread/dhcp6_client.h>
+#include "basenetif.h"
 
 #ifdef __cplusplus
 
 namespace particle { namespace net {
 
-class OpenThreadNetif {
+class OpenThreadNetif : public BaseNetif {
 public:
     OpenThreadNetif(otInstance* ot = nullptr);
-    ~OpenThreadNetif();
+    virtual ~OpenThreadNetif();
 
+    otInstance* getOtInstance();
+
+protected:
+    virtual void ifEventHandler(const if_event* ev) override;
+
+private:
     /* LwIP netif init callback */
     static err_t initCb(netif *netif);
     /* LwIP netif output_ip6 callback */
@@ -44,21 +51,15 @@ public:
     /* OpenThread state changed callback */
     static void otStateChangedCb(uint32_t flags, void* ctx);
 
-    netif* interface();
-
-    otInstance* getOtInstance();
-
-    int up();
-    int down();
-
-protected:
     void input(otMessage* message);
     void stateChanged(uint32_t flags);
 
     void refreshIpAddresses();
 
+    int up();
+    int down();
+
 private:
-    netif netif_ = {};
     otInstance* ot_ = nullptr;
     otNetifAddress slaacAddresses_[OPENTHREAD_CONFIG_NUM_SLAAC_ADDRESSES] = {};
 #if OPENTHREAD_ENABLE_DHCP6_CLIENT

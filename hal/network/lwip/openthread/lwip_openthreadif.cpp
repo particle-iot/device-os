@@ -56,7 +56,8 @@ int otNetifAddressStateToIp6AddrState(const otNetifAddress* addr) {
 } /* anonymous */
 
 OpenThreadNetif::OpenThreadNetif(otInstance* ot)
-        : ot_(ot) {
+        : BaseNetif(),
+          ot_(ot) {
 
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
     if (!ot_) {
@@ -79,7 +80,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     netifapi_netif_add(interface(), nullptr, nullptr, nullptr, nullptr, initCb, tcpip_input);
     interface()->state = this;
     /* Automatically set it up */
-    netifapi_netif_set_up(interface());
+    /* netifapi_netif_set_up(interface()); */
 
     /* Register OpenThread receive callback */
     otIp6SetReceiveCallback(ot_, otReceiveCb, this);
@@ -105,8 +106,8 @@ OpenThreadNetif::~OpenThreadNetif() {
 
 /* LwIP netif init callback */
 err_t OpenThreadNetif::initCb(netif* netif) {
-    netif->name[0] = 'o';
-    netif->name[1] = 't';
+    netif->name[0] = 't';
+    netif->name[1] = 'h';
 
     netif->mtu = 1280;
     netif->output_ip6 = outputIp6Cb;
@@ -397,10 +398,6 @@ void OpenThreadNetif::input(otMessage* msg) {
     }
 }
 
-netif* OpenThreadNetif::interface() {
-    return &netif_;
-}
-
 otInstance* OpenThreadNetif::getOtInstance() {
     return ot_;
 }
@@ -435,4 +432,14 @@ int OpenThreadNetif::down() {
     }
 
     return r;
+}
+
+void OpenThreadNetif::ifEventHandler(const if_event* ev) {
+    if (ev->ev_type == IF_EVENT_STATE) {
+        if (ev->ev_if_state->state) {
+            up();
+        } else {
+            down();
+        }
+    }
 }
