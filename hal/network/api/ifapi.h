@@ -25,7 +25,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#ifndef IF_T_DEFINED
 typedef void* if_t;
+#endif /* IF_T_DEFINED */
 
 enum if_flags_t {
     IFF_NONE          = 0x00,
@@ -65,18 +67,20 @@ enum if_xflags_t {
 #define IF_NAMESIZE (6)
 #endif /* IF_NAMESIZE */
 
-enum if_addr_flags_t {
-    IF_ADDR_FLAG_NONE                 = 0x00,
-    IF_ADDR_FLAG_IP6_STATE_TENTATIVE  = 0x01,
+enum if_ip6_addr_state_t {
+    IF_IP6_ADDR_STATE_NONE                 = 0x00,
+    IF_IP6_ADDR_STATE_INVALID              = 0x00,
+    IF_IP6_ADDR_STATE_TENTATIVE            = 0x01,
 
-    IF_ADDR_FLAG_IP6_STATE_VALID      = 0x02,
-    IF_ADDR_FLAG_IP6_STATE_DEPRECATED = 0x02,
+    IF_IP6_ADDR_STATE_VALID                = 0x02,
+    IF_IP6_ADDR_STATE_DEPRECATED           = 0x02,
 
-    IF_ADDR_FLAG_IP6_STATE_PREFERRED  = 0x04,
-    IF_ADDR_FLAG_IP6_STATE_DUPLICATED = 0x08,
+    IF_IP6_ADDR_STATE_PREFERRED            = 0x06,
+    IF_IP6_ADDR_STATE_DUPLICATED           = 0x08
 };
 
 struct if_ip6_addr_data {
+    uint8_t state;
     unsigned int valid_lifetime;
     unsigned int preferred_lifetime;
 };
@@ -84,13 +88,11 @@ struct if_ip6_addr_data {
 struct if_addr {
     /* Do not reorder. Aims to be compatible with 'struct ifaddrs' */
     struct sockaddr* addr;
-    union {
-        struct sockaddr* netmask;
-        uint8_t prefixlen;
-    };
+    /* Unset for AF_INET6 addresses */
+    struct sockaddr* netmask;
     union {
         struct sockaddr* peeraddr;
-        /* XXX */
+        /* XXX: Routing table should be used instead */
         struct sockaddr* gw;
     };
 
@@ -98,6 +100,9 @@ struct if_addr {
         void* data;
         struct if_ip6_addr_data* ip6_addr_data;
     };
+
+    /* Will be set for both IPv4 and IPv6 */
+    uint8_t prefixlen;
 
     unsigned int flags;
 };
@@ -153,10 +158,12 @@ struct if_event_link_state {
 };
 
 struct if_event_addr {
+    struct if_addr* oldaddr;
     struct if_addr* addr;
 };
 
 struct if_event_lladdr {
+    struct sockaddr_ll* oldaddr;
     struct sockaddr_ll* addr;
 };
 
@@ -211,6 +218,8 @@ int if_get_lladdr(if_t iface, struct sockaddr_ll* addr);
 int if_set_lladdr(if_t iface, const struct sockaddr_ll* addr);
 
 if_event_handler_cookie_t if_event_handler_add(if_event_handler_t handler, void* arg);
+if_event_handler_cookie_t if_event_handler_add_if(if_t iface, if_event_handler_t handler, void* arg);
+if_event_handler_cookie_t if_event_handler_self(if_t iface, if_event_handler_t handler, void* arg);
 int if_event_handler_del(if_event_handler_cookie_t cookie);
 
 #ifdef __cplusplus

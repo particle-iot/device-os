@@ -18,6 +18,7 @@
 #include "ifapi.h"
 #include "ipsockaddr.h"
 #include "lwiplock.h"
+#include <lwip/tcpip.h>
 #include <lwip/netif.h>
 #include <lwip/netifapi.h>
 #include <lwip/dhcp.h>
@@ -33,7 +34,7 @@ bool netif_validate(if_t iface) {
     LwipTcpIpCoreLock lk;
     netif* netif;
     NETIF_FOREACH(netif) {
-        if ((if_t)netif == iface) {
+        if (netif == iface) {
             return true;
         }
     }
@@ -43,18 +44,104 @@ bool netif_validate(if_t iface) {
 
 struct EventHandlerList {
     EventHandlerList* next;
+    if_t iface;
     if_event_handler_t handler;
     void* arg;
+    bool self;
 };
 
 EventHandlerList* s_eventHandlerList = nullptr;
+EventHandlerList* s_selfEventHandlerList = nullptr;
 
-void notify_all_handlers_event(struct netif* netif, const struct if_event* ev) {
-    for (EventHandlerList* h = s_eventHandlerList; h != nullptr; h = h->next) {
-        if (h->handler) {
-            h->handler(h->arg, (if_t)netif, ev);
+if_ip6_addr_state_t netif_ip6_state_to_if_ip6_addr_state(uint8_t state) {
+    switch (state) {
+        case IP6_ADDR_TENTATIVE:
+        case IP6_ADDR_TENTATIVE_1:
+        case IP6_ADDR_TENTATIVE_2:
+        case IP6_ADDR_TENTATIVE_3:
+        case IP6_ADDR_TENTATIVE_4:
+        case IP6_ADDR_TENTATIVE_5:
+        case IP6_ADDR_TENTATIVE_6:
+        case IP6_ADDR_TENTATIVE_7: {
+            return IF_IP6_ADDR_STATE_TENTATIVE;
+        }
+        case IP6_ADDR_DEPRECATED: {
+            return IF_IP6_ADDR_STATE_DEPRECATED;
+        }
+        case IP6_ADDR_PREFERRED: {
+            return IF_IP6_ADDR_STATE_PREFERRED;
+        }
+        case IP6_ADDR_DUPLICATED: {
+            return IF_IP6_ADDR_STATE_DUPLICATED;
+        }
+        case IP6_ADDR_INVALID:
+        default: {
+            break;
         }
     }
+
+    return IF_IP6_ADDR_STATE_INVALID;
+}
+
+void netif_ip6_address_to_if_addr(struct netif* netif, uint8_t i, struct if_addr* a) {
+    IP6ADDR_PORT_TO_SOCKADDR((sockaddr_in6*)a->addr, netif_ip6_addr(netif, i), 0);
+    /* XXX: LwIP supports only /64 prefixes at the moment */
+    if (!ip6_addr_isany(netif_ip6_addr(netif, i))) {
+        a->prefixlen = 64;
+    } else {
+        a->prefixlen = 0;
+    }
+
+    const uint8_t state = netif_ip6_addr_state(netif, i);
+    a->ip6_addr_data->state = netif_ip6_state_to_if_ip6_addr_state(state);
+
+    a->ip6_addr_data->valid_lifetime = netif_ip6_addr_valid_life(netif, i);
+    a->ip6_addr_data->preferred_lifetime = netif_ip6_addr_pref_life(netif, i);
+}
+
+unsigned int ip4_netmask_to_prefix_length(const ip4_addr_t* netmask) {
+    const unsigned int mask = ip4_addr_get_u32(netmask);
+    return mask == 0 ? 0 : (32 - __builtin_ctz(mask));
+}
+
+void netif_ip4_address_to_if_addr(struct netif* netif, struct if_addr* a) {
+    IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->addr, netif_ip4_addr(netif), 0);
+    IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->netmask, netif_ip4_netmask(netif), 0);
+    IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->gw, netif_ip4_gw(netif), 0);
+
+    a->prefixlen = ip4_netmask_to_prefix_length(netif_ip4_netmask(netif));
+}
+
+if_event_handler_cookie_t common_event_handler_add(if_t iface, bool self, if_event_handler_t handler, void* arg) {
+    EventHandlerList** list = self ? &s_selfEventHandlerList : &s_eventHandlerList;
+
+    /* We should really implement a list-like common class */
+    EventHandlerList* e = new EventHandlerList;
+    if (e) {
+        LwipTcpIpCoreLock lk;
+        e->handler = handler;
+        e->arg = arg;
+        e->next = *list;
+        e->iface = iface;
+        e->self = self;
+        *list = e;
+    }
+
+    return e;
+}
+
+void notify_all_handlers_event_list(EventHandlerList* list, struct netif* netif, const struct if_event* ev) {
+    for (EventHandlerList* h = list; h != nullptr; h = h->next) {
+        if (h->handler && (h->iface == nullptr || h->iface == netif)) {
+            h->handler(h->arg, netif, ev);
+        }
+    }
+}
+
+void notify_all_handlers_event(struct netif* netif, const struct if_event* ev) {
+    /* Execute handlers from this list first */
+    notify_all_handlers_event_list(s_selfEventHandlerList, netif, ev);
+    notify_all_handlers_event_list(s_eventHandlerList, netif, ev);
 }
 
 void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
@@ -62,7 +149,7 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
     ev.ev_len = sizeof(if_event);
 
     char name[IF_NAMESIZE] = {};
-    if_get_name((if_t)netif, name);
+    if_get_name(netif, name);
 
     switch (reason) {
         case LWIP_NSC_NETIF_ADDED: {
@@ -81,16 +168,18 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
         }
         case LWIP_NSC_LINK_CHANGED: {
             struct if_event_link_state ev_if_link = {};
+            ev.ev_type = IF_EVENT_LINK;
             ev.ev_if_link = &ev_if_link;
-            ev.ev_if_link->state = (netif->flags & NETIF_FLAG_LINK_UP) ? 1 : 0;
+            ev.ev_if_link->state = args->link_changed.state;
             LOG(INFO, "Netif %s link %s", name, ev.ev_if_link->state ? "UP" : "DOWN");
             notify_all_handlers_event(netif, &ev);
             break;
         }
         case LWIP_NSC_STATUS_CHANGED: {
             struct if_event_state ev_if_state = {};
+            ev.ev_type = IF_EVENT_STATE;
             ev.ev_if_state = &ev_if_state;
-            ev.ev_if_state->state = (netif->flags & NETIF_FLAG_UP) ? 1 : 0;
+            ev.ev_if_state->state = args->status_changed.state;
             LOG(INFO, "Netif %s state %s", name, ev.ev_if_state->state ? "UP" : "DOWN");
             notify_all_handlers_event(netif, &ev);
             break;
@@ -99,20 +188,85 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
         case LWIP_NSC_IPV4_NETMASK_CHANGED:
         case LWIP_NSC_IPV4_GATEWAY_CHANGED:
         case LWIP_NSC_IPV4_SETTINGS_CHANGED: {
-            /* TODO */
             LOG(TRACE, "Netif %s ipv4 configuration changed", name);
+            ev.ev_type = IF_EVENT_ADDR;
+            struct if_event_addr ev_if_addr = {};
+            ev.ev_if_addr = &ev_if_addr;
+            struct if_addr oldaddr = {};
+            struct if_addr newaddr = {};
+            ev_if_addr.oldaddr = &oldaddr;
+            ev_if_addr.addr = &newaddr;
+
+            if (args->ipv4_changed.old_address) {
+                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.addr, ip_2_ip4(args->ipv4_changed.old_address), 0);
+            } else {
+                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.addr, netif_ip4_addr(netif), 0);
+            }
+
+            if (args->ipv4_changed.old_netmask) {
+                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.netmask, ip_2_ip4(args->ipv4_changed.old_netmask), 0);
+                oldaddr.prefixlen = ip4_netmask_to_prefix_length(ip_2_ip4(args->ipv4_changed.old_netmask));
+            } else {
+                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.netmask, netif_ip4_netmask(netif), 0);
+                oldaddr.prefixlen = ip4_netmask_to_prefix_length(netif_ip4_netmask(netif));
+            }
+
+            if (args->ipv4_changed.old_gw) {
+                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.gw, ip_2_ip4(args->ipv4_changed.old_gw), 0);
+            } else {
+                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.gw, netif_ip4_gw(netif), 0);
+            }
+
+            netif_ip4_address_to_if_addr(netif, &newaddr);
+
+            notify_all_handlers_event(netif, &ev);
+
             break;
         }
 
+        /* TODO: refactor these */
         case LWIP_NSC_IPV6_SET: {
-            /* TODO */
             LOG(TRACE, "Netif %s ipv6 configuration changed", name);
+            ev.ev_type = IF_EVENT_ADDR;
+            struct if_event_addr ev_if_addr = {};
+            ev.ev_if_addr = &ev_if_addr;
+            struct if_addr oldaddr = {};
+            struct if_addr newaddr = {};
+            struct if_ip6_addr_data ip6_newaddr_data = {};
+            newaddr.ip6_addr_data = &ip6_newaddr_data;
+            ev_if_addr.oldaddr = &oldaddr;
+            ev_if_addr.addr = &newaddr;
+
+            IP6ADDR_PORT_TO_SOCKADDR((sockaddr_in6*)oldaddr.addr, ip_2_ip6(args->ipv6_set.old_address), 0);
+            if (!ip_addr_isany(args->ipv6_set.old_address)) {
+                oldaddr.prefixlen = 64;
+            }
+            netif_ip6_address_to_if_addr(netif, args->ipv6_set.addr_index, &newaddr);
+            notify_all_handlers_event(netif, &ev);
             break;
         }
 
         case LWIP_NSC_IPV6_ADDR_STATE_CHANGED: {
-            /* TODO */
             LOG(TRACE, "Netif %s ipv6 addr state changed", name);
+            ev.ev_type = IF_EVENT_ADDR;
+            struct if_event_addr ev_if_addr = {};
+            ev.ev_if_addr = &ev_if_addr;
+            struct if_addr oldaddr = {};
+            struct if_addr newaddr = {};
+            struct if_ip6_addr_data ip6_oldaddr_data = {};
+            struct if_ip6_addr_data ip6_newaddr_data = {};
+            oldaddr.ip6_addr_data = &ip6_oldaddr_data;
+            newaddr.ip6_addr_data = &ip6_newaddr_data;
+            ev_if_addr.oldaddr = &oldaddr;
+            ev_if_addr.addr = &newaddr;
+
+            netif_ip6_address_to_if_addr(netif, args->ipv6_addr_state_changed.addr_index, &oldaddr);
+            netif_ip6_address_to_if_addr(netif, args->ipv6_addr_state_changed.addr_index, &newaddr);
+            /* Only the state differs */
+            ip6_oldaddr_data.state = netif_ip6_state_to_if_ip6_addr_state(args->ipv6_addr_state_changed.old_state);
+            /* Reset lifetimes because we have no idea what they were before the change */
+            ip6_oldaddr_data.valid_lifetime = ip6_oldaddr_data.preferred_lifetime = 0;
+            notify_all_handlers_event(netif, &ev);
             break;
         }
 
@@ -125,12 +279,14 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
 } /* anonymous */
 
 int if_init(void) {
+    tcpip_init([](void* arg) {
+        LOG(TRACE, "LwIP started");
+    }, /* &sem */ nullptr);
 
-    /* TODO */
+    LwipTcpIpCoreLock lk;
 
     NETIF_DECLARE_EXT_CALLBACK(handler);
     netif_add_ext_callback(&handler, &netif_ext_callback_handler);
-
 
     return if_init_platform(nullptr);
 }
@@ -163,7 +319,7 @@ int if_get_list(struct if_list** ifs, void* buf, size_t* buflen) {
 
     NETIF_FOREACH(netif) {
         iface->next = nullptr;
-        iface->iface = (if_t)netif;
+        iface->iface = netif;
         if (prev) {
             prev->next = iface;
         }
@@ -207,7 +363,7 @@ int if_get_by_index(uint8_t index, if_t* iface) {
     netif* netif = netif_get_by_index(index);
 
     if (netif) {
-        *iface = (if_t)netif;
+        *iface = netif;
         return 0;
     }
 
@@ -219,7 +375,7 @@ int if_get_by_name(char* name, if_t* iface) {
     auto netif = netif_find(name);
 
     if (netif != nullptr) {
-        *iface = (if_t)netif;
+        *iface = netif;
         return 0;
     }
 
@@ -238,7 +394,7 @@ int if_get_flags(if_t iface, unsigned int* flags) {
             return -1;
         }
 
-        iff = ((netif*)iface)->flags;
+        iff = iface->flags;
     }
 
     *flags = 0;
@@ -300,9 +456,9 @@ int if_set_flags(if_t iface, unsigned int flags) {
 
     if (changed & IFF_UP) {
         if (curFlags & IFF_UP) {
-            netif_set_up((netif*)iface);
+            netif_set_up(iface);
         } else {
-            netif_set_down((netif*)iface);
+            netif_set_down(iface);
         }
     }
 
@@ -428,7 +584,7 @@ int if_get_index(if_t iface, uint8_t* index) {
         return -1;
     }
 
-    *index = netif_get_index((netif*)iface);
+    *index = netif_get_index(iface);
     return 0;
 }
 
@@ -499,7 +655,7 @@ int if_get_if_addrs(struct if_addrs** addrs) {
     struct netif* netif;
     NETIF_FOREACH(netif) {
         if_addrs* a = nullptr;
-        int r = if_get_addrs((if_t)netif, &a);
+        int r = if_get_addrs(netif, &a);
         if (r) {
             goto cleanup;
         }
@@ -584,15 +740,13 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
         a->netmask = (sockaddr*)(buf + sizeof(if_addr) + sizeof(sockaddr_in));
         a->gw = (sockaddr*)(buf + sizeof(if_addr) + sizeof(sockaddr_in) * 2);
 
-        IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->addr, netif_ip4_addr(netif), 0);
-        IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->netmask, netif_ip4_addr(netif), 0);
-        IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->gw, netif_ip4_addr(netif), 0);
+        netif_ip4_address_to_if_addr(netif, a);
 
         current->if_addr = a;
     }
 
     for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
-        if ((netif_ip6_addr_state(netif, i) != IP6_ADDR_INVALID) ||
+        if ((netif_ip6_addr_state(netif, i) != IP6_ADDR_INVALID) &&
              !ip6_addr_isany(netif_ip6_addr(netif, i))) {
 
             if (current->if_addr) {
@@ -606,7 +760,7 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
                 current = a;
             }
 
-            const size_t alloc = sizeof(if_addr) + sizeof(sockaddr_in6);
+            const size_t alloc = sizeof(if_addr) + sizeof(sockaddr_in6) + sizeof(if_ip6_addr_data);
             uint8_t* buf = (uint8_t*)calloc(alloc, 1);
             if (!buf) {
                 goto cleanup;
@@ -614,9 +768,9 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
 
             if_addr* a = (if_addr*)buf;
             a->addr = (sockaddr*)(buf + sizeof(if_addr));
+            a->ip6_addr_data = (if_ip6_addr_data*)(buf + sizeof(if_addr) + sizeof(sockaddr_in6));
 
-            IP6ADDR_PORT_TO_SOCKADDR((sockaddr_in6*)a->addr, netif_ip6_addr(netif, i), 0);
-            a->prefixlen = 64;
+            netif_ip6_address_to_if_addr(netif, i, a);
 
             current->if_addr = a;
         }
@@ -664,7 +818,7 @@ int if_add_addr(if_t iface, const struct if_addr* addr) {
             if (addr->gw) {
                 SOCKADDR4_TO_IP4ADDR_PORT((const sockaddr_in*)addr->gw, &gw, dummy);
             }
-            netif_set_addr((netif*)iface, ip_2_ip4(&ip4addr), ip_2_ip4(&netmask), ip_2_ip4(&gw));
+            netif_set_addr(iface, ip_2_ip4(&ip4addr), ip_2_ip4(&netmask), ip_2_ip4(&gw));
             return 0;
         }
 
@@ -674,7 +828,7 @@ int if_add_addr(if_t iface, const struct if_addr* addr) {
             uint16_t dummy;
             /* Non-/64 prefixes are not supported. Ignoring prefixlen */
             SOCKADDR6_TO_IP6ADDR_PORT((const sockaddr_in6*)addr->addr, &ip6addr, dummy);
-            err_t r = netif_add_ip6_address((netif*)iface, ip_2_ip6(&ip6addr), nullptr);
+            err_t r = netif_add_ip6_address(iface, ip_2_ip6(&ip6addr), nullptr);
             return r == 0 ? 0 : -1;
         }
 
@@ -696,7 +850,7 @@ int if_del_addr(if_t iface, const struct if_addr* addr) {
 
     switch (addr->addr->sa_family) {
         case AF_INET: {
-            netif_set_addr((netif*)iface, nullptr, nullptr, nullptr);
+            netif_set_addr(iface, nullptr, nullptr, nullptr);
             return 0;
         }
 
@@ -708,9 +862,9 @@ int if_del_addr(if_t iface, const struct if_addr* addr) {
             SOCKADDR6_TO_IP6ADDR_PORT((const sockaddr_in6*)addr->addr, &ip6addr, dummy);
 
             for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
-                if (ip6_addr_cmp_zoneless(ip_2_ip6(&ip6addr), netif_ip6_addr((netif*)iface, i))) {
-                    netif_ip6_addr_set_state((netif*)iface, i, IP6_ADDR_INVALID);
-                    netif_ip6_addr_set_parts((netif*)iface, i, 0, 0, 0, 0);
+                if (ip6_addr_cmp_zoneless(ip_2_ip6(&ip6addr), netif_ip6_addr(iface, i))) {
+                    netif_ip6_addr_set_state(iface, i, IP6_ADDR_INVALID);
+                    netif_ip6_addr_set_parts(iface, i, 0, 0, 0, 0);
                     return 0;
                 }
             }
@@ -736,8 +890,8 @@ int if_get_lladdr(if_t iface, struct sockaddr_ll* addr) {
     addr->sll_family = AF_LINK;
     addr->sll_protocol = 0x0001;
     if_get_index(iface, &addr->sll_ifindex);
-    addr->sll_halen = ((netif*)iface)->hwaddr_len;
-    memcpy(addr->sll_addr, ((netif*)iface)->hwaddr, ((netif*)iface)->hwaddr_len);
+    addr->sll_halen = iface->hwaddr_len;
+    memcpy(addr->sll_addr, iface->hwaddr, iface->hwaddr_len);
 
     return 0;
 }
@@ -750,8 +904,8 @@ int if_set_lladdr(if_t iface, const struct sockaddr_ll* addr) {
     }
 
     if (addr->sll_family == AF_LINK && addr->sll_halen && addr->sll_halen <= NETIF_MAX_HWADDR_LEN) {
-        memcpy(((netif*)iface)->hwaddr, addr->sll_addr, addr->sll_halen);
-        ((netif*)iface)->hwaddr_len = addr->sll_halen;
+        memcpy(iface->hwaddr, addr->sll_addr, addr->sll_halen);
+        iface->hwaddr_len = addr->sll_halen;
         return 0;
     }
 
@@ -759,17 +913,15 @@ int if_set_lladdr(if_t iface, const struct sockaddr_ll* addr) {
 }
 
 if_event_handler_cookie_t if_event_handler_add(if_event_handler_t handler, void* arg) {
-    /* We should really implement a list-like common class */
-    EventHandlerList* e = new EventHandlerList;
-    if (e) {
-        LwipTcpIpCoreLock lk;
-        e->handler = handler;
-        e->arg = arg;
-        e->next = s_eventHandlerList;
-        s_eventHandlerList = e;
-    }
+    return common_event_handler_add(nullptr, false, handler, arg);
+}
 
-    return e;
+if_event_handler_cookie_t if_event_handler_add_if(if_t iface, if_event_handler_t handler, void* arg) {
+    return common_event_handler_add(iface, false, handler, arg);
+}
+
+if_event_handler_cookie_t if_event_handler_self(if_t iface, if_event_handler_t handler, void* arg) {
+    return common_event_handler_add(iface, true, handler, arg);
 }
 
 int if_event_handler_del(if_event_handler_cookie_t cookie) {
@@ -778,15 +930,16 @@ int if_event_handler_del(if_event_handler_cookie_t cookie) {
     }
 
     EventHandlerList* e = (EventHandlerList*)cookie;
+    EventHandlerList** list = e->self ? &s_selfEventHandlerList : &s_eventHandlerList;
 
     LwipTcpIpCoreLock lk;
 
-    for (EventHandlerList* h = s_eventHandlerList, *prev = nullptr; h != nullptr; h = h->next) {
+    for (EventHandlerList* h = *list, *prev = nullptr; h != nullptr; h = h->next) {
         if (h == e) {
             if (prev) {
                 prev->next = h->next;
             } else {
-                s_eventHandlerList = h->next;
+                *list = h->next;
             }
 
             delete e;

@@ -19,5 +19,9 @@
 #define NETWORK_LWIP_IFAPI_IMPL_H
 
 #include "socket_hal_posix.h"
+#include <lwip/netif.h>
+
+#define IF_T_DEFINED
+typedef struct netif* if_t;
 
 #endif /* NETWORK_LWIP_IFAPI_IMPL_H */
