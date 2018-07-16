@@ -33,12 +33,30 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "mbedtls/ecjpake.h"
 #include "mbedtls/ccm.h"
+#include "mbedtls/md.h"
 
 #include "mbedtls_util.h"
 
 #ifndef PAIRING_ENABLED
 #define PAIRING_ENABLED 0
 #endif
+
+#define CHECK(_expr) \
+        do { \
+            const int _ret = _expr; \
+            if (_ret < 0) { \
+                return _ret; \
+            } \
+        } while (false)
+
+#define CHECK_MBEDTLS(_expr) \
+        do { \
+            const int _ret = _expr; \
+            if (_ret != 0) { \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", _ret); \
+                return mbedtlsError(_ret); \
+            } \
+        } while (false)
 
 #undef DEBUG // Legacy logging macro
 
@@ -129,7 +147,7 @@ const size_t HANDSHAKE_HEADER_SIZE = sizeof(HandshakeHeader);
 const size_t MAX_HANDSHAKE_PAYLOAD_SIZE = 512;
 
 // Handshake timeout in milliseconds
-const unsigned HANDSHAKE_TIMEOUT = 15000;
+const unsigned HANDSHAKE_TIMEOUT = 10000;
 
 // Size of the J-PAKE passphrase in bytes
 const size_t JPAKE_PASSPHRASE_SIZE = 15;
@@ -137,17 +155,133 @@ const size_t JPAKE_PASSPHRASE_SIZE = 15;
 // Size of the J-PAKE's shared secret in bytes
 const size_t JPAKE_SHARED_SECRET_SIZE = 32;
 
+// Client identity string
+const char* const JPAKE_CLIENT_ID = "client";
+
+// Server identity string
+const char* const JPAKE_SERVER_ID = "server";
+
 // Size of the cipher's key in bytes
 const size_t AES_CCM_KEY_SIZE = 16;
 
 // Size of the authentication field in bytes
-const size_t AES_CCM_TAG_SIZE = 8; // M
+const size_t AES_CCM_TAG_SIZE = 8;
 
-// Size of the length field in bytes
-const size_t AES_CCM_LENGTH_SIZE = 4; // L
+// Total size of the nonce in bytes
+const size_t AES_CCM_NONCE_SIZE = 12;
 
-// Size of the nonce in bytes
-const size_t AES_CCM_NONCE_SIZE = 11; // 15 - L
+// Size of the fixed part of the nonce in bytes
+const size_t AES_CCM_FIXED_NONCE_SIZE = 8;
+
+// Sanity checks
+static_assert(15 - AES_CCM_NONCE_SIZE >= 3, // At least 3 bytes should be available to store the size of encrypted data
+        "Invalid size of the CCM length field"); // See RFC 3610
+
+static_assert(AES_CCM_NONCE_SIZE >= AES_CCM_FIXED_NONCE_SIZE + 4, // 4 bytes of the nonce data are reserved for the counter
+        "Invalid size of the nonce");
+
+static_assert(JPAKE_SHARED_SECRET_SIZE >= AES_CCM_KEY_SIZE + AES_CCM_FIXED_NONCE_SIZE * 2, // See BleControlRequestChannel::initAesCcm()
+        "Invalid size of the shared secret");
+
+int mbedtlsError(int ret) {
+    switch (ret) {
+    case 0:
+        return SYSTEM_ERROR_NONE;
+    // TODO
+    default:
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+}
+
+class Sha256 {
+public:
+    static const size_t SIZE = 32;
+
+    Sha256() :
+            ctx_() {
+    }
+
+    ~Sha256() {
+        destroy();
+    }
+
+    int init() {
+        const auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+        if (!mdInfo) {
+            LOG_DEBUG(ERROR, "mbedtls_md_info_from_type() failed");
+            return SYSTEM_ERROR_NOT_FOUND;
+        }
+        mbedtls_md_init(&ctx_);
+        CHECK_MBEDTLS(mbedtls_md_setup(&ctx_, mdInfo, 0 /* hmac */));
+        CHECK_MBEDTLS(mbedtls_md_starts(&ctx_));
+        return 0;
+    }
+
+    int init(const Sha256& src) {
+        CHECK(init());
+        CHECK_MBEDTLS(mbedtls_md_clone(&ctx_, &src.ctx_));
+        return 0;
+    }
+
+    void destroy() {
+        mbedtls_md_free(&ctx_);
+    }
+
+    int update(const char* data, size_t size) {
+        CHECK_MBEDTLS(mbedtls_md_update(&ctx_, (const uint8_t*)data, size));
+        return 0;
+    }
+
+    int finish(char* buf) {
+        CHECK_MBEDTLS(mbedtls_md_finish(&ctx_, (uint8_t*)buf));
+        return 0;
+    }
+
+private:
+    mbedtls_md_context_t ctx_;
+};
+
+class HmacSha256 {
+public:
+    static const size_t SIZE = 32;
+
+    HmacSha256() :
+            ctx_() {
+    }
+
+    ~HmacSha256() {
+        destroy();
+    }
+
+    int init(const char* key, size_t keySize) {
+        const auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+        if (!mdInfo) {
+            LOG_DEBUG(ERROR, "mbedtls_md_info_from_type() failed");
+            return SYSTEM_ERROR_NOT_FOUND;
+        }
+        mbedtls_md_init(&ctx_);
+        CHECK_MBEDTLS(mbedtls_md_setup(&ctx_, mdInfo, 1 /* hmac */));
+        CHECK_MBEDTLS(mbedtls_md_hmac_starts(&ctx_, (const uint8_t*)key, keySize));
+        return 0;
+    }
+
+    void destroy() {
+        mbedtls_md_free(&ctx_);
+    }
+
+    int update(const char* data, size_t size) {
+        CHECK_MBEDTLS(mbedtls_md_hmac_update(&ctx_, (const uint8_t*)data, size));
+        return 0;
+    }
+
+    int finish(char* buf) {
+        CHECK_MBEDTLS(mbedtls_md_hmac_finish(&ctx_, (uint8_t*)buf));
+        return 0;
+    }
+
+private:
+    mbedtls_md_context_t ctx_;
+};
 
 } // particle::system::
 
@@ -158,13 +292,17 @@ public:
         RUNNING
     };
 
-    virtual ~HandshakeHandler() = default;
+    virtual ~HandshakeHandler() {
+        destroy();
+    }
 
     virtual int run() = 0;
 
 protected:
     explicit HandshakeHandler(BleControlRequestChannel* channel) :
             channel_(channel),
+            buf_(nullptr),
+            timeStart_(0),
             size_(0),
             offs_(0) {
     }
@@ -174,16 +312,22 @@ protected:
         if (!data_) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
+        timeStart_ = HAL_Timer_Get_Milli_Seconds();
         return 0;
     }
 
     void destroy() {
         data_.reset();
+        channel_->freeBuffer(buf_);
+        buf_ = nullptr;
         size_ = 0;
         offs_ = 0;
     }
 
-    int readPacket() {
+    int readPacket(const char** data, size_t* size) {
+        if (HAL_Timer_Get_Milli_Seconds() - timeStart_ >= HANDSHAKE_TIMEOUT) {
+            return SYSTEM_ERROR_TIMEOUT;
+        }
         if (offs_ == size_) {
             // Read packet header
             HandshakeHeader h = {};
@@ -202,47 +346,42 @@ protected:
         if (offs_ < size_) {
             return Result::RUNNING;
         }
-        return Result::DONE;
-    }
-
-    void writePacket(Buffer* buf) {
-        // Serialize packet header
-        HandshakeHeader h = {};
-        h.size = nativeToLittleEndian(buf->size);
-        buf->data -= HANDSHAKE_HEADER_SIZE;
-        buf->size += HANDSHAKE_HEADER_SIZE;
-        memcpy(buf->data, &h, HANDSHAKE_HEADER_SIZE);
-        // Enqueue the buffer for sending
-        channel_->sendBuffer(buf);
-    }
-
-    int allocPacket(Buffer** buf) {
-        Buffer* b = nullptr;
-        const int ret = channel_->reallocBuffer(HANDSHAKE_HEADER_SIZE + MAX_HANDSHAKE_PAYLOAD_SIZE, &b);
-        if (ret != 0) {
-            return ret;
-        }
-        b->data += HANDSHAKE_HEADER_SIZE;
-        b->size -= HANDSHAKE_HEADER_SIZE;
-        *buf = b;
+        *data = data_.get();
+        *size = size_;
         return 0;
     }
 
-    void freePacket(Buffer* buf) {
-        channel_->freeBuffer(buf);
+    void writePacket() {
+        SPARK_ASSERT(buf_);
+        // Serialize packet header
+        HandshakeHeader h = {};
+        h.size = nativeToLittleEndian(buf_->size);
+        buf_->data -= HANDSHAKE_HEADER_SIZE;
+        buf_->size += HANDSHAKE_HEADER_SIZE;
+        memcpy(buf_->data, &h, HANDSHAKE_HEADER_SIZE);
+        // Enqueue the buffer for sending
+        channel_->sendBuffer(buf_);
+        buf_ = nullptr;
     }
 
-    const char* packetData() const {
-        return data_.get();
+    int initPacket(Buffer** buf, size_t size) {
+        SPARK_ASSERT(!buf_);
+        CHECK(channel_->reallocBuffer(HANDSHAKE_HEADER_SIZE + size, &buf_));
+        buf_->data += HANDSHAKE_HEADER_SIZE;
+        buf_->size -= HANDSHAKE_HEADER_SIZE;
+        *buf = buf_;
+        return 0;
     }
 
-    size_t packetSize() const {
-        return size_;
+    int initPacket(Buffer** buf) {
+        return initPacket(buf, MAX_HANDSHAKE_PAYLOAD_SIZE);
     }
 
 private:
+    std::unique_ptr<char[]> data_;
     BleControlRequestChannel* channel_;
-    std::unique_ptr<char[]> data_; // Received payload data
+    BleControlRequestChannel::Buffer* buf_;
+    system_tick_t timeStart_;
     size_t size_;
     size_t offs_;
 };
@@ -257,20 +396,15 @@ public:
 
     ~JpakeHandler() {
         mbedtls_ecjpake_free(&ctx_);
+        memset(secret_, 0, JPAKE_SHARED_SECRET_SIZE);
     }
 
     int init(const char* key, size_t keySize) {
-        int ret = HandshakeHandler::init();
-        if (ret != 0) {
-            return ret;
-        }
+        CHECK(HandshakeHandler::init());
+        CHECK(hash_.init());
         mbedtls_ecjpake_init(&ctx_);
-        ret = mbedtls_ecjpake_setup(&ctx_, MBEDTLS_ECJPAKE_SERVER, MBEDTLS_MD_SHA256, MBEDTLS_ECP_DP_SECP256R1,
-                (const unsigned char*)key, keySize);
-        if (ret != 0) {
-            LOG(ERROR, "mbedtls_ecjpake_setup() failed: %d", ret);
-            return SYSTEM_ERROR_UNKNOWN;
-        }
+        CHECK_MBEDTLS(mbedtls_ecjpake_setup(&ctx_, MBEDTLS_ECJPAKE_SERVER, MBEDTLS_MD_SHA256, MBEDTLS_ECP_DP_SECP256R1,
+                (const uint8_t*)key, keySize));
         state_ = State::READ_ROUND1;
         return 0;
     }
@@ -290,6 +424,12 @@ public:
         case State::WRITE_ROUND2:
             ret = writeRound2();
             break;
+        case State::READ_CONFIRM:
+            ret = readConfirm();
+            break;
+        case State::WRITE_CONFIRM:
+            ret = writeConfirm();
+            break;
         case State::DONE:
             return Result::DONE;
         default:
@@ -301,192 +441,203 @@ public:
         return ret;
     }
 
-    int genSecret(char* buf, size_t size) {
+    const char* secret() const {
         if (state_ != State::DONE) {
-            return SYSTEM_ERROR_INVALID_STATE;
+            return nullptr;
         }
-        size_t n = 0;
-        const int ret = mbedtls_ecjpake_derive_secret(&ctx_, (unsigned char*)buf, size, &n, mbedtls_default_rng, nullptr);
-        if (ret != 0) {
-            LOG(ERROR, "mbedtls_ecjpake_derive_secret() failed: %d", ret);
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-        return n;
+        return secret_;
     }
 
 private:
-    // TODO: Add a verification step
     enum class State {
         NEW,
         READ_ROUND1,
         WRITE_ROUND1,
         READ_ROUND2,
         WRITE_ROUND2,
+        READ_CONFIRM,
+        WRITE_CONFIRM,
         DONE,
         FAILED
     };
 
+    Sha256 hash_;
     mbedtls_ecjpake_context ctx_;
+    char secret_[JPAKE_SHARED_SECRET_SIZE];
     State state_;
 
     int readRound1() {
-        int ret = readPacket();
-        if (ret != 0) {
+        const char* data = nullptr;
+        size_t size = 0;
+        const int ret = readPacket(&data, &size);
+        if (ret != Result::DONE) {
             return ret;
         }
-        ret = mbedtls_ecjpake_read_round_one(&ctx_, (const unsigned char*)packetData(), packetSize());
-        if (ret != 0) {
-            LOG(ERROR, "mbedtls_ecjpake_read_round_one() failed: %d", ret);
-            return SYSTEM_ERROR_BAD_DATA;
-        }
+        CHECK_MBEDTLS(mbedtls_ecjpake_read_round_one(&ctx_, (const uint8_t*)data, size));
+        CHECK(hash_.update(data, size));
         state_ = State::WRITE_ROUND1;
         return Result::RUNNING;
     }
 
     int writeRound1() {
         Buffer* buf = nullptr;
-        int ret = allocPacket(&buf);
-        if (ret != 0) {
-            return ret;
-        }
+        CHECK(initPacket(&buf));
         size_t n = 0;
-        ret = mbedtls_ecjpake_write_round_one(&ctx_, (unsigned char*)buf->data, buf->size, &n, mbedtls_default_rng, nullptr);
-        if (ret != 0) {
-            freePacket(buf);
-            LOG(ERROR, "mbedtls_ecjpake_write_round_one() failed: %d", ret);
-            return SYSTEM_ERROR_UNKNOWN;
-        }
+        CHECK_MBEDTLS(mbedtls_ecjpake_write_round_one(&ctx_, (uint8_t*)buf->data, buf->size, &n, mbedtls_default_rng, nullptr));
         buf->size = n;
-        writePacket(buf);
-        state_ = State::WRITE_ROUND2; // Send the 2nd round immediately
+        CHECK(hash_.update(buf->data, buf->size));
+        writePacket();
+        state_ = State::WRITE_ROUND2; // Send the round 2 message immediately
         return Result::RUNNING;
     }
 
     int readRound2() {
-        int ret = readPacket();
-        if (ret != 0) {
+        const char* data = nullptr;
+        size_t size = 0;
+        const int ret = readPacket(&data, &size);
+        if (ret != Result::DONE) {
             return ret;
         }
-        ret = mbedtls_ecjpake_read_round_two(&ctx_, (const unsigned char*)packetData(), packetSize());
-        if (ret != 0) {
-            LOG(ERROR, "mbedtls_ecjpake_read_round_two() failed: %d", ret);
-            return SYSTEM_ERROR_BAD_DATA;
-        }
-        HandshakeHandler::destroy();
-        state_ = State::DONE;
-        return Result::DONE;
+        CHECK_MBEDTLS(mbedtls_ecjpake_read_round_two(&ctx_, (const uint8_t*)data, size));
+        CHECK(hash_.update(data, size));
+        state_ = State::READ_CONFIRM;
+        return Result::RUNNING;
     }
 
     int writeRound2() {
         Buffer* buf = nullptr;
-        int ret = allocPacket(&buf);
-        if (ret != 0) {
-            return ret;
-        }
+        CHECK(initPacket(&buf));
         size_t n = 0;
-        ret = mbedtls_ecjpake_write_round_two(&ctx_, (unsigned char*)buf->data, buf->size, &n, mbedtls_default_rng, nullptr);
-        if (ret != 0) {
-            freePacket(buf);
-            LOG(ERROR, "mbedtls_ecjpake_write_round_two() failed: %d", ret);
-            return SYSTEM_ERROR_UNKNOWN;
-        }
+        CHECK_MBEDTLS(mbedtls_ecjpake_write_round_two(&ctx_, (uint8_t*)buf->data, buf->size, &n, mbedtls_default_rng, nullptr));
         buf->size = n;
-        writePacket(buf);
+        CHECK(hash_.update(buf->data, buf->size));
+        writePacket();
         state_ = State::READ_ROUND2;
         return Result::RUNNING;
+    }
+
+    int readConfirm() {
+        const char* data = nullptr;
+        size_t size = 0;
+        const int ret = readPacket(&data, &size);
+        if (ret != Result::DONE) {
+            return ret;
+        }
+        if (size != Sha256::SIZE) {
+            LOG_DEBUG(ERROR, "Invalid size of the confirmation message");
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        // Derive the shared secret
+        size_t n = 0;
+        CHECK_MBEDTLS(mbedtls_ecjpake_derive_secret(&ctx_, (uint8_t*)secret_, JPAKE_SHARED_SECRET_SIZE, &n,
+                mbedtls_default_rng, nullptr));
+        if (n != JPAKE_SHARED_SECRET_SIZE) { // Sanity check
+            LOG_DEBUG(ERROR, "Invalid size of the shared secret");
+            return SYSTEM_ERROR_INTERNAL;
+        }
+        mbedtls_ecjpake_free(&ctx_);
+        // Validate the confirmation message
+        Sha256 hash;
+        CHECK(hash.init(hash_));
+        char hashVal[Sha256::SIZE] = {};
+        CHECK(hash.finish(hashVal));
+        hash.destroy();
+        HmacSha256 hmac;
+        CHECK(hmac.init(secret_, JPAKE_SHARED_SECRET_SIZE));
+        CHECK(hmac.update(JPAKE_CLIENT_ID, strlen(JPAKE_CLIENT_ID)));
+        CHECK(hmac.update(hashVal, sizeof(hashVal)));
+        CHECK(hmac.finish(hashVal));
+        if (memcmp(data, hashVal, Sha256::SIZE) != 0) {
+            LOG_DEBUG(ERROR, "Invalid confirmation message");
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        CHECK(hash_.update(data, size));
+        HandshakeHandler::destroy(); // Free the buffer for received data
+        state_ = State::WRITE_CONFIRM;
+        return Result::RUNNING;
+    }
+
+    int writeConfirm() {
+        Buffer* buf = nullptr;
+        CHECK(initPacket(&buf, Sha256::SIZE));
+        CHECK(hash_.finish(buf->data));
+        hash_.destroy();
+        HmacSha256 hmac;
+        CHECK(hmac.init(secret_, JPAKE_SHARED_SECRET_SIZE));
+        CHECK(hmac.update(JPAKE_SERVER_ID, strlen(JPAKE_SERVER_ID)));
+        CHECK(hmac.update(buf->data, buf->size));
+        CHECK(hmac.finish(buf->data));
+        writePacket();
+        state_ = State::DONE;
+        return Result::DONE;
     }
 };
 
 class BleControlRequestChannel::AesCcmCipher {
 public:
     AesCcmCipher() :
-            clientCtx_(),
-            serverCtx_(),
+            ctx_(),
             reqCount_(0),
             repCount_(0) {
     }
 
     ~AesCcmCipher() {
-        mbedtls_ccm_free(&clientCtx_);
-        mbedtls_ccm_free(&serverCtx_);
+        mbedtls_ccm_free(&ctx_);
+        memset(reqNonce_, 0, AES_CCM_FIXED_NONCE_SIZE);
+        memset(repNonce_, 0, AES_CCM_FIXED_NONCE_SIZE);
     }
 
-    int init(const char* clientKey, const char* serverKey) {
-        int ret = initContext(&clientCtx_, clientKey);
-        if (ret != 0) {
-            return ret;
-        }
-        ret = initContext(&serverCtx_, serverKey);
-        if (ret != 0) {
-            return ret;
-        }
+    int init(const char* key, const char* clientNonce, const char* serverNonce) {
+        mbedtls_ccm_init(&ctx_);
+        CHECK_MBEDTLS(mbedtls_ccm_setkey(&ctx_, MBEDTLS_CIPHER_ID_AES, (const uint8_t*)key, AES_CCM_KEY_SIZE * 8));
+        memcpy(reqNonce_, clientNonce, AES_CCM_FIXED_NONCE_SIZE);
+        memcpy(repNonce_, serverNonce, AES_CCM_FIXED_NONCE_SIZE);
         return 0;
     }
 
     int decryptRequestData(char* buf, size_t payloadSize) {
-        uint8_t nonce[AES_CCM_NONCE_SIZE] = {};
-        genNonce(nonce, ++reqCount_, MessageType::REQUEST);
-        const int ret = mbedtls_ccm_auth_decrypt(&clientCtx_,
+        char nonce[AES_CCM_NONCE_SIZE] = {};
+        genRequestNonce(nonce);
+        CHECK_MBEDTLS(mbedtls_ccm_auth_decrypt(&ctx_,
                 payloadSize + REQUEST_HEADER_SIZE, // Size of the input data
-                nonce, AES_CCM_NONCE_SIZE, // Nonce
+                (const uint8_t*)nonce, AES_CCM_NONCE_SIZE, // Nonce
                 (const uint8_t*)buf, MESSAGE_HEADER_SIZE, // Additional data
                 (const uint8_t*)buf + MESSAGE_HEADER_SIZE, // Input buffer
                 (uint8_t*)buf + MESSAGE_HEADER_SIZE, // Output buffer
-                (const uint8_t*)buf + payloadSize + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE, AES_CCM_TAG_SIZE); // Authentication tag
-        if (ret != 0) {
-            LOG(ERROR, "mbedtls_ccm_auth_decrypt() failed: %d", ret);
-            return SYSTEM_ERROR_BAD_DATA;
-        }
+                (const uint8_t*)buf + payloadSize + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE, AES_CCM_TAG_SIZE)); // Authentication tag
         return 0;
     }
 
     int encryptReplyData(char* buf, size_t payloadSize) {
-        uint8_t nonce[AES_CCM_NONCE_SIZE] = {};
-        genNonce(nonce, ++repCount_, MessageType::REPLY);
-        const int ret = mbedtls_ccm_encrypt_and_tag(&serverCtx_,
+        char nonce[AES_CCM_NONCE_SIZE] = {};
+        genReplyNonce(nonce);
+        CHECK_MBEDTLS(mbedtls_ccm_encrypt_and_tag(&ctx_,
                 payloadSize + REPLY_HEADER_SIZE, // Size of the input data
-                nonce, AES_CCM_NONCE_SIZE, // Nonce
+                (const uint8_t*)nonce, AES_CCM_NONCE_SIZE, // Nonce
                 (const uint8_t*)buf, MESSAGE_HEADER_SIZE, // Additional data
                 (const uint8_t*)buf + MESSAGE_HEADER_SIZE, // Input buffer
                 (uint8_t*)buf + MESSAGE_HEADER_SIZE, // Output buffer
-                (uint8_t*)buf + payloadSize + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE, AES_CCM_TAG_SIZE); // Authentication tag
-        if (ret != 0) {
-            LOG(ERROR, "mbedtls_ccm_encrypt_and_tag() failed: %d", ret);
-            return SYSTEM_ERROR_UNKNOWN;
-        }
+                (uint8_t*)buf + payloadSize + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE, AES_CCM_TAG_SIZE)); // Authentication tag
         return 0;
     }
 
 private:
-    enum MessageType {
-        REQUEST = 0x01,
-        REPLY = 0x02
-    };
-
-    mbedtls_ccm_context clientCtx_;
-    mbedtls_ccm_context serverCtx_;
+    mbedtls_ccm_context ctx_;
+    char reqNonce_[AES_CCM_FIXED_NONCE_SIZE];
+    char repNonce_[AES_CCM_FIXED_NONCE_SIZE];
     uint32_t reqCount_;
     uint32_t repCount_;
 
-    static int initContext(mbedtls_ccm_context* ctx, const char* key) {
-        mbedtls_ccm_init(ctx);
-        const int ret = mbedtls_ccm_setkey(ctx, MBEDTLS_CIPHER_ID_AES, (const uint8_t*)key, AES_CCM_KEY_SIZE * 8);
-        if (ret != 0) {
-            LOG(ERROR, "mbedtls_ccm_setkey() failed: %d", ret);
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-        return 0;
+    void genRequestNonce(char* dest) {
+        const uint32_t count = nativeToLittleEndian(++reqCount_);
+        memcpy(dest, &count, 4);
+        memcpy(dest + 4, reqNonce_, AES_CCM_FIXED_NONCE_SIZE);
     }
 
-    static void genNonce(uint8_t* nonce, uint32_t counter, MessageType msgType) {
-        // TODO: RFC 3610 suggests using an endpoint's address as part of the nonce. TLS generates a
-        // random implicit part of the nonce during the handshake
-        memset(nonce, 0xff, 6);
-        nonce[6] = (counter >> 0) & 0xff;
-        nonce[7] = (counter >> 8) & 0xff;
-        nonce[8] = (counter >> 16) & 0xff;
-        nonce[9] = (counter >> 24) & 0xff;
-        nonce[10] = (uint8_t)msgType;
+    void genReplyNonce(char* dest) {
+        const uint32_t count = nativeToLittleEndian(++repCount_ | 0x80000000u);
+        memcpy(dest, &count, 4);
+        memcpy(dest + 4, repNonce_, AES_CCM_FIXED_NONCE_SIZE);
     }
 };
 
@@ -502,7 +653,6 @@ BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handle
         reqBufSize_(0),
         reqBufOffs_(0),
         packetSize_(0),
-        connStartTime_(0),
         connHandle_(BLE_INVALID_CONN_HANDLE),
         curConnHandle_(BLE_INVALID_CONN_HANDLE),
         connId_(0),
@@ -589,14 +739,6 @@ void BleControlRequestChannel::run() {
                 goto error;
             }
         }
-        // TODO: The handshake handler doesn't perform verification of the shared secret. For now,
-        // we require the client to send its first request within the handshake timeout, and use
-        // the authentication tag of that request to verify the key exchange
-        if (connStartTime_ != 0 && HAL_Timer_Get_Milli_Seconds() - connStartTime_ >= HANDSHAKE_TIMEOUT) {
-            LOG(ERROR, "Handshake timeout");
-            ret = SYSTEM_ERROR_TIMEOUT;
-            goto error;
-        }
         // Send BLE notification packet
         ret = sendPacket();
         if (ret != 0) {
@@ -615,10 +757,7 @@ error:
 
 int BleControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {
     const auto req = static_cast<Request*>(ctrlReq);
-    const int ret = reallocBuffer(size + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + AES_CCM_TAG_SIZE, &req->repBuf);
-    if (ret != 0) {
-        return ret;
-    }
+    CHECK(reallocBuffer(size + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + AES_CCM_TAG_SIZE, &req->repBuf));
     if (size > 0) {
         req->reply_data = req->repBuf->data + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE;
     } else {
@@ -646,21 +785,12 @@ void BleControlRequestChannel::setResult(ctrl_request* ctrlReq, int result, ctrl
 }
 
 int BleControlRequestChannel::initChannel() {
-    int ret = 0;
     packetBuf_.reset(new(std::nothrow) char[BLE_MAX_ATTR_VALUE_PACKET_SIZE]);
     if (!packetBuf_) {
-        ret = SYSTEM_ERROR_NO_MEMORY;
-        goto error;
+        return SYSTEM_ERROR_NO_MEMORY;
     }
-    ret = initJpake();
-    if (ret != 0) {
-        goto error;
-    }
-    connStartTime_ = HAL_Timer_Get_Milli_Seconds();
+    CHECK(initJpake());
     return 0;
-error:
-    resetChannel();
-    return ret;
 }
 
 void BleControlRequestChannel::resetChannel() {
@@ -682,7 +812,6 @@ void BleControlRequestChannel::resetChannel() {
     reqBufOffs_ = 0;
     inBufSize_ = 0;
     packetSize_ = 0;
-    connStartTime_ = 0;
 }
 
 int BleControlRequestChannel::receiveRequest() {
@@ -694,11 +823,7 @@ int BleControlRequestChannel::receiveRequest() {
         }
         // Allocate a request object
         const size_t payloadSize = littleEndianToNative(mh.size);
-        const int ret = allocRequest(payloadSize, &curReq_);
-        if (ret != 0) {
-            LOG(ERROR, "Unable to allocate request object");
-            return ret;
-        }
+        CHECK(allocRequest(payloadSize, &curReq_));
         memcpy(curReq_->reqBuf, &mh, MESSAGE_HEADER_SIZE);
         reqBufSize_ = payloadSize + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE + AES_CCM_TAG_SIZE; // Total size of the request data
         reqBufOffs_ = MESSAGE_HEADER_SIZE;
@@ -712,10 +837,7 @@ int BleControlRequestChannel::receiveRequest() {
     }
     // Decrypt request data
     SPARK_ASSERT(aesCcm_);
-    const int ret = aesCcm_->decryptRequestData(p, curReq_->request_size);
-    if (ret != 0) {
-        return ret;
-    }
+    CHECK(aesCcm_->decryptRequestData(p, curReq_->request_size));
     // Parse request header
     RequestHeader rh = {};
     memcpy(&rh, p + MESSAGE_HEADER_SIZE, REQUEST_HEADER_SIZE);
@@ -727,8 +849,6 @@ int BleControlRequestChannel::receiveRequest() {
     curReq_ = nullptr;
     reqBufSize_ = 0;
     reqBufOffs_ = 0;
-    // Reset handshake timer (see notes in the run() method)
-    connStartTime_ = 0;
     return 0;
 }
 
@@ -749,7 +869,6 @@ int BleControlRequestChannel::sendReply() {
     if (!req->repBuf) {
         const int ret = reallocBuffer(MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + AES_CCM_TAG_SIZE, &req->repBuf);
         if (ret != 0) {
-            LOG(ERROR, "Unable to allocate buffer for reply data");
             freeRequest(req);
             return ret;
         }
@@ -905,10 +1024,7 @@ int BleControlRequestChannel::disconnected(const ble_disconnected_event_data& ev
 
 int BleControlRequestChannel::connParamChanged(const ble_conn_param_changed_event_data& event) {
     ble_conn_param param = { .version = BLE_API_VERSION };
-    const int ret = ble_get_conn_param(curConnHandle_, &param, nullptr);
-    if (ret != 0) {
-        return ret;
-    }
+    CHECK(ble_get_conn_param(curConnHandle_, &param, nullptr));
     maxPacketSize_ = param.att_mtu_size - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
     return 0;
 }
@@ -916,10 +1032,7 @@ int BleControlRequestChannel::connParamChanged(const ble_conn_param_changed_even
 int BleControlRequestChannel::charParamChanged(const ble_char_param_changed_event_data& event) {
     if (event.char_handle == sendCharHandle_) {
         ble_char_param param = { .version = BLE_API_VERSION };
-        const int ret = ble_get_char_param(curConnHandle_, sendCharHandle_, &param, nullptr);
-        if (ret != 0) {
-            return ret;
-        }
+        CHECK(ble_get_char_param(curConnHandle_, sendCharHandle_, &param, nullptr));
         notifEnabled_ = param.notif_enabled;
         writable_ = notifEnabled_;
     }
@@ -938,10 +1051,7 @@ int BleControlRequestChannel::dataReceived(const ble_data_received_event_data& e
         DEBUG("Received BLE packet");
         DEBUG_DUMP(event.data, event.size);
         Buffer* buf = nullptr;
-        const int ret = allocPooledBuffer(event.size, &buf);
-        if (ret != 0) {
-            return ret;
-        }
+        CHECK(allocPooledBuffer(event.size, &buf));
         memcpy(buf->data, event.data, event.size);
         inBufs_.pushBack(buf);
     }
@@ -951,10 +1061,7 @@ int BleControlRequestChannel::dataReceived(const ble_data_received_event_data& e
 int BleControlRequestChannel::initProfile() {
     // Register base UUID
     uint8_t uuidType = 0;
-    int ret = ble_add_base_uuid((const char*)BASE_UUID, &uuidType, nullptr);
-    if (ret != 0) {
-        return ret;
-    }
+    CHECK(ble_add_base_uuid((const char*)BASE_UUID, &uuidType, nullptr));
     // Characteristics
     ble_char chars[3] = {};
     // Protocol version
@@ -997,11 +1104,7 @@ int BleControlRequestChannel::initProfile() {
     ble_profile profile = {};
     profile.version = BLE_API_VERSION;
     char devName[32] = {};
-    ret = get_device_name(devName, sizeof(devName));
-    if (ret < 0) {
-        LOG(ERROR, "Unable to get device name");
-        return ret;
-    }
+    CHECK(get_device_name(devName, sizeof(devName)));
     profile.device_name = devName;
     profile.services = &ctrlService;
     profile.service_count = 1;
@@ -1011,10 +1114,7 @@ int BleControlRequestChannel::initProfile() {
     profile.manuf_data = &manufData;
     profile.callback = processBleEvent;
     profile.user_data = this;
-    ret = ble_init_profile(&profile, nullptr);
-    if (ret != 0) {
-        return ret;
-    }
+    CHECK(ble_init_profile(&profile, nullptr));
     sendCharHandle_ = sendChar.handle;
     recvCharHandle_ = recvChar.handle;
     return 0;
@@ -1022,49 +1122,33 @@ int BleControlRequestChannel::initProfile() {
 
 int BleControlRequestChannel::initAesCcm() {
     SPARK_ASSERT(jpake_);
-    char secret[JPAKE_SHARED_SECRET_SIZE] = {};
-    static_assert(sizeof(secret) >= AES_CCM_KEY_SIZE * 2, "");
-    int ret = jpake_->genSecret(secret, sizeof(secret));
-    if (ret < 0) {
-        return ret;
-    }
-    if (ret < (int)sizeof(secret)) {
-        LOG(ERROR, "Invalid size of the shared secret data");
-        return SYSTEM_ERROR_INTERNAL;
-    }
-    std::unique_ptr<AesCcmCipher> c(new(std::nothrow) AesCcmCipher);
-    if (!c) {
+    const auto secret = jpake_->secret();
+    SPARK_ASSERT(secret);
+    aesCcm_.reset(new(std::nothrow) AesCcmCipher);
+    if (!aesCcm_) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    // Split the shared secret into client and server keys
-    ret = c->init(secret, secret + AES_CCM_KEY_SIZE);
-    if (ret != 0) {
-        return ret;
-    }
-    aesCcm_.reset(c.release()); // Transfer ownership
+    // First AES_CCM_KEY_SIZE bytes of the shared secret are used as the session key for AES-CCM
+    // encryption, next two blocks of AES_CCM_FIXED_NONCE_SIZE bytes each are used as fixed parts
+    // of client and server nonces respectively
+    CHECK(aesCcm_->init(secret, secret + AES_CCM_KEY_SIZE, secret + AES_CCM_KEY_SIZE + AES_CCM_FIXED_NONCE_SIZE));
     return 0;
 }
 
 int BleControlRequestChannel::initJpake() {
     char secret[JPAKE_PASSPHRASE_SIZE] = {};
     static_assert(sizeof(secret) <= HAL_DEVICE_SECRET_SIZE, "");
-    int ret = hal_get_device_secret(secret, sizeof(secret), nullptr);
-    if (ret < 0) {
-        return ret;
-    }
-    if (ret < (int)sizeof(secret)) {
-        LOG(ERROR, "Invalid size of the device secret data");
+    const int ret = hal_get_device_secret(secret, sizeof(secret), nullptr);
+    CHECK(ret);
+    if (ret < (int)sizeof(secret)) { // Sanity check
+        LOG_DEBUG(ERROR, "Invalid size of the device secret data");
         return SYSTEM_ERROR_INTERNAL;
     }
-    std::unique_ptr<JpakeHandler> h(new(std::nothrow) JpakeHandler(this));
-    if (!h) {
+    jpake_.reset(new(std::nothrow) JpakeHandler(this));
+    if (!jpake_) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    ret = h->init(secret, sizeof(secret));
-    if (ret != 0) {
-        return ret;
-    }
-    jpake_.reset(h.release()); // Transfer ownership
+    CHECK(jpake_->init(secret, sizeof(secret)));
     return 0;
 }
 
