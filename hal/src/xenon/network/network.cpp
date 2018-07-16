@@ -18,6 +18,8 @@
 #include "ifapi.h"
 #include "ot_api.h"
 #include "openthread/lwip_openthreadif.h"
+#include "wiznet/wiznetif.h"
+#include <nrf52840.h>
 
 using namespace particle::net;
 
@@ -37,6 +39,18 @@ int if_init_platform(void*) {
     th2 = new OpenThreadNetif(ot_get_instance());
 
     /* en3 - Ethernet FeatherWing (optional) */
-    (void)en3;
+    uint8_t mac[6] = {};
+    {
+        const uint32_t lsb = __builtin_bswap32(NRF_FICR->DEVICEADDR[0]);
+        const uint32_t msb = NRF_FICR->DEVICEADDR[1] & 0xffff;
+        memcpy(mac + 2, &lsb, sizeof(lsb));
+        mac[0] = msb >> 8;
+        mac[1] = msb;
+        /* Drop 'multicast' bit */
+        mac[0] &= 0b11111110;
+        /* Set 'locally administered' bit */
+        mac[0] |= 0b10;
+    }
+    en3 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
     return 0;
 }

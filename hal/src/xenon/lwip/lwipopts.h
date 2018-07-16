@@ -292,13 +292,13 @@ void sys_unlock_tcpip_core(void);
  * The default number of timeouts is calculated here for all enabled modules.
  * The formula expects settings to be either '0' or '1'.
  */
-// #define MEMP_NUM_SYS_TIMEOUT            LWIP_NUM_SYS_TIMEOUT_INTERNAL
+#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 0)
 
 /**
  * MEMP_NUM_NETBUF: the number of struct netbufs.
  * (only needed if you use the sequential API, like api_lib.c)
  */
-#define MEMP_NUM_NETBUF                 2
+#define MEMP_NUM_NETBUF                 4
 
 /**
  * MEMP_NUM_NETCONN: the number of struct netconns.
@@ -1128,7 +1128,7 @@ void sys_unlock_tcpip_core(void);
  * LWIP_NETIF_LOOPBACK==1: Support sending packets with a destination IP
  * address equal to the netif IP address, looping them back up the stack.
  */
-#define LWIP_NETIF_LOOPBACK             0
+#define LWIP_NETIF_LOOPBACK             1
 
 /**
  * LWIP_LOOPBACK_MAX_PBUFS: Maximum number of pbufs on queue for loopback
