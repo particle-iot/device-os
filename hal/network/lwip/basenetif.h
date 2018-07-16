@@ -32,14 +32,17 @@ public:
 
 protected:
     virtual void ifEventHandler(const if_event* ev) = 0;
+    virtual void netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) = 0;
 
 private:
     static void ifEventCb(void* arg, if_t iface, const if_event* ev);
+    static void netifEventCb(netif* iface, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args);
 
 protected:
     netif netif_ = {};
 
 private:
+    netif_ext_callback_t netifEventHandlerCookie_;
     if_event_handler_cookie_t eventHandlerCookie_;
 };
 
