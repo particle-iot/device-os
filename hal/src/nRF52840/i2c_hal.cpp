@@ -20,6 +20,7 @@
 #include "nrf_gpio.h"
 #include "i2c_hal.h"
 #include "gpio_hal.h"
+#include "delay_hal.h"
 #include "platforms.h"
 #include "concurrent_hal.h"
 #include "interrupts_hal.h"
@@ -27,10 +28,8 @@
 #include "logging.h"
 
 #define TOTAL_I2C                   2
-
 #define BUFFER_LENGTH               I2C_BUFFER_LENGTH 
 #define I2C_IRQ_PRIORITY            APP_IRQ_PRIORITY_LOWEST
-
 
 /* TWI instance. */
 static nrfx_twim_t m_twi0 = NRFX_TWIM_INSTANCE(0);
@@ -46,7 +45,7 @@ typedef struct {
     I2C_Mode                mode;
     uint32_t                speed;
 
-    uint8_t                 address;
+    uint8_t                 address;    // 7bit data
 
     uint8_t                 rx_buf[BUFFER_LENGTH];
     uint8_t                 rx_buf_index;
@@ -253,15 +252,38 @@ void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* res
 uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reserved)
 {
     HAL_I2C_Acquire(i2c, NULL);
-    m_i2c_map[i2c].transmitting = true;
-    uint32_t err_code = nrfx_twim_tx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, m_i2c_map[i2c].tx_buf, 
-                                       m_i2c_map[i2c].tx_buf_length, stop);
-    if (err_code)
-    {
-        m_i2c_map[i2c].transmitting = false;
-    }
 
-    while (m_i2c_map[i2c].transmitting);
+    uint32_t err_code;
+    // FIXME: workaround, not support send zero byte data, 
+    // scan slave device by resquestting 1 bytes from slave
+    if (m_i2c_map[i2c].tx_buf_length)
+    {
+        m_i2c_map[i2c].transmitting = true;
+        err_code = nrfx_twim_tx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, m_i2c_map[i2c].tx_buf, 
+                                        m_i2c_map[i2c].tx_buf_length, !stop);
+        if (err_code)
+        {
+            m_i2c_map[i2c].transmitting = false;
+        }
+
+        while (m_i2c_map[i2c].transmitting);
+
+        m_i2c_map[i2c].tx_buf_index = 0;
+        m_i2c_map[i2c].tx_buf_length = 0;
+    }
+    else
+    {
+        uint8_t dummy = 0;
+
+        m_i2c_map[i2c].transmitting = true;
+        err_code = nrfx_twim_rx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, &dummy, 1);
+        if (err_code)
+        {
+            m_i2c_map[i2c].transmitting = false;
+        }
+
+        while (m_i2c_map[i2c].transmitting);
+    }
 
     HAL_I2C_Release(i2c, NULL);
     return 0;
@@ -362,12 +384,38 @@ void HAL_I2C1_EV_Handler(void)
 
 void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved)
 {
-    // nrfx driver use DMA to send data
+    // use DMA to send data by default
 }
 
 uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
 {
-  return 0;
+    HAL_I2C_Acquire(i2c, NULL);
+    if (HAL_I2C_Is_Enabled(i2c, NULL)) {
+        HAL_I2C_End(i2c, NULL);
+
+        HAL_Pin_Mode(m_i2c_map[i2c].sda_pin, INPUT_PULLUP); //Turn SCA into high impedance input
+        HAL_Pin_Mode(m_i2c_map[i2c].scl_pin, OUTPUT);       //Turn SCL into a normal GPO
+        HAL_GPIO_Write(m_i2c_map[i2c].scl_pin, 1);     // Start idle HIGH
+
+        //Generate 9 pulses on SCL to tell slave to release the bus
+        for(int i=0; i <9; i++)
+        {
+            HAL_GPIO_Write(m_i2c_map[i2c].scl_pin, 0);
+            HAL_Delay_Microseconds(100);
+            HAL_GPIO_Write(m_i2c_map[i2c].scl_pin, 1);
+            HAL_Delay_Microseconds(100);
+        }
+
+        //Change SCL to be an input
+        HAL_Pin_Mode(m_i2c_map[i2c].scl_pin, INPUT_PULLUP);
+
+        HAL_I2C_Begin(i2c, m_i2c_map[i2c].mode, m_i2c_map[i2c].address, NULL);
+        HAL_Delay_Milliseconds(50);
+        HAL_I2C_Release(i2c, NULL);
+        return 0;
+    }
+    HAL_I2C_Release(i2c, NULL);
+    return 1;
 }
 
 int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
