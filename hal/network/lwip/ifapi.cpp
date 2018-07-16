@@ -22,7 +22,9 @@
 #include <lwip/netif.h>
 #include <lwip/netifapi.h>
 #include <lwip/dhcp.h>
+extern "C" {
 #include <lwip/dhcp6.h>
+}
 #include <lwip/autoip.h>
 #include "logging.h"
 
@@ -455,7 +457,7 @@ int if_set_flags(if_t iface, unsigned int flags) {
     const unsigned int changed = flags ^ curFlags;
 
     if (changed & IFF_UP) {
-        if (curFlags & IFF_UP) {
+        if (flags & IFF_UP) {
             netif_set_up(iface);
         } else {
             netif_set_down(iface);
