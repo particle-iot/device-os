@@ -77,10 +77,11 @@ extern "C" {
 #endif
 
 typedef enum {
-  HAL_SPI_INFO_VERSION_1 = 11
+  HAL_SPI_INFO_VERSION_1 = 11,
+  HAL_SPI_INFO_VERSION_2 = 12
 } hal_spi_info_version_t;
 
-#define HAL_SPI_INFO_VERSION HAL_SPI_INFO_VERSION_1
+#define HAL_SPI_INFO_VERSION HAL_SPI_INFO_VERSION_2
 
 typedef struct hal_spi_info_t {
     uint16_t version;
@@ -93,6 +94,7 @@ typedef struct hal_spi_info_t {
     uint32_t clock;
     uint8_t bit_order;
     uint8_t data_mode;
+    pin_t ss_pin;
 } hal_spi_info_t;
 
 typedef struct HAL_SPI_TransferStatus {

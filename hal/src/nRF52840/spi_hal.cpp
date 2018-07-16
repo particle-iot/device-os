@@ -53,8 +53,8 @@ typedef struct {
 static const nrfx_spim_t m_spi2 = NRFX_SPIM_INSTANCE(2);
 static const nrfx_spim_t m_spi3 = NRFX_SPIM_INSTANCE(3);
 static nrf5x_spi_info_t m_spi_map[TOTAL_SPI] = {
-    {&m_spi3, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO},
-    {&m_spi2, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},
+    {&m_spi3, APP_IRQ_PRIORITY_HIGH, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO},
+    {&m_spi2, APP_IRQ_PRIORITY_HIGH, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},
 };
 
 static void spi_event_handler(nrfx_spim_evt_t const * p_event,
@@ -169,9 +169,9 @@ static int spi_tx_rx(HAL_SPI_Interface spi, uint8_t *tx_buf, uint8_t *rx_buf, ui
     nrfx_spim_xfer_desc_t const spim_xfer_desc =
     {
         .p_tx_buffer = tx_buf,
-        .tx_length   = size,
+        .tx_length   = tx_buf ? size : 0,
         .p_rx_buffer = rx_buf,
-        .rx_length   = size,
+        .rx_length   = rx_buf ? size : 0,
     };
     err_code = nrfx_spim_xfer(m_spi_map[spi].instance, &spim_xfer_desc, 0);
 
@@ -344,6 +344,10 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
         info->mode = m_spi_map[spi].spi_mode;
         info->bit_order = m_spi_map[spi].bit_order;
         info->data_mode = m_spi_map[spi].data_mode;
+        if (info->version >= HAL_SPI_INFO_VERSION_2) {
+            info->ss_pin = m_spi_map[spi].ss_pin != NRFX_SPIM_PIN_NOT_USED ?
+                           NRF_PIN_LOOKUP_TABLE[m_spi_map[spi].ss_pin] : 0xffff;
+        }
         HAL_enable_irq(state);
     }
 }
