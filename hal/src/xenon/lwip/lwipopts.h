@@ -1104,7 +1104,7 @@ void sys_unlock_tcpip_core(void);
  * LWIP_NUM_NETIF_CLIENT_DATA: Number of clients that may store
  * data in client_data member array of struct netif (max. 256).
  */
-#define LWIP_NUM_NETIF_CLIENT_DATA            1
+#define LWIP_NUM_NETIF_CLIENT_DATA            4
 
 /*
    ------------------------------------
@@ -1167,7 +1167,7 @@ void sys_unlock_tcpip_core(void);
  * The stack size value itself is platform-dependent, but is passed to
  * sys_thread_new() when the thread is created.
  */
-#define TCPIP_THREAD_STACKSIZE          4096
+#define TCPIP_THREAD_STACKSIZE          OS_THREAD_STACK_SIZE_DEFAULT_NETWORK
 
 /**
  * TCPIP_THREAD_PRIO: The priority assigned to the main tcpip thread.
