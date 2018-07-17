@@ -26,19 +26,19 @@ using namespace particle::net;
 namespace {
 
 /* th2 - OpenThread */
-BaseNetif* th2 = nullptr;
+BaseNetif* th1 = nullptr;
 /* en3 - Ethernet FeatherWing */
-BaseNetif* en3 = nullptr;
+BaseNetif* en2 = nullptr;
 
 } /* anonymous */
 
 int if_init_platform(void*) {
-    /* lo1 (created by LwIP) */
+    /* lo0 (created by LwIP) */
 
-    /* th2 - OpenThread */
-    th2 = new OpenThreadNetif(ot_get_instance());
+    /* th1 - OpenThread */
+    th1 = new OpenThreadNetif(ot_get_instance());
 
-    /* en3 - Ethernet FeatherWing (optional) */
+    /* en2 - Ethernet FeatherWing (optional) */
     uint8_t mac[6] = {};
     {
         const uint32_t lsb = __builtin_bswap32(NRF_FICR->DEVICEADDR[0]);
@@ -51,6 +51,12 @@ int if_init_platform(void*) {
         /* Set 'locally administered' bit */
         mac[0] |= 0b10;
     }
-    en3 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+    en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+    uint8_t dummy;
+    if (if_get_index(en2->interface(), &dummy)) {
+        /* No en2 present */
+        delete en2;
+        en2 = nullptr;
+    }
     return 0;
 }
