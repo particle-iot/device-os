@@ -61,6 +61,15 @@ static inline void sockaddr_to_ipaddr_port(const struct sockaddr *sockaddr, ip_a
   }
 }
 
+static inline void ipaddr_port_to_sockaddr(const ip_addr_t* ipaddr, u16_t port, struct sockaddr* sockaddr)
+{
+  if (IP_IS_V4(ipaddr)) {
+    IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)sockaddr, ip_2_ip4(ipaddr), port);
+  } else {
+    IP6ADDR_PORT_TO_SOCKADDR((sockaddr_in6*)sockaddr, ip_2_ip6(ipaddr), port);
+  }
+}
+
 } } /* particle::net */
 
 #endif /* HAL_NETWORK_LWIP_IPSOCKADDR_H */

@@ -86,7 +86,7 @@ if_ip6_addr_state_t netif_ip6_state_to_if_ip6_addr_state(uint8_t state) {
 }
 
 void netif_ip6_address_to_if_addr(struct netif* netif, uint8_t i, struct if_addr* a) {
-    IP6ADDR_PORT_TO_SOCKADDR((sockaddr_in6*)a->addr, netif_ip6_addr(netif, i), 0);
+    ipaddr_port_to_sockaddr(netif_ip_addr6(netif, i), 0, a->addr);
     /* XXX: LwIP supports only /64 prefixes at the moment */
     if (!ip6_addr_isany(netif_ip6_addr(netif, i))) {
         a->prefixlen = 64;
@@ -107,9 +107,9 @@ unsigned int ip4_netmask_to_prefix_length(const ip4_addr_t* netmask) {
 }
 
 void netif_ip4_address_to_if_addr(struct netif* netif, struct if_addr* a) {
-    IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->addr, netif_ip4_addr(netif), 0);
-    IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->netmask, netif_ip4_netmask(netif), 0);
-    IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)a->gw, netif_ip4_gw(netif), 0);
+    ipaddr_port_to_sockaddr(netif_ip_addr4(netif), 0, a->addr);
+    ipaddr_port_to_sockaddr(netif_ip_netmask4(netif), 0, a->netmask);
+    ipaddr_port_to_sockaddr(netif_ip_gw4(netif), 0, a->gw);
 
     a->prefixlen = ip4_netmask_to_prefix_length(netif_ip4_netmask(netif));
 }
@@ -152,6 +152,14 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
 
     char name[IF_NAMESIZE] = {};
     if_get_name(netif, name);
+
+    if (reason & (LWIP_NSC_IPV4_ADDRESS_CHANGED |
+                  LWIP_NSC_IPV4_NETMASK_CHANGED |
+                  LWIP_NSC_IPV4_GATEWAY_CHANGED |
+                  LWIP_NSC_IPV4_SETTINGS_CHANGED)) {
+        /* Patch the reason */
+        reason = LWIP_NSC_IPV4_SETTINGS_CHANGED;
+    }
 
     switch (reason) {
         case LWIP_NSC_NETIF_ADDED: {
@@ -199,24 +207,32 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
             ev_if_addr.oldaddr = &oldaddr;
             ev_if_addr.addr = &newaddr;
 
+            struct sockaddr_in addrs[6] = {};
+            oldaddr.addr = (sockaddr*)&addrs[0];
+            oldaddr.netmask = (sockaddr*)&addrs[1];
+            oldaddr.gw = (sockaddr*)&addrs[2];
+            newaddr.addr = (sockaddr*)&addrs[3];
+            newaddr.netmask = (sockaddr*)&addrs[4];
+            newaddr.gw = (sockaddr*)&addrs[5];
+
             if (args->ipv4_changed.old_address) {
-                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.addr, ip_2_ip4(args->ipv4_changed.old_address), 0);
+                ipaddr_port_to_sockaddr(args->ipv4_changed.old_address, 0, oldaddr.addr);
             } else {
-                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.addr, netif_ip4_addr(netif), 0);
+                ipaddr_port_to_sockaddr(netif_ip_addr4(netif), 0, oldaddr.addr);
             }
 
             if (args->ipv4_changed.old_netmask) {
-                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.netmask, ip_2_ip4(args->ipv4_changed.old_netmask), 0);
+                ipaddr_port_to_sockaddr(args->ipv4_changed.old_netmask, 0, oldaddr.netmask);
                 oldaddr.prefixlen = ip4_netmask_to_prefix_length(ip_2_ip4(args->ipv4_changed.old_netmask));
             } else {
-                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.netmask, netif_ip4_netmask(netif), 0);
+                ipaddr_port_to_sockaddr(netif_ip_netmask4(netif), 0, oldaddr.netmask);
                 oldaddr.prefixlen = ip4_netmask_to_prefix_length(netif_ip4_netmask(netif));
             }
 
             if (args->ipv4_changed.old_gw) {
-                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.gw, ip_2_ip4(args->ipv4_changed.old_gw), 0);
+                ipaddr_port_to_sockaddr(args->ipv4_changed.old_gw, 0, oldaddr.gw);
             } else {
-                IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)oldaddr.gw, netif_ip4_gw(netif), 0);
+                ipaddr_port_to_sockaddr(netif_ip_gw4(netif), 0, oldaddr.gw);
             }
 
             netif_ip4_address_to_if_addr(netif, &newaddr);
@@ -239,7 +255,11 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
             ev_if_addr.oldaddr = &oldaddr;
             ev_if_addr.addr = &newaddr;
 
-            IP6ADDR_PORT_TO_SOCKADDR((sockaddr_in6*)oldaddr.addr, ip_2_ip6(args->ipv6_set.old_address), 0);
+            struct sockaddr_in6 addrs[2] = {};
+            oldaddr.addr = (sockaddr*)&addrs[0];
+            newaddr.addr = (sockaddr*)&addrs[1];
+
+            ipaddr_port_to_sockaddr(args->ipv6_set.old_address, 0, oldaddr.addr);
             if (!ip_addr_isany(args->ipv6_set.old_address)) {
                 oldaddr.prefixlen = 64;
             }
@@ -815,10 +835,10 @@ int if_add_addr(if_t iface, const struct if_addr* addr) {
             ip_addr_t netmask = {};
             ip_addr_t gw = {};
             uint16_t dummy;
-            SOCKADDR4_TO_IP4ADDR_PORT((const sockaddr_in*)addr->addr, &ip4addr, dummy);
-            SOCKADDR4_TO_IP4ADDR_PORT((const sockaddr_in*)addr->netmask, &netmask, dummy);
+            sockaddr_to_ipaddr_port(addr->addr, &ip4addr, &dummy);
+            sockaddr_to_ipaddr_port(addr->netmask, &netmask, &dummy);
             if (addr->gw) {
-                SOCKADDR4_TO_IP4ADDR_PORT((const sockaddr_in*)addr->gw, &gw, dummy);
+                sockaddr_to_ipaddr_port(addr->gw, &gw, &dummy);
             }
             netif_set_addr(iface, ip_2_ip4(&ip4addr), ip_2_ip4(&netmask), ip_2_ip4(&gw));
             return 0;
@@ -829,7 +849,7 @@ int if_add_addr(if_t iface, const struct if_addr* addr) {
             ip_addr_t ip6addr = {};
             uint16_t dummy;
             /* Non-/64 prefixes are not supported. Ignoring prefixlen */
-            SOCKADDR6_TO_IP6ADDR_PORT((const sockaddr_in6*)addr->addr, &ip6addr, dummy);
+            sockaddr_to_ipaddr_port(addr->addr, &ip6addr, &dummy);
             err_t r = netif_add_ip6_address(iface, ip_2_ip6(&ip6addr), nullptr);
             return r == 0 ? 0 : -1;
         }
@@ -861,7 +881,7 @@ int if_del_addr(if_t iface, const struct if_addr* addr) {
             ip_addr_t ip6addr = {};
             uint16_t dummy;
             /* Non-/64 prefixes are not supported. Ignoring netmask */
-            SOCKADDR6_TO_IP6ADDR_PORT((const sockaddr_in6*)addr->addr, &ip6addr, dummy);
+            sockaddr_to_ipaddr_port(addr->addr, &ip6addr, &dummy);
 
             for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
                 if (ip6_addr_cmp_zoneless(ip_2_ip6(&ip6addr), netif_ip6_addr(iface, i))) {
