@@ -27,6 +27,7 @@ ProtocolError ChunkedTransfer::handle_update_begin(
         token_t token, Message& message, MessageChannel& channel)
 {
     uint8_t flags = 0;
+	chunk_count = 0;
     int actual_len = message.length();
     uint8_t* queue = message.buf();
     message_id_t msg_id = CoAP::message_id(queue);
@@ -113,6 +114,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
 {
     first_chunk_received = true;
     last_chunk_millis = callbacks->millis();
+    chunk_count++;
 
     Message response;
     ProtocolError error;
@@ -301,7 +303,10 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
     {
         updating = 2;       // flag that we are sending missing chunks.
         DEBUG("update done - missing chunks starting at %d", index);
-        error = send_missing_chunks(channel, MISSED_CHUNKS_TO_SEND);
+        chunk_index_t resend_chunk_count = std::min(std::max(2u,unsigned(chunk_count*1.2)), MISSED_CHUNKS_TO_SEND);
+        chunk_count = 0;
+
+        error = send_missing_chunks(channel, resend_chunk_count);
         last_chunk_millis = callbacks->millis();
     }
     return error;
