@@ -167,7 +167,20 @@ void RTC1_IRQHandler(void)
     {
         nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
 
-        BUTTON_Debounce();
+        if (HAL_Buttons[BUTTON1].active && BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+        {
+            if (!HAL_Buttons[BUTTON1].debounce_time)
+            {
+                HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+                HAL_Notify_Button_State(BUTTON1, true);
+            }
+            HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+        }
+        else if (HAL_Buttons[BUTTON1].active)
+        {
+            HAL_Buttons[BUTTON1].active = 0;
+            HAL_Core_Mode_Button_Reset(BUTTON1);
+        }
     }
 }
 

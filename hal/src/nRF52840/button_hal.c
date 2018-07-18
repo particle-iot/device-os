@@ -70,13 +70,13 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 {
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        /* Disable RTC0 tick Interrupt */
+        /* Disable RTC1 tick Interrupt */
         nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
 
         HAL_Pin_Mode(HAL_Buttons[Button].pin, BUTTON1_GPIO_MODE);
         BUTTON_EXTI_Config(Button, ENABLE);
 
-        /* Enable the RTC0 NVIC Interrupt */
+        /* Enable the RTC1 NVIC Interrupt */
         sd_nvic_SetPriority(RTC1_IRQn, RTC1_IRQ_PRIORITY);
         sd_nvic_ClearPendingIRQ(RTC1_IRQn);
         sd_nvic_EnableIRQ(RTC1_IRQn);
