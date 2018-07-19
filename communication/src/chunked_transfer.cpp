@@ -198,22 +198,6 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
                     response_size = notify_update_done(message, response, channel, 0, 0);
                     callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
                 }
-                else
-                {
-                    if (response_size)
-                    {
-                        response.set_length(response_size);
-                        error = channel.send(response);
-                        response_size = 0;
-                        if (error)
-                        {
-                            WARN("send chunk response failed");
-                            return error;
-                        }
-                    }
-                    if (next_missed > missed_chunk_index)
-                        send_missing_chunks(channel, MISSED_CHUNKS_TO_SEND);
-                }
             }
             chunk_index++;
         }
@@ -355,36 +339,6 @@ ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel,
 
 ProtocolError ChunkedTransfer::idle(MessageChannel& channel)
 {
-    system_tick_t millis_since_last_chunk = callbacks->millis() - last_chunk_millis;
-    if (first_chunk_received && 3000 < millis_since_last_chunk)
-    {
-        // Check for timeout on initial update phase "updating = 1", and successive phases "updating =2".
-        if (updating > 0)
-        {    // send missing chunks
-            WARN("timeout - resending missing chunks");
-            Message message;
-            ProtocolError error = channel.create(message,
-                    MISSED_CHUNKS_TO_SEND * sizeof(chunk_index_t) + 7);
-            if (!error)
-                error = send_missing_chunks(channel, MISSED_CHUNKS_TO_SEND);
-            if (error)
-                return error;
-        }
-        /* Do not resend chunks since this can cause duplicates on the server.
-         else
-         {
-         queue[0] = 0;
-         queue[1] = 16;
-         chunk_missed(queue + 2, chunk_index);
-         if (0 > blocking_send(queue, 18))
-         {
-         // error
-         return false;
-         }
-         }
-         */
-        last_chunk_millis = callbacks->millis();
-    }
     return NO_ERROR;
 }
 
