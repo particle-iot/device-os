@@ -78,8 +78,12 @@ private:
 
     os_thread_t thread_ = nullptr;
     os_queue_t queue_ = nullptr;
+    os_semaphore_t spiSem_ = nullptr;
 
     std::atomic_bool exit_;
+    std::atomic_bool inRecv_;
+
+    system_tick_t lastStatePoll_ = 0;
 
     /* FIXME: Wiznet callbacks do not have any kind of state arguments :( */
     static WizNetif* instance_;

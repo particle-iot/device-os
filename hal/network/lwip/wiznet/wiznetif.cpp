@@ -72,6 +72,7 @@
             res = false;                                                        \
             break;                                                              \
         }                                                                       \
+        /* I'd really love to get rid of this */                                \
         os_thread_yield();                                                      \
     }                                                                           \
     res;                                                                        \
@@ -120,6 +121,8 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
     /* There is an external 10k pull-up */
     HAL_Pin_Mode(interrupt_, INPUT);
 
+    SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
+
     if (!HAL_SPI_Is_Enabled(spi_)) {
         HAL_SPI_Init(spi_);
     }
@@ -165,11 +168,12 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
             size_t r = 0;
             while (r < len) {
                 size_t t = std::min((len - r), (size_t)65535);
-                HAL_SPI_DMA_Transfer(self->spi_, nullptr, pBuf + r, t, nullptr);
-                HAL_SPI_TransferStatus st;
-                do {
-                  HAL_SPI_DMA_Transfer_Status(self->spi_, &st);
-                } while(st.transfer_ongoing);
+                HAL_SPI_DMA_Transfer(self->spi_, nullptr, pBuf + r, t, [](void) -> void {
+                    auto self = instance();
+                    os_semaphore_give(self->spiSem_, true);
+                });
+                auto self = instance();
+                os_semaphore_take(self->spiSem_, WIZNET_DEFAULT_TIMEOUT, true);
                 r += t;
             }
         },
@@ -179,11 +183,12 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
             size_t r = 0;
             while (r < len) {
                 size_t t = std::min((len - r), (size_t)65535);
-                HAL_SPI_DMA_Transfer(self->spi_, pBuf + r, nullptr, t, nullptr);
-                HAL_SPI_TransferStatus st;
-                do {
-                  HAL_SPI_DMA_Transfer_Status(self->spi_, &st);
-                } while(st.transfer_ongoing);
+                HAL_SPI_DMA_Transfer(self->spi_, pBuf + r, nullptr, t, [](void) -> void {
+                    auto self = instance();
+                    os_semaphore_give(self->spiSem_, true);
+                });
+                auto self = instance();
+                os_semaphore_take(self->spiSem_, WIZNET_DEFAULT_TIMEOUT, true);
                 r += t;
             }
         }
@@ -194,8 +199,9 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
 
     exit_ = false;
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
-        SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 10, nullptr) == 0);
-        SPARK_ASSERT(os_thread_create(&thread_, "wiz", OS_THREAD_PRIORITY_NETWORK, &WizNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
+        /* FIXME: */
+        SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
+        SPARK_ASSERT(os_thread_create(&thread_, "wiz", OS_THREAD_PRIORITY_NETWORK, &WizNetif::loop, this, 4096) == 0);
     }
 }
 
@@ -203,9 +209,13 @@ WizNetif::~WizNetif() {
     exit_ = true;
     if (thread_ && queue_) {
         const void* dummy = nullptr;
-        os_queue_put(queue_, &dummy, 100, nullptr);
+        os_queue_put(queue_, &dummy, 1000, nullptr);
         os_thread_join(thread_);
         os_queue_destroy(queue_, nullptr);
+    }
+
+    if (spiSem_) {
+        os_semaphore_destroy(spiSem_);
     }
 
     HAL_Pin_Mode(reset_, INPUT);
@@ -233,8 +243,6 @@ err_t WizNetif::initInterface() {
     netif_.output = etharp_output;
     netif_.output_ip6 = ethip6_output;
     netif_.linkoutput = &WizNetif::linkOutputCb;
-
-    netif_set_default(interface());
 
     hwReset();
     if (!isPresent()) {
@@ -264,7 +272,8 @@ bool WizNetif::isPresent() {
 
 void WizNetif::interruptCb(void* arg) {
     WizNetif* self = static_cast<WizNetif*>(arg);
-    if (self) {
+    if (self && !self->inRecv_) {
+        self->inRecv_ = true;
         const void* dummy = nullptr;
         os_queue_put(self->queue_, &dummy, 0, nullptr);
     }
@@ -274,15 +283,14 @@ void WizNetif::loop(void* arg) {
     WizNetif* self = static_cast<WizNetif*>(arg);
     while(!self->exit_) {
         pbuf* p = nullptr;
-        int r = os_queue_take(self->queue_, (void*)&p, WIZNET_DEFAULT_TIMEOUT * 10, nullptr);
+        os_queue_take(self->queue_, (void*)&p, WIZNET_DEFAULT_TIMEOUT * 10, nullptr);
         if (p) {
             self->output(p);
-        } else {
-            if (r == 0) {
-                self->input();
-            }
-            self->pollState();
         }
+        if (self->inRecv_) {
+            self->input();
+        }
+        self->pollState();
     }
 
     self->down();
@@ -368,6 +376,10 @@ int WizNetif::closeRaw() {
 }
 
 void WizNetif::pollState() {
+    if (HAL_Timer_Get_Milli_Seconds() - lastStatePoll_ < 500) {
+        return;
+    }
+
     /* Poll link state and update if necessary */
     auto linkState = wizphy_getphylink() == PHY_LINK_ON;
 
@@ -395,7 +407,7 @@ void WizNetif::input() {
             pktSize = (tmp[0] << 8 | tmp[1]) - 2;
         }
 
-        LOG_DEBUG(TRACE, "Received packet, %d bytes", pktSize);
+        // LOG_DEBUG(TRACE, "Received packet, %d bytes", pktSize);
 
         if (pktSize >= 1514) {
             closeRaw();
@@ -440,6 +452,7 @@ void WizNetif::input() {
             WAIT_TIMED(WIZNET_DEFAULT_TIMEOUT, getSn_CR(0));
         }
     }
+    inRecv_ = false;
 
     setSn_IR(0, Sn_IR_RECV);
 }
@@ -451,8 +464,8 @@ err_t WizNetif::linkOutput(pbuf* p) {
 
     /* Increase reference counter */
     pbuf_ref(p);
-    if (os_queue_put(queue_, &p, WIZNET_DEFAULT_TIMEOUT, nullptr)) {
-        LOG(TRACE, "Dropping packet %x, not enough space in event queue", p);
+    if (os_queue_put(queue_, &p, 0, nullptr)) {
+        LOG(ERROR, "Dropping packet %x, not enough space in event queue", p);
         pbuf_free(p);
         return ERR_MEM;
     }
@@ -471,7 +484,7 @@ void WizNetif::output(pbuf* p) {
 
     if (p->tot_len > txAvailable || txAvailable == 0xffff) {
         /* Drop packet */
-        LOG(TRACE, "Dropping packet, not enough space in TX buffer");
+        LOG(ERROR, "Dropping packet, not enough space in TX buffer");
         goto cleanup;
     }
 
