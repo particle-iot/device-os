@@ -138,6 +138,7 @@ protected:
     }
 
     virtual int on_now() override {
+        (void)interface();
         return 0;
     }
 
