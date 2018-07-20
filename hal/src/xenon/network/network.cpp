@@ -33,9 +33,9 @@ using namespace particle::net::nat;
 namespace {
 
 /* th2 - OpenThread */
-BaseNetif* th1 = nullptr;
+BaseNetif* th2 = nullptr;
 /* en3 - Ethernet FeatherWing */
-BaseNetif* en2 = nullptr;
+BaseNetif* en3 = nullptr;
 
 Nat64* nat64 = nullptr;
 
@@ -49,12 +49,12 @@ void nat64_tick_do() {
 } /* anonymous */
 
 int if_init_platform(void*) {
-    /* lo0 (created by LwIP) */
+    /* lo1 (created by LwIP) */
 
-    /* th1 - OpenThread */
-    th1 = new OpenThreadNetif(ot_get_instance());
+    /* th2 - OpenThread */
+    th2 = new OpenThreadNetif(ot_get_instance());
 
-    /* en2 - Ethernet FeatherWing (optional) */
+    /* en3 - Ethernet FeatherWing (optional) */
     uint8_t mac[6] = {};
     {
         const uint32_t lsb = __builtin_bswap32(NRF_FICR->DEVICEADDR[0]);
@@ -67,27 +67,27 @@ int if_init_platform(void*) {
         /* Set 'locally administered' bit */
         mac[0] |= 0b10;
     }
-    en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+    en3 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
     uint8_t dummy;
-    if (if_get_index(en2->interface(), &dummy)) {
-        /* No en2 present */
-        delete en2;
-        en2 = nullptr;
+    if (if_get_index(en3->interface(), &dummy)) {
+        /* No en3 present */
+        delete en3;
+        en3 = nullptr;
     } else {
         unsigned int flags = 0;
-        if_get_flags(en2->interface(), &flags);
+        if_get_flags(en3->interface(), &flags);
         flags |= (IFF_UP);
-        if_set_flags(en2->interface(), flags);
+        if_set_flags(en3->interface(), flags);
 
         flags = 0;
-        if_get_xflags(en2->interface(), &flags);
+        if_get_xflags(en3->interface(), &flags);
         flags |= IFXF_DHCP;
-        if_set_xflags(en2->interface(), flags);
+        if_set_xflags(en3->interface(), flags);
 
         nat64 = new Nat64();
         ip_addr_t prefix;
         ipaddr_aton("64:ff9b::", &prefix);
-        Rule r(th1->interface(), en2->interface());
+        Rule r(th2->interface(), en3->interface());
         nat64->enable(r);
 
         nat64_tick_do();
@@ -115,8 +115,8 @@ int if_init_platform(void*) {
 extern "C" {
 
 struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
-    if (en2) {
-        return en2->interface();
+    if (en3) {
+        return en3->interface();
     }
 
     return nullptr;
