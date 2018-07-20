@@ -292,7 +292,7 @@ void sys_unlock_tcpip_core(void);
  * The default number of timeouts is calculated here for all enabled modules.
  * The formula expects settings to be either '0' or '1'.
  */
-#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 0)
+#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 2)
 
 /**
  * MEMP_NUM_NETBUF: the number of struct netbufs.
@@ -432,6 +432,11 @@ void sys_unlock_tcpip_core(void);
  * interface, define this to 0.
  */
 #define IP_FORWARD                      1
+
+/**
+ * LWIP_IPV4_SRC_ROUTING==1: Enables source routing
+ */
+#define LWIP_IPV4_SRC_ROUTING           1
 
 /**
  * LWIP_L3_BRIDGE==1: Enables the ability to L3 bridge IP/IPv6 interfaces
@@ -679,7 +684,7 @@ void sys_unlock_tcpip_core(void);
  * The first server can be initialized automatically by defining
  * DNS_SERVER_ADDRESS(ipaddr), where 'ipaddr' is an 'ip_addr_t*'
  */
-#define DNS_MAX_SERVERS                 2
+#define DNS_MAX_SERVERS                 4
 
 /** DNS maximum number of retries when asking for a name, before "timeout". */
 #define DNS_MAX_RETRIES           4
@@ -1181,7 +1186,7 @@ void sys_unlock_tcpip_core(void);
  * The queue size value itself is platform-dependent, but is passed to
  * sys_mbox_new() when tcpip_init is called.
  */
-#define TCPIP_MBOX_SIZE                 10
+#define TCPIP_MBOX_SIZE                 (MEMP_NUM_PBUF)
 
 /**
  * Define this to something that triggers a watchdog. This is called from
@@ -1836,7 +1841,7 @@ void sys_unlock_tcpip_core(void);
  * Declare your hook function prototypes in there, you may also \#include all headers
  * providing data types that are need in this file.
  */
-// #define LWIP_HOOK_FILENAME "lwiphooks.h"
+#define LWIP_HOOK_FILENAME "lwiphooks.h"
 
 /*
    ---------------------------------------
