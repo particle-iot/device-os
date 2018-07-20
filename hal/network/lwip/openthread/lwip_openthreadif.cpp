@@ -90,10 +90,17 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     otSetStateChangedCallback(ot_, otStateChangedCb, this);
 
     {
+        /* FIXME */
         LOCK_TCPIP_CORE();
         ip_addr_t dns;
-        ipaddr_aton("fdaa:bb:1::1", &dns);
+        ipaddr_aton("64:ff9b::808:808", &dns);
         dns_setserver(0, &dns);
+        ipaddr_aton("64:ff9b::808:404", &dns);
+        dns_setserver(1, &dns);
+        ipaddr_aton("8.8.8.8", &dns);
+        dns_setserver(2, &dns);
+        ipaddr_aton("8.8.4.4", &dns);
+        dns_setserver(3, &dns);
         UNLOCK_TCPIP_CORE();
     }
 }
@@ -114,6 +121,9 @@ err_t OpenThreadNetif::initCb(netif* netif) {
     netif->rs_count = 0;
     netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_NO_ND6;
 
+    /* FIXME */
+    netif_set_default(netif);
+
     return ERR_OK;
 }
 
@@ -129,13 +139,13 @@ err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr
     ip_addr_copy_from_ip6_packed(dst, ip6hdr->dest);
     ip_addr_copy_from_ip6_packed(src, ip6hdr->src);
 
-    char tmp[IP6ADDR_STRLEN_MAX] = {0};
-    char tmp1[IP6ADDR_STRLEN_MAX] = {0};
+    // char tmp[IP6ADDR_STRLEN_MAX] = {0};
+    // char tmp1[IP6ADDR_STRLEN_MAX] = {0};
 
-    ipaddr_ntoa_r(&src, tmp, sizeof(tmp));
-    ipaddr_ntoa_r(&dst, tmp1, sizeof(tmp1));
+    // ipaddr_ntoa_r(&src, tmp, sizeof(tmp));
+    // ipaddr_ntoa_r(&dst, tmp1, sizeof(tmp1));
 
-    LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes (%s -> %s)", self, p->tot_len, tmp, tmp1);
+    // LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes (%s -> %s)", self, p->tot_len, tmp, tmp1);
 
     auto msg = otIp6NewMessage(self->ot_, true);
     if (msg == nullptr) {
@@ -380,7 +390,7 @@ void OpenThreadNetif::input(otMessage* msg) {
         return;
     }
     uint16_t len = otMessageGetLength(msg);
-    LOG(TRACE, "OpenThreadNetif(%x): input() length %u", this, len);
+    //LOG(TRACE, "OpenThreadNetif(%x): input() length %u", this, len);
     auto p = pbuf_alloc(PBUF_IP, len, PBUF_POOL);
     if (p) {
         uint16_t written = 0;
