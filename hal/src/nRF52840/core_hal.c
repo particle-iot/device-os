@@ -35,6 +35,7 @@
 #include "rng_hal.h"
 #include <stdlib.h>
 #include <malloc.h>
+#include "rtc_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
@@ -272,6 +273,8 @@ void HAL_Core_Config(void)
 
     HAL_RNG_Configuration();
 
+    HAL_RTC_Configuration();
+    
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
