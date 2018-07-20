@@ -256,6 +256,7 @@ void IWDG_Reset_Enable(uint32_t msTimeout)
             NVIC_SystemReset();
         }
 
-        HAL_Watchdog_Init(msTimeout);
+        // FIXME: DON'T enable watchdog temporarily
+        // HAL_Watchdog_Init(msTimeout);
     }
 }
