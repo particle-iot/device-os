@@ -254,36 +254,30 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reser
     HAL_I2C_Acquire(i2c, NULL);
 
     uint32_t err_code;
-    // FIXME: workaround, not support send zero byte data, 
-    // scan slave device by resquestting 1 bytes from slave
-    if (m_i2c_map[i2c].tx_buf_length)
+
+    if (m_i2c_map[i2c].tx_buf_length == 0)
     {
-        m_i2c_map[i2c].transmitting = true;
-        err_code = nrfx_twim_tx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, m_i2c_map[i2c].tx_buf, 
-                                        m_i2c_map[i2c].tx_buf_length, !stop);
-        if (err_code)
-        {
-            m_i2c_map[i2c].transmitting = false;
-        }
+        // Not support send zero byte
+        HAL_I2C_Release(i2c, NULL);
+        return 1;
+    }
 
-        while (m_i2c_map[i2c].transmitting);
-
+    m_i2c_map[i2c].transmitting = true;
+    err_code = nrfx_twim_tx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, m_i2c_map[i2c].tx_buf, 
+                                    m_i2c_map[i2c].tx_buf_length, !stop);
+    if (err_code)
+    {
+        m_i2c_map[i2c].transmitting = false;
         m_i2c_map[i2c].tx_buf_index = 0;
         m_i2c_map[i2c].tx_buf_length = 0;
+        HAL_I2C_Release(i2c, NULL);
+        return 2;
     }
-    else
-    {
-        uint8_t dummy = 0;
 
-        m_i2c_map[i2c].transmitting = true;
-        err_code = nrfx_twim_rx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, &dummy, 1);
-        if (err_code)
-        {
-            m_i2c_map[i2c].transmitting = false;
-        }
+    while (m_i2c_map[i2c].transmitting);
 
-        while (m_i2c_map[i2c].transmitting);
-    }
+    m_i2c_map[i2c].tx_buf_index = 0;
+    m_i2c_map[i2c].tx_buf_length = 0;
 
     HAL_I2C_Release(i2c, NULL);
     return 0;
