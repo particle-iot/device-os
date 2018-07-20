@@ -19,9 +19,16 @@
 #include "ot_api.h"
 #include "openthread/lwip_openthreadif.h"
 #include "wiznet/wiznetif.h"
+#include "nat64.h"
+#include <lwip/timeouts.h>
+#include <mutex>
+#include <openthread/border_router.h>
+#include <openthread/thread_ftd.h>
+#include <openthread/ip6.h>
 #include <nrf52840.h>
 
 using namespace particle::net;
+using namespace particle::net::nat;
 
 namespace {
 
@@ -29,6 +36,15 @@ namespace {
 BaseNetif* th1 = nullptr;
 /* en3 - Ethernet FeatherWing */
 BaseNetif* en2 = nullptr;
+
+Nat64* nat64 = nullptr;
+
+void nat64_tick_do() {
+    sys_timeout(1000, [](void* arg) -> void {
+        nat64->timeout(1000);
+        nat64_tick_do();
+    }, nullptr);
+}
 
 } /* anonymous */
 
@@ -57,6 +73,71 @@ int if_init_platform(void*) {
         /* No en2 present */
         delete en2;
         en2 = nullptr;
+    } else {
+        unsigned int flags = 0;
+        if_get_flags(en2->interface(), &flags);
+        flags |= (IFF_UP);
+        if_set_flags(en2->interface(), flags);
+
+        flags = 0;
+        if_get_xflags(en2->interface(), &flags);
+        flags |= IFXF_DHCP;
+        if_set_xflags(en2->interface(), flags);
+
+        nat64 = new Nat64();
+        ip_addr_t prefix;
+        ipaddr_aton("64:ff9b::", &prefix);
+        Rule r(th1->interface(), en2->interface());
+        nat64->enable(r);
+
+        nat64_tick_do();
+
+        auto thread = ot_get_instance();
+        otBorderRouterConfig config = {};
+        config.mPreference = 0x01;
+        config.mPreferred = 1;
+        config.mSlaac = 1;
+        config.mDefaultRoute = 1;
+        config.mOnMesh = 1;
+        config.mStable = 1;
+
+        std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
+        otIp6AddressFromString("fd11:23::", &config.mPrefix.mPrefix);
+        config.mPrefix.mLength = 64;
+
+        otBorderRouterAddOnMeshPrefix(thread, &config);
+        otThreadBecomeRouter(thread);
+        otBorderRouterRegister(thread);
     }
     return 0;
+}
+
+extern "C" {
+
+struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
+    if (en2) {
+        return en2->interface();
+    }
+
+    return nullptr;
+}
+
+int lwip_hook_ip6_forward_pre_routing(struct pbuf* p, struct ip6_hdr* ip6hdr, struct netif* inp, u32_t* flags) {
+    if (nat64) {
+        return nat64->ip6Input(p, ip6hdr, inp);
+    }
+
+    /* Do not forward */
+    return 1;
+}
+
+int lwip_hook_ip4_input_pre_upper_layers(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp) {
+    if (nat64) {
+        nat64->ip4Input(p, (ip_hdr*)iphdr, inp);
+    }
+
+    /* Try to handle locally if not consumed by NAT64 */
+    return 0;
+}
+
 }
