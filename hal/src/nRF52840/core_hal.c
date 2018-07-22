@@ -161,29 +161,6 @@ void UsageFault_Handler(void)
     }
 }
 
-void RTC1_IRQHandler(void)
-{
-    if (nrf_rtc_event_pending(NRF_RTC1, NRF_RTC_EVENT_TICK))
-    {
-        nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
-
-        if (HAL_Buttons[BUTTON1].active && BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
-        {
-            if (!HAL_Buttons[BUTTON1].debounce_time)
-            {
-                HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-                HAL_Notify_Button_State(BUTTON1, true);
-            }
-            HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-        }
-        else if (HAL_Buttons[BUTTON1].active)
-        {
-            HAL_Buttons[BUTTON1].active = 0;
-            HAL_Core_Mode_Button_Reset(BUTTON1);
-        }
-    }
-}
-
 void SysTickOverride(void)
 {
     System1MsTick();
@@ -323,30 +300,6 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
     }
 
     return pressedState;
-}
-
-void HAL_Core_Mode_Button_Reset(uint16_t button)
-{
-    HAL_Buttons[button].debounce_time = 0x00;
-
-    if (HAL_Buttons[BUTTON1].active + HAL_Buttons[BUTTON1_MIRROR].active == 0) {
-        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
-    }
-
-    HAL_Notify_Button_State((Button_TypeDef)button, false);
-
-    /* Enable Button Interrupt */
-    if (button != BUTTON1_MIRROR) {
-        BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
-    } else {
-        HAL_InterruptExtraConfiguration irqConf = {0};
-        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
-        irqConf.IRQChannelPreemptionPriority = 0;
-        irqConf.IRQChannelSubPriority = 0;
-        irqConf.keepHandler = 1;
-        irqConf.keepPriority = 1;
-        HAL_Interrupts_Attach(HAL_Buttons[button].pin, NULL, NULL, HAL_Buttons[button].interrupt_mode, &irqConf);
-    }
 }
 
 void HAL_Core_System_Reset(void)

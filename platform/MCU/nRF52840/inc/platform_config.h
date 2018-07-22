@@ -36,7 +36,7 @@
 #endif
 
 #define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
-#define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
+#define BUTTON_DEBOUNCE_INTERVAL            (1000 / UI_TIMER_FREQUENCY)
 
 
 // QSPI Flash
@@ -106,15 +106,17 @@
 #define BUTTON1_MIRROR_SUPPORTED            0
 #else
 //Push Buttons in Device OS, use interrupt HAL
-#define BUTTON1_GPIO_PIN                    20
-#define BUTTON1_GPIO_MODE                   INPUT_PULLUP
-#define BUTTON1_GPIOTE_INTERRUPT_MODE       FALLING
+#define BUTTON1_PIN                         20
+#define BUTTON1_PIN_MODE                    INPUT_PULLUP
+#define BUTTON1_INTERRUPT_MODE              FALLING
 #define BUTTON1_PRESSED                     0x00
-#define BUTTON1_MIRROR_SUPPORTED            0
+#define BUTTON1_MIRROR_SUPPORTED            1
+#define BUTTON1_MIRROR_PIN                  PIN_INVALID
+#define BUTTON1_MIRROR_PIN_MODE             INPUT_PULLUP
+#define BUTTON1_MIRROR_INTERRUPT_MODE       FALLING
+
 #endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
 
 /* Exported functions ------------------------------------------------------- */
 
 #endif /* __PLATFORM_CONFIG_H */
-
-

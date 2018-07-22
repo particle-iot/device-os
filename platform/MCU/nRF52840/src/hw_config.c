@@ -83,9 +83,6 @@ void Set_System(void)
 
     DWT_Init();
 
-    /* Configure RTC1 for BUTTON-DEBOUNCE usage */
-    UI_Timer_Configure();
-
     /* Configure the LEDs and set the default states */
     int LEDx;
     for(LEDx = 0; LEDx < LEDn; ++LEDx)
@@ -176,15 +173,7 @@ void Finish_Update()
     sd_nvic_SystemReset();
 }
 
-void UI_Timer_Configure(void)
-{
-    nrf_rtc_prescaler_set(NRF_RTC1, RTC_FREQ_TO_PRESCALER(UI_TIMER_FREQUENCY));
-    /* NOTE: the second argument is an event (nrf_rtc_event_t) */
-    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
-    /* NOTE: the second argument is a mask */
-    nrf_rtc_event_enable(NRF_RTC1, RTC_EVTEN_TICK_Msk);
-    nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_START);
-}
+
 
 platform_system_flags_t system_flags;
 

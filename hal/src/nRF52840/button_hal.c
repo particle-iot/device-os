@@ -14,44 +14,106 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "button_hal.h"
-#include <nrf_rtc.h>
-#include <nrf_nvic.h>
+#include "nrfx_timer.h"
 #include "platform_config.h"
 #include "interrupts_hal.h"
 #include "pinmap_impl.h"
 #include "nrfx_gpiote.h"
 #include "gpio_hal.h"
+#include "core_hal.h"
+#include "logging.h"
+
+#define TIMERx_ID               2
+#define TIMERx_IRQ_PRIORITY     APP_IRQ_PRIORITY_MID
+
+// 16bit counter, 125KHz clock, interrupt interval: 10ms
+#define TIMERx_BIT_WIDTH        NRF_TIMER_BIT_WIDTH_16
+#define TIMERx_FREQUENCY        NRF_TIMER_FREQ_125kHz
+
+const nrfx_timer_t m_button_timer = NRFX_TIMER_INSTANCE(TIMERx_ID);
+
 
 button_config_t HAL_Buttons[] = {
     {
-        .interrupt_mode = BUTTON1_GPIOTE_INTERRUPT_MODE,
-        .active         = 0,
-        .pin            = BUTTON1_GPIO_PIN,
+        .active         = false,
+        .pin            = BUTTON1_PIN,
+        .interrupt_mode = BUTTON1_INTERRUPT_MODE,
         .debounce_time  = 0,
     },
     {
-        .active         = 0,
+        .active         = false,
+        .pin            = BUTTON1_MIRROR_PIN,
+        .interrupt_mode = BUTTON1_MIRROR_INTERRUPT_MODE,
         .debounce_time  = 0
     }
 };
 
-void BUTTON_Interrupt_Handler(void *data)
-{
-    BUTTON_Check_Irq((uint32_t)data);
-}
-
-void BUTTON_Check_Irq(uint16_t button)
+static void mode_button_reset(uint16_t button)
 {
     HAL_Buttons[button].debounce_time = 0x00;
-    HAL_Buttons[button].active = 1;
+
+    if (!HAL_Buttons[BUTTON1].active && !HAL_Buttons[BUTTON1_MIRROR].active) 
+    {
+        nrfx_timer_disable(&m_button_timer);
+        nrfx_timer_clear(&m_button_timer);
+    }
+
+    HAL_Notify_Button_State((Button_TypeDef)button, false); 
+
+    /* Enable Button Interrupt */
+    BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
+}
+
+void button_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
+{
+    if (event_type == NRF_TIMER_EVENT_COMPARE0)
+    {
+        if (HAL_Buttons[BUTTON1].active && (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED))
+        {
+            if (!HAL_Buttons[BUTTON1].debounce_time)
+            {
+                HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+                HAL_Notify_Button_State(BUTTON1, true); 
+            }
+            HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+        }
+        else if (HAL_Buttons[BUTTON1].active)
+        {
+            HAL_Buttons[BUTTON1].active = false;
+            mode_button_reset(BUTTON1);
+        }
+
+        if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active &&
+            BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) 
+        {
+            if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time)
+            {
+                HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+                HAL_Notify_Button_State(BUTTON1_MIRROR, true);
+            }
+            HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+        }
+        else if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active)
+        {
+            HAL_Buttons[BUTTON1_MIRROR].active = false;
+            mode_button_reset(BUTTON1_MIRROR);
+        }
+    }
+}
+
+void BUTTON_Interrupt_Handler(void *data)
+{
+    uint32_t button = (uint32_t)data;
+
+    HAL_Buttons[button].debounce_time = 0x00;
+    HAL_Buttons[button].active = true;
 
     /* Disable button Interrupt */
     BUTTON_EXTI_Config(button, DISABLE);
 
-    /* Enable RTC1 tick interrupt */
-    nrf_rtc_int_enable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
+    /* Start timer */
+    nrfx_timer_enable(&m_button_timer);
 }
 
 /**
@@ -68,18 +130,24 @@ void BUTTON_Check_Irq(uint16_t button)
  */
 void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 {
+    HAL_Pin_Mode(HAL_Buttons[Button].pin, BUTTON1_PIN_MODE);
+
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        /* Disable RTC1 tick Interrupt */
-        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
+        nrfx_timer_config_t timer_cfg = {
+            .frequency          = TIMERx_FREQUENCY,
+            .mode               = NRF_TIMER_MODE_TIMER,          
+            .bit_width          = TIMERx_BIT_WIDTH,
+            .interrupt_priority = TIMERx_IRQ_PRIORITY,                    
+            .p_context          = NULL                                                       
+        };
+        SPARK_ASSERT(nrfx_timer_init(&m_button_timer, &timer_cfg, button_timer_event_handler) == NRF_SUCCESS);
 
-        HAL_Pin_Mode(HAL_Buttons[Button].pin, BUTTON1_GPIO_MODE);
+        uint32_t time_ticks = nrfx_timer_ms_to_ticks(&m_button_timer, BUTTON_DEBOUNCE_INTERVAL);
+        nrfx_timer_extended_compare(&m_button_timer, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
+
+        /* Attach GPIOTE Interrupt */
         BUTTON_EXTI_Config(Button, ENABLE);
-
-        /* Enable the RTC1 NVIC Interrupt */
-        sd_nvic_SetPriority(RTC1_IRQn, RTC1_IRQ_PRIORITY);
-        sd_nvic_ClearPendingIRQ(RTC1_IRQn);
-        sd_nvic_EnableIRQ(RTC1_IRQn);
     }
 }
 
@@ -134,27 +202,13 @@ void BUTTON_Check_State(uint16_t button, uint8_t pressed)
     if (BUTTON_GetState(button) == pressed)
     {
         if (!HAL_Buttons[button].active)
-            HAL_Buttons[button].active = 1;
+            HAL_Buttons[button].active = true;
         HAL_Buttons[button].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
     }
     else if (HAL_Buttons[button].active)
     {
-        HAL_Buttons[button].active = 0;
+        HAL_Buttons[button].active = false;
         /* Enable button Interrupt */
         BUTTON_EXTI_Config(button, ENABLE);
     }
-}
-
-int BUTTON_Debounce()
-{
-    BUTTON_Check_State(BUTTON1, BUTTON1_PRESSED);
-
-    int pressed = HAL_Buttons[BUTTON1].active;
-    if (pressed == 0)
-    {
-        /* Disable RTC1 tick Interrupt */
-        nrf_rtc_int_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
-    }
-
-    return pressed;
 }
