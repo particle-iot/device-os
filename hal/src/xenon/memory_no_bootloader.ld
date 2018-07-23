@@ -17,19 +17,12 @@
 
 INCLUDE softdevice.ld
 
-/* FIXME: Use DCT? */
-OPENTHREAD_STORAGE_LENGTH = 16K;
-
 MEMORY
 {
     INCLUDE backup_ram_memory.ld
 
-    DCT1_FLASH (rx) : ORIGIN = 0x000F0000, LENGTH = 16K
-    DCT2_FLASH (rx) : ORIGIN = 0x000F4000, LENGTH = 16K
-    OPENTHREAD_STORAGE (rx) : ORIGIN = 0xEC000, LENGTH = OPENTHREAD_STORAGE_LENGTH
-
-    /* FIXME: The length below doesn't take the bootloader size into account */
-    APP_FLASH (rx)  : ORIGIN = APP_CODE_BASE, LENGTH = 1M - APP_CODE_BASE - OPENTHREAD_STORAGE_LENGTH - LENGTH(DCT1_FLASH) - LENGTH(DCT2_FLASH)
+    /* FIXME: bootloader size should come from a common .ld */
+    APP_FLASH (rx)  : ORIGIN = APP_CODE_BASE, LENGTH = 1M - APP_CODE_BASE - 48K
 
     SRAM      (rwx) : ORIGIN = 0x20000000 + APP_RAM_BASE, LENGTH = 256K - APP_RAM_BASE - LENGTH(BACKUPSRAM) - LENGTH(BACKUPSRAM_SYSTEM)
 }

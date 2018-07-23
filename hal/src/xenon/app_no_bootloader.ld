@@ -360,15 +360,6 @@ PROVIDE( __RAM_segment_used_end__ = link_stack_end );
 PROVIDE( __tx_free_memory_start = link_stack_end );
 PROVIDE( __tx_vectors = link_interrupt_vectors_location );
 
-PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
-PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
-PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
-PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
-
-PROVIDE( __start_ot_flash_data   = ORIGIN( OPENTHREAD_STORAGE ));
-PROVIDE( __length_ot_flash_data  = LENGTH( OPENTHREAD_STORAGE ));
-PROVIDE( __stop_ot_flash_data    = ORIGIN( OPENTHREAD_STORAGE ) + LENGTH( OPENTHREAD_STORAGE ));
-
 PROVIDE( VTOR_Length = interrupt_vectors_length );
 
 ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );

@@ -188,12 +188,6 @@ SECTIONS
     INCLUDE module_end.ld
 }
 
-
-/* PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH )); */
-/* PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH )); */
-/* PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH )); */
-/* PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH )); */
-
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == 0x200,  "module info not where expected" )
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
