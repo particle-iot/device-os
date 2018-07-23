@@ -55,7 +55,7 @@ LOG_SOURCE_CATEGORY("net.dns64")
 
 #undef DEBUG // Legacy logging macro
 
-#ifdef DEBUG_DNS64
+#if DEBUG_DNS64
 #define DEBUG(...) LOG_DEBUG(TRACE, __VA_ARGS__)
 #else
 #define DEBUG(...)
@@ -92,13 +92,13 @@ enum HeaderFlag { // RFC 1035, 4.1.1
 enum Type {
     A = 1, // RFC 1035, 3.2.2
     AAAA = 28, // RFC 3596, 2.1
-    ALL = 255 // RFC 1035, 3.2.3
+    TYPE_ANY = 255 // RFC 1035, 3.2.3
 };
 
 // CLASS/QCLASS values
 enum Class {
     IN = 1, // RFC 1035, 3.2.4
-    ANY = 255 // RFC 1035, 3.2.5
+    CLASS_ANY = 255 // RFC 1035, 3.2.5
 };
 
 // Message header
@@ -320,6 +320,7 @@ struct Dns64::Query {
     sockaddr_in6 srcAddr;
     Header h;
     Question q;
+    uint16_t type;
 };
 
 int Dns64::init(if_t iface, const ip6_addr_t& prefix, uint16_t port) {
@@ -378,7 +379,7 @@ int Dns64::run() {
         return socketToSystemError(errno);
     }
     const int ret = processQuery(buf_.get(), n, srcAddr);
-    if (ret != 0) {
+    if (ret < 0) {
         LOG_DEBUG(ERROR, "Unable to process query: %d", ret);
     }
     return 0;
@@ -397,26 +398,24 @@ int Dns64::processQuery(char* data, size_t size, const sockaddr_in6& srcAddr) {
     int ret = parseQuery(data, size, q.get(), &name);
     if (ret == 0) {
         // Perform a DNS lookup
+        q->type = q->q.qtype; // Try getting an address of the requested type first
         ip_addr_t addr = {};
-        uint8_t addrType = LWIP_DNS_ADDRTYPE_IPV6_IPV4; // Try to resolve to an IPv6 address first
-        if (q->q.qtype == Type::A) {
-            addrType = LWIP_DNS_ADDRTYPE_IPV4; // Resolve to an IPv4 address
-        }
-        LwipTcpIpCoreLock lock; // LwIP's DNS client API is not thread-safe
-        const auto lwipRet = dns_gethostbyname_addrtype(name, &addr, Dns64::dnsCallback, q.get(), addrType);
-        lock.unlock();
-        if (lwipRet == ERR_OK) {
+        ret = getHostByName(name, &addr, q.get());
+        if (ret == GetHostByNameResult::DONE) {
             ret = sendResponse(addr, name, *q, ctx_.get());
-        } else if (lwipRet == ERR_INPROGRESS) {
+            if (ret < 0) {
+                LOG_DEBUG(ERROR, "Unable to send response: %d", ret);
+            }
+        } else if (ret == GetHostByNameResult::PENDING) {
             q.release(); // The query is being processed asynchronously
         } else {
-            ret = lwipToSystemError(lwipRet);
+            LOG_DEBUG(ERROR, "Unable to resolve hostname: %d", ret);
         }
     }
     if (ret < 0) {
-        const int r = sendErrorResponse(systemToDnsError(ret), name, *q, ctx_.get());
+        const int r = sendErrorResponse(ret, name, *q, ctx_.get());
         if (r < 0) {
-            LOG_DEBUG(ERROR, "Unable to send response: %d", r);
+            LOG_DEBUG(WARN, "Unable to send error response: %d", r);
         }
     }
     return ret;
@@ -441,15 +440,17 @@ int Dns64::parseQuery(char* data, size_t size, Query* q, const char** name) {
     // Parse the question section
     data += CHECK(readName(data, end - data, name));
     CHECK(readQuestion(data, end - data, &q->q));
-    if (q->q.qtype != Type::A && q->q.qtype != Type::AAAA) {
+    if (q->q.qtype == Type::TYPE_ANY) {
+        q->q.qtype = Type::AAAA; // Prefer IPv6 by default
+    } else if (q->q.qtype != Type::A && q->q.qtype != Type::AAAA) {
         LOG_DEBUG(ERROR, "Unsupported query type (QTYPE)");
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-    if (q->q.qcls != Class::IN && q->q.qcls != Class::ANY) {
+    if (q->q.qcls != Class::IN && q->q.qcls != Class::CLASS_ANY) {
         LOG_DEBUG(ERROR, "Unsupported query class (QCLASS)");
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-    DEBUG("Received query: QNAME: %s, QTYPE: %d, QCLASS: %d", *name, (int)q->q.qtype, (int)q->q.qcls);
+    DEBUG("Received query: QNAME: %s, QTYPE: %d", *name, (int)q->q.qtype);
     return 0;
 }
 
@@ -502,7 +503,7 @@ int Dns64::sendResponse(const ip_addr_t& addr, const char* name, const Query& q,
     return 0;
 }
 
-int Dns64::sendErrorResponse(uint16_t code, const char* name, const Query& q, Context* ctx) {
+int Dns64::sendErrorResponse(int error, const char* name, const Query& q, Context* ctx) {
     // Allocate a buffer for response data
     size_t qsize = 0; // Size of the question section
     if (name) {
@@ -517,9 +518,10 @@ int Dns64::sendErrorResponse(uint16_t code, const char* name, const Query& q, Co
     char* data = buf.get();
     char* const end = data + size;
     // Serialize the header section
+    const auto rcode = systemToDnsError(error);
     Header h = {};
     h.id = q.h.id;
-    h.flags = HeaderFlag::QR | (q.h.flags & HeaderFlag::OPCODE_MASK) | (q.h.flags & HeaderFlag::RD) | code;
+    h.flags = HeaderFlag::QR | (q.h.flags & HeaderFlag::OPCODE_MASK) | (q.h.flags & HeaderFlag::RD) | rcode;
     h.qdcount = name ? 1 : 0;
     data += CHECK(writeHeader(data, end - data, h));
     if (name) {
@@ -532,9 +534,25 @@ int Dns64::sendErrorResponse(uint16_t code, const char* name, const Query& q, Co
     return 0;
 }
 
+int Dns64::getHostByName(const char* name, ip_addr_t* addr, Query* q) {
+    const uint8_t addrType = (q->type == Type::A) ? LWIP_DNS_ADDRTYPE_IPV4 : LWIP_DNS_ADDRTYPE_IPV6;
+    LwipTcpIpCoreLock lock; // LwIP's DNS client API is not thread-safe
+    const auto lwipRet = dns_gethostbyname_addrtype(name, addr, Dns64::dnsCallback, q, addrType);
+    lock.unlock();
+    if (lwipRet == ERR_INPROGRESS) {
+        return GetHostByNameResult::PENDING;
+    } else if (lwipRet != ERR_OK) {
+        return lwipToSystemError(lwipRet);
+    }
+    return GetHostByNameResult::DONE;
+}
+
 void Dns64::dnsCallback(const char* name, const ip_addr_t* addr, void* data) {
     DEBUG("dns_found_callback: name: %s, address: %s", name ? name : "NULL", addr ? IPADDR_NTOA(addr) : "NULL");
-    const std::unique_ptr<Query> q(static_cast<Query*>(data));
+    std::unique_ptr<Query> q(static_cast<Query*>(data));
+    if (!name) {
+        return;
+    }
     const auto ctx = q->ctx.lock();
     if (!ctx) {
         return;
@@ -542,14 +560,28 @@ void Dns64::dnsCallback(const char* name, const ip_addr_t* addr, void* data) {
     int ret = 0;
     if (addr) {
         ret = sendResponse(*addr, name, *q, ctx.get());
-        if (ret < 0) {
-            ret = sendErrorResponse(systemToDnsError(ret), name, *q, ctx.get());
+    } else if (q->type == Type::AAAA) {
+        q->type = Type::A; // Try getting an IPv4 address
+        ip_addr_t addr = {};
+        ret = getHostByName(name, &addr, q.get());
+        if (ret == GetHostByNameResult::DONE) {
+            ret = sendResponse(addr, name, *q, ctx.get());
+            if (ret < 0) {
+                LOG_DEBUG(ERROR, "Unable to send response: %d", ret);
+            }
+        } else if (ret == GetHostByNameResult::PENDING) {
+            q.release(); // The query is being processed asynchronously
+        } else {
+            LOG_DEBUG(ERROR, "Unable to resolve hostname: %d", ret);
         }
     } else {
-        ret = sendErrorResponse(HeaderFlag::RCODE_NAME_ERROR, name, *q, ctx.get());
+        ret = SYSTEM_ERROR_NOT_FOUND;
     }
     if (ret < 0) {
-        LOG_DEBUG(ERROR, "Unable to send response: %d", ret);
+        ret = sendErrorResponse(ret, name, *q, ctx.get());
+        if (ret < 0) {
+            LOG_DEBUG(WARN, "Unable to send error response: %d", ret);
+        }
     }
 }
 

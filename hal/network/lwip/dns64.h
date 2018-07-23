@@ -42,6 +42,11 @@ public:
     int run() override;
 
 private:
+    enum GetHostByNameResult {
+        DONE,
+        PENDING
+    };
+
     struct Context;
     struct Query;
 
@@ -52,7 +57,9 @@ private:
     static int parseQuery(char* data, size_t size, Query* q, const char** name);
 
     static int sendResponse(const ip_addr_t& addr, const char* name, const Query& q, Context* ctx);
-    static int sendErrorResponse(uint16_t code, const char* name, const Query& q, Context* ctx);
+    static int sendErrorResponse(int error, const char* name, const Query& q, Context* ctx);
+
+    static int getHostByName(const char* name, ip_addr_t* addr, Query* q);
 
     static void dnsCallback(const char* name, const ip_addr_t* addr, void* data);
 };
