@@ -66,69 +66,70 @@ extern "C" {
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x1000) //4K (256 sectors of 4K each used by main firmware)
 
+#ifndef USE_SERIAL_FLASH
+#    error "USE_SERIAL_FLASH not defined"
+#endif /* USE_SERIAL_FLASH */
+
 #ifdef MODULAR_FIRMWARE
-    #error "Modular firmware is not supported"
-    #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
-    #ifndef USER_FIRMWARE_IMAGE_SIZE
-    #error USER_FIRMWARE_IMAGE_SIZE not defined
-    #else
-    #define FIRMWARE_IMAGE_SIZE  USER_FIRMWARE_IMAGE_SIZE
-    #endif
+#    error "Modular firmware is not supported"
+#    define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
+#    ifndef USER_FIRMWARE_IMAGE_SIZE
+#        error USER_FIRMWARE_IMAGE_SIZE not defined
+#    else
+#        define FIRMWARE_IMAGE_SIZE  USER_FIRMWARE_IMAGE_SIZE
+#    endif
 
-    #ifndef USER_FIRMWARE_IMAGE_LOCATION
-    #error USER_FIRMWARE_IMAGE_LOCATION not defined
-    #endif
+#    ifndef USER_FIRMWARE_IMAGE_LOCATION
+#        error USER_FIRMWARE_IMAGE_LOCATION not defined
+#    endif
 
-    #if (PLATFORM_ID==10)
-        #define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
-        #define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
-    #else
-        #define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
-        #define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
-    #endif
+#    define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
+#    define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
 
-#else
-#ifdef COMBINED_FIRMWARE_IMAGE
-	#define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_SYSTEM_PART
-#else
-    #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_MONO_FIRMWARE
-#endif
-    #define USER_FIRMWARE_IMAGE_LOCATION CORE_FW_ADDRESS
-    #ifdef USE_SERIAL_FLASH
-    #define FIRMWARE_IMAGE_SIZE 0x000bc000 // 752K (see module_user_mono.maximum_size)
-    #else
-	#ifdef COMBINED_FIRMWARE_IMAGE
-		#define FIRMWARE_IMAGE_SIZE 0x80000	// 512k system-part1+system-part2
-		#define TEST_FIRMWARE_IMAGE_SIZE 0x60000	// 384k for test firmware
-	#else
-	// this was "true" mono firmware. We are now using a hybrid where the firmware payload is 512k
-		#define FIRMWARE_IMAGE_SIZE     0x60000 //384K (monolithic firmware size)
-	#endif // COMBINED_FIRMWARE_IMAGE
-    #endif
+#else /* MODULAR_FIRMWARE */
 
-#ifdef COMBINED_FIRMWARE_IMAGE
-	/* Internal Flash memory address where Factory programmed monolithic core firmware is located */
-	#define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + TEST_FIRMWARE_IMAGE_SIZE))
-	/* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
-	#define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + TEST_FIRMWARE_IMAGE_SIZE))
-#else
-    /* Internal Flash memory address where Factory programmed monolithic core firmware is located */
-    #define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
-    /* Internal Flash memory address where monolithic core firmware will be saved for backup/restore */
-    //#define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
-    /* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
-    #define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
-#endif
+#    ifdef COMBINED_FIRMWARE_IMAGE
+#        error "Combined firmware is not supported"
+#        define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_SYSTEM_PART
+#    else
+#        define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_MONO_FIRMWARE
+#    endif
+#    define USER_FIRMWARE_IMAGE_LOCATION CORE_FW_ADDRESS
+#    ifdef USE_SERIAL_FLASH
+#        define FIRMWARE_IMAGE_SIZE 0x000c4000 // 784K (see module_user_mono.maximum_size)
+#    else
+#        ifdef COMBINED_FIRMWARE_IMAGE
+#            define FIRMWARE_IMAGE_SIZE 0x80000 // 512k system-part1+system-part2
+#            define TEST_FIRMWARE_IMAGE_SIZE 0x60000    // 384k for test firmware
+#        else
+             // this was "true" mono firmware. We are now using a hybrid where the firmware payload is 512k
+#            define FIRMWARE_IMAGE_SIZE     0x60000 //384K (monolithic firmware size)
+#        endif // COMBINED_FIRMWARE_IMAGE
+#    endif
 
-    #ifdef USE_SERIAL_FLASH
-    /* External Flash memory address where Factory programmed core firmware is located */
-    #define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x00200000)
-    /* External Flash memory address where core firmware will be saved for backup/restore */
-    #define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
-    /* External Flash memory address where OTA upgraded core firmware will be saved */
-    #define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS + FIRMWARE_IMAGE_SIZE))
-    #endif
-#endif
+#    ifdef COMBINED_FIRMWARE_IMAGE
+         /* Internal Flash memory address where Factory programmed monolithic core firmware is located */
+#        define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + TEST_FIRMWARE_IMAGE_SIZE))
+         /* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
+#        define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + TEST_FIRMWARE_IMAGE_SIZE))
+#    else
+         /* Internal Flash memory address where Factory programmed monolithic core firmware is located */
+#        define INTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
+         /* Internal Flash memory address where monolithic core firmware will be saved for backup/restore */
+//#        define INTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
+         /* Internal Flash memory address where OTA upgraded monolithic core firmware will be saved */
+#        define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
+#    endif
+
+#    ifdef USE_SERIAL_FLASH
+         /* External Flash memory address where Factory programmed core firmware is located */
+#        define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x00200000)
+         /* External Flash memory address where core firmware will be saved for backup/restore */
+#        define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
+         /* External Flash memory address where OTA upgraded core firmware will be saved */
+#        define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS + FIRMWARE_IMAGE_SIZE))
+#    endif
+#endif /* MODULAR_FIRMWARE */
 
 #if FIRMWARE_IMAGE_SIZE > INTERNAL_FLASH_SIZE
 #   error "FIRMWARE_IMAGE_SIZE too large to fit into internal flash"
