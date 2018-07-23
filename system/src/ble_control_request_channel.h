@@ -34,8 +34,14 @@
 #include <memory>
 #include <atomic>
 
-#ifndef DEBUG_CHANNEL
-#define DEBUG_CHANNEL 0
+// Set this macro to 0 to disable the channel security
+#ifndef BLE_CHANNEL_SECURITY_ENABLED
+#define BLE_CHANNEL_SECURITY_ENABLED 1
+#endif
+
+// Set this macro to 1 to enable additional logging
+#ifndef BLE_CHANNEL_DEBUG_ENABLED
+#define BLE_CHANNEL_DEBUG_ENABLED 0
 #endif
 
 static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
@@ -80,7 +86,7 @@ private:
         uint16_t id; // Request ID
     };
 
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
     std::atomic<unsigned> allocReqCount_;
     std::atomic<unsigned> heapBufCount_;
     std::atomic<unsigned> poolBufCount_;
@@ -99,10 +105,10 @@ private:
 
     std::unique_ptr<char[]> packetBuf_; // Intermediate buffer for BLE packet data
     size_t packetSize_; // Size of the pending BLE packet
-
+#if BLE_CHANNEL_SECURITY_ENABLED
     std::unique_ptr<AesCcmCipher> aesCcm_; // AES cipher
     std::unique_ptr<JpakeHandler> jpake_; // J-PAKE handshake handler
-
+#endif
     AtomicAllocedPool pool_; // Pool allocator
 
     uint16_t connHandle_; // Connection handle used by the processing thread
@@ -137,9 +143,10 @@ private:
     int dataReceived(const ble_data_received_event_data& event);
 
     int initProfile();
+#if BLE_CHANNEL_SECURITY_ENABLED
     int initAesCcm();
     int initJpake();
-
+#endif
     int allocRequest(size_t size, Request** req);
     void freeRequest(Request* req);
 

@@ -37,10 +37,6 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "mbedtls_util.h"
 
-#ifndef PAIRING_ENABLED
-#define PAIRING_ENABLED 0
-#endif
-
 #define CHECK(_expr) \
         do { \
             const int _ret = _expr; \
@@ -60,7 +56,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #undef DEBUG // Legacy logging macro
 
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
 #define DEBUG(_fmt, ...) \
         do { \
             LOG_PRINTF(TRACE, _fmt "\r\n", ##__VA_ARGS__); \
@@ -182,6 +178,12 @@ static_assert(AES_CCM_NONCE_SIZE >= AES_CCM_FIXED_NONCE_SIZE + 4, // 4 bytes of 
 
 static_assert(JPAKE_SHARED_SECRET_SIZE >= AES_CCM_KEY_SIZE + AES_CCM_FIXED_NONCE_SIZE * 2, // See BleControlRequestChannel::initAesCcm()
         "Invalid size of the shared secret");
+
+#if BLE_CHANNEL_SECURITY_ENABLED
+const size_t MESSAGE_FOOTER_SIZE = AES_CCM_TAG_SIZE;
+#else
+const size_t MESSAGE_FOOTER_SIZE = 0;
+#endif
 
 int mbedtlsError(int ret) {
     switch (ret) {
@@ -643,7 +645,7 @@ private:
 
 BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handler) :
         ControlRequestChannel(handler),
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
         allocReqCount_(0),
         heapBufCount_(0),
         poolBufCount_(0),
@@ -712,6 +714,7 @@ void BleControlRequestChannel::run() {
         }
     }
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
+#if BLE_CHANNEL_SECURITY_ENABLED
         if (jpake_) {
             // Process handshake packets
             ret = jpake_->run();
@@ -728,6 +731,7 @@ void BleControlRequestChannel::run() {
                 LOG(TRACE, "Handshake done");
             }
         } else {
+#endif
             // Serialize next reply and enqueue it for sending
             ret = sendReply();
             if (ret != 0) {
@@ -738,7 +742,9 @@ void BleControlRequestChannel::run() {
             if (ret != 0) {
                 goto error;
             }
+#if BLE_CHANNEL_SECURITY_ENABLED
         }
+#endif
         // Send BLE notification packet
         ret = sendPacket();
         if (ret != 0) {
@@ -757,7 +763,7 @@ error:
 
 int BleControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {
     const auto req = static_cast<Request*>(ctrlReq);
-    CHECK(reallocBuffer(size + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + AES_CCM_TAG_SIZE, &req->repBuf));
+    CHECK(reallocBuffer(size + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + MESSAGE_FOOTER_SIZE, &req->repBuf));
     if (size > 0) {
         req->reply_data = req->repBuf->data + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE;
     } else {
@@ -789,13 +795,17 @@ int BleControlRequestChannel::initChannel() {
     if (!packetBuf_) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
+#if BLE_CHANNEL_SECURITY_ENABLED
     CHECK(initJpake());
+#endif
     return 0;
 }
 
 void BleControlRequestChannel::resetChannel() {
+#if BLE_CHANNEL_SECURITY_ENABLED
     jpake_.reset();
     aesCcm_.reset();
+#endif
     packetBuf_.reset();
     while (Request* req = readyReqs_.popFront()) {
         freeRequest(req);
@@ -825,7 +835,7 @@ int BleControlRequestChannel::receiveRequest() {
         const size_t payloadSize = littleEndianToNative(mh.size);
         CHECK(allocRequest(payloadSize, &curReq_));
         memcpy(curReq_->reqBuf, &mh, MESSAGE_HEADER_SIZE);
-        reqBufSize_ = payloadSize + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE + AES_CCM_TAG_SIZE; // Total size of the request data
+        reqBufSize_ = payloadSize + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE + MESSAGE_FOOTER_SIZE; // Total size of the request data
         reqBufOffs_ = MESSAGE_HEADER_SIZE;
     }
     // Read remaining request data
@@ -835,9 +845,11 @@ int BleControlRequestChannel::receiveRequest() {
     if (reqBufOffs_ < reqBufSize_) {
         return 0; // Wait for more data
     }
+#if BLE_CHANNEL_SECURITY_ENABLED
     // Decrypt request data
     SPARK_ASSERT(aesCcm_);
     CHECK(aesCcm_->decryptRequestData(p, curReq_->request_size));
+#endif
     // Parse request header
     RequestHeader rh = {};
     memcpy(&rh, p + MESSAGE_HEADER_SIZE, REQUEST_HEADER_SIZE);
@@ -867,7 +879,7 @@ int BleControlRequestChannel::sendReply() {
     }
     // Make sure we have a buffer to serialize the reply
     if (!req->repBuf) {
-        const int ret = reallocBuffer(MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + AES_CCM_TAG_SIZE, &req->repBuf);
+        const int ret = reallocBuffer(MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + MESSAGE_FOOTER_SIZE, &req->repBuf);
         if (ret != 0) {
             freeRequest(req);
             return ret;
@@ -883,15 +895,20 @@ int BleControlRequestChannel::sendReply() {
     rh.id = nativeToLittleEndian(req->id);
     rh.result = nativeToLittleEndian(req->result);
     memcpy(p + MESSAGE_HEADER_SIZE, &rh, REPLY_HEADER_SIZE);
+    int ret = 0;
+#if BLE_CHANNEL_SECURITY_ENABLED
     // Encrypt reply data
     SPARK_ASSERT(aesCcm_);
-    const int ret = aesCcm_->encryptReplyData(p, req->reply_size);
+    ret = aesCcm_->encryptReplyData(p, req->reply_size);
     if (ret == 0) {
+#endif
         // Enqueue the reply buffer for sending
         outBufs_.pushBack(req->repBuf);
         req->repBuf = nullptr;
         LOG(TRACE, "Enqueued a reply message for sending, ID: %u", (unsigned)req->id);
+#if BLE_CHANNEL_SECURITY_ENABLED
     }
+#endif
     freeRequest(req);
     return ret;
 }
@@ -1077,17 +1094,11 @@ int BleControlRequestChannel::initProfile() {
     sendChar.uuid.type = uuidType;
     sendChar.uuid.uuid = SEND_CHAR_UUID;
     sendChar.type = BLE_CHAR_TYPE_TX;
-#if PAIRING_ENABLED
-    sendChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
-#endif
     // RX
     ble_char& recvChar = chars[2];
     recvChar.uuid.type = uuidType;
     recvChar.uuid.uuid = RECV_CHAR_UUID;
     recvChar.type = BLE_CHAR_TYPE_RX;
-#if PAIRING_ENABLED
-    recvChar.flags = BLE_CHAR_FLAG_REQUIRE_PAIRING;
-#endif
     // Services
     ble_service ctrlService = {};
     ctrlService.uuid.type = uuidType;
@@ -1108,9 +1119,6 @@ int BleControlRequestChannel::initProfile() {
     profile.device_name = devName;
     profile.services = &ctrlService;
     profile.service_count = 1;
-#if PAIRING_ENABLED
-    profile.flags = BLE_PROFILE_FLAG_ENABLE_PAIRING;
-#endif
     profile.manuf_data = &manufData;
     profile.callback = processBleEvent;
     profile.user_data = this;
@@ -1120,6 +1128,7 @@ int BleControlRequestChannel::initProfile() {
     return 0;
 }
 
+#if BLE_CHANNEL_SECURITY_ENABLED
 int BleControlRequestChannel::initAesCcm() {
     SPARK_ASSERT(jpake_);
     const auto secret = jpake_->secret();
@@ -1151,13 +1160,14 @@ int BleControlRequestChannel::initJpake() {
     CHECK(jpake_->init(secret, sizeof(secret)));
     return 0;
 }
+#endif // BLE_CHANNEL_SECURITY_ENABLED
 
 int BleControlRequestChannel::allocRequest(size_t size, Request** req) {
     std::unique_ptr<Request> r(new(std::nothrow) Request());
     if (!r) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    r->reqBuf = new(std::nothrow) char[size + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE + AES_CCM_TAG_SIZE];
+    r->reqBuf = new(std::nothrow) char[size + MESSAGE_HEADER_SIZE + REQUEST_HEADER_SIZE + MESSAGE_FOOTER_SIZE];
     if (!r->reqBuf) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
@@ -1168,7 +1178,7 @@ int BleControlRequestChannel::allocRequest(size_t size, Request** req) {
     r->connId = connId_;
     r->channel = this;
     *req = r.release(); // Transfer ownership
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
     const auto count = ++allocReqCount_;
     DEBUG("Allocated a request object (count: %u)", (unsigned)count);
 #endif
@@ -1180,7 +1190,7 @@ void BleControlRequestChannel::freeRequest(Request* req) {
         freeBuffer(req->repBuf);
         delete[] req->reqBuf;
         delete req;
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
         const auto count = --allocReqCount_;
         DEBUG("Freed a request object (count: %u)", (unsigned)count);
 #endif
@@ -1194,7 +1204,7 @@ int BleControlRequestChannel::reallocBuffer(size_t size, Buffer** buf) {
     }
     b->data = linkedBufferData(b);
     b->size = size;
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
     if (!*buf) {
         const auto count = ++heapBufCount_;
         DEBUG("Allocated a buffer, size: %u (count: %u)", (unsigned)size, (unsigned)count);
@@ -1207,7 +1217,7 @@ int BleControlRequestChannel::reallocBuffer(size_t size, Buffer** buf) {
 void BleControlRequestChannel::freeBuffer(Buffer* buf) {
     if (buf) {
         freeLinkedBuffer(buf);
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
         const auto count = --heapBufCount_;
         DEBUG("Freed a buffer (count: %u)", (unsigned)count);
 #endif
@@ -1222,7 +1232,7 @@ int BleControlRequestChannel::allocPooledBuffer(size_t size, Buffer** buf) {
     b->data = linkedBufferData(b);
     b->size = size;
     *buf = b;
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
     const auto count = ++poolBufCount_;
     DEBUG("Allocated a pooled buffer, size: %u (count: %u)", (unsigned)size, (unsigned)count);
 #endif
@@ -1232,7 +1242,7 @@ int BleControlRequestChannel::allocPooledBuffer(size_t size, Buffer** buf) {
 void BleControlRequestChannel::freePooledBuffer(Buffer* buf) {
     if (buf) {
         freeLinkedBuffer(buf, &pool_);
-#if DEBUG_CHANNEL
+#if BLE_CHANNEL_DEBUG_ENABLED
         const auto count = --poolBufCount_;
         DEBUG("Freed a pooled buffer (count: %u)", (unsigned)count);
 #endif
