@@ -43,8 +43,10 @@ typedef void(*ThreadRunnerEventHandler)(const ThreadRunnerEvent& event);
 
 class ThreadRunnerOptions {
 public:
-    static const char* const DEFAULT_THREAD_NAME = "ThreadRunner";
-    static const size_t DEFAULT_STACK_SIZE = 2048;
+    // Default settings
+    static const char* const THREAD_NAME;
+    static const size_t STACK_SIZE = 2048;
+    static const os_thread_prio_t PRIORITY = OS_THREAD_PRIORITY_DEFAULT;
 
     ThreadRunnerOptions();
 
@@ -63,8 +65,8 @@ public:
 private:
     ThreadRunnerEventHandler handler_;
     const char* name_;
-    os_thread_prio_t prio_;
     size_t stackSize_;
+    os_thread_prio_t prio_;
 };
 
 class ThreadRunner {
@@ -78,7 +80,7 @@ public:
 
 private:
     Runnable* run_;
-    EventHandler* eventHandler_;
+    ThreadRunnerEventHandler eventHandler_;
     os_thread_t thread_;
     volatile bool stop_;
 
@@ -87,9 +89,9 @@ private:
 
 inline ThreadRunnerOptions::ThreadRunnerOptions() :
         handler_(nullptr),
-        name_(DEFAULT_THREAD_NAME),
-        prio_(OS_THREAD_PRIORITY_DEFAULT),
-        stackSize_(DEFAULT_STACK_SIZE) {
+        name_(THREAD_NAME),
+        stackSize_(STACK_SIZE),
+        prio_(PRIORITY) {
 }
 
 inline ThreadRunnerOptions& ThreadRunnerOptions::eventHandler(ThreadRunnerEventHandler handler) {
@@ -98,7 +100,7 @@ inline ThreadRunnerOptions& ThreadRunnerOptions::eventHandler(ThreadRunnerEventH
 }
 
 inline ThreadRunnerEventHandler ThreadRunnerOptions::eventHandler() const {
-    return handler_
+    return handler_;
 }
 
 inline ThreadRunnerOptions& ThreadRunnerOptions::threadName(const char* name) {

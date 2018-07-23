@@ -17,15 +17,20 @@
 
 #include "thread_runner.h"
 
+#include "runnable.h"
+
+#include "system_error.h"
 #include "debug.h"
 
 namespace particle {
+
+const char* const ThreadRunnerOptions::THREAD_NAME = "ThreadRunner";
 
 int ThreadRunner::init(Runnable* run, const ThreadRunnerOptions& opts) {
     run_ = run;
     eventHandler_ = opts.eventHandler();
     stop_ = false;
-    if (os_thread_create(&thread_, opts.threadName(), opts.threadPriority(), ThreadRunner::run, opts.stackSize()) != 0) {
+    if (os_thread_create(&thread_, opts.threadName(), opts.priority(), ThreadRunner::run, this, opts.stackSize()) != 0) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     return 0;
@@ -44,25 +49,29 @@ void ThreadRunner::destroy() {
 void ThreadRunner::run(void* data) {
     const auto r = static_cast<ThreadRunner*>(data);
     if (r->eventHandler_) {
-        const ThreadRunnerEvent ev = { .type = ThreadRunnerEventType::STARTED }
+        ThreadRunnerEvent ev = {};
+        ev.type = ThreadRunnerEventType::STARTED;
         r->eventHandler_(ev);
     }
     for (;;) {
-        if (stop_) {
+        if (r->stop_) {
             break;
         }
         const int ret = r->run_->run();
         if (ret < 0) {
             LOG_DEBUG(ERROR, "Runnable failed: %d", ret);
             if (r->eventHandler_) {
-                const ThreadRunnerErrorEvent ev = { .type = ThreadRunnerEventType::ERROR, .error = ret };
+                ThreadRunnerErrorEvent ev = {};
+                ev.type = ThreadRunnerEventType::ERROR;
+                ev.error = ret;
                 r->eventHandler_(ev);
             }
             break;
         }
     }
     if (r->eventHandler_) {
-        const ThreadRunnerEvent ev = { .type = ThreadRunnerEventType::STOPPED }
+        ThreadRunnerEvent ev = {};
+        ev.type = ThreadRunnerEventType::STOPPED;
         r->eventHandler_(ev);
     }
     SPARK_ASSERT(os_thread_exit(r->thread_) == 0);
