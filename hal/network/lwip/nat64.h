@@ -29,34 +29,9 @@
 #include "intrusive_list.h"
 #include "simple_pool_allocator.h"
 #include "logging.h"
+#include "ipaddr_util.h"
 
 namespace particle { namespace net { namespace nat {
-
-template <size_t SIZE>
-struct IpAddrNtoaHelper {
-    char str[SIZE] = {};
-};
-
-#define IPADDR_NTOA(addr) \
-    ({ \
-        IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> tmp; \
-        ipaddr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
-        tmp; \
-    })
-
-#define IP6ADDR_NTOA(addr) \
-    ({ \
-        IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> tmp; \
-        ip6addr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
-        tmp; \
-    })
-
-#define IP4ADDR_NTOA(addr) \
-    ({ \
-        IpAddrNtoaHelper<IP4ADDR_STRLEN_MAX> tmp; \
-        ip4addr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
-        tmp; \
-    })
 
 template <typename AddrT, typename DerivedT>
 class IpTransportAddressGeneric {
@@ -479,6 +454,7 @@ inline SessionEntry* BibEntry::addSession(const Ip6TransportAddress& dst, uint32
 }
 
 inline bool BibEntry::timeout(uint32_t dt, particle::SimpleAllocator& allocator) {
+    using namespace particle::net;
     for (auto s = sessions_.front(), p = static_cast<SessionEntry*>(nullptr); s != nullptr;) {
         if (s->timeout(dt)) {
             LOG_DEBUG(TRACE, "Session timed out %s#%u <-> %s#%u, %s#%u <-> %s#%u",
