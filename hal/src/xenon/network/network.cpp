@@ -26,7 +26,9 @@
 #include <openthread/thread_ftd.h>
 #include <openthread/ip6.h>
 #include <nrf52840.h>
+#include "random.h"
 
+using namespace particle;
 using namespace particle::net;
 using namespace particle::net::nat;
 
@@ -102,7 +104,9 @@ int if_init_platform(void*) {
         config.mStable = 1;
 
         std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
-        otIp6AddressFromString("fd11:23::", &config.mPrefix.mPrefix);
+        config.mPrefix.mPrefix.mFields.m8[0] = 0xfd;
+        Random rand;
+        rand.gen((char*)config.mPrefix.mPrefix.mFields.m8 + 1, 5); // Generate global ID
         config.mPrefix.mLength = 64;
 
         otBorderRouterAddOnMeshPrefix(thread, &config);
