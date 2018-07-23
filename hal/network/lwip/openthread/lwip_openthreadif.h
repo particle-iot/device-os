@@ -62,10 +62,8 @@ private:
 
 private:
     otInstance* ot_ = nullptr;
-    otNetifAddress slaacAddresses_[OPENTHREAD_CONFIG_NUM_SLAAC_ADDRESSES] = {};
-#if OPENTHREAD_ENABLE_DHCP6_CLIENT
-    otDhcpAddress dhcpAddresses_[OPENTHREAD_CONFIG_NUM_DHCP_PREFIXES];
-#endif // OPENTHREAD_ENABLE_DHCP6_CLIENT
+    otNetifAddress addresses_[OPENTHREAD_CONFIG_MAX_EXT_IP_ADDRS] = {};
+    otBorderRouterConfig abr_ = {};
 };
 
 } } // namespace particle::net
