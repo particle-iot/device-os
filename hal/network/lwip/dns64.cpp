@@ -15,7 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "dns64.h"
 
 #include "socket_hal_posix.h"
@@ -23,9 +22,16 @@
 #include "system_error.h"
 #include "logging.h"
 
+#include "lwiplock.h"
+#include "lwip_util.h"
+
 #include "lwip/dns.h"
 
 LOG_SOURCE_CATEGORY("net.dns64")
+
+#ifndef DEBUG_DNS64
+#define DEBUG_DNS64 0
+#endif
 
 // TODO: Move this macro to a global header
 #define CHECK(_expr) \
@@ -46,6 +52,14 @@ LOG_SOURCE_CATEGORY("net.dns64")
             } \
             _ret; \
         })
+
+#undef DEBUG // Legacy logging macro
+
+#ifdef DEBUG_DNS64
+#define DEBUG(...) LOG_DEBUG(TRACE, __VA_ARGS__)
+#else
+#define DEBUG(...)
+#endif
 
 namespace particle {
 
@@ -117,7 +131,7 @@ const size_t MAX_MESSAGE_SIZE = 512; // RFC 1035, 2.3.4
 // Value of the TTL field sent in all response messages
 const uint32_t DEFAULT_TTL = 0; // Do not cache (RFC 1035, 4.1.3)
 
-// Timeout for recvfrom()
+// Timeout for recvfrom() in milliseconds
 const unsigned SOCKET_RECV_TIMEOUT = 3000;
 
 ssize_t readHeader(const char* data, size_t size, Header* h) {
@@ -326,7 +340,7 @@ int Dns64::init(if_t iface, const ip6_addr_t& prefix, uint16_t port) {
     int opt = 1;
     CHECK_SOCKET(sock_setsockopt(ctx_->sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)));
     timeval tv = {};
-    tv.tv_sec = SOCKET_RECV_TIMEOUT;
+    tv.tv_usec = SOCKET_RECV_TIMEOUT * 1000;
     CHECK_SOCKET(sock_setsockopt(ctx_->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))); // TODO: Use poll()
     // Bind the socket
     char name[IF_NAMESIZE] = {};
@@ -388,7 +402,9 @@ int Dns64::processQuery(char* data, size_t size, const sockaddr_in6& srcAddr) {
         if (q->q.qtype == Type::A) {
             addrType = LWIP_DNS_ADDRTYPE_IPV4; // Resolve to an IPv4 address
         }
+        LwipTcpIpCoreLock lock; // LwIP's DNS client API is not thread-safe
         const auto lwipRet = dns_gethostbyname_addrtype(name, &addr, Dns64::dnsCallback, q.get(), addrType);
+        lock.unlock();
         if (lwipRet == ERR_OK) {
             ret = sendResponse(addr, name, *q, ctx_.get());
         } else if (lwipRet == ERR_INPROGRESS) {
@@ -433,6 +449,7 @@ int Dns64::parseQuery(char* data, size_t size, Query* q, const char** name) {
         LOG_DEBUG(ERROR, "Unsupported query class (QCLASS)");
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
+    DEBUG("Received query: QNAME: %s, QTYPE: %d, QCLASS: %d", *name, (int)q->q.qtype, (int)q->q.qcls);
     return 0;
 }
 
@@ -444,10 +461,10 @@ int Dns64::sendResponse(const ip_addr_t& addr, const char* name, const Query& q,
     } else {
         ip_addr_copy(raddr, addr);
     }
-    const size_t addrSize = IP_ADDR_RAW_SIZE(raddr); // Size of the serialized IP address
+    const size_t addrSize = IPADDR_SIZE(&raddr); // Size of the serialized IP address
     // Allocate a buffer for response data
-    const size_t nameSize = strlen(name);
-    const size_t size = sizeof(Header) /* ID ... ARCOUNT */ + nameSize + 1 /* QNAME (including term. null) */ +
+    const size_t qnameSize = strlen(name) + 2; // Including the length and term. null bytes
+    const size_t size = sizeof(Header) /* ID ... ARCOUNT */ + qnameSize /* QNAME */ +
             sizeof(Question) /* QTYPE ... QCLASS */ + 2 /* NAME (compressed) */ +
             sizeof(Record) /* TYPE ... RDLENGTH */ + addrSize /* RDATA */ ;
     std::unique_ptr<char[]> buf(new(std::nothrow) char[size]);
@@ -479,7 +496,7 @@ int Dns64::sendResponse(const ip_addr_t& addr, const char* name, const Query& q,
     if (end - data < (ptrdiff_t)addrSize) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    memcpy(data, &raddr.u_addr, addrSize);
+    memcpy(data, IPADDR_DATA(&raddr), addrSize);
     // Send the response
     CHECK_SOCKET(sock_sendto(ctx->sock, buf.get(), size, MSG_DONTWAIT, (const sockaddr*)&q.srcAddr, sizeof(q.srcAddr)));
     return 0;
@@ -489,7 +506,8 @@ int Dns64::sendErrorResponse(uint16_t code, const char* name, const Query& q, Co
     // Allocate a buffer for response data
     size_t qsize = 0; // Size of the question section
     if (name) {
-        qsize = strlen(name) + 1 /* QNAME (including term. null) */ + sizeof(Question) /* QTYPE ... QCLASS */ ;
+        const size_t qnameSize = strlen(name) + 2; // Including the length and term. null bytes
+        qsize = qnameSize /* QNAME */ + sizeof(Question) /* QTYPE ... QCLASS */ ;
     }
     const size_t size = sizeof(Header) /* ID ... ARCOUNT */ + qsize;
     std::unique_ptr<char[]> buf(new(std::nothrow) char[size]);
@@ -515,6 +533,7 @@ int Dns64::sendErrorResponse(uint16_t code, const char* name, const Query& q, Co
 }
 
 void Dns64::dnsCallback(const char* name, const ip_addr_t* addr, void* data) {
+    DEBUG("dns_found_callback: name: %s, address: %s", name ? name : "NULL", addr ? IPADDR_NTOA(addr) : "NULL");
     const std::unique_ptr<Query> q(static_cast<Query*>(data));
     const auto ctx = q->ctx.lock();
     if (!ctx) {

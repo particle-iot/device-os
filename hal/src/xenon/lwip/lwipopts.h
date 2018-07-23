@@ -1381,7 +1381,7 @@ void sys_unlock_tcpip_core(void);
 /**
  * SO_REUSE==1: Enable SO_REUSEADDR option.
  */
-#define SO_REUSE                        0
+#define SO_REUSE                        1
 
 /**
  * SO_REUSE_RXTOALL==1: Pass a copy of incoming broadcast/multicast packets
