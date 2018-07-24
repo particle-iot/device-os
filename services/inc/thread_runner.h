@@ -45,7 +45,7 @@ class ThreadRunnerOptions {
 public:
     // Default settings
     static const char* const THREAD_NAME;
-    static const size_t STACK_SIZE = 2048;
+    static const size_t STACK_SIZE = OS_THREAD_STACK_SIZE_DEFAULT;
     static const os_thread_prio_t PRIORITY = OS_THREAD_PRIORITY_DEFAULT;
 
     ThreadRunnerOptions();

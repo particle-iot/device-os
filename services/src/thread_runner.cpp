@@ -74,7 +74,7 @@ void ThreadRunner::run(void* data) {
         ev.type = ThreadRunnerEventType::STOPPED;
         r->eventHandler_(ev);
     }
-    SPARK_ASSERT(os_thread_exit(r->thread_) == 0);
+    SPARK_ASSERT(os_thread_exit(nullptr) == 0);
 }
 
 } // particle
