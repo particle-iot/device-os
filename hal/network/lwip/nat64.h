@@ -215,8 +215,6 @@ public:
     int ip4Input(pbuf* p, ip_hdr* header, netif* in);
     int ip6Input(pbuf* p, ip6_hdr* header, netif* in);
 
-    void timeout(uint32_t dt);
-
 protected:
     int natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto, pbuf* p, netif* in, void* ipheader);
     bool filter(const IpTransportAddress& src, const IpTransportAddress& dst, netif* in) const;
@@ -227,6 +225,13 @@ protected:
     bool findNextL4Id(Ip4TransportAddress& src, L4Protocol proto);
     bool findNextUdpPort(Ip4TransportAddress& src);
     bool findNextIcmpId(Ip4TransportAddress& src);
+
+    void timeout(uint32_t dt);
+
+    void enableSessionTimer();
+    void disableSessionTimer();
+
+    static void timeoutHandlerCb(void* arg);
 
 private:
 

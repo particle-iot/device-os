@@ -19,9 +19,16 @@
 LOG_SOURCE_CATEGORY("net.nat64")
 
 #include "nat64.h"
+
+/* FIXME: this is a hack for static_assert(MEMP_NUM_SYS_TIMEOUT > LWIP_NUM_SYS_TIMEOUT_INTERNAL)
+ * to work correctly
+ */
+#include <netif/ppp/ppp_opts.h>
+
 #include <lwip/ip.h>
 #include <lwip/udp.h>
 #include <lwip/inet_chksum.h>
+#include <lwip/timeouts.h>
 #include "lwiplock.h"
 
 using namespace particle::net;
@@ -71,6 +78,10 @@ const uint16_t DEFAULT_ICMP_NAT_MAX_ID = 65535;
 const size_t DEFAULT_POOL_SIZE = 6 * 1024;
 const size_t DEFAULT_MAX_TRANSLATION_ENTRIES = DEFAULT_POOL_SIZE / NAT64_ENTRY_SIZE;
 
+const size_t DEFAULT_SESSION_CLEANUP_TIMEOUT = 1000;
+
+static_assert(MEMP_NUM_SYS_TIMEOUT > LWIP_NUM_SYS_TIMEOUT_INTERNAL, "An extra timeout should be allocated for NAT64 service. Increase MEMP_NUM_SYS_TIMEOUT");
+
 } /* anonymous */
 
 Nat64::Nat64()
@@ -79,7 +90,7 @@ Nat64::Nat64()
 }
 
 Nat64::~Nat64() {
-    /* FIXME */
+    disableSessionTimer();
 }
 
 void Nat64::setPref64(const ip6_addr_t* pref64) {
@@ -93,6 +104,7 @@ bool Nat64::enable(const Rule& rule) {
     rule_ = new Rule(rule);
     if (!pool_) {
         pool_.reset(new SimpleAllocedPool(DEFAULT_MAX_TRANSLATION_ENTRIES * NAT64_ENTRY_SIZE));
+        enableSessionTimer();
     }
     return true;
 }
@@ -488,4 +500,20 @@ void Nat64::timeout(uint32_t dt) {
             bib = bib->next;
         }
     }
+}
+
+void Nat64::enableSessionTimer() {
+    LwipTcpIpCoreLock lock;
+    timeoutHandlerCb(this);
+}
+
+void Nat64::disableSessionTimer() {
+    LwipTcpIpCoreLock lock;
+    sys_untimeout(&timeoutHandlerCb, this);
+}
+
+void Nat64::timeoutHandlerCb(void* arg) {
+    auto self = static_cast<Nat64*>(arg);
+    self->timeout(DEFAULT_SESSION_CLEANUP_TIMEOUT);
+    sys_timeout(DEFAULT_SESSION_CLEANUP_TIMEOUT, &timeoutHandlerCb, self);
 }

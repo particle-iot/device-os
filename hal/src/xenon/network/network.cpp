@@ -20,7 +20,6 @@
 #include "openthread/lwip_openthreadif.h"
 #include "wiznet/wiznetif.h"
 #include "nat64.h"
-#include <lwip/timeouts.h>
 #include <mutex>
 #include <openthread/border_router.h>
 #include <openthread/thread_ftd.h>
@@ -40,13 +39,6 @@ BaseNetif* th2 = nullptr;
 BaseNetif* en3 = nullptr;
 
 Nat64* nat64 = nullptr;
-
-void nat64_tick_do() {
-    sys_timeout(1000, [](void* arg) -> void {
-        nat64->timeout(1000);
-        nat64_tick_do();
-    }, nullptr);
-}
 
 } /* anonymous */
 
@@ -76,23 +68,14 @@ int if_init_platform(void*) {
         delete en3;
         en3 = nullptr;
     } else {
-        unsigned int flags = 0;
-        if_get_flags(en3->interface(), &flags);
-        flags |= (IFF_UP);
-        if_set_flags(en3->interface(), flags);
-
-        flags = 0;
-        if_get_xflags(en3->interface(), &flags);
-        flags |= IFXF_DHCP;
-        if_set_xflags(en3->interface(), flags);
+        if_set_flags(en3->interface(), IFF_UP);
+        if_set_xflags(en3->interface(), IFXF_DHCP);
 
         nat64 = new Nat64();
         ip_addr_t prefix;
         ipaddr_aton("64:ff9b::", &prefix);
         Rule r(th2->interface(), en3->interface());
         nat64->enable(r);
-
-        nat64_tick_do();
 
         auto thread = ot_get_instance();
         otBorderRouterConfig config = {};
