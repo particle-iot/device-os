@@ -229,9 +229,18 @@ public:
         mbedtls_md_free(&ctx_);
     }
 
+    int start() {
+        CHECK_MBEDTLS(mbedtls_md_starts(&ctx_));
+        return 0;
+    }
+
     int update(const char* data, size_t size) {
         CHECK_MBEDTLS(mbedtls_md_update(&ctx_, (const uint8_t*)data, size));
         return 0;
+    }
+
+    int update(const char* str) {
+        return update(str, strlen(str));
     }
 
     int finish(char* buf) {
@@ -271,9 +280,18 @@ public:
         mbedtls_md_free(&ctx_);
     }
 
+    int start() {
+        CHECK_MBEDTLS(mbedtls_md_hmac_reset(&ctx_));
+        return 0;
+    }
+
     int update(const char* data, size_t size) {
         CHECK_MBEDTLS(mbedtls_md_hmac_update(&ctx_, (const uint8_t*)data, size));
         return 0;
+    }
+
+    int update(const char* str) {
+        return update(str, strlen(str));
     }
 
     int finish(char* buf) {
@@ -398,7 +416,8 @@ public:
 
     ~JpakeHandler() {
         mbedtls_ecjpake_free(&ctx_);
-        memset(secret_, 0, JPAKE_SHARED_SECRET_SIZE);
+        memset(secret_, 0, sizeof(secret_));
+        memset(confirmKey_, 0, sizeof(confirmKey_));
     }
 
     int init(const char* key, size_t keySize) {
@@ -466,6 +485,7 @@ private:
     Sha256 hash_;
     mbedtls_ecjpake_context ctx_;
     char secret_[JPAKE_SHARED_SECRET_SIZE];
+    char confirmKey_[Sha256::SIZE];
     State state_;
 
     int readRound1() {
@@ -531,22 +551,30 @@ private:
         }
         // Derive the shared secret
         size_t n = 0;
-        CHECK_MBEDTLS(mbedtls_ecjpake_derive_secret(&ctx_, (uint8_t*)secret_, JPAKE_SHARED_SECRET_SIZE, &n,
+        CHECK_MBEDTLS(mbedtls_ecjpake_derive_secret(&ctx_, (uint8_t*)secret_, sizeof(secret_), &n,
                 mbedtls_default_rng, nullptr));
         if (n != JPAKE_SHARED_SECRET_SIZE) { // Sanity check
             LOG_DEBUG(ERROR, "Invalid size of the shared secret");
             return SYSTEM_ERROR_INTERNAL;
         }
         mbedtls_ecjpake_free(&ctx_);
-        // Validate the confirmation message
+        // Generate the confirmation key
         Sha256 hash;
+        CHECK(hash.init());
+        CHECK(hash.update(secret_, sizeof(secret_)));
+        CHECK(hash.update("JPAKE_KC"));
+        CHECK(hash.finish(confirmKey_));
+        hash.destroy();
+        // Validate the confirmation message
         CHECK(hash.init(hash_));
         char hashVal[Sha256::SIZE] = {};
         CHECK(hash.finish(hashVal));
         hash.destroy();
         HmacSha256 hmac;
-        CHECK(hmac.init(secret_, JPAKE_SHARED_SECRET_SIZE));
-        CHECK(hmac.update(JPAKE_CLIENT_ID, strlen(JPAKE_CLIENT_ID)));
+        CHECK(hmac.init(confirmKey_, sizeof(confirmKey_)));
+        CHECK(hmac.update("KC_1_U"));
+        CHECK(hmac.update(JPAKE_CLIENT_ID));
+        CHECK(hmac.update(JPAKE_SERVER_ID));
         CHECK(hmac.update(hashVal, sizeof(hashVal)));
         CHECK(hmac.finish(hashVal));
         if (memcmp(data, hashVal, Sha256::SIZE) != 0) {
@@ -565,8 +593,10 @@ private:
         CHECK(hash_.finish(buf->data));
         hash_.destroy();
         HmacSha256 hmac;
-        CHECK(hmac.init(secret_, JPAKE_SHARED_SECRET_SIZE));
-        CHECK(hmac.update(JPAKE_SERVER_ID, strlen(JPAKE_SERVER_ID)));
+        CHECK(hmac.init(confirmKey_, sizeof(confirmKey_)));
+        CHECK(hmac.update("KC_1_U"));
+        CHECK(hmac.update(JPAKE_SERVER_ID));
+        CHECK(hmac.update(JPAKE_CLIENT_ID));
         CHECK(hmac.update(buf->data, buf->size));
         CHECK(hmac.finish(buf->data));
         writePacket();
