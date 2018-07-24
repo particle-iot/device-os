@@ -77,10 +77,11 @@ extern "C" {
 #endif
 
 typedef enum {
-  HAL_SPI_INFO_VERSION_1 = 11
+  HAL_SPI_INFO_VERSION_1 = 11,
+  HAL_SPI_INFO_VERSION_2 = 12
 } hal_spi_info_version_t;
 
-#define HAL_SPI_INFO_VERSION HAL_SPI_INFO_VERSION_1
+#define HAL_SPI_INFO_VERSION HAL_SPI_INFO_VERSION_2
 
 typedef struct hal_spi_info_t {
     uint16_t version;
@@ -93,6 +94,7 @@ typedef struct hal_spi_info_t {
     uint32_t clock;
     uint8_t bit_order;
     uint8_t data_mode;
+    pin_t ss_pin;
 } hal_spi_info_t;
 
 typedef struct HAL_SPI_TransferStatus {
@@ -121,6 +123,9 @@ int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatu
 // HAL_SPI_Set_Bit_Order, HAL_SPI_Set_Data_Mode and HAL_SPI_Set_Clock_Divider in one go
 // to avoid having to reconfigure SPI peripheral 3 times
 int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved);
+
+int32_t HAL_SPI_Acquire(HAL_SPI_Interface spi, void* reserved);
+int32_t HAL_SPI_Release(HAL_SPI_Interface spi, void* reserved);
 
 #ifdef __cplusplus
 }

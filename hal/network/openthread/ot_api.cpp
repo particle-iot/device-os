@@ -103,7 +103,7 @@ int ot_init(int (*onInit)(otInstance*), void* reserved) {
 
     LOG(INFO, "OpenThread version: %s", otGetVersionString());
 
-    if (os_thread_create(&s_threadThread, "ot", OS_THREAD_PRIORITY_NETWORK,
+    if (os_thread_create(&s_threadThread, "ot", OS_THREAD_PRIORITY_NETWORK_HIGH,
                          ot_process, thread, OS_THREAD_STACK_SIZE_DEFAULT_NETWORK)) {
         return SYSTEM_ERROR_UNKNOWN;
     }

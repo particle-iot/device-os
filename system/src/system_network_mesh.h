@@ -27,12 +27,15 @@
 
 #include <mutex>
 #include <memory>
-#include "openthread/lwip_openthreadif.h"
+#include "ifapi.h"
 #include "system_openthread.h"
 #include <openthread/platform/settings.h>
 #include <openthread/dataset.h>
 #include "net_hal.h"
 #include "system_update.h"
+
+/* FIXME */
+const uint8_t meshIfIndex = 2;
 
 class MeshNetworkInterface : public ManagedIPNetworkInterface<IPConfig, MeshNetworkInterface>
 {
@@ -40,6 +43,18 @@ public:
 
     MeshNetworkInterface() {
         system_set_flag(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS, 0, nullptr);
+    }
+
+    static void ifEventCb(void* arg, if_t iface, const if_event* ev) {
+        if (ev->ev_type == IF_EVENT_LINK) {
+            if (ev->ev_if_link->state) {
+                HAL_NET_notify_connected();
+                /* FIXME */
+                HAL_NET_notify_dhcp(true);
+            } else {
+                HAL_NET_notify_disconnected();
+            }
+        }
     }
 
     void fetch_ipconfig(IPConfig* target)  {
@@ -100,8 +115,6 @@ protected:
     }
 
     virtual void on_start_listening() override {
-        auto& iff = iface();
-        (void)iff;
     }
 
     virtual bool on_stop_listening() override {
@@ -115,15 +128,11 @@ protected:
     }
 
     virtual int connect_finalize() override {
-        int r = iface().up();
-        HAL_NET_notify_connected();
-        HAL_NET_notify_dhcp(true);
-        return r;
+        return if_set_flags(interface(), IFF_UP);
     }
 
     virtual int on_now() override {
-        auto& iff = iface();
-        (void)iff;
+        (void)interface();
         return 0;
     }
 
@@ -132,15 +141,27 @@ protected:
     }
 
     virtual void disconnect_now() override {
-        iface().down();
-        HAL_NET_notify_disconnected();
+        unsigned int flags = 0;
+        if_get_flags(interface(), &flags);
+        if_clear_flags(interface(), IFF_UP);
+
+        if (!(flags & IFF_RUNNING)) {
+            HAL_NET_notify_disconnected();
+        }
     }
 
 private:
-    particle::net::OpenThreadNetif& iface() {
-        static particle::net::OpenThreadNetif iff(particle::system::threadInstance());
-        return iff;
+
+    if_t interface() {
+        if_t iface;
+        if_get_by_index(meshIfIndex, &iface);
+        if (!handlerCookie_) {
+            handlerCookie_ = if_event_handler_add_if(iface, &MeshNetworkInterface::ifEventCb, this);
+        }
+        return iface;
     }
+
+    if_event_handler_cookie_t handlerCookie_ = nullptr;
 };
 
 #endif /* HAL_PLATFORM_MESH */

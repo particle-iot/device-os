@@ -33,3 +33,7 @@
 [submodule "third_party/littlefs/littlefs"]
 	path = third_party/littlefs/littlefs
 	url = ../littlefs.git
+[submodule "third_party/wiznet_driver/wiznet_driver"]
+	path = third_party/wiznet_driver/wiznet_driver
+	url = ../ioLibrary_Driver.git
+	branch = particle

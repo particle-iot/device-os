@@ -20,6 +20,9 @@ CPPSRC += $(call target_files,$(HAL_SRC_ARMV7_PATH)/,*.cpp)
 # CSRC += $(call target_files,$(HAL_SRC_TEMPLATE_PATH)/,*.c)
 # CPPSRC += $(call target_files,$(HAL_SRC_TEMPLATE_PATH)/,*.cpp)
 
+CSRC += $(call target_files,$(HAL_MODULE_PATH)/network/api/,*.c)
+CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/api/,*.cpp)
+
 CSRC += $(call target_files,$(HAL_MODULE_PATH)/network/lwip/,*.c)
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/lwip/,*.cpp)
 

@@ -15,27 +15,32 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LWIP_OPENTHREAD_IF_H
-#define LWIP_OPENTHREAD_IF_H
+#ifndef LWIP_WIZNET_IF_H
+#define LWIP_WIZNET_IF_H
 
-#include <openthread-core-config.h>
+#include "basenetif.h"
+#include "interrupts_hal.h"
+#include "spi_hal.h"
+#include "concurrent_hal.h"
+#include <atomic>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
-#include <openthread/message.h>
-#include <openthread/ip6.h>
-#include <openthread/dhcp6_client.h>
-#include "basenetif.h"
 
 #ifdef __cplusplus
 
 namespace particle { namespace net {
 
-class OpenThreadNetif : public BaseNetif {
+class WizNetif : public BaseNetif {
 public:
-    OpenThreadNetif(otInstance* ot = nullptr);
-    virtual ~OpenThreadNetif();
+    WizNetif();
+    WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6]);
+    virtual ~WizNetif();
 
-    otInstance* getOtInstance();
+    netif* interface();
+
+    static WizNetif* instance() {
+        return instance_;
+    }
 
 protected:
     virtual void ifEventHandler(const if_event* ev) override;
@@ -44,32 +49,49 @@ protected:
 private:
     /* LwIP netif init callback */
     static err_t initCb(netif *netif);
-    /* LwIP netif output_ip6 callback */
-    static err_t outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr);
+    err_t initInterface();
 
-    /* OpenThread receive callback */
-    static void otReceiveCb(otMessage* msg, void* ctx);
-    /* OpenThread state changed callback */
-    static void otStateChangedCb(uint32_t flags, void* ctx);
+    void hwReset();
+    bool isPresent();
 
-    void input(otMessage* message);
-    void stateChanged(uint32_t flags);
-
-    void refreshIpAddresses();
+    static void interruptCb(void* arg);
+    static void loop(void* arg);
 
     int up();
     int down();
 
+    int openRaw();
+    int closeRaw();
+
+    void pollState();
+    void input();
+    void output(pbuf* p);
+    /* LwIP netif linkoutput callback */
+    static err_t linkOutputCb(netif* netif, pbuf* p);
+    err_t linkOutput(pbuf* p);
+
 private:
-    otInstance* ot_ = nullptr;
-    otNetifAddress addresses_[OPENTHREAD_CONFIG_MAX_EXT_IP_ADDRS] = {};
-    otBorderRouterConfig abr_ = {};
+    HAL_SPI_Interface spi_;
+    pin_t cs_;
+    pin_t reset_;
+    pin_t interrupt_;
+
+    os_thread_t thread_ = nullptr;
+    os_queue_t queue_ = nullptr;
+    os_semaphore_t spiSem_ = nullptr;
+
+    std::atomic_bool exit_;
+    std::atomic_bool inRecv_;
+
+    system_tick_t lastStatePoll_ = 0;
+
+    /* FIXME: Wiznet callbacks do not have any kind of state arguments :( */
+    static WizNetif* instance_;
 };
 
 } } // namespace particle::net
 
 #endif /* __cplusplus */
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -79,4 +101,4 @@ extern "C" {
 }
 #endif /* __cplusplus */
 
-#endif /* LWIP_OPENTHREAD_IF_H */
+#endif /* LWIP_WIZNET_IF_H */

@@ -30,10 +30,19 @@
 #include "ot_api.h"
 #include <mutex>
 #include <lwip/dns.h>
+#include <openthread/netdata.h>
+#include "ipaddr_util.h"
 
 using namespace particle::net;
 
 namespace {
+
+void otIp6AddressToIp6Addr(const otIp6Address* otAddr, ip6_addr_t& addr) {
+    IP6_ADDR(&addr, otAddr->mFields.m32[0],
+                    otAddr->mFields.m32[1],
+                    otAddr->mFields.m32[2],
+                    otAddr->mFields.m32[3]);
+}
 
 void otNetifAddressToIp6Addr(const otNetifAddress* otAddr, ip6_addr_t& addr) {
     IP6_ADDR(&addr, otAddr->mAddress.mFields.m32[0],
@@ -53,10 +62,86 @@ int otNetifAddressStateToIp6AddrState(const otNetifAddress* addr) {
     return addr->mValid ? (addr->mPreferred ? IP6_ADDR_PREFERRED : IP6_ADDR_DEPRECATED) : IP6_ADDR_INVALID;
 }
 
+enum OtNetifAddressType {
+    OT_NETIF_ADDRESS_TYPE_NONE = 0x00,
+    OT_NETIF_ADDRESS_TYPE_SLAAC,
+    OT_NETIF_ADDRESS_TYPE_DHCP,
+
+    OT_NETIF_ADDRESS_TYPE_ANY = 0xff
+};
+
+bool otIp6PrefixEquals(const otIp6Prefix& p1, const otIp6Prefix& p2) {
+    if (p1.mLength == p2.mLength && otIp6PrefixMatch(&p1.mPrefix, &p2.mPrefix) == p1.mLength) {
+        return true;
+    }
+
+    return false;
+}
+
+bool otNetifAddressMatchesPrefix(const otNetifAddress& addr, const otIp6Prefix& pref) {
+    if (otIp6PrefixMatch(&pref.mPrefix, &addr.mAddress) >= pref.mLength &&
+        pref.mLength == addr.mPrefixLength) {
+        return true;
+    }
+
+    return false;
+}
+
+bool otNetifAddressInNetDataPrefixList(otInstance* ot, const otNetifAddress& addr, OtNetifAddressType type = OT_NETIF_ADDRESS_TYPE_ANY) {
+    otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
+    otBorderRouterConfig config = {};
+
+    while (otNetDataGetNextOnMeshPrefix(ot, &iterator, &config) == OT_ERROR_NONE) {
+        switch (type) {
+            case OT_NETIF_ADDRESS_TYPE_SLAAC: {
+                if (!config.mSlaac) {
+                    continue;
+                }
+                break;
+            }
+            case OT_NETIF_ADDRESS_TYPE_DHCP: {
+                if (!config.mDhcp) {
+                    continue;
+                }
+                break;
+            }
+            case OT_NETIF_ADDRESS_TYPE_ANY: {
+                if (!(config.mSlaac || config.mDhcp)) {
+                    continue;
+                }
+                break;
+            }
+        }
+
+        if (otNetifAddressMatchesPrefix(addr, config.mPrefix)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+const char* routerPreferenceToString(int pref) {
+    static const char* prefs[] = {
+        "Reserved",
+        "Low",
+        "Medium",
+        "High",
+    };
+
+    pref += 2;
+    if (pref > 3) {
+        return nullptr;
+    }
+
+    return prefs[pref];
+}
+
 } /* anonymous */
 
 OpenThreadNetif::OpenThreadNetif(otInstance* ot)
-        : ot_(ot) {
+        : BaseNetif(),
+          ot_(ot) {
 
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
     if (!ot_) {
@@ -79,7 +164,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     netifapi_netif_add(interface(), nullptr, nullptr, nullptr, nullptr, initCb, tcpip_input);
     interface()->state = this;
     /* Automatically set it up */
-    netifapi_netif_set_up(interface());
+    /* netifapi_netif_set_up(interface()); */
 
     /* Register OpenThread receive callback */
     otIp6SetReceiveCallback(ot_, otReceiveCb, this);
@@ -89,29 +174,43 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     otSetStateChangedCallback(ot_, otStateChangedCb, this);
 
     {
+        /* FIXME */
         LOCK_TCPIP_CORE();
         ip_addr_t dns;
-        ipaddr_aton("fdaa:bb:1::1", &dns);
+        ipaddr_aton("64:ff9b::808:808", &dns);
         dns_setserver(0, &dns);
+        ipaddr_aton("64:ff9b::808:404", &dns);
+        dns_setserver(1, &dns);
+        ipaddr_aton("8.8.8.8", &dns);
+        dns_setserver(2, &dns);
+        ipaddr_aton("8.8.4.4", &dns);
+        dns_setserver(3, &dns);
         UNLOCK_TCPIP_CORE();
     }
 }
 
 OpenThreadNetif::~OpenThreadNetif() {
-    /* Unregister OpenThread state changed callback */
-    otRemoveStateChangeCallback(ot_, otStateChangedCb, this);
+    {
+        std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+        /* Unregister OpenThread state changed and receive callbacks */
+        otRemoveStateChangeCallback(ot_, otStateChangedCb, this);
+        otIp6SetReceiveCallback(ot_, nullptr, nullptr);
+    }
     netifapi_netif_remove(interface());
 }
 
 /* LwIP netif init callback */
 err_t OpenThreadNetif::initCb(netif* netif) {
-    netif->name[0] = 'o';
-    netif->name[1] = 't';
+    netif->name[0] = 't';
+    netif->name[1] = 'h';
 
     netif->mtu = 1280;
     netif->output_ip6 = outputIp6Cb;
     netif->rs_count = 0;
     netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_NO_ND6;
+
+    /* FIXME */
+    netif_set_default(netif);
 
     return ERR_OK;
 }
@@ -128,13 +227,13 @@ err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr
     ip_addr_copy_from_ip6_packed(dst, ip6hdr->dest);
     ip_addr_copy_from_ip6_packed(src, ip6hdr->src);
 
-    char tmp[IP6ADDR_STRLEN_MAX] = {0};
-    char tmp1[IP6ADDR_STRLEN_MAX] = {0};
+    // char tmp[IP6ADDR_STRLEN_MAX] = {0};
+    // char tmp1[IP6ADDR_STRLEN_MAX] = {0};
 
-    ipaddr_ntoa_r(&src, tmp, sizeof(tmp));
-    ipaddr_ntoa_r(&dst, tmp1, sizeof(tmp1));
+    // ipaddr_ntoa_r(&src, tmp, sizeof(tmp));
+    // ipaddr_ntoa_r(&dst, tmp1, sizeof(tmp1));
 
-    LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes (%s -> %s)", self, p->tot_len, tmp, tmp1);
+    // LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes (%s -> %s)", self, p->tot_len, tmp, tmp1);
 
     auto msg = otIp6NewMessage(self->ot_, true);
     if (msg == nullptr) {
@@ -361,17 +460,162 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
 }
 
 void OpenThreadNetif::refreshIpAddresses() {
-    otIp6SlaacUpdate(ot_, slaacAddresses_, sizeof(slaacAddresses_) / sizeof(slaacAddresses_[0]),
-                     otIp6CreateRandomIid, nullptr);
+    /* Remove addresses that don't match any prefix in the network data */
+    for (unsigned i = 0; i < sizeof(addresses_) / sizeof(addresses_[0]); i++) {
+        if (!addresses_[i].mValid) {
+            continue;
+        }
+        if (!otNetifAddressInNetDataPrefixList(ot_, addresses_[i], OT_NETIF_ADDRESS_TYPE_SLAAC)) {
+            /* Remove */
+            otIp6RemoveUnicastAddress(ot_, &addresses_[i].mAddress);
+            memset(&addresses_[i], 0, sizeof(addresses_[i]));
+        }
+    }
 
-    /* FIXME */
-#if OPENTHREAD_ENABLE_DHCP6_SERVER
-    otDhcp6ServerUpdate(ot_);
-#endif // OPENTHREAD_ENABLE_DHCP6_SERVER
+    const uint16_t ourRloc16 = otThreadGetRloc16(ot_);
 
-#if OPENTHREAD_ENABLE_DHCP6_CLIENT
-    otDhcp6ClientUpdate(ot_, dhcpAddresses_, sizeof(dhcpAddresses_) / sizeof(dhcpAddresses_[0]), nullptr);
-#endif // OPENTHREAD_ENABLE_DHCP6_CLIENT
+    /* Active Border Router election */
+    otBorderRouterConfig active = {};
+
+    otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
+    otBorderRouterConfig config = {};
+    while (otNetDataGetNextOnMeshPrefix(ot_, &iterator, &config) == OT_ERROR_NONE) {
+        /* For now we are only handling SLAAC prefixes */
+        if (!config.mSlaac) {
+            continue;
+        }
+
+        /* Do not process prefixes with P_default = false here, we are trying to choose
+         * the best BR.
+         */
+        if (!config.mDefaultRoute) {
+            continue;
+        }
+
+        if (config.mPrefix.mLength > 64) {
+            LOG(WARN, "Longer than /64 prefixes are currently not supported");
+            continue;
+        }
+
+        /* OpenThread does not export functions that deal with scopes :(
+         * Use LwIP here
+         */
+        ip6_addr_t addr = {};
+        otIp6AddressToIp6Addr(&config.mPrefix.mPrefix, addr);
+        ip6_addr_t activeAddr = {};
+        otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, activeAddr);
+
+        LOG_DEBUG(TRACE, "Candidate preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
+            IP6ADDR_NTOA(&addr).str, config.mPrefix.mLength,
+            routerPreferenceToString(config.mPreference),
+            config.mRloc16,
+            config.mPreferred,
+            config.mStable);
+
+        if (config.mRloc16 == ourRloc16) {
+            /* Rule -1. We are a border router, do not choose any other */
+            LOG(TRACE, "This is our own prefix");
+            active = config;
+            break;
+        }
+
+        if (otIp6IsAddressUnspecified(&active.mPrefix.mPrefix) && active.mPrefix.mLength == 0) {
+            /* Rule 0: any prefix is better than none */
+            active = config;
+        } else if (config.mStable && !active.mStable) {
+            /* Rule 1: Stable prefixes are preferred (P_stable = true) */
+            active = config;
+        } else if (config.mPreferred && !active.mPreferred) {
+            /* Rule 2: Prefer preferred prefixes */
+            active = config;
+        } else if (config.mPreference > active.mPreference) {
+            /* Rule 3: Prefix with maximum P_preference is preferred */
+            active = config;
+        } else if (ip6_addr_isglobal(&addr) > ip6_addr_isglobal(&activeAddr)) {
+            /* Rule 4: Global scope is preferred over site-local (GUA over ULA) */
+            active = config;
+        } else if (config.mPrefix.mLength < active.mPrefix.mLength) {
+            /* Rule 5: Larger prefix is preferred (e.g. between /64 and /120, /64 is preferred) */
+            active = config;
+        } else {
+            if (abr_.mRloc16 && config.mRloc16 == abr_.mRloc16 && otIp6PrefixEquals(config.mPrefix, abr_.mPrefix)) {
+                /* Rule 6: If the ABR is among the candidates, it should be preferred */
+                /* NOTE: anything other than prefix and RLOC16 is ignored */
+                active = config;
+            } else if (active.mRloc16 != abr_.mRloc16 && config.mRloc16 < active.mRloc16) {
+                /* Rule 7: Lowest RLOC16 is preferred */
+                active = config;
+            }
+        }
+    }
+
+    if (!otIp6IsAddressUnspecified(&active.mPrefix.mPrefix)) {
+        if (memcmp(&abr_, &active, sizeof(active))) {
+            ip6_addr_t addr = {};
+            otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, addr);
+            LOG(INFO, "Switched over to a new preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
+                IP6ADDR_NTOA(&addr).str, active.mPrefix.mLength,
+                routerPreferenceToString(active.mPreference),
+                active.mRloc16,
+                active.mPreferred,
+                active.mStable);
+            abr_ = active;
+        }
+    } else {
+        memset(&abr_, 0, sizeof(abr_));
+    }
+
+    iterator = OT_NETWORK_DATA_ITERATOR_INIT;
+    while (otNetDataGetNextOnMeshPrefix(ot_, &iterator, &config) == OT_ERROR_NONE) {
+        /* For now we are only handling SLAAC prefixes */
+        if (!config.mSlaac) {
+            continue;
+        }
+
+        bool matches = false;
+
+        for (unsigned i = 0; i < sizeof(addresses_) / sizeof(addresses_[0]); i++) {
+            if (!addresses_[i].mValid) {
+                continue;
+            }
+
+            if (otNetifAddressMatchesPrefix(addresses_[i], config.mPrefix)) {
+                matches = true;
+
+                bool preferred = otNetifAddressMatchesPrefix(addresses_[i], active.mPrefix);
+
+                if (addresses_[i].mPreferred != preferred) {
+                    addresses_[i].mPreferred = true;
+                    otIp6RemoveUnicastAddress(ot_, &addresses_[i].mAddress);
+                    otIp6AddUnicastAddress(ot_, &addresses_[i]);
+                }
+            }
+        }
+
+        if (matches) {
+            continue;
+        }
+
+        /* Add new address */
+        for (unsigned i = 0; i < sizeof(addresses_) / sizeof(addresses_[0]); i++) {
+            if (addresses_[i].mValid) {
+                continue;
+            }
+
+            addresses_[i].mAddress = config.mPrefix.mPrefix;
+            addresses_[i].mPrefixLength = config.mPrefix.mLength;
+            addresses_[i].mValid = true;
+            addresses_[i].mPreferred = !memcmp(&config, &active, sizeof(config));
+            if (config.mRloc16 != ourRloc16) {
+                otIp6CreateRandomIid(ot_, &addresses_[i], nullptr);
+            } else {
+                /* Pref::1/PrefLen */
+                addresses_[i].mAddress.mFields.m8[OT_IP6_ADDRESS_SIZE - 1] = 0x01;
+            }
+            otIp6AddUnicastAddress(ot_, &addresses_[i]);
+            break;
+        }
+    }
 }
 
 void OpenThreadNetif::input(otMessage* msg) {
@@ -379,7 +623,7 @@ void OpenThreadNetif::input(otMessage* msg) {
         return;
     }
     uint16_t len = otMessageGetLength(msg);
-    LOG(TRACE, "OpenThreadNetif(%x): input() length %u", this, len);
+    //LOG(TRACE, "OpenThreadNetif(%x): input() length %u", this, len);
     auto p = pbuf_alloc(PBUF_IP, len, PBUF_POOL);
     if (p) {
         uint16_t written = 0;
@@ -395,10 +639,6 @@ void OpenThreadNetif::input(otMessage* msg) {
     } else {
         LOG(TRACE, "input failed to alloc");
     }
-}
-
-netif* OpenThreadNetif::interface() {
-    return &netif_;
 }
 
 otInstance* OpenThreadNetif::getOtInstance() {
@@ -435,4 +675,18 @@ int OpenThreadNetif::down() {
     }
 
     return r;
+}
+
+void OpenThreadNetif::ifEventHandler(const if_event* ev) {
+    if (ev->ev_type == IF_EVENT_STATE) {
+        if (ev->ev_if_state->state) {
+            up();
+        } else {
+            down();
+        }
+    }
+}
+
+void OpenThreadNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
+    /* Nothing to do here */
 }

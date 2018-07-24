@@ -34,11 +34,12 @@ typedef void* os_thread_t;
 typedef int32_t os_result_t;
 typedef uint8_t os_thread_prio_t;
 /* Default priority is the same as the application thread */
-#define OS_THREAD_PRIORITY_DEFAULT  (2)
-#define OS_THREAD_PRIORITY_CRITICAL (9)
-#define OS_THREAD_PRIORITY_NETWORK  (8)
+#define OS_THREAD_PRIORITY_DEFAULT       (2)
+#define OS_THREAD_PRIORITY_CRITICAL      (9)
+#define OS_THREAD_PRIORITY_NETWORK       (7)
+#define OS_THREAD_PRIORITY_NETWORK_HIGH  (8)
 #define OS_THREAD_STACK_SIZE_DEFAULT (3*1024)
-#define OS_THREAD_STACK_SIZE_DEFAULT_NETWORK (8*1024)
+#define OS_THREAD_STACK_SIZE_DEFAULT_NETWORK (6*1024)
 
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;

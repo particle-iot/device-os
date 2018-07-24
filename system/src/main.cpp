@@ -67,7 +67,7 @@
 #endif /* HAL_PLATFORM_FILESYSTEM */
 
 #if HAL_PLATFORM_LWIP
-#include <lwip/tcpip.h>
+#include "ifapi.h"
 #endif /* HAL_PLATFORM_LWIP */
 
 #if PLATFORM_ID == 3
@@ -661,17 +661,17 @@ void app_setup_and_loop(void)
         }
     }
 
+#if HAL_PLATFORM_OPENTHREAD
+    system::threadInit();
+#endif /* HAL_PLATFORM_OPENTHREAD */
+
 #if HAL_PLATFORM_LWIP
-    tcpip_init([](void* arg) {
-        LOG(TRACE, "LwIP started");
-    }, /* &sem */ nullptr);
+    if_init();
 #endif /* HAL_PLATFORM_LWIP */
 
     // FIXME: Move BLE and Thread initialization to an appropriate place
     ble_init(nullptr);
-#if HAL_PLATFORM_OPENTHREAD
-    system::threadInit();
-#endif /* HAL_PLATFORM_OPENTHREAD */
+
     system::SystemControl::instance()->init();
 
     manage_safe_mode();

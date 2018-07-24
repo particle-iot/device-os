@@ -21,6 +21,7 @@
 #include "pinmap_impl.h"
 #include "logging.h"
 #include "interrupts_hal.h"
+#include "concurrent_hal.h"
 
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
@@ -35,7 +36,7 @@ typedef struct {
     uint8_t                             mosi_pin;
     uint8_t                             miso_pin;
 
-    SPI_Mode                            spi_mode; 
+    SPI_Mode                            spi_mode;
     uint8_t                             data_mode;
     uint8_t                             bit_order;
     uint32_t                            clock;
@@ -45,13 +46,15 @@ typedef struct {
     bool                                enabled;
     volatile bool                       transmitting;
     uint16_t                            transfer_length;
+
+    os_mutex_recursive_t                mutex;
 } nrf5x_spi_info_t;
 
-static const nrfx_spim_t m_spi2 = NRFX_SPIM_INSTANCE(2);  
-static const nrfx_spim_t m_spi3 = NRFX_SPIM_INSTANCE(3);  
+static const nrfx_spim_t m_spi2 = NRFX_SPIM_INSTANCE(2);
+static const nrfx_spim_t m_spi3 = NRFX_SPIM_INSTANCE(3);
 static nrf5x_spi_info_t m_spi_map[TOTAL_SPI] = {
-    {&m_spi3, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO},
-    {&m_spi2, APP_IRQ_PRIORITY_LOWEST, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},
+    {&m_spi3, APP_IRQ_PRIORITY_HIGH, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO},
+    {&m_spi2, APP_IRQ_PRIORITY_HIGH, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},
 };
 
 static void spi_event_handler(nrfx_spim_evt_t const * p_event,
@@ -73,7 +76,7 @@ static inline nrf_spim_frequency_t get_nrf_spi_frequency(HAL_SPI_Interface spi, 
 {
     switch (clock_div)
     {
-        case SPI_CLOCK_DIV2: 
+        case SPI_CLOCK_DIV2:
             if (spi == HAL_SPI_INTERFACE1)
             {
                 return NRF_SPIM_FREQ_32M;
@@ -83,15 +86,15 @@ static inline nrf_spim_frequency_t get_nrf_spi_frequency(HAL_SPI_Interface spi, 
             {
                 return NRF_SPIM_FREQ_16M;
             }
-        case SPI_CLOCK_DIV8: 
+        case SPI_CLOCK_DIV8:
             return NRF_SPIM_FREQ_8M;
-        case SPI_CLOCK_DIV16: 
+        case SPI_CLOCK_DIV16:
             return NRF_SPIM_FREQ_4M;
         case SPI_CLOCK_DIV32:
             return NRF_SPIM_FREQ_2M;
-        case SPI_CLOCK_DIV64: 
+        case SPI_CLOCK_DIV64:
             return NRF_SPIM_FREQ_1M;
-        case SPI_CLOCK_DIV128: 
+        case SPI_CLOCK_DIV128:
             return NRF_SPIM_FREQ_500K;
         case SPI_CLOCK_DIV256:
             return NRF_SPIM_FREQ_250K;
@@ -166,11 +169,15 @@ static int spi_tx_rx(HAL_SPI_Interface spi, uint8_t *tx_buf, uint8_t *rx_buf, ui
     nrfx_spim_xfer_desc_t const spim_xfer_desc =
     {
         .p_tx_buffer = tx_buf,
-        .tx_length   = size,
+        .tx_length   = tx_buf ? size : 0,
         .p_rx_buffer = rx_buf,
-        .rx_length   = size,
+        .rx_length   = rx_buf ? size : 0,
     };
     err_code = nrfx_spim_xfer(m_spi_map[spi].instance, &spim_xfer_desc, 0);
+
+    if (err_code) {
+        m_spi_map[spi].transmitting = false;
+    }
 
     return err_code ? 0 : size;
 }
@@ -182,6 +189,14 @@ static void spi_transfer_cancel(HAL_SPI_Interface spi)
 
 void HAL_SPI_Init(HAL_SPI_Interface spi)
 {
+    os_thread_scheduling(false, nullptr);
+    if (m_spi_map[spi].mutex == nullptr) {
+        os_mutex_recursive_create(&m_spi_map[spi].mutex);
+    }
+    os_thread_scheduling(true, NULL);
+
+    HAL_SPI_Acquire(spi, nullptr);
+
     if (m_spi_map[spi].enabled)
     {
         spi_uninit(spi);
@@ -189,13 +204,15 @@ void HAL_SPI_Init(HAL_SPI_Interface spi)
 
     // Default: SPI_MODE_MASTER, SPI_MODE3, MSBFIRST, 16MHZ
     m_spi_map[spi].enabled = false;
-    m_spi_map[spi].transmitting = false;   
+    m_spi_map[spi].transmitting = false;
     m_spi_map[spi].spi_mode = DEFAULT_SPI_MODE;
     m_spi_map[spi].bit_order = DEFAULT_BIT_ORDER;
-    m_spi_map[spi].data_mode = DEFAULT_DATA_MODE; 
+    m_spi_map[spi].data_mode = DEFAULT_DATA_MODE;
     m_spi_map[spi].clock = DEFAULT_SPI_CLOCK;
     m_spi_map[spi].user_callback = NULL;
     m_spi_map[spi].transfer_length = 0;
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
@@ -327,6 +344,10 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
         info->mode = m_spi_map[spi].spi_mode;
         info->bit_order = m_spi_map[spi].bit_order;
         info->data_mode = m_spi_map[spi].data_mode;
+        if (info->version >= HAL_SPI_INFO_VERSION_2) {
+            info->ss_pin = m_spi_map[spi].ss_pin != NRFX_SPIM_PIN_NOT_USED ?
+                           NRF_PIN_LOOKUP_TABLE[m_spi_map[spi].ss_pin] : 0xffff;
+        }
         HAL_enable_irq(state);
     }
 }
@@ -340,7 +361,7 @@ void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi)
 {
     spi_transfer_cancel(spi);
     m_spi_map[spi].transmitting = false;
-    m_spi_map[spi].user_callback = NULL; 
+    m_spi_map[spi].user_callback = NULL;
 }
 
 int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st)
@@ -374,15 +395,15 @@ int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t
     {
         m_spi_map[spi].data_mode = DEFAULT_DATA_MODE;
         m_spi_map[spi].bit_order = DEFAULT_BIT_ORDER;
-        m_spi_map[spi].clock = DEFAULT_SPI_CLOCK;        
+        m_spi_map[spi].clock = DEFAULT_SPI_CLOCK;
     }
     else
     {
         m_spi_map[spi].data_mode = mode;
         m_spi_map[spi].bit_order = order;
-        m_spi_map[spi].clock = clockdiv;   
+        m_spi_map[spi].clock = clockdiv;
     }
-    
+
     if (m_spi_map[spi].enabled)
     {
         spi_uninit(spi);
@@ -390,4 +411,24 @@ int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t
     }
 
     return 0;
+}
+
+int32_t HAL_SPI_Acquire(HAL_SPI_Interface spi, void* reserved) {
+    if (!HAL_IsISR()) {
+        os_mutex_recursive_t mutex = m_spi_map[spi].mutex;
+        if (mutex) {
+            return os_mutex_recursive_lock(mutex);
+        }
+    }
+    return -1;
+}
+
+int32_t HAL_SPI_Release(HAL_SPI_Interface spi, void* reserved) {
+    if (!HAL_IsISR()) {
+        os_mutex_recursive_t mutex = m_spi_map[spi].mutex;
+        if (mutex) {
+            return os_mutex_recursive_unlock(mutex);
+        }
+    }
+    return -1;
 }
