@@ -97,3 +97,6 @@
 #define NRFX_SPIM_ENABLED       1
 #define NRFX_SPIM2_ENABLED      1
 #define NRFX_SPIM3_ENABLED      1
+
+#define NRFX_TIMER2_ENABLED     1
+

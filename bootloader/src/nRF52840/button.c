@@ -23,7 +23,7 @@
 
 button_config_t HAL_Buttons[] = {
     {
-        .active         = 0,
+        .active         = false,
         .pin            = BUTTON1_GPIO_PIN,
         .mode           = BUTTON1_GPIO_MODE,
         .pupd           = BUTTON1_GPIO_PUPD,
@@ -37,10 +37,21 @@ button_config_t HAL_Buttons[] = {
         .nvic_irq_prio  = BUTTON1_GPIOTE_IRQ_PRIORITY
     },
     {
-        .active         = 0,
+        .active         = false,
         .debounce_time  = 0
     }
 };
+
+static void rtc_timer_init(void)
+{
+    nrf_rtc_prescaler_set(NRF_RTC1, RTC_FREQ_TO_PRESCALER(UI_TIMER_FREQUENCY));
+    /* NOTE: the second argument is an event (nrf_rtc_event_t) */
+    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
+    /* NOTE: the second argument is a mask */
+    nrf_rtc_event_enable(NRF_RTC1, RTC_EVTEN_TICK_Msk);
+    nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_START);
+}
+
 /**
  * @brief  Configures Button GPIO, EXTI Line and DEBOUNCE Timer.
  * @param  Button: Specifies the Button to be configured.
@@ -63,6 +74,8 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
         NRF_GPIO_PIN_S0S1,
         NRF_GPIO_PIN_NOSENSE);
 
+    rtc_timer_init();
+
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
         /* Disable RTC0 tick Interrupt */
@@ -70,14 +83,14 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
         BUTTON_EXTI_Config(Button, ENABLE);
 
-        sd_nvic_SetPriority(HAL_Buttons[Button].nvic_irqn, HAL_Buttons[Button].nvic_irq_prio);
-        sd_nvic_ClearPendingIRQ(HAL_Buttons[Button].nvic_irqn);
-        sd_nvic_EnableIRQ(HAL_Buttons[Button].nvic_irqn);
+        NVIC_SetPriority(HAL_Buttons[Button].nvic_irqn, HAL_Buttons[Button].nvic_irq_prio);
+        NVIC_ClearPendingIRQ(HAL_Buttons[Button].nvic_irqn);
+        NVIC_EnableIRQ(HAL_Buttons[Button].nvic_irqn);
 
         /* Enable the RTC0 NVIC Interrupt */
-        sd_nvic_SetPriority(RTC1_IRQn, RTC1_IRQ_PRIORITY);
-        sd_nvic_ClearPendingIRQ(RTC1_IRQn);
-        sd_nvic_EnableIRQ(RTC1_IRQn);
+        NVIC_SetPriority(RTC1_IRQn, RTC1_IRQ_PRIORITY);
+        NVIC_ClearPendingIRQ(RTC1_IRQn);
+        NVIC_EnableIRQ(RTC1_IRQn);
     }
 }
 
@@ -153,7 +166,7 @@ void BUTTON_Irq_Handler(void)
 void BUTTON_Check_Irq(uint16_t button)
 {
     HAL_Buttons[button].debounce_time = 0x00;
-    HAL_Buttons[button].active = 1;
+    HAL_Buttons[button].active = true;
 
     /* Disable button Interrupt */
     BUTTON_EXTI_Config(button, DISABLE);
@@ -167,12 +180,12 @@ void BUTTON_Check_State(uint16_t button, uint8_t pressed)
     if (BUTTON_GetState(button) == pressed)
     {
         if (!HAL_Buttons[button].active)
-            HAL_Buttons[button].active = 1;
+            HAL_Buttons[button].active = true;
         HAL_Buttons[button].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
     }
     else if (HAL_Buttons[button].active)
     {
-        HAL_Buttons[button].active = 0;
+        HAL_Buttons[button].active = false;
         /* Enable button Interrupt */
         BUTTON_EXTI_Config(button, ENABLE);
     }
@@ -210,9 +223,9 @@ uint16_t BUTTON_Pressed_Time(Button_TypeDef button)
 
 void BUTTON_Uninit()
 {
-    sd_nvic_DisableIRQ(GPIOTE_IRQn);
-    sd_nvic_ClearPendingIRQ(GPIOTE_IRQn);
-    sd_nvic_SetPriority(GPIOTE_IRQn, 0);
+    NVIC_DisableIRQ(GPIOTE_IRQn);
+    NVIC_ClearPendingIRQ(GPIOTE_IRQn);
+    NVIC_SetPriority(GPIOTE_IRQn, 0);
 
     for (int i = 0; i < BUTTONn; i++)
     {
