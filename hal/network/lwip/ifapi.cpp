@@ -538,14 +538,38 @@ int if_set_flags(if_t iface, unsigned int flags) {
     curFlags &= ~(IFF_CANTCHANGE);
     flags &= ~(IFF_CANTCHANGE);
 
+    /* We only care about the flags which are mentioned in `flags` */
+    curFlags &= flags;
+
     const unsigned int changed = flags ^ curFlags;
 
     if (changed & IFF_UP) {
-        if (flags & IFF_UP) {
-            netif_set_up(iface);
-        } else {
-            netif_set_down(iface);
-        }
+        netif_set_up(iface);
+    }
+
+    return 0;
+}
+
+int if_clear_flags(if_t iface, unsigned int flags) {
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_validate(iface)) {
+        return -1;
+    }
+
+    unsigned int curFlags = 0;
+    if (if_get_flags(iface, &curFlags)) {
+        return -1;
+    }
+
+    curFlags &= ~(IFF_CANTCHANGE);
+    flags &= ~(IFF_CANTCHANGE);
+
+    /* We only care about the flags which are mentioned in `flags` */
+    const unsigned int changed = curFlags & flags;
+
+    if (changed & IFF_UP) {
+        netif_set_down(iface);
     }
 
     return 0;
@@ -612,49 +636,85 @@ int if_set_xflags(if_t iface, unsigned int xflags) {
     curFlags &= ~(IFXF_CANTCHANGE);
     xflags &= ~(IFXF_CANTCHANGE);
 
+    /* We only care about the flags which are mentioned in `xflags` */
+    curFlags &= xflags;
+
     const unsigned int changed = xflags ^ curFlags;
 
     struct netif* netif = (struct netif*)iface;
 
 #if LWIP_IPV6
     if (changed & IFXF_AUTOCONF6) {
-        if (curFlags & IFXF_AUTOCONF6) {
-            netif_set_ip6_autoconfig_enabled(netif, 0);
-        } else {
-            netif_set_ip6_autoconfig_enabled(netif, 1);
-            netif_create_ip6_linklocal_address(netif, 1);
-        }
+        netif_set_ip6_autoconfig_enabled(netif, 1);
+        netif_create_ip6_linklocal_address(netif, 1);
     }
 #endif /* LWIP_IPV6 */
 
 #if LWIP_DHCP
     if (changed & IFXF_DHCP) {
-        if (curFlags & IFXF_DHCP) {
-            dhcp_release_and_stop(netif);
-        } else {
-            dhcp_start(netif);
-        }
+        dhcp_start(netif);
     }
 #endif /* LWIP_DHCP */
 
 #if LWIP_IPV6_DHCP6
     if (changed & IFXF_DHCP6) {
-        if (curFlags & IFXF_DHCP6) {
-            dhcp6_disable(netif);
-        } else {
-            /* FIXME */
-            dhcp6_enable_stateless(netif);
-        }
+        /* FIXME */
+        dhcp6_enable_stateless(netif);
     }
 #endif /* LWIP_IPV6_DHCP6 */
 
 #if LWIP_IPV4 && LWIP_AUTOIP
     if (changed & IFXF_AUTOIP) {
-        if (curFlags & IFXF_AUTOIP) {
-            autoip_stop(netif);
-        } else {
-            autoip_start(netif);
-        }
+        autoip_start(netif);
+    }
+#endif /* LWIP_IPV4 && LWIP_AUTOIP */
+
+    /* TODO: WOL */
+
+    return 0;
+}
+
+int if_clear_xflags(if_t iface, unsigned int xflags) {
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_validate(iface)) {
+        return -1;
+    }
+
+    unsigned int curFlags = 0;
+    if (if_get_xflags(iface, &curFlags)) {
+        return -1;
+    }
+
+    curFlags &= ~(IFXF_CANTCHANGE);
+    xflags &= ~(IFXF_CANTCHANGE);
+
+    /* We only care about the flags which are mentioned in `xflags` */
+    const unsigned int changed = curFlags & xflags;
+
+    struct netif* netif = (struct netif*)iface;
+
+#if LWIP_IPV6
+    if (changed & IFXF_AUTOCONF6) {
+        netif_set_ip6_autoconfig_enabled(netif, 0);
+    }
+#endif /* LWIP_IPV6 */
+
+#if LWIP_DHCP
+    if (changed & IFXF_DHCP) {
+        dhcp_release_and_stop(netif);
+    }
+#endif /* LWIP_DHCP */
+
+#if LWIP_IPV6_DHCP6
+    if (changed & IFXF_DHCP6) {
+        dhcp6_disable(netif);
+    }
+#endif /* LWIP_IPV6_DHCP6 */
+
+#if LWIP_IPV4 && LWIP_AUTOIP
+    if (changed & IFXF_AUTOIP) {
+        autoip_stop(netif);
     }
 #endif /* LWIP_IPV4 && LWIP_AUTOIP */
 

@@ -128,13 +128,7 @@ protected:
     }
 
     virtual int connect_finalize() override {
-        unsigned int flags = 0;
-        int r = if_get_flags(interface(), &flags);
-        if (r) {
-            return r;
-        }
-        flags |= (IFF_UP);
-        return if_set_flags(interface(), flags);
+        return if_set_flags(interface(), IFF_UP);
     }
 
     virtual int on_now() override {
@@ -149,8 +143,7 @@ protected:
     virtual void disconnect_now() override {
         unsigned int flags = 0;
         if_get_flags(interface(), &flags);
-        flags &= ~(IFF_UP);
-        if_set_flags(interface(), flags);
+        if_clear_flags(interface(), IFF_UP);
 
         if (!(flags & IFF_RUNNING)) {
             HAL_NET_notify_disconnected();
