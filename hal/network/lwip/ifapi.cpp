@@ -317,8 +317,8 @@ __attribute__((weak)) int if_init_platform(void*) {
     return 0;
 }
 
-int if_get_list(struct if_list** ifs, void* buf, size_t* buflen) {
-    if (buflen == nullptr) {
+int if_get_list(struct if_list** ifs) {
+    if (ifs == nullptr) {
         return -1;
     }
 
@@ -331,8 +331,8 @@ int if_get_list(struct if_list** ifs, void* buf, size_t* buflen) {
         len += sizeof(if_list);
     }
 
-    if (*buflen < len || buf == nullptr || ifs == nullptr) {
-        *buflen = len;
+    void* buf = calloc(1, len);
+    if (!buf) {
         return -1;
     }
 
@@ -352,6 +352,70 @@ int if_get_list(struct if_list** ifs, void* buf, size_t* buflen) {
     *ifs = (if_list*)buf;
 
     return 0;
+}
+
+int if_free_list(struct if_list* ifs) {
+    if (ifs) {
+        free(ifs);
+        return 0;
+    }
+
+    return -1;
+}
+
+int if_get_name_index(struct if_nameindex** ifs) {
+    if (ifs == nullptr) {
+        return -1;
+    }
+
+    LwipTcpIpCoreLock lk;
+
+    size_t len = 0;
+    unsigned count = 0;
+    netif* netif;
+
+    NETIF_FOREACH(netif) {
+        len += sizeof(if_nameindex);
+        char tmp[IF_NAMESIZE] = {};
+        if_get_name(netif, tmp);
+        len += strlen(tmp) + 1;
+        count++;
+    }
+
+    len += sizeof(if_nameindex);
+    count++;
+
+    void* buf = calloc(1, len);
+    if (!buf) {
+        return -1;
+    }
+
+    char* namePtr = (char*)(((if_nameindex*)buf) + count);
+
+    if_nameindex* iface = (if_nameindex*)buf;
+    NETIF_FOREACH(netif) {
+        iface->if_index = netif_get_index(netif);
+        iface->if_name = namePtr;
+        if_get_name(netif, iface->if_name);
+        namePtr += strlen(iface->if_name) + 1;
+        iface++;
+    }
+
+    iface->if_index = 0;
+    iface->if_name = nullptr;
+
+    *ifs = (if_nameindex*)buf;
+
+    return 0;
+}
+
+int if_free_name_index(struct if_nameindex* ifs) {
+    if (ifs) {
+        free(ifs);
+        return 0;
+    }
+
+    return -1;
 }
 
 int if_name_to_index(const char* name, uint8_t* index) {

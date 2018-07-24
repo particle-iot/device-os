@@ -125,6 +125,12 @@ struct if_list {
     void* data;
 };
 
+struct if_nameindex {
+    /* Aims to be compatible with RFC 3493 if_nameindex */
+    unsigned int if_index;
+    char* if_name;
+};
+
 typedef void* if_event_handler_cookie_t;
 
 enum if_event_type_t {
@@ -184,7 +190,11 @@ typedef void (*if_event_handler_t)(void* arg, if_t iface, const struct if_event*
 int if_init(void);
 int if_init_platform(void*);
 
-int if_get_list(struct if_list** ifs, void* buf, size_t* buflen);
+int if_get_list(struct if_list** ifs);
+int if_free_list(struct if_list* ifs);
+
+int if_get_name_index(struct if_nameindex** ifs);
+int if_free_name_index(struct if_nameindex* ifs);
 
 int if_name_to_index(const char* name, uint8_t* index);
 int if_index_to_name(uint8_t index, char* name);
@@ -194,9 +204,11 @@ int if_get_by_name(char* name, if_t* iface);
 
 int if_get_flags(if_t iface, unsigned int* flags);
 int if_set_flags(if_t iface, unsigned int flags);
+int if_clear_flags(if_t iface, unsigned int flags);
 
 int if_get_xflags(if_t iface, unsigned int* xflags);
 int if_set_xflags(if_t iface, unsigned int xflags);
+int if_clear_xflags(if_t iface, unsigned int xflags);
 
 int if_get_index(if_t iface, uint8_t* index);
 int if_get_name(if_t iface, char* name);
