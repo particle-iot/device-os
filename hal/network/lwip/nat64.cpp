@@ -422,8 +422,9 @@ BibEntry* Nat64::addBib(const IpTransportAddress& src, const IpTransportAddress&
                     }
                 }
                 LOG_DEBUG(TRACE, "Failed to allocate new BIB");
+            } else {
+                LOG_DEBUG(TRACE, "Failed to allocate new BIB, because there is no IPv4 address on the outside iface");
             }
-            LOG_DEBUG(TRACE, "Failed to allocate new BIB, because there is no IPv4 address on the outside iface");
         }
     }
 

@@ -120,7 +120,13 @@ int lwip_hook_ip6_forward_pre_routing(struct pbuf* p, struct ip6_hdr* ip6hdr, st
 
 int lwip_hook_ip4_input_pre_upper_layers(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp) {
     if (nat64) {
-        nat64->ip4Input(p, (ip_hdr*)iphdr, inp);
+        int r = nat64->ip4Input(p, (ip_hdr*)iphdr, inp);
+        if (r) {
+            /* Ip4 hooks do not free the packet if it has been handled by the hook */
+            pbuf_free(p);
+        }
+
+        return r;
     }
 
     /* Try to handle locally if not consumed by NAT64 */
