@@ -545,16 +545,18 @@ void OpenThreadNetif::refreshIpAddresses() {
         }
     }
 
-    if (!otIp6IsAddressUnspecified(&active.mPrefix.mPrefix) && memcmp(&abr_, &active, sizeof(active))) {
-        ip6_addr_t addr = {};
-        otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, addr);
-        LOG(INFO, "Switched over to a new preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
-            IP6ADDR_NTOA(&addr).str, active.mPrefix.mLength,
-            routerPreferenceToString(active.mPreference),
-            active.mRloc16,
-            active.mPreferred,
-            active.mStable);
-        abr_ = active;
+    if (!otIp6IsAddressUnspecified(&active.mPrefix.mPrefix)) {
+        if (memcmp(&abr_, &active, sizeof(active))) {
+            ip6_addr_t addr = {};
+            otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, addr);
+            LOG(INFO, "Switched over to a new preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
+                IP6ADDR_NTOA(&addr).str, active.mPrefix.mLength,
+                routerPreferenceToString(active.mPreference),
+                active.mRloc16,
+                active.mPreferred,
+                active.mStable);
+            abr_ = active;
+        }
     } else {
         memset(&abr_, 0, sizeof(abr_));
     }
