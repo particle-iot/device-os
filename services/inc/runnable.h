@@ -15,44 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_NETWORK_LWIP_LOCK_H
-#define HAL_NETWORK_LWIP_LOCK_H
+#pragma once
 
-#include <lwip/opt.h>
+namespace particle {
 
-#ifdef __cplusplus
-
-namespace particle { namespace net {
-
-class LwipTcpIpCoreLock {
+class Runnable {
 public:
-    LwipTcpIpCoreLock() :
-            locked_(false) {
-        lock();
-    }
+    virtual ~Runnable() = default;
 
-    ~LwipTcpIpCoreLock() {
-        if (locked_) {
-            unlock();
-        }
-    }
-
-    void lock() {
-        LOCK_TCPIP_CORE();
-        locked_ = true;
-    }
-
-    void unlock() {
-        UNLOCK_TCPIP_CORE();
-        locked_ = false;
-    }
-
-private:
-    bool locked_;
+    virtual int run() = 0;
 };
 
-} } /* particle::net */
-
-#endif /* __cplusplus */
-
-#endif /* HAL_NETWORK_LWIP_LOCK_H */
+} // particle

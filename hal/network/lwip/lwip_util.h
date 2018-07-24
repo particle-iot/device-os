@@ -15,44 +15,33 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_NETWORK_LWIP_LOCK_H
-#define HAL_NETWORK_LWIP_LOCK_H
+#pragma once
 
-#include <lwip/opt.h>
+#include "lwip/ip_addr.h"
 
-#ifdef __cplusplus
+#define IPADDR_NTOA(_addr) \
+        ({ \
+            ::particle::detail::IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> h; \
+            ipaddr_ntoa_r(_addr, h.str, sizeof(h.str)); \
+            h; \
+        }).str
 
-namespace particle { namespace net {
+#define IPADDR_DATA(_addr) \
+        (IP_IS_V4(_addr) ? &ip_2_ip4(_addr)->addr : ip_2_ip6(_addr)->addr)
 
-class LwipTcpIpCoreLock {
-public:
-    LwipTcpIpCoreLock() :
-            locked_(false) {
-        lock();
-    }
+#define IPADDR_SIZE(_addr) \
+        (IP_IS_V4(_addr) ? sizeof(ip4_addr::addr) : sizeof(ip6_addr::addr))
 
-    ~LwipTcpIpCoreLock() {
-        if (locked_) {
-            unlock();
-        }
-    }
+namespace particle {
 
-    void lock() {
-        LOCK_TCPIP_CORE();
-        locked_ = true;
-    }
+namespace detail {
 
-    void unlock() {
-        UNLOCK_TCPIP_CORE();
-        locked_ = false;
-    }
-
-private:
-    bool locked_;
+// Helper structure for the IPADDR_NTOA macro
+template<size_t N>
+struct IpAddrNtoaHelper {
+    char str[N];
 };
 
-} } /* particle::net */
+} // particle::detail
 
-#endif /* __cplusplus */
-
-#endif /* HAL_NETWORK_LWIP_LOCK_H */
+} // particle
