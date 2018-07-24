@@ -42,7 +42,8 @@ void serial_at_response_out(void* data, const char* msg)
 
 STARTUP(
     cellular_at_response_handler_set(serial_at_response_out, NULL, NULL);
-    cellular_credentials_set("m2mtrial.telefonica.com", "", "", NULL);
+    // cellular_credentials_set("m2mtrial.telefonica.com", "", "", NULL);
+    cellular_credentials_set("m2m.com.attz", "", "", NULL);
 );
 
 /* This function is called once at start up ----------------------------------*/
