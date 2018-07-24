@@ -27,7 +27,7 @@ ProtocolError ChunkedTransfer::handle_update_begin(
         token_t token, Message& message, MessageChannel& channel)
 {
     uint8_t flags = 0;
-	chunk_count = 0;
+    chunk_count = 0;
     int actual_len = message.length();
     uint8_t* queue = message.buf();
     message_id_t msg_id = CoAP::message_id(queue);
@@ -112,7 +112,6 @@ ProtocolError ChunkedTransfer::handle_update_begin(
 ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
         MessageChannel& channel)
 {
-    first_chunk_received = true;
     last_chunk_millis = callbacks->millis();
     chunk_count++;
 
@@ -340,6 +339,8 @@ ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel,
 
 ProtocolError ChunkedTransfer::idle(MessageChannel& channel)
 {
+    /* Timeout to resend missing chunks removed.
+     * Leaving idle() here in case we need to add something in the future. */
     return NO_ERROR;
 }
 
