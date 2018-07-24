@@ -190,8 +190,12 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
 }
 
 OpenThreadNetif::~OpenThreadNetif() {
-    /* Unregister OpenThread state changed callback */
-    otRemoveStateChangeCallback(ot_, otStateChangedCb, this);
+    {
+        std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+        /* Unregister OpenThread state changed and receive callbacks */
+        otRemoveStateChangeCallback(ot_, otStateChangedCb, this);
+        otIp6SetReceiveCallback(ot_, nullptr, nullptr);
+    }
     netifapi_netif_remove(interface());
 }
 

@@ -127,7 +127,9 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
         HAL_SPI_Init(spi_);
     }
 
+    HAL_SPI_Acquire(spi_, nullptr);
     spi_ensure_configured(spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
+    HAL_SPI_Release(spi_, nullptr);
 
     reg_wizchip_cris_cbfunc(
         [](void) -> void {
@@ -167,6 +169,7 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
             spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
             size_t r = 0;
             while (r < len) {
+                /* FIXME: maximum DMA transfer size should be correctly handled by HAL */
                 size_t t = std::min((len - r), (size_t)65535);
                 HAL_SPI_DMA_Transfer(self->spi_, nullptr, pBuf + r, t, [](void) -> void {
                     auto self = instance();
@@ -182,6 +185,7 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
             spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
             size_t r = 0;
             while (r < len) {
+                /* FIXME: maximum DMA transfer size should be correctly handled by HAL */
                 size_t t = std::min((len - r), (size_t)65535);
                 HAL_SPI_DMA_Transfer(self->spi_, pBuf + r, nullptr, t, [](void) -> void {
                     auto self = instance();
@@ -201,7 +205,7 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
         /* FIXME: */
         SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
-        SPARK_ASSERT(os_thread_create(&thread_, "wiz", OS_THREAD_PRIORITY_NETWORK, &WizNetif::loop, this, 4096) == 0);
+        SPARK_ASSERT(os_thread_create(&thread_, "wiz", OS_THREAD_PRIORITY_NETWORK, &WizNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
     }
 }
 
