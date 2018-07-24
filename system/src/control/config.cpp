@@ -78,6 +78,17 @@ int getSerialNumber(ctrl_request* req) {
     return 0;
 }
 
+int getSystemVersion(ctrl_request* req) {
+    const auto verStr = PP_STR(SYSTEM_VERSION_STRING);
+    PB(GetSystemVersionReply) pbRep = {};
+    EncodedString eVerStr(&pbRep.version, verStr, strlen(verStr));
+    const int ret = encodeReplyMessage(req, PB_FIELDS(GetSystemVersionReply), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
 int handleSetClaimCodeRequest(ctrl_request* req) {
     particle_ctrl_SetClaimCodeRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetClaimCodeRequest_fields, &pbReq);

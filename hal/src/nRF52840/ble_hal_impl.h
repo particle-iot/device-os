@@ -26,11 +26,6 @@
 #error "NRF_SDH_BLE_GATT_MAX_MTU_SIZE is not defined"
 #endif
 
-// TODO: Move to an appropriate platform header
-#ifndef BLE_ENABLED
-#define BLE_ENABLED 1
-#endif
-
 // Invalid connection handle
 // TODO: Prefix all BLE HAL definitions with "hal_"
 #define BLE_INVALID_CONN_HANDLE BLE_CONN_HANDLE_INVALID
@@ -47,11 +42,5 @@
 // Maximum number of characteristics per service
 #define BLE_MAX_CHAR_COUNT 4
 
-// Size of the ATT opcode field in bytes
-#define BLE_ATT_OPCODE_SIZE 1
-
-// Size of the ATT handle field in bytes
-#define BLE_ATT_HANDLE_SIZE 2
-
-// Maximum size of an attribute's value in bytes
-#define BLE_MAX_ATTR_VALUE_SIZE (NRF_SDH_BLE_GATT_MAX_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
+// Maximum supported size of an ATT packet in bytes (ATT_MTU)
+#define BLE_MAX_ATT_MTU_SIZE NRF_SDH_BLE_GATT_MAX_MTU_SIZE

@@ -19,13 +19,30 @@
 
 #include "system_control.h"
 
-#if SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+#if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE
 
 #include "control_request_handler.h"
+#include "simple_pool_allocator.h"
+#include "atomic_intrusive_queue.h"
 
-#include "app_fifo.h"
+#include "linked_buffer.h"
+
+#include "ble_hal.h"
+
+#include "spark_wiring_thread.h"
 
 #include <memory>
+#include <atomic>
+
+// Set this macro to 0 to disable the channel security
+#ifndef BLE_CHANNEL_SECURITY_ENABLED
+#define BLE_CHANNEL_SECURITY_ENABLED 1
+#endif
+
+// Set this macro to 1 to enable additional logging
+#ifndef BLE_CHANNEL_DEBUG_ENABLED
+#define BLE_CHANNEL_DEBUG_ENABLED 0
+#endif
 
 static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
 
@@ -42,62 +59,112 @@ public:
     int init();
     void destroy();
 
-    // TODO: Use a separate thread for the BLE channel loop
-    int run();
+    void run();
 
-    // ControlRequestChannel
+    // Reimplemented from `ControlRequestChannel`
+    virtual int allocReplyData(ctrl_request* ctrlReq, size_t size) override;
+    virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
 private:
+    class HandshakeHandler;
+    class JpakeHandler;
+    class AesCcmCipher;
+
+    struct Buffer: LinkedBuffer<> {
+        char* data;
+        size_t size;
+    };
+
     // Request data
     struct Request: ctrl_request {
         Request* next; // Next request
+        char* reqBuf; // Request buffer (assembled from multiple input buffers)
+        Buffer* repBuf; // Reply buffer (allocated as a single output buffer)
         int result; // Result code
+        unsigned connId; // Connection ID
         uint16_t id; // Request ID
     };
 
-    Request* pendingReqs_; // Pending requests
-    Request* readyReqs_; // Completed requests
+#if BLE_CHANNEL_DEBUG_ENABLED
+    std::atomic<unsigned> allocReqCount_;
+    std::atomic<unsigned> heapBufCount_;
+    std::atomic<unsigned> poolBufCount_;
+#endif
+    IntrusiveQueue<Request> readyReqs_; // Completed requests
+    Mutex readyReqsLock_;
 
-    Request* sendReq_;
-    std::unique_ptr<uint8_t[]> sendBuf_;
-    size_t sendPos_;
-    bool headerSent_;
+    AtomicIntrusiveQueue<Buffer> inBufs_; // Packets received from the client (input buffers)
+    IntrusiveQueue<Buffer> outBufs_; // Packets to be sent to the client (output buffers)
+    IntrusiveQueue<Buffer> readInBufs_; // "Consumed" input buffers (see read() function)
+    size_t inBufSize_; // Total size of all consumed input buffers
 
-    Request* recvReq_;
-    std::unique_ptr<uint8_t[]> recvBuf_;
-    app_fifo_t recvFifo_;
-    size_t recvPos_;
-    bool headerRecvd_;
+    Request* curReq_; // A request being received
+    size_t reqBufSize_; // Size of the request buffer
+    size_t reqBufOffs_; // Offset in the request buffer
 
-    uint16_t sendCharHandle_;
-    uint16_t recvCharHandle_;
+    std::unique_ptr<char[]> packetBuf_; // Intermediate buffer for BLE packet data
+    size_t packetSize_; // Size of the pending BLE packet
+#if BLE_CHANNEL_SECURITY_ENABLED
+    std::unique_ptr<AesCcmCipher> aesCcm_; // AES cipher
+    std::unique_ptr<JpakeHandler> jpake_; // J-PAKE handshake handler
+#endif
+    AtomicAllocedPool pool_; // Pool allocator
 
-    volatile uint16_t connHandle_;
-    volatile uint16_t maxCharValSize_;
-    volatile bool notifEnabled_;
-    volatile bool writable_;
+    uint16_t connHandle_; // Connection handle used by the processing thread
+    volatile uint16_t curConnHandle_; // Current connection handle
 
-    int sendNext();
-    int receiveNext();
+    unsigned connId_; // Last connection ID known to the processing thread
+    std::atomic<unsigned> curConnId_; // Current connection ID
 
-    void connected(const ble_connected_event_data& event);
-    void disconnected(const ble_disconnected_event_data& event);
-    void connParamChanged(const ble_conn_param_changed_event_data& event);
-    void charParamChanged(const ble_char_param_changed_event_data& event);
-    void dataSent(const ble_data_sent_event_data& event);
-    void dataReceived(const ble_data_received_event_data& event);
+    volatile uint16_t maxPacketSize_; // Maximum number of bytes that can be written to the TX characteristic
+    volatile bool notifEnabled_; // Set to `true` if the client is subscribed to the notifications
+    volatile bool writable_; // Set to `true` if the TX characteristic is writable
+
+    uint16_t sendCharHandle_; // TX characteristic handle
+    uint16_t recvCharHandle_; // RX characteristic handle
+
+    int initChannel();
+    void resetChannel();
+
+    int receiveRequest();
+    int sendReply();
+    int sendPacket();
+
+    bool readAll(char* data, size_t size);
+    size_t readSome(char* data, size_t size);
+    void sendBuffer(Buffer* buf);
+
+    int connected(const ble_connected_event_data& event);
+    int disconnected(const ble_disconnected_event_data& event);
+    int connParamChanged(const ble_conn_param_changed_event_data& event);
+    int charParamChanged(const ble_char_param_changed_event_data& event);
+    int dataSent(const ble_data_sent_event_data& event);
+    int dataReceived(const ble_data_received_event_data& event);
 
     int initProfile();
+#if BLE_CHANNEL_SECURITY_ENABLED
+    int initAesCcm();
+    int initJpake();
+#endif
+    int allocRequest(size_t size, Request** req);
+    void freeRequest(Request* req);
+
+    int reallocBuffer(size_t size, Buffer** buf);
+    void freeBuffer(Buffer* buf);
+
+    int allocPooledBuffer(size_t size, Buffer** buf);
+    void freePooledBuffer(Buffer* buf);
 
     static void processBleEvent(int event, const void* eventData, void* userData);
-
-    static Request* allocRequest(size_t size = 0);
-    static Request* freeRequest(Request* req);
 };
+
+inline void BleControlRequestChannel::sendBuffer(Buffer* buf) {
+    outBufs_.pushBack(buf);
+}
 
 } // particle::system
 
 } // particle
 
-#endif // SYSTEM_CONTROL_ENABLED && BLE_ENABLED
+#endif // SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE

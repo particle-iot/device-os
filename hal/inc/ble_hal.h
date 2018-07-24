@@ -29,6 +29,20 @@
 // API version
 #define BLE_API_VERSION 1
 
+// Default maximum size of an ATT packet in bytes (ATT_MTU)
+#define BLE_MIN_ATT_MTU_SIZE 23
+
+// Size of the ATT opcode field in bytes
+#define BLE_ATT_OPCODE_SIZE 1
+
+// Size of the ATT handle field in bytes
+#define BLE_ATT_HANDLE_SIZE 2
+
+// Minimum and maximum number of bytes that can be sent in a single write command, read response,
+// notification or indication packet
+#define BLE_MIN_ATTR_VALUE_PACKET_SIZE (BLE_MIN_ATT_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
+#define BLE_MAX_ATTR_VALUE_PACKET_SIZE (BLE_MAX_ATT_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -101,6 +115,13 @@ typedef struct ble_service {
     uint16_t char_count;
 } ble_service;
 
+// Manufacturer-specific data
+typedef struct ble_manuf_data {
+    uint16_t company_id;
+    uint16_t size;
+    const char* data;
+} ble_manuf_data;
+
 // BLE_EVENT_CONNECTED event data
 typedef struct ble_connected_event_data {
     uint16_t conn_handle;
@@ -146,6 +167,7 @@ typedef struct ble_profile {
     uint16_t service_count;
     ble_service* services;
     const char* device_name;
+    const ble_manuf_data* manuf_data;
     ble_event_callback callback;
     void* user_data;
 } ble_profile;
@@ -153,7 +175,7 @@ typedef struct ble_profile {
 // Connection parameters
 typedef struct ble_conn_param {
     uint16_t version; // API version
-    uint16_t max_char_value_size;
+    uint16_t att_mtu_size; // Maximum size of an ATT packet (ATT_MTU)
 } ble_conn_param;
 
 // Characteristic parameters

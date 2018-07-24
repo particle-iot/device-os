@@ -78,14 +78,14 @@ SystemControl::SystemControl() :
 #ifdef USB_VENDOR_REQUEST_ENABLE
         usbChannel_(this),
 #endif
-#if BLE_ENABLED
+#if HAL_PLATFORM_BLE
         bleChannel_(this),
 #endif
         appReqHandler_(nullptr) {
 }
 
 int SystemControl::init() {
-#if BLE_ENABLED
+#if HAL_PLATFORM_BLE
     const int ret = bleChannel_.init();
     if (ret != 0) {
         return ret;
@@ -94,11 +94,10 @@ int SystemControl::init() {
     return 0;
 }
 
-int SystemControl::run() {
-#if BLE_ENABLED
-    return bleChannel_.run();
+void SystemControl::run() {
+#if HAL_PLATFORM_BLE
+    bleChannel_.run();
 #endif
-    return 0;
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
@@ -109,6 +108,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_SERIAL_NUMBER: {
         setResult(req, control::config::getSerialNumber(req));
+        break;
+    }
+    case CTRL_REQUEST_SYSTEM_VERSION: {
+        setResult(req, control::config::getSystemVersion(req));
         break;
     }
     case CTRL_REQUEST_RESET: {

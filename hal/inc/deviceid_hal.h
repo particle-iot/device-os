@@ -35,6 +35,9 @@
 // Size of the device's serial number
 #define HAL_DEVICE_SERIAL_NUMBER_SIZE 15
 
+// Size of the device secret data
+#define HAL_DEVICE_SECRET_SIZE 32
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -73,6 +76,12 @@ void HAL_save_device_id(uint32_t offset);
  * Get the device's serial number.
  */
 int hal_get_device_serial_number(char* str, size_t size, void* reserved);
+
+/**
+ * Get the device secret data.
+ */
+// TODO: Move this function to an appropriate module
+int hal_get_device_secret(char* data, size_t size, void* reserved);
 
 #ifdef	__cplusplus
 }
