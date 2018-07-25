@@ -20,12 +20,14 @@
 #include "nrf_nvic.h"
 #include "interrupts_hal.h"
 
-#define RTCx                     NRF_RTC1
-#define RTCx_IRQn                RTC1_IRQn
-#define RTCx_IRQHandler          RTC1_IRQHandler
-#define RTCx_IRQ_Priority        APP_IRQ_PRIORITY_LOWEST
-#define RTCx_TIMEOUT_SECONDS     0xFFFFFF   // This value should be set as large as possible to save power.
-#define DEFAULT_UNIX_TIME        946684800  // Default date/time to 2000/01/01 00:00:00 
+#define RTC_ID                      1
+#define RTC_IRQ_Priority            APP_IRQ_PRIORITY_LOWEST
+#define RTC_TIMEOUT_SECONDS         (0xFFFFFF / 8)     // This value should be set as large as possible to save power.
+#define DEFAULT_UNIX_TIME           946684800          // Default date/time to 2000/01/01 00:00:00 
+#define CC_CHANNEL_TIME             0
+#define CC_CHANNEL_ALARM            1
+
+static const nrfx_rtc_t m_rtc = NRFX_RTC_INSTANCE(RTC_ID); 
 
 static volatile time_t m_unix_time;
 static volatile time_t m_unix_time_alarm;
@@ -33,80 +35,73 @@ static volatile time_t m_unix_time_last_set;
 
 extern "C" void HAL_RTCAlarm_Handler(void);
 
-void RTCx_IRQHandler(void)
+static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
-    if (RTCx->EVENTS_COMPARE[0])
-    {
-        RTCx->EVENTS_COMPARE[0] = 0;
-        RTCx->TASKS_CLEAR = 1;
-        
+    if (int_type == NRF_DRV_RTC_INT_COMPARE0) {
         m_unix_time += RTCx_TIMEOUT_SECONDS;
-        if (m_unix_time_alarm == m_unix_time)
-        {
+        if (m_unix_time_alarm == m_unix_time) {
             HAL_RTCAlarm_Handler();
+        } else if ((m_unix_time_alarm > m_unix_time) && (m_unix_time_alarm - m_unix_time < RTCx_TIMEOUT_SECONDS)) {
+            err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_TIME, rtc_counter + (m_unix_time_alarm - m_unix_time) * 8 true);
+            APP_ERROR_CHECK(err_code);
         }
-        else if ((m_unix_time_alarm > m_unix_time) && (m_unix_time_alarm - m_unix_time < RTCx_TIMEOUT_SECONDS))
-        {
-            RTCx->EVTENSET = RTC_EVTENSET_COMPARE1_Msk;
-            RTCx->INTENSET = RTC_INTENSET_COMPARE1_Msk;
-            RTCx->CC[1] = (m_unix_time_alarm - m_unix_time) * 8;
-        }
-    }
-
-    if (RTCx->EVENTS_COMPARE[1])
-    {
-        RTCx->EVENTS_COMPARE[1] = 0;
-        RTCx->INTENCLR = RTC_INTENCLR_COMPARE1_Msk;
-        RTCx->CC[1] = 0;
-
+    } else if (int_type == NRF_DRV_RTC_INT_COMPARE1) {
+        nrfx_rtc_cc_disable(&m_rtc, CC_CHANNEL_ALARM);
         HAL_RTCAlarm_Handler();
     }
 }
 
 void HAL_RTC_Configuration(void)
 {
-    // Start LFCLK first, we've done this already
-    
+    uint32_t err_code;
+
     // Set default time
     m_unix_time = DEFAULT_UNIX_TIME;
     m_unix_time_alarm = 0;
     m_unix_time_last_set = 0;
 
-    // Configure wakeup time for RTC 
-    RTCx->PRESCALER = 0xFFF;
-    RTCx->EVTENSET = RTC_EVTENSET_COMPARE0_Msk;
-    RTCx->INTENSET = RTC_INTENSET_COMPARE0_Msk;
-    RTCx->CC[0] = RTCx_TIMEOUT_SECONDS * 8;
-    RTCx->TASKS_START = 1;
-    sd_nvic_SetPriority(RTCx_IRQn, RTCx_IRQ_Priority);
-    sd_nvic_EnableIRQ(RTCx_IRQn);  
+    //Initialize RTC instance
+    nrfx_rtc_config_t config = {                                                
+        .prescaler          = 0xFFF,
+        .interrupt_priority = RTC_IRQ_Priority,
+        .reliable           = false,
+        .tick_latency       = NRFX_RTC_US_TO_TICKS(NRFX_RTC_MAXIMUM_LATENCY_US, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY)
+    };
+
+    err_code = nrfx_rtc_init(&m_rtc, &config, rtc_handler);
+    APP_ERROR_CHECK(err_code);
+
+    // Set compare channel to trigger interrupt after COMPARE_COUNTERTIME seconds
+    err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_TIME, RTC_TIMEOUT_SECONDS * 8, true);
+    APP_ERROR_CHECK(err_code);
+
+    // Power on RTC instance
+    nrfx_rtc_enable(&m_rtc);
 }
 
 void HAL_RTC_Set_UnixTime(time_t value)
 {
     int32_t state = HAL_disable_irq();
-    RTCx->TASKS_CLEAR = 1;  
+    nrfx_rtc_counter_clear(&m_rtc);
     m_unix_time = m_unix_time_last_set = value;
     HAL_enable_irq(state);
 }
 
 time_t HAL_RTC_Get_UnixTime(void)
 {
-    return m_unix_time + RTCx->COUNTER / 8;
+    return m_unix_time + nrfx_rtc_counter_get(&m_rtc) / 8;
 }
 
 void HAL_RTC_Set_UnixAlarm(time_t value)
 {
     int32_t state = HAL_disable_irq();
-    uint32_t rtc_counter = RTCx->COUNTER;
+    uint32_t rtc_counter = nrfx_rtc_counter_get(&m_rtc);
     m_unix_time_alarm = HAL_RTC_Get_UnixTime() + value;
 
     // Configure alarm time which is before next interrupt
-    if (rtc_counter / 8 + value < RTCx_TIMEOUT_SECONDS)
-    {
-        RTCx->EVTENSET = RTC_EVTENSET_COMPARE1_Msk;
-        RTCx->INTENSET = RTC_INTENSET_COMPARE1_Msk;
-        RTCx->CC[1] = rtc_counter + value * 8;
+    if (rtc_counter / 8 + value < RTCx_TIMEOUT_SECONDS) {
+        err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_ALARM, rtc_counter + value * 8, true);
+        APP_ERROR_CHECK(err_code);
     }
     HAL_enable_irq(state);
 }
