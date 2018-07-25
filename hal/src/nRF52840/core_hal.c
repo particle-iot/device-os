@@ -33,11 +33,14 @@
 #include "hal_platform.h"
 #include "dct.h"
 #include "rng_hal.h"
+#include <stdlib.h>
+#include <malloc.h>
 
 #define BACKUP_REGISTER_NUM        10
 int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
 volatile uint8_t rtos_started = 0;
 
+extern char link_heap_location, link_heap_location_end;
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -597,9 +600,34 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
 {
 }
 
+extern size_t pvPortLargestFreeBlock();
+
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
 {
-    return -1;
+    struct mallinfo heapinfo = mallinfo();
+    // fordblks  The total number of bytes in free blocks.
+    info->freeheap = heapinfo.fordblks;
+    if (offsetof(runtime_info_t, total_init_heap) + sizeof(info->total_init_heap) <= info->size) {
+        info->total_init_heap = (uint32_t)(&link_heap_location_end - &link_heap_location);
+    }
+
+    if (offsetof(runtime_info_t, total_heap) + sizeof(info->total_heap) <= info->size) {
+        info->total_heap = heapinfo.arena;
+    }
+
+    if (offsetof(runtime_info_t, max_used_heap) + sizeof(info->max_used_heap) <= info->size) {
+        info->max_used_heap = heapinfo.usmblks;
+    }
+
+    if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
+        info->user_static_ram = info->total_init_heap - info->total_heap;
+    }
+
+    if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {
+    		info->largest_free_block_heap = pvPortLargestFreeBlock();
+    }
+
+    return 0;
 }
 
 uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
@@ -614,13 +642,46 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
     return 0;
 }
 
+
+#if HAL_PLATFORM_CLOUD_UDP
+
+#include "dtls_session_persist.h"
+#include <string.h>
+
+SessionPersistDataOpaque session __attribute__((section(".backup_system")));
+
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
-    return -1;
+	if (offset==0 && length==sizeof(SessionPersistDataOpaque))
+	{
+		memcpy(&session, buffer, length);
+		return 0;
+	}
+	return -1;
 }
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-    return -1;
+	if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque) && session.size==sizeof(SessionPersistDataOpaque))
+	{
+		*length = sizeof(SessionPersistDataOpaque);
+		memcpy(buffer, &session, sizeof(session));
+		return 0;
+	}
+	return -1;
 }
 
+
+#else
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+	return -1;
+}
+
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+	return -1;
+}
+
+#endif
