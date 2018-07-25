@@ -28,9 +28,9 @@
 #define GPIOTE_CONFIG_IRQ_PRIORITY                      APP_IRQ_PRIORITY_HIGH
 #define NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS      8
 
-#define NRFX_RTC_ENABLED  0
+#define NRFX_RTC_ENABLED  1
 #define NRFX_RTC0_ENABLED 0 // Used by SoftDevice
-#define NRFX_RTC1_ENABLED 0 // Reserved for FreeRTOS
+#define NRFX_RTC1_ENABLED 1 // Reserved for FreeRTOS
 #define NRFX_RTC2_ENABLED 0 // FIXME: Used by OpenThread
 
 #define NRFX_ADC_ENABLED 0

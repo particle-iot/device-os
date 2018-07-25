@@ -35,17 +35,17 @@ static volatile time_t m_unix_time_last_set;
 
 extern "C" void HAL_RTCAlarm_Handler(void);
 
-static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
+static void rtc_handler(nrfx_rtc_int_type_t int_type)
 {
-    if (int_type == NRF_DRV_RTC_INT_COMPARE0) {
-        m_unix_time += RTCx_TIMEOUT_SECONDS;
+    if (int_type == NRFX_RTC_INT_COMPARE0) {
+        m_unix_time += RTC_TIMEOUT_SECONDS;
         if (m_unix_time_alarm == m_unix_time) {
             HAL_RTCAlarm_Handler();
-        } else if ((m_unix_time_alarm > m_unix_time) && (m_unix_time_alarm - m_unix_time < RTCx_TIMEOUT_SECONDS)) {
-            err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_TIME, rtc_counter + (m_unix_time_alarm - m_unix_time) * 8 true);
-            APP_ERROR_CHECK(err_code);
+        } else if ((m_unix_time_alarm > m_unix_time) && (m_unix_time_alarm - m_unix_time < RTC_TIMEOUT_SECONDS)) {
+            uint32_t err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_ALARM,  (m_unix_time_alarm - m_unix_time) * 8, true);
+            SPARK_ASSERT(err_code == NRF_SUCCESS);
         }
-    } else if (int_type == NRF_DRV_RTC_INT_COMPARE1) {
+    } else if (int_type == NRFX_RTC_INT_COMPARE1) {
         nrfx_rtc_cc_disable(&m_rtc, CC_CHANNEL_ALARM);
         HAL_RTCAlarm_Handler();
     }
@@ -64,16 +64,16 @@ void HAL_RTC_Configuration(void)
     nrfx_rtc_config_t config = {                                                
         .prescaler          = 0xFFF,
         .interrupt_priority = RTC_IRQ_Priority,
-        .reliable           = false,
-        .tick_latency       = NRFX_RTC_US_TO_TICKS(NRFX_RTC_MAXIMUM_LATENCY_US, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY)
+        .tick_latency       = 0,
+        .reliable           = false
     };
 
     err_code = nrfx_rtc_init(&m_rtc, &config, rtc_handler);
-    APP_ERROR_CHECK(err_code);
+    SPARK_ASSERT(err_code == NRF_SUCCESS);
 
     // Set compare channel to trigger interrupt after COMPARE_COUNTERTIME seconds
     err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_TIME, RTC_TIMEOUT_SECONDS * 8, true);
-    APP_ERROR_CHECK(err_code);
+    SPARK_ASSERT(err_code == NRF_SUCCESS);
 
     // Power on RTC instance
     nrfx_rtc_enable(&m_rtc);
@@ -99,9 +99,9 @@ void HAL_RTC_Set_UnixAlarm(time_t value)
     m_unix_time_alarm = HAL_RTC_Get_UnixTime() + value;
 
     // Configure alarm time which is before next interrupt
-    if (rtc_counter / 8 + value < RTCx_TIMEOUT_SECONDS) {
-        err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_ALARM, rtc_counter + value * 8, true);
-        APP_ERROR_CHECK(err_code);
+    if (rtc_counter / 8 + value < RTC_TIMEOUT_SECONDS) {
+        uint32_t err_code = nrfx_rtc_cc_set(&m_rtc, CC_CHANNEL_ALARM, rtc_counter + value * 8, true);
+        SPARK_ASSERT(err_code == NRF_SUCCESS);
     }
     HAL_enable_irq(state);
 }
@@ -117,9 +117,6 @@ uint8_t HAL_RTC_Time_Is_Valid(void* reserved)
     int32_t state = HAL_disable_irq();
     for (;;)
     {
-        if (!(RTCx->INTENSET & RTC_INTENSET_COMPARE0_Msk))
-            break;
-
         if (m_unix_time_last_set && HAL_RTC_Get_UnixTime() < m_unix_time_last_set)
             break;
 
