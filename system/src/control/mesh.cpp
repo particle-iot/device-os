@@ -52,7 +52,7 @@
             const auto ret = _expr; \
             if (ret != OT_ERROR_NONE) { \
                 LOG(ERROR, #_expr " failed: %d", (int)ret); \
-                return SYSTEM_ERROR_UNKNOWN; \
+                return threadToSystemError(ret); \
             } \
         } while (false)
 
@@ -109,6 +109,27 @@ public:
         genAlpha(data, size, alpha, sizeof(alpha));
     }
 };
+
+int threadToSystemError(otError error) {
+    switch (error) {
+    case OT_ERROR_NONE:
+        return SYSTEM_ERROR_NONE;
+    case OT_ERROR_SECURITY:
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    case OT_ERROR_NOT_FOUND:
+        return SYSTEM_ERROR_NOT_FOUND;
+    case OT_ERROR_RESPONSE_TIMEOUT:
+        return SYSTEM_ERROR_TIMEOUT;
+    case OT_ERROR_NO_BUFS:
+        return SYSTEM_ERROR_NO_MEMORY;
+    case OT_ERROR_BUSY:
+        return SYSTEM_ERROR_BUSY;
+    case OT_ERROR_ABORT:
+        return SYSTEM_ERROR_ABORTED;
+    default:
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+}
 
 } // particle::ctrl::mesh::
 
@@ -388,31 +409,28 @@ void joinNetwork(ctrl_request* req) {
     auto tRet = otIp6SetEnabled(thread, true);
     if (tRet != OT_ERROR_NONE) {
         LOG(ERROR, "otIp6SetEnabled() failed: %u", (unsigned)tRet);
-        system_ctrl_set_result(req, -1, nullptr, nullptr, nullptr);
+        system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
         return;
     }
     otJoinerCallback cb = [](otError tRet, void* ctx) {
         const auto req = (ctrl_request*)ctx;
-        int ret = -1;
         if (tRet == OT_ERROR_NONE) {
             const auto thread = threadInstance();
             tRet = otThreadSetEnabled(thread, true);
-            if (tRet == OT_ERROR_NONE) {
-                ret = 0;
-            } else {
+            if (tRet != OT_ERROR_NONE) {
                 LOG(ERROR, "otThreadSetEnabled() failed: %u", (unsigned)tRet);
             }
         } else {
             LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
         }
         memset(g_joinPwd, 0, sizeof(g_joinPwd));
-        system_ctrl_set_result(req, ret, nullptr, nullptr, nullptr);
+        system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
     };
     tRet = otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
             VENDOR_DATA, cb, req);
     if (tRet != OT_ERROR_NONE) {
         LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
-        system_ctrl_set_result(req, -1, nullptr, nullptr, nullptr);
+        system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
     }
 }
 
@@ -444,7 +462,7 @@ int getNetworkInfo(ctrl_request* req) {
     // Network name
     const char* name = otThreadGetNetworkName(thread);
     if (!name) {
-        return -1;
+        return SYSTEM_ERROR_UNKNOWN;
     }
     // Channel
     const uint8_t channel = otLinkGetChannel(thread);
@@ -453,7 +471,7 @@ int getNetworkInfo(ctrl_request* req) {
     // Extended PAN ID
     const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
     if (!extPanId) {
-        return SYSTEM_ERROR_INVALID_STATE;
+        return SYSTEM_ERROR_UNKNOWN;
     }
     char extPanIdStr[OT_EXT_PAN_ID_SIZE * 2] = {};
     bytes2hexbuf_lower_case(extPanId, OT_EXT_PAN_ID_SIZE, extPanIdStr);
