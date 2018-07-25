@@ -208,7 +208,7 @@ void SystemSetupConsole<Config>::cleanup()
 template <typename Config>
 void SystemSetupConsole<Config>::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, nullptr);
 }
 
 template <typename Config>
@@ -238,9 +238,11 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     else if ('m' == c)
     {
         print("Your device MAC address is\r\n");
-        IPConfig config;
-        config.size = sizeof(config);
-        network.get_ipconfig(&config);
+        IPConfig config = {};
+        auto conf = static_cast<const IPConfig*>(network_config(0, 0, 0));
+        if (conf && conf->size) {
+            memcpy(&config, conf, conf->size);
+        }
         const uint8_t* addr = config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)

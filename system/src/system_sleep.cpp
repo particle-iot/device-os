@@ -178,7 +178,7 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
 #endif
 
     led_set_update_enabled(0, nullptr); // Disable background LED updates
-    LED_Off(LED_RGB);    
+    LED_Off(LED_RGB);
 	system_power_management_sleep();
     int ret = HAL_Core_Enter_Stop_Mode_Ext(pins, pins_count, modes, modes_count, seconds, nullptr);
     led_set_update_enabled(1, nullptr); // Enable background LED updates
@@ -213,19 +213,19 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
 void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
     // Cancel current connection attempt to unblock the system thread
-    network.connect_cancel(true);
+    network_connect_cancel(0, 1, 0, 0);
     InterruptMode m = (InterruptMode)edgeTriggerMode;
     system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
 }
 
 void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
-    network.connect_cancel(true);
+    network_connect_cancel(0, 1, 0, 0);
     system_sleep_impl(sleepMode, seconds, param, reserved);
 }
 
 int32_t system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
 {
-    network.connect_cancel(true);
+    network_connect_cancel(0, 1, 0, 0);
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }

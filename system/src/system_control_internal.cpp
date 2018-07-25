@@ -19,6 +19,8 @@
 
 #if SYSTEM_CONTROL_ENABLED
 
+#include "system_threading.h"
+#include "system_network.h"
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "spark_wiring_system.h"
@@ -139,12 +141,12 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
     case CTRL_REQUEST_START_LISTENING: {
-        network.listen();
+        network_listen(0, 0, 0);
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
     case CTRL_REQUEST_STOP_LISTENING: {
-        network.listen(true /* stop */);
+        network_listen(0, NETWORK_LISTEN_EXIT, 0);
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
