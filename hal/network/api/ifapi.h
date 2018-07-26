@@ -226,8 +226,8 @@ int if_free_if_addrs(struct if_addrs* addrs);
 int if_add_addr(if_t iface, const struct if_addr* addr);
 int if_del_addr(if_t iface, const struct if_addr* addr);
 
-int if_get_lladdr(if_t iface, struct sockaddr_ll* addr);
-int if_set_lladdr(if_t iface, const struct sockaddr_ll* addr);
+int if_get_lladdr(if_t iface, struct sockaddr_ll* addr); // TODO: Add size_t addr_size?
+int if_set_lladdr(if_t iface, const struct sockaddr_ll* addr); // TODO: ditto
 
 if_event_handler_cookie_t if_event_handler_add(if_event_handler_t handler, void* arg);
 if_event_handler_cookie_t if_event_handler_add_if(if_t iface, if_event_handler_t handler, void* arg);
