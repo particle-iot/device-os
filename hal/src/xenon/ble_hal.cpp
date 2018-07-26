@@ -41,16 +41,19 @@ const auto FAST_ADVERT_TIMEOUT = MSEC_TO_UNITS(180000, UNIT_10_MS); // Fast mode
 const auto SLOW_ADVERT_TIMEOUT = 0; // Advertise indefinitely (slow mode)
 
 // Minimum acceptable connection interval in 1.25 ms units
-const auto MIN_CONN_INTERVAL = MSEC_TO_UNITS(20, UNIT_1_25_MS);
+const auto MIN_CONN_INTERVAL = MSEC_TO_UNITS(15, UNIT_1_25_MS);
 
 // Maximum acceptable connection interval in 1.25 ms units
-const auto MAX_CONN_INTERVAL = MSEC_TO_UNITS(75, UNIT_1_25_MS);
+const auto MAX_CONN_INTERVAL = MSEC_TO_UNITS(45, UNIT_1_25_MS);
 
 // Connection supervisory timeout in 10 ms units
-const auto CONN_SUP_TIMEOUT = MSEC_TO_UNITS(4000, UNIT_10_MS);
+const auto CONN_SUP_TIMEOUT = MSEC_TO_UNITS(5000, UNIT_10_MS);
 
-// Slave latency
+// Slave latency (a number of LL connection events)
 const auto SLAVE_LATENCY = 0;
+
+// Maximum number of attempts to agree on the connection interval
+const auto MAX_CONN_PARAM_UPDATE_ATTEMPTS = 2;
 
 // Application's BLE observer priority
 const auto BLE_OBSERVER_PRIO = 3;
@@ -85,16 +88,52 @@ struct Profile {
     void* userData;
 };
 
+struct Conn {
+    uint16_t handle;
+    uint16_t paramUpdateAttempts;
+};
+
 // Current profile
 Profile g_profile = {};
 
-// Current connection handle
-volatile uint16_t g_connHandle = BLE_CONN_HANDLE_INVALID;
+// Connection state
+volatile Conn g_conn = {
+    .handle = BLE_CONN_HANDLE_INVALID,
+    .paramUpdateAttempts = 0
+};
 
 // Advertising mode flag
 volatile bool g_advertEnabled = false;
 
 static_assert(NRF_SDH_BLE_PERIPHERAL_LINK_COUNT == 1, "Multiple simultaneous peripheral connections are not supported");
+
+int halError(uint32_t error) {
+    switch (error) {
+    case NRF_ERROR_INVALID_STATE:
+        return BLE_ERROR_INVALID_STATE;
+    case NRF_ERROR_BUSY:
+        return BLE_ERROR_BUSY;
+    case NRF_ERROR_NO_MEM:
+        return BLE_ERROR_NO_MEMORY;
+    default:
+        return BLE_ERROR_UNKNOWN;
+    }
+}
+
+int updateConnInterval(uint16_t connHandle, uint16_t interval) {
+    ble_gap_conn_params_t param = {};
+    param.min_conn_interval = interval;
+    param.max_conn_interval = interval;
+    param.slave_latency = SLAVE_LATENCY;
+    param.conn_sup_timeout = CONN_SUP_TIMEOUT;
+    LOG_DEBUG(TRACE, "Requesting connection interval: %u x 1.25 ms", (unsigned)interval);
+    const auto ret = sd_ble_gap_conn_param_update(connHandle, &param);
+    if (ret != NRF_SUCCESS) {
+        LOG_DEBUG(WARN, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
+        return halError(ret);
+    }
+    return 0;
+}
 
 const Char* findChar(uint16_t handle) {
     for (size_t i = 0; i < g_profile.serviceCount; ++i) {
@@ -112,19 +151,34 @@ const Char* findChar(uint16_t handle) {
 void processBleEvent(const ble_evt_t* event, void* data) {
     switch (event->header.evt_id) {
     case BLE_GAP_EVT_CONNECTED: {
-        LOG(TRACE, "Connected");
-        g_connHandle = event->evt.gap_evt.conn_handle;
+        LOG_DEBUG(TRACE, "Connected");
+        g_conn.handle = event->evt.gap_evt.conn_handle;
+        g_conn.paramUpdateAttempts = 0;
+        const auto& connParam = event->evt.gap_evt.params.connected.conn_params;
+        if (connParam.max_conn_interval > MIN_CONN_INTERVAL && MAX_CONN_PARAM_UPDATE_ATTEMPTS != 0) {
+            updateConnInterval(g_conn.handle, MIN_CONN_INTERVAL);
+            ++g_conn.paramUpdateAttempts;
+        }
         ble_connected_event_data d = {};
-        d.conn_handle = g_connHandle;
+        d.conn_handle = g_conn.handle;
         g_profile.callback(BLE_EVENT_CONNECTED, &d, g_profile.userData);
         break;
     }
     case BLE_GAP_EVT_DISCONNECTED: {
-        LOG(TRACE, "Disconnected");
-        g_connHandle = BLE_CONN_HANDLE_INVALID;
+        LOG_DEBUG(TRACE, "Disconnected");
+        g_conn.handle = BLE_CONN_HANDLE_INVALID;
         ble_disconnected_event_data d = {};
         d.conn_handle = event->evt.gap_evt.conn_handle;
         g_profile.callback(BLE_EVENT_DISCONNECTED, &d, g_profile.userData);
+        break;
+    }
+    case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
+        const auto& connParam = event->evt.gap_evt.params.conn_param_update.conn_params;
+        LOG_DEBUG(TRACE, "Connection interval updated: %u x 1.25 ms", (unsigned)connParam.max_conn_interval);
+        if (connParam.max_conn_interval > MIN_CONN_INTERVAL && g_conn.paramUpdateAttempts < MAX_CONN_PARAM_UPDATE_ATTEMPTS) {
+            updateConnInterval(g_conn.handle, MIN_CONN_INTERVAL);
+            ++g_conn.paramUpdateAttempts;
+        }
         break;
     }
     case BLE_GAP_EVT_SEC_PARAMS_REQUEST: {
@@ -156,14 +210,14 @@ void processBleEvent(const ble_evt_t* event, void* data) {
     case BLE_GAP_EVT_AUTH_STATUS: {
         const auto status = event->evt.gap_evt.params.auth_status.auth_status;
         if (status == BLE_GAP_SEC_STATUS_SUCCESS) {
-            LOG(TRACE, "Authentication succeeded");
+            LOG_DEBUG(TRACE, "Authentication succeeded");
         } else {
             LOG(WARN, "Authentication failed, status: %d", (int)status);
         }
         break;
     }
     case BLE_GAP_EVT_PHY_UPDATE_REQUEST: {
-        LOG(TRACE, "PHY update request");
+        LOG_DEBUG(TRACE, "PHY update request");
         ble_gap_phys_t phys = {};
         phys.rx_phys = BLE_GAP_PHY_AUTO;
         phys.tx_phys = BLE_GAP_PHY_AUTO;
@@ -185,7 +239,7 @@ void processBleEvent(const ble_evt_t* event, void* data) {
                 d.size = writeParam.len;
                 g_profile.callback(BLE_EVENT_DATA_RECEIVED, &d, g_profile.userData);
             } else if (writeParam.handle == chr->handles.cccd_handle && writeParam.len == 2) {
-                LOG(TRACE, "CCCD changed");
+                LOG_DEBUG(TRACE, "CCCD changed");
                 ble_char_param_changed_event_data d = {};
                 d.conn_handle = event->evt.gatts_evt.conn_handle;
                 d.char_handle = chr->handles.value_handle;
@@ -241,15 +295,15 @@ void processAdvertEvent(ble_adv_evt_t event) {
                 LOG(ERROR, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
             }
         } else {
-            LOG(TRACE, "Fast advertising mode started");
+            LOG_DEBUG(TRACE, "Fast advertising mode started");
             g_profile.callback(BLE_EVENT_ADVERT_STARTED, nullptr, g_profile.userData);
         }
         break;
     case BLE_ADV_EVT_SLOW:
-        LOG(TRACE, "Slow advertising mode started");
+        LOG_DEBUG(TRACE, "Slow advertising mode started");
         break;
     case BLE_ADV_EVT_IDLE:
-        LOG(TRACE, "Advertising stopped");
+        LOG_DEBUG(TRACE, "Advertising stopped");
         g_profile.callback(BLE_EVENT_ADVERT_STOPPED, nullptr, g_profile.userData);
         break;
     default:
@@ -260,23 +314,12 @@ void processAdvertEvent(ble_adv_evt_t event) {
 
 void processGattEvent(nrf_ble_gatt_t* gatt, const nrf_ble_gatt_evt_t* event) {
     if (event->evt_id == NRF_BLE_GATT_EVT_ATT_MTU_UPDATED) {
-        LOG(TRACE, "MTU updated: %u", (unsigned)event->params.att_mtu_effective);
+        LOG_DEBUG(TRACE, "MTU updated: %u", (unsigned)event->params.att_mtu_effective);
         ble_conn_param_changed_event_data d = {};
         d.conn_handle = event->conn_handle;
         g_profile.callback(BLE_EVENT_CONN_PARAM_CHANGED, &d, g_profile.userData);
     } else {
         // LOG_DEBUG(TRACE, "Unhandled GATT event: %u", (unsigned)event->evt_id);
-    }
-}
-
-int halError(uint32_t error) {
-    switch (error) {
-    case NRF_ERROR_INVALID_STATE:
-        return BLE_ERROR_INVALID_STATE;
-    case NRF_ERROR_NO_MEM:
-        return BLE_ERROR_NO_MEMORY;
-    default:
-        return BLE_ERROR_UNKNOWN;
     }
 }
 
@@ -542,7 +585,7 @@ int ble_init(void* reserved) {
         LOG(ERROR, "nrf_sdh_ble_default_cfg_set() failed: %u", (unsigned)ret);
         return halError(ret);
     }
-    LOG(TRACE, "RAM start: 0x%08x", (unsigned)ramStart);
+    LOG_DEBUG(TRACE, "RAM start: 0x%08x", (unsigned)ramStart);
     // Enable the stack
     ret = nrf_sdh_ble_enable(&ramStart);
     if (ret != NRF_SUCCESS) {
@@ -600,7 +643,7 @@ int ble_init_profile(ble_profile* profile, void* reserved) {
 
 int ble_start_advert(void* reserved) {
     g_advertEnabled = true;
-    if (g_connHandle == BLE_CONN_HANDLE_INVALID) {
+    if (g_conn.handle == BLE_CONN_HANDLE_INVALID) {
         const uint32_t ret = ble_advertising_start(&g_advert, BLE_ADV_MODE_FAST);
         if (ret != NRF_SUCCESS) {
             LOG(ERROR, "ble_advertising_start() failed: %u", (unsigned)ret);
@@ -612,7 +655,7 @@ int ble_start_advert(void* reserved) {
 
 void ble_stop_advert(void* reserved) {
     g_advertEnabled = false;
-    if (g_advert.initialized && g_connHandle == BLE_CONN_HANDLE_INVALID) {
+    if (g_advert.initialized && g_conn.handle == BLE_CONN_HANDLE_INVALID) {
         const uint32_t ret = sd_ble_gap_adv_stop(g_advert.adv_handle);
         if (ret != NRF_SUCCESS) {
             LOG(ERROR, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
