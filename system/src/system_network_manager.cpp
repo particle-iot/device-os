@@ -56,6 +56,8 @@ LOG_SOURCE_CATEGORY("system.nm")
 #if HAL_PLATFORM_OPENTHREAD
 #include "system_openthread.h"
 #include <openthread/dataset.h>
+#include <openthread/thread.h>
+#include <openthread/instance.h>
 #endif /* HAL_PLATFORM_OPENTHREAD */
 
 using namespace particle::system;
@@ -92,6 +94,11 @@ NetworkManager::NetworkManager() {
 
 NetworkManager::~NetworkManager() {
     destroy();
+}
+
+NetworkManager* NetworkManager::instance() {
+    static NetworkManager man;
+    return &man;
 }
 
 void NetworkManager::init() {
@@ -223,27 +230,7 @@ bool NetworkManager::isIp6ConnectivityAvailable() {
     return ip6State_ == ProtocolState::CONFIGURED;
 }
 
-int NetworkManager::enterListeningMode(unsigned int timeout) {
-    return 0;
-}
-
-int NetworkManager::exitListeningMode() {
-    return 0;
-}
-
-bool NetworkManager::isInListeningMode() {
-    return false;
-}
-
-int NetworkManager::setListeningModeTimeout(unsigned int timeout) {
-    return 0;
-}
-
-unsigned int NetworkManager::getListeningModeTimeout() {
-    return 0;
-}
-
-bool NetworkManager::hasLowerLayerConfiguration() {
+bool NetworkManager::isConfigured() {
     bool ret = true;
     for_each_iface([&](if_t iface, unsigned int curFlags) {
         if (ret && !haveLowerLayerConfiguration(iface)) {
@@ -254,6 +241,31 @@ bool NetworkManager::hasLowerLayerConfiguration() {
     return ret;
 }
 
+int NetworkManager::clearConfiguration(if_t iface) {
+    if (state_ != State::IFACE_DOWN && state_ != State::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    if (!iface) {
+        for_each_iface([](if_t iface, unsigned int flags) {
+            char name[IF_NAMESIZE] = {};
+            if_get_name(iface, name);
+
+#if HAL_PLATFORM_OPENTHREAD
+            if (!strncmp(name, "th", 2)) {
+                /* OpenThread iface */
+                std::lock_guard<ThreadLock> lk(ThreadLock());
+                otMasterKey key = {};
+                otThreadSetMasterKey(threadInstance(), &key);
+                otInstanceErasePersistentInfo(threadInstance());
+            }
+#endif /* HAL_PLATFORM_OPENTHREAD */
+        });
+    }
+
+    return SYSTEM_ERROR_INVALID_ARGUMENT;
+}
+
 NetworkManager::State NetworkManager::getState() const {
     return state_;
 }
@@ -262,7 +274,6 @@ void NetworkManager::transition(State state) {
     if (state_ == state) {
         /* Just in case */
         LOG_DEBUG(ERROR, "Transitioning to the same state");
-        return;
     }
 
     /* From */
@@ -386,7 +397,10 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
     } else {
         /* Interface administrative state changed to DOWN */
         if (state_ == State::IFACE_REQUEST_DOWN) {
-            if (countIfacesWithFlags(IFF_UP) == 0) {
+            /* FIXME: LwIP issues netif_set_down callback BEFORE clearing the IFF_UP flag,
+             * that's why the count of interfaces with IFF_UP should be 1 here
+             */
+            if (countIfacesWithFlags(IFF_UP) == 1) {
                 transition(State::IFACE_DOWN);
             }
         }
@@ -459,7 +473,7 @@ void NetworkManager::refreshIpState() {
         }
 
         if (a->addr->sa_family == AF_INET) {
-            if (a->prefixlen > 0 /* FIXME */ && a->gw) {
+            if (a->prefixlen > 0 && /* FIXME */ a->gw) {
                 ip4 = ProtocolState::CONFIGURED;
             }
         } else if (a->addr->sa_family == AF_INET6) {
@@ -481,6 +495,9 @@ void NetworkManager::refreshIpState() {
 
     if_free_if_addrs(addrs);
 
+    const auto oldIp4State = ip4State_.load();
+    const auto oldIp6State = ip6State_.load();
+
     ip4State_ = ip4;
     ip6State_ = ip6;
 
@@ -490,6 +507,11 @@ void NetworkManager::refreshIpState() {
         transition(State::IFACE_LINK_UP);
     } else if (state_ == State::IFACE_LINK_UP && ipConfigured) {
         transition(State::IP_CONFIGURED);
+    } else if (state_ == State::IP_CONFIGURED && ipConfigured) {
+        /* Transition to the same state here. Once we implement events this will be relevant */
+        if (ip4 != oldIp4State || ip6 != oldIp6State) {
+            transition(State::IP_CONFIGURED);
+        }
     }
 }
 

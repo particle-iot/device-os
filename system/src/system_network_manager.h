@@ -29,8 +29,9 @@ namespace particle { namespace system {
 
 class NetworkManager {
 public:
-    NetworkManager();
     ~NetworkManager();
+
+    static NetworkManager* instance();
 
     void init();
     void destroy();
@@ -47,14 +48,8 @@ public:
     bool isIp4ConnectivityAvailable();
     bool isIp6ConnectivityAvailable();
 
-    int enterListeningMode(unsigned int timeout = 0);
-    int exitListeningMode();
-    bool isInListeningMode();
-
-    int setListeningModeTimeout(unsigned int timeout);
-    unsigned int getListeningModeTimeout();
-
-    bool hasLowerLayerConfiguration();
+    bool isConfigured();
+    int clearConfiguration(if_t iface = nullptr);
 
     enum class State {
         NONE,
@@ -75,6 +70,9 @@ public:
     };
 
     State getState() const;
+
+protected:
+    NetworkManager();
 
 private:
 
