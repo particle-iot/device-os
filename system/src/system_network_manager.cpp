@@ -15,14 +15,29 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("system.nm")
+
 #include "system_network_manager.h"
 #include "system_error.h"
+#include <mutex>
+#include "system_led_signal.h"
+#include "enumclass.h"
 
 #define CHECK(_expr) \
         ({ \
             const auto _ret = _expr; \
             if (_ret < 0) { \
                 return _ret; \
+            } \
+            _ret; \
+        })
+
+#define CHECKV(_expr) \
+        ({ \
+            const auto _ret = _expr; \
+            if (_ret < 0) { \
+                return; \
             } \
             _ret; \
         })
@@ -38,6 +53,11 @@
 
 #if HAL_PLATFORM_IFAPI
 
+#if HAL_PLATFORM_OPENTHREAD
+#include "system_openthread.h"
+#include <openthread/dataset.h>
+#endif /* HAL_PLATFORM_OPENTHREAD */
+
 using namespace particle::system;
 
 namespace {
@@ -48,7 +68,13 @@ int for_each_iface(F&& f) {
     CHECK(if_get_list(&ifs));
 
     for (if_list* iface = ifs; iface != nullptr; iface = iface->next) {
-        f(iface->iface);
+        if (iface->iface) {
+            unsigned int flags = 0;
+            CHECK_CONT(if_get_flags(iface->iface, &flags));
+            if (!(flags & IFF_LOOPBACK)) {
+                f(iface->iface, flags);
+            }
+        }
     }
 
     if_free_list(ifs);
@@ -59,7 +85,7 @@ int for_each_iface(F&& f) {
 } /* anonymous */
 
 NetworkManager::NetworkManager() {
-    state_ = State::DISABLED;
+    state_ = State::NONE;
     ip4State_ = ProtocolState::UNCONFIGURED;
     ip6State_ = ProtocolState::UNCONFIGURED;
 }
@@ -72,6 +98,8 @@ void NetworkManager::init() {
     if (!ifEventHandlerCookie_) {
         ifEventHandlerCookie_ = if_event_handler_add(&ifEventHandlerCb, this);
     }
+
+    transition(State::DISABLED);
 }
 
 void NetworkManager::destroy() {
@@ -119,18 +147,17 @@ int NetworkManager::activateConnections() {
     int waitingFor = 0;
 
     /* Bring all the interfaces up */
-    CHECK(for_each_iface([&](if_t iface) -> int {
-        unsigned int flags = 0;
-        CHECK(if_get_flags(iface, &flags));
-        if (!(flags & IFF_LOOPBACK)) {
-            if (!(flags & IFF_UP)) {
-                CHECK(if_set_flags(iface, IFF_UP));
-                /* FIXME */
-                CHECK(if_set_xflags(iface, IFXF_DHCP));
-                ++waitingFor;
-            }
+    CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
+        if (!(flags & IFF_UP)) {
+            CHECKV(if_set_flags(iface, IFF_UP));
+
+            /* FIXME */
+            CHECKV(if_set_xflags(iface, IFXF_DHCP));
+
+            /* TODO: establish lower layer connection, e.g. 802.11 */
+
+            ++waitingFor;
         }
-        return 0;
     }));
 
     if (!waitingFor) {
@@ -157,16 +184,11 @@ int NetworkManager::deactivateConnections() {
     int waitingFor = 0;
 
     /* Bring all the interfaces down */
-    CHECK(for_each_iface([&](if_t iface) -> int {
-        unsigned int flags = 0;
-        CHECK(if_get_flags(iface, &flags));
-        if (!(flags & IFF_LOOPBACK)) {
-            if (flags & IFF_UP) {
-                CHECK(if_clear_flags(iface, IFF_UP));
-                ++waitingFor;
-            }
+    CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
+        if (flags & IFF_UP) {
+            CHECKV(if_clear_flags(iface, IFF_UP));
+            ++waitingFor;
         }
-        return 0;
     }));
 
     if (!waitingFor) {
@@ -221,9 +243,48 @@ unsigned int NetworkManager::getListeningModeTimeout() {
     return 0;
 }
 
+bool NetworkManager::hasLowerLayerConfiguration() {
+    bool ret = true;
+    for_each_iface([&](if_t iface, unsigned int curFlags) {
+        if (ret && !haveLowerLayerConfiguration(iface)) {
+            ret = false;
+        }
+    });
+
+    return ret;
+}
+
+NetworkManager::State NetworkManager::getState() const {
+    return state_;
+}
+
 void NetworkManager::transition(State state) {
+    if (state_ == state) {
+        /* Just in case */
+        LOG_DEBUG(ERROR, "Transitioning to the same state");
+        return;
+    }
+
     /* From */
     switch (state_) {
+        case State::DISABLED: {
+            break;
+        }
+        case State::IFACE_DOWN: {
+            break;
+        }
+        case State::IFACE_REQUEST_DOWN: {
+            break;
+        }
+        case State::IFACE_REQUEST_UP: {
+            break;
+        }
+        case State::IFACE_UP: {
+            break;
+        }
+        case State::IFACE_LINK_UP: {
+            break;
+        }
         /* Ensure that IPv4/IPv6 protocol state is reset */
         case State::IP_CONFIGURED: {
             ip4State_ = ProtocolState::UNCONFIGURED;
@@ -234,7 +295,37 @@ void NetworkManager::transition(State state) {
 
     /* To */
     switch (state) {
+        case State::DISABLED: {
+            LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
+            break;
+        }
+        case State::IFACE_DOWN: {
+            LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
+            break;
+        }
+        case State::IFACE_REQUEST_DOWN: {
+            /* TODO: ? */
+            break;
+        }
+        case State::IFACE_REQUEST_UP: {
+            LED_SIGNAL_START(NETWORK_CONNECTING, BACKGROUND);
+            break;
+        }
+        case State::IFACE_UP: {
+            LED_SIGNAL_START(NETWORK_CONNECTING, BACKGROUND);
+            break;
+        }
+        case State::IFACE_LINK_UP: {
+            LED_SIGNAL_START(NETWORK_DHCP, BACKGROUND);
+            break;
+        }
+        case State::IP_CONFIGURED: {
+            LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);
+            break;
+        }
     }
+
+    LOG(INFO, "State changed: %s -> %s", stateToName(state_), stateToName(state));
 
     state_ = state;
 }
@@ -332,25 +423,104 @@ void NetworkManager::handleIfLinkLayerAddr(if_t iface, const struct if_event* ev
     /* We don't care about this */
 }
 
-unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags, bool ignoreLoopback) {
+unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) {
     unsigned int count = 0;
 
-    for_each_iface([&](if_t iface) -> int {
-        unsigned int curFlags = 0;
-        CHECK(if_get_flags(iface, &flags));
-        if (!ignoreLoopback || !(curFlags & IFF_LOOPBACK)) {
-            if ((curFlags & flags) == flags) {
-                ++count;
-            }
+    for_each_iface([&](if_t iface, unsigned int curFlags) {
+        if ((curFlags & flags) == flags) {
+            ++count;
         }
-        return 0;
     });
 
     return count;
 }
 
 void NetworkManager::refreshIpState() {
-    /* TODO */
+    ProtocolState ip4 = ProtocolState::UNCONFIGURED;
+    ProtocolState ip6 = ProtocolState::UNCONFIGURED;
+
+    if_addrs* addrs = nullptr;
+    CHECKV(if_get_if_addrs(&addrs));
+
+    for (auto addr = addrs; addr != nullptr; addr = addr->next) {
+        /* Skip loopback interface */
+        if (addr->ifflags & IFF_LOOPBACK) {
+            continue;
+        }
+
+        /* Skip non-UP and non-LINK_UP interfaces */
+        if ((addr->ifflags & (IFF_UP | IFF_LOWER_UP)) != (IFF_UP | IFF_LOWER_UP)) {
+            continue;
+        }
+
+        auto a = addr->if_addr;
+        if (!a || !a->addr) {
+            continue;
+        }
+
+        if (a->addr->sa_family == AF_INET) {
+            if (a->prefixlen > 0 /* FIXME */ && a->gw) {
+                ip4 = ProtocolState::CONFIGURED;
+            }
+        } else if (a->addr->sa_family == AF_INET6) {
+            sockaddr_in6* sin6 = (sockaddr_in6*)a->addr;
+            auto ip6_addr_data = a->ip6_addr_data;
+
+            /* NOTE: we say that IPv6 is configured if there is at least
+             * one IPv6 address on an interface without scope and in a VALID state,
+             * which is in fact either PREFERRED or DEPRECATED.
+             */
+            if (sin6->sin6_scope_id == 0 && a->prefixlen > 0 &&
+                ip6_addr_data && ip6_addr_data->state & IF_IP6_ADDR_STATE_VALID) {
+                ip6 = ProtocolState::CONFIGURED;
+            }
+        } else {
+            /* Unknown family */
+        }
+    }
+
+    if_free_if_addrs(addrs);
+
+    ip4State_ = ip4;
+    ip6State_ = ip6;
+
+    const bool ipConfigured = (ip4 == ProtocolState::CONFIGURED) || (ip6 == ProtocolState::CONFIGURED);
+
+    if (state_ == State::IP_CONFIGURED && !ipConfigured) {
+        transition(State::IFACE_LINK_UP);
+    } else if (state_ == State::IFACE_LINK_UP && ipConfigured) {
+        transition(State::IP_CONFIGURED);
+    }
 }
 
+bool NetworkManager::haveLowerLayerConfiguration(if_t iface) {
+    char name[IF_NAMESIZE] = {};
+    if_get_name(iface, name);
+
+#if HAL_PLATFORM_OPENTHREAD
+    if (!strncmp(name, "th", 2)) {
+        /* OpenThread iface */
+        std::lock_guard<ThreadLock> lk(ThreadLock());
+        return otDatasetIsCommissioned(threadInstance());
+    }
+#endif /* HAL_PLATFORM_OPENTHREAD */
+
+    return true;
+}
+
+
+const char* NetworkManager::stateToName(State state) {
+    static const char* const stateNames[] = {
+        "NONE",
+        "DISABLED",
+        "IFACE_DOWN",
+        "IFACE_REQUEST_DOWN",
+        "IFACE_REQUEST_UP",
+        "IFACE_UP",
+        "IFACE_LINK_UP",
+        "IP_CONFIGURED"
+    };
+
+    return stateNames[::particle::to_underlying(state)];
+}
 #endif /* HAL_PLATFORM_IFAPI */

@@ -54,8 +54,10 @@ public:
     int setListeningModeTimeout(unsigned int timeout);
     unsigned int getListeningModeTimeout();
 
-private:
+    bool hasLowerLayerConfiguration();
+
     enum class State {
+        NONE,
         /* Networking is disabled */
         DISABLED,
         /* Networking is enabled, all interfaces are administratively down */
@@ -71,6 +73,12 @@ private:
         /* At least one of the interfaces has IPv4 or IPv6 configuration */
         IP_CONFIGURED
     };
+
+    State getState() const;
+
+private:
+
+    const char* stateToName(State state);
 
     enum class ProtocolState {
         UNCONFIGURED,
@@ -88,8 +96,10 @@ private:
     void handleIfAddr(if_t iface, const struct if_event* ev);
     void handleIfLinkLayerAddr(if_t iface, const struct if_event* ev);
 
-    unsigned int countIfacesWithFlags(unsigned int flags, bool ignoreLoopback = true);
+    unsigned int countIfacesWithFlags(unsigned int flags);
     void refreshIpState();
+
+    bool haveLowerLayerConfiguration(if_t iface);
 
 private:
     if_event_handler_cookie_t ifEventHandlerCookie_ = {};
