@@ -33,6 +33,11 @@
 
 #include "system_network.h"
 
+#include "ifapi.h"
+
+#include "str_util.h"
+#include "scope_guard.h"
+
 #include <algorithm>
 
 #define CHECK(_expr) \
@@ -50,7 +55,27 @@ namespace particle {
 namespace control {
 namespace network {
 
+namespace {
+
 using namespace particle::control::common;
+
+PB(InterfaceType) ifaceTypeFromName(const char* name) {
+    if (startsWith(name, "lo")) {
+        return PB(InterfaceType_LOOPBACK);
+    } else if (startsWith(name, "th")) {
+        return PB(InterfaceType_THREAD);
+    } else if (startsWith(name, "en")) {
+        return PB(InterfaceType_ETHERNET);
+    } else if (startsWith(name, "wl")) {
+        return PB(InterfaceType_WIFI);
+    } else if (startsWith(name, "pp")) {
+        return PB(InterfaceType_PPP);
+    } else {
+        return PB(InterfaceType_INVALID_INTERFACE_TYPE);
+    }
+}
+
+} // particle::control::network::
 
 int handleGetConfigurationRequest(ctrl_request* req) {
     particle_ctrl_NetworkGetConfigurationRequest request = {};
@@ -246,7 +271,45 @@ int handleSetConfigurationRequest(ctrl_request* req) {
 }
 
 int getInterfaceList(ctrl_request* req) {
-    //PB(GetInterfaceListReply) pbRep = {};
+    if_list* ifaceList = nullptr;
+    CHECK(if_get_list(&ifaceList));
+    SCOPE_GUARD({
+        if_free_list(ifaceList);
+    });
+    PB(GetInterfaceListReply) pbRep = {};
+    pbRep.interfaces.arg = ifaceList;
+    pbRep.interfaces.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+        const auto ifaceList = (if_list*)*arg;
+        for (if_list* i = ifaceList; i; i = i->next) {
+            uint8_t index = 0;
+            if (if_get_index(i->iface, &index) != 0) {
+                return false;
+            }
+            char name[IF_NAMESIZE] = {};
+            if (if_get_name(i->iface, name) != 0) {
+                return false;
+            }
+            const auto type = ifaceTypeFromName(name);
+            if (type == PB(InterfaceType_INVALID_INTERFACE_TYPE)) {
+                return false;
+            }
+            PB(InterfaceEntry) pbIface = {};
+            EncodedString eName(&pbIface.name, name, strlen(name));
+            pbIface.index = index;
+            pbIface.type = type;
+            if (!pb_encode_tag_for_field(strm, field)) {
+                return false;
+            }
+            if (!pb_encode_submessage(strm, PB(InterfaceEntry_fields), &pbIface)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    const int ret = encodeReplyMessage(req, PB(GetInterfaceListReply_fields), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
     return 0;
 }
 
