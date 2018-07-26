@@ -15,9 +15,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("net.th")
+
 #include "openthread-core-config.h"
 #include "lwip_openthreadif.h"
-#include "logging.h"
 #include <openthread/instance.h>
 #include <lwip/netifapi.h>
 #include <lwip/tcpip.h>
@@ -296,6 +298,11 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         }
     }
 
+    if (flags & OT_CHANGED_THREAD_NETDATA) {
+        LOG(TRACE, "OT_CHANGED_THREAD_NETDATA");
+        refreshIpAddresses();
+    }
+
     /* IPv6-addresses */
     if (flags & (OT_CHANGED_IP6_ADDRESS_ADDED |
                  OT_CHANGED_IP6_ADDRESS_REMOVED |
@@ -357,13 +364,14 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
                 int8_t idx = -1;
                 netif_add_ip6_address(interface(), &ip6addr, &idx);
                 if (idx >= 0) {
-                    netif_ip6_addr_set_state(interface(), idx, state);
+                    /* IMPORTANT: scope needs to be adjusted first */
                     if (addr->mScopeOverrideValid) {
                         /* FIXME: we should use custom scopes */
                         ip6_addr_set_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), netif_get_index(interface()));
                     } else {
                         ip6_addr_assign_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), IP6_UNICAST, interface());
                     }
+                    netif_ip6_addr_set_state(interface(), idx, state);
                 }
                 char tmp[IP6ADDR_STRLEN_MAX] = {0};
                 ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
@@ -413,10 +421,6 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
     }
     if (flags & OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER) {
         LOG(TRACE, "OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER");
-    }
-    if (flags & OT_CHANGED_THREAD_NETDATA) {
-        LOG(TRACE, "OT_CHANGED_THREAD_NETDATA");
-        refreshIpAddresses();
     }
     if (flags & OT_CHANGED_THREAD_CHILD_ADDED) {
         LOG(TRACE, "OT_CHANGED_THREAD_CHILD_ADDED");
@@ -586,7 +590,6 @@ void OpenThreadNetif::refreshIpAddresses() {
 
                 if (addresses_[i].mPreferred != preferred) {
                     addresses_[i].mPreferred = true;
-                    otIp6RemoveUnicastAddress(ot_, &addresses_[i].mAddress);
                     otIp6AddUnicastAddress(ot_, &addresses_[i]);
                 }
             }
@@ -611,6 +614,7 @@ void OpenThreadNetif::refreshIpAddresses() {
             } else {
                 /* Pref::1/PrefLen */
                 addresses_[i].mAddress.mFields.m8[OT_IP6_ADDRESS_SIZE - 1] = 0x01;
+                addresses_[i].mScopeOverrideValid = true;
             }
             otIp6AddUnicastAddress(ot_, &addresses_[i]);
             break;
