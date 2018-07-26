@@ -82,6 +82,7 @@ private:
 
     std::atomic_bool exit_;
     std::atomic_bool inRecv_;
+    std::atomic_bool down_;
 
     system_tick_t lastStatePoll_ = 0;
 
