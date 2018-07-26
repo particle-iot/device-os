@@ -34,6 +34,7 @@ LOG_SOURCE_CATEGORY("net.th")
 #include <lwip/dns.h>
 #include <openthread/netdata.h>
 #include "ipaddr_util.h"
+#include "lwiplock.h"
 
 using namespace particle::net;
 
@@ -176,8 +177,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     otSetStateChangedCallback(ot_, otStateChangedCb, this);
 
     {
-        /* FIXME */
-        LOCK_TCPIP_CORE();
+        LwipTcpIpCoreLock lk;
         ip_addr_t dns;
         ipaddr_aton("64:ff9b::808:808", &dns);
         dns_setserver(0, &dns);
@@ -187,7 +187,6 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
         dns_setserver(2, &dns);
         ipaddr_aton("8.8.4.4", &dns);
         dns_setserver(3, &dns);
-        UNLOCK_TCPIP_CORE();
     }
 }
 
@@ -283,7 +282,12 @@ void OpenThreadNetif::otStateChangedCb(uint32_t flags, void* ctx) {
 }
 
 void OpenThreadNetif::stateChanged(uint32_t flags) {
-    LOCK_TCPIP_CORE();
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_is_up(interface())) {
+        return;
+    }
+
     /* link state */
     if (flags & OT_CHANGED_THREAD_ROLE) {
         switch (otThreadGetDeviceRole(ot_)) {
@@ -294,6 +298,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             }
             default: {
                 netif_set_link_up(interface());
+                refreshIpAddresses();
             }
         }
     }
@@ -392,8 +397,6 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             mld6_joingroup_netif(interface(), &ip6addr);
         }
     }
-
-    UNLOCK_TCPIP_CORE();
 
     if (flags & OT_CHANGED_IP6_ADDRESS_ADDED) {
         LOG(TRACE, "OT_CHANGED_IP6_ADDRESS_ADDED");
@@ -651,6 +654,9 @@ otInstance* OpenThreadNetif::getOtInstance() {
 
 int OpenThreadNetif::up() {
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+
+    down();
+
     LOG(INFO, "Bringing OpenThreadNetif up");
     LOG(INFO, "Network name: %s", otThreadGetNetworkName(ot_));
     LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(ot_));
@@ -667,16 +673,22 @@ int OpenThreadNetif::up() {
 }
 
 int OpenThreadNetif::down() {
-    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
-    LOG(INFO, "Bringing OpenThreadNetif down");
     int r = 0;
+    {
+        std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+        LOG(INFO, "Bringing OpenThreadNetif down");
 
-    if ((r = otThreadSetEnabled(ot_, false)) != OT_ERROR_NONE) {
-        return r;
+        if ((r = otThreadSetEnabled(ot_, false)) != OT_ERROR_NONE) {
+            return r;
+        }
+        if ((r = otIp6SetEnabled(ot_, false)) != OT_ERROR_NONE) {
+            return r;
+        }
     }
-    if ((r = otIp6SetEnabled(ot_, false)) != OT_ERROR_NONE) {
-        return r;
-    }
+
+    /* Force link-down */
+    LwipTcpIpCoreLock lkk;
+    netif_set_link_down(interface());
 
     return r;
 }
