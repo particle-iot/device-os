@@ -35,6 +35,17 @@
 
 #include <algorithm>
 
+#define CHECK(_expr) \
+        ({ \
+            const auto _ret = _expr; \
+            if (_ret < 0) { \
+                return _ret; \
+            } \
+            _ret; \
+        })
+
+#define PB(_name) particle_ctrl_##_name
+
 namespace particle {
 namespace control {
 namespace network {
@@ -232,6 +243,15 @@ int handleSetConfigurationRequest(ctrl_request* req) {
     r = SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
     return r;
+}
+
+int getInterfaceList(ctrl_request* req) {
+    //PB(GetInterfaceListReply) pbRep = {};
+    return 0;
+}
+
+int getInterface(ctrl_request* req) {
+    return 0;
 }
 
 } } } /* namespace particle::control::network */

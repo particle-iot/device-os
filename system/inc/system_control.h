@@ -84,7 +84,10 @@ typedef enum ctrl_request_type {
     CTRL_REQUEST_GET_SECTION_DATA_SIZE = 264,
     // Cloud connectivity
     CTRL_REQUEST_GET_CLOUD_CONNECTION_STATUS = 300,
-    // Mesh networking
+    // Network management
+    CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST = 400,
+    CTRL_REQUEST_NETWORK_GET_INTERFACE = 401,
+    // Mesh network management
     CTRL_REQUEST_MESH_AUTH = 1001,
     CTRL_REQUEST_MESH_CREATE_NETWORK = 1002,
     CTRL_REQUEST_MESH_START_COMMISSIONER = 1003,
