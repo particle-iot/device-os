@@ -236,7 +236,7 @@ int BorderRouterManager::enable() {
 
     if (isIfUp() && !presentLeader) {
         LOG(TRACE, "Trying to synchronize local netdata with leader");
-        if (otThreadGetDeviceRole(ot_get_instance())) {
+        if (otThreadGetDeviceRole(ot_get_instance()) == OT_DEVICE_ROLE_CHILD) {
             otThreadBecomeRouter(ot_get_instance());
         }
         otBorderRouterRegister(ot_get_instance());
