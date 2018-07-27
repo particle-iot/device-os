@@ -143,9 +143,15 @@ void notify_all_handlers_event_list(EventHandlerList* list, struct netif* netif,
 }
 
 void notify_all_handlers_event(struct netif* netif, const struct if_event* ev) {
-    /* Execute handlers from this list first */
-    notify_all_handlers_event_list(s_selfEventHandlerList, netif, ev);
+    if (ev->ev_type != IF_EVENT_STATE || ev->ev_if_state->state) {
+        /* Execute handlers from this list first */
+        notify_all_handlers_event_list(s_selfEventHandlerList, netif, ev);
+    }
     notify_all_handlers_event_list(s_eventHandlerList, netif, ev);
+    if (ev->ev_type == IF_EVENT_STATE && !ev->ev_if_state->state) {
+        /* Execute handlers from this list last */
+        notify_all_handlers_event_list(s_selfEventHandlerList, netif, ev);
+    }
 }
 
 void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
@@ -458,7 +464,7 @@ int if_get_by_index(uint8_t index, if_t* iface) {
     return -1;
 }
 
-int if_get_by_name(char* name, if_t* iface) {
+int if_get_by_name(const char* name, if_t* iface) {
     LwipTcpIpCoreLock lk;
     auto netif = netif_find(name);
 

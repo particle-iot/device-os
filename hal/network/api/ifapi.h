@@ -200,7 +200,7 @@ int if_name_to_index(const char* name, uint8_t* index);
 int if_index_to_name(uint8_t index, char* name);
 
 int if_get_by_index(uint8_t index, if_t* iface);
-int if_get_by_name(char* name, if_t* iface);
+int if_get_by_name(const char* name, if_t* iface);
 
 int if_get_flags(if_t iface, unsigned int* flags);
 int if_set_flags(if_t iface, unsigned int flags);
