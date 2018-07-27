@@ -38,17 +38,17 @@ public:
 
     int enableNetworking();
     int disableNetworking();
-    bool isNetworkingEnabled();
+    bool isNetworkingEnabled() const;
 
     int activateConnections();
     int deactivateConnections();
-    bool isEstablishingConnections();
+    bool isEstablishingConnections() const;
 
-    bool isConnectivityAvailable();
-    bool isIp4ConnectivityAvailable();
-    bool isIp6ConnectivityAvailable();
+    bool isConnectivityAvailable() const;
+    bool isIp4ConnectivityAvailable() const;
+    bool isIp6ConnectivityAvailable() const;
 
-    bool isConfigured();
+    bool isConfigured() const;
     int clearConfiguration(if_t iface = nullptr);
 
     enum class State {
@@ -76,7 +76,7 @@ protected:
 
 private:
 
-    const char* stateToName(State state);
+    const char* stateToName(State state) const;
 
     enum class ProtocolState {
         UNCONFIGURED,
@@ -94,10 +94,10 @@ private:
     void handleIfAddr(if_t iface, const struct if_event* ev);
     void handleIfLinkLayerAddr(if_t iface, const struct if_event* ev);
 
-    unsigned int countIfacesWithFlags(unsigned int flags);
+    unsigned int countIfacesWithFlags(unsigned int flags) const;
     void refreshIpState();
 
-    bool haveLowerLayerConfiguration(if_t iface);
+    bool haveLowerLayerConfiguration(if_t iface) const;
 
 private:
     if_event_handler_cookie_t ifEventHandlerCookie_ = {};

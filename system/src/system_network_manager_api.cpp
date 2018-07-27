@@ -25,6 +25,7 @@
 #include "system_update.h"
 #include "system_cloud_internal.h"
 #include "system_threading.h"
+#include "system_listening_mode.h"
 #include <atomic>
 
 using namespace particle::system;
@@ -64,7 +65,10 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         if (!NetworkManager::instance()->isNetworkingEnabled()) {
             NetworkManager::instance()->enableNetworking();
         }
-        NetworkManager::instance()->activateConnections();
+
+        if (NetworkManager::instance()->isConfigured()) {
+            NetworkManager::instance()->activateConnections();
+        }
     }());
 }
 
@@ -74,7 +78,7 @@ void network_disconnect(network_handle_t network, uint32_t reason, void* reserve
         SPARK_WLAN_STARTED = 0;
         s_forcedDisconnect = true;
         NetworkManager::instance()->deactivateConnections();
-        /* FIXME */
+        /* FIXME: should not loop in here */
         while (NetworkManager::instance()->getState() != NetworkManager::State::IFACE_DOWN) {
             HAL_Delay_Milliseconds(1);
         }
@@ -114,7 +118,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         SPARK_WLAN_STARTED = 0;
         SPARK_WLAN_SLEEP = 1;
         network_disconnect(0, 0, 0);
-        /* FIXME */
+        /* FIXME: should not loop in here */
         while (NetworkManager::instance()->getState() != NetworkManager::State::IFACE_DOWN) {
             HAL_Delay_Milliseconds(1);
         }
@@ -127,7 +131,20 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 }
 
 void network_listen(network_handle_t network, uint32_t flags, void*) {
-    /* TODO: */
+    /* May be called from an ISR */
+    if (!HAL_IsISR()) {
+        if (!(flags & NETWORK_LISTEN_EXIT)) {
+            ListeningModeHandler::instance()->enter();
+        } else {
+            ListeningModeHandler::instance()->exit();
+        }
+    } else {
+        if (!(flags & NETWORK_LISTEN_EXIT)) {
+            ListeningModeHandler::instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_ENTER, nullptr);
+        } else {
+            ListeningModeHandler::instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_EXIT, nullptr);
+        }
+    }
 }
 
 void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void*) {
@@ -141,7 +158,15 @@ uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, vo
 
 bool network_listening(network_handle_t network, uint32_t, void*) {
     /* TODO */
-    return false;
+    return ListeningModeHandler::instance()->isActive();
+}
+
+int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg) {
+    if (!HAL_IsISR()) {
+        return ListeningModeHandler::instance()->command(command, arg);
+    }
+
+    return ListeningModeHandler::instance()->enqueueCommand(command, arg);
 }
 
 int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*) {
@@ -150,8 +175,7 @@ int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentia
 }
 
 bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCredentials* creds, void*) {
-    /* TODO */
-    return false;
+    return NetworkManager::instance()->clearConfiguration() == 0;
 }
 
 int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved) {
@@ -164,16 +188,23 @@ int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer,
     return -1;
 }
 
-int network_clear_settings(network_handle_t network, uint32_t flags, void* reserved) {
-    /* TODO */
-    return -1;
-}
-
 /**
  * Reset or initialize the network connection as required.
  */
 void manage_network_connection() {
+    if (ListeningModeHandler::instance()->isActive()) {
+        /* Nothing to do, we are in listening mode */
+        return;
+    }
+
+    if (!NetworkManager::instance()->isConfigured()) {
+        /* Enter listening mode */
+        network_listen(0, 0, 0);
+        return;
+    }
+
     /* Need to disconnect and disable networking */
+    /* FIXME: refactor */
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP) {
         auto wasSleeping = SPARK_WLAN_SLEEP;
         cloud_disconnect();
@@ -196,6 +227,7 @@ void manage_network_connection() {
 }
 
 void manage_smart_config() {
+    ListeningModeHandler::instance()->run();
 }
 
 void manage_ip_config() {

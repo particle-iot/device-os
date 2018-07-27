@@ -139,7 +139,7 @@ int NetworkManager::disableNetworking() {
     return SYSTEM_ERROR_INVALID_STATE;
 }
 
-bool NetworkManager::isNetworkingEnabled() {
+bool NetworkManager::isNetworkingEnabled() const {
     return state_ != State::DISABLED;
 }
 
@@ -206,7 +206,7 @@ int NetworkManager::deactivateConnections() {
     return 0;
 }
 
-bool NetworkManager::isEstablishingConnections() {
+bool NetworkManager::isEstablishingConnections() const {
     switch (state_) {
         case State::IFACE_REQUEST_UP:
         case State::IFACE_UP:
@@ -218,19 +218,19 @@ bool NetworkManager::isEstablishingConnections() {
     return false;
 }
 
-bool NetworkManager::isConnectivityAvailable() {
+bool NetworkManager::isConnectivityAvailable() const {
     return state_ == State::IP_CONFIGURED;
 }
 
-bool NetworkManager::isIp4ConnectivityAvailable() {
+bool NetworkManager::isIp4ConnectivityAvailable() const {
     return ip4State_ == ProtocolState::CONFIGURED;
 }
 
-bool NetworkManager::isIp6ConnectivityAvailable() {
+bool NetworkManager::isIp6ConnectivityAvailable() const {
     return ip6State_ == ProtocolState::CONFIGURED;
 }
 
-bool NetworkManager::isConfigured() {
+bool NetworkManager::isConfigured() const {
     bool ret = true;
     for_each_iface([&](if_t iface, unsigned int curFlags) {
         if (ret && !haveLowerLayerConfiguration(iface)) {
@@ -244,6 +244,10 @@ bool NetworkManager::isConfigured() {
 int NetworkManager::clearConfiguration(if_t iface) {
     if (state_ != State::IFACE_DOWN && state_ != State::DISABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    if (!isConfigured()) {
+        return SYSTEM_ERROR_NONE;
     }
 
     if (!iface) {
@@ -437,7 +441,7 @@ void NetworkManager::handleIfLinkLayerAddr(if_t iface, const struct if_event* ev
     /* We don't care about this */
 }
 
-unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) {
+unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) const {
     unsigned int count = 0;
 
     for_each_iface([&](if_t iface, unsigned int curFlags) {
@@ -515,7 +519,7 @@ void NetworkManager::refreshIpState() {
     }
 }
 
-bool NetworkManager::haveLowerLayerConfiguration(if_t iface) {
+bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
     char name[IF_NAMESIZE] = {};
     if_get_name(iface, name);
 
@@ -531,7 +535,7 @@ bool NetworkManager::haveLowerLayerConfiguration(if_t iface) {
 }
 
 
-const char* NetworkManager::stateToName(State state) {
+const char* NetworkManager::stateToName(State state) const {
     static const char* const stateNames[] = {
         "NONE",
         "DISABLED",

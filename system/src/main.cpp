@@ -129,6 +129,9 @@ uint16_t system_button_pushed_duration(uint8_t button, void*)
 static volatile uint8_t button_final_clicks = 0;
 static volatile uint8_t button_current_clicks = 0;
 
+/* FIXME */
+static volatile bool button_cleared_credentials = false;
+
 #if Wiring_SetupButtonUX
 
 namespace {
@@ -304,6 +307,7 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
             {
                 system_notify_event(button_status, 0);
             }
+            button_cleared_credentials = false;
         }
         else if (pressed_time > 0)
         {
@@ -364,9 +368,10 @@ extern "C" void HAL_SysTick_Handler(void)
         }
 #endif
     }
-    else if(network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(10000))
+    else if(network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(10000) && !button_cleared_credentials)
     {
-        network_clear_settings(0, 0, 0);
+        button_cleared_credentials = true;
+        network_listen_command(0, NETWORK_LISTEN_COMMAND_CLEAR_CREDENTIALS, 0);
     }
     // determine if the button press needs to change the state (and hasn't done so already))
     else if(!network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)

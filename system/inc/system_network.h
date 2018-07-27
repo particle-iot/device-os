@@ -85,6 +85,15 @@ void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void
 uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, void* reserved);
 bool network_listening(network_handle_t network, uint32_t param1, void* reserved);
 
+typedef enum {
+    NETWORK_LISTEN_COMMAND_NONE,
+    NETWORK_LISTEN_COMMAND_ENTER,
+    NETWORK_LISTEN_COMMAND_EXIT,
+    NETWORK_LISTEN_COMMAND_CLEAR_CREDENTIALS
+} network_listen_command_t;
+
+int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg);
+
 bool network_has_credentials(network_handle_t network, uint32_t param1, void* reserved);
 
 #include "wlan_hal.h"
@@ -106,7 +115,6 @@ void network_setup(network_handle_t network, uint32_t flags, void* reserved);
 int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved);
 int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer, size_t buffer_len, void* reserved);
 
-int network_clear_settings(network_handle_t network, uint32_t flags, void* reserved);
 /**
  * Disable automatic listening mode when no credentials are configured.
  */

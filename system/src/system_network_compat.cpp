@@ -416,7 +416,7 @@ int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer,
     SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT(nif(network).get_hostname(buffer, buffer_len));
 }
 
-int network_clear_settings(network_handle_t network, uint32_t flags, void* reserved)
+int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg)
 {
     nif(network).listen_command();
     return 0;

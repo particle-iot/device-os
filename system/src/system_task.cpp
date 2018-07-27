@@ -382,7 +382,12 @@ void handle_cloud_connection(bool force_events)
                 if (system_mode() == SAFE_MODE) {
                     LED_SIGNAL_START(SAFE_MODE, BACKGROUND); // Connected to the cloud while in safe mode
                 } else {
+/* FIXME: there should be macro that checks for NetworkManager availability */
+#if !HAL_PLATFORM_IFAPI
                     LED_SIGNAL_START(CLOUD_CONNECTED, BACKGROUND);
+#else
+                    LED_SIGNAL_START(CLOUD_CONNECTED, NORMAL);
+#endif /* !HAL_PLATFORM_IFAPI */
                 }
                 LED_SIGNAL_STOP(CLOUD_CONNECTING);
             }
