@@ -74,7 +74,7 @@ enum OtNetifAddressType {
 };
 
 bool otIp6PrefixEquals(const otIp6Prefix& p1, const otIp6Prefix& p2) {
-    if (p1.mLength == p2.mLength && otIp6PrefixMatch(&p1.mPrefix, &p2.mPrefix) == p1.mLength) {
+    if (p1.mLength == p2.mLength && otIp6PrefixMatch(&p1.mPrefix, &p2.mPrefix) >= p1.mLength) {
         return true;
     }
 

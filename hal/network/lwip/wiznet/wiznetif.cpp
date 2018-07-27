@@ -246,7 +246,10 @@ err_t WizNetif::initInterface() {
     netif_.name[1] = 'n';
 
     netif_.mtu = 1500;
-    netif_.flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
+    netif_.flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_IGMP;
+    /* FIXME: Remove once we enable IPv6 */
+    netif_.flags |= NETIF_FLAG_NO_ND6;
+    /* netif_.flags |= NETIF_FLAG_MLD6 */
 
     netif_.output = etharp_output;
     netif_.output_ip6 = ethip6_output;
@@ -386,12 +389,11 @@ int WizNetif::closeRaw() {
 }
 
 void WizNetif::pollState() {
-    {
-        LwipTcpIpCoreLock lk;
-        if (!netif_is_up(interface()) || down_) {
-            return;
-        }
+    LwipTcpIpCoreLock lk;
+    if (!netif_is_up(interface()) || down_) {
+        return;
     }
+
     if (HAL_Timer_Get_Milli_Seconds() - lastStatePoll_ < 500) {
         return;
     }
