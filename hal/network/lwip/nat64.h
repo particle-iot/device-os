@@ -464,10 +464,10 @@ inline bool BibEntry::timeout(uint32_t dt, particle::SimpleAllocator& allocator)
     for (auto s = sessions_.front(), p = static_cast<SessionEntry*>(nullptr); s != nullptr;) {
         if (s->timeout(dt)) {
             LOG_DEBUG(TRACE, "Session timed out %s#%u <-> %s#%u, %s#%u <-> %s#%u",
-                      IP6ADDR_NTOA(&s->src6().address()).str, s->src6().l4Id(),
-                      IP6ADDR_NTOA(&s->dst6().address()).str, s->dst6().l4Id(),
-                      IP4ADDR_NTOA(&s->src4().address()).str, s->src4().l4Id(),
-                      IP4ADDR_NTOA(&s->dst4().address()).str, s->dst4().l4Id());
+                      IP6ADDR_NTOA(&s->src6().address()), s->src6().l4Id(),
+                      IP6ADDR_NTOA(&s->dst6().address()), s->dst6().l4Id(),
+                      IP4ADDR_NTOA(&s->src4().address()), s->src4().l4Id(),
+                      IP4ADDR_NTOA(&s->dst4().address()), s->dst4().l4Id());
             auto popped = sessions_.pop(s, p);
             s = popped->next;
             allocator.free(popped);

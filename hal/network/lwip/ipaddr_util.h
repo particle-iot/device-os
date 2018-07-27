@@ -30,21 +30,21 @@ struct IpAddrNtoaHelper {
         IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> tmp; \
         ipaddr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
         tmp; \
-    })
+    }).str
 
 #define IP6ADDR_NTOA(addr) \
     ({ \
         IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> tmp; \
         ip6addr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
         tmp; \
-    })
+    }).str
 
 #define IP4ADDR_NTOA(addr) \
     ({ \
         IpAddrNtoaHelper<IP4ADDR_STRLEN_MAX> tmp; \
         ip4addr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
         tmp; \
-    })
+    }).str
 
 } } /* namespace particle::net */
 
