@@ -64,6 +64,7 @@ typedef enum {
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
+void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
 
 #ifdef PLATFORM_ID
 

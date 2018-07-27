@@ -248,7 +248,7 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency)
     {
         return -3;
     }
-    PIN_MAP[pin].pin_func = PF_PWM;
+    HAL_Set_Pin_Function(pin, PF_PWM);
 
     return 0;
 }

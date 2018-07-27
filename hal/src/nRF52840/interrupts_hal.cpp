@@ -145,8 +145,6 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
         return;
     }
 
-    PIN_MAP[pin].pin_func = PF_DIO;
-
     nrfx_gpiote_in_event_enable(nrf_pin, true);
 }
 
@@ -174,7 +172,7 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
     m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
     m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
     PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
-    PIN_MAP[pin].pin_func = PF_NONE;
+    HAL_Set_Pin_Function(pin, PF_NONE);
 }
 
 void HAL_Interrupts_Enable_All(void)

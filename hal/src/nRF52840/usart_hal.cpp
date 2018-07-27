@@ -190,12 +190,12 @@ static uint32_t uart_init(HAL_USART_Serial serial, uint32_t baud)
     nrf_drv_uart_rx(m_uart_map[serial].instance, m_uart_map[serial].rx_buffer, 1);
 
     // set pin mode
-    PIN_MAP[m_uart_map[serial].tx_pin].pin_func = PF_UART;
-    PIN_MAP[m_uart_map[serial].rx_pin].pin_func = PF_UART;
+    HAL_Set_Pin_Function(m_uart_map[serial].tx_pin, PF_UART);
+    HAL_Set_Pin_Function(m_uart_map[serial].rx_pin, PF_UART);
     if (IS_HWFC_ENABLED(m_uart_map[serial].uart_config))
     {
-        PIN_MAP[m_uart_map[serial].cts_pin].pin_func = PF_UART;
-        PIN_MAP[m_uart_map[serial].rts_pin].pin_func = PF_UART;
+        HAL_Set_Pin_Function(m_uart_map[serial].cts_pin, PF_UART);
+        HAL_Set_Pin_Function(m_uart_map[serial].rts_pin, PF_UART);
     }
 
     return NRF_SUCCESS;
@@ -206,13 +206,12 @@ static void uart_uninit(HAL_USART_Serial serial)
     nrf_drv_uart_uninit(m_uart_map[serial].instance);
 
     // reset pin mode
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    PIN_MAP[m_uart_map[serial].tx_pin].pin_func = PF_NONE;
-    PIN_MAP[m_uart_map[serial].rx_pin].pin_func = PF_NONE;
+    HAL_Set_Pin_Function(m_uart_map[serial].tx_pin, PF_NONE);
+    HAL_Set_Pin_Function(m_uart_map[serial].rx_pin, PF_NONE);
     if (IS_HWFC_ENABLED(m_uart_map[serial].uart_config))
     {
-        PIN_MAP[m_uart_map[serial].cts_pin].pin_func = PF_NONE;
-        PIN_MAP[m_uart_map[serial].rts_pin].pin_func = PF_NONE;
+        HAL_Set_Pin_Function(m_uart_map[serial].cts_pin, PF_NONE);
+        HAL_Set_Pin_Function(m_uart_map[serial].rts_pin, PF_NONE);
     }
 }
 
