@@ -208,6 +208,7 @@ public:
     ~Nat64();
 
     void setPref64(const ip6_addr_t* pref64);
+    ip6_addr_t getPref64() const;
     bool enable(const Rule& rule);
     bool disable(const Rule& rule);
     bool disable(netif* any);

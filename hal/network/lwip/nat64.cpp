@@ -98,6 +98,11 @@ void Nat64::setPref64(const ip6_addr_t* pref64) {
     ip6_addr_set(&pref64_, pref64);
 }
 
+ip6_addr_t Nat64::getPref64() const {
+    LwipTcpIpCoreLock lk;
+    return pref64_;
+}
+
 bool Nat64::enable(const Rule& rule) {
     LwipTcpIpCoreLock lk;
     disable(nullptr);
@@ -337,7 +342,25 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
         }
 
         LOG_DEBUG(TRACE, "Translated IPv6 pkt out");
-        ip6_output(q, &session->dst6().address(), &session->src6().address(), hl, IPH_TOS(ip4hdr), proto);
+        /* FIXME: zones should be cleared before being stored in the session
+         * Removing zones here for now immediately before sending.
+         */
+        ip6_addr_t src = session->dst6().address();
+        ip6_addr_t dst = session->src6().address();
+        ip6_addr_clear_zone(&src);
+        ip6_addr_clear_zone(&dst);
+
+        /* Just in case */
+        auto outif = ip6_route(&src, &dst);
+        if (outif != in) {
+            ip6_output(q, &src, &dst, hl, IPH_TOS(ip4hdr), proto);
+        } else {
+            LOG_DEBUG(WARN, "Not outputting translated packet on the same interface it was received");
+            if (rule_->inside()) {
+                ip6_output_if_src(q, &src, &dst, hl, IPH_TOS(ip4hdr), proto, rule_->inside());
+            }
+
+        }
     }
     pbuf_free(q);
 
