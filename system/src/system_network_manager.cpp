@@ -275,11 +275,6 @@ NetworkManager::State NetworkManager::getState() const {
 }
 
 void NetworkManager::transition(State state) {
-    if (state_ == state) {
-        /* Just in case */
-        LOG_DEBUG(ERROR, "Transitioning to the same state");
-    }
-
     /* From */
     switch (state_) {
         case State::DISABLED: {
@@ -332,6 +327,7 @@ void NetworkManager::transition(State state) {
         }
         case State::IFACE_LINK_UP: {
             LED_SIGNAL_START(NETWORK_DHCP, BACKGROUND);
+            refreshIpState();
             break;
         }
         case State::IP_CONFIGURED: {
@@ -416,7 +412,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         /* Interface link state changed to UP */
         if (state_ == State::IFACE_UP) {
             transition(State::IFACE_LINK_UP);
-
+        } else if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             refreshIpState();
         }
     } else {
