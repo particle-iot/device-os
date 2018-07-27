@@ -20,6 +20,11 @@
 #pragma once
 
 #include "system_network_internal.h"
+
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
 #include "cellular_hal.h"
 #include "interrupts_hal.h"
 #include "spark_wiring_interrupts.h"
@@ -191,3 +196,4 @@ public:
     }
 };
 
+#endif /* !HAL_PLATFORM_IFAPI */

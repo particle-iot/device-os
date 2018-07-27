@@ -48,6 +48,14 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
 
+#if HAL_PLATFORM_BLE
+#include "ble_hal.h"
+#include "system_control_internal.h"
+
+using namespace particle;
+
+#endif /* HAL_PLATFORM_BLE */
+
 using spark::Network;
 using particle::LEDStatus;
 using particle::CloudDiagnostics;
@@ -77,12 +85,12 @@ ISRTaskQueue SystemISRTaskQueue;
 void Network_Setup(bool threaded)
 {
 #if !PARTICLE_NO_NETWORK
-    network.setup();
+    network_setup(0, 0, 0);
 
     // don't automatically connect when threaded since we want the thread to start asap
     if ((!threaded && system_mode() == AUTOMATIC) || system_mode()==SAFE_MODE)
     {
-        network.connect();
+        network_connect(0, 0, 0, 0);
     }
 #endif
 
@@ -92,7 +100,7 @@ void Network_Setup(bool threaded)
 #endif
 }
 
-static int cfod_count = 0;
+int cfod_count = 0;
 
 /**
  * Use usb serial ymodem flasher to update firmware.
@@ -102,42 +110,6 @@ void manage_serial_flasher()
     if(SPARK_FLASH_UPDATE == 3)
     {
         system_firmwareUpdate(&Serial);
-    }
-}
-
-/**
- * Reset or initialize the network connection as required.
- */
-void manage_network_connection()
-{
-    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
-    {
-        if (SPARK_WLAN_STARTED)
-        {
-            WARN("Resetting WLAN due to %s", (WLAN_WD_TO()) ? "WLAN_WD_TO()":((SPARK_WLAN_RESET) ? "SPARK_WLAN_RESET" : "SPARK_WLAN_SLEEP"));
-            auto was_sleeping = SPARK_WLAN_SLEEP;
-            auto was_disconnected = network.manual_disconnect();
-            cloud_disconnect();
-            // Note: The cloud connectivity layer may "detect" an unanticipated network disconnection
-            // before the networking layer, and due to current recovery logic, which resets the network,
-            // it's difficult to say whether the network has actually failed or not. In this case we
-            // disconnect from the network with the RESET reason code
-            network.disconnect(SPARK_WLAN_RESET ? NETWORK_DISCONNECT_REASON_RESET : NETWORK_DISCONNECT_REASON_NONE);
-            network.off();
-            CLR_WLAN_WD();
-            SPARK_WLAN_RESET = 0;
-            SPARK_WLAN_SLEEP = was_sleeping;
-            network.set_manual_disconnect(was_disconnected);
-            cfod_count = 0;
-        }
-    }
-    else
-    {
-        if (!SPARK_WLAN_STARTED || (spark_cloud_flag_auto_connect() && !network.ready()))
-        {
-            // INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.ready()");
-            network.connect();
-        }
     }
 }
 
@@ -235,7 +207,10 @@ void handle_cloud_errors()
 {
     const uint8_t blinks = Spark_Error_Count;
     Spark_Error_Count = 0;
+
+#if PLATFORM_ID == 0
     network.set_error_count(0); // Reset Error Count
+#endif /* PLATFORM_ID == 0 */
 
     LOG(WARN, "Handling cloud error: %d", (int)blinks);
 
@@ -289,7 +264,7 @@ void handle_cfod()
 
 void establish_cloud_connection()
 {
-    if (network.ready() && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
+    if (network_ready(0, 0, 0) && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
     {
         LED_SIGNAL_START(CLOUD_CONNECTING, NORMAL);
         if (in_cloud_backoff_period())
@@ -331,14 +306,17 @@ void establish_cloud_connection()
 
             // if the user put the networkin listening mode via the button,
             // the cloud connect may have been cancelled.
-            if (SPARK_WLAN_RESET || network.listening())
+            if (SPARK_WLAN_RESET || network_listening(0, 0, 0))
             {
                 return;
             }
 
             cloud_connection_failed();
             handle_cfod();
+            /* FIXME: */
+#if PLATFORM_ID == 0
             network.set_error_count(Spark_Error_Count);
+#endif /* PLATFORM_ID == 0 */
         }
 
         // Handle errors last to ensure they are shown
@@ -372,7 +350,7 @@ void handle_cloud_connection(bool force_events)
             int err = cloud_handshake();
             if (err)
             {
-                if (!SPARK_WLAN_RESET && !network.listening())
+                if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0))
                 {
                     cloud_connection_failed();
                     uint32_t color = RGB_COLOR_RED;
@@ -404,7 +382,12 @@ void handle_cloud_connection(bool force_events)
                 if (system_mode() == SAFE_MODE) {
                     LED_SIGNAL_START(SAFE_MODE, BACKGROUND); // Connected to the cloud while in safe mode
                 } else {
+/* FIXME: there should be macro that checks for NetworkManager availability */
+#if !HAL_PLATFORM_IFAPI
                     LED_SIGNAL_START(CLOUD_CONNECTED, BACKGROUND);
+#else
+                    LED_SIGNAL_START(CLOUD_CONNECTED, NORMAL);
+#endif /* !HAL_PLATFORM_IFAPI */
                 }
                 LED_SIGNAL_STOP(CLOUD_CONNECTING);
             }
@@ -633,7 +616,7 @@ uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void
 void cancel_connection()
 {
     // Cancel current network connection attempt
-    network.connect_cancel(true);
+    network_connect_cancel(0, 1, 0, 0);
     // Abort cloud connection
     Spark_Abort();
 }

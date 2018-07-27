@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("net.ifapi")
+
 #include "ifapi.h"
 #include "ipsockaddr.h"
 #include "lwiplock.h"
@@ -26,7 +29,6 @@ extern "C" {
 #include <lwip/dhcp6.h>
 }
 #include <lwip/autoip.h>
-#include "logging.h"
 
 using namespace particle::net;
 
@@ -102,7 +104,7 @@ void netif_ip6_address_to_if_addr(struct netif* netif, uint8_t i, struct if_addr
 }
 
 unsigned int ip4_netmask_to_prefix_length(const ip4_addr_t* netmask) {
-    const unsigned int mask = ip4_addr_get_u32(netmask);
+    const unsigned int mask = ntohl(ip4_addr_get_u32(netmask));
     return mask == 0 ? 0 : (32 - __builtin_ctz(mask));
 }
 
@@ -141,9 +143,15 @@ void notify_all_handlers_event_list(EventHandlerList* list, struct netif* netif,
 }
 
 void notify_all_handlers_event(struct netif* netif, const struct if_event* ev) {
-    /* Execute handlers from this list first */
-    notify_all_handlers_event_list(s_selfEventHandlerList, netif, ev);
+    if (ev->ev_type != IF_EVENT_STATE || ev->ev_if_state->state) {
+        /* Execute handlers from this list first */
+        notify_all_handlers_event_list(s_selfEventHandlerList, netif, ev);
+    }
     notify_all_handlers_event_list(s_eventHandlerList, netif, ev);
+    if (ev->ev_type == IF_EVENT_STATE && !ev->ev_if_state->state) {
+        /* Execute handlers from this list last */
+        notify_all_handlers_event_list(s_selfEventHandlerList, netif, ev);
+    }
 }
 
 void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
@@ -456,7 +464,7 @@ int if_get_by_index(uint8_t index, if_t* iface) {
     return -1;
 }
 
-int if_get_by_name(char* name, if_t* iface) {
+int if_get_by_name(const char* name, if_t* iface) {
     LwipTcpIpCoreLock lk;
     auto netif = netif_find(name);
 
@@ -819,6 +827,9 @@ int if_get_if_addrs(struct if_addrs** addrs) {
         }
     }
 
+    *addrs = first;
+    return 0;
+
 cleanup:
     if_free_if_addrs(first);
     return -1;
@@ -856,7 +867,7 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
         }
 
         if_addr* a = (if_addr*)buf;
-        a->addr = (sockaddr*)(buf + sizeof(if_addr));
+        a->addr = (sockaddr*)((char*)buf + sizeof(if_addr));
         if_get_lladdr(iface, (sockaddr_ll*)a->addr);
 
         current->if_addr = a;
@@ -864,12 +875,12 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
 
     if (!ip4_addr_isany_val(*netif_ip4_addr(netif))) {
         if (current->if_addr) {
-            if_addrs* a = (if_addrs*)calloc(sizeof(if_addrs*), 1);
+            if_addrs* a = (if_addrs*)calloc(sizeof(if_addrs), 1);
             if (!a) {
                 goto cleanup;
             }
             memcpy(a, current, sizeof(*a));
-            current->if_addr = nullptr;
+            a->if_addr = nullptr;
             current->next = a;
             current = a;
         }
@@ -882,9 +893,9 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
         }
 
         if_addr* a = (if_addr*)buf;
-        a->addr = (sockaddr*)(buf + sizeof(if_addr));
-        a->netmask = (sockaddr*)(buf + sizeof(if_addr) + sizeof(sockaddr_in));
-        a->gw = (sockaddr*)(buf + sizeof(if_addr) + sizeof(sockaddr_in) * 2);
+        a->addr = (sockaddr*)((char*)buf + sizeof(if_addr));
+        a->netmask = (sockaddr*)((char*)buf + sizeof(if_addr) + sizeof(sockaddr_in));
+        a->gw = (sockaddr*)((char*)buf + sizeof(if_addr) + sizeof(sockaddr_in) * 2);
 
         netif_ip4_address_to_if_addr(netif, a);
 
@@ -896,12 +907,12 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
              !ip6_addr_isany(netif_ip6_addr(netif, i))) {
 
             if (current->if_addr) {
-                if_addrs* a = (if_addrs*)calloc(sizeof(if_addrs*), 1);
+                if_addrs* a = (if_addrs*)calloc(sizeof(if_addrs), 1);
                 if (!a) {
                     goto cleanup;
                 }
                 memcpy(a, current, sizeof(*a));
-                current->if_addr = nullptr;
+                a->if_addr = nullptr;
                 current->next = a;
                 current = a;
             }
@@ -913,8 +924,8 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
             }
 
             if_addr* a = (if_addr*)buf;
-            a->addr = (sockaddr*)(buf + sizeof(if_addr));
-            a->ip6_addr_data = (if_ip6_addr_data*)(buf + sizeof(if_addr) + sizeof(sockaddr_in6));
+            a->addr = (sockaddr*)((char*)buf + sizeof(if_addr));
+            a->ip6_addr_data = (if_ip6_addr_data*)((char*)buf + sizeof(if_addr) + sizeof(sockaddr_in6));
 
             netif_ip6_address_to_if_addr(netif, i, a);
 

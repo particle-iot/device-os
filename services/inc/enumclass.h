@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,15 +15,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "spark_wiring_platform.h"
+#ifndef SERVICES_ENUMCLASS_H
+#define SERVICES_ENUMCLASS_H
 
-#if Wiring_Cellular && !HAL_PLATFORM_IFAPI
+#include <type_traits>
 
-#include "system_network_cellular.h"
+namespace particle {
 
-// This function handles USART3 global interrupt request
-extern "C" void HAL_USART3_Handler(void) {
-    HAL_USART3_Handler_Impl(nullptr); // Provided by cellular HAL
+template <typename E>
+constexpr auto to_underlying(E e) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(e);
 }
 
-#endif // Wiring_Cellular != 0 && !HAL_PLATFORM_IFAPI
+} /* particle */
+
+#endif /* SERVICES_ENUMCLASS_H */

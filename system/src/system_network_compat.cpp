@@ -17,6 +17,12 @@
  ******************************************************************************
  */
 
+#include "hal_platform.h"
+
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_diagnostics.h"
 #include "system_setup.h"
@@ -312,6 +318,11 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
     return nif(network).connecting();
 }
 
+int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved) {
+    nif(network).connect_cancel(flags);
+    return 0;
+}
+
 /**
  *
  * @param network
@@ -405,4 +416,51 @@ int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer,
     SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT(nif(network).get_hostname(buffer, buffer_len));
 }
 
+int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg)
+{
+    nif(network).listen_command();
+    return 0;
+}
+
+/* FIXME: */
+extern int cfod_count;
+
+/**
+ * Reset or initialize the network connection as required.
+ */
+void manage_network_connection()
+{
+    if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP || WLAN_WD_TO())
+    {
+        if (SPARK_WLAN_STARTED)
+        {
+            WARN("Resetting WLAN due to %s", (WLAN_WD_TO()) ? "WLAN_WD_TO()":((SPARK_WLAN_RESET) ? "SPARK_WLAN_RESET" : "SPARK_WLAN_SLEEP"));
+            auto was_sleeping = SPARK_WLAN_SLEEP;
+            //auto was_disconnected = network.manual_disconnect();
+            cloud_disconnect();
+            // Note: The cloud connectivity layer may "detect" an unanticipated network disconnection
+            // before the networking layer, and due to current recovery logic, which resets the network,
+            // it's difficult to say whether the network has actually failed or not. In this case we
+            // disconnect from the network with the RESET reason code
+            network_disconnect(0, SPARK_WLAN_RESET ? NETWORK_DISCONNECT_REASON_RESET : NETWORK_DISCONNECT_REASON_NONE, 0);
+            network_off(0, 0, 0, 0);
+            CLR_WLAN_WD();
+            SPARK_WLAN_RESET = 0;
+            SPARK_WLAN_SLEEP = was_sleeping;
+            //network.set_manual_disconnect(was_disconnected);
+            cfod_count = 0;
+        }
+    }
+    else
+    {
+        if (!SPARK_WLAN_STARTED || (spark_cloud_flag_auto_connect() && !network_ready(0, 0, 0)))
+        {
+            // INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.ready()");
+            network_connect(0, 0, 0, 0);
+        }
+    }
+}
+
 #endif
+
+#endif /* !HAL_PLATFORM_IFAPI */

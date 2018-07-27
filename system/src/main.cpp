@@ -121,13 +121,16 @@ static volatile uint16_t pressed_time = 0;
 
 uint16_t system_button_pushed_duration(uint8_t button, void*)
 {
-    if (button || network.listening())
+    if (button || network_listening(0, 0, 0))
         return 0;
     return pressed_time ? HAL_Timer_Get_Milli_Seconds()-pressed_time : 0;
 }
 
 static volatile uint8_t button_final_clicks = 0;
 static volatile uint8_t button_current_clicks = 0;
+
+/* FIXME */
+static volatile bool button_cleared_credentials = false;
 
 #if Wiring_SetupButtonUX
 
@@ -298,25 +301,26 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
     {
         if (pressed)
         {
-            wasListeningOnButtonPress = network.listening();
+            wasListeningOnButtonPress = network_listening(0, 0, 0);
             pressed_time = HAL_Timer_Get_Milli_Seconds();
             if (!wasListeningOnButtonPress)             // start of button press
             {
                 system_notify_event(button_status, 0);
             }
+            button_cleared_credentials = false;
         }
         else if (pressed_time > 0)
         {
             int release_time = HAL_Timer_Get_Milli_Seconds();
             uint16_t depressed_duration = release_time - pressed_time;
 
-            if (!network.listening()) {
+            if (!network_listening(0, 0, 0)) {
                 system_notify_event(button_status, depressed_duration);
                 handle_button_click(depressed_duration);
             }
             pressed_time = 0;
-            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening()) {
-                network.listen(true);
+            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network_listening(0, 0, 0)) {
+                network_listen(0, NETWORK_LISTEN_EXIT, 0);
             }
         }
     }
@@ -364,19 +368,20 @@ extern "C" void HAL_SysTick_Handler(void)
         }
 #endif
     }
-    else if(network.listening() && HAL_Core_Mode_Button_Pressed(10000))
+    else if(network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(10000) && !button_cleared_credentials)
     {
-        network.listen_command();
+        button_cleared_credentials = true;
+        network_listen_command(0, NETWORK_LISTEN_COMMAND_CLEAR_CREDENTIALS, 0);
     }
     // determine if the button press needs to change the state (and hasn't done so already))
-    else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
+    else if(!network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
         cancel_connection(); // Unblock the system thread
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
         HAL_Notify_Button_State(0, false);
-        network.listen();
+        network_listen(0, 0, 0);
         HAL_Notify_Button_State(0, true);
     }
 

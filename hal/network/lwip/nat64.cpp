@@ -98,6 +98,11 @@ void Nat64::setPref64(const ip6_addr_t* pref64) {
     ip6_addr_set(&pref64_, pref64);
 }
 
+ip6_addr_t Nat64::getPref64() const {
+    LwipTcpIpCoreLock lk;
+    return pref64_;
+}
+
 bool Nat64::enable(const Rule& rule) {
     LwipTcpIpCoreLock lk;
     disable(nullptr);
@@ -235,8 +240,8 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
     }
 
     LOG_DEBUG(TRACE, "NAT64 input (%s) %s#%u -> %s#%u", proto == L4_PROTO_UDP ? "UDP" : "ICMP",
-              IPADDR_NTOA(&srcAddr.address()).str, srcAddr.l4Id(),
-              IPADDR_NTOA(&dstAddr.address()).str, dstAddr.l4Id());
+              IPADDR_NTOA(&srcAddr.address()), srcAddr.l4Id(),
+              IPADDR_NTOA(&dstAddr.address()), dstAddr.l4Id());
 
     if (filter(srcAddr, dstAddr, in)) {
         /* Unhandled */
@@ -254,8 +259,8 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
 
     if (bib) {
         LOG_DEBUG(TRACE, "BIB %s#%u <-> %s#%u",
-                  IP6ADDR_NTOA(&bib->src6().address()).str, bib->src6().l4Id(),
-                  IP4ADDR_NTOA(&bib->dst4().address()).str, bib->dst4().l4Id());
+                  IP6ADDR_NTOA(&bib->src6().address()), bib->src6().l4Id(),
+                  IP4ADDR_NTOA(&bib->dst4().address()), bib->dst4().l4Id());
         /* Lookup session */
         session = bib->lookupSession(srcAddr, dstAddr);
 
@@ -270,10 +275,10 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
 
         if (session) {
             LOG_DEBUG(TRACE, "Session %s#%u <-> %s#%u, %s#%u <-> %s#%u, %lums",
-                      IP6ADDR_NTOA(&session->src6().address()).str, session->src6().l4Id(),
-                      IP6ADDR_NTOA(&session->dst6().address()).str, session->dst6().l4Id(),
-                      IP4ADDR_NTOA(&session->src4().address()).str, session->src4().l4Id(),
-                      IP4ADDR_NTOA(&session->dst4().address()).str, session->dst4().l4Id(),
+                      IP6ADDR_NTOA(&session->src6().address()), session->src6().l4Id(),
+                      IP6ADDR_NTOA(&session->dst6().address()), session->dst6().l4Id(),
+                      IP4ADDR_NTOA(&session->src4().address()), session->src4().l4Id(),
+                      IP4ADDR_NTOA(&session->dst4().address()), session->dst4().l4Id(),
                       session->lifetime());
             session->setLifetime(protoLifetime);
         }
@@ -337,7 +342,25 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
         }
 
         LOG_DEBUG(TRACE, "Translated IPv6 pkt out");
-        ip6_output(q, &session->dst6().address(), &session->src6().address(), hl, IPH_TOS(ip4hdr), proto);
+        /* FIXME: zones should be cleared before being stored in the session
+         * Removing zones here for now immediately before sending.
+         */
+        ip6_addr_t src = session->dst6().address();
+        ip6_addr_t dst = session->src6().address();
+        ip6_addr_clear_zone(&src);
+        ip6_addr_clear_zone(&dst);
+
+        /* Just in case */
+        auto outif = ip6_route(&src, &dst);
+        if (outif != in) {
+            ip6_output(q, &src, &dst, hl, IPH_TOS(ip4hdr), proto);
+        } else {
+            LOG_DEBUG(WARN, "Not outputting translated packet on the same interface it was received");
+            if (rule_->inside()) {
+                ip6_output_if_src(q, &src, &dst, hl, IPH_TOS(ip4hdr), proto, rule_->inside());
+            }
+
+        }
     }
     pbuf_free(q);
 
@@ -371,7 +394,7 @@ bool Nat64::filter(const IpTransportAddress& src, const IpTransportAddress& dst,
 
         if (ip6_addr_common_prefix_length(&pref64_, ip_2_ip6(&dst.address()), 96) != 96) {
             LOG_DEBUG(TRACE, "Filtered, because destination doesn't match Pref64 %s",
-                      IP6ADDR_NTOA(&pref64_).str);
+                      IP6ADDR_NTOA(&pref64_));
             return true;
         }
     }
@@ -475,8 +498,8 @@ void Nat64::timeout(uint32_t dt) {
     for (auto bib = udpBibTable_.front(), p = static_cast<BibEntry*>(nullptr); bib != nullptr;) {
         if (bib->timeout(dt, *pool_)) {
             LOG_DEBUG(TRACE, "UDP BIB %s#%u <-> %s#%u timed out",
-                      IP6ADDR_NTOA(&bib->src6().address()).str, bib->src6().l4Id(),
-                      IP4ADDR_NTOA(&bib->dst4().address()).str, bib->dst4().l4Id());
+                      IP6ADDR_NTOA(&bib->src6().address()), bib->src6().l4Id(),
+                      IP4ADDR_NTOA(&bib->dst4().address()), bib->dst4().l4Id());
 
             auto popped = udpBibTable_.pop(bib, p);
             bib = popped->next;
@@ -490,8 +513,8 @@ void Nat64::timeout(uint32_t dt) {
     for (auto bib = icmpBibTable_.front(), p = static_cast<BibEntry*>(nullptr); bib != nullptr;) {
         if (bib->timeout(dt, *pool_)) {
             LOG_DEBUG(TRACE, "ICMP BIB %s#%u <-> %s#%u timed out",
-                      IP6ADDR_NTOA(&bib->src6().address()).str, bib->src6().l4Id(),
-                      IP4ADDR_NTOA(&bib->dst4().address()).str, bib->dst4().l4Id());
+                      IP6ADDR_NTOA(&bib->src6().address()), bib->src6().l4Id(),
+                      IP4ADDR_NTOA(&bib->dst4().address()), bib->dst4().l4Id());
 
             auto popped = udpBibTable_.pop(bib, p);
             bib = popped->next;

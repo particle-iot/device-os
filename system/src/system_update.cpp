@@ -42,6 +42,7 @@
 #include "spark_macros.h"
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
+#include "system_threading.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -186,7 +187,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
     if (bitrate == start_dfu_flasher_serial_speed)
     {
-        network.connect_cancel(true);
+        network_connect_cancel(0, 1, 0, 0);
         //Reset device and briefly enter DFU bootloader mode
         System.dfu(false);
     }

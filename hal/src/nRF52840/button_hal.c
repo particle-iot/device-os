@@ -112,8 +112,10 @@ void BUTTON_Interrupt_Handler(void *data)
     /* Disable button Interrupt */
     BUTTON_EXTI_Config(button, DISABLE);
 
-    /* Start timer */
-    nrfx_timer_enable(&m_button_timer);
+    /* Start timer if it hasn't been previously started */
+    if (!nrfx_timer_is_enabled(&m_button_timer)) {
+        nrfx_timer_enable(&m_button_timer);
+    }
 }
 
 /**

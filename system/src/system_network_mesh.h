@@ -20,6 +20,10 @@
 
 #include "hal_platform.h"
 
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
 #if HAL_PLATFORM_MESH && HAL_PLATFORM_OPENTHREAD && HAL_PLATFORM_LWIP
 
 #include "system_network_internal.h"
@@ -165,5 +169,7 @@ private:
 };
 
 #endif /* HAL_PLATFORM_MESH */
+
+#endif /* !HAL_PLATFORM_IFAPI */
 
 #endif /* SYSTEM_NETWORK_MESH_H */

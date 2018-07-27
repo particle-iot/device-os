@@ -15,9 +15,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("net.th")
+
 #include "openthread-core-config.h"
 #include "lwip_openthreadif.h"
-#include "logging.h"
 #include <openthread/instance.h>
 #include <lwip/netifapi.h>
 #include <lwip/tcpip.h>
@@ -32,6 +34,9 @@
 #include <lwip/dns.h>
 #include <openthread/netdata.h>
 #include "ipaddr_util.h"
+#include "lwiplock.h"
+
+#include <lwip/opt.h>
 
 using namespace particle::net;
 
@@ -71,7 +76,7 @@ enum OtNetifAddressType {
 };
 
 bool otIp6PrefixEquals(const otIp6Prefix& p1, const otIp6Prefix& p2) {
-    if (p1.mLength == p2.mLength && otIp6PrefixMatch(&p1.mPrefix, &p2.mPrefix) == p1.mLength) {
+    if (p1.mLength == p2.mLength && otIp6PrefixMatch(&p1.mPrefix, &p2.mPrefix) >= p1.mLength) {
         return true;
     }
 
@@ -137,6 +142,9 @@ const char* routerPreferenceToString(int pref) {
     return prefs[pref];
 }
 
+const uint8_t THREAD_DNS_SERVER_INDEX =
+    std::min(DNS_MAX_SERVERS - 1, std::max(LWIP_DHCP_MAX_DNS_SERVERS, LWIP_DHCP6_MAX_DNS_SERVERS));
+
 } /* anonymous */
 
 OpenThreadNetif::OpenThreadNetif(otInstance* ot)
@@ -172,21 +180,6 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
 
     /* Register OpenThread state changed callback */
     otSetStateChangedCallback(ot_, otStateChangedCb, this);
-
-    {
-        /* FIXME */
-        LOCK_TCPIP_CORE();
-        ip_addr_t dns;
-        ipaddr_aton("64:ff9b::808:808", &dns);
-        dns_setserver(0, &dns);
-        ipaddr_aton("64:ff9b::808:404", &dns);
-        dns_setserver(1, &dns);
-        ipaddr_aton("8.8.8.8", &dns);
-        dns_setserver(2, &dns);
-        ipaddr_aton("8.8.4.4", &dns);
-        dns_setserver(3, &dns);
-        UNLOCK_TCPIP_CORE();
-    }
 }
 
 OpenThreadNetif::~OpenThreadNetif() {
@@ -207,7 +200,7 @@ err_t OpenThreadNetif::initCb(netif* netif) {
     netif->mtu = 1280;
     netif->output_ip6 = outputIp6Cb;
     netif->rs_count = 0;
-    netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_NO_ND6;
+    netif->flags |= NETIF_FLAG_NO_ND6;
 
     /* FIXME */
     netif_set_default(netif);
@@ -281,7 +274,12 @@ void OpenThreadNetif::otStateChangedCb(uint32_t flags, void* ctx) {
 }
 
 void OpenThreadNetif::stateChanged(uint32_t flags) {
-    LOCK_TCPIP_CORE();
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_is_up(interface())) {
+        return;
+    }
+
     /* link state */
     if (flags & OT_CHANGED_THREAD_ROLE) {
         switch (otThreadGetDeviceRole(ot_)) {
@@ -292,8 +290,14 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             }
             default: {
                 netif_set_link_up(interface());
+                refreshIpAddresses();
             }
         }
+    }
+
+    if (flags & OT_CHANGED_THREAD_NETDATA) {
+        LOG(TRACE, "OT_CHANGED_THREAD_NETDATA");
+        refreshIpAddresses();
     }
 
     /* IPv6-addresses */
@@ -357,13 +361,14 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
                 int8_t idx = -1;
                 netif_add_ip6_address(interface(), &ip6addr, &idx);
                 if (idx >= 0) {
-                    netif_ip6_addr_set_state(interface(), idx, state);
+                    /* IMPORTANT: scope needs to be adjusted first */
                     if (addr->mScopeOverrideValid) {
                         /* FIXME: we should use custom scopes */
                         ip6_addr_set_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), netif_get_index(interface()));
                     } else {
                         ip6_addr_assign_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), IP6_UNICAST, interface());
                     }
+                    netif_ip6_addr_set_state(interface(), idx, state);
                 }
                 char tmp[IP6ADDR_STRLEN_MAX] = {0};
                 ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
@@ -384,8 +389,6 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             mld6_joingroup_netif(interface(), &ip6addr);
         }
     }
-
-    UNLOCK_TCPIP_CORE();
 
     if (flags & OT_CHANGED_IP6_ADDRESS_ADDED) {
         LOG(TRACE, "OT_CHANGED_IP6_ADDRESS_ADDED");
@@ -413,10 +416,6 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
     }
     if (flags & OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER) {
         LOG(TRACE, "OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER");
-    }
-    if (flags & OT_CHANGED_THREAD_NETDATA) {
-        LOG(TRACE, "OT_CHANGED_THREAD_NETDATA");
-        refreshIpAddresses();
     }
     if (flags & OT_CHANGED_THREAD_CHILD_ADDED) {
         LOG(TRACE, "OT_CHANGED_THREAD_CHILD_ADDED");
@@ -506,7 +505,7 @@ void OpenThreadNetif::refreshIpAddresses() {
         otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, activeAddr);
 
         LOG_DEBUG(TRACE, "Candidate preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
-            IP6ADDR_NTOA(&addr).str, config.mPrefix.mLength,
+            IP6ADDR_NTOA(&addr), config.mPrefix.mLength,
             routerPreferenceToString(config.mPreference),
             config.mRloc16,
             config.mPreferred,
@@ -554,12 +553,20 @@ void OpenThreadNetif::refreshIpAddresses() {
             ip6_addr_t addr = {};
             otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, addr);
             LOG(INFO, "Switched over to a new preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
-                IP6ADDR_NTOA(&addr).str, active.mPrefix.mLength,
+                IP6ADDR_NTOA(&addr), active.mPrefix.mLength,
                 routerPreferenceToString(active.mPreference),
                 active.mRloc16,
                 active.mPreferred,
                 active.mStable);
             abr_ = active;
+
+            if (abr_.mRloc16 != ourRloc16) {
+                /* Pref::1 */
+                addr.addr[3] = PP_HTONL(1);
+                setDns(&addr);
+            } else {
+                setDns(nullptr);
+            }
         }
     } else {
         memset(&abr_, 0, sizeof(abr_));
@@ -586,7 +593,6 @@ void OpenThreadNetif::refreshIpAddresses() {
 
                 if (addresses_[i].mPreferred != preferred) {
                     addresses_[i].mPreferred = true;
-                    otIp6RemoveUnicastAddress(ot_, &addresses_[i].mAddress);
                     otIp6AddUnicastAddress(ot_, &addresses_[i]);
                 }
             }
@@ -647,6 +653,9 @@ otInstance* OpenThreadNetif::getOtInstance() {
 
 int OpenThreadNetif::up() {
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+
+    down();
+
     LOG(INFO, "Bringing OpenThreadNetif up");
     LOG(INFO, "Network name: %s", otThreadGetNetworkName(ot_));
     LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(ot_));
@@ -663,16 +672,22 @@ int OpenThreadNetif::up() {
 }
 
 int OpenThreadNetif::down() {
-    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
-    LOG(INFO, "Bringing OpenThreadNetif down");
     int r = 0;
+    {
+        std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+        LOG(INFO, "Bringing OpenThreadNetif down");
 
-    if ((r = otThreadSetEnabled(ot_, false)) != OT_ERROR_NONE) {
-        return r;
+        if ((r = otThreadSetEnabled(ot_, false)) != OT_ERROR_NONE) {
+            return r;
+        }
+        if ((r = otIp6SetEnabled(ot_, false)) != OT_ERROR_NONE) {
+            return r;
+        }
     }
-    if ((r = otIp6SetEnabled(ot_, false)) != OT_ERROR_NONE) {
-        return r;
-    }
+
+    /* Force link-down */
+    LwipTcpIpCoreLock lkk;
+    netif_set_link_down(interface());
 
     return r;
 }
@@ -689,4 +704,17 @@ void OpenThreadNetif::ifEventHandler(const if_event* ev) {
 
 void OpenThreadNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
     /* Nothing to do here */
+}
+
+void OpenThreadNetif::setDns(const ip6_addr_t* addr) {
+    LwipTcpIpCoreLock lk;
+    if (addr) {
+        ip_addr_t ipaddr = {};
+        ip_addr_copy_from_ip6(ipaddr, *addr);
+        dns_setserver(THREAD_DNS_SERVER_INDEX, &ipaddr);
+        LOG(INFO, "DNS server on mesh network: %s", IPADDR_NTOA(&ipaddr));
+    } else {
+        dns_setserver(THREAD_DNS_SERVER_INDEX, nullptr);
+        LOG(INFO, "No DNS server on mesh network");
+    }
 }

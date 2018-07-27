@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("net.en")
+
 #include "wiznetif.h"
 #include <lwip/opt.h>
 #include <lwip/mem.h>
@@ -202,6 +205,7 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
     memcpy(netif_.hwaddr, mac, ETHARP_HWADDR_LEN);
 
     exit_ = false;
+    down_ = true;
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
         /* FIXME: */
         SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
@@ -242,7 +246,10 @@ err_t WizNetif::initInterface() {
     netif_.name[1] = 'n';
 
     netif_.mtu = 1500;
-    netif_.flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
+    netif_.flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_IGMP;
+    /* FIXME: Remove once we enable IPv6 */
+    netif_.flags |= NETIF_FLAG_NO_ND6;
+    /* netif_.flags |= NETIF_FLAG_MLD6 */
 
     netif_.output = etharp_output;
     netif_.output_ip6 = ethip6_output;
@@ -322,6 +329,7 @@ int WizNetif::up() {
     if (!r) {
         /* Attach interrupt handler */
         HAL_Interrupts_Attach(interrupt_, &WizNetif::interruptCb, this, FALLING, nullptr);
+        down_ = false;
     }
 
     return r;
@@ -329,6 +337,7 @@ int WizNetif::up() {
 
 int WizNetif::down() {
     LwipTcpIpCoreLock lk;
+    down_ = true;
     /* Detach interrupt handler */
     HAL_Interrupts_Detach(interrupt_);
 
@@ -380,6 +389,11 @@ int WizNetif::closeRaw() {
 }
 
 void WizNetif::pollState() {
+    LwipTcpIpCoreLock lk;
+    if (!netif_is_up(interface()) || down_) {
+        return;
+    }
+
     if (HAL_Timer_Get_Milli_Seconds() - lastStatePoll_ < 500) {
         return;
     }
@@ -387,7 +401,6 @@ void WizNetif::pollState() {
     /* Poll link state and update if necessary */
     auto linkState = wizphy_getphylink() == PHY_LINK_ON;
 
-    LwipTcpIpCoreLock lk;
     if (netif_is_link_up(&netif_) != linkState) {
         if (linkState) {
             LOG(INFO, "Link up");
@@ -400,6 +413,10 @@ void WizNetif::pollState() {
 }
 
 void WizNetif::input() {
+    if (down_) {
+        return;
+    }
+
     uint16_t size = 0;
     while ((size = getSn_RX_RSR(0)) > 0 && size != 0xffff) {
         uint16_t pktSize = 0;
@@ -479,6 +496,10 @@ err_t WizNetif::linkOutput(pbuf* p) {
 void WizNetif::output(pbuf* p) {
     uint16_t txAvailable = 0;
     uint16_t ptr;
+
+    if (down_) {
+        goto cleanup;
+    }
 
 #if ETH_PAD_SIZE
     pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */

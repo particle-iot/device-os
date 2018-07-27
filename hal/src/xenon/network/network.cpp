@@ -21,11 +21,9 @@
 #include "wiznet/wiznetif.h"
 #include "nat64.h"
 #include <mutex>
-#include <openthread/border_router.h>
-#include <openthread/thread_ftd.h>
-#include <openthread/ip6.h>
 #include <nrf52840.h>
 #include "random.h"
+#include "border_router_manager.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -37,8 +35,6 @@ namespace {
 BaseNetif* th2 = nullptr;
 /* en3 - Ethernet FeatherWing */
 BaseNetif* en3 = nullptr;
-
-Nat64* nat64 = nullptr;
 
 } /* anonymous */
 
@@ -68,33 +64,8 @@ int if_init_platform(void*) {
         delete en3;
         en3 = nullptr;
     } else {
-        if_set_flags(en3->interface(), IFF_UP);
-        if_set_xflags(en3->interface(), IFXF_DHCP);
-
-        nat64 = new Nat64();
-        ip_addr_t prefix;
-        ipaddr_aton("64:ff9b::", &prefix);
-        Rule r(th2->interface(), en3->interface());
-        nat64->enable(r);
-
-        auto thread = ot_get_instance();
-        otBorderRouterConfig config = {};
-        config.mPreference = 0x01;
-        config.mPreferred = 1;
-        config.mSlaac = 1;
-        config.mDefaultRoute = 1;
-        config.mOnMesh = 1;
-        config.mStable = 1;
-
-        std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
-        config.mPrefix.mPrefix.mFields.m8[0] = 0xfd;
-        Random rand;
-        rand.gen((char*)config.mPrefix.mPrefix.mFields.m8 + 1, 5); // Generate global ID
-        config.mPrefix.mLength = 64;
-
-        otBorderRouterAddOnMeshPrefix(thread, &config);
-        otThreadBecomeRouter(thread);
-        otBorderRouterRegister(thread);
+        /* Enable border router by default */
+        BorderRouterManager::instance()->start();
     }
     return 0;
 }
@@ -110,6 +81,7 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
 }
 
 int lwip_hook_ip6_forward_pre_routing(struct pbuf* p, struct ip6_hdr* ip6hdr, struct netif* inp, u32_t* flags) {
+    auto nat64 = BorderRouterManager::instance()->getNat64();
     if (nat64) {
         return nat64->ip6Input(p, ip6hdr, inp);
     }
@@ -119,6 +91,7 @@ int lwip_hook_ip6_forward_pre_routing(struct pbuf* p, struct ip6_hdr* ip6hdr, st
 }
 
 int lwip_hook_ip4_input_pre_upper_layers(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp) {
+    auto nat64 = BorderRouterManager::instance()->getNat64();
     if (nat64) {
         int r = nat64->ip4Input(p, (ip_hdr*)iphdr, inp);
         if (r) {
