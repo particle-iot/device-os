@@ -1032,9 +1032,9 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net))
             goto failure;
         // get the MSISDNs related to this subscriber
-        sendFormated("AT+CNUM\r\n");
-        if (RESP_OK != waitFinalResp(_cbCNUM, _net.num))
-            goto failure;
+        // sendFormated("AT+CNUM\r\n");
+        // if (RESP_OK != waitFinalResp(_cbCNUM, _net.num))
+        //     goto failure;
 
         // get the signal strength indication
         sendFormated("AT+CSQ\r\n");
