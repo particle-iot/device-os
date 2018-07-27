@@ -339,6 +339,10 @@ int if_get_list(struct if_list** ifs) {
         len += sizeof(if_list);
     }
 
+    if (len == 0) {
+        return -1;
+    }
+
     void* buf = calloc(1, len);
     if (!buf) {
         return -1;

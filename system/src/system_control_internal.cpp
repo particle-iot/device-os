@@ -305,6 +305,14 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::cloud::getConnectionStatus(req));
         break;
     }
+    case CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST: {
+        setResult(req, control::network::getInterfaceList(req));
+        break;
+    }
+    case CTRL_REQUEST_NETWORK_GET_INTERFACE: {
+        setResult(req, control::network::getInterface(req));
+        break;
+    }
     case CTRL_REQUEST_MESH_AUTH: {
         setResult(req, ctrl::mesh::auth(req));
         break;

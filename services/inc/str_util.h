@@ -57,4 +57,18 @@ inline bool isPrintable(const char* str) {
     return isPrintable(str, std::strlen(str));
 }
 
+inline bool startsWith(const char* str, size_t strSize, const char* prefix, size_t prefixSize) {
+    if (strSize < prefixSize) {
+        return false;
+    }
+    if (strncmp(str, prefix, prefixSize) != 0) {
+        return false;
+    }
+    return true;
+}
+
+inline bool startsWith(const char* str, const char* prefix) {
+    return startsWith(str, strlen(str), prefix, strlen(prefix));
+}
+
 } // particle
