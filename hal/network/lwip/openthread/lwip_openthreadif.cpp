@@ -208,7 +208,7 @@ err_t OpenThreadNetif::initCb(netif* netif) {
     netif->mtu = 1280;
     netif->output_ip6 = outputIp6Cb;
     netif->rs_count = 0;
-    netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_NO_ND6;
+    netif->flags |= NETIF_FLAG_NO_ND6;
 
     /* FIXME */
     netif_set_default(netif);
