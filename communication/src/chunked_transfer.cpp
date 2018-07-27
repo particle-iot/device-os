@@ -124,7 +124,9 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
     if (!is_updating())
     {
         WARN("got chunk when not updating");
-        return INVALID_STATE;
+        // TODO: return INVALID_STATE after we add a way to have
+        // the server ACK our UpdateDone ACK before we reset_updating().
+        return NO_ERROR;
     }
 
     bool fast_ota = false;
@@ -187,17 +189,6 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
                 response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, channel.is_unreliable());
             }
             flag_chunk_received(chunk_index);
-            if (updating == 2)
-            {            // clearing up missed chunks at the end of fast OTA
-                chunk_index_t next_missed = next_chunk_missing(0);
-                if (next_missed == NO_CHUNKS_MISSING)
-                {
-                    INFO("received all chunks");
-                    reset_updating();
-                    response_size = notify_update_done(message, response, channel, 0, 0);
-                    callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
-                }
-            }
             chunk_index++;
         }
         else
@@ -273,8 +264,11 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
     if (error)
         return error;
 
-    if (!is_updating())
-        return INVALID_STATE;
+    if (!is_updating()) {
+        // TODO: return INVALID_STATE after we add a way to have
+        // the server ACK our UpdateDone ACK before we reset_updating().
+        return NO_ERROR;
+    }
 
     if (!missing)
     {
