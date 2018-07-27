@@ -18,7 +18,7 @@
 #include "deviceid_hal.h"
 #include "exflash_hal.h"
 #include "str_util.h"
-#include "random.h"
+#include "system_error.h"
 #include "dct.h"
 
 #include "nrf52840.h"
@@ -92,14 +92,8 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
             return ret;
         }
         if (!isPrintable(secret, sizeof(secret))) {
-            // Generate random data
-            Random().genBase32(secret, sizeof(secret));
-        }
-        // Update the DCT
-        ret = dct_write_app_data(secret, DCT_DEVICE_SECRET_OFFSET, sizeof(secret));
-        if (ret < 0) {
-            return ret;
-        }
+            return SYSTEM_ERROR_NOT_FOUND;
+        };
     }
     memcpy(data, secret, std::min(size, sizeof(secret)));
     return HAL_DEVICE_SECRET_SIZE;

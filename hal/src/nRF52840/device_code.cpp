@@ -20,7 +20,6 @@
 #include "deviceid_hal.h"
 
 #include "str_util.h"
-#include "random.h"
 #include "preprocessor.h"
 #include "debug.h"
 
@@ -43,25 +42,18 @@ const auto SETUP_CODE_SIZE = DCT_DEVICE_CODE_SIZE;
 const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
 
 int getDeviceSetupCode(char* code) {
-    // First, retrieve the serial number
-    char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
-    int ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
-    if (ret >= (int)SETUP_CODE_SIZE && (size_t)ret <= sizeof(serial)) {
-        // Use last characters of the serial number as the setup code
-        memcpy(code, &serial[ret - SETUP_CODE_SIZE], SETUP_CODE_SIZE);
-    } else {
-        // Fall back to the DCT
-        ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
-        if (ret < 0) {
-            return ret;
-        }
-        if (!isPrintable(code, SETUP_CODE_SIZE)) {
-            // Generate a random code
-            Random().genBase32(code, SETUP_CODE_SIZE);
-            ret = dct_write_app_data(code, SETUP_CODE_DCT_OFFSET, SETUP_CODE_SIZE);
-            if (ret < 0) {
-                return ret;
-            }
+    // Check if the device setup code is initialized in the DCT
+    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
+    if (ret < 0 || !isPrintable(code, SETUP_CODE_SIZE)) {
+        // Check the OTP memory
+        char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
+        ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
+        if (ret >= (int)SETUP_CODE_SIZE && (size_t)ret <= sizeof(serial)) {
+            // Use last characters of the serial number as the setup code
+            memcpy(code, &serial[ret - SETUP_CODE_SIZE], SETUP_CODE_SIZE);
+        } else {
+            // Return a dummy setup code
+            memset(code, 'X', SETUP_CODE_SIZE);
         }
     }
     return 0;
@@ -104,17 +96,11 @@ int get_device_name(char* buf, size_t size) {
             nameSize = DEVICE_NAME_MAX_SIZE - SETUP_CODE_SIZE - 1;
         }
         // Generate device name
-        memset(dctName, 0xff, DEVICE_NAME_DCT_SIZE);
         memcpy(name, platform, nameSize);
         name[0] = toupper(name[0]); // Ensure the first letter is capitalized
         name[nameSize++] = '-';
         memcpy(name + nameSize, code, SETUP_CODE_SIZE);
         nameSize += SETUP_CODE_SIZE;
-        dctName[0] = nameSize;
-        ret = dct_write_app_data(dctName, DEVICE_NAME_DCT_OFFSET, DEVICE_NAME_DCT_SIZE);
-        if (ret < 0) {
-            return ret;
-        }
     }
     memcpy(buf, name, std::min(nameSize, size));
     // Ensure the output buffer is always null-terminated
