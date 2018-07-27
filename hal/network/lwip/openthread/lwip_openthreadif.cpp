@@ -36,6 +36,8 @@ LOG_SOURCE_CATEGORY("net.th")
 #include "ipaddr_util.h"
 #include "lwiplock.h"
 
+#include <lwip/opt.h>
+
 using namespace particle::net;
 
 namespace {
@@ -140,6 +142,9 @@ const char* routerPreferenceToString(int pref) {
     return prefs[pref];
 }
 
+const uint8_t THREAD_DNS_SERVER_INDEX =
+    std::min(DNS_MAX_SERVERS - 1, std::max(LWIP_DHCP_MAX_DNS_SERVERS, LWIP_DHCP6_MAX_DNS_SERVERS));
+
 } /* anonymous */
 
 OpenThreadNetif::OpenThreadNetif(otInstance* ot)
@@ -175,19 +180,6 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
 
     /* Register OpenThread state changed callback */
     otSetStateChangedCallback(ot_, otStateChangedCb, this);
-
-    {
-        LwipTcpIpCoreLock lk;
-        ip_addr_t dns;
-        ipaddr_aton("64:ff9b::808:808", &dns);
-        dns_setserver(0, &dns);
-        ipaddr_aton("64:ff9b::808:404", &dns);
-        dns_setserver(1, &dns);
-        ipaddr_aton("8.8.8.8", &dns);
-        dns_setserver(2, &dns);
-        ipaddr_aton("8.8.4.4", &dns);
-        dns_setserver(3, &dns);
-    }
 }
 
 OpenThreadNetif::~OpenThreadNetif() {
@@ -513,7 +505,7 @@ void OpenThreadNetif::refreshIpAddresses() {
         otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, activeAddr);
 
         LOG_DEBUG(TRACE, "Candidate preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
-            IP6ADDR_NTOA(&addr).str, config.mPrefix.mLength,
+            IP6ADDR_NTOA(&addr), config.mPrefix.mLength,
             routerPreferenceToString(config.mPreference),
             config.mRloc16,
             config.mPreferred,
@@ -561,12 +553,20 @@ void OpenThreadNetif::refreshIpAddresses() {
             ip6_addr_t addr = {};
             otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, addr);
             LOG(INFO, "Switched over to a new preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
-                IP6ADDR_NTOA(&addr).str, active.mPrefix.mLength,
+                IP6ADDR_NTOA(&addr), active.mPrefix.mLength,
                 routerPreferenceToString(active.mPreference),
                 active.mRloc16,
                 active.mPreferred,
                 active.mStable);
             abr_ = active;
+
+            if (abr_.mRloc16 != ourRloc16) {
+                /* Pref::1 */
+                addr.addr[3] = PP_HTONL(1);
+                setDns(&addr);
+            } else {
+                setDns(nullptr);
+            }
         }
     } else {
         memset(&abr_, 0, sizeof(abr_));
@@ -617,7 +617,6 @@ void OpenThreadNetif::refreshIpAddresses() {
             } else {
                 /* Pref::1/PrefLen */
                 addresses_[i].mAddress.mFields.m8[OT_IP6_ADDRESS_SIZE - 1] = 0x01;
-                addresses_[i].mScopeOverrideValid = true;
             }
             otIp6AddUnicastAddress(ot_, &addresses_[i]);
             break;
@@ -705,4 +704,17 @@ void OpenThreadNetif::ifEventHandler(const if_event* ev) {
 
 void OpenThreadNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
     /* Nothing to do here */
+}
+
+void OpenThreadNetif::setDns(const ip6_addr_t* addr) {
+    LwipTcpIpCoreLock lk;
+    if (addr) {
+        ip_addr_t ipaddr = {};
+        ip_addr_copy_from_ip6(ipaddr, *addr);
+        dns_setserver(THREAD_DNS_SERVER_INDEX, &ipaddr);
+        LOG(INFO, "DNS server on mesh network: %s", IPADDR_NTOA(&ipaddr));
+    } else {
+        dns_setserver(THREAD_DNS_SERVER_INDEX, nullptr);
+        LOG(INFO, "No DNS server on mesh network");
+    }
 }

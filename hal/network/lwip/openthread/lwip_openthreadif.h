@@ -60,6 +60,8 @@ private:
     int up();
     int down();
 
+    void setDns(const ip6_addr_t* addr);
+
 private:
     otInstance* ot_ = nullptr;
     otNetifAddress addresses_[OPENTHREAD_CONFIG_MAX_EXT_IP_ADDRS] = {};

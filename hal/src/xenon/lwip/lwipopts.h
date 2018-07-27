@@ -597,7 +597,7 @@ void sys_unlock_tcpip_core(void);
  * DHCP servers received in the response are passed to DNS via @ref dns_setserver()
  * (up to the maximum limit defined here).
  */
-// #define LWIP_DHCP_MAX_DNS_SERVERS       DNS_MAX_SERVERS
+#define LWIP_DHCP_MAX_DNS_SERVERS       2
 
 /*
    ------------------------------------
@@ -675,7 +675,7 @@ void sys_unlock_tcpip_core(void);
 #define LWIP_DNS                        1
 
 /** DNS maximum number of entries to maintain locally. */
-#define DNS_TABLE_SIZE                  4
+#define DNS_TABLE_SIZE                  32
 
 /** DNS maximum host name length supported in the name table. */
 #define DNS_MAX_NAME_LENGTH             256
@@ -687,7 +687,7 @@ void sys_unlock_tcpip_core(void);
 #define DNS_MAX_SERVERS                 4
 
 /** DNS maximum number of retries when asking for a name, before "timeout". */
-#define DNS_MAX_RETRIES           4
+#define DNS_MAX_RETRIES                 3
 
 /** DNS do a name checking between the query and the response. */
 #define DNS_DOES_NAME_CHECK             1
@@ -1829,6 +1829,14 @@ void sys_unlock_tcpip_core(void);
  * LWIP_IPV6_DHCP6==1: enable DHCPv6 stateful address autoconfiguration.
  */
 #define LWIP_IPV6_DHCP6                 1
+
+/**
+ * LWIP_DHCP6_MAX_DNS_SERVERS > 0: Request DNS servers via DHCPv6.
+ * DNS servers received in the response are passed to DNS via @ref dns_setserver()
+ * (up to the maximum limit defined here).
+ */
+#define LWIP_DHCP6_MAX_DNS_SERVERS      2
+
 
 /*
    ---------------------------------------

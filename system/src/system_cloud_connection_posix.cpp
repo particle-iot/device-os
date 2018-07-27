@@ -26,11 +26,6 @@
 #include "system_string_interpolate.h"
 #include "spark_wiring_ticks.h"
 
-/* XXX: REMOVE when DNS64 is implemented on Border Router */
-#if HAL_PLATFORM_OPENTHREAD
-#include "ifapi.h"
-#endif /* HAL_PLATFORM_OPENTHREAD */
-
 namespace {
 
 enum CloudServerAddressType {
@@ -141,20 +136,6 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
 
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
         /* Iterate over all the addresses and attempt to connect */
-
-        /* XXX: REMOVE when DNS64 is implemented on Border Router */
-#if HAL_PLATFORM_OPENTHREAD
-        if (if_get_by_index(3, nullptr) && a->ai_family == AF_INET) {
-            a->ai_family = AF_INET6;
-            sockaddr_in6* sin6 = ((sockaddr_in6*)a->ai_addr);
-            uint32_t addr = ((sockaddr_in*)a->ai_addr)->sin_addr.s_addr;
-            inet_inet_pton(AF_INET6, "64:ff9b::", &sin6->sin6_addr);
-            sin6->sin6_addr.un.u32_addr[3] = addr;
-            sin6->sin6_len = sizeof(*sin6);
-            sin6->sin6_family = AF_INET6;
-            sin6->sin6_scope_id = 0;
-        }
-#endif /* HAL_PLATFORM_OPENTHREAD */
 
         int s = sock_socket(a->ai_family, a->ai_socktype, a->ai_protocol);
         if (s < 0) {
