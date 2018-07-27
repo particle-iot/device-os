@@ -77,10 +77,11 @@ void network_disconnect(network_handle_t network, uint32_t reason, void* reserve
         cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
         SPARK_WLAN_STARTED = 0;
         s_forcedDisconnect = true;
-        NetworkManager::instance()->deactivateConnections();
-        /* FIXME: should not loop in here */
-        while (NetworkManager::instance()->getState() != NetworkManager::State::IFACE_DOWN) {
-            HAL_Delay_Milliseconds(1);
+        if (!NetworkManager::instance()->deactivateConnections()) {
+            /* FIXME: should not loop in here */
+            while (NetworkManager::instance()->getState() != NetworkManager::State::IFACE_DOWN) {
+                HAL_Delay_Milliseconds(1);
+            }
         }
     }());
 }
@@ -119,9 +120,6 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         SPARK_WLAN_SLEEP = 1;
         network_disconnect(0, 0, 0);
         /* FIXME: should not loop in here */
-        while (NetworkManager::instance()->getState() != NetworkManager::State::IFACE_DOWN) {
-            HAL_Delay_Milliseconds(1);
-        }
         NetworkManager::instance()->disableNetworking();
 
         if (flags & 1) {
