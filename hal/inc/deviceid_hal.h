@@ -36,7 +36,7 @@
 #define HAL_DEVICE_SERIAL_NUMBER_SIZE 15
 
 // Size of the device secret data
-#define HAL_DEVICE_SECRET_SIZE 32
+#define HAL_DEVICE_SECRET_SIZE 15
 
 #ifdef	__cplusplus
 extern "C" {
