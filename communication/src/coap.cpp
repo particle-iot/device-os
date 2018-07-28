@@ -28,14 +28,21 @@ namespace particle { namespace protocol {
 
 CoAPCode::Enum CoAP::code(const unsigned char *message)
 {
-  switch (message[1])
+	CoAPCode::Enum code = (CoAPCode::Enum)message[1];
+  switch (code)
   {
     case 0x00: return CoAPCode::EMPTY;
     case 0x01: return CoAPCode::GET;
     case 0x02: return CoAPCode::POST;
     case 0x03: return CoAPCode::PUT;
     case 0x45: return CoAPCode::CONTENT;
-    default: return CoAPCode::ERROR;
+
+    default:
+    	// todo - add all recognised codes. Via a smart macro to void manually repeating them.
+		if (CoAPCode::is_success(code)) {	// should have been handled above.
+			return CoAPCode::ERROR;
+		}
+		return code;						// allow any error code
   }
 }
 
