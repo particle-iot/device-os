@@ -43,7 +43,7 @@ SCENARIO("CoAP::code")
     msg[1] = 0x45;
     REQUIRE(coap.code(msg)==CoAPCode::CONTENT);
 
-    msg[1] = 10;
+    msg[1] = 10;	// todo - this is not a valid CoAP code in the spec
     REQUIRE(coap.code(msg)==CoAPCode::ERROR);
 
 }
