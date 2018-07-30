@@ -36,6 +36,8 @@
 
 #include <algorithm>
 #include "nrf_delay.h"
+#include "deviceid_hal.h"
+#include "bytes2hexbuf.h"
 
 using namespace particle::usbd;
 
@@ -174,6 +176,14 @@ const uint8_t USBD_MsftStrDesc[] = {
     0xee
   )
 };
+
+
+char* device_id_as_string(char* buf) {
+  uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
+  unsigned deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+  bytes2hexbuf_lower_case(deviceId, deviceIdLen, buf);
+  return buf;
+}
 
 } /* anonymous */
 
@@ -714,8 +724,8 @@ const uint8_t* NrfDevice::getString(SetupRequest* r, uint16_t* len) {
       return getUnicodeString(USBD_PRODUCT_STRING, sizeof(USBD_PRODUCT_STRING) - 1, len);
     }
     case STRING_IDX_SERIAL: {
-      /* FIXME: Once we have deviceid_hal, we should report actual device ID here */
-      return getUnicodeString("0", 1, len);
+      char deviceid[HAL_DEVICE_ID_SIZE * 2 + 1] = {};
+      return getUnicodeString(device_id_as_string(deviceid), sizeof(deviceid) - 1, len);
     }
     case STRING_IDX_CONFIG: {
       return getUnicodeString(USBD_CONFIGURATION_STRING, sizeof(USBD_CONFIGURATION_STRING) - 1, len);

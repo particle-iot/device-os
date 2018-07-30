@@ -19,7 +19,9 @@
 #include "exflash_hal.h"
 #include "str_util.h"
 #include "system_error.h"
+#ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct.h"
+#endif /* HAL_DEVICE_ID_NO_DCT */
 
 #include "nrf52840.h"
 
@@ -76,6 +78,7 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
     return HAL_DEVICE_SERIAL_NUMBER_SIZE;
 }
 
+#ifndef HAL_DEVICE_ID_NO_DCT
 int hal_get_device_secret(char* data, size_t size, void* reserved)
 {
     // Check if the device secret data is initialized in the DCT
@@ -98,3 +101,5 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
     memcpy(data, secret, std::min(size, sizeof(secret)));
     return HAL_DEVICE_SECRET_SIZE;
 }
+#endif /* HAL_DEVICE_ID_NO_DCT */
+
