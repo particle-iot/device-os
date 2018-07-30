@@ -24,6 +24,7 @@
 #include "common.h"
 
 #include "concurrent_hal.h"
+#include "delay_hal.h"
 
 #include "bytes2hexbuf.h"
 #include "hex_to_bytes.h"
@@ -78,6 +79,9 @@ namespace {
 // Default IEEE 802.15.4 channel
 const unsigned DEFAULT_CHANNEL = 11;
 
+// Timeout is seconds after which the commissioner role is automatically stopped
+const unsigned COMMISSIONER_TIMEOUT = 120;
+
 // Timeout in seconds after which a joiner is automatically removed from the commissioner's list
 const unsigned JOINER_TIMEOUT = 120;
 
@@ -99,6 +103,9 @@ const char* const VENDOR_DATA = "";
 // Current joining device credential
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
+// Commissioner role timer
+os_timer_t g_commTimer = nullptr;
+
 class Random: public particle::Random {
 public:
     void genBase32Thread(char* data, size_t size) {
@@ -109,6 +116,45 @@ public:
         genAlpha(data, size, alpha, sizeof(alpha));
     }
 };
+
+void commissionerTimeout(os_timer_t timer);
+
+void stopCommissionerTimer() {
+    if (g_commTimer) {
+        os_timer_destroy(g_commTimer, nullptr);
+        g_commTimer = nullptr;
+        LOG_DEBUG(TRACE, "Commissioner timer stopped");
+    }
+}
+
+int startCommissionerTimer() {
+    if (!g_commTimer) {
+        const int ret = os_timer_create(&g_commTimer, COMMISSIONER_TIMEOUT * 1000, commissionerTimeout, nullptr, true, nullptr);
+        if (ret != 0) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+    }
+    const int ret = os_timer_change(g_commTimer, OS_TIMER_CHANGE_START, false, 0, 0xffffffff, nullptr);
+    if (ret != 0) {
+        stopCommissionerTimer();
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    LOG_DEBUG(TRACE, "Commissioner timer started");
+    return 0;
+}
+
+void commissionerTimeout(os_timer_t timer) {
+    THREAD_LOCK(lock);
+    LOG_DEBUG(TRACE, "Commissioner timeout");
+    stopCommissionerTimer();
+    const auto thread = threadInstance();
+    if (otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_DISABLED) {
+        const auto ret = otCommissionerStop(thread);
+        if (ret != OT_ERROR_NONE) {
+            LOG(WARN, "otCommissionerStop() failed: %d", (int)ret);
+        }
+    }
+}
 
 int threadToSystemError(otError error) {
     switch (error) {
@@ -126,6 +172,8 @@ int threadToSystemError(otError error) {
         return SYSTEM_ERROR_BUSY;
     case OT_ERROR_ABORT:
         return SYSTEM_ERROR_ABORTED;
+    case OT_ERROR_INVALID_STATE:
+        return SYSTEM_ERROR_INVALID_STATE;
     default:
         return SYSTEM_ERROR_UNKNOWN;
     }
@@ -288,11 +336,24 @@ int startCommissioner(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    const auto state = otCommissionerGetState(thread);
+    otCommissionerState state = otCommissionerGetState(thread);
     if (state == OT_COMMISSIONER_STATE_DISABLED) {
         CHECK_THREAD(otCommissionerStart(thread));
-        CHECK_THREAD(otCommissionerSetProvisioningUrl(thread, nullptr));
     }
+    // FIXME: Subscribe to OpenThread events instead of polling
+    for (;;) {
+        state = otCommissionerGetState(thread);
+        if (state != OT_COMMISSIONER_STATE_PETITION) {
+            break;
+        }
+        lock.unlock();
+        HAL_Delay_Milliseconds(500);
+        lock.lock();
+    }
+    if (state != OT_COMMISSIONER_STATE_ACTIVE) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    startCommissionerTimer();
     return 0;
 }
 
@@ -306,6 +367,7 @@ int stopCommissioner(ctrl_request* req) {
     if (state != OT_COMMISSIONER_STATE_DISABLED) {
         CHECK_THREAD(otCommissionerStop(thread));
     }
+    stopCommissionerTimer();
     return 0;
 }
 
