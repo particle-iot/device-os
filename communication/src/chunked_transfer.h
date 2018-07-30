@@ -75,6 +75,11 @@ private:
 	 * Marks the indices of missed chunks not yet requested.
 	 */
 	chunk_index_t missed_chunk_index;
+	/**
+	 * Number of chunks received in the current flight of chunks (between UpdateBegin|UpdateDone and UpdateDone)
+	 */
+	chunk_index_t chunk_count;
+
 	unsigned short chunk_index;
 	unsigned short chunk_size;
 
