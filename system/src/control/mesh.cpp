@@ -123,7 +123,6 @@ void stopCommissionerTimer() {
     if (g_commTimer) {
         os_timer_destroy(g_commTimer, nullptr);
         g_commTimer = nullptr;
-        LOG_DEBUG(TRACE, "Commissioner timer stopped");
     }
 }
 
@@ -336,11 +335,22 @@ int startCommissioner(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    CHECK_THREAD(otIp6SetEnabled(thread, true));
+    CHECK_THREAD(otThreadSetEnabled(thread, true));
+    // FIXME: Subscribe to OpenThread events instead of polling
+    for (;;) {
+        const auto role = otThreadGetDeviceRole(thread);
+        if (role != OT_DEVICE_ROLE_DETACHED) {
+            break;
+        }
+        lock.unlock();
+        HAL_Delay_Milliseconds(500);
+        lock.lock();
+    }
     otCommissionerState state = otCommissionerGetState(thread);
     if (state == OT_COMMISSIONER_STATE_DISABLED) {
         CHECK_THREAD(otCommissionerStart(thread));
     }
-    // FIXME: Subscribe to OpenThread events instead of polling
     for (;;) {
         state = otCommissionerGetState(thread);
         if (state != OT_COMMISSIONER_STATE_PETITION) {
