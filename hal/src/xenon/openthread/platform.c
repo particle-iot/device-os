@@ -43,6 +43,7 @@
 #if SOFTDEVICE_PRESENT
 #include <nrf_sdh_soc.h>
 #include "softdevice.h"
+#include "platform-softdevice.h"
 #endif /* SOFTDEVICE_PRESENT */
 
 #include <openthread/config.h>
@@ -91,6 +92,19 @@ void PlatformInit(int argc, char *argv[])
 
 #if SOFTDEVICE_PRESENT
     NRF_SDH_SOC_OBSERVER(socObserver, NRF_SDH_SOC_STACK_OBSERVER_PRIO, processSocEvent, NULL);
+#endif /* SOFTDEVICE_PRESENT */
+
+#if SOFTDEVICE_PRESENT
+    // Correct the PPM for the LF crystal
+    const PlatformSoftdeviceRaalConfigParams config = {
+        .timeslotLength     = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_LENGTH,
+        .timeslotTimeout    = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_TIMEOUT,
+        .timeslotMaxLength  = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_MAX_LENGTH,
+        .timeslotAllocIters = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_ALLOC_ITERS,
+        .timeslotSafeMargin = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_SAFE_MARGIN,
+        .lfClkAccuracyPpm   = 20
+    };
+    PlatformSoftdeviceRaalConfig(&config);
 #endif /* SOFTDEVICE_PRESENT */
 }
 
