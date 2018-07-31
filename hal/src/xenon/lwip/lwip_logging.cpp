@@ -15,23 +15,21 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_LWIP_LOGGING_H
-#define HAL_LWIP_LOGGING_H
+#include "lwip_logging.h"
+#include <cstring>
+#include "logging.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+uint32_t g_lwip_debug_flags = 0xffffffff;
 
-void lwip_log_message(const char *fmt, ...);
+void lwip_log_message(const char* fmt, ...) {
+    LogAttributes attr = {};
+    va_list args;
+    va_start(args, fmt);
 
-#ifdef __cplusplus
+    char tmp[LOG_MAX_STRING_LENGTH] = {};
+    strncpy(tmp, fmt, sizeof(tmp));
+    tmp[strcspn(tmp, "\r\n")] = 0;
+
+    log_message_v(1, "lwip", &attr, nullptr /* reserved */, tmp, args);
+    va_end(args);
 }
-#endif /* __cplusplus */
-
-#ifdef DEBUG_BUILD
-#define LWIP_PLATFORM_DIAG(x) do { lwip_log_message x; } while(0)
-#else
-#define LWIP_PLATFORM_DIAG(x)
-#endif /* DEBUG_BUILD */
-
-#endif /* HAL_LWIP_LOGGING_H */

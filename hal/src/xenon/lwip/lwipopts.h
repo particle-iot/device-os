@@ -1857,7 +1857,7 @@ void sys_unlock_tcpip_core(void);
    ---------------------------------------
 */
 
-#define LWIP_DEBUG                      1
+#define LWIP_DEBUG                      defined(DEBUG_BUILD)
 
 /**
  * LWIP_DBG_MIN_LEVEL: After masking, the value of the debug is
@@ -1884,7 +1884,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * NETIF_DEBUG: Enable debugging in netif.c.
  */
-#define NETIF_DEBUG                     LWIP_DBG_ON
+#define NETIF_DEBUG                     LWIP_DBG_OFF
 
 /**
  * PBUF_DEBUG: Enable debugging in pbuf.c.
@@ -1909,7 +1909,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * ICMP_DEBUG: Enable debugging in icmp.c.
  */
-#define ICMP_DEBUG                      LWIP_DBG_ON
+#define ICMP_DEBUG                      LWIP_DBG_OFF
 
 /**
  * IGMP_DEBUG: Enable debugging in igmp.c.
@@ -2020,7 +2020,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * DHCP_DEBUG: Enable debugging in dhcp.c.
  */
-#define DHCP_DEBUG                      LWIP_DBG_ON
+#define DHCP_DEBUG                      LWIP_DBG_OFF
 
 /**
  * AUTOIP_DEBUG: Enable debugging in autoip.c.
