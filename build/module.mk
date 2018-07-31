@@ -166,7 +166,7 @@ size: $(TARGET_BASE).elf
 # create a object listing from the elf file
 %.lst: %.elf
 	$(call,echo,'Invoking: ARM GNU Create Listing')
-#	$(VERBOSE)$(OBJDUMP) -h -S $< > $@
+	$(VERBOSE)$(OBJDUMP) -h -S $< > $@
 	$(call,echo,'Finished building: $@')
 	$(call,echo,)
 

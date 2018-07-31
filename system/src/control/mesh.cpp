@@ -46,6 +46,7 @@
 
 #include "proto/mesh.pb.h"
 
+#include "system_commands.h"
 #include <mutex>
 #include <cstdlib>
 
@@ -213,6 +214,62 @@ int auth(ctrl_request* req) {
     return 0;
 }
 
+using namespace MeshCommand;
+int notifyNetworkUpdated(int flags) {
+    NotifyMeshNetworkUpdated cmd;
+    NetworkInfo& ni = cmd.ni;
+    // todo - consolidate with getNetworkInfo - decouple fetching the network info from the
+    // control request decoding/result encoding.
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    if (!thread) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!otDatasetIsCommissioned(thread)) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    if (flags & NetworkInfo::NAME_VALID) {
+        // Network name
+        const char* name = otThreadGetNetworkName(thread);
+        if (!name) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        size_t length = strlen(name);
+        strncpy(ni.name, name, MAX_NETWORK_NAME_LENGTH);
+        ni.name_length = length;
+    }
+    if (flags & NetworkInfo::CHANNEL_VALID) {
+    // Channel
+        ni.channel = otLinkGetChannel(thread);
+    }
+    if (flags & NetworkInfo::PANID_VALID) {
+        // PAN ID
+        const otPanId panId = otLinkGetPanId(thread);
+        ni.panid[0] = panId>>8;
+        ni.panid[1] = panId&0xFF;
+    }
+    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    if (!extPanId) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    memcpy(ni.update.id, extPanId, sizeof(ni.xpanid));
+    if (flags & NetworkInfo::XPANID_VALID) {
+        // Extended PAN ID
+        memcpy(ni.xpanid, extPanId, sizeof(ni.xpanid));
+    }
+    if (flags & NetworkInfo::ON_MESH_PREFIX_VALID) {
+        const uint8_t* prefix = otThreadGetMeshLocalPrefix(thread);
+        if (!prefix) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        memcpy(ni.on_mesh_prefix, prefix, 8);
+    }
+
+    ni.update.size = sizeof(ni);
+    ni.flags = flags;
+    return system_command_enqueue(cmd, sizeof(cmd));
+}
+
 int createNetwork(ctrl_request* req) {
     THREAD_LOCK(lock);
     const auto thread = threadInstance();
@@ -358,6 +415,8 @@ int createNetwork(ctrl_request* req) {
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
+    notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED|NetworkInfo::PANID_VALID|NetworkInfo::XPANID_VALID|NetworkInfo::CHANNEL_VALID|NetworkInfo::ON_MESH_PREFIX_VALID|NetworkInfo::NAME_VALID);
+
     // Encode a reply
     char extPanIdStr[sizeof(extPanId) * 2] = {};
     bytes2hexbuf_lower_case((const uint8_t*)&extPanId, sizeof(extPanId), extPanIdStr);
@@ -515,6 +574,22 @@ int removeJoiner(ctrl_request* req) {
     return 0;
 }
 
+int notifyJoined(bool joined) {
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    if (!extPanId) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    NotifyMeshNetworkJoined cmd;
+    cmd.nu.size = sizeof(cmd.nu);
+    memcpy(cmd.nu.id, extPanId, sizeof(cmd.nu.id));
+    cmd.joined = joined;
+
+    return system_command_enqueue(cmd, sizeof(cmd));
+}
+
 void joinNetwork(ctrl_request* req) {
     THREAD_LOCK(lock);
     const auto thread = threadInstance();
@@ -548,6 +623,9 @@ void joinNetwork(ctrl_request* req) {
         LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
         system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
     }
+    else {
+        notifyJoined(true);
+    }
 }
 
 int leaveNetwork(ctrl_request* req) {
@@ -556,6 +634,7 @@ int leaveNetwork(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    notifyJoined(false);
     // Disable Thread protocol
     CHECK_THREAD(otThreadSetEnabled(thread, false));
     // Clear master key (invalidates active and pending datasets)

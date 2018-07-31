@@ -64,46 +64,46 @@ struct SparkCallbacks
 
     uint8_t reserved;
 
-  int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
-  int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
+	int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
+	int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 
-  /**
-   * @param flags 1 dry run only.
-   * Return 0 on success.
-   */
-  int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+	/**
+	* @param flags 1 dry run only.
+	* Return 0 on success.
+	*/
+	int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
 
-  /**
-   *
-   * @return 0 on success
-   */
-  int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
+	/**
+	*
+	* @return 0 on success
+	*/
+	int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
 
-  /**
-   * Finalize the data storage.
-   * #param reset - if the device should be reset to apply the changes.
-   * #return 0 on success. Other values indicate an issue with the file.
-   */
-  int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+	/**
+	* Finalize the data storage.
+	* #param reset - if the device should be reset to apply the changes.
+	* #return 0 on success. Other values indicate an issue with the file.
+	*/
+	int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
 
-  uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
+	uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
 
-  void (*signal)(bool on, unsigned int param, void* reserved);
-  system_tick_t (*millis)();
+	void (*signal)(bool on, unsigned int param, void* reserved);
+	system_tick_t (*millis)();
 
-  /**
-   * Sets the time. Time is given in milliseconds since the epoch, UCT.
-   */
-  void (*set_time)(time_t t, unsigned int param, void* reserved);
+	/**
+	* Sets the time. Time is given in milliseconds since the epoch, UCT.
+	*/
+	void (*set_time)(time_t t, unsigned int param, void* reserved);
 
-  // size == 40
+	// size == 40
 
-  /**
-   * A pointer that is passed back to the send/receive functions.
-   */
-  void* transport_context;
+	/**
+	* A pointer that is passed back to the send/receive functions.
+	*/
+	void* transport_context;
 
-  // size == 44
+	// size == 44
 
   	enum PersistType
 	{

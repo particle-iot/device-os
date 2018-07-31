@@ -472,8 +472,6 @@ public:
 
 	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
 
-	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
-
 #if PLATFORM_MESH
 	int mesh_command(MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion);
 #endif

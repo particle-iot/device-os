@@ -47,6 +47,7 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
+#include "system_commands.h"
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
@@ -450,6 +451,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_ip_config();
 
         CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+
+        particle::system::fetchAndExecuteCommand(millis());
     }
     else
     {

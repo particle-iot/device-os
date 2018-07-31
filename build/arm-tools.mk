@@ -65,6 +65,3 @@ endif
 ifeq ($(shell test $(quote)$(arm_gcc_version)$(quote) $(lt) $(quote)4.9.0$(quote); echo $$?),0)
      NANO_SUFFIX=_s
 endif
-
-# hack workaround to fake mesh support on a photon
-CFLAGS += -DPLATFORM_MESH=1
