@@ -60,14 +60,24 @@ system_error_t toSystemError(ProtocolError error);
 typedef uint16_t chunk_index_t;
 
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
-const chunk_index_t MAX_CHUNKS = 65535;
-const size_t MISSED_CHUNKS_TO_SEND = 50;
-const size_t MAX_FUNCTION_ARG_LENGTH = 64;
-const size_t MAX_FUNCTION_KEY_LENGTH = 12;
-const size_t MAX_VARIABLE_KEY_LENGTH = 12;
-const size_t MAX_EVENT_NAME_LENGTH = 64;
-const size_t MAX_EVENT_DATA_LENGTH = 64;
-const size_t MAX_EVENT_TTL_SECONDS = 16777215;
+const chunk_index_t MAX_CHUNKS        = 65535;
+const size_t MISSED_CHUNKS_TO_SEND    = 40u;
+const size_t MINIMUM_CHUNK_INCREASE   = 2u;
+const size_t MAX_EVENT_TTL_SECONDS    = 16777215;
+const size_t MAX_OPTION_DELTA_LENGTH  = 12;
+#if PLATFORM_ID<2
+    const size_t MAX_FUNCTION_ARG_LENGTH = 64;
+    const size_t MAX_FUNCTION_KEY_LENGTH = 12;
+    const size_t MAX_VARIABLE_KEY_LENGTH = 12;
+    const size_t MAX_EVENT_NAME_LENGTH   = 64;
+    const size_t MAX_EVENT_DATA_LENGTH   = 255;
+#else
+    const size_t MAX_FUNCTION_ARG_LENGTH = 622;
+    const size_t MAX_FUNCTION_KEY_LENGTH = 64;
+    const size_t MAX_VARIABLE_KEY_LENGTH = 64;
+    const size_t MAX_EVENT_NAME_LENGTH   = 64;
+    const size_t MAX_EVENT_DATA_LENGTH   = 622;
+#endif
 
 // Timeout in milliseconds given to receive an acknowledgement for a published event
 const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
@@ -100,7 +110,8 @@ namespace Connection
 {
 enum Enum
 {
-    PING = 0
+    PING = 0,
+    FAST_OTA = 1
 };
 }
 
@@ -115,6 +126,21 @@ enum Enum {
     ERROR         = 0x00,
     SUCCESS       = 0x01,
     VALIDATE_ONLY = 0x02
+};
+}
+
+typedef uint32_t keepalive_source_t;
+
+typedef struct
+{
+    uint16_t size;
+    keepalive_source_t keepalive_source;
+} connection_properties_t;
+
+namespace KeepAliveSource {
+enum Enum {
+    USER   = 1<<0,   // set by user in wiring
+    SYSTEM = 1<<1    // set by system
 };
 }
 

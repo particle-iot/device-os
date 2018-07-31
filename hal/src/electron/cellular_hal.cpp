@@ -14,6 +14,35 @@ static CellularNetProv cellularNetProv = CELLULAR_NETPROV_TELEFONICA;
 // CELLULAR_NET_PROVIDER_DATA[CELLULAR_NETPROV_MAX - 1] is the last provider record
 const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_DATA };
 
+namespace
+{
+
+const char* defaultOrUserApn(const CellularCredentials& cred)
+{
+    if ((cred.apn && *cred.apn) || (cred.username && *cred.username) || (cred.password && *cred.password)) {
+        // Use user-provided APN
+        return cred.apn;
+    } else {
+        // Determine APN based on IMSI
+        auto ret = cellular_imsi_to_network_provider(nullptr);
+        if (ret != 0) {
+            // Should never get here since we always return 0 from above
+            return cred.apn;
+        }
+        // If we are potentially still defaulting to Telefonica, check for R410 modem type
+        if (cellularNetProv == CELLULAR_NETPROV_TELEFONICA) {
+            // Determine APN based on Modem Type
+            const DevStatus* const status = electronMDM.getDevStatus();
+            if (status->dev == DEV_SARA_R410) {
+                cellularNetProv = CELLULAR_NETPROV_KORE;
+            }
+        }
+        return CELLULAR_NET_PROVIDER_DATA[cellularNetProv].apn;
+    }
+}
+
+} // namespace
+
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
 static HAL_NET_Callbacks netCallbacks = { 0 };
@@ -118,6 +147,22 @@ cellular_result_t  cellular_gprs_detach(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.detach());
     HAL_NET_notify_disconnected();
+    return 0;
+}
+
+cellular_result_t cellular_connect(void* reserved)
+{
+    const CellularCredentials& cred = cellularCredentials;
+    const char* apn = cred.apn;
+    // TODO: Look for an APN based on IMSI for LTE providers as well
+    apn = defaultOrUserApn(cred);
+    CHECK_SUCCESS(electronMDM.connect(apn, cred.username, cred.password));
+    return 0;
+}
+
+cellular_result_t cellular_disconnect(void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.disconnect());
     return 0;
 }
 
