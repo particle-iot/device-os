@@ -28,6 +28,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "timer_hal.h"
 #include "deviceid_hal.h"
 
+#include "scope_guard.h"
 #include "endian.h"
 #include "debug.h"
 
@@ -689,8 +690,9 @@ BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handle
         curConnHandle_(BLE_INVALID_CONN_HANDLE),
         connId_(0),
         curConnId_(0),
+        packetCount_(0),
         maxPacketSize_(0),
-        notifEnabled_(false),
+        subscribed_(false),
         writable_(false),
         sendCharHandle_(BLE_INVALID_ATTR_HANDLE),
         recvCharHandle_(BLE_INVALID_ATTR_HANDLE) {
@@ -812,10 +814,11 @@ void BleControlRequestChannel::freeRequestData(ctrl_request* ctrlReq) {
 }
 
 void BleControlRequestChannel::setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) {
-    // TODO: Completion handling
     const auto req = static_cast<Request*>(ctrlReq);
     freeRequestData(req);
     req->result = result;
+    req->handler = handler;
+    req->handlerData = data;
     const std::lock_guard<Mutex> lock(readyReqsLock_);
     readyReqs_.pushBack(req);
 }
@@ -837,7 +840,12 @@ void BleControlRequestChannel::resetChannel() {
     aesCcm_.reset();
 #endif
     packetBuf_.reset();
+    std::unique_lock<Mutex> lock(readyReqsLock_);
     while (Request* req = readyReqs_.popFront()) {
+        freeRequest(req);
+    }
+    lock.unlock();
+    while (Request* req = pendingReps_.popFront()) {
         freeRequest(req);
     }
     while (Buffer* buf = outBufs_.popFront()) {
@@ -885,7 +893,7 @@ int BleControlRequestChannel::receiveRequest() {
     memcpy(&rh, p + MESSAGE_HEADER_SIZE, REQUEST_HEADER_SIZE);
     curReq_->id = littleEndianToNative(rh.id); // Request ID
     curReq_->type = littleEndianToNative(rh.type); // Request type
-    LOG(TRACE, "Received a request message, ID: %u", (unsigned)curReq_->id);
+    LOG(TRACE, "Received a request message; type: %u, ID: %u", (unsigned)curReq_->type, (unsigned)curReq_->id);
     // Process request
     handler()->processRequest(curReq_, this);
     curReq_ = nullptr;
@@ -907,13 +915,12 @@ int BleControlRequestChannel::sendReply() {
     if (!req) {
         return 0; // Nothing to send
     }
+    NAMED_SCOPE_GUARD(reqGuard, {
+        freeRequest(req);
+    });
     // Make sure we have a buffer to serialize the reply
     if (!req->repBuf) {
-        const int ret = reallocBuffer(MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + MESSAGE_FOOTER_SIZE, &req->repBuf);
-        if (ret != 0) {
-            freeRequest(req);
-            return ret;
-        }
+        CHECK(reallocBuffer(MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + MESSAGE_FOOTER_SIZE, &req->repBuf));
     }
     const auto p = req->repBuf->data;
     // Serialize message header
@@ -925,22 +932,20 @@ int BleControlRequestChannel::sendReply() {
     rh.id = nativeToLittleEndian(req->id);
     rh.result = nativeToLittleEndian(req->result);
     memcpy(p + MESSAGE_HEADER_SIZE, &rh, REPLY_HEADER_SIZE);
-    int ret = 0;
 #if BLE_CHANNEL_SECURITY_ENABLED
     // Encrypt reply data
     SPARK_ASSERT(aesCcm_);
-    ret = aesCcm_->encryptReplyData(p, req->reply_size);
-    if (ret == 0) {
+    CHECK(aesCcm_->encryptReplyData(p, req->reply_size));
 #endif
-        // Enqueue the reply buffer for sending
-        outBufs_.pushBack(req->repBuf);
-        req->repBuf = nullptr;
-        LOG(TRACE, "Enqueued a reply message for sending, ID: %u", (unsigned)req->id);
-#if BLE_CHANNEL_SECURITY_ENABLED
+    // Enqueue the reply buffer for sending
+    outBufs_.pushBack(req->repBuf);
+    req->repBuf = nullptr;
+    LOG(TRACE, "Enqueued a reply message for sending; ID: %u", (unsigned)req->id);
+    if (req->handler) {
+        pendingReps_.pushBack(req);
+        reqGuard.dismiss();
     }
-#endif
-    freeRequest(req);
-    return ret;
+    return 0;
 }
 
 int BleControlRequestChannel::sendPacket() {
@@ -963,6 +968,14 @@ int BleControlRequestChannel::sendPacket() {
         packetSize_ += n;
     }
     if (packetSize_ == 0) {
+        if (packetCount_ == 0) {
+            // Invoke completion handlers
+            while (Request* req = pendingReps_.popFront()) {
+                req->handler(SYSTEM_ERROR_NONE, req->handlerData);
+                req->handler = nullptr;
+                freeRequest(req);
+            }
+        }
         return 0; // Nothing to send
     }
     // Send packet
@@ -976,6 +989,7 @@ int BleControlRequestChannel::sendPacket() {
         LOG(ERROR, "ble_set_char_value() failed: %d", ret);
         return ret;
     }
+    ++packetCount_;
     DEBUG("Sent BLE packet");
     DEBUG_DUMP(packetBuf_.get(), packetSize_);
     packetSize_ = 0;
@@ -1044,11 +1058,12 @@ int BleControlRequestChannel::connected(const ble_connected_event_data& event) {
     ble_char_param charParam = { .version = BLE_API_VERSION };
     ret = ble_get_char_param(curConnHandle_, sendCharHandle_, &charParam, nullptr);
     if (ret == 0) {
-        notifEnabled_ = charParam.notif_enabled;
+        subscribed_ = charParam.notif_enabled;
     } else {
-        notifEnabled_ = false;
+        subscribed_ = false;
     }
-    writable_ = notifEnabled_;
+    writable_ = subscribed_;
+    packetCount_ = 0;
     // Update connection state counter
     curConnId_.fetch_add(1, std::memory_order_release);
     return 0;
@@ -1060,10 +1075,8 @@ int BleControlRequestChannel::disconnected(const ble_disconnected_event_data& ev
         freePooledBuffer(buf);
     }
     // Reset connection parameters
-    writable_ = false;
-    notifEnabled_ = false;
-    maxPacketSize_ = 0;
     curConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    writable_ = false;
     // Update connection state counter
     curConnId_.fetch_add(1, std::memory_order_release);
     return 0;
@@ -1080,16 +1093,17 @@ int BleControlRequestChannel::charParamChanged(const ble_char_param_changed_even
     if (event.char_handle == sendCharHandle_) {
         ble_char_param param = { .version = BLE_API_VERSION };
         CHECK(ble_get_char_param(curConnHandle_, sendCharHandle_, &param, nullptr));
-        notifEnabled_ = param.notif_enabled;
-        writable_ = notifEnabled_;
+        subscribed_ = param.notif_enabled;
+        writable_ = subscribed_;
     }
     return 0;
 }
 
 int BleControlRequestChannel::dataSent(const ble_data_sent_event_data& event) {
-    if (notifEnabled_) {
+    if (subscribed_) {
         writable_ = true;
     }
+    --packetCount_;
     return 0;
 }
 
@@ -1216,14 +1230,20 @@ int BleControlRequestChannel::allocRequest(size_t size, Request** req) {
 }
 
 void BleControlRequestChannel::freeRequest(Request* req) {
-    if (req) {
-        freeBuffer(req->repBuf);
-        delete[] req->reqBuf;
-        delete req;
+    if (!req) {
+        return;
+    }
+    const auto handler = req->handler;
+    const auto handlerData = req->handlerData;
+    freeBuffer(req->repBuf);
+    delete[] req->reqBuf;
+    delete req;
 #if BLE_CHANNEL_DEBUG_ENABLED
-        const auto count = --allocReqCount_;
-        DEBUG("Freed a request object (count: %u)", (unsigned)count);
+    const auto count = --allocReqCount_;
+    DEBUG("Freed a request object (count: %u)", (unsigned)count);
 #endif
+    if (handler) {
+        handler(SYSTEM_ERROR_UNKNOWN, handlerData);
     }
 }
 
