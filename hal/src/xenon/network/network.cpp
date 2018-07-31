@@ -71,7 +71,7 @@ int if_init_platform(void*) {
 
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
-    LOG_DEBUG(TRACE, "Heap: %lu/%lu Kbytes used", m.uordblks / 1000, total / 1000);
+    LOG(TRACE, "Heap: %lu/%lu Kbytes used", m.uordblks / 1000, total / 1000);
 
     return 0;
 }
