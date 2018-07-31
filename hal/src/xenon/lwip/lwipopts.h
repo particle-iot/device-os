@@ -228,7 +228,7 @@ void sys_unlock_tcpip_core(void);
  * per active UDP "connection".
  * (requires the LWIP_UDP option)
  */
-#define MEMP_NUM_UDP_PCB                4
+#define MEMP_NUM_UDP_PCB                8
 
 /**
  * MEMP_NUM_TCP_PCB: the number of simultaneously active TCP connections.
@@ -298,13 +298,13 @@ void sys_unlock_tcpip_core(void);
  * MEMP_NUM_NETBUF: the number of struct netbufs.
  * (only needed if you use the sequential API, like api_lib.c)
  */
-#define MEMP_NUM_NETBUF                 4
+#define MEMP_NUM_NETBUF                 (PBUF_POOL_SIZE)
 
 /**
  * MEMP_NUM_NETCONN: the number of struct netconns.
  * (only needed if you use the sequential API, like api_lib.c)
  */
-#define MEMP_NUM_NETCONN                4
+#define MEMP_NUM_NETCONN                8
 
 /**
  * MEMP_NUM_SELECT_CB: the number of struct lwip_select_cb.
@@ -342,7 +342,7 @@ void sys_unlock_tcpip_core(void);
 /**
  * PBUF_POOL_SIZE: the number of buffers in the pbuf pool.
  */
-#define PBUF_POOL_SIZE                  16
+#define PBUF_POOL_SIZE                  24
 
 /*
    ---------------------------------
@@ -1244,7 +1244,7 @@ void sys_unlock_tcpip_core(void);
  * NETCONN_UDP. The queue size value itself is platform-dependent, but is passed
  * to sys_mbox_new() when the recvmbox is created.
  */
-#define DEFAULT_UDP_RECVMBOX_SIZE       10
+#define DEFAULT_UDP_RECVMBOX_SIZE       (MEMP_NUM_PBUF * 4)
 
 /**
  * DEFAULT_TCP_RECVMBOX_SIZE: The mailbox size for the incoming packets on a
