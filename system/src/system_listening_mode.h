@@ -25,6 +25,8 @@
 #include <atomic>
 #include "system_network.h"
 #include "active_object.h"
+#include "system_setup.h"
+#include <memory>
 
 namespace particle { namespace system {
 
@@ -59,6 +61,8 @@ private:
 
 private:
     std::atomic_bool active_;
+
+    std::unique_ptr<SystemSetupConsole<SystemSetupConsoleConfig> > console_;
 };
 
 } } /* particle::system */
