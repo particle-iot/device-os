@@ -59,8 +59,6 @@ LOG_SOURCE_CATEGORY("net.en")
 #define WIZNET_SPI_BITORDER MSBFIRST
 #endif /* WIZNET_SPI_BITORDER */
 
-#define WIZNET_DEFAULT_TIMEOUT (100)
-
 #define WAIT_TIMED(timeout, expr) ({                                            \
     uint32_t _millis = HAL_Timer_Get_Milli_Seconds();                           \
     bool res = true;                                                            \
@@ -97,6 +95,11 @@ void spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t orde
         HAL_SPI_Set_Settings(spi, 0, clockdiv, order, mode, nullptr);
     }
 }
+
+const int WIZNET_DEFAULT_TIMEOUT = 100;
+/* FIXME */
+const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
+const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = 0xffffffff;
 
 } /* anonymous */
 
@@ -292,14 +295,19 @@ void WizNetif::interruptCb(void* arg) {
 
 void WizNetif::loop(void* arg) {
     WizNetif* self = static_cast<WizNetif*>(arg);
+    unsigned int timeout = WIZNET_DEFAULT_TIMEOUT;
     while(!self->exit_) {
         pbuf* p = nullptr;
-        os_queue_take(self->queue_, (void*)&p, WIZNET_DEFAULT_TIMEOUT * 10, nullptr);
+        os_queue_take(self->queue_, (void*)&p, timeout, nullptr);
+        timeout = WIZNET_DEFAULT_TIMEOUT;
         if (p) {
             self->output(p);
         }
         if (self->inRecv_) {
-            self->input();
+            int r = self->input();
+            if (r) {
+                timeout = WIZNET_INRECV_NEXT_BACKOFF;
+            }
         }
         self->pollState();
     }
@@ -410,15 +418,21 @@ void WizNetif::pollState() {
             netif_set_link_down(&netif_);
         }
     }
+
+    lastStatePoll_ = HAL_Timer_Get_Milli_Seconds();
 }
 
-void WizNetif::input() {
+int WizNetif::input() {
     if (down_) {
-        return;
+        return 0;
     }
 
     uint16_t size = 0;
-    while ((size = getSn_RX_RSR(0)) > 0 && size != 0xffff) {
+    unsigned int count = 0;
+
+    int r = 0;
+
+    while ((size = getSn_RX_RSR(0)) > 0 && size != 0xffff && count < WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION) {
         uint16_t pktSize = 0;
         {
             uint8_t tmp[2] = {};
@@ -433,7 +447,7 @@ void WizNetif::input() {
         if (pktSize >= 1514) {
             closeRaw();
             openRaw();
-            return;
+            return r;
         }
 
 #if ETH_PAD_SIZE
@@ -471,11 +485,21 @@ void WizNetif::input() {
             wiz_recv_ignore(0, pktSize);
             setSn_CR(0, Sn_CR_RECV);
             WAIT_TIMED(WIZNET_DEFAULT_TIMEOUT, getSn_CR(0));
-        }
-    }
-    inRecv_ = false;
 
-    setSn_IR(0, Sn_IR_RECV);
+            /* Giving a chance to free up some pbufs */
+            r = 1;
+            break;
+        }
+
+        ++count;
+    }
+
+    if (getSn_RX_RSR(0) == 0 || getSn_RX_RSR(0) == 0xffff) {
+        inRecv_ = false;
+        setSn_IR(0, Sn_IR_RECV);
+    }
+
+    return r;
 }
 
 err_t WizNetif::linkOutput(pbuf* p) {
@@ -505,7 +529,7 @@ void WizNetif::output(pbuf* p) {
     pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */
 #endif
 
-    WAIT_TIMED(WIZNET_DEFAULT_TIMEOUT * 10, (((txAvailable = getSn_TX_FSR(0)) < p->tot_len) && txAvailable != 0xffff));
+    WAIT_TIMED(WIZNET_DEFAULT_TIMEOUT, (((txAvailable = getSn_TX_FSR(0)) < p->tot_len) && txAvailable != 0xffff));
 
     if (p->tot_len > txAvailable || txAvailable == 0xffff) {
         /* Drop packet */

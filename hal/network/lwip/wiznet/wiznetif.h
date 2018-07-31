@@ -64,7 +64,7 @@ private:
     int closeRaw();
 
     void pollState();
-    void input();
+    int input();
     void output(pbuf* p);
     /* LwIP netif linkoutput callback */
     static err_t linkOutputCb(netif* netif, pbuf* p);
