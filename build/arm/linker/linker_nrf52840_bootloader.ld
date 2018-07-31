@@ -23,7 +23,7 @@ INCLUDE softdevice.ld
 bootloader_ram_origin = 0x20000000 + APP_RAM_BASE;
 bootloader_ram_length = 0x20000;
 
-bootloader_flash_length = 32K;
+bootloader_flash_length = 48K;
 bootloader_flash_origin = 0x100000 - bootloader_flash_length;
 
 
@@ -31,8 +31,6 @@ MEMORY
 {
   RAM (xrw) : ORIGIN = bootloader_ram_origin, LENGTH = bootloader_ram_length
   APP_FLASH (rx) : ORIGIN = bootloader_flash_origin, LENGTH = bootloader_flash_length
-/*  DCT1_FLASH (rx) : ORIGIN = 0x00004000, LENGTH = 16K */
-/*  DCT2_FLASH (rx) : ORIGIN = 0x00008000, LENGTH = 16K */
   INCLUDE backup_ram_memory.ld
 }
 
