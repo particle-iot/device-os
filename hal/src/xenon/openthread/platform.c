@@ -48,6 +48,38 @@
 
 #include <openthread/config.h>
 
+#include "gpio_hal.h"
+#include "platforms.h"
+
+static void selectAntenna(bool external) {
+    HAL_Pin_Mode(ANTSW1, OUTPUT);
+#if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
+    HAL_Pin_Mode(ANTSW2, OUTPUT);
+#endif
+
+    if (external) {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 0);
+#else
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#endif
+    } else {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 1);
+#else
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#endif
+    }
+}
+
 static void processSocEvent(uint32_t event, void* data) {
     PlatformSoftdeviceSocEvtHandler(event);
 }
@@ -73,6 +105,9 @@ void PlatformInit(int argc, char *argv[])
     // Enable I-code cache
     NRF_NVMC->ICACHECNF = NVMC_ICACHECNF_CACHEEN_Enabled;
 #endif
+
+    /* Just in case force the antenna to internal one */
+    selectAntenna(false);
 
 //     nrf_drv_clock_init();
 
