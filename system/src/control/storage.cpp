@@ -287,17 +287,8 @@ void finishFirmwareUpdateRequest(ctrl_request* req) {
         goto cancel;
     }
     if (!pbReq.validate_only) {
-#if PLATFORM_ID == PLATFORM_XENON
-        // FIXME: The BLE request channel doesn't support completion handling, so the client won't
-        // have a chance to receive the reply
-        finishFirmwareUpdate(0, nullptr);
-        // Exit the listening loop
-        network_listen(0, NETWORK_LISTEN_EXIT, nullptr);
-        goto done;
-#else
         // Reply to the host and apply the update
         system_ctrl_set_result(req, ret, finishFirmwareUpdate, nullptr, nullptr);
-#endif
         return;
     }
 cancel:

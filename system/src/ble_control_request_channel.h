@@ -81,6 +81,8 @@ private:
         Request* next; // Next request
         char* reqBuf; // Request buffer (assembled from multiple input buffers)
         Buffer* repBuf; // Reply buffer (allocated as a single output buffer)
+        ctrl_completion_handler_fn handler; // Completion handler
+        void* handlerData; // Completion handler data
         int result; // Result code
         unsigned connId; // Connection ID
         uint16_t id; // Request ID
@@ -92,6 +94,7 @@ private:
     std::atomic<unsigned> poolBufCount_;
 #endif
     IntrusiveQueue<Request> readyReqs_; // Completed requests
+    IntrusiveQueue<Request> pendingReps_; // Pending completion handlers
     Mutex readyReqsLock_;
 
     AtomicIntrusiveQueue<Buffer> inBufs_; // Packets received from the client (input buffers)
@@ -117,8 +120,9 @@ private:
     unsigned connId_; // Last connection ID known to the processing thread
     std::atomic<unsigned> curConnId_; // Current connection ID
 
-    volatile uint16_t maxPacketSize_; // Maximum number of bytes that can be written to the TX characteristic
-    volatile bool notifEnabled_; // Set to `true` if the client is subscribed to the notifications
+    std::atomic<unsigned> packetCount_; // Number of pending notification packets
+    volatile uint16_t maxPacketSize_; // Maximum number of bytes that can be sent in a single notification packet
+    volatile bool subscribed_; // Set to `true` if the client is subscribed to the notifications
     volatile bool writable_; // Set to `true` if the TX characteristic is writable
 
     uint16_t sendCharHandle_; // TX characteristic handle
