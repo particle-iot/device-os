@@ -24,6 +24,7 @@
 #include <nrf52840.h>
 #include "random.h"
 #include "border_router_manager.h"
+#include <malloc.h>
 
 using namespace particle;
 using namespace particle::net;
@@ -67,6 +68,11 @@ int if_init_platform(void*) {
         /* Enable border router by default */
         BorderRouterManager::instance()->start();
     }
+
+    auto m = mallinfo();
+    const size_t total = m.uordblks + m.fordblks;
+    LOG_DEBUG(TRACE, "Heap: %lu/%lu Kbytes used", m.uordblks / 1000, total / 1000);
+
     return 0;
 }
 
