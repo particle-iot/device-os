@@ -61,12 +61,6 @@ int decodeRequestMessage(ctrl_request* req, const pb_field_t* fields, void* dst)
     int ret = SYSTEM_ERROR_UNKNOWN;
     bool res = false;
 
-    if (req->request_size == 0) {
-        // Nothing to decode
-        ret = SYSTEM_ERROR_BAD_DATA;
-        goto cleanup;
-    }
-
     stream = pb_istream_init(nullptr);
     if (stream == nullptr) {
         ret = SYSTEM_ERROR_NO_MEMORY;
