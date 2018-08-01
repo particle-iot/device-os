@@ -20,7 +20,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include "stdarg.h"
-#include "spark_protocol_functions.h"
 
 PRODUCT_ID(PLATFORM_ID);
 PRODUCT_VERSION(3);
@@ -36,18 +35,6 @@ STARTUP(System.enableFeature(FEATURE_WIFITESTER));
 
 SYSTEM_MODE(AUTOMATIC);
 
-void network_created_handler(int error, const void* data, void* callback_data, void* reserved) {
-	Serial.printlnf("network created result %d ",error);
-}
-
-void fill_array(uint8_t* dest, uint8_t start, uint8_t count) {
-	while (count --> 0) {
-		*dest++ = start++;
-	}
-}
-
-SerialLogHandler logHandler1;
-
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
@@ -61,77 +48,10 @@ void setup()
     Particle.function("analogwrite", tinkerAnalogWrite);
 }
 
-void bad_request() {
-    ProtocolFacade* sp = system_cloud_protocol_instance();
-    completion_handler_data ch;
-    ch.handler_callback = network_created_handler;
-
-    MeshCommand::NetworkUpdate nu;
-
-	nu.size = sizeof(nu);
-
-	Serial.printlnf("making a bad request");
-	spark_protocol_mesh_command(sp, MeshCommand::DEVICE_MEMBERSHIP, 0, &nu, &ch);
-
-}
-
-void network_register(bool created) {
-    ProtocolFacade* sp = system_cloud_protocol_instance();
-
-    completion_handler_data ch;
-    ch.handler_callback = network_created_handler;
-
-    MeshCommand::NetworkInfo ni;
-
-	ni.update.size = sizeof(ni);
-	ni.flags = 0x3e | (created ? 1 : 0);
-	ni.channel = 11;
-	fill_array(ni.update.id, 0x10, 8);
-	fill_array(ni.panid, 0x20, 2);
-	fill_array(ni.xpanid, 0x30, 8);
-	Serial.printlnf("registering network, created=%d", created);
-	strncpy(ni.name, "Hello World", sizeof(ni.name));
-	ni.name_length = 11;
-	spark_protocol_mesh_command(sp, MeshCommand::NETWORK_CREATED, 0, &ni, &ch);
-}
-
-void device_join(bool joined) {
-    ProtocolFacade* sp = system_cloud_protocol_instance();
-
-
-    completion_handler_data ch;
-    ch.handler_callback = network_created_handler;
-
-    MeshCommand::NetworkUpdate nu;
-
-	nu.size = sizeof(nu);
-	fill_array(nu.id, 0x10, 8);
-
-	Serial.printlnf("registering device, joined=%d", joined);
-	spark_protocol_mesh_command(sp, MeshCommand::DEVICE_MEMBERSHIP, joined, &nu, &ch);
-
-}
-
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-	switch (Serial.read()) {
-	case 'n':
-		network_register(false);
-		break;
-	case 'N':
-		network_register(true);
-		break;
-	case 'j':
-		device_join(false);
-		break;
-	case 'J':
-		device_join(true);
-		break;
-	case 'b':
-		bad_request();
-		break;
-	}
+    //This will run in a loop
 }
 
 /*******************************************************************************
