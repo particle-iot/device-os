@@ -83,7 +83,7 @@ int SessionConnection::load(const ServerAddress& addr)
             return -1;
         }
     } else {
-        LOG(ERROR, "Failed to loaded session data from persistent storage");
+        LOG(ERROR, "Failed to load session data from persistent storage");
         discard();
         return -1;
     }
