@@ -1,5 +1,5 @@
-#if PLATFORM_MESH
 #include "mesh.h"
+#if HAL_PLATFORM_MESH
 #include "messages.h"
 #include "coap.h"
 #include "bytes2hexbuf.h"

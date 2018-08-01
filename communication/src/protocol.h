@@ -15,6 +15,7 @@
 #include "hal_platform.h"
 #include "mesh.h"
 #include "timesyncmanager.h"
+#include "hal_platform.h"
 
 namespace particle
 {
@@ -115,7 +116,7 @@ class Protocol
 	 */
 	TimeSyncManager timesync_;
 
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
 	Mesh mesh;
 #endif
 
@@ -472,7 +473,7 @@ public:
 
 	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
 
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
 	int mesh_command(MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion);
 #endif
 

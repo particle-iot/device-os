@@ -31,7 +31,7 @@
 #include "protocol_selector.h"
 #include "protocol_defs.h"
 #include "completion_handler.h"
-
+#include "hal_platform.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -196,7 +196,7 @@ namespace ProtocolCommands {
 
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data=0, void* reserved=NULL);
 
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
 namespace MeshCommand {
 
 const unsigned MAX_NETWORK_NAME_LENGTH = 16;

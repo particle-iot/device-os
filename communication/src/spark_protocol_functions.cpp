@@ -209,7 +209,7 @@ system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* 
     return protocol->time_last_synced(tm);
 }
 
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
 int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion, void* reserved) {
 	(void)reserved;
 	return protocol->mesh_command(cmd, data, extraData, completion);

@@ -20,13 +20,14 @@
 #include "spark_protocol_functions.h"
 #include "logging.h"
 #include "file_queue.h"
+#include "hal_platform.h"
 
 namespace particle {
 namespace system {
 
 struct SystemCommand {
     enum Enum {
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
         NOTIFY_MESH_NETWORK,
         NOTIFY_MESH_JOINED,
 #endif
@@ -43,7 +44,7 @@ int system_command_enqueue(SystemCommand& cmd, uint16_t size);
 int system_command_clear();
 
 
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
 
 using namespace MeshCommand;
 
@@ -81,7 +82,7 @@ struct NotifyMeshNetworkJoined : SystemCommand {
 #endif // PLATFORM_MESH
 
 union AllCommands {
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
     SystemCommand base;
     NotifyMeshNetworkJoined joined;
     NotifyMeshNetworkUpdated created;

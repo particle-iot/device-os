@@ -1,5 +1,6 @@
 #pragma once
-#if PLATFORM_MESH
+#include "hal_platform.h"
+#if HAL_PLATFORM_MESH
 
 #include "protocol_defs.h"
 #include "message_channel.h"

@@ -562,7 +562,7 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 	return callbacks->millis();
 }
 
-#if PLATFORM_MESH
+#if HAL_PLATFORM_MESH
 int completion_result(int result, completion_handler_data* completion) {
 	if (completion) {
 		completion->handler_callback(result, nullptr, completion->handler_data, nullptr);
