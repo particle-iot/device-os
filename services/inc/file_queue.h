@@ -66,7 +66,6 @@ public:
         return 0;
     }
 
-
     /**
      * Add an entry to the back of the queue.
      */
@@ -75,12 +74,13 @@ public:
         FsLock lk(fs_);
         _open();
         int ret = lfs_file_open(lfs(), &write_file_, path_, LFS_O_WRONLY | LFS_O_APPEND | LFS_O_CREAT);
-        if (!ret) {
-            QueueEntry entry = { .size = size, .flags = QueueEntry::ACTIVE };
-            ret = lfs_file_write(lfs(), &write_file_, &entry, sizeof(entry));
-            ret = ret || lfs_file_write(lfs(), &write_file_, item, size);
+        if (ret>=0) {
+            QueueEntry entry = { .size = uint16_t(size+sizeof(QueueEntry)), .flags = QueueEntry::ACTIVE };
+            ret = file_write(&write_file_, &entry, sizeof(entry));
+            ret = ret || file_write(&write_file_, item, size);
             ret = lfs_file_close(lfs(), &write_file_) || ret;   // always close even if there are other errors
         }
+        LOG(INFO, "add item to file queue %s, size %d, result %d", path_, size, ret);
         return ret;
     }
 
@@ -94,14 +94,25 @@ public:
      * as will fit into the buffer is copied.
      * @return SYSTEM_ERROR_NOT_FOUND when there is no such entry.
      */
-    int front(QueueEntry& entry, void* buffer, size_t length) {
+    int front(QueueEntry& entry, void* buffer, uint16_t length) {
         FsLock lk(fs_);
         int ret = _front(entry, true);
-        if (!ret) {
-            ret = lfs_file_read(lfs(), &read_file_, buffer, length);
-            if (ret!=int(length)) {
-                ret = LFS_ERR_IO;
-            }
+        if (ret>=0) {
+            int remaining = entry.size-sizeof(entry);
+        	if (remaining>length) {
+        		LOG(ERROR,  "Buffer length %d is too small. Need at least %d", length, remaining);
+        		ret = LFS_ERR_INVAL;
+        	} else {
+        		ret = lfs_file_read(lfs(), &read_file_, buffer, remaining);
+				if (ret!=int(remaining)) {
+					LOG(ERROR, "Incomplete queue record. Expected length %d but read %d", remaining, ret);
+					clear();
+					ret = LFS_ERR_IO;
+				} else {
+					ret = 0;	// no error
+					LOG(INFO, "Retrieved entry from file queue, size %d", entry.size);
+				}
+        	}
             ret = lfs_file_close(lfs(), &read_file_) || ret;
         }
         return ret;
@@ -117,60 +128,87 @@ public:
     int _front(QueueEntry& entry, bool keepOpen) {
         _open();
         int ret = lfs_file_open(lfs(), &read_file_, path_, LFS_O_RDONLY);
-        int pos = 0;
-        while (!ret) {
-            ret = lfs_file_read(lfs(), &read_file_, &entry, sizeof(entry));
-            if (ret==sizeof(QueueEntry)) {
-                ret = 0; 	// all good
-                if (entry.flags & QueueEntry::ACTIVE) {
-                    break;
-                }
-            } else {
-                ret = LFS_ERR_IO;
-                break;	// problem reading
-            }
-            pos += sizeof(QueueEntry);
-            pos += entry.size;
-            ret = lfs_file_seek(lfs(), &read_file_, entry.size, LFS_SEEK_CUR);
-            if (ret>=0)
-                ret = 0;
-        }
-        if (ret || !keepOpen) {
-            ret = lfs_file_close(lfs(), &read_file_) || ret;
-        }
-        return ret || pos;
-    }
-
-    /**
-     * Remove the front item in the queue.
-     */
-    int popFront() {
-        FsLock lk(fs_);
-        QueueEntry entry;
-        int ret = _front(entry, false);
-        bool isLast = false;
         if (!ret) {
-            int offset = ret;
-            int ret = lfs_file_open(lfs(), &read_file_, path_, LFS_O_WRONLY);
-            if (!ret) {
-                offset += offsetof(QueueEntry, flags);
-                ret = lfs_file_seek(lfs(), &read_file_, offset, LFS_SEEK_SET);
-                if (ret>=0) ret = 0;
-                entry.flags &= ~QueueEntry::ACTIVE;
-                ret = lfs_file_write(lfs(), &read_file_, &entry.flags, sizeof(entry.flags)) || ret;
-                lfs_soff_t length = lfs_file_size(lfs(), &read_file_);
-                isLast = (length>=0 && length==(offset+int(sizeof(QueueEntry::flags))+entry.size));
-                ret = lfs_file_close(lfs(), &read_file_) || ret;
-            }
-        }
-        if (isLast && !ret) {
-            // when the last entry has been cleared remove the file
-            ret = lfs_remove(lfs(), path_);
+			while (!ret) {
+				ret = lfs_file_read(lfs(), &read_file_, &entry, sizeof(entry));
+				if (ret==sizeof(QueueEntry)) {
+					ret = 0; 	// all good
+					if (entry.flags & QueueEntry::ACTIVE) {
+						break;
+					}
+				} else {
+					ret = LFS_ERR_IO;
+					break;	// problem reading
+				}
+				ret = lfs_file_seek(lfs(), &read_file_, entry.size-sizeof(entry), LFS_SEEK_CUR);
+				if (ret>=0) {
+					ret = 0;
+				}
+			}
+			if (ret || !keepOpen) {
+				ret = lfs_file_close(lfs(), &read_file_) || ret;
+			}
         }
         return ret;
     }
 
+    /**
+     * Remove the front item in the queue. This is done by clearing the ACTIVE flag in the queue entry.
+     */
+    int popFront() {
+        FsLock lk(fs_);
+        QueueEntry entry;
+        int ret = _front(entry, true);
+        // file position points to the start of the file data
+        int offset = lfs_file_tell(lfs(), &read_file_);
+        ret = lfs_file_close(lfs(), &read_file_);
+
+        bool isLast = false;
+        if (ret>=0) {
+            int ret = lfs_file_open(lfs(), &read_file_, path_, LFS_O_RDWR);
+            if (!ret) {
+                offset -= sizeof(entry);	// offset is at the start of the entry
+                ret = lfs_file_seek(lfs(), &read_file_, offset, LFS_SEEK_SET);
+                if (ret>=0) ret = 0;
+                entry.flags &= ~QueueEntry::ACTIVE;
+                if (!ret) {
+                	ret = lfs_file_write(lfs(), &read_file_, &entry, sizeof(entry));
+                	if (ret==sizeof(entry))
+                		ret = 0;
+                }
+                lfs_soff_t length = lfs_file_size(lfs(), &read_file_);
+                isLast = (length>=0 && length==(offset+entry.size));
+                ret = lfs_file_close(lfs(), &read_file_) || ret;
+            }
+        }
+        if (isLast && !ret) {
+        	LOG(INFO, "Removed last entry from file queue, deleting file %s", path_);
+            // when the last entry has been cleared remove the file
+            ret = clear();
+        }
+        return ret;
+    }
+
+    int clear() {
+    	return lfs_remove(lfs(), path_);
+    }
+
 private:
+
+    int file_write(lfs_file* file, void* data, uint16_t size) {
+		int ret = lfs_file_write(lfs(), file, data, size);
+		if (ret<0) {
+			LOG(ERROR, "Error writing %d bytes to file %s: error %d", size, path_, ret);
+		}
+		else if (ret!=size) {
+			LOG(ERROR, "wrote only %d bytes to file %s, expected %d bytes to be written", ret, path_, size);
+			ret = LFS_ERR_IO;
+		}
+		else {
+			ret = 0;
+		}
+		return ret;
+	}
 
     lfs_t* lfs() {
         return &fs_->instance;

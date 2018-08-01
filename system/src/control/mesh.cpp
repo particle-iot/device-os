@@ -225,13 +225,11 @@ int notifyNetworkUpdated(int flags) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (!otDatasetIsCommissioned(thread)) {
-        return SYSTEM_ERROR_NOT_FOUND;
-    }
     if (flags & NetworkInfo::NAME_VALID) {
         // Network name
         const char* name = otThreadGetNetworkName(thread);
         if (!name) {
+        	LOG(ERROR, "Unable to retrieve thread network name");
             return SYSTEM_ERROR_UNKNOWN;
         }
         size_t length = strlen(name);
@@ -250,6 +248,7 @@ int notifyNetworkUpdated(int flags) {
     }
     const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
     if (!extPanId) {
+    	LOG(ERROR, "Unable to retrieve thread XPAN ID");
         return SYSTEM_ERROR_UNKNOWN;
     }
     memcpy(ni.update.id, extPanId, sizeof(ni.xpanid));
@@ -260,6 +259,7 @@ int notifyNetworkUpdated(int flags) {
     if (flags & NetworkInfo::ON_MESH_PREFIX_VALID) {
         const uint8_t* prefix = otThreadGetMeshLocalPrefix(thread);
         if (!prefix) {
+        	LOG(ERROR, "Unable to retrieve thread network local prefix");
             return SYSTEM_ERROR_UNKNOWN;
         }
         memcpy(ni.on_mesh_prefix, prefix, 8);
@@ -267,7 +267,11 @@ int notifyNetworkUpdated(int flags) {
 
     ni.update.size = sizeof(ni);
     ni.flags = flags;
-    return system_command_enqueue(cmd, sizeof(cmd));
+    int result = system_command_enqueue(cmd, sizeof(cmd));
+    if (result) {
+    	LOG(ERROR, "Unable to add notification to system command queue %d", result);
+    }
+    return result;
 }
 
 int createNetwork(ctrl_request* req) {
@@ -415,7 +419,10 @@ int createNetwork(ctrl_request* req) {
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
-    notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED|NetworkInfo::PANID_VALID|NetworkInfo::XPANID_VALID|NetworkInfo::CHANNEL_VALID|NetworkInfo::ON_MESH_PREFIX_VALID|NetworkInfo::NAME_VALID);
+    int notifyResult = notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED|NetworkInfo::PANID_VALID|NetworkInfo::XPANID_VALID|NetworkInfo::CHANNEL_VALID|NetworkInfo::ON_MESH_PREFIX_VALID|NetworkInfo::NAME_VALID);
+    if (notifyResult<0) {
+    	LOG(ERROR, "Unable to notify network change %d", notifyResult);
+    }
 
     // Encode a reply
     char extPanIdStr[sizeof(extPanId) * 2] = {};
@@ -634,6 +641,7 @@ int leaveNetwork(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    system_command_clear();
     notifyJoined(false);
     // Disable Thread protocol
     CHECK_THREAD(otThreadSetEnabled(thread, false));

@@ -40,6 +40,8 @@ void fetchAndExecuteCommand(system_tick_t currentTime);
 void handleCommandComplete(int error, const void* data, void* callback_data, void* reserved);
 
 int system_command_enqueue(SystemCommand& cmd, uint16_t size);
+int system_command_clear();
+
 
 #if PLATFORM_MESH
 
@@ -85,17 +87,8 @@ union AllCommands {
     NotifyMeshNetworkUpdated created;
 #endif
     AllCommands() {
-
     }
-    int execute() {
-        switch (base.commandType) {
-        case SystemCommand::NOTIFY_MESH_NETWORK: return created.execute();
-        case SystemCommand::NOTIFY_MESH_JOINED: return joined.execute();
-        default:
-            LOG(ERROR, "Ignoring unknown command type %d", base.commandType);
-            return 0;
-        }
-    }
+    int execute();
 };
 
 

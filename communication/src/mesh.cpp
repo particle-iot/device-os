@@ -37,7 +37,7 @@ ProtocolError registerCompletionHandler(Protocol& protocol, ProtocolError result
 		}
 	}
 	else {
-		handler.setResult(result);
+		handler.setResult(toSystemError(result));
 	}
 	return result;
 }
