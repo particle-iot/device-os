@@ -57,7 +57,7 @@ SCENARIO("CoAP::header")
 
 		WHEN("header is called with arguments")
 		{
-			int size = coap.header(buf, CoAPType::CON, 3, CoAPCode::CONTINUE, 0x1234);
+			int size = coap.header(buf, CoAPType::CON, CoAPCode::CONTINUE, 0, nullptr, message_id_t(0x1234));
 			THEN("The buffer is filled out correctly")
 			{
 				REQUIRE(buf[0]==0x43);

@@ -139,7 +139,7 @@ public:
 		return buf[2]<<8 | buf[3];
 	}
 
-	static size_t header(uint8_t* buf, CoAPType::Enum type, CoAPCode::Enum code, const uint8_t tokenLen=0, const uint8_t* token=nullptr, uint16_t msgid=0)
+	static size_t header(uint8_t* buf, CoAPType::Enum type, CoAPCode::Enum code, const uint8_t tokenLen=0, const uint8_t* token=nullptr, message_id_t msgid=0)
 	{
 		buf[0] = VERSION<<6 | type << 4 | (tokenLen & 0xF);
 		buf[1] = code;
