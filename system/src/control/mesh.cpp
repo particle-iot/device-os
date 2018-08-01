@@ -77,6 +77,9 @@ namespace mesh {
 
 namespace {
 
+// Default IEEE 802.15.4 channel
+const unsigned DEFAULT_CHANNEL = 11;
+
 // Timeout is seconds after which the commissioner role is automatically stopped
 const unsigned COMMISSIONER_TIMEOUT = 120;
 
@@ -265,7 +268,7 @@ int createNetwork(ctrl_request* req) {
             os_thread_yield();
         }
         lock.lock();
-        channel = (enScan.channel != 0) ? enScan.channel : 11; // Just in case
+        channel = (enScan.channel != 0) ? enScan.channel : DEFAULT_CHANNEL; // Just in case
     }
     LOG(TRACE, "Using channel %u", channel);
     CHECK_THREAD(otLinkSetChannel(thread, channel));
