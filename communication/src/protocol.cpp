@@ -54,9 +54,11 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
 	if (CoAPType::is_reply(type)) {
+		LOG(TRACE, "Reply recieved: type=%d, code=%d", type, code);
 		// todo - this is a little too simple in the case of an empty ACK for a separate response
 		// the message should then be bound to the token. see CH19037
 		if (type==CoAPType::RESET) {		// RST is sent with an empty code. It's like an unspecified error
+			LOG(TRACE, "Reset received, setting error code to internal server error.");
 			code = CoAPCode::INTERNAL_SERVER_ERROR;
 		}
 		notify_message_complete(msg_id, code);

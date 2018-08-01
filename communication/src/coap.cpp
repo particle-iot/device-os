@@ -38,9 +38,13 @@ CoAPCode::Enum CoAP::code(const unsigned char *message) {
             return CoAPCode::POST;
         case 0x03:
             return CoAPCode::PUT;
-        case 0x45:
-            return CoAPCode::CONTENT;
 
+        case CoAPCode::OK: return CoAPCode::OK;
+        case CoAPCode::CREATED: return CoAPCode::CREATED;
+        case CoAPCode::DELETED: return CoAPCode::DELETED;
+        case CoAPCode::CHANGED: return CoAPCode::CHANGED;
+        case CoAPCode::NOT_MODIFIED: return CoAPCode::NOT_MODIFIED;
+        case CoAPCode::CONTENT: return CoAPCode::CONTENT;
         default:
             // todo - add all recognised codes. Via a smart macro to void manually repeating them.
             if (CoAPCode::is_success(code)) {    // should have been handled above.
