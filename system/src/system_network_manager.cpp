@@ -23,6 +23,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include <mutex>
 #include "system_led_signal.h"
 #include "enumclass.h"
+#include "system_commands.h"
 
 #define CHECK(_expr) \
         ({ \
@@ -262,6 +263,7 @@ int NetworkManager::clearConfiguration(if_t iface) {
                 otMasterKey key = {};
                 otThreadSetMasterKey(threadInstance(), &key);
                 otInstanceErasePersistentInfo(threadInstance());
+                system_command_clear();
             }
 #endif /* HAL_PLATFORM_OPENTHREAD */
         });
