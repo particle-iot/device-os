@@ -145,11 +145,11 @@ int tinkerDigitalWrite(String command)
     String pinStr = command.substring(0, indexOfComma);
     String pinState = command.substring(indexOfComma + 1);
 
-    bool state;
+    uint8_t state;
     if (pinState == "HIGH") {
-        state = true;
+        state = HIGH;
     } else if (pinState == "LOW") {
-        state = false;
+        state = LOW;
     } else {
         return -2;
     }
@@ -176,7 +176,7 @@ int tinkerDigitalWrite(String command)
 int tinkerAnalogRead(String pinStr)
 {
     pin_t pin = lookupPinByName(pinStr);
-    if (pin != PIN_INVALID) {
+    if (pin != PIN_INVALID && HAL_Validate_Pin_Function(pin, PF_ADC) == PF_ADC) {
         return analogRead(pin);
     }
     return -1;
@@ -204,7 +204,8 @@ int tinkerAnalogWrite(String command)
     }
 
     pin_t pin = lookupPinByName(pinStr);
-    if (pin != PIN_INVALID) {
+    if (pin != PIN_INVALID && (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC ||
+        HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)) {
         pinMode(pin, OUTPUT);
         analogWrite(pin, value);
         return 1;
