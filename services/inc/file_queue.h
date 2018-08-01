@@ -77,8 +77,8 @@ public:
         if (ret>=0) {
             QueueEntry entry = { .size = uint16_t(size+sizeof(QueueEntry)), .flags = QueueEntry::ACTIVE };
             ret = file_write(&write_file_, &entry, sizeof(entry));
-            ret = ret || file_write(&write_file_, item, size);
-            ret = lfs_file_close(lfs(), &write_file_) || ret;   // always close even if there are other errors
+            ret = preserve_error(file_write(&write_file_, item, size), ret);
+            ret = preserve_error(lfs_file_close(lfs(), &write_file_), ret);   // always close even if there are other errors
         }
         LOG(INFO, "add item to file queue %s, size %d, result %d", path_, size, ret);
         return ret;
@@ -113,7 +113,7 @@ public:
 					LOG(INFO, "Retrieved entry from file queue, size %d", entry.size);
 				}
         	}
-            ret = lfs_file_close(lfs(), &read_file_) || ret;
+            ret = preserve_error(lfs_file_close(lfs(), &read_file_), ret);
         }
         return ret;
     }
@@ -146,7 +146,7 @@ public:
 				}
 			}
 			if (ret || !keepOpen) {
-				ret = lfs_file_close(lfs(), &read_file_) || ret;
+				ret = preserve_error(lfs_file_close(lfs(), &read_file_), ret);
 			}
         }
         return ret;
@@ -159,7 +159,7 @@ public:
         FsLock lk(fs_);
         QueueEntry entry;
         int ret = _front(entry, true);
-        // file position points to the start of the file data
+        // file position points to the start of the file data for the first ACTIVE entry.
         int offset = lfs_file_tell(lfs(), &read_file_);
         ret = lfs_file_close(lfs(), &read_file_);
 
@@ -178,7 +178,7 @@ public:
                 }
                 lfs_soff_t length = lfs_file_size(lfs(), &read_file_);
                 isLast = (length>=0 && length==(offset+entry.size));
-                ret = lfs_file_close(lfs(), &read_file_) || ret;
+                ret = preserve_error(lfs_file_close(lfs(), &read_file_), ret);
             }
         }
         if (isLast && !ret) {
@@ -190,6 +190,7 @@ public:
     }
 
     int clear() {
+    	FsLock lk(fs_);
     	return lfs_remove(lfs(), path_);
     }
 
@@ -212,6 +213,10 @@ private:
 
     lfs_t* lfs() {
         return &fs_->instance;
+    }
+
+    static int preserve_error(int first, int second) {
+    	return first<0 ? first : second;
     }
 
     filesystem_t* fs_ = nullptr;
