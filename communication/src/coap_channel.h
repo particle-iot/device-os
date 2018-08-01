@@ -427,6 +427,9 @@ public:
 		return type==CoAPType::ACK || type==CoAPType::RESET;
 	}
 
+	/**
+	 * Send a message synchronously, waiting for the acknowledgement.
+	 */
 	template<typename Time>
 	ProtocolError send_synchronous(Message& msg, Channel& channel, Time& time)
 	{
@@ -504,8 +507,10 @@ public:
 
 
 /**
- * T: the baseclass
- * M: a callable type that provides the current system ticks
+ * Implements reliable CoAP messaging by attempting to resent the message
+ * multiple times when an acknowledgement isn't received.
+ * @param T the baseclass
+ * @param M: a callable type that provides the current system ticks
  */
 template <class T, typename M>
 class CoAPReliableChannel : public T
@@ -534,6 +539,9 @@ class CoAPReliableChannel : public T
 		return channel::receive(msg);
 	}
 
+	/**
+	 * A channel that delegates to another one.
+	 */
 	class DelegateChannel : public Channel
 	{
 		CoAPReliableChannel<T,M>* channel;
@@ -582,6 +590,9 @@ public:
 		return server;
 	}
 
+	/**
+	 * Clear the message stores when the channel is initially established.
+	 */
 	ProtocolError establish(uint32_t& flags, uint32_t app_crc) override
 	{
 		server.clear();
@@ -641,7 +652,7 @@ public:
 	 * reliable receipt and retransmission.
 	 *
 	 * @param msg			The message received
-	 * @param requests		When true, both requests and responses are retreived. When false, only responses are retrieved.
+	 * @param requests		When true, both requests and responses are retrieved. When false, only responses are retrieved.
 	 */
 	ProtocolError receive(Message& msg, bool requests)
 	{

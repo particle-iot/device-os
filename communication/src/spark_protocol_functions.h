@@ -31,7 +31,7 @@
 #include "protocol_selector.h"
 #include "protocol_defs.h"
 #include "completion_handler.h"
-
+#include "hal_platform.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -64,46 +64,46 @@ struct SparkCallbacks
 
     uint8_t reserved;
 
-  int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
-  int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
+	int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
+	int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 
-  /**
-   * @param flags 1 dry run only.
-   * Return 0 on success.
-   */
-  int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+	/**
+	* @param flags 1 dry run only.
+	* Return 0 on success.
+	*/
+	int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
 
-  /**
-   *
-   * @return 0 on success
-   */
-  int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
+	/**
+	*
+	* @return 0 on success
+	*/
+	int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
 
-  /**
-   * Finalize the data storage.
-   * #param reset - if the device should be reset to apply the changes.
-   * #return 0 on success. Other values indicate an issue with the file.
-   */
-  int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+	/**
+	* Finalize the data storage.
+	* #param reset - if the device should be reset to apply the changes.
+	* #return 0 on success. Other values indicate an issue with the file.
+	*/
+	int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
 
-  uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
+	uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
 
-  void (*signal)(bool on, unsigned int param, void* reserved);
-  system_tick_t (*millis)();
+	void (*signal)(bool on, unsigned int param, void* reserved);
+	system_tick_t (*millis)();
 
-  /**
-   * Sets the time. Time is given in milliseconds since the epoch, UCT.
-   */
-  void (*set_time)(time_t t, unsigned int param, void* reserved);
+	/**
+	* Sets the time. Time is given in milliseconds since the epoch, UCT.
+	*/
+	void (*set_time)(time_t t, unsigned int param, void* reserved);
 
-  // size == 40
+	// size == 40
 
-  /**
-   * A pointer that is passed back to the send/receive functions.
-   */
-  void* transport_context;
+	/**
+	* A pointer that is passed back to the send/receive functions.
+	*/
+	void* transport_context;
 
-  // size == 44
+	// size == 44
 
   	enum PersistType
 	{
@@ -164,7 +164,9 @@ typedef struct {
     size_t size;
     completion_callback handler_callback;
     void* handler_data;
-} spark_protocol_send_event_data;
+} completion_handler_data;
+
+typedef completion_handler_data spark_protocol_send_event_data;
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
                 int ttl, uint32_t flags, void* reserved);
@@ -193,6 +195,89 @@ namespace ProtocolCommands {
 
 
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data=0, void* reserved=NULL);
+
+#if HAL_PLATFORM_MESH
+namespace MeshCommand {
+
+const unsigned MAX_NETWORK_NAME_LENGTH = 16;
+const unsigned PANID_LENGTH = 2;
+const unsigned XPANID_LENGTH = 8;
+const unsigned MESH_PREFIX_LENGTH = 8;
+
+struct __attribute__ ((__packed__)) NetworkUpdate {
+	uint16_t size;
+	uint8_t id[XPANID_LENGTH];	// the current xpan ID, or previous xpanID on rename.
+};
+
+struct  __attribute__ ((__packed__)) NetworkInfo {
+	enum Flags {
+		NETWORK_CREATED = 1<<0,
+		PANID_VALID = 1<<1,
+		XPANID_VALID = 1<<2,
+		CHANNEL_VALID = 1<<3,
+		ON_MESH_PREFIX_VALID = 1<<4,
+		NAME_VALID = 1<<5
+	};
+	NetworkUpdate update;
+	uint16_t flags;
+	uint8_t panid[PANID_LENGTH];
+	uint8_t xpanid[XPANID_LENGTH];	// the renamed xpan ID or the new xpanID when creating a new network
+	uint8_t channel;
+	uint8_t on_mesh_prefix[MESH_PREFIX_LENGTH];
+	uint8_t name_length;
+	char name[MAX_NETWORK_NAME_LENGTH];
+};
+
+enum Enum {
+	/**
+	 * Inform the Device Cloud that a mesh network has been created. The extraData points to a NetworkInfo struct.
+	 * The completion handler is invoked with a success or error code. No result data is provided.
+	 */
+	NETWORK_CREATED,
+
+	/**
+	 * Inform the Device Cloud that an existing network has been updated. The extraData point to a NetworkInfo struct.
+	 * The completion handler is invoked with a success or error code. No result data is provided.
+	 */
+	NETWORK_UPDATED,
+
+	/**
+	 * A device has joined or left the mesh network. The message is sent after the device has joined the network and before the device leaves the network.
+	 * The data parameter is set to
+	 * 	0 the device will leave the network
+	 * 	1 the device has joined the network
+	 *
+	 * 	The callback handler is notified with SYSTEM_ERROR_NOT_ALLOWED when the device is not permitted to join the network.
+	 * The completion handler is invoked with a success or error code. No result data is provided.
+	 */
+	DEVICE_MEMBERSHIP,
+
+	/**
+	 * Informs the DeviceCloud that a device will enable or disable border router functionality.
+	 * The data parameter is set to
+	 * 	0 the device will not have border router functionality
+	 * 	1 the device would like to enable border router functionality.
+	 *
+	 * 	The callback handler is notified with SYSTEM_ERROR_NOT_ALLOWED when the device is not permitted to act as a border router.
+	 * 	The completion handler is invoked with a success or error code. No result data is provided.
+	 */
+	DEVICE_BORDER_ROUTER,
+};
+
+
+} // namespace MeshCommands
+
+/**
+ * Invoke a mesh command asynchronously.
+ * @param protocol	The protocol instance that implements the command
+ * @param cmd		The command type to invoke
+ * @param data		Integer data to parameterize the command. See the command documentation for command-specific details.
+ * @param extraData	Structured data to parameterize the command. See the command documentation for command-specific details.
+ * @param completion An optional completion handler that is called with the result of the command.
+ */
+int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data=0, void* extraData=nullptr, completion_handler_data* completion=nullptr, void* reserved=nullptr);
+#endif
+
 
 /**
  * Decrypt a buffer using the given public key.

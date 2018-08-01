@@ -31,6 +31,7 @@ namespace protocol
 
 class Message
 {
+	static const unsigned MINIMUM_COAP_MESSAGE_LENGTH = 4;
 	template<size_t max, size_t prefix, size_t suffix>
 	friend class BufferMessageChannel;
 
@@ -78,11 +79,15 @@ public:
     bool has_id() { return id>=0; }
     message_id_t get_id() { return message_id_t(id); }
 
-    bool send_direct() { return length()<4; }
+    /**
+     * This is used for non-CoAP messages, such as zero and 1 byte messages used to keep the
+     * channel open.
+     */
+    bool send_direct() { return length()<MINIMUM_COAP_MESSAGE_LENGTH; }
 
     CoAPType::Enum get_type() const
     {
-    		return length() ? CoAP::type(buf()): CoAPType::ERROR;
+    		return length()>=MINIMUM_COAP_MESSAGE_LENGTH ? CoAP::type(buf()): CoAPType::ERROR;
     }
 
     bool is_request() const
@@ -98,7 +103,7 @@ public:
 
     bool decode_id()
     {
-    		bool decode = (length()>=4);
+    		bool decode = (length()>=MINIMUM_COAP_MESSAGE_LENGTH);
     		if (decode)
     			set_id(CoAP::message_id(buf()));
     		return decode;

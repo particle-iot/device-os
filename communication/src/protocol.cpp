@@ -47,10 +47,26 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	pinger.message_received();
 	uint8_t* queue = message.buf();
 	message_type = Messages::decodeType(queue, message.length());
+	// todo - not all requests/responses have tokens. These device requests do not use tokens:
+	// Update Done, ChunkMissed, event, ping, hello
 	token_t token = queue[4];
 	message_id_t msg_id = CoAP::message_id(queue);
+	CoAPCode::Enum code = CoAP::code(queue);
+	CoAPType::Enum type = CoAP::type(queue);
+	if (CoAPType::is_reply(type)) {
+		LOG(TRACE, "Reply recieved: type=%d, code=%d", type, code);
+		// todo - this is a little too simple in the case of an empty ACK for a separate response
+		// the message should then be bound to the token. see CH19037
+		if (type==CoAPType::RESET) {		// RST is sent with an empty code. It's like an unspecified error
+			LOG(TRACE, "Reset received, setting error code to internal server error.");
+			code = CoAPCode::INTERNAL_SERVER_ERROR;
+		}
+		notify_message_complete(msg_id, code);
+	}
+
 	ProtocolError error = NO_ERROR;
 	//LOG(WARN,"message type %d", message_type);
+	// todo - would be good to separate requests from responses here.
 	switch (message_type)
 	{
 	case CoAPMessageType::DESCRIBE:
@@ -126,10 +142,6 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		error = channel.send(message);
 		break;
 
-	case CoAPMessageType::EMPTY_ACK:
-		ack_handlers.setResult(msg_id);
-		break;
-
 	case CoAPMessageType::ERROR:
 	default:
 		; // drop it on the floor
@@ -137,6 +149,17 @@ ProtocolError Protocol::handle_received_message(Message& message,
 
 	// all's well
 	return error;
+}
+
+void Protocol::notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode) {
+	LOG(INFO, "message id %d complete with code %d.%02d", msg_id, (responseCode>>5), responseCode&31);
+	if (CoAPCode::is_success(responseCode)) {
+		ack_handlers.setResult(msg_id);
+	}
+	else {
+		// todo - map the response codes to system errors
+		ack_handlers.setError(msg_id, SYSTEM_ERROR_UNKNOWN);
+	}
 }
 
 ProtocolError Protocol::handle_key_change(Message& message)
@@ -540,6 +563,30 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 {
 	return callbacks->millis();
 }
+
+#if HAL_PLATFORM_MESH
+int completion_result(int result, completion_handler_data* completion) {
+	if (completion) {
+		completion->handler_callback(result, nullptr, completion->handler_data, nullptr);
+	}
+	return result;
+}
+
+int Protocol::mesh_command(MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion)
+{
+	LOG(INFO, "handling mesh command %d", cmd);
+	switch(cmd) {
+	case MeshCommand::NETWORK_CREATED:
+		return mesh.network_update(*this, next_token(), channel, true, *(MeshCommand::NetworkInfo*)extraData, completion);
+	case MeshCommand::NETWORK_UPDATED:
+		return mesh.network_update(*this, next_token(), channel, false, *(MeshCommand::NetworkInfo*)extraData, completion);
+	case MeshCommand::DEVICE_MEMBERSHIP:
+		return mesh.device_joined(*this, next_token(), channel, data, *(MeshCommand::NetworkUpdate*)extraData, completion);
+	default:
+		return completion_result(SYSTEM_ERROR_INVALID_ARGUMENT, completion);
+	}
+}
+#endif
 
 
 }}

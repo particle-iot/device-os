@@ -21,6 +21,7 @@ COMMUNICATION=communication
 DYNALIB=dynalib
 HAL=hal
 SERVICES=services
+WIRING=wiring
 
 TARGETDIR=target
 TARGET=runner
@@ -55,6 +56,7 @@ INCLUDE_DIRS += $(PROJECT_ROOT)/$(SERVICES)/inc
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(COMMUNICATION)/src
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(HAL)/shared $(PROJECT_ROOT)/$(HAL)/inc
 INCLUDE_DIRS += $(PROJECT_ROOT)/$(DYNALIB)/inc
+INCLUDE_DIRS += $(PROJECT_ROOT)/$(WIRING)/inc
 
 CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 CFLAGS += -ffunction-sections -fdata-sections -Wall
