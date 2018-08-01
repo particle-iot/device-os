@@ -80,6 +80,8 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 
 /* Exported macros -----------------------------------------------------------*/
 
+#define PIN_INVALID 0xff
+
 /*
 * Pin mapping. Borrowed from Wiring
 */
@@ -89,7 +91,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define FIRST_ANALOG_PIN    D14
 
 // digital pins
-#define D0          0   
+#define D0          0
 #define D1          1
 #define D2          2
 #define D3          3
