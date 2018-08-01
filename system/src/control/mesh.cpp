@@ -39,9 +39,10 @@
 #include "openthread/instance.h"
 #include "openthread/commissioner.h"
 #include "openthread/joiner.h"
+#include "openthread/ip6.h"
+#include "openthread/link.h"
 #include "openthread/dataset.h"
 #include "openthread/dataset_ftd.h"
-#include "openthread/ip6.h"
 
 #include "proto/mesh.pb.h"
 
@@ -76,9 +77,6 @@ namespace mesh {
 
 namespace {
 
-// Default IEEE 802.15.4 channel
-const unsigned DEFAULT_CHANNEL = 11;
-
 // Timeout is seconds after which the commissioner role is automatically stopped
 const unsigned COMMISSIONER_TIMEOUT = 120;
 
@@ -91,8 +89,11 @@ const size_t JOINER_PASSWORD_MIN_SIZE = 6;
 // Maximum size of the joining device credential
 const size_t JOINER_PASSWORD_MAX_SIZE = 32;
 
-// Time in milliseconds to spend scanning each channel
-const unsigned SCAN_DURATION = 0; // Use Thread's default timeout
+// Time in milliseconds to spend scanning each channel during an active scan
+const unsigned ACTIVE_SCAN_DURATION = 0; // Use Thread's default timeout
+
+// Time in milliseconds to spend scanning each channel during an energy scan
+const unsigned ENERGY_SCAN_DURATION = 200;
 
 // Vendor data
 const char* const VENDOR_NAME = "Particle";
@@ -231,9 +232,42 @@ int createNetwork(ctrl_request* req) {
     }
     CHECK_THREAD(otThreadSetEnabled(thread, false));
     CHECK_THREAD(otIp6SetEnabled(thread, false));
-    // Determine IEEE 802.15.4 channel
-    // TODO: Perform an energy scan?
-    const unsigned channel = (pbReq.channel != 0) ? pbReq.channel : DEFAULT_CHANNEL;
+    unsigned channel = pbReq.channel; // IEEE 802.15.4 channel
+    if (channel == 0) {
+        // Perform an energy scan
+        struct EnergyScanResult {
+            unsigned channel;
+            int minRssi;
+            volatile bool done;
+        };
+        EnergyScanResult enScan = {};
+        // For now, excluding channels 25 and 26 which are not allowed for use in most countries which
+        // have radio frequency regulations
+        const unsigned channelMask = OT_CHANNEL_ALL & ~OT_CHANNEL_25_MASK & ~OT_CHANNEL_26_MASK;
+        LOG_DEBUG(TRACE, "Performing energy scan");
+        CHECK_THREAD(otLinkEnergyScan(thread, channelMask, ENERGY_SCAN_DURATION,
+                [](otEnergyScanResult* result, void* data) {
+            const auto scan = (EnergyScanResult*)data;
+            if (!result) {
+                LOG_DEBUG(TRACE, "Energy scan done");
+                scan->done = true;
+                return;
+            }
+            LOG_DEBUG(TRACE, "Channel: %u; RSSI: %d", (unsigned)result->mChannel, (int)result->mMaxRssi);
+            if (result->mMaxRssi < scan->minRssi) {
+                scan->minRssi = result->mMaxRssi;
+                scan->channel = result->mChannel;
+            }
+        }, &enScan));
+        // FIXME: Make this handler asynchronous
+        lock.unlock();
+        while (!enScan.done) {
+            os_thread_yield();
+        }
+        lock.lock();
+        channel = (enScan.channel != 0) ? enScan.channel : 11; // Just in case
+    }
+    LOG(TRACE, "Using channel %u", channel);
     CHECK_THREAD(otLinkSetChannel(thread, channel));
     // Perform an IEEE 802.15.4 active scan
     struct ActiveScanResult {
@@ -246,10 +280,12 @@ int createNetwork(ctrl_request* req) {
     if (!actScan.extPanIds.reserve(4) || !actScan.panIds.reserve(4)) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, SCAN_DURATION,
+    LOG_DEBUG(TRACE, "Performing active scan");
+    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, ACTIVE_SCAN_DURATION,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ActiveScanResult*)data;
         if (!result) {
+            LOG_DEBUG(TRACE, "Active scan done");
             scan->done = true;
             return;
         }
@@ -270,6 +306,11 @@ int createNetwork(ctrl_request* req) {
                 scan->result = SYSTEM_ERROR_NO_MEMORY;
             }
         }
+#ifdef DEBUG_BUILD
+        char extPanIdStr[sizeof(extPanId) * 2] = {};
+        bytes2hexbuf_lower_case((const uint8_t*)&extPanId, sizeof(extPanId), extPanIdStr);
+        LOG_DEBUG(TRACE, "Name: %s; PAN ID: 0x%04x; Extended PAN ID: 0x%s", result->mNetworkName, (unsigned)panId, extPanIdStr);
+#endif
     }, &actScan));
     // FIXME: Make this handler asynchronous
     lock.unlock();
@@ -578,7 +619,7 @@ int scanNetworks(ctrl_request* req) {
         volatile bool done;
     };
     ScanResult scan = {};
-    CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, SCAN_DURATION,
+    CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, ACTIVE_SCAN_DURATION,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ScanResult*)data;
         if (!result) {
