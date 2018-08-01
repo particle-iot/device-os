@@ -617,6 +617,8 @@ void joinNetwork(ctrl_request* req) {
             tRet = otThreadSetEnabled(thread, true);
             if (tRet != OT_ERROR_NONE) {
                 LOG(ERROR, "otThreadSetEnabled() failed: %u", (unsigned)tRet);
+            } else {
+                notifyJoined(true);
             }
         } else {
             LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
@@ -629,9 +631,6 @@ void joinNetwork(ctrl_request* req) {
     if (tRet != OT_ERROR_NONE) {
         LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
         system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
-    }
-    else {
-        notifyJoined(true);
     }
 }
 
