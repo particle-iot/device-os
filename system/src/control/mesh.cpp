@@ -371,7 +371,7 @@ int createNetwork(ctrl_request* req) {
             }
         }
 #ifdef DEBUG_BUILD
-        char extPanIdStr[sizeof(extPanId) * 2] = {};
+        char extPanIdStr[sizeof(extPanId) * 2 + 1] = {};
         bytes2hexbuf_lower_case((const uint8_t*)&extPanId, sizeof(extPanId), extPanIdStr);
         LOG_DEBUG(TRACE, "Name: %s; PAN ID: 0x%04x; Extended PAN ID: 0x%s", result->mNetworkName, (unsigned)panId, extPanIdStr);
 #endif
