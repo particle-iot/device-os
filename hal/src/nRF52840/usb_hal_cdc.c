@@ -36,7 +36,9 @@
 #include "app_usbd_serial_num.h"
 #include "app_fifo.h"
 #include "usb_hal_cdc.h"
+
 #include "logging.h"
+LOG_SOURCE_CATEGORY("hal.usbcdc")
 
 /**
  * @brief Enable power USB detection
@@ -136,8 +138,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             ret_code_t ret;
             /*Setup first transfer*/
             ret = app_usbd_cdc_acm_read(&m_app_cdc_acm, m_rx_buffer, READ_SIZE);
-            if (ret == NRF_ERROR_IO_PENDING)
-            {
+            if (ret == NRF_ERROR_IO_PENDING) {
                 io_pending = true;
             }
             LOG_DEBUG(TRACE, "com open!");
@@ -152,29 +153,23 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             uint8_t data = 0;
             uint16_t size = 0;
 
-            if (m_usb_instance.com_opened == false)
-            {
+            if (m_usb_instance.com_opened == false) {
                 m_usb_instance.transmitting = false;
                 LOG_DEBUG(TRACE, "tx done, but com close!!! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
                 
                 return;
             }
 
-            while ((size < SEND_SIZE) && (app_fifo_get(&m_usb_instance.tx_fifo, &data) == NRF_SUCCESS))
-            {
+            while ((size < SEND_SIZE) && (app_fifo_get(&m_usb_instance.tx_fifo, &data) == NRF_SUCCESS)) {
                 m_tx_buffer[size++] = data;
             }
 
-            if (size == 0)
-            {
+            if (size == 0) {
                 m_usb_instance.transmitting = false;
-            }
-            else
-            {
+            } else {
                 m_usb_instance.transmitting = true;  // app_usbd_cdc_acm_write() cause interrupt before return!
                 uint32_t ret = app_usbd_cdc_acm_write(&m_app_cdc_acm, m_tx_buffer, size);
-                if (ret != NRF_SUCCESS)
-                {
+                if (ret != NRF_SUCCESS) {
                     m_usb_instance.transmitting = false;
                     LOG_DEBUG(ERROR, "ERROR: send data FAILED!");
                 }
@@ -183,12 +178,9 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
         }
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
             ret_code_t ret;
-            do
-            {
-                if (io_pending)
-                {
-                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0]))
-                    {
+            do {
+                if (io_pending) {
+                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0])) {
                         m_usb_instance.rx_ovf = true;
                         LOG_DEBUG(TRACE, "ERROR!!! rx overflow!!!");
                     }
@@ -199,16 +191,13 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                 ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
                                             m_rx_buffer,
                                             READ_SIZE);
-                if (ret == NRF_SUCCESS)    
-                {
-                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0]))
-                    {
+                if (ret == NRF_SUCCESS) {
+                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0])) {
                         m_usb_instance.rx_ovf = true;
                         LOG_DEBUG(TRACE, "ERROR!!! rx overflow!!!");
                     }
                 }  
-                else if (ret == NRF_ERROR_IO_PENDING)
-                {
+                else if (ret == NRF_ERROR_IO_PENDING) {
                     io_pending = true;
                 }
             } while (ret == NRF_SUCCESS);
