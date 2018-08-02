@@ -42,6 +42,7 @@
 #include "exflash_hal.h"
 #include "crc32.h"
 #include "core_hal.h"
+#include "service_debug.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -94,8 +95,8 @@ void Set_System(void)
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
 
     /* Configure internal flash and external flash */
-    hal_flash_init();
-    hal_exflash_init();
+    SPARK_ASSERT(!hal_flash_init());
+    SPARK_ASSERT(!hal_exflash_init());
 }
 
 void Reset_System(void) {
