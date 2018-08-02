@@ -36,8 +36,6 @@ STARTUP(System.enableFeature(FEATURE_WIFITESTER));
 
 SYSTEM_MODE(AUTOMATIC);
 
-#define PIN_MAPPING_ENTRY(pin) {_PP_STR(pin), pin}
-
 struct PinMapping {
     const char* name;
     pin_t pin;
@@ -45,39 +43,39 @@ struct PinMapping {
 
 PinMapping pinmap[] = {
 #if PLATFORM_ID == PLATFORM_XENON
-    PIN_MAPPING_ENTRY(D0),
-    PIN_MAPPING_ENTRY(D1),
-    PIN_MAPPING_ENTRY(D2),
-    PIN_MAPPING_ENTRY(D3),
-    PIN_MAPPING_ENTRY(D4),
-    PIN_MAPPING_ENTRY(D5),
-    PIN_MAPPING_ENTRY(D6),
-    PIN_MAPPING_ENTRY(D7),
-    PIN_MAPPING_ENTRY(D8),
-    PIN_MAPPING_ENTRY(D9),
-    PIN_MAPPING_ENTRY(D10),
-    PIN_MAPPING_ENTRY(D11),
-    PIN_MAPPING_ENTRY(D12),
-    PIN_MAPPING_ENTRY(D13),
-    PIN_MAPPING_ENTRY(D14),
-    PIN_MAPPING_ENTRY(D15),
-    PIN_MAPPING_ENTRY(D16),
-    PIN_MAPPING_ENTRY(D17),
-    PIN_MAPPING_ENTRY(D18),
-    PIN_MAPPING_ENTRY(D19),
-    PIN_MAPPING_ENTRY(A0),
-    PIN_MAPPING_ENTRY(A1),
-    PIN_MAPPING_ENTRY(A2),
-    PIN_MAPPING_ENTRY(A3),
-    PIN_MAPPING_ENTRY(A4),
-    PIN_MAPPING_ENTRY(A5),
-    PIN_MAPPING_ENTRY(SCK),
-    PIN_MAPPING_ENTRY(MISO),
-    PIN_MAPPING_ENTRY(MOSI),
-    PIN_MAPPING_ENTRY(SDA),
-    PIN_MAPPING_ENTRY(SCL),
-    PIN_MAPPING_ENTRY(TX),
-    PIN_MAPPING_ENTRY(RX)
+    {"D0", D0},
+    {"D1", D1},
+    {"D2", D2},
+    {"D3", D3},
+    {"D4", D4},
+    {"D5", D5},
+    {"D6", D6},
+    {"D7", D7},
+    {"D8", D8},
+    {"D9", D9},
+    {"D10", D10},
+    {"D11", D11},
+    {"D12", D12},
+    {"D13", D13},
+    {"D14", D14},
+    {"D15", D15},
+    {"D16", D16},
+    {"D17", D17},
+    {"D18", D18},
+    {"D19", D19},
+    {"A0", A0},
+    {"A1", A1},
+    {"A2", A2},
+    {"A3", A3},
+    {"A4", A4},
+    {"A5", A5},
+    {"SCK", SCK},
+    {"MISO", MISO},
+    {"MOSI", MOSI},
+    {"SDA", SDA},
+    {"SCL", SCL},
+    {"TX", TX},
+    {"RX", RX}
 #endif /* PLATFORM_ID == PLATFORM_XENON */
 };
 
