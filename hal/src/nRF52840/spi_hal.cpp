@@ -133,31 +133,27 @@ static void spi_init(HAL_SPI_Interface spi)
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 
     // Set pin function
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    PIN_MAP[m_spi_map[spi].ss_pin].pin_func = PF_SPI;
-    PIN_MAP[m_spi_map[spi].sck_pin].pin_func = PF_SPI;
-    PIN_MAP[m_spi_map[spi].mosi_pin].pin_func = PF_SPI;
-    PIN_MAP[m_spi_map[spi].miso_pin].pin_func = PF_SPI;
+    HAL_Set_Pin_Function(m_spi_map[spi].ss_pin, PF_SPI);
+    HAL_Set_Pin_Function(m_spi_map[spi].sck_pin, PF_SPI);
+    HAL_Set_Pin_Function(m_spi_map[spi].mosi_pin, PF_SPI);
+    HAL_Set_Pin_Function(m_spi_map[spi].miso_pin, PF_SPI);
 }
 
 static void spi_uninit(HAL_SPI_Interface spi)
 {
     nrfx_spim_uninit(m_spi_map[spi].instance);
 
-    // Set pin function
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    PIN_MAP[m_spi_map[spi].ss_pin].pin_func = PF_NONE;
-    PIN_MAP[m_spi_map[spi].sck_pin].pin_func = PF_NONE;
-    PIN_MAP[m_spi_map[spi].mosi_pin].pin_func = PF_NONE;
-    PIN_MAP[m_spi_map[spi].miso_pin].pin_func = PF_NONE;
+    HAL_Set_Pin_Function(m_spi_map[spi].ss_pin, PF_NONE);
+    HAL_Set_Pin_Function(m_spi_map[spi].sck_pin, PF_NONE);
+    HAL_Set_Pin_Function(m_spi_map[spi].mosi_pin, PF_NONE);
+    HAL_Set_Pin_Function(m_spi_map[spi].miso_pin, PF_NONE);
 }
 
 static void ss_pin_uninit(HAL_SPI_Interface spi)
 {
-    // Set pin function
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    PIN_MAP[m_spi_map[spi].ss_pin].pin_func = PF_NONE;
     nrf_gpio_cfg_default(get_nrf_pin_num(m_spi_map[spi].ss_pin));
+    
+    HAL_Set_Pin_Function(m_spi_map[spi].ss_pin, PF_NONE);
 }
 
 static int spi_tx_rx(HAL_SPI_Interface spi, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size)

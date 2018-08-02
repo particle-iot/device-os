@@ -17,6 +17,7 @@
 
 #include "nrf_gpio.h" 
 #include "gpio_hal.h"
+#include "pinmap_hal.h"
 #include "pinmap_impl.h"
 #include "hw_ticks.h"
 #include <stddef.h>
@@ -65,30 +66,30 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
         case OUTPUT:
             nrf_gpio_cfg_output(gpio_pin_map);
             PIN_MAP[pin].pin_mode = OUTPUT;
-            PIN_MAP[pin].pin_func = PF_DIO;
+            HAL_Set_Pin_Function(pin, PF_DIO);
             break;
 
         case INPUT:
             nrf_gpio_cfg_input(gpio_pin_map, NRF_GPIO_PIN_NOPULL);
             PIN_MAP[pin].pin_mode = INPUT;
-            PIN_MAP[pin].pin_func = PF_DIO;
+            HAL_Set_Pin_Function(pin, PF_DIO);
             break;
 
         case INPUT_PULLUP:
             nrf_gpio_cfg_input(gpio_pin_map, NRF_GPIO_PIN_PULLUP);
             PIN_MAP[pin].pin_mode = INPUT_PULLUP;
-            PIN_MAP[pin].pin_func = PF_DIO;
+            HAL_Set_Pin_Function(pin, PF_DIO);
             break;
 
         case INPUT_PULLDOWN:
             nrf_gpio_cfg_input(gpio_pin_map, NRF_GPIO_PIN_PULLDOWN);
             PIN_MAP[pin].pin_mode = INPUT_PULLDOWN;
-            PIN_MAP[pin].pin_func = PF_DIO;
+            HAL_Set_Pin_Function(pin, PF_DIO);
             break;
 
         case PIN_MODE_NONE:
             nrf_gpio_cfg_default(gpio_pin_map);
-            PIN_MAP[pin].pin_func = PF_NONE;
+            HAL_Set_Pin_Function(pin, PF_NONE);
         default:
             break;
     }
