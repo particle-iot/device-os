@@ -82,10 +82,10 @@ namespace {
 const unsigned DEFAULT_CHANNEL = 11;
 
 // Timeout is seconds after which the commissioner role is automatically stopped
-const unsigned COMMISSIONER_TIMEOUT = 120;
+const unsigned COMMISSIONER_TIMEOUT = 600;
 
 // Timeout in seconds after which a joiner is automatically removed from the commissioner's list
-const unsigned JOINER_TIMEOUT = 120;
+const unsigned JOINER_TIMEOUT = 300;
 
 // Minimum size of the joining device credential
 const size_t JOINER_PASSWORD_MIN_SIZE = 6;
@@ -131,7 +131,7 @@ void stopCommissionerTimer() {
     }
 }
 
-int startCommissionerTimer() {
+int restartCommissionerTimer() {
     if (!g_commTimer) {
         const int ret = os_timer_create(&g_commTimer, COMMISSIONER_TIMEOUT * 1000, commissionerTimeout, nullptr, true, nullptr);
         if (ret != 0) {
@@ -474,7 +474,7 @@ int startCommissioner(ctrl_request* req) {
     if (state != OT_COMMISSIONER_STATE_ACTIVE) {
         return SYSTEM_ERROR_TIMEOUT;
     }
-    startCommissionerTimer();
+    restartCommissionerTimer();
     return 0;
 }
 
@@ -552,6 +552,7 @@ int addJoiner(ctrl_request* req) {
             dJoinPwd.size > JOINER_PASSWORD_MAX_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    restartCommissionerTimer();
     // Add joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
@@ -575,6 +576,7 @@ int removeJoiner(ctrl_request* req) {
     if (dEui64Str.size != sizeof(otExtAddress) * 2) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    restartCommissionerTimer();
     // Remove joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
