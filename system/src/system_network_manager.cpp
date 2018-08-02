@@ -92,7 +92,7 @@ NetworkManager::NetworkManager() {
     ip4State_ = ProtocolState::UNCONFIGURED;
     ip6State_ = ProtocolState::UNCONFIGURED;
     dns4State_ = DnsState::UNCONFIGURED;
-    dns46tate_ = DnsState::UNCONFIGURED;
+    dns6State_ = DnsState::UNCONFIGURED;
 }
 
 NetworkManager::~NetworkManager() {
