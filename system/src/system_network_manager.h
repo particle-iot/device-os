@@ -23,6 +23,7 @@
 #if HAL_PLATFORM_IFAPI
 
 #include "ifapi.h"
+#include "resolvapi.h"
 #include <atomic>
 
 namespace particle { namespace system {
@@ -83,6 +84,11 @@ private:
         CONFIGURED
     };
 
+    enum class DnsState {
+        UNCONFIGURED,
+        CONFIGURED
+    };
+
     void transition(State state);
     static void ifEventHandlerCb(void* arg, if_t iface, const struct if_event* ev);
     void ifEventHandler(if_t iface, const struct if_event* ev);
@@ -96,15 +102,22 @@ private:
 
     unsigned int countIfacesWithFlags(unsigned int flags) const;
     void refreshIpState();
+    void refreshDnsState();
 
     bool haveLowerLayerConfiguration(if_t iface) const;
 
+    static void resolvEventHandlerCb(void* arg, const void* data);
+    void resolvEventHandler(const void* data);
+
 private:
     if_event_handler_cookie_t ifEventHandlerCookie_ = {};
+    resolv_event_handler_cookie_t resolvEventHandlerCookie_ = {};
 
     std::atomic<State> state_;
     std::atomic<ProtocolState> ip4State_;
     std::atomic<ProtocolState> ip6State_;
+    std::atomic<DnsState> dns4State_;
+    std::atomic<DnsState> dns6State_;
 };
 
 

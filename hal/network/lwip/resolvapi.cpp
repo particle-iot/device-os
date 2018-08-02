@@ -23,6 +23,25 @@
 
 using namespace particle::net;
 
+struct EventHandlerList {
+    EventHandlerList* next;
+    resolv_event_handler_t handler;
+    void* arg;
+};
+
+static void dns_list_change_callback_handler(u8_t numdns, const ip_addr_t *dnsserver);
+
+EventHandlerList* s_eventHandlerList = nullptr;
+
+int resolv_init(void) {
+    LwipTcpIpCoreLock lk;
+
+    DNS_DECLARE_LIST_CHANGE_CALLBACK(handler);
+    dns_add_list_change_callback(&handler, &dns_list_change_callback_handler);
+
+    return 0;
+}
+
 int resolv_get_dns_servers(struct resolv_dns_servers** servers) {
     if (servers == nullptr) {
         return -1;
@@ -125,4 +144,56 @@ int resolv_del_dns_server(const struct sockaddr* server) {
     }
 
     return -1;
+}
+
+resolv_event_handler_cookie_t resolv_event_handler_add(resolv_event_handler_t handler, void* arg) {
+    /* We should really implement a list-like common class */
+    EventHandlerList* e = new EventHandlerList;
+    if (e) {
+        LwipTcpIpCoreLock lk;
+        e->handler = handler;
+        e->arg = arg;
+        e->next = s_eventHandlerList;
+        s_eventHandlerList = e;
+    }
+
+    return e;
+}
+
+int resolv_event_handler_del(resolv_event_handler_cookie_t cookie) {
+    if (!cookie) {
+        return -1;
+    }
+
+    EventHandlerList* e = (EventHandlerList*)cookie;
+
+    LwipTcpIpCoreLock lk;
+
+    for (EventHandlerList* h = s_eventHandlerList, *prev = nullptr; h != nullptr; h = h->next) {
+        if (h == e) {
+            if (prev) {
+                prev->next = h->next;
+            } else {
+                s_eventHandlerList = h->next;
+            }
+
+            delete e;
+
+            return 0;
+        }
+
+        prev = h;
+    }
+
+    return -1;
+}
+
+void dns_list_change_callback_handler(u8_t numdns, const ip_addr_t *dnsserver) {
+    LOG(INFO, "DNS server list changed");
+    for (EventHandlerList* h = s_eventHandlerList; h != nullptr; h = h->next) {
+        if (h->handler) {
+            /* FIXME */
+            h->handler(h->arg, nullptr);
+        }
+    }
 }

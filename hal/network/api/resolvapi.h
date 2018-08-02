@@ -30,11 +30,19 @@ struct resolv_dns_servers {
     struct sockaddr* server;
 };
 
+int resolv_init(void);
+
 int resolv_get_dns_servers(struct resolv_dns_servers** servers);
 int resolv_free_dns_servers(struct resolv_dns_servers* servers);
 
 int resolv_add_dns_server(const struct sockaddr* server, uint8_t priority);
 int resolv_del_dns_server(const struct sockaddr* server);
+
+typedef void* resolv_event_handler_cookie_t;
+typedef void (*resolv_event_handler_t)(void* arg, const void* ptr);
+
+resolv_event_handler_cookie_t resolv_event_handler_add(resolv_event_handler_t handler, void* arg);
+int resolv_event_handler_del(resolv_event_handler_cookie_t cookie);
 
 #ifdef __cplusplus
 }
