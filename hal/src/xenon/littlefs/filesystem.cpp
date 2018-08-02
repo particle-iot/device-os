@@ -62,18 +62,30 @@ namespace {
 int fs_read(const struct lfs_config* c, lfs_block_t block,
             lfs_off_t off, void* buffer, lfs_size_t size)
 {
-    return hal_exflash_read(block * c->block_size + off, (uint8_t*)buffer, size);
+    int r = hal_exflash_read(block * c->block_size + off, (uint8_t*)buffer, size);
+    if (r) {
+        LOG_DEBUG(ERROR, "fs_read error %d", r);
+    }
+    return r;
 }
 
 int fs_prog(const struct lfs_config* c, lfs_block_t block,
             lfs_off_t off, const void* buffer, lfs_size_t size)
 {
-    return hal_exflash_write(block * c->block_size + off, (const uint8_t*)buffer, size);
+    int r = hal_exflash_write(block * c->block_size + off, (const uint8_t*)buffer, size);
+    if (r) {
+        LOG_DEBUG(ERROR, "fs_prog error %d", r);
+    }
+    return r;
 }
 
 int fs_erase(const struct lfs_config* c, lfs_block_t block)
 {
-    return hal_exflash_erase_sector(block * c->block_size, 1);
+    int r = hal_exflash_erase_sector(block * c->block_size, 1);
+    if (r) {
+        LOG_DEBUG(ERROR, "fs_erase error %d", r);
+    }
+    return r;
 }
 
 int fs_sync(const struct lfs_config *c)
@@ -264,6 +276,8 @@ int filesystem_mount(filesystem_t* fs) {
     if (!ret) {
         fs->state = true;
     }
+
+    SPARK_ASSERT(fs->state);
 
     return ret;
 }
