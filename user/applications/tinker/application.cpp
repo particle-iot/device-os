@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include "stdarg.h"
+#include "preprocessor.h"
 
 PRODUCT_ID(PLATFORM_ID);
 PRODUCT_VERSION(3);
@@ -34,6 +35,60 @@ STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
 STARTUP(System.enableFeature(FEATURE_WIFITESTER));
 
 SYSTEM_MODE(AUTOMATIC);
+
+struct PinMapping {
+    const char* name;
+    pin_t pin;
+};
+
+PinMapping pinmap[] = {
+#if PLATFORM_ID == PLATFORM_XENON
+    {"D0", D0},
+    {"D1", D1},
+    {"D2", D2},
+    {"D3", D3},
+    {"D4", D4},
+    {"D5", D5},
+    {"D6", D6},
+    {"D7", D7},
+    {"D8", D8},
+    {"D9", D9},
+    {"D10", D10},
+    {"D11", D11},
+    {"D12", D12},
+    {"D13", D13},
+    {"D14", D14},
+    {"D15", D15},
+    {"D16", D16},
+    {"D17", D17},
+    {"D18", D18},
+    {"D19", D19},
+    {"A0", A0},
+    {"A1", A1},
+    {"A2", A2},
+    {"A3", A3},
+    {"A4", A4},
+    {"A5", A5},
+    {"SCK", SCK},
+    {"MISO", MISO},
+    {"MOSI", MOSI},
+    {"SDA", SDA},
+    {"SCL", SCL},
+    {"TX", TX},
+    {"RX", RX}
+#endif /* PLATFORM_ID == PLATFORM_XENON */
+};
+
+pin_t lookupPinByName(const String& name) {
+    for (unsigned i = 0; i < sizeof(pinmap) / sizeof(pinmap[0]); i++) {
+        const auto& entry = pinmap[i];
+        if (!strcmp(entry.name, name.c_str())) {
+            return entry.pin;
+        }
+    }
+
+    return PIN_INVALID;
+}
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
@@ -62,38 +117,14 @@ void loop()
  * Return         : Value of the pin (0 or 1) in INT type
                     Returns a negative number on failure
  *******************************************************************************/
-int tinkerDigitalRead(String pin)
+int tinkerDigitalRead(String pinStr)
 {
-    //convert ascii to integer
-    int pinNumber = pin.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 7) return -1;
-
-    if(pin.startsWith("D"))
-    {
-        pinMode(pinNumber, INPUT_PULLDOWN);
-        return digitalRead(pinNumber);
+    pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID) {
+        pinMode(pin, INPUT_PULLDOWN);
+        return digitalRead(pin);
     }
-    else if (pin.startsWith("A"))
-    {
-        pinMode(pinNumber+10, INPUT_PULLDOWN);
-        return digitalRead(pinNumber+10);
-    }
-#if Wiring_Cellular
-    else if (pin.startsWith("B"))
-    {
-        if (pinNumber > 5) return -3;
-        pinMode(pinNumber+24, INPUT_PULLDOWN);
-        return digitalRead(pinNumber+24);
-    }
-    else if (pin.startsWith("C"))
-    {
-        if (pinNumber > 5) return -4;
-        pinMode(pinNumber+30, INPUT_PULLDOWN);
-        return digitalRead(pinNumber+30);
-    }
-#endif
-    return -2;
+    return -1;
 }
 
 /*******************************************************************************
@@ -105,45 +136,31 @@ int tinkerDigitalRead(String pin)
  *******************************************************************************/
 int tinkerDigitalWrite(String command)
 {
-    bool value = 0;
-    //convert ascii to integer
-    int pinNumber = command.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 7) return -1;
+    int indexOfComma = command.indexOf(',');
+    if (indexOfComma <= 0) {
+        return -1;
+    }
+    String pinStr = command.substring(0, indexOfComma);
+    String pinState = command.substring(indexOfComma + 1);
 
-    if(command.substring(3,7) == "HIGH") value = 1;
-    else if(command.substring(3,6) == "LOW") value = 0;
-    else return -2;
+    uint8_t state;
+    if (pinState == "HIGH") {
+        state = HIGH;
+    } else if (pinState == "LOW") {
+        state = LOW;
+    } else {
+        return -2;
+    }
 
-    if(command.startsWith("D"))
-    {
-        pinMode(pinNumber, OUTPUT);
-        digitalWrite(pinNumber, value);
+    pin_t pin = lookupPinByName(pinStr);
+
+    if (pin != PIN_INVALID) {
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, state);
         return 1;
     }
-    else if(command.startsWith("A"))
-    {
-        pinMode(pinNumber+10, OUTPUT);
-        digitalWrite(pinNumber+10, value);
-        return 1;
-    }
-#if Wiring_Cellular
-    else if(command.startsWith("B"))
-    {
-        if (pinNumber > 5) return -4;
-        pinMode(pinNumber+24, OUTPUT);
-        digitalWrite(pinNumber+24, value);
-        return 1;
-    }
-    else if(command.startsWith("C"))
-    {
-        if (pinNumber > 5) return -5;
-        pinMode(pinNumber+30, OUTPUT);
-        digitalWrite(pinNumber+30, value);
-        return 1;
-    }
-#endif
-    else return -3;
+
+    return -1;
 }
 
 /*******************************************************************************
@@ -154,29 +171,13 @@ int tinkerDigitalWrite(String command)
  * Return         : Returns the analog value in INT type (0 to 4095)
                     Returns a negative number on failure
  *******************************************************************************/
-int tinkerAnalogRead(String pin)
+int tinkerAnalogRead(String pinStr)
 {
-    //convert ascii to integer
-    int pinNumber = pin.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
-    if (pinNumber < 0 || pinNumber > 7) return -1;
-
-    if(pin.startsWith("D"))
-    {
-        return -3;
+    pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && HAL_Validate_Pin_Function(pin, PF_ADC) == PF_ADC) {
+        return analogRead(pin);
     }
-    else if (pin.startsWith("A"))
-    {
-        return analogRead(pinNumber+10);
-    }
-#if Wiring_Cellular
-    else if (pin.startsWith("B"))
-    {
-        if (pinNumber < 2 || pinNumber > 5) return -3;
-        return analogRead(pinNumber+24);
-    }
-#endif
-    return -2;
+    return -1;
 }
 
 /*******************************************************************************
@@ -188,66 +189,25 @@ int tinkerAnalogRead(String pin)
  *******************************************************************************/
 int tinkerAnalogWrite(String command)
 {
-    String value = command.substring(3);
-
-    if(command.substring(0,2) == "TX")
-    {
-        pinMode(TX, OUTPUT);
-        analogWrite(TX, value.toInt());
-        return 1;
+    int indexOfComma = command.indexOf(',');
+    if (indexOfComma <= 0) {
+        return -1;
     }
-    else if(command.substring(0,2) == "RX")
-    {
-        pinMode(RX, OUTPUT);
-        analogWrite(RX, value.toInt());
-        return 1;
+    String pinStr = command.substring(0, indexOfComma);
+    String pinValue = command.substring(indexOfComma + 1);
+
+    int value = pinValue.toInt();
+    if (value < 0 || value > 255) {
+        return -2;
     }
 
-    //convert ascii to integer
-    int pinNumber = command.charAt(1) - '0';
-    //Sanity check to see if the pin numbers are within limits
+    pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC ||
+        HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)) {
+        pinMode(pin, OUTPUT);
+        analogWrite(pin, value);
+        return 1;
+    }
 
-    if (pinNumber < 0 || pinNumber > 7) return -1;
-
-    if(command.startsWith("D"))
-    {
-        pinMode(pinNumber, OUTPUT);
-        analogWrite(pinNumber, value.toInt());
-        return 1;
-    }
-    else if(command.startsWith("A"))
-    {
-        pinMode(pinNumber+10, OUTPUT);
-        analogWrite(pinNumber+10, value.toInt());
-        return 1;
-    }
-    else if(command.substring(0,2) == "TX")
-    {
-        pinMode(TX, OUTPUT);
-        analogWrite(TX, value.toInt());
-        return 1;
-    }
-    else if(command.substring(0,2) == "RX")
-    {
-        pinMode(RX, OUTPUT);
-        analogWrite(RX, value.toInt());
-        return 1;
-    }
-#if Wiring_Cellular
-    else if (command.startsWith("B"))
-    {
-        if (pinNumber > 3) return -3;
-        pinMode(pinNumber+24, OUTPUT);
-        analogWrite(pinNumber+24, value.toInt());
-        return 1;
-    }
-    else if (command.startsWith("C"))
-    {
-        if (pinNumber < 4 || pinNumber > 5) return -4;
-        pinMode(pinNumber+30, OUTPUT);
-        analogWrite(pinNumber+30, value.toInt());
-        return 1;
-    }
-#endif
-    else return -2;
+    return -1;
 }
