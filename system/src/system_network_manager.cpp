@@ -91,6 +91,8 @@ NetworkManager::NetworkManager() {
     state_ = State::NONE;
     ip4State_ = ProtocolState::UNCONFIGURED;
     ip6State_ = ProtocolState::UNCONFIGURED;
+    dns4State_ = DnsState::UNCONFIGURED;
+    dns46tate_ = DnsState::UNCONFIGURED;
 }
 
 NetworkManager::~NetworkManager() {
@@ -107,6 +109,10 @@ void NetworkManager::init() {
         ifEventHandlerCookie_ = if_event_handler_add(&ifEventHandlerCb, this);
     }
 
+    if (!resolvEventHandlerCookie_) {
+        resolvEventHandlerCookie_ = resolv_event_handler_add(&resolvEventHandlerCb, this);
+    }
+
     transition(State::DISABLED);
 }
 
@@ -114,6 +120,11 @@ void NetworkManager::destroy() {
     if (ifEventHandlerCookie_) {
         if_event_handler_del(ifEventHandlerCookie_);
         ifEventHandlerCookie_ = nullptr;
+    }
+
+    if (resolvEventHandlerCookie_) {
+        resolv_event_handler_del(resolvEventHandlerCookie_);
+        resolvEventHandlerCookie_ = nullptr;
     }
 }
 
@@ -301,6 +312,8 @@ void NetworkManager::transition(State state) {
         case State::IP_CONFIGURED: {
             ip4State_ = ProtocolState::UNCONFIGURED;
             ip6State_ = ProtocolState::UNCONFIGURED;
+            dns4State_ = DnsState::UNCONFIGURED;
+            dns6State_ = DnsState::UNCONFIGURED;
             break;
         }
     }
@@ -500,10 +513,13 @@ void NetworkManager::refreshIpState() {
     const auto oldIp4State = ip4State_.load();
     const auto oldIp6State = ip6State_.load();
 
+    refreshDnsState();
+
     ip4State_ = ip4;
     ip6State_ = ip6;
 
-    const bool ipConfigured = (ip4 == ProtocolState::CONFIGURED) || (ip6 == ProtocolState::CONFIGURED);
+    const bool ipConfigured = (ip4 == ProtocolState::CONFIGURED && dns4State_ == DnsState::CONFIGURED) ||
+            (ip6 == ProtocolState::CONFIGURED && dns6State_ == DnsState::CONFIGURED);
 
     if (state_ == State::IP_CONFIGURED && !ipConfigured) {
         transition(State::IFACE_LINK_UP);
@@ -515,6 +531,31 @@ void NetworkManager::refreshIpState() {
             transition(State::IP_CONFIGURED);
         }
     }
+}
+
+void NetworkManager::refreshDnsState() {
+    resolv_dns_servers* servers = nullptr;
+    CHECKV(resolv_get_dns_servers(&servers));
+
+    DnsState ip4 = DnsState::UNCONFIGURED;
+    DnsState ip6 = DnsState::UNCONFIGURED;
+
+    for (auto server = servers; server != nullptr; server = server->next) {
+        if (!server || !server->server) {
+            continue;
+        }
+
+        if (server->server->sa_family == AF_INET) {
+            ip4 = DnsState::CONFIGURED;
+        } else if (server->server->sa_family == AF_INET6) {
+            ip6 = DnsState::CONFIGURED;
+        }
+    }
+
+    resolv_free_dns_servers(servers);
+
+    dns4State_ = ip4;
+    dns6State_ = ip6;
 }
 
 bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
@@ -532,6 +573,15 @@ bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
     return true;
 }
 
+void NetworkManager::resolvEventHandlerCb(void* arg, const void* data) {
+    auto self = static_cast<NetworkManager*>(arg);
+    self->resolvEventHandler(data);
+}
+
+void NetworkManager::resolvEventHandler(const void* data) {
+    /* FIXME */
+    refreshIpState();
+}
 
 const char* NetworkManager::stateToName(State state) const {
     static const char* const stateNames[] = {

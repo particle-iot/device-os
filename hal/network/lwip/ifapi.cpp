@@ -30,6 +30,8 @@ extern "C" {
 }
 #include <lwip/autoip.h>
 
+#include "resolvapi.h"
+
 using namespace particle::net;
 
 namespace {
@@ -317,6 +319,8 @@ int if_init(void) {
 
     NETIF_DECLARE_EXT_CALLBACK(handler);
     netif_add_ext_callback(&handler, &netif_ext_callback_handler);
+
+    resolv_init();
 
     return if_init_platform(nullptr);
 }
