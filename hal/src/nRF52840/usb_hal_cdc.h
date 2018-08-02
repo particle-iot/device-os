@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int usb_hal_init(void);
 bool usb_hal_is_enabled(void);
 int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16_t tx_buf_size);
@@ -21,6 +25,10 @@ void usb_uart_flush_rx_data(void);
 void usb_uart_flush_tx_data(void);
 int usb_uart_available_tx_data(void);
 bool usb_hal_is_connected(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

@@ -109,13 +109,11 @@ APP_USBD_CDC_ACM_GLOBAL_DEF(m_app_cdc_acm,
 
 #define FIFO_LENGTH(p_fifo)     fifo_length(p_fifo)  /**< Macro for calculating the FIFO length. */
 #define IS_FIFO_FULL(p_fifo)    fifo_full(p_fifo)
-static __INLINE uint32_t fifo_length(app_fifo_t * p_fifo)
-{
+static __INLINE uint32_t fifo_length(app_fifo_t * p_fifo) {
     uint32_t tmp = p_fifo->read_pos;
     return p_fifo->write_pos - tmp;
 }
-static __INLINE bool fifo_full(app_fifo_t * p_fifo)
-{
+static __INLINE bool fifo_full(app_fifo_t * p_fifo) {
     return (FIFO_LENGTH(p_fifo) > p_fifo->buf_size_mask);
 }
 
@@ -127,10 +125,8 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
 {
     static bool io_pending = false;
 
-    switch (event)
-    {
-        case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
-        {
+    switch (event) {
+        case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN: {
             // reset buffer state
             m_usb_instance.com_opened = true;
             m_usb_instance.rx_ovf = false;
@@ -145,14 +141,14 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                 io_pending = true;
             }
             LOG_DEBUG(TRACE, "com open!");
+            break;
         }
-        break;
-        case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:
+        case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:{
             m_usb_instance.com_opened = false;
             LOG_DEBUG(TRACE, "com close!!! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
             break;
-        case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
-        {
+        }
+        case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: {
             uint8_t data = 0;
             uint16_t size = 0;
 
@@ -183,12 +179,10 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                     LOG_DEBUG(ERROR, "ERROR: send data FAILED!");
                 }
             }
+            break;
         }
-        break;
-        case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
-        {
+        case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
             ret_code_t ret;
-
             do
             {
                 if (io_pending)
@@ -218,9 +212,8 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                     io_pending = true;
                 }
             } while (ret == NRF_SUCCESS);
+            break;
         }
-        break;
-
         default:
             break;
     }
@@ -228,41 +221,51 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
 
 static void usbd_user_ev_handler(app_usbd_event_type_t event)
 {
-    switch (event)
-    {
-        case APP_USBD_EVT_DRV_SUSPEND:
+    switch (event) {
+        case APP_USBD_EVT_DRV_SUSPEND: {
             LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_SUSPEND");
             break;
-        case APP_USBD_EVT_DRV_RESUME:
+        }
+        case APP_USBD_EVT_DRV_RESUME: {
             LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_RESUME");
             break;
-        case APP_USBD_EVT_STARTED: 
+        }
+        case APP_USBD_EVT_STARTED: {
             // triggered by app_usbd_start()
             break;
-        case APP_USBD_EVT_STOPPED: 
+        }
+        case APP_USBD_EVT_STOPPED: {
             // triggered by app_usbd_stop()
             app_usbd_disable();
             break;
-        case APP_USBD_EVT_POWER_DETECTED:
+        }
+        case APP_USBD_EVT_POWER_DETECTED: {
             m_usb_instance.power_state = POWER_STATE_DETECTED;
+            if (!nrf_drv_usbd_is_enabled())
+            {
+                app_usbd_enable();
+            }
             break;
-        case APP_USBD_EVT_POWER_REMOVED:
+        }
+        case APP_USBD_EVT_POWER_REMOVED: {
             app_usbd_stop(); 
             m_usb_instance.power_state = POWER_STATE_REMOVED;
             break;
-        case APP_USBD_EVT_POWER_READY: 
+        }
+        case APP_USBD_EVT_POWER_READY: {
             m_usb_instance.power_state = POWER_STATE_READY;
+            app_usbd_start();
+            m_usb_instance.rx_ovf = 0;
+            m_usb_instance.com_opened = false;
             break;
-        default:
+        }
+        default: 
             break;
     }
 }
 
-int usb_hal_init(void)
-{
-    if (m_usb_instance.initialized)
-    {   
-        // already initialized
+int usb_hal_init(void) {
+    if (m_usb_instance.initialized) {   
         return 0;
     }
 
@@ -272,14 +275,12 @@ int usb_hal_init(void)
     };
 
     ret = nrf_drv_clock_init();
-    if ((ret != NRF_SUCCESS) && (ret != NRF_ERROR_MODULE_ALREADY_INITIALIZED))
-    {
-        return -1;
+    if (ret != NRF_ERROR_MODULE_ALREADY_INITIALIZED) {
+        SPARK_ASSERT(ret == NRF_SUCCESS);
     }
 
     nrf_drv_clock_lfclk_request(NULL);
-    while(!nrf_drv_clock_lfclk_is_running())
-    {
+    while(!nrf_drv_clock_lfclk_is_running()) {
         /* Just waiting */
     }
 
@@ -293,22 +294,18 @@ int usb_hal_init(void)
     return 0;
 }
 
-int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16_t tx_buf_size)
-{
+int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16_t tx_buf_size) {
     uint32_t ret;
 
-    if (m_usb_instance.mode == USB_MODE_CDC_UART)
-    {
+    if (m_usb_instance.mode == USB_MODE_CDC_UART) {
         return 0;
     }
 
-    if (app_fifo_init(&m_usb_instance.rx_fifo, rx_buf, rx_buf_size))
-    {
+    if (app_fifo_init(&m_usb_instance.rx_fifo, rx_buf, rx_buf_size)) {
         return  -1;
     }
 
-    if (app_fifo_init(&m_usb_instance.tx_fifo, tx_buf, tx_buf_size))
-    {
+    if (app_fifo_init(&m_usb_instance.tx_fifo, tx_buf, tx_buf_size)) {
         return  -2;
     }
 
@@ -316,13 +313,10 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
     ret = app_usbd_class_append(class_cdc_acm);
     SPARK_ASSERT(ret == NRF_SUCCESS);
 
-    if (USBD_POWER_DETECTION)
-    {
+    if (USBD_POWER_DETECTION) {
         ret = app_usbd_power_events_enable();
         SPARK_ASSERT(ret == NRF_SUCCESS);
-    }
-    else
-    {
+    } else {
         LOG_DEBUG(TRACE, "No USB power detection enabled\r\nStarting USB now");
 
         app_usbd_enable();
@@ -334,20 +328,16 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
     return 0;
 }
 
-int usb_uart_send(uint8_t data[], uint16_t size)
-{
-    if (!m_usb_instance.com_opened)
-    {
+int usb_uart_send(uint8_t data[], uint16_t size) {
+    if (!m_usb_instance.com_opened) {
         return 0;
     }
 
-    if ((__get_PRIMASK() & 1))
-    {
+    if ((__get_PRIMASK() & 1)) {
         return 0;
     }
 
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
         // wait until tx fifo is available
         while (IS_FIFO_FULL(&m_usb_instance.tx_fifo));
         app_fifo_put(&m_usb_instance.tx_fifo, data[i]);
@@ -358,17 +348,17 @@ int usb_uart_send(uint8_t data[], uint16_t size)
     uint8_t  pre_send_data = 0;
 
     // trigger first transmitting
-    if (!m_usb_instance.transmitting)
-    {
-        while ((pre_send_size < SEND_SIZE) && (app_fifo_get(&m_usb_instance.tx_fifo, &pre_send_data) == NRF_SUCCESS))
+    if (!m_usb_instance.transmitting) {
+        while ((pre_send_size < SEND_SIZE) && 
+               (app_fifo_get(&m_usb_instance.tx_fifo, &pre_send_data) == NRF_SUCCESS))
         {
             m_tx_buffer[pre_send_size++] = pre_send_data;
         }
 
         m_usb_instance.transmitting = true; // app_usbd_cdc_acm_write() cause interrupt before return!
         ret = app_usbd_cdc_acm_write(&m_app_cdc_acm, m_tx_buffer, pre_send_size);
-        if (ret != NRF_SUCCESS)
-        {
+        SPARK_ASSERT(ret == NRF_SUCCESS); 
+        if (ret != NRF_SUCCESS) {
             m_usb_instance.transmitting = false;
             pre_send_size = 0;
             LOG_DEBUG(ERROR, "ERROR: send data FAILED!");
@@ -378,25 +368,22 @@ int usb_uart_send(uint8_t data[], uint16_t size)
     return pre_send_size;
 }
 
-void usb_uart_set_baudrate(uint32_t baudrate)
-{
+void usb_uart_set_baudrate(uint32_t baudrate) {
     m_usb_instance.baudrate = baudrate;
 }
 
-uint32_t usb_uart_get_baudrate(void)
-{
+uint32_t usb_uart_get_baudrate(void) {
     return m_usb_instance.baudrate;
 }
 
-void usb_hal_attach(void)
-{
-    if (m_usb_instance.power_state == POWER_STATE_REMOVED)
+void usb_hal_attach(void) {
+    if ((m_usb_instance.power_state == POWER_STATE_REMOVED) ||
+        (m_usb_instance.power_state == POWER_STATE_READY))
     {
         return;
     }
 
-    if (!nrf_drv_usbd_is_enabled())
-    {
+    if (!nrf_drv_usbd_is_enabled()) {
         app_usbd_enable();
     }
     app_usbd_start();
@@ -405,66 +392,53 @@ void usb_hal_attach(void)
     m_usb_instance.com_opened = false;
 }
 
-void usb_hal_detach(void)
-{
-    if (m_usb_instance.power_state == POWER_STATE_REMOVED)
-    {
+void usb_hal_detach(void) {
+    if (m_usb_instance.power_state == POWER_STATE_REMOVED) {
         return;
     }
 
     app_usbd_stop();
-    if (nrf_drv_usbd_is_enabled())
-    {
+    if (nrf_drv_usbd_is_enabled()) {
         app_usbd_disable();
     }
 }
 
-int usb_uart_available_rx_data(void)
-{
+int usb_uart_available_rx_data(void) {
     return FIFO_LENGTH(&m_usb_instance.rx_fifo); 
 }
 
-uint8_t usb_uart_get_rx_data(void)
-{
+uint8_t usb_uart_get_rx_data(void) {
     uint8_t data = 0;
-    if (app_fifo_get(&m_usb_instance.rx_fifo, &data))
-    {
+    if (app_fifo_get(&m_usb_instance.rx_fifo, &data)) {
         return 0;
     }
     return data;
 }
 
-uint8_t usb_uart_peek_rx_data(uint8_t index)
-{
+uint8_t usb_uart_peek_rx_data(uint8_t index) {
     uint8_t data = 0;
-    if (app_fifo_peek(&m_usb_instance.rx_fifo, index, &data))
-    {
+    if (app_fifo_peek(&m_usb_instance.rx_fifo, index, &data)) {
         return 0;
     }
     return data;
 }
 
-void usb_uart_flush_rx_data(void)
-{
+void usb_uart_flush_rx_data(void) {
     app_fifo_flush(&m_usb_instance.rx_fifo);
 }
 
-void usb_uart_flush_tx_data(void)
-{
+void usb_uart_flush_tx_data(void) {
     app_fifo_flush(&m_usb_instance.tx_fifo);
 }
 
-int usb_uart_available_tx_data(void)
-{
+int usb_uart_available_tx_data(void) {
     return FIFO_LENGTH(&m_usb_instance.tx_fifo); 
 }
 
-bool usb_hal_is_enabled(void)
-{
+bool usb_hal_is_enabled(void) {
     return m_usb_instance.initialized;
 }
 
-bool usb_hal_is_connected(void)
-{
+bool usb_hal_is_connected(void) {
     return m_usb_instance.com_opened;
 }

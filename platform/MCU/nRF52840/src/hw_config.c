@@ -43,6 +43,7 @@
 #include "crc32.h"
 #include "core_hal.h"
 #include "service_debug.h"
+#include "usb_hal.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
