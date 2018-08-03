@@ -212,6 +212,7 @@ private:
 	}
 
     lfs_t* lfs() {
+        _open();
         return &fs_->instance;
     }
 
