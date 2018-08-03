@@ -150,6 +150,18 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
+    case CTRL_REQUEST_GET_DEVICE_MODE: {
+        setResult(req, control::config::getDeviceMode(req));
+        break;
+    }
+    case CTRL_REQUEST_SET_DEVICE_SETUP_DONE: {
+        setResult(req, control::config::setDeviceSetupDone(req));
+        break;
+    }
+    case CTRL_REQUEST_IS_DEVICE_SETUP_DONE: {
+        setResult(req, control::config::isDeviceSetupDone(req));
+        break;
+    }
     case CTRL_REQUEST_MODULE_INFO: {
         struct Formatter {
             static int callback(Appender* appender, void* data) {

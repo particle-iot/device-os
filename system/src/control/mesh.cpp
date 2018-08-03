@@ -72,6 +72,8 @@ namespace particle {
 using namespace control::common;
 using namespace system;
 
+using namespace MeshCommand;
+
 namespace ctrl {
 
 namespace mesh {
@@ -214,7 +216,6 @@ int auth(ctrl_request* req) {
     return 0;
 }
 
-using namespace MeshCommand;
 int notifyNetworkUpdated(int flags) {
     NotifyMeshNetworkUpdated cmd;
     NetworkInfo& ni = cmd.ni;
