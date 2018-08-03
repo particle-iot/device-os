@@ -56,4 +56,4 @@
 
 // <0=> 32MHz/1
 // Ze fastest!
-#define NRFX_QSPI_CONFIG_FREQUENCY 0
+#define NRFX_QSPI_CONFIG_FREQUENCY 1
