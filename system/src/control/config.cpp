@@ -21,11 +21,14 @@
 
 #include "common.h"
 #include "system_cloud_internal.h"
+#include "system_network.h"
 
 #include "deviceid_hal.h"
 #include "core_hal.h"
 
 #include "bytes2hexbuf.h"
+
+#include "dct.h"
 
 #if HAL_PLATFORM_OPENTHREAD
 #include "ota_flash_hal_impl.h"
@@ -113,6 +116,46 @@ int handleStartNyanRequest(ctrl_request* req) {
 int handleStopNyanRequest(ctrl_request* req) {
     Spark_Signal(false, 0, nullptr);
     return SYSTEM_ERROR_NONE;
+}
+
+int getDeviceMode(ctrl_request* req) {
+    const bool listening = network_listening(0, 0, nullptr);
+    PB(GetDeviceModeReply) pbRep = {};
+    pbRep.mode = listening ? PB(DeviceMode_LISTENING_MODE) : PB(DeviceMode_DEVICE_MODE_OTHER);
+    const int ret = encodeReplyMessage(req, PB(GetDeviceModeReply_fields), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int setDeviceSetupDone(ctrl_request* req) {
+    PB(SetDeviceSetupDoneRequest) pbReq = {};
+    int ret = decodeRequestMessage(req, PB(SetDeviceSetupDoneRequest_fields), &pbReq);
+    if (ret != 0) {
+        return ret;
+    }
+    const uint8_t val = pbReq.done ? 0x01 : 0xff;
+    ret = dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int isDeviceSetupDone(ctrl_request* req) {
+    uint8_t val = 0;
+    int ret = dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
+    if (ret != 0) {
+        return ret;
+    }
+    PB(IsDeviceSetupDoneReply) pbRep = {};
+    pbRep.done = (val == 0x01) ? true : false;
+    ret = encodeReplyMessage(req, PB(IsDeviceSetupDoneReply_fields), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
 }
 
 #if !HAL_PLATFORM_OPENTHREAD
