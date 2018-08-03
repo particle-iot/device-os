@@ -135,6 +135,7 @@ int setDeviceSetupDone(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
+    LOG_DEBUG(TRACE, "%s device setup flag", pbReq.done ? "Setting" : "Clearing");
     const uint8_t val = pbReq.done ? 0x01 : 0xff;
     ret = dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
     if (ret != 0) {

@@ -32,7 +32,7 @@ int stopCommissioner(ctrl_request* req);
 int prepareJoiner(ctrl_request* req);
 int addJoiner(ctrl_request* req);
 int removeJoiner(ctrl_request* req);
-void joinNetwork(ctrl_request* req);
+int joinNetwork(ctrl_request* req);
 int leaveNetwork(ctrl_request* req);
 int getNetworkInfo(ctrl_request* req);
 int scanNetworks(ctrl_request* req);

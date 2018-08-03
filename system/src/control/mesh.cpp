@@ -327,7 +327,7 @@ int createNetwork(ctrl_request* req) {
         // FIXME: Make this handler asynchronous
         lock.unlock();
         while (!enScan.done) {
-            os_thread_yield();
+            HAL_Delay_Milliseconds(500);
         }
         lock.lock();
         channel = (enScan.channel != 0) ? enScan.channel : DEFAULT_CHANNEL; // Just in case
@@ -381,7 +381,7 @@ int createNetwork(ctrl_request* req) {
     // FIXME: Make this handler asynchronous
     lock.unlock();
     while (!actScan.done) {
-        os_thread_yield();
+        HAL_Delay_Milliseconds(500);
     }
     lock.lock();
     if (actScan.result != 0) {
@@ -421,11 +421,20 @@ int createNetwork(ctrl_request* req) {
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
+    // FIXME: Subscribe to OpenThread events instead of polling
+    for (;;) {
+        const auto role = otThreadGetDeviceRole(thread);
+        if (role != OT_DEVICE_ROLE_DETACHED) {
+            break;
+        }
+        lock.unlock();
+        HAL_Delay_Milliseconds(500);
+        lock.lock();
+    }
     int notifyResult = notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED|NetworkInfo::PANID_VALID|NetworkInfo::XPANID_VALID|NetworkInfo::CHANNEL_VALID|NetworkInfo::ON_MESH_PREFIX_VALID|NetworkInfo::NAME_VALID);
     if (notifyResult<0) {
         LOG(ERROR, "Unable to notify network change %d", notifyResult);
     }
-
     // Encode a reply
     char extPanIdStr[sizeof(extPanId) * 2] = {};
     bytes2hexbuf_lower_case((const uint8_t*)&extPanId, sizeof(extPanId), extPanIdStr);
@@ -601,41 +610,50 @@ int notifyJoined(bool joined) {
     return system_command_enqueue(cmd, sizeof(cmd));
 }
 
-void joinNetwork(ctrl_request* req) {
+int joinNetwork(ctrl_request* req) {
     THREAD_LOCK(lock);
     const auto thread = threadInstance();
     if (!thread) {
-        system_ctrl_set_result(req, SYSTEM_ERROR_INVALID_STATE, nullptr, nullptr, nullptr);
-        return;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
-    auto tRet = otIp6SetEnabled(thread, true);
-    if (tRet != OT_ERROR_NONE) {
-        LOG(ERROR, "otIp6SetEnabled() failed: %u", (unsigned)tRet);
-        system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
-        return;
-    }
-    otJoinerCallback cb = [](otError tRet, void* ctx) {
-        const auto req = (ctrl_request*)ctx;
-        if (tRet == OT_ERROR_NONE) {
-            const auto thread = threadInstance();
-            tRet = otThreadSetEnabled(thread, true);
-            if (tRet != OT_ERROR_NONE) {
-                LOG(ERROR, "otThreadSetEnabled() failed: %u", (unsigned)tRet);
-            } else {
-                notifyJoined(true);
-            }
-        } else {
-            LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
-        }
-        memset(g_joinPwd, 0, sizeof(g_joinPwd));
-        system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
+    CHECK_THREAD(otIp6SetEnabled(thread, true));
+    struct JoinStatus {
+        int result;
+        volatile bool done;
     };
-    tRet = otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
-            VENDOR_DATA, cb, req);
-    if (tRet != OT_ERROR_NONE) {
-        LOG(ERROR, "otJoinerStart() failed: %u", (unsigned)tRet);
-        system_ctrl_set_result(req, threadToSystemError(tRet), nullptr, nullptr, nullptr);
+    JoinStatus stat = {};
+    CHECK_THREAD(otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
+            VENDOR_DATA, [](otError result, void* data) {
+        const auto stat = (JoinStatus*)data;
+        if (result != OT_ERROR_NONE) {
+            LOG(ERROR, "Unable to join network: %u", (unsigned)result);
+        }
+        stat->result = threadToSystemError(result);
+        stat->done = true;
+    }, &stat));
+    // FIXME: Make this handler asynchronous
+    lock.unlock();
+    while (!stat.done) {
+        HAL_Delay_Milliseconds(500);
     }
+    lock.lock();
+    memset(g_joinPwd, 0, sizeof(g_joinPwd));
+    if (stat.result != 0) {
+        return stat.result;
+    }
+    CHECK_THREAD(otThreadSetEnabled(thread, true));
+    // FIXME: Subscribe to OpenThread events instead of polling
+    for (;;) {
+        const auto role = otThreadGetDeviceRole(thread);
+        if (role != OT_DEVICE_ROLE_DETACHED) {
+            break;
+        }
+        lock.unlock();
+        HAL_Delay_Milliseconds(500);
+        lock.lock();
+    }
+    notifyJoined(true);
+    return 0;
 }
 
 int leaveNetwork(ctrl_request* req) {
@@ -740,7 +758,7 @@ int scanNetworks(ctrl_request* req) {
     // FIXME: Make this handler asynchronous
     lock.unlock();
     while (!scan.done) {
-        os_thread_yield();
+        HAL_Delay_Milliseconds(500);
     }
     lock.lock();
     if (scan.result != 0) {
