@@ -250,10 +250,10 @@ bool NetworkManager::isConfigured() const {
     if (dctRet == 0 && val != 0x01) {
         return false;
     }
-    bool ret = true;
+    bool ret = false;
     for_each_iface([&](if_t iface, unsigned int curFlags) {
-        if (ret && !haveLowerLayerConfiguration(iface)) {
-            ret = false;
+        if (haveLowerLayerConfiguration(iface)) {
+            ret = true;
         }
     });
     return ret;
