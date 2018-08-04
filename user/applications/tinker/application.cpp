@@ -136,12 +136,15 @@ int tinkerDigitalRead(String pinStr)
  *******************************************************************************/
 int tinkerDigitalWrite(String command)
 {
-    int indexOfComma = command.indexOf(',');
-    if (indexOfComma <= 0) {
+    int separatorIndex = command.indexOf(',');
+    if (separatorIndex <= 0) {
+        separatorIndex = command.indexOf('=');
+    }
+    if (separatorIndex <= 0) {
         return -1;
     }
-    String pinStr = command.substring(0, indexOfComma);
-    String pinState = command.substring(indexOfComma + 1);
+    String pinStr = command.substring(0, separatorIndex);
+    String pinState = command.substring(separatorIndex + 1);
 
     uint8_t state;
     if (pinState == "HIGH") {
@@ -189,12 +192,15 @@ int tinkerAnalogRead(String pinStr)
  *******************************************************************************/
 int tinkerAnalogWrite(String command)
 {
-    int indexOfComma = command.indexOf(',');
-    if (indexOfComma <= 0) {
+    int separatorIndex = command.indexOf(',');
+    if (separatorIndex <= 0) {
+        separatorIndex = command.indexOf('=');
+    }
+    if (separatorIndex <= 0) {
         return -1;
     }
-    String pinStr = command.substring(0, indexOfComma);
-    String pinValue = command.substring(indexOfComma + 1);
+    String pinStr = command.substring(0, separatorIndex);
+    String pinValue = command.substring(separatorIndex + 1);
 
     int value = pinValue.toInt();
     if (value < 0 || value > 255) {
