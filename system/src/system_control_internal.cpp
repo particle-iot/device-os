@@ -354,7 +354,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
     case CTRL_REQUEST_MESH_JOIN_NETWORK: {
-        ctrl::mesh::joinNetwork(req);
+        setResult(req, ctrl::mesh::joinNetwork(req));
         break;
     }
     case CTRL_REQUEST_MESH_LEAVE_NETWORK: {

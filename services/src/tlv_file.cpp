@@ -289,6 +289,7 @@ int TlvFile::del(uint16_t key, int index) {
 }
 
 lfs_t* TlvFile::lfs() {
+    SPARK_ASSERT(fs_);
     return &fs_->instance;
 }
 

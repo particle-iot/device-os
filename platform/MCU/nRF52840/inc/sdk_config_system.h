@@ -76,7 +76,7 @@
 
 // <0=> 32MHz/1
 // Ze fastest!
-#define NRFX_QSPI_CONFIG_FREQUENCY 0
+#define NRFX_QSPI_CONFIG_FREQUENCY 1
 
 #ifdef DEBUG_BUILD
 #define SEGGER_RTT_CONFIG_DEFAULT_MODE 1 // Do not block, output as much as fits
