@@ -30,6 +30,7 @@ namespace particle { namespace system {
 
 class ListeningModeHandler {
 public:
+    ListeningModeHandler();
     ~ListeningModeHandler();
 
     static ListeningModeHandler* instance();
@@ -45,9 +46,6 @@ public:
 
     int command(network_listen_command_t com, void* arg);
     int enqueueCommand(network_listen_command_t com, void* arg);
-
-protected:
-    ListeningModeHandler();
 
 private:
     struct Task : ISRTaskQueue::Task {

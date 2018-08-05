@@ -38,7 +38,13 @@ using particle::LEDStatus;
 #include "ble_hal.h"
 #endif /* HAL_PLATFORM_BLE */
 
+namespace {
+
 using namespace particle::system;
+
+ListeningModeHandler g_listenModeHandler;
+
+} // unnamed
 
 ListeningModeHandler::ListeningModeHandler()
         : active_(false) {
@@ -49,8 +55,7 @@ ListeningModeHandler::~ListeningModeHandler() {
 }
 
 ListeningModeHandler* ListeningModeHandler::instance() {
-    static ListeningModeHandler h;
-    return &h;
+    return &g_listenModeHandler;
 }
 
 int ListeningModeHandler::enter(unsigned int timeout) {
