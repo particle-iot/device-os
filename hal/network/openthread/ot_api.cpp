@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("ot.api");
+
 #include "ot_api.h"
 #include <openthread-core-config.h>
 #include <openthread/openthread.h>
@@ -29,9 +32,6 @@
 #include "static_recursive_mutex.h"
 #include <mutex>
 #include <limits>
-#include "logging.h"
-
-LOG_SOURCE_CATEGORY("ot.api");
 
 using namespace particle::net::ot;
 
