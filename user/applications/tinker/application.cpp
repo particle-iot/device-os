@@ -22,6 +22,8 @@
 #include "stdarg.h"
 #include "preprocessor.h"
 
+#include <cctype>
+
 PRODUCT_ID(PLATFORM_ID);
 PRODUCT_VERSION(3);
 
@@ -136,9 +138,13 @@ int tinkerDigitalRead(String pinStr)
  *******************************************************************************/
 int tinkerDigitalWrite(String command)
 {
-    int separatorIndex = command.indexOf(',');
-    if (separatorIndex <= 0) {
-        separatorIndex = command.indexOf('=');
+    int separatorIndex = -1;
+    for (unsigned i = 0; i < command.length(); ++i) {
+        const char c = command.charAt(i);
+        if (!std::isalnum((unsigned char)c)) {
+            separatorIndex = i;
+            break;
+        }
     }
     if (separatorIndex <= 0) {
         return -1;
@@ -192,9 +198,13 @@ int tinkerAnalogRead(String pinStr)
  *******************************************************************************/
 int tinkerAnalogWrite(String command)
 {
-    int separatorIndex = command.indexOf(',');
-    if (separatorIndex <= 0) {
-        separatorIndex = command.indexOf('=');
+    int separatorIndex = -1;
+    for (unsigned i = 0; i < command.length(); ++i) {
+        const char c = command.charAt(i);
+        if (!std::isalnum((unsigned char)c)) {
+            separatorIndex = i;
+            break;
+        }
     }
     if (separatorIndex <= 0) {
         return -1;
