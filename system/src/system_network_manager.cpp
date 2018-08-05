@@ -284,6 +284,8 @@ int NetworkManager::clearConfiguration(if_t iface) {
             }
 #endif /* HAL_PLATFORM_OPENTHREAD */
         });
+
+        return SYSTEM_ERROR_NONE;
     }
 
     return SYSTEM_ERROR_INVALID_ARGUMENT;
