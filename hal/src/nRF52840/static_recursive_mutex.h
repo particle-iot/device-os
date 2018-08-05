@@ -21,31 +21,39 @@
 
 #include <FreeRTOS.h>
 #include <semphr.h>
+#include "task.h"
+#include "interrupts_hal.h"
 
 /* TODO: consolidate with stm32f2x version */
 class StaticRecursiveMutex {
 public:
     StaticRecursiveMutex() {
+        handle_ = xSemaphoreCreateRecursiveMutexStatic(&mutexBuffer_);
+        SPARK_ASSERT(handle_);
     }
 
     ~StaticRecursiveMutex() {
-        vSemaphoreDelete(mutex());
+        vSemaphoreDelete(handle_);
     }
 
     bool lock(unsigned timeout = 0) {
+        SPARK_ASSERT(!HAL_IsISR());
+        if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) {
+            return true;
+        }
         const TickType_t t = (timeout > 0) ? (timeout / portTICK_PERIOD_MS) : portMAX_DELAY;
-        return (xSemaphoreTakeRecursive(mutex(), t) == pdTRUE);
+        return (xSemaphoreTakeRecursive(handle_, t) == pdTRUE);
     }
 
     bool unlock() {
-        return (xSemaphoreGiveRecursive(mutex()) == pdTRUE);
+        SPARK_ASSERT(!HAL_IsISR());
+        if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) {
+            return true;
+        }
+        return (xSemaphoreGiveRecursive(handle_) == pdTRUE);
     }
 
 private:
+    SemaphoreHandle_t handle_;
     StaticSemaphore_t mutexBuffer_;
-
-    SemaphoreHandle_t mutex() {
-        static SemaphoreHandle_t m = xSemaphoreCreateRecursiveMutexStatic(&mutexBuffer_);
-        return m;
-    }
 };
