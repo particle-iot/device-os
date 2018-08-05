@@ -169,6 +169,11 @@ int NetworkManager::activateConnections() {
 
     /* Bring all the interfaces up */
     CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
+        /* Skip interfaces that don't have configuration */
+        if (!haveLowerLayerConfiguration(iface)) {
+            return;
+        }
+
         if (!(flags & IFF_UP)) {
             CHECKV(if_set_flags(iface, IFF_UP));
 
@@ -206,6 +211,13 @@ int NetworkManager::deactivateConnections() {
 
     /* Bring all the interfaces down */
     CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
+        /* Skip interfaces that don't have configuration
+         * FIXME: Do we need this here as well?
+         */
+        // if (!haveLowerLayerConfiguration(iface)) {
+        //     return;
+        // }
+
         if (flags & IFF_UP) {
             CHECKV(if_clear_flags(iface, IFF_UP));
             ++waitingFor;
@@ -464,6 +476,11 @@ unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) const {
     unsigned int count = 0;
 
     for_each_iface([&](if_t iface, unsigned int curFlags) {
+        /* Skip interfaces that don't have configuration */
+        if (!haveLowerLayerConfiguration(iface)) {
+            return;
+        }
+
         if ((curFlags & flags) == flags) {
             ++count;
         }
