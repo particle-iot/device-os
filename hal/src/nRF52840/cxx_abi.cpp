@@ -38,6 +38,8 @@ struct __attribute__((packed)) guard_t {
 
 /* http://refspecs.linuxbase.org/cxxabi-1.86.html#once-ctor */
 
+extern "C" {
+
 int __cxa_guard_acquire(__guard* g) {
     guard_t* guard = reinterpret_cast<guard_t*>(g);
 
@@ -77,3 +79,5 @@ void __cxa_pure_virtual() {
     PANIC(PureVirtualCall, "Call on pure virtual");
     while (1);
 }
+
+} // extern "C"
