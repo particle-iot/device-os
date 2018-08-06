@@ -30,7 +30,6 @@ namespace {
 StaticRecursiveMutex s_mutex;
 
 struct __attribute__((packed)) guard_t {
-    uint8_t guard;
     uint8_t done;
 };
 
@@ -67,6 +66,7 @@ void __cxa_guard_release(__guard* g) {
     SPARK_ASSERT(!guard->done);
     /* We were doing the initialization, so unlock the mutex */
     guard->done = 1;
+    guard->guard = 1;
     SPARK_ASSERT(s_mutex.unlock());
 }
 
