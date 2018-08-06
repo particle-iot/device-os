@@ -656,6 +656,9 @@ int OpenThreadNetif::up() {
 
     down();
 
+    /* Clean up a set of SLAAC addresses */
+    memset(addresses_, 0, sizeof(addresses_));
+
     LOG(INFO, "Bringing OpenThreadNetif up");
     LOG(INFO, "Network name: %s", otThreadGetNetworkName(ot_));
     LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(ot_));

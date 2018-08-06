@@ -208,22 +208,21 @@ const Section* storageSection(unsigned storageIndex, unsigned sectionIndex) {
 
 std::unique_ptr<FileTransfer::Descriptor> g_desc;
 
-int cancelFirmwareUpdate() {
-    int ret = 0;
+void cancelFirmwareUpdate() {
     if (g_desc) {
-        ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::ERROR, nullptr);
-        if (ret == 0) {
-            g_desc.reset();
+        const int ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::ERROR, nullptr);
+        if (ret != 0) {
+            LOG(WARN, "Spark_Finish_Firmware_Update(UpdateFlag::ERROR) failed: %d", ret);
         }
+        g_desc.reset();
     }
-    return ret;
 }
 
 void finishFirmwareUpdate(int result, void* data) {
     if (g_desc) {
         const int ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::SUCCESS, nullptr);
         if (ret != 0) {
-            LOG(ERROR, "Spark_Finish_Firmware_Update() failed");
+            LOG(ERROR, "Spark_Finish_Firmware_Update(UpdateFlag::SUCCESS) failed: %d", ret);
         }
         g_desc.reset();
     }
@@ -238,10 +237,7 @@ int startFirmwareUpdateRequest(ctrl_request* req) {
         return ret;
     }
     // Cancel current transfer
-    ret = cancelFirmwareUpdate();
-    if (ret != 0) {
-        return ret;
-    }
+    cancelFirmwareUpdate();
     g_desc.reset(new(std::nothrow) FileTransfer::Descriptor);
     if (!g_desc) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -298,7 +294,8 @@ done:
 }
 
 int cancelFirmwareUpdateRequest(ctrl_request* req) {
-    return cancelFirmwareUpdate();
+    cancelFirmwareUpdate();
+    return 0;
 }
 
 int firmwareUpdateDataRequest(ctrl_request* req) {
