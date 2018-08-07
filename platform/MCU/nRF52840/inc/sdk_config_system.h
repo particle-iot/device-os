@@ -100,11 +100,16 @@
 
 #define NRFX_TIMER2_ENABLED     1
 
+#define USBD_ENABLED                            1
+#define USBD_CONFIG_IRQ_PRIORITY                2
 #define APP_USBD_ENABLED                        1
+#define APP_USBD_CONFIG_SELF_POWERED            1
 #define APP_USBD_CDC_ACM_ENABLED                1
+#define APP_USBD_CONFIG_MAX_POWER               500
 #define APP_USBD_CONFIG_POWER_EVENTS_PROCESS    1
-#define APP_USBD_CONFIG_SOF_HANDLING_MODE       1  // Interrupt mode
+#define APP_USBD_CONFIG_SOF_HANDLING_MODE       2  // Interrupt mode
 #define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE      0  // handle USB event in interrupt, NOT to call any functions that modifies the USBD 
                                                    // library state from the context higher than USB interrupt context.
+
 #define APP_USBD_VID                            USBD_VID_SPARK
 #define APP_USBD_PID                            USBD_PID_CDC 
