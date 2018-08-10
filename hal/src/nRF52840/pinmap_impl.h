@@ -47,6 +47,9 @@ typedef struct Pin_Info {
 NRF5x_Pin_Info* HAL_Pin_Map(void);
 extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
 
+#define TOTAL_ANALOG_PINS   6
+#define FIRST_ANALOG_PIN    D14
+
 // Common Pins
 #define D0                  0
 #define D1                  1
@@ -100,12 +103,8 @@ extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
 #define CTS                 D3
 #define RTS                 D2
 
-
 #if PLATFORM_ID == PLATFORM_XENON 
 #define TOTAL_PINS          31
-#define TOTAL_ANALOG_PINS   6
-#define FIRST_ANALOG_PIN    D14
-
 #define TX1                 D4
 #define RX1                 D5
 #define CTS1                D6
