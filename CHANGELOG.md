@@ -1,3 +1,8 @@
+## 0.8.0-rc.9-xenon
+
+- Preliminary Golden firmware release candidate for testing
+
+
 ## 0.8.0-rc.8-xenon
 
 - Preliminary Golden firmware release candidate for testing
