@@ -76,7 +76,7 @@ int resolv_get_dns_servers(struct resolv_dns_servers** servers) {
                 current->next = entry;
             }
 
-            current = current->next;
+            current = entry;
         }
     }
 
