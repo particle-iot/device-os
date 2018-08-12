@@ -21,13 +21,10 @@
 #include "usb_hal.h"
 #include "usb_hal_cdc.h"
 
-#define USB_RX_BUFFER_SIZE      64
-#define USB_TX_BUFFER_SIZE      64
+#define USB_RX_BUFFER_SIZE      256
+#define USB_TX_BUFFER_SIZE      256
 
 #ifdef USB_CDC_ENABLE
-
-static uint8_t m_usb_tx_buffer[USB_TX_BUFFER_SIZE];
-static uint8_t m_usb_rx_buffer[USB_RX_BUFFER_SIZE];
 
 /*******************************************************************************
  * Function Name  : USB_USART_Init
@@ -129,17 +126,22 @@ void HAL_USB_Detach() {
 }
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config) {
-    if (config == NULL) {
-        return;
-    }
-
-    if (config && (
-        config->rx_buffer == NULL   ||
-        config->rx_buffer_size == 0 || 
-        config->tx_buffer == NULL   ||
-        config->tx_buffer_size == 0))
+    if ((config == NULL) || 
+        (config && (config->rx_buffer == NULL   ||
+                    config->rx_buffer_size == 0 || 
+                    config->tx_buffer == NULL   ||
+                    config->tx_buffer_size == 0)))
     {
-        usb_uart_init(m_usb_rx_buffer, USB_RX_BUFFER_SIZE, m_usb_tx_buffer, USB_TX_BUFFER_SIZE);
+		static uint8_t *p_tx_buffer = NULL;
+		static uint8_t *p_rx_buffer = NULL;
+		
+		if (p_tx_buffer == NULL) {
+			p_tx_buffer = (uint8_t *)malloc(USB_TX_BUFFER_SIZE);
+		}
+		if (p_rx_buffer == NULL) {
+			p_rx_buffer = (uint8_t *)malloc(USB_RX_BUFFER_SIZE);
+		}
+        usb_uart_init(p_rx_buffer, USB_RX_BUFFER_SIZE, p_tx_buffer, USB_TX_BUFFER_SIZE);
     } else {
         usb_uart_init(config->rx_buffer, config->rx_buffer_size, config->tx_buffer, config->tx_buffer_size);
     }
