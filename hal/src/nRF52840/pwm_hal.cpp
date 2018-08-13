@@ -142,10 +142,10 @@ int uninit_pwm_pin(uint16_t pin)
     nrfx_pwm_config_t const config = {
         .output_pins =
         {
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[0] | NRFX_PWM_PIN_INVERTED),   // channel 0
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[1] | NRFX_PWM_PIN_INVERTED),   // channel 1
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[2] | NRFX_PWM_PIN_INVERTED),   // channel 2
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[3] | NRFX_PWM_PIN_INVERTED),   // channel 3
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[0]),   // channel 0
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[1]),   // channel 1
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[2]),   // channel 2
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[3]),   // channel 3
         },
         .irq_priority = APP_IRQ_PRIORITY_LOWEST,
         .base_clock   = pwm_setting.pwm_clock,
@@ -215,10 +215,10 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency)
     nrfx_pwm_config_t const config = {
         .output_pins =
         {
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[0] | NRFX_PWM_PIN_INVERTED),   // channel 0
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[1] | NRFX_PWM_PIN_INVERTED),   // channel 1
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[2] | NRFX_PWM_PIN_INVERTED),   // channel 2
-            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[3] | NRFX_PWM_PIN_INVERTED),   // channel 3
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[0]),   // channel 0
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[1]),   // channel 1
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[2]),   // channel 2
+            (uint8_t)(PWM_MAP[pwm_num].nrf_pins[3]),   // channel 3
         },
         .irq_priority = APP_IRQ_PRIORITY_LOWEST,
         .base_clock   = pwm_setting.pwm_clock,
