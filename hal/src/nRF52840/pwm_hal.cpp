@@ -29,8 +29,8 @@
 #define MAX_PWM_PERIOD_US                   2         // 2us
 #define MIN_PWM_FREQ                        4         // 4Hz
 #define MIN_PWM_PERIOD_US                   250000    // 250ms
-#define DEFAULT_RESOLUTION_BITS				8
-#define MAX_RESOLUTION_BITS					15
+#define DEFAULT_RESOLUTION_BITS             8
+#define MAX_RESOLUTION_BITS                 15
 
 
 typedef struct {
