@@ -70,7 +70,7 @@ void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
 
 #endif
 
-#if PLATFORM_ID == PLATFORM_XENON 
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
 typedef struct NRF5x_Pin_Info  NRF5x_Pin_Info;
 NRF5x_Pin_Info* HAL_Pin_Map(void);
 extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
@@ -86,7 +86,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 /*
 * Pin mapping. Borrowed from Wiring
 */
-#if PLATFORM_ID == PLATFORM_XENON 
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON
 #define TOTAL_PINS          31
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    D14

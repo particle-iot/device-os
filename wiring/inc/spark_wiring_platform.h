@@ -105,7 +105,7 @@
 #define Wiring_LogConfig 1 // for testing purposes
 #endif
 
-#if PLATFORM_ID==14      // Xenon
+#if PLATFORM_ID==14 || PLATFORM_ID==12 || PLATFORM_ID==13     // Xenon
 /* FIXME: */
 #define Wiring_Mesh 1
 #define Wiring_SPI1 1
