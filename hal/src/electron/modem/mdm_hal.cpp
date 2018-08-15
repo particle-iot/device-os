@@ -1504,6 +1504,12 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
             sendFormated("AT+UPSND=" PROFILE ",0\r\n");
             if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
                 goto failure;
+            // Get the primary DNS server (logs only), don't fail on error.
+            sendFormated("AT+UPSND=" PROFILE ",1\r\n");
+            waitFinalResp();
+            // Get the secondary DNS server (logs only), don't fail on error.
+            sendFormated("AT+UPSND=" PROFILE ",2\r\n");
+            waitFinalResp();
         }
         UNLOCK();
         _attached = true;  // GPRS
