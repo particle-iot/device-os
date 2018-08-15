@@ -19,16 +19,25 @@
 
 #include "module_info.h"
 
-enum MeshNCPModemIdentifier {
-	UNKNOWN,
-	ESP32 = 1,
-	SARA_U201 = 2,
-	SARA_G350 = 3,
-	SARA_R410 = 4
+enum MeshNCPManufacturer {
+	MESH_NCP_MANUFACTURER_UNKNOWN,
+	MESH_NCP_MANUFACTURER_ESPRESSIF = 1,
+	MESH_NCP_MANUFACTURER_UBLOX = 2
 };
 
+#define MESH_NCP_IDENTIFIER(mf,t) (t|(mf<<5))
+
+enum MeshNCPIdentifier {
+	MESH_NCP_UNKNOWN,
+	MESH_NCP_ESP32 = MESH_NCP_IDENTIFIER(MESH_NCP_MANUFACTURER_ESPRESSIF, 1),
+	MESH_NCP_SARA_U201 = MESH_NCP_IDENTIFIER(MESH_NCP_MANUFACTURER_UBLOX, 2),
+	MESH_NCP_SARA_G350 = MESH_NCP_IDENTIFIER(MESH_NCP_MANUFACTURER_UBLOX, 3),
+	MESH_NCP_SARA_R410 = MESH_NCP_IDENTIFIER(MESH_NCP_MANUFACTURER_UBLOX, 4)
+};
+
+
 /**
- * Determine the modem identifier from the module info given.
- * Returns UNKNOWN when the module info does not represent an NCP module, or if the NCP type is unknown, or if the main platform does not match this device's platform.
+ * Determine the NCP identifier from the module info given.
+ * Returns MESH_NCP_UNKNOWN when the module info does not represent an NCP module, or if the NCP type is unknown, or if the main platform does not match this device's platform.
  */
-MeshNCPModemIdentifier platform_ncp_modem_identifier(module_info_t* moduleInfo);
+MeshNCPIdentifier platform_ncp_identifier(module_info_t* moduleInfo);

@@ -18,18 +18,19 @@
 #include "platform_ncp.h"
 
 
-MeshNCPModemIdentifier platform_ncp_modem_identifier(module_info_t* mi)
+
+MeshNCPIdentifier platform_ncp_identifier(module_info_t* mi)
 {
-	MeshNCPModemIdentifier modem = UNKNOWN;
-	if (mi->platform_id == PLATFORM_ID && mi->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+	MeshNCPIdentifier ncp = MESH_NCP_UNKNOWN;
+	if (mi->platform_id == PLATFORM_ID) {
 		switch (mi->reserved) {
-		case ESP32:
-		case SARA_U201:
-		case SARA_G350:
-		case SARA_R410:
-			modem = static_cast<MeshNCPModemIdentifier>(mi->reserved);
+		case MESH_NCP_ESP32:
+		case MESH_NCP_SARA_U201:
+		case MESH_NCP_SARA_G350:
+		case MESH_NCP_SARA_R410:
+			ncp = static_cast<MeshNCPIdentifier>(mi->reserved);
 			break;
 		}
 	}
-	return modem;
+	return ncp;
 }
