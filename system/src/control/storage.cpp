@@ -204,7 +204,7 @@ const Section* storageSection(unsigned storageIndex, unsigned sectionIndex) {
     return &storage.sections[sectionIndex];
 }
 
-#endif // PLATFORM_ID != PLATFORM_XENON
+#endif // !HAL_MESH_PLATFORM
 
 std::unique_ptr<FileTransfer::Descriptor> g_desc;
 
@@ -501,7 +501,7 @@ int getSectionDataSizeRequest(ctrl_request* req) {
     return 0;
 }
 
-#else // PLATFORM_ID == PLATFORM_XENON
+#else // !HAL_PLATFORM_MESH
 
 // TODO
 
@@ -525,7 +525,7 @@ int getSectionDataSizeRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-#endif // PLATFORM_ID == PLATFORM_XENON
+#endif // !HAL_PLATFORM_MESH
 
 } // namespace particle::control
 

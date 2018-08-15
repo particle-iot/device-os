@@ -44,7 +44,7 @@ struct PinMapping {
 };
 
 PinMapping pinmap[] = {
-#if PLATFORM_ID == PLATFORM_XENON
+#if HAL_PLATFORM_MESH
     {"D0", D0},
     {"D1", D1},
     {"D2", D2},
@@ -78,7 +78,7 @@ PinMapping pinmap[] = {
     {"SCL", SCL},
     {"TX", TX},
     {"RX", RX}
-#endif /* PLATFORM_ID == PLATFORM_XENON */
+#endif /* HAL_PLATFORM_MESH */
 };
 
 pin_t lookupPinByName(const String& name) {

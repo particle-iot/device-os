@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "platforms.h"
+#include "hal_platform_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,11 +67,8 @@ typedef enum {
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
 
-#ifdef PLATFORM_ID
 
-#endif
-
-#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#if HAL_PLATFORM_NRF52840
 typedef struct NRF5x_Pin_Info  NRF5x_Pin_Info;
 NRF5x_Pin_Info* HAL_Pin_Map(void);
 extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
