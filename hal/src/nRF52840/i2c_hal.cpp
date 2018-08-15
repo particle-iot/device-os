@@ -35,24 +35,31 @@
 static nrfx_twim_t m_twi0 = NRFX_TWIM_INSTANCE(0);
 static nrfx_twim_t m_twi1 = NRFX_TWIM_INSTANCE(1);
 
+typedef enum {
+    TRANSFER_STATE_IDLE,
+    TRANSFER_STATE_BUSY,
+    TRANSFER_STATE_ERROR_ADDRESS,
+    TRANSFER_STATE_ERROR_DATA
+} transfer_tate_t;
+
 typedef struct {
-    nrfx_twim_t             *instance;
-    uint8_t                 scl_pin;
-    uint8_t                 sda_pin;
+    nrfx_twim_t                 *instance;
+    uint8_t                     scl_pin;
+    uint8_t                     sda_pin;
 
-    bool                    enabled;
-    volatile bool           transmitting;
-    I2C_Mode                mode;
-    uint32_t                speed;
+    bool                        enabled;
+    volatile transfer_tate_t    transfer_state;
+    I2C_Mode                    mode;
+    uint32_t                    speed;
 
-    uint8_t                 address;    // 7bit data
+    uint8_t                     address;    // 7bit data
 
-    uint8_t                 rx_buf[BUFFER_LENGTH];
-    uint8_t                 rx_buf_index;
-    uint8_t                 rx_buf_length;
-    uint8_t                 tx_buf[BUFFER_LENGTH];
-    uint8_t                 tx_buf_index;
-    uint8_t                 tx_buf_length;
+    uint8_t                     rx_buf[BUFFER_LENGTH];
+    uint8_t                     rx_buf_index;
+    uint8_t                     rx_buf_length;
+    uint8_t                     tx_buf[BUFFER_LENGTH];
+    uint8_t                     tx_buf_index;
+    uint8_t                     tx_buf_length;
 
     os_mutex_recursive_t    mutex;
 
@@ -69,35 +76,34 @@ nrf5x_i2c_info_t m_i2c_map[TOTAL_I2C] = {
 #endif
 };
 
-static void twi_handler(nrfx_twim_evt_t const * p_event, void * p_context)
-{
+static void twi_handler(nrfx_twim_evt_t const * p_event, void * p_context) {
     uint32_t inst_num = (uint32_t)p_context;
 
-    switch (p_event->type)
-    {
-        case NRFX_TWIM_EVT_DONE:
+    switch (p_event->type) {
+        case NRFX_TWIM_EVT_DONE: {
             if (p_event->xfer_desc.type == NRFX_TWIM_XFER_RX)
             {
                 // TODO: slave mode receive 
             }
-            m_i2c_map[inst_num].transmitting = false;
+            m_i2c_map[inst_num].transfer_state = TRANSFER_STATE_IDLE;
             break;
-
-        case NRFX_TWIM_EVT_ADDRESS_NACK:
-            m_i2c_map[inst_num].transmitting = false;
+        }
+        case NRFX_TWIM_EVT_ADDRESS_NACK: {
+            m_i2c_map[inst_num].transfer_state = TRANSFER_STATE_ERROR_ADDRESS;
             break;
-        case NRFX_TWIM_EVT_DATA_NACK:
-            m_i2c_map[inst_num].transmitting = false;
+        }
             break;
+        case NRFX_TWIM_EVT_DATA_NACK: {
+            m_i2c_map[inst_num].transfer_state = TRANSFER_STATE_ERROR_DATA;
+            break;
+        }
         default:
             break;
     }
 }
 
-static int twi_uinit(HAL_I2C_Interface i2c)
-{
-    if (m_i2c_map[i2c].enabled)
-    {
+static int twi_uinit(HAL_I2C_Interface i2c) {
+    if (m_i2c_map[i2c].enabled) {
         nrfx_twim_uninit(m_i2c_map[i2c].instance);
     }
 
@@ -109,8 +115,7 @@ static int twi_uinit(HAL_I2C_Interface i2c)
     return 0;
 }
 
-static int twi_init(HAL_I2C_Interface i2c)
-{
+static int twi_init(HAL_I2C_Interface i2c) {
     ret_code_t err_code;
     nrf_twim_frequency_t nrf_frequency = (m_i2c_map[i2c].speed == CLOCK_SPEED_400KHZ) ? NRF_TWIM_FREQ_400K : NRF_TWIM_FREQ_100K;
 
@@ -137,16 +142,13 @@ static int twi_init(HAL_I2C_Interface i2c)
     return 0;
 }
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
-{
-    if (m_i2c_map[i2c].enabled)
-    {
+void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
+    if (m_i2c_map[i2c].enabled) {
         twi_uinit(i2c);
     }
 
     os_thread_scheduling(false, NULL);
-    if (m_i2c_map[i2c].mutex == NULL) 
-    {
+    if (m_i2c_map[i2c].mutex == NULL) {
         os_mutex_recursive_create(&m_i2c_map[i2c].mutex);
     }
 
@@ -155,7 +157,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
 
     m_i2c_map[i2c].enabled = false;
     m_i2c_map[i2c].mode = I2C_MODE_MASTER;
-    m_i2c_map[i2c].transmitting = false;
+    m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
     m_i2c_map[i2c].speed = CLOCK_SPEED_100KHZ;
     m_i2c_map[i2c].rx_buf_index = 0;
     m_i2c_map[i2c].rx_buf_length = 0;
@@ -167,20 +169,17 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     HAL_I2C_Release(i2c, NULL);
 }
 
-void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
-{
+void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     m_i2c_map[i2c].speed = speed;
     HAL_I2C_Release(i2c, NULL);
 }
 
-void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
-{
+void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved) {
     // always enabled
 }
 
-void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved)
-{
+void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
 
     // TODO: to support slave mode 
@@ -200,38 +199,39 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     HAL_I2C_Release(i2c, NULL);
 }
 
-void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved)
-{
+void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
-    if (m_i2c_map[i2c].enabled)
-    {
+    if (m_i2c_map[i2c].enabled) {
         twi_uinit(i2c);
         m_i2c_map[i2c].enabled = false;
     }
     HAL_I2C_Release(i2c, NULL);
 }
 
-uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop,void* reserved)
-{
+uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     uint32_t err_code;
 
     // clamp to buffer length
-    if(quantity > BUFFER_LENGTH)
-    {
+    if(quantity > BUFFER_LENGTH) {
         quantity = BUFFER_LENGTH;
     }
 
-    m_i2c_map[i2c].transmitting = true;
+    m_i2c_map[i2c].transfer_state = TRANSFER_STATE_BUSY;
     m_i2c_map[i2c].address = address;
     err_code = nrfx_twim_rx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, m_i2c_map[i2c].rx_buf, quantity);
-    if (err_code)
-    {
-        m_i2c_map[i2c].transmitting = false;
+    if (err_code) {
+        m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
         quantity = 0;
     }
 
-    while (m_i2c_map[i2c].transmitting);
+    while (m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY);
+
+    if (m_i2c_map[i2c].transfer_state != TRANSFER_STATE_IDLE) {
+        m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
+        HAL_I2C_Release(i2c, NULL);
+        return 0;
+    }
 
     m_i2c_map[i2c].rx_buf_index = 0;
     m_i2c_map[i2c].rx_buf_length = quantity;
@@ -240,8 +240,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     return quantity;
 }
 
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* reserved)
-{
+void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     m_i2c_map[i2c].address = address;
     m_i2c_map[i2c].tx_buf_index = 0;
@@ -249,32 +248,29 @@ void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* res
     HAL_I2C_Release(i2c, NULL);
 }
 
-uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reserved)
-{
+uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
 
     uint32_t err_code;
 
-    if (m_i2c_map[i2c].tx_buf_length == 0)
-    {
-        // Not support send zero byte
+    m_i2c_map[i2c].transfer_state = TRANSFER_STATE_BUSY;
+    err_code = nrfx_twim_tx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, m_i2c_map[i2c].tx_buf, 
+                                    m_i2c_map[i2c].tx_buf_length, !stop);
+    if (err_code) {
+        m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
+        m_i2c_map[i2c].tx_buf_index = 0;
+        m_i2c_map[i2c].tx_buf_length = 0;
         HAL_I2C_Release(i2c, NULL);
         return 1;
     }
 
-    m_i2c_map[i2c].transmitting = true;
-    err_code = nrfx_twim_tx(m_i2c_map[i2c].instance, m_i2c_map[i2c].address, m_i2c_map[i2c].tx_buf, 
-                                    m_i2c_map[i2c].tx_buf_length, !stop);
-    if (err_code)
-    {
-        m_i2c_map[i2c].transmitting = false;
-        m_i2c_map[i2c].tx_buf_index = 0;
-        m_i2c_map[i2c].tx_buf_length = 0;
+    while (m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY);
+
+    if (m_i2c_map[i2c].transfer_state != TRANSFER_STATE_IDLE) {
+        m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
         HAL_I2C_Release(i2c, NULL);
         return 2;
     }
-
-    while (m_i2c_map[i2c].transmitting);
 
     m_i2c_map[i2c].tx_buf_index = 0;
     m_i2c_map[i2c].tx_buf_length = 0;
@@ -283,14 +279,12 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reser
     return 0;
 }
 
-uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved)
-{
+uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
 
     // in master/slave transmitter mode
     // don't bother if buffer is full
-    if (m_i2c_map[i2c].tx_buf_length >= BUFFER_LENGTH)
-    {
+    if (m_i2c_map[i2c].tx_buf_length >= BUFFER_LENGTH) {
         HAL_I2C_Release(i2c, NULL);
         return 0;
     }
@@ -303,64 +297,55 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved)
     return 1;
 }
 
-int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved)
-{
+int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     int32_t available = m_i2c_map[i2c].rx_buf_length - m_i2c_map[i2c].rx_buf_index;
     HAL_I2C_Release(i2c, NULL);
     return available;
 }
 
-int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved)
-{
+int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     int value = -1;
 
     // get each successive byte on each call
-    if (m_i2c_map[i2c].rx_buf_index < m_i2c_map[i2c].rx_buf_length)
-    {
+    if (m_i2c_map[i2c].rx_buf_index < m_i2c_map[i2c].rx_buf_length) {
         value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_buf_index++];
     }
     HAL_I2C_Release(i2c, NULL);
     return value;
 }
 
-int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved)
-{
+int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     int value = -1;
 
-    if(m_i2c_map[i2c].rx_buf_index < m_i2c_map[i2c].rx_buf_length)
-    {
+    if(m_i2c_map[i2c].rx_buf_index < m_i2c_map[i2c].rx_buf_length) {
         value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_buf_index];
     }
     HAL_I2C_Release(i2c, NULL);
     return value;
 }
 
-void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved)
-{
+void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved) {
     m_i2c_map[i2c].rx_buf_index = 0;
     m_i2c_map[i2c].rx_buf_length = 0;
     m_i2c_map[i2c].tx_buf_index = 0;
     m_i2c_map[i2c].tx_buf_length = 0;
 }
 
-bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved)
-{
+bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     bool en = m_i2c_map[i2c].enabled;
     HAL_I2C_Release(i2c, NULL);
     return en;
 }
 
-void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved)
-{
+void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved) {
     // TODO: slave mode
 }
 
-void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void),void* reserved)
-{
+void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void),void* reserved) {
     // TODO: slave mode
 }
 
@@ -371,18 +356,15 @@ void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(voi
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-void HAL_I2C1_EV_Handler(void)
-{
+void HAL_I2C1_EV_Handler(void) {
     // TODO: slave mode
 }
 
-void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved)
-{
+void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved) {
     // use DMA to send data by default
 }
 
-uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
-{
+uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1) {
     HAL_I2C_Acquire(i2c, NULL);
     if (HAL_I2C_Is_Enabled(i2c, NULL)) {
         HAL_I2C_End(i2c, NULL);
@@ -392,8 +374,7 @@ uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
         HAL_GPIO_Write(m_i2c_map[i2c].scl_pin, 1);     // Start idle HIGH
 
         //Generate 9 pulses on SCL to tell slave to release the bus
-        for(int i=0; i <9; i++)
-        {
+        for(int i=0; i <9; i++) {
             HAL_GPIO_Write(m_i2c_map[i2c].scl_pin, 0);
             HAL_Delay_Microseconds(100);
             HAL_GPIO_Write(m_i2c_map[i2c].scl_pin, 1);
