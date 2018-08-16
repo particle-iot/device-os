@@ -84,8 +84,8 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 /*
 * Pin mapping. Borrowed from Wiring
 */
-#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON
-#define TOTAL_PINS          31
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    D14
 
@@ -119,6 +119,9 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RGBG        22
 #define RGBB        23
 
+#if PLATFORM_ID == PLATFORM_XENON
+#define TOTAL_PINS          (31)
+
 #define BATT        24
 #define PWR         25
 #define CHG         26
@@ -126,6 +129,42 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define NFC_PIN2    28
 #define ANTSW1      29
 #define ANTSW2      30
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#define TX1	24
+#define RX1 25
+#define CTS1 26
+#define RTS1 27
+#else
+#define TX1         D4
+#define RX1         D5
+#define CTS1        D6
+#define RTS1        D8
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON
+#define TOTAL_PINS 			(36)
+#define ESPBOOT	28
+#define ESPEN 29
+#define HWAKE 30
+#define ANTSW1 31
+#define ANTSW2 32
+#define BATT 33
+#define PWR 34
+#define CHG 35
+#endif
+
+#if PLATFORM_ID == PLATFORM_BORON
+#define TOTAL_PINS	(34)
+#define UBPWR 28
+#define UBRST 29
+#define BUFEN 30
+#define ANTSW1 31
+#define PMIC_SCL 32
+#define PMIC_SDA 33
+#endif
+
 
 // analog pins
 #define A0          D19
@@ -149,11 +188,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RX          D10
 #define CTS         D3
 #define RTS         D2
-
-#define TX1         D4
-#define RX1         D5
-#define CTS1        D6
-#define RTS1        D8
 
 // WKP pin on Xenon
 #define WKP         D8   // FIXME: 
