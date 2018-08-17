@@ -1,7 +1,7 @@
 #include "application.h"
 
 #include "xmodem_sender.h"
-#include "stream.h"
+#include "../../../../services/inc/stream.h"
 #include "file.h"
 
 SYSTEM_MODE(SEMI_AUTOMATIC)
