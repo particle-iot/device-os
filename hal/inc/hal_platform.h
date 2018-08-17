@@ -91,4 +91,9 @@
 #define HAL_PLATFORM_IFAPI (0)
 #endif /* HAL_PLATFORM_IFAPI */
 
+#ifndef HAL_PLATFORM_NRF52840
+#define HAL_PLATFORM_NRF52840 (0)
+#endif /* HAL_PLATFORM_NRF52840 */
+
+
 #endif /* HAL_PLATFORM_H */

@@ -36,6 +36,7 @@ env:
   # FIXME: Other platforms are currently probably broken
   matrix:
     - BUILD_PLATFORM=xenon
+    - BUILD_PLATFORM=argon
 
   # matrix:
   #   - BUILD_PLATFORM=unit-test gcc

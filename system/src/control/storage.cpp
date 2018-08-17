@@ -23,7 +23,7 @@
 #include "system_network.h"
 #include "common.h"
 
-#if PLATFORM_ID != PLATFORM_XENON
+#if !HAL_PLATFORM_MESH
 #include "ota_flash_hal_stm32f2xx.h"
 #include "flash_storage_impl.h"
 #include "eeprom_emulation_impl.h"
@@ -46,7 +46,7 @@
 #if PLATFORM_ID != PLATFORM_PHOTON_PRODUCTION && \
     PLATFORM_ID != PLATFORM_P1 && \
     PLATFORM_ID != PLATFORM_ELECTRON_PRODUCTION && \
-    PLATFORM_ID != PLATFORM_XENON
+    !HAL_PLATFORM_MESH
 #error "Unsupported platform"
 #endif
 
@@ -64,7 +64,7 @@ using namespace common;
 
 namespace {
 
-#if PLATFORM_ID != PLATFORM_XENON
+#if !HAL_PLATFORM_MESH
 
 struct Section;
 
@@ -204,7 +204,7 @@ const Section* storageSection(unsigned storageIndex, unsigned sectionIndex) {
     return &storage.sections[sectionIndex];
 }
 
-#endif // PLATFORM_ID != PLATFORM_XENON
+#endif // !HAL_MESH_PLATFORM
 
 std::unique_ptr<FileTransfer::Descriptor> g_desc;
 
@@ -322,7 +322,7 @@ int firmwareUpdateDataRequest(ctrl_request* req) {
     return 0;
 }
 
-#if PLATFORM_ID != PLATFORM_XENON
+#if !HAL_PLATFORM_MESH
 
 int describeStorageRequest(ctrl_request* req) {
     particle_ctrl_DescribeStorageReply pbRep = {};
@@ -501,7 +501,7 @@ int getSectionDataSizeRequest(ctrl_request* req) {
     return 0;
 }
 
-#else // PLATFORM_ID == PLATFORM_XENON
+#else // !HAL_PLATFORM_MESH
 
 // TODO
 
@@ -525,7 +525,7 @@ int getSectionDataSizeRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-#endif // PLATFORM_ID == PLATFORM_XENON
+#endif // !HAL_PLATFORM_MESH
 
 } // namespace particle::control
 
