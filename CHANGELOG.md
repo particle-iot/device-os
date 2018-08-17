@@ -1,3 +1,9 @@
+## 0.8.0-rc.10
+
+### BUGFIXES
+
+- [Electron/LTE] eDRX & Power Saving mode disabled by default [#1567](https://github.com/particle-iot/firmware/pull/1567)
+
 ## 0.8.0-rc.9
 
 ### BUGFIXES
