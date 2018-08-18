@@ -786,6 +786,23 @@ bool MDMParser::init(DevStatus* status)
             _dev.lpm = LPM_ACTIVE;
         }
     }
+    if (_dev.dev == DEV_SARA_R410) {
+        // Force eDRX mode to be disabled
+        // 18/23 hardware doesn't seem to be disabled by default
+        sendFormated("AT+CEDRXS=0\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        sendFormated("AT+CEDRXS?\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        // Force Power Saving mode to be disabled for good measure
+        sendFormated("AT+CPSMS=0\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        sendFormated("AT+CPSMS?\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+    }
     // Setup SMS in text mode
     sendFormated("AT+CMGF=1\r\n");
     if (RESP_OK != waitFinalResp())
@@ -1487,6 +1504,12 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
             sendFormated("AT+UPSND=" PROFILE ",0\r\n");
             if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
                 goto failure;
+            // Get the primary DNS server (logs only), don't fail on error.
+            sendFormated("AT+UPSND=" PROFILE ",1\r\n");
+            waitFinalResp();
+            // Get the secondary DNS server (logs only), don't fail on error.
+            sendFormated("AT+UPSND=" PROFILE ",2\r\n");
+            waitFinalResp();
         }
         UNLOCK();
         _attached = true;  // GPRS
