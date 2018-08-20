@@ -22,7 +22,7 @@
 namespace particle {
 
 class Stream;
-class InputFile;
+class InputStream;
 
 // Class implementing the XMODEM-1K protocol
 class XmodemSender {
@@ -35,7 +35,7 @@ public:
     XmodemSender();
     ~XmodemSender();
 
-    int init(Stream* strm, InputFile* file);
+    int init(Stream* dest, InputStream* src, size_t size);
     void destroy();
 
     // Returns one of the values defined by the `Status` enum or a negative value in case of an error.
@@ -55,15 +55,14 @@ private:
 
     State state_; // Current sender state
     system_tick_t stateTime_; // Time when the sender state was last changed
-    unsigned retries_; // Number of retries
+    unsigned retryCount_; // Number of retries
+    unsigned canCount_; // Number of received CAN bytes
 
-    Stream* strm_; // Destination stream
-
-    InputFile* file_; // Source file
+    InputStream* srcStrm_; // Source stream
+    Stream* destStrm_; // Destination stream
     size_t fileSize_; // File size
-    size_t fileOffs_; // Offset in the file at which the current chunk starts
+    size_t fileOffs_; // Current offset in the file
 
-    size_t chunkSize_; // Size of the current data chunk
     size_t packetSize_; // Size of the current XMODEM packet
     size_t packetOffs_; // Number of transmitted bytes of the current packet
     unsigned packetNum_; // Packet number

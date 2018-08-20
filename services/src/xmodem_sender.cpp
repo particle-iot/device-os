@@ -20,8 +20,9 @@
 #include "timer_hal.h"
 
 #include "stream.h"
-#include "file.h"
 #include "check.h"
+
+#include <algorithm>
 
 LOG_SOURCE_CATEGORY("xmodem");
 
@@ -59,11 +60,14 @@ const unsigned NCG_TIMEOUT = 30000;
 const unsigned ACK_TIMEOUT = 10000;
 const unsigned SEND_TIMEOUT = 10000;
 
-// Maximum number of retries
-const unsigned MAX_PACKET_RETRIES = 1;
-const unsigned MAX_EOT_RETRIES = 1;
+// Maximum number of retries before aborting the transfer
+const unsigned MAX_PACKET_RETRY_COUNT = 2;
+const unsigned MAX_EOT_RETRY_COUNT = 2;
 
-// Calculates CRC-16 checksum using the CRC-16-CCITT algorithm (supposedly)
+// Number of CAN bytes that need to be received in order to cancel the transfer
+const unsigned RECV_CAN_COUNT = 2;
+
+// Calculates a 16-bit checksum using the CRC-CCITT (XMODEM) algorithm
 uint16_t calcCrc16(const char* data, size_t size) {
     uint16_t crc = 0;
     const auto end = data + size;
@@ -91,18 +95,18 @@ XmodemSender::~XmodemSender() {
     destroy();
 }
 
-int XmodemSender::init(Stream* strm, InputFile* file) {
+int XmodemSender::init(Stream* dest, InputStream* src, size_t size) {
     buf_.reset(new(std::nothrow) char[BUFFER_SIZE]);
     CHECK_TRUE(buf_, SYSTEM_ERROR_NO_MEMORY);
-    strm_ = strm;
-    file_ = file;
-    fileSize_ = CHECK(file_->size());
+    srcStrm_ = src;
+    destStrm_ = dest;
+    fileSize_ = size;
     fileOffs_ = 0;
-    chunkSize_ = 0;
     packetSize_ = 0;
     packetOffs_ = 0;
+    retryCount_ = 0;
+    canCount_ = 0;
     packetNum_ = 1;
-    retries_ = 0;
     setState(State::RECV_NCG);
     LOG_DEBUG(TRACE, "Waiting for NCGbyte (0x%02x)", (unsigned char)Ctrl::C);
     return 0;
@@ -166,36 +170,36 @@ int XmodemSender::sendPacket() {
     CHECK(readCtrl()); // Process CAN control bytes
     if (packetSize_ == 0) {
         PacketHeader h = {};
-        chunkSize_ = fileSize_ - fileOffs_;
+        size_t chunkSize = fileSize_ - fileOffs_;
         // Avoid sending more than 128 padding bytes in a 1K packet
-        if (chunkSize_ > 896) {
+        if (chunkSize > 896) {
             packetSize_ = 1024;
             h.start = Ctrl::STX;
         } else {
             packetSize_ = 128;
             h.start = Ctrl::SOH;
         }
-        if (chunkSize_ > packetSize_) {
-            chunkSize_ = packetSize_;
+        if (chunkSize > packetSize_) {
+            chunkSize = packetSize_;
         }
         h.num = packetNum_ & 0xff;
         h.numComp = ~h.num;
         // Packet header
         memcpy(buf_.get(), &h, sizeof(PacketHeader));
         // Packet data
-        CHECK(file_->read(buf_.get() + sizeof(PacketHeader), chunkSize_, fileOffs_));
+        CHECK(srcStrm_->read(buf_.get() + sizeof(PacketHeader), chunkSize));
         // Padding bytes
-        memset(buf_.get() + sizeof(PacketHeader) + chunkSize_, 0, packetSize_ - chunkSize_);
+        memset(buf_.get() + sizeof(PacketHeader) + chunkSize, 0, packetSize_ - chunkSize);
         // Packet checksum
-        const uint16_t crc16 = calcCrc16(buf_.get() + sizeof(PacketHeader), packetSize_);
+        const uint16_t crc = calcCrc16(buf_.get() + sizeof(PacketHeader), packetSize_);
         PacketCrc c = {};
-        c.msb = crc16 >> 8;
-        c.lsb = crc16 & 0xff;
+        c.msb = crc >> 8;
+        c.lsb = crc & 0xff;
         memcpy(buf_.get() + sizeof(PacketHeader) + packetSize_, &c, sizeof(PacketCrc));
         packetSize_ += sizeof(PacketHeader) + sizeof(PacketCrc);
         LOG_DEBUG(TRACE, "Sending packet; number: %u, size: %u", packetNum_, (unsigned)packetSize_);
     }
-    packetOffs_ += CHECK(strm_->write(buf_.get() + packetOffs_, packetSize_ - packetOffs_));
+    packetOffs_ += CHECK(destStrm_->write(buf_.get() + packetOffs_, packetSize_ - packetOffs_));
     if (packetOffs_ == packetSize_) {
         LOG_DEBUG(TRACE, "Waiting for ACK");
         setState(State::RECV_PACKET_ACK);
@@ -208,7 +212,7 @@ int XmodemSender::recvPacketAck() {
     const size_t n = CHECK(readCtrl(&c));
     if (c == Ctrl::NAK || checkTimeout(ACK_TIMEOUT) != 0) {
         LOG_DEBUG(TRACE, "%s", (c == Ctrl::NAK) ? "Received NAK" : "ACK timeout");
-        if (++retries_ > MAX_PACKET_RETRIES) {
+        if (++retryCount_ > MAX_PACKET_RETRY_COUNT) {
             LOG(ERROR, "Maximum number of retransmissions exceeded");
             return SYSTEM_ERROR_LIMIT_EXCEEDED;
         }
@@ -221,8 +225,8 @@ int XmodemSender::recvPacketAck() {
             return SYSTEM_ERROR_PROTOCOL;
         }
         LOG_DEBUG(TRACE, "Received ACK");
-        retries_ = 0;
-        fileOffs_ += chunkSize_;
+        retryCount_ = 0;
+        fileOffs_ += std::min(fileSize_ - fileOffs_, packetSize_ - sizeof(PacketHeader) - sizeof(PacketCrc));
         if (fileOffs_ < fileSize_) {
             // Send next packet
             packetSize_ = 0;
@@ -241,7 +245,7 @@ int XmodemSender::sendEot() {
     CHECK(checkTimeout(SEND_TIMEOUT));
     CHECK(readCtrl()); // Process CAN control bytes
     const char c = Ctrl::EOT;
-    const size_t n = CHECK(strm_->write(&c, 1));
+    const size_t n = CHECK(destStrm_->write(&c, 1));
     if (n > 0) {
         LOG_DEBUG(TRACE, "Sent EOT");
         setState(State::RECV_EOT_ACK);
@@ -254,7 +258,7 @@ int XmodemSender::recvEotAck() {
     const size_t n = CHECK(readCtrl(&c));
     if (c == Ctrl::NAK || checkTimeout(ACK_TIMEOUT) != 0) {
         LOG_DEBUG(TRACE, "%s", (c == Ctrl::NAK) ? "Received NAK" : "ACK timeout");
-        if (++retries_ > MAX_EOT_RETRIES) {
+        if (++retryCount_ > MAX_EOT_RETRY_COUNT) {
             LOG(ERROR, "Maximum number of retransmissions exceeded");
             return SYSTEM_ERROR_LIMIT_EXCEEDED;
         }
@@ -273,19 +277,25 @@ int XmodemSender::recvEotAck() {
 
 int XmodemSender::readCtrl(char* c) {
     char cc = 0;
-    int ret = strm_->read(&cc, 1);
-    if (ret > 0) {
+    size_t n = CHECK(destStrm_->read(&cc, 1));
+    if (n > 0) {
         if (cc == Ctrl::CAN) {
-            LOG(WARN, "Receiver has cancelled the transfer");
-            ret = SYSTEM_ERROR_CANCELLED;
-        } else if (cc == Ctrl::C && state_ != State::RECV_NCG && packetNum_ == 1) {
-            // Ignore superfluous NCGbyte's received while we're sending the first packet
-            ret = 0;
-        } else if (c) {
-            *c = cc;
+            if (++canCount_ == RECV_CAN_COUNT) {
+                LOG(WARN, "Receiver has cancelled the transfer");
+                return SYSTEM_ERROR_CANCELLED;
+            }
+            n = 0;
+        } else {
+            canCount_ = 0;
+            if (cc == Ctrl::C && state_ != State::RECV_NCG && packetNum_ == 1) {
+                // Ignore superfluous NCGbyte's received while we're sending the first packet
+                n = 0;
+            } else if (c) {
+                *c = cc;
+            }
         }
     }
-    return ret;
+    return n;
 }
 
 int XmodemSender::checkTimeout(unsigned timeout) {
