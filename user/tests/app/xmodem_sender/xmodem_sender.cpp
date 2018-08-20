@@ -69,6 +69,7 @@ private:
 class SerialStream: public particle::Stream {
 public:
     SerialStream() {
+        Serial1.setTimeout(0);
         Serial1.begin(115200);
     }
 
