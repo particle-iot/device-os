@@ -421,7 +421,7 @@ void usb_uart_flush_tx_data(void) {
 }
 
 int usb_uart_available_tx_data(void) {
-    return FIFO_LENGTH(&m_usb_instance.tx_fifo); 
+    return m_usb_instance.tx_fifo.buf_size_mask - FIFO_LENGTH(&m_usb_instance.tx_fifo);
 }
 
 bool usb_hal_is_enabled(void) {
