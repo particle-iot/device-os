@@ -44,12 +44,12 @@ typedef struct module_dependency_t {
 typedef struct module_info_t {
     const void* module_start_address;   /* the first byte of this module in flash */
     const void* module_end_address;     /* the last byte (exclusive) of this smodule in flash. 4 byte crc starts here. */
-    uint8_t reserved;
-    uint8_t reserved2;
+    uint8_t reserved;					/* Platform-specific definition. */
+    uint8_t reserved2;					/* reserved, set to 0 */
     uint16_t module_version;            /* 16 bit version */
     uint16_t platform_id;               /* The platform this module was compiled for. */
     uint8_t  module_function;           /* The module function */
-    uint8_t  module_index;
+    uint8_t  module_index;				/* distinguish modules of the same type */
     module_dependency_t dependency;
     module_dependency_t dependency2;
 } module_info_t;
@@ -99,8 +99,9 @@ typedef enum module_function_t {
     /* The module is a user part */
     MODULE_FUNCTION_USER_PART = MOD_FUNC_USER_PART,
 
-    /* Rewrite persisted settings */
+    /* Rewrite persisted settings. (Not presently used?) */
     MODULE_FUNCTION_SETTINGS = MOD_FUNC_SETTINGS
+
 } module_function_t;
 
 typedef enum {
