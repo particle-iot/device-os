@@ -18,6 +18,7 @@
 #pragma once
 
 #include "module_info.h"
+#include "ota_flash_hal.h"
 
 enum MeshNCPManufacturer {
 	MESH_NCP_MANUFACTURER_UNKNOWN,
@@ -28,7 +29,8 @@ enum MeshNCPManufacturer {
 #define MESH_NCP_IDENTIFIER(mf,t) (t|(mf<<5))
 
 enum MeshNCPIdentifier {
-	MESH_NCP_UNKNOWN,
+	MESH_NCP_UNKNOWN = -1,
+	MESH_NCP_NONE = 0,
 	MESH_NCP_ESP32 = MESH_NCP_IDENTIFIER(MESH_NCP_MANUFACTURER_ESPRESSIF, 1),
 	MESH_NCP_SARA_U201 = MESH_NCP_IDENTIFIER(MESH_NCP_MANUFACTURER_UBLOX, 2),
 	MESH_NCP_SARA_G350 = MESH_NCP_IDENTIFIER(MESH_NCP_MANUFACTURER_UBLOX, 3),
@@ -41,3 +43,15 @@ enum MeshNCPIdentifier {
  * Returns MESH_NCP_UNKNOWN when the module info does not represent an NCP module, or if the NCP type is unknown, or if the main platform does not match this device's platform.
  */
 MeshNCPIdentifier platform_ncp_identifier(module_info_t* moduleInfo);
+
+/**
+ * Determine the NCP that is running on this platform.
+ */
+MeshNCPIdentifier platform_current_ncp_identifier();
+
+/**
+ * Update the NCP firmware from the given module. The module has been validated for integrity and matching platform and dependencies checked.
+ */
+hal_update_complete_t platform_ncp_update_module(const hal_module_t* module);
+
+

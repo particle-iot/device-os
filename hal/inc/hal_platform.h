@@ -95,5 +95,15 @@
 #define HAL_PLATFORM_NRF52840 (0)
 #endif /* HAL_PLATFORM_NRF52840 */
 
+#ifndef HAL_PLATFORM_NCP
+#define HAL_PLATFORM_NCP (0)
+#endif /* HAL_PLATFORM_NCP */
+
+#ifndef HAL_PLATFORM_NCP_AT
+#define HAL_PLATFORM_NCP_AT (0)
+#endif /* HAL_PLATFORM_NCP_AT */
+
+#define HAL_PLATFORM_MCU_ANY (0xFF)
+#define HAL_PLATFORM_MCU_DEFAULT (0)
 
 #endif /* HAL_PLATFORM_H */
