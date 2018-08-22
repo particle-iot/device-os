@@ -71,4 +71,20 @@ inline bool startsWith(const char* str, const char* prefix) {
     return startsWith(str, strlen(str), prefix, strlen(prefix));
 }
 
+inline bool endsWith(const char* str, size_t strSize, const char* suffix, size_t suffixSize) {
+    if (strSize < suffixSize) {
+        return false;
+    }
+
+    if (strncmp(str + strSize - suffixSize, suffix, suffixSize) != 0) {
+        return false;
+    }
+
+    return true;
+}
+
+inline bool endsWith(const char* str, const char* suffix) {
+    return endsWith(str, strlen(str), suffix, strlen(suffix));
+}
+
 } // particle
