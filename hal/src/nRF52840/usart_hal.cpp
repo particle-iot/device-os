@@ -104,7 +104,7 @@ static nrf_uart_baudrate_t get_nrf_baudrate(uint32_t baud)
 
     nrf_uart_baudrate_t nrf_baudtate = NRF_UARTE_BAUDRATE_115200;
 
-    if (baud <= 1200 || baud >= 100000)
+    if (baud < 1200 || baud > 1000000)
     {
         // return default baudrate
         return nrf_baudtate;
