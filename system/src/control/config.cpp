@@ -25,8 +25,10 @@
 
 #include "deviceid_hal.h"
 #include "core_hal.h"
+#include "platforms.h"
 
 #include "bytes2hexbuf.h"
+#include "check.h"
 
 #include "dct.h"
 
@@ -34,6 +36,10 @@
 #include "ota_flash_hal_impl.h"
 #else
 #include "ota_flash_hal_stm32f2xx.h"
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
+#include "atclient.h"
 #endif
 
 #include "config.pb.h"
@@ -90,6 +96,23 @@ int getSystemVersion(ctrl_request* req) {
         return ret;
     }
     return 0;
+}
+
+int getNcpFirmwareVersion(ctrl_request* req) {
+#if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
+    const auto ncp = ArgonNcpAtClient::instance();
+    char verStr[32] = {};
+    CHECK(ncp->getVersion(verStr, sizeof(verStr)));
+    uint16_t modVer = 0;
+    CHECK(ncp->getModuleVersion(&modVer));
+    PB(GetNcpFirmwareVersionReply) pbRep = {};
+    EncodedString eVerStr(&pbRep.version, verStr, strlen(verStr));
+    pbRep.module_version = modVer;
+    CHECK(encodeReplyMessage(req, PB_FIELDS(GetNcpFirmwareVersionReply), &pbRep));
+    return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // PLATFORM_ID != PLATFORM_ARGON
 }
 
 int handleSetClaimCodeRequest(ctrl_request* req) {
