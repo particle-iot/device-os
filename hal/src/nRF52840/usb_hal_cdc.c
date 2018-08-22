@@ -81,7 +81,8 @@ typedef struct {
 
     volatile bool           com_opened;
     volatile bool           transmitting;
-    volatile bool           rx_ovf;
+    volatile uint32_t       rx_data_size;
+    volatile bool           rx_done;
 
     // USB CDC 
     uint32_t                baudrate;       // just for compatibility, no need baudrate configuration on nRF52
@@ -89,10 +90,11 @@ typedef struct {
 
 static usb_instance_t m_usb_instance = {0};
 
-#define READ_SIZE 1
-#define SEND_SIZE NRF_DRV_USBD_EPSIZE   
-static char         m_rx_buffer[READ_SIZE];  
-static char         m_tx_buffer[SEND_SIZE];
+// Rx buffer length must by multiple of NRF_DRV_USBD_EPSIZE.
+#define READ_SIZE       (NRF_DRV_USBD_EPSIZE * 2)
+static char m_rx_buffer[READ_SIZE];
+#define SEND_SIZE       NRF_DRV_USBD_EPSIZE   
+static char             m_tx_buffer[SEND_SIZE];
 
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                                     app_usbd_cdc_acm_user_event_t event);
@@ -119,28 +121,34 @@ static __INLINE bool fifo_full(app_fifo_t * p_fifo) {
     return (FIFO_LENGTH(p_fifo) > p_fifo->buf_size_mask);
 }
 
+static void reset_rx_tx_state(void) {
+    m_usb_instance.rx_done = false;
+    m_usb_instance.rx_data_size = 0;
+    m_usb_instance.transmitting = false;
+}
+
 /**
  * @brief User event handler @ref app_usbd_cdc_acm_user_ev_handler_t (headphones)
  * */
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                                     app_usbd_cdc_acm_user_event_t event)
 {
-    static bool io_pending = false;
+    // static bool io_pending = false;
+    app_usbd_cdc_acm_t const *cdc_acm_class = app_usbd_cdc_acm_class_get(p_inst);
 
     switch (event) {
         case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN: {
             // reset buffer state
             m_usb_instance.com_opened = true;
-            m_usb_instance.rx_ovf = false;
+            reset_rx_tx_state();
             app_fifo_flush(&m_usb_instance.tx_fifo);
             app_fifo_flush(&m_usb_instance.rx_fifo);
 
-            ret_code_t ret;
-            /*Setup first transfer*/
-            ret = app_usbd_cdc_acm_read(&m_app_cdc_acm, m_rx_buffer, READ_SIZE);
-            if (ret == NRF_ERROR_IO_PENDING) {
-                io_pending = true;
-            }
+            // Setup first transfer.
+            (void)app_usbd_cdc_acm_read_any(cdc_acm_class, m_rx_buffer, READ_SIZE);
+            // TODO: do we need delay?
+            // nrf_delay_ms(10);
+
             LOG_DEBUG(TRACE, "com open!");
             break;
         }
@@ -177,30 +185,9 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             break;
         }
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
-            ret_code_t ret;
-            do {
-                if (io_pending) {
-                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0])) {
-                        m_usb_instance.rx_ovf = true;
-                        LOG_DEBUG(TRACE, "ERROR!!! rx overflow!!!");
-                    }
-                    io_pending = false;
-                }
+            m_usb_instance.rx_done = true;
+            m_usb_instance.rx_data_size = app_usbd_cdc_acm_rx_size(cdc_acm_class);
 
-                /* Fetch data until internal buffer is empty */
-                ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
-                                            m_rx_buffer,
-                                            READ_SIZE);
-                if (ret == NRF_SUCCESS) {
-                    if (app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[0])) {
-                        m_usb_instance.rx_ovf = true;
-                        LOG_DEBUG(TRACE, "ERROR!!! rx overflow!!!");
-                    }
-                }  
-                else if (ret == NRF_ERROR_IO_PENDING) {
-                    io_pending = true;
-                }
-            } while (ret == NRF_SUCCESS);
             break;
         }
         default:
@@ -221,6 +208,8 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
         }
         case APP_USBD_EVT_STARTED: {
             // triggered by app_usbd_start()
+            m_usb_instance.com_opened = false;
+            reset_rx_tx_state();
             break;
         }
         case APP_USBD_EVT_STOPPED: {
@@ -244,8 +233,6 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
         case APP_USBD_EVT_POWER_READY: {
             m_usb_instance.power_state = POWER_STATE_READY;
             app_usbd_start();
-            m_usb_instance.rx_ovf = 0;
-            m_usb_instance.com_opened = false;
             break;
         }
         default: 
@@ -329,7 +316,7 @@ int usb_uart_send(uint8_t data[], uint16_t size) {
     for (int i = 0; i < size; i++) {
         // wait until tx fifo is available
         while (IS_FIFO_FULL(&m_usb_instance.tx_fifo));
-        app_fifo_put(&m_usb_instance.tx_fifo, data[i]);
+        SPARK_ASSERT(app_fifo_put(&m_usb_instance.tx_fifo, data[i]) == NRF_SUCCESS);
     }
 
     uint32_t ret;
@@ -377,7 +364,6 @@ void usb_hal_attach(void) {
     }
     app_usbd_start();
 
-    m_usb_instance.rx_ovf = 0;
     m_usb_instance.com_opened = false;
 }
 
@@ -393,15 +379,35 @@ void usb_hal_detach(void) {
 }
 
 int usb_uart_available_rx_data(void) {
-    return FIFO_LENGTH(&m_usb_instance.rx_fifo); 
+    return FIFO_LENGTH(&m_usb_instance.rx_fifo) + m_usb_instance.rx_data_size; 
 }
 
 uint8_t usb_uart_get_rx_data(void) {
-    uint8_t data = 0;
-    if (app_fifo_get(&m_usb_instance.rx_fifo, &data)) {
-        return 0;
+    if (m_usb_instance.rx_done) {
+        if (FIFO_LENGTH(&m_usb_instance.rx_fifo) + m_usb_instance.rx_data_size < m_usb_instance.rx_fifo.buf_size_mask) {
+            for (int i = 0; i < m_usb_instance.rx_data_size; i++) {
+                SPARK_ASSERT(app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[i]) == NRF_SUCCESS);
+            }
+
+            m_usb_instance.rx_data_size = 0;
+            app_usbd_class_inst_t const * class_cdc_inst = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
+            app_usbd_cdc_acm_t const *cdc_acm_class = app_usbd_cdc_acm_class_get(class_cdc_inst);
+
+            m_usb_instance.rx_done = false;
+
+            // Setup next transfer.
+            if (app_usbd_cdc_acm_read_any(cdc_acm_class, m_rx_buffer, READ_SIZE) == NRF_SUCCESS) {
+            
+            } 
+        } 
     }
-    return data;
+
+    uint8_t data = 0;
+    if (FIFO_LENGTH(&m_usb_instance.rx_fifo)) {
+        SPARK_ASSERT(app_fifo_get(&m_usb_instance.rx_fifo, &data) == NRF_SUCCESS);
+    }
+
+    return data; 
 }
 
 uint8_t usb_uart_peek_rx_data(uint8_t index) {
