@@ -5,6 +5,6 @@ NANOPB_SRC_PATH = $(SERVICES_MODULE_PATH)/nanopb
 CPPSRC += $(call target_files,$(TARGET_SPARK_SERVICES_SRC_PATH),*.cpp)
 CSRC += $(call target_files,$(TARGET_SPARK_SERVICES_SRC_PATH),*.c)
 
-CPPFLAGS += -std=gnu++11
+CPPFLAGS += -std=gnu++14
 
 LOG_MODULE_CATEGORY = service
