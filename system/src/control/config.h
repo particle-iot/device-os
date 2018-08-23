@@ -26,6 +26,7 @@ namespace config {
 int getDeviceId(ctrl_request* req);
 int getSerialNumber(ctrl_request* req);
 int getSystemVersion(ctrl_request* req);
+int getNcpFirmwareVersion(ctrl_request* req);
 int getDeviceMode(ctrl_request* req);
 int setDeviceSetupDone(ctrl_request* req);
 int isDeviceSetupDone(ctrl_request* req);

@@ -1160,6 +1160,7 @@ int BleControlRequestChannel::initProfile() {
     profile.version = BLE_API_VERSION;
     char devName[32] = {};
     CHECK(get_device_name(devName, sizeof(devName)));
+    LOG(INFO, "Device name: %s", devName);
     profile.device_name = devName;
     profile.services = &ctrlService;
     profile.service_count = 1;
