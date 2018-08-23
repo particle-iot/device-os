@@ -84,8 +84,7 @@ typedef struct {
     volatile uint32_t       rx_data_size;
     volatile bool           rx_done;
 
-    // USB CDC 
-    uint32_t                baudrate;       // just for compatibility, no need baudrate configuration on nRF52
+    void (*bit_rate_changed_handler)(uint32_t bitRate);
 } usb_instance_t;
 
 static usb_instance_t m_usb_instance = {0};
@@ -137,6 +136,12 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
     app_usbd_cdc_acm_t const *cdc_acm_class = app_usbd_cdc_acm_class_get(p_inst);
 
     switch (event) {
+        case APP_USBD_CDC_ACM_USER_EVT_SET_LINE_CODING: {
+            if (m_usb_instance.bit_rate_changed_handler) {
+                (*m_usb_instance.bit_rate_changed_handler)(usb_uart_get_baudrate());
+            }
+            break;
+        }
         case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN: {
             // reset buffer state
             m_usb_instance.com_opened = true;
@@ -345,17 +350,27 @@ int usb_uart_send(uint8_t data[], uint16_t size) {
 }
 
 void usb_uart_set_baudrate(uint32_t baudrate) {
-    m_usb_instance.baudrate = baudrate;
+    app_usbd_class_inst_t const * cdc_inst_class = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
+    app_usbd_cdc_acm_t const *cdc_acm_class= app_usbd_cdc_acm_class_get(cdc_inst_class);
+
+    if ((cdc_acm_class != NULL) && (cdc_acm_class->specific.p_data != NULL)) {
+        *(uint32_t *)cdc_acm_class->specific.p_data->ctx.line_coding.dwDTERate = baudrate;
+    }
 }
 
 uint32_t usb_uart_get_baudrate(void) {
-    return m_usb_instance.baudrate;
+    app_usbd_class_inst_t const * cdc_inst_class = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
+    app_usbd_cdc_acm_t const *cdc_acm_class= app_usbd_cdc_acm_class_get(cdc_inst_class);
+
+    if ((cdc_acm_class != NULL) && (cdc_acm_class->specific.p_data != NULL)) {
+        return uint32_decode(cdc_acm_class->specific.p_data->ctx.line_coding.dwDTERate);
+    }
+
+    return 0;
 }
 
 void usb_hal_attach(void) {
-    if ((m_usb_instance.power_state == POWER_STATE_REMOVED) ||
-        (m_usb_instance.power_state == POWER_STATE_READY))
-    {
+    if (m_usb_instance.power_state == POWER_STATE_REMOVED) {
         return;
     }
 
@@ -389,11 +404,11 @@ uint8_t usb_uart_get_rx_data(void) {
                 SPARK_ASSERT(app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[i]) == NRF_SUCCESS);
             }
 
-            m_usb_instance.rx_data_size = 0;
             app_usbd_class_inst_t const * class_cdc_inst = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
             app_usbd_cdc_acm_t const *cdc_acm_class = app_usbd_cdc_acm_class_get(class_cdc_inst);
 
             m_usb_instance.rx_done = false;
+            m_usb_instance.rx_data_size = 0;
 
             // Setup next transfer.
             if (app_usbd_cdc_acm_read_any(cdc_acm_class, m_rx_buffer, READ_SIZE) == NRF_SUCCESS) {
@@ -436,4 +451,8 @@ bool usb_hal_is_enabled(void) {
 
 bool usb_hal_is_connected(void) {
     return m_usb_instance.com_opened;
+}
+
+void usb_hal_set_bit_rate_changed_handler(void (*handler)(uint32_t bitRate)) {
+    m_usb_instance.bit_rate_changed_handler = handler;
 }

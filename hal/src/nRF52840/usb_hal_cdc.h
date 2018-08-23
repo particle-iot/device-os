@@ -25,6 +25,7 @@ void usb_uart_flush_rx_data(void);
 void usb_uart_flush_tx_data(void);
 int usb_uart_available_tx_data(void);
 bool usb_hal_is_connected(void);
+void usb_hal_set_bit_rate_changed_handler(void (*handler)(uint32_t bitRate));
 
 #ifdef __cplusplus
 }

@@ -64,13 +64,8 @@ unsigned int USB_USART_Baud_Rate(void) {
  * Return         : Length.
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void) {
-    int32_t available = HAL_USB_USART_Available_Data(HAL_USB_USART_SERIAL);
-    if (available > 255) {
-        return 255;
-    } else if (available < 0) {
-        return 0;
-    }
-    return available;
+    // Deprecated
+    return 0;
 }
 
 /*******************************************************************************
@@ -148,8 +143,11 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
 }
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved) {
-    usb_uart_set_baudrate(baud);
-    HAL_USB_Attach();
+    if (baud != usb_uart_get_baudrate()) {
+        HAL_USB_Detach();
+        usb_uart_set_baudrate(baud);
+        HAL_USB_Attach();
+    }
 }
 
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial) {
@@ -208,7 +206,7 @@ void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize) {
 #endif
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate)) {
-    return;
+    usb_hal_set_bit_rate_changed_handler(handler);
 }
 
 int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved) {
