@@ -322,7 +322,12 @@ void AtClientBase::setState(State state) {
         case State::READY:
         case State::NOT_READY: {
             // FIXME: there should be a flushInput() method
-            while (stream_->read(buffer_, sizeof(buffer_)) > 0);
+            auto start = millis();
+            if (getState() != State::NOT_READY) {
+                start = 0;
+            }
+            while ((millis() - start) < ATCLIENT_READY_TIMEOUT ||
+                    stream_->read(buffer_, sizeof(buffer_)) > 0);
             // Reset a bunch of things
             resetData();
             break;
