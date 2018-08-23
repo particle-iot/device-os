@@ -5,8 +5,7 @@
 #include "xmodem_sender.h"
 #include "check.h"
 #include "../../../../services/inc/stream.h"
-#include "atclient.h"
-#include "Serial2/Serial2.h"
+#include "network/ncp.h"
 
 #include <cstdarg>
 
@@ -68,30 +67,7 @@ private:
     size_t offs_;
 };
 
-class SerialStream: public particle::Stream {
-public:
-    SerialStream(USARTSerial& serial)
-            : serial_(serial) {
-        serial_.setTimeout(0);
-    }
-
-    ~SerialStream() = default;
-
-    int read(char* data, size_t size) override {
-        return serial_.readBytes(data, size);
-    }
-
-    int write(const char* data, size_t size) override {
-        return serial_.write((const uint8_t*)data, size);
-    }
-
-private:
-    USARTSerial& serial_;
-};
-
 std::unique_ptr<XmodemSender> sender;
-std::unique_ptr<SerialStream> serialStrm;
-std::unique_ptr<particle::services::at::ArgonNcpAtClient> modem;
 std::unique_ptr<ExtFlashStream> extFlashStrm;
 std::unique_ptr<TextStream> textStrm;
 
@@ -102,14 +78,14 @@ const RttLogHandler logHandler(LOG_LEVEL_ALL);
 void initTextStream() {
     const size_t SIZE = 3500;
     textStrm.reset(new TextStream(SIZE));
-    sender->init(serialStrm.get(), textStrm.get(), SIZE);
+    sender->init(argonNcpAtClient()->getStream(), textStrm.get(), SIZE);
 }
 
 int logVersion() {
     char ver[16] = {};
     uint16_t mver = 0;
-    CHECK(modem->getVersion(ver, sizeof(ver)));
-    CHECK(modem->getModuleVersion(&mver));
+    CHECK(argonNcpAtClient()->getVersion(ver, sizeof(ver)));
+    CHECK(argonNcpAtClient()->getModuleVersion(&mver));
     Log.info("Current version: %s (%hu)", ver, mver);
     return 0;
 }
@@ -118,20 +94,17 @@ int initExtFlashStream() {
     const size_t SIZE = 800976;
     const size_t OFFSET = 0x00200000;
     extFlashStrm.reset(new ExtFlashStream(OFFSET, SIZE));
-    sender->init(serialStrm.get(), extFlashStrm.get(), SIZE);
+    sender->init(argonNcpAtClient()->getStream(), extFlashStrm.get(), SIZE);
 
     CHECK(logVersion());
-    CHECK(modem->startUpdate(SIZE));
+    CHECK(argonNcpAtClient()->startUpdate(SIZE));
     return 0;
 }
 
 } // unnamed
 
 void setup() {
-    Serial2.begin(921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
-    serialStrm.reset(new SerialStream(Serial2));
     sender.reset(new XmodemSender);
-    modem.reset(new particle::services::at::ArgonNcpAtClient(serialStrm.get()));
     // initTextStream();
     if (initExtFlashStream()) {
         sender.reset();
@@ -148,11 +121,11 @@ void loop() {
             } else {
                 Log.error("XMODEM transfer failed: %d", ret);
             }
-            Log.info("Update result: %d", modem->finishUpdate());
+            Log.info("Update result: %d", argonNcpAtClient()->finishUpdate());
             sender.reset();
 
             // Invalidate AT Client state, because the ESP32 was reset
-            modem->reset();
+            argonNcpAtClient()->reset();
             logVersion();
         }
     }
