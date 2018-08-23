@@ -45,8 +45,15 @@ const char* const stateNames[] = {
 
 constexpr const char* AtClientBase::resultCodes_[];
 
+// 5s
+const auto ATCLIENT_DEFAULT_TIMEOUT = 5000;
+
+// 2s
+const auto ATCLIENT_READY_TIMEOUT = 2000;
+
 AtClientBase::AtClientBase(Stream* stream)
-        : stream_(stream) {
+        : stream_(stream),
+          timeout_(ATCLIENT_DEFAULT_TIMEOUT) {
 }
 
 AtClientBase::~AtClientBase() {
@@ -67,6 +74,9 @@ void AtClientBase::reset() {
 int AtClientBase::waitReady(unsigned int timeout) {
     auto start = millis();
     int r = SYSTEM_ERROR_TIMEOUT;
+
+    TimeoutOverride t(ATCLIENT_READY_TIMEOUT, this);
+
     while ((millis() - start) < timeout) {
         r = waitState(State::READY);
         if (!r) {
@@ -220,6 +230,7 @@ bool AtClientBase::isFinalResultCode(ResultCode code) {
 }
 
 int AtClientBase::sendCommand(const char* fmt, ...) {
+    waitReady(ATCLIENT_DEFAULT_TIMEOUT * 2);
     CHECK_TRUE(state_ == State::READY || state_ == State::FINAL_RESULT_CODE, SYSTEM_ERROR_INVALID_STATE);
 
     va_list args;

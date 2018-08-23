@@ -142,8 +142,7 @@ private:
     char* informationText_ = nullptr;
     ResultCode resultCode_ = ResultCode::UNKNOWN;
 
-    // 10s
-    unsigned int timeout_ = 5000;
+    unsigned int timeout_;
 
     char buffer_[ATCLIENT_BUFFER_SIZE] = {};
 

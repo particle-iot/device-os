@@ -105,8 +105,6 @@ void initTextStream() {
 }
 
 int logVersion() {
-    CHECK(modem->waitReady(10000));
-
     char ver[16] = {};
     uint16_t mver = 0;
     CHECK(modem->getVersion(ver, sizeof(ver)));
@@ -116,7 +114,7 @@ int logVersion() {
 }
 
 int initExtFlashStream() {
-    const size_t SIZE = 790320;
+    const size_t SIZE = 800976;
     const size_t OFFSET = 0x00200000;
     extFlashStrm.reset(new ExtFlashStream(OFFSET, SIZE));
     sender->init(serialStrm.get(), extFlashStrm.get(), SIZE);
@@ -152,9 +150,8 @@ void loop() {
             Log.info("Update result: %d", modem->finishUpdate());
             sender.reset();
 
-            // If we don't reset the state here, ATE0 will not be sent
+            // Invalidate AT Client state, because the ESP32 was reset
             modem->reset();
-            // waitReady() call in logVersion() is also important
             logVersion();
         }
     }
