@@ -56,10 +56,23 @@ private:
 
 using particle::XmodemSender;
 
+// instantiate Serial2
+// todo - maybe we should have a special define that enables Serial2 in wiring, but only
+// from system firmware. This would avoid the repetition here.
+
+static Ring_Buffer serial2_rx_buffer;
+static Ring_Buffer serial2_tx_buffer;
+
+USARTSerial& __fetch_global_Serial2()
+{
+	static USARTSerial serial2(HAL_USART_SERIAL2, &serial2_rx_buffer, &serial2_tx_buffer);
+	return serial2;
+}
+
 hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	// not so happy about mixing the layers like this. Seems strange that HAL should be dependent on wiring.
-	Serial1.end();
-	Serial1.begin(921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
+	Serial2.end();
+	Serial2.begin(921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
 	SerialStream stream(Serial1);
 	particle::services::at::ArgonNcpAtClient atclient(&stream);
 	SerialStream serialStream(Serial1);
