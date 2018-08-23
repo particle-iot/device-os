@@ -362,7 +362,7 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
     hal_update_complete_t result = HAL_UPDATE_ERROR;
 
     bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
+	LOG(INFO, "module fetched %d, checks=%x, result=%x", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
     	uint8_t mcu_identifier = module_mcu_target(module.info);
@@ -394,7 +394,7 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
     	}
 #endif
     	else {
-    		DEBUG("NCP module is not for this platform. %x, %x", mcu_identifier, current_mcu_identifier);
+    		LOG(ERROR, "NCP module is not for this platform. module NCP: %x, current NCP: %x", mcu_identifier, current_mcu_identifier);
     	}
     }
     else

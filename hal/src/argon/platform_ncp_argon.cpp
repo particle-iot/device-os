@@ -58,6 +58,7 @@ using particle::XmodemSender;
 
 hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	// not so happy about mixing the layers like this. Seems strange that HAL should be dependent on wiring.
+	Serial1.end();
 	Serial1.begin(921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
 	SerialStream stream(Serial1);
 	particle::services::at::ArgonNcpAtClient atclient(&stream);
