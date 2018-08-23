@@ -1,37 +1,16 @@
 #include "platform_ncp.h"
-#include "atclient.h"
+#include "network/ncp.h"
 #include "led_service.h"
 #include "check.h"
 #include "scope_guard.h"
 #include "system_led_signal.h"
 #include "xmodem_sender.h"
-#include "spark_wiring_usartserial.h"
 #include "stream.h"
 
 MeshNCPIdentifier platform_current_ncp_identifier() {
 	return MESH_NCP_ESP32;
 }
 
-class SerialStream: public particle::Stream {
-public:
-    SerialStream(USARTSerial& serial)
-            : serial_(serial) {
-        serial_.setTimeout(0);
-    }
-
-    ~SerialStream() = default;
-
-    int read(char* data, size_t size) override {
-        return serial_.readBytes(data, size);
-    }
-
-    int write(const char* data, size_t size) override {
-        return serial_.write((const uint8_t*)data, size);
-    }
-
-private:
-    USARTSerial& serial_;
-};
 
 class BufferStream : public particle::InputStream {
 public:
@@ -56,26 +35,10 @@ private:
 
 using particle::XmodemSender;
 
-// instantiate Serial2
-// todo - maybe we should have a special define that enables Serial2 in wiring, but only
-// from system firmware. This would avoid the repetition here.
-
-static Ring_Buffer serial2_rx_buffer;
-static Ring_Buffer serial2_tx_buffer;
-
-USARTSerial& __fetch_global_Serial2()
-{
-	static USARTSerial serial2(HAL_USART_SERIAL2, &serial2_rx_buffer, &serial2_tx_buffer);
-	return serial2;
-}
-
 hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	// not so happy about mixing the layers like this. Seems strange that HAL should be dependent on wiring.
-	Serial2.end();
-	Serial2.begin(921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
-	SerialStream stream(Serial1);
-	particle::services::at::ArgonNcpAtClient atclient(&stream);
-	SerialStream serialStream(Serial1);
+	particle::services::at::ArgonNcpAtClient& atclient = *argonNcpAtClient();
+
 	// we pass only the actual binary after the module info and up to the suffix
 	const uint8_t* start = (const uint8_t*)module->info;
 	static_assert(sizeof(module_info_t)==24, "expected module info size to be 24");
@@ -88,11 +51,12 @@ hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	    });
 	XmodemSender sender;
 	BufferStream moduleStream(start, length);
-	CHECK_RESULT(sender.init(&serialStream, &moduleStream, length), HAL_UPDATE_ERROR);
+	CHECK_RESULT(sender.init(atclient.getStream(), &moduleStream, length), HAL_UPDATE_ERROR);
 	uint16_t previous_version = 0;
 	atclient.getModuleVersion(&previous_version);
 	LOG(INFO, "Updating ESP32 firmware from version %d to version %d", previous_version, module->info->module_version);
 	CHECK_RESULT(atclient.startUpdate(length), HAL_UPDATE_ERROR);
+
 	bool success = false;
 	for (;;) {
 		const int ret = sender.run();
