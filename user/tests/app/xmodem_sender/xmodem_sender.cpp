@@ -6,6 +6,7 @@
 #include "check.h"
 #include "../../../../services/inc/stream.h"
 #include "atclient.h"
+#include "Serial2/Serial2.h"
 
 #include <cstdarg>
 
@@ -127,8 +128,8 @@ int initExtFlashStream() {
 } // unnamed
 
 void setup() {
-    Serial1.begin(921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
-    serialStrm.reset(new SerialStream(Serial1));
+    Serial2.begin(921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
+    serialStrm.reset(new SerialStream(Serial2));
     sender.reset(new XmodemSender);
     modem.reset(new particle::services::at::ArgonNcpAtClient(serialStrm.get()));
     // initTextStream();
