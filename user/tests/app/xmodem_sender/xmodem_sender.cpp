@@ -5,10 +5,11 @@
 #include "xmodem_sender.h"
 #include "check.h"
 #include "../../../../services/inc/stream.h"
+#include "network/ncp.h"
 
 #include <cstdarg>
 
-SYSTEM_MODE(SEMI_AUTOMATIC)
+SYSTEM_MODE(SEMI_AUTOMATIC);
 
 namespace {
 
@@ -66,94 +67,49 @@ private:
     size_t offs_;
 };
 
-class SerialStream: public particle::Stream {
-public:
-    SerialStream() {
-        Serial1.setTimeout(0);
-        Serial1.begin(115200);
-    }
-
-    ~SerialStream() {
-        Serial1.end();
-    }
-
-    int read(char* data, size_t size) override {
-        return Serial1.readBytes(data, size);
-    }
-
-    int write(const char* data, size_t size) override {
-        return Serial1.write((const uint8_t*)data, size);
-    }
-};
-
-class DummyModem {
-public:
-    explicit DummyModem(particle::Stream* strm) :
-            strm_(strm) {
-    }
-
-    int writeCommand(const char* fmt, ...) {
-        va_list args;
-        va_start(args, fmt);
-        char buf[256];
-        size_t n = CHECK(vsnprintf(buf, sizeof(buf) - 2, fmt, args));
-        buf[n++] = '\r';
-        buf[n++] = '\n';
-        CHECK(strm_->write(buf, n));
-        Log.write(buf, n);
-        return n;
-    }
-
-    int readResponse(unsigned timeout = 1000) {
-        char buf[256];
-        size_t size = 0;
-        system_tick_t t = millis();
-        do {
-            char c = 0;
-            const size_t n = CHECK(strm_->read(&c, 1));
-            if (n > 0) {
-                buf[size++] = c;
-            }
-        } while (millis() - t < timeout);
-        Log.write(buf, size);
-        return size;
-    }
-
-private:
-    particle::Stream* strm_;
-};
-
 std::unique_ptr<XmodemSender> sender;
-std::unique_ptr<SerialStream> serialStrm;
-std::unique_ptr<DummyModem> modem;
 std::unique_ptr<ExtFlashStream> extFlashStrm;
 std::unique_ptr<TextStream> textStrm;
 
+#ifdef DEBUG_BUILD
 const RttLogHandler logHandler(LOG_LEVEL_ALL);
+#endif // DEBUG_BUILD
 
 void initTextStream() {
     const size_t SIZE = 3500;
     textStrm.reset(new TextStream(SIZE));
-    sender->init(serialStrm.get(), textStrm.get(), SIZE);
+    sender->init(argonNcpAtClient()->getStream(), textStrm.get(), SIZE);
 }
 
-void initExtFlashStream() {
-    const size_t SIZE = 825168;
+int logVersion() {
+    char ver[16] = {};
+    uint16_t mver = 0;
+    CHECK(argonNcpAtClient()->getVersion(ver, sizeof(ver)));
+    CHECK(argonNcpAtClient()->getModuleVersion(&mver));
+    Log.info("Current version: %s (%hu)", ver, mver);
+    return 0;
+}
+
+int initExtFlashStream() {
+    const size_t SIZE = 800976;
     const size_t OFFSET = 0x00200000;
     extFlashStrm.reset(new ExtFlashStream(OFFSET, SIZE));
-    sender->init(serialStrm.get(), extFlashStrm.get(), SIZE);
-    modem->writeCommand("AT+FWUPD=%u", SIZE);
-    modem->readResponse();
+    sender->init(argonNcpAtClient()->getStream(), extFlashStrm.get(), SIZE);
+
+    CHECK(logVersion());
+    CHECK(argonNcpAtClient()->startUpdate(SIZE));
+    return 0;
 }
 
 } // unnamed
 
 void setup() {
-    serialStrm.reset(new SerialStream);
     sender.reset(new XmodemSender);
-    modem.reset(new DummyModem(serialStrm.get()));
-    initTextStream();
-    // initExtFlashStream();
+    // initTextStream();
+    if (initExtFlashStream()) {
+        sender.reset();
+        Log.error("Failed to talk to NCP");
+    }
 }
 
 void loop() {
@@ -165,7 +121,12 @@ void loop() {
             } else {
                 Log.error("XMODEM transfer failed: %d", ret);
             }
+            Log.info("Update result: %d", argonNcpAtClient()->finishUpdate());
             sender.reset();
+
+            // Invalidate AT Client state, because the ESP32 was reset
+            argonNcpAtClient()->reset();
+            logVersion();
         }
     }
 }
