@@ -39,7 +39,7 @@
 #endif
 
 #if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
-#include "atclient.h"
+#include "network/ncp.h"
 #endif
 
 #include "config.pb.h"
@@ -100,7 +100,7 @@ int getSystemVersion(ctrl_request* req) {
 
 int getNcpFirmwareVersion(ctrl_request* req) {
 #if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
-    const auto ncp = ArgonNcpAtClient::instance();
+    const auto ncp = argonNcpAtClient();
     char verStr[32] = {};
     CHECK(ncp->getVersion(verStr, sizeof(verStr)));
     uint16_t modVer = 0;
