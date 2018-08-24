@@ -44,10 +44,7 @@ hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	start += sizeof(module_info_t);		// skip the module info
 	const uint8_t* end = start + (uint32_t(module->info->module_end_address) - uint32_t(module->info->module_start_address));
 	const unsigned length = end-start;
-	LED_SIGNAL_START(FIRMWARE_UPDATE, CRITICAL);
-	NAMED_SCOPE_GUARD(ledGuard, {
-			LED_SIGNAL_STOP(FIRMWARE_UPDATE);
-	    });
+
 	XmodemSender sender;
 	BufferStream moduleStream(start, length);
 	CHECK_RESULT(sender.init(atclient.getStream(), &moduleStream, length), HAL_UPDATE_ERROR);
@@ -66,6 +63,7 @@ hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 			} else {
 				LOG(ERROR, "XMODEM transfer failed: %d", ret);
 			}
+			break;
 		}
 		LED_Toggle(LED_RGB);
 	}
