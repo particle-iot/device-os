@@ -25,8 +25,8 @@
 #include "pinmap_impl.h"
 #include "usart_hal.h"
 #include "logging.h"
-  
-#define UART_BUFF_SIZE              (SERIAL_BUFFER_SIZE * 2)
+
+#define UART_BUFF_SIZE              (sizeof(((Ring_Buffer*)0)->buffer))
 
 // only support even parity(SERIAL_PARITY_EVEN)
 #define IS_PARITY_VALID(config)     (((config & SERIAL_PARITY) == SERIAL_PARITY_EVEN) || ((config & SERIAL_PARITY) == SERIAL_PARITY_NO))
@@ -34,7 +34,7 @@
 // only support both CTS and RTS(SERIAL_FLOW_CONTROL_RTS_CTS)
 #define IS_HWFC_VALID(config)       (((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS_CTS) || ((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_NONE))
 #define IS_HWFC_ENABLED(config)     (((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS_CTS) ? true : false)
-// only support one stop bit 
+// only support one stop bit
 #define IS_STOP_BITS_VALID(config)  ((config & SERIAL_STOP_BITS) == SERIAL_STOP_BITS_1)
 // only support one 8 data bits
 #define IS_DATA_BITS_VALID(config)  ((config & SERIAL_DATA_BITS) == SERIAL_DATA_BITS_8)
@@ -60,7 +60,7 @@ typedef struct {
 static nrf_drv_uart_t m_uarte0 = NRF_DRV_UART_INSTANCE(0);
 static nrf_drv_uart_t m_uarte1 = NRF_DRV_UART_INSTANCE(1);
 
-static nrf5x_uart_info_t m_uart_map[TOTAL_USARTS] = 
+static nrf5x_uart_info_t m_uart_map[TOTAL_USARTS] =
 {
     {&m_uarte0, APP_IRQ_PRIORITY_LOWEST, TX, RX, CTS, RTS},
     {&m_uarte1, APP_IRQ_PRIORITY_LOWEST, TX1, RX1, CTS1, RTS1}
@@ -84,21 +84,21 @@ static nrf_uart_baudrate_t get_nrf_baudrate(uint32_t baud)
         uint32_t baud;
         nrf_uart_baudrate_t nrf_baud;
     } baudrate_map[] = {
-        { 1200,     NRF_UARTE_BAUDRATE_1200    }, 
-        { 2400,     NRF_UARTE_BAUDRATE_2400    }, 
-        { 4800,     NRF_UARTE_BAUDRATE_4800    }, 
-        { 9600,     NRF_UARTE_BAUDRATE_9600    }, 
-        { 14400,    NRF_UARTE_BAUDRATE_14400   }, 
-        { 19200,    NRF_UARTE_BAUDRATE_19200   }, 
-        { 28800,    NRF_UARTE_BAUDRATE_28800   }, 
-        { 38400,    NRF_UARTE_BAUDRATE_38400   }, 
-        { 57600,    NRF_UARTE_BAUDRATE_57600   }, 
-        { 76800,    NRF_UARTE_BAUDRATE_76800   }, 
-        { 115200,   NRF_UARTE_BAUDRATE_115200  }, 
-        { 230400,   NRF_UARTE_BAUDRATE_230400  }, 
-        { 250000,   NRF_UARTE_BAUDRATE_250000  }, 
-        { 460800,   NRF_UARTE_BAUDRATE_460800  }, 
-        { 921600,   NRF_UARTE_BAUDRATE_921600  }, 
+        { 1200,     NRF_UARTE_BAUDRATE_1200    },
+        { 2400,     NRF_UARTE_BAUDRATE_2400    },
+        { 4800,     NRF_UARTE_BAUDRATE_4800    },
+        { 9600,     NRF_UARTE_BAUDRATE_9600    },
+        { 14400,    NRF_UARTE_BAUDRATE_14400   },
+        { 19200,    NRF_UARTE_BAUDRATE_19200   },
+        { 28800,    NRF_UARTE_BAUDRATE_28800   },
+        { 38400,    NRF_UARTE_BAUDRATE_38400   },
+        { 57600,    NRF_UARTE_BAUDRATE_57600   },
+        { 76800,    NRF_UARTE_BAUDRATE_76800   },
+        { 115200,   NRF_UARTE_BAUDRATE_115200  },
+        { 230400,   NRF_UARTE_BAUDRATE_230400  },
+        { 250000,   NRF_UARTE_BAUDRATE_250000  },
+        { 460800,   NRF_UARTE_BAUDRATE_460800  },
+        { 921600,   NRF_UARTE_BAUDRATE_921600  },
         { 1000000,  NRF_UARTE_BAUDRATE_1000000 }
     };
 
@@ -118,7 +118,7 @@ static nrf_uart_baudrate_t get_nrf_baudrate(uint32_t baud)
             break;
         }
     }
-    
+
     return nrf_baudtate;
 }
 
@@ -171,22 +171,22 @@ static uint32_t uart_init(HAL_USART_Serial serial, uint32_t baud)
     uint32_t err_code;
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     nrf_drv_uart_config_t config = {
-        .pseltxd            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].tx_pin].gpio_port, PIN_MAP[m_uart_map[serial].tx_pin].gpio_pin),              
-        .pselrxd            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].rx_pin].gpio_port, PIN_MAP[m_uart_map[serial].rx_pin].gpio_pin),                      
-        .pselcts            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].cts_pin].gpio_port, PIN_MAP[m_uart_map[serial].cts_pin].gpio_pin),                      
-        .pselrts            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].rts_pin].gpio_port, PIN_MAP[m_uart_map[serial].rts_pin].gpio_pin),                     
-        .p_context          = (void *)((int)m_uart_map[serial].instance->inst_idx),                                              
+        .pseltxd            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].tx_pin].gpio_port, PIN_MAP[m_uart_map[serial].tx_pin].gpio_pin),
+        .pselrxd            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].rx_pin].gpio_port, PIN_MAP[m_uart_map[serial].rx_pin].gpio_pin),
+        .pselcts            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].cts_pin].gpio_port, PIN_MAP[m_uart_map[serial].cts_pin].gpio_pin),
+        .pselrts            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].rts_pin].gpio_port, PIN_MAP[m_uart_map[serial].rts_pin].gpio_pin),
+        .p_context          = (void *)((int)m_uart_map[serial].instance->inst_idx),
         .hwfc               = IS_HWFC_ENABLED(m_uart_map[serial].uart_config) ? NRF_UART_HWFC_ENABLED : NRF_UART_HWFC_DISABLED,
         .parity             = IS_PARITY_ENABLED(m_uart_map[serial].uart_config) ? NRF_UART_PARITY_INCLUDED : NRF_UART_PARITY_EXCLUDED,
         .baudrate           = get_nrf_baudrate(baud),
-        .interrupt_priority = m_uart_map[serial].priority,                  
-        NRF_DRV_UART_DEFAULT_CONFIG_USE_EASY_DMA                                 
+        .interrupt_priority = m_uart_map[serial].priority,
+        NRF_DRV_UART_DEFAULT_CONFIG_USE_EASY_DMA
     };
 
     err_code = nrf_drv_uart_init(m_uart_map[serial].instance, &config, uart_event_handler);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 
-    // Turn on receiver 
+    // Turn on receiver
     nrf_drv_uart_rx(m_uart_map[serial].instance, m_uart_map[serial].rx_buffer, 1);
 
     // set pin mode
@@ -284,7 +284,7 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
 
     memset(tx_buffer, 0, sizeof(Ring_Buffer));
     memset(rx_buffer, 0, sizeof(Ring_Buffer));
-    
+
     ret = app_fifo_init(&m_uart_map[serial].tx_fifo, (uint8_t *)tx_buffer->buffer, UART_BUFF_SIZE);
     SPARK_ASSERT(ret == NRF_SUCCESS);
     ret = app_fifo_init(&m_uart_map[serial].rx_fifo, (uint8_t *)rx_buffer->buffer, UART_BUFF_SIZE);
@@ -293,11 +293,11 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
     m_uart_map[serial].enabled = false;
     m_uart_map[serial].rx_ovf = false;
     m_uart_map[serial].uart_config = 0;
-}  
+}
 
 
 void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
-{   
+{
     HAL_USART_BeginConfig(serial, baud, 0, 0);
 }
 
@@ -307,7 +307,7 @@ bool HAL_USART_Validate_Config(uint32_t config)
 	if (!IS_DATA_BITS_VALID(config))
 		return false;
 
-	// Either No or Even 
+	// Either No or Even
 	if (!IS_PARITY_VALID(config))
 		return false;
 
@@ -340,7 +340,7 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
     }
 
     m_uart_map[serial].uart_config = config;
-    uart_init(serial, baud); 
+    uart_init(serial, baud);
     m_uart_map[serial].enabled = true;
 }
 
@@ -348,7 +348,7 @@ void HAL_USART_End(HAL_USART_Serial serial)
 {
     // Wait for transmission of outgoing data
     while (FIFO_LENGTH(&m_uart_map[serial].tx_fifo));
-    
+
     uart_uninit(serial);
 
     app_fifo_flush(&m_uart_map[serial].tx_fifo);
@@ -363,10 +363,10 @@ uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
     {
         return 0;
     }
-    
-    // FIXME: lower layer driver send data by using interrupt， couldn't use 
+
+    // FIXME: lower layer driver send data by using interrupt， couldn't use
     //        blocking transmission mode
-    // interrupt is diable(enter criticle) 
+    // interrupt is diable(enter criticle)
     // while ((__get_PRIMASK() & 1) && FIFO_LENGTH(m_uart_map[serial].tx_fifo)) {}
     if ((__get_PRIMASK() & 1))
     {
@@ -404,7 +404,7 @@ int32_t HAL_USART_Read_Data(HAL_USART_Serial serial)
 }
 
 int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial)
-{    
+{
     uint8_t data = 0;
 
     if (HAL_USART_Available_Data(serial) == 0)
@@ -439,7 +439,7 @@ void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 
 int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
 {
-    return UART_BUFF_SIZE - FIFO_LENGTH(&m_uart_map[serial].tx_fifo);
+    return m_uart_map[serial].tx_fifo.buf_size_mask - FIFO_LENGTH(&m_uart_map[serial].tx_fifo);
 }
 
 uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data)
