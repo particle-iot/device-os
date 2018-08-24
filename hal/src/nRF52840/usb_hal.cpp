@@ -110,23 +110,16 @@ bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial) {
 
 #endif
 
-#ifdef USB_HID_ENABLE
-/*******************************************************************************
- * Function Name : USB_HID_Send_Report.
- * Description   : Send HID Report Info to Host.
- * Input         : pHIDReport and reportSize.
- * Output        : None.
- * Return value  : None.
- *******************************************************************************/
-void USB_HID_Send_Report(void *pHIDReport, uint16_t reportSize) {
-    return;
+void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
+{
+    // Old USB API, just for compatibility in main.cpp
+    // Enable Serial by default
+	HAL_USB_USART_LineCoding_BitRate_Handler(handler, NULL);
 }
-#endif
 
-void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate)) {
+int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved) {
+    // Enable Serial by default
+    HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, NULL);
     usb_hal_set_bit_rate_changed_handler(handler);
-}
-
-int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved) {
     return 0;
 }
