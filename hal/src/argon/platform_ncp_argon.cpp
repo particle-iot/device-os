@@ -47,11 +47,11 @@ hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 
 	XmodemSender sender;
 	BufferStream moduleStream(start, length);
-	CHECK_RESULT(sender.init(atclient.getStream(), &moduleStream, length), HAL_UPDATE_ERROR);
+	CHECK_RETURN(sender.init(atclient.getStream(), &moduleStream, length), HAL_UPDATE_ERROR);
 	uint16_t previous_version = 0;
 	atclient.getModuleVersion(&previous_version);
 	LOG(INFO, "Updating ESP32 firmware from version %d to version %d", previous_version, module->info->module_version);
-	CHECK_RESULT(atclient.startUpdate(length), HAL_UPDATE_ERROR);
+	CHECK_RETURN(atclient.startUpdate(length), HAL_UPDATE_ERROR);
 
 	bool success = false;
 	for (;;) {
@@ -68,13 +68,13 @@ hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 		LED_Toggle(LED_RGB);
 	}
 	LED_On(LED_RGB);
-	CHECK_RESULT(atclient.finishUpdate(), HAL_UPDATE_ERROR);
+	CHECK_RETURN(atclient.finishUpdate(), HAL_UPDATE_ERROR);
 	atclient.reset();
 
 	hal_update_complete_t result = success ? HAL_UPDATE_APPLIED : HAL_UPDATE_ERROR;
 	// won't fail the update if we for some reason cannot get the module version
 	uint16_t version;
-	CHECK_RESULT(atclient.getModuleVersion(&version), result);
+	CHECK_RETURN(atclient.getModuleVersion(&version), result);
 	LOG(INFO, "ESP32 firmware version updated to version %d", version);
 	return result;
 }

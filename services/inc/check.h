@@ -31,14 +31,14 @@
 #define _LOG_CHECKED_ERROR(_expr, _ret)
 #endif
 
-#define CHECK_RESULT(_expr, _result) \
+#define CHECK_RETURN(_expr, _val) \
         ({ \
             const auto _ret = _expr; \
             if (_ret < 0) { \
                 _LOG_CHECKED_ERROR(_expr, _ret); \
-                return _result; \
+                return _val; \
             } \
-            _result; \
+            _ret; \
         })
 
 #define CHECK(_expr) \
