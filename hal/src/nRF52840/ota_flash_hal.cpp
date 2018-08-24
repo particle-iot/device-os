@@ -251,7 +251,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
 
 bool HAL_Verify_User_Dependencies()
 {
-    const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1, 0);
+    const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1, HAL_PLATFORM_MCU_DEFAULT);
     return validate_module_dependencies(bounds, false, false);
 }
 
