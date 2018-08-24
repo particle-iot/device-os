@@ -334,7 +334,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
             res = (result == HAL_UPDATE_ERROR);
 
             // always restart for now
-            if (true || result==HAL_UPDATE_APPLIED_PENDING_RESTART)
+            if ((true || result==HAL_UPDATE_APPLIED_PENDING_RESTART) && !(flags & UpdateFlag::DONT_RESET))
             {
                 spark_protocol_command(sp, ProtocolCommands::DISCONNECT);
                 system_pending_shutdown();
