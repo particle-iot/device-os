@@ -11,7 +11,6 @@ MeshNCPIdentifier platform_current_ncp_identifier() {
 	return MESH_NCP_ESP32;
 }
 
-
 class BufferStream : public particle::InputStream {
 public:
 	BufferStream(const uint8_t* buffer, size_t length) : buffer(buffer), remaining(length) {}
