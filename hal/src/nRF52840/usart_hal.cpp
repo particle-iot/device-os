@@ -22,7 +22,7 @@
 #include "nrf_gpio.h"
 #include "nrf_assert.h"
 #include "app_fifo.h"
-#include "pinmap_hal.h"
+#include "pinmap_impl.h"
 #include "usart_hal.h"
 #include "logging.h"
   
