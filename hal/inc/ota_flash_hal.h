@@ -45,7 +45,7 @@ typedef struct {
     module_function_t module_function;
     uint8_t module_index;
     module_store_t store;
-
+    uint8_t mcu_identifier;		// which MCU is targeted by this module. 0 means main/primary MCU. HAL_PLATFORM_MCU_ANY
 } module_bounds_t;
 
 typedef enum {

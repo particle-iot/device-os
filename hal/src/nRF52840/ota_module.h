@@ -31,9 +31,14 @@ extern "C" {
  * @return {@code true} if the dependencies are satisfied, {@code false} otherwise.
  */
 bool validate_module_dependencies(const module_bounds_t* bounds, bool userPartOptional, bool fullDeps);
-const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index);
+const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index, uint8_t mcu_identifier);
 bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags);
 const module_info_t* locate_module(const module_bounds_t* bounds);
+
+inline uint8_t module_mcu_target(const module_info_t* info) {
+	return info->reserved;
+}
+
 
 #ifdef __cplusplus
 }

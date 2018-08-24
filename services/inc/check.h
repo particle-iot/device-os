@@ -31,6 +31,16 @@
 #define _LOG_CHECKED_ERROR(_expr, _ret)
 #endif
 
+#define CHECK_RETURN(_expr, _val) \
+        ({ \
+            const auto _ret = _expr; \
+            if (_ret < 0) { \
+                _LOG_CHECKED_ERROR(_expr, _ret); \
+                return _val; \
+            } \
+            _ret; \
+        })
+
 #define CHECK(_expr) \
         ({ \
             const auto _ret = _expr; \

@@ -1,5 +1,6 @@
 #include "ota_flash_hal.h"
 #include "spark_macros.h"
+#include "hal_platform.h"
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 #error "Modular firmware is not supported"
@@ -13,6 +14,9 @@ const module_bounds_t module_bootloader = {
         .module_function = MODULE_FUNCTION_BOOTLOADER,
         .module_index = 0,
         .store = MODULE_STORE_MAIN
+#if HAL_PLATFORM_NCP
+		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
     };
 
 // Monolithic firmware
@@ -23,6 +27,10 @@ const module_bounds_t module_user_mono = {
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
         .store = MODULE_STORE_MAIN
+#if HAL_PLATFORM_NCP
+		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
+
     };
 
 // Factory firmware
@@ -33,6 +41,9 @@ const module_bounds_t module_factory_mono = {
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
         .store = MODULE_STORE_FACTORY
+#if HAL_PLATFORM_NCP
+		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
     };
 
 // OTA region
@@ -43,8 +54,30 @@ const module_bounds_t module_ota = {
         .module_function = MODULE_FUNCTION_NONE,
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD
+#if HAL_PLATFORM_NCP
+		,.mcu_identifier = HAL_PLATFORM_MCU_ANY
+#endif
+
     };
 
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono };
+#if HAL_PLATFORM_NCP
+const module_bounds_t module_ncp_mono = {
+		.maximum_size = 1500*1024,
+		.start_address = 0,
+		.end_address = 1500*1024,
+		.module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+		.module_index = 0,
+		.store = MODULE_STORE_MAIN
+#if HAL_PLATFORM_NCP
+		,.mcu_identifier = HAL_PLATFORM_MCU_ANY
+#endif
+};
+#endif
+
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono
+#if HAL_PLATFORM_NCP
+		,&module_ncp_mono
+#endif /* HAL_PLATFORM_NCP */
+};
 
 const unsigned module_bounds_length = arraySize(module_bounds);

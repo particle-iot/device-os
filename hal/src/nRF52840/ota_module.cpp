@@ -21,6 +21,10 @@
 #include "flash_mal.h"
 #include "ota_module.h"
 
+// NB: Modules in external flash are made to appears as if they are located in Internal flash by means of
+// XiP - the external flash is mapped to a region of addressable memory, and can be access transparently via
+// a pointer to the memory region. That is why the OTA module can be accessed via FLASH_INTERNAL.
+
 /**
  * Determines if a given address is in range.
  * @param test      The address to test
@@ -44,7 +48,6 @@ const module_info_t* locate_module(const module_bounds_t* bounds) {
     return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
 }
 
-
 /**
  * Fetches and validates the module info found at a given location.
  * @param target        Receives the module into
@@ -62,7 +65,8 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;
         const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
-        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info));
+        // find the location of where the module should be flashed to based on its module co-ordinates (function/index/mcu)
+        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info), module_mcu_target(target->info));
         if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
             target->validity_result |= MODULE_VALIDATION_RANGE;
             target->validity_result |= (PLATFORM_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;

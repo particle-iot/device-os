@@ -39,7 +39,8 @@
 #include "delay_hal.h"
 // For ATOMIC_BLOCK
 #include "spark_wiring_interrupts.h"
-
+#include "hal_platform.h"
+#include "platform_ncp.h"
 #include <memory>
 
 #define OTA_CHUNK_SIZE                 (512)
@@ -48,17 +49,22 @@
 
 static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength);
 
+inline bool matches_mcu(uint8_t bounds_mcu, uint8_t actual_mcu) {
+	return bounds_mcu==HAL_PLATFORM_MCU_ANY || actual_mcu==HAL_PLATFORM_MCU_ANY || (bounds_mcu==actual_mcu);
+}
+
 /**
  * Finds the location where a given module is stored. The module is identified
- * by it's funciton and index.
+ * by its function and index.
  * @param module_function   The function of the module to find.
  * @param module_index      The function index of the module to find.
+ * @param mcu_identifier	The mcu identifier that is the target for the module.
  * @return the module_bounds corresponding to the module, NULL when not found.
  */
-const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index)
+const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index, uint8_t mcu_identifier)
 {
     for (unsigned i=0; i<module_bounds_length; i++) {
-        if (module_bounds[i]->module_function==module_function && module_bounds[i]->module_index==module_index)
+        if (module_bounds[i]->module_function==module_function && module_bounds[i]->module_index==module_index && matches_mcu(module_bounds[i]->mcu_identifier, mcu_identifier))
             return module_bounds[i];
     }
     return NULL;
@@ -219,7 +225,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
             // deliberately not transitive, so we only check the first dependency
             // so only user->system_part_2 is checked
             if (module->dependency.module_function != MODULE_FUNCTION_NONE) {
-                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index, module_mcu_target(module));
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = dependency && (dependency->module_version>=module->dependency.module_version);
             } else {
@@ -230,7 +236,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 (module->dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
                 valid = valid && true;
             } else {
-                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index);
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index, module_mcu_target(module));
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
             }
@@ -245,7 +251,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
 
 bool HAL_Verify_User_Dependencies()
 {
-    const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1);
+    const module_bounds_t* bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, 1, HAL_PLATFORM_MCU_DEFAULT);
     return validate_module_dependencies(bounds, false, false);
 }
 
@@ -356,29 +362,40 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
     hal_update_complete_t result = HAL_UPDATE_ERROR;
 
     bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
+	LOG(INFO, "module fetched %d, checks=%x, result=%x", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
-        uint32_t moduleLength = module_length(module.info);
-        module_function_t function = module_function(module.info);
+    	uint8_t mcu_identifier = module_mcu_target(module.info);
+    	uint8_t current_mcu_identifier = platform_current_ncp_identifier();
+    	if (mcu_identifier==HAL_PLATFORM_MCU_DEFAULT) {
+            uint32_t moduleLength = module_length(module.info);
+            module_function_t function = module_function(module.info);
+            // bootloader is copied directly
 
-        // bootloader is copied directly
-        if (function==MODULE_FUNCTION_BOOTLOADER) {
-            result = flash_bootloader(&module, moduleLength);
-        }
-        else
-        {
-            if (FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS,
-                FLASH_INTERNAL, uint32_t(module.info->module_start_address),
-                (moduleLength + 4),//+4 to copy the CRC too
-                function,
-                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION)) { //true to verify the CRC during copy also
-                    result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-                    DEBUG("OTA module applied - device will restart");
-            }
-        }
-
-        FLASH_End();
+			if (function==MODULE_FUNCTION_BOOTLOADER) {
+				result = flash_bootloader(&module, moduleLength);
+			}
+			else
+			{
+				if (FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS,
+					FLASH_INTERNAL, uint32_t(module.info->module_start_address),
+					(moduleLength + 4),//+4 to copy the CRC too
+					function,
+					MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION)) { //true to verify the CRC during copy also
+						result = HAL_UPDATE_APPLIED_PENDING_RESTART;
+						DEBUG("OTA module applied - device will restart");
+						FLASH_End();
+				}
+			}
+    	}
+#if HAL_PLATFORM_NCP
+    	else if (mcu_identifier==current_mcu_identifier) {
+    		result = platform_ncp_update_module(&module);
+    	}
+#endif
+    	else {
+    		LOG(ERROR, "NCP module is not for this platform. module NCP: %x, current NCP: %x", mcu_identifier, current_mcu_identifier);
+    	}
     }
     else
     {
