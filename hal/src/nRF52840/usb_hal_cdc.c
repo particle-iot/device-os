@@ -224,8 +224,7 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
         }
         case APP_USBD_EVT_POWER_DETECTED: {
             m_usb_instance.power_state = POWER_STATE_DETECTED;
-            if (!nrf_drv_usbd_is_enabled())
-            {
+            if (!nrf_drv_usbd_is_enabled()) {
                 app_usbd_enable();
             }
             break;
