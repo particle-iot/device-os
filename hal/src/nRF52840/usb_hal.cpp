@@ -20,9 +20,7 @@
 #include <stdlib.h>
 #include "usb_hal.h"
 #include "usb_hal_cdc.h"
-
-#define USB_RX_BUFFER_SIZE      256
-#define USB_TX_BUFFER_SIZE      256
+#include "usb_settings.h"
 
 #ifdef USB_CDC_ENABLE
 
@@ -39,15 +37,15 @@ void HAL_USB_Detach() {
 }
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config) {
-    if ((config == NULL) || 
+    if ((config == NULL) ||
         (config && (config->rx_buffer == NULL   ||
-                    config->rx_buffer_size == 0 || 
+                    config->rx_buffer_size == 0 ||
                     config->tx_buffer == NULL   ||
                     config->tx_buffer_size == 0)))
     {
 		static uint8_t *p_tx_buffer = NULL;
 		static uint8_t *p_rx_buffer = NULL;
-		
+
 		if (p_tx_buffer == NULL) {
 			p_tx_buffer = (uint8_t *)malloc(USB_TX_BUFFER_SIZE);
 		}
