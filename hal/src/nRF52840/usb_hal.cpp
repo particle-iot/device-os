@@ -61,11 +61,7 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
 }
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved) {
-    if (baud != usb_uart_get_baudrate()) {
-        HAL_USB_Detach();
-        usb_uart_set_baudrate(baud);
-        HAL_USB_Attach();
-    }
+    usb_uart_set_baudrate(baud);
 }
 
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial) {

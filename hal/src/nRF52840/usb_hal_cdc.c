@@ -36,6 +36,8 @@
 #include "app_usbd_serial_num.h"
 #include "app_fifo.h"
 #include "usb_hal_cdc.h"
+#include "deviceid_hal.h"
+#include "bytes2hexbuf.h"
 
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.usbcdc")
@@ -56,8 +58,7 @@ LOG_SOURCE_CATEGORY("hal.usbcdc")
 #define CDC_ACM_DATA_EPIN       NRF_DRV_USBD_EPIN1
 #define CDC_ACM_DATA_EPOUT      NRF_DRV_USBD_EPOUT1
 
-#define SERIAL_NUMBER_STRING_SIZE (12) 
-//uint16_t APP_USBD_STRING_SERIAL[SERIAL_NUMBER_STRING_SIZE + 1];
+extern uint16_t g_extern_serial_number[SERIAL_NUMBER_STRING_SIZE + 1];
 
 typedef enum {
      USB_MODE_NONE,
@@ -264,7 +265,17 @@ int usb_hal_init(void) {
         /* Just waiting */
     }
 
-    app_usbd_serial_num_generate();
+    // Create USB Serial string by Device ID
+    uint8_t device_id[HAL_DEVICE_ID_SIZE] = {};
+    uint8_t devcei_id_len = HAL_device_ID(device_id, sizeof(device_id));
+    char device_id_string[HAL_DEVICE_ID_SIZE * 2 + 1] = {};
+    bytes2hexbuf_lower_case(device_id, devcei_id_len, device_id_string);
+
+    memset(g_extern_serial_number, 0, sizeof(g_extern_serial_number));
+    g_extern_serial_number[0] = (uint16_t)APP_USBD_DESCRIPTOR_STRING << 8 | sizeof(g_extern_serial_number);
+    for (uint32_t i = 0; i < strlen(device_id_string); i++) {
+        g_extern_serial_number[i + 1] = (uint8_t)device_id_string[i];
+    }
 
     ret = app_usbd_init(&usbd_config);
     SPARK_ASSERT(ret == NRF_SUCCESS);
@@ -410,9 +421,7 @@ uint8_t usb_uart_get_rx_data(void) {
             m_usb_instance.rx_data_size = 0;
 
             // Setup next transfer.
-            if (app_usbd_cdc_acm_read_any(cdc_acm_class, m_rx_buffer, READ_SIZE) == NRF_SUCCESS) {
-            
-            } 
+            app_usbd_cdc_acm_read_any(cdc_acm_class, m_rx_buffer, READ_SIZE);
         } 
     }
 
