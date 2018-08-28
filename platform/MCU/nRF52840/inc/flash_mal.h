@@ -60,7 +60,7 @@ extern "C" {
 //Bootloader firmware at the start of internal flash
 #define USB_DFU_ADDRESS             INTERNAL_FLASH_START
 //Main firmware begin address after 256KB from start of flash
-#define CORE_FW_ADDRESS             ((uint32_t)0x00030000)
+#define CORE_FW_ADDRESS             ((uint32_t)0x00026000)
 #define APP_START_MASK              ((uint32_t)0x2FFC0000)
 
 /* Internal Flash page size */
@@ -71,7 +71,6 @@ extern "C" {
 #endif /* USE_SERIAL_FLASH */
 
 #ifdef MODULAR_FIRMWARE
-#    error "Modular firmware is not supported"
 #    define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
 #    ifndef USER_FIRMWARE_IMAGE_SIZE
 #        error USER_FIRMWARE_IMAGE_SIZE not defined
@@ -85,6 +84,15 @@ extern "C" {
 
 #    define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
 #    define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
+
+#    ifdef USE_SERIAL_FLASH
+         /* External Flash memory address where Factory programmed core firmware is located */
+#        define EXTERNAL_FLASH_FAC_ADDRESS  ((uint32_t)0x00200000)
+         /* External Flash memory address where core firmware will be saved for backup/restore */
+#        define EXTERNAL_FLASH_BKP_ADDRESS  ((uint32_t)EXTERNAL_FLASH_FAC_ADDRESS)
+         /* External Flash memory address where OTA upgraded core firmware will be saved */
+#        define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_FAC_ADDRESS + FIRMWARE_IMAGE_SIZE))
+#    endif
 
 #else /* MODULAR_FIRMWARE */
 

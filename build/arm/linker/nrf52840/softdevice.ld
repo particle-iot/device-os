@@ -21,8 +21,8 @@ SOFTDEVICE_MINIMUM_CODE_BASE = 0x26000;
 
 /* Reserving 16K in total */
 APP_RAM_BASE = 16K;
-/* Reserving 192K in total */
-APP_CODE_BASE = 192K;
+/* Reserving 152K in total */
+APP_CODE_BASE = 152K;
 
 ASSERT ( APP_RAM_BASE >= SOFTDEVICE_MINIMUM_RAM_BASE, "APP_RAM_BASE needs to be adjusted" );
 ASSERT ( APP_CODE_BASE >= SOFTDEVICE_MINIMUM_CODE_BASE, "APP_CODE_BASE needs to be adjusted" );

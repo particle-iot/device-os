@@ -29,11 +29,11 @@ HAL_DEPS = third_party/lwip third_party/freertos third_party/openthread third_pa
 HAL_DEPS_INCLUDE_SCRIPTS =$(foreach module,$(HAL_DEPS),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(HAL_DEPS_INCLUDE_SCRIPTS)
 
-# if hal is used as a make dependency (linked) then add linker commands
-ifneq (,$(HAL_LINK))
-
 HAL_LIB_DEP += $(FREERTOS_LIB_DEP) $(LWIP_LIB_DEP) $(OPENTHREAD_LIB_DEP) $(WIZNET_DRIVER_LIB_DEP)
 LIBS += $(notdir $(HAL_DEPS))
+
+# if hal is used as a make dependency (linked) then add linker commands
+ifneq (,$(HAL_LINK))
 
 LINKER_FILE=$(HAL_SRC_INCL_PATH)/app_no_bootloader.ld
 LINKER_DEPS=$(LINKER_FILE)

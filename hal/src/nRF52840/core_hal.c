@@ -289,6 +289,23 @@ void HAL_Core_Setup(void)
     HAL_Core_Config_systick_configuration();
 }
 
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+// TODO: Implement these functions for modular firmware
+bool HAL_Core_Validate_User_Module(void)
+{
+    bool valid = true;
+
+    return valid;
+}
+
+bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
+{
+    bool valid = true;
+
+    return valid;
+}
+#endif
+
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {
     bool pressedState = false;
