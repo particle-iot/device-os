@@ -1,3 +1,10 @@
+## 0.8.0-rc.11-argon
+
+### FEATURES
+
+- [Argon] Increase the OTA region size to 1500k
+- [Argon] Reduce the factory firmware size to 128k, leaving 430k unused in external flash.
+
 ## 0.8.0-rc.10-argon
 
 ### FEATURES
