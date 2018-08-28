@@ -34,10 +34,10 @@ const module_bounds_t module_user_mono = {
     };
 
 // Factory firmware
-const module_bounds_t module_factory_mono = {
-        .maximum_size = 0x000c4000, // module_user_mono.maximum_size
+const module_bounds_t module_factory_modular = {
+        .maximum_size = 0x00020000, // module_user_app.maximum_size
         .start_address = 0x12200000, // XIP start address (0x12000000) + 2M
-        .end_address = 0x122c4000,
+        .end_address = 0x12220000,
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
         .store = MODULE_STORE_FACTORY
@@ -46,11 +46,26 @@ const module_bounds_t module_factory_mono = {
 #endif
     };
 
+// placeholder for unused space
+const module_bounds_t module_xip_code = {
+        .maximum_size = 0x69000,		// 430k
+        .start_address = 0x12220000, // module_factory_modular.end_address
+        .end_address = 0x12289000, // module_ota.start_address
+        .module_function = MODULE_FUNCTION_NONE,
+        .module_index = 0,
+        .store = MODULE_STORE_SCRATCHPAD
+#if HAL_PLATFORM_NCP
+		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
+
+    };
+
+
 // OTA region
 const module_bounds_t module_ota = {
-        .maximum_size = 0x000c4000, // module_user_mono.maximum_size
-        .start_address = 0x122c4000, // module_factory_mono.end_address
-        .end_address = 0x12388000,
+        .maximum_size = 1500*1024,
+        .start_address = 0x12289000, // XiP base+4M - maximum-size
+        .end_address = 0x12400000,	// XiP base+4M
         .module_function = MODULE_FUNCTION_NONE,
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD
@@ -74,7 +89,7 @@ const module_bounds_t module_ncp_mono = {
 };
 #endif
 
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_modular
 #if HAL_PLATFORM_NCP
 		,&module_ncp_mono
 #endif /* HAL_PLATFORM_NCP */
