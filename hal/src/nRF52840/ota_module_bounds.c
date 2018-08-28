@@ -1,6 +1,7 @@
 #include "ota_flash_hal.h"
 #include "spark_macros.h"
 #include "hal_platform.h"
+#include "flash_mal.h"
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 #error "Modular firmware is not supported"
@@ -33,11 +34,13 @@ const module_bounds_t module_user_mono = {
 
     };
 
+#define EXTERNAL_FLASH_XIP_BASE (0x12000000)
+
 // Factory firmware
 const module_bounds_t module_factory_modular = {
-        .maximum_size = 0x00020000, // module_user_app.maximum_size
-        .start_address = 0x12200000, // XIP start address (0x12000000) + 2M
-        .end_address = 0x12220000,
+        .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
+        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS,
+        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
         .store = MODULE_STORE_FACTORY
@@ -48,9 +51,9 @@ const module_bounds_t module_factory_modular = {
 
 // placeholder for unused space
 const module_bounds_t module_xip_code = {
-        .maximum_size = 0x69000,		// 430k
-        .start_address = 0x12220000, // module_factory_modular.end_address
-        .end_address = 0x12289000, // module_ota.start_address
+        .maximum_size = EXTERNAL_FLASH_RESERVED_LENGTH,
+        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_RESERVED_ADDRESS, // module_factory_modular.end_address
+        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_RESERVED_LENGTH,
         .module_function = MODULE_FUNCTION_NONE,
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD
@@ -63,9 +66,9 @@ const module_bounds_t module_xip_code = {
 
 // OTA region
 const module_bounds_t module_ota = {
-        .maximum_size = 1500*1024,
-        .start_address = 0x12289000, // XiP base+4M - maximum-size
-        .end_address = 0x12400000,	// XiP base+4M
+        .maximum_size = EXTERNAL_FLASH_OTA_LENGTH,
+        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS,
+        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH,
         .module_function = MODULE_FUNCTION_NONE,
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD
@@ -74,6 +77,8 @@ const module_bounds_t module_ota = {
 #endif
 
     };
+
+STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)==0x12400000);
 
 #if HAL_PLATFORM_NCP
 const module_bounds_t module_ncp_mono = {
