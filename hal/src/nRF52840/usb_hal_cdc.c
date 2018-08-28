@@ -160,7 +160,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
         }
         case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:{
             m_usb_instance.com_opened = false;
-            LOG_DEBUG(TRACE, "com close!!! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
+            LOG_DEBUG(TRACE, "com close! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
             break;
         }
         case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: {
@@ -169,7 +169,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
 
             if (m_usb_instance.com_opened == false) {
                 m_usb_instance.transmitting = false;
-                LOG_DEBUG(TRACE, "tx done, but com close!!! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
+                LOG_DEBUG(TRACE, "tx done, but com close! %d", FIFO_LENGTH(&m_usb_instance.tx_fifo));
 
                 return;
             }
@@ -194,6 +194,21 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             m_usb_instance.rx_done = true;
             m_usb_instance.rx_data_size = app_usbd_cdc_acm_rx_size(cdc_acm_class);
 
+            LOG_DEBUG(TRACE, "rx size: %d", m_usb_instance.rx_data_size);
+
+            if (FIFO_LENGTH(&m_usb_instance.rx_fifo) + m_usb_instance.rx_data_size <= m_usb_instance.rx_fifo.buf_size_mask) {
+                // Receive data into buffer
+                for (int i = 0; i < m_usb_instance.rx_data_size; i++) {
+                    SPARK_ASSERT(app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[i]) == NRF_SUCCESS);
+                }
+
+                // Reset receive status
+                m_usb_instance.rx_done = false;
+                m_usb_instance.rx_data_size = 0;
+
+                // Setup next transfer.
+                app_usbd_cdc_acm_read_any(cdc_acm_class, m_rx_buffer, READ_SIZE);
+            }
             break;
         }
         default:
@@ -413,7 +428,7 @@ int usb_uart_available_rx_data(void) {
 
 uint8_t usb_uart_get_rx_data(void) {
     if (m_usb_instance.rx_done) {
-        if (FIFO_LENGTH(&m_usb_instance.rx_fifo) + m_usb_instance.rx_data_size < m_usb_instance.rx_fifo.buf_size_mask) {
+        if (FIFO_LENGTH(&m_usb_instance.rx_fifo) + m_usb_instance.rx_data_size <= m_usb_instance.rx_fifo.buf_size_mask) {
             for (int i = 0; i < m_usb_instance.rx_data_size; i++) {
                 SPARK_ASSERT(app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[i]) == NRF_SUCCESS);
             }
@@ -454,7 +469,7 @@ void usb_uart_flush_tx_data(void) {
 }
 
 int usb_uart_available_tx_data(void) {
-    return m_usb_instance.tx_fifo.buf_size_mask - FIFO_LENGTH(&m_usb_instance.tx_fifo);
+    return m_usb_instance.tx_fifo.buf_size_mask - FIFO_LENGTH(&m_usb_instance.tx_fifo) + 1;
 }
 
 bool usb_hal_is_enabled(void) {
