@@ -21,26 +21,43 @@
 
 namespace particle {
 
-// Base abstract class for an input stream
-class InputStream {
+// Base abstract class for an IO stream
+class BaseStream {
 public:
-    virtual ~InputStream() = default;
+    enum EventFlag {
+        READABLE = 0x01,
+        WRITABLE = 0x02
+    };
 
+    virtual ~BaseStream() = default;
+
+    virtual int waitEvent(unsigned flags, unsigned timeout = 0) = 0;
+};
+
+// Base abstract class for an input stream
+class InputStream: virtual public BaseStream {
+public:
     virtual int read(char* data, size_t size) = 0;
+    virtual int peek(char* data, size_t size) = 0;
+    virtual int skip(size_t size) = 0;
+
+    int readAll(char* data, size_t size, unsigned timeout = 0);
+    int skipAll(size_t size, unsigned timeout = 0);
 };
 
 // Base abstract class for an output stream
-class OutputStream {
+class OutputStream: virtual public BaseStream {
 public:
-    virtual ~OutputStream() = default;
-
     virtual int write(const char* data, size_t size) = 0;
+    virtual int flush() = 0;
+
+    int writeAll(const char* data, size_t size, unsigned timeout = 0);
 };
 
 // Base abstract class for a bidirectional stream
 class Stream:
-        virtual public InputStream,
-        virtual public OutputStream {
+        public InputStream,
+        public OutputStream {
 };
 
 } // particle
