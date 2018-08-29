@@ -5,6 +5,6 @@ MeshNCPIdentifier platform_current_ncp_identifier() {
 	return MESH_NCP_UNKNOWN;
 }
 
-platform_ncp_update_module(const hal_module_t* module) {
+hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	return HAL_UPDATE_ERROR;
 }
