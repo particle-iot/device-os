@@ -34,6 +34,7 @@
         (ALREADY_EXISTS, "Already exists", -180), \
         (TOO_LARGE, "Too large data", -190), \
         (LIMIT_EXCEEDED, "Limit exceeded", -200), \
+        (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
         (IO, "IO error", -220), \
         (NETWORK, "Network error", -230), \

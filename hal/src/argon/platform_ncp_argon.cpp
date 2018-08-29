@@ -15,21 +15,46 @@ class BufferStream : public particle::InputStream {
 public:
 	BufferStream(const uint8_t* buffer, size_t length) : buffer(buffer), remaining(length) {}
 
-    virtual int read(char* data, size_t size) {
-    	if (!remaining) {
-    		return SYSTEM_ERROR_OUT_OF_RANGE;
-    	}
-    	size = std::min(size, remaining);
-    	memcpy(data, buffer, size);
-    	buffer += size;
-    	remaining -= size;
-    	return size;
+    int read(char* data, size_t size) override {
+        CHECK(peek(data, size));
+        return skip(size);
+    }
+
+    int peek(char* data, size_t size) override {
+        if (!remaining) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        size = std::min(size, remaining);
+        memcpy(data, buffer, size);
+        return size;
+    }
+
+    int skip(size_t size) override {
+        if (!remaining) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        size = std::min(size, remaining);
+        buffer += size;
+        remaining -= size;
+        return size;
+    }
+
+    int waitEvent(unsigned flags, unsigned timeout) override {
+        if (!flags) {
+            return 0;
+        }
+        if (!(flags & InputStream::READABLE)) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (!remaining) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        return InputStream::READABLE;
     }
 
 private:
 	const uint8_t* buffer;
 	size_t remaining;
-
 };
 
 using particle::XmodemSender;
@@ -44,7 +69,6 @@ hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	start += sizeof(module_info_t);		// skip the module info
 	const uint8_t* end = start + (uint32_t(module->info->module_end_address) - uint32_t(module->info->module_start_address));
 	const unsigned length = end-start;
-
 	XmodemSender sender;
 	BufferStream moduleStream(start, length);
 	CHECK_RETURN(sender.init(atclient.getStream(), &moduleStream, length), HAL_UPDATE_ERROR);

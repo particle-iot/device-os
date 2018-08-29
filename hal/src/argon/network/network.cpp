@@ -27,6 +27,8 @@
 #include <malloc.h>
 #include "stream.h"
 #include "usart_hal.h"
+#include "timer_hal.h"
+#include "concurrent_hal.h"
 #include "ncp.h"
 
 using namespace particle;
@@ -69,6 +71,33 @@ public:
         return read;
     }
 
+    int peek(char* data, size_t size) override {
+        if (size > 1) {
+            return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+        }
+        if (size == 0) {
+            return 0;
+        }
+        const int c = HAL_USART_Peek_Data(serial_);
+        if (c < 0) {
+            return 0;
+        }
+        *data = c;
+        return size;
+    }
+
+    int skip(size_t size) override {
+        size_t n = 0;
+        while (n < size) {
+            const int c = HAL_USART_Read_Data(serial_);
+            if (c < 0) {
+                break;
+            }
+            ++n;
+        }
+        return n;
+    }
+
     int write(const char* data, size_t size) override {
         size_t written = 0;
         while (written < size) {
@@ -78,6 +107,38 @@ public:
             }
         }
         return written;
+    }
+
+    int flush() override {
+        HAL_USART_Flush_Data(serial_);
+        return 0;
+    }
+
+    int waitEvent(unsigned flags, unsigned timeout) override {
+        if (!flags) {
+            return 0;
+        }
+        if (!(flags & (Stream::READABLE | Stream::WRITABLE))) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        unsigned f = 0;
+        const auto t = HAL_Timer_Get_Milli_Seconds();
+        for (;;) {
+            if (HAL_USART_Available_Data(serial_) > 0) {
+                f |= Stream::READABLE;
+            }
+            if (HAL_USART_Available_Data_For_Write(serial_) > 0) {
+                f |= Stream::WRITABLE;
+            }
+            if (f &= flags) {
+                break;
+            }
+            if (timeout > 0 && HAL_Timer_Get_Milli_Seconds() - t >= timeout) {
+                return SYSTEM_ERROR_TIMEOUT;
+            }
+            os_thread_yield();
+        }
+        return f;
     }
 
 private:
