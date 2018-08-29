@@ -593,11 +593,15 @@ void hal_btstack_loop_execute(void)
             int ret;
             notify_queneRead(&data);
             if ((data.data_flag_len & 0x80) == 0x00)
-                ret = att_server_notify(connect_handle, data.handle, data.data, data.data_flag_len&0x7F);
+            {
+                att_server_notify(connect_handle, data.handle, data.data, data.data_flag_len&0x7F);
+            }
             else
+            {
                 ret = att_server_indicate(connect_handle, data.handle, data.data, data.data_flag_len&0x7F);
-            if (ret == 0)
-                pending_notify_complete = true;
+                if (ret == 0)
+                    pending_notify_complete = true;
+            }
         }
         btstack_run_loop_execute();
     }
