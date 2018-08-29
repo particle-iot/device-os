@@ -59,7 +59,10 @@ private:
 
 using particle::XmodemSender;
 
-hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	// not so happy about mixing the layers like this. Seems strange that HAL should be dependent on wiring.
 	particle::services::at::ArgonNcpAtClient& atclient = *argonNcpAtClient();
 
