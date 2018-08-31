@@ -68,15 +68,16 @@ static bool get_pwm_clock_setting(uint32_t value, uint32_t frequency, uint8_t re
     frequency = (frequency < MIN_PWM_FREQ) ? MIN_PWM_FREQ : frequency;
     period_us = 1000000 / frequency;
 
-    // convert to 15bits
+    // invert value and convert to 15bits
+    value = (1 << resolution) - 1 - value;
     value = (value == 0) ? 0 : (value + 1) * MAX_PWM_COUNTERTOP / (1 << resolution);
 
     if (value) {
         // when the frequency is too high, keep the duty cycle to approximation
-        duty_us = period_us - (value + 1) * period_us / (MAX_PWM_COUNTERTOP + 1);
+        duty_us = (value + 1) * period_us / (MAX_PWM_COUNTERTOP + 1);
         duty_us = duty_us ? duty_us : 1;
     } else {
-        duty_us = period_us;
+        duty_us = 0;
     }
 
     uint32_t period_hwu = period_us * 16;
