@@ -23,7 +23,9 @@
 #include "system_network.h"
 #include "common.h"
 
-#if !HAL_PLATFORM_MESH
+#if HAL_PLATFORM_MESH
+#include "ota_flash_hal_impl.h"
+#else
 #include "ota_flash_hal_stm32f2xx.h"
 #include "flash_storage_impl.h"
 #include "eeprom_emulation_impl.h"
@@ -34,6 +36,9 @@
 
 #include "protocol_defs.h" // For UpdateFlag enum
 #include "nanopb_misc.h"
+#include "miniz.h"
+#include "scope_guard.h"
+#include "check.h"
 
 #include "platforms.h"
 
@@ -54,6 +59,8 @@
 #ifdef USE_SERIAL_FLASH
 #pragma message("External flash is not supported")
 #endif
+
+#define PB(_name) particle_ctrl_##_name
 
 namespace particle {
 
@@ -206,16 +213,26 @@ const Section* storageSection(unsigned storageIndex, unsigned sectionIndex) {
 
 #endif // !HAL_MESH_PLATFORM
 
-std::unique_ptr<FileTransfer::Descriptor> g_desc;
+// TODO: Move handling of compressed firmware binaries to the common system code
+struct FirmwareUpdate {
+    FileTransfer::Descriptor descr; // File transfer descriptor
+    std::unique_ptr<tinfl_decompressor> decomp; // Decompressor context
+    std::unique_ptr<char[]> decompBuf; // Intermediate buffer for decompressed data
+    size_t bytesLeft; // Number of remaining bytes to receive
+    size_t bytesWritten; // Number of bytes written to the OTA section
+};
+
+std::unique_ptr<FirmwareUpdate> g_update;
 
 void cancelFirmwareUpdate() {
-    if (g_desc) {
-        const int ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::ERROR, nullptr);
-        if (ret != 0) {
-            LOG(WARN, "Spark_Finish_Firmware_Update(UpdateFlag::ERROR) failed: %d", ret);
-        }
-        g_desc.reset();
+    if (!g_update) {
+        return;
     }
+    const int ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::ERROR, nullptr);
+    if (ret != 0) {
+        LOG(WARN, "Spark_Finish_Firmware_Update(UpdateFlag::ERROR) failed: %d", ret);
+    }
+    g_update.reset();
 }
 
 void firmwareUpdateCompletionHandler(int result, void* data) {
@@ -225,31 +242,43 @@ void firmwareUpdateCompletionHandler(int result, void* data) {
 } // namespace
 
 int startFirmwareUpdateRequest(ctrl_request* req) {
-    particle_ctrl_StartFirmwareUpdateRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_StartFirmwareUpdateRequest_fields, &pbReq);
+    PB(StartFirmwareUpdateRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(StartFirmwareUpdateRequest_fields), &pbReq));
+    cancelFirmwareUpdate(); // Cancel current transfer
+    std::unique_ptr<FirmwareUpdate> update(new(std::nothrow) FirmwareUpdate);
+    CHECK_TRUE(update, SYSTEM_ERROR_NO_MEMORY);
+    if (pbReq.format == PB(FileFormat_MINIZ)) {
+        update->decomp.reset(new(std::nothrow) tinfl_decompressor);
+        CHECK_TRUE(update->decomp, SYSTEM_ERROR_NO_MEMORY);
+        tinfl_init(update->decomp.get());
+        update->decompBuf.reset(new(std::nothrow) char[TINFL_LZ_DICT_SIZE]);
+        CHECK_TRUE(update->decompBuf, SYSTEM_ERROR_NO_MEMORY);
+        // FIXME: The size of the decompressed data is unknown at this point, so we're setting
+        // the target file size to the maximum value to make sure the system erases the entire
+        // OTA section
+        update->descr.file_length = module_ota.maximum_size;
+    } else if (pbReq.format == PB(FileFormat_BIN)) {
+        update->descr.file_length = pbReq.size;
+    } else {
+        LOG(ERROR, "Unknown binary format: %u", (unsigned)pbReq.format);
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    update->descr.store = FileTransfer::Store::FIRMWARE;
+    update->descr.chunk_size = 1024; // TODO: Determine depending on free RAM?
+    update->descr.chunk_address = 0;
+    update->descr.file_address = 0;
+    int ret = Spark_Prepare_For_Firmware_Update(update->descr, 0, nullptr);
     if (ret != 0) {
+        LOG(ERROR, "Spark_Prepare_For_Firmware_Update() failed: %d", ret);
         return ret;
     }
-    // Cancel current transfer
-    cancelFirmwareUpdate();
-    g_desc.reset(new(std::nothrow) FileTransfer::Descriptor);
-    if (!g_desc) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    g_desc->file_length = pbReq.size;
-    g_desc->store = FileTransfer::Store::FIRMWARE;
-    g_desc->chunk_size = 1024; // TODO: Determine depending on free RAM?
-    g_desc->file_address = 0;
-    g_desc->chunk_address = 0;
-    ret = Spark_Prepare_For_Firmware_Update(*g_desc, 0, nullptr);
-    if (ret != 0) {
-        g_desc.reset();
-        return ret;
-    }
-    g_desc->chunk_address = g_desc->file_address;
-    particle_ctrl_StartFirmwareUpdateReply pbRep = {};
-    pbRep.chunk_size = g_desc->chunk_size;
-    ret = encodeReplyMessage(req, particle_ctrl_StartFirmwareUpdateReply_fields, &pbRep);
+    update->descr.chunk_address = update->descr.file_address;
+    update->bytesLeft = pbReq.size;
+    update->bytesWritten = 0;
+    g_update = std::move(update);
+    PB(StartFirmwareUpdateReply) pbRep = {};
+    pbRep.chunk_size = g_update->descr.chunk_size;
+    ret = encodeReplyMessage(req, PB(StartFirmwareUpdateReply_fields), &pbRep);
     if (ret != 0) {
         cancelFirmwareUpdate();
         return ret;
@@ -258,23 +287,20 @@ int startFirmwareUpdateRequest(ctrl_request* req) {
 }
 
 void finishFirmwareUpdateRequest(ctrl_request* req) {
-    particle_ctrl_FinishFirmwareUpdateRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_FinishFirmwareUpdateRequest_fields, &pbReq);
+    PB(FinishFirmwareUpdateRequest) pbReq = {};
+    int ret = decodeRequestMessage(req, PB(FinishFirmwareUpdateRequest_fields), &pbReq);
     if (ret != 0) {
         goto done;
     }
-    if (!g_desc) {
+    if (!g_update || g_update->bytesLeft > 0) {
         ret = SYSTEM_ERROR_INVALID_STATE;
         goto done;
     }
-    if (g_desc->chunk_address != g_desc->file_address + g_desc->file_length) {
-        ret = SYSTEM_ERROR_INVALID_STATE;
-        goto cancel;
-    }
+    LOG_DEBUG(TRACE, "Firmware size: %u", (unsigned)g_update->bytesWritten);
     if (!pbReq.validate_only) {
         // Apply the update
-        ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::SUCCESS | UpdateFlag::DONT_RESET, nullptr);
-        g_desc.reset();
+        ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::SUCCESS | UpdateFlag::DONT_RESET, nullptr);
+        g_update.reset();
         if (ret != 0) {
             goto done;
         }
@@ -283,10 +309,9 @@ void finishFirmwareUpdateRequest(ctrl_request* req) {
         return;
     }
     // Validate the firmware binary
-    ret = Spark_Finish_Firmware_Update(*g_desc, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, nullptr);
-cancel:
-    cancelFirmwareUpdate();
+    ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, nullptr);
 done:
+    cancelFirmwareUpdate();
     system_ctrl_set_result(req, ret, nullptr, nullptr, nullptr);
 }
 
@@ -296,26 +321,57 @@ int cancelFirmwareUpdateRequest(ctrl_request* req) {
 }
 
 int firmwareUpdateDataRequest(ctrl_request* req) {
-    particle_ctrl_FirmwareUpdateDataRequest pbReq = {};
+    NAMED_SCOPE_GUARD(guard, {
+        cancelFirmwareUpdate();
+    });
+    PB(FirmwareUpdateDataRequest) pbReq = {};
     DecodedString pbData(&pbReq.data);
-    int ret = decodeRequestMessage(req, particle_ctrl_FirmwareUpdateDataRequest_fields, &pbReq);
-    if (ret != 0) {
-        return ret;
-    }
-    if (!g_desc) {
+    CHECK(decodeRequestMessage(req, PB(FirmwareUpdateDataRequest_fields), &pbReq));
+    if (!g_update) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (pbData.size == 0 || g_desc->chunk_address + pbData.size > g_desc->file_address + g_desc->file_length) {
-        cancelFirmwareUpdate();
+    if (pbData.size == 0 || pbData.size > g_update->bytesLeft) {
         return SYSTEM_ERROR_OUT_OF_RANGE;
     }
-    g_desc->chunk_size = pbData.size;
-    ret = Spark_Save_Firmware_Chunk(*g_desc, (const uint8_t*)pbData.data, nullptr);
-    if (ret != 0) {
-        cancelFirmwareUpdate();
-        return ret;
+    if (!g_update->decomp) {
+        g_update->descr.chunk_size = pbData.size;
+        const int ret = Spark_Save_Firmware_Chunk(g_update->descr, (const uint8_t*)pbData.data, nullptr);
+        if (ret != 0) {
+            return ret;
+        }
+        g_update->descr.chunk_address += pbData.size;
+        g_update->bytesLeft -= pbData.size;
+    } else {
+        size_t srcOffs = 0;
+        size_t destOffs = 0;
+        for (;;) {
+            size_t srcBytes = pbData.size - srcOffs;
+            size_t destBytes = TINFL_LZ_DICT_SIZE - destOffs;
+            const auto stat = tinfl_decompress(g_update->decomp.get(), (const mz_uint8*)pbData.data + srcOffs,
+                    &srcBytes, (mz_uint8*)g_update->decompBuf.get(), (mz_uint8*)g_update->decompBuf.get() + destOffs,
+                    &destBytes, (g_update->bytesLeft > srcBytes) ? TINFL_FLAG_HAS_MORE_INPUT : 0);
+            if (stat < 0) {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
+            srcOffs += srcBytes;
+            g_update->bytesLeft -= srcBytes;
+            if (destBytes > 0) {
+                g_update->descr.chunk_size = destBytes;
+                const int ret = Spark_Save_Firmware_Chunk(g_update->descr,
+                        (const uint8_t*)g_update->decompBuf.get() + destOffs, nullptr);
+                if (ret != 0) {
+                    return ret;
+                }
+                g_update->descr.chunk_address += destBytes;
+                g_update->bytesWritten += destBytes;
+                destOffs = (destOffs + destBytes) % TINFL_LZ_DICT_SIZE;
+            }
+            if (stat != TINFL_STATUS_HAS_MORE_OUTPUT) {
+                break;
+            }
+        }
     }
-    g_desc->chunk_address += g_desc->chunk_size;
+    guard.dismiss();
     return 0;
 }
 
