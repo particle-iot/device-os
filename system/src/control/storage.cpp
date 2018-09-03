@@ -218,6 +218,7 @@ struct FirmwareUpdate {
     FileTransfer::Descriptor descr; // File transfer descriptor
     std::unique_ptr<tinfl_decompressor> decomp; // Decompressor context
     std::unique_ptr<char[]> decompBuf; // Intermediate buffer for decompressed data
+    size_t decompBufOffs; // Offset in the buffer for decompressed data
     size_t bytesLeft; // Number of remaining bytes to receive
     size_t bytesWritten; // Number of bytes written to the OTA section
 };
@@ -253,6 +254,7 @@ int startFirmwareUpdateRequest(ctrl_request* req) {
         tinfl_init(update->decomp.get());
         update->decompBuf.reset(new(std::nothrow) char[TINFL_LZ_DICT_SIZE]);
         CHECK_TRUE(update->decompBuf, SYSTEM_ERROR_NO_MEMORY);
+        update->decompBufOffs = 0;
         // FIXME: The size of the decompressed data is unknown at this point, so we're setting
         // the target file size to the maximum value to make sure the system erases the entire
         // OTA section
@@ -343,12 +345,11 @@ int firmwareUpdateDataRequest(ctrl_request* req) {
         g_update->bytesLeft -= pbData.size;
     } else {
         size_t srcOffs = 0;
-        size_t destOffs = 0;
         for (;;) {
             size_t srcBytes = pbData.size - srcOffs;
-            size_t destBytes = TINFL_LZ_DICT_SIZE - destOffs;
-            const auto stat = tinfl_decompress(g_update->decomp.get(), (const mz_uint8*)pbData.data + srcOffs,
-                    &srcBytes, (mz_uint8*)g_update->decompBuf.get(), (mz_uint8*)g_update->decompBuf.get() + destOffs,
+            size_t destBytes = TINFL_LZ_DICT_SIZE - g_update->decompBufOffs;
+            const auto stat = tinfl_decompress(g_update->decomp.get(), (const mz_uint8*)pbData.data + srcOffs, &srcBytes,
+                    (mz_uint8*)g_update->decompBuf.get(), (mz_uint8*)g_update->decompBuf.get() + g_update->decompBufOffs,
                     &destBytes, (g_update->bytesLeft > srcBytes) ? TINFL_FLAG_HAS_MORE_INPUT : 0);
             if (stat < 0) {
                 return SYSTEM_ERROR_BAD_DATA;
@@ -358,13 +359,13 @@ int firmwareUpdateDataRequest(ctrl_request* req) {
             if (destBytes > 0) {
                 g_update->descr.chunk_size = destBytes;
                 const int ret = Spark_Save_Firmware_Chunk(g_update->descr,
-                        (const uint8_t*)g_update->decompBuf.get() + destOffs, nullptr);
+                        (const uint8_t*)g_update->decompBuf.get() + g_update->decompBufOffs, nullptr);
                 if (ret != 0) {
                     return ret;
                 }
+                g_update->decompBufOffs = (g_update->decompBufOffs + destBytes) % TINFL_LZ_DICT_SIZE;
                 g_update->descr.chunk_address += destBytes;
                 g_update->bytesWritten += destBytes;
-                destOffs = (destOffs + destBytes) % TINFL_LZ_DICT_SIZE;
             }
             if (stat != TINFL_STATUS_HAS_MORE_OUTPUT) {
                 break;
