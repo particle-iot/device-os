@@ -115,6 +115,13 @@ int getNcpFirmwareVersion(ctrl_request* req) {
 #endif // PLATFORM_ID != PLATFORM_ARGON
 }
 
+int getSystemCapabilities(ctrl_request* req) {
+    PB(GetSystemCapabilitiesReply) pbRep = {};
+    pbRep.flags |= PB(SystemCapabilityFlag_COMPRESSED_OTA);
+    CHECK(encodeReplyMessage(req, PB(GetSystemCapabilitiesReply_fields), &pbRep));
+    return 0;
+}
+
 int handleSetClaimCodeRequest(ctrl_request* req) {
     particle_ctrl_SetClaimCodeRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetClaimCodeRequest_fields, &pbReq);

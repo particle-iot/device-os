@@ -120,6 +120,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::getNcpFirmwareVersion(req));
         break;
     }
+    case CTRL_REQUEST_GET_SYSTEM_CAPABILITIES: {
+        setResult(req, control::config::getSystemCapabilities(req));
+        break;
+    }
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
             System.reset();
