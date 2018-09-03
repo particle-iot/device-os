@@ -37,3 +37,7 @@
 	path = third_party/wiznet_driver/wiznet_driver
 	url = ../ioLibrary_Driver.git
 	branch = particle
+[submodule "third_party/miniz/miniz"]
+	path = third_party/miniz/miniz
+	url = ../miniz.git
+	branch = particle
