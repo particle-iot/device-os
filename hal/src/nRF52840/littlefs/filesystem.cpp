@@ -264,8 +264,24 @@ int filesystem_mount(filesystem_t* fs) {
 #endif /* LFS_NO_MALLOC */
 
     ret = lfs_mount(&fs->instance, &fs->config);
+    if (!ret) {
+        /* IMPORTANT: manually calling deorphan here to validate the filesystem.
+         * We've added another check to avoid inifite loop when traversing
+         * metadata-pair linked-list: when pair == tail (which means that the next entry is
+         * the current pair, lfs_deorphan() will return LFS_ERR_CORRUPT).
+         */
+        ret = lfs_deorphan(&fs->instance);
+    }
     if (ret) {
-        /* Error, attempt to format */
+        /* Error, attempt to format:
+         * 1. Completely erase the flash
+         * 2. lfs_format
+         */
+
+        /* This operation shouldn't fail, but just in case adding SPARK_ASSERT
+         * to cause a reset if something goes wrong during the erasure
+         */
+        SPARK_ASSERT(hal_exflash_erase_sector(0, FILESYSTEM_BLOCK_COUNT) == 0);
         ret = lfs_format(&fs->instance, &fs->config);
         if (!ret) {
             /* Re-attempt to mount */
