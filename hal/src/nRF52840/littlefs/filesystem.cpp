@@ -18,6 +18,7 @@
 #include "filesystem.h"
 #include "platform_config.h"
 #include "exflash_hal.h"
+#include "rgbled.h"
 #include <mutex>
 
 using namespace particle::fs;
@@ -281,6 +282,11 @@ int filesystem_mount(filesystem_t* fs) {
         /* This operation shouldn't fail, but just in case adding SPARK_ASSERT
          * to cause a reset if something goes wrong during the erasure
          */
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+        /* Give some indication that the bootloader is alive */
+        LED_SetRGBColor(RGB_COLOR_WHITE);
+        LED_On(LED_RGB);
+#endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
         SPARK_ASSERT(hal_exflash_erase_sector(0, FILESYSTEM_BLOCK_COUNT) == 0);
         ret = lfs_format(&fs->instance, &fs->config);
         if (!ret) {
