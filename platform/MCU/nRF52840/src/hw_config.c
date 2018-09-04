@@ -24,6 +24,8 @@
 
 #include "nrf_nvic.h"
 #include "nrf_rtc.h"
+#include "nrf_power.h"
+#include "nrf_delay.h"
 
 #ifdef SOFTDEVICE_PRESENT
 #include "nrf_sdh.h"
@@ -62,8 +64,16 @@ static void DWT_Init(void)
  * @param  None
  * @retval None
  */
+
 void Set_System(void)
 {
+    nrf_power_pofcon_set(true, NRF_POWER_POFTHR_V28);
+    nrf_delay_ms(10);
+    if (nrf_power_event_check(NRF_POWER_EVENT_POFWARN)) {
+        NVIC_SystemReset();
+    }
+    nrf_power_pofcon_set(false, NRF_POWER_POFTHR_V28);
+
     ret_code_t ret = nrf_drv_clock_init();
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
