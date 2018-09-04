@@ -22,7 +22,7 @@
 
 // List of all defined system errors
 #define SYSTEM_ERRORS \
-        (NONE, "", 0), \
+        (NONE, "", 0), /* -999 ... 0: Generic result codes */ \
         (UNKNOWN, "Unknown error", -100), \
         (BUSY, "Resource busy", -110), \
         (NOT_SUPPORTED, "Not supported", -120), \
@@ -43,7 +43,9 @@
         (NO_MEMORY, "Memory allocation error", -260), \
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
-        (OUT_OF_RANGE, "Out of range", -290)
+        (OUT_OF_RANGE, "Out of range", -290), \
+        (AT_PARSER_END_OF_RESPONSE, "End of response data", -1000), /* -1099 ... -1000: AT parser */ \
+        (AT_PARSER_END_OF_LINE, "End of response line", -1001) \
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
