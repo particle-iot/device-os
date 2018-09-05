@@ -23,6 +23,7 @@
 /* nordic_common.h already defines MIN()/MAX() */
 // #include <sys/param.h>
 #include "nrfx_qspi.h"
+#include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "app_util_platform.h"
 #include "app_error.h"
@@ -98,6 +99,11 @@ static int exit_secure_otp() {
 int hal_exflash_init(void)
 {
     int ret = 0;
+
+    // PATCH: Initialize CS pin, external memory discharge 
+    nrf_gpio_cfg_output(QSPI_FLASH_CSN_PIN);
+    nrf_gpio_pin_set(QSPI_FLASH_CSN_PIN);
+    nrf_gpio_cfg_input(QSPI_FLASH_IO1_PIN, NRF_GPIO_PIN_PULLDOWN);
 
     hal_exflash_lock();
 
