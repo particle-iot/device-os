@@ -33,12 +33,19 @@
 #include "hal_platform.h"
 #include "dct.h"
 #include "rng_hal.h"
+#include "interrupts_hal.h"
 #include <stdlib.h>
 #include <malloc.h>
+#include <nrf_power.h>
 
 #define BACKUP_REGISTER_NUM        10
 static int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
 static volatile uint8_t rtos_started = 0;
+
+static struct Last_Reset_Info {
+    int reason;
+    uint32_t data;
+} last_reset_info = { RESET_REASON_NONE, 0 };
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -314,7 +321,15 @@ void HAL_Core_Enter_Safe_Mode(void* reserved) {
 }
 
 void HAL_Core_Enter_Bootloader(bool persist) {
+    if (persist) {
+        HAL_Core_Write_Backup_Register(BKP_DR_10, 0xFFFF);
+        system_flags.FLASH_OTA_Update_SysFlag = 0xFFFF;
+        Save_SystemFlags();
+    } else {
+        HAL_Core_Write_Backup_Register(BKP_DR_01, ENTER_DFU_APP_REQUEST);
+    }
 
+    HAL_Core_System_Reset_Ex(RESET_REASON_DFU_MODE, 0, NULL);
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds) {
@@ -333,7 +348,92 @@ void HAL_Core_Execute_Standby_Mode(void) {
 
 }
 
+
+bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
+    uint32_t reset_reason = 0;
+    sd_power_reset_reason_get(&reset_reason);
+    switch(resetType) {
+        case PIN_RESET: {
+            return reset_reason == NRF_POWER_RESETREAS_RESETPIN_MASK;
+        }
+        case SOFTWARE_RESET: {
+            return reset_reason == NRF_POWER_RESETREAS_SREQ_MASK;
+        }
+        case WATCHDOG_RESET: {
+            return reset_reason == NRF_POWER_RESETREAS_DOG_MASK;
+        }
+        case POWER_MANAGEMENT_RESET: {
+            // SYSTEM OFF Mode
+            return reset_reason == NRF_POWER_RESETREAS_OFF_MASK;;
+        }
+        case POWER_DOWN_RESET: {
+            // Not support
+            return false;
+        }
+        case POWER_BROWNOUT_RESET: {
+            // Not support
+            return false;
+        }
+        default:
+            return false;
+    }
+}
+
+static void Init_Last_Reset_Info()
+{
+    if (HAL_Core_System_Reset_FlagSet(SOFTWARE_RESET))
+    {
+        // Load reset info from backup registers
+        last_reset_info.reason = HAL_Core_Read_Backup_Register(BKP_DR_02);
+        last_reset_info.data = HAL_Core_Read_Backup_Register(BKP_DR_03);
+        // Clear backup registers
+        HAL_Core_Write_Backup_Register(BKP_DR_02, 0);
+        HAL_Core_Write_Backup_Register(BKP_DR_03, 0);
+    }
+    else // Hardware reset
+    {
+        if (HAL_Core_System_Reset_FlagSet(WATCHDOG_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_WATCHDOG;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_MANAGEMENT_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_MANAGEMENT; // Reset generated when entering standby mode (nRST_STDBY: 0)
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_DOWN_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_DOWN;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_BROWNOUT_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_BROWNOUT;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(PIN_RESET)) // Pin reset flag should be checked in the last place
+        {
+            last_reset_info.reason = RESET_REASON_PIN_RESET;
+        }
+        // TODO: Reset from USB, NFC, LPCOMP...
+        else
+        {
+            last_reset_info.reason = RESET_REASON_UNKNOWN;
+        }
+        last_reset_info.data = 0; // Not used
+    }
+
+    // Clear Reset info register
+    sd_power_reset_reason_clr(0xFFFFFFFF);
+}
+
 int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved) {
+    if (HAL_Feature_Get(FEATURE_RESET_INFO)) {
+        if (reason) {
+            *reason = last_reset_info.reason;
+        }
+        if (data) {
+            *data = last_reset_info.data;
+        }
+        return 0;
+    }
     return -1;
 }
 
@@ -402,15 +502,14 @@ void application_start() {
 
     HAL_Core_Setup();
 
-    /*
-    generate_key();
+    // TODO:
+    // generate_key();
 
     if (HAL_Feature_Get(FEATURE_RESET_INFO))
     {
         // Load last reset info from RCC / backup registers
         Init_Last_Reset_Info();
     }
-    */
 
     app_setup_and_loop();
 }
