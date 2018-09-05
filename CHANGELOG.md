@@ -1,3 +1,14 @@
+## 0.8.0-rc.12
+
+## FEATURES
+
+- [Mesh] Support for compressed binaries in the BLE OTA update
+
+## BUGFIXES
+
+- [Mesh] Reset MCU when power is unstable, discharge external flash before initialization
+- [Mesh] Fix littlefs infinite loop on filesystem corruption
+
 ## 0.8.0-rc.11-argon
 
 ### FEATURES
