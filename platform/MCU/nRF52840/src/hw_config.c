@@ -67,12 +67,15 @@ static void DWT_Init(void)
 
 void Set_System(void)
 {
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER 
+    // Reset chip if detect jitter
     nrf_power_pofcon_set(true, NRF_POWER_POFTHR_V28);
-    nrf_delay_ms(10);
+    nrf_delay_ms(200);
     if (nrf_power_event_check(NRF_POWER_EVENT_POFWARN)) {
         NVIC_SystemReset();
     }
     nrf_power_pofcon_set(false, NRF_POWER_POFTHR_V28);
+#endif
 
     ret_code_t ret = nrf_drv_clock_init();
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);

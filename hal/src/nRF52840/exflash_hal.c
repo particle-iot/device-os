@@ -104,7 +104,6 @@ int hal_exflash_init(void)
     nrf_gpio_cfg_output(QSPI_FLASH_CSN_PIN);
     nrf_gpio_pin_set(QSPI_FLASH_CSN_PIN);
     nrf_gpio_cfg_input(QSPI_FLASH_IO1_PIN, NRF_GPIO_PIN_PULLDOWN);
-    nrf_delay_ms(200);
 
     hal_exflash_lock();
 
