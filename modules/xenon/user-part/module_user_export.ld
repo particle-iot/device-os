@@ -1,6 +1,6 @@
 
 /* location of the module_info block */
-user_module_info = 0xF4000 ;
+user_module_info = 0xD4000 ;
 
 /**
  * End of the module info block.
