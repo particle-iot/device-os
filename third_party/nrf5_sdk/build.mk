@@ -22,7 +22,6 @@ CSRC += $(TARGET_NRF5_SDK_LIBRARY_UTIL_PATH)/app_util_platform.c
 CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/usbd/nrf_drv_usbd.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic/nrf_atomic.c
 CSRS += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic_fifo/nrf_atfifo.c
-CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_uart.c
 CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_spi.c
 
 CFLAGS += -Wno-unused-but-set-variable
