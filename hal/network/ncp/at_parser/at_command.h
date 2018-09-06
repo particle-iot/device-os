@@ -17,18 +17,19 @@
 
 #pragma once
 
+#include <cstring>
 #include <cstddef>
 #include <cstdarg>
 
 namespace particle {
-
-class AtResponse;
 
 namespace detail {
 
 class AtParserImpl;
 
 } // particle::detail
+
+class AtResponse;
 
 /**
  * AT command.
@@ -179,8 +180,14 @@ private:
     explicit AtCommand(detail::AtParserImpl* parser);
     explicit AtCommand(int error);
 
-    friend class AtParserImpl;
+    int error(int ret);
+
+    friend class AtParser;
 };
+
+inline AtCommand& AtCommand::print(const char* str) {
+    return write(str, strlen(str));
+}
 
 inline int AtCommand::error() const {
     return error_;

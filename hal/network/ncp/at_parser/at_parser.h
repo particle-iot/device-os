@@ -21,16 +21,16 @@
 
 namespace particle {
 
-class AtCommand;
-class AtResponse;
-class AtResponseReader;
-class Stream;
-
 namespace detail {
 
 class AtParserImpl;
 
 } // particle::detail
+
+class AtCommand;
+class AtResponse;
+class AtResponseReader;
+class Stream;
 
 /**
  * AT parser settings.
@@ -43,6 +43,7 @@ public:
     enum CommandTerminator {
         CR, ///< "\r"
         LF, ///< "\n"
+        // Doesn't seem to be allowed by V.250, but some modems use it
         CRLF ///< "\r\n"
     };
 
@@ -57,13 +58,19 @@ public:
      *
      * @see `commandTimeout()`
      */
-    static const auto DEFAULT_COMMAND_TIMEOUT = 60000;
+    static const auto DEFAULT_COMMAND_TIMEOUT = 90000;
     /**
      * Default stream timeout in milliseconds.
      *
      * @see `streamTimeout()`
      */
     static const auto DEFAULT_STREAM_TIMEOUT = 5000;
+    /**
+     * Default state of the echo handling.
+     *
+     * @see `echoEnabled()`
+     */
+    static const auto DEFAULT_ECHO_ENABLED = true;
 
     /**
      * Constructs a settings object with all parameters set to their default values.
@@ -136,12 +143,27 @@ public:
      * @see `DEFAULT_STREAM_TIMEOUT`
      */
     unsigned streamTimeout() const;
+    /**
+     * Enables or disables the echo handling.
+     *
+     * @return This settings object.
+     *
+     * @see `DEFAULT_ECHO_ENABLED`
+     */
+    AtParserConfig& echoEnabled(bool enabled);
+    /**
+     * Returns `true` if the echo handling is enabled, or `false` otherwise.
+     *
+     * @see `DEFAULT_ECHO_ENABLED`
+     */
+    bool echoEnabled() const;
 
 private:
     Stream* strm_;
     CommandTerminator cmdTerm_;
     unsigned cmdTimeout_;
     unsigned strmTimeout_;
+    bool echoEnabled_;
 };
 
 /**
@@ -309,11 +331,18 @@ public:
      */
     void reset();
     /**
+     * Enables or disables the echo handling.
+     *
+     * @see `config()`
+     * @see `AtParserConfig::echoEnabled()`
+     */
+    void echoEnabled(bool enabled);
+    /**
      * Returns the parser settings.
      *
      * @return Settings object.
      */
-    const AtParserConfig& config() const;
+    AtParserConfig config() const;
 
     // Instances of this class are non-copyable
     AtParser(const AtParser&) = delete;
@@ -327,7 +356,8 @@ inline AtParserConfig::AtParserConfig() :
         strm_(nullptr),
         cmdTerm_(DEFAULT_COMMAND_TERMINATOR),
         cmdTimeout_(DEFAULT_COMMAND_TIMEOUT),
-        strmTimeout_(DEFAULT_STREAM_TIMEOUT) {
+        strmTimeout_(DEFAULT_STREAM_TIMEOUT),
+        echoEnabled_(DEFAULT_ECHO_ENABLED) {
 }
 
 inline AtParserConfig& AtParserConfig::stream(Stream* strm) {
@@ -364,6 +394,15 @@ inline AtParserConfig& AtParserConfig::streamTimeout(unsigned timeout) {
 
 inline unsigned AtParserConfig::streamTimeout() const {
     return strmTimeout_;
+}
+
+inline AtParserConfig& AtParserConfig::echoEnabled(bool enabled) {
+    echoEnabled_ = enabled;
+    return *this;
+}
+
+inline bool AtParserConfig::echoEnabled() const {
+    return echoEnabled_;
 }
 
 } // particle

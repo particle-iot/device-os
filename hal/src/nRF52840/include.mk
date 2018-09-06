@@ -22,6 +22,8 @@ INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/posix
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/openthread
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/wiznet
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp/at_parser
 endif
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))

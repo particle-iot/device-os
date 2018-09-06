@@ -44,8 +44,7 @@
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
         (OUT_OF_RANGE, "Out of range", -290), \
-        (AT_PARSER_END_OF_RESPONSE, "End of response data", -1000), /* -1099 ... -1000: AT parser */ \
-        (AT_PARSER_END_OF_LINE, "End of response line", -1001) \
+        (AT_PARSER_END_OF_RESPONSE, "End of response data", -1000) /* -1099 ... -1000: AT parser */ \
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

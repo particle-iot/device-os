@@ -24,16 +24,18 @@
 
 namespace particle {
 
-class AtParser;
-
 namespace detail {
 
 class AtParserImpl;
 
 } // particle::detail
 
+class AtParser;
+class AtCommand;
+class CString;
+
 /**
- * Response data reader.
+ * Response reader.
  *
  * Instances of this class are used to read and parse AT command responses and unsolicited result
  * codes (URCs).
@@ -43,21 +45,6 @@ class AtParserImpl;
  */
 class AtResponseReader {
 public:
-    /**
-     * Parser-specific result codes returned by the `read()` method.
-     *
-     * @see `read()`
-     */
-    enum ReadResult {
-        /**
-         * The end of the response data is reached (`-1000`).
-         */
-        END_OF_RESPONSE = SYSTEM_ERROR_AT_PARSER_END_OF_RESPONSE,
-        /**
-         * The end of the current line of the response data is reached (`-1001`).
-         */
-        END_OF_LINE = SYSTEM_ERROR_AT_PARSER_END_OF_LINE
-    };
     /**
      * Flags controlling the behavior of the `read()` method.
      *
@@ -72,31 +59,32 @@ public:
          */
         BINARY_DATA = 0x01,
         /**
-         * Stop reading the response data when the end of the current line is reached.
+         * Stop reading when the the end of the current line is reached.
          *
-         * If this flag is set, `read()` will return `END_OF_LINE` when the end of the current line
-         * is reached. The next call to `read()` with this flag set will read the response data
-         * starting from the next line.
-         *
-         * @note Empty lines are skipped.
+         * @see `atLineEnd()`
          */
         STOP_AT_LINE_END = 0x02,
         /**
-         * Discard the remaining characters of the current line.
+         * Discard remaining characters of the current line.
          *
          * This flag implies `STOP_AT_LINE_END`.
          */
-        SKIP_REST_OF_LINE = 0x04
+        DISCARD_REST_OF_LINE = 0x04
+    };
+    /**
+     * Parser-specific result codes.
+     *
+     * @see `read()`
+     * @see `readLine()`
+     * @see `scanf()`
+     */
+    enum ReadResult {
+        /**
+         * The end of the response data is reached (`-1000`).
+         */
+        END_OF_RESPONSE = SYSTEM_ERROR_AT_PARSER_END_OF_RESPONSE
     };
 
-    /**
-     * Move-constructs a reader object.
-     */
-    AtResponseReader(AtResponseReader&& reader);
-    /**
-     * Destroys the reader object.
-     */
-    virtual ~AtResponseReader();
     /**
      * Reads the response data.
      *
@@ -106,16 +94,17 @@ public:
      * @return Number of bytes read, or a negative result code in case of an error.
      *
      * @see `readLine()`
+     * @see `readAll()`
      * @see `scanf()`
      * @see `ReadFlag`
      * @see `ReadResult`
      */
     int read(char* data, size_t size, unsigned flags = 0);
     /**
-     * Reads a single line of the response data.
+     * Reads a line of the response.
      *
-     * This method is similar to `read()` invoked with the `SKIP_REST_OF_LINE` flag set.
-     * In addition, this method ensures that the resulting string is null-terminated.
+     * This method is similar to `read()` invoked with the `DISCARD_REST_OF_LINE` flag set.
+     * The output is always null-terminated, unless `size` is set to `0`.
      *
      * @param data Destination buffer.
      * @param size Buffer size.
@@ -123,42 +112,58 @@ public:
      *         case of an error.
      *
      * @see `read()`
+     * @see `readAll()`
      * @see `scanf()`
      * @see `ReadResult`
      */
     int readLine(char* data, size_t size);
     /**
-     * Reads and parses a single line of the response data.
+     * Reads a line of the response.
+     *
+     * This method reads a single entire line of the response, allocating a buffer for it
+     * dynamically.
+     *
+     * @return A string.
+     *
+     * @see `read()`
+     * @see `readAll()`
+     * @see `scanf()`
+     */
+    CString readLine();
+    /**
+     * Reads and parses a line of the response.
      *
      * @param fmt scanf-style format string.
      * @param ... Output arguments.
-     * @return Number of characters read (not including `\0`), or a negative result code in
-     *         case of an error.
+     * @return Number of items matched and assigned, or a negative result code in case of an error.
      *
      * @see `vscanf()`
      * @see `read()`
      * @see `readLine()`
+     * @see `readAll()`
      * @see `ReadResult`
      */
     int scanf(const char* fmt, ...) __attribute__((format(scanf, 2, 3)));
     /**
-     * Reads and parses a single line of the response data.
+     * Reads and parses a line of the response.
      *
      * @param fmt scanf-style format string.
      * @param args Output arguments.
-     * @return Number of characters read (not including `\0`), or a negative result code in
-     *         case of an error.
+     * @return Number of items matched and assigned, or a negative result code in case of an error.
      *
      * @see `scanf()`
      * @see `read()`
      * @see `readLine()`
+     * @see `readAll()`
      * @see `ReadResult`
      */
     int vscanf(const char* fmt, va_list args);
     /**
+     * Returns `true` if the end of the current line is reached.
+     */
+    bool atLineEnd() const;
+    /**
      * Returns the result code of the first failed operation.
-     *
-     * @return Result code.
      */
     int error() const;
     /**
@@ -178,8 +183,13 @@ protected:
 
     explicit AtResponseReader(detail::AtParserImpl* parser);
     explicit AtResponseReader(int error);
+    AtResponseReader(AtResponseReader&& reader);
+    virtual ~AtResponseReader();
 
-    friend class AtParserImpl;
+    int readLine(char* buf, size_t size, size_t offs);
+    int error(int ret);
+
+    friend class detail::AtParserImpl;
 };
 
 /**
@@ -217,6 +227,19 @@ public:
      */
     ~AtResponse();
     /**
+     * Reads the entire response data.
+     *
+     * This method reads the entire response data, allocating a buffer for it dynamically.
+     * The output doesn't include the result code.
+     *
+     * @return A string.
+     *
+     * @see `read()`
+     * @see `readLine()`
+     * @see `scanf()`
+     */
+    CString readAll();
+    /**
      * Reads the final result code.
      *
      * @return One of the values defined by `Result`, or a negative result code in case of an error.
@@ -227,12 +250,19 @@ public:
      *
      * @return Error code. 
      */
-    int resultErrorCode();
+    int resultErrorCode() const;
+    /**
+     * Returns `true` if the end of the response data is reached.
+     */
+    bool atResponseEnd() const;
 
 private:
-    using AtResponseReader::AtResponseReader;
+    int resultErrorCode_;
 
-    friend class AtParserImpl;
+    explicit AtResponse(detail::AtParserImpl* parser);
+    explicit AtResponse(int error);
+
+    friend class AtCommand;
 };
 
 inline int AtResponseReader::error() const {
@@ -241,6 +271,10 @@ inline int AtResponseReader::error() const {
 
 inline AtResponseReader::operator bool() const {
     return (error_ == 0);
+}
+
+inline int AtResponse::resultErrorCode() const {
+    return resultErrorCode_;
 }
 
 } // particle
