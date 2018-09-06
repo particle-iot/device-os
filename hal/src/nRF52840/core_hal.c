@@ -322,6 +322,10 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
     return pressedState;
 }
 
+void HAL_Core_Mode_Button_Reset(uint16_t button)
+{
+}
+
 void HAL_Core_System_Reset(void)
 {
     NVIC_SystemReset();
@@ -373,6 +377,10 @@ void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
 }
 
+void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
+{
+}
+
 void HAL_Core_Execute_Standby_Mode(void)
 {
 }
@@ -403,6 +411,21 @@ void HAL_Bootloader_Lock(bool lock)
 {
 }
 
+// TODO: Return the reset reason.
+bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
+{
+    switch(resetType)
+    {
+    case PIN_RESET:
+    case SOFTWARE_RESET:
+    case WATCHDOG_RESET:
+    case POWER_MANAGEMENT_RESET:
+    case POWER_DOWN_RESET:
+    case POWER_BROWNOUT_RESET:
+    default:
+        return false;
+    }
+}
 
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 {

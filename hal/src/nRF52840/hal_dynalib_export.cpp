@@ -21,26 +21,23 @@
  */
 
 #define DYNALIB_EXPORT
-//#include "hal_dynalib.h"
-//#include "hal_dynalib_core.h"
-//#include "hal_dynalib_gpio.h"
-//#include "hal_dynalib_i2c.h"
-//#include "hal_dynalib_ota.h"
-//#include "hal_dynalib_peripherals.h"
-//#include "hal_dynalib_socket.h"
-//#include "hal_dynalib_spi.h"
-//#include "hal_dynalib_usart.h"
-//#include "hal_dynalib_wlan.h"
-//#include "hal_dynalib_concurrent.h"
-//#include "hal_dynalib_cellular.h"
-//#include "hal_dynalib_can.h"
-//#include "hal_dynalib_rgbled.h"
-//#include "hal_dynalib_dct.h"
+#include "hal_dynalib.h"
+#include "hal_dynalib_core.h"
+#include "hal_dynalib_gpio.h"
+#include "hal_dynalib_i2c.h"
+#include "hal_dynalib_ota.h"
+#include "hal_dynalib_peripherals.h"
+#include "hal_dynalib_socket.h"
+#include "hal_dynalib_spi.h"
+#include "hal_dynalib_usart.h"
+#include "hal_dynalib_concurrent.h"
+#include "hal_dynalib_rgbled.h"
+#include "hal_dynalib_dct.h"
 
 #ifndef HAL_USB_EXCLUDE
-//#include "hal_dynalib_usb.h"
+#include "hal_dynalib_usb.h"
 #endif
 
 #ifndef HAL_BOOTLOADER_EXCLUDE
-//#include "hal_dynalib_bootloader.h"
+#include "hal_dynalib_bootloader.h"
 #endif

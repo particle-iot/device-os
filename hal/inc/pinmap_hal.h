@@ -72,6 +72,10 @@ void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
 typedef struct NRF5x_Pin_Info  NRF5x_Pin_Info;
 NRF5x_Pin_Info* HAL_Pin_Map(void);
 extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
+
+// FIXME: hack for hal_dynalib_gpio.h
+typedef struct NRF5x_Pin_Info STM32_Pin_Info;
+
 #else
 typedef struct STM32_Pin_Info  STM32_Pin_Info;
 STM32_Pin_Info* HAL_Pin_Map(void);

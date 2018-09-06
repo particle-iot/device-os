@@ -48,6 +48,10 @@ void HAL_RTC_Set_UnixTime(time_t value)
 {
 }
 
+void HAL_RTC_Configuration(void)
+{
+}
+
 uint8_t HAL_RTC_Time_Is_Valid(void* reserved)
 {
     return 0;

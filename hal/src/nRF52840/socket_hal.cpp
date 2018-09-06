@@ -56,6 +56,11 @@ sock_result_t socket_bind(sock_handle_t sock, uint16_t port)
     return 0;
 }
 
+sock_result_t socket_create_tcp_server(uint16_t port, network_interface_t nif)
+{
+    return 0;
+}
+
 sock_result_t socket_accept(sock_handle_t sock)
 {
     return 0;
