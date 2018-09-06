@@ -54,7 +54,7 @@ bool bootloader_update_if_needed()
 {
     bool updated = false;
     uint32_t bootloader_image_size = 0;
-    const uint8_t* bootloader_image = HAL_Bootloader_Image(&bootloader_image_size, nullptr)
+    const uint8_t* bootloader_image = HAL_Bootloader_Image(&bootloader_image_size, nullptr);
     if (bootloader_requires_update(bootloader_image, bootloader_image_size)) {
         updated = bootloader_update(bootloader_image, bootloader_image_size);
     }
