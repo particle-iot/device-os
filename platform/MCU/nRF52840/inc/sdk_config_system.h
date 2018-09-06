@@ -88,7 +88,7 @@
 
 #define NRFX_PRS_ENABLED        1
 #define NRFX_UART_ENABLED       0
-#define NRFX_UARTE_ENABLED      1
+#define NRFX_UARTE_ENABLED      0
 #define NRFX_LPCOMP_ENABLED     0
 
 #define NRFX_TWI_ENABLED        0
