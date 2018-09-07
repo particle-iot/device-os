@@ -59,6 +59,8 @@ extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
+extern void malloc_enable(uint8_t);
+
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
 {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -271,6 +273,11 @@ void HAL_Core_Config(void)
     HAL_Core_Setup_override_interrupts();
 
     HAL_RNG_Configuration();
+
+    // Enable malloc before littlefs initialization.
+    // Because the heap is right after the system static variables and is set to "link_heap_location" by default,
+    // it is unnecessary to set the new heap top.
+    malloc_enable(1);
 
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();

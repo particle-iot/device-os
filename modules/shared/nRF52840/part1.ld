@@ -242,8 +242,6 @@ SECTIONS
     INCLUDE backup_ram_user.ld
     INCLUDE backup_ram_system.ld
 
-    link_heap_location = end;
-    link_heap_location_end = __Stack_Init;
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
 
@@ -254,6 +252,9 @@ SECTIONS
         . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
         link_stack_end = .;
     }> SRAM AT> SRAM
+    
+    link_heap_location = link_stack_end;
+    link_heap_location_end = __Stack_Init;
 
 
     /DISCARD/ :
@@ -282,7 +283,7 @@ SECTIONS
 
 /* Declare libc Heap to start at end of allocated RAM */
 
-PROVIDE( _heap = link_stack_end );
+PROVIDE( _heap = link_heap_location );
 
 /* End of the heap is top of RAM, aligned 8 byte */
 
