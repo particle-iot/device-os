@@ -44,6 +44,8 @@ void system_part1_pre_init() {
 void system_part1_init() {
 }
 
+void system_part2_post_init() __attribute__((alias("system_part1_post_init")));
+
 void system_part1_post_init() {
     if (is_user_module_valid()) {
         module_user_init();
@@ -57,9 +59,9 @@ void setup() {
 }
 
 void loop() {
-//    if (is_user_module_valid()) {
-//        module_user_loop();
-//    }
+    if (is_user_module_valid()) {
+        module_user_loop();
+    }
 }
 
 __attribute__((externally_visible, section(".module_pre_init"))) const void* system_part1_pre_init_fn = (const void*)system_part1_pre_init;
