@@ -91,15 +91,14 @@ inline RingBuffer<T>::RingBuffer(T* buffer, size_t size)
 
 template <typename T>
 inline void RingBuffer<T>::init(T* buffer, size_t size) {
-    reset();
     buffer_ = buffer;
-    size_ = curSize_ = size;
+    size_ = size;
+    reset();
 }
 
 template <typename T>
 inline void RingBuffer<T>::reset() {
-    buffer_ = nullptr;
-    size_ = curSize_ = 0;
+    curSize_ = size_;
 
     head_ = tail_ = headPending_ = tailPending_ = 0;
     full_ = false;
@@ -248,9 +247,11 @@ inline T* RingBuffer<T>::acquire(size_t size) {
         headPending_ += size;
         return buffer_ + head;
     } else if (acquirableWrapped() >= size) {
+        // Calculate provisional head
+        size_t head = (head_ + headPending_) % curSize_;
+        curSize_ = head;
         head_ = 0;
-        curSize_ = tail_;
-        tail_ = 0;
+        tail_ = tail_ % curSize_;
         headPending_ += size;
         return buffer_;
     }
@@ -267,7 +268,10 @@ inline ssize_t RingBuffer<T>::acquireCommit(size_t size, size_t cancel) {
 
     headPending_ -= (size + cancel);
     head_ = (head_ + size) % curSize_;
-    full_ = (head_ == tail_);
+    full_ = ((head_ == tail_) && size > 0);
+
+    updateCurSize();
+
     return (size);
 }
 
@@ -292,9 +296,10 @@ inline ssize_t RingBuffer<T>::consumeCommit(size_t size, size_t cancel) {
 
     tailPending_ -= (size + cancel);
     tail_ = (tail_ + size) % curSize_;
-    full_ = false;
-    updateCurSize();
-    return (size + cancel);
+    if (size > 0) {
+        full_ = false;
+    }
+    return (size);
 }
 
 template <typename T>
@@ -313,7 +318,7 @@ inline size_t RingBuffer<T>::curData() const {
 
 template <typename T>
 inline void RingBuffer<T>::updateCurSize() {
-    if (curSize_ != size_ && head_ >= tail_) {
+    if (curSize_ != size_ && head_ >= tail_ && !full_) {
         curSize_ = size_;
     }
 }

@@ -27,9 +27,12 @@
 #include <atomic>
 #include <algorithm>
 #include "hal_irq_flag.h"
+#include "delay_hal.h"
 
 namespace {
 
+// Copied from spark_wiring_interrupts.h
+// Ideally this should be moved into services. HAL shouldn't depend on wiring
 class AtomicSection {
     int prev_;
 public:
@@ -55,7 +58,7 @@ void uarte0InterruptHandler(void);
 void uarte1InterruptHandler(void);
 
 const uint8_t MAX_SCHEDULED_RECEIVALS = 1;
-const size_t RESERVED_RX_SIZE = 5;
+const size_t RESERVED_RX_SIZE = 0;
 
 class Usart {
 public:
@@ -99,8 +102,6 @@ public:
     }
 
     int deInit() {
-        rxBuffer_.reset();
-        txBuffer_.reset();
         configured_ = false;
 
         return 0;
@@ -165,16 +166,16 @@ public:
         nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
 
         nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ERROR_MASK |
-                                     NRF_UARTE_INT_RXSTARTED_MASK |
+                                     // NRF_UARTE_INT_RXSTARTED_MASK |
                                      NRF_UARTE_INT_RXDRDY_MASK |
-                                     NRF_UARTE_INT_RXTO_MASK |
+                                     // NRF_UARTE_INT_RXTO_MASK |
                                      NRF_UARTE_INT_ENDRX_MASK |
-                                     NRF_UARTE_INT_TXSTARTED_MASK |
-                                     NRF_UARTE_INT_TXDRDY_MASK |
-                                     NRF_UARTE_INT_TXSTOPPED_MASK |
+                                     // NRF_UARTE_INT_TXSTARTED_MASK |
+                                     // NRF_UARTE_INT_TXDRDY_MASK |
+                                     // NRF_UARTE_INT_TXSTOPPED_MASK |
                                      NRF_UARTE_INT_ENDTX_MASK);
 
-        NRFX_IRQ_PRIORITY_SET(nrfx_get_irq_number((void *)uarte_), APP_IRQ_PRIORITY_LOWEST);
+        NRFX_IRQ_PRIORITY_SET(nrfx_get_irq_number((void *)uarte_), APP_IRQ_PRIORITY_HIGHEST);
         NRFX_IRQ_ENABLE(nrfx_get_irq_number((void *)uarte_));
 
         nrf_uarte_enable(uarte_);
@@ -189,18 +190,23 @@ public:
 
     int end() {
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+        AtomicSection lk;
+
+        nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_ERROR_MASK |
+                              NRF_UARTE_INT_RXSTARTED_MASK |
+                              NRF_UARTE_INT_RXDRDY_MASK |
+                              NRF_UARTE_INT_RXTO_MASK |
+                              NRF_UARTE_INT_ENDRX_MASK |
+                              NRF_UARTE_INT_TXSTARTED_MASK |
+                              NRF_UARTE_INT_TXDRDY_MASK |
+                              NRF_UARTE_INT_TXSTOPPED_MASK |
+                              NRF_UARTE_INT_ENDTX_MASK);
+        NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)uarte_));
+
+        stopTransmission();
+        stopReceiver();
 
         nrf_uarte_disable(uarte_);
-        nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_ERROR_MASK |
-                                      NRF_UARTE_INT_RXSTARTED_MASK |
-                                      NRF_UARTE_INT_RXDRDY_MASK |
-                                      NRF_UARTE_INT_RXTO_MASK |
-                                      NRF_UARTE_INT_ENDRX_MASK |
-                                      NRF_UARTE_INT_TXSTARTED_MASK |
-                                      NRF_UARTE_INT_TXDRDY_MASK |
-                                      NRF_UARTE_INT_TXSTOPPED_MASK |
-                                      NRF_UARTE_INT_ENDTX_MASK);
-        NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)uarte_));
 
         nrf_uarte_txrx_pins_disconnect(uarte_);
         nrf_uarte_hwfc_pins_disconnect(uarte_);
@@ -225,6 +231,8 @@ public:
         config_ = {};
         transmitting_ = false;
         receiving_ = 0;
+        rxBuffer_.reset();
+        txBuffer_.reset();
 
         return 0;
     }
@@ -240,8 +248,11 @@ public:
     }
 
     ssize_t read(uint8_t* buffer, size_t size) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
-        ssize_t r = CHECK(rxBuffer_.get(buffer, size));
+        const ssize_t maxRead = CHECK(data());
+        const size_t readSize = CHECK_TRUE(std::min((size_t)maxRead, size) > 0, SYSTEM_ERROR_NO_MEMORY);
+        ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
         if (!receiving_) {
             startReceiver();
         }
@@ -249,17 +260,21 @@ public:
     }
 
     ssize_t peek(uint8_t* buffer, size_t size) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
-        return rxBuffer_.peek(buffer, size);
+        const ssize_t maxRead = CHECK(data());
+        const size_t peekSize = CHECK_TRUE(std::min((size_t)maxRead, size) > 0, SYSTEM_ERROR_NO_MEMORY);
+        return rxBuffer_.peek(buffer, peekSize);
     }
 
     ssize_t write(const uint8_t* buffer, size_t size) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
-        ssize_t r = CHECK(txBuffer_.put(buffer, size));
-        if (!transmitting_) {
-            // Start transmission
-            startTransmission();
-        }
+        const ssize_t canWrite = CHECK(space());
+        size_t writeSize = CHECK_TRUE(std::min((size_t)canWrite, size) > 0, SYSTEM_ERROR_NO_MEMORY);
+        ssize_t r = CHECK(txBuffer_.put(buffer, writeSize));
+        // Start transmission
+        startTransmission();
         return r;
     }
 
@@ -270,7 +285,7 @@ public:
             }
             {
                 AtomicSection lk;
-                if (txBuffer_.empty()) {
+                if (!enabled_ || txBuffer_.empty()) {
                     break;
                 }
             }
@@ -287,62 +302,45 @@ public:
     }
 
     void interruptHandler() {
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
-
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXSTARTED);
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
-
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTARTED);
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
-        // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
-
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ERROR)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
             const auto e = nrf_uarte_errorsrc_get_and_clear(uarte_);
-            LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_ERROR %u", e);
             (void)e;
         }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXSTARTED)) {
-            // LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_RXSTARTED");
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXSTARTED);
-            startReceiver();
-        }
+        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXSTARTED)) {
+        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXSTARTED);
+        // }
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXDRDY)) {
-            // LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_RXDRDY");
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
             rxBuffer_.acquireCommit(1);
         }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXTO)) {
-            LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_RXTO");
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
-            // Flush
-            startReceiver(true);
-        }
+        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXTO)) {
+        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+        //     // Flush?
+        //     // startReceiver(true);
+        // }
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
-            LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_ENDRX");
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+            // Sometimes RXDRDY is not being set for the last byte
+            if (rxBuffer_.acquirePending() > 0) {
+                rxBuffer_.acquireCommit(rxBuffer_.acquirePending());
+            }
             --receiving_;
             startReceiver();
         }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTARTED)) {
-            // LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_TXSTARTED");
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTARTED);
-        }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXDDY)) {
-            // LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_TXDDY");
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
-            txBuffer_.consumeCommit(1);
-        }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTOPPED)) {
-            // LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_TXSTOPPED");
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
-        }
+        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTARTED)) {
+        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTARTED);
+        // }
+        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXDDY)) {
+        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
+        //     txBuffer_.consumeCommit(1);
+        // }
+        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTOPPED)) {
+        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
+        // }
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
-            // LOG_DEBUG(TRACE, "event NRF_UARTE_EVENT_ENDTX");
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
+            txBuffer_.consumeCommit(nrf_uarte_tx_amount_get(uarte_));
             transmitting_ = false;
             startTransmission();
         }
@@ -352,17 +350,18 @@ private:
     void startTransmission() {
         const size_t consumable = txBuffer_.consumable();
         if (!transmitting_ && consumable > 0) {
+            transmitting_ = true;
             auto ptr = txBuffer_.consume(consumable);
             SPARK_ASSERT(ptr);
-            // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
-            // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
+            // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
             nrf_uarte_tx_buffer_set(uarte_, ptr, consumable);
             nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STARTTX);
         }
     }
 
     void startReceiver(bool flush = false) {
-        LOG_DEBUG(TRACE, "startReceiver: %d", (int)receiving_);
         if (receiving_ >= MAX_SCHEDULED_RECEIVALS) {
             return;
         }
@@ -371,10 +370,12 @@ private:
         const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
         size_t rxSize = std::max(acquirable, acquirableWrapped);
 
-        LOG_DEBUG(TRACE, "acquirable %d %d %d", acquirable, acquirableWrapped, rxSize);
+        if (rxSize == 0) {
+            return;
+        }
 
         if (!flush) {
-            // We should always reserve 5 bytes in the rx buffer
+            // We should always reserve RESERVED_RX_SIZE bytes in the rx buffer
             if (rxSize == acquirable) {
                 if (acquirableWrapped < RESERVED_RX_SIZE) {
                     if (rxSize > RESERVED_RX_SIZE) {
@@ -392,25 +393,50 @@ private:
             }
         } else {
             rxSize = std::min(RESERVED_RX_SIZE, rxSize);
-            SPARK_ASSERT(rxSize == RESERVED_RX_SIZE);
         }
-
-        LOG_DEBUG(TRACE, "rxSize %d", rxSize);
 
         if (rxSize > 0) {
             ++receiving_;
             auto ptr = rxBuffer_.acquire(rxSize);
             SPARK_ASSERT(ptr);
-            // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
-            // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+            memset(ptr, 0xa5, rxSize);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
             nrf_uarte_rx_buffer_set(uarte_, ptr, rxSize);
             if (!flush) {
-                LOG_DEBUG(TRACE, "startrx");
                 nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STARTRX);
             } else {
-                LOG_DEBUG(TRACE, "flushrx");
                 nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_FLUSHRX);
             }
+        }
+    }
+
+    void stopReceiver() {
+        if (receiving_) {
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+            nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPRX);
+            bool rxto = false;
+            bool endrx = false;
+            while (!(rxto && endrx)) {
+                if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
+                    nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+                    endrx = true;
+                }
+                if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXTO)) {
+                    nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+                    rxto = true;
+                }
+            }
+        }
+    }
+
+    void stopTransmission() {
+        if (transmitting_) {
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
+            nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPTX);
+            while (!nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTOPPED));
         }
     }
 
@@ -619,6 +645,8 @@ uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data) {
 
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    // Blocking!
+    while(usart->isEnabled() && usart->space() <= 0);
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
 }
 
