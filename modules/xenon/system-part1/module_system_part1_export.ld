@@ -14,10 +14,6 @@ There will be a link error if there is not this amount of RAM free at the end.
 */
 _Minimum_Stack_Size = 0x1400;
 
-/* include the memory spaces definitions sub-script */
-/* Linker subscript for STM32F20x definitions with 1024K Flash and 128K RAM */
-
-/* Memory Spaces Definitions */
 
 /* higher address of the user mode stack */
 _estack = 0x20000000 + 200K;

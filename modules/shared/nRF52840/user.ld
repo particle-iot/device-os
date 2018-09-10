@@ -123,9 +123,6 @@ SECTIONS
 PROVIDE ( end = system_heap_end );
 
 
-min_heap_end = link_heap_start + min_heap_size;
-ASSERT ( min_heap_end <= __Stack_Init, "Insufficient room for heap." );
-
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
