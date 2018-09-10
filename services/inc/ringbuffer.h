@@ -21,9 +21,14 @@
 #include <cstddef>
 #include "system_error.h"
 #include "check.h"
+#include <atomic>
 
 namespace particle {
 namespace services {
+
+inline size_t wrap(size_t v, size_t size) {
+    return v >= size ? v - size : v;
+}
 
 template <typename T>
 class RingBuffer {
@@ -58,6 +63,7 @@ public:
     size_t acquirePending() const;
     size_t consumePending() const;
 
+    void acquireBegin();
     T* acquire(size_t size);
     ssize_t acquireCommit(size_t size, size_t cancel = 0);
 
@@ -70,23 +76,29 @@ private:
     void updateCurSize();
 
 public:
-    T* buffer_ = nullptr;
-    size_t head_ = 0;
-    size_t tail_ = 0;
 
-    size_t headPending_ = 0;
-    size_t tailPending_ = 0;
+    T* buffer_ = nullptr;
+    volatile size_t head_;
+    volatile size_t tail_;
+
+    volatile size_t headPending_;
+    volatile size_t tailPending_;
 
     size_t size_ = 0;
-    size_t curSize_ = 0;
-    bool full_ = false;
+    volatile size_t curSize_;
+    volatile bool full_;
 };
 
 template <typename T>
 inline RingBuffer<T>::RingBuffer(T* buffer, size_t size)
         : buffer_(buffer),
+          head_(0),
+          tail_(0),
+          headPending_(0),
+          tailPending_(0),
           size_(size),
-          curSize_(size) {
+          curSize_(size),
+          full_(false) {
 }
 
 template <typename T>
@@ -140,16 +152,20 @@ template <typename T>
 inline ssize_t RingBuffer<T>::put(const T* v, size_t size) {
     CHECK_TRUE(space() >= (ssize_t)size, SYSTEM_ERROR_TOO_LARGE);
 
+    size_t head = head_;
+
     if (v != nullptr) {
         for (size_t i = 0; i < size; i++) {
-            buffer_[head_] = v[i];
-            head_ = (head_ + 1) % curSize_;
+            buffer_[head] = v[i];
+            head = wrap(head + 1, curSize_);
         }
     } else {
-        head_ = (head_ + size) % curSize_;
+        head = wrap(head + size, curSize_);
     }
 
+    head_ = head;
     full_ = (head_ == tail_);
+
     return size;
 }
 
@@ -162,24 +178,24 @@ template <typename T>
 inline ssize_t RingBuffer<T>::get(T* v, size_t size) {
     CHECK_TRUE(data() >= (ssize_t)size, SYSTEM_ERROR_TOO_LARGE);
 
+    size_t tail = tail_;
+
     if (v != nullptr) {
         for (size_t i = 0; i < size; i++) {
-            v[i] = buffer_[tail_];
-            tail_ = (tail_ + 1) % curSize_;
+            v[i] = buffer_[tail];
+            tail = wrap((tail + 1), curSize_);
         }
-    } else {
-        tail_ = (tail_ + size_) % curSize_;
     }
 
+    tail_ = tail;
     full_ = false;
-    updateCurSize();
 
     return size;
 }
 
 template <typename T>
 inline ssize_t RingBuffer<T>::peek(T* v) {
-    return get(v, 1);
+    return peek(v, 1);
 }
 
 template <typename T>
@@ -188,17 +204,22 @@ inline ssize_t RingBuffer<T>::peek(T* v, size_t size) {
     CHECK_TRUE(v, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     for (size_t i = 0; i < size; i++) {
-        v[i] = buffer_[(tail_ + i) % curSize_];
+        v[i] = buffer_[wrap((tail_ + i), curSize_)];
     }
 
     return size;
 }
 
 template <typename T>
+inline void RingBuffer<T>::acquireBegin() {
+    updateCurSize();
+}
+
+template <typename T>
 inline size_t RingBuffer<T>::acquirable() const {
     // Calculate provisional head and full
-    size_t head = (head_ + headPending_) % curSize_;
-    bool full = full_ || ((head == tail_) && (headPending_ != 0));
+    size_t head = wrap(head_ + headPending_, curSize_);
+    bool full = this->full() || ((head == tail_) && (headPending_ != 0));
     if (head >= tail_ && !full) {
         return (curSize_ - head);
     } else {
@@ -209,8 +230,8 @@ inline size_t RingBuffer<T>::acquirable() const {
 template <typename T>
 inline size_t RingBuffer<T>::acquirableWrapped() const {
     // Calculate provisional head and full
-    size_t head = (head_ + headPending_) % curSize_;
-    bool full = full_ || ((head == tail_) && (headPending_ != 0));
+    size_t head = wrap(head_ + headPending_, curSize_);
+    bool full = this->full() || ((head == tail_) && (headPending_ != 0));
     if (head >= tail_ && !full) {
         return tail_;
     } else {
@@ -221,7 +242,7 @@ inline size_t RingBuffer<T>::acquirableWrapped() const {
 template <typename T>
 inline size_t RingBuffer<T>::consumable() const {
     // Calculate provisional tail
-    size_t tail = (tail_ + tailPending_) % curSize_;
+    size_t tail = wrap(tail_ + tailPending_, curSize_);
     if (head_ >= tail && !full_) {
         return head_ - tail;
     } else {
@@ -243,15 +264,15 @@ template <typename T>
 inline T* RingBuffer<T>::acquire(size_t size) {
     if (acquirable() >= size) {
         // Calculate provisional head
-        size_t head = (head_ + headPending_) % curSize_;
+        size_t head = wrap(head_ + headPending_, curSize_);
         headPending_ += size;
         return buffer_ + head;
     } else if (acquirableWrapped() >= size) {
         // Calculate provisional head
-        size_t head = (head_ + headPending_) % curSize_;
+        size_t head = wrap(head_ + headPending_, curSize_);
         curSize_ = head;
         head_ = 0;
-        tail_ = tail_ % curSize_;
+        tail_ = wrap(tail_, curSize_);
         headPending_ += size;
         return buffer_;
     }
@@ -261,25 +282,29 @@ inline T* RingBuffer<T>::acquire(size_t size) {
 
 template <typename T>
 inline ssize_t RingBuffer<T>::acquireCommit(size_t size, size_t cancel) {
+#ifdef DEBUG_BUILD
     CHECK_TRUE(headPending_ >= (size + cancel), SYSTEM_ERROR_TOO_LARGE);
     if (cancel != 0) {
         CHECK_TRUE((ssize_t)headPending_ - (size + cancel) == 0, SYSTEM_ERROR_INVALID_STATE);
     }
+#endif // DEBUG_BUILD
 
     headPending_ -= (size + cancel);
-    head_ = (head_ + size) % curSize_;
+    head_ = wrap(head_ + size, curSize_);
     full_ = ((head_ == tail_) && size > 0);
-
-    updateCurSize();
 
     return (size);
 }
 
 template <typename T>
 inline T* RingBuffer<T>::consume(size_t size) {
+#ifdef DEBUG_BUILD
     if (consumable() >= size) {
+#else
+    {
+#endif // DEBUG_BUILD
         // Calculate provisional tail
-        size_t tail = (tail_ + tailPending_) % curSize_;
+        size_t tail = wrap(tail_ + tailPending_, curSize_);
         tailPending_ += size;
         return buffer_ + tail;
     }
@@ -289,13 +314,15 @@ inline T* RingBuffer<T>::consume(size_t size) {
 
 template <typename T>
 inline ssize_t RingBuffer<T>::consumeCommit(size_t size, size_t cancel) {
+#ifdef DEBUG_BUILD
     CHECK_TRUE(tailPending_ >= (size + cancel), SYSTEM_ERROR_TOO_LARGE);
     if (cancel != 0) {
         CHECK_TRUE((ssize_t)tailPending_ - (size + cancel) == 0, SYSTEM_ERROR_INVALID_STATE);
     }
+#endif // DEBUG_BUILD
 
     tailPending_ -= (size + cancel);
-    tail_ = (tail_ + size) % curSize_;
+    tail_ = wrap(tail_ + size, curSize_);
     if (size > 0) {
         full_ = false;
     }

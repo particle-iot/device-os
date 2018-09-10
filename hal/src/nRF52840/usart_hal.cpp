@@ -16,8 +16,10 @@
  */
 
 #include "logging.h"
-#include "usart_hal.h"
 #include <nrf_uarte.h>
+#include <nrf_ppi.h>
+#include <nrf_timer.h>
+#include "usart_hal.h"
 #include "ringbuffer.h"
 #include "pinmap_impl.h"
 #include "check_nrf.h"
@@ -45,6 +47,33 @@ public:
     }
 };
 
+class RxLock {
+public:
+    RxLock(NRF_UARTE_Type* uarte)
+            : uarte_(uarte) {
+        nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDRX_MASK);
+    }
+    ~RxLock() {
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK);
+    }
+
+private:
+    NRF_UARTE_Type* uarte_;
+};
+
+class TxLock {
+public:
+    TxLock(NRF_UARTE_Type* uarte)
+            : uarte_(uarte) {
+        nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDTX_MASK);
+    }
+    ~TxLock() {
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDTX_MASK);
+    }
+
+private:
+    NRF_UARTE_Type* uarte_;
+};
 
 inline uint32_t pinToNrf(pin_t pin) {
     const auto pinMap = HAL_Pin_Map();
@@ -59,19 +88,23 @@ void uarte1InterruptHandler(void);
 
 const uint8_t MAX_SCHEDULED_RECEIVALS = 1;
 const size_t RESERVED_RX_SIZE = 0;
+const size_t RX_THRESHOLD = 8;
 
 class Usart {
 public:
-    Usart(NRF_UARTE_Type* instance, void (*interruptHandler)(void),
-            pin_t tx, pin_t rx, pin_t cts, pin_t rts)
+    Usart(NRF_UARTE_Type* instance, void (*interruptHandler)(void), NRF_TIMER_Type* timer,
+            nrf_ppi_channel_t ppi, pin_t tx, pin_t rx, pin_t cts, pin_t rts)
             : uarte_(instance),
               interruptHandler_(interruptHandler),
+              timer_(timer),
+              ppi_(ppi),
               txPin_(tx),
               rxPin_(rx),
               ctsPin_(cts),
               rtsPin_(rts),
               transmitting_(false),
-              receiving_(0) {
+              receiving_(0),
+              rxConsumed_(0) {
     }
 
     struct Config {
@@ -111,6 +144,8 @@ public:
         CHECK_TRUE(isConfigured(), SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(validateConfig(conf.config), SYSTEM_ERROR_INVALID_ARGUMENT);
         auto nrfBaudRate = CHECK_RETURN(getNrfBaudrate(conf.baudRate), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        AtomicSection lk;
 
         if (isEnabled()) {
             end();
@@ -165,15 +200,9 @@ public:
         nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
         nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
 
-        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ERROR_MASK |
-                                     // NRF_UARTE_INT_RXSTARTED_MASK |
-                                     NRF_UARTE_INT_RXDRDY_MASK |
-                                     // NRF_UARTE_INT_RXTO_MASK |
-                                     NRF_UARTE_INT_ENDRX_MASK |
-                                     // NRF_UARTE_INT_TXSTARTED_MASK |
-                                     // NRF_UARTE_INT_TXDRDY_MASK |
-                                     // NRF_UARTE_INT_TXSTOPPED_MASK |
-                                     NRF_UARTE_INT_ENDTX_MASK);
+        disableInterrupts();
+
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK | NRF_UARTE_INT_ENDTX_MASK);
 
         NRFX_IRQ_PRIORITY_SET(nrfx_get_irq_number((void *)uarte_), APP_IRQ_PRIORITY_HIGHEST);
         NRFX_IRQ_ENABLE(nrfx_get_irq_number((void *)uarte_));
@@ -183,6 +212,7 @@ public:
         config_ = conf;
         enabled_ = true;
 
+        enableTimer();
         startReceiver();
 
         return 0;
@@ -192,16 +222,7 @@ public:
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
 
-        nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_ERROR_MASK |
-                              NRF_UARTE_INT_RXSTARTED_MASK |
-                              NRF_UARTE_INT_RXDRDY_MASK |
-                              NRF_UARTE_INT_RXTO_MASK |
-                              NRF_UARTE_INT_ENDRX_MASK |
-                              NRF_UARTE_INT_TXSTARTED_MASK |
-                              NRF_UARTE_INT_TXDRDY_MASK |
-                              NRF_UARTE_INT_TXSTOPPED_MASK |
-                              NRF_UARTE_INT_ENDTX_MASK);
-        NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)uarte_));
+        disableInterrupts();
 
         stopTransmission();
         stopReceiver();
@@ -227,10 +248,13 @@ public:
 
         nrfx_prs_release(uarte_);
 
+        disableTimer();
+
         enabled_ = false;
         config_ = {};
         transmitting_ = false;
         receiving_ = 0;
+        rxConsumed_ = 0;
         rxBuffer_.reset();
         txBuffer_.reset();
 
@@ -238,21 +262,33 @@ public:
     }
 
     ssize_t data() {
-        AtomicSection lk;
-        return rxBuffer_.data();
+        RxLock lk(uarte_);
+        size_t d = rxBuffer_.data();
+        if (d == 0) {
+            const ssize_t toConsume = timerValue() - rxConsumed_;
+            if (toConsume > 0) {
+                rxBuffer_.acquireCommit(toConsume);
+                rxConsumed_ += toConsume;
+            }
+            d += toConsume;
+        }
+        return d;
     }
 
     ssize_t space() {
-        AtomicSection lk;
+        TxLock lk(uarte_);
         return txBuffer_.space();
     }
 
     ssize_t read(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        AtomicSection lk;
         const ssize_t maxRead = CHECK(data());
         const size_t readSize = CHECK_TRUE(std::min((size_t)maxRead, size) > 0, SYSTEM_ERROR_NO_MEMORY);
-        ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
+        ssize_t r;
+        {
+            RxLock lk(uarte_);
+            r = CHECK(rxBuffer_.get(buffer, readSize));
+        }
         if (!receiving_) {
             startReceiver();
         }
@@ -261,18 +297,21 @@ public:
 
     ssize_t peek(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        AtomicSection lk;
         const ssize_t maxRead = CHECK(data());
         const size_t peekSize = CHECK_TRUE(std::min((size_t)maxRead, size) > 0, SYSTEM_ERROR_NO_MEMORY);
+        RxLock lk(uarte_);
         return rxBuffer_.peek(buffer, peekSize);
     }
 
     ssize_t write(const uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        AtomicSection lk;
         const ssize_t canWrite = CHECK(space());
         size_t writeSize = CHECK_TRUE(std::min((size_t)canWrite, size) > 0, SYSTEM_ERROR_NO_MEMORY);
-        ssize_t r = CHECK(txBuffer_.put(buffer, writeSize));
+        ssize_t r;
+        {
+            TxLock lk(uarte_);
+            r = CHECK(txBuffer_.put(buffer, writeSize));
+        }
         // Start transmission
         startTransmission();
         return r;
@@ -284,7 +323,7 @@ public:
                 // FIXME: busy loop
             }
             {
-                AtomicSection lk;
+                TxLock lk(uarte_);
                 if (!enabled_ || txBuffer_.empty()) {
                     break;
                 }
@@ -302,43 +341,21 @@ public:
     }
 
     void interruptHandler() {
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ERROR)) {
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
-            const auto e = nrf_uarte_errorsrc_get_and_clear(uarte_);
-            (void)e;
-        }
-        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXSTARTED)) {
-        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXSTARTED);
-        // }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXDRDY)) {
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
-            rxBuffer_.acquireCommit(1);
-        }
-        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXTO)) {
-        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
-        //     // Flush?
-        //     // startReceiver(true);
-        // }
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
-            // Sometimes RXDRDY is not being set for the last byte
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+
+            nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+            rxConsumed_ = 0;
+
             if (rxBuffer_.acquirePending() > 0) {
                 rxBuffer_.acquireCommit(rxBuffer_.acquirePending());
             }
+
             --receiving_;
             startReceiver();
-        }
-        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTARTED)) {
-        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTARTED);
-        // }
-        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXDDY)) {
-        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
-        //     txBuffer_.consumeCommit(1);
-        // }
-        // if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTOPPED)) {
-        //     nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
-        // }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
+            return;
+        } else if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
             txBuffer_.consumeCommit(nrf_uarte_tx_amount_get(uarte_));
             transmitting_ = false;
@@ -348,12 +365,14 @@ public:
 
 private:
     void startTransmission() {
-        const size_t consumable = txBuffer_.consumable();
-        if (!transmitting_ && consumable > 0) {
+        size_t consumable;
+        if (!transmitting_ && (consumable = txBuffer_.consumable())) {
             transmitting_ = true;
             auto ptr = txBuffer_.consume(consumable);
+#ifdef DEBUG_BUILD
             SPARK_ASSERT(ptr);
-            // nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
+#endif // DEBUG_BUILD
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
             nrf_uarte_tx_buffer_set(uarte_, ptr, consumable);
@@ -366,18 +385,29 @@ private:
             return;
         }
 
+        // Updates current size
+        rxBuffer_.acquireBegin();
+
         const size_t acquirable = rxBuffer_.acquirable();
         const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
         size_t rxSize = std::max(acquirable, acquirableWrapped);
 
-        if (rxSize == 0) {
+        if (rxSize < RX_THRESHOLD) {
             return;
         }
 
-        if (!flush) {
-            // We should always reserve RESERVED_RX_SIZE bytes in the rx buffer
-            if (rxSize == acquirable) {
-                if (acquirableWrapped < RESERVED_RX_SIZE) {
+        if (RESERVED_RX_SIZE) {
+            if (!flush) {
+                // We should always reserve RESERVED_RX_SIZE bytes in the rx buffer
+                if (rxSize == acquirable) {
+                    if (acquirableWrapped < RESERVED_RX_SIZE) {
+                        if (rxSize > RESERVED_RX_SIZE) {
+                            rxSize -= RESERVED_RX_SIZE;
+                        } else {
+                            return;
+                        }
+                    }
+                } else {
                     if (rxSize > RESERVED_RX_SIZE) {
                         rxSize -= RESERVED_RX_SIZE;
                     } else {
@@ -385,21 +415,16 @@ private:
                     }
                 }
             } else {
-                if (rxSize > RESERVED_RX_SIZE) {
-                    rxSize -= RESERVED_RX_SIZE;
-                } else {
-                    return;
-                }
+                rxSize = std::min(RESERVED_RX_SIZE, rxSize);
             }
-        } else {
-            rxSize = std::min(RESERVED_RX_SIZE, rxSize);
         }
 
         if (rxSize > 0) {
             ++receiving_;
             auto ptr = rxBuffer_.acquire(rxSize);
+#ifdef DEBUG_BUILD
             SPARK_ASSERT(ptr);
-            memset(ptr, 0xa5, rxSize);
+#endif // DEBUG_BUILD
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
@@ -438,6 +463,43 @@ private:
             nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPTX);
             while (!nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTOPPED));
         }
+    }
+
+    void disableInterrupts() {
+        nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_ERROR_MASK |
+                      NRF_UARTE_INT_RXSTARTED_MASK |
+                      NRF_UARTE_INT_RXDRDY_MASK |
+                      NRF_UARTE_INT_RXTO_MASK |
+                      NRF_UARTE_INT_ENDRX_MASK |
+                      NRF_UARTE_INT_TXSTARTED_MASK |
+                      NRF_UARTE_INT_TXDRDY_MASK |
+                      NRF_UARTE_INT_TXSTOPPED_MASK |
+                      NRF_UARTE_INT_ENDTX_MASK);
+        NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)uarte_));
+    }
+
+    void enableTimer() {
+        NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)timer_));
+        nrf_timer_mode_set(timer_, NRF_TIMER_MODE_COUNTER);
+        nrf_timer_bit_width_set(timer_, NRF_TIMER_BIT_WIDTH_16);
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_START);
+
+        nrf_ppi_channel_endpoint_setup(ppi_, (uint32_t)&uarte_->EVENTS_RXDRDY,
+                (uint32_t)&timer_->TASKS_COUNT);
+        nrf_ppi_channel_enable(ppi_);
+    }
+
+    void disableTimer() {
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_SHUTDOWN);
+        nrf_ppi_channel_disable(ppi_);
+        rxConsumed_ = 0;
+    }
+
+    size_t timerValue() {
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CAPTURE0);
+        return nrf_timer_cc_read(timer_, NRF_TIMER_CC_CHANNEL0);
     }
 
     static bool validateConfig(unsigned int config) {
@@ -491,6 +553,8 @@ private:
 
     NRF_UARTE_Type* uarte_;
     void (*interruptHandler_)(void);
+    NRF_TIMER_Type* timer_;
+    nrf_ppi_channel_t ppi_;
 
     pin_t txPin_;
     pin_t rxPin_;
@@ -500,8 +564,9 @@ private:
     bool configured_ = false;
     bool enabled_ = false;
 
-    std::atomic_bool transmitting_;
-    std::atomic<uint8_t> receiving_;
+    volatile bool transmitting_;
+    volatile uint8_t receiving_;
+    volatile size_t rxConsumed_;
 
     Config config_ = {};
 
@@ -513,8 +578,8 @@ constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
 
 
 static Usart s_usartMap[] = {
-    {NRF_UARTE0, uarte0InterruptHandler, TX, RX, CTS, RTS},
-    {NRF_UARTE1, uarte1InterruptHandler, TX1, RX1, CTS1, RTS1}
+    {NRF_UARTE0, uarte0InterruptHandler, NRF_TIMER3, NRF_PPI_CHANNEL30, TX, RX, CTS, RTS},
+    {NRF_UARTE1, uarte1InterruptHandler, NRF_TIMER4, NRF_PPI_CHANNEL31, TX1, RX1, CTS1, RTS1}
 };
 
 Usart* getInstance(HAL_USART_Serial serial) {
