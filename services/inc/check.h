@@ -51,15 +51,14 @@
             _ret; \
         })
 
-#define CHECK_TRUE(_expr, _val) \
-        ({ \
+#define CHECK_TRUE(_expr, _ret) \
+        do { \
             const bool _ok = (bool)(_expr); \
             if (!_ok) { \
-                _LOG_CHECKED_ERROR(_expr, _val); \
-                return _val; \
+                _LOG_CHECKED_ERROR(_expr, _ret); \
+                return _ret; \
             } \
-            _ok; \
-        })
+        } while (false)
 
 #define CHECK_TRUE_RETURN(_expr, _val) \
         ({ \

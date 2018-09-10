@@ -21,7 +21,6 @@
 #include <cstddef>
 #include "system_error.h"
 #include "check.h"
-#include <atomic>
 
 namespace particle {
 namespace services {

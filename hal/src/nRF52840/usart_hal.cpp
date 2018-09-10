@@ -26,7 +26,6 @@
 #include "gpio_hal.h"
 #include <nrfx_prs.h>
 #include <nrf_gpio.h>
-#include <atomic>
 #include <algorithm>
 #include "hal_irq_flag.h"
 #include "delay_hal.h"
@@ -88,7 +87,7 @@ void uarte1InterruptHandler(void);
 
 const uint8_t MAX_SCHEDULED_RECEIVALS = 1;
 const size_t RESERVED_RX_SIZE = 0;
-const size_t RX_THRESHOLD = 8;
+const size_t RX_THRESHOLD = 4;
 
 class Usart {
 public:
@@ -254,7 +253,6 @@ public:
         config_ = {};
         transmitting_ = false;
         receiving_ = 0;
-        rxConsumed_ = 0;
         rxBuffer_.reset();
         txBuffer_.reset();
 
@@ -262,9 +260,10 @@ public:
     }
 
     ssize_t data() {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         RxLock lk(uarte_);
         size_t d = rxBuffer_.data();
-        if (d == 0) {
+        if (d == 0 && receiving_) {
             const ssize_t toConsume = timerValue() - rxConsumed_;
             if (toConsume > 0) {
                 rxBuffer_.acquireCommit(toConsume);
@@ -276,6 +275,7 @@ public:
     }
 
     ssize_t space() {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         TxLock lk(uarte_);
         return txBuffer_.space();
     }
@@ -283,7 +283,8 @@ public:
     ssize_t read(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
-        const size_t readSize = CHECK_TRUE(std::min((size_t)maxRead, size) > 0, SYSTEM_ERROR_NO_MEMORY);
+        const size_t readSize = std::min((size_t)maxRead, size);
+        CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
         ssize_t r;
         {
             RxLock lk(uarte_);
@@ -298,7 +299,8 @@ public:
     ssize_t peek(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
-        const size_t peekSize = CHECK_TRUE(std::min((size_t)maxRead, size) > 0, SYSTEM_ERROR_NO_MEMORY);
+        const size_t peekSize = std::min((size_t)maxRead, size);
+        CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(uarte_);
         return rxBuffer_.peek(buffer, peekSize);
     }
@@ -306,7 +308,8 @@ public:
     ssize_t write(const uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         const ssize_t canWrite = CHECK(space());
-        size_t writeSize = CHECK_TRUE(std::min((size_t)canWrite, size) > 0, SYSTEM_ERROR_NO_MEMORY);
+        const size_t writeSize = std::min((size_t)canWrite, size);
+        CHECK_TRUE(writeSize > 0, SYSTEM_ERROR_NO_MEMORY);
         ssize_t r;
         {
             TxLock lk(uarte_);
