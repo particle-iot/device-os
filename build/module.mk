@@ -303,7 +303,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
+.PHONY: all prebuild postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
 .SECONDARY:
 
 include $(COMMON_BUILD)/recurse.mk
