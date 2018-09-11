@@ -582,7 +582,6 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
             return -1;
         }
         case FEATURE_RESET_INFO: {
-            // TODO FEATURE_FLAG_RESET_INFO is in Feature_Flag
             #define FEATURE_FLAG_RESET_INFO 0x01
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
@@ -600,7 +599,8 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
 bool HAL_Feature_Get(HAL_Feature feature) {
     switch (feature) {
         case FEATURE_CLOUD_UDP: {
-            return true;
+            uint8_t value = 0;
+            return (dct_read_app_data_copy(DCT_CLOUD_TRANSPORT_OFFSET, &value, sizeof(value)) == 0) ? value : false;
         }
         case FEATURE_RESET_INFO: {
             bool value = false;
