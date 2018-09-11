@@ -1,3 +1,9 @@
+## 0.8.0-rc.13
+
+## FEATURES
+
+- [Mesh] Removes flash erasure procedure when failing to mount the filesystem to avoid a long (5-10 sec) boot delay.
+
 ## 0.8.0-rc.12
 
 ## FEATURES

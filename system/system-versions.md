@@ -56,6 +56,7 @@
 | 207 | 309 | 0.8.0-rc.10 |         (Xenon, Argon) |
 | 207 | 310 | 0.8.0-rc.11 |         (Argon) |
 | 208 | 311 | 0.8.0-rc.12 |         (Xenon, Argon) |
+| 209 | 312 | 0.8.0-rc.13 |         (Xenon, Argon) |
 
 
 To find out the release version of system firmware currently installed, in listening mode,
