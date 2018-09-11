@@ -42,11 +42,11 @@ class AtResponse;
  * receiving the response data:
  *
  * ```cpp
- * int initModem(AtParser& parser, bool reset) {
+ * int initModem(AtParser& parser, bool echoOff) {
  *     auto cmd = parser.command();
- *     cmd.write("AT");
- *     if (reset) {
- *         cmd.write("Z");
+ *     cmd.print("ATZ");
+ *     if (echoOff) {
+ *         cmd.print("E0");
  *     }
  *     return cmd.exec();
  * }
@@ -57,7 +57,7 @@ class AtResponse;
  * failed operation can be retrieved using the `error()` method:
  *
  * ```cpp
- * if (!cmd.write("AT")) {
+ * if (!cmd) {
  *     LOG(ERROR, "Error: %d", cmd.error());
  * }
  * ```
@@ -136,26 +136,22 @@ public:
      */
     AtCommand& timeout(unsigned timeout);
     /**
-     * Returns the command timeout.
-     *
-     * @return Timeout in milliseconds.
-     *
-     * @see `AtParserConfig::commandTimeout()`
-     */
-    unsigned timeout() const;
-    /**
      * Sends this AT command.
      *
      * @return Response object.
      */
     AtResponse send();
     /**
-     * Sends this AT command and waits for a final result code.
+     * Sends this AT command and waits for the final result code.
      *
      * @return One of the values defined by `AtResponse::Result`, or a negative result code in
      *         case of an error.
      */
     int exec();
+    /**
+     * Cancels the processing of the current AT command.
+     */
+    void reset();
     /**
      * Returns the result code of the first failed operation.
      *

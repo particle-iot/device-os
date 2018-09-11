@@ -33,6 +33,7 @@
         (NOT_FOUND, "Not found", -170), \
         (ALREADY_EXISTS, "Already exists", -180), \
         (TOO_LARGE, "Too large data", -190), \
+        (NOT_ENOUGH_DATA, "Not enough data", -191), \
         (LIMIT_EXCEEDED, "Limit exceeded", -200), \
         (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
@@ -43,8 +44,7 @@
         (NO_MEMORY, "Memory allocation error", -260), \
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
-        (OUT_OF_RANGE, "Out of range", -290), \
-        (AT_PARSER_END_OF_RESPONSE, "End of response data", -1000) /* -1099 ... -1000: AT parser */ \
+        (OUT_OF_RANGE, "Out of range", -290)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

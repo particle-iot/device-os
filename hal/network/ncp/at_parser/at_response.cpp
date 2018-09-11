@@ -28,7 +28,7 @@ namespace particle {
 
 namespace {
 
-// Initial buffer sizes for different methods
+// Initial buffer sizes for different read methods
 const size_t READ_LINE_INIT_BUF_SIZE = 128; // Allocated on the heap
 const size_t READ_ALL_INIT_BUF_SIZE = 128; // Allocated on the heap
 const size_t SCANF_INIT_BUF_SIZE = 128; // Allocated on the stack
@@ -59,25 +59,25 @@ AtResponseReader::AtResponseReader(AtResponseReader&& reader) :
 AtResponseReader::~AtResponseReader() {
 }
 
-int AtResponseReader::read(char* data, size_t size, unsigned flags) {
+int AtResponseReader::read(char* data, size_t size) {
     if (!parser_) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
-    const int n = parser_->readResponse(data, size, flags);
-    if (n < 0 && n != ReadResult::END_OF_RESPONSE) {
-        return error(n);
-    }
-    return n;
+    return parser_->read(data, size);
 }
 
 int AtResponseReader::readLine(char* data, size_t size) {
-    int n = read(data, size, ReadFlag::DISCARD_REST_OF_LINE);
-    if (n >= 0 && size > 0) {
+    int n = readLine(data, size);
+    if (n < 0) {
+        return n;
+    }
+    if (size > 0) {
         if ((size_t)n == size) {
             --n;
         }
         data[n] = '\0';
     }
+    PARSER_CHECK(nextLine());
     return n;
 }
 
@@ -99,6 +99,39 @@ CString AtResponseReader::readLine() {
     return CString::wrap(buf);
 }
 
+CString AtResponseReader::readAll() {
+    size_t size = READ_ALL_INIT_BUF_SIZE;
+    auto buf = (char*)malloc(size);
+    if (!buf) {
+        error(SYSTEM_ERROR_NO_MEMORY);
+        return CString();
+    }
+    NAMED_SCOPE_GUARD(g, {
+        free(buf);
+    });
+    size_t offs = 0;
+    for (;;) {
+        const int n = read(buf + offs, size - offs - 1);
+        if (n < 0) {
+            return CString();
+        }
+        offs += n;
+        if (false /* atResponseEnd() */) {
+            break;
+        }
+        size = increaseBufSize(size);
+        const auto p = (char*)realloc(buf, size);
+        if (!p) {
+            error(SYSTEM_ERROR_NO_MEMORY);
+            return CString();
+        }
+        buf = p;
+    }
+    buf[offs] = '\0';
+    g.dismiss();
+    return CString::wrap(buf);
+}
+
 int AtResponseReader::scanf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -109,11 +142,11 @@ int AtResponseReader::scanf(const char* fmt, ...) {
 
 int AtResponseReader::vscanf(const char* fmt, va_list args) {
     char buf[SCANF_INIT_BUF_SIZE];
-    int n = read(buf, sizeof(buf) - 1, ReadFlag::STOP_AT_LINE_END);
+    int n = parser_->readLine(buf, sizeof(buf) - 1);
     if (n < 0) {
         return n;
     }
-    if (atLineEnd()) {
+    if (parser_->endOfLine()) {
         buf[n] = '\0';
         n = vsscanf(buf, fmt, args);
     } else {
@@ -136,24 +169,18 @@ int AtResponseReader::vscanf(const char* fmt, va_list args) {
     if (n < 0) {
         return SYSTEM_ERROR_UNKNOWN;
     }
+    PARSER_CHECK(nextLine());
     return n;
-}
-
-bool AtResponseReader::atLineEnd() const {
-    if (!parser_) {
-        return true;
-    }
-    return parser_->atLineEnd();
 }
 
 int AtResponseReader::readLine(char* buf, size_t size, size_t offs) {
     for (;;) {
-        const int n = read(buf + offs, size - offs - 1, ReadFlag::STOP_AT_LINE_END);
+        const int n = parser_->readLine(buf + offs, size - offs - 1);
         if (n < 0) {
             return n;
         }
         offs += n;
-        if (atLineEnd()) {
+        if (parser_->endOfLine()) {
             break;
         }
         size = increaseBufSize(size);
@@ -168,7 +195,6 @@ int AtResponseReader::readLine(char* buf, size_t size, size_t offs) {
 
 int AtResponseReader::error(int ret) {
     if (parser_) {
-        parser_->cancelCommand();
         parser_ = nullptr;
     }
     if (error_ == 0) {
@@ -199,39 +225,6 @@ AtResponse::~AtResponse() {
     }
 }
 
-CString AtResponse::readAll() {
-    size_t size = READ_ALL_INIT_BUF_SIZE;
-    auto buf = (char*)malloc(size);
-    if (!buf) {
-        error(SYSTEM_ERROR_NO_MEMORY);
-        return CString();
-    }
-    NAMED_SCOPE_GUARD(g, {
-        free(buf);
-    });
-    size_t offs = 0;
-    for (;;) {
-        const int n = read(buf + offs, size - offs - 1);
-        if (n < 0) {
-            return CString();
-        }
-        offs += n;
-        if (atResponseEnd()) {
-            break;
-        }
-        size = increaseBufSize(size);
-        const auto p = (char*)realloc(buf, size);
-        if (!p) {
-            error(SYSTEM_ERROR_NO_MEMORY);
-            return CString();
-        }
-        buf = p;
-    }
-    buf[offs] = '\0';
-    g.dismiss();
-    return CString::wrap(buf);
-}
-
 int AtResponse::readResult() {
     if (!parser_) {
         return error(SYSTEM_ERROR_INVALID_STATE);
@@ -244,11 +237,11 @@ int AtResponse::readResult() {
     return ret;
 }
 
-bool AtResponse::atResponseEnd() const {
-    if (!parser_) {
-        return true;
+void AtResponse::reset() {
+    if (parser_) {
+        parser_->cancelCommand();
+        parser_ = nullptr;
     }
-    return parser_->atResponseEnd();
 }
 
 } // particle

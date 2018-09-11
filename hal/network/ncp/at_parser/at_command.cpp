@@ -27,7 +27,7 @@ namespace particle {
 
 namespace {
 
-// Initial buffer size for snprintf()
+// Initial buffer size for the vprintf() method
 const size_t PRINTF_INIT_BUF_SIZE = 128;
 
 } // unnamed
@@ -50,19 +50,16 @@ AtCommand::AtCommand(AtCommand&& cmd) :
 }
 
 AtCommand::~AtCommand() {
-    if (parser_) {
-        parser_->cancelCommand();
-    }
+    reset();
 }
 
 AtCommand& AtCommand::write(const char* data, size_t size) {
+    int ret = SYSTEM_ERROR_INVALID_STATE;
     if (parser_) {
-        const int ret = parser_->writeCommand(data, size);
-        if (ret < 0) {
-            error(ret);
-        }
-    } else {
-        error(SYSTEM_ERROR_INVALID_STATE);
+        ret = parser_->write(data, size);
+    }
+    if (ret < 0) {
+        error(ret);
     }
     return *this;
 }
@@ -112,19 +109,12 @@ AtCommand& AtCommand::timeout(unsigned timeout) {
     return *this;
 }
 
-unsigned AtCommand::timeout() const {
-    if (!parser_) {
-        return 0;
-    }
-    return parser_->commandTimeout();
-}
-
 AtResponse AtCommand::send() {
     if (!parser_) {
         error(SYSTEM_ERROR_INVALID_STATE);
         return AtResponse(error_);
     }
-    const int ret = parser_->flushCommand();
+    const int ret = parser_->sendCommand();
     if (ret < 0) {
         error(ret);
         return AtResponse(error_);
@@ -139,9 +129,14 @@ int AtCommand::exec() {
     return resp.readResult();
 }
 
-int AtCommand::error(int ret) {
+void AtCommand::reset() {
     if (parser_) {
         parser_->cancelCommand();
+    }
+}
+
+int AtCommand::error(int ret) {
+    if (parser_) {
         parser_ = nullptr;
     }
     if (error_ == 0) {

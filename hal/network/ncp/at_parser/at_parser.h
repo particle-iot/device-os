@@ -33,26 +33,26 @@ class AtResponseReader;
 class Stream;
 
 /**
+ * Command line terminator.
+ */
+enum class AtCommandTerminator {
+    CR, ///< "\r"
+    LF, ///< "\n"
+    // Doesn't seem to be allowed by V.250, but some modems use it
+    CRLF ///< "\r\n"
+};
+
+/**
  * AT parser settings.
  */
 class AtParserConfig {
 public:
     /**
-     * Command line terminator.
-     */
-    enum CommandTerminator {
-        CR, ///< "\r"
-        LF, ///< "\n"
-        // Doesn't seem to be allowed by V.250, but some modems use it
-        CRLF ///< "\r\n"
-    };
-
-    /**
      * Default command line terminator.
      *
      * @see `commandTerminator()`
      */
-    static const auto DEFAULT_COMMAND_TERMINATOR = CommandTerminator::CR;
+    static const auto DEFAULT_COMMAND_TERMINATOR = AtCommandTerminator::CR;
     /**
      * Default command timeout in milliseconds.
      *
@@ -97,7 +97,7 @@ public:
      *
      * @see `DEFAULT_COMMAND_TERMINATOR`
      */
-    AtParserConfig& commandTerminator(CommandTerminator term);
+    AtParserConfig& commandTerminator(AtCommandTerminator term);
     /**
      * Returns the command line terminator.
      *
@@ -105,7 +105,7 @@ public:
      *
      * @see `DEFAULT_COMMAND_TERMINATOR`
      */
-    CommandTerminator commandTerminator() const;
+    AtCommandTerminator commandTerminator() const;
     /**
      * Sets the default command timeout.
      *
@@ -160,7 +160,7 @@ public:
 
 private:
     Stream* strm_;
-    CommandTerminator cmdTerm_;
+    AtCommandTerminator cmdTerm_;
     unsigned cmdTimeout_;
     unsigned strmTimeout_;
     bool echoEnabled_;
@@ -178,9 +178,11 @@ public:
      * @param prefix URC prefix string.
      * @param data User data.
      *
+     * @return `0` on success, or a negative result code in case of an error.
+     *
      * @see `addUrcHandler()`
      */
-    typedef void(*UrcHandlerFn)(AtResponseReader* reader, const char* prefix, void* data);
+    typedef int(*UrcHandlerFn)(AtResponseReader* reader, const char* prefix, void* data);
 
     /**
      * Constructs a parser object.
@@ -319,11 +321,13 @@ public:
     /**
      * Processes URCs.
      *
-     * This method needs to be called periodically in order to process pending URCs.
+     * This method needs to be called periodically in order to process pending URCs when there are
+     * no active AT commands.
      *
      * @param timeout Maximum time in milliseconds to spend waiting for URCs. If this argument is
      *        set to `0` the parser will process URCs in a non-blocking manner.
-     * @return The number of processed URCs, or a negative result code in case of an error.
+     *
+     * @return Number of URCs processed, or a negative result code in case of an error.
      */
     int processUrc(unsigned timeout = 0);
     /**
@@ -369,12 +373,12 @@ inline Stream* AtParserConfig::stream() const {
     return strm_;
 }
 
-inline AtParserConfig& AtParserConfig::commandTerminator(CommandTerminator term) {
+inline AtParserConfig& AtParserConfig::commandTerminator(AtCommandTerminator term) {
     cmdTerm_ = term;
     return *this;
 }
 
-inline AtParserConfig::CommandTerminator AtParserConfig::commandTerminator() const {
+inline AtCommandTerminator AtParserConfig::commandTerminator() const {
     return cmdTerm_;
 }
 

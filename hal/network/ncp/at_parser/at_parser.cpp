@@ -38,6 +38,7 @@ AtParser::~AtParser() {
 
 int AtParser::init(AtParserConfig conf) {
     CHECK_FALSE(p_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(conf.stream(), SYSTEM_ERROR_INVALID_ARGUMENT);
     std::unique_ptr<detail::AtParserImpl> p(new(std::nothrow) detail::AtParserImpl(std::move(conf)));
     CHECK_TRUE(p, SYSTEM_ERROR_NO_MEMORY);
     p_ = std::move(p);
@@ -52,7 +53,7 @@ AtCommand AtParser::command() {
     if (!p_) {
         return AtCommand(SYSTEM_ERROR_INVALID_STATE);
     }
-    const int ret = p_->beginCommand();
+    const int ret = p_->newCommand();
     if (ret < 0) {
         return AtCommand(ret);
     }
