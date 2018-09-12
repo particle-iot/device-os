@@ -30,7 +30,7 @@ void system_part1_pre_init() {
     }
 
     if (bootloader_validated && is_user_module_valid()) {
-        module_user_pre_init();
+
     }
     else {
         // indicate to the system that it shouldn't run user code

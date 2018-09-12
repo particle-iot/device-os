@@ -45,7 +45,7 @@ LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -T$(LINKER_FILE)
 # Minimum main stack size with S140 softdevice is 1536 bytes
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=2048
+LDFLAGS += -Wl,--defsym,__STACKSIZE__=4096
 
 # support for external linker file
 

@@ -183,7 +183,7 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
     
-    padding_length = ALIGN(system_part1_ram_start - ORIGIN(SRAM), 512);
+    padding_length = ALIGN(system_part1_static_ram_start - ORIGIN(SRAM), 512);
 
     .padding : /* 512 byte aligned offset in SRAM */
     {
@@ -244,17 +244,9 @@ SECTIONS
 
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
-
-    .stack : /* Contains the initial stack */
-    {
-        link_stack_location = ALIGN(., 4);
-        *(.stack)
-        . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
-        link_stack_end = .;
-    }> SRAM AT> SRAM
     
-    link_heap_location = link_stack_end;
-    link_heap_location_end = __Stack_Init;
+    link_heap_location = _ebss;
+    link_heap_location_end = link_heap_location + min_heap_size;
 
 
     /DISCARD/ :
@@ -282,12 +274,10 @@ SECTIONS
 }
 
 /* Declare libc Heap to start at end of allocated RAM */
-
 PROVIDE( _heap = link_heap_location );
 
 /* End of the heap is top of RAM, aligned 8 byte */
-
-PROVIDE( _eheap = ALIGN( __Stack_Init, 8 ) );
+PROVIDE( _eheap = ALIGN( link_heap_location_end, 8 ) );
 
 /* ThreadX aliases */
 PROVIDE( __RAM_segment_used_end__ = link_stack_end );
@@ -296,6 +286,7 @@ PROVIDE( __tx_vectors = link_interrupt_vectors_location );
 
 PROVIDE( VTOR_Length = interrupt_vectors_length );
 ASSERT ( interrupt_vectors_length == 0x200, "vector table length invalid");
+
 /* Dynalib assertion */
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
@@ -309,12 +300,14 @@ ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_l
 ASSERT ( chk_system_pre_init_start < chk_system_pre_init_end , "system_part1_pre_init function not included" );
 ASSERT ( chk_system_init_start < chk_system_init_end , "system_part1_init function not included" );
 
-min_end_of_heap = link_heap_location + min_heap_size ;
-ASSERT ( min_end_of_heap < __Stack_Init, "Insufficient room for heap" );
+/* Heap assertion*/
+ASSERT ( link_heap_location_end < user_static_ram_start, "Insufficient room for heap" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
-ASSERT ( system_part1_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
+ASSERT ( system_part1_static_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
+ASSERT ( system_part1_static_ram_start == ORIGIN(SRAM), "ORIGIN of SRAM should be equal to system_part1_static_ram_start. Adjust by hand to obtain the correct address and length. ");
+ASSERT ( (link_bss_end - link_global_data_start) <= system_part1_static_ram_size, "Insufficient room for .data and .bss sections" )
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
@@ -322,6 +315,4 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 ASSERT ( system_part1_module_info_start == link_module_info_start, "part1 module info start not where expected" );
 ASSERT ( system_part1_module_info_end == link_module_info_end, "part1 module info end not where expected" );
 
-ASSERT ( ORIGIN(SRAM) == system_part1_ram_start, "ORIGIN of SRAM should be equal to system_part1_ram_start. Adjust by hand to obtain the correct address and length. ");
 
-ASSERT ( (link_bss_end - link_global_data_start) <= system_part1_ram_size, "Insufficient room for .data and .bss sections" )

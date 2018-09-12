@@ -1,5 +1,6 @@
 
 INCLUDE softdevice.ld
+INCLUDE ../../shared/nRF52840/common.ld
 
 MEMORY
 {

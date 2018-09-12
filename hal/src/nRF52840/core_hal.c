@@ -60,6 +60,11 @@ extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 
 extern void malloc_enable(uint8_t);
+extern void malloc_set_heap_end(void*);
+extern void* malloc_heap_end();
+#if defined(MODULAR_FIRMWARE)
+void* module_user_pre_init();
+#endif
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
 {
@@ -274,10 +279,17 @@ void HAL_Core_Config(void)
 
     HAL_RNG_Configuration();
 
+#if defined(MODULAR_FIRMWARE)
+    if (HAL_Core_Validate_User_Module()) {
+        void* new_heap_end = module_user_pre_init();
+        if (new_heap_end > malloc_heap_end()) {
+            malloc_set_heap_end(new_heap_end);
+        }
+    }
+
     // Enable malloc before littlefs initialization.
-    // Because the heap is right after the system static variables and is set to "link_heap_location" by default,
-    // it is unnecessary to set the new heap top.
     malloc_enable(1);
+#endif
 
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();

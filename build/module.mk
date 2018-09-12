@@ -94,7 +94,7 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC
 CLOUD_FLASH_URL ?= https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
 
 # All Target
-all: $(MAKE_DEPENDENCIES) $(TARGET) postbuild
+all: prebuild $(MAKE_DEPENDENCIES) $(TARGET) postbuild
 
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin

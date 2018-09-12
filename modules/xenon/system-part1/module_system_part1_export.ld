@@ -1,28 +1,10 @@
-
-__Stack_Size = 2048 ;
-
-PROVIDE ( _Stack_Size = __Stack_Size ) ;
-
-__Stack_Init = _estack - __Stack_Size ;
-
-/* "PROVIDE" allows to easily override these values from an object file or the commmand line.
- */
-PROVIDE ( _Stack_Init = __Stack_Init ) ;
-
-/*
-There will be a link error if there is not this amount of RAM free at the end.
-*/
-_Minimum_Stack_Size = 0x1400;
+/* System part1 static RAM */
+system_part1_static_ram_start = 0x20000000 + APP_RAM_BASE;
+system_part1_static_ram_size = 100K;
+system_part1_static_ram_end = system_part1_static_ram_start + system_part1_static_ram_size;
 
 
-/* higher address of the user mode stack */
-_estack = 0x20000000 + 200K;
-
-
-system_part1_ram_start = 0x20000000 + 16K;
-system_part1_ram_size = 100K;
-
-
+/* System part1 flash */
 system_part1_start = 0x30000;
 system_part1_vtor_table_size = 0x200;
 system_part1_module_info_size = 24;
@@ -34,11 +16,6 @@ system_part1_module_info_end = system_part1_module_info_start + system_part1_mod
  */
 system_part1_module_table = system_part1_module_info_end;
 
-
-/** 32K just a guess */
-min_heap_size = 32K;
-
-system_heap_end = __Stack_Init;
 
 PROVIDE ( dynalib_location_hal = system_part1_module_table + 0 );
 PROVIDE ( dynalib_location_rt = system_part1_module_table + 4 );

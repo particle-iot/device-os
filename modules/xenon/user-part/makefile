@@ -19,37 +19,36 @@ LIB_DEPS += $(USER_LIB_DEP) $(SERVICES_DYNALIB_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $
 LIB_DIRS += $(dir $(LIB_DEPS))
 
 
-TARGET= prebuild elf bin lst hex size
+TARGET= elf elf_fi bin lst hex size
 
 
 include $(PROJECT_ROOT)/build/arm-tlm.mk
 
 $(call check_modular)
 
-WRITE_FILE_CREATE =$(file >$(1),$(2))
-WRITE_FILE_APPEND =$(file >>$(1),$(2))
 
-COMMA := ,
+elf_fi: $(TARGET_BASE)_fi.elf
 
-prebuild:
-	@echo Generating fake linker script ...
-	$(call WRITE_FILE_CREATE, module_user_memory.ld,/* Memory layout constants */)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_app_flash_origin = 0xD4000;)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_app_flash_length = 128K;)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,/* The SRAM Origin is system_part1_module_ram_end$(COMMA) and extends to system_static_ram_start */)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_origin = 0x20040000 - 56K;)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_length = 56K;)
 
-final_linker_script.ld: makefile build_linker_script.mk
-	$(MAKE) -f build_linker_script.mk TARGET_ELF=$(TARGET_BASE).elf
-	
-$(TARGET_BASE)_fi.elf : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS) final_linker_script.ld
-	$(call echo,'Building target: $@')
-	$(call echo,'Invoking: ARM GCC C++ Linker')
-	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CCACHE) $(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+prebuild: build_linker_script.mk
+	$(call echo,)
+	$(VERBOSE)$(MAKE) -f build_linker_script.mk PREBUILD=1
 	$(call echo,)
 
-postbuild: $(TARGET_BASE)_fi.elf
-	@rm module_user_memory.ld
+
+postbuild:
+	$(VERBOSE)$(RM) module_user_memory.ld
+
+
+$(TARGET_BASE)_fi.elf: $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS) $(TARGET_BASE).elf build_linker_script.mk
+	$(VERBOSE)$(RM) module_user_memory.ld
+	$(VERBOSE)$(MAKE) -f build_linker_script.mk INTERMEDIATE_ELF=$(TARGET_BASE).elf
+	$(call echo,)
+	$(call echo, Generating the final ELF file...)
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CCACHE) $(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	$(VERBOSE)mv -f $@ $(TARGET_BASE).elf
+	$(call echo,)
+
+.PHONY: elf_fi
+

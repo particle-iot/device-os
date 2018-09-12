@@ -91,7 +91,6 @@ SECTIONS
         *(.bss*)
         *(COMMON)
         link_bss_end = .;
-        link_heap_start = .;
         . = ALIGN(., 4);
     }> SRAM AT> SRAM
 
@@ -124,17 +123,17 @@ PROVIDE ( end = system_heap_end );
 
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
-
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
-
-/* Include this modules static exports for validation */
-INCLUDE module_user_export.ld
-
 ASSERT ( link_dynalib_start == user_module_table, "Dynalib location not same as exported location" );
 
 ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware location and APP_FLASH origin differ" );
-
 ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
+
+/* Heap assertion*/
+link_heap_location_end = system_part1_static_ram_end + min_heap_size;
+ASSERT ( link_heap_location_end < link_global_data_start, "Insufficient room for heap" );
+
+ASSERT ( (link_bss_end - link_global_data_start) <= user_static_ram_size, "Insufficient room for .data and .bss sections" )
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );

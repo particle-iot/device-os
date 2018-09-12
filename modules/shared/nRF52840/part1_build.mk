@@ -25,7 +25,7 @@ LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 # Minimum main stack size with S140 softdevice is 1536 bytes
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=2048
+LDFLAGS += -Wl,--defsym,__STACKSIZE__=4096
 
 # assembler startup script
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
