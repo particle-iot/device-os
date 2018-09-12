@@ -92,10 +92,12 @@ const size_t RX_THRESHOLD = 4;
 
 class Usart {
 public:
-    Usart(NRF_UARTE_Type* instance, void (*interruptHandler)(void), NRF_TIMER_Type* timer,
+    Usart(NRF_UARTE_Type* instance, void (*interruptHandler)(void),
+            app_irq_priority_t prio, NRF_TIMER_Type* timer,
             nrf_ppi_channel_t ppi, pin_t tx, pin_t rx, pin_t cts, pin_t rts)
             : uarte_(instance),
               interruptHandler_(interruptHandler),
+              prio_(prio),
               timer_(timer),
               ppi_(ppi),
               txPin_(tx),
@@ -204,7 +206,7 @@ public:
 
         nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK | NRF_UARTE_INT_ENDTX_MASK);
 
-        NRFX_IRQ_PRIORITY_SET(nrfx_get_irq_number((void *)uarte_), APP_IRQ_PRIORITY_HIGHEST);
+        NRFX_IRQ_PRIORITY_SET(nrfx_get_irq_number((void *)uarte_), prio_);
         NRFX_IRQ_ENABLE(nrfx_get_irq_number((void *)uarte_));
 
         nrf_uarte_enable(uarte_);
@@ -581,6 +583,7 @@ private:
 
     NRF_UARTE_Type* uarte_;
     void (*interruptHandler_)(void);
+    app_irq_priority_t prio_;
     NRF_TIMER_Type* timer_;
     nrf_ppi_channel_t ppi_;
 
@@ -604,10 +607,18 @@ private:
 
 constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
 
+const auto UARTE0_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOWEST;
+// TODO: move this to hal_platform_config.h ?
+#if PLATFORM_ID == PLATFORM_XENON
+const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOWEST;
+#else
+const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_HIGHEST;
+#endif // PLATFORM_ID == PLATFORM_XENON
+
 Usart* getInstance(HAL_USART_Serial serial) {
     static Usart usartMap[] = {
-        {NRF_UARTE0, uarte0InterruptHandler, NRF_TIMER3, NRF_PPI_CHANNEL30, TX, RX, CTS, RTS},
-        {NRF_UARTE1, uarte1InterruptHandler, NRF_TIMER4, NRF_PPI_CHANNEL31, TX1, RX1, CTS1, RTS1}
+        {NRF_UARTE0, uarte0InterruptHandler, UARTE0_INTERRUPT_PRIORITY, NRF_TIMER3, NRF_PPI_CHANNEL30, TX, RX, CTS, RTS},
+        {NRF_UARTE1, uarte1InterruptHandler, UARTE1_INTERRUPT_PRIORITY, NRF_TIMER4, NRF_PPI_CHANNEL31, TX1, RX1, CTS1, RTS1}
     };
 
     CHECK_TRUE(serial < sizeof(usartMap) / sizeof(usartMap[0]), nullptr);
