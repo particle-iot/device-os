@@ -3,7 +3,7 @@ SYSTEM_PART1_MODULE_PATH=.
 PROJECT_ROOT = ../../..
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
-PLATFORM_DFU = 0x26000
+PLATFORM_DFU = 0x30000
 
 DEPENDENCIES = newlib_nano modules/xenon/user-part modules/xenon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto

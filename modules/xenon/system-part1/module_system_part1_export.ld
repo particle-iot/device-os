@@ -23,7 +23,7 @@ system_part1_ram_start = 0x20000000 + 16K;
 system_part1_ram_size = 100K;
 
 
-system_part1_start = 0x26000;
+system_part1_start = 0x30000;
 system_part1_vtor_table_size = 0x200;
 system_part1_module_info_size = 24;
 system_part1_module_info_start = system_part1_start + system_part1_vtor_table_size;

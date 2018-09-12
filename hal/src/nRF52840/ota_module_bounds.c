@@ -19,8 +19,8 @@ const module_bounds_t module_bootloader = {
 
 // Modular firmware
 const module_bounds_t module_system_part1 = {
-        .maximum_size = 0x000AE000, // 1M - APP_CODE_BASE - bootloader_flash_length - user_flash_length
-        .start_address = 0x00026000, // APP_CODE_BASE
+        .maximum_size = 0x000A4000, // 1M - APP_CODE_BASE - bootloader_flash_length - user_flash_length
+        .start_address = 0x00030000, // APP_CODE_BASE
         .end_address = 0x000D4000,
         .module_function = MODULE_FUNCTION_SYSTEM_PART,
         .module_index = 1,
