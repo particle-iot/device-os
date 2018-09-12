@@ -40,7 +40,7 @@ typedef enum {
     TRANSFER_STATE_BUSY,
     TRANSFER_STATE_ERROR_ADDRESS,
     TRANSFER_STATE_ERROR_DATA
-} transfer_tate_t;
+} transfer_state_t;
 
 typedef struct {
     nrfx_twim_t                 *instance;
@@ -48,7 +48,7 @@ typedef struct {
     uint8_t                     sda_pin;
 
     bool                        enabled;
-    volatile transfer_tate_t    transfer_state;
+    volatile transfer_state_t   transfer_state;
     I2C_Mode                    mode;
     uint32_t                    speed;
 
