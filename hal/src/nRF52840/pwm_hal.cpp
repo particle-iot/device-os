@@ -366,7 +366,7 @@ uint8_t HAL_PWM_Get_Resolution(uint16_t pin) {
 }
 
 void HAL_PWM_Set_Resolution(uint16_t pin, uint8_t resolution) {
-    if (pin >= TOTAL_PINS || resolution > MAX_RESOLUTION_BITS) {
+    if (pin >= TOTAL_PINS || resolution > MAX_RESOLUTION_BITS || resolution < 1) {
         return;
     }
 
