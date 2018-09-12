@@ -119,11 +119,20 @@ int uninit_pwm_pin(uint16_t pin) {
 
     if (PWM_MAP[pwm_num].enabled) {
         nrfx_pwm_uninit(&PWM_MAP[pwm_num].pwm);
+        PWM_MAP[pwm_num].enabled = false;
     }
 
     // reset pin mode, don't call HAL_Set_Pin_Function or will enter a loop
     nrf_gpio_cfg_default(NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin));
     PIN_MAP[pin].pin_func = PF_NONE;
+
+    if ((PWM_MAP[pwm_num].pins[0] == PIN_INVALID) &&
+        (PWM_MAP[pwm_num].pins[1] == PIN_INVALID) &&
+        (PWM_MAP[pwm_num].pins[2] == PIN_INVALID) &&
+        (PWM_MAP[pwm_num].pins[3] == PIN_INVALID))
+    {
+        return 0;
+    }
 
     // reconfigure pwm
     for (int i = 0; i < PWM_CHANNEL_NUM; i++) {
@@ -188,6 +197,7 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
 
     if (PWM_MAP[pwm_num].enabled) {
         nrfx_pwm_uninit(&PWM_MAP[pwm_num].pwm);
+        PWM_MAP[pwm_num].enabled = false;
     }
 
     // if frequency is changed, all the pins in the same pwm module should be reconfigured
