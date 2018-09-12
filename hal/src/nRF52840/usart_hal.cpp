@@ -29,6 +29,7 @@
 #include <algorithm>
 #include "hal_irq_flag.h"
 #include "delay_hal.h"
+#include "interrupts_hal.h"
 
 namespace {
 
@@ -343,6 +344,12 @@ public:
         return enabled_;
     }
 
+    void pump() {
+        if (!willPreempt() && isEnabled()) {
+            interruptHandler();
+        }
+    }
+
     void interruptHandler() {
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
@@ -358,7 +365,8 @@ public:
             --receiving_;
             startReceiver();
             return;
-        } else if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
             txBuffer_.consumeCommit(nrf_uarte_tx_amount_get(uarte_));
             transmitting_ = false;
@@ -505,6 +513,23 @@ private:
         return nrf_timer_cc_read(timer_, NRF_TIMER_CC_CHANNEL0);
     }
 
+    bool willPreempt() const {
+        // Check if interrupts are disabled:
+        // 1. Globally
+        // 2. Application interrupts through SoftDevice
+        if ((__get_PRIMASK() & 1) || nrf_nvic_state.__cr_flag) {
+            return false;
+        }
+
+        if (HAL_IsISR()) {
+            if (!HAL_WillPreempt(nrfx_get_irq_number((void*)uarte_), HAL_ServicedIRQn())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     static bool validateConfig(unsigned int config) {
         CHECK_TRUE((config & SERIAL_MODE) == SERIAL_8N1 ||
                    (config & SERIAL_MODE) == SERIAL_8E1 ||
@@ -579,16 +604,15 @@ private:
 
 constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
 
-
-static Usart s_usartMap[] = {
-    {NRF_UARTE0, uarte0InterruptHandler, NRF_TIMER3, NRF_PPI_CHANNEL30, TX, RX, CTS, RTS},
-    {NRF_UARTE1, uarte1InterruptHandler, NRF_TIMER4, NRF_PPI_CHANNEL31, TX1, RX1, CTS1, RTS1}
-};
-
 Usart* getInstance(HAL_USART_Serial serial) {
-    CHECK_TRUE(serial < sizeof(s_usartMap) / sizeof(s_usartMap[0]), nullptr);
+    static Usart usartMap[] = {
+        {NRF_UARTE0, uarte0InterruptHandler, NRF_TIMER3, NRF_PPI_CHANNEL30, TX, RX, CTS, RTS},
+        {NRF_UARTE1, uarte1InterruptHandler, NRF_TIMER4, NRF_PPI_CHANNEL31, TX1, RX1, CTS1, RTS1}
+    };
 
-    return &s_usartMap[serial];
+    CHECK_TRUE(serial < sizeof(usartMap) / sizeof(usartMap[0]), nullptr);
+
+    return &usartMap[serial];
 }
 
 void uarte0InterruptHandler(void) {
@@ -678,6 +702,7 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial) {
 ssize_t HAL_USART_Write(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
+    usart->pump();
     return usart->write((const uint8_t*)buffer, size);
 }
 
@@ -714,7 +739,9 @@ uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data) {
 uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
-    while(usart->isEnabled() && usart->space() <= 0);
+    while(usart->isEnabled() && usart->space() <= 0) {
+        usart->pump();
+    }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
 }
 
