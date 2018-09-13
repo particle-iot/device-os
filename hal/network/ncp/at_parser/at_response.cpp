@@ -63,21 +63,21 @@ int AtResponseReader::read(char* data, size_t size) {
     if (!parser_) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
-    return parser_->read(data, size);
+    const size_t n = PARSER_CHECK(parser_->read(data, size));
+    return n;
 }
 
 int AtResponseReader::readLine(char* data, size_t size) {
-    int n = readLine(data, size);
-    if (n < 0) {
-        return n;
+    if (!parser_) {
+        return error(SYSTEM_ERROR_INVALID_STATE);
     }
+    size_t n = PARSER_CHECK(readLine(data, size, true /* skipToLineEnd */));
     if (size > 0) {
         if ((size_t)n == size) {
             --n;
         }
         data[n] = '\0';
     }
-    PARSER_CHECK(nextLine());
     return n;
 }
 
@@ -116,7 +116,7 @@ CString AtResponseReader::readAll() {
             return CString();
         }
         offs += n;
-        if (false /* atResponseEnd() */) {
+        if (parser_->atResponseEnd()) {
             break;
         }
         size = increaseBufSize(size);
@@ -141,12 +141,12 @@ int AtResponseReader::scanf(const char* fmt, ...) {
 }
 
 int AtResponseReader::vscanf(const char* fmt, va_list args) {
-    char buf[SCANF_INIT_BUF_SIZE];
-    int n = parser_->readLine(buf, sizeof(buf) - 1);
-    if (n < 0) {
-        return n;
+    if (!parser_) {
+        return error(SYSTEM_ERROR_INVALID_STATE);
     }
-    if (parser_->endOfLine()) {
+    char buf[SCANF_INIT_BUF_SIZE];
+    int n = PARSER_CHECK(parser_->readLine(buf, sizeof(buf) - 1, false /* skipToLineEnd */));
+    if (parser_->atLineEnd()) {
         buf[n] = '\0';
         n = vsscanf(buf, fmt, args);
     } else {
@@ -167,20 +167,16 @@ int AtResponseReader::vscanf(const char* fmt, va_list args) {
         n = vsscanf(buf2, fmt, args);
     }
     if (n < 0) {
-        return SYSTEM_ERROR_UNKNOWN;
+        return SYSTEM_ERROR_UNKNOWN; // vsscanf() error
     }
-    PARSER_CHECK(nextLine());
     return n;
 }
 
 int AtResponseReader::readLine(char* buf, size_t size, size_t offs) {
     for (;;) {
-        const int n = parser_->readLine(buf + offs, size - offs - 1);
-        if (n < 0) {
-            return n;
-        }
+        const size_t n = PARSER_CHECK(parser_->readLine(buf + offs, size - offs - 1, false /* skipToLineEnd */));
         offs += n;
-        if (parser_->endOfLine()) {
+        if (parser_->atLineEnd()) {
             break;
         }
         size = increaseBufSize(size);

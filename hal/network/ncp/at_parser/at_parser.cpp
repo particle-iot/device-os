@@ -98,7 +98,7 @@ int AtParser::execCommand(unsigned timeout, const char* fmt, ...) {
     return cmd.exec();
 }
 
-int AtParser::addUrcHandler(const char* prefix, UrcHandlerFn handler, void* data) {
+int AtParser::addUrcHandler(const char* prefix, UrcHandler handler, void* data) {
     CHECK_TRUE(p_, SYSTEM_ERROR_INVALID_STATE);
     return p_->addUrcHandler(prefix, handler, data);
 }

@@ -182,7 +182,7 @@ public:
      *
      * @see `addUrcHandler()`
      */
-    typedef int(*UrcHandlerFn)(AtResponseReader* reader, const char* prefix, void* data);
+    typedef int(*UrcHandler)(AtResponseReader* reader, const char* prefix, void* data);
 
     /**
      * Constructs a parser object.
@@ -309,7 +309,7 @@ public:
      *
      * @see `removeUrcHandler()`
      */
-    int addUrcHandler(const char* prefix, UrcHandlerFn handler, void* data);
+    int addUrcHandler(const char* prefix, UrcHandler handler, void* data);
     /**
      * Removes a previously registered URC handler.
      *

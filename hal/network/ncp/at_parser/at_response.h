@@ -77,7 +77,7 @@ class CString;
  * ```
  *
  * @see `AtResponse`
- * @see `AtParser::UrcHandlerFn`
+ * @see `AtParser::UrcHandler`
  */
 class AtResponseReader {
 public:
@@ -222,8 +222,8 @@ protected:
 /**
  * AT command response.
  *
- * This class inherits all the methods of `AtResponseReader` and, additionally, provides a method
- * to read the final result code:
+ * This class inherits all the methods of `AtResponseReader` and provides a method to read the
+ * final result code:
  *
  * ```cpp
  * bool processResponse(AtResponse& resp) {
@@ -272,12 +272,9 @@ public:
      */
     int readResult();
     /**
-     * Returns the error code reported via the `CME ERROR` or `CMS ERROR` result code.
+     * Returns the error code reported via the "+CME ERROR" or "+CMS ERROR" result code.
      *
      * @return Error code.
-     *
-     * @see 3GPP TS 27.005
-     * @see 3GPP TS 27.007
      */
     int resultErrorCode() const;
     /**
