@@ -41,6 +41,8 @@ int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system"
 volatile uint8_t rtos_started = 0;
 
 extern char link_heap_location, link_heap_location_end;
+extern char _Stack_Init;
+void* new_heap_end = &link_heap_location_end;
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -281,7 +283,7 @@ void HAL_Core_Config(void)
 
 #if defined(MODULAR_FIRMWARE)
     if (HAL_Core_Validate_User_Module()) {
-        void* new_heap_end = module_user_pre_init();
+        new_heap_end = module_user_pre_init();
         if (new_heap_end > malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
@@ -679,7 +681,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        info->user_static_ram = info->total_init_heap - info->total_heap;
+        info->user_static_ram = (uint32_t)&_Stack_Init - (uint32_t)new_heap_end;
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {

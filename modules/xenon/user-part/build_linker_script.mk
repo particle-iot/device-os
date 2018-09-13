@@ -18,13 +18,13 @@ USER_SRAM_LENGTH = ( $(DATA_SECTION_LEN) + $(BSS_SECTION_LEN) )
 all: $(INTERMEDIATE_ELF)
 endif
 
-
+# 8K is the backup ram length plusing the stack length
 all:
 	@echo Creating module_user_memory.ld ...
 	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_app_flash_origin = 0xD4000;)
 	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_app_flash_length = 128K;)
 	$(call WRITE_FILE_APPEND, module_user_memory.ld,)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_origin = 0x20040000 - $(USER_SRAM_LENGTH);)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_length = $(USER_SRAM_LENGTH);)
+	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_origin = 0x20040000 - 8K - $(USER_SRAM_LENGTH);)
+	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_length = 8K + $(USER_SRAM_LENGTH);)
 
 
