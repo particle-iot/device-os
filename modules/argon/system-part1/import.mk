@@ -1,5 +1,5 @@
 include ../../shared/system_module_version.mk
-SYSTEM_PART1_MODULE_PATH ?= $(PROJECT_ROOT)/modules/xenon/system-part1
+SYSTEM_PART1_MODULE_PATH ?= $(PROJECT_ROOT)/modules/argon/system-part1
 
 ifeq ($(MINIMAL),y)
 GLOBAL_DEFINES += SYSTEM_MINIMAL

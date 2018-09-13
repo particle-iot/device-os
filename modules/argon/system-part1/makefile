@@ -5,7 +5,7 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x30000
 
-DEPENDENCIES = newlib_nano modules/xenon/user-part modules/xenon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto
+DEPENDENCIES = newlib_nano modules/argon/user-part modules/argon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
 MAKE_DEPENDENCIES = newlib_nano $(LIB_DEPENDENCIES)
