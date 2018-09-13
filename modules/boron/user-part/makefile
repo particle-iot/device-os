@@ -9,7 +9,7 @@ PLATFORM_DFU_LEAVE = y
 export COMPILE_LTO=n
 
 # communication used only for header declarations
-DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication-dynalib modules/argon/system-part1 platform wiring_globals
+DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication-dynalib modules/boron/system-part1 platform wiring_globals
 MAKE_DEPENDENCIES = user hal-dynalib services-dynalib system-dynalib rt-dynalib wiring communication-dynalib platform wiring_globals
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
