@@ -41,24 +41,28 @@ typedef struct {
 
 typedef struct NRF5x_PWM_Info {
     nrfx_pwm_t                              pwm;
+    uint32_t                                frequency;
     uint8_t                                 pins[4];
     uint32_t                                values[4];
 
     bool                                    enabled;
-    uint32_t                                frequency;
     nrf_pwm_values_individual_t             seq_value;
 } NRF5x_PWM_Info;
 
 NRF5x_PWM_Info PWM_MAP[NRF5X_PWM_COUNT] = {
-    {NRFX_PWM_INSTANCE(0), {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}},
-    {NRFX_PWM_INSTANCE(1), {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}},
-    {NRFX_PWM_INSTANCE(2), {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}},
-    {NRFX_PWM_INSTANCE(3), {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}}
+    {NRFX_PWM_INSTANCE(0), 500, {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}},
+    {NRFX_PWM_INSTANCE(1), 500, {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}},
+    {NRFX_PWM_INSTANCE(2), 500, {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}},
+    {NRFX_PWM_INSTANCE(3), 500, {NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED, NRFX_PWM_PIN_NOT_USED}}
 };
 
 static inline uint8_t get_nrf_pin(uint8_t pin) {
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin) | NRFX_PWM_PIN_INVERTED;
+    if (pin == PIN_INVALID) {
+        return pin;
+    } else {
+        return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin) | NRFX_PWM_PIN_INVERTED;
+    }
 }
 
 static bool get_pwm_clock_setting(uint32_t value, uint32_t frequency, uint8_t resolution, pwm_setting_t *p_setting) {
