@@ -45,6 +45,8 @@ STARTUP(cellular_at_response_handler_set(serial_at_response_out, NULL, NULL));
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
+    Particle.keepAlive(23*60);
+
     //Setup the Tinker application here
 
     //Register all the Tinker functions
