@@ -130,7 +130,7 @@ int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
 
 STARTUP(
     cellular_at_response_handler_set(serial_at_response_out, NULL, NULL);
-    cellular_credentials_set("m2m.com.attz", "", "", NULL);
+    // cellular_credentials_set("m2m.com.attz", "", "", NULL);
 );
 
 bool connectEPS() {
@@ -142,7 +142,8 @@ bool connectEPS() {
         Serial.println("ERROR!\r\nFailed modem initialization! Did you turn the modem on? SIM installed?");
     }
     else {
-        cellularSetAPN("m2m.com.attz");
+        // cellularSetAPN("m2m.com.attz");
+        cellularSetAPN("");
         cellularRegisterEPS();
         updateRegistrationTime = millis();
         return true;
