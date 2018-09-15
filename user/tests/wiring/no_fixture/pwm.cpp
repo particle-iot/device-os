@@ -37,6 +37,8 @@ const uint8_t pwm_pins[] = {
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
 #elif (PLATFORM_ID == 10) // Electron
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, B0, B1, B2, B3, C4, C5
+#elif (PLATFORM_ID == PLATFORM_XENON) // Xenon
+        D2, D3, D4, D5, D6, D7, D8, A0, A1, A2, A3, A4, A5, RGBR, RGBG, RGBB
 #endif
 };
 
@@ -59,9 +61,13 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
 }
 
 test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
-    pin_t pin = D5;//pin under test
+#if (PLATFORM_ID == PLATFORM_XENON)
+    pin_t pin = D0;  //pin under test, D0 is not a Timer channel
+#else
+    pin_t pin = D5;  //pin under test, D5 is not a Timer channel
+#endif
     // when
-    pinMode(pin, OUTPUT);//D5 is not a Timer channel
+    pinMode(pin, OUTPUT);
     analogWrite(pin, 100);
     // then
     //analogWrite has a default PWM frequency of 500Hz
