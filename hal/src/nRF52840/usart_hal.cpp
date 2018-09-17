@@ -265,7 +265,7 @@ public:
     ssize_t data() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         RxLock lk(uarte_);
-        size_t d = rxBuffer_.data();
+        ssize_t d = rxBuffer_.data();
         if (d == 0 && receiving_) {
             const ssize_t toConsume = timerValue() - rxConsumed_;
             if (toConsume > 0) {
@@ -617,8 +617,8 @@ const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_HIGHEST;
 
 Usart* getInstance(HAL_USART_Serial serial) {
     static Usart usartMap[] = {
-        {NRF_UARTE0, uarte0InterruptHandler, UARTE0_INTERRUPT_PRIORITY, NRF_TIMER3, NRF_PPI_CHANNEL30, TX, RX, CTS, RTS},
-        {NRF_UARTE1, uarte1InterruptHandler, UARTE1_INTERRUPT_PRIORITY, NRF_TIMER4, NRF_PPI_CHANNEL31, TX1, RX1, CTS1, RTS1}
+        {NRF_UARTE0, uarte0InterruptHandler, UARTE0_INTERRUPT_PRIORITY, NRF_TIMER3, NRF_PPI_CHANNEL4, TX, RX, CTS, RTS},
+        {NRF_UARTE1, uarte1InterruptHandler, UARTE1_INTERRUPT_PRIORITY, NRF_TIMER4, NRF_PPI_CHANNEL5, TX1, RX1, CTS1, RTS1}
     };
 
     CHECK_TRUE(serial < sizeof(usartMap) / sizeof(usartMap[0]), nullptr);
