@@ -42,18 +42,6 @@ const module_bounds_t module_user = {
 #endif
     };
 
-const module_bounds_t module_factory = {
-        .maximum_size = 0x00020000, // 128K
-        .start_address = 0x12200000, // XIP start address (0x12000000) + 2M
-        .end_address = 0x122c4000,
-        .module_function = MODULE_FUNCTION_USER_PART,
-        .module_index = 0,
-        .store = MODULE_STORE_MAIN
-#if HAL_PLATFORM_NCP
-        ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
-#endif
-    };
-
 // Monolithic firmware
 const module_bounds_t module_user_mono = {
         .maximum_size = 0x000c4000, // 1M - APP_CODE_BASE - bootloader_flash_length
@@ -70,7 +58,7 @@ const module_bounds_t module_user_mono = {
 #define EXTERNAL_FLASH_XIP_BASE (0x12000000)
 
 // Factory firmware
-const module_bounds_t module_factory_modular = {
+const module_bounds_t module_factory = {
         .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
         .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS,
         .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
@@ -79,6 +67,18 @@ const module_bounds_t module_factory_modular = {
         .store = MODULE_STORE_FACTORY
 #if HAL_PLATFORM_NCP
 		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
+    };
+
+const module_bounds_t module_factory_mono = {
+        .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
+        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS,
+        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
+        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+        .module_index = 0,
+        .store = MODULE_STORE_FACTORY
+#if HAL_PLATFORM_NCP
+        ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
     };
 
@@ -95,7 +95,6 @@ const module_bounds_t module_xip_code = {
 #endif
 
     };
-
 
 // OTA region
 const module_bounds_t module_ota = {
@@ -128,13 +127,13 @@ const module_bounds_t module_ncp_mono = {
 #endif
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory_modular
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory
 #if HAL_PLATFORM_NCP
         ,&module_ncp_mono
 #endif /* HAL_PLATFORM_NCP */
 };
 #else
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_modular
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono
 #if HAL_PLATFORM_NCP
         ,&module_ncp_mono
 #endif /* HAL_PLATFORM_NCP */
