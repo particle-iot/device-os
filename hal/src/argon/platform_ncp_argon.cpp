@@ -1,5 +1,6 @@
 #include "platform_ncp.h"
 #include "network/ncp.h"
+#include "atclient.h"
 #include "led_service.h"
 #include "check.h"
 #include "scope_guard.h"
@@ -36,7 +37,7 @@ using particle::XmodemSender;
 
 hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
 	// not so happy about mixing the layers like this. Seems strange that HAL should be dependent on wiring.
-	particle::services::at::ArgonNcpAtClient& atclient = *argonNcpAtClient();
+	auto& atclient = *particle::ncpClientInstance()->atParser();
 
 	// we pass only the actual binary after the module info and up to the suffix
 	const uint8_t* start = (const uint8_t*)module->info;

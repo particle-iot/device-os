@@ -15,15 +15,14 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_ARGON_NETWORK_NCP_H
-#define HAL_ARGON_NETWORK_NCP_H
+#pragma once
 
-#include "wifi_ncp_client.h"
+#include "ncp_client.h"
 
 namespace particle {
 
-WifiNcpClient* ncpClientInstance();
+class CellularNcpClient: public NcpClient {
+public:
+};
 
 } // particle
-
-#endif // HAL_ARGON_NETWORK_NCP_H

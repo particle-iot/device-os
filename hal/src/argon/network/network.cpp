@@ -21,12 +21,16 @@
 #include "wiznet/wiznetif.h"
 #include "nat64.h"
 #include <mutex>
+#include <memory>
 #include <nrf52840.h>
+#include "atclient.h"
 #include "random.h"
+#include "check.h"
 #include "border_router_manager.h"
 #include <malloc.h>
 #include "stream.h"
 #include "usart_hal.h"
+#include "esp32_ncp_client.h"
 #include "ncp.h"
 
 using namespace particle;
@@ -89,12 +93,47 @@ private:
 
 } // anonymous
 
-particle::services::at::ArgonNcpAtClient* argonNcpAtClient() {
-    using namespace particle::services::at;
-    static SerialStream stream(HAL_USART_SERIAL2, 921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
-    static ArgonNcpAtClient atClient(&stream);
-    return &atClient;
+namespace particle {
+
+class NcpClientInitializer {
+public:
+    NcpClientInitializer() {
+        const int ret = init();
+        if (ret != 0) {
+            LOG(ERROR, "Unable to initialize NCP client");
+        }
+    }
+
+    WifiNcpClient* client() const {
+        return ncpClient_.get();
+    }
+
+private:
+    std::unique_ptr<SerialStream> strm_;
+    std::unique_ptr<services::at::ArgonNcpAtClient> atClient_;
+    std::unique_ptr<WifiNcpClient> ncpClient_;
+
+    int init() {
+        std::unique_ptr<SerialStream> strm(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, 921600,
+                SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
+        CHECK_TRUE(strm, SYSTEM_ERROR_NO_MEMORY);
+        std::unique_ptr<services::at::ArgonNcpAtClient> atClient(
+                new(std::nothrow) services::at::ArgonNcpAtClient(strm.get()));
+        CHECK_TRUE(atClient, SYSTEM_ERROR_NO_MEMORY);
+        ncpClient_.reset(new(std::nothrow) Esp32NcpClient(atClient.get()));
+        CHECK_TRUE(ncpClient_, SYSTEM_ERROR_NO_MEMORY);
+        strm_ = std::move(strm);
+        atClient_ = std::move(atClient);
+        return 0;
+    }
+};
+
+WifiNcpClient* ncpClientInstance() {
+    static NcpClientInitializer ncp;
+    return ncp.client();
 }
+
+} // particle
 
 int if_init_platform(void*) {
     /* lo1 (created by LwIP) */

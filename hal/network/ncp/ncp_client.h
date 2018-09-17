@@ -15,15 +15,44 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_ARGON_NETWORK_NCP_H
-#define HAL_ARGON_NETWORK_NCP_H
+#pragma once
 
-#include "wifi_ncp_client.h"
+#include "platform_ncp.h"
 
 namespace particle {
 
-WifiNcpClient* ncpClientInstance();
+class InputStream;
+
+enum class NcpState {
+    OFF = 0,
+    READY = 1
+};
+
+enum class NcpConnectionState {
+    DISCONNECTED = 0,
+    CONNECTED = 1
+};
+
+class NcpClient {
+public:
+    virtual ~NcpClient() = default;
+
+    virtual int waitReady() = 0;
+    virtual void off() = 0;
+    virtual NcpState ncpState() = 0;
+
+    virtual int connect() = 0;
+    virtual void disconnect() = 0;
+    virtual NcpConnectionState connectionState() = 0;
+
+    virtual int getFirmwareVersionString(char* buf, size_t size) = 0;
+    virtual int getFirmwareModuleVersion(uint16_t* ver) = 0;
+    virtual int updateFirmware(InputStream* file, size_t size) = 0;
+
+    virtual int ncpId() const = 0;
+
+private:
+    int ncpId_;
+};
 
 } // particle
-
-#endif // HAL_ARGON_NETWORK_NCP_H
