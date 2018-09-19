@@ -33,6 +33,7 @@
 #include "hal_platform.h"
 #include "dct.h"
 #include "rng_hal.h"
+#include "ota_module.h"
 #include <stdlib.h>
 #include <malloc.h>
 
@@ -311,17 +312,70 @@ void HAL_Core_Setup(void)
 }
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-// TODO: Implement these functions for modular firmware
 bool HAL_Core_Validate_User_Module(void)
 {
-    bool valid = true;
+    bool valid = false;
+
+    Load_SystemFlags();
+
+    const uint8_t flags = SYSTEM_FLAG(StartupMode_SysFlag);
+    if (flags == 0xff /* Old bootloader */ || !(flags & 1)) // Safe mode flag
+    {
+        //CRC verification Enabled by default
+        if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
+        {
+            //CRC check the user module and set to module_user_part_validated
+            valid = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
+                                         FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
+                    && HAL_Verify_User_Dependencies();
+        }
+        else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+        {
+            //Reset and let bootloader perform the user module factory reset
+            //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
+            //saves precious system_part2 flash size i.e. fits in < 128KB
+            HAL_Core_Factory_Reset();
+
+            while(1);//Device should reset before reaching this line
+        }
+    }
 
     return valid;
 }
 
 bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 {
-    bool valid = true;
+    const module_bounds_t* bounds = NULL;
+    hal_module_t mod;
+    bool module_fetched = false;
+    bool valid = false;
+
+    // First verify bootloader module
+    bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0, HAL_PLATFORM_MCU_DEFAULT);
+    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+
+    valid = module_fetched && (mod.validity_checked == mod.validity_result);
+
+    if (!valid) {
+        return valid;
+    }
+
+    // Now check system-parts
+    int i = 0;
+    if (flags & 1) {
+        // Validate only that system-part that depends on bootloader passes dependency check
+        i = 1;
+    }
+    do {
+        bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++, HAL_PLATFORM_MCU_DEFAULT);
+        if (bounds) {
+            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+            valid = module_fetched && (mod.validity_checked == mod.validity_result);
+        }
+        if (flags & 1) {
+            bounds = NULL;
+        }
+    } while(bounds != NULL && valid);
 
     return valid;
 }

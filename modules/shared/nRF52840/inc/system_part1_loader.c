@@ -29,10 +29,7 @@ void system_part1_pre_init() {
         module_user_part_validated = HAL_Core_Validate_User_Module();
     }
 
-    if (bootloader_validated && is_user_module_valid()) {
-
-    }
-    else {
+    if (!bootloader_validated || !is_user_module_valid()) {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
