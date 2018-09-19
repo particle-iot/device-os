@@ -37,7 +37,6 @@ const module_bounds_t module_ota = {
 STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)==0x12400000);
 
 
-#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 // Modular firmware
 const module_bounds_t module_system_part1 = {
         .maximum_size = 0x000A4000, // 1M - APP_CODE_BASE - bootloader_flash_length - user_flash_length
@@ -76,7 +75,6 @@ const module_bounds_t module_factory = {
 #endif
     };
 
-#else // defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
 // Monolithic firmware
 const module_bounds_t module_user_mono = {
@@ -102,8 +100,6 @@ const module_bounds_t module_factory_mono = {
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
     };
-
-#endif
 
 // placeholder for unused space
 const module_bounds_t module_xip_code = {
@@ -133,19 +129,11 @@ const module_bounds_t module_ncp_mono = {
 };
 #endif
 
-#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory, &module_user_mono
 #if HAL_PLATFORM_NCP
         ,&module_ncp_mono
 #endif /* HAL_PLATFORM_NCP */
 };
-#else
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono
-#if HAL_PLATFORM_NCP
-        ,&module_ncp_mono
-#endif /* HAL_PLATFORM_NCP */
-};
-#endif
 
 
 const unsigned module_bounds_length = arraySize(module_bounds);
