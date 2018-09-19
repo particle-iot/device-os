@@ -67,8 +67,8 @@ const module_bounds_t module_factory = {
         .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
         .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS,
         .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
-        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
-        .module_index = 0,
+        .module_function = MODULE_FUNCTION_USER_PART,
+        .module_index = 1,
         .store = MODULE_STORE_FACTORY
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
