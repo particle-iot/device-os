@@ -364,7 +364,7 @@ uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
         return 0;
     }
 
-    // FIXME: lower layer driver send data by using interrupt锛� couldn't use
+    // FIXME: lower layer driver send data by using interrupt couldn't use
     //        blocking transmission mode
     // interrupt is diable(enter criticle)
     // while ((__get_PRIMASK() & 1) && FIFO_LENGTH(m_uart_map[serial].tx_fifo)) {}
