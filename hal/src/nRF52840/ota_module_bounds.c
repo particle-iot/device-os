@@ -56,7 +56,7 @@ const module_bounds_t module_user = {
         .start_address = 0x000D4000,
         .end_address = 0x000f4000,
         .module_function = MODULE_FUNCTION_USER_PART,
-        .module_index = 0,
+        .module_index = 1,
         .store = MODULE_STORE_MAIN
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
