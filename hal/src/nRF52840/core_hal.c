@@ -328,7 +328,7 @@ bool HAL_Core_Validate_User_Module(void)
                                   FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
                 && HAL_Verify_User_Dependencies();
     }
-    else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+    else if(FLASH_isUserModuleInfoValid(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
     {
         //Reset and let bootloader perform the user module factory reset
         //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
