@@ -11,6 +11,7 @@ MEMORY
 }
 
 INCLUDE module_system_part1_export.ld
-INCLUDE module_user_export.ld
+
+INCLUDE ../../shared/nRF52840/module_user_export.ld
 
 INCLUDE ../../shared/nRF52840/user.ld

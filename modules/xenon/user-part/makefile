@@ -30,9 +30,9 @@ $(call check_modular)
 elf_fi: $(TARGET_BASE)_fi.elf
 
 
-prebuild: build_linker_script.mk
+prebuild: $(SHARED_MODULAR)/build_linker_script.mk
 	$(call echo,)
-	$(VERBOSE)$(MAKE) -f build_linker_script.mk PREBUILD=1
+	$(VERBOSE)$(MAKE) -f $(SHARED_MODULAR)/build_linker_script.mk PREBUILD=1
 	$(call echo,)
 
 
@@ -40,9 +40,9 @@ postbuild:
 	$(VERBOSE)$(RM) module_user_memory.ld
 
 
-$(TARGET_BASE)_fi.elf: $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS) $(TARGET_BASE).elf build_linker_script.mk
+$(TARGET_BASE)_fi.elf: $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS) $(TARGET_BASE).elf $(SHARED_MODULAR)/build_linker_script.mk
 	$(VERBOSE)$(RM) module_user_memory.ld
-	$(VERBOSE)$(MAKE) -f build_linker_script.mk INTERMEDIATE_ELF=$(TARGET_BASE).elf
+	$(VERBOSE)$(MAKE) -f $(SHARED_MODULAR)/build_linker_script.mk INTERMEDIATE_ELF=$(TARGET_BASE).elf
 	$(call echo,)
 	$(call echo, Generating the final ELF file...)
 	$(VERBOSE)$(MKDIR) $(dir $@)

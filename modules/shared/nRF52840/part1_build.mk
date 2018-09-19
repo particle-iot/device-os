@@ -13,12 +13,12 @@ LINKER_FILE=$(SYSTEM_PART1_MODULE_PATH)/linker.ld
 LINKER_DEPS += $(LINKER_FILE)
 
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
-LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
+LINKER_DEPS += $(SHARED_MODULAR)/module_user_export.ld
 
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
-
+LDFLAGS += -L$(SHARED_MODULAR)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
@@ -42,7 +42,7 @@ endif
 
 LDFLAGS += -u uxTopUsedPriority
 
-SYSTEM_PART1_SRC_PATH = $(SYSTEM_PART1_MODULE_PATH)/src
+SYSTEM_PART1_SRC_PATH = $(SHARED_MODULAR)/src/system-part1
 
 CPPSRC += $(call target_files,$(SYSTEM_PART1_SRC_PATH),*.cpp)
 CSRC += $(call target_files,$(SYSTEM_PART1_SRC_PATH),*.c)
