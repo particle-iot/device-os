@@ -24,7 +24,7 @@ all:
 	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_app_flash_origin = 0xD4000;)
 	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_app_flash_length = 128K;)
 	$(call WRITE_FILE_APPEND, module_user_memory.ld,)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_origin = 0x20040000 - 8K - $(USER_SRAM_LENGTH);)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_length = 8K + $(USER_SRAM_LENGTH);)
+	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_origin = 0x20040000 - 6K - $(USER_SRAM_LENGTH);)
+	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_length = 6K + $(USER_SRAM_LENGTH);)
 
 
