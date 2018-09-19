@@ -4,6 +4,9 @@
 #include "flash_mal.h"
 
 
+#define EXTERNAL_FLASH_XIP_BASE (0x12000000)
+
+
 // Bootloader
 const module_bounds_t module_bootloader = {
         .maximum_size = 0x0000c000, // bootloader_flash_length
@@ -17,6 +20,24 @@ const module_bounds_t module_bootloader = {
 #endif
     };
 
+// OTA region
+const module_bounds_t module_ota = {
+        .maximum_size = EXTERNAL_FLASH_OTA_LENGTH,
+        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS,
+        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH,
+        .module_function = MODULE_FUNCTION_NONE,
+        .module_index = 0,
+        .store = MODULE_STORE_SCRATCHPAD
+#if HAL_PLATFORM_NCP
+        ,.mcu_identifier = HAL_PLATFORM_MCU_ANY
+#endif
+
+    };
+
+STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)==0x12400000);
+
+
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 // Modular firmware
 const module_bounds_t module_system_part1 = {
         .maximum_size = 0x000A4000, // 1M - APP_CODE_BASE - bootloader_flash_length - user_flash_length
@@ -42,21 +63,6 @@ const module_bounds_t module_user = {
 #endif
     };
 
-// Monolithic firmware
-const module_bounds_t module_user_mono = {
-        .maximum_size = 0x000c4000, // 1M - APP_CODE_BASE - bootloader_flash_length
-        .start_address = 0x00030000, // APP_CODE_BASE
-        .end_address = 0x000f4000, // APP_CODE_BASE + module_user_mono.maximum_size
-        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
-        .module_index = 0,
-        .store = MODULE_STORE_MAIN
-#if HAL_PLATFORM_NCP
-		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
-#endif
-    };
-
-#define EXTERNAL_FLASH_XIP_BASE (0x12000000)
-
 // Factory firmware
 const module_bounds_t module_factory = {
         .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
@@ -65,6 +71,21 @@ const module_bounds_t module_factory = {
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
         .store = MODULE_STORE_FACTORY
+#if HAL_PLATFORM_NCP
+        ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
+    };
+
+#else // defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+
+// Monolithic firmware
+const module_bounds_t module_user_mono = {
+        .maximum_size = 0x000c4000, // 1M - APP_CODE_BASE - bootloader_flash_length
+        .start_address = 0x00030000, // APP_CODE_BASE
+        .end_address = 0x000f4000, // APP_CODE_BASE + module_user_mono.maximum_size
+        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+        .module_index = 0,
+        .store = MODULE_STORE_MAIN
 #if HAL_PLATFORM_NCP
 		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
@@ -82,6 +103,8 @@ const module_bounds_t module_factory_mono = {
 #endif
     };
 
+#endif
+
 // placeholder for unused space
 const module_bounds_t module_xip_code = {
         .maximum_size = EXTERNAL_FLASH_RESERVED_LENGTH,
@@ -91,26 +114,10 @@ const module_bounds_t module_xip_code = {
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD
 #if HAL_PLATFORM_NCP
-		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+        ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
 
     };
-
-// OTA region
-const module_bounds_t module_ota = {
-        .maximum_size = EXTERNAL_FLASH_OTA_LENGTH,
-        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS,
-        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH,
-        .module_function = MODULE_FUNCTION_NONE,
-        .module_index = 0,
-        .store = MODULE_STORE_SCRATCHPAD
-#if HAL_PLATFORM_NCP
-		,.mcu_identifier = HAL_PLATFORM_MCU_ANY
-#endif
-
-    };
-
-STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)==0x12400000);
 
 #if HAL_PLATFORM_NCP
 const module_bounds_t module_ncp_mono = {
