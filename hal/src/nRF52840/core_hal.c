@@ -289,6 +289,10 @@ void HAL_Core_Config(void)
             malloc_set_heap_end(new_heap_end);
         }
     }
+    else {
+        // Set the heap end to the stack start to make most use of the SRAM.
+        malloc_set_heap_end(&_Stack_Init);
+    }
 
     // Enable malloc before littlefs initialization.
     malloc_enable(1);
@@ -316,28 +320,22 @@ bool HAL_Core_Validate_User_Module(void)
 {
     bool valid = false;
 
-    Load_SystemFlags();
-
-    const uint8_t flags = SYSTEM_FLAG(StartupMode_SysFlag);
-    if (flags == 0xff /* Old bootloader */ || !(flags & 1)) // Safe mode flag
+    //CRC verification Enabled by default
+    if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
     {
-        //CRC verification Enabled by default
-        if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
-        {
-            //CRC check the user module and set to module_user_part_validated
-            valid = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
-                                         FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
-                    && HAL_Verify_User_Dependencies();
-        }
-        else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
-        {
-            //Reset and let bootloader perform the user module factory reset
-            //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
-            //saves precious system_part2 flash size i.e. fits in < 128KB
-            HAL_Core_Factory_Reset();
+        //CRC check the user module and set to module_user_part_validated
+        valid = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
+                                  FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
+                && HAL_Verify_User_Dependencies();
+    }
+    else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+    {
+        //Reset and let bootloader perform the user module factory reset
+        //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
+        //saves precious system_part2 flash size i.e. fits in < 128KB
+        HAL_Core_Factory_Reset();
 
-            while(1);//Device should reset before reaching this line
-        }
+        while(1);//Device should reset before reaching this line
     }
 
     return valid;
@@ -429,6 +427,14 @@ void HAL_Core_Factory_Reset(void)
 
 void HAL_Core_Enter_Safe_Mode(void* reserved)
 {
+}
+
+bool HAL_Core_Enter_Safe_Mode_Requested(void)
+{
+    Load_SystemFlags();
+    uint8_t flags = SYSTEM_FLAG(StartupMode_SysFlag);
+
+    return (flags & 1);
 }
 
 void HAL_Core_Enter_Bootloader(bool persist)

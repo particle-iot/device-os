@@ -142,6 +142,7 @@ typedef enum {
 } hal_standby_mode_flag_t;
 
 void HAL_Core_Enter_Safe_Mode(void* reserved);
+bool HAL_Core_Enter_Safe_Mode_Requested(void);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
 int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);

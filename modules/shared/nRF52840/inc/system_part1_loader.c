@@ -1,5 +1,4 @@
 #include "platforms.h"
-
 #include <string.h>
 
 extern void** dynalib_location_user;
@@ -29,7 +28,9 @@ void system_part1_pre_init() {
         module_user_part_validated = HAL_Core_Validate_User_Module();
     }
 
-    if (!bootloader_validated || !is_user_module_valid()) {
+    bool safe_mode = HAL_Core_Enter_Safe_Mode_Requested();
+
+    if (!bootloader_validated || !is_user_module_valid() || safe_mode) {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
