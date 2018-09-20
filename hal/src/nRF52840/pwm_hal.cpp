@@ -61,7 +61,7 @@ static inline uint8_t get_nrf_pin(uint8_t pin) {
     if (pin == PIN_INVALID) {
         return pin;
     } else {
-        return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin) | NRFX_PWM_PIN_INVERTED;
+        return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     }
 }
 
@@ -203,6 +203,9 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
         nrfx_pwm_uninit(&PWM_MAP[pwm_num].pwm);
         PWM_MAP[pwm_num].enabled = false;
     }
+
+    // GPIO output mode will cause glitches, configure GPIO to default mode
+    nrf_gpio_cfg_default(NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin));
 
     // if frequency is changed, all the pins in the same pwm module should be reconfigured
     for (int i = 0; i < PWM_CHANNEL_NUM; i++) {
