@@ -24,11 +24,17 @@ extern const module_bounds_t* module_bounds[];
 extern const unsigned module_bounds_length;
 
 extern const module_bounds_t module_bootloader;
+extern const module_bounds_t module_ota;
+
+// Modular firmware
+extern const module_bounds_t module_system_part1;
+extern const module_bounds_t module_user;
+extern const module_bounds_t module_factory;
 
 // Monolithic firmware
 extern const module_bounds_t module_user_mono;
 extern const module_bounds_t module_factory_mono;
-extern const module_bounds_t module_ota;
+
 
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved);
 

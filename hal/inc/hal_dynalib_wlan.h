@@ -26,7 +26,7 @@
 
 #include "dynalib.h"
 
-#if PLATFORM_ID != 10
+#if PLATFORM_ID != 10 && PLATFORM_ID != 13 && PLATFORM_ID != 14
 
 #ifdef DYNALIB_EXPORT
 #include "wlan_hal.h"

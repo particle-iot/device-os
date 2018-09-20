@@ -117,3 +117,8 @@ int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRat
     usb_hal_set_bit_rate_changed_handler(handler);
     return 0;
 }
+
+int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
+{
+    return 0;
+}

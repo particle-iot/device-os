@@ -71,7 +71,6 @@ extern "C" {
 #endif /* USE_SERIAL_FLASH */
 
 #ifdef MODULAR_FIRMWARE
-#    error "Modular firmware is not supported"
 #    define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
 #    ifndef USER_FIRMWARE_IMAGE_SIZE
 #        error USER_FIRMWARE_IMAGE_SIZE not defined
@@ -85,6 +84,18 @@ extern "C" {
 
 #    define INTERNAL_FLASH_OTA_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE)
 #    define INTERNAL_FLASH_FAC_ADDRESS (USER_FIRMWARE_IMAGE_LOCATION+FIRMWARE_IMAGE_SIZE+FIRMWARE_IMAGE_SIZE)
+
+#    ifdef USE_SERIAL_FLASH
+#        define EXTERNAL_FLASH_SYSTEM_STORE (0x200000)          // 2M
+#        define EXTERNAL_FLASH_FAC_ADDRESS (EXTERNAL_FLASH_SYSTEM_STORE)
+#        define EXTERNAL_FLASH_FAC_LENGTH (128*1024)
+#        define EXTERNAL_FLASH_RESERVED_ADDRESS (EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH)
+#        define EXTERNAL_FLASH_RESERVED_LENGTH (420*1024)
+#        define EXTERNAL_FLASH_OTA_LENGTH (1500*1024)
+         /* External Flash memory address where Factory programmed core firmware is located */
+#        /* External Flash memory address where OTA upgraded core firmware will be saved */
+#        define EXTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_RESERVED_LENGTH))
+#    endif
 
 #else /* MODULAR_FIRMWARE */
 

@@ -299,6 +299,11 @@ bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
     return m_spi_map[spi].enabled;
 }
 
+bool HAL_SPI_Is_Enabled_Old(void)
+{
+    return false;
+}
+
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
 {
     while(m_spi_map[spi].transmitting);
