@@ -16,10 +16,10 @@
  */
 
 #ifndef PINMAP_IMPL_H
-#define	PINMAP_IMPL_H
+#define PINMAP_IMPL_H
 
 
-#ifdef	__cplusplus
+#ifdef  __cplusplus
 extern "C" {
 #endif
 
@@ -49,7 +49,7 @@ typedef struct NRF5x_Pin_Info {
 
 extern NRF5x_Pin_Info* HAL_Pin_Map(void);
 
-#ifdef	__cplusplus
+#ifdef  __cplusplus
 }
 #endif
 

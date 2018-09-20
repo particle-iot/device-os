@@ -65,6 +65,14 @@ CSRC += \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/nrf_ble_gatt/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_advertising/,*.c)
 
+# USBD
+CSRC += \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd.c \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_core.c \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_serial_num.c \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_string_desc.c \
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/class/cdc/acm/app_usbd_cdc_acm.c 
+
 ifeq ($(DEBUG_BUILD),y)
 CSRC += \
 	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c

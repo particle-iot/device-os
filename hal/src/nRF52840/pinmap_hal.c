@@ -18,6 +18,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
+#include "pwm_hal.h"
 
 NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 {

@@ -132,7 +132,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-#define TX1	24
+#define TX1 24
 #define RX1 25
 #define CTS1 26
 #define RTS1 27
@@ -144,8 +144,8 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_ARGON
-#define TOTAL_PINS 			(36)
-#define ESPBOOT	28
+#define TOTAL_PINS          (36)
+#define ESPBOOT 28
 #define ESPEN 29
 #define HWAKE 30
 #define ANTSW1 31
@@ -156,7 +156,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_BORON
-#define TOTAL_PINS	(34)
+#define TOTAL_PINS  (34)
 #define UBPWR 28
 #define UBRST 29
 #define BUFEN 30
