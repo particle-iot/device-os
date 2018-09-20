@@ -38,6 +38,7 @@
 #include "system_version.h"
 #include "spark_wiring_flags.h"
 #include <limits>
+#include <mutex>
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID != 20
 #define SYSTEM_HW_TICKS 1
@@ -107,10 +108,6 @@ public:
 
     SystemClass(System_Mode_TypeDef mode = DEFAULT) {
         set_system_mode(mode);
-        if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
-            // Woken up from standby mode
-            sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
-        }
     }
 
     static System_Mode_TypeDef mode(void) {
@@ -374,28 +371,35 @@ public:
         return data;
     }
 
-    inline WakeupReason wakeUpReason() const {
-        return sleepResult_.reason();
+    inline WakeupReason wakeUpReason() {
+        return sleepResult().reason();
     }
 
-    inline bool wokenUpByPin() const {
-        return sleepResult_.wokenUpByPin();
+    inline bool wokenUpByPin() {
+        return sleepResult().wokenUpByPin();
     }
 
-    inline bool wokenUpByRtc() const {
-        return sleepResult_.wokenUpByRtc();
+    inline bool wokenUpByRtc() {
+        return sleepResult().wokenUpByRtc();
     }
 
-    inline pin_t wakeUpPin() const {
-        return sleepResult_.pin();
+    inline pin_t wakeUpPin() {
+        return sleepResult().pin();
     }
 
-    inline SleepResult sleepResult() const {
-        return sleepResult_;
+    SleepResult sleepResult() {
+        static std::once_flag f;
+        std::call_once(f, [&]() {
+            if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
+                // Woken up from standby mode
+                sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
+            }
+        });
+         return sleepResult_;
     }
 
-    inline system_error_t sleepError() const {
-        return sleepResult_.error();
+    inline system_error_t sleepError() {
+        return sleepResult().error();
     }
 
     void buttonMirror(pin_t pin, InterruptMode mode, bool bootloader=false) const
