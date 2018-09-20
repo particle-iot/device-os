@@ -17,11 +17,13 @@
 
 #pragma once
 
+#include "preprocessor.h"
+
 #include <utility>
 
 // TODO: Add a separate class for unnamed scope guards
 #define SCOPE_GUARD(_func) \
-        NAMED_SCOPE_GUARD(_scope_guard_##__COUNTER__, _func)
+        NAMED_SCOPE_GUARD(PP_CAT(_scope_guard_, __COUNTER__), _func)
 
 #define NAMED_SCOPE_GUARD(_name, _func) \
         auto _name = ::particle::makeNamedScopeGuard([&] _func)
