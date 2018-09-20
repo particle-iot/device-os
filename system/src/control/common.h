@@ -22,12 +22,13 @@
 #if SYSTEM_CONTROL_ENABLED
 
 #include "system_error.h"
-#include "common.pb.h"
 #include "inet_hal.h"
 #include <pb.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <stdlib.h>
+
+#include "proto/common.pb.h"
 
 namespace particle {
 namespace control {

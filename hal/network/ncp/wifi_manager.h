@@ -26,6 +26,9 @@ namespace particle {
 
 class WifiNcpClient;
 
+// Maximum number of WiFi network settings that can be saved to a persistent storage
+const unsigned MAX_CONFIGURED_WIFI_NETWORK_COUNT = 10;
+
 const size_t BSSID_SIZE = 6;
 
 struct Bssid {
@@ -161,12 +164,13 @@ public:
 
     int getNetworkInfo(WifiNetworkInfo* info);
 
-    int setNetworkConfig(const WifiNetworkConfig& conf);
+    int setNetworkConfig(WifiNetworkConfig conf);
     int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
 
     int getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data);
     void removeConfiguredNetwork(const char* ssid);
     void clearConfiguredNetworks();
+    bool hasConfiguredNetworks();
 
     int scan(WifiScanCallback callback, void* data);
 
