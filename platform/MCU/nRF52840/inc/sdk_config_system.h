@@ -90,9 +90,12 @@
 #define NRFX_UART_ENABLED       0
 #define NRFX_UARTE_ENABLED      1
 #define NRFX_LPCOMP_ENABLED     0
+
 #define NRFX_TWI_ENABLED        0
-#define NRFX_TWIM_ENABLED       0
+#define NRFX_TWIM_ENABLED       1
 #define NRFX_TWIS_ENABLED       0
+#define NRFX_TWIM0_ENABLED      1
+#define NRFX_TWIM1_ENABLED      1
 
 #define NRFX_SPIM_ENABLED       1
 #define NRFX_SPIM2_ENABLED      1
