@@ -45,7 +45,6 @@
 #include "crc32.h"
 #include "core_hal.h"
 #include "service_debug.h"
-#include "usb_hal.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -97,12 +96,6 @@ void Set_System(void)
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
     DWT_Init();
-
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    // FIXME: Have to initialize USB before softdevice enabled,  
-    // otherwise USB module won't recevie power event
-    HAL_USB_Init();
-#endif
 
     /* Configure the LEDs and set the default states */
     int LEDx;
@@ -196,16 +189,22 @@ void Finish_Update()
 
 
 
-platform_system_flags_t system_flags;
+__attribute__((section(".retained_system_flags"))) platform_system_flags_t system_flags;
+
+#define SYSTEM_FLAGS_MAGIC_NUMBER 0x1ADEACC0u
 
 void Load_SystemFlags()
 {
-    dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &system_flags, sizeof(platform_system_flags_t));
+	// if the header does not match the expected magic value, then initialize
+	if (system_flags.header!=SYSTEM_FLAGS_MAGIC_NUMBER) {
+        memset(&system_flags, 0xff, sizeof(platform_system_flags_t));
+        system_flags.header = SYSTEM_FLAGS_MAGIC_NUMBER;
+	}
 }
 
 void Save_SystemFlags()
 {
-    dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, sizeof(platform_system_flags_t));
+	// nothing to do here
 }
 
 bool FACTORY_Flash_Reset(void)
