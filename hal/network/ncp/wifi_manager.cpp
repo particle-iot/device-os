@@ -1,0 +1,81 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "wifi_manager.h"
+
+namespace particle {
+
+WifiManager::WifiManager(WifiNcpClient* ncpClient) :
+        ncpClient_(ncpClient) {
+}
+
+WifiManager::~WifiManager() {
+}
+
+int WifiManager::on() {
+    return 0;
+}
+
+void WifiManager::off() {
+}
+
+WifiAdapterState WifiManager::adapterState() {
+    return WifiAdapterState::OFF;
+}
+
+int WifiManager::connect(const char* ssid) {
+    return 0;
+}
+
+int WifiManager::connect() {
+    return 0;
+}
+
+void WifiManager::disconnect() {
+}
+
+WifiConnectionState WifiManager::connectionState() {
+    return WifiConnectionState::DISCONNECTED;
+}
+
+int WifiManager::getNetworkInfo(WifiNetworkInfo* info) {
+    return 0;
+}
+
+int WifiManager::setNetworkConfig(const WifiNetworkConfig& conf) {
+    return 0;
+}
+
+int WifiManager::getNetworkConfig(const char* ssid, WifiNetworkConfig* conf) {
+    return 0;
+}
+
+int WifiManager::getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data) {
+    return 0;
+}
+
+void WifiManager::removeConfiguredNetwork(const char* ssid) {
+}
+
+void WifiManager::clearConfiguredNetworks() {
+}
+
+int WifiManager::scan(WifiScanCallback callback, void* data) {
+    return 0;
+}
+
+} // particle

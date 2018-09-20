@@ -18,11 +18,11 @@
 #ifndef HAL_ARGON_NETWORK_NCP_H
 #define HAL_ARGON_NETWORK_NCP_H
 
-#include "wifi_ncp_client.h"
-
 namespace particle {
 
-WifiNcpClient* ncpClientInstance();
+class WifiManager;
+
+WifiManager* wifiManager();
 
 } // particle
 

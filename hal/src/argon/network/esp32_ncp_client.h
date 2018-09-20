@@ -29,18 +29,18 @@ public:
     int waitReady() override;
     void off() override;
     NcpState ncpState() override;
-    int connect() override;
     void disconnect() override;
     NcpConnectionState connectionState() override;
     int getFirmwareVersionString(char* buf, size_t size) override;
     int getFirmwareModuleVersion(uint16_t* ver) override;
     int updateFirmware(InputStream* file, size_t size) override;
     int ncpId() const override;
+    services::at::ArgonNcpAtClient* atParser() const override;
 
     // Reimplemented from WifiNcpClient
-    int connect(const char* bssid, const WifiCredentials* cred) override;
-    int scan(ScanCallback callback) override;
-    services::at::ArgonNcpAtClient* atParser() const override;
+    int connect(const char* ssid, const Bssid& bssid, const WifiCredentials& cred) override;
+    int getNetworkInfo(WifiNetworkInfo* info) override;
+    int scan(WifiScanCallback callback, void* data) override;
 
 private:
     services::at::ArgonNcpAtClient* atParser_;

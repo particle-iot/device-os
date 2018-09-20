@@ -17,6 +17,11 @@
 
 #include "esp32_ncp_client.h"
 
+#include "atclient.h"
+#include "check.h"
+
+#include <cstdio>
+
 namespace particle {
 
 Esp32NcpClient::Esp32NcpClient(services::at::ArgonNcpAtClient* atParser) :
@@ -32,10 +37,6 @@ void Esp32NcpClient::off() {
 
 NcpState Esp32NcpClient::ncpState() {
     return NcpState::OFF;
-}
-
-int Esp32NcpClient::connect() {
-    return 0;
 }
 
 void Esp32NcpClient::disconnect() {
@@ -61,16 +62,20 @@ int Esp32NcpClient::ncpId() const {
     return 0;
 }
 
-int Esp32NcpClient::connect(const char* bssid, const WifiCredentials* cred) {
-    return 0;
-}
-
-int Esp32NcpClient::scan(ScanCallback callback) {
-    return 0;
-}
-
 services::at::ArgonNcpAtClient* Esp32NcpClient::atParser() const {
     return atParser_;
+}
+
+int Esp32NcpClient::connect(const char* ssid, const Bssid& bssid, const WifiCredentials& cred) {
+    return 0;
+}
+
+int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
+    return 0;
+}
+
+int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
+    return 0;
 }
 
 } // particle

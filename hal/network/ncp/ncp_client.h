@@ -21,6 +21,16 @@
 
 namespace particle {
 
+namespace services {
+
+namespace at {
+
+class ArgonNcpAtClient;
+
+} // particle::services::at
+
+} // particle::services
+
 class InputStream;
 
 enum class NcpState {
@@ -41,7 +51,6 @@ public:
     virtual void off() = 0;
     virtual NcpState ncpState() = 0;
 
-    virtual int connect() = 0;
     virtual void disconnect() = 0;
     virtual NcpConnectionState connectionState() = 0;
 
@@ -51,8 +60,8 @@ public:
 
     virtual int ncpId() const = 0;
 
-private:
-    int ncpId_;
+    // TODO: Move this method to a subclass
+    virtual services::at::ArgonNcpAtClient* atParser() const = 0;
 };
 
 } // particle
