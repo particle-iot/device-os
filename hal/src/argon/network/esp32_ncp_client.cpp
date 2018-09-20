@@ -66,7 +66,7 @@ services::at::ArgonNcpAtClient* Esp32NcpClient::atParser() const {
     return atParser_;
 }
 
-int Esp32NcpClient::connect(const char* ssid, const Bssid& bssid, const WifiCredentials& cred) {
+int Esp32NcpClient::connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     return 0;
 }
 

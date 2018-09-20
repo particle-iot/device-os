@@ -41,6 +41,8 @@
 
 #if HAL_PLATFORM_NCP
 #include "network/ncp.h"
+#include "wifi_manager.h"
+#include "wifi_ncp_client.h"
 #endif
 
 #include "config.pb.h"
@@ -101,11 +103,11 @@ int getSystemVersion(ctrl_request* req) {
 
 int getNcpFirmwareVersion(ctrl_request* req) {
 #if HAL_PLATFORM_NCP
-    const auto ncp = ncpClientInstance();
+    const auto ncpClient = wifiManager()->ncpClient();
     char verStr[32] = {};
-    CHECK(ncp->getFirmwareVersionString(verStr, sizeof(verStr)));
+    CHECK(ncpClient->getFirmwareVersionString(verStr, sizeof(verStr)));
     uint16_t modVer = 0;
-    CHECK(ncp->getFirmwareModuleVersion(&modVer));
+    CHECK(ncpClient->getFirmwareModuleVersion(&modVer));
     PB(GetNcpFirmwareVersionReply) pbRep = {};
     EncodedString eVerStr(&pbRep.version, verStr, strlen(verStr));
     pbRep.module_version = modVer;

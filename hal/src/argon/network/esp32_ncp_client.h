@@ -38,7 +38,7 @@ public:
     services::at::ArgonNcpAtClient* atParser() const override;
 
     // Reimplemented from WifiNcpClient
-    int connect(const char* ssid, const Bssid& bssid, const WifiCredentials& cred) override;
+    int connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) override;
     int getNetworkInfo(WifiNetworkInfo* info) override;
     int scan(WifiScanCallback callback, void* data) override;
 

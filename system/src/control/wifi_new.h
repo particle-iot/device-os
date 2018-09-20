@@ -17,16 +17,24 @@
 
 #pragma once
 
-#include "ncp_client.h"
-#include "wifi_manager.h"
+#include "system_control.h"
 
 namespace particle {
 
-class WifiNcpClient: public NcpClient {
-public:
-    virtual int connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) = 0;
-    virtual int getNetworkInfo(WifiNetworkInfo* info) = 0;
-    virtual int scan(WifiScanCallback callback, void* data) = 0;
-};
+namespace ctrl {
+
+namespace wifi {
+
+int joinNewNetwork(ctrl_request* req);
+int joinKnownNetwork(ctrl_request* req);
+int getKnownNetworks(ctrl_request* req);
+int removeKnownNetwork(ctrl_request* req);
+int clearKnownNetworks(ctrl_request* req);
+int getCurrentNetwork(ctrl_request* req);
+int scanNetworks(ctrl_request* req);
+
+} // particle::ctrl::wifi
+
+} // particle::ctrl
 
 } // particle

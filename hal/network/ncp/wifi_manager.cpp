@@ -33,8 +33,8 @@ int WifiManager::on() {
 void WifiManager::off() {
 }
 
-WifiAdapterState WifiManager::adapterState() {
-    return WifiAdapterState::OFF;
+WifiManager::AdapterState WifiManager::adapterState() {
+    return AdapterState::OFF;
 }
 
 int WifiManager::connect(const char* ssid) {
@@ -48,8 +48,8 @@ int WifiManager::connect() {
 void WifiManager::disconnect() {
 }
 
-WifiConnectionState WifiManager::connectionState() {
-    return WifiConnectionState::DISCONNECTED;
+WifiManager::ConnectionState WifiManager::connectionState() {
+    return ConnectionState::DISCONNECTED;
 }
 
 int WifiManager::getNetworkInfo(WifiNetworkInfo* info) {

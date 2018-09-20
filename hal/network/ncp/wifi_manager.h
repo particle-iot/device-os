@@ -19,6 +19,7 @@
 
 #include "c_string.h"
 
+#include <cstring>
 #include <cstdint>
 
 namespace particle {
@@ -53,15 +54,11 @@ public:
     WifiCredentials& password(const char* pwd);
     const char* password() const;
 
-    WifiCredentials& security(WifiSecurity sec);
-    WifiSecurity security() const;
-
     WifiCredentials& type(Type type);
     Type type() const;
 
 private:
     CString pwd_;
-    WifiSecurity sec_;
     Type type_;
 };
 
@@ -72,12 +69,16 @@ public:
     WifiNetworkConfig& ssid(const char* ssid);
     const char* ssid() const;
 
+    WifiNetworkConfig& security(WifiSecurity sec);
+    WifiSecurity security() const;
+
     WifiNetworkConfig& credentials(WifiCredentials cred);
     const WifiCredentials& credentials() const;
 
 private:
     CString ssid_;
     WifiCredentials cred_;
+    WifiSecurity sec_;
 };
 
 class WifiNetworkInfo {
@@ -130,33 +131,33 @@ private:
     int rssi_;
 };
 
-typedef void(*WifiScanCallback)(WifiScanResult result, void* data);
-
-enum class WifiAdapterState {
-    OFF = 0,
-    ON = 1
-};
-
-enum class WifiConnectionState {
-    DISCONNECTED = 0,
-    CONNECTED = 1
-};
+typedef int(*WifiScanCallback)(WifiScanResult result, void* data);
 
 class WifiManager {
 public:
-    typedef void(*GetConfiguredNetworksCallback)(WifiNetworkConfig conf, void* data);
+    enum AdapterState {
+        OFF = 0,
+        ON = 1
+    };
+
+    enum ConnectionState {
+        DISCONNECTED = 0,
+        CONNECTED = 1
+    };
+
+    typedef int(*GetConfiguredNetworksCallback)(WifiNetworkConfig conf, void* data);
 
     explicit WifiManager(WifiNcpClient* ncpClient);
     ~WifiManager();
 
     int on();
     void off();
-    WifiAdapterState adapterState();
+    AdapterState adapterState();
 
     int connect(const char* ssid);
     int connect();
     void disconnect();
-    WifiConnectionState connectionState();
+    ConnectionState connectionState();
 
     int getNetworkInfo(WifiNetworkInfo* info);
 
@@ -176,8 +177,15 @@ private:
     WifiNcpClient* ncpClient_;
 };
 
+inline bool operator==(const Bssid& bssid1, const Bssid& bssid2) {
+    return (memcmp(bssid1.data, bssid2.data, BSSID_SIZE) == 0);
+}
+
+inline bool operator!=(const Bssid& bssid1, const Bssid& bssid2) {
+    return !(bssid1 == bssid2);
+}
+
 inline WifiCredentials::WifiCredentials() :
-        sec_(WifiSecurity::NONE),
         type_(Type::NONE) {
 }
 
@@ -190,15 +198,6 @@ inline const char* WifiCredentials::password() const {
     return pwd_;
 }
 
-inline WifiCredentials& WifiCredentials::security(WifiSecurity sec) {
-    sec_ = sec;
-    return *this;
-}
-
-inline WifiSecurity WifiCredentials::security() const {
-    return sec_;
-}
-
 inline WifiCredentials& WifiCredentials::type(Type type) {
     type_ = type;
     return *this;
@@ -208,7 +207,8 @@ inline WifiCredentials::Type WifiCredentials::type() const {
     return type_;
 }
 
-inline WifiNetworkConfig::WifiNetworkConfig() {
+inline WifiNetworkConfig::WifiNetworkConfig() :
+        sec_(WifiSecurity::NONE) {
 }
 
 inline WifiNetworkConfig& WifiNetworkConfig::ssid(const char* ssid) {
@@ -218,6 +218,15 @@ inline WifiNetworkConfig& WifiNetworkConfig::ssid(const char* ssid) {
 
 inline const char* WifiNetworkConfig::ssid() const {
     return ssid_;
+}
+
+inline WifiNetworkConfig& WifiNetworkConfig::security(WifiSecurity sec) {
+    sec_ = sec;
+    return *this;
+}
+
+inline WifiSecurity WifiNetworkConfig::security() const {
+    return sec_;
 }
 
 inline WifiNetworkConfig& WifiNetworkConfig::credentials(WifiCredentials cred) {
