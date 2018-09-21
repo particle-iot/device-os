@@ -23,27 +23,28 @@
 #include <stddef.h>
 
 inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
-inline bool is_valid_pin(pin_t pin)
-{
+inline bool is_valid_pin(pin_t pin) {
     return pin < TOTAL_PINS;
 }
 
-PinMode HAL_Get_Pin_Mode(pin_t pin)
-{
+PinMode HAL_Get_Pin_Mode(pin_t pin) {
     return (!is_valid_pin(pin)) ? PIN_MODE_NONE : HAL_Pin_Map()[pin].pin_mode;
 }
 
-PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
-{
+PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction) {
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-    if (!is_valid_pin(pin))
+    if (!is_valid_pin(pin)) {
         return PF_NONE;
-    if (pinFunction==PF_ADC && PIN_MAP[pin].adc_channel != ADC_CHANNEL_NONE)
+    }
+    if (pinFunction==PF_ADC && PIN_MAP[pin].adc_channel != ADC_CHANNEL_NONE) {
         return PF_ADC;
+    }
     // Compatible with STM32 for wiring layer
-    if (pinFunction==PF_TIMER && PIN_MAP[pin].pwm_instance != PWM_INSTANCE_NONE)
+    if (pinFunction==PF_TIMER && PIN_MAP[pin].pwm_instance != PWM_INSTANCE_NONE) {
         return PF_TIMER;
+    }
+
     return PF_DIO;
 }
 
@@ -51,65 +52,60 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
  * or INPUT_PULLDOWN
  */
-void HAL_Pin_Mode(pin_t pin, PinMode setMode)
-{
-    if (!is_valid_pin(pin))
-    {
+void HAL_Pin_Mode(pin_t pin, PinMode setMode) {
+    if (!is_valid_pin(pin)) {
         return;
     }
     
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t gpio_pin_map = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     
-    switch (setMode)
-    {
-        case OUTPUT:
-            nrf_gpio_cfg_output(gpio_pin_map);
+    switch (setMode) {
+        case OUTPUT: {
+            nrf_gpio_cfg_output(nrf_pin);
             PIN_MAP[pin].pin_mode = OUTPUT;
             HAL_Set_Pin_Function(pin, PF_DIO);
             break;
-
-        case INPUT:
-            nrf_gpio_cfg_input(gpio_pin_map, NRF_GPIO_PIN_NOPULL);
+        }
+        case INPUT: {
+            nrf_gpio_cfg_input(nrf_pin, NRF_GPIO_PIN_NOPULL);
             PIN_MAP[pin].pin_mode = INPUT;
             HAL_Set_Pin_Function(pin, PF_DIO);
             break;
-
-        case INPUT_PULLUP:
-            nrf_gpio_cfg_input(gpio_pin_map, NRF_GPIO_PIN_PULLUP);
+        }
+        case INPUT_PULLUP: {
+            nrf_gpio_cfg_input(nrf_pin, NRF_GPIO_PIN_PULLUP);
             PIN_MAP[pin].pin_mode = INPUT_PULLUP;
             HAL_Set_Pin_Function(pin, PF_DIO);
             break;
-
-        case INPUT_PULLDOWN:
-            nrf_gpio_cfg_input(gpio_pin_map, NRF_GPIO_PIN_PULLDOWN);
+        }
+        case INPUT_PULLDOWN: {
+            nrf_gpio_cfg_input(nrf_pin, NRF_GPIO_PIN_PULLDOWN);
             PIN_MAP[pin].pin_mode = INPUT_PULLDOWN;
             HAL_Set_Pin_Function(pin, PF_DIO);
             break;
-
-        case PIN_MODE_NONE:
-            nrf_gpio_cfg_default(gpio_pin_map);
+        }
+        case PIN_MODE_NONE: {
+            nrf_gpio_cfg_default(nrf_pin);
             HAL_Set_Pin_Function(pin, PF_NONE);
+            break;
+        }
         default:
             break;
     }
-
-    
 }
 
 /*
  * @brief Saves a pin mode to be recalled later.
  */
-void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
-{
+void HAL_GPIO_Save_Pin_Mode(uint16_t pin) {
     // deprecated
 }
 
 /*
  * @brief Recalls a saved pin mode.
  */
-PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
-{
+PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin) {
     // deprecated
     return PIN_MODE_NONE;
 }
@@ -117,47 +113,38 @@ PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
 /*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
-void HAL_GPIO_Write(uint16_t pin, uint8_t value)
-{
-    if (!is_valid_pin(pin))
-    {
+void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
+    if (!is_valid_pin(pin)) {
         return;
     }
     
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t gpio_pin_map = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
-    if(value == 0)
-    {
-        nrf_gpio_pin_clear(gpio_pin_map);
-    }
-    else
-    {
-        nrf_gpio_pin_set(gpio_pin_map);
+    if(value == 0) {
+        nrf_gpio_pin_clear(nrf_pin);
+    } else {
+        nrf_gpio_pin_set(nrf_pin);
     }
 }
 
 /*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
-int32_t HAL_GPIO_Read(uint16_t pin)
-{
-    if (!is_valid_pin(pin))
-    {
+int32_t HAL_GPIO_Read(uint16_t pin) {
+    if (!is_valid_pin(pin)) {
         return 0;
     }
     
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t gpio_pin_map = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     
     if ((PIN_MAP[pin].pin_mode == INPUT) ||
         (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
         (PIN_MAP[pin].pin_mode == INPUT_PULLDOWN))
     {
-        return nrf_gpio_pin_read(gpio_pin_map);
-    }
-    else
-    {
+        return nrf_gpio_pin_read(nrf_pin);
+    } else {
         return 0;
     }
 }
@@ -167,10 +154,8 @@ int32_t HAL_GPIO_Read(uint16_t pin)
 * @returns uint32_t pulse width in microseconds up to 3 seconds,
 *          returns 0 on 3 second timeout error, or invalid pin.
 */
-uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
-{
-    if (!is_valid_pin(pin))
-    {
+uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
+    if (!is_valid_pin(pin)) {
         return 0;
     }
     
@@ -181,10 +166,8 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
     /* If already on the value we want to measure, wait for the next one.
      * Time out after 3 seconds so we don't block the background tasks
      */
-    while (HAL_GPIO_Read(pin) == value)
-    {
-        if (GetSystem1MsTick() - timeout_start > 3000)
-        {
+    while (HAL_GPIO_Read(pin) == value) {
+        if (GetSystem1MsTick() - timeout_start > 3000) {
             return 0;
         }
     }
@@ -192,10 +175,8 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
     /* Wait until the start of the pulse.
      * Time out after 3 seconds so we don't block the background tasks
      */
-    while (HAL_GPIO_Read(pin) != value)
-    {
-        if (GetSystem1MsTick() - timeout_start > 3000)
-        {
+    while (HAL_GPIO_Read(pin) != value) {
+        if (GetSystem1MsTick() - timeout_start > 3000) {
             return 0;
         }
     }
@@ -204,17 +185,11 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
      * Time out after 3 seconds so we don't block the background tasks
      */
     volatile uint32_t pulse_start = GetSystem1MsTick();
-    while (HAL_GPIO_Read(pin) == value)
-    {
-        if (GetSystem1MsTick() - timeout_start > 3000)
-        {
+    while (HAL_GPIO_Read(pin) == value) {
+        if (GetSystem1MsTick() - timeout_start > 3000) {
             return 0;
         }
     }
 
     return GetSystem1MsTick() - pulse_start;
 }
-
-
-
-
