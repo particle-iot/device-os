@@ -248,6 +248,16 @@ void loop()
                     RGB_BLUE;
                 }
             }
+            else if(cmd == ":prof1;" || cmd == ":PROF1;") {
+                Cellular.command("AT+COPS=2\r\n");
+                Cellular.command("AT+UMNOPROF=2\r\n");
+                Cellular.command("AT+CFUN=15\r\n");
+            }
+            else if(cmd == ":prof0;" || cmd == ":PROF0;") {
+                Cellular.command("AT+COPS=2\r\n");
+                Cellular.command("AT+UMNOPROF=0\r\n");
+                Cellular.command("AT+CFUN=15\r\n");
+            }
             else if(cmd == ":help;" || cmd == ":HELP;") {
                 showHelp();
             }
@@ -368,5 +378,7 @@ void showHelp() {
                    "\r\n[:dis;    ] Network disconnect and stop polling the EPS status (default), LED=BLUE"
                    "\r\n[:cloud1; ] Connect to the Particle Cloud, LED=CYAN"
                    "\r\n[:cloud0; ] Disconnect from the Particle Cloud, LED=GREEN"
+                   "\r\n[:prof1;  ] Set MNO profile +UMNOPROF to (AT&T)"
+                   "\r\n[:prof0;  ] Set MNO profile +UMNOPROF to (default)"
                    "\r\n[:help;   ] show this help menu\r\n");
 }
