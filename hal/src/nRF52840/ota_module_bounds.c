@@ -4,9 +4,6 @@
 #include "flash_mal.h"
 
 
-#define EXTERNAL_FLASH_XIP_BASE (0x12000000)
-
-
 // Bootloader
 const module_bounds_t module_bootloader = {
         .maximum_size = 0x0000c000, // bootloader_flash_length
@@ -23,8 +20,8 @@ const module_bounds_t module_bootloader = {
 // OTA region
 const module_bounds_t module_ota = {
         .maximum_size = EXTERNAL_FLASH_OTA_LENGTH,
-        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS,
-        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH,
+        .start_address = EXTERNAL_FLASH_OTA_XIP_ADDRESS,
+        .end_address = EXTERNAL_FLASH_OTA_XIP_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH,
         .module_function = MODULE_FUNCTION_NONE,
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD
@@ -34,7 +31,7 @@ const module_bounds_t module_ota = {
 
     };
 
-STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)==0x12400000);
+STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_OTA_XIP_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)==0x12400000);
 
 
 // Modular firmware
@@ -65,8 +62,8 @@ const module_bounds_t module_user = {
 // Factory firmware
 const module_bounds_t module_factory = {
         .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
-        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS,
-        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
+        .start_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS,
+        .end_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
         .module_function = MODULE_FUNCTION_USER_PART,
         .module_index = 1,
         .store = MODULE_STORE_FACTORY
@@ -91,8 +88,8 @@ const module_bounds_t module_user_mono = {
 
 const module_bounds_t module_factory_mono = {
         .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
-        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS,
-        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
+        .start_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS,
+        .end_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
         .store = MODULE_STORE_FACTORY
@@ -104,8 +101,8 @@ const module_bounds_t module_factory_mono = {
 // placeholder for unused space
 const module_bounds_t module_xip_code = {
         .maximum_size = EXTERNAL_FLASH_RESERVED_LENGTH,
-        .start_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_RESERVED_ADDRESS, // module_factory_modular.end_address
-        .end_address = EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_RESERVED_LENGTH,
+        .start_address = EXTERNAL_FLASH_RESERVED_XIP_ADDRESS, // module_factory_modular.end_address
+        .end_address = EXTERNAL_FLASH_RESERVED_XIP_ADDRESS + EXTERNAL_FLASH_RESERVED_LENGTH,
         .module_function = MODULE_FUNCTION_NONE,
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD

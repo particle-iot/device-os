@@ -34,10 +34,9 @@ extern platform_system_flags_t system_flags;
 
 // these are functions used by the bootloader
 
-inline void OTA_Finished_ResetStatus() {}
-inline bool OTA_Flash_Reset() { return false; }
-inline bool FACTORY_Flash_Reset() { return 0; }
-inline void BACKUP_Flash_Reset() {}
+void OTA_Flash_Reset(void);
+bool FACTORY_Flash_Reset(void);
+void BACKUP_Flash_Reset(void);
 
 #define __IO volatile
 void IWDG_Reset_Enable(uint32_t msTimeout);

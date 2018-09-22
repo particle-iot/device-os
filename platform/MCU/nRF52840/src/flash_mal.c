@@ -48,7 +48,7 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
-        return startAddress >= 0x00000000 && endAddress <= 0x100000;
+        return startAddress >= 0x00000000 && endAddress <= 0x20000000;
     }
     else if (flashDeviceID == FLASH_SERIAL)
     {
@@ -404,13 +404,7 @@ int FLASH_ApplyFactoryResetImage(copymem_fn_t copy)
                                    flash_module.module_function,
                                    flash_module.flags);
     }
-    else
-    {
-        // attempt to use the default that the bootloader was built with
-        restoreFactoryReset = copy(FLASH_INTERNAL, INTERNAL_FLASH_FAC_ADDRESS, FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
-            FACTORY_RESET_MODULE_FUNCTION,
-            MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION);
-    }
+
     return restoreFactoryReset;
 }
 
