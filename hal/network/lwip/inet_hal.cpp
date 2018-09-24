@@ -57,3 +57,19 @@ const char* inet_inet_ntop(int af, const void* src, char* dst, socklen_t size) {
 int inet_inet_pton(int af, const char* src, void* dst) {
   return lwip_inet_pton(af, src, dst);
 }
+
+uint32_t inet_htonl(uint32_t v) {
+  return lwip_htonl(v);
+}
+
+uint32_t inet_ntohl(uint32_t v) {
+  return lwip_ntohl(v);
+}
+
+uint16_t inet_htons(uint16_t v) {
+  return lwip_htons(v);
+}
+
+uint16_t inet_ntohs(uint16_t v) {
+  return lwip_ntohs(v);
+}
