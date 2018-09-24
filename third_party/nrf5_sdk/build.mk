@@ -72,8 +72,8 @@ CSRC += \
 	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_string_desc.c \
 	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/class/cdc/acm/app_usbd_cdc_acm.c 
 
-ifeq ($(DEBUG_BUILD),y)
-CSRC += \
-	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c
-endif
+#ifeq ($(DEBUG_BUILD),y)
+#CSRC += \
+#	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c
+#endif
 endif

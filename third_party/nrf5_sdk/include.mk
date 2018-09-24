@@ -87,8 +87,8 @@ ifneq (,$(findstring crypto,$(MAKE_DEPENDENCIES)))
 LIBS_EXT_END += $(TARGET_NRF5_SDK_EXTERNAL_PATH)/nrf_cc310/lib/libnrf_cc310_0.9.9.a
 endif
 
-ifeq ($(DEBUG_BUILD),y)
-INCLUDE_DIRS += \
-	$(TARGET_NRF5_SDK_EXTERNAL_PATH)/segger_rtt
-endif
+#ifeq ($(DEBUG_BUILD),y)
+#INCLUDE_DIRS += \
+#	$(TARGET_NRF5_SDK_EXTERNAL_PATH)/segger_rtt
+#endif
 endif
