@@ -29,6 +29,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <unistd.h>
 
 /* Includes ------------------------------------------------------------------*/
 // #include "pinmap_hal.h"
@@ -60,6 +61,7 @@
 #define SERIAL_PARITY         ((uint32_t)0b00001100)
 #define SERIAL_DATA_BITS      ((uint32_t)0b00110000)
 #define SERIAL_FLOW_CONTROL   ((uint32_t)0b11000000)
+#define SERIAL_MODE           (SERIAL_DATA_BITS | SERIAL_PARITY | SERIAL_STOP_BITS)
 
 // Stop bits
 #define SERIAL_STOP_BITS_1    ((uint32_t)0b00000000)
@@ -141,6 +143,15 @@ typedef enum HAL_USART_Serial {
 extern "C" {
 #endif
 
+typedef struct HAL_USART_Buffer_Config {
+  uint16_t size;
+  void* rx_buffer;
+  uint16_t rx_buffer_size;
+  void* tx_buffer;
+  uint16_t tx_buffer_size;
+} HAL_USART_Buffer_Config;
+
+int HAL_USART_Init_Ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*);
 void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
 void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud);
 void HAL_USART_End(HAL_USART_Serial serial);
@@ -156,6 +167,10 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data);
 void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved);
 uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial);
+
+ssize_t HAL_USART_Write(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize);
+ssize_t HAL_USART_Read(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
+ssize_t HAL_USART_Peek(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
 
 #ifdef __cplusplus
 }

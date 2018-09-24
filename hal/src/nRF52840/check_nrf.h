@@ -17,56 +17,26 @@
 
 #pragma once
 
-#include "system_error.h"
-#include "logging.h"
+#include "check.h"
+#include <nrf_error.h>
+#include <nrfx_errors.h>
 
-#ifndef LOG_CHECKED_ERRORS
-#define LOG_CHECKED_ERRORS 0
-#endif
-
-#if LOG_CHECKED_ERRORS
-#define _LOG_CHECKED_ERROR(_expr, _ret) \
-        LOG(ERROR, #_expr " failed: %d", (int)_ret)
-#else
-#define _LOG_CHECKED_ERROR(_expr, _ret)
-#endif
-
-#define CHECK_RETURN(_expr, _val) \
+#define CHECK_NRF_RETURN(_expr, _val) \
         ({ \
             const auto _ret = _expr; \
-            if (_ret < 0) { \
+            if (_ret != NRF_SUCCESS && _ret != NRFX_SUCCESS) { \
                 _LOG_CHECKED_ERROR(_expr, _ret); \
                 return _val; \
             } \
             _ret; \
         })
 
-#define CHECK(_expr) \
+#define CHECK_NRF(_expr) \
         ({ \
             const auto _ret = _expr; \
-            if (_ret < 0) { \
+            if (_ret != NRF_SUCCESS && _ret != NRFX_SUCCESS) { \
                 _LOG_CHECKED_ERROR(_expr, _ret); \
                 return _ret; \
-            } \
-            _ret; \
-        })
-
-#define CHECK_TRUE(_expr, _ret) \
-        do { \
-            const bool _ok = (bool)(_expr); \
-            if (!_ok) { \
-                _LOG_CHECKED_ERROR(_expr, _ret); \
-                return _ret; \
-            } \
-        } while (false)
-
-#define CHECK_TRUE_RETURN(_expr, _val) \
-        ({ \
-            const auto _ret = _expr; \
-            const bool _ok = (bool)(_ret); \
-            if (!_ok) { \
-                _LOG_CHECKED_ERROR(_expr, _val); \
-                return _val; \
             } \
             _ret; \
         })
