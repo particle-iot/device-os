@@ -121,6 +121,11 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
+    // PWM have conflict with GPIO OUTPUT mode on nRF52
+    if (PIN_MAP[pin].pin_func == PF_PWM) {
+        HAL_Pin_Mode(pin, OUTPUT);
+    }
+
     if(value == 0) {
         nrf_gpio_pin_clear(nrf_pin);
     } else {
@@ -144,6 +149,8 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
         (PIN_MAP[pin].pin_mode == INPUT_PULLDOWN))
     {
         return nrf_gpio_pin_read(nrf_pin);
+    } else if (PIN_MAP[pin].pin_mode == OUTPUT) {
+        return nrf_gpio_pin_out_read(nrf_pin);
     } else {
         return 0;
     }
@@ -155,19 +162,25 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 *          returns 0 on 3 second timeout error, or invalid pin.
 */
 uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
+
+    #define FAST_READ(pin)  ((reg->IN >> pin) & 1UL)
+
     if (!is_valid_pin(pin)) {
         return 0;
     }
     
-    volatile uint32_t timeout_start = GetSystem1MsTick(); 
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&nrf_pin);
 
-    HAL_Pin_Mode(pin, INPUT);
+    volatile uint32_t timeout_start = SYSTEM_TICK_COUNTER;
 
     /* If already on the value we want to measure, wait for the next one.
      * Time out after 3 seconds so we don't block the background tasks
      */
-    while (HAL_GPIO_Read(pin) == value) {
-        if (GetSystem1MsTick() - timeout_start > 3000) {
+    // while (nrf_gpio_pin_read(gpio_pin_map) == value)
+    while (FAST_READ(nrf_pin) == value) {
+        if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
             return 0;
         }
     }
@@ -175,8 +188,8 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
     /* Wait until the start of the pulse.
      * Time out after 3 seconds so we don't block the background tasks
      */
-    while (HAL_GPIO_Read(pin) != value) {
-        if (GetSystem1MsTick() - timeout_start > 3000) {
+    while (FAST_READ(nrf_pin) != value) {
+        if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
             return 0;
         }
     }
@@ -184,12 +197,12 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
     /* Wait until this value changes, this will be our elapsed pulse width.
      * Time out after 3 seconds so we don't block the background tasks
      */
-    volatile uint32_t pulse_start = GetSystem1MsTick();
-    while (HAL_GPIO_Read(pin) == value) {
-        if (GetSystem1MsTick() - timeout_start > 3000) {
+    volatile uint32_t pulse_start = SYSTEM_TICK_COUNTER;
+    while (FAST_READ(nrf_pin) == value) {
+        if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
             return 0;
         }
     }
 
-    return GetSystem1MsTick() - pulse_start;
+    return (SYSTEM_TICK_COUNTER - pulse_start) / SYSTEM_US_TICKS;
 }
