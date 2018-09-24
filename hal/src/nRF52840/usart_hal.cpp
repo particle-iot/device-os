@@ -768,13 +768,3 @@ uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial) {
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool enable) {
     // Unsupported
 }
-
-void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved) {
-    // not support
-    return;
-}
-
-uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial) {
-    // not support
-    return false;
-}
