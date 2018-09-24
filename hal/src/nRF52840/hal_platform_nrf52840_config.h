@@ -20,7 +20,9 @@
 
 #define HAL_PLATFORM_DCT (1)
 
-#define HAL_USE_SOCKET_HAL_COMPAT (1)
+#define HAL_USE_SOCKET_HAL_COMPAT (0)
+
+/** Only for HAL_IPAddress */
 #define HAL_USE_INET_HAL_COMPAT (1)
 
 #define HAL_USE_SOCKET_HAL_POSIX (1)
