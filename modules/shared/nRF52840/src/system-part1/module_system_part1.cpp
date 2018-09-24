@@ -29,6 +29,10 @@ DYNALIB_TABLE_EXTERN(hal_bootloader);
 DYNALIB_TABLE_EXTERN(hal_dct);
 DYNALIB_TABLE_EXTERN(communication);
 DYNALIB_TABLE_EXTERN(services);
+DYNALIB_TABLE_EXTERN(hal_inet);
+DYNALIB_TABLE_EXTERN(hal_netdb);
+DYNALIB_TABLE_EXTERN(hal_ifapi);
+DYNALIB_TABLE_EXTERN(hal_resolvapi);
 
 
 // strange that this is needed given that the entire block is scoped extern "C"
@@ -58,7 +62,11 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     DYNALIB_TABLE_NAME(hal_bootloader),
     DYNALIB_TABLE_NAME(hal_dct),
     DYNALIB_TABLE_NAME(communication),
-    DYNALIB_TABLE_NAME(services)
+    DYNALIB_TABLE_NAME(services),
+    DYNALIB_TABLE_NAME(hal_inet),
+    DYNALIB_TABLE_NAME(hal_netdb),
+    DYNALIB_TABLE_NAME(hal_ifapi),
+    DYNALIB_TABLE_NAME(hal_resolvapi)
 };
 
 #include "system_part1_loader.c"
