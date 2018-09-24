@@ -106,7 +106,7 @@ void netif_ip6_address_to_if_addr(struct netif* netif, uint8_t i, struct if_addr
 }
 
 unsigned int ip4_netmask_to_prefix_length(const ip4_addr_t* netmask) {
-    const unsigned int mask = ntohl(ip4_addr_get_u32(netmask));
+    const unsigned int mask = lwip_ntohl(ip4_addr_get_u32(netmask));
     return mask == 0 ? 0 : (32 - __builtin_ctz(mask));
 }
 

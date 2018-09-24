@@ -41,6 +41,8 @@ extern "C" {
  */
 #define NO_SYS                           0
 
+#define LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS 1
+
 /*
    ------------------------------------
    ----------- Core locking -----------
