@@ -62,6 +62,13 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         s_forcedDisconnect = false;
+
+        if (!NetworkManager::instance()->isConfigured()) {
+            /* Enter listening mode */
+            network_listen(0, 0, 0);
+            return;
+        }
+
         if (!NetworkManager::instance()->isNetworkingEnabled()) {
             NetworkManager::instance()->enableNetworking();
         }
@@ -195,12 +202,6 @@ void manage_network_connection() {
         return;
     }
 
-    if (!NetworkManager::instance()->isConfigured()) {
-        /* Enter listening mode */
-        network_listen(0, 0, 0);
-        return;
-    }
-
     /* Need to disconnect and disable networking */
     /* FIXME: refactor */
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP) {
@@ -213,6 +214,12 @@ void manage_network_connection() {
         cfod_count = 0;
     } else {
         if (spark_cloud_flag_auto_connect() && !s_forcedDisconnect) {
+            if (!NetworkManager::instance()->isConfigured()) {
+                /* Enter listening mode */
+                network_listen(0, 0, 0);
+                return;
+            }
+
             if (!NetworkManager::instance()->isNetworkingEnabled()) {
                 NetworkManager::instance()->enableNetworking();
             }
