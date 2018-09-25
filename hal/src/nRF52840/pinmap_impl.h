@@ -33,6 +33,7 @@ typedef struct NRF5x_Pin_Info {
     uint8_t     adc_channel;
     uint8_t     pwm_instance;   // 4 instances on nRF52, range: 0~3
     uint8_t     pwm_channel;    // 4 channels in each instance, range: 0~3
+	uint8_t     pwm_resolution; // default 8bit, max 15bit
     uint8_t     exti_channel;   // 16 channels
 } NRF5x_Pin_Info;
 
