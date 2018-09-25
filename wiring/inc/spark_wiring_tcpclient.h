@@ -77,17 +77,8 @@ private:
         uint16_t total;
         IPAddress remoteIP;
 
-        explicit Data(sock_handle_t sock) :
-                sock(sock),
-                offset(0),
-                total(0) {
-        }
-
-        ~Data() {
-            if (socket_handle_valid(sock)) {
-                socket_close(sock);
-            }
-        }
+        explicit Data(sock_handle_t sock);
+        ~Data();
     };
 
     std::shared_ptr<Data> d_;

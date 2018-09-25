@@ -15,16 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_DYNALIB_SOCKET_H
-#define	HAL_DYNALIB_SOCKET_H
+/**
+ * @file
+ * @brief
+ *  This is a POSIX wrapper for inet_hal_posix
+ */
 
-#include "dynalib.h"
-#include "hal_platform.h"
+#ifndef NETINET_IN_H
+#define NETINET_IN_H
 
-#if HAL_USE_SOCKET_HAL_POSIX
-#include "hal_dynalib_socket_posix.h"
-#else
-#include "hal_dynalib_socket_compat.h"
-#endif // HAL_USE_SOCKET_HAL_POSIX
+#include "inet_hal.h"
 
-#endif /* HAL_DYNALIB_SOCKET_H */
+#endif /* NETINET_IN_H */

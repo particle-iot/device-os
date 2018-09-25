@@ -25,13 +25,16 @@
   ******************************************************************************
  */
 
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_COMPAT
+
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_network.h"
 #include "system_task.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "spark_macros.h"
-
 
 using namespace spark;
 
@@ -245,3 +248,17 @@ IPAddress TCPClient::remoteIP()
 {
     return d_->remoteIP;
 }
+
+TCPClient::Data::Data(sock_handle_t sock)
+        : sock(sock),
+          offset(0),
+          total(0) {
+}
+
+TCPClient::Data::~Data() {
+    if (socket_handle_valid(sock)) {
+        socket_close(sock);
+    }
+}
+
+#endif // HAL_USE_SOCKET_HAL_COMPAT

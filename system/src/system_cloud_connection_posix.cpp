@@ -25,6 +25,7 @@
 #include "netdb_hal.h"
 #include "system_string_interpolate.h"
 #include "spark_wiring_ticks.h"
+#include <arpa/inet.h>
 
 namespace {
 

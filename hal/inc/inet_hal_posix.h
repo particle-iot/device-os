@@ -118,6 +118,42 @@ const char* inet_inet_ntop(int af, const void* src, char* dst, socklen_t size);
 int inet_inet_pton(int af, const char* src, void* dst);
 
 /**
+ * Converts the unsigned integer from host byte order to network byte order.
+ *
+ * @param[in]  v     input unsigned integer
+ *
+ * @returns    unsigned integer in network byte order
+ */
+uint32_t inet_htonl(uint32_t v);
+
+/**
+ * Converts the unsigned integer from network byte order to host byte order.
+ *
+ * @param[in]  v     input unsigned integer
+ *
+ * @returns    unsigned integer in host byte order
+ */
+uint32_t inet_ntohl(uint32_t v);
+
+/**
+ * Converts the unsigned short integer from host byte order to network byte order.
+ *
+ * @param[in]  v     input unsigned short integer
+ *
+ * @returns    unsigned short integer in network byte order
+ */
+uint16_t inet_htons(uint16_t v);
+
+/**
+ * Converts the unsigned short integer from network byte order to host byte order.
+ *
+ * @param[in]  v     input unsigned short integer
+ *
+ * @returns    unsigned short integer in host byte order
+ */
+uint16_t inet_ntohs(uint16_t v);
+
+/**
  * @}
  *
  */

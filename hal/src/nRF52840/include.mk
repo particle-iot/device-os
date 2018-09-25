@@ -19,6 +19,7 @@ INCLUDE_DIRS += $(HAL_INCL_NRF52840_PATH)/mbedtls
 INCLUDE_DIRS += $(HAL_INCL_NRF52840_PATH)/littlefs
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/api
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/posix
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/openthread
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/wiznet
 endif

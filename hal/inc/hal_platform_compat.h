@@ -59,4 +59,6 @@
 #define HAL_PLATFORM_NCP 	(1)
 #define HAL_PLATFORM_NCP_AT (0)
 
+#define HAL_PLATFORM_DCT_NO_DEPRECATED (0)
+
 #endif /* HAL_PLATFORM_COMPAT_H */

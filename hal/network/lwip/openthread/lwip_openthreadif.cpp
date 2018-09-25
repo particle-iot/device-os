@@ -49,6 +49,10 @@ void otIp6AddressToIp6Addr(const otIp6Address* otAddr, ip6_addr_t& addr) {
                     otAddr->mFields.m32[3]);
 }
 
+void ip6AddrToOtIp6Address(const ip6_addr_t& addr, otIp6Address* otAddr) {
+    memcpy(otAddr->mFields.m32, addr.addr, sizeof(addr.addr));
+}
+
 void otNetifAddressToIp6Addr(const otNetifAddress* otAddr, ip6_addr_t& addr) {
     IP6_ADDR(&addr, otAddr->mAddress.mFields.m32[0],
                     otAddr->mAddress.mFields.m32[1],
@@ -201,6 +205,7 @@ err_t OpenThreadNetif::initCb(netif* netif) {
     netif->output_ip6 = outputIp6Cb;
     netif->rs_count = 0;
     netif->flags |= NETIF_FLAG_NO_ND6;
+    netif->mld_mac_filter = mldMacFilterCb;
 
     /* FIXME */
     netif_set_default(netif);
@@ -251,6 +256,25 @@ err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr
     return ret == OT_ERROR_NONE ? ERR_OK : ERR_VAL;
 }
 
+err_t OpenThreadNetif::mldMacFilterCb(netif* netif, const ip6_addr_t *group,
+        netif_mac_filter_action action) {
+    auto self = static_cast<OpenThreadNetif*>(netif->state);
+
+    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+
+    otIp6Address addr = {};
+    ip6AddrToOtIp6Address(*group, &addr);
+
+    int ret = OT_ERROR_FAILED;
+
+    if (action == NETIF_ADD_MAC_FILTER) {
+        ret = otIp6SubscribeMulticastAddress(self->ot_, &addr);
+    } else if (action == NETIF_DEL_MAC_FILTER) {
+        ret = otIp6UnsubscribeMulticastAddress(self->ot_, &addr);
+    }
+    return ret == OT_ERROR_NONE ? ERR_OK : ERR_VAL;
+}
+
 /* OpenThread receive callback */
 void OpenThreadNetif::otReceiveCb(otMessage* msg, void* ctx) {
     auto self = static_cast<OpenThreadNetif*>(ctx);
@@ -291,6 +315,9 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             default: {
                 netif_set_link_up(interface());
                 refreshIpAddresses();
+
+                // FIXME:
+                flags |= OT_CHANGED_IP6_ADDRESS_ADDED | OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED;
             }
         }
     }
@@ -382,12 +409,19 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         /* Sychronize multicast groups */
         /* FIXME: naive */
         /* Clear all groups */
+        interface()->mld_mac_filter = nullptr;
         mld6_stop(interface());
         for (const auto* addr = otIp6GetMulticastAddresses(ot_); addr; addr = addr->mNext) {
             ip6_addr_t ip6addr = {};
             otNetifMulticastAddressToIp6Addr(addr, ip6addr);
             mld6_joingroup_netif(interface(), &ip6addr);
+#ifdef DEBUG_BUILD
+            char tmp[IP6ADDR_STRLEN_MAX] = {0};
+            ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
+            LOG_DEBUG(TRACE, "Subscribed to %s", tmp);
+#endif // DEBUG_BUILD
         }
+        interface()->mld_mac_filter = mldMacFilterCb;
     }
 
     if (flags & OT_CHANGED_IP6_ADDRESS_ADDED) {

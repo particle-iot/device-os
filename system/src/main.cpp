@@ -70,6 +70,10 @@
 #include "ifapi.h"
 #endif /* HAL_PLATFORM_LWIP */
 
+#if HAL_PLATFORM_IFAPI
+#include "system_listening_mode.h"
+#endif /* HAL_PLATFORM_IFAPI */
+
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
 #include <thread>
@@ -445,6 +449,12 @@ void app_loop(bool threaded)
                 if (semi_automatic_connecting(threaded)) {
                     break;
                 }
+
+#if HAL_PLATFORM_IFAPI
+            if (!threaded && particle::system::ListeningModeHandler::instance()->isActive()) {
+                break;
+            }
+#endif // HAL_PLATFORM_IFAPI
 
             if ((SPARK_WIRING_APPLICATION != 1))
             {

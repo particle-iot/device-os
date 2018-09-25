@@ -88,7 +88,7 @@ int netdb_getnameinfo(const struct sockaddr* sa, socklen_t salen, char* host,
             }
 
             if (serv && servlen > 0) {
-                snprintf(serv, servlen, "%u", ntohs(in->sin_port));
+                snprintf(serv, servlen, "%u", lwip_ntohs(in->sin_port));
             }
             break;
         }
@@ -103,7 +103,7 @@ int netdb_getnameinfo(const struct sockaddr* sa, socklen_t salen, char* host,
             }
 
             if (serv && servlen > 0) {
-                snprintf(serv, servlen, "%u", ntohs(in6->sin6_port));
+                snprintf(serv, servlen, "%u", lwip_ntohs(in6->sin6_port));
             }
             break;
         }

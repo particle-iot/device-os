@@ -15,16 +15,21 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_DYNALIB_SOCKET_H
-#define	HAL_DYNALIB_SOCKET_H
+/**
+ * @file
+ * @brief
+ *  This is a POSIX wrapper for netdb_hal
+ */
 
-#include "dynalib.h"
-#include "hal_platform.h"
+#ifndef NETDB_H
+#define NETDB_H
 
-#if HAL_USE_SOCKET_HAL_POSIX
-#include "hal_dynalib_socket_posix.h"
-#else
-#include "hal_dynalib_socket_compat.h"
-#endif // HAL_USE_SOCKET_HAL_POSIX
+#include "netdb_hal.h"
 
-#endif /* HAL_DYNALIB_SOCKET_H */
+#define gethostbyname(name) netdb_gethostbyname(name)
+#define gethostbyname_r(name, ret, buf, buflen, result, h_errnop) netdb_gethostbyname_r(name, ret, buf, buflen, result, h_errnop)
+#define freeaddrinfo(ai) netdb_freeaddrinfo(ai)
+#define getaddrinfo(hostname, servname, hints, res) netdb_getaddrinfo(hostname, servname, hints, res)
+#define getnameinfo(sa, salen, host, hostlen, serv, servlen, flags) netdb_getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
+
+#endif /* NETDB_H */

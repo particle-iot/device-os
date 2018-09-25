@@ -40,6 +40,13 @@ extern "C" {
  *
  */
 
+/** Compatibility sock_handle_t */
+typedef int sock_handle_t;
+/** Compatibility sock_result_t */
+typedef int sock_result_t;
+/** Compatibility socket_handle_valid() macro */
+#define socket_handle_valid(x) ((x) >= 0)
+
 /**
  * Accept a connection on a socket.
  *

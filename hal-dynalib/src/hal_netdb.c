@@ -15,16 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_DYNALIB_SOCKET_H
-#define	HAL_DYNALIB_SOCKET_H
-
-#include "dynalib.h"
 #include "hal_platform.h"
 
+// FIXME
 #if HAL_USE_SOCKET_HAL_POSIX
-#include "hal_dynalib_socket_posix.h"
-#else
-#include "hal_dynalib_socket_compat.h"
+#include "hal_dynalib_netdb_posix.h"
 #endif // HAL_USE_SOCKET_HAL_POSIX
-
-#endif /* HAL_DYNALIB_SOCKET_H */
