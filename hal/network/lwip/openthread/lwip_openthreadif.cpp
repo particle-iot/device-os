@@ -415,9 +415,11 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             ip6_addr_t ip6addr = {};
             otNetifMulticastAddressToIp6Addr(addr, ip6addr);
             mld6_joingroup_netif(interface(), &ip6addr);
+#ifdef DEBUG_BUILD
             char tmp[IP6ADDR_STRLEN_MAX] = {0};
             ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
-            LOG(TRACE, "Subscribed to %s", tmp);
+            LOG_DEBUG(TRACE, "Subscribed to %s", tmp);
+#endif // DEBUG_BUILD
         }
         interface()->mld_mac_filter = mldMacFilterCb;
     }

@@ -167,7 +167,7 @@ uint8_t UDP::begin(uint16_t port, network_interface_t nif) {
     bool bound = false;
     const int one = 1;
 
-    #if HAL_IPv6
+#if HAL_IPv6
     struct sockaddr_in6 saddr = {};
     saddr.sin6_len = sizeof(saddr);
     saddr.sin6_family = AF_INET6;
