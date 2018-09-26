@@ -168,38 +168,7 @@ EepromFile& eeprom() {
     return eeprom;
 }
 
-#ifdef DEBUG_BUILD
-#define EEPROM_LOCK_TIMEOUT 30000
-int eepromLockCounter = 0;
-#else
-#define EEPROM_LOCK_TIMEOUT 0 // Wait indefinitely
-#endif
-
-StaticRecursiveMutex eepromLock;
-
 } // namespace
-
-static int eeprom_lock(int write) {
-    SPARK_ASSERT(!HAL_IsISR());
-    const bool ok = eepromLock.lock(EEPROM_LOCK_TIMEOUT);
-    SPARK_ASSERT(ok);
-#ifdef DEBUG_BUILD
-    ++eepromLockCounter;
-    SPARK_ASSERT(eepromLockCounter == 1 || !write);
-#endif
-    return !ok;
-}
-
-static int eeprom_unlock(int write) {
-    SPARK_ASSERT(!HAL_IsISR());
-    const bool ok = eepromLock.unlock();
-    SPARK_ASSERT(ok);
-#ifdef DEBUG_BUILD
-    --eepromLockCounter;
-    SPARK_ASSERT(eepromLockCounter == 0 || !write);
-#endif
-    return !ok;
-}
 
 void HAL_EEPROM_Init(void) {
     // eeprom file is created in constructor of EepromFile
@@ -226,9 +195,7 @@ void HAL_EEPROM_Get(uint32_t index, void *data, size_t length) {
         return;
     }
 
-    eeprom_lock(0);
     eeprom().read(index, (uint8_t *)data, length);
-    eeprom_unlock(0);
 }
 
 void HAL_EEPROM_Put(uint32_t index, const void *data, size_t length) {
@@ -236,13 +203,9 @@ void HAL_EEPROM_Put(uint32_t index, const void *data, size_t length) {
         return;
     }
 
-    eeprom_lock(1);
     eeprom().write(index, (const uint8_t *)data, length);
-    eeprom_unlock(1);
 }
 
 void HAL_EEPROM_Clear() {
-    eeprom_lock(1);
     eeprom().recreate();
-    eeprom_unlock(1);
 }
