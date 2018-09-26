@@ -229,6 +229,10 @@ WizNetif::~WizNetif() {
         os_semaphore_destroy(spiSem_);
     }
 
+    HAL_SPI_Acquire(spi_, nullptr);
+    HAL_SPI_End(spi_);
+    HAL_SPI_Release(spi_, nullptr);
+
     HAL_Pin_Mode(reset_, INPUT);
     HAL_Pin_Mode(cs_, INPUT);
     HAL_Pin_Mode(interrupt_, INPUT);
