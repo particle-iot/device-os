@@ -2,6 +2,7 @@
 #define	SPARK_WIRING_PLATFORM_H
 
 #include "platforms.h"
+#include "hal_platform.h"
 #include "inet_hal.h"
 
 /**

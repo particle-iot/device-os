@@ -31,6 +31,7 @@
 #endif // HAL_PLATFORM_IFAPI
 #include "netdb_hal.h"
 #include <arpa/inet.h>
+#include "spark_wiring_constants.h"
 
 using namespace spark;
 
