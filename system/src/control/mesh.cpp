@@ -84,10 +84,10 @@ namespace {
 const unsigned DEFAULT_CHANNEL = 11;
 
 // Timeout is seconds after which the commissioner role is automatically stopped
-const unsigned COMMISSIONER_TIMEOUT = 600;
+const unsigned DEFAULT_COMMISSIONER_TIMEOUT = 600;
 
 // Timeout in seconds after which a joiner is automatically removed from the commissioner's list
-const unsigned JOINER_TIMEOUT = 300;
+const unsigned DEFAULT_JOINER_TIMEOUT = 600;
 
 // Minimum size of the joining device credential
 const size_t JOINER_PASSWORD_MIN_SIZE = 6;
@@ -113,6 +113,9 @@ char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. nul
 // Commissioner role timer
 os_timer_t g_commTimer = nullptr;
 
+// Commissioner role timeout
+unsigned g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
+
 class Random: public particle::Random {
 public:
     void genBase32Thread(char* data, size_t size) {
@@ -127,20 +130,27 @@ public:
 void commissionerTimeout(os_timer_t timer);
 
 void stopCommissionerTimer() {
+    THREAD_LOCK(lock);
     if (g_commTimer) {
         os_timer_destroy(g_commTimer, nullptr);
         g_commTimer = nullptr;
+        g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
+        LOG_DEBUG(TRACE, "Commissioner timer stopped");
     }
 }
 
 int restartCommissionerTimer() {
+    THREAD_LOCK(lock);
+    const unsigned timeout = g_commTimeout * 1000;
+    os_timer_change_t change = OS_TIMER_CHANGE_PERIOD;
     if (!g_commTimer) {
-        const int ret = os_timer_create(&g_commTimer, COMMISSIONER_TIMEOUT * 1000, commissionerTimeout, nullptr, true, nullptr);
+        const int ret = os_timer_create(&g_commTimer, timeout, commissionerTimeout, nullptr, true, nullptr);
         if (ret != 0) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
+        change = OS_TIMER_CHANGE_START;
     }
-    const int ret = os_timer_change(g_commTimer, OS_TIMER_CHANGE_START, false, 0, 0xffffffff, nullptr);
+    const int ret = os_timer_change(g_commTimer, change, false, timeout, 0xffffffff, nullptr);
     if (ret != 0) {
         stopCommissionerTimer();
         return SYSTEM_ERROR_UNKNOWN;
@@ -456,6 +466,13 @@ int startCommissioner(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // Parse request
+    PB(StartCommissionerRequest) pbReq = {};
+    int ret = decodeRequestMessage(req, PB(StartCommissionerRequest_fields), &pbReq);
+    if (ret != 0) {
+        return ret;
+    }
+    // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     // FIXME: Subscribe to OpenThread events instead of polling
@@ -483,6 +500,10 @@ int startCommissioner(ctrl_request* req) {
     }
     if (state != OT_COMMISSIONER_STATE_ACTIVE) {
         return SYSTEM_ERROR_TIMEOUT;
+    }
+    g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
+    if (pbReq.timeout > 0) {
+        g_commTimeout = pbReq.timeout;
     }
     restartCommissionerTimer();
     return 0;
@@ -566,7 +587,11 @@ int addJoiner(ctrl_request* req) {
     // Add joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
-    CHECK_THREAD(otCommissionerAddJoiner(thread, &eui64, dJoinPwd.data, JOINER_TIMEOUT));
+    unsigned timeout = DEFAULT_JOINER_TIMEOUT;
+    if (pbReq.timeout > 0) {
+        timeout = pbReq.timeout;
+    }
+    CHECK_THREAD(otCommissionerAddJoiner(thread, &eui64, dJoinPwd.data, timeout));
     return 0;
 }
 
