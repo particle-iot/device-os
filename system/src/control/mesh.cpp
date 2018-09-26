@@ -521,6 +521,15 @@ int stopCommissioner(ctrl_request* req) {
         CHECK_THREAD(otCommissionerStop(thread));
     }
     stopCommissionerTimer();
+    for (;;) {
+        const auto state = otCommissionerGetState(thread);
+        if (state == OT_COMMISSIONER_STATE_DISABLED) {
+            break;
+        }
+        lock.unlock();
+        HAL_Delay_Milliseconds(500);
+        lock.lock();
+    }
     return 0;
 }
 
