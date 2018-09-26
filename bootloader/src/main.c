@@ -435,12 +435,14 @@ int main(void)
             __set_MSP(*(__IO uint32_t*) ApplicationAddress);
             Jump_To_Application();
         }
+#if !HAL_PLATFORM_MESH
         else
         {
             LED_SetRGBColor(RGB_COLOR_RED);
             FACTORY_Flash_Reset();
             // if we get here, the factory reset wasn't successful
         }
+#endif
         // else drop through to DFU mode
 
     }
