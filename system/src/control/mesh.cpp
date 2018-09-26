@@ -156,7 +156,7 @@ int restartCommissionerTimer() {
         stopCommissionerTimer();
         return SYSTEM_ERROR_UNKNOWN;
     }
-    LOG_DEBUG(TRACE, "Commissioner timer started");
+    LOG_DEBUG(TRACE, "Commissioner timer %s", (change == OS_TIMER_CHANGE_START) ? "started" : "restarted");
     return 0;
 }
 
@@ -166,6 +166,7 @@ void commissionerTimeout(os_timer_t timer) {
     stopCommissionerTimer();
     const auto thread = threadInstance();
     if (otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_DISABLED) {
+        LOG_DEBUG(TRACE, "Stopping commissioner");
         const auto ret = otCommissionerStop(thread);
         if (ret != OT_ERROR_NONE) {
             LOG(WARN, "otCommissionerStop() failed: %d", (int)ret);
@@ -488,6 +489,7 @@ int startCommissioner(ctrl_request* req) {
     }
     otCommissionerState state = otCommissionerGetState(thread);
     if (state == OT_COMMISSIONER_STATE_DISABLED) {
+        LOG_DEBUG(TRACE, "Starting commissioner");
         CHECK_THREAD(otCommissionerStart(thread));
     }
     for (;;) {
@@ -502,6 +504,7 @@ int startCommissioner(ctrl_request* req) {
     if (state != OT_COMMISSIONER_STATE_ACTIVE) {
         return SYSTEM_ERROR_TIMEOUT;
     }
+    LOG_DEBUG(TRACE, "Commissioner started");
     g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
     if (pbReq.timeout > 0) {
         g_commTimeout = pbReq.timeout;
@@ -518,6 +521,7 @@ int stopCommissioner(ctrl_request* req) {
     }
     const auto state = otCommissionerGetState(thread);
     if (state != OT_COMMISSIONER_STATE_DISABLED) {
+        LOG_DEBUG(TRACE, "Stopping commissioner");
         CHECK_THREAD(otCommissionerStop(thread));
     }
     stopCommissionerTimer();
@@ -530,6 +534,7 @@ int stopCommissioner(ctrl_request* req) {
         HAL_Delay_Milliseconds(500);
         lock.lock();
     }
+    LOG_DEBUG(TRACE, "Commissioner stopped");
     return 0;
 }
 
@@ -559,14 +564,16 @@ int prepareJoiner(ctrl_request* req) {
     // Get factory-assigned EUI-64
     otExtAddress eui64 = {}; // OT_EXT_ADDRESS_SIZE
     otLinkGetFactoryAssignedIeeeEui64(thread, &eui64);
-    char eui64Str[sizeof(eui64) * 2] = {};
+    char eui64Str[sizeof(eui64) * 2 + 1] = {}; // +1 character for term. null
     bytes2hexbuf_lower_case((const uint8_t*)&eui64, sizeof(eui64), eui64Str);
     // Generate joining device credential
     Random rand;
     rand.genBase32Thread(g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
+    LOG_DEBUG(TRACE, "Joiner initialized: PAN ID: 0x%04x, EUI-64: %s, password: %s", (unsigned)pbReq.network.pan_id,
+            eui64Str, g_joinPwd);
     // Encode a reply
     PB(PrepareJoinerReply) pbRep = {};
-    EncodedString eEuiStr(&pbRep.eui64, eui64Str, sizeof(eui64Str));
+    EncodedString eEuiStr(&pbRep.eui64, eui64Str, strlen(eui64Str));
     EncodedString eJoinPwd(&pbRep.password, g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
     ret = encodeReplyMessage(req, PB(PrepareJoinerReply_fields), &pbRep);
     if (ret != 0) {
@@ -601,6 +608,7 @@ int addJoiner(ctrl_request* req) {
     if (pbReq.timeout > 0) {
         timeout = pbReq.timeout;
     }
+    LOG_DEBUG(TRACE, "Adding joiner: EUI-64: %s, password: %s", dEui64Str.data, dJoinPwd.data);
     CHECK_THREAD(otCommissionerAddJoiner(thread, &eui64, dJoinPwd.data, timeout));
     return 0;
 }
@@ -625,6 +633,7 @@ int removeJoiner(ctrl_request* req) {
     // Remove joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
+    LOG_DEBUG(TRACE, "Removing joiner: EUI-64: %s", dEui64Str.data);
     CHECK_THREAD(otCommissionerRemoveJoiner(thread, &eui64));
     return 0;
 }
@@ -666,6 +675,7 @@ int joinNetwork(ctrl_request* req) {
         int result;
         volatile bool done;
     };
+    LOG(INFO, "Joining the network");
     JoinStatus stat = {};
     CHECK_THREAD(otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
             VENDOR_DATA, [](otError result, void* data) {
@@ -731,6 +741,7 @@ int joinNetwork(ctrl_request* req) {
         HAL_Delay_Milliseconds(500);
         lock.lock();
     }
+    LOG(INFO, "Successfully joined the network");
     notifyJoined(true);
     return 0;
 }
