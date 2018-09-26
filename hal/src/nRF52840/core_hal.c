@@ -34,6 +34,7 @@
 #include "dct.h"
 #include "rng_hal.h"
 #include "ota_module.h"
+#include "bootloader.h"
 #include <stdlib.h>
 #include <malloc.h>
 #include "rtc_hal.h"
@@ -328,6 +329,10 @@ void HAL_Core_Setup(void)
      * SysTick is enabled within FreeRTOS
      */
     HAL_Core_Config_systick_configuration();
+
+    if (bootloader_update_if_needed()) {
+        HAL_Core_System_Reset();
+    }
 }
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
