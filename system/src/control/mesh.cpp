@@ -84,11 +84,14 @@ namespace {
 // Default IEEE 802.15.4 channel
 const unsigned DEFAULT_CHANNEL = 11;
 
-// Timeout is seconds after which the commissioner role is automatically stopped
+// Time is seconds after which the commissioner role is automatically stopped
 const unsigned DEFAULT_COMMISSIONER_TIMEOUT = 600;
 
-// Timeout in seconds after which a joiner is automatically removed from the commissioner's list
-const unsigned DEFAULT_JOINER_TIMEOUT = 600;
+// Time in seconds after which a joiner is automatically removed from the commissioner dataset
+const unsigned DEFAULT_JOINER_ENTRY_TIMEOUT = 600;
+
+// Maximum time in seconds to spend trying to join a network
+const unsigned DEFAULT_JOINER_TIMEOUT = 120;
 
 // Minimum size of the joining device credential
 const size_t JOINER_PASSWORD_MIN_SIZE = 6;
@@ -604,7 +607,7 @@ int addJoiner(ctrl_request* req) {
     // Add joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
-    unsigned timeout = DEFAULT_JOINER_TIMEOUT;
+    unsigned timeout = DEFAULT_JOINER_ENTRY_TIMEOUT;
     if (pbReq.timeout > 0) {
         timeout = pbReq.timeout;
     }
@@ -666,69 +669,68 @@ int joinNetwork(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
-    unsigned timeout = 0;
+    unsigned timeout = DEFAULT_JOINER_TIMEOUT;
     if (pbReq.timeout > 0) {
-        timeout = pbReq.timeout * 1000;
+        timeout = pbReq.timeout;
     }
+    timeout *= 1000;
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     struct JoinStatus {
         int result;
         volatile bool done;
     };
-    LOG(INFO, "Joining the network");
-    JoinStatus stat = {};
-    CHECK_THREAD(otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
-            VENDOR_DATA, [](otError result, void* data) {
-        const auto stat = (JoinStatus*)data;
-        if (result == OT_ERROR_NONE) {
-            LOG(TRACE, "Joiner succeeded");
-        } else {
-            LOG(ERROR, "Joiner failed: %u", (unsigned)result);
-        }
-        stat->result = threadToSystemError(result);
-        stat->done = true;
-    }, &stat));
+    LOG(INFO, "Joining the network; timeout: %u", timeout);
     // FIXME: Make this handler asynchronous
-    auto t = HAL_Timer_Get_Milli_Seconds();
+    JoinStatus stat = {};
     bool cancel = false;
-    lock.unlock();
+    const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
-        HAL_Delay_Milliseconds(500);
-        if (stat.done) {
-            break;
-        }
-        if (timeout > 0) {
+        stat.done = false;
+        stat.result = SYSTEM_ERROR_UNKNOWN;
+        CHECK_THREAD(otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
+                VENDOR_DATA, [](otError result, void* data) {
+            const auto stat = (JoinStatus*)data;
+            if (result == OT_ERROR_NONE) {
+                LOG(TRACE, "Joiner succeeded");
+            } else {
+                LOG(ERROR, "Joiner failed: %u", (unsigned)result);
+            }
+            stat->result = threadToSystemError(result);
+            stat->done = true;
+        }, &stat));
+        lock.unlock();
+        for (;;) {
+            HAL_Delay_Milliseconds(500);
+            if (stat.done) {
+                break;
+            }
             const auto t2 = HAL_Timer_Get_Milli_Seconds();
-            t = t2 - t;
-            if (t >= timeout) {
+            if (t2 - t1 >= timeout) {
                 LOG(WARN, "Joiner timeout");
                 cancel = true;
                 break;
             }
-            timeout -= t;
-            t = t2;
         }
+        lock.lock();
+        if ((stat.done && stat.result == 0) || cancel) {
+            break;
+        }
+        LOG_DEBUG(TRACE, "Restarting joiner");
     }
-    lock.lock();
     if (cancel) {
         LOG_DEBUG(TRACE, "Stopping joiner");
         CHECK_THREAD(otJoinerStop(thread));
+        lock.unlock();
         for (;;) {
-            const auto state = otJoinerGetState(thread);
-            if (state == OT_JOINER_STATE_IDLE) {
-                LOG_DEBUG(TRACE, "Joiner stopped");
+            if (stat.done) {
                 break;
             }
-            lock.unlock();
             HAL_Delay_Milliseconds(500);
-            lock.lock();
         }
-    }
-    if (!stat.done) {
-        return SYSTEM_ERROR_TIMEOUT;
+        lock.lock();
     }
     if (stat.result != 0) {
-        return stat.result;
+        return (cancel ? SYSTEM_ERROR_TIMEOUT : stat.result);
     }
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     // FIXME: Subscribe to OpenThread events instead of polling
