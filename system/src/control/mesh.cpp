@@ -24,6 +24,7 @@
 #include "common.h"
 
 #include "concurrent_hal.h"
+#include "timer_hal.h"
 #include "delay_hal.h"
 
 #include "bytes2hexbuf.h"
@@ -641,6 +642,16 @@ int joinNetwork(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // Parse request
+    PB(JoinNetworkRequest) pbReq = {};
+    int ret = decodeRequestMessage(req, PB(JoinNetworkRequest_fields), &pbReq);
+    if (ret != 0) {
+        return ret;
+    }
+    unsigned timeout = 0;
+    if (pbReq.timeout > 0) {
+        timeout = pbReq.timeout * 1000;
+    }
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     struct JoinStatus {
         int result;
@@ -650,19 +661,53 @@ int joinNetwork(ctrl_request* req) {
     CHECK_THREAD(otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
             VENDOR_DATA, [](otError result, void* data) {
         const auto stat = (JoinStatus*)data;
-        if (result != OT_ERROR_NONE) {
-            LOG(ERROR, "Unable to join network: %u", (unsigned)result);
+        if (result == OT_ERROR_NONE) {
+            LOG(TRACE, "Joiner succeeded");
+        } else {
+            LOG(ERROR, "Joiner failed: %u", (unsigned)result);
         }
         stat->result = threadToSystemError(result);
         stat->done = true;
     }, &stat));
     // FIXME: Make this handler asynchronous
+    auto t = HAL_Timer_Get_Milli_Seconds();
+    bool cancel = false;
     lock.unlock();
-    while (!stat.done) {
+    for (;;) {
         HAL_Delay_Milliseconds(500);
+        if (stat.done) {
+            break;
+        }
+        if (timeout > 0) {
+            const auto t2 = HAL_Timer_Get_Milli_Seconds();
+            t = t2 - t;
+            if (t >= timeout) {
+                LOG(WARN, "Joiner timeout");
+                cancel = true;
+                break;
+            }
+            timeout -= t;
+            t = t2;
+        }
     }
     lock.lock();
-    memset(g_joinPwd, 0, sizeof(g_joinPwd));
+    if (cancel) {
+        LOG_DEBUG(TRACE, "Stopping joiner");
+        CHECK_THREAD(otJoinerStop(thread));
+        for (;;) {
+            const auto state = otJoinerGetState(thread);
+            if (state == OT_JOINER_STATE_IDLE) {
+                LOG_DEBUG(TRACE, "Joiner stopped");
+                break;
+            }
+            lock.unlock();
+            HAL_Delay_Milliseconds(500);
+            lock.lock();
+        }
+    }
+    if (!stat.done) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
     if (stat.result != 0) {
         return stat.result;
     }
