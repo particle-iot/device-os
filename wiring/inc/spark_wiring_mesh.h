@@ -81,152 +81,32 @@ protected:
 		 * Determines if the given handler exists.
 		 */
 		bool event_handler_exists(const char *event_name, EventHandler handler,
-				void *handler_data, SubscriptionScope::Enum scope, const char* id)
-		{
-			const int NUM_HANDLERS = sizeof(event_handlers)
-					/ sizeof(FilteringEventHandler);
-			for (int i = 0; i < NUM_HANDLERS; i++)
-			{
-				if (event_handlers[i].handler == handler
-						&& event_handlers[i].handler_data == handler_data
-						&& event_handlers[i].scope == scope)
-				{
-					const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
-					const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
-					if (!strncmp(event_handlers[i].filter, event_name, FILTER_LEN))
-					{
-						const size_t MAX_ID_LEN =
-								sizeof(event_handlers[i].device_id) - 1;
-						const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
-						if (id_len)
-							return !strncmp(event_handlers[i].device_id, id, id_len);
-						else
-							return !event_handlers[i].device_id[0];
-					}
-				}
-			}
-			return false;
-		}
+				void *handler_data, SubscriptionScope::Enum scope, const char* id);
 
 		/**
 		 * Adds the given handler.
 		 */
 		int add_event_handler(const char *event_name, EventHandler handler,
-				void *handler_data, SubscriptionScope::Enum scope, const char* id)
-		{
-			if (event_handler_exists(event_name, handler, handler_data, scope, id))
-				return SYSTEM_ERROR_NONE;
-
-			const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
-			for (int i = 0; i < NUM_HANDLERS; i++)
-			{
-				if (NULL == event_handlers[i].handler)
-				{
-					const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
-					const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
-					memcpy(event_handlers[i].filter, event_name, FILTER_LEN);
-					memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
-					event_handlers[i].handler = handler;
-					event_handlers[i].handler_data = handler_data;
-					event_handlers[i].device_id[0] = 0;
-					const size_t MAX_ID_LEN = sizeof(event_handlers[i].device_id) - 1;
-					const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
-					memcpy(event_handlers[i].device_id, id, id_len);
-					event_handlers[i].device_id[id_len] = 0;
-					event_handlers[i].scope = scope;
-					return SYSTEM_ERROR_NONE;
-				}
-			}
-			return SYSTEM_ERROR_NO_MEMORY;
-		}
-
+				void *handler_data, SubscriptionScope::Enum scope, const char* id);
 
 public:
-		int add(const char* name, EventHandler handler) {
-			return SYSTEM_ERROR_NONE;
-		}
+		int add(const char* name, EventHandler handler);
 
-		void send(const char* event_name, const char* data) {
-			const size_t event_name_length = strlen(event_name);
-			const int NUM_HANDLERS = sizeof(event_handlers)
-					/ sizeof(FilteringEventHandler);
-			for (int i = 0; i < NUM_HANDLERS; i++)
-			{
-				if (NULL == event_handlers[i].handler)
-				{
-					break;
-				}
-				const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
-				const size_t filter_length = strnlen(event_handlers[i].filter,
-						MAX_FILTER_LENGTH);
-
-				if (event_name_length < filter_length)
-				{
-					// does not match this filter, try the next event handler
-					continue;
-				}
-
-				const int cmp = memcmp(event_handlers[i].filter, event_name,
-						filter_length);
-				if (0 == cmp)
-				{
-					system_invoke_event_handler(sizeof(FilteringEventHandler),
-													&event_handlers[i], (const char*) event_name,
-													(const char*) data, nullptr);
-				}
-				// else continue the for loop to try the next handler
-			}
-		}
+		void send(const char* event_name, const char* data);
 	};
 
 	static const uint16_t PORT = 36969;
 	static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
 	static const uint16_t MAX_PACKET_LEN = 768;
 
-	static int fetchMulticastAddress(IPAddress& mcastAddr) {
-		HAL_IPAddress addr = {};
-		addr.v = 6;
-		inet_inet_pton(AF_INET6, MULTICAST_ADDR, addr.ipv6);
-		mcastAddr = addr;
-		return 0;
-	}
-
 	UDP* udp;
-
-	int initialize_udp() {
-		if (udp) {
-			return SYSTEM_ERROR_NONE;
-		}
-		udp = new UDP();
-		if (!udp) {
-			return SYSTEM_ERROR_NO_MEMORY;
-		}
-		udp->setBuffer(MAX_PACKET_LEN);
-		// Get OpenThread interface index (OpenThread interface is named "th1" on all Mesh devices)
-		uint8_t idx = 0;
-		if_name_to_index("th1", &idx);
-		 // Create UDP socket and bind to OpenThread interface
-		CHECK(udp->begin(PORT, idx));
-		// subscribe to multicast
-
-		IPAddress mcastAddr;
-		CHECK(fetchMulticastAddress(mcastAddr));
-		udp->joinMulticast(mcastAddr);
-		return SYSTEM_ERROR_NONE;
-	}
-
-	int uninitialize_udp() {
-		if (udp) {
-			IPAddress mcastAddr;
-			fetchMulticastAddress(mcastAddr);
-			udp->leaveMulticast(mcastAddr);
-			delete udp;
-			udp = nullptr;
-		}
-		return SYSTEM_ERROR_NONE;
-	}
-
 	Subscriptions subscriptions;
+
+	static int fetchMulticastAddress(IPAddress& mcastAddr);
+
+	int initialize_udp();
+
+	int uninitialize_udp();
 
 public:
 
@@ -234,41 +114,14 @@ public:
 		system_task_loop(mesh_loop, nullptr);
 	}
 
-	int publish(const char* topic, const char* data) {
-		CHECK(initialize_udp());
-		IPAddress mcastAddr;
-		CHECK(fetchMulticastAddress(mcastAddr));
+	int publish(const char* topic, const char* data);
 
-		CHECK(udp->beginPacket(mcastAddr, PORT));
-		udp->write((const uint8_t*)topic, strlen(topic)+1);
-		udp->write((const uint8_t*)data, strlen(data)+1);
-		CHECK(udp->endPacket());
-		return SYSTEM_ERROR_NONE;
-	}
-
-	int subscribe(const char* prefix, EventHandler handler) {
-		CHECK(initialize_udp());
-		CHECK(subscriptions.add(prefix, handler));
-		return SYSTEM_ERROR_NONE;
-	}
+	int subscribe(const char* prefix, EventHandler handler);
 
 	/**
 	 * Pull data from the socket and handle as required.
 	 */
-	int poll() {
-		int result = 0;
-		if (udp) {
-			int len = udp->parsePacket();
-			if (len>0) {
-				const char* buffer = (const char*)udp->buffer();
-				int namelen = strlen(buffer);
-				subscriptions.send(buffer, buffer+namelen+1);
-			} else {
-				result = len;
-			}
-		}
-		return result;
-	}
+	int poll();
 };
 
 class MeshClass : public NetworkClass, public MeshPublish {
