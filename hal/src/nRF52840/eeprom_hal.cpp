@@ -209,3 +209,11 @@ void HAL_EEPROM_Put(uint32_t index, const void *data, size_t length) {
 void HAL_EEPROM_Clear() {
     eeprom().recreate();
 }
+
+bool HAL_EEPROM_Has_Pending_Erase() {
+    return false;
+}
+
+void HAL_EEPROM_Perform_Pending_Erase() {
+
+}

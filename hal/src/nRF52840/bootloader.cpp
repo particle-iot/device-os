@@ -7,9 +7,6 @@
 #include "bootloader_hal.h"
 #include "ota_flash_hal_impl.h"
 
-#if !defined(HAL_REPLACE_BOOTLOADER_OTA) || defined(HAL_REPLACE_BOOTLOADER)
-#error "Updating the booloader using an embedded binary is not supported"
-#endif
 
 #define BOOTLOADER_ADDR (module_bootloader.start_address)
 
@@ -17,7 +14,7 @@
 int bootloader_update(const void* bootloader_image, unsigned length)
 {
     HAL_Bootloader_Lock(false);
-    int result = (FLASH_CopyMemory(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS,
+    int result = (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
         FLASH_INTERNAL, BOOTLOADER_ADDR, length, MODULE_FUNCTION_BOOTLOADER,
         MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION));
     HAL_Bootloader_Lock(true);
