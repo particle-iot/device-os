@@ -1,6 +1,6 @@
 /* System part1 static RAM */
 system_part1_static_ram_start = 0x20000000 + APP_RAM_BASE;
-system_part1_static_ram_size = 100K;
+system_part1_static_ram_size = 104K;
 system_part1_static_ram_end = system_part1_static_ram_start + system_part1_static_ram_size;
 
 
