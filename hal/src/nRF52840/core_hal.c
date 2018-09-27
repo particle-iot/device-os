@@ -315,6 +315,11 @@ void HAL_Core_Config(void)
     // TODO: Use current LED theme
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
+
+    FLASH_AddToFactoryResetModuleSlot(
+      FLASH_INTERNAL, EXTERNAL_FLASH_FAC_XIP_ADDRESS,
+      FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
+      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 }
 
 void HAL_Core_Setup(void)
@@ -338,8 +343,12 @@ bool HAL_Core_Validate_User_Module(void)
                                   FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
                 && HAL_Verify_User_Dependencies();
     }
-    else if(FLASH_isUserModuleInfoValid(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+    else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, EXTERNAL_FLASH_FAC_XIP_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
     {
+        // If user application is invalid, we should at least enable
+        // the heap allocation for littlelf to set system flags.
+        malloc_enable(1);
+
         //Reset and let bootloader perform the user module factory reset
         //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
         //saves precious system_part2 flash size i.e. fits in < 128KB
