@@ -31,6 +31,7 @@
 #include <nrf_rtc.h>
 #include "button_hal.h"
 #include "hal_platform.h"
+#include "user.h"
 #include "dct.h"
 #include "rng_hal.h"
 #include "ota_module.h"
@@ -303,6 +304,9 @@ void HAL_Core_Config(void)
     else {
         // Set the heap end to the stack start to make most use of the SRAM.
         malloc_set_heap_end(&_Stack_Init);
+
+        // Try copying the embedded user image to user application address
+        user_update();
     }
 
     // Enable malloc before littlefs initialization.
