@@ -41,11 +41,11 @@ extern const unsigned char USER_IMAGE[];
 
 const uint8_t* HAL_User_Image(uint32_t* size, void* reserved)
 {
-#ifdef HAL_REPLACE_USER
+#if defined(INCLUDE_APP)
     if (size)
         *size = (uint32_t)USER_IMAGE_LEN;
     return (const uint8_t*)USER_IMAGE;
 #else
     return (const uint8_t*)0;
-#endif // HAL_REPLACE_USER
+#endif // INCLUDE_APP
 }

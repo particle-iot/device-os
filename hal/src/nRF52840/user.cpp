@@ -11,7 +11,7 @@
 #define USER_ADDR (module_user.start_address)
 
 
-#ifdef HAL_REPLACE_USER
+#if defined(INCLUDE_APP)
 int user_update(void)
 {
     uint32_t user_image_size = 0;
@@ -28,5 +28,5 @@ int user_update(void)
 {
     return FLASH_ACCESS_RESULT_ERROR;
 }
-#endif // HAL_REPLACE_USER
+#endif // INCLUDE_APP
 

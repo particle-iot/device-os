@@ -25,12 +25,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#if !defined(SYSTEM_MINIMAL)
-#if HAL_PLATFORM_MESH
-#define HAL_REPLACE_USER
-#endif
-#endif
-
 
 const uint8_t* HAL_User_Image(uint32_t* size, void* reserved);
 
