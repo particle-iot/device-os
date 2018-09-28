@@ -20,6 +20,8 @@
 #if SYSTEM_CONTROL_ENABLED
 
 #include "system_openthread.h"
+#include "system_network_manager.h"
+#include "system_cloud.h"
 
 #include "common.h"
 
@@ -32,6 +34,7 @@
 #include "random.h"
 #include "preprocessor.h"
 #include "logging.h"
+#include "check.h"
 
 #include "spark_wiring_vector.h"
 
@@ -130,6 +133,118 @@ public:
         genAlpha(data, size, alpha, sizeof(alpha));
     }
 };
+
+int threadToSystemError(otError error);
+
+int notifyNetworkUpdated(int flags) {
+    NotifyMeshNetworkUpdated cmd;
+    NetworkInfo& ni = cmd.ni;
+    // todo - consolidate with getNetworkInfo - decouple fetching the network info from the
+    // control request decoding/result encoding.
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    if (!thread) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (flags & NetworkInfo::NAME_VALID) {
+        // Network name
+        const char* name = otThreadGetNetworkName(thread);
+        if (!name) {
+            LOG(ERROR, "Unable to retrieve thread network name");
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        size_t length = strlen(name);
+        strncpy(ni.name, name, MAX_NETWORK_NAME_LENGTH);
+        ni.name_length = length;
+    }
+    if (flags & NetworkInfo::CHANNEL_VALID) {
+    // Channel
+        ni.channel = otLinkGetChannel(thread);
+    }
+    if (flags & NetworkInfo::PANID_VALID) {
+        // PAN ID
+        const otPanId panId = otLinkGetPanId(thread);
+        ni.panid[0] = panId>>8;
+        ni.panid[1] = panId&0xFF;
+    }
+    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    if (!extPanId) {
+        LOG(ERROR, "Unable to retrieve thread XPAN ID");
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    memcpy(ni.update.id, extPanId, sizeof(ni.xpanid));
+    if (flags & NetworkInfo::XPANID_VALID) {
+        // Extended PAN ID
+        memcpy(ni.xpanid, extPanId, sizeof(ni.xpanid));
+    }
+    if (flags & NetworkInfo::ON_MESH_PREFIX_VALID) {
+        const uint8_t* prefix = otThreadGetMeshLocalPrefix(thread);
+        if (!prefix) {
+            LOG(ERROR, "Unable to retrieve thread network local prefix");
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        memcpy(ni.on_mesh_prefix, prefix, 8);
+    }
+
+    ni.update.size = sizeof(ni);
+    ni.flags = flags;
+    int result = system_command_enqueue(cmd, sizeof(cmd));
+    if (result) {
+        LOG(ERROR, "Unable to add notification to system command queue %d", result);
+    }
+    return result;
+}
+
+int notifyJoined(bool joined) {
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    if (!extPanId) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    NotifyMeshNetworkJoined cmd;
+    cmd.nu.size = sizeof(cmd.nu);
+    memcpy(cmd.nu.id, extPanId, sizeof(cmd.nu.id));
+    cmd.joined = joined;
+
+    return system_command_enqueue(cmd, sizeof(cmd));
+}
+
+int resetThread() {
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    if (!thread) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    // Disconnect from the cloud and bring all network interfaces down
+    // TODO: Disable only the Thread interface
+    cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
+    system::NetworkManager::instance()->deactivateConnections();
+    // Enqueue a network change event
+    system_command_clear();
+    if (otDatasetIsCommissioned(thread)) {
+        notifyJoined(false);
+    }
+    // Disable Thread
+    CHECK_THREAD(otThreadSetEnabled(thread, false));
+    CHECK_THREAD(otIp6SetEnabled(thread, false));
+    // Clear master key (invalidates active and pending datasets)
+    otMasterKey key = {};
+    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
+    // Erase persistent data
+    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
+/*
+    // FIXME: Reinitialize OpenThread using the same buffer to make sure all references to the
+    // OpenThread instance remain valid
+    otInstanceFinalize(thread);
+    size_t size = 0;
+    otInstanceInit(nullptr, &size);
+    const auto thread2 = otInstanceInit(thread, &size);
+    SPARK_ASSERT(thread2 == thread);
+*/
+    return 0;
+}
 
 void commissionerTimeout(os_timer_t timer);
 
@@ -231,65 +346,6 @@ int auth(ctrl_request* req) {
     return 0;
 }
 
-int notifyNetworkUpdated(int flags) {
-    NotifyMeshNetworkUpdated cmd;
-    NetworkInfo& ni = cmd.ni;
-    // todo - consolidate with getNetworkInfo - decouple fetching the network info from the
-    // control request decoding/result encoding.
-    THREAD_LOCK(lock);
-    const auto thread = threadInstance();
-    if (!thread) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (flags & NetworkInfo::NAME_VALID) {
-        // Network name
-        const char* name = otThreadGetNetworkName(thread);
-        if (!name) {
-            LOG(ERROR, "Unable to retrieve thread network name");
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-        size_t length = strlen(name);
-        strncpy(ni.name, name, MAX_NETWORK_NAME_LENGTH);
-        ni.name_length = length;
-    }
-    if (flags & NetworkInfo::CHANNEL_VALID) {
-    // Channel
-        ni.channel = otLinkGetChannel(thread);
-    }
-    if (flags & NetworkInfo::PANID_VALID) {
-        // PAN ID
-        const otPanId panId = otLinkGetPanId(thread);
-        ni.panid[0] = panId>>8;
-        ni.panid[1] = panId&0xFF;
-    }
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
-    if (!extPanId) {
-        LOG(ERROR, "Unable to retrieve thread XPAN ID");
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-    memcpy(ni.update.id, extPanId, sizeof(ni.xpanid));
-    if (flags & NetworkInfo::XPANID_VALID) {
-        // Extended PAN ID
-        memcpy(ni.xpanid, extPanId, sizeof(ni.xpanid));
-    }
-    if (flags & NetworkInfo::ON_MESH_PREFIX_VALID) {
-        const uint8_t* prefix = otThreadGetMeshLocalPrefix(thread);
-        if (!prefix) {
-            LOG(ERROR, "Unable to retrieve thread network local prefix");
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-        memcpy(ni.on_mesh_prefix, prefix, 8);
-    }
-
-    ni.update.size = sizeof(ni);
-    ni.flags = flags;
-    int result = system_command_enqueue(cmd, sizeof(cmd));
-    if (result) {
-        LOG(ERROR, "Unable to add notification to system command queue %d", result);
-    }
-    return result;
-}
-
 int createNetwork(ctrl_request* req) {
     THREAD_LOCK(lock);
     const auto thread = threadInstance();
@@ -310,8 +366,8 @@ int createNetwork(ctrl_request* req) {
             dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    CHECK_THREAD(otThreadSetEnabled(thread, false));
-    CHECK_THREAD(otIp6SetEnabled(thread, false));
+    // Disable Thread and clear network credentials
+    CHECK(resetThread());
     unsigned channel = pbReq.channel; // IEEE 802.15.4 channel
     if (channel == 0) {
         // Perform an energy scan
@@ -553,14 +609,8 @@ int prepareJoiner(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
-    // Disable Thread
-    CHECK_THREAD(otThreadSetEnabled(thread, false));
-    CHECK_THREAD(otIp6SetEnabled(thread, false));
-    // Clear master key (invalidates active and pending datasets)
-    otMasterKey key = {};
-    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
-    // Erase persistent data
-    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
+    // Disable Thread and clear network credentials
+    CHECK(resetThread());
     // Set PAN ID
     // https://github.com/openthread/openthread/pull/613
     CHECK_THREAD(otLinkSetPanId(thread, pbReq.network.pan_id));
@@ -639,22 +689,6 @@ int removeJoiner(ctrl_request* req) {
     LOG_DEBUG(TRACE, "Removing joiner: EUI-64: %s", dEui64Str.data);
     CHECK_THREAD(otCommissionerRemoveJoiner(thread, &eui64));
     return 0;
-}
-
-int notifyJoined(bool joined) {
-    THREAD_LOCK(lock);
-    const auto thread = threadInstance();
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
-    if (!extPanId) {
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-
-    NotifyMeshNetworkJoined cmd;
-    cmd.nu.size = sizeof(cmd.nu);
-    memcpy(cmd.nu.id, extPanId, sizeof(cmd.nu.id));
-    cmd.joined = joined;
-
-    return system_command_enqueue(cmd, sizeof(cmd));
 }
 
 int joinNetwork(ctrl_request* req) {
@@ -749,20 +783,8 @@ int joinNetwork(ctrl_request* req) {
 }
 
 int leaveNetwork(ctrl_request* req) {
-    THREAD_LOCK(lock);
-    const auto thread = threadInstance();
-    if (!thread) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    system_command_clear();
-    notifyJoined(false);
-    // Disable Thread protocol
-    CHECK_THREAD(otThreadSetEnabled(thread, false));
-    // Clear master key (invalidates active and pending datasets)
-    otMasterKey key = {};
-    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
-    // Erase persistent data
-    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
+    // Disable Thread and clear network credentials
+    CHECK(resetThread());
     return 0;
 }
 
