@@ -405,7 +405,6 @@ void HAL_Core_Setup(void) {
     if (bootloader_update_if_needed()) {
         HAL_Core_System_Reset();
     }
-    HAL_Bootloader_Lock(true);
 
     HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
 
