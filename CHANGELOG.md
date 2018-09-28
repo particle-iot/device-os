@@ -1,3 +1,14 @@
+## 0.8.0-rc.11
+
+### ENHANCEMENTS
+
+- [Electron/Photon/P1] Do not check and lock bootloader sector write protection on every boot [ch17416] [#1578](https://github.com/particle-iot/firmware/pull/1578)
+
+### BUGFIXES
+
+- [Electron/LTE] adds 1 retry for UDP/TCP socket send in case of error [ch18789] [#1576](https://github.com/particle-iot/firmware/pull/1576)
+- [Electron/Photon/P1] Fixes recursive semaphore lock timeout [ch21928] [#1577](https://github.com/particle-iot/firmware/pull/1577)
+
 ## 0.8.0-rc.10
 
 ### BUGFIXES
