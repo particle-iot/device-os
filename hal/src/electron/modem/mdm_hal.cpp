@@ -52,6 +52,7 @@ std::recursive_mutex mdm_mutex;
 #define PROFILE         "0"   //!< this is the psd profile used
 #define MAX_SIZE        1024  //!< max expected messages (used with RX)
 #define USO_MAX_WRITE   1024  //!< maximum number of bytes to write to socket (used with TX)
+#define MDM_SOCKET_SEND_RETRIES (1) //!< maximum number of times to retry a socket send in case of error
 
 // ID of the PDP context used to configure the default EPS bearer when registering in an LTE network
 // Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
@@ -1987,13 +1988,17 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         {
             LOCK();
             if (ISSOCKET(socket)) {
-                sendFormated("AT+USOWR=%d,%d\r\n",_sockets[socket].handle,blk);
-                if (RESP_PROMPT == waitFinalResp()) {
-                    HAL_Delay_Milliseconds(50);
-                    send(buf, blk);
-                    if (RESP_OK == waitFinalResp())
-                        ok = true;
-                }
+                uint8_t retry_num = 0;
+                do {
+                    sendFormated("AT+USOWR=%d,%d\r\n",_sockets[socket].handle,blk);
+                    if (RESP_PROMPT == waitFinalResp()) {
+                        HAL_Delay_Milliseconds(50);
+                        send(buf, blk);
+                        if (RESP_OK == waitFinalResp()) {
+                            ok = true;
+                        }
+                    }
+                } while(!ok && retry_num++ < MDM_SOCKET_SEND_RETRIES);
             }
             UNLOCK();
         }
@@ -2075,13 +2080,17 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         {
             LOCK();
             if (ISSOCKET(socket)) {
-                sendFormated("AT+USOST=%d,\"" IPSTR "\",%d,%d\r\n",_sockets[socket].handle,IPNUM(ip),port,blk);
-                if (RESP_PROMPT == waitFinalResp()) {
-                    HAL_Delay_Milliseconds(50);
-                    send(buf, blk);
-                    if (RESP_OK == waitFinalResp())
-                        ok = true;
-                }
+                uint8_t retry_num = 0;
+                do {
+                    sendFormated("AT+USOST=%d,\"" IPSTR "\",%d,%d\r\n",_sockets[socket].handle,IPNUM(ip),port,blk);
+                    if (RESP_PROMPT == waitFinalResp()) {
+                        HAL_Delay_Milliseconds(50);
+                        send(buf, blk);
+                        if (RESP_OK == waitFinalResp()) {
+                            ok = true;
+                        }
+                    }
+                } while(!ok && retry_num++ < MDM_SOCKET_SEND_RETRIES);
             }
             UNLOCK();
         }
