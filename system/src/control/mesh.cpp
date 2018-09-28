@@ -283,7 +283,11 @@ void commissionerTimeout(os_timer_t timer) {
     LOG_DEBUG(TRACE, "Commissioner timeout");
     stopCommissionerTimer();
     const auto thread = threadInstance();
-    if (otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_DISABLED) {
+    if (!thread) {
+        return;
+    }
+    const auto state = otCommissionerGetState(thread);
+    if (state != OT_COMMISSIONER_STATE_DISABLED) {
         LOG_DEBUG(TRACE, "Stopping commissioner");
         const auto ret = otCommissionerStop(thread);
         if (ret != OT_ERROR_NONE) {
@@ -534,8 +538,15 @@ int startCommissioner(ctrl_request* req) {
         return ret;
     }
     // Enable Thread
-    CHECK_THREAD(otIp6SetEnabled(thread, true));
-    CHECK_THREAD(otThreadSetEnabled(thread, true));
+    if (!otDatasetIsCommissioned(thread)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!otIp6IsEnabled(thread)) {
+        CHECK_THREAD(otIp6SetEnabled(thread, true));
+    }
+    if (otThreadGetDeviceRole(thread) == OT_DEVICE_ROLE_DISABLED) {
+        CHECK_THREAD(otThreadSetEnabled(thread, true));
+    }
     // FIXME: Subscribe to OpenThread events instead of polling
     for (;;) {
         const auto role = otThreadGetDeviceRole(thread);
@@ -547,23 +558,27 @@ int startCommissioner(ctrl_request* req) {
         lock.lock();
     }
     otCommissionerState state = otCommissionerGetState(thread);
-    if (state == OT_COMMISSIONER_STATE_DISABLED) {
-        LOG_DEBUG(TRACE, "Starting commissioner");
-        CHECK_THREAD(otCommissionerStart(thread));
-    }
-    for (;;) {
-        state = otCommissionerGetState(thread);
-        if (state != OT_COMMISSIONER_STATE_PETITION) {
-            break;
+    if (state == OT_COMMISSIONER_STATE_ACTIVE) {
+        LOG_DEBUG(TRACE, "Commissioner is already active");
+    } else {
+        if (state == OT_COMMISSIONER_STATE_DISABLED) {
+            LOG_DEBUG(TRACE, "Starting commissioner");
+            CHECK_THREAD(otCommissionerStart(thread));
         }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
+        for (;;) {
+            lock.unlock();
+            HAL_Delay_Milliseconds(500);
+            lock.lock();
+            state = otCommissionerGetState(thread);
+            if (state != OT_COMMISSIONER_STATE_PETITION) {
+                break;
+            }
+        }
+        if (state != OT_COMMISSIONER_STATE_ACTIVE) {
+            return SYSTEM_ERROR_TIMEOUT;
+        }
+        LOG_DEBUG(TRACE, "Commissioner started");
     }
-    if (state != OT_COMMISSIONER_STATE_ACTIVE) {
-        return SYSTEM_ERROR_TIMEOUT;
-    }
-    LOG_DEBUG(TRACE, "Commissioner started");
     g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
     if (pbReq.timeout > 0) {
         g_commTimeout = pbReq.timeout;
@@ -578,22 +593,24 @@ int stopCommissioner(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    const auto state = otCommissionerGetState(thread);
+    stopCommissionerTimer();
+    otCommissionerState state = otCommissionerGetState(thread);
     if (state != OT_COMMISSIONER_STATE_DISABLED) {
         LOG_DEBUG(TRACE, "Stopping commissioner");
         CHECK_THREAD(otCommissionerStop(thread));
-    }
-    stopCommissionerTimer();
-    for (;;) {
-        const auto state = otCommissionerGetState(thread);
-        if (state == OT_COMMISSIONER_STATE_DISABLED) {
-            break;
+        for (;;) {
+            lock.unlock();
+            HAL_Delay_Milliseconds(500);
+            lock.lock();
+            state = otCommissionerGetState(thread);
+            if (state == OT_COMMISSIONER_STATE_DISABLED) {
+                break;
+            }
         }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
+        LOG_DEBUG(TRACE, "Commissioner stopped");
+    } else {
+        LOG_DEBUG(TRACE, "Commissioner is not active");
     }
-    LOG_DEBUG(TRACE, "Commissioner stopped");
     return 0;
 }
 
@@ -750,6 +767,7 @@ int joinNetwork(ctrl_request* req) {
             break;
         }
         LOG_DEBUG(TRACE, "Restarting joiner");
+        HAL_Delay_Milliseconds(1000);
     }
     if (cancel) {
         LOG_DEBUG(TRACE, "Stopping joiner");
