@@ -22,6 +22,7 @@
 #include "system_openthread.h"
 #include "system_network_manager.h"
 #include "system_cloud.h"
+#include "system_threading.h"
 
 #include "common.h"
 
@@ -261,7 +262,7 @@ void stopCommissionerTimer() {
     }
 }
 
-int restartCommissionerTimer() {
+int startCommissionerTimer() {
     THREAD_LOCK(lock);
     os_timer_change_t change = OS_TIMER_CHANGE_PERIOD;
     if (!g_commTimer) {
@@ -282,21 +283,27 @@ int restartCommissionerTimer() {
 }
 
 void commissionerTimeout(os_timer_t timer) {
-    THREAD_LOCK(lock);
     LOG_DEBUG(TRACE, "Commissioner timeout");
     stopCommissionerTimer();
-    const auto thread = threadInstance();
-    if (!thread) {
+    // Stopping the commissioner in the timer thread may cause a stack overflow
+    const auto task = new(std::nothrow) ISRTaskQueue::Task;
+    if (!task) {
         return;
     }
-    const auto state = otCommissionerGetState(thread);
-    if (state != OT_COMMISSIONER_STATE_DISABLED) {
-        LOG_DEBUG(TRACE, "Stopping commissioner");
-        const auto ret = otCommissionerStop(thread);
-        if (ret != OT_ERROR_NONE) {
-            LOG(WARN, "otCommissionerStop() failed: %d", (int)ret);
+    task->func = [](ISRTaskQueue::Task* task) {
+        delete task;
+        THREAD_LOCK(lock);
+        const auto thread = threadInstance();
+        if (!thread) {
+            return;
         }
-    }
+        const auto state = otCommissionerGetState(thread);
+        if (state != OT_COMMISSIONER_STATE_DISABLED) {
+            LOG_DEBUG(TRACE, "Stopping commissioner");
+            otCommissionerStop(thread);
+        }
+    };
+    SystemISRTaskQueue.enqueue(task);
 }
 
 int threadToSystemError(otError error) {
@@ -586,7 +593,7 @@ int startCommissioner(ctrl_request* req) {
     if (pbReq.timeout > 0) {
         g_commTimeout = pbReq.timeout * 1000;
     }
-    restartCommissionerTimer();
+    startCommissionerTimer();
     return 0;
 }
 
@@ -673,7 +680,6 @@ int addJoiner(ctrl_request* req) {
             dJoinPwd.size > JOINER_PASSWORD_MAX_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    restartCommissionerTimer();
     // Add joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
@@ -683,6 +689,7 @@ int addJoiner(ctrl_request* req) {
     }
     LOG_DEBUG(TRACE, "Adding joiner: EUI-64: %s, password: %s", dEui64Str.data, dJoinPwd.data);
     CHECK_THREAD(otCommissionerAddJoiner(thread, &eui64, dJoinPwd.data, timeout));
+    startCommissionerTimer();
     return 0;
 }
 
@@ -702,12 +709,12 @@ int removeJoiner(ctrl_request* req) {
     if (dEui64Str.size != sizeof(otExtAddress) * 2) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    restartCommissionerTimer();
     // Remove joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
     LOG_DEBUG(TRACE, "Removing joiner: EUI-64: %s", dEui64Str.data);
     CHECK_THREAD(otCommissionerRemoveJoiner(thread, &eui64));
+    startCommissionerTimer();
     return 0;
 }
 
