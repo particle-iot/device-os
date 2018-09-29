@@ -126,7 +126,11 @@ const module_bounds_t module_ncp_mono = {
 };
 #endif
 
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory, &module_user_mono
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory
+#else
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono
+#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 #if HAL_PLATFORM_NCP
         ,&module_ncp_mono
 #endif /* HAL_PLATFORM_NCP */
