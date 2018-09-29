@@ -41,7 +41,7 @@ const auto FAST_ADVERT_TIMEOUT = MSEC_TO_UNITS(180000, UNIT_10_MS); // Fast mode
 const auto SLOW_ADVERT_TIMEOUT = 0; // Advertise indefinitely (slow mode)
 
 // Minimum acceptable connection interval in 1.25 ms units
-const auto MIN_CONN_INTERVAL = MSEC_TO_UNITS(15, UNIT_1_25_MS);
+const auto MIN_CONN_INTERVAL = MSEC_TO_UNITS(30, UNIT_1_25_MS);
 
 // Maximum acceptable connection interval in 1.25 ms units
 const auto MAX_CONN_INTERVAL = MSEC_TO_UNITS(45, UNIT_1_25_MS);
