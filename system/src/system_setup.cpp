@@ -103,6 +103,42 @@ public:
     }
 };
 
+class WrappedStreamAppender : public StreamAppender
+{
+  bool wrotePrefix_;
+  const uint8_t* prefix_;
+  size_t prefixLength_;
+  const uint8_t* suffix_;
+  size_t suffixLenght_;
+public:
+  WrappedStreamAppender(
+      Stream& stream,
+      const uint8_t* prefix,
+      size_t prefixLength,
+      const uint8_t* suffix,
+      size_t suffixLenght) :
+    StreamAppender(stream),
+    wrotePrefix_(false),
+    prefix_(prefix),
+    prefixLength_(prefixLength),
+    suffix_(suffix),
+    suffixLenght_(suffixLenght)
+  {}
+
+  ~WrappedStreamAppender() {
+    append(suffix_, suffixLenght_);
+  }
+
+  virtual bool append(const uint8_t* data, size_t length) override {
+    if (!wrotePrefix_) {
+      StreamAppender::append(prefix_, prefixLength_);
+      wrotePrefix_ = true;
+    }
+    return StreamAppender::append(data, length);
+  }
+};
+
+
 #if SETUP_OVER_SERIAL1
 inline bool setup_serial1() {
     uint8_t value = 0;
@@ -263,10 +299,10 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('s' == c)
     {
-        StreamAppender appender(serial);
-        print("{");
+        auto prefix = "{";
+        auto suffix = "}\r\n";
+        WrappedStreamAppender appender(serial, (const uint8_t*)prefix, strlen(prefix), (const uint8_t*)suffix, strlen(suffix));
         system_module_info(append_instance, &appender);
-        print("}\r\n");
     }
     else if ('v' == c)
     {
