@@ -366,7 +366,7 @@ int createNetwork(ctrl_request* req) {
     }
     // Network name: up to 16 characters, UTF-8 encoded
     // Commissioning credential: 6 to 255 characters, UTF-8 encoded
-    if (dName.size == 0 || dName.size >= OT_NETWORK_NAME_MAX_SIZE || dPwd.size < OT_COMMISSIONING_PASSPHRASE_MIN_SIZE ||
+    if (dName.size == 0 || dName.size > OT_NETWORK_NAME_MAX_SIZE || dPwd.size < OT_COMMISSIONING_PASSPHRASE_MIN_SIZE ||
             dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
