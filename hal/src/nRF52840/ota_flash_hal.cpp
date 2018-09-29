@@ -70,6 +70,12 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
     return NULL;
 }
 
+void set_key_value(key_value* kv, const char* key, const char* value)
+{
+    kv->key = key;
+    strncpy(kv->value, value, sizeof(kv->value)-1);
+}
+
 void copy_dct(void* target, uint16_t offset, uint16_t length) 
 {
     dct_read_app_data_copy(offset, target, length);
@@ -145,11 +151,26 @@ int fetch_device_public_key_ex(void)
     return 0; // flash_pub_key
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
+void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
-    info->platform_id = PLATFORM_ID;
-    info->module_count = 0;
-    info->modules = NULL;
+    if (construct) {
+        info->platform_id = PLATFORM_ID;
+        // bootloader, system 1, system 2, optional user code and factory restore
+        uint8_t count = module_bounds_length;
+        info->modules = new hal_module_t[count];
+        if (info->modules) {
+            info->module_count = count;
+            for (unsigned i=0; i<count; i++) {
+                fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
+            }
+        }
+    }
+    else
+    {
+        delete info->modules;
+        info->modules = NULL;
+    }
+    HAL_OTA_Add_System_Info(info, construct, reserved);
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
