@@ -25,8 +25,6 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "enumclass.h"
 #include "system_commands.h"
 
-#include "dct.h"
-
 #define CHECK(_expr) \
         ({ \
             const auto _ret = _expr; \
@@ -257,11 +255,6 @@ bool NetworkManager::isIp6ConnectivityAvailable() const {
 }
 
 bool NetworkManager::isConfigured() const {
-    uint8_t val = 0;
-    const int dctRet = dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
-    if (dctRet == 0 && val != 0x01) {
-        return false;
-    }
     bool ret = false;
     for_each_iface([&](if_t iface, unsigned int curFlags) {
         if (haveLowerLayerConfiguration(iface)) {
