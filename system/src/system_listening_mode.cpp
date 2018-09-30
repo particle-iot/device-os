@@ -66,9 +66,9 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     active_ = true;
     LOG(INFO, "Entering listening mode");
 
-    // We no longer bring all network interfaces down before entering the listening mode
-    //cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
-    //NetworkManager::instance()->deactivateConnections();
+    /* Disconnect from cloud and network */
+    cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
+    NetworkManager::instance()->deactivateConnections();
 
     LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
 

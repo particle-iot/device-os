@@ -241,10 +241,8 @@ int resetThread() {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    // Disconnect from the cloud and bring all network interfaces down
     // TODO: Disable only the Thread interface
-    cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
-    system::NetworkManager::instance()->deactivateConnections();
+    NetworkManager::instance()->deactivateConnections();
     // Enqueue a network change event
     system_command_clear();
     if (otDatasetIsCommissioned(thread)) {
