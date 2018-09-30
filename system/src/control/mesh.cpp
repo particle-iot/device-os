@@ -29,6 +29,7 @@
 #include "concurrent_hal.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
+#include "core_hal.h"
 
 #include "bytes2hexbuf.h"
 #include "hex_to_bytes.h"
@@ -67,6 +68,22 @@
 #define THREAD_LOCK(_name) \
         ThreadLock _name##Mutex; \
         std::unique_lock<ThreadLock> _name(_name##Mutex)
+
+// TODO: Make mesh-related request handlers asynchronous
+#define WAIT_UNTIL(_lock, _expr) \
+        for (const auto _t1 = HAL_Timer_Get_Milli_Seconds();;) { \
+            if (_expr) { \
+                break; \
+            } \
+            _lock.unlock(); \
+            const auto _t2 = HAL_Timer_Get_Milli_Seconds(); \
+            if (_t2 - _t1 >= WAIT_UNTIL_TIMEOUT) { \
+                LOG(ERROR, "WAIT_UNTIL() timeout"); \
+                HAL_Core_System_Reset_Ex(RESET_REASON_WATCHDOG, 0, nullptr); \
+            } \
+            HAL_Delay_Milliseconds(500); \
+            _lock.lock(); \
+        }
 
 #define PB(_name) particle_ctrl_mesh_##_name
 
@@ -111,6 +128,9 @@ const unsigned ACTIVE_SCAN_DURATION = 0; // Use Thread's default timeout
 
 // Time in milliseconds to spend scanning each channel during an energy scan
 const unsigned ENERGY_SCAN_DURATION = 200;
+
+// Time in milliseconds after which WAIT_UNTIL() resets the device
+const unsigned WAIT_UNTIL_TIMEOUT = 600000;
 
 // Vendor data
 const char* const VENDOR_NAME = "Particle";
@@ -409,12 +429,7 @@ int createNetwork(ctrl_request* req) {
                 scan->channel = result->mChannel;
             }
         }, &enScan));
-        // FIXME: Make this handler asynchronous
-        lock.unlock();
-        while (!enScan.done) {
-            HAL_Delay_Milliseconds(500);
-        }
-        lock.lock();
+        WAIT_UNTIL(lock, enScan.done);
         channel = (enScan.channel != 0) ? enScan.channel : DEFAULT_CHANNEL; // Just in case
     }
     LOG(TRACE, "Using channel %u", channel);
@@ -463,12 +478,7 @@ int createNetwork(ctrl_request* req) {
                 (unsigned)panId, extPanIdStr);
 #endif
     }, &actScan));
-    // FIXME: Make this handler asynchronous
-    lock.unlock();
-    while (!actScan.done) {
-        HAL_Delay_Milliseconds(500);
-    }
-    lock.lock();
+    WAIT_UNTIL(lock, actScan.done);
     if (actScan.result != 0) {
         return actScan.result;
     }
@@ -506,18 +516,11 @@ int createNetwork(ctrl_request* req) {
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
-    // FIXME: Subscribe to OpenThread events instead of polling
-    for (;;) {
-        const auto role = otThreadGetDeviceRole(thread);
-        if (role != OT_DEVICE_ROLE_DETACHED) {
-            break;
-        }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
-    }
-    int notifyResult = notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED|NetworkInfo::PANID_VALID|NetworkInfo::XPANID_VALID|NetworkInfo::CHANNEL_VALID|NetworkInfo::ON_MESH_PREFIX_VALID|NetworkInfo::NAME_VALID);
-    if (notifyResult<0) {
+    WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
+    const int notifyResult = notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED | NetworkInfo::PANID_VALID |
+            NetworkInfo::XPANID_VALID | NetworkInfo::CHANNEL_VALID | NetworkInfo::ON_MESH_PREFIX_VALID |
+            NetworkInfo::NAME_VALID);
+    if (notifyResult < 0) {
         LOG(ERROR, "Unable to notify network change %d", notifyResult);
     }
     // Encode a reply
@@ -557,16 +560,7 @@ int startCommissioner(ctrl_request* req) {
     if (otThreadGetDeviceRole(thread) == OT_DEVICE_ROLE_DISABLED) {
         CHECK_THREAD(otThreadSetEnabled(thread, true));
     }
-    // FIXME: Subscribe to OpenThread events instead of polling
-    for (;;) {
-        const auto role = otThreadGetDeviceRole(thread);
-        if (role != OT_DEVICE_ROLE_DETACHED) {
-            break;
-        }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
-    }
+    WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     otCommissionerState state = otCommissionerGetState(thread);
     if (state == OT_COMMISSIONER_STATE_ACTIVE) {
         LOG_DEBUG(TRACE, "Commissioner is already active");
@@ -575,15 +569,7 @@ int startCommissioner(ctrl_request* req) {
             LOG_DEBUG(TRACE, "Starting commissioner");
             CHECK_THREAD(otCommissionerStart(thread));
         }
-        for (;;) {
-            lock.unlock();
-            HAL_Delay_Milliseconds(500);
-            lock.lock();
-            state = otCommissionerGetState(thread);
-            if (state != OT_COMMISSIONER_STATE_PETITION) {
-                break;
-            }
-        }
+        WAIT_UNTIL(lock, otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_PETITION);
         if (state != OT_COMMISSIONER_STATE_ACTIVE) {
             return SYSTEM_ERROR_TIMEOUT;
         }
@@ -607,16 +593,8 @@ int stopCommissioner(ctrl_request* req) {
     otCommissionerState state = otCommissionerGetState(thread);
     if (state != OT_COMMISSIONER_STATE_DISABLED) {
         LOG_DEBUG(TRACE, "Stopping commissioner");
-        CHECK_THREAD(otCommissionerStop(thread));
-        for (;;) {
-            lock.unlock();
-            HAL_Delay_Milliseconds(500);
-            lock.lock();
-            state = otCommissionerGetState(thread);
-            if (state == OT_COMMISSIONER_STATE_DISABLED) {
-                break;
-            }
-        }
+        otCommissionerStop(thread);
+        WAIT_UNTIL(lock, otCommissionerGetState(thread) == OT_COMMISSIONER_STATE_DISABLED);
         LOG_DEBUG(TRACE, "Commissioner stopped");
     } else {
         LOG_DEBUG(TRACE, "Commissioner is not active");
@@ -740,7 +718,6 @@ int joinNetwork(ctrl_request* req) {
         volatile bool done;
     };
     LOG(INFO, "Joining the network; timeout: %u", timeout);
-    // FIXME: Make this handler asynchronous
     JoinStatus stat = {};
     bool cancel = false;
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
@@ -780,20 +757,12 @@ int joinNetwork(ctrl_request* req) {
             break;
         }
         LOG_DEBUG(TRACE, "Restarting joiner");
-        HAL_Delay_Milliseconds(1000);
+        HAL_Delay_Milliseconds(500);
     }
     if (cancel) {
         LOG_DEBUG(TRACE, "Stopping joiner");
-        CHECK_THREAD(otJoinerStop(thread));
-        for (;;) {
-            const auto state = otJoinerGetState(thread);
-            if (state == OT_JOINER_STATE_IDLE) {
-                break;
-            }
-            lock.unlock();
-            HAL_Delay_Milliseconds(500);
-            lock.lock();
-        }
+        otJoinerStop(thread);
+        WAIT_UNTIL(lock, otJoinerGetState(thread) == OT_JOINER_STATE_IDLE);
         LOG_DEBUG(TRACE, "Joiner stopped");
         CHECK(resetThread());
         return SYSTEM_ERROR_TIMEOUT;
@@ -803,16 +772,7 @@ int joinNetwork(ctrl_request* req) {
         return threadToSystemError(stat.result);
     }
     CHECK_THREAD(otThreadSetEnabled(thread, true));
-    // FIXME: Subscribe to OpenThread events instead of polling
-    for (;;) {
-        const auto role = otThreadGetDeviceRole(thread);
-        if (role != OT_DEVICE_ROLE_DETACHED) {
-            break;
-        }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
-    }
+    WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");
     notifyJoined(true);
     return 0;
@@ -905,12 +865,7 @@ int scanNetworks(ctrl_request* req) {
             scan->result = SYSTEM_ERROR_NO_MEMORY;
         }
     }, &scan));
-    // FIXME: Make this handler asynchronous
-    lock.unlock();
-    while (!scan.done) {
-        HAL_Delay_Milliseconds(500);
-    }
-    lock.lock();
+    WAIT_UNTIL(lock, scan.done);
     if (scan.result != 0) {
         return scan.result;
     }
