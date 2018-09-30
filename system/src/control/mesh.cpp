@@ -559,7 +559,7 @@ int startCommissioner(ctrl_request* req) {
         CHECK_THREAD(otThreadSetEnabled(thread, true));
     }
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
-    otCommissionerState state = otCommissionerGetState(thread);
+    auto state = otCommissionerGetState(thread);
     if (state == OT_COMMISSIONER_STATE_ACTIVE) {
         LOG_DEBUG(TRACE, "Commissioner is already active");
     } else {
@@ -568,6 +568,7 @@ int startCommissioner(ctrl_request* req) {
             CHECK_THREAD(otCommissionerStart(thread));
         }
         WAIT_UNTIL(lock, otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_PETITION);
+        state = otCommissionerGetState(thread);
         if (state != OT_COMMISSIONER_STATE_ACTIVE) {
             return SYSTEM_ERROR_TIMEOUT;
         }
@@ -588,7 +589,7 @@ int stopCommissioner(ctrl_request* req) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     stopCommissionerTimer();
-    otCommissionerState state = otCommissionerGetState(thread);
+    const auto state = otCommissionerGetState(thread);
     if (state != OT_COMMISSIONER_STATE_DISABLED) {
         LOG_DEBUG(TRACE, "Stopping commissioner");
         otCommissionerStop(thread);
