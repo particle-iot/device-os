@@ -258,7 +258,7 @@ int UDP::beginPacket(const char *host, uint16_t port) {
 }
 
 int UDP::beginPacket(IPAddress ip, uint16_t port) {
-	LOG(TRACE, "begin packet %s:%d", ip.toString().c_str(), port);
+	LOG(TRACE, "begin packet %s#%d", ip.toString().c_str(), port);
     // default behavior previously was to use a 512 byte buffer, so instantiate that if not already done
     if (!_buffer && _buffer_size) {
         setBuffer(_buffer_size);
@@ -277,7 +277,7 @@ int UDP::endPacket() {
 }
 
 int UDP::sendPacket(const uint8_t* buffer, size_t buffer_size, IPAddress remoteIP, uint16_t port) {
-    LOG(TRACE, "sendPacket size %d, %s:%d", buffer_size, remoteIP.toString().c_str(), port);
+    LOG(TRACE, "sendPacket size %d, %s#%d", buffer_size, remoteIP.toString().c_str(), port);
 	sockaddr_storage s = {};
     ipAddressPortToSockaddr(remoteIP, port, (struct sockaddr*)&s);
     if (s.ss_family == AF_UNSPEC) {
@@ -324,7 +324,7 @@ int UDP::receivePacket(uint8_t* buffer, size_t size) {
         ret = sock_recvfrom(_sock, buffer, size, MSG_DONTWAIT, (struct sockaddr*)&saddr, &slen);
         if (ret >= 0) {
             sockaddrToIpAddressPort((const struct sockaddr*)&saddr, _remoteIP, &_remotePort);
-            LOG(TRACE, "received %d bytes from %s:%d", ret, _remoteIP.toString().c_str(), _remotePort);
+            LOG(TRACE, "received %d bytes from %s#%d", ret, _remoteIP.toString().c_str(), _remotePort);
         }
     }
     return ret;

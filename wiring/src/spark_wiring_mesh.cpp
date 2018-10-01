@@ -138,12 +138,12 @@ int MeshPublish::initialize_udp() {
 	if (udp) {
 		return SYSTEM_ERROR_NONE;
 	}
-	udp = new UDP();
+	udp.reset(new UDP());
 	if (!udp) {
 		return SYSTEM_ERROR_NO_MEMORY;
 	}
 	udp->setBuffer(MAX_PACKET_LEN);
-	// Get OpenThread interface index (OpenThread interface is named "th1" on all Mesh devices)
+	// Get OpenThread interface index (	 interface is named "th1" on all Mesh devices)
 	uint8_t idx = 0;
 	if_name_to_index("th1", &idx);
 	 // Create UDP socket and bind to OpenThread interface
@@ -161,8 +161,7 @@ int MeshPublish::uninitialize_udp() {
 		IPAddress mcastAddr;
 		fetchMulticastAddress(mcastAddr);
 		udp->leaveMulticast(mcastAddr);
-		delete udp;
-		udp = nullptr;
+		udp.reset();
 	}
 	return SYSTEM_ERROR_NONE;
 }

@@ -29,6 +29,7 @@
 #include "spark_wiring_platform.h"
 #include "string.h"
 #include "ifapi.h"
+#include <arpa/inet.h>
 
 IPAddress::IPAddress()
 {
@@ -115,7 +116,7 @@ size_t IPAddress::printTo(Print& p) const
 {
 #if HAL_IPv6
 	if (address.v==6) {
-		char buf[40];
+		char buf[INET6_ADDRSTRLEN+1];
 		buf[0] = 0;
 		inet_inet_ntop(AF_INET6, address.ipv6, buf, sizeof(buf));
 		return p.write(buf);

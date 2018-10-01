@@ -31,6 +31,7 @@
 #include "system_error.h"
 #include "check.h"
 #include "ifapi.h"
+#include <memory>
 
 namespace spark {
 
@@ -97,9 +98,9 @@ public:
 
 	static const uint16_t PORT = 36969;
 	static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
-	static const uint16_t MAX_PACKET_LEN = 768;
+	static const uint16_t MAX_PACKET_LEN = 1232;
 
-	UDP* udp;
+	std::unique_ptr<UDP> udp;
 	Subscriptions subscriptions;
 
 	static int fetchMulticastAddress(IPAddress& mcastAddr);
