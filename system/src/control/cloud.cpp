@@ -21,6 +21,8 @@
 
 #include "common.h"
 
+#include "system_cloud.h"
+
 #include "spark_wiring_diagnostics.h"
 
 #include "cloud.pb.h"
@@ -48,6 +50,16 @@ int getConnectionStatus(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
+    return 0;
+}
+
+int connect(ctrl_request* req) {
+    spark_cloud_flag_connect();
+    return 0;
+}
+
+int disconnect(ctrl_request* req) {
+    spark_cloud_flag_disconnect();
     return 0;
 }
 

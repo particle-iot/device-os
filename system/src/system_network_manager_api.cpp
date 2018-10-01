@@ -21,11 +21,15 @@
 
 #include "system_network.h"
 #include "system_network_internal.h"
-#include "delay_hal.h"
 #include "system_update.h"
 #include "system_cloud_internal.h"
 #include "system_threading.h"
 #include "system_listening_mode.h"
+
+#include "delay_hal.h"
+
+#include "dct.h"
+
 #include <atomic>
 
 using namespace particle::system;
@@ -45,6 +49,19 @@ namespace {
 /* FIXME: This is not how this should be handled */
 std::atomic_bool s_forcedDisconnect(false);
 
+bool testAndClearSetupDoneFlag() {
+    static bool checkDone = true;
+    if (checkDone) {
+        checkDone = false;
+        uint8_t done = 0x01;
+        dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &done, 1);
+        if (done == 0x00 || done == 0xff) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } /* anonymous */
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
@@ -63,7 +80,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         SPARK_WLAN_SLEEP = 0;
         s_forcedDisconnect = false;
 
-        if (!NetworkManager::instance()->isConfigured()) {
+        if (!NetworkManager::instance()->isConfigured() || !testAndClearSetupDoneFlag()) {
             /* Enter listening mode */
             network_listen(0, 0, 0);
             return;
@@ -214,7 +231,7 @@ void manage_network_connection() {
         cfod_count = 0;
     } else {
         if (spark_cloud_flag_auto_connect() && !s_forcedDisconnect) {
-            if (!NetworkManager::instance()->isConfigured()) {
+            if (!NetworkManager::instance()->isConfigured() || !testAndClearSetupDoneFlag()) {
                 /* Enter listening mode */
                 network_listen(0, 0, 0);
                 return;

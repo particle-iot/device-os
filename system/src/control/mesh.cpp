@@ -20,18 +20,23 @@
 #if SYSTEM_CONTROL_ENABLED
 
 #include "system_openthread.h"
+#include "system_network_manager.h"
+#include "system_cloud.h"
+#include "system_threading.h"
 
 #include "common.h"
 
 #include "concurrent_hal.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
+#include "core_hal.h"
 
 #include "bytes2hexbuf.h"
 #include "hex_to_bytes.h"
 #include "random.h"
 #include "preprocessor.h"
 #include "logging.h"
+#include "check.h"
 
 #include "spark_wiring_vector.h"
 
@@ -64,6 +69,22 @@
         ThreadLock _name##Mutex; \
         std::unique_lock<ThreadLock> _name(_name##Mutex)
 
+// TODO: Make mesh-related request handlers asynchronous
+#define WAIT_UNTIL(_lock, _expr) \
+        for (const auto _t1 = HAL_Timer_Get_Milli_Seconds();;) { \
+            if (_expr) { \
+                break; \
+            } \
+            _lock.unlock(); \
+            const auto _t2 = HAL_Timer_Get_Milli_Seconds(); \
+            if (_t2 - _t1 >= WAIT_UNTIL_TIMEOUT) { \
+                LOG(ERROR, "WAIT_UNTIL() timeout"); \
+                HAL_Core_System_Reset_Ex(RESET_REASON_WATCHDOG, 0, nullptr); \
+            } \
+            HAL_Delay_Milliseconds(500); \
+            _lock.lock(); \
+        }
+
 #define PB(_name) particle_ctrl_mesh_##_name
 
 using spark::Vector;
@@ -84,14 +105,17 @@ namespace {
 // Default IEEE 802.15.4 channel
 const unsigned DEFAULT_CHANNEL = 11;
 
-// Time is seconds after which the commissioner role is automatically stopped
-const unsigned DEFAULT_COMMISSIONER_TIMEOUT = 600;
+// Time is milliseconds after which the commissioner role is automatically stopped
+const unsigned DEFAULT_COMMISSIONER_TIMEOUT = 600000;
 
-// Time in seconds after which a joiner is automatically removed from the commissioner dataset
+// Time in seconds after which a joiner entry is automatically removed from the commissioner dataset
 const unsigned DEFAULT_JOINER_ENTRY_TIMEOUT = 600;
 
-// Maximum time in seconds to spend trying to join a network
-const unsigned DEFAULT_JOINER_TIMEOUT = 120;
+// Maximum time in milliseconds to spend trying to join a network
+const unsigned DEFAULT_JOINER_TIMEOUT = 120000;
+
+// Maximum time in milliseconds to spend trying to discover a network
+const unsigned DISCOVERY_TIMEOUT = 45000;
 
 // Minimum size of the joining device credential
 const size_t JOINER_PASSWORD_MIN_SIZE = 6;
@@ -104,6 +128,9 @@ const unsigned ACTIVE_SCAN_DURATION = 0; // Use Thread's default timeout
 
 // Time in milliseconds to spend scanning each channel during an energy scan
 const unsigned ENERGY_SCAN_DURATION = 200;
+
+// Time in milliseconds after which WAIT_UNTIL() resets the device
+const unsigned WAIT_UNTIL_TIMEOUT = 600000;
 
 // Vendor data
 const char* const VENDOR_NAME = "Particle";
@@ -131,105 +158,7 @@ public:
     }
 };
 
-void commissionerTimeout(os_timer_t timer);
-
-void stopCommissionerTimer() {
-    THREAD_LOCK(lock);
-    if (g_commTimer) {
-        os_timer_destroy(g_commTimer, nullptr);
-        g_commTimer = nullptr;
-        g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
-        LOG_DEBUG(TRACE, "Commissioner timer stopped");
-    }
-}
-
-int restartCommissionerTimer() {
-    THREAD_LOCK(lock);
-    const unsigned timeout = g_commTimeout * 1000;
-    os_timer_change_t change = OS_TIMER_CHANGE_PERIOD;
-    if (!g_commTimer) {
-        const int ret = os_timer_create(&g_commTimer, timeout, commissionerTimeout, nullptr, true, nullptr);
-        if (ret != 0) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        change = OS_TIMER_CHANGE_START;
-    }
-    const int ret = os_timer_change(g_commTimer, change, false, timeout, 0xffffffff, nullptr);
-    if (ret != 0) {
-        stopCommissionerTimer();
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-    LOG_DEBUG(TRACE, "Commissioner timer %s", (change == OS_TIMER_CHANGE_START) ? "started" : "restarted");
-    return 0;
-}
-
-void commissionerTimeout(os_timer_t timer) {
-    THREAD_LOCK(lock);
-    LOG_DEBUG(TRACE, "Commissioner timeout");
-    stopCommissionerTimer();
-    const auto thread = threadInstance();
-    if (otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_DISABLED) {
-        LOG_DEBUG(TRACE, "Stopping commissioner");
-        const auto ret = otCommissionerStop(thread);
-        if (ret != OT_ERROR_NONE) {
-            LOG(WARN, "otCommissionerStop() failed: %d", (int)ret);
-        }
-    }
-}
-
-int threadToSystemError(otError error) {
-    switch (error) {
-    case OT_ERROR_NONE:
-        return SYSTEM_ERROR_NONE;
-    case OT_ERROR_SECURITY:
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    case OT_ERROR_NOT_FOUND:
-        return SYSTEM_ERROR_NOT_FOUND;
-    case OT_ERROR_RESPONSE_TIMEOUT:
-        return SYSTEM_ERROR_TIMEOUT;
-    case OT_ERROR_NO_BUFS:
-        return SYSTEM_ERROR_NO_MEMORY;
-    case OT_ERROR_BUSY:
-        return SYSTEM_ERROR_BUSY;
-    case OT_ERROR_ABORT:
-        return SYSTEM_ERROR_ABORTED;
-    case OT_ERROR_INVALID_STATE:
-        return SYSTEM_ERROR_INVALID_STATE;
-    default:
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-}
-
-} // particle::ctrl::mesh::
-
-int auth(ctrl_request* req) {
-    THREAD_LOCK(lock);
-    const auto thread = threadInstance();
-    if (!thread) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    // Parse request
-    PB(AuthRequest) pbReq = {};
-    DecodedCString dPwd(&pbReq.password); // Commissioning credential
-    int ret = decodeRequestMessage(req, PB(AuthRequest_fields), &pbReq);
-    if (ret != 0) {
-        return ret;
-    }
-    // Get network name, extended PAN ID and current PSKc
-    const char* name = otThreadGetNetworkName(thread);
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
-    const uint8_t* curPskc = otThreadGetPSKc(thread);
-    if (!name || !extPanId || !curPskc) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    // Generate PSKc for the provided commissioning credential
-    uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
-    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, name, extPanId, pskc));
-    if (memcmp(pskc, curPskc, OT_PSKC_MAX_SIZE) != 0) {
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    }
-    return 0;
-}
+int threadToSystemError(otError error);
 
 int notifyNetworkUpdated(int flags) {
     NotifyMeshNetworkUpdated cmd;
@@ -290,6 +219,165 @@ int notifyNetworkUpdated(int flags) {
     return result;
 }
 
+int notifyJoined(bool joined) {
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    if (!extPanId) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    NotifyMeshNetworkJoined cmd;
+    cmd.nu.size = sizeof(cmd.nu);
+    memcpy(cmd.nu.id, extPanId, sizeof(cmd.nu.id));
+    cmd.joined = joined;
+
+    return system_command_enqueue(cmd, sizeof(cmd));
+}
+
+int resetThread() {
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    if (!thread) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    // TODO: Disable only the Thread interface
+    NetworkManager::instance()->deactivateConnections();
+    // Enqueue a network change event
+    system_command_clear();
+    if (otDatasetIsCommissioned(thread)) {
+        notifyJoined(false);
+    }
+    // Disable Thread
+    CHECK_THREAD(otThreadSetEnabled(thread, false));
+    CHECK_THREAD(otIp6SetEnabled(thread, false));
+    // Clear master key (invalidates active and pending datasets)
+    otMasterKey key = {};
+    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
+    // Erase persistent data
+    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
+/*
+    // FIXME: Reinitialize OpenThread using the same buffer to make sure all references to the
+    // OpenThread instance remain valid
+    otInstanceFinalize(thread);
+    size_t size = 0;
+    otInstanceInit(nullptr, &size);
+    const auto thread2 = otInstanceInit(thread, &size);
+    SPARK_ASSERT(thread2 == thread);
+*/
+    return 0;
+}
+
+void commissionerTimeout(os_timer_t timer);
+
+void stopCommissionerTimer() {
+    THREAD_LOCK(lock);
+    if (g_commTimer) {
+        os_timer_destroy(g_commTimer, nullptr);
+        g_commTimer = nullptr;
+        g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
+        LOG_DEBUG(TRACE, "Commissioner timer stopped");
+    }
+}
+
+int startCommissionerTimer() {
+    THREAD_LOCK(lock);
+    os_timer_change_t change = OS_TIMER_CHANGE_PERIOD;
+    if (!g_commTimer) {
+        const int ret = os_timer_create(&g_commTimer, g_commTimeout, commissionerTimeout, nullptr, true, nullptr);
+        if (ret != 0) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        change = OS_TIMER_CHANGE_START;
+    }
+    const int ret = os_timer_change(g_commTimer, change, false, g_commTimeout, 0xffffffff, nullptr);
+    if (ret != 0) {
+        stopCommissionerTimer();
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    LOG_DEBUG(TRACE, "Commissioner timer %s; timeout: %u", (change == OS_TIMER_CHANGE_START) ? "started" : "restarted",
+            g_commTimeout);
+    return 0;
+}
+
+void commissionerTimeout(os_timer_t timer) {
+    LOG_DEBUG(TRACE, "Commissioner timeout");
+    stopCommissionerTimer();
+    // Stopping the commissioner in the timer thread may cause a stack overflow
+    const auto task = new(std::nothrow) ISRTaskQueue::Task;
+    if (!task) {
+        return;
+    }
+    task->func = [](ISRTaskQueue::Task* task) {
+        delete task;
+        THREAD_LOCK(lock);
+        const auto thread = threadInstance();
+        if (!thread) {
+            return;
+        }
+        const auto state = otCommissionerGetState(thread);
+        if (state != OT_COMMISSIONER_STATE_DISABLED) {
+            LOG_DEBUG(TRACE, "Stopping commissioner");
+            otCommissionerStop(thread);
+        }
+    };
+    SystemISRTaskQueue.enqueue(task);
+}
+
+int threadToSystemError(otError error) {
+    switch (error) {
+    case OT_ERROR_NONE:
+        return SYSTEM_ERROR_NONE;
+    case OT_ERROR_SECURITY:
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    case OT_ERROR_NOT_FOUND:
+        return SYSTEM_ERROR_NOT_FOUND;
+    case OT_ERROR_RESPONSE_TIMEOUT:
+        return SYSTEM_ERROR_TIMEOUT;
+    case OT_ERROR_NO_BUFS:
+        return SYSTEM_ERROR_NO_MEMORY;
+    case OT_ERROR_BUSY:
+        return SYSTEM_ERROR_BUSY;
+    case OT_ERROR_ABORT:
+        return SYSTEM_ERROR_ABORTED;
+    case OT_ERROR_INVALID_STATE:
+        return SYSTEM_ERROR_INVALID_STATE;
+    default:
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+}
+
+} // particle::ctrl::mesh::
+
+int auth(ctrl_request* req) {
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    if (!thread) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    // Parse request
+    PB(AuthRequest) pbReq = {};
+    DecodedCString dPwd(&pbReq.password); // Commissioning credential
+    int ret = decodeRequestMessage(req, PB(AuthRequest_fields), &pbReq);
+    if (ret != 0) {
+        return ret;
+    }
+    // Get network name, extended PAN ID and current PSKc
+    const char* name = otThreadGetNetworkName(thread);
+    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    const uint8_t* curPskc = otThreadGetPSKc(thread);
+    if (!name || !extPanId || !curPskc) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    // Generate PSKc for the provided commissioning credential
+    uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
+    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, name, extPanId, pskc));
+    if (memcmp(pskc, curPskc, OT_PSKC_MAX_SIZE) != 0) {
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+    return 0;
+}
+
 int createNetwork(ctrl_request* req) {
     THREAD_LOCK(lock);
     const auto thread = threadInstance();
@@ -306,12 +394,12 @@ int createNetwork(ctrl_request* req) {
     }
     // Network name: up to 16 characters, UTF-8 encoded
     // Commissioning credential: 6 to 255 characters, UTF-8 encoded
-    if (dName.size == 0 || dName.size >= OT_NETWORK_NAME_MAX_SIZE || dPwd.size < OT_COMMISSIONING_PASSPHRASE_MIN_SIZE ||
+    if (dName.size == 0 || dName.size > OT_NETWORK_NAME_MAX_SIZE || dPwd.size < OT_COMMISSIONING_PASSPHRASE_MIN_SIZE ||
             dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    CHECK_THREAD(otThreadSetEnabled(thread, false));
-    CHECK_THREAD(otIp6SetEnabled(thread, false));
+    // Disable Thread and clear network credentials
+    CHECK(resetThread());
     unsigned channel = pbReq.channel; // IEEE 802.15.4 channel
     if (channel == 0) {
         // Perform an energy scan
@@ -339,12 +427,7 @@ int createNetwork(ctrl_request* req) {
                 scan->channel = result->mChannel;
             }
         }, &enScan));
-        // FIXME: Make this handler asynchronous
-        lock.unlock();
-        while (!enScan.done) {
-            HAL_Delay_Milliseconds(500);
-        }
-        lock.lock();
+        WAIT_UNTIL(lock, enScan.done);
         channel = (enScan.channel != 0) ? enScan.channel : DEFAULT_CHANNEL; // Just in case
     }
     LOG(TRACE, "Using channel %u", channel);
@@ -393,12 +476,7 @@ int createNetwork(ctrl_request* req) {
                 (unsigned)panId, extPanIdStr);
 #endif
     }, &actScan));
-    // FIXME: Make this handler asynchronous
-    lock.unlock();
-    while (!actScan.done) {
-        HAL_Delay_Milliseconds(500);
-    }
-    lock.lock();
+    WAIT_UNTIL(lock, actScan.done);
     if (actScan.result != 0) {
         return actScan.result;
     }
@@ -436,18 +514,11 @@ int createNetwork(ctrl_request* req) {
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
-    // FIXME: Subscribe to OpenThread events instead of polling
-    for (;;) {
-        const auto role = otThreadGetDeviceRole(thread);
-        if (role != OT_DEVICE_ROLE_DETACHED) {
-            break;
-        }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
-    }
-    int notifyResult = notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED|NetworkInfo::PANID_VALID|NetworkInfo::XPANID_VALID|NetworkInfo::CHANNEL_VALID|NetworkInfo::ON_MESH_PREFIX_VALID|NetworkInfo::NAME_VALID);
-    if (notifyResult<0) {
+    WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
+    const int notifyResult = notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED | NetworkInfo::PANID_VALID |
+            NetworkInfo::XPANID_VALID | NetworkInfo::CHANNEL_VALID | NetworkInfo::ON_MESH_PREFIX_VALID |
+            NetworkInfo::NAME_VALID);
+    if (notifyResult < 0) {
         LOG(ERROR, "Unable to notify network change %d", notifyResult);
     }
     // Encode a reply
@@ -478,41 +549,36 @@ int startCommissioner(ctrl_request* req) {
         return ret;
     }
     // Enable Thread
-    CHECK_THREAD(otIp6SetEnabled(thread, true));
-    CHECK_THREAD(otThreadSetEnabled(thread, true));
-    // FIXME: Subscribe to OpenThread events instead of polling
-    for (;;) {
-        const auto role = otThreadGetDeviceRole(thread);
-        if (role != OT_DEVICE_ROLE_DETACHED) {
-            break;
+    if (!otDatasetIsCommissioned(thread)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!otIp6IsEnabled(thread)) {
+        CHECK_THREAD(otIp6SetEnabled(thread, true));
+    }
+    if (otThreadGetDeviceRole(thread) == OT_DEVICE_ROLE_DISABLED) {
+        CHECK_THREAD(otThreadSetEnabled(thread, true));
+    }
+    WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
+    auto state = otCommissionerGetState(thread);
+    if (state == OT_COMMISSIONER_STATE_ACTIVE) {
+        LOG_DEBUG(TRACE, "Commissioner is already active");
+    } else {
+        if (state == OT_COMMISSIONER_STATE_DISABLED) {
+            LOG_DEBUG(TRACE, "Starting commissioner");
+            CHECK_THREAD(otCommissionerStart(thread));
         }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
-    }
-    otCommissionerState state = otCommissionerGetState(thread);
-    if (state == OT_COMMISSIONER_STATE_DISABLED) {
-        LOG_DEBUG(TRACE, "Starting commissioner");
-        CHECK_THREAD(otCommissionerStart(thread));
-    }
-    for (;;) {
+        WAIT_UNTIL(lock, otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_PETITION);
         state = otCommissionerGetState(thread);
-        if (state != OT_COMMISSIONER_STATE_PETITION) {
-            break;
+        if (state != OT_COMMISSIONER_STATE_ACTIVE) {
+            return SYSTEM_ERROR_TIMEOUT;
         }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
+        LOG_DEBUG(TRACE, "Commissioner started");
     }
-    if (state != OT_COMMISSIONER_STATE_ACTIVE) {
-        return SYSTEM_ERROR_TIMEOUT;
-    }
-    LOG_DEBUG(TRACE, "Commissioner started");
     g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
     if (pbReq.timeout > 0) {
-        g_commTimeout = pbReq.timeout;
+        g_commTimeout = pbReq.timeout * 1000;
     }
-    restartCommissionerTimer();
+    startCommissionerTimer();
     return 0;
 }
 
@@ -522,22 +588,16 @@ int stopCommissioner(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    stopCommissionerTimer();
     const auto state = otCommissionerGetState(thread);
     if (state != OT_COMMISSIONER_STATE_DISABLED) {
         LOG_DEBUG(TRACE, "Stopping commissioner");
-        CHECK_THREAD(otCommissionerStop(thread));
+        otCommissionerStop(thread);
+        WAIT_UNTIL(lock, otCommissionerGetState(thread) == OT_COMMISSIONER_STATE_DISABLED);
+        LOG_DEBUG(TRACE, "Commissioner stopped");
+    } else {
+        LOG_DEBUG(TRACE, "Commissioner is not active");
     }
-    stopCommissionerTimer();
-    for (;;) {
-        const auto state = otCommissionerGetState(thread);
-        if (state == OT_COMMISSIONER_STATE_DISABLED) {
-            break;
-        }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
-    }
-    LOG_DEBUG(TRACE, "Commissioner stopped");
     return 0;
 }
 
@@ -553,14 +613,8 @@ int prepareJoiner(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
-    // Disable Thread
-    CHECK_THREAD(otThreadSetEnabled(thread, false));
-    CHECK_THREAD(otIp6SetEnabled(thread, false));
-    // Clear master key (invalidates active and pending datasets)
-    otMasterKey key = {};
-    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
-    // Erase persistent data
-    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
+    // Disable Thread and clear network credentials
+    CHECK(resetThread());
     // Set PAN ID
     // https://github.com/openthread/openthread/pull/613
     CHECK_THREAD(otLinkSetPanId(thread, pbReq.network.pan_id));
@@ -603,7 +657,6 @@ int addJoiner(ctrl_request* req) {
             dJoinPwd.size > JOINER_PASSWORD_MAX_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    restartCommissionerTimer();
     // Add joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
@@ -613,6 +666,7 @@ int addJoiner(ctrl_request* req) {
     }
     LOG_DEBUG(TRACE, "Adding joiner: EUI-64: %s, password: %s", dEui64Str.data, dJoinPwd.data);
     CHECK_THREAD(otCommissionerAddJoiner(thread, &eui64, dJoinPwd.data, timeout));
+    startCommissionerTimer();
     return 0;
 }
 
@@ -632,29 +686,13 @@ int removeJoiner(ctrl_request* req) {
     if (dEui64Str.size != sizeof(otExtAddress) * 2) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    restartCommissionerTimer();
     // Remove joiner
     otExtAddress eui64 = {};
     hexToBytes(dEui64Str.data, (char*)&eui64, sizeof(otExtAddress));
     LOG_DEBUG(TRACE, "Removing joiner: EUI-64: %s", dEui64Str.data);
     CHECK_THREAD(otCommissionerRemoveJoiner(thread, &eui64));
+    startCommissionerTimer();
     return 0;
-}
-
-int notifyJoined(bool joined) {
-    THREAD_LOCK(lock);
-    const auto thread = threadInstance();
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
-    if (!extPanId) {
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-
-    NotifyMeshNetworkJoined cmd;
-    cmd.nu.size = sizeof(cmd.nu);
-    memcpy(cmd.nu.id, extPanId, sizeof(cmd.nu.id));
-    cmd.joined = joined;
-
-    return system_command_enqueue(cmd, sizeof(cmd));
 }
 
 int joinNetwork(ctrl_request* req) {
@@ -671,22 +709,20 @@ int joinNetwork(ctrl_request* req) {
     }
     unsigned timeout = DEFAULT_JOINER_TIMEOUT;
     if (pbReq.timeout > 0) {
-        timeout = pbReq.timeout;
+        timeout = pbReq.timeout * 1000;
     }
-    timeout *= 1000;
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     struct JoinStatus {
-        int result;
+        otError result;
         volatile bool done;
     };
     LOG(INFO, "Joining the network; timeout: %u", timeout);
-    // FIXME: Make this handler asynchronous
     JoinStatus stat = {};
     bool cancel = false;
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
+        stat.result = OT_ERROR_FAILED;
         stat.done = false;
-        stat.result = SYSTEM_ERROR_UNKNOWN;
         CHECK_THREAD(otJoinerStart(thread, g_joinPwd, nullptr, VENDOR_NAME, VENDOR_MODEL, VENDOR_SW_VERSION,
                 VENDOR_DATA, [](otError result, void* data) {
             const auto stat = (JoinStatus*)data;
@@ -695,7 +731,7 @@ int joinNetwork(ctrl_request* req) {
             } else {
                 LOG(ERROR, "Joiner failed: %u", (unsigned)result);
             }
-            stat->result = threadToSystemError(result);
+            stat->result = result;
             stat->done = true;
         }, &stat));
         lock.unlock();
@@ -712,57 +748,38 @@ int joinNetwork(ctrl_request* req) {
             }
         }
         lock.lock();
-        if ((stat.done && stat.result == 0) || cancel) {
+        if (cancel || stat.result != OT_ERROR_NOT_FOUND) {
+            break;
+        }
+        const auto t2 = HAL_Timer_Get_Milli_Seconds();
+        if (t2 - t1 >= DISCOVERY_TIMEOUT) {
             break;
         }
         LOG_DEBUG(TRACE, "Restarting joiner");
+        HAL_Delay_Milliseconds(500);
     }
     if (cancel) {
         LOG_DEBUG(TRACE, "Stopping joiner");
-        CHECK_THREAD(otJoinerStop(thread));
-        lock.unlock();
-        for (;;) {
-            if (stat.done) {
-                break;
-            }
-            HAL_Delay_Milliseconds(500);
-        }
-        lock.lock();
+        otJoinerStop(thread);
+        WAIT_UNTIL(lock, otJoinerGetState(thread) == OT_JOINER_STATE_IDLE);
+        LOG_DEBUG(TRACE, "Joiner stopped");
+        CHECK(resetThread());
+        return SYSTEM_ERROR_TIMEOUT;
     }
-    if (stat.result != 0) {
-        return (cancel ? SYSTEM_ERROR_TIMEOUT : stat.result);
+    if (stat.result != OT_ERROR_NONE) {
+        CHECK(resetThread());
+        return threadToSystemError(stat.result);
     }
     CHECK_THREAD(otThreadSetEnabled(thread, true));
-    // FIXME: Subscribe to OpenThread events instead of polling
-    for (;;) {
-        const auto role = otThreadGetDeviceRole(thread);
-        if (role != OT_DEVICE_ROLE_DETACHED) {
-            break;
-        }
-        lock.unlock();
-        HAL_Delay_Milliseconds(500);
-        lock.lock();
-    }
+    WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");
     notifyJoined(true);
     return 0;
 }
 
 int leaveNetwork(ctrl_request* req) {
-    THREAD_LOCK(lock);
-    const auto thread = threadInstance();
-    if (!thread) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    system_command_clear();
-    notifyJoined(false);
-    // Disable Thread protocol
-    CHECK_THREAD(otThreadSetEnabled(thread, false));
-    // Clear master key (invalidates active and pending datasets)
-    otMasterKey key = {};
-    CHECK_THREAD(otThreadSetMasterKey(thread, &key));
-    // Erase persistent data
-    CHECK_THREAD(otInstanceErasePersistentInfo(thread));
+    // Disable Thread and clear network credentials
+    CHECK(resetThread());
     return 0;
 }
 
@@ -847,12 +864,7 @@ int scanNetworks(ctrl_request* req) {
             scan->result = SYSTEM_ERROR_NO_MEMORY;
         }
     }, &scan));
-    // FIXME: Make this handler asynchronous
-    lock.unlock();
-    while (!scan.done) {
-        HAL_Delay_Milliseconds(500);
-    }
-    lock.lock();
+    WAIT_UNTIL(lock, scan.done);
     if (scan.result != 0) {
         return scan.result;
     }

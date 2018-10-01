@@ -198,6 +198,14 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_MAX_JOINER_ENTRIES
+ *
+ * The maximum number of Joiner entries maintained by the Commissioner.
+ *
+ */
+#define OPENTHREAD_CONFIG_MAX_JOINER_ENTRIES 4
+
+/**
  * @def NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
  *
  * Define as 1 to enable AES usage in interrupt context and AES-256, by introducing a software AES under platform layer.

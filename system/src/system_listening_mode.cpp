@@ -70,7 +70,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
     NetworkManager::instance()->deactivateConnections();
 
-    LED_SIGNAL_START(LISTENING_MODE, NORMAL);
+    LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
 
 #if HAL_PLATFORM_BLE
     // Start advertising

@@ -321,8 +321,16 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::getSectionDataSizeRequest(req));
         break;
     }
-    case CTRL_REQUEST_GET_CLOUD_CONNECTION_STATUS: {
+    case CTRL_REQUEST_CLOUD_GET_CONNECTION_STATUS: {
         setResult(req, ctrl::cloud::getConnectionStatus(req));
+        break;
+    }
+    case CTRL_REQUEST_CLOUD_CONNECT: {
+        setResult(req, ctrl::cloud::connect(req));
+        break;
+    }
+    case CTRL_REQUEST_CLOUD_DISCONNECT: {
+        setResult(req, ctrl::cloud::disconnect(req));
         break;
     }
     case CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST: {
