@@ -200,6 +200,7 @@ int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd,
 namespace MeshCommand {
 
 const unsigned MAX_NETWORK_NAME_LENGTH = 16;
+const unsigned MAX_NETWORK_ID_LENGTH = 24;
 const unsigned PANID_LENGTH = 2;
 const unsigned XPANID_LENGTH = 8;
 const unsigned MESH_PREFIX_LENGTH = 8;
@@ -216,7 +217,8 @@ struct  __attribute__ ((__packed__)) NetworkInfo {
 		XPANID_VALID = 1<<2,
 		CHANNEL_VALID = 1<<3,
 		ON_MESH_PREFIX_VALID = 1<<4,
-		NAME_VALID = 1<<5
+		NAME_VALID = 1<<5,
+		NETWORK_ID_VALID = 1<<6,
 	};
 	NetworkUpdate update;
 	uint16_t flags;
@@ -225,7 +227,8 @@ struct  __attribute__ ((__packed__)) NetworkInfo {
 	uint8_t channel;
 	uint8_t on_mesh_prefix[MESH_PREFIX_LENGTH];
 	uint8_t name_length;
-	char name[MAX_NETWORK_NAME_LENGTH];
+	char name[MAX_NETWORK_NAME_LENGTH+1];
+	char id[MAX_NETWORK_NAME_LENGTH+1];
 };
 
 enum Enum {

@@ -49,6 +49,7 @@
 #include "openthread/link.h"
 #include "openthread/dataset.h"
 #include "openthread/dataset_ftd.h"
+#include "openthread/platform/settings.h"
 
 #include "proto/mesh.pb.h"
 
@@ -138,6 +139,11 @@ const char* const VENDOR_MODEL = PP_STR(PLATFORM_NAME);
 const char* const VENDOR_SW_VERSION = PP_STR(SYSTEM_VERSION_STRING);
 const char* const VENDOR_DATA = "";
 
+/**
+ * Thread persistent storage key index.
+ */
+const uint16_t kKeyNetworkId = 0x4000;
+
 // Current joining device credential
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
@@ -159,6 +165,19 @@ public:
 };
 
 int threadToSystemError(otError error);
+
+otError fetchNetworkId(otInstance* ot, char* buf, uint16_t buflen) {
+	buf[0] = 0;
+	auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, reinterpret_cast<uint8_t*>(buf), &buflen);
+	if (result==OT_ERROR_NOT_FOUND) {
+		result = OT_ERROR_NONE;
+	}
+	return result;
+}
+
+otError setNetworkId(otInstance* ot, const uint8_t* buf) {
+	return otPlatSettingsSet(ot, kKeyNetworkId, buf, strlen(reinterpret_cast<const char*>(buf))+1);
+}
 
 int notifyNetworkUpdated(int flags) {
     NotifyMeshNetworkUpdated cmd;
@@ -208,6 +227,10 @@ int notifyNetworkUpdated(int flags) {
             return SYSTEM_ERROR_UNKNOWN;
         }
         memcpy(ni.on_mesh_prefix, prefix, 8);
+    }
+    if (flags & NetworkInfo::NETWORK_ID_VALID) {
+    	uint16_t length = sizeof(ni.id);
+    	CHECK_THREAD(fetchNetworkId(thread, ni.id, length));
     }
 
     ni.update.size = sizeof(ni);
@@ -388,6 +411,7 @@ int createNetwork(ctrl_request* req) {
     PB(CreateNetworkRequest) pbReq = {};
     DecodedCString dName(&pbReq.name); // Network name
     DecodedCString dPwd(&pbReq.password); // Commissioning credential
+    DecodedCString dId(&pbReq.network_id); // network id credential
     int ret = decodeRequestMessage(req, PB(CreateNetworkRequest_fields), &pbReq);
     if (ret != 0) {
         return ret;
@@ -395,7 +419,7 @@ int createNetwork(ctrl_request* req) {
     // Network name: up to 16 characters, UTF-8 encoded
     // Commissioning credential: 6 to 255 characters, UTF-8 encoded
     if (dName.size == 0 || dName.size > OT_NETWORK_NAME_MAX_SIZE || dPwd.size < OT_COMMISSIONING_PASSPHRASE_MIN_SIZE ||
-            dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE) {
+            dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE || dId.size > MAX_NETWORK_ID_LENGTH) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Disable Thread and clear network credentials
@@ -511,13 +535,14 @@ int createNetwork(ctrl_request* req) {
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
     CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
     CHECK_THREAD(otThreadSetPSKc(thread, pskc));
+    CHECK_THREAD(setNetworkId(thread, reinterpret_cast<const uint8_t*>(dId.data)));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     const int notifyResult = notifyNetworkUpdated(NetworkInfo::NETWORK_CREATED | NetworkInfo::PANID_VALID |
             NetworkInfo::XPANID_VALID | NetworkInfo::CHANNEL_VALID | NetworkInfo::ON_MESH_PREFIX_VALID |
-            NetworkInfo::NAME_VALID);
+            NetworkInfo::NAME_VALID | NetworkInfo::NETWORK_ID_VALID);
     if (notifyResult < 0) {
         LOG(ERROR, "Unable to notify network change %d", notifyResult);
     }
@@ -527,6 +552,7 @@ int createNetwork(ctrl_request* req) {
     PB(CreateNetworkReply) pbRep = {};
     EncodedString eName(&pbRep.network.name, dName.data, dName.size);
     EncodedString eExtPanId(&pbRep.network.ext_pan_id, extPanIdStr, sizeof(extPanIdStr));
+    EncodedString eNetworkId(&pbRep.network.network_id, dId.data, dId.size);
     pbRep.network.pan_id = panId;
     pbRep.network.channel = channel;
     ret = encodeReplyMessage(req, PB(CreateNetworkReply_fields), &pbRep);
@@ -797,6 +823,9 @@ int getNetworkInfo(ctrl_request* req) {
     if (!name) {
         return SYSTEM_ERROR_UNKNOWN;
     }
+    // Network Id
+    char networkId[MAX_NETWORK_ID_LENGTH+1];
+    fetchNetworkId(thread, networkId, sizeof(networkId));
     // Channel
     const uint8_t channel = otLinkGetChannel(thread);
     // PAN ID
@@ -812,6 +841,8 @@ int getNetworkInfo(ctrl_request* req) {
     PB(GetNetworkInfoReply) pbRep = {};
     EncodedString eName(&pbRep.network.name, name, strlen(name));
     EncodedString eExtPanIdStr(&pbRep.network.ext_pan_id, extPanIdStr, sizeof(extPanIdStr));
+    EncodedString eNetworkId(&pbRep.network.network_id, networkId, strlen(networkId));
+
     pbRep.network.channel = channel;
     pbRep.network.pan_id = panId;
     const int ret = encodeReplyMessage(req, PB(GetNetworkInfoReply_fields), &pbRep);
