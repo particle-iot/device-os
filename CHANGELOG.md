@@ -1,16 +1,50 @@
+## 0.8.0-rc.15
+
+### FEATURES
+
+- [Mesh] Modular firmware support with factory reset
+- [Mesh] I2C Master driver support
+- [Mesh] PWM Driver
+- [Mesh] Tone Driver
+- [Mesh] USB CDC Driver
+- [Mesh] USART DMA Driver
+- [Mesh] RTC Driver
+- [Mesh] FastPin implementation
+- [Mesh] Reset reason
+- [Mesh] UDP in wiring with multicast support
+- [Mesh] Mesh-local publish/subscribe
+- [Mesh] EEPROM emulation
+- [Mesh] Hybrid firmware for mono->modular upgrade w/ tinker app embedded.
+
+### ENHANCEMENTS
+
+- [Mesh] Timeouts for joiner and comissioner
+- [Mesh] Multiple attempts to join network
+- [Mesh] Control requests for managing the cloud connection
+
+### BUGFIXES
+
+- [Mesh] I2C support for sending 0-byte transfer
+- [Mesh] Stop comissioner role synchronously
+- [Mesh] Increase the minimum BLE interval to 30ms
+
+### INTERNAL CHANGES
+
+- Bootloader included in Device OS
+
 ## 0.8.0-rc.13
 
-## FEATURES
+### FEATURES
 
 - [Mesh] Removes flash erasure procedure when failing to mount the filesystem to avoid a long (5-10 sec) boot delay.
 
 ## 0.8.0-rc.12
 
-## FEATURES
+### FEATURES
 
 - [Mesh] Support for compressed binaries in the BLE OTA update
 
-## BUGFIXES
+### BUGFIXES
 
 - [Mesh] Reset MCU when power is unstable, discharge external flash before initialization
 - [Mesh] Fix littlefs infinite loop on filesystem corruption

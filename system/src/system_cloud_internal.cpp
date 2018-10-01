@@ -313,6 +313,7 @@ const char* KEY_RESTORE_EVENT = "spark/device/key/restore";
 void SystemEvents(const char* name, const char* data)
 {
     if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
+    	LOG(TRACE, "Claim code received by the cloud and cleared locally.");
         HAL_Set_Claim_Code(NULL);
     }
     if (!strcmp(name, RESET_EVENT)) {
@@ -808,7 +809,7 @@ int Spark_Handshake(bool presence_announce)
         char buf[CLAIM_CODE_SIZE + 1];
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
         {
-            LOG(INFO,"Send spark/device/claim/code event");
+            LOG(INFO,"Send spark/device/claim/code event for code %s", buf);
             Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
         }
 
