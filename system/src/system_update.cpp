@@ -525,11 +525,17 @@ bool module_info_to_json(appender_fn append, void* append_data, const hal_module
     // on the photon we have just one dependency, this will need generalizing for other platforms
       && json.write_attribute("d") && json.write('[');
 
-    for (unsigned int d=0; d<2 && info; d++) {
+    bool hasDependencies = false;
+    for (unsigned int d=0; d<2; d++) {
         const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
         module_function_t function = module_function_t(dependency.module_function);
-        if (function==MODULE_FUNCTION_NONE) // skip empty dependents
-            continue;
+        if (function!=MODULE_FUNCTION_NONE) // skip empty dependents
+        	hasDependencies = true;
+    }
+
+    for (unsigned int d=0; d<2 && info && hasDependencies; d++) {
+        const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
+        module_function_t function = module_function_t(dependency.module_function);
         if (d) result &= json.write(',');
         result &= json.write('{')
           && json.write_string("f", module_function_string(function))

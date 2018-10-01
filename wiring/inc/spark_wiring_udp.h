@@ -27,7 +27,7 @@
 #ifndef __SPARK_WIRING_UDP_H
 #define __SPARK_WIRING_UDP_H
 
-#include "spark_wiring.h"
+#include "spark_wiring_ipaddress.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_stream.h"
 #include "socket_hal.h"
@@ -210,6 +210,7 @@ public:
      */
     void flush_buffer();
 
+    const uint8_t* buffer() const { return _buffer; }
 
     virtual IPAddress remoteIP() { return _remoteIP; };
     virtual uint16_t remotePort() { return _remotePort; };

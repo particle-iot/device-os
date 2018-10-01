@@ -20,11 +20,18 @@
 
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_udp.h"
 #include "system_network.h"
 
 #if Wiring_Mesh
 
 #include "spark_wiring_signal.h"
+#include "system_task.h"
+#include "events.h"
+#include "system_error.h"
+#include "check.h"
+#include "ifapi.h"
+#include <memory>
 
 namespace spark {
 
@@ -63,7 +70,62 @@ public:
 };
 
 
-class MeshClass : public NetworkClass {
+int mesh_loop();
+
+class MeshPublish {
+
+	class Subscriptions {
+		FilteringEventHandler event_handlers[5];
+
+protected:
+		/**
+		 * Determines if the given handler exists.
+		 */
+		bool event_handler_exists(const char *event_name, EventHandler handler,
+				void *handler_data, SubscriptionScope::Enum scope, const char* id);
+
+		/**
+		 * Adds the given handler.
+		 */
+		int add_event_handler(const char *event_name, EventHandler handler,
+				void *handler_data, SubscriptionScope::Enum scope, const char* id);
+
+public:
+		int add(const char* name, EventHandler handler);
+
+		void send(const char* event_name, const char* data);
+	};
+
+	static const uint16_t PORT = 36969;
+	static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
+	static const uint16_t MAX_PACKET_LEN = 1232;
+
+	std::unique_ptr<UDP> udp;
+	Subscriptions subscriptions;
+
+	static int fetchMulticastAddress(IPAddress& mcastAddr);
+
+	int initialize_udp();
+
+	int uninitialize_udp();
+
+public:
+
+	MeshPublish() : udp(nullptr) {
+		system_task_loop(mesh_loop, nullptr);
+	}
+
+	int publish(const char* topic, const char* data);
+
+	int subscribe(const char* prefix, EventHandler handler);
+
+	/**
+	 * Pull data from the socket and handle as required.
+	 */
+	int poll();
+};
+
+class MeshClass : public NetworkClass, public MeshPublish {
 public:
     void on() {
         network_on(*this, 0, 0, NULL);

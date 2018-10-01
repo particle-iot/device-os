@@ -31,6 +31,8 @@
 #endif // HAL_PLATFORM_IFAPI
 #include "netdb_hal.h"
 #include <arpa/inet.h>
+#include "spark_wiring_constants.h"
+
 
 using namespace spark;
 
@@ -118,8 +120,9 @@ int joinLeaveMulticast(int sock, const IPAddress& addr, uint8_t ifindex, bool jo
         struct ipv6_mreq mreq = {};
         mreq.ipv6mr_multiaddr = ((struct sockaddr_in6*)&s)->sin6_addr;
         mreq.ipv6mr_interface = ifindex;
-        return sock_setsockopt(sock, IPPROTO_IPV6, join ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP,
-                &mreq, sizeof(mreq));
+        CHECK(sock_setsockopt(sock, IPPROTO_IPV6, join ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP,
+                &mreq, sizeof(mreq)));
+        return 0;
     }
 #endif // HAL_IPv6
     return -1;
@@ -255,6 +258,7 @@ int UDP::beginPacket(const char *host, uint16_t port) {
 }
 
 int UDP::beginPacket(IPAddress ip, uint16_t port) {
+	LOG(TRACE, "begin packet %s#%d", ip.toString().c_str(), port);
     // default behavior previously was to use a 512 byte buffer, so instantiate that if not already done
     if (!_buffer && _buffer_size) {
         setBuffer(_buffer_size);
@@ -273,7 +277,8 @@ int UDP::endPacket() {
 }
 
 int UDP::sendPacket(const uint8_t* buffer, size_t buffer_size, IPAddress remoteIP, uint16_t port) {
-    sockaddr_storage s = {};
+    LOG(TRACE, "sendPacket size %d, %s#%d", buffer_size, remoteIP.toString().c_str(), port);
+	sockaddr_storage s = {};
     ipAddressPortToSockaddr(remoteIP, port, (struct sockaddr*)&s);
     if (s.ss_family == AF_UNSPEC) {
         return -1;
@@ -319,6 +324,7 @@ int UDP::receivePacket(uint8_t* buffer, size_t size) {
         ret = sock_recvfrom(_sock, buffer, size, MSG_DONTWAIT, (struct sockaddr*)&saddr, &slen);
         if (ret >= 0) {
             sockaddrToIpAddressPort((const struct sockaddr*)&saddr, _remoteIP, &_remotePort);
+            LOG(TRACE, "received %d bytes from %s#%d", ret, _remoteIP.toString().c_str(), _remotePort);
         }
     }
     return ret;

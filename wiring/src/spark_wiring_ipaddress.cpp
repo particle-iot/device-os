@@ -28,6 +28,8 @@
 #include "spark_wiring_print.h"
 #include "spark_wiring_platform.h"
 #include "string.h"
+#include "ifapi.h"
+#include <arpa/inet.h>
 
 IPAddress::IPAddress()
 {
@@ -112,6 +114,14 @@ bool IPAddress::operator==(const IPAddress& that) const
 
 size_t IPAddress::printTo(Print& p) const
 {
+#if HAL_IPv6
+	if (address.v==6) {
+		char buf[INET6_ADDRSTRLEN+1];
+		buf[0] = 0;
+		inet_inet_ntop(AF_INET6, address.ipv6, buf, sizeof(buf));
+		return p.write(buf);
+	}
+#endif
     size_t n = 0;
     for (int i = 0; i < 4; i++)
     {

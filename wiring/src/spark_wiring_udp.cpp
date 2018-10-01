@@ -35,6 +35,7 @@
 #include "inet_hal.h"
 #include "spark_macros.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_constants.h"
 
 using namespace spark;
 

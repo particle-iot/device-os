@@ -155,7 +155,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
-        // bootloader, system 1, system 2, optional user code and factory restore
         uint8_t count = module_bounds_length;
         info->modules = new hal_module_t[count];
         if (info->modules) {
