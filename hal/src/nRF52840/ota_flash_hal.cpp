@@ -41,6 +41,7 @@
 #include "spark_wiring_interrupts.h"
 #include "hal_platform.h"
 #include "platform_ncp.h"
+#include "deviceid_hal.h"
 #include <memory>
 
 #define OTA_CHUNK_SIZE                 (512)
@@ -598,4 +599,37 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         dct_write_app_data(data, offset, length>data_length ? data_length : length);
 
     return length;
+}
+
+int fetch_system_properties(key_value* storage, int keyCount) {
+	int keys = 0;
+	if (storage) {
+		if (keyCount && 0<hal_get_device_secret(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+			storage[keys].key = "ms";
+			keyCount--;
+			keys++;
+		}
+		if (keyCount && 0<hal_get_device_serial_number(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+			storage[keys].key = "sn";
+			keyCount--;
+			keys++;
+		}
+		return keys;
+	}
+	else {
+		return 2;
+	}
+}
+
+int add_system_properties(hal_system_info_t* info, bool create, size_t additional) {
+	if (create) {
+		int keyCount = fetch_system_properties(nullptr, 0);
+		info->key_values = new key_value[keyCount+additional];
+		info->key_value_count = fetch_system_properties(info->key_values, keyCount);
+		return info->key_value_count;
+	} else {
+		delete info->key_values;
+		info->key_values = nullptr;
+		return 0;
+	}
 }

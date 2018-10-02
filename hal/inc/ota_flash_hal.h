@@ -239,6 +239,9 @@ typedef struct {
  */
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* generation);
 
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved);
+
+
 
 #ifdef	__cplusplus
 }

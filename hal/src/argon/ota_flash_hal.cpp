@@ -27,7 +27,5 @@
 
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    // presently no additional key/value pairs to send back
-    info->key_values = NULL;
-    info->key_value_count = 0;
+	add_system_properties(info, create, 0);
 }
