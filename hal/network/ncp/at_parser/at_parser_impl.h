@@ -24,13 +24,9 @@
 
 #include "spark_wiring_vector.h"
 
-#ifndef AT_COMMAND_LOG_ENABLED
-#define AT_COMMAND_LOG_ENABLED 1
-#endif
-
 #define PARSER_CHECK(_expr) \
         ({ \
-            const int _ret = _expr; \
+            const auto _ret = _expr; \
             if (_ret < 0) { \
                 return this->error(_ret); \
             } \
@@ -46,13 +42,11 @@ using spark::Vector;
 // Size of the intermediate buffer for received data
 const size_t INPUT_BUF_SIZE = 64;
 
-// Number of initial characters of an AT command stored by the parser
-const size_t CMD_PREFIX_BUF_SIZE = 64;
+// Maximum number of AT command characters stored by the parser
+const size_t CMD_BUF_SIZE = 128;
 
-// Maximum size of an AT command or response line that can be written to the log
-const size_t LOG_LINE_BUF_SIZE = 128;
-
-static_assert(CMD_PREFIX_BUF_SIZE <= INPUT_BUF_SIZE, "Input buffer is too small");
+// Maximum number of response line characters stored by the parser
+const size_t RESP_BUF_SIZE = 128;
 
 class AtParserImpl {
 public:
@@ -61,55 +55,54 @@ public:
 
     int newCommand();
     int sendCommand();
-    void cancelCommand();
+    void resetCommand();
     void commandTimeout(unsigned timeout);
     int write(const char* data, size_t size);
 
-    int read(char* data, size_t size);
-    int readLine(char* data, size_t size, bool skipToLineEnd);
     int readResult(int* errorCode);
-
+    int readLine(char* data, size_t size);
+    int nextLine();
+    int hasNextLine(bool* hasLine);
     bool atLineEnd() const;
-    bool atResponseEnd() const;
 
     int addUrcHandler(const char* prefix, AtParser::UrcHandler handler, void* data);
     void removeUrcHandler(const char* prefix);
     int processUrc(unsigned timeout);
 
-    void echoEnabled(bool enabled);
+    void reset();
 
+    void echoEnabled(bool enabled);
     const AtParserConfig& config() const;
 
-    void reset();
+    static bool isConfigValid(const AtParserConfig& conf);
 
 private:
     enum StatusFlag {
-        READY = 0x0001, // Ready to send a new command or process URCs
-        CHECK_RESULT = 0x0002, // The line may contain a final result code
-        CHECK_URC = 0x0004, // The line may contain a known URC
-        CHECK_ECHO = 0x0008, // The line may contain the command echo
-        WRITE_CMD = 0x0010, // Writing the command data
-        FLUSH_CMD = 0x0020, // Writing the command terminator
-        SKIP_RESP = 0x0040, // Skipping the response data
-        WAIT_ECHO = 0x0080, // Waiting for the command echo
-        IS_ECHO = 0x0100, // The line contains the command echo
-        HAS_RESULT = 0x0200, // The result code has been parsed
-        LINE_END = 0x0400, // The end of the line is reached
-        URC_HANDLER = 0x0800 // An URC handler is running
+        READY = 0x0001, // Ready to send a command or process URCs
+        WRITE_CMD = 0x0002, // Writing the command data
+        FLUSH_CMD = 0x0004, // Writing the command terminator
+        LINE_BEGIN = 0x0008, // The parser is at the beginning of the line
+        LINE_END = 0x0010, // The end of the line is reached
+        HAS_RESULT = 0x0020, // A final result code has been parsed
+        HAS_ECHO = 0x0040, // The command echo has been parsed
+        ECHO_ENABLED = 0x0080, // The echo is enabled
+        URC_HANDLER = 0x0100 // An URC handler is running
     };
 
-    enum ParserFlag {
-        STOP_AT_LINE_END = 0x01,
-        SKIP_LINE_BREAK = 0x02
+    enum ParseFlag {
+        PARSE_RESULT = 0x01, // Parse a final result code
+        PARSE_URC = 0x02, // Parse a known URC
+        PARSE_ECHO = 0x04 // Parse the command echo
     };
 
-    enum ParserResult {
-        MATCH = 0,
-        NO_MATCH = 1,
-        READ_MORE = 2
+    enum ParseResult {
+        NO_MATCH, // No match found
+        PARSED_RESULT, // Parsed a final result code
+        PARSED_URC, // Parsed a known URC
+        PARSED_ECHO, // Parsed the command echo
+        READ_MORE // More data is needed
     };
 
-    // URC handler data
     struct UrcHandler {
         const char* prefix; // Prefix string
         size_t prefixSize; // Size of the prefix string
@@ -117,43 +110,41 @@ private:
         void* data; // User data
     };
 
+    const char* const cmdTerm_; // Command terminator string
+    const size_t cmdTermSize_; // Size of the command terminator string
+
     char buf_[INPUT_BUF_SIZE]; // Input buffer
-    size_t bufPos_; // Number of bytes in the input buffer available for reading
+    size_t bufPos_; // Number of bytes in the input buffer
 
-    char cmdData_[CMD_PREFIX_BUF_SIZE]; // Prefix of the current command
-    size_t cmdDataSize_; // Size of the command prefix
+    char cmdData_[CMD_BUF_SIZE]; // Command data
+    size_t cmdSize_; // Size of the command data
 
-#if AT_COMMAND_LOG_ENABLED
-    char logLine_[LOG_LINE_BUF_SIZE]; // Command or response line
-    size_t logLineSize_; // Size of the command or response line
-#endif
-    const char* cmdTerm_; // Command terminator string
-    size_t cmdTermSize_; // Size of the command terminator string
-    size_t cmdTermOffs_; // Number of command terminator characters sent to the DCE
+    char respData_[RESP_BUF_SIZE]; // Response data
+    size_t respSize_; // Size of the response data
 
     AtResponse::Result result_; // Final result code
     int errorCode_; // Error code reported via "+CME ERROR" or "+CMS ERROR"
+    size_t cmdTermOffs_; // Number of characters of the command terminator written to the stream
     unsigned cmdTimeout_; // Command timeout
     unsigned status_; // Status flags
 
     Vector<UrcHandler> urcHandlers_; // URC handlers
     AtParserConfig conf_; // Parser settings
 
-    int processInput(unsigned flags, char* data, size_t size, unsigned* urcCount, unsigned* timeout);
+    int readRespLine(char* data, size_t size);
+    int waitEcho();
 
-    int parseLine();
-    int parseResult(AtResponse::Result* result, int* errorCode);
+    int parseLine(unsigned flags, unsigned* timeout);
+    int parseResult();
     int parseUrc(const UrcHandler** handler);
     int parseEcho();
 
-    int flushCommand(unsigned* timeout);
-
-    int write(const char* data, size_t* size, unsigned* timeout);
+    int readLine(char* data, size_t size, unsigned* timeout);
+    int nextLine(unsigned* timeout);
     int readMore(unsigned* timeout);
-    void shift(size_t size);
 
-    void writeLogLine(const char* data, size_t size);
-    void flushLogLine(bool isCmd);
+    int flushCommand(unsigned* timeout);
+    int write(const char* data, size_t* size, unsigned* timeout);
 
     void setStatus(unsigned flags);
     void clearStatus(unsigned flags);
@@ -161,6 +152,18 @@ private:
 
     int error(int ret);
 };
+
+inline void AtParserImpl::commandTimeout(unsigned timeout) {
+    cmdTimeout_ = timeout;
+}
+
+inline bool AtParserImpl::atLineEnd() const {
+    return checkStatus(StatusFlag::LINE_END);
+}
+
+inline void AtParserImpl::echoEnabled(bool enabled) {
+    conf_.echoEnabled(enabled);
+}
 
 inline const AtParserConfig& AtParserImpl::config() const {
     return conf_;
@@ -177,16 +180,6 @@ inline void AtParserImpl::clearStatus(unsigned flags) {
 inline unsigned AtParserImpl::checkStatus(unsigned flags) const {
     return (status_ & flags);
 }
-
-#if !AT_COMMAND_LOG_ENABLED
-
-inline void AtParserImpl::writeLogLine(const char* data, size_t size) {
-}
-
-inline void AtParserImpl::flushLogLine() {
-}
-
-#endif // !AT_COMMAND_LOG_ENABLED
 
 } // particle::detail
 

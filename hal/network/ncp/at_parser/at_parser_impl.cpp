@@ -58,6 +58,24 @@ const ResultCode RESULT_CODES[] = {
 
 const size_t RESULT_CODE_COUNT = sizeof(RESULT_CODES) / sizeof(RESULT_CODES[0]);
 
+size_t appendToBuf(char* dest, size_t destSize, const char* src, size_t srcSize) {
+    const size_t n = std::min(srcSize, destSize);
+    memcpy(dest, src, n);
+    return n;
+}
+
+void logCmdLine(const char* data, size_t size) {
+    if (size > 0) {
+        LOG(TRACE, "> %.*s", size, data);
+    }
+}
+
+void logRespLine(const char* data, size_t size) {
+    if (size > 0) {
+        LOG(TRACE, "< %.*s", size, data);
+    }
+}
+
 const char* cmdTermStr(AtCommandTerminator term) {
     switch (term) {
     case AtCommandTerminator::LF:
@@ -69,18 +87,17 @@ const char* cmdTermStr(AtCommandTerminator term) {
     }
 }
 
-inline bool isLineBreak(char c) {
+inline bool isNewline(char c) {
     return (c == '\r' || c == '\n');
 }
 
-bool findLineBreak(const char* data, size_t size, size_t* pos) {
+size_t findNewline(const char* data, size_t size) {
     for (size_t i = 0; i < size; ++i) {
-        if (isLineBreak(data[i])) {
-            *pos = i;
-            return true;
+        if (isNewline(data[i])) {
+            return i;
         }
     }
-    return false;
+    return size;
 }
 
 inline system_tick_t millis() {
@@ -90,9 +107,9 @@ inline system_tick_t millis() {
 } // unnamed
 
 AtParserImpl::AtParserImpl(AtParserConfig conf) :
+        cmdTerm_(cmdTermStr(conf.commandTerminator())),
+        cmdTermSize_(strlen(cmdTerm_)),
         conf_(std::move(conf)) {
-    cmdTerm_ = cmdTermStr(conf_.commandTerminator());
-    cmdTermSize_ = strlen(cmdTerm_);
     reset();
 }
 
@@ -101,9 +118,14 @@ AtParserImpl::~AtParserImpl() {
 
 int AtParserImpl::newCommand() {
     if (!checkStatus(StatusFlag::READY)) {
-        return SYSTEM_ERROR_BUSY; // This error doesn't cancel the current command
+        return SYSTEM_ERROR_BUSY; // This error doesn't affect the current command
     }
     cmdTimeout_ = conf_.commandTimeout(); // Default command timeout
+    if (conf_.echoEnabled()) {
+        setStatus(StatusFlag::ECHO_ENABLED);
+    } else {
+        clearStatus(StatusFlag::ECHO_ENABLED);
+    }
     clearStatus(StatusFlag::READY);
     setStatus(StatusFlag::WRITE_CMD);
     return 0;
@@ -113,104 +135,134 @@ int AtParserImpl::sendCommand() {
     if (!checkStatus(StatusFlag::WRITE_CMD)) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
-    if (cmdDataSize_ == 0) {
+    if (checkStatus(StatusFlag::FLUSH_CMD) || cmdSize_ == 0) {
         return error(SYSTEM_ERROR_NOT_ENOUGH_DATA);
     }
+    clearStatus(StatusFlag::WRITE_CMD);
     setStatus(StatusFlag::FLUSH_CMD);
     cmdTermOffs_ = 0;
     PARSER_CHECK(flushCommand(&cmdTimeout_));
     return 0;
 }
 
-void AtParserImpl::cancelCommand() {
+void AtParserImpl::resetCommand() {
     if (checkStatus(StatusFlag::WRITE_CMD)) {
         clearStatus(StatusFlag::WRITE_CMD);
-        if (cmdDataSize_ > 0) {
-            // We have to send the command terminator and skip the response if at least one byte of
-            // the command data has been sent already
-            setStatus(StatusFlag::FLUSH_CMD | StatusFlag::SKIP_RESP);
+        if (!checkStatus(StatusFlag::FLUSH_CMD) && cmdSize_ > 0) {
+            // Even though the command is incomplete, it needs to be terminated properly in order
+            // to keep the parser in a consistent state
+            cmdTermOffs_ = 0;
+            setStatus(StatusFlag::FLUSH_CMD);
         }
     }
-    if (checkStatus(StatusFlag::HAS_RESULT)) {
-        clearStatus(StatusFlag::HAS_RESULT);
-    } else if (!checkStatus(StatusFlag::READY)) {
-        setStatus(StatusFlag::SKIP_RESP);
-    }
+    clearStatus(StatusFlag::HAS_RESULT | StatusFlag::HAS_ECHO);
     setStatus(StatusFlag::READY);
-}
-
-void AtParserImpl::commandTimeout(unsigned timeout) {
-    cmdTimeout_ = timeout;
 }
 
 int AtParserImpl::write(const char* data, size_t size) {
     if (!checkStatus(StatusFlag::WRITE_CMD)) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
-    if (cmdDataSize_ == 0 && !checkStatus(StatusFlag::LINE_END)) {
-        // Finish reading the current line and flush the log buffer
-        PARSER_CHECK(processInput(ParserFlag::STOP_AT_LINE_END, nullptr /* data */, 0 /* size */, nullptr /* urcCount */,
-                &cmdTimeout_));
-    }
+    // Make sure the previous command has been terminated
+    PARSER_CHECK(flushCommand(&cmdTimeout_));
     const int ret = write(data, &size, &cmdTimeout_);
-    if (size > 0) {
-        const size_t n = std::min(size, CMD_PREFIX_BUF_SIZE - cmdDataSize_);
-        memcpy(cmdData_ + cmdDataSize_, data, n);
-        cmdDataSize_ += n;
-        writeLogLine(data, size);
-    }
+    cmdSize_ += appendToBuf(cmdData_ + cmdSize_, CMD_BUF_SIZE - cmdSize_, data, size);
     if (ret < 0) {
         return error(ret);
     }
     return size;
 }
 
-int AtParserImpl::read(char* data, size_t size) {
-    if (checkStatus(StatusFlag::READY) && !checkStatus(StatusFlag::URC_HANDLER)) {
-        return error(SYSTEM_ERROR_INVALID_STATE);
-    }
-    unsigned* timeout = nullptr;
-    if (!checkStatus(StatusFlag::URC_HANDLER)) {
-        timeout = &cmdTimeout_;
-    }
-    const size_t n = PARSER_CHECK(processInput(ParserFlag::STOP_AT_LINE_END, data, size, nullptr /* urcCount */,
-            timeout));
-    return n;
-}
-
-int AtParserImpl::readLine(char* data, size_t size, bool skipToLineEnd) {
-    if (checkStatus(StatusFlag::READY) && !checkStatus(StatusFlag::URC_HANDLER)) {
-        return error(SYSTEM_ERROR_INVALID_STATE);
-    }
-    unsigned* timeout = nullptr;
-    if (!checkStatus(StatusFlag::URC_HANDLER)) {
-        timeout = &cmdTimeout_;
-    }
-    const size_t n = PARSER_CHECK(processInput(ParserFlag::STOP_AT_LINE_END, data, size, nullptr /* urcCount */,
-            timeout));
-    if (skipToLineEnd && !checkStatus(StatusFlag::LINE_END)) {
-        // Skip the rest of the line
-        PARSER_CHECK(processInput(ParserFlag::STOP_AT_LINE_END, nullptr /* data */, 0 /* size */, nullptr /* urcCount */,
-                timeout));
-    }
-    return n;
-}
-
 int AtParserImpl::readResult(int* errorCode) {
     if (checkStatus(StatusFlag::READY)) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
-    PARSER_CHECK(processInput(0 /* flags */, nullptr /* data */, 0 /* size */, nullptr /* urcCount */, &cmdTimeout_));
-    *errorCode = errorCode_;
+    if (!checkStatus(StatusFlag::HAS_RESULT)) {
+        for (;;) {
+            if (checkStatus(StatusFlag::LINE_BEGIN)) {
+                const int ret = PARSER_CHECK(parseLine(ParseFlag::PARSE_RESULT | ParseFlag::PARSE_URC, &cmdTimeout_));
+                if (ret == ParseResult::PARSED_RESULT) {
+                    break;
+                }
+            }
+            PARSER_CHECK(nextLine(&cmdTimeout_));
+        }
+    }
+    if (errorCode) {
+        *errorCode = errorCode_;
+    }
     return result_;
 }
 
-bool AtParserImpl::atLineEnd() const {
-    return checkStatus(StatusFlag::LINE_END);
+int AtParserImpl::readLine(char* data, size_t size) {
+    int ret = 0;
+    if (checkStatus(StatusFlag::URC_HANDLER)) {
+        ret = readLine(data, size, nullptr /* timeout */);
+    } else if (!checkStatus(StatusFlag::READY)) {
+        ret = readRespLine(data, size);
+    } else {
+        ret = SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (ret < 0) {
+        error(ret);
+    }
+    return ret;
 }
 
-bool AtParserImpl::atResponseEnd() const {
-    return checkStatus(StatusFlag::HAS_RESULT);
+int AtParserImpl::nextLine() {
+    if (checkStatus(StatusFlag::READY)) {
+        return error(SYSTEM_ERROR_INVALID_STATE);
+    }
+    if (checkStatus(StatusFlag::HAS_RESULT)) {
+        return error(SYSTEM_ERROR_END_OF_STREAM);
+    }
+    if (checkStatus(StatusFlag::ECHO_ENABLED) && !checkStatus(StatusFlag::HAS_ECHO)) {
+        PARSER_CHECK(waitEcho());
+        setStatus(StatusFlag::HAS_ECHO);
+    }
+    for (;;) {
+        if (checkStatus(StatusFlag::LINE_BEGIN)) {
+            const int ret = CHECK(parseLine(ParseFlag::PARSE_RESULT | ParseFlag::PARSE_URC, &cmdTimeout_));
+            if (ret == ParseResult::PARSED_RESULT) {
+                return SYSTEM_ERROR_END_OF_STREAM;
+            }
+        }
+        if (!checkStatus(StatusFlag::LINE_END)) {
+            break;
+        }
+        CHECK(nextLine(&cmdTimeout_));
+    }
+    return 0;
+}
+
+int AtParserImpl::hasNextLine(bool* hasLine) {
+    if (checkStatus(StatusFlag::READY)) {
+        return error(SYSTEM_ERROR_INVALID_STATE);
+    }
+    if (checkStatus(StatusFlag::HAS_RESULT)) {
+        *hasLine = false;
+        return 0;
+    }
+    if (checkStatus(StatusFlag::ECHO_ENABLED) && !checkStatus(StatusFlag::HAS_ECHO)) {
+        PARSER_CHECK(waitEcho());
+        setStatus(StatusFlag::HAS_ECHO);
+    }
+    for (;;) {
+        if (checkStatus(StatusFlag::LINE_BEGIN)) {
+            const int ret = PARSER_CHECK(parseLine(ParseFlag::PARSE_RESULT | ParseFlag::PARSE_URC, &cmdTimeout_));
+            if (ret == ParseResult::PARSED_RESULT) {
+                setStatus(StatusFlag::HAS_RESULT);
+                *hasLine = false;
+                break;
+            }
+        }
+        if (!checkStatus(StatusFlag::LINE_END)) {
+            *hasLine = true;
+            break;
+        }
+        PARSER_CHECK(nextLine(&cmdTimeout_));
+    }
+    return 0;
 }
 
 int AtParserImpl::addUrcHandler(const char* prefix, AtParser::UrcHandler handler, void* data) {
@@ -241,102 +293,126 @@ void AtParserImpl::removeUrcHandler(const char* prefix) {
 
 int AtParserImpl::processUrc(unsigned timeout) {
     if (!checkStatus(StatusFlag::READY)) {
-        return SYSTEM_ERROR_BUSY; // This error doesn't cancel the current command
+        return SYSTEM_ERROR_BUSY;
     }
-    if (checkStatus(StatusFlag::FLUSH_CMD)) {
-        PARSER_CHECK(flushCommand(&timeout));
-        if (checkStatus(StatusFlag::FLUSH_CMD)) {
-            return 0; // Non-blocking write did not complete
+    size_t urcCount = 0;
+    for (;;) {
+        if (!checkStatus(StatusFlag::LINE_BEGIN)) {
+            PARSER_CHECK(nextLine(&timeout));
+        }
+        const int ret = PARSER_CHECK(parseLine(ParseFlag::PARSE_URC, &timeout));
+        if (ret == ParseResult::PARSED_URC) {
+            ++urcCount;
+            break;
         }
     }
-    unsigned urcCount = 0;
-    PARSER_CHECK(processInput(0 /* flags */, nullptr /* data */, 0 /* size */, &urcCount, &timeout));
     return urcCount;
-}
-
-void AtParserImpl::echoEnabled(bool enabled) {
-    // The echo setting can't be changed if there's an active command
-    if (checkStatus(StatusFlag::READY)) {
-        conf_.echoEnabled(enabled);
-    }
 }
 
 void AtParserImpl::reset() {
     bufPos_ = 0;
-    cmdDataSize_ = 0;
+    cmdSize_ = 0;
     cmdTimeout_ = 0;
     cmdTermOffs_ = 0;
-#if AT_COMMAND_LOG_ENABLED
-    logLineSize_ = 0;
-#endif
-    status_ = StatusFlag::READY | StatusFlag::LINE_END;
+    respSize_ = 0;
+    errorCode_ = 0;
+    result_ = AtResponse::OK;
+    status_ = StatusFlag::READY | StatusFlag::LINE_BEGIN;
 }
 
-int AtParserImpl::processInput(unsigned flags, char* data, size_t size, unsigned* urcCount, unsigned* timeout) {
-    bool readMore = false;
+bool AtParserImpl::isConfigValid(const AtParserConfig& conf) {
+    return (conf.stream() != nullptr && conf.commandTimeout() > 0 && conf.streamTimeout() > 0);
+}
+
+int AtParserImpl::readRespLine(char* data, size_t size) {
+    if (checkStatus(StatusFlag::HAS_RESULT)) {
+        return SYSTEM_ERROR_END_OF_STREAM;
+    }
+    if (checkStatus(StatusFlag::ECHO_ENABLED) && !checkStatus(StatusFlag::HAS_ECHO)) {
+        CHECK(waitEcho());
+        setStatus(StatusFlag::HAS_ECHO);
+    }
     size_t bytesRead = 0;
     for (;;) {
-        if (readMore) {
-            readMore = false;
-            const size_t n = PARSER_CHECK(this->readMore(timeout));
-            if (n == 0 && timeout && *timeout == 0) {
-                break; // Non-blocking processing is requested
+        if (checkStatus(StatusFlag::LINE_BEGIN)) {
+            const int ret = CHECK(parseLine(ParseFlag::PARSE_RESULT | ParseFlag::PARSE_URC, &cmdTimeout_));
+            if (ret == ParseResult::PARSED_RESULT) {
+                return SYSTEM_ERROR_END_OF_STREAM;
             }
         }
-        int ret = parseLine();
-        if (ret == ParserResult::READ_MORE) {
-            readMore = true;
-            continue;
+        if (!checkStatus(StatusFlag::LINE_END)) {
+            bytesRead = CHECK(readLine(data, size, &cmdTimeout_));
+            break;
         }
-        if (checkStatus(StatusFlag::HAS_RESULT)) {
-            if (checkStatus(StatusFlag::SKIP_RESP)) {
-                clearStatus(StatusFlag::SKIP_RESP | StatusFlag::HAS_RESULT);
-            } else {
-                break;
-            }
-        }
+        CHECK(nextLine(&cmdTimeout_));
     }
     return bytesRead;
 }
 
-int AtParserImpl::parseLine() {
-    int ret = ParserResult::NO_MATCH;
-    if (checkStatus(StatusFlag::CHECK_RESULT)) {
-        int ret = PARSER_CHECK(parseResult(&result_, &errorCode_));
-        if (ret == ParserResult::MATCH) {
-            setStatus(StatusFlag::HAS_RESULT);
-        } else if (ret == ParserResult::NO_MATCH) {
-            clearStatus(StatusFlag::CHECK_RESULT);
+int AtParserImpl::waitEcho() {
+    for (;;) {
+        if (!checkStatus(StatusFlag::LINE_BEGIN)) {
+            CHECK(nextLine(&cmdTimeout_));
         }
-    } else if (checkStatus(StatusFlag::CHECK_ECHO)) {
-        ret = PARSER_CHECK(parseEcho());
-        if (ret == ParserResult::MATCH) {
-            setStatus(StatusFlag::IS_ECHO);
-        } else if (ret == ParserResult::NO_MATCH) {
-            clearStatus(StatusFlag::CHECK_ECHO);
+        const int ret = CHECK(parseLine(ParseFlag::PARSE_ECHO | ParseFlag::PARSE_URC, &cmdTimeout_));
+        if (ret == ParseResult::PARSED_ECHO) {
+            CHECK(nextLine(&cmdTimeout_));
+            break;
         }
-    } else if (checkStatus(StatusFlag::CHECK_URC)) {
-        const UrcHandler* h = nullptr;
-        ret = PARSER_CHECK(parseUrc(&h));
-        if (ret == ParserResult::MATCH) {
-            clearStatus(StatusFlag::CHECK_URC);
-            setStatus(StatusFlag::URC_HANDLER);
-            SCOPE_GUARD({
+    }
+    return 0;
+}
+
+int AtParserImpl::parseLine(unsigned flags, unsigned* timeout) {
+    int ret = ParseResult::NO_MATCH;
+    for (;;) {
+        if (flags & ParseFlag::PARSE_RESULT) {
+            // Check if the line contains a final result code
+            ret = parseResult();
+            if (ret == ParseResult::NO_MATCH) {
+                flags &= ~ParseFlag::PARSE_RESULT;
+            }
+        } else if (flags & ParseFlag::PARSE_ECHO) {
+            // Check if the line contains the command echo
+            ret = parseEcho();
+            if (ret == ParseResult::NO_MATCH) {
+                flags &= ~ParseFlag::PARSE_ECHO;
+            }
+        } else if (flags & ParseFlag::PARSE_URC) {
+            // Check if the line contains a known URC
+            const UrcHandler* h = nullptr;
+            ret = parseUrc(&h);
+            if (ret == ParseResult::PARSED_URC) {
+                // Read the line recursively
+                AtResponseReader reader(this);
+                setStatus(StatusFlag::URC_HANDLER);
+                const int r = h->callback(&reader, h->prefix, h->data);
                 clearStatus(StatusFlag::URC_HANDLER);
-            });
-            AtResponseReader reader(this);
-            PARSER_CHECK(h->callback(&reader, h->prefix, h->data));
-        } else if (ret == ParserResult::NO_MATCH) {
-            clearStatus(StatusFlag::CHECK_URC);
+                if (r < 0) {
+                    LOG(ERROR, "URC handler error: %d", r);
+                }
+            } else if (ret == ParseResult::NO_MATCH) {
+                flags &= ~ParseFlag::PARSE_URC;
+            }
+        }
+        if (ret == ParseResult::READ_MORE) {
+            CHECK(readMore(timeout));
+        } else if (ret != ParseResult::NO_MATCH) {
+            // Read and discard remaining characters of the line
+            CHECK(readLine(nullptr, 0, timeout));
+            break;
+        } else if (!flags) {
+            break;
         }
     }
     return ret;
 }
 
-int AtParserImpl::parseResult(AtResponse::Result* result, int* errorCode) {
+int AtParserImpl::parseResult() {
     if (bufPos_ == 0) {
-        return ParserResult::READ_MORE;
+        return ParseResult::READ_MORE;
     }
+    // Look for a result code that matches the buffer contents
     const ResultCode* r = nullptr;
     size_t maxSize = 0;
     for (size_t i = 0; i < RESULT_CODE_COUNT; ++i) {
@@ -348,53 +424,54 @@ int AtParserImpl::parseResult(AtResponse::Result* result, int* errorCode) {
         }
     }
     if (!r) {
-        return ParserResult::NO_MATCH;
+        return ParseResult::NO_MATCH;
     }
     if (bufPos_ < r->strSize + 1) {
-        return ParserResult::READ_MORE;
+        return ParseResult::READ_MORE;
     }
-    char c = buf_[r->strSize];
+    char c = buf_[r->strSize]; // Separator character
     if (r->val == AtResponse::CME_ERROR || r->val == AtResponse::CMS_ERROR) {
+        // "+CME ERROR" or "+CMS ERROR" should be followed by ':'
         if (c != ':') {
-            return ParserResult::NO_MATCH;
+            return ParseResult::NO_MATCH;
         }
         if (bufPos_ < r->strSize + 2) {
-            return ParserResult::READ_MORE;
+            return ParseResult::READ_MORE;
         }
         const auto codeStr = buf_ + r->strSize + 1; // First character after ':'
-        size_t pos = 0;
-        if (!findLineBreak(codeStr, bufPos_ - r->strSize - 1, &pos)) {
-            return ParserResult::READ_MORE;
+        const size_t codeStrSize = bufPos_ - r->strSize - 1;
+        const size_t n = findNewline(codeStr, codeStrSize);
+        if (n == codeStrSize) {
+            return ParseResult::READ_MORE;
         }
-        if (pos == 0) {
-            return ParserResult::NO_MATCH;
+        if (n == 0) {
+            return ParseResult::NO_MATCH; // Malformed result code line
         }
-        c = codeStr[pos];
-        codeStr[pos] = '\0';
+        c = codeStr[n]; // Newline character
+        codeStr[n] = '\0';
         char* end = nullptr;
         const auto code = strtol(codeStr, &end, 10);
-        codeStr[pos] = c;
-        if (end != codeStr + pos) {
-            return ParserResult::NO_MATCH;
+        codeStr[n] = c; // Restore newline character
+        if (end != codeStr + n) {
+            return ParseResult::NO_MATCH; // Error code is not a number
         }
-        *errorCode = code;
-        shift(end - buf_);
+        errorCode_ = code;
     } else {
-        // All other result codes end with a line break character
-        if (!isLineBreak(c)) {
-            return ParserResult::NO_MATCH;
+        // Any other result code should be followed by a newline character
+        if (!isNewline(c)) {
+            return ParseResult::NO_MATCH;
         }
-        *errorCode = 0;
-        shift(r->strSize);
+        errorCode_ = 0;
     }
-    *result = r->val;
-    return ParserResult::MATCH;
+    result_ = r->val;
+    return ParseResult::PARSED_RESULT;
 }
 
 int AtParserImpl::parseUrc(const UrcHandler** handler) {
     if (bufPos_ == 0) {
-        return ParserResult::READ_MORE;
+        return ParseResult::READ_MORE;
     }
+    // Look for an URC prefix that matches the buffer contents
     const UrcHandler* h = nullptr;
     size_t maxSize = 0;
     for (size_t i = 0; i < (size_t)urcHandlers_.size(); ++i) {
@@ -406,40 +483,138 @@ int AtParserImpl::parseUrc(const UrcHandler** handler) {
         }
     }
     if (!h) {
-        return ParserResult::NO_MATCH;
+        return ParseResult::NO_MATCH;
     }
     if (bufPos_ < h->prefixSize) {
-        return ParserResult::READ_MORE;
+        return ParseResult::READ_MORE;
     }
     *handler = h;
-    return ParserResult::MATCH;
+    return ParseResult::PARSED_URC;
 }
 
 int AtParserImpl::parseEcho() {
     if (bufPos_ == 0) {
-        return ParserResult::READ_MORE;
+        return ParseResult::READ_MORE;
     }
-    const size_t n = std::min(bufPos_, cmdDataSize_);
+    // Check if the command line matches the buffer contents
+    size_t n = std::min(bufPos_, cmdSize_);
     if (memcmp(buf_, cmdData_, n) != 0) {
-        return ParserResult::NO_MATCH;
+        return ParseResult::NO_MATCH;
     }
-    if (bufPos_ < cmdDataSize_) {
-        return ParserResult::READ_MORE;
+    n = std::min(cmdSize_, INPUT_BUF_SIZE);
+    if (bufPos_ < n) {
+        return ParseResult::READ_MORE;
     }
-    shift(cmdDataSize_);
-    return ParserResult::MATCH;
+    return ParseResult::PARSED_ECHO;
+}
+
+int AtParserImpl::readLine(char* data, size_t size, unsigned* timeout) {
+    size_t bytesRead = 0;
+    for (;;) {
+        size_t n = findNewline(buf_, bufPos_);
+        if (data && n > size) {
+            n = size;
+        }
+        if (n > 0) {
+            clearStatus(StatusFlag::LINE_BEGIN);
+            respSize_ += appendToBuf(respData_ + respSize_, RESP_BUF_SIZE - respSize_, buf_, n);
+            if (data) {
+                memcpy(data, buf_, n);
+                data += n;
+                size -= n;
+            }
+            bytesRead += n;
+            bufPos_ -= n;
+        }
+        if (bufPos_ > 0) {
+            memmove(buf_, buf_ + n, bufPos_);
+            if (isNewline(buf_[0])) {
+                setStatus(StatusFlag::LINE_END);
+                logRespLine(respData_, respSize_);
+                respSize_ = 0;
+            }
+            break;
+        }
+        CHECK(readMore(timeout));
+    }
+    return bytesRead;
+}
+
+int AtParserImpl::nextLine(unsigned* timeout) {
+    size_t bytesRead = 0;
+    for (;;) {
+        size_t n = findNewline(buf_, bufPos_);
+        respSize_ += appendToBuf(respData_ + respSize_, RESP_BUF_SIZE - respSize_, buf_, n);
+        if (n < bufPos_) {
+            setStatus(StatusFlag::LINE_END);
+            logRespLine(respData_, respSize_);
+            respSize_ = 0;
+            do {
+                ++n;
+            } while (n < bufPos_ && isNewline(buf_[n]));
+        }
+        if (n > 0) {
+            clearStatus(StatusFlag::LINE_BEGIN);
+            bytesRead += n;
+            bufPos_ -= n;
+        }
+        if (bufPos_ > 0) {
+            memmove(buf_, buf_ + n, bufPos_);
+        } else {
+            CHECK(readMore(timeout));
+        }
+        if (checkStatus(StatusFlag::LINE_END) && !isNewline(buf_[0])) {
+            clearStatus(StatusFlag::LINE_END);
+            setStatus(StatusFlag::LINE_BEGIN);
+            break;
+        }
+    }
+    return bytesRead;
+}
+
+int AtParserImpl::readMore(unsigned* timeout) {
+    assert(bufPos_ < INPUT_BUF_SIZE);
+    const auto strm = conf_.stream();
+    size_t bytesRead = 0;
+    for (;;) {
+        bytesRead = CHECK(strm->read(buf_ + bufPos_, INPUT_BUF_SIZE - bufPos_));
+        if (bytesRead > 0) {
+            break;
+        }
+        // The global timeout overrides the stream timeout
+        unsigned waitTimeout = conf_.streamTimeout();
+        if (timeout) {
+            if (*timeout == 0) {
+                return SYSTEM_ERROR_WOULD_BLOCK; // Non-blocking reading
+            }
+            waitTimeout = *timeout;
+        }
+        auto t = millis();
+        CHECK(strm->waitEvent(Stream::READABLE, waitTimeout));
+        if (timeout) {
+            t = millis() - t;
+            if (t >= *timeout) {
+                return SYSTEM_ERROR_TIMEOUT;
+            }
+            *timeout -= t;
+        }
+    }
+    bufPos_ += bytesRead;
+    return bytesRead;
 }
 
 int AtParserImpl::flushCommand(unsigned* timeout) {
+    if (!checkStatus(StatusFlag::FLUSH_CMD)) {
+        return 0;
+    }
+    assert(cmdSize_ > 0);
     size_t n = cmdTermSize_ - cmdTermOffs_;
     const int ret = write(cmdTerm_ + cmdTermOffs_, &n, timeout);
     cmdTermOffs_ += n;
     if (cmdTermOffs_ == cmdTermSize_) {
         clearStatus(StatusFlag::FLUSH_CMD);
-        if (conf_.echoEnabled()) {
-            setStatus(StatusFlag::WAIT_ECHO);
-        }
-        flushLogLine(true /* isCmd */);
+        logCmdLine(cmdData_, cmdSize_);
+        cmdSize_ = 0;
     }
     return ret;
 }
@@ -448,26 +623,30 @@ int AtParserImpl::write(const char* data, size_t* size, unsigned* timeout) {
     const auto strm = conf_.stream();
     const auto end = data + *size;
     auto t = millis();
-    // The number of written bytes gets reported to the calling code even if the operation fails
+    // The number of bytes gets reported to the calling code even if the operation fails
     *size = 0;
     for (;;) {
-        const size_t n = PARSER_CHECK(strm->write(data, end - data));
-        data += n;
+        const size_t n = CHECK(strm->write(data, end - data));
         *size += n;
-        if (data == end || (timeout && *timeout == 0)) {
+        data += n;
+        if (data == end) {
             break;
         }
-        // When writing, we track both the stream and global timeouts
+        // Use the shortest of the global and stream timeouts
         unsigned waitTimeout = conf_.streamTimeout();
-        if (timeout && (waitTimeout == 0 || *timeout < waitTimeout)) {
-            waitTimeout = *timeout;
+        if (timeout) {
+            if (*timeout == 0) {
+                return SYSTEM_ERROR_WOULD_BLOCK; // Non-blocking writing
+            } else if (*timeout < waitTimeout) {
+                waitTimeout = *timeout;
+            }
         }
-        PARSER_CHECK(strm->waitEvent(Stream::WRITABLE, waitTimeout));
+        CHECK(strm->waitEvent(Stream::WRITABLE, waitTimeout));
         if (timeout) {
             const auto t2 = millis();
             t = t2 - t;
             if (t >= *timeout) {
-                return error(SYSTEM_ERROR_TIMEOUT);
+                return SYSTEM_ERROR_TIMEOUT;
             }
             *timeout -= t;
             t = t2;
@@ -476,71 +655,10 @@ int AtParserImpl::write(const char* data, size_t* size, unsigned* timeout) {
     return *size;
 }
 
-int AtParserImpl::readMore(unsigned* timeout) {
-    assert(bufPos_ < INPUT_BUF_SIZE);
-    const auto strm = conf_.stream();
-    size_t n = 0;
-    for (;;) {
-        n = PARSER_CHECK(strm->read(buf_ + bufPos_, INPUT_BUF_SIZE - bufPos_));
-        if (n > 0 || (timeout && *timeout == 0)) {
-            break;
-        }
-        // When reading, we track either the stream or global timeout. Stream::waitEvent() will
-        // wait indefinitely if the stream timeout is disabled (i.e. set to 0), and the global
-        // timeout is not specified (timeout == nullptr)
-        unsigned waitTimeout = conf_.streamTimeout();
-        if (timeout) {
-            waitTimeout = *timeout;
-        }
-        auto t = millis();
-        PARSER_CHECK(strm->waitEvent(Stream::READABLE, waitTimeout));
-        if (timeout) {
-            t = millis() - t;
-            if (t >= *timeout) {
-                return error(SYSTEM_ERROR_TIMEOUT);
-            }
-            *timeout -= t;
-        }
-    }
-    bufPos_ += n;
-    return n;
-}
-
-void AtParserImpl::shift(size_t size) {
-    assert(size <= bufPos_);
-    memmove(buf_, buf_ + size, bufPos_ - size);
-    bufPos_ -= size;
-}
-
-#if AT_COMMAND_LOG_ENABLED
-
-void AtParserImpl::writeLogLine(const char* data, size_t size) {
-    for (size_t i = 0; i < size && logLineSize_ < LOG_LINE_BUF_SIZE; ++i, ++logLineSize_) {
-        char c = data[i];
-        if (!isprint((unsigned char)c)) {
-            c = '.';
-        }
-        logLine_[logLineSize_] = c;
-    }
-}
-
-void AtParserImpl::flushLogLine(bool isCmd) {
-    if (logLineSize_ > 0) {
-        size_t n = logLineSize_;
-        if (n == LOG_LINE_BUF_SIZE) {
-            n = LOG_LINE_BUF_SIZE - 1;
-            logLine_[n - 1] = '~';
-        }
-        logLine_[n] = '\0';
-        LOG(TRACE, "%s %s", isCmd ? ">" : "<", logLine_);
-        logLineSize_ = 0;
-    }
-}
-
-#endif // AT_COMMAND_LOG_ENABLED
-
 int AtParserImpl::error(int ret) {
-    cancelCommand();
+    if (!checkStatus(StatusFlag::READY)) {
+        resetCommand();
+    }
     return ret;
 }
 

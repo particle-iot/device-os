@@ -26,6 +26,8 @@
 
 namespace particle {
 
+using detail::AtParserImpl;
+
 AtParser::AtParser() {
 }
 
@@ -38,10 +40,9 @@ AtParser::~AtParser() {
 
 int AtParser::init(AtParserConfig conf) {
     CHECK_FALSE(p_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(conf.stream(), SYSTEM_ERROR_INVALID_ARGUMENT);
-    std::unique_ptr<detail::AtParserImpl> p(new(std::nothrow) detail::AtParserImpl(std::move(conf)));
-    CHECK_TRUE(p, SYSTEM_ERROR_NO_MEMORY);
-    p_ = std::move(p);
+    CHECK_TRUE(AtParserImpl::isConfigValid(conf), SYSTEM_ERROR_INVALID_ARGUMENT);
+    p_.reset(new(std::nothrow) AtParserImpl(std::move(conf)));
+    CHECK_TRUE(p_, SYSTEM_ERROR_NO_MEMORY);
     return 0;
 }
 

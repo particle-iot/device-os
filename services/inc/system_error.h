@@ -38,6 +38,7 @@
         (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
         (IO, "IO error", -220), \
+        (WOULD_BLOCK, "Would block", -221), \
         (NETWORK, "Network error", -230), \
         (PROTOCOL, "Protocol error", -240), \
         (INTERNAL, "Internal error", -250), \

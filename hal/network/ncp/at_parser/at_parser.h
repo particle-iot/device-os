@@ -126,8 +126,7 @@ public:
     /**
      * Sets the stream timeout.
      *
-     * This method sets the inter-byte timeout for read and write operations. A value of `0`
-     * disables the timeout.
+     * This method sets the inter-byte timeout for read and write operations.
      *
      * @param timeout Timeout in milliseconds.
      * @return This settings object.

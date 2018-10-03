@@ -21,6 +21,7 @@
 
 #include "scope_guard.h"
 #include "c_string.h"
+#include "check.h"
 
 #include <cstdio>
 
@@ -30,10 +31,9 @@ namespace {
 
 // Initial buffer sizes for different read methods
 const size_t READ_LINE_INIT_BUF_SIZE = 128; // Allocated on the heap
-const size_t READ_ALL_INIT_BUF_SIZE = 128; // Allocated on the heap
 const size_t SCANF_INIT_BUF_SIZE = 128; // Allocated on the stack
 
-inline size_t increaseBufSize(size_t size) {
+inline size_t incBufSize(size_t size) {
     return size * 2;
 }
 
@@ -59,19 +59,14 @@ AtResponseReader::AtResponseReader(AtResponseReader&& reader) :
 AtResponseReader::~AtResponseReader() {
 }
 
-int AtResponseReader::read(char* data, size_t size) {
-    if (!parser_) {
-        return error(SYSTEM_ERROR_INVALID_STATE);
-    }
-    const size_t n = PARSER_CHECK(parser_->read(data, size));
-    return n;
-}
-
 int AtResponseReader::readLine(char* data, size_t size) {
     if (!parser_) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
-    size_t n = PARSER_CHECK(readLine(data, size, true /* skipToLineEnd */));
+    int n = parser_->readLine(data, size);
+    if (n < 0) {
+        return error(n);
+    }
     if (size > 0) {
         if ((size_t)n == size) {
             --n;
@@ -99,39 +94,6 @@ CString AtResponseReader::readLine() {
     return CString::wrap(buf);
 }
 
-CString AtResponseReader::readAll() {
-    size_t size = READ_ALL_INIT_BUF_SIZE;
-    auto buf = (char*)malloc(size);
-    if (!buf) {
-        error(SYSTEM_ERROR_NO_MEMORY);
-        return CString();
-    }
-    NAMED_SCOPE_GUARD(g, {
-        free(buf);
-    });
-    size_t offs = 0;
-    for (;;) {
-        const int n = read(buf + offs, size - offs - 1);
-        if (n < 0) {
-            return CString();
-        }
-        offs += n;
-        if (parser_->atResponseEnd()) {
-            break;
-        }
-        size = increaseBufSize(size);
-        const auto p = (char*)realloc(buf, size);
-        if (!p) {
-            error(SYSTEM_ERROR_NO_MEMORY);
-            return CString();
-        }
-        buf = p;
-    }
-    buf[offs] = '\0';
-    g.dismiss();
-    return CString::wrap(buf);
-}
-
 int AtResponseReader::scanf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -145,13 +107,16 @@ int AtResponseReader::vscanf(const char* fmt, va_list args) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
     char buf[SCANF_INIT_BUF_SIZE];
-    int n = PARSER_CHECK(parser_->readLine(buf, sizeof(buf) - 1, false /* skipToLineEnd */));
+    int n = parser_->readLine(buf, sizeof(buf) - 1);
+    if (n < 0) {
+        return error(n);
+    }
     if (parser_->atLineEnd()) {
         buf[n] = '\0';
         n = vsscanf(buf, fmt, args);
     } else {
         // Allocate a larger buffer on the heap
-        const size_t size = increaseBufSize(sizeof(buf));
+        const size_t size = incBufSize(sizeof(buf));
         auto buf2 = (char*)malloc(size);
         if (!buf2) {
             return error(SYSTEM_ERROR_NO_MEMORY);
@@ -160,26 +125,26 @@ int AtResponseReader::vscanf(const char* fmt, va_list args) {
             free(buf2);
         });
         memcpy(buf2, buf, n);
-        n = readLine(buf2, size, n);
-        if (n < 0) {
-            return n;
-        }
+        CHECK(readLine(buf2, size, n));
         n = vsscanf(buf2, fmt, args);
     }
     if (n < 0) {
-        return SYSTEM_ERROR_UNKNOWN; // vsscanf() error
+        return error(SYSTEM_ERROR_UNKNOWN); // vsscanf() error
     }
     return n;
 }
 
 int AtResponseReader::readLine(char* buf, size_t size, size_t offs) {
     for (;;) {
-        const size_t n = PARSER_CHECK(parser_->readLine(buf + offs, size - offs - 1, false /* skipToLineEnd */));
+        const int n = parser_->readLine(buf + offs, size - offs - 1);
+        if (n < 0) {
+            return error(n);
+        }
         offs += n;
         if (parser_->atLineEnd()) {
             break;
         }
-        size = increaseBufSize(size);
+        size = incBufSize(size);
         buf = (char*)realloc(buf, size);
         if (!buf) {
             return error(SYSTEM_ERROR_NO_MEMORY);
@@ -216,9 +181,32 @@ AtResponse::AtResponse(AtResponse&& resp) :
 }
 
 AtResponse::~AtResponse() {
-    if (parser_) {
-        parser_->cancelCommand();
+    reset();
+}
+
+bool AtResponse::hasNextLine() {
+    if (!parser_) {
+        error(SYSTEM_ERROR_INVALID_STATE);
+        return false;
     }
+    bool hasLine = false;
+    const int ret = parser_->hasNextLine(&hasLine);
+    if (ret < 0) {
+        error(ret);
+        return false;
+    }
+    return hasLine;
+}
+
+int AtResponse::nextLine() {
+    if (!parser_) {
+        return error(SYSTEM_ERROR_INVALID_STATE);
+    }
+    const int ret = parser_->nextLine();
+    if (ret < 0) {
+        return error(ret);
+    }
+    return ret;
 }
 
 int AtResponse::readResult() {
@@ -229,13 +217,13 @@ int AtResponse::readResult() {
     if (ret < 0) {
         return error(ret);
     }
-    parser_ = nullptr;
+    reset();
     return ret;
 }
 
 void AtResponse::reset() {
     if (parser_) {
-        parser_->cancelCommand();
+        parser_->resetCommand();
         parser_ = nullptr;
     }
 }

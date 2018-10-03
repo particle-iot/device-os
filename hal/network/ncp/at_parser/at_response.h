@@ -40,7 +40,7 @@ class CString;
  * Instances of this class are used to read and parse AT command responses and unsolicited result
  * codes (URCs).
  *
- * Responses are typically processed in a line-by-line manner:
+ * Responses are processed in a line-by-line manner:
  *
  * ```cpp
  * void logResponse(AtResponseReader& resp) {
@@ -49,19 +49,6 @@ class CString;
  *         if (s) {
  *             LOG(INFO, "%s", (const char*)s);
  *         }
- *     }
- * }
- * ```
- *
- * It is also possible to read the response data in blocks of arbitrary size, preserving line
- * break characters:
- *
- * ```cpp
- * while (resp.hasMoreData()) {
- *     char data[128];
- *     const int n = resp.read(data, sizeof(data));
- *     if (n > 0) {
- *         LOG_WRITE(INFO, data, n);
  *     }
  * }
  * ```
@@ -82,18 +69,6 @@ class CString;
 class AtResponseReader {
 public:
     /**
-     * Reads the response data.
-     *
-     * @param data Destination buffer.
-     * @param size Buffer size.
-     * @return Number of characters read, or a negative result code in case of an error.
-     *
-     * @see `readLine()`
-     * @see `readAll()`
-     * @see `scanf()`
-     */
-    int read(char* data, size_t size);
-    /**
      * Reads the current line.
      *
      * This method reads up to `size` characters of the current line, discarding the rest of
@@ -104,8 +79,6 @@ public:
      * @return Number of characters read (not including `\0`), or a negative result code in
      *         case of an error.
      *
-     * @see `read()`
-     * @see `readAll()`
      * @see `scanf()`
      */
     int readLine(char* data, size_t size);
@@ -116,39 +89,9 @@ public:
      *
      * @return A string.
      *
-     * @see `read()`
-     * @see `readAll()`
      * @see `scanf()`
      */
     CString readLine();
-    /**
-     * Reads the entire response.
-     *
-     * This method reads up to `size` characters of the response data, discarding the rest of
-     * the data. The output is always null-terminated, unless `size` is `0`.
-     *
-     * @param data Destination buffer.
-     * @param size Buffer size.
-     * @return Number of characters read (not including `\0`), or a negative result code in
-     *         case of an error.
-     *
-     * @see `read()`
-     * @see `readLine()`
-     * @see `scanf()`
-     */
-    int readAll(char* data, size_t size);
-    /**
-     * Reads the entire response.
-     *
-     * This method reads the entire response data, allocating a buffer for it dynamically.
-     *
-     * @return A string.
-     *
-     * @see `read()`
-     * @see `readLine()`
-     * @see `scanf()`
-     */
-    CString readAll();
     /**
      * Reads and parses the current line.
      *
@@ -157,9 +100,7 @@ public:
      * @return Number of items matched and assigned, or a negative result code in case of an error.
      *
      * @see `vscanf()`
-     * @see `read()`
      * @see `readLine()`
-     * @see `readAll()`
      */
     int scanf(const char* fmt, ...) __attribute__((format(scanf, 2, 3)));
     /**
@@ -170,25 +111,9 @@ public:
      * @return Number of items matched and assigned, or a negative result code in case of an error.
      *
      * @see `scanf()`
-     * @see `read()`
      * @see `readLine()`
-     * @see `readAll()`
      */
     int vscanf(const char* fmt, va_list args);
-    /**
-     * Skips the rest of the current line and sets the position to the beginning of the next line.
-     *
-     * @return Number of characters skipped, or a negative result code in case of an error.
-     */
-    int nextLine();
-    /**
-     * Returns `true` if there is another line available for reading.
-     */
-    bool hasNextLine();
-    /**
-     * Returns `true` if there is more data available for reading.
-     */
-    bool hasMoreData();
     /**
      * Returns the result code of the first failed operation.
      */
@@ -222,8 +147,8 @@ protected:
 /**
  * AT command response.
  *
- * This class inherits all the methods of `AtResponseReader` and provides a method to read the
- * final result code:
+ * This class inherits all methods of `AtResponseReader` and provides a method to read the final
+ * result code:
  *
  * ```cpp
  * bool processResponse(AtResponse& resp) {
@@ -265,6 +190,16 @@ public:
      *       response data sent by the DCE.
      */
     ~AtResponse();
+    /**
+     * Returns `true` if there is another line available for reading.
+     */
+    bool hasNextLine();
+    /**
+     * Skips the current line.
+     *
+     * @return Number of characters skipped, or a negative result code in case of an error.
+     */
+    int nextLine();
     /**
      * Reads the final result code.
      *

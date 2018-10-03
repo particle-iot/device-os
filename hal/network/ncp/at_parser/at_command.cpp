@@ -131,7 +131,7 @@ int AtCommand::exec() {
 
 void AtCommand::reset() {
     if (parser_) {
-        parser_->cancelCommand();
+        parser_->resetCommand();
     }
 }
 
