@@ -25,6 +25,7 @@
 
 #include "deviceid_hal.h"
 #include "core_hal.h"
+#include "hal_platform.h"
 #include "platforms.h"
 
 #include "bytes2hexbuf.h"
@@ -38,8 +39,10 @@
 #include "ota_flash_hal_stm32f2xx.h"
 #endif
 
-#if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
+#if HAL_PLATFORM_NCP
 #include "network/ncp.h"
+#include "wifi_manager.h"
+#include "wifi_ncp_client.h"
 #endif
 
 #include "config.pb.h"
@@ -99,12 +102,12 @@ int getSystemVersion(ctrl_request* req) {
 }
 
 int getNcpFirmwareVersion(ctrl_request* req) {
-#if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
-    const auto ncp = argonNcpAtClient();
+#if HAL_PLATFORM_NCP
+    const auto ncpClient = wifiManager()->ncpClient();
     char verStr[32] = {};
-    CHECK(ncp->getVersion(verStr, sizeof(verStr)));
+    CHECK(ncpClient->getFirmwareVersionString(verStr, sizeof(verStr)));
     uint16_t modVer = 0;
-    CHECK(ncp->getModuleVersion(&modVer));
+    CHECK(ncpClient->getFirmwareModuleVersion(&modVer));
     PB(GetNcpFirmwareVersionReply) pbRep = {};
     EncodedString eVerStr(&pbRep.version, verStr, strlen(verStr));
     pbRep.module_version = modVer;
@@ -112,7 +115,7 @@ int getNcpFirmwareVersion(ctrl_request* req) {
     return 0;
 #else
     return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // PLATFORM_ID != PLATFORM_ARGON
+#endif // !HAL_PLATFORM_NCP
 }
 
 int getSystemCapabilities(ctrl_request* req) {

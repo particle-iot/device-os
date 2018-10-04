@@ -82,7 +82,7 @@ public:
         ERROR
     };
 
-protected:
+// protected:
     int run();
 
     int readLine(char* buf, size_t size, bool skipEmpty = false);

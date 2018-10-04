@@ -21,32 +21,47 @@
 
 namespace particle {
 
+namespace services {
+
+namespace at {
+
+class ArgonNcpAtClient;
+
+} // particle::services::at
+
+} // particle::services
+
 class InputStream;
+
+enum class NcpState {
+    OFF = 0,
+    READY = 1
+};
+
+enum class NcpConnectionState {
+    DISCONNECTED = 0,
+    CONNECTED = 1
+};
 
 class NcpClient {
 public:
-    enum State {
-        UNKNOWN = 0,
-        READY = 1,
-        OFF = 2
-    };
-
     virtual ~NcpClient() = default;
 
-    virtual int waitReady(unsigned timeout) = 0;
-    virtual void reset() = 0;
+    virtual int waitReady() = 0;
     virtual void off() = 0;
+    virtual NcpState ncpState() = 0;
 
-    virtual State state() const = 0;
-
-    virtual int updateFirmware(InputStream* file, size_t size) = 0;
+    virtual void disconnect() = 0;
+    virtual NcpConnectionState connectionState() = 0;
 
     virtual int getFirmwareVersionString(char* buf, size_t size) = 0;
     virtual int getFirmwareModuleVersion(uint16_t* ver) = 0;
+    virtual int updateFirmware(InputStream* file, size_t size) = 0;
 
     virtual int ncpId() const = 0;
 
-    static int create(int ncpId, NcpClient** ncpClient);
+    // TODO: Move this method to a subclass
+    virtual services::at::ArgonNcpAtClient* atParser() const = 0;
 };
 
 } // particle

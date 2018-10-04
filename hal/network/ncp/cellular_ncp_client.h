@@ -17,11 +17,11 @@
 
 #pragma once
 
-#include "at_ncp_client.h"
+#include "ncp_client.h"
 
 namespace particle {
 
-class CellularNcpClient: public AtNcpClient {
+class CellularNcpClient: public NcpClient {
 public:
 };
 

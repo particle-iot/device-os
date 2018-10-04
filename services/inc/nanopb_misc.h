@@ -26,6 +26,8 @@
 extern "C" {
 #endif // __cplusplus
 
+typedef struct lfs_file lfs_file_t;
+
 pb_ostream_t* pb_ostream_init(void* reserved);
 bool pb_ostream_free(pb_ostream_t* stream, void* reserved);
 
@@ -34,6 +36,9 @@ bool pb_istream_free(pb_istream_t* stream, void* reserved);
 
 bool pb_ostream_from_buffer_ex(pb_ostream_t* stream, pb_byte_t *buf, size_t bufsize, void* reserved);
 bool pb_istream_from_buffer_ex(pb_istream_t* stream, const pb_byte_t *buf, size_t bufsize, void* reserved);
+
+bool pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved);
+bool pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, void* reserved);
 
 #ifdef __cplusplus
 }
