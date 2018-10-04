@@ -21,21 +21,12 @@
 
 namespace particle {
 
-namespace services {
-
-namespace at {
-
-class ArgonNcpAtClient;
-
-} // particle::services::at
-
-} // particle::services
-
+class AtParser;
 class InputStream;
 
 enum class NcpState {
     OFF = 0,
-    READY = 1
+    ON = 1
 };
 
 enum class NcpConnectionState {
@@ -43,11 +34,46 @@ enum class NcpConnectionState {
     CONNECTED = 1
 };
 
+enum class NcpEventType {
+    NCP_STATE_CHANGED = 1,
+    CONNECTION_STATE_CHANGED = 2
+};
+
+struct NcpEvent {
+    NcpEventType type;
+};
+
+struct NcpStateChangedEvent: NcpEvent {
+    NcpState state;
+};
+
+struct NcpConnectionStateChangedEvent: NcpEvent {
+    NcpConnectionState state;
+};
+
+typedef void(*NcpEventHandler)(const NcpEvent& event, void* data);
+
+class NcpClientConfig {
+public:
+    NcpClientConfig();
+
+    NcpClientConfig& eventHandler(NcpEventHandler handler, void* data = nullptr);
+    NcpEventHandler eventHandler() const;
+    void* eventHandlerData() const;
+
+private:
+    NcpEventHandler eventHandler_;
+    void* eventHandlerData_;
+};
+
 class NcpClient {
 public:
     virtual ~NcpClient() = default;
 
-    virtual int waitReady() = 0;
+    virtual int init(const NcpClientConfig& conf) = 0;
+    virtual void destroy() = 0;
+
+    virtual int on() = 0;
     virtual void off() = 0;
     virtual NcpState ncpState() = 0;
 
@@ -58,10 +84,77 @@ public:
     virtual int getFirmwareModuleVersion(uint16_t* ver) = 0;
     virtual int updateFirmware(InputStream* file, size_t size) = 0;
 
-    virtual int ncpId() const = 0;
+    virtual AtParser* atParser();
 
-    // TODO: Move this method to a subclass
-    virtual services::at::ArgonNcpAtClient* atParser() const = 0;
+    virtual void lock() = 0;
+    virtual void unlock() = 0;
+
+    virtual int ncpId() const = 0;
 };
+
+class NcpClientLock {
+public:
+    explicit NcpClientLock(NcpClient* client);
+    NcpClientLock(NcpClientLock&& lock);
+    ~NcpClientLock();
+
+    void lock();
+    void unlock();
+
+    NcpClientLock(const NcpClientLock&) = delete;
+    NcpClientLock& operator=(const NcpClientLock&) = delete;
+
+private:
+    NcpClient* client_;
+    bool locked_;
+};
+
+inline NcpClientConfig::NcpClientConfig() :
+        eventHandler_(nullptr),
+        eventHandlerData_(nullptr) {
+}
+
+inline NcpClientConfig& NcpClientConfig::eventHandler(NcpEventHandler handler, void* data) {
+    eventHandler_ = handler;
+    eventHandlerData_ = data;
+    return *this;
+}
+
+inline NcpEventHandler NcpClientConfig::eventHandler() const {
+    return eventHandler_;
+}
+
+inline void* NcpClientConfig::eventHandlerData() const {
+    return eventHandlerData_;
+}
+
+inline NcpClientLock::NcpClientLock(NcpClient* client) :
+        client_(client),
+        locked_(false) {
+    lock();
+}
+
+inline NcpClientLock::NcpClientLock(NcpClientLock&& lock) :
+        client_(lock.client_),
+        locked_(lock.locked_) {
+    lock.client_ = nullptr;
+    lock.locked_ = false;
+}
+
+inline NcpClientLock::~NcpClientLock() {
+    if (locked_) {
+        unlock();
+    }
+}
+
+inline void NcpClientLock::lock() {
+    client_->lock();
+    locked_ = true;
+}
+
+inline void NcpClientLock::unlock() {
+    client_->unlock();
+    locked_ = false;
+}
 
 } // particle

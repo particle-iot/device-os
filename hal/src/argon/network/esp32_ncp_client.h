@@ -18,15 +18,16 @@
 #pragma once
 
 #include "wifi_ncp_client.h"
+#include "at_parser.h"
 
 namespace particle {
 
 class Esp32NcpClient: public WifiNcpClient {
 public:
-    explicit Esp32NcpClient(services::at::ArgonNcpAtClient* atParser);
-
     // Reimplemented from NcpClient
-    int waitReady() override;
+    int init(const NcpClientConfig& conf) override;
+    void destroy() override;
+    int on() override;
     void off() override;
     NcpState ncpState() override;
     void disconnect() override;
@@ -34,8 +35,10 @@ public:
     int getFirmwareVersionString(char* buf, size_t size) override;
     int getFirmwareModuleVersion(uint16_t* ver) override;
     int updateFirmware(InputStream* file, size_t size) override;
+    AtParser* atParser() override;
+    void lock() override;
+    void unlock() override;
     int ncpId() const override;
-    services::at::ArgonNcpAtClient* atParser() const override;
 
     // Reimplemented from WifiNcpClient
     int connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) override;
@@ -43,7 +46,7 @@ public:
     int scan(WifiScanCallback callback, void* data) override;
 
 private:
-    services::at::ArgonNcpAtClient* atParser_;
+    AtParser atParser_;
 };
 
 } // particle

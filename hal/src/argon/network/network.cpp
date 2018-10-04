@@ -157,7 +157,7 @@ private:
 } // anonymous
 
 namespace particle {
-
+/*
 class WifiManagerInitializer {
 public:
     WifiManagerInitializer() {
@@ -196,10 +196,13 @@ private:
         return 0;
     }
 };
-
+*/
 WifiManager* wifiManager() {
+    return nullptr;
+/*
     static WifiManagerInitializer mgr;
     return mgr.instance();
+*/
 }
 
 } // particle

@@ -2,7 +2,6 @@
 #include "network/ncp.h"
 #include "wifi_manager.h"
 #include "wifi_ncp_client.h"
-#include "atclient.h"
 #include "led_service.h"
 #include "check.h"
 #include "scope_guard.h"
@@ -66,6 +65,8 @@ using particle::XmodemSender;
 // some not entirely clear circumstances. Disabling compiler optimizations helps to work around
 // the problem
 __attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
+    return HAL_UPDATE_ERROR; // FIXME
+/*
 	// not so happy about mixing the layers like this. Seems strange that HAL should be dependent on wiring.
 	auto& atclient = *particle::wifiManager()->ncpClient()->atParser();
 
@@ -107,4 +108,5 @@ __attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module
 	CHECK_RETURN(atclient.getModuleVersion(&version), result);
 	LOG(INFO, "ESP32 firmware version updated to version %d", version);
 	return result;
+*/
 }

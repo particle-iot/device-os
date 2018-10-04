@@ -17,18 +17,22 @@
 
 #include "esp32_ncp_client.h"
 
-#include "atclient.h"
 #include "check.h"
-
-#include <cstdio>
 
 namespace particle {
 
-Esp32NcpClient::Esp32NcpClient(services::at::ArgonNcpAtClient* atParser) :
-        atParser_(atParser) {
+namespace {
+
+} // unnamed
+
+int Esp32NcpClient::init(const NcpClientConfig& conf) {
+    return 0;
 }
 
-int Esp32NcpClient::waitReady() {
+void Esp32NcpClient::destroy() {
+}
+
+int Esp32NcpClient::on() {
     return 0;
 }
 
@@ -58,12 +62,18 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     return 0;
 }
 
-int Esp32NcpClient::ncpId() const {
-    return 0;
+AtParser* Esp32NcpClient::atParser() {
+    return &atParser_;
 }
 
-services::at::ArgonNcpAtClient* Esp32NcpClient::atParser() const {
-    return atParser_;
+void Esp32NcpClient::lock() {
+}
+
+void Esp32NcpClient::unlock() {
+}
+
+int Esp32NcpClient::ncpId() const {
+    return 0;
 }
 
 int Esp32NcpClient::connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) {
