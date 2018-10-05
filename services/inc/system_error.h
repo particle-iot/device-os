@@ -39,6 +39,7 @@
         (INVALID_STATE, "Invalid state", -210), \
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
+        (FILE, "File error", -225), \
         (NETWORK, "Network error", -230), \
         (PROTOCOL, "Protocol error", -240), \
         (INTERNAL, "Internal error", -250), \
