@@ -33,6 +33,8 @@ public:
     int skip(size_t size) override;
     int write(const char* data, size_t size) override;
     int flush() override;
+    int availForRead() override;
+    int availForWrite() override;
     int waitEvent(unsigned flags, unsigned timeout) override;
 
 private:

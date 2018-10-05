@@ -40,6 +40,7 @@ public:
     virtual int read(char* data, size_t size) = 0;
     virtual int peek(char* data, size_t size) = 0;
     virtual int skip(size_t size) = 0;
+    virtual int availForRead() = 0;
 
     int readAll(char* data, size_t size, unsigned timeout = 0);
     int skipAll(size_t size, unsigned timeout = 0);
@@ -50,6 +51,7 @@ class OutputStream: virtual public BaseStream {
 public:
     virtual int write(const char* data, size_t size) = 0;
     virtual int flush() = 0;
+    virtual int availForWrite() = 0;
 
     int writeAll(const char* data, size_t size, unsigned timeout = 0);
 };

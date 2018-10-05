@@ -91,6 +91,14 @@ int SerialStream::flush() {
     return 0;
 }
 
+int SerialStream::availForRead() {
+    return HAL_USART_Available_Data(serial_);
+}
+
+int SerialStream::availForWrite() {
+    return HAL_USART_Available_Data_For_Write(serial_);
+}
+
 int SerialStream::waitEvent(unsigned flags, unsigned timeout) {
     if (!flags) {
         return 0;
