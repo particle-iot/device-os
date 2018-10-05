@@ -49,6 +49,7 @@ public:
 
     int waitReady(unsigned int timeout);
 
+    void setStream(Stream* stream);
     ::particle::Stream* getStream();
 
     enum class ResultCode {
@@ -172,6 +173,9 @@ public:
 
     int getVersion(char* buf, size_t bufSize);
     int getModuleVersion(uint16_t* module);
+    int getMac(int idx, uint8_t* mac);
+    int startMuxer();
+    int connect();
 
     int startUpdate(size_t size);
     int finishUpdate();

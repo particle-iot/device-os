@@ -86,6 +86,10 @@ int AtClientBase::waitReady(unsigned int timeout) {
     return SYSTEM_ERROR_TIMEOUT;
 }
 
+void AtClientBase::setStream(Stream* stream) {
+    stream_ = stream;
+}
+
 Stream* AtClientBase::getStream() {
     return stream_;
 }
@@ -468,6 +472,66 @@ int ArgonNcpAtClient::finishUpdate() {
         return SYSTEM_ERROR_PROTOCOL;
     }
     CHECK_TRUE(getFinalResultCode() == ResultCode::OK, SYSTEM_ERROR_UNKNOWN);
+    return 0;
+}
+
+int ArgonNcpAtClient::getMac(int idx, uint8_t* mac) {
+    int r = sendCommand("AT+GETMAC=%d", idx);
+    CHECK_TRUE(r > 0, r);
+
+    r = waitIntermediateResultCode();
+    if (r) {
+        if (getState() == State::FINAL_RESULT_CODE && getFinalResultCode() == ResultCode::ERROR) {
+            return SYSTEM_ERROR_PROTOCOL;
+        } else {
+            return r;
+        }
+    }
+    CHECK_TRUE(getIntermediateResultCode(), SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(!strcmp(getIntermediateResultCode(), "+GETMAC"), SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(getIntermediateResultCodeValue(), SYSTEM_ERROR_BAD_DATA);
+
+    unsigned int tmp[6] = {};
+    CHECK_TRUE(sscanf(getIntermediateResultCodeValue(), "\"%x:%x:%x:%x:%x:%x\"",
+            tmp, tmp + 1, tmp + 2, tmp + 3, tmp + 4, tmp + 5) == 6, SYSTEM_ERROR_BAD_DATA);
+
+    for (unsigned i = 0; i < 6; i++) {
+        mac[i] = tmp[i];
+    }
+    CHECK(waitFinalResultCode());
+    if (getFinalResultCode() == ResultCode::ERROR) {
+        return SYSTEM_ERROR_PROTOCOL;
+    }
+    CHECK_TRUE(getFinalResultCode() == ResultCode::OK, SYSTEM_ERROR_UNKNOWN);
+
+    return 0;
+}
+
+int ArgonNcpAtClient::startMuxer() {
+    int r = sendCommand("AT+CMUX=0");
+    CHECK_TRUE(r > 0, r);
+
+    CHECK(waitFinalResultCode());
+    CHECK_TRUE(getFinalResultCode() == ResultCode::OK, SYSTEM_ERROR_UNKNOWN);
+    return 0;
+}
+
+int ArgonNcpAtClient::connect() {
+    TimeoutOverride t(30000, this);
+    int r = sendCommand("AT+CWDHCP=0,3");
+    CHECK_TRUE(r > 0, r);
+
+    CHECK(waitFinalResultCode());
+    CHECK_TRUE(getFinalResultCode() == ResultCode::OK, SYSTEM_ERROR_UNKNOWN);
+
+    r = sendCommand("AT+CWJAP=\"Particle\",\"ParticleWifi\"");
+    CHECK_TRUE(r > 0, r);
+
+    CHECK(waitInformationText());
+    CHECK_TRUE(getInformationText(), SYSTEM_ERROR_BAD_DATA);
+
+    reset();
+
     return 0;
 }
 
