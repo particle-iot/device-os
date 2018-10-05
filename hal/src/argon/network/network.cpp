@@ -31,6 +31,7 @@
 #include "wifi_network_manager.h"
 #include "ncp.h"
 #include "debug.h"
+#include "esp32/esp32ncpnetif.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -69,10 +70,27 @@ private:
     }
 };
 
-/* th2 - OpenThread */
-BaseNetif* th2 = nullptr;
-/* en3 - Ethernet FeatherWing */
-BaseNetif* en3 = nullptr;
+/* th1 - OpenThread */
+BaseNetif* th1 = nullptr;
+/* en2 - Ethernet FeatherWing */
+BaseNetif* en2 = nullptr;
+/* wl3 - ESP32 NCP Station */
+BaseNetif* wl3 = nullptr;
+/* wl4 - ESP32 NCP Access Point */
+BaseNetif* wl4 = nullptr;
+
+bool netifCanForwardIpv4(netif* iface) {
+    if (iface && netif_is_up(iface) && netif_is_link_up(iface)) {
+        auto addr = netif_ip_addr4(iface);
+        auto mask = netif_ip_netmask4(iface);
+        auto gw = netif_ip_gw4(iface);
+        if (!ip_addr_isany(addr) && !ip_addr_isany(mask) && !ip_addr_isany(gw)) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 } // unnamed
 
@@ -84,12 +102,12 @@ WifiNetworkManager* wifiNetworkManager() {
 } // particle
 
 int if_init_platform(void*) {
-    /* lo1 (created by LwIP) */
+    /* lo0 (created by LwIP) */
 
-    /* th2 - OpenThread */
-    th2 = new OpenThreadNetif(ot_get_instance());
+    /* th1 - OpenThread */
+    th1 = new OpenThreadNetif(ot_get_instance());
 
-    /* en3 - Ethernet FeatherWing (optional) */
+    /* en2 - Ethernet FeatherWing (optional) */
     uint8_t mac[6] = {};
     {
         const uint32_t lsb = __builtin_bswap32(NRF_FICR->DEVICEADDR[0]);
@@ -102,16 +120,22 @@ int if_init_platform(void*) {
         /* Set 'locally administered' bit */
         mac[0] |= 0b10;
     }
-    en3 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+    en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
     uint8_t dummy;
-    if (if_get_index(en3->interface(), &dummy)) {
-        /* No en3 present */
-        delete en3;
-        en3 = nullptr;
-    } else {
-        /* Enable border router by default */
-        BorderRouterManager::instance()->start();
+    if (if_get_index(en2->interface(), &dummy)) {
+        /* No en2 present */
+        delete en2;
+        en2 = nullptr;
     }
+
+    /* wl3 - ESP32 NCP Station */
+    wl3 = new Esp32NcpNetif(argonNcpAtClient());
+
+    /* TODO: wl4 - ESP32 NCP Access Point */
+    (void)wl4;
+
+    /* Enable border router by default */
+    BorderRouterManager::instance()->start();
 
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
@@ -120,11 +144,16 @@ int if_init_platform(void*) {
     return 0;
 }
 
+
 extern "C" {
 
 struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
-    if (en3) {
-        return en3->interface();
+    if (src == nullptr) {
+        if (en2 && netifCanForwardIpv4(en2->interface())) {
+            return en2->interface();
+        } else if (wl3 && netifCanForwardIpv4(wl3->interface())) {
+            return wl3->interface();
+        }
     }
 
     return nullptr;
