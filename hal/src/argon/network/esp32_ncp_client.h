@@ -20,10 +20,21 @@
 #include "wifi_ncp_client.h"
 #include "at_parser.h"
 
+#include "platform_ncp.h"
+
+#include "spark_wiring_thread.h"
+
+#include <memory>
+
 namespace particle {
+
+class SerialStream;
 
 class Esp32NcpClient: public WifiNcpClient {
 public:
+    Esp32NcpClient();
+    ~Esp32NcpClient();
+
     // Reimplemented from NcpClient
     int init(const NcpClientConfig& conf) override;
     void destroy() override;
@@ -47,6 +58,43 @@ public:
 
 private:
     AtParser atParser_;
+    NcpClientConfig conf_;
+    std::unique_ptr<SerialStream> serial_;
+    RecursiveMutex mutex_;
+    NcpState ncpState_;
+    NcpConnectionState connState_;
+    int parserError_;
+    bool ready_;
+
+    int checkParser();
+    int waitReady();
+    void ncpState(NcpState state);
+    void connectionState(NcpConnectionState state);
+    void parserError(int error);
 };
+
+inline NcpState Esp32NcpClient::ncpState() {
+    return ncpState_;
+}
+
+inline NcpConnectionState Esp32NcpClient::connectionState() {
+    return NcpConnectionState::DISCONNECTED;
+}
+
+inline void Esp32NcpClient::lock() {
+    mutex_.lock();
+}
+
+inline void Esp32NcpClient::unlock() {
+    mutex_.unlock();
+}
+
+inline int Esp32NcpClient::ncpId() const {
+    return MeshNCPIdentifier::MESH_NCP_ESP32;
+}
+
+inline void Esp32NcpClient::parserError(int error) {
+    parserError_ = error;
+}
 
 } // particle

@@ -34,13 +34,14 @@ enum class NcpConnectionState {
     CONNECTED = 1
 };
 
-enum class NcpEventType {
-    NCP_STATE_CHANGED = 1,
-    CONNECTION_STATE_CHANGED = 2
-};
-
 struct NcpEvent {
-    NcpEventType type;
+    enum Type {
+        NCP_STATE_CHANGED = 1,
+        CONNECTION_STATE_CHANGED = 2,
+        CUSTOM_EVENT_TYPE_BASE = 100
+    };
+
+    Type type;
 };
 
 struct NcpStateChangedEvent: NcpEvent {
