@@ -78,7 +78,7 @@ public:
     virtual void off() = 0;
     virtual NcpState ncpState() = 0;
 
-    virtual void disconnect() = 0;
+    virtual int disconnect() = 0;
     virtual NcpConnectionState connectionState() = 0;
 
     virtual int getFirmwareVersionString(char* buf, size_t size) = 0;

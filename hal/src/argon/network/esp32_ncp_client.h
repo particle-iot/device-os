@@ -41,7 +41,7 @@ public:
     int on() override;
     void off() override;
     NcpState ncpState() override;
-    void disconnect() override;
+    int disconnect() override;
     NcpConnectionState connectionState() override;
     int getFirmwareVersionString(char* buf, size_t size) override;
     int getFirmwareModuleVersion(uint16_t* ver) override;
@@ -58,10 +58,10 @@ public:
     int getMacAddress(MacAddress* addr) override;
 
 private:
-    AtParser atParser_;
-    NcpClientConfig conf_;
+    AtParser parser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
+    NcpClientConfig conf_;
     NcpState ncpState_;
     NcpConnectionState connState_;
     int parserError_;

@@ -29,6 +29,9 @@ class WifiNcpClient;
 // Maximum number of WiFi network settings that can be saved to a persistent storage
 const unsigned MAX_CONFIGURED_WIFI_NETWORK_COUNT = 10;
 
+// Maximum length of an SSID
+const size_t MAX_SSID_SIZE = 32;
+
 enum class WifiSecurity {
     NONE = 0,
     WEP = 1,
