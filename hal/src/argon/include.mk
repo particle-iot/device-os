@@ -5,4 +5,9 @@
 
 INCLUDE_DIRS += $(TARGET_HAL_PATH)/src/$(PLATFORM)
 
+ifneq (,$(findstring platform,$(DEPENDENCIES)))
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/esp32
+endif
+
+
 include $(TARGET_HAL_PATH)/src/nRF52840/include.mk

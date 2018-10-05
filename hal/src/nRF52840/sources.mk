@@ -18,8 +18,17 @@ CPPSRC += $(call target_files,$(HAL_SRC_ARMV7_PATH)/,*.cpp)
 CSRC += $(call target_files,$(HAL_MODULE_PATH)/network/api/,*.c)
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/api/,*.cpp)
 
-CSRC += $(call target_files,$(HAL_MODULE_PATH)/network/lwip/,*.c)
-CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/lwip/,*.cpp)
+CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/,*.c)
+CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/,*.cpp)
+
+CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/api/,*.c)
+CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/api/,*.cpp)
+
+CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/wiznet/,*.c)
+CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/wiznet/,*.cpp)
+
+CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/openthread/,*.c)
+CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/openthread/,*.cpp)
 
 CSRC += $(call target_files,$(HAL_MODULE_PATH)/network/openthread/,*.c)
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/openthread/,*.cpp)
