@@ -17,9 +17,9 @@
 
 #pragma once
 
+#include "addr_util.h"
 #include "c_string.h"
 
-#include <cstring>
 #include <cstdint>
 
 namespace particle {
@@ -28,15 +28,6 @@ class WifiNcpClient;
 
 // Maximum number of WiFi network settings that can be saved to a persistent storage
 const unsigned MAX_CONFIGURED_WIFI_NETWORK_COUNT = 10;
-
-const size_t MAC_ADDRESS_SIZE = 6;
-
-// TODO: This should be defined elsewhere
-struct MacAddress {
-    uint8_t data[MAC_ADDRESS_SIZE];
-};
-
-const MacAddress INVALID_MAC_ADDRESS = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
 
 enum class WifiSecurity {
     NONE = 0,
@@ -181,14 +172,6 @@ public:
 private:
     WifiNcpClient* ncpClient_;
 };
-
-inline bool operator==(const MacAddress& addr1, const MacAddress& addr2) {
-    return (memcmp(addr1.data, addr2.data, MAC_ADDRESS_SIZE) == 0);
-}
-
-inline bool operator!=(const MacAddress& addr1, const MacAddress& addr2) {
-    return !(addr1 == addr2);
-}
 
 inline WifiCredentials::WifiCredentials() :
         type_(Type::NONE) {

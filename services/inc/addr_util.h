@@ -17,36 +17,34 @@
 
 #pragma once
 
+#include <cstring>
 #include <cstdint>
 
 namespace particle {
 
-inline int hexToNibble(char c) {
-    if (c >= '0' && c <= '9') {
-        return (c - '0');
-    } else if (c >= 'a' && c <= 'f') {
-        return (c - 'a' + 0x0a);
-    } else if (c >= 'A' && c <= 'F') {
-        return (c - 'A' + 0x0a);
-    }
-    return -1;
+const size_t MAC_ADDRESS_SIZE = 6;
+
+struct MacAddress {
+    uint8_t data[MAC_ADDRESS_SIZE];
+};
+
+const MacAddress INVALID_MAC_ADDRESS = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+
+const size_t MAC_ADDRESS_STRING_SIZE = 17;
+
+bool macAddressToString(const MacAddress& addr, char* str, size_t size);
+bool macAddressFromString(MacAddress* addr, const char* str, size_t size);
+
+inline bool macAddressFromString(MacAddress* addr, const char* str) {
+    return macAddressFromString(addr, str, strlen(str));
 }
 
-inline size_t hexToBytes(const char* src, char* dest, size_t size) {
-    size_t n = 0;
-    while (n < size) {
-        const int h = hexToNibble(*src++);
-        if (h < 0) {
-            break;
-        }
-        const int l = hexToNibble(*src++);
-        if (l < 0) {
-            break;
-        }
-        *dest++ = ((unsigned)h << 4) | (unsigned)l;
-        ++n;
-    }
-    return n;
+inline bool operator==(const MacAddress& addr1, const MacAddress& addr2) {
+    return (memcmp(addr1.data, addr2.data, MAC_ADDRESS_SIZE) == 0);
 }
 
-} // namespace particle
+inline bool operator!=(const MacAddress& addr1, const MacAddress& addr2) {
+    return !(addr1 == addr2);
+}
+
+} // particle
