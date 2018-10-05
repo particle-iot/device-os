@@ -23,6 +23,7 @@
 
 #include "network/ncp.h"
 #include "wifi_manager.h"
+#include "wifi_ncp_client.h"
 
 #include "scope_guard.h"
 #include "check.h"
@@ -47,8 +48,8 @@ using spark::Vector;
 template<typename T>
 void bssidToPb(const MacAddress& bssid, T* pbBssid) {
     if (bssid != INVALID_MAC_ADDRESS) {
-        static_assert(sizeof(pbBssid->bytes) == MAC_ADDRESS_SIZE, "Invalid size of the BSSID field");
         memcpy(pbBssid->bytes, &bssid, MAC_ADDRESS_SIZE);
+        pbBssid->size = MAC_ADDRESS_SIZE;
     } else {
         pbBssid->size = 0;
     }
@@ -142,7 +143,7 @@ int removeKnownNetwork(ctrl_request* req) {
     CHECK(decodeRequestMessage(req, PB(RemoveKnownNetworkRequest_fields), &pbReq));
     const auto wifiMgr = wifiManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
-    wifiMgr->removeConfiguredNetwork(dSsid.data);
+    wifiMgr->removeNetworkConfig(dSsid.data);
     return 0;
 }
 
@@ -156,8 +157,10 @@ int clearKnownNetworks(ctrl_request* req) {
 int getCurrentNetwork(ctrl_request* req) {
     const auto wifiMgr = wifiManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     WifiNetworkInfo info;
-    CHECK(wifiMgr->getNetworkInfo(&info));
+    CHECK(ncpClient->getNetworkInfo(&info));
     // Encode a reply
     PB(GetCurrentNetworkReply) pbRep = {};
     EncodedString eSsid(&pbRep.ssid, info.ssid(), strlen(info.ssid()));
@@ -171,9 +174,11 @@ int getCurrentNetwork(ctrl_request* req) {
 int scanNetworks(ctrl_request* req) {
     const auto wifiMgr = wifiManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     // Scan for networks
     Vector<WifiScanResult> networks;
-    CHECK(wifiMgr->scan([](WifiScanResult network, void* data) -> int {
+    CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {
         const auto networks = (Vector<WifiScanResult>*)data;
         CHECK_TRUE(networks->append(std::move(network)), SYSTEM_ERROR_NO_MEMORY);
         return 0;

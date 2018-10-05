@@ -67,6 +67,9 @@ public:
     WifiNetworkConfig& ssid(const char* ssid);
     const char* ssid() const;
 
+    WifiNetworkConfig& bssid(const MacAddress& bssid);
+    const MacAddress& bssid() const;
+
     WifiNetworkConfig& security(WifiSecurity sec);
     WifiSecurity security() const;
 
@@ -75,6 +78,7 @@ public:
 
 private:
     CString ssid_;
+    MacAddress bssid_;
     WifiCredentials cred_;
     WifiSecurity sec_;
 };
@@ -133,47 +137,26 @@ typedef int(*WifiScanCallback)(WifiScanResult result, void* data);
 
 class WifiManager {
 public:
-    enum AdapterState {
-        OFF = 0,
-        ON = 1
-    };
-
-    enum ConnectionState {
-        DISCONNECTED = 0,
-        CONNECTED = 1
-    };
-
     typedef int(*GetConfiguredNetworksCallback)(WifiNetworkConfig conf, void* data);
 
-    explicit WifiManager(WifiNcpClient* ncpClient);
+    explicit WifiManager(WifiNcpClient* client);
     ~WifiManager();
-
-    int on();
-    void off();
-    AdapterState adapterState();
 
     int connect(const char* ssid);
     int connect();
-    void disconnect();
-    ConnectionState connectionState();
-
-    int getNetworkInfo(WifiNetworkInfo* info);
 
     int setNetworkConfig(WifiNetworkConfig conf);
     int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
+    void removeNetworkConfig(const char* ssid);
 
     int getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data);
-    void removeConfiguredNetwork(const char* ssid);
     void clearConfiguredNetworks();
     bool hasConfiguredNetworks();
 
-    int scan(WifiScanCallback callback, void* data);
-
-    // TODO: Move this method to a subclass
     WifiNcpClient* ncpClient() const;
 
 private:
-    WifiNcpClient* ncpClient_;
+    WifiNcpClient* client_;
 };
 
 inline WifiCredentials::WifiCredentials() :
@@ -199,6 +182,7 @@ inline WifiCredentials::Type WifiCredentials::type() const {
 }
 
 inline WifiNetworkConfig::WifiNetworkConfig() :
+        bssid_(INVALID_MAC_ADDRESS),
         sec_(WifiSecurity::NONE) {
 }
 
@@ -209,6 +193,15 @@ inline WifiNetworkConfig& WifiNetworkConfig::ssid(const char* ssid) {
 
 inline const char* WifiNetworkConfig::ssid() const {
     return ssid_;
+}
+
+inline WifiNetworkConfig& WifiNetworkConfig::bssid(const MacAddress& bssid) {
+    bssid_ = bssid;
+    return *this;
+}
+
+inline const MacAddress& WifiNetworkConfig::bssid() const {
+    return bssid_;
 }
 
 inline WifiNetworkConfig& WifiNetworkConfig::security(WifiSecurity sec) {
@@ -323,8 +316,12 @@ inline int WifiScanResult::rssi() const {
     return rssi_;
 }
 
+inline int WifiManager::connect() {
+    return connect(nullptr);
+}
+
 inline WifiNcpClient* WifiManager::ncpClient() const {
-    return ncpClient_;
+    return client_;
 }
 
 } // particle

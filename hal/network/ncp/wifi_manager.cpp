@@ -17,13 +17,15 @@
 
 #include "wifi_manager.h"
 
-#include "filesystem.h"
+#include "wifi_ncp_client.h"
 
-#include "nanopb_misc.h"
+#include "file_util.h"
 #include "scope_guard.h"
 #include "check.h"
 
 #include "spark_wiring_vector.h"
+
+#include <algorithm>
 
 // FIXME: Move nanopb utilities to a common header file
 #include "../../../system/src/control/common.h"
@@ -34,6 +36,8 @@
 #define PB(_name) particle_firmware_##_name
 #define PB_WIFI(_name) particle_ctrl_wifi_##_name
 
+#define CONFIG_FILE "/sys/wifi_config.bin"
+
 namespace particle {
 
 namespace {
@@ -41,40 +45,39 @@ namespace {
 using namespace control::common;
 using spark::Vector;
 
-int openConfigFile(lfs_t* lfs, lfs_file_t* file) {
-    int ret = lfs_mkdir(lfs, "/sys");
-    if (ret < 0 && ret != LFS_ERR_EXIST) {
-        return SYSTEM_ERROR_UNKNOWN;
+template<typename T>
+void bssidToPb(const MacAddress& bssid, T* pbBssid) {
+    if (bssid != INVALID_MAC_ADDRESS) {
+        memcpy(pbBssid->bytes, &bssid, MAC_ADDRESS_SIZE);
+        pbBssid->size = MAC_ADDRESS_SIZE;
+    } else {
+        pbBssid->size = 0;
     }
-    ret = lfs_file_open(lfs, file, "/sys/wifi_config.bin", LFS_O_RDWR | LFS_O_CREAT);
-    if (ret < 0) {
-        LOG(ERROR, "Unable to open WiFi configuration file");
-        return SYSTEM_ERROR_UNKNOWN;
+}
+
+template<typename T>
+void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
+    if (pbBssid.size == MAC_ADDRESS_SIZE) {
+        memcpy(bssid, pbBssid.bytes, MAC_ADDRESS_SIZE);
+    } else {
+        *bssid = INVALID_MAC_ADDRESS;
     }
-    return 0;
 }
 
 // TODO: Implement a couple functions to conveniently save/load a protobuf message to/from a file
 int loadConfig(Vector<WifiNetworkConfig>* networks) {
     // Get filesystem instance
     const auto fs = filesystem_get_instance(nullptr);
-    CHECK_TRUE(fs, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
     // Open configuration file
     lfs_file_t file = {};
-    CHECK(openConfigFile(&fs->instance, &file));
+    CHECK(openFile(&file, CONFIG_FILE, LFS_O_RDONLY));
     SCOPE_GUARD({
         lfs_file_close(&fs->instance, &file);
     });
-    // Initialize nanopb stream
-    const auto strm = pb_istream_init(nullptr);
-    CHECK_TRUE(strm, SYSTEM_ERROR_NO_MEMORY);
-    SCOPE_GUARD({
-        pb_istream_free(strm, nullptr);
-    });
-    CHECK_TRUE(pb_istream_from_file(strm, &file, nullptr), SYSTEM_ERROR_UNKNOWN);
-    // Load configuration
+    // Parse configuration
     PB(WifiConfig) pbConf = {};
     pbConf.networks.arg = networks;
     pbConf.networks.funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
@@ -90,43 +93,37 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
         if (pbConf.credentials.type == PB_WIFI(CredentialsType_PASSWORD)) {
             cred.password(dPwd.data);
         }
-        WifiNetworkConfig conf;
-        conf.ssid(dSsid.data);
-        conf.security((WifiSecurity)pbConf.security);
-        conf.credentials(std::move(cred));
+        MacAddress bssid = INVALID_MAC_ADDRESS;
+        bssidFromPb(&bssid, pbConf.bssid);
+        auto conf = WifiNetworkConfig()
+            .ssid(dSsid.data)
+            .bssid(bssid)
+            .security((WifiSecurity)pbConf.security)
+            .credentials(std::move(cred));
         if (!networks->append(std::move(conf))) {
             return false;
         }
         return true;
     };
-    if (!pb_decode(strm, PB(WifiConfig_fields), &pbConf)) {
-        LOG(ERROR, "Unable to parse WiFi configuration");
-        lfs_file_truncate(&fs->instance, &file, 0);
-        networks->clear();
-    }
+    CHECK(decodeMessageFromFile(&file, PB(WifiConfig_fields), &pbConf));
     return 0;
 }
 
 int saveConfig(const Vector<WifiNetworkConfig>& networks) {
     // Get filesystem instance
     const auto fs = filesystem_get_instance(nullptr);
-    CHECK_TRUE(fs, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
-    // Open configuration file
+    // Open temporary file
     lfs_file_t file = {};
-    CHECK(openConfigFile(&fs->instance, &file));
-    SCOPE_GUARD({
+    CHECK(openFile(&file, CONFIG_FILE ".tmp", LFS_O_WRONLY));
+    NAMED_SCOPE_GUARD(g, {
         lfs_file_close(&fs->instance, &file);
     });
-    // Initialize nanopb stream
-    const auto strm = pb_ostream_init(nullptr);
-    CHECK_TRUE(strm, SYSTEM_ERROR_NO_MEMORY);
-    SCOPE_GUARD({
-        pb_ostream_free(strm, nullptr);
-    });
-    CHECK_TRUE(pb_ostream_from_file(strm, &file, nullptr), SYSTEM_ERROR_UNKNOWN);
-    // Save configuration
+    int r = lfs_file_truncate(&fs->instance, &file, 0);
+    CHECK_TRUE(r == LFS_ERR_OK, SYSTEM_ERROR_FILE);
+    // Serialize configuration
     PB(WifiConfig) pbConf = {};
     pbConf.networks.arg = const_cast<Vector<WifiNetworkConfig>*>(&networks);
     pbConf.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
@@ -135,6 +132,7 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
             PB(WifiConfig_Network) pbConf = {};
             EncodedString eSsid(&pbConf.ssid, conf.ssid(), strlen(conf.ssid()));
             EncodedString ePwd(&pbConf.credentials.password);
+            bssidToPb(conf.bssid(), &pbConf.bssid);
             pbConf.security = (PB_WIFI(Security))conf.security();
             pbConf.credentials.type = (PB_WIFI(CredentialsType))conf.credentials().type();
             if (conf.credentials().type() == WifiCredentials::PASSWORD) {
@@ -151,10 +149,12 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
         }
         return true;
     };
-    if (!pb_encode(strm, PB(WifiConfig_fields), &pbConf)) {
-        LOG(ERROR, "Unable to serialize WiFi configuration");
-        lfs_file_truncate(&fs->instance, &file, 0);
-    }
+    CHECK(encodeMessageToFile(&file, PB(WifiConfig_fields), &pbConf));
+    // Replace target configuration file
+    lfs_file_close(&fs->instance, &file);
+    g.dismiss();
+    r = lfs_rename(&fs->instance, CONFIG_FILE ".tmp", CONFIG_FILE);
+    CHECK_TRUE(r == LFS_ERR_OK, SYSTEM_ERROR_FILE);
     return 0;
 }
 
@@ -167,42 +167,101 @@ int networkIndexForSsid(const char* ssid, const Vector<WifiNetworkConfig>& netwo
     return -1;
 }
 
+void sortByRssi(Vector<WifiScanResult>* scanResults) {
+    std::sort(scanResults->begin(), scanResults->end(), [](const WifiScanResult& ap1, const WifiScanResult& ap2) {
+        return (ap1.rssi() > ap2.rssi()); // In descending order
+    });
+}
+
 } // unnamed
 
-WifiManager::WifiManager(WifiNcpClient* ncpClient) :
-        ncpClient_(ncpClient) {
+WifiManager::WifiManager(WifiNcpClient* client) :
+        client_(client) {
 }
 
 WifiManager::~WifiManager() {
 }
 
-int WifiManager::on() {
-    return 0;
-}
-
-void WifiManager::off() {
-}
-
-WifiManager::AdapterState WifiManager::adapterState() {
-    return AdapterState::OFF;
-}
-
 int WifiManager::connect(const char* ssid) {
-    return 0;
-}
-
-int WifiManager::connect() {
-    return 0;
-}
-
-void WifiManager::disconnect() {
-}
-
-WifiManager::ConnectionState WifiManager::connectionState() {
-    return ConnectionState::DISCONNECTED;
-}
-
-int WifiManager::getNetworkInfo(WifiNetworkInfo* info) {
+    // Get known networks
+    Vector<WifiNetworkConfig> networks;
+    CHECK(loadConfig(&networks));
+    int index = 0;
+    if (ssid) {
+        // Find network with the given SSID
+        for (; index < networks.size(); ++index) {
+            if (strcmp(networks.at(index).ssid(), ssid) == 0) {
+                break;
+            }
+        }
+    }
+    if (index == networks.size()) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    // Connect to the network
+    bool updateConfig = false;
+    auto network = &networks.at(index);
+    int r = client_->connect(network->ssid(), network->bssid(), network->security(), network->credentials());
+    if (r < 0) {
+        // Perform network scan
+        Vector<WifiScanResult> scanResults;
+        CHECK_TRUE(scanResults.reserve(10), SYSTEM_ERROR_NO_MEMORY);
+        CHECK(client_->scan([](WifiScanResult result, void* data) -> int {
+            auto scanResults = (Vector<WifiScanResult>*)data;
+            CHECK_TRUE(scanResults->append(std::move(result)), SYSTEM_ERROR_NO_MEMORY);
+            return 0;
+        }, &scanResults));
+        // Sort discovered networks by RSSI
+        sortByRssi(&scanResults);
+        // Try to connect to any known network among the discovered ones
+        bool connected = false;
+        for (const auto& ap: scanResults) {
+            if (!ssid) {
+                index = 0;
+                for (; index < networks.size(); ++index) {
+                    network = &networks.at(index);
+                    if (strcmp(network->ssid(), ap.ssid()) == 0) {
+                        break;
+                    }
+                }
+                if (index == networks.size()) {
+                    continue;
+                }
+            } else if (strcmp(ssid, ap.ssid()) != 0) {
+                continue;
+            }
+            r = client_->connect(network->ssid(), ap.bssid(), network->security(), network->credentials());
+            if (r == 0) {
+                if (network->bssid() != ap.bssid()) {
+                    // Update BSSID
+                    network->bssid(ap.bssid());
+                    updateConfig = true;
+                }
+                connected = true;
+                break;
+            }
+        }
+        if (!connected) {
+            return SYSTEM_ERROR_NOT_FOUND;
+        }
+    } else if (network->bssid() == INVALID_MAC_ADDRESS) {
+        // Update BSSID
+        WifiNetworkInfo info;
+        r = client_->getNetworkInfo(&info);
+        if (r == 0) {
+            network->bssid(info.bssid());
+            updateConfig = true;
+        }
+    }
+    if (index != 0) {
+        // Move the network to the beginning of the list
+        auto network = networks.takeAt(index);
+        networks.prepend(std::move(network));
+        updateConfig = true;
+    }
+    if (updateConfig) {
+        saveConfig(networks);
+    }
     return 0;
 }
 
@@ -236,19 +295,7 @@ int WifiManager::getNetworkConfig(const char* ssid, WifiNetworkConfig* conf) {
     return 0;
 }
 
-int WifiManager::getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data) {
-    Vector<WifiNetworkConfig> networks;
-    CHECK(loadConfig(&networks));
-    for (int i = 0; i < networks.size(); ++i) {
-        const int ret = callback(std::move(networks[i]), data);
-        if (ret < 0) {
-            return ret;
-        }
-    }
-    return 0;
-}
-
-void WifiManager::removeConfiguredNetwork(const char* ssid) {
+void WifiManager::removeNetworkConfig(const char* ssid) {
     Vector<WifiNetworkConfig> networks;
     if (loadConfig(&networks) < 0) {
         return;
@@ -261,13 +308,25 @@ void WifiManager::removeConfiguredNetwork(const char* ssid) {
     saveConfig(networks);
 }
 
+int WifiManager::getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data) {
+    Vector<WifiNetworkConfig> networks;
+    CHECK(loadConfig(&networks));
+    for (int i = 0; i < networks.size(); ++i) {
+        const int ret = callback(std::move(networks[i]), data);
+        if (ret < 0) {
+            return ret;
+        }
+    }
+    return 0;
+}
+
 void WifiManager::clearConfiguredNetworks() {
     Vector<WifiNetworkConfig> networks;
     saveConfig(networks);
 }
 
-int WifiManager::scan(WifiScanCallback callback, void* data) {
-    return 0;
+bool WifiManager::hasConfiguredNetworks() {
+    return false;
 }
 
 } // particle

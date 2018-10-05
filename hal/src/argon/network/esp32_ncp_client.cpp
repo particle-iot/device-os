@@ -198,6 +198,7 @@ AtParser* Esp32NcpClient::atParser() {
 
 int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     const NcpClientLock lock(this);
+    CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
     auto cmd = parser_.command();
     cmd.printf("AT+CWJAP=%s", ssid);
@@ -232,7 +233,7 @@ int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     int rssi = 0;
     int r = CHECK_PARSER(resp.scanf("+CWJAP: \"%32[^\"]\",\"%17[^\"]\",%d,%d", ssid, bssidStr, &channel, &rssi));
     CHECK_TRUE(r == 4, SYSTEM_ERROR_UNKNOWN);
-    MacAddress bssid = {};
+    MacAddress bssid = INVALID_MAC_ADDRESS;
     CHECK_TRUE(macAddressFromString(&bssid, bssidStr), SYSTEM_ERROR_UNKNOWN);
     *info = WifiNetworkInfo().ssid(ssid).bssid(bssid).channel(channel).rssi(rssi);
     return 0;
@@ -251,7 +252,7 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
         const int r = CHECK_PARSER(resp.scanf("+CWLAP: %d,\"%32[^\"]\",%d,\"%17[^\"]\",%d", &security, ssid, &rssi,
                 bssidStr, &channel));
         CHECK_TRUE(r == 5, SYSTEM_ERROR_UNKNOWN);
-        MacAddress bssid = {};
+        MacAddress bssid = INVALID_MAC_ADDRESS;
         CHECK_TRUE(macAddressFromString(&bssid, bssidStr), SYSTEM_ERROR_UNKNOWN);
         auto result = WifiScanResult().ssid(ssid).bssid(bssid).security((WifiSecurity)security).channel(channel)
                 .rssi(rssi);
