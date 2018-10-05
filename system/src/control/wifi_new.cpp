@@ -45,10 +45,10 @@ using namespace particle::control::common;
 using spark::Vector;
 
 template<typename T>
-void bssidToPb(const Bssid& bssid, T* pbBssid) {
-    if (bssid != INVALID_BSSID) {
-        static_assert(sizeof(pbBssid->bytes) == BSSID_SIZE, "Invalid size of the BSSID field");
-        memcpy(pbBssid->bytes, &bssid, BSSID_SIZE);
+void bssidToPb(const MacAddress& bssid, T* pbBssid) {
+    if (bssid != INVALID_MAC_ADDRESS) {
+        static_assert(sizeof(pbBssid->bytes) == MAC_ADDRESS_SIZE, "Invalid size of the BSSID field");
+        memcpy(pbBssid->bytes, &bssid, MAC_ADDRESS_SIZE);
     } else {
         pbBssid->size = 0;
     }

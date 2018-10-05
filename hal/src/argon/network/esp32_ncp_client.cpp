@@ -166,7 +166,7 @@ AtParser* Esp32NcpClient::atParser() {
     return &atParser_;
 }
 
-int Esp32NcpClient::connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) {
+int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
     return 0;
@@ -179,6 +179,12 @@ int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
 }
 
 int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+    return 0;
+}
+
+int Esp32NcpClient::getMacAddress(MacAddress* addr) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
     return 0;

@@ -24,9 +24,10 @@ namespace particle {
 
 class WifiNcpClient: public NcpClient {
 public:
-    virtual int connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) = 0;
+    virtual int connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) = 0;
     virtual int getNetworkInfo(WifiNetworkInfo* info) = 0;
     virtual int scan(WifiScanCallback callback, void* data) = 0;
+    virtual int getMacAddress(MacAddress* addr) = 0;
 };
 
 } // particle

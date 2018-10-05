@@ -29,13 +29,14 @@ class WifiNcpClient;
 // Maximum number of WiFi network settings that can be saved to a persistent storage
 const unsigned MAX_CONFIGURED_WIFI_NETWORK_COUNT = 10;
 
-const size_t BSSID_SIZE = 6;
+const size_t MAC_ADDRESS_SIZE = 6;
 
-struct Bssid {
-    uint8_t data[BSSID_SIZE];
+// TODO: This should be defined elsewhere
+struct MacAddress {
+    uint8_t data[MAC_ADDRESS_SIZE];
 };
 
-const Bssid INVALID_BSSID = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+const MacAddress INVALID_MAC_ADDRESS = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
 
 enum class WifiSecurity {
     NONE = 0,
@@ -91,8 +92,8 @@ public:
     WifiNetworkInfo& ssid(const char* ssid);
     const char* ssid() const;
 
-    WifiNetworkInfo& bssid(const Bssid& bssid);
-    const Bssid& bssid() const;
+    WifiNetworkInfo& bssid(const MacAddress& bssid);
+    const MacAddress& bssid() const;
 
     WifiNetworkInfo& channel(int channel);
     int channel() const;
@@ -102,7 +103,7 @@ public:
 
 private:
     CString ssid_;
-    Bssid bssid_;
+    MacAddress bssid_;
     int channel_;
     int rssi_;
 };
@@ -114,8 +115,8 @@ public:
     WifiScanResult& ssid(const char* ssid);
     const char* ssid() const;
 
-    WifiScanResult& bssid(const Bssid& bssid);
-    const Bssid& bssid() const;
+    WifiScanResult& bssid(const MacAddress& bssid);
+    const MacAddress& bssid() const;
 
     WifiScanResult& security(WifiSecurity sec);
     WifiSecurity security() const;
@@ -128,7 +129,7 @@ public:
 
 private:
     CString ssid_;
-    Bssid bssid_;
+    MacAddress bssid_;
     WifiSecurity sec_;
     int channel_;
     int rssi_;
@@ -181,12 +182,12 @@ private:
     WifiNcpClient* ncpClient_;
 };
 
-inline bool operator==(const Bssid& bssid1, const Bssid& bssid2) {
-    return (memcmp(bssid1.data, bssid2.data, BSSID_SIZE) == 0);
+inline bool operator==(const MacAddress& addr1, const MacAddress& addr2) {
+    return (memcmp(addr1.data, addr2.data, MAC_ADDRESS_SIZE) == 0);
 }
 
-inline bool operator!=(const Bssid& bssid1, const Bssid& bssid2) {
-    return !(bssid1 == bssid2);
+inline bool operator!=(const MacAddress& addr1, const MacAddress& addr2) {
+    return !(addr1 == addr2);
 }
 
 inline WifiCredentials::WifiCredentials() :
@@ -243,7 +244,7 @@ inline const WifiCredentials& WifiNetworkConfig::credentials() const {
 }
 
 inline WifiNetworkInfo::WifiNetworkInfo() :
-        bssid_(INVALID_BSSID),
+        bssid_(INVALID_MAC_ADDRESS),
         channel_(0),
         rssi_(0) {
 }
@@ -257,12 +258,12 @@ inline const char* WifiNetworkInfo::ssid() const {
     return ssid_;
 }
 
-inline WifiNetworkInfo& WifiNetworkInfo::bssid(const Bssid& bssid) {
+inline WifiNetworkInfo& WifiNetworkInfo::bssid(const MacAddress& bssid) {
     bssid_ = bssid;
     return *this;
 }
 
-inline const Bssid& WifiNetworkInfo::bssid() const {
+inline const MacAddress& WifiNetworkInfo::bssid() const {
     return bssid_;
 }
 
@@ -285,7 +286,7 @@ inline int WifiNetworkInfo::rssi() const {
 }
 
 inline WifiScanResult::WifiScanResult() :
-        bssid_(INVALID_BSSID),
+        bssid_(INVALID_MAC_ADDRESS),
         sec_(WifiSecurity::NONE),
         channel_(0),
         rssi_(0) {
@@ -300,12 +301,12 @@ inline const char* WifiScanResult::ssid() const {
     return ssid_;
 }
 
-inline WifiScanResult& WifiScanResult::bssid(const Bssid& bssid) {
+inline WifiScanResult& WifiScanResult::bssid(const MacAddress& bssid) {
     bssid_ = bssid;
     return *this;
 }
 
-inline const Bssid& WifiScanResult::bssid() const {
+inline const MacAddress& WifiScanResult::bssid() const {
     return bssid_;
 }
 

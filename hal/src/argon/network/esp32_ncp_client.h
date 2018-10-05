@@ -52,9 +52,10 @@ public:
     int ncpId() const override;
 
     // Reimplemented from WifiNcpClient
-    int connect(const char* ssid, const Bssid& bssid, WifiSecurity sec, const WifiCredentials& cred) override;
+    int connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) override;
     int getNetworkInfo(WifiNetworkInfo* info) override;
     int scan(WifiScanCallback callback, void* data) override;
+    int getMacAddress(MacAddress* addr) override;
 
 private:
     AtParser atParser_;
