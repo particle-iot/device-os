@@ -28,12 +28,12 @@ endif
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
 
-HAL_DEPS = third_party/lwip third_party/freertos third_party/openthread third_party/wiznet_driver
+HAL_DEPS = third_party/lwip third_party/freertos third_party/openthread third_party/wiznet_driver gsm0710muxer
 HAL_DEPS_INCLUDE_SCRIPTS =$(foreach module,$(HAL_DEPS),$(PROJECT_ROOT)/$(module)/import.mk)
 include $(HAL_DEPS_INCLUDE_SCRIPTS)
 
 ifneq ($(filter hal,$(LIBS)),)
-HAL_LIB_DEP += $(FREERTOS_LIB_DEP) $(LWIP_LIB_DEP) $(OPENTHREAD_LIB_DEP) $(WIZNET_DRIVER_LIB_DEP)
+HAL_LIB_DEP += $(FREERTOS_LIB_DEP) $(LWIP_LIB_DEP) $(OPENTHREAD_LIB_DEP) $(WIZNET_DRIVER_LIB_DEP) $(GSM0710MUXER_LIB_DEP)
 LIBS += $(notdir $(HAL_DEPS))
 endif
 
