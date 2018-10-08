@@ -49,6 +49,8 @@ Esp32NcpNetif::Esp32NcpNetif(particle::services::at::ArgonNcpAtClient* atclient)
           origStream_(atclient->getStream()),
           muxer_(origStream_) {
 
+    registerHandlers();
+
     LOG(INFO, "Creating Esp32NcpNetif LwIP interface");
     start_ = false;
     stop_ = false;
