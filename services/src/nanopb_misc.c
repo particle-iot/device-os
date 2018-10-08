@@ -27,7 +27,7 @@ static bool write_file_callback(pb_ostream_t* strm, const uint8_t* data, size_t 
         return false;
     }
     const lfs_ssize_t n = lfs_file_write(&fs->instance, strm->state, data, size);
-    if (n < 0 || (size_t)n != size) {
+    if (n != (lfs_ssize_t)size) {
         return false;
     }
     return true;
@@ -39,10 +39,10 @@ static bool read_file_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
         return false;
     }
     const lfs_ssize_t n = lfs_file_read(&fs->instance, strm->state, data, size);
-    if (n < 0 || (size_t)n != size) {
+    if (n != (lfs_ssize_t)size) {
         return false;
     }
-    return false;
+    return true;
 }
 
 pb_ostream_t* pb_ostream_init(void* reserved) {

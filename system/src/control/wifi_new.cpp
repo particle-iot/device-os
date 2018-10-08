@@ -50,8 +50,13 @@ void bssidToPb(const MacAddress& bssid, T* pbBssid) {
     if (bssid != INVALID_MAC_ADDRESS) {
         memcpy(pbBssid->bytes, &bssid, MAC_ADDRESS_SIZE);
         pbBssid->size = MAC_ADDRESS_SIZE;
-    } else {
-        pbBssid->size = 0;
+    }
+}
+
+template<typename T>
+void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
+    if (pbBssid.size == MAC_ADDRESS_SIZE) {
+        memcpy(bssid, pbBssid.bytes, MAC_ADDRESS_SIZE);
     }
 }
 
@@ -74,6 +79,9 @@ int joinNewNetwork(ctrl_request* req) {
     }
     WifiNetworkConfig conf;
     conf.ssid(dSsid.data);
+    MacAddress bssid = INVALID_MAC_ADDRESS;
+    bssidFromPb(&bssid, pbReq.bssid);
+    conf.bssid(bssid);
     conf.security((WifiSecurity)pbReq.security);
     conf.credentials(std::move(cred));
     // Get current configuration
@@ -89,6 +97,9 @@ int joinNewNetwork(ctrl_request* req) {
         }
     });
     // Connect to the network
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    CHECK(ncpClient->on());
     CHECK(wifiMgr->connect(dSsid.data));
     oldConfGuard.dismiss();
     return 0;

@@ -50,8 +50,6 @@ void bssidToPb(const MacAddress& bssid, T* pbBssid) {
     if (bssid != INVALID_MAC_ADDRESS) {
         memcpy(pbBssid->bytes, &bssid, MAC_ADDRESS_SIZE);
         pbBssid->size = MAC_ADDRESS_SIZE;
-    } else {
-        pbBssid->size = 0;
     }
 }
 
@@ -59,8 +57,6 @@ template<typename T>
 void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
     if (pbBssid.size == MAC_ADDRESS_SIZE) {
         memcpy(bssid, pbBssid.bytes, MAC_ADDRESS_SIZE);
-    } else {
-        *bssid = INVALID_MAC_ADDRESS;
     }
 }
 
@@ -74,7 +70,7 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
     // Open configuration file
     lfs_file_t file = {};
     CHECK(openFile(&file, CONFIG_FILE, LFS_O_RDONLY));
-    SCOPE_GUARD({
+    NAMED_SCOPE_GUARD(fileGuard, {
         lfs_file_close(&fs->instance, &file);
     });
     // Parse configuration
@@ -105,7 +101,15 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
         }
         return true;
     };
-    CHECK(decodeMessageFromFile(&file, PB(WifiConfig_fields), &pbConf));
+    const int r = decodeMessageFromFile(&file, PB(WifiConfig_fields), &pbConf);
+    if (r < 0) {
+        LOG(ERROR, "Unable to parse network settings");
+        networks->clear();
+        LOG(WARN, "Removing file: %s", CONFIG_FILE);
+        lfs_file_close(&fs->instance, &file);
+        fileGuard.dismiss();
+        lfs_remove(&fs->instance, CONFIG_FILE);
+    }
     return 0;
 }
 
@@ -115,10 +119,10 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
-    // Open temporary file
+    // Open configuration file
     lfs_file_t file = {};
-    CHECK(openFile(&file, CONFIG_FILE ".tmp", LFS_O_WRONLY));
-    NAMED_SCOPE_GUARD(g, {
+    CHECK(openFile(&file, CONFIG_FILE, LFS_O_WRONLY));
+    SCOPE_GUARD({
         lfs_file_close(&fs->instance, &file);
     });
     int r = lfs_file_truncate(&fs->instance, &file, 0);
@@ -150,11 +154,7 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
         return true;
     };
     CHECK(encodeMessageToFile(&file, PB(WifiConfig_fields), &pbConf));
-    // Replace target configuration file
-    lfs_file_close(&fs->instance, &file);
-    g.dismiss();
-    r = lfs_rename(&fs->instance, CONFIG_FILE ".tmp", CONFIG_FILE);
-    CHECK_TRUE(r == LFS_ERR_OK, SYSTEM_ERROR_FILE);
+    LOG(TRACE, "Updated file: %s", CONFIG_FILE);
     return 0;
 }
 
@@ -273,7 +273,7 @@ int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf) {
     if (index < 0) {
         // Add a new network or replace the last network in the list
         if (networks.size() < (int)MAX_CONFIGURED_WIFI_NETWORK_COUNT) {
-            CHECK_TRUE(networks.append(WifiNetworkConfig()), SYSTEM_ERROR_NO_MEMORY);
+            CHECK_TRUE(networks.resize(networks.size() + 1), SYSTEM_ERROR_NO_MEMORY);
         }
         index = networks.size() - 1;
     }
