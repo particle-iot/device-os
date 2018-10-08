@@ -330,7 +330,8 @@ void WifiNetworkManager::clearConfiguredNetworks() {
 
 bool WifiNetworkManager::hasConfiguredNetworks() {
     Vector<WifiNetworkConfig> networks;
-    if (!loadConfig(&networks)) {
+    const int r = loadConfig(&networks);
+    if (r < 0) {
         return false;
     }
     return !networks.isEmpty();
