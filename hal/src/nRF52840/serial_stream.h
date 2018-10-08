@@ -18,14 +18,15 @@
 #pragma once
 
 #include "usart_hal.h"
-
 #include "stream.h"
+#include <memory>
 
 namespace particle {
 
 class SerialStream: public Stream {
 public:
-    SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config);
+    SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config,
+            size_t rxBufferSize = 0, size_t txBufferSize = 0);
     ~SerialStream();
 
     int read(char* data, size_t size) override;
@@ -38,9 +39,9 @@ public:
     int waitEvent(unsigned flags, unsigned timeout) override;
 
 private:
-    Ring_Buffer rxBuffer_;
-    Ring_Buffer txBuffer_;
     HAL_USART_Serial serial_;
+    std::unique_ptr<char[]> rxBuffer_;
+    std::unique_ptr<char[]> txBuffer_;
 };
 
 } // particle

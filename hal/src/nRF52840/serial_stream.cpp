@@ -19,16 +19,41 @@
 
 #include "concurrent_hal.h"
 #include "timer_hal.h"
-
+#include "service_debug.h"
 #include "system_error.h"
+
+namespace {
+
+const auto SERIAL_STREAM_BUFFER_SIZE_RX = 2048;
+const auto SERIAL_STREAM_BUFFER_SIZE_TX = 2048;
+
+} // anonymous
 
 namespace particle {
 
-SerialStream::SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config) :
-        rxBuffer_(),
-        txBuffer_(),
+SerialStream::SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config,
+        size_t rxBufferSize, size_t txBufferSize) :
         serial_(serial) {
-    HAL_USART_Init(serial_, &rxBuffer_, &txBuffer_);
+
+    if (!rxBufferSize) {
+        rxBufferSize = SERIAL_STREAM_BUFFER_SIZE_RX;
+    }
+    if (!txBufferSize) {
+        txBufferSize = SERIAL_STREAM_BUFFER_SIZE_TX;
+    }
+
+    rxBuffer_.reset(new (std::nothrow) char[rxBufferSize]);
+    txBuffer_.reset(new (std::nothrow) char[txBufferSize]);
+    SPARK_ASSERT(rxBuffer_);
+    SPARK_ASSERT(txBuffer_);
+
+    HAL_USART_Buffer_Config c = {};
+    c.size = sizeof(c);
+    c.rx_buffer = (uint8_t*)rxBuffer_.get();
+    c.tx_buffer = (uint8_t*)txBuffer_.get();
+    c.rx_buffer_size = rxBufferSize;
+    c.tx_buffer_size = txBufferSize;
+    HAL_USART_Init_Ex(serial_, &c, nullptr);
     HAL_USART_BeginConfig(serial_, baudrate, config, 0);
 }
 
@@ -37,53 +62,29 @@ SerialStream::~SerialStream() {
 }
 
 int SerialStream::read(char* data, size_t size) {
-    size_t read = 0;
-    while (read < size) {
-        int c = HAL_USART_Read_Data(serial_);
-        if (c < 0) {
-            break;
-        }
-        data[read++] = (char)c;
-    }
-    return read;
-}
-
-int SerialStream::peek(char* data, size_t size) {
-    if (size > 1) {
-        return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
-    }
     if (size == 0) {
         return 0;
     }
-    const int c = HAL_USART_Peek_Data(serial_);
-    if (c < 0) {
+    return HAL_USART_Read(serial_, data, size, sizeof(char));
+}
+
+int SerialStream::peek(char* data, size_t size) {
+    if (size == 0) {
         return 0;
     }
-    *data = c;
-    return size;
+    return HAL_USART_Peek(serial_, data, size, sizeof(char));
 }
 
 int SerialStream::skip(size_t size) {
-    size_t n = 0;
-    while (n < size) {
-        const int c = HAL_USART_Read_Data(serial_);
-        if (c < 0) {
-            break;
-        }
-        ++n;
-    }
-    return n;
+    return HAL_USART_Read(serial_, nullptr, size, sizeof(char));
 }
 
 int SerialStream::write(const char* data, size_t size) {
-    size_t written = 0;
-    while (written < size) {
-        auto w = HAL_USART_Write_NineBitData(serial_, data[written]);
-        if (w == sizeof(data[written])) {
-            ++written;
-        }
+    auto r = HAL_USART_Write(serial_, data, size, sizeof(char));
+    if (r == SYSTEM_ERROR_NO_MEMORY) {
+        return 0;
     }
-    return written;
+    return r;
 }
 
 int SerialStream::flush() {
