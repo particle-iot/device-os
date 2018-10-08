@@ -155,6 +155,8 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
         : BaseNetif(),
           ot_(ot) {
 
+    registerHandlers();
+
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
     if (!ot_) {
 #if !defined(OPENTHREAD_ENABLE_MULTIPLE_INSTANCES) || OPENTHREAD_ENABLE_MULTIPLE_INSTANCES == 0

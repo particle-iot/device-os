@@ -118,6 +118,8 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
           reset_(reset),
           interrupt_(interrupt) {
 
+    registerHandlers();
+
     LOG(INFO, "Creating Wiznet LwIP interface");
 
     instance_ = this;
