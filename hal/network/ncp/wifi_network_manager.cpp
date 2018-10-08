@@ -20,6 +20,7 @@
 #include "wifi_ncp_client.h"
 
 #include "file_util.h"
+#include "logging.h"
 #include "scope_guard.h"
 #include "check.h"
 
@@ -37,6 +38,8 @@
 #define PB_WIFI(_name) particle_ctrl_wifi_##_name
 
 #define CONFIG_FILE "/sys/wifi_config.bin"
+
+LOG_SOURCE_CATEGORY("ncp.mgr")
 
 namespace particle {
 

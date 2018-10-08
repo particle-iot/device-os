@@ -201,7 +201,7 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
     auto cmd = parser_.command();
-    cmd.printf("AT+CWJAP=%s", ssid);
+    cmd.printf("AT+CWJAP=\"%s\"", ssid);
     switch (cred.type()) {
     case WifiCredentials::PASSWORD:
         cmd.printf(",\"%s\"", cred.password());
