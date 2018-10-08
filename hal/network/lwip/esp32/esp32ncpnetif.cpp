@@ -159,6 +159,16 @@ int Esp32NcpNetif::upImpl() {
         LOG(TRACE, "Failed to initialize ESP32 NCP client: %d", r);
         return r;
     }
+    MacAddress mac = {};
+    if (!memcmp(interface()->hwaddr, mac.data, interface()->hwaddr_len)) {
+        // Query MAC address
+        r = wifiMan_->ncpClient()->getMacAddress(&mac);
+        if (r) {
+            LOG(TRACE, "Failed to query ESP32 MAC address: %d", r);
+            return r;
+        }
+        memcpy(interface()->hwaddr, mac.data, interface()->hwaddr_len);
+    }
     r = wifiMan_->connect();
     if (r) {
         LOG(TRACE, "Failed to connect to WiFi: %d", r);
