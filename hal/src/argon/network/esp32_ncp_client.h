@@ -19,12 +19,12 @@
 
 #include "wifi_ncp_client.h"
 #include "at_parser.h"
-
 #include "platform_ncp.h"
-
 #include "spark_wiring_thread.h"
-
 #include <memory>
+#include "static_recursive_mutex.h"
+#include "gsm0710muxer/muxer.h"
+#include "gsm0710muxer/channel_stream.h"
 
 namespace particle {
 
@@ -57,6 +57,8 @@ public:
     int scan(WifiScanCallback callback, void* data) override;
     int getMacAddress(MacAddress* addr) override;
 
+    virtual int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
+
 private:
     AtParser parser_;
     std::unique_ptr<SerialStream> serial_;
@@ -66,9 +68,15 @@ private:
     NcpConnectionState connState_;
     int parserError_;
     bool ready_;
+    gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
+    std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
 
+    int initParser(Stream* stream);
     int checkParser();
     int waitReady();
+    int initReady();
+    static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
+            decltype(muxer_)::ChannelState newState, void* ctx);
     void ncpState(NcpState state);
     void connectionState(NcpConnectionState state);
     void parserError(int error);

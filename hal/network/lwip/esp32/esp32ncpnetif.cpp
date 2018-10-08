@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+// DO NOT REMOVE
+#include "interrupts_hal.h"
+
 #include "logging.h"
 LOG_SOURCE_CATEGORY("net.esp32ncp")
 
@@ -34,30 +37,37 @@ LOG_SOURCE_CATEGORY("net.esp32ncp")
 #include <lwip/dns.h>
 #include <algorithm>
 #include "lwiplock.h"
-#include "interrupts_hal.h"
-
+#include "wifi_ncp_client.h"
 #include "concurrent_hal.h"
 
 #include "platform_config.h"
 
+#include "check.h"
+
+namespace {
+
+enum class NetifEvent {
+    None = 0,
+    Up = 1,
+    Down = 2,
+    Exit = 3
+};
+
+} // anonymous
+
 using namespace particle::net;
 
-Esp32NcpNetif::Esp32NcpNetif(particle::services::at::ArgonNcpAtClient* atclient)
+Esp32NcpNetif::Esp32NcpNetif()
         : BaseNetif(),
-          exit_(false),
-          atClient_(atclient),
-          origStream_(atclient->getStream()),
-          muxer_(origStream_) {
+          exit_(false) {
 
     registerHandlers();
 
     LOG(INFO, "Creating Esp32NcpNetif LwIP interface");
-    start_ = false;
-    stop_ = false;
 
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
         /* FIXME: */
-        SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
+        SPARK_ASSERT(os_queue_create(&queue_, sizeof(NetifEvent), 4, nullptr) == 0);
         SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
     }
 }
@@ -65,15 +75,15 @@ Esp32NcpNetif::Esp32NcpNetif(particle::services::at::ArgonNcpAtClient* atclient)
 Esp32NcpNetif::~Esp32NcpNetif() {
     exit_ = true;
     if (thread_ && queue_) {
-        const void* dummy = nullptr;
-        os_queue_put(queue_, &dummy, 1000, nullptr);
+        auto ex = NetifEvent::Exit;
+        os_queue_put(queue_, &ex, 1000, nullptr);
         os_thread_join(thread_);
         os_queue_destroy(queue_, nullptr);
     }
 }
 
-netif* Esp32NcpNetif::interface() {
-    return &netif_;
+void Esp32NcpNetif::setWifiManager(particle::WifiNetworkManager* wifiMan) {
+    wifiMan_ = wifiMan;
 }
 
 err_t Esp32NcpNetif::initCb(netif* netif) {
@@ -100,35 +110,31 @@ err_t Esp32NcpNetif::initInterface() {
     return ERR_OK;
 }
 
-void Esp32NcpNetif::hwReset() {
-    HAL_Pin_Mode(ESPBOOT, OUTPUT);
-    HAL_Pin_Mode(ESPEN, OUTPUT);
-    // De-assert the BOOT pin
-    HAL_GPIO_Write(ESPBOOT, 1);
-    HAL_Delay_Milliseconds(100);
-     // Secondly, assert the EN pin
-    HAL_GPIO_Write(ESPEN, 0);
-    HAL_Delay_Milliseconds(100);
-     // Thirdly, dessert EN pin
-    HAL_GPIO_Write(ESPEN, 1);
-    HAL_Delay_Milliseconds(100);
-}
-
 void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
-    unsigned int timeout = 100;
-    while(!self->exit_ || self->muxer_.isRunning()) {
-        if (self->start_) {
-            if (!self->upImpl()) {
-                self->start_ = false;
+    unsigned int timeout = 5000;
+    while(!self->exit_) {
+        NetifEvent ev;
+        if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {
+            // Event
+            switch (ev) {
+                case NetifEvent::Up: {
+                    self->upImpl();
+                    break;
+                }
+                case NetifEvent::Down: {
+                    self->downImpl();
+                    break;
+                }
+            }
+        } else {
+            if (self->up_) {
+                LwipTcpIpCoreLock lk;
+                if (!netif_is_link_up(self->interface())) {
+                    self->upImpl();
+                }
             }
         }
-        if (self->stop_) {
-            self->stop_ = false;
-            self->downImpl();
-        }
-        self->muxer_.notifyInput(0);
-        HAL_Delay_Milliseconds(timeout);
     }
 
     self->down();
@@ -137,42 +143,43 @@ void Esp32NcpNetif::loop(void* arg) {
 }
 
 int Esp32NcpNetif::up() {
-    start_ = true;
-    return 0;
+    NetifEvent ev = NetifEvent::Up;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
 int Esp32NcpNetif::down() {
-    stop_ = true;
-    return 0;
+    NetifEvent ev = NetifEvent::Down;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
 int Esp32NcpNetif::upImpl() {
-    hwReset();
-    atClient_->setStream(origStream_);
-    atClient_->reset();
-
-    CHECK(atClient_->getMac(0, netif_.hwaddr));
-    CHECK(atClient_->connect());
-    CHECK(atClient_->startMuxer());
-    // Initiator
-    muxer_.setMaxFrameSize(1536);
-    muxer_.setMaxRetransmissions(10);
-    muxer_.setAckTimeout(1000);
-    muxer_.setControlResponseTimeout(1000);
-    muxer_.setKeepAlivePeriod(10000);
-    muxer_.setKeepAliveMaxMissed(6);
-    muxer_.start(true);
-    muxer_.openChannel(2, channelDataHandlerCb, this);
-    muxer_.resumeChannel(2);
-
-    LwipTcpIpCoreLock lk;
-    netif_set_link_up(interface());
-
-    return 0;
+    up_ = true;
+    auto r = wifiMan_->ncpClient()->on();
+    if (r) {
+        LOG(TRACE, "Failed to initialize ESP32 NCP client: %d", r);
+        return r;
+    }
+    r = wifiMan_->connect();
+    if (r) {
+        LOG(TRACE, "Failed to connect to WiFi: %d", r);
+    }
+    return r;
 }
 
-int Esp32NcpNetif::channelDataHandlerCb(const uint8_t* data, size_t size, void* ctx) {
-    LOG(TRACE, "channel data handler %x %u", data, size);
+void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
+    auto self = (Esp32NcpNetif*)ctx;
+    if (ev.type == NcpEvent::CONNECTION_STATE_CHANGED) {
+        LwipTcpIpCoreLock lk;
+        const auto& cev = static_cast<const NcpConnectionStateChangedEvent&>(ev);
+        if (cev.state == NcpConnectionState::DISCONNECTED) {
+            netif_set_link_up(self->interface());
+        } else if (cev.state == NcpConnectionState::CONNECTED) {
+            netif_set_link_down(self->interface());
+        }
+    }
+}
+
+void Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(ctx);
     size_t pktSize = size;
 #if ETH_PAD_SIZE
@@ -198,13 +205,11 @@ int Esp32NcpNetif::channelDataHandlerCb(const uint8_t* data, size_t size, void* 
             pbuf_free(p);
         }
     }
-
-    return 0;
 }
 
 int Esp32NcpNetif::downImpl() {
-    muxer_.stop();
-    hwReset();
+    up_ = false;
+    wifiMan_->ncpClient()->disconnect();
     LwipTcpIpCoreLock lk;
     netif_set_link_down(interface());
     return 0;
@@ -223,11 +228,11 @@ err_t Esp32NcpNetif::linkOutput(pbuf* p) {
 
     if (p->len == p->tot_len) {
         // non-queue packet
-        muxer_.writeChannel(2, (const uint8_t*)p->payload, p->tot_len);
+        wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)p->payload, p->tot_len);
     } else {
         pbuf* q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
         if (q) {
-            muxer_.writeChannel(2, (const uint8_t*)q->payload, q->tot_len);
+            wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)q->payload, q->tot_len);
             pbuf_free(q);
         }
     }

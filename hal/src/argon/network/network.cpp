@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define NO_STATIC_ASSERT
 #include "ifapi.h"
 #include "ot_api.h"
 #include "openthread/lwip_openthreadif.h"
@@ -41,6 +42,15 @@ namespace particle {
 
 namespace {
 
+/* th1 - OpenThread */
+BaseNetif* th1 = nullptr;
+/* en2 - Ethernet FeatherWing */
+BaseNetif* en2 = nullptr;
+/* wl3 - ESP32 NCP Station */
+BaseNetif* wl3 = nullptr;
+/* wl4 - ESP32 NCP Access Point */
+BaseNetif* wl4 = nullptr;
+
 class WifiNetworkManagerInit {
 public:
     WifiNetworkManagerInit() {
@@ -60,7 +70,9 @@ private:
         // Initialize NCP client
         std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) Esp32NcpClient);
         CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
-        auto conf = NcpClientConfig(); // FIXME: Set event handler callback
+        auto conf = NcpClientConfig()
+                .eventHandler(Esp32NcpNetif::ncpEventHandlerCb, wl3)
+                .dataHandler(Esp32NcpNetif::ncpDataHandlerCb, wl3);
         CHECK(ncpClient->init(std::move(conf)));
         // Initialize network manager
         mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
@@ -69,15 +81,6 @@ private:
         return 0;
     }
 };
-
-/* th1 - OpenThread */
-BaseNetif* th1 = nullptr;
-/* en2 - Ethernet FeatherWing */
-BaseNetif* en2 = nullptr;
-/* wl3 - ESP32 NCP Station */
-BaseNetif* wl3 = nullptr;
-/* wl4 - ESP32 NCP Access Point */
-BaseNetif* wl4 = nullptr;
 
 bool netifCanForwardIpv4(netif* iface) {
     if (iface && netif_is_up(iface) && netif_is_link_up(iface)) {
@@ -129,7 +132,10 @@ int if_init_platform(void*) {
     }
 
     /* wl3 - ESP32 NCP Station */
-    wl3 = new Esp32NcpNetif(argonNcpAtClient());
+    wl3 = new Esp32NcpNetif();
+    if (wl3) {
+        ((Esp32NcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
+    }
 
     /* TODO: wl4 - ESP32 NCP Access Point */
     (void)wl4;

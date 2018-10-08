@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define NO_STATIC_ASSERT
 #include "esp32_ncp_client.h"
 
 #include "at_command.h"
@@ -84,6 +85,16 @@ void espOff() {
     HAL_GPIO_Write(ESPEN, 0);
 }
 
+const auto ESP32_NCP_MAX_MUXER_FRAME_SIZE = 1536;
+const auto ESP32_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
+const auto ESP32_NCP_KEEPALIVE_MAX_MISSED = 5;
+
+const auto ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 1024;
+
+const auto ESP32_NCP_AT_CHANNEL = 1;
+const auto ESP32_NCP_STA_CHANNEL = 2;
+const auto ESP32_NCP_AP_CHANNEL = 3;
+
 } // unnamed
 
 Esp32NcpClient::Esp32NcpClient() :
@@ -106,11 +117,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, 921600,
             SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
-    // Initialize AT parser
-    auto parserConf = AtParserConfig()
-            .stream(serial.get())
-            .commandTerminator(AtCommandTerminator::CRLF);
-    CHECK(parser_.init(std::move(parserConf)));
+    CHECK(initParser(serial.get()));
     serial_ = std::move(serial);
     conf_ = conf;
     ncpState_ = NcpState::OFF;
@@ -118,6 +125,15 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     parserError_ = 0;
     ready_ = false;
     return 0;
+}
+
+int Esp32NcpClient::initParser(Stream* stream) {
+    // Initialize AT parser
+    auto parserConf = AtParserConfig()
+            .stream(stream)
+            .commandTerminator(AtCommandTerminator::CRLF);
+    parser_.destroy();
+    return parser_.init(std::move(parserConf));
 }
 
 void Esp32NcpClient::destroy() {
@@ -200,6 +216,17 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
     const NcpClientLock lock(this);
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
+
+    // Open data channel
+    CHECK(muxer_.openChannel(ESP32_NCP_STA_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto self = (Esp32NcpClient*)ctx;
+        const auto handler = self->conf_.dataHandler();
+        if (handler) {
+            handler(0, data, size, self->conf_.dataHandlerData());
+        }
+        return 0;
+    }, this));
+
     auto cmd = parser_.command();
     cmd.printf("AT+CWJAP=\"%s\"", ssid);
     switch (cred.type()) {
@@ -244,14 +271,17 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+CWLAP");
     while (resp.hasNextLine()) {
-        char ssid[MAX_SSID_SIZE + 1] = {};
+        char ssid[MAX_SSID_SIZE + 2] = {};
         char bssidStr[MAC_ADDRESS_STRING_SIZE + 1] = {};
         int security = 0;
         int channel = 0;
         int rssi = 0;
-        const int r = CHECK_PARSER(resp.scanf("+CWLAP:(%d,\"%32[^\"]\",%d,\"%17[^\"]\",%d)", &security, ssid, &rssi,
+        const int r = CHECK_PARSER(resp.scanf("+CWLAP:(%d,\"%33[^,],%d,\"%17[^\"]\",%d)", &security, ssid, &rssi,
                 bssidStr, &channel));
         CHECK_TRUE(r == 5, SYSTEM_ERROR_UNKNOWN);
+        // Fixup SSID
+        CHECK_TRUE(strlen(ssid) > 0, SYSTEM_ERROR_UNKNOWN);
+        ssid[strlen(ssid) - 1] = '\0';
         MacAddress bssid = INVALID_MAC_ADDRESS;
         CHECK_TRUE(macAddressFromString(&bssid, bssidStr), SYSTEM_ERROR_UNKNOWN);
         auto result = WifiScanResult().ssid(ssid).bssid(bssid).security((WifiSecurity)security).channel(channel)
@@ -294,6 +324,8 @@ int Esp32NcpClient::waitReady() {
     if (ready_) {
         return 0;
     }
+    muxer_.stop();
+    CHECK(initParser(serial_.get()));
     espReset();
     flushInput(serial_.get(), 1000);
     parser_.reset();
@@ -322,9 +354,73 @@ int Esp32NcpClient::waitReady() {
     flushInput(serial_.get(), 1000);
     parser_.reset();
     parserError_ = 0;
-    LOG(TRACE, "NCP initialized");
-    ncpState(NcpState::ON);
-    return 0;
+    LOG(TRACE, "NCP ready to accept AT commands");
+    return initReady();
+}
+
+int Esp32NcpClient::initReady() {
+    // Send AT+CMUX and initialize multiplexer
+    const int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+    // Initialize muxer
+    muxer_.setStream(serial_.get());
+    muxer_.setMaxFrameSize(ESP32_NCP_MAX_MUXER_FRAME_SIZE);
+    muxer_.setKeepAlivePeriod(ESP32_NCP_KEEPALIVE_PERIOD);
+    muxer_.setKeepAliveMaxMissed(ESP32_NCP_KEEPALIVE_MAX_MISSED);
+
+    // XXX: we might need to adjust these:
+    muxer_.setMaxRetransmissions(10);
+    muxer_.setAckTimeout(100);
+    muxer_.setControlResponseTimeout(500);
+
+    // Set channel state handler
+    muxer_.setChannelStateHandler(muxChannelStateCb, this);
+
+    // Create AT channel stream
+    if (!muxerAtStream_) {
+        muxerAtStream_.reset(new (std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, ESP32_NCP_AT_CHANNEL));
+        CHECK_TRUE(muxerAtStream_, SYSTEM_ERROR_NO_MEMORY);
+        CHECK(muxerAtStream_->init(ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
+    }
+
+    // Start muxer (blocking call)
+    CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
+
+    // Open AT channel and connect it to AT channel stream
+    if (muxer_.openChannel(ESP32_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
+        // Failed to open AT channel
+        muxer_.stop();
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    // Just in case resume AT channel
+    muxer_.resumeChannel(ESP32_NCP_AT_CHANNEL);
+
+    // Reinitialize parser with a muxer-based stream
+    CHECK(initParser(muxerAtStream_.get()));
+
+    const unsigned timeout = 5000;
+    const auto t1 = HAL_Timer_Get_Milli_Seconds();
+    for (;;) {
+        const int r = parser_.execCommand(1000, "AT");
+        if (r == AtResponse::OK) {
+            // Success, remote end answered to an AT command
+            LOG_DEBUG(TRACE, "Muxer AT channel live");
+            const int r = CHECK_PARSER(parser_.execCommand("AT+CWDHCP=0,3"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            ncpState(NcpState::ON);
+            return 0;
+        }
+        const auto t2 = HAL_Timer_Get_Milli_Seconds();
+        if (t2 - t1 >= timeout) {
+            break;
+        }
+        if (r != SYSTEM_ERROR_TIMEOUT) {
+            HAL_Delay_Milliseconds(1000);
+        }
+    }
+
+    return SYSTEM_ERROR_UNKNOWN;
 }
 
 void Esp32NcpClient::ncpState(NcpState state) {
@@ -358,6 +454,34 @@ void Esp32NcpClient::connectionState(NcpConnectionState state) {
         event.state = connState_;
         handler(event, conf_.eventHandlerData());
     }
+}
+
+int Esp32NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
+        decltype(muxer_)::ChannelState newState, void* ctx) {
+    auto self = (Esp32NcpClient*)ctx;
+    switch (channel) {
+        case 0: {
+            // Muxer stopped
+            self->ncpState(NcpState::OFF);
+            break;
+        }
+        case ESP32_NCP_STA_CHANNEL: {
+            // Notify that the underlying data channel closed
+            self->connectionState(NcpConnectionState::DISCONNECTED);
+            break;
+        }
+    }
+
+    return 0;
+}
+
+int Esp32NcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    if (id == 0) {
+        return muxer_.writeChannel(ESP32_NCP_STA_CHANNEL, data, size);
+    } else if (id == 1) {
+        return muxer_.writeChannel(ESP32_NCP_AP_CHANNEL, data, size);
+    }
+    return SYSTEM_ERROR_INVALID_ARGUMENT;
 }
 
 } // particle

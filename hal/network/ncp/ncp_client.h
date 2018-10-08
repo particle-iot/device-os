@@ -53,6 +53,7 @@ struct NcpConnectionStateChangedEvent: NcpEvent {
 };
 
 typedef void(*NcpEventHandler)(const NcpEvent& event, void* data);
+typedef void(*NcpDataHandler)(int id, const uint8_t* data, size_t size, void* ctx);
 
 class NcpClientConfig {
 public:
@@ -62,9 +63,15 @@ public:
     NcpEventHandler eventHandler() const;
     void* eventHandlerData() const;
 
+    NcpClientConfig& dataHandler(NcpDataHandler handler, void* data = nullptr);
+    NcpDataHandler dataHandler() const;
+    void* dataHandlerData() const;
+
 private:
     NcpEventHandler eventHandler_;
     void* eventHandlerData_;
+    NcpDataHandler dataHandler_;
+    void* dataHandlerData_;
 };
 
 class NcpClient {
@@ -91,6 +98,8 @@ public:
     virtual void unlock() = 0;
 
     virtual int ncpId() const = 0;
+
+    virtual int dataChannelWrite(int id, const uint8_t* data, size_t size) = 0;
 };
 
 class NcpClientLock {
@@ -128,6 +137,21 @@ inline NcpEventHandler NcpClientConfig::eventHandler() const {
 inline void* NcpClientConfig::eventHandlerData() const {
     return eventHandlerData_;
 }
+
+inline NcpClientConfig& NcpClientConfig::dataHandler(NcpDataHandler handler, void* data) {
+    dataHandler_ = handler;
+    dataHandlerData_ = data;
+    return *this;
+}
+
+inline NcpDataHandler NcpClientConfig::dataHandler() const {
+    return dataHandler_;
+}
+
+inline void* NcpClientConfig::dataHandlerData() const {
+    return dataHandlerData_;
+}
+
 
 inline NcpClientLock::NcpClientLock(NcpClient* client) :
         client_(client),
