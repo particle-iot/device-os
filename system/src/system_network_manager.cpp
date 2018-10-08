@@ -24,6 +24,10 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "system_led_signal.h"
 #include "enumclass.h"
 #include "system_commands.h"
+#if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
+#include "network/ncp.h"
+#include "wifi_network_manager.h"
+#endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
 
 #define CHECK(_expr) \
         ({ \
@@ -587,6 +591,13 @@ bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
         return otDatasetIsCommissioned(threadInstance());
     }
 #endif /* HAL_PLATFORM_OPENTHREAD */
+
+#if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
+    if (!strncmp(name, "wl", 2)) {
+        auto wifiMan = wifiNetworkManager();
+        return wifiMan->hasConfiguredNetworks();
+    }
+#endif // HAL_PLATFORM_WIFI
 
     return true;
 }
