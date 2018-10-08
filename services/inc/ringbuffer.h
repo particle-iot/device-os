@@ -176,7 +176,6 @@ inline ssize_t RingBuffer<T>::get(T* v) {
 
 template <typename T>
 inline ssize_t RingBuffer<T>::get(T* v, size_t size) {
-    CHECK_TRUE(size, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(data() >= (ssize_t)size, SYSTEM_ERROR_TOO_LARGE);
 
     size_t tail = tail_;
