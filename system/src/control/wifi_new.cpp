@@ -111,6 +111,9 @@ int joinKnownNetwork(ctrl_request* req) {
     CHECK(decodeRequestMessage(req, PB(JoinKnownNetworkRequest_fields), &pbReq));
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    CHECK(ncpClient->on());
     CHECK(wifiMgr->connect(dSsid.data));
     return 0;
 }

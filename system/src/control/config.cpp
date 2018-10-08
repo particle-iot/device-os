@@ -103,7 +103,11 @@ int getSystemVersion(ctrl_request* req) {
 
 int getNcpFirmwareVersion(ctrl_request* req) {
 #if HAL_PLATFORM_NCP
-    const auto ncpClient = wifiNetworkManager()->ncpClient();
+    const auto wifiMgr = wifiNetworkManager();
+    CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    CHECK(ncpClient->on());
     char verStr[32] = {};
     CHECK(ncpClient->getFirmwareVersionString(verStr, sizeof(verStr)));
     uint16_t modVer = 0;
