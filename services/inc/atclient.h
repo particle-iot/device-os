@@ -182,6 +182,26 @@ public:
 private:
 };
 
+class BoronNcpAtClient: public AtClientBase {
+public:
+    BoronNcpAtClient(Stream* stream);
+    virtual ~BoronNcpAtClient();
+
+    int init();
+    int destroy();
+
+    int getImsi();
+    int getCcid();
+    int selectSim(bool external);
+    int startMuxer();
+    int registerNet();
+    int isRegistered(bool w);
+
+    int connect();
+private:
+};
+
+
 } // at
 } // services
 } // particle
