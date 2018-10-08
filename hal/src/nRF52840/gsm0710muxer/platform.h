@@ -42,6 +42,7 @@ const auto taskPriority = OS_THREAD_PRIORITY_NETWORK;
 
 // #define GSM0710_MODEM_STATUS_SEND_EMPTY_BREAK
 #define GSM0710_PUMP_INPUT_DATA
+// #define GSM0710_ENABLE_DEBUG_LOGGING
 
 } // portable
 } // gsm0710
