@@ -23,6 +23,7 @@
 
 #include "system_error.h"
 #include "inet_hal.h"
+
 #include <pb.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
@@ -82,6 +83,7 @@ struct EncodedString {
     }
 };
 
+// Note: Do not use this class with non-buffered nanopb streams
 struct DecodedString {
     const char* data;
     size_t size;
@@ -104,7 +106,7 @@ struct DecodedString {
 
 // Class storing a null-terminated string
 struct DecodedCString {
-    const char* data;
+    char* data;
     size_t size;
 
     explicit DecodedCString(pb_callback_t* cb) :
@@ -113,18 +115,14 @@ struct DecodedCString {
         cb->arg = this;
         cb->funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
             const size_t n = strm->bytes_left;
-            if (n > 0) {
-                const auto buf = (char*)malloc(n + 1);
-                if (!buf) {
-                    return false;
-                }
-                memcpy(buf, strm->state, n);
-                buf[n] = '\0';
-                const auto str = (DecodedCString*)*arg;
-                str->data = buf;
-                str->size = n;
+            const auto str = (DecodedCString*)*arg;
+            str->data = (char*)malloc(n + 1);
+            if (!str->data) {
+                return false;
             }
-            return pb_read(strm, nullptr, n);
+            str->data[n] = '\0';
+            str->size = n;
+            return pb_read(strm, (pb_byte_t*)str->data, n);
         };
     }
 
