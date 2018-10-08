@@ -329,7 +329,11 @@ void WifiNetworkManager::clearConfiguredNetworks() {
 }
 
 bool WifiNetworkManager::hasConfiguredNetworks() {
-    return false;
+    Vector<WifiNetworkConfig> networks;
+    if (!loadConfig(&networks)) {
+        return false;
+    }
+    return !networks.isEmpty();
 }
 
 } // particle
