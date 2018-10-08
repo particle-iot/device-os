@@ -262,6 +262,8 @@ int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     CHECK_TRUE(r == 4, SYSTEM_ERROR_UNKNOWN);
     MacAddress bssid = INVALID_MAC_ADDRESS;
     CHECK_TRUE(macAddressFromString(&bssid, bssidStr), SYSTEM_ERROR_UNKNOWN);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     *info = WifiNetworkInfo().ssid(ssid).bssid(bssid).channel(channel).rssi(rssi);
     return 0;
 }
@@ -298,9 +300,11 @@ int Esp32NcpClient::getMacAddress(MacAddress* addr) {
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+GETMAC=0"); // WiFi station
     char addrStr[MAC_ADDRESS_STRING_SIZE + 1] = {};
-    const int r = CHECK_PARSER(resp.scanf("+GETMAC: \"%32[^\"]\"", addrStr));
+    int r = CHECK_PARSER(resp.scanf("+GETMAC: \"%32[^\"]\"", addrStr));
     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
     CHECK_TRUE(macAddressFromString(addr, addrStr), SYSTEM_ERROR_UNKNOWN);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     return 0;
 }
 
@@ -445,7 +449,7 @@ void Esp32NcpClient::connectionState(NcpConnectionState state) {
     if (connState_ == state) {
         return;
     }
-    LOG(TRACE, "NCP connection state changed: %d", (int)connState_);
+    LOG(TRACE, "NCP connection state changed: %d", (int)state);
     connState_ = state;
     const auto handler = conf_.eventHandler();
     if (handler) {
@@ -459,16 +463,19 @@ void Esp32NcpClient::connectionState(NcpConnectionState state) {
 int Esp32NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
         decltype(muxer_)::ChannelState newState, void* ctx) {
     auto self = (Esp32NcpClient*)ctx;
-    switch (channel) {
-        case 0: {
-            // Muxer stopped
-            self->ncpState(NcpState::OFF);
-            break;
-        }
-        case ESP32_NCP_STA_CHANNEL: {
-            // Notify that the underlying data channel closed
-            self->connectionState(NcpConnectionState::DISCONNECTED);
-            break;
+    // We are only interested in Closed state
+    if (newState == decltype(muxer_)::ChannelState::Closed) {
+        switch (channel) {
+            case 0: {
+                // Muxer stopped
+                self->ncpState(NcpState::OFF);
+                break;
+            }
+            case ESP32_NCP_STA_CHANNEL: {
+                // Notify that the underlying data channel closed
+                self->connectionState(NcpConnectionState::DISCONNECTED);
+                break;
+            }
         }
     }
 

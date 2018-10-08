@@ -169,6 +169,8 @@ int Esp32NcpNetif::upImpl() {
         }
         memcpy(interface()->hwaddr, mac.data, interface()->hwaddr_len);
     }
+    // Ensure that we are disconnected
+    downImpl();
     r = wifiMan_->connect();
     if (r) {
         LOG(TRACE, "Failed to connect to WiFi: %d", r);
@@ -177,14 +179,20 @@ int Esp32NcpNetif::upImpl() {
 }
 
 void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
+    LOG(TRACE, "NCP event %d", (int)ev.type);
     auto self = (Esp32NcpNetif*)ctx;
     if (ev.type == NcpEvent::CONNECTION_STATE_CHANGED) {
         LwipTcpIpCoreLock lk;
+        if (!netif_is_up(self->interface())) {
+            // Ignore
+            return;
+        }
         const auto& cev = static_cast<const NcpConnectionStateChangedEvent&>(ev);
+        LOG(TRACE, "State changed event: %d", (int)cev.state);
         if (cev.state == NcpConnectionState::DISCONNECTED) {
-            netif_set_link_up(self->interface());
-        } else if (cev.state == NcpConnectionState::CONNECTED) {
             netif_set_link_down(self->interface());
+        } else if (cev.state == NcpConnectionState::CONNECTED) {
+            netif_set_link_up(self->interface());
         }
     }
 }
@@ -219,6 +227,11 @@ void Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, v
 
 int Esp32NcpNetif::downImpl() {
     up_ = false;
+    auto r = wifiMan_->ncpClient()->on();
+    if (r) {
+        LOG(TRACE, "Failed to initialize ESP32 NCP client: %d", r);
+        return r;
+    }
     wifiMan_->ncpClient()->disconnect();
     LwipTcpIpCoreLock lk;
     netif_set_link_down(interface());
@@ -230,7 +243,7 @@ err_t Esp32NcpNetif::linkOutput(pbuf* p) {
         return ERR_IF;
     }
 
-    LOG(TRACE, "link output %x %u", p->payload, p->tot_len);
+    // LOG_DEBUG(TRACE, "link output %x %u", p->payload, p->tot_len);
 
 #if ETH_PAD_SIZE
     pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */
