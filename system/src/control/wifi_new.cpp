@@ -176,6 +176,7 @@ int scanNetworks(ctrl_request* req) {
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    CHECK(ncpClient->on());
     // Scan for networks
     Vector<WifiScanResult> networks;
     CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {
@@ -193,8 +194,8 @@ int scanNetworks(ctrl_request* req) {
             EncodedString eSsid(&pbNetwork.ssid, network.ssid(), strlen(network.ssid()));
             bssidToPb(network.bssid(), &pbNetwork.bssid);
             pbNetwork.security = (PB(Security))network.security();
-            pbNetwork.channel = (PB(Security))network.channel();
-            pbNetwork.rssi = (PB(Security))network.rssi();
+            pbNetwork.channel = network.channel();
+            pbNetwork.rssi = network.rssi();
             if (!pb_encode_tag_for_field(strm, field)) {
                 return false;
             }

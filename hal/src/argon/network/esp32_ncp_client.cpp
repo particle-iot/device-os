@@ -249,7 +249,7 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
         int security = 0;
         int channel = 0;
         int rssi = 0;
-        const int r = CHECK_PARSER(resp.scanf("+CWLAP: %d,\"%32[^\"]\",%d,\"%17[^\"]\",%d", &security, ssid, &rssi,
+        const int r = CHECK_PARSER(resp.scanf("+CWLAP:(%d,\"%32[^\"]\",%d,\"%17[^\"]\",%d)", &security, ssid, &rssi,
                 bssidStr, &channel));
         CHECK_TRUE(r == 5, SYSTEM_ERROR_UNKNOWN);
         MacAddress bssid = INVALID_MAC_ADDRESS;
