@@ -18,7 +18,7 @@
 #pragma once
 
 #include "ncp_client.h"
-#include "wifi_manager.h"
+#include "wifi_network_manager.h"
 
 namespace particle {
 

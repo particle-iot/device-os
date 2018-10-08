@@ -20,9 +20,9 @@
 
 namespace particle {
 
-class WifiManager;
+class WifiNetworkManager;
 
-WifiManager* wifiManager();
+WifiNetworkManager* wifiNetworkManager();
 
 } // particle
 

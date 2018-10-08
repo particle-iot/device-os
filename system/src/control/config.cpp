@@ -41,7 +41,7 @@
 
 #if HAL_PLATFORM_NCP
 #include "network/ncp.h"
-#include "wifi_manager.h"
+#include "wifi_network_manager.h"
 #include "wifi_ncp_client.h"
 #endif
 
@@ -103,7 +103,7 @@ int getSystemVersion(ctrl_request* req) {
 
 int getNcpFirmwareVersion(ctrl_request* req) {
 #if HAL_PLATFORM_NCP
-    const auto ncpClient = wifiManager()->ncpClient();
+    const auto ncpClient = wifiNetworkManager()->ncpClient();
     char verStr[32] = {};
     CHECK(ncpClient->getFirmwareVersionString(verStr, sizeof(verStr)));
     uint16_t modVer = 0;

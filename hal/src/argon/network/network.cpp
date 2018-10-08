@@ -28,7 +28,7 @@
 #include "border_router_manager.h"
 #include <malloc.h>
 #include "esp32_ncp_client.h"
-#include "wifi_manager.h"
+#include "wifi_network_manager.h"
 #include "ncp.h"
 #include "debug.h"
 
@@ -36,62 +36,49 @@ using namespace particle;
 using namespace particle::net;
 using namespace particle::net::nat;
 
+namespace particle {
+
 namespace {
+
+class WifiNetworkManagerInit {
+public:
+    WifiNetworkManagerInit() {
+        const int ret = init();
+        SPARK_ASSERT(ret == 0);
+    }
+
+    WifiNetworkManager* instance() const {
+        return mgr_.get();
+    }
+
+private:
+    std::unique_ptr<WifiNcpClient> ncpClient_;
+    std::unique_ptr<WifiNetworkManager> mgr_;
+
+    int init() {
+        // Initialize NCP client
+        std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) Esp32NcpClient);
+        CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
+        auto conf = NcpClientConfig(); // FIXME: Set event handler callback
+        CHECK(ncpClient->init(std::move(conf)));
+        // Initialize network manager
+        mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
+        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
+        ncpClient_ = std::move(ncpClient);
+        return 0;
+    }
+};
 
 /* th2 - OpenThread */
 BaseNetif* th2 = nullptr;
 /* en3 - Ethernet FeatherWing */
 BaseNetif* en3 = nullptr;
 
-} /* anonymous */
+} // unnamed
 
-namespace particle {
-/*
-class WifiManagerInitializer {
-public:
-    WifiManagerInitializer() {
-        const int ret = init();
-        SPARK_ASSERT(ret == 0);
-    }
-
-    WifiManager* instance() const {
-        return mgr_.get();
-    }
-
-private:
-    std::unique_ptr<SerialStream> strm_;
-    std::unique_ptr<services::at::ArgonNcpAtClient> atClient_;
-    std::unique_ptr<WifiNcpClient> ncpClient_;
-    std::unique_ptr<WifiManager> mgr_;
-
-    int init() {
-        // Serial stream
-        std::unique_ptr<SerialStream> strm(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, 921600,
-                SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
-        CHECK_TRUE(strm, SYSTEM_ERROR_NO_MEMORY);
-        // AT client
-        std::unique_ptr<services::at::ArgonNcpAtClient> atClient(
-                new(std::nothrow) services::at::ArgonNcpAtClient(strm.get()));
-        CHECK_TRUE(atClient, SYSTEM_ERROR_NO_MEMORY);
-        // NCP client
-        std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) Esp32NcpClient(atClient.get()));
-        CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
-        // WiFi manager
-        mgr_.reset(new(std::nothrow) WifiManager(ncpClient.get()));
-        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
-        strm_ = std::move(strm);
-        atClient_ = std::move(atClient);
-        ncpClient_ = std::move(ncpClient);
-        return 0;
-    }
-};
-*/
-WifiManager* wifiManager() {
-    return nullptr;
-/*
-    static WifiManagerInitializer mgr;
+WifiNetworkManager* wifiNetworkManager() {
+    static WifiNetworkManagerInit mgr;
     return mgr.instance();
-*/
 }
 
 } // particle

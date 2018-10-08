@@ -22,7 +22,7 @@
 #include "common.h"
 
 #include "network/ncp.h"
-#include "wifi_manager.h"
+#include "wifi_network_manager.h"
 #include "wifi_ncp_client.h"
 
 #include "scope_guard.h"
@@ -77,7 +77,7 @@ int joinNewNetwork(ctrl_request* req) {
     conf.security((WifiSecurity)pbReq.security);
     conf.credentials(std::move(cred));
     // Get current configuration
-    const auto wifiMgr = wifiManager();
+    const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     WifiNetworkConfig oldConf;
     const bool hasOldConf = (wifiMgr->getNetworkConfig(dSsid.data, &oldConf) == 0);
@@ -98,14 +98,14 @@ int joinKnownNetwork(ctrl_request* req) {
     PB(JoinKnownNetworkRequest) pbReq = {};
     DecodedCString dSsid(&pbReq.ssid);
     CHECK(decodeRequestMessage(req, PB(JoinKnownNetworkRequest_fields), &pbReq));
-    const auto wifiMgr = wifiManager();
+    const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     CHECK(wifiMgr->connect(dSsid.data));
     return 0;
 }
 
 int getKnownNetworks(ctrl_request* req) {
-    const auto wifiMgr = wifiManager();
+    const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     // Enumerate configured networks
     Vector<WifiNetworkConfig> networks;
@@ -141,21 +141,21 @@ int removeKnownNetwork(ctrl_request* req) {
     PB(RemoveKnownNetworkRequest) pbReq = {};
     DecodedCString dSsid(&pbReq.ssid);
     CHECK(decodeRequestMessage(req, PB(RemoveKnownNetworkRequest_fields), &pbReq));
-    const auto wifiMgr = wifiManager();
+    const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     wifiMgr->removeNetworkConfig(dSsid.data);
     return 0;
 }
 
 int clearKnownNetworks(ctrl_request* req) {
-    const auto wifiMgr = wifiManager();
+    const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     wifiMgr->clearConfiguredNetworks();
     return 0;
 }
 
 int getCurrentNetwork(ctrl_request* req) {
-    const auto wifiMgr = wifiManager();
+    const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
@@ -172,7 +172,7 @@ int getCurrentNetwork(ctrl_request* req) {
 }
 
 int scanNetworks(ctrl_request* req) {
-    const auto wifiMgr = wifiManager();
+    const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);

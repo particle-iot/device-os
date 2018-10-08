@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "wifi_manager.h"
+#include "wifi_network_manager.h"
 
 #include "wifi_ncp_client.h"
 
@@ -175,14 +175,14 @@ void sortByRssi(Vector<WifiScanResult>* scanResults) {
 
 } // unnamed
 
-WifiManager::WifiManager(WifiNcpClient* client) :
+WifiNetworkManager::WifiNetworkManager(WifiNcpClient* client) :
         client_(client) {
 }
 
-WifiManager::~WifiManager() {
+WifiNetworkManager::~WifiNetworkManager() {
 }
 
-int WifiManager::connect(const char* ssid) {
+int WifiNetworkManager::connect(const char* ssid) {
     // Get known networks
     Vector<WifiNetworkConfig> networks;
     CHECK(loadConfig(&networks));
@@ -265,7 +265,7 @@ int WifiManager::connect(const char* ssid) {
     return 0;
 }
 
-int WifiManager::setNetworkConfig(WifiNetworkConfig conf) {
+int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf) {
     CHECK_TRUE(conf.ssid(), SYSTEM_ERROR_INVALID_ARGUMENT);
     Vector<WifiNetworkConfig> networks;
     CHECK(loadConfig(&networks));
@@ -282,7 +282,7 @@ int WifiManager::setNetworkConfig(WifiNetworkConfig conf) {
     return 0;
 }
 
-int WifiManager::getNetworkConfig(const char* ssid, WifiNetworkConfig* conf) {
+int WifiNetworkManager::getNetworkConfig(const char* ssid, WifiNetworkConfig* conf) {
     // TODO: Cache the list of networks
     CHECK_TRUE(ssid, SYSTEM_ERROR_INVALID_ARGUMENT);
     Vector<WifiNetworkConfig> networks;
@@ -295,7 +295,7 @@ int WifiManager::getNetworkConfig(const char* ssid, WifiNetworkConfig* conf) {
     return 0;
 }
 
-void WifiManager::removeNetworkConfig(const char* ssid) {
+void WifiNetworkManager::removeNetworkConfig(const char* ssid) {
     Vector<WifiNetworkConfig> networks;
     if (loadConfig(&networks) < 0) {
         return;
@@ -308,7 +308,7 @@ void WifiManager::removeNetworkConfig(const char* ssid) {
     saveConfig(networks);
 }
 
-int WifiManager::getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data) {
+int WifiNetworkManager::getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data) {
     Vector<WifiNetworkConfig> networks;
     CHECK(loadConfig(&networks));
     for (int i = 0; i < networks.size(); ++i) {
@@ -320,12 +320,12 @@ int WifiManager::getConfiguredNetworks(GetConfiguredNetworksCallback callback, v
     return 0;
 }
 
-void WifiManager::clearConfiguredNetworks() {
+void WifiNetworkManager::clearConfiguredNetworks() {
     Vector<WifiNetworkConfig> networks;
     saveConfig(networks);
 }
 
-bool WifiManager::hasConfiguredNetworks() {
+bool WifiNetworkManager::hasConfiguredNetworks() {
     return false;
 }
 

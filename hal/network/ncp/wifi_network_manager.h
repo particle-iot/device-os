@@ -135,12 +135,12 @@ private:
 
 typedef int(*WifiScanCallback)(WifiScanResult result, void* data);
 
-class WifiManager {
+class WifiNetworkManager {
 public:
     typedef int(*GetConfiguredNetworksCallback)(WifiNetworkConfig conf, void* data);
 
-    explicit WifiManager(WifiNcpClient* client);
-    ~WifiManager();
+    explicit WifiNetworkManager(WifiNcpClient* client);
+    ~WifiNetworkManager();
 
     int connect(const char* ssid);
     int connect();
@@ -316,11 +316,11 @@ inline int WifiScanResult::rssi() const {
     return rssi_;
 }
 
-inline int WifiManager::connect() {
+inline int WifiNetworkManager::connect() {
     return connect(nullptr);
 }
 
-inline WifiNcpClient* WifiManager::ncpClient() const {
+inline WifiNcpClient* WifiNetworkManager::ncpClient() const {
     return client_;
 }
 
