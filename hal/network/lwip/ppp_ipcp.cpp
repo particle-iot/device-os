@@ -474,8 +474,8 @@ ip4_addr_t Ipcp::getNegotiatedPrimaryDns() {
   using namespace ipcp;
   auto opt = static_cast<CommonConfigurationOptionIpAddress*>(findOption(CONFIGURATION_OPTION_PRIMARY_DNS_SERVER));
   ip4_addr_t ret = *IP4_ADDR_ANY4;
-  if (opt->statePeer == CONFIGURATION_OPTION_STATE_ACK) {
-    ret = opt->getPeerAddress();
+  if (opt->stateLocal == CONFIGURATION_OPTION_STATE_ACK) {
+    ret = opt->getLocalAddress();
   }
   return ret;
 }
@@ -484,8 +484,8 @@ ip4_addr_t Ipcp::getNegotiatedSecondaryDns() {
   using namespace ipcp;
   auto opt = static_cast<CommonConfigurationOptionIpAddress*>(findOption(CONFIGURATION_OPTION_SECONDARY_DNS_SERVER));
   ip4_addr_t ret = *IP4_ADDR_ANY4;
-  if (opt->statePeer == CONFIGURATION_OPTION_STATE_ACK) {
-    ret = opt->getPeerAddress();
+  if (opt->stateLocal == CONFIGURATION_OPTION_STATE_ACK) {
+    ret = opt->getLocalAddress();
   }
   return ret;
 }

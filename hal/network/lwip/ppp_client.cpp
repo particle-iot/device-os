@@ -26,36 +26,6 @@ extern "C" {
 #include "socket_hal.h"
 #include "inet_hal.h"
 
-// class Client {
-// public:
-//   Client();
-//   ~Client();
-
-//   /* Administrative up */
-//   bool connect();
-//   /* Administrative down */
-//   bool disconnect();
-
-//   /* FIXME */
-//   bool configure(void* config);
-
-//   enum Event {
-//     EVENT_NONE        = 0x00,
-//     EVENT_LOWER_UP    = 0x01,
-//     EVENT_LOWER_DOWN  = 0x02,
-//     EVENT_UP          = 0x04,
-//     EVENT_DOWN        = 0x08
-//   };
-
-//   void setDataChannel(DataChannel* ch);
-//   void notifyEvent(uint64_t ev);
-
-//   typedef void (*NotifyCallback)(Client* c, uint64_t ev, void* ctx);
-
-//   void setNotifyCallback(NotifyCallback* cb, void* ctx);
-
-//   netif* getIf();
-
 using namespace particle::net::ppp;
 
 std::once_flag Client::once_;
@@ -90,6 +60,7 @@ void Client::init() {
     inited_ = true;
     pcb_ = pppapi_pppos_create(&if_, &Client::outputCb, &Client::notifyStatusCb, this);
     SPARK_ASSERT(pcb_);
+    if_.flags &= ~NETIF_FLAG_UP;
 
     LOCK_TCPIP_CORE();
     ipcp_ = std::make_unique<Ipcp>(pcb_);
