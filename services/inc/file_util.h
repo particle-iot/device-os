@@ -24,6 +24,7 @@
 namespace particle {
 
 int openFile(lfs_file_t* file, const char* path, unsigned flags = LFS_O_RDWR);
+int dumpFile(const char* path);
 
 int decodeMessageFromFile(lfs_file_t* file, const pb_field_t* fields, void* msg);
 int encodeMessageToFile(lfs_file_t* file, const pb_field_t* fields, const void* msg);
