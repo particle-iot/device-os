@@ -119,11 +119,15 @@ void Esp32NcpNetif::loop(void* arg) {
             // Event
             switch (ev) {
                 case NetifEvent::Up: {
-                    self->upImpl();
+                    if (self->upImpl()) {
+                        self->wifiMan_->ncpClient()->off();
+                    }
                     break;
                 }
                 case NetifEvent::Down: {
-                    self->downImpl();
+                    if (self->downImpl()) {
+                        self->wifiMan_->ncpClient()->off();
+                    }
                     break;
                 }
             }

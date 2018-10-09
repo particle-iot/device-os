@@ -63,7 +63,8 @@ const auto ESP32_NCP_MAX_MUXER_FRAME_SIZE = 1536;
 const auto ESP32_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
 const auto ESP32_NCP_KEEPALIVE_MAX_MISSED = 5;
 
-const auto ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 2048;
+// FIXME: for now using a very large buffer
+const auto ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 
 const auto ESP32_NCP_AT_CHANNEL = 1;
 const auto ESP32_NCP_STA_CHANNEL = 2;

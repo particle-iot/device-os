@@ -29,6 +29,11 @@
 
 namespace particle {
 
+namespace detail {
+const auto MUXER_CHANNEL_SUSPEND_THRESHOLD = 3; // 1/3
+const auto MUXER_CHANNEL_RESUME_THRESHOLD = 2; // 1/2
+} // detail
+
 template <typename MuxerT>
 class MuxerChannelStream : virtual public Stream {
 public:
@@ -51,12 +56,17 @@ public:
     virtual int waitEvent(unsigned flags, unsigned timeout = 0) override;
 
 private:
+    void suspend();
+    void resume();
+
+private:
     MuxerT* muxer_;
     uint8_t channel_;
     size_t rxBufSize_ = 0;
     std::unique_ptr<particle::services::RingBuffer<char> > rxBuf_;
     std::unique_ptr<char[]> rxBufData_;
     os_semaphore_t sem_ = nullptr;
+    volatile bool flow_ = false;
 };
 
 template <typename MuxerT>
@@ -104,6 +114,7 @@ int MuxerChannelStream<MuxerT>::channelDataCb(const uint8_t* data, size_t size, 
         LOG_DEBUG(WARN, "No space in muxer channel stream rx buffer while trying to put %d bytes (%d available)",
                 (int)size, self->rxBuf_->space());
     }
+    self->suspend();
     if (wasEmpty) {
         os_semaphore_give(self->sem_, true);
     }
@@ -114,7 +125,9 @@ template <typename MuxerT>
 int MuxerChannelStream<MuxerT>::read(char* data, size_t size) {
     size_t canRead = CHECK(rxBuf_->data());
     size_t willRead = std::min(canRead, size);
-    return rxBuf_->get(data, willRead);
+    auto r = rxBuf_->get(data, willRead);
+    resume();
+    return r;
 }
 
 template <typename MuxerT>
@@ -126,9 +139,7 @@ int MuxerChannelStream<MuxerT>::peek(char* data, size_t size) {
 
 template <typename MuxerT>
 int MuxerChannelStream<MuxerT>::skip(size_t size) {
-    size_t canRead = CHECK(rxBuf_->data());
-    size_t willRead = std::min(canRead, size);
-    return rxBuf_->get(nullptr, willRead);
+    return read(nullptr, size);
 }
 
 template <typename MuxerT>
@@ -187,6 +198,30 @@ int MuxerChannelStream<MuxerT>::waitEvent(unsigned flags, unsigned timeout) {
         os_semaphore_take(sem_, HAL_Timer_Get_Milli_Seconds() - t, false);
     }
     return f;
+}
+
+template <typename MuxerT>
+void MuxerChannelStream<MuxerT>::suspend() {
+    ssize_t space = rxBuf_->space();
+    if (space < 0) {
+        return;
+    }
+    if (!flow_ && (size_t)space <= (rxBufSize_ / detail::MUXER_CHANNEL_SUSPEND_THRESHOLD)) {
+        muxer_->suspendChannel(channel_);
+        flow_ = true;
+    }
+}
+
+template <typename MuxerT>
+void MuxerChannelStream<MuxerT>::resume() {
+    ssize_t space = rxBuf_->space();
+    if (space < 0) {
+        return;
+    }
+    if (flow_ && (size_t)space >= (rxBufSize_ / detail::MUXER_CHANNEL_RESUME_THRESHOLD)) {
+        muxer_->resumeChannel(channel_);
+        flow_ = false;
+    }
 }
 
 } // particle
