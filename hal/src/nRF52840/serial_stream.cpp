@@ -65,21 +65,32 @@ int SerialStream::read(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    return HAL_USART_Read(serial_, data, size, sizeof(char));
+    auto r = HAL_USART_Read(serial_, data, size, sizeof(char));
+    if (r == SYSTEM_ERROR_NO_MEMORY) {
+        return 0;
+    }
+    return r;
 }
 
 int SerialStream::peek(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    return HAL_USART_Peek(serial_, data, size, sizeof(char));
+    auto r = HAL_USART_Peek(serial_, data, size, sizeof(char));
+    if (r == SYSTEM_ERROR_NO_MEMORY) {
+        return 0;
+    }
+    return r;
 }
 
 int SerialStream::skip(size_t size) {
-    return HAL_USART_Read(serial_, nullptr, size, sizeof(char));
+    return read(nullptr, size);
 }
 
 int SerialStream::write(const char* data, size_t size) {
+    if (size == 0) {
+        return 0;
+    }
     auto r = HAL_USART_Write(serial_, data, size, sizeof(char));
     if (r == SYSTEM_ERROR_NO_MEMORY) {
         return 0;

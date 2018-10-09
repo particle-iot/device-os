@@ -149,6 +149,9 @@ inline ssize_t RingBuffer<T>::put(const T& v) {
 
 template <typename T>
 inline ssize_t RingBuffer<T>::put(const T* v, size_t size) {
+    if (size == 0) {
+        return 0;
+    }
     CHECK_TRUE(v && size, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(space() >= (ssize_t)size, SYSTEM_ERROR_TOO_LARGE);
 
@@ -176,6 +179,9 @@ inline ssize_t RingBuffer<T>::get(T* v) {
 
 template <typename T>
 inline ssize_t RingBuffer<T>::get(T* v, size_t size) {
+    if (size == 0) {
+        return 0;
+    }
     CHECK_TRUE(data() >= (ssize_t)size, SYSTEM_ERROR_TOO_LARGE);
 
     size_t tail = tail_;
@@ -185,6 +191,8 @@ inline ssize_t RingBuffer<T>::get(T* v, size_t size) {
             v[i] = buffer_[tail];
             tail = wrap((tail + 1), curSize_);
         }
+    } else {
+        tail = wrap(tail + size, curSize_);
     }
 
     tail_ = tail;
@@ -200,6 +208,9 @@ inline ssize_t RingBuffer<T>::peek(T* v) {
 
 template <typename T>
 inline ssize_t RingBuffer<T>::peek(T* v, size_t size) {
+    if (size == 0) {
+        return 0;
+    }
     CHECK_TRUE(data() >= (ssize_t)size, SYSTEM_ERROR_TOO_LARGE);
     CHECK_TRUE(v, SYSTEM_ERROR_INVALID_ARGUMENT);
 
