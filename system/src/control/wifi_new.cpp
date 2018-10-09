@@ -100,6 +100,7 @@ int joinNewNetwork(ctrl_request* req) {
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     CHECK(ncpClient->on());
+    CHECK(ncpClient->disconnect());
     CHECK(wifiMgr->connect(dSsid.data));
     oldConfGuard.dismiss();
     return 0;
@@ -114,6 +115,7 @@ int joinKnownNetwork(ctrl_request* req) {
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     CHECK(ncpClient->on());
+    CHECK(ncpClient->disconnect());
     CHECK(wifiMgr->connect(dSsid.data));
     return 0;
 }

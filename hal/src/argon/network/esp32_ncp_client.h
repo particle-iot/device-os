@@ -82,14 +82,6 @@ private:
     void parserError(int error);
 };
 
-inline NcpState Esp32NcpClient::ncpState() {
-    return ncpState_;
-}
-
-inline NcpConnectionState Esp32NcpClient::connectionState() {
-    return NcpConnectionState::DISCONNECTED;
-}
-
 inline void Esp32NcpClient::lock() {
     mutex_.lock();
 }

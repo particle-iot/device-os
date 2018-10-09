@@ -147,6 +147,11 @@ void Esp32NcpClient::off() {
     ncpState(NcpState::OFF);
 }
 
+NcpState Esp32NcpClient::ncpState() {
+    const NcpClientLock lock(this);
+    return ncpState_;
+}
+
 int Esp32NcpClient::disconnect() {
     const NcpClientLock lock(this);
     if (connState_ == NcpConnectionState::DISCONNECTED) {
@@ -157,6 +162,11 @@ int Esp32NcpClient::disconnect() {
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     connectionState(NcpConnectionState::DISCONNECTED);
     return 0;
+}
+
+NcpConnectionState Esp32NcpClient::connectionState() {
+    const NcpClientLock lock(this);
+    return connState_;
 }
 
 int Esp32NcpClient::getFirmwareVersionString(char* buf, size_t size) {
@@ -281,6 +291,7 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
 
 int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     const NcpClientLock lock(this);
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+CWJAP?");
     char ssid[MAX_SSID_SIZE + 1] = {};
