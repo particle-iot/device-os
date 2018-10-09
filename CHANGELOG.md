@@ -1,3 +1,9 @@
+## 0.8.0-rc.16
+
+### FEATURES
+
+- [Argon] Initial support for WiFi networking
+
 ## 0.8.0-rc.15
 
 ### FEATURES
