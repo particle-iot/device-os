@@ -112,7 +112,7 @@ err_t Esp32NcpNetif::initInterface() {
 
 void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
-    unsigned int timeout = 5000;
+    unsigned int timeout = 100;
     while(!self->exit_) {
         NetifEvent ev;
         if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {
@@ -139,6 +139,7 @@ void Esp32NcpNetif::loop(void* arg) {
                 }
             }
         }
+        self->wifiMan_->ncpClient()->processEvents();
     }
 
     self->down();
@@ -175,6 +176,8 @@ int Esp32NcpNetif::upImpl() {
     }
     // Ensure that we are disconnected
     downImpl();
+    // Restore up flag
+    up_ = true;
     r = wifiMan_->connect();
     if (r) {
         LOG(TRACE, "Failed to connect to WiFi: %d", r);
