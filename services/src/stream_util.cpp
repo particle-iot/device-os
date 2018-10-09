@@ -91,7 +91,7 @@ int readLine(InputStream* strm, char* data, size_t size, unsigned timeout) {
 }
 
 int skipAll(InputStream* strm, unsigned timeout) {
-    return readWhile(strm, timeout, [](char c) {       
+    return readWhile(strm, timeout, [](char c) {
         return true;
     });
 }

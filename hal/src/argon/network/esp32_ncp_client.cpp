@@ -205,12 +205,14 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
             break;
         }
     }
-    CHECK(skipNonPrintable(strm, 1000));
-    CHECK_TRUE(ok, SYSTEM_ERROR_UNKNOWN);
+    if (!ok) {
+        CHECK(skipAll(strm, 3000));
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    CHECK(skipNonPrintable(strm, 30000));
     CHECK(readLine(strm, buf, sizeof(buf), 1000));
-    CHECK(skipAll(strm, 1000));
     if (strcmp(buf, "OK") != 0) {
-        LOG(ERROR, "Unexpected result code: %s", buf);
+        LOG(ERROR, "Unexpected result code: \"%s\"", buf);
         return SYSTEM_ERROR_UNKNOWN;
     }
     // FIXME: Find a better way to reset the client state
