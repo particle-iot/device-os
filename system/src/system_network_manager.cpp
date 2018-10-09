@@ -28,6 +28,9 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "network/ncp.h"
 #include "wifi_network_manager.h"
 #endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
+#if HAL_PLATFORM_MESH
+#include "border_router_manager.h"
+#endif // HAL_PLATFORM_MESH
 
 #define CHECK(_expr) \
         ({ \
@@ -66,6 +69,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #endif /* HAL_PLATFORM_OPENTHREAD */
 
 using namespace particle::system;
+using namespace particle::net;
 
 namespace {
 
@@ -545,6 +549,15 @@ void NetworkManager::refreshIpState() {
 
     ip4State_ = ip4;
     ip6State_ = ip6;
+
+#if HAL_PLATFORM_MESH
+    // FIXME: for now only checking ip4 state
+    if (ip4State_ == ProtocolState::CONFIGURED && dns4State_ == DnsState::CONFIGURED) {
+        BorderRouterManager::instance()->start();
+    } else {
+        BorderRouterManager::instance()->stop();
+    }
+#endif // HAL_PLATFORM_MESH
 
     const bool ipConfigured = (ip4 == ProtocolState::CONFIGURED && dns4State_ == DnsState::CONFIGURED) ||
             (ip6 == ProtocolState::CONFIGURED && dns6State_ == DnsState::CONFIGURED);

@@ -64,9 +64,6 @@ int if_init_platform(void*) {
         /* No en2 present */
         delete en2;
         en2 = nullptr;
-    } else {
-        /* Enable border router by default */
-        BorderRouterManager::instance()->start();
     }
 
     auto m = mallinfo();

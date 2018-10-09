@@ -140,13 +140,6 @@ int if_init_platform(void*) {
     /* TODO: wl4 - ESP32 NCP Access Point */
     (void)wl4;
 
-    /* FIXME: Enable border router by default if there is an ethernet shield or configured
-     * wifi networks
-     */
-    if (en2 || wifiNetworkManager()->hasConfiguredNetworks()) {
-        BorderRouterManager::instance()->start();
-    }
-
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
     LOG(TRACE, "Heap: %lu/%lu Kbytes used", m.uordblks / 1000, total / 1000);
