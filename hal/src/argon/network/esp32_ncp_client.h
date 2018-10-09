@@ -46,6 +46,8 @@ public:
     int getFirmwareVersionString(char* buf, size_t size) override;
     int getFirmwareModuleVersion(uint16_t* ver) override;
     int updateFirmware(InputStream* file, size_t size) override;
+    int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
+    void processEvents() override;
     AtParser* atParser() override;
     void lock() override;
     void unlock() override;
@@ -56,8 +58,6 @@ public:
     int getNetworkInfo(WifiNetworkInfo* info) override;
     int scan(WifiScanCallback callback, void* data) override;
     int getMacAddress(MacAddress* addr) override;
-
-    virtual int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
 
 private:
     AtParser parser_;

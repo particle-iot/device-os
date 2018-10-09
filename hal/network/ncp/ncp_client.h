@@ -92,14 +92,15 @@ public:
     virtual int getFirmwareModuleVersion(uint16_t* ver) = 0;
     virtual int updateFirmware(InputStream* file, size_t size) = 0;
 
+    virtual int dataChannelWrite(int id, const uint8_t* data, size_t size) = 0;
+    virtual void processEvents() = 0;
+
     virtual AtParser* atParser();
 
     virtual void lock() = 0;
     virtual void unlock() = 0;
 
     virtual int ncpId() const = 0;
-
-    virtual int dataChannelWrite(int id, const uint8_t* data, size_t size) = 0;
 };
 
 class NcpClientLock {

@@ -108,7 +108,15 @@ int Esp32NcpClient::initParser(Stream* stream) {
             .stream(stream)
             .commandTerminator(AtCommandTerminator::CRLF);
     parser_.destroy();
-    return parser_.init(std::move(parserConf));
+    CHECK(parser_.init(std::move(parserConf)));
+    // Register URC handlers
+    CHECK(parser_.addUrcHandler("WIFI CONNECTED", nullptr, nullptr)); // Ignore
+    CHECK(parser_.addUrcHandler("WIFI DISCONNECT", [](AtResponseReader* reader, const char* prefix, void* data) {
+        const auto self = (Esp32NcpClient*)data;
+        self->connectionState(NcpConnectionState::DISCONNECTED);
+        return 0;
+    }, this));
+    return 0;
 }
 
 void Esp32NcpClient::destroy() {
@@ -219,6 +227,14 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     off();
     CHECK(on());
     return 0;
+}
+
+void Esp32NcpClient::processEvents() {
+    const NcpClientLock lock(this);
+    if (ncpState_ != NcpState::ON) {
+        return;
+    }
+    parser_.processUrc();
 }
 
 AtParser* Esp32NcpClient::atParser() {

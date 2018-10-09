@@ -382,7 +382,9 @@ int AtParserImpl::parseLine(unsigned flags, unsigned* timeout) {
             // Check if the line contains a known URC
             const UrcHandler* h = nullptr;
             ret = parseUrc(&h);
-            if (ret == ParseResult::PARSED_URC) {
+            if (ret == ParseResult::NO_MATCH) {
+                flags &= ~ParseFlag::PARSE_URC;
+            } else if (ret == ParseResult::PARSED_URC && h->callback) {
                 // Read the line recursively
                 AtResponseReader reader(this);
                 setStatus(StatusFlag::URC_HANDLER);
@@ -391,8 +393,6 @@ int AtParserImpl::parseLine(unsigned flags, unsigned* timeout) {
                 if (r < 0) {
                     LOG(ERROR, "URC handler error: %d", r);
                 }
-            } else if (ret == ParseResult::NO_MATCH) {
-                flags &= ~ParseFlag::PARSE_URC;
             }
         }
         if (ret == ParseResult::READ_MORE) {
