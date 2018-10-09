@@ -186,8 +186,9 @@ int XmodemSender::sendPacket() {
         h.numComp = ~h.num;
         // Packet header
         memcpy(buf_.get(), &h, sizeof(PacketHeader));
-        // Packet data
-        CHECK(srcStrm_->read(buf_.get() + sizeof(PacketHeader), chunkSize));
+        // TODO: Non-blocking reading of the source stream and graceful termination of the transfer
+        // in case of source stream errors are not supported
+        CHECK(srcStrm_->readAll(buf_.get() + sizeof(PacketHeader), chunkSize)); // Packet data
         // Padding bytes
         memset(buf_.get() + sizeof(PacketHeader) + chunkSize, 0, packetSize_ - chunkSize);
         // Packet checksum
@@ -201,6 +202,7 @@ int XmodemSender::sendPacket() {
     }
     packetOffs_ += CHECK(destStrm_->write(buf_.get() + packetOffs_, packetSize_ - packetOffs_));
     if (packetOffs_ == packetSize_) {
+        CHECK(destStrm_->flush());
         LOG_DEBUG(TRACE, "Waiting for ACK");
         setState(State::RECV_PACKET_ACK);
     }
@@ -247,6 +249,7 @@ int XmodemSender::sendEot() {
     const char c = Ctrl::EOT;
     const size_t n = CHECK(destStrm_->write(&c, 1));
     if (n > 0) {
+        CHECK(destStrm_->flush());
         LOG_DEBUG(TRACE, "Sent EOT");
         setState(State::RECV_EOT_ACK);
     }

@@ -15,94 +15,102 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define NO_STATIC_ASSERT
 #include "ifapi.h"
 #include "ot_api.h"
 #include "openthread/lwip_openthreadif.h"
 #include "wiznet/wiznetif.h"
 #include "nat64.h"
 #include <mutex>
+#include <memory>
 #include <nrf52840.h>
 #include "random.h"
+#include "check.h"
 #include "border_router_manager.h"
 #include <malloc.h>
-#include "stream.h"
-#include "usart_hal.h"
+#include "esp32_ncp_client.h"
+#include "wifi_network_manager.h"
 #include "ncp.h"
+#include "debug.h"
+#include "esp32/esp32ncpnetif.h"
 
 using namespace particle;
 using namespace particle::net;
 using namespace particle::net::nat;
 
-namespace {
-
-/* th2 - OpenThread */
-BaseNetif* th2 = nullptr;
-/* en3 - Ethernet FeatherWing */
-BaseNetif* en3 = nullptr;
-
-} /* anonymous */
+namespace particle {
 
 namespace {
 
-class SerialStream: public particle::Stream {
+/* th1 - OpenThread */
+BaseNetif* th1 = nullptr;
+/* en2 - Ethernet FeatherWing */
+BaseNetif* en2 = nullptr;
+/* wl3 - ESP32 NCP Station */
+BaseNetif* wl3 = nullptr;
+/* wl4 - ESP32 NCP Access Point */
+BaseNetif* wl4 = nullptr;
+
+class WifiNetworkManagerInit {
 public:
-    SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config)
-            : serial_(serial) {
-        HAL_USART_Init(serial_, &rxBuffer_, &txBuffer_);
-        HAL_USART_BeginConfig(serial_, baudrate, config, 0);
+    WifiNetworkManagerInit() {
+        const int ret = init();
+        SPARK_ASSERT(ret == 0);
     }
 
-    ~SerialStream() {
-        HAL_USART_End(serial_);
-    }
-
-    int read(char* data, size_t size) override {
-        size_t read = 0;
-        while (read < size) {
-            int c = HAL_USART_Read_Data(serial_);
-            if (c < 0) {
-                break;
-            }
-            data[read++] = (char)c;
-        }
-
-        return read;
-    }
-
-    int write(const char* data, size_t size) override {
-        size_t written = 0;
-        while (written < size) {
-            auto w = HAL_USART_Write_NineBitData(serial_, data[written]);
-            if (w == sizeof(data[written])) {
-                ++written;
-            }
-        }
-        return written;
+    WifiNetworkManager* instance() const {
+        return mgr_.get();
     }
 
 private:
-    Ring_Buffer rxBuffer_ = {};
-    Ring_Buffer txBuffer_ = {};
+    std::unique_ptr<WifiNcpClient> ncpClient_;
+    std::unique_ptr<WifiNetworkManager> mgr_;
 
-    HAL_USART_Serial serial_;
+    int init() {
+        // Initialize NCP client
+        std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) Esp32NcpClient);
+        CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
+        auto conf = NcpClientConfig()
+                .eventHandler(Esp32NcpNetif::ncpEventHandlerCb, wl3)
+                .dataHandler(Esp32NcpNetif::ncpDataHandlerCb, wl3);
+        CHECK(ncpClient->init(std::move(conf)));
+        // Initialize network manager
+        mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
+        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
+        ncpClient_ = std::move(ncpClient);
+        return 0;
+    }
 };
 
-} // anonymous
+bool netifCanForwardIpv4(netif* iface) {
+    if (iface && netif_is_up(iface) && netif_is_link_up(iface)) {
+        auto addr = netif_ip_addr4(iface);
+        auto mask = netif_ip_netmask4(iface);
+        auto gw = netif_ip_gw4(iface);
+        if (!ip_addr_isany(addr) && !ip_addr_isany(mask) && !ip_addr_isany(gw)) {
+            return true;
+        }
+    }
 
-particle::services::at::ArgonNcpAtClient* argonNcpAtClient() {
-    using namespace particle::services::at;
-    static SerialStream stream(HAL_USART_SERIAL2, 921600, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
-    static ArgonNcpAtClient atClient(&stream);
-    return &atClient;
+    return false;
 }
 
+} // unnamed
+
+WifiNetworkManager* wifiNetworkManager() {
+    static WifiNetworkManagerInit mgr;
+    return mgr.instance();
+}
+
+} // particle
+
 int if_init_platform(void*) {
-    /* lo1 (created by LwIP) */
+    /* lo0 (created by LwIP) */
 
-    /* th2 - OpenThread */
-    th2 = new OpenThreadNetif(ot_get_instance());
+    /* th1 - OpenThread */
+    th1 = new OpenThreadNetif(ot_get_instance());
 
-    /* en3 - Ethernet FeatherWing (optional) */
+    /* en2 - Ethernet FeatherWing (optional) */
     uint8_t mac[6] = {};
     {
         const uint32_t lsb = __builtin_bswap32(NRF_FICR->DEVICEADDR[0]);
@@ -115,16 +123,22 @@ int if_init_platform(void*) {
         /* Set 'locally administered' bit */
         mac[0] |= 0b10;
     }
-    en3 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+    en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
     uint8_t dummy;
-    if (if_get_index(en3->interface(), &dummy)) {
-        /* No en3 present */
-        delete en3;
-        en3 = nullptr;
-    } else {
-        /* Enable border router by default */
-        BorderRouterManager::instance()->start();
+    if (if_get_index(en2->interface(), &dummy)) {
+        /* No en2 present */
+        delete en2;
+        en2 = nullptr;
     }
+
+    /* wl3 - ESP32 NCP Station */
+    wl3 = new Esp32NcpNetif();
+    if (wl3) {
+        ((Esp32NcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
+    }
+
+    /* TODO: wl4 - ESP32 NCP Access Point */
+    (void)wl4;
 
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
@@ -133,11 +147,16 @@ int if_init_platform(void*) {
     return 0;
 }
 
+
 extern "C" {
 
 struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
-    if (en3) {
-        return en3->interface();
+    if (src == nullptr) {
+        if (en2 && netifCanForwardIpv4(en2->interface())) {
+            return en2->interface();
+        } else if (wl3 && netifCanForwardIpv4(wl3->interface())) {
+            return wl3->interface();
+        }
     }
 
     return nullptr;

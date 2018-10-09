@@ -4,42 +4,16 @@
 
 #include "xmodem_sender.h"
 #include "check.h"
-#include "../../../../services/inc/stream.h"
 #include "network/ncp.h"
 
+#include "../../../../services/inc/stream.h"
+
+#include <algorithm>
 #include <cstdarg>
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
 namespace {
-
-// Input stream generating text data
-class TextStream: public InputStream {
-public:
-    explicit TextStream(size_t size) :
-            size_(size),
-            c_('A') {
-    }
-
-    int read(char* data, size_t size) override {
-        // XmodemSender shouldn't try to read more bytes than necessary
-        if (size > size_) {
-            return SYSTEM_ERROR_OUT_OF_RANGE;
-        }
-        for (size_t i = 0; i < size; ++i) {
-            data[i] = c_++;
-            if (c_ > 'Z') {
-                c_ = 'A';
-            }
-        }
-        size_ -= size;
-        return size;
-    }
-
-private:
-    size_t size_;
-    char c_;
-};
 
 // Input stream reading data from the external flash
 class ExtFlashStream: public InputStream {
@@ -50,16 +24,43 @@ public:
     }
 
     int read(char* data, size_t size) override {
-        if (size > size_) {
-            return SYSTEM_ERROR_OUT_OF_RANGE;
+        CHECK(peek(data, size));
+        return skip(size);
+    }
+
+    int peek(char* data, size_t size) override {
+        if (!size_) {
+            return SYSTEM_ERROR_END_OF_STREAM;
         }
-        const int ret = hal_exflash_read(offs_, (uint8_t*)data, size);
+        const size_t n = std::min(size_, size);
+        const int ret = hal_exflash_read(offs_, (uint8_t*)data, n);
         if (ret != 0) {
             return SYSTEM_ERROR_UNKNOWN;
         }
-        size_ -= size;
-        offs_ += size;
-        return size;
+        return n;
+    }
+
+    int skip(size_t size) override {
+        if (!size_) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        const size_t n = std::min(size_, size);
+        offs_ += n;
+        size_ -= n;
+        return n;
+    }
+
+    int waitEvent(unsigned flags, unsigned timeout) override {
+        if (!flags) {
+            return 0;
+        }
+        if (!(flags & InputStream::READABLE)) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (!size_) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        return InputStream::READABLE;
     }
 
 private:
@@ -69,17 +70,10 @@ private:
 
 std::unique_ptr<XmodemSender> sender;
 std::unique_ptr<ExtFlashStream> extFlashStrm;
-std::unique_ptr<TextStream> textStrm;
 
 #ifdef DEBUG_BUILD
 const RttLogHandler logHandler(LOG_LEVEL_ALL);
 #endif // DEBUG_BUILD
-
-void initTextStream() {
-    const size_t SIZE = 3500;
-    textStrm.reset(new TextStream(SIZE));
-    sender->init(argonNcpAtClient()->getStream(), textStrm.get(), SIZE);
-}
 
 int logVersion() {
     char ver[16] = {};
@@ -90,12 +84,12 @@ int logVersion() {
     return 0;
 }
 
-int initExtFlashStream() {
-    const size_t SIZE = 800976;
+int init() {
+    const size_t SIZE = 0;
+    static_assert(SIZE > 0, "File size is not specified");
     const size_t OFFSET = 0x00200000;
     extFlashStrm.reset(new ExtFlashStream(OFFSET, SIZE));
     sender->init(argonNcpAtClient()->getStream(), extFlashStrm.get(), SIZE);
-
     CHECK(logVersion());
     CHECK(argonNcpAtClient()->startUpdate(SIZE));
     return 0;
@@ -105,8 +99,7 @@ int initExtFlashStream() {
 
 void setup() {
     sender.reset(new XmodemSender);
-    // initTextStream();
-    if (initExtFlashStream()) {
+    if (init() != 0) {
         sender.reset();
         Log.error("Failed to talk to NCP");
     }
@@ -123,7 +116,6 @@ void loop() {
             }
             Log.info("Update result: %d", argonNcpAtClient()->finishUpdate());
             sender.reset();
-
             // Invalidate AT Client state, because the ESP32 was reset
             argonNcpAtClient()->reset();
             logVersion();

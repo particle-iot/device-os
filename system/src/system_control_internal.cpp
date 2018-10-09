@@ -29,6 +29,7 @@
 
 #include "control/network.h"
 #include "control/wifi.h"
+#include "control/wifi_new.h"
 #include "control/config.h"
 #include "control/storage.h"
 #include "control/mesh.h"
@@ -339,6 +340,34 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_NETWORK_GET_INTERFACE: {
         setResult(req, control::network::getInterface(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_JOIN_NEW_NETWORK: {
+        setResult(req, ctrl::wifi::joinNewNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_JOIN_KNOWN_NETWORK: {
+        setResult(req, ctrl::wifi::joinKnownNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_GET_KNOWN_NETWORKS: {
+        setResult(req, ctrl::wifi::getKnownNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_REMOVE_KNOWN_NETWORK: {
+        setResult(req, ctrl::wifi::removeKnownNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_CLEAR_KNOWN_NETWORKS: {
+        setResult(req, ctrl::wifi::clearKnownNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_GET_CURRENT_NETWORK: {
+        setResult(req, ctrl::wifi::getCurrentNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_SCAN_NETWORKS: {
+        setResult(req, ctrl::wifi::scanNetworks(req));
         break;
     }
     case CTRL_REQUEST_MESH_AUTH: {

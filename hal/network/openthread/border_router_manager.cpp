@@ -206,7 +206,15 @@ int BorderRouterManager::enable() {
         LOG(TRACE, "No prefix in local network data");
         if (!config_.mOnMesh) {
             LOG(TRACE, "Generating border router configuration");
+            // FIXME: for now HIGH for Xenon with ethernet shield, medium for Argon,
+            // and low for Boron
+#if PLATFORM_ID == PLATFORM_XENON
             config_.mPreference = OT_ROUTE_PREFERENCE_HIGH;
+#elif PLATFORM_ID == PLATFORM_ARGON
+            config_.mPreference = OT_ROUTE_PREFERENCE_MED;
+#elif PLATFORM_ID == PLATFORM_BORON
+            config_.mPreference = OT_ROUTE_PREFERENCE_LOW;
+#endif
             config_.mPreferred = 1;
             config_.mSlaac = 1;
             config_.mDefaultRoute = 1;

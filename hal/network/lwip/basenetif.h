@@ -18,6 +18,7 @@
 #ifndef HAL_NETWORK_LWIP_BASENETIF_H
 #define HAL_NETWORK_LWIP_BASENETIF_H
 
+#include <mutex>
 #include <lwip/netif.h>
 #include "ifapi.h"
 
@@ -28,9 +29,11 @@ public:
     BaseNetif();
     virtual ~BaseNetif();
 
-    if_t interface();
+    virtual if_t interface();
 
 protected:
+    void registerHandlers();
+
     virtual void ifEventHandler(const if_event* ev) = 0;
     virtual void netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) = 0;
 
@@ -44,6 +47,8 @@ protected:
 private:
     netif_ext_callback_t netifEventHandlerCookie_;
     if_event_handler_cookie_t eventHandlerCookie_;
+    static uint8_t clientDataId_;
+    static std::once_flag once_;
 };
 
 } } /* particle::net */

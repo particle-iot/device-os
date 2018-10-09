@@ -22,7 +22,7 @@
 
 // List of all defined system errors
 #define SYSTEM_ERRORS \
-        (NONE, "", 0), \
+        (NONE, "", 0), /* -999 ... 0: Generic result codes */ \
         (UNKNOWN, "Unknown error", -100), \
         (BUSY, "Resource busy", -110), \
         (NOT_SUPPORTED, "Not supported", -120), \
@@ -33,9 +33,13 @@
         (NOT_FOUND, "Not found", -170), \
         (ALREADY_EXISTS, "Already exists", -180), \
         (TOO_LARGE, "Too large data", -190), \
+        (NOT_ENOUGH_DATA, "Not enough data", -191), \
         (LIMIT_EXCEEDED, "Limit exceeded", -200), \
+        (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
         (IO, "IO error", -220), \
+        (WOULD_BLOCK, "Would block", -221), \
+        (FILE, "File error", -225), \
         (NETWORK, "Network error", -230), \
         (PROTOCOL, "Protocol error", -240), \
         (INTERNAL, "Internal error", -250), \

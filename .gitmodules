@@ -41,3 +41,6 @@
 	path = third_party/miniz/miniz
 	url = ../miniz.git
 	branch = particle
+[submodule "gsm0710muxer/gsm0710muxer"]
+	path = gsm0710muxer/gsm0710muxer
+	url = ../gsm0710muxer.git

@@ -60,6 +60,9 @@
             } \
         } while (false)
 
+#define CHECK_FALSE(_expr, _ret) \
+        CHECK_TRUE(!(_expr), _ret)
+
 #define CHECK_TRUE_RETURN(_expr, _val) \
         ({ \
             const auto _ret = _expr; \

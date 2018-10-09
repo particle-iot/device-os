@@ -153,7 +153,7 @@ public:
             end();
         }
 
-        CHECK_NRF_RETURN(nrfx_prs_acquire(uarte_, interruptHandler_), SYSTEM_ERROR_INTERNAL);
+        nrfx_prs_acquire(uarte_, interruptHandler_);
 
         HAL_GPIO_Write(txPin_, 1);
         HAL_Pin_Mode(txPin_, OUTPUT);
@@ -635,6 +635,10 @@ void uarte1InterruptHandler(void) {
 }
 
 } // anonymous
+
+extern "C" void UARTE1_IRQHandler(void) {
+    uarte1InterruptHandler();
+}
 
 int HAL_USART_Init_Ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
