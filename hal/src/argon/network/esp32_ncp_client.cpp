@@ -26,6 +26,8 @@
 #include "delay_hal.h"
 #include "serial_stream.h"
 
+#include "xmodem_sender.h"
+#include "stream_util.h"
 #include "check.h"
 
 #include <cstdlib>
@@ -43,34 +45,6 @@
 namespace particle {
 
 namespace {
-
-int flushInput(InputStream* strm, unsigned timeout = 0) {
-    size_t bytesRead = 0;
-    auto t = HAL_Timer_Get_Milli_Seconds();
-    for (;;) {
-        const size_t n = CHECK(strm->availForRead());
-        bytesRead += CHECK(strm->skip(n));
-        if (timeout == 0) {
-            break;
-        }
-        const int r = strm->waitEvent(InputStream::READABLE, timeout);
-        if (r == SYSTEM_ERROR_TIMEOUT) {
-            break;
-        }
-        if (r < 0) {
-            return r;
-        }
-        const auto t2 = HAL_Timer_Get_Milli_Seconds();
-        t = t2 - t;
-        if (t < timeout) {
-            timeout -= t;
-            t = t2;
-        } else {
-            timeout = 0;
-        }
-    }
-    return bytesRead;
-}
 
 void espReset() {
     HAL_GPIO_Write(ESPBOOT, 1);
@@ -204,7 +178,43 @@ int Esp32NcpClient::getFirmwareModuleVersion(uint16_t* ver) {
 
 int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     const NcpClientLock lock(this);
-    // TODO
+    CHECK(checkParser());
+    auto resp = parser_.sendCommand("AT+FWUPD=%u", (unsigned)size);
+    char buf[32] = {};
+    CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+    if (strcmp(buf, "+FWUPD: ONGOING") != 0) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    LOG(TRACE, "Initiating XMODEM transfer");
+    parser_.reset();
+    const auto strm = parser_.config().stream();
+    CHECK(skipWhitespace(strm, 1000));
+    XmodemSender sender;
+    CHECK(sender.init(strm, file, size));
+    bool ok = false;
+    for (;;) {
+        const int r = sender.run();
+        if (r != XmodemSender::RUNNING) {
+            if (r == XmodemSender::DONE) {
+                LOG(INFO, "XMODEM transfer finished");
+                ok = true;
+            } else {
+                LOG(ERROR, "XMODEM transfer failed: %d", r);
+            }
+            break;
+        }
+    }
+    CHECK(skipNonPrintable(strm, 1000));
+    CHECK_TRUE(ok, SYSTEM_ERROR_UNKNOWN);
+    CHECK(readLine(strm, buf, sizeof(buf), 1000));
+    CHECK(skipAll(strm, 1000));
+    if (strcmp(buf, "OK") != 0) {
+        LOG(ERROR, "Unexpected result code: %s", buf);
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    // FIXME: Find a better way to reset the client state
+    off();
+    CHECK(on());
     return 0;
 }
 
@@ -331,7 +341,7 @@ int Esp32NcpClient::waitReady() {
     muxer_.stop();
     CHECK(initParser(serial_.get()));
     espReset();
-    flushInput(serial_.get(), 1000);
+    skipAll(serial_.get(), 1000);
     parser_.reset();
     const unsigned timeout = 10000;
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
@@ -355,7 +365,7 @@ int Esp32NcpClient::waitReady() {
         ncpState(NcpState::OFF);
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    flushInput(serial_.get(), 1000);
+    skipAll(serial_.get(), 1000);
     parser_.reset();
     parserError_ = 0;
     LOG(TRACE, "NCP ready to accept AT commands");
