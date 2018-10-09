@@ -292,6 +292,12 @@ int NetworkManager::clearConfiguration(if_t iface) {
                 system_command_clear();
             }
 #endif /* HAL_PLATFORM_OPENTHREAD */
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+            else if (!strncmp(name, "wl", 2)) {
+                auto wifiMan = wifiNetworkManager();
+                return wifiMan->clearConfiguredNetworks();
+            }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
         });
 
         return SYSTEM_ERROR_NONE;
