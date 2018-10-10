@@ -199,7 +199,7 @@ void Client::loop() {
   running_ = true;
   LOG(TRACE, "PPP thread started");
   while(!exit_) {
-    unsigned qWait = 10;
+    unsigned qWait = 100;
 
     switch (state_) {
       case STATE_CONNECT: {
