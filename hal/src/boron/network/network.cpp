@@ -25,7 +25,7 @@
 #include "random.h"
 #include "border_router_manager.h"
 #include <malloc.h>
-#include "stream.h"
+#include "serial_stream.h"
 #include "usart_hal.h"
 #include "ncp.h"
 #include "pppncpnetif.h"
@@ -42,46 +42,6 @@ BaseNetif* th1 = nullptr;
 BaseNetif* en2 = nullptr;
 /* pp3 - Cellular */
 BaseNetif* pp3 = nullptr;
-
-const auto SERIAL_STREAM_BUFFER_SIZE_RX = 2048;
-const auto SERIAL_STREAM_BUFFER_SIZE_TX = 2048;
-
-class SerialStream: public particle::Stream {
-public:
-    SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config)
-            : serial_(serial) {
-        HAL_USART_Buffer_Config c = {};
-        c.size = sizeof(c);
-        c.rx_buffer = rxBuffer_;
-        c.tx_buffer = txBuffer_;
-        c.rx_buffer_size = sizeof(rxBuffer_);
-        c.tx_buffer_size = sizeof(txBuffer_);
-        HAL_USART_Init_Ex(serial_, &c, nullptr);
-        HAL_USART_BeginConfig(serial_, baudrate, config, 0);
-    }
-
-    ~SerialStream() {
-        HAL_USART_End(serial_);
-    }
-
-    int read(char* data, size_t size) override {
-        return HAL_USART_Read(serial_, data, size, sizeof(char));
-    }
-
-    int write(const char* data, size_t size) override {
-        auto r = HAL_USART_Write(serial_, data, size, sizeof(char));
-        if (r == SYSTEM_ERROR_NO_MEMORY) {
-            return 0;
-        }
-        return r;
-    }
-
-private:
-    uint8_t rxBuffer_[SERIAL_STREAM_BUFFER_SIZE_RX];
-    uint8_t txBuffer_[SERIAL_STREAM_BUFFER_SIZE_TX];
-
-    HAL_USART_Serial serial_;
-};
 
 bool netifCanForwardIpv4(netif* iface) {
     if (iface && netif_is_up(iface) && netif_is_link_up(iface)) {
