@@ -18,11 +18,37 @@
 #pragma once
 
 #include "ncp_client.h"
+#include "cellular_network_manager.h"
 
 namespace particle {
 
+class CellularNcpClientConfig: public NcpClientConfig {
+public:
+    CellularNcpClientConfig();
+
+    CellularNcpClientConfig& simType(SimType type);
+    SimType simType() const;
+
+private:
+    SimType simType_;
+};
+
 class CellularNcpClient: public NcpClient {
 public:
+    virtual int connect(const CellularNetworkConfig& conf) = 0;
 };
+
+inline CellularNcpClientConfig::CellularNcpClientConfig() :
+        simType_(SimType::INTERNAL) {
+}
+
+inline CellularNcpClientConfig& CellularNcpClientConfig::simType(SimType type) {
+    simType_ = type;
+    return *this;
+}
+
+inline SimType CellularNcpClientConfig::simType() const {
+    return simType_;
+}
 
 } // particle
