@@ -16,6 +16,7 @@
  */
 
 #define NO_STATIC_ASSERT
+
 #include "sara_u2_ncp_client.h"
 
 #include "at_command.h"
@@ -31,6 +32,8 @@
 #include "delay_hal.h"
 
 #include "stream_util.h"
+
+#include <algorithm>
 
 #define CHECK_PARSER(_expr) \
         ({ \
@@ -282,7 +285,21 @@ int SaraU2NcpClient::connect(const CellularNetworkConfig& conf) {
 }
 
 int SaraU2NcpClient::getIccid(char* buf, size_t size) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+    auto resp = parser_.sendCommand("AT+CCID");
+    char iccid[32] = {};
+    const int r = resp.scanf("+CCID: %31s", iccid);
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+    size_t n = std::min(strlen(iccid), size);
+    memcpy(buf, iccid, n);
+    if (size > 0) {
+        if (n == size) {
+            --n;
+        }
+        buf[n] = '\0';
+    }
+    return n;
 }
 
 int SaraU2NcpClient::checkParser() {
