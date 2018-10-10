@@ -38,10 +38,13 @@ public:
     int availForWrite() override;
     int waitEvent(unsigned flags, unsigned timeout) override;
 
+    int setBaudRate(unsigned int baudrate);
+
 private:
     HAL_USART_Serial serial_;
     std::unique_ptr<char[]> rxBuffer_;
     std::unique_ptr<char[]> txBuffer_;
+    uint32_t config_;
 };
 
 } // particle

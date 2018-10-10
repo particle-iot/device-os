@@ -32,8 +32,9 @@ const auto SERIAL_STREAM_BUFFER_SIZE_TX = 2048;
 namespace particle {
 
 SerialStream::SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config,
-        size_t rxBufferSize, size_t txBufferSize) :
-        serial_(serial) {
+        size_t rxBufferSize, size_t txBufferSize)
+        : serial_(serial),
+          config_(config) {
 
     if (!rxBufferSize) {
         rxBufferSize = SERIAL_STREAM_BUFFER_SIZE_RX;
@@ -136,6 +137,12 @@ int SerialStream::waitEvent(unsigned flags, unsigned timeout) {
         os_thread_yield();
     }
     return f;
+}
+
+int SerialStream::setBaudRate(unsigned int baudrate) {
+    HAL_USART_End(serial_);
+    HAL_USART_BeginConfig(serial_, baudrate, config_, 0);
+    return 0;
 }
 
 } // particle
