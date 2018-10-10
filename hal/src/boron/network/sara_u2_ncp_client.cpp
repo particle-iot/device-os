@@ -289,8 +289,10 @@ int SaraU2NcpClient::getIccid(char* buf, size_t size) {
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+CCID");
     char iccid[32] = {};
-    const int r = resp.scanf("+CCID: %31s", iccid);
+    int r = CHECK_PARSER(resp.scanf("+CCID: %31s", iccid));
     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     size_t n = std::min(strlen(iccid), size);
     memcpy(buf, iccid, n);
     if (size > 0) {
