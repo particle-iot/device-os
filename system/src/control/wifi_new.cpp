@@ -16,8 +16,9 @@
  */
 
 #include "wifi_new.h"
+#include "hal_platform.h"
 
-#if SYSTEM_CONTROL_ENABLED
+#if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
 
 #include "common.h"
 
@@ -231,4 +232,4 @@ int scanNetworks(ctrl_request* req) {
 
 } // particle
 
-#endif // SYSTEM_CONTROL_ENABLED
+#endif // SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI

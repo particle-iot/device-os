@@ -26,6 +26,7 @@
 #include "spark_wiring_system.h"
 #include "appender.h"
 #include "debug.h"
+#include "hal_platform.h"
 
 #include "control/network.h"
 #include "control/wifi.h"
@@ -342,6 +343,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::network::getInterface(req));
         break;
     }
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
     case CTRL_REQUEST_WIFI_JOIN_NEW_NETWORK: {
         setResult(req, ctrl::wifi::joinNewNetwork(req));
         break;
@@ -370,6 +372,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::wifi::scanNetworks(req));
         break;
     }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
     case CTRL_REQUEST_MESH_AUTH: {
         setResult(req, ctrl::mesh::auth(req));
         break;

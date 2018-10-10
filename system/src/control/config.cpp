@@ -102,7 +102,7 @@ int getSystemVersion(ctrl_request* req) {
 }
 
 int getNcpFirmwareVersion(ctrl_request* req) {
-#if HAL_PLATFORM_NCP
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();
@@ -119,7 +119,7 @@ int getNcpFirmwareVersion(ctrl_request* req) {
     return 0;
 #else
     return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // !HAL_PLATFORM_NCP
+#endif // !(HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI)
 }
 
 int getSystemCapabilities(ctrl_request* req) {
