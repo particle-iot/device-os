@@ -19,6 +19,8 @@
 
 #include "c_string.h"
 
+#include <memory>
+
 namespace particle {
 
 class CellularNcpClient;
@@ -42,6 +44,8 @@ public:
     CellularNetworkConfig& password(const char* pwd);
     const char* password() const;
 
+    bool isEmpty() const;
+
 private:
     CString apn_;
     CString user_;
@@ -58,18 +62,18 @@ public:
 
     int connect();
 
-    int setNetworkConfig(SimType simType, const CellularNetworkConfig& conf);
+    int setNetworkConfig(SimType simType, CellularNetworkConfig conf);
     int getNetworkConfig(SimType simType, CellularNetworkConfig* conf);
-    void clearNetworkConfig(SimType simType);
-    void clearNetworkConfig();
+    int clearNetworkConfig(SimType simType);
+    int clearNetworkConfig();
 
-    void setActiveSimType(SimType simType);
+    int setActiveSimType(SimType simType);
     int getActiveSimType(SimType* simType);
 
     CellularNcpClient* ncpClient() const;
 
 private:
-    CellularNcpClient* client_;
+    std::unique_ptr<CellularNcpClient> client_;
 };
 
 inline CellularNetworkConfig::CellularNetworkConfig() {
@@ -102,8 +106,12 @@ inline const char* CellularNetworkConfig::password() const {
     return pwd_;
 }
 
+inline bool CellularNetworkConfig::isEmpty() const {
+    return (!apn_ && !user_ && !pwd_);
+}
+
 inline CellularNcpClient* CellularNetworkManager::ncpClient() const {
-    return client_;
+    return client_.get();
 }
 
 } // particle
