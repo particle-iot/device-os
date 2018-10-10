@@ -42,7 +42,7 @@ public:
     CellularNetworkConfig& password(const char* pwd);
     const char* password() const;
 
-    bool isEmpty() const;
+    bool isDefault() const;
 
 private:
     CString apn_;
@@ -101,7 +101,7 @@ inline const char* CellularNetworkConfig::password() const {
     return pwd_;
 }
 
-inline bool CellularNetworkConfig::isEmpty() const {
+inline bool CellularNetworkConfig::isDefault() const {
     return (!apn_ && !user_ && !pwd_);
 }
 

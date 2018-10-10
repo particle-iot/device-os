@@ -4,3 +4,4 @@
 
 #define HAL_PLATFORM_NCP (1)
 #define HAL_PLATFORM_NCP_AT (1)
+#define HAL_PLATFORM_CELLULAR (1)

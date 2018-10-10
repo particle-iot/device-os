@@ -31,6 +31,7 @@
 #include "control/network.h"
 #include "control/wifi.h"
 #include "control/wifi_new.h"
+#include "control/cellular.h"
 #include "control/config.h"
 #include "control/storage.h"
 #include "control/mesh.h"
@@ -373,6 +374,28 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+    case CTRL_REQUEST_CELLULAR_SET_ACCESS_POINT: {
+        setResult(req, ctrl::cellular::setAccessPoint(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ACCESS_POINT: {
+        setResult(req, ctrl::cellular::getAccessPoint(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_SET_ACTIVE_SIM: {
+        setResult(req, ctrl::cellular::setActiveSim(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ACTIVE_SIM: {
+        setResult(req, ctrl::cellular::getActiveSim(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ICCID: {
+        setResult(req, ctrl::cellular::getIccid(req));
+        break;
+    }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
     case CTRL_REQUEST_MESH_AUTH: {
         setResult(req, ctrl::mesh::auth(req));
         break;
