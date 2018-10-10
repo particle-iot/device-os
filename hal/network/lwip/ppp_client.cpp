@@ -118,6 +118,10 @@ bool Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
   /* FIXME */
   pppapi_set_default(pcb_);
+
+  // FIXME:
+  static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
+  output((const uint8_t*)UBLOX_NCP_CONNECT_COMMAND, sizeof(UBLOX_NCP_CONNECT_COMMAND) - 1);
   return true;
 }
 
@@ -205,7 +209,7 @@ void Client::loop() {
       case STATE_CONNECT: {
         prepareConnect();
         transition(STATE_CONNECTING);
-        err_t err = pppapi_connect(pcb_, 0);
+        err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
           transition(STATE_CONNECT);

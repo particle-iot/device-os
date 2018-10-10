@@ -87,8 +87,6 @@ const auto UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 const auto UBLOX_NCP_AT_CHANNEL = 1;
 const auto UBLOX_NCP_PPP_CHANNEL = 2;
 
-const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
-
 } // anonymous
 
 SaraU2NcpClient::SaraU2NcpClient() {
@@ -497,16 +495,13 @@ void SaraU2NcpClient::connectionState(NcpConnectionState state) {
             return 0;
         }, this);
 
-        if (!r) {
-            r = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, (const uint8_t*)UBLOX_NCP_CONNECT_COMMAND,
-                    sizeof(UBLOX_NCP_CONNECT_COMMAND), 5000);
-        }
-
         if (r) {
             // Some kind of an error
             connectionState(NcpConnectionState::DISCONNECTED);
             return;
         }
+    } else {
+        muxer_.closeChannel(UBLOX_NCP_PPP_CHANNEL);
     }
 
     const auto handler = conf_.eventHandler();
