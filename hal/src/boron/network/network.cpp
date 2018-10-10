@@ -59,13 +59,6 @@ bool netifCanForwardIpv4(netif* iface) {
     return false;
 }
 
-particle::services::at::BoronNcpAtClient* boronNcpAtClient() {
-    using namespace particle::services::at;
-    static SerialStream stream(HAL_USART_SERIAL2, 230400, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
-    static BoronNcpAtClient atClient(&stream);
-    return &atClient;
-}
-
 class CellularNetworkManagerInit {
 public:
     CellularNetworkManagerInit() {
@@ -86,9 +79,9 @@ private:
         SimType sim = SimType::INVALID;
         CHECK(CellularNetworkManager::getActiveSim(&sim));
         auto conf = CellularNcpClientConfig()
-                .simType(sim);
-                //.eventHandler()
-                //.dataHandler()
+                .simType(sim)
+                .eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3)
+                .dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
         // Initialize NCP client
         std::unique_ptr<CellularNcpClient> client;
         const auto ncpId = platform_current_ncp_identifier();
@@ -154,7 +147,10 @@ int if_init_platform(void*) {
     }
 
     /* pp3 - Cellular */
-    pp3 = new PppNcpNetif(boronNcpAtClient());
+    pp3 = new PppNcpNetif();
+    if (pp3) {
+        ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
+    }
 
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;

@@ -23,6 +23,8 @@
 #include "at_parser.h"
 
 #include "spark_wiring_thread.h"
+#include "gsm0710muxer/channel_stream.h"
+#include "static_recursive_mutex.h"
 
 namespace particle {
 
@@ -59,6 +61,40 @@ private:
     AtParser parser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
+    NcpClientConfig conf_;
+    NcpState ncpState_ = NcpState::OFF;
+    NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
+    int parserError_ = 0;
+    bool ready_ = false;
+    gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
+    std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
+
+    enum class RegistrationState {
+        NotRegistered = 0,
+        Registered    = 1
+    };
+
+    RegistrationState creg_ = RegistrationState::NotRegistered;
+    RegistrationState cgreg_ = RegistrationState::NotRegistered;
+    RegistrationState cereg_ = RegistrationState::NotRegistered;
+
+    int initParser(Stream* stream);
+    int checkParser();
+    int waitReady();
+    int initReady();
+    int waitAtResponse(unsigned int timeout);
+    int selectSimCard();
+    int checkSimCard();
+    int configureApn(const CellularNetworkConfig& conf);
+    int registerNet();
+    int changeBaudRate(unsigned int baud);
+    static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
+            decltype(muxer_)::ChannelState newState, void* ctx);
+    void ncpState(NcpState state);
+    void connectionState(NcpConnectionState state);
+    void parserError(int error);
+    void resetRegistrationState();
+    void checkRegistrationState();
 };
 
 inline AtParser* SaraU2NcpClient::atParser() {
@@ -71,6 +107,10 @@ inline void SaraU2NcpClient::lock() {
 
 inline void SaraU2NcpClient::unlock() {
     mutex_.unlock();
+}
+
+inline void SaraU2NcpClient::parserError(int error) {
+    parserError_ = error;
 }
 
 } // particle
