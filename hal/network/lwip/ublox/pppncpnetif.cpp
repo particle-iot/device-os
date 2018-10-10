@@ -43,67 +43,17 @@ LOG_SOURCE_CATEGORY("net.pppncp")
 
 using namespace particle::net;
 
-class MuxerDataChannel : public particle::net::ppp::DataChannel {
-public:
-  MuxerDataChannel(gsm0710::Muxer<particle::Stream, StaticRecursiveMutex>* muxer, int chan)
-      : muxer_(muxer),
-        chan_(chan),
-        rxBuf_(rxBufData_, sizeof(rxBufData_)) {
-    muxer->openChannel(chan_, channelDataHandlerCb, this);
-    muxer->resumeChannel(chan_);
-  }
+namespace {
 
-  ~MuxerDataChannel() {
-    muxer_->closeChannel(chan_);
-  }
-
-  virtual int readSome(char* data, size_t size) {
-    std::lock_guard<std::mutex> lk(m_);
-    size_t canRead = CHECK(rxBuf_.data());
-    size_t toRead = std::min(size, canRead);
-    if (toRead > 0) {
-        return rxBuf_.get((uint8_t*)data, toRead);
-    }
-    return 0;
-  }
-
-  virtual int writeSome(const char* data, size_t size) override {
-    muxer_->writeChannel(chan_, (const uint8_t*)data, size);
-    return size;
-  }
-
-  virtual int waitEvent(unsigned flags, unsigned timeout = 0) override {
-    std::unique_lock<std::mutex> lk(m_);
-    if (rxBuf_.data() > 0) {
-        return DataChannel::READABLE;
-    } else {
-        lk.unlock();
-        HAL_Delay_Milliseconds(timeout);
-        lk.lock();
-        if (rxBuf_.data() > 0) {
-            return DataChannel::READABLE;
-        }
-    }
-    return 0;
-  }
-
-  static int channelDataHandlerCb(const uint8_t* data, size_t size, void* ctx) {
-    LOG(TRACE, "channel data handler %x %u", data, size);
-    auto self = (MuxerDataChannel*)ctx;
-    std::lock_guard<std::mutex> lk(self->m_);
-    if (self->rxBuf_.space() >= (ssize_t)size) {
-        self->rxBuf_.put(data, size);
-    }
-    return 0;
-  }
-
-private:
-    std::mutex m_;
-    gsm0710::Muxer<particle::Stream, StaticRecursiveMutex>* muxer_;
-    int chan_;
-  particle::services::RingBuffer<uint8_t> rxBuf_;
-  uint8_t rxBufData_[2048];
+enum class NetifEvent {
+    None = 0,
+    Up = 1,
+    Down = 2,
+    Exit = 3
 };
+
+} // anonymous
+
 
 PppNcpNetif::PppNcpNetif(particle::services::at::BoronNcpAtClient* atclient)
         : BaseNetif(),
@@ -115,23 +65,19 @@ PppNcpNetif::PppNcpNetif(particle::services::at::BoronNcpAtClient* atclient)
     registerHandlers();
 
     LOG(INFO, "Creating PppNcpNetif LwIP interface");
-    start_ = false;
-    stop_ = false;
 
+    client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
 
-    // if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
-        /* FIXME: */
-        SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
-        SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
-    // }
+    SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 4, nullptr) == 0);
+    SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
 PppNcpNetif::~PppNcpNetif() {
     exit_ = true;
     if (thread_ && queue_) {
-        const void* dummy = nullptr;
-        os_queue_put(queue_, &dummy, 1000, nullptr);
+        auto ex = NetifEvent::Exit;
+        os_queue_put(queue_, &ex, 1000, nullptr);
         os_thread_join(thread_);
         os_queue_destroy(queue_, nullptr);
     }
@@ -161,18 +107,35 @@ void PppNcpNetif::hwReset() {
 void PppNcpNetif::loop(void* arg) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(arg);
     unsigned int timeout = 100;
-    while(!self->exit_ || self->muxer_.isRunning()) {
-        if (self->start_) {
-            if (!self->upImpl()) {
-                self->start_ = false;
+    while(!self->exit_) {
+        NetifEvent ev;
+        if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {
+            // Event
+            switch (ev) {
+                case NetifEvent::Up: {
+                    self->upImpl();
+                    // if (self->upImpl()) {
+                    //     self->wifiMan_->ncpClient()->off();
+                    // }
+                    break;
+                }
+                case NetifEvent::Down: {
+                    self->downImpl();
+                    // if (self->downImpl()) {
+                    //     self->wifiMan_->ncpClient()->off();
+                    // }
+                    break;
+                }
             }
+        } else {
+            // if (self->up_) {
+            //     LwipTcpIpCoreLock lk;
+            //     if (!netif_is_link_up(self->interface())) {
+            //         self->upImpl();
+            //     }
+            // }
         }
-        if (self->stop_) {
-            self->stop_ = false;
-            self->downImpl();
-        }
-        self->muxer_.notifyInput(0);
-        HAL_Delay_Milliseconds(timeout);
+        // self->wifiMan_->ncpClient()->processEvents();
     }
 
     self->down();
@@ -181,13 +144,13 @@ void PppNcpNetif::loop(void* arg) {
 }
 
 int PppNcpNetif::up() {
-    start_ = true;
-    return 0;
+    NetifEvent ev = NetifEvent::Up;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
 int PppNcpNetif::down() {
-    stop_ = true;
-    return 0;
+    NetifEvent ev = NetifEvent::Down;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
 int PppNcpNetif::upImpl() {
@@ -218,10 +181,20 @@ int PppNcpNetif::upImpl() {
     muxer_.setControlResponseTimeout(1000);
     muxer_.setKeepAlivePeriod(10000);
     muxer_.setKeepAliveMaxMissed(6);
-    muxer_.start(true);
-    auto ch = new MuxerDataChannel(&muxer_, 1);
-    ch->writeSome("AT+CGDATA=\"PPP\",1\r\n", strlen("AT+CGDATA=\"PPP\",1\r\n"));
-    client_.setDataChannel(ch);
+    CHECK(muxer_.start(true));
+    CHECK(muxer_.openChannel(1, [](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto client = (particle::net::ppp::Client*)ctx;
+        return client->input(data, size);
+    }, &client_));
+    muxer_.writeChannel(1, (const uint8_t*)"AT+CGDATA=\"PPP\",1\r\n", strlen("AT+CGDATA=\"PPP\",1\r\n"));
+    client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto self = (PppNcpNetif*)ctx;
+        auto r = self->muxer_.writeChannel(1, data, size);
+        if (r == 0) {
+            return size;
+        }
+        return r;
+    }, this);
     client_.connect();
     client_.notifyEvent(particle::net::ppp::Client::EVENT_LOWER_UP);
     // muxer_.openChannel(1, channelDataHandlerCb, this);
@@ -233,13 +206,8 @@ int PppNcpNetif::upImpl() {
     return 0;
 }
 
-int PppNcpNetif::channelDataHandlerCb(const uint8_t* data, size_t size, void* ctx) {
-    LOG(TRACE, "channel data handler %x %u", data, size);
-
-    return 0;
-}
-
 int PppNcpNetif::downImpl() {
+    client_.disconnect();
     muxer_.stop();
     hwReset();
     // LwipTcpIpCoreLock lk;
@@ -259,4 +227,13 @@ void PppNcpNetif::ifEventHandler(const if_event* ev) {
 
 void PppNcpNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
     /* Nothing to do here */
+}
+
+void PppNcpNetif::pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, void* ctx) {
+    auto self = (PppNcpNetif*)ctx;
+    self->pppEventHandler(ev);
+}
+
+void PppNcpNetif::pppEventHandler(uint64_t ev) {
+    LOG(TRACE, "pppp ev %llu", ev);
 }

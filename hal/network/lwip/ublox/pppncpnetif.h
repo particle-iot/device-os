@@ -46,6 +46,7 @@ protected:
 private:
     int up();
     int down();
+
     int upImpl();
     int downImpl();
 
@@ -53,15 +54,13 @@ private:
 
     static void loop(void* arg);
 
-    static int channelDataHandlerCb(const uint8_t* data, size_t size, void* ctx);
+    static void pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, void* ctx);
+    void pppEventHandler(uint64_t ev);
 
 private:
     os_thread_t thread_ = nullptr;
     os_queue_t queue_ = nullptr;
     std::atomic_bool exit_;
-    std::atomic_bool start_;
-    std::atomic_bool stop_;
-
     particle::services::at::BoronNcpAtClient* atClient_ = nullptr;
     particle::Stream* origStream_ = nullptr;
     gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;

@@ -156,9 +156,6 @@ int if_init_platform(void*) {
     /* pp3 - Cellular */
     pp3 = new PppNcpNetif(boronNcpAtClient());
 
-    /* Enable border router by default */
-    BorderRouterManager::instance()->start();
-
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
     LOG(TRACE, "Heap: %lu/%lu Kbytes used", m.uordblks / 1000, total / 1000);

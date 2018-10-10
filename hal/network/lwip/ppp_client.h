@@ -28,25 +28,11 @@ extern "C" {
 #include "concurrent_hal.h"
 #include <mutex>
 #include <atomic>
+#include "stream.h"
 
 #ifdef __cplusplus
 
 namespace particle { namespace net { namespace ppp {
-
-class DataChannel {
-public:
-  enum WaitEventFlag {
-      READABLE = 0x01,
-      WRITABLE = 0x02
-  };
-
-  int read(char* data, size_t size, unsigned timeout = 0);
-  int write(const char* data, size_t size, unsigned timeout = 0);
-
-  virtual int readSome(char* data, size_t size) = 0;
-  virtual int writeSome(const char* data, size_t size) = 0;
-  virtual int waitEvent(unsigned flags, unsigned timeout = 0) = 0;
-};
 
 class Client {
 public:
@@ -87,8 +73,11 @@ public:
     STATE_MAX          = 8
   };
 
-  void setDataChannel(DataChannel* ch);
   bool notifyEvent(uint64_t ev);
+  int input(const uint8_t* data, size_t size);
+
+  typedef int (*OutputCallback)(const uint8_t* data, size_t size, void* ctx);
+  void setOutputCallback(OutputCallback cb, void* ctx);
 
   typedef void (*NotifyCallback)(Client* c, uint64_t ev, void* ctx);
 
@@ -129,9 +118,7 @@ private:
   void loop();
 
   static uint32_t outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx);
-  uint32_t output(uint8_t* data, uint32_t len);
-
-  bool input();
+  uint32_t output(const uint8_t* data, size_t len);
 
   static void notifyPhaseCb(ppp_pcb* pcb, uint8_t phase, void* ctx);
   void notifyPhase(uint8_t phase);
@@ -149,7 +136,9 @@ private:
 private:
   netif if_ = {};
   ppp_pcb* pcb_ = nullptr;
+#if PPP_IPCP_OVERRIDE
   std::unique_ptr<Ipcp> ipcp_;
+#endif // PPP_IPCP_OVERRIDE
 
   bool lowerState_ = false;
   bool admState_ = false;
@@ -161,11 +150,11 @@ private:
   std::mutex mutex_;
   os_queue_t queue_ = nullptr;
 
-  DataChannel* channel_ = nullptr;
-  std::unique_ptr<uint8_t[]> recvBuf_;
-
   NotifyCallback cb_ = nullptr;
   void* cbCtx_ = nullptr;
+
+  OutputCallback oCb_ = nullptr;
+  void* oCbCtx_ = nullptr;
 
   bool inited_ = false;
   std::atomic_bool running_;
