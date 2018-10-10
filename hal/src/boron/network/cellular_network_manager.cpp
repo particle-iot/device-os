@@ -46,7 +46,7 @@ struct CellularConfig {
     SimType activeSim;
 
     CellularConfig() :
-            activeSim(SimType::INVALID) {
+            activeSim(SimType::INTERNAL) {
     }
 };
 
@@ -169,27 +169,28 @@ int saveConfig(const CellularConfig& conf) {
 
 } // unnamed
 
-CellularNetworkManager::CellularNetworkManager() {
+CellularNetworkManager::CellularNetworkManager(CellularNcpClient* client) :
+        client_(client) {
 }
 
 CellularNetworkManager::~CellularNetworkManager() {
 }
 
-int CellularNetworkManager::init() {
-    return 0;
-}
-
-void CellularNetworkManager::destroy() {
-}
-
 int CellularNetworkManager::connect() {
-    return 0;
-}
-
-int CellularNetworkManager::setNetworkConfig(SimType simType, CellularNetworkConfig conf) {
     CellularConfig c;
     CHECK(loadConfig(&c));
-    switch (simType) {
+    const CellularNetworkConfig* conf = &c.intSimConf;
+    if (c.activeSim == SimType::EXTERNAL) {
+        conf = &c.extSimConf;
+    }
+    CHECK(client_->connect(*conf));
+    return 0;
+}
+
+int CellularNetworkManager::setNetworkConfig(SimType sim, CellularNetworkConfig conf) {
+    CellularConfig c;
+    CHECK(loadConfig(&c));
+    switch (sim) {
     case SimType::INTERNAL:
         c.intSimConf = std::move(conf);
         break;
@@ -203,10 +204,10 @@ int CellularNetworkManager::setNetworkConfig(SimType simType, CellularNetworkCon
     return 0;
 }
 
-int CellularNetworkManager::getNetworkConfig(SimType simType, CellularNetworkConfig* conf) {
+int CellularNetworkManager::getNetworkConfig(SimType sim, CellularNetworkConfig* conf) {
     CellularConfig c;
     CHECK(loadConfig(&c));
-    switch (simType) {
+    switch (sim) {
     case SimType::INTERNAL:
         *conf = std::move(c.intSimConf);
         break;
@@ -219,10 +220,10 @@ int CellularNetworkManager::getNetworkConfig(SimType simType, CellularNetworkCon
     return 0;
 }
 
-int CellularNetworkManager::clearNetworkConfig(SimType simType) {
+int CellularNetworkManager::clearNetworkConfig(SimType sim) {
     CellularConfig c;
     CHECK(loadConfig(&c));
-    switch (simType) {
+    switch (sim) {
     case SimType::INTERNAL:
         c.intSimConf = CellularNetworkConfig();
         break;
@@ -245,18 +246,18 @@ int CellularNetworkManager::clearNetworkConfig() {
     return 0;
 }
 
-int CellularNetworkManager::setActiveSimType(SimType simType) {
+int CellularNetworkManager::setActiveSim(SimType sim) {
     CellularConfig c;
     CHECK(loadConfig(&c));
-    c.activeSim = simType;
+    c.activeSim = sim;
     CHECK(saveConfig(c));
     return 0;
 }
 
-int CellularNetworkManager::getActiveSimType(SimType* simType) {
+int CellularNetworkManager::getActiveSim(SimType* sim) {
     CellularConfig c;
     CHECK(loadConfig(&c));
-    *simType = c.activeSim;
+    *sim = c.activeSim;
     return 0;
 }
 

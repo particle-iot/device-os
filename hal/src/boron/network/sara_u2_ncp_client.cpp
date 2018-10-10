@@ -83,4 +83,8 @@ int SaraU2NcpClient::connect(const CellularNetworkConfig& conf) {
     return 0;
 }
 
+int SaraU2NcpClient::getIccid(char* buf, size_t size) {
+    return 0;
+}
+
 } // particle

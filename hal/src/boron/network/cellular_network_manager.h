@@ -19,8 +19,6 @@
 
 #include "c_string.h"
 
-#include <memory>
-
 namespace particle {
 
 class CellularNcpClient;
@@ -54,26 +52,23 @@ private:
 
 class CellularNetworkManager {
 public:
-    explicit CellularNetworkManager();
+    explicit CellularNetworkManager(CellularNcpClient* client);
     ~CellularNetworkManager();
-
-    int init();
-    void destroy();
 
     int connect();
 
-    int setNetworkConfig(SimType simType, CellularNetworkConfig conf);
-    int getNetworkConfig(SimType simType, CellularNetworkConfig* conf);
-    int clearNetworkConfig(SimType simType);
-    int clearNetworkConfig();
-
-    int setActiveSimType(SimType simType);
-    int getActiveSimType(SimType* simType);
-
     CellularNcpClient* ncpClient() const;
 
+    static int setNetworkConfig(SimType sim, CellularNetworkConfig conf);
+    static int getNetworkConfig(SimType sim, CellularNetworkConfig* conf);
+    static int clearNetworkConfig(SimType sim);
+    static int clearNetworkConfig();
+
+    static int setActiveSim(SimType sim);
+    static int getActiveSim(SimType* sim);
+
 private:
-    std::unique_ptr<CellularNcpClient> client_;
+    CellularNcpClient* client_;
 };
 
 inline CellularNetworkConfig::CellularNetworkConfig() {
@@ -111,7 +106,7 @@ inline bool CellularNetworkConfig::isEmpty() const {
 }
 
 inline CellularNcpClient* CellularNetworkManager::ncpClient() const {
-    return client_.get();
+    return client_;
 }
 
 } // particle

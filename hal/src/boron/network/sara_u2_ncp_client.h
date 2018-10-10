@@ -53,6 +53,7 @@ public:
 
     // Reimplemented from CellularNcpClient
     int connect(const CellularNetworkConfig& conf) override;
+    int getIccid(char* buf, size_t size) override;
 
 private:
     AtParser parser_;

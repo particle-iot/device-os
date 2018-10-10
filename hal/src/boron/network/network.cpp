@@ -29,6 +29,9 @@
 #include "usart_hal.h"
 #include "ncp.h"
 #include "pppncpnetif.h"
+#include "sara_u2_ncp_client.h"
+#include "sara_r4_ncp_client.h"
+#include "platform_ncp.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -56,14 +59,72 @@ bool netifCanForwardIpv4(netif* iface) {
     return false;
 }
 
-} /* anonymous */
-
 particle::services::at::BoronNcpAtClient* boronNcpAtClient() {
     using namespace particle::services::at;
     static SerialStream stream(HAL_USART_SERIAL2, 230400, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
     static BoronNcpAtClient atClient(&stream);
     return &atClient;
 }
+
+class CellularNetworkManagerInit {
+public:
+    CellularNetworkManagerInit() {
+        const int r = init();
+        SPARK_ASSERT(r == 0);
+    }
+
+    CellularNetworkManager* instance() const {
+        return mgr_.get();
+    }
+
+private:
+    std::unique_ptr<CellularNcpClient> client_;
+    std::unique_ptr<CellularNetworkManager> mgr_;
+
+    int init() {
+        // Get active SIM card
+        SimType sim = SimType::INVALID;
+        CHECK(CellularNetworkManager::getActiveSim(&sim));
+        auto conf = CellularNcpClientConfig()
+                .simType(sim);
+                //.eventHandler()
+                //.dataHandler()
+        // Initialize NCP client
+        std::unique_ptr<CellularNcpClient> client;
+        const auto ncpId = platform_current_ncp_identifier();
+        switch (ncpId) {
+        case MeshNCPIdentifier::MESH_NCP_SARA_U201:
+        case MeshNCPIdentifier::MESH_NCP_SARA_G350:
+            client.reset(new(std::nothrow) SaraU2NcpClient);
+            break;
+        case MeshNCPIdentifier::MESH_NCP_SARA_R410:
+            client.reset(new(std::nothrow) SaraR4NcpClient);
+            break;
+        default:
+            LOG(ERROR, "Unknown NCP type: %d", (int)ncpId);
+            client.reset(new(std::nothrow) SaraU2NcpClient); // Assuming SARA-U2
+            break;
+        }
+        CHECK_TRUE(client, SYSTEM_ERROR_NO_MEMORY);
+        CHECK(client->init(std::move(conf)));
+        // Initialize network manager
+        mgr_.reset(new(std::nothrow) CellularNetworkManager(client.get()));
+        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
+        client_ = std::move(client);
+        return 0;
+    }
+};
+
+} /* anonymous */
+
+namespace particle {
+
+CellularNetworkManager* cellularNetworkManager() {
+    static CellularNetworkManagerInit mgr;
+    return mgr.instance();
+}
+
+} // particle
 
 int if_init_platform(void*) {
     /* lo0 (created by LwIP) */
