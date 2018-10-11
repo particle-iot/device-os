@@ -64,11 +64,11 @@ void ubloxOff() {
     HAL_Delay_Milliseconds(50);
 }
 
-void ubloxReset() {
+void ubloxReset(unsigned int reset) {
     HAL_GPIO_Write(BUFEN, 0);
 
     HAL_GPIO_Write(UBRST, 0);
-    HAL_Delay_Milliseconds(100);
+    HAL_Delay_Milliseconds(reset);
     HAL_GPIO_Write(UBRST, 1);
 
     HAL_GPIO_Write(UBPWR, 0);
@@ -349,7 +349,7 @@ int SaraNcpClient::waitReady() {
     muxer_.stop();
     CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
     CHECK(initParser(serial_.get()));
-    ubloxReset();
+    ubloxReset(conf_.ncpIdentifier() != MESH_NCP_SARA_R410 ? 100 : 10000);
     skipAll(serial_.get(), 1000);
     parser_.reset();
     ready_ = waitAtResponse(20000) == 0;
@@ -510,13 +510,16 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
 }
 
 int SaraNcpClient::registerNet() {
-    int r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    // Only applies to LTE, ignore response code
-    r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    int r = 0;
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    } else {
+        r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
 
     connectionState(NcpConnectionState::CONNECTING);
 
@@ -525,13 +528,15 @@ int SaraNcpClient::registerNet() {
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CEGREG?"));
-    // Ignore response code
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    } else {
+        r = CHECK_PARSER(parser_.execCommand("AT+CEGREG?"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
 
     return 0;
 }
@@ -630,9 +635,9 @@ void SaraNcpClient::resetRegistrationState() {
 
 void SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if (creg_ == RegistrationState::Registered &&
-                (cgreg_ == RegistrationState::Registered ||
-                 cereg_ == RegistrationState::Registered)) {
+        if ((creg_ == RegistrationState::Registered &&
+                    cgreg_ == RegistrationState::Registered) ||
+                    cereg_ == RegistrationState::Registered) {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);
