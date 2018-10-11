@@ -537,7 +537,7 @@ int SaraNcpClient::registerNet() {
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     } else {
-        r = CHECK_PARSER(parser_.execCommand("AT+CEGREG?"));
+        r = CHECK_PARSER(parser_.execCommand("AT+CEREG?"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
 
