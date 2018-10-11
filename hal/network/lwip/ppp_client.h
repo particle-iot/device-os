@@ -83,6 +83,8 @@ public:
 
   void setNotifyCallback(NotifyCallback cb, void* ctx);
 
+  void setAuth(const char* user, const char* password);
+
   netif* getIf();
 
 private:
@@ -139,6 +141,9 @@ private:
 #if PPP_IPCP_OVERRIDE
   std::unique_ptr<Ipcp> ipcp_;
 #endif // PPP_IPCP_OVERRIDE
+
+  std::unique_ptr<char> user_;
+  std::unique_ptr<char> pass_;
 
   bool lowerState_ = false;
   bool admState_ = false;

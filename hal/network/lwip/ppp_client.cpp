@@ -26,6 +26,7 @@ extern "C" {
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "system_error.h"
+#include "lwiplock.h"
 
 using namespace particle::net::ppp;
 
@@ -185,6 +186,25 @@ void Client::setOutputCallback(OutputCallback cb, void* ctx) {
   std::lock_guard<std::mutex> lk(mutex_);
   oCb_ = cb;
   oCbCtx_ = ctx;
+}
+
+void Client::setAuth(const char* user, const char* password) {
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    user_.reset();
+    pass_.reset();
+    if (user) {
+      user_.reset(strdup(user));
+    }
+    if (password) {
+      pass_.reset(strdup(password));
+    }
+  }
+
+  {
+    LwipTcpIpCoreLock lk;
+    ppp_set_auth(pcb_, PPPAUTHTYPE_ANY, user_.get(), pass_.get());
+  }
 }
 
 netif* Client::getIf() {

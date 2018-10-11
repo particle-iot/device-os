@@ -215,6 +215,10 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
                 self->client_.notifyEvent(ppp::Client::EVENT_LOWER_UP);
             }
         }
+    } else if (ev.type == CellularNcpEvent::AUTH) {
+        const auto& cev = static_cast<const CellularNcpAuthEvent&>(ev);
+        LOG(TRACE, "New auth info");
+        self->client_.setAuth(cev.user, cev.password);
     }
 }
 

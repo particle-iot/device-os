@@ -576,6 +576,13 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
 
     const auto handler = conf_.eventHandler();
     if (handler) {
+        if (state == NcpConnectionState::CONNECTED) {
+            CellularNcpAuthEvent event = {};
+            event.type = CellularNcpEvent::AUTH;
+            event.user = netConf_.user();
+            event.password = netConf_.password();
+            handler(event, conf_.eventHandlerData());
+        }
         NcpConnectionStateChangedEvent event = {};
         event.type = NcpEvent::CONNECTION_STATE_CHANGED;
         event.state = connState_;
@@ -621,14 +628,6 @@ void SaraNcpClient::checkRegistrationState() {
         if (creg_ == RegistrationState::Registered &&
                 (cgreg_ == RegistrationState::Registered ||
                  cereg_ == RegistrationState::Registered)) {
-            const auto handler = conf_.eventHandler();
-            if (handler) {
-                CellularNcpAuthEvent event = {};
-                event.type = CellularNcpEvent::AUTH;
-                event.user = netConf_.user();
-                event.password = netConf_.password();
-                handler(event, conf_.eventHandlerData());
-            }
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);
