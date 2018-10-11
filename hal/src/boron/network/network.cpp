@@ -77,16 +77,16 @@ private:
         // Get active SIM card
         SimType sim = SimType::INVALID;
         CHECK(CellularNetworkManager::getActiveSim(&sim));
-        auto conf = CellularNcpClientConfig()
-                .simType(sim)
-                .ncpIdentifier(platform_current_ncp_identifier())
-                .eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3)
-                .dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
+        CellularNcpClientConfig conf;
+        conf.simType(sim);
+        conf.ncpIdentifier(platform_current_ncp_identifier());
+        conf.eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3);
+        conf.dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
         // Initialize NCP client
         std::unique_ptr<CellularNcpClient> client;
-        client.reset(new (std::nothrow) SaraNcpClient);
+        client.reset(new(std::nothrow) SaraNcpClient);
         CHECK_TRUE(client, SYSTEM_ERROR_NO_MEMORY);
-        CHECK(client->init(std::move(conf)));
+        CHECK(client->init(conf));
         // Initialize network manager
         mgr_.reset(new(std::nothrow) CellularNetworkManager(client.get()));
         CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
