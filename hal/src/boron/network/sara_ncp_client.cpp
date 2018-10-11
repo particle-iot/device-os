@@ -275,7 +275,6 @@ int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
         HAL_Delay_Milliseconds(1000);
     }
     CHECK(simState);
-    // TODO: check ICCID
     CHECK(configureApn(conf));
     CHECK(registerNet());
 
@@ -452,6 +451,7 @@ int SaraNcpClient::checkSimCard() {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     if (!strcmp(code, "READY")) {
+        CHECK(getIccid(nullptr, 0));
         return 0;
     }
     return SYSTEM_ERROR_UNKNOWN;
@@ -475,8 +475,10 @@ int SaraNcpClient::registerNet() {
     r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    r = CHECK_PARSER(parser_.execCommand("AT+COPS=0"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // NOTE: up to 3 mins
+    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
+    // Ignore response code here
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
