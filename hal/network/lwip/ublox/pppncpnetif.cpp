@@ -36,6 +36,7 @@ LOG_SOURCE_CATEGORY("net.pppncp")
 #include "lwiplock.h"
 #include "interrupts_hal.h"
 #include "ringbuffer.h"
+#include "network/cellular_ncp_client.h"
 
 #include "concurrent_hal.h"
 
@@ -43,207 +44,136 @@ LOG_SOURCE_CATEGORY("net.pppncp")
 
 using namespace particle::net;
 
-class MuxerDataChannel : public particle::net::ppp::DataChannel {
-public:
-  MuxerDataChannel(gsm0710::Muxer<particle::Stream, StaticRecursiveMutex>* muxer, int chan)
-      : muxer_(muxer),
-        chan_(chan),
-        rxBuf_(rxBufData_, sizeof(rxBufData_)) {
-    muxer->openChannel(chan_, channelDataHandlerCb, this);
-    muxer->resumeChannel(chan_);
-  }
+namespace {
 
-  ~MuxerDataChannel() {
-    muxer_->closeChannel(chan_);
-  }
-
-  virtual int readSome(char* data, size_t size) {
-    std::lock_guard<std::mutex> lk(m_);
-    size_t canRead = CHECK(rxBuf_.data());
-    size_t toRead = std::min(size, canRead);
-    if (toRead > 0) {
-        return rxBuf_.get((uint8_t*)data, toRead);
-    }
-    return 0;
-  }
-
-  virtual int writeSome(const char* data, size_t size) override {
-    muxer_->writeChannel(chan_, (const uint8_t*)data, size);
-    return size;
-  }
-
-  virtual int waitEvent(unsigned flags, unsigned timeout = 0) override {
-    std::unique_lock<std::mutex> lk(m_);
-    if (rxBuf_.data() > 0) {
-        return DataChannel::READABLE;
-    } else {
-        lk.unlock();
-        HAL_Delay_Milliseconds(timeout);
-        lk.lock();
-        if (rxBuf_.data() > 0) {
-            return DataChannel::READABLE;
-        }
-    }
-    return 0;
-  }
-
-  static int channelDataHandlerCb(const uint8_t* data, size_t size, void* ctx) {
-    LOG(TRACE, "channel data handler %x %u", data, size);
-    auto self = (MuxerDataChannel*)ctx;
-    std::lock_guard<std::mutex> lk(self->m_);
-    if (self->rxBuf_.space() >= (ssize_t)size) {
-        self->rxBuf_.put(data, size);
-    }
-    return 0;
-  }
-
-private:
-    std::mutex m_;
-    gsm0710::Muxer<particle::Stream, StaticRecursiveMutex>* muxer_;
-    int chan_;
-  particle::services::RingBuffer<uint8_t> rxBuf_;
-  uint8_t rxBufData_[2048];
+enum class NetifEvent {
+    None = 0,
+    Up = 1,
+    Down = 2,
+    Exit = 3
 };
 
-PppNcpNetif::PppNcpNetif(particle::services::at::BoronNcpAtClient* atclient)
+} // anonymous
+
+
+PppNcpNetif::PppNcpNetif()
         : BaseNetif(),
-          exit_(false),
-          atClient_(atclient),
-          origStream_(atclient->getStream()),
-          muxer_(origStream_) {
+          exit_(false) {
 
     registerHandlers();
 
     LOG(INFO, "Creating PppNcpNetif LwIP interface");
-    start_ = false;
-    stop_ = false;
 
+    client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
 
-    // if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
-        /* FIXME: */
-        SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
-        SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
-    // }
+    SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 4, nullptr) == 0);
+    SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
 PppNcpNetif::~PppNcpNetif() {
     exit_ = true;
     if (thread_ && queue_) {
-        const void* dummy = nullptr;
-        os_queue_put(queue_, &dummy, 1000, nullptr);
+        auto ex = NetifEvent::Exit;
+        os_queue_put(queue_, &ex, 1000, nullptr);
         os_thread_join(thread_);
         os_queue_destroy(queue_, nullptr);
     }
+}
+
+void PppNcpNetif::setCellularManager(CellularNetworkManager* celMan) {
+    celMan_ = celMan;
 }
 
 if_t PppNcpNetif::interface() {
     return (if_t)client_.getIf();
 }
 
-void PppNcpNetif::hwReset() {
-    HAL_Pin_Mode(UBPWR, OUTPUT);
-    HAL_Pin_Mode(UBRST, OUTPUT);
-    HAL_Pin_Mode(BUFEN, OUTPUT);
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-
-    HAL_GPIO_Write(ANTSW1, 1);
-    HAL_GPIO_Write(BUFEN, 0);
-
-    HAL_GPIO_Write(UBRST, 0);
-    HAL_Delay_Milliseconds(100);
-    HAL_GPIO_Write(UBRST, 1);
-
-    HAL_GPIO_Write(UBPWR, 0); HAL_Delay_Milliseconds(50);
-    HAL_GPIO_Write(UBPWR, 1); HAL_Delay_Milliseconds(10);
-}
-
 void PppNcpNetif::loop(void* arg) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(arg);
     unsigned int timeout = 100;
-    while(!self->exit_ || self->muxer_.isRunning()) {
-        if (self->start_) {
-            if (!self->upImpl()) {
-                self->start_ = false;
+    while(!self->exit_) {
+        NetifEvent ev;
+        if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {
+            // Event
+            switch (ev) {
+                case NetifEvent::Up: {
+                    if (self->upImpl()) {
+                        self->celMan_->ncpClient()->off();
+                    }
+                    break;
+                }
+                case NetifEvent::Down: {
+                    self->downImpl();
+                    self->celMan_->ncpClient()->off();
+                    break;
+                }
+            }
+        } else {
+            if (self->up_) {
+                if (self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+                    if (self->upImpl()) {
+                        self->celMan_->ncpClient()->off();
+                    }
+                }
             }
         }
-        if (self->stop_) {
-            self->stop_ = false;
-            self->downImpl();
-        }
-        self->muxer_.notifyInput(0);
-        HAL_Delay_Milliseconds(timeout);
+        self->celMan_->ncpClient()->processEvents();
     }
 
-    self->down();
+    self->downImpl();
+    self->celMan_->ncpClient()->off();
 
     os_thread_exit(nullptr);
 }
 
 int PppNcpNetif::up() {
-    start_ = true;
-    return 0;
+    NetifEvent ev = NetifEvent::Up;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
 int PppNcpNetif::down() {
-    stop_ = true;
-    return 0;
+    NetifEvent ev = NetifEvent::Down;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
 int PppNcpNetif::upImpl() {
-    hwReset();
-    atClient_->setStream(origStream_);
-    atClient_->reset();
-    atClient_->setTimeout(60000);
-
-    CHECK(atClient_->selectSim(true));
-    while (atClient_->waitReady(1)) {
-        HAL_Delay_Milliseconds(1000);
+    up_ = true;
+    auto r = celMan_->ncpClient()->on();
+    if (r) {
+        LOG(TRACE, "Failed to initialize ublox NCP client: %d", r);
+        return r;
     }
-    CHECK(atClient_->getImsi());
-    CHECK(atClient_->getCcid());
-
-    CHECK(atClient_->registerNet());
-    while (atClient_->isRegistered(false)) {
-        HAL_Delay_Milliseconds(1000);
-    }
-    while (atClient_->isRegistered(true)) {
-        HAL_Delay_Milliseconds(1000);
-    }
-    CHECK(atClient_->startMuxer());
-    // Initiator
-    muxer_.setMaxFrameSize(1509);
-    muxer_.setMaxRetransmissions(10);
-    muxer_.setAckTimeout(1000);
-    muxer_.setControlResponseTimeout(1000);
-    muxer_.setKeepAlivePeriod(10000);
-    muxer_.setKeepAliveMaxMissed(6);
-    muxer_.start(true);
-    auto ch = new MuxerDataChannel(&muxer_, 1);
-    ch->writeSome("AT+CGDATA=\"PPP\",1\r\n", strlen("AT+CGDATA=\"PPP\",1\r\n"));
-    client_.setDataChannel(ch);
+    // Ensure that we are disconnected
+    downImpl();
+    // Restore up flag
+    up_ = true;
+    client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto c = (CellularNcpClient*)ctx;
+        int r = c->dataChannelWrite(0, data, size);
+        if (!r) {
+            return size;
+        }
+        return r;
+    }, celMan_->ncpClient());
     client_.connect();
-    client_.notifyEvent(particle::net::ppp::Client::EVENT_LOWER_UP);
-    // muxer_.openChannel(1, channelDataHandlerCb, this);
-    // muxer_.resumeChannel(1);
-
-    // LwipTcpIpCoreLock lk;
-    // netif_set_link_up(interface());
-
-    return 0;
-}
-
-int PppNcpNetif::channelDataHandlerCb(const uint8_t* data, size_t size, void* ctx) {
-    LOG(TRACE, "channel data handler %x %u", data, size);
-
-    return 0;
+    r = celMan_->connect();
+    if (r) {
+        LOG(TRACE, "Failed to connect to cellular network: %d", r);
+    }
+    return r;
 }
 
 int PppNcpNetif::downImpl() {
-    muxer_.stop();
-    hwReset();
-    // LwipTcpIpCoreLock lk;
-    // netif_set_link_down(interface());
+    up_ = false;
+    client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+    client_.disconnect();
+    auto r = celMan_->ncpClient()->on();
+    if (r) {
+        LOG(TRACE, "Failed to initialize ublox NCP client: %d", r);
+        return r;
+    }
+    celMan_->ncpClient()->disconnect();
     return 0;
 }
 
@@ -259,4 +189,41 @@ void PppNcpNetif::ifEventHandler(const if_event* ev) {
 
 void PppNcpNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
     /* Nothing to do here */
+}
+
+void PppNcpNetif::pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, void* ctx) {
+    auto self = (PppNcpNetif*)ctx;
+    self->pppEventHandler(ev);
+}
+
+void PppNcpNetif::pppEventHandler(uint64_t ev) {
+}
+
+void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
+    LOG(TRACE, "NCP event %d", (int)ev.type);
+    auto self = (PppNcpNetif*)ctx;
+    if (ev.type == NcpEvent::CONNECTION_STATE_CHANGED) {
+        const auto& cev = static_cast<const NcpConnectionStateChangedEvent&>(ev);
+        LOG(TRACE, "State changed event: %d", (int)cev.state);
+        switch (cev.state) {
+            case NcpConnectionState::DISCONNECTED:
+            case NcpConnectionState::CONNECTING: {
+                self->client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+                break;
+            }
+            case NcpConnectionState::CONNECTED: {
+                self->client_.notifyEvent(ppp::Client::EVENT_LOWER_UP);
+            }
+        }
+    } else if (ev.type == CellularNcpEvent::AUTH) {
+        const auto& cev = static_cast<const CellularNcpAuthEvent&>(ev);
+        LOG(TRACE, "New auth info");
+        self->client_.setAuth(cev.user, cev.password);
+    }
+}
+
+void PppNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
+    PppNcpNetif* self = static_cast<PppNcpNetif*>(ctx);
+    LOG(TRACE, "input %u", size);
+    self->client_.input(data, size);
 }

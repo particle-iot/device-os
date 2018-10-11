@@ -17,12 +17,12 @@
 
 #pragma once
 
-#include "ncp_client.h"
+#include <cstddef>
 
 namespace particle {
 
-class CellularNcpClient: public NcpClient {
-public:
-};
+class CellularNetworkConfig;
+
+CellularNetworkConfig networkConfigForImsi(const char* imsi, size_t size);
 
 } // particle

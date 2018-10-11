@@ -20,13 +20,14 @@
 
 #include "basenetif.h"
 #include "concurrent_hal.h"
-#include "atclient.h"
 #include "static_recursive_mutex.h"
 #include <atomic>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
 #include "gsm0710muxer/muxer.h"
 #include "ppp_client.h"
+#include "network/cellular_network_manager.h"
+#include "ncp_client.h"
 
 #ifdef __cplusplus
 
@@ -34,10 +35,15 @@ namespace particle { namespace net {
 
 class PppNcpNetif : public BaseNetif {
 public:
-    PppNcpNetif(particle::services::at::BoronNcpAtClient* atclient);
+    PppNcpNetif();
     virtual ~PppNcpNetif();
 
     virtual if_t interface() override;
+
+    void setCellularManager(CellularNetworkManager* celMan);
+
+    static void ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx);
+    static void ncpEventHandlerCb(const NcpEvent& ev, void* ctx);
 
 protected:
     virtual void ifEventHandler(const if_event* ev) override;
@@ -46,26 +52,22 @@ protected:
 private:
     int up();
     int down();
+
     int upImpl();
     int downImpl();
 
-    void hwReset();
-
     static void loop(void* arg);
 
-    static int channelDataHandlerCb(const uint8_t* data, size_t size, void* ctx);
+    static void pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, void* ctx);
+    void pppEventHandler(uint64_t ev);
 
 private:
     os_thread_t thread_ = nullptr;
     os_queue_t queue_ = nullptr;
     std::atomic_bool exit_;
-    std::atomic_bool start_;
-    std::atomic_bool stop_;
-
-    particle::services::at::BoronNcpAtClient* atClient_ = nullptr;
-    particle::Stream* origStream_ = nullptr;
-    gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
     particle::net::ppp::Client client_;
+    bool up_ = false;
+    CellularNetworkManager* celMan_ = nullptr;
 };
 
 } } // namespace particle::net

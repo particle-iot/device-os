@@ -139,9 +139,7 @@ int Esp32NcpClient::on() {
 
 void Esp32NcpClient::off() {
     const NcpClientLock lock(this);
-    if (ncpState_ == NcpState::OFF) {
-        return;
-    }
+    muxer_.stop();
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
@@ -468,14 +466,17 @@ int Esp32NcpClient::initReady() {
 }
 
 void Esp32NcpClient::ncpState(NcpState state) {
+    if (state == NcpState::OFF) {
+        ready_ = false;
+        connectionState(NcpConnectionState::DISCONNECTED);
+    }
+
     if (ncpState_ == state) {
         return;
     }
-    LOG(TRACE, "NCP state changed: %d", (int)ncpState_);
     ncpState_ = state;
-    if (ncpState_ == NcpState::OFF) {
-        connectionState(NcpConnectionState::DISCONNECTED);
-    }
+    LOG(TRACE, "NCP state changed: %d", (int)ncpState_);
+
     const auto handler = conf_.eventHandler();
     if (handler) {
         NcpStateChangedEvent event = {};
@@ -503,16 +504,17 @@ void Esp32NcpClient::connectionState(NcpConnectionState state) {
 int Esp32NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
         decltype(muxer_)::ChannelState newState, void* ctx) {
     auto self = (Esp32NcpClient*)ctx;
+    // This callback is executed from the multiplexer thread, not safe to use the lock here
+    // because it might get called while blocked inside some muxer function
+
     // We are only interested in Closed state
     if (newState == decltype(muxer_)::ChannelState::Closed) {
         switch (channel) {
-            case 0: {
+            case 0:
                 // Muxer stopped
-                self->ncpState(NcpState::OFF);
-                break;
-            }
             case ESP32_NCP_STA_CHANNEL: {
                 // Notify that the underlying data channel closed
+                // It should be safe to call this here
                 self->connectionState(NcpConnectionState::DISCONNECTED);
                 break;
             }

@@ -18,9 +18,12 @@
 #ifndef HAL_BORON_NETWORK_NCP_H
 #define HAL_BORON_NETWORK_NCP_H
 
-#include "atclient.h"
+namespace particle {
 
-// FIXME: temporary function
-particle::services::at::BoronNcpAtClient* boronNcpAtClient();
+class CellularNetworkManager;
+
+CellularNetworkManager* cellularNetworkManager();
+
+} // particle
 
 #endif // HAL_BORON_NETWORK_NCP_H

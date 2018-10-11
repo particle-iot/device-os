@@ -17,34 +17,22 @@
 
 #pragma once
 
-#include "usart_hal.h"
-#include "stream.h"
-#include <memory>
+#include "system_control.h"
 
 namespace particle {
 
-class SerialStream: public Stream {
-public:
-    SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config,
-            size_t rxBufferSize = 0, size_t txBufferSize = 0);
-    ~SerialStream();
+namespace ctrl {
 
-    int read(char* data, size_t size) override;
-    int peek(char* data, size_t size) override;
-    int skip(size_t size) override;
-    int write(const char* data, size_t size) override;
-    int flush() override;
-    int availForRead() override;
-    int availForWrite() override;
-    int waitEvent(unsigned flags, unsigned timeout) override;
+namespace cellular {
 
-    int setBaudRate(unsigned int baudrate);
+int setAccessPoint(ctrl_request* req);
+int getAccessPoint(ctrl_request* req);
+int setActiveSim(ctrl_request* req);
+int getActiveSim(ctrl_request* req);
+int getIccid(ctrl_request* req);
 
-private:
-    HAL_USART_Serial serial_;
-    std::unique_ptr<char[]> rxBuffer_;
-    std::unique_ptr<char[]> txBuffer_;
-    uint32_t config_;
-};
+} // particle::ctrl::wifi
+
+} // particle::ctrl
 
 } // particle

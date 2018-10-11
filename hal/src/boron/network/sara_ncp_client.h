@@ -17,23 +17,23 @@
 
 #pragma once
 
-#include "wifi_ncp_client.h"
-#include "at_parser.h"
+#include "cellular_ncp_client.h"
 #include "platform_ncp.h"
+
+#include "at_parser.h"
+
 #include "spark_wiring_thread.h"
-#include <memory>
-#include "static_recursive_mutex.h"
-#include "gsm0710muxer/muxer.h"
 #include "gsm0710muxer/channel_stream.h"
+#include "static_recursive_mutex.h"
 
 namespace particle {
 
 class SerialStream;
 
-class Esp32NcpClient: public WifiNcpClient {
+class SaraNcpClient: public CellularNcpClient {
 public:
-    Esp32NcpClient();
-    ~Esp32NcpClient();
+    SaraNcpClient();
+    ~SaraNcpClient();
 
     // Reimplemented from NcpClient
     int init(const NcpClientConfig& conf) override;
@@ -53,48 +53,64 @@ public:
     void unlock() override;
     int ncpId() const override;
 
-    // Reimplemented from WifiNcpClient
-    int connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) override;
-    int getNetworkInfo(WifiNetworkInfo* info) override;
-    int scan(WifiScanCallback callback, void* data) override;
-    int getMacAddress(MacAddress* addr) override;
+    // Reimplemented from CellularNcpClient
+    int connect(const CellularNetworkConfig& conf) override;
+    int getIccid(char* buf, size_t size) override;
 
 private:
     AtParser parser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
-    NcpClientConfig conf_;
-    NcpState ncpState_;
-    volatile NcpConnectionState connState_;
-    int parserError_;
-    bool ready_;
+    CellularNcpClientConfig conf_;
+    NcpState ncpState_ = NcpState::OFF;
+    volatile NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
+    int parserError_ = 0;
+    bool ready_ = false;
     gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
+    CellularNetworkConfig netConf_;
+
+    enum class RegistrationState {
+        NotRegistered = 0,
+        Registered    = 1,
+    };
+
+    RegistrationState creg_ = RegistrationState::NotRegistered;
+    RegistrationState cgreg_ = RegistrationState::NotRegistered;
+    RegistrationState cereg_ = RegistrationState::NotRegistered;
 
     int initParser(Stream* stream);
     int checkParser();
     int waitReady();
     int initReady();
+    int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
+    int selectSimCard();
+    int checkSimCard();
+    int configureApn(const CellularNetworkConfig& conf);
+    int registerNet();
+    int changeBaudRate(unsigned int baud);
     static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
             decltype(muxer_)::ChannelState newState, void* ctx);
     void ncpState(NcpState state);
     void connectionState(NcpConnectionState state);
     void parserError(int error);
+    void resetRegistrationState();
+    void checkRegistrationState();
 };
 
-inline void Esp32NcpClient::lock() {
+inline AtParser* SaraNcpClient::atParser() {
+    return &parser_;
+}
+
+inline void SaraNcpClient::lock() {
     mutex_.lock();
 }
 
-inline void Esp32NcpClient::unlock() {
+inline void SaraNcpClient::unlock() {
     mutex_.unlock();
 }
 
-inline int Esp32NcpClient::ncpId() const {
-    return MeshNCPIdentifier::MESH_NCP_ESP32;
-}
-
-inline void Esp32NcpClient::parserError(int error) {
+inline void SaraNcpClient::parserError(int error) {
     parserError_ = error;
 }
 

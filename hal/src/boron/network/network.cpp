@@ -29,6 +29,8 @@
 #include "usart_hal.h"
 #include "ncp.h"
 #include "pppncpnetif.h"
+#include "sara_ncp_client.h"
+#include "platform_ncp.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -56,14 +58,53 @@ bool netifCanForwardIpv4(netif* iface) {
     return false;
 }
 
+class CellularNetworkManagerInit {
+public:
+    CellularNetworkManagerInit() {
+        const int r = init();
+        SPARK_ASSERT(r == 0);
+    }
+
+    CellularNetworkManager* instance() const {
+        return mgr_.get();
+    }
+
+private:
+    std::unique_ptr<CellularNcpClient> client_;
+    std::unique_ptr<CellularNetworkManager> mgr_;
+
+    int init() {
+        // Get active SIM card
+        SimType sim = SimType::INVALID;
+        CHECK(CellularNetworkManager::getActiveSim(&sim));
+        CellularNcpClientConfig conf;
+        conf.simType(sim);
+        conf.ncpIdentifier(platform_current_ncp_identifier());
+        conf.eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3);
+        conf.dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
+        // Initialize NCP client
+        std::unique_ptr<CellularNcpClient> client;
+        client.reset(new(std::nothrow) SaraNcpClient);
+        CHECK_TRUE(client, SYSTEM_ERROR_NO_MEMORY);
+        CHECK(client->init(conf));
+        // Initialize network manager
+        mgr_.reset(new(std::nothrow) CellularNetworkManager(client.get()));
+        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
+        client_ = std::move(client);
+        return 0;
+    }
+};
+
 } /* anonymous */
 
-particle::services::at::BoronNcpAtClient* boronNcpAtClient() {
-    using namespace particle::services::at;
-    static SerialStream stream(HAL_USART_SERIAL2, 230400, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS);
-    static BoronNcpAtClient atClient(&stream);
-    return &atClient;
+namespace particle {
+
+CellularNetworkManager* cellularNetworkManager() {
+    static CellularNetworkManagerInit mgr;
+    return mgr.instance();
 }
+
+} // particle
 
 int if_init_platform(void*) {
     /* lo0 (created by LwIP) */
@@ -93,10 +134,10 @@ int if_init_platform(void*) {
     }
 
     /* pp3 - Cellular */
-    pp3 = new PppNcpNetif(boronNcpAtClient());
-
-    /* Enable border router by default */
-    BorderRouterManager::instance()->start();
+    pp3 = new PppNcpNetif();
+    if (pp3) {
+        ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
+    }
 
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;

@@ -25,6 +25,8 @@ extern "C" {
 #include <mutex>
 #include "socket_hal.h"
 #include "inet_hal.h"
+#include "system_error.h"
+#include "lwiplock.h"
 
 using namespace particle::net::ppp;
 
@@ -73,9 +75,6 @@ void Client::init() {
     os_queue_create(&queue_, sizeof(uint64_t), 5, nullptr);
     SPARK_ASSERT(queue_);
 
-    recvBuf_ = std::make_unique<uint8_t[]>(PPP_MAXMRU);
-    SPARK_ASSERT(recvBuf_);
-
     os_thread_create(&thread_, "ppp", OS_THREAD_PRIORITY_NETWORK, &Client::loopCb, this, OS_THREAD_STACK_SIZE_DEFAULT);
     SPARK_ASSERT(thread_);
   }
@@ -120,6 +119,10 @@ bool Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
   /* FIXME */
   pppapi_set_default(pcb_);
+
+  // FIXME:
+  static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
+  output((const uint8_t*)UBLOX_NCP_CONNECT_COMMAND, sizeof(UBLOX_NCP_CONNECT_COMMAND) - 1);
   return true;
 }
 
@@ -149,11 +152,6 @@ bool Client::configure(void* config) {
   return true;
 }
 
-void Client::setDataChannel(DataChannel* ch) {
-  std::lock_guard<std::mutex> lk(mutex_);
-  channel_ = ch;
-}
-
 bool Client::notifyEvent(uint64_t ev) {
   if (!running_) {
     return false;
@@ -161,10 +159,52 @@ bool Client::notifyEvent(uint64_t ev) {
   return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr) == 0;
 }
 
+int Client::input(const uint8_t* data, size_t size) {
+  if (running_) {
+    switch (state_) {
+      case STATE_CONNECTING:
+      case STATE_DISCONNECTING:
+      case STATE_CONNECTED: {
+        err_t err = pppos_input_tcpip(pcb_, (u8_t*)data, size);
+        if (err) {
+          return SYSTEM_ERROR_INTERNAL;
+        }
+        return 0;
+      }
+    }
+  }
+  return SYSTEM_ERROR_INVALID_STATE;
+}
+
 void Client::setNotifyCallback(NotifyCallback cb, void* ctx) {
   std::lock_guard<std::mutex> lk(mutex_);
   cb_ = cb;
   cbCtx_ = ctx;
+}
+
+void Client::setOutputCallback(OutputCallback cb, void* ctx) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  oCb_ = cb;
+  oCbCtx_ = ctx;
+}
+
+void Client::setAuth(const char* user, const char* password) {
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    user_.reset();
+    pass_.reset();
+    if (user) {
+      user_.reset(strdup(user));
+    }
+    if (password) {
+      pass_.reset(strdup(password));
+    }
+  }
+
+  {
+    LwipTcpIpCoreLock lk;
+    ppp_set_auth(pcb_, PPPAUTHTYPE_ANY, user_.get(), pass_.get());
+  }
 }
 
 netif* Client::getIf() {
@@ -183,13 +223,13 @@ void Client::loop() {
   running_ = true;
   LOG(TRACE, "PPP thread started");
   while(!exit_) {
-    unsigned qWait = 10;
+    unsigned qWait = 100;
 
     switch (state_) {
       case STATE_CONNECT: {
         prepareConnect();
         transition(STATE_CONNECTING);
-        err_t err = pppapi_connect(pcb_, 0);
+        err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
           transition(STATE_CONNECT);
@@ -200,9 +240,7 @@ void Client::loop() {
       case STATE_CONNECTING:
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
-        /* We should not block waiting for incoming events */
-        qWait = 0;
-        input();
+        // Nothing to do
         break;
       }
 
@@ -313,32 +351,17 @@ uint32_t Client::outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx) 
   return 0;
 }
 
-uint32_t Client::output(uint8_t* data, uint32_t len) {
-  auto ch = channel_;
-  if (ch) {
-    LOG(TRACE, "Outputing %lu bytes", len);
-    return ch->writeSome((const char*)data, len);
-  }
+uint32_t Client::output(const uint8_t* data, size_t len) {
+  LOG_DEBUG(TRACE, "Outputing %lu bytes", len);
 
-  return 0;
-}
-
-bool Client::input() {
-  auto ch = channel_;
-  if (ch) {
-    if (ch->waitEvent(DataChannel::READABLE, 10) & DataChannel::READABLE) {
-      int recvd = ch->readSome((char*)recvBuf_.get(), PPP_MAXMRU);
-      if (recvd > 0) {
-        LOG(TRACE, "Read %d bytes", recvd);
-        err_t err = pppos_input_tcpip(pcb_, recvBuf_.get(), recvd);
-        if (err != ERR_OK) {
-          LOG(TRACE, "pppos_input_tcpip error %x", err);
-        }
-      }
+  if (oCb_) {
+    auto r = oCb_(data, len, oCbCtx_);
+    if (r >= 0) {
+      return r;
     }
   }
 
-  return true;
+  return 0;
 }
 
 void Client::notifyPhaseCb(ppp_pcb* pcb, uint8_t phase, void* ctx) {
