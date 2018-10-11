@@ -16,8 +16,7 @@
  */
 
 #define NO_STATIC_ASSERT
-
-#include "sara_u2_ncp_client.h"
+#include "sara_ncp_client.h"
 
 #include "at_command.h"
 #include "at_response.h"
@@ -92,14 +91,14 @@ const auto UBLOX_NCP_PPP_CHANNEL = 2;
 
 } // anonymous
 
-SaraU2NcpClient::SaraU2NcpClient() {
+SaraNcpClient::SaraNcpClient() {
 }
 
-SaraU2NcpClient::~SaraU2NcpClient() {
+SaraNcpClient::~SaraNcpClient() {
     destroy();
 }
 
-int SaraU2NcpClient::init(const NcpClientConfig& conf) {
+int SaraNcpClient::init(const NcpClientConfig& conf) {
     // Make sure Ublox module is powered down
     HAL_Pin_Mode(UBPWR, OUTPUT);
     HAL_Pin_Mode(UBRST, OUTPUT);
@@ -120,7 +119,7 @@ int SaraU2NcpClient::init(const NcpClientConfig& conf) {
     return 0;
 }
 
-void SaraU2NcpClient::destroy() {
+void SaraNcpClient::destroy() {
     if (ncpState_ != NcpState::OFF) {
         ncpState_ = NcpState::OFF;
         ubloxOff();
@@ -129,7 +128,7 @@ void SaraU2NcpClient::destroy() {
     serial_.reset();
 }
 
-int SaraU2NcpClient::initParser(Stream* stream) {
+int SaraNcpClient::initParser(Stream* stream) {
     // Initialize AT parser
     auto parserConf = AtParserConfig()
             .stream(stream)
@@ -139,7 +138,7 @@ int SaraU2NcpClient::initParser(Stream* stream) {
     CHECK(parser_.addUrcHandler("+CME ERROR", nullptr, nullptr)); // Ignore
     CHECK(parser_.addUrcHandler("+CMS ERROR", nullptr, nullptr)); // Ignore
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
-        const auto self = (SaraU2NcpClient*)data;
+        const auto self = (SaraNcpClient*)data;
         int val;
         int r = CHECK_PARSER_URC(reader->scanf("+CREG: %d", &val));
         CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
@@ -153,7 +152,7 @@ int SaraU2NcpClient::initParser(Stream* stream) {
         return 0;
     }, this));
     CHECK(parser_.addUrcHandler("+CGREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
-        const auto self = (SaraU2NcpClient*)data;
+        const auto self = (SaraNcpClient*)data;
         int val;
         int r = CHECK_PARSER_URC(reader->scanf("+CGREG: %d", &val));
         CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
@@ -167,7 +166,7 @@ int SaraU2NcpClient::initParser(Stream* stream) {
         return 0;
     }, this));
     CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
-        const auto self = (SaraU2NcpClient*)data;
+        const auto self = (SaraNcpClient*)data;
         int val;
         int r = CHECK_PARSER_URC(reader->scanf("+CEREG: %d", &val));
         CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
@@ -183,7 +182,7 @@ int SaraU2NcpClient::initParser(Stream* stream) {
     return 0;
 }
 
-int SaraU2NcpClient::on() {
+int SaraNcpClient::on() {
     const NcpClientLock lock(this);
     if (ncpState_ == NcpState::ON) {
         return 0;
@@ -192,7 +191,7 @@ int SaraU2NcpClient::on() {
     return 0;
 }
 
-void SaraU2NcpClient::off() {
+void SaraNcpClient::off() {
     const NcpClientLock lock(this);
     if (ncpState_ == NcpState::OFF) {
         return;
@@ -202,12 +201,12 @@ void SaraU2NcpClient::off() {
     ncpState(NcpState::OFF);
 }
 
-NcpState SaraU2NcpClient::ncpState() {
+NcpState SaraNcpClient::ncpState() {
     const NcpClientLock lock(this);
     return ncpState_;
 }
 
-int SaraU2NcpClient::disconnect() {
+int SaraNcpClient::disconnect() {
     const NcpClientLock lock(this);
     if (connState_ == NcpConnectionState::DISCONNECTED) {
         return 0;
@@ -222,12 +221,12 @@ int SaraU2NcpClient::disconnect() {
     return 0;
 }
 
-NcpConnectionState SaraU2NcpClient::connectionState() {
+NcpConnectionState SaraNcpClient::connectionState() {
     const NcpClientLock lock(this);
     return connState_;
 }
 
-int SaraU2NcpClient::getFirmwareVersionString(char* buf, size_t size) {
+int SaraNcpClient::getFirmwareVersionString(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+CGMR");
@@ -237,19 +236,19 @@ int SaraU2NcpClient::getFirmwareVersionString(char* buf, size_t size) {
     return 0;
 }
 
-int SaraU2NcpClient::getFirmwareModuleVersion(uint16_t* ver) {
+int SaraNcpClient::getFirmwareModuleVersion(uint16_t* ver) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int SaraU2NcpClient::updateFirmware(InputStream* file, size_t size) {
+int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int SaraU2NcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     return muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
 }
 
-void SaraU2NcpClient::processEvents() {
+void SaraNcpClient::processEvents() {
     const NcpClientLock lock(this);
     if (ncpState_ != NcpState::ON) {
         return;
@@ -257,11 +256,11 @@ void SaraU2NcpClient::processEvents() {
     parser_.processUrc();
 }
 
-int SaraU2NcpClient::ncpId() const {
+int SaraNcpClient::ncpId() const {
     return MeshNCPIdentifier::MESH_NCP_SARA_U201;
 }
 
-int SaraU2NcpClient::connect(const CellularNetworkConfig& conf) {
+int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
     const NcpClientLock lock(this);
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
@@ -276,6 +275,7 @@ int SaraU2NcpClient::connect(const CellularNetworkConfig& conf) {
         HAL_Delay_Milliseconds(1000);
     }
     CHECK(simState);
+    // TODO: check ICCID
     CHECK(configureApn(conf));
     CHECK(registerNet());
 
@@ -284,7 +284,7 @@ int SaraU2NcpClient::connect(const CellularNetworkConfig& conf) {
     return 0;
 }
 
-int SaraU2NcpClient::getIccid(char* buf, size_t size) {
+int SaraNcpClient::getIccid(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+CCID");
@@ -304,7 +304,7 @@ int SaraU2NcpClient::getIccid(char* buf, size_t size) {
     return n;
 }
 
-int SaraU2NcpClient::checkParser() {
+int SaraNcpClient::checkParser() {
     if (ncpState_ != NcpState::ON) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -320,7 +320,7 @@ int SaraU2NcpClient::checkParser() {
     return 0;
 }
 
-int SaraU2NcpClient::waitAtResponse(unsigned int timeout) {
+int SaraNcpClient::waitAtResponse(unsigned int timeout) {
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
         const int r = parser_.execCommand(1000, "AT");
@@ -338,7 +338,7 @@ int SaraU2NcpClient::waitAtResponse(unsigned int timeout) {
     return SYSTEM_ERROR_TIMEOUT;
 }
 
-int SaraU2NcpClient::waitReady() {
+int SaraNcpClient::waitReady() {
     if (ready_) {
         return 0;
     }
@@ -362,22 +362,23 @@ int SaraU2NcpClient::waitReady() {
     return initReady();
 }
 
-int SaraU2NcpClient::selectSimCard() {
+int SaraNcpClient::selectSimCard() {
     // TODO: for now always using external SIM card
     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,0"));
+    // const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,255"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     return 0;
 }
 
-int SaraU2NcpClient::changeBaudRate(unsigned int baud) {
+int SaraNcpClient::changeBaudRate(unsigned int baud) {
     auto resp = parser_.sendCommand("AT+IPR=%u", baud);
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     return serial_->setBaudRate(baud);
 }
 
-int SaraU2NcpClient::initReady() {
+int SaraNcpClient::initReady() {
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard());
 
@@ -443,7 +444,7 @@ int SaraU2NcpClient::initReady() {
     return 0;
 }
 
-int SaraU2NcpClient::checkSimCard() {
+int SaraNcpClient::checkSimCard() {
     auto resp = parser_.sendCommand("AT+CPIN?");
     char code[32] = {};
     int r = CHECK_PARSER(resp.scanf("+CPIN: %32[^\n]", code));
@@ -456,7 +457,7 @@ int SaraU2NcpClient::checkSimCard() {
     return SYSTEM_ERROR_UNKNOWN;
 }
 
-int SaraU2NcpClient::configureApn(const CellularNetworkConfig& conf) {
+int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // FIXME: for now IPv4 context only
     auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"",
             conf.user() && conf.password() ? "CHAP:" : "", conf.apn() ? conf.apn() : "");
@@ -465,20 +466,30 @@ int SaraU2NcpClient::configureApn(const CellularNetworkConfig& conf) {
     return 0;
 }
 
-int SaraU2NcpClient::registerNet() {
+int SaraNcpClient::registerNet() {
     int r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    // Only applies to LTE:
-    // r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
+    // Only applies to LTE, ignore response code
+    r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
     r = CHECK_PARSER(parser_.execCommand("AT+COPS=0"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+    r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    r = CHECK_PARSER(parser_.execCommand("AT+CEGREG?"));
+    // Ignore response code
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
     return 0;
 }
 
-void SaraU2NcpClient::ncpState(NcpState state) {
+void SaraNcpClient::ncpState(NcpState state) {
     if (ncpState_ == state) {
         return;
     }
@@ -496,7 +507,7 @@ void SaraU2NcpClient::ncpState(NcpState state) {
     }
 }
 
-void SaraU2NcpClient::connectionState(NcpConnectionState state) {
+void SaraNcpClient::connectionState(NcpConnectionState state) {
     if (connState_ == state) {
         return;
     }
@@ -506,7 +517,7 @@ void SaraU2NcpClient::connectionState(NcpConnectionState state) {
     if (connState_ == NcpConnectionState::CONNECTED) {
         // Open data channel
         int r = muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
-            auto self = (SaraU2NcpClient*)ctx;
+            auto self = (SaraNcpClient*)ctx;
             const auto handler = self->conf_.dataHandler();
             if (handler) {
                 handler(0, data, size, self->conf_.dataHandlerData());
@@ -532,9 +543,9 @@ void SaraU2NcpClient::connectionState(NcpConnectionState state) {
     }
 }
 
-int SaraU2NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
+int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
         decltype(muxer_)::ChannelState newState, void* ctx) {
-    auto self = (SaraU2NcpClient*)ctx;
+    auto self = (SaraNcpClient*)ctx;
     // We are only interested in Closed state
     if (newState == decltype(muxer_)::ChannelState::Closed) {
         switch (channel) {
@@ -556,16 +567,17 @@ int SaraU2NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Channe
     return 0;
 }
 
-void SaraU2NcpClient::resetRegistrationState() {
+void SaraNcpClient::resetRegistrationState() {
     creg_ = RegistrationState::NotRegistered;
     cgreg_ = RegistrationState::NotRegistered;
     cereg_ = RegistrationState::NotRegistered;
 }
 
-void SaraU2NcpClient::checkRegistrationState() {
+void SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        // FIXME: CEREG
-        if (creg_ == RegistrationState::Registered && cgreg_ == RegistrationState::Registered) {
+        if (creg_ == RegistrationState::Registered &&
+                (cgreg_ == RegistrationState::Registered ||
+                 cereg_ == RegistrationState::Registered)) {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);

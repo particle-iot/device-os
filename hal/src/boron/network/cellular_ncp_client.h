@@ -29,8 +29,12 @@ public:
     CellularNcpClientConfig& simType(SimType type);
     SimType simType() const;
 
+    CellularNcpClientConfig& ncpIdentifier(MeshNCPIdentifier ident);
+    MeshNCPIdentifier ncpIdentifier() const;
+
 private:
     SimType simType_;
+    MeshNCPIdentifier ident_;
 };
 
 class CellularNcpClient: public NcpClient {
@@ -40,7 +44,8 @@ public:
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :
-        simType_(SimType::INTERNAL) {
+        simType_(SimType::INTERNAL),
+        ident_(MESH_NCP_UNKNOWN) {
 }
 
 inline CellularNcpClientConfig& CellularNcpClientConfig::simType(SimType type) {
@@ -50,6 +55,16 @@ inline CellularNcpClientConfig& CellularNcpClientConfig::simType(SimType type) {
 
 inline SimType CellularNcpClientConfig::simType() const {
     return simType_;
+}
+
+
+inline CellularNcpClientConfig& CellularNcpClientConfig::ncpIdentifier(MeshNCPIdentifier ident) {
+    ident_ = ident;
+    return *this;
+}
+
+inline MeshNCPIdentifier CellularNcpClientConfig::ncpIdentifier() const {
+    return ident_;
 }
 
 } // particle

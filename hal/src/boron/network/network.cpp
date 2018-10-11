@@ -29,8 +29,7 @@
 #include "usart_hal.h"
 #include "ncp.h"
 #include "pppncpnetif.h"
-#include "sara_u2_ncp_client.h"
-#include "sara_r4_ncp_client.h"
+#include "sara_ncp_client.h"
 #include "platform_ncp.h"
 
 using namespace particle;
@@ -80,24 +79,12 @@ private:
         CHECK(CellularNetworkManager::getActiveSim(&sim));
         auto conf = CellularNcpClientConfig()
                 .simType(sim)
+                .ncpIdentifier(platform_current_ncp_identifier())
                 .eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3)
                 .dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
         // Initialize NCP client
         std::unique_ptr<CellularNcpClient> client;
-        const auto ncpId = platform_current_ncp_identifier();
-        switch (ncpId) {
-        case MeshNCPIdentifier::MESH_NCP_SARA_U201:
-        case MeshNCPIdentifier::MESH_NCP_SARA_G350:
-            client.reset(new(std::nothrow) SaraU2NcpClient);
-            break;
-        case MeshNCPIdentifier::MESH_NCP_SARA_R410:
-            client.reset(new(std::nothrow) SaraR4NcpClient);
-            break;
-        default:
-            LOG(ERROR, "Unknown NCP type: %d", (int)ncpId);
-            client.reset(new(std::nothrow) SaraU2NcpClient); // Assuming SARA-U2
-            break;
-        }
+        client.reset(new (std::nothrow) SaraNcpClient);
         CHECK_TRUE(client, SYSTEM_ERROR_NO_MEMORY);
         CHECK(client->init(std::move(conf)));
         // Initialize network manager

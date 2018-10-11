@@ -30,10 +30,10 @@ namespace particle {
 
 class SerialStream;
 
-class SaraU2NcpClient: public CellularNcpClient {
+class SaraNcpClient: public CellularNcpClient {
 public:
-    SaraU2NcpClient();
-    ~SaraU2NcpClient();
+    SaraNcpClient();
+    ~SaraNcpClient();
 
     // Reimplemented from NcpClient
     int init(const NcpClientConfig& conf) override;
@@ -71,7 +71,7 @@ private:
 
     enum class RegistrationState {
         NotRegistered = 0,
-        Registered    = 1
+        Registered    = 1,
     };
 
     RegistrationState creg_ = RegistrationState::NotRegistered;
@@ -97,19 +97,19 @@ private:
     void checkRegistrationState();
 };
 
-inline AtParser* SaraU2NcpClient::atParser() {
+inline AtParser* SaraNcpClient::atParser() {
     return &parser_;
 }
 
-inline void SaraU2NcpClient::lock() {
+inline void SaraNcpClient::lock() {
     mutex_.lock();
 }
 
-inline void SaraU2NcpClient::unlock() {
+inline void SaraNcpClient::unlock() {
     mutex_.unlock();
 }
 
-inline void SaraU2NcpClient::parserError(int error) {
+inline void SaraNcpClient::parserError(int error) {
     parserError_ = error;
 }
 
