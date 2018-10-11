@@ -162,6 +162,20 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             info->module_count = count;
             for (unsigned i=0; i<count; i++) {
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
+#if defined(HYBRID_BUILD)
+#ifndef MODULAR_FIRMWARE
+#error HYBRID_BUILD must be modular
+#endif
+                static module_info_t hybrid_info;
+
+				// change monolithic firmware to modular in the hybrid build.
+                if (info->modules[i].info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+                	memcpy(&hybrid_info, info->modules[i].info, sizeof(hybrid_info));
+                	info->modules[i].info = &hybrid_info;
+                	hybrid_info.module_function = MODULE_FUNCTION_SYSTEM_PART;
+                	hybrid_info.module_index = 1;
+                }
+#endif // HYBRID_BUILD
             }
         }
         HAL_OTA_Add_System_Info(info, construct, reserved);
