@@ -78,7 +78,7 @@ void ubloxReset(unsigned int reset) {
 }
 
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE = 921600;
+const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -217,7 +217,8 @@ int SaraNcpClient::disconnect() {
     }
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    (void)r;
+    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     resetRegistrationState();
 
@@ -415,13 +416,15 @@ int SaraNcpClient::initReady() {
 
     // Just in case disconnect
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    // Change the baudrate to 921600
-    CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE));
-    // Check that the modem is responsive at the new baudrate
-    skipAll(serial_.get(), 1000);
-    CHECK(waitAtResponse(10000));
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        // Change the baudrate to 921600
+        CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
+        // Check that the modem is responsive at the new baudrate
+        skipAll(serial_.get(), 1000);
+        CHECK(waitAtResponse(10000));
+    }
 
     // Send AT+CMUX and initialize multiplexer
     r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,1509,,,,,"));
