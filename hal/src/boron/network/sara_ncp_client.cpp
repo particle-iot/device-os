@@ -111,6 +111,9 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     auto sconf = SERIAL_8N1;
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         sconf |= SERIAL_FLOW_CONTROL_RTS_CTS;
+    } else {
+        HAL_Pin_Mode(RTS1, OUTPUT);
+        HAL_GPIO_Write(RTS1, 0);
     }
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2,
             UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
@@ -325,10 +328,10 @@ int SaraNcpClient::checkParser() {
     return 0;
 }
 
-int SaraNcpClient::waitAtResponse(unsigned int timeout) {
+int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
-        const int r = parser_.execCommand(1000, "AT");
+        const int r = parser_.execCommand(period, "AT");
         if (r == AtResponse::OK) {
             return 0;
         }
@@ -337,7 +340,7 @@ int SaraNcpClient::waitAtResponse(unsigned int timeout) {
             break;
         }
         if (r != SYSTEM_ERROR_TIMEOUT) {
-            HAL_Delay_Milliseconds(1000);
+            HAL_Delay_Milliseconds(period);
         }
     }
     return SYSTEM_ERROR_TIMEOUT;
@@ -398,6 +401,7 @@ int SaraNcpClient::selectSimCard() {
         // R410
         const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        HAL_Delay_Milliseconds(10000);
     }
 
     return waitAtResponse(20000);
@@ -433,13 +437,20 @@ int SaraNcpClient::initReady() {
     // Initialize muxer
     muxer_.setStream(serial_.get());
     muxer_.setMaxFrameSize(UBLOX_NCP_MAX_MUXER_FRAME_SIZE);
-    muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD);
-    muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
-
-    // XXX: we might need to adjust these:
-    muxer_.setMaxRetransmissions(10);
-    muxer_.setAckTimeout(100);
-    muxer_.setControlResponseTimeout(500);
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD);
+        muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
+        muxer_.setMaxRetransmissions(10);
+        muxer_.setAckTimeout(100);
+        muxer_.setControlResponseTimeout(500);
+    } else {
+        muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD * 2);
+        muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED / 2 + 1);
+        muxer_.useMscAsKeepAlive(true);
+        muxer_.setMaxRetransmissions(3);
+        muxer_.setAckTimeout(2530);
+        muxer_.setControlResponseTimeout(2540);
+    }
 
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);
@@ -469,7 +480,11 @@ int SaraNcpClient::initReady() {
     // Reinitialize parser with a muxer-based stream
     CHECK(initParser(muxerAtStream_.get()));
 
-    CHECK(waitAtResponse(10000));
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        CHECK(waitAtResponse(10000));
+    } else {
+        CHECK(waitAtResponse(20000, 5000));
+    }
     ncpState(NcpState::ON);
     LOG_DEBUG(TRACE, "Muxer AT channel live");
 

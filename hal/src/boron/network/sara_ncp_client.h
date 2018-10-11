@@ -83,7 +83,7 @@ private:
     int checkParser();
     int waitReady();
     int initReady();
-    int waitAtResponse(unsigned int timeout);
+    int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
     int selectSimCard();
     int checkSimCard();
     int configureApn(const CellularNetworkConfig& conf);
