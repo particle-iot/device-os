@@ -111,7 +111,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
     CHECK(initParser(serial.get()));
     serial_ = std::move(serial);
-    conf_ = conf;
+    conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     ncpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
     parserError_ = 0;
@@ -364,8 +364,7 @@ int SaraNcpClient::waitReady() {
 
 int SaraNcpClient::selectSimCard() {
     // TODO: check current configuration and leave it as is if matches
-    auto conf = static_cast<CellularNcpClientConfig&>(conf_);
-    switch (conf.simType()) {
+    switch (conf_.simType()) {
         case SimType::EXTERNAL: {
             LOG(INFO, "Using external Nano SIM card");
             const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,0"));
@@ -375,7 +374,7 @@ int SaraNcpClient::selectSimCard() {
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
-            if (conf.ncpIdentifier() != MESH_NCP_SARA_R410) {
+            if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
                 const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,255"));
                 CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
             } else {
@@ -386,7 +385,7 @@ int SaraNcpClient::selectSimCard() {
         }
     }
 
-    if (conf.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         // U201
         const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);

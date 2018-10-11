@@ -61,7 +61,7 @@ private:
     AtParser parser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
-    NcpClientConfig conf_;
+    CellularNcpClientConfig conf_;
     NcpState ncpState_ = NcpState::OFF;
     NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
     int parserError_ = 0;
