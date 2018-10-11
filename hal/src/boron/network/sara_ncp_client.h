@@ -68,6 +68,7 @@ private:
     bool ready_ = false;
     gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
+    CellularNetworkConfig netConf_;
 
     enum class RegistrationState {
         NotRegistered = 0,

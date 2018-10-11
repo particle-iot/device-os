@@ -20,6 +20,7 @@
 
 #include "at_command.h"
 #include "at_response.h"
+#include "network_config_db.h"
 
 #include "serial_stream.h"
 #include "check.h"
@@ -486,9 +487,20 @@ int SaraNcpClient::checkSimCard() {
 }
 
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
+    netConf_ = conf;
+    if (!netConf_.isValid()) {
+        // Look for network settings based on IMSI
+        char buf[32] = {};
+        auto resp = parser_.sendCommand("AT+CIMI");
+        CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+        const int r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        netConf_ = networkConfigForImsi(buf, strlen(buf));
+    }
     // FIXME: for now IPv4 context only
     auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"",
-            conf.user() && conf.password() ? "CHAP:" : "", conf.apn() ? conf.apn() : "");
+            (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
+            netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     return 0;
@@ -608,6 +620,14 @@ void SaraNcpClient::checkRegistrationState() {
         if (creg_ == RegistrationState::Registered &&
                 (cgreg_ == RegistrationState::Registered ||
                  cereg_ == RegistrationState::Registered)) {
+            const auto handler = conf_.eventHandler();
+            if (handler) {
+                CellularNcpAuthEvent event = {};
+                event.type = CellularNcpEvent::AUTH;
+                event.user = netConf_.user();
+                event.password = netConf_.user();
+                handler(event, conf_.eventHandlerData());
+            }
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);

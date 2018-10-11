@@ -35,12 +35,15 @@ public:
 
     CellularNetworkConfig& apn(const char* apn);
     const char* apn() const;
+    bool hasApn() const;
 
     CellularNetworkConfig& user(const char* user);
     const char* user() const;
+    bool hasUser() const;
 
     CellularNetworkConfig& password(const char* pwd);
     const char* password() const;
+    bool hasPassword() const;
 
     bool isValid() const;
 
@@ -83,6 +86,10 @@ inline const char* CellularNetworkConfig::apn() const {
     return apn_;
 }
 
+inline bool CellularNetworkConfig::hasApn() const {
+    return apn_ && *apn_;
+}
+
 inline CellularNetworkConfig& CellularNetworkConfig::user(const char* user) {
     user_ = user;
     return *this;
@@ -92,6 +99,10 @@ inline const char* CellularNetworkConfig::user() const {
     return user_;
 }
 
+inline bool CellularNetworkConfig::hasUser() const {
+    return user_ && *user_;
+}
+
 inline CellularNetworkConfig& CellularNetworkConfig::password(const char* pwd) {
     pwd_ = pwd;
     return *this;
@@ -99,6 +110,10 @@ inline CellularNetworkConfig& CellularNetworkConfig::password(const char* pwd) {
 
 inline const char* CellularNetworkConfig::password() const {
     return pwd_;
+}
+
+inline bool CellularNetworkConfig::hasPassword() const {
+    return pwd_ && *pwd_;
 }
 
 inline bool CellularNetworkConfig::isValid() const {

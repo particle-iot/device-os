@@ -42,7 +42,7 @@ struct NcpEvent {
         CUSTOM_EVENT_TYPE_BASE = 100
     };
 
-    Type type;
+    int type;
 };
 
 struct NcpStateChangedEvent: NcpEvent {

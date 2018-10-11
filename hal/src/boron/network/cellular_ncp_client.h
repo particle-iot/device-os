@@ -22,6 +22,17 @@
 
 namespace particle {
 
+struct CellularNcpEvent: NcpEvent {
+    enum Type {
+        AUTH = CUSTOM_EVENT_TYPE_BASE
+    };
+};
+
+struct CellularNcpAuthEvent: CellularNcpEvent {
+    const char* user;
+    const char* password;
+};
+
 class CellularNcpClientConfig: public NcpClientConfig {
 public:
     CellularNcpClientConfig();
