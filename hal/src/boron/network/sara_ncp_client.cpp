@@ -140,11 +140,11 @@ int SaraNcpClient::initParser(Stream* stream) {
     CHECK(parser_.addUrcHandler("+CMS ERROR", nullptr, nullptr)); // Ignore
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val;
-        int r = CHECK_PARSER_URC(reader->scanf("+CREG: %d", &val));
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        int val[2];
+        int r = CHECK_PARSER_URC(reader->scanf("+CREG: %d,%d", &val[0], &val[1]));
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
         // Home network or roaming
-        if (val == 1 || val == 5) {
+        if (val[r - 1] == 1 || val[r - 1] == 5) {
             self->creg_ = RegistrationState::Registered;
         } else {
             self->creg_ = RegistrationState::NotRegistered;
@@ -154,11 +154,11 @@ int SaraNcpClient::initParser(Stream* stream) {
     }, this));
     CHECK(parser_.addUrcHandler("+CGREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val;
-        int r = CHECK_PARSER_URC(reader->scanf("+CGREG: %d", &val));
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        int val[2];
+        int r = CHECK_PARSER_URC(reader->scanf("+CGREG: %d,%d", &val[0], &val[1]));
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
         // Home network or roaming
-        if (val == 1 || val == 5) {
+        if (val[r - 1] == 1 || val[r - 1] == 5) {
             self->cgreg_ = RegistrationState::Registered;
         } else {
             self->cgreg_ = RegistrationState::NotRegistered;
@@ -168,11 +168,11 @@ int SaraNcpClient::initParser(Stream* stream) {
     }, this));
     CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val;
-        int r = CHECK_PARSER_URC(reader->scanf("+CEREG: %d", &val));
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        int val[2];
+        int r = CHECK_PARSER_URC(reader->scanf("+CEREG: %d,%d", &val[0], &val[1]));
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
         // Home network or roaming
-        if (val == 1 || val == 5) {
+        if (val[r - 1] == 1 || val[r - 1] == 5) {
             self->cereg_ = RegistrationState::Registered;
         } else {
             self->cereg_ = RegistrationState::NotRegistered;
@@ -194,9 +194,7 @@ int SaraNcpClient::on() {
 
 void SaraNcpClient::off() {
     const NcpClientLock lock(this);
-    if (ncpState_ == NcpState::OFF) {
-        return;
-    }
+    muxer_.stop();
     ubloxOff();
     ready_ = false;
     ncpState(NcpState::OFF);
@@ -255,6 +253,7 @@ void SaraNcpClient::processEvents() {
         return;
     }
     parser_.processUrc();
+    checkRegistrationState();
 }
 
 int SaraNcpClient::ncpId() const {
@@ -279,7 +278,7 @@ int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
     CHECK(configureApn(conf));
     CHECK(registerNet());
 
-    connectionState(NcpConnectionState::CONNECTING);
+    checkRegistrationState();
 
     return 0;
 }
@@ -371,7 +370,7 @@ int SaraNcpClient::selectSimCard() {
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
             break;
         }
-        case SimType::INTERNAL:
+        case SimType::INTERNAL: {
         default: {
             LOG(INFO, "Using internal SIM card");
             if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
@@ -514,6 +513,8 @@ int SaraNcpClient::registerNet() {
     r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
+    connectionState(NcpConnectionState::CONNECTING);
+
     // NOTE: up to 3 mins
     r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
     // Ignore response code here
@@ -531,14 +532,17 @@ int SaraNcpClient::registerNet() {
 }
 
 void SaraNcpClient::ncpState(NcpState state) {
+    if (state == NcpState::OFF) {
+        ready_ = false;
+        connectionState(NcpConnectionState::DISCONNECTED);
+    }
+
     if (ncpState_ == state) {
         return;
     }
-    LOG(TRACE, "NCP state changed: %d", (int)ncpState_);
     ncpState_ = state;
-    if (ncpState_ == NcpState::OFF) {
-        connectionState(NcpConnectionState::DISCONNECTED);
-    }
+    LOG(TRACE, "NCP state changed: %d", (int)ncpState_);
+
     const auto handler = conf_.eventHandler();
     if (handler) {
         NcpStateChangedEvent event = {};
@@ -565,14 +569,9 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
             }
             return 0;
         }, this);
-
         if (r) {
-            // Some kind of an error
-            connectionState(NcpConnectionState::DISCONNECTED);
-            return;
+            connState_ = NcpConnectionState::DISCONNECTED;
         }
-    } else {
-        muxer_.closeChannel(UBLOX_NCP_PPP_CHANNEL);
     }
 
     const auto handler = conf_.eventHandler();
@@ -587,19 +586,22 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
 int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
         decltype(muxer_)::ChannelState newState, void* ctx) {
     auto self = (SaraNcpClient*)ctx;
+    // This callback is executed from the multiplexer thread, not safe to use the lock here
+    // because it might get called while blocked inside some muxer function
+
     // We are only interested in Closed state
     if (newState == decltype(muxer_)::ChannelState::Closed) {
         switch (channel) {
             case 0: {
                 // Muxer stopped
-                self->ncpState(NcpState::OFF);
+                self->connState_ = NcpConnectionState::DISCONNECTED;
                 break;
             }
             case UBLOX_NCP_PPP_CHANNEL: {
-                // Notify that the underlying data channel closed
-                self->connectionState(NcpConnectionState::CONNECTING);
-                // Attempt to re-establish
-                self->checkRegistrationState();
+                // PPP channel closed
+                if (self->connState_ != NcpConnectionState::DISCONNECTED) {
+                    self->connState_ = NcpConnectionState::CONNECTING;
+                }
                 break;
             }
         }

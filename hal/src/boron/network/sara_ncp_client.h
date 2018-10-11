@@ -63,7 +63,7 @@ private:
     RecursiveMutex mutex_;
     CellularNcpClientConfig conf_;
     NcpState ncpState_ = NcpState::OFF;
-    NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
+    volatile NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
     int parserError_ = 0;
     bool ready_ = false;
     gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;

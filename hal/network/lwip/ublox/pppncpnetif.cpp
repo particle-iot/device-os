@@ -85,7 +85,6 @@ void PppNcpNetif::setCellularManager(CellularNetworkManager* celMan) {
     celMan_ = celMan;
 }
 
-
 if_t PppNcpNetif::interface() {
     return (if_t)client_.getIf();
 }
@@ -99,32 +98,31 @@ void PppNcpNetif::loop(void* arg) {
             // Event
             switch (ev) {
                 case NetifEvent::Up: {
-                    self->upImpl();
-                    // if (self->upImpl()) {
-                    //     self->wifiMan_->ncpClient()->off();
-                    // }
+                    if (self->upImpl()) {
+                        self->celMan_->ncpClient()->off();
+                    }
                     break;
                 }
                 case NetifEvent::Down: {
                     self->downImpl();
-                    // if (self->downImpl()) {
-                    //     self->wifiMan_->ncpClient()->off();
-                    // }
+                    self->celMan_->ncpClient()->off();
                     break;
                 }
             }
         } else {
-            // if (self->up_) {
-            //     LwipTcpIpCoreLock lk;
-            //     if (!netif_is_link_up(self->interface())) {
-            //         self->upImpl();
-            //     }
-            // }
+            if (self->up_) {
+                if (self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+                    if (self->upImpl()) {
+                        self->celMan_->ncpClient()->off();
+                    }
+                }
+            }
         }
         self->celMan_->ncpClient()->processEvents();
     }
 
-    self->down();
+    self->downImpl();
+    self->celMan_->ncpClient()->off();
 
     os_thread_exit(nullptr);
 }
@@ -151,7 +149,6 @@ int PppNcpNetif::upImpl() {
     // Restore up flag
     up_ = true;
     client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
-        LOG(TRACE, "output %u", size);
         auto c = (CellularNcpClient*)ctx;
         int r = c->dataChannelWrite(0, data, size);
         if (!r) {
@@ -170,6 +167,7 @@ int PppNcpNetif::upImpl() {
 int PppNcpNetif::downImpl() {
     up_ = false;
     client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+    client_.disconnect();
     auto r = celMan_->ncpClient()->on();
     if (r) {
         LOG(TRACE, "Failed to initialize ublox NCP client: %d", r);
@@ -199,7 +197,6 @@ void PppNcpNetif::pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, 
 }
 
 void PppNcpNetif::pppEventHandler(uint64_t ev) {
-    LOG(TRACE, "pppp ev %llu", ev);
 }
 
 void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
