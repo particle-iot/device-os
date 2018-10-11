@@ -70,7 +70,7 @@ int getAccessPoint(ctrl_request* req) {
     EncodedString eApn(&pbRep.access_point.apn);
     EncodedString eUser(&pbRep.access_point.user);
     EncodedString ePwd(&pbRep.access_point.password);
-    if (!conf.isDefault()) {
+    if (conf.isValid()) {
         if (conf.apn()) {
             eApn.data = conf.apn();
             eApn.size = strlen(conf.apn());
