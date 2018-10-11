@@ -1,3 +1,9 @@
+## 0.8.0-rc.17
+
+### FEATURES
+
+- [Boron] Initial support for 3G and LTE networking
+
 ## 0.8.0-rc.16
 
 ### FEATURES
