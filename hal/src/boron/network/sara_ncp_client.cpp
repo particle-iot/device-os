@@ -625,7 +625,7 @@ void SaraNcpClient::checkRegistrationState() {
                 CellularNcpAuthEvent event = {};
                 event.type = CellularNcpEvent::AUTH;
                 event.user = netConf_.user();
-                event.password = netConf_.user();
+                event.password = netConf_.password();
                 handler(event, conf_.eventHandlerData());
             }
             connectionState(NcpConnectionState::CONNECTED);
