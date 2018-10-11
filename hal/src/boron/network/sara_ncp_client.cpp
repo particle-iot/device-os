@@ -362,12 +362,40 @@ int SaraNcpClient::waitReady() {
 }
 
 int SaraNcpClient::selectSimCard() {
-    // TODO: for now always using external SIM card
-    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,0"));
-    // const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,255"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // TODO: check current configuration and leave it as is if matches
+    auto conf = static_cast<CellularNcpClientConfig&>(conf_);
+    switch (conf.simType()) {
+        case SimType::EXTERNAL: {
+            LOG(INFO, "Using external Nano SIM card");
+            const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,0"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            break;
+        }
+        case SimType::INTERNAL:
+        default: {
+            LOG(INFO, "Using internal SIM card");
+            if (conf.ncpIdentifier() != MESH_NCP_SARA_R410) {
+                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,255"));
+                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            } else {
+                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,1"));
+                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            }
+            break;
+        }
+    }
 
-    return 0;
+    if (conf.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        // U201
+        const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    } else {
+        // R410
+        const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
+
+    return waitAtResponse(20000);
 }
 
 int SaraNcpClient::changeBaudRate(unsigned int baud) {
