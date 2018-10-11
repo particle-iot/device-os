@@ -105,13 +105,18 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     HAL_Pin_Mode(UBRST, OUTPUT);
     HAL_Pin_Mode(BUFEN, OUTPUT);
     ubloxOff();
+
+    conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     // Initialize serial stream
+    auto sconf = SERIAL_8N1;
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        sconf |= SERIAL_FLOW_CONTROL_RTS_CTS;
+    }
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2,
-            UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
+            UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
     CHECK(initParser(serial.get()));
     serial_ = std::move(serial);
-    conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     ncpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
     parserError_ = 0;
