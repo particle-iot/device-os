@@ -370,7 +370,7 @@ int SaraNcpClient::selectSimCard() {
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
             break;
         }
-        case SimType::INTERNAL: {
+        case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
             if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
