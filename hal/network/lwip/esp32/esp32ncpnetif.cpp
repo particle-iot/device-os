@@ -125,9 +125,8 @@ void Esp32NcpNetif::loop(void* arg) {
                     break;
                 }
                 case NetifEvent::Down: {
-                    if (self->downImpl()) {
-                        self->wifiMan_->ncpClient()->off();
-                    }
+                    self->downImpl();
+                    self->wifiMan_->ncpClient()->off();
                     break;
                 }
             }
@@ -135,14 +134,17 @@ void Esp32NcpNetif::loop(void* arg) {
             if (self->up_) {
                 LwipTcpIpCoreLock lk;
                 if (!netif_is_link_up(self->interface())) {
-                    self->upImpl();
+                    if (self->upImpl()) {
+                        self->wifiMan_->ncpClient()->off();
+                    }
                 }
             }
         }
         self->wifiMan_->ncpClient()->processEvents();
     }
 
-    self->down();
+    self->downImpl();
+    self->wifiMan_->ncpClient()->off();
 
     os_thread_exit(nullptr);
 }
