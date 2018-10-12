@@ -59,8 +59,6 @@ extern const module_bounds_t module_factory;
 extern const module_bounds_t module_user_mono;
 extern const module_bounds_t module_factory_mono;
 
-void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved);
-
 const uint8_t* fetch_server_public_key(uint8_t lock);
 const uint8_t* fetch_device_private_key(uint8_t lock);
 const uint8_t* fetch_device_public_key(uint8_t lock);

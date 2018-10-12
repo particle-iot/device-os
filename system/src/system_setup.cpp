@@ -38,6 +38,7 @@
 #include "spark_wiring_wifi_credentials.h"
 #include "system_ymodem.h"
 #include "mbedtls_util.h"
+#include "ota_flash_hal.h"
 
 #if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
@@ -258,18 +259,60 @@ bool SystemSetupConsole<Config>::handle_peek(char c)
     return false;
 }
 
+bool filter_key(const char* src, char* dest, size_t size) {
+	memcpy(dest, src, size);
+	if (!strcmp(src, "imei")) {
+		strcpy(dest, "IMEI");
+	}
+	else if (!strcmp(src, "iccid")) {
+		strcpy(dest, "ICCID");
+	}
+	else if (!strcmp(src, "sn")) {
+		strcpy(dest, "Serial Number");
+	}
+	else if (!strcmp(src, "ms")) {
+		strcpy(dest, "Device Secret");
+	}
+	return false;
+}
+
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)
 {
     if ('i' == c)
     {
-#if PLATFORM_ID<3
-        print("Your core id is ");
-#else
-        print("Your device id is ");
-#endif
-        String id = spark_deviceID();
-        print(id.c_str());
-        print("\r\n");
+    	// see if we have any additional properties. This is true
+    	// for Cellular and Mesh devices.
+    	hal_system_info_t info = {};
+    	info.size = sizeof(info);
+    	HAL_OTA_Add_System_Info(&info, true, nullptr);
+    	LOG(TRACE, "device info key/value count: %d", info.key_value_count);
+    	if (info.key_value_count) {
+    		print("Device ID: ");
+    		String id = spark_deviceID();
+			print(id.c_str());
+			print("\r\n");
+
+			for (int i=0; i<info.key_value_count; i++) {
+				char key[20];
+				if (!filter_key(info.key_values[i].key, key, sizeof(key))) {
+					print(key);
+					print(": ");
+					print(info.key_values[i].value);
+					print("\r\n");
+				}
+			}
+		}
+    	else {
+	#if PLATFORM_ID<3
+			print("Your core id is ");
+	#else
+			print("Your device id is ");
+	#endif
+			String id = spark_deviceID();
+			print(id.c_str());
+			print("\r\n");
+    	}
+    	HAL_OTA_Add_System_Info(&info, false, nullptr);
     }
     else if ('m' == c)
     {
@@ -651,23 +694,7 @@ void CellularSetupConsole::exit()
 
 void CellularSetupConsole::handle(char c)
 {
-    if (c=='i')
-    {
-        CellularDevice dev;
-        cellular_device_info(&dev, NULL);
-        String id = spark_deviceID();
-        print("Device ID: ");
-        print(id.c_str());
-        print("\r\n");
-        print("IMEI: ");
-        print(dev.imei);
-        print("\r\n");
-        print("ICCID: ");
-        print(dev.iccid);
-        print("\r\n");
-    }
-    else
-        super::handle(c);
+	super::handle(c);
 }
 
 #endif

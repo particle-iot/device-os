@@ -99,6 +99,9 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
         };
     }
     memcpy(data, secret, std::min(size, sizeof(secret)));
+    if (size>HAL_DEVICE_SECRET_SIZE) {
+    	data[HAL_DEVICE_SECRET_SIZE] = 0;
+    }
     return HAL_DEVICE_SECRET_SIZE;
 }
 #endif /* HAL_DEVICE_ID_NO_DCT */

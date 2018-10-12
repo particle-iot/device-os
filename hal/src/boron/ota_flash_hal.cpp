@@ -29,9 +29,10 @@
 
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
+	const int additional = 2;
+	int count = add_system_properties(info, create, additional);
     if (create) {
-        info->key_value_count = 2;
-        info->key_values = new key_value[info->key_value_count];
+        info->key_value_count = count + additional;
 
         CellularDevice device;
         memset(&device, 0, sizeof(device));
@@ -39,13 +40,8 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
         // TODO: this function does not exist yet for the Boron
         // cellular_device_info(&device, NULL);
 
-        set_key_value(info->key_values, "imei", device.imei);
-        set_key_value(info->key_values+1, "iccid", device.iccid);
-    }
-    else
-    {
-        delete info->key_values;
-        info->key_values = NULL;
+        set_key_value(info->key_values+count, "imei", device.imei);
+        set_key_value(info->key_values+count+1, "iccid", device.iccid);
     }
 }
 
