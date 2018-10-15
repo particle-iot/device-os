@@ -395,6 +395,10 @@ int SaraNcpClient::selectSimCard() {
 
     CHECK(waitAtResponse(20000));
 
+    // Using numeric CME ERROR codes
+    int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
     int simState = 0;
     for (unsigned i = 0; i < 10; ++i) {
         simState = checkSimCard();
@@ -414,15 +418,11 @@ int SaraNcpClient::changeBaudRate(unsigned int baud) {
 }
 
 int SaraNcpClient::initReady() {
-    // Using numeric CME ERROR codes
-    int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard());
 
     // Just in case disconnect
-    r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
