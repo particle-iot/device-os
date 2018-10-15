@@ -37,7 +37,7 @@ enum class WifiSecurity {
     WEP = 1,
     WPA_PSK = 2,
     WPA2_PSK = 3,
-    WPA_WPA2_PSK = 4,
+    WPA_WPA2_PSK = 4
 };
 
 class WifiCredentials {

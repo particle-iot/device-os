@@ -17,181 +17,287 @@
 
 #include "wlan_hal.h"
 
-#include "system_error.h"
+#include "network/ncp.h"
+#include "wifi_network_manager.h"
+#include "wifi_ncp_client.h"
 
-uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
-{
-    return 0;
-}
+#include "c_string.h"
+#include "check.h"
 
-int wlan_clear_credentials()
-{
-    return 1;
-}
+#include <cstring>
 
-int wlan_has_credentials()
-{
-    return 1;
-}
+namespace {
 
-int wlan_connect_init()
-{
-    return 0;
-}
+using namespace particle;
 
-wlan_result_t wlan_activate()
-{
-    return 0;
-}
-
-wlan_result_t wlan_deactivate()
-{
-    return 0;
-}
-
-bool wlan_reset_credentials_store_required()
-{
-    return false;
-}
-
-wlan_result_t wlan_reset_credentials_store()
-{
-    return 0;
-}
-
-/**
- * Do what is needed to finalize the connection.
- * @return
- */
-wlan_result_t wlan_connect_finalize()
-{
-    // enable connection from stored profiles
-    return 0;
-}
-
-void Set_NetApp_Timeout(void)
-{
-}
-
-wlan_result_t wlan_disconnect_now()
-{
-    return 0;
-}
-
-wlan_result_t wlan_connected_rssi(char* ssid)
-{
-    return 0;
-}
-
-int wlan_connected_info(void* reserved, wlan_connected_info_t* inf, void* reserved1)
-{
-    return -1;
-}
-
-int wlan_set_credentials(WLanCredentials* c)
-{
-    return -1;
-}
-
-void wlan_smart_config_init()
-{
-}
-
-bool wlan_smart_config_finalize()
-{
-    return false;
-}
-
-void wlan_smart_config_cleanup()
-{
-}
-
-void wlan_setup()
-{
-}
-
-void wlan_set_error_count(uint32_t errorCount)
-{
-}
-
-void wlan_fetch_ipconfig(WLanConfig* config)
-{
-}
-
-void SPARK_WLAN_SmartConfigProcess()
-{
-}
-
-void wlan_connect_cancel(bool called_from_isr)
-{
-}
-
-/**
- * Sets the IP source - static or dynamic.
- */
-void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved)
-{
-}
-
-/**
- * Sets the IP Addresses to use when the device is in static IP mode.
- * @param device
- * @param netmask
- * @param gateway
- * @param dns1
- * @param dns2
- * @param reserved
- */
-void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
-        const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved)
-{
-}
-
-IPAddressSource wlan_get_ipaddress_source(void* reserved)
-{
-    return DYNAMIC_IP;
-}
-
-int wlan_get_ipaddress(IPConfig* conf, void* reserved)
-{
-    return -1;
-}
-
-int wlan_scan(wlan_scan_result_t callback, void* cookie)
-{
-    return -1;
-}
-
-int wlan_restart(void* reserved)
-{
-    return -1;
-}
-
-int wlan_get_hostname(char* buf, size_t len, void* reserved)
-{
-    // Unsupported
-    if (buf) {
-        buf[0] = '\0';
+bool isSupportedSecurityType(WLanSecurityType type) {
+    switch (type) {
+    case WLanSecurityType::WLAN_SEC_UNSEC:
+    case WLanSecurityType::WLAN_SEC_WEP:
+    case WLanSecurityType::WLAN_SEC_WPA:
+    case WLanSecurityType::WLAN_SEC_WPA2:
+        return true;
+    default:
+        return false;
     }
-    return -1;
 }
 
-int wlan_set_hostname(const char* hostname, void* reserved)
-{
-    // Unsupported
-    return -1;
+WifiSecurity toWifiSecurity(WLanSecurityType type) {
+    switch (type) {
+    case WLanSecurityType::WLAN_SEC_UNSEC:
+        return WifiSecurity::NONE;
+    case WLanSecurityType::WLAN_SEC_WEP:
+        return WifiSecurity::WEP;
+    case WLanSecurityType::WLAN_SEC_WPA:
+        return WifiSecurity::WPA_PSK;
+    case WLanSecurityType::WLAN_SEC_WPA2:
+        return WifiSecurity::WPA2_PSK;
+    default:
+        return WifiSecurity::NONE;
+    }
 }
 
-int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
-{
+WLanSecurityType fromWifiSecurity(WifiSecurity sec) {
+    switch (sec) {
+    case WifiSecurity::NONE:
+        return WLanSecurityType::WLAN_SEC_UNSEC;
+    case WifiSecurity::WEP:
+        return WLanSecurityType::WLAN_SEC_WEP;
+    case WifiSecurity::WPA_PSK:
+        return WLanSecurityType::WLAN_SEC_WPA;
+    case WifiSecurity::WPA2_PSK:
+    case WifiSecurity::WPA_WPA2_PSK:
+        return WLanSecurityType::WLAN_SEC_WPA2;
+    default:
+        return WLanSecurityType::WLAN_SEC_UNSEC;
+    }
+}
+
+} // unnamed
+
+int wlan_connect_init() {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved)
-{
+int wlan_connect_finalize() {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+bool wlan_reset_credentials_store_required() {
+    return false;
+}
+
+int wlan_reset_credentials_store() {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+void Set_NetApp_Timeout() {
+}
+
+int wlan_disconnect_now() {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_activate() {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_deactivate() {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_connected_rssi() {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_connected_info(void* reserved, wlan_connected_info_t* info, void* reserved1) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_clear_credentials() {
+    const auto mgr = wifiNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    mgr->clearConfiguredNetworks();
+    return 0;
+}
+
+int wlan_has_credentials() {
+    const auto mgr = wifiNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    if (!mgr->hasConfiguredNetworks()) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    return 0;
+}
+
+int wlan_set_credentials(WLanCredentials* halCred) {
+    if (!isSupportedSecurityType((WLanSecurityType)halCred->security) ||
+            (halCred->security != WLanSecurityType::WLAN_SEC_UNSEC && halCred->password_len == 0) ||
+            halCred->ssid_len == 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    WifiCredentials cred;
+    if (halCred->security != WLanSecurityType::WLAN_SEC_UNSEC) {
+        const auto pwd = CString::wrap(strndup(halCred->password, halCred->password_len));
+        cred.type(WifiCredentials::PASSWORD);
+        cred.password(pwd);
+    }
+    const auto ssid = CString::wrap(strndup(halCred->ssid, halCred->ssid_len));
+    WifiNetworkConfig conf;
+    conf.ssid(ssid);
+    conf.security(toWifiSecurity(halCred->security));
+    conf.credentials(std::move(cred));
+    const auto mgr = wifiNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    CHECK(mgr->setNetworkConfig(std::move(conf)));
+    return 0;
+}
+
+void wlan_smart_config_init() {
+}
+
+void wlan_smart_config_cleanup() {
+}
+
+void wlan_set_error_count(uint32_t errorCount) {
+}
+
+bool wlan_smart_config_finalize() {
+    return false;
+}
+
+void wlan_fetch_ipconfig(WLanConfig* conf) {
+    memset(&conf, 0, conf->size);
+    memset(conf->BSSID, 0xff, sizeof(conf->BSSID));
+    memset(conf->nw.uaMacAddr, 0xff, sizeof(conf->nw.uaMacAddr));
+    // TODO
+}
+
+void wlan_setup() {
+}
+
+void SPARK_WLAN_SmartConfigProcess() {
+}
+
+void HAL_WLAN_notify_simple_config_done() {
+}
+
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
+    if (antenna != ANT_AUTO) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return 0;
+}
+
+WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved) {
     return ANT_AUTO;
 }
 
+void wlan_connect_cancel(bool called_from_isr) {
+}
+
+void wlan_set_ipaddress_source(IPAddressSource source, bool persist, void* reserved) {
+}
+
+IPAddressSource wlan_get_ipaddress_source(void* reserved) {
+    return DYNAMIC_IP;
+}
+
+void wlan_set_ipaddress(const HAL_IPAddress* device, const HAL_IPAddress* netmask,
+        const HAL_IPAddress* gateway, const HAL_IPAddress* dns1, const HAL_IPAddress* dns2, void* reserved) {
+}
+
+int wlan_get_ipaddress(IPConfig* conf, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_scan(wlan_scan_result_t callback, void* cookie) {
+    struct Data {
+        wlan_scan_result_t callback;
+        void* data;
+    };
+    Data d = {
+        .callback = callback,
+        .data = cookie
+    };
+    const auto mgr = wifiNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK(client->scan([](WifiScanResult result, void* data) {
+        WiFiAccessPoint ap = {};
+        ap.size = sizeof(WiFiAccessPoint);
+        if (result.ssid()) {
+            ap.ssidLength = strlen(result.ssid());
+            if (ap.ssidLength >= sizeof(ap.ssid)) {
+                ap.ssidLength = sizeof(ap.ssid) - 1;
+            }
+            memcpy(ap.ssid, result.ssid(), ap.ssidLength);
+            ap.ssid[ap.ssidLength] = '\0';
+        }
+        static_assert(sizeof(ap.bssid) == MAC_ADDRESS_SIZE, "");
+        memcpy(ap.bssid, &result.bssid(), MAC_ADDRESS_SIZE);
+        ap.security = fromWifiSecurity(result.security());
+        ap.channel = result.channel();
+        ap.rssi = result.rssi();
+        const auto d = (const Data*)data;
+        d->callback(&ap, d->data);
+        return 0;
+    }, &d));
+    return 0;
+}
+
 int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
+    struct Data {
+        wlan_scan_result_t callback;
+        void* data;
+    };
+    Data d = {
+        .callback = callback,
+        .data = callback_data
+    };
+    const auto mgr = wifiNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    CHECK(mgr->getConfiguredNetworks([](WifiNetworkConfig conf, void* data) {
+        WiFiAccessPoint ap = {};
+        ap.size = sizeof(WiFiAccessPoint);
+        if (conf.ssid()) {
+            ap.ssidLength = strlen(conf.ssid());
+            if (ap.ssidLength >= sizeof(ap.ssid)) {
+                ap.ssidLength = sizeof(ap.ssid) - 1;
+            }
+            memcpy(ap.ssid, conf.ssid(), ap.ssidLength);
+            ap.ssid[ap.ssidLength] = '\0';
+        }
+        static_assert(sizeof(ap.bssid) == MAC_ADDRESS_SIZE, "");
+        memcpy(ap.bssid, &conf.bssid(), MAC_ADDRESS_SIZE);
+        ap.security = fromWifiSecurity(conf.security());
+        const auto d = (const Data*)data;
+        d->callback(&ap, d->data);
+        return 0;
+    }, &d));
+    return 0;
+}
+
+bool isWiFiPowersaveClockDisabled() {
+    return false;
+}
+
+int wlan_restart(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_set_hostname(const char* hostname, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int wlan_get_hostname(char* buf, size_t len, void* reserved) {
+    if (len > 0) {
+        buf[0] = '\0';
+    }
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS) {
     return 0;
 }

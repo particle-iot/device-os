@@ -62,6 +62,16 @@ bool testAndClearSetupDoneFlag() {
     return true;
 }
 
+#if HAL_PLATFORM_WIFI
+const WLanConfig* wlanConfig() {
+    static WLanConfig conf = {
+        .size = sizeof(WLanConfig)
+    };
+    wlan_fetch_ipconfig(&conf);
+    return &conf;
+}
+#endif
+
 } /* anonymous */
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
@@ -70,7 +80,14 @@ void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
 }
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved) {
-    return nullptr;
+    switch (network) {
+#if HAL_PLATFORM_WIFI
+    case NETWORK_INTERFACE_WIFI_STA:
+        return wlanConfig();
+#endif
+    default:
+        return nullptr;
+    }
 }
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
