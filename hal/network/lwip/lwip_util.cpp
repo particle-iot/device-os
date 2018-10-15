@@ -15,9 +15,23 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_NETWORK_LWIP_IP_ADDR_UTIL_H
-#define HAL_NETWORK_LWIP_IP_ADDR_UTIL_H
-
 #include "lwip_util.h"
+#include <lwip/netif.h>
+#include <lwip/netifapi.h>
 
-#endif /* HAL_NETWORK_LWIP_IP_ADDR_UTIL_H */
+namespace particle {
+
+void reserve_netif_index() {
+    struct netif iface = {};
+    netifapi_netif_add(&iface, nullptr, nullptr, nullptr, nullptr, [](struct netif* iface) -> err_t {
+        // Dummy
+        iface->name[0] = 'd';
+        iface->name[1] = 'm';
+        iface->flags = 0;
+        return ERR_OK;
+    }, nullptr);
+
+    netifapi_netif_remove(&iface);
+}
+
+} // particle
