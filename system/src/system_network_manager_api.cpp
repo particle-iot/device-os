@@ -138,6 +138,9 @@ void network_disconnect(network_handle_t network, uint32_t reason, void* reserve
                 NetworkManager::instance()->disableInterface(iface);
                 NetworkManager::instance()->syncInterfaceStates();
             }
+        } else {
+            // Mainly to populate the list
+            NetworkManager::instance()->disableInterface();
         }
 
         if ((network == NETWORK_INTERFACE_ALL ||
@@ -197,7 +200,17 @@ int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t pa
 }
 
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([]() {
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
+        if (network != NETWORK_INTERFACE_ALL) {
+            network_disconnect(network, 0, 0);
+            if_t iface;
+            if (!if_get_by_index(network, &iface)) {
+                if_req_power req = {};
+                req.state = IF_POWER_STATE_UP;
+                if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+            }
+        }
+
         NetworkManager::instance()->enableNetworking();
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;

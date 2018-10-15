@@ -79,10 +79,6 @@ public:
             NetworkClass(NETWORK_INTERFACE_WIFI_STA) {
     }
 
-    operator network_handle_t() {
-        return 0;
-    }
-
     WLanConfig* wifi_config() {
         return (WLanConfig*)network_config(*this, 0, NULL);
     }

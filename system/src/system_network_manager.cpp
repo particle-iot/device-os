@@ -173,7 +173,7 @@ int NetworkManager::activateConnections() {
         }
 
         // Ignore disabled interfaces
-        if (isInterfaceEnabled(iface)) {
+        if (!isInterfaceEnabled(iface)) {
             return;
         }
 
@@ -449,7 +449,7 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
             /* FIXME: LwIP issues netif_set_down callback BEFORE clearing the IFF_UP flag,
              * that's why the count of interfaces with IFF_UP should be 1 here
              */
-            if (countIfacesWithFlags(IFF_UP) == 1) {
+            if (countIfacesWithFlags(IFF_UP) <= 1) {
                 transition(State::IFACE_DOWN);
             }
         }
@@ -497,7 +497,7 @@ unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) const {
         }
 
         // Ignore disabled interfaces
-        if (isInterfaceEnabled(iface)) {
+        if (!isInterfaceEnabled(iface)) {
             return;
         }
 
@@ -690,7 +690,7 @@ const char* NetworkManager::stateToName(State state) const {
     return stateNames[::particle::to_underlying(state)];
 }
 
-void NetworkManager::populateInterfaceRuntimeState(bool state) {
+void NetworkManager::populateInterfaceRuntimeState(bool st) {
     for_each_iface([&](if_t iface, unsigned int flags) {
         auto state = getInterfaceRuntimeState(iface);
         if (!state) {
@@ -701,7 +701,7 @@ void NetworkManager::populateInterfaceRuntimeState(bool state) {
             }
         }
         if (state) {
-            state->enabled = state;
+            state->enabled = st;
         }
     });
 }
