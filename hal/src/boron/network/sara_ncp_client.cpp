@@ -144,8 +144,6 @@ int SaraNcpClient::initParser(Stream* stream) {
             .commandTerminator(AtCommandTerminator::CRLF);
     parser_.destroy();
     CHECK(parser_.init(std::move(parserConf)));
-    CHECK(parser_.addUrcHandler("+CME ERROR", nullptr, nullptr)); // Ignore
-    CHECK(parser_.addUrcHandler("+CMS ERROR", nullptr, nullptr)); // Ignore
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
         int val[2];
@@ -221,7 +219,7 @@ int SaraNcpClient::disconnect() {
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
     (void)r;
-    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     resetRegistrationState();
 
@@ -275,15 +273,6 @@ int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
     CHECK(checkParser());
 
     resetRegistrationState();
-    int simState = 0;
-    for (unsigned i = 0; i < 10; ++i) {
-        simState = checkSimCard();
-        if (!simState) {
-            break;
-        }
-        HAL_Delay_Milliseconds(1000);
-    }
-    CHECK(simState);
     CHECK(configureApn(conf));
     CHECK(registerNet());
 
@@ -404,7 +393,17 @@ int SaraNcpClient::selectSimCard() {
         HAL_Delay_Milliseconds(10000);
     }
 
-    return waitAtResponse(20000);
+    CHECK(waitAtResponse(20000));
+
+    int simState = 0;
+    for (unsigned i = 0; i < 10; ++i) {
+        simState = checkSimCard();
+        if (!simState) {
+            break;
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
+    return simState;
 }
 
 int SaraNcpClient::changeBaudRate(unsigned int baud) {
@@ -415,12 +414,16 @@ int SaraNcpClient::changeBaudRate(unsigned int baud) {
 }
 
 int SaraNcpClient::initReady() {
+    // Using numeric CME ERROR codes
+    int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard());
 
     // Just in case disconnect
-    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
-    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         // Change the baudrate to 921600
@@ -495,13 +498,14 @@ int SaraNcpClient::initReady() {
 
 int SaraNcpClient::checkSimCard() {
     auto resp = parser_.sendCommand("AT+CPIN?");
-    char code[32] = {};
+    char code[33] = {};
     int r = CHECK_PARSER(resp.scanf("+CPIN: %32[^\n]", code));
     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     if (!strcmp(code, "READY")) {
-        CHECK(getIccid(nullptr, 0));
+        r = parser_.execCommand("AT+CCID");
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         return 0;
     }
     return SYSTEM_ERROR_UNKNOWN;
