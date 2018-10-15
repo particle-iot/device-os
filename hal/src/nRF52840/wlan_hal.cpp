@@ -24,6 +24,7 @@
 #include "c_string.h"
 #include "check.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace {
@@ -110,8 +111,21 @@ int wlan_connected_rssi() {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int wlan_connected_info(void* reserved, wlan_connected_info_t* info, void* reserved1) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+int wlan_connected_info(void* reserved, wlan_connected_info_t* halInfo, void* reserved1) {
+    const auto mgr = wifiNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    WifiNetworkInfo info;
+    CHECK(client->getNetworkInfo(&info));
+    const int32_t rssi = info.rssi();
+    const int32_t noise = -90;
+    halInfo->rssi = rssi * 100;
+    halInfo->snr = (rssi - noise) * 100;
+    halInfo->noise = noise * 100;
+    halInfo->strength = std::min(std::max(2 * (rssi + 100), 0L), 100L) * 65535 / 100;
+    halInfo->quality = std::min(std::max(halInfo->snr / 100 - 9, 0L), 31L) * 65535 / 31;
+    return 0;
 }
 
 int wlan_clear_credentials() {
