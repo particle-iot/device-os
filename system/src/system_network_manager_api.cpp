@@ -64,9 +64,12 @@ bool testAndClearSetupDoneFlag() {
 
 #if HAL_PLATFORM_WIFI
 const WLanConfig* wlanConfig() {
-    static WLanConfig conf = {
-        .size = sizeof(WLanConfig)
-    };
+    // TODO: Cache current WiFi configuration
+    static WLanConfig conf;
+    memset(&conf, 0, sizeof(conf));
+    memset(conf.BSSID, 0xff, sizeof(conf.BSSID));
+    memset(conf.nw.uaMacAddr, 0xff, sizeof(conf.nw.uaMacAddr));
+    conf.size = sizeof(WLanConfig);
     wlan_fetch_ipconfig(&conf);
     return &conf;
 }

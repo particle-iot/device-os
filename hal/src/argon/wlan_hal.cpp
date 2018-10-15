@@ -25,6 +25,7 @@
 #include "system_network.h" // FIXME: For network_interface_index
 
 #include "scope_guard.h"
+#include "endian.h"
 #include "check.h"
 
 #include <algorithm>
@@ -184,12 +185,9 @@ bool wlan_smart_config_finalize() {
 }
 
 int wlan_fetch_ipconfig(WLanConfig* conf) {
-    memset(&conf, 0, conf->size);
-    memset(conf->BSSID, 0xff, sizeof(conf->BSSID));
-    memset(conf->nw.uaMacAddr, 0xff, sizeof(conf->nw.uaMacAddr));
     if_t iface = nullptr;
     CHECK(if_get_by_index(NETWORK_INTERFACE_WIFI_STA, &iface));
-    SPARK_ASSERT(iface);
+    CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_STATE);
     unsigned flags = 0;
     CHECK(if_get_flags(iface, &flags));
     CHECK_TRUE((flags & IFF_UP) && (flags & IFF_LOWER_UP), SYSTEM_ERROR_INVALID_STATE);
@@ -215,14 +213,20 @@ int wlan_fetch_ipconfig(WLanConfig* conf) {
     CHECK_TRUE(sockAddr, SYSTEM_ERROR_INVALID_STATE);
     static_assert(sizeof(conf->nw.aucIP.ipv4) == sizeof(sockAddr->sin_addr), "");
     memcpy(&conf->nw.aucIP.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
+    conf->nw.aucIP.ipv4 = reverseByteOrder(conf->nw.aucIP.ipv4);
+    conf->nw.aucIP.v = 4;
     // Subnet mask
     sockAddr = (const sockaddr_in*)ifAddr->netmask;
     CHECK_TRUE(sockAddr, SYSTEM_ERROR_INVALID_STATE);
     memcpy(&conf->nw.aucSubnetMask.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
+    conf->nw.aucSubnetMask.ipv4 = reverseByteOrder(conf->nw.aucSubnetMask.ipv4);
+    conf->nw.aucSubnetMask.v = 4;
     // Gateway address
     sockAddr = (const sockaddr_in*)ifAddr->gw;
     CHECK_TRUE(sockAddr, SYSTEM_ERROR_INVALID_STATE);
     memcpy(&conf->nw.aucDefaultGateway.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
+    conf->nw.aucDefaultGateway.ipv4 = reverseByteOrder(conf->nw.aucDefaultGateway.ipv4);
+    conf->nw.aucDefaultGateway.v = 4;
     // SSID
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
