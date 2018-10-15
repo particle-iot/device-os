@@ -686,7 +686,7 @@ void sys_unlock_tcpip_core(void);
  * The first server can be initialized automatically by defining
  * DNS_SERVER_ADDRESS(ipaddr), where 'ipaddr' is an 'ip_addr_t*'
  */
-#define DNS_MAX_SERVERS                 4
+#define DNS_MAX_SERVERS                 5
 
 /** DNS maximum number of retries when asking for a name, before "timeout". */
 #define DNS_MAX_RETRIES                 3
