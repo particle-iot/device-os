@@ -290,10 +290,12 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie) {
     struct Data {
         wlan_scan_result_t callback;
         void* data;
+        size_t count;
     };
     Data d = {
         .callback = callback,
-        .data = cookie
+        .data = cookie,
+        .count = 0
     };
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
@@ -315,21 +317,24 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie) {
         ap.security = fromWifiSecurity(result.security());
         ap.channel = result.channel();
         ap.rssi = result.rssi();
-        const auto d = (const Data*)data;
+        const auto d = (Data*)data;
         d->callback(&ap, d->data);
+        ++d->count;
         return 0;
     }, &d));
-    return 0;
+    return d.count;
 }
 
 int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
     struct Data {
         wlan_scan_result_t callback;
         void* data;
+        size_t count;
     };
     Data d = {
         .callback = callback,
-        .data = callback_data
+        .data = callback_data,
+        .count = 0
     };
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
@@ -347,11 +352,12 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
         static_assert(sizeof(ap.bssid) == MAC_ADDRESS_SIZE, "");
         memcpy(ap.bssid, &conf.bssid(), MAC_ADDRESS_SIZE);
         ap.security = fromWifiSecurity(conf.security());
-        const auto d = (const Data*)data;
+        const auto d = (Data*)data;
         d->callback(&ap, d->data);
+        ++d->count;
         return 0;
     }, &d));
-    return 0;
+    return d.count;
 }
 
 bool isWiFiPowersaveClockDisabled() {
