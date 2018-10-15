@@ -143,6 +143,10 @@
 #define Wiring_Cellular 0
 #endif
 
+#ifndef Wiring_Ethernet
+#define Wiring_Ethernet 0
+#endif
+
 #ifndef Wiring_Serial2
 #define Wiring_Serial2 0
 #endif

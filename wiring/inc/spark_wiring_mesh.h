@@ -127,6 +127,10 @@ public:
 
 class MeshClass : public NetworkClass, public MeshPublish {
 public:
+    MeshClass() :
+            NetworkClass(NETWORK_INTERFACE_MESH) {
+    }
+
     void on() {
         network_on(*this, 0, 0, NULL);
     }

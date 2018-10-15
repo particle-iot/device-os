@@ -37,6 +37,9 @@ class CellularClass : public NetworkClass
     CellularDevice device;
 
 public:
+    CellularClass() :
+            NetworkClass(NETWORK_INTERFACE_CELLULAR) {
+    }
 
     IPAddress localIP() {
         return IPAddress(((CellularConfig*)network_config(*this, 0, NULL))->nw.aucIP);

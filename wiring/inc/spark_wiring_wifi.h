@@ -75,8 +75,9 @@ class WiFiClass : public NetworkClass
     }
 
 public:
-    WiFiClass() {}
-    ~WiFiClass() {}
+    WiFiClass() :
+            NetworkClass(NETWORK_INTERFACE_WIFI_STA) {
+    }
 
     operator network_handle_t() {
         return 0;

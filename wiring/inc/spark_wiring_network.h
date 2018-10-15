@@ -35,7 +35,6 @@ class NetworkClass;
 // Defined as the primary network
 extern NetworkClass& Network;
 
-
 //Retained for compatibility and to flag compiler warnings as build errors
 class NetworkClass
 {
@@ -55,17 +54,21 @@ public:
     virtual bool ready(void)=0;
 
     operator network_interface_t() {
-        return 0;   // the default
+        return iface_;
     }
 
+    static NetworkClass& from(network_interface_t nif);
 
-    static NetworkClass& from(network_interface_t nif) {
-        // hard-code for now until multiple-networks are implemented.
-        return Network;
+protected:
+    explicit NetworkClass(network_interface_t iface) :
+            iface_(iface) {
     }
+
+private:
+    network_interface_t iface_;
 };
 
 
-}
+} // spark
 
 #endif

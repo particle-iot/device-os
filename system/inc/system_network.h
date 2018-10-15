@@ -41,6 +41,14 @@ extern "C" {
 #define SPARK_NO_CLOUD 1
 #endif
 
+typedef enum network_interface_index {
+    NETWORK_INTERFACE_MESH = 1,
+    NETWORK_INTERFACE_ETHERNET = 2,
+    NETWORK_INTERFACE_CELLULAR = 3,
+    NETWORK_INTERFACE_WIFI_STA = 3,
+    NETWORK_INTERFACE_WIFI_AP = 4
+} network_interface_index;
+
 typedef enum network_disconnect_reason {
     NETWORK_DISCONNECT_REASON_NONE = 0,
     NETWORK_DISCONNECT_REASON_ERROR = 1, // Disconnected due to an error
