@@ -20,8 +20,11 @@
 #include "network/ncp.h"
 #include "wifi_network_manager.h"
 #include "wifi_ncp_client.h"
+#include "ifapi.h"
 
-#include "c_string.h"
+#include "system_network.h" // FIXME: For network_interface_index
+
+#include "scope_guard.h"
 #include "check.h"
 
 #include <algorithm>
@@ -180,11 +183,65 @@ bool wlan_smart_config_finalize() {
     return false;
 }
 
-void wlan_fetch_ipconfig(WLanConfig* conf) {
+int wlan_fetch_ipconfig(WLanConfig* conf) {
     memset(&conf, 0, conf->size);
     memset(conf->BSSID, 0xff, sizeof(conf->BSSID));
     memset(conf->nw.uaMacAddr, 0xff, sizeof(conf->nw.uaMacAddr));
-    // TODO
+    if_t iface = nullptr;
+    CHECK(if_get_by_index(NETWORK_INTERFACE_WIFI_STA, &iface));
+    SPARK_ASSERT(iface);
+    unsigned flags = 0;
+    CHECK(if_get_flags(iface, &flags));
+    CHECK_TRUE((flags & IFF_UP) && (flags & IFF_LOWER_UP), SYSTEM_ERROR_INVALID_STATE);
+    // MAC address
+    sockaddr_ll hwAddr = {};
+    CHECK(if_get_lladdr(iface, &hwAddr));
+    CHECK_TRUE((size_t)hwAddr.sll_halen == MAC_ADDRESS_SIZE, SYSTEM_ERROR_UNKNOWN);
+    memcpy(conf->nw.uaMacAddr, hwAddr.sll_addr, MAC_ADDRESS_SIZE);
+    // IP address
+    if_addrs* ifAddrList = nullptr;
+    CHECK(if_get_addrs(iface, &ifAddrList));
+    SCOPE_GUARD({
+        if_free_if_addrs(ifAddrList);
+    });
+    if_addr* ifAddr = nullptr;
+    for (if_addrs* i = ifAddrList; i; i = i->next) {
+        if (i->if_addr->addr->sa_family == AF_INET) { // Skip non-IPv4 addresses
+            ifAddr = i->if_addr;
+            break;
+        }
+    }
+    auto sockAddr = (const sockaddr_in*)ifAddr->addr;
+    CHECK_TRUE(sockAddr, SYSTEM_ERROR_INVALID_STATE);
+    static_assert(sizeof(conf->nw.aucIP.ipv4) == sizeof(sockAddr->sin_addr), "");
+    memcpy(&conf->nw.aucIP.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
+    // Subnet mask
+    sockAddr = (const sockaddr_in*)ifAddr->netmask;
+    CHECK_TRUE(sockAddr, SYSTEM_ERROR_INVALID_STATE);
+    memcpy(&conf->nw.aucSubnetMask.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
+    // Gateway address
+    sockAddr = (const sockaddr_in*)ifAddr->gw;
+    CHECK_TRUE(sockAddr, SYSTEM_ERROR_INVALID_STATE);
+    memcpy(&conf->nw.aucDefaultGateway.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
+    // SSID
+    const auto mgr = wifiNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    WifiNetworkInfo info;
+    CHECK(client->getNetworkInfo(&info));
+    if (info.ssid()) {
+        size_t n = strlen(info.ssid());
+        if (n >= sizeof(conf->uaSSID)) {
+            n = sizeof(conf->uaSSID) - 1;
+        }
+        memcpy(conf->uaSSID, info.ssid(), n);
+        conf->uaSSID[n] = '\0';
+    }
+    // BSSID
+    static_assert(sizeof(conf->BSSID) == MAC_ADDRESS_SIZE, "");
+    memcpy(conf->BSSID, &info.bssid(), MAC_ADDRESS_SIZE);
+    return 0;
 }
 
 void wlan_setup() {

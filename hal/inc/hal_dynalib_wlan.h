@@ -61,7 +61,7 @@ DYNALIB_FN(12, hal_wlan, wlan_smart_config_cleanup, void(void))
 DYNALIB_FN(13, hal_wlan, wlan_smart_config_finalize, bool(void))
 
 DYNALIB_FN(14, hal_wlan, wlan_set_error_count, void(uint32_t))
-DYNALIB_FN(15, hal_wlan, wlan_fetch_ipconfig, void(WLanConfig*))
+DYNALIB_FN(15, hal_wlan, wlan_fetch_ipconfig, int(WLanConfig*))
 DYNALIB_FN(16, hal_wlan, wlan_setup, void(void))
 
 DYNALIB_FN(17, hal_wlan, HAL_NET_SetNetWatchDog, uint32_t(uint32_t))
