@@ -31,6 +31,7 @@
 #include "pppncpnetif.h"
 #include "sara_ncp_client.h"
 #include "platform_ncp.h"
+#include "lwip_util.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -131,6 +132,7 @@ int if_init_platform(void*) {
         /* No en2 present */
         delete en2;
         en2 = nullptr;
+        reserve_netif_index();
     }
 
     /* pp3 - Cellular */

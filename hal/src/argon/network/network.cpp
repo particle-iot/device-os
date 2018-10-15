@@ -33,6 +33,7 @@
 #include "ncp.h"
 #include "debug.h"
 #include "esp32/esp32ncpnetif.h"
+#include "lwip_util.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -129,6 +130,7 @@ int if_init_platform(void*) {
         /* No en2 present */
         delete en2;
         en2 = nullptr;
+        reserve_netif_index();
     }
 
     /* wl3 - ESP32 NCP Station */

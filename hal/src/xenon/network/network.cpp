@@ -25,6 +25,7 @@
 #include "random.h"
 #include "border_router_manager.h"
 #include <malloc.h>
+#include "lwip_util.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -64,6 +65,7 @@ int if_init_platform(void*) {
         /* No en2 present */
         delete en2;
         en2 = nullptr;
+        reserve_netif_index();
     }
 
     auto m = mallinfo();
