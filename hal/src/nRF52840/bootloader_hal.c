@@ -24,8 +24,8 @@
 #define CAT2(a,b) a##b
 #define CAT(a,b) CAT2(a,b)
 
-#define BOOTLOADER_IMAGE CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin))
-#define BOOTLOADER_IMAGE_LEN CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin_len))
+#define BOOTLOADER_IMAGE CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin_miniz))
+#define BOOTLOADER_IMAGE_LEN CAT(bootloader_platform_, CAT(PLATFORM_ID,_bin_miniz_len))
 
 #ifdef __cplusplus
 extern "C" {
