@@ -62,12 +62,12 @@ PppNcpNetif::PppNcpNetif()
         : BaseNetif(),
           exit_(false) {
 
-    registerHandlers();
-
     LOG(INFO, "Creating PppNcpNetif LwIP interface");
 
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
+
+    registerHandlers();
 
     SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 4, nullptr) == 0);
     SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);

@@ -63,12 +63,10 @@ Esp32NcpNetif::Esp32NcpNetif()
         : BaseNetif(),
           exit_(false) {
 
-    registerHandlers();
-
     LOG(INFO, "Creating Esp32NcpNetif LwIP interface");
 
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
-        /* FIXME: */
+        registerHandlers();
         SPARK_ASSERT(os_queue_create(&queue_, sizeof(NetifEvent), 4, nullptr) == 0);
         SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
     }

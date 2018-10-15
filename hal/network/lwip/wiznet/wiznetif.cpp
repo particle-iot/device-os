@@ -118,8 +118,6 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
           reset_(reset),
           interrupt_(interrupt) {
 
-    registerHandlers();
-
     LOG(INFO, "Creating Wiznet LwIP interface");
 
     instance_ = this;
@@ -212,7 +210,7 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
     exit_ = false;
     down_ = true;
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
-        /* FIXME: */
+        registerHandlers();
         SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
         SPARK_ASSERT(os_thread_create(&thread_, "wiz", OS_THREAD_PRIORITY_NETWORK, &WizNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
     }

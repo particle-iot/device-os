@@ -155,8 +155,6 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
         : BaseNetif(),
           ot_(ot) {
 
-    registerHandlers();
-
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
     if (!ot_) {
 #if !defined(OPENTHREAD_ENABLE_MULTIPLE_INSTANCES) || OPENTHREAD_ENABLE_MULTIPLE_INSTANCES == 0
@@ -177,6 +175,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     LOG(INFO, "Creating new LwIP OpenThread interface");
     netifapi_netif_add(interface(), nullptr, nullptr, nullptr, nullptr, initCb, tcpip_input);
     interface()->state = this;
+    registerHandlers();
     /* Automatically set it up */
     /* netifapi_netif_set_up(interface()); */
 
