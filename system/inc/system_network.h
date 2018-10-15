@@ -42,6 +42,7 @@ extern "C" {
 #endif
 
 typedef enum network_interface_index {
+    NETWORK_INTERFACE_ALL = 0,
     NETWORK_INTERFACE_LOOPBACK = 1,
     NETWORK_INTERFACE_MESH = 2,
     NETWORK_INTERFACE_ETHERNET = 3,
