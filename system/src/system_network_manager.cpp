@@ -306,7 +306,8 @@ int NetworkManager::clearConfiguration(if_t oIface) {
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
         else if (!strncmp(name, "wl", 2)) {
             auto wifiMan = wifiNetworkManager();
-            ret = wifiMan->clearConfiguredNetworks();
+            wifiMan->clearConfiguredNetworks();
+            ret = SYSTEM_ERROR_NONE;
         }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
     });
