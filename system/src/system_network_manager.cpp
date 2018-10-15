@@ -341,6 +341,9 @@ void NetworkManager::transition(State state) {
             ip6State_ = ProtocolState::UNCONFIGURED;
             dns4State_ = DnsState::UNCONFIGURED;
             dns6State_ = DnsState::UNCONFIGURED;
+#if HAL_PLATFORM_MESH
+            BorderRouterManager::instance()->stop();
+#endif // HAL_PLATFORM_MESH
             break;
         }
     }
