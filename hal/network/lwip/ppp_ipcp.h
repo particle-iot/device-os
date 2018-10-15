@@ -41,6 +41,8 @@ public:
   virtual void enable() override;
   virtual void disable() override;
 
+  void setDnsEntryIndex(int idx);
+
   void setLocalAddress(const ip4_addr_t& addr);
   void setPeerAddress(const ip4_addr_t& addr);
   void setNetmask(const ip4_addr_t& netmask);
@@ -106,6 +108,7 @@ private:
   bool lowerState_ = false;
   bool admState_ = false;
   bool state_ = false;
+  int dnsIndex_ = 0;
 
   struct IpcpConfiguration {
     ip4_addr_t localAddress;
