@@ -115,6 +115,10 @@
 //#endif
 #endif
 
+#if HAL_PLATFORM_WIFI
+#define Wiring_WiFi 1
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif

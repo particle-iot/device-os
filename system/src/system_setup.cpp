@@ -670,7 +670,7 @@ void WiFiSetupConsole::cleanup()
 
 void WiFiSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 #endif
@@ -689,7 +689,7 @@ CellularSetupConsole::~CellularSetupConsole()
 
 void CellularSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 void CellularSetupConsole::handle(char c)
