@@ -302,8 +302,14 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
 }
 
 int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*) {
-    /* TODO */
-    return -1;
+    switch (network) {
+#if HAL_PLATFORM_WIFI
+    case NETWORK_INTERFACE_WIFI_STA:
+        return wlan_set_credentials(credentials);
+#endif
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
 }
 
 bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCredentials* creds, void*) {
