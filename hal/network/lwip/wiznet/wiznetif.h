@@ -36,7 +36,8 @@ public:
     WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6]);
     virtual ~WizNetif();
 
-    netif* interface();
+    virtual int powerUp() override;
+    virtual int powerDown() override;
 
     static WizNetif* instance() {
         return instance_;

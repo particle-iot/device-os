@@ -731,6 +731,14 @@ int OpenThreadNetif::down() {
     return r;
 }
 
+int OpenThreadNetif::powerUp() {
+    return 0;
+}
+
+int OpenThreadNetif::powerDown() {
+    return down();
+}
+
 void OpenThreadNetif::ifEventHandler(const if_event* ev) {
     if (ev->ev_type == IF_EVENT_STATE) {
         if (ev->ev_if_state->state) {

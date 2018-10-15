@@ -50,7 +50,9 @@ enum class NetifEvent {
     None = 0,
     Up = 1,
     Down = 2,
-    Exit = 3
+    Exit = 3,
+    PowerOff = 4,
+    PowerOn = 5
 };
 
 } // anonymous
@@ -126,7 +128,16 @@ void Esp32NcpNetif::loop(void* arg) {
                 }
                 case NetifEvent::Down: {
                     self->downImpl();
+                    // self->wifiMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOff: {
+                    self->downImpl();
                     self->wifiMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOn: {
+                    self->wifiMan_->ncpClient()->on();
                     break;
                 }
             }
@@ -156,6 +167,16 @@ int Esp32NcpNetif::up() {
 
 int Esp32NcpNetif::down() {
     NetifEvent ev = NetifEvent::Down;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int Esp32NcpNetif::powerUp() {
+    NetifEvent ev = NetifEvent::PowerOn;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int Esp32NcpNetif::powerDown() {
+    NetifEvent ev = NetifEvent::PowerOff;
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 

@@ -240,10 +240,6 @@ WizNetif::~WizNetif() {
     HAL_Pin_Mode(interrupt_, INPUT);
 }
 
-netif* WizNetif::interface() {
-    return &netif_;
-}
-
 err_t WizNetif::initCb(netif* netif) {
     WizNetif* self = static_cast<WizNetif*>(netif->state);
 
@@ -356,6 +352,14 @@ int WizNetif::down() {
     HAL_Interrupts_Detach(interrupt_);
 
     return closeRaw();
+}
+
+int WizNetif::powerUp() {
+    return 0;
+}
+
+int WizNetif::powerDown() {
+    return down();
 }
 
 int WizNetif::openRaw() {

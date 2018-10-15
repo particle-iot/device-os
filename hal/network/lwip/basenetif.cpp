@@ -32,6 +32,10 @@ BaseNetif::~BaseNetif() {
     if_event_handler_del(eventHandlerCookie_);
 }
 
+int BaseNetif::getClientDataId() {
+    return clientDataId_;
+}
+
 void BaseNetif::registerHandlers() {
     LwipTcpIpCoreLock lk;
     std::call_once(once_, []() {

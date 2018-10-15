@@ -31,6 +31,11 @@ public:
 
     virtual if_t interface();
 
+    static int getClientDataId();
+
+    virtual int powerUp() = 0;
+    virtual int powerDown() = 0;
+
 protected:
     void registerHandlers();
 

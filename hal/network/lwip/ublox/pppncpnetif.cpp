@@ -50,7 +50,9 @@ enum class NetifEvent {
     None = 0,
     Up = 1,
     Down = 2,
-    Exit = 3
+    Exit = 3,
+    PowerOff = 4,
+    PowerOn = 5
 };
 
 } // anonymous
@@ -105,7 +107,16 @@ void PppNcpNetif::loop(void* arg) {
                 }
                 case NetifEvent::Down: {
                     self->downImpl();
+                    // self->celMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOff: {
+                    self->downImpl();
                     self->celMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOn: {
+                    self->celMan_->ncpClient()->on();
                     break;
                 }
             }
@@ -134,6 +145,16 @@ int PppNcpNetif::up() {
 
 int PppNcpNetif::down() {
     NetifEvent ev = NetifEvent::Down;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int PppNcpNetif::powerUp() {
+    NetifEvent ev = NetifEvent::PowerOn;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int PppNcpNetif::powerDown() {
+    NetifEvent ev = NetifEvent::PowerOff;
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
