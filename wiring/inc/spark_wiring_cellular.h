@@ -68,7 +68,10 @@ public:
         setCredentials("", username, password);
     }
     void setCredentials(const char* apn, const char* username, const char* password) {
-        // todo
+        cellular_credentials_set(apn, username, password, nullptr);
+    }
+    void clearCredentials() {
+        cellular_credentials_clear(nullptr);
     }
 
     void listen(bool begin=true) {
@@ -134,6 +137,19 @@ public:
         HAL_IPAddress ip = {0};
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL) != 0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);
+    }
+
+    int setActiveSim(SimType sim) {
+        return cellular_set_active_sim(sim, nullptr);
+    }
+
+    SimType getActiveSim() const {
+        int sim = 0;
+        const int r = cellular_get_active_sim(&sim, nullptr);
+        if (r < 0) {
+            return INVALID_SIM;
+        }
+        return (SimType)sim;
     }
 
     void lock()

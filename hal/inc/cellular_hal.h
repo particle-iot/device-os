@@ -35,9 +35,9 @@ extern "C" {
 typedef struct MDM_BandSelect MDM_BandSelect;
 
 typedef enum SimType {
-    SIM_TYPE_INVALID = 0,
-    SIM_TYPE_INTERNAL = 1,
-    SIM_TYPE_EXTERNAL = 2
+    INVALID_SIM = 0,
+    INTERNAL_SIM = 1,
+    EXTERNAL_SIM = 2
 } SimType;
 
 /**
@@ -97,6 +97,11 @@ cellular_result_t cellular_credentials_set(const char* apn, const char* username
  * Get cellular connection parameters
  */
 CellularCredentials* cellular_credentials_get(void* reserved);
+
+/**
+ * Set cellular connection parameters to defaults.
+ */
+cellular_result_t cellular_credentials_clear(void* reserved);
 
 bool cellular_sim_ready(void* reserved);
 

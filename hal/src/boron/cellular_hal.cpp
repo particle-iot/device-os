@@ -167,6 +167,15 @@ CellularCredentials* cellular_credentials_get(void* reserved) {
     return &cred;
 }
 
+int cellular_credentials_clear(void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    auto sim = particle::SimType::INTERNAL;
+    CHECK(mgr->getActiveSim(&sim));
+    CHECK(mgr->clearNetworkConfig(sim));
+    return 0;
+}
+
 bool cellular_sim_ready(void* reserved) {
     return false;
 }
@@ -310,7 +319,7 @@ int cellular_set_active_sim(int simType, void* reserved) {
     const auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     auto sim = particle::SimType::INTERNAL;
-    if (simType == SIM_TYPE_EXTERNAL) {
+    if (simType == EXTERNAL_SIM) {
         sim = particle::SimType::EXTERNAL;
     }
     CHECK(mgr->setActiveSim(sim));
@@ -323,9 +332,9 @@ int cellular_get_active_sim(int* simType, void* reserved) {
     auto sim = particle::SimType::INTERNAL;
     CHECK(mgr->getActiveSim(&sim));
     if (sim == particle::SimType::EXTERNAL) {
-        *simType = SIM_TYPE_EXTERNAL;
+        *simType = EXTERNAL_SIM;
     } else {
-        *simType = SIM_TYPE_INTERNAL;
+        *simType = INTERNAL_SIM;
     }
     return 0;
 }
