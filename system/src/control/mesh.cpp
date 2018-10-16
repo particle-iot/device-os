@@ -147,6 +147,9 @@ const uint16_t kKeyNetworkId = 0x4000;
 // Current joining device credential
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
+// Joiner's network ID
+char g_joinNetworkId[MAX_NETWORK_ID_LENGTH + 1] = {}; // +1 character for term. null
+
 // Commissioner role timer
 os_timer_t g_commTimer = nullptr;
 
@@ -635,9 +638,13 @@ int prepareJoiner(ctrl_request* req) {
     }
     // Parse request
     PB(PrepareJoinerRequest) pbReq = {};
+    DecodedCString dNetworkId(&pbReq.network.network_id);
     int ret = decodeRequestMessage(req, PB(PrepareJoinerRequest_fields), &pbReq);
     if (ret != 0) {
         return ret;
+    }
+    if (dNetworkId.size > MAX_NETWORK_ID_LENGTH) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Disable Thread and clear network credentials
     CHECK(resetThread());
@@ -654,6 +661,8 @@ int prepareJoiner(ctrl_request* req) {
     rand.genBase32Thread(g_joinPwd, JOINER_PASSWORD_MAX_SIZE);
     LOG_DEBUG(TRACE, "Joiner initialized: PAN ID: 0x%04x, EUI-64: %s, password: %s", (unsigned)pbReq.network.pan_id,
             eui64Str, g_joinPwd);
+    memcpy(g_joinNetworkId, dNetworkId.data, dNetworkId.size);
+    g_joinNetworkId[dNetworkId.size] = '\0';
     // Encode a reply
     PB(PrepareJoinerReply) pbRep = {};
     EncodedString eEuiStr(&pbRep.eui64, eui64Str, strlen(eui64Str));
@@ -796,6 +805,7 @@ int joinNetwork(ctrl_request* req) {
         CHECK(resetThread());
         return threadToSystemError(stat.result);
     }
+    CHECK_THREAD(setNetworkId(thread, (const uint8_t*)g_joinNetworkId));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");
