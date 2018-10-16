@@ -51,7 +51,7 @@ protected:
 
 private:
     netif_ext_callback_t netifEventHandlerCookie_;
-    if_event_handler_cookie_t eventHandlerCookie_;
+    if_event_handler_cookie_t eventHandlerCookie_ = nullptr;
     static uint8_t clientDataId_;
     static std::once_flag once_;
 };
