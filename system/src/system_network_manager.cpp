@@ -28,6 +28,9 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "network/ncp.h"
 #include "wifi_network_manager.h"
 #endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+#include "cellular_hal.h"
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_MESH
 #include "border_router_manager.h"
 #endif // HAL_PLATFORM_MESH
@@ -310,6 +313,11 @@ int NetworkManager::clearConfiguration(if_t oIface) {
             ret = SYSTEM_ERROR_NONE;
         }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+        else if (!strncmp(name, "pp", 2)) {
+            ret = cellular_credentials_clear(nullptr);
+        }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
     });
 
     return ret;
