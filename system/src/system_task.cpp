@@ -99,6 +99,10 @@ void Network_Setup(bool threaded)
     //Initialize spark protocol callbacks for all System modes
     Spark_Protocol_Init();
 #endif
+
+#if PLATFORM_ID == PLATFORM_BORON
+    system_cloud_set_inet_family_keepalive(AF_INET, HAL_PLATFORM_BORON_CLOUD_KEEPALIVE_INTERVAL, 0);
+#endif // PLATFORM_ID == PLATFORM_BORON
 }
 
 int cfod_count = 0;
@@ -280,9 +284,8 @@ void establish_cloud_connection()
         conn_prop.keepalive_source = particle::protocol::KeepAliveSource::SYSTEM;
         CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr), (void)0);
         spark_cloud_udp_port_set(provider_data.port);
-#elif defined(HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL)
-        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL, nullptr, nullptr), (void)0);
-#endif
+#endif // PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+
         INFO("Cloud: connecting");
         const auto diag = CloudDiagnostics::instance();
         diag->status(CloudDiagnostics::CONNECTING);

@@ -37,10 +37,32 @@ LOG_SOURCE_CATEGORY("net.th")
 #include "lwiplock.h"
 
 #include <lwip/opt.h>
+#include "hal_platform.h"
+
+// FIXME:
+#include "system_threading.h"
+extern "C" int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags);
 
 using namespace particle::net;
 
 namespace {
+
+void updateIp6CloudKeepalive(unsigned int value) {
+    struct Task: public ISRTaskQueue::Task {
+        unsigned int value;
+    };
+    const auto task = new(std::nothrow) Task;
+    if (!task) {
+        return;
+    }
+    task->value = value;
+    task->func = [](ISRTaskQueue::Task* task) {
+        unsigned int value = ((Task*)task)->value;
+        delete task;
+        system_cloud_set_inet_family_keepalive(AF_INET6, value, 0);
+    };
+    SystemISRTaskQueue.enqueue(task);
+}
 
 void otIp6AddressToIp6Addr(const otIp6Address* otAddr, ip6_addr_t& addr) {
     IP6_ADDR(&addr, otAddr->mFields.m32[0],
@@ -601,6 +623,12 @@ void OpenThreadNetif::refreshIpAddresses() {
                 setDns(&addr);
             } else {
                 setDns(nullptr);
+            }
+
+            if (abr_.mPreference == OT_ROUTE_PREFERENCE_LOW) {
+                updateIp6CloudKeepalive(HAL_PLATFORM_BORON_CLOUD_KEEPALIVE_INTERVAL);
+            } else {
+                updateIp6CloudKeepalive(HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
             }
         }
     } else {
