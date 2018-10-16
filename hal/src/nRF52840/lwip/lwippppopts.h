@@ -372,7 +372,7 @@
 /**
  * LCP_ECHOINTERVAL: Interval in seconds between keepalive echo requests, 0 to disable.
  */
-#define LCP_ECHOINTERVAL                0
+#define LCP_ECHOINTERVAL                5
 
 /**
  * LCP_MAXECHOFAILS: Number of unanswered echo requests before failure.
