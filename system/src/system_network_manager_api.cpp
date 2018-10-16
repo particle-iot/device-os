@@ -228,7 +228,6 @@ int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t pa
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
         if (network != NETWORK_INTERFACE_ALL) {
-            network_disconnect(network, 0, 0);
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
                 if_req_power req = {};
@@ -378,18 +377,8 @@ void manage_network_connection() {
         cfod_count = 0;
     } else {
         if (spark_cloud_flag_auto_connect() && !s_forcedDisconnect) {
-            if (!NetworkManager::instance()->isConfigured() || !testAndClearSetupDoneFlag()) {
-                /* Enter listening mode */
-                network_listen(0, 0, 0);
-                return;
-            }
-
-            if (!NetworkManager::instance()->isNetworkingEnabled()) {
-                NetworkManager::instance()->enableNetworking();
-            }
-
             if (!NetworkManager::instance()->isConnectivityAvailable() && !NetworkManager::instance()->isEstablishingConnections()) {
-                NetworkManager::instance()->activateConnections();
+                network_connect(0, 0, 0, 0);
             }
         }
     }
