@@ -230,6 +230,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
 #endif // Wiring_WiFi && !HAL_PLATFORM_NCP
+#if !HAL_PLATFORM_MESH
     /* network requests */
     case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
         setResult(req, control::network::handleGetConfigurationRequest(req));
@@ -243,6 +244,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::network::handleSetConfigurationRequest(req));
         break;
     }
+#endif // !HAL_PLATFORM_MESH
     /* config requests */
     case CTRL_REQUEST_SET_CLAIM_CODE: {
         setResult(req, control::config::handleSetClaimCodeRequest(req));

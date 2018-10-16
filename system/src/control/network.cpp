@@ -97,6 +97,8 @@ PB(InterfaceType) ifaceTypeFromName(const char* name) {
 
 } // particle::control::network::
 
+#if !HAL_PLATFORM_MESH
+
 int handleGetConfigurationRequest(ctrl_request* req) {
     particle_ctrl_NetworkGetConfigurationRequest request = {};
     int r = decodeRequestMessage(req, particle_ctrl_NetworkGetConfigurationRequest_fields, &request);
@@ -289,6 +291,8 @@ int handleSetConfigurationRequest(ctrl_request* req) {
 #endif
     return r;
 }
+
+#endif // !HAL_PLATFORM_MESH
 
 int getInterfaceList(ctrl_request* req) {
     if_list* ifList = nullptr;
