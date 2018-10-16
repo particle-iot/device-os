@@ -198,47 +198,82 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
     }
     if (signalExt) {
         signalExt->rat = fromCellularAccessTechnology(s.accessTechnology());
-        signalExt->rssi = strn;
-        signalExt->qual = qual;
         // Signal strength
         switch (s.strengthUnits()) {
         case CellularStrengthUnits::RXLEV: {
+            // Convert to dBm [-111, -48], see 3GPP TS 45.008 8.1.4
+            // Reported multiplied by 100
+            signalExt->rssi = (strn != 99) ? (strn - 111) * 100 : std::numeric_limits<int32_t>::min();
             // RSSI in % [0, 100] based on [-111, -48] range mapped to [0, 65535] integer range
             signalExt->strength = (strn != 99) ? strn * 65535 / 63 : std::numeric_limits<int32_t>::min();
             break;
         }
         case CellularStrengthUnits::RSCP: {
+            // Convert to dBm [-121, -25], see 3GPP TS 25.133 9.1.1.3
+            // Reported multiplied by 100
+            signalExt->rscp = (strn != 255) ? (strn - 116) * 100 : std::numeric_limits<int32_t>::min();
             // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
             signalExt->strength = (strn != 255) ? (strn + 5) * 65535 / 96 : std::numeric_limits<int32_t>::min();
             break;
         }
         case CellularStrengthUnits::RSRP: {
+            // Convert to dBm [-140, -44], see 3GPP TS 36.133 subclause 9.1.4
+            // Reported multiplied by 100
+            signalExt->rsrp = (strn != 255) ? (strn - 141) * 100 : std::numeric_limits<int32_t>::min();
             // RSRP in % [0, 100] based on [-140, -44] range mapped to [0, 65535] integer range
             signalExt->strength = (strn != 255) ? strn * 65535 / 97 : std::numeric_limits<int32_t>::min();
             break;
         }
         default:
+            signalExt->rssi = std::numeric_limits<int32_t>::min();
             signalExt->strength = std::numeric_limits<int32_t>::min();
             break;
         }
         // Signal quality
         switch (s.qualityUnits()) {
         case CellularQualityUnits::RXQUAL: {
+            // % * 100, see 3GPP TS 45.008 8.2.4
+            // 0.14%, 0.28%, 0.57%, 1.13%, 2.26%, 4.53%, 9.05%, 18.10%
+            static const uint16_t berMapping[] = { 14, 28, 57, 113, 226, 453, 905, 1810 };
+            static const size_t berMappingSize = sizeof(berMapping) / sizeof(berMapping[0]);
+            // Convert to BER (% * 100), see 3GPP TS 45.008 8.2.4
+            signalExt->ber = (qual >= 0 && (size_t)qual < berMappingSize) ? berMapping[qual] : std::numeric_limits<int32_t>::min();
+            // Quality based on RXQUAL in % [0, 100] mapped to [0, 65535] integer range
+            signalExt->quality = (qual != 99) ? (7 - qual) * 65535 / 7 : std::numeric_limits<int32_t>::min();
+            break;
+        }
+        case CellularQualityUnits::MEAN_BEP: {
+            // Convert to MEAN_BEP level first
+            // See u-blox AT Reference Manual:
+            // In 2G RAT EGPRS packet transfer mode indicates the Mean Bit Error Probability (BEP) of a radio
+            // block. 3GPP TS 45.008 [148] specifies the range 0-31 for the Mean BEP which is mapped to
+            // the range 0-7 of <qual>
+            const int bepLevel = (qual != 99) ? (7 - qual) * 31 / 7 : std::numeric_limits<int32_t>::min();
+            // Convert to log10(MEAN_BEP) multiplied by 100, see 3GPP TS 45.008 10.2.3.3
+            // Uses QPSK table
+            signalExt->bep = bepLevel >= 0 ? (-(bepLevel - 31) * 10 - 370) : bepLevel;
             // Quality based on RXQUAL in % [0, 100] mapped to [0, 65535] integer range
             signalExt->quality = (qual != 99) ? (7 - qual) * 65535 / 7 : std::numeric_limits<int32_t>::min();
             break;
         }
         case CellularQualityUnits::ECN0: {
+            // Convert to Ec/Io (dB) [-24.5, 0], see 3GPP TS 25.133 9.1.2.3
+            // Report multiplied by 100
+            signalExt->ecno = (qual != 255) ? qual * 50 - 2450 : std::numeric_limits<int32_t>::min();
             // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
             signalExt->quality = (qual != 255) ? qual * 65535 / 49 : std::numeric_limits<int32_t>::min();
             break;
         }
         case CellularQualityUnits::RSRQ: {
+            // Convert to dB [-19.5, -3], see 3GPP TS 36.133 subclause 9.1.7
+            // Report multiplied by 100
+            signalExt->rsrq = (qual != 255) ? qual * 50 - 2000 : std::numeric_limits<int32_t>::min();
             // Quality based on RSRQ in % [0, 100] mapped to [0,65535] integer range
             signalExt->quality = (qual != 255) ? qual * 65535 / 34 : std::numeric_limits<int32_t>::min();
             break;
         }
         default:
+            signalExt->qual = std::numeric_limits<int32_t>::min();
             signalExt->quality = std::numeric_limits<int32_t>::min();
             break;
         }
