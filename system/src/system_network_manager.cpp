@@ -466,6 +466,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             refreshIpState();
         }
     } else {
+        resetInterfaceProtocolState(iface);
         /* Interface link state changed to DOWN */
         if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             if (countIfacesWithFlags(IFF_UP | IFF_LOWER_UP) == 0) {
@@ -798,10 +799,12 @@ NetworkManager::ProtocolState NetworkManager::getInterfaceIp6State(if_t iface) c
     return ProtocolState::UNCONFIGURED;
 }
 
-void NetworkManager::resetInterfaceProtocolState() {
+void NetworkManager::resetInterfaceProtocolState(if_t iface) {
     for (auto item = runState_.front(); item != nullptr; item = item->next) {
-        item->ip4State = ProtocolState::UNCONFIGURED;
-        item->ip6State = ProtocolState::UNCONFIGURED;
+        if (!iface || item->iface == iface) {
+            item->ip4State = ProtocolState::UNCONFIGURED;
+            item->ip6State = ProtocolState::UNCONFIGURED;
+        }
     }
 }
 

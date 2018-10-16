@@ -101,6 +101,10 @@ private:
     };
 
     struct InterfaceRuntimeState {
+        InterfaceRuntimeState()
+                : ip4State(ProtocolState::UNCONFIGURED),
+                  ip6State(ProtocolState::UNCONFIGURED) {
+        }
         InterfaceRuntimeState* next = nullptr;
         bool enabled = false;
         if_t iface = nullptr;
@@ -131,7 +135,7 @@ private:
     InterfaceRuntimeState* getInterfaceRuntimeState(if_t iface) const;
     void populateInterfaceRuntimeState(bool enabled);
     bool isDisabled(if_t iface);
-    void resetInterfaceProtocolState();
+    void resetInterfaceProtocolState(if_t iface = nullptr);
 
 private:
     if_event_handler_cookie_t ifEventHandlerCookie_ = {};
