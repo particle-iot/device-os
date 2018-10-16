@@ -28,9 +28,32 @@
 #include "endian.h"
 #include "check.h"
 
+#include <limits>
+
 namespace {
 
 using namespace particle;
+
+hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat) {
+    switch (rat) {
+    case CellularAccessTechnology::GSM:
+    case CellularAccessTechnology::GSM_COMPACT:
+        return NET_ACCESS_TECHNOLOGY_GSM;
+    case CellularAccessTechnology::GSM_EDGE:
+        return NET_ACCESS_TECHNOLOGY_EDGE;
+    case CellularAccessTechnology::UTRAN:
+    case CellularAccessTechnology::UTRAN_HSDPA:
+    case CellularAccessTechnology::UTRAN_HSUPA:
+    case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
+        return NET_ACCESS_TECHNOLOGY_UTRAN;
+    case CellularAccessTechnology::LTE:
+    case CellularAccessTechnology::E_UTRAN:
+    case CellularAccessTechnology::EC_GSM_IOT: // FIXME
+        return NET_ACCESS_TECHNOLOGY_LTE;
+    default:
+        return NET_ACCESS_TECHNOLOGY_UNKNOWN;
+    }
+}
 
 } // unnamed
 
@@ -151,8 +174,67 @@ bool cellular_sim_ready(void* reserved) {
 void cellular_cancel(bool cancel, bool calledFromISR, void* reserved) {
 }
 
-int cellular_signal(CellularSignalHal* signal, cellular_signal_t* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CellularSignalQuality s;
+    CHECK(client->getSignalQuality(&s));
+    const auto strn = s.strength();
+    const auto qual = s.quality();
+    if (signal) {
+        signal->rssi = strn;
+        signal->qual = qual;
+    }
+    if (signalExt) {
+        signalExt->rat = fromCellularAccessTechnology(s.accessTechnology());
+        signalExt->rssi = strn;
+        signalExt->qual = qual;
+        // Signal strength
+        switch (s.strengthUnits()) {
+        case CellularStrengthUnits::RXLEV: {
+            // RSSI in % [0, 100] based on [-111, -48] range mapped to [0, 65535] integer range
+            signalExt->strength = (strn != 99) ? strn * 65535 / 63 : std::numeric_limits<int32_t>::min();
+            break;
+        }
+        case CellularStrengthUnits::RSCP: {
+            // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
+            signalExt->strength = (strn != 255) ? (strn + 5) * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            break;
+        }
+        case CellularStrengthUnits::RSRP: {
+            // RSRP in % [0, 100] based on [-140, -44] range mapped to [0, 65535] integer range
+            signalExt->strength = (strn != 255) ? strn * 65535 / 97 : std::numeric_limits<int32_t>::min();
+            break;
+        }
+        default:
+            signalExt->strength = std::numeric_limits<int32_t>::min();
+            break;
+        }
+        // Signal quality
+        switch (s.qualityUnits()) {
+        case CellularQualityUnits::RXQUAL: {
+            // Quality based on RXQUAL in % [0, 100] mapped to [0, 65535] integer range
+            signalExt->quality = (qual != 99) ? (7 - qual) * 65535 / 7 : std::numeric_limits<int32_t>::min();
+            break;
+        }
+        case CellularQualityUnits::ECN0: {
+            // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
+            signalExt->quality = (qual != 255) ? qual * 65535 / 49 : std::numeric_limits<int32_t>::min();
+            break;
+        }
+        case CellularQualityUnits::RSRQ: {
+            // Quality based on RSRQ in % [0, 100] mapped to [0,65535] integer range
+            signalExt->quality = (qual != 255) ? qual * 65535 / 34 : std::numeric_limits<int32_t>::min();
+            break;
+        }
+        default:
+            signalExt->quality = std::numeric_limits<int32_t>::min();
+            break;
+        }
+    }
+    return 0;
 }
 
 int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms, const char* format, ...) {
