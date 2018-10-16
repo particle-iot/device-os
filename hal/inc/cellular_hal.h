@@ -32,6 +32,8 @@
 extern "C" {
 #endif
 
+typedef struct MDM_BandSelect MDM_BandSelect;
+
 /**
  * Power on and initialize the cellular module,
  * if USART3 not initialized, will be done on first call.
@@ -169,6 +171,21 @@ void cellular_unlock(void* reserved);
  * mode is volatile and will default to 1 on system reset/boot.
  */
 void cellular_set_power_mode(int mode, void* reserved);
+
+/**
+ * Set cellular band select
+ */
+cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved);
+
+/**
+ * Get cellular band select
+ */
+cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved);
+
+/**
+ * Get cellular band available
+ */
+cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reserved);
 
 #ifdef __cplusplus
 }

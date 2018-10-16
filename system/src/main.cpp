@@ -653,7 +653,7 @@ void app_setup_and_loop(void)
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
-#if Wiring_Cellular == 1
+#if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
     system_power_management_init();
 #endif
 

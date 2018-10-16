@@ -21,7 +21,7 @@
 
 #if Wiring_Cellular
 
-#include "cellular_internal.h"
+// #include "cellular_internal.h"
 
 namespace spark {
 
