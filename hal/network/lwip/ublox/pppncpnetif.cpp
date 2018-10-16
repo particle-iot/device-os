@@ -245,6 +245,5 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
 
 void PppNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(ctx);
-    LOG(TRACE, "input %u", size);
     self->client_.input(data, size);
 }

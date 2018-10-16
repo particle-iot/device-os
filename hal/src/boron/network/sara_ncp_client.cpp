@@ -90,6 +90,8 @@ const auto UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 const auto UBLOX_NCP_AT_CHANNEL = 1;
 const auto UBLOX_NCP_PPP_CHANNEL = 2;
 
+const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -360,44 +362,96 @@ int SaraNcpClient::waitReady() {
 }
 
 int SaraNcpClient::selectSimCard() {
-    // TODO: check current configuration and leave it as is if matches
+    // Read current GPIO configuration
+    int mode = -1;
+    int value = -1;
+    {
+        auto resp = parser_.sendCommand("AT+UGPIOC?");
+        char buf[32] = {};
+        CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+        if (!strcmp(buf, "+UGPIOC:")) {
+            while (resp.hasNextLine()) {
+                int p, m;
+                const int r = CHECK_PARSER(resp.scanf("%d,%d", &p, &m));
+                if (r == 2 && p == UBLOX_NCP_SIM_SELECT_PIN) {
+                    mode = m;
+                }
+            }
+        }
+        const int r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
+
+    if (mode == 0) {
+        int p, v;
+        auto resp = parser_.sendCommand("AT+UGPIOR=%u", UBLOX_NCP_SIM_SELECT_PIN);
+        int r = CHECK_PARSER(resp.scanf("+UGPIOR: %d,%d", &p, &v));
+        if (r == 2 && p == UBLOX_NCP_SIM_SELECT_PIN) {
+            value = v;
+        }
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
+
+    bool reset = false;
+
     switch (conf_.simType()) {
         case SimType::EXTERNAL: {
             LOG(INFO, "Using external Nano SIM card");
-            const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,0"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            const int externalSimMode = 0;
+            const int externalSimValue = 0;
+            if (mode != externalSimMode || externalSimValue != value) {
+                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
+                        UBLOX_NCP_SIM_SELECT_PIN, externalSimMode, externalSimValue));
+                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                reset = true;
+            }
             break;
         }
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
             if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
-                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,255"));
-                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                const int internalSimMode = 255;
+                if (mode != internalSimMode) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                    reset = true;
+                }
             } else {
-                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,1"));
-                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                const int internalSimMode = 0;
+                const int internalSimValue = 1;
+                if (mode != internalSimMode || value != internalSimValue) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                    reset = true;
+                }
             }
             break;
         }
     }
 
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
-        // U201
-        const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    } else {
-        // R410
-        const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        HAL_Delay_Milliseconds(10000);
+    if (reset) {
+        if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+            // U201
+            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            HAL_Delay_Milliseconds(100);
+        } else {
+            // R410
+            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            HAL_Delay_Milliseconds(10000);
+        }
+
+        CHECK(waitAtResponse(20000));
     }
 
-    CHECK(waitAtResponse(20000));
-
     // Using numeric CME ERROR codes
-    int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     int simState = 0;
     for (unsigned i = 0; i < 10; ++i) {
