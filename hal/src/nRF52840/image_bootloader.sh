@@ -1,6 +1,6 @@
 # updates the bootloader image embedded in system firmware
 bl_dir=../../../build/target/bootloader
-clean=
+clean=clean
 platform=$(uname)
 
 function die()
