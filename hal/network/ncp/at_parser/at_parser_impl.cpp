@@ -305,6 +305,7 @@ int AtParserImpl::processUrc(unsigned timeout) {
             ++urcCount;
             break;
         }
+        PARSER_CHECK(readLine(nullptr, 0, &timeout));
     }
     return urcCount;
 }
