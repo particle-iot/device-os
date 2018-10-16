@@ -73,7 +73,8 @@ enum class CellularQualityUnits {
     NONE = 0,
     RXQUAL = 1,
     ECN0 = 2,
-    RSRQ = 3
+    RSRQ = 3,
+    MEAN_BEP = 4
 };
 
 class CellularSignalQuality {
@@ -91,12 +92,14 @@ public:
     CellularSignalQuality& quality(int val);
     int quality() const;
 
+    CellularSignalQuality& qualityUnits(const CellularQualityUnits& units);
     CellularQualityUnits qualityUnits() const;
 
 private:
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
     int strength_ = -1;
     int quality_ = -1;
+    CellularQualityUnits qunits_ = CellularQualityUnits::NONE;
 };
 
 class CellularNcpClient: public NcpClient {
@@ -184,7 +187,15 @@ inline int CellularSignalQuality::quality() const {
     return quality_;
 }
 
+inline CellularSignalQuality& CellularSignalQuality::qualityUnits(const CellularQualityUnits& units) {
+    qunits_ = units;
+    return *this;
+}
+
 inline CellularQualityUnits CellularSignalQuality::qualityUnits() const {
+    if (qunits_ != CellularQualityUnits::NONE) {
+        return qunits_;
+    }
     switch (act_) {
         case CellularAccessTechnology::GSM:
         case CellularAccessTechnology::GSM_COMPACT:

@@ -434,8 +434,13 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
             }
         }
 
+        if (qual->accessTechnology() == CellularAccessTechnology::GSM_EDGE) {
+            qual->qualityUnits(CellularQualityUnits::MEAN_BEP);
+        }
+
         switch (qual->qualityUnits()) {
-            case CellularQualityUnits::RXQUAL: {
+            case CellularQualityUnits::RXQUAL:
+            case CellularQualityUnits::MEAN_BEP: {
                 qual->quality(rxqual);
                 break;
             }
