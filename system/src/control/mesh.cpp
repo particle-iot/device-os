@@ -229,8 +229,8 @@ int notifyNetworkUpdated(int flags) {
         memcpy(ni.on_mesh_prefix, prefix, 8);
     }
     if (flags & NetworkInfo::NETWORK_ID_VALID) {
-    	uint16_t length = sizeof(ni.id);
-    	CHECK_THREAD(fetchNetworkId(thread, ni.id, length));
+        uint16_t length = sizeof(ni.id);
+        CHECK_THREAD(fetchNetworkId(thread, ni.id, length));
     }
 
     ni.update.size = sizeof(ni);
@@ -824,7 +824,7 @@ int getNetworkInfo(ctrl_request* req) {
         return SYSTEM_ERROR_UNKNOWN;
     }
     // Network Id
-    char networkId[MAX_NETWORK_ID_LENGTH+1];
+    char networkId[MAX_NETWORK_ID_LENGTH + 1] = {};
     fetchNetworkId(thread, networkId, sizeof(networkId));
     // Channel
     const uint8_t channel = otLinkGetChannel(thread);

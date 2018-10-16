@@ -228,7 +228,7 @@ struct  __attribute__ ((__packed__)) NetworkInfo {
 	uint8_t on_mesh_prefix[MESH_PREFIX_LENGTH];
 	uint8_t name_length;
 	char name[MAX_NETWORK_NAME_LENGTH+1];
-	char id[MAX_NETWORK_NAME_LENGTH+1];
+	char id[MAX_NETWORK_ID_LENGTH+1];
 };
 
 enum Enum {
