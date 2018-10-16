@@ -641,6 +641,25 @@ int SaraNcpClient::initReady() {
         CHECK(waitAtResponse(10000));
     }
 
+    if (ncpId() == MESH_NCP_SARA_R410) {
+        // Force eDRX mode to be disabled
+        // 18/23 hardware doesn't seem to be disabled by default
+        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        // Force Power Saving mode to be disabled for good measure
+        r = CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS?"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(parser_.execCommand("AT+CPSMS?"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    } else {
+        // Power saving
+        r = CHECK_PARSER(parser_.execCommand("AT+UPSV=0"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
+
     // Send AT+CMUX and initialize multiplexer
     r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,1509,,,,,"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
