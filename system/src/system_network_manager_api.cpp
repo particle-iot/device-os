@@ -32,6 +32,13 @@
 
 #include <atomic>
 
+#if HAL_PLATFORM_WIFI
+#include "wlan_hal.h"
+#endif
+#if HAL_PLATFORM_CELLULAR
+#include "cellular_hal.h"
+#endif
+
 using namespace particle::system;
 
 /* FIXME: */
@@ -64,13 +71,25 @@ bool testAndClearSetupDoneFlag() {
 
 #if HAL_PLATFORM_WIFI
 const WLanConfig* wlanConfig() {
-    // TODO: Cache current WiFi configuration
+    // TODO: Cache current configuration
     static WLanConfig conf;
     memset(&conf, 0, sizeof(conf));
     memset(conf.BSSID, 0xff, sizeof(conf.BSSID));
     memset(conf.nw.uaMacAddr, 0xff, sizeof(conf.nw.uaMacAddr));
-    conf.size = sizeof(WLanConfig);
+    conf.size = sizeof(conf);
     wlan_fetch_ipconfig(&conf);
+    return &conf;
+}
+#endif
+
+#if HAL_PLATFORM_CELLULAR
+const CellularConfig* cellularConfig() {
+    // TODO: Cache current configuration
+    static CellularConfig conf;
+    memset(&conf, 0, sizeof(conf));
+    memset(conf.nw.uaMacAddr, 0xff, sizeof(conf.nw.uaMacAddr));
+    conf.size = sizeof(conf);
+    cellular_fetch_ipconfig(&conf, nullptr);
     return &conf;
 }
 #endif
@@ -87,6 +106,10 @@ const void* network_config(network_handle_t network, uint32_t param, void* reser
 #if HAL_PLATFORM_WIFI
     case NETWORK_INTERFACE_WIFI_STA:
         return wlanConfig();
+#endif
+#if HAL_PLATFORM_CELLULAR
+    case NETWORK_INTERFACE_CELLULAR:
+        return cellularConfig();
 #endif
     default:
         return nullptr;

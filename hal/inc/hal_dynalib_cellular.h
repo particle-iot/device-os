@@ -71,6 +71,9 @@ DYNALIB_FN(30, hal_cellular, cellular_network_provider_data_get, const CellularN
 DYNALIB_FN(31, hal_cellular, cellular_lock, int(void*))
 DYNALIB_FN(32, hal_cellular, cellular_unlock, void(void*))
 DYNALIB_FN(33, hal_cellular, cellular_set_power_mode, void(int mode, void* reserved))
+DYNALIB_FN(34, hal_cellular, cellular_set_active_sim, cellular_result_t(int, void*))
+DYNALIB_FN(35, hal_cellular, cellular_get_active_sim, cellular_result_t(int*, void*))
+
 DYNALIB_END(hal_cellular)
 
 #endif  // PLATFORM_ID == 10

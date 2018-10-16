@@ -52,6 +52,7 @@ class CellularNcpClient: public NcpClient {
 public:
     virtual int connect(const CellularNetworkConfig& conf) = 0;
     virtual int getIccid(char* buf, size_t size) = 0;
+    virtual int getImei(char* buf, size_t size) = 0;
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :

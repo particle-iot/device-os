@@ -45,6 +45,18 @@
             _r; \
         })
 
+#define CHECK_PARSER_OK(_expr) \
+        do { \
+            const auto _r = _expr; \
+            if (_r < 0) { \
+                this->parserError(_r); \
+                return _r; \
+            } \
+            if (_r != ::particle::AtResponse::OK) { \
+                return SYSTEM_ERROR_UNKNOWN; \
+            } \
+        } while (false)
+
 #define CHECK_PARSER_URC(_expr) \
         ({ \
             const auto _r = _expr; \
@@ -300,6 +312,15 @@ int SaraNcpClient::getIccid(char* buf, size_t size) {
         }
         buf[n] = '\0';
     }
+    return n;
+}
+
+int SaraNcpClient::getImei(char* buf, size_t size) {
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+    auto resp = parser_.sendCommand("AT+CGSN");
+    const size_t n = CHECK_PARSER(resp.readLine(buf, size));
+    CHECK_PARSER_OK(resp.readResult());
     return n;
 }
 

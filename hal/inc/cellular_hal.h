@@ -34,6 +34,12 @@ extern "C" {
 
 typedef struct MDM_BandSelect MDM_BandSelect;
 
+typedef enum SimType {
+    SIM_TYPE_INVALID = 0,
+    SIM_TYPE_INTERNAL = 1,
+    SIM_TYPE_EXTERNAL = 2
+} SimType;
+
 /**
  * Power on and initialize the cellular module,
  * if USART3 not initialized, will be done on first call.
@@ -153,7 +159,7 @@ cellular_result_t cellular_imsi_to_network_provider(void* reserved);
 /**
  * Function for getting the cellular network provider data currently set
  */
-const CellularNetProvData cellular_network_provider_data_get(void* reserved);
+CellularNetProvData cellular_network_provider_data_get(void* reserved);
 
 /**
  * Acquires the modem lock.
@@ -186,6 +192,16 @@ cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved
  * Get cellular band available
  */
 cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reserved);
+
+/**
+ * Set active SIM card.
+ */
+cellular_result_t cellular_set_active_sim(int sim_type, void* reserved);
+
+/**
+ * Get active SIM card.
+ */
+cellular_result_t cellular_get_active_sim(int* sim_type, void* reserved);
 
 #ifdef __cplusplus
 }
