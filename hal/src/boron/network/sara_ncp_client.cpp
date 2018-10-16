@@ -278,7 +278,7 @@ void SaraNcpClient::processEvents() {
 }
 
 int SaraNcpClient::ncpId() const {
-    return MeshNCPIdentifier::MESH_NCP_SARA_U201;
+    return conf_.ncpIdentifier();
 }
 
 int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
@@ -322,6 +322,139 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
     const size_t n = CHECK_PARSER(resp.readLine(buf, size));
     CHECK_PARSER_OK(resp.readResult());
     return n;
+}
+
+int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(connState_ != NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(qual, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK(checkParser());
+
+    {
+        int act;
+        int v;
+        auto resp = parser_.sendCommand("AT+COPS?");
+        int r = CHECK_PARSER(resp.scanf("+COPS: %d,%*d,\"%*[^\"]\",%d", &v, &act));
+        CHECK_TRUE(r == 2, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        switch (static_cast<CellularAccessTechnology>(act)) {
+            case CellularAccessTechnology::NONE:
+            case CellularAccessTechnology::GSM:
+            case CellularAccessTechnology::GSM_COMPACT:
+            case CellularAccessTechnology::UTRAN:
+            case CellularAccessTechnology::GSM_EDGE:
+            case CellularAccessTechnology::UTRAN_HSDPA:
+            case CellularAccessTechnology::UTRAN_HSUPA:
+            case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
+            case CellularAccessTechnology::LTE:
+            case CellularAccessTechnology::EC_GSM_IOT:
+            case CellularAccessTechnology::E_UTRAN: {
+                break;
+            }
+            default: {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
+        }
+        qual->accessTechnology(static_cast<CellularAccessTechnology>(act));
+    }
+
+    if (ncpId() == MESH_NCP_SARA_R410) {
+        int rxlev, rxqual, rscp, ecn0, rsrq, rsrp;
+        auto resp = parser_.sendCommand("AT+CESQ");
+        int r = CHECK_PARSER(resp.scanf("+CESQ: %d,%d,%d,%d,%d,%d", &rxlev, &rxqual,
+                &rscp, &ecn0, &rsrq, &rsrp));
+        CHECK_TRUE(r == 6, SYSTEM_ERROR_BAD_DATA);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        switch (qual->strengthUnits()) {
+            case CellularStrengthUnits::RXLEV: {
+                qual->strength(rxlev);
+                break;
+            }
+            case CellularStrengthUnits::RSCP: {
+                qual->strength(rscp);
+                break;
+            }
+            case CellularStrengthUnits::RSRP: {
+                qual->strength(rsrp);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+
+        switch (qual->qualityUnits()) {
+            case CellularQualityUnits::RXQUAL: {
+                qual->quality(rxqual);
+                break;
+            }
+            case CellularQualityUnits::ECN0: {
+                qual->quality(ecn0);
+                break;
+            }
+            case CellularQualityUnits::RSRQ: {
+                qual->quality(rsrq);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+    } else {
+        int rxlev, rxqual;
+        auto resp = parser_.sendCommand("AT+CSQ");
+        int r = CHECK_PARSER(resp.scanf("+CSQ: %d,%d", &rxlev, &rxqual));
+        CHECK_TRUE(r == 2, SYSTEM_ERROR_BAD_DATA);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        // Fixup values
+        switch (qual->strengthUnits()) {
+            case CellularStrengthUnits::RXLEV: {
+                qual->strength((rxlev != 99) ? (2 * rxlev) : rxlev);
+                break;
+            }
+            case CellularStrengthUnits::RSCP: {
+                qual->strength((rxlev != 99) ? (3 + 2 * rxlev) : 255);
+                break;
+            }
+            case CellularStrengthUnits::RSRP: {
+                qual->strength((rxlev != 99) ? (rxlev * 97) / 31 : 255);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+
+        switch (qual->qualityUnits()) {
+            case CellularQualityUnits::RXQUAL: {
+                qual->quality(rxqual);
+                break;
+            }
+            case CellularQualityUnits::ECN0: {
+                qual->quality((rxqual != 99) ? std::min((7 + (7 - rxqual) * 6), 44) : 255);
+                break;
+            }
+            case CellularQualityUnits::RSRQ: {
+                qual->quality((rxqual != 99) ? (rxqual * 34) / 7 : 255);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+    }
+
+    return 0;
 }
 
 int SaraNcpClient::checkParser() {
@@ -406,7 +539,7 @@ int SaraNcpClient::selectSimCard() {
     if (mode == 0) {
         int p, v;
         auto resp = parser_.sendCommand("AT+UGPIOR=%u", UBLOX_NCP_SIM_SELECT_PIN);
-        int r = CHECK_PARSER(resp.scanf("+UGPIOR: %d,%d", &p, &v));
+        int r = CHECK_PARSER(resp.scanf("+UGPIO%*[R:] %d%*[ ,]%d", &p, &v));
         if (r == 2 && p == UBLOX_NCP_SIM_SELECT_PIN) {
             value = v;
         }

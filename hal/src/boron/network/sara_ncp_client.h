@@ -54,9 +54,10 @@ public:
     int ncpId() const override;
 
     // Reimplemented from CellularNcpClient
-    int connect(const CellularNetworkConfig& conf) override;
-    int getIccid(char* buf, size_t size) override;
-    int getImei(char* buf, size_t size) override;
+    virtual int connect(const CellularNetworkConfig& conf) override;
+    virtual int getIccid(char* buf, size_t size) override;
+    virtual int getImei(char* buf, size_t size) override;
+    virtual int getSignalQuality(CellularSignalQuality* qual) override;
 
 private:
     AtParser parser_;
