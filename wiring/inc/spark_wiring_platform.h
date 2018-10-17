@@ -123,6 +123,10 @@
 #define Wiring_Cellular 1
 #endif
 
+#if HAL_PLATFORM_ETHERNET
+#define Wiring_Ethernet 1
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
@@ -190,6 +194,14 @@
 #ifndef Wiring_Rtt
 #define Wiring_Rtt 0
 #endif
+
+#ifndef Wiring_Keyboard
+#define Wiring_Keyboard 0
+#endif // Wiring_Keyboard
+
+#ifndef Wiring_Mouse
+#define Wiring_Mouse 0
+#endif // Wiring_Mouse
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 

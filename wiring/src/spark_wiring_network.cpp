@@ -20,6 +20,10 @@
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_mesh.h"
+#include "hal_platform.h"
+#if HAL_USE_INET_HAL_POSIX
+#include <netdb.h>
+#endif // HAL_USE_INET_HAL_POSIX
 
 namespace spark {
 
@@ -46,6 +50,35 @@ NetworkClass& NetworkClass::from(network_interface_t nif) {
     default:
         return Network;
     }
+}
+
+IPAddress NetworkClass::resolve(const char* name) {
+    IPAddress addr;
+#if HAL_USE_INET_HAL_POSIX
+    struct addrinfo *ai = nullptr;
+    const int r = getaddrinfo(name, nullptr, nullptr, &ai);
+    if (!r && ai) {
+        // NOTE: using only the first entry
+        switch (ai->ai_family) {
+            case AF_INET: {
+                // NOTE: HAL_IPAddress is little-endian
+                auto in = (struct sockaddr_in*)ai->ai_addr;
+                addr = (const uint8_t*)(&in->sin_addr.s_addr);
+                break;
+            }
+            case AF_INET6: {
+                auto in6 = (struct sockaddr_in6*)ai->ai_addr;
+                HAL_IPAddress a = {};
+                a.v = 6;
+                memcpy(a.ipv6, in6->sin6_addr.s6_addr, sizeof(a.ipv6));
+                addr = IPAddress(a);
+                break;
+            }
+        }
+    }
+    freeaddrinfo(ai);
+#endif // HAL_USE_INET_HAL_POSIX
+    return addr;
 }
 
 } // spark

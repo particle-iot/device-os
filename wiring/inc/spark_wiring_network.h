@@ -59,6 +59,8 @@ public:
 
     static NetworkClass& from(network_interface_t nif);
 
+    virtual IPAddress resolve(const char* name);
+
 protected:
     explicit NetworkClass(network_interface_t iface) :
             iface_(iface) {

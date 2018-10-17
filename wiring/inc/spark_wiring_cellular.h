@@ -132,12 +132,14 @@ public:
         return cellular_command((_CALLBACKPTR_MDM)cb, (void*)param, timeout_ms, format, Fargs...);
     }
 
+#if !HAL_USE_INET_HAL_POSIX
     IPAddress resolve(const char* name)
     {
         HAL_IPAddress ip = {0};
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL) != 0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }
+#endif // !HAL_USE_INET_HAL_POSIX
 
     int setActiveSim(SimType sim) {
         return cellular_set_active_sim(sim, nullptr);
