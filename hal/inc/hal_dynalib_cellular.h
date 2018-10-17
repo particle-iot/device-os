@@ -25,8 +25,9 @@
 #define	HAL_DYNALIB_CELLULAR_H
 
 #include "dynalib.h"
+#include "hal_platform.h"
 
-#if PLATFORM_ID == 10
+#if PLATFORM_ID == 10 || HAL_PLATFORM_CELLULAR
 
 #ifdef DYNALIB_EXPORT
 #include "cellular_hal.h"
@@ -77,6 +78,6 @@ DYNALIB_FN(36, hal_cellular, cellular_credentials_clear, int(void*))
 
 DYNALIB_END(hal_cellular)
 
-#endif  // PLATFORM_ID == 10
+#endif  // PLATFORM_ID == 10 || HAL_PLATFORM_CELLULAR
 
 #endif  // HAL_DYNALIB_CELLULAR_H
