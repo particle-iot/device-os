@@ -33,7 +33,7 @@ namespace spark {
 class NetworkClass;
 
 // Defined as the primary network
-extern NetworkClass& Network;
+extern NetworkClass Network;
 
 //Retained for compatibility and to flag compiler warnings as build errors
 class NetworkClass
@@ -48,10 +48,17 @@ public:
     uint32_t ping(IPAddress remoteIP) __attribute__((deprecated("Please use WiFi.ping() instead")));
     uint32_t ping(IPAddress remoteIP, uint8_t nTries) __attribute__((deprecated("Please use WiFi.ping() instead")));
 
-    static void connect(void) __attribute__((deprecated("Please use WiFi.connect() instead")));
-    static void disconnect(void) __attribute__((deprecated("Please use WiFi.disconnect() instead")));
-    static bool connecting(void) __attribute__((deprecated("Please use WiFi.connecting() instead")));
-    virtual bool ready(void)=0;
+    virtual void connect(unsigned flags = 0);
+    virtual void disconnect();
+    virtual bool connecting();
+    virtual bool ready();
+
+    virtual void on();
+    virtual void off();
+    virtual void listen(bool begin = true);
+    virtual void setListenTimeout(uint16_t timeout);
+    virtual uint16_t getListenTimeout();
+    virtual bool listening();
 
     operator network_interface_t() {
         return iface_;
@@ -61,9 +68,8 @@ public:
 
     virtual IPAddress resolve(const char* name);
 
-protected:
-    explicit NetworkClass(network_interface_t iface) :
-            iface_(iface) {
+    explicit NetworkClass(network_interface_t iface)
+            : iface_(iface) {
     }
 
 private:

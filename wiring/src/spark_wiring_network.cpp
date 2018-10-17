@@ -20,12 +20,15 @@
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_mesh.h"
+#include "spark_wiring_ethernet.h"
 #include "hal_platform.h"
 #if HAL_USE_INET_HAL_POSIX
 #include <netdb.h>
 #endif // HAL_USE_INET_HAL_POSIX
 
 namespace spark {
+
+NetworkClass Network(NETWORK_INTERFACE_ALL);
 
 NetworkClass& NetworkClass::from(network_interface_t nif) {
     switch (nif) {
@@ -35,7 +38,7 @@ NetworkClass& NetworkClass::from(network_interface_t nif) {
 #endif
 #if Wiring_Ethernet
     case NETWORK_INTERFACE_ETHERNET:
-        return Network; // FIXME
+        return Ethernet;
 #endif
 #if Wiring_WiFi
     case NETWORK_INTERFACE_WIFI_STA:
@@ -50,6 +53,46 @@ NetworkClass& NetworkClass::from(network_interface_t nif) {
     default:
         return Network;
     }
+}
+
+void NetworkClass::connect(unsigned flags) {
+    network_connect(*this, flags, 0, nullptr);
+}
+
+void NetworkClass::disconnect() {
+    network_disconnect(*this, NETWORK_DISCONNECT_REASON_USER, nullptr);
+}
+
+bool NetworkClass::connecting() {
+    return network_connecting(*this, 0, nullptr);
+}
+
+bool NetworkClass::ready() {
+    return network_ready(*this, 0, nullptr);
+}
+
+void NetworkClass::on() {
+    network_on(*this, 0, 0, nullptr);
+}
+
+void NetworkClass::off() {
+    network_off(*this, 0, 0, nullptr);
+}
+
+void NetworkClass::listen(bool begin) {
+    network_listen(*this, begin ? 0 : 1, nullptr);
+}
+
+void NetworkClass::setListenTimeout(uint16_t timeout) {
+    network_set_listen_timeout(*this, timeout, nullptr);
+}
+
+uint16_t NetworkClass::getListenTimeout() {
+    return network_get_listen_timeout(*this, 0, nullptr);
+}
+
+bool NetworkClass::listening() {
+    return network_listening(*this, 0, nullptr);
 }
 
 IPAddress NetworkClass::resolve(const char* name) {
