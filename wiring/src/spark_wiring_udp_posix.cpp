@@ -45,7 +45,7 @@ inline bool isOpen(sock_handle_t sd) {
 inline void sockaddrToIpAddressPort(const struct sockaddr* saddr, IPAddress& addr, uint16_t* port) {
     if (saddr->sa_family == AF_INET) {
         const struct sockaddr_in* inaddr = (const struct sockaddr_in*)saddr;
-        addr = inaddr->sin_addr.s_addr;
+        addr = (const uint8_t*)(&inaddr->sin_addr.s_addr);
         if (port) {
             *port = ntohs(inaddr->sin_port);
         }
@@ -195,11 +195,6 @@ uint8_t UDP::begin(uint16_t port, network_interface_t nif) {
         goto done;
     }
 
-    // Bind socket
-    if (sock_bind(_sock, (const struct sockaddr*)&saddr, sizeof(saddr))) {
-        goto done;
-    }
-
 #if HAL_PLATFORM_IFAPI
     // TODO: provide compatibility headers and use if_indextoname()
     if (nif != 0) {
@@ -212,6 +207,11 @@ uint8_t UDP::begin(uint16_t port, network_interface_t nif) {
         }
     }
 #endif // HAL_PLATFORM_IFAPI
+
+    // Bind socket
+    if (sock_bind(_sock, (const struct sockaddr*)&saddr, sizeof(saddr))) {
+        goto done;
+    }
 
     _nif = nif;
 
