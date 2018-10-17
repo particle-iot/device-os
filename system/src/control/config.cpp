@@ -21,6 +21,7 @@
 
 #include "common.h"
 #include "system_cloud_internal.h"
+#include "system_update.h"
 #include "system_network.h"
 
 #include "deviceid_hal.h"
@@ -158,7 +159,7 @@ int handleStopNyanRequest(ctrl_request* req) {
 int getDeviceMode(ctrl_request* req) {
     const bool listening = network_listening(0, 0, nullptr);
     PB(GetDeviceModeReply) pbRep = {};
-    pbRep.mode = listening ? PB(DeviceMode_LISTENING_MODE) : PB(DeviceMode_DEVICE_MODE_OTHER);
+    pbRep.mode = listening ? PB(DeviceMode_LISTENING_MODE) : PB(DeviceMode_NORMAL_MODE);
     const int ret = encodeReplyMessage(req, PB(GetDeviceModeReply_fields), &pbRep);
     if (ret != 0) {
         return ret;
@@ -192,6 +193,20 @@ int isDeviceSetupDone(ctrl_request* req) {
     ret = encodeReplyMessage(req, PB(IsDeviceSetupDoneReply_fields), &pbRep);
     if (ret != 0) {
         return ret;
+    }
+    return 0;
+}
+
+int setStartupMode(ctrl_request* req) {
+    PB(SetStartupModeRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(SetStartupModeRequest_fields), &pbReq));
+    switch (pbReq.mode) {
+    case PB(DeviceMode_LISTENING_MODE):
+        CHECK(system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 1, nullptr));
+        break;
+    default:
+        CHECK(system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr));
+        break;
     }
     return 0;
 }

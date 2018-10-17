@@ -56,17 +56,25 @@ namespace {
 /* FIXME: This is not how this should be handled */
 std::atomic_bool s_forcedDisconnect(false);
 
-bool testAndClearSetupDoneFlag() {
-    static bool checkDone = true;
-    if (checkDone) {
-        checkDone = false;
-        uint8_t done = 0x01;
-        dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &done, 1);
-        if (done == 0x00 || done == 0xff) {
-            return false;
+bool testAndClearListeningModeFlag() {
+    static bool check = true;
+    if (check) {
+        check = false;
+        // Check startup flag
+        uint8_t val = 0x00;
+        system_get_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, &val, nullptr);
+        if (val) {
+            system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr); // Clear startup flag
+            return true;
+        }
+        // Check setup done flag
+        val = 0x01;
+        dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
+        if (val == 0x00 || val == 0xff) {
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
 #if HAL_PLATFORM_WIFI
@@ -123,7 +131,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         SPARK_WLAN_SLEEP = 0;
         s_forcedDisconnect = false;
 
-        if (!NetworkManager::instance()->isConfigured() || !testAndClearSetupDoneFlag()) {
+        if (testAndClearListeningModeFlag() || !NetworkManager::instance()->isConfigured()) {
             /* Enter listening mode */
             network_listen(0, 0, 0);
             return;

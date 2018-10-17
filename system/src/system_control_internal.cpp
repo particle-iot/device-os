@@ -173,6 +173,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::isDeviceSetupDone(req));
         break;
     }
+    case CTRL_REQUEST_SET_STARTUP_MODE: {
+        setResult(req, control::config::setStartupMode(req));
+        break;
+    }
     case CTRL_REQUEST_MODULE_INFO: {
         struct Formatter {
             static int callback(Appender* appender, void* data) {
