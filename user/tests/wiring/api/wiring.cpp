@@ -49,8 +49,9 @@ test(api_wiring_interrupt) {
 
     API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
 
-
+#if PLATFORM_ID >= 6 && PLATFORM_ID <= 10
     API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM1_CC_IRQ, D0_callback));
+#endif // PLATFORM_ID >= 6 && PLATFORM_ID <= 10
 
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14));
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14, 0));
@@ -134,14 +135,14 @@ void TIM3_callback()
 {
 }
 
-#if PLATFORM_ID>=6
+#if PLATFORM_ID >= 6 && PLATFORM_ID <= 10
 // system interrupt not available for the core yet.
 test(api_wiring_system_interrupt) {
 
     API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM3_IRQ, TIM3_callback));
     API_COMPILE(detachSystemInterrupt(SysInterrupt_TIM3_IRQ));
 }
-#endif
+#endif // PLATFORM_ID >= 6 && PLATFORM_ID <= 10
 
 void externalLEDHandler(uint8_t r, uint8_t g, uint8_t b) {
 }
