@@ -47,6 +47,7 @@ DYNALIB_FN(11, hal_socket, sock_recvfrom, int(int, void*, size_t, int, struct so
 DYNALIB_FN(12, hal_socket, sock_send, int(int, const void*, size_t, int))
 DYNALIB_FN(13, hal_socket, sock_sendto, int(int, const void*, size_t, int, const struct sockaddr*, socklen_t))
 DYNALIB_FN(14, hal_socket, sock_socket, int(int, int, int))
+DYNALIB_FN(15, hal_socket, sock_fcntl, int(int, int, ...))
 
 DYNALIB_END(hal_socket)
 
