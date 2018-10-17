@@ -1,3 +1,13 @@
+## 0.8.0-rc.18
+
+### FEATURES
+
+- [Mesh] Wiring API for networking
+
+### BUGFIXES
+
+- [Mesh] Various bugfixes and stability improvements
+
 ## 0.8.0-rc.17
 
 ### FEATURES
