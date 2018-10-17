@@ -419,10 +419,10 @@ void manage_safe_mode()
             // explicitly disable multithreading
             system_thread_set_state(spark::feature::DISABLED, NULL);
             uint8_t value = 0;
-            system_get_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, &value, nullptr);
+            system_get_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, &value, nullptr);
             if (value)
             {
-                system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 0, 0);
+                system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, 0);
                 // flag listening mode
                 network_listen(0, 0, 0);
             }
@@ -653,7 +653,7 @@ void app_setup_and_loop(void)
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
-#if Wiring_Cellular == 1
+#if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
     system_power_management_init();
 #endif
 

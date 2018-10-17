@@ -50,7 +50,9 @@ enum class NetifEvent {
     None = 0,
     Up = 1,
     Down = 2,
-    Exit = 3
+    Exit = 3,
+    PowerOff = 4,
+    PowerOn = 5
 };
 
 } // anonymous
@@ -60,14 +62,15 @@ PppNcpNetif::PppNcpNetif()
         : BaseNetif(),
           exit_(false) {
 
-    registerHandlers();
-
     LOG(INFO, "Creating PppNcpNetif LwIP interface");
+
+    SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 4, nullptr) == 0);
 
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
 
-    SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 4, nullptr) == 0);
+    registerHandlers();
+
     SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
@@ -105,7 +108,16 @@ void PppNcpNetif::loop(void* arg) {
                 }
                 case NetifEvent::Down: {
                     self->downImpl();
+                    // self->celMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOff: {
+                    self->downImpl();
                     self->celMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOn: {
+                    self->celMan_->ncpClient()->on();
                     break;
                 }
             }
@@ -134,6 +146,16 @@ int PppNcpNetif::up() {
 
 int PppNcpNetif::down() {
     NetifEvent ev = NetifEvent::Down;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int PppNcpNetif::powerUp() {
+    NetifEvent ev = NetifEvent::PowerOn;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int PppNcpNetif::powerDown() {
+    NetifEvent ev = NetifEvent::PowerOff;
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
@@ -224,6 +246,5 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
 
 void PppNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(ctx);
-    LOG(TRACE, "input %u", size);
     self->client_.input(data, size);
 }

@@ -50,7 +50,9 @@ enum class NetifEvent {
     None = 0,
     Up = 1,
     Down = 2,
-    Exit = 3
+    Exit = 3,
+    PowerOff = 4,
+    PowerOn = 5
 };
 
 } // anonymous
@@ -61,13 +63,11 @@ Esp32NcpNetif::Esp32NcpNetif()
         : BaseNetif(),
           exit_(false) {
 
-    registerHandlers();
-
     LOG(INFO, "Creating Esp32NcpNetif LwIP interface");
 
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
-        /* FIXME: */
         SPARK_ASSERT(os_queue_create(&queue_, sizeof(NetifEvent), 4, nullptr) == 0);
+        registerHandlers();
         SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
     }
 }
@@ -126,7 +126,16 @@ void Esp32NcpNetif::loop(void* arg) {
                 }
                 case NetifEvent::Down: {
                     self->downImpl();
+                    // self->wifiMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOff: {
+                    self->downImpl();
                     self->wifiMan_->ncpClient()->off();
+                    break;
+                }
+                case NetifEvent::PowerOn: {
+                    self->wifiMan_->ncpClient()->on();
                     break;
                 }
             }
@@ -156,6 +165,16 @@ int Esp32NcpNetif::up() {
 
 int Esp32NcpNetif::down() {
     NetifEvent ev = NetifEvent::Down;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int Esp32NcpNetif::powerUp() {
+    NetifEvent ev = NetifEvent::PowerOn;
+    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int Esp32NcpNetif::powerDown() {
+    NetifEvent ev = NetifEvent::PowerOff;
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 

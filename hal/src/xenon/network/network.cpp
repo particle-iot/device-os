@@ -25,6 +25,8 @@
 #include "random.h"
 #include "border_router_manager.h"
 #include <malloc.h>
+#include "lwip_util.h"
+#include "core_hal.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -58,12 +60,17 @@ int if_init_platform(void*) {
         /* Set 'locally administered' bit */
         mac[0] |= 0b10;
     }
-    en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+
+    if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+    }
+
     uint8_t dummy;
-    if (if_get_index(en2->interface(), &dummy)) {
+    if (!en2 || if_get_index(en2->interface(), &dummy)) {
         /* No en2 present */
         delete en2;
         en2 = nullptr;
+        reserve_netif_index();
     }
 
     auto m = mallinfo();

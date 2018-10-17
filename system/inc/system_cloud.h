@@ -215,10 +215,10 @@ extern const unsigned char backup_tcp_public_server_address[18];
 #define SPARK_LOOP_DELAY_MILLIS       1000    //1sec
 #define SPARK_RECEIVE_DELAY_MILLIS    10      //10ms
 
-#if PLATFORM_ID==10
-#define TIMING_FLASH_UPDATE_TIMEOUT   90000   //90sec
+#if PLATFORM_ID==10 || HAL_PLATFORM_MESH
+#define TIMING_FLASH_UPDATE_TIMEOUT   (300000) // 300sec
 #else
-#define TIMING_FLASH_UPDATE_TIMEOUT   30000   //30sec
+#define TIMING_FLASH_UPDATE_TIMEOUT   (30000)  // 30sec
 #endif
 
 #define USER_VAR_MAX_COUNT            10

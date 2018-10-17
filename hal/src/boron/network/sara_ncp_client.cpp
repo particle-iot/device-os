@@ -45,6 +45,18 @@
             _r; \
         })
 
+#define CHECK_PARSER_OK(_expr) \
+        do { \
+            const auto _r = _expr; \
+            if (_r < 0) { \
+                this->parserError(_r); \
+                return _r; \
+            } \
+            if (_r != ::particle::AtResponse::OK) { \
+                return SYSTEM_ERROR_UNKNOWN; \
+            } \
+        } while (false)
+
 #define CHECK_PARSER_URC(_expr) \
         ({ \
             const auto _r = _expr; \
@@ -89,6 +101,8 @@ const auto UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 
 const auto UBLOX_NCP_AT_CHANNEL = 1;
 const auto UBLOX_NCP_PPP_CHANNEL = 2;
+
+const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 
 } // anonymous
 
@@ -144,8 +158,6 @@ int SaraNcpClient::initParser(Stream* stream) {
             .commandTerminator(AtCommandTerminator::CRLF);
     parser_.destroy();
     CHECK(parser_.init(std::move(parserConf)));
-    CHECK(parser_.addUrcHandler("+CME ERROR", nullptr, nullptr)); // Ignore
-    CHECK(parser_.addUrcHandler("+CMS ERROR", nullptr, nullptr)); // Ignore
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
         int val[2];
@@ -221,7 +233,7 @@ int SaraNcpClient::disconnect() {
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
     (void)r;
-    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     resetRegistrationState();
 
@@ -266,7 +278,7 @@ void SaraNcpClient::processEvents() {
 }
 
 int SaraNcpClient::ncpId() const {
-    return MeshNCPIdentifier::MESH_NCP_SARA_U201;
+    return conf_.ncpIdentifier();
 }
 
 int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
@@ -275,15 +287,6 @@ int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
     CHECK(checkParser());
 
     resetRegistrationState();
-    int simState = 0;
-    for (unsigned i = 0; i < 10; ++i) {
-        simState = checkSimCard();
-        if (!simState) {
-            break;
-        }
-        HAL_Delay_Milliseconds(1000);
-    }
-    CHECK(simState);
     CHECK(configureApn(conf));
     CHECK(registerNet());
 
@@ -310,6 +313,153 @@ int SaraNcpClient::getIccid(char* buf, size_t size) {
         buf[n] = '\0';
     }
     return n;
+}
+
+int SaraNcpClient::getImei(char* buf, size_t size) {
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+    auto resp = parser_.sendCommand("AT+CGSN");
+    const size_t n = CHECK_PARSER(resp.readLine(buf, size));
+    CHECK_PARSER_OK(resp.readResult());
+    return n;
+}
+
+int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(connState_ != NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(qual, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK(checkParser());
+
+    {
+        int act;
+        int v;
+        auto resp = parser_.sendCommand("AT+COPS?");
+        int r = CHECK_PARSER(resp.scanf("+COPS: %d,%*d,\"%*[^\"]\",%d", &v, &act));
+        CHECK_TRUE(r == 2, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        switch (static_cast<CellularAccessTechnology>(act)) {
+            case CellularAccessTechnology::NONE:
+            case CellularAccessTechnology::GSM:
+            case CellularAccessTechnology::GSM_COMPACT:
+            case CellularAccessTechnology::UTRAN:
+            case CellularAccessTechnology::GSM_EDGE:
+            case CellularAccessTechnology::UTRAN_HSDPA:
+            case CellularAccessTechnology::UTRAN_HSUPA:
+            case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
+            case CellularAccessTechnology::LTE:
+            case CellularAccessTechnology::EC_GSM_IOT:
+            case CellularAccessTechnology::E_UTRAN: {
+                break;
+            }
+            default: {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
+        }
+        qual->accessTechnology(static_cast<CellularAccessTechnology>(act));
+    }
+
+    if (ncpId() == MESH_NCP_SARA_R410) {
+        int rxlev, rxqual, rscp, ecn0, rsrq, rsrp;
+        auto resp = parser_.sendCommand("AT+CESQ");
+        int r = CHECK_PARSER(resp.scanf("+CESQ: %d,%d,%d,%d,%d,%d", &rxlev, &rxqual,
+                &rscp, &ecn0, &rsrq, &rsrp));
+        CHECK_TRUE(r == 6, SYSTEM_ERROR_BAD_DATA);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        switch (qual->strengthUnits()) {
+            case CellularStrengthUnits::RXLEV: {
+                qual->strength(rxlev);
+                break;
+            }
+            case CellularStrengthUnits::RSCP: {
+                qual->strength(rscp);
+                break;
+            }
+            case CellularStrengthUnits::RSRP: {
+                qual->strength(rsrp);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+
+        switch (qual->qualityUnits()) {
+            case CellularQualityUnits::RXQUAL: {
+                qual->quality(rxqual);
+                break;
+            }
+            case CellularQualityUnits::ECN0: {
+                qual->quality(ecn0);
+                break;
+            }
+            case CellularQualityUnits::RSRQ: {
+                qual->quality(rsrq);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+    } else {
+        int rxlev, rxqual;
+        auto resp = parser_.sendCommand("AT+CSQ");
+        int r = CHECK_PARSER(resp.scanf("+CSQ: %d,%d", &rxlev, &rxqual));
+        CHECK_TRUE(r == 2, SYSTEM_ERROR_BAD_DATA);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        // Fixup values
+        switch (qual->strengthUnits()) {
+            case CellularStrengthUnits::RXLEV: {
+                qual->strength((rxlev != 99) ? (2 * rxlev) : rxlev);
+                break;
+            }
+            case CellularStrengthUnits::RSCP: {
+                qual->strength((rxlev != 99) ? (3 + 2 * rxlev) : 255);
+                break;
+            }
+            case CellularStrengthUnits::RSRP: {
+                qual->strength((rxlev != 99) ? (rxlev * 97) / 31 : 255);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+
+        if (qual->accessTechnology() == CellularAccessTechnology::GSM_EDGE) {
+            qual->qualityUnits(CellularQualityUnits::MEAN_BEP);
+        }
+
+        switch (qual->qualityUnits()) {
+            case CellularQualityUnits::RXQUAL:
+            case CellularQualityUnits::MEAN_BEP: {
+                qual->quality(rxqual);
+                break;
+            }
+            case CellularQualityUnits::ECN0: {
+                qual->quality((rxqual != 99) ? std::min((7 + (7 - rxqual) * 6), 44) : 255);
+                break;
+            }
+            case CellularQualityUnits::RSRQ: {
+                qual->quality((rxqual != 99) ? (rxqual * 34) / 7 : 255);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+    }
+
+    return 0;
 }
 
 int SaraNcpClient::checkParser() {
@@ -371,40 +521,106 @@ int SaraNcpClient::waitReady() {
 }
 
 int SaraNcpClient::selectSimCard() {
-    // TODO: check current configuration and leave it as is if matches
+    // Read current GPIO configuration
+    int mode = -1;
+    int value = -1;
+    {
+        auto resp = parser_.sendCommand("AT+UGPIOC?");
+        char buf[32] = {};
+        CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+        if (!strcmp(buf, "+UGPIOC:")) {
+            while (resp.hasNextLine()) {
+                int p, m;
+                const int r = CHECK_PARSER(resp.scanf("%d,%d", &p, &m));
+                if (r == 2 && p == UBLOX_NCP_SIM_SELECT_PIN) {
+                    mode = m;
+                }
+            }
+        }
+        const int r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
+
+    if (mode == 0) {
+        int p, v;
+        auto resp = parser_.sendCommand("AT+UGPIOR=%u", UBLOX_NCP_SIM_SELECT_PIN);
+        int r = CHECK_PARSER(resp.scanf("+UGPIO%*[R:] %d%*[ ,]%d", &p, &v));
+        if (r == 2 && p == UBLOX_NCP_SIM_SELECT_PIN) {
+            value = v;
+        }
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
+
+    bool reset = false;
+
     switch (conf_.simType()) {
         case SimType::EXTERNAL: {
             LOG(INFO, "Using external Nano SIM card");
-            const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,0"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            const int externalSimMode = 0;
+            const int externalSimValue = 0;
+            if (mode != externalSimMode || externalSimValue != value) {
+                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
+                        UBLOX_NCP_SIM_SELECT_PIN, externalSimMode, externalSimValue));
+                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                reset = true;
+            }
             break;
         }
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
             if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
-                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,255"));
-                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                const int internalSimMode = 255;
+                if (mode != internalSimMode) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                    reset = true;
+                }
             } else {
-                const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=23,0,1"));
-                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                const int internalSimMode = 0;
+                const int internalSimValue = 1;
+                if (mode != internalSimMode || value != internalSimValue) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                    reset = true;
+                }
             }
             break;
         }
     }
 
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
-        // U201
-        const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    } else {
-        // R410
-        const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        HAL_Delay_Milliseconds(10000);
+    if (reset) {
+        if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+            // U201
+            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            HAL_Delay_Milliseconds(100);
+        } else {
+            // R410
+            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            HAL_Delay_Milliseconds(10000);
+        }
+
+        CHECK(waitAtResponse(20000));
     }
 
-    return waitAtResponse(20000);
+    // Using numeric CME ERROR codes
+    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+    int simState = 0;
+    for (unsigned i = 0; i < 10; ++i) {
+        simState = checkSimCard();
+        if (!simState) {
+            break;
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
+    return simState;
 }
 
 int SaraNcpClient::changeBaudRate(unsigned int baud) {
@@ -420,7 +636,7 @@ int SaraNcpClient::initReady() {
 
     // Just in case disconnect
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
-    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         // Change the baudrate to 921600
@@ -428,6 +644,25 @@ int SaraNcpClient::initReady() {
         // Check that the modem is responsive at the new baudrate
         skipAll(serial_.get(), 1000);
         CHECK(waitAtResponse(10000));
+    }
+
+    if (ncpId() == MESH_NCP_SARA_R410) {
+        // Force eDRX mode to be disabled
+        // 18/23 hardware doesn't seem to be disabled by default
+        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        // Force Power Saving mode to be disabled for good measure
+        r = CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS?"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(parser_.execCommand("AT+CPSMS?"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    } else {
+        // Power saving
+        r = CHECK_PARSER(parser_.execCommand("AT+UPSV=0"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
 
     // Send AT+CMUX and initialize multiplexer
@@ -495,13 +730,14 @@ int SaraNcpClient::initReady() {
 
 int SaraNcpClient::checkSimCard() {
     auto resp = parser_.sendCommand("AT+CPIN?");
-    char code[32] = {};
+    char code[33] = {};
     int r = CHECK_PARSER(resp.scanf("+CPIN: %32[^\n]", code));
     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     if (!strcmp(code, "READY")) {
-        CHECK(getIccid(nullptr, 0));
+        r = parser_.execCommand("AT+CCID");
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         return 0;
     }
     return SYSTEM_ERROR_UNKNOWN;

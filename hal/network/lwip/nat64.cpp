@@ -19,6 +19,8 @@
 LOG_SOURCE_CATEGORY("net.nat64")
 
 #include "nat64.h"
+#include "hal_platform_config.h"
+#include "platforms.h"
 
 /* FIXME: this is a hack for static_assert(MEMP_NUM_SYS_TIMEOUT > LWIP_NUM_SYS_TIMEOUT_INTERNAL)
  * to work correctly
@@ -66,7 +68,11 @@ uint16_t nextBoundId(uint16_t id, uint16_t min, uint16_t max) {
 }
 
 /* UDP_MIN: 2 minutes (as defined in [RFC4787]) */
+#if PLATFORM_ID != PLATFORM_BORON
 const uint32_t DEFAULT_UDP_NAT_LIFETIME = 120 * 1000;
+#else
+const uint32_t DEFAULT_UDP_NAT_LIFETIME = HAL_PLATFORM_BORON_CLOUD_KEEPALIVE_INTERVAL + 60 * 1000;
+#endif // PLATFORM_ID == PLATFORM_BORON
 const uint16_t DEFAULT_UDP_NAT_MIN_PORT = 40000;
 const uint16_t DEFAULT_UDP_NAT_MAX_PORT = 49000;
 

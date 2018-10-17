@@ -180,6 +180,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define A5          D14
 
 // SPI pins
+#define SS          D14
 #define SCK         D13
 #define MISO        D11
 #define MOSI        D12

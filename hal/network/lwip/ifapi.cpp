@@ -31,6 +31,8 @@ extern "C" {
 #include <lwip/autoip.h>
 
 #include "resolvapi.h"
+#include "basenetif.h"
+#include "check.h"
 
 using namespace particle::net;
 
@@ -46,6 +48,12 @@ bool netif_validate(if_t iface) {
     }
 
     return false;
+}
+
+BaseNetif* getBaseNetif(if_t iface) {
+    auto idx = BaseNetif::getClientDataId();
+    CHECK_TRUE(idx >= 0, nullptr);
+    return (BaseNetif*)netif_get_client_data(iface, idx);
 }
 
 struct EventHandlerList {
@@ -1116,4 +1124,36 @@ int if_event_handler_del(if_event_handler_cookie_t cookie) {
     }
 
     return -1;
+}
+
+int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) {
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_validate(iface)) {
+        return -1;
+    }
+
+    switch (type) {
+        case IF_REQ_POWER_STATE: {
+            if (reqsize != sizeof(if_req_power)) {
+                return -1;
+            }
+
+            if_req_power* preq = (if_req_power*)req;
+            auto bnetif = getBaseNetif(iface);
+            CHECK_TRUE(bnetif, -1);
+            if (preq->state == IF_POWER_STATE_UP) {
+                return bnetif->powerUp();
+            } else if (preq->state == IF_POWER_STATE_DOWN) {
+                return bnetif->powerDown();
+            }
+            break;
+        }
+
+        default: {
+            return -1;
+        }
+    }
+
+    return 0;
 }

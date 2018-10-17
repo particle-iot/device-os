@@ -305,6 +305,7 @@ int AtParserImpl::processUrc(unsigned timeout) {
             ++urcCount;
             break;
         }
+        PARSER_CHECK(readLine(nullptr, 0, &timeout));
     }
     return urcCount;
 }
@@ -452,10 +453,12 @@ int AtParserImpl::parseResult() {
         char* end = nullptr;
         const auto code = strtol(codeStr, &end, 10);
         codeStr[n] = c; // Restore newline character
-        if (end != codeStr + n) {
-            return ParseResult::NO_MATCH; // Error code is not a number
+        if (end == codeStr + n) {
+            errorCode_ = code;
+        } else {
+            // Error code is not a number, use some generic code
+            errorCode_ = 0; // Phone failure
         }
-        errorCode_ = code;
     } else {
         // Any other result code should be followed by a newline character
         if (!isNewline(c)) {

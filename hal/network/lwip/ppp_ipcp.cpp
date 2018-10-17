@@ -66,6 +66,10 @@ void Ipcp::disable() {
   }
 }
 
+void Ipcp::setDnsEntryIndex(int idx) {
+  dnsIndex_ = idx;
+}
+
 void Ipcp::init() {
   LOG(TRACE, "IPCP: init");
 
@@ -351,13 +355,13 @@ void Ipcp::up() {
     if (!ip4_addr_isany_val(pdns)) {
       ip_addr_t tmp;
       ip_addr_copy_from_ip4(tmp, pdns);
-      dns_setserver(0, &tmp);
+      dns_setserver(dnsIndex_, &tmp);
     }
 
     if (!ip4_addr_isany_val(sdns)) {
       ip_addr_t tmp;
       ip_addr_copy_from_ip4(tmp, sdns);
-      dns_setserver(1, &tmp);
+      dns_setserver(dnsIndex_ + 1, &tmp);
     }
 
     if (!state_) {

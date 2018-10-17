@@ -26,6 +26,7 @@
 #include "system_string_interpolate.h"
 #include "spark_wiring_ticks.h"
 #include <arpa/inet.h>
+#include "spark_wiring_cloud.h"
 
 namespace {
 
@@ -162,9 +163,41 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         }
         LOG(INFO, "Cloud socket=%d, connecting to %s:%u", s, serverHost, serverPort);
 
+        if (protocol == IPPROTO_UDP) {
+            struct sockaddr_storage saddr = {};
+            saddr.s2_len = sizeof(saddr);
+            saddr.ss_family = a->ai_family;
+
+            /* NOTE: Always binding to 5684 by default */
+            switch (a->ai_family) {
+                case AF_INET: {
+                    ((sockaddr_in*)&saddr)->sin_port = htons(PORT_COAPS);
+                    break;
+                }
+                case AF_INET6: {
+                    ((sockaddr_in6*)&saddr)->sin6_port = htons(PORT_COAPS);
+                    break;
+                }
+            }
+
+            const int one = 1;
+            if (sock_setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+                LOG(ERROR, "Cloud socket=%d, failed to set SO_REUSEADDR, errno=%d", s, errno);
+                sock_close(s);
+                continue;
+            }
+
+            /* Bind socket */
+            if (sock_bind(s, (const struct sockaddr*)&saddr, sizeof(saddr))) {
+                LOG(ERROR, "Cloud socket=%d, failed to bind, errno=%d");
+                sock_close(s);
+                continue;
+            }
+        }
+
         /* FIXME: timeout for TCP */
         /* NOTE: we do this for UDP sockets as well in order to automagically filter
-         * on source address and port and perform a bind() */
+         * on source address and port */
         r = sock_connect(s, a->ai_addr, a->ai_addrlen);
         if (r) {
             LOG(ERROR, "Cloud socket=%d, failed to connect to %s:%u, errno=%d", s, serverHost, serverPort, errno);
@@ -202,6 +235,10 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         if (saddrCache) {
             memcpy(saddrCache, a->ai_addr, a->ai_addrlen);
         }
+
+        unsigned int keepalive = 0;
+        system_cloud_get_inet_family_keepalive(a->ai_family, &keepalive);
+        system_cloud_set_inet_family_keepalive(a->ai_family, keepalive, 1);
 
         break;
     }

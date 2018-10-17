@@ -33,6 +33,7 @@ int tinkerAnalogWrite(String command);
 // FIXME: Causes uart_init to assertion fault (SOS 10) when ext flash has been erased
 // STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
 // STARTUP(System.enableFeature(FEATURE_WIFITESTER));
+STARTUP(System.enableFeature(FEATURE_ETHERNET_DETECTION));
 
 Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL);
 

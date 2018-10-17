@@ -25,8 +25,9 @@
 #define	HAL_DYNALIB_WLAN_H
 
 #include "dynalib.h"
+#include "hal_platform.h"
 
-#if PLATFORM_ID != 10 && PLATFORM_ID != 13 && PLATFORM_ID != 14
+#if (PLATFORM_ID != 10 && PLATFORM_ID != 13 && PLATFORM_ID != 14) || HAL_PLATFORM_WIFI
 
 #ifdef DYNALIB_EXPORT
 #include "wlan_hal.h"
@@ -61,7 +62,7 @@ DYNALIB_FN(12, hal_wlan, wlan_smart_config_cleanup, void(void))
 DYNALIB_FN(13, hal_wlan, wlan_smart_config_finalize, bool(void))
 
 DYNALIB_FN(14, hal_wlan, wlan_set_error_count, void(uint32_t))
-DYNALIB_FN(15, hal_wlan, wlan_fetch_ipconfig, void(WLanConfig*))
+DYNALIB_FN(15, hal_wlan, wlan_fetch_ipconfig, int(WLanConfig*))
 DYNALIB_FN(16, hal_wlan, wlan_setup, void(void))
 
 DYNALIB_FN(17, hal_wlan, HAL_NET_SetNetWatchDog, uint32_t(uint32_t))
@@ -82,7 +83,7 @@ DYNALIB_FN(31, hal_wlan, wlan_get_ipaddress, int(IPConfig*, void*))
 DYNALIB_FN(32, hal_wlan, wlan_get_ipaddress_source, IPAddressSource(void*))
 DYNALIB_END(hal_wlan)
 
-#endif  // PLATFORM_ID != 10
+#endif // (PLATFORM_ID != 10 && PLATFORM_ID != 13 && PLATFORM_ID != 14) || HAL_PLATFORM_WIFI
 
 #endif	/* HAL_DYNALIB_WLAN_H */
 

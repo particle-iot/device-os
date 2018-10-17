@@ -112,10 +112,9 @@ typedef enum
 
     /**
      * A persistent flag that when set will cause the system to startup
-     * in listening mode if booting in safe mode. The flag is automatically
-     * cleared on reboot.
+     * in listening mode. The flag is automatically cleared on reboot.
      */
-    SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
+    SYSTEM_FLAG_STARTUP_LISTEN_MODE,
 
 	/**
 	 * Enable/Disable use of serial1 during setup.

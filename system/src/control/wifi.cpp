@@ -17,7 +17,7 @@
 
 #include "wifi.h"
 
-#if SYSTEM_CONTROL_ENABLED
+#if SYSTEM_CONTROL_ENABLED && !HAL_PLATFORM_NCP
 
 #include "common.h"
 #include "wifi.pb.h"
@@ -212,4 +212,4 @@ int handleClearCredentialsRequest(ctrl_request* req) {
 
 #endif // Wiring_WiFi == 1
 
-#endif // SYSTEM_CONTROL_ENABLED
+#endif // SYSTEM_CONTROL_ENABLED && !HAL_PLATFORM_NCP

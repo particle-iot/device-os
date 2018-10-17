@@ -10,7 +10,7 @@ LOG_SOURCE_CATEGORY("sys.power")
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
 
-#if Wiring_Cellular == 1
+#if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
 
 using namespace particle::power;
 

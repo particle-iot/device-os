@@ -47,7 +47,7 @@ LOG_SOURCE_CATEGORY("net.dns64")
         ({ \
             const auto _ret = _expr; \
             if (_ret < 0) { \
-                LOG(ERROR, #_expr " failed: %d", errno); \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", errno); \
                 return socketToSystemError(errno); \
             } \
             _ret; \

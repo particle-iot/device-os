@@ -355,7 +355,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('L' == c)
     {
-        system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
+        system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 1, nullptr);
         System.enterSafeMode();
     }
     else if ('c' == c)
@@ -670,7 +670,7 @@ void WiFiSetupConsole::cleanup()
 
 void WiFiSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 #endif
@@ -689,7 +689,7 @@ CellularSetupConsole::~CellularSetupConsole()
 
 void CellularSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 void CellularSetupConsole::handle(char c)

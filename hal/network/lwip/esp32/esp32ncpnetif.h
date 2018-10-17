@@ -37,6 +37,9 @@ public:
 
     void setWifiManager(particle::WifiNetworkManager* wifiMan);
 
+    virtual int powerUp() override;
+    virtual int powerDown() override;
+
     static void ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx);
     static void ncpEventHandlerCb(const NcpEvent& ev, void* ctx);
 

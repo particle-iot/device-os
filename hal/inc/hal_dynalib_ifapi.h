@@ -64,6 +64,7 @@ DYNALIB_FN(27, hal_ifapi, if_event_handler_add, if_event_handler_cookie_t(if_eve
 DYNALIB_FN(28, hal_ifapi, if_event_handler_add_if, if_event_handler_cookie_t(if_t, if_event_handler_t, void*))
 DYNALIB_FN(29, hal_ifapi, if_event_handler_self, if_event_handler_cookie_t(if_t, if_event_handler_t, void*))
 DYNALIB_FN(30, hal_ifapi, if_event_handler_del, int(if_event_handler_cookie_t))
+DYNALIB_FN(31, hal_ifapi, if_request, int(if_t, int, void*, size_t, void*))
 
 DYNALIB_END(hal_ifapi)
 

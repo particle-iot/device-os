@@ -37,10 +37,32 @@ LOG_SOURCE_CATEGORY("net.th")
 #include "lwiplock.h"
 
 #include <lwip/opt.h>
+#include "hal_platform.h"
+
+// FIXME:
+#include "system_threading.h"
+extern "C" int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags);
 
 using namespace particle::net;
 
 namespace {
+
+void updateIp6CloudKeepalive(unsigned int value) {
+    struct Task: public ISRTaskQueue::Task {
+        unsigned int value;
+    };
+    const auto task = new(std::nothrow) Task;
+    if (!task) {
+        return;
+    }
+    task->value = value;
+    task->func = [](ISRTaskQueue::Task* task) {
+        unsigned int value = ((Task*)task)->value;
+        delete task;
+        system_cloud_set_inet_family_keepalive(AF_INET6, value, 0);
+    };
+    SystemISRTaskQueue.enqueue(task);
+}
 
 void otIp6AddressToIp6Addr(const otIp6Address* otAddr, ip6_addr_t& addr) {
     IP6_ADDR(&addr, otAddr->mFields.m32[0],
@@ -155,8 +177,6 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
         : BaseNetif(),
           ot_(ot) {
 
-    registerHandlers();
-
     std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
     if (!ot_) {
 #if !defined(OPENTHREAD_ENABLE_MULTIPLE_INSTANCES) || OPENTHREAD_ENABLE_MULTIPLE_INSTANCES == 0
@@ -177,6 +197,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
     LOG(INFO, "Creating new LwIP OpenThread interface");
     netifapi_netif_add(interface(), nullptr, nullptr, nullptr, nullptr, initCb, tcpip_input);
     interface()->state = this;
+    registerHandlers();
     /* Automatically set it up */
     /* netifapi_netif_set_up(interface()); */
 
@@ -603,6 +624,12 @@ void OpenThreadNetif::refreshIpAddresses() {
             } else {
                 setDns(nullptr);
             }
+
+            if (abr_.mPreference == OT_ROUTE_PREFERENCE_LOW) {
+                updateIp6CloudKeepalive(HAL_PLATFORM_BORON_CLOUD_KEEPALIVE_INTERVAL);
+            } else {
+                updateIp6CloudKeepalive(HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
+            }
         }
     } else {
         memset(&abr_, 0, sizeof(abr_));
@@ -729,6 +756,14 @@ int OpenThreadNetif::down() {
     netif_set_link_down(interface());
 
     return r;
+}
+
+int OpenThreadNetif::powerUp() {
+    return 0;
+}
+
+int OpenThreadNetif::powerDown() {
+    return down();
 }
 
 void OpenThreadNetif::ifEventHandler(const if_event* ev) {

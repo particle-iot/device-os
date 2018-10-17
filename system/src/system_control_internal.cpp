@@ -173,6 +173,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::isDeviceSetupDone(req));
         break;
     }
+    case CTRL_REQUEST_SET_STARTUP_MODE: {
+        setResult(req, control::config::setStartupMode(req));
+        break;
+    }
     case CTRL_REQUEST_MODULE_INFO: {
         struct Formatter {
             static int callback(Appender* appender, void* data) {
@@ -203,7 +207,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         }
         break;
     }
-#if Wiring_WiFi == 1
+#if Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
     /* wifi requests */
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
         setResult(req, control::wifi::handleGetAntennaRequest(req));
@@ -229,7 +233,8 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::wifi::handleClearCredentialsRequest(req));
         break;
     }
-#endif // Wiring_WiFi
+#endif // Wiring_WiFi && !HAL_PLATFORM_NCP
+#if !HAL_PLATFORM_MESH
     /* network requests */
     case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
         setResult(req, control::network::handleGetConfigurationRequest(req));
@@ -243,6 +248,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::network::handleSetConfigurationRequest(req));
         break;
     }
+#endif // !HAL_PLATFORM_MESH
     /* config requests */
     case CTRL_REQUEST_SET_CLAIM_CODE: {
         setResult(req, control::config::handleSetClaimCodeRequest(req));

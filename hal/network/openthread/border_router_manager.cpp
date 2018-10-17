@@ -166,7 +166,7 @@ int BorderRouterManager::stopServices() {
     {
         std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
         /* Register OpenThread state changed callback */
-        otSetStateChangedCallback(ot_get_instance(), &otStateChangedCb, this);
+        otRemoveStateChangeCallback(ot_get_instance(), &otStateChangedCb, this);
     }
 
     if (ifEventCookie_) {

@@ -28,18 +28,13 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "network/ncp.h"
 #include "wifi_network_manager.h"
 #endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+#include "cellular_hal.h"
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_MESH
 #include "border_router_manager.h"
 #endif // HAL_PLATFORM_MESH
-
-#define CHECK(_expr) \
-        ({ \
-            const auto _ret = _expr; \
-            if (_ret < 0) { \
-                return _ret; \
-            } \
-            _ret; \
-        })
+#include "check.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -180,6 +175,11 @@ int NetworkManager::activateConnections() {
             return;
         }
 
+        // Ignore disabled interfaces
+        if (!isInterfaceEnabled(iface)) {
+            return;
+        }
+
         if (!(flags & IFF_UP)) {
             CHECKV(if_set_flags(iface, IFF_UP));
 
@@ -262,17 +262,21 @@ bool NetworkManager::isIp6ConnectivityAvailable() const {
     return ip6State_ == ProtocolState::CONFIGURED;
 }
 
-bool NetworkManager::isConfigured() const {
+bool NetworkManager::isConfigured(if_t iface) const {
     bool ret = false;
-    for_each_iface([&](if_t iface, unsigned int curFlags) {
-        if (haveLowerLayerConfiguration(iface)) {
-            ret = true;
-        }
-    });
-    return ret;
+    if (!iface) {
+        for_each_iface([&](if_t iface, unsigned int curFlags) {
+            if (haveLowerLayerConfiguration(iface)) {
+                ret = true;
+            }
+        });
+        return ret;
+    } else {
+        return haveLowerLayerConfiguration(iface);
+    }
 }
 
-int NetworkManager::clearConfiguration(if_t iface) {
+int NetworkManager::clearConfiguration(if_t oIface) {
     if (state_ != State::IFACE_DOWN && state_ != State::DISABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -281,33 +285,42 @@ int NetworkManager::clearConfiguration(if_t iface) {
         return SYSTEM_ERROR_NONE;
     }
 
-    if (!iface) {
-        for_each_iface([](if_t iface, unsigned int flags) {
-            char name[IF_NAMESIZE] = {};
-            if_get_name(iface, name);
+    int ret = SYSTEM_ERROR_INVALID_ARGUMENT;
+
+    for_each_iface([&](if_t iface, unsigned int flags) {
+        char name[IF_NAMESIZE] = {};
+        if_get_name(iface, name);
+
+        if (oIface && iface != oIface) {
+            return;
+        }
 
 #if HAL_PLATFORM_OPENTHREAD
-            if (!strncmp(name, "th", 2)) {
-                /* OpenThread iface */
-                std::lock_guard<ThreadLock> lk(ThreadLock());
-                otMasterKey key = {};
-                otThreadSetMasterKey(threadInstance(), &key);
-                otInstanceErasePersistentInfo(threadInstance());
-                system_command_clear();
-            }
+        if (!strncmp(name, "th", 2)) {
+            /* OpenThread iface */
+            std::lock_guard<ThreadLock> lk(ThreadLock());
+            otMasterKey key = {};
+            otThreadSetMasterKey(threadInstance(), &key);
+            otInstanceErasePersistentInfo(threadInstance());
+            system_command_clear();
+            ret = SYSTEM_ERROR_NONE;
+        }
 #endif /* HAL_PLATFORM_OPENTHREAD */
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
-            else if (!strncmp(name, "wl", 2)) {
-                auto wifiMan = wifiNetworkManager();
-                return wifiMan->clearConfiguredNetworks();
-            }
+        else if (!strncmp(name, "wl", 2)) {
+            auto wifiMan = wifiNetworkManager();
+            wifiMan->clearConfiguredNetworks();
+            ret = SYSTEM_ERROR_NONE;
+        }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
-        });
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+        else if (!strncmp(name, "pp", 2)) {
+            ret = cellular_credentials_clear(nullptr);
+        }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+    });
 
-        return SYSTEM_ERROR_NONE;
-    }
-
-    return SYSTEM_ERROR_INVALID_ARGUMENT;
+    return ret;
 }
 
 NetworkManager::State NetworkManager::getState() const {
@@ -341,6 +354,9 @@ void NetworkManager::transition(State state) {
             ip6State_ = ProtocolState::UNCONFIGURED;
             dns4State_ = DnsState::UNCONFIGURED;
             dns6State_ = DnsState::UNCONFIGURED;
+#if HAL_PLATFORM_MESH
+            BorderRouterManager::instance()->stop();
+#endif // HAL_PLATFORM_MESH
             break;
         }
     }
@@ -441,7 +457,7 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
             /* FIXME: LwIP issues netif_set_down callback BEFORE clearing the IFF_UP flag,
              * that's why the count of interfaces with IFF_UP should be 1 here
              */
-            if (countIfacesWithFlags(IFF_UP) == 1) {
+            if (countIfacesWithFlags(IFF_UP) <= 1) {
                 transition(State::IFACE_DOWN);
             }
         }
@@ -458,6 +474,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             refreshIpState();
         }
     } else {
+        resetInterfaceProtocolState(iface);
         /* Interface link state changed to DOWN */
         if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             if (countIfacesWithFlags(IFF_UP | IFF_LOWER_UP) == 0) {
@@ -488,6 +505,11 @@ unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) const {
             return;
         }
 
+        // Ignore disabled interfaces
+        if (!isInterfaceEnabled(iface)) {
+            return;
+        }
+
         if ((curFlags & flags) == flags) {
             ++count;
         }
@@ -500,10 +522,15 @@ void NetworkManager::refreshIpState() {
     ProtocolState ip4 = ProtocolState::UNCONFIGURED;
     ProtocolState ip6 = ProtocolState::UNCONFIGURED;
 
+    resetInterfaceProtocolState();
+
     if_addrs* addrs = nullptr;
     CHECKV(if_get_if_addrs(&addrs));
 
     for (auto addr = addrs; addr != nullptr; addr = addr->next) {
+        ProtocolState ifIp4 = ProtocolState::UNCONFIGURED;
+        ProtocolState ifIp6 = ProtocolState::UNCONFIGURED;
+
         /* Skip loopback interface */
         if (addr->ifflags & IFF_LOOPBACK) {
             continue;
@@ -521,7 +548,7 @@ void NetworkManager::refreshIpState() {
 
         if (a->addr->sa_family == AF_INET) {
             if (a->prefixlen > 0 && /* FIXME */ a->gw) {
-                ip4 = ProtocolState::CONFIGURED;
+                ifIp4 = ProtocolState::CONFIGURED;
             }
         } else if (a->addr->sa_family == AF_INET6) {
             sockaddr_in6* sin6 = (sockaddr_in6*)a->addr;
@@ -532,11 +559,37 @@ void NetworkManager::refreshIpState() {
              * which is in fact either PREFERRED or DEPRECATED.
              */
             if (sin6->sin6_scope_id == 0 && a->prefixlen > 0 &&
-                ip6_addr_data && ip6_addr_data->state & IF_IP6_ADDR_STATE_VALID) {
-                ip6 = ProtocolState::CONFIGURED;
+                    ip6_addr_data && (ip6_addr_data->state & IF_IP6_ADDR_STATE_VALID)) {
+                ifIp6 = ProtocolState::CONFIGURED;
+            } else if (sin6->sin6_scope_id != 0 && a->prefixlen > 0 &&
+                    ip6_addr_data && (ip6_addr_data->state & IF_IP6_ADDR_STATE_VALID)) {
+                // Otherwise report link-local
+                ifIp6 = ProtocolState::LINKLOCAL;
             }
         } else {
             /* Unknown family */
+        }
+
+        if ((int)ifIp4 > (int)ip4) {
+            ip4 = ifIp4;
+        }
+        if ((int)ifIp6 > (int)ip6) {
+            ip6 = ifIp6;
+        }
+
+        {
+            if_t iface;
+            if (!if_get_by_index(addr->ifindex, &iface)) {
+                auto state = getInterfaceRuntimeState(iface);
+                if (state) {
+                    if ((int)ifIp4 > (int)state->ip4State.load()) {
+                        state->ip4State = ifIp4;
+                    }
+                    if ((int)ifIp6 > (int)state->ip6State.load()) {
+                        state->ip6State = ifIp6;
+                    }
+                }
+            }
         }
     }
 
@@ -645,4 +698,122 @@ const char* NetworkManager::stateToName(State state) const {
 
     return stateNames[::particle::to_underlying(state)];
 }
+
+void NetworkManager::populateInterfaceRuntimeState(bool st) {
+    for_each_iface([&](if_t iface, unsigned int flags) {
+        auto state = getInterfaceRuntimeState(iface);
+        if (!state) {
+            state = new (std::nothrow) InterfaceRuntimeState;
+            if (state) {
+                state->iface = iface;
+                runState_.pushFront(state);
+            }
+        }
+        if (state) {
+            state->enabled = st;
+        }
+    });
+}
+
+int NetworkManager::enableInterface(if_t iface) {
+    // Special case - enable all
+    if (iface == nullptr) {
+        populateInterfaceRuntimeState(true);
+    } else {
+        auto state = getInterfaceRuntimeState(iface);
+        CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
+        state->enabled = true;
+    }
+    return 0;
+}
+
+int NetworkManager::disableInterface(if_t iface) {
+    // Special case - disable all
+    if (iface == nullptr) {
+        populateInterfaceRuntimeState(false);
+    } else {
+        auto state = getInterfaceRuntimeState(iface);
+        CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
+        state->enabled = false;
+    }
+    return 0;
+}
+
+int NetworkManager::syncInterfaceStates() {
+    if (isEstablishingConnections()) {
+        CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
+            if (!haveLowerLayerConfiguration(iface)) {
+                return;
+            }
+
+            auto state = getInterfaceRuntimeState(iface);
+            if (state) {
+                if (state->enabled && !(flags & IFF_UP)) {
+                    CHECKV(if_set_flags(iface, IFF_UP));
+                    CHECKV(if_set_xflags(iface, IFXF_DHCP));
+                } else if (!state->enabled && (flags & IFF_UP)) {
+                    CHECKV(if_clear_flags(iface, IFF_UP));
+                }
+            }
+        }));
+    }
+
+    return 0;
+}
+
+NetworkManager::InterfaceRuntimeState* NetworkManager::getInterfaceRuntimeState(if_t iface) const {
+    for (auto item = runState_.front(); item != nullptr; item = item->next) {
+        if (item->iface == iface) {
+            return item;
+        }
+    }
+    return nullptr;
+}
+
+bool NetworkManager::isInterfaceEnabled(if_t iface) const {
+    auto state = getInterfaceRuntimeState(iface);
+    if (state) {
+        return state->enabled;
+    }
+    return false;
+}
+
+int NetworkManager::countEnabledInterfaces() {
+    int count = 0;
+    for (auto item = runState_.front(); item != nullptr; item = item->next) {
+        if (item->enabled && haveLowerLayerConfiguration(item->iface)) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
+NetworkManager::ProtocolState NetworkManager::getInterfaceIp4State(if_t iface) const {
+    auto state = getInterfaceRuntimeState(iface);
+    if (state) {
+        return state->ip4State;
+    }
+
+    return ProtocolState::UNCONFIGURED;
+}
+
+NetworkManager::ProtocolState NetworkManager::getInterfaceIp6State(if_t iface) const {
+    auto state = getInterfaceRuntimeState(iface);
+    if (state) {
+        return state->ip6State;
+    }
+
+    return ProtocolState::UNCONFIGURED;
+}
+
+void NetworkManager::resetInterfaceProtocolState(if_t iface) {
+    for (auto item = runState_.front(); item != nullptr; item = item->next) {
+        if (!iface || item->iface == iface) {
+            item->ip4State = ProtocolState::UNCONFIGURED;
+            item->ip6State = ProtocolState::UNCONFIGURED;
+        }
+    }
+}
+
 #endif /* HAL_PLATFORM_IFAPI */

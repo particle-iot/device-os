@@ -67,6 +67,8 @@ void Client::init() {
     LOCK_TCPIP_CORE();
     ipcp_ = std::make_unique<Ipcp>(pcb_);
     SPARK_ASSERT(ipcp_);
+    // FIXME hardcoded
+    ipcp_->setDnsEntryIndex(2);
     netif_set_client_data(&if_, netifClientDataIdx_, this);
     UNLOCK_TCPIP_CORE();
 

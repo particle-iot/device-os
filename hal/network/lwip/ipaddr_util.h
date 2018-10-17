@@ -18,34 +18,6 @@
 #ifndef HAL_NETWORK_LWIP_IP_ADDR_UTIL_H
 #define HAL_NETWORK_LWIP_IP_ADDR_UTIL_H
 
-namespace particle { namespace net {
-
-template <size_t SIZE>
-struct IpAddrNtoaHelper {
-    char str[SIZE] = {};
-};
-
-#define IPADDR_NTOA(addr) \
-    ({ \
-        IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> tmp; \
-        ipaddr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
-        tmp; \
-    }).str
-
-#define IP6ADDR_NTOA(addr) \
-    ({ \
-        IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> tmp; \
-        ip6addr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
-        tmp; \
-    }).str
-
-#define IP4ADDR_NTOA(addr) \
-    ({ \
-        IpAddrNtoaHelper<IP4ADDR_STRLEN_MAX> tmp; \
-        ip4addr_ntoa_r(addr, tmp.str, sizeof(tmp.str)); \
-        tmp; \
-    }).str
-
-} } /* namespace particle::net */
+#include "lwip_util.h"
 
 #endif /* HAL_NETWORK_LWIP_IP_ADDR_UTIL_H */

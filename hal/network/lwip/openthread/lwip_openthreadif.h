@@ -37,6 +37,9 @@ public:
 
     otInstance* getOtInstance();
 
+    virtual int powerUp() override;
+    virtual int powerDown() override;
+
 protected:
     virtual void ifEventHandler(const if_event* ev) override;
     virtual void netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) override;

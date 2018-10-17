@@ -32,6 +32,20 @@
 #define IPADDR_SIZE(_addr) \
         (IP_IS_V4(_addr) ? sizeof(ip4_addr::addr) : sizeof(ip6_addr::addr))
 
+#define IP6ADDR_NTOA(_addr) \
+    ({ \
+        ::particle::detail::IpAddrNtoaHelper<IP6ADDR_STRLEN_MAX> tmp; \
+        ip6addr_ntoa_r(_addr, tmp.str, sizeof(tmp.str)); \
+        tmp; \
+    }).str
+
+#define IP4ADDR_NTOA(_addr) \
+    ({ \
+        ::particle::detail::IpAddrNtoaHelper<IP4ADDR_STRLEN_MAX> tmp; \
+        ip4addr_ntoa_r(_addr, tmp.str, sizeof(tmp.str)); \
+        tmp; \
+    }).str
+
 namespace particle {
 
 namespace detail {
@@ -43,5 +57,7 @@ struct IpAddrNtoaHelper {
 };
 
 } // particle::detail
+
+void reserve_netif_index();
 
 } // particle

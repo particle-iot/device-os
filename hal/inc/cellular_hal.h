@@ -32,6 +32,14 @@
 extern "C" {
 #endif
 
+typedef struct MDM_BandSelect MDM_BandSelect;
+
+typedef enum SimType {
+    INVALID_SIM = 0,
+    INTERNAL_SIM = 1,
+    EXTERNAL_SIM = 2
+} SimType;
+
 /**
  * Power on and initialize the cellular module,
  * if USART3 not initialized, will be done on first call.
@@ -89,6 +97,11 @@ cellular_result_t cellular_credentials_set(const char* apn, const char* username
  * Get cellular connection parameters
  */
 CellularCredentials* cellular_credentials_get(void* reserved);
+
+/**
+ * Set cellular connection parameters to defaults.
+ */
+cellular_result_t cellular_credentials_clear(void* reserved);
 
 bool cellular_sim_ready(void* reserved);
 
@@ -151,7 +164,7 @@ cellular_result_t cellular_imsi_to_network_provider(void* reserved);
 /**
  * Function for getting the cellular network provider data currently set
  */
-const CellularNetProvData cellular_network_provider_data_get(void* reserved);
+CellularNetProvData cellular_network_provider_data_get(void* reserved);
 
 /**
  * Acquires the modem lock.
@@ -169,6 +182,31 @@ void cellular_unlock(void* reserved);
  * mode is volatile and will default to 1 on system reset/boot.
  */
 void cellular_set_power_mode(int mode, void* reserved);
+
+/**
+ * Set cellular band select
+ */
+cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved);
+
+/**
+ * Get cellular band select
+ */
+cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved);
+
+/**
+ * Get cellular band available
+ */
+cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reserved);
+
+/**
+ * Set active SIM card.
+ */
+cellular_result_t cellular_set_active_sim(int sim_type, void* reserved);
+
+/**
+ * Get active SIM card.
+ */
+cellular_result_t cellular_get_active_sim(int* sim_type, void* reserved);
 
 #ifdef __cplusplus
 }

@@ -75,11 +75,11 @@ inline bool is_ipv4(const HAL_IPAddress* address)
 }
 
 typedef struct __attribute__((__packed__)) _NetworkConfig_t {
-    HAL_IPAddress aucIP;             // byte 0 is MSB, byte 3 is LSB
-    HAL_IPAddress aucSubnetMask;     // byte 0 is MSB, byte 3 is LSB
-    HAL_IPAddress aucDefaultGateway; // byte 0 is MSB, byte 3 is LSB
-    HAL_IPAddress aucDHCPServer;     // byte 0 is MSB, byte 3 is LSB
-    HAL_IPAddress aucDNSServer;      // byte 0 is MSB, byte 3 is LSB
+    HAL_IPAddress aucIP;             // byte 0 is LSB, byte 3 is MSB
+    HAL_IPAddress aucSubnetMask;     // byte 0 is LSB, byte 3 is MSB
+    HAL_IPAddress aucDefaultGateway; // byte 0 is LSB, byte 3 is MSB
+    HAL_IPAddress aucDHCPServer;     // byte 0 is LSB, byte 3 is MSB
+    HAL_IPAddress aucDNSServer;      // byte 0 is LSB, byte 3 is MSB
     uint8_t uaMacAddr[6];
 } NetworkConfig;
 PARTICLE_STATIC_ASSERT(NetworkConfig_size, sizeof(HAL_IPAddress)*5+6);

@@ -388,14 +388,23 @@ public:
     }
 
     SleepResult sleepResult() {
-        static std::once_flag f;
-        std::call_once(f, [&]() {
+        // FIXME: __once_proxy, std::get_once_mutex, std::set_once_functor_lock_ptr
+        // static std::once_flag f;
+        // std::call_once(f, [&]() {
+        //     if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
+        //         // Woken up from standby mode
+        //         sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
+        //     }
+        // });
+        static bool f = false;
+        if (!f) {
+            f = true;
             if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
                 // Woken up from standby mode
                 sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
             }
-        });
-         return sleepResult_;
+        }
+        return sleepResult_;
     }
 
     inline system_error_t sleepError() {

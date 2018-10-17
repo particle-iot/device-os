@@ -23,6 +23,7 @@
 
 /* socket_hal_posix_impl.h should get included from socket_hal.h automagically */
 #include "socket_hal.h"
+#include <cstdarg>
 
 int sock_accept(int s, struct sockaddr* addr, socklen_t* addrlen) {
   return lwip_accept(s, addr, addrlen);
@@ -84,4 +85,12 @@ ssize_t sock_sendto(int s, const void* dataptr, size_t size, int flags,
 
 int sock_socket(int domain, int type, int protocol) {
   return lwip_socket(domain, type, protocol);
+}
+
+int sock_fcntl(int s, int cmd, ...) {
+  va_list vl;
+  va_start(vl, cmd);
+  int val = va_arg(vl, int);
+  va_end(vl);
+  return lwip_fcntl(s, cmd, val);
 }

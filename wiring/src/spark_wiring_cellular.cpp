@@ -21,7 +21,7 @@
 
 #if Wiring_Cellular
 
-#include "cellular_internal.h"
+// #include "cellular_internal.h"
 
 namespace spark {
 
@@ -150,7 +150,7 @@ namespace spark {
     }
 
     CellularClass Cellular;
-    NetworkClass& Network = Cellular;
+    // NetworkClass& Network = Cellular;
 }
 
 #endif
