@@ -11,6 +11,8 @@ LOG_MODULE_CATEGORY = hal
 
 ifeq ($(PLATFORM_ID),13)
 ifneq ($(DEBUG_BUILD),y)
+ifneq ($(INCLUDE_APP),y)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_INFO
+endif
 endif
 endif
