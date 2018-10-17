@@ -60,7 +60,7 @@
         do { \
             const auto ret = _expr; \
             if (ret != OT_ERROR_NONE) { \
-                LOG(ERROR, #_expr " failed: %d", (int)ret); \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
                 return threadToSystemError(ret); \
             } \
         } while (false)
