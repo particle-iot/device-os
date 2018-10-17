@@ -82,6 +82,7 @@ private:
     void ncpState(NcpState state);
     void connectionState(NcpConnectionState state);
     void parserError(int error);
+    int getFirmwareModuleVersionImpl(uint16_t* ver);
 };
 
 inline void Esp32NcpClient::lock() {

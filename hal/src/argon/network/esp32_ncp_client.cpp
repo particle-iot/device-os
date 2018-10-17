@@ -29,7 +29,6 @@
 #include "xmodem_sender.h"
 #include "stream_util.h"
 #include "check.h"
-#include "scope_guard.h"
 
 #include <cstdlib>
 
@@ -185,6 +184,10 @@ int Esp32NcpClient::getFirmwareVersionString(char* buf, size_t size) {
 int Esp32NcpClient::getFirmwareModuleVersion(uint16_t* ver) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
+    return getFirmwareModuleVersionImpl(ver);
+}
+
+int Esp32NcpClient::getFirmwareModuleVersionImpl(uint16_t* ver) {
     char buf[16] = {};
     auto resp = parser_.sendCommand("AT+MVER");
     CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
@@ -413,15 +416,9 @@ int Esp32NcpClient::initReady() {
     int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0"));
 
     if (r != AtResponse::OK) {
-        // Temporarily trick everybody into thinking that we are ready
-        SCOPE_GUARD({
-            ncpState_ = NcpState::OFF;
-        });
-        ncpState_ = NcpState::ON;
-
         // Check current NCP firmware module version
         uint16_t mver = 0;
-        CHECK(getFirmwareModuleVersion(&mver));
+        CHECK(getFirmwareModuleVersionImpl(&mver));
 
         // If it's < ESP32_NCP_MIN_MVER_WITH_CMUX, AT+CMUX is not supposed to work
         // We simply won't initialize it
