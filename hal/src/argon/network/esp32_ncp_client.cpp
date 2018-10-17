@@ -29,6 +29,7 @@
 #include "xmodem_sender.h"
 #include "stream_util.h"
 #include "check.h"
+#include "scope_guard.h"
 
 #include <cstdlib>
 
@@ -70,13 +71,16 @@ const auto ESP32_NCP_AT_CHANNEL = 1;
 const auto ESP32_NCP_STA_CHANNEL = 2;
 const auto ESP32_NCP_AP_CHANNEL = 3;
 
+const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 4;
+
 } // unnamed
 
 Esp32NcpClient::Esp32NcpClient() :
         ncpState_(NcpState::OFF),
         connState_(NcpConnectionState::DISCONNECTED),
         parserError_(0),
-        ready_(false) {
+        ready_(false),
+        muxerNotStarted_(false) {
 }
 
 Esp32NcpClient::~Esp32NcpClient() {
@@ -99,6 +103,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     connState_ = NcpConnectionState::DISCONNECTED;
     parserError_ = 0;
     ready_ = false;
+    muxerNotStarted_ = false;
     return 0;
 }
 
@@ -255,14 +260,17 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
     CHECK(checkParser());
 
     // Open data channel
-    CHECK(muxer_.openChannel(ESP32_NCP_STA_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
+    int r = muxer_.openChannel(ESP32_NCP_STA_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
         auto self = (Esp32NcpClient*)ctx;
         const auto handler = self->conf_.dataHandler();
         if (handler) {
             handler(0, data, size, self->conf_.dataHandlerData());
         }
         return 0;
-    }, this));
+    }, this);
+    // We are running an older NCP firmware without muxer support, ignore error here
+    CHECK_TRUE(r == 0 || (r == gsm0710::GSM0710_ERROR_INVALID_STATE && muxerNotStarted_),
+            SYSTEM_ERROR_UNKNOWN);
 
     auto cmd = parser_.command();
     cmd.printf("AT+CWJAP=\"%s\"", ssid);
@@ -281,7 +289,7 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
         macAddressToString(bssid, bssidStr, sizeof(bssidStr));
         cmd.printf(",\"%s\"", bssidStr);
     }
-    const int r = CHECK_PARSER(cmd.exec());
+    r = CHECK_PARSER(cmd.exec());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     connectionState(NcpConnectionState::CONNECTED);
     return 0;
@@ -402,9 +410,39 @@ int Esp32NcpClient::waitReady() {
 
 int Esp32NcpClient::initReady() {
     // Send AT+CMUX and initialize multiplexer
-    const int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0"));
+    int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0"));
+
+    if (r != AtResponse::OK) {
+        // Temporarily trick everybody into thinking that we are ready
+        SCOPE_GUARD({
+            ncpState_ = NcpState::OFF;
+        });
+        ncpState_ = NcpState::ON;
+
+        // Check current NCP firmware module version
+        uint16_t mver = 0;
+        CHECK(getFirmwareModuleVersion(&mver));
+
+        // If it's < ESP32_NCP_MIN_MVER_WITH_CMUX, AT+CMUX is not supposed to work
+        // We simply won't initialize it
+        CHECK_TRUE(mver < ESP32_NCP_MIN_MVER_WITH_CMUX, SYSTEM_ERROR_UNKNOWN);
+
+        muxerNotStarted_ = true;
+    } else {
+        CHECK(initMuxer());
+        muxerNotStarted_ = false;
+    }
+
+    // Disable DHCP on both STA and AP interfaces
+    r = CHECK_PARSER(parser_.execCommand("AT+CWDHCP=0,3"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
+    // Now we are ready
+    ncpState(NcpState::ON);
+    return 0;
+}
+
+int Esp32NcpClient::initMuxer() {
     // Initialize muxer
     muxer_.setStream(serial_.get());
     muxer_.setMaxFrameSize(ESP32_NCP_MAX_MUXER_FRAME_SIZE);
@@ -448,9 +486,6 @@ int Esp32NcpClient::initReady() {
         if (r == AtResponse::OK) {
             // Success, remote end answered to an AT command
             LOG_DEBUG(TRACE, "Muxer AT channel live");
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CWDHCP=0,3"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-            ncpState(NcpState::ON);
             return 0;
         }
         const auto t2 = HAL_Timer_Get_Milli_Seconds();

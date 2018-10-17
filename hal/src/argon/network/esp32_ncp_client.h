@@ -70,11 +70,13 @@ private:
     bool ready_;
     gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
+    bool muxerNotStarted_;
 
     int initParser(Stream* stream);
     int checkParser();
     int waitReady();
     int initReady();
+    int initMuxer();
     static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
             decltype(muxer_)::ChannelState newState, void* ctx);
     void ncpState(NcpState state);
