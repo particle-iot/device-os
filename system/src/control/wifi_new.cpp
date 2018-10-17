@@ -95,6 +95,8 @@ int joinNewNetwork(ctrl_request* req) {
     NAMED_SCOPE_GUARD(oldConfGuard, {
         if (hasOldConf) {
             wifiMgr->setNetworkConfig(oldConf); // Restore previous configuration
+        } else {
+            wifiMgr->removeNetworkConfig(conf.ssid());
         }
     });
     // Connect to the network
