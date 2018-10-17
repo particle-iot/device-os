@@ -48,6 +48,11 @@ extern char link_heap_location, link_heap_location_end;
 extern char _Stack_Init;
 void* new_heap_end = &link_heap_location_end;
 
+typedef enum Feature_Flag {
+    FEATURE_FLAG_RESET_INFO = 0x01,
+    FEATURE_FLAG_ETHERNET_DETECTION = 0x02
+} Feature_Flag;
+
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
 void HardFault_Handler(void);
@@ -626,15 +631,16 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
     if (result != 0) {
         return result;
     }
-    const bool cur_value = flags & flag;
+    // NOTE: inverted logic!
+    const bool cur_value = !(flags & flag);
     if (prev_value) {
         *prev_value = cur_value;
     }
     if (cur_value != value) {
         if (value) {
-            flags |= flag;
-        } else {
             flags &= ~flag;
+        } else {
+            flags |= flag;
         }
         result = dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
         if (result != 0) {
@@ -654,7 +660,7 @@ static int Read_Feature_Flag(uint32_t flag, bool* value)
     if (result != 0) {
         return result;
     }
-    *value = flags & flag;
+    *value = !(flags & flag);
     return 0;
 }
 
@@ -671,8 +677,6 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
         }
         case FEATURE_RESET_INFO:
         {
-            // TODO FEATURE_FLAG_RESET_INFO is in Feature_Flag
-            #define FEATURE_FLAG_RESET_INFO 0x01
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 #if HAL_PLATFORM_CLOUD_UDP
@@ -682,6 +686,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
         }
 #endif // HAL_PLATFORM_CLOUD_UDP
+        case FEATURE_ETHERNET_DETECTION: {
+            return Write_Feature_Flag(FEATURE_FLAG_ETHERNET_DETECTION, enabled, NULL);
+        }
     }
 
     return -1;
@@ -699,6 +706,10 @@ bool HAL_Feature_Get(HAL_Feature feature)
         {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
+        }
+        case FEATURE_ETHERNET_DETECTION: {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_ETHERNET_DETECTION, &value) == 0) ? value : false;
         }
     }
     return false;

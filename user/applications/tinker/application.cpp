@@ -35,6 +35,7 @@ int tinkerAnalogWrite(String command);
 
 STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
 STARTUP(System.enableFeature(FEATURE_WIFITESTER));
+STARTUP(System.enableFeature(FEATURE_ETHERNET_DETECTION));
 
 SYSTEM_MODE(AUTOMATIC);
 
