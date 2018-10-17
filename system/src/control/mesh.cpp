@@ -538,7 +538,7 @@ int createNetwork(ctrl_request* req) {
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
     CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
     CHECK_THREAD(otThreadSetPSKc(thread, pskc));
-    CHECK_THREAD(setNetworkId(thread, reinterpret_cast<const uint8_t*>(dId.data)));
+    CHECK_THREAD(setNetworkId(thread, reinterpret_cast<const uint8_t*>(dId.data ? dId.data : "")));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
