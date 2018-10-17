@@ -37,9 +37,7 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
         CellularDevice device;
         memset(&device, 0, sizeof(device));
         device.size = sizeof(device);
-        // TODO: this function does not exist yet for the Boron
-        // cellular_device_info(&device, NULL);
-
+        cellular_device_info(&device, NULL);
         set_key_value(info->key_values+count, "imei", device.imei);
         set_key_value(info->key_values+count+1, "iccid", device.iccid);
     }
