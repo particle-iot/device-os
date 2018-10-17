@@ -209,6 +209,7 @@ int wlan_fetch_ipconfig(WLanConfig* conf) {
             break;
         }
     }
+    CHECK_TRUE(ifAddr, SYSTEM_ERROR_INVALID_STATE);
     auto sockAddr = (const sockaddr_in*)ifAddr->addr;
     CHECK_TRUE(sockAddr, SYSTEM_ERROR_INVALID_STATE);
     static_assert(sizeof(conf->nw.aucIP.ipv4) == sizeof(sockAddr->sin_addr), "");
