@@ -150,7 +150,7 @@ namespace spark {
     }
 
     CellularClass Cellular;
-    NetworkClass& Network = Cellular;
+    // NetworkClass& Network = Cellular;
 }
 
 #endif
