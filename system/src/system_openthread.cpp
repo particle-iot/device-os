@@ -36,7 +36,7 @@
         do { \
             const otError ret = _expr; \
             if (ret != OT_ERROR_NONE) { \
-                LOG(ERROR, #_expr " failed: %d", (int)ret); \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
                 return systemError(ret); \
             } \
         } while (false)
