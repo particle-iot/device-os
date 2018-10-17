@@ -31,7 +31,7 @@
 
 #ifdef DYNALIB_EXPORT
 #include "cellular_hal.h"
-#include "cellular_internal.h"
+// #include "cellular_internal.h"
 #include "inet_hal.h"
 #include "net_hal.h"
 #endif
@@ -68,7 +68,7 @@ DYNALIB_FN(26, hal_cellular, HAL_NET_SetCallbacks, void(const HAL_NET_Callbacks*
 DYNALIB_FN(27, hal_cellular, cellular_pause, cellular_result_t(void*))
 DYNALIB_FN(28, hal_cellular, cellular_resume, cellular_result_t(void*))
 DYNALIB_FN(29, hal_cellular, cellular_imsi_to_network_provider, cellular_result_t(void*))
-DYNALIB_FN(30, hal_cellular, cellular_network_provider_data_get, const CellularNetProvData(void*))
+DYNALIB_FN(30, hal_cellular, cellular_network_provider_data_get, CellularNetProvData(void*))
 DYNALIB_FN(31, hal_cellular, cellular_lock, int(void*))
 DYNALIB_FN(32, hal_cellular, cellular_unlock, void(void*))
 DYNALIB_FN(33, hal_cellular, cellular_set_power_mode, void(int mode, void* reserved))

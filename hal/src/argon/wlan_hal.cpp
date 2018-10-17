@@ -31,6 +31,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include "softap_http.h"
+
 namespace {
 
 using namespace particle;
@@ -380,6 +382,6 @@ int wlan_get_hostname(char* buf, size_t len, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS) {
-    return 0;
+int softap_set_application_page_handler(PageProvider* provider, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }

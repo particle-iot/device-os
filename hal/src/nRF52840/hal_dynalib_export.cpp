@@ -37,6 +37,8 @@
 #include "hal_dynalib_netdb_posix.h"
 #include "hal_dynalib_ifapi.h"
 #include "hal_dynalib_resolvapi.h"
+#include "hal_dynalib_wlan.h"
+#include "hal_dynalib_cellular.h"
 
 #ifndef HAL_USB_EXCLUDE
 #include "hal_dynalib_usb.h"

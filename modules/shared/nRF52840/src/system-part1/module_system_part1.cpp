@@ -74,10 +74,10 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     DYNALIB_TABLE_NAME(hal_ifapi),
     DYNALIB_TABLE_NAME(hal_resolvapi)
 #if HAL_PLATFORM_CELLULAR
-    , DYNALIB_TABLE_NAME(hal_cellular);
+    , DYNALIB_TABLE_NAME(hal_cellular)
 #endif // HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_WIFI
-    , DYNALIB_TABLE_NAME(hal_wlan);
+    , DYNALIB_TABLE_NAME(hal_wlan)
 #endif // HAL_PLATFORM_WIFI
 };
 
