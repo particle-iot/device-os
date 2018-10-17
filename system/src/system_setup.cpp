@@ -355,7 +355,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('L' == c)
     {
-        system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
+        system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 1, nullptr);
         System.enterSafeMode();
     }
     else if ('c' == c)

@@ -43,7 +43,7 @@ typedef enum
     BKP_DR_07 = 0x07,
     BKP_DR_08 = 0x08,
     BKP_DR_09 = 0x09,
-    BKP_DR_10 = 0x10
+    BKP_DR_10 = 0x0a
 } BKP_DR_TypeDef;
 
 typedef enum

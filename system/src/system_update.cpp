@@ -62,7 +62,7 @@ static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
-static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE == 4, "system flag value");
+static_assert(SYSTEM_FLAG_STARTUP_LISTEN_MODE == 4, "system flag value");
 static_assert(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1 == 5, "system flag value");
 static_assert(SYSTEM_FLAG_PUBLISH_RESET_INFO == 6, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS == 7, "system flag value");
@@ -71,7 +71,7 @@ static_assert(SYSTEM_FLAG_MAX == 8, "system flag max value");
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     0, 1, // OTA updates pending/enabled
     0, 1, // Reset pending/enabled
-    0,    // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
+    0,    // SYSTEM_FLAG_STARTUP_LISTEN_MODE,
     0,    // SYSTEM_FLAG_SETUP_OVER_SERIAL1
     1,    // SYSTEM_FLAG_PUBLISH_RESET_INFO
     1     // SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS
@@ -81,7 +81,7 @@ const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
-    if (flag == SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+    if (flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE)
     {
         HAL_Core_Write_Backup_Register(BKP_DR_10, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
     }
@@ -107,10 +107,11 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
         return -1;
     if (value)
     {
-        if (flag == SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+        if (flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE)
         {
             uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_10);
             *value = (reg == SAFE_MODE_LISTEN);
+            systemFlags[flag] = *value;
         }
         else
         {
