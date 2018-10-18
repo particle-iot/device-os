@@ -560,6 +560,12 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
     for (unsigned i=0; i<system.module_count; i++) {
         if (i) result &= json.write(',');
         const hal_module_t& module = system.modules[i];
+#ifdef HYBRID_BUILD
+        // FIXME: skip, otherwise we overflow MBEDTLS_SSL_MAX_CONTENT_LEN
+        if (module.info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+            continue;
+        }
+#endif // HYBRID_BUILD
         result &= module_info_to_json(append, append_data, &module, 0);
     }
 
