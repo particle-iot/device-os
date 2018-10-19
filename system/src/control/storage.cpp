@@ -33,6 +33,7 @@
 #endif
 
 #include "eeprom_hal.h"
+#include "delay_hal.h"
 
 #include "protocol_defs.h" // For UpdateFlag enum
 #include "nanopb_misc.h"
@@ -239,6 +240,7 @@ void cancelFirmwareUpdate() {
 }
 
 void firmwareUpdateCompletionHandler(int result, void* data) {
+    HAL_Delay_Milliseconds(1000);
     system_pending_shutdown();
 }
 

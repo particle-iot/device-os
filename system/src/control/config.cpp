@@ -211,6 +211,34 @@ int setStartupMode(ctrl_request* req) {
     return 0;
 }
 
+int setFeature(ctrl_request* req) {
+    PB(SetFeatureRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(SetFeatureRequest_fields), &pbReq));
+    switch (pbReq.feature) {
+    case PB(Feature_ETHERNET_DETECTION):
+        CHECK(HAL_Feature_Set(FEATURE_ETHERNET_DETECTION, pbReq.enabled));
+        break;
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return 0;
+}
+
+int getFeature(ctrl_request* req) {
+    PB(GetFeatureRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(GetFeatureRequest_fields), &pbReq));
+    PB(GetFeatureReply) pbRep = {};
+    switch (pbReq.feature) {
+    case PB(Feature_ETHERNET_DETECTION):
+        pbRep.enabled = HAL_Feature_Get(FEATURE_ETHERNET_DETECTION);
+        break;
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    CHECK(encodeReplyMessage(req, PB(GetFeatureReply_fields), &pbRep));
+    return 0;
+}
+
 #if !HAL_PLATFORM_OPENTHREAD
 
 int handleSetSecurityKeyRequest(ctrl_request* req) {
