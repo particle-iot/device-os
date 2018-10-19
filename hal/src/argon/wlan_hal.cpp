@@ -137,14 +137,14 @@ int wlan_connected_info(void* reserved, wlan_connected_info_t* halInfo, void* re
 int wlan_clear_credentials() {
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
-    mgr->clearConfiguredNetworks();
+    mgr->clearNetworkConfig();
     return 0;
 }
 
 int wlan_has_credentials() {
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
-    if (!mgr->hasConfiguredNetworks()) {
+    if (!mgr->hasNetworkConfig()) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
     return 0;
@@ -341,7 +341,7 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
     };
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
-    CHECK(mgr->getConfiguredNetworks([](WifiNetworkConfig conf, void* data) {
+    CHECK(mgr->getNetworkConfig([](WifiNetworkConfig conf, void* data) {
         WiFiAccessPoint ap = {};
         ap.size = sizeof(WiFiAccessPoint);
         if (conf.ssid()) {

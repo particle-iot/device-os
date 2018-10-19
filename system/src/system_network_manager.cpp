@@ -309,7 +309,7 @@ int NetworkManager::clearConfiguration(if_t oIface) {
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
         else if (!strncmp(name, "wl", 2)) {
             auto wifiMan = wifiNetworkManager();
-            wifiMan->clearConfiguredNetworks();
+            wifiMan->clearNetworkConfig();
             ret = SYSTEM_ERROR_NONE;
         }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
@@ -669,7 +669,7 @@ bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
     if (!strncmp(name, "wl", 2)) {
         auto wifiMan = wifiNetworkManager();
-        return wifiMan->hasConfiguredNetworks();
+        return wifiMan->hasNetworkConfig();
     }
 #endif // HAL_PLATFORM_WIFI
 

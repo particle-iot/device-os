@@ -298,6 +298,18 @@ int WifiNetworkManager::getNetworkConfig(const char* ssid, WifiNetworkConfig* co
     return 0;
 }
 
+int WifiNetworkManager::getNetworkConfig(GetNetworkConfigCallback callback, void* data) {
+    Vector<WifiNetworkConfig> networks;
+    CHECK(loadConfig(&networks));
+    for (int i = 0; i < networks.size(); ++i) {
+        const int ret = callback(std::move(networks[i]), data);
+        if (ret < 0) {
+            return ret;
+        }
+    }
+    return 0;
+}
+
 void WifiNetworkManager::removeNetworkConfig(const char* ssid) {
     Vector<WifiNetworkConfig> networks;
     if (loadConfig(&networks) < 0) {
@@ -311,24 +323,12 @@ void WifiNetworkManager::removeNetworkConfig(const char* ssid) {
     saveConfig(networks);
 }
 
-int WifiNetworkManager::getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data) {
-    Vector<WifiNetworkConfig> networks;
-    CHECK(loadConfig(&networks));
-    for (int i = 0; i < networks.size(); ++i) {
-        const int ret = callback(std::move(networks[i]), data);
-        if (ret < 0) {
-            return ret;
-        }
-    }
-    return 0;
-}
-
-void WifiNetworkManager::clearConfiguredNetworks() {
+void WifiNetworkManager::clearNetworkConfig() {
     Vector<WifiNetworkConfig> networks;
     saveConfig(networks);
 }
 
-bool WifiNetworkManager::hasConfiguredNetworks() {
+bool WifiNetworkManager::hasNetworkConfig() {
     Vector<WifiNetworkConfig> networks;
     const int r = loadConfig(&networks);
     if (r < 0) {

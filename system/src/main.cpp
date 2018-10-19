@@ -641,7 +641,7 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     // Clear WiFi credentials
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
-    wifiMgr->clearConfiguredNetworks();
+    wifiMgr->clearNetworkConfig();
 #endif // HAL_PLATFORM_WIFI
 #if HAL_PLATFORM_CELLULAR
     // Clear cellular credentials

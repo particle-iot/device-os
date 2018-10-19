@@ -128,7 +128,7 @@ int getKnownNetworks(ctrl_request* req) {
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     // Enumerate configured networks
     Vector<WifiNetworkConfig> networks;
-    CHECK(wifiMgr->getConfiguredNetworks([](WifiNetworkConfig conf, void* data) -> int {
+    CHECK(wifiMgr->getNetworkConfig([](WifiNetworkConfig conf, void* data) -> int {
         const auto networks = (Vector<WifiNetworkConfig>*)data;
         CHECK_TRUE(networks->append(std::move(conf)), SYSTEM_ERROR_NO_MEMORY);
         return 0;
@@ -169,7 +169,7 @@ int removeKnownNetwork(ctrl_request* req) {
 int clearKnownNetworks(ctrl_request* req) {
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
-    wifiMgr->clearConfiguredNetworks();
+    wifiMgr->clearNetworkConfig();
     return 0;
 }
 
