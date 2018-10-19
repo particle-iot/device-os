@@ -148,7 +148,7 @@ const uint16_t kKeyNetworkId = 0x4000;
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
 // Joiner's network ID
-char g_joinNetworkId[MAX_NETWORK_ID_LENGTH + 1] = {}; // +1 character for term. null
+char g_joinNetworkId[MESH_NETWORK_ID_LENGTH + 1] = {}; // +1 character for term. null
 
 // Commissioner role timer
 os_timer_t g_commTimer = nullptr;
@@ -171,15 +171,15 @@ int threadToSystemError(otError error);
 
 otError fetchNetworkId(otInstance* ot, char* buf, uint16_t buflen) {
 	buf[0] = 0;
-	auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, reinterpret_cast<uint8_t*>(buf), &buflen);
+	auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, (uint8_t*)buf, &buflen);
 	if (result==OT_ERROR_NOT_FOUND) {
 		result = OT_ERROR_NONE;
 	}
 	return result;
 }
 
-otError setNetworkId(otInstance* ot, const uint8_t* buf) {
-	return otPlatSettingsSet(ot, kKeyNetworkId, buf, strlen(reinterpret_cast<const char*>(buf))+1);
+otError setNetworkId(otInstance* ot, const char* buf) {
+	return otPlatSettingsSet(ot, kKeyNetworkId, (const uint8_t*)buf, strlen(buf) + 1);
 }
 
 int notifyNetworkUpdated(int flags) {
@@ -422,7 +422,7 @@ int createNetwork(ctrl_request* req) {
     // Network name: up to 16 characters, UTF-8 encoded
     // Commissioning credential: 6 to 255 characters, UTF-8 encoded
     if (dName.size == 0 || dName.size > OT_NETWORK_NAME_MAX_SIZE || dPwd.size < OT_COMMISSIONING_PASSPHRASE_MIN_SIZE ||
-            dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE || dId.size > MAX_NETWORK_ID_LENGTH) {
+            dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE || dId.size != MESH_NETWORK_ID_LENGTH) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Disable Thread and clear network credentials
@@ -538,7 +538,7 @@ int createNetwork(ctrl_request* req) {
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
     CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
     CHECK_THREAD(otThreadSetPSKc(thread, pskc));
-    CHECK_THREAD(setNetworkId(thread, reinterpret_cast<const uint8_t*>(dId.data ? dId.data : "")));
+    CHECK_THREAD(setNetworkId(thread, dId.data ? dId.data : ""));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
@@ -643,7 +643,7 @@ int prepareJoiner(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
-    if (dNetworkId.size > MAX_NETWORK_ID_LENGTH) {
+    if (dNetworkId.size != MESH_NETWORK_ID_LENGTH) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Disable Thread and clear network credentials
@@ -805,7 +805,7 @@ int joinNetwork(ctrl_request* req) {
         CHECK(resetThread());
         return threadToSystemError(stat.result);
     }
-    CHECK_THREAD(setNetworkId(thread, (const uint8_t*)g_joinNetworkId));
+    CHECK_THREAD(setNetworkId(thread, g_joinNetworkId));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");
@@ -834,7 +834,7 @@ int getNetworkInfo(ctrl_request* req) {
         return SYSTEM_ERROR_UNKNOWN;
     }
     // Network Id
-    char networkId[MAX_NETWORK_ID_LENGTH + 1] = {};
+    char networkId[MESH_NETWORK_ID_LENGTH + 1] = {};
     fetchNetworkId(thread, networkId, sizeof(networkId));
     // Channel
     const uint8_t channel = otLinkGetChannel(thread);
