@@ -16,7 +16,6 @@
  */
 
 #include "dct_hal.h"
-#include "dct.h"
 #include "dcd_flash_impl.h"
 #include "scope_guard.h"
 #include "system_error.h"

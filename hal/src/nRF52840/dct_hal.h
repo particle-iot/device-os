@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "dct.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

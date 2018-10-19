@@ -45,10 +45,12 @@
 #include "watchdog_hal.h"
 #include "usb_hal.h"
 #include "button_hal.h"
+#include "dct_hal.h"
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"
 #include "diagnostics.h"
+#include "check.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_cellular_printable.h"
@@ -73,6 +75,14 @@
 #if HAL_PLATFORM_IFAPI
 #include "system_listening_mode.h"
 #endif /* HAL_PLATFORM_IFAPI */
+
+#if HAL_PLATFORM_NCP
+#include "network/ncp.h"
+#endif
+
+#if HAL_PLATFORM_MESH
+#include <openthread/platform/settings.h>
+#endif
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -616,6 +626,39 @@ private:
     func_t f_;
 };
 
+int resetSettingsToFactoryDefaultsIfNeeded() {
+    Load_SystemFlags();
+    if (SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) != 0x0001) {
+        return 0;
+    }
+    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
+    Save_SystemFlags();
+#if HAL_PLATFORM_MESH
+    // Clear OpenThread settings
+    otPlatSettingsInit(nullptr);
+    otPlatSettingsWipe(nullptr);
+#if HAL_PLATFORM_WIFI
+    // Clear WiFi credentials
+    const auto wifiMgr = wifiNetworkManager();
+    CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    wifiMgr->clearConfiguredNetworks();
+#endif // HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_CELLULAR
+    // Clear cellular credentials
+    const auto cellMgr = cellularNetworkManager();
+    CHECK_TRUE(cellMgr, SYSTEM_ERROR_UNKNOWN);
+    cellMgr->clearNetworkConfig();
+#endif // HAL_PLATFORM_CELLULAR
+    // Copy device key
+    std::unique_ptr<char[]> devKey(new(std::nothrow) char[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
+    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, devKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    // Clear DCT and restore device key
+    CHECK(dct_clear());
+    CHECK(dct_write_app_data(devKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+#endif // HAL_PLATFORM_MESH
+    return 0;
+}
+
 // Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
 // global variable allows to register a handler for HAL events early
 HALEventHandler g_halEventHandler;
@@ -652,6 +695,9 @@ void app_setup_and_loop(void)
     DECLARE_SYS_HEALTH(ENTERED_Main);
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
+
+    // Reset all persistent settings to factory defaults if necessary
+    resetSettingsToFactoryDefaultsIfNeeded();
 
 #if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
     system_power_management_init();

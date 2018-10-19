@@ -18,9 +18,9 @@
 #ifndef HAL_ARGON_NETWORK_NCP_H
 #define HAL_ARGON_NETWORK_NCP_H
 
-namespace particle {
+#include "wifi_network_manager.h"
 
-class WifiNetworkManager;
+namespace particle {
 
 WifiNetworkManager* wifiNetworkManager();
 
