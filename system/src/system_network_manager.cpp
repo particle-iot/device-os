@@ -350,13 +350,15 @@ void NetworkManager::transition(State state) {
         }
         /* Ensure that IPv4/IPv6 protocol state is reset */
         case State::IP_CONFIGURED: {
-            ip4State_ = ProtocolState::UNCONFIGURED;
-            ip6State_ = ProtocolState::UNCONFIGURED;
-            dns4State_ = DnsState::UNCONFIGURED;
-            dns6State_ = DnsState::UNCONFIGURED;
+            if (state != State::IP_CONFIGURED) {
+                ip4State_ = ProtocolState::UNCONFIGURED;
+                ip6State_ = ProtocolState::UNCONFIGURED;
+                dns4State_ = DnsState::UNCONFIGURED;
+                dns6State_ = DnsState::UNCONFIGURED;
 #if HAL_PLATFORM_MESH
-            BorderRouterManager::instance()->stop();
+                BorderRouterManager::instance()->stop();
 #endif // HAL_PLATFORM_MESH
+            }
             break;
         }
     }
