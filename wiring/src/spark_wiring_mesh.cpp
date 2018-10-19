@@ -23,6 +23,7 @@
 #if Wiring_Mesh
 
 #include <arpa/inet.h>
+#include "delay_hal.h"
 
 namespace spark {
 
@@ -137,6 +138,7 @@ int MeshPublish::fetchMulticastAddress(IPAddress& mcastAddr) {
 }
 
 int MeshPublish::initialize_udp() {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
 	if (udp) {
 		return SYSTEM_ERROR_NONE;
 	}
@@ -159,6 +161,7 @@ int MeshPublish::initialize_udp() {
 }
 
 int MeshPublish::uninitialize_udp() {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
 	if (udp) {
 		IPAddress mcastAddr;
 		fetchMulticastAddress(mcastAddr);
@@ -169,6 +172,7 @@ int MeshPublish::uninitialize_udp() {
 }
 
 int MeshPublish::publish(const char* topic, const char* data) {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
 	CHECK(initialize_udp());
 	IPAddress mcastAddr;
 	CHECK(fetchMulticastAddress(mcastAddr));
@@ -181,6 +185,15 @@ int MeshPublish::publish(const char* topic, const char* data) {
 }
 
 int MeshPublish::subscribe(const char* prefix, EventHandler handler) {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
+	if (!thread_) {
+		thread_.reset(new (std::nothrow) Thread("meshpub", [](void* ptr) {
+            auto self = (MeshPublish*)ptr;
+            while (true) {
+                self->poll();
+            }
+        }, this, OS_THREAD_PRIORITY_DEFAULT + 1));
+	}
 	CHECK(initialize_udp());
 	CHECK(subscriptions.add(prefix, handler));
 	return SYSTEM_ERROR_NONE;
@@ -191,16 +204,31 @@ int MeshPublish::subscribe(const char* prefix, EventHandler handler) {
  */
 int MeshPublish::poll() {
 	int result = 0;
-	if (udp) {
-		int len = udp->parsePacket();
+	UDP* u = nullptr;
+	{
+		std::lock_guard<RecursiveMutex> lk(mutex_);
+		u = udp.get();
+	}
+	if (u) {
+		if (!buffer_) {
+			buffer_.reset(new (std::nothrow) uint8_t[MAX_PACKET_LEN]);
+			if (!buffer_) {
+				return SYSTEM_ERROR_NO_MEMORY;
+			}
+		}
+		int len = u->receivePacket(buffer_.get(), MAX_PACKET_LEN, 1000);
 		if (len>0) {
 			LOG(TRACE, "parse packet %d", len);
-			const char* buffer = (const char*)udp->buffer();
+			const char* buffer = (const char*)buffer_.get();
 			int namelen = strlen(buffer);
+
+			std::lock_guard<RecursiveMutex> lk(mutex_);
 			subscriptions.send(buffer, buffer+namelen+1);
 		} else {
 			result = len;
 		}
+	} else {
+		HAL_Delay_Milliseconds(100);
 	}
 	return result;
 }
