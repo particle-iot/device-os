@@ -32,6 +32,7 @@
 #include "check.h"
 #include "ifapi.h"
 #include <memory>
+#include "scope_guard.h"
 
 namespace spark {
 
@@ -170,6 +171,9 @@ public:
     bool ready() {
         return network_ready(*this, 0,  NULL);
     }
+
+    // There are multiple IPv6 addresses, here we are only reporting ML-EID (Mesh-Local EID)
+    IPAddress localIP();
 };
 
 

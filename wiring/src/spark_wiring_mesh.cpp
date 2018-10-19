@@ -22,6 +22,8 @@
 
 #if Wiring_Mesh
 
+#include <arpa/inet.h>
+
 namespace spark {
 
 int mesh_loop() {
@@ -203,7 +205,41 @@ int MeshPublish::poll() {
 	return result;
 }
 
+IPAddress MeshClass::localIP() {
+    HAL_IPAddress addr = {};
+    addr.v = 6;
 
+    if_t iface = nullptr;
+    if (!if_get_by_index((network_interface_t)*this, &iface)) {
+        if_addrs* ifAddrList = nullptr;
+        if (!if_get_addrs(iface, &ifAddrList)) {
+            SCOPE_GUARD({
+                if_free_if_addrs(ifAddrList);
+            });
+            for (if_addrs* i = ifAddrList; i; i = i->next) {
+                if (i->if_addr->addr->sa_family == AF_INET6) {
+                    const auto in6addr = (const struct sockaddr_in6*)i->if_addr->addr;
+
+                    // ML-EID will be a preferred, scoped, non-linklocal address
+                    if (IN6_IS_ADDR_LINKLOCAL(&in6addr->sin6_addr)) {
+                        continue;
+                    }
+
+                    if (in6addr->sin6_scope_id == 0) {
+                        continue;
+                    }
+
+                    if (i->if_addr->ip6_addr_data && i->if_addr->ip6_addr_data->state == IF_IP6_ADDR_STATE_PREFERRED) {
+                        memcpy(addr.ipv6, in6addr->sin6_addr.s6_addr, sizeof(addr.ipv6));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return addr;
+}
 
 MeshClass Mesh;
 } // namespace spark
