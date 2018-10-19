@@ -27,6 +27,27 @@
 #include <lwip/sockets.h>
 #include <lwip/inet.h>
 
+#ifndef IN6_IS_ADDR_V4MAPPED
+#define IN6_IS_ADDR_V4MAPPED(a) \
+    ((((uint32_t*)(a))[0] == 0) && (((uint32_t*)(a))[1] == 0) && \
+     (((uint32_t*)(a))[2] == htonl(0xffff)))
+#endif // IN6_IS_ADDR_V4MAPPED
+
+#ifndef IN6_IS_ADDR_MULTICAST
+#define IN6_IS_ADDR_MULTICAST(a) (((uint8_t *)(a))[0] == 0xff)
+#endif // IN6_IS_ADDR_MULTICAST
+
+#ifndef IN6_IS_ADDR_LINKLOCAL
+#define IN6_IS_ADDR_LINKLOCAL(a) \
+    ((((uint32_t*)(a))[0] & htonl(0xffc00000)) == htonl(0xfe800000))
+#endif // IN6_IS_ADDR_LINKLOCAL
+
+#ifndef IN6_IS_ADDR_LOOPBACK
+#define IN6_IS_ADDR_LOOPBACK(a) \
+    (((uint32_t*)(a))[0] == 0 && ((uint32_t*)(a))[1] == 0 && \
+     ((uint32_t*)(a))[2] == 0 && ((uint32_t*)(a))[3] == htonl(1))
+#endif // IN6_IS_ADDR_LOOPBACK
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

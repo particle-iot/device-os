@@ -34,36 +34,11 @@
 #include <arpa/inet.h>
 #include "spark_wiring_constants.h"
 #include "spark_wiring_thread.h"
+#include "spark_wiring_posix_common.h"
 
 using namespace spark;
 
 static TCPClient* s_invalid_client = nullptr;
-
-namespace {
-
-inline void sockaddrToIpAddressPort(const struct sockaddr* saddr, IPAddress& addr, uint16_t* port) {
-    if (saddr->sa_family == AF_INET) {
-        const struct sockaddr_in* inaddr = (const struct sockaddr_in*)saddr;
-        addr = (const uint8_t*)(&inaddr->sin_addr.s_addr);
-        if (port) {
-            *port = ntohs(inaddr->sin_port);
-        }
-    }
-#if HAL_IPv6
-    else if (saddr->sa_family == AF_INET6) {
-        const struct sockaddr_in6* in6addr = (const struct sockaddr_in6*)saddr;
-        HAL_IPAddress a = {};
-        memcpy(a.ipv6, in6addr->sin6_addr.s6_addr, sizeof(a.ipv6));
-        a.v = 6;
-        addr = IPAddress(a);
-        if (port) {
-            *port = ntohs(in6addr->sin6_port);
-        }
-    }
-#endif // HAL_IPv6
-}
-
-}
 
 class TCPServerClient : public TCPClient {
 public:
@@ -75,7 +50,7 @@ public:
         struct sockaddr_storage saddr = {};
         socklen_t len = sizeof(saddr);
         if (!sock_getpeername(sock_handle(), (struct sockaddr*)&saddr, &len)) {
-            sockaddrToIpAddressPort((const struct sockaddr*)&saddr, addr, nullptr);
+            detail::sockaddrToIpAddressPort((const struct sockaddr*)&saddr, addr, nullptr);
         }
         return addr;
     }
