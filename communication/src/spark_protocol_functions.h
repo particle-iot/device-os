@@ -207,7 +207,7 @@ const unsigned MESH_PREFIX_LENGTH = 8;
 
 struct __attribute__ ((__packed__)) NetworkUpdate {
 	uint16_t size;
-	uint8_t id[XPANID_LENGTH];	// the current xpan ID, or previous xpanID on rename.
+	char id[MESH_NETWORK_ID_LENGTH + 1]; // Network ID
 };
 
 struct  __attribute__ ((__packed__)) NetworkInfo {

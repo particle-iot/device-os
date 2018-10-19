@@ -51,7 +51,8 @@ using namespace MeshCommand;
 struct NotifyMeshNetworkUpdated : SystemCommand {
     NetworkInfo ni;
 
-    NotifyMeshNetworkUpdated() {
+    NotifyMeshNetworkUpdated() :
+            ni() {
         ni.update.size = sizeof(ni);
         commandType = NOTIFY_MESH_NETWORK;
     }
@@ -67,7 +68,9 @@ struct NotifyMeshNetworkJoined : SystemCommand {
     NetworkUpdate nu;
     bool joined;
 
-    NotifyMeshNetworkJoined() {
+    NotifyMeshNetworkJoined() :
+            nu(),
+            joined(false) {
         nu.size = sizeof(nu);
         commandType = NOTIFY_MESH_JOINED;
     }
