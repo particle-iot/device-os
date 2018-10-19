@@ -634,20 +634,17 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
     Save_SystemFlags();
 #if HAL_PLATFORM_MESH
+    LOG(WARN, "Resetting settings to factory defaults");
     // Clear OpenThread settings
     otPlatSettingsInit(nullptr);
     otPlatSettingsWipe(nullptr);
 #if HAL_PLATFORM_WIFI
     // Clear WiFi credentials
-    const auto wifiMgr = wifiNetworkManager();
-    CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
-    wifiMgr->clearNetworkConfig();
+    WifiNetworkManager::clearNetworkConfig();
 #endif // HAL_PLATFORM_WIFI
 #if HAL_PLATFORM_CELLULAR
     // Clear cellular credentials
-    const auto cellMgr = cellularNetworkManager();
-    CHECK_TRUE(cellMgr, SYSTEM_ERROR_UNKNOWN);
-    cellMgr->clearNetworkConfig();
+    CellularNetworkManager::clearNetworkConfig();
 #endif // HAL_PLATFORM_CELLULAR
     // Copy device key
     std::unique_ptr<char[]> devKey(new(std::nothrow) char[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);

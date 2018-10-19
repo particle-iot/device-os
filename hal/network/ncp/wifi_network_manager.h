@@ -145,12 +145,12 @@ public:
     int connect(const char* ssid);
     int connect();
 
-    int setNetworkConfig(WifiNetworkConfig conf);
-    int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
-    int getNetworkConfig(GetNetworkConfigCallback callback, void* data);
-    void removeNetworkConfig(const char* ssid);
-    void clearNetworkConfig();
-    bool hasNetworkConfig();
+    static int setNetworkConfig(WifiNetworkConfig conf);
+    static int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
+    static int getNetworkConfig(GetNetworkConfigCallback callback, void* data);
+    static void removeNetworkConfig(const char* ssid);
+    static void clearNetworkConfig();
+    static bool hasNetworkConfig();
 
     WifiNcpClient* ncpClient() const;
 
