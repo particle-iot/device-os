@@ -1,3 +1,21 @@
+## 0.8.0-rc.19
+
+### BUGFIXES
+
+- [Mesh] Fixes a bug introduced in rc.18 causing Mesh devices to be stuck in fast blinking green (link-local only communication) despite having a border router within the network.
+- [Mesh] __errno() is now exported from system-part1 in rt dynalib
+- [Mesh] Fixes a bug in IPv4 mapped IPv6 address conversion to IPAddress in TCPClient/TCPServer/UDP
+- [Mesh] Correct Mesh backup server address
+- [Mesh] Mesh pubsub thread-safety
+- [Mesh] Use network ID instead of XPAN ID to identify networks
+
+### FEATURES
+
+- [Mesh] Mesh.localIP() introduced
+- [Wiring] UDP: blocking reads
+- [Mesh] Full factory reset
+- [Mesh] Control requests to enable/disable Ethernet shield detection
+
 ## 0.8.0-rc.18
 
 ### FEATURES
