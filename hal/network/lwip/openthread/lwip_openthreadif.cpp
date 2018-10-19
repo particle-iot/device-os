@@ -363,6 +363,10 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         /* Check existing addresses and adjust state if necessary */
         int otIdx = 0;
         for (const auto* addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+            // Skip RLOC addresses
+            if (addr->mRloc) {
+                continue;
+            }
             ip6_addr_t ip6addr = {};
             otNetifAddressToIp6Addr(addr, ip6addr);
             if (addr->mScopeOverrideValid) {
@@ -401,6 +405,9 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         /* Add new addresses */
         otIdx = 0;
         for (const auto* addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+            if (addr->mRloc) {
+                continue;
+            }
             if (!handledOt[otIdx]) {
                 /* New address */
                 ip6_addr_t ip6addr = {};
