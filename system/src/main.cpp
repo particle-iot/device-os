@@ -39,6 +39,7 @@
 #include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
+#include "system_commands.h"
 #include "core_hal.h"
 #include "delay_hal.h"
 #include "syshealth_hal.h"
@@ -634,10 +635,12 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
     Save_SystemFlags();
 #if HAL_PLATFORM_MESH
-    LOG(WARN, "Resetting settings to factory defaults");
+    LOG(WARN, "Resetting all settings to factory defaults");
     // Clear OpenThread settings
     otPlatSettingsInit(nullptr);
     otPlatSettingsWipe(nullptr);
+    // Clear pending commands
+    system::system_command_clear();
 #if HAL_PLATFORM_WIFI
     // Clear WiFi credentials
     WifiNetworkManager::clearNetworkConfig();
