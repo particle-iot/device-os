@@ -340,8 +340,8 @@ void SystemEvents(const char* name, const char* data)
         memset(&server_addr_buf, 0xff, sizeof(server_addr_buf));
         if (udp) {
 #if HAL_PLATFORM_CLOUD_UDP
-            memcpy(&psk_buf, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
-            memcpy(&server_addr_buf, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
+            memcpy(&psk_buf, backup_udp_public_server_key, backup_udp_public_server_key_size);
+            memcpy(&server_addr_buf, backup_udp_public_server_address, backup_udp_public_server_address_size);
 #endif // HAL_PLATFORM_CLOUD_UDP
         } else {
 #if HAL_PLATFORM_CLOUD_TCP
@@ -790,7 +790,7 @@ void Spark_Protocol_Init(void)
             LOG(WARN, "Public Server Key was blank, restoring.");
             if (udp) {
 #if HAL_PLATFORM_CLOUD_UDP
-                memcpy(&pubkey, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
+                memcpy(&pubkey, backup_udp_public_server_key, backup_udp_public_server_key_size);
 #endif // HAL_PLATFORM_CLOUD_UDP
             } else {
 #if HAL_PLATFORM_CLOUD_TCP

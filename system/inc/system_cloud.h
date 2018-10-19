@@ -202,8 +202,12 @@ int spark_set_connection_property(unsigned property_id, unsigned data, particle:
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 
-extern const unsigned char backup_udp_public_server_key[91];
-extern const unsigned char backup_udp_public_server_address[22];
+extern const unsigned char backup_udp_public_server_key[];
+extern const size_t backup_udp_public_server_key_size;
+
+extern const unsigned char backup_udp_public_server_address[];
+extern const size_t backup_udp_public_server_address_size;
+
 extern const unsigned char backup_tcp_public_server_key[294];
 extern const unsigned char backup_tcp_public_server_address[18];
 

@@ -134,7 +134,7 @@ int spark_cloud_socket_connect()
         LOG(WARN, "Public Server Address was blank, restoring.");
         if (udp) {
 #if HAL_PLATFORM_CLOUD_UDP
-            memcpy(&server_addr, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
+            memcpy(&server_addr, backup_udp_public_server_address, backup_udp_public_server_address_size);
 #endif // HAL_PLATFORM_CLOUD_UDP
         }
         else {

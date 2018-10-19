@@ -646,12 +646,19 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     // Clear cellular credentials
     CellularNetworkManager::clearNetworkConfig();
 #endif // HAL_PLATFORM_CELLULAR
-    // Copy device key
-    std::unique_ptr<char[]> devKey(new(std::nothrow) char[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
-    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, devKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
-    // Clear DCT and restore device key
+    // Copy device keys
+    std::unique_ptr<char[]> devPrivKey(new(std::nothrow) char[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
+    std::unique_ptr<char[]> devPubKey(new(std::nothrow) char[DCT_ALT_DEVICE_PUBLIC_KEY_SIZE]);
+    CHECK_TRUE(devPrivKey && devPubKey, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, devPrivKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
+    // Clear DCT and restore device keys
     CHECK(dct_clear());
-    CHECK(dct_write_app_data(devKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    CHECK(dct_write_app_data(devPrivKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
+    // Restore default server key and address
+    CHECK(dct_write_app_data(backup_udp_public_server_key, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, backup_udp_public_server_key_size));
+    CHECK(dct_write_app_data(backup_udp_public_server_address, DCT_ALT_SERVER_ADDRESS_OFFSET, backup_udp_public_server_address_size));
 #endif // HAL_PLATFORM_MESH
     return 0;
 }

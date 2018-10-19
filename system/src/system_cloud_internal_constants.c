@@ -19,6 +19,8 @@
 #include "static_assert.h"
 #include "hal_platform.h"
 
+#include <stddef.h>
+
 #if HAL_PLATFORM_CLOUD_UDP
 
 // minimal udp public server key
@@ -34,6 +36,8 @@ const unsigned char backup_udp_public_server_key[] = {
 };
 
 STATIC_ASSERT(backup_udp_public_server_key_size, sizeof(backup_udp_public_server_key)==91);
+
+const size_t backup_udp_public_server_key_size = sizeof(backup_udp_public_server_key);
 
 # if HAL_PLATFORM_MESH
 
@@ -57,6 +61,9 @@ const unsigned char backup_udp_public_server_address[] = {
 STATIC_ASSERT(backup_udp_public_server_address_size, sizeof(backup_udp_public_server_address)==22);
 
 # endif // !HAL_PLATFORM_MESH
+
+const size_t backup_udp_public_server_address_size = sizeof(backup_udp_public_server_address);
+
 #endif // HAL_PLATFORM_CLOUD_UDP
 
 #if HAL_PLATFORM_CLOUD_TCP
