@@ -261,7 +261,7 @@ size_t UDP::write(const uint8_t *buffer, size_t size) {
     return size;
 }
 
-int UDP::parsePacket() {
+int UDP::parsePacket(system_tick_t timeout) {
     if (!_buffer && _buffer_size) {
         setBuffer(_buffer_size);
     }
@@ -276,12 +276,24 @@ int UDP::parsePacket() {
     return available();
 }
 
-int UDP::receivePacket(uint8_t* buffer, size_t size) {
+int UDP::receivePacket(uint8_t* buffer, size_t size, system_tick_t timeout) {
     int ret = -1;
     if (isOpen(_sock) && buffer) {
         sockaddr_storage saddr = {};
         socklen_t slen = sizeof(saddr);
-        ret = sock_recvfrom(_sock, buffer, size, MSG_DONTWAIT, (struct sockaddr*)&saddr, &slen);
+        int flags = 0;
+        if (timeout == 0) {
+            flags = MSG_DONTWAIT;
+        } else {
+            struct timeval tv = {};
+            tv.tv_sec = timeout / 1000;
+            tv.tv_usec = (timeout % 1000) * 1000;
+            ret = sock_setsockopt(_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+            if (ret) {
+                return ret;
+            }
+        }
+        ret = sock_recvfrom(_sock, buffer, size, flags, (struct sockaddr*)&saddr, &slen);
         if (ret >= 0) {
             detail::sockaddrToIpAddressPort((const struct sockaddr*)&saddr, _remoteIP, &_remotePort);
             LOG(TRACE, "received %d bytes from %s#%d", ret, _remoteIP.toString().c_str(), _remotePort);
