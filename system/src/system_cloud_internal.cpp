@@ -329,17 +329,25 @@ void SystemEvents(const char* name, const char* data)
     if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
         // Restore PSK to DCT/DCD/FLASH
         LOG(INFO,"Restoring Public Server Key and Server Address to flash");
+#if HAL_PLATFORM_CLOUD_UDP
         bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#else
+        bool udp = false;
+#endif
         unsigned char psk_buf[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];   // 320 (udp) vs 294 (tcp), allocate 320.
         unsigned char server_addr_buf[EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH];
         memset(&psk_buf, 0xff, sizeof(psk_buf));
         memset(&server_addr_buf, 0xff, sizeof(server_addr_buf));
         if (udp) {
+#if HAL_PLATFORM_CLOUD_UDP
             memcpy(&psk_buf, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
             memcpy(&server_addr_buf, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
+#endif // HAL_PLATFORM_CLOUD_UDP
         } else {
+#if HAL_PLATFORM_CLOUD_TCP
             memcpy(&psk_buf, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
             memcpy(&server_addr_buf, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
+#endif // HAL_PLATFORM_CLOUD_TCP
         }
         HAL_FLASH_Write_ServerPublicKey(psk_buf, udp);
         HAL_FLASH_Write_ServerAddress(server_addr_buf, udp);
@@ -706,7 +714,11 @@ void Spark_Protocol_Init(void)
                 spark_protocol_set_product_firmware_version(sp, info.product_version);
         }
 
+#if HAL_PLATFORM_CLOUD_UDP
         const bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#else
+        const bool udp = false;
+#endif // HAL_PLATFORM_CLOUD_UDP
 
         SparkCallbacks callbacks;
         memset(&callbacks, 0, sizeof(callbacks));
@@ -777,10 +789,13 @@ void Spark_Protocol_Init(void)
         if (pubkey[0] == 0xff) {
             LOG(WARN, "Public Server Key was blank, restoring.");
             if (udp) {
+#if HAL_PLATFORM_CLOUD_UDP
                 memcpy(&pubkey, backup_udp_public_server_key, sizeof(backup_udp_public_server_key));
-            }
-            else {
+#endif // HAL_PLATFORM_CLOUD_UDP
+            } else {
+#if HAL_PLATFORM_CLOUD_TCP
                 memcpy(&pubkey, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
+#endif // HAL_PLATFORM_CLOUD_TCP
             }
             particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
         }
