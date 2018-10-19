@@ -35,6 +35,8 @@ int dct_write_app_data(const void* data, uint32_t offset, uint32_t size);
 int dct_lock(int write);
 int dct_unlock(int write);
 
+int dct_clear();
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
