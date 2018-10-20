@@ -51,10 +51,12 @@ public:
     bool isIp6ConnectivityAvailable() const;
 
     enum class ProtocolState {
-        UNCONFIGURED,
-        CONFIGURED,
-        LINKLOCAL
+        UNCONFIGURED = 0,
+        LINKLOCAL = 1,
+        CONFIGURED = 2
     };
+    static_assert((int)ProtocolState::CONFIGURED > (int)ProtocolState::LINKLOCAL &&
+            (int)ProtocolState::LINKLOCAL > (int)ProtocolState::UNCONFIGURED, "UNCONFIGURED < LINKLOCAL < CONFIGURED");
 
     ProtocolState getInterfaceIp4State(if_t iface) const;
     ProtocolState getInterfaceIp6State(if_t iface) const;

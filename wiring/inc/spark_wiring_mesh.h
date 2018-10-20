@@ -16,7 +16,7 @@
  */
 
 #ifndef SPARK_WIRING_MESH_H
-#define	SPARK_WIRING_MESH_H
+#define    SPARK_WIRING_MESH_H
 
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
@@ -32,6 +32,9 @@
 #include "check.h"
 #include "ifapi.h"
 #include <memory>
+#include "scope_guard.h"
+
+#include "spark_wiring_thread.h"
 
 namespace spark {
 
@@ -73,56 +76,65 @@ public:
 int mesh_loop();
 
 class MeshPublish {
+private:
+    class Subscriptions {
+        FilteringEventHandler event_handlers[5];
 
-	class Subscriptions {
-		FilteringEventHandler event_handlers[5];
+    protected:
+        /**
+         * Determines if the given handler exists.
+         */
+        bool event_handler_exists(const char *event_name, EventHandler handler,
+                void *handler_data, SubscriptionScope::Enum scope, const char* id);
 
-protected:
-		/**
-		 * Determines if the given handler exists.
-		 */
-		bool event_handler_exists(const char *event_name, EventHandler handler,
-				void *handler_data, SubscriptionScope::Enum scope, const char* id);
+        /**
+         * Adds the given handler.
+         */
+        int add_event_handler(const char *event_name, EventHandler handler,
+                void *handler_data, SubscriptionScope::Enum scope, const char* id);
 
-		/**
-		 * Adds the given handler.
-		 */
-		int add_event_handler(const char *event_name, EventHandler handler,
-				void *handler_data, SubscriptionScope::Enum scope, const char* id);
+    public:
+        int add(const char* name, EventHandler handler);
+
+        void send(const char* event_name, const char* data);
+    };
+
+
+    static const uint16_t PORT = 36969;
+    static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
+    static const uint16_t MAX_PACKET_LEN = 1232;
+
+    std::unique_ptr<UDP> udp;
+    Subscriptions subscriptions;
+
+    static int fetchMulticastAddress(IPAddress& mcastAddr);
+
+    int initialize_udp();
+
+    int uninitialize_udp();
+
+    std::unique_ptr<Thread> thread_;
+    RecursiveMutex mutex_;
+    std::unique_ptr<uint8_t[]> buffer_;
 
 public:
-		int add(const char* name, EventHandler handler);
 
-		void send(const char* event_name, const char* data);
-	};
+    MeshPublish() : udp(nullptr) {
+        // System thread gets blocked while connecting to cloud, while it's connecting to it
+        // RX packet buffer pool may easily get exhausted, because nobody is reading the data
+        // out of the socket. Create a separate thread here with a higher priority than application
+        // and system.
+    // system_task_loop(mesh_loop, nullptr);
+    }
 
-	static const uint16_t PORT = 36969;
-	static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
-	static const uint16_t MAX_PACKET_LEN = 1232;
+    int publish(const char* topic, const char* data);
 
-	std::unique_ptr<UDP> udp;
-	Subscriptions subscriptions;
+    int subscribe(const char* prefix, EventHandler handler);
 
-	static int fetchMulticastAddress(IPAddress& mcastAddr);
-
-	int initialize_udp();
-
-	int uninitialize_udp();
-
-public:
-
-	MeshPublish() : udp(nullptr) {
-		system_task_loop(mesh_loop, nullptr);
-	}
-
-	int publish(const char* topic, const char* data);
-
-	int subscribe(const char* prefix, EventHandler handler);
-
-	/**
-	 * Pull data from the socket and handle as required.
-	 */
-	int poll();
+    /**
+     * Pull data from the socket and handle as required.
+     */
+    int poll();
 };
 
 class MeshClass : public NetworkClass, public MeshPublish {
@@ -170,6 +182,9 @@ public:
     bool ready() {
         return network_ready(*this, 0,  NULL);
     }
+
+    // There are multiple IPv6 addresses, here we are only reporting ML-EID (Mesh-Local EID)
+    IPAddress localIP();
 };
 
 

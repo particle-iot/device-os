@@ -17,6 +17,11 @@
  */
 
 #include "static_assert.h"
+#include "hal_platform.h"
+
+#include <stddef.h>
+
+#if HAL_PLATFORM_CLOUD_UDP
 
 // minimal udp public server key
 const unsigned char backup_udp_public_server_key[] = {
@@ -29,13 +34,39 @@ const unsigned char backup_udp_public_server_key[] = {
   0x2e, 0x9e, 0x3a, 0x62, 0x15, 0x1c, 0x48, 0x17, 0x9b, 0xd8, 0x09, 0xdd,
   0xce, 0x9c, 0x5d, 0xc3, 0x0f, 0x54, 0xb8
 };
+
+STATIC_ASSERT(backup_udp_public_server_key_size, sizeof(backup_udp_public_server_key)==91);
+
+const size_t backup_udp_public_server_key_size = sizeof(backup_udp_public_server_key);
+
+# if HAL_PLATFORM_MESH
+
+// $id.udp-mesh.particle.io
+const unsigned char backup_udp_public_server_address[] = {
+  0x01, 0x18, 0x24, 0x69, 0x64, 0x2e, 0x75, 0x64, 0x70, 0x2d, 0x6d, 0x65,
+  0x73, 0x68, 0x2e, 0x70, 0x61, 0x72, 0x74, 0x69, 0x63, 0x6c, 0x65, 0x2e,
+  0x69, 0x6f, 0x00
+};
+
+STATIC_ASSERT(backup_udp_public_server_address_size, sizeof(backup_udp_public_server_address)==27);
+
+# else // HAL_PLATFORM_MESH
+
+// $id.udp.particle.io
 const unsigned char backup_udp_public_server_address[] = {
   0x01, 0x13, 0x24, 0x69, 0x64, 0x2e, 0x75, 0x64, 0x70, 0x2e, 0x70, 0x61,
   0x72, 0x74, 0x69, 0x63, 0x6c, 0x65, 0x2e, 0x69, 0x6f, 0x00
 };
-STATIC_ASSERT(backup_udp_public_server_key_size, sizeof(backup_udp_public_server_key)==91);
+
 STATIC_ASSERT(backup_udp_public_server_address_size, sizeof(backup_udp_public_server_address)==22);
 
+# endif // !HAL_PLATFORM_MESH
+
+const size_t backup_udp_public_server_address_size = sizeof(backup_udp_public_server_address);
+
+#endif // HAL_PLATFORM_CLOUD_UDP
+
+#if HAL_PLATFORM_CLOUD_TCP
 // minimal tcp public server key
 const unsigned char backup_tcp_public_server_key[] = {
   0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
@@ -70,3 +101,5 @@ const unsigned char backup_tcp_public_server_address[] = {
 };
 STATIC_ASSERT(backup_tcp_public_server_key_size, sizeof(backup_tcp_public_server_key)==294);
 STATIC_ASSERT(backup_tcp_public_server_address_size, sizeof(backup_tcp_public_server_address)==18);
+
+#endif // HAL_PLATFORM_CLOUD_TCP

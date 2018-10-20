@@ -11,10 +11,6 @@ uint8_t* buildNetworkUpdateMessage(uint8_t token, Message& message, MessageChann
 {
 	channel.create(message);
 
-	char hex_id[sizeof(update.id)*2+1];
-	bytes2hexbuf_lower_case(update.id, sizeof(update.id), hex_id);
-	hex_id[sizeof(hex_id)-1] = 0;
-
 	uint8_t* const buf = message.buf();
 	uint8_t* p = buf;
 	p += CoAP::header(p, CoAPType::CON, CoAPCode::PUT, 1, &token);
@@ -22,7 +18,7 @@ uint8_t* buildNetworkUpdateMessage(uint8_t token, Message& message, MessageChann
 	// add Uri-Path options
 	p += CoAP::uri_path(p, CoAPOption::NONE, "m");
 	p += CoAP::uri_path(p, CoAPOption::URI_PATH, "n");
-	p += CoAP::uri_path(p, CoAPOption::URI_PATH, hex_id);
+	p += CoAP::uri_path(p, CoAPOption::URI_PATH, update.id);
 
 	return p;
 }

@@ -137,7 +137,7 @@ typedef int(*WifiScanCallback)(WifiScanResult result, void* data);
 
 class WifiNetworkManager {
 public:
-    typedef int(*GetConfiguredNetworksCallback)(WifiNetworkConfig conf, void* data);
+    typedef int(*GetNetworkConfigCallback)(WifiNetworkConfig conf, void* data);
 
     explicit WifiNetworkManager(WifiNcpClient* client);
     ~WifiNetworkManager();
@@ -145,13 +145,12 @@ public:
     int connect(const char* ssid);
     int connect();
 
-    int setNetworkConfig(WifiNetworkConfig conf);
-    int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
-    void removeNetworkConfig(const char* ssid);
-
-    int getConfiguredNetworks(GetConfiguredNetworksCallback callback, void* data);
-    void clearConfiguredNetworks();
-    bool hasConfiguredNetworks();
+    static int setNetworkConfig(WifiNetworkConfig conf);
+    static int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
+    static int getNetworkConfig(GetNetworkConfigCallback callback, void* data);
+    static void removeNetworkConfig(const char* ssid);
+    static void clearNetworkConfig();
+    static bool hasNetworkConfig();
 
     WifiNcpClient* ncpClient() const;
 

@@ -148,8 +148,10 @@ public:
      * @param buf_size      The buffer size
      * @return The number of bytes written to the buffer, or a negative value on error.
      */
-    virtual int receivePacket(uint8_t* buffer, size_t buf_size);
-    virtual int receivePacket(char* buffer, size_t buf_size) { return receivePacket((uint8_t*)buffer, buf_size); }
+    virtual int receivePacket(uint8_t* buffer, size_t buf_size, system_tick_t timeout = 0);
+    virtual int receivePacket(char* buffer, size_t buf_size, system_tick_t timeout = 0) {
+        return receivePacket((uint8_t*)buffer, buf_size, timeout);
+    }
 
     /**
      * Begin writing a packet to the given destination.
@@ -181,7 +183,7 @@ public:
     virtual int endPacket();
 
 
-    virtual int parsePacket();
+    virtual int parsePacket(system_tick_t timeout = 0);
     /**
      * Retrieves the size of the unread data following a call to
      * {@ #parsePacket}.

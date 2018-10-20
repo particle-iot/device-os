@@ -89,6 +89,17 @@ void otNetifMulticastAddressToIp6Addr(const otNetifMulticastAddress* otAddr, ip6
                     otAddr->mAddress.mFields.m32[3]);
 }
 
+bool otNetifAddressIsRloc(const otNetifAddress* addr) {
+    if (addr->mRloc) {
+        return true;
+    }
+    static const auto kAloc16Mask = 0xfc;
+    static const auto kRloc16ReservedBitMask = 0x02;
+    return (addr->mAddress.mFields.m16[4] == PP_HTONL(0x0000) && addr->mAddress.mFields.m16[5] == PP_HTONL(0x00ff) &&
+            addr->mAddress.mFields.m16[6] == PP_HTONL(0xfe00) && addr->mAddress.mFields.m8[14] < kAloc16Mask &&
+            (addr->mAddress.mFields.m8[14] & kRloc16ReservedBitMask) == 0);
+}
+
 int otNetifAddressStateToIp6AddrState(const otNetifAddress* addr) {
     return addr->mValid ? (addr->mPreferred ? IP6_ADDR_PREFERRED : IP6_ADDR_DEPRECATED) : IP6_ADDR_INVALID;
 }
@@ -362,7 +373,11 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
 
         /* Check existing addresses and adjust state if necessary */
         int otIdx = 0;
-        for (const auto* addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+        for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+            // Skip RLOC addresses
+            if (otNetifAddressIsRloc(addr)) {
+                continue;
+            }
             ip6_addr_t ip6addr = {};
             otNetifAddressToIp6Addr(addr, ip6addr);
             if (addr->mScopeOverrideValid) {
@@ -400,7 +415,10 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
 
         /* Add new addresses */
         otIdx = 0;
-        for (const auto* addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+        for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+            if (otNetifAddressIsRloc(addr)) {
+                continue;
+            }
             if (!handledOt[otIdx]) {
                 /* New address */
                 ip6_addr_t ip6addr = {};
@@ -422,7 +440,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
                 }
                 char tmp[IP6ADDR_STRLEN_MAX] = {0};
                 ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
-                LOG(TRACE, "Added %s", tmp);
+                LOG(TRACE, "Added %s %d", tmp, otNetifAddressIsRloc(addr));
             }
             otIdx++;
         }
@@ -434,7 +452,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         /* Clear all groups */
         interface()->mld_mac_filter = nullptr;
         mld6_stop(interface());
-        for (const auto* addr = otIp6GetMulticastAddresses(ot_); addr; addr = addr->mNext) {
+        for (auto addr = otIp6GetMulticastAddresses(ot_); addr; addr = addr->mNext) {
             ip6_addr_t ip6addr = {};
             otNetifMulticastAddressToIp6Addr(addr, ip6addr);
             mld6_joingroup_netif(interface(), &ip6addr);
@@ -561,7 +579,7 @@ void OpenThreadNetif::refreshIpAddresses() {
         ip6_addr_t activeAddr = {};
         otIp6AddressToIp6Addr(&active.mPrefix.mPrefix, activeAddr);
 
-        LOG_DEBUG(TRACE, "Candidate preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
+        LOG(TRACE, "Candidate preferred prefix: %s/%u, preference = %s, RLOC16 = %04x, preferred = %d, stable = %d",
             IP6ADDR_NTOA(&addr), config.mPrefix.mLength,
             routerPreferenceToString(config.mPreference),
             config.mRloc16,

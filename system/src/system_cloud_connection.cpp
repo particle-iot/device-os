@@ -133,10 +133,14 @@ int spark_cloud_socket_connect()
     if (server_addr.addr_type != IP_ADDRESS && server_addr.addr_type != DOMAIN_NAME) {
         LOG(WARN, "Public Server Address was blank, restoring.");
         if (udp) {
-            memcpy(&server_addr, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
+#if HAL_PLATFORM_CLOUD_UDP
+            memcpy(&server_addr, backup_udp_public_server_address, backup_udp_public_server_address_size);
+#endif // HAL_PLATFORM_CLOUD_UDP
         }
         else {
+#if HAL_PLATFORM_CLOUD_TCP
             memcpy(&server_addr, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
+#endif // HAL_PLATFORM_CLOUD_TCP
         }
         particle_key_errors |= SERVER_ADDRESS_BLANK;
     }

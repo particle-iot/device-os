@@ -26,6 +26,7 @@
 #include "spark_wiring_system.h"
 #include "appender.h"
 #include "debug.h"
+#include "delay_hal.h"
 #include "hal_platform.h"
 
 #include "control/network.h"
@@ -127,26 +128,38 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::getSystemCapabilities(req));
         break;
     }
+    case CTRL_REQUEST_SET_FEATURE: {
+        setResult(req, control::config::setFeature(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_FEATURE: {
+        setResult(req, control::config::getFeature(req));
+        break;
+    }
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.reset();
         });
         break;
     }
     case CTRL_REQUEST_FACTORY_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.factoryReset();
         });
         break;
     }
     case CTRL_REQUEST_DFU_MODE: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.dfu(false);
         });
         break;
     }
     case CTRL_REQUEST_SAFE_MODE: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.enterSafeMode();
         });
         break;

@@ -16,8 +16,9 @@
  */
 
 #include "dct_hal.h"
-#include "dct.h"
 #include "dcd_flash_impl.h"
+#include "scope_guard.h"
+#include "system_error.h"
 #include "service_debug.h"
 
 #include "filesystem.h"
@@ -72,6 +73,32 @@ public:
         close();
 
         return r;
+    }
+
+    bool clear() {
+        FsLock lk(fs_);
+        if (!open(LFS_O_WRONLY)) {
+            return false;
+        }
+        SCOPE_GUARD({
+            close();
+        });
+        char buf[128];
+        memset(buf, 0xff, sizeof(buf));
+        const lfs_ssize_t size = lfs_file_size(lfs(), &file_);
+        if (size < 0) {
+            return false;
+        }
+        size_t offs = 0;
+        while (offs < (size_t)size) {
+            const size_t n = std::min(sizeof(buf), (size_t)size - offs);
+            const lfs_ssize_t r = lfs_file_write(lfs(), &file_, buf, n);
+            if (r != (lfs_ssize_t)n) {
+                return false;
+            }
+            offs += n;
+        }
+        return true;
     }
 
 
@@ -185,4 +212,11 @@ int dct_write_app_data(const void* data, uint32_t offset, uint32_t size) {
     const int result = dcd().write(offset, (const uint8_t*)data, size);
     dct_unlock(1);
     return result > 0 ? 0 : result;
+}
+
+int dct_clear() {
+    dct_lock(0);
+    const bool ok = dcd().clear();
+    dct_unlock(0);
+    return (ok ? 0 : SYSTEM_ERROR_UNKNOWN);
 }

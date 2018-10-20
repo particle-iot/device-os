@@ -148,7 +148,7 @@ const uint16_t kKeyNetworkId = 0x4000;
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
 // Joiner's network ID
-char g_joinNetworkId[MAX_NETWORK_ID_LENGTH + 1] = {}; // +1 character for term. null
+char g_joinNetworkId[MESH_NETWORK_ID_LENGTH + 1] = {}; // +1 character for term. null
 
 // Commissioner role timer
 os_timer_t g_commTimer = nullptr;
@@ -169,17 +169,17 @@ public:
 
 int threadToSystemError(otError error);
 
-otError fetchNetworkId(otInstance* ot, char* buf, uint16_t buflen) {
+otError fetchNetworkId(otInstance* ot, char* buf, uint16_t* buflen) {
 	buf[0] = 0;
-	auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, reinterpret_cast<uint8_t*>(buf), &buflen);
+	auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, (uint8_t*)buf, buflen);
 	if (result==OT_ERROR_NOT_FOUND) {
 		result = OT_ERROR_NONE;
 	}
 	return result;
 }
 
-otError setNetworkId(otInstance* ot, const uint8_t* buf) {
-	return otPlatSettingsSet(ot, kKeyNetworkId, buf, strlen(reinterpret_cast<const char*>(buf))+1);
+otError setNetworkId(otInstance* ot, const char* buf) {
+	return otPlatSettingsSet(ot, kKeyNetworkId, (const uint8_t*)buf, strlen(buf) + 1);
 }
 
 int notifyNetworkUpdated(int flags) {
@@ -192,8 +192,14 @@ int notifyNetworkUpdated(int flags) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // Network ID
+    uint16_t netIdSize = sizeof(ni.update.id);
+    CHECK_THREAD(fetchNetworkId(thread, ni.update.id, &netIdSize));
+    if (flags & NetworkInfo::NETWORK_ID_VALID) {
+        memcpy(ni.id, ni.update.id, sizeof(ni.update.id));
+    }
+    // Network name
     if (flags & NetworkInfo::NAME_VALID) {
-        // Network name
         const char* name = otThreadGetNetworkName(thread);
         if (!name) {
             LOG(ERROR, "Unable to retrieve thread network name");
@@ -203,26 +209,26 @@ int notifyNetworkUpdated(int flags) {
         strncpy(ni.name, name, MAX_NETWORK_NAME_LENGTH);
         ni.name_length = length;
     }
-    if (flags & NetworkInfo::CHANNEL_VALID) {
     // Channel
+    if (flags & NetworkInfo::CHANNEL_VALID) {
         ni.channel = otLinkGetChannel(thread);
     }
+    // PAN ID
     if (flags & NetworkInfo::PANID_VALID) {
-        // PAN ID
         const otPanId panId = otLinkGetPanId(thread);
-        ni.panid[0] = panId>>8;
-        ni.panid[1] = panId&0xFF;
+        ni.panid[0] = panId >> 8;
+        ni.panid[1] = panId & 0xff;
     }
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
-    if (!extPanId) {
-        LOG(ERROR, "Unable to retrieve thread XPAN ID");
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-    memcpy(ni.update.id, extPanId, sizeof(ni.xpanid));
+    // Extended PAN ID
     if (flags & NetworkInfo::XPANID_VALID) {
-        // Extended PAN ID
+        const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+        if (!extPanId) {
+            LOG(ERROR, "Unable to retrieve thread XPAN ID");
+            return SYSTEM_ERROR_UNKNOWN;
+        }
         memcpy(ni.xpanid, extPanId, sizeof(ni.xpanid));
     }
+    // Mesh-local prefix
     if (flags & NetworkInfo::ON_MESH_PREFIX_VALID) {
         const uint8_t* prefix = otThreadGetMeshLocalPrefix(thread);
         if (!prefix) {
@@ -231,11 +237,6 @@ int notifyNetworkUpdated(int flags) {
         }
         memcpy(ni.on_mesh_prefix, prefix, 8);
     }
-    if (flags & NetworkInfo::NETWORK_ID_VALID) {
-        uint16_t length = sizeof(ni.id);
-        CHECK_THREAD(fetchNetworkId(thread, ni.id, length));
-    }
-
     ni.update.size = sizeof(ni);
     ni.flags = flags;
     int result = system_command_enqueue(cmd, sizeof(cmd));
@@ -248,16 +249,11 @@ int notifyNetworkUpdated(int flags) {
 int notifyJoined(bool joined) {
     THREAD_LOCK(lock);
     const auto thread = threadInstance();
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
-    if (!extPanId) {
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-
+    CHECK_TRUE(thread, SYSTEM_ERROR_INVALID_STATE);
     NotifyMeshNetworkJoined cmd;
-    cmd.nu.size = sizeof(cmd.nu);
-    memcpy(cmd.nu.id, extPanId, sizeof(cmd.nu.id));
+    uint16_t netIdSize = sizeof(cmd.nu.id);
+    CHECK_THREAD(fetchNetworkId(thread, cmd.nu.id, &netIdSize));
     cmd.joined = joined;
-
     return system_command_enqueue(cmd, sizeof(cmd));
 }
 
@@ -422,7 +418,7 @@ int createNetwork(ctrl_request* req) {
     // Network name: up to 16 characters, UTF-8 encoded
     // Commissioning credential: 6 to 255 characters, UTF-8 encoded
     if (dName.size == 0 || dName.size > OT_NETWORK_NAME_MAX_SIZE || dPwd.size < OT_COMMISSIONING_PASSPHRASE_MIN_SIZE ||
-            dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE || dId.size > MAX_NETWORK_ID_LENGTH) {
+            dPwd.size > OT_COMMISSIONING_PASSPHRASE_MAX_SIZE || dId.size != MESH_NETWORK_ID_LENGTH) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Disable Thread and clear network credentials
@@ -538,7 +534,7 @@ int createNetwork(ctrl_request* req) {
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
     CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
     CHECK_THREAD(otThreadSetPSKc(thread, pskc));
-    CHECK_THREAD(setNetworkId(thread, reinterpret_cast<const uint8_t*>(dId.data ? dId.data : "")));
+    CHECK_THREAD(setNetworkId(thread, dId.data ? dId.data : ""));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
@@ -643,7 +639,7 @@ int prepareJoiner(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
-    if (dNetworkId.size > MAX_NETWORK_ID_LENGTH) {
+    if (dNetworkId.size != MESH_NETWORK_ID_LENGTH) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Disable Thread and clear network credentials
@@ -805,7 +801,7 @@ int joinNetwork(ctrl_request* req) {
         CHECK(resetThread());
         return threadToSystemError(stat.result);
     }
-    CHECK_THREAD(setNetworkId(thread, (const uint8_t*)g_joinNetworkId));
+    CHECK_THREAD(setNetworkId(thread, g_joinNetworkId));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");
@@ -834,8 +830,9 @@ int getNetworkInfo(ctrl_request* req) {
         return SYSTEM_ERROR_UNKNOWN;
     }
     // Network Id
-    char networkId[MAX_NETWORK_ID_LENGTH + 1] = {};
-    fetchNetworkId(thread, networkId, sizeof(networkId));
+    char networkId[MESH_NETWORK_ID_LENGTH + 1] = {};
+    uint16_t networkIdSize = sizeof(networkId);
+    fetchNetworkId(thread, networkId, &networkIdSize);
     // Channel
     const uint8_t channel = otLinkGetChannel(thread);
     // PAN ID

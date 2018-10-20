@@ -18,9 +18,9 @@
 #ifndef HAL_BORON_NETWORK_NCP_H
 #define HAL_BORON_NETWORK_NCP_H
 
-namespace particle {
+#include "cellular_network_manager.h"
 
-class CellularNetworkManager;
+namespace particle {
 
 CellularNetworkManager* cellularNetworkManager();
 

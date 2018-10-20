@@ -309,7 +309,7 @@ int NetworkManager::clearConfiguration(if_t oIface) {
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
         else if (!strncmp(name, "wl", 2)) {
             auto wifiMan = wifiNetworkManager();
-            wifiMan->clearConfiguredNetworks();
+            wifiMan->clearNetworkConfig();
             ret = SYSTEM_ERROR_NONE;
         }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
@@ -350,13 +350,15 @@ void NetworkManager::transition(State state) {
         }
         /* Ensure that IPv4/IPv6 protocol state is reset */
         case State::IP_CONFIGURED: {
-            ip4State_ = ProtocolState::UNCONFIGURED;
-            ip6State_ = ProtocolState::UNCONFIGURED;
-            dns4State_ = DnsState::UNCONFIGURED;
-            dns6State_ = DnsState::UNCONFIGURED;
+            if (state != State::IP_CONFIGURED) {
+                ip4State_ = ProtocolState::UNCONFIGURED;
+                ip6State_ = ProtocolState::UNCONFIGURED;
+                dns4State_ = DnsState::UNCONFIGURED;
+                dns6State_ = DnsState::UNCONFIGURED;
 #if HAL_PLATFORM_MESH
-            BorderRouterManager::instance()->stop();
+                BorderRouterManager::instance()->stop();
 #endif // HAL_PLATFORM_MESH
+            }
             break;
         }
     }
@@ -667,7 +669,7 @@ bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
     if (!strncmp(name, "wl", 2)) {
         auto wifiMan = wifiNetworkManager();
-        return wifiMan->hasConfiguredNetworks();
+        return wifiMan->hasNetworkConfig();
     }
 #endif // HAL_PLATFORM_WIFI
 

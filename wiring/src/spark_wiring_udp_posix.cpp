@@ -32,7 +32,7 @@
 #include "netdb_hal.h"
 #include <arpa/inet.h>
 #include "spark_wiring_constants.h"
-
+#include "spark_wiring_posix_common.h"
 
 using namespace spark;
 
@@ -42,49 +42,9 @@ inline bool isOpen(sock_handle_t sd) {
     return socket_handle_valid(sd);
 }
 
-inline void sockaddrToIpAddressPort(const struct sockaddr* saddr, IPAddress& addr, uint16_t* port) {
-    if (saddr->sa_family == AF_INET) {
-        const struct sockaddr_in* inaddr = (const struct sockaddr_in*)saddr;
-        addr = (const uint8_t*)(&inaddr->sin_addr.s_addr);
-        if (port) {
-            *port = ntohs(inaddr->sin_port);
-        }
-    }
-#if HAL_IPv6
-    else if (saddr->sa_family == AF_INET6) {
-        const struct sockaddr_in6* in6addr = (const struct sockaddr_in6*)saddr;
-        HAL_IPAddress a = {};
-        memcpy(a.ipv6, in6addr->sin6_addr.s6_addr, sizeof(a.ipv6));
-        a.v = 6;
-        addr = IPAddress(a);
-        if (port) {
-            *port = ntohs(in6addr->sin6_port);
-        }
-    }
-#endif // HAL_IPv6
-}
-
-inline void ipAddressPortToSockaddr(const IPAddress& addr, uint16_t port, struct sockaddr* saddr) {
-    if (addr.version() == 6) {
-        struct sockaddr_in6* in6addr = (struct sockaddr_in6*)saddr;
-        in6addr->sin6_len = sizeof(sockaddr_in6);
-        in6addr->sin6_family = AF_INET6;
-        in6addr->sin6_port = htons(port);
-        const auto& a = addr.raw();
-        memcpy(in6addr->sin6_addr.s6_addr, a.ipv6, sizeof(a.ipv6));
-    } else if (addr.version() == 4) {
-        struct sockaddr_in* inaddr = (struct sockaddr_in*)saddr;
-        inaddr->sin_len = sizeof(sockaddr_in);
-        inaddr->sin_family = AF_INET;
-        inaddr->sin_port = htons(port);
-        const auto& a = addr.raw();
-        inaddr->sin_addr.s_addr = a.ipv4;
-    }
-}
-
 int joinLeaveMulticast(int sock, const IPAddress& addr, uint8_t ifindex, bool join) {
     sockaddr_storage s = {};
-    ipAddressPortToSockaddr(addr, 0, (struct sockaddr*)&s);
+    detail::ipAddressPortToSockaddr(addr, 0, (struct sockaddr*)&s);
     if (s.ss_family == AF_INET) {
         struct ip_mreq mreq = {};
         mreq.imr_multiaddr = ((struct sockaddr_in*)&s)->sin_addr;
@@ -248,7 +208,7 @@ int UDP::beginPacket(const char *host, uint16_t port) {
     // FIXME: for now using only the first entry
     if (ais && ais->ai_addr) {
         IPAddress addr;
-        sockaddrToIpAddressPort(ais->ai_addr, addr, nullptr);
+        detail::sockaddrToIpAddressPort(ais->ai_addr, addr, nullptr);
         if (addr) {
             return beginPacket(addr, port);
         }
@@ -279,7 +239,7 @@ int UDP::endPacket() {
 int UDP::sendPacket(const uint8_t* buffer, size_t buffer_size, IPAddress remoteIP, uint16_t port) {
     LOG(TRACE, "sendPacket size %d, %s#%d", buffer_size, remoteIP.toString().c_str(), port);
 	sockaddr_storage s = {};
-    ipAddressPortToSockaddr(remoteIP, port, (struct sockaddr*)&s);
+    detail::ipAddressPortToSockaddr(remoteIP, port, (struct sockaddr*)&s);
     if (s.ss_family == AF_UNSPEC) {
         return -1;
     }
@@ -301,7 +261,7 @@ size_t UDP::write(const uint8_t *buffer, size_t size) {
     return size;
 }
 
-int UDP::parsePacket() {
+int UDP::parsePacket(system_tick_t timeout) {
     if (!_buffer && _buffer_size) {
         setBuffer(_buffer_size);
     }
@@ -316,14 +276,26 @@ int UDP::parsePacket() {
     return available();
 }
 
-int UDP::receivePacket(uint8_t* buffer, size_t size) {
+int UDP::receivePacket(uint8_t* buffer, size_t size, system_tick_t timeout) {
     int ret = -1;
     if (isOpen(_sock) && buffer) {
         sockaddr_storage saddr = {};
         socklen_t slen = sizeof(saddr);
-        ret = sock_recvfrom(_sock, buffer, size, MSG_DONTWAIT, (struct sockaddr*)&saddr, &slen);
+        int flags = 0;
+        if (timeout == 0) {
+            flags = MSG_DONTWAIT;
+        } else {
+            struct timeval tv = {};
+            tv.tv_sec = timeout / 1000;
+            tv.tv_usec = (timeout % 1000) * 1000;
+            ret = sock_setsockopt(_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+            if (ret) {
+                return ret;
+            }
+        }
+        ret = sock_recvfrom(_sock, buffer, size, flags, (struct sockaddr*)&saddr, &slen);
         if (ret >= 0) {
-            sockaddrToIpAddressPort((const struct sockaddr*)&saddr, _remoteIP, &_remotePort);
+            detail::sockaddrToIpAddressPort((const struct sockaddr*)&saddr, _remoteIP, &_remotePort);
             LOG(TRACE, "received %d bytes from %s#%d", ret, _remoteIP.toString().c_str(), _remotePort);
         }
     }

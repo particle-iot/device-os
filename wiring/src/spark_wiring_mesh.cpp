@@ -22,6 +22,9 @@
 
 #if Wiring_Mesh
 
+#include <arpa/inet.h>
+#include "delay_hal.h"
+
 namespace spark {
 
 int mesh_loop() {
@@ -135,6 +138,7 @@ int MeshPublish::fetchMulticastAddress(IPAddress& mcastAddr) {
 }
 
 int MeshPublish::initialize_udp() {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
 	if (udp) {
 		return SYSTEM_ERROR_NONE;
 	}
@@ -157,6 +161,7 @@ int MeshPublish::initialize_udp() {
 }
 
 int MeshPublish::uninitialize_udp() {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
 	if (udp) {
 		IPAddress mcastAddr;
 		fetchMulticastAddress(mcastAddr);
@@ -167,6 +172,7 @@ int MeshPublish::uninitialize_udp() {
 }
 
 int MeshPublish::publish(const char* topic, const char* data) {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
 	CHECK(initialize_udp());
 	IPAddress mcastAddr;
 	CHECK(fetchMulticastAddress(mcastAddr));
@@ -179,6 +185,15 @@ int MeshPublish::publish(const char* topic, const char* data) {
 }
 
 int MeshPublish::subscribe(const char* prefix, EventHandler handler) {
+	std::lock_guard<RecursiveMutex> lk(mutex_);
+	if (!thread_) {
+		thread_.reset(new (std::nothrow) Thread("meshpub", [](void* ptr) {
+            auto self = (MeshPublish*)ptr;
+            while (true) {
+                self->poll();
+            }
+        }, this, OS_THREAD_PRIORITY_DEFAULT + 1));
+	}
 	CHECK(initialize_udp());
 	CHECK(subscriptions.add(prefix, handler));
 	return SYSTEM_ERROR_NONE;
@@ -189,21 +204,70 @@ int MeshPublish::subscribe(const char* prefix, EventHandler handler) {
  */
 int MeshPublish::poll() {
 	int result = 0;
-	if (udp) {
-		int len = udp->parsePacket();
+	UDP* u = nullptr;
+	{
+		std::lock_guard<RecursiveMutex> lk(mutex_);
+		u = udp.get();
+	}
+	if (u) {
+		if (!buffer_) {
+			buffer_.reset(new (std::nothrow) uint8_t[MAX_PACKET_LEN]);
+			if (!buffer_) {
+				return SYSTEM_ERROR_NO_MEMORY;
+			}
+		}
+		int len = u->receivePacket(buffer_.get(), MAX_PACKET_LEN, 1000);
 		if (len>0) {
 			LOG(TRACE, "parse packet %d", len);
-			const char* buffer = (const char*)udp->buffer();
+			const char* buffer = (const char*)buffer_.get();
 			int namelen = strlen(buffer);
+
+			std::lock_guard<RecursiveMutex> lk(mutex_);
 			subscriptions.send(buffer, buffer+namelen+1);
 		} else {
 			result = len;
 		}
+	} else {
+		HAL_Delay_Milliseconds(100);
 	}
 	return result;
 }
 
+IPAddress MeshClass::localIP() {
+    HAL_IPAddress addr = {};
+    addr.v = 6;
 
+    if_t iface = nullptr;
+    if (!if_get_by_index((network_interface_t)*this, &iface)) {
+        if_addrs* ifAddrList = nullptr;
+        if (!if_get_addrs(iface, &ifAddrList)) {
+            SCOPE_GUARD({
+                if_free_if_addrs(ifAddrList);
+            });
+            for (if_addrs* i = ifAddrList; i; i = i->next) {
+                if (i->if_addr->addr->sa_family == AF_INET6) {
+                    const auto in6addr = (const struct sockaddr_in6*)i->if_addr->addr;
+
+                    // ML-EID will be a preferred, scoped, non-linklocal address
+                    if (IN6_IS_ADDR_LINKLOCAL(&in6addr->sin6_addr)) {
+                        continue;
+                    }
+
+                    if (in6addr->sin6_scope_id == 0) {
+                        continue;
+                    }
+
+                    if (i->if_addr->ip6_addr_data && i->if_addr->ip6_addr_data->state == IF_IP6_ADDR_STATE_PREFERRED) {
+                        memcpy(addr.ipv6, in6addr->sin6_addr.s6_addr, sizeof(addr.ipv6));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return addr;
+}
 
 MeshClass Mesh;
 } // namespace spark
