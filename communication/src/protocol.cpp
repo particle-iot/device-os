@@ -157,8 +157,7 @@ void Protocol::notify_message_complete(message_id_t msg_id, CoAPCode::Enum respo
 		ack_handlers.setResult(msg_id);
 	}
 	else {
-		// todo - map the response codes to system errors
-		ack_handlers.setError(msg_id, SYSTEM_ERROR_UNKNOWN);
+		ack_handlers.setError(msg_id, (int)SYSTEM_ERROR_COAP_BASE - (int)responseCode);
 	}
 }
 
