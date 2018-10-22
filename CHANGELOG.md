@@ -1,3 +1,24 @@
+## 0.8.0-rc.20
+
+### FEATURES
+
+- [Mesh] `pinResetFast()` / `pinSetFast()` / `pinReadFast()` implementation (#244)
+- [Mesh] Clear Mesh credentials if Network Joined / Updated request is rejected cloudside with 4xx error code
+
+### BUGFIXES
+
+- [Boron] Increased LTE Boron USART polling rate
+- [Boron] Increased maximum PPP LCP echo failures to 10
+- [Boron] Increased maximum GSM07.10 missed keepalives to 5 on LTE Boron
+- [Mesh] NetworkManager: fixes credentials removal and interface state syncup in connected state
+- [Mesh] Removes extra comma from JSON module info in hybrid builds (#246)
+- [Argon, Boron] Fix echo handling in the AT command parser
+
+### ENHANCEMENTS
+
+- [Argon] Changes expected NCP firmware module function from monolithic (`0x03`) to NCP monolithic (`0x07`), adds NCP module info to system module info (#245)
+- [Mesh] Move system flags to backup RAM (#216)
+
 ## 0.8.0-rc.19
 
 ### BUGFIXES
