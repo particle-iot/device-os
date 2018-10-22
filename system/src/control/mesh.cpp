@@ -162,6 +162,10 @@ public:
     }
 };
 
+/**
+ * Fetch the corresponding network attributes given by the flags into a network update command
+ * and apply the update.
+ */
 int notifyNetworkUpdated(int flags) {
     NotifyMeshNetworkUpdated cmd;
     NetworkInfo& ni = cmd.ni;
@@ -327,6 +331,17 @@ void commissionerTimeout(os_timer_t timer) {
 }
 
 } // particle::ctrl::mesh::
+
+int notifyBorderRouter(bool active) {
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    CHECK_TRUE(thread, SYSTEM_ERROR_INVALID_STATE);
+    NotifyMeshNetworkGateway cmd;
+    uint16_t netIdSize = sizeof(cmd.nu.id);
+    CHECK(threadGetNetworkId(thread, cmd.nu.id, &netIdSize));
+    cmd.active = active;
+    return system_command_enqueue(cmd, sizeof(cmd));
+}
 
 int auth(ctrl_request* req) {
     THREAD_LOCK(lock);

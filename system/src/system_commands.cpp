@@ -5,6 +5,7 @@
 #include "system_network.h"
 #if HAL_PLATFORM_MESH
 #include "system_openthread.h"
+#include "border_router_manager.h"
 #endif // HAL_PLATFORM_MESH
 
 namespace particle {
@@ -70,6 +71,29 @@ void handleMeshNetworkUpdatedComplete(int error, const void* data, void* callbac
     }
 }
 
+void handleCommandComplete(int error, const void* data, void* callback_data, void* reserved) {
+	if (!error) {
+		persistCommands.popFront();
+		scheduleNextCommand();
+	} else if (isCoap4xxError(error)) {
+		persistCommands.popFront();
+		scheduleNextCommand();
+	} else {
+		scheduleNextCommand(DELAY_BETWEEN_COMMAND_CHECKS);
+	}
+}
+
+void handleMeshNetworkGatewayComplete(int error, const void* data, void* callback_data, void* reserved) {
+	handleCommandComplete(error, data, callback_data, reserved);
+	if (error) {
+		particle::net::BorderRouterManager::instance()->stop();
+		LOG(WARN, "Gateway operation vetoed.");
+	}
+	else {
+		LOG(INFO, "Gateway operation confirmed.");
+	}
+}
+
 #endif // HAL_PLATFORM_MESH
 
 void fetchAndExecuteCommand(system_tick_t currentTime) {
@@ -106,6 +130,7 @@ int AllCommands::execute() {
     switch (base.commandType) {
     case SystemCommand::NOTIFY_MESH_NETWORK: return created.execute();
     case SystemCommand::NOTIFY_MESH_JOINED: return joined.execute();
+    case SystemCommand::NOTIFY_MESH_GATEWAY: return gateway.execute();
     default:
         LOG(ERROR, "Ignoring unknown command type %d", base.commandType);
         return 0;
