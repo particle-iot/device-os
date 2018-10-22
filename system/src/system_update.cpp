@@ -558,7 +558,6 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         && json.write_attribute("m")
         && json.write('[');
     for (unsigned i=0; i<system.module_count; i++) {
-        if (i) result &= json.write(',');
         const hal_module_t& module = system.modules[i];
 #ifdef HYBRID_BUILD
         // FIXME: skip, otherwise we overflow MBEDTLS_SSL_MAX_CONTENT_LEN
@@ -566,6 +565,7 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
             continue;
         }
 #endif // HYBRID_BUILD
+        if (i) result &= json.write(',');
         result &= module_info_to_json(append, append_data, &module, 0);
     }
 
