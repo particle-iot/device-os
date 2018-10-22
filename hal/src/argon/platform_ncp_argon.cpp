@@ -97,33 +97,34 @@ __attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module
 }
 
 int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create) {
-	for (int i=0; i<sys_info->module_count; i++) {
-		hal_module_t* module = sys_info->modules + i;
-		if (!memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
-			if (create) {
-				const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
-				SPARK_ASSERT(ncpClient);
-				CHECK(ncpClient->on());
-				uint16_t version;
-				int error = ncpClient->getFirmwareModuleVersion(&version);
-				if (error) {
-					version = 0;
-				}
-				// todo - we could augment the getFirmwareModuleVersion command to retrieve more details
-				auto info = new module_info_t();
-				*info = {};
-				info->module_version = version;
-				info->platform_id = PLATFORM_ID;
-				info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
+    for (int i=0; i<sys_info->module_count; i++) {
+        hal_module_t* module = sys_info->modules + i;
+        if (!memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
+            if (create) {
+                const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
+                SPARK_ASSERT(ncpClient);
+                CHECK(ncpClient->on());
+                uint16_t version;
+                int error = ncpClient->getFirmwareModuleVersion(&version);
+                if (error) {
+                    version = 0;
+                }
+                // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
+                auto info = new module_info_t();
+                CHECK_TRUE(info, SYSTEM_ERROR_NO_MEMORY);
 
-				module->info = info;
-				// assume all checks pass since it was validated when being flashed to the NCP
-				module->validity_result = module->validity_checked;
-			}
-			else {
-				delete module->info;
-			}
-		}
-	}
-	return 0;
+                info->module_version = version;
+                info->platform_id = PLATFORM_ID;
+                info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
+
+                module->info = info;
+                // assume all checks pass since it was validated when being flashed to the NCP
+                module->validity_result = module->validity_checked;
+            }
+            else {
+                delete module->info;
+            }
+        }
+    }
+    return 0;
 }

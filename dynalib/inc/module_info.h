@@ -80,7 +80,7 @@ PARTICLE_STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(v
 #define MOD_FUNC_SYSTEM_PART     4
 #define MOD_FUNC_USER_PART       5
 #define MOD_FUNC_SETTINGS        6
-#define MOD_FUNC_NCP_FIRMWARE	 7
+#define MOD_FUNC_NCP_FIRMWARE	   7
 
 typedef enum module_function_t {
     MODULE_FUNCTION_NONE = MOD_FUNC_NONE,
@@ -103,8 +103,8 @@ typedef enum module_function_t {
     /* Rewrite persisted settings. (Not presently used?) */
     MODULE_FUNCTION_SETTINGS = MOD_FUNC_SETTINGS,
 
-	/*Firmware targeted for the NCP. */
-	MODULE_FUNCTION_NCP_FIRMWARE = MOD_FUNC_NCP_FIRMWARE
+    /* Firmware targeted for the NCP. */
+    MODULE_FUNCTION_NCP_FIRMWARE = MOD_FUNC_NCP_FIRMWARE
 
 } module_function_t;
 

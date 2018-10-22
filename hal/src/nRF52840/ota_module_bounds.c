@@ -82,7 +82,7 @@ const module_bounds_t module_user_mono = {
         .module_index = 0,
         .store = MODULE_STORE_MAIN
 #if HAL_PLATFORM_NCP
-		,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+        ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
     };
 
@@ -114,14 +114,14 @@ const module_bounds_t module_xip_code = {
 
 #if HAL_PLATFORM_NCP
 const module_bounds_t module_ncp_mono = {
-		.maximum_size = 1500*1024,
-		.start_address = 0,
-		.end_address = 1500*1024,
-		.module_function = MODULE_FUNCTION_NCP_FIRMWARE,
-		.module_index = 0,
-		.store = MODULE_STORE_MAIN
+        .maximum_size = 1500*1024,
+        .start_address = 0,
+        .end_address = 1500*1024,
+        .module_function = MODULE_FUNCTION_NCP_FIRMWARE,
+        .module_index = 0,
+        .store = MODULE_STORE_MAIN
 #if HAL_PLATFORM_NCP
-		,.mcu_identifier = HAL_PLATFORM_MCU_ANY
+        ,.mcu_identifier = HAL_PLATFORM_MCU_ANY
 #endif
 };
 #endif
@@ -129,7 +129,7 @@ const module_bounds_t module_ncp_mono = {
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory
 #if defined(HYBRID_BUILD) // include the mono module so that the hybrid module validates. The reason to not do this all the time is because the
-		// list of modules becomes somewhat confusing (with the same address range covered by 2 distinct definitions.)
+        // list of modules becomes somewhat confusing (with the same address range covered by 2 distinct definitions.)
 ,&module_user_mono
 #endif // defined(HYBRID_BUILD)
 #else
