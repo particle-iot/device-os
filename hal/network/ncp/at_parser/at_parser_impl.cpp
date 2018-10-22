@@ -126,6 +126,9 @@ int AtParserImpl::newCommand() {
     } else {
         clearStatus(StatusFlag::ECHO_ENABLED);
     }
+    if (!checkStatus(StatusFlag::FLUSH_CMD)) {
+        cmdSize_ = 0;
+    }
     clearStatus(StatusFlag::READY);
     setStatus(StatusFlag::WRITE_CMD);
     return 0;
@@ -164,7 +167,10 @@ int AtParserImpl::write(const char* data, size_t size) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
     // Make sure the previous command has been terminated
-    PARSER_CHECK(flushCommand(&cmdTimeout_));
+    if (checkStatus(StatusFlag::FLUSH_CMD)) {
+        PARSER_CHECK(flushCommand(&cmdTimeout_));
+        cmdSize_ = 0;
+    }
     const int ret = write(data, &size, &cmdTimeout_);
     cmdSize_ += appendToBuf(cmdData_ + cmdSize_, CMD_BUF_SIZE - cmdSize_, data, size);
     if (ret < 0) {
@@ -178,6 +184,10 @@ int AtParserImpl::readResult(int* errorCode) {
         return error(SYSTEM_ERROR_INVALID_STATE);
     }
     if (!checkStatus(StatusFlag::HAS_RESULT)) {
+        if (checkStatus(StatusFlag::ECHO_ENABLED) && !checkStatus(StatusFlag::HAS_ECHO)) {
+            PARSER_CHECK(waitEcho());
+            setStatus(StatusFlag::HAS_ECHO);
+        }
         for (;;) {
             if (checkStatus(StatusFlag::LINE_BEGIN)) {
                 const int ret = PARSER_CHECK(parseLine(ParseFlag::PARSE_RESULT | ParseFlag::PARSE_URC, &cmdTimeout_));
@@ -617,7 +627,6 @@ int AtParserImpl::flushCommand(unsigned* timeout) {
     if (cmdTermOffs_ == cmdTermSize_) {
         clearStatus(StatusFlag::FLUSH_CMD);
         logCmdLine(cmdData_, cmdSize_);
-        cmdSize_ = 0;
     }
     return ret;
 }
