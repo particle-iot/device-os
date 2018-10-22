@@ -277,7 +277,7 @@ bool NetworkManager::isConfigured(if_t iface) const {
 }
 
 int NetworkManager::clearConfiguration(if_t oIface) {
-    if (state_ != State::IFACE_DOWN && state_ != State::DISABLED) {
+    if (!oIface && state_ != State::IFACE_DOWN && state_ != State::DISABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
@@ -292,6 +292,11 @@ int NetworkManager::clearConfiguration(if_t oIface) {
         if_get_name(iface, name);
 
         if (oIface && iface != oIface) {
+            return;
+        }
+
+        if (oIface && (flags & (IFF_UP | IFF_LOWER_UP))) {
+            ret = SYSTEM_ERROR_INVALID_STATE;
             return;
         }
 
@@ -742,7 +747,7 @@ int NetworkManager::disableInterface(if_t iface) {
 }
 
 int NetworkManager::syncInterfaceStates() {
-    if (isEstablishingConnections()) {
+    if (isEstablishingConnections() || isConnectivityAvailable()) {
         CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
             if (!haveLowerLayerConfiguration(iface)) {
                 return;

@@ -152,13 +152,22 @@ ProtocolError Protocol::handle_received_message(Message& message,
 }
 
 void Protocol::notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode) {
-	LOG(INFO, "message id %d complete with code %d.%02d", msg_id, (responseCode>>5), responseCode&31);
+	const auto codeClass = (int)responseCode >> 5;
+	const auto codeDetail = (int)responseCode & 0x1f;
+	LOG(INFO, "message id %d complete with code %d.%02d", msg_id, codeClass, codeDetail);
 	if (CoAPCode::is_success(responseCode)) {
 		ack_handlers.setResult(msg_id);
-	}
-	else {
-		// todo - map the response codes to system errors
-		ack_handlers.setError(msg_id, SYSTEM_ERROR_UNKNOWN);
+	} else {
+		int error = SYSTEM_ERROR_COAP;
+		switch (codeClass) {
+		case 4:
+			error = SYSTEM_ERROR_COAP_4XX;
+			break;
+		case 5:
+			error = SYSTEM_ERROR_COAP_5XX;
+			break;
+		}
+		ack_handlers.setError(msg_id, error);
 	}
 }
 

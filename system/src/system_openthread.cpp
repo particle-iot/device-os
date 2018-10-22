@@ -31,13 +31,14 @@
 #include <openthread/commissioner.h>
 #include <openthread/joiner.h>
 #include <openthread/platform.h>
+#include <openthread/platform/settings.h>
 
 #define CHECK_THREAD(_expr) \
         do { \
             const otError ret = _expr; \
             if (ret != OT_ERROR_NONE) { \
                 LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
-                return systemError(ret); \
+                return ::particle::system::threadToSystemError(ret); \
             } \
         } while (false)
 
@@ -48,14 +49,6 @@ namespace particle {
 namespace system {
 
 namespace {
-
-int systemError(otError error) {
-    switch (error) {
-    // TODO
-    default:
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-}
 
 const char* deviceRoleStr(otDeviceRole role) {
     switch (role) {
@@ -182,6 +175,11 @@ void threadStateChanged(uint32_t flags, void* data) {
     }
 }
 
+/**
+ * Thread persistent storage key index.
+ */
+const uint16_t kKeyNetworkId = 0x4000;
+
 } // particle::system::
 
 int threadInit() {
@@ -203,6 +201,42 @@ int threadInit() {
 
         return 0;
     }, nullptr);
+}
+
+int threadGetNetworkId(otInstance* ot, char* buf, uint16_t* buflen) {
+    buf[0] = 0;
+    auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, (uint8_t*)buf, buflen);
+    if (result == OT_ERROR_NOT_FOUND) {
+        result = OT_ERROR_NONE;
+    }
+    return threadToSystemError(result);
+}
+
+int threadToSystemError(otError error) {
+    switch (error) {
+    case OT_ERROR_NONE:
+        return SYSTEM_ERROR_NONE;
+    case OT_ERROR_SECURITY:
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    case OT_ERROR_NOT_FOUND:
+        return SYSTEM_ERROR_NOT_FOUND;
+    case OT_ERROR_RESPONSE_TIMEOUT:
+        return SYSTEM_ERROR_TIMEOUT;
+    case OT_ERROR_NO_BUFS:
+        return SYSTEM_ERROR_NO_MEMORY;
+    case OT_ERROR_BUSY:
+        return SYSTEM_ERROR_BUSY;
+    case OT_ERROR_ABORT:
+        return SYSTEM_ERROR_ABORTED;
+    case OT_ERROR_INVALID_STATE:
+        return SYSTEM_ERROR_INVALID_STATE;
+    default:
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+}
+
+int threadSetNetworkId(otInstance* ot, const char* buf) {
+    return threadToSystemError(otPlatSettingsSet(ot, kKeyNetworkId, (const uint8_t*)buf, strlen(buf) + 1));
 }
 
 } // particle::system

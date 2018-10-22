@@ -139,11 +139,6 @@ const char* const VENDOR_MODEL = PP_STR(PLATFORM_NAME);
 const char* const VENDOR_SW_VERSION = PP_STR(SYSTEM_VERSION_STRING);
 const char* const VENDOR_DATA = "";
 
-/**
- * Thread persistent storage key index.
- */
-const uint16_t kKeyNetworkId = 0x4000;
-
 // Current joining device credential
 char g_joinPwd[JOINER_PASSWORD_MAX_SIZE + 1] = {}; // +1 character for term. null
 
@@ -167,21 +162,6 @@ public:
     }
 };
 
-int threadToSystemError(otError error);
-
-otError fetchNetworkId(otInstance* ot, char* buf, uint16_t* buflen) {
-	buf[0] = 0;
-	auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, (uint8_t*)buf, buflen);
-	if (result==OT_ERROR_NOT_FOUND) {
-		result = OT_ERROR_NONE;
-	}
-	return result;
-}
-
-otError setNetworkId(otInstance* ot, const char* buf) {
-	return otPlatSettingsSet(ot, kKeyNetworkId, (const uint8_t*)buf, strlen(buf) + 1);
-}
-
 int notifyNetworkUpdated(int flags) {
     NotifyMeshNetworkUpdated cmd;
     NetworkInfo& ni = cmd.ni;
@@ -194,7 +174,7 @@ int notifyNetworkUpdated(int flags) {
     }
     // Network ID
     uint16_t netIdSize = sizeof(ni.update.id);
-    CHECK_THREAD(fetchNetworkId(thread, ni.update.id, &netIdSize));
+    CHECK(threadGetNetworkId(thread, ni.update.id, &netIdSize));
     if (flags & NetworkInfo::NETWORK_ID_VALID) {
         memcpy(ni.id, ni.update.id, sizeof(ni.update.id));
     }
@@ -252,7 +232,7 @@ int notifyJoined(bool joined) {
     CHECK_TRUE(thread, SYSTEM_ERROR_INVALID_STATE);
     NotifyMeshNetworkJoined cmd;
     uint16_t netIdSize = sizeof(cmd.nu.id);
-    CHECK_THREAD(fetchNetworkId(thread, cmd.nu.id, &netIdSize));
+    CHECK(threadGetNetworkId(thread, cmd.nu.id, &netIdSize));
     cmd.joined = joined;
     return system_command_enqueue(cmd, sizeof(cmd));
 }
@@ -344,29 +324,6 @@ void commissionerTimeout(os_timer_t timer) {
         }
     };
     SystemISRTaskQueue.enqueue(task);
-}
-
-int threadToSystemError(otError error) {
-    switch (error) {
-    case OT_ERROR_NONE:
-        return SYSTEM_ERROR_NONE;
-    case OT_ERROR_SECURITY:
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    case OT_ERROR_NOT_FOUND:
-        return SYSTEM_ERROR_NOT_FOUND;
-    case OT_ERROR_RESPONSE_TIMEOUT:
-        return SYSTEM_ERROR_TIMEOUT;
-    case OT_ERROR_NO_BUFS:
-        return SYSTEM_ERROR_NO_MEMORY;
-    case OT_ERROR_BUSY:
-        return SYSTEM_ERROR_BUSY;
-    case OT_ERROR_ABORT:
-        return SYSTEM_ERROR_ABORTED;
-    case OT_ERROR_INVALID_STATE:
-        return SYSTEM_ERROR_INVALID_STATE;
-    default:
-        return SYSTEM_ERROR_UNKNOWN;
-    }
 }
 
 } // particle::ctrl::mesh::
@@ -534,7 +491,7 @@ int createNetwork(ctrl_request* req) {
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
     CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
     CHECK_THREAD(otThreadSetPSKc(thread, pskc));
-    CHECK_THREAD(setNetworkId(thread, dId.data ? dId.data : ""));
+    CHECK(threadSetNetworkId(thread, dId.data ? dId.data : ""));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
@@ -801,7 +758,7 @@ int joinNetwork(ctrl_request* req) {
         CHECK(resetThread());
         return threadToSystemError(stat.result);
     }
-    CHECK_THREAD(setNetworkId(thread, g_joinNetworkId));
+    CHECK(threadSetNetworkId(thread, g_joinNetworkId));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");
@@ -832,7 +789,7 @@ int getNetworkInfo(ctrl_request* req) {
     // Network Id
     char networkId[MESH_NETWORK_ID_LENGTH + 1] = {};
     uint16_t networkIdSize = sizeof(networkId);
-    fetchNetworkId(thread, networkId, &networkIdSize);
+    threadGetNetworkId(thread, networkId, &networkIdSize);
     // Channel
     const uint8_t channel = otLinkGetChannel(thread);
     // PAN ID
