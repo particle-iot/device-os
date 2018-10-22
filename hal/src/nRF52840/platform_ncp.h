@@ -54,4 +54,10 @@ MeshNCPIdentifier platform_current_ncp_identifier();
  */
 hal_update_complete_t platform_ncp_update_module(const hal_module_t* module);
 
+/**
+ * Augments the module info with data retrieved from the NCP.
+ */
+int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create);
+
+
 

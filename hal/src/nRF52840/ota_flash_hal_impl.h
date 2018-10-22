@@ -3,6 +3,7 @@
 
 #include "ota_flash_hal.h"
 #include "platforms.h"
+#include "hal_platform.h"
 
 typedef enum security_key_type {
     INVALID_SECURITY_KEY = 0,
@@ -34,6 +35,10 @@ extern const module_bounds_t module_factory;
 // Monolithic firmware
 extern const module_bounds_t module_user_mono;
 extern const module_bounds_t module_factory_mono;
+
+#if HAL_PLATFORM_NCP
+extern const module_bounds_t module_ncp_mono;
+#endif
 
 
 const uint8_t* fetch_server_public_key(uint8_t lock);
