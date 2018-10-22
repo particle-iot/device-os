@@ -300,7 +300,7 @@ void sys_unlock_tcpip_core(void);
  * MEMP_NUM_NETBUF: the number of struct netbufs.
  * (only needed if you use the sequential API, like api_lib.c)
  */
-#define MEMP_NUM_NETBUF                 (PBUF_POOL_SIZE)
+#define MEMP_NUM_NETBUF                 (PBUF_POOL_SIZE - 1)
 
 /**
  * MEMP_NUM_NETCONN: the number of struct netconns.
