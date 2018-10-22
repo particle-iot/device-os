@@ -680,7 +680,7 @@ int SaraNcpClient::initReady() {
         muxer_.setControlResponseTimeout(500);
     } else {
         muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD * 2);
-        muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED / 2 + 1);
+        muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
         muxer_.useMscAsKeepAlive(true);
         muxer_.setMaxRetransmissions(3);
         muxer_.setAckTimeout(2530);

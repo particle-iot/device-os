@@ -381,7 +381,7 @@
 /**
  * LCP_MAXECHOFAILS: Number of unanswered echo requests before failure.
  */
-#define LCP_MAXECHOFAILS                3
+#define LCP_MAXECHOFAILS                10
 
 /**
  * PPP_MAXIDLEFLAG: Max Xmit idle time (in ms) before resend flag char.
