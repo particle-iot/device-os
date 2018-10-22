@@ -47,26 +47,9 @@
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
         (OUT_OF_RANGE, "Out of range", -290), \
-        (COAP_BASE, "", -1000), \
-        (COAP_400_BASE, "CoAP: 4xx", -1128), \
-        (COAP_400_BAD_REQUEST, "CoAP: Bad request", -1128), \
-        (COAP_401_UNAUTHORIZED, "CoAP: Unauthorized", -1129), \
-        (COAP_402_BAD_OPTION, "CoAP: Bad option", -1130), \
-        (COAP_403_FORBIDDEN, "CoAP: Forbidden", -1131), \
-        (COAP_404_NOT_FOUND, "CoAP: Not found", -1132), \
-        (COAP_405_METHOD_NOT_ALLOWED, "CoAP: Method not allowed", -1133), \
-        (COAP_406_NOT_ACCEPTABLE, "CoAP: Not acceptable", -1134), \
-        (COAP_408_REQUEST_ENTITY_INCOMPLETE, "CoAP: Request entity incomplete", -1136), \
-        (COAP_412_PRECONDITION_FAILED, "CoAP: Precondition failed", -1140), \
-        (COAP_413_REQUEST_ENTITY_TOO_LARGE, "CoAP: Request entity too large", -1141), \
-        (COAP_415_UNSUPPORTED_CONTENT_FORMAT, "CoAP: Unsupported content format", -1143), \
-        (COAP_500_BASE, "CoAP: 5xx", -1160), \
-        (COAP_500_INTERNAL_SERVER_ERROR, "CoAP: Internal server error", -1160), \
-        (COAP_501_NOT_IMPLEMENTED, "CoAP: Not implemented", -1161), \
-        (COAP_502_BAD_GATEWAY, "CoAP: Bad gateway", -1162), \
-        (COAP_503_SERVICE_UNAVAILABLE, "CoAP: Service unavailable", -1163), \
-        (COAP_504_GATEWAY_TIMEOUT, "CoAP: Gateway timeout", -1164), \
-        (COAP_505_PROXYING_NOT_SUPPORTED, "CoAP: Proxying not supported", -1165)
+        (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
+        (COAP_4XX, "CoAP: 4xx", -1100), \
+        (COAP_5XX, "CoAP: 5xx", -1132)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

@@ -37,7 +37,7 @@ void destroyMeshCredentialsIfNetworkIdMatches(const char* networkId) {
 }
 
 inline bool isCoap4xxError(int error) {
-    return error <= SYSTEM_ERROR_COAP_400_BASE && error > SYSTEM_ERROR_COAP_500_BASE;
+    return (error == SYSTEM_ERROR_COAP_4XX);
 }
 
 void handleMeshNetworkJoinedComplete(int error, const void* data, void* callback_data, void* reserved) {
