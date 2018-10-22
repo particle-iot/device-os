@@ -32,6 +32,7 @@
 #include <openthread/joiner.h>
 #include <openthread/platform.h>
 #include <openthread/platform/settings.h>
+#include <mutex>
 
 #define CHECK_THREAD(_expr) \
         do { \
