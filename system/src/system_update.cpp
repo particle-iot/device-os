@@ -488,6 +488,7 @@ const char* module_function_string(module_function_t func) {
         case MODULE_FUNCTION_MONO_FIRMWARE: return "m";
         case MODULE_FUNCTION_SYSTEM_PART: return "s";
         case MODULE_FUNCTION_USER_PART: return "u";
+        case MODULE_FUNCTION_NCP_FIRMWARE: return "c";
         default: return "_";
     }
 }

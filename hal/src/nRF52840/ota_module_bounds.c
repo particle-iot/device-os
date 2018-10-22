@@ -117,7 +117,7 @@ const module_bounds_t module_ncp_mono = {
 		.maximum_size = 1500*1024,
 		.start_address = 0,
 		.end_address = 1500*1024,
-		.module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+		.module_function = MODULE_FUNCTION_NCP_FIRMWARE,
 		.module_index = 0,
 		.store = MODULE_STORE_MAIN
 #if HAL_PLATFORM_NCP

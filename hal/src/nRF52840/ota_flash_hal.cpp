@@ -164,13 +164,14 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
             }
         }
+        HAL_OTA_Add_System_Info(info, construct, reserved);
     }
     else
     {
+        HAL_OTA_Add_System_Info(info, construct, reserved);
         delete info->modules;
         info->modules = NULL;
     }
-    HAL_OTA_Add_System_Info(info, construct, reserved);
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
