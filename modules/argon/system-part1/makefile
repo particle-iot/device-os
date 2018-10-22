@@ -5,7 +5,7 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x30000
 NCP_FIRMWARE_MODULE_VERSION=4
-MODULE_DEPENDENCY2=7,0,$(NCP_FIRMWARE_MODULE_VERSION)
+# MODULE_DEPENDENCY2=7,0,$(NCP_FIRMWARE_MODULE_VERSION)
 DEPENDENCIES = newlib_nano modules/argon/user-part modules/argon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
