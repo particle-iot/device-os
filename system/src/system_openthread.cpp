@@ -204,6 +204,7 @@ int threadInit() {
 }
 
 int threadGetNetworkId(otInstance* ot, char* buf, uint16_t* buflen) {
+    std::lock_guard<ThreadLock> lk(ThreadLock());
     buf[0] = 0;
     auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, (uint8_t*)buf, buflen);
     if (result == OT_ERROR_NOT_FOUND) {
@@ -236,6 +237,7 @@ int threadToSystemError(otError error) {
 }
 
 int threadSetNetworkId(otInstance* ot, const char* buf) {
+    std::lock_guard<ThreadLock> lk(ThreadLock());
     return threadToSystemError(otPlatSettingsSet(ot, kKeyNetworkId, (const uint8_t*)buf, strlen(buf) + 1));
 }
 
