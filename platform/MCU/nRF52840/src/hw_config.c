@@ -45,6 +45,7 @@
 #include "crc32.h"
 #include "core_hal.h"
 #include "service_debug.h"
+#include "usb_hal.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -96,6 +97,12 @@ void Set_System(void)
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
     DWT_Init();
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    // FIXME: Have to initialize USB before softdevice enabled,
+    // otherwise USB module won't recevie power event
+    HAL_USB_Init();
+#endif
 
     /* Configure the LEDs and set the default states */
     int LEDx;
