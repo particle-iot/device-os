@@ -27,8 +27,6 @@
 
 #include "lwip/dns.h"
 
-#include "spark_wiring_thread.h"
-
 LOG_SOURCE_CATEGORY("net.dns64")
 
 #ifndef DEBUG_DNS64
@@ -133,8 +131,8 @@ const size_t MAX_MESSAGE_SIZE = 512; // RFC 1035, 2.3.4
 // Value of the TTL field sent in all response messages
 const uint32_t DEFAULT_TTL = 0; // Do not cache (RFC 1035, 4.1.3)
 
-// Timeout for recvfrom() in milliseconds
-const unsigned SOCKET_RECV_TIMEOUT = 3000;
+// Timeout for select() in milliseconds
+const unsigned SOCKET_RECV_TIMEOUT = 1000;
 
 ssize_t readHeader(const char* data, size_t size, Header* h) {
     if (size < sizeof(Header)) {
@@ -303,7 +301,6 @@ uint16_t systemToDnsError(int error) {
 } // particle::net::
 
 struct Dns64::Context {
-    RecursiveMutex mutex;
     ip6_addr_t prefix;
     int sock;
 
@@ -381,7 +378,7 @@ int Dns64::run() {
     if (r == 0) {
         return 0;
     }
-    const std::lock_guard<RecursiveMutex> lock(ctx_->mutex);
+    const LwipTcpIpCoreLock lock;
     sockaddr_in6 srcAddr = {};
     socklen_t addrSize = sizeof(srcAddr);
     const ssize_t n = sock_recvfrom(ctx_->sock, buf_.get(), MAX_MESSAGE_SIZE, 0, (sockaddr*)&srcAddr, &addrSize);
@@ -572,7 +569,6 @@ void Dns64::dnsCallback(const char* name, const ip_addr_t* addr, void* data) {
     if (!ctx) {
         return;
     }
-    const std::lock_guard<RecursiveMutex> lock(ctx->mutex);
     int ret = 0;
     if (addr) {
         ret = sendResponse(*addr, name, *q, ctx.get());
