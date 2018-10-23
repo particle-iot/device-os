@@ -222,8 +222,16 @@ int BorderRouterManager::enable() {
             config_.mStable = 1;
 
             config_.mPrefix.mPrefix.mFields.m8[0] = 0xfd;
-            Random rand;
-            rand.gen((char*)config_.mPrefix.mPrefix.mFields.m8 + 1, 5); // Generate global ID
+            if (!prefix_) {
+                prefix_.reset(new (std::nothrow) uint8_t[5]);
+                Random rand;
+                rand.gen((char*)config_.mPrefix.mPrefix.mFields.m8 + 1, 5); // Generate global ID
+                if (prefix_) {
+                    memcpy(prefix_.get(), (char*)config_.mPrefix.mPrefix.mFields.m8 + 1, 5);
+                }
+            } else {
+                memcpy((char*)config_.mPrefix.mPrefix.mFields.m8 + 1, prefix_.get(), 5);
+            }
             config_.mPrefix.mLength = 64;
         }
 
