@@ -43,7 +43,7 @@
 #include "rtc_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
-static int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
+static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
 static volatile uint8_t rtos_started = 0;
 
 static struct Last_Reset_Info {

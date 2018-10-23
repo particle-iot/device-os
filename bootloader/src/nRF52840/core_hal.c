@@ -2,7 +2,7 @@
 #include "nrf_delay.h"
 
 #define BACKUP_REGISTER_NUM        10
-static int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
+static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
 
 int32_t HAL_Core_Backup_Register(uint32_t BKP_DR) {
     if ((BKP_DR == 0) || (BKP_DR > BACKUP_REGISTER_NUM)) {
