@@ -32,6 +32,8 @@
 #include "dtls_message_channel.h"
 #include "coap_channel.h"
 #include "eckeygen.h"
+#include <limits>
+#include "logging.h"
 
 namespace particle {
 namespace protocol {
@@ -90,6 +92,15 @@ public:
 			ack_handlers.clear();
 			result = NO_ERROR;
 			break;
+		case ProtocolCommands::FORCE_PING: {
+			if (!pinger.is_expecting_ping_ack()) {
+				LOG(INFO, "Forcing a cloud ping");
+				pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
+					return ping();
+				});
+			}
+			break;
+		}
 		}
 		return result;
 	}

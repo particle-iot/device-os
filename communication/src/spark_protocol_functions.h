@@ -189,7 +189,8 @@ namespace ProtocolCommands {
     SLEEP,
     WAKE,
     DISCONNECT,
-    TERMINATE
+    TERMINATE,
+    FORCE_PING
   };
 };
 
