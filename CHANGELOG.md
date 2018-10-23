@@ -4,6 +4,8 @@
 
 - [Mesh] `pinResetFast()` / `pinSetFast()` / `pinReadFast()` implementation (#244)
 - [Mesh] Clear Mesh credentials if Network Joined / Updated request is rejected cloudside with 4xx error code
+- [communication] Added `FORCE_PING` protocol command to proactively ping the cloud
+- [Mesh] Ping the cloud whenever the network interface state / configuration change
 
 ### BUGFIXES
 
@@ -13,6 +15,8 @@
 - [Mesh] NetworkManager: fixes credentials removal and interface state syncup in connected state
 - [Mesh] Removes extra comma from JSON module info in hybrid builds (#246)
 - [Argon, Boron] Fix echo handling in the AT command parser
+- [communication] When resuming a session without sending HELLO message, an error from `ping()` needs to be propagated
+- [Mesh] Added a proposed workaround to radio driver from https://devzone.nordicsemi.com/f/nordic-q-a/38460/thread-dynamic-multiprotocol---assertion-at-radioreceive
 
 ### ENHANCEMENTS
 
@@ -20,13 +24,20 @@
 - [Mesh] Move system flags to backup RAM (#216)
 - [Mesh] Implement `System.dfu()` and `System.enterSafeMode()` (#209)
 - [Mesh] Implement querying of the last reset info (#209)
+- [Mesh] Ignore ALOC addresses when synchronizing IP address information between OpenThread and LwIP
+- [Mesh] Enable / disable Border Router functionality on system thread instead of LwIP thread
+- [Mesh] `otPlatAssertFail()` implemented
+- [Boron] Reset the modem if it can't register in the network for 5 minutes
+- [Mesh] Use `select()` instead of blocking `recvfrom()` in the DNS64 service
+- [system] Disable interrupts in `ISRTaskQueue::process()` only if there is at least on entry in the queue
+
 
 ## 0.8.0-rc.19
 
 ### BUGFIXES
 
 - [Mesh] Fixes a bug introduced in rc.18 causing Mesh devices to be stuck in fast blinking green (link-local only communication) despite having a border router within the network.
-- [Mesh] __errno() is now exported from system-part1 in rt dynalib
+- [Mesh] `__errno()` is now exported from system-part1 in rt dynalib
 - [Mesh] Fixes a bug in IPv4 mapped IPv6 address conversion to IPAddress in TCPClient/TCPServer/UDP
 - [Mesh] Correct Mesh backup server address
 - [Mesh] Mesh pubsub thread-safety
