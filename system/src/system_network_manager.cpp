@@ -104,6 +104,23 @@ void forceCloudPingIfConnected() {
     SystemISRTaskQueue.enqueue(task);
 }
 
+#if HAL_PLATFORM_MESH
+void setBorderRouterState(bool start) {
+    const auto task = new(std::nothrow) ISRTaskQueue::Task();
+    if (!task) {
+        return;
+    }
+    task->func = start ? [](ISRTaskQueue::Task* task) {
+        delete task;
+        BorderRouterManager::instance()->start();
+    } : [](ISRTaskQueue::Task* task) {
+        delete task;
+        BorderRouterManager::instance()->stop();
+    };
+    SystemISRTaskQueue.enqueue(task);
+}
+#endif // HAL_PLATFORM_MESH
+
 } /* anonymous */
 
 NetworkManager::NetworkManager() {
@@ -377,7 +394,7 @@ void NetworkManager::transition(State state) {
                 dns4State_ = DnsState::UNCONFIGURED;
                 dns6State_ = DnsState::UNCONFIGURED;
 #if HAL_PLATFORM_MESH
-                BorderRouterManager::instance()->stop();
+                setBorderRouterState(false);
 #endif // HAL_PLATFORM_MESH
             }
             break;
@@ -631,9 +648,9 @@ void NetworkManager::refreshIpState() {
 #if HAL_PLATFORM_MESH
     // FIXME: for now only checking ip4 state
     if (ip4State_ == ProtocolState::CONFIGURED && dns4State_ == DnsState::CONFIGURED) {
-        BorderRouterManager::instance()->start();
+        setBorderRouterState(true);
     } else {
-        BorderRouterManager::instance()->stop();
+        setBorderRouterState(false);
     }
 #endif // HAL_PLATFORM_MESH
 
