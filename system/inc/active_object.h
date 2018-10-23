@@ -463,6 +463,6 @@ public:
     bool process();
 
 private:
-    Task* firstTask_;
+    volatile Task* firstTask_;
     Task* lastTask_;
 };
