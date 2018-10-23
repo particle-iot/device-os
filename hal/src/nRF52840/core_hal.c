@@ -594,22 +594,6 @@ void HAL_Bootloader_Lock(bool lock) {
 
 }
 
-// TODO: Return the reset reason.
-bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
-{
-    switch(resetType)
-    {
-    case PIN_RESET:
-    case SOFTWARE_RESET:
-    case WATCHDOG_RESET:
-    case POWER_MANAGEMENT_RESET:
-    case POWER_DOWN_RESET:
-    case POWER_BROWNOUT_RESET:
-    default:
-        return false;
-    }
-}
-
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved) {
     return SystemCoreClock;
 }
