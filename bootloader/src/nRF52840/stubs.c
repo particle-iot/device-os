@@ -35,5 +35,5 @@ void HAL_Delay_Microseconds(uint32_t uSec) {
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
-    /* FIXME */
+    NVIC_SystemReset();
 }
