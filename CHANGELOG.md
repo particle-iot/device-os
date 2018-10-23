@@ -6,6 +6,7 @@
 - [Mesh] Clear Mesh credentials if Network Joined / Updated request is rejected cloudside with 4xx error code
 - [communication] Added `FORCE_PING` protocol command to proactively ping the cloud
 - [Mesh] Ping the cloud whenever the network interface state / configuration change
+- [Mesh] Send the border router CoAP message to the cloud when the device becomes a border router (#248)
 
 ### BUGFIXES
 
