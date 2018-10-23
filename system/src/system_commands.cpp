@@ -72,6 +72,7 @@ void handleMeshNetworkUpdatedComplete(int error, const void* data, void* callbac
 }
 
 void handleCommandComplete(int error, const void* data, void* callback_data, void* reserved) {
+	LOG(INFO, "Gateway status command complete, result %d", error);
 	if (!error) {
 		persistCommands.popFront();
 		scheduleNextCommand();
@@ -84,6 +85,7 @@ void handleCommandComplete(int error, const void* data, void* callback_data, voi
 }
 
 void handleMeshNetworkGatewayComplete(int error, const void* data, void* callback_data, void* reserved) {
+
 	handleCommandComplete(error, data, callback_data, reserved);
 	if (error) {
 		particle::net::BorderRouterManager::instance()->stop();

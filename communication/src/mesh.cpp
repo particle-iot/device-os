@@ -63,6 +63,13 @@ ProtocolError Mesh::device_joined(Protocol& protocol, uint8_t token, MessageChan
 	return sendNetworkUpdate(p, protocol, message, channel, c);
 }
 
+ProtocolError Mesh::device_gateway(Protocol& protocol, uint8_t token, MessageChannel& channel, bool active, MeshCommand::NetworkUpdate& update, completion_handler_data* c)
+{
+	Message message;
+	uint8_t* p = buildNetworkUpdateMessage(token, message, channel, update);
+	p += CoAP::uri_query(p, CoAPOption::URI_PATH, active ? "br=1" : "br=0");
+	return sendNetworkUpdate(p, protocol, message, channel, c);
+}
 
 
 }}

@@ -62,7 +62,7 @@ struct NotifyMeshNetworkUpdated : SystemCommand {
     }
 
     int execute() {
-        LOG(INFO, "Invoking network update command");
+        LOG(INFO, "Invoking network update command for networkId=%s", ni.update.id);
         completion_handler_data ch = {
             .size = sizeof(ch),
             .handler_callback = handleMeshNetworkUpdatedComplete,
@@ -84,7 +84,7 @@ struct NotifyMeshNetworkJoined : SystemCommand {
     }
 
     int execute() {
-        LOG(INFO, "Invoking network joined command, joined=%d", joined);
+        LOG(INFO, "Invoking network joined command, networkId=%s, joined=%d", nu.id, joined);
         completion_handler_data ch = {
             .size = sizeof(ch),
             .handler_callback = handleMeshNetworkJoinedComplete,
@@ -106,7 +106,7 @@ struct NotifyMeshNetworkGateway : SystemCommand {
     }
 
     int execute() {
-        LOG(INFO, "Invoking network gateway command, active=%d", active);
+        LOG(INFO, "Invoking network gateway command, networkId=%s, active=%d", nu.id, active);
         completion_handler_data ch = { .size=sizeof(ch), .handler_callback = handleMeshNetworkGatewayComplete, .handler_data = nullptr };
         return spark_protocol_mesh_command(spark_protocol_instance(), DEVICE_BORDER_ROUTER, active, &nu, &ch);
     }
