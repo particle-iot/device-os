@@ -27,6 +27,8 @@
 
 #include "lwip/dns.h"
 
+#include "spark_wiring_thread.h"
+
 LOG_SOURCE_CATEGORY("net.dns64")
 
 #ifndef DEBUG_DNS64
@@ -301,6 +303,7 @@ uint16_t systemToDnsError(int error) {
 } // particle::net::
 
 struct Dns64::Context {
+    RecursiveMutex mutex;
     ip6_addr_t prefix;
     int sock;
 
@@ -340,9 +343,6 @@ int Dns64::init(if_t iface, const ip6_addr_t& prefix, uint16_t port) {
     // Set socket options
     int opt = 1;
     CHECK_SOCKET(sock_setsockopt(ctx_->sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)));
-    timeval tv = {};
-    tv.tv_usec = SOCKET_RECV_TIMEOUT * 1000;
-    CHECK_SOCKET(sock_setsockopt(ctx_->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))); // TODO: Use poll()
     // Bind the socket
     char name[IF_NAMESIZE] = {};
     CHECK(if_get_name(iface, name));
@@ -367,6 +367,21 @@ int Dns64::run() {
     if (!ctx_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    fd_set fd;
+    FD_ZERO(&fd);
+    FD_SET(ctx_->sock, &fd);
+    timeval tv = {};
+    tv.tv_usec = SOCKET_RECV_TIMEOUT * 1000;
+    int r = lwip_select(ctx_->sock + 1, &fd, nullptr, nullptr, &tv);
+    if (r < 0) {
+        LOG(ERROR, "select() failed: %d", errno);
+        destroy();
+        return socketToSystemError(errno);
+    }
+    if (r == 0) {
+        return 0;
+    }
+    const std::lock_guard<RecursiveMutex> lock(ctx_->mutex);
     sockaddr_in6 srcAddr = {};
     socklen_t addrSize = sizeof(srcAddr);
     const ssize_t n = sock_recvfrom(ctx_->sock, buf_.get(), MAX_MESSAGE_SIZE, 0, (sockaddr*)&srcAddr, &addrSize);
@@ -378,9 +393,9 @@ int Dns64::run() {
         destroy();
         return socketToSystemError(errno);
     }
-    const int ret = processQuery(buf_.get(), n, srcAddr);
-    if (ret < 0) {
-        LOG_DEBUG(ERROR, "Unable to process query: %d", ret);
+    r = processQuery(buf_.get(), n, srcAddr);
+    if (r < 0) {
+        LOG_DEBUG(ERROR, "Unable to process query: %d", r);
     }
     return 0;
 }
@@ -557,6 +572,7 @@ void Dns64::dnsCallback(const char* name, const ip_addr_t* addr, void* data) {
     if (!ctx) {
         return;
     }
+    const std::lock_guard<RecursiveMutex> lock(ctx->mutex);
     int ret = 0;
     if (addr) {
         ret = sendResponse(*addr, name, *q, ctx.get());
