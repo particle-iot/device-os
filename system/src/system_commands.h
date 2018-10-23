@@ -102,7 +102,7 @@ struct NotifyMeshNetworkGateway : SystemCommand {
             nu(),
             active(active) {
         nu.size = sizeof(nu);
-        commandType = NOTIFY_MESH_JOINED;
+        commandType = NOTIFY_MESH_GATEWAY;
     }
 
     int execute() {
