@@ -1,3 +1,9 @@
+.backup_registers :
+{
+  link_global_backup_registers = .;
+  *(.backup_registers*)
+  link_global_backup_registers_end = .;
+}>BACKUPSRAM_REGISTERS AT> APP_FLASH
 
 .backup_system_flags :
 {
@@ -15,4 +21,3 @@
 }>BACKUPSRAM_SYSTEM AT> APP_FLASH
 /* even though we don't initialize the system backup RAM presently, it has to be
  placed at APP_FLASH or the resulting file ends up being hundreds of megabytes in size */
-

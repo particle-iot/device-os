@@ -34,6 +34,8 @@
 #include "user.h"
 #include "dct.h"
 #include "rng_hal.h"
+#include "interrupts_hal.h"
+#include <nrf_power.h>
 #include "ota_module.h"
 #include "bootloader.h"
 #include <stdlib.h>
@@ -41,12 +43,13 @@
 #include "rtc_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
-int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
-volatile uint8_t rtos_started = 0;
+static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
+static volatile uint8_t rtos_started = 0;
 
-extern char link_heap_location, link_heap_location_end;
-extern char _Stack_Init;
-void* new_heap_end = &link_heap_location_end;
+static struct Last_Reset_Info {
+    int reason;
+    uint32_t data;
+} last_reset_info = { RESET_REASON_NONE, 0 };
 
 typedef enum Feature_Flag {
     FEATURE_FLAG_RESET_INFO = 0x01,
@@ -66,9 +69,12 @@ void SysTickOverride(void);
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info);
 void app_error_handler_bare(uint32_t err);
 
+extern char link_heap_location, link_heap_location_end;
 extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
+extern char _Stack_Init;
+void* new_heap_end = &link_heap_location_end;
 
 extern void malloc_enable(uint8_t);
 extern void malloc_set_heap_end(void*);
@@ -77,8 +83,7 @@ extern void* malloc_heap_end();
 void* module_user_pre_init();
 #endif
 
-__attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
-{
+__attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
     away as the variables never actually get used.  If the debugger won't show the
     values of the variables, make them global my moving their declaration outside
@@ -110,20 +115,18 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
         UsageFault_Handler();
-}
-    else {
+    } else {
         PANIC(HardFault,"HardFault");
 
         /* Go to infinite loop when Hard Fault exception occurs */
-        while (1)
-        {
+        while (1) {
+            ;
         }
     }
 }
 
 
-void HardFault_Handler(void)
-{
+void HardFault_Handler(void) {
     __asm volatile
     (
         " tst lr, #4                                                \n"
@@ -137,21 +140,21 @@ void HardFault_Handler(void)
     );
 }
 
-void app_error_fault_handler(uint32_t _id, uint32_t _pc, uint32_t _info)
-{
+void app_error_fault_handler(uint32_t _id, uint32_t _pc, uint32_t _info) {
     volatile uint32_t id = _id;
     volatile uint32_t pc = _pc;
     volatile uint32_t info = _info;
     (void)id; (void)pc; (void)info;
     PANIC(HardFault,"HardFault");
     while(1) {
+        ;
     }
 }
 
-void app_error_handler_bare(uint32_t error_code)
-{
+void app_error_handler_bare(uint32_t error_code) {
     PANIC(HardFault,"HardFault");
     while(1) {
+        ;
     }
 }
 
@@ -162,35 +165,31 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
     }
 }
 
-void MemManage_Handler(void)
-{
+void MemManage_Handler(void) {
     /* Go to infinite loop when Memory Manage exception occurs */
     PANIC(MemManage,"MemManage");
-    while (1)
-    {
+    while (1) {
+        ;
     }
 }
 
-void BusFault_Handler(void)
-{
+void BusFault_Handler(void) {
     /* Go to infinite loop when Bus Fault exception occurs */
     PANIC(BusFault,"BusFault");
-    while (1)
-    {
+    while (1) {
+        ;
     }
 }
 
-void UsageFault_Handler(void)
-{
+void UsageFault_Handler(void) {
     /* Go to infinite loop when Usage Fault exception occurs */
     PANIC(UsageFault,"UsageFault");
-    while (1)
-    {
+    while (1) {
+        ;
     }
 }
 
-void SysTickOverride(void)
-{
+void SysTickOverride(void) {
     System1MsTick();
 
     /* Handle short and generic tasks for the device HAL on 1ms ticks */
@@ -201,8 +200,7 @@ void SysTickOverride(void)
     // HAL_System_Interrupt_Trigger(SysInterrupt_SysTick, NULL);
 }
 
-void SysTickChain()
-{
+void SysTickChain() {
     SysTick_Handler();
     SysTickOverride();
 }
@@ -211,14 +209,12 @@ void SysTickChain()
  * Called by HAL_Core_Init() to pre-initialize any low level hardware before
  * the main loop runs.
  */
-void HAL_Core_Init_finalize(void)
-{
+void HAL_Core_Init_finalize(void) {
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[IRQN_TO_IDX(SysTick_IRQn)] = (uint32_t)SysTickChain;
 }
 
-void HAL_Core_Init(void)
-{
+void HAL_Core_Init(void) {
     HAL_Core_Init_finalize();
 }
 
@@ -232,8 +228,7 @@ void HAL_Core_Config_systick_configuration(void) {
  * Called by HAL_Core_Config() to allow the HAL implementation to override
  * the interrupt table if required.
  */
-void HAL_Core_Setup_override_interrupts(void)
-{
+void HAL_Core_Setup_override_interrupts(void) {
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     /* Set MBR to forward interrupts to application */
     *((volatile uint32_t*)0x20000000) = (uint32_t)isrs;
@@ -251,16 +246,16 @@ void HAL_Core_Setup_override_interrupts(void)
     /* Enable softdevice */
     nrf_sdh_enable_request();
     /* Wait until softdevice enabled*/
-    while(!nrf_sdh_is_enabled());
+    while (!nrf_sdh_is_enabled()) {
+        ;
+    }
 }
 
-void HAL_Core_Restore_Interrupt(IRQn_Type irqn) 
-{
+void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
     uint32_t handler = ((const uint32_t*)&link_interrupt_vectors_location)[IRQN_TO_IDX(irqn)];
 
     // Special chain handler
-    if (irqn == SysTick_IRQn) 
-    {
+    if (irqn == SysTick_IRQn) {
         handler = (uint32_t)SysTickChain;
     } 
 
@@ -275,8 +270,7 @@ void HAL_Core_Restore_Interrupt(IRQn_Type irqn)
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-void HAL_Core_Config(void)
-{
+void HAL_Core_Config(void) {
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 
 #ifdef DFU_BUILD_ENABLE
@@ -332,8 +326,7 @@ void HAL_Core_Config(void)
       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 }
 
-void HAL_Core_Setup(void)
-{
+void HAL_Core_Setup(void) {
     /* DOES NOT DO ANYTHING
      * SysTick is enabled within FreeRTOS
      */
@@ -412,16 +405,13 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 }
 #endif
 
-bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
-{
+bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration) {
     bool pressedState = false;
 
-    if(BUTTON_GetDebouncedTime(BUTTON1) >= pressedMillisDuration)
-    {
+    if(BUTTON_GetDebouncedTime(BUTTON1) >= pressedMillisDuration) {
         pressedState = true;
     }
-    if(BUTTON_GetDebouncedTime(BUTTON1_MIRROR) >= pressedMillisDuration)
-    {
+    if(BUTTON_GetDebouncedTime(BUTTON1_MIRROR) >= pressedMillisDuration) {
         pressedState = true;
     }
 
@@ -432,34 +422,29 @@ void HAL_Core_Mode_Button_Reset(uint16_t button)
 {
 }
 
-void HAL_Core_System_Reset(void)
-{
+void HAL_Core_System_Reset(void) {
     NVIC_SystemReset();
 }
 
-void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
-{
-/*
-    // FIXME: This currently causes a hard fault
-    if (HAL_Feature_Get(FEATURE_RESET_INFO))
-    {
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
+    if (HAL_Feature_Get(FEATURE_RESET_INFO)) {
         // Save reset info to backup registers
         HAL_Core_Write_Backup_Register(BKP_DR_02, reason);
         HAL_Core_Write_Backup_Register(BKP_DR_03, data);
     }
-*/
+
     HAL_Core_System_Reset();
 }
 
-void HAL_Core_Factory_Reset(void)
-{
+void HAL_Core_Factory_Reset(void) {
     system_flags.Factory_Reset_SysFlag = 0xAAAA;
     Save_SystemFlags();
     HAL_Core_System_Reset_Ex(RESET_REASON_FACTORY_RESET, 0, NULL);
 }
 
-void HAL_Core_Enter_Safe_Mode(void* reserved)
-{
+void HAL_Core_Enter_Safe_Mode(void* reserved) {
+    HAL_Core_Write_Backup_Register(BKP_DR_01, ENTER_SAFE_MODE_APP_REQUEST);
+    HAL_Core_System_Reset_Ex(RESET_REASON_SAFE_MODE, 0, NULL);
 }
 
 bool HAL_Core_Enter_Safe_Mode_Requested(void)
@@ -470,37 +455,122 @@ bool HAL_Core_Enter_Safe_Mode_Requested(void)
     return (flags & 1);
 }
 
-void HAL_Core_Enter_Bootloader(bool persist)
-{
+void HAL_Core_Enter_Bootloader(bool persist) {
+    if (persist) {
+        HAL_Core_Write_Backup_Register(BKP_DR_10, 0xFFFF);
+        system_flags.FLASH_OTA_Update_SysFlag = 0xFFFF;
+        Save_SystemFlags();
+    } else {
+        HAL_Core_Write_Backup_Register(BKP_DR_01, ENTER_DFU_APP_REQUEST);
+    }
+
+    HAL_Core_System_Reset_Ex(RESET_REASON_DFU_MODE, 0, NULL);
 }
 
-void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
-{
+void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds) {
 }
 
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
-{
+int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved) {
     return -1;
 }
 
-void HAL_Core_Execute_Stop_Mode(void)
-{
+void HAL_Core_Execute_Stop_Mode(void) {
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
-{
+void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
 }
 
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
-{
+void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
 }
 
-void HAL_Core_Execute_Standby_Mode(void)
-{
+void HAL_Core_Execute_Standby_Mode(void) {
 }
 
-int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
+bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
+    uint32_t reset_reason = 0;
+    sd_power_reset_reason_get(&reset_reason);
+    switch(resetType) {
+        case PIN_RESET: {
+            return reset_reason == NRF_POWER_RESETREAS_RESETPIN_MASK;
+        }
+        case SOFTWARE_RESET: {
+            return reset_reason == NRF_POWER_RESETREAS_SREQ_MASK;
+        }
+        case WATCHDOG_RESET: {
+            return reset_reason == NRF_POWER_RESETREAS_DOG_MASK;
+        }
+        case POWER_MANAGEMENT_RESET: {
+            // SYSTEM OFF Mode
+            return reset_reason == NRF_POWER_RESETREAS_OFF_MASK;;
+        }
+        case POWER_DOWN_RESET: {
+            // Not support
+            return false;
+        }
+        case POWER_BROWNOUT_RESET: {
+            // Not support
+            return false;
+        }
+        default:
+            return false;
+    }
+}
+
+static void Init_Last_Reset_Info()
 {
+    if (HAL_Core_System_Reset_FlagSet(SOFTWARE_RESET))
+    {
+        // Load reset info from backup registers
+        last_reset_info.reason = HAL_Core_Read_Backup_Register(BKP_DR_02);
+        last_reset_info.data = HAL_Core_Read_Backup_Register(BKP_DR_03);
+        // Clear backup registers
+        HAL_Core_Write_Backup_Register(BKP_DR_02, 0);
+        HAL_Core_Write_Backup_Register(BKP_DR_03, 0);
+    }
+    else // Hardware reset
+    {
+        if (HAL_Core_System_Reset_FlagSet(WATCHDOG_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_WATCHDOG;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_MANAGEMENT_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_MANAGEMENT; // Reset generated when entering standby mode (nRST_STDBY: 0)
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_DOWN_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_DOWN;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(POWER_BROWNOUT_RESET))
+        {
+            last_reset_info.reason = RESET_REASON_POWER_BROWNOUT;
+        }
+        else if (HAL_Core_System_Reset_FlagSet(PIN_RESET)) // Pin reset flag should be checked in the last place
+        {
+            last_reset_info.reason = RESET_REASON_PIN_RESET;
+        }
+        // TODO: Reset from USB, NFC, LPCOMP...
+        else
+        {
+            last_reset_info.reason = RESET_REASON_UNKNOWN;
+        }
+        last_reset_info.data = 0; // Not used
+    }
+
+    // Clear Reset info register
+    sd_power_reset_reason_clr(0xFFFFFFFF);
+}
+
+int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved) {
+    if (HAL_Feature_Get(FEATURE_RESET_INFO)) {
+        if (reason) {
+            *reason = last_reset_info.reason;
+        }
+        if (data) {
+            *data = last_reset_info.data;
+        }
+        return 0;
+    }
     return -1;
 }
 
@@ -510,39 +580,20 @@ int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved)
  * @param  BufferSize: Size of the buffer to be computed
  * @retval 32-bit CRC
  */
-uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
-{
+uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize) {
     // TODO: Use the peripheral lock?
     return Compute_CRC32(pBuffer, bufferSize, NULL);
 }
 
-uint16_t HAL_Core_Mode_Button_Pressed_Time()
-{
+uint16_t HAL_Core_Mode_Button_Pressed_Time() {
     return 0;
 }
 
-void HAL_Bootloader_Lock(bool lock)
-{
+void HAL_Bootloader_Lock(bool lock) {
+
 }
 
-// TODO: Return the reset reason.
-bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
-{
-    switch(resetType)
-    {
-    case PIN_RESET:
-    case SOFTWARE_RESET:
-    case WATCHDOG_RESET:
-    case POWER_MANAGEMENT_RESET:
-    case POWER_DOWN_RESET:
-    case POWER_BROWNOUT_RESET:
-    default:
-        return false;
-    }
-}
-
-unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
-{
+unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved) {
     return SystemCoreClock;
 }
 
@@ -555,21 +606,22 @@ static TaskHandle_t  app_thread_handle;
  */
 xSemaphoreHandle malloc_mutex = 0;
 
-static void init_malloc_mutex(void)
-{
+static void init_malloc_mutex(void) {
     malloc_mutex = xSemaphoreCreateRecursiveMutex();
 }
 
-void __malloc_lock(void* ptr)
-{
-    if (malloc_mutex)
-        while (!xSemaphoreTakeRecursive(malloc_mutex, 0xFFFFFFFF)) {}
+void __malloc_lock(void* ptr) {
+    if (malloc_mutex) {
+        while (!xSemaphoreTakeRecursive(malloc_mutex, 0xFFFFFFFF)) {
+            ;
+        }
+    }
 }
 
-void __malloc_unlock(void* ptr)
-{
-    if (malloc_mutex)
+void __malloc_unlock(void* ptr) {
+    if (malloc_mutex) {
         xSemaphoreGiveRecursive(malloc_mutex);
+    }
 }
 
 /**
@@ -577,8 +629,7 @@ void __malloc_unlock(void* ptr)
  * This should be called from the RTOS main thread once initialization has been
  * completed, constructors invoked and and HAL_Core_Config() has been called.
  */
-void application_start()
-{
+void application_start() {
     rtos_started = 1;
 
     // one the key is sent to the cloud, this can be removed, since the key is fetched in
@@ -587,29 +638,26 @@ void application_start()
 
     HAL_Core_Setup();
 
-    /*
-    generate_key();
+    // TODO:
+    // generate_key();
 
     if (HAL_Feature_Get(FEATURE_RESET_INFO))
     {
         // Load last reset info from RCC / backup registers
         Init_Last_Reset_Info();
     }
-    */
 
     app_setup_and_loop();
 }
 
-void application_task_start(void* arg)
-{
+void application_task_start(void* arg) {
     application_start();
 }
 
 /**
  * Called from startup_stm32f2xx.s at boot, main entry point.
  */
-int main(void)
-{
+int main(void) {
     init_malloc_mutex();
     xTaskCreate( application_task_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
 
@@ -621,8 +669,7 @@ int main(void)
     return 0;
 }
 
-static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
-{
+static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value) {
     if (HAL_IsISR()) {
         return -1; // DCT cannot be accessed from an ISR
     }
@@ -650,8 +697,7 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
     return 0;
 }
 
-static int Read_Feature_Flag(uint32_t flag, bool* value)
-{
+static int Read_Feature_Flag(uint32_t flag, bool* value) {
     if (HAL_IsISR()) {
         return -1; // DCT cannot be accessed from an ISR
     }
@@ -664,24 +710,19 @@ static int Read_Feature_Flag(uint32_t flag, bool* value)
     return 0;
 }
 
-int HAL_Feature_Set(HAL_Feature feature, bool enabled)
-{
-   switch (feature)
-    {
-        case FEATURE_RETAINED_MEMORY:
-        {
+int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
+   switch (feature) {
+        case FEATURE_RETAINED_MEMORY: {
             // TODO: Switch on backup SRAM clock
             // Switch on backup power regulator, so that it survives the deep sleep mode,
             // software and hardware reset. Power must be supplied to VIN or VBAT to retain SRAM values.
             return -1;
         }
-        case FEATURE_RESET_INFO:
-        {
+        case FEATURE_RESET_INFO: {
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 #if HAL_PLATFORM_CLOUD_UDP
-        case FEATURE_CLOUD_UDP:
-        {
+        case FEATURE_CLOUD_UDP: {
             const uint8_t data = (enabled ? 0xff : 0x00);
             return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
         }
@@ -694,16 +735,12 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
     return -1;
 }
 
-bool HAL_Feature_Get(HAL_Feature feature)
-{
-    switch (feature)
-    {
-        case FEATURE_CLOUD_UDP:
-        {
-            return true;
+bool HAL_Feature_Get(HAL_Feature feature) {
+    switch (feature) {
+        case FEATURE_CLOUD_UDP: {
+            return true; // Mesh platforms are UDP-only
         }
-        case FEATURE_RESET_INFO:
-        {
+        case FEATURE_RESET_INFO: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
         }
@@ -715,49 +752,43 @@ bool HAL_Feature_Get(HAL_Feature feature)
     return false;
 }
 
-int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
-{
-    if ((BKP_DR == 0) || (BKP_DR > BACKUP_REGISTER_NUM))
-    {
+int32_t HAL_Core_Backup_Register(uint32_t BKP_DR) {
+    if ((BKP_DR == 0) || (BKP_DR > BACKUP_REGISTER_NUM)) {
         return -1;
     }
 
     return BKP_DR - 1;
 }
 
-void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data)
-{
+void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data) {
     int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
-    if (BKP_DR_Index != -1)
-    {
+    if (BKP_DR_Index != -1) {
         backup_register[BKP_DR_Index] = Data;
     }
 }
 
-uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR)
-{
+uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR) {
     int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
-    if (BKP_DR_Index != -1)
-    {
+    if (BKP_DR_Index != -1) {
         return backup_register[BKP_DR_Index];
     }
     return 0xFFFFFFFF;
 }
 
-void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void* reserved)
-{
+void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void* reserved) {
+
 }
 
-void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved)
-{
+void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved) {
+
 }
 
-void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* reserved)
-{
+void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* reserved) {
+
 }
 
-void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
-{
+void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved) {
+
 }
 
 extern size_t pvPortLargestFreeBlock();
