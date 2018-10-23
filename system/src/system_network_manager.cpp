@@ -35,6 +35,8 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "border_router_manager.h"
 #endif // HAL_PLATFORM_MESH
 #include "check.h"
+#include "system_cloud.h"
+#include "system_threading.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -86,6 +88,20 @@ int for_each_iface(F&& f) {
     if_free_list(ifs);
 
     return 0;
+}
+
+void forceCloudPingIfConnected() {
+    const auto task = new(std::nothrow) ISRTaskQueue::Task();
+    if (!task) {
+        return;
+    }
+    task->func = [](ISRTaskQueue::Task* task) {
+        delete task;
+        if (spark_cloud_flag_connected()) {
+            spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::FORCE_PING, 0, nullptr);
+        }
+    };
+    SystemISRTaskQueue.enqueue(task);
 }
 
 } /* anonymous */
@@ -491,12 +507,14 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             }
         }
     }
+    forceCloudPingIfConnected();
 }
 
 void NetworkManager::handleIfAddr(if_t iface, const struct if_event* ev) {
     if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
         refreshIpState();
     }
+    forceCloudPingIfConnected();
 }
 
 void NetworkManager::handleIfLinkLayerAddr(if_t iface, const struct if_event* ev) {
