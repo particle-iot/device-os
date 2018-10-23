@@ -83,6 +83,7 @@ private:
     std::shared_ptr<nat::Nat64> nat64_;
     std::unique_ptr<Dns64> dns64_;
     std::unique_ptr<::particle::ThreadRunner> dns64Runner_;
+    std::unique_ptr<uint8_t[]> prefix_;
 };
 
 } } /* particle::net */

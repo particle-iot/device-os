@@ -35,6 +35,8 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "border_router_manager.h"
 #endif // HAL_PLATFORM_MESH
 #include "check.h"
+#include "system_cloud.h"
+#include "system_threading.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -87,6 +89,37 @@ int for_each_iface(F&& f) {
 
     return 0;
 }
+
+void forceCloudPingIfConnected() {
+    const auto task = new(std::nothrow) ISRTaskQueue::Task();
+    if (!task) {
+        return;
+    }
+    task->func = [](ISRTaskQueue::Task* task) {
+        delete task;
+        if (spark_cloud_flag_connected()) {
+            spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::FORCE_PING, 0, nullptr);
+        }
+    };
+    SystemISRTaskQueue.enqueue(task);
+}
+
+#if HAL_PLATFORM_MESH
+void setBorderRouterState(bool start) {
+    const auto task = new(std::nothrow) ISRTaskQueue::Task();
+    if (!task) {
+        return;
+    }
+    task->func = start ? [](ISRTaskQueue::Task* task) {
+        delete task;
+        BorderRouterManager::instance()->start();
+    } : [](ISRTaskQueue::Task* task) {
+        delete task;
+        BorderRouterManager::instance()->stop();
+    };
+    SystemISRTaskQueue.enqueue(task);
+}
+#endif // HAL_PLATFORM_MESH
 
 } /* anonymous */
 
@@ -361,7 +394,7 @@ void NetworkManager::transition(State state) {
                 dns4State_ = DnsState::UNCONFIGURED;
                 dns6State_ = DnsState::UNCONFIGURED;
 #if HAL_PLATFORM_MESH
-                BorderRouterManager::instance()->stop();
+                setBorderRouterState(false);
 #endif // HAL_PLATFORM_MESH
             }
             break;
@@ -491,12 +524,14 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             }
         }
     }
+    forceCloudPingIfConnected();
 }
 
 void NetworkManager::handleIfAddr(if_t iface, const struct if_event* ev) {
     if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
         refreshIpState();
     }
+    forceCloudPingIfConnected();
 }
 
 void NetworkManager::handleIfLinkLayerAddr(if_t iface, const struct if_event* ev) {
@@ -613,9 +648,9 @@ void NetworkManager::refreshIpState() {
 #if HAL_PLATFORM_MESH
     // FIXME: for now only checking ip4 state
     if (ip4State_ == ProtocolState::CONFIGURED && dns4State_ == DnsState::CONFIGURED) {
-        BorderRouterManager::instance()->start();
+        setBorderRouterState(true);
     } else {
-        BorderRouterManager::instance()->stop();
+        setBorderRouterState(false);
     }
 #endif // HAL_PLATFORM_MESH
 

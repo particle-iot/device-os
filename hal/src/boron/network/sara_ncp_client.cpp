@@ -89,6 +89,10 @@ void ubloxReset(unsigned int reset) {
     HAL_Delay_Milliseconds(10);
 }
 
+inline system_tick_t millis() {
+    return HAL_Timer_Get_Milli_Seconds();
+}
+
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
 
@@ -103,6 +107,9 @@ const auto UBLOX_NCP_AT_CHANNEL = 1;
 const auto UBLOX_NCP_PPP_CHANNEL = 2;
 
 const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
+
+const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
+const unsigned REGISTRATION_TIMEOUT = 5 * 60 * 1000;
 
 } // anonymous
 
@@ -136,6 +143,8 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     serial_ = std::move(serial);
     ncpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
+    regStartTime_ = 0;
+    regCheckTime_ = 0;
     parserError_ = 0;
     ready_ = false;
     resetRegistrationState();
@@ -270,11 +279,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
 
 void SaraNcpClient::processEvents() {
     const NcpClientLock lock(this);
-    if (ncpState_ != NcpState::ON) {
-        return;
-    }
-    parser_.processUrc();
-    checkRegistrationState();
+    processEventsImpl();
 }
 
 int SaraNcpClient::ncpId() const {
@@ -792,6 +797,9 @@ int SaraNcpClient::registerNet() {
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
 
+    regStartTime_ = millis();
+    regCheckTime_ = regStartTime_;
+
     return 0;
 }
 
@@ -885,6 +893,8 @@ void SaraNcpClient::resetRegistrationState() {
     creg_ = RegistrationState::NotRegistered;
     cgreg_ = RegistrationState::NotRegistered;
     cereg_ = RegistrationState::NotRegistered;
+    regStartTime_ = millis();
+    regCheckTime_ = regStartTime_;
 }
 
 void SaraNcpClient::checkRegistrationState() {
@@ -895,8 +905,35 @@ void SaraNcpClient::checkRegistrationState() {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);
+            regStartTime_ = millis();
+            regCheckTime_ = regStartTime_;
         }
     }
+}
+
+int SaraNcpClient::processEventsImpl() {
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
+    parser_.processUrc(); // Ignore errors
+    checkRegistrationState();
+    if (connState_ != NcpConnectionState::CONNECTING ||
+            millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
+        return 0;
+    }
+    SCOPE_GUARD({
+        regCheckTime_ = millis();
+    });
+    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    } else {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+    }
+    if (connState_ == NcpConnectionState::CONNECTING &&
+            millis() - regStartTime_ >= REGISTRATION_TIMEOUT) {
+        LOG(WARN, "Resetting the modem due to the network registration timeout");
+        off();
+    }
+    return 0;
 }
 
 } // particle

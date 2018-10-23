@@ -89,15 +89,17 @@ void otNetifMulticastAddressToIp6Addr(const otNetifMulticastAddress* otAddr, ip6
                     otAddr->mAddress.mFields.m32[3]);
 }
 
-bool otNetifAddressIsRloc(const otNetifAddress* addr) {
+bool otNetifAddressIsRlocOrAloc(const otNetifAddress* addr) {
     if (addr->mRloc) {
         return true;
     }
     static const auto kAloc16Mask = 0xfc;
     static const auto kRloc16ReservedBitMask = 0x02;
     return (addr->mAddress.mFields.m16[4] == PP_HTONL(0x0000) && addr->mAddress.mFields.m16[5] == PP_HTONL(0x00ff) &&
-            addr->mAddress.mFields.m16[6] == PP_HTONL(0xfe00) && addr->mAddress.mFields.m8[14] < kAloc16Mask &&
-            (addr->mAddress.mFields.m8[14] & kRloc16ReservedBitMask) == 0);
+            addr->mAddress.mFields.m16[6] == PP_HTONL(0xfe00) &&
+            ((addr->mAddress.mFields.m8[14] < kAloc16Mask &&
+            (addr->mAddress.mFields.m8[14] & kRloc16ReservedBitMask) == 0) ||
+            (addr->mAddress.mFields.m8[14] == kAloc16Mask)));
 }
 
 int otNetifAddressStateToIp6AddrState(const otNetifAddress* addr) {
@@ -375,7 +377,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         int otIdx = 0;
         for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
             // Skip RLOC addresses
-            if (otNetifAddressIsRloc(addr)) {
+            if (otNetifAddressIsRlocOrAloc(addr)) {
                 continue;
             }
             ip6_addr_t ip6addr = {};
@@ -416,7 +418,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
         /* Add new addresses */
         otIdx = 0;
         for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
-            if (otNetifAddressIsRloc(addr)) {
+            if (otNetifAddressIsRlocOrAloc(addr)) {
                 continue;
             }
             if (!handledOt[otIdx]) {
@@ -440,7 +442,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
                 }
                 char tmp[IP6ADDR_STRLEN_MAX] = {0};
                 ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
-                LOG(TRACE, "Added %s %d", tmp, otNetifAddressIsRloc(addr));
+                LOG(TRACE, "Added %s %d", tmp, otNetifAddressIsRlocOrAloc(addr));
             }
             otIdx++;
         }
@@ -586,11 +588,13 @@ void OpenThreadNetif::refreshIpAddresses() {
             config.mPreferred,
             config.mStable);
 
+        /* Rule -1. We are a border router, do not choose any other */
         if (config.mRloc16 == ourRloc16) {
-            /* Rule -1. We are a border router, do not choose any other */
             LOG(TRACE, "This is our own prefix");
             active = config;
-            break;
+            continue;
+        } else if (active.mRloc16 == ourRloc16) {
+            continue;
         }
 
         if (otIp6IsAddressUnspecified(&active.mPrefix.mPrefix) && active.mPrefix.mLength == 0) {

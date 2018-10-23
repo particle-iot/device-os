@@ -80,6 +80,8 @@ private:
     RegistrationState creg_ = RegistrationState::NotRegistered;
     RegistrationState cgreg_ = RegistrationState::NotRegistered;
     RegistrationState cereg_ = RegistrationState::NotRegistered;
+    system_tick_t regStartTime_;
+    system_tick_t regCheckTime_;
 
     int initParser(Stream* stream);
     int checkParser();
@@ -98,6 +100,7 @@ private:
     void parserError(int error);
     void resetRegistrationState();
     void checkRegistrationState();
+    int processEventsImpl();
 };
 
 inline AtParser* SaraNcpClient::atParser() {

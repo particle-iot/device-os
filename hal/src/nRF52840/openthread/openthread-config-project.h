@@ -220,6 +220,14 @@
 #define NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT                   0
 #endif
 
+/**
+ * @def OPENTHREAD_CONFIG_PLATFORM_ASSERT_MANAGEMENT
+ *
+ * The assert is managed by platform defined logic when this flag is set.
+ *
+ */
+#define OPENTHREAD_CONFIG_PLATFORM_ASSERT_MANAGEMENT 1
+
 /*
  * Suppress the ARMCC warning on unreachable statement,
  * e.g. break after assert(false) or ExitNow() macro.

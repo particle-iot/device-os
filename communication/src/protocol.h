@@ -64,11 +64,6 @@ class Protocol
 	CommunicationsHandlers handlers;
 
 	/**
-	 * Manages Ping functionality.
-	 */
-	Pinger pinger;
-
-	/**
 	 * Manages chunked file transfer functionality.
 	 */
 	ChunkedTransfer chunkedTransfer;
@@ -158,6 +153,11 @@ public:
 
 
 protected:
+	/**
+	 * Manages Ping functionality.
+	 */
+	Pinger pinger;
+
 	/**
 	 * Completion handlers for messages with confirmable delivery.
 	 */
