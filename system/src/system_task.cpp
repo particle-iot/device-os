@@ -455,9 +455,6 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         CLOUD_FN(manage_cloud_connection(force_events), (void)0);
 
-        if (background_task) {
-        	background_task();
-        }
         particle::system::fetchAndExecuteCommand(millis());
     }
     else
