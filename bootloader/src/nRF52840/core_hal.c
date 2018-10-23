@@ -4,8 +4,7 @@
 #define BACKUP_REGISTER_NUM        10
 static int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
 
-int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
-{
+int32_t HAL_Core_Backup_Register(uint32_t BKP_DR) {
     if ((BKP_DR == 0) || (BKP_DR > BACKUP_REGISTER_NUM)) {
         return -1;
     }
@@ -13,16 +12,14 @@ int32_t HAL_Core_Backup_Register(uint32_t BKP_DR)
     return BKP_DR - 1;
 }
 
-void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data)
-{
+void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data) {
     int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
     if (BKP_DR_Index != -1) {
         backup_register[BKP_DR_Index] = Data;
     }
 }
 
-uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR)
-{
+uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR) {
     int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
     if (BKP_DR_Index != -1) {
         return backup_register[BKP_DR_Index];
