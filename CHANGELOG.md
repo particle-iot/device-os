@@ -18,6 +18,8 @@
 
 - [Argon] Changes expected NCP firmware module function from monolithic (`0x03`) to NCP monolithic (`0x07`), adds NCP module info to system module info (#245)
 - [Mesh] Move system flags to backup RAM (#216)
+- [Mesh] Implement `System.dfu()` and `System.enterSafeMode()` (#209)
+- [Mesh] Implement querying of the last reset info (#209)
 
 ## 0.8.0-rc.19
 
