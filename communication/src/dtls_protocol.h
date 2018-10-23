@@ -96,7 +96,7 @@ public:
 			if (!pinger.is_expecting_ping_ack()) {
 				LOG(INFO, "Forcing a cloud ping");
 				pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
-					return ping();
+					return ping(true);
 				});
 			}
 			break;
