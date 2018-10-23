@@ -427,8 +427,6 @@ static void process_isr_task_queue()
     SystemISRTaskQueue.process();
 }
 
-system_task_fn background_task;
-
 #if Wiring_SetupButtonUX
 extern void system_handle_button_clicks(bool isIsr);
 #endif
@@ -660,10 +658,5 @@ int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler*
                 const char* event_name, const char* event_data, void* reserved)
 {
 	invokeEventHandler(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
-	return SYSTEM_ERROR_NONE;
-}
-
-int system_task_loop(system_task_fn fn, void*) {
-	background_task = fn;
 	return SYSTEM_ERROR_NONE;
 }
