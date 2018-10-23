@@ -26,9 +26,13 @@
 #include "spark_wiring_system.h"
 #include "appender.h"
 #include "debug.h"
+#include "delay_hal.h"
+#include "hal_platform.h"
 
 #include "control/network.h"
 #include "control/wifi.h"
+#include "control/wifi_new.h"
+#include "control/cellular.h"
 #include "control/config.h"
 #include "control/storage.h"
 #include "control/mesh.h"
@@ -124,26 +128,38 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::getSystemCapabilities(req));
         break;
     }
+    case CTRL_REQUEST_SET_FEATURE: {
+        setResult(req, control::config::setFeature(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_FEATURE: {
+        setResult(req, control::config::getFeature(req));
+        break;
+    }
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.reset();
         });
         break;
     }
     case CTRL_REQUEST_FACTORY_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.factoryReset();
         });
         break;
     }
     case CTRL_REQUEST_DFU_MODE: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.dfu(false);
         });
         break;
     }
     case CTRL_REQUEST_SAFE_MODE: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.enterSafeMode();
         });
         break;
@@ -168,6 +184,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_IS_DEVICE_SETUP_DONE: {
         setResult(req, control::config::isDeviceSetupDone(req));
+        break;
+    }
+    case CTRL_REQUEST_SET_STARTUP_MODE: {
+        setResult(req, control::config::setStartupMode(req));
         break;
     }
     case CTRL_REQUEST_MODULE_INFO: {
@@ -200,7 +220,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         }
         break;
     }
-#if Wiring_WiFi == 1
+#if Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
     /* wifi requests */
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
         setResult(req, control::wifi::handleGetAntennaRequest(req));
@@ -226,7 +246,8 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::wifi::handleClearCredentialsRequest(req));
         break;
     }
-#endif // Wiring_WiFi
+#endif // Wiring_WiFi && !HAL_PLATFORM_NCP
+#if !HAL_PLATFORM_MESH
     /* network requests */
     case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
         setResult(req, control::network::handleGetConfigurationRequest(req));
@@ -240,6 +261,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::network::handleSetConfigurationRequest(req));
         break;
     }
+#endif // !HAL_PLATFORM_MESH
     /* config requests */
     case CTRL_REQUEST_SET_CLAIM_CODE: {
         setResult(req, control::config::handleSetClaimCodeRequest(req));
@@ -321,8 +343,16 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::getSectionDataSizeRequest(req));
         break;
     }
-    case CTRL_REQUEST_GET_CLOUD_CONNECTION_STATUS: {
+    case CTRL_REQUEST_CLOUD_GET_CONNECTION_STATUS: {
         setResult(req, ctrl::cloud::getConnectionStatus(req));
+        break;
+    }
+    case CTRL_REQUEST_CLOUD_CONNECT: {
+        setResult(req, ctrl::cloud::connect(req));
+        break;
+    }
+    case CTRL_REQUEST_CLOUD_DISCONNECT: {
+        setResult(req, ctrl::cloud::disconnect(req));
         break;
     }
     case CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST: {
@@ -333,6 +363,58 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::network::getInterface(req));
         break;
     }
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+    case CTRL_REQUEST_WIFI_JOIN_NEW_NETWORK: {
+        setResult(req, ctrl::wifi::joinNewNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_JOIN_KNOWN_NETWORK: {
+        setResult(req, ctrl::wifi::joinKnownNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_GET_KNOWN_NETWORKS: {
+        setResult(req, ctrl::wifi::getKnownNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_REMOVE_KNOWN_NETWORK: {
+        setResult(req, ctrl::wifi::removeKnownNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_CLEAR_KNOWN_NETWORKS: {
+        setResult(req, ctrl::wifi::clearKnownNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_GET_CURRENT_NETWORK: {
+        setResult(req, ctrl::wifi::getCurrentNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_SCAN_NETWORKS: {
+        setResult(req, ctrl::wifi::scanNetworks(req));
+        break;
+    }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+    case CTRL_REQUEST_CELLULAR_SET_ACCESS_POINT: {
+        setResult(req, ctrl::cellular::setAccessPoint(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ACCESS_POINT: {
+        setResult(req, ctrl::cellular::getAccessPoint(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_SET_ACTIVE_SIM: {
+        setResult(req, ctrl::cellular::setActiveSim(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ACTIVE_SIM: {
+        setResult(req, ctrl::cellular::getActiveSim(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ICCID: {
+        setResult(req, ctrl::cellular::getIccid(req));
+        break;
+    }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
     case CTRL_REQUEST_MESH_AUTH: {
         setResult(req, ctrl::mesh::auth(req));
         break;

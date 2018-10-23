@@ -20,7 +20,11 @@ void* _malloc_r(struct _reent *r, size_t s) {
 }
 
 void _free_r(struct _reent* r, void* ptr) {
-    (void)r;
+    // Hack of the century. We cannot free reent->_current_locale, because it's in
+    // .text section on most of our platforms in flash and is simply a constant "C"
+    if (r && ptr == r->_current_locale) {
+        ptr = NULL;
+    }
     vPortFree(ptr);
 }
 

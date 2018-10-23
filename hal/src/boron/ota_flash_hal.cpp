@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
- * @file    inet_hal.c
- * @author  Matthew McGowan
+ * @file    ota_flash_hal.cpp
+ * @author  Matthew McGowan, Satish Nair
  * @version V1.0.0
- * @date    27-Sept-2014
+ * @date    25-Sept-2014
  * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
@@ -23,18 +23,23 @@
  ******************************************************************************
  */
 
+#include <cstring>
+#include "ota_flash_hal_impl.h"
+#include "cellular_hal.h"
 
-#include "inet_hal.h"
-
-
-int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr,
-        network_interface_t nif, void* reserved)
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    return 1;
+	const int additional = 2;
+	int count = add_system_properties(info, create, additional);
+    if (create) {
+        info->key_value_count = count + additional;
+
+        CellularDevice device;
+        memset(&device, 0, sizeof(device));
+        device.size = sizeof(device);
+        cellular_device_info(&device, NULL);
+        set_key_value(info->key_values+count, "imei", device.imei);
+        set_key_value(info->key_values+count+1, "iccid", device.iccid);
+    }
 }
 
-int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
-        void* reserved)
-{
-    return 0;
-}

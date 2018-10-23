@@ -99,6 +99,10 @@ void Network_Setup(bool threaded)
     //Initialize spark protocol callbacks for all System modes
     Spark_Protocol_Init();
 #endif
+
+#if PLATFORM_ID == PLATFORM_BORON
+    system_cloud_set_inet_family_keepalive(AF_INET, HAL_PLATFORM_BORON_CLOUD_KEEPALIVE_INTERVAL, 0);
+#endif // PLATFORM_ID == PLATFORM_BORON
 }
 
 int cfod_count = 0;
@@ -280,9 +284,8 @@ void establish_cloud_connection()
         conn_prop.keepalive_source = particle::protocol::KeepAliveSource::SYSTEM;
         CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr), (void)0);
         spark_cloud_udp_port_set(provider_data.port);
-#elif defined(HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL)
-        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL, nullptr, nullptr), (void)0);
-#endif
+#endif // PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+
         INFO("Cloud: connecting");
         const auto diag = CloudDiagnostics::instance();
         diag->status(CloudDiagnostics::CONNECTING);
@@ -424,6 +427,8 @@ static void process_isr_task_queue()
     SystemISRTaskQueue.process();
 }
 
+system_task_fn background_task;
+
 #if Wiring_SetupButtonUX
 extern void system_handle_button_clicks(bool isIsr);
 #endif
@@ -452,6 +457,9 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         CLOUD_FN(manage_cloud_connection(force_events), (void)0);
 
+        if (background_task) {
+        	background_task();
+        }
         particle::system::fetchAndExecuteCommand(millis());
     }
     else
@@ -646,4 +654,16 @@ void system_pool_free(void* ptr, void* reserved) {
     ATOMIC_BLOCK() {
         g_memPool.deallocate(ptr);
     }
+}
+
+int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* event_data, void* reserved)
+{
+	invokeEventHandler(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
+	return SYSTEM_ERROR_NONE;
+}
+
+int system_task_loop(system_task_fn fn, void*) {
+	background_task = fn;
+	return SYSTEM_ERROR_NONE;
 }

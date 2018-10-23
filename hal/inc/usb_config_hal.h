@@ -29,8 +29,11 @@
 #define SPARK_USB_SERIAL        //Default is Virtual COM Port
 
 #if PLATFORM_ID >= 6
-# define SPARK_USB_MOUSE
-# define SPARK_USB_KEYBOARD
+// FIXME: when HID is implemented on mesh platforms.
+# if PLATFORM_ID != 12 && PLATFORM_ID != 13 && PLATFORM_ID != 14
+#  define SPARK_USB_MOUSE
+#  define SPARK_USB_KEYBOARD
+# endif
 
 # if !defined (SPARK_USB_SERIAL) && !defined (SPARK_USB_MOUSE) && !defined (SPARK_USB_KEYBOARD)
 #  define USB_CDC_ENABLE  //Use USB Serial feature by default if none is defined

@@ -275,7 +275,7 @@ int filesystem_mount(filesystem_t* fs) {
     }
     if (ret) {
         /* Error, attempt to format:
-         * 1. Completely erase the flash
+         * (disabled) 1. Completely erase the flash
          * 2. lfs_format
          */
 
@@ -287,7 +287,11 @@ int filesystem_mount(filesystem_t* fs) {
         LED_SetRGBColor(RGB_COLOR_WHITE);
         LED_On(LED_RGB);
 #endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
-        SPARK_ASSERT(hal_exflash_erase_sector(0, FILESYSTEM_BLOCK_COUNT) == 0);
+        /* This operation takes about 5-10 seconds. It isn't strictly necessary
+         * and was added simlpy as a precaution. We should still be able to recover
+         * by just performing littlefs formatting instead of full flash erasure.
+         */
+        // SPARK_ASSERT(hal_exflash_erase_sector(0, FILESYSTEM_BLOCK_COUNT) == 0);
         ret = lfs_format(&fs->instance, &fs->config);
         if (!ret) {
             /* Re-attempt to mount */

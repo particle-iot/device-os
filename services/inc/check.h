@@ -59,3 +59,17 @@
                 return _ret; \
             } \
         } while (false)
+
+#define CHECK_FALSE(_expr, _ret) \
+        CHECK_TRUE(!(_expr), _ret)
+
+#define CHECK_TRUE_RETURN(_expr, _val) \
+        ({ \
+            const auto _ret = _expr; \
+            const bool _ok = (bool)(_ret); \
+            if (!_ok) { \
+                _LOG_CHECKED_ERROR(_expr, _val); \
+                return _val; \
+            } \
+            _ret; \
+        })

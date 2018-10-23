@@ -28,9 +28,9 @@
 #define GPIOTE_CONFIG_IRQ_PRIORITY                      APP_IRQ_PRIORITY_HIGH
 #define NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS      8
 
-#define NRFX_RTC_ENABLED  0
+#define NRFX_RTC_ENABLED  1
 #define NRFX_RTC0_ENABLED 0 // Used by SoftDevice
-#define NRFX_RTC1_ENABLED 0 // Reserved for FreeRTOS
+#define NRFX_RTC1_ENABLED 1 // Reserved for FreeRTOS
 #define NRFX_RTC2_ENABLED 0 // FIXME: Used by OpenThread
 
 #define NRFX_ADC_ENABLED 0
@@ -78,21 +78,24 @@
 // Ze fastest!
 #define NRFX_QSPI_CONFIG_FREQUENCY 1
 
-#ifdef DEBUG_BUILD
-#define SEGGER_RTT_CONFIG_DEFAULT_MODE 1 // Do not block, output as much as fits
-#define SEGGER_RTT_CONFIG_BUFFER_SIZE_UP 16384
-#define SEGGER_RTT_CONFIG_MAX_NUM_UP_BUFFERS 2
-#define SEGGER_RTT_CONFIG_BUFFER_SIZE_DOWN 16
-#define SEGGER_RTT_CONFIG_MAX_NUM_DOWN_BUFFERS 2
-#endif
+// #ifdef DEBUG_BUILD
+// #define SEGGER_RTT_CONFIG_DEFAULT_MODE 1 // Do not block, output as much as fits
+// #define SEGGER_RTT_CONFIG_BUFFER_SIZE_UP 16384
+// #define SEGGER_RTT_CONFIG_MAX_NUM_UP_BUFFERS 2
+// #define SEGGER_RTT_CONFIG_BUFFER_SIZE_DOWN 16
+// #define SEGGER_RTT_CONFIG_MAX_NUM_DOWN_BUFFERS 2
+// #endif
 
 #define NRFX_PRS_ENABLED        1
 #define NRFX_UART_ENABLED       0
-#define NRFX_UARTE_ENABLED      1
+#define NRFX_UARTE_ENABLED      0
 #define NRFX_LPCOMP_ENABLED     0
+
 #define NRFX_TWI_ENABLED        0
-#define NRFX_TWIM_ENABLED       0
+#define NRFX_TWIM_ENABLED       1
 #define NRFX_TWIS_ENABLED       0
+#define NRFX_TWIM0_ENABLED      1
+#define NRFX_TWIM1_ENABLED      1
 
 #define NRFX_SPIM_ENABLED       1
 #define NRFX_SPIM2_ENABLED      1
@@ -100,3 +103,16 @@
 
 #define NRFX_TIMER2_ENABLED     1
 
+#define USBD_ENABLED                            1
+#define USBD_CONFIG_IRQ_PRIORITY                2
+#define APP_USBD_ENABLED                        1
+#define APP_USBD_CONFIG_SELF_POWERED            1
+#define APP_USBD_CDC_ACM_ENABLED                1
+#define APP_USBD_CONFIG_MAX_POWER               500
+#define APP_USBD_CONFIG_POWER_EVENTS_PROCESS    1
+#define APP_USBD_CONFIG_SOF_HANDLING_MODE       2  // Interrupt mode
+#define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE      0  // handle USB event in interrupt, NOT to call any functions that modifies the USBD 
+                                                   // library state from the context higher than USB interrupt context.
+
+#define APP_USBD_VID                            USBD_VID_SPARK
+#define APP_USBD_PID                            USBD_PID_CDC 

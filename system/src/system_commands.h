@@ -29,7 +29,7 @@ struct SystemCommand {
     enum Enum {
 #if HAL_PLATFORM_MESH
         NOTIFY_MESH_NETWORK,
-        NOTIFY_MESH_JOINED,
+        NOTIFY_MESH_JOINED
 #endif
     };
 
@@ -38,7 +38,6 @@ struct SystemCommand {
 
 
 void fetchAndExecuteCommand(system_tick_t currentTime);
-void handleCommandComplete(int error, const void* data, void* callback_data, void* reserved);
 
 int system_command_enqueue(SystemCommand& cmd, uint16_t size);
 int system_command_clear();
@@ -46,19 +45,27 @@ int system_command_clear();
 
 #if HAL_PLATFORM_MESH
 
+void handleMeshNetworkJoinedComplete(int error, const void* data, void* callback_data, void* reserved);
+void handleMeshNetworkUpdatedComplete(int error, const void* data, void* callback_data, void* reserved);
+
 using namespace MeshCommand;
 
 struct NotifyMeshNetworkUpdated : SystemCommand {
     NetworkInfo ni;
 
-    NotifyMeshNetworkUpdated() {
+    NotifyMeshNetworkUpdated() :
+            ni() {
         ni.update.size = sizeof(ni);
         commandType = NOTIFY_MESH_NETWORK;
     }
 
     int execute() {
         LOG(INFO, "Invoking network update command");
-        completion_handler_data ch = { .size=sizeof(ch), .handler_callback = handleCommandComplete, .handler_data = nullptr };
+        completion_handler_data ch = {
+            .size = sizeof(ch),
+            .handler_callback = handleMeshNetworkUpdatedComplete,
+            .handler_data = this
+        };
         return spark_protocol_mesh_command(spark_protocol_instance(), NETWORK_UPDATED, 0, &ni, &ch);
     }
 };
@@ -67,14 +74,20 @@ struct NotifyMeshNetworkJoined : SystemCommand {
     NetworkUpdate nu;
     bool joined;
 
-    NotifyMeshNetworkJoined() {
+    NotifyMeshNetworkJoined() :
+            nu(),
+            joined(false) {
         nu.size = sizeof(nu);
         commandType = NOTIFY_MESH_JOINED;
     }
 
     int execute() {
         LOG(INFO, "Invoking network joined command, joined=%d", joined);
-        completion_handler_data ch = { .size=sizeof(ch), .handler_callback = handleCommandComplete, .handler_data = nullptr };
+        completion_handler_data ch = {
+            .size = sizeof(ch),
+            .handler_callback = handleMeshNetworkJoinedComplete,
+            .handler_data = this
+        };
         return spark_protocol_mesh_command(spark_protocol_instance(), DEVICE_MEMBERSHIP, joined, &nu, &ch);
     }
 };

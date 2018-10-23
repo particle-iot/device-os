@@ -37,6 +37,9 @@ extern uint8_t feature_cloud_udp;
 extern uint32_t particle_key_errors;
 volatile bool cloud_socket_aborted = false;
 
+static volatile int s_ipv4_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
+static volatile int s_ipv6_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
+
 using namespace particle::system::cloud;
 
 #if HAL_PLATFORM_CLOUD_UDP
@@ -130,10 +133,14 @@ int spark_cloud_socket_connect()
     if (server_addr.addr_type != IP_ADDRESS && server_addr.addr_type != DOMAIN_NAME) {
         LOG(WARN, "Public Server Address was blank, restoring.");
         if (udp) {
-            memcpy(&server_addr, backup_udp_public_server_address, sizeof(backup_udp_public_server_address));
+#if HAL_PLATFORM_CLOUD_UDP
+            memcpy(&server_addr, backup_udp_public_server_address, backup_udp_public_server_address_size);
+#endif // HAL_PLATFORM_CLOUD_UDP
         }
         else {
+#if HAL_PLATFORM_CLOUD_TCP
             memcpy(&server_addr, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
+#endif // HAL_PLATFORM_CLOUD_TCP
         }
         particle_key_errors |= SERVER_ADDRESS_BLANK;
     }
@@ -259,4 +266,62 @@ int Internet_Test(void)
 void Multicast_Presence_Announcement(void)
 {
     system_multicast_announce_presence(nullptr);
+}
+
+int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags) {
+    switch (af) {
+        case AF_INET: {
+            LOG(TRACE, "Updating cloud keepalive for AF_INET: %lu -> %lu", s_ipv4_cloud_keepalive,
+                    value);
+            s_ipv4_cloud_keepalive = value;
+            break;
+        }
+        case AF_INET6: {
+            LOG(TRACE, "Updating cloud keepalive for AF_INET6: %lu -> %lu", s_ipv6_cloud_keepalive,
+                    value);
+            s_ipv6_cloud_keepalive = value;
+            break;
+        }
+        default: {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+    }
+
+#if !defined(SPARK_NO_CLOUD) && HAL_PLATFORM_CLOUD_UDP
+    // Check if connected
+    if (spark_cloud_flag_connected() || (flags & 1)) {
+        if (((sockaddr*)&g_system_cloud_session_data.address)->sa_family == af) {
+            // Change it now
+            LOG(TRACE, "Applying new keepalive interval now");
+            particle::protocol::connection_properties_t conn_prop = {};
+            conn_prop.size = sizeof(conn_prop);
+            conn_prop.keepalive_source = particle::protocol::KeepAliveSource::SYSTEM;
+            spark_set_connection_property(particle::protocol::Connection::PING,
+                    value, &conn_prop, nullptr);
+        }
+    }
+#endif // !defined(SPARK_NO_CLOUD) && HAL_PLATFORM_CLOUD_UDP
+    return 0;
+}
+
+int system_cloud_get_inet_family_keepalive(int af, unsigned int* value) {
+    if (!value) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    switch (af) {
+        case AF_INET: {
+            *value = s_ipv4_cloud_keepalive;
+            break;
+        }
+        case AF_INET6: {
+            *value = s_ipv6_cloud_keepalive;
+            break;
+        }
+        default: {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+    }
+
+    return 0;
 }

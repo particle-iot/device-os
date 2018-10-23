@@ -94,7 +94,7 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC
 CLOUD_FLASH_URL ?= https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
 
 # All Target
-all: $(MAKE_DEPENDENCIES) $(TARGET) postbuild
+all: prebuild $(MAKE_DEPENDENCIES) $(TARGET) postbuild
 
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
@@ -303,7 +303,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
+.PHONY: all prebuild postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
 .SECONDARY:
 
 include $(COMMON_BUILD)/recurse.mk

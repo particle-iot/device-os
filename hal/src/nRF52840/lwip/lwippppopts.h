@@ -91,7 +91,11 @@
 /**
  * PPP_DEBUG: Enable debugging for PPP.
  */
+#ifdef DEBUG_BUILD
 #define PPP_DEBUG                       LWIP_DBG_ON
+#else
+#define PPP_DEBUG                       LWIP_DBG_OFF
+#endif // DEBUG_BUILD
 
 /**
  * PPP_INPROC_IRQ_SAFE==1 call pppos_input() using tcpip_callback().
@@ -372,12 +376,12 @@
 /**
  * LCP_ECHOINTERVAL: Interval in seconds between keepalive echo requests, 0 to disable.
  */
-#define LCP_ECHOINTERVAL                0
+#define LCP_ECHOINTERVAL                5
 
 /**
  * LCP_MAXECHOFAILS: Number of unanswered echo requests before failure.
  */
-#define LCP_MAXECHOFAILS                3
+#define LCP_MAXECHOFAILS                10
 
 /**
  * PPP_MAXIDLEFLAG: Max Xmit idle time (in ms) before resend flag char.

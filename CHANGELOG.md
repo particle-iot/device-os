@@ -1,10 +1,111 @@
+## 0.8.0-rc.20
+
+### FEATURES
+
+- [Mesh] `pinResetFast()` / `pinSetFast()` / `pinReadFast()` implementation (#244)
+- [Mesh] Clear Mesh credentials if Network Joined / Updated request is rejected cloudside with 4xx error code
+
+### BUGFIXES
+
+- [Boron] Increased LTE Boron USART polling rate
+- [Boron] Increased maximum PPP LCP echo failures to 10
+- [Boron] Increased maximum GSM07.10 missed keepalives to 5 on LTE Boron
+- [Mesh] NetworkManager: fixes credentials removal and interface state syncup in connected state
+- [Mesh] Removes extra comma from JSON module info in hybrid builds (#246)
+- [Argon, Boron] Fix echo handling in the AT command parser
+
+### ENHANCEMENTS
+
+- [Argon] Changes expected NCP firmware module function from monolithic (`0x03`) to NCP monolithic (`0x07`), adds NCP module info to system module info (#245)
+- [Mesh] Move system flags to backup RAM (#216)
+
+## 0.8.0-rc.19
+
+### BUGFIXES
+
+- [Mesh] Fixes a bug introduced in rc.18 causing Mesh devices to be stuck in fast blinking green (link-local only communication) despite having a border router within the network.
+- [Mesh] __errno() is now exported from system-part1 in rt dynalib
+- [Mesh] Fixes a bug in IPv4 mapped IPv6 address conversion to IPAddress in TCPClient/TCPServer/UDP
+- [Mesh] Correct Mesh backup server address
+- [Mesh] Mesh pubsub thread-safety
+- [Mesh] Use network ID instead of XPAN ID to identify networks
+
+### FEATURES
+
+- [Mesh] Mesh.localIP() introduced
+- [Wiring] UDP: blocking reads
+- [Mesh] Full factory reset
+- [Mesh] Control requests to enable/disable Ethernet shield detection
+
+## 0.8.0-rc.18
+
+### FEATURES
+
+- [Mesh] Wiring API for networking
+
+### BUGFIXES
+
+- [Mesh] Various bugfixes and stability improvements
+
+## 0.8.0-rc.17
+
+### FEATURES
+
+- [Boron] Initial support for 3G and LTE networking
+
+## 0.8.0-rc.16
+
+### FEATURES
+
+- [Argon] Initial support for WiFi networking
+
+## 0.8.0-rc.15
+
+### FEATURES
+
+- [Mesh] Modular firmware support with factory reset
+- [Mesh] I2C Master driver support
+- [Mesh] PWM Driver
+- [Mesh] Tone Driver
+- [Mesh] USB CDC Driver
+- [Mesh] USART DMA Driver
+- [Mesh] RTC Driver
+- [Mesh] FastPin implementation
+- [Mesh] Reset reason
+- [Mesh] UDP in wiring with multicast support
+- [Mesh] Mesh-local publish/subscribe
+- [Mesh] EEPROM emulation
+- [Mesh] Hybrid firmware for mono->modular upgrade w/ tinker app embedded.
+
+### ENHANCEMENTS
+
+- [Mesh] Timeouts for joiner and comissioner
+- [Mesh] Multiple attempts to join network
+- [Mesh] Control requests for managing the cloud connection
+
+### BUGFIXES
+
+- [Mesh] I2C support for sending 0-byte transfer
+- [Mesh] Stop comissioner role synchronously
+- [Mesh] Increase the minimum BLE interval to 30ms
+
+### INTERNAL CHANGES
+
+- Bootloader included in Device OS
+
+## 0.8.0-rc.13
+
+### FEATURES
+
+- [Mesh] Removes flash erasure procedure when failing to mount the filesystem to avoid a long (5-10 sec) boot delay.
+
 ## 0.8.0-rc.12
 
-## FEATURES
+### FEATURES
 
 - [Mesh] Support for compressed binaries in the BLE OTA update
 
-## BUGFIXES
+### BUGFIXES
 
 - [Mesh] Reset MCU when power is unstable, discharge external flash before initialization
 - [Mesh] Fix littlefs infinite loop on filesystem corruption

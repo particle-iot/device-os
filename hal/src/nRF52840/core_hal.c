@@ -31,12 +31,16 @@
 #include <nrf_rtc.h>
 #include "button_hal.h"
 #include "hal_platform.h"
+#include "user.h"
 #include "dct.h"
 #include "rng_hal.h"
 #include "interrupts_hal.h"
+#include <nrf_power.h>
+#include "ota_module.h"
+#include "bootloader.h"
 #include <stdlib.h>
 #include <malloc.h>
-#include <nrf_power.h>
+#include "rtc_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_system")));
@@ -46,6 +50,11 @@ static struct Last_Reset_Info {
     int reason;
     uint32_t data;
 } last_reset_info = { RESET_REASON_NONE, 0 };
+
+typedef enum Feature_Flag {
+    FEATURE_FLAG_RESET_INFO = 0x01,
+    FEATURE_FLAG_ETHERNET_DETECTION = 0x02
+} Feature_Flag;
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -64,6 +73,15 @@ extern char link_heap_location, link_heap_location_end;
 extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
+extern char _Stack_Init;
+void* new_heap_end = &link_heap_location_end;
+
+extern void malloc_enable(uint8_t);
+extern void malloc_set_heap_end(void*);
+extern void* malloc_heap_end();
+#if defined(MODULAR_FIRMWARE)
+void* module_user_pre_init();
+#endif
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -137,6 +155,13 @@ void app_error_handler_bare(uint32_t error_code) {
     PANIC(HardFault,"HardFault");
     while(1) {
         ;
+    }
+}
+
+void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
+{
+    PANIC(HardFault,"HardFault");
+    while(1) {
     }
 }
 
@@ -266,6 +291,27 @@ void HAL_Core_Config(void) {
 
     HAL_RNG_Configuration();
 
+    HAL_RTC_Configuration();
+    
+#if defined(MODULAR_FIRMWARE)
+    if (HAL_Core_Validate_User_Module()) {
+        new_heap_end = module_user_pre_init();
+        if (new_heap_end > malloc_heap_end()) {
+            malloc_set_heap_end(new_heap_end);
+        }
+    }
+    else {
+        // Set the heap end to the stack start to make most use of the SRAM.
+        malloc_set_heap_end(&_Stack_Init);
+
+        // Try copying the embedded user image to user application address
+        user_update();
+    }
+
+    // Enable malloc before littlefs initialization.
+    malloc_enable(1);
+#endif
+
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
@@ -273,6 +319,11 @@ void HAL_Core_Config(void) {
     // TODO: Use current LED theme
     LED_SetRGBColor(RGB_COLOR_WHITE);
     LED_On(LED_RGB);
+
+    FLASH_AddToFactoryResetModuleSlot(
+      FLASH_INTERNAL, EXTERNAL_FLASH_FAC_XIP_ADDRESS,
+      FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
+      FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 }
 
 void HAL_Core_Setup(void) {
@@ -280,7 +331,79 @@ void HAL_Core_Setup(void) {
      * SysTick is enabled within FreeRTOS
      */
     HAL_Core_Config_systick_configuration();
+
+    if (bootloader_update_if_needed()) {
+        HAL_Core_System_Reset();
+    }
 }
+
+#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
+bool HAL_Core_Validate_User_Module(void)
+{
+    bool valid = false;
+
+    //CRC verification Enabled by default
+    if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
+    {
+        //CRC check the user module and set to module_user_part_validated
+        valid = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
+                                  FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
+                && HAL_Verify_User_Dependencies();
+    }
+    else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, EXTERNAL_FLASH_FAC_XIP_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+    {
+        // If user application is invalid, we should at least enable
+        // the heap allocation for littlelf to set system flags.
+        malloc_enable(1);
+
+        //Reset and let bootloader perform the user module factory reset
+        //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
+        //saves precious system_part2 flash size i.e. fits in < 128KB
+        HAL_Core_Factory_Reset();
+
+        while(1);//Device should reset before reaching this line
+    }
+
+    return valid;
+}
+
+bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
+{
+    const module_bounds_t* bounds = NULL;
+    hal_module_t mod;
+    bool module_fetched = false;
+    bool valid = false;
+
+    // First verify bootloader module
+    bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0, HAL_PLATFORM_MCU_DEFAULT);
+    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+
+    valid = module_fetched && (mod.validity_checked == mod.validity_result);
+
+    if (!valid) {
+        return valid;
+    }
+
+    // Now check system-parts
+    int i = 0;
+    if (flags & 1) {
+        // Validate only that system-part that depends on bootloader passes dependency check
+        i = 1;
+    }
+    do {
+        bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++, HAL_PLATFORM_MCU_DEFAULT);
+        if (bounds) {
+            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+            valid = module_fetched && (mod.validity_checked == mod.validity_result);
+        }
+        if (flags & 1) {
+            bounds = NULL;
+        }
+    } while(bounds != NULL && valid);
+
+    return valid;
+}
+#endif
 
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration) {
     bool pressedState = false;
@@ -293,6 +416,10 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration) {
     }
 
     return pressedState;
+}
+
+void HAL_Core_Mode_Button_Reset(uint16_t button)
+{
 }
 
 void HAL_Core_System_Reset(void) {
@@ -320,6 +447,14 @@ void HAL_Core_Enter_Safe_Mode(void* reserved) {
     HAL_Core_System_Reset_Ex(RESET_REASON_SAFE_MODE, 0, NULL);
 }
 
+bool HAL_Core_Enter_Safe_Mode_Requested(void)
+{
+    Load_SystemFlags();
+    uint8_t flags = SYSTEM_FLAG(StartupMode_SysFlag);
+
+    return (flags & 1);
+}
+
 void HAL_Core_Enter_Bootloader(bool persist) {
     if (persist) {
         HAL_Core_Write_Backup_Register(BKP_DR_10, 0xFFFF);
@@ -344,10 +479,13 @@ void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
 
 }
 
-void HAL_Core_Execute_Standby_Mode(void) {
-
+void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
+{
 }
 
+void HAL_Core_Execute_Standby_Mode(void)
+{
+}
 
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
     uint32_t reset_reason = 0;
@@ -456,6 +594,21 @@ void HAL_Bootloader_Lock(bool lock) {
 
 }
 
+// TODO: Return the reset reason.
+bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType)
+{
+    switch(resetType)
+    {
+    case PIN_RESET:
+    case SOFTWARE_RESET:
+    case WATCHDOG_RESET:
+    case POWER_MANAGEMENT_RESET:
+    case POWER_DOWN_RESET:
+    case POWER_BROWNOUT_RESET:
+    default:
+        return false;
+    }
+}
 
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved) {
     return SystemCoreClock;
@@ -542,15 +695,16 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value) {
     if (result != 0) {
         return result;
     }
-    const bool cur_value = flags & flag;
+    // NOTE: inverted logic!
+    const bool cur_value = !(flags & flag);
     if (prev_value) {
         *prev_value = cur_value;
     }
     if (cur_value != value) {
         if (value) {
-            flags |= flag;
-        } else {
             flags &= ~flag;
+        } else {
+            flags |= flag;
         }
         result = dct_write_app_data(&flags, DCT_FEATURE_FLAGS_OFFSET, 4);
         if (result != 0) {
@@ -569,7 +723,7 @@ static int Read_Feature_Flag(uint32_t flag, bool* value) {
     if (result != 0) {
         return result;
     }
-    *value = flags & flag;
+    *value = !(flags & flag);
     return 0;
 }
 
@@ -582,7 +736,6 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
             return -1;
         }
         case FEATURE_RESET_INFO: {
-            #define FEATURE_FLAG_RESET_INFO 0x01
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 #if HAL_PLATFORM_CLOUD_UDP
@@ -591,6 +744,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
             return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
         }
 #endif // HAL_PLATFORM_CLOUD_UDP
+        case FEATURE_ETHERNET_DETECTION: {
+            return Write_Feature_Flag(FEATURE_FLAG_ETHERNET_DETECTION, enabled, NULL);
+        }
     }
 
     return -1;
@@ -605,6 +761,10 @@ bool HAL_Feature_Get(HAL_Feature feature) {
         case FEATURE_RESET_INFO: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
+        }
+        case FEATURE_ETHERNET_DETECTION: {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_ETHERNET_DETECTION, &value) == 0) ? value : false;
         }
     }
     return false;
@@ -669,7 +829,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        info->user_static_ram = info->total_init_heap - info->total_heap;
+        info->user_static_ram = (uint32_t)&_Stack_Init - (uint32_t)new_heap_end;
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {

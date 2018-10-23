@@ -61,7 +61,8 @@ typedef enum {
     PF_DAC,
     PF_UART,
     PF_PWM,
-    PF_SPI
+    PF_SPI,
+    PF_I2C
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
@@ -72,6 +73,10 @@ void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
 typedef struct NRF5x_Pin_Info  NRF5x_Pin_Info;
 NRF5x_Pin_Info* HAL_Pin_Map(void);
 extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
+
+// FIXME: hack for hal_dynalib_gpio.h
+typedef struct NRF5x_Pin_Info STM32_Pin_Info;
+
 #else
 typedef struct STM32_Pin_Info  STM32_Pin_Info;
 STM32_Pin_Info* HAL_Pin_Map(void);
@@ -132,7 +137,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-#define TX1	24
+#define TX1 24
 #define RX1 25
 #define CTS1 26
 #define RTS1 27
@@ -144,8 +149,8 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_ARGON
-#define TOTAL_PINS 			(36)
-#define ESPBOOT	28
+#define TOTAL_PINS          (36)
+#define ESPBOOT 28
 #define ESPEN 29
 #define HWAKE 30
 #define ANTSW1 31
@@ -156,7 +161,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_BORON
-#define TOTAL_PINS	(34)
+#define TOTAL_PINS  (34)
 #define UBPWR 28
 #define UBRST 29
 #define BUFEN 30
@@ -175,6 +180,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define A5          D14
 
 // SPI pins
+#define SS          D14
 #define SCK         D13
 #define MISO        D11
 #define MOSI        D12

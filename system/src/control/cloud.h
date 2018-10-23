@@ -26,6 +26,8 @@ namespace ctrl {
 namespace cloud {
 
 int getConnectionStatus(ctrl_request* req);
+int connect(ctrl_request* req);
+int disconnect(ctrl_request* req);
 
 } // particle::ctrl::cloud
 

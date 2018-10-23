@@ -45,6 +45,7 @@
 #include "crc32.h"
 #include "core_hal.h"
 #include "service_debug.h"
+#include "usb_hal.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -96,6 +97,12 @@ void Set_System(void)
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
     DWT_Init();
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    // FIXME: Have to initialize USB before softdevice enabled,
+    // otherwise USB module won't recevie power event
+    HAL_USB_Init();
+#endif
 
     /* Configure the LEDs and set the default states */
     int LEDx;
@@ -189,16 +196,54 @@ void Finish_Update()
 
 
 
-platform_system_flags_t system_flags;
+__attribute__((section(".retained_system_flags"))) platform_system_flags_t system_flags;
+
+#define SYSTEM_FLAGS_MAGIC_NUMBER 0x1ADEACC0u
 
 void Load_SystemFlags()
 {
-    dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &system_flags, sizeof(platform_system_flags_t));
+	// if the header does not match the expected magic value, then initialize
+	if (system_flags.header!=SYSTEM_FLAGS_MAGIC_NUMBER) {
+        memset(&system_flags, 0xff, sizeof(platform_system_flags_t));
+        system_flags.header = SYSTEM_FLAGS_MAGIC_NUMBER;
+	}
 }
 
 void Save_SystemFlags()
 {
-    dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, sizeof(platform_system_flags_t));
+	// nothing to do here
+}
+
+bool FACTORY_Flash_Reset(void)
+{
+    bool success;
+
+    // Restore the Factory firmware using flash_modules application dct info
+    success = FLASH_RestoreFromFactoryResetModuleSlot();
+    //FLASH_AddToFactoryResetModuleSlot() is now called in HAL_Core_Config() in core_hal.c,
+    //So FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS) is not required and hence commented
+
+    system_flags.Factory_Reset_SysFlag = 0xFFFF;
+    if (success) {
+        system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
+        system_flags.dfu_on_no_firmware = 0;
+        SYSTEM_FLAG(Factory_Reset_Done_SysFlag) = 0x5A;
+        Finish_Update();
+    }
+    else {
+        Save_SystemFlags();
+    }
+    return success;
+}
+
+void BACKUP_Flash_Reset(void)
+{
+    //Not supported since there is no Backup copy of the firmware in Internal Flash
+}
+
+void OTA_Flash_Reset(void)
+{
+    //FLASH_UpdateModules() does the job of copying the split firmware modules
 }
 
 bool OTA_Flashed_GetStatus(void)

@@ -15,75 +15,554 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string.h>
-#include "sdk_common.h"
-#include "nrfx.h"
-#include "nrf_drv_uart.h"
-#include "nrf_gpio.h"
-#include "nrf_assert.h"
-#include "app_fifo.h"
-#include "pinmap_impl.h"
-#include "usart_hal.h"
 #include "logging.h"
+#include <nrf_uarte.h>
+#include <nrf_ppi.h>
+#include <nrf_timer.h>
+#include "usart_hal.h"
+#include "ringbuffer.h"
+#include "pinmap_impl.h"
+#include "check_nrf.h"
+#include "gpio_hal.h"
+#include <nrfx_prs.h>
+#include <nrf_gpio.h>
+#include <algorithm>
+#include "hal_irq_flag.h"
+#include "delay_hal.h"
+#include "interrupts_hal.h"
 
-#define UART_BUFF_SIZE              (sizeof(((Ring_Buffer*)0)->buffer))
+namespace {
 
-// only support even parity(SERIAL_PARITY_EVEN)
-#define IS_PARITY_VALID(config)     (((config & SERIAL_PARITY) == SERIAL_PARITY_EVEN) || ((config & SERIAL_PARITY) == SERIAL_PARITY_NO))
-#define IS_PARITY_ENABLED(config)   (((config & SERIAL_PARITY) == SERIAL_PARITY_EVEN) ? true : false)
-// only support both CTS and RTS(SERIAL_FLOW_CONTROL_RTS_CTS)
-#define IS_HWFC_VALID(config)       (((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS_CTS) || ((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_NONE))
-#define IS_HWFC_ENABLED(config)     (((config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS_CTS) ? true : false)
-// only support one stop bit
-#define IS_STOP_BITS_VALID(config)  ((config & SERIAL_STOP_BITS) == SERIAL_STOP_BITS_1)
-// only support one 8 data bits
-#define IS_DATA_BITS_VALID(config)  ((config & SERIAL_DATA_BITS) == SERIAL_DATA_BITS_8)
+// Copied from spark_wiring_interrupts.h
+// Ideally this should be moved into services. HAL shouldn't depend on wiring
+class AtomicSection {
+    int prev_;
+public:
+    AtomicSection() {
+        prev_ = HAL_disable_irq();
+    }
 
-typedef struct {
-    nrf_drv_uart_t          *instance;
-    app_irq_priority_t      priority;
-    uint8_t                 tx_pin;
-    uint8_t                 rx_pin;
-    uint8_t                 cts_pin;
-    uint8_t                 rts_pin;
-
-    app_fifo_t              rx_fifo;
-    app_fifo_t              tx_fifo;
-    uint8_t                 rx_buffer[1];
-    uint8_t                 tx_buffer[1];
-
-    bool                    enabled;
-    bool                    rx_ovf;
-    uint32_t                uart_config;
-} nrf5x_uart_info_t;
-
-static nrf_drv_uart_t m_uarte0 = NRF_DRV_UART_INSTANCE(0);
-static nrf_drv_uart_t m_uarte1 = NRF_DRV_UART_INSTANCE(1);
-
-static nrf5x_uart_info_t m_uart_map[TOTAL_USARTS] =
-{
-    {&m_uarte0, APP_IRQ_PRIORITY_LOWEST, TX, RX, CTS, RTS},
-    {&m_uarte1, APP_IRQ_PRIORITY_LOWEST, TX1, RX1, CTS1, RTS1}
+    ~AtomicSection() {
+        HAL_enable_irq(prev_);
+    }
 };
 
-#define FIFO_LENGTH(p_fifo)     fifo_length(p_fifo)  /**< Macro for calculating the FIFO length. */
-#define IS_FIFO_FULL(p_fifo)    fifo_full(p_fifo)
-static __INLINE uint32_t fifo_length(app_fifo_t * p_fifo)
-{
-    uint32_t tmp = p_fifo->read_pos;
-    return p_fifo->write_pos - tmp;
-}
-static __INLINE bool fifo_full(app_fifo_t * p_fifo)
-{
-    return (FIFO_LENGTH(p_fifo) > p_fifo->buf_size_mask);
+class RxLock {
+public:
+    RxLock(NRF_UARTE_Type* uarte)
+            : uarte_(uarte) {
+        nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDRX_MASK);
+    }
+    ~RxLock() {
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK);
+    }
+
+private:
+    NRF_UARTE_Type* uarte_;
+};
+
+class TxLock {
+public:
+    TxLock(NRF_UARTE_Type* uarte)
+            : uarte_(uarte) {
+        nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDTX_MASK);
+    }
+    ~TxLock() {
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDTX_MASK);
+    }
+
+private:
+    NRF_UARTE_Type* uarte_;
+};
+
+inline uint32_t pinToNrf(pin_t pin) {
+    const auto pinMap = HAL_Pin_Map();
+    const auto& entry = pinMap[pin];
+    return NRF_GPIO_PIN_MAP(entry.gpio_port, entry.gpio_pin);
 }
 
-static nrf_uart_baudrate_t get_nrf_baudrate(uint32_t baud)
-{
-    static const struct {
-        uint32_t baud;
-        nrf_uart_baudrate_t nrf_baud;
-    } baudrate_map[] = {
+class Usart;
+Usart* getInstance(HAL_USART_Serial serial);
+void uarte0InterruptHandler(void);
+void uarte1InterruptHandler(void);
+
+const uint8_t MAX_SCHEDULED_RECEIVALS = 1;
+const size_t RESERVED_RX_SIZE = 0;
+const size_t RX_THRESHOLD = 4;
+
+class Usart {
+public:
+    Usart(NRF_UARTE_Type* instance, void (*interruptHandler)(void),
+            app_irq_priority_t prio, NRF_TIMER_Type* timer,
+            nrf_ppi_channel_t ppi, pin_t tx, pin_t rx, pin_t cts, pin_t rts)
+            : uarte_(instance),
+              interruptHandler_(interruptHandler),
+              prio_(prio),
+              timer_(timer),
+              ppi_(ppi),
+              txPin_(tx),
+              rxPin_(rx),
+              ctsPin_(cts),
+              rtsPin_(rts),
+              transmitting_(false),
+              receiving_(0),
+              rxConsumed_(0) {
+    }
+
+    struct Config {
+        unsigned int baudRate;
+        unsigned int config;
+    };
+
+    int init(const HAL_USART_Buffer_Config& conf) {
+        if (isEnabled()) {
+            CHECK(end());
+        }
+
+        if (isConfigured()) {
+            CHECK(deInit());
+        }
+
+        CHECK_TRUE(conf.rx_buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(conf.rx_buffer_size, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(conf.tx_buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(conf.tx_buffer_size, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        rxBuffer_.init((uint8_t*)conf.rx_buffer, conf.rx_buffer_size);
+        txBuffer_.init((uint8_t*)conf.tx_buffer, conf.tx_buffer_size);
+
+        configured_ = true;
+
+        return 0;
+    }
+
+    int deInit() {
+        configured_ = false;
+
+        return 0;
+    }
+
+    int begin(const Config& conf) {
+        CHECK_TRUE(isConfigured(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(validateConfig(conf.config), SYSTEM_ERROR_INVALID_ARGUMENT);
+        auto nrfBaudRate = CHECK_RETURN(getNrfBaudrate(conf.baudRate), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        AtomicSection lk;
+
+        if (isEnabled()) {
+            end();
+        }
+
+        nrfx_prs_acquire(uarte_, interruptHandler_);
+
+        HAL_GPIO_Write(txPin_, 1);
+        HAL_Pin_Mode(txPin_, OUTPUT);
+        HAL_Pin_Mode(rxPin_, INPUT);
+        HAL_Set_Pin_Function(txPin_, PF_UART);
+        HAL_Set_Pin_Function(rxPin_, PF_UART);
+
+        nrf_uarte_baudrate_set(uarte_, (nrf_uarte_baudrate_t)nrfBaudRate);
+        nrf_uarte_configure(uarte_,
+                conf.config & SERIAL_PARITY_EVEN ? NRF_UARTE_PARITY_INCLUDED : NRF_UARTE_PARITY_EXCLUDED,
+                conf.config & SERIAL_FLOW_CONTROL_RTS_CTS ? NRF_UARTE_HWFC_ENABLED : NRF_UARTE_HWFC_DISABLED);
+        nrf_uarte_txrx_pins_set(uarte_, pinToNrf(txPin_), pinToNrf(rxPin_));
+
+        if (conf.config & SERIAL_FLOW_CONTROL_CTS) {
+            HAL_Pin_Mode(ctsPin_, INPUT);
+            HAL_Set_Pin_Function(ctsPin_, PF_UART);
+        }
+
+        if (conf.config & SERIAL_FLOW_CONTROL_RTS) {
+            HAL_GPIO_Write(rtsPin_, 1);
+            HAL_Pin_Mode(rtsPin_, OUTPUT);
+            HAL_Set_Pin_Function(rtsPin_, PF_UART);
+        }
+
+        if (conf.config & SERIAL_FLOW_CONTROL_RTS_CTS) {
+            uint32_t cts = NRF_UARTE_PSEL_DISCONNECTED;
+            uint32_t rts = NRF_UARTE_PSEL_DISCONNECTED;
+            if (conf.config & SERIAL_FLOW_CONTROL_CTS) {
+                cts = pinToNrf(ctsPin_);
+            }
+            if (conf.config & SERIAL_FLOW_CONTROL_RTS) {
+                rts = pinToNrf(rtsPin_);
+            }
+            nrf_uarte_hwfc_pins_set(uarte_, rts, cts);
+        }
+
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
+
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXSTARTED);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTARTED);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
+
+        disableInterrupts();
+
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK | NRF_UARTE_INT_ENDTX_MASK);
+
+        NRFX_IRQ_PRIORITY_SET(nrfx_get_irq_number((void *)uarte_), prio_);
+        NRFX_IRQ_ENABLE(nrfx_get_irq_number((void *)uarte_));
+
+        nrf_uarte_enable(uarte_);
+
+        config_ = conf;
+        enabled_ = true;
+
+        enableTimer();
+        startReceiver();
+
+        return 0;
+    }
+
+    int end() {
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+        AtomicSection lk;
+
+        disableInterrupts();
+
+        stopTransmission();
+        stopReceiver();
+
+        nrf_uarte_disable(uarte_);
+
+        nrf_uarte_txrx_pins_disconnect(uarte_);
+        nrf_uarte_hwfc_pins_disconnect(uarte_);
+
+        HAL_Pin_Mode(txPin_, INPUT);
+        HAL_Set_Pin_Function(txPin_, PF_NONE);
+        HAL_Pin_Mode(rxPin_, INPUT);
+        HAL_Set_Pin_Function(rxPin_, PF_NONE);
+
+        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+            HAL_Pin_Mode(ctsPin_, INPUT);
+            HAL_Set_Pin_Function(ctsPin_, PF_NONE);
+        }
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            HAL_Pin_Mode(rtsPin_, INPUT);
+            HAL_Set_Pin_Function(rtsPin_, PF_NONE);
+        }
+
+        nrfx_prs_release(uarte_);
+
+        disableTimer();
+
+        enabled_ = false;
+        config_ = {};
+        transmitting_ = false;
+        receiving_ = 0;
+        rxBuffer_.reset();
+        txBuffer_.reset();
+
+        return 0;
+    }
+
+    ssize_t data() {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        RxLock lk(uarte_);
+        ssize_t d = rxBuffer_.data();
+        if (d == 0 && receiving_) {
+            const ssize_t toConsume = timerValue() - rxConsumed_;
+            if (toConsume > 0) {
+                rxBuffer_.acquireCommit(toConsume);
+                rxConsumed_ += toConsume;
+            }
+            d += toConsume;
+        }
+        return d;
+    }
+
+    ssize_t space() {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        TxLock lk(uarte_);
+        return txBuffer_.space();
+    }
+
+    ssize_t read(uint8_t* buffer, size_t size) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        const ssize_t maxRead = CHECK(data());
+        const size_t readSize = std::min((size_t)maxRead, size);
+        CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
+        ssize_t r;
+        {
+            RxLock lk(uarte_);
+            r = CHECK(rxBuffer_.get(buffer, readSize));
+        }
+        if (!receiving_) {
+            startReceiver();
+        }
+        return r;
+    }
+
+    ssize_t peek(uint8_t* buffer, size_t size) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        const ssize_t maxRead = CHECK(data());
+        const size_t peekSize = std::min((size_t)maxRead, size);
+        CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
+        RxLock lk(uarte_);
+        return rxBuffer_.peek(buffer, peekSize);
+    }
+
+    ssize_t write(const uint8_t* buffer, size_t size) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        const ssize_t canWrite = CHECK(space());
+        const size_t writeSize = std::min((size_t)canWrite, size);
+        CHECK_TRUE(writeSize > 0, SYSTEM_ERROR_NO_MEMORY);
+        ssize_t r;
+        {
+            TxLock lk(uarte_);
+            r = CHECK(txBuffer_.put(buffer, writeSize));
+        }
+        // Start transmission
+        startTransmission();
+        return r;
+    }
+
+    ssize_t flush() {
+        while (true) {
+            while (transmitting_) {
+                // FIXME: busy loop
+            }
+            {
+                TxLock lk(uarte_);
+                if (!enabled_ || txBuffer_.empty()) {
+                    break;
+                }
+            }
+        }
+        return 0;
+    }
+
+    bool isConfigured() const {
+        return configured_;
+    }
+
+    bool isEnabled() const {
+        return enabled_;
+    }
+
+    void pump() {
+        if (!willPreempt() && isEnabled()) {
+            interruptHandler();
+        }
+    }
+
+    void interruptHandler() {
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+
+            nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+            rxConsumed_ = 0;
+
+            if (rxBuffer_.acquirePending() > 0) {
+                rxBuffer_.acquireCommit(rxBuffer_.acquirePending());
+            }
+
+            --receiving_;
+            startReceiver();
+            return;
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
+            txBuffer_.consumeCommit(nrf_uarte_tx_amount_get(uarte_));
+            transmitting_ = false;
+            startTransmission();
+        }
+    }
+
+private:
+    void startTransmission() {
+        size_t consumable;
+        if (!transmitting_ && (consumable = txBuffer_.consumable())) {
+            transmitting_ = true;
+            auto ptr = txBuffer_.consume(consumable);
+#ifdef DEBUG_BUILD
+            SPARK_ASSERT(ptr);
+#endif // DEBUG_BUILD
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
+            nrf_uarte_tx_buffer_set(uarte_, ptr, consumable);
+            nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STARTTX);
+        }
+    }
+
+    void startReceiver(bool flush = false) {
+        if (receiving_ >= MAX_SCHEDULED_RECEIVALS) {
+            return;
+        }
+
+        // Updates current size
+        rxBuffer_.acquireBegin();
+
+        const size_t acquirable = rxBuffer_.acquirable();
+        const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
+        size_t rxSize = std::max(acquirable, acquirableWrapped);
+
+        if (rxSize < RX_THRESHOLD) {
+            return;
+        }
+
+        if (RESERVED_RX_SIZE) {
+            if (!flush) {
+                // We should always reserve RESERVED_RX_SIZE bytes in the rx buffer
+                if (rxSize == acquirable) {
+                    if (acquirableWrapped < RESERVED_RX_SIZE) {
+                        if (rxSize > RESERVED_RX_SIZE) {
+                            rxSize -= RESERVED_RX_SIZE;
+                        } else {
+                            return;
+                        }
+                    }
+                } else {
+                    if (rxSize > RESERVED_RX_SIZE) {
+                        rxSize -= RESERVED_RX_SIZE;
+                    } else {
+                        return;
+                    }
+                }
+            } else {
+                rxSize = std::min(RESERVED_RX_SIZE, rxSize);
+            }
+        }
+
+        if (rxSize > 0) {
+            ++receiving_;
+            auto ptr = rxBuffer_.acquire(rxSize);
+#ifdef DEBUG_BUILD
+            SPARK_ASSERT(ptr);
+#endif // DEBUG_BUILD
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+            nrf_uarte_rx_buffer_set(uarte_, ptr, rxSize);
+            if (!flush) {
+                nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STARTRX);
+            } else {
+                nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_FLUSHRX);
+            }
+        }
+    }
+
+    void stopReceiver() {
+        if (receiving_) {
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+            nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPRX);
+            bool rxto = false;
+            bool endrx = false;
+            while (!(rxto && endrx)) {
+                if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
+                    nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+                    endrx = true;
+                }
+                if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXTO)) {
+                    nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+                    rxto = true;
+                }
+            }
+        }
+    }
+
+    void stopTransmission() {
+        if (transmitting_) {
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
+            nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPTX);
+            while (!nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTOPPED));
+        }
+    }
+
+    void disableInterrupts() {
+        nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_ERROR_MASK |
+                      NRF_UARTE_INT_RXSTARTED_MASK |
+                      NRF_UARTE_INT_RXDRDY_MASK |
+                      NRF_UARTE_INT_RXTO_MASK |
+                      NRF_UARTE_INT_ENDRX_MASK |
+                      NRF_UARTE_INT_TXSTARTED_MASK |
+                      NRF_UARTE_INT_TXDRDY_MASK |
+                      NRF_UARTE_INT_TXSTOPPED_MASK |
+                      NRF_UARTE_INT_ENDTX_MASK);
+        NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)uarte_));
+    }
+
+    void enableTimer() {
+        NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)timer_));
+        nrf_timer_mode_set(timer_, NRF_TIMER_MODE_COUNTER);
+        nrf_timer_bit_width_set(timer_, NRF_TIMER_BIT_WIDTH_16);
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_START);
+
+        nrf_ppi_channel_endpoint_setup(ppi_, (uint32_t)&uarte_->EVENTS_RXDRDY,
+                (uint32_t)&timer_->TASKS_COUNT);
+        nrf_ppi_channel_enable(ppi_);
+    }
+
+    void disableTimer() {
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_SHUTDOWN);
+        nrf_ppi_channel_disable(ppi_);
+        rxConsumed_ = 0;
+    }
+
+    size_t timerValue() {
+        nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CAPTURE0);
+        return nrf_timer_cc_read(timer_, NRF_TIMER_CC_CHANNEL0);
+    }
+
+    bool willPreempt() const {
+        // Check if interrupts are disabled:
+        // 1. Globally
+        // 2. Application interrupts through SoftDevice
+        if ((__get_PRIMASK() & 1) || nrf_nvic_state.__cr_flag) {
+            return false;
+        }
+
+        if (HAL_IsISR()) {
+            if (!HAL_WillPreempt(nrfx_get_irq_number((void*)uarte_), HAL_ServicedIRQn())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static bool validateConfig(unsigned int config) {
+        CHECK_TRUE((config & SERIAL_MODE) == SERIAL_8N1 ||
+                   (config & SERIAL_MODE) == SERIAL_8E1 ||
+                   (config & SERIAL_MODE) == SERIAL_8N2 ||
+                   (config & SERIAL_MODE) == SERIAL_8E2, false);
+
+        CHECK_TRUE((config & SERIAL_HALF_DUPLEX) == 0, false);
+        CHECK_TRUE((config & LIN_MODE) == 0, false);
+
+        // LIN-mode configuration and half-duplex pin configuration is ignored
+
+        return true;
+    }
+
+    struct BaudrateMap {
+        unsigned int baudRate;
+        nrf_uarte_baudrate_t nrfBaudRate;
+    };
+
+    static int getNrfBaudrate(unsigned int baudRate) {
+        for (unsigned int i = 0; i < sizeof(baudrateMap_) / sizeof(baudrateMap_[0]); i++) {
+            if (baudrateMap_[i].baudRate == baudRate) {
+                return baudrateMap_[i].nrfBaudRate;
+            }
+        }
+
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+
+private:
+    static constexpr const BaudrateMap baudrateMap_[] = {
         { 1200,     NRF_UARTE_BAUDRATE_1200    },
         { 2400,     NRF_UARTE_BAUDRATE_2400    },
         { 4800,     NRF_UARTE_BAUDRATE_4800    },
@@ -102,347 +581,194 @@ static nrf_uart_baudrate_t get_nrf_baudrate(uint32_t baud)
         { 1000000,  NRF_UARTE_BAUDRATE_1000000 }
     };
 
-    nrf_uart_baudrate_t nrf_baudtate = NRF_UARTE_BAUDRATE_115200;
+    NRF_UARTE_Type* uarte_;
+    void (*interruptHandler_)(void);
+    app_irq_priority_t prio_;
+    NRF_TIMER_Type* timer_;
+    nrf_ppi_channel_t ppi_;
 
-    if (baud < 1200 || baud > 1000000)
-    {
-        // return default baudrate
-        return nrf_baudtate;
-    }
+    pin_t txPin_;
+    pin_t rxPin_;
+    pin_t ctsPin_;
+    pin_t rtsPin_;
 
-    for (uint32_t i = 1; i < sizeof(baudrate_map) / sizeof(baudrate_map[0]); i++)
-    {
-        if (baud < baudrate_map[i].baud)
-        {
-            nrf_baudtate = baudrate_map[i - 1].nrf_baud;
-            break;
-        }
-    }
+    bool configured_ = false;
+    bool enabled_ = false;
 
-    return nrf_baudtate;
-}
+    volatile bool transmitting_;
+    volatile uint8_t receiving_;
+    volatile size_t rxConsumed_;
 
-static void uart_event_handler(nrf_drv_uart_event_t * p_event, void* p_context)
-{
-    uint32_t instance_num = (uint32_t)p_context;
+    Config config_ = {};
 
-    switch (p_event->type)
-    {
-        case NRF_DRV_UART_EVT_RX_DONE:
-            // Write received byte to FIFO.
-            app_fifo_put(&m_uart_map[instance_num].rx_fifo, p_event->data.rxtx.p_data[0]);
+    particle::services::RingBuffer<uint8_t> txBuffer_;
+    particle::services::RingBuffer<uint8_t> rxBuffer_;
+};
 
-            // Start new RX if size in buffer.
-            if (FIFO_LENGTH(&m_uart_map[instance_num].rx_fifo) <= m_uart_map[instance_num].rx_fifo.buf_size_mask)
-            {
-                nrf_drv_uart_rx(m_uart_map[instance_num].instance, m_uart_map[instance_num].rx_buffer, 1);
-            }
-            else
-            {
-                // Overflow in RX FIFO.
-                m_uart_map[instance_num].rx_ovf = true;
-            }
-            break;
+constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
 
-        case NRF_DRV_UART_EVT_ERROR:
-            nrf_drv_uart_rx(m_uart_map[instance_num].instance, m_uart_map[instance_num].rx_buffer, 1);
-            break;
+const auto UARTE0_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOWEST;
+// TODO: move this to hal_platform_config.h ?
+#if PLATFORM_ID == PLATFORM_XENON
+const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOWEST;
+#else
+const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_HIGHEST;
+#endif // PLATFORM_ID == PLATFORM_XENON
 
-        case NRF_DRV_UART_EVT_TX_DONE:
-            // Get next byte from FIFO.
-            if (app_fifo_get(&m_uart_map[instance_num].tx_fifo, m_uart_map[instance_num].tx_buffer) == NRF_SUCCESS)
-            {
-                nrf_drv_uart_tx(m_uart_map[instance_num].instance, m_uart_map[instance_num].tx_buffer, 1);
-            }
-            break;
-
-        default:
-            break;
-    }
-}
-
-static uint32_t uart_init(HAL_USART_Serial serial, uint32_t baud)
-{
-    if (m_uart_map[serial].tx_fifo.p_buf == NULL || m_uart_map[serial].rx_fifo.p_buf == NULL)
-    {
-        return NRF_ERROR_INVALID_PARAM;
-    }
-
-    uint32_t err_code;
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    nrf_drv_uart_config_t config = {
-        .pseltxd            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].tx_pin].gpio_port, PIN_MAP[m_uart_map[serial].tx_pin].gpio_pin),
-        .pselrxd            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].rx_pin].gpio_port, PIN_MAP[m_uart_map[serial].rx_pin].gpio_pin),
-        .pselcts            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].cts_pin].gpio_port, PIN_MAP[m_uart_map[serial].cts_pin].gpio_pin),
-        .pselrts            = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_uart_map[serial].rts_pin].gpio_port, PIN_MAP[m_uart_map[serial].rts_pin].gpio_pin),
-        .p_context          = (void *)((int)m_uart_map[serial].instance->inst_idx),
-        .hwfc               = IS_HWFC_ENABLED(m_uart_map[serial].uart_config) ? NRF_UART_HWFC_ENABLED : NRF_UART_HWFC_DISABLED,
-        .parity             = IS_PARITY_ENABLED(m_uart_map[serial].uart_config) ? NRF_UART_PARITY_INCLUDED : NRF_UART_PARITY_EXCLUDED,
-        .baudrate           = get_nrf_baudrate(baud),
-        .interrupt_priority = m_uart_map[serial].priority,
-        NRF_DRV_UART_DEFAULT_CONFIG_USE_EASY_DMA
+Usart* getInstance(HAL_USART_Serial serial) {
+    static Usart usartMap[] = {
+        {NRF_UARTE0, uarte0InterruptHandler, UARTE0_INTERRUPT_PRIORITY, NRF_TIMER3, NRF_PPI_CHANNEL4, TX, RX, CTS, RTS},
+        {NRF_UARTE1, uarte1InterruptHandler, UARTE1_INTERRUPT_PRIORITY, NRF_TIMER4, NRF_PPI_CHANNEL5, TX1, RX1, CTS1, RTS1}
     };
 
-    err_code = nrf_drv_uart_init(m_uart_map[serial].instance, &config, uart_event_handler);
-    SPARK_ASSERT(err_code == NRF_SUCCESS);
+    CHECK_TRUE(serial < sizeof(usartMap) / sizeof(usartMap[0]), nullptr);
 
-    // Turn on receiver
-    nrf_drv_uart_rx(m_uart_map[serial].instance, m_uart_map[serial].rx_buffer, 1);
-
-    // set pin mode
-    HAL_Set_Pin_Function(m_uart_map[serial].tx_pin, PF_UART);
-    HAL_Set_Pin_Function(m_uart_map[serial].rx_pin, PF_UART);
-    if (IS_HWFC_ENABLED(m_uart_map[serial].uart_config))
-    {
-        HAL_Set_Pin_Function(m_uart_map[serial].cts_pin, PF_UART);
-        HAL_Set_Pin_Function(m_uart_map[serial].rts_pin, PF_UART);
-    }
-
-    return NRF_SUCCESS;
+    return &usartMap[serial];
 }
 
-static void uart_uninit(HAL_USART_Serial serial)
-{
-    nrf_drv_uart_uninit(m_uart_map[serial].instance);
-
-    // reset pin mode
-    HAL_Set_Pin_Function(m_uart_map[serial].tx_pin, PF_NONE);
-    HAL_Set_Pin_Function(m_uart_map[serial].rx_pin, PF_NONE);
-    if (IS_HWFC_ENABLED(m_uart_map[serial].uart_config))
-    {
-        HAL_Set_Pin_Function(m_uart_map[serial].cts_pin, PF_NONE);
-        HAL_Set_Pin_Function(m_uart_map[serial].rts_pin, PF_NONE);
-    }
+void uarte0InterruptHandler(void) {
+    getInstance(HAL_USART_SERIAL1)->interruptHandler();
 }
 
-static uint32_t uart_flush(HAL_USART_Serial serial)
-{
-    uint32_t err_code;
-
-    err_code = app_fifo_flush(&m_uart_map[serial].rx_fifo);
-    VERIFY_SUCCESS(err_code);
-
-    err_code = app_fifo_flush(&m_uart_map[serial].tx_fifo);
-    VERIFY_SUCCESS(err_code);
-
-    return NRF_SUCCESS;
+void uarte1InterruptHandler(void) {
+    getInstance(HAL_USART_SERIAL2)->interruptHandler();
 }
 
-static uint32_t uart_get(HAL_USART_Serial serial, uint8_t * p_byte)
-{
-    ASSERT(p_byte);
-    bool rx_ovf = m_uart_map[serial].rx_ovf;
+} // anonymous
 
-    ret_code_t err_code = app_fifo_get(&m_uart_map[serial].rx_fifo, p_byte);
-
-    // If FIFO was full new request to receive one byte was not scheduled. Must be done here.
-    if (rx_ovf)
-    {
-        m_uart_map[serial].rx_ovf = false;
-        uint32_t uart_err_code = nrf_drv_uart_rx(m_uart_map[serial].instance, m_uart_map[serial].rx_buffer, 1);
-
-        // RX resume should never fail.
-        SPARK_ASSERT(uart_err_code == NRF_SUCCESS);
-    }
-
-    return err_code;
+extern "C" void UARTE1_IRQHandler(void) {
+    uarte1InterruptHandler();
 }
 
-static uint32_t uart_put(HAL_USART_Serial serial, uint8_t byte)
-{
-    uint32_t err_code;
-    err_code = app_fifo_put(&m_uart_map[serial].tx_fifo, byte);
-    if (err_code == NRF_SUCCESS)
-    {
-        // The new byte has been added to FIFO. It will be picked up from there
-        // (in 'uart_event_handler') when all preceding bytes are transmitted.
-        // But if UART is not transmitting anything at the moment, we must start
-        // a new transmission here.
-        if (!nrf_drv_uart_tx_in_progress(m_uart_map[serial].instance))
-        {
-            // This operation should be almost always successful, since we've
-            // just added a byte to FIFO, but if some bigger delay occurred
-            // (some heavy interrupt handler routine has been executed) since
-            // that time, FIFO might be empty already.
-            if (app_fifo_get(&m_uart_map[serial].tx_fifo, m_uart_map[serial].tx_buffer) == NRF_SUCCESS)
-            {
-                err_code = nrf_drv_uart_tx(m_uart_map[serial].instance, m_uart_map[serial].tx_buffer, 1);
-            }
-        }
-    }
-    return err_code;
+int HAL_USART_Init_Ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    return usart->init(*config);
 }
 
-void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
-{
-    uint32_t ret;
+void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer* rxBuffer, Ring_Buffer* txBuffer) {
+    HAL_USART_Buffer_Config conf = {
+        .size = sizeof(HAL_USART_Buffer_Config),
+        .rx_buffer = rxBuffer->buffer,
+        .rx_buffer_size = sizeof(rxBuffer->buffer),
+        .tx_buffer = txBuffer->buffer,
+        .tx_buffer_size = sizeof(txBuffer->buffer)
+    };
 
-    if (m_uart_map[serial].enabled)
-    {
-        uart_uninit(serial);
-    }
-
-    memset(tx_buffer, 0, sizeof(Ring_Buffer));
-    memset(rx_buffer, 0, sizeof(Ring_Buffer));
-
-    ret = app_fifo_init(&m_uart_map[serial].tx_fifo, (uint8_t *)tx_buffer->buffer, UART_BUFF_SIZE);
-    SPARK_ASSERT(ret == NRF_SUCCESS);
-    ret = app_fifo_init(&m_uart_map[serial].rx_fifo, (uint8_t *)rx_buffer->buffer, UART_BUFF_SIZE);
-    SPARK_ASSERT(ret == NRF_SUCCESS);
-
-    m_uart_map[serial].enabled = false;
-    m_uart_map[serial].rx_ovf = false;
-    m_uart_map[serial].uart_config = 0;
+    HAL_USART_Init_Ex(serial, &conf, nullptr);
 }
 
-
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
-{
-    HAL_USART_BeginConfig(serial, baud, 0, 0);
-}
-
-bool HAL_USART_Validate_Config(uint32_t config)
-{
-	// Total word length should be 8 bits
-	if (!IS_DATA_BITS_VALID(config))
-		return false;
-
-	// Either No or Even
-	if (!IS_PARITY_VALID(config))
-		return false;
-
-    // Either one or two stop bits
-    if (!IS_STOP_BITS_VALID(config))
-        return false;
-
-    // Not support half duplex mode
-	if (config & SERIAL_HALF_DUPLEX)
-		return false;
-
-    // Not support lin mode
-	if (config & LIN_MODE)
-        return false;
-
-	return true;
-}
-
-void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr)
-{
-    // Verify UART configuration, exit if it's invalid.
-    if (!HAL_USART_Validate_Config(config))
-    {
+void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*) {
+    auto usart = getInstance(serial);
+    // FIXME: CHECK_XXX that doesn't return anything?
+    if (!usart) {
         return;
     }
 
-    if (m_uart_map[serial].enabled)
-    {
-        uart_uninit(serial);
+    Usart::Config conf = {
+        .baudRate = baud,
+        .config = config
+    };
+
+    usart->begin(conf);
+}
+
+void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud) {
+    HAL_USART_BeginConfig(serial, baud, SERIAL_8N1, nullptr);
+}
+
+void HAL_USART_End(HAL_USART_Serial serial) {
+    auto usart = getInstance(serial);
+    // FIXME: CHECK_XXX?
+    if (!usart) {
+        return;
     }
 
-    m_uart_map[serial].uart_config = config;
-    uart_init(serial, baud);
-    m_uart_map[serial].enabled = true;
+    usart->end();
 }
 
-void HAL_USART_End(HAL_USART_Serial serial)
-{
-    // Wait for transmission of outgoing data
-    while (FIFO_LENGTH(&m_uart_map[serial].tx_fifo));
-
-    uart_uninit(serial);
-
-    app_fifo_flush(&m_uart_map[serial].tx_fifo);
-    app_fifo_flush(&m_uart_map[serial].rx_fifo);
-
-    m_uart_map[serial].enabled = false;
+int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->space();
 }
 
-uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
-{
-    if (!m_uart_map[serial].enabled)
-    {
-        return 0;
+int32_t HAL_USART_Available_Data(HAL_USART_Serial serial) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->data();
+}
+
+void HAL_USART_Flush_Data(HAL_USART_Serial serial) {
+    auto usart = getInstance(serial);
+    // FIXME: CHECK_XXX?
+    if (!usart) {
+        return;
     }
 
-    // FIXME: lower layer driver send data by using interrupt， couldn't use
-    //        blocking transmission mode
-    // interrupt is diable(enter criticle)
-    // while ((__get_PRIMASK() & 1) && FIFO_LENGTH(m_uart_map[serial].tx_fifo)) {}
-    if ((__get_PRIMASK() & 1))
-    {
-        return 0;
-    }
-
-    if (IS_FIFO_FULL(&m_uart_map[serial].tx_fifo))
-    {
-        while (IS_FIFO_FULL(&m_uart_map[serial].tx_fifo));
-    }
-
-    uart_put(serial, data);
-
-    return 1;
+    usart->flush();
 }
 
-int32_t HAL_USART_Available_Data(HAL_USART_Serial serial)
-{
-    return FIFO_LENGTH(&m_uart_map[serial].rx_fifo);
+bool HAL_USART_Is_Enabled(HAL_USART_Serial serial) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), false);
+
+    return usart->isEnabled();
 }
 
-int32_t HAL_USART_Read_Data(HAL_USART_Serial serial)
-{
-    uint8_t data = 0;
-
-    if (HAL_USART_Available_Data(serial) == 0)
-    {
-        return -1;
-    }
-    else
-    {
-        uart_get(serial, &data);
-        return data;
-    }
+ssize_t HAL_USART_Write(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
+    usart->pump();
+    return usart->write((const uint8_t*)buffer, size);
 }
 
-int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial)
-{
-    uint8_t data = 0;
-
-    if (HAL_USART_Available_Data(serial) == 0)
-    {
-        return -1;
-    }
-    else
-    {
-        app_fifo_peek(&m_uart_map[serial].rx_fifo, 0, &data);
-        return data;
-    }
+ssize_t HAL_USART_Read(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
+    return usart->read((uint8_t*)buffer, size);
 }
 
-void HAL_USART_Flush_Data(HAL_USART_Serial serial)
-{
-    // Loop until UART send buffer is empty
-    while (FIFO_LENGTH(&m_uart_map[serial].tx_fifo));
-
-    uart_flush(serial);
+ssize_t HAL_USART_Peek(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
+    return usart->peek((uint8_t*)buffer, size);
 }
 
-bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
-{
-    return m_uart_map[serial].enabled;
+int32_t HAL_USART_Read_Data(HAL_USART_Serial serial) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    uint8_t c;
+    CHECK(usart->read(&c, sizeof(c)));
+    return c;
 }
 
-void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
-{
-    // not support
-    return;
+int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    uint8_t c;
+    CHECK(usart->peek(&c, sizeof(c)));
+    return c;
 }
 
-int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
-{
-    return m_uart_map[serial].tx_fifo.buf_size_mask - FIFO_LENGTH(&m_uart_map[serial].tx_fifo);
-}
-
-uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data)
-{
+uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data) {
     return HAL_USART_Write_Data(serial, data);
+}
+
+uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    // Blocking!
+    while(usart->isEnabled() && usart->space() <= 0) {
+        usart->pump();
+    }
+    return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
+}
+
+void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved) {
+    // Unsupported
+}
+
+uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial) {
+    // Unsupported
+    return 0;
+}
+
+void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool enable) {
+    // Unsupported
 }

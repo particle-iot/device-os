@@ -132,6 +132,37 @@ inline int32_t pinReadFast(pin_t _pin)
 {
 	return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
+#elif PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+
+#include "nrf_gpio.h"
+#include "pinmap_impl.h"
+
+inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
+inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
+
+static NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+inline void pinSetFast(pin_t _pin)
+{
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[_pin].gpio_port, PIN_MAP[_pin].gpio_pin);
+    nrf_gpio_pin_set(nrf_pin);
+}
+
+inline void pinResetFast(pin_t _pin)
+{
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[_pin].gpio_port, PIN_MAP[_pin].gpio_pin);
+    nrf_gpio_pin_clear(nrf_pin);
+}
+
+inline int32_t pinReadFast(pin_t _pin)
+{
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[_pin].gpio_port, PIN_MAP[_pin].gpio_pin);
+    // Dummy read is needed because peripherals run at 16 MHz while the CPU runs at 64 MHz. 
+    (void)nrf_gpio_pin_read(nrf_pin);
+    return nrf_gpio_pin_read(nrf_pin);
+}
+
 #elif PLATFORM_ID==3 || PLATFORM_ID == 20
 
 // make them unresolved symbols so attempted use will result in a linker error

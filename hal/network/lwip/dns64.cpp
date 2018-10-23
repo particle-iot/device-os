@@ -47,7 +47,7 @@ LOG_SOURCE_CATEGORY("net.dns64")
         ({ \
             const auto _ret = _expr; \
             if (_ret < 0) { \
-                LOG(ERROR, #_expr " failed: %d", errno); \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", errno); \
                 return socketToSystemError(errno); \
             } \
             _ret; \
@@ -140,12 +140,12 @@ ssize_t readHeader(const char* data, size_t size, Header* h) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     memcpy(h, data, sizeof(Header));
-    h->id = ntohs(h->id);
-    h->flags = ntohs(h->flags);
-    h->qdcount = ntohs(h->qdcount);
-    h->ancount = ntohs(h->ancount);
-    h->nscount = ntohs(h->nscount);
-    h->arcount = ntohs(h->arcount);
+    h->id = lwip_ntohs(h->id);
+    h->flags = lwip_ntohs(h->flags);
+    h->qdcount = lwip_ntohs(h->qdcount);
+    h->ancount = lwip_ntohs(h->ancount);
+    h->nscount = lwip_ntohs(h->nscount);
+    h->arcount = lwip_ntohs(h->arcount);
     return sizeof(Header);
 }
 
@@ -154,12 +154,12 @@ ssize_t writeHeader(char* data, size_t size, const Header& h) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
     Header hh = {};
-    hh.id = htons(h.id);
-    hh.flags = htons(h.flags);
-    hh.qdcount = htons(h.qdcount);
-    hh.ancount = htons(h.ancount);
-    hh.nscount = htons(h.nscount);
-    hh.arcount = htons(h.arcount);
+    hh.id = lwip_htons(h.id);
+    hh.flags = lwip_htons(h.flags);
+    hh.qdcount = lwip_htons(h.qdcount);
+    hh.ancount = lwip_htons(h.ancount);
+    hh.nscount = lwip_htons(h.nscount);
+    hh.arcount = lwip_htons(h.arcount);
     memcpy(data, &hh, sizeof(Header));
     return sizeof(Header);
 }
@@ -170,8 +170,8 @@ ssize_t readQuestion(const char* data, size_t size, Question* q) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     memcpy(q, data, sizeof(Question));
-    q->qtype = ntohs(q->qtype);
-    q->qcls = ntohs(q->qcls);
+    q->qtype = lwip_ntohs(q->qtype);
+    q->qcls = lwip_ntohs(q->qcls);
     return sizeof(Question);
 }
 
@@ -180,8 +180,8 @@ ssize_t writeQuestion(char* data, size_t size, const Question& q) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
     Question qq = {};
-    qq.qtype = htons(q.qtype);
-    qq.qcls = htons(q.qcls);
+    qq.qtype = lwip_htons(q.qtype);
+    qq.qcls = lwip_htons(q.qcls);
     memcpy(data, &qq, sizeof(Question));
     return sizeof(Question);
 }
@@ -191,10 +191,10 @@ ssize_t writeRecord(char* data, size_t size, const Record& r) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
     Record rr = {};
-    rr.type = htons(r.type);
-    rr.cls = htons(r.cls);
-    rr.ttl = htons(r.ttl);
-    rr.rdlength = htons(r.rdlength);
+    rr.type = lwip_htons(r.type);
+    rr.cls = lwip_htons(r.cls);
+    rr.ttl = lwip_htons(r.ttl);
+    rr.rdlength = lwip_htons(r.rdlength);
     memcpy(data, &rr, sizeof(Record));
     return sizeof(Record);
 }
@@ -350,7 +350,7 @@ int Dns64::init(if_t iface, const ip6_addr_t& prefix, uint16_t port) {
     sockaddr_in6 addr = {};
     addr.sin6_len = sizeof(sockaddr_in6);
     addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons(port);
+    addr.sin6_port = lwip_htons(port);
     addr.sin6_flowinfo = 0;
     addr.sin6_addr = in6addr_any;
     addr.sin6_scope_id = 0;

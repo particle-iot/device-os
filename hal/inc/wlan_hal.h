@@ -302,7 +302,7 @@ bool wlan_smart_config_finalize();
 /**
  * Retrieve IP address info. Available after HAL_WLAN_notify_dhcp() has been callted.
  */
-void wlan_fetch_ipconfig(WLanConfig* config);
+int wlan_fetch_ipconfig(WLanConfig* config);
 
 /**
  * Called once at startup to initialize the wlan hardware.

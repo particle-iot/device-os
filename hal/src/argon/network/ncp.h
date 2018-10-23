@@ -18,9 +18,12 @@
 #ifndef HAL_ARGON_NETWORK_NCP_H
 #define HAL_ARGON_NETWORK_NCP_H
 
-#include "atclient.h"
+#include "wifi_network_manager.h"
 
-// FIXME: temporary function
-particle::services::at::ArgonNcpAtClient* argonNcpAtClient();
+namespace particle {
+
+WifiNetworkManager* wifiNetworkManager();
+
+} // particle
 
 #endif // HAL_ARGON_NETWORK_NCP_H

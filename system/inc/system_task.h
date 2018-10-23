@@ -105,6 +105,12 @@ void* system_pool_alloc(size_t size, void* reserved);
  */
 void system_pool_free(void* ptr, void* reserved);
 
+int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* event_data, void* reserved);
+
+typedef int (*system_task_fn)();
+int system_task_loop(system_task_fn fn, void*);
+
 #ifdef __cplusplus
 }
 #endif

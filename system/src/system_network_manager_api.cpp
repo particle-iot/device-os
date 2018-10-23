@@ -21,12 +21,23 @@
 
 #include "system_network.h"
 #include "system_network_internal.h"
-#include "delay_hal.h"
 #include "system_update.h"
 #include "system_cloud_internal.h"
 #include "system_threading.h"
 #include "system_listening_mode.h"
+
+#include "delay_hal.h"
+
+#include "dct.h"
+
 #include <atomic>
+
+#if HAL_PLATFORM_WIFI
+#include "wlan_hal.h"
+#endif
+#if HAL_PLATFORM_CELLULAR
+#include "cellular_hal.h"
+#endif
 
 using namespace particle::system;
 
@@ -45,6 +56,52 @@ namespace {
 /* FIXME: This is not how this should be handled */
 std::atomic_bool s_forcedDisconnect(false);
 
+bool testAndClearListeningModeFlag() {
+    static bool check = true;
+    if (check) {
+        check = false;
+        // Check startup flag
+        uint8_t val = 0x00;
+        system_get_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, &val, nullptr);
+        if (val) {
+            system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr); // Clear startup flag
+            return true;
+        }
+        // Check setup done flag
+        val = 0x01;
+        dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
+        if (val == 0x00 || val == 0xff) {
+            return true;
+        }
+    }
+    return false;
+}
+
+#if HAL_PLATFORM_WIFI
+const WLanConfig* wlanConfig() {
+    // TODO: Cache current configuration
+    static WLanConfig conf;
+    memset(&conf, 0, sizeof(conf));
+    memset(conf.BSSID, 0xff, sizeof(conf.BSSID));
+    memset(conf.nw.uaMacAddr, 0xff, sizeof(conf.nw.uaMacAddr));
+    conf.size = sizeof(conf);
+    wlan_fetch_ipconfig(&conf);
+    return &conf;
+}
+#endif
+
+#if HAL_PLATFORM_CELLULAR
+const CellularConfig* cellularConfig() {
+    // TODO: Cache current configuration
+    static CellularConfig conf;
+    memset(&conf, 0, sizeof(conf));
+    memset(conf.nw.uaMacAddr, 0xff, sizeof(conf.nw.uaMacAddr));
+    conf.size = sizeof(conf);
+    cellular_fetch_ipconfig(&conf, nullptr);
+    return &conf;
+}
+#endif
+
 } /* anonymous */
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
@@ -53,15 +110,44 @@ void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
 }
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved) {
-    return nullptr;
+    switch (network) {
+#if HAL_PLATFORM_WIFI
+    case NETWORK_INTERFACE_WIFI_STA:
+        return wlanConfig();
+#endif
+#if HAL_PLATFORM_CELLULAR
+    case NETWORK_INTERFACE_CELLULAR:
+        return cellularConfig();
+#endif
+    default:
+        return nullptr;
+    }
 }
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
     /* TODO: WIFI_CONNECT_SKIP_LISTEN is unhandled */
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([]() {
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         s_forcedDisconnect = false;
+
+        if (testAndClearListeningModeFlag() || !NetworkManager::instance()->isConfigured()) {
+            /* Enter listening mode */
+            network_listen(0, 0, 0);
+            return;
+        }
+
+        if (network != NETWORK_INTERFACE_ALL) {
+            if_t iface;
+            if (!if_get_by_index(network, &iface)) {
+                NetworkManager::instance()->enableInterface(iface);
+                NetworkManager::instance()->syncInterfaceStates();
+            }
+        } else {
+            // Mainly to populate the list
+            NetworkManager::instance()->enableInterface();
+        }
+
         if (!NetworkManager::instance()->isNetworkingEnabled()) {
             NetworkManager::instance()->enableNetworking();
         }
@@ -73,11 +159,27 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 }
 
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([]() {
-        cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
-        SPARK_WLAN_STARTED = 0;
-        s_forcedDisconnect = true;
-        if (!NetworkManager::instance()->deactivateConnections()) {
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
+        if (network == NETWORK_INTERFACE_ALL) {
+            cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+            SPARK_WLAN_STARTED = 0;
+            s_forcedDisconnect = true;
+        }
+
+        if (network != NETWORK_INTERFACE_ALL) {
+            if_t iface;
+            if (!if_get_by_index(network, &iface)) {
+                NetworkManager::instance()->disableInterface(iface);
+                NetworkManager::instance()->syncInterfaceStates();
+            }
+        } else {
+            // Mainly to populate the list
+            NetworkManager::instance()->disableInterface();
+        }
+
+        if ((network == NETWORK_INTERFACE_ALL ||
+                NetworkManager::instance()->countEnabledInterfaces() == 0) &&
+                !NetworkManager::instance()->deactivateConnections()) {
             /* FIXME: should not loop in here */
             while (NetworkManager::instance()->getState() != NetworkManager::State::IFACE_DOWN) {
                 HAL_Delay_Milliseconds(1);
@@ -86,13 +188,45 @@ void network_disconnect(network_handle_t network, uint32_t reason, void* reserve
     }());
 }
 
-bool network_ready(network_handle_t network, uint32_t param, void* reserved)
-{
-    return NetworkManager::instance()->isConnectivityAvailable();
+bool network_ready(network_handle_t network, uint32_t param, void* reserved) {
+    if (network == NETWORK_INTERFACE_ALL) {
+        return NetworkManager::instance()->isConnectivityAvailable();
+    } else {
+        if_t iface;
+        if (!if_get_by_index(network, &iface)) {
+            if (NetworkManager::instance()->isInterfaceEnabled(iface)) {
+                auto ip4 = NetworkManager::instance()->getInterfaceIp4State(iface);
+                auto ip6 = NetworkManager::instance()->getInterfaceIp6State(iface);
+                // FIXME
+                if (network != NETWORK_INTERFACE_MESH) {
+                    if (ip4 == NetworkManager::ProtocolState::CONFIGURED || ip6 == NetworkManager::ProtocolState::CONFIGURED) {
+                        return true;
+                    }
+                } else {
+                    if (ip4 != NetworkManager::ProtocolState::UNCONFIGURED || ip6 != NetworkManager::ProtocolState::UNCONFIGURED) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 bool network_connecting(network_handle_t network, uint32_t param, void* reserved) {
-    return NetworkManager::instance()->isEstablishingConnections();
+    if (network == NETWORK_INTERFACE_ALL) {
+        return NetworkManager::instance()->isEstablishingConnections();
+    } else {
+        if_t iface;
+        if (!if_get_by_index(network, &iface)) {
+            if (NetworkManager::instance()->isConnectivityAvailable() ||
+                    NetworkManager::instance()->isEstablishingConnections()) {
+                return !network_ready(network, param, reserved);
+            }
+        }
+    }
+    return false;
 }
 
 int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved) {
@@ -100,7 +234,16 @@ int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t pa
 }
 
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([]() {
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
+        if (network != NETWORK_INTERFACE_ALL) {
+            if_t iface;
+            if (!if_get_by_index(network, &iface)) {
+                if_req_power req = {};
+                req.state = IF_POWER_STATE_UP;
+                if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+            }
+        }
+
         NetworkManager::instance()->enableNetworking();
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
@@ -108,22 +251,43 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
 }
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved) {
-    return NetworkManager::instance()->isConfigured();
+    if (network == NETWORK_INTERFACE_ALL) {
+        return NetworkManager::instance()->isConfigured();
+    } else {
+        if_t iface;
+        if (!if_get_by_index(network, &iface)) {
+            return NetworkManager::instance()->isConfigured(iface);
+        }
+    }
+
+    return false;
 }
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
     /* flags & 1 means also disconnect the cloud
      * (so it doesn't autmatically connect when network resumed)
      */
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([flags]() {
-        SPARK_WLAN_STARTED = 0;
-        SPARK_WLAN_SLEEP = 1;
-        network_disconnect(0, 0, 0);
-        /* FIXME: should not loop in here */
-        NetworkManager::instance()->disableNetworking();
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
+        if (network != NETWORK_INTERFACE_ALL) {
+            network_disconnect(network, 0, 0);
+            if_t iface;
+            if (!if_get_by_index(network, &iface)) {
+                if_req_power req = {};
+                req.state = IF_POWER_STATE_DOWN;
+                if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+            }
+        }
 
-        if (flags & 1) {
-            spark_cloud_flag_disconnect();
+        if (network == NETWORK_INTERFACE_ALL || NetworkManager::instance()->countEnabledInterfaces() == 0) {
+            SPARK_WLAN_STARTED = 0;
+            SPARK_WLAN_SLEEP = 1;
+            network_disconnect(0, 0, 0);
+            /* FIXME: should not loop in here */
+            NetworkManager::instance()->disableNetworking();
+
+            if (flags & 1) {
+                spark_cloud_flag_disconnect();
+            }
         }
     }());
 }
@@ -168,12 +332,26 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
 }
 
 int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*) {
-    /* TODO */
-    return -1;
+    switch (network) {
+#if HAL_PLATFORM_WIFI
+    case NETWORK_INTERFACE_WIFI_STA:
+        return wlan_set_credentials(credentials);
+#endif
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
 }
 
 bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCredentials* creds, void*) {
-    return NetworkManager::instance()->clearConfiguration() == 0;
+    if (network == NETWORK_INTERFACE_ALL) {
+        return NetworkManager::instance()->clearConfiguration() == 0;
+    } else {
+        if_t iface;
+        if (!if_get_by_index(network, &iface)) {
+            return NetworkManager::instance()->clearConfiguration(iface);
+        }
+    }
+    return false;
 }
 
 int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved) {
@@ -195,12 +373,6 @@ void manage_network_connection() {
         return;
     }
 
-    if (!NetworkManager::instance()->isConfigured()) {
-        /* Enter listening mode */
-        network_listen(0, 0, 0);
-        return;
-    }
-
     /* Need to disconnect and disable networking */
     /* FIXME: refactor */
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP) {
@@ -213,12 +385,8 @@ void manage_network_connection() {
         cfod_count = 0;
     } else {
         if (spark_cloud_flag_auto_connect() && !s_forcedDisconnect) {
-            if (!NetworkManager::instance()->isNetworkingEnabled()) {
-                NetworkManager::instance()->enableNetworking();
-            }
-
             if (!NetworkManager::instance()->isConnectivityAvailable() && !NetworkManager::instance()->isEstablishingConnections()) {
-                NetworkManager::instance()->activateConnections();
+                network_connect(0, 0, 0, 0);
             }
         }
     }

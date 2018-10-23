@@ -25,6 +25,7 @@
 #include "ifapi.h"
 #include "resolvapi.h"
 #include <atomic>
+#include "intrusive_list.h"
 
 namespace particle { namespace system {
 
@@ -49,8 +50,25 @@ public:
     bool isIp4ConnectivityAvailable() const;
     bool isIp6ConnectivityAvailable() const;
 
-    bool isConfigured() const;
+    enum class ProtocolState {
+        UNCONFIGURED = 0,
+        LINKLOCAL = 1,
+        CONFIGURED = 2
+    };
+    static_assert((int)ProtocolState::CONFIGURED > (int)ProtocolState::LINKLOCAL &&
+            (int)ProtocolState::LINKLOCAL > (int)ProtocolState::UNCONFIGURED, "UNCONFIGURED < LINKLOCAL < CONFIGURED");
+
+    ProtocolState getInterfaceIp4State(if_t iface) const;
+    ProtocolState getInterfaceIp6State(if_t iface) const;
+
+    bool isConfigured(if_t iface = nullptr) const;
     int clearConfiguration(if_t iface = nullptr);
+
+    int enableInterface(if_t iface = nullptr);
+    int disableInterface(if_t iface = nullptr);
+    bool isInterfaceEnabled(if_t iface) const;
+    int countEnabledInterfaces();
+    int syncInterfaceStates();
 
     enum class State {
         NONE,
@@ -79,14 +97,21 @@ private:
 
     const char* stateToName(State state) const;
 
-    enum class ProtocolState {
+    enum class DnsState {
         UNCONFIGURED,
         CONFIGURED
     };
 
-    enum class DnsState {
-        UNCONFIGURED,
-        CONFIGURED
+    struct InterfaceRuntimeState {
+        InterfaceRuntimeState()
+                : ip4State(ProtocolState::UNCONFIGURED),
+                  ip6State(ProtocolState::UNCONFIGURED) {
+        }
+        InterfaceRuntimeState* next = nullptr;
+        bool enabled = false;
+        if_t iface = nullptr;
+        std::atomic<ProtocolState> ip4State;
+        std::atomic<ProtocolState> ip6State;
     };
 
     void transition(State state);
@@ -109,6 +134,11 @@ private:
     static void resolvEventHandlerCb(void* arg, const void* data);
     void resolvEventHandler(const void* data);
 
+    InterfaceRuntimeState* getInterfaceRuntimeState(if_t iface) const;
+    void populateInterfaceRuntimeState(bool enabled);
+    bool isDisabled(if_t iface);
+    void resetInterfaceProtocolState(if_t iface = nullptr);
+
 private:
     if_event_handler_cookie_t ifEventHandlerCookie_ = {};
     resolv_event_handler_cookie_t resolvEventHandlerCookie_ = {};
@@ -118,6 +148,8 @@ private:
     std::atomic<ProtocolState> ip6State_;
     std::atomic<DnsState> dns4State_;
     std::atomic<DnsState> dns6State_;
+
+    IntrusiveList<InterfaceRuntimeState> runState_;
 };
 
 

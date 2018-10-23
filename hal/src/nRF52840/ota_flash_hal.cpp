@@ -41,6 +41,7 @@
 #include "spark_wiring_interrupts.h"
 #include "hal_platform.h"
 #include "platform_ncp.h"
+#include "deviceid_hal.h"
 #include <memory>
 
 #define OTA_CHUNK_SIZE                 (512)
@@ -68,6 +69,12 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
             return module_bounds[i];
     }
     return NULL;
+}
+
+void set_key_value(key_value* kv, const char* key, const char* value)
+{
+    kv->key = key;
+    strncpy(kv->value, value, sizeof(kv->value)-1);
 }
 
 void copy_dct(void* target, uint16_t offset, uint16_t length) 
@@ -145,11 +152,26 @@ int fetch_device_public_key_ex(void)
     return 0; // flash_pub_key
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
+void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
-    info->platform_id = PLATFORM_ID;
-    info->module_count = 0;
-    info->modules = NULL;
+    if (construct) {
+        info->platform_id = PLATFORM_ID;
+        uint8_t count = module_bounds_length;
+        info->modules = new hal_module_t[count];
+        if (info->modules) {
+            info->module_count = count;
+            for (unsigned i=0; i<count; i++) {
+                fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
+            }
+        }
+        HAL_OTA_Add_System_Info(info, construct, reserved);
+    }
+    else
+    {
+        HAL_OTA_Add_System_Info(info, construct, reserved);
+        delete info->modules;
+        info->modules = NULL;
+    }
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
@@ -578,4 +600,37 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         dct_write_app_data(data, offset, length>data_length ? data_length : length);
 
     return length;
+}
+
+int fetch_system_properties(key_value* storage, int keyCount) {
+	int keys = 0;
+	if (storage) {
+		if (keyCount && 0<hal_get_device_secret(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+			storage[keys].key = "ms";
+			keyCount--;
+			keys++;
+		}
+		if (keyCount && 0<hal_get_device_serial_number(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+			storage[keys].key = "sn";
+			keyCount--;
+			keys++;
+		}
+		return keys;
+	}
+	else {
+		return 2;
+	}
+}
+
+int add_system_properties(hal_system_info_t* info, bool create, size_t additional) {
+	if (create) {
+		int keyCount = fetch_system_properties(nullptr, 0);
+		info->key_values = new key_value[keyCount+additional];
+		info->key_value_count = fetch_system_properties(info->key_values, keyCount);
+		return info->key_value_count;
+	} else {
+		delete info->key_values;
+		info->key_values = nullptr;
+		return 0;
+	}
 }

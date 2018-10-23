@@ -5,7 +5,7 @@
 #include "spark_wiring_fixed_point.h"
 #include "debug.h"
 
-#if Wiring_Cellular == 1
+#if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
 
 #include "system_power_manager.h"
 

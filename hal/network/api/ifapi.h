@@ -140,7 +140,8 @@ enum if_event_type_t {
     IF_EVENT_STATE                = 0x03,
     IF_EVENT_LINK                 = 0x04,
     IF_EVENT_ADDR                 = 0x05,
-    IF_EVENT_LLADDR               = 0x06
+    IF_EVENT_LLADDR               = 0x06,
+    IF_EVENT_POWER_STATE          = 0x07
 };
 
 enum if_state_t {
@@ -155,11 +156,21 @@ enum if_link_state_t {
     IF_LINK_STATE_UP   = 0x02,
 };
 
+enum if_power_state_t {
+    IF_POWER_STATE_NONE = 0x00,
+    IF_POWER_STATE_DOWN = 0x01,
+    IF_POWER_STATE_UP   = 0x02
+};
+
 struct if_event_state {
     uint8_t state;
 };
 
 struct if_event_link_state {
+    uint8_t state;
+};
+
+struct if_event_power_state {
     uint8_t state;
 };
 
@@ -182,10 +193,18 @@ struct if_event {
         struct if_event_link_state* ev_if_link;
         struct if_event_addr* ev_if_addr;
         struct if_event_lladdr* ev_if_lladdr;
+        struct if_event_power_state* ev_power_state;
     };
 };
 
 typedef void (*if_event_handler_t)(void* arg, if_t iface, const struct if_event* ev);
+
+typedef struct if_event_power_state if_req_power;
+
+enum if_req_t {
+    IF_REQ_NONE        = 0,
+    IF_REQ_POWER_STATE = 1
+};
 
 int if_init(void);
 int if_init_platform(void*);
@@ -233,6 +252,8 @@ if_event_handler_cookie_t if_event_handler_add(if_event_handler_t handler, void*
 if_event_handler_cookie_t if_event_handler_add_if(if_t iface, if_event_handler_t handler, void* arg);
 if_event_handler_cookie_t if_event_handler_self(if_t iface, if_event_handler_t handler, void* arg);
 int if_event_handler_del(if_event_handler_cookie_t cookie);
+
+int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved);
 
 #ifdef __cplusplus
 }

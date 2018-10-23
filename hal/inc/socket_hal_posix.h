@@ -40,6 +40,15 @@ extern "C" {
  *
  */
 
+/** Compatibility sock_handle_t */
+typedef int sock_handle_t;
+/** Compatibility sock_result_t */
+typedef int sock_result_t;
+/** Compatibility socket_handle_valid() macro */
+#define socket_handle_valid(x) ((x) >= 0)
+/** Compatibility SOCKET_WAIT_FOREVER definition */
+#define SOCKET_WAIT_FOREVER (0xffffffff)
+
 /**
  * Accept a connection on a socket.
  *
@@ -236,6 +245,18 @@ ssize_t sock_sendto(int s, const void* dataptr, size_t size, int flags,
  * @returns    The socket descriptor on success, or -1 on error, with errno set accordingly.
  */
 int sock_socket(int domain, int type, int protocol);
+
+/**
+ * Manipulates socket descriptor.
+ *
+ * @param[in]  s        a socket that has been created with sock_socket()
+ * @param[in]  cmd      an operation type
+ * @param[in]  ...      (optional) argument
+ *
+ * @retval  0  Success
+ * @retval -1  Error, errno is set appropriately.
+ */
+int sock_fcntl(int s, int cmd, ...);
 
 /**
  * @}

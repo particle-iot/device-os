@@ -41,6 +41,8 @@ extern "C" {
  */
 #define NO_SYS                           0
 
+#define LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS 1
+
 /*
    ------------------------------------
    ----------- Core locking -----------
@@ -298,7 +300,7 @@ void sys_unlock_tcpip_core(void);
  * MEMP_NUM_NETBUF: the number of struct netbufs.
  * (only needed if you use the sequential API, like api_lib.c)
  */
-#define MEMP_NUM_NETBUF                 (PBUF_POOL_SIZE)
+#define MEMP_NUM_NETBUF                 (PBUF_POOL_SIZE - 1)
 
 /**
  * MEMP_NUM_NETCONN: the number of struct netconns.
@@ -678,13 +680,13 @@ void sys_unlock_tcpip_core(void);
 #define DNS_TABLE_SIZE                  32
 
 /** DNS maximum host name length supported in the name table. */
-#define DNS_MAX_NAME_LENGTH             256
+#define DNS_MAX_NAME_LENGTH             128
 
 /** The maximum of DNS servers
  * The first server can be initialized automatically by defining
  * DNS_SERVER_ADDRESS(ipaddr), where 'ipaddr' is an 'ip_addr_t*'
  */
-#define DNS_MAX_SERVERS                 4
+#define DNS_MAX_SERVERS                 5
 
 /** DNS maximum number of retries when asking for a name, before "timeout". */
 #define DNS_MAX_RETRIES                 3
@@ -1344,7 +1346,7 @@ void sys_unlock_tcpip_core(void);
  * LWIP_SO_SNDTIMEO==1: Enable send timeout for sockets/netconns and
  * SO_SNDTIMEO processing.
  */
-#define LWIP_SO_SNDTIMEO                0
+#define LWIP_SO_SNDTIMEO                1
 
 /**
  * LWIP_SO_RCVTIMEO==1: Enable receive timeout for sockets/netconns and
@@ -1733,7 +1735,7 @@ void sys_unlock_tcpip_core(void);
  * multicast group for each of its local addresses, plus one for MDNS if
  * applicable, plus any number of groups to be joined on UDP sockets.
  */
-#define MEMP_NUM_MLD6_GROUP             100
+#define MEMP_NUM_MLD6_GROUP             20
 
 /**
  * LWIP_ND6_QUEUEING==1: queue outgoing IPv6 packets while MAC address

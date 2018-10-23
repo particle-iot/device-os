@@ -20,16 +20,30 @@
 
 using namespace particle::net;
 
+uint8_t BaseNetif::clientDataId_;
+std::once_flag BaseNetif::once_;
+
 BaseNetif::BaseNetif() {
-    LwipTcpIpCoreLock lk;
-    netif_add_ext_callback(&netifEventHandlerCookie_, &BaseNetif::netifEventCb);
-    eventHandlerCookie_ = if_event_handler_self(interface(), &BaseNetif::ifEventCb, this);
 }
 
 BaseNetif::~BaseNetif() {
     LwipTcpIpCoreLock lk;
     netif_remove_ext_callback(&netifEventHandlerCookie_);
     if_event_handler_del(eventHandlerCookie_);
+}
+
+int BaseNetif::getClientDataId() {
+    return clientDataId_;
+}
+
+void BaseNetif::registerHandlers() {
+    LwipTcpIpCoreLock lk;
+    std::call_once(once_, []() {
+        clientDataId_ = netif_alloc_client_data_id();
+    });
+    netif_set_client_data(interface(), clientDataId_, (void*)this);
+    netif_add_ext_callback(&netifEventHandlerCookie_, &BaseNetif::netifEventCb);
+    eventHandlerCookie_ = if_event_handler_self(interface(), &BaseNetif::ifEventCb, this);
 }
 
 if_t BaseNetif::interface() {
@@ -44,7 +58,7 @@ void BaseNetif::ifEventCb(void* arg, if_t iface, const if_event* ev) {
 }
 
 void BaseNetif::netifEventCb(netif* iface, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
-    BaseNetif* self = static_cast<BaseNetif*>(iface->state);
+    BaseNetif* self = static_cast<BaseNetif*>(netif_get_client_data(iface, clientDataId_));
     if (self && self->interface() == iface) {
         self->netifEventHandler(reason, args);
     }

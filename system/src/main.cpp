@@ -39,16 +39,19 @@
 #include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
+#include "system_commands.h"
 #include "core_hal.h"
 #include "delay_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
 #include "usb_hal.h"
 #include "button_hal.h"
+#include "dct_hal.h"
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"
 #include "diagnostics.h"
+#include "check.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_cellular_printable.h"
@@ -69,6 +72,18 @@
 #if HAL_PLATFORM_LWIP
 #include "ifapi.h"
 #endif /* HAL_PLATFORM_LWIP */
+
+#if HAL_PLATFORM_IFAPI
+#include "system_listening_mode.h"
+#endif /* HAL_PLATFORM_IFAPI */
+
+#if HAL_PLATFORM_NCP
+#include "network/ncp.h"
+#endif
+
+#if HAL_PLATFORM_MESH
+#include <openthread/platform/settings.h>
+#endif
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -415,10 +430,10 @@ void manage_safe_mode()
             // explicitly disable multithreading
             system_thread_set_state(spark::feature::DISABLED, NULL);
             uint8_t value = 0;
-            system_get_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, &value, nullptr);
+            system_get_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, &value, nullptr);
             if (value)
             {
-                system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 0, 0);
+                system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, 0);
                 // flag listening mode
                 network_listen(0, 0, 0);
             }
@@ -445,6 +460,12 @@ void app_loop(bool threaded)
                 if (semi_automatic_connecting(threaded)) {
                     break;
                 }
+
+#if HAL_PLATFORM_IFAPI
+            if (!threaded && particle::system::ListeningModeHandler::instance()->isActive()) {
+                break;
+            }
+#endif // HAL_PLATFORM_IFAPI
 
             if ((SPARK_WIRING_APPLICATION != 1))
             {
@@ -606,6 +627,45 @@ private:
     func_t f_;
 };
 
+int resetSettingsToFactoryDefaultsIfNeeded() {
+    Load_SystemFlags();
+    if (SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) != 0x0001) {
+        return 0;
+    }
+    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
+    Save_SystemFlags();
+#if HAL_PLATFORM_MESH
+    LOG(WARN, "Resetting all settings to factory defaults");
+    // Clear OpenThread settings
+    otPlatSettingsInit(nullptr);
+    otPlatSettingsWipe(nullptr);
+    // Clear pending commands
+    system::system_command_clear();
+#if HAL_PLATFORM_WIFI
+    // Clear WiFi credentials
+    WifiNetworkManager::clearNetworkConfig();
+#endif // HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_CELLULAR
+    // Clear cellular credentials
+    CellularNetworkManager::clearNetworkConfig();
+#endif // HAL_PLATFORM_CELLULAR
+    // Copy device keys
+    std::unique_ptr<char[]> devPrivKey(new(std::nothrow) char[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
+    std::unique_ptr<char[]> devPubKey(new(std::nothrow) char[DCT_ALT_DEVICE_PUBLIC_KEY_SIZE]);
+    CHECK_TRUE(devPrivKey && devPubKey, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, devPrivKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
+    // Clear DCT and restore device keys
+    CHECK(dct_clear());
+    CHECK(dct_write_app_data(devPrivKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
+    // Restore default server key and address
+    CHECK(dct_write_app_data(backup_udp_public_server_key, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, backup_udp_public_server_key_size));
+    CHECK(dct_write_app_data(backup_udp_public_server_address, DCT_ALT_SERVER_ADDRESS_OFFSET, backup_udp_public_server_address_size));
+#endif // HAL_PLATFORM_MESH
+    return 0;
+}
+
 // Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
 // global variable allows to register a handler for HAL events early
 HALEventHandler g_halEventHandler;
@@ -643,7 +703,10 @@ void app_setup_and_loop(void)
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
-#if Wiring_Cellular == 1
+    // Reset all persistent settings to factory defaults if necessary
+    resetSettingsToFactoryDefaultsIfNeeded();
+
+#if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
     system_power_management_init();
 #endif
 

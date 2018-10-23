@@ -70,12 +70,16 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
     NetworkManager::instance()->deactivateConnections();
 
-    LED_SIGNAL_START(LISTENING_MODE, NORMAL);
+    LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
 
 #if HAL_PLATFORM_BLE
     // Start advertising
     ble_start_advert(nullptr);
 #endif /* HAL_PLATFORM_BLE */
+
+    SystemSetupConsoleConfig config;
+    console_.reset(new SystemSetupConsole<SystemSetupConsoleConfig>(config));
+
     return 0;
 }
 
@@ -93,6 +97,8 @@ int ListeningModeHandler::exit() {
 
     LED_SIGNAL_STOP(LISTENING_MODE);
 
+    console_.reset();
+
     active_ = false;
 
     return 0;
@@ -107,7 +113,9 @@ int ListeningModeHandler::run() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    /* TODO */
+    if (console_) {
+        console_->loop();
+    }
 
     return 0;
 }

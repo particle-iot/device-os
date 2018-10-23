@@ -26,6 +26,8 @@
 
 #include "dynalib.h"
 
+#if PLATFORM_ID != 12 && PLATFORM_ID != 13 && PLATFORM_ID != 14
+
 #ifdef DYNALIB_EXPORT
 #include "can_hal.h"
 #endif
@@ -44,6 +46,8 @@ DYNALIB_FN(8, hal_can, HAL_CAN_Is_Enabled, bool(HAL_CAN_Channel))
 DYNALIB_FN(9, hal_can, HAL_CAN_Error_Status, HAL_CAN_Errors(HAL_CAN_Channel))
 
 DYNALIB_END(hal_can)
+
+#endif
 
 #endif	/* HAL_DYNALIB_CAN_H */
 

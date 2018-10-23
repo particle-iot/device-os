@@ -140,6 +140,12 @@
 /* Define to 1 to enable the TMF proxy feature. */
 #define OPENTHREAD_ENABLE_TMF_PROXY 0
 
+/* Define to 1 to enable the UDP proxy feature. */
+#define OPENTHREAD_ENABLE_UDP_PROXY 1
+
+/* Define to 1 to enable the border agent feature. */
+#define OPENTHREAD_ENABLE_BORDER_AGENT 0
+
 /* OpenThread examples */
 /* #undef OPENTHREAD_EXAMPLES */
 

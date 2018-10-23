@@ -33,6 +33,7 @@
 #endif
 
 #include "eeprom_hal.h"
+#include "delay_hal.h"
 
 #include "protocol_defs.h" // For UpdateFlag enum
 #include "nanopb_misc.h"
@@ -167,8 +168,10 @@ const Section INTERNAL_STORAGE_SECTIONS[] = {
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
     // System part 1
     { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_SYSTEM_PART, 1, 0, module_system_part1.start_address, module_system_part1.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
+#if !HAL_PLATFORM_MESH
     // System part 2
     { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_SYSTEM_PART, 2, 0, module_system_part2.start_address, module_system_part2.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
+#endif
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     // System part 3 (Electron)
     { particle_ctrl_SectionType_FIRMWARE, particle_ctrl_FirmwareModuleType_SYSTEM_PART, 3, 0, module_system_part3.start_address, module_system_part3.maximum_size, internalFlashRead, nullptr, nullptr, getFirmwareModuleSize },
@@ -237,6 +240,7 @@ void cancelFirmwareUpdate() {
 }
 
 void firmwareUpdateCompletionHandler(int result, void* data) {
+    HAL_Delay_Milliseconds(1000);
     system_pending_shutdown();
 }
 

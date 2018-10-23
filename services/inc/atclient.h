@@ -49,6 +49,7 @@ public:
 
     int waitReady(unsigned int timeout);
 
+    void setStream(Stream* stream);
     ::particle::Stream* getStream();
 
     enum class ResultCode {
@@ -82,7 +83,7 @@ public:
         ERROR
     };
 
-protected:
+// protected:
     int run();
 
     int readLine(char* buf, size_t size, bool skipEmpty = false);
@@ -172,11 +173,34 @@ public:
 
     int getVersion(char* buf, size_t bufSize);
     int getModuleVersion(uint16_t* module);
+    int getMac(int idx, uint8_t* mac);
+    int startMuxer();
+    int connect();
 
     int startUpdate(size_t size);
     int finishUpdate();
 private:
 };
+
+class BoronNcpAtClient: public AtClientBase {
+public:
+    BoronNcpAtClient(Stream* stream);
+    virtual ~BoronNcpAtClient();
+
+    int init();
+    int destroy();
+
+    int getImsi();
+    int getCcid();
+    int selectSim(bool external);
+    int startMuxer();
+    int registerNet();
+    int isRegistered(bool w);
+
+    int connect();
+private:
+};
+
 
 } // at
 } // services

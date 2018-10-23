@@ -21,10 +21,12 @@
 
 #include "common.h"
 #include "system_cloud_internal.h"
+#include "system_update.h"
 #include "system_network.h"
 
 #include "deviceid_hal.h"
 #include "core_hal.h"
+#include "hal_platform.h"
 #include "platforms.h"
 
 #include "bytes2hexbuf.h"
@@ -38,8 +40,10 @@
 #include "ota_flash_hal_stm32f2xx.h"
 #endif
 
-#if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
+#if HAL_PLATFORM_NCP
 #include "network/ncp.h"
+#include "wifi_network_manager.h"
+#include "wifi_ncp_client.h"
 #endif
 
 #include "config.pb.h"
@@ -99,12 +103,16 @@ int getSystemVersion(ctrl_request* req) {
 }
 
 int getNcpFirmwareVersion(ctrl_request* req) {
-#if PLATFORM_ID == PLATFORM_ARGON // FIXME: Use a HAL feature macro
-    const auto ncp = argonNcpAtClient();
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+    const auto wifiMgr = wifiNetworkManager();
+    CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    CHECK(ncpClient->on());
     char verStr[32] = {};
-    CHECK(ncp->getVersion(verStr, sizeof(verStr)));
+    CHECK(ncpClient->getFirmwareVersionString(verStr, sizeof(verStr)));
     uint16_t modVer = 0;
-    CHECK(ncp->getModuleVersion(&modVer));
+    CHECK(ncpClient->getFirmwareModuleVersion(&modVer));
     PB(GetNcpFirmwareVersionReply) pbRep = {};
     EncodedString eVerStr(&pbRep.version, verStr, strlen(verStr));
     pbRep.module_version = modVer;
@@ -112,7 +120,7 @@ int getNcpFirmwareVersion(ctrl_request* req) {
     return 0;
 #else
     return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // PLATFORM_ID != PLATFORM_ARGON
+#endif // !(HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI)
 }
 
 int getSystemCapabilities(ctrl_request* req) {
@@ -151,7 +159,7 @@ int handleStopNyanRequest(ctrl_request* req) {
 int getDeviceMode(ctrl_request* req) {
     const bool listening = network_listening(0, 0, nullptr);
     PB(GetDeviceModeReply) pbRep = {};
-    pbRep.mode = listening ? PB(DeviceMode_LISTENING_MODE) : PB(DeviceMode_DEVICE_MODE_OTHER);
+    pbRep.mode = listening ? PB(DeviceMode_LISTENING_MODE) : PB(DeviceMode_NORMAL_MODE);
     const int ret = encodeReplyMessage(req, PB(GetDeviceModeReply_fields), &pbRep);
     if (ret != 0) {
         return ret;
@@ -186,6 +194,48 @@ int isDeviceSetupDone(ctrl_request* req) {
     if (ret != 0) {
         return ret;
     }
+    return 0;
+}
+
+int setStartupMode(ctrl_request* req) {
+    PB(SetStartupModeRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(SetStartupModeRequest_fields), &pbReq));
+    switch (pbReq.mode) {
+    case PB(DeviceMode_LISTENING_MODE):
+        CHECK(system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 1, nullptr));
+        break;
+    default:
+        CHECK(system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr));
+        break;
+    }
+    return 0;
+}
+
+int setFeature(ctrl_request* req) {
+    PB(SetFeatureRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(SetFeatureRequest_fields), &pbReq));
+    switch (pbReq.feature) {
+    case PB(Feature_ETHERNET_DETECTION):
+        CHECK(HAL_Feature_Set(FEATURE_ETHERNET_DETECTION, pbReq.enabled));
+        break;
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return 0;
+}
+
+int getFeature(ctrl_request* req) {
+    PB(GetFeatureRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(GetFeatureRequest_fields), &pbReq));
+    PB(GetFeatureReply) pbRep = {};
+    switch (pbReq.feature) {
+    case PB(Feature_ETHERNET_DETECTION):
+        pbRep.enabled = HAL_Feature_Get(FEATURE_ETHERNET_DETECTION);
+        break;
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    CHECK(encodeReplyMessage(req, PB(GetFeatureReply_fields), &pbRep));
     return 0;
 }
 

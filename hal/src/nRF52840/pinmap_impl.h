@@ -16,10 +16,10 @@
  */
 
 #ifndef PINMAP_IMPL_H
-#define	PINMAP_IMPL_H
+#define PINMAP_IMPL_H
 
 
-#ifdef	__cplusplus
+#ifdef  __cplusplus
 extern "C" {
 #endif
 
@@ -33,6 +33,7 @@ typedef struct NRF5x_Pin_Info {
     uint8_t     adc_channel;
     uint8_t     pwm_instance;   // 4 instances on nRF52, range: 0~3
     uint8_t     pwm_channel;    // 4 channels in each instance, range: 0~3
+	uint8_t     pwm_resolution; // default 8bit, max 15bit
     uint8_t     exti_channel;   // 16 channels
 } NRF5x_Pin_Info;
 
@@ -49,7 +50,7 @@ typedef struct NRF5x_Pin_Info {
 
 extern NRF5x_Pin_Info* HAL_Pin_Map(void);
 
-#ifdef	__cplusplus
+#ifdef  __cplusplus
 }
 #endif
 
