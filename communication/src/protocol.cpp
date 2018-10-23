@@ -590,6 +590,8 @@ int Protocol::mesh_command(MeshCommand::Enum cmd, uint32_t data, void* extraData
 		return mesh.network_update(*this, next_token(), channel, false, *(MeshCommand::NetworkInfo*)extraData, completion);
 	case MeshCommand::DEVICE_MEMBERSHIP:
 		return mesh.device_joined(*this, next_token(), channel, data, *(MeshCommand::NetworkUpdate*)extraData, completion);
+	case MeshCommand::DEVICE_BORDER_ROUTER:
+		return mesh.device_gateway(*this, next_token(), channel, data, *(MeshCommand::NetworkUpdate*)extraData, completion);
 	default:
 		return completion_result(SYSTEM_ERROR_INVALID_ARGUMENT, completion);
 	}

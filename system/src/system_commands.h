@@ -29,7 +29,8 @@ struct SystemCommand {
     enum Enum {
 #if HAL_PLATFORM_MESH
         NOTIFY_MESH_NETWORK,
-        NOTIFY_MESH_JOINED
+        NOTIFY_MESH_JOINED,
+		NOTIFY_MESH_GATEWAY
 #endif
     };
 
@@ -47,6 +48,7 @@ int system_command_clear();
 
 void handleMeshNetworkJoinedComplete(int error, const void* data, void* callback_data, void* reserved);
 void handleMeshNetworkUpdatedComplete(int error, const void* data, void* callback_data, void* reserved);
+void handleMeshNetworkGatewayComplete(int error, const void* data, void* callback_data, void* reserved);
 
 using namespace MeshCommand;
 
@@ -60,7 +62,7 @@ struct NotifyMeshNetworkUpdated : SystemCommand {
     }
 
     int execute() {
-        LOG(INFO, "Invoking network update command");
+        LOG(INFO, "Invoking network update command for networkId=%s", ni.update.id);
         completion_handler_data ch = {
             .size = sizeof(ch),
             .handler_callback = handleMeshNetworkUpdatedComplete,
@@ -82,7 +84,7 @@ struct NotifyMeshNetworkJoined : SystemCommand {
     }
 
     int execute() {
-        LOG(INFO, "Invoking network joined command, joined=%d", joined);
+        LOG(INFO, "Invoking network joined command, networkId=%s, joined=%d", nu.id, joined);
         completion_handler_data ch = {
             .size = sizeof(ch),
             .handler_callback = handleMeshNetworkJoinedComplete,
@@ -92,6 +94,25 @@ struct NotifyMeshNetworkJoined : SystemCommand {
     }
 };
 
+struct NotifyMeshNetworkGateway : SystemCommand {
+	NetworkUpdate nu;
+	bool active;
+
+	NotifyMeshNetworkGateway(bool active = true) :
+            nu(),
+            active(active) {
+        nu.size = sizeof(nu);
+        commandType = NOTIFY_MESH_GATEWAY;
+    }
+
+    int execute() {
+        LOG(INFO, "Invoking network gateway command, networkId=%s, active=%d", nu.id, active);
+        completion_handler_data ch = { .size=sizeof(ch), .handler_callback = handleMeshNetworkGatewayComplete, .handler_data = nullptr };
+        return spark_protocol_mesh_command(spark_protocol_instance(), DEVICE_BORDER_ROUTER, active, &nu, &ch);
+    }
+
+};
+
 #endif // PLATFORM_MESH
 
 union AllCommands {
@@ -99,6 +120,7 @@ union AllCommands {
     SystemCommand base;
     NotifyMeshNetworkJoined joined;
     NotifyMeshNetworkUpdated created;
+    NotifyMeshNetworkGateway gateway;
 #endif
     AllCommands() {
     }

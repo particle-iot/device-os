@@ -33,6 +33,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_MESH
 #include "border_router_manager.h"
+#include "control/mesh.h"
 #endif // HAL_PLATFORM_MESH
 #include "check.h"
 #include "system_cloud.h"
@@ -112,7 +113,9 @@ void setBorderRouterState(bool start) {
     }
     task->func = start ? [](ISRTaskQueue::Task* task) {
         delete task;
-        BorderRouterManager::instance()->start();
+        if (!BorderRouterManager::instance()->start()) {
+        	particle::ctrl::mesh::notifyBorderRouter(true);
+        }
     } : [](ISRTaskQueue::Task* task) {
         delete task;
         BorderRouterManager::instance()->stop();

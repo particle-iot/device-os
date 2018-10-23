@@ -39,6 +39,8 @@ int scanNetworks(ctrl_request* req);
 
 int test(ctrl_request* req); // FIXME
 
+int notifyBorderRouter(bool active);
+
 } // particle::ctrl::mesh
 
 } // particle::ctrl
