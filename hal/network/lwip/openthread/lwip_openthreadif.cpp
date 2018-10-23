@@ -588,11 +588,13 @@ void OpenThreadNetif::refreshIpAddresses() {
             config.mPreferred,
             config.mStable);
 
+        /* Rule -1. We are a border router, do not choose any other */
         if (config.mRloc16 == ourRloc16) {
-            /* Rule -1. We are a border router, do not choose any other */
             LOG(TRACE, "This is our own prefix");
             active = config;
-            break;
+            continue;
+        } else if (active.mRloc16 == ourRloc16) {
+            continue;
         }
 
         if (otIp6IsAddressUnspecified(&active.mPrefix.mPrefix) && active.mPrefix.mLength == 0) {
