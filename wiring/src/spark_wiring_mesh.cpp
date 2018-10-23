@@ -178,6 +178,8 @@ int MeshPublish::publish(const char* topic, const char* data) {
 	CHECK(fetchMulticastAddress(mcastAddr));
 
 	CHECK(udp->beginPacket(mcastAddr, PORT));
+	uint8_t version = 0;
+	udp->write(&version, 1);
 	udp->write((const uint8_t*)topic, strlen(topic)+1);
 	udp->write((const uint8_t*)data, strlen(data)+1);
 	CHECK(udp->endPacket());
@@ -220,10 +222,12 @@ int MeshPublish::poll() {
 		if (len>0) {
 			LOG(TRACE, "parse packet %d", len);
 			const char* buffer = (const char*)buffer_.get();
-			int namelen = strlen(buffer);
-
-			std::lock_guard<RecursiveMutex> lk(mutex_);
-			subscriptions.send(buffer, buffer+namelen+1);
+			char version = *buffer++;
+			if (version==0) {
+				int namelen = strlen(buffer);
+				std::lock_guard<RecursiveMutex> lk(mutex_);
+				subscriptions.send(buffer, buffer+namelen+1);
+			}
 		} else {
 			result = len;
 		}
