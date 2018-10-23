@@ -468,23 +468,22 @@ void HAL_Core_Enter_Bootloader(bool persist) {
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds) {
-
 }
 
 int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved) {
     return -1;
 }
 
+void HAL_Core_Execute_Stop_Mode(void) {
+}
+
 void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
-
 }
 
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
-{
+void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
 }
 
-void HAL_Core_Execute_Standby_Mode(void)
-{
+void HAL_Core_Execute_Standby_Mode(void) {
 }
 
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
@@ -739,8 +738,7 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
 bool HAL_Feature_Get(HAL_Feature feature) {
     switch (feature) {
         case FEATURE_CLOUD_UDP: {
-            uint8_t value = 0;
-            return (dct_read_app_data_copy(DCT_CLOUD_TRANSPORT_OFFSET, &value, sizeof(value)) == 0) ? value : false;
+            return true; // Mesh platforms are UDP-only
         }
         case FEATURE_RESET_INFO: {
             bool value = false;
