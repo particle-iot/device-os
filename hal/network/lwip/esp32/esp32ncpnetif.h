@@ -35,6 +35,7 @@ public:
     Esp32NcpNetif();
     virtual ~Esp32NcpNetif();
 
+    void init();
     void setWifiManager(particle::WifiNetworkManager* wifiMan);
 
     virtual int powerUp() override;

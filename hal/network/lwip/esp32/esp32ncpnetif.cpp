@@ -67,8 +67,6 @@ Esp32NcpNetif::Esp32NcpNetif()
 
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
         SPARK_ASSERT(os_queue_create(&queue_, sizeof(NetifEvent), 4, nullptr) == 0);
-        registerHandlers();
-        SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
     }
 }
 
@@ -80,6 +78,11 @@ Esp32NcpNetif::~Esp32NcpNetif() {
         os_thread_join(thread_);
         os_queue_destroy(queue_, nullptr);
     }
+}
+
+void Esp32NcpNetif::init() {
+    registerHandlers();
+    SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
 void Esp32NcpNetif::setWifiManager(particle::WifiNetworkManager* wifiMan) {

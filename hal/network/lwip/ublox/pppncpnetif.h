@@ -38,6 +38,8 @@ public:
     PppNcpNetif();
     virtual ~PppNcpNetif();
 
+    void init();
+
     virtual if_t interface() override;
 
     void setCellularManager(CellularNetworkManager* celMan);

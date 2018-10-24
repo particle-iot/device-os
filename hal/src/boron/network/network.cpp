@@ -144,6 +144,7 @@ int if_init_platform(void*) {
     pp3 = new PppNcpNetif();
     if (pp3) {
         ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
+        ((PppNcpNetif*)pp3)->init();
     }
 
     auto m = mallinfo();
