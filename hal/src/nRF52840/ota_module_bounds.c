@@ -112,7 +112,7 @@ const module_bounds_t module_xip_code = {
 
     };
 
-#if HAL_PLATFORM_NCP
+#if HAL_PLATFORM_NCP_UPDATABLE
 const module_bounds_t module_ncp_mono = {
         .maximum_size = 1500*1024,
         .start_address = 0,
@@ -135,7 +135,7 @@ const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_sys
 #else
 const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono
 #endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
-#if HAL_PLATFORM_NCP
+#if HAL_PLATFORM_NCP_UPDATABLE
         ,&module_ncp_mono
 #endif /* HAL_PLATFORM_NCP */
 };

@@ -410,11 +410,14 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 				}
 			}
     	}
-#if HAL_PLATFORM_NCP
+
     	else if (mcu_identifier==current_mcu_identifier) {
+#if HAL_PLATFORM_NCP_UPDATABLE
     		result = platform_ncp_update_module(&module);
-    	}
+#else
+    		LOG(ERROR, "NCP module is not updatable on this platform");
 #endif
+		}
     	else {
     		LOG(ERROR, "NCP module is not for this platform. module NCP: %x, current NCP: %x", mcu_identifier, current_mcu_identifier);
     	}

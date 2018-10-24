@@ -19,6 +19,7 @@
 
 #include "module_info.h"
 #include "ota_flash_hal.h"
+#include "hal_platform.h"
 
 enum MeshNCPManufacturer {
 	MESH_NCP_MANUFACTURER_UNKNOWN,
@@ -49,6 +50,7 @@ MeshNCPIdentifier platform_ncp_identifier(module_info_t* moduleInfo);
  */
 MeshNCPIdentifier platform_current_ncp_identifier();
 
+#if HAL_PLATFORM_NCP_UPDATABLE
 /**
  * Update the NCP firmware from the given module. The module has been validated for integrity and matching platform and dependencies checked.
  */
@@ -59,5 +61,5 @@ hal_update_complete_t platform_ncp_update_module(const hal_module_t* module);
  */
 int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create);
 
-
+#endif
 
