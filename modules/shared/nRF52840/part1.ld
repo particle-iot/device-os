@@ -239,6 +239,13 @@ SECTIONS
         __bss_end__ = _ebss;
     }> SRAM AT> SRAM
 
+    .stack __Stack_Init : /* Contains the initial stack */
+    {
+        link_stack_location = .;
+        *(.stack)
+        link_stack_end = .;
+    }> SRAM AT> SRAM
+
     INCLUDE backup_ram_user.ld
     INCLUDE backup_ram_system.ld
 

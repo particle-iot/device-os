@@ -361,13 +361,13 @@ int AtParserImpl::readRespLine(char* data, size_t size) {
 }
 
 int AtParserImpl::waitEcho() {
+    if (!checkStatus(StatusFlag::LINE_BEGIN)) {
+        CHECK(nextLine(&cmdTimeout_));
+    }
     for (;;) {
-        if (!checkStatus(StatusFlag::LINE_BEGIN)) {
-            CHECK(nextLine(&cmdTimeout_));
-        }
         const int ret = CHECK(parseLine(ParseFlag::PARSE_ECHO | ParseFlag::PARSE_URC, &cmdTimeout_));
+        CHECK(nextLine(&cmdTimeout_));
         if (ret == ParseResult::PARSED_ECHO) {
-            CHECK(nextLine(&cmdTimeout_));
             break;
         }
     }

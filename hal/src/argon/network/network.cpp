@@ -142,6 +142,7 @@ int if_init_platform(void*) {
     wl3 = new Esp32NcpNetif();
     if (wl3) {
         ((Esp32NcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
+        ((Esp32NcpNetif*)wl3)->init();
     }
 
     /* TODO: wl4 - ESP32 NCP Access Point */

@@ -49,7 +49,8 @@ typedef enum PinMode {
   AF_OUTPUT_PUSHPULL, //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
   AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
   AN_INPUT,           //Used internally for ADC Input
-  AN_OUTPUT,          //Used internally for DAC Output
+  AN_OUTPUT,          //Used internally for DAC Output,
+  OUTPUT_OPEN_DRAIN = AF_OUTPUT_DRAIN,
   PIN_MODE_NONE=0xFF
 } PinMode;
 
@@ -161,13 +162,14 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_BORON
-#define TOTAL_PINS  (34)
+#define TOTAL_PINS  (35)
 #define UBPWR 28
 #define UBRST 29
 #define BUFEN 30
 #define ANTSW1 31
 #define PMIC_SCL 32
 #define PMIC_SDA 33
+#define UBVINT 34
 #endif
 
 

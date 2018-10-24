@@ -15,9 +15,9 @@ function update_bl()
 # $1 - platform ID
 # $2 - platform name
    pushd ../../../bootloader
-   make -s PLATFORM_ID=$1 $clean all || die   
+   make -s PLATFORM_ID=$1 COMPILE_LTO=n $clean all || die
    popd
-   miniz_compress c $bl_dir/platform-$1-lto/bootloader.bin bootloader_platform_$1.bin.miniz || die
+   miniz_compress c $bl_dir/platform-$1/bootloader.bin bootloader_platform_$1.bin.miniz || die
    xxd -i bootloader_platform_$1.bin.miniz > ../$2/bootloader_platform_$1.c || die
    rm bootloader_platform_$1.bin.miniz || die
    if [[ "$platform" == "Darwin" ]]; then

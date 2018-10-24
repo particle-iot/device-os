@@ -12,19 +12,19 @@ mkdir -p release
 cd bootloader
 
 rm -rf ../build/target
-make -s all PLATFORM=xenon
-cp ../build/target/bootloader/platform-14-lto/bootloader.bin ../release/bootloader-${version}-xenon.bin
-cp ../build/target/bootloader/platform-14-lto/bootloader.elf ../release/bootloader-${version}-xenon.elf
+make -s all PLATFORM=xenon COMPILE_LTO=n
+cp ../build/target/bootloader/platform-14/bootloader.bin ../release/bootloader-${version}-xenon.bin
+cp ../build/target/bootloader/platform-14/bootloader.elf ../release/bootloader-${version}-xenon.elf
 
 rm -rf ../build/target
-make -s all PLATFORM=argon
-cp ../build/target/bootloader/platform-12-lto/bootloader.bin ../release/bootloader-${version}-argon.bin
-cp ../build/target/bootloader/platform-12-lto/bootloader.elf ../release/bootloader-${version}-argon.elf
+make -s all PLATFORM=argon COMPILE_LTO=n
+cp ../build/target/bootloader/platform-12/bootloader.bin ../release/bootloader-${version}-argon.bin
+cp ../build/target/bootloader/platform-12/bootloader.elf ../release/bootloader-${version}-argon.elf
 
 rm -rf ../build/target
-make -s all PLATFORM=boron
-cp ../build/target/bootloader/platform-13-lto/bootloader.bin ../release/bootloader-${version}-boron.bin
-cp ../build/target/bootloader/platform-13-lto/bootloader.elf ../release/bootloader-${version}-boron.elf
+make -s all PLATFORM=boron COMPILE_LTO=n
+cp ../build/target/bootloader/platform-13/bootloader.bin ../release/bootloader-${version}-boron.bin
+cp ../build/target/bootloader/platform-13/bootloader.elf ../release/bootloader-${version}-boron.elf
 
 # Modular firmware
 

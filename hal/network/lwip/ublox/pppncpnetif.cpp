@@ -68,10 +68,6 @@ PppNcpNetif::PppNcpNetif()
 
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
-
-    registerHandlers();
-
-    SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
 PppNcpNetif::~PppNcpNetif() {
@@ -82,6 +78,11 @@ PppNcpNetif::~PppNcpNetif() {
         os_thread_join(thread_);
         os_queue_destroy(queue_, nullptr);
     }
+}
+
+void PppNcpNetif::init() {
+    registerHandlers();
+    SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
 void PppNcpNetif::setCellularManager(CellularNetworkManager* celMan) {
@@ -95,6 +96,8 @@ if_t PppNcpNetif::interface() {
 void PppNcpNetif::loop(void* arg) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(arg);
     unsigned int timeout = 100;
+    // Off by default
+    self->celMan_->ncpClient()->off();
     while(!self->exit_) {
         NetifEvent ev;
         if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {
