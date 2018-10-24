@@ -21,7 +21,6 @@ _Minimum_Stack_Size = 0x1400;
 INCLUDE softdevice.ld
 
 bootloader_ram_origin = 0x20000000 + APP_RAM_BASE;
-bootloader_ram_length = 256K - APP_RAM_BASE - LENGTH(BACKUPSRAM_ALL);
 
 bootloader_flash_length = 48K;
 bootloader_flash_origin = 0x100000 - bootloader_flash_length;
@@ -30,7 +29,7 @@ bootloader_flash_origin = 0x100000 - bootloader_flash_length;
 MEMORY
 {
   INCLUDE backup_ram_memory.ld
-  RAM (xrw) : ORIGIN = bootloader_ram_origin, LENGTH = bootloader_ram_length
+  RAM (xrw) : ORIGIN = bootloader_ram_origin, LENGTH = 256K - APP_RAM_BASE - LENGTH(BACKUPSRAM_ALL)
   APP_FLASH (rx) : ORIGIN = bootloader_flash_origin, LENGTH = bootloader_flash_length
 }
 
