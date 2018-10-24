@@ -1,3 +1,10 @@
+## 0.8.0-rc.21
+
+## BUGFIXES
+
+- [Argon] Shorten describe message so it fits when sent to the cloud [#252]
+- [Boron] Remove NCP module from describe since it is not updatable [#252]
+
 ## 0.8.0-rc.20
 
 ### FEATURES
