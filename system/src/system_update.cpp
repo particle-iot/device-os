@@ -597,6 +597,7 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     hal_system_info_t info;
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
+    info.flags = HAL_SYSTEM_INFO_FLAGS_CLOUD;
     HAL_System_Info(&info, true, NULL);
     bool result = system_info_to_json(append, append_data, info);
     HAL_System_Info(&info, false, NULL);
