@@ -34,6 +34,7 @@
 #include "stream_util.h"
 
 #include <algorithm>
+#include "spark_wiring_interrupts.h"
 
 #define CHECK_PARSER(_expr) \
         ({ \
@@ -71,24 +72,6 @@ namespace particle {
 
 namespace {
 
-void ubloxOff() {
-    HAL_GPIO_Write(UBPWR, 0);
-    HAL_Delay_Milliseconds(50);
-}
-
-void ubloxReset(unsigned int reset) {
-    HAL_GPIO_Write(BUFEN, 0);
-
-    HAL_GPIO_Write(UBRST, 0);
-    HAL_Delay_Milliseconds(reset);
-    HAL_GPIO_Write(UBRST, 1);
-
-    HAL_GPIO_Write(UBPWR, 0);
-    HAL_Delay_Milliseconds(50);
-    HAL_GPIO_Write(UBPWR, 1);
-    HAL_Delay_Milliseconds(10);
-}
-
 inline system_tick_t millis() {
     return HAL_Timer_Get_Milli_Seconds();
 }
@@ -121,12 +104,9 @@ SaraNcpClient::~SaraNcpClient() {
 }
 
 int SaraNcpClient::init(const NcpClientConfig& conf) {
-    // Make sure Ublox module is powered down
-    HAL_Pin_Mode(UBPWR, OUTPUT);
-    HAL_Pin_Mode(UBRST, OUTPUT);
-    HAL_Pin_Mode(BUFEN, OUTPUT);
-    ubloxOff();
-
+    modemInit();
+    // Power off the modem, ignore any possible errors
+    modemPowerOff();
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     // Initialize serial stream
     auto sconf = SERIAL_8N1;
@@ -154,7 +134,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
 void SaraNcpClient::destroy() {
     if (ncpState_ != NcpState::OFF) {
         ncpState_ = NcpState::OFF;
-        ubloxOff();
+        modemPowerOff();
     }
     parser_.destroy();
     serial_.reset();
@@ -217,6 +197,8 @@ int SaraNcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
+    // Power on the modem
+    CHECK(modemPowerOn());
     CHECK(waitReady());
     return 0;
 }
@@ -224,7 +206,10 @@ int SaraNcpClient::on() {
 void SaraNcpClient::off() {
     const NcpClientLock lock(this);
     muxer_.stop();
-    ubloxOff();
+    // Disable voltage translator
+    modemSetUartState(false);
+    // Power down
+    modemPowerOff();
     ready_ = false;
     ncpState(NcpState::OFF);
 }
@@ -508,13 +493,17 @@ int SaraNcpClient::waitReady() {
     muxer_.stop();
     CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
     CHECK(initParser(serial_.get()));
-    ubloxReset(conf_.ncpIdentifier() != MESH_NCP_SARA_R410 ? 100 : 10000);
+    // Enable voltage translator
+    CHECK(modemSetUartState(true));
     skipAll(serial_.get(), 1000);
     parser_.reset();
     ready_ = waitAtResponse(20000) == 0;
     if (!ready_) {
         LOG(ERROR, "No response from NCP");
-        ubloxOff();
+        // Disable voltage translator
+        modemSetUartState(false);
+        // Hard reset the modem
+        modemHardReset();
         ncpState(NcpState::OFF);
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -931,8 +920,160 @@ int SaraNcpClient::processEventsImpl() {
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= REGISTRATION_TIMEOUT) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
-        off();
+        modemHardReset();
     }
+    return 0;
+}
+
+int SaraNcpClient::modemInit() const {
+    hal_gpio_config_t conf = {
+        .size = sizeof(conf),
+        .version = 0,
+        .mode = OUTPUT,
+        .set_value = true,
+        .value = 1
+    };
+
+    // Configure PWR_ON and RESET_N pins as Open-Drain and set to high by default
+    CHECK(HAL_Pin_Configure(UBPWR, &conf));
+    CHECK(HAL_Pin_Configure(UBRST, &conf));
+
+    conf.mode = OUTPUT;
+    // Configure BUFEN as Push-Pull Output and default to 1 (disabled)
+    CHECK(HAL_Pin_Configure(BUFEN, &conf));
+
+    // Configure VINT as Input for modem power state monitoring
+    conf.mode = INPUT;
+    CHECK(HAL_Pin_Configure(UBVINT, &conf));
+
+    LOG(TRACE, "Modem low level initialization OK");
+
+    return 0;
+}
+
+int SaraNcpClient::modemPowerOn() const {
+    if (!modemPowerState()) {
+        LOG(TRACE, "Powering modem on");
+        // Perform power-on sequence depending on the NCP type
+        if (ncpId() != MESH_NCP_SARA_R410) {
+            // U201
+            // Low pulse 50-80us
+            ATOMIC_BLOCK() {
+                HAL_GPIO_Write(UBPWR, 0);
+                HAL_Delay_Microseconds(50);
+                HAL_GPIO_Write(UBPWR, 1);
+            }
+        } else {
+            // R410
+            // Low pulse 150-3200ms
+            HAL_GPIO_Write(UBPWR, 0);
+            HAL_Delay_Milliseconds(150);
+            HAL_GPIO_Write(UBPWR, 1);
+        }
+
+        bool powerGood;
+        // Verify that the module was powered up by checking the VINT pin up to 1 sec
+        for (unsigned i = 0; i < 10; i++) {
+            powerGood = modemPowerState();
+            if (powerGood) {
+                break;
+            }
+            HAL_Delay_Milliseconds(100);
+        }
+        if (powerGood) {
+            LOG(TRACE, "Modem powered on");
+        } else {
+            LOG(ERROR, "Failed to power on modem");
+        }
+    } else {
+        LOG(TRACE, "Modem already on");
+    }
+    CHECK_TRUE(modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+
+    return 0;
+}
+
+int SaraNcpClient::modemPowerOff() const {
+    if (modemPowerState()) {
+        LOG(TRACE, "Powering modem off");
+        // Important! We need to disable voltage translator here
+        // otherwise V_INT will never go low
+        modemSetUartState(false);
+        // Perform power-off sequence depending on the NCP type
+        if (ncpId() != MESH_NCP_SARA_R410) {
+            // U201
+            // Low pulse 1s+
+            HAL_GPIO_Write(UBPWR, 0);
+            HAL_Delay_Milliseconds(1500);
+            HAL_GPIO_Write(UBPWR, 1);
+        } else {
+            // R410
+            // Low pulse 1.5s+
+            HAL_GPIO_Write(UBPWR, 0);
+            HAL_Delay_Milliseconds(1600);
+            HAL_GPIO_Write(UBPWR, 1);
+        }
+
+        bool powerGood;
+        // Verify that the module was powered down by checking the VINT pin up to 10 sec
+        for (unsigned i = 0; i < 100; i++) {
+            powerGood = modemPowerState();
+            if (!powerGood) {
+                break;
+            }
+            HAL_Delay_Milliseconds(100);
+        }
+        if (!powerGood) {
+            LOG(TRACE, "Modem powered off");
+        } else {
+            LOG(ERROR, "Failed to power off modem");
+        }
+    } else {
+        LOG(TRACE, "Modem already off");
+    }
+
+    CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+    return 0;
+}
+
+int SaraNcpClient::modemHardReset() const {
+    const auto pwrState = modemPowerState();
+    // We can only reset the modem in the powered state
+    if (!pwrState) {
+        LOG(ERROR, "Cannot hard reset the modem, it's not on");
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    LOG(TRACE, "Hard resetting the modem");
+    if (ncpId() != MESH_NCP_SARA_R410) {
+        // U201
+        // Low pulse for 50ms
+        HAL_GPIO_Write(UBRST, 0);
+        HAL_Delay_Milliseconds(50);
+        HAL_GPIO_Write(UBRST, 1);
+        HAL_Delay_Milliseconds(1000);
+    } else {
+        // R410
+        // Low pulse for 10s
+        HAL_GPIO_Write(UBRST, 0);
+        HAL_Delay_Milliseconds(10000);
+        HAL_GPIO_Write(UBRST, 1);
+        // Just in case waiting here for one more second,
+        // won't hurt, we've already waited for 10
+        HAL_Delay_Milliseconds(1000);
+        // IMPORTANT: R4 is powered-off after applying RESET!
+        return modemPowerOn();
+    }
+    return 0;
+}
+
+bool SaraNcpClient::modemPowerState() const {
+    return HAL_GPIO_Read(UBVINT);
+}
+
+int SaraNcpClient::modemSetUartState(bool state) const {
+    LOG(ERROR, "Setting UART voltage translator state %d", state);
+    HAL_GPIO_Write(BUFEN, state ? 0 : 1);
     return 0;
 }
 

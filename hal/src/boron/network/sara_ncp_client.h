@@ -101,6 +101,13 @@ private:
     void resetRegistrationState();
     void checkRegistrationState();
     int processEventsImpl();
+
+    int modemInit() const;
+    int modemPowerOn() const;
+    int modemPowerOff() const;
+    int modemHardReset() const;
+    bool modemPowerState() const;
+    int modemSetUartState(bool state) const;
 };
 
 inline AtParser* SaraNcpClient::atParser() {
