@@ -589,7 +589,7 @@ int SaraNcpClient::selectSimCard() {
             // U201
             const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-            HAL_Delay_Milliseconds(100);
+            HAL_Delay_Milliseconds(1000);
         } else {
             // R410
             const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
