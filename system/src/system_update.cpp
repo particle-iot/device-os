@@ -83,7 +83,7 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
     if (flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE)
     {
-        HAL_Core_Write_Backup_Register(BKP_DR_10, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
+        HAL_Core_Write_Backup_Register(BKP_DR_09, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
     }
 }
 
@@ -92,7 +92,7 @@ int system_set_flag(system_flag_t flag, uint8_t value, void*)
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
 
-    if (systemFlags[flag]!=value) {
+    if (systemFlags[flag] != value || flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE) {
         uint8_t oldValue = systemFlags[flag];
         systemFlags[flag] = value;
         system_flag_changed(flag, oldValue, value);
@@ -109,7 +109,7 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
     {
         if (flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE)
         {
-            uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_10);
+            uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_09);
             *value = (reg == SAFE_MODE_LISTEN);
             systemFlags[flag] = *value;
         }
