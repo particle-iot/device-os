@@ -1,3 +1,17 @@
+## 0.8.0-rc.22
+
+### BUGFIXES
+
+- [Argon, Boron] AT parser: Ignore response lines that don't contain an URC when waiting for a command echo
+- [Mesh] Use an unused backup register for the `STARTUP_LISTEN_MODE` flag
+- [Boron] Fixed SARA U201/R410 power on/off and reset procedures.
+- [Mesh] Fixed backup and stack sections overlap in linker files
+- [Boron] Added missing `UBVINT` pin definition
+
+### FEATURES
+
+- [Mesh] `HAL_Pin_Configure()` implemented allowing to configure the pin and set it to a certain state without a glitch
+
 ## 0.8.0-rc.21
 
 ## BUGFIXES
