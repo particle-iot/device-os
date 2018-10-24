@@ -105,8 +105,6 @@ SaraNcpClient::~SaraNcpClient() {
 
 int SaraNcpClient::init(const NcpClientConfig& conf) {
     modemInit();
-    // Power off the modem, ignore any possible errors
-    modemPowerOff();
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     // Initialize serial stream
     auto sconf = SERIAL_8N1;
@@ -1072,7 +1070,7 @@ bool SaraNcpClient::modemPowerState() const {
 }
 
 int SaraNcpClient::modemSetUartState(bool state) const {
-    LOG(ERROR, "Setting UART voltage translator state %d", state);
+    LOG(TRACE, "Setting UART voltage translator state %d", state);
     HAL_GPIO_Write(BUFEN, state ? 0 : 1);
     return 0;
 }

@@ -116,6 +116,7 @@ err_t Esp32NcpNetif::initInterface() {
 void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
     unsigned int timeout = 100;
+    self->wifiMan_->ncpClient()->off();
     while(!self->exit_) {
         NetifEvent ev;
         if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {

@@ -96,6 +96,8 @@ if_t PppNcpNetif::interface() {
 void PppNcpNetif::loop(void* arg) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(arg);
     unsigned int timeout = 100;
+    // Off by default
+    self->celMan_->ncpClient()->off();
     while(!self->exit_) {
         NetifEvent ev;
         if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {
