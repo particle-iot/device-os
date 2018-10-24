@@ -918,7 +918,9 @@ int SaraNcpClient::processEventsImpl() {
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= REGISTRATION_TIMEOUT) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
+        muxer_.stop();
         modemHardReset();
+        ncpState(NcpState::OFF);
     }
     return 0;
 }
