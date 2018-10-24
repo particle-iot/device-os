@@ -80,8 +80,15 @@ typedef struct {
     uint16_t module_count;      // number of modules in the array
     key_value* key_values;      // key_values, allocated by HAL_System_Info
     uint16_t key_value_count;   // number of key values
+    uint16_t flags;				// only when size > offsetof(flags) otherwise assume 0
 } hal_system_info_t;
 
+/**
+ * The flag indicates the content is for the cloud describe message.
+ * Some details may be omitted if they are already known in the cloud to reduce overhead.
+ * The Mesh Serial Number and Device Secret are not added as keys when this flag is set.
+ */
+#define HAL_SYSTEM_INFO_FLAGS_CLOUD (0x01)
 
 /**
  *

@@ -36,7 +36,7 @@ extern const module_bounds_t module_factory;
 extern const module_bounds_t module_user_mono;
 extern const module_bounds_t module_factory_mono;
 
-#if HAL_PLATFORM_NCP
+#if HAL_PLATFORM_NCP_UPDATABLE
 extern const module_bounds_t module_ncp_mono;
 #endif
 

@@ -51,7 +51,3 @@ MeshNCPIdentifier platform_current_ncp_identifier() {
     }
     return (MeshNCPIdentifier)ncpId;
 }
-
-hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
-	return HAL_UPDATE_ERROR; // Not supported
-}
