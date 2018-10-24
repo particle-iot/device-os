@@ -11,7 +11,7 @@ Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
 
 /* higher address of the user mode stack */
 /* end of 256K SRAM - backup sram pages */
-_estack = 0x20040000 - LENGTH(BACKUPSRAM) - LENGTH(BACKUPSRAM_SYSTEM);
+_estack = 0x20040000 - LENGTH(BACKUPSRAM_ALL);
 
 /* include the sections management sub-script for FLASH mode */
 
@@ -126,20 +126,12 @@ SECTIONS
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
 
-    /* This is the user stack section
-    This is just to check that there is enough RAM left for the User mode stack
-    It should generate an error if it's full.
-     */
-    ._usrstack :
+    .stack __Stack_Init : /* Contains the initial stack */
     {
-        . = ALIGN(4);
-        _susrstack = . ;
-
-        . = . + _Minimum_Stack_Size ;
-
-        . = ALIGN(4);
-        _eusrstack = . ;
-    } >RAM
+        link_stack_location = .;
+        *(.stack)
+        link_stack_end = .;
+    }> RAM AT> RAM
 
     /* after that it's only debugging information. */
 

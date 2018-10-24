@@ -1,6 +1,6 @@
 /* Default stack sizes. These are used by the startup in order to allocate stacks for the
    different modes. */
-__Stack_Size = 2048;
+__Stack_Size = __STACKSIZE__;
 __Stack_Init = _estack - __Stack_Size;
 
 /* There will be a link error if there is not this amount of RAM free at the end. */
@@ -21,7 +21,7 @@ _Minimum_Stack_Size = 0x1400;
 INCLUDE softdevice.ld
 
 bootloader_ram_origin = 0x20000000 + APP_RAM_BASE;
-bootloader_ram_length = 0x20000;
+bootloader_ram_length = 256K - APP_RAM_BASE - LENGTH(BACKUPSRAM_ALL);
 
 bootloader_flash_length = 48K;
 bootloader_flash_origin = 0x100000 - bootloader_flash_length;
@@ -29,9 +29,9 @@ bootloader_flash_origin = 0x100000 - bootloader_flash_length;
 
 MEMORY
 {
+  INCLUDE backup_ram_memory.ld
   RAM (xrw) : ORIGIN = bootloader_ram_origin, LENGTH = bootloader_ram_length
   APP_FLASH (rx) : ORIGIN = bootloader_flash_origin, LENGTH = bootloader_flash_length
-  INCLUDE backup_ram_memory.ld
 }
 
 INCLUDE linker_nrf52840_common.ld

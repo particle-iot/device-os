@@ -46,7 +46,7 @@ INCLUDE memory_no_bootloader.ld
  + These are used by the startup in order to allocate stacks for the different modes.
  */
 
-__Stack_Size = 2048 ;
+__Stack_Size = __STACKSIZE__;
 
 PROVIDE ( _Stack_Size = __Stack_Size ) ;
 
@@ -67,7 +67,7 @@ _Minimum_Stack_Size = 0x1400;
 /* Memory Spaces Definitions */
 
 /* higher address of the user mode stack */
-_estack = ORIGIN(SRAM)+LENGTH(SRAM);
+_estack = 0x20040000 - LENGTH(BACKUPSRAM_ALL);
 
 /* TODO: Below sections are required by the Nordic SDK and were copy-pasted from a BLE example code.
 Consider revising them, especially for modular builds */
@@ -294,14 +294,12 @@ SECTIONS
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
 
-    .stack : /* Contains the initial stack */
+    .stack __Stack_Init : /* Contains the initial stack */
     {
-        link_stack_location = ALIGN(., 4);
+        link_stack_location = .;
         *(.stack)
-        . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
         link_stack_end = .;
     }> SRAM AT> SRAM
-
 
     /DISCARD/ :
     {

@@ -38,12 +38,15 @@ LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 # Minimum main stack size with S140 softdevice is 1536 bytes
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=2048
+MAIN_STACK_SIZE = 2048
+LDFLAGS += -Wl,--defsym,__STACKSIZE__=$(MAIN_STACK_SIZE)
+LDFLAGS += -Wl,--defsym,__STACK_SIZE=$(MAIN_STACK_SIZE)
 
 # assembler startup script
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=0
+ASFLAGS += -D__STACKSIZE__=$(MAIN_STACK_SIZE) -D__STACK_SIZE=$(MAIN_STACK_SIZE)
 
 ifneq ("$(HAL_MINIMAL)","y")
 USE_PRINTF_FLOAT ?= y
