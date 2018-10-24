@@ -523,6 +523,10 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	}
 	int msglen = appender.next() - (uint8_t*) buf;
 	message.set_length(msglen);
+	if (appender.overflowed()) {
+		LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
+	}
+
 	LOG(INFO,"Sending '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
 											  desc_flags & DESCRIBE_APPLICATION ? "A" : "",
 											  desc_flags & DESCRIBE_METRICS ? "M" : "");

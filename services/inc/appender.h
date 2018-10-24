@@ -60,20 +60,25 @@ class BufferAppender : public Appender {
     uint8_t* buffer;
     uint8_t* end;
     uint8_t* start;
-
+    uint16_t overflow;
 public:
 
-    BufferAppender(uint8_t* start, size_t length) {
+    BufferAppender(uint8_t* start, size_t length) : overflow(0) {
         this->buffer = start;
         this->end = start + length;
         this->start = start;
     }
 
     bool append(const uint8_t* data, size_t length) {
-        bool has_space = (size_t(end-buffer)>=length);
-        if (has_space) {
+    	// note that this simple implementation will overflow when the lenghth to write won't fit. E.g.
+    	// trying to write 20 bytes to an Appender with only
+    	bool has_space = (size_t(end-buffer)>=length);
+        if (has_space && !overflow) {
             memcpy(buffer, data, length);
             buffer += length;
+        }
+        else {
+        	overflow += length;
         }
         return has_space;
     }
@@ -84,9 +89,11 @@ public:
     bool append(char c) {
         return Appender::append(c);
     }
-    size_t size() {
+    size_t size() const {
         return (buffer - start);
     }
+
+    const uint16_t overflowed() const { return overflow; }
 
     const uint8_t* next() { return buffer; }
 };
