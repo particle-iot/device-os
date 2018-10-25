@@ -822,7 +822,7 @@ int Spark_Handshake(bool presence_announce)
     if (!err)
     {
         char buf[CLAIM_CODE_SIZE + 1];
-        if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && *buf)
+        if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff)
         {
             LOG(INFO,"Send spark/device/claim/code event for code %s", buf);
             Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
