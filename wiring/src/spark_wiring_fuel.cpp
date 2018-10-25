@@ -123,6 +123,7 @@ float FuelGauge::getSoC() {
 }
 
 float FuelGauge::getNormalizedSoC() {
+#if HAL_PLATFORM_PMIC_BQ24195
     std::lock_guard<FuelGauge> l(*this);
     PMIC power(true);
 
@@ -145,6 +146,9 @@ float FuelGauge::getNormalizedSoC() {
     }
 
     return normalized * 100.0f;
+#else
+    return 0.0f;
+#endif // HAL_PLATFORM_PMIC_BQ24195
 }
 
 // Return the version number of the chip
