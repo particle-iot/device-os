@@ -31,7 +31,7 @@
 #define EXTI_CHANNEL_NUM                (GPIOTE_CHANNEL_NUM + PORT_EVENT_CHANNEL_NUM)
 
 static struct {
-    uint8_t                 pin;  
+    uint8_t                 pin;
     HAL_InterruptCallback   interrupt_callback;
 } m_exti_channels[EXTI_CHANNEL_NUM] = {{0}};
 
@@ -42,6 +42,11 @@ extern char link_ram_interrupt_vectors_location_end;
 static void gpiote_interrupt_handler(nrfx_gpiote_pin_t nrf_pin, nrf_gpiote_polarity_t action)
 {
     uint8_t pin = NRF_PIN_LOOKUP_TABLE[nrf_pin];
+    if (pin == PIN_INVALID) {
+        // Ignore
+        return;
+    }
+
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     HAL_InterruptHandler user_isr_handle = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler;
