@@ -125,6 +125,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     serial_ = std::move(serial);
     muxerAtStream_ = std::move(muxStrm);
     ncpState_ = NcpState::OFF;
+    prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
     regStartTime_ = 0;
     regCheckTime_ = 0;
@@ -232,7 +233,7 @@ int SaraNcpClient::enable() {
     }
     serial_->enabled(true);
     muxerAtStream_->enabled(true);
-    ncpState_ = NcpState::OFF;
+    ncpState_ = prevNcpState_;
     off();
     return 0;
 }
@@ -240,13 +241,17 @@ int SaraNcpClient::enable() {
 void SaraNcpClient::disable() {
     // This method is used to unblock the network interface thread, so we're not trying to acquire
     // the client lock here
+    const NcpState state = ncpState_;
+    if (state == NcpState::DISABLED) {
+        return;
+    }
+    prevNcpState_ = state;
     ncpState_ = NcpState::DISABLED;
     serial_->enabled(false);
     muxerAtStream_->enabled(false);
 }
 
 NcpState SaraNcpClient::ncpState() {
-    const NcpClientLock lock(this);
     return ncpState_;
 }
 
