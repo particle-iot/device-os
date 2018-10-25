@@ -39,7 +39,9 @@ public:
     int init(const NcpClientConfig& conf) override;
     void destroy() override;
     int on() override;
-    void off() override;
+    int off() override;
+    int enable() override;
+    void disable() override;
     NcpState ncpState() override;
     int disconnect() override;
     NcpConnectionState connectionState() override;
@@ -64,7 +66,8 @@ private:
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
     CellularNcpClientConfig conf_;
-    NcpState ncpState_ = NcpState::OFF;
+    volatile NcpState ncpState_ = NcpState::OFF;
+    volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
     int parserError_ = 0;
     bool ready_ = false;

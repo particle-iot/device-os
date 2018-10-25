@@ -76,6 +76,7 @@ const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 4;
 
 Esp32NcpClient::Esp32NcpClient() :
         ncpState_(NcpState::OFF),
+        prevNcpState_(NcpState::OFF),
         connState_(NcpConnectionState::DISCONNECTED),
         parserError_(0),
         ready_(false),
@@ -95,10 +96,16 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, 921600,
             SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
+    // Initialize muxed channel stream
+    decltype(muxerAtStream_) muxStrm(new(std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, ESP32_NCP_AT_CHANNEL));
+    CHECK_TRUE(muxStrm, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(muxStrm->init(ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
     CHECK(initParser(serial.get()));
     serial_ = std::move(serial);
+    muxerAtStream_ = std::move(muxStrm);
     conf_ = conf;
     ncpState_ = NcpState::OFF;
+    prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
     parserError_ = 0;
     ready_ = false;
@@ -129,11 +136,15 @@ void Esp32NcpClient::destroy() {
         espOff();
     }
     parser_.destroy();
+    muxerAtStream_.reset();
     serial_.reset();
 }
 
 int Esp32NcpClient::on() {
     const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
@@ -141,21 +152,52 @@ int Esp32NcpClient::on() {
     return 0;
 }
 
-void Esp32NcpClient::off() {
+int Esp32NcpClient::off() {
     const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     muxer_.stop();
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
+    return 0;
+}
+
+int Esp32NcpClient::enable() {
+    const NcpClientLock lock(this);
+    if (ncpState_ != NcpState::DISABLED) {
+        return 0;
+    }
+    serial_->enabled(true);
+    muxerAtStream_->enabled(true);
+    ncpState_ = prevNcpState_;
+    off();
+    return 0;
+}
+
+void Esp32NcpClient::disable() {
+    // This method is used to unblock the network interface thread, so we're not trying to acquire
+    // the client lock here
+    const NcpState state = ncpState_;
+    if (state == NcpState::DISABLED) {
+        return;
+    }
+    prevNcpState_ = state;
+    ncpState_ = NcpState::DISABLED;
+    serial_->enabled(false);
+    muxerAtStream_->enabled(false);
 }
 
 NcpState Esp32NcpClient::ncpState() {
-    const NcpClientLock lock(this);
     return ncpState_;
 }
 
 int Esp32NcpClient::disconnect() {
     const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     if (connState_ == NcpConnectionState::DISCONNECTED) {
         return 0;
     }
@@ -167,7 +209,6 @@ int Esp32NcpClient::disconnect() {
 }
 
 NcpConnectionState Esp32NcpClient::connectionState() {
-    const NcpClientLock lock(this);
     return connState_;
 }
 
@@ -454,13 +495,6 @@ int Esp32NcpClient::initMuxer() {
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);
 
-    // Create AT channel stream
-    if (!muxerAtStream_) {
-        muxerAtStream_.reset(new (std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, ESP32_NCP_AT_CHANNEL));
-        CHECK_TRUE(muxerAtStream_, SYSTEM_ERROR_NO_MEMORY);
-        CHECK(muxerAtStream_->init(ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
-    }
-
     // Start muxer (blocking call)
     CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
 
@@ -498,6 +532,9 @@ int Esp32NcpClient::initMuxer() {
 }
 
 void Esp32NcpClient::ncpState(NcpState state) {
+    if (ncpState_ == NcpState::DISABLED) {
+        return;
+    }
     if (state == NcpState::OFF) {
         ready_ = false;
         connectionState(NcpConnectionState::DISCONNECTED);
@@ -519,6 +556,9 @@ void Esp32NcpClient::ncpState(NcpState state) {
 }
 
 void Esp32NcpClient::connectionState(NcpConnectionState state) {
+    if (ncpState_ == NcpState::DISABLED) {
+        return;
+    }
     if (connState_ == state) {
         return;
     }

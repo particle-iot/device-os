@@ -118,8 +118,10 @@ void Esp32NcpNetif::loop(void* arg) {
     unsigned int timeout = 100;
     self->wifiMan_->ncpClient()->off();
     while(!self->exit_) {
+        self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
         NetifEvent ev;
-        if (!os_queue_take(self->queue_, &ev, timeout, nullptr)) {
+        const int r = os_queue_take(self->queue_, &ev, timeout, nullptr);
+        if (!r) {
             // Event
             switch (ev) {
                 case NetifEvent::Up: {
@@ -168,6 +170,11 @@ int Esp32NcpNetif::up() {
 }
 
 int Esp32NcpNetif::down() {
+    const auto client = wifiMan_->ncpClient();
+    if (client->connectionState() != NcpConnectionState::CONNECTED) {
+        // Disable the client to interrupt its current operation
+        client->disable();
+    }
     NetifEvent ev = NetifEvent::Down;
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }

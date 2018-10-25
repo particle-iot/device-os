@@ -117,9 +117,15 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2,
             UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
+    // Initialize muxed channel stream
+    decltype(muxerAtStream_) muxStrm(new(std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, UBLOX_NCP_AT_CHANNEL));
+    CHECK_TRUE(muxStrm, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(muxStrm->init(UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
     CHECK(initParser(serial.get()));
     serial_ = std::move(serial);
+    muxerAtStream_ = std::move(muxStrm);
     ncpState_ = NcpState::OFF;
+    prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
     regStartTime_ = 0;
     regCheckTime_ = 0;
@@ -135,6 +141,7 @@ void SaraNcpClient::destroy() {
         modemPowerOff();
     }
     parser_.destroy();
+    muxerAtStream_.reset();
     serial_.reset();
 }
 
@@ -192,6 +199,9 @@ int SaraNcpClient::initParser(Stream* stream) {
 
 int SaraNcpClient::on() {
     const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
@@ -201,8 +211,11 @@ int SaraNcpClient::on() {
     return 0;
 }
 
-void SaraNcpClient::off() {
+int SaraNcpClient::off() {
     const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     muxer_.stop();
     // Disable voltage translator
     modemSetUartState(false);
@@ -210,15 +223,43 @@ void SaraNcpClient::off() {
     modemPowerOff();
     ready_ = false;
     ncpState(NcpState::OFF);
+    return 0;
+}
+
+int SaraNcpClient::enable() {
+    const NcpClientLock lock(this);
+    if (ncpState_ != NcpState::DISABLED) {
+        return 0;
+    }
+    serial_->enabled(true);
+    muxerAtStream_->enabled(true);
+    ncpState_ = prevNcpState_;
+    off();
+    return 0;
+}
+
+void SaraNcpClient::disable() {
+    // This method is used to unblock the network interface thread, so we're not trying to acquire
+    // the client lock here
+    const NcpState state = ncpState_;
+    if (state == NcpState::DISABLED) {
+        return;
+    }
+    prevNcpState_ = state;
+    ncpState_ = NcpState::DISABLED;
+    serial_->enabled(false);
+    muxerAtStream_->enabled(false);
 }
 
 NcpState SaraNcpClient::ncpState() {
-    const NcpClientLock lock(this);
     return ncpState_;
 }
 
 int SaraNcpClient::disconnect() {
     const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     if (connState_ == NcpConnectionState::DISCONNECTED) {
         return 0;
     }
@@ -234,7 +275,6 @@ int SaraNcpClient::disconnect() {
 }
 
 NcpConnectionState SaraNcpClient::connectionState() {
-    const NcpClientLock lock(this);
     return connState_;
 }
 
@@ -682,13 +722,6 @@ int SaraNcpClient::initReady() {
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);
 
-    // Create AT channel stream
-    if (!muxerAtStream_) {
-        muxerAtStream_.reset(new (std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, UBLOX_NCP_AT_CHANNEL));
-        CHECK_TRUE(muxerAtStream_, SYSTEM_ERROR_NO_MEMORY);
-        CHECK(muxerAtStream_->init(UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
-    }
-
     NAMED_SCOPE_GUARD(muxerSg, {
         muxer_.stop();
     });
@@ -791,6 +824,9 @@ int SaraNcpClient::registerNet() {
 }
 
 void SaraNcpClient::ncpState(NcpState state) {
+    if (ncpState_ == NcpState::DISABLED) {
+        return;
+    }
     if (state == NcpState::OFF) {
         ready_ = false;
         connectionState(NcpConnectionState::DISCONNECTED);
@@ -812,6 +848,9 @@ void SaraNcpClient::ncpState(NcpState state) {
 }
 
 void SaraNcpClient::connectionState(NcpConnectionState state) {
+    if (ncpState_ == NcpState::DISABLED) {
+        return;
+    }
     if (connState_ == state) {
         return;
     }

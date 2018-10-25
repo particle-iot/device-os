@@ -26,7 +26,8 @@ class InputStream;
 
 enum class NcpState {
     OFF = 0,
-    ON = 1
+    ON = 1,
+    DISABLED = 2
 };
 
 enum class NcpConnectionState {
@@ -83,7 +84,9 @@ public:
     virtual void destroy() = 0;
 
     virtual int on() = 0;
-    virtual void off() = 0;
+    virtual int off() = 0;
+    virtual int enable() = 0;
+    virtual void disable() = 0;
     virtual NcpState ncpState() = 0;
 
     virtual int disconnect() = 0;
