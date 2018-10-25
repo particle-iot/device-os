@@ -78,7 +78,7 @@ void PowerManager::handleUpdate() {
 
   // Watchdog fault
   if ((curFault) & 0x80) {
-    // Restore parameters. Do not run DPDM detection
+    // Restore parameters
     initDefault();
   }
 
