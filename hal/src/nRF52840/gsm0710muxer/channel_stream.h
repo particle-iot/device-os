@@ -55,6 +55,9 @@ public:
 
     virtual int waitEvent(unsigned flags, unsigned timeout = 0) override;
 
+    void enabled(bool enabled);
+    bool enabled() const;
+
 private:
     void suspend();
     void resume();
@@ -67,17 +70,18 @@ private:
     std::unique_ptr<char[]> rxBufData_;
     os_semaphore_t sem_ = nullptr;
     volatile bool flow_ = false;
+    volatile bool enabled_ = true;
 };
 
 template <typename MuxerT>
-MuxerChannelStream<MuxerT>::MuxerChannelStream(MuxerT* muxer, uint8_t channel)
+inline MuxerChannelStream<MuxerT>::MuxerChannelStream(MuxerT* muxer, uint8_t channel)
         : muxer_(muxer),
           channel_(channel) {
 
 }
 
 template <typename MuxerT>
-MuxerChannelStream<MuxerT>::~MuxerChannelStream() {
+inline MuxerChannelStream<MuxerT>::~MuxerChannelStream() {
     if (sem_) {
         os_semaphore_destroy(sem_);
         sem_ = nullptr;
@@ -85,7 +89,7 @@ MuxerChannelStream<MuxerT>::~MuxerChannelStream() {
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::init(size_t rxBufSize) {
+inline int MuxerChannelStream<MuxerT>::init(size_t rxBufSize) {
     if (rxBufSize != rxBufSize_ || !rxBufData_) {
         rxBufSize_ = rxBufSize;
         rxBufData_.reset(new (std::nothrow) char[rxBufSize]);
@@ -106,7 +110,7 @@ int MuxerChannelStream<MuxerT>::init(size_t rxBufSize) {
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::channelDataCb(const uint8_t* data, size_t size, void* ctx) {
+inline int MuxerChannelStream<MuxerT>::channelDataCb(const uint8_t* data, size_t size, void* ctx) {
     auto self = (MuxerChannelStream<MuxerT>*)ctx;
     auto wasEmpty = self->rxBuf_->empty();
     auto r = self->rxBuf_->put((const char*)data, size);
@@ -116,13 +120,16 @@ int MuxerChannelStream<MuxerT>::channelDataCb(const uint8_t* data, size_t size, 
     }
     self->suspend();
     if (wasEmpty) {
-        os_semaphore_give(self->sem_, true);
+        os_semaphore_give(self->sem_, false);
     }
     return 0;
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::read(char* data, size_t size) {
+inline int MuxerChannelStream<MuxerT>::read(char* data, size_t size) {
+    if (!enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     size_t canRead = CHECK(rxBuf_->data());
     size_t willRead = std::min(canRead, size);
     auto r = rxBuf_->get(data, willRead);
@@ -131,24 +138,33 @@ int MuxerChannelStream<MuxerT>::read(char* data, size_t size) {
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::peek(char* data, size_t size) {
+inline int MuxerChannelStream<MuxerT>::peek(char* data, size_t size) {
+    if (!enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     size_t canPeek = CHECK(rxBuf_->data());
     size_t willPeek = std::min(canPeek, size);
     return rxBuf_->peek(data, willPeek);
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::skip(size_t size) {
+inline int MuxerChannelStream<MuxerT>::skip(size_t size) {
     return read(nullptr, size);
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::availForRead() {
+inline int MuxerChannelStream<MuxerT>::availForRead() {
+    if (!enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     return rxBuf_->data();
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::write(const char* data, size_t size) {
+inline int MuxerChannelStream<MuxerT>::write(const char* data, size_t size) {
+    if (!enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     if (size == 0) {
         return 0;
     }
@@ -162,17 +178,26 @@ int MuxerChannelStream<MuxerT>::write(const char* data, size_t size) {
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::flush() {
+inline int MuxerChannelStream<MuxerT>::flush() {
+    if (!enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     return 0;
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::availForWrite() {
+inline int MuxerChannelStream<MuxerT>::availForWrite() {
+    if (!enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     return muxer_->getMaxFrameSize();
 }
 
 template <typename MuxerT>
-int MuxerChannelStream<MuxerT>::waitEvent(unsigned flags, unsigned timeout) {
+inline int MuxerChannelStream<MuxerT>::waitEvent(unsigned flags, unsigned timeout) {
+    if (!enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     if (!flags) {
         return 0;
     }
@@ -196,12 +221,15 @@ int MuxerChannelStream<MuxerT>::waitEvent(unsigned flags, unsigned timeout) {
             return SYSTEM_ERROR_TIMEOUT;
         }
         os_semaphore_take(sem_, HAL_Timer_Get_Milli_Seconds() - t, false);
+        if (!enabled_) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
     }
     return f;
 }
 
 template <typename MuxerT>
-void MuxerChannelStream<MuxerT>::suspend() {
+inline void MuxerChannelStream<MuxerT>::suspend() {
     ssize_t space = rxBuf_->space();
     if (space < 0) {
         return;
@@ -213,7 +241,7 @@ void MuxerChannelStream<MuxerT>::suspend() {
 }
 
 template <typename MuxerT>
-void MuxerChannelStream<MuxerT>::resume() {
+inline void MuxerChannelStream<MuxerT>::resume() {
     ssize_t space = rxBuf_->space();
     if (space < 0) {
         return;
@@ -224,5 +252,20 @@ void MuxerChannelStream<MuxerT>::resume() {
     }
 }
 
+template <typename MuxerT>
+inline void MuxerChannelStream<MuxerT>::enabled(bool enabled) {
+    const auto wasEnabled = enabled_;
+    enabled_ = enabled;
+    if (!enabled && wasEnabled) {
+        os_semaphore_give(sem_, false);
+    }
+}
+
+template <typename MuxerT>
+inline bool MuxerChannelStream<MuxerT>::enabled() const {
+    return enabled_;
+}
+
 } // particle
+
 #endif // GSM0710_MUXER_CHANNEL_STREAM_H
