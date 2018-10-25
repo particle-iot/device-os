@@ -160,6 +160,9 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
+#if defined(HYBRID_BUILD)
+            bool hybrid_module_found = false;
+#endif
             for (unsigned i=0; i<count; i++) {
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
 #if defined(HYBRID_BUILD)
@@ -167,13 +170,13 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 #error HYBRID_BUILD must be modular
 #endif
                 static module_info_t hybrid_info;
-
-				// change monolithic firmware to modular in the hybrid build.
-                if (info->modules[i].info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
-                	memcpy(&hybrid_info, info->modules[i].info, sizeof(hybrid_info));
-                	info->modules[i].info = &hybrid_info;
-                	hybrid_info.module_function = MODULE_FUNCTION_SYSTEM_PART;
-                	hybrid_info.module_index = 1;
+                // change monolithic firmware to modular in the hybrid build.
+                if (!hybrid_module_found && info->modules[i].info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+                    memcpy(&hybrid_info, info->modules[i].info, sizeof(hybrid_info));
+                    info->modules[i].info = &hybrid_info;
+                    hybrid_info.module_function = MODULE_FUNCTION_SYSTEM_PART;
+                    hybrid_info.module_index = 1; 
+                    hybrid_module_found = true;
                 }
 #endif // HYBRID_BUILD
             }
