@@ -126,7 +126,7 @@ public:
         // and system.
     }
 
-    int publish(const char* topic, const char* data);
+    int publish(const char* topic, const char* data = nullptr);
 
     int subscribe(const char* prefix, EventHandler handler);
 
