@@ -40,6 +40,8 @@ public:
     void destroy() override;
     int on() override;
     void off() override;
+    int enable() override;
+    void disable() override;
     NcpState ncpState() override;
     int disconnect() override;
     NcpConnectionState connectionState() override;

@@ -149,6 +149,14 @@ void Esp32NcpClient::off() {
     ncpState(NcpState::OFF);
 }
 
+int Esp32NcpClient::enable() {
+    return 0; // TODO
+}
+
+void Esp32NcpClient::disable() {
+    // TODO
+}
+
 NcpState Esp32NcpClient::ncpState() {
     const NcpClientLock lock(this);
     return ncpState_;

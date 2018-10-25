@@ -212,6 +212,14 @@ void SaraNcpClient::off() {
     ncpState(NcpState::OFF);
 }
 
+int SaraNcpClient::enable() {
+    return 0; // TODO
+}
+
+void SaraNcpClient::disable() {
+    // TODO
+}
+
 NcpState SaraNcpClient::ncpState() {
     const NcpClientLock lock(this);
     return ncpState_;
