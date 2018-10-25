@@ -24,12 +24,15 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_i2c.h"
-#include "spark_wiring_platform.h"
-
 #ifndef __SPARK_WIRING_POWER_H
 #define __SPARK_WIRING_POWER_H
+
+#include "spark_wiring_platform.h"
+
+#if HAL_PLATFORM_PMIC_BQ24195
+
+#include "spark_wiring.h"
+#include "spark_wiring_i2c.h"
 
 //Default PMIC (BQ24195) I2C address
 #define PMIC_ADDRESS                            0x6B
@@ -46,8 +49,6 @@
 #define SYSTEM_STATUS_REGISTER                  0x08
 #define FAULT_REGISTER                          0x09
 #define PMIC_VERSION_REGISTER                   0x0A
-
-
 
 class PMIC {
 
@@ -148,6 +149,8 @@ private:
 
     bool lock_;
 };
+
+#endif /* HAL_PLATFORM_PMIC_BQ24195 */
 
 #endif /* __SPARK_WIRING_POWER_H */
 

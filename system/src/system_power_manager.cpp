@@ -10,7 +10,7 @@ LOG_SOURCE_CATEGORY("sys.power")
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
 
-#if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
+#if Wiring_Cellular == 1 || (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
 using namespace particle::power;
 
@@ -166,6 +166,8 @@ void PowerManager::loop(void* arg) {
   PowerManager* self = PowerManager::instance();
   {
     LOG_DEBUG(INFO, "Power Management Initializing.");
+    // IMPORTANT: attach the interrupt handler first
+    attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
     self->initDefault();
     FuelGauge fuel(true);
     fuel.wakeup();
@@ -173,7 +175,6 @@ void PowerManager::loop(void* arg) {
     fuel.clearAlert(); // Ensure this is cleared, or interrupts will never occur
     LOG_DEBUG(INFO, "State of Charge: %-6.2f%%", fuel.getSoC());
     LOG_DEBUG(INFO, "Battery Voltage: %-4.2fV", fuel.getVCell());
-    attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
   }
 
   uint32_t tmp;
@@ -183,6 +184,7 @@ void PowerManager::loop(void* arg) {
       self->handleUpdate();
     }
     self->handlePossibleFaultLoop();
+    self->checkWatchdog();
   }
 }
 
@@ -191,7 +193,7 @@ void PowerManager::isrHandler() {
   self->update();
 }
 
-void PowerManager::initDefault() {
+void PowerManager::initDefault(bool dpdm) {
   PMIC power(true);
   power.begin();
   // Enters host-managed mode
@@ -203,8 +205,10 @@ void PowerManager::initDefault() {
   // Set recharge threshold to default value - 100mV
   power.setRechargeThreshold(100);
   // power.setChargeCurrent(0,0,0,0,0,0); // 512mA
-  // Force-start input current limit detection
-  power.enableDPDM();
+  if (dpdm) {
+    // Force-start input current limit detection
+    power.enableDPDM();
+  }
   // Enable charging
   power.enableCharging();
 
@@ -279,11 +283,13 @@ void PowerManager::handleStateChange(battery_state_t from, battery_state_t to, b
     case BATTERY_STATE_FAULT:
       break;
     case BATTERY_STATE_DISCONNECTED: {
+      // Not disabling charging for now in disconnected state on Mesh devices
       PMIC power;
       // Disable charging
       power.disableCharging();
       // Enable watchdog that should re-enable charging in 40 seconds
-      power.setWatchdog(0b01);
+      // power.setWatchdog(0b01);
+      chargingDisabledTimestamp_ = millis();
       break;
     }
   }
@@ -346,6 +352,14 @@ void PowerManager::handlePossibleFaultLoop() {
   }
 }
 
+void PowerManager::checkWatchdog() {
+  if (g_batteryState == BATTERY_STATE_DISCONNECTED &&
+      ((millis() - chargingDisabledTimestamp_) >= DEFAULT_WATCHDOG_TIMEOUT)) {
+    // Re-enable charging, do not run DPDM detection
+    initDefault(false);
+  }
+}
+
 void PowerManager::logStat(uint8_t stat, uint8_t fault) {
 #if defined(DEBUG_BUILD) && 0
   uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
@@ -364,4 +378,4 @@ void PowerManager::logStat(uint8_t stat, uint8_t fault) {
 #endif
 }
 
-#endif /* Wiring_Cellular == 1 */
+#endif /* Wiring_Cellular == 1 || (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */

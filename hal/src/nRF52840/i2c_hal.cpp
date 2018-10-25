@@ -28,7 +28,7 @@
 #include "logging.h"
 
 #define TOTAL_I2C                   2
-#define BUFFER_LENGTH               I2C_BUFFER_LENGTH 
+#define BUFFER_LENGTH               I2C_BUFFER_LENGTH
 #define I2C_IRQ_PRIORITY            APP_IRQ_PRIORITY_LOWEST
 
 /* TWI instance. */

@@ -48,7 +48,7 @@ endif
 
 ifeq ($(PLATFORM_ID),13)
 ifneq ($(DEBUG_BUILD),y)
-ifneq ($(INCLUDE_APP),y)
+ifneq ($(HYBRID_BUILD),y)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
 endif
 endif

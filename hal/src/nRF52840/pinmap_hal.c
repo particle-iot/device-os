@@ -39,13 +39,13 @@ NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* A5            - 14 */ { NRF_PORT_0, 31, PIN_MODE_NONE, PF_NONE, 7,                3,                 2,                8, EXTI_CHANNEL_NONE},
 /* A4            - 15 */ { NRF_PORT_0, 30, PIN_MODE_NONE, PF_NONE, 6,                3,                 3,                8, EXTI_CHANNEL_NONE},
 /* A3            - 16 */ { NRF_PORT_0, 29, PIN_MODE_NONE, PF_NONE, 5,                2,                 0,                8, EXTI_CHANNEL_NONE},
-/* A2            - 17 */ { NRF_PORT_0, 28, PIN_MODE_NONE, PF_NONE, 4,                2,                 1,                8, EXTI_CHANNEL_NONE}, 
-/* A1            - 18 */ { NRF_PORT_0, 4,  PIN_MODE_NONE, PF_NONE, 2,                2,                 2,                8, EXTI_CHANNEL_NONE}, 
+/* A2            - 17 */ { NRF_PORT_0, 28, PIN_MODE_NONE, PF_NONE, 4,                2,                 1,                8, EXTI_CHANNEL_NONE},
+/* A1            - 18 */ { NRF_PORT_0, 4,  PIN_MODE_NONE, PF_NONE, 2,                2,                 2,                8, EXTI_CHANNEL_NONE},
 /* A0            - 19 */ { NRF_PORT_0, 3,  PIN_MODE_NONE, PF_NONE, 1,                2,                 3,                8, EXTI_CHANNEL_NONE},
-/* MODE BUTTON   - 20 */ { NRF_PORT_0, 11, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE}, 
-/* RGBR          - 21 */ { NRF_PORT_0, 13, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,                8, EXTI_CHANNEL_NONE}, 
-/* RGBG          - 22 */ { NRF_PORT_0, 14, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,                8, EXTI_CHANNEL_NONE}, 
-/* RGBB          - 23 */ { NRF_PORT_0, 15, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,                8, EXTI_CHANNEL_NONE}, 
+/* MODE BUTTON   - 20 */ { NRF_PORT_0, 11, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
+/* RGBR          - 21 */ { NRF_PORT_0, 13, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,                8, EXTI_CHANNEL_NONE},
+/* RGBG          - 22 */ { NRF_PORT_0, 14, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,                8, EXTI_CHANNEL_NONE},
+/* RGBB          - 23 */ { NRF_PORT_0, 15, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,                8, EXTI_CHANNEL_NONE},
 
 #if PLATFORM_ID == PLATFORM_XENON
 /* BATT          - 24 */ { NRF_PORT_0, 5,  PIN_MODE_NONE, PF_NONE, 3,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
@@ -82,19 +82,41 @@ NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* ANTSW1        - 31 */ { NRF_PORT_0, 7,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* PMIC_SCL      - 32 */ { NRF_PORT_1, 9,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* PMIC_SDA      - 33 */ { NRF_PORT_0, 24, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
-/* UBVINT        - 34 */ { NRF_PORT_0, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE}
+/* UBVINT        - 34 */ { NRF_PORT_0, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
+/* LOW_BAT_UC    - 35 */ { NRF_PORT_0, 5,  PIN_MODE_NONE, PF_NONE, 3,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE}
 #endif
 
 };
 
+#if PLATFORM_ID == PLATFORM_XENON
 const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
-    PIN_INVALID, PIN_INVALID, PIN_INVALID, 19,          18,          PIN_INVALID, 9,           PIN_INVALID, /* P0.00 ~ P0.07 */
-    10,          PIN_INVALID, PIN_INVALID, 20,          PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, /* P0.08 ~ P0.15 */
+    PIN_INVALID, PIN_INVALID, PIN_INVALID, 19,          18,          24,          9,           PIN_INVALID, /* P0.00 ~ P0.07 */
+    10,          27,          28,          20,          25,          21,          22,          23,          /* P0.08 ~ P0.15 */
     PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, /* P0.16 ~ P0.23 */
-    PIN_INVALID, PIN_INVALID, 0,           1,           17,          16,          15,          14,          /* P0.24 ~ P0.31 */
+    29,          30,          0,           1,           17,          16,          15,          14,          /* P0.24 ~ P0.31 */
     PIN_INVALID, 2,           3,           8,           PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, /* P1.00 ~ P1.07 */
-    4,           PIN_INVALID, 5,           6,           7,           12,          11,          13,          /* P1.08 ~ P1.15 */
+    4,           26,          5,           6,           7,           12,          11,          13,          /* P1.08 ~ P1.15 */
 };
+#elif PLATFORM_ID == PLATFORM_ARGON
+const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
+    PIN_INVALID, PIN_INVALID, 31,          19,          18,          33,          9,           30,          /* P0.00 ~ P0.07 */
+    10,          PIN_INVALID, PIN_INVALID, 20,          34,          21,          22,          23,          /* P0.08 ~ P0.15 */
+    28,          PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, /* P0.16 ~ P0.23 */
+    29,          32,          0,           1,           17,          16,          15,          14,          /* P0.24 ~ P0.31 */
+    PIN_INVALID, 2,           3,           8,           25,          24,          26,          27,          /* P1.00 ~ P1.07 */
+    4,           35,          5,           6,           7,           12,          11,          13,          /* P1.08 ~ P1.15 */
+};
+#elif PLATFORM_ID == PLATFORM_BORON
+const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
+    PIN_INVALID, PIN_INVALID, 34,          19,          18,          35,          9,           31,          /* P0.00 ~ P0.07 */
+    10,          PIN_INVALID, PIN_INVALID, 20,          29,          21,          22,          23,          /* P0.08 ~ P0.15 */
+    28,          PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, /* P0.16 ~ P0.23 */
+    33,          30,          0,           1,           17,          16,          15,          14,          /* P0.24 ~ P0.31 */
+    PIN_INVALID, 2,           3,           8,           25,          24,          26,          27,          /* P1.00 ~ P1.07 */
+    4,           32,          5,           6,           7,           12,          11,          13,          /* P1.08 ~ P1.15 */
+};
+#endif
+
 
 NRF5x_Pin_Info* HAL_Pin_Map(void) {
     return __PIN_MAP;

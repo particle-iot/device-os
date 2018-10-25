@@ -38,11 +38,9 @@ typedef enum
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum HAL_I2C_Interface {
-    HAL_I2C_INTERFACE1 = 0,    //maps to I2C1 (pins: D0, D1)
-#if PLATFORM_ID == 10 // Electron
-    HAL_I2C_INTERFACE2 = 1     //maps to I2C1 (pins: C4, C5)
-   ,HAL_I2C_INTERFACE3 = 2     //maps to I2C3 (PM_SDA_UC, PM_SCL_UC)
-#endif
+    HAL_I2C_INTERFACE1 = 0,
+    HAL_I2C_INTERFACE2 = 1,
+    HAL_I2C_INTERFACE3 = 2
 } HAL_I2C_Interface;
 
 /* Exported constants --------------------------------------------------------*/

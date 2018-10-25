@@ -706,9 +706,7 @@ void app_setup_and_loop(void)
     // Reset all persistent settings to factory defaults if necessary
     resetSettingsToFactoryDefaultsIfNeeded();
 
-#if Wiring_Cellular == 1 && !HAL_PLATFORM_MESH
     system_power_management_init();
-#endif
 
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);

@@ -31,7 +31,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "platforms.h"
-#include "hal_platform_config.h"
+#include "hal_platform.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -162,7 +162,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 #if PLATFORM_ID == PLATFORM_BORON
-#define TOTAL_PINS  (35)
+#define TOTAL_PINS  (36)
 #define UBPWR 28
 #define UBRST 29
 #define BUFEN 30
@@ -170,6 +170,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define PMIC_SCL 32
 #define PMIC_SDA 33
 #define UBVINT 34
+#define LOW_BAT_UC 35
 #endif
 
 
