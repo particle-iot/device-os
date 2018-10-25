@@ -232,6 +232,7 @@ int SaraNcpClient::enable() {
     }
     serial_->enabled(true);
     muxerAtStream_->enabled(true);
+    ncpState_ = NcpState::OFF;
     off();
     return 0;
 }
