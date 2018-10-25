@@ -40,11 +40,23 @@ public:
 
     int setBaudRate(unsigned int baudrate);
 
+    void enabled(bool enabled);
+    bool enabled() const;
+
 private:
     HAL_USART_Serial serial_;
     std::unique_ptr<char[]> rxBuffer_;
     std::unique_ptr<char[]> txBuffer_;
     uint32_t config_;
+    volatile bool enabled_;
 };
+
+inline void SerialStream::enabled(bool enabled) {
+    enabled_ = enabled;
+}
+
+inline bool SerialStream::enabled() const {
+    return enabled_;
+}
 
 } // particle
