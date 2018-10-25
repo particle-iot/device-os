@@ -66,8 +66,9 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include <openthread/instance.h>
 #endif /* HAL_PLATFORM_OPENTHREAD */
 
-using namespace particle::system;
 using namespace particle::net;
+
+namespace particle { namespace system {
 
 namespace {
 
@@ -105,26 +106,45 @@ void forceCloudPingIfConnected() {
     SystemISRTaskQueue.enqueue(task);
 }
 
+} /* anonymous */
+
+
 #if HAL_PLATFORM_MESH
-void setBorderRouterState(bool start) {
+volatile uint8_t br_permitted;
+volatile uint8_t br_enabled;
+
+void updateBorderRouter() {
     const auto task = new(std::nothrow) ISRTaskQueue::Task();
     if (!task) {
         return;
     }
-    task->func = start ? [](ISRTaskQueue::Task* task) {
+    task->func = [](ISRTaskQueue::Task* task) {
         delete task;
-        if (!BorderRouterManager::instance()->start()) {
-        	particle::ctrl::mesh::notifyBorderRouter(true);
+        if (br_enabled) {
+			if (br_permitted) {
+				BorderRouterManager::instance()->start();
+			} else {
+				particle::ctrl::mesh::notifyBorderRouter(true);
+			}
+        } else {
+        	BorderRouterManager::instance()->stop();
         }
-    } : [](ISRTaskQueue::Task* task) {
-        delete task;
-        BorderRouterManager::instance()->stop();
     };
     SystemISRTaskQueue.enqueue(task);
 }
+
+void setBorderRouterPermitted(bool permitted) {
+	br_permitted = permitted;
+	updateBorderRouter();
+}
+
+void setBorderRouterState(bool start) {
+	br_enabled = start;
+	updateBorderRouter();
+}
+
 #endif // HAL_PLATFORM_MESH
 
-} /* anonymous */
 
 NetworkManager::NetworkManager() {
     state_ = State::NONE;
@@ -860,5 +880,7 @@ void NetworkManager::resetInterfaceProtocolState(if_t iface) {
         }
     }
 }
+
+}} /* namespace particle::system */
 
 #endif /* HAL_PLATFORM_IFAPI */

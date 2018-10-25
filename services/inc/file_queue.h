@@ -88,9 +88,8 @@ public:
      * Retrieve the front queue entry in the file.
      *
      * @param entry	The entry to populate
-     * @param buffer	When non-zero, represents a buffer to fill
-     * with the contents of the entry.
-     * @param buffer	The length of the buffer. Only as much data
+     * @param buffer	the buffer to fill with the contents of the entry.
+     * @param length	The length of the buffer. Only as much data
      * as will fit into the buffer is copied.
      * @return SYSTEM_ERROR_NOT_FOUND when there is no such entry.
      */
