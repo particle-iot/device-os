@@ -151,7 +151,7 @@ int PppNcpNetif::up() {
 
 int PppNcpNetif::down() {
     const auto client = celMan_->ncpClient();
-    if (client->connectionState() == NcpConnectionState::CONNECTING) {
+    if (client->connectionState() != NcpConnectionState::CONNECTED) {
         // Disable the client to interrupt its current operation
         client->disable();
     }

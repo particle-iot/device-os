@@ -171,7 +171,7 @@ int Esp32NcpNetif::up() {
 
 int Esp32NcpNetif::down() {
     const auto client = wifiMan_->ncpClient();
-    if (client->connectionState() == NcpConnectionState::CONNECTING) {
+    if (client->connectionState() != NcpConnectionState::CONNECTED) {
         // Disable the client to interrupt its current operation
         client->disable();
     }
