@@ -127,6 +127,14 @@
 #define Wiring_Ethernet 1
 #endif
 
+#if HAL_PLATFORM_I2C2
+#define Wiring_Wire1 1
+#endif // HAL_PLATFORM_I2C2
+
+#if HAL_PLATFORM_I2C3
+#define Wiring_Wire3 1
+#endif // HAL_PLATFORM_I2C3
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
