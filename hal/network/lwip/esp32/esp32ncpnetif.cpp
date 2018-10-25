@@ -118,9 +118,9 @@ void Esp32NcpNetif::loop(void* arg) {
     unsigned int timeout = 100;
     self->wifiMan_->ncpClient()->off();
     while(!self->exit_) {
+        self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
         NetifEvent ev;
         const int r = os_queue_take(self->queue_, &ev, timeout, nullptr);
-        self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
         if (!r) {
             // Event
             switch (ev) {

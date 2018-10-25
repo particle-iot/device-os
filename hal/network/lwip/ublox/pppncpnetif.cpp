@@ -99,9 +99,9 @@ void PppNcpNetif::loop(void* arg) {
     // Off by default
     self->celMan_->ncpClient()->off();
     while(!self->exit_) {
+        self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         NetifEvent ev;
         const int r = os_queue_take(self->queue_, &ev, timeout, nullptr);
-        self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         if (!r) {
             // Event
             switch (ev) {
