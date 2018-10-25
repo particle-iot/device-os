@@ -42,6 +42,9 @@ void system_power_management_sleep(bool sleep) {
 
 #else /* Wiring_Cellular != 1 */
 
+void system_power_management_init() {
+}
+
 void system_power_management_sleep(bool sleep) {
 }
 
