@@ -66,7 +66,8 @@ private:
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
     NcpClientConfig conf_;
-    NcpState ncpState_;
+    volatile NcpState ncpState_;
+    volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_;
     int parserError_;
     bool ready_;

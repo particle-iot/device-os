@@ -824,7 +824,7 @@ int SaraNcpClient::registerNet() {
 }
 
 void SaraNcpClient::ncpState(NcpState state) {
-    if (state == NcpState::DISABLED) {
+    if (ncpState_ == NcpState::DISABLED) {
         return;
     }
     if (state == NcpState::OFF) {
