@@ -141,12 +141,13 @@ int Esp32NcpClient::on() {
     return 0;
 }
 
-void Esp32NcpClient::off() {
+int Esp32NcpClient::off() {
     const NcpClientLock lock(this);
     muxer_.stop();
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
+    return 0;
 }
 
 int Esp32NcpClient::enable() {

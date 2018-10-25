@@ -39,7 +39,7 @@ public:
     int init(const NcpClientConfig& conf) override;
     void destroy() override;
     int on() override;
-    void off() override;
+    int off() override;
     int enable() override;
     void disable() override;
     NcpState ncpState() override;
