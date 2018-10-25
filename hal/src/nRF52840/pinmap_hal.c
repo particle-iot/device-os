@@ -121,4 +121,3 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 NRF5x_Pin_Info* HAL_Pin_Map(void) {
     return __PIN_MAP;
 }
->>>>>>> [nrf52840] pinmap: fixes nrf pin -> particle pin mapping tables
