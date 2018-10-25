@@ -52,7 +52,7 @@ namespace spark {
         } \
     }
 
-class EthernetClass : public NetworkClass, public MeshPublish {
+class EthernetClass : public NetworkClass {
 public:
     EthernetClass() :
             NetworkClass(NETWORK_INTERFACE_ETHERNET) {
