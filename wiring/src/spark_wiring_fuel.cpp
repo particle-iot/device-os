@@ -25,15 +25,39 @@
  */
 
 #include "spark_wiring_fuel.h"
+
 #include <mutex>
 #include "spark_wiring_power.h"
 
-FuelGauge::FuelGauge(bool _lock) :
-#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION)
-    FuelGauge(Wire3, _lock)
-#else
-    FuelGauge(Wire, _lock)
-#endif /* (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION) */
+namespace {
+
+TwoWire* fuelWireInstance() {
+#if HAL_PLATFORM_FUELGAUGE_MAX17043
+    switch (HAL_PLATFORM_FUELGAUGE_MAX17043_I2C) {
+        case HAL_I2C_INTERFACE1:
+        default: {
+            return &Wire;
+        }
+#if Wiring_Wire1
+        case HAL_I2C_INTERFACE2: {
+            return &Wire1;
+        }
+#endif // Wiring_Wire1
+#if Wiring_Wire3
+        case HAL_I2C_INTERFACE3: {
+            return &Wire3;
+        }
+#endif // Wiring_Wire3
+    }
+#endif // HAL_PLATFORM_FUELGAUGE_MAX17043
+
+    return &Wire;
+}
+
+} // anonymous
+
+FuelGauge::FuelGauge(bool _lock)
+        : FuelGauge(*fuelWireInstance(), _lock)
 {
 }
 
