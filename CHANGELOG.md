@@ -1,3 +1,9 @@
+## 0.8.0-rc.24
+
+### BUGFIXES
+
+- [Mesh] Retry system commands on cloud connection errors (#261)
+
 ## 0.8.0-rc.23
 
 ### BREAKING CHANGES
