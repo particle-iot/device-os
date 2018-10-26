@@ -35,9 +35,12 @@ inline bool isCoap4xxError(int error) {
     return (error == SYSTEM_ERROR_COAP_4XX);
 }
 
-bool handleCommandComplete(int error, void* data, size_t size) {
-    FileQueue::QueueEntry e;
-    const int r = persistCommands.front(e, data, size);
+bool handleCommandComplete(int error, void* data = nullptr, size_t size = 0) {
+    int r = 0;
+    if (data) {
+        FileQueue::QueueEntry e;
+        r = persistCommands.front(e, data, size);
+    }
     if (!error || isCoap4xxError(error)) {
         persistCommands.popFront();
         scheduleNextCommand();
@@ -87,7 +90,7 @@ void handleMeshNetworkUpdatedComplete(int error, const void* data, void* callbac
 }
 
 void handleMeshNetworkGatewayComplete(int error, const void* data, void* callback_data, void* reserved) {
-    handleCommandComplete(error, &g_cmd, sizeof(g_cmd));
+    handleCommandComplete(error);
     LOG(INFO, "Gateway status command complete, result %d", error);
 	if (error) {
         LOG(WARN, "Gateway operation vetoed");
