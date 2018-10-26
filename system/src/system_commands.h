@@ -28,9 +28,9 @@ namespace system {
 struct SystemCommand {
     enum Enum {
 #if HAL_PLATFORM_MESH
-        NOTIFY_MESH_NETWORK,
-        NOTIFY_MESH_JOINED,
-		NOTIFY_MESH_GATEWAY
+        /* 0 */ NOTIFY_MESH_NETWORK,
+        /* 1 */ NOTIFY_MESH_JOINED,
+		/* 2 */ NOTIFY_MESH_GATEWAY
 #endif
     };
 
