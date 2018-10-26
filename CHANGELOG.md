@@ -1,3 +1,25 @@
+## 0.8.0-rc.33
+
+### BREAKING CHANGES
+
+- [Mesh] Added versioning to mesh pub/sub protocol. Makes the format incompatible with previous releases (#250)
+
+### FEATURES
+
+- [Boron] PMIC and FuelGauge wiring APIs enabled (#257)
+- [Boron] Enabled system power manager. (LTE) Borons should now work correctly without the battery attached (#257)
+- [Argon, Boron] Ongoing connection attempt can be cancelled from a higher priority context (#258)
+- [Mesh] Require the cloud to confirm the BR functionality
+
+### BUGFIXES
+
+- [Mesh] Ethernet wiring object can now be correctly used (#259)
+- [Mesh] Increased `MEMP_NUM_NETBUF` for all the platforms to allow to queue up more packet buffers
+- [Mesh] Hybrid module reports itself as modular instead of monolithic in system module info (#255)
+- [Mesh] Multicast subscriptions created on LwIP were getting lost when Thread interface was going down (#250)
+- [system] Claim code shouldn't be published if it's not initialized in DCT
+- [Mesh] hal: D7 and RGB LED pins should be in the same PWM group
+
 ## 0.8.0-rc.22
 
 ### BUGFIXES
