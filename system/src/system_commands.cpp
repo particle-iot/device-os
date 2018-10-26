@@ -104,7 +104,7 @@ void handleMeshNetworkGatewayComplete(int error, const void* data, void* callbac
 #endif // HAL_PLATFORM_MESH
 
 void fetchAndExecuteCommand(system_tick_t currentTime) {
-    if (g_cmdPending || (int)currentTime - (int)nextCommandTime <= 0) {
+    if (g_cmdPending || (int)currentTime - (int)nextCommandTime < 0) {
         return;
     }
 
