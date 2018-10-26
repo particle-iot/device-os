@@ -87,9 +87,7 @@ void handleMeshNetworkUpdatedComplete(int error, const void* data, void* callbac
 }
 
 void handleMeshNetworkGatewayComplete(int error, const void* data, void* callback_data, void* reserved) {
-    if (!handleCommandComplete(error, &g_cmd, sizeof(g_cmd))) {
-        return;
-    }
+    handleCommandComplete(error, &g_cmd, sizeof(g_cmd));
     LOG(INFO, "Gateway status command complete, result %d", error);
 	if (error) {
         LOG(WARN, "Gateway operation vetoed");
