@@ -303,11 +303,15 @@ err_t OpenThreadNetif::mldMacFilterCb(netif* netif, const ip6_addr_t *group,
 
     int ret = OT_ERROR_FAILED;
 
+    // A very hacky solution: keep the list of subscriptions on loopback
     if (action == NETIF_ADD_MAC_FILTER) {
+        mld6_joingroup_netif(netif_get_by_index(1), group);
         ret = otIp6SubscribeMulticastAddress(self->ot_, &addr);
     } else if (action == NETIF_DEL_MAC_FILTER) {
+        mld6_leavegroup_netif(netif_get_by_index(1), group);
         ret = otIp6UnsubscribeMulticastAddress(self->ot_, &addr);
     }
+
     return ret == OT_ERROR_NONE ? ERR_OK : ERR_VAL;
 }
 
@@ -463,6 +467,12 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
             LOG_DEBUG(TRACE, "Subscribed to %s", tmp);
 #endif // DEBUG_BUILD
+        }
+        // Go through the list of subscriptions on LwIP side and add them if needed
+        for (struct mld_group* g = netif_mld6_data(netif_get_by_index(1)); g != nullptr; g = g->next) {
+            otIp6Address addr = {};
+            ip6AddrToOtIp6Address(g->group_address, &addr);
+            otIp6SubscribeMulticastAddress(ot_, &addr);
         }
         interface()->mld_mac_filter = mldMacFilterCb;
     }

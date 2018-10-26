@@ -109,7 +109,6 @@ int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler*
                 const char* event_name, const char* event_data, void* reserved);
 
 typedef int (*system_task_fn)();
-int system_task_loop(system_task_fn fn, void*);
 
 #ifdef __cplusplus
 }

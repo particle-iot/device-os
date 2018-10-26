@@ -124,10 +124,9 @@ public:
         // RX packet buffer pool may easily get exhausted, because nobody is reading the data
         // out of the socket. Create a separate thread here with a higher priority than application
         // and system.
-    // system_task_loop(mesh_loop, nullptr);
     }
 
-    int publish(const char* topic, const char* data);
+    int publish(const char* topic, const char* data = nullptr);
 
     int subscribe(const char* prefix, EventHandler handler);
 
