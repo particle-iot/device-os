@@ -39,7 +39,7 @@ ProtocolError registerCompletionHandler(Protocol& protocol, ProtocolError result
 		}
 	}
 	else {
-		handler.setResult(toSystemError(result));
+		handler.setError(toSystemError(result));
 	}
 	return result;
 }
