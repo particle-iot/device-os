@@ -109,7 +109,7 @@
  *
  * Mandatory for debugging, it displays exchanged packet content in debug trace.
  */
-#define PRINTPKT_SUPPORT                1
+#define PRINTPKT_SUPPORT                0
 
 /**
  * PPP_IPV4_SUPPORT==1: Enable PPP IPv4 support

@@ -1859,7 +1859,9 @@ void sys_unlock_tcpip_core(void);
    ---------------------------------------
 */
 
-#define LWIP_DEBUG                      defined(DEBUG_BUILD)
+#ifdef DEBUG_BUILD
+#define LWIP_DEBUG                      1
+#endif // DEBUG_BUILD
 
 /**
  * LWIP_DBG_MIN_LEVEL: After masking, the value of the debug is
