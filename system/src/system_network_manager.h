@@ -152,6 +152,9 @@ private:
     IntrusiveList<InterfaceRuntimeState> runState_;
 };
 
+#if HAL_PLATFORM_MESH
+void setBorderRouterPermitted(bool permitted);
+#endif /* HAL_PLATFORM_MESH */
 
 } } /* particle::system */
 

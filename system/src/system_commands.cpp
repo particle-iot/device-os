@@ -3,25 +3,55 @@
 #include "system_cloud_connection.h"
 #include "system_cloud.h"
 #include "system_network.h"
+
 #if HAL_PLATFORM_MESH
 #include "system_openthread.h"
 #include "border_router_manager.h"
+#include "system_network_manager.h"
 #endif // HAL_PLATFORM_MESH
 
 namespace particle {
+
 namespace system {
+
+namespace {
 
 using particle::fs::FileQueue;
 
-static FileQueue persistCommands("commands.bin");
+const system_tick_t DELAY_BETWEEN_COMMAND_CHECKS = 5000;
+
+FileQueue persistCommands("commands.bin");
 
 system_tick_t nextCommandTime = 0;
-const system_tick_t COMMAND_EXECUTION_TIMEOUT = 60*3*1000;
-const system_tick_t DELAY_BETWEEN_COMMAND_CHECKS = 5000;
+
+AllCommands g_cmd; // maybe this should be dynamically allocated
+bool g_cmdPending = false;
 
 void scheduleNextCommand(system_tick_t timeout = 0) {
     nextCommandTime = millis() + timeout;
 }
+
+inline bool isCoap4xxError(int error) {
+    return (error == SYSTEM_ERROR_COAP_4XX);
+}
+
+bool handleCommandComplete(int error, void* data = nullptr, size_t size = 0) {
+    int r = 0;
+    if (data) {
+        FileQueue::QueueEntry e;
+        r = persistCommands.front(e, data, size);
+    }
+    if (!error || isCoap4xxError(error)) {
+        persistCommands.popFront();
+        scheduleNextCommand();
+    } else {
+        scheduleNextCommand(DELAY_BETWEEN_COMMAND_CHECKS);
+    }
+    g_cmdPending = false;
+    return (r == 0);
+}
+
+} // unnamed
 
 #if HAL_PLATFORM_MESH
 
@@ -37,88 +67,74 @@ void destroyMeshCredentialsIfNetworkIdMatches(const char* networkId) {
     }
 }
 
-inline bool isCoap4xxError(int error) {
-    return (error == SYSTEM_ERROR_COAP_4XX);
-}
-
 void handleMeshNetworkJoinedComplete(int error, const void* data, void* callback_data, void* reserved) {
-    auto cmd = static_cast<NotifyMeshNetworkJoined*>(callback_data);
+    if (!handleCommandComplete(error, &g_cmd, sizeof(g_cmd))) {
+        return;
+    }
+    const auto cmd = (const NotifyMeshNetworkJoined*)&g_cmd;
     LOG(INFO, "Network %s command complete, result %d", cmd->joined ? "joined" : "left", error);
-    if (!error) {
-        persistCommands.popFront();
-        scheduleNextCommand();
-    } else if (isCoap4xxError(error)) {
-        persistCommands.popFront();
+    if (isCoap4xxError(error)) {
         destroyMeshCredentialsIfNetworkIdMatches(cmd->nu.id);
-        scheduleNextCommand();
-    } else {
-        scheduleNextCommand(DELAY_BETWEEN_COMMAND_CHECKS);
     }
 }
 
 void handleMeshNetworkUpdatedComplete(int error, const void* data, void* callback_data, void* reserved) {
-    auto cmd = static_cast<NotifyMeshNetworkUpdated*>(callback_data);
+    if (!handleCommandComplete(error, &g_cmd, sizeof(g_cmd))) {
+        return;
+    }
+    const auto cmd = (const NotifyMeshNetworkUpdated*)&g_cmd;
     LOG(INFO, "Network updated command complete, result %d", error);
-    if (!error) {
-        persistCommands.popFront();
-        scheduleNextCommand();
-    } else if (isCoap4xxError(error)) {
-        persistCommands.popFront();
+    if (isCoap4xxError(error)) {
         destroyMeshCredentialsIfNetworkIdMatches(cmd->ni.id);
-        scheduleNextCommand();
-    } else {
-        scheduleNextCommand(DELAY_BETWEEN_COMMAND_CHECKS);
     }
 }
 
-void handleCommandComplete(int error, const void* data, void* callback_data, void* reserved) {
-	LOG(INFO, "Gateway status command complete, result %d", error);
-	if (!error) {
-		persistCommands.popFront();
-		scheduleNextCommand();
-	} else if (isCoap4xxError(error)) {
-		persistCommands.popFront();
-		scheduleNextCommand();
-	} else {
-		scheduleNextCommand(DELAY_BETWEEN_COMMAND_CHECKS);
-	}
-}
-
 void handleMeshNetworkGatewayComplete(int error, const void* data, void* callback_data, void* reserved) {
-
-	handleCommandComplete(error, data, callback_data, reserved);
+    handleCommandComplete(error);
+    LOG(INFO, "Gateway status command complete, result %d", error);
 	if (error) {
-		particle::net::BorderRouterManager::instance()->stop();
-		LOG(WARN, "Gateway operation vetoed.");
-	}
-	else {
-		LOG(INFO, "Gateway operation confirmed.");
+        LOG(WARN, "Gateway operation vetoed");
+		setBorderRouterPermitted(false);
+	} else {
+		LOG(INFO, "Gateway operation confirmed");
+		setBorderRouterPermitted(true);
 	}
 }
 
 #endif // HAL_PLATFORM_MESH
 
 void fetchAndExecuteCommand(system_tick_t currentTime) {
-    if ((int(currentTime)-int(nextCommandTime))<0)
+    if (g_cmdPending || (int)currentTime - (int)nextCommandTime < 0) {
         return;
+    }
 
     FileQueue::QueueEntry entry;
-    static AllCommands cmd;
+
     // execution is asynchronous. The CallbackHandler is invoked to deliver the asynchronous result.
-    if (spark_cloud_flag_connected() && !persistCommands.front(entry, &cmd, sizeof(cmd)) && !cmd.execute()) {
-        nextCommandTime = currentTime + COMMAND_EXECUTION_TIMEOUT;
+    if (spark_cloud_flag_connected() && !persistCommands.front(entry, &g_cmd, sizeof(g_cmd)) && !g_cmd.execute()) {
+        g_cmdPending = true;
     } else {
         nextCommandTime = currentTime + DELAY_BETWEEN_COMMAND_CHECKS;
     }
 }
 
-int system_command_enqueue(SystemCommand& cmd, uint16_t size) {
-    int result = persistCommands.pushBack(&cmd, size);
+int system_command_enqueue(SystemCommand& enqueue, uint16_t size) {
+
+	FileQueue::QueueEntry entry;
+
+	int error = persistCommands.front(entry, &g_cmd, sizeof(g_cmd));
+	// skip enqueuing duplicate commands. Ideally each command itself should be able to filter the queue, but for now this will do.
+	if (!error && !memcmp(&enqueue, &g_cmd, size)) {
+		LOG(INFO, "Command %d size %d skipped because it is a duplicate", enqueue.commandType, size);
+		return 0;
+	}
+
+	int result = persistCommands.pushBack(&enqueue, size);
 	if (result<0) {
-		LOG(ERROR, "Unable to enqueue command %d size %d to system command queue. Error=%d", cmd.commandType, size, result);
+		LOG(ERROR, "Unable to enqueue command %d size %d to system command queue. Error=%d", enqueue.commandType, size, result);
 	}
 	else {
-		LOG(INFO, "Added command %d size %d to system command queue.", cmd.commandType, size);
+		LOG(INFO, "Added command %d size %d to system command queue", enqueue.commandType, size);
 	}
 	return result;
 }

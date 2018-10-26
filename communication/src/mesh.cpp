@@ -7,6 +7,12 @@
 
 namespace particle { namespace protocol {
 
+namespace {
+
+const unsigned MESH_COMMAND_TIMEOUT = 3 * 60 * 1000;
+
+} // unnamed
+
 uint8_t* buildNetworkUpdateMessage(uint8_t token, Message& message, MessageChannel& channel, MeshCommand::NetworkUpdate& update)
 {
 	channel.create(message);
@@ -27,7 +33,7 @@ ProtocolError registerCompletionHandler(Protocol& protocol, ProtocolError result
 	CompletionHandler handler(c->handler_callback, c->handler_data);
 	if (result == NO_ERROR) {
 		if (message.has_id()) {
-			protocol.add_ack_handler(message.get_id(), std::move(handler), CompletionHandlerList::MAX_TIMEOUT);
+			protocol.add_ack_handler(message.get_id(), std::move(handler), MESH_COMMAND_TIMEOUT);
 		} else {
 			handler.setResult();
 		}
