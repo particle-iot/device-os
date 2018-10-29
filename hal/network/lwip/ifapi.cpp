@@ -660,6 +660,16 @@ int if_set_xflags(if_t iface, unsigned int xflags) {
     curFlags &= ~(IFXF_CANTCHANGE);
     xflags &= ~(IFXF_CANTCHANGE);
 
+    unsigned int flags = 0;
+    if (if_get_flags(iface, &flags)) {
+        return -1;
+    }
+
+    if (flags & IFF_POINTTOPOINT) {
+        /* Drop DHCPv4 flag */
+        xflags &= ~(IFXF_DHCP);
+    }
+
     /* We only care about the flags which are mentioned in `xflags` */
     curFlags &= xflags;
 
