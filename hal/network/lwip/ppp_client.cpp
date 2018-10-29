@@ -119,8 +119,6 @@ bool Client::prepareConnect() {
   if_.ip6_autoconfig_enabled = 1;
   if_.flags |= NETIF_FLAG_MLD6;
   UNLOCK_TCPIP_CORE();
-  /* FIXME */
-  pppapi_set_default(pcb_);
 
   // FIXME:
   static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
