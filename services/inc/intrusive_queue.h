@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "spark_wiring_interrupts.h"
+
 namespace particle {
 
 // Template class implementing an intrusive queue container
@@ -63,6 +65,57 @@ public:
 private:
     ItemT* front_;
     ItemT* back_;
+};
+
+// TODO: Use a known good lockless queue implementation
+template<typename ItemT>
+class AtomicIntrusiveQueue {
+public:
+    typedef ItemT ItemType;
+
+    AtomicIntrusiveQueue() :
+            front_(nullptr),
+            back_(nullptr) {
+    }
+
+    void pushBack(ItemT* item) {
+        ATOMIC_BLOCK() {
+            if (back_) {
+                back_->next = item;
+            } else { // The queue is empty
+                front_ = item;
+            }
+            item->next = nullptr;
+            back_ = item;
+        }
+    }
+
+    ItemT* popFront() {
+        if (!front_) {
+            return nullptr;
+        }
+        ItemT* item = nullptr;
+        ATOMIC_BLOCK() {
+            item = front_;
+            front_ = static_cast<ItemT*>(item->next);
+            if (!front_) {
+                back_ = nullptr;
+            }
+        }
+        return item;
+    }
+
+    ItemT* front() const {
+        return front_;
+    }
+
+    ItemT* back() const {
+        return back_;
+    }
+
+private:
+    ItemT* volatile front_;
+    ItemT* volatile back_;
 };
 
 } // particle

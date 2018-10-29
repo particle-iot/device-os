@@ -23,8 +23,8 @@
 
 #include "control_request_handler.h"
 #include "simple_pool_allocator.h"
-#include "atomic_intrusive_queue.h"
 
+#include "intrusive_queue.h"
 #include "linked_buffer.h"
 
 #include "ble_hal.h"
