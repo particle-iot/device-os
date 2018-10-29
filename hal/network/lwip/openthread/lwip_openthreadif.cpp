@@ -473,6 +473,9 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             otIp6Address addr = {};
             ip6AddrToOtIp6Address(g->group_address, &addr);
             otIp6SubscribeMulticastAddress(ot_, &addr);
+            if (!mld6_lookfor_group(interface(), &g->group_address)) {
+                mld6_joingroup_netif(interface(), &g->group_address);
+            }
         }
         interface()->mld_mac_filter = mldMacFilterCb;
     }
