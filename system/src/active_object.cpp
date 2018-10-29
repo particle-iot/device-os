@@ -102,7 +102,7 @@ bool ISRTaskQueue::process() {
     }
     ATOMIC_BLOCK() {
         // Take task object from the queue
-        task = (Task*)firstTask_;
+        task = firstTask_;
         firstTask_ = task->next;
         if (!firstTask_) {
             lastTask_ = nullptr;
