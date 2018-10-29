@@ -74,7 +74,8 @@ extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
 extern char _Stack_Init;
-void* new_heap_end = &link_heap_location_end;
+
+static void* new_heap_end = &link_heap_location_end;
 
 extern void malloc_enable(uint8_t);
 extern void malloc_set_heap_end(void*);
@@ -799,7 +800,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     // fordblks  The total number of bytes in free blocks.
     info->freeheap = heapinfo.fordblks;
     if (offsetof(runtime_info_t, total_init_heap) + sizeof(info->total_init_heap) <= info->size) {
-        info->total_init_heap = (uint32_t)(&link_heap_location_end - &link_heap_location);
+        info->total_init_heap = (uintptr_t)new_heap_end - (uintptr_t)&link_heap_location;
     }
 
     if (offsetof(runtime_info_t, total_heap) + sizeof(info->total_heap) <= info->size) {
@@ -811,7 +812,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        info->user_static_ram = (uint32_t)&_Stack_Init - (uint32_t)new_heap_end;
+        info->user_static_ram = (uintptr_t)&_Stack_Init - (uintptr_t)new_heap_end;
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {
