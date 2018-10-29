@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "logging.h"
 LOG_SOURCE_CATEGORY("sys.power")
 
@@ -107,6 +124,12 @@ void PowerManager::handleUpdate() {
     } else if (!pwr_good) {
       state = BATTERY_STATE_DISCHARGING;
     }
+  }
+
+  if (g_batteryState == BATTERY_STATE_DISCONNECTED && state == BATTERY_STATE_NOT_CHARGING &&
+      chargingDisabledTimestamp_) {
+    // We are aware of the fact that charging has been disabled, stay in disconnected state
+    state = BATTERY_STATE_DISCONNECTED;
   }
 
   const bool lowBat = fuel.getAlert();
@@ -283,7 +306,6 @@ void PowerManager::handleStateChange(battery_state_t from, battery_state_t to, b
     case BATTERY_STATE_FAULT:
       break;
     case BATTERY_STATE_DISCONNECTED: {
-      // Not disabling charging for now in disconnected state on Mesh devices
       PMIC power;
       // Disable charging
       power.disableCharging();
@@ -356,6 +378,8 @@ void PowerManager::checkWatchdog() {
   if (g_batteryState == BATTERY_STATE_DISCONNECTED &&
       ((millis() - chargingDisabledTimestamp_) >= DEFAULT_WATCHDOG_TIMEOUT)) {
     // Re-enable charging, do not run DPDM detection
+    LOG_DEBUG(TRACE, "re-enabling charging");
+    chargingDisabledTimestamp_ = 0;
     initDefault(false);
   }
 }
