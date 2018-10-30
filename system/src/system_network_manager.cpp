@@ -110,8 +110,58 @@ void forceCloudPingIfConnected() {
 
 
 #if HAL_PLATFORM_MESH
-volatile uint8_t br_permitted;
-volatile uint8_t br_enabled;
+namespace BorderRouterPermission {
+	enum Enum { NONE, YES, NO };
+}
+
+/**
+ * Setting of the border router on this device from the cloud.
+ */
+volatile BorderRouterPermission::Enum br_permitted;
+/**
+ * Flag to enable/disable the border router functionality locally.
+ */
+volatile bool br_enabled;
+
+/**
+ * For now poll the cloud. Later the cloud will send a message when the device
+ * is eligible as a border router.
+ */
+const uint32_t GATEWAY_CLOUD_REFRESH_MS = 5*60*1000;
+static volatile os_timer_t g_brTimer;
+
+void brTimerCleanup() {
+	os_timer_t t = g_brTimer;
+	g_brTimer = nullptr;
+	os_timer_destroy(t, nullptr);
+}
+
+void updateBorderRouter();
+
+void brUpdateTimeout(os_timer_t timer) {
+	brTimerCleanup();
+	// clear the permitted flag so that it is re-evaluated.
+	br_permitted = BorderRouterPermission::NONE;
+	updateBorderRouter();
+}
+
+/**
+ * Schedules a query to be sent to the device cloud about the border router
+ * eligibility.
+ */
+void scheduleBrUpdate(uint32_t period) {
+	if (!g_brTimer) {
+		// since this is the only thread that creates the timer this is as good as single-threaded code.
+		os_timer_t t = nullptr;
+		if (!os_timer_create(&t, period, brUpdateTimeout, nullptr, true, nullptr)) {
+			if (!os_timer_change(t, OS_TIMER_CHANGE_START, false, period, 0xffffffff, nullptr)) {
+				g_brTimer = t;
+			} else {
+				os_timer_destroy(t, nullptr);
+			}
+		}
+	}
+}
 
 void updateBorderRouter() {
     const auto task = new(std::nothrow) ISRTaskQueue::Task();
@@ -120,13 +170,33 @@ void updateBorderRouter() {
     }
     task->func = [](ISRTaskQueue::Task* task) {
         delete task;
+        LOG(TRACE, "br_enabled=%d, br_permitted=%d", br_enabled, br_permitted);
         if (br_enabled) {
-			if (br_permitted) {
+        	switch (br_permitted) {
+        	case BorderRouterPermission::YES:
+        		// all flags are allowing it
+				LOG(INFO, "Starting gateway");
 				BorderRouterManager::instance()->start();
-			} else {
+				// for now, once enabled we rely on explicit notification
+				// from the cloud to disable. This ensures the BR remains active
+				// should the cloud connection become unreliable.
+				// scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
+				break;
+
+        	case BorderRouterPermission::NO:
+				LOG(WARN, "Stopping non permitted gateway");
+				BorderRouterManager::instance()->stop();
+				scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
+				break;
+
+			default: // not set, so get retrieving it.
+				LOG(INFO, "Checking gateway status with the device cloud");
+				// we only inform when the device wants to become a gateway
 				particle::ctrl::mesh::notifyBorderRouter(true);
-			}
+				break;
+			} // switch
         } else {
+        	LOG(INFO, "stopping disabled gateway");
         	BorderRouterManager::instance()->stop();
         }
     };
@@ -134,17 +204,18 @@ void updateBorderRouter() {
 }
 
 void setBorderRouterPermitted(bool permitted) {
-	br_permitted = permitted;
+	br_permitted = permitted ? BorderRouterPermission::YES : BorderRouterPermission::NO;
+	LOG(TRACE, "br_permitted=%d", permitted);
 	updateBorderRouter();
 }
 
 void setBorderRouterState(bool start) {
 	br_enabled = start;
+	LOG(TRACE, "br_enabled=%d", start);
 	updateBorderRouter();
 }
 
 #endif // HAL_PLATFORM_MESH
-
 
 NetworkManager::NetworkManager() {
     state_ = State::NONE;
