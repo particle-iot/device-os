@@ -1,3 +1,27 @@
+## 0.8.0-rc.25
+
+### FEATURES
+
+- [Argon] Enables serial setup console `WiFiSetupConsole` in listening mode to manage WiFi credentials (#268)
+
+### BUGFIXES
+
+- [system] Fix memory usage diagnostics (#262)
+- [openthread] Work around network name issues (#267)
+- [ble] Avoid disabling interrupts when processing control requests (#264)
+- [system] Power manager should not immediately go into `NOT_CHARGING` state from `DISCONNECTED` before `DEFAULT_WATCHDOG_TIMEOUT` passes (#263)
+- [system] Battery state of charge should not be reported in `DISCONNECTED` state (#263)
+- [ifapi] DHCPv4 client shouldn't start on ppp interfaces through `if_set_xflags()` (#263)
+- [Boron] ppp (cellular) netif should not be default (#263)
+- [Mesh] Fix memory usage diagnostics in modular builds (#262)
+
+### ENHANCEMENTS
+
+- [hal] Define `retained` and `retained_system` macros (#265)
+- [system] Use ephemeral ports when connecting to the cloud over IPv4 (#269)
+- [system] Re-request permission to become Border Router from the cloud every 5 minutes if previously denied using a separate timer (#266)
+- [openthread] When syncing LwIP -> OT multicast subscriptions, immediately join the group on LwIP side as well, if not joined already (#263)
+
 ## 0.8.0-rc.24
 
 ### BUGFIXES

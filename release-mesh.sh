@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=0.8.0-rc.24
+version=0.8.0-rc.25
 
 set -e
 
