@@ -120,7 +120,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 /* FIXME: this should probably be moved into system_cloud_internal */
                 system_string_interpolate(address->domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
                 snprintf(tmpserv, sizeof(tmpserv), "%u", address->port);
-                LOG(TRACE, "Resolving %s:%s", tmphost, tmpserv);
+                LOG(TRACE, "Resolving %s#%s", tmphost, tmpserv);
                 netdb_getaddrinfo(tmphost, tmpserv, &hints, &info);
                 type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
                 break;
@@ -161,9 +161,10 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 break;
             }
         }
-        LOG(INFO, "Cloud socket=%d, connecting to %s:%u", s, serverHost, serverPort);
+        LOG(INFO, "Cloud socket=%d, connecting to %s#%u", s, serverHost, serverPort);
 
-        if (protocol == IPPROTO_UDP) {
+        /* We are using fixed source port only for IPv6 connections */
+        if (protocol == IPPROTO_UDP && a->ai_family == AF_INET6) {
             struct sockaddr_storage saddr = {};
             saddr.s2_len = sizeof(saddr);
             saddr.ss_family = a->ai_family;
@@ -200,11 +201,11 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
          * on source address and port */
         r = sock_connect(s, a->ai_addr, a->ai_addrlen);
         if (r) {
-            LOG(ERROR, "Cloud socket=%d, failed to connect to %s:%u, errno=%d", s, serverHost, serverPort, errno);
+            LOG(ERROR, "Cloud socket=%d, failed to connect to %s#%u, errno=%d", s, serverHost, serverPort, errno);
             sock_close(s);
             continue;
         }
-        LOG(TRACE, "Cloud socket=%d, connected to %s:%u", s, serverHost, serverPort);
+        LOG(TRACE, "Cloud socket=%d, connected to %s#%u", s, serverHost, serverPort);
 
         /* If we got here, we are most likely connected, however keep track of current addrinfo list
          * in order to try the next address if application layer fails to establish the connection
