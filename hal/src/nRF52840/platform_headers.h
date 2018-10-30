@@ -5,3 +5,6 @@
  * features in user code. Normally user code should access the platform via
  * the HAL.
  */
+
+#define retained __attribute__((section(".retained_user")))
+#define retained_system __attribute__((section(".retained_system")))
