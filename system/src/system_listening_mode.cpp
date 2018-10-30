@@ -31,6 +31,7 @@ LOG_SOURCE_CATEGORY("system.listen")
 #include "system_network.h"
 #include "delay_hal.h"
 #include "system_control_internal.h"
+#include "check.h"
 
 using particle::LEDStatus;
 
@@ -77,8 +78,25 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     ble_start_advert(nullptr);
 #endif /* HAL_PLATFORM_BLE */
 
+#if !HAL_PLATFORM_WIFI
     SystemSetupConsoleConfig config;
     console_.reset(new SystemSetupConsole<SystemSetupConsoleConfig>(config));
+#else
+    WiFiSetupConsoleConfig config = {};
+    config.connect_callback2 = [](void*, NetworkCredentials* creds, bool dryRun) -> int {
+        // NOTE: dry run is not supported
+        if (dryRun) {
+            return 0;
+        }
+        if (creds) {
+            CHECK(network_set_credentials(NETWORK_INTERFACE_WIFI_STA, 0, creds, nullptr));
+            // Exit listening mode
+            instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_EXIT, nullptr);
+        }
+        return 0;
+    };
+    console_.reset(new WiFiSetupConsole(config));
+#endif // HAL_PLATFORM_WIFI
 
     return 0;
 }

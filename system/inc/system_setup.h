@@ -65,10 +65,17 @@ struct WiFiSetupConsoleConfig : SystemSetupConsoleConfig
 };
 #endif
 
-template<typename Config> class SystemSetupConsole
+class SystemSetupConsoleBase {
+public:
+    SystemSetupConsoleBase() = default;
+    virtual ~SystemSetupConsoleBase() = default;
+    virtual void loop(void) = 0;
+};
+
+template<typename Config> class SystemSetupConsole : public SystemSetupConsoleBase
 {
 public:
-    SystemSetupConsole(Config& config);
+    SystemSetupConsole(const Config& config);
     virtual ~SystemSetupConsole();
     virtual void loop(void);
 protected:
@@ -85,7 +92,7 @@ protected:
      */
     virtual bool handle_peek(char c);
 
-    Config& config;
+    Config config;
     void print(const char *s);
     void read_line(char *dst, int max_len);
     void read_multiline(char *dst, int max_len);
@@ -110,7 +117,7 @@ class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
     using super = SystemSetupConsole<WiFiSetupConsoleConfig>;
 
 public:
-    WiFiSetupConsole(WiFiSetupConsoleConfig& config);
+    WiFiSetupConsole(const WiFiSetupConsoleConfig& config);
     virtual ~WiFiSetupConsole();
 
 protected:
@@ -143,7 +150,7 @@ class CellularSetupConsole : public SystemSetupConsole<CellularSetupConsoleConfi
     using super = SystemSetupConsole<CellularSetupConsoleConfig>;
 
 public:
-    CellularSetupConsole(CellularSetupConsoleConfig& config);
+    CellularSetupConsole(const CellularSetupConsoleConfig& config);
     virtual ~CellularSetupConsole();
 
     virtual void exit() override;

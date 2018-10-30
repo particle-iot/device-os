@@ -62,7 +62,7 @@ private:
 private:
     std::atomic_bool active_;
 
-    std::unique_ptr<SystemSetupConsole<SystemSetupConsoleConfig> > console_;
+    std::unique_ptr<SystemSetupConsoleBase> console_;
 };
 
 } } /* particle::system */
