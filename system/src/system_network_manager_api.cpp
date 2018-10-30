@@ -295,11 +295,13 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 void network_listen(network_handle_t network, uint32_t flags, void*) {
     /* May be called from an ISR */
     if (!HAL_IsISR()) {
-        if (!(flags & NETWORK_LISTEN_EXIT)) {
-            ListeningModeHandler::instance()->enter();
-        } else {
-            ListeningModeHandler::instance()->exit();
-        }
+        SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
+            if (!(flags & NETWORK_LISTEN_EXIT)) {
+                ListeningModeHandler::instance()->enter();
+            } else {
+                ListeningModeHandler::instance()->exit();
+            }
+        }());
     } else {
         if (!(flags & NETWORK_LISTEN_EXIT)) {
             ListeningModeHandler::instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_ENTER, nullptr);

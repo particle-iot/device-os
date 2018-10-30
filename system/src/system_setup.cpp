@@ -148,7 +148,7 @@ inline bool setup_serial1() {
 }
 #endif
 
-template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
+template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(const Config& config_)
     : config(config_)
 {
     WITH_LOCK(serial);
@@ -431,7 +431,7 @@ template<typename Config> void SystemSetupConsole<Config>::read_multiline(char *
 
 #if Wiring_WiFi
 
-WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
+WiFiSetupConsole::WiFiSetupConsole(const WiFiSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
 }
@@ -678,7 +678,7 @@ void WiFiSetupConsole::exit()
 
 #if Wiring_Cellular
 
-CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
+CellularSetupConsole::CellularSetupConsole(const CellularSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
 }
