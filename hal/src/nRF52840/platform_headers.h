@@ -7,3 +7,4 @@
  */
 
 #define retained __attribute__((section(".retained_user")))
+#define retained_system __attribute__((section(".retained_system")))
