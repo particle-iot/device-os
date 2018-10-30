@@ -260,17 +260,12 @@ int resetThread() {
     // Clear master key (invalidates active and pending datasets)
     otMasterKey key = {};
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
+    // FIXME: Setting the network name to an invalid UTF-8 string helps to work around an issue in
+    // the OT's MAC layer implementation, where the cached network name doesn't get updated if it
+    // starts with the same characters as the new name
+    CHECK_THREAD(otThreadSetNetworkName(thread, "\xff"));
     // Erase persistent data
     CHECK_THREAD(otInstanceErasePersistentInfo(thread));
-/*
-    // FIXME: Reinitialize OpenThread using the same buffer to make sure all references to the
-    // OpenThread instance remain valid
-    otInstanceFinalize(thread);
-    size_t size = 0;
-    otInstanceInit(nullptr, &size);
-    const auto thread2 = otInstanceInit(thread, &size);
-    SPARK_ASSERT(thread2 == thread);
-*/
     return 0;
 }
 
@@ -821,7 +816,6 @@ int getNetworkInfo(ctrl_request* req) {
     EncodedString eName(&pbRep.network.name, name, strlen(name));
     EncodedString eExtPanIdStr(&pbRep.network.ext_pan_id, extPanIdStr, sizeof(extPanIdStr));
     EncodedString eNetworkId(&pbRep.network.network_id, networkId, strlen(networkId));
-
     pbRep.network.channel = channel;
     pbRep.network.pan_id = panId;
     const int ret = encodeReplyMessage(req, PB(GetNetworkInfoReply_fields), &pbRep);
@@ -863,6 +857,9 @@ int scanNetworks(ctrl_request* req) {
         // Network name
         static_assert(sizeof(result->mNetworkName) <= sizeof(Network::name), "");
         memcpy(&network.name, &result->mNetworkName, sizeof(result->mNetworkName));
+        // FIXME: OT doesn't null-terminate the network name in the scan results if it has the
+        // maximum length of 16 characters
+        network.name[OT_NETWORK_NAME_MAX_SIZE] = '\0';
         // Extended PAN ID
         static_assert(sizeof(result->mExtendedPanId) * 2 == sizeof(Network::extPanId), "");
         bytes2hexbuf_lower_case((const uint8_t*)&result->mExtendedPanId, sizeof(result->mExtendedPanId), network.extPanId);
