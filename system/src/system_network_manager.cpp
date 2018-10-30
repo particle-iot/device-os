@@ -116,36 +116,36 @@ enum class BorderRouterPermission { NONE, YES, NO };
 /**
  * Setting of the border router on this device from the cloud.
  */
-volatile BorderRouterPermission br_permitted;
+volatile BorderRouterPermission br_permitted = BorderRouterPermission::NONE;
 /**
  * Flag to enable/disable the border router functionality locally.
  */
-volatile bool br_enabled;
+volatile bool br_enabled = false;
 
 /**
  * For now poll the cloud. Later the cloud will send a message when the device
  * is eligible as a border router.
  */
 const uint32_t GATEWAY_CLOUD_REFRESH_MS = 5*60*1000;
-static os_timer_t g_brTimer;
+static os_timer_t g_brTimer = nullptr;
 
 /**
  * Destroy the border router timer
  */
 void brTimerCleanup() {
-	os_timer_t t = g_brTimer;
-	g_brTimer = nullptr;
-	if (t) {
-		os_timer_destroy(t, nullptr);
-	}
+    os_timer_t t = g_brTimer;
+    g_brTimer = nullptr;
+    if (t) {
+        os_timer_destroy(t, nullptr);
+    }
 }
 
 void updateBorderRouter();
 
 void brUpdateTimeout(os_timer_t timer) {
-	// clear the permitted flag so that it is re-evaluated.
-	br_permitted = BorderRouterPermission::NONE;
-	updateBorderRouter();
+    // clear the permitted flag so that it is re-evaluated.
+    br_permitted = BorderRouterPermission::NONE;
+    updateBorderRouter();
 }
 
 /**
@@ -153,15 +153,15 @@ void brUpdateTimeout(os_timer_t timer) {
  * eligibility.
  */
 void scheduleBrUpdate(uint32_t period) {
-	if (!g_brTimer) {
-		// since this is the only thread that creates the timer this is as good as single-threaded code.
-		os_timer_create(&g_brTimer, period, brUpdateTimeout, nullptr, true, nullptr);
-	}
-	if (g_brTimer && !os_timer_is_active(g_brTimer, nullptr)) {
-		if (os_timer_change(g_brTimer, OS_TIMER_CHANGE_START, false, period, 0xffffffff, nullptr)) {
-			brTimerCleanup();
-		}
-	}
+    if (!g_brTimer) {
+        // since this is the only thread that creates the timer this is as good as single-threaded code.
+        os_timer_create(&g_brTimer, period, brUpdateTimeout, nullptr, true, nullptr);
+    }
+    if (g_brTimer && !os_timer_is_active(g_brTimer, nullptr)) {
+        if (os_timer_change(g_brTimer, OS_TIMER_CHANGE_START, false, period, 0xffffffff, nullptr)) {
+            brTimerCleanup();
+        }
+    }
 }
 
 void updateBorderRouter() {
@@ -173,51 +173,56 @@ void updateBorderRouter() {
         delete task;
         LOG_DEBUG(TRACE, "br_enabled=%d, br_permitted=%d", br_enabled, br_permitted);
         if (br_enabled) {
-        	switch (br_permitted) {
-        	case BorderRouterPermission::YES:
-        		// all flags are allowing it
-				if (!BorderRouterManager::instance()->start()) {
-					LOG(INFO, "Starting gateway");
-					brTimerCleanup();
-				}
-				// for now, once enabled we rely on explicit notification
-				// from the cloud to disable. This ensures the BR remains active
-				// should the cloud connection become unreliable.
-				// scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
-				break;
+            switch (br_permitted) {
+            case BorderRouterPermission::YES:
+                // all flags are allowing it
+                if (!BorderRouterManager::instance()->start()) {
+                    LOG(INFO, "Starting gateway");
+                    brTimerCleanup();
+                }
+                // for now, once enabled we rely on explicit notification
+                // from the cloud to disable. This ensures the BR remains active
+                // should the cloud connection become unreliable.
+                // scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
+                break;
 
-        	case BorderRouterPermission::NO:
-				if (!BorderRouterManager::instance()->stop()) {
-					LOG(WARN, "Stopping non permitted gateway");
-				}
-				scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
-				break;
+            case BorderRouterPermission::NO:
+                if (!BorderRouterManager::instance()->stop()) {
+                    LOG(WARN, "Stopping non permitted gateway");
+                }
+                scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
+                break;
 
-			default: // not set, so get retrieving it.
-				LOG(INFO, "Checking gateway status with the device cloud");
-				// we only inform when the device wants to become a gateway
-				particle::ctrl::mesh::notifyBorderRouter(true);
-				break;
-			} // switch
+            default: // not set, so get retrieving it.
+                LOG(INFO, "Checking gateway status with the device cloud");
+                // we only inform when the device wants to become a gateway
+                particle::ctrl::mesh::notifyBorderRouter(true);
+                break;
+            } // switch
         } else {
-        	if (!BorderRouterManager::instance()->stop()) {
-        		LOG(INFO, "stopping disabled gateway");
-        	}
+            if (!BorderRouterManager::instance()->stop()) {
+                LOG(INFO, "stopping disabled gateway");
+            }
         }
     };
     SystemISRTaskQueue.enqueue(task);
 }
 
 void setBorderRouterPermitted(bool permitted) {
-	br_permitted = permitted ? BorderRouterPermission::YES : BorderRouterPermission::NO;
-	LOG(TRACE, "br_permitted=%d", permitted);
-	updateBorderRouter();
+    const auto p = permitted ? BorderRouterPermission::YES : BorderRouterPermission::NO;
+    if (p != br_permitted) {
+        LOG(TRACE, "br_permitted=%d", permitted);
+    }
+    br_permitted = p;
+    updateBorderRouter();
 }
 
 void setBorderRouterState(bool start) {
-	br_enabled = start;
-	LOG(TRACE, "br_enabled=%d", start);
-	updateBorderRouter();
+    if (start != br_enabled) {
+        LOG(TRACE, "br_enabled=%d", start);
+    }
+    br_enabled = start;
+    updateBorderRouter();
 }
 
 #endif // HAL_PLATFORM_MESH
