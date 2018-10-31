@@ -41,3 +41,4 @@ PROVIDE ( dynalib_location_hal_netdb = system_part1_module_table + 80 );
 PROVIDE ( dynalib_location_hal_ifapi = system_part1_module_table + 84 );
 PROVIDE ( dynalib_location_hal_resolvapi = system_part1_module_table + 88 );
 PROVIDE ( dynalib_location_hal_wlan = system_part1_module_table + 92 );
+PROVIDE ( dynalib_location_system_mesh = system_part1_module_table + 96 );
