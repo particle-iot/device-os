@@ -25,8 +25,8 @@
 
 DYNALIB_BEGIN(system_mesh)
 
-DYNALIB_FN(0, system_mesh, mesh_set_device_role, int(int, int, unsigned, void*))
-DYNALIB_FN(1, system_mesh, mesh_get_device_role, int(int*, int*, int*, void*))
+DYNALIB_FN(0, system_mesh, mesh_set_device_mode, int(int, int, unsigned, void*))
+DYNALIB_FN(1, system_mesh, mesh_get_device_mode, int(int*, int*, int*, void*))
 DYNALIB_FN(2, system_mesh, mesh_get_network_info, int(mesh_network_info*, void*))
 
 DYNALIB_END(system_mesh)

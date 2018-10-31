@@ -16,7 +16,7 @@
  */
 
 #ifndef SPARK_WIRING_MESH_H
-#define    SPARK_WIRING_MESH_H
+#define SPARK_WIRING_MESH_H
 
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
@@ -27,6 +27,7 @@
 
 #include "spark_wiring_signal.h"
 #include "system_task.h"
+#include "system_mesh.h"
 #include "events.h"
 #include "system_error.h"
 #include "check.h"

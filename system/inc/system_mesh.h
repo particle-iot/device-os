@@ -117,7 +117,7 @@ typedef struct mesh_network_info {
  *
  * @return `0` on success, or a negative result code in case of an error.
  */
-int mesh_set_device_role(int role, int type, unsigned flags, void* reserved);
+int mesh_set_device_mode(int role, int type, unsigned flags, void* reserved);
 /**
  * Get the device role.
  *
@@ -128,7 +128,7 @@ int mesh_set_device_role(int role, int type, unsigned flags, void* reserved);
  *
  * @return `0` on success, or a negative result code in case of an error.
  */
-int mesh_get_device_role(int* current_role, int* configured_role, int* type, void* reserved);
+int mesh_get_device_mode(int* current_role, int* configured_role, int* type, void* reserved);
 /**
  * Get the network info.
  *

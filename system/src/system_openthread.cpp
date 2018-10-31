@@ -53,8 +53,6 @@ namespace {
 using namespace particle;
 using namespace particle::system;
 
-using net::ot::ThreadLock;
-
 // Persistent storage keys
 const uint16_t NETWORK_ID_KEY = 0x4000;
 const uint16_t DEVICE_CONFIG_KEY = 0x4001;
@@ -82,6 +80,7 @@ int setDeviceMode(otInstance* thread, int role, int type) {
     CHECK_THREAD(otThreadSetLinkMode(thread, conf));
     const bool routerEnabled = (role != MESH_DEVICE_ROLE_ENDPOINT);
     otThreadSetRouterRoleEnabled(thread, routerEnabled);
+    // TODO: Enable/disable border router
     return 0;
 }
 
@@ -314,7 +313,7 @@ int threadSetNetworkId(otInstance* ot, const char* buf) {
 } // particle
 
 // System API
-int mesh_set_device_role(int role, int type, unsigned flags, void* reserved) {
+int mesh_set_device_mode(int role, int type, unsigned flags, void* reserved) {
     // TODO: Make it possible to disable Thread persistently
     if (role == MESH_DEVICE_ROLE_DISABLED || role == MESH_DEVICE_ROLE_DETACHED) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -331,7 +330,7 @@ int mesh_set_device_role(int role, int type, unsigned flags, void* reserved) {
     return 0;
 }
 
-int mesh_get_device_role(int* current_role, int* configured_role, int* type, void* reserved) {
+int mesh_get_device_mode(int* current_role, int* configured_role, int* type, void* reserved) {
     const std::lock_guard<ThreadLock> lock(ThreadLock());
     const auto thread = threadInstance();
     CHECK_TRUE(thread, SYSTEM_ERROR_INVALID_STATE);
