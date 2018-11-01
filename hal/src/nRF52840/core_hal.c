@@ -488,8 +488,10 @@ void HAL_Core_Execute_Standby_Mode(void) {
 }
 
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
-    uint32_t reset_reason = 0;
-    sd_power_reset_reason_get(&reset_reason);
+    uint32_t reset_reason = SYSTEM_FLAG(RCC_CSR_SysFlag);
+    if (reset_reason == 0xffffffff) {
+        sd_power_reset_reason_get(&reset_reason);
+    }
     switch(resetType) {
         case PIN_RESET: {
             return reset_reason == NRF_POWER_RESETREAS_RESETPIN_MASK;
@@ -502,15 +504,14 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
         }
         case POWER_MANAGEMENT_RESET: {
             // SYSTEM OFF Mode
-            return reset_reason == NRF_POWER_RESETREAS_OFF_MASK;;
+            return reset_reason == NRF_POWER_RESETREAS_OFF_MASK;
         }
-        case POWER_DOWN_RESET: {
-            // Not support
-            return false;
-        }
+        // If none of the reset sources are flagged, this indicates that
+        // the chip was reset from the on-chip reset generator,
+        // which will indicate a power-on-reset or a brownout reset.
+        case POWER_DOWN_RESET:
         case POWER_BROWNOUT_RESET: {
-            // Not support
-            return false;
+            return reset_reason == 0;
         }
         default:
             return false;
@@ -742,8 +743,7 @@ bool HAL_Feature_Get(HAL_Feature feature) {
             return true; // Mesh platforms are UDP-only
         }
         case FEATURE_RESET_INFO: {
-            bool value = false;
-            return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
+            return true;
         }
         case FEATURE_ETHERNET_DETECTION: {
             bool value = false;
