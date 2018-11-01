@@ -25,7 +25,7 @@
 #include "system_cloud_internal.h"
 #include "system_threading.h"
 #include "system_listening_mode.h"
-
+#include "system_event.h"
 #include "delay_hal.h"
 
 #include "dct.h"
@@ -336,8 +336,13 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
 int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*) {
     switch (network) {
 #if HAL_PLATFORM_WIFI
-    case NETWORK_INTERFACE_WIFI_STA:
-        return wlan_set_credentials(credentials);
+    case NETWORK_INTERFACE_WIFI_STA: {
+        auto r = wlan_set_credentials(credentials);
+        if (!r) {
+            system_notify_event(network_credentials, network_credentials_added, credentials);
+        }
+        return r;
+    }
 #endif
     default:
         return SYSTEM_ERROR_INVALID_ARGUMENT;

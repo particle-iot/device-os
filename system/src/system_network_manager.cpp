@@ -38,6 +38,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "check.h"
 #include "system_cloud.h"
 #include "system_threading.h"
+#include "system_event.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -462,6 +463,10 @@ int NetworkManager::clearConfiguration(if_t oIface) {
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
     });
 
+    if (!ret) {
+        system_notify_event(network_credentials, network_credentials_cleared);
+    }
+
     return ret;
 }
 
@@ -509,14 +514,24 @@ void NetworkManager::transition(State state) {
     switch (state) {
         case State::DISABLED: {
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
+            // FIXME:
+            system_notify_event(network_status, network_status_powering_off);
+            system_notify_event(network_status, network_status_off);
             break;
         }
         case State::IFACE_DOWN: {
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
+            if (state_ == State::IFACE_REQUEST_DOWN) {
+                system_notify_event(network_status, network_status_disconnected);
+            } else if (state_ == State::DISABLED) {
+                // FIXME:
+                system_notify_event(network_status, network_status_powering_on);
+                system_notify_event(network_status, network_status_on);
+            }
             break;
         }
         case State::IFACE_REQUEST_DOWN: {
-            /* TODO: ? */
+            system_notify_event(network_status, network_status_disconnecting);
             break;
         }
         case State::IFACE_REQUEST_UP: {
@@ -525,6 +540,7 @@ void NetworkManager::transition(State state) {
         }
         case State::IFACE_UP: {
             LED_SIGNAL_START(NETWORK_CONNECTING, BACKGROUND);
+            system_notify_event(network_status, network_status_connecting);
             break;
         }
         case State::IFACE_LINK_UP: {
@@ -533,6 +549,9 @@ void NetworkManager::transition(State state) {
         }
         case State::IP_CONFIGURED: {
             LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);
+            if (state_ != State::IP_CONFIGURED) {
+                system_notify_event(network_status, network_status_connected);
+            }
             break;
         }
     }
