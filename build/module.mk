@@ -306,6 +306,10 @@ clean: clean_deps
 .PHONY: all prebuild postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
 .SECONDARY:
 
+# Disable implicit builtin rules
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
+
 include $(COMMON_BUILD)/recurse.mk
 
 
