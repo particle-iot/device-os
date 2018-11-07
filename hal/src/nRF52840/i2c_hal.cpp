@@ -77,7 +77,7 @@ static void twis1_handler(nrfx_twis_evt_t const * p_event);
 
 nrf5x_i2c_info_t m_i2c_map[TOTAL_I2C] = {
     {&m_twim0, &m_twis0, twis0_handler, SCL, SDA},
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#if PLATFORM_ID == PLATFORM_BORON
     {&m_twim1, &m_twis1, twis1_handler, PMIC_SCL, PMIC_SDA}
 #else
     {&m_twim1, &m_twis1, twis1_handler, D3, D2}
