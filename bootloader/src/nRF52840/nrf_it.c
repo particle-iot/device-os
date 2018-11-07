@@ -120,19 +120,3 @@ void SysTick_Handler(void)
     System1MsTick();
     Timing_Decrement();
 }
-
-void GPIOTE_IRQHandler(void)
-{
-    BUTTON_Irq_Handler(0);
-}
-
-void RTC1_IRQHandler(void)
-{
-    if (nrf_rtc_event_pending(NRF_RTC1, NRF_RTC_EVENT_TICK))
-    {
-        nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
-
-        BUTTON_Debounce();
-    }
-}
-

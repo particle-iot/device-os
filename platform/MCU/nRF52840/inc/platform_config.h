@@ -92,42 +92,31 @@
     #error "Unknown PLATFORM_ID"
 #endif
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-//Push Buttons in Bootloader, use the lowest level GPIOTE driver
-#if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM
-#define BUTTON1_GPIO_PIN                    25
-#else
-#define BUTTON1_GPIO_PIN                    11
-#endif
-#define BUTTON1_GPIO_MODE                   NRF_GPIO_PIN_DIR_INPUT
-#define BUTTON1_GPIO_PUPD                   NRF_GPIO_PIN_PULLUP
-#define BUTTON1_PRESSED                     0x00
-#define BUTTON1_GPIOTE_EVENT_IN             NRF_GPIOTE_EVENTS_IN_0
-#define BUTTON1_GPIOTE_EVENT_CHANNEL        0
-#define BUTTON1_GPIOTE_INT_MASK             NRF_GPIOTE_INT_IN0_MASK
-#define BUTTON1_GPIOTE_INTERRUPT_MODE       FALLING
-#define BUTTON1_GPIOTE_IRQn                 GPIOTE_IRQn
-#define BUTTON1_GPIOTE_IRQ_HANDLER          GPIOTE_IRQHandler
-#define BUTTON1_GPIOTE_IRQ_PRIORITY         7
-#define BUTTON1_GPIOTE_IRQ_INDEX            22
-#define BUTTON1_GPIOTE_TRIGGER              NRF_GPIOTE_POLARITY_HITOLO
-#define BUTTON1_MIRROR_SUPPORTED            0
-#else
-//Push Buttons in Device OS, use interrupt HAL
+//Push Buttons, use interrupt HAL
 #if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
-#define BUTTON1_PIN                         22
+#define BUTTON1_PIN                                 22
 #else
-#define BUTTON1_PIN                         20
+#define BUTTON1_PIN                                 20
 #endif
-#define BUTTON1_PIN_MODE                    INPUT_PULLUP
-#define BUTTON1_INTERRUPT_MODE              FALLING
-#define BUTTON1_PRESSED                     0x00
-#define BUTTON1_MIRROR_SUPPORTED            1
-#define BUTTON1_MIRROR_PIN                  PIN_INVALID
-#define BUTTON1_MIRROR_PIN_MODE             INPUT_PULLUP
-#define BUTTON1_MIRROR_INTERRUPT_MODE       FALLING
+#define BUTTON1_PIN_MODE                            INPUT_PULLUP
+#define BUTTON1_INTERRUPT_MODE                      FALLING
+#define BUTTON1_PRESSED                             0x00
+#define BUTTON1_MIRROR_SUPPORTED                    1
+#define BUTTON1_MIRROR_PRESSED                      0x00
+#define BUTTON1_MIRROR_PIN                          PIN_INVALID
+#define BUTTON1_MIRROR_PIN_MODE                     INPUT_PULLUP
+#define BUTTON1_MIRROR_INTERRUPT_MODE               FALLING
 
-#endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
+//RGB LEDs
+#define LED_MIRROR_SUPPORTED                        1
+#define LEDn                                        (4 * (LED_MIRROR_SUPPORTED + 1))
+#define LED_RED                                     LED2  // RED Led
+#define LED_GREEN                                   LED3  // GREEN Led
+#define LED_BLUE                                    LED4  // BLUE Led
+#define LED_PIN_USER                                7
+#define LED_PIN_RED                                 21
+#define LED_PIN_GREEN                               22
+#define LED_PIN_BLUE                                23
 
 /* Exported functions ------------------------------------------------------- */
 

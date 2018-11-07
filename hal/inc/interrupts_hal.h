@@ -89,6 +89,7 @@ extern "C" {
 #endif
 
 void HAL_Interrupts_Init(void);
+void HAL_Interrupts_Uninit(void);
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config);
 void HAL_Interrupts_Detach(uint16_t pin);
 void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved);
@@ -119,7 +120,7 @@ int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handle
 #endif /* nRF52840 */
 
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX) || defined(nRF52840)
-inline bool HAL_IsISR()
+static inline bool HAL_IsISR() 
 {
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 }

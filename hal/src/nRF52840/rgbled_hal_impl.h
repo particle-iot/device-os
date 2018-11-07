@@ -26,26 +26,12 @@
 extern "C" {
 #endif
 
+#define LED_CONFIG_STRUCT_VERSION           0x01
 typedef struct led_config_t {
-    uint8_t             version;            // Struct version
-    uint16_t            pin;                // GPIO pin
-    union {
-        uint16_t        clk;                // GPIO clock identifier
-        uint16_t        hal_pin;            // HAL pin number
-    };
-    union {
-        uint16_t        hal_mode;           // HAL mode
-    };
-    union {
-        struct {
-            uint8_t is_active   : 1; // Is LED active?
-            uint8_t is_hal_pin  : 1; // HAL or GPIO pin
-            uint8_t is_inverted : 1; // If LED is "inverted", active state is 0, instead of 1
-            uint8_t is_pwm      : 1; // PWM enabled LED
-        };
-        uint8_t flags;
-    };
-    uint8_t padding[14];
+    uint8_t             version;        // Struct version
+    uint16_t            pin;
+    uint8_t             is_inverted;    // If LED is "inverted", active state is 0, instead of 1
+    uint8_t             padding[18];
 } led_config_t;
 
 #ifdef  __cplusplus
@@ -53,4 +39,3 @@ typedef struct led_config_t {
 #endif
 
 #endif  /* RGBLED_HAL_IMPL_H_ */
-

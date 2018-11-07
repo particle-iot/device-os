@@ -127,6 +127,10 @@ void Set_System(void)
     HAL_USB_Init();
 #endif
 
+    /* Configure internal flash and external flash */
+    SPARK_ASSERT(!hal_flash_init());
+    SPARK_ASSERT(!hal_exflash_init());
+
     /* Configure the LEDs and set the default states */
     int LEDx;
     for(LEDx = 0; LEDx < LEDn; ++LEDx)
@@ -134,53 +138,17 @@ void Set_System(void)
         LED_Init(LEDx);
     }
 
+    // GPIOTE initialization
+    HAL_Interrupts_Init();
+
     /* Configure the Button */
     BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
-
-    /* Configure internal flash and external flash */
-    SPARK_ASSERT(!hal_flash_init());
-    SPARK_ASSERT(!hal_exflash_init());
 }
 
 void Reset_System(void) {
     __DSB();
 
     SysTick_Disable();
-
-    sd_nvic_DisableIRQ(RTC1_IRQn);
-
-    const uint32_t evtMask = RTC_EVTEN_COMPARE3_Msk |
-                             RTC_EVTEN_COMPARE2_Msk |
-                             RTC_EVTEN_COMPARE1_Msk |
-                             RTC_EVTEN_COMPARE0_Msk |
-                             RTC_EVTEN_OVRFLW_Msk   |
-                             RTC_EVTEN_TICK_Msk;
-
-    const uint32_t intMask = NRF_RTC_INT_TICK_MASK     |
-                             NRF_RTC_INT_OVERFLOW_MASK |
-                             NRF_RTC_INT_COMPARE0_MASK |
-                             NRF_RTC_INT_COMPARE1_MASK |
-                             NRF_RTC_INT_COMPARE2_MASK |
-                             NRF_RTC_INT_COMPARE3_MASK;
-
-    nrf_rtc_task_trigger(NRF_RTC1, NRF_RTC_TASK_STOP);
-
-    /* NOTE: the second argument is a mask */
-    nrf_rtc_int_disable(NRF_RTC1, intMask);
-    nrf_rtc_event_disable(NRF_RTC1, evtMask);
-
-    /* NOTE: the second argument is an event (nrf_rtc_event_t) */
-    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
-    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_OVERFLOW);
-    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_0);
-    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_1);
-    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_2);
-    nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_3);
-
-    sd_nvic_ClearPendingIRQ(RTC1_IRQn);
-    sd_nvic_SetPriority(RTC1_IRQn, 0);
-
-    nrf_rtc_prescaler_set(NRF_RTC1, 0);
 
     BUTTON_Uninit();
 

@@ -19,6 +19,7 @@
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
 #include "pwm_hal.h"
+#include "module_info.h"
 
 NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 {
@@ -250,4 +251,32 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 
 NRF5x_Pin_Info* HAL_Pin_Map(void) {
     return __PIN_MAP;
+}
+
+void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (pin >= TOTAL_PINS) {
+        return;
+    }
+
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    // Release peripheral resource
+    if (pin_func != PIN_MAP[pin].pin_func) {
+        switch (PIN_MAP[pin].pin_func) {
+            case PF_PWM: {
+                HAL_PWM_Reset_Pin(pin);
+                break;
+            }
+            case PF_ADC: {
+                // TODO: reset ADC pin
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    PIN_MAP[pin].pin_func = pin_func;
+#endif
 }
