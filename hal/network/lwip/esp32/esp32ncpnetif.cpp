@@ -39,6 +39,8 @@ LOG_SOURCE_CATEGORY("net.esp32ncp")
 #include "lwiplock.h"
 #include "wifi_ncp_client.h"
 #include "concurrent_hal.h"
+#include "deviceid_hal.h"
+#include "bytes2hexbuf.h"
 
 #include "platform_config.h"
 
@@ -105,6 +107,15 @@ err_t Esp32NcpNetif::initInterface() {
     /* FIXME: Remove once we enable IPv6 */
     netif_.flags |= NETIF_FLAG_NO_ND6;
     /* netif_.flags |= NETIF_FLAG_MLD6 */
+
+    uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
+    uint8_t deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+    hostname_ = std::make_unique<char[]>(deviceIdLen * 2 + 1);
+    if (hostname_) {
+        bytes2hexbuf_lower_case(deviceId, deviceIdLen, hostname_.get());
+        hostname_[deviceIdLen * 2] = '\0';
+    }
+    netif_set_hostname(interface(), hostname_.get());
 
     netif_.output = etharp_output;
     netif_.output_ip6 = ethip6_output;

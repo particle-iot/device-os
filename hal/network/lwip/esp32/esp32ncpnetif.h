@@ -25,6 +25,7 @@
 #include <lwip/pbuf.h>
 #include "wifi_network_manager.h"
 #include "ncp_client.h"
+#include <memory>
 
 #ifdef __cplusplus
 
@@ -71,6 +72,7 @@ private:
     std::atomic_bool exit_;
     bool up_ = false;
     particle::WifiNetworkManager* wifiMan_ = nullptr;
+    std::unique_ptr<char[]> hostname_;
 };
 
 } } // namespace particle::net
