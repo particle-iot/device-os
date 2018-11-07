@@ -29,6 +29,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
+#include "platforms.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -39,8 +40,12 @@ typedef enum
 /* Exported types ------------------------------------------------------------*/
 typedef enum HAL_I2C_Interface {
     HAL_I2C_INTERFACE1 = 0,
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    HAL_I2C_INTERFACE2 = 1
+#else
     HAL_I2C_INTERFACE2 = 1,
     HAL_I2C_INTERFACE3 = 2
+#endif
 } HAL_I2C_Interface;
 
 /* Exported constants --------------------------------------------------------*/

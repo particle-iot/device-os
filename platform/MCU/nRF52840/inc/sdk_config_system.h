@@ -93,9 +93,11 @@
 
 #define NRFX_TWI_ENABLED        0
 #define NRFX_TWIM_ENABLED       1
-#define NRFX_TWIS_ENABLED       0
+#define NRFX_TWIS_ENABLED       1
 #define NRFX_TWIM0_ENABLED      1
 #define NRFX_TWIM1_ENABLED      1
+#define NRFX_TWIS0_ENABLED      1
+#define NRFX_TWIS1_ENABLED      1
 
 #define NRFX_SPIM_ENABLED       1
 #define NRFX_SPIM2_ENABLED      1
