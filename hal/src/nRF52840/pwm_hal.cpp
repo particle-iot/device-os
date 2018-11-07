@@ -266,6 +266,10 @@ void HAL_PWM_Reset_Pin(uint16_t pin) {
     }
 
     uninit_pwm_pin(pin);
+
+    // Reset pwm resolution
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    PIN_MAP[pin].pwm_resolution = DEFAULT_RESOLUTION_BITS;
 }
 
 /*
