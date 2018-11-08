@@ -38,6 +38,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "check.h"
 #include "system_cloud.h"
 #include "system_threading.h"
+#include "inet_hal.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -785,10 +786,17 @@ void NetworkManager::refreshDnsState() {
             continue;
         }
 
+        char h[INET6_ADDRSTRLEN] = {};
         if (server->server->sa_family == AF_INET) {
             ip4 = DnsState::CONFIGURED;
+            auto sin = (struct sockaddr_in*)server->server;
+            inet_inet_ntop(sin->sin_family, &sin->sin_addr, h, sizeof(h));
+            LOG_DEBUG(TRACE, "DNS %s", h);
         } else if (server->server->sa_family == AF_INET6) {
             ip6 = DnsState::CONFIGURED;
+            auto sin6 = (struct sockaddr_in6*)server->server;
+            inet_inet_ntop(sin6->sin6_family, &sin6->sin6_addr, h, sizeof(h));
+            LOG_DEBUG(TRACE, "DNS %s", h);
         }
     }
 
