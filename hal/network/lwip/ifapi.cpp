@@ -665,7 +665,7 @@ int if_set_xflags(if_t iface, unsigned int xflags) {
         return -1;
     }
 
-    if (flags & IFF_POINTTOPOINT) {
+    if ((flags & IFF_POINTTOPOINT) || !(flags & IFF_BROADCAST)) {
         /* Drop DHCPv4 flag */
         xflags &= ~(IFXF_DHCP);
     }
