@@ -59,12 +59,12 @@ typedef struct {
 
     uint8_t                     address;    // 7bit data
 
-    volatile uint8_t            rx_buf[BUFFER_LENGTH];
+    uint8_t                     rx_buf[BUFFER_LENGTH];
     uint8_t                     rx_buf_index;
     uint8_t                     rx_buf_length;
-    volatile uint8_t            tx_buf[BUFFER_LENGTH];
-    volatile uint8_t            tx_buf_index;
-    volatile uint8_t            tx_buf_length;
+    uint8_t                     tx_buf[BUFFER_LENGTH];
+    uint8_t                     tx_buf_index;
+    uint8_t                     tx_buf_length;
 
     os_mutex_recursive_t        mutex;
 
