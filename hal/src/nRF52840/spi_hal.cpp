@@ -89,6 +89,7 @@ void spi_slave_event_handler(nrfx_spis_evt_t const * p_event, void * p_context) 
 
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE) {
         m_spi_map[spi].transfer_length = p_event->rx_amount;
+        m_spi_map[spi].transmitting = false;
 
         if (p_event->rx_amount) {
             if (m_spi_map[spi].spi_dma_user_callback) {
@@ -296,7 +297,18 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
         spi_uninit(spi);
     }
 
-    m_spi_map[spi].ss_pin = (pin == SPI_DEFAULT_SS) ? PIN_INVALID : pin;
+    if (pin == SPI_DEFAULT_SS) {
+        if (spi == HAL_SPI_INTERFACE1) {
+            m_spi_map[spi].ss_pin = SS;
+        } else if (spi == HAL_SPI_INTERFACE2) {
+            m_spi_map[spi].ss_pin = D5;
+        } else {
+            m_spi_map[spi].ss_pin = PIN_INVALID;
+        }
+    } else {
+        m_spi_map[spi].ss_pin = pin;
+    }
+
     m_spi_map[spi].spi_mode = mode;
     spi_init(spi, mode);
     m_spi_map[spi].enabled = true;
@@ -419,7 +431,20 @@ void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffe
     } else {
         // reset transfer length
         m_spi_map[spi].transfer_length = 0;
-        HAL_SPI_Set_Slave_Buffers(spi, tx_buffer, rx_buffer, length);
+        m_spi_map[spi].slave_buf_length = length;
+        m_spi_map[spi].slave_tx_buf = tx_buffer;
+        m_spi_map[spi].slave_rx_buf = rx_buffer;
+        uint32_t err_code = nrfx_spis_buffers_set(m_spi_map[spi].slave, 
+                                            (uint8_t *)m_spi_map[spi].slave_tx_buf, 
+                                            m_spi_map[spi].slave_buf_length, 
+                                            (uint8_t *)m_spi_map[spi].slave_rx_buf, 
+                                            m_spi_map[spi].slave_buf_length);
+        if (err_code == NRF_ERROR_INVALID_STATE) {
+            // LOG_DEBUG(WARN, "nrfx_spis_buffers_set, invalid state");
+        } else {
+            SPARK_ASSERT(err_code == NRF_SUCCESS);
+            m_spi_map[spi].transmitting = true;
+        }
     }
 }
 
@@ -466,24 +491,6 @@ int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t
     if (m_spi_map[spi].enabled) {
         spi_uninit(spi);
         spi_init(spi, m_spi_map[spi].spi_mode);
-    }
-
-    return 0;
-}
-
-int32_t HAL_SPI_Set_Slave_Buffers(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length) {
-    m_spi_map[spi].slave_buf_length = length;
-    m_spi_map[spi].slave_tx_buf = tx_buffer;
-    m_spi_map[spi].slave_rx_buf = rx_buffer;
-    uint32_t err_code = nrfx_spis_buffers_set(m_spi_map[spi].slave, 
-                                        (uint8_t *)m_spi_map[spi].slave_tx_buf, 
-                                        m_spi_map[spi].slave_buf_length, 
-                                        (uint8_t *)m_spi_map[spi].slave_rx_buf, 
-                                        m_spi_map[spi].slave_buf_length);
-    if (err_code == NRF_ERROR_INVALID_STATE) {
-        // LOG_DEBUG(WARN, "nrfx_spis_buffers_set, invalid state");
-    } else {
-        SPARK_ASSERT(err_code == NRF_SUCCESS);
     }
 
     return 0;

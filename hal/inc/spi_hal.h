@@ -123,7 +123,6 @@ int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatu
 // HAL_SPI_Set_Bit_Order, HAL_SPI_Set_Data_Mode and HAL_SPI_Set_Clock_Divider in one go
 // to avoid having to reconfigure SPI peripheral 3 times
 int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved);
-int32_t HAL_SPI_Set_Slave_Buffers(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length);
 
 int32_t HAL_SPI_Acquire(HAL_SPI_Interface spi, void* reserved);
 int32_t HAL_SPI_Release(HAL_SPI_Interface spi, void* reserved);
