@@ -441,11 +441,6 @@ void sys_unlock_tcpip_core(void);
 #define LWIP_IPV4_SRC_ROUTING           1
 
 /**
- * LWIP_L3_BRIDGE==1: Enables the ability to L3 bridge IP/IPv6 interfaces
- */
-#define LWIP_L3_BRIDGE                  1
-
-/**
  * IP_REASSEMBLY==1: Reassemble incoming fragmented IP packets. Note that
  * this option does not affect outgoing packet sizes, which can be controlled
  * via IP_FRAG.
@@ -575,7 +570,7 @@ void sys_unlock_tcpip_core(void);
  * netif drivers might not set this flag, the default is off. If enabled,
  * netif_set_link_up() must be called to continue dhcp starting.
  */
-#define LWIP_DHCP_CHECK_LINK_UP         0
+#define LWIP_DHCP_CHECK_LINK_UP         1
 
 /**
  * LWIP_DHCP_BOOTP_FILE==1: Store offered_si_addr and boot_file_name.
