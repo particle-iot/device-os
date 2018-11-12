@@ -372,4 +372,6 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" );
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
 
+ASSERT ( link_constructors_location % 4 == 0, "the constructor array should be at a 4-byte aligned address." );
+
 /*ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );*/

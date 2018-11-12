@@ -324,4 +324,6 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 ASSERT ( system_part1_module_info_start == link_module_info_start, "part1 module info start not where expected" );
 ASSERT ( system_part1_module_info_end == link_module_info_end, "part1 module info end not where expected" );
 
+ASSERT ( ( link_constructors_location % 4 ) == 0, "constructor array should be aligned to a 4-bytes" );
+
 INCLUDE backup_ram_system_assert.ld
