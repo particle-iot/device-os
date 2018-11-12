@@ -164,20 +164,6 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
 }
 
 /*
- * @brief Toggle GPIO pin
- */
-void HAL_GPIO_Toggle(uint16_t pin) {
-    if (!is_valid_pin(pin)) {
-        return;
-    }
-    
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t gpio_pin_map = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
-
-    nrf_gpio_pin_toggle(gpio_pin_map);
-}
-
-/*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
 int32_t HAL_GPIO_Read(uint16_t pin) {

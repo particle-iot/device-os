@@ -93,7 +93,7 @@ void Set_User_LED(uint8_t state) {
  * @brief  Toggle user LED
  */
 void Toggle_User_LED(void) {
-    HAL_GPIO_Toggle(HAL_Leds[LED_USER].pin);
+    HAL_GPIO_Write(HAL_Leds[LED_USER].pin, !HAL_GPIO_Read(HAL_Leds[LED_USER].pin));
 }
 
 /**
