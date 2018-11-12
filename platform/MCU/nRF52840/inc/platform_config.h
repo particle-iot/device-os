@@ -23,7 +23,6 @@
 #define NO_STATIC_ASSERT
 #include "platforms.h"
 #include "logging.h"
-#include "module_info.h"
 
 // STM32 Device electronic signature
 // Factory-programmed 12 byte unique device ID
