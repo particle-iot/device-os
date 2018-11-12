@@ -154,6 +154,8 @@ void Reset_System(void) {
 
     hal_exflash_uninit();
 
+    RGB_LED_Uninit();
+
     __DSB();
 }
 

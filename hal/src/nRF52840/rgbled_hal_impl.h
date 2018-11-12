@@ -30,7 +30,12 @@ extern "C" {
 typedef struct led_config_t {
     uint8_t             version;        // Struct version
     uint16_t            pin;
-    uint8_t             is_inverted;    // If LED is "inverted", active state is 0, instead of 1
+    union {
+        struct {
+            uint8_t is_active   : 1;    // Is LED active?
+            uint8_t is_inverted : 1;    // If LED is "inverted", active state is 0, instead of 1
+        };
+    };
     uint8_t             padding[18];
 } led_config_t;
 

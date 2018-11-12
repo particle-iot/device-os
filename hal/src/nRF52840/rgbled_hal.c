@@ -12,22 +12,26 @@ led_config_t HAL_Leds[LEDn] = {
     {
         .version = LED_CONFIG_STRUCT_VERSION,
         .pin = LED_PIN_USER,
-        .is_inverted = 0
+        .is_inverted = 0,
+        .is_active = 1
     },
     {
         .version = LED_CONFIG_STRUCT_VERSION,
         .pin = LED_PIN_RED,
-        .is_inverted = 1
+        .is_inverted = 1,
+        .is_active = 1
     },
     {
         .version = LED_CONFIG_STRUCT_VERSION,
         .pin = LED_PIN_GREEN,
-        .is_inverted = 1
+        .is_inverted = 1,
+        .is_active = 1
     },
     {
         .version = LED_CONFIG_STRUCT_VERSION,
         .pin = LED_PIN_BLUE,
-        .is_inverted = 1
+        .is_inverted = 1,
+        .is_active = 1
     },
 };
 
@@ -37,8 +41,10 @@ static void set_led_value(Led_TypeDef led, uint16_t value) {
         return;
     }
 
-    uint32_t pwm_max = Get_RGB_LED_Max_Value();
-    HAL_PWM_Write_Ext(HAL_Leds[led].pin, HAL_Leds[led].is_inverted ? (pwm_max - value) : value);
+    if (HAL_Leds[led].is_active) {
+        uint32_t pwm_max = Get_RGB_LED_Max_Value();
+        HAL_PWM_Write_Ext(HAL_Leds[led].pin, HAL_Leds[led].is_inverted ? (pwm_max - value) : value);
+    }
 }
 
 /**
@@ -105,7 +111,9 @@ void LED_Init(Led_TypeDef Led) {
         // Load configuration from DCT
         led_config_t conf;
         const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-        if (dct_read_app_data_copy(offset, &conf, sizeof(conf)) == 0 && conf.version != 0xff) {
+        if (dct_read_app_data_copy(offset, &conf, sizeof(conf)) == 0 && 
+            conf.version != 0xff &&
+            conf.is_active) {
             //int32_t state = HAL_disable_irq();
             memcpy((void*)&HAL_Leds[Led], (void*)&conf, sizeof(led_config_t));
             //HAL_enable_irq(state);
@@ -221,8 +229,11 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
 {
     int32_t state = HAL_disable_irq();
     led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
-    HAL_PWM_Reset_Pin(ledc->pin);
-    HAL_Pin_Mode(ledc->pin, PIN_MODE_NONE);
+    if (ledc->is_active) {
+        ledc->is_active = 0;
+        HAL_PWM_Reset_Pin(ledc->pin);
+        HAL_Pin_Mode(ledc->pin, PIN_MODE_NONE);
+    }
     HAL_enable_irq(state);
 
     if (bootloader) {
@@ -252,6 +263,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
         .version = 0x01,
         .pin = pin,
         .is_inverted = flags,
+        .is_active = 1
     };
 
     int32_t state = HAL_disable_irq();
@@ -264,4 +276,10 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
     }
 
     LED_Mirror_Persist(led, &conf);
+}
+
+void RGB_LED_Uninit() {
+    for (int i = 0; i < LEDn; i++) {
+        HAL_PWM_Reset_Pin(HAL_Leds[i].pin);
+    }
 }
