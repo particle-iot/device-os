@@ -122,9 +122,14 @@ void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
 
 
 /**
- * Notifies all subscribers about an event.
+ * Notifies all subscribers about an event. The calling context must not be from an ISR.
  * @param event
  * @param data
  * @param pointer
  */
 void system_notify_event(system_event_t event, uint32_t data=0, void* pointer=nullptr, void (*fn)(void* data)=nullptr, void* fndata=nullptr);
+
+/**
+ * Notifies all subscribers about an event. When the notification is in the context of an ISR, it is marshaled to the system thread.
+ */
+void system_notify_event_isr(system_event_t event, uint32_t data=0, void* pointer=nullptr, void (*fn)(void* data)=nullptr, void* fndata=nullptr);
