@@ -276,7 +276,7 @@ void reset_button_click()
     button_current_clicks = 0;
     CLR_BUTTON_TIMEOUT();
     if (clicks > 0) {
-        system_notify_event(button_final_click, clicks);
+        system_notify_event_isr(button_final_click, clicks);
         button_final_clicks = clicks;
 #if Wiring_SetupButtonUX
         // Certain numbers of clicks can be processed directly in ISR
@@ -298,7 +298,7 @@ void handle_button_click(uint16_t depressed_duration)
             ARM_BUTTON_TIMEOUT(1000);
             reset = false;
         }
-        system_notify_event(button_click, button_current_clicks);
+        system_notify_event_isr(button_click, button_current_clicks);
     }
     if (reset) {
         reset_button_click();
@@ -316,11 +316,11 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
     {
         if (pressed)
         {
-            wasListeningOnButtonPress = network_listening(0, 0, 0);
-            pressed_time = HAL_Timer_Get_Milli_Seconds();
+        	pressed_time = HAL_Timer_Get_Milli_Seconds();
+        	wasListeningOnButtonPress = network_listening(0, 0, 0);
             if (!wasListeningOnButtonPress)             // start of button press
             {
-                system_notify_event(button_status, 0);
+                system_notify_event_isr(button_status, 0);
             }
             button_cleared_credentials = false;
         }
@@ -330,7 +330,7 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
             uint16_t depressed_duration = release_time - pressed_time;
 
             if (!network_listening(0, 0, 0)) {
-                system_notify_event(button_status, depressed_duration);
+                system_notify_event_isr(button_status, depressed_duration);
                 handle_button_click(depressed_duration);
             }
             pressed_time = 0;
