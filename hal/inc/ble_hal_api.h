@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+namespace particle { namespace ble {
+
 /* BLE device address type */
 typedef enum {
     BLE_ADDR_TYPE_PUBLIC = 0x00, /**< Public (identity) address.*/
@@ -35,6 +37,15 @@ typedef struct {
     ble_address_type_t type;
     uint8_t            data[6];
 } ble_address_t;
+
+/* BLE UUID */
+typedef struct {
+    uint8_t type;
+    union {
+        uint16_t uuid16;
+        uint8_t  uuid128[16];
+    };
+} ble_uuid_t;
 
 /* BLE advertising parameters */
 typedef struct {
@@ -91,16 +102,20 @@ typedef struct {
 
 /* BLE service and characteristic discovery events */
 typedef struct {
-    uint16_t status;
-    uint16_t conn_handle;
-    uint16_t service_handle;
-    uint16_t char_handle;
-    uint16_t cccd_handle;
-    union {
-        uint16_t uuid16;
-        uint8_t  uuid128[16];
-    };
+    uint16_t   status;
+    uint16_t   conn_handle;
+    uint16_t   service_handle;
+    uint16_t   char_handle;
+    uint16_t   cccd_handle;
+    ble_uuid_t uuid;
 } ble_discovery_event_t;
+
+/* BLE characteristic definition */
+typedef struct {
+    ble_uuid_t uuid;
+    uint8_t*   value;
+    uint8_t    properties;
+} ble_characteristic_t;
 
 /* GATT Client data transmission events */
 typedef struct {
@@ -150,6 +165,10 @@ int hal_ble_set_device_address(ble_address_t addr);
 int hal_ble_get_device_address(ble_address_t* addr);
 int hal_ble_set_device_name(const char* device_name);
 int hal_ble_get_device_name(uint8_t* device_name, uint16_t* len);
+int hal_ble_set_appearance(uint16_t appearance);
+int hal_ble_get_appearance(uint16_t* appearance);
+int hal_ble_add_to_whitelist(ble_address_t* addr);
+int hal_ble_remove_from_whitelist(ble_address_t* addr);
 
 /* Functions for BLE Broadcaster */
 int hal_ble_set_tx_power(int8_t value);
@@ -158,6 +177,7 @@ int hal_ble_set_advertising_params(ble_adv_params_t* adv_params);
 int hal_ble_set_advertising_interval(uint16_t interval);
 int hal_ble_set_advertising_duration(uint16_t duration);
 int hal_ble_set_advertising_type(uint8_t type);
+int hal_ble_enable_advertising_filter(bool enable);
 int hal_ble_set_advertising_data(uint8_t* data, uint8_t len);
 int hal_ble_set_scan_response_data(uint8_t* data, uint8_t len);
 int hal_ble_start_advertising(void);
@@ -166,14 +186,21 @@ bool hal_ble_is_advertising(void);
 
 /* Functions for BLE Observer */
 int hal_ble_set_scanning_params(ble_scan_params_t* scan_params);
+int hal_ble_set_scanning_interval(uint16_t interval);
+int hal_ble_set_scanning_window(uint16_t window);
+int hal_ble_set_scanning_timeout(uint16_t timeout);
+int hal_ble_enable_scanning_filter(bool enable);
+int hal_ble_set_scanning_policy(uint8_t value);
 int hal_ble_start_scanning(void);
 int hal_ble_stop_scanning(void);
 
 /* Functions for BLE Central and Peripheral */
 int hal_ble_connect(ble_address_t* addr);
+int hal_ble_connect_cancel(void);
 int hal_ble_disconnect(uint16_t conn_handle);
 int hal_ble_update_connection_params(uint16_t conn_handle, ble_conn_params_t* conn_params);
-int hal_ble_set_ppcp(uint16_t conn_handle, ble_conn_params_t* conn_params);
+int hal_ble_set_ppcp(ble_conn_params_t* conn_params);
+int hal_ble_get_ppcp(ble_conn_params_t* conn_params);
 int hal_ble_get_rssi(uint16_t conn_handle);
 
 /* Functions for GATT Client */
@@ -187,13 +214,16 @@ int hal_ble_write_without_response(uint16_t conn_handle, uint8_t char_handle, ui
 int hal_ble_read(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t* len);
 
 /* Functions for GATT Server */
-int hal_ble_add_service(uint16_t *service_handle);
-int hal_ble_add_characteristic(uint16_t service_handle, uint16_t *char_handle);
+int hal_ble_add_service(particle::ble::ble_uuid_t const* uuid, uint16_t* service_handle);
+int hal_ble_add_characteristic(uint16_t service_handle, ble_characteristic_t* characteristic, uint16_t *char_handle);
 int hal_ble_publish(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len);
 int hal_ble_set_characteristic_value(uint8_t char_handle, uint8_t* data, uint16_t len);
+int hal_ble_get_characteristic_value(uint8_t char_handle, uint8_t* data, uint16_t* len);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+} } /* particle::ble */
 
 #endif /* BLE_HAL_API_H */

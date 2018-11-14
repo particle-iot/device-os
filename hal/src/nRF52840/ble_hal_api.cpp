@@ -37,6 +37,7 @@
 
 LOG_SOURCE_CATEGORY("hal.ble_api")
 
+using namespace particle::ble;
 
 #define BLE_CONN_CFG_TAG                1
 #define BLE_OBSERVER_PRIO               1
@@ -96,6 +97,7 @@ static void processBleEvent(const ble_evt_t* event, void* p_context) {
     }
 }
 
+/* This function should be called previous to any other BLE APIs. */
 int hal_ble_init(void* reserved) {
     std::lock_guard<bleLock> lk(bleLock());
 
@@ -193,6 +195,26 @@ int hal_ble_get_device_name(uint8_t* device_name, uint16_t* len) {
     return sysError(ret);
 }
 
+int hal_ble_set_appearance(uint16_t appearance) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_get_appearance(uint16_t* appearance) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_add_to_whitelist(ble_address_t* addr) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_remove_from_whitelist(ble_address_t* addr) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
 int hal_ble_set_tx_power(int8_t value) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
@@ -219,6 +241,11 @@ int hal_ble_set_advertising_duration(uint16_t duration) {
 }
 
 int hal_ble_set_advertising_type(uint8_t type) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_enable_advertising_filter(bool enable) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
 }
@@ -252,6 +279,31 @@ int hal_ble_set_scanning_params(ble_scan_params_t* scan_params) {
     return 0;
 }
 
+int hal_ble_set_scanning_interval(uint16_t interval) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_set_scanning_window(uint16_t window) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_set_scanning_timeout(uint16_t timeout) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_enable_scanning_filter(bool enable) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_set_scanning_policy(uint8_t value) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
 int hal_ble_start_scanning(void) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
@@ -267,6 +319,11 @@ int hal_ble_connect(ble_address_t* addr) {
     return 0;
 }
 
+int hal_ble_connect_cancel(void) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
 int hal_ble_disconnect(uint16_t conn_handle) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
@@ -277,7 +334,12 @@ int hal_ble_update_connection_params(uint16_t conn_handle, ble_conn_params_t* co
     return 0;
 }
 
-int hal_ble_set_ppcp(uint16_t conn_handle, ble_conn_params_t* conn_params) {
+int hal_ble_set_ppcp(ble_conn_params_t* conn_params) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_get_ppcp(ble_conn_params_t* conn_params) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
 }
@@ -302,12 +364,12 @@ int hal_ble_discovery_descriptors(uint16_t conn_handle, uint16_t char_handle) {
     return 0;
 }
 
-int hal_ble_add_service(uint16_t *service_handle) {
+int hal_ble_add_service(particle::ble::ble_uuid_t const* uuid, uint16_t* service_handle) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
 }
 
-int hal_ble_add_characteristic(uint16_t service_handle, uint16_t *char_handle) {
+int hal_ble_add_characteristic(uint16_t service_handle, ble_characteristic_t* characteristic, uint16_t *char_handle) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
 }
@@ -343,6 +405,11 @@ int hal_ble_publish(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, ui
 }
 
 int hal_ble_set_characteristic_value(uint8_t char_handle, uint8_t* data, uint16_t len) {
+    std::lock_guard<bleLock> lk(bleLock());
+    return 0;
+}
+
+int hal_ble_get_characteristic_value(uint8_t char_handle, uint8_t* data, uint16_t* len) {
     std::lock_guard<bleLock> lk(bleLock());
     return 0;
 }
