@@ -4,6 +4,9 @@
 CLEAN_DEPENDENCIES=$(patsubst %,clean_%,$(MAKE_DEPENDENCIES))
 
 # these variables are defined internally and passed to submakes
+RECURSIVE_VARIABLES?=GLOBAL_DEFINES MODULAR_FIRMWARE
+export $(RECURSIVE_VARIABLES)
+
 export GLOBAL_DEFINES
 export MODULAR_FIRMWARE
 
