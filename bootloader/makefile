@@ -12,6 +12,8 @@ LIB_DIRS += $(dir $(LIB_DEPS))
 
 export COMPILE_LTO=y
 
+# propagate this through the transient dependencies so they know that it is the bootloader being built.
+# perhaps propagating the top level module name would be more flexible.
 export BOOTLOADER_MODULE=1
 
 include ../build/platform-id.mk

@@ -9,8 +9,10 @@ SOURCE_PATH ?= $(MODULE_PATH)
 include $(MODULE_PATH)/import.mk
 
 # FIXME: find a better place for this
-ifneq (,$(filter $(PLATFORM_ID),12 13 14))
+# Ensure soft-device is enabled for non-bootloader builds 
+ifneq (,$(filter $(PLATFORM_ID),12 13 14)) # Is a mesh platform
 ifneq ("$(BOOTLOADER_MODULE)","1")
+# soft device present in all firmwares except the bootloader
 export SOFTDEVICE_PRESENT=y
 CFLAGS += -DSOFTDEVICE_PRESENT=1
 ASFLAGS += -DSOFTDEVICE_PRESENT=1
@@ -107,7 +109,7 @@ none:
 	;
 
 ifeq (,$(INCLUDES_FILE))
-# top-level invocation, so remove the file first
+# top-level invocation, so remove the file first and echo the filename
 INCLUDES_PREBUILD=create_includes
 endif
 
@@ -115,16 +117,20 @@ ifneq (,$(filter $(MAKECMDGOALS),includes))
 SUBDIR_GOALS=includes
 endif
 
-# the full path to the include file. Cannot be relative since it's relative to the module folder.
-INCLUDES_FILE?=$(realpath $(TARGET_BASE).includes.txt)
+# the full path to the include list file producted. 
+# Cannot be relative since it's relative to the module folder, and
+# different modules are in different directories.
+INCLUDES_FILE?=$(abspath $(TARGET_BASE).includes.txt)
 
-includes: $(INCLUDES_PREBUILD) $(INCLUDES_FILE) $(MAKE_DEPENDENCIES)
-	uniq $(INCLUDES_FILE)
-	sort $(INCLUDES_FILE)
+includes: $(INCLUDES_PREBUILD) $(INCLUDES_FILE) $(MAKE_DEPENDENCIES)	
+	$(VERBOSE)$(SORT) $(INCLUDES_FILE) > $(INCLUDES_FILE).uniq
+	$(VERBOSE)$(UNIQ) $(INCLUDES_FILE).uniq $(INCLUDES_FILE)
+	$(VERBOSE)$(RM) $(INCLUDES_FILE).uniq
 	
 create_includes: 
 	$(VERBOSE)$(MKDIR) $(dir $(INCLUDES_FILE))
-	@echo '' > $(INCLUDES_FILE)
+	$(VERBOSE)$(RM) $(INCLUDES_FILE)
+	echo $(INCLUDES_FILE)
 
 RECURSIVE_VARIABLES+=INCLUDES_FILE SUBDIR_GOALS
 # ensure the includes file remains constant and that the include target is propagated to submodules
@@ -345,7 +351,7 @@ define newline
 
 
 endef
-INCLUDE_DIRS_LIST = $(patsubst %,echo % >> $(INCLUDES_FILE) &&,$(realpath $(INCLUDE_DIRS))) true
+INCLUDE_DIRS_LIST = @$(patsubst %,echo "%" >> $(INCLUDES_FILE) &&,$(realpath $(INCLUDE_DIRS))) true
 # have to export so that the newlines don't get output in the shell invocation (they then apppear as separate commands)
 export INCLUDE_DIRS_LIST
 

@@ -19,6 +19,8 @@ DFUSUFFIX = dfu-suffix
 CURL = curl
 CRC = crc32
 XXD = xxd
+SORT = sort
+UNIQ = uniq
 SERIAL_SWITCHER = $(COMMON_BUILD)/serial_switcher.py
 
 crc32_path := $(shell which $(CRC))
