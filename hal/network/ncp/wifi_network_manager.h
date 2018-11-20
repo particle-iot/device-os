@@ -32,6 +32,9 @@ const unsigned MAX_CONFIGURED_WIFI_NETWORK_COUNT = 10;
 // Maximum length of an SSID
 const size_t MAX_SSID_SIZE = 32;
 
+// Maximum length of a WPA/WPA2 key
+const size_t MAX_WPA_WPA2_PSK_SIZE = 64;
+
 enum class WifiSecurity {
     NONE = 0,
     WEP = 1,

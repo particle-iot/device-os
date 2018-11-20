@@ -28,6 +28,7 @@
 
 #include "xmodem_sender.h"
 #include "stream_util.h"
+#include "str_util.h"
 #include "check.h"
 
 #include <cstdlib>
@@ -57,6 +58,10 @@ void espReset() {
 
 void espOff() {
     HAL_GPIO_Write(ESPEN, 0);
+}
+
+char* espEscape(const char* src, char* dest, size_t destSize) {
+    return escape(src, ",\"\\", '\\', dest, destSize);
 }
 
 const auto ESP32_NCP_MAX_MUXER_FRAME_SIZE = 1536;
@@ -317,14 +322,20 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
             SYSTEM_ERROR_UNKNOWN);
 
     auto cmd = parser_.command();
-    cmd.printf("AT+CWJAP=\"%s\"", ssid);
+    char escSsid[MAX_SSID_SIZE * 2 + 1] = {}; // Escaped SSID
+    espEscape(ssid, escSsid, sizeof(escSsid) - 1);
+    cmd.printf("AT+CWJAP=\"%s\"", escSsid);
     switch (cred.type()) {
-    case WifiCredentials::PASSWORD:
-        cmd.printf(",\"%s\"", cred.password());
+    case WifiCredentials::PASSWORD: {
+        char escPwd[MAX_WPA_WPA2_PSK_SIZE * 2 + 1] = {}; // Escaped password
+        espEscape(cred.password(), escPwd, sizeof(escPwd) - 1);
+        cmd.printf(",\"%s\"", escPwd);
         break;
-    case WifiCredentials::NONE:
+    }
+    case WifiCredentials::NONE: {
         cmd.print(",\"\"");
         break;
+    }
     default:
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
