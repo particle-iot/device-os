@@ -381,6 +381,12 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
         int rssi = 0;
         const int r = CHECK_PARSER(resp.scanf("+CWLAP:(%d,\"%33[^,],%d,\"%17[^\"]\",%d)", &security, ssid, &rssi,
                 bssidStr, &channel));
+        if (r != 5) {
+            // FIXME: ESP32 doesn't escape special characters, such as ',' and '"', in SSIDs. For now,
+            // we're skipping such entries
+            LOG(WARN, "Unable to parse AP info");
+            continue;
+        }
         CHECK_TRUE(r == 5, SYSTEM_ERROR_UNKNOWN);
         // Fixup SSID
         CHECK_TRUE(strlen(ssid) > 0, SYSTEM_ERROR_UNKNOWN);
