@@ -387,7 +387,6 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
             LOG(WARN, "Unable to parse AP info");
             continue;
         }
-        CHECK_TRUE(r == 5, SYSTEM_ERROR_UNKNOWN);
         // Fixup SSID
         CHECK_TRUE(strlen(ssid) > 0, SYSTEM_ERROR_UNKNOWN);
         ssid[strlen(ssid) - 1] = '\0';
