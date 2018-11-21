@@ -19,20 +19,30 @@
 
 namespace particle {
 
-char* escape(const char* src, size_t srcSize, const char* spec, size_t specSize, char esc, char* dest, size_t destSize) {
-    size_t i = 0;
-    size_t j = 0;
-    while (i < srcSize && j < destSize) {
-        const char c = src[i++];
-        if (memchr(spec, (unsigned char)c, specSize) != nullptr) {
-            if (j == destSize - 1) {
-                break; // Avoid generating an invalid escaped string
-            }
-            dest[j++] = esc;
+size_t escape(const char* src, const char* spec, char esc, char* dest, size_t destSize) {
+    size_t n = 0;
+    for (;;) {
+        const char c = *src++;
+        if (!c) {
+            break;
         }
-        dest[j++] = c;
+        if (strchr(spec, c) != nullptr) {
+            if (n < destSize) {
+                dest[n] = esc;
+            }
+            ++n;
+        }
+        if (n < destSize) {
+            dest[n] = c;
+        }
+        ++n;
     }
-    return dest;
+    if (n < destSize) {
+        dest[n] = '\0';
+    } else if (destSize > 0) {
+        dest[destSize - 1] = '\0';
+    }
+    return n;
 }
 
 } // particle

@@ -60,7 +60,7 @@ void espOff() {
     HAL_GPIO_Write(ESPEN, 0);
 }
 
-char* espEscape(const char* src, char* dest, size_t destSize) {
+size_t espEscape(const char* src, char* dest, size_t destSize) {
     return escape(src, ",\"\\", '\\', dest, destSize);
 }
 

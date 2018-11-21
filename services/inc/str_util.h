@@ -88,33 +88,18 @@ inline bool endsWith(const char* str, const char* suffix) {
 }
 
 /**
- * Escapes a set of characters by prepending them with an escape character.
+ * Escapes a set of characters in a string by prepending them with an escape character. The output
+ * is always null-terminated, unless the size of the destination buffer is `0`.
  *
- * @param str Source string.
- * @param strSize Size of the source string.
- * @param spec Characters that need to be escaped.
- * @param specSize Number of characters that need to be escaped.
- * @param esc Escape character.
- * @param dest Destination buffer.
- * @param destSize Size of the destination buffer.
- *
- * @return Destination buffer.
- */
-char* escape(const char* src, size_t srcSize, const char* spec, size_t specSize, char esc, char* dest, size_t destSize);
-
-/**
- * Escapes a set of characters by prepending them with an escape character.
- *
- * @param str Source string.
+ * @param src Source string.
  * @param spec Characters that need to be escaped.
  * @param esc Escape character.
  * @param dest Destination buffer.
  * @param destSize Size of the destination buffer.
  *
- * @return Destination buffer.
+ * @return Number of characters in the entire escaped string, not including the trailing `\0`.
+ *         The value can be larger than the size of the destination buffer.
  */
-inline char* escape(const char* src, const char* spec, char esc, char* dest, size_t destSize) {
-    return escape(src, strlen(src), spec, strlen(spec), esc, dest, destSize);
-}
+size_t escape(const char* src, const char* spec, char esc, char* dest, size_t destSize);
 
 } // particle
