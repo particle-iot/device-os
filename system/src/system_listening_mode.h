@@ -27,6 +27,7 @@
 #include "active_object.h"
 #include "system_setup.h"
 #include <memory>
+#include "system_tick_hal.h"
 
 namespace particle { namespace system {
 
@@ -63,6 +64,8 @@ private:
     std::atomic_bool active_;
 
     std::unique_ptr<SystemSetupConsoleBase> console_;
+    system_tick_t timestampStarted_;
+    system_tick_t timestampUpdate_;
 };
 
 } } /* particle::system */

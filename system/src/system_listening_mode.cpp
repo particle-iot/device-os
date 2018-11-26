@@ -32,6 +32,7 @@ LOG_SOURCE_CATEGORY("system.listen")
 #include "delay_hal.h"
 #include "system_control_internal.h"
 #include "check.h"
+#include "system_event.h"
 
 using particle::LEDStatus;
 
@@ -44,6 +45,8 @@ namespace {
 using namespace particle::system;
 
 ListeningModeHandler g_listenModeHandler;
+
+const auto SETUP_UPDATE_INTERVAL = 1000;
 
 } // unnamed
 
@@ -72,6 +75,8 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     NetworkManager::instance()->deactivateConnections();
 
     LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
+    system_notify_event(setup_begin, 0);
+    timestampStarted_ = timestampUpdate_ = HAL_Timer_Get_Milli_Seconds();
 
 #if HAL_PLATFORM_BLE
     // Start advertising
@@ -119,6 +124,8 @@ int ListeningModeHandler::exit() {
 
     active_ = false;
 
+    system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
+
     return 0;
 }
 
@@ -133,6 +140,12 @@ int ListeningModeHandler::run() {
 
     if (console_) {
         console_->loop();
+    }
+
+    if ((HAL_Timer_Get_Milli_Seconds() - timestampUpdate_) >= SETUP_UPDATE_INTERVAL) {
+        const auto now = HAL_Timer_Get_Milli_Seconds();
+        system_notify_event(setup_update, now - timestampStarted_);
+        timestampUpdate_ = now;
     }
 
     return 0;
