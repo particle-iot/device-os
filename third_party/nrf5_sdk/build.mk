@@ -7,6 +7,7 @@ TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH = $(TARGET_NRF5_SDK_SRC_PATH)/integrat
 TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH = $(TARGET_NRF5_SDK_SRC_PATH)/components/drivers_nrf
 TARGET_NRF5_SDK_SOFTDEVICE_SRC_PATH = $(TARGET_NRF5_SDK_SRC_PATH)/components/softdevice
 TARGET_NRF5_SDK_BLE_SRC_PATH = $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/components/ble
+TARGET_NRF5_SDK_NFC_SRC_PATH = $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/components/nfc
 TARGET_NRF5_SDK_EXTERNAL_SRC_PATH = $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/external
 
 # C source files included in this build.
@@ -62,6 +63,14 @@ CSRC += \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/common/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/nrf_ble_gatt/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_advertising/,*.c)
+
+# NFC
+CSRC += \
+	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/ndef/generic/,*.c) \
+	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/ndef/launchapp/,*.c) \
+	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/ndef/text/,*.c) \
+	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/ndef/uri/,*.c) \
+	$(TARGET_NRF5_SDK_NFC_SRC_PATH)/t2t_lib/hal_t2t/hal_nfc_t2t.c
 
 # USBD
 CSRC += \
