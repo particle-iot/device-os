@@ -37,8 +37,8 @@ typedef struct {
 
 typedef void (*NfcEventCallback)(NfcEventType type, NfcEvent *event);
 
-int HAL_NFC_Type2_Init(NfcTagType type);
-int HAL_NFC_Type2_Set_Payload(NfcTagType type, const uint8_t *msg_buf, uint16_t msg_len);
-int HAL_NFC_Type2_Start_Emulation(NfcTagType type);
-int HAL_NFC_Type2_Stop_Emulation(NfcTagType type);
+int HAL_NFC_Type2_Init(void);
+int HAL_NFC_Type2_Set_Payload(const uint8_t *msg_buf, uint16_t msg_len);
+int HAL_NFC_Type2_Start_Emulation(void);
+int HAL_NFC_Type2_Stop_Emulation(void);
 int HAL_NFC_Type2_Set_Callback(NfcEventCallback callback);

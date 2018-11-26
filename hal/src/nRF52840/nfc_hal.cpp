@@ -47,42 +47,30 @@ static void nfc_type_2_callback(void * p_context, nfc_t2t_event_t event, const u
     }
 }
 
-int HAL_NFC_Type2_Init(NfcTagType type) {
-    uint32_t err_code;
-    if (type == NFC_TAG_TYPE_2) {
-        err_code = nfc_t2t_setup(nfc_type_2_callback, NULL);
-        APP_ERROR_CHECK(err_code);
-    }
+int HAL_NFC_Type2_Init(void) {
+    uint32_t err_code = nfc_t2t_setup(nfc_type_2_callback, NULL);
+    APP_ERROR_CHECK(err_code);
 
     return 0;
 }
 
-int HAL_NFC_Type2_Set_Payload(NfcTagType type, const uint8_t *msg_buf, uint16_t msg_len) {
-    uint32_t err_code;
-    if (type == NFC_TAG_TYPE_2) {
-        err_code = nfc_t2t_payload_set(msg_buf, msg_len);
-        APP_ERROR_CHECK(err_code);
-    }
+int HAL_NFC_Type2_Set_Payload(const uint8_t *msg_buf, uint16_t msg_len) {
+    uint32_t err_code = nfc_t2t_payload_set(msg_buf, msg_len);
+    APP_ERROR_CHECK(err_code);
 
     return 0;
 }
 
-int HAL_NFC_Type2_Start_Emulation(NfcTagType type) {
-    uint32_t err_code;
-    if (type == NFC_TAG_TYPE_2) {
-        err_code = nfc_t2t_emulation_start();
-        APP_ERROR_CHECK(err_code);
-    }
+int HAL_NFC_Type2_Start_Emulation(void) {
+    uint32_t err_code = nfc_t2t_emulation_start();
+    APP_ERROR_CHECK(err_code);
 
     return 0;
 }
 
-int HAL_NFC_Type2_Stop_Emulation(NfcTagType type) {
-    uint32_t err_code;
-    if (type == NFC_TAG_TYPE_2) {
-        err_code = nfc_t2t_emulation_stop();
-        APP_ERROR_CHECK(err_code);
-    }
+int HAL_NFC_Type2_Stop_Emulation(void) {
+    uint32_t err_code = nfc_t2t_emulation_stop();
+    APP_ERROR_CHECK(err_code);
 
     return 0;
 }
