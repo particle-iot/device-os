@@ -98,8 +98,11 @@
 #define NRFX_TWIM1_ENABLED      1
 
 #define NRFX_SPIM_ENABLED       1
+#define NRFX_SPIS_ENABLED       1
 #define NRFX_SPIM2_ENABLED      1
 #define NRFX_SPIM3_ENABLED      1
+#define NRFX_SPIS2_ENABLED      1
+#define NRFX_SPIS3_ENABLED      1
 
 #define NRFX_TIMER2_ENABLED     1
 
