@@ -25,6 +25,7 @@
 #include <atomic>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
+#include <memory>
 
 #ifdef __cplusplus
 
@@ -89,6 +90,8 @@ private:
 
     /* FIXME: Wiznet callbacks do not have any kind of state arguments :( */
     static WizNetif* instance_;
+
+    std::unique_ptr<char[]> hostname_;
 };
 
 } } // namespace particle::net
