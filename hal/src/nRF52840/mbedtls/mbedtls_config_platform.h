@@ -230,6 +230,7 @@
 #define MBEDTLS_AES_ALT
 #define MBEDTLS_ECP_ALT
 #define MBEDTLS_SHA256_ALT
+#define MBEDTLS_SHA1_ALT
 
 //#define MBEDTLS_ARC4_ALT
 //#define MBEDTLS_BLOWFISH_ALT
@@ -240,7 +241,6 @@
 //#define MBEDTLS_MD4_ALT
 //#define MBEDTLS_MD5_ALT
 //#define MBEDTLS_RIPEMD160_ALT
-//#define MBEDTLS_SHA1_ALT
 //#define MBEDTLS_SHA512_ALT
 
 /**
