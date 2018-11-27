@@ -29,7 +29,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "deviceid_hal.h"
 
 #include "scope_guard.h"
-#include "endian.h"
+#include "endian_util.h"
 #include "debug.h"
 
 #include "mbedtls/ecjpake.h"
