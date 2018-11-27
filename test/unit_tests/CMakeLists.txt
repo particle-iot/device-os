@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(test)
+project(unit_tests)
 
 set(PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 set(THIRD_PARTY_DIR ${PROJECT_DIR}/third_party)
