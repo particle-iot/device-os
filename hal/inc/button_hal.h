@@ -53,6 +53,8 @@ void BUTTON_Check_Irq(uint16_t button);
 void BUTTON_Check_State(uint16_t button, uint8_t pressed);
 int BUTTON_Debounce();
 
+void BUTTON_Timer_Handler(void);
+
 extern button_config_t HAL_Buttons[];
 
 #ifdef __cplusplus
