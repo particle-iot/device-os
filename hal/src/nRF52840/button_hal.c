@@ -24,16 +24,6 @@
 #include "core_hal.h"
 #include "logging.h"
 
-#define TIMERx_ID               2
-#define TIMERx_IRQ_PRIORITY     _PRIO_SD_LOWEST
-
-// 16bit counter, 125KHz clock, interrupt interval: 10ms
-#define TIMERx_BIT_WIDTH        NRF_TIMER_BIT_WIDTH_16
-#define TIMERx_FREQUENCY        NRF_TIMER_FREQ_125kHz
-
-const nrfx_timer_t m_button_timer = NRFX_TIMER_INSTANCE(TIMERx_ID);
-
-
 button_config_t HAL_Buttons[] = {
     {
         .active         = false,
@@ -49,14 +39,19 @@ button_config_t HAL_Buttons[] = {
     }
 };
 
+static struct {
+    bool        enable;
+    uint32_t    timeout;
+} systick_button_timer;
+
 static void mode_button_reset(uint16_t button)
 {
     HAL_Buttons[button].debounce_time = 0x00;
 
     if (!HAL_Buttons[BUTTON1].active && !HAL_Buttons[BUTTON1_MIRROR].active)
     {
-        nrfx_timer_disable(&m_button_timer);
-        nrfx_timer_clear(&m_button_timer);
+        systick_button_timer.enable = false;
+        systick_button_timer.timeout = 0;
     }
 
     HAL_Notify_Button_State((Button_TypeDef)button, false);
@@ -65,40 +60,37 @@ static void mode_button_reset(uint16_t button)
     BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
 }
 
-void button_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
+void button_timer_event_handler(void)
 {
-    if (event_type == NRF_TIMER_EVENT_COMPARE0)
+    if (HAL_Buttons[BUTTON1].active && (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED))
     {
-        if (HAL_Buttons[BUTTON1].active && (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED))
+        if (!HAL_Buttons[BUTTON1].debounce_time)
         {
-            if (!HAL_Buttons[BUTTON1].debounce_time)
-            {
-                HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-                HAL_Notify_Button_State(BUTTON1, true);
-            }
             HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+            HAL_Notify_Button_State(BUTTON1, true); 
         }
-        else if (HAL_Buttons[BUTTON1].active)
-        {
-            HAL_Buttons[BUTTON1].active = false;
-            mode_button_reset(BUTTON1);
-        }
+        HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+    }
+    else if (HAL_Buttons[BUTTON1].active)
+    {
+        HAL_Buttons[BUTTON1].active = false;
+        mode_button_reset(BUTTON1);
+    }
 
-        if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active &&
-            BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0))
+    if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active &&
+        BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) 
+    {
+        if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time)
         {
-            if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time)
-            {
-                HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-                HAL_Notify_Button_State(BUTTON1_MIRROR, true);
-            }
             HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+            HAL_Notify_Button_State(BUTTON1_MIRROR, true);
         }
-        else if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active)
-        {
-            HAL_Buttons[BUTTON1_MIRROR].active = false;
-            mode_button_reset(BUTTON1_MIRROR);
-        }
+        HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+    }
+    else if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active)
+    {
+        HAL_Buttons[BUTTON1_MIRROR].active = false;
+        mode_button_reset(BUTTON1_MIRROR);
     }
 }
 
@@ -113,8 +105,24 @@ void BUTTON_Interrupt_Handler(void *data)
     BUTTON_EXTI_Config(button, DISABLE);
 
     /* Start timer if it hasn't been previously started */
-    if (!nrfx_timer_is_enabled(&m_button_timer)) {
-        nrfx_timer_enable(&m_button_timer);
+    if (!systick_button_timer.enable) {
+        systick_button_timer.enable = true;
+        systick_button_timer.timeout = BUTTON_DEBOUNCE_INTERVAL;
+    }
+}
+
+void BUTTON_Timer_Handler(void)
+{
+    if (!systick_button_timer.enable) {
+        return;
+    }
+
+    if (systick_button_timer.timeout) {
+        systick_button_timer.timeout--;
+        if (systick_button_timer.timeout == 0) {
+            systick_button_timer.timeout = BUTTON_DEBOUNCE_INTERVAL;
+            button_timer_event_handler();
+        }
     }
 }
 
@@ -136,18 +144,6 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
 
     if (Button_Mode == BUTTON_MODE_EXTI)
     {
-        nrfx_timer_config_t timer_cfg = {
-            .frequency          = TIMERx_FREQUENCY,
-            .mode               = NRF_TIMER_MODE_TIMER,
-            .bit_width          = TIMERx_BIT_WIDTH,
-            .interrupt_priority = TIMERx_IRQ_PRIORITY,
-            .p_context          = NULL
-        };
-        SPARK_ASSERT(nrfx_timer_init(&m_button_timer, &timer_cfg, button_timer_event_handler) == NRF_SUCCESS);
-
-        uint32_t time_ticks = nrfx_timer_ms_to_ticks(&m_button_timer, BUTTON_DEBOUNCE_INTERVAL);
-        nrfx_timer_extended_compare(&m_button_timer, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
-
         /* Attach GPIOTE Interrupt */
         BUTTON_EXTI_Config(Button, ENABLE);
     }

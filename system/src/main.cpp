@@ -419,6 +419,8 @@ extern "C" void HAL_SysTick_Handler(void)
     }
 #endif
 
+    BUTTON_Timer_Handler();
+
     if (IS_BUTTON_TIMEOUT())
     {
         reset_button_click();
