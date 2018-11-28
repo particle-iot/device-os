@@ -30,6 +30,7 @@
 #include "gpio_hal.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
+#include "core_hal.h"
 
 #include "stream_util.h"
 
@@ -1034,6 +1035,23 @@ int SaraNcpClient::modemPowerOn() const {
 }
 
 int SaraNcpClient::modemPowerOff() const {
+    static std::once_flag f;
+    std::call_once(f, [this]() {
+        if (ncpId() != MESH_NCP_SARA_R410 && modemPowerState()) {
+            // U201 will auto power-on when it detects a rising VIN
+            // If we perform a power-off sequence immediately after it just started
+            // to power-on, it will not be detected. Add an artificial delay here.
+            int reason;
+            if (!HAL_Core_Get_Last_Reset_Info(&reason, nullptr, nullptr) &&
+                    (reason == RESET_REASON_POWER_DOWN || reason == RESET_REASON_POWER_BROWNOUT)) {
+                auto now = HAL_Timer_Get_Milli_Seconds();
+                if (now < 5000) {
+                    HAL_Delay_Milliseconds(5000 - now);
+                }
+            }
+        }
+    });
+
     if (modemPowerState()) {
         LOG(TRACE, "Powering modem off");
         // Important! We need to disable voltage translator here
