@@ -36,7 +36,7 @@
 #include "socket_hal_posix.h"
 #include "ifapi.h"
 
-#include "endian.h"
+#include "endian_util.h"
 #include "str_util.h"
 #include "scope_guard.h"
 

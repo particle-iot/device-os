@@ -38,6 +38,7 @@ env:
     - BUILD_PLATFORM=xenon
     - BUILD_PLATFORM=argon
     - BUILD_PLATFORM=boron
+    - BUILD_PLATFORM=unit-test
 
   # matrix:
   #   - BUILD_PLATFORM=unit-test gcc

@@ -87,4 +87,19 @@ inline bool endsWith(const char* str, const char* suffix) {
     return endsWith(str, strlen(str), suffix, strlen(suffix));
 }
 
+/**
+ * Escapes a set of characters in a string by prepending them with an escape character. The output
+ * is always null-terminated, unless the size of the destination buffer is `0`.
+ *
+ * @param src Source string.
+ * @param spec Characters that need to be escaped.
+ * @param esc Escape character.
+ * @param dest Destination buffer.
+ * @param destSize Size of the destination buffer.
+ *
+ * @return Number of characters in the entire escaped string, not including the trailing `\0`.
+ *         The value can be larger than the size of the destination buffer.
+ */
+size_t escape(const char* src, const char* spec, char esc, char* dest, size_t destSize);
+
 } // particle

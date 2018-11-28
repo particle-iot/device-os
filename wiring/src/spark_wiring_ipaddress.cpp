@@ -28,7 +28,7 @@
 #include "spark_wiring_print.h"
 #include "spark_wiring_platform.h"
 #include "string.h"
-#include "ifapi.h"
+
 #include <arpa/inet.h>
 
 IPAddress::IPAddress()

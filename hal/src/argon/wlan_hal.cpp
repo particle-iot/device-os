@@ -25,7 +25,7 @@
 #include "system_network.h" // FIXME: For network_interface_index
 
 #include "scope_guard.h"
-#include "endian.h"
+#include "endian_util.h"
 #include "check.h"
 
 #include <algorithm>

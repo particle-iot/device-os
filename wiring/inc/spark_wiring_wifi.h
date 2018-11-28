@@ -229,7 +229,7 @@ public:
 #if !HAL_USE_INET_HAL_POSIX
     IPAddress resolve(const char* name)
     {
-        HAL_IPAddress ip = {0};
+        HAL_IPAddress ip = {};
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL) != 0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }

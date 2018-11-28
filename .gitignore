@@ -59,3 +59,8 @@ module_user_memory.ld
 
 # Doxygen documentation
 docs/doxygen/html/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
