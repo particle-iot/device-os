@@ -23,22 +23,22 @@ typedef enum {
     NFC_TAG_TYPE_NONE,
     NFC_TAG_TYPE_2,
     NFC_TAG_TYPE_NOT_SURPPORTED
-} NfcTagType;
+} nfc_tag_type_t;
 
 typedef enum {
     NFC_EVENT_FIELD_ON,             // NFC tag has detected external NFC field and was selected by an NFC polling device.
     NFC_EVENT_FIELD_OFF,            // External NFC field has been removed.
     NFC_EVENT_READ                  // NFC polling device has read all tag data.
-} NfcEventType;
+} nfc_event_type_t;
 
 typedef struct {
     uint32_t reserved;
-} NfcEvent;
+} nfc_event_t;
 
-typedef void (*NfcEventCallback)(NfcEventType type, NfcEvent *event);
+typedef void (*nfc_event_callback_t)(nfc_event_type_t type, nfc_event_t *event);
 
-int HAL_NFC_Type2_Init(void);
-int HAL_NFC_Type2_Set_Payload(const uint8_t *msg_buf, uint16_t msg_len);
-int HAL_NFC_Type2_Start_Emulation(void);
-int HAL_NFC_Type2_Stop_Emulation(void);
-int HAL_NFC_Type2_Set_Callback(NfcEventCallback callback);
+int hal_nfc_type2_init(void);
+int hal_nfc_type2_set_payload(const uint8_t *msg_buf, uint16_t msg_len);
+int hal_nfc_type2_start_emulation(void);
+int hal_nfc_type2_stop_emulation(void);
+int hal_nfc_type2_set_callback(nfc_event_callback_t callback);

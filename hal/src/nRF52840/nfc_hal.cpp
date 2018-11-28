@@ -19,7 +19,7 @@
 #include "nfc_t2t_lib.h"
 #include "app_error.h"
 
-static NfcEventCallback g_nfc_event_user_callback = NULL;
+static nfc_event_callback_t g_nfc_event_user_callback = NULL;
 
 static void nfc_type_2_callback(void * p_context, nfc_t2t_event_t event, const uint8_t * p_data, size_t data_length) {
     (void)p_context;
@@ -47,35 +47,35 @@ static void nfc_type_2_callback(void * p_context, nfc_t2t_event_t event, const u
     }
 }
 
-int HAL_NFC_Type2_Init(void) {
+int hal_nfc_type2_init(void) {
     uint32_t err_code = nfc_t2t_setup(nfc_type_2_callback, NULL);
     APP_ERROR_CHECK(err_code);
 
     return 0;
 }
 
-int HAL_NFC_Type2_Set_Payload(const uint8_t *msg_buf, uint16_t msg_len) {
+int hal_nfc_type2_set_payload(const uint8_t *msg_buf, uint16_t msg_len) {
     uint32_t err_code = nfc_t2t_payload_set(msg_buf, msg_len);
     APP_ERROR_CHECK(err_code);
 
     return 0;
 }
 
-int HAL_NFC_Type2_Start_Emulation(void) {
+int hal_nfc_type2_start_emulation(void) {
     uint32_t err_code = nfc_t2t_emulation_start();
     APP_ERROR_CHECK(err_code);
 
     return 0;
 }
 
-int HAL_NFC_Type2_Stop_Emulation(void) {
+int hal_nfc_type2_stop_emulation(void) {
     uint32_t err_code = nfc_t2t_emulation_stop();
     APP_ERROR_CHECK(err_code);
 
     return 0;
 }
 
-int HAL_NFC_Type2_Set_Callback(NfcEventCallback callback) {
+int hal_nfc_type2_set_callback(nfc_event_callback_t callback) {
     g_nfc_event_user_callback = callback;
 
     return 0;
