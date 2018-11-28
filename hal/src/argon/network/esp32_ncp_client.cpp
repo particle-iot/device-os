@@ -584,6 +584,8 @@ int Esp32NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Channel
         switch (channel) {
             case 0:
                 // Muxer stopped
+                self->disable();
+                // NOTE: fall-through
             case ESP32_NCP_STA_CHANNEL: {
                 // Notify that the underlying data channel closed
                 // It should be safe to call this here
