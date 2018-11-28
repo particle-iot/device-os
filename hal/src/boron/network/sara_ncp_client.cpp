@@ -899,6 +899,7 @@ int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelS
         switch (channel) {
             case 0: {
                 // Muxer stopped
+                self->disable();
                 self->connState_ = NcpConnectionState::DISCONNECTED;
                 break;
             }
