@@ -67,7 +67,8 @@ inline void ipAddressPortToSockaddr(const IPAddress& addr, uint16_t port, struct
         inaddr->sin_family = AF_INET;
         inaddr->sin_port = htons(port);
         const auto& a = addr.raw();
-        inaddr->sin_addr.s_addr = a.ipv4;
+        // NOTE: HAL_IPAddress.ipv4 is host-order :|
+        inaddr->sin_addr.s_addr = htonl(a.ipv4);
     }
 #endif // HAL_IPv6
 }
