@@ -39,7 +39,7 @@ button_config_t HAL_Buttons[] = {
     }
 };
 
-static struct {
+static volatile struct {
     bool        enable;
     uint32_t    timeout;
 } systick_button_timer;
