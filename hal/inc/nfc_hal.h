@@ -17,7 +17,8 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
 typedef enum {
     NFC_TAG_TYPE_NONE,
@@ -35,10 +36,10 @@ typedef struct {
     uint32_t reserved;
 } nfc_event_t;
 
-typedef void (*nfc_event_callback_t)(nfc_event_type_t type, nfc_event_t *event);
+typedef void (*nfc_event_callback_t)(nfc_event_type_t type, nfc_event_t *event, void* ctx);
 
 int hal_nfc_type2_init(void);
-int hal_nfc_type2_set_payload(const uint8_t *msg_buf, uint16_t msg_len);
+int hal_nfc_type2_set_payload(const void *msg_buf, size_t msg_len);
 int hal_nfc_type2_start_emulation(void);
 int hal_nfc_type2_stop_emulation(void);
 int hal_nfc_type2_set_callback(nfc_event_callback_t callback);

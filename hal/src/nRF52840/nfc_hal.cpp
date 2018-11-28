@@ -26,19 +26,19 @@ static void nfc_type_2_callback(void * p_context, nfc_t2t_event_t event, const u
     switch (event) {
         case NFC_T2T_EVENT_FIELD_ON: {
             if (g_nfc_event_user_callback) {
-                g_nfc_event_user_callback(NFC_EVENT_FIELD_ON, NULL);
+                g_nfc_event_user_callback(NFC_EVENT_FIELD_ON, NULL, NULL);
             }
             break;
         }
         case NFC_T2T_EVENT_FIELD_OFF: {
             if (g_nfc_event_user_callback) {
-                g_nfc_event_user_callback(NFC_EVENT_FIELD_OFF, NULL);
+                g_nfc_event_user_callback(NFC_EVENT_FIELD_OFF, NULL, NULL);
             }
             break;
         }
         case NFC_T2T_EVENT_DATA_READ: {
             if (g_nfc_event_user_callback) {
-                g_nfc_event_user_callback(NFC_EVENT_READ, NULL);
+                g_nfc_event_user_callback(NFC_EVENT_READ, NULL, NULL);
             }
             break;
         }
@@ -54,8 +54,8 @@ int hal_nfc_type2_init(void) {
     return 0;
 }
 
-int hal_nfc_type2_set_payload(const uint8_t *msg_buf, uint16_t msg_len) {
-    uint32_t err_code = nfc_t2t_payload_set(msg_buf, msg_len);
+int hal_nfc_type2_set_payload(const void *msg_buf, size_t msg_len) {
+    uint32_t err_code = nfc_t2t_payload_set((uint8_t *)msg_buf, msg_len);
     APP_ERROR_CHECK(err_code);
 
     return 0;
