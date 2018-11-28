@@ -32,6 +32,7 @@ LOG_SOURCE_CATEGORY("net.nat64")
 #include <lwip/inet_chksum.h>
 #include <lwip/timeouts.h>
 #include "lwiplock.h"
+#include "random.h"
 
 using namespace particle::net;
 using namespace particle::net::nat;
@@ -90,9 +91,11 @@ static_assert(MEMP_NUM_SYS_TIMEOUT > LWIP_NUM_SYS_TIMEOUT_INTERNAL, "An extra ti
 
 } /* anonymous */
 
-Nat64::Nat64()
-        : udpNextPort_(DEFAULT_UDP_NAT_MIN_PORT) {
+Nat64::Nat64() {
     IP6_ADDR(&pref64_, PP_HTONL(0x64ff9b), 0, 0, 0);
+    unsigned int rVal;
+    particle::Random::genSecure((char*)&rVal, sizeof(rVal));
+    udpNextPort_ = rVal % (DEFAULT_UDP_NAT_MAX_PORT - DEFAULT_UDP_NAT_MIN_PORT) + DEFAULT_UDP_NAT_MIN_PORT;
 }
 
 Nat64::~Nat64() {
