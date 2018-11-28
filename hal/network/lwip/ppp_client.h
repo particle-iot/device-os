@@ -24,6 +24,9 @@
 extern "C" {
 #include <netif/ppp/ppp.h>
 }
+
+#if defined(PPP_SUPPORT) && PPP_SUPPORT
+
 #include "ppp_ipcp.h"
 #include "concurrent_hal.h"
 #include <mutex>
@@ -173,5 +176,7 @@ private:
 } } } /* namespace particle::net::ppp */
 
 #endif /* __cplusplus */
+
+#endif // defined(PPP_SUPPORT) && PPP_SUPPORT
 
 #endif /* HAL_NETWORK_LWIP_PPP_CLIENT_H */

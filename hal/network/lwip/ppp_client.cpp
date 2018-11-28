@@ -16,6 +16,9 @@
  */
 
 #include "ppp_client.h"
+
+#if defined(PPP_SUPPORT) && PPP_SUPPORT
+
 #include "service_debug.h"
 extern "C" {
 #include <netif/ppp/pppos.h>
@@ -434,3 +437,5 @@ void Client::transition(State newState) {
     }
   }
 }
+
+#endif // defined(PPP_SUPPORT) && PPP_SUPPORT
