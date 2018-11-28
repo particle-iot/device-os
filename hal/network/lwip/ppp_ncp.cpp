@@ -16,5 +16,3 @@
  */
 
 #include "ppp_ncp.h"
-
-using namespace particle::net::ppp;

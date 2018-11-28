@@ -344,7 +344,7 @@ void sys_unlock_tcpip_core(void);
 /**
  * PBUF_POOL_SIZE: the number of buffers in the pbuf pool.
  */
-#define PBUF_POOL_SIZE                  24
+#define PBUF_POOL_SIZE                  16
 
 /*
    ---------------------------------

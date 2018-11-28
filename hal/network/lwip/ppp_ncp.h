@@ -30,6 +30,8 @@ extern "C" {
 #include <netif/ppp/fsm.h>
 }
 
+#if defined(PPP_SUPPORT) && PPP_SUPPORT
+
 #include "ppp_configuration_option.h"
 
 #ifdef __cplusplus
@@ -425,5 +427,7 @@ fsm_callbacks Ncp<protocol, ContextVariable, protoName, dataProtoName>::fsmCallb
 } } } /* namespace particle::net::ppp */
 
 #endif /* __cplusplus */
+
+#endif // defined(PPP_SUPPORT) && PPP_SUPPORT
 
 #endif /* HAL_NETWORK_LIP_PPP_NCP_H */

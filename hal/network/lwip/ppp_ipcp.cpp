@@ -16,6 +16,9 @@
  */
 
 #include "ppp_ipcp.h"
+
+#if defined(PPP_SUPPORT) && PPP_SUPPORT
+
 #include <lwip/dns.h>
 #include "logging.h"
 
@@ -493,3 +496,5 @@ ip4_addr_t Ipcp::getNegotiatedSecondaryDns() {
   }
   return ret;
 }
+
+#endif // defined(PPP_SUPPORT) && PPP_SUPPORT

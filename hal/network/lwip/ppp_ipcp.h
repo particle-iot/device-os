@@ -19,6 +19,9 @@
 #define HAL_NETWORK_LWIP_PPP_IPCP_H
 
 #include "ppp_ncp.h"
+
+#if defined(PPP_SUPPORT) && PPP_SUPPORT
+
 #include <netif/ppp/ipcp.h>
 #include "ppp_ipcp_options.h"
 
@@ -129,5 +132,7 @@ private:
 } } } /* namespace particle::net::ppp */
 
 #endif /* __cplusplus */
+
+#endif // defined(PPP_SUPPORT) && PPP_SUPPORT
 
 #endif /* HAL_NETWORK_LWIP_PPP_IPCP_H */

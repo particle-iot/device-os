@@ -18,10 +18,13 @@
 #ifndef HAL_LWIP_LWIPPPPOPTS_H
 #define HAL_LWIP_LWIPPPPOPTS_H
 
+#include "platforms.h"
+
 /**
  * PPP_SUPPORT==1: Enable PPP.
  */
-#define PPP_SUPPORT                     1
+// TODO: There should probably be separate config files for each Gen 3 platform
+#define PPP_SUPPORT                     (PLATFORM_ID == PLATFORM_BORON)
 
 /**
  * PPPOE_SUPPORT==1: Enable PPP Over Ethernet
@@ -52,7 +55,7 @@
  * MEMP_NUM_PPP_PCB: the number of simultaneously active PPP
  * connections (requires the PPP_SUPPORT option)
  */
-#define MEMP_NUM_PPP_PCB                2
+#define MEMP_NUM_PPP_PCB                1
 
 /**
  * PPP_NUM_TIMEOUTS_PER_PCB: the number of sys_timeouts running in parallel per
