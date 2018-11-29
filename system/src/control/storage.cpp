@@ -617,8 +617,6 @@ int getModuleInfo(ctrl_request* req) {
         for (size_t i = 0; i < info->module_count; ++i) {
             const hal_module_t& module = info->modules[i];
             if (!module.info) {
-                // TODO: This skips the NCP firmware module, but there's a separate request that
-                // can be used to retrieve the NCP firmware version
                 continue;
             }
             if (module.bounds.store != MODULE_STORE_MAIN) {
