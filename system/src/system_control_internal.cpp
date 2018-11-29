@@ -190,19 +190,8 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::setStartupMode(req));
         break;
     }
-    case CTRL_REQUEST_MODULE_INFO: {
-        struct Formatter {
-            static int callback(Appender* appender, void* data) {
-                if (!appender->append('{') ||
-                        !system_module_info(append_instance, appender) ||
-                        !appender->append('}')) {
-                    return SYSTEM_ERROR_UNKNOWN;
-                }
-                return 0;
-            }
-        };
-        const int ret = formatReplyData(req, Formatter::callback);
-        setResult(req, ret);
+    case CTRL_REQUEST_GET_MODULE_INFO: {
+        setResult(req, control::getModuleInfo(req));
         break;
     }
     case CTRL_REQUEST_DIAGNOSTIC_INFO: {
