@@ -29,6 +29,8 @@ namespace particle
 namespace protocol
 {
 
+inline bool time_has_passed(system_tick_t now, system_tick_t tick);
+
 /**
  * Decorates a MessageChannel with message ID management as required by CoAP.
  * When a message is sent that doesn't have an assigned ID, it is assigned the next available ID.
@@ -111,6 +113,19 @@ private:
 	system_tick_t timeout;
 
 	/**
+	 * The timestamp when the message was first sent.
+	 */
+	system_tick_t first_sent_timestamp;
+
+	/**
+	 * Exponentially increasing timeout value (not a timestamp).
+	 * Initially is set to a random value between
+	 * [ACK_TIMEOUT, ACK_TIMEOUT * ACK_RANDOM_FACTOR / ACK_RANDOM_DIVISOR]
+	 * Doubled on every retransmission.
+	 */
+	system_tick_t timeout_value;
+
+	/**
 	 * The unique 16-bit ID for this message.
 	 */
 	message_id_t id;
@@ -149,20 +164,34 @@ private:
 
 public:
 
-	static const uint16_t ACK_TIMEOUT = 4000;
-	static const uint16_t ACK_RANDOM_FACTOR = 1500;
-	static const uint16_t ACK_RANDOM_DIVISOR = 1000;
-	static const uint8_t MAX_RETRANSMIT = 3;
-	static const uint16_t MAX_TRANSMIT_SPAN = 45*1000;
-
+	// RFC7252 4.8. Transmission Parameters
+	// We are NOT using the default RFC values
+	static constexpr const auto ACK_TIMEOUT = 4000;
+	static constexpr const auto ACK_RANDOM_FACTOR = 1500;
+	static constexpr const auto ACK_RANDOM_DIVISOR = 1000;
+	static constexpr const auto MAX_RETRANSMIT = 3;
+	// RFC7252 4.8.2. Time Values Derived from Transmission Parameters
+	static constexpr const auto MAX_TRANSMIT_SPAN = (ACK_TIMEOUT * ((1 << MAX_RETRANSMIT) - 1) * ACK_RANDOM_FACTOR) / ACK_RANDOM_DIVISOR;
+	static constexpr const auto MAX_TRANSMIT_WAIT = (ACK_TIMEOUT * ((1 << (MAX_RETRANSMIT + 1)) - 1) * ACK_RANDOM_FACTOR) / ACK_RANDOM_DIVISOR;
+	static constexpr const auto MAX_LATENCY = 100000;
+	static constexpr const auto PROCESSING_DELAY = ACK_TIMEOUT;
+	static constexpr const auto EXCHANGE_LIFETIME = MAX_TRANSMIT_SPAN + (2 * MAX_LATENCY) + PROCESSING_DELAY;
 
 	/**
 	 * The number of outstanding messages allowed.
 	 */
-	static const uint8_t NSTART = 1;
+	static constexpr const auto NSTART = 1;
 
 
-	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), delivered(nullptr), data_len(0) {
+	CoAPMessage(message_id_t id_) :
+			next(nullptr),
+			timeout(0),
+			first_sent_timestamp(0),
+			timeout_value(0),
+			id(id_),
+			transmit_count(0),
+			delivered(nullptr),
+			data_len(0) {
 		message_count++;
 	}
 
@@ -196,6 +225,8 @@ public:
 	inline message_id_t get_id() const { return id; }
 	inline void removed() { next = nullptr; }
 	inline system_tick_t get_timeout() const { return timeout; }
+	inline system_tick_t get_timeout_value() const { return timeout_value; }
+	inline system_tick_t get_transmit_count() const { return transmit_count; }
 
 	inline void set_delivered_handler(std::function<void(Delivery)>* handler) { this->delivered = handler; }
 
@@ -218,23 +249,35 @@ public:
 	bool prepare_retransmit(system_tick_t now)
 	{
 		CoAPType::Enum coapType = CoAP::type(get_data());
-		if (coapType==CoAPType::CON) {
-			timeout = now + transmit_timeout(transmit_count);
-			transmit_count++;
-			return transmit_count <= MAX_RETRANSMIT+1;
+		if (coapType == CoAPType::CON) {
+			if (transmit_count != 0) {
+				// RFC7252 4.2. Messages Transmitted Reliably
+				// When the timeout is triggered and the retransmission counter is less than
+				// MAX_RETRANSMIT, the message is retransmitted, the retransmission
+				// counter is incremented, and the timeout is doubled.
+				++transmit_count;
+				timeout_value *= 2;
+			} else {
+				// RFC7252 4.2. Messages Transmitted Reliably
+				// For a new Confirmable message, the initial timeout is set
+				// to a random duration (often not an integral number of seconds)
+				// between ACK_TIMEOUT and (ACK_TIMEOUT * ACK_RANDOM_FACTOR)
+				// and the retransmission counter is set to 0.
+				timeout_value = ACK_TIMEOUT + (rand() % ((ACK_TIMEOUT * ACK_RANDOM_FACTOR) / ACK_RANDOM_DIVISOR));
+				first_sent_timestamp = now;
+			}
+			timeout = now + timeout_value;
+			// RFC7252 4.2. Messages Transmitted Reliably
+			// The entire sequence of (re-)transmissions MUST stay in the envelope of MAX_TRANSMIT_SPAN
+			if (transmit_count <= MAX_RETRANSMIT &&
+					!time_has_passed(now, (first_sent_timestamp + MAX_TRANSMIT_SPAN))) {
+				LOG(TRACE, "(re)txing message id=%x attempt=%d timeout=%d", get_id(),
+						transmit_count, timeout_value);
+				return true;
+			}
 		}
 		// other message types are not resent on timeout
 		return false;
-	}
-
-	/**
-	 * Determines the transmit timeout for the given transmission count.
-	 */
-	static inline system_tick_t transmit_timeout(uint8_t transmit_count)
-	{
-		system_tick_t timeout = (ACK_TIMEOUT << transmit_count);
-		timeout += ((timeout * (rand()%256))>>9);
-		return timeout;
 	}
 
 	inline CoAPType::Enum get_type() const
