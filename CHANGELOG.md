@@ -1,3 +1,35 @@
+## 0.8.0-rc.26-mesh
+
+### BUGFIXES
+
+- [Argon] Escape special characters in SSIDs and passwords (#1604)
+- [Gen 3] Network system events are correctly generated (#1585)
+- [Gen 3] Correct C++ contructor array alignment in system-part1 (#1594)
+- [Gen 3] Fixed a conflict between DHCPv4-assigned and ND6-assigned DNS servers (#1596)
+- [Argon / Boron] Fixed a race condition when restarting the GSM07.10 multiplexer causing a memory leak/corruption (#1608)
+- [Gen 3] IPv4 `IPAddress` endianness issue fixed (#1610)
+- [Boron] Fixed a crash when using `STARTUP()` macro to manage Cellular credentials (#1613)
+
+### ENHANCEMENTS
+
+- [Boron] 3G Borons no longer incur 10 second power-on delay when cold booting (#1584)
+- [Gen 3] Build time significantly improved (#1587)
+- [Gen 3] Hardware-accelerated SHA-1 (#1593)
+- [Gen 3] Newlib 3.0 compatibility (#1599)
+- [Argon / Boron] AT parser immediately interrupted when GSM07.10 multiplexer exits asynchronously (e.g. terminated by the peer or due to keepalive timeout) (#1608)
+- [Gen 3] NAT64 initial base source port randomized on boot (#1609)
+- [Gen 3] LwIP optimizations (#1610)
+
+### FEATURES
+- [Gen 3] SPI slave mode (#1588)
+- [Gen 3] I2C slave mode (#1591)
+- [Gen 3] Servo HAL (#1589)
+- [Gen 3] Implement a control request to retrieve the module info in the protobuf format (#1614)
+
+### INTERNAL
+
+- [Gen 3] Run unit tests as part of a CI build (#1604).
+
 ## 0.8.0-rc.25
 
 ### FEATURES
