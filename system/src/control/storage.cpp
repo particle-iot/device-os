@@ -626,6 +626,12 @@ int getModuleInfo(ctrl_request* req) {
             if (type == PB(FirmwareModuleType_INVALID_FIRMWARE_MODULE)) {
                 continue;
             }
+#ifdef HYBRID_BUILD
+            // FIXME: Avoid enumerating the system module twice in case of a hybrid build
+            if (type == PB(FirmwareModuleType_MONO_FIRMWARE)) {
+                continue;
+            }
+#endif // HYBRID_BUILD
             PB(GetModuleInfoReply_Module) pbModule = {};
             pbModule.type = type;
             pbModule.index = module.info->module_index;
