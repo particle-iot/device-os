@@ -142,12 +142,10 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
 }
 
 int cellular_credentials_set(const char* apn, const char* user, const char* password, void* reserved) {
-    const auto mgr = cellularNetworkManager();
-    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     auto sim = particle::SimType::INTERNAL;
-    CHECK(mgr->getActiveSim(&sim));
+    CHECK(CellularNetworkManager::getActiveSim(&sim));
     auto cred = CellularNetworkConfig().apn(apn).user(user).password(password);
-    CHECK(mgr->setNetworkConfig(sim, std::move(cred)));
+    CHECK(CellularNetworkManager::setNetworkConfig(sim, std::move(cred)));
     return 0;
 }
 
@@ -155,13 +153,9 @@ CellularCredentials* cellular_credentials_get(void* reserved) {
     // TODO: Copy the settings to a storage provided by the calling code
     static CellularCredentials cred;
     static CellularNetworkConfig conf;
-    const auto mgr = cellularNetworkManager();
-    if (!mgr) {
-        return nullptr;
-    }
     auto sim = particle::SimType::INTERNAL;
-    CHECK_RETURN(mgr->getActiveSim(&sim), nullptr);
-    CHECK_RETURN(mgr->getNetworkConfig(sim, &conf), nullptr);
+    CHECK_RETURN(CellularNetworkManager::getActiveSim(&sim), nullptr);
+    CHECK_RETURN(CellularNetworkManager::getNetworkConfig(sim, &conf), nullptr);
     cred.apn = conf.hasApn() ? conf.apn() : "";
     cred.username = conf.hasUser() ? conf.user() : "";
     cred.password = conf.hasPassword() ? conf.password() : "";
@@ -169,11 +163,9 @@ CellularCredentials* cellular_credentials_get(void* reserved) {
 }
 
 int cellular_credentials_clear(void* reserved) {
-    const auto mgr = cellularNetworkManager();
-    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     auto sim = particle::SimType::INTERNAL;
-    CHECK(mgr->getActiveSim(&sim));
-    CHECK(mgr->clearNetworkConfig(sim));
+    CHECK(CellularNetworkManager::getActiveSim(&sim));
+    CHECK(CellularNetworkManager::clearNetworkConfig(sim));
     return 0;
 }
 
@@ -352,21 +344,17 @@ int cellular_band_available_get(MDM_BandSelect* bands, void* reserved) {
 }
 
 int cellular_set_active_sim(int simType, void* reserved) {
-    const auto mgr = cellularNetworkManager();
-    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     auto sim = particle::SimType::INTERNAL;
     if (simType == EXTERNAL_SIM) {
         sim = particle::SimType::EXTERNAL;
     }
-    CHECK(mgr->setActiveSim(sim));
+    CHECK(CellularNetworkManager::setActiveSim(sim));
     return 0;
 }
 
 int cellular_get_active_sim(int* simType, void* reserved) {
-    const auto mgr = cellularNetworkManager();
-    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     auto sim = particle::SimType::INTERNAL;
-    CHECK(mgr->getActiveSim(&sim));
+    CHECK(CellularNetworkManager::getActiveSim(&sim));
     if (sim == particle::SimType::EXTERNAL) {
         *simType = EXTERNAL_SIM;
     } else {
