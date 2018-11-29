@@ -49,7 +49,7 @@ static void button_timer_init(void);
 static void button_timer_uninit(void);
 static void button_timer_start(void);
 static void button_timer_stop(void);
-static void button_timer_event_handler(nrf_timer_event_t event_type, void* p_context);
+static void button_timer_event_handler(void);
 static void button_reset(uint16_t button);
 
 static void button_timer_init(void) {
@@ -74,35 +74,33 @@ static void button_timer_stop(void) {
     systick_button_timer.timeout = 0;
 }
 
-static void button_timer_event_handler(nrf_timer_event_t event_type, void* p_context) {
-    if (event_type == NRF_TIMER_EVENT_COMPARE0) {
-        if (HAL_Buttons[BUTTON1].active && (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)) {
-            if (!HAL_Buttons[BUTTON1].debounce_time) {
-                HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-                HAL_Notify_Button_State(BUTTON1, true); 
-#endif
-            }
+static void button_timer_event_handler(void) {
+    if (HAL_Buttons[BUTTON1].active && (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)) {
+        if (!HAL_Buttons[BUTTON1].debounce_time) {
             HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-        } else if (HAL_Buttons[BUTTON1].active) {
-            HAL_Buttons[BUTTON1].active = false;
-            button_reset(BUTTON1);
-        }
-
-        if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active &&
-            BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) 
-        {
-            if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time) {
-                HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-                HAL_Notify_Button_State(BUTTON1_MIRROR, true);
+            HAL_Notify_Button_State(BUTTON1, true); 
 #endif
-            }
-            HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-        } else if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active) {
-            HAL_Buttons[BUTTON1_MIRROR].active = false;
-            button_reset(BUTTON1_MIRROR);
         }
+        HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+    } else if (HAL_Buttons[BUTTON1].active) {
+        HAL_Buttons[BUTTON1].active = false;
+        button_reset(BUTTON1);
+    }
+
+    if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active &&
+        BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) 
+    {
+        if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time) {
+            HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+            HAL_Notify_Button_State(BUTTON1_MIRROR, true);
+#endif
+        }
+        HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+    } else if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active) {
+        HAL_Buttons[BUTTON1_MIRROR].active = false;
+        button_reset(BUTTON1_MIRROR);
     }
 }
 
