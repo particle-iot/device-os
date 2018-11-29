@@ -42,3 +42,4 @@ PROVIDE ( dynalib_location_hal_ifapi = system_part1_module_table + 84 );
 PROVIDE ( dynalib_location_hal_resolvapi = system_part1_module_table + 88 );
 PROVIDE ( dynalib_location_hal_wlan = system_part1_module_table + 92 );
 PROVIDE ( dynalib_location_hal_ble = system_part1_module_table + 96 );
+PROVIDE ( dynalib_location_hal_nfc = system_part1_module_table + 100 );
