@@ -100,7 +100,7 @@ typedef struct {
     uint16_t       user_desc_handle;
     uint16_t       cccd_handle;
     uint16_t       sccd_handle;
-    uint8_t*       value;
+    uint8_t        value[BLE_MAX_CHAR_VALUE_LEN];
     uint16_t       value_len;
 } hal_ble_char_t;
 
@@ -130,7 +130,7 @@ typedef struct {
     uint8_t  evt_id;
     union {
         uint8_t reason;             // Disconnect event
-    } data;
+    };
 } hal_ble_connection_event_t;
 
 /* BLE scan result event */
@@ -156,7 +156,6 @@ typedef struct {
 
 /* GATT Client data transmission events */
 typedef struct {
-    uint16_t status;
     uint16_t conn_handle;
     uint16_t char_handle;
     uint8_t* data;
