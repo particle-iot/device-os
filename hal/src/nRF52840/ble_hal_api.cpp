@@ -81,7 +81,10 @@ static ble_data_t               s_bleScanData = {
 
 static uint8_t s_connParamsUpdateAttempts = 0;
 
-static hal_ble_connection_t s_bleConnection;
+static hal_ble_connection_t s_bleConnInfo;
+
+static hal_ble_service_t* s_bleService[BLE_MAX_SERVICE_COUNT];
+static uint8_t            s_bleServiceCount = 0;
 
 static bool s_indInProgress = false;
 
@@ -349,7 +352,7 @@ static bool isConnParamsFeeded(hal_ble_connection_t* conn) {
 }
 
 static void connParamsUpdateTimerCb(os_timer_t timer) {
-    if (s_bleConnection.conn_handle == BLE_INVALID_CONN_HANDLE) {
+    if (s_bleConnInfo.conn_handle == BLE_INVALID_CONN_HANDLE) {
         return;
     }
 
@@ -361,9 +364,9 @@ static void connParamsUpdateTimerCb(os_timer_t timer) {
         connParams.slave_latency     = ppcp.slave_latency;
         connParams.conn_sup_timeout  = ppcp.conn_sup_timeout;
 
-        ret_code_t ret = sd_ble_gap_conn_param_update(s_bleConnection.conn_handle, &connParams);
+        ret_code_t ret = sd_ble_gap_conn_param_update(s_bleConnInfo.conn_handle, &connParams);
         if (ret != NRF_SUCCESS) {
-            LOG_DEBUG(WARN, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
+            LOG(WARN, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
             return;
         }
 
@@ -372,7 +375,7 @@ static void connParamsUpdateTimerCb(os_timer_t timer) {
 }
 
 static void updateConnParamsIfNeeded(void) {
-    if (s_bleConnection.role == BLE_ROLE_PERIPHERAL && !isConnParamsFeeded(&s_bleConnection)) {
+    if (s_bleConnInfo.role == BLE_ROLE_PERIPHERAL && !isConnParamsFeeded(&s_bleConnInfo)) {
         if (s_connParamsUpdateAttempts < BLE_CONN_PARAMS_UPDATE_ATTEMPS) {
             if (s_connParamsUpdateTimer != NULL) {
                 if (os_timer_change(s_connParamsUpdateTimer, OS_TIMER_CHANGE_START, true, 0, 0, NULL)) {
@@ -381,12 +384,25 @@ static void updateConnParamsIfNeeded(void) {
             }
         }
         else {
-            ret_code_t ret = sd_ble_gap_disconnect(s_bleConnection.conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+            ret_code_t ret = sd_ble_gap_disconnect(s_bleConnInfo.conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
             }
         }
     }
+}
+
+static hal_ble_char_t* findCharacteristic(uint16_t attrHandle) {
+    for (uint8_t i = 0; i < s_bleServiceCount; i++) {
+        for (uint8_t j = 0; j < s_bleService[i]->char_count; j++) {
+            if (   attrHandle == s_bleService[i]->chars[j]->value_handle
+                || attrHandle == s_bleService[i]->chars[j]->cccd_handle) {
+                return s_bleService[i]->chars[j];
+            }
+        }
+    }
+
+    return NULL;
 }
 
 static void dispatchBleEvent(hal_ble_event_t* evt) {
@@ -409,11 +425,11 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         case BLE_GAP_EVT_CONNECTED: {
             LOG_DEBUG(TRACE, "BLE connected, handle: 0x%04X", event->evt.gap_evt.conn_handle);
 
-            s_bleConnection.role             = event->evt.gap_evt.params.connected.role;
-            s_bleConnection.conn_handle      = event->evt.gap_evt.conn_handle;
-            s_bleConnection.conn_interval    = event->evt.gap_evt.params.connected.conn_params.max_conn_interval;
-            s_bleConnection.slave_latency    = event->evt.gap_evt.params.connected.conn_params.slave_latency;
-            s_bleConnection.conn_sup_timeout = event->evt.gap_evt.params.connected.conn_params.conn_sup_timeout;
+            s_bleConnInfo.role             = event->evt.gap_evt.params.connected.role;
+            s_bleConnInfo.conn_handle      = event->evt.gap_evt.conn_handle;
+            s_bleConnInfo.conn_interval    = event->evt.gap_evt.params.connected.conn_params.max_conn_interval;
+            s_bleConnInfo.slave_latency    = event->evt.gap_evt.params.connected.conn_params.slave_latency;
+            s_bleConnInfo.conn_sup_timeout = event->evt.gap_evt.params.connected.conn_params.conn_sup_timeout;
 
             // Update connection parameters if needed.
             s_connParamsUpdateAttempts = 0;
@@ -421,10 +437,10 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             hal_ble_event_t bleEvt;
             bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
-            bleEvt.conn_event.conn_handle = s_bleConnection.conn_handle;
+            bleEvt.conn_event.conn_handle = s_bleConnInfo.conn_handle;
             bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_CONNECTED;
             if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
-                LOG_DEBUG(ERROR, "os_queue_put() failed.");
+                LOG(ERROR, "os_queue_put() failed.");
             }
         } break;
 
@@ -433,16 +449,27 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                       event->evt.gap_evt.conn_handle,
                       event->evt.gap_evt.params.disconnected.reason);
 
+            s_bleConnInfo.conn_handle = BLE_INVALID_CONN_HANDLE;
+
             // Stop the connection parameters update timer.
             if (!os_timer_is_active(s_connParamsUpdateTimer, NULL)) {
                 os_timer_change(s_connParamsUpdateTimer, OS_TIMER_CHANGE_STOP, true, 0, 0, NULL);
             }
+
+            hal_ble_event_t bleEvt;
+            bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
+            bleEvt.conn_event.conn_handle = s_bleConnInfo.conn_handle;
+            bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_DISCONNECTED;
+            bleEvt.conn_event.reason      = event->evt.gap_evt.params.disconnected.reason;
+            if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
+            }
         } break;
 
         case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
-            s_bleConnection.conn_interval    = event->evt.gap_evt.params.conn_param_update.conn_params.max_conn_interval;
-            s_bleConnection.slave_latency    = event->evt.gap_evt.params.conn_param_update.conn_params.slave_latency;
-            s_bleConnection.conn_sup_timeout = event->evt.gap_evt.params.conn_param_update.conn_params.conn_sup_timeout;
+            s_bleConnInfo.conn_interval    = event->evt.gap_evt.params.conn_param_update.conn_params.max_conn_interval;
+            s_bleConnInfo.slave_latency    = event->evt.gap_evt.params.conn_param_update.conn_params.slave_latency;
+            s_bleConnInfo.conn_sup_timeout = event->evt.gap_evt.params.conn_param_update.conn_params.conn_sup_timeout;
 
             // Update connection parameters if needed.
             updateConnParamsIfNeeded();
@@ -459,8 +486,47 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
         } break;
 
+        case BLE_GAP_EVT_DATA_LENGTH_UPDATE: {
+            LOG_DEBUG(TRACE, "GAP data length updated.");
+        } break;
+
+        case BLE_GAP_EVT_DATA_LENGTH_UPDATE_REQUEST: {
+            LOG_DEBUG(TRACE, "GAP data length update request.");
+
+            ble_gap_data_length_params_t gapDataLenParams;
+            gapDataLenParams.max_tx_octets  = BLE_GAP_DATA_LENGTH_AUTO;
+            gapDataLenParams.max_rx_octets  = BLE_GAP_DATA_LENGTH_AUTO;
+            gapDataLenParams.max_tx_time_us = BLE_GAP_DATA_LENGTH_AUTO;
+            gapDataLenParams.max_rx_time_us = BLE_GAP_DATA_LENGTH_AUTO;
+            ret_code_t ret = sd_ble_gap_data_length_update(event->evt.gap_evt.conn_handle, &gapDataLenParams, NULL);
+            if (ret != NRF_SUCCESS) {
+                LOG(ERROR, "sd_ble_gap_data_length_update() failed: %u", (unsigned)ret);
+            }
+        } break;
+
+        case BLE_GAP_EVT_SEC_PARAMS_REQUEST: {
+            // Pairing is not supported
+            ret_code_t ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, nullptr, nullptr);
+            if (ret != NRF_SUCCESS) {
+                LOG(ERROR, "sd_ble_gap_sec_params_reply() failed: %u", (unsigned)ret);
+            }
+        } break;
+
+        case BLE_GAP_EVT_AUTH_STATUS: {
+            if (event->evt.gap_evt.params.auth_status.auth_status == BLE_GAP_SEC_STATUS_SUCCESS) {
+                LOG_DEBUG(TRACE, "Authentication succeeded");
+            }
+            else {
+                LOG_DEBUG(WARN, "Authentication failed, status: %d", (int)event->evt.gap_evt.params.auth_status.auth_status);
+            }
+        } break;
+
         case BLE_GAP_EVT_TIMEOUT: {
             LOG_DEBUG(ERROR, "BLE GAP timeout, source: %d", event->evt.gap_evt.params.timeout.src);
+        } break;
+
+        case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
+            LOG_DEBUG(TRACE, "ATT_MTU exchanged.");
         } break;
 
         case BLE_GATTC_EVT_TIMEOUT: {
@@ -478,6 +544,45 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gatts_sys_attr_set() failed: %u", (unsigned)ret);
             }
+        } break;
+
+        case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
+            LOG_DEBUG(TRACE, "GATT ATT MTU exchange request.");
+
+            ret_code_t ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
+            if (ret != NRF_SUCCESS) {
+                LOG(ERROR, "sd_ble_gatts_exchange_mtu_reply() failed: %u", (unsigned)ret);
+            }
+        } break;
+
+        case BLE_GATTS_EVT_WRITE: {
+            hal_ble_char_t* bleChar;
+            uint16_t attrHandle = event->evt.gatts_evt.params.write.handle;
+            bleChar = findCharacteristic(attrHandle);
+            if (bleChar != NULL) {
+                if (attrHandle == bleChar->cccd_handle) {
+                    LOG_DEBUG(TRACE, "Write CCCD.");
+                }
+                else if (attrHandle == bleChar->value_handle) {
+                    LOG_DEBUG(TRACE, "Write value.");
+
+                    memcpy(bleChar->value, event->evt.gatts_evt.params.write.data, event->evt.gatts_evt.params.write.len);
+
+                    hal_ble_event_t bleEvt;
+                    bleEvt.evt_type               = BLE_EVT_TYPE_DATA;
+                    bleEvt.data_event.conn_handle = event->evt.gatts_evt.conn_handle;
+                    bleEvt.data_event.char_handle = bleChar->value_handle;
+                    bleEvt.data_event.data        = bleChar->value;
+                    bleEvt.data_event.data_len    = bleChar->value_len;
+                    if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                    }
+                }
+            }
+        } break;
+
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE: {
+
         } break;
 
         case BLE_GATTS_EVT_HVC: {
@@ -544,7 +649,7 @@ int hal_ble_init(uint8_t role, void* reserved) {
             s_bleEvtCallbacks[i] = NULL;
         }
 
-        s_bleConnection.conn_handle = BLE_INVALID_CONN_HANDLE;
+        s_bleConnInfo.conn_handle = BLE_INVALID_CONN_HANDLE;
 
         // Configure an advertising set to obtain an advertising handle.
         if (role & BLE_ROLE_PERIPHERAL) {
@@ -582,6 +687,8 @@ int hal_ble_init(uint8_t role, void* reserved) {
         if (os_timer_create(&s_connParamsUpdateTimer, BLE_CONN_PARAMS_UPDATE_DELAY_MS, connParamsUpdateTimerCb, NULL, true, NULL)) {
             LOG(ERROR, "os_timer_create() failed.");
         }
+
+        s_bleInitialized = true;
 
         return SYSTEM_ERROR_NONE;
     }
@@ -1088,6 +1195,10 @@ int ble_add_service(uint8_t type, hal_ble_uuid_t* uuid, hal_ble_service_t* servi
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    if (s_bleServiceCount >= BLE_MAX_SERVICE_COUNT) {
+        return SYSTEM_ERROR_LIMIT_EXCEEDED;
+    }
+
     int err = addUuidIfNeeded(uuid, &svcUuid);
     if (err != SYSTEM_ERROR_NONE) {
         return err;
@@ -1101,6 +1212,9 @@ int ble_add_service(uint8_t type, hal_ble_uuid_t* uuid, hal_ble_service_t* servi
 
     service->type = type;
     memcpy(&service->uuid, uuid, sizeof(hal_ble_uuid_t));
+
+    s_bleService[s_bleServiceCount] = service;
+    s_bleServiceCount++;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1203,7 +1317,8 @@ int ble_add_characteristic(hal_ble_char_init_t* char_init, hal_ble_char_t* ble_c
     ble_char->user_desc_handle = char_handles.user_desc_handle;
     ble_char->cccd_handle      = char_handles.cccd_handle;
     ble_char->sccd_handle      = char_handles.sccd_handle;
-    ble_char->value            = char_init->value;
+
+    memcpy(ble_char->value, char_init->value, char_init->value_len);
     ble_char->value_len        = char_init->value_len;
 
     char_init->service->chars[char_init->service->char_count] = ble_char;
