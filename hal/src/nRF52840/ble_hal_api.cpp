@@ -15,6 +15,20 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/* Headers included from nRF5_SDK/components/softdevice/s140/headers */
+#include "ble.h"
+#include "ble_gap.h"
+#include "ble_gatt.h"
+#include "ble_gatts.h"
+#include "ble_gattc.h"
+#include "ble_types.h"
+/* Headers included from nRF5_SDK/components/softdevice/common */
+#include "nrf_sdh.h"
+#include "nrf_sdh_ble.h"
+#include "nrf_sdh_soc.h"
+
+#include "app_util.h"
+
 #include "concurrent_hal.h"
 #include "static_recursive_mutex.h"
 #include <mutex>
@@ -23,6 +37,7 @@
 #include "system_error.h"
 #include "logging.h"
 #include <string.h>
+
 
 LOG_SOURCE_CATEGORY("hal.ble_api")
 
@@ -83,7 +98,7 @@ static uint8_t s_connParamsUpdateAttempts = 0;
 
 static hal_ble_connection_t s_bleConnInfo;
 
-static hal_ble_service_t* s_bleService[BLE_MAX_SERVICE_COUNT];
+static hal_ble_service_t* s_bleService[BLE_MAX_SERVICES_COUNT];
 static uint8_t            s_bleServiceCount = 0;
 
 static bool s_indInProgress = false;
@@ -642,6 +657,8 @@ int hal_ble_init(uint8_t role, void* reserved) {
             return sysError(ret);
         }
 
+        s_bleInitialized = true;
+
         // Register a handler for BLE events.
         NRF_SDH_BLE_OBSERVER(bleObserver, BLE_OBSERVER_PRIO, isrProcessBleEvent, nullptr);
 
@@ -687,8 +704,6 @@ int hal_ble_init(uint8_t role, void* reserved) {
         if (os_timer_create(&s_connParamsUpdateTimer, BLE_CONN_PARAMS_UPDATE_DELAY_MS, connParamsUpdateTimerCb, NULL, true, NULL)) {
             LOG(ERROR, "os_timer_create() failed.");
         }
-
-        s_bleInitialized = true;
 
         return SYSTEM_ERROR_NONE;
     }
@@ -1195,7 +1210,7 @@ int ble_add_service(uint8_t type, hal_ble_uuid_t* uuid, hal_ble_service_t* servi
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    if (s_bleServiceCount >= BLE_MAX_SERVICE_COUNT) {
+    if (s_bleServiceCount >= BLE_MAX_SERVICES_COUNT) {
         return SYSTEM_ERROR_LIMIT_EXCEEDED;
     }
 
