@@ -18,20 +18,9 @@
 #ifndef BLE_HAL_API_IMPL_H
 #define BLE_HAL_API_IMPL_H
 
-/* Headers included from nRF5_SDK/components/softdevice/s140/headers */
-#include "ble.h"
+
 #include "ble_gap.h"
-#include "ble_gatt.h"
 #include "ble_gatts.h"
-#include "ble_gattc.h"
-#include "ble_types.h"
-/* Headers included from nRF5_SDK/components/softdevice/common */
-#include "nrf_sdh.h"
-#include "nrf_sdh_ble.h"
-#include "nrf_sdh_soc.h"
-
-#include "app_util.h"
-
 
 #define BLE_ROLE_INVALID                            BLE_GAP_ROLE_INVALID
 #define BLE_ROLE_PERIPHERAL                         BLE_GAP_ROLE_PERIPH
@@ -55,6 +44,15 @@
 
 /* Maximum number of device address in the whitelist. */
 #define BLE_MAX_WHITELIST_ADDR_COUNT                BLE_GAP_WHITELIST_ADDR_MAX_COUNT
+
+/* BLE advertising event type */
+#define BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT        BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED
+#define BLE_ADV_CONNECTABLE_UNDIRECTED_EVT                  BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED
+#define BLE_ADV_CONNECTABLE_DIRECTED_EVT                    BLE_GAP_ADV_TYPE_CONNECTABLE_NONSCANNABLE_DIRECTED
+#define BLE_ADV_NON_CONNECTABLE_NON_SCANABLE_UNDIRECTED_EVT BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED
+#define BLE_ADV_NON_CONNECTABLE_NON_SCANABLE_DIRECTED_EVT   BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_NONSCANNABLE_DIRECTED
+#define BLE_ADV_SCANABLE_UNDIRECTED_EVT                     BLE_GAP_ADV_TYPE_NONCONNECTABLE_SCANNABLE_UNDIRECTED
+#define BLE_ADV_SCANABLE_DIRECTED_EVT                       BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_SCANNABLE_DIRECTED
 
 /* Default advertising parameters */
 #define BLE_DEFAULT_ADVERTISING_INTERVAL            160     /* The advertising interval (in units of 0.625 ms). */
@@ -89,7 +87,7 @@
 #define BLE_UUID_TYPE_128BIT                        1
 
 /* Maximum allowed Characteristic and Service */
-#define BLE_MAX_SERVICE_COUNT                       5
+#define BLE_MAX_SERVICES_COUNT                      5
 #define BLE_MAX_CHARS_PER_SERVICE_COUNT             10
 
 /* Maximum BLE Characteristic value length */
