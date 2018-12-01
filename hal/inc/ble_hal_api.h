@@ -60,8 +60,8 @@ typedef struct {
 typedef struct {
     uint8_t  type;
     uint8_t  filter_policy;
-    uint16_t interval;
-    uint16_t duration;
+    uint16_t interval;                  /**< Advertising interval in 625 us units. */
+    uint16_t duration;                  /**< Advertising duration in 10 ms units.*/
     uint8_t  inc_tx_power;
 } hal_ble_adv_params_t;
 
