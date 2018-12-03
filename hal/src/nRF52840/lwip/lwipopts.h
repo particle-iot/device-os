@@ -28,6 +28,10 @@
 
 #include "lwip_logging.h"
 
+#ifndef DEBUG_BUILD
+#define LWIP_NOASSERT
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

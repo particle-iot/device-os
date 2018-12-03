@@ -228,6 +228,9 @@ sys_mutex_lock(sys_mutex_t *mutex)
 
   ret = xSemaphoreTakeRecursive(mutex->mut, portMAX_DELAY);
   LWIP_ASSERT("failed to take the mutex", ret == pdTRUE);
+#ifdef LWIP_NOASSERT
+  LWIP_UNUSED_ARG(ret);
+#endif // LWIP_NOASSERT
 }
 
 void
@@ -239,6 +242,9 @@ sys_mutex_unlock(sys_mutex_t *mutex)
 
   ret = xSemaphoreGiveRecursive(mutex->mut);
   LWIP_ASSERT("failed to give the mutex", ret == pdTRUE);
+#ifdef LWIP_NOASSERT
+  LWIP_UNUSED_ARG(ret);
+#endif // LWIP_NOASSERT
 }
 
 void
@@ -271,7 +277,12 @@ sys_sem_new(sys_sem_t *sem, u8_t initial_count)
   if(initial_count == 1) {
     BaseType_t ret = xSemaphoreGive(sem->sem);
     LWIP_ASSERT("sys_sem_new: initial give failed", ret == pdTRUE);
+
+#ifdef LWIP_NOASSERT
+    LWIP_UNUSED_ARG(ret);
+#endif // LWIP_NOASSERT
   }
+
   return ERR_OK;
 }
 
@@ -286,6 +297,10 @@ sys_sem_signal(sys_sem_t *sem)
   /* queue full is OK, this is a signal only... */
   LWIP_ASSERT("sys_sem_signal: sane return value",
     (ret == pdTRUE) || (ret == errQUEUE_FULL));
+
+#ifdef LWIP_NOASSERT
+  LWIP_UNUSED_ARG(ret);
+#endif // LWIP_NOASSERT
 }
 
 u32_t
@@ -350,6 +365,10 @@ sys_mbox_post(sys_mbox_t *mbox, void *msg)
 
   ret = xQueueSendToBack(mbox->mbx, &msg, portMAX_DELAY);
   LWIP_ASSERT("mbox post failed", ret == pdTRUE);
+
+#ifdef LWIP_NOASSERT
+  LWIP_UNUSED_ARG(ret);
+#endif // LWIP_NOASSERT
 }
 
 err_t
@@ -491,6 +510,11 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg, int stacksize
   LWIP_ASSERT("task creation failed", ret == pdTRUE);
 
   lwip_thread.thread_handle = rtos_task;
+
+#ifdef LWIP_NOASSERT
+  LWIP_UNUSED_ARG(ret);
+#endif // LWIP_NOASSERT
+
   return lwip_thread;
 }
 
@@ -612,6 +636,11 @@ sys_check_core_locking(void)
 #else /* LWIP_TCPIP_CORE_LOCKING */
     LWIP_ASSERT("Function called from wrong thread", current_thread == lwip_tcpip_thread);
 #endif /* LWIP_TCPIP_CORE_LOCKING */
+
+#ifdef LWIP_NOASSERT
+  LWIP_UNUSED_ARG(current_thread);
+#endif // LWIP_NOASSERT
+
   }
 #endif /* !NO_SYS */
 }
