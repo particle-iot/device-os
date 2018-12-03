@@ -387,7 +387,13 @@ void handle_cloud_connection(bool force_events)
                 CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
                 system_notify_event(cloud_status, cloud_status_connected);
                 if (system_mode() == SAFE_MODE) {
-                    LED_SIGNAL_START(SAFE_MODE, BACKGROUND); // Connected to the cloud while in safe mode
+/* FIXME: there should be macro that checks for NetworkManager availability */
+                    // Connected to the cloud while in safe mode
+#if !HAL_PLATFORM_IFAPI
+                    LED_SIGNAL_START(SAFE_MODE, BACKGROUND);
+#else
+                    LED_SIGNAL_START(SAFE_MODE, NORMAL);
+#endif /* !HAL_PLATFORM_IFAPI */
                 } else {
 /* FIXME: there should be macro that checks for NetworkManager availability */
 #if !HAL_PLATFORM_IFAPI
