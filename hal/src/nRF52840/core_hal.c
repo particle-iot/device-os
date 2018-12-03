@@ -293,7 +293,7 @@ void HAL_Core_Config(void) {
     HAL_RNG_Configuration();
 
     HAL_RTC_Configuration();
-    
+
 #if defined(MODULAR_FIRMWARE)
     if (HAL_Core_Validate_User_Module()) {
         new_heap_end = module_user_pre_init();
@@ -305,8 +305,8 @@ void HAL_Core_Config(void) {
         // Set the heap end to the stack start to make most use of the SRAM.
         malloc_set_heap_end(&_Stack_Init);
 
-        // Try copying the embedded user image to user application address
-        user_update();
+        // Update the user module if needed
+        user_update_if_needed();
     }
 
     // Enable malloc before littlefs initialization.
