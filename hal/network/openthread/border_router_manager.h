@@ -19,7 +19,8 @@
 #define BORDER_ROUTER_MANAGER_H
 
 #include "ifapi.h"
-#include <openthread/types.h>
+#include <openthread/instance.h>
+#include <openthread/netdata.h>
 #include <memory>
 #include <atomic>
 

@@ -24,7 +24,7 @@
 #ifndef NETWORK_OPENTHREAD_OT_API_H
 #define NETWORK_OPENTHREAD_OT_API_H
 
-#include <openthread/types.h>
+#include <openthread/instance.h>
 
 #ifdef __cplusplus
 extern "C" {
