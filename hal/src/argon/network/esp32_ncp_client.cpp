@@ -327,12 +327,14 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
     cmd.printf("AT+CWJAP=\"%s\"", escSsid);
     switch (cred.type()) {
     case WifiCredentials::PASSWORD: {
+        LOG(TRACE, "Connecting to \"%s\"", ssid);
         char escPwd[MAX_WPA_WPA2_PSK_SIZE * 2 + 1] = {}; // Escaped password
         espEscape(cred.password(), escPwd, sizeof(escPwd) - 1);
         cmd.printf(",\"%s\"", escPwd);
         break;
     }
     case WifiCredentials::NONE: {
+        LOG(TRACE, "Connecting to \"%s\" (no security)", ssid);
         cmd.print(",\"\"");
         break;
     }
@@ -344,7 +346,10 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
         macAddressToString(bssid, bssidStr, sizeof(bssidStr));
         cmd.printf(",\"%s\"", bssidStr);
     }
-    r = CHECK_PARSER(cmd.exec());
+    parser_.logEnabled(false); // Avoid logging the password
+    auto resp = cmd.send();
+    parser_.logEnabled(AtParserConfig::DEFAULT_LOG_ENABLED);
+    r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     connectionState(NcpConnectionState::CONNECTED);
     return 0;

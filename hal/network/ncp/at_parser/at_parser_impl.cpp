@@ -409,8 +409,14 @@ int AtParserImpl::parseLine(unsigned flags, unsigned* timeout) {
         if (ret == ParseResult::READ_MORE) {
             CHECK(readMore(timeout));
         } else if (ret != ParseResult::NO_MATCH) {
+            const auto logEnabled = conf_.logEnabled();
+            if (ret == ParseResult::PARSED_ECHO) {
+                conf_.logEnabled(false); // Do not log the command echo
+            }
             // Read and discard remaining characters of the line
-            CHECK(readLine(nullptr, 0, timeout));
+            const int r = readLine(nullptr, 0, timeout);
+            conf_.logEnabled(logEnabled);
+            CHECK(r);
             break;
         } else if (!flags) {
             break;
@@ -543,7 +549,9 @@ int AtParserImpl::readLine(char* data, size_t size, unsigned* timeout) {
             memmove(buf_, buf_ + n, bufPos_);
             if (isNewline(buf_[0])) {
                 setStatus(StatusFlag::LINE_END);
-                logRespLine(respData_, respSize_);
+                if (conf_.logEnabled()) {
+                    logRespLine(respData_, respSize_);
+                }
                 respSize_ = 0;
             }
             break;
@@ -560,7 +568,9 @@ int AtParserImpl::nextLine(unsigned* timeout) {
         respSize_ += appendToBuf(respData_ + respSize_, RESP_BUF_SIZE - respSize_, buf_, n);
         if (n < bufPos_) {
             setStatus(StatusFlag::LINE_END);
-            logRespLine(respData_, respSize_);
+            if (conf_.logEnabled()) {
+                logRespLine(respData_, respSize_);
+            }
             respSize_ = 0;
             do {
                 ++n;
@@ -626,7 +636,9 @@ int AtParserImpl::flushCommand(unsigned* timeout) {
     cmdTermOffs_ += n;
     if (cmdTermOffs_ == cmdTermSize_) {
         clearStatus(StatusFlag::FLUSH_CMD);
-        logCmdLine(cmdData_, cmdSize_);
+        if (conf_.logEnabled()) {
+            logCmdLine(cmdData_, cmdSize_);
+        }
     }
     return ret;
 }

@@ -127,6 +127,12 @@ void AtParser::echoEnabled(bool enabled) {
     }
 }
 
+void AtParser::logEnabled(bool enabled) {
+    if (p_) {
+        p_->logEnabled(enabled);
+    }
+}
+
 AtParserConfig AtParser::config() const {
     if (!p_) {
         return AtParserConfig();

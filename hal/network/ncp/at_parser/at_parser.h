@@ -71,6 +71,12 @@ public:
      * @see `echoEnabled()`
      */
     static const auto DEFAULT_ECHO_ENABLED = true;
+    /**
+     * Default state of the logging.
+     *
+     * @see `logEnabled()`
+     */
+    static const auto DEFAULT_LOG_ENABLED = true;
 
     /**
      * Constructs a settings object with all parameters set to their default values.
@@ -156,6 +162,20 @@ public:
      * @see `DEFAULT_ECHO_ENABLED`
      */
     bool echoEnabled() const;
+    /**
+     * Enables or disables the logging of AT commands.
+     *
+     * @return This settings object.
+     *
+     * @see `DEFAULT_LOG_ENABLED`
+     */
+    AtParserConfig& logEnabled(bool enabled);
+    /**
+     * Returns `true` if the logging of AT commands is enabled, or `false` otherwise.
+     *
+     * @see `DEFAULT_LOG_ENABLED`
+     */
+    bool logEnabled() const;
 
 private:
     Stream* strm_;
@@ -163,6 +183,7 @@ private:
     unsigned cmdTimeout_;
     unsigned strmTimeout_;
     bool echoEnabled_;
+    bool logEnabled_;
 };
 
 /**
@@ -341,6 +362,13 @@ public:
      */
     void echoEnabled(bool enabled);
     /**
+     * Enables or disables the logging of AT commands.
+     *
+     * @see `config()`
+     * @see `AtParserConfig::logEnabled()`
+     */
+    void logEnabled(bool enabled);
+    /**
      * Returns the parser settings.
      *
      * @return Settings object.
@@ -360,7 +388,8 @@ inline AtParserConfig::AtParserConfig() :
         cmdTerm_(DEFAULT_COMMAND_TERMINATOR),
         cmdTimeout_(DEFAULT_COMMAND_TIMEOUT),
         strmTimeout_(DEFAULT_STREAM_TIMEOUT),
-        echoEnabled_(DEFAULT_ECHO_ENABLED) {
+        echoEnabled_(DEFAULT_ECHO_ENABLED),
+        logEnabled_(DEFAULT_LOG_ENABLED) {
 }
 
 inline AtParserConfig& AtParserConfig::stream(Stream* strm) {
@@ -406,6 +435,15 @@ inline AtParserConfig& AtParserConfig::echoEnabled(bool enabled) {
 
 inline bool AtParserConfig::echoEnabled() const {
     return echoEnabled_;
+}
+
+inline AtParserConfig& AtParserConfig::logEnabled(bool enabled) {
+    logEnabled_ = enabled;
+    return *this;
+}
+
+inline bool AtParserConfig::logEnabled() const {
+    return logEnabled_;
 }
 
 } // particle

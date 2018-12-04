@@ -72,6 +72,7 @@ public:
     void reset();
 
     void echoEnabled(bool enabled);
+    void logEnabled(bool enabled);
     const AtParserConfig& config() const;
 
     static bool isConfigValid(const AtParserConfig& conf);
@@ -163,6 +164,10 @@ inline bool AtParserImpl::atLineEnd() const {
 
 inline void AtParserImpl::echoEnabled(bool enabled) {
     conf_.echoEnabled(enabled);
+}
+
+inline void AtParserImpl::logEnabled(bool enabled) {
+    conf_.logEnabled(enabled);
 }
 
 inline const AtParserConfig& AtParserImpl::config() const {
