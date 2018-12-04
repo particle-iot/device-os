@@ -19,6 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
+#include "ssd1306.h"
 
 #define SETUP_BTN                   A0
 #define PUB_BTN                     A1
@@ -105,12 +106,29 @@ void setup() {
     pinMode(SETUP_BTN, INPUT_PULLUP);
     pinMode(PUB_BTN, INPUT_PULLUP);
 
+    oled.init();
+    oled.clear();
+
+#if (PLATFORM_ID == PLATFORM_ARGON)
+    if (digitalRead(SETUP_BTN) == LOW) {
+        delay(100);
+        if (digitalRead(SETUP_BTN) == LOW) {
+            while (digitalRead(SETUP_BTN) == LOW);
+            WiFi.on();
+            WiFi.connect();
+            while (!WiFi.ready());
+            oled.println("Wi-Fi connected.");
+        }
+    }
+#endif
+
     Mesh.on();
     Mesh.connect();
     while (!Mesh.ready());
+    oled.println("Mesh connected.");
 
     RGB.control(true);
-    RGB.color(0, 255, 0);
+    RGB.color(255, 0, 255);
 
 #if (PLATFORM_ID == PLATFORM_XENON)
     Mesh.subscribe("mesh-xenon", meshHandler);
@@ -127,7 +145,7 @@ void loop() {
     if (digitalRead(SETUP_BTN) == LOW) {
         delay(100);
         if (digitalRead(SETUP_BTN) == LOW) {
-            while(digitalRead(SETUP_BTN));
+            while (digitalRead(SETUP_BTN) == LOW);
             toggle_antenna();
         }
     }
@@ -160,8 +178,20 @@ void loop() {
     }
     else if ((curr_millis - pre_millis) >= 800) {
         pre_millis = curr_millis;
-        RGB.color(255, 255, 0);
+        RGB.color(0, 0, 0);
         delay(50);
-        RGB.color(0, 255, 0);
+        RGB.color(255, 0, 255);
+
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        if (WiFi.ready()) {
+            int rssi = WiFi.RSSI();
+            if (rssi < 0) {
+                oled.printf("RSSI: -%d dBm\r\n", -rssi);
+            }
+            else {
+                oled.printf("ERROR: %d\r\n", rssi);
+            }
+        }
+#endif
     }
 }
