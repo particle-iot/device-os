@@ -55,7 +55,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId);
+void otSysSoftdeviceSocEvtHandler(uint32_t aEvtId);
 
 #ifdef __cplusplus
 }

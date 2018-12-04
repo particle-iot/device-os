@@ -45,38 +45,45 @@
 #include <openthread/platform/diag.h>
 #include <openthread/platform/time.h>
 
-#include "platform.h"
+#include "openthread-system.h"
 
 #include "openthread-platform-config.h"
 #include "platform-nrf5.h"
 #include <core_cmFunc.h>
 
 #include <nrf_drv_clock.h>
-#include <platform/timer/nrf_802154_timer.h>
+#include <nrf_802154_utils.h>
+#include <platform/lp_timer/nrf_802154_lp_timer.h>
 
 #include <hal/nrf_rtc.h>
 
 #include <openthread/config.h>
-#include <openthread/types.h>
-
-#ifndef CEIL_DIV
-#define CEIL_DIV(a, b) (((a) + (b) - 1) / (b))
-#endif /* CEIL_DIV */
 
 // clang-format off
-#define RTC_FREQUENCY       32768ULL
+#define RTC_FREQUENCY       NRF_802154_RTC_FREQUENCY
 
 #define US_PER_MS           1000ULL
-#define US_PER_S            1000000ULL
-#define US_PER_TICK         CEIL_DIV(US_PER_S, RTC_FREQUENCY)
-#define US_PER_OVERFLOW     (512UL * US_PER_S)  ///< Time that has passed between overflow events. On full RTC speed, it occurs every 512 s.
+#define US_PER_S            NRF_802154_US_PER_S
+#define US_PER_OVERFLOW     (512UL * NRF_802154_US_PER_S)  ///< Time that has passed between overflow events. On full RTC speed, it occurs every 512 s.
 
 #define MS_PER_S            1000UL
+
+#define MIN_RTC_COMPARE_EVENT_TICKS  2                                                        ///< Minimum number of RTC ticks delay that guarantees that RTC compare event will fire.
+#define MIN_RTC_COMPARE_EVENT_DT     (MIN_RTC_COMPARE_EVENT_TICKS * NRF_802154_US_PER_TICK)   ///< Minimum time delta from now before RTC compare event is guaranteed to fire.
+#define EPOCH_32BIT_US               (1ULL << 32)
+#define EPOCH_FROM_TIME(time)        ((time) & ((uint64_t)UINT32_MAX << 32))
 
 #define XTAL_ACCURACY       40 // The crystal used on nRF52840PDK has ±20ppm accuracy.
 // clang-format on
 
-typedef enum { kMsTimer, kUsTimer, k802154Timer, kNumTimers } AlarmIndex;
+typedef enum
+{
+    kMsTimer,
+    kUsTimer,
+    k802154Timer,
+    k802154Sync,
+    kNumTimers
+} AlarmIndex;
 
 typedef struct
 {
@@ -95,6 +102,7 @@ typedef struct
 static volatile uint32_t sOverflowCounter; ///< Counter of RTC overflowCounter, incremented by 2 on each OVERFLOW event.
 static volatile uint8_t  sMutex;           ///< Mutex for write access to @ref sOverflowCounter.
 static volatile uint64_t sTimeOffset = 0;  ///< Time overflowCounter to keep track of current time (in millisecond).
+static volatile bool     sEventPending;    ///< Timer fired and upper layer should be notified.
 static AlarmData         sTimerData[kNumTimers]; ///< Data of the timers.
 
 static const AlarmChannelData sChannelData[kNumTimers] = //
@@ -113,14 +121,19 @@ static const AlarmChannelData sChannelData[kNumTimers] = //
                 .mCompareEvent     = NRF_RTC_EVENT_COMPARE_1,
                 .mCompareInt       = NRF_RTC_INT_COMPARE1_MASK,
             },
-        [k802154Timer] = {
-            .mChannelNumber    = 2,
-            .mCompareEventMask = RTC_EVTEN_COMPARE2_Msk,
-            .mCompareEvent     = NRF_RTC_EVENT_COMPARE_2,
-            .mCompareInt       = NRF_RTC_INT_COMPARE2_MASK,
+        [k802154Timer] =
+            {
+                .mChannelNumber    = 2,
+                .mCompareEventMask = RTC_EVTEN_COMPARE2_Msk,
+                .mCompareEvent     = NRF_RTC_EVENT_COMPARE_2,
+                .mCompareInt       = NRF_RTC_INT_COMPARE2_MASK,
+            },
+        [k802154Sync] = {
+            .mChannelNumber    = 3,
+            .mCompareEventMask = RTC_EVTEN_COMPARE3_Msk,
+            .mCompareEvent     = NRF_RTC_EVENT_COMPARE_3,
+            .mCompareInt       = NRF_RTC_INT_COMPARE3_MASK,
         }};
-
-static uint32_t OverflowCounterGet(void);
 
 static inline bool MutexGet(void)
 {
@@ -153,42 +166,26 @@ static inline void MutexRelease(void)
     sMutex = 0;
 }
 
-static inline uint32_t TimeToTicks(uint64_t aTime, AlarmIndex aIndex)
+static inline uint64_t TimeToTicks(uint64_t aTime, AlarmIndex aIndex)
 {
-    uint32_t ticks;
+    if (aIndex == kMsTimer)
+    {
+        aTime *= US_PER_MS;
+    }
+
+    return NRF_802154_US_TO_RTC_TICKS(aTime);
+}
+
+static inline uint64_t TicksToTime(uint64_t aTicks, AlarmIndex aIndex)
+{
+    uint64_t result = NRF_802154_RTC_TICKS_TO_US(aTicks);
 
     if (aIndex == kMsTimer)
     {
-        ticks = (uint32_t)CEIL_DIV((aTime * US_PER_MS * RTC_FREQUENCY), US_PER_S) & RTC_CC_COMPARE_Msk;
-    }
-    else
-    {
-        ticks = (uint32_t)CEIL_DIV((aTime * RTC_FREQUENCY), US_PER_S) & RTC_CC_COMPARE_Msk;
+        result /= US_PER_MS;
     }
 
-    return ticks;
-}
-
-static inline uint64_t TicksToTime(uint32_t aTicks)
-{
-    return CEIL_DIV((US_PER_S * (uint64_t)aTicks), RTC_FREQUENCY);
-}
-
-static inline uint64_t AlarmGetCurrentTimeRtcProtected(AlarmIndex aIndex)
-{
-    uint64_t usecTime = nrf5AlarmGetCurrentTime() + 2 * US_PER_TICK;
-    uint64_t currentTime;
-
-    if (aIndex == kMsTimer)
-    {
-        currentTime = usecTime / US_PER_MS;
-    }
-    else
-    {
-        currentTime = usecTime;
-    }
-
-    return currentTime;
+    return result;
 }
 
 static inline bool AlarmShallStrike(uint64_t aNow, AlarmIndex aIndex)
@@ -196,37 +193,7 @@ static inline bool AlarmShallStrike(uint64_t aNow, AlarmIndex aIndex)
     return aNow >= sTimerData[aIndex].mTargetTime;
 }
 
-static void HandleCompareMatch(AlarmIndex aIndex, bool aSkipCheck)
-{
-    nrf_rtc_event_clear(RTC_INSTANCE, sChannelData[aIndex].mCompareEvent);
-
-    uint64_t now = nrf5AlarmGetCurrentTime();
-
-    if (aIndex == kMsTimer)
-    {
-        now /= US_PER_MS;
-    }
-
-    // In case the target time was larger than single overflow,
-    // we should only strike the timer on final compare event.
-    if (aSkipCheck || AlarmShallStrike(now, aIndex))
-    {
-        nrf_rtc_event_disable(RTC_INSTANCE, sChannelData[aIndex].mCompareEventMask);
-        nrf_rtc_int_disable(RTC_INSTANCE, sChannelData[aIndex].mCompareInt);
-
-        if (aIndex == k802154Timer)
-        {
-            nrf_802154_timer_fired();
-        }
-        else
-        {
-            sTimerData[aIndex].mFireAlarm = true;
-            PlatformEventSignalPending();
-        }
-    }
-}
-
-static uint32_t OverflowCounterGet(void)
+static uint32_t GetOverflowCounter(void)
 {
     uint32_t overflowCounter;
 
@@ -289,36 +256,145 @@ static uint32_t OverflowCounterGet(void)
     return overflowCounter;
 }
 
-static void AlarmStartAt(uint32_t aT0, uint32_t aDt, AlarmIndex aIndex)
+static uint32_t GetRtcCounter(void)
+{
+    return nrf_rtc_counter_get(RTC_INSTANCE);
+}
+
+static void GetOffsetAndCounter(uint32_t *aOffset, uint32_t *aCounter)
+{
+    uint32_t offset1 = GetOverflowCounter();
+
+    __DMB();
+
+    uint32_t rtcValue1 = GetRtcCounter();
+
+    __DMB();
+
+    uint32_t offset2 = GetOverflowCounter();
+
+    *aOffset  = offset2;
+    *aCounter = (offset1 == offset2) ? rtcValue1 : GetRtcCounter();
+}
+
+static uint64_t GetTime(uint32_t aOffset, uint32_t aCounter, AlarmIndex aIndex)
+{
+    uint64_t result = (uint64_t)aOffset * US_PER_OVERFLOW + TicksToTime(aCounter, kUsTimer);
+
+    if (aIndex == kMsTimer)
+    {
+        result /= US_PER_MS;
+    }
+
+    return result;
+}
+
+static uint64_t GetCurrentTime(AlarmIndex aIndex)
+{
+    uint32_t offset;
+    uint32_t rtc_counter;
+
+    GetOffsetAndCounter(&offset, &rtc_counter);
+
+    return GetTime(offset, rtc_counter, aIndex);
+}
+
+static void HandleCompareMatch(AlarmIndex aIndex, bool aSkipCheck)
+{
+    nrf_rtc_event_clear(RTC_INSTANCE, sChannelData[aIndex].mCompareEvent);
+
+    uint64_t now = GetCurrentTime(aIndex);
+
+    // In case the target time was larger than single overflow,
+    // we should only strike the timer on final compare event.
+    if (aSkipCheck || AlarmShallStrike(now, aIndex))
+    {
+        nrf_rtc_event_disable(RTC_INSTANCE, sChannelData[aIndex].mCompareEventMask);
+        nrf_rtc_int_disable(RTC_INSTANCE, sChannelData[aIndex].mCompareInt);
+
+        switch (aIndex)
+        {
+        case k802154Timer:
+            nrf_802154_lp_timer_fired();
+            break;
+
+        case k802154Sync:
+            nrf_802154_lp_timer_synchronized();
+            break;
+
+        case kMsTimer:
+        case kUsTimer:
+            sTimerData[aIndex].mFireAlarm = true;
+            sEventPending                 = true;
+            otSysEventSignalPending();
+            break;
+
+        default:
+            assert(false);
+        }
+    }
+}
+
+static uint64_t ConvertT0AndDtTo64BitTime(uint32_t aT0, uint32_t aDt, const uint64_t *aNow)
 {
     uint64_t now;
-    uint32_t targetCounter;
+    now = *aNow;
+
+    if (((uint32_t)now < aT0) && ((aT0 - (uint32_t)now) > (UINT32_MAX / 2)))
+    {
+        now -= EPOCH_32BIT_US;
+    }
+    else if (((uint32_t)now > aT0) && (((uint32_t)now) - aT0 > (UINT32_MAX / 2)))
+    {
+        now += EPOCH_32BIT_US;
+    }
+
+    return (EPOCH_FROM_TIME(now)) + aT0 + aDt;
+}
+
+static uint64_t RoundUpTimeToTimerTicksMultiply(uint64_t aTime, AlarmIndex aIndex)
+{
+    uint64_t ticks  = TimeToTicks(aTime, aIndex);
+    uint64_t result = TicksToTime(ticks, aIndex);
+    return result;
+}
+
+static void TimerStartAt(uint32_t aT0, uint32_t aDt, AlarmIndex aIndex, const uint64_t *aNow)
+{
+    uint64_t targetCounter;
+    uint64_t targetTime;
 
     nrf_rtc_int_disable(RTC_INSTANCE, sChannelData[aIndex].mCompareInt);
     nrf_rtc_event_enable(RTC_INSTANCE, sChannelData[aIndex].mCompareEventMask);
 
-    now = nrf5AlarmGetCurrentTime();
+    targetTime    = ConvertT0AndDtTo64BitTime(aT0, aDt, aNow);
+    targetCounter = TimeToTicks(targetTime, aIndex) & RTC_CC_COMPARE_Msk;
 
-    if (aIndex == kMsTimer)
-    {
-        now /= US_PER_MS;
-    }
-
-    // Check if 32 LSB of `now` overflowed between getting aT0 and loading `now` value.
-    if ((uint32_t)now < aT0)
-    {
-        now -= 0x0000000100000000;
-    }
-
-    sTimerData[aIndex].mTargetTime = (now & 0xffffffff00000000) + aT0 + aDt;
-
-    targetCounter = TimeToTicks(sTimerData[aIndex].mTargetTime, aIndex);
+    sTimerData[aIndex].mTargetTime = RoundUpTimeToTimerTicksMultiply(targetTime, aIndex);
 
     nrf_rtc_cc_set(RTC_INSTANCE, sChannelData[aIndex].mChannelNumber, targetCounter);
+}
 
-    now = AlarmGetCurrentTimeRtcProtected(aIndex);
+static void AlarmStartAt(uint32_t aT0, uint32_t aDt, AlarmIndex aIndex)
+{
+    uint32_t offset;
+    uint32_t rtc_value;
+    uint64_t now;
+    uint64_t now_rtc_protected;
 
-    if (AlarmShallStrike(now, aIndex))
+    GetOffsetAndCounter(&offset, &rtc_value);
+    now = GetTime(offset, rtc_value, aIndex);
+
+    TimerStartAt(aT0, aDt, aIndex, &now);
+
+    if (rtc_value != GetRtcCounter())
+    {
+        GetOffsetAndCounter(&offset, &rtc_value);
+    }
+
+    now_rtc_protected = GetTime(offset, rtc_value + MIN_RTC_COMPARE_EVENT_TICKS, aIndex);
+
+    if (AlarmShallStrike(now_rtc_protected, aIndex))
     {
         HandleCompareMatch(aIndex, true);
 
@@ -333,6 +409,13 @@ static void AlarmStartAt(uint32_t aT0, uint32_t aDt, AlarmIndex aIndex)
     {
         nrf_rtc_int_enable(RTC_INSTANCE, sChannelData[aIndex].mCompareInt);
     }
+}
+
+static void TimerSyncStartAt(uint32_t aT0, uint32_t aDt, const uint64_t *aNow)
+{
+    TimerStartAt(aT0, aDt, k802154Sync, aNow);
+
+    nrf_rtc_int_enable(RTC_INSTANCE, sChannelData[k802154Sync].mCompareInt);
 }
 
 static void AlarmStop(AlarmIndex aIndex)
@@ -359,9 +442,9 @@ void nrf5AlarmInit(void)
     }
 
     // Setup RTC timer.
-    sd_nvic_SetPriority(RTC_IRQN, RTC_IRQ_PRIORITY);
-    sd_nvic_ClearPendingIRQ(RTC_IRQN);
-    sd_nvic_EnableIRQ(RTC_IRQN);
+    NVIC_SetPriority(RTC_IRQN, RTC_IRQ_PRIORITY);
+    NVIC_ClearPendingIRQ(RTC_IRQN);
+    NVIC_EnableIRQ(RTC_IRQN);
 
     nrf_rtc_prescaler_set(RTC_INSTANCE, 0);
 
@@ -394,64 +477,50 @@ void nrf5AlarmDeinit(void)
     nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_OVRFLW_Msk);
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
 
-    sd_nvic_DisableIRQ(RTC_IRQN);
-    sd_nvic_ClearPendingIRQ(RTC_IRQN);
-    sd_nvic_SetPriority(RTC_IRQN, 0);
+    nrf_802154_lp_timer_sync_stop();
+
+    NVIC_DisableIRQ(RTC_IRQN);
+    NVIC_ClearPendingIRQ(RTC_IRQN);
+    NVIC_SetPriority(RTC_IRQN, 0);
 
     nrf_drv_clock_lfclk_release();
 }
 
 void nrf5AlarmProcess(otInstance *aInstance)
 {
-    if (sTimerData[kMsTimer].mFireAlarm)
+    do
     {
-        sTimerData[kMsTimer].mFireAlarm = false;
+        sEventPending = false;
+
+        if (sTimerData[kMsTimer].mFireAlarm)
+        {
+            sTimerData[kMsTimer].mFireAlarm = false;
 
 #if OPENTHREAD_ENABLE_DIAG
 
-        if (otPlatDiagModeGet())
-        {
-            otPlatDiagAlarmFired(aInstance);
-        }
-        else
+            if (otPlatDiagModeGet())
+            {
+                otPlatDiagAlarmFired(aInstance);
+            }
+            else
 #endif
-        {
-            otPlatAlarmMilliFired(aInstance);
+            {
+                otPlatAlarmMilliFired(aInstance);
+            }
         }
-    }
 
-    if (sTimerData[kUsTimer].mFireAlarm)
-    {
-        sTimerData[kUsTimer].mFireAlarm = false;
+        if (sTimerData[kUsTimer].mFireAlarm)
+        {
+            sTimerData[kUsTimer].mFireAlarm = false;
 
-        otPlatAlarmMicroFired(aInstance);
-    }
+            otPlatAlarmMicroFired(aInstance);
+        }
+    } while (sEventPending);
 }
 
 inline uint64_t nrf5AlarmGetCurrentTime(void)
 {
-    uint32_t offset1 = OverflowCounterGet();
-
-    __DMB();
-
-    uint32_t rtcValue1 = nrf_rtc_counter_get(RTC_INSTANCE);
-
-    __DMB();
-
-    uint32_t offset2 = OverflowCounterGet();
-
-    __DMB();
-
-    uint32_t rtcValue2 = nrf_rtc_counter_get(RTC_INSTANCE);
-
-    if (offset1 == offset2)
-    {
-        return (uint64_t)offset1 * US_PER_OVERFLOW + TicksToTime(rtcValue1);
-    }
-    else
-    {
-        return (uint64_t)offset2 * US_PER_OVERFLOW + TicksToTime(rtcValue2);
-    }
+    return GetCurrentTime(kUsTimer);
 }
 
 uint32_t otPlatAlarmMilliGetNow(void)
@@ -461,14 +530,14 @@ uint32_t otPlatAlarmMilliGetNow(void)
 
 void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
 {
-    (void)aInstance;
+    OT_UNUSED_VARIABLE(aInstance);
 
     AlarmStartAt(aT0, aDt, kMsTimer);
 }
 
 void otPlatAlarmMilliStop(otInstance *aInstance)
 {
-    (void)aInstance;
+    OT_UNUSED_VARIABLE(aInstance);
 
     AlarmStop(kMsTimer);
 }
@@ -480,14 +549,14 @@ uint32_t otPlatAlarmMicroGetNow(void)
 
 void otPlatAlarmMicroStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
 {
-    (void)aInstance;
+    OT_UNUSED_VARIABLE(aInstance);
 
     AlarmStartAt(aT0, aDt, kUsTimer);
 }
 
 void otPlatAlarmMicroStop(otInstance *aInstance)
 {
-    (void)aInstance;
+    OT_UNUSED_VARIABLE(aInstance);
 
     AlarmStop(kUsTimer);
 }
@@ -496,51 +565,87 @@ void otPlatAlarmMicroStop(otInstance *aInstance)
  * Radio driver timer abstraction API
  */
 
-void nrf_802154_timer_init(void)
+void nrf_802154_lp_timer_init(void)
 {
     // Intentionally empty
 }
 
-void nrf_802154_timer_deinit(void)
+void nrf_802154_lp_timer_deinit(void)
 {
     // Intentionally empty
 }
 
-void nrf_802154_timer_critical_section_enter(void)
+void nrf_802154_lp_timer_critical_section_enter(void)
 {
     nrf_rtc_int_disable(RTC_INSTANCE, sChannelData[k802154Timer].mCompareInt);
     __DSB();
     __ISB();
 }
 
-void nrf_802154_timer_critical_section_exit(void)
+void nrf_802154_lp_timer_critical_section_exit(void)
 {
     nrf_rtc_int_enable(RTC_INSTANCE, sChannelData[k802154Timer].mCompareInt);
 }
 
-uint32_t nrf_802154_timer_time_get(void)
+uint32_t nrf_802154_lp_timer_time_get(void)
 {
     return (uint32_t)nrf5AlarmGetCurrentTime();
 }
 
-uint32_t nrf_802154_timer_granularity_get(void)
+uint32_t nrf_802154_lp_timer_granularity_get(void)
 {
-    return US_PER_TICK;
+    return NRF_802154_US_PER_TICK;
 }
 
-void nrf_802154_timer_start(uint32_t t0, uint32_t dt)
+void nrf_802154_lp_timer_start(uint32_t t0, uint32_t dt)
 {
     AlarmStartAt(t0, dt, k802154Timer);
 }
 
-void nrf_802154_timer_stop(void)
+bool nrf_802154_lp_timer_is_running(void)
+{
+    return nrf_rtc_int_is_enabled(RTC_INSTANCE, sChannelData[k802154Timer].mCompareInt);
+}
+
+void nrf_802154_lp_timer_stop(void)
 {
     AlarmStop(k802154Timer);
 }
 
-bool nrf_802154_timer_is_running(void)
+void nrf_802154_lp_timer_sync_start_now(void)
 {
-    return nrf_rtc_int_is_enabled(RTC_INSTANCE, sChannelData[k802154Timer].mCompareInt);
+    uint32_t counter;
+    uint32_t offset;
+    uint64_t now;
+
+    do
+    {
+        GetOffsetAndCounter(&offset, &counter);
+        now = GetTime(offset, counter, k802154Sync);
+        TimerSyncStartAt((uint32_t)now, MIN_RTC_COMPARE_EVENT_DT, &now);
+    } while (GetRtcCounter() != counter);
+}
+
+void nrf_802154_lp_timer_sync_start_at(uint32_t t0, uint32_t dt)
+{
+    uint64_t now = GetCurrentTime(k802154Sync);
+
+    TimerSyncStartAt(t0, dt, &now);
+}
+
+void nrf_802154_lp_timer_sync_stop(void)
+{
+    AlarmStop(k802154Sync);
+}
+
+uint32_t nrf_802154_lp_timer_sync_event_get(void)
+{
+    return (uint32_t)nrf_rtc_event_address_get(RTC_INSTANCE, sChannelData[k802154Sync].mCompareEvent);
+}
+
+uint32_t nrf_802154_lp_timer_sync_time_get(void)
+{
+    return (uint32_t)sTimerData[k802154Sync].mTargetTime;
 }
 
 /**
@@ -558,7 +663,7 @@ void RTC_IRQ_HANDLER(void)
         nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
 
         // Handle OVERFLOW event by reading current value of overflow counter.
-        (void)OverflowCounterGet();
+        (void)GetOverflowCounter();
     }
 
     // Handle compare match.
