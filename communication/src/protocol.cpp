@@ -304,7 +304,6 @@ int Protocol::begin()
 	}
 	LOG(INFO,"Handshake completed");
 	channel.notify_established();
-	flags |= SKIP_SESSION_RESUME_HELLO;
 	return error;
 }
 
