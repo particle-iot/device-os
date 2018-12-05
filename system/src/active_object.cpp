@@ -97,11 +97,11 @@ void ISRTaskQueue::enqueue(Task* task) {
 
 bool ISRTaskQueue::process() {
     Task* task = nullptr;
+    if (!firstTask_) {
+        return false;
+    }
     ATOMIC_BLOCK() {
         // Take task object from the queue
-        if (!firstTask_) {
-            return false;
-        }
         task = firstTask_;
         firstTask_ = task->next;
         if (!firstTask_) {
