@@ -60,6 +60,11 @@ static void DWT_Init(void)
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
+static void power_failure_handler(void) {
+    // Simply reset
+    NVIC_SystemReset();
+}
+
 /**
  * @brief  Configures Main system clocks & power.
  * @param  None
@@ -68,16 +73,6 @@ static void DWT_Init(void)
 
 void Set_System(void)
 {
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER 
-    // Reset chip if detect jitter
-    nrf_power_pofcon_set(true, NRF_POWER_POFTHR_V28);
-    nrf_delay_ms(200);
-    if (nrf_power_event_check(NRF_POWER_EVENT_POFWARN)) {
-        NVIC_SystemReset();
-    }
-    nrf_power_pofcon_set(false, NRF_POWER_POFTHR_V28);
-#endif
-
     ret_code_t ret = nrf_drv_clock_init();
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
 
@@ -95,6 +90,15 @@ void Set_System(void)
 
     ret = nrf_drv_power_init(NULL);
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
+
+    // Enable power failure comparator
+    nrf_drv_power_pofwarn_config_t conf = {
+        .handler = power_failure_handler,
+        .thrvddh = NRF_POWER_POFTHRVDDH_V28,
+        .thr = NRF_POWER_POFTHR_V28,
+    };
+    ret = nrf_drv_power_pof_init(&conf);
+    SPARK_ASSERT(ret == NRF_SUCCESS);
 
     DWT_Init();
 
