@@ -285,7 +285,7 @@ uint16_t PMIC::getInputCurrentLimit(void) {
         3000
     };
     byte raw = readInputSourceRegister();
-    raw &= 0x03;
+    raw &= 0x07;
     return mapping[raw];
 }
 
