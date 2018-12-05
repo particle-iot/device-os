@@ -22,6 +22,10 @@
 // modules/nrfx/templates/nRF52840/nrfx_config.h
 // config/nrf52840/config/sdk_config.h
 
+// IMPORTANT: these two should be set to the same value
+#define NRFX_CLOCK_CONFIG_IRQ_PRIORITY 0
+#define NRFX_POWER_CONFIG_IRQ_PRIORITY 0
+
 #define NRFX_GPIOTE_ENABLED 0
 
 #define NRFX_RTC_ENABLED 0
