@@ -109,6 +109,12 @@ void PowerManager::handleUpdate() {
     }
   }
 
+  if (g_batteryState == BATTERY_STATE_DISCONNECTED && state == BATTERY_STATE_NOT_CHARGING &&
+      chargingDisabledTimestamp_) {
+    // We are aware of the fact that charging has been disabled, stay in disconnected state
+    state = BATTERY_STATE_DISCONNECTED;
+  }
+
   const bool lowBat = fuel.getAlert();
   handleStateChange(g_batteryState, state, lowBat);
 
@@ -355,6 +361,8 @@ void PowerManager::checkWatchdog() {
   if (g_batteryState == BATTERY_STATE_DISCONNECTED &&
       ((millis() - chargingDisabledTimestamp_) >= DEFAULT_WATCHDOG_TIMEOUT)) {
     // Re-enable charging, do not run DPDM detection
+    LOG_DEBUG(TRACE, "re-enabling charging");
+    chargingDisabledTimestamp_ = 0;
     initDefault(false);
   }
 }
