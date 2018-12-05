@@ -10,6 +10,7 @@ static const system_tick_t DEFAULT_FAULT_WINDOW = 1000;
 static const uint32_t DEFAULT_FAULT_COUNT_THRESHOLD = 5;
 static const system_tick_t DEFAULT_FAULT_SUPPRESSION_PERIOD = 60000;
 static const system_tick_t DEFAULT_QUEUE_WAIT = 1000;
+static const system_tick_t DEFAULT_WATCHDOG_TIMEOUT = 60000;
 
 class PowerManager {
 public:
@@ -26,11 +27,12 @@ private:
   static void isrHandler();
   void update();
   void handleUpdate();
-  void initDefault();
+  void initDefault(bool dpdm = true);
   void handleStateChange(battery_state_t from, battery_state_t to, bool low);
   battery_state_t handlePossibleFault(battery_state_t from, battery_state_t to);
   void handlePossibleFaultLoop();
   void logStat(uint8_t stat, uint8_t fault);
+  void checkWatchdog();
 
 private:
   static volatile bool update_;
@@ -41,6 +43,7 @@ private:
   uint32_t possibleFaultCounter_ = 0;
   system_tick_t possibleFaultTimestamp_ = 0;
   bool lowBatEnabled_ = true;
+  system_tick_t chargingDisabledTimestamp_ = 0;
 };
 
 

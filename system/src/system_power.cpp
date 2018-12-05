@@ -16,6 +16,9 @@ BatteryChargeDiagnosticData::BatteryChargeDiagnosticData(uint16_t id, const char
 }
 
 int BatteryChargeDiagnosticData::get(IntType& val) {
+    if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     FuelGauge fuel(true);
     float soc = fuel.getNormalizedSoC();
     val = particle::FixedPointUQ<8, 8>(soc);
@@ -41,6 +44,9 @@ void system_power_management_sleep(bool sleep) {
 }
 
 #else /* Wiring_Cellular != 1 */
+
+void system_power_management_init() {
+}
 
 void system_power_management_sleep(bool sleep) {
 }
