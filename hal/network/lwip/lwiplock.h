@@ -37,6 +37,11 @@ public:
         }
     }
 
+    LwipTcpIpCoreLock(LwipTcpIpCoreLock&& lock) :
+            locked_(lock.locked_) {
+        lock.locked_ = false;
+    }
+
     void lock() {
         LOCK_TCPIP_CORE();
         locked_ = true;
@@ -46,6 +51,9 @@ public:
         UNLOCK_TCPIP_CORE();
         locked_ = false;
     }
+
+    LwipTcpIpCoreLock(const LwipTcpIpCoreLock&) = delete;
+    LwipTcpIpCoreLock& operator=(const LwipTcpIpCoreLock&) = delete;
 
 private:
     bool locked_;
