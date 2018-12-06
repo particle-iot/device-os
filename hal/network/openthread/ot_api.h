@@ -25,6 +25,11 @@
 #define NETWORK_OPENTHREAD_OT_API_H
 
 #include <openthread/instance.h>
+#include "hal_platform.h"
+
+#if HAL_OPENTHREAD_USE_LWIP_LOCK
+#include "lwiplock.h"
+#endif // HAL_OPENTHREAD_USE_LWIP_LOCK
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,19 +88,46 @@ int ot_unlock(void* reserved);
 
 namespace particle { namespace net { namespace ot {
 
-/**
- * Convenience struct meeting BasicLockable requirements for
- * use with std::lock_guard/unique_lock/scoped_lock
- */
-struct ThreadLock {
-    static void lock() {
-        ot_lock(nullptr);
+#if !HAL_OPENTHREAD_USE_LWIP_LOCK
+class ThreadLock {
+public:
+    ThreadLock() :
+            locked_(false) {
+        lock();
     }
 
-    static void unlock() {
-        ot_unlock(nullptr);
+    ~ThreadLock() {
+        if (locked_) {
+            unlock();
+        }
     }
+
+    ThreadLock(ThreadLock&& lock) :
+            locked_(lock.locked_) {
+        lock.locked_ = false;
+    }
+
+    void lock() {
+        ot_lock(nullptr);
+        locked_ = true;
+    }
+
+    void unlock() {
+        ot_unlock(nullptr);
+        locked_ = false;
+    }
+
+    ThreadLock(const ThreadLock&) = delete;
+    ThreadLock& operator=(const ThreadLock&) = delete;
+
+private:
+    bool locked_;
 };
+#else
+
+using ThreadLock = particle::net::LwipTcpIpCoreLock;
+
+#endif // HAL_OPENTHREAD_USE_LWIP_LOCK
 
 } } } /* particle::net::ot */
 

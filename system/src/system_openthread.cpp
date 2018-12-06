@@ -183,28 +183,13 @@ const uint16_t kKeyNetworkId = 0x4000;
 } // particle::system::
 
 int threadInit() {
-    return ot_init([](otInstance* thread) -> int {
-        CHECK_THREAD(otSetStateChangedCallback(thread, threadStateChanged, thread));
-
-        otLinkModeConfig mode = {};
-        mode.mRxOnWhenIdle = true;
-        mode.mSecureDataRequests = true;
-        mode.mDeviceType = true;
-        mode.mNetworkData = true;
-        CHECK_THREAD(otThreadSetLinkMode(thread, mode));
-
-        if (otDatasetIsCommissioned(thread)) {
-            LOG(INFO, "Network name: %s", otThreadGetNetworkName(thread));
-            LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(thread));
-            LOG(INFO, "802.15.4 PAN ID: 0x%04x", (unsigned)otLinkGetPanId(thread));
-        }
-
-        return 0;
-    }, nullptr);
+    ThreadLock lk;
+    CHECK_THREAD(otSetStateChangedCallback(ot_get_instance(), threadStateChanged, ot_get_instance()));
+    return 0;
 }
 
 int threadGetNetworkId(otInstance* ot, char* buf, uint16_t* buflen) {
-    std::lock_guard<ThreadLock> lk(ThreadLock());
+    ThreadLock lk;
     buf[0] = 0;
     auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, (uint8_t*)buf, buflen);
     return threadToSystemError(result);
@@ -234,7 +219,7 @@ int threadToSystemError(otError error) {
 }
 
 int threadSetNetworkId(otInstance* ot, const char* buf) {
-    std::lock_guard<ThreadLock> lk(ThreadLock());
+    ThreadLock lk;
     return threadToSystemError(otPlatSettingsSet(ot, kKeyNetworkId, (const uint8_t*)buf, strlen(buf) + 1));
 }
 

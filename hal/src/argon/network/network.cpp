@@ -107,6 +107,8 @@ WifiNetworkManager* wifiNetworkManager() {
 } // particle
 
 int if_init_platform(void*) {
+    CHECK(ot_init(nullptr, nullptr));
+
     /* lo0 (created by LwIP) */
 
     /* th1 - OpenThread */

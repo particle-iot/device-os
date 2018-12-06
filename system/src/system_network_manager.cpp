@@ -441,7 +441,7 @@ int NetworkManager::clearConfiguration(if_t oIface) {
 #if HAL_PLATFORM_OPENTHREAD
         if (!strncmp(name, "th", 2)) {
             /* OpenThread iface */
-            std::lock_guard<ThreadLock> lk(ThreadLock());
+            ThreadLock lk;
             otMasterKey key = {};
             otThreadSetMasterKey(threadInstance(), &key);
             otInstanceErasePersistentInfo(threadInstance());
@@ -824,7 +824,7 @@ bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
 #if HAL_PLATFORM_OPENTHREAD
     if (!strncmp(name, "th", 2)) {
         /* OpenThread iface */
-        std::lock_guard<ThreadLock> lk(ThreadLock());
+        ThreadLock lk;
         return otDatasetIsCommissioned(threadInstance());
     }
 #endif /* HAL_PLATFORM_OPENTHREAD */

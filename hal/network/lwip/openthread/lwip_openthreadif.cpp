@@ -190,7 +190,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
         : BaseNetif(),
           ot_(ot) {
 
-    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+    ot::ThreadLock lk;
     if (!ot_) {
 #if !defined(OPENTHREAD_ENABLE_MULTIPLE_INSTANCES) || OPENTHREAD_ENABLE_MULTIPLE_INSTANCES == 0
         ot_ = otInstanceInitSingle();
@@ -224,7 +224,7 @@ OpenThreadNetif::OpenThreadNetif(otInstance* ot)
 
 OpenThreadNetif::~OpenThreadNetif() {
     {
-        std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+        ot::ThreadLock lk;
         /* Unregister OpenThread state changed and receive callbacks */
         otRemoveStateChangeCallback(ot_, otStateChangedCb, this);
         otIp6SetReceiveCallback(ot_, nullptr, nullptr);
@@ -253,7 +253,7 @@ err_t OpenThreadNetif::initCb(netif* netif) {
 err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr) {
     auto self = static_cast<OpenThreadNetif*>(netif->state);
 
-    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+    ot::ThreadLock lk;
 
     ip_addr_t src = {};
     ip_addr_t dst = {};
@@ -300,7 +300,7 @@ err_t OpenThreadNetif::mldMacFilterCb(netif* netif, const ip6_addr_t *group,
         netif_mac_filter_action action) {
     auto self = static_cast<OpenThreadNetif*>(netif->state);
 
-    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+    ot::ThreadLock lk;
 
     otIp6Address addr = {};
     ip6AddrToOtIp6Address(*group, &addr);
@@ -323,7 +323,7 @@ err_t OpenThreadNetif::mldMacFilterCb(netif* netif, const ip6_addr_t *group,
 void OpenThreadNetif::otReceiveCb(otMessage* msg, void* ctx) {
     auto self = static_cast<OpenThreadNetif*>(ctx);
 
-    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+    ot::ThreadLock lk;
 
     // LOG(TRACE, "otReceiveCb: new message %x", msg);
 
@@ -754,7 +754,7 @@ otInstance* OpenThreadNetif::getOtInstance() {
 }
 
 int OpenThreadNetif::up() {
-    std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+    ot::ThreadLock lk;
 
     down();
 
@@ -779,7 +779,7 @@ int OpenThreadNetif::up() {
 int OpenThreadNetif::down() {
     int r = 0;
     {
-        std::lock_guard<ot::ThreadLock> lk(ot::ThreadLock());
+        ot::ThreadLock lk;
         LOG(INFO, "Bringing OpenThreadNetif down");
 
         if ((r = otThreadSetEnabled(ot_, false)) != OT_ERROR_NONE) {
