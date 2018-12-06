@@ -37,7 +37,7 @@
 
 #include <stdint.h>
 
-#include <openthread/types.h>
+#include <openthread/instance.h>
 
 #include "openthread-platform-config.h"
 
@@ -52,6 +52,12 @@ void nrf5UartInit(void);
  *
  */
 void nrf5UartDeinit(void);
+
+/**
+ * Clear pending UART data.
+ *
+ */
+void nrf5UartClearPendingData(void);
 
 /**
  * This function performs UART driver processing.
