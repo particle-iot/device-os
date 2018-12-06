@@ -145,7 +145,7 @@ int BorderRouterManager::startServices() {
     CHECK(dns64Runner_->init(dns64_.get()));
 
     {
-        std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
+        particle::net::ot::ThreadLock lk;
         /* Register OpenThread state changed callback */
         otSetStateChangedCallback(ot_get_instance(), &otStateChangedCb, this);
     }
@@ -164,7 +164,7 @@ int BorderRouterManager::startServices() {
 
 int BorderRouterManager::stopServices() {
     {
-        std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
+        particle::net::ot::ThreadLock lk;
         /* Register OpenThread state changed callback */
         otRemoveStateChangeCallback(ot_get_instance(), &otStateChangedCb, this);
     }
@@ -192,7 +192,7 @@ int BorderRouterManager::stopServices() {
 }
 
 int BorderRouterManager::enable() {
-    std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
+    particle::net::ot::ThreadLock lk;
 
     otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
     otBorderRouterConfig config = {};
@@ -264,7 +264,7 @@ int BorderRouterManager::enable() {
 }
 
 int BorderRouterManager::disable() {
-    std::lock_guard<particle::net::ot::ThreadLock> lk(particle::net::ot::ThreadLock());
+    particle::net::ot::ThreadLock lk;
 
     if (config_.mOnMesh) {
         LOG(TRACE, "Disabling border routing");

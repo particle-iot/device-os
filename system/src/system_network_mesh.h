@@ -80,14 +80,14 @@ public:
 
     virtual bool clear_credentials() override {
         using namespace particle::system;
-        std::lock_guard<ThreadLock> lk(ThreadLock());
+        ThreadLock lk;
         otPlatSettingsWipe(threadInstance());
         return true;
     }
 
     bool has_credentials() override {
         using namespace particle::system;
-        std::lock_guard<ThreadLock> lk(ThreadLock());
+        ThreadLock lk;
         return otDatasetIsCommissioned(threadInstance());
     }
 

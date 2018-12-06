@@ -27,6 +27,7 @@
 #include <malloc.h>
 #include "lwip_util.h"
 #include "core_hal.h"
+#include "check.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -42,6 +43,8 @@ BaseNetif* en2 = nullptr;
 } /* anonymous */
 
 int if_init_platform(void*) {
+    CHECK(ot_init(nullptr, nullptr));
+
     /* lo0 (created by LwIP) */
 
     /* th1 - OpenThread */

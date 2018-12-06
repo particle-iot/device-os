@@ -60,7 +60,7 @@ void ot_process(void* arg) {
     while (true) {
         os_semaphore_take(s_threadSem, CONCURRENT_WAIT_FOREVER, false);
         {
-            std::lock_guard<ThreadLock> lk(ThreadLock());
+            ThreadLock lk;
             otTaskletsProcess(thread);
             otSysProcessDrivers(thread);
         }
@@ -82,7 +82,7 @@ void otSysEventSignalPending(void)
 }
 
 int ot_init(int (*onInit)(otInstance*), void* reserved) {
-    std::lock_guard<ThreadLock> lk(ThreadLock());
+    ThreadLock lk;
     if (s_threadInstance != nullptr) {
         /* Already initialized */
         return SYSTEM_ERROR_ALREADY_EXISTS;
@@ -109,6 +109,19 @@ int ot_init(int (*onInit)(otInstance*), void* reserved) {
 
     s_threadInstance = thread;
 
+    otLinkModeConfig mode = {};
+    mode.mRxOnWhenIdle = true;
+    mode.mSecureDataRequests = true;
+    mode.mDeviceType = true;
+    mode.mNetworkData = true;
+    otThreadSetLinkMode(thread, mode);
+
+    if (otDatasetIsCommissioned(thread)) {
+        LOG(INFO, "Network name: %s", otThreadGetNetworkName(thread));
+        LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(thread));
+        LOG(INFO, "802.15.4 PAN ID: 0x%04x", (unsigned)otLinkGetPanId(thread));
+    }
+
     if (onInit != nullptr) {
         onInit(thread);
     }
@@ -120,7 +133,7 @@ int ot_init(int (*onInit)(otInstance*), void* reserved) {
 }
 
 otInstance* ot_get_instance() {
-    std::lock_guard<ThreadLock> lk(ThreadLock());
+    ThreadLock lk;
     return s_threadInstance;
 }
 

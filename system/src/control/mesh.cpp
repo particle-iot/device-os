@@ -67,8 +67,7 @@
         } while (false)
 
 #define THREAD_LOCK(_name) \
-        ThreadLock _name##Mutex; \
-        std::unique_lock<ThreadLock> _name(_name##Mutex)
+        ThreadLock _name;
 
 // TODO: Make mesh-related request handlers asynchronous
 #define WAIT_UNTIL(_lock, _expr) \
