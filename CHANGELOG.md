@@ -9,6 +9,11 @@
 - [Argon / Boron] Fixed a race condition when restarting the GSM07.10 multiplexer causing a memory leak/corruption (#1608)
 - [Gen 3] IPv4 `IPAddress` endianness issue fixed (#1610)
 - [Boron] Fixed a crash when using `STARTUP()` macro to manage Cellular credentials (#1613)
+- [Gen 3] Embedded user part update procedure fixed in for hybrid builds (#1617)
+- [communication] Sticky `SKIP_SESSION_RESUME_HELLO` no longer set immediately after session resume (#1623)
+- [Gen 3] OpenThread locking fixes (#1625)
+- [Gen 3] NetworkManager initiail state initialized in `network_setup()`
+- [Gen 3] IPv4 `IPAddress` endianness issue fixed (#1610)
 
 ### ENHANCEMENTS
 
@@ -19,6 +24,10 @@
 - [Argon / Boron] AT parser immediately interrupted when GSM07.10 multiplexer exits asynchronously (e.g. terminated by the peer or due to keepalive timeout) (#1608)
 - [Gen 3] NAT64 initial base source port randomized on boot (#1609)
 - [Gen 3] LwIP optimizations (#1610)
+- [Gen 3] DHCP hostname option enabled (defaults to DeviceID) (#1595)
+- [Argon] WiFi passwords are not included in the logging output (#1619)
+- [Gen 3] OpenThread updated to 20181204 master (#1620)
+- [Gen 3] Power failure comparator always configured with 2.8V threshold (#1621)
 
 ### FEATURES
 - [Gen 3] SPI slave mode (#1588)
