@@ -14,6 +14,7 @@
 - [Gen 3] OpenThread locking fixes (#1625)
 - [Gen 3] NetworkManager initiail state initialized in `network_setup()`
 - [Gen 3] IPv4 `IPAddress` endianness issue fixed (#1610)
+- [Gen 3] Fixes an assertion failure in LwIP DHCP code when receiving an offer with > 2 DNS servers (#1618)
 
 ### ENHANCEMENTS
 
