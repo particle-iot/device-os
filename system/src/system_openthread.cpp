@@ -183,6 +183,7 @@ const uint16_t kKeyNetworkId = 0x4000;
 } // particle::system::
 
 int threadInit() {
+    ThreadLock lk;
     CHECK_THREAD(otSetStateChangedCallback(ot_get_instance(), threadStateChanged, ot_get_instance()));
     return 0;
 }
