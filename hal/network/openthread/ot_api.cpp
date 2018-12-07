@@ -31,6 +31,7 @@ LOG_SOURCE_CATEGORY("ot.api");
 #include "static_recursive_mutex.h"
 #include <mutex>
 #include <limits>
+#include "check.h"
 
 using namespace particle::net::ot;
 
@@ -114,7 +115,14 @@ int ot_init(int (*onInit)(otInstance*), void* reserved) {
     mode.mSecureDataRequests = true;
     mode.mDeviceType = true;
     mode.mNetworkData = true;
-    otThreadSetLinkMode(thread, mode);
+    // FIXME: CHECK_THREAD()
+    CHECK_TRUE(otThreadSetLinkMode(thread, mode) == OT_ERROR_NONE, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(otPlatRadioSetTransmitPower(thread, (int8_t)HAL_PLATFORM_OPENTHREAD_MAX_TX_POWER) == OT_ERROR_NONE,
+            SYSTEM_ERROR_UNKNOWN);
+
+    int8_t transmitPower = 0;
+    CHECK_TRUE(otPlatRadioGetTransmitPower(thread, &transmitPower) == OT_ERROR_NONE, SYSTEM_ERROR_UNKNOWN);
+    LOG(INFO, "Max transmit power: %d", (int)transmitPower);
 
     if (otDatasetIsCommissioned(thread)) {
         LOG(INFO, "Network name: %s", otThreadGetNetworkName(thread));
