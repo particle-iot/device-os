@@ -116,6 +116,8 @@ int ot_init(int (*onInit)(otInstance*), void* reserved) {
     mode.mNetworkData = true;
     otThreadSetLinkMode(thread, mode);
 
+    otPlatRadioSetTransmitPower(thread, 8);
+
     if (otDatasetIsCommissioned(thread)) {
         LOG(INFO, "Network name: %s", otThreadGetNetworkName(thread));
         LOG(INFO, "802.15.4 channel: %d", (int)otLinkGetChannel(thread));

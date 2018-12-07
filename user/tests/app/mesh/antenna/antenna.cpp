@@ -20,6 +20,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include "ssd1306.h"
+#include "openthread/platform/radio.h"
+#include "ot_api.h"
 
 #define SETUP_BTN                   A0
 #define PUB_BTN                     A1
@@ -29,7 +31,7 @@
 #define RGB_GREEN                   D5
 #define RGB_BLUE                    D4
 
-SYSTEM_MODE(MANUAL);
+SYSTEM_MODE(AUTOMATIC);
 
 Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL);
 
@@ -114,21 +116,22 @@ void setup() {
         delay(100);
         if (digitalRead(SETUP_BTN) == LOW) {
             while (digitalRead(SETUP_BTN) == LOW);
-            WiFi.on();
-            WiFi.connect();
-            while (!WiFi.ready());
+            if (!WiFi.ready()) {
+				WiFi.on();
+				WiFi.connect();
+				while (!WiFi.ready());
+            }
             oled.println("Wi-Fi connected.");
         }
     }
 #endif
 
-    Mesh.on();
-    Mesh.connect();
-    while (!Mesh.ready());
+    if (!Mesh.ready()) {
+		Mesh.on();
+		Mesh.connect();
+		while (!Mesh.ready());
+    }
     oled.println("Mesh connected.");
-
-    RGB.control(true);
-    RGB.color(255, 0, 255);
 
 #if (PLATFORM_ID == PLATFORM_XENON)
     Mesh.subscribe("mesh-xenon", meshHandler);
@@ -178,9 +181,16 @@ void loop() {
     }
     else if ((curr_millis - pre_millis) >= 800) {
         pre_millis = curr_millis;
-        RGB.color(0, 0, 0);
-        delay(50);
-        RGB.color(255, 0, 255);
+
+        if (Mesh.ready()) {
+        	int8_t meshRssi = otPlatRadioGetRssi(ot_get_instance());
+            if (meshRssi < 0) {
+                oled.printf("RSSI: -%d dBm\r\n", -meshRssi);
+            }
+            else {
+                oled.printf("ERROR: %d\r\n", meshRssi);
+            }
+        }
 
 #if (PLATFORM_ID == PLATFORM_ARGON)
         if (WiFi.ready()) {
