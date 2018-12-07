@@ -1034,17 +1034,14 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps))
     {
         sendFormated("AT+COPS?\r\n");
-        if (RESP_OK != waitFinalResp(_cbCOPS, &_net))
+        if (RESP_OK != waitFinalResp(_cbCOPS, &_net)) {
             goto failure;
-        // get the MSISDNs related to this subscriber
-        sendFormated("AT+CNUM\r\n");
-        if (RESP_OK != waitFinalResp(_cbCNUM, _net.num))
-            goto failure;
-
+        }
         // get the signal strength indication
         sendFormated("AT+CSQ\r\n");
-        if (RESP_OK != waitFinalResp(_cbCSQ, &_net))
+        if (RESP_OK != waitFinalResp(_cbCSQ, &_net)) {
             goto failure;
+        }
     }
     if (status) {
         memcpy(status, &_net, sizeof(NetStatus));
