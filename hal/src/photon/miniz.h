@@ -859,7 +859,8 @@ enum
     TINFL_MAX_HUFF_SYMBOLS_0 = 288,
     TINFL_MAX_HUFF_SYMBOLS_1 = 32,
     TINFL_MAX_HUFF_SYMBOLS_2 = 19,
-    TINFL_FAST_LOOKUP_BITS = 10,
+    /* The value of this field has been changed from 10 to 5 to reduce the size of the tinfl_decompressor structure */
+    TINFL_FAST_LOOKUP_BITS = 5,
     TINFL_FAST_LOOKUP_SIZE = 1 << TINFL_FAST_LOOKUP_BITS
 };
 
