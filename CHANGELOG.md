@@ -15,6 +15,7 @@
 - [Gen 3] NetworkManager initiail state initialized in `network_setup()`
 - [Gen 3] IPv4 `IPAddress` endianness issue fixed (#1610)
 - [Gen 3] Fixes an assertion failure in LwIP DHCP code when receiving an offer with > 2 DNS servers (#1618)
+- [Argon / Xenon] `Wire1` enabled (#1633)
 
 ### ENHANCEMENTS
 
@@ -27,8 +28,9 @@
 - [Gen 3] LwIP optimizations (#1610)
 - [Gen 3] DHCP hostname option enabled (defaults to DeviceID) (#1595)
 - [Argon] WiFi passwords are not included in the logging output (#1619)
-- [Gen 3] OpenThread updated to 20181204 master (#1620)
 - [Gen 3] Power failure comparator always configured with 2.8V threshold (#1621)
+- [Gen 3] Default mesh transmit power setting changed from 0dBm to 8dBm (#1629)
+- [Gen 3] BLE MTU and data length changed to default minimum values, while still allowing upgrade by the peer up to the maximums available on nRF52840 (#1634)
 
 ### FEATURES
 - [Gen 3] SPI slave mode (#1588)
