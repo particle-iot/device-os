@@ -28,7 +28,7 @@
 
 #include <openthread-core-config.h>
 #include <openthread/platform/settings.h>
-#include <openthread/instance.h>
+#include <openthread/types.h>
 
 #include "tlv_file.h"
 

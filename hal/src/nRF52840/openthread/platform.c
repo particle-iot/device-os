@@ -37,12 +37,9 @@
 
 #include <openthread/platform/logging.h>
 
-#include "openthread-system.h"
-#include "platform-fem.h"
 #include "platform-nrf5.h"
 #include <nrf_drv_clock.h>
 #include <nrf.h>
-
 #if SOFTDEVICE_PRESENT
 #include <nrf_sdh_soc.h>
 #include "softdevice.h"
@@ -50,8 +47,6 @@
 #endif /* SOFTDEVICE_PRESENT */
 
 #include <openthread/config.h>
-
-extern bool gPlatformPseudoResetWasRequested;
 
 #include "gpio_hal.h"
 #include "platforms.h"
@@ -86,18 +81,25 @@ static void selectAntenna(bool external) {
 }
 
 static void processSocEvent(uint32_t event, void* data) {
-    otSysSoftdeviceSocEvtHandler(event);
+    PlatformSoftdeviceSocEvtHandler(event);
 }
 
-void otSysInit(int argc, char *argv[])
+void PlatformInit(int argc, char *argv[])
 {
-    OT_UNUSED_VARIABLE(argc);
-    OT_UNUSED_VARIABLE(argv);
+    extern bool gPlatformPseudoResetWasRequested;
 
     if (gPlatformPseudoResetWasRequested)
     {
-        otSysDeinit();
+        nrf5AlarmDeinit();
+        nrf5AlarmInit();
+
+        gPlatformPseudoResetWasRequested = false;
+
+        return;
     }
+
+    (void)argc;
+    (void)argv;
 
 #if !SOFTDEVICE_PRESENT
     // Enable I-code cache
@@ -107,13 +109,19 @@ void otSysInit(int argc, char *argv[])
     /* Just in case force the antenna to internal one */
     selectAntenna(false);
 
+//     nrf_drv_clock_init();
+
+// #if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+//     nrf5LogInit();
+// #endif
     nrf5AlarmInit();
     nrf5RandomInit();
-
-    if (!gPlatformPseudoResetWasRequested)
-    {
-        nrf5CryptoInit();
-    }
+//     nrf5UartInit();
+// #ifndef SPIS_TRANSPORT_DISABLE
+//     nrf5SpiSlaveInit();
+// #endif
+//     nrf5MiscInit();
+    nrf5CryptoInit();
     nrf5RadioInit();
     nrf5TempInit();
 
@@ -123,7 +131,7 @@ void otSysInit(int argc, char *argv[])
 
 #if SOFTDEVICE_PRESENT
     // Correct the PPM for the LF crystal
-    const otSysSoftdeviceRaalConfigParams config = {
+    const PlatformSoftdeviceRaalConfigParams config = {
         .timeslotLength     = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_LENGTH,
         .timeslotTimeout    = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_TIMEOUT,
         .timeslotMaxLength  = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_MAX_LENGTH,
@@ -131,42 +139,45 @@ void otSysInit(int argc, char *argv[])
         .timeslotSafeMargin = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_SAFE_MARGIN,
         .lfClkAccuracyPpm   = 20
     };
-    otSysSoftdeviceRaalConfig(&config);
+    PlatformSoftdeviceRaalConfig(&config);
 #endif /* SOFTDEVICE_PRESENT */
-
-#if PLATFORM_FEM_ENABLE_DEFAULT_CONFIG
-    PlatformFemSetConfigParams(&PLATFORM_FEM_DEFAULT_CONFIG);
-#endif
-
-    gPlatformPseudoResetWasRequested = false;
 }
 
-void otSysDeinit(void)
+void PlatformDeinit(void)
 {
     nrf5TempDeinit();
     nrf5RadioDeinit();
-
-    if (!gPlatformPseudoResetWasRequested) {
-        nrf5CryptoDeinit();
-    }
+    nrf5CryptoDeinit();
+//     nrf5MiscDeinit();
+// #ifndef SPIS_TRANSPORT_DISABLE
+//     nrf5SpiSlaveDeinit();
+// #endif
+//      nrf5UartDeinit();
     nrf5RandomDeinit();
     nrf5AlarmDeinit();
+// #if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+//     nrf5LogDeinit();
+// #endif
 }
 
-bool otSysPseudoResetWasRequested(void)
+bool PlatformPseudoResetWasRequested(void)
 {
     extern bool gPlatformPseudoResetWasRequested;
     return gPlatformPseudoResetWasRequested;
 }
 
-void otSysProcessDrivers(otInstance *aInstance)
+void PlatformProcessDrivers(otInstance *aInstance)
 {
-    nrf5RadioProcess(aInstance);
-    nrf5TempProcess();
     nrf5AlarmProcess(aInstance);
+    nrf5RadioProcess(aInstance);
+//     nrf5UartProcess();
+    nrf5TempProcess();
+// #ifndef SPIS_TRANSPORT_DISABLE
+//     nrf5SpiSlaveProcess();
+// #endif
 }
 
-__WEAK void otSysEventSignalPending(void)
+__WEAK void PlatformEventSignalPending(void)
 {
     // Intentionally empty
 }

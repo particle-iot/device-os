@@ -39,7 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <utils/code_utils.h>
+#include "code_utils.h"
 #include <openthread/platform/random.h>
 
 #include "platform-nrf5.h"

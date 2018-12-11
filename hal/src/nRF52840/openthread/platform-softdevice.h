@@ -54,7 +54,7 @@ typedef struct
     uint16_t timeslotAllocIters; /**< Maximum number of iteration of dividing timeslot_length by factor of 2 performed by arbiter. */
     uint16_t timeslotSafeMargin; /**< Safe margin before timeslot is finished and nrf_raal_timeslot_ended should be called in microseconds. */
     uint16_t lfClkAccuracyPpm;   /**< Clock accuracy in ppm unit. */
-} otSysSoftdeviceRaalConfigParams;
+} PlatformSoftdeviceRaalConfigParams;
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,13 +64,13 @@ extern "C" {
  * Function for processing SoftDevice SoC events.
  *
  */
-void otSysSoftdeviceSocEvtHandler(uint32_t aEvtId);
+void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId);
 
 /**
  * Function used to set non-default parameters of Softdevice RAAL.
  *
  */
-void otSysSoftdeviceRaalConfig(const otSysSoftdeviceRaalConfigParams *aConfig);
+void PlatformSoftdeviceRaalConfig(const PlatformSoftdeviceRaalConfigParams *aConfig);
 
 #ifdef __cplusplus
 }
