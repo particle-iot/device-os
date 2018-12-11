@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017, The OpenThread Authors.
+ *  Copyright (c) 2016, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,37 +28,55 @@
 
 /**
  * @file
- *   This file includes the common SoftDevice headers.
- *
+ * @brief
+ *   This file defines the platform-specific initializers.
  */
 
-#ifndef SOFTDEVICE_H_
-#define SOFTDEVICE_H_
+#ifndef PLATFORM_H_
+#define PLATFORM_H_
 
-#if defined(__GNUC__)
-    _Pragma("GCC diagnostic push")
-    _Pragma("GCC diagnostic ignored \"-Wreturn-type\"")
-    _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")
-    _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
-#endif
-
-#include <nrf_svc.h>
-#include <nrf_sdm.h>
-#include <nrf_soc.h>
-#include <nrf_nvic.h>
-
-#if defined(__GNUC__)
-    _Pragma("GCC diagnostic pop")
-#endif
+#include <openthread/types.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cplusplus */
+#endif
 
-void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId);
+/**
+ * This function performs all platform-specific initialization.
+ *
+ */
+void PlatformInit(int argc, char *argv[]);
+
+/**
+ * This function performs all platform-specific deinitialization.
+ *
+ */
+void PlatformDeinit(void);
+
+/**
+ * This function returns true is a pseudo-reset was requested.
+ * In such a case, the main loop should shut down and re-initialize
+ * the OpenThread instance.
+ *
+ */
+bool PlatformPseudoResetWasRequested(void);
+
+/**
+ * This function performs all platform-specific processing.
+ *
+ * @param[in]  aInstance  The OpenThread instance structure.
+ *
+ */
+void PlatformProcessDrivers(otInstance *aInstance);
+
+/**
+ * This function is called whenever platform drivers needs processing.
+ *
+ */
+extern void PlatformEventSignalPending(void);
 
 #ifdef __cplusplus
-}
-#endif /* __cplusplus */
+} // end of extern "C"
+#endif
 
-#endif  // SOFTDEVICE_H_
+#endif // PLATFORM_H_

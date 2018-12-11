@@ -42,21 +42,22 @@
 #include <string.h>
 
 #include <common/code_utils.hpp>
-#include "openthread-platform-config.h"
+#include <openthread-platform-config.h>
 #include <openthread/platform/alarm-micro.h>
 #include <openthread/platform/diag.h>
 #include <openthread/platform/logging.h>
 #include <openthread/platform/radio.h>
 #include <openthread/platform/time.h>
 
-#include "openthread-system.h"
 #include "platform-nrf5.h"
+#include "platform.h"
 
 #include <nrf.h>
 #include <nrf_802154.h>
 
 #include <openthread-core-config.h>
 #include <openthread/config.h>
+#include <openthread/types.h>
 
 // clang-format off
 
@@ -82,8 +83,8 @@ static uint8_t      sTransmitPsdu[OT_RADIO_FRAME_MAX_SIZE + 1];
 #if OPENTHREAD_CONFIG_HEADER_IE_SUPPORT
 static otRadioIeInfo sTransmitIeInfo;
 static otRadioIeInfo sReceivedIeInfos[NRF_802154_RX_BUFFERS];
+static otInstance *  sInstance = NULL;
 #endif
-static otInstance *sInstance = NULL;
 
 static otRadioFrame sAckFrame;
 
@@ -93,8 +94,7 @@ static uint32_t sEnergyDetectionTime;
 static uint8_t  sEnergyDetectionChannel;
 static int8_t   sEnergyDetected;
 
-typedef enum
-{
+typedef enum {
     kPendingEventSleep,                // Requested to enter Sleep state.
     kPendingEventFrameTransmitted,     // Transmitted frame and received ACK (if requested).
     kPendingEventChannelAccessFailure, // Failed to transmit frame (channel busy).
@@ -147,7 +147,7 @@ static void setPendingEvent(RadioPendingEvents aEvent)
         pendingEvents |= bitToSet;
     } while (__STREXW(pendingEvents, (unsigned long volatile *)&sPendingEvents));
 
-    otSysEventSignalPending();
+    PlatformEventSignalPending();
 }
 
 static void resetPendingEvent(RadioPendingEvents aEvent)
@@ -180,7 +180,7 @@ static inline void clearPendingEvents(void)
 #if !OPENTHREAD_CONFIG_ENABLE_PLATFORM_EUI64_CUSTOM_SOURCE
 void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     uint64_t factoryAddress = (uint64_t)NRF_FICR->DEVICEID[0] << 32;
     factoryAddress |= NRF_FICR->DEVICEID[1];
@@ -191,7 +191,7 @@ void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 
 void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanId)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     uint8_t address[SHORT_ADDRESS_SIZE];
     convertShortAddress(address, aPanId);
@@ -201,14 +201,14 @@ void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanId)
 
 void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     nrf_802154_extended_address_set(aExtAddress->m8);
 }
 
 void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aShortAddress)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     uint8_t address[SHORT_ADDRESS_SIZE];
     convertShortAddress(address, aShortAddress);
@@ -231,7 +231,7 @@ void nrf5RadioDeinit(void)
 
 otRadioState otPlatRadioGetState(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     if (sDisabled)
     {
@@ -259,9 +259,9 @@ otRadioState otPlatRadioGetState(otInstance *aInstance)
 
 otError otPlatRadioEnable(otInstance *aInstance)
 {
-    otError error;
+    (void)aInstance;
 
-    sInstance = aInstance;
+    otError error;
 
     if (sDisabled)
     {
@@ -278,9 +278,9 @@ otError otPlatRadioEnable(otInstance *aInstance)
 
 otError otPlatRadioDisable(otInstance *aInstance)
 {
-    otError error;
+    (void)aInstance;
 
-    OT_UNUSED_VARIABLE(aInstance);
+    otError error;
 
     if (!sDisabled)
     {
@@ -297,14 +297,14 @@ otError otPlatRadioDisable(otInstance *aInstance)
 
 bool otPlatRadioIsEnabled(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     return !sDisabled;
 }
 
 otError otPlatRadioSleep(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     if (nrf_802154_sleep())
     {
@@ -321,7 +321,7 @@ otError otPlatRadioSleep(otInstance *aInstance)
 
 otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     bool result;
 
@@ -337,6 +337,10 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 
 otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
 {
+#if OPENTHREAD_CONFIG_HEADER_IE_SUPPORT
+    sInstance = aInstance;
+#endif
+
     otError result = OT_ERROR_NONE;
 
     aFrame->mPsdu[-1] = aFrame->mLength;
@@ -367,49 +371,49 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
 
 otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     return &sTransmitFrame;
 }
 
 int8_t otPlatRadioGetRssi(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     return nrf_802154_rssi_last_get();
 }
 
 otRadioCaps otPlatRadioGetCaps(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     return (otRadioCaps)(OT_RADIO_CAPS_ENERGY_SCAN | OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF);
 }
 
 bool otPlatRadioGetPromiscuous(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     return nrf_802154_promiscuous_get();
 }
 
 void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnable)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     nrf_802154_promiscuous_set(aEnable);
 }
 
 void otPlatRadioEnableSrcMatch(otInstance *aInstance, bool aEnable)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     nrf_802154_auto_pending_bit_set(aEnable);
 }
 
 otError otPlatRadioAddSrcMatchShortEntry(otInstance *aInstance, const uint16_t aShortAddress)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     otError error;
 
@@ -430,7 +434,7 @@ otError otPlatRadioAddSrcMatchShortEntry(otInstance *aInstance, const uint16_t a
 
 otError otPlatRadioAddSrcMatchExtEntry(otInstance *aInstance, const otExtAddress *aExtAddress)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     otError error;
 
@@ -448,7 +452,7 @@ otError otPlatRadioAddSrcMatchExtEntry(otInstance *aInstance, const otExtAddress
 
 otError otPlatRadioClearSrcMatchShortEntry(otInstance *aInstance, const uint16_t aShortAddress)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     otError error;
 
@@ -469,7 +473,7 @@ otError otPlatRadioClearSrcMatchShortEntry(otInstance *aInstance, const uint16_t
 
 otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const otExtAddress *aExtAddress)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     otError error;
 
@@ -487,21 +491,21 @@ otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const otExtAddre
 
 void otPlatRadioClearSrcMatchShortEntries(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     nrf_802154_pending_bit_for_addr_reset(false);
 }
 
 void otPlatRadioClearSrcMatchExtEntries(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     nrf_802154_pending_bit_for_addr_reset(true);
 }
 
 otError otPlatRadioEnergyScan(otInstance *aInstance, uint8_t aScanChannel, uint16_t aScanDuration)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     sEnergyDetectionTime    = (uint32_t)aScanDuration * 1000UL;
     sEnergyDetectionChannel = aScanChannel;
@@ -524,9 +528,8 @@ otError otPlatRadioEnergyScan(otInstance *aInstance, uint8_t aScanChannel, uint1
 
 otError otPlatRadioGetTransmitPower(otInstance *aInstance, int8_t *aPower)
 {
-    OT_UNUSED_VARIABLE(aInstance);
-
     otError error = OT_ERROR_NONE;
+    (void)aInstance;
 
     if (aPower == NULL)
     {
@@ -542,7 +545,7 @@ otError otPlatRadioGetTransmitPower(otInstance *aInstance, int8_t *aPower)
 
 otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    (void)aInstance;
 
     sDefaultTxPower = aPower;
     nrf_802154_tx_power_set(aPower);
@@ -704,12 +707,11 @@ void nrf_802154_received_raw(uint8_t *p_data, int8_t power, uint8_t lqi)
     receivedFrame->mInfo.mRxInfo.mRssi = power;
     receivedFrame->mInfo.mRxInfo.mLqi  = lqi;
     receivedFrame->mChannel            = nrf_802154_channel_get();
-    if (otPlatRadioGetPromiscuous(sInstance))
-    {
-        uint64_t timestamp                 = nrf5AlarmGetCurrentTime();
-        receivedFrame->mInfo.mRxInfo.mMsec = timestamp / US_PER_MS;
-        receivedFrame->mInfo.mRxInfo.mUsec = timestamp - receivedFrame->mInfo.mRxInfo.mMsec * US_PER_MS;
-    }
+#if OPENTHREAD_ENABLE_RAW_LINK_API
+    uint64_t timestamp                 = nrf5AlarmGetCurrentTime();
+    receivedFrame->mInfo.mRxInfo.mMsec = timestamp / US_PER_MS;
+    receivedFrame->mInfo.mRxInfo.mUsec = timestamp - receivedFrame->mInfo.mRxInfo.mMsec * US_PER_MS;
+#endif
 #if OPENTHREAD_CONFIG_ENABLE_TIME_SYNC
     // Get the timestamp when the SFD was received.
     uint32_t offset =
@@ -717,7 +719,7 @@ void nrf_802154_received_raw(uint8_t *p_data, int8_t power, uint8_t lqi)
     receivedFrame->mIeInfo->mTimestamp = otPlatTimeGet() - offset;
 #endif
 
-    otSysEventSignalPending();
+    PlatformEventSignalPending();
 }
 
 void nrf_802154_receive_failed(nrf_802154_rx_error_t error)
@@ -800,8 +802,7 @@ void nrf_802154_energy_detected(uint8_t result)
 
 int8_t otPlatRadioGetReceiveSensitivity(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aInstance);
-
+    (void)aInstance;
     return NRF52840_RECEIVE_SENSITIVITY;
 }
 

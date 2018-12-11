@@ -31,7 +31,7 @@
 #include <string.h>
 
 #include <hal/nrf_temp.h>
-#include <utils/code_utils.h>
+#include <code_utils.h>
 
 #include "platform-nrf5.h"
 #include <platform/temperature/nrf_802154_temperature.h>
@@ -50,7 +50,7 @@ __STATIC_INLINE void dataReadyEventClear(void)
 {
     NRF_TEMP->EVENTS_DATARDY = 0;
     volatile uint32_t dummy  = NRF_TEMP->EVENTS_DATARDY;
-    OT_UNUSED_VARIABLE(dummy);
+    (void)dummy;
 }
 #endif
 

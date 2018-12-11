@@ -44,6 +44,7 @@
 #include "platform-softdevice.h"
 #include "platform-nrf5.h"
 
+#include <openthread/types.h>
 #include <nrf_raal_softdevice.h>
 
 otError nrf5SdErrorToOtError(uint32_t aSdError)
@@ -82,12 +83,13 @@ otError nrf5SdErrorToOtError(uint32_t aSdError)
     }
 }
 
-void otSysSoftdeviceSocEvtHandler(uint32_t aEvtId)
+void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId)
 {
+    // nrf5SdSocFlashProcess(aEvtId);
     nrf_raal_softdevice_soc_evt_handler(aEvtId);
 }
 
-void otSysSoftdeviceRaalConfig(const otSysSoftdeviceRaalConfigParams *aConfig)
+void PlatformSoftdeviceRaalConfig(const PlatformSoftdeviceRaalConfigParams *aConfig)
 {
     nrf_raal_softdevice_cfg_t cfg;
     memset(&cfg, 0, sizeof(cfg));

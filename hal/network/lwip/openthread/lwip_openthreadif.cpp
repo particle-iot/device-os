@@ -269,11 +269,7 @@ err_t OpenThreadNetif::outputIp6Cb(netif* netif, pbuf* p, const ip6_addr_t* addr
 
     // LOG(TRACE, "OpenThreadNetif(%x) output() %lu bytes (%s -> %s)", self, p->tot_len, tmp, tmp1);
 
-    otMessageSettings settings = {};
-    settings.mLinkSecurityEnabled = 1;
-    settings.mPriority = OT_MESSAGE_PRIORITY_NORMAL;
-
-    auto msg = otIp6NewMessage(self->ot_, &settings);
+    auto msg = otIp6NewMessage(self->ot_, true);
     if (msg == nullptr) {
         LOG(TRACE, "out of memory");
         return ERR_MEM;

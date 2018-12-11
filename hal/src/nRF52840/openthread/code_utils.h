@@ -28,37 +28,47 @@
 
 /**
  * @file
- *   This file includes the common SoftDevice headers.
- *
+ *   This file includes macros for validating runtime conditions.
  */
 
-#ifndef SOFTDEVICE_H_
-#define SOFTDEVICE_H_
+#ifndef CODE_UTILS_H
+#define CODE_UTILS_H
 
-#if defined(__GNUC__)
-    _Pragma("GCC diagnostic push")
-    _Pragma("GCC diagnostic ignored \"-Wreturn-type\"")
-    _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")
-    _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
-#endif
+/**
+ *  This checks for the specified condition, which is expected to
+ *  commonly be true, and branches to the local label 'exit' if the
+ *  condition is false.
+ *
+ *  @param[in]  aCondition  A Boolean expression to be evaluated.
+ *
+ */
+#define otEXPECT(aCondition) \
+    do                       \
+    {                        \
+        if (!(aCondition))   \
+        {                    \
+            goto exit;       \
+        }                    \
+    } while (0)
 
-#include <nrf_svc.h>
-#include <nrf_sdm.h>
-#include <nrf_soc.h>
-#include <nrf_nvic.h>
+/**
+ *  This checks for the specified condition, which is expected to
+ *  commonly be true, and both executes @p anAction and branches to
+ *  the local label 'exit' if the condition is false.
+ *
+ *  @param[in]  aCondition  A Boolean expression to be evaluated.
+ *  @param[in]  aAction     An expression or block to execute when the
+ *                          assertion fails.
+ *
+ */
+#define otEXPECT_ACTION(aCondition, aAction) \
+    do                                       \
+    {                                        \
+        if (!(aCondition))                   \
+        {                                    \
+            aAction;                         \
+            goto exit;                       \
+        }                                    \
+    } while (0)
 
-#if defined(__GNUC__)
-    _Pragma("GCC diagnostic pop")
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif  // SOFTDEVICE_H_
+#endif // CODE_UTILS_H
