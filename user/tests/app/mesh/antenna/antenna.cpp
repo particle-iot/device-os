@@ -35,6 +35,13 @@ SYSTEM_MODE(AUTOMATIC);
 
 Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL);
 
+#if (PLATFORM_ID == PLATFORM_ARGON)
+TCPServer server = TCPServer(23);
+TCPClient client;
+#endif
+
+static bool on = false;
+
 static void toggle_antenna(void) {
     static bool extAnt = false;
 
@@ -73,8 +80,6 @@ static void toggle_antenna(void) {
 
 
 void meshHandler(const char *event, const char *data) {
-    static bool on = false;
-
 #if (PLATFORM_ID == PLATFORM_XENON)
     if (!strcmp("mesh-xenon", event)) {
 #elif (PLATFORM_ID == PLATFORM_ARGON)
@@ -82,11 +87,11 @@ void meshHandler(const char *event, const char *data) {
 #endif
         if (!on) {
             on = true;
-            digitalWrite(RGB_RED, LOW);
+            digitalWrite(RGB_GREEN, LOW);
         }
         else {
             on = false;
-            digitalWrite(RGB_RED, HIGH);
+            digitalWrite(RGB_GREEN, HIGH);
         }
     }
 }
@@ -121,8 +126,12 @@ void setup() {
 				WiFi.connect();
 				while (!WiFi.ready());
             }
-            oled.println("Wi-Fi connected.");
         }
+    }
+
+    if (WiFi.ready()) {
+        oled.println("Wi-Fi connected.");
+        oled.println(WiFi.localIP());
     }
 #endif
 
@@ -138,12 +147,14 @@ void setup() {
 #elif (PLATFORM_ID == PLATFORM_ARGON)
     Mesh.subscribe("mesh-argon", meshHandler);
 #endif
+
+#if (PLATFORM_ID == PLATFORM_ARGON)
+    server.begin();
+#endif
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop() {
-    static bool on = false;
-
     //This will run in a loop
     if (digitalRead(SETUP_BTN) == LOW) {
         delay(100);
@@ -173,6 +184,17 @@ void loop() {
         }
     }
 
+#if (PLATFORM_ID == PLATFORM_ARGON)
+    if (!client.connected()) {
+        // if no client is yet connected, check for a new connection
+        client = server.available();
+    }
+    else {
+        server.println("Hello from Particle!");
+        delay(200);
+    }
+#endif
+
     // Indicate that whether the system is not blocked.
     static uint32_t pre_millis;
     uint32_t curr_millis = millis();
@@ -185,7 +207,7 @@ void loop() {
         if (Mesh.ready()) {
         	int8_t meshRssi = otPlatRadioGetRssi(ot_get_instance());
             if (meshRssi < 0) {
-                oled.printf("RSSI: -%d dBm\r\n", -meshRssi);
+                oled.printf("Mesh: -%d dBm\r\n", -meshRssi);
             }
             else {
                 oled.printf("ERROR: %d\r\n", meshRssi);
@@ -196,7 +218,7 @@ void loop() {
         if (WiFi.ready()) {
             int rssi = WiFi.RSSI();
             if (rssi < 0) {
-                oled.printf("RSSI: -%d dBm\r\n", -rssi);
+                oled.printf("WiFi: -%d dBm\r\n", -rssi);
             }
             else {
                 oled.printf("ERROR: %d\r\n", rssi);
