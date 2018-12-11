@@ -61,6 +61,12 @@ const auto BLE_OBSERVER_PRIO = 3;
 // An application-specific tag identifying the SoftDevice BLE configuration (can't be 0)
 const auto CONN_CFG_TAG = 1;
 
+// Default MTU size
+const auto DEFAULT_MTU = 23;
+
+// Default data length size
+const auto DEFAULT_DATA_LENGTH = 27;
+
 // Advertising module instance
 BLE_ADVERTISING_DEF(g_advert);
 
@@ -538,8 +544,14 @@ int initGatt() {
     if (ret != NRF_SUCCESS) {
         return halError(ret);
     }
+    // Set data length size
+    ret = nrf_ble_gatt_data_length_set(&g_gatt, BLE_CONN_HANDLE_INVALID, DEFAULT_DATA_LENGTH);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "nrf_ble_gatt_data_length_set() failed: %u", (unsigned)ret);
+        return halError(ret);
+    }
     // Set MTU size
-    ret = nrf_ble_gatt_att_mtu_periph_set(&g_gatt, NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
+    ret = nrf_ble_gatt_att_mtu_periph_set(&g_gatt, DEFAULT_MTU);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "nrf_ble_gatt_att_mtu_periph_set() failed: %u", (unsigned)ret);
         return halError(ret);
