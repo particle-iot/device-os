@@ -25,12 +25,11 @@
 
 #include <openthread-core-config.h>
 
-#include <openthread/openthread.h>
 #include <openthread/thread.h>
 #include <openthread/instance.h>
 #include <openthread/commissioner.h>
 #include <openthread/joiner.h>
-#include <openthread/platform.h>
+#include <openthread-system.h>
 #include <openthread/platform/settings.h>
 #include <mutex>
 

@@ -204,21 +204,21 @@ int notifyNetworkUpdated(int flags) {
     }
     // Extended PAN ID
     if (flags & NetworkInfo::XPANID_VALID) {
-        const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+        const auto extPanId = otThreadGetExtendedPanId(thread);
         if (!extPanId) {
             LOG(ERROR, "Unable to retrieve thread XPAN ID");
             return SYSTEM_ERROR_UNKNOWN;
         }
-        memcpy(ni.xpanid, extPanId, sizeof(ni.xpanid));
+        memcpy(ni.xpanid, extPanId->m8, sizeof(ni.xpanid));
     }
     // Mesh-local prefix
     if (flags & NetworkInfo::ON_MESH_PREFIX_VALID) {
-        const uint8_t* prefix = otThreadGetMeshLocalPrefix(thread);
+        const auto prefix = otThreadGetMeshLocalPrefix(thread);
         if (!prefix) {
             LOG(ERROR, "Unable to retrieve thread network local prefix");
             return SYSTEM_ERROR_UNKNOWN;
         }
-        memcpy(ni.on_mesh_prefix, prefix, 8);
+        memcpy(ni.on_mesh_prefix, prefix->m8, 8);
     }
     ni.update.size = sizeof(ni);
     ni.flags = flags;
@@ -352,7 +352,7 @@ int auth(ctrl_request* req) {
     }
     // Get network name, extended PAN ID and current PSKc
     const char* name = otThreadGetNetworkName(thread);
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    const auto extPanId = otThreadGetExtendedPanId(thread);
     const uint8_t* curPskc = otThreadGetPSKc(thread);
     if (!name || !extPanId || !curPskc) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -477,28 +477,31 @@ int createNetwork(ctrl_request* req) {
     } while (panId == 0xffff || actScan.panIds.contains(panId));
     CHECK_THREAD(otLinkSetPanId(thread, panId));
     // Generate extended PAN ID
-    uint64_t extPanId = 0;
+    otExtendedPanId extPanId = {};
     do {
-        extPanId = rand.gen<uint64_t>();
-    } while (actScan.extPanIds.contains(extPanId));
+        rand.gen((char*)extPanId.m8, OT_EXT_PAN_ID_SIZE);
+    } while (actScan.extPanIds.contains(*((uint64_t*)extPanId.m8)));
     static_assert(sizeof(extPanId) == OT_EXT_PAN_ID_SIZE, "");
-    CHECK_THREAD(otThreadSetExtendedPanId(thread, (const uint8_t*)&extPanId));
+    CHECK_THREAD(otThreadSetExtendedPanId(thread, &extPanId));
     // Set network name
     CHECK_THREAD(otThreadSetNetworkName(thread, dName.data));
     // Generate mesh-local prefix (see section 3 of RFC 4193)
-    uint8_t prefix[OT_MESH_LOCAL_PREFIX_SIZE] = {
+    otMeshLocalPrefix prefix = {
+        .m8 = {
             0xfd, // Prefix, L
             0x00, 0x00, 0x00, 0x00, 0x00, // Global ID
-            0x00, 0x00 }; // Subnet ID
-    rand.gen((char*)prefix + 1, 5); // Generate global ID
-    CHECK_THREAD(otThreadSetMeshLocalPrefix(thread, prefix));
+            0x00, 0x00 // Subnet ID
+        }
+    };
+    rand.gen((char*)prefix.m8 + 1, 5); // Generate global ID
+    CHECK_THREAD(otThreadSetMeshLocalPrefix(thread, &prefix));
     // Generate master key
     otMasterKey key = {};
     rand.genSecure((char*)&key, sizeof(key));
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
     // Set PSKc
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
-    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, (const uint8_t*)&extPanId, pskc));
+    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, &extPanId, pskc));
     CHECK_THREAD(otThreadSetPSKc(thread, pskc));
     CHECK(threadSetNetworkId(thread, dId.data ? dId.data : ""));
     // Enable Thread
@@ -512,8 +515,8 @@ int createNetwork(ctrl_request* req) {
         LOG(ERROR, "Unable to notify network change %d", notifyResult);
     }
     // Encode a reply
-    char extPanIdStr[sizeof(extPanId) * 2] = {};
-    bytes2hexbuf_lower_case((const uint8_t*)&extPanId, sizeof(extPanId), extPanIdStr);
+    char extPanIdStr[OT_EXT_PAN_ID_SIZE * 2] = {};
+    bytes2hexbuf_lower_case(extPanId.m8, OT_EXT_PAN_ID_SIZE, extPanIdStr);
     PB(CreateNetworkReply) pbRep = {};
     EncodedString eName(&pbRep.network.name, dName.data, dName.size);
     EncodedString eExtPanId(&pbRep.network.ext_pan_id, extPanIdStr, sizeof(extPanIdStr));
@@ -804,12 +807,12 @@ int getNetworkInfo(ctrl_request* req) {
     // PAN ID
     const otPanId panId = otLinkGetPanId(thread);
     // Extended PAN ID
-    const uint8_t* extPanId = otThreadGetExtendedPanId(thread);
+    const auto extPanId = otThreadGetExtendedPanId(thread);
     if (!extPanId) {
         return SYSTEM_ERROR_UNKNOWN;
     }
     char extPanIdStr[OT_EXT_PAN_ID_SIZE * 2] = {};
-    bytes2hexbuf_lower_case(extPanId, OT_EXT_PAN_ID_SIZE, extPanIdStr);
+    bytes2hexbuf_lower_case(extPanId->m8, OT_EXT_PAN_ID_SIZE, extPanIdStr);
     // Encode a reply
     PB(GetNetworkInfoReply) pbRep = {};
     EncodedString eName(&pbRep.network.name, name, strlen(name));
