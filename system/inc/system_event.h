@@ -122,7 +122,7 @@ void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
 
 
 /**
- * Notifies all subscribers about an event.
+ * Notifies all subscribers about an event. It is safe to call this function from an ISR.
  * @param event
  * @param data
  * @param pointer
