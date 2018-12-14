@@ -1,5 +1,7 @@
 #include "service_debug.h"
 #include <stdlib.h>
+#include <assert.h>
+#include "delay_hal.h"
 
 /**
  * Shared newlib implementation for stm32 devices. (This is probably suitable for all embedded devices on gcc.)
@@ -57,6 +59,11 @@ void _exit(int status) {
     }
 }
 
+void __assert_func(const char *file, int line, const char* func, const char* expr) {
+    LOG(ERROR, "Assertion failed: %s:%d %s (%s)", file, line, func, expr);
+    PANIC(AssertionFailure, expr);
+    while(1);
+}
 
 int _write(int file, char *ptr, int len) { return 0; }
 int _read(int file, char *ptr, int len) { return 0; }
