@@ -199,6 +199,9 @@ typedef enum Feature_Flag {
 
 static Last_Reset_Info last_reset_info = { RESET_REASON_NONE, 0 };
 
+static volatile uint32_t feature_flags = 0;
+static volatile bool feature_flags_loaded = false;
+
 /* Private function prototypes -----------------------------------------------*/
 extern uint32_t HAL_Interrupts_Pin_IRQn(pin_t pin);
 
@@ -291,18 +294,26 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
             return result;
         }
     }
+    feature_flags = flags;
+    feature_flags_loaded = true;
     return 0;
 }
 
 static int Read_Feature_Flag(uint32_t flag, bool* value)
 {
-    if (HAL_IsISR()) {
-        return -1; // DCT cannot be accessed from an ISR
-    }
     uint32_t flags = 0;
-    const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
-    if (result != 0) {
-        return result;
+    if (!feature_flags_loaded) {
+        if (HAL_IsISR()) {
+            return -1; // DCT cannot be accessed from an ISR
+        }
+        const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+        if (result != 0) {
+            return result;
+        }
+        feature_flags = flags;
+        feature_flags_loaded = true;
+    } else {
+        flags = feature_flags;
     }
     *value = flags & flag;
     return 0;
