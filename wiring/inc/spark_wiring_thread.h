@@ -81,6 +81,8 @@ private:
         }
     };
 
+    // The thread context is allocated dynamically in order to keep all pointers to it valid, even if
+    // the original wrapper object has been moved and subsequently destroyed
     std::unique_ptr<Data> d_;
 
 public:
