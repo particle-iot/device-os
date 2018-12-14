@@ -918,7 +918,7 @@ int Internet_Test(void)
     DEBUG("socketed testSocket=%d", testSocket);
 
 
-    if (testSocket < 0)
+    if (!socket_handle_valid(testSocket))
     {
         return -1;
     }
