@@ -317,12 +317,17 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     else if ('m' == c)
     {
         print("Your device MAC address is\r\n");
+    #if !HAL_PLATFORM_WIFI    
         IPConfig config = {};
         auto conf = static_cast<const IPConfig*>(network_config(0, 0, 0));
         if (conf && conf->size) {
             memcpy(&config, conf, conf->size);
         }
         const uint8_t* addr = config.nw.uaMacAddr;
+    #else
+        auto conf = static_cast<const IPConfig*>(network_config(NETWORK_INTERFACE_WIFI_STA, 0, 0));
+        const uint8_t* addr = conf->nw.uaMacAddr;
+    #endif
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)
         {
