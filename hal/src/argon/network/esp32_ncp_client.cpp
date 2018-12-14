@@ -287,6 +287,10 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     }
     // FIXME: Find a better way to reset the client state
     off();
+    // NOTE: we need to ensure that we enable the client again
+    // after it was asynchronously disabled due to muxer
+    // stopping asynchronously
+    enable();
     CHECK(on());
     return 0;
 }
