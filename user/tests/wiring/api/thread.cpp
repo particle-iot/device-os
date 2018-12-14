@@ -17,8 +17,10 @@ test(api_thread) {
     Thread t;
     API_COMPILE(t.dispose());
     API_COMPILE(t.join());
-    API_COMPILE(t.is_valid());
-    API_COMPILE(t.is_current());
+    API_COMPILE(t.isValid());
+    API_COMPILE(t.isCurrent());
+    API_COMPILE(t.is_valid()); // Deprecated
+    API_COMPILE(t.is_current()); // Deprecated
     API_COMPILE(t = Thread("test", thread_fn));
 }
 
