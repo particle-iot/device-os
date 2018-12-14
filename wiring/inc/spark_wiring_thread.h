@@ -31,6 +31,7 @@
 #include <mutex>
 #include <functional>
 #include <type_traits>
+#include <memory>
 
 typedef std::function<os_thread_return_t(void)> wiring_thread_fn_t;
 
@@ -63,32 +64,77 @@ public:
 class Thread
 {
 private:
-    mutable os_thread_t handle = OS_THREAD_INVALID_HANDLE;
-    mutable wiring_thread_fn_t *wrapper = NULL;
-    os_thread_fn_t func_ = NULL;
-    void* func_param_ = NULL;
-    bool exited_ = false;
+    struct Data {
+        std::unique_ptr<wiring_thread_fn_t> wrapper;
+        os_thread_t handle;
+        os_thread_fn_t func;
+        void* func_param;
+        volatile bool started;
+        volatile bool exited;
+
+        Data() :
+            handle(OS_THREAD_INVALID_HANDLE),
+            func(nullptr),
+            func_param(nullptr),
+            started(false),
+            exited(false) {
+        }
+    };
+
+    // The thread context is allocated dynamically in order to keep all pointers to it valid, even if
+    // the original wrapper object has been moved and subsequently destroyed
+    std::unique_ptr<Data> d_;
 
 public:
-    Thread() : handle(OS_THREAD_INVALID_HANDLE) {}
+    Thread()
+    {
+    }
 
     Thread(const char* name, os_thread_fn_t function, void* function_param=NULL,
             os_thread_prio_t priority=OS_THREAD_PRIORITY_DEFAULT, size_t stack_size=OS_THREAD_STACK_SIZE_DEFAULT)
-        : wrapper(NULL),
-          func_(function),
-          func_param_(function_param)
+        : d_(new(std::nothrow) Data)
     {
-        os_thread_create(&handle, name, priority, &Thread::run, this, stack_size);
+        if (!d_) {
+            goto error;
+        }
+        d_->func = function;
+        d_->func_param = function_param;
+        if (os_thread_create(&d_->handle, name, priority, &Thread::run, d_.get(), stack_size) != 0) {
+            goto error;
+        }
+        while (!d_->started) {
+            os_thread_yield();
+        }
+        return;
+    error:
+        d_.reset();
     }
 
     Thread(const char *name, wiring_thread_fn_t function,
             os_thread_prio_t priority=OS_THREAD_PRIORITY_DEFAULT, size_t stack_size=OS_THREAD_STACK_SIZE_DEFAULT)
-        : handle(OS_THREAD_INVALID_HANDLE), wrapper(NULL)
+        : d_(new(std::nothrow) Data)
     {
-        if(function) {
-            wrapper = new wiring_thread_fn_t(function);
-            os_thread_create(&handle, name, priority, &Thread::run, this, stack_size);
+        if (!d_) {
+            goto error;
         }
+        d_->wrapper.reset(new(std::nothrow) wiring_thread_fn_t(std::move(function)));
+        if (!d_->wrapper) {
+            goto error;
+        }
+        if (os_thread_create(&d_->handle, name, priority, &Thread::run, d_.get(), stack_size) != 0) {
+            goto error;
+        }
+        while (!d_->started) {
+            os_thread_yield();
+        }
+        return;
+    error:
+        d_.reset();
+    }
+
+    Thread(Thread&& thread)
+        : d_(std::move(thread.d_))
+    {
     }
 
     ~Thread()
@@ -98,72 +144,70 @@ public:
 
     void dispose()
     {
-        if (!is_valid())
+        if (!isValid())
             return;
 
         // We shouldn't dispose of current thread
-        if (is_current())
+        if (isCurrent())
             return;
 
-        if (!exited_) {
+        if (!d_->exited) {
             join();
         }
 
-        if (wrapper) {
-            delete wrapper;
-            wrapper = NULL;
-        }
+        os_thread_cleanup(d_->handle);
 
-        os_thread_cleanup(handle);
-        handle = OS_THREAD_INVALID_HANDLE;
+        d_.reset();
     }
 
     bool join()
     {
-        return is_valid() && os_thread_join(handle)==0;
+        return isValid() && os_thread_join(d_->handle)==0;
     }
 
     bool cancel()
     {
-        return is_valid() && os_thread_exit(handle)==0;
+        return isValid() && os_thread_exit(d_->handle)==0;
     }
 
-    bool is_valid()
+    bool is_valid() // Deprecated
+    {
+        return isValid();
+    }
+
+    bool isValid() const
     {
         // TODO should this also check xTaskIsTaskFinished as well?
-        return handle!=OS_THREAD_INVALID_HANDLE;
+        return (bool)d_;
     }
 
-    bool is_current()
+    bool is_current() // Deprecated
     {
-        return os_thread_is_current(handle);
+        return isCurrent();
     }
 
-    Thread& operator = (const Thread& rhs)
+    bool isCurrent() const
     {
-        if (this != &rhs)
-        {
-            this->handle = rhs.handle;
-            this->wrapper = rhs.wrapper;
-            this->func_ = rhs.func_;
-            this->func_param_ = rhs.func_param_;
-            this->exited_ = rhs.exited_;
-            rhs.handle = OS_THREAD_INVALID_HANDLE;
-            rhs.wrapper = NULL;
-        }
+        return isValid() && os_thread_is_current(d_->handle);
+    }
+
+    Thread& operator=(Thread&& thread)
+    {
+        d_ = std::move(thread.d_);
         return *this;
     }
 
 private:
 
     static os_thread_return_t run(void* param) {
-        Thread* th = (Thread*)param;
-        if (th->func_) {
-            (*(th->func_))(th->func_param_);
+        Data* th = (Data*)param;
+        th->started = true;
+        if (th->func) {
+            (*(th->func))(th->func_param);
         } else if (th->wrapper) {
             (*(th->wrapper))();
         }
-        th->exited_ = true;
+        th->exited = true;
         os_thread_exit(nullptr);
     }
 };

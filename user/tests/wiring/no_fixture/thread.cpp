@@ -6,11 +6,12 @@
 
 static uint32_t s_ram_free_before = 0;
 
+Thread testThread;
 test(THREAD_01_creation)
 {
-	s_ram_free_before = System.freeMemory();
+    s_ram_free_before = System.freeMemory();
     volatile bool threadRan = false;
-    Thread testThread = Thread("test", [&]() {
+    testThread = Thread("test", [&]() {
         threadRan = true;
     }, OS_THREAD_PRIORITY_DEFAULT, 4096);
 
