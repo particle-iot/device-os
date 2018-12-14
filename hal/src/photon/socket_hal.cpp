@@ -89,7 +89,10 @@ struct tcp_packet_t
      */
     unsigned offset;
 
-    tcp_packet_t() {}
+    tcp_packet_t() :
+            packet(nullptr),
+            offset(0) {
+    }
 
     ~tcp_packet_t() {
         dispose_packet();
@@ -116,7 +119,7 @@ struct tcp_socket_t : public wiced_tcp_socket_t {
 
     tcp_socket_t() : open(false), closed_externally(false) {}
 
-    ~tcp_socket_t() { wiced_tcp_delete_socket(this); }
+    ~tcp_socket_t() {}
 
     void connected() { open = true; }
 
@@ -139,15 +142,20 @@ struct tcp_socket_t : public wiced_tcp_socket_t {
             wiced_tcp_disconnect(this);
             open = false;
         }
+        wiced_tcp_delete_socket(this);
+        memset(this, 0, sizeof(wiced_tcp_socket_t));
+        packet.dispose_packet();
     }
 };
 
 struct udp_socket_t : wiced_udp_socket_t
 {
-    ~udp_socket_t() { wiced_udp_delete_socket(this); }
+    ~udp_socket_t() {}
 
     void close()
     {
+        wiced_udp_delete_socket(this);
+        memset(this, 0, sizeof(wiced_udp_socket_t));
     }
 };
 
@@ -171,7 +179,6 @@ public:
         this->server = server;
         this->closed = false;
         this->closed_externally = false;
-        memset(&packet, 0, sizeof(packet));
     }
 
     wiced_tcp_socket_t* get_socket() { return socket; }
@@ -314,6 +321,7 @@ struct tcp_server_t : public wiced_tcp_server_t
             }
         }
         wiced_tcp_server_stop(this);
+        memset(this, 0, sizeof(wiced_tcp_server_t));
         os_mutex_recursive_unlock(accept_lock);
     }
 
