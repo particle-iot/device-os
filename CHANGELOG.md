@@ -1,3 +1,17 @@
+## 0.8.0-rc.27
+
+### BUGFIXES
+- [Argon] Sucessful update of the NCP firmware no longer results in `SYSTEM_ERROR_INVALID_STATE` (#1645)
+- [Argon] `m` command in listening mode correctly reports WiFi MAC address (#1638)
+
+### ENHANCEMENTS
+- [Gen 3] Added newlib `__assert_func()` implementation that logs the assertion failure and delegates to `AssertionFailure` panic handler (#1636)
+- [Gen 3] OpenThread upgraded to 2018/12/17 master (#1643)
+- [Gen 3] Added a workaround for RTC / TIMER negative drift issue in Nordic 802.15.4 radio driver (#1643)
+- [Gen 3] Normalized (lowered) IRQ priorities to a safe 5-7 range (#1643)
+- [Gen 3] `timer_hal` and `rtc_hal` migrated to use a single stable monotonic 64-bit microsecond counter provided by OpenThread platform-specific code using the RTC peripheral (#1643)
+- [Gen 3] `HAL_disable_irq()` / `HAL_enable_irq()` implementation changed to use `__set_BASEPRI()` instead of `sd_nvic_critical_region_enter()` / `sd_nvic_critical_region_exit()` to avoid assertion failures in Nordic 802.15.4 radio driver
+
 ## 0.8.0-rc.26
 
 ### BUGFIXES
