@@ -147,9 +147,7 @@ int Esp32NcpNetif::queryMacAddress() {
 void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
     unsigned int timeout = 100;
-    auto r = self->queryMacAddress();
-    if (r) // Failed to query MAC Address
-        return;
+    self->queryMacAddress();
     self->wifiMan_->ncpClient()->off();
     while(!self->exit_) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
