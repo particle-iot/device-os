@@ -57,6 +57,12 @@
 #include <mutex>
 #include <cstdlib>
 
+// FIXME: OT_RADIO_2P4GHZ_OQPSK_CHANNEL_MASK should be used instead
+// once https://github.com/openthread/openthread/pull/3381 is merged
+#ifndef OT_CHANNEL_ALL
+#define OT_CHANNEL_ALL (0xffffffff)
+#endif // OT_CHANNEL_ALL
+
 #define CHECK_THREAD(_expr) \
         do { \
             const auto ret = _expr; \

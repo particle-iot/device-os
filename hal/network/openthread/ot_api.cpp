@@ -62,7 +62,9 @@ void ot_process(void* arg) {
         os_semaphore_take(s_threadSem, CONCURRENT_WAIT_FOREVER, false);
         {
             ThreadLock lk;
-            otTaskletsProcess(thread);
+            while (otTaskletsArePending(thread)) {
+                otTaskletsProcess(thread);
+            }
             otSysProcessDrivers(thread);
         }
     }

@@ -23,7 +23,6 @@
 #include <lwip/pbuf.h>
 #include <openthread/message.h>
 #include <openthread/ip6.h>
-#include <openthread/dhcp6_client.h>
 #include <openthread/netdata.h>
 #include "basenetif.h"
 
