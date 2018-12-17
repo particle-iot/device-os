@@ -129,7 +129,7 @@ void otSysInit(int argc, char *argv[])
         .timeslotMaxLength  = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_MAX_LENGTH,
         .timeslotAllocIters = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_ALLOC_ITERS,
         .timeslotSafeMargin = PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_SAFE_MARGIN,
-        .lfClkAccuracyPpm   = 20
+        .lfClkAccuracyPpm   = PLATFORM_SOFTDEVICE_RAAL_DEFAULT_LF_CLK_ACCURACY_PPM
     };
     otSysSoftdeviceRaalConfig(&config);
 #endif /* SOFTDEVICE_PRESENT */
