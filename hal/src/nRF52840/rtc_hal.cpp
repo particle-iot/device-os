@@ -50,8 +50,12 @@ void HAL_RTC_Set_UnixTime(time_t value) {
 }
 
 time_t HAL_RTC_Get_UnixTime(void) {
+    int st = HAL_disable_irq();
+    auto unix_time_base = s_unix_time_base;
+    auto unix_time_base_ms = s_unix_time_base_ms;
+    HAL_enable_irq(st);
     uint64_t ms = hal_timer_millis(nullptr);
-    return s_unix_time_base + (time_t)((ms - s_unix_time_base_ms) / 1000);
+    return unix_time_base + (time_t)((ms - unix_time_base_ms) / 1000);
 }
 
 void HAL_RTC_Set_UnixAlarm(time_t value) {
