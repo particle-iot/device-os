@@ -15,24 +15,21 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
-#include "hw_config.h"
-#include "core_hal.h"
 #include "timer_hal.h"
-#include "syshealth_hal.h"
+
+// NOTE: hal_timer_init(), hal_timer_millis() and hal_timer_micros() are
+// implemented in OpenThread platform code (alarm.c). We are re-using alarm implementation
+// necessary for OpenThread internal functionality for our internal needs.
+// It already provides a proper 64-bit stable monotonic microsecond counter, so we use that
+// to derive 64-bit milliseconds out of it, as well as use it in rtc HAL.
 
 system_tick_t HAL_Timer_Get_Micro_Seconds(void)
 {
-    return GetSystem1UsTick();
+    return (system_tick_t)hal_timer_micros(nullptr);
 }
 
 system_tick_t HAL_Timer_Get_Milli_Seconds(void)
 {
-    return GetSystem1MsTick();
-}
-
-uint64_t hal_timer_millis(void* reserved)
-{
-    return GetSystem1MsTick64();
+    return (system_tick_t)hal_timer_millis(nullptr);
 }

@@ -15,17 +15,18 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "nrf52840.h"
-#include "nrf_nvic.h"
+#include <nrf52840.h>
+#include <nrf_nvic.h>
+#include <app_util_platform.h>
 
-int HAL_disable_irq()
-{
-    uint8_t st = 0;
-    sd_nvic_critical_region_enter(&st);
+int HAL_disable_irq() {
+    // We are blocking any interrupts with priorities >= 2, without
+    // affecting SoftDevice interrupts which run with priorities 0 and 1.
+    int st = __get_BASEPRI();
+    __set_BASEPRI(APP_IRQ_PRIORITY_HIGHEST << (8 - __NVIC_PRIO_BITS));
     return st;
 }
 
 void HAL_enable_irq(int is) {
-    uint8_t st = (uint8_t)is;
-    sd_nvic_critical_region_exit(st);
+    __set_BASEPRI(is);
 }

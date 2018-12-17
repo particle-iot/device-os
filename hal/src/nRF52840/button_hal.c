@@ -25,7 +25,7 @@
 #include "logging.h"
 
 #define TIMERx_ID               2
-#define TIMERx_IRQ_PRIORITY     APP_IRQ_PRIORITY_MID
+#define TIMERx_IRQ_PRIORITY     _PRIO_SD_LOWEST
 
 // 16bit counter, 125KHz clock, interrupt interval: 10ms
 #define TIMERx_BIT_WIDTH        NRF_TIMER_BIT_WIDTH_16
@@ -53,13 +53,13 @@ static void mode_button_reset(uint16_t button)
 {
     HAL_Buttons[button].debounce_time = 0x00;
 
-    if (!HAL_Buttons[BUTTON1].active && !HAL_Buttons[BUTTON1_MIRROR].active) 
+    if (!HAL_Buttons[BUTTON1].active && !HAL_Buttons[BUTTON1_MIRROR].active)
     {
         nrfx_timer_disable(&m_button_timer);
         nrfx_timer_clear(&m_button_timer);
     }
 
-    HAL_Notify_Button_State((Button_TypeDef)button, false); 
+    HAL_Notify_Button_State((Button_TypeDef)button, false);
 
     /* Enable Button Interrupt */
     BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
@@ -74,7 +74,7 @@ void button_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
             if (!HAL_Buttons[BUTTON1].debounce_time)
             {
                 HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-                HAL_Notify_Button_State(BUTTON1, true); 
+                HAL_Notify_Button_State(BUTTON1, true);
             }
             HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
         }
@@ -85,7 +85,7 @@ void button_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
         }
 
         if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active &&
-            BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) 
+            BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0))
         {
             if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time)
             {
@@ -138,10 +138,10 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
     {
         nrfx_timer_config_t timer_cfg = {
             .frequency          = TIMERx_FREQUENCY,
-            .mode               = NRF_TIMER_MODE_TIMER,          
+            .mode               = NRF_TIMER_MODE_TIMER,
             .bit_width          = TIMERx_BIT_WIDTH,
-            .interrupt_priority = TIMERx_IRQ_PRIORITY,                    
-            .p_context          = NULL                                                       
+            .interrupt_priority = TIMERx_IRQ_PRIORITY,
+            .p_context          = NULL
         };
         SPARK_ASSERT(nrfx_timer_init(&m_button_timer, &timer_cfg, button_timer_event_handler) == NRF_SUCCESS);
 
@@ -162,7 +162,7 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
 
     if (NewState == ENABLE)
     {
-        HAL_Interrupts_Attach(HAL_Buttons[Button].pin, BUTTON_Interrupt_Handler, (void *)((int)Button), FALLING, &config); 
+        HAL_Interrupts_Attach(HAL_Buttons[Button].pin, BUTTON_Interrupt_Handler, (void *)((int)Button), FALLING, &config);
     }
     else
     {

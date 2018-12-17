@@ -182,7 +182,11 @@ void SysTick_Configuration(void) {
     sd_nvic_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);   //OLD: sd_nvic_EncodePriority(sd_nvic_GetPriorityGrouping(), 0x03, 0x00)
 }
 
-void Finish_Update() 
+void SysTick_Disable() {
+    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
+}
+
+void Finish_Update()
 {
     //Set system flag to Enable IWDG in IWDG_Reset_Enable()
     //called in bootloader to recover from corrupt firmware

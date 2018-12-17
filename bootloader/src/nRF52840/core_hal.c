@@ -34,3 +34,8 @@ void HAL_Delay_Microseconds(uint32_t uSec) {
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
     NVIC_SystemReset();
 }
+
+int HAL_Core_Enter_Panic_Mode(void* reserved) {
+    __disable_irq();
+    return 0;
+}

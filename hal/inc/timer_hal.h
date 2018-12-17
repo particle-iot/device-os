@@ -54,6 +54,21 @@ system_tick_t HAL_Timer_Get_Milli_Seconds(void);
  */
 uint64_t hal_timer_millis(void* reserved);
 
+/**
+ * Returns the number of microseconds passed since the device was last reset. This function is
+ * similar to HAL_Timer_Get_Micro_Seconds() but returns a 64-bit value.
+ */
+uint64_t hal_timer_micros(void* reserved);
+
+/**
+ * @brief      Initializes timer HAL
+ *
+ * @param      reserved  Reserved argument
+ *
+ * @return     0 in case of success, any other value in case of an error
+ */
+int hal_timer_init(void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

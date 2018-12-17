@@ -20,12 +20,11 @@ LOG_SOURCE_CATEGORY("ot.api");
 
 #include "ot_api.h"
 #include <openthread-core-config.h>
-#include <openthread/openthread.h>
 #include <openthread/thread.h>
 #include <openthread/commissioner.h>
 #include <openthread/joiner.h>
 #include <openthread/instance.h>
-#include <openthread/platform.h>
+#include <openthread-system.h>
 #include <openthread/tasklet.h>
 #include "concurrent_hal.h"
 #include "system_error.h"
@@ -63,8 +62,10 @@ void ot_process(void* arg) {
         os_semaphore_take(s_threadSem, CONCURRENT_WAIT_FOREVER, false);
         {
             ThreadLock lk;
-            otTaskletsProcess(thread);
-            PlatformProcessDrivers(thread);
+            while (otTaskletsArePending(thread)) {
+                otTaskletsProcess(thread);
+            }
+            otSysProcessDrivers(thread);
         }
     }
     os_thread_exit(nullptr);
@@ -77,7 +78,7 @@ void otTaskletsSignalPending(otInstance* instance)
     os_semaphore_give(s_threadSem, false);
 }
 
-void PlatformEventSignalPending(void)
+void otSysEventSignalPending(void)
 {
     /* May be executed from an ISR. os_semaphore_give() should be able to handle this */
     os_semaphore_give(s_threadSem, false);
@@ -94,7 +95,7 @@ int ot_init(int (*onInit)(otInstance*), void* reserved) {
         return SYSTEM_ERROR_UNKNOWN;
     }
 
-    PlatformInit(0, nullptr);
+    otSysInit(0, nullptr);
 
     otInstance* const thread = allocInstance();
     if (!thread) {

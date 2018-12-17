@@ -29,7 +29,7 @@
 #define NRFX_POWER_CONFIG_IRQ_PRIORITY 0
 
 #define NRFX_GPIOTE_ENABLED                             1
-#define GPIOTE_CONFIG_IRQ_PRIORITY                      APP_IRQ_PRIORITY_HIGH
+#define GPIOTE_CONFIG_IRQ_PRIORITY                      _PRIO_SD_LOWEST
 #define NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS      8
 
 #define NRFX_RTC_ENABLED  1
@@ -113,7 +113,7 @@
 #define NRFX_TIMER2_ENABLED     1
 
 #define USBD_ENABLED                            1
-#define USBD_CONFIG_IRQ_PRIORITY                2
+#define USBD_CONFIG_IRQ_PRIORITY                APP_IRQ_PRIORITY_LOW
 #define APP_USBD_ENABLED                        1
 #define APP_USBD_CONFIG_SELF_POWERED            1
 #define APP_USBD_CDC_ACM_ENABLED                1
@@ -124,4 +124,4 @@
                                                    // library state from the context higher than USB interrupt context.
 
 #define APP_USBD_VID                            USBD_VID_SPARK
-#define APP_USBD_PID                            USBD_PID_CDC 
+#define APP_USBD_PID                            USBD_PID_CDC

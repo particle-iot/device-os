@@ -36,14 +36,17 @@
 #define PLATFORM_SOFTDEVICE_H_
 
 #include <stdint.h>
+#include <nrf_raal_softdevice.h>
 
 /** @brief RAAL Softdevice default parameters. */
-#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_LENGTH       6400
-#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_ALLOC_ITERS  5
-#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_SAFE_MARGIN  91
-#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_TIMEOUT      6400
-#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_MAX_LENGTH   120000000
-#define PLATFORM_SOFTDEVICE_RAAL_DEFAULT_LF_CLK_ACCURACY_PPM   25
+#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_LENGTH       NRF_RAAL_TIMESLOT_DEFAULT_LENGTH
+#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_ALLOC_ITERS  NRF_RAAL_TIMESLOT_DEFAULT_ALLOC_ITERS
+#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_SAFE_MARGIN  NRF_RAAL_TIMESLOT_DEFAULT_SAFE_MARGIN
+#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_TIMEOUT      NRF_RAAL_TIMESLOT_DEFAULT_TIMEOUT
+// IMPORTANT: this is a workaround suggested by Nordic engineers
+// See https://github.com/openthread/openthread/issues/3363 for additional info
+#define PLATFORM_SOFTDEVICE_RAAL_TIMESLOT_DEFAULT_MAX_LENGTH   20000000
+#define PLATFORM_SOFTDEVICE_RAAL_DEFAULT_LF_CLK_ACCURACY_PPM   20
 
 /** @brief RAAL Softdevice configuration parameters. */
 typedef struct
@@ -54,7 +57,7 @@ typedef struct
     uint16_t timeslotAllocIters; /**< Maximum number of iteration of dividing timeslot_length by factor of 2 performed by arbiter. */
     uint16_t timeslotSafeMargin; /**< Safe margin before timeslot is finished and nrf_raal_timeslot_ended should be called in microseconds. */
     uint16_t lfClkAccuracyPpm;   /**< Clock accuracy in ppm unit. */
-} PlatformSoftdeviceRaalConfigParams;
+} otSysSoftdeviceRaalConfigParams;
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,13 +67,13 @@ extern "C" {
  * Function for processing SoftDevice SoC events.
  *
  */
-void PlatformSoftdeviceSocEvtHandler(uint32_t aEvtId);
+void otSysSoftdeviceSocEvtHandler(uint32_t aEvtId);
 
 /**
  * Function used to set non-default parameters of Softdevice RAAL.
  *
  */
-void PlatformSoftdeviceRaalConfig(const PlatformSoftdeviceRaalConfigParams *aConfig);
+void otSysSoftdeviceRaalConfig(const otSysSoftdeviceRaalConfigParams *aConfig);
 
 #ifdef __cplusplus
 }

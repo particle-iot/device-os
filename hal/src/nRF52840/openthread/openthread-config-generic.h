@@ -67,6 +67,12 @@
 /* Define to 1 if you want to enable CoAP to an application. */
 #define OPENTHREAD_ENABLE_APPLICATION_COAP 1
 
+/* Define to 1 if you want to enable CoAP Secure to an application. */
+#define OPENTHREAD_ENABLE_APPLICATION_COAP_SECURE 0
+
+/* Define to 1 to enable the border agent feature. */
+#define OPENTHREAD_ENABLE_BORDER_AGENT 0
+
 /* Define to 1 if you want to enable Border Router */
 #define OPENTHREAD_ENABLE_BORDER_ROUTER 1
 
@@ -81,6 +87,9 @@
 
 /* Define to 1 if you want to use child supervision feature */
 #define OPENTHREAD_ENABLE_CHILD_SUPERVISION 0
+
+/* Define to 1 to build CLI library. */
+#define OPENTHREAD_ENABLE_CLI 0
 
 /* Define to 1 to enable the commissioner role. */
 #define OPENTHREAD_ENABLE_COMMISSIONER 1
@@ -100,6 +109,9 @@
 /* Define to 1 to enable dtls support. */
 #define OPENTHREAD_ENABLE_DTLS 1
 
+/* Define to 1 if you want to enable ECDSA support */
+#define OPENTHREAD_ENABLE_ECDSA 0
+
 /* Define to 1 if you want to use jam detection feature */
 #define OPENTHREAD_ENABLE_JAM_DETECTION 0
 
@@ -110,7 +122,7 @@
 #define OPENTHREAD_ENABLE_LEGACY 0
 
 /* Define to 1 if you want to use MAC filter feature */
-#define OPENTHREAD_ENABLE_MAC_FILTER 1
+#define OPENTHREAD_ENABLE_MAC_FILTER 0
 
 /* Define to 1 to enable network diagnostic for MTD. */
 #define OPENTHREAD_ENABLE_MTD_NETWORK_DIAGNOSTIC 0
@@ -131,23 +143,32 @@
 /* Define to 1 if using NCP vendor hook */
 #define OPENTHREAD_ENABLE_NCP_VENDOR_HOOK 0
 
+/* Define to 1 to enable platform UDP. */
+#define OPENTHREAD_ENABLE_PLATFORM_UDP 0
+
+/* Define to 1 to build posix application. */
+#define OPENTHREAD_ENABLE_POSIX_APP 0
+
+/* Define to 1 to build radio-only library. */
+#define OPENTHREAD_ENABLE_RADIO_ONLY 0
+
 /* Define to 1 if you want to enable raw link-layer API */
 #define OPENTHREAD_ENABLE_RAW_LINK_API 0
 
 /* Define to 1 if you want to enable Service */
 #define OPENTHREAD_ENABLE_SERVICE 0
 
-/* Define to 1 to enable the TMF proxy feature. */
-#define OPENTHREAD_ENABLE_TMF_PROXY 0
+/* Define to 1 if you want to enable SNTP Client */
+#define OPENTHREAD_ENABLE_SNTP_CLIENT 0
 
-/* Define to 1 to enable the UDP proxy feature. */
-#define OPENTHREAD_ENABLE_UDP_PROXY 1
+/* Define to 1 to enable the UDP forward feature. */
+#define OPENTHREAD_ENABLE_UDP_FORWARD 0
 
-/* Define to 1 to enable the border agent feature. */
-#define OPENTHREAD_ENABLE_BORDER_AGENT 0
+/* Define to 1 if using vendor extension */
+#define OPENTHREAD_ENABLE_VENDOR_EXTENSION 0
 
-/* OpenThread examples */
-/* #undef OPENTHREAD_EXAMPLES */
+/* Define to 1 if you want to use cc1352 examples */
+/* #undef OPENTHREAD_EXAMPLES_CC1352 */
 
 /* Define to 1 if you want to use cc2538 examples */
 /* #undef OPENTHREAD_EXAMPLES_CC2538 */
