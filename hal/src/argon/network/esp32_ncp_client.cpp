@@ -285,6 +285,13 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
         LOG(ERROR, "Unexpected result code: \"%s\"", buf);
         return SYSTEM_ERROR_UNKNOWN;
     }
+    // Stop the muxer
+    muxer_.stop();
+    // Wait a bit for the NCP to reset
+    HAL_Delay_Milliseconds(2000);
+    // Re-enable the client in case it was asynchronously disabled by the muxer
+    // due to the NCP reset
+    enable();
     // FIXME: Find a better way to reset the client state
     off();
     CHECK(on());
