@@ -70,10 +70,10 @@ void HAL_RTC_Set_UnixAlarm(time_t value) {
 
     HAL_RTC_Cancel_UnixAlarm();
 
-    if (!os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_PERIOD, false, value * 1000,
-            0xffffffff, nullptr)) {
-        os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_START, false, 0, 0xffffffff, nullptr);
-    }
+    // NOTE: changing the period of a timer in a dormant state will also
+    // start the timer.
+    os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_PERIOD, false, value * 1000,
+            0xffffffff, nullptr);
 }
 
 void HAL_RTC_Cancel_UnixAlarm(void) {
