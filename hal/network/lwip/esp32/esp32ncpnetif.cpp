@@ -124,9 +124,30 @@ err_t Esp32NcpNetif::initInterface() {
     return ERR_OK;
 }
 
+int Esp32NcpNetif::queryMacAddress() {
+    auto r = wifiMan_->ncpClient()->on();
+    if (r) {
+        LOG(TRACE, "Failed to initialize ESP32 NCP client: %d", r);
+        return r;
+    }
+    MacAddress mac = {};
+    if (!memcmp(interface()->hwaddr, mac.data, interface()->hwaddr_len)) {
+        // Query MAC address
+        r = wifiMan_->ncpClient()->getMacAddress(&mac);
+        if (r) {
+            LOG(TRACE, "Failed to query ESP32 MAC address: %d", r);
+            return r;
+        }
+        memcpy(interface()->hwaddr, mac.data, interface()->hwaddr_len);
+    }
+
+    return r;
+}
+
 void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
     unsigned int timeout = 100;
+    self->queryMacAddress();
     self->wifiMan_->ncpClient()->off();
     while(!self->exit_) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
@@ -202,21 +223,9 @@ int Esp32NcpNetif::powerDown() {
 
 int Esp32NcpNetif::upImpl() {
     up_ = true;
-    auto r = wifiMan_->ncpClient()->on();
-    if (r) {
-        LOG(TRACE, "Failed to initialize ESP32 NCP client: %d", r);
+    auto r = queryMacAddress();
+    if (r) // Failed to query MAC address
         return r;
-    }
-    MacAddress mac = {};
-    if (!memcmp(interface()->hwaddr, mac.data, interface()->hwaddr_len)) {
-        // Query MAC address
-        r = wifiMan_->ncpClient()->getMacAddress(&mac);
-        if (r) {
-            LOG(TRACE, "Failed to query ESP32 MAC address: %d", r);
-            return r;
-        }
-        memcpy(interface()->hwaddr, mac.data, interface()->hwaddr_len);
-    }
     // Ensure that we are disconnected
     downImpl();
     // Restore up flag

@@ -60,6 +60,8 @@ private:
     static err_t initCb(netif *netif);
     err_t initInterface();
 
+    int queryMacAddress();
+    
     static void loop(void* arg);
 
     /* LwIP netif linkoutput callback */

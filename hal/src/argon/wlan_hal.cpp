@@ -192,12 +192,12 @@ int wlan_fetch_ipconfig(WLanConfig* conf) {
     CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_STATE);
     unsigned flags = 0;
     CHECK(if_get_flags(iface, &flags));
-    CHECK_TRUE((flags & IFF_UP) && (flags & IFF_LOWER_UP), SYSTEM_ERROR_INVALID_STATE);
     // MAC address
     sockaddr_ll hwAddr = {};
     CHECK(if_get_lladdr(iface, &hwAddr));
     CHECK_TRUE((size_t)hwAddr.sll_halen == MAC_ADDRESS_SIZE, SYSTEM_ERROR_UNKNOWN);
     memcpy(conf->nw.uaMacAddr, hwAddr.sll_addr, MAC_ADDRESS_SIZE);
+    CHECK_TRUE((flags & IFF_UP) && (flags & IFF_LOWER_UP), SYSTEM_ERROR_INVALID_STATE);
     // IP address
     if_addrs* ifAddrList = nullptr;
     CHECK(if_get_addrs(iface, &ifAddrList));

@@ -318,9 +318,13 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     {
         print("Your device MAC address is\r\n");
         IPConfig config = {};
+    #if !HAL_PLATFORM_WIFI    
         auto conf = static_cast<const IPConfig*>(network_config(0, 0, 0));
+    #else
+        auto conf = static_cast<const IPConfig*>(network_config(NETWORK_INTERFACE_WIFI_STA, 0, 0));
+    #endif
         if (conf && conf->size) {
-            memcpy(&config, conf, conf->size);
+            memcpy(&config, conf, std::min(sizeof(config), (size_t)conf->size));
         }
         const uint8_t* addr = config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
