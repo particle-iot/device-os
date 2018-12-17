@@ -324,9 +324,9 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
         auto conf = static_cast<const IPConfig*>(network_config(NETWORK_INTERFACE_WIFI_STA, 0, 0));
     #endif
         if (conf && conf->size) {
-            memcpy(&config, conf, conf->size);
+            memcpy(&config, conf, std::min(sizeof(config), (size_t)conf->size));
         }
-        const uint8_t* addr = conf->nw.uaMacAddr;
+        const uint8_t* addr = config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)
         {
