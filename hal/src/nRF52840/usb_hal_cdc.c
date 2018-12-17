@@ -340,7 +340,7 @@ int usb_uart_send(uint8_t data[], uint16_t size) {
     }
 
 #ifdef SOFTDEVICE_PRESENT
-    if (nrf_nvic_state.__cr_flag) {
+    if (nrf_nvic_state.__cr_flag || __get_PRIMASK() || __get_BASEPRI() >= USBD_CONFIG_IRQ_PRIORITY) {
 #else
     if ((__get_PRIMASK() & 1)) {
 #endif // SOFTDEVICE_PRESENT

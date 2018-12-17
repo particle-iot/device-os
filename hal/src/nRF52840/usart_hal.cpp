@@ -519,7 +519,8 @@ private:
         // Check if interrupts are disabled:
         // 1. Globally
         // 2. Application interrupts through SoftDevice
-        if ((__get_PRIMASK() & 1) || nrf_nvic_state.__cr_flag) {
+        // 3. Via BASEPRI
+        if ((__get_PRIMASK() & 1) || nrf_nvic_state.__cr_flag || __get_BASEPRI() >= prio_) {
             return false;
         }
 
@@ -607,12 +608,12 @@ private:
 
 constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
 
-const auto UARTE0_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOWEST;
+const auto UARTE0_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOW;
 // TODO: move this to hal_platform_config.h ?
 #if PLATFORM_ID == PLATFORM_XENON
-const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOWEST;
+const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOW;
 #else
-const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_HIGHEST;
+const auto UARTE1_INTERRUPT_PRIORITY = (app_irq_priority_t)_PRIO_SD_LOWEST;
 #endif // PLATFORM_ID == PLATFORM_XENON
 
 Usart* getInstance(HAL_USART_Serial serial) {
