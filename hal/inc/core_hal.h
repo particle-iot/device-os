@@ -150,6 +150,9 @@ void HAL_Core_Execute_Stop_Mode(void);
 void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
 void HAL_Core_Execute_Standby_Mode(void);
 void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
+
+int HAL_Core_Enter_Panic_Mode(void* reserved);
+
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
 typedef enum _BootloaderFlag_t {

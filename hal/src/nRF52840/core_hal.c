@@ -830,6 +830,11 @@ uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
     return 0;
 }
 
+int HAL_Core_Enter_Panic_Mode(void* reserved)
+{
+    __disable_irq();
+    return 0;
+}
 
 #if HAL_PLATFORM_CLOUD_UDP
 
