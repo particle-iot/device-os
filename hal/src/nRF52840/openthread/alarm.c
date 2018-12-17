@@ -688,3 +688,17 @@ uint16_t otPlatTimeGetXtalAccuracy(void)
     return XTAL_ACCURACY;
 }
 #endif // OPENTHREAD_CONFIG_ENABLE_TIME_SYNC
+
+// Particle-specific
+int hal_timer_init(void* reserved) {
+    nrf5AlarmInit();
+    return 0;
+}
+
+uint64_t hal_timer_micros(void* reserved) {
+    return GetCurrentTime(kUsTimer);
+}
+
+uint64_t hal_timer_millis(void* reserved) {
+    return GetCurrentTime(kUsTimer) / US_PER_MS;
+}

@@ -107,7 +107,8 @@ void otSysInit(int argc, char *argv[])
     /* Just in case force the antenna to internal one */
     selectAntenna(false);
 
-    nrf5AlarmInit();
+    // Alarm is initialize much earlier in our core HAL
+    // nrf5AlarmInit();
     nrf5RandomInit();
 
     if (!gPlatformPseudoResetWasRequested)
@@ -150,7 +151,8 @@ void otSysDeinit(void)
         nrf5CryptoDeinit();
     }
     nrf5RandomDeinit();
-    nrf5AlarmDeinit();
+    // We need Alarm for normal core HAL functionality
+    // nrf5AlarmDeinit();
 }
 
 bool otSysPseudoResetWasRequested(void)

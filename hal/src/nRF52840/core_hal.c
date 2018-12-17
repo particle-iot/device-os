@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include "rtc_hal.h"
+#include "timer_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -191,14 +192,7 @@ void UsageFault_Handler(void) {
 }
 
 void SysTickOverride(void) {
-    System1MsTick();
-
-    /* Handle short and generic tasks for the device HAL on 1ms ticks */
-    // HAL_1Ms_Tick();
-
     HAL_SysTick_Handler();
-
-    // HAL_System_Interrupt_Trigger(SysInterrupt_SysTick, NULL);
 }
 
 void SysTickChain() {
@@ -258,7 +252,7 @@ void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
     // Special chain handler
     if (irqn == SysTick_IRQn) {
         handler = (uint32_t)SysTickChain;
-    } 
+    }
 
     volatile uint32_t* isrs = (volatile uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[IRQN_TO_IDX(irqn)] = handler;
@@ -287,6 +281,8 @@ void HAL_Core_Config(void) {
     HAL_Interrupts_Init();
 
     Set_System();
+
+    hal_timer_init(NULL);
 
     HAL_Core_Setup_override_interrupts();
 
