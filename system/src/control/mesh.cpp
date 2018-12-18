@@ -776,7 +776,7 @@ int joinNetwork(ctrl_request* req) {
         CHECK(resetThread());
         return ot_system_error(stat.result);
     }
-    CHECK(ot_set_network_id(thread, g_joinNetworkId, sizeof(g_joinNetworkId)));
+    CHECK(ot_set_network_id(thread, g_joinNetworkId, strlen(g_joinNetworkId) + 1));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");

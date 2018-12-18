@@ -221,18 +221,16 @@ int BorderRouterManager::enable() {
             config_.mOnMesh = 1;
             config_.mStable = 1;
 
-            config_.mPrefix.mPrefix.mFields.m8[0] = 0xfd;
-            if (!prefix_) {
-                prefix_.reset(new (std::nothrow) uint8_t[5]);
+            if (ot_get_border_router_prefix(ot_get_instance(), 0, &config_.mPrefix) ||
+                    config_.mPrefix.mLength != 64) {
+                // Failed to retrieve from persistent storage
+                // Generate new prefix
+                config_.mPrefix.mPrefix.mFields.m8[0] = 0xfd;
                 Random rand;
                 rand.gen((char*)config_.mPrefix.mPrefix.mFields.m8 + 1, 5); // Generate global ID
-                if (prefix_) {
-                    memcpy(prefix_.get(), (char*)config_.mPrefix.mPrefix.mFields.m8 + 1, 5);
-                }
-            } else {
-                memcpy((char*)config_.mPrefix.mPrefix.mFields.m8 + 1, prefix_.get(), 5);
+                config_.mPrefix.mLength = 64;
+                ot_set_border_router_prefix(ot_get_instance(), 0, &config_.mPrefix);
             }
-            config_.mPrefix.mLength = 64;
         }
 
         LOG(TRACE, "Adding prefix into local network data");
