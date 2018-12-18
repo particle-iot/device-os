@@ -57,8 +57,8 @@ bool handleCommandComplete(int error, void* data = nullptr, size_t size = 0) {
 
 void destroyMeshCredentialsIfNetworkIdMatches(const char* networkId) {
     char nId[MESH_NETWORK_ID_LENGTH + 1] = {};
-    uint16_t sz = sizeof(nId);
-    if (!threadGetNetworkId(threadInstance(), nId, &sz)) {
+    size_t sz = sizeof(nId);
+    if (!ot_get_network_id(threadInstance(), nId, &sz)) {
         if (!memcmp(nId, networkId, sizeof(nId))) {
             LOG(ERROR, "Destroying Mesh credentials due to rejected system command");
             network_disconnect(NETWORK_INTERFACE_MESH, NETWORK_DISCONNECT_REASON_ERROR, nullptr);

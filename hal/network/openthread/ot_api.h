@@ -25,6 +25,7 @@
 #define NETWORK_OPENTHREAD_OT_API_H
 
 #include <openthread/instance.h>
+#include <openthread/ip6.h>
 #include "hal_platform.h"
 
 #if HAL_OPENTHREAD_USE_LWIP_LOCK
@@ -82,6 +83,60 @@ int ot_lock(void* reserved);
  * @returns    0 on success, system_error_t on error.
  */
 int ot_unlock(void* reserved);
+
+/**
+ * Converts OpenThread otError to system_error_t
+ *
+ * @param[in]  error  otError to be converted
+ *
+ * @returns    system_error_t corresponding to the otError
+ */
+int ot_system_error(otError error);
+
+/**
+ * Retrieves a particular Border Router prefix from the persistent storage.
+ *
+ * @param      ot      OpenThread instance object
+ * @param[in]  idx     The index of the Border Router prefix
+ * @param[out] prefix  A pointer to otIp6Prefix, which will contain the retreived prefix
+ *
+ * @returns    0 on success, system_error_t on error.
+ */
+int ot_get_border_router_prefix(otInstance* ot, unsigned int idx, otIp6Prefix* prefix);
+
+/**
+ * Stores a particular Border Router prefix in persistent storage.
+ *
+ * @param      ot      OpenThread instance object
+ * @param[in]  idx     The index of the Border Router prefix
+ * @param[in]  prefix  The prefix to store
+ *
+ * @returns    0 on success, system_error_t on error.
+ */
+int ot_set_border_router_prefix(otInstance* ot, unsigned int idx, const otIp6Prefix* prefix);
+
+/**
+ * Retrieves Particle-specific Network Id from the persistent storage.
+ *
+ * @param           ot      OpenThread instance object
+ * @param[out]      buf     Buffer to store the retrieved Network Id
+ * @param[inout]    buflen  Size of the buffer, on return will contain the actual length
+ *                          of the retrieved Network Id
+ *
+ * @returns         0 on success, system_error_t on error.
+ */
+int ot_get_network_id(otInstance* ot, char* buf, size_t* buflen);
+
+/**
+ * Stores Particle-specific Network Id in persistent storage.
+ *
+ * @param      ot       OpenThread instance object
+ * @param[in]  buf      Buffer containing the Network Id
+ * @param[in]  buflen   Size of the Network Id
+ *
+ * @returns    0 on success, system_error_t on error.
+ */
+int ot_set_network_id(otInstance* ot, const char* buf, size_t buflen);
 
 #ifdef __cplusplus
 }
