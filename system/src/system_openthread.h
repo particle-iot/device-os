@@ -35,13 +35,6 @@ inline otInstance* threadInstance() {
     return ot_get_instance();
 }
 
-int threadToSystemError(otError error);
-
-int threadGetNetworkId(otInstance* ot, char* buf, uint16_t* buflen);
-
-int threadSetNetworkId(otInstance* ot, const char* buf);
-
-
 } // particle::system
 
 } // particle

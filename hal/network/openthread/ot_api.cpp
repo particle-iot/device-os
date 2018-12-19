@@ -26,6 +26,7 @@ LOG_SOURCE_CATEGORY("ot.api");
 #include <openthread/instance.h>
 #include <openthread-system.h>
 #include <openthread/tasklet.h>
+#include <openthread/platform/settings.h>
 #include "concurrent_hal.h"
 #include "system_error.h"
 #include "static_recursive_mutex.h"
@@ -36,6 +37,12 @@ LOG_SOURCE_CATEGORY("ot.api");
 using namespace particle::net::ot;
 
 namespace {
+
+// Particle-specific data indexes in OpenThread persisted settings
+// Network Id
+const uint16_t KEY_NETWORK_ID = 0x4000;
+// Border router prefixes
+const uint16_t KEY_BORDER_ROUTER_PREFIX_BASE = 0x4100;
 
 otInstance* s_threadInstance = nullptr;
 StaticRecursiveMutex s_threadMutex;
@@ -153,4 +160,56 @@ int ot_lock(void* reserved) {
 
 int ot_unlock(void* reserved) {
     return !s_threadMutex.unlock();
+}
+
+int ot_system_error(otError error) {
+    switch (error) {
+    case OT_ERROR_NONE:
+        return SYSTEM_ERROR_NONE;
+    case OT_ERROR_SECURITY:
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    case OT_ERROR_NOT_FOUND:
+        return SYSTEM_ERROR_NOT_FOUND;
+    case OT_ERROR_RESPONSE_TIMEOUT:
+        return SYSTEM_ERROR_TIMEOUT;
+    case OT_ERROR_NO_BUFS:
+        return SYSTEM_ERROR_NO_MEMORY;
+    case OT_ERROR_BUSY:
+        return SYSTEM_ERROR_BUSY;
+    case OT_ERROR_ABORT:
+        return SYSTEM_ERROR_ABORTED;
+    case OT_ERROR_INVALID_STATE:
+        return SYSTEM_ERROR_INVALID_STATE;
+    default:
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+}
+
+int ot_get_border_router_prefix(otInstance* ot, unsigned int idx, otIp6Prefix* prefix) {
+    ThreadLock lk;
+    uint16_t sz = sizeof(otIp6Prefix);
+    auto result = otPlatSettingsGet(ot, KEY_BORDER_ROUTER_PREFIX_BASE + idx, 0,
+            (uint8_t*)prefix, &sz);
+    return ot_system_error(result);
+}
+
+int ot_set_border_router_prefix(otInstance* ot, unsigned int idx, const otIp6Prefix* prefix) {
+    ThreadLock lk;
+    auto result = otPlatSettingsSet(ot, KEY_BORDER_ROUTER_PREFIX_BASE + idx,
+            (const uint8_t*)prefix, sizeof(otIp6Prefix));
+    return ot_system_error(result);
+}
+
+int ot_get_network_id(otInstance* ot, char* buf, size_t* buflen) {
+    ThreadLock lk;
+    uint16_t sz = *buflen;
+    auto result = otPlatSettingsGet(ot, KEY_NETWORK_ID, 0, (uint8_t*)buf, &sz);
+    *buflen = sz;
+    return ot_system_error(result);
+}
+
+int ot_set_network_id(otInstance* ot, const char* buf, size_t buflen) {
+    ThreadLock lk;
+    auto result = otPlatSettingsSet(ot, KEY_NETWORK_ID, (const uint8_t*)buf, buflen);
+    return ot_system_error(result);
 }

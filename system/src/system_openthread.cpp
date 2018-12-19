@@ -30,7 +30,6 @@
 #include <openthread/commissioner.h>
 #include <openthread/joiner.h>
 #include <openthread-system.h>
-#include <openthread/platform/settings.h>
 #include <mutex>
 
 #define CHECK_THREAD(_expr) \
@@ -38,7 +37,7 @@
             const otError ret = _expr; \
             if (ret != OT_ERROR_NONE) { \
                 LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
-                return ::particle::system::threadToSystemError(ret); \
+                return ot_system_error(ret); \
             } \
         } while (false)
 
@@ -175,52 +174,12 @@ void threadStateChanged(uint32_t flags, void* data) {
     }
 }
 
-/**
- * Thread persistent storage key index.
- */
-const uint16_t kKeyNetworkId = 0x4000;
-
 } // particle::system::
 
 int threadInit() {
     ThreadLock lk;
     CHECK_THREAD(otSetStateChangedCallback(ot_get_instance(), threadStateChanged, ot_get_instance()));
     return 0;
-}
-
-int threadGetNetworkId(otInstance* ot, char* buf, uint16_t* buflen) {
-    ThreadLock lk;
-    buf[0] = 0;
-    auto result = otPlatSettingsGet(ot, kKeyNetworkId, 0, (uint8_t*)buf, buflen);
-    return threadToSystemError(result);
-}
-
-int threadToSystemError(otError error) {
-    switch (error) {
-    case OT_ERROR_NONE:
-        return SYSTEM_ERROR_NONE;
-    case OT_ERROR_SECURITY:
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    case OT_ERROR_NOT_FOUND:
-        return SYSTEM_ERROR_NOT_FOUND;
-    case OT_ERROR_RESPONSE_TIMEOUT:
-        return SYSTEM_ERROR_TIMEOUT;
-    case OT_ERROR_NO_BUFS:
-        return SYSTEM_ERROR_NO_MEMORY;
-    case OT_ERROR_BUSY:
-        return SYSTEM_ERROR_BUSY;
-    case OT_ERROR_ABORT:
-        return SYSTEM_ERROR_ABORTED;
-    case OT_ERROR_INVALID_STATE:
-        return SYSTEM_ERROR_INVALID_STATE;
-    default:
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-}
-
-int threadSetNetworkId(otInstance* ot, const char* buf) {
-    ThreadLock lk;
-    return threadToSystemError(otPlatSettingsSet(ot, kKeyNetworkId, (const uint8_t*)buf, strlen(buf) + 1));
 }
 
 } // particle::system

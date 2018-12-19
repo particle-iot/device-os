@@ -68,7 +68,7 @@
             const auto ret = _expr; \
             if (ret != OT_ERROR_NONE) { \
                 LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
-                return threadToSystemError(ret); \
+                return ot_system_error(ret); \
             } \
         } while (false)
 
@@ -182,8 +182,8 @@ int notifyNetworkUpdated(int flags) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     // Network ID
-    uint16_t netIdSize = sizeof(ni.update.id);
-    CHECK(threadGetNetworkId(thread, ni.update.id, &netIdSize));
+    size_t netIdSize = sizeof(ni.update.id);
+    CHECK(ot_get_network_id(thread, ni.update.id, &netIdSize));
     if (flags & NetworkInfo::NETWORK_ID_VALID) {
         memcpy(ni.id, ni.update.id, sizeof(ni.update.id));
     }
@@ -240,8 +240,8 @@ int notifyJoined(bool joined) {
     const auto thread = threadInstance();
     CHECK_TRUE(thread, SYSTEM_ERROR_INVALID_STATE);
     NotifyMeshNetworkJoined cmd;
-    uint16_t netIdSize = sizeof(cmd.nu.id);
-    CHECK(threadGetNetworkId(thread, cmd.nu.id, &netIdSize));
+    size_t netIdSize = sizeof(cmd.nu.id);
+    CHECK(ot_get_network_id(thread, cmd.nu.id, &netIdSize));
     cmd.joined = joined;
     return system_command_enqueue(cmd, sizeof(cmd));
 }
@@ -337,8 +337,8 @@ int notifyBorderRouter(bool active) {
     const auto thread = threadInstance();
     CHECK_TRUE(thread, SYSTEM_ERROR_INVALID_STATE);
     NotifyMeshNetworkGateway cmd;
-    uint16_t netIdSize = sizeof(cmd.nu.id);
-    CHECK(threadGetNetworkId(thread, cmd.nu.id, &netIdSize));
+    size_t netIdSize = sizeof(cmd.nu.id);
+    CHECK(ot_get_network_id(thread, cmd.nu.id, &netIdSize));
     cmd.active = active;
     return system_command_enqueue(cmd, sizeof(cmd));
 }
@@ -509,7 +509,7 @@ int createNetwork(ctrl_request* req) {
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
     CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, &extPanId, pskc));
     CHECK_THREAD(otThreadSetPSKc(thread, pskc));
-    CHECK(threadSetNetworkId(thread, dId.data ? dId.data : ""));
+    CHECK(ot_set_network_id(thread, dId.data ? dId.data : "", dId.data ? (strlen(dId.data) + 1) : 1));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
@@ -774,9 +774,9 @@ int joinNetwork(ctrl_request* req) {
     }
     if (stat.result != OT_ERROR_NONE) {
         CHECK(resetThread());
-        return threadToSystemError(stat.result);
+        return ot_system_error(stat.result);
     }
-    CHECK(threadSetNetworkId(thread, g_joinNetworkId));
+    CHECK(ot_set_network_id(thread, g_joinNetworkId, strlen(g_joinNetworkId) + 1));
     CHECK_THREAD(otThreadSetEnabled(thread, true));
     WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
     LOG(INFO, "Successfully joined the network");
@@ -806,8 +806,8 @@ int getNetworkInfo(ctrl_request* req) {
     }
     // Network Id
     char networkId[MESH_NETWORK_ID_LENGTH + 1] = {};
-    uint16_t networkIdSize = sizeof(networkId);
-    threadGetNetworkId(thread, networkId, &networkIdSize);
+    size_t networkIdSize = sizeof(networkId);
+    ot_get_network_id(thread, networkId, &networkIdSize);
     // Channel
     const uint8_t channel = otLinkGetChannel(thread);
     // PAN ID
