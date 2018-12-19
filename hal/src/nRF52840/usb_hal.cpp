@@ -113,6 +113,7 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 
 int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved) {
     // Enable Serial by default
+    HAL_USB_USART_Init(HAL_USB_USART_SERIAL, nullptr);
     HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, NULL);
     usb_hal_set_bit_rate_changed_handler(handler);
     return 0;
