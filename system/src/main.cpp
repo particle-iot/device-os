@@ -500,7 +500,7 @@ void handle_out_of_memory(size_t requested) {
 	}
 	else {
 		recurse = true;
-		system_notify_event(out_of_memory, requested);
+		system_notify_event(out_of_memory, requested, nullptr, nullptr, nullptr, NOTIFY_SYNCHRONOUSLY);
 		recurse = false;
 	}
 }
