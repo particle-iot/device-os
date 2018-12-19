@@ -69,6 +69,12 @@ void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer
     }
 }
 
+void system_notify_event_async(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
+    // run event notifications on the application thread
+    APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_async(event, data, pointer, fn, fndata));
+    system_notify_event_impl(event, data, pointer, fn, fndata);
+}
+
 class SystemEventTask : public ISRTaskQueue::Task {
     system_event_t event_;
     uint32_t data_;
@@ -88,8 +94,7 @@ class SystemEventTask : public ISRTaskQueue::Task {
      * Notify the system event encoded in this class.
      */
     void notify() {
-        // run event notifications on the application thread
-        APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_impl(event_, data_, pointer_, fn_, fndata_));
+        system_notify_event_async(event_, data_, pointer_, fn_, fndata_);
         system_pool_free(this, nullptr);
     }
 
@@ -143,7 +148,7 @@ void system_notify_event(system_event_t event, uint32_t data, void* pointer, voi
             SystemISRTaskQueue.enqueue(task);
         };
     } else {
-        APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_impl(event, data, pointer, fn, fndata));
+        system_notify_event_async(event, data, pointer, fn, fndata);
     }
 }
 
