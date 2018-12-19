@@ -112,12 +112,7 @@ test(SYSTEM_04_button_mirror)
     EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
     delay(300);
     pinMode(D1, INPUT_PULLUP);
-
-    // Make sure all asynchronous events get processed by the application thread
-    const auto t = millis();
-    do {
-        Particle.process();
-    } while (millis() - t < 300);
+    delay(300);
 
     assertEqual(s_button_clicks, 3);
 }

@@ -97,6 +97,12 @@ enum SystemEventsParam {
     time_changed_sync = 1
 };
 
+/**
+ * Flags altering the behavior of the `system_notify_event()` function.
+ */
+enum SystemNotifyEventFlag {
+    NOTIFY_SYNCHRONOUSLY = 0x01
+};
 
 /**
  * Subscribes to the system events given
@@ -126,5 +132,7 @@ void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
  * @param event
  * @param data
  * @param pointer
+ * @param flags Event flags as defined by the `SystemNotifyEventFlag` enum.
  */
-void system_notify_event(system_event_t event, uint32_t data=0, void* pointer=nullptr, void (*fn)(void* data)=nullptr, void* fndata=nullptr);
+void system_notify_event(system_event_t event, uint32_t data = 0, void* pointer = nullptr,
+        void (*fn)(void* data) = nullptr, void* fndata = nullptr, unsigned flags = 0);
