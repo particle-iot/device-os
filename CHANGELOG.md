@@ -11,6 +11,8 @@
 - [Gen 3] Normalized (lowered) IRQ priorities to a safe 5-7 range (#1643)
 - [Gen 3] `timer_hal` and `rtc_hal` migrated to use a single stable monotonic 64-bit microsecond counter provided by OpenThread platform-specific code using the RTC peripheral (#1643)
 - [Gen 3] `HAL_disable_irq()` / `HAL_enable_irq()` implementation changed to use `__set_BASEPRI()` instead of `sd_nvic_critical_region_enter()` / `sd_nvic_critical_region_exit()` to avoid assertion failures in Nordic 802.15.4 radio driver
+- [Gen 3] Persistent border router prefix (#1647)
+- [Gen 3] Enables USB Serial by default (#1649)
 
 ## 0.8.0-rc.26
 
