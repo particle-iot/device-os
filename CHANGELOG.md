@@ -1,3 +1,21 @@
+## 0.8.0-rc.12
+
+### ENHANCEMENTS
+
+- [Electron/Photon/P1] Cache persistent feature flags ([#1640](https://github.com/particle-iot/firmware/pull/1640))
+- [Photon/P1] Memory usage optimizations ([#1635](https://github.com/particle-iot/firmware/pull/1635))
+
+### BUGFIXES
+
+- [Electron/Photon/P1] Fixes SOS in 0.8.0-rc.11 and also ensures button and OOM events are handled synchronously. Previously in multi-threaded applications the button handling may have been delayed to run within the application thread.  Now it is always handled immediately and should be noted that it is called from an ISR, so it is not advised to dynamically allocate memory in button event handlers. ([#1600](https://github.com/particle-iot/firmware/pull/1600)) ([#1650](https://github.com/particle-iot/firmware/pull/1650))
+- [Electron/Photon/P1] Do not disable interrupts on every system loop iteration ([#1622](https://github.com/particle-iot/firmware/pull/1622))
+- [Electron/Photon/P1] Wait for Wiring Thread to start ([#1528](https://github.com/particle-iot/firmware/pull/1528))
+- [Electron/LTE] Power Manager Watchdog Timer Fix ([#1581](https://github.com/particle-iot/firmware/pull/1581))
+- [Electron/LTE] AT+CNUM command causing registration failure on LTE devices ([#1627](https://github.com/particle-iot/firmware/pull/1627))
+- [Electron] `PMIC::getInputCurrentLimit()` cannot report values higher than 900mA ([#1581](https://github.com/particle-iot/firmware/pull/1581))
+- [Electron] Do not set the sticky skip hello after handshake ([#1624](https://github.com/particle-iot/firmware/pull/1624))
+- [Photon/P1] Invalidate sockets when turning WiFi off ([#1639](https://github.com/particle-iot/firmware/pull/1639))
+
 ## 0.8.0-rc.11
 
 ### ENHANCEMENTS
