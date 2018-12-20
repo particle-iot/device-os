@@ -212,7 +212,8 @@ test(SYSTEM_07_fragmented_heap) {
 
 	unregister_oom();
 	register_oom();
-	block* b = new block[2];  // no room for 2 blocks
+	const size_t BLOCKS_TO_MALLOC = 3;
+	block* b = new block[BLOCKS_TO_MALLOC];  // no room for 3 blocks, memory is clearly fragmented
 	delete b;
 
 	// free the remaining blocks
@@ -222,12 +223,12 @@ test(SYSTEM_07_fragmented_heap) {
 		delete b;
 	}
 
-	assertMoreOrEqual(half_fragment_block_size, sizeof(block));
-	assertLessOrEqual(half_fragment_block_size, 2*sizeof(block)+8 /* 8 byte overhead */);
+	assertMoreOrEqual(half_fragment_block_size, sizeof(block)); // there should definitely be one block available
+	assertLessOrEqual(half_fragment_block_size, BLOCKS_TO_MALLOC*sizeof(block)-1); // we expect malloc of 3 blocks to fail, so this better allow up to that size less 1
 	assertMoreOrEqual(half_fragment_free, low_heap+(sizeof(block)*count));
 
 	assertTrue(oomEventReceived);
-	assertMoreOrEqual(oomSizeReceived, sizeof(block)*2);
+	assertMoreOrEqual(oomSizeReceived, sizeof(block)*BLOCKS_TO_MALLOC);
 }
 
 test(SYSTEM_08_out_of_memory_not_raised_for_0_size_malloc)
