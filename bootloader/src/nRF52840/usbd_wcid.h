@@ -21,8 +21,6 @@
 #define USB_WCID_DATA(...) __VA_ARGS__
 
 #define USB_WCID_MS_OS_STRING_DESCRIPTOR(signature, code)                   \
-    0x12,                                          /* bLength */            \
-    0x03,                                          /* bDescriptorType */    \
     signature,                                     /* qwSignature */        \
     code,                                          /* MS_VendorCode */      \
     0x00                                           /* Padding */
