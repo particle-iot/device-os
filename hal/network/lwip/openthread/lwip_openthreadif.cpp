@@ -305,15 +305,24 @@ err_t OpenThreadNetif::mldMacFilterCb(netif* netif, const ip6_addr_t *group,
     otIp6Address addr = {};
     ip6AddrToOtIp6Address(*group, &addr);
 
-    int ret = OT_ERROR_FAILED;
+    int ret = OT_ERROR_NONE;
+
+    // IMPORTANT: it's no longer possible to manage multicast
+    // subscriptions while the OpenThread netif is not fully up,
+    // as this will trigger an assertion failure in Netif::SubscribeAllNodesMulticast(void),
+    // hence otIp6IsEnabled() check.
 
     // A very hacky solution: keep the list of subscriptions on loopback
     if (action == NETIF_ADD_MAC_FILTER) {
         mld6_joingroup_netif(netif_get_by_index(1), group);
-        ret = otIp6SubscribeMulticastAddress(self->ot_, &addr);
+        if (otIp6IsEnabled(self->ot_)) {
+            ret = otIp6SubscribeMulticastAddress(self->ot_, &addr);
+        }
     } else if (action == NETIF_DEL_MAC_FILTER) {
         mld6_leavegroup_netif(netif_get_by_index(1), group);
-        ret = otIp6UnsubscribeMulticastAddress(self->ot_, &addr);
+        if (otIp6IsEnabled(self->ot_)) {
+            ret = otIp6UnsubscribeMulticastAddress(self->ot_, &addr);
+        }
     }
 
     return ret == OT_ERROR_NONE ? ERR_OK : ERR_VAL;
