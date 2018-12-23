@@ -21,6 +21,7 @@
 #include "usb_hal.h"
 #include "usb_hal_cdc.h"
 #include "usb_settings.h"
+#include <mutex>
 
 #ifdef USB_CDC_ENABLE
 
