@@ -448,6 +448,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::mesh::scanNetworks(req));
         break;
     }
+    case CTRL_REQUEST_MESH_GET_NETWORK_DIAGNOSTICS: {
+        setResult(req, ctrl::mesh::getNetworkDiagnostics(req));
+        break;
+    }
     case CTRL_REQUEST_MESH_TEST: { // FIXME
         setResult(req, ctrl::mesh::test(req));
         break;

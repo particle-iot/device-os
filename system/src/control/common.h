@@ -37,6 +37,8 @@ namespace common {
 
 int encodeReplyMessage(ctrl_request* req, const pb_field_t* fields, const void* src);
 int decodeRequestMessage(ctrl_request* req, const pb_field_t* fields, void* dst);
+int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_t* field,
+        const pb_field_t* fields, const void* src);
 
 int protoIpFromHal(particle_ctrl_IPAddress* ip, const HAL_IPAddress* sip);
 int halIpFromProto(particle_ctrl_IPAddress* ip, HAL_IPAddress* halip);
