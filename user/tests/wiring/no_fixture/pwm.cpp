@@ -60,6 +60,8 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     //To Do : Add test for remaining pins if required
 }
 
+#if !HAL_PLATFORM_NRF52840 // TODO
+
 test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 #if (PLATFORM_ID == PLATFORM_XENON)
     pin_t pin = D0;  //pin under test, D0 is not a Timer channel
@@ -74,6 +76,8 @@ test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
     assertNotEqual(HAL_PWM_Get_Frequency_Ext(pin), TIM_PWM_FREQ);
     //To Do : Add test for remaining pins if required
 }
+
+#endif // !HAL_PLATFORM_NRF52840
 
 test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
     pin_t pin = 51; // pin under test (not a valid user pin)
@@ -92,6 +96,8 @@ template <typename F> void for_all_pwm_pins(F callback)
 		callback(pwm_pins[i]);
 	}
 }
+
+#if !HAL_PLATFORM_NRF52840 // TODO
 
 test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
     for_all_pwm_pins([](uint16_t pin) {
@@ -130,6 +136,8 @@ test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
     pinMode(pin, INPUT);
     });
 }
+
+#endif // !HAL_PLATFORM_NRF52840
 
 test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
 	for_all_pwm_pins([](uint16_t pin) {
