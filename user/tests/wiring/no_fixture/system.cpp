@@ -77,6 +77,8 @@ test(SYSTEM_03_user_backup_ram)
 
 #endif // defined(USER_BACKUP_RAM)
 
+#if !HAL_PLATFORM_NRF52840 // TODO
+
 #if defined(BUTTON1_MIRROR_SUPPORTED)
 static int s_button_clicks = 0;
 static void onButtonClick(system_event_t ev, int data) {
@@ -129,6 +131,8 @@ test(SYSTEM_05_button_mirror_disable)
     System.disableButtonMirror(false);
 }
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
+
+#endif // !HAL_PLATFORM_NRF52840
 
 #if PLATFORM_ID!=0
 // platform supports out of memory notifiation
