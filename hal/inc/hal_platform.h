@@ -166,4 +166,8 @@
 #define HAL_OPENTHREAD_USE_LWIP_LOCK (1)
 #endif // HAL_OPENTHREAD_USE_LWIP_LOCK
 
+#ifndef HAL_PLATFORM_RNG
+#define HAL_PLATFORM_RNG (0)
+#endif
+
 #endif /* HAL_PLATFORM_H */

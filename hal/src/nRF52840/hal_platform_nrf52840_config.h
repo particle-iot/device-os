@@ -55,3 +55,5 @@
 #define HAL_PLATFORM_ETHERNET (1)
 
 #define HAL_PLATFORM_I2C2 (1)
+
+#define HAL_PLATFORM_RNG (1)
