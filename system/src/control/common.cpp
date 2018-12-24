@@ -1,15 +1,75 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("system.ctrl.common");
+
 #include "common.h"
 
 #if SYSTEM_CONTROL_ENABLED
 
 #include "nanopb_misc.h"
 #include "spark_wiring_platform.h"
+#include "check.h"
+#include "scope_guard.h"
 
 using namespace particle;
 
 namespace particle {
 namespace control {
 namespace common {
+
+int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_t* field, const pb_field_t* fields, const void* src) {
+    size_t sz = 0;
+    CHECK_TRUE(pb_get_encoded_size(&sz, fields, src), SYSTEM_ERROR_UNKNOWN);
+
+    // Check whether the message fits into the current reply buffer
+    // Worst case scenario, reserve 16 additional bytes
+    size_t sizeRequired = offset + sz + sizeof(uint64_t) * 2;
+    if (sizeRequired > req->reply_size) {
+        // Attempt to realloc
+        CHECK(system_ctrl_alloc_reply_data(req, sizeRequired, nullptr));
+    }
+
+    // Allocate ostream
+    auto stream = pb_ostream_init(nullptr);
+    if (stream == nullptr) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+
+    SCOPE_GUARD({
+        if (stream != nullptr) {
+            pb_ostream_free(stream, nullptr);
+        }
+    });
+
+    CHECK_TRUE(pb_ostream_from_buffer_ex(stream, (pb_byte_t*)req->reply_data + offset,
+            req->reply_size - offset, nullptr), SYSTEM_ERROR_UNKNOWN);
+
+    // Encode tag
+    CHECK_TRUE(pb_encode_tag_for_field(stream, field), SYSTEM_ERROR_UNKNOWN);
+    // Encode submessage
+    CHECK_TRUE(pb_encode_submessage(stream, fields, src), SYSTEM_ERROR_UNKNOWN);
+
+    // Is this safe?
+    const size_t written = stream->bytes_written;
+    return written;
+}
 
 int encodeReplyMessage(ctrl_request* req, const pb_field_t* fields, const void* src) {
     pb_ostream_t* stream = nullptr;
