@@ -181,6 +181,7 @@ void Esp32NcpNetif::loop(void* arg) {
             if (self->up_) {
                 LwipTcpIpCoreLock lk;
                 if (!netif_is_link_up(self->interface())) {
+                    lk.unlock();
                     if (self->upImpl()) {
                         self->wifiMan_->ncpClient()->off();
                     }
