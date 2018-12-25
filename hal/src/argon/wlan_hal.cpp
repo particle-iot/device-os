@@ -318,6 +318,13 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie) {
         static_assert(sizeof(ap.bssid) == MAC_ADDRESS_SIZE, "");
         memcpy(ap.bssid, &result.bssid(), MAC_ADDRESS_SIZE);
         ap.security = fromWifiSecurity(result.security());
+        // FIXME: As the ESP32 doesn't return the cipher type of an AP, we manually set it here.
+        if (ap.security == WLAN_SEC_WPA || ap.security == WLAN_SEC_WPA2) {
+            ap.cipher = WLAN_CIPHER_AES_TKIP;
+        }
+        else {
+            ap.cipher = WLAN_CIPHER_NOT_SET;
+        }
         ap.channel = result.channel();
         ap.rssi = result.rssi();
         const auto d = (Data*)data;
@@ -355,6 +362,13 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
         static_assert(sizeof(ap.bssid) == MAC_ADDRESS_SIZE, "");
         memcpy(ap.bssid, &conf.bssid(), MAC_ADDRESS_SIZE);
         ap.security = fromWifiSecurity(conf.security());
+        // FIXME: As the ESP32 doesn't return the cipher type of an AP, we manually set it here.
+        if (ap.security == WLAN_SEC_WPA || ap.security == WLAN_SEC_WPA2) {
+            ap.cipher = WLAN_CIPHER_AES_TKIP;
+        }
+        else {
+            ap.cipher = WLAN_CIPHER_NOT_SET;
+        }
         const auto d = (Data*)data;
         d->callback(&ap, d->data);
         ++d->count;
