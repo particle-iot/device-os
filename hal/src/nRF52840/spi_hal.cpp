@@ -315,8 +315,10 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
 }
 
 void HAL_SPI_End(HAL_SPI_Interface spi) {
-    spi_uninit(spi);
-    m_spi_map[spi].enabled = false;
+    if (m_spi_map[spi].enabled) {
+        spi_uninit(spi);
+        m_spi_map[spi].enabled = false;
+    }
 }
 
 void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order) {
