@@ -135,6 +135,10 @@
 #define Wiring_Wire3 1
 #endif // HAL_PLATFORM_I2C3
 
+#if HAL_PLATFORM_USART2
+#define Wiring_Serial2 1
+#endif // HAL_PLATFORM_USART2
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
