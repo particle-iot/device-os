@@ -37,8 +37,10 @@ const uint8_t pwm_pins[] = {
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
 #elif (PLATFORM_ID == 10) // Electron
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, B0, B1, B2, B3, C4, C5
-#elif (PLATFORM_ID == PLATFORM_XENON) // Xenon
-        D2, D3, D4, D5, D6, D7, D8, A0, A1, A2, A3, A4, A5, RGBR, RGBG, RGBB
+#elif HAL_PLATFORM_NRF52840 // Xenon/Argon/Boron
+        D2, D3, D4, D5, D6, /* D7, */ D8, A0, A1, A2, A3, A4, A5 /* , RGBR, RGBG, RGBB */
+#else
+#error "Unsupported platform"
 #endif
 };
 
@@ -60,7 +62,8 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     //To Do : Add test for remaining pins if required
 }
 
-#if !HAL_PLATFORM_NRF52840 // TODO
+// This test is STM32-specific
+#if !HAL_PLATFORM_NRF52840
 
 test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 #if (PLATFORM_ID == PLATFORM_XENON)
