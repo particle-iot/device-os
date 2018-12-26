@@ -120,7 +120,7 @@ inline void yield() {
 # define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
 # endif
 
-#elif HAL_PLATFORM_MESH
+#elif HAL_PLATFORM_NRF52840
 
 # ifndef digitalPinToPort
 # define digitalPinToPort(P)        ( HAL_Pin_Map()[P].gpio_port ? NRF_P1 : NRF_P0 )
