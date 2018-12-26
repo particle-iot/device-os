@@ -386,9 +386,9 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved) {
         } else {
             info->clock = 0;
         }
-        info->default_settings = ((m_spi_map[spi].spi_mode  == DEFAULT_SPI_MODE) ||
-                                  (m_spi_map[spi].bit_order == DEFAULT_BIT_ORDER) ||
-                                  (m_spi_map[spi].data_mode == DEFAULT_DATA_MODE) ||
+        info->default_settings = ((m_spi_map[spi].spi_mode  == DEFAULT_SPI_MODE) &&
+                                  (m_spi_map[spi].bit_order == DEFAULT_BIT_ORDER) &&
+                                  (m_spi_map[spi].data_mode == DEFAULT_DATA_MODE) &&
                                   (m_spi_map[spi].clock     == DEFAULT_SPI_CLOCK));
         info->enabled = m_spi_map[spi].enabled;
         info->mode = m_spi_map[spi].spi_mode;
