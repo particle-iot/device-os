@@ -37,6 +37,9 @@
 #define PLATFORM_ARGON						12
 #define PLATFORM_BORON						13
 #define PLATFORM_XENON						14
+#define PLATFORM_ARGON_SOM                  22
+#define PLATFORM_BORON_SOM                  23
+#define PLATFORM_XENON_SOM                  24
 #define PLATFORM_NEWHAL                     60000
 
 #endif	/* PLATFORMS_H */

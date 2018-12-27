@@ -25,8 +25,9 @@
 #define HAL_DYNALIB_CAN_H
 
 #include "dynalib.h"
+#include "hal_platform.h"
 
-#if PLATFORM_ID != 12 && PLATFORM_ID != 13 && PLATFORM_ID != 14
+#if !HAL_PLATFORM_NRF52840
 
 #ifdef DYNALIB_EXPORT
 #include "can_hal.h"

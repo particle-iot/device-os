@@ -42,7 +42,10 @@
 // QSPI Flash
 #if PLATFORM_ID == PLATFORM_ARGON || \
     PLATFORM_ID == PLATFORM_BORON || \
-    PLATFORM_ID == PLATFORM_XENON
+    PLATFORM_ID == PLATFORM_XENON || \
+    PLATFORM_ID == PLATFORM_ARGON_SOM || \
+    PLATFORM_ID == PLATFORM_BORON_SOM || \
+    PLATFORM_ID == PLATFORM_XENON_SOM
 #define QSPI_FLASH_SCK_PIN                  19
 #define QSPI_FLASH_CSN_PIN                  17
 #define QSPI_FLASH_IO0_PIN                  20
@@ -81,7 +84,8 @@
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
 
-#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
+    PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #else
     #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)
@@ -90,7 +94,11 @@
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 //Push Buttons in Bootloader, use the lowest level GPIOTE driver
+#if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM
+#define BUTTON1_GPIO_PIN                    25
+#else
 #define BUTTON1_GPIO_PIN                    11
+#endif
 #define BUTTON1_GPIO_MODE                   NRF_GPIO_PIN_DIR_INPUT
 #define BUTTON1_GPIO_PUPD                   NRF_GPIO_PIN_PULLUP
 #define BUTTON1_PRESSED                     0x00
@@ -106,7 +114,11 @@
 #define BUTTON1_MIRROR_SUPPORTED            0
 #else
 //Push Buttons in Device OS, use interrupt HAL
+#if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#define BUTTON1_PIN                         22
+#else
 #define BUTTON1_PIN                         20
+#endif
 #define BUTTON1_PIN_MODE                    INPUT_PULLUP
 #define BUTTON1_INTERRUPT_MODE              FALLING
 #define BUTTON1_PRESSED                     0x00

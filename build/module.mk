@@ -9,7 +9,7 @@ SOURCE_PATH ?= $(MODULE_PATH)
 include $(MODULE_PATH)/import.mk
 
 # FIXME: find a better place for this
-ifneq (,$(filter $(PLATFORM_ID),12 13 14))
+ifneq (,$(filter $(PLATFORM_ID),12 13 14 22 23 24))
 ifneq ("$(BOOTLOADER_MODULE)","1")
 export SOFTDEVICE_PRESENT=y
 CFLAGS += -DSOFTDEVICE_PRESENT=1

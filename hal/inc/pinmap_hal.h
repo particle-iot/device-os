@@ -90,117 +90,202 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 /*
 * Pin mapping. Borrowed from Wiring
 */
-#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
+    PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
 
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
 #define TOTAL_ANALOG_PINS   6
+#else
+#define TOTAL_ANALOG_PINS   8 // SoM
+#endif
+
 #define FIRST_ANALOG_PIN    D14
 
 // digital pins
-#define D0          0
-#define D1          1
-#define D2          2
-#define D3          3
-#define D4          4
-#define D5          5
-#define D6          6
-#define D7          7
-#define D8          8
-#define D9          9
-#define D10         10
-#define D11         11
-#define D12         12
-#define D13         13
-#define D14         14
-#define D15         15
-#define D16         16
-#define D17         17
-#define D18         18
-#define D19         19
+#define D0              0
+#define D1              1
+#define D2              2
+#define D3              3
+#define D4              4
+#define D5              5
+#define D6              6
+#define D7              7
+#define D8              8
+#define D9              9
+#define D10             10
+#define D11             11
+#define D12             12
+#define D13             13
+#define D14             14
+#define D15             15
+#define D16             16
+#define D17             17
+#define D18             18
+#define D19             19
 
-// button pin
-#define BTN         20
+#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
 
-// RGB LED pins
-#define RGBR        21
-#define RGBG        22
-#define RGBB        23
+#define D20             20
+#define D21             21
+#define D22             28
+#define D23             29
 
-#if PLATFORM_ID == PLATFORM_XENON
-#define TOTAL_PINS          (31)
-
-#define BATT        24
-#define PWR         25
-#define CHG         26
-#define NFC_PIN1    27
-#define NFC_PIN2    28
-#define ANTSW1      29
-#define ANTSW2      30
+#if PLATFORM_ID == PLATFORM_ARGON_SOM
+#define D24             37
 #endif
 
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-#define TX1 24
-#define RX1 25
-#define CTS1 26
-#define RTS1 27
-#else
-#define TX1         D4
-#define RX1         D5
-#define CTS1        D6
-#define RTS1        D8
+#if PLATFORM_ID == PLATFORM_XENON_SOM
+#define D24             30
+#define D25             31
+#define D26             32
+#define D27             33
+#define D28             34
+#define D29             35
+#define D30             36
+#define D31             37
 #endif
 
-#if PLATFORM_ID == PLATFORM_ARGON
-#define TOTAL_PINS          (36)
-#define ESPBOOT 28
-#define ESPEN 29
-#define HWAKE 30
-#define ANTSW1 31
-#define ANTSW2 32
-#define BATT 33
-#define PWR 34
-#define CHG 35
 #endif
-
-#if PLATFORM_ID == PLATFORM_BORON
-#define TOTAL_PINS  (36)
-#define UBPWR 28
-#define UBRST 29
-#define BUFEN 30
-#define ANTSW1 31
-#define PMIC_SCL 32
-#define PMIC_SDA 33
-#define UBVINT 34
-#define LOW_BAT_UC 35
-#endif
-
 
 // analog pins
-#define A0          D19
-#define A1          D18
-#define A2          D17
-#define A3          D16
-#define A4          D15
-#define A5          D14
+#define A0              D19
+#define A1              D18
+#define A2              D17
+#define A3              D16
+#define A4              D15
+#define A5              D14
+
+#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#define A6              D21
+#define A7              D20
+#endif
 
 // SPI pins
-#define SS          D14
-#define SCK         D13
-#define MISO        D11
-#define MOSI        D12
+#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#define SS              D8
+#else
+#define SS              D14
+#endif
+#define SCK             D13
+#define MISO            D11
+#define MOSI            D12
 
 // I2C pins
-#define SDA         D0
-#define SCL         D1
+#define SDA             D0
+#define SCL             D1
 
 // uart pins
-#define TX          D9
-#define RX          D10
-#define CTS         D3
-#define RTS         D2
+#define TX              D9
+#define RX              D10
+#define CTS             D3
+#define RTS             D2
 
-// WKP pin on Xenon
-#define WKP         D8   // FIXME: 
-#define A7          A5   // FIXME: A7 is used in spark_wiring_wifitester.cpp
+#if PLATFORM_ID == PLATFORM_XENON
+#define TX1             D4
+#define RX1             D5
+#define CTS1            D6
+#define RTS1            D8
+#elif PLATFORM_ID == PLATFORM_XENON_SOM
+#define TX1             D25
+#define RX1             D26
+#define CTS1            D22
+#define RTS1            D23
+#elif PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#define TX1             24
+#define RX1             25
+#define CTS1            26
+#define RTS1            27
+#else // Argon SoM and Boron SoM
+#define TX1             30
+#define RX1             31
+#define CTS1            32
+#define RTS1            33
+#endif
+
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+
+// button pin
+#define BTN             20
+
+// RGB LED pins
+#define RGBR            21
+#define RGBG            22
+#define RGBB            23
+
+#define A7              A5   // FIXME: A7 is used in spark_wiring_wifitester.cpp
+
+#else // Mesh SoMs
+
+// button pin
+#define BTN             22
+
+// RGB LED pins
+#define RGBR            23
+#define RGBG            24
+#define RGBB            25
+
+#define NFC_PIN1        26
+#define NFC_PIN2        27
+
+#endif
+
+// WKP pin
+#define WKP             D8   // FIXME:
+
+#if PLATFORM_ID == PLATFORM_XENON // Xenon
+#define TOTAL_PINS      (31)
+#define BATT            24
+#define PWR             25
+#define CHG             26
+#define NFC_PIN1        27
+#define NFC_PIN2        28
+#define ANTSW1          29
+#define ANTSW2          30
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON // Argon
+#define TOTAL_PINS      (36)
+#define ESPBOOT         28
+#define ESPEN           29
+#define HWAKE           30
+#define ANTSW1          31
+#define ANTSW2          32
+#define BATT            33
+#define PWR             34
+#define CHG             35
+#endif
+
+#if PLATFORM_ID == PLATFORM_BORON // Boron
+#define TOTAL_PINS      (36)
+#define UBPWR           28
+#define UBRST           29
+#define BUFEN           30
+#define ANTSW1          31
+#define PMIC_SCL        32
+#define PMIC_SDA        33
+#define UBVINT          34
+#define LOW_BAT_UC      35
+#endif
+
+#if PLATFORM_ID == PLATFORM_XENON_SOM // Xenon SoM
+#define TOTAL_PINS      (38)
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON_SOM // Argon SoM
+#define TOTAL_PINS      (38)
+#define ESPBOOT         34
+#define ESPEN           35
+#define HWAKE           36
+#endif
+
+#if PLATFORM_ID == PLATFORM_BORON_SOM // Boron SoM
+#define TOTAL_PINS      (38)
+#define UBPWR           34
+#define UBRST           35
+#define BUFEN           36
+#define UBVINT          37
+#define LOW_BAT_UC      A6
+#endif
 
 // TODO: Move this to a platform-specific header
 #define DEFAULT_PWM_FREQ 500 // 500Hz
