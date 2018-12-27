@@ -81,7 +81,7 @@
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
 #define APP_USBD_STRINGS_PRODUCT         \
-    APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+    APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
 
 
 /**
