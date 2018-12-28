@@ -5,6 +5,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
+#include "rgbled_hal.h"
 #include <stdio.h>
 
 #ifdef abs
@@ -217,8 +218,6 @@ test(LED_10_ChangeHandlerCalled) {
     RGB.onChange(NULL);
 }
 
-#if !HAL_PLATFORM_NRF52840 // TODO
-
 static void assertRgbLedMirrorPinsColor(const pin_t pins[3], uint16_t r, uint16_t g, uint16_t b)
 {
     // Convert to CCR
@@ -252,8 +251,6 @@ test(LED_11_MirroringWorks) {
     RGB.mirrorDisable();
     RGB.control(false);
 }
-
-#endif // !HAL_PLATFORM_NRF52840
 
 namespace {
 

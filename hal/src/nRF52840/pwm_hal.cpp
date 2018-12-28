@@ -24,7 +24,6 @@
 #define NRF5X_PWM_COUNT                     4
 #define PWM_CHANNEL_NUM                     4
 #define MAX_PWM_COUNTERTOP                  0x7FFF    // 15bit
-#define DEFAULT_PWM_FREQ                    500       // 500Hz
 #define MAX_PWM_FREQ                        500000    // 500kHz, base clock 16MHz, resolution value 16
 #define MAX_PWM_PERIOD_US                   2         // 2us
 #define MIN_PWM_FREQ                        4         // 4Hz

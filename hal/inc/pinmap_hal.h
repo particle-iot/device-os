@@ -202,6 +202,10 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define WKP         D8   // FIXME: 
 #define A7          A5   // FIXME: A7 is used in spark_wiring_wifitester.cpp
 
+// TODO: Move this to a platform-specific header
+#define DEFAULT_PWM_FREQ 500 // 500Hz
+#define TIM_PWM_FREQ DEFAULT_PWM_FREQ
+
 #elif PLATFORM_ID != 3
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 47
