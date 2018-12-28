@@ -195,6 +195,8 @@ test(WIFI_11_restore_default_hostname)
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
+#if !HAL_PLATFORM_NRF52840 // TODO
+
 test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
 {
     WiFiAccessPoint results[5];
@@ -207,6 +209,8 @@ test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
     }
     assertLessOrEqual(WiFi.scan(results, 5), 0);
 }
+
+#endif // !HAL_PLATFORM_NRF52840
 
 test(WIFI_13_restore_connection)
 {
