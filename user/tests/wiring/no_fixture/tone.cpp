@@ -33,11 +33,12 @@ static const pin_t pin = D1;//pin under test
 static const pin_t pin = A1;//pin under test
 #endif
 
-// This test is STM32-specific
-#if !HAL_PLATFORM_NRF52840
-
 test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
-    uint8_t pin = D5;//pin under test
+#if HAL_PLATFORM_NRF52840
+    pin_t pin = D0;
+#else
+    pin_t pin = D5;
+#endif
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when
@@ -46,8 +47,6 @@ test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
     assertNotEqual(HAL_Tone_Is_Stopped(pin), false);
     //To Do : Add test for remaining pins if required
 }
-
-#endif // !HAL_PLATFORM_NRF52840
 
 test(TONE_02_GeneratedOnPinResultsInCorrectFrequency) {
     uint32_t frequency = 500;
