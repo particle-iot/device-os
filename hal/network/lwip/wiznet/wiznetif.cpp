@@ -86,8 +86,10 @@ namespace {
 void spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t order, uint8_t mode) {
     hal_spi_info_t info = {.version = HAL_SPI_INFO_VERSION_2};
     HAL_SPI_Info(spi, &info, nullptr);
-    if (!info.enabled || info.ss_pin != 0xffff || info.mode != SPI_MODE_MASTER) {
-        HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, 0xffff, nullptr);
+    if (!info.enabled || info.ss_pin != 0xff || info.mode != SPI_MODE_MASTER) {
+        // 0xff is for PIN_INVALID, so that user takes control of the CS pin.
+        // While 0xffff is for SPI_DEFAULT_SS, in which case the SPI HAL driver will use the default CS pin.
+        HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, 0xff, nullptr);
     }
 
     if (info.mode != SPI_MODE_MASTER ||
