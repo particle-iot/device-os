@@ -34,9 +34,9 @@
 #define PLATFORM_P1                         8
 #define PLATFORM_ETHERNET_PROTO             9
 #define PLATFORM_ELECTRON_PRODUCTION        10
-#define PLATFORM_ARGON						12
-#define PLATFORM_BORON						13
-#define PLATFORM_XENON						14
+#define PLATFORM_ARGON                      12
+#define PLATFORM_BORON                      13
+#define PLATFORM_XENON                      14
 #define PLATFORM_ARGON_SOM                  22
 #define PLATFORM_BORON_SOM                  23
 #define PLATFORM_XENON_SOM                  24

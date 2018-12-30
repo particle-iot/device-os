@@ -131,7 +131,11 @@ int if_init_platform(void*) {
     }
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
+#if PLATFORM_ID == PLATFORM_BORON
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+#else // Boron SoM
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, 0xFF, D22, mac);
+#endif
     }
 
     uint8_t dummy;

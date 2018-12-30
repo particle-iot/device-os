@@ -80,8 +80,13 @@
  *
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
+#if PLATFORM_ID == 13 // Boron
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC('B', 'o', 'r', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+#else // Boron SoM
+#define APP_USBD_STRINGS_PRODUCT         \
+    APP_USBD_STRING_DESC('B', 'o', 'r', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+#endif
 
 
 /**

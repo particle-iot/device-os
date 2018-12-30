@@ -1,1 +1,0 @@
-include ../../shared/nRF52840/user_build.mk
