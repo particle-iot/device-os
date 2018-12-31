@@ -177,4 +177,23 @@ test(AT_CMD_04_error_test) {
         (*lines)++;
         return WAIT;
     }, &lines, 5000, "AT+USOCL=7\r\n"), (int)SYSTEM_ERROR_NONE);
+
+    // +CMS ERROR: invalid memory index
+    lines = 0;
+    assertEqualBlock(send_cellular_command([](int type, const char* buf, int len, int* lines) -> int {
+        at_resp_info_print(type, buf, len, lines);
+        assertEqualBlock(type, (int)TYPE_ERROR);
+        return WAIT;
+    }, &lines, 5000, "AT+CMSS=1000\r\n"), (int)SYSTEM_ERROR_NONE);
 }
+
+test(AT_CMD_05_no_carrier) {
+    int lines = 0;
+
+    assertEqualBlock(send_cellular_command([](int type, const char* buf, int len, int* lines) -> int {
+        at_resp_info_print(type, buf, len, lines);
+        assertEqualBlock(type, (int)TYPE_NOCARRIER);
+        return WAIT;
+    }, &lines, 5000, "atd1234567890\r\n"), (int)SYSTEM_ERROR_NONE);
+}
+
