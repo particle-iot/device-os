@@ -46,7 +46,6 @@ docker run --rm --volume <local firmware repository>:/particle-iot/firmware --vo
 
 - [`arm-none-eabi-gcc`](#gcc-for-arm-cortex-processors)
 - [`make`](#gnu-make)
-- [`dfu-util`](#device-firmware-upgrade-utilities)
 - [`crc32`](#32-bit-cyclic-redundency-check-utility)
 - [`xxd`](#xxd-hex-dump-utility)
 - [Zadig (Windows only)](#zadig-windows-only)
@@ -72,6 +71,11 @@ message if the version is older than this.
 **Linux _(non-Ubuntu)_:**
 
 Install from the download page.
+
+Additional 32-bit dependencies:
+
+- [`lib32ncurses5`](https://packages.debian.org/stretch/lib32ncurses5) - The ncurses library routines are a terminal-independent method of updating character screens with reasonable optimization.
+- [`libc6-i386`](https://packages.debian.org/stretch/libc6-i386) - This package includes shared versions of the standard C library and the standard math library, as well as many others.
 
 **OSX:**
 
@@ -137,25 +141,6 @@ In order to turn your source code into binaries, you will need a tool called `ma
 | Linux | Debian | apt-get | `sudo apt-get install make` |
 | OSX | n/a | [Homebrew](http://brew.sh/) | `brew install make` |
 | OSX | n/a | [Macports](http://www.macports.org) | `port install make` |
-| Windows | n/a | n/a | `# See detailed instructions below` |
-
-**Windows:**
-
-Install from the download page.
-
-### Device Firmware Upgrade Utilities
-
-`dfu-util` - Device firmware update (DFU) USB programmer
-
-| Confirmed version | Download page |
-|:-----------------:|:-------------:|
-| 0.8 | [sourceforge.net](http://dfu-util.sourceforge.net/) |
-
-| OS | Distribution | Package Manager | Command |
-|:-- |:------------ |:--------------- |:------- |
-| Linux | Debian | apt-get | `sudo apt-get install dfu-util` |
-| OSX | n/a | [Homebrew](http://brew.sh/) | `brew install dfu-util` |
-| OSX | n/a | [Macports](http://www.macports.org) | `port install dfu-util` |
 | Windows | n/a | n/a | `# See detailed instructions below` |
 
 **Windows:**
