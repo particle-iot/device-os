@@ -1826,7 +1826,6 @@ int MDMParser::_socketSocket(int socket, IpProtocol ipproto, int port)
 int MDMParser::socketSocket(IpProtocol ipproto, int port)
 {
     int socket;
-    static bool checkedOnce = false;
     LOCK();
 
     if (!_attached) {
@@ -1836,16 +1835,13 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
     }
 
     if (_attached) {
-        if (!checkedOnce) {
-            checkedOnce = true; // prevent re-entry
-            DEBUG_D("On first socketSocket use, free all open sockets\r\n");
-            // Clean up any open sockets, we may have power cycled the STM32
-            // while the modem remained connected.
-            for (int s = 0; s < NUMSOCKETS; s++) {
-                _socketCloseHandleIfOpen(s);
-                // re-initialize the socket element
-                _socketFree(s);
-            }
+        // Check for any stale handles that are open on the modem but not currently associated
+        // with a socket. These may occur after power cycling the STM32 with modem connected
+        // or if a previous socket was not closed cleanly. socketFree() will unconditionally
+        // free the socket even if the handle doesn't close on the modem.
+        if (_socketCloseUnusedHandles())
+        {
+            DEBUG_D("%s: closed stale socket handle(s)\r\n", __func__);
         }
 
         // find an free socket
@@ -1855,18 +1851,6 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
             int _socket = _socketSocket(socket, ipproto, port);
             if (_socket != MDM_SOCKET_ERROR) {
                 socket = _socket;
-            }
-            else {
-                // A socket should be available, but errored on trying to create one
-                if (_socketCloseUnusedHandles()) {
-                    // find a new free socket and try again
-                    _socket = _findSocket(MDM_SOCKET_ERROR);
-                    socket = _socketSocket(_socket, ipproto, port);
-                }
-                else {
-                    // We tried to close unused handles, but also failed.
-                    socket = MDM_SOCKET_ERROR;
-                }
             }
         }
     }
