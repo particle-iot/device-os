@@ -1,3 +1,9 @@
+## 0.8.0-rc.14
+
+### BUGFIXES
+
+- [Electron/LTE] Fixes unique stale socket issue with LTE devices ([#1666](https://github.com/particle-iot/firmware/pull/1666))
+
 ## 0.8.0-rc.12
 
 ### ENHANCEMENTS
