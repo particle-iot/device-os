@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("hal.ble_api")
+
 /* Headers included from nRF5_SDK/components/softdevice/s140/headers */
 #include "ble.h"
 #include "ble_gap.h"
@@ -35,11 +38,8 @@
 
 #include "ble_hal_api.h"
 #include "system_error.h"
-#include "logging.h"
+
 #include <string.h>
-
-
-LOG_SOURCE_CATEGORY("hal.ble_api")
 
 
 #define BLE_CONN_CFG_TAG                        1
@@ -675,7 +675,7 @@ int hal_ble_init(uint8_t role, void* reserved) {
             params.filter_policy = BLE_GAP_ADV_FP_ANY;
             params.interval      = BLE_DEFAULT_ADVERTISING_INTERVAL;
             params.duration      = BLE_DEFAULT_ADVERTISING_DURATION;
-            params.inc_tx_power  = true;
+            params.inc_tx_power  = false;
 
             int error = ble_set_advertising_params(&params);
             if (error != SYSTEM_ERROR_NONE) {
