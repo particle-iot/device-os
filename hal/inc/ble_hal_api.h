@@ -173,7 +173,7 @@ typedef struct {
 } hal_ble_event_t;
 
 /* BLE event callback */
-typedef void *ble_event_callback_t(hal_ble_event_t* event);
+typedef void (*ble_event_callback_t)(hal_ble_event_t* event);
 
 
 #ifdef __cplusplus
