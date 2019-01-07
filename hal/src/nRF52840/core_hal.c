@@ -42,6 +42,7 @@
 #include <malloc.h>
 #include "rtc_hal.h"
 #include "timer_hal.h"
+#include "pinmap_impl.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -475,9 +476,28 @@ void HAL_Core_Execute_Stop_Mode(void) {
 }
 
 void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
+    // Not support RTC wakeup on Gen 3 Device
+    if (seconds > 0) {
+        return;
+    }
+
+    HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
 }
 
 void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
+    // Force to use external wakeup pin on Gen 3 Device
+    if (flags & HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN) {
+        return;
+    }
+
+    // Configure wakeup pin and enter deep sleep mode
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
+    nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    SPARK_ASSERT(sd_power_system_off() == NRF_SUCCESS);
+
+    // Following code will not be reached
+    while (1);
 }
 
 void HAL_Core_Execute_Standby_Mode(void) {
