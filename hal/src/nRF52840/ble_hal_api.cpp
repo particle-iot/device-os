@@ -398,7 +398,7 @@ static void updateConnParamsIfNeeded(void) {
                     return;
                 }
             }
-            LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d seconds",
+            LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms",
                     s_connParamsUpdateAttempts, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
         }
         else {
@@ -443,6 +443,9 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         } break;
 
         case BLE_GAP_EVT_CONNECTED: {
+            // FIXME: If multi role is enabled, this flag should not be clear here.
+            s_isAdvertising = false;
+
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
 
             s_bleConnInfo.role             = event->evt.gap_evt.params.connected.role;
@@ -489,6 +492,16 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             bleEvt.conn_event.reason      = event->evt.gap_evt.params.disconnected.reason;
             if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
+            }
+
+            // Re-start advertising.
+            LOG_DEBUG(TRACE, "Restart BLE advertising.");
+            ret = sd_ble_gap_adv_start(s_advHandle, BLE_CONN_CFG_TAG);
+            if (ret != NRF_SUCCESS) {
+                LOG(ERROR, "sd_ble_gap_adv_start() failed: %u", (unsigned)ret);
+            }
+            else {
+                s_isAdvertising = true;
             }
         } break;
 
@@ -977,7 +990,12 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
     bleGapAdvParams.primary_phy                 = BLE_GAP_PHY_1MBPS;
 
     LOG_DEBUG(TRACE, "BLE advertising interval: (%d x 0.625) ms.", bleGapAdvParams.interval);
-    LOG_DEBUG(TRACE, "BLE advertising duration: (%d x 10) ms.", bleGapAdvParams.duration);
+    if (bleGapAdvParams.duration == 0) {
+        LOG_DEBUG(TRACE, "BLE advertising duration: infinite.");
+    }
+    else {
+        LOG_DEBUG(TRACE, "BLE advertising duration: (%d x 10) ms.", bleGapAdvParams.duration);
+    }
 
     // Make sure the advertising data and scan response data is consistent.
     ble_gap_adv_data_t bleGapAdvData;
