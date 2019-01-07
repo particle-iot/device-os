@@ -63,7 +63,7 @@ class bleLock {
 
 static bool         s_bleInitialized = false;
 
-static ble_event_callback_t*    s_bleEvtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
+static ble_event_callback_t     s_bleEvtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
 
 static ble_gap_addr_t           s_whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
 static ble_gap_addr_t const*    s_whitelist_ptr[BLE_MAX_WHITELIST_ADDR_COUNT];
@@ -712,7 +712,7 @@ int hal_ble_init(uint8_t role, void* reserved) {
     }
 }
 
-int ble_register_callback(ble_event_callback_t* callback) {
+int ble_register_callback(ble_event_callback_t callback) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInitialized);
     for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
@@ -724,7 +724,7 @@ int ble_register_callback(ble_event_callback_t* callback) {
     return SYSTEM_ERROR_LIMIT_EXCEEDED;
 }
 
-int ble_deregister_callback(ble_event_callback_t* callback) {
+int ble_deregister_callback(ble_event_callback_t callback) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInitialized);
     for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
