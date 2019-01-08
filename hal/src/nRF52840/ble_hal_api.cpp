@@ -1537,7 +1537,7 @@ int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
     gattValue.p_value = cccd;
     gattValue.len = sizeof(cccd);
     gattValue.offset = 0;
-    ret_code_t ret = sd_ble_gatts_value_get(0, ble_char->cccd_handle, &gattValue);
+    ret_code_t ret = sd_ble_gatts_value_get(BLE_CONN_HANDLE_INVALID, ble_char->cccd_handle, &gattValue);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_value_get() failed: %u", (unsigned)ret);
         return sysError(ret);
@@ -1593,7 +1593,7 @@ int ble_set_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16
     gattValue.offset  = 0;
     gattValue.p_value = data;
 
-    ret_code_t ret = sd_ble_gatts_value_set(0, ble_char->value_handle, &gattValue);
+    ret_code_t ret = sd_ble_gatts_value_set(BLE_CONN_HANDLE_INVALID, ble_char->value_handle, &gattValue);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_value_set() failed: %u", (unsigned)ret);
         return sysError(ret);
@@ -1617,7 +1617,7 @@ int ble_get_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16
     gattValue.offset  = 0;
     gattValue.p_value = data;
 
-    ret_code_t ret = sd_ble_gatts_value_get(0, ble_char->value_handle, &gattValue);
+    ret_code_t ret = sd_ble_gatts_value_get(BLE_CONN_HANDLE_INVALID, ble_char->value_handle, &gattValue);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_value_get() failed: %u", (unsigned)ret);
         *len = 0;
