@@ -1,3 +1,98 @@
+## 1.0.0
+
+### BREAKING CHANGES
+
+- Beginning with 1.0.0 release, Particle.publish() and Particle.subscribe() methods will require event scope to be specified explicitly. This means using `PRIVATE` or `PUBLIC` for `Particle.publish()` and `MY_DEVICES` or `ALL_DEVICES` for `Particle.subscribe()`.  Please update your apps to include the event scope to avoid compilation errors in firmware `>0.7.0`. Deprecation warnings for this change began with `0.7.0-rc.3` [#1365](https://github.com/spark/firmware/pull/1365)
+- [Core/Photon/P1] `WiFi.RSSI()` must be cast to `int8_t` when used inline with Serial.print() to produce correct results.  E.g. `Serial.printlnf("%d", (int8_t) WiFi.RSSI() );` Electron is not affected. [#1423](https://github.com/particle-iot/firmware/pull/1423)
+
+### FEATURES
+
+- Diagnostics service [#1390](https://github.com/spark/firmware/pull/1390)
+- Network and Cloud diagnostics [#1424](https://github.com/spark/firmware/pull/1424)
+- Diagnostics for unacked messages and rate limited events [#1391](https://github.com/spark/firmware/pull/1391)
+- System uptime diagnoatics [#1393](https://github.com/spark/firmware/pull/1393)
+- Network Signal Quality/Strength rework and diagnostics [#1423](https://github.com/spark/firmware/pull/1423)
+- RAM usage diagnostic sources data [#1411](https://github.com/spark/firmware/pull/1411)
+- Battery charge diagnostics [#1395](https://github.com/spark/firmware/pull/1395)
+- Battery State diagnostics [#1398](https://github.com/spark/firmware/pull/1398)
+- [Electron] Reworked power management [#1412](https://github.com/spark/firmware/pull/1412)
+- Low-latency interrupt handlers [#1394](https://github.com/spark/firmware/pull/1394)
+- [Electron] adds UPSV handling to cellular_hal [#1480](https://github.com/particle-iot/firmware/pull/1480)
+- [Photon/P1] TCPClient: non-blocking, blocking, blocking with timeout writes support [#1485](https://github.com/particle-iot/firmware/pull/1485)
+- Network and cloud diagnostics [#1424](https://github.com/particle-iot/firmware/pull/1424)
+- Out of heap system event and heap fragmentation detection [#1452](https://github.com/particle-iot/firmware/pull/1452)
+- USB request handlers [#1444](https://github.com/particle-iot/firmware/pull/1444)
+
+### ENHANCEMENTS
+
+- [Photon/P1] Moves Wi-Fi tester into application module [#1378](https://github.com/spark/firmware/pull/1378)
+- [Photon/P1] Wi-FI firmware compression [#1421](https://github.com/spark/firmware/pull/1421)
+- Only remake $(TARGET_BASE).elf el al. if necessary [#1223](https://github.com/particle-iot/firmware/pull/1223)
+- Use 'using std::**' instead of define * std::* [#1258](https://github.com/particle-iot/firmware/pull/1258)
+- Added docs on local build setup [#1374](https://github.com/particle-iot/firmware/pull/1374)
+- Firmware update and access to internal flash via USB requests [#1456](https://github.com/particle-iot/firmware/pull/1456)
+- Generalize FuelGauge to also use alternative I2C interfaces. [#1443](https://github.com/particle-iot/firmware/pull/1443)
+- [Photon/P1] WiFi.dnsServerIP()/WiFi.dhcpServerIP() support [#1386](https://github.com/particle-iot/firmware/pull/1386)
+- [Photon/P1] Increase maximum supported number of simultaneously active TCP connections [#1350](https://github.com/particle-iot/firmware/pull/1350)
+- Disable WKP pin waking device up from `SLEEP_MODE_DEEP` [#1409](https://github.com/particle-iot/firmware/pull/1409)
+- System.sleep(): support for multiple wake up pins [#1405](https://github.com/particle-iot/firmware/pull/1405)
+- System.sleep() wake up reason [#1410](https://github.com/particle-iot/firmware/pull/1410)
+- Serialize access to the CRC peripheral (STM32F2xx) [#1465](https://github.com/particle-iot/firmware/pull/1465)
+- [Photon/P1] Enables support for SHA384/SHA512 certificates for WPA Enterprise [#1501](https://github.com/particle-iot/firmware/pull/1501)
+- [Photon/P1] A number of networking-related fixes v2 [#1500](https://github.com/particle-iot/firmware/pull/1500)
+- [Electron/Photon/P1] Increase Device OS API argument lengths. More data in Functions, Variables, Publish, Subscribe... oh my! [#1537](https://github.com/particle-iot/firmware/pull/1537)
+- [Electron] Adds support for SARA-R410 to the Cellular HAL [#1532](https://github.com/particle-iot/firmware/pull/1532)
+- [Electron/Photon/P1] Do not check and lock bootloader sector write protection on every boot [ch17416] [#1578](https://github.com/particle-iot/firmware/pull/1578)
+- [Photon/P1] Memory usage optimizations ([#1635](https://github.com/particle-iot/firmware/pull/1635))
+- [Electron/Photon/P1] Cache persistent feature flags ([#1640](https://github.com/particle-iot/firmware/pull/1640))
+
+### BUGFIXES
+
+- [Electron] Error handling in the data usage API [#1435](https://github.com/spark/firmware/pull/1435)
+- Cloud random seed not working [#1312](https://github.com/spark/firmware/issues/1312)
+- Fixed shadowing of write(const unint_8_t`*`, sizte_t) in USBKeyboard [#1372](https://github.com/particle-iot/firmware/pull/1372)
+- Fix usage of an incorrect prerequisite name in program-* targets [#1463](https://github.com/particle-iot/firmware/pull/1463)
+- [Virtual] Fixes virtual device running with UDP protocol [#1462](https://github.com/particle-iot/firmware/pull/1462)
+- [Core] Fixes I2C slave mode [#1309](https://github.com/particle-iot/firmware/pull/1309)
+- [Electron] moves some newlib functions into part1 [#1471](https://github.com/particle-iot/firmware/pull/1471)
+- [Electron] DCD fixes [#1454](https://github.com/particle-iot/firmware/pull/1454)
+- [Electron] connect_cancel() fix [#1464](https://github.com/particle-iot/firmware/pull/1464)
+- [Electron] Fix caching of the description CRCs in the backup RAM [#1413](https://github.com/particle-iot/firmware/pull/1413)
+- [Electron] Guard cellular_command() with a global lock [#1415](https://github.com/particle-iot/firmware/pull/1415)
+- [Electron] Fix heap bounds build for system part1 [#1478](https://github.com/particle-iot/firmware/pull/1478)
+- [Photon/P1/Electron] Recursive logging freezes the application thread while the LogHandler is trying to acquire a lock on the resource [#1517](https://github.com/particle-iot/firmware/pull/1517)
+- [Photon/Electron] WKP pin needs to be disabled as a wakeup source on boot to allow its normal operation [#1496](https://github.com/particle-iot/firmware/pull/1496)
+- [Photon/P1] A number of networking-related fixes v2 [#1500](https://github.com/particle-iot/firmware/pull/1500)
+- [Photon/P1] A number of networking-related fixes [#1492](https://github.com/particle-iot/firmware/pull/1492)
+- [Electron] Fixes missing URCs for received data during TX or RX socket operations. This caused the modem not to be able to receive further data properly until it re-connected to the Cloud which it would do automatically but usually after a short or longer period of time. [#1530](https://github.com/particle-iot/firmware/pull/1530)
+- [Electron] `Particle.keepAlive()` API was broken since v0.6.2-rc.2 firmware on Electron where the System would override an early set User ping interval.  This required a workaround of updating the keepAlive after the System made a connection to the Cloud.  See issue #1482 for workaround. [#1536](https://github.com/particle-iot/firmware/pull/1536)
+- [Electron] Bug fixes for SARA-R410 LTE E Series [#1547](https://github.com/particle-iot/firmware/pull/1547)
+- [Electron] Disables 30 second ping for Kore SIMs on SARA_R410 (default 23 minute ping re-applied)
+- [Electron/LTE] Fast OTA Fixes [#1558](https://github.com/particle-iot/firmware/pull/1558)
+- [Electron/LTE] eDRX & Power Saving mode disabled by default [#1567](https://github.com/particle-iot/firmware/pull/1567)
+- [Electron/Photon/P1] Fixes recursive semaphore lock timeout [ch21928] [#1577](https://github.com/particle-iot/firmware/pull/1577)
+- [Electron/LTE] adds 1 retry for UDP/TCP socket send in case of error [ch18789] [#1576](https://github.com/particle-iot/firmware/pull/1576)
+- [Photon/P1] Invalidate sockets when turning WiFi off ([#1639](https://github.com/particle-iot/firmware/pull/1639))
+- [Electron] Do not set the sticky skip hello after handshake ([#1624](https://github.com/particle-iot/firmware/pull/1624))
+- [Electron] `PMIC::getInputCurrentLimit()` cannot report values higher than 900mA ([#1581](https://github.com/particle-iot/firmware/pull/1581))
+- [Electron/LTE] AT+CNUM command causing registration failure on LTE devices ([#1627](https://github.com/particle-iot/firmware/pull/1627))
+- [Electron/LTE] Power Manager Watchdog Timer Fix ([#1581](https://github.com/particle-iot/firmware/pull/1581))
+- [Electron/Photon/P1] Wait for Wiring Thread to start ([#1528](https://github.com/particle-iot/firmware/pull/1528))
+- [Electron/Photon/P1] Do not disable interrupts on every system loop iteration ([#1622](https://github.com/particle-iot/firmware/pull/1622))
+- [Electron/Photon/P1] Fixes SOS in 0.8.0-rc.11 and also ensures button and OOM events are handled synchronously. Previously in multi-threaded applications the button handling may have been delayed to run within the application thread.  Now it is always handled immediately and should be noted that it is called from an ISR, so it is not advised to dynamically allocate memory in button event handlers. ([#1600](https://github.com/particle-iot/firmware/pull/1600)) ([#1650](https://github.com/particle-iot/firmware/pull/1650))
+- [Electron/LTE] Fixes unique stale socket issue with LTE devices ([#1666](https://github.com/particle-iot/firmware/pull/1666))
+
+### INTERNAL
+
+- Minor refactoring of the USB protocol implementation [#1473](https://github.com/particle-iot/firmware/pull/1473)
+- [Electron] Flash size optimizations [#1469](https://github.com/particle-iot/firmware/pull/1469)
+- Documents low level USB request completion notifications [#1475](https://github.com/particle-iot/firmware/pull/1475)
+- IS_CLAIMED request fixes [#1472](https://github.com/particle-iot/firmware/pull/1472)
+- fixes the unit test build [#1474](https://github.com/particle-iot/firmware/pull/1474)
+- Fixes some 0.8.0-rc.2 tests [#1476](https://github.com/particle-iot/firmware/pull/1476)
+- [Electron] fixes sticker-rig issue with POWER_ON command [#1544](https://github.com/particle-iot/firmware/pull/1544)
+- [Electron] Fixes monolithic build [#1543](https://github.com/particle-iot/firmware/pull/1543)
+
 ## 0.8.0-rc.14
 
 ### BUGFIXES

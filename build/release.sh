@@ -1,4 +1,4 @@
-VERSION="0.8.0-rc.14"
+VERSION="1.0.0"
 
 function release_file()
 {
