@@ -47,12 +47,12 @@ typedef struct {
     uint8_t addr[BLE_SIG_ADDR_LEN];
 } hal_ble_address_t;
 
-/* BLE UUID */
+/* BLE UUID, little endian */
 typedef struct {
     uint8_t type;
     union {
         uint16_t uuid16;
-        uint8_t* uuid128;
+        uint8_t  uuid128[BLE_SIG_UUID_128BIT_LEN];
     };
 } hal_ble_uuid_t;
 
@@ -93,36 +93,13 @@ typedef struct {
 
 /* BLE characteristic definition */
 typedef struct {
-    uint16_t       service_handle;
-    hal_ble_uuid_t uuid;
     uint8_t        properties;
     uint16_t       value_handle;
     uint16_t       user_desc_handle;
     uint16_t       cccd_handle;
     uint16_t       sccd_handle;
-    uint8_t        value[BLE_MAX_CHAR_VALUE_LEN];
-    uint16_t       value_len;
+    hal_ble_uuid_t uuid;
 } hal_ble_char_t;
-
-/* BLE service definition */
-typedef struct {
-    uint8_t         type;
-    hal_ble_uuid_t  uuid;
-    uint16_t        start_handle;
-    uint16_t        end_handle;
-    hal_ble_char_t* chars[BLE_MAX_CHARS_PER_SERVICE_COUNT];
-    uint8_t         char_count;
-} hal_ble_service_t;
-
-typedef struct {
-    hal_ble_service_t* service;
-    hal_ble_uuid_t     uuid;
-    uint8_t            properties;
-    uint8_t*           value;
-    uint16_t           value_len;
-    uint8_t*           desc;
-    uint16_t           desc_len;
-} hal_ble_char_init_t;
 
 /* BLE connection status changed event */
 typedef struct {
@@ -158,7 +135,7 @@ typedef struct {
 typedef struct {
     uint16_t conn_handle;
     uint16_t char_handle;
-    uint8_t* data;
+    uint8_t  data[BLE_MAX_CHAR_VALUE_LEN];
     uint16_t data_len;
 } hal_ble_data_event_t;
 
@@ -421,23 +398,60 @@ int ble_stop_scanning(void);
 /**
  * Add a BLE service.
  *
- * @param[in]       type    BLE service type, either BLE_SERVICE_TYPE_PRIMARY or BLE_SERVICE_TYPE_SECONDARY.
- * @param[in]       uuid    Pointer to the BLE service UUID.
- * @param[in,out]   service Pointer to the hal_ble_service_t structure.
+ * @param[in]   type    BLE service type, either BLE_SERVICE_TYPE_PRIMARY or BLE_SERVICE_TYPE_SECONDARY.
+ * @param[in]   uuid128 Pointer to the 128-bits BLE service UUID.
+ * @param[out]  handle  Service handle.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_add_service(uint8_t type, hal_ble_uuid_t* uuid, hal_ble_service_t* service);
+int ble_add_service_uuid128(uint8_t type, const uint8_t* uuid, uint16_t* handle);
+
+/**
+ * Add a BLE service.
+ *
+ * @param[in]   type    BLE service type, either BLE_SERVICE_TYPE_PRIMARY or BLE_SERVICE_TYPE_SECONDARY.
+ * @param[in]   uuid16  Pointer to the 16-bits BLE service UUID.
+ * @param[out]  handle  Service handle.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle);
 
 /**
  * Add a BLE Characteristic under a specific BLE Service.
  *
- * @param[in]       char_init   Pointer to the structure that contains the Characteristic configurations.
- * @param[in]       ble_char    Pointer to the hal_ble_char_t structure.
+ * @param[in]       service_handle  The service handle of which the characteristic to be added to.
+ * @param[in]       uuid128         Pointer to the Characteristic 128-bits UUID.
+ * @param[in]       properties      The Characteristic properties.
+ * @param[in,out]   ble_char        Pointer to the hal_ble_char_t structure.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_add_characteristic(hal_ble_char_init_t* char_init, hal_ble_char_t* ble_char);
+int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_t properties, hal_ble_char_t* ble_char);
+
+/**
+ * Add a BLE Characteristic under a specific BLE Service.
+ *
+ * @param[in]       service_handle  The service handle of which the characteristic to be added to.
+ * @param[in]       uuid16          Pointer to the Characteristic 16-bits UUID.
+ * @param[in]       properties      The Characteristic properties.
+ * @param[in,out]   ble_char        Pointer to the hal_ble_char_t structure.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties, hal_ble_char_t* ble_char);
+
+/**
+ * Add descriptor under a specific BLE Characteristic.
+ *
+ * @param[in]       char_handle The Characteristic handle of which the descriptor to be added to.
+ * @param[in]       desc        Pointer to the descriptor.
+ * @param[in]       len         Length of the descriptor.
+ * @param[in,out]   ble_char    Pointer to the hal_ble_char_t structure.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_add_char_desc(uint16_t char_handle, uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char);
 
 /**
  * Send a BLE notification or indication to client.
