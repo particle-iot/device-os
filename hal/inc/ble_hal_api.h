@@ -427,7 +427,7 @@ int ble_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_t properties, hal_ble_char_t* ble_char);
+int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_t properties, const char* desc, hal_ble_char_t* ble_char);
 
 /**
  * Add a BLE Characteristic under a specific BLE Service.
@@ -439,7 +439,7 @@ int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties, hal_ble_char_t* ble_char);
+int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties, const char* desc, hal_ble_char_t* ble_char);
 
 /**
  * Add descriptor under a specific BLE Characteristic.
