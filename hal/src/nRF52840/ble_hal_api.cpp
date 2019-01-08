@@ -401,10 +401,11 @@ static int addService(uint8_t type, const ble_uuid_t* uuid, uint16_t* handle) {
     return SYSTEM_ERROR_NONE;
 }
 
-static int addCharacteristic(uint16_t service_handle, const ble_uuid_t* uuid, uint8_t properties, hal_ble_char_t* ble_char) {
+static int addCharacteristic(uint16_t service_handle, const ble_uuid_t* uuid, uint8_t properties, const char* desc, hal_ble_char_t* ble_char) {
     ret_code_t               ret;
     ble_gatts_char_md_t      char_md;
     ble_gatts_attr_md_t      value_attr_md;
+    ble_gatts_attr_md_t      user_desc_attr_md;
     ble_gatts_attr_md_t      cccd_attr_md;
     ble_gatts_attr_t         char_value_attr;
     ble_gatts_char_handles_t char_handles;
@@ -419,8 +420,24 @@ static int addCharacteristic(uint16_t service_handle, const ble_uuid_t* uuid, ui
     char_md.char_props.indicate       = (properties & BLE_SIG_CHAR_PROP_INDICATE) ? 1 : 0;
     char_md.char_props.auth_signed_wr = (properties & BLE_SIG_CHAR_PROP_AUTH_SIGN_WRITES) ? 1 : 0;
     // User Description Descriptor
-    char_md.p_char_user_desc = NULL;
-    char_md.p_user_desc_md   = NULL;
+    if (desc != NULL) {
+        memset(&user_desc_attr_md, 0, sizeof(user_desc_attr_md));
+        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&user_desc_attr_md.read_perm);
+        BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&user_desc_attr_md.write_perm);
+        user_desc_attr_md.vloc    = BLE_GATTS_VLOC_STACK;
+        user_desc_attr_md.rd_auth = 0;
+        user_desc_attr_md.wr_auth = 0;
+        user_desc_attr_md.vlen    = 0;
+
+        char_md.p_char_user_desc        = (const uint8_t *)desc;
+        char_md.char_user_desc_max_size = strlen(desc);
+        char_md.char_user_desc_size     = strlen(desc);
+        char_md.p_user_desc_md          = &user_desc_attr_md;
+    }
+    else {
+        char_md.p_char_user_desc = NULL;
+        char_md.p_user_desc_md   = NULL;
+    }
     // Client Characteristic Configuration Descriptor
     if (char_md.char_props.notify || char_md.char_props.indicate) {
         memset(&cccd_attr_md, 0, sizeof(cccd_attr_md));
@@ -1402,7 +1419,7 @@ int ble_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle) {
     return addService(type, &svcUuid, handle);
 }
 
-int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_t properties, hal_ble_char_t* ble_char) {
+int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_t properties, const char* desc, hal_ble_char_t* ble_char) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInitialized);
 
@@ -1429,7 +1446,7 @@ int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_
         return sysError(ret);
     }
 
-    int error = addCharacteristic(service_handle, &charUuid, properties, ble_char);
+    int error = addCharacteristic(service_handle, &charUuid, properties, desc, ble_char);
     if (SYSTEM_ERROR_NONE == error) {
         ble_char->uuid.type = BLE_UUID_TYPE_128BIT;
         memcpy(ble_char->uuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
@@ -1438,7 +1455,7 @@ int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_
     return error;
 }
 
-int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties, hal_ble_char_t* ble_char) {
+int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties, const char* desc, hal_ble_char_t* ble_char) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInitialized);
 
@@ -1452,7 +1469,7 @@ int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t proper
     charUuid.type = BLE_UUID_TYPE_BLE;
     charUuid.uuid = uuid16;
 
-    int error = addCharacteristic(service_handle, &charUuid, properties, ble_char);
+    int error = addCharacteristic(service_handle, &charUuid, properties, desc, ble_char);
     if (SYSTEM_ERROR_NONE == error) {
         ble_char->uuid.type   = BLE_UUID_TYPE_16BIT;
         ble_char->uuid.uuid16 = uuid16;
