@@ -1461,7 +1461,7 @@ int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t proper
     return error;
 }
 
-int ble_add_char_desc(uint16_t char_handle, uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char) {
+int ble_add_char_desc(uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInitialized);
 
@@ -1504,7 +1504,7 @@ int ble_add_char_desc(uint16_t char_handle, uint8_t* desc, uint16_t len, hal_ble
     desc_attr.max_len   = len;
     desc_attr.p_value   = desc;
 
-    ret = sd_ble_gatts_descriptor_add(char_handle, &desc_attr, &ble_char->user_desc_handle);
+    ret = sd_ble_gatts_descriptor_add(ble_char->value_handle, &desc_attr, &ble_char->user_desc_handle);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_descriptor_add() failed: %u", (unsigned)ret);
         return sysError(ret);
@@ -1616,6 +1616,7 @@ int ble_get_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16
     ret_code_t ret = sd_ble_gatts_value_get(0, ble_char->value_handle, &gattValue);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_value_get() failed: %u", (unsigned)ret);
+        *len = 0;
         return sysError(ret);
     }
 

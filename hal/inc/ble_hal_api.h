@@ -444,14 +444,13 @@ int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t proper
 /**
  * Add descriptor under a specific BLE Characteristic.
  *
- * @param[in]       char_handle The Characteristic handle of which the descriptor to be added to.
  * @param[in]       desc        Pointer to the descriptor.
  * @param[in]       len         Length of the descriptor.
  * @param[in,out]   ble_char    Pointer to the hal_ble_char_t structure.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_add_char_desc(uint16_t char_handle, uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char);
+int ble_add_char_desc(uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char);
 
 /**
  * Send a BLE notification or indication to client.
