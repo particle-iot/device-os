@@ -76,19 +76,14 @@
 #define BLE_CONN_PARAMS_UPDATE_DELAY_MS             5000
 #define BLE_CONN_PARAMS_UPDATE_ATTEMPS              2
 
-
 /* BLE Service type */
 #define BLE_SERVICE_TYPE_INVALID                    BLE_GATTS_SRVC_TYPE_INVALID
 #define BLE_SERVICE_TYPE_PRIMARY                    BLE_GATTS_SRVC_TYPE_PRIMARY
 #define BLE_SERVICE_TYPE_SECONDARY                  BLE_GATTS_SRVC_TYPE_SECONDARY
 
-/* BLE UUID type field in the ble_uuid_t */
+/* BLE UUID type field in the hal_ble_uuid_t */
 #define BLE_UUID_TYPE_16BIT                         0
 #define BLE_UUID_TYPE_128BIT                        1
-
-/* Maximum allowed Characteristic and Service */
-#define BLE_MAX_SERVICES_COUNT                      5
-#define BLE_MAX_CHARS_PER_SERVICE_COUNT             10
 
 /* Maximum BLE Characteristic value length */
 #define BLE_MAX_CHAR_VALUE_LEN                      20
