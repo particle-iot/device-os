@@ -523,8 +523,6 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                       event->evt.gap_evt.conn_handle,
                       event->evt.gap_evt.params.disconnected.reason);
 
-            s_bleConnInfo.conn_handle = BLE_INVALID_CONN_HANDLE;
-
             // Stop the connection parameters update timer.
             if (!os_timer_is_active(s_connParamsUpdateTimer, NULL)) {
                 os_timer_change(s_connParamsUpdateTimer, OS_TIMER_CHANGE_STOP, true, 0, 0, NULL);
@@ -538,6 +536,8 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
+
+            s_bleConnInfo.conn_handle = BLE_INVALID_CONN_HANDLE;
 
             // Re-start advertising.
             LOG_DEBUG(TRACE, "Restart BLE advertising.");
@@ -1513,18 +1513,22 @@ int ble_add_char_desc(uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_publish(uint16_t conn_handle, hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
+int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInitialized);
 
     LOG_DEBUG(TRACE, "ble_publish().");
 
-    if (ble_char == NULL || data == NULL || conn_handle == BLE_INVALID_CONN_HANDLE) {
+    if (ble_char == NULL || data == NULL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     if (!(ble_char->properties & BLE_SIG_CHAR_PROP_NOTIFY) && !(ble_char->properties & BLE_SIG_CHAR_PROP_INDICATE)) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    if (s_bleConnInfo.conn_handle == BLE_INVALID_CONN_HANDLE) {
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     // Check if the client has enabled notification or indication
@@ -1533,7 +1537,7 @@ int ble_publish(uint16_t conn_handle, hal_ble_char_t* ble_char, uint8_t* data, u
     gattValue.p_value = cccd;
     gattValue.len = sizeof(cccd);
     gattValue.offset = 0;
-    ret_code_t ret = sd_ble_gatts_value_get(conn_handle, ble_char->cccd_handle, &gattValue);
+    ret_code_t ret = sd_ble_gatts_value_get(0, ble_char->cccd_handle, &gattValue);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_value_get() failed: %u", (unsigned)ret);
         return sysError(ret);
@@ -1560,7 +1564,7 @@ int ble_publish(uint16_t conn_handle, hal_ble_char_t* ble_char, uint8_t* data, u
         hvxParams.p_data = data;
         hvxParams.p_len  = &hvxLen;
 
-        ret_code_t ret = sd_ble_gatts_hvx(conn_handle, &hvxParams);
+        ret_code_t ret = sd_ble_gatts_hvx(s_bleConnInfo.conn_handle, &hvxParams);
         if (ret != NRF_SUCCESS) {
             LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
             return sysError(ret);

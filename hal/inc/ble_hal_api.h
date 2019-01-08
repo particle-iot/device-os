@@ -455,13 +455,13 @@ int ble_add_char_desc(uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char);
 /**
  * Send a BLE notification or indication to client.
  *
- * @param[in]   conn_handle BLE connection handle.
+ * @param[in]   ble_char    Pointer to the hal_ble_char_t structure.
  * @param[in]   data        Pointer to the buffer that contains the data to be sent.
  * @param[in]   len         Length of the data to be sent.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_publish(uint16_t conn_handle, hal_ble_char_t* ble_char, uint8_t* data, uint16_t len);
+int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len);
 
 /**
  * Update local characteristic value. The value won't send to client.
