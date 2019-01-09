@@ -84,12 +84,16 @@ typedef struct {
 
 /* BLE connection status */
 typedef struct {
+    uint8_t  initialized   : 1;
+    uint8_t  advertising   : 1;
+    uint8_t  scanning      : 1;
+    uint8_t  connected     : 1;
+    uint8_t  ind_confirmed : 1;
+    int8_t   tx_power;
     uint8_t  role;
     uint16_t conn_handle;
-    uint16_t conn_interval;
-    uint16_t slave_latency;
-    uint16_t conn_sup_timeout;
-} hal_ble_connection_t;
+    hal_ble_conn_params_t conn_params;
+} hal_ble_status_t;
 
 /* BLE characteristic definition */
 typedef struct {
@@ -134,7 +138,7 @@ typedef struct {
 /* GATT Client data transmission events */
 typedef struct {
     uint16_t conn_handle;
-    uint16_t char_handle;
+    uint16_t attr_handle;
     uint8_t  data[BLE_MAX_CHAR_VALUE_LEN];
     uint16_t data_len;
 } hal_ble_data_event_t;
@@ -173,7 +177,7 @@ int hal_ble_init(uint8_t role, void* reserved);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_register_callback(ble_event_callback_t* callback);
+int ble_register_callback(ble_event_callback_t callback);
 
 /**
  * Deregister the callback function to unsubscribe the BLE events.
@@ -182,7 +186,16 @@ int ble_register_callback(ble_event_callback_t* callback);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_deregister_callback(ble_event_callback_t* callback);
+int ble_deregister_callback(ble_event_callback_t callback);
+
+/**
+ * Fetch current BLE status.
+ *
+ * @param[in,out]   status  Pointer to where the BLE status being stored.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_status(hal_ble_status_t* status);
 
 /**
  * Set local BLE identity address, which type must be either public or random static.
