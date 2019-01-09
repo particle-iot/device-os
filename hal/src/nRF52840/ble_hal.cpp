@@ -30,6 +30,9 @@
 
 LOG_SOURCE_CATEGORY("hal.ble")
 
+//#define BLE_HAL_LEGACY
+
+#ifdef BLE_HAL_LEGACY
 namespace {
 
 // Advertising interval in 0.625 ms units
@@ -584,8 +587,10 @@ int initGap(const char* deviceName) {
 }
 
 } // ::
+#endif
 
 int ble_init(void* reserved) {
+#ifdef BLE_HAL_LEGACY
     if (!nrf_sdh_is_enabled()) {
         LOG(ERROR, "SoftDevice is not enabled");
         return BLE_ERROR_INVALID_STATE;
@@ -606,10 +611,13 @@ int ble_init(void* reserved) {
     }
     // Register a handler for BLE events
     NRF_SDH_BLE_OBSERVER(bleObserver, BLE_OBSERVER_PRIO, processBleEvent, nullptr);
+#endif
+
     return 0;
 }
 
 int ble_add_base_uuid(const char* uuid, uint8_t* uuid_type, void* reserved) {
+#ifdef BLE_HAL_LEGACY
     ble_uuid128_t u = {};
     static_assert(sizeof(u.uuid128) == 16, "");
     memcpy(u.uuid128, uuid, sizeof(u.uuid128));
@@ -618,10 +626,13 @@ int ble_add_base_uuid(const char* uuid, uint8_t* uuid_type, void* reserved) {
         LOG(ERROR, "sd_ble_uuid_vs_add() failed: %u", (unsigned)ret);
         return halError(ret);
     }
+#endif
+
     return 0;
 }
 
 int ble_init_profile(ble_profile* profile, void* reserved) {
+#ifdef BLE_HAL_LEGACY
     if (profile->version > BLE_API_VERSION) {
         LOG(ERROR, "Unsupported API version");
         return BLE_ERROR_INVALID_PARAM;
@@ -650,10 +661,13 @@ int ble_init_profile(ble_profile* profile, void* reserved) {
         LOG(ERROR, "Unable to initialize advertising module");
         return ret;
     }
+#endif
+
     return 0;
 }
 
 int ble_start_advert(void* reserved) {
+#ifdef BLE_HAL_LEGACY
     g_advertEnabled = true;
     if (g_conn.handle == BLE_CONN_HANDLE_INVALID) {
         const uint32_t ret = ble_advertising_start(&g_advert, BLE_ADV_MODE_FAST);
@@ -662,10 +676,13 @@ int ble_start_advert(void* reserved) {
             return halError(ret);
         }
     } // else: Advertising will be restarted automatically when the client disconnects
+#endif
+
     return 0;
 }
 
 void ble_stop_advert(void* reserved) {
+#ifdef BLE_HAL_LEGACY
     g_advertEnabled = false;
     if (g_advert.initialized && g_conn.handle == BLE_CONN_HANDLE_INVALID) {
         const uint32_t ret = sd_ble_gap_adv_stop(g_advert.adv_handle);
@@ -673,9 +690,11 @@ void ble_stop_advert(void* reserved) {
             LOG(ERROR, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
         }
     }
+#endif
 }
 
 int ble_get_char_param(uint16_t conn_handle, uint16_t char_handle, ble_char_param* param, void* reserved) {
+#ifdef BLE_HAL_LEGACY
     if (param->version > BLE_API_VERSION) {
         LOG(ERROR, "Unsupported API version");
         return BLE_ERROR_INVALID_PARAM;
@@ -697,10 +716,13 @@ int ble_get_char_param(uint16_t conn_handle, uint16_t char_handle, ble_char_para
         return halError(ret);
     }
     param->notif_enabled = ble_srv_is_notification_enabled(val.p_value);
+#endif
+
     return 0;
 }
 
 int ble_set_char_value(uint16_t conn_handle, uint16_t char_handle, const char* data, uint16_t size, unsigned flags, void* reserved) {
+#ifdef BLE_HAL_LEGACY
     if (flags & BLE_SET_CHAR_VALUE_FLAG_NOTIFY) {
         // Update value of the attribute and send a notification
         uint16_t n = size;
@@ -729,9 +751,13 @@ int ble_set_char_value(uint16_t conn_handle, uint16_t char_handle, const char* d
         }
         return val.len;
     }
+#endif
+
+    return 0;
 }
 
 int ble_get_conn_param(uint16_t conn_handle, ble_conn_param* param, void* reserved) {
+#ifdef BLE_HAL_LEGACY
     if (param->version > BLE_API_VERSION) {
         LOG(ERROR, "Unsupported API version");
         return BLE_ERROR_INVALID_PARAM;
@@ -742,12 +768,16 @@ int ble_get_conn_param(uint16_t conn_handle, ble_conn_param* param, void* reserv
         return BLE_ERROR_UNKNOWN;
     }
     param->att_mtu_size = mtu;
+#endif
+
     return 0;
 }
 
 void ble_disconnect(uint16_t conn_handle, void* reserved) {
+#ifdef BLE_HAL_LEGACY
     const uint32_t ret = sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     if (ret != NRF_SUCCESS) {
         LOG(WARN, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
     }
+#endif
 }
