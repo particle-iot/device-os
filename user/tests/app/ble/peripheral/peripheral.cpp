@@ -25,9 +25,37 @@ SYSTEM_MODE(MANUAL);
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-hal_ble_char_t bleChar1;
-hal_ble_char_t bleChar2;
-hal_ble_char_t bleChar3;
+hal_ble_char_t bleChar1; // Read and Write
+hal_ble_char_t bleChar2; // Notify
+hal_ble_char_t bleChar3; // Write without response
+
+static void handleBleEvent(hal_ble_event_t *event)
+{
+    if (event->evt_type == BLE_EVT_TYPE_CONNECTION) {
+        if (event->conn_event.evt_id == BLE_CONN_EVT_ID_CONNECTED) {
+            LOG(TRACE, "BLE connected, handle: %d", event->conn_event.conn_handle);
+        }
+        else {
+            LOG(TRACE, "BLE disconnected, handle: %d", event->conn_event.conn_handle);
+        }
+    }
+    else if (event->evt_type == BLE_EVT_TYPE_DATA) {
+        if (event->data_event.attr_handle == bleChar1.value_handle) {
+            LOG(TRACE, "BLE characteristic 1 received data.");
+        }
+        else if (event->data_event.attr_handle == bleChar3.value_handle) {
+            LOG(TRACE, "BLE characteristic 3 received data.");
+        }
+        else {
+            LOG(TRACE, "BLE received data, attribute handle: %d.", event->data_event.attr_handle);
+        }
+
+        for (uint8_t i = 0; i < event->data_event.data_len; i++) {
+            Serial1.printf("0x%02X,", event->data_event.data[i]);
+        }
+        Serial1.print("\r\n");
+    }
+}
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
@@ -49,7 +77,7 @@ void setup()
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_GAP_ADV_FP_ANY;
     advParams.interval      = 100;
-    advParams.duration      = 1800;
+    advParams.duration      = 0;
     advParams.inc_tx_power  = false;
     ble_set_advertising_params(&advParams);
 
@@ -74,6 +102,8 @@ void setup()
     uint8_t data[20] = {0x11};
     ble_set_characteristic_value(&bleChar1, data, 5);
 
+    ble_register_callback(handleBleEvent);
+
     ble_start_advertising();
 }
 
@@ -81,20 +111,10 @@ void setup()
 void loop()
 {
     static uint16_t cnt = 0;
-    uint8_t data[20] = {0x11};
-    uint16_t len = 20;
 
     if (ble_connected()) {
-        ble_get_characteristic_value(&bleChar1, data, &len);
-        if (len > 0) {
-            for (uint8_t i = 0; i < len; i++) {
-                Serial1.printf("0x%02x, ", data[i]);
-            }
-            Serial1.print("\r\n");
-        }
-
-//        ble_publish(&bleChar2, (uint8_t *)&cnt, 2);
-//        cnt++;
+        ble_publish(&bleChar2, (uint8_t *)&cnt, 2);
+        cnt++;
     }
 
     delay(3000);
