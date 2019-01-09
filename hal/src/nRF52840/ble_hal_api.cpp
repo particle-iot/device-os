@@ -1242,6 +1242,10 @@ int ble_connect(hal_ble_address_t* addr) {
     return 0;
 }
 
+bool ble_connected(void) {
+    return (s_bleConnInfo.conn_handle != BLE_INVALID_CONN_HANDLE) ? true : false;
+}
+
 int ble_connect_cancel(void) {
     std::lock_guard<bleLock> lk(bleLock());
 

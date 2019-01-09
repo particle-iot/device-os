@@ -486,6 +486,14 @@ int ble_set_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16
 int ble_get_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16_t* len);
 
 int ble_connect(hal_ble_address_t* addr);
+
+/**
+ * Check if BLE is connected with peer device.
+ *
+ * @returns true if connected, otherwise false.
+ */
+bool ble_connected(void);
+
 int ble_connect_cancel(void);
 
 /**
