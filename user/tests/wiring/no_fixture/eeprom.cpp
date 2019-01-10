@@ -125,4 +125,5 @@ test(EEPROM_05_OneByteReadsAndWrites) {
         assertEqual(v, val);
         ++val;
     }
+    EEPROM.clear();
 }
