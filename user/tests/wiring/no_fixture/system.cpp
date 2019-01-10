@@ -172,7 +172,7 @@ test(SYSTEM_06_out_of_memory)
 
 test(SYSTEM_07_fragmented_heap) {
 	struct block {
-		char data[20];
+		char data[508];
 		block* next;
 	};
 	register_oom();
