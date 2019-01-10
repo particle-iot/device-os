@@ -146,8 +146,6 @@ test(TIMER_06_create_with_long_delay_succeeds_when_timer_service_is_not_busy)
 	assertEqual(fails, 0);
 }
 
-#if !HAL_PLATFORM_NRF52840 // TODO
-
 /**
  * When the timer service is busy, attempts to create a timer with too short a delay
  * will fail.
@@ -157,8 +155,6 @@ test(TIMER_07_can_be_disposed_disposed_when_running)
 	Timer t(1, [] { HAL_Delay_Milliseconds(50); }, true);
 	assertTrue(t.start());
 }
-
-#endif // !HAL_PLATFORM_NRF52840
 
 test(TIMER_08_disposed_early)
 {
