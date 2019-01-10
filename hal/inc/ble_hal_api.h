@@ -40,6 +40,9 @@
 #define BLE_CONN_EVT_ID_CONNECTED                   0x01
 #define BLE_CONN_EVT_ID_DISCONNECTED                0x02
 
+#define BLE_SCAN_RESULT_EVT_DATA_TYPE_ADV           0x01
+#define BLE_SCAN_RESULT_EVT_DATA_TYPE_SCAN_RESP     0x02
+
 
 /* BLE device address */
 typedef struct {
@@ -69,9 +72,9 @@ typedef struct {
 typedef struct {
     uint8_t  active;
     uint8_t  filter_policy;
-    uint16_t interval;
-    uint16_t window;
-    uint16_t timeout;
+    uint16_t interval;                  /**< Scan interval in 625 us units. */
+    uint16_t window;                    /**< Scan window in 625 us units. */
+    uint16_t timeout;                   /**< Scan timeout in 10 ms units. */
 } hal_ble_scan_params_t;
 
 /* BLE connection parameters */
@@ -116,12 +119,10 @@ typedef struct {
 
 /* BLE scan result event */
 typedef struct {
-    uint8_t           type;
+    uint8_t           data_type;
     hal_ble_address_t peer_addr;
-    hal_ble_address_t direct_addr;
-    int8_t            tx_power;
     int8_t            rssi;
-    uint8_t*          data;
+    uint8_t           data[BLE_MAX_SCAN_REPORT_BUF_LEN];
     uint16_t          data_len;
 } hal_ble_scan_result_event_t;
 
