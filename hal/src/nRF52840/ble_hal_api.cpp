@@ -61,14 +61,14 @@ class bleLock {
     }
 };
 
-static ble_event_callback_t     s_bleEvtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
+static ble_event_callback_t s_bleEvtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
 
-static ble_gap_addr_t           s_whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
-static ble_gap_addr_t const*    s_whitelist_ptr[BLE_MAX_WHITELIST_ADDR_COUNT];
+static ble_gap_addr_t        s_whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
+static ble_gap_addr_t const* s_whitelist_ptr[BLE_MAX_WHITELIST_ADDR_COUNT];
 
-static uint8_t  s_advHandle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;
+static uint8_t s_advHandle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;
 
-static uint8_t  s_advData[BLE_MAX_ADV_DATA_LEN] = {
+static uint8_t s_advData[BLE_MAX_ADV_DATA_LEN] = {
     0x02,
     BLE_SIG_AD_TYPE_FLAGS,
     BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE,
@@ -78,7 +78,7 @@ static uint16_t s_advDataLen = 3;
 static uint8_t  s_scanRespData[BLE_MAX_ADV_DATA_LEN];
 static uint16_t s_scanRespDataLen = 0;
 
-static hal_ble_scan_params_t    s_scanParams = {
+static hal_ble_scan_params_t s_scanParams = {
     .active        = true,
     .filter_policy = BLE_GAP_SCAN_FP_ACCEPT_ALL,
     .interval      = BLE_DEFAULT_SCANNING_INTERVAL,
@@ -86,11 +86,10 @@ static hal_ble_scan_params_t    s_scanParams = {
     .timeout       = BLE_DEFAULT_SCANNING_TIMEOUT
 };
 
-static uint8_t                  s_scanReportBuff[BLE_MAX_SCAN_REPORT_BUF_LEN];
-
-static ble_data_t               s_bleScanData = {
-    s_scanReportBuff,
-    BLE_MAX_SCAN_REPORT_BUF_LEN
+static uint8_t    s_scanReportBuff[BLE_MAX_SCAN_REPORT_BUF_LEN];
+static ble_data_t s_bleScanData = {
+    .p_data = s_scanReportBuff,
+    .len = BLE_MAX_SCAN_REPORT_BUF_LEN
 };
 
 static uint8_t s_connParamsUpdateAttempts = 0;
@@ -510,6 +509,32 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             s_bleStatus.advertising = false;
         } break;
 
+        case BLE_GAP_EVT_ADV_REPORT: {
+            LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
+
+            bleEvt.evt_type = BLE_EVT_TYPE_SCAN_RESULT;
+            if (event->evt.gap_evt.params.adv_report.type.scan_response) {
+                bleEvt.scan_result_event.data_type = BLE_SCAN_RESULT_EVT_DATA_TYPE_SCAN_RESP;
+            }
+            else {
+                bleEvt.scan_result_event.data_type = BLE_SCAN_RESULT_EVT_DATA_TYPE_ADV;
+            }
+            bleEvt.scan_result_event.peer_addr.addr_type = event->evt.gap_evt.params.adv_report.peer_addr.addr_type;
+            memcpy(bleEvt.scan_result_event.peer_addr.addr, event->evt.gap_evt.params.adv_report.peer_addr.addr, BLE_SIG_ADDR_LEN);
+            bleEvt.scan_result_event.rssi = event->evt.gap_evt.params.adv_report.rssi;
+            bleEvt.scan_result_event.data_len = event->evt.gap_evt.params.adv_report.data.len;
+            memcpy(bleEvt.scan_result_event.data, event->evt.gap_evt.params.adv_report.data.p_data, bleEvt.scan_result_event.data_len);
+            if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
+            }
+
+            // Continue scanning, scanning parameters pointer must be set to NULL.
+            ret_code_t ret = sd_ble_gap_scan_start(NULL, &s_bleScanData);
+            if (ret != NRF_SUCCESS) {
+                LOG(ERROR, "sd_ble_gap_scan_start() failed: %u", (unsigned)ret);
+            }
+        } break;
+
         case BLE_GAP_EVT_CONNECTED: {
             // FIXME: If multi role is enabled, this flag should not be clear here.
             s_bleStatus.advertising = false;
@@ -520,11 +545,12 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             s_bleStatus.conn_handle      = event->evt.gap_evt.conn_handle;
             memcpy(&s_bleStatus.conn_params, &event->evt.gap_evt.params.connected.conn_params, sizeof(ble_gap_conn_params_t));
 
-            LOG_DEBUG(TRACE, "BLE role: %d", s_bleStatus.role);
-            LOG_DEBUG(TRACE, "BLE connection handle: %d", s_bleStatus.conn_handle);
-            LOG_DEBUG(TRACE, "BLE connection interval: (%d x 1.25) ms", s_bleStatus.conn_params.max_conn_interval);
-            LOG_DEBUG(TRACE, "BLE slave latency: %d", s_bleStatus.conn_params.slave_latency);
-            LOG_DEBUG(TRACE, "BLE connection supervision timeout: (%d x 10) ms", s_bleStatus.conn_params.conn_sup_timeout);
+            LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", s_bleStatus.role, s_bleStatus.conn_handle);
+            LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
+            LOG_DEBUG(TRACE, "  %.2f          %d       %d",
+                    s_bleStatus.conn_params.max_conn_interval*1.25,
+                    s_bleStatus.conn_params.slave_latency,
+                    s_bleStatus.conn_params.conn_sup_timeout*10);
 
             // Update connection parameters if needed.
             s_connParamsUpdateAttempts = 0;
@@ -575,9 +601,11 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             memcpy(&s_bleStatus.conn_params, &event->evt.gap_evt.params.conn_param_update.conn_params, sizeof(ble_gap_conn_params_t));
 
-            LOG_DEBUG(TRACE, "BLE connection interval: (%d x 1.25) ms", s_bleStatus.conn_params.max_conn_interval);
-            LOG_DEBUG(TRACE, "BLE slave latency: %d", s_bleStatus.conn_params.slave_latency);
-            LOG_DEBUG(TRACE, "BLE connection supervision timeout: (%d x 10) ms", s_bleStatus.conn_params.conn_sup_timeout);
+            LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
+            LOG_DEBUG(TRACE, "  %.2f          %d       %d",
+                    s_bleStatus.conn_params.max_conn_interval*1.25,
+                    s_bleStatus.conn_params.slave_latency,
+                    s_bleStatus.conn_params.conn_sup_timeout*10);
 
             // Update connection parameters if needed.
             updateConnParamsIfNeeded();
@@ -600,10 +628,12 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
         case BLE_GAP_EVT_DATA_LENGTH_UPDATE: {
             LOG_DEBUG(TRACE, "BLE GAP event: gap data length updated.");
-            LOG_DEBUG(TRACE, "Max tx octets: %d", event->evt.gap_evt.params.data_length_update.effective_params.max_tx_octets);
-            LOG_DEBUG(TRACE, "Max rx octets: %d", event->evt.gap_evt.params.data_length_update.effective_params.max_rx_octets);
-            LOG_DEBUG(TRACE, "Max tx time: %d us", event->evt.gap_evt.params.data_length_update.effective_params.max_tx_time_us);
-            LOG_DEBUG(TRACE, "Max rx time: %d us", event->evt.gap_evt.params.data_length_update.effective_params.max_rx_time_us);
+            LOG_DEBUG(TRACE, "| txo    rxo     txt(us)     rxt(us) |.");
+            LOG_DEBUG(TRACE, "  %d    %d     %d        %d",
+                    event->evt.gap_evt.params.data_length_update.effective_params.max_tx_octets,
+                    event->evt.gap_evt.params.data_length_update.effective_params.max_rx_octets,
+                    event->evt.gap_evt.params.data_length_update.effective_params.max_tx_time_us,
+                    event->evt.gap_evt.params.data_length_update.effective_params.max_rx_time_us);
         } break;
 
         case BLE_GAP_EVT_DATA_LENGTH_UPDATE_REQUEST: {
@@ -642,7 +672,19 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         } break;
 
         case BLE_GAP_EVT_TIMEOUT: {
-            LOG_DEBUG(ERROR, "BLE GAP event: timeout, source: %d", event->evt.gap_evt.params.timeout.src);
+            if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
+                LOG_DEBUG(TRACE, "BLE GAP event: Scanning timeout");
+                s_bleStatus.scanning = false;
+            }
+            else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
+                LOG_DEBUG(ERROR, "BLE GAP event: Connection timeout");
+            }
+            else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_AUTH_PAYLOAD) {
+                LOG_DEBUG(ERROR, "BLE GAP event: Authenticated payload timeout");
+            }
+            else {
+                LOG_DEBUG(ERROR, "BLE GAP event: Unknown timeout, source: %d", event->evt.gap_evt.params.timeout.src);
+            }
         } break;
 
         case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
@@ -1041,13 +1083,8 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
     bleGapAdvParams.filter_policy               = adv_params->filter_policy;
     bleGapAdvParams.primary_phy                 = BLE_GAP_PHY_1MBPS;
 
-    LOG_DEBUG(TRACE, "BLE advertising interval: (%d x 0.625) ms.", bleGapAdvParams.interval);
-    if (bleGapAdvParams.duration == 0) {
-        LOG_DEBUG(TRACE, "BLE advertising duration: infinite.");
-    }
-    else {
-        LOG_DEBUG(TRACE, "BLE advertising duration: (%d x 10) ms.", bleGapAdvParams.duration);
-    }
+    LOG_DEBUG(TRACE, "BLE advertising interval: %.3fms, timeout: %dms.",
+            bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
 
     // Make sure the advertising data and scan response data is consistent.
     ble_gap_adv_data_t bleGapAdvData;
@@ -1203,7 +1240,13 @@ int ble_start_scanning(void) {
 
     LOG_DEBUG(TRACE, "ble_start_scanning().");
 
+    sd_ble_gap_scan_stop();
+    s_bleStatus.scanning = false;
+
     ble_gap_scan_params_t bleGapScanParams;
+    memset(&bleGapScanParams, 0x00, sizeof(ble_gap_scan_params_t));
+
+    bleGapScanParams.extended     = 0;
     bleGapScanParams.active        = s_scanParams.active;
     bleGapScanParams.interval      = s_scanParams.interval;
     bleGapScanParams.window        = s_scanParams.window;
@@ -1211,15 +1254,19 @@ int ble_start_scanning(void) {
     bleGapScanParams.scan_phys     = BLE_GAP_PHY_1MBPS;
     bleGapScanParams.filter_policy = s_scanParams.filter_policy;
 
-    LOG_DEBUG(TRACE, "BLE scan interval: (%d x 0.625) ms.", bleGapScanParams.interval);
-    LOG_DEBUG(TRACE, "BLE scan window:   (%d x 0.625) ms.", bleGapScanParams.window);
-    LOG_DEBUG(TRACE, "BLE scan timeout:  (%d x 10) ms.", bleGapScanParams.timeout);
+    LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
+    LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
+            bleGapScanParams.interval*0.625,
+            bleGapScanParams.window*0.625,
+            bleGapScanParams.timeout*10);
 
     ret_code_t ret = sd_ble_gap_scan_start(&bleGapScanParams, &s_bleScanData);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_scan_start() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
+
+    s_bleStatus.scanning = true;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1236,12 +1283,16 @@ int ble_stop_scanning(void) {
         return sysError(ret);
     }
 
+    s_bleStatus.scanning = false;
+
     return SYSTEM_ERROR_NONE;
 }
 
 int ble_connect(hal_ble_address_t* addr) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleStatus.initialized);
+
+    s_bleStatus.scanning = false;
 
     return 0;
 }
