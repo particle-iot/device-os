@@ -83,13 +83,15 @@ public:
 
     void dispose()
     {
-        if (handle)
-        	{
-        		stop();
-        		while (running) {
-				delay(1);
-			}
-        		os_timer_destroy(handle, nullptr);
+        if (handle) {
+            stop();
+            // Make sure the callback will not be called after this object is destroyed.
+            // TODO: Consider assigning a higher priority to the timer thread
+            os_timer_set_id(handle, nullptr);
+            while (running) {
+                os_thread_yield();
+            }
+            os_timer_destroy(handle, nullptr);
             handle = nullptr;
         }
     }
@@ -100,12 +102,9 @@ public:
      */
     virtual void timeout()
     {
-		running = true;
-        if (callback)
-        {
+        if (callback) {
             callback();
         }
-        running = false;
     }
 
 private:
@@ -115,10 +114,18 @@ private:
 
     static void invoke_timer(os_timer_t timer)
     {
-        void* timer_id = NULL;
-        if (!os_timer_get_id(timer, &timer_id)) {
-            if (timer_id)
-                ((Timer*)timer_id)->timeout();
+        Timer* t = nullptr;
+        SINGLE_THREADED_BLOCK() {
+            void* id = nullptr;
+            os_timer_get_id(timer, &id);
+            t = static_cast<Timer*>(id);
+            if (t) {
+                t->running = true;
+            }
+        }
+        if (t) {
+            t->timeout();
+            t->running = false;
         }
     }
 

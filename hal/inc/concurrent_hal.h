@@ -222,6 +222,11 @@ os_scheduler_state_t os_scheduler_get_state(void* reserved);
 int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* timer_id, bool one_shot, void* reserved);
 int os_timer_get_id(os_timer_t timer, void** timer_id);
 
+/**
+ * Sets a pointer to user data associated with the timer.
+ */
+int os_timer_set_id(os_timer_t timer, void* timer_id);
+
 typedef enum os_timer_change_t
 {
     OS_TIMER_CHANGE_START,
