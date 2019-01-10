@@ -61,29 +61,79 @@ class bleLock {
     }
 };
 
-static ble_event_callback_t s_bleEvtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
+/* BLE connection status */
+typedef struct {
+    uint8_t  initialized   : 1;
+    uint8_t  advertising   : 1;
+    uint8_t  scanning      : 1;
+    uint8_t  connected     : 1;
+    uint8_t  indConfirmed  : 1;
+    int8_t   txPower;
+    uint8_t  role;
+    uint16_t connHandle;
+    uint8_t  advHandle;
+    uint8_t  connParamsUpdateAttempts;
 
-static ble_gap_addr_t        s_whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
-static ble_gap_addr_t const* s_whitelist_ptr[BLE_MAX_WHITELIST_ADDR_COUNT];
+    hal_ble_scan_params_t scanParams;
+    hal_ble_adv_params_t  advParams;
 
-static uint8_t s_advHandle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;
+    uint8_t               advData[BLE_MAX_ADV_DATA_LEN];
+    uint16_t              advDataLen;
+    uint8_t               scanRespData[BLE_MAX_ADV_DATA_LEN];
+    uint16_t              scanRespDataLen;
 
-static uint8_t s_advData[BLE_MAX_ADV_DATA_LEN] = {
-    0x02,
-    BLE_SIG_AD_TYPE_FLAGS,
-    BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE,
-};
-static uint16_t s_advDataLen = 3;
+    os_queue_t            evtQueue;
+    os_thread_t           evtThread;
+    os_timer_t            connParamsUpdateTimer;
 
-static uint8_t  s_scanRespData[BLE_MAX_ADV_DATA_LEN];
-static uint16_t s_scanRespDataLen = 0;
+    hal_ble_conn_params_t effectiveConnParams;
+    ble_gap_addr_t        whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
+    ble_gap_addr_t const* whitelistPointer[BLE_MAX_WHITELIST_ADDR_COUNT];
+    ble_event_callback_t  evtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
+} HalBleInstance_t;
 
-static hal_ble_scan_params_t s_scanParams = {
-    .active        = true,
-    .filter_policy = BLE_GAP_SCAN_FP_ACCEPT_ALL,
-    .interval      = BLE_DEFAULT_SCANNING_INTERVAL,
-    .window        = BLE_DEFAULT_SCANNING_WINDOW,
-    .timeout       = BLE_DEFAULT_SCANNING_TIMEOUT
+
+static HalBleInstance_t s_bleInstance = {
+    .initialized  = 0,
+    .advertising  = 0,
+    .scanning     = 0,
+    .connected    = 0,
+    .indConfirmed = 1,
+    .txPower      = 0,
+    .role         = BLE_ROLE_INVALID,
+    .connHandle   = BLE_INVALID_CONN_HANDLE,
+    .advHandle    = BLE_GAP_ADV_SET_HANDLE_NOT_SET,
+    .connParamsUpdateAttempts = 0,
+
+    .scanParams = {
+        .active        = true,
+        .filter_policy = BLE_GAP_SCAN_FP_ACCEPT_ALL,
+        .interval      = BLE_DEFAULT_SCANNING_INTERVAL,
+        .window        = BLE_DEFAULT_SCANNING_WINDOW,
+        .timeout       = BLE_DEFAULT_SCANNING_TIMEOUT
+    },
+
+    .advParams = {
+        .type          = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED,
+        .filter_policy = BLE_GAP_ADV_FP_ANY,
+        .interval      = BLE_DEFAULT_ADVERTISING_INTERVAL,
+        .duration      = BLE_DEFAULT_ADVERTISING_DURATION,
+        .inc_tx_power  = false
+    },
+
+    .advData = {
+        0x02,
+        BLE_SIG_AD_TYPE_FLAGS,
+        BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE
+    },
+    .advDataLen = 3,
+
+    .scanRespData = { 0 },
+    .scanRespDataLen = 0,
+
+    .evtQueue  = NULL,
+    .evtThread = NULL,
+    .connParamsUpdateTimer = NULL,
 };
 
 static uint8_t    s_scanReportBuff[BLE_MAX_SCAN_REPORT_BUF_LEN];
@@ -92,19 +142,6 @@ static ble_data_t s_bleScanData = {
     .len = BLE_MAX_SCAN_REPORT_BUF_LEN
 };
 
-static uint8_t s_connParamsUpdateAttempts = 0;
-
-static hal_ble_status_t s_bleStatus = {
-    .initialized   = 0,
-    .advertising   = 0,
-    .scanning      = 0,
-    .connected     = 0,
-    .ind_confirmed = 1,
-};
-
-static os_queue_t  s_bleEvtQueue = NULL;
-static os_thread_t s_bleEvtThread = NULL;
-static os_timer_t  s_connParamsUpdateTimer = NULL;
 
 /*
  * Valid TX Power for nRF52840:
@@ -199,13 +236,13 @@ static int adStructEncode(uint8_t adType, uint8_t* data, uint16_t len, uint8_t f
     bool      adsExist = false;
 
     if (flag == BLE_ADV_DATA_ADVERTISING) {
-        pAdvData = s_advData;
-        pAdvDataLen = &s_advDataLen;
+        pAdvData    = s_bleInstance.advData;
+        pAdvDataLen = &s_bleInstance.advDataLen;
     }
     else if (flag == BLE_ADV_DATA_SCAN_RESPONSE && adType != BLE_SIG_AD_TYPE_FLAGS) {
         // The scan response data should not contain the AD Flags AD structure.
-        pAdvData = s_scanRespData;
-        pAdvDataLen = &s_scanRespDataLen;
+        pAdvData    = s_bleInstance.scanRespData;
+        pAdvDataLen = &s_bleInstance.scanRespDataLen;
     }
     else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -274,7 +311,7 @@ int setAdvData(uint8_t* data, uint16_t len, uint8_t flag) {
     bool advPending = false;
 
     // It is invalid to provide the same data buffers while advertising.
-    if (s_bleStatus.advertising) {
+    if (s_bleInstance.advertising) {
         int err = ble_stop_advertising();
         if (err != SYSTEM_ERROR_NONE) {
             return err;
@@ -287,29 +324,29 @@ int setAdvData(uint8_t* data, uint16_t len, uint8_t flag) {
     if (flag == BLE_ADV_DATA_ADVERTISING) {
         bleGapAdvData.adv_data.p_data      = data;
         bleGapAdvData.adv_data.len         = len;
-        bleGapAdvData.scan_rsp_data.p_data = s_scanRespData;
-        bleGapAdvData.scan_rsp_data.len    = s_scanRespDataLen;
+        bleGapAdvData.scan_rsp_data.p_data = s_bleInstance.scanRespData;
+        bleGapAdvData.scan_rsp_data.len    = s_bleInstance.scanRespDataLen;
     }
     else {
-        bleGapAdvData.adv_data.p_data      = s_advData;
-        bleGapAdvData.adv_data.len         = s_advDataLen;
+        bleGapAdvData.adv_data.p_data      = s_bleInstance.advData;
+        bleGapAdvData.adv_data.len         = s_bleInstance.advDataLen;
         bleGapAdvData.scan_rsp_data.p_data = data;
         bleGapAdvData.scan_rsp_data.len    = len;
     }
 
-    ret_code_t ret = sd_ble_gap_adv_set_configure(&s_advHandle, &bleGapAdvData, NULL);
+    ret_code_t ret = sd_ble_gap_adv_set_configure(&s_bleInstance.advHandle, &bleGapAdvData, NULL);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_adv_set_configure() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
 
     if (flag == BLE_ADV_DATA_ADVERTISING) {
-        memcpy(s_advData, data, len);
-        s_advDataLen = len;
+        memcpy(s_bleInstance.advData, data, len);
+        s_bleInstance.advDataLen = len;
     }
     else {
-        memcpy(s_scanRespData, data, len);
-        s_scanRespDataLen = len;
+        memcpy(s_bleInstance.scanRespData, data, len);
+        s_bleInstance.scanRespDataLen = len;
     }
 
     if (advPending) {
@@ -347,7 +384,7 @@ static bool isConnParamsFeeded(hal_ble_conn_params_t* conn_params) {
 }
 
 static void connParamsUpdateTimerCb(os_timer_t timer) {
-    if (s_bleStatus.conn_handle == BLE_INVALID_CONN_HANDLE) {
+    if (s_bleInstance.connHandle == BLE_INVALID_CONN_HANDLE) {
         return;
     }
 
@@ -359,30 +396,30 @@ static void connParamsUpdateTimerCb(os_timer_t timer) {
         connParams.slave_latency     = ppcp.slave_latency;
         connParams.conn_sup_timeout  = ppcp.conn_sup_timeout;
 
-        ret_code_t ret = sd_ble_gap_conn_param_update(s_bleStatus.conn_handle, &connParams);
+        ret_code_t ret = sd_ble_gap_conn_param_update(s_bleInstance.connHandle, &connParams);
         if (ret != NRF_SUCCESS) {
             LOG(WARN, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
             return;
         }
 
-        s_connParamsUpdateAttempts++;
+        s_bleInstance.connParamsUpdateAttempts++;
     }
 }
 
 static void updateConnParamsIfNeeded(void) {
-    if (s_bleStatus.role == BLE_ROLE_PERIPHERAL && !isConnParamsFeeded(&s_bleStatus.conn_params)) {
-        if (s_connParamsUpdateAttempts < BLE_CONN_PARAMS_UPDATE_ATTEMPS) {
-            if (s_connParamsUpdateTimer != NULL) {
-                if (os_timer_change(s_connParamsUpdateTimer, OS_TIMER_CHANGE_START, true, 0, 0, NULL)) {
+    if (s_bleInstance.role == BLE_ROLE_PERIPHERAL && !isConnParamsFeeded(&s_bleInstance.effectiveConnParams)) {
+        if (s_bleInstance.connParamsUpdateAttempts < BLE_CONN_PARAMS_UPDATE_ATTEMPS) {
+            if (s_bleInstance.connParamsUpdateTimer != NULL) {
+                if (os_timer_change(s_bleInstance.connParamsUpdateTimer, OS_TIMER_CHANGE_START, true, 0, 0, NULL)) {
                     LOG(ERROR, "os_timer_change() failed.");
                     return;
                 }
             }
             LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms",
-                    s_connParamsUpdateAttempts, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
+                    s_bleInstance.connParamsUpdateAttempts, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
         }
         else {
-            ret_code_t ret = sd_ble_gap_disconnect(s_bleStatus.conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+            ret_code_t ret = sd_ble_gap_disconnect(s_bleInstance.connHandle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
                 return;
@@ -493,8 +530,8 @@ static int addCharacteristic(uint16_t service_handle, const ble_uuid_t* uuid, ui
 
 static void dispatchBleEvent(hal_ble_event_t* evt) {
     for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-        if (s_bleEvtCallbacks[i] != NULL) {
-            s_bleEvtCallbacks[i](evt);
+        if (s_bleInstance.evtCallbacks[i] != NULL) {
+            s_bleInstance.evtCallbacks[i](evt);
         }
     }
 }
@@ -506,7 +543,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
     switch (event->header.evt_id) {
         case BLE_GAP_EVT_ADV_SET_TERMINATED: {
             LOG_DEBUG(TRACE, "BLE GAP event: advertising stopped.");
-            s_bleStatus.advertising = false;
+            s_bleInstance.advertising = false;
         } break;
 
         case BLE_GAP_EVT_ADV_REPORT: {
@@ -524,7 +561,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             bleEvt.scan_result_event.rssi = event->evt.gap_evt.params.adv_report.rssi;
             bleEvt.scan_result_event.data_len = event->evt.gap_evt.params.adv_report.data.len;
             memcpy(bleEvt.scan_result_event.data, event->evt.gap_evt.params.adv_report.data.p_data, bleEvt.scan_result_event.data_len);
-            if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
+            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
 
@@ -537,29 +574,29 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
         case BLE_GAP_EVT_CONNECTED: {
             // FIXME: If multi role is enabled, this flag should not be clear here.
-            s_bleStatus.advertising = false;
+            s_bleInstance.advertising = false;
 
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
 
-            s_bleStatus.role             = event->evt.gap_evt.params.connected.role;
-            s_bleStatus.conn_handle      = event->evt.gap_evt.conn_handle;
-            memcpy(&s_bleStatus.conn_params, &event->evt.gap_evt.params.connected.conn_params, sizeof(ble_gap_conn_params_t));
+            s_bleInstance.role             = event->evt.gap_evt.params.connected.role;
+            s_bleInstance.connHandle       = event->evt.gap_evt.conn_handle;
+            memcpy(&s_bleInstance.effectiveConnParams, &event->evt.gap_evt.params.connected.conn_params, sizeof(ble_gap_conn_params_t));
 
-            LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", s_bleStatus.role, s_bleStatus.conn_handle);
+            LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", s_bleInstance.role, s_bleInstance.connHandle);
             LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
             LOG_DEBUG(TRACE, "  %.2f          %d       %d",
-                    s_bleStatus.conn_params.max_conn_interval*1.25,
-                    s_bleStatus.conn_params.slave_latency,
-                    s_bleStatus.conn_params.conn_sup_timeout*10);
+                    s_bleInstance.effectiveConnParams.max_conn_interval*1.25,
+                    s_bleInstance.effectiveConnParams.slave_latency,
+                    s_bleInstance.effectiveConnParams.conn_sup_timeout*10);
 
             // Update connection parameters if needed.
-            s_connParamsUpdateAttempts = 0;
+            s_bleInstance.connParamsUpdateAttempts = 0;
             updateConnParamsIfNeeded();
 
             bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
-            bleEvt.conn_event.conn_handle = s_bleStatus.conn_handle;
+            bleEvt.conn_event.conn_handle = s_bleInstance.connHandle;
             bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_CONNECTED;
-            if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
+            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
         } break;
@@ -570,42 +607,42 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                       event->evt.gap_evt.params.disconnected.reason);
 
             // Stop the connection parameters update timer.
-            if (!os_timer_is_active(s_connParamsUpdateTimer, NULL)) {
-                os_timer_change(s_connParamsUpdateTimer, OS_TIMER_CHANGE_STOP, true, 0, 0, NULL);
+            if (!os_timer_is_active(s_bleInstance.connParamsUpdateTimer, NULL)) {
+                os_timer_change(s_bleInstance.connParamsUpdateTimer, OS_TIMER_CHANGE_STOP, true, 0, 0, NULL);
             }
 
             bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
-            bleEvt.conn_event.conn_handle = s_bleStatus.conn_handle;
+            bleEvt.conn_event.conn_handle = s_bleInstance.connHandle;
             bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_DISCONNECTED;
             bleEvt.conn_event.reason      = event->evt.gap_evt.params.disconnected.reason;
-            if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
+            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
 
-            s_bleStatus.conn_handle = BLE_INVALID_CONN_HANDLE;
-            s_bleStatus.role = BLE_ROLE_INVALID;
+            s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
+            s_bleInstance.role = BLE_ROLE_INVALID;
 
             // Re-start advertising.
             LOG_DEBUG(TRACE, "Restart BLE advertising.");
-            ret = sd_ble_gap_adv_start(s_advHandle, BLE_CONN_CFG_TAG);
+            ret = sd_ble_gap_adv_start(s_bleInstance.advHandle, BLE_CONN_CFG_TAG);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_adv_start() failed: %u", (unsigned)ret);
             }
             else {
-                s_bleStatus.advertising = true;
+                s_bleInstance.advertising = true;
             }
         } break;
 
         case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
             LOG_DEBUG(TRACE, "BLE GAP event: connection parameter updated.");
 
-            memcpy(&s_bleStatus.conn_params, &event->evt.gap_evt.params.conn_param_update.conn_params, sizeof(ble_gap_conn_params_t));
+            memcpy(&s_bleInstance.effectiveConnParams, &event->evt.gap_evt.params.conn_param_update.conn_params, sizeof(ble_gap_conn_params_t));
 
             LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
             LOG_DEBUG(TRACE, "  %.2f          %d       %d",
-                    s_bleStatus.conn_params.max_conn_interval*1.25,
-                    s_bleStatus.conn_params.slave_latency,
-                    s_bleStatus.conn_params.conn_sup_timeout*10);
+                    s_bleInstance.effectiveConnParams.max_conn_interval*1.25,
+                    s_bleInstance.effectiveConnParams.slave_latency,
+                    s_bleInstance.effectiveConnParams.conn_sup_timeout*10);
 
             // Update connection parameters if needed.
             updateConnParamsIfNeeded();
@@ -674,7 +711,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         case BLE_GAP_EVT_TIMEOUT: {
             if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
                 LOG_DEBUG(TRACE, "BLE GAP event: Scanning timeout");
-                s_bleStatus.scanning = false;
+                s_bleInstance.scanning = false;
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Connection timeout");
@@ -733,7 +770,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             bleEvt.data_event.attr_handle = event->evt.gatts_evt.params.write.handle;
             bleEvt.data_event.data_len    = event->evt.gatts_evt.params.write.len;
             memcpy(bleEvt.data_event.data, event->evt.gatts_evt.params.write.data, bleEvt.data_event.data_len);
-            if (os_queue_put(s_bleEvtQueue, &bleEvt, 0, NULL)) {
+            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
         } break;
@@ -744,7 +781,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
         case BLE_GATTS_EVT_HVC: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: indication confirmed.");
-            s_bleStatus.ind_confirmed = true;
+            s_bleInstance.indConfirmed = true;
         } break;
 
         case BLE_GATTS_EVT_TIMEOUT: {
@@ -766,7 +803,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 static os_thread_return_t handleBleEventThread(void* param) {
     while (1) {
         hal_ble_event_t bleEvent;
-        if (!os_queue_take(s_bleEvtQueue, &bleEvent, CONCURRENT_WAIT_FOREVER, NULL)) {
+        if (!os_queue_take(s_bleInstance.evtQueue, &bleEvent, CONCURRENT_WAIT_FOREVER, NULL)) {
             dispatchBleEvent(&bleEvent);
         }
         else {
@@ -775,7 +812,11 @@ static os_thread_return_t handleBleEventThread(void* param) {
         }
     }
 
-    os_thread_exit(s_bleEvtThread);
+    os_thread_exit(s_bleInstance.evtThread);
+}
+
+bool ble_is_initialized(void) {
+    return s_bleInstance.initialized;
 }
 
 int hal_ble_init(uint8_t role, void* reserved) {
@@ -783,7 +824,7 @@ int hal_ble_init(uint8_t role, void* reserved) {
 
     /* The SoftDevice has been enabled in core_hal.c */
 
-    if (!s_bleStatus.initialized) {
+    if (!s_bleInstance.initialized) {
         LOG_DEBUG(TRACE, "Initializing BLE stack.");
 
         // Configure the BLE stack using the default settings.
@@ -803,52 +844,45 @@ int hal_ble_init(uint8_t role, void* reserved) {
             return sysError(ret);
         }
 
-        s_bleStatus.initialized = true;
+        s_bleInstance.initialized = true;
 
         // Register a handler for BLE events.
         NRF_SDH_BLE_OBSERVER(bleObserver, BLE_OBSERVER_PRIO, isrProcessBleEvent, nullptr);
 
         for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-            s_bleEvtCallbacks[i] = NULL;
+            s_bleInstance.evtCallbacks[i] = NULL;
         }
 
-        s_bleStatus.conn_handle = BLE_INVALID_CONN_HANDLE;
+        s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
 
         // Configure an advertising set to obtain an advertising handle.
         if (role & BLE_ROLE_PERIPHERAL) {
-            hal_ble_adv_params_t params;
-            params.type          = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
-            params.filter_policy = BLE_GAP_ADV_FP_ANY;
-            params.interval      = BLE_DEFAULT_ADVERTISING_INTERVAL;
-            params.duration      = BLE_DEFAULT_ADVERTISING_DURATION;
-            params.inc_tx_power  = false;
-
-            int error = ble_set_advertising_params(&params);
+            int error = ble_set_advertising_params(&s_bleInstance.advParams);
             if (error != SYSTEM_ERROR_NONE) {
                 return error;
             }
 
             // Set the default TX Power
-            ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, s_advHandle, 0);
+            ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, s_bleInstance.advHandle, s_bleInstance.txPower);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_tx_power_set() failed: %u", (unsigned)ret);
                 return sysError(ret);
             }
-            s_bleStatus.tx_power = 0;
+            s_bleInstance.txPower = 0;
         }
 
-        if (os_queue_create(&s_bleEvtQueue, sizeof(hal_ble_event_t), BLE_EVENT_QUEUE_ITEM_COUNT, NULL)) {
+        if (os_queue_create(&s_bleInstance.evtQueue, sizeof(hal_ble_event_t), BLE_EVENT_QUEUE_ITEM_COUNT, NULL)) {
             LOG(ERROR, "os_queue_create() failed");
             return SYSTEM_ERROR_NO_MEMORY;
         }
 
-        if (os_thread_create(&s_bleEvtThread, "BLE Event Thread", OS_THREAD_PRIORITY_NETWORK, handleBleEventThread, NULL, BLE_EVENT_THREAD_STACK_SIZE)) {
+        if (os_thread_create(&s_bleInstance.evtThread, "BLE Event Thread", OS_THREAD_PRIORITY_NETWORK, handleBleEventThread, NULL, BLE_EVENT_THREAD_STACK_SIZE)) {
             LOG(ERROR, "os_thread_create() failed");
-            os_queue_destroy(s_bleEvtQueue, NULL);
+            os_queue_destroy(s_bleInstance.evtQueue, NULL);
             return SYSTEM_ERROR_INTERNAL;
         }
 
-        if (os_timer_create(&s_connParamsUpdateTimer, BLE_CONN_PARAMS_UPDATE_DELAY_MS, connParamsUpdateTimerCb, NULL, true, NULL)) {
+        if (os_timer_create(&s_bleInstance.connParamsUpdateTimer, BLE_CONN_PARAMS_UPDATE_DELAY_MS, connParamsUpdateTimerCb, NULL, true, NULL)) {
             LOG(ERROR, "os_timer_create() failed.");
         }
 
@@ -861,10 +895,10 @@ int hal_ble_init(uint8_t role, void* reserved) {
 
 int ble_register_callback(ble_event_callback_t callback) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
     for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-        if (s_bleEvtCallbacks[i] == NULL) {
-            s_bleEvtCallbacks[i] = callback;
+        if (s_bleInstance.evtCallbacks[i] == NULL) {
+            s_bleInstance.evtCallbacks[i] = callback;
             return SYSTEM_ERROR_NONE;
         }
     }
@@ -873,10 +907,10 @@ int ble_register_callback(ble_event_callback_t callback) {
 
 int ble_deregister_callback(ble_event_callback_t callback) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
     for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-        if (s_bleEvtCallbacks[i] == callback) {
-            s_bleEvtCallbacks[i] = NULL;
+        if (s_bleInstance.evtCallbacks[i] == callback) {
+            s_bleInstance.evtCallbacks[i] = NULL;
             return SYSTEM_ERROR_NONE;
         }
     }
@@ -885,7 +919,7 @@ int ble_deregister_callback(ble_event_callback_t callback) {
 
 int ble_set_device_address(hal_ble_address_t const* addr) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_device_address().");
 
@@ -908,7 +942,7 @@ int ble_set_device_address(hal_ble_address_t const* addr) {
 
 int ble_get_device_address(hal_ble_address_t* addr) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_get_device_address().");
 
@@ -927,7 +961,7 @@ int ble_get_device_address(hal_ble_address_t* addr) {
 
 int ble_set_device_name(uint8_t const* device_name, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_device_name().");
 
@@ -944,7 +978,7 @@ int ble_set_device_name(uint8_t const* device_name, uint16_t len) {
 
 int ble_get_device_name(uint8_t* device_name, uint16_t* len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_get_device_name().");
 
@@ -959,7 +993,7 @@ int ble_get_device_name(uint8_t* device_name, uint16_t* len) {
 
 int ble_set_appearance(uint16_t appearance) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_appearance().");
 
@@ -973,7 +1007,7 @@ int ble_set_appearance(uint16_t appearance) {
 
 int ble_get_appearance(uint16_t* appearance) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_get_appearance().");
 
@@ -987,7 +1021,7 @@ int ble_get_appearance(uint16_t* appearance) {
 
 int ble_add_whitelist(hal_ble_address_t* addr_list, uint8_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_add_whitelist().");
 
@@ -996,13 +1030,13 @@ int ble_add_whitelist(hal_ble_address_t* addr_list, uint8_t len) {
     }
 
     for (uint8_t i = 0; i < len; i++) {
-        s_whitelist[i].addr_id_peer = true;
-        s_whitelist[i].addr_type = addr_list[i].addr_type;
-        memcpy(s_whitelist[i].addr, addr_list[i].addr, BLE_SIG_ADDR_LEN);
-        s_whitelist_ptr[i] = &s_whitelist[i];
+        s_bleInstance.whitelist[i].addr_id_peer = true;
+        s_bleInstance.whitelist[i].addr_type = addr_list[i].addr_type;
+        memcpy(s_bleInstance.whitelist[i].addr, addr_list[i].addr, BLE_SIG_ADDR_LEN);
+        s_bleInstance.whitelistPointer[i] = &s_bleInstance.whitelist[i];
     }
 
-    ret_code_t ret = sd_ble_gap_whitelist_set(s_whitelist_ptr, len);
+    ret_code_t ret = sd_ble_gap_whitelist_set(s_bleInstance.whitelistPointer, len);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_whitelist_set() failed: %u", (unsigned)ret);
     }
@@ -1012,7 +1046,7 @@ int ble_add_whitelist(hal_ble_address_t* addr_list, uint8_t len) {
 
 int ble_delete_whitelist(void) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_delete_whitelist().");
 
@@ -1026,16 +1060,16 @@ int ble_delete_whitelist(void) {
 
 int ble_set_tx_power(int8_t value) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_tx_power().");
 
-    ret_code_t ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, s_advHandle, roundTxPower(value));
+    ret_code_t ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, s_bleInstance.advHandle, roundTxPower(value));
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_tx_power_set() failed: %u", (unsigned)ret);
     }
 
-    s_bleStatus.tx_power = roundTxPower(value);
+    s_bleInstance.txPower = roundTxPower(value);
 
     return sysError(ret);
 }
@@ -1045,14 +1079,14 @@ int ble_get_tx_power(int8_t* value) {
 
     LOG_DEBUG(TRACE, "ble_get_tx_power().");
 
-    *value = s_bleStatus.tx_power;
+    *value = s_bleInstance.txPower;
 
     return SYSTEM_ERROR_NONE;
 }
 
 int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_advertising_params().");
 
@@ -1060,7 +1094,7 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
     bool advPending = false;
 
     // It is invalid to change advertising set parameters while advertising.
-    if (s_bleStatus.advertising) {
+    if (s_bleInstance.advertising) {
         int err = ble_stop_advertising();
         if (err != SYSTEM_ERROR_NONE) {
             return err;
@@ -1088,12 +1122,12 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
 
     // Make sure the advertising data and scan response data is consistent.
     ble_gap_adv_data_t bleGapAdvData;
-    bleGapAdvData.adv_data.p_data      = s_advData;
-    bleGapAdvData.adv_data.len         = s_advDataLen;
-    bleGapAdvData.scan_rsp_data.p_data = s_scanRespData;
-    bleGapAdvData.scan_rsp_data.len    = s_scanRespDataLen;
+    bleGapAdvData.adv_data.p_data      = s_bleInstance.advData;
+    bleGapAdvData.adv_data.len         = s_bleInstance.advDataLen;
+    bleGapAdvData.scan_rsp_data.p_data = s_bleInstance.scanRespData;
+    bleGapAdvData.scan_rsp_data.len    = s_bleInstance.scanRespDataLen;
 
-    ret = sd_ble_gap_adv_set_configure(&s_advHandle, &bleGapAdvData, &bleGapAdvParams);
+    ret = sd_ble_gap_adv_set_configure(&s_bleInstance.advHandle, &bleGapAdvData, &bleGapAdvParams);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_adv_set_configure() failed: %u", (unsigned)ret);
         return sysError(ret);
@@ -1104,12 +1138,14 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
         return ble_start_advertising();
     }
 
+    memcpy(&s_bleInstance.advParams, adv_params, sizeof(hal_ble_adv_params_t));
+
     return sysError(ret);
 }
 
 int ble_set_adv_data_snippet(uint8_t adType, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_adv_data_snippet().");
 
@@ -1118,16 +1154,16 @@ int ble_set_adv_data_snippet(uint8_t adType, uint8_t* data, uint16_t len) {
 
 int ble_refresh_adv_data(void) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_refresh_adv_data().");
 
-    return setAdvData(s_advData, s_advDataLen, BLE_ADV_DATA_ADVERTISING);
+    return setAdvData(s_bleInstance.advData, s_bleInstance.advDataLen, BLE_ADV_DATA_ADVERTISING);
 }
 
 int ble_set_adv_data(uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_adv_data().");
 
@@ -1136,7 +1172,7 @@ int ble_set_adv_data(uint8_t* data, uint16_t len) {
 
 int ble_set_scan_resp_data_snippet(uint8_t adType, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_scan_resp_data_snippet().");
 
@@ -1145,16 +1181,16 @@ int ble_set_scan_resp_data_snippet(uint8_t adType, uint8_t* data, uint16_t len) 
 
 int ble_refresh_scan_resp_data(void) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_refresh_scan_resp_data().");
 
-    return setAdvData(s_scanRespData, s_scanRespDataLen, BLE_ADV_DATA_SCAN_RESPONSE);
+    return setAdvData(s_bleInstance.scanRespData, s_bleInstance.scanRespDataLen, BLE_ADV_DATA_SCAN_RESPONSE);
 }
 
 int ble_set_scan_resp_data(uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_scan_resp_data().");
 
@@ -1163,56 +1199,53 @@ int ble_set_scan_resp_data(uint8_t* data, uint16_t len) {
 
 int ble_start_advertising(void) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_start_advertising().");
 
-    if (s_bleStatus.advertising) {
+    if (s_bleInstance.advertising) {
         return SYSTEM_ERROR_NONE;
     }
 
-    ret_code_t ret = sd_ble_gap_adv_start(s_advHandle, BLE_CONN_CFG_TAG);
+    ret_code_t ret = sd_ble_gap_adv_start(s_bleInstance.advHandle, BLE_CONN_CFG_TAG);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_adv_start() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
     else {
-        s_bleStatus.advertising = true;
+        s_bleInstance.advertising = true;
         return SYSTEM_ERROR_NONE;
     }
 }
 
 int ble_stop_advertising(void) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_stop_advertising().");
 
-    if (!s_bleStatus.advertising) {
+    if (!s_bleInstance.advertising) {
         return SYSTEM_ERROR_NONE;
     }
 
-    ret_code_t ret = sd_ble_gap_adv_stop(s_advHandle);
+    ret_code_t ret = sd_ble_gap_adv_stop(s_bleInstance.advHandle);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
     else {
-        s_bleStatus.advertising = false;
+        s_bleInstance.advertising = false;
         return SYSTEM_ERROR_NONE;
     }
 }
 
 bool ble_is_advertising(void) {
-    std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
-
-    return s_bleStatus.advertising;
+    return s_bleInstance.advertising;
 }
 
 int ble_set_scanning_params(hal_ble_scan_params_t* scan_params) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_scanning_params().");
 
@@ -1229,30 +1262,30 @@ int ble_set_scanning_params(hal_ble_scan_params_t* scan_params) {
         scan_params->window = BLE_GAP_SCAN_WINDOW_MAX;
     }
 
-    memcpy(&s_scanParams, scan_params, sizeof(hal_ble_scan_params_t));
+    memcpy(&s_bleInstance.scanParams, scan_params, sizeof(hal_ble_scan_params_t));
 
     return SYSTEM_ERROR_NONE;
 }
 
 int ble_start_scanning(void) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_start_scanning().");
 
     sd_ble_gap_scan_stop();
-    s_bleStatus.scanning = false;
+    s_bleInstance.scanning = false;
 
     ble_gap_scan_params_t bleGapScanParams;
     memset(&bleGapScanParams, 0x00, sizeof(ble_gap_scan_params_t));
 
-    bleGapScanParams.extended     = 0;
-    bleGapScanParams.active        = s_scanParams.active;
-    bleGapScanParams.interval      = s_scanParams.interval;
-    bleGapScanParams.window        = s_scanParams.window;
-    bleGapScanParams.timeout       = s_scanParams.timeout;
+    bleGapScanParams.extended      = 0;
+    bleGapScanParams.active        = s_bleInstance.scanParams.active;
+    bleGapScanParams.interval      = s_bleInstance.scanParams.interval;
+    bleGapScanParams.window        = s_bleInstance.scanParams.window;
+    bleGapScanParams.timeout       = s_bleInstance.scanParams.timeout;
     bleGapScanParams.scan_phys     = BLE_GAP_PHY_1MBPS;
-    bleGapScanParams.filter_policy = s_scanParams.filter_policy;
+    bleGapScanParams.filter_policy = s_bleInstance.scanParams.filter_policy;
 
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
     LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
@@ -1266,14 +1299,18 @@ int ble_start_scanning(void) {
         return sysError(ret);
     }
 
-    s_bleStatus.scanning = true;
+    s_bleInstance.scanning = true;
 
     return SYSTEM_ERROR_NONE;
 }
 
+bool ble_is_scanning(void) {
+    return s_bleInstance.scanning;
+}
+
 int ble_stop_scanning(void) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_stop_scanning().");
 
@@ -1283,33 +1320,22 @@ int ble_stop_scanning(void) {
         return sysError(ret);
     }
 
-    s_bleStatus.scanning = false;
+    s_bleInstance.scanning = false;
 
     return SYSTEM_ERROR_NONE;
 }
 
 int ble_connect(hal_ble_address_t* addr) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
-    s_bleStatus.scanning = false;
+    s_bleInstance.scanning = false;
 
     return 0;
 }
 
-bool ble_connected(void) {
-    std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
-
-    return (s_bleStatus.conn_handle != BLE_INVALID_CONN_HANDLE) ? true : false;
-}
-
-int ble_status(hal_ble_status_t* status) {
-    std::lock_guard<bleLock> lk(bleLock());
-
-    memcpy(status, &s_bleStatus, sizeof(hal_ble_status_t));
-
-    return SYSTEM_ERROR_NONE;
+bool ble_is_connected(void) {
+    return (s_bleInstance.connHandle != BLE_INVALID_CONN_HANDLE) ? true : false;
 }
 
 int ble_connect_cancel(void) {
@@ -1322,7 +1348,7 @@ int ble_connect_cancel(void) {
 
 int ble_set_ppcp(hal_ble_conn_params_t* conn_params) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_ppcp().");
 
@@ -1363,7 +1389,7 @@ int ble_set_ppcp(hal_ble_conn_params_t* conn_params) {
 
 int ble_get_ppcp(hal_ble_conn_params_t* conn_params) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_get_ppcp().");
 
@@ -1388,7 +1414,7 @@ int ble_get_ppcp(hal_ble_conn_params_t* conn_params) {
 
 int ble_update_connection_params(uint16_t conn_handle, hal_ble_conn_params_t* conn_params) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_update_connection_params().");
 
@@ -1425,7 +1451,7 @@ int ble_update_connection_params(uint16_t conn_handle, hal_ble_conn_params_t* co
 
 int hal_ble_disconnect(uint16_t conn_handle, uint8_t reason) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "hal_ble_disconnect().");
 
@@ -1444,7 +1470,7 @@ int hal_ble_disconnect(uint16_t conn_handle, uint8_t reason) {
 
 int ble_add_service_uuid128(uint8_t type, const uint8_t* uuid128, uint16_t* handle) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_add_service_uuid128().");
 
@@ -1474,7 +1500,7 @@ int ble_add_service_uuid128(uint8_t type, const uint8_t* uuid128, uint16_t* hand
 
 int ble_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_add_service_uuid16().");
 
@@ -1491,7 +1517,7 @@ int ble_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle) {
 
 int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_t properties, const char* desc, hal_ble_char_t* ble_char) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_add_char_uuid128().");
 
@@ -1527,7 +1553,7 @@ int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_
 
 int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties, const char* desc, hal_ble_char_t* ble_char) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_add_char_uuid16().");
 
@@ -1550,7 +1576,7 @@ int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t proper
 
 int ble_add_char_desc(uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_add_char_desc().");
 
@@ -1602,7 +1628,7 @@ int ble_add_char_desc(uint8_t* desc, uint16_t len, hal_ble_char_t* ble_char) {
 
 int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_publish().");
 
@@ -1614,7 +1640,7 @@ int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
-    if (s_bleStatus.conn_handle == BLE_INVALID_CONN_HANDLE) {
+    if (s_bleInstance.connHandle == BLE_INVALID_CONN_HANDLE) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
@@ -1624,14 +1650,14 @@ int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
     gattValue.p_value = cccd;
     gattValue.len = sizeof(cccd);
     gattValue.offset = 0;
-    ret_code_t ret = sd_ble_gatts_value_get(s_bleStatus.conn_handle, ble_char->cccd_handle, &gattValue);
+    ret_code_t ret = sd_ble_gatts_value_get(s_bleInstance.connHandle, ble_char->cccd_handle, &gattValue);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_value_get() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
 
     uint16_t cccd_value = uint16_decode(cccd);
-    if (cccd_value == BLE_SIG_CCCD_VAL_DISABLED || cccd_value > BLE_SIG_CCCD_VAL_INDICATION || !s_bleStatus.ind_confirmed) {
+    if (cccd_value == BLE_SIG_CCCD_VAL_DISABLED || cccd_value > BLE_SIG_CCCD_VAL_INDICATION || !s_bleInstance.indConfirmed) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     else {
@@ -1651,14 +1677,14 @@ int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
         hvxParams.p_data = data;
         hvxParams.p_len  = &hvxLen;
 
-        ret_code_t ret = sd_ble_gatts_hvx(s_bleStatus.conn_handle, &hvxParams);
+        ret_code_t ret = sd_ble_gatts_hvx(s_bleInstance.connHandle, &hvxParams);
         if (ret != NRF_SUCCESS) {
             LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
             return sysError(ret);
         }
 
         if (cccd_value == BLE_SIG_CCCD_VAL_INDICATION) {
-            s_bleStatus.ind_confirmed = false;
+            s_bleInstance.indConfirmed = false;
         }
     }
 
@@ -1667,7 +1693,7 @@ int ble_publish(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
 
 int ble_set_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_characteristic_value().");
 
@@ -1691,7 +1717,7 @@ int ble_set_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16
 
 int ble_get_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16_t* len) {
     std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleStatus.initialized);
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_get_characteristic_value().");
 

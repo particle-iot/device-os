@@ -85,19 +85,6 @@ typedef struct {
     uint16_t conn_sup_timeout;          /**< Connection Supervision Timeout in 10 ms units.*/
 } hal_ble_conn_params_t;
 
-/* BLE connection status */
-typedef struct {
-    uint8_t  initialized   : 1;
-    uint8_t  advertising   : 1;
-    uint8_t  scanning      : 1;
-    uint8_t  connected     : 1;
-    uint8_t  ind_confirmed : 1;
-    int8_t   tx_power;
-    uint8_t  role;
-    uint16_t conn_handle;
-    hal_ble_conn_params_t conn_params;
-} hal_ble_status_t;
-
 /* BLE characteristic definition */
 typedef struct {
     uint8_t        properties;
@@ -163,6 +150,13 @@ extern "C" {
 #endif
 
 /**
+ * Check if the BLE stack is initialized.
+ *
+ * @returns     true if initialized, otherwise false.
+ */
+bool ble_is_initialized(void);
+
+/**
  * Initialize the BLE stack. This function must be called previous to any other BLE APIs.
  *
  * @param[in]   reserved    Reserved for future use.
@@ -188,15 +182,6 @@ int ble_register_callback(ble_event_callback_t callback);
  * @returns     0 on success, system_error_t on error.
  */
 int ble_deregister_callback(ble_event_callback_t callback);
-
-/**
- * Fetch current BLE status.
- *
- * @param[in,out]   status  Pointer to where the BLE status being stored.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_status(hal_ble_status_t* status);
 
 /**
  * Set local BLE identity address, which type must be either public or random static.
@@ -403,6 +388,13 @@ int ble_set_scanning_params(hal_ble_scan_params_t* scan_params);
 int ble_start_scanning(void);
 
 /**
+ * Check if BLE is scanning nearby devices.
+ *
+ * @returns     true if it is scanning, otherwise false.
+ */
+bool ble_is_scanning(void);
+
+/**
  * Stop scanning nearby BLE devices.
  *
  * @returns     0 on success, system_error_t on error.
@@ -506,7 +498,7 @@ int ble_connect(hal_ble_address_t* addr);
  *
  * @returns true if connected, otherwise false.
  */
-bool ble_connected(void);
+bool ble_is_connected(void);
 
 int ble_connect_cancel(void);
 
