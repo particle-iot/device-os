@@ -206,8 +206,6 @@ test(TIME_12_concatenate) {
     assertEqual(s.c_str(), (const char*)"Sat Jan 10 13:37:04 2004abcd");
 }
 
-#if !HAL_PLATFORM_NRF52840 // TODO
-
 test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
 {
     if (!Particle.connected())
@@ -224,8 +222,6 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
     assertTrue(Particle.syncTimeDone());
     assertFalse(Particle.syncTimePending());
 }
-
-#endif // !HAL_PLATFORM_NRF52840
 
 test(TIME_14_timeSyncedLast_works_correctly)
 {
