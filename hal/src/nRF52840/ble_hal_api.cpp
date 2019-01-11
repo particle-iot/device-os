@@ -195,7 +195,7 @@ static int8_t roundTxPower(int8_t value) {
     return s_validTxPower[i - 1];
 }
 
-static int locateAdStructure(uint8_t flag, uint8_t* data, uint16_t len, uint16_t* offset, uint16_t* adsLen) {
+static int locateAdStructure(uint8_t flag, const uint8_t* data, uint16_t len, uint16_t* offset, uint16_t* adsLen) {
     if (flag == BLE_SIG_AD_TYPE_FLAGS) {
         *offset = 0;
         *adsLen = 3;
@@ -204,7 +204,7 @@ static int locateAdStructure(uint8_t flag, uint8_t* data, uint16_t len, uint16_t
 
     // A valid AD structure is composed of Length field, Type field and Data field.
     // Each field should be filled with at least one byte.
-    for (uint16_t i = 3; (i + 3) <= len; i = i) {
+    for (uint16_t i = 0; (i + 3) <= len; i = i) {
         *adsLen = data[i];
 
         uint8_t adsType = data[i + 1];
@@ -1143,13 +1143,13 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
     return sysError(ret);
 }
 
-int ble_set_adv_data_snippet(uint8_t adType, uint8_t* data, uint16_t len) {
+int ble_set_adv_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_adv_data_snippet().");
 
-    return adStructEncode(adType, data, len, BLE_ADV_DATA_ADVERTISING);
+    return adStructEncode(ad_type, data, len, BLE_ADV_DATA_ADVERTISING);
 }
 
 int ble_refresh_adv_data(void) {
@@ -1170,13 +1170,13 @@ int ble_set_adv_data(uint8_t* data, uint16_t len) {
     return setAdvData(data, len, BLE_ADV_DATA_ADVERTISING);
 }
 
-int ble_set_scan_resp_data_snippet(uint8_t adType, uint8_t* data, uint16_t len) {
+int ble_set_scan_resp_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_set_scan_resp_data_snippet().");
 
-    return adStructEncode(adType, data, len, BLE_ADV_DATA_SCAN_RESPONSE);
+    return adStructEncode(ad_type, data, len, BLE_ADV_DATA_SCAN_RESPONSE);
 }
 
 int ble_refresh_scan_resp_data(void) {
@@ -1323,6 +1323,34 @@ int ble_stop_scanning(void) {
     s_bleInstance.scanning = false;
 
     return SYSTEM_ERROR_NONE;
+}
+
+int ble_adv_data_decode(uint8_t flag, const uint8_t* adv_data, uint16_t adv_data_len, uint8_t* data, uint16_t* len) {
+    std::lock_guard<bleLock> lk(bleLock());
+
+    // An AD structure must consist of 1 byte length field, 1 byte type field and at least 1 byte data field
+    if (adv_data == NULL || adv_data_len < 3) {
+        *len = 0;
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+
+    uint16_t dataOffset, dataLen;
+    if (locateAdStructure(flag, adv_data, adv_data_len, &dataOffset, &dataLen) == SYSTEM_ERROR_NONE) {
+        if (len != NULL) {
+            dataLen = dataLen - 2;
+            if (data != NULL && *len > 0) {
+                // Only copy the data field of the found AD structure.
+                *len = MIN(*len, dataLen);
+                memcpy(data, &adv_data[dataOffset+2], *len);
+            }
+            *len = dataLen;
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    *len = 0;
+    return SYSTEM_ERROR_NOT_FOUND;
 }
 
 int ble_connect(hal_ble_address_t* addr) {
