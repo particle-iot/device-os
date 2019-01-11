@@ -33,7 +33,7 @@
 #define BLE_EVENT_QUEUE_ITEM_COUNT                  10
 
 /* BLE event thread stack size */
-#define BLE_EVENT_THREAD_STACK_SIZE                 1024
+#define BLE_EVENT_THREAD_STACK_SIZE                 2048
 
 /* BLE invalid connection handle. */
 #define BLE_INVALID_CONN_HANDLE                     BLE_CONN_HANDLE_INVALID
