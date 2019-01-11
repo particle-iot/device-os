@@ -292,13 +292,13 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params);
  * Unless the ble_refresh_adv_data() is called.
  * By setting the data pointer to NULl will delete the data snippet.
  *
- * @param[in]   adType  BLE GAP advertising data structure type.
+ * @param[in]   ad_type BLE GAP advertising data structure type.
  * @param[in]   data    Pointer to BLE GAP advertising data structure data.
  * @param[in]   len     Length of the BLE GAP advertising data structure data.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_set_adv_data_snippet(uint8_t adType, uint8_t* data, uint16_t len);
+int ble_set_adv_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len);
 
 /**
  * Set the BLE advertising data. It will update the advertising data immediately if success.
@@ -324,13 +324,13 @@ int ble_refresh_adv_data(void);
  * Unless the ble_refresh_scan_resp_data() is called.
  * By setting the data pointer to NULl will delete the data snippet.
  *
- * @param[in]   adType  BLE GAP advertising data structure type.
+ * @param[in]   ad_type BLE GAP advertising data structure type.
  * @param[in]   data    Pointer to BLE GAP advertising data structure data.
  * @param[in]   len     Length of the BLE GAP advertising data structure data.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_set_scan_resp_data_snippet(uint8_t adType, uint8_t* data, uint16_t len);
+int ble_set_scan_resp_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len);
 
 /**
  * Set the BLE scan response data.
@@ -400,6 +400,22 @@ bool ble_is_scanning(void);
  * @returns     0 on success, system_error_t on error.
  */
 int ble_stop_scanning(void);
+
+/**
+ * Check if the given advertising data contains specified type of advertising structure.
+ *
+ * @param[in]       ad_type         BLE GAP advertising data structure type.
+ * @param[in]       adv_data        Pointer to BLE GAP advertising data structure data.
+ * @param[in]       adv_data_len    Length of the BLE GAP advertising data structure data.
+ * @param[out]      data            Pointer to where the decoded data to be filled in if specified
+ *                                  type of advertising structure is found. It can be NULL.
+ * @param[in,out]   len             Return the length of decoded data. It can be NULL.
+ *                                  If NULL, the data parameter is ignored.
+ *                                  If both the data and len are not NULL, it is the length of given data buffer when pass in.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_adv_data_decode(uint8_t ad_type, const uint8_t* adv_data, uint16_t adv_data_len, uint8_t* data, uint16_t* len);
 
 /**
  * Add a BLE service.
