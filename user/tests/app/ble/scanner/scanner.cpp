@@ -25,7 +25,7 @@ SYSTEM_MODE(MANUAL);
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-const char *addr_type[4] = {
+const char *addrType[4] = {
     "Public",
     "Random Static",
     "Random Private Resolvable",
@@ -41,15 +41,15 @@ static void handleBleEvent(hal_ble_event_t *event)
         else {
             LOG(TRACE, "BLE Scan Sesponse data");
         }
-        Serial1.printf(" RSSI: %i dBm\r\n", event->scan_result_event.rssi);
+        Serial1.printf(" RSSI         : %i dBm\r\n", event->scan_result_event.rssi);
 
         if (event->scan_result_event.peer_addr.addr_type <= 3) {
-            Serial1.printf(" Peer address type: %s\r\n", addr_type[event->scan_result_event.peer_addr.addr_type]);
+            Serial1.printf(" Address type : %s\r\n", addrType[event->scan_result_event.peer_addr.addr_type]);
         }
         else {
-            Serial1.printf(" Peer address type: Anonymous\r\n");
+            Serial1.printf(" Address type : Anonymous\r\n");
         }
-        Serial1.printf(" Peer address: %02X:%02X:%02X:%02X:%02X:%02X\r\n",
+        Serial1.printf(" Address      : %02X:%02X:%02X:%02X:%02X:%02X\r\n",
                 event->scan_result_event.peer_addr.addr[0],
                 event->scan_result_event.peer_addr.addr[1],
                 event->scan_result_event.peer_addr.addr[2],
@@ -57,11 +57,49 @@ static void handleBleEvent(hal_ble_event_t *event)
                 event->scan_result_event.peer_addr.addr[4],
                 event->scan_result_event.peer_addr.addr[5]);
 
-        Serial1.print(" Payload: ");
+        Serial1.print(" Payload      : ");
         for (uint8_t i = 0; i < event->scan_result_event.data_len; i++) {
             Serial1.printf("%02X ", event->scan_result_event.data[i]);
         }
-        Serial1.print("\r\n\r\n");
+        Serial1.print("\r\n");
+
+        uint8_t  mfgData[20];
+        uint16_t mfgDataLen = sizeof(mfgData);
+        ble_adv_data_decode(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,
+                event->scan_result_event.data, event->scan_result_event.data_len,
+                mfgData, &mfgDataLen);
+        if (mfgDataLen != 0) {
+            Serial1.print(" Manufacturing data found: ");
+            for (uint8_t i = 0; i < mfgDataLen; i++) {
+                Serial1.printf("%02X ", mfgData[i]);
+            }
+            Serial1.print("\r\n");
+        }
+
+        uint8_t  shortName[20];
+        uint16_t shortNameLen = sizeof(shortName);
+        ble_adv_data_decode(BLE_SIG_AD_TYPE_SHORT_LOCAL_NAME,
+                event->scan_result_event.data, event->scan_result_event.data_len,
+                shortName, &shortNameLen);
+        if (shortNameLen != 0) {
+            shortName[shortNameLen] = '\0';
+            Serial1.printf(" Shorted device name found: %s\r\n", shortName);
+        }
+
+        uint8_t  uuid128[16];
+        uint16_t uuidLen = sizeof(uuid128);
+        ble_adv_data_decode(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE,
+                event->scan_result_event.data, event->scan_result_event.data_len,
+                uuid128, &uuidLen);
+        if (uuidLen != 0) {
+            Serial1.print(" 128-bits UUID found: ");
+            for (uint8_t i = 0; i < uuidLen; i++) {
+                Serial1.printf("%02X ", uuid128[i]);
+            }
+            Serial1.print("\r\n");
+        }
+
+        Serial1.print("\r\n");
     }
 }
 
@@ -79,7 +117,7 @@ void setup()
     scanParams.filter_policy = BLE_GAP_SCAN_FP_ACCEPT_ALL;
     scanParams.interval = 3200; // 2 seconds
     scanParams.window   = 100;
-    scanParams.timeout  = 1000; // 0 for forever unless stop initially
+    scanParams.timeout  = 2000; // 0 for forever unless stop initially
     ble_set_scanning_params(&scanParams);
 
     ble_register_callback(handleBleEvent);
