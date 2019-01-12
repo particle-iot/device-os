@@ -66,6 +66,7 @@ typedef struct {
     uint8_t  initialized   : 1;
     uint8_t  advertising   : 1;
     uint8_t  scanning      : 1;
+    uint8_t  connecting    : 1;
     uint8_t  connected     : 1;
     uint8_t  indConfirmed  : 1;
     int8_t   txPower;
@@ -97,6 +98,7 @@ static HalBleInstance_t s_bleInstance = {
     .initialized  = 0,
     .advertising  = 0,
     .scanning     = 0,
+    .connecting   = 0,
     .connected    = 0,
     .indConfirmed = 1,
     .txPower      = 0,
@@ -578,8 +580,10 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
 
-            s_bleInstance.role             = event->evt.gap_evt.params.connected.role;
-            s_bleInstance.connHandle       = event->evt.gap_evt.conn_handle;
+            s_bleInstance.role       = event->evt.gap_evt.params.connected.role;
+            s_bleInstance.connHandle = event->evt.gap_evt.conn_handle;
+            s_bleInstance.connecting = false;
+            s_bleInstance.connected  = true;
             memcpy(&s_bleInstance.effectiveConnParams, &event->evt.gap_evt.params.connected.conn_params, sizeof(ble_gap_conn_params_t));
 
             LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", s_bleInstance.role, s_bleInstance.connHandle);
@@ -620,7 +624,8 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
-            s_bleInstance.role = BLE_ROLE_INVALID;
+            s_bleInstance.role       = BLE_ROLE_INVALID;
+            s_bleInstance.connected  = false;
 
             // Re-start advertising.
             LOG_DEBUG(TRACE, "Restart BLE advertising.");
@@ -715,6 +720,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Connection timeout");
+                s_bleInstance.connecting = false;
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_AUTH_PAYLOAD) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Authenticated payload timeout");
@@ -1359,17 +1365,62 @@ int ble_connect(hal_ble_address_t* addr) {
 
     s_bleInstance.scanning = false;
 
+    ble_gap_addr_t devAddr;
+    memset(&devAddr, 0x00, sizeof(ble_gap_addr_t));
+    devAddr.addr_type = addr->addr_type;
+    memcpy(devAddr.addr, addr->addr, BLE_SIG_ADDR_LEN);
+
+    ble_gap_scan_params_t bleGapScanParams;
+    memset(&bleGapScanParams, 0x00, sizeof(ble_gap_scan_params_t));
+
+    bleGapScanParams.extended      = 0;
+    bleGapScanParams.active        = s_bleInstance.scanParams.active;
+    bleGapScanParams.interval      = s_bleInstance.scanParams.interval;
+    bleGapScanParams.window        = s_bleInstance.scanParams.window;
+    bleGapScanParams.timeout       = s_bleInstance.scanParams.timeout;
+    bleGapScanParams.scan_phys     = BLE_GAP_PHY_1MBPS;
+    bleGapScanParams.filter_policy = s_bleInstance.scanParams.filter_policy;
+
+    ble_gap_conn_params_t connParams;
+    ret_code_t ret = sd_ble_gap_ppcp_get(&connParams);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gap_ppcp_set() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    ret = sd_ble_gap_connect(&devAddr, &bleGapScanParams, &connParams, BLE_CONN_CFG_TAG);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gap_connect() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    s_bleInstance.connecting = true;
+
     return 0;
 }
 
+bool ble_is_connecting(void) {
+    return s_bleInstance.connecting;
+}
+
 bool ble_is_connected(void) {
-    return (s_bleInstance.connHandle != BLE_INVALID_CONN_HANDLE) ? true : false;
+    return s_bleInstance.connected;
 }
 
 int ble_connect_cancel(void) {
     std::lock_guard<bleLock> lk(bleLock());
 
     LOG_DEBUG(TRACE, "ble_connect_cancel().");
+
+    if (s_bleInstance.connecting) {
+        ret_code_t ret = sd_ble_gap_connect_cancel();
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_gap_connect_cancel() failed: %u", (unsigned)ret);
+            return sysError(ret);
+        }
+
+        s_bleInstance.connecting = false;
+    }
 
     return 0;
 }
