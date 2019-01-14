@@ -206,23 +206,14 @@ static void spi_init(HAL_SPI_Interface spi, SPI_Mode mode) {
 static void spi_uninit(HAL_SPI_Interface spi) {
     if (m_spi_map[spi].spi_mode == SPI_MODE_MASTER) {
         nrfx_spim_uninit(m_spi_map[spi].master);
-        HAL_Pin_Mode(m_spi_map[spi].ss_pin, PIN_MODE_NONE);
     } else {
         nrfx_spis_uninit(m_spi_map[spi].slave);
         HAL_Interrupts_Detach(m_spi_map[spi].ss_pin);
-        HAL_Pin_Mode(m_spi_map[spi].ss_pin, PIN_MODE_NONE);
     }
 
     HAL_Set_Pin_Function(m_spi_map[spi].sck_pin, PF_NONE);
     HAL_Set_Pin_Function(m_spi_map[spi].mosi_pin, PF_NONE);
     HAL_Set_Pin_Function(m_spi_map[spi].miso_pin, PF_NONE);
-}
-
-static void ss_pin_uninit(HAL_SPI_Interface spi) {
-    uint8_t nrf_pin = get_nrf_pin_num(m_spi_map[spi].ss_pin);
-    if (nrf_pin != NRFX_SPIM_PIN_NOT_USED) {
-        HAL_Pin_Mode(m_spi_map[spi].ss_pin, PIN_MODE_NONE);
-    }
 }
 
 static uint32_t spi_tx_rx(HAL_SPI_Interface spi, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size) {
@@ -289,10 +280,6 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin) {
 }
 
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved) {
-    if (m_spi_map[spi].ss_pin != PIN_INVALID) {
-        ss_pin_uninit(spi);
-    }
-
     if (m_spi_map[spi].enabled) {
         spi_uninit(spi);
     }
