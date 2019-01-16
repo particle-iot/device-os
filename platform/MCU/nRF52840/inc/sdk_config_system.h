@@ -131,3 +131,6 @@
 
 #define APP_USBD_DEVICE_VER_MAJOR               1
 #define APP_USBD_DEVICE_VER_MINOR               1
+
+#define NRFX_POWER_CONFIG_DEFAULT_DCDCEN        1
+
