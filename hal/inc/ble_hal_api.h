@@ -528,12 +528,11 @@ int ble_connect_cancel(void);
 /**
  * Terminate BLE connection.
  *
- * @param[in]   conn_handle BLE connection handle.
- * @param[in]   reason      Disconnect reason, either BLE_DISCONN_REASON_USER_INITIATE or BLE_DISCONN_REASON_CONN_INTERVAL.
+ * @param[in]   conn_handle BLE connection handle. If BLE peripheral role, it is ignored.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_disconnect(uint16_t conn_handle, uint8_t reason);
+int hal_ble_disconnect(uint16_t conn_handle);
 
 /**
  * Update connection parameters. In the central role this will initiate a Link Layer connection parameter update procedure.

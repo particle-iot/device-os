@@ -623,9 +623,10 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
 
-            s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
-            s_bleInstance.role       = BLE_ROLE_INVALID;
-            s_bleInstance.connected  = false;
+            s_bleInstance.connHandle   = BLE_INVALID_CONN_HANDLE;
+            s_bleInstance.role         = BLE_ROLE_INVALID;
+            s_bleInstance.connected    = false;
+            s_bleInstance.indConfirmed = true;
 
             // Re-start advertising.
             LOG_DEBUG(TRACE, "Restart BLE advertising.");
@@ -1528,17 +1529,23 @@ int ble_update_connection_params(uint16_t conn_handle, hal_ble_conn_params_t* co
     return SYSTEM_ERROR_NONE;
 }
 
-int hal_ble_disconnect(uint16_t conn_handle, uint8_t reason) {
+int hal_ble_disconnect(uint16_t conn_handle) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "hal_ble_disconnect().");
 
-    if (conn_handle == BLE_INVALID_CONN_HANDLE) {
+    if (!s_bleInstance.connected) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    else if (s_bleInstance.role == BLE_ROLE_PERIPHERAL) {
+        conn_handle = s_bleInstance.connHandle;
+    }
+    else if (conn_handle == BLE_INVALID_CONN_HANDLE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    ret_code_t ret = sd_ble_gap_disconnect(conn_handle, reason);
+    ret_code_t ret = sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
         return sysError(ret);
