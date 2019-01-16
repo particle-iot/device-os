@@ -623,20 +623,23 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
 
+            // Re-start advertising.
+            // FIXME: when multi-role implemented.
+            if (s_bleInstance.role == BLE_ROLE_PERIPHERAL) {
+                LOG_DEBUG(TRACE, "Restart BLE advertising.");
+                ret = sd_ble_gap_adv_start(s_bleInstance.advHandle, BLE_CONN_CFG_TAG);
+                if (ret != NRF_SUCCESS) {
+                    LOG(ERROR, "sd_ble_gap_adv_start() failed: %u", (unsigned)ret);
+                }
+                else {
+                    s_bleInstance.advertising = true;
+                }
+            }
+
             s_bleInstance.connHandle   = BLE_INVALID_CONN_HANDLE;
             s_bleInstance.role         = BLE_ROLE_INVALID;
             s_bleInstance.connected    = false;
             s_bleInstance.indConfirmed = true;
-
-            // Re-start advertising.
-            LOG_DEBUG(TRACE, "Restart BLE advertising.");
-            ret = sd_ble_gap_adv_start(s_bleInstance.advHandle, BLE_CONN_CFG_TAG);
-            if (ret != NRF_SUCCESS) {
-                LOG(ERROR, "sd_ble_gap_adv_start() failed: %u", (unsigned)ret);
-            }
-            else {
-                s_bleInstance.advertising = true;
-            }
         } break;
 
         case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
