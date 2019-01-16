@@ -47,10 +47,20 @@
 #include "system_error.h"
 #include <nrf_lpcomp.h>
 #include <nrfx_gpiote.h>
+#include <nrf_drv_clock.h>
+#include "usb_hal.h"
+#include "usart_hal.h"
+#include "system_error.h"
+#include <nrfx_rtc.h>
+#include "gpio_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
 static volatile uint8_t rtos_started = 0;
+
+#define RTC_ID   1
+static const app_irq_priority_t RTC_IRQ_Priority = APP_IRQ_PRIORITY_LOWEST;
+static const nrfx_rtc_t m_rtc = NRFX_RTC_INSTANCE(RTC_ID);
 
 static struct Last_Reset_Info {
     int reason;
@@ -469,11 +479,197 @@ void HAL_Core_Enter_Bootloader(bool persist) {
     HAL_Core_System_Reset_Ex(RESET_REASON_DFU_MODE, 0, NULL);
 }
 
+static void fpu_sleep_prepare(void) {
+    uint32_t fpscr;
+    CRITICAL_REGION_ENTER();
+    fpscr = __get_FPSCR();
+    /*
+        * Clear FPU exceptions.
+        * Without this step, the FPU interrupt is marked as pending,
+        * preventing system from sleeping. Exceptions cleared:
+        * - IOC - Invalid Operation cumulative exception bit.
+        * - DZC - Division by Zero cumulative exception bit.
+        * - OFC - Overflow cumulative exception bit.
+        * - UFC - Underflow cumulative exception bit.
+        * - IXC - Inexact cumulative exception bit.
+        * - IDC - Input Denormal cumulative exception bit.
+        */
+    __set_FPSCR(fpscr & ~0x9Fu);
+    __DMB();
+    NVIC_ClearPendingIRQ(FPU_IRQn);
+    CRITICAL_REGION_EXIT();
+
+    /*__
+        * Assert no critical FPU exception is signaled:
+        * - IOC - Invalid Operation cumulative exception bit.
+        * - DZC - Division by Zero cumulative exception bit.
+        * - OFC - Overflow cumulative exception bit.
+        */
+    SPARK_ASSERT((fpscr & 0x07) == 0);
+}
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds) {
+
+}
+
+static void wakeup_rtc_handler(nrfx_rtc_int_type_t int_type) {
+
+}
+
+static void wakeup_from_rtc(uint32_t seconds) {
+    //Initialize RTC instance
+    nrfx_rtc_config_t config = {
+        .prescaler          = 0xFFF, // 125 ms counter period, 582.542 hours overflow
+        .interrupt_priority = RTC_IRQ_Priority,
+        .tick_latency       = 0,
+        .reliable           = false
+    };
+
+    uint32_t err_code = nrfx_rtc_init(&m_rtc, &config, wakeup_rtc_handler);
+    SPARK_ASSERT(err_code == NRF_SUCCESS);
+
+    // Set compare channel to trigger interrupt after COMPARE_COUNTERTIME seconds
+    nrfx_rtc_counter_clear(&m_rtc);
+    err_code = nrfx_rtc_cc_set(&m_rtc, 0, seconds * 8, true);
+    SPARK_ASSERT(err_code == NRF_SUCCESS);
+
+    // Power on RTC instance
+    nrfx_rtc_enable(&m_rtc);
 }
 
 int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved) {
-    return -1;
+    // Initial sanity check
+    if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+
+    // Validate pins and modes
+    if ((pins_count > 0 && pins == NULL) || (pins_count > 0 && mode_count == 0) || (mode_count > 0 && mode == NULL)) {
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+
+    for (unsigned i = 0; i < pins_count; i++) {
+        if (pins[i] >= TOTAL_PINS) {
+            return SYSTEM_ERROR_NOT_ALLOWED;
+        }
+    }
+
+    for (int i = 0; i < mode_count; i++) {
+        switch(mode[i]) {
+            case RISING:
+            case FALLING:
+            case CHANGE:
+                break;
+            default:
+                return SYSTEM_ERROR_NOT_ALLOWED;
+        }
+    }
+
+    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+
+    // Detach USB
+    HAL_USB_Detach();
+
+    // Flush all USARTs
+    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
+        if (HAL_USART_Is_Enabled(usart)) {
+            HAL_USART_Flush_Data(usart);
+        }
+    }
+
+    // Disable all interrupt, __disable_irq()
+    uint8_t dummy = 0;
+    uint32_t err_code = sd_nvic_critical_region_enter(&dummy);
+    SPARK_ASSERT(err_code == NRF_SUCCESS);
+
+    fpu_sleep_prepare();
+
+    // Disable QSPI interrupt, it will be trigged by ready event
+    // TODO: why it fails when using sd_nvic_xxxx API
+    NVIC_DisableIRQ(QSPI_IRQn);
+    NVIC_ClearPendingIRQ(QSPI_IRQn);
+
+    bool hfclk_resume = false;
+    if (nrf_drv_clock_hfclk_is_running()) {
+        hfclk_resume = true;
+        nrf_drv_clock_hfclk_release();
+        while (nrf_drv_clock_hfclk_is_running()) {
+            ;
+        }
+    }
+
+    // Suspend all GPIOTE interrupts
+    HAL_Interrupts_Suspend();
+
+    for (int i = 0; i < pins_count; i++) {
+        pin_t wakeUpPin = pins[i];
+        InterruptMode edgeTriggerMode = (i < mode_count) ? mode[i] : mode[mode_count - 1];
+
+        PinMode wakeUpPinMode = INPUT;
+        // Set required pinMode based on edgeTriggerMode
+        switch(edgeTriggerMode) {
+            case RISING: {
+                wakeUpPinMode = INPUT_PULLDOWN;
+                break;
+            }
+            case FALLING: {
+                wakeUpPinMode = INPUT_PULLUP;
+                break;
+            }
+            case CHANGE:
+            default:
+                wakeUpPinMode = INPUT;
+                break;
+        }
+
+        HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
+        HAL_InterruptExtraConfiguration irqConf = {0};
+        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
+        irqConf.IRQChannelPreemptionPriority = 0;
+        irqConf.IRQChannelSubPriority = 0;
+        irqConf.keepHandler = 1;
+        irqConf.keepPriority = 1;
+        HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, &irqConf);
+    }
+
+    // Configure RTC wake-up
+    if (seconds > 0) {
+        wakeup_from_rtc(seconds);
+    }
+
+    // Enable all interrupt, __enable_irq()
+    err_code = sd_nvic_critical_region_exit(dummy);
+    APP_ERROR_CHECK(err_code);
+
+    // Enter sleep mode, wait for event
+    // TODO: why this API has to call twice?
+    SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
+    SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
+
+    // TODO: Add a workaround to detect wakeup reason
+    int32_t reason = SYSTEM_ERROR_NOT_SUPPORTED;
+
+    // Restore wakeup RTC
+    nrfx_rtc_uninit(&m_rtc);
+
+    // Restore GPIOTE
+    HAL_Interrupts_Restore();
+
+    // Enable QSPI interrupt
+    NVIC_EnableIRQ(QSPI_IRQn);
+
+    // Restore hfclk
+    if (hfclk_resume) {
+        nrf_drv_clock_hfclk_request(NULL);
+        while (!nrf_drv_clock_hfclk_is_running()) {
+            ;
+        }
+    }
+
+    HAL_USB_Attach();
+
+    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
+
+    return reason;
 }
 
 void HAL_Core_Execute_Stop_Mode(void) {
