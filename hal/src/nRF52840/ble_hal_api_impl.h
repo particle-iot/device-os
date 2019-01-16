@@ -38,10 +38,6 @@
 /* BLE invalid connection handle. */
 #define BLE_INVALID_CONN_HANDLE                     BLE_CONN_HANDLE_INVALID
 
-/* BLE disconnect reason */
-#define BLE_DISCONN_REASON_USER_INITIATE            BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION
-#define BLE_DISCONN_REASON_CONN_INTERVAL            BLE_HCI_CONN_INTERVAL_UNACCEPTABLE
-
 /* Maximum number of device address in the whitelist. */
 #define BLE_MAX_WHITELIST_ADDR_COUNT                BLE_GAP_WHITELIST_ADDR_MAX_COUNT
 
