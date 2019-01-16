@@ -77,6 +77,7 @@ typedef struct {
 
     hal_ble_scan_params_t scanParams;
     hal_ble_adv_params_t  advParams;
+    hal_ble_conn_params_t ppcp;
 
     uint8_t               advData[BLE_MAX_ADV_DATA_LEN];
     uint16_t              advDataLen;
@@ -121,6 +122,17 @@ static HalBleInstance_t s_bleInstance = {
         .interval      = BLE_DEFAULT_ADVERTISING_INTERVAL,
         .duration      = BLE_DEFAULT_ADVERTISING_DURATION,
         .inc_tx_power  = false
+    },
+
+    /*
+     * For BLE Central, this is the initial connection parameters.
+     * For BLE Peripheral, this the Peripheral Preferred Connection Parameters.
+     */
+    .ppcp = {
+        .min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL,
+        .max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL,
+        .slave_latency     = BLE_DEFAULT_SLAVE_LATENCY,
+        .conn_sup_timeout  = BLE_DEFAULT_CONN_SUP_TIMEOUT
     },
 
     .advData = {
@@ -355,6 +367,39 @@ int setAdvData(uint8_t* data, uint16_t len, uint8_t flag) {
         advPending = false;
         return ble_start_advertising();
     }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+static int fromHalScanParams(hal_ble_scan_params_t* halScanParams, ble_gap_scan_params_t* scanParams) {
+    if (halScanParams == NULL || scanParams == NULL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    memset(scanParams, 0x00, sizeof(ble_gap_scan_params_t));
+
+    scanParams->extended      = 0;
+    scanParams->active        = halScanParams->active;
+    scanParams->interval      = halScanParams->interval;
+    scanParams->window        = halScanParams->window;
+    scanParams->timeout       = halScanParams->timeout;
+    scanParams->scan_phys     = BLE_GAP_PHY_1MBPS;
+    scanParams->filter_policy = halScanParams->filter_policy;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+static int fromHalConnParams(hal_ble_conn_params_t* halConnParams, ble_gap_conn_params_t* connParams) {
+    if (halConnParams == NULL || connParams == NULL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    memset(connParams, 0x00, sizeof(ble_gap_conn_params_t));
+
+    connParams->min_conn_interval = halConnParams->min_conn_interval;
+    connParams->max_conn_interval = halConnParams->max_conn_interval;
+    connParams->slave_latency     = halConnParams->slave_latency;
+    connParams->conn_sup_timeout  = halConnParams->conn_sup_timeout;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -640,6 +685,16 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             s_bleInstance.role         = BLE_ROLE_INVALID;
             s_bleInstance.connected    = false;
             s_bleInstance.indConfirmed = true;
+        } break;
+
+        case BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST: {
+            LOG_DEBUG(TRACE, "BLE GAP event: connection parameter update request.");
+
+            ret = sd_ble_gap_conn_param_update(event->evt.gap_evt.conn_handle,
+                    &event->evt.gap_evt.params.conn_param_update_request.conn_params);
+            if (ret != NRF_SUCCESS) {
+                LOG(ERROR, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
+            }
         } break;
 
         case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
@@ -1287,15 +1342,7 @@ int ble_start_scanning(void) {
     s_bleInstance.scanning = false;
 
     ble_gap_scan_params_t bleGapScanParams;
-    memset(&bleGapScanParams, 0x00, sizeof(ble_gap_scan_params_t));
-
-    bleGapScanParams.extended      = 0;
-    bleGapScanParams.active        = s_bleInstance.scanParams.active;
-    bleGapScanParams.interval      = s_bleInstance.scanParams.interval;
-    bleGapScanParams.window        = s_bleInstance.scanParams.window;
-    bleGapScanParams.timeout       = s_bleInstance.scanParams.timeout;
-    bleGapScanParams.scan_phys     = BLE_GAP_PHY_1MBPS;
-    bleGapScanParams.filter_policy = s_bleInstance.scanParams.filter_policy;
+    fromHalScanParams(&s_bleInstance.scanParams, &bleGapScanParams);
 
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
     LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
@@ -1375,24 +1422,12 @@ int ble_connect(hal_ble_address_t* addr) {
     memcpy(devAddr.addr, addr->addr, BLE_SIG_ADDR_LEN);
 
     ble_gap_scan_params_t bleGapScanParams;
-    memset(&bleGapScanParams, 0x00, sizeof(ble_gap_scan_params_t));
-
-    bleGapScanParams.extended      = 0;
-    bleGapScanParams.active        = s_bleInstance.scanParams.active;
-    bleGapScanParams.interval      = s_bleInstance.scanParams.interval;
-    bleGapScanParams.window        = s_bleInstance.scanParams.window;
-    bleGapScanParams.timeout       = s_bleInstance.scanParams.timeout;
-    bleGapScanParams.scan_phys     = BLE_GAP_PHY_1MBPS;
-    bleGapScanParams.filter_policy = s_bleInstance.scanParams.filter_policy;
+    fromHalScanParams(&s_bleInstance.scanParams, &bleGapScanParams);
 
     ble_gap_conn_params_t connParams;
-    ret_code_t ret = sd_ble_gap_ppcp_get(&connParams);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_ppcp_set() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
+    fromHalConnParams(&s_bleInstance.ppcp, &connParams);
 
-    ret = sd_ble_gap_connect(&devAddr, &bleGapScanParams, &connParams, BLE_CONN_CFG_TAG);
+    ret_code_t ret = sd_ble_gap_connect(&devAddr, &bleGapScanParams, &connParams, BLE_CONN_CFG_TAG);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_connect() failed: %u", (unsigned)ret);
         return sysError(ret);
@@ -1456,16 +1491,15 @@ int ble_set_ppcp(hal_ble_conn_params_t* conn_params) {
     }
 
     ble_gap_conn_params_t connParams;
-    connParams.min_conn_interval = conn_params->min_conn_interval;
-    connParams.max_conn_interval = conn_params->max_conn_interval;
-    connParams.slave_latency     = conn_params->slave_latency;
-    connParams.conn_sup_timeout  = conn_params->conn_sup_timeout;
+    fromHalConnParams(conn_params, &connParams);
 
     ret_code_t ret = sd_ble_gap_ppcp_set(&connParams);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_ppcp_set() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
+
+    memcpy(&s_bleInstance.ppcp, conn_params, sizeof(hal_ble_conn_params_t));
 
     return SYSTEM_ERROR_NONE;
 }
