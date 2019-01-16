@@ -51,13 +51,13 @@
 #define BLE_ADV_SCANABLE_DIRECTED_EVT                       BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_SCANNABLE_DIRECTED
 
 /* Default advertising parameters */
-#define BLE_DEFAULT_ADVERTISING_INTERVAL            160     /* The advertising interval (in units of 0.625 ms). */
-#define BLE_DEFAULT_ADVERTISING_DURATION            18000   /* The advertising duration (in units of 10 milliseconds). */
+#define BLE_DEFAULT_ADVERTISING_INTERVAL            160     /* The advertising interval: 100ms (in units of 0.625 ms). */
+#define BLE_DEFAULT_ADVERTISING_DURATION            18000   /* The advertising duration: 180s (in units of 10 milliseconds). */
 
 /* Default scanning parameters */
-#define BLE_DEFAULT_SCANNING_INTERVAL               0x00A0  /* The scan interval in units of 0.625 millisecond. */
-#define BLE_DEFAULT_SCANNING_WINDOW                 0x0050  /* The scan window in units of 0.625 millisecond. */
-#define BLE_DEFAULT_SCANNING_TIMEOUT                0x0000  /* The timeout in units of 10 millisecond when scanning. 0x0000 disables timeout. */
+#define BLE_DEFAULT_SCANNING_INTERVAL               160     /* The scan interval: 100ms (in units of 0.625 ms). */
+#define BLE_DEFAULT_SCANNING_WINDOW                 80      /* The scan window: 50ms (in units of 0.625 ms). */
+#define BLE_DEFAULT_SCANNING_TIMEOUT                0       /* The timeout: forever (in units of 10 ms. 0 for scanning forever). */
 
 /* Maximum length of advertising and scan response data */
 #define BLE_MAX_ADV_DATA_LEN                        BLE_GAP_ADV_SET_DATA_SIZE_MAX
@@ -71,6 +71,12 @@
 
 #define BLE_CONN_PARAMS_UPDATE_DELAY_MS             5000
 #define BLE_CONN_PARAMS_UPDATE_ATTEMPS              2
+
+/* Default BLE connection parameters */
+#define BLE_DEFAULT_MIN_CONN_INTERVAL               80      /* The minimal connection interval: 100ms (in units of 1.25ms). */
+#define BLE_DEFAULT_MAX_CONN_INTERVAL               400     /* The minimal connection interval: 500ms (in units of 1.25ms). */
+#define BLE_DEFAULT_SLAVE_LATENCY                   0       /* The slave latency. */
+#define BLE_DEFAULT_CONN_SUP_TIMEOUT                400     /* The connection supervision timeout: 4s (in units of 10ms). */
 
 /* BLE Service type */
 #define BLE_SERVICE_TYPE_INVALID                    BLE_GATTS_SRVC_TYPE_INVALID
