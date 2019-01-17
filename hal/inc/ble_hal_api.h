@@ -287,10 +287,8 @@ int ble_get_tx_power(int8_t* value);
 int ble_set_advertising_params(hal_ble_adv_params_t* adv_params);
 
 /**
- * Add, update or delete data snippet from advertising data.
- * After this function being called, it won't update the advertising data,
- * Unless the ble_refresh_adv_data() is called.
- * By setting the data pointer to NULl will delete the data snippet.
+ * Add, update or delete AD structure from advertising data.
+ * By setting the data pointer to NULl to delete the AD structure.
  *
  * @param[in]   ad_type BLE GAP advertising data structure type.
  * @param[in]   data    Pointer to BLE GAP advertising data structure data.
@@ -298,7 +296,7 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_set_adv_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len);
+int ble_config_adv_data(uint8_t ad_type, uint8_t* data, uint16_t len);
 
 /**
  * Set the BLE advertising data. It will update the advertising data immediately if success.
@@ -311,18 +309,8 @@ int ble_set_adv_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len);
 int ble_set_adv_data(uint8_t* data, uint16_t len);
 
 /**
- * Refresh the BLE advertising data. It should be called after calling the ble_set_adv_data_snippet(),
- * so that the advertising data can be updated.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_refresh_adv_data(void);
-
-/**
- * Add, update or delete data snippet from scan response data.
- * After this function being called, it won't update the scan response data,
- * Unless the ble_refresh_scan_resp_data() is called.
- * By setting the data pointer to NULl will delete the data snippet.
+ * Add, update or delete AD structure from scan response data.
+ * By setting the data pointer to NULl to delete the AD structure.
  *
  * @param[in]   ad_type BLE GAP advertising data structure type.
  * @param[in]   data    Pointer to BLE GAP advertising data structure data.
@@ -330,7 +318,7 @@ int ble_refresh_adv_data(void);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_set_scan_resp_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len);
+int ble_config_scan_resp_data(uint8_t ad_type, uint8_t* data, uint16_t len);
 
 /**
  * Set the BLE scan response data.
@@ -341,14 +329,6 @@ int ble_set_scan_resp_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len)
  * @returns     0 on success, system_error_t on error.
  */
 int ble_set_scan_resp_data(uint8_t* data, uint16_t len);
-
-/**
- * Refresh the BLE scan response data. It should be called after calling the ble_set_scan_resp_data_snippet(),
- * so that the scan response data can be updated.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_refresh_scan_resp_data(void);
 
 /**
  * Start BLE advertising.
