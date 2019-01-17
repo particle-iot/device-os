@@ -126,7 +126,7 @@ static HalBleInstance_t s_bleInstance = {
 
     /*
      * For BLE Central, this is the initial connection parameters.
-     * For BLE Peripheral, this the Peripheral Preferred Connection Parameters.
+     * For BLE Peripheral, this is the Peripheral Preferred Connection Parameters.
      */
     .ppcp = {
         .min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL,
@@ -1208,22 +1208,18 @@ int ble_set_advertising_params(hal_ble_adv_params_t* adv_params) {
     return sysError(ret);
 }
 
-int ble_set_adv_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len) {
+int ble_config_adv_data(uint8_t ad_type, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
-    LOG_DEBUG(TRACE, "ble_set_adv_data_snippet().");
+    LOG_DEBUG(TRACE, "ble_config_adv_data().");
 
-    return adStructEncode(ad_type, data, len, BLE_ADV_DATA_ADVERTISING);
-}
+    int ret = adStructEncode(ad_type, data, len, BLE_ADV_DATA_ADVERTISING);
+    if (ret == SYSTEM_ERROR_NONE) {
+        ret = setAdvData(s_bleInstance.advData, s_bleInstance.advDataLen, BLE_ADV_DATA_ADVERTISING);
+    }
 
-int ble_refresh_adv_data(void) {
-    std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleInstance.initialized);
-
-    LOG_DEBUG(TRACE, "ble_refresh_adv_data().");
-
-    return setAdvData(s_bleInstance.advData, s_bleInstance.advDataLen, BLE_ADV_DATA_ADVERTISING);
+    return ret;
 }
 
 int ble_set_adv_data(uint8_t* data, uint16_t len) {
@@ -1235,22 +1231,18 @@ int ble_set_adv_data(uint8_t* data, uint16_t len) {
     return setAdvData(data, len, BLE_ADV_DATA_ADVERTISING);
 }
 
-int ble_set_scan_resp_data_snippet(uint8_t ad_type, uint8_t* data, uint16_t len) {
+int ble_config_scan_resp_data(uint8_t ad_type, uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
-    LOG_DEBUG(TRACE, "ble_set_scan_resp_data_snippet().");
+    LOG_DEBUG(TRACE, "ble_config_scan_resp_data().");
 
-    return adStructEncode(ad_type, data, len, BLE_ADV_DATA_SCAN_RESPONSE);
-}
+    int ret = adStructEncode(ad_type, data, len, BLE_ADV_DATA_SCAN_RESPONSE);
+    if (ret == SYSTEM_ERROR_NONE) {
+        ret = setAdvData(s_bleInstance.scanRespData, s_bleInstance.scanRespDataLen, BLE_ADV_DATA_SCAN_RESPONSE);
+    }
 
-int ble_refresh_scan_resp_data(void) {
-    std::lock_guard<bleLock> lk(bleLock());
-    SPARK_ASSERT(s_bleInstance.initialized);
-
-    LOG_DEBUG(TRACE, "ble_refresh_scan_resp_data().");
-
-    return setAdvData(s_bleInstance.scanRespData, s_bleInstance.scanRespDataLen, BLE_ADV_DATA_SCAN_RESPONSE);
+    return ret;
 }
 
 int ble_set_scan_resp_data(uint8_t* data, uint16_t len) {

@@ -81,8 +81,11 @@ void setup()
     advParams.inc_tx_power  = false;
     ble_set_advertising_params(&advParams);
 
-    ble_set_adv_data_snippet(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, devName, sizeof(devName));
-    ble_refresh_adv_data();
+    ble_config_adv_data(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, devName, sizeof(devName));
+    uint8_t uuid[2] = {0xab, 0xcd};
+    ble_config_adv_data(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, uuid, sizeof(uuid));
+    uint8_t mfgData[10] = {0x12, 0x34};
+    ble_config_scan_resp_data(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, mfgData, sizeof(mfgData));
 
     uint16_t svcHandle;
 
