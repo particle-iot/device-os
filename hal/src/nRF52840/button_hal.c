@@ -146,11 +146,14 @@ void BUTTON_Timer_Handler(void)
 }
 
 void BUTTON_Init(Button_TypeDef button, ButtonMode_TypeDef Button_Mode) {
-    // Initialize button timer
-    button_timer_init();
+
+    if (!systick_button_timer.enable) {
+        // Initialize button timer
+        button_timer_init();
+    }
 
     // Configure button pin
-    HAL_Pin_Mode(HAL_Buttons[button].pin, BUTTON1_PIN_MODE);
+    HAL_Pin_Mode(HAL_Buttons[button].pin, HAL_Buttons[button].interrupt_mode == RISING ? INPUT_PULLDOWN : INPUT_PULLUP);
     if (Button_Mode == BUTTON_MODE_EXTI)  {
         /* Attach GPIOTE Interrupt */
         BUTTON_EXTI_Config(button, ENABLE);
@@ -172,7 +175,11 @@ void BUTTON_EXTI_Config(Button_TypeDef button, FunctionalState NewState) {
     config.flags = HAL_DIRECT_INTERRUPT_FLAG_NONE;
 
     if (NewState == ENABLE) {
-        HAL_Interrupts_Attach(HAL_Buttons[button].pin, BUTTON_Interrupt_Handler, (void *)((int)button), FALLING, &config); 
+        HAL_Interrupts_Attach(HAL_Buttons[button].pin, 
+                              BUTTON_Interrupt_Handler, 
+                              (void *)((int)button), 
+                              HAL_Buttons[button].interrupt_mode, 
+                              &config); 
     } else {
         HAL_Interrupts_Detach(HAL_Buttons[button].pin);
     }
