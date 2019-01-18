@@ -23,6 +23,7 @@
 #include "logging.h"
 #include "hw_config.h"
 #include "button_hal.h"
+#include "hal_platform_nrf52840_config.h"
 
 extern void Timing_Decrement(void);
 
@@ -119,4 +120,8 @@ void SysTick_Handler(void)
 {
     System1MsTick();
     Timing_Decrement();
+
+#if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK
+    BUTTON_Timer_Handler();
+#endif
 }
