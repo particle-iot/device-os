@@ -24,19 +24,12 @@
 #include "platforms.h"
 #include "logging.h"
 
-// STM32 Device electronic signature
-// Factory-programmed 12 byte unique device ID
-#define         ID1          (0x1FFF7A10)
-#define         ID2          (0x1FFF7A14)
-#define         ID3          (0x1FFF7A18)
-
 #ifndef PLATFORM_ID
 #error "PLATFORM_ID not defined"
 #endif
 
 #define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            (1000 / UI_TIMER_FREQUENCY)
-
 
 // QSPI Flash
 #if PLATFORM_ID == PLATFORM_ARGON || \
@@ -76,9 +69,7 @@
 #define USART1_IRQ_PRIORITY                 5       //USART1 Interrupt
 #define USART2_IRQ_PRIORITY                 5       //USART2 Interrupt
 #define RTC1_IRQ_PRIORITY                   5       //RTC1 Interrupt
-#define SYSTICK_IRQ_PRIORITY                13      //CORTEX_M3 Systick Interrupt
-#define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
-#define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt
+#define SYSTICK_IRQ_PRIORITY                7      //CORTEX_M3 Systick Interrupt
 
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
