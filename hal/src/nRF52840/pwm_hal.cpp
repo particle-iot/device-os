@@ -59,6 +59,10 @@ static inline uint8_t get_nrf_pin(uint8_t pin) {
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (pin == PIN_INVALID) {
         return pin;
+    } else if (pin == RGBR || pin == RGBG || pin == RGBB) {
+        // FIXME: When idle state = 0, we can see a quick bright spot on RGB LED,
+        // because the RBG LED is pullup, set idle state = 1, 
+        return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin) | NRFX_PWM_PIN_INVERTED;
     } else {
         return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     }
