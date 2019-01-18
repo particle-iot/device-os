@@ -169,8 +169,7 @@ void SysTick_Configuration(void) {
         }
     }
 
-    /* Configure the SysTick Handler Priority: Preemption priority and subpriority */
-    sd_nvic_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);   //OLD: sd_nvic_EncodePriority(sd_nvic_GetPriorityGrouping(), 0x03, 0x00)
+    NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);
 }
 
 void SysTick_Disable() {
