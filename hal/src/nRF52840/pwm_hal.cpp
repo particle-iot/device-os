@@ -264,14 +264,14 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
 }
 
 void HAL_PWM_Reset_Pin(uint16_t pin) {
-    if (pin >= TOTAL_PINS) {
+    // Reset pwm resolution
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (pin >= TOTAL_PINS || PIN_MAP[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;
     }
 
     uninit_pwm_pin(pin);
-
-    // Reset pwm resolution
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     PIN_MAP[pin].pwm_resolution = DEFAULT_RESOLUTION_BITS;
 }
 

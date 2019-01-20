@@ -280,6 +280,8 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
 
 void RGB_LED_Uninit() {
     for (int i = 0; i < LEDn; i++) {
-        HAL_PWM_Reset_Pin(HAL_Leds[i].pin);
+        if (HAL_Leds[i].is_active) {
+            HAL_PWM_Reset_Pin(HAL_Leds[i].pin);
+        }
     }
 }
