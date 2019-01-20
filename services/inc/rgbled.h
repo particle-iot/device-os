@@ -43,6 +43,19 @@ typedef enum
 #define LED_RGB           LED3_LED4_LED2
 #define LED_USER          LED1
 
+// FIXME: These should be pulled from platform_config.h
+#ifndef LED_RED
+#define LED_RED           LED3
+#endif
+
+#ifndef LED_GREEN
+#define LED_GREEN         LED4
+#endif
+
+#ifndef LED_BLUE
+#define LED_BLUE          LED2
+#endif
+
 //RGB Basic Colors
 #define RGB_COLOR_RED     0xFF0000
 #define RGB_COLOR_GREEN   0x00FF00
