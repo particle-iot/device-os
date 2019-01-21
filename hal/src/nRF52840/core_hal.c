@@ -53,6 +53,7 @@
 #include "system_error.h"
 #include <nrfx_rtc.h>
 #include "gpio_hal.h"
+#include "exflash_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -99,6 +100,9 @@ extern void* malloc_heap_end();
 #if defined(MODULAR_FIRMWARE)
 void* module_user_pre_init();
 #endif
+
+extern void nrf5AlarmInit(void);
+extern void nrf5AlarmDeinit(void);
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -508,7 +512,8 @@ static void fpu_sleep_prepare(void) {
     SPARK_ASSERT((fpscr & 0x07) == 0);
 }
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds) {
-
+    InterruptMode m = (InterruptMode)edgeTriggerMode;
+    HAL_Core_Enter_Stop_Mode_Ext(&wakeUpPin, 1, &m, 1, seconds, NULL);
 }
 
 static void wakeup_rtc_handler(nrfx_rtc_int_type_t int_type) {
@@ -569,6 +574,12 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
     // Detach USB
     HAL_USB_Detach();
 
+    // Disable RTC2
+    nrf5AlarmDeinit();
+
+    // Disable external flash
+    hal_exflash_uninit();
+
     // Flush all USARTs
     for (int usart = 0; usart < TOTAL_USARTS; usart++) {
         if (HAL_USART_Is_Enabled(usart)) {
@@ -580,13 +591,6 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
     uint8_t dummy = 0;
     uint32_t err_code = sd_nvic_critical_region_enter(&dummy);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
-
-    fpu_sleep_prepare();
-
-    // Disable QSPI interrupt, it will be trigged by ready event
-    // TODO: why it fails when using sd_nvic_xxxx API
-    NVIC_DisableIRQ(QSPI_IRQn);
-    NVIC_ClearPendingIRQ(QSPI_IRQn);
 
     bool hfclk_resume = false;
     if (nrf_drv_clock_hfclk_is_running()) {
@@ -640,8 +644,10 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
     err_code = sd_nvic_critical_region_exit(dummy);
     APP_ERROR_CHECK(err_code);
 
+    fpu_sleep_prepare();
+
     // Enter sleep mode, wait for event
-    // TODO: why this API has to call twice?
+    // FIXME: why this API has to call twice?
     SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
     SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
 
@@ -654,9 +660,6 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
     // Restore GPIOTE
     HAL_Interrupts_Restore();
 
-    // Enable QSPI interrupt
-    NVIC_EnableIRQ(QSPI_IRQn);
-
     // Restore hfclk
     if (hfclk_resume) {
         nrf_drv_clock_hfclk_request(NULL);
@@ -664,6 +667,10 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
             ;
         }
     }
+
+    hal_exflash_init();
+
+    nrf5AlarmInit();
 
     HAL_USB_Attach();
 
