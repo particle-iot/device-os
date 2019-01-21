@@ -36,6 +36,7 @@ typedef enum {
 } hal_exflash_command_t;
 
 int hal_exflash_init(void);
+int hal_exflash_uninit(void);
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size);
 int hal_exflash_erase_sector(uintptr_t addr, size_t num_sectors);
 int hal_exflash_erase_block(uintptr_t addr, size_t num_blocks);

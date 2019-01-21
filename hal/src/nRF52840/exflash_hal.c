@@ -150,6 +150,25 @@ hal_exflash_init_done:
     return 0;
 }
 
+int hal_exflash_uninit(void)
+{
+    hal_exflash_lock();
+    nrfx_qspi_uninit();
+    // PATCH: Initialize CS pin, external memory discharge 
+    nrf_gpio_cfg_output(QSPI_FLASH_CSN_PIN);
+    nrf_gpio_pin_set(QSPI_FLASH_CSN_PIN);
+    nrf_gpio_cfg_input(QSPI_FLASH_IO1_PIN, NRF_GPIO_PIN_PULLDOWN);
+    // The nrfx_qspi driver doesn't clear pending IRQ
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    SPARK_ASSERT(sd_nvic_ClearPendingIRQ(QSPI_IRQn) == NRF_SUCCESS);
+#else
+    NVIC_ClearPendingIRQ(QSPI_IRQn);
+#endif
+    hal_exflash_unlock();
+
+    return 0;
+}
+
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size)
 {
     hal_exflash_lock();
