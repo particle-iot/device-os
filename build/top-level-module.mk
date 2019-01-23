@@ -8,4 +8,3 @@ BUILD_PATH_BASE?=$(COMMON_BUILD)/target
 
 
 include $(COMMON_BUILD)/platform-id.mk
-include $(COMMON_BUILD)/checks.mk
