@@ -86,9 +86,14 @@
 /* BLE UUID type field in the hal_ble_uuid_t */
 #define BLE_UUID_TYPE_16BIT                         0
 #define BLE_UUID_TYPE_128BIT                        1
+#define BLE_UUID_TYPE_128BIT_SHORTED                2
 
 /* Maximum BLE Characteristic value length */
 #define BLE_MAX_CHAR_VALUE_LEN                      20
+
+#define BLE_MAX_SVC_COUNT                           5
+#define BLE_MAX_CHAR_COUNT                          10
+#define BLE_MAX_DESC_COUNT                          10
 
 
 #endif /* BLE_HAL_API_IMPL_H */
