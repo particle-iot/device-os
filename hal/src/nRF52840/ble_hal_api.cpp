@@ -42,11 +42,16 @@ LOG_SOURCE_CATEGORY("hal.ble_api")
 #include <string.h>
 
 
-#define BLE_CONN_CFG_TAG                        1
-#define BLE_OBSERVER_PRIO                       1
+#define BLE_CONN_CFG_TAG                            1
+#define BLE_OBSERVER_PRIO                           1
 
-#define BLE_ADV_DATA_ADVERTISING                0
-#define BLE_ADV_DATA_SCAN_RESPONSE              1
+#define BLE_ADV_DATA_ADVERTISING                    0
+#define BLE_ADV_DATA_SCAN_RESPONSE                  1
+
+#define BLE_DISCOVERY_PROCEDURE_IDLE                0x00
+#define BLE_DISCOVERY_PROCEDURE_SERVICES            0x01
+#define BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS     0x02
+#define BLE_DISCOVERY_PROCEDURE_DESCRIPTORS         0x03
 
 
 StaticRecursiveMutex s_bleMutex;
@@ -61,7 +66,19 @@ class bleLock {
     }
 };
 
-/* BLE connection status */
+typedef struct {
+    uint16_t             discStartHandle;
+    uint16_t             discEndHandle;
+    hal_ble_service_t    services[BLE_MAX_SVC_COUNT];
+    hal_ble_char_t       characteristics[BLE_MAX_CHAR_COUNT];
+    hal_ble_descriptor_t descriptors[BLE_MAX_DESC_COUNT];
+    uint8_t              discAll : 1;
+    uint8_t              count;
+    uint8_t              currIndex;
+    uint8_t              currDiscProcedure;
+} HalBleDiscovery_t;
+
+/* BLE Instance */
 typedef struct {
     uint8_t  initialized   : 1;
     uint8_t  advertising   : 1;
@@ -84,6 +101,7 @@ typedef struct {
     uint8_t               scanRespData[BLE_MAX_ADV_DATA_LEN];
     uint16_t              scanRespDataLen;
 
+    os_semaphore_t        semaphore;
     os_queue_t            evtQueue;
     os_thread_t           evtThread;
     os_timer_t            connParamsUpdateTimer;
@@ -92,6 +110,8 @@ typedef struct {
     ble_gap_addr_t        whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
     ble_gap_addr_t const* whitelistPointer[BLE_MAX_WHITELIST_ADDR_COUNT];
     ble_event_callback_t  evtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
+
+    HalBleDiscovery_t     discovery;
 } HalBleInstance_t;
 
 
@@ -145,6 +165,7 @@ static HalBleInstance_t s_bleInstance = {
     .scanRespData = { 0 },
     .scanRespDataLen = 0,
 
+    .semaphore = NULL,
     .evtQueue  = NULL,
     .evtThread = NULL,
     .connParamsUpdateTimer = NULL,
@@ -404,6 +425,92 @@ static int fromHalConnParams(hal_ble_conn_params_t* halConnParams, ble_gap_conn_
     return SYSTEM_ERROR_NONE;
 }
 
+static int fromHalUuid(const hal_ble_uuid_t* halUuid, ble_uuid_t* uuid) {
+    if (uuid == NULL || halUuid == NULL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (halUuid->type == BLE_UUID_TYPE_128BIT) {
+        ble_uuid128_t uuid128;
+        memcpy(uuid128.uuid128, halUuid->uuid128, BLE_SIG_UUID_128BIT_LEN);
+
+        ret_code_t ret = sd_ble_uuid_vs_add(&uuid128, &uuid->type);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_uuid_vs_add() failed: %u", (unsigned)ret);
+            return sysError(ret);
+        }
+
+        ret = sd_ble_uuid_decode(BLE_SIG_UUID_128BIT_LEN, halUuid->uuid128, uuid);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_uuid_decode() failed: %u", (unsigned)ret);
+            return sysError(ret);
+        }
+    }
+    else if (halUuid->type == BLE_UUID_TYPE_16BIT) {
+        uuid->type = BLE_UUID_TYPE_BLE;
+        uuid->uuid = halUuid->uuid16;
+    }
+    else {
+        uuid->type = BLE_UUID_TYPE_UNKNOWN;
+        uuid->uuid = halUuid->uuid16;
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+static int toHalUuid(const ble_uuid_t* uuid, hal_ble_uuid_t* halUuid) {
+    if (uuid == NULL || halUuid == NULL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (uuid->type == BLE_UUID_TYPE_BLE) {
+        halUuid->type = BLE_UUID_TYPE_16BIT;
+        halUuid->uuid16 = uuid->uuid;
+        return SYSTEM_ERROR_NONE;
+    }
+    else if (uuid->type != BLE_UUID_TYPE_UNKNOWN) {
+        uint8_t uuidLen;
+        halUuid->type = BLE_UUID_TYPE_128BIT;
+        ret_code_t ret = sd_ble_uuid_encode(uuid, &uuidLen, halUuid->uuid128);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_uuid_encode() failed: %u", (unsigned)ret);
+            halUuid->type = BLE_UUID_TYPE_128BIT_SHORTED;
+            halUuid->uuid16 = uuid->uuid;
+            return sysError(ret);
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    halUuid->type = BLE_UUID_TYPE_128BIT_SHORTED;
+    halUuid->uuid16 = uuid->uuid;
+
+    return SYSTEM_ERROR_UNKNOWN;
+}
+
+static uint8_t toHalCharacteristicProperties(ble_gatt_char_props_t properties) {
+    uint8_t halProperties = 0;
+
+    if (properties.broadcast)      halProperties |= BLE_SIG_CHAR_PROP_BROADCAST;
+    if (properties.read)           halProperties |= BLE_SIG_CHAR_PROP_READ;
+    if (properties.write_wo_resp)  halProperties |= BLE_SIG_CHAR_PROP_WRITE_WO_RESP;
+    if (properties.write)          halProperties |= BLE_SIG_CHAR_PROP_WRITE;
+    if (properties.notify)         halProperties |= BLE_SIG_CHAR_PROP_NOTIFY;
+    if (properties.indicate)       halProperties |= BLE_SIG_CHAR_PROP_INDICATE;
+    if (properties.auth_signed_wr) halProperties |= BLE_SIG_CHAR_PROP_AUTH_SIGN_WRITES;
+
+    return halProperties;
+}
+
+static void fromHalCharacteristicProperties(uint8_t halProperties, ble_gatt_char_props_t* properties) {
+    properties->broadcast      = (halProperties & BLE_SIG_CHAR_PROP_BROADCAST) ? 1 : 0;
+    properties->read           = (halProperties & BLE_SIG_CHAR_PROP_READ) ? 1 : 0;
+    properties->write_wo_resp  = (halProperties & BLE_SIG_CHAR_PROP_WRITE_WO_RESP) ? 1 : 0;
+    properties->write          = (halProperties & BLE_SIG_CHAR_PROP_WRITE) ? 1 : 0;
+    properties->notify         = (halProperties & BLE_SIG_CHAR_PROP_NOTIFY) ? 1 : 0;
+    properties->indicate       = (halProperties & BLE_SIG_CHAR_PROP_INDICATE) ? 1 : 0;
+    properties->auth_signed_wr = (halProperties & BLE_SIG_CHAR_PROP_AUTH_SIGN_WRITES) ? 1 : 0;
+}
+
 static bool isConnParamsFeeded(hal_ble_conn_params_t* conn_params) {
     hal_ble_conn_params_t ppcp;
 
@@ -500,13 +607,7 @@ static int addCharacteristic(uint16_t service_handle, const ble_uuid_t* uuid, ui
 
     /* Characteristic metadata */
     memset(&char_md, 0, sizeof(char_md));
-    char_md.char_props.broadcast      = (properties & BLE_SIG_CHAR_PROP_BROADCAST) ? 1 : 0;
-    char_md.char_props.read           = (properties & BLE_SIG_CHAR_PROP_READ) ? 1 : 0;
-    char_md.char_props.write_wo_resp  = (properties & BLE_SIG_CHAR_PROP_WRITE_WO_RESP) ? 1 : 0;
-    char_md.char_props.write          = (properties & BLE_SIG_CHAR_PROP_WRITE) ? 1 : 0;
-    char_md.char_props.notify         = (properties & BLE_SIG_CHAR_PROP_NOTIFY) ? 1 : 0;
-    char_md.char_props.indicate       = (properties & BLE_SIG_CHAR_PROP_INDICATE) ? 1 : 0;
-    char_md.char_props.auth_signed_wr = (properties & BLE_SIG_CHAR_PROP_AUTH_SIGN_WRITES) ? 1 : 0;
+    fromHalCharacteristicProperties(properties, &char_md.char_props);
     // User Description Descriptor
     if (desc != NULL) {
         memset(&user_desc_attr_md, 0, sizeof(user_desc_attr_md));
@@ -613,7 +714,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             // Continue scanning, scanning parameters pointer must be set to NULL.
-            ret_code_t ret = sd_ble_gap_scan_start(NULL, &s_bleScanData);
+            ret = sd_ble_gap_scan_start(NULL, &s_bleScanData);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_scan_start() failed: %u", (unsigned)ret);
             }
@@ -745,7 +846,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             gapDataLenParams.max_rx_octets  = BLE_GAP_DATA_LENGTH_AUTO;
             gapDataLenParams.max_tx_time_us = BLE_GAP_DATA_LENGTH_AUTO;
             gapDataLenParams.max_rx_time_us = BLE_GAP_DATA_LENGTH_AUTO;
-            ret_code_t ret = sd_ble_gap_data_length_update(event->evt.gap_evt.conn_handle, &gapDataLenParams, NULL);
+            ret = sd_ble_gap_data_length_update(event->evt.gap_evt.conn_handle, &gapDataLenParams, NULL);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_data_length_update() failed: %u", (unsigned)ret);
             }
@@ -755,7 +856,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             LOG_DEBUG(TRACE, "BLE GAP event: security parameters request.");
 
             // Pairing is not supported
-            ret_code_t ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, nullptr, nullptr);
+            ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, nullptr, nullptr);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_sec_params_reply() failed: %u", (unsigned)ret);
             }
@@ -794,6 +895,187 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             LOG_DEBUG(TRACE, "Effective Server RX MTU: %d.", event->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu);
         } break;
 
+        case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
+            uint8_t svcCount = event->evt.gattc_evt.params.prim_srvc_disc_rsp.count;
+            LOG_DEBUG(TRACE, "BLE GATT Client event: %d primary service discovered.", svcCount);
+
+            bool terminate = true;
+            if ( (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS)
+              && (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_SERVICES) ) {
+                for (uint8_t i = 0; i < svcCount; i++) {
+                    s_bleInstance.discovery.services[s_bleInstance.discovery.count].start_handle = event->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].handle_range.start_handle;
+                    s_bleInstance.discovery.services[s_bleInstance.discovery.count].end_handle   = event->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].handle_range.end_handle;
+                    toHalUuid(&event->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].uuid, &s_bleInstance.discovery.services[s_bleInstance.discovery.count].uuid);
+                    s_bleInstance.discovery.count++;
+                    if (s_bleInstance.discovery.count >= BLE_MAX_SVC_COUNT) {
+                        break;
+                    }
+                }
+                uint16_t currEndHandle = event->evt.gattc_evt.params.prim_srvc_disc_rsp.services[svcCount-1].handle_range.end_handle;
+                if ( (s_bleInstance.discovery.discAll)
+                  && (s_bleInstance.discovery.count < BLE_MAX_SVC_COUNT)
+                  && (currEndHandle < 0xFFFF) ) {
+                    ret = sd_ble_gattc_primary_services_discover(event->evt.gattc_evt.conn_handle, currEndHandle + 1, NULL);
+                    if (ret != NRF_SUCCESS) {
+                        LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed: %u", (unsigned)ret);
+                    }
+                    else {
+                        terminate = false;
+                    }
+                }
+            }
+            else {
+                LOG(ERROR, "BLE service discovery failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
+            }
+
+            if (terminate) {
+                bleEvt.evt_type               = BLE_EVT_TYPE_DISCOVERY;
+                bleEvt.disc_event.evt_id      = BLE_DISC_EVT_ID_SVC_DISCOVERED;
+                bleEvt.disc_event.conn_handle = event->evt.gattc_evt.conn_handle;
+                bleEvt.disc_event.services    = s_bleInstance.discovery.services;
+                bleEvt.disc_event.count       = s_bleInstance.discovery.count;
+                if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                    // This flag should be cleared after this event being popped, in case that
+                    // further operation is needed to retrieve 128-bits UUID. If this event is not enqueued,
+                    // this flag should be clear here.
+                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                }
+            }
+        } break;
+
+        case BLE_GATTC_EVT_CHAR_DISC_RSP: {
+            uint8_t charCount = event->evt.gattc_evt.params.char_disc_rsp.count;
+            LOG_DEBUG(TRACE, "BLE GATT Client event: %d characteristic discovered.", charCount);
+
+            bool terminate = true;
+            if ( (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS)
+              && (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS) ) {
+                for (uint8_t i = 0; i < charCount; i++) {
+                    s_bleInstance.discovery.characteristics[s_bleInstance.discovery.count].char_ext_props = event->evt.gattc_evt.params.char_disc_rsp.chars[i].char_ext_props;
+                    s_bleInstance.discovery.characteristics[s_bleInstance.discovery.count].properties     = toHalCharacteristicProperties(event->evt.gattc_evt.params.char_disc_rsp.chars[i].char_props);
+                    s_bleInstance.discovery.characteristics[s_bleInstance.discovery.count].decl_handle    = event->evt.gattc_evt.params.char_disc_rsp.chars[i].handle_decl;
+                    s_bleInstance.discovery.characteristics[s_bleInstance.discovery.count].value_handle   = event->evt.gattc_evt.params.char_disc_rsp.chars[i].handle_value;
+                    toHalUuid(&event->evt.gattc_evt.params.char_disc_rsp.chars[i].uuid, &s_bleInstance.discovery.characteristics[s_bleInstance.discovery.count].uuid);
+
+                    s_bleInstance.discovery.count++;
+                    if (s_bleInstance.discovery.count >= BLE_MAX_CHAR_COUNT) {
+                        break;
+                    }
+                }
+
+                uint16_t currEndHandle = event->evt.gattc_evt.params.char_disc_rsp.chars[charCount-1].handle_value;
+                if ( (currEndHandle < s_bleInstance.discovery.discEndHandle)
+                  && (s_bleInstance.discovery.count < BLE_MAX_CHAR_COUNT) ) {
+                    ble_gattc_handle_range_t handleRange;
+                    handleRange.start_handle = currEndHandle + 1;
+                    handleRange.end_handle   = s_bleInstance.discovery.discEndHandle;
+                    ret = sd_ble_gattc_characteristics_discover(event->evt.gattc_evt.conn_handle, &handleRange);
+                    if (ret != NRF_SUCCESS) {
+                        LOG(ERROR, "sd_ble_gattc_characteristics_discover() failed: %u", (unsigned)ret);
+                    }
+                    else {
+                        terminate = false;
+                    }
+                }
+            }
+            else {
+                LOG(ERROR, "BLE characteristic discovery failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
+            }
+
+            if (terminate) {
+                bleEvt.evt_type                   = BLE_EVT_TYPE_DISCOVERY;
+                bleEvt.disc_event.evt_id          = BLE_DISC_EVT_ID_CHAR_DISCOVERED;
+                bleEvt.disc_event.conn_handle     = event->evt.gattc_evt.conn_handle;
+                bleEvt.disc_event.characteristics = s_bleInstance.discovery.characteristics;
+                bleEvt.disc_event.count           = s_bleInstance.discovery.count;
+                if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                }
+            }
+        } break;
+
+        case BLE_GATTC_EVT_DESC_DISC_RSP: {
+            uint8_t descCount = event->evt.gattc_evt.params.desc_disc_rsp.count;
+            LOG_DEBUG(TRACE, "BLE GATT Client event: %d descriptors discovered.", descCount);
+
+            bool terminate = true;
+            if ( (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS)
+              && (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_DESCRIPTORS) ) {
+                for (uint8_t i = 0; i < descCount; i++) {
+                    // It will report all attributes with 16-bits UUID, filter descriptors.
+                    switch (event->evt.gattc_evt.params.desc_disc_rsp.descs[i].uuid.uuid) {
+                        case BLE_SIG_UUID_CHAR_EXTENDED_PROPERTIES_DESC:
+                        case BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC:
+                        case BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC:
+                        case BLE_SIG_UUID_SERVER_CHAR_CONFIG_DESC:
+                        case BLE_SIG_UUID_CHAR_PRESENT_FORMAT_DESC:
+                        case BLE_SIG_UUID_CHAR_AGGREGATE_FORMAT: {
+                            s_bleInstance.discovery.descriptors[s_bleInstance.discovery.count].handle = event->evt.gattc_evt.params.desc_disc_rsp.descs[i].handle;
+                            toHalUuid(&event->evt.gattc_evt.params.desc_disc_rsp.descs[i].uuid, &s_bleInstance.discovery.descriptors[s_bleInstance.discovery.count].uuid);
+                            s_bleInstance.discovery.count++;
+                        }
+                        default: break;
+                    }
+                    if (s_bleInstance.discovery.count >= BLE_MAX_DESC_COUNT) {
+                        break;
+                    }
+                }
+
+                uint16_t currEndHandle = event->evt.gattc_evt.params.desc_disc_rsp.descs[descCount-1].handle;
+                if ( (currEndHandle < s_bleInstance.discovery.discEndHandle)
+                  && (s_bleInstance.discovery.count < BLE_MAX_DESC_COUNT) ) {
+                    ble_gattc_handle_range_t handleRange;
+                    handleRange.start_handle = currEndHandle + 1;
+                    handleRange.end_handle   = s_bleInstance.discovery.discEndHandle;
+                    ret = sd_ble_gattc_descriptors_discover(event->evt.gattc_evt.conn_handle, &handleRange);
+                    if (ret != NRF_SUCCESS) {
+                        LOG(ERROR, "sd_ble_gattc_descriptors_discover() failed: %u", (unsigned)ret);
+                    }
+                    else {
+                        terminate = false;
+                    }
+                }
+            }
+            else {
+                LOG(ERROR, "BLE characteristic discovery failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
+            }
+
+            if (terminate) {
+                bleEvt.evt_type               = BLE_EVT_TYPE_DISCOVERY;
+                bleEvt.disc_event.evt_id      = BLE_DISC_EVT_ID_DESC_DISCOVERED;
+                bleEvt.disc_event.conn_handle = event->evt.gattc_evt.conn_handle;
+                bleEvt.disc_event.descriptors = s_bleInstance.discovery.descriptors;
+                bleEvt.disc_event.count       = s_bleInstance.discovery.count;
+                if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                }
+            }
+        } break;
+
+        case BLE_GATTC_EVT_READ_RSP: {
+            LOG_DEBUG(TRACE, "BLE GATT Client event: read response.");
+
+            if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
+                if (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_SERVICES) {
+                    s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
+                    memcpy(s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.uuid128, event->evt.gattc_evt.params.read_rsp.data, BLE_SIG_UUID_128BIT_LEN);
+                    os_semaphore_give(s_bleInstance.semaphore, false);
+                }
+                else if (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS) {
+                    s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
+                    // The offset of Characteristic UUID in the Characteristic declaration attribute is 3.
+                    memcpy(s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.uuid128, &event->evt.gattc_evt.params.read_rsp.data[3], BLE_SIG_UUID_128BIT_LEN);
+                    os_semaphore_give(s_bleInstance.semaphore, false);
+                }
+            }
+            else {
+                LOG(ERROR, "BLE read characteristic failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
+            }
+        } break;
+
         case BLE_GATTC_EVT_TIMEOUT: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: timeout, conn handle: %d, source: %d",
                     event->evt.gattc_evt.conn_handle, event->evt.gattc_evt.params.timeout.src);
@@ -819,7 +1101,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             LOG_DEBUG(TRACE, "BLE GATT Server event: exchange ATT MTU request.");
             LOG_DEBUG(TRACE, "Effective Client RX MTU: %d.", event->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu);
 
-            ret_code_t ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
+            ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gatts_exchange_mtu_reply() failed: %u", (unsigned)ret);
             }
@@ -869,6 +1151,37 @@ static os_thread_return_t handleBleEventThread(void* param) {
     while (1) {
         hal_ble_event_t bleEvent;
         if (!os_queue_take(s_bleInstance.evtQueue, &bleEvent, CONCURRENT_WAIT_FOREVER, NULL)) {
+            // Try retrieving 128-bits service or characteristic UUID before dispatching this event.
+            if (bleEvent.evt_type == BLE_EVT_TYPE_DISCOVERY) {
+                if (bleEvent.disc_event.evt_id == BLE_DISC_EVT_ID_SVC_DISCOVERED) {
+                    for (uint8_t i = 0; i < bleEvent.disc_event.count; i++) {
+                        if (bleEvent.disc_event.services[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
+                            ret_code_t ret = sd_ble_gattc_read(bleEvent.disc_event.conn_handle, bleEvent.disc_event.services[i].start_handle, 0);
+                            if (ret != NRF_SUCCESS) {
+                                LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+                                break;
+                            }
+                            s_bleInstance.discovery.currIndex = i;
+                            os_semaphore_take(s_bleInstance.semaphore, 2000, false);
+                        }
+                    }
+                }
+                else if (bleEvent.disc_event.evt_id == BLE_DISC_EVT_ID_CHAR_DISCOVERED) {
+                    for (uint8_t i = 0; i < bleEvent.disc_event.count; i++) {
+                        if (bleEvent.disc_event.characteristics[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
+                            ret_code_t ret = sd_ble_gattc_read(bleEvent.disc_event.conn_handle, bleEvent.disc_event.characteristics[i].decl_handle, 0);
+                            if (ret != NRF_SUCCESS) {
+                                LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+                                break;
+                            }
+                            s_bleInstance.discovery.currIndex = i;
+                            os_semaphore_take(s_bleInstance.semaphore, 2000, false);
+                        }
+                    }
+                }
+                s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+            }
+
             dispatchBleEvent(&bleEvent);
         }
         else {
@@ -936,14 +1249,21 @@ int hal_ble_init(uint8_t role, void* reserved) {
             s_bleInstance.txPower = 0;
         }
 
+        if (os_semaphore_create(&s_bleInstance.semaphore, 1, 0)) {
+            LOG(ERROR, "os_semaphore_create() failed");
+            return SYSTEM_ERROR_INTERNAL;
+        }
+
         if (os_queue_create(&s_bleInstance.evtQueue, sizeof(hal_ble_event_t), BLE_EVENT_QUEUE_ITEM_COUNT, NULL)) {
             LOG(ERROR, "os_queue_create() failed");
+            os_semaphore_destroy(s_bleInstance.semaphore);
             return SYSTEM_ERROR_NO_MEMORY;
         }
 
         if (os_thread_create(&s_bleInstance.evtThread, "BLE Event Thread", OS_THREAD_PRIORITY_NETWORK, handleBleEventThread, NULL, BLE_EVENT_THREAD_STACK_SIZE)) {
             LOG(ERROR, "os_thread_create() failed");
             os_queue_destroy(s_bleInstance.evtQueue, NULL);
+            os_semaphore_destroy(s_bleInstance.semaphore);
             return SYSTEM_ERROR_INTERNAL;
         }
 
@@ -1589,28 +1909,22 @@ int ble_add_service_uuid128(uint8_t type, const uint8_t* uuid128, uint16_t* hand
 
     LOG_DEBUG(TRACE, "ble_add_service_uuid128().");
 
-    ret_code_t ret;
-    ble_uuid_t svcUuid;
+    ble_uuid_t     svcUuid;
+    hal_ble_uuid_t halUuid;
 
     if (uuid128 == NULL || handle == NULL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    ble_uuid128_t uuid;
-    memcpy(uuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
-    ret = sd_ble_uuid_vs_add(&uuid, &svcUuid.type);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_uuid_vs_add() failed: %u", (unsigned)ret);
-        return sysError(ret);
+    halUuid.type = BLE_UUID_TYPE_128BIT;
+    memcpy(halUuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
+
+    int ret = fromHalUuid(&halUuid, &svcUuid);
+    if (ret == SYSTEM_ERROR_NONE) {
+        ret = addService(type, &svcUuid, handle);
     }
 
-    ret = sd_ble_uuid_decode(BLE_SIG_UUID_128BIT_LEN, uuid128, &svcUuid);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_uuid_decode() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-
-    return addService(type, &svcUuid, handle);
+    return ret;
 }
 
 int ble_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle) {
@@ -1636,34 +1950,26 @@ int ble_add_char_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_
 
     LOG_DEBUG(TRACE, "ble_add_char_uuid128().");
 
-    ret_code_t ret;
-    ble_uuid_t charUuid;
+    ble_uuid_t     charUuid;
+    hal_ble_uuid_t halUuid;
 
     if (uuid128 == NULL || ble_char == NULL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    ble_uuid128_t uuid;
-    memcpy(uuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
-    ret = sd_ble_uuid_vs_add(&uuid, &charUuid.type);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_uuid_vs_add() failed: %u", (unsigned)ret);
-        return sysError(ret);
+    halUuid.type = BLE_UUID_TYPE_128BIT;
+    memcpy(halUuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
+
+    int ret = fromHalUuid(&halUuid, &charUuid);
+    if (ret == SYSTEM_ERROR_NONE) {
+        ret = addCharacteristic(service_handle, &charUuid, properties, desc, ble_char);
+        if (SYSTEM_ERROR_NONE == ret) {
+            ble_char->uuid.type = BLE_UUID_TYPE_128BIT;
+            memcpy(ble_char->uuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
+        }
     }
 
-    ret = sd_ble_uuid_decode(BLE_SIG_UUID_128BIT_LEN, uuid128, &charUuid);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_uuid_decode() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-
-    int error = addCharacteristic(service_handle, &charUuid, properties, desc, ble_char);
-    if (SYSTEM_ERROR_NONE == error) {
-        ble_char->uuid.type = BLE_UUID_TYPE_128BIT;
-        memcpy(ble_char->uuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
-    }
-
-    return error;
+    return ret;
 }
 
 int ble_add_char_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties, const char* desc, hal_ble_char_t* ble_char) {
@@ -1905,28 +2211,155 @@ int ble_get_rssi(uint16_t conn_handle) {
     return 0;
 }
 
-int ble_discovery_services(uint16_t conn_handle) {
+int ble_discover_all_services(uint16_t conn_handle) {
     std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
 
-    LOG_DEBUG(TRACE, "ble_discovery_services().");
+    LOG_DEBUG(TRACE, "ble_discovery_all_services().");
 
-    return 0;
+    if (conn_handle == BLE_INVALID_CONN_HANDLE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (s_bleInstance.discovery.currDiscProcedure != BLE_DISCOVERY_PROCEDURE_IDLE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    ret_code_t ret = sd_ble_gattc_primary_services_discover(conn_handle, 0x01, NULL);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
+    s_bleInstance.discovery.discAll = true;
+    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
+
+    return SYSTEM_ERROR_NONE;
 }
 
-int ble_discovery_characteristics(uint16_t conn_handle, uint16_t service_handle) {
+int ble_discover_service_by_uuid128(uint16_t conn_handle, const uint8_t *uuid128) {
     std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
 
-    LOG_DEBUG(TRACE, "ble_discovery_characteristics().");
+    LOG_DEBUG(TRACE, "ble_discovery_service_by_uuid128().");
 
-    return 0;
+    if (conn_handle == BLE_INVALID_CONN_HANDLE || uuid128 == NULL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (s_bleInstance.discovery.currDiscProcedure != BLE_DISCOVERY_PROCEDURE_IDLE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    ble_uuid_t     svcUuid;
+    hal_ble_uuid_t halUuid;
+    halUuid.type = BLE_UUID_TYPE_128BIT;
+    memcpy(halUuid.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
+
+    int ret = fromHalUuid(&halUuid, &svcUuid);
+    if (ret == SYSTEM_ERROR_NONE) {
+        ret = sd_ble_gattc_primary_services_discover(conn_handle, 0x01, &svcUuid);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed: %u", (unsigned)ret);
+            return sysError(ret);
+        }
+
+        memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
+        s_bleInstance.discovery.discAll = false;
+        s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    return ret;
 }
 
-int ble_discovery_descriptors(uint16_t conn_handle, uint16_t char_handle) {
+int ble_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uuid) {
     std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
 
-    LOG_DEBUG(TRACE, "ble_discovery_descriptors().");
+    LOG_DEBUG(TRACE, "ble_discovery_service_by_uuid16().");
 
-    return 0;
+    if (conn_handle == BLE_INVALID_CONN_HANDLE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (s_bleInstance.discovery.currDiscProcedure != BLE_DISCOVERY_PROCEDURE_IDLE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    ble_uuid_t svcUuid;
+    svcUuid.type = BLE_UUID_TYPE_BLE;
+    svcUuid.uuid = uuid;
+
+    ret_code_t ret = sd_ble_gattc_primary_services_discover(conn_handle, 0x01, &svcUuid);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
+    s_bleInstance.discovery.discAll = false;
+    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_discover_characteristics(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    LOG_DEBUG(TRACE, "ble_discover_characteristics().");
+
+    if (conn_handle == BLE_INVALID_CONN_HANDLE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    ble_gattc_handle_range_t handleRange;
+    handleRange.start_handle = start_handle;
+    handleRange.end_handle   = end_handle;
+
+    ret_code_t ret = sd_ble_gattc_characteristics_discover(conn_handle, &handleRange);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gattc_characteristics_discover() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
+    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS;
+    s_bleInstance.discovery.discStartHandle = start_handle;
+    s_bleInstance.discovery.discEndHandle = end_handle;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_discover_descriptors(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    LOG_DEBUG(TRACE, "ble_discover_descriptors().");
+
+    if (conn_handle == BLE_INVALID_CONN_HANDLE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    ble_gattc_handle_range_t handleRange;
+    handleRange.start_handle = start_handle;
+    handleRange.end_handle   = end_handle;
+
+    ret_code_t ret = sd_ble_gattc_descriptors_discover(conn_handle, &handleRange);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gattc_descriptors_discover() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
+    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_DESCRIPTORS;
+    s_bleInstance.discovery.discStartHandle = start_handle;
+    s_bleInstance.discovery.discEndHandle = end_handle;
+
+    return SYSTEM_ERROR_NONE;
 }
 
 
