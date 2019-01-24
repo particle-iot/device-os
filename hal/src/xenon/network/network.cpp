@@ -68,7 +68,7 @@ int if_init_platform(void*) {
 #if PLATFORM_ID == PLATFORM_XENON
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
 #else // Xenon SoM
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, 0xFF, D22, mac);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D22, mac);
 #endif
     }
 
