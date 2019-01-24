@@ -43,6 +43,10 @@
 #define BLE_SCAN_RESULT_EVT_DATA_TYPE_ADV           0x01
 #define BLE_SCAN_RESULT_EVT_DATA_TYPE_SCAN_RESP     0x02
 
+#define BLE_DISC_EVT_ID_SVC_DISCOVERED              0x01
+#define BLE_DISC_EVT_ID_CHAR_DISCOVERED             0x02
+#define BLE_DISC_EVT_ID_DESC_DISCOVERED             0x03
+
 
 /* BLE device address */
 typedef struct {
@@ -85,15 +89,30 @@ typedef struct {
     uint16_t conn_sup_timeout;          /**< Connection Supervision Timeout in 10 ms units.*/
 } hal_ble_conn_params_t;
 
+/* BLE service definition */
+typedef struct {
+    uint16_t       start_handle;
+    uint16_t       end_handle;
+    hal_ble_uuid_t uuid;
+} hal_ble_service_t;
+
 /* BLE characteristic definition */
 typedef struct {
+    uint8_t        char_ext_props : 1;
     uint8_t        properties;
+    uint16_t       decl_handle;
     uint16_t       value_handle;
     uint16_t       user_desc_handle;
     uint16_t       cccd_handle;
     uint16_t       sccd_handle;
     hal_ble_uuid_t uuid;
 } hal_ble_char_t;
+
+/* BLE descriptor definition */
+typedef struct {
+    uint16_t       handle;
+    hal_ble_uuid_t uuid;
+} hal_ble_descriptor_t;
 
 /* BLE connection status changed event */
 typedef struct {
@@ -115,12 +134,14 @@ typedef struct {
 
 /* BLE service and characteristic discovery events */
 typedef struct {
-    uint16_t   status;
-    uint16_t   conn_handle;
-    uint16_t   service_handle;
-    uint16_t   char_handle;
-    uint16_t   cccd_handle;
-    ble_uuid_t uuid;
+    uint16_t conn_handle;
+    uint8_t  evt_id;
+    uint8_t  count;
+    union {
+        hal_ble_service_t*    services;
+        hal_ble_char_t*       characteristics;
+        hal_ble_descriptor_t* descriptors;
+    };
 } hal_ble_discovery_event_t;
 
 /* GATT Client data transmission events */
@@ -549,9 +570,11 @@ int ble_get_ppcp(hal_ble_conn_params_t* conn_params);
 int ble_get_rssi(uint16_t conn_handle);
 
 /* Functions for GATT Client */
-int ble_discovery_services(uint16_t conn_handle);
-int ble_discovery_characteristics(uint16_t conn_handle, uint16_t service_handle);
-int ble_discovery_descriptors(uint16_t conn_handle, uint16_t char_handle);
+int ble_discover_all_services(uint16_t conn_handle);
+int ble_discover_service_by_uuid128(uint16_t conn_handle, const uint8_t *uuid128);
+int ble_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uuid);
+int ble_discover_characteristics(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle);
+int ble_discover_descriptors(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle);
 int ble_subscribe(uint16_t conn_handle, uint8_t char_handle);
 int ble_unsubscribe(uint16_t conn_handle, uint8_t char_handle);
 int ble_write_with_response(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len);
