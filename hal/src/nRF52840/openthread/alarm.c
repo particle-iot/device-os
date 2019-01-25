@@ -59,6 +59,8 @@
 
 #include <openthread/config.h>
 
+#include "hw_ticks.h"
+
 // clang-format off
 #define RTC_FREQUENCY       NRF_802154_RTC_FREQUENCY
 
@@ -104,6 +106,7 @@ static volatile uint8_t  sMutex;           ///< Mutex for write access to @ref s
 static volatile uint64_t sTimeOffset = 0;  ///< Time overflowCounter to keep track of current time (in millisecond).
 static volatile bool     sEventPending;    ///< Timer fired and upper layer should be notified.
 static AlarmData         sTimerData[kNumTimers]; ///< Data of the timers.
+static volatile uint32_t sSystemMillisClock;     ///< Use DWT->CYCCNT to make microseconds accurate
 
 static const AlarmChannelData sChannelData[kNumTimers] = //
     {                                                    //
@@ -279,7 +282,7 @@ static void GetOffsetAndCounter(uint32_t *aOffset, uint32_t *aCounter)
 
 static uint64_t GetTime(uint32_t aOffset, uint32_t aCounter, AlarmIndex aIndex)
 {
-    uint64_t result = (uint64_t)aOffset * US_PER_OVERFLOW + TicksToTime(aCounter, kUsTimer);
+    uint64_t result = (uint64_t)aOffset * US_PER_OVERFLOW + (DWT->CYCCNT - sSystemMillisClock) / SYSTEM_US_TICKS; 
 
     if (aIndex == kMsTimer)
     {
@@ -654,6 +657,8 @@ uint32_t nrf_802154_lp_timer_sync_time_get(void)
 
 void RTC_IRQ_HANDLER(void)
 {
+    sSystemMillisClock = DWT->CYCCNT;
+
     // Handle overflow.
     if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW))
     {
