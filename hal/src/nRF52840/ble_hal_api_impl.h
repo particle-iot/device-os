@@ -38,6 +38,9 @@
 /* BLE invalid connection handle. */
 #define BLE_INVALID_CONN_HANDLE                     BLE_CONN_HANDLE_INVALID
 
+/* BLE invalid attribute handle. */
+#define BLE_INVALID_ATTR_HANDLE                     0x00
+
 /* Maximum number of device address in the whitelist. */
 #define BLE_MAX_WHITELIST_ADDR_COUNT                BLE_GAP_WHITELIST_ADDR_MAX_COUNT
 
