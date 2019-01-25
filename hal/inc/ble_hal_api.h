@@ -575,6 +575,7 @@ int ble_discover_service_by_uuid128(uint16_t conn_handle, const uint8_t *uuid128
 int ble_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uuid);
 int ble_discover_characteristics(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle);
 int ble_discover_descriptors(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle);
+bool ble_is_discovering(void);
 int ble_subscribe(uint16_t conn_handle, uint8_t char_handle);
 int ble_unsubscribe(uint16_t conn_handle, uint8_t char_handle);
 int ble_write_with_response(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len);
