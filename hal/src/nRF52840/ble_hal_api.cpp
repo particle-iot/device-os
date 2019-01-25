@@ -1085,6 +1085,25 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
         } break;
 
+        case BLE_GATTC_EVT_WRITE_RSP: {
+            LOG_DEBUG(TRACE, "BLE GATT Client event: write response.");
+        } break;
+
+        case BLE_GATTC_EVT_HVX: {
+            LOG_DEBUG(TRACE, "BLE GATT Client event: data received. conn_handle: %d, attr_handle: %d, len: %d, type: %d",
+                    event->evt.gattc_evt.conn_handle, event->evt.gattc_evt.params.hvx.handle,
+                    event->evt.gattc_evt.params.hvx.len, event->evt.gattc_evt.params.hvx.type);
+
+            bleEvt.evt_type               = BLE_EVT_TYPE_DATA;
+            bleEvt.data_event.conn_handle = event->evt.gattc_evt.conn_handle;
+            bleEvt.data_event.attr_handle = event->evt.gattc_evt.params.hvx.handle;
+            bleEvt.data_event.data_len    = event->evt.gattc_evt.params.hvx.len;
+            memcpy(bleEvt.data_event.data, event->evt.gattc_evt.params.hvx.data, bleEvt.data_event.data_len);
+            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
+            }
+        } break;
+
         case BLE_GATTC_EVT_TIMEOUT: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: timeout, conn handle: %d, source: %d",
                     event->evt.gattc_evt.conn_handle, event->evt.gattc_evt.params.timeout.src);
@@ -2179,20 +2198,47 @@ int ble_get_characteristic_value(hal_ble_char_t* ble_char, uint8_t* data, uint16
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_subscribe(uint16_t conn_handle, uint8_t char_handle) {
+int ble_configure_cccd(uint16_t conn_handle, hal_ble_char_t* ble_char, bool enable) {
     std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
 
-    LOG_DEBUG(TRACE, "ble_subscribe().");
+    LOG_DEBUG(TRACE, "ble_configure_cccd().");
 
-    return 0;
-}
+    if (conn_handle == BLE_CONN_HANDLE_INVALID || ble_char == NULL || ble_char->cccd_handle == BLE_INVALID_ATTR_HANDLE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
 
-int ble_unsubscribe(uint16_t conn_handle, uint8_t char_handle) {
-    std::lock_guard<bleLock> lk(bleLock());
+    uint8_t buf[2] = {0x00, 0x00};
+    ble_gattc_write_params_t writeParams;
 
-    LOG_DEBUG(TRACE, "ble_unsubscribe().");
+    if (ble_char->properties & BLE_SIG_CHAR_PROP_NOTIFY) {
+        buf[0] = BLE_SIG_CCCD_VAL_NOTIFICATION;
+    }
+    else if (ble_char->properties & BLE_SIG_CHAR_PROP_INDICATE) {
+        buf[0] = BLE_SIG_CCCD_VAL_INDICATION;
+    }
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
 
-    return 0;
+    if (!enable) {
+        buf[0] = 0x00;
+    }
+
+    writeParams.write_op = BLE_GATT_OP_WRITE_REQ;
+    writeParams.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
+    writeParams.handle   = ble_char->cccd_handle;
+    writeParams.offset   = 0;
+    writeParams.len      = sizeof(buf);
+    writeParams.p_value  = buf;
+
+    ret_code_t ret = sd_ble_gattc_write(conn_handle, &writeParams);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gattc_write() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    return SYSTEM_ERROR_NONE;
 }
 
 int ble_write_with_response(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len) {
