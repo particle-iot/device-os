@@ -577,9 +577,8 @@ int ble_discover_characteristics(uint16_t conn_handle, uint16_t start_handle, ui
 int ble_discover_descriptors(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle);
 bool ble_is_discovering(void);
 int ble_configure_cccd(uint16_t conn_handle, hal_ble_char_t* ble_char, bool enable);
-int ble_write_with_response(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len);
-int ble_write_without_response(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len);
-int ble_read(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t* len);
+int ble_write(uint16_t conn_handle, hal_ble_char_t* ble_char, uint8_t* data, uint16_t len, bool response);
+int ble_read(uint16_t conn_handle, hal_ble_char_t* ble_char);
 
 
 #ifdef __cplusplus
