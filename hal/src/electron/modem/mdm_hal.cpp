@@ -62,10 +62,12 @@ std::recursive_mutex mdm_mutex;
 // data read from a socket if the data contains a null byte
 // #define SOCKET_HEX_MODE
 
-// Timeout for socket write operations
-#define SOCKET_WRITE_TIMEOUT 30000
-// Timeout for +COPS command
-#define COPS_TIMEOUT (3 * 60 * 1000)
+// Timeouts for various AT commands
+#define USOWR_TIMEOUT   (120 * 1000) /* 120 for R4, 1 for U2/G3 */
+#define USORD_TIMEOUT   ( 1 * 1000)
+#define USOST_TIMEOUT   (10 * 1000)  /*  10 for R4, 1 for U2/G3 */
+#define USORF_TIMEOUT   ( 1 * 1000)
+#define COPS_TIMEOUT    ( 3 * 60 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -1963,35 +1965,44 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
     int cnt = len;
     while (cnt > 0) {
         int blk = USO_MAX_WRITE;
-        if (cnt < blk)
+        if (cnt < blk) {
             blk = cnt;
+        }
         bool ok = false;
         {
             LOCK();
             if (ISSOCKET(socket)) {
                 uint8_t retry_num = 0;
+                int response = 0;
                 do {
                     sendFormated("AT+USOWR=%d,%d\r\n",_sockets[socket].handle,blk);
-                    if (RESP_PROMPT == waitFinalResp()) {
+                    response = waitFinalResp(nullptr, nullptr, USOWR_TIMEOUT);
+                    if (response == RESP_PROMPT) {
                         HAL_Delay_Milliseconds(50);
                         send(buf, blk);
-                        if (RESP_OK == waitFinalResp()) {
+                        response = waitFinalResp(nullptr, nullptr, USOWR_TIMEOUT);
+                        if (response == RESP_OK) {
                             ok = true;
                         }
+                    } else if (response == RESP_OK && retry_num == 1) {
+                        // 1st try no signal, command will timeout, during 2nd try if signal comes back
+                        // modem will send data from first try and respond OK instead of PROMPT
+                        ok = true;
                     }
                 } while(!ok && retry_num++ < MDM_SOCKET_SEND_RETRIES);
             }
             UNLOCK();
         }
-        if (!ok)
+        if (!ok) {
             return MDM_SOCKET_ERROR;
+        }
         buf += blk;
         cnt -= blk;
     }
     LOCK();
     if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
-        waitFinalResp(NULL, NULL, 10*1000);
+        waitFinalResp(nullptr, nullptr, USORD_TIMEOUT);
     }
     UNLOCK();
     return (len - cnt);
@@ -2036,7 +2047,7 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         if (send("\"\r\n", 3) != 3) {
             goto error;
         }
-        if (waitFinalResp(nullptr, nullptr, SOCKET_WRITE_TIMEOUT) != RESP_OK) {
+        if (waitFinalResp(nullptr, nullptr, USOST_TIMEOUT) != RESP_OK) {
             goto error;
         }
         UNLOCK();
@@ -2055,35 +2066,44 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
     int cnt = len;
     while (cnt > 0) {
         int blk = USO_MAX_WRITE;
-        if (cnt < blk)
+        if (cnt < blk) {
             blk = cnt;
+        }
         bool ok = false;
         {
             LOCK();
             if (ISSOCKET(socket)) {
                 uint8_t retry_num = 0;
+                int response = 0;
                 do {
                     sendFormated("AT+USOST=%d,\"" IPSTR "\",%d,%d\r\n",_sockets[socket].handle,IPNUM(ip),port,blk);
-                    if (RESP_PROMPT == waitFinalResp()) {
+                    response = waitFinalResp(nullptr, nullptr, USOST_TIMEOUT);
+                    if (response == RESP_PROMPT) {
                         HAL_Delay_Milliseconds(50);
                         send(buf, blk);
-                        if (RESP_OK == waitFinalResp()) {
+                        response = waitFinalResp(nullptr, nullptr, USOST_TIMEOUT);
+                        if (response == RESP_OK) {
                             ok = true;
                         }
+                    } else if (response == RESP_OK && retry_num == 1) {
+                        // 1st try no signal, command will timeout, during 2nd try if signal comes back
+                        // modem will send data from first try and respond OK instead of PROMPT
+                        ok = true;
                     }
                 } while(!ok && retry_num++ < MDM_SOCKET_SEND_RETRIES);
             }
             UNLOCK();
         }
-        if (!ok)
+        if (!ok) {
             return MDM_SOCKET_ERROR;
+        }
         buf += blk;
         cnt -= blk;
     }
     LOCK();
     if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
-        waitFinalResp(NULL, NULL, 10*1000);
+        waitFinalResp(nullptr, nullptr, USORF_TIMEOUT);
     }
     UNLOCK();
     return (len - cnt);
@@ -2127,7 +2147,7 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         if (send("\"\r\n", 3) != 3) {
             goto error;
         }
-        if (waitFinalResp(nullptr, nullptr, SOCKET_WRITE_TIMEOUT) != RESP_OK) {
+        if (waitFinalResp(nullptr, nullptr, USOST_TIMEOUT) != RESP_OK) {
             goto error;
         }
         UNLOCK();
