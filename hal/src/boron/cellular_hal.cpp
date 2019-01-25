@@ -136,6 +136,10 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    const NcpClientLock lock(client);
+    // Ensure the modem is powered on
+    CHECK(client->on());
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
     return 0;
