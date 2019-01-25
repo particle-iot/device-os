@@ -118,10 +118,6 @@ void loop()
     if (ble_is_connected()) {
         ble_publish(&bleChar2, (uint8_t *)&cnt, 2);
         cnt++;
-
-        if (cnt == 10) {
-            hal_ble_disconnect(0);
-        }
     }
     else {
         cnt = 0;

@@ -25,7 +25,18 @@ SYSTEM_MODE(MANUAL);
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-uint8_t svcUUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
+uint8_t  svc1Uuid[]  = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x0f};
+uint8_t  char1Uuid[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x0f};
+
+uint8_t  svc2Uuid[]  = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
+uint8_t  char2Uuid[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x10};
+
+uint16_t svc3Uuid  = 0x1234;
+uint16_t char3Uuid = 0x5678;
+
+hal_ble_service_t service1, service2, service3;
+hal_ble_char_t char1, char2, char3;
+bool char1Discovered, char2Discovered, char3Discovered;
 
 static void handleBleEvent(hal_ble_event_t *event)
 {
@@ -50,8 +61,6 @@ static void handleBleEvent(hal_ble_event_t *event)
 
             LOG(TRACE, "Start discovering service...");
             ble_discover_all_services(event->conn_event.conn_handle);
-            //ble_discover_service_by_uuid128(event->conn_event.conn_handle, svcUUID);
-            //ble_discover_service_by_uuid16(event->conn_event.conn_handle, 0x1234);
         }
         else {
             LOG(TRACE, "BLE disconnected, handle: %d", event->conn_event.conn_handle);
@@ -61,54 +70,78 @@ static void handleBleEvent(hal_ble_event_t *event)
     }
     else if (event->evt_type == BLE_EVT_TYPE_DISCOVERY) {
         if (event->disc_event.evt_id == BLE_DISC_EVT_ID_SVC_DISCOVERED) {
-            LOG(TRACE, "BLE primary service discovered %d", event->disc_event.count);
+            hal_ble_service_t* service;
             for (uint8_t i = 0; i < event->disc_event.count; i++) {
-                LOG(TRACE, "Handle range: %d ~ %d", event->disc_event.services[i].start_handle, event->disc_event.services[i].end_handle);
+                service = NULL;
                 if (event->disc_event.services[i].uuid.type == BLE_UUID_TYPE_16BIT) {
-                    LOG(TRACE, "Service UUID: 0x%04X", event->disc_event.services[i].uuid.uuid16);
+                    if (event->disc_event.services[i].uuid.uuid16 == svc3Uuid) {
+                        service = &service3;
+                        LOG(TRACE, "BLE Service3 found.");
+                    }
                 }
                 else if (event->disc_event.services[i].uuid.type == BLE_UUID_TYPE_128BIT) {
-                    Serial1.print("Service UUID: 0x");
-                    for (uint8_t j = 0; j < BLE_SIG_UUID_128BIT_LEN; j++) {
-                        Serial1.printf("%02X", event->disc_event.services[i].uuid.uuid128[j]);
+                    if (!memcmp(svc1Uuid, event->disc_event.services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
+                        service = &service1;
+                        LOG(TRACE, "BLE Service1 found.");
                     }
-                    Serial1.print("\r\n");
+                    else if (!memcmp(svc2Uuid, event->disc_event.services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
+                        service = &service2;
+                        LOG(TRACE, "BLE Service2 found.");
+                    }
+                }
+                if (service != NULL) {
+                    memcpy(service, &event->disc_event.services[i], sizeof(hal_ble_service_t));
                 }
             }
 
-            ble_discover_characteristics(event->disc_event.conn_handle, 14, 16);
+            if (!char1Discovered) {
+                ble_discover_characteristics(event->disc_event.conn_handle, service1.start_handle, service1.end_handle);
+            }
         }
         else if (event->disc_event.evt_id == BLE_DISC_EVT_ID_CHAR_DISCOVERED) {
-            LOG(TRACE, "BLE characteristics discovered: %d", event->disc_event.count);
+            hal_ble_char_t* characteristic = NULL;
             for (uint8_t i = 0; i < event->disc_event.count; i++) {
                 if (event->disc_event.characteristics[i].uuid.type == BLE_UUID_TYPE_16BIT) {
-                    LOG(TRACE, "Characteristic UUID: 0x%04X", event->disc_event.characteristics[i].uuid.uuid16);
+                    if (event->disc_event.characteristics[i].uuid.uuid16 == char3Uuid) {
+                        characteristic = &char3;
+                        char3Discovered = true;
+                        LOG(TRACE, "BLE Characteristic3 found.");
+                    }
                 }
                 else if (event->disc_event.characteristics[i].uuid.type == BLE_UUID_TYPE_128BIT) {
-                    Serial1.print("Characteristic UUID: 0x");
-                    for (uint8_t j = 0; j < BLE_SIG_UUID_128BIT_LEN; j++) {
-                        Serial1.printf("%02X", event->disc_event.characteristics[i].uuid.uuid128[j]);
+                    if (!memcmp(char1Uuid, event->disc_event.characteristics[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
+                        characteristic = &char1;
+                        char1Discovered = true;
+                        LOG(TRACE, "BLE Characteristic1 found.");
                     }
-                    Serial1.print("\r\n");
+                    else if (!memcmp(char2Uuid, event->disc_event.characteristics[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
+                        characteristic = &char2;
+                        char2Discovered = true;
+                        LOG(TRACE, "BLE Characteristic2 found.");
+                    }
+                }
+                if (characteristic != NULL) {
+                    memcpy(characteristic, &event->disc_event.characteristics[i], sizeof(hal_ble_char_t));
                 }
             }
 
-            ble_discover_descriptors(event->disc_event.conn_handle, 17, 65535);
+            if (!char2Discovered) {
+                ble_discover_characteristics(event->disc_event.conn_handle, service2.start_handle, service2.end_handle);
+            }
+            else if (!char3Discovered) {
+                ble_discover_characteristics(event->disc_event.conn_handle, service3.start_handle, service3.end_handle);
+            }
+            else {
+                ble_discover_descriptors(event->disc_event.conn_handle, char2.value_handle, char3.decl_handle);
+            }
         }
         else if (event->disc_event.evt_id == BLE_DISC_EVT_ID_DESC_DISCOVERED) {
-            LOG(TRACE, "BLE descriptors discovered: %d", event->disc_event.count);
             for (uint8_t i = 0; i < event->disc_event.count; i++) {
-                if (event->disc_event.descriptors[i].uuid.type == BLE_UUID_TYPE_16BIT) {
-                    LOG(TRACE, "Descriptor handle: %d, UUID: 0x%04X",
-                            event->disc_event.descriptors[i].handle,
-                            event->disc_event.descriptors[i].uuid.uuid16);
-                }
-                else if (event->disc_event.descriptors[i].uuid.type == BLE_UUID_TYPE_128BIT) {
-                    Serial1.printf("Descriptors handle: %d, UUID: 0x", event->disc_event.descriptors[i].handle);
-                    for (uint8_t j = 0; j < BLE_SIG_UUID_128BIT_LEN; j++) {
-                        Serial1.printf("%02X", event->disc_event.descriptors[i].uuid.uuid128[j]);
-                    }
-                    Serial1.print("\r\n");
+                if (event->disc_event.descriptors[i].uuid.uuid16 == BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC) {
+                    char2.cccd_handle = event->disc_event.descriptors[i].handle;
+                    LOG(TRACE, "BLE Characteristic2 CCCD found.");
+
+                    ble_configure_cccd(event->disc_event.conn_handle, &char2, true);
                 }
             }
         }
