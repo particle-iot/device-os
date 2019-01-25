@@ -106,7 +106,7 @@ static volatile uint8_t  sMutex;           ///< Mutex for write access to @ref s
 static volatile uint64_t sTimeOffset = 0;  ///< Time overflowCounter to keep track of current time (in millisecond).
 static volatile bool     sEventPending;    ///< Timer fired and upper layer should be notified.
 static AlarmData         sTimerData[kNumTimers]; ///< Data of the timers.
-static volatile uint32_t sSystemMillisClock;     ///< Use DWT->CYCCNT to make microseconds accurate
+static volatile uint32_t sSystemTicks;           ///< Use DWT->CYCCNT to make microseconds accurate
 
 static const AlarmChannelData sChannelData[kNumTimers] = //
     {                                                    //
@@ -282,7 +282,7 @@ static void GetOffsetAndCounter(uint32_t *aOffset, uint32_t *aCounter)
 
 static uint64_t GetTime(uint32_t aOffset, uint32_t aCounter, AlarmIndex aIndex)
 {
-    uint64_t result = (uint64_t)aOffset * US_PER_OVERFLOW + (DWT->CYCCNT - sSystemMillisClock) / SYSTEM_US_TICKS; 
+    uint64_t result = (uint64_t)aOffset * US_PER_OVERFLOW + TicksToTime(aCounter, kUsTimer);
 
     if (aIndex == kMsTimer)
     {
@@ -657,7 +657,7 @@ uint32_t nrf_802154_lp_timer_sync_time_get(void)
 
 void RTC_IRQ_HANDLER(void)
 {
-    sSystemMillisClock = DWT->CYCCNT;
+    sSystemTicks = DWT->CYCCNT;
 
     // Handle overflow.
     if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW))
@@ -701,7 +701,11 @@ int hal_timer_init(void* reserved) {
 }
 
 uint64_t hal_timer_micros(void* reserved) {
-    return GetCurrentTime(kUsTimer);
+    uint32_t offset;
+    uint32_t rtc_counter;
+    GetOffsetAndCounter(&offset, &rtc_counter);
+
+    return (uint64_t)offset * US_PER_OVERFLOW + (DWT->CYCCNT - sSystemTicks) / SYSTEM_US_TICKS;
 }
 
 uint64_t hal_timer_millis(void* reserved) {
