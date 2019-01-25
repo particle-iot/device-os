@@ -792,7 +792,7 @@ bool MDMParser::init(DevStatus* status)
     if (_dev.dev == DEV_SARA_R410) {
         // Force eDRX mode to be disabled
         // 18/23 hardware doesn't seem to be disabled by default
-        sendFormated("AT+CEDRXS=0\r\n");
+        sendFormated("AT+CEDRXS=3,2\r\n");
         if (RESP_OK != waitFinalResp())
             goto failure;
         sendFormated("AT+CEDRXS?\r\n");
