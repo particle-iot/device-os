@@ -678,6 +678,30 @@ static int addCharacteristic(uint16_t service_handle, const ble_uuid_t* uuid, ui
     return SYSTEM_ERROR_NONE;
 }
 
+static int writeAttribute(uint16_t connHandle, uint16_t attrHandle, uint8_t* data, uint16_t len, bool response) {
+    ble_gattc_write_params_t writeParams;
+
+    if (response) {
+        writeParams.write_op = BLE_GATT_OP_WRITE_REQ;
+    }
+    else {
+        writeParams.write_op = BLE_GATT_OP_WRITE_CMD;
+    }
+    writeParams.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
+    writeParams.handle   = attrHandle;
+    writeParams.offset   = 0;
+    writeParams.len      = len;
+    writeParams.p_value  = data;
+
+    ret_code_t ret = sd_ble_gattc_write(connHandle, &writeParams);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gattc_write() failed: %u", (unsigned)ret);
+        return sysError(ret);
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
 static void dispatchBleEvent(hal_ble_event_t* evt) {
     for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
         if (s_bleInstance.evtCallbacks[i] != NULL) {
@@ -1079,6 +1103,16 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                         os_semaphore_give(s_bleInstance.semaphore, false);
                     }
                 }
+                else {
+                    bleEvt.evt_type               = BLE_EVT_TYPE_DATA;
+                    bleEvt.data_event.conn_handle = event->evt.gattc_evt.conn_handle;
+                    bleEvt.data_event.attr_handle = event->evt.gattc_evt.params.read_rsp.handle;
+                    bleEvt.data_event.data_len    = event->evt.gattc_evt.params.read_rsp.len;
+                    memcpy(bleEvt.data_event.data, event->evt.gattc_evt.params.read_rsp.data, bleEvt.data_event.data_len);
+                    if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                    }
+                }
             }
             else {
                 LOG(ERROR, "BLE read characteristic failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
@@ -1086,13 +1120,24 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         } break;
 
         case BLE_GATTC_EVT_WRITE_RSP: {
-            LOG_DEBUG(TRACE, "BLE GATT Client event: write response.");
+            LOG_DEBUG(TRACE, "BLE GATT Client event: write with response completed.");
+        } break;
+
+        case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: {
+            LOG_DEBUG(TRACE, "BLE GATT Client event: write without response completed.");
         } break;
 
         case BLE_GATTC_EVT_HVX: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: data received. conn_handle: %d, attr_handle: %d, len: %d, type: %d",
                     event->evt.gattc_evt.conn_handle, event->evt.gattc_evt.params.hvx.handle,
                     event->evt.gattc_evt.params.hvx.len, event->evt.gattc_evt.params.hvx.type);
+
+            if (event->evt.gattc_evt.params.hvx.type == BLE_GATT_HVX_INDICATION) {
+                ret = sd_ble_gattc_hv_confirm(event->evt.gattc_evt.conn_handle, event->evt.gattc_evt.params.hvx.handle);
+                if (ret != NRF_SUCCESS) {
+                    LOG(ERROR, "sd_ble_gattc_hv_confirm() failed: %u", (unsigned)ret);
+                }
+            }
 
             bleEvt.evt_type               = BLE_EVT_TYPE_DATA;
             bleEvt.data_event.conn_handle = event->evt.gattc_evt.conn_handle;
@@ -2209,7 +2254,6 @@ int ble_configure_cccd(uint16_t conn_handle, hal_ble_char_t* ble_char, bool enab
     }
 
     uint8_t buf[2] = {0x00, 0x00};
-    ble_gattc_write_params_t writeParams;
 
     if (ble_char->properties & BLE_SIG_CHAR_PROP_NOTIFY) {
         buf[0] = BLE_SIG_CCCD_VAL_NOTIFICATION;
@@ -2225,44 +2269,44 @@ int ble_configure_cccd(uint16_t conn_handle, hal_ble_char_t* ble_char, bool enab
         buf[0] = 0x00;
     }
 
-    writeParams.write_op = BLE_GATT_OP_WRITE_REQ;
-    writeParams.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
-    writeParams.handle   = ble_char->cccd_handle;
-    writeParams.offset   = 0;
-    writeParams.len      = sizeof(buf);
-    writeParams.p_value  = buf;
+    return writeAttribute(conn_handle, ble_char->cccd_handle, buf, 2, true);
+}
 
-    ret_code_t ret = sd_ble_gattc_write(conn_handle, &writeParams);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gattc_write() failed: %u", (unsigned)ret);
-        return sysError(ret);
+int ble_write(uint16_t conn_handle, hal_ble_char_t* ble_char, uint8_t* data, uint16_t len, bool response) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    LOG_DEBUG(TRACE, "ble_write().");
+
+    if (conn_handle == BLE_CONN_HANDLE_INVALID || ble_char == NULL || ble_char->value_handle == BLE_INVALID_ATTR_HANDLE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    return SYSTEM_ERROR_NONE;
+    if ((ble_char->properties & BLE_SIG_CHAR_PROP_WRITE_WO_RESP) || (ble_char->properties & BLE_SIG_CHAR_PROP_WRITE)) {
+        return writeAttribute(conn_handle, ble_char->value_handle, data, len, response);
+    }
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
 }
 
-int ble_write_with_response(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len) {
+int ble_read(uint16_t conn_handle, hal_ble_char_t* ble_char) {
     std::lock_guard<bleLock> lk(bleLock());
-
-    LOG_DEBUG(TRACE, "ble_write_with_response().");
-
-    return 0;
-}
-
-int ble_write_without_response(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t len) {
-    std::lock_guard<bleLock> lk(bleLock());
-
-    LOG_DEBUG(TRACE, "ble_write_without_response().");
-
-    return 0;
-}
-
-int ble_read(uint16_t conn_handle, uint8_t char_handle, uint8_t* data, uint16_t* len) {
-    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
 
     LOG_DEBUG(TRACE, "ble_read().");
 
-    return 0;
+    if (ble_char->properties & BLE_SIG_CHAR_PROP_READ) {
+        ret_code_t ret = sd_ble_gattc_read(conn_handle, ble_char->value_handle, 0);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+            return sysError(ret);
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
 }
 
 int ble_get_rssi(uint16_t conn_handle) {
