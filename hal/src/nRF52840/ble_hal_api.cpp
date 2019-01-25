@@ -80,12 +80,13 @@ typedef struct {
 
 /* BLE Instance */
 typedef struct {
-    uint8_t  initialized   : 1;
-    uint8_t  advertising   : 1;
-    uint8_t  scanning      : 1;
-    uint8_t  connecting    : 1;
-    uint8_t  connected     : 1;
-    uint8_t  indConfirmed  : 1;
+    uint8_t  initialized  : 1;
+    uint8_t  advertising  : 1;
+    uint8_t  scanning     : 1;
+    uint8_t  connecting   : 1;
+    uint8_t  discovering  : 1;
+    uint8_t  connected    : 1;
+    uint8_t  indConfirmed : 1;
     int8_t   txPower;
     uint8_t  role;
     uint16_t connHandle;
@@ -120,6 +121,7 @@ static HalBleInstance_t s_bleInstance = {
     .advertising  = 0,
     .scanning     = 0,
     .connecting   = 0,
+    .discovering  = 0,
     .connected    = 0,
     .indConfirmed = 1,
     .txPower      = 0,
@@ -940,6 +942,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                     // further operation is needed to retrieve 128-bits UUID. If this event is not enqueued,
                     // this flag should be clear here.
                     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                    s_bleInstance.discovering = false;
                 }
             }
         } break;
@@ -992,6 +995,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
                     LOG(ERROR, "os_queue_put() failed.");
                     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                    s_bleInstance.discovering = false;
                 }
             }
         } break;
@@ -1051,6 +1055,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
                     LOG(ERROR, "os_queue_put() failed.");
                     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                    s_bleInstance.discovering = false;
                 }
             }
         } break;
@@ -1059,16 +1064,20 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             LOG_DEBUG(TRACE, "BLE GATT Client event: read response.");
 
             if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
-                if (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_SERVICES) {
-                    s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
-                    memcpy(s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.uuid128, event->evt.gattc_evt.params.read_rsp.data, BLE_SIG_UUID_128BIT_LEN);
-                    os_semaphore_give(s_bleInstance.semaphore, false);
-                }
-                else if (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS) {
-                    s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
-                    // The offset of Characteristic UUID in the Characteristic declaration attribute is 3.
-                    memcpy(s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.uuid128, &event->evt.gattc_evt.params.read_rsp.data[3], BLE_SIG_UUID_128BIT_LEN);
-                    os_semaphore_give(s_bleInstance.semaphore, false);
+                if (s_bleInstance.discovering) {
+                    if ( (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_SERVICES)
+                      && (event->evt.gattc_evt.params.read_rsp.handle == s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].start_handle) ) {
+                        s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
+                        memcpy(s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.uuid128, event->evt.gattc_evt.params.read_rsp.data, BLE_SIG_UUID_128BIT_LEN);
+                        os_semaphore_give(s_bleInstance.semaphore, false);
+                    }
+                    else if ( (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS)
+                           && (event->evt.gattc_evt.params.read_rsp.handle == s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].decl_handle) ) {
+                        s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
+                        // The offset of Characteristic UUID in the Characteristic declaration attribute is 3.
+                        memcpy(s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.uuid128, &event->evt.gattc_evt.params.read_rsp.data[3], BLE_SIG_UUID_128BIT_LEN);
+                        os_semaphore_give(s_bleInstance.semaphore, false);
+                    }
                 }
             }
             else {
@@ -1162,7 +1171,10 @@ static os_thread_return_t handleBleEventThread(void* param) {
                                 break;
                             }
                             s_bleInstance.discovery.currIndex = i;
-                            os_semaphore_take(s_bleInstance.semaphore, 2000, false);
+                            if (os_semaphore_take(s_bleInstance.semaphore, 2000, false)) {
+                                LOG(ERROR, "os_semaphore_take() timeout.");
+                                break;
+                            }
                         }
                     }
                 }
@@ -1175,11 +1187,15 @@ static os_thread_return_t handleBleEventThread(void* param) {
                                 break;
                             }
                             s_bleInstance.discovery.currIndex = i;
-                            os_semaphore_take(s_bleInstance.semaphore, 2000, false);
+                            if (os_semaphore_take(s_bleInstance.semaphore, 2000, false)) {
+                                LOG(ERROR, "os_semaphore_take() timeout.");
+                                break;
+                            }
                         }
                     }
                 }
                 s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                s_bleInstance.discovering = false;
             }
 
             dispatchBleEvent(&bleEvent);
@@ -2234,6 +2250,7 @@ int ble_discover_all_services(uint16_t conn_handle) {
     memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
     s_bleInstance.discovery.discAll = true;
     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
+    s_bleInstance.discovering = true;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2268,6 +2285,7 @@ int ble_discover_service_by_uuid128(uint16_t conn_handle, const uint8_t *uuid128
         memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
         s_bleInstance.discovery.discAll = false;
         s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
+        s_bleInstance.discovering = true;
 
         return SYSTEM_ERROR_NONE;
     }
@@ -2302,6 +2320,7 @@ int ble_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uuid) {
     memset(&s_bleInstance.discovery, 0x00, sizeof(s_bleInstance.discovery));
     s_bleInstance.discovery.discAll = false;
     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
+    s_bleInstance.discovering = true;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2330,6 +2349,7 @@ int ble_discover_characteristics(uint16_t conn_handle, uint16_t start_handle, ui
     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS;
     s_bleInstance.discovery.discStartHandle = start_handle;
     s_bleInstance.discovery.discEndHandle = end_handle;
+    s_bleInstance.discovering = true;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2358,8 +2378,13 @@ int ble_discover_descriptors(uint16_t conn_handle, uint16_t start_handle, uint16
     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_DESCRIPTORS;
     s_bleInstance.discovery.discStartHandle = start_handle;
     s_bleInstance.discovery.discEndHandle = end_handle;
+    s_bleInstance.discovering = true;
 
     return SYSTEM_ERROR_NONE;
+}
+
+bool ble_is_discovering(void) {
+    return s_bleInstance.discovering;
 }
 
 
