@@ -58,6 +58,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.mesh");
 #include "openthread/dataset_ftd.h"
 #include "openthread/platform/settings.h"
 #include "thread/network_diagnostic_tlvs.hpp"
+#include "thread/network_data_tlvs.hpp"
 
 #include "proto/mesh.pb.h"
 
@@ -181,6 +182,9 @@ os_timer_t g_commTimer = nullptr;
 
 // Commissioner role timeout
 unsigned g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
+
+// Router ID offset (it's defined in mle_constants.hpp, but we don't want to include it)
+const unsigned MLE_ROUTER_ID_OFFSET = 10;
 
 class Random: public particle::Random {
 public:
@@ -962,6 +966,306 @@ struct DiagnosticResult {
     int error;
 };
 
+struct NetworkDataState {
+    ot::NetworkData::NetworkDataTlv* begin;
+    ot::NetworkData::NetworkDataTlv* end;
+};
+
+void findNetworkDataTlv(NetworkDataState* state, uint8_t* data, size_t len, bool stable) {
+    using namespace ot::NetworkData;
+    NetworkDataTlv* networkData = reinterpret_cast<NetworkDataTlv*>(data);
+    auto end = reinterpret_cast<NetworkDataTlv*>(data + len);
+    for (auto netData = networkData; netData && netData < end; netData = netData->GetNext()) {
+        if (stable == netData->IsStable()) {
+            state->begin = netData;
+            state->end = end;
+            return;
+        }
+    }
+}
+
+bool encodeContext(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto prefix = static_cast<PrefixTlv*>(*arg);
+
+    for (auto netData = prefix->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(prefix->GetSubTlvs()) + prefix->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeContext) {
+            continue;
+        }
+
+        auto context = static_cast<ContextTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_Context) pbContext = {};
+        pbContext.cid = context->GetContextId();
+        pbContext.context_length = context->GetContextLength();
+        pbContext.compress = context->IsCompress();
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, particle_ctrl_mesh_DiagnosticInfo_NetworkData_Context_fields, &pbContext)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeHasRoute(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto prefix = static_cast<PrefixTlv*>(*arg);
+
+    for (auto netData = prefix->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(prefix->GetSubTlvs()) + prefix->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeHasRoute) {
+            continue;
+        }
+
+        auto hasRoute = static_cast<HasRouteTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_HasRoute) pbHasRoute = {};
+        pbHasRoute.entries.arg = hasRoute;
+        pbHasRoute.entries.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+            auto hasRoute = static_cast<HasRouteTlv*>(*arg);
+
+            for (int i = 0; i < hasRoute->GetNumEntries(); i++) {
+                auto entry = hasRoute->GetEntry(i);
+                PB(DiagnosticInfo_NetworkData_HasRoute_HasRouteEntry) pbEntry = {};
+                pbEntry.rloc = entry->GetRloc();
+                pbEntry.preference = static_cast<PB(DiagnosticInfo_RoutePreference)>(entry->GetPreference());
+
+                if (!pb_encode_tag_for_field(strm, field)) {
+                    return false;
+                }
+                if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_HasRoute_HasRouteEntry_fields), &pbEntry)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_HasRoute_fields), &pbHasRoute)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeBorderRouter(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto prefix = static_cast<PrefixTlv*>(*arg);
+
+    for (auto netData = prefix->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(prefix->GetSubTlvs()) + prefix->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeBorderRouter) {
+            continue;
+        }
+
+        auto borderRouter = static_cast<BorderRouterTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_BorderRouter) pbBorderRouter = {};
+        pbBorderRouter.entries.arg = borderRouter;
+        pbBorderRouter.entries.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+            auto borderRouter = static_cast<BorderRouterTlv*>(*arg);
+
+            for (int i = 0; i < borderRouter->GetNumEntries(); i++) {
+                auto entry = borderRouter->GetEntry(i);
+                PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry) pbEntry = {};
+                pbEntry.rloc = entry->GetRloc();
+                pbEntry.preference = static_cast<PB(DiagnosticInfo_RoutePreference)>(entry->GetPreference());
+
+                if (entry->IsPreferred()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_PREFERRED);
+                }
+                if (entry->IsSlaac()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_SLAAC);
+                }
+                if (entry->IsDhcp()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_DHCP);
+                }
+                if (entry->IsConfigure()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_CONFIGURE);
+                }
+                if (entry->IsDefaultRoute()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_DEFAULT_ROUTE);
+                }
+                if (entry->IsOnMesh()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_ON_MESH);
+                }
+                // P_nd_dns is not supported as of now in OpenThread
+                // if (entry->IsNdDns()) {
+                //     pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_ND_DNS);
+                // }
+
+                if (!pb_encode_tag_for_field(strm, field)) {
+                    return false;
+                }
+                if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_fields), &pbEntry)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_BorderRouter_fields), &pbBorderRouter)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeNetworkDataPrefixes(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+    auto networkDataState = static_cast<NetworkDataState*>(*arg);
+
+    for (auto netData = networkDataState->begin;
+            netData && netData < networkDataState->end;
+            netData = netData->GetNext()) {
+        if (!(netData->GetType() == NetworkDataTlv::kTypePrefix &&
+              netData->IsStable() == networkDataState->begin->IsStable())) {
+            continue;
+        }
+
+        auto prefix = static_cast<PrefixTlv*>(netData);
+        if (!prefix->IsValid()) {
+            continue;
+        }
+
+        PB(DiagnosticInfo_NetworkData_Prefix) pbPrefix = {};
+        pbPrefix.domain_id = prefix->GetDomainId();
+        pbPrefix.prefix_length = prefix->GetPrefixLength();
+        pbPrefix.prefix.size = BitVectorBytes(prefix->GetPrefixLength());
+        memcpy(pbPrefix.prefix.bytes, prefix->GetPrefix(), pbPrefix.prefix.size);
+
+        // Process sub-TLVs: Context, Has Route, Border Router
+        if (prefix->GetSubTlvsLength() >= sizeof(NetworkDataTlv)) {
+            pbPrefix.context.arg = prefix;
+            pbPrefix.context.funcs.encode = encodeContext;
+            pbPrefix.has_route.entries.arg = prefix;
+            pbPrefix.has_route.entries.funcs.encode = encodeHasRoute;
+            pbPrefix.border_router.entries.arg = prefix;
+            pbPrefix.border_router.entries.funcs.encode = encodeBorderRouter;
+        }
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, particle_ctrl_mesh_DiagnosticInfo_NetworkData_Prefix_fields, &pbPrefix)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeServers(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto service = static_cast<ServiceTlv*>(*arg);
+
+    for (auto netData = service->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(service->GetSubTlvs()) + service->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeServer) {
+            continue;
+        }
+
+        auto server = static_cast<ServerTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_Server) pbServer = {};
+        pbServer.rloc = server->GetServer16();
+        EncodedString eServerData(&pbServer.data, (const char*)server->GetServerData(), server->GetServerDataLength());
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_Server_fields), &pbServer)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeNetworkDataServices(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+    auto networkDataState = static_cast<NetworkDataState*>(*arg);
+
+    for (auto netData = networkDataState->begin;
+            netData && netData < networkDataState->end;
+            netData = netData->GetNext()) {
+        if (!(netData->GetType() == NetworkDataTlv::kTypeService &&
+              netData->IsStable() == networkDataState->begin->IsStable())) {
+            continue;
+        }
+
+        auto service = static_cast<ServiceTlv*>(netData);
+        if (!service->IsValid()) {
+            continue;
+        }
+
+        PB(DiagnosticInfo_NetworkData_Service) pbService = {};
+        pbService.sid = service->GetServiceID();
+        pbService.enterprise_number = service->GetEnterpriseNumber();
+        EncodedString eServiceData(&pbService.data, (const char*)service->GetServiceData(),
+                service->GetServiceDataLength());
+
+        // Process sub-TLVs: Server
+        if (service->GetSubTlvsLength() >= sizeof(NetworkDataTlv)) {
+            pbService.servers.arg = service;
+            pbService.servers.funcs.encode = encodeServers;
+        }
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, particle_ctrl_mesh_DiagnosticInfo_NetworkData_Service_fields, &pbService)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void encodeNetworkData(NetworkDataState* stable, NetworkDataState* temporary, PB(DiagnosticInfo)* pbRep) {
+    using namespace ot::NetworkData;
+
+    auto& pbNetData = pbRep->network_data;
+
+    if (stable->begin) {
+        pbNetData.stable.prefixes.arg = stable;
+        pbNetData.stable.prefixes.funcs.encode = encodeNetworkDataPrefixes;
+        pbNetData.stable.services.arg = stable;
+        pbNetData.stable.services.funcs.encode = encodeNetworkDataServices;
+    }
+
+    if (temporary->begin) {
+        pbNetData.temporary.prefixes.arg = temporary;
+        pbNetData.temporary.prefixes.funcs.encode = encodeNetworkDataPrefixes;
+        pbNetData.temporary.services.arg = temporary;
+        pbNetData.temporary.services.funcs.encode = encodeNetworkDataServices;
+    }
+}
+
 int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* message,
         const otMessageInfo* messageInfo, uint16_t rloc) {
     const int len = otMessageGetLength(message) - otMessageGetOffset(message);
@@ -973,6 +1277,9 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
     using namespace ot::NetworkDiagnostic;
 
     PB(DiagnosticInfo) pbRep = {};
+
+    NetworkDataState stableNetData = {};
+    NetworkDataState temporaryNetData = {};
 
     for (const ot::Tlv* tlv = reinterpret_cast<const ot::Tlv*>(tlvs.get());
             reinterpret_cast<const uint8_t*>(tlv) < tlvs.get() + len; tlv = tlv->GetNext()) {
@@ -1039,7 +1346,7 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
                                 continue;
                             }
                             PB(DiagnosticInfo_Route64_RouteData) routeData = {};
-                            routeData.router_id = i;
+                            routeData.router_rloc = i << MLE_ROUTER_ID_OFFSET;
                             routeData.link_quality_out = routeTlv->GetLinkQualityOut(i);
                             routeData.link_quality_in = routeTlv->GetLinkQualityIn(i);
                             routeData.route_cost = routeTlv->GetRouteCost(i);
@@ -1058,14 +1365,21 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
             case NetworkDiagnosticTlv::kLeaderData: {
                 auto leaderDataTlv = static_cast<const LeaderDataTlv*>(tlv);
                 if (leaderDataTlv->IsValid()) {
-                    // TODO
+                    auto& leaderData = pbRep.leader_data;
+                    leaderData.partition_id = leaderDataTlv->GetPartitionId();
+                    leaderData.weighting = leaderDataTlv->GetWeighting();
+                    leaderData.data_version = leaderDataTlv->GetDataVersion();
+                    leaderData.stable_data_version = leaderDataTlv->GetStableDataVersion();
+                    leaderData.leader_rloc = leaderDataTlv->GetLeaderRouterId() << MLE_ROUTER_ID_OFFSET;
                 }
                 break;
             }
             case NetworkDiagnosticTlv::kNetworkData: {
-                auto networkDataTlv = static_cast<const NetworkDataTlv*>(tlv);
+                auto networkDataTlv = (NetworkDataTlv*)(tlv);
                 if (networkDataTlv->IsValid()) {
-                    // TODO
+                    findNetworkDataTlv(&stableNetData, networkDataTlv->GetNetworkData(), networkDataTlv->GetLength(), true);
+                    findNetworkDataTlv(&temporaryNetData, networkDataTlv->GetNetworkData(), networkDataTlv->GetLength(), false);
+                    encodeNetworkData(&stableNetData, &temporaryNetData, &pbRep);
                 }
                 break;
             }
@@ -1212,6 +1526,8 @@ int getNetworkDiagnostics(ctrl_request* req) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    bool childTableRequested = false;
+
     // Validate requested tlvs
     for (unsigned i = 0; i < diagTypes.size; i++) {
         switch(diagTypes.data[i]) {
@@ -1227,16 +1543,23 @@ int getNetworkDiagnostics(ctrl_request* req) {
             case PB(DiagnosticType_MAC_COUNTERS):
             case PB(DiagnosticType_BATTERY_LEVEL):
             case PB(DiagnosticType_SUPPLY_VOLTAGE):
-            case PB(DiagnosticType_CHILD_TABLE):
             case PB(DiagnosticType_CHANNEL_PAGES):
             // case PB(DiagnosticType_TYPE_LIST):
             case PB(DiagnosticType_MAX_CHILD_TIMEOUT): {
+                break;
+            }
+            case PB(DiagnosticType_CHILD_TABLE): {
+                childTableRequested = true;
                 break;
             }
             default: {
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
             }
         }
+    }
+
+    if ((pbReq.flags & PB(GetNetworkDiagnosticsRequest_Flags_QUERY_CHILDREN)) && !childTableRequested) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     THREAD_LOCK(lock);
