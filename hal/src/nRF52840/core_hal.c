@@ -73,6 +73,14 @@ typedef enum Feature_Flag {
     FEATURE_FLAG_ETHERNET_DETECTION = 0x02
 } Feature_Flag;
 
+#define STOP_MODE_EXIT_CONDITION_NONE   0x00
+#define STOP_MODE_EXIT_CONDITION_PIN    0x01
+#define STOP_MODE_EXIT_CONDITION_RTC    0x02
+static volatile struct {
+    uint32_t    source;
+    uint32_t    pin_index;
+} wakeup_info;
+
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
 void HardFault_Handler(void);
@@ -517,7 +525,12 @@ void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long
 }
 
 static void wakeup_rtc_handler(nrfx_rtc_int_type_t int_type) {
+    wakeup_info.source |= STOP_MODE_EXIT_CONDITION_RTC;
+}
 
+static void wakeup_gpiote_handler(void* data) {
+    wakeup_info.source |= STOP_MODE_EXIT_CONDITION_PIN;
+    wakeup_info.pin_index = (uint32_t)data;
 }
 
 static void wakeup_from_rtc(uint32_t seconds) {
@@ -592,6 +605,8 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
     uint32_t err_code = sd_nvic_critical_region_enter(&dummy);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 
+    wakeup_info.source = STOP_MODE_EXIT_CONDITION_NONE;
+
     bool hfclk_resume = false;
     if (nrf_drv_clock_hfclk_is_running()) {
         hfclk_resume = true;
@@ -600,6 +615,8 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
             ;
         }
     }
+
+    uint32_t exit_conditions = 0x00;
 
     // Suspend all GPIOTE interrupts
     HAL_Interrupts_Suspend();
@@ -632,12 +649,16 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
         irqConf.IRQChannelSubPriority = 0;
         irqConf.keepHandler = 1;
         irqConf.keepPriority = 1;
-        HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, &irqConf);
+        HAL_Interrupts_Attach(wakeUpPin, wakeup_gpiote_handler, (void*)(uint32_t)i, edgeTriggerMode, &irqConf);
+
+        exit_conditions |= STOP_MODE_EXIT_CONDITION_PIN;
     }
 
     // Configure RTC wake-up
     if (seconds > 0) {
         wakeup_from_rtc(seconds);
+
+        exit_conditions |= STOP_MODE_EXIT_CONDITION_RTC;
     }
 
     // Enable all interrupt, __enable_irq()
@@ -647,12 +668,28 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
     fpu_sleep_prepare();
 
     // Enter sleep mode, wait for event
-    // FIXME: why this API has to call twice?
-    SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
-    SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
+    do {
+        SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
+    } while (wakeup_info.source == STOP_MODE_EXIT_CONDITION_NONE);
 
-    // TODO: Add a workaround to detect wakeup reason
     int32_t reason = SYSTEM_ERROR_NOT_SUPPORTED;
+
+    if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
+        if (wakeup_info.source & STOP_MODE_EXIT_CONDITION_PIN) {
+            reason = wakeup_info.pin_index + 1;
+        }
+        for (int i = 0; i < pins_count; i++) {
+            pin_t wakeUpPin = pins[i];
+            /* Detach the Interrupt pin */
+            HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
+        }
+    }
+
+    if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
+        if (wakeup_info.source & STOP_MODE_EXIT_CONDITION_RTC) {
+            reason = 0;
+        }
+    }
 
     // Restore wakeup RTC
     nrfx_rtc_uninit(&m_rtc);
