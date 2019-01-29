@@ -377,7 +377,7 @@ DfuMal* DfuClassDriver::currentMal() {
 }
 
 int DfuClassDriver::setup(SetupRequest* req) {
-  if ((req->bRequest == 0xee && req->bmRequestType == 0b11000001 && req->wIndex == 0x0005) ||
+  if ((req->bRequest == 0xee && req->bmRequestType == 0xc1 && req->wIndex == 0x0005) ||
       (req->bRequest == 0xee && req->bmRequestType == 0xc0 && req->wIndex == 0x0004)) {
     return handleMsftRequest(req);
   }
@@ -503,7 +503,7 @@ int DfuClassDriver::inDone(uint8_t ep, unsigned status) {
 }
 
 const uint8_t* DfuClassDriver::getConfigurationDescriptor(uint16_t* length) {
-  *length = *((uint16_t*)cfgDesc_ + 2);
+  *length = *((uint16_t*)(cfgDesc_ + 2));
   return cfgDesc_;
 }
 

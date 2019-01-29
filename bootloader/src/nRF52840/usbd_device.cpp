@@ -160,8 +160,8 @@ const uint8_t s_deviceDescriptor[] = {
   HIBYTE(USBD_VID_SPARK),     /*idVendor*/
   LOBYTE(USBD_PID_DFU),       /*idProduct*/
   HIBYTE(USBD_PID_DFU),       /*idProduct*/
-  LOBYTE(0x0250),             /*bcdDevice (2.50) */
-  HIBYTE(0x0250),             /*bcdDevice (2.50) */
+  LOBYTE(0x0251),             /*bcdDevice (2.51) */
+  HIBYTE(0x0251),             /*bcdDevice (2.51) */
   Device::STRING_IDX_MANUFACTURER, /*Index of manufacturer  string*/
   Device::STRING_IDX_PRODUCT,      /*Index of product string*/
   Device::STRING_IDX_SERIAL,       /*Index of serial number string*/
@@ -444,6 +444,7 @@ void NrfDevice::setup() {
   static_assert(sizeof(SetupRequest) == sizeof(nrf_drv_usbd_setup_t), "SetupRequest and nrf_drv_usbd_setup_t are expected to be of the same size");
   memcpy(&r, &setup, sizeof(r));
 
+
   switch (r.bmRequestTypeRecipient) {
     case SetupRequest::RECIPIENT_DEVICE: {
       setupDevice(&r);
@@ -507,7 +508,13 @@ void NrfDevice::setupDevice(SetupRequest* r) {
       }
       break;
     }
-    case SetupRequest::TYPE_VENDOR: /* FIXME */
+    case SetupRequest::TYPE_VENDOR:
+    case SetupRequest::TYPE_CLASS: {
+      if (drv_) {
+        drv_->setup(r);
+      }
+      break;
+    }
     default: {
       nrf_drv_usbd_setup_stall();
       break;
@@ -869,7 +876,9 @@ void NrfDevice::setupReply(SetupRequest* r, const uint8_t* data, size_t size) {
     bool zlpRequired = (size < r->wLength) &&
                        (0 == (size % nrf_drv_usbd_ep_max_packet_size_get(NRF_DRV_USBD_EPIN0)));
     nrf_drv_usbd_transfer_t transfer = {
-        .p_data = {.tx = data},
+        .p_data = {
+          .tx = data
+        },
         .size = txSize,
         .flags = (uint32_t)(zlpRequired ? NRF_DRV_USBD_TRANSFER_ZLP_FLAG : 0)
     };
