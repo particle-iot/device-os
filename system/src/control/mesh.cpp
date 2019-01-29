@@ -1291,7 +1291,8 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
                 auto eMacTlv = static_cast<const ExtMacAddressTlv*>(tlv);
                 if (eMacTlv->IsValid()) {
                     auto eMac = eMacTlv->GetMacAddr();
-                    memcpy(pbRep.ext_mac_address, eMac->m8, sizeof(pbRep.ext_mac_address));
+                    memcpy(pbRep.ext_mac_address.bytes, eMac->m8, sizeof(pbRep.ext_mac_address.bytes));
+                    pbRep.ext_mac_address.size = sizeof(pbRep.ext_mac_address.bytes);
                 }
                 break;
             }
