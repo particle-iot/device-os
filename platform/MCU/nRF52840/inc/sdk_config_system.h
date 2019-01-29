@@ -120,7 +120,7 @@
 #define APP_USBD_CONFIG_MAX_POWER               500
 #define APP_USBD_CONFIG_POWER_EVENTS_PROCESS    1
 #define APP_USBD_CONFIG_SOF_HANDLING_MODE       2  // Interrupt mode
-#define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE      0  // handle USB event in interrupt, NOT to call any functions that modifies the USBD 
+#define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE      0  // handle USB event in interrupt, NOT to call any functions that modifies the USBD
                                                    // library state from the context higher than USB interrupt context.
 
 #define APP_USBD_VID                            USBD_VID_SPARK
@@ -128,3 +128,6 @@
 
 #define NRFX_SPIM_MISO_PULL_CFG                 0  // MISO pin pull configuration. The default configuration is pull down,
                                                    // change it to no pull <0=> NRF_GPIO_PIN_NOPULL.
+
+#define APP_USBD_DEVICE_VER_MAJOR               1
+#define APP_USBD_DEVICE_VER_MINOR               1

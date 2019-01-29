@@ -24,7 +24,37 @@ LOG_SOURCE_CATEGORY("hal.usb.control");
 #include "app_usbd_string_desc.h"
 #include "app_usbd_core.h"
 
+#include "usbd_wcid.h"
+
 namespace {
+
+/* Extended Compat ID OS Descriptor */
+static const uint8_t MSFT_EXTENDED_COMPAT_ID_DESCRIPTOR[] = {
+    USB_WCID_EXT_COMPAT_ID_OS_DESCRIPTOR(
+        0x02,
+        USB_WCID_DATA('W', 'I', 'N', 'U', 'S', 'B', '\0', '\0'),
+        USB_WCID_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+    )
+};
+
+/* Extended Properties OS Descriptor */
+static const uint8_t MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR[] = {
+    USB_WCID_EXT_PROP_OS_DESCRIPTOR(
+        USB_WCID_DATA(
+            /* bPropertyData "{20b6cfa4-6dc7-468a-a8db-faa7c23ddea5}" */
+            '{', 0x00, '2', 0x00, '0', 0x00, 'b', 0x00,
+            '6', 0x00, 'c', 0x00, 'f', 0x00, 'a', 0x00,
+            '4', 0x00, '-', 0x00, '6', 0x00, 'd', 0x00,
+            'c', 0x00, '7', 0x00, '-', 0x00, '4', 0x00,
+            '6', 0x00, '8', 0x00, 'a', 0x00, '-', 0x00,
+            'a', 0x00, '8', 0x00, 'd', 0x00, 'b', 0x00,
+            '-', 0x00, 'f', 0x00, 'a', 0x00, 'a', 0x00,
+            '7', 0x00, 'c', 0x00, '2', 0x00, '3', 0x00,
+            'd', 0x00, 'd', 0x00, 'e', 0x00, 'a', 0x00,
+            '5', 0x00, '}'
+        )
+    )
+};
 
 HAL_USB_Vendor_Request_Callback s_usb_vendor_request_callback = nullptr;
 void* s_usb_vendor_request_callback_ctx = nullptr;
@@ -91,11 +121,11 @@ ret_code_t usbd_control_event_handler(app_usbd_class_inst_t const* inst,
 
     ret_code_t ret = NRF_SUCCESS;
     switch (event->app_evt.type) {
-        case APP_USBD_EVT_DRV_SOF: {
-            // TODO: handle timeouts using SOF
-            break;
-        }
-        case APP_USBD_EVT_DRV_RESET: {
+        case APP_USBD_EVT_DRV_RESET:
+        case APP_USBD_EVT_STARTED:
+        case APP_USBD_EVT_STOPPED:
+        case APP_USBD_EVT_DRV_SUSPEND:
+        case APP_USBD_EVT_DRV_RESUME: {
             ret = usbd_control_reset();
             break;
         }
@@ -103,25 +133,16 @@ ret_code_t usbd_control_event_handler(app_usbd_class_inst_t const* inst,
             ret = usbd_control_setup_handler(inst, (app_usbd_setup_evt_t const*)event);
             break;
         }
+        case APP_USBD_EVT_DRV_SOF: {
+            break;
+        }
         case APP_USBD_EVT_DRV_EPTRANSFER: {
-            break;
-        }
-        case APP_USBD_EVT_DRV_SUSPEND: {
-            break;
-        }
-        case APP_USBD_EVT_DRV_RESUME: {
             break;
         }
         case APP_USBD_EVT_INST_APPEND: {
             break;
         }
         case APP_USBD_EVT_INST_REMOVE: {
-            break;
-        }
-        case APP_USBD_EVT_STARTED: {
-            break;
-        }
-        case APP_USBD_EVT_STOPPED: {
             break;
         }
         default: {
@@ -155,6 +176,28 @@ bool usbd_control_feed_descriptors(app_usbd_class_descriptor_ctx_t* ctx,
     APP_USBD_CLASS_DESCRIPTOR_END();
 }
 
+ret_code_t usbd_control_handle_msft_request(app_usbd_class_inst_t const* inst,
+        app_usbd_setup_evt_t const* event) {
+    auto req = &event->setup;
+
+    // FIXME: we should get rid of magick numbers
+    if (req->wIndex.w == 0x0004) {
+        return app_usbd_core_setup_rsp(req, MSFT_EXTENDED_COMPAT_ID_DESCRIPTOR, sizeof(MSFT_EXTENDED_COMPAT_ID_DESCRIPTOR));
+    } else if (req->wIndex.w == 0x0005) {
+        if ((req->wValue.w & 0xff) == 0x02) {
+            return app_usbd_core_setup_rsp(req, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, sizeof(MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR));
+        } else {
+            // Send dummy
+            uint8_t dummy[10] = {0};
+            return app_usbd_core_setup_rsp(req, dummy, sizeof(dummy));
+        }
+    } else {
+        return NRF_ERROR_INTERNAL;
+    }
+
+    return NRF_SUCCESS;
+}
+
 HAL_USB_SetupRequest s_usb_setup_request = {};
 uint8_t s_usb_setup_request_data[NRF_DRV_USBD_EPSIZE] = {};
 
@@ -172,13 +215,17 @@ ret_code_t usbd_control_setup_handler(app_usbd_class_inst_t const* inst,
 
     ret_code_t ret = NRF_SUCCESS;
 
-    // TODO: Handle Microsoft-specific WCID stuff
+    auto req = &event->setup;
+
+    // Handle Microsoft vendor requests
+    if ((req->bmRequest == 0xee && req->bmRequestType == 0xc1 && req->wIndex.w == 0x0005) ||
+            (req->bmRequest == 0xee && req->bmRequestType == 0xc0 && req->wIndex.w == 0x0004)) {
+        return usbd_control_handle_msft_request(inst, event);
+    }
 
     if (s_usb_vendor_request_callback == nullptr) {
         return NRF_ERROR_INVALID_STATE;
     }
-
-    auto req = &event->setup;
 
     s_usb_setup_request.bmRequestType = req->bmRequestType;
     s_usb_setup_request.bRequest = req->bmRequest;
