@@ -149,7 +149,7 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
 void HAL_Core_Execute_Stop_Mode(void);
 int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
 void HAL_Core_Execute_Standby_Mode(void);
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
+int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
 
 int HAL_Core_Enter_Panic_Mode(void* reserved);
 

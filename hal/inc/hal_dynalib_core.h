@@ -77,7 +77,7 @@ DYNALIB_FN(31, hal_core, HAL_Core_Led_Mirror_Pin_Disable, void(uint8_t, uint8_t,
 
 DYNALIB_FN(32, hal_core, HAL_Set_Event_Callback, void(HAL_Event_Callback, void*))
 DYNALIB_FN(33, hal_core, HAL_Core_Enter_Stop_Mode_Ext, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, void*))
-DYNALIB_FN(34, hal_core, HAL_Core_Execute_Standby_Mode_Ext, void(uint32_t, void*))
+DYNALIB_FN(34, hal_core, HAL_Core_Execute_Standby_Mode_Ext, int(uint32_t, void*))
 
 DYNALIB_END(hal_core)
 

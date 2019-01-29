@@ -45,6 +45,8 @@
 #include "pinmap_impl.h"
 #include <nrf_pwm.h>
 #include "system_error.h"
+#include <nrf_lpcomp.h>
+#include <nrfx_gpiote.h>
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -484,37 +486,56 @@ int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
-    HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
-
-    // This will never get reached
-    return 0;
+    return HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
 }
 
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
+int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
     // Force to use external wakeup pin on Gen 3 Device
     if (flags & HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN) {
-        return;
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
-    // Disable interrupts, no going back at this point and we don't want anybody interrupting
-    // us while we configure / deconfigure things
-    HAL_disable_irq();
+    // Uninit GPIOTE
+    nrfx_gpiote_uninit();
 
-    // Configure wakeup pin and enter deep sleep mode
+    // Disable GPIOTE PORT interrupts
+    nrf_gpiote_int_disable(GPIOTE_INTENSET_PORT_Msk);
+
+    // Clear any GPIOTE events
+    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
+
+    // Disable low power comparator
+    nrf_lpcomp_disable();
+
+    // Configure wakeup pin
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
     nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
 
-    // Disable PWM (otherwise RGB LED gets stuck in a weird state, maybe other pins as well)
-    nrf_pwm_disable(NRF_PWM0);
-    nrf_pwm_disable(NRF_PWM1);
-    nrf_pwm_disable(NRF_PWM2);
-    nrf_pwm_disable(NRF_PWM3);
+    // Disable RAM retention for any sector other than the one that contains backup sections
+    // This should reduce power consumption
+    sd_power_ram_power_clr(0, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(1, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(2, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(3, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(4, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(5, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(6, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(7, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    sd_power_ram_power_clr(8, NRF_POWER_RAMPOWER_S0RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S1RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S2RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S3RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S4RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S5RETENTION_MASK);
+
+    // Unfortunately this is a 32K sector
+    // TODO: move backup sections?
+    sd_power_ram_power_set(8, NRF_POWER_RAMPOWER_S5RETENTION_MASK);
 
     SPARK_ASSERT(sd_power_system_off() == NRF_SUCCESS);
-
-    // Following code will not be reached
     while (1);
+    return 0;
 }
 
 void HAL_Core_Execute_Standby_Mode(void) {

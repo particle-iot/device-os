@@ -788,13 +788,10 @@ int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
         HAL_RTC_Set_UnixAlarm((time_t) seconds);
     }
 
-    HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
-
-    // This will never get reached
-    return 0;
+    return HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
 }
 
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
+int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
 {
     if ((flags & HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN) == 0) {
     /* Enable WKUP pin */
@@ -809,6 +806,8 @@ void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
 
     /* Following code will not be reached */
     while(1);
+
+    return 0;
 }
 
 void HAL_Core_Execute_Standby_Mode(void)
