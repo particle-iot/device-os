@@ -125,3 +125,6 @@
 
 #define APP_USBD_VID                            USBD_VID_SPARK
 #define APP_USBD_PID                            USBD_PID_CDC
+
+#define NRFX_SPIM_MISO_PULL_CFG                 0  // MISO pin pull configuration. The default configuration is pull down,
+                                                   // change it to no pull <0=> NRF_GPIO_PIN_NOPULL.
