@@ -120,6 +120,32 @@ inline void yield() {
 # define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
 # endif
 
+#elif HAL_PLATFORM_NRF52840
+
+# ifndef digitalPinToPort
+# define digitalPinToPort(P)        ( HAL_Pin_Map()[P].gpio_port ? NRF_P1 : NRF_P0 )
+# endif
+
+# ifndef digitalPinToBitMask
+# define digitalPinToBitMask(P)     ( HAL_Pin_Map()[P].gpio_pin )
+# endif
+
+# ifndef portOutputRegister
+# define portOutputRegister(port)   ( &(port->OUT) )
+# endif
+
+# ifndef portInputRegister
+# define portInputRegister(port)    ( &(port->IN) )
+# endif
+
+# ifndef portModeRegister
+# define portModeRegister(port)     ( &(port->DIR) )
+# endif
+
+# ifndef digitalPinHasPWM
+# define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
+# endif
+
 #endif // PLATFORM_ID == PLATFORM_SPARK_CORE || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
 #ifndef _BV
