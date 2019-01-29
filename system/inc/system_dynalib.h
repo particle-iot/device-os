@@ -49,8 +49,8 @@ DYNALIB_FN(3, system, system_firmwareUpdate, bool(Stream*, void*))
 DYNALIB_FN(4, system, system_fileTransfer, bool(system_file_transfer_t*, void*))
 
 DYNALIB_FN(5, system, system_delay_ms, void(unsigned long, bool))
-DYNALIB_FN(6, system, system_sleep, void(Spark_Sleep_TypeDef, long, uint32_t, void*))
-DYNALIB_FN(7, system, system_sleep_pin, void(uint16_t, uint16_t, long, uint32_t, void*))
+DYNALIB_FN(6, system, system_sleep, int(Spark_Sleep_TypeDef, long, uint32_t, void*))
+DYNALIB_FN(7, system, system_sleep_pin, int(uint16_t, uint16_t, long, uint32_t, void*))
 DYNALIB_FN(8, system, system_subscribe_event, int(system_event_t, system_event_handler_t*, void*))
 DYNALIB_FN(9, system, system_unsubscribe_event, void(system_event_t, system_event_handler_t*, void*))
 DYNALIB_FN(10, system, system_button_pushed_duration, uint16_t(uint8_t, void*))
@@ -96,7 +96,7 @@ DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_set_result, void(ctrl_request*, in
 
 DYNALIB_FN(BASE_IDX + 13, system, system_pool_alloc, void*(size_t, void*))
 DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
-DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
+DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
 DYNALIB_FN(BASE_IDX + 16, system, system_invoke_event_handler, int(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name, const char* event_data, void* reserved))
 
 

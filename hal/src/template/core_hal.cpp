@@ -24,6 +24,7 @@
  */
 
 #include "core_hal.h"
+#include "system_error.h"
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -83,8 +84,9 @@ void HAL_Core_Execute_Stop_Mode(void)
 {
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 void HAL_Core_Execute_Standby_Mode(void)

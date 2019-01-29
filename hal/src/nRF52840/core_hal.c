@@ -44,6 +44,7 @@
 #include "timer_hal.h"
 #include "pinmap_impl.h"
 #include <nrf_pwm.h>
+#include "system_error.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -476,13 +477,17 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
 void HAL_Core_Execute_Stop_Mode(void) {
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
-    // Not support RTC wakeup on Gen 3 Device
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
+    // RTC cannot be kept running in System OFF mode, so wake up by RTC
+    // is not supported in deep sleep
     if (seconds > 0) {
-        return;
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
     HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
+
+    // This will never get reached
+    return 0;
 }
 
 void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
