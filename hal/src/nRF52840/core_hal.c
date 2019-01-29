@@ -43,6 +43,7 @@
 #include "rtc_hal.h"
 #include "timer_hal.h"
 #include "pinmap_impl.h"
+#include <nrf_pwm.h>
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -490,10 +491,21 @@ void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
         return;
     }
 
+    // Disable interrupts, no going back at this point and we don't want anybody interrupting
+    // us while we configure / deconfigure things
+    HAL_disable_irq();
+
     // Configure wakeup pin and enter deep sleep mode
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
     nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+
+    // Disable PWM (otherwise RGB LED gets stuck in a weird state, maybe other pins as well)
+    nrf_pwm_disable(NRF_PWM0);
+    nrf_pwm_disable(NRF_PWM1);
+    nrf_pwm_disable(NRF_PWM2);
+    nrf_pwm_disable(NRF_PWM3);
+
     SPARK_ASSERT(sd_power_system_off() == NRF_SUCCESS);
 
     // Following code will not be reached
