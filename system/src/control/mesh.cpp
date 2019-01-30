@@ -57,8 +57,12 @@ LOG_SOURCE_CATEGORY("system.ctrl.mesh");
 #include "openthread/dataset.h"
 #include "openthread/dataset_ftd.h"
 #include "openthread/platform/settings.h"
+#include "openthread/netdata.h"
 #include "thread/network_diagnostic_tlvs.hpp"
 #include "thread/network_data_tlvs.hpp"
+
+#include "deviceid_hal.h"
+#include "openthread/particle_extension.h"
 
 #include "proto/mesh.pb.h"
 
@@ -71,15 +75,6 @@ LOG_SOURCE_CATEGORY("system.ctrl.mesh");
 #ifndef OT_CHANNEL_ALL
 #define OT_CHANNEL_ALL (0xffffffff)
 #endif // OT_CHANNEL_ALL
-
-#define CHECK_THREAD(_expr) \
-        do { \
-            const auto ret = _expr; \
-            if (ret != OT_ERROR_NONE) { \
-                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
-                return ot_system_error(ret); \
-            } \
-        } while (false)
 
 #define THREAD_LOCK(_name) \
         ThreadLock _name;
@@ -106,11 +101,11 @@ LOG_SOURCE_CATEGORY("system.ctrl.mesh");
             if (_expr) { \
                 break; \
             } \
-            _lock.unlock(); \
             const auto _t2 = HAL_Timer_Get_Milli_Seconds(); \
             if (_t2 - _t1 >= _maxWait) { \
                 break; \
             } \
+            _lock.unlock(); \
             HAL_Delay_Milliseconds(_pollPeriod); \
             _lock.lock(); \
         }
@@ -964,6 +959,16 @@ struct DiagnosticResult {
     Vector<uint16_t> children;
 
     int error;
+
+    struct RlocDeviceId {
+        bool resolved;
+        uint16_t rloc;
+        uint8_t deviceId[HAL_DEVICE_ID_SIZE];
+    };
+
+    Vector<RlocDeviceId> deviceIdMapping;
+    volatile int routersResolved;
+    volatile int childrenResolved;
 };
 
 struct NetworkDataState {
@@ -1498,6 +1503,16 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
         pbRep.rloc = rloc;
     }
 
+    if (diagResult->pbReq->flags & PB(GetNetworkDiagnosticsRequest_Flags_RESOLVE_DEVICE_ID)) {
+        for (const auto& entry : diagResult->deviceIdMapping) {
+            if (entry.resolved && entry.rloc == pbRep.rloc) {
+                pbRep.device_id.size = HAL_DEVICE_ID_SIZE;
+                memcpy(pbRep.device_id.bytes, entry.deviceId, HAL_DEVICE_ID_SIZE);
+                break;
+            }
+        }
+    }
+
     auto r = appendReplySubmessage(diagResult->req, diagResult->written, PB(GetNetworkDiagnosticsReply_fields),
             PB(DiagnosticInfo_fields), &pbRep);
     if (r > 0) {
@@ -1601,6 +1616,9 @@ int getNetworkDiagnostics(ctrl_request* req) {
     diagResult.pbReq = &pbReq;
     diagResult.routersCount = routers.size();
 
+    const unsigned diagReplyTimeout = pbReq.timeout > 0 ? pbReq.timeout * 1000 : DIAGNOSTIC_REPLY_TIMEOUT;
+    const unsigned resolveReplyTimeout = std::max(diagReplyTimeout / 2, DIAGNOSTIC_REPLY_TIMEOUT / 2);
+
     otThreadSetReceiveDiagnosticGetCallback(thread,
             [](otMessage *message, const otMessageInfo *messageInfo, void *ctx) {
                 DiagnosticResult* diagResult = static_cast<DiagnosticResult*>(ctx);
@@ -1627,6 +1645,44 @@ int getNetworkDiagnostics(ctrl_request* req) {
         otThreadSetReceiveDiagnosticGetCallback(thread, nullptr, nullptr);
     });
 
+    otExtParticleSetReceiveDeviceIdGetCallback(thread,
+            [](otError err, otCoapCode coapResult, const uint8_t* deviceId, size_t length,
+                    const otMessageInfo* msgInfo, void* ctx) {
+                DiagnosticResult* diagResult = static_cast<DiagnosticResult*>(ctx);
+                const auto& m16 = msgInfo->mPeerAddr.mFields.m16;
+                auto rloc = ntohs(m16[(sizeof(m16) / sizeof(m16[0])) - 1]);
+                LOG_DEBUG(TRACE, "Received Device Id response from %04x %d %d", rloc, err, coapResult);
+
+                if (err == OT_ERROR_NONE && deviceId && length) {
+                    DiagnosticResult::RlocDeviceId mapping = {true, rloc};
+                    memcpy(mapping.deviceId, deviceId, sizeof(mapping.deviceId));
+                    diagResult->deviceIdMapping.append(mapping);
+                }
+
+                if ((rloc & 0x00ff) == 0x0000) {
+                    // Router
+                    ++diagResult->routersResolved;
+                } else {
+                    // Child
+                    ++diagResult->childrenResolved;
+                }
+    }, &diagResult);
+
+    SCOPE_GUARD({
+        otExtParticleSetReceiveDeviceIdGetCallback(thread, nullptr, nullptr);
+    });
+
+    if (pbReq.flags & PB(GetNetworkDiagnosticsRequest_Flags_RESOLVE_DEVICE_ID)) {
+        for (const auto& router : routers) {
+            otIp6Address addr = {};
+            setIp6RlocAddress(&addr, localPrefix, router.mRloc16);
+            LOG_DEBUG(TRACE, "Sending GET Device Id to router %04x", router.mRloc16);
+            CHECK_THREAD(otExtParticleSendDeviceIdGet(thread, &addr));
+        }
+        // FIXME: it's probably better to use something like a semaphore here
+        WAIT_UNTIL_EX(lock, 100, resolveReplyTimeout, (diagResult.routersResolved >= diagResult.routersCount));
+    }
+
     for (const auto& router : routers) {
         otIp6Address addr = {};
         setIp6RlocAddress(&addr, localPrefix, router.mRloc16);
@@ -1636,13 +1692,24 @@ int getNetworkDiagnostics(ctrl_request* req) {
 
     routers.clear();
 
-    const unsigned diagReplyTimeout = pbReq.timeout > 0 ? pbReq.timeout * 1000 : DIAGNOSTIC_REPLY_TIMEOUT;
     // FIXME: it's probably better to use something like a semaphore here
     WAIT_UNTIL_EX(lock, 100, diagReplyTimeout, (diagResult.routersReplied >= diagResult.routersCount));
 
     if (!diagResult.error && diagResult.children.size() > 0) {
         // Query children as well, if requested
         diagResult.childCount = diagResult.children.size();
+
+        if (pbReq.flags & PB(GetNetworkDiagnosticsRequest_Flags_RESOLVE_DEVICE_ID)) {
+            for (const auto& child : diagResult.children) {
+                otIp6Address addr = {};
+                setIp6RlocAddress(&addr, localPrefix, child);
+                LOG_DEBUG(TRACE, "Sending GET Device Id to child %04x", child);
+                CHECK_THREAD(otExtParticleSendDeviceIdGet(thread, &addr));
+            }
+            // FIXME: it's probably better to use something like a semaphore here
+            WAIT_UNTIL_EX(lock, 100, resolveReplyTimeout, (diagResult.childrenResolved >= diagResult.childCount));
+        }
+
         for (const auto& child : diagResult.children) {
             otIp6Address addr = {};
             setIp6RlocAddress(&addr, localPrefix, child);

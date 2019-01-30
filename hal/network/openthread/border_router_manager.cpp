@@ -37,16 +37,6 @@ using namespace particle;
 using namespace particle::net;
 using namespace particle::net::nat;
 
-#define CHECK(_expr) \
-        ({ \
-            const auto _ret = _expr; \
-            if (_ret < 0) { \
-                return _ret; \
-            } \
-            _ret; \
-        })
-
-
 BorderRouterManager::BorderRouterManager()
         : started_(false),
           enabled_(false) {
