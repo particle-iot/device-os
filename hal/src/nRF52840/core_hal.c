@@ -42,6 +42,11 @@
 #include <malloc.h>
 #include "rtc_hal.h"
 #include "timer_hal.h"
+#include "pinmap_impl.h"
+#include <nrf_pwm.h>
+#include "system_error.h"
+#include <nrf_lpcomp.h>
+#include <nrfx_gpiote.h>
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -474,10 +479,44 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
 void HAL_Core_Execute_Stop_Mode(void) {
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
+    // RTC cannot be kept running in System OFF mode, so wake up by RTC
+    // is not supported in deep sleep
+    if (seconds > 0) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    return HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
 }
 
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
+int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
+    // Force to use external wakeup pin on Gen 3 Device
+    if (flags & HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    // Uninit GPIOTE
+    nrfx_gpiote_uninit();
+
+    // Disable GPIOTE PORT interrupts
+    nrf_gpiote_int_disable(GPIOTE_INTENSET_PORT_Msk);
+
+    // Clear any GPIOTE events
+    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
+
+    // Disable low power comparator
+    nrf_lpcomp_disable();
+
+    // Configure wakeup pin
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
+    nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+
+    // RAM retention is configured on early boot in Set_System()
+
+    SPARK_ASSERT(sd_power_system_off() == NRF_SUCCESS);
+    while (1);
+    return 0;
 }
 
 void HAL_Core_Execute_Standby_Mode(void) {

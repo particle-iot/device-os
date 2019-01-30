@@ -43,8 +43,8 @@ void SystemClass::reset(uint32_t data)
 
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
 {
-    system_sleep(sleepMode, seconds, flags.value(), NULL);
-    System.sleepResult_ = SleepResult();
+    int ret = system_sleep(sleepMode, seconds, flags.value(), NULL);
+    System.sleepResult_ = SleepResult(WAKEUP_REASON_NONE, static_cast<system_error_t>(ret));
     return System.sleepResult_;
 }
 

@@ -137,8 +137,8 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
             }
 
             system_power_management_sleep();
-            HAL_Core_Enter_Standby_Mode(seconds,
-                (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
+            return HAL_Core_Enter_Standby_Mode(seconds,
+                    (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
             break;
 
 #if Wiring_SetupButtonUX
@@ -147,8 +147,8 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
             network_off(0, 0, 0, NULL);
             sleep_fuel_gauge();
             system_power_management_sleep();
-            HAL_Core_Enter_Standby_Mode(seconds,
-                (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
+            return HAL_Core_Enter_Standby_Mode(seconds,
+                    (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
             break;
 #endif
     }
@@ -210,21 +210,21 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
 /**
  * Wraps the actual implementation, which has to return a value as part of the threaded implementation.
  */
-void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+int system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
     // Cancel current connection attempt to unblock the system thread
     network_connect_cancel(0, 1, 0, 0);
     InterruptMode m = (InterruptMode)edgeTriggerMode;
-    system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
+    return system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
 }
 
-void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
+int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
     network_connect_cancel(0, 1, 0, 0);
-    system_sleep_impl(sleepMode, seconds, param, reserved);
+    return system_sleep_impl(sleepMode, seconds, param, reserved);
 }
 
-int32_t system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
+int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
 {
     network_connect_cancel(0, 1, 0, 0);
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);

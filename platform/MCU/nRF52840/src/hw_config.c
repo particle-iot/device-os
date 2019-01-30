@@ -100,6 +100,25 @@ void Set_System(void)
     ret = nrf_drv_power_pof_init(&conf);
     SPARK_ASSERT(ret == NRF_SUCCESS);
 
+    // Disable RAM retention for any sector other than the one that contains backup sections
+    // This should reduce power consumption in sleep modes
+    // Unfortunately the backup sections reside in a 32K sector
+    // TODO: move backup sections to a different region so that it resides in 8K sector?
+    nrf_power_rampower_mask_on(8, NRF_POWER_RAMPOWER_S5RETENTION_MASK);
+    nrf_power_rampower_mask_off(0, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(1, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(2, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(3, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(4, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(5, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(6, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(7, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
+    nrf_power_rampower_mask_off(8, NRF_POWER_RAMPOWER_S0RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S1RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S2RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S3RETENTION_MASK |
+            NRF_POWER_RAMPOWER_S4RETENTION_MASK);
+
     DWT_Init();
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER

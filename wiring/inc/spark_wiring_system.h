@@ -92,7 +92,7 @@ struct SleepResult {
 
 private:
     WakeupReason reason_ = WAKEUP_REASON_NONE;
-    system_error_t err_ = SYSTEM_ERROR_UNKNOWN;
+    system_error_t err_ = SYSTEM_ERROR_NONE;
     pin_t pin_ = std::numeric_limits<pin_t>::max();
 };
 
@@ -145,7 +145,7 @@ public:
     }
 #endif
 
-    
+
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
     inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) {
         return sleep(sleepMode, seconds, flag);
@@ -165,7 +165,7 @@ public:
      */
     inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
         // This will only work in C++14
-        // static_assert(pins.size() > 0, "Provided pin list is empty");    
+        // static_assert(pins.size() > 0, "Provided pin list is empty");
         return sleepPinImpl(pins.begin(), pins.size(), &edgeTriggerMode, 1, seconds, flag);
     }
     inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
