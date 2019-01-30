@@ -122,7 +122,7 @@
 #define OPENTHREAD_ENABLE_LEGACY 0
 
 /* Define to 1 if you want to use MAC filter feature */
-#define OPENTHREAD_ENABLE_MAC_FILTER 0
+#define OPENTHREAD_ENABLE_MAC_FILTER 1
 
 /* Define to 1 to enable network diagnostic for MTD. */
 #define OPENTHREAD_ENABLE_MTD_NETWORK_DIAGNOSTIC 0
