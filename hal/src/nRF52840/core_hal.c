@@ -512,26 +512,7 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
     nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
 
-    // Disable RAM retention for any sector other than the one that contains backup sections
-    // This should reduce power consumption
-    sd_power_ram_power_clr(0, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(1, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(2, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(3, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(4, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(5, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(6, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(7, NRF_POWER_RAMPOWER_S0RETENTION_MASK | NRF_POWER_RAMPOWER_S1RETENTION_MASK);
-    sd_power_ram_power_clr(8, NRF_POWER_RAMPOWER_S0RETENTION_MASK |
-            NRF_POWER_RAMPOWER_S1RETENTION_MASK |
-            NRF_POWER_RAMPOWER_S2RETENTION_MASK |
-            NRF_POWER_RAMPOWER_S3RETENTION_MASK |
-            NRF_POWER_RAMPOWER_S4RETENTION_MASK |
-            NRF_POWER_RAMPOWER_S5RETENTION_MASK);
-
-    // Unfortunately this is a 32K sector
-    // TODO: move backup sections?
-    sd_power_ram_power_set(8, NRF_POWER_RAMPOWER_S5RETENTION_MASK);
+    // RAM retention is configured on early boot in Set_System()
 
     SPARK_ASSERT(sd_power_system_off() == NRF_SUCCESS);
     while (1);
