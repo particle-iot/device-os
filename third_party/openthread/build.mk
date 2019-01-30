@@ -1,6 +1,8 @@
 TARGET_OPENTHREAD_SRC_PATH = $(OPENTHREAD_MODULE_PATH)/openthread
 
-CPPSRC += $(call target_files,$(TARGET_OPENTHREAD_SRC_PATH)/src/core/,*.cpp)
+FILTERED_CPP_SOURCES := %extension_example.cpp
+
+CPPSRC += $(filter-out $(FILTERED_CPP_SOURCES),$(call target_files,$(TARGET_OPENTHREAD_SRC_PATH)/src/core/,*.cpp))
 CSRC += $(call target_files,$(TARGET_OPENTHREAD_SRC_PATH)/src/core/,*.c)
 
 INCLUDE_DIRS += $(TARGET_OPENTHREAD_SRC_PATH)/examples/platforms
@@ -15,7 +17,7 @@ CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/ra
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_priority_drop_swi.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_request_swi.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_swi.c
-CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/raal/softdevice/nrf_raal_softdevice.c
+CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/rsch/raal/softdevice/nrf_raal_softdevice.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_ack_pending_bit.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_core.c
@@ -24,7 +26,8 @@ CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/ra
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_debug.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_pib.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_revision.c
-CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_rsch.c
+CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/rsch/nrf_802154_rsch.c
+CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/rsch/nrf_802154_rsch_crit_sect.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_rssi.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_rx_buffer.c
 CSRC += $(TARGET_OPENTHREAD_SRC_PATH)/third_party/NordicSemiconductor/drivers/radio/nrf_802154_timer_coord.c

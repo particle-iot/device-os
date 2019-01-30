@@ -73,12 +73,28 @@
 #define OPENTHREAD_CONFIG_PLATFORM_INFO                         "Xenon"
 
 /**
+ * @def OPENTHREAD_CONFIG_MAX_CHILDREN
+ *
+ * The maximum number of children.
+ *
+ */
+#define OPENTHREAD_CONFIG_MAX_CHILDREN                          32
+
+/**
  * @def OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS
  *
  * The number of message buffers in the buffer pool.
  *
  */
 #define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS                   128
+
+/**
+ * @def OPENTHREAD_CONFIG_IP_ADDRS_PER_CHILD
+ *
+ * The maximum number of supported IPv6 address registrations per child.
+ *
+ */
+#define OPENTHREAD_CONFIG_IP_ADDRS_PER_CHILD                    6
 
 /**
  * @def OPENTHREAD_CONFIG_MAX_STATECHANGE_HANDLERS
@@ -94,7 +110,7 @@
  * The number of EID-to-RLOC cache entries.
  *
  */
-#define OPENTHREAD_CONFIG_ADDRESS_CACHE_ENTRIES                 20
+#define OPENTHREAD_CONFIG_ADDRESS_CACHE_ENTRIES                 32
 
 /**
  * @def OPENTHREAD_CONFIG_LOG_PREPREND_LEVEL
@@ -133,7 +149,7 @@
  * Define to 1 if you want to support microsecond timer in platform.
  *
  */
-#define OPENTHREAD_CONFIG_ENABLE_PLATFORM_USEC_TIMER     1
+#define OPENTHREAD_CONFIG_ENABLE_PLATFORM_USEC_TIMER            1
 
 /**
  * @def SETTINGS_CONFIG_BASE_ADDRESS

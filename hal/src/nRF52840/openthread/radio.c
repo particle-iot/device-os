@@ -327,9 +327,7 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 
     nrf_802154_channel_set(aChannel);
     nrf_802154_tx_power_set(sDefaultTxPower);
-    // A proposed workaround from
-    // https://devzone.nordicsemi.com/f/nordic-q-a/38460/thread-dynamic-multiprotocol---assertion-at-radioreceive
-    while ((result = nrf_802154_receive()) != true);
+    result = nrf_802154_receive();
     clearPendingEvents();
 
     return result ? OT_ERROR_NONE : OT_ERROR_INVALID_STATE;
@@ -739,6 +737,7 @@ void nrf_802154_receive_failed(nrf_802154_rx_error_t error)
     case NRF_802154_RX_ERROR_RUNTIME:
     case NRF_802154_RX_ERROR_TIMESLOT_ENDED:
     case NRF_802154_RX_ERROR_ABORTED:
+    case NRF_802154_RX_ERROR_INVALID_LENGTH:
         sReceiveError = OT_ERROR_FAILED;
         break;
 
