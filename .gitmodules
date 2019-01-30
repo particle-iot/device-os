@@ -27,9 +27,6 @@
 [submodule "third_party/openthread/openthread"]
 	path = third_party/openthread/openthread
 	url = https://github.com/particle-iot/openthread.git
-[submodule "third_party/nrf_802154/nrf_802154"]
-	path = third_party/nrf_802154/nrf_802154
-	url = https://github.com/NordicSemiconductor/nRF-IEEE-802.15.4-radio-driver.git
 [submodule "third_party/littlefs/littlefs"]
 	path = third_party/littlefs/littlefs
 	url = https://github.com/particle-iot/littlefs.git
