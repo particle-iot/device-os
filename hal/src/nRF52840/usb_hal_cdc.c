@@ -38,6 +38,7 @@
 #include "usb_hal_cdc.h"
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
+#include "hal_platform.h"
 
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.usbcdc")
@@ -318,6 +319,13 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
     app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
     ret = app_usbd_class_append(class_cdc_acm);
     SPARK_ASSERT(ret == NRF_SUCCESS);
+
+    // FIXME: this should not be handled in here, but for now in order to ensure that
+    // the control interface is always at interface #2, we do it here
+    extern int hal_usb_control_interface_init(void* reserved);
+#if HAL_PLATFORM_USB_CONTROL_INTERFACE
+    hal_usb_control_interface_init(NULL);
+#endif // HAL_PLATFORM_USB_CONTROL_INTERFACE
 
     if (USBD_POWER_DETECTION) {
         ret = app_usbd_power_events_enable();
