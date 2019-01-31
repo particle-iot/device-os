@@ -153,6 +153,7 @@ private:
         });
 
         rep->SetDefaultResponseHeader(msg);
+        rep->SetCode(OT_COAP_CODE_CONTENT);
         rep->SetPayloadMarker();
 
         uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
@@ -186,7 +187,7 @@ private:
             const uint8_t* deviceId = nullptr;
             size_t deviceIdSize = 0;
 
-            if (result == OT_ERROR_NONE && msg.GetCode() == OT_COAP_CODE_CHANGED) {
+            if (result == OT_ERROR_NONE && msg.GetCode() == OT_COAP_CODE_CONTENT) {
                 result = ot::Tlv::Get(msg, ParticleTlv::TLV_TYPE_DEVICE_ID, sizeof(DeviceIdTlv), tlv);
                 if (result == OT_ERROR_NONE && tlv.IsValid()) {
                     deviceId = tlv.GetDeviceId();
