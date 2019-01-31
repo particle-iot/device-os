@@ -20,6 +20,7 @@
 #include "pwm_hal.h"
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
+#include "gpio_hal.h"
 
 #define NRF5X_PWM_COUNT                     4
 #define PWM_CHANNEL_NUM                     4
@@ -59,13 +60,16 @@ static inline uint8_t get_nrf_pin(uint8_t pin) {
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (pin == PIN_INVALID) {
         return pin;
-    } else if (pin == RGBR || pin == RGBG || pin == RGBB) {
-        // FIXME: When idle state = 0, we can see a quick bright spot on RGB LED,
-        // because the RBG LED is pullup, set idle state = 1, 
-        return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin) | NRFX_PWM_PIN_INVERTED;
-    } else {
-        return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     }
+    uint8_t p = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    if (HAL_Get_Pin_Mode(pin) == OUTPUT) {
+        // If GPIO is configured as output and is set to high, tell nrfx_pwm
+        // that we want this pin to be high when PWM is off
+        if (HAL_GPIO_Read(pin) == 1) {
+            p |= NRFX_PWM_PIN_INVERTED;
+        }
+    }
+    return p;
 }
 
 static bool get_pwm_clock_setting(uint32_t value, uint32_t frequency, uint8_t resolution, pwm_setting_t *p_setting) {
@@ -213,7 +217,7 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
     // if frequency is changed, all the pins in the same pwm module should be reconfigured
     for (int i = 0; i < PWM_CHANNEL_NUM; i++) {
         if (PWM_MAP[pwm_num].pins[i] != PIN_INVALID) {
-            if (get_pwm_clock_setting(PWM_MAP[pwm_num].values[i], frequency, 
+            if (get_pwm_clock_setting(PWM_MAP[pwm_num].values[i], frequency,
                                       PIN_MAP[PWM_MAP[pwm_num].pins[i]].pwm_resolution, &pwm_setting) == false)
             {
                 continue;

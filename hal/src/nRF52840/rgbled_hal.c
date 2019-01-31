@@ -69,10 +69,10 @@ void Get_RGB_LED_Values(uint16_t* values) {
     values[0] = HAL_Leds[LED_RED].is_inverted ?
                 (pwm_max - HAL_PWM_Get_AnalogValue(HAL_Leds[LED_RED].pin)) :
                 HAL_PWM_Get_AnalogValue(HAL_Leds[LED_RED].pin);
-    values[1] = HAL_Leds[LED_GREEN].is_inverted ? 
+    values[1] = HAL_Leds[LED_GREEN].is_inverted ?
                 (pwm_max - HAL_PWM_Get_AnalogValue(HAL_Leds[LED_GREEN].pin)) :
                 HAL_PWM_Get_AnalogValue(HAL_Leds[LED_GREEN].pin);
-    values[2] = HAL_Leds[LED_BLUE].is_inverted ? 
+    values[2] = HAL_Leds[LED_BLUE].is_inverted ?
                 (pwm_max - HAL_PWM_Get_AnalogValue(HAL_Leds[LED_BLUE].pin)) :
                 HAL_PWM_Get_AnalogValue(HAL_Leds[LED_BLUE].pin);
 }
@@ -106,12 +106,12 @@ void Toggle_User_LED(void) {
  * @brief  Configures LED GPIO
  */
 void LED_Init(Led_TypeDef Led) {
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     if (Led >= LED_MIRROR_OFFSET) {
         // Load configuration from DCT
         led_config_t conf;
         const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-        if (dct_read_app_data_copy(offset, &conf, sizeof(conf)) == 0 && 
+        if (dct_read_app_data_copy(offset, &conf, sizeof(conf)) == 0 &&
             conf.version != 0xff &&
             conf.is_active) {
             //int32_t state = HAL_disable_irq();
@@ -191,14 +191,11 @@ led_config_t* HAL_Led_Get_Configuration(uint8_t led, void* reserved) {
  * @brief  Initialize LED
  */
 void HAL_Led_Init(uint8_t led, led_config_t* conf, void* reserved) {
-    if (led < LED_MIRROR_OFFSET) {
-        LED_Init((Led_TypeDef)led);
-        return;
-    }
-
     if (conf) {
         HAL_Led_Set_Configuration(led, conf, NULL);
     }
+
+    LED_Init((Led_TypeDef)led);
 }
 
 /**
