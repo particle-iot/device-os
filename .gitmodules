@@ -1,49 +1,46 @@
 [submodule "proto"]
 	path = proto
-	url = ../firmware-protobuf.git
+	url = https://github.com/particle-iot/firmware-protobuf.git
 [submodule "third_party/nrf5_sdk/nrf5_sdk"]
 	path = third_party/nrf5_sdk/nrf5_sdk
-	url = ../nrf5_sdk.git
+	url = https://github.com/particle-iot/nrf5_sdk.git
 [submodule "third_party/lwip/lwip"]
 	path = third_party/lwip/lwip
-	url = ../lwip.git
+	url = https://github.com/particle-iot/lwip.git
 	branch = particle
 [submodule "third_party/lwip/lwip-contrib"]
 	path = third_party/lwip/lwip-contrib
-	url = ../lwip-contrib.git
+	url = https://github.com/particle-iot/lwip-contrib.git
 	branch = master
 [submodule "third_party/freertos/freertos"]
 	path = third_party/freertos/freertos
-	url = ../freertos.git
+	url = https://github.com/particle-iot/freertos.git
 	branch = particle
 [submodule "third_party/mbedtls/mbedtls"]
 	path = third_party/mbedtls/mbedtls
-	url = ../mbedtls.git
+	url = https://github.com/particle-iot/mbedtls.git
 	branch = particle-mbedtls-2.4.2
 [submodule "third_party/nanopb/nanopb"]
 	path = third_party/nanopb/nanopb
-	url = ../nanopb.git
+	url = https://github.com/particle-iot/nanopb.git
 	branch = particle-nanopb-0.3.9
 [submodule "third_party/openthread/openthread"]
 	path = third_party/openthread/openthread
-	url = ../openthread.git
-[submodule "third_party/nrf_802154/nrf_802154"]
-	path = third_party/nrf_802154/nrf_802154
-	url = ../../NordicSemiconductor/nRF-IEEE-802.15.4-radio-driver.git
+	url = https://github.com/particle-iot/openthread.git
 [submodule "third_party/littlefs/littlefs"]
 	path = third_party/littlefs/littlefs
-	url = ../littlefs.git
+	url = https://github.com/particle-iot/littlefs.git
 [submodule "third_party/wiznet_driver/wiznet_driver"]
 	path = third_party/wiznet_driver/wiznet_driver
-	url = ../ioLibrary_Driver.git
+	url = https://github.com/particle-iot/ioLibrary_Driver.git
 	branch = particle
 [submodule "third_party/miniz/miniz"]
 	path = third_party/miniz/miniz
-	url = ../miniz.git
+	url = https://github.com/particle-iot/miniz.git
 	branch = particle
 [submodule "gsm0710muxer/gsm0710muxer"]
 	path = gsm0710muxer/gsm0710muxer
-	url = ../gsm0710muxer.git
+	url = https://github.com/particle-iot/gsm0710muxer.git
 [submodule "third_party/catch2/catch2"]
 	path = third_party/catch2/catch2
-	url = ../Catch2.git
+	url = https://github.com/particle-iot/Catch2.git
