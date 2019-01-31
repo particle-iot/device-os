@@ -1,4 +1,4 @@
-ifneq (, $(shell sh -c "command -v git"))
+ifneq (, $(shell command -v git;))
     git_branch := $(shell git rev-parse --abbrev-ref HEAD)
     ifeq ("$(git_branch)","develop")
         ifndef PARTICLE_DEVELOP
