@@ -60,14 +60,27 @@ uint64_t hal_timer_millis(void* reserved);
  */
 uint64_t hal_timer_micros(void* reserved);
 
+typedef struct {
+    uint64_t base_clock_offset;
+} hal_timer_init_config_t;
+
 /**
  * @brief      Initializes timer HAL
+ *
+ * @param      conf  (optional) Configuration
+ *
+ * @return     0 in case of success, any other value in case of an error
+ */
+int hal_timer_init(const hal_timer_init_config_t* conf);
+
+/**
+ * @brief      Deinitializes timer HAL
  *
  * @param      reserved  Reserved argument
  *
  * @return     0 in case of success, any other value in case of an error
  */
-int hal_timer_init(void* reserved);
+int hal_timer_deinit(void* reserved);
 
 #ifdef __cplusplus
 }
