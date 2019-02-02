@@ -1515,7 +1515,7 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
         }
     }
 
-    auto r = appendReplySubmessage(diagResult->req, diagResult->written, PB(GetNetworkDiagnosticsReply_fields),
+    auto r = appendReplySubmessage(diagResult->req, diagResult->written, &PB(GetNetworkDiagnosticsReply_fields)[0],
             PB(DiagnosticInfo_fields), &pbRep);
     if (r > 0) {
         diagResult->written += r;
