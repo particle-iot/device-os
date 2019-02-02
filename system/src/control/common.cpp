@@ -53,9 +53,7 @@ int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_t* fi
     }
 
     SCOPE_GUARD({
-        if (stream != nullptr) {
-            pb_ostream_free(stream, nullptr);
-        }
+        pb_ostream_free(stream, nullptr);
     });
 
     CHECK_TRUE(pb_ostream_from_buffer_ex(stream, (pb_byte_t*)req->reply_data + offset,

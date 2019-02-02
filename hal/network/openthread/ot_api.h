@@ -47,6 +47,16 @@ extern "C" {
             } \
         } while (false)
 
+// Does not convert otErrors to system_error_t
+#define CHECK_THREAD_OTERR(_expr) \
+        do { \
+            const auto ret = _expr; \
+            if (ret != OT_ERROR_NONE) { \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
+                return ret; \
+            } \
+        } while (false)
+
 /**
  * @addtogroup ot_api
  *

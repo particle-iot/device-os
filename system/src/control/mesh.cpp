@@ -60,6 +60,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.mesh");
 #include "openthread/netdata.h"
 #include "thread/network_diagnostic_tlvs.hpp"
 #include "thread/network_data_tlvs.hpp"
+#include "thread/mle_constants.hpp"
 
 #include "deviceid_hal.h"
 #include "openthread/particle_extension.h"
@@ -178,9 +179,6 @@ os_timer_t g_commTimer = nullptr;
 // Commissioner role timeout
 unsigned g_commTimeout = DEFAULT_COMMISSIONER_TIMEOUT;
 
-// Router ID offset (it's defined in mle_constants.hpp, but we don't want to include it)
-const unsigned MLE_ROUTER_ID_OFFSET = 10;
-
 class Random: public particle::Random {
 public:
     void genBase32Thread(char* data, size_t size) {
@@ -195,6 +193,7 @@ public:
 void setIp6RlocAddress(otIp6Address* addr, const otMeshLocalPrefix* prefix, uint16_t rloc) {
     memcpy(addr->mFields.m8, prefix->m8, OT_MESH_LOCAL_PREFIX_SIZE);
     // Generate RLOC IPv6 address. Is there a better way to do this?
+    addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 4] = 0x0000;
     addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 3] = htons(0x00ff);
     addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 2] = htons(0xfe00);
     addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 1] = htons(rloc);
@@ -1352,7 +1351,7 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
                                 continue;
                             }
                             PB(DiagnosticInfo_Route64_RouteData) routeData = {};
-                            routeData.router_rloc = i << MLE_ROUTER_ID_OFFSET;
+                            routeData.router_rloc = i << ot::Mle::kRouterIdOffset;
                             routeData.link_quality_out = routeTlv->GetLinkQualityOut(i);
                             routeData.link_quality_in = routeTlv->GetLinkQualityIn(i);
                             routeData.route_cost = routeTlv->GetRouteCost(i);
@@ -1376,7 +1375,7 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
                     leaderData.weighting = leaderDataTlv->GetWeighting();
                     leaderData.data_version = leaderDataTlv->GetDataVersion();
                     leaderData.stable_data_version = leaderDataTlv->GetStableDataVersion();
-                    leaderData.leader_rloc = leaderDataTlv->GetLeaderRouterId() << MLE_ROUTER_ID_OFFSET;
+                    leaderData.leader_rloc = leaderDataTlv->GetLeaderRouterId() << ot::Mle::kRouterIdOffset;
                 }
                 break;
             }
@@ -1504,10 +1503,13 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
     }
 
     if (diagResult->pbReq->flags & PB(GetNetworkDiagnosticsRequest_Flags_RESOLVE_DEVICE_ID)) {
-        for (const auto& entry : diagResult->deviceIdMapping) {
+        for (int i = 0; i < diagResult->deviceIdMapping.size(); ++i) {
+            const auto& entry = diagResult->deviceIdMapping.at(i);
             if (entry.resolved && entry.rloc == pbRep.rloc) {
                 pbRep.device_id.size = HAL_DEVICE_ID_SIZE;
                 memcpy(pbRep.device_id.bytes, entry.deviceId, HAL_DEVICE_ID_SIZE);
+                // Remove the entry
+                diagResult->deviceIdMapping.removeAt(i);
                 break;
             }
         }
@@ -1605,7 +1607,7 @@ int getNetworkDiagnostics(ctrl_request* req) {
             continue;
         }
 
-        routers.append(routerInfo);
+        CHECK_TRUE(routers.append(routerInfo), SYSTEM_ERROR_NO_MEMORY);
     }
 
     auto localPrefix = otThreadGetMeshLocalPrefix(thread);
@@ -1632,7 +1634,7 @@ int getNetworkDiagnostics(ctrl_request* req) {
                     diagResult->error = r;
                 }
 
-                if ((rloc & 0x00ff) == 0x0000) {
+                if ((rloc & ot::Mle::kMaxChildId) == 0x0000) {
                     // Router
                     ++diagResult->routersReplied;
                 } else {
@@ -1659,7 +1661,7 @@ int getNetworkDiagnostics(ctrl_request* req) {
                     diagResult->deviceIdMapping.append(mapping);
                 }
 
-                if ((rloc & 0x00ff) == 0x0000) {
+                if ((rloc & ot::Mle::kMaxChildId) == 0x0000) {
                     // Router
                     ++diagResult->routersResolved;
                 } else {

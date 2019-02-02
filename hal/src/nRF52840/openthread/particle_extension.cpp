@@ -105,7 +105,7 @@ public:
             msg->Init(OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_GET);
         }
         msg->SetToken(Coap::Message::kDefaultTokenLength);
-        msg->AppendUriPathOptions(PARTICLE_URI_PATH_DEVICE_ID_GET_REQUEST);
+        CHECK_THREAD_OTERR(msg->AppendUriPathOptions(PARTICLE_URI_PATH_DEVICE_ID_GET_REQUEST));
 
         Ip6::MessageInfo msgInfo;
 
@@ -193,7 +193,8 @@ private:
                     deviceId = tlv.GetDeviceId();
                     deviceIdSize = HAL_DEVICE_ID_SIZE;
                 } else {
-                    if (result != OT_ERROR_NONE) {
+                    if (result == OT_ERROR_NONE) {
+                        // !tlv.IsValid()
                         result = OT_ERROR_PARSE;
                     }
                 }
