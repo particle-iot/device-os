@@ -165,7 +165,7 @@
 #define OPENTHREAD_ENABLE_UDP_FORWARD 0
 
 /* Define to 1 if using vendor extension */
-#define OPENTHREAD_ENABLE_VENDOR_EXTENSION 0
+#define OPENTHREAD_ENABLE_VENDOR_EXTENSION 1
 
 /* Define to 1 if you want to use cc1352 examples */
 /* #undef OPENTHREAD_EXAMPLES_CC1352 */

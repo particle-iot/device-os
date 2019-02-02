@@ -28,6 +28,8 @@
 #include <openthread/ip6.h>
 #include "hal_platform.h"
 
+#include "check.h"
+
 #if HAL_OPENTHREAD_USE_LWIP_LOCK
 #include "lwiplock.h"
 #endif // HAL_OPENTHREAD_USE_LWIP_LOCK
@@ -36,6 +38,24 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#define CHECK_THREAD(_expr) \
+        do { \
+            const auto ret = _expr; \
+            if (ret != OT_ERROR_NONE) { \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
+                return ot_system_error(ret); \
+            } \
+        } while (false)
+
+// Does not convert otErrors to system_error_t
+#define CHECK_THREAD_OTERR(_expr) \
+        do { \
+            const auto ret = _expr; \
+            if (ret != OT_ERROR_NONE) { \
+                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
+                return ret; \
+            } \
+        } while (false)
 
 /**
  * @addtogroup ot_api

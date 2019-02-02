@@ -32,15 +32,6 @@
 #include <openthread-system.h>
 #include <mutex>
 
-#define CHECK_THREAD(_expr) \
-        do { \
-            const otError ret = _expr; \
-            if (ret != OT_ERROR_NONE) { \
-                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
-                return ot_system_error(ret); \
-            } \
-        } while (false)
-
 LOG_SOURCE_CATEGORY("system.ot");
 
 namespace particle {

@@ -15,6 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("system.ctrl.mesh");
+
 #include "mesh.h"
 
 #if SYSTEM_CONTROL_ENABLED
@@ -37,6 +41,9 @@
 #include "preprocessor.h"
 #include "logging.h"
 #include "check.h"
+#include "scope_guard.h"
+#include <arpa/inet.h>
+#include "inet_hal_posix.h"
 
 #include "spark_wiring_vector.h"
 
@@ -50,6 +57,13 @@
 #include "openthread/dataset.h"
 #include "openthread/dataset_ftd.h"
 #include "openthread/platform/settings.h"
+#include "openthread/netdata.h"
+#include "thread/network_diagnostic_tlvs.hpp"
+#include "thread/network_data_tlvs.hpp"
+#include "thread/mle_constants.hpp"
+
+#include "deviceid_hal.h"
+#include "openthread/particle_extension.h"
 
 #include "proto/mesh.pb.h"
 
@@ -62,15 +76,6 @@
 #ifndef OT_CHANNEL_ALL
 #define OT_CHANNEL_ALL (0xffffffff)
 #endif // OT_CHANNEL_ALL
-
-#define CHECK_THREAD(_expr) \
-        do { \
-            const auto ret = _expr; \
-            if (ret != OT_ERROR_NONE) { \
-                LOG_DEBUG(ERROR, #_expr " failed: %d", (int)ret); \
-                return ot_system_error(ret); \
-            } \
-        } while (false)
 
 #define THREAD_LOCK(_name) \
         ThreadLock _name;
@@ -88,6 +93,21 @@
                 HAL_Core_System_Reset_Ex(RESET_REASON_WATCHDOG, 0, nullptr); \
             } \
             HAL_Delay_Milliseconds(500); \
+            _lock.lock(); \
+        }
+
+// FIXME: provide a single WAIT_UNTIL with variable number of arguments
+#define WAIT_UNTIL_EX(_lock, _pollPeriod, _maxWait, _expr) \
+        for (const auto _t1 = HAL_Timer_Get_Milli_Seconds();;) { \
+            if (_expr) { \
+                break; \
+            } \
+            const auto _t2 = HAL_Timer_Get_Milli_Seconds(); \
+            if (_t2 - _t1 >= _maxWait) { \
+                break; \
+            } \
+            _lock.unlock(); \
+            HAL_Delay_Milliseconds(_pollPeriod); \
             _lock.lock(); \
         }
 
@@ -138,6 +158,9 @@ const unsigned ENERGY_SCAN_DURATION = 200;
 // Time in milliseconds after which WAIT_UNTIL() resets the device
 const unsigned WAIT_UNTIL_TIMEOUT = 600000;
 
+// Time in milliseconds to wait for diagnostic reply from the nodes
+const unsigned DIAGNOSTIC_REPLY_TIMEOUT = 10000;
+
 // Vendor data
 const char* const VENDOR_NAME = "Particle";
 const char* const VENDOR_MODEL = PP_STR(PLATFORM_NAME);
@@ -166,6 +189,15 @@ public:
         genAlpha(data, size, alpha, sizeof(alpha));
     }
 };
+
+void setIp6RlocAddress(otIp6Address* addr, const otMeshLocalPrefix* prefix, uint16_t rloc) {
+    memcpy(addr->mFields.m8, prefix->m8, OT_MESH_LOCAL_PREFIX_SIZE);
+    // Generate RLOC IPv6 address. Is there a better way to do this?
+    addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 4] = 0x0000;
+    addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 3] = htons(0x00ff);
+    addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 2] = htons(0xfe00);
+    addr->mFields.m16[(sizeof(addr->mFields.m16) / sizeof(addr->mFields.m16[0])) - 1] = htons(rloc);
+}
 
 /**
  * Fetch the corresponding network attributes given by the flags into a network update command
@@ -909,6 +941,796 @@ int scanNetworks(ctrl_request* req) {
         return ret;
     }
     return 0;
+}
+
+struct DiagnosticResult {
+    ctrl_request* req;
+
+    size_t written;
+
+    const PB(GetNetworkDiagnosticsRequest)* pbReq;
+
+    int routersCount;
+    volatile int routersReplied;
+
+    int childCount;
+    volatile int childReplied;
+    Vector<uint16_t> children;
+
+    int error;
+
+    struct RlocDeviceId {
+        bool resolved;
+        uint16_t rloc;
+        uint8_t deviceId[HAL_DEVICE_ID_SIZE];
+    };
+
+    Vector<RlocDeviceId> deviceIdMapping;
+    volatile int routersResolved;
+    volatile int childrenResolved;
+};
+
+struct NetworkDataState {
+    ot::NetworkData::NetworkDataTlv* begin;
+    ot::NetworkData::NetworkDataTlv* end;
+};
+
+void findNetworkDataTlv(NetworkDataState* state, uint8_t* data, size_t len, bool stable) {
+    using namespace ot::NetworkData;
+    NetworkDataTlv* networkData = reinterpret_cast<NetworkDataTlv*>(data);
+    auto end = reinterpret_cast<NetworkDataTlv*>(data + len);
+    for (auto netData = networkData; netData && netData < end; netData = netData->GetNext()) {
+        if (stable == netData->IsStable()) {
+            state->begin = netData;
+            state->end = end;
+            return;
+        }
+    }
+}
+
+bool encodeContext(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto prefix = static_cast<PrefixTlv*>(*arg);
+
+    for (auto netData = prefix->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(prefix->GetSubTlvs()) + prefix->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeContext) {
+            continue;
+        }
+
+        auto context = static_cast<ContextTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_Context) pbContext = {};
+        pbContext.cid = context->GetContextId();
+        pbContext.context_length = context->GetContextLength();
+        pbContext.compress = context->IsCompress();
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, particle_ctrl_mesh_DiagnosticInfo_NetworkData_Context_fields, &pbContext)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeHasRoute(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto prefix = static_cast<PrefixTlv*>(*arg);
+
+    for (auto netData = prefix->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(prefix->GetSubTlvs()) + prefix->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeHasRoute) {
+            continue;
+        }
+
+        auto hasRoute = static_cast<HasRouteTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_HasRoute) pbHasRoute = {};
+        pbHasRoute.entries.arg = hasRoute;
+        pbHasRoute.entries.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+            auto hasRoute = static_cast<HasRouteTlv*>(*arg);
+
+            for (int i = 0; i < hasRoute->GetNumEntries(); i++) {
+                auto entry = hasRoute->GetEntry(i);
+                PB(DiagnosticInfo_NetworkData_HasRoute_HasRouteEntry) pbEntry = {};
+                pbEntry.rloc = entry->GetRloc();
+                pbEntry.preference = static_cast<PB(DiagnosticInfo_RoutePreference)>(entry->GetPreference());
+
+                if (!pb_encode_tag_for_field(strm, field)) {
+                    return false;
+                }
+                if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_HasRoute_HasRouteEntry_fields), &pbEntry)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_HasRoute_fields), &pbHasRoute)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeBorderRouter(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto prefix = static_cast<PrefixTlv*>(*arg);
+
+    for (auto netData = prefix->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(prefix->GetSubTlvs()) + prefix->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeBorderRouter) {
+            continue;
+        }
+
+        auto borderRouter = static_cast<BorderRouterTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_BorderRouter) pbBorderRouter = {};
+        pbBorderRouter.entries.arg = borderRouter;
+        pbBorderRouter.entries.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+            auto borderRouter = static_cast<BorderRouterTlv*>(*arg);
+
+            for (int i = 0; i < borderRouter->GetNumEntries(); i++) {
+                auto entry = borderRouter->GetEntry(i);
+                PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry) pbEntry = {};
+                pbEntry.rloc = entry->GetRloc();
+                pbEntry.preference = static_cast<PB(DiagnosticInfo_RoutePreference)>(entry->GetPreference());
+
+                if (entry->IsPreferred()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_PREFERRED);
+                }
+                if (entry->IsSlaac()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_SLAAC);
+                }
+                if (entry->IsDhcp()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_DHCP);
+                }
+                if (entry->IsConfigure()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_CONFIGURE);
+                }
+                if (entry->IsDefaultRoute()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_DEFAULT_ROUTE);
+                }
+                if (entry->IsOnMesh()) {
+                    pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_ON_MESH);
+                }
+                // P_nd_dns is not supported as of now in OpenThread
+                // if (entry->IsNdDns()) {
+                //     pbEntry.flags |= PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_Flags_ND_DNS);
+                // }
+
+                if (!pb_encode_tag_for_field(strm, field)) {
+                    return false;
+                }
+                if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_BorderRouter_BorderRouterEntry_fields), &pbEntry)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_BorderRouter_fields), &pbBorderRouter)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeNetworkDataPrefixes(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+    auto networkDataState = static_cast<NetworkDataState*>(*arg);
+
+    for (auto netData = networkDataState->begin;
+            netData && netData < networkDataState->end;
+            netData = netData->GetNext()) {
+        if (!(netData->GetType() == NetworkDataTlv::kTypePrefix &&
+              netData->IsStable() == networkDataState->begin->IsStable())) {
+            continue;
+        }
+
+        auto prefix = static_cast<PrefixTlv*>(netData);
+        if (!prefix->IsValid()) {
+            continue;
+        }
+
+        PB(DiagnosticInfo_NetworkData_Prefix) pbPrefix = {};
+        pbPrefix.domain_id = prefix->GetDomainId();
+        pbPrefix.prefix_length = prefix->GetPrefixLength();
+        pbPrefix.prefix.size = BitVectorBytes(prefix->GetPrefixLength());
+        memcpy(pbPrefix.prefix.bytes, prefix->GetPrefix(), pbPrefix.prefix.size);
+
+        // Process sub-TLVs: Context, Has Route, Border Router
+        if (prefix->GetSubTlvsLength() >= sizeof(NetworkDataTlv)) {
+            pbPrefix.context.arg = prefix;
+            pbPrefix.context.funcs.encode = encodeContext;
+            pbPrefix.has_route.entries.arg = prefix;
+            pbPrefix.has_route.entries.funcs.encode = encodeHasRoute;
+            pbPrefix.border_router.entries.arg = prefix;
+            pbPrefix.border_router.entries.funcs.encode = encodeBorderRouter;
+        }
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, particle_ctrl_mesh_DiagnosticInfo_NetworkData_Prefix_fields, &pbPrefix)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeServers(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+
+    auto service = static_cast<ServiceTlv*>(*arg);
+
+    for (auto netData = service->GetSubTlvs();
+            netData && netData < reinterpret_cast<const NetworkDataTlv*>(
+                reinterpret_cast<uint8_t*>(service->GetSubTlvs()) + service->GetSubTlvsLength());
+            netData = netData->GetNext()) {
+        if (netData->GetType() != NetworkDataTlv::kTypeServer) {
+            continue;
+        }
+
+        auto server = static_cast<ServerTlv*>(netData);
+
+        PB(DiagnosticInfo_NetworkData_Server) pbServer = {};
+        pbServer.rloc = server->GetServer16();
+        EncodedString eServerData(&pbServer.data, (const char*)server->GetServerData(), server->GetServerDataLength());
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, PB(DiagnosticInfo_NetworkData_Server_fields), &pbServer)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool encodeNetworkDataServices(pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    using namespace ot::NetworkData;
+    auto networkDataState = static_cast<NetworkDataState*>(*arg);
+
+    for (auto netData = networkDataState->begin;
+            netData && netData < networkDataState->end;
+            netData = netData->GetNext()) {
+        if (!(netData->GetType() == NetworkDataTlv::kTypeService &&
+              netData->IsStable() == networkDataState->begin->IsStable())) {
+            continue;
+        }
+
+        auto service = static_cast<ServiceTlv*>(netData);
+        if (!service->IsValid()) {
+            continue;
+        }
+
+        PB(DiagnosticInfo_NetworkData_Service) pbService = {};
+        pbService.sid = service->GetServiceID();
+        pbService.enterprise_number = service->GetEnterpriseNumber();
+        EncodedString eServiceData(&pbService.data, (const char*)service->GetServiceData(),
+                service->GetServiceDataLength());
+
+        // Process sub-TLVs: Server
+        if (service->GetSubTlvsLength() >= sizeof(NetworkDataTlv)) {
+            pbService.servers.arg = service;
+            pbService.servers.funcs.encode = encodeServers;
+        }
+
+        if (!pb_encode_tag_for_field(strm, field)) {
+            return false;
+        }
+        if (!pb_encode_submessage(strm, particle_ctrl_mesh_DiagnosticInfo_NetworkData_Service_fields, &pbService)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void encodeNetworkData(NetworkDataState* stable, NetworkDataState* temporary, PB(DiagnosticInfo)* pbRep) {
+    using namespace ot::NetworkData;
+
+    auto& pbNetData = pbRep->network_data;
+
+    if (stable->begin) {
+        pbNetData.stable.prefixes.arg = stable;
+        pbNetData.stable.prefixes.funcs.encode = encodeNetworkDataPrefixes;
+        pbNetData.stable.services.arg = stable;
+        pbNetData.stable.services.funcs.encode = encodeNetworkDataServices;
+    }
+
+    if (temporary->begin) {
+        pbNetData.temporary.prefixes.arg = temporary;
+        pbNetData.temporary.prefixes.funcs.encode = encodeNetworkDataPrefixes;
+        pbNetData.temporary.services.arg = temporary;
+        pbNetData.temporary.services.funcs.encode = encodeNetworkDataServices;
+    }
+}
+
+int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* message,
+        const otMessageInfo* messageInfo, uint16_t rloc) {
+    const int len = otMessageGetLength(message) - otMessageGetOffset(message);
+    // Put all the TLVs into a contiguous block
+    auto tlvs = std::make_unique<uint8_t[]>(len);
+    CHECK_TRUE(tlvs, SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(otMessageRead(message, otMessageGetOffset(message), tlvs.get(), len) == len, SYSTEM_ERROR_BAD_DATA);
+
+    using namespace ot::NetworkDiagnostic;
+
+    PB(DiagnosticInfo) pbRep = {};
+
+    NetworkDataState stableNetData = {};
+    NetworkDataState temporaryNetData = {};
+
+    for (const ot::Tlv* tlv = reinterpret_cast<const ot::Tlv*>(tlvs.get());
+            reinterpret_cast<const uint8_t*>(tlv) < tlvs.get() + len; tlv = tlv->GetNext()) {
+
+        auto type = tlv->GetType();
+
+        switch (type) {
+            case NetworkDiagnosticTlv::kExtMacAddress: {
+                auto eMacTlv = static_cast<const ExtMacAddressTlv*>(tlv);
+                if (eMacTlv->IsValid()) {
+                    auto eMac = eMacTlv->GetMacAddr();
+                    memcpy(pbRep.ext_mac_address.bytes, eMac->m8, sizeof(pbRep.ext_mac_address.bytes));
+                    pbRep.ext_mac_address.size = sizeof(pbRep.ext_mac_address.bytes);
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kAddress16: {
+                auto a16Tlv = static_cast<const Address16Tlv*>(tlv);
+                if (a16Tlv->IsValid()) {
+                    pbRep.rloc = a16Tlv->GetRloc16();
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kMode: {
+                auto modeTlv = static_cast<const ModeTlv*>(tlv);
+                if (modeTlv->IsValid()) {
+                    pbRep.mode = modeTlv->GetMode();
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kTimeout: {
+                auto timeoutTlv = static_cast<const TimeoutTlv*>(tlv);
+                if (timeoutTlv->IsValid()) {
+                    pbRep.timeout = timeoutTlv->GetTimeout();
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kConnectivity: {
+                auto conTlv = static_cast<const ConnectivityTlv*>(tlv);
+                if (conTlv->IsValid()) {
+                    auto& con = pbRep.connectivity;
+                    con.parent_priority = conTlv->GetParentPriority();
+                    con.link_quality_1 = conTlv->GetLinkQuality1();
+                    con.link_quality_2 = conTlv->GetLinkQuality2();
+                    con.link_quality_3 = conTlv->GetLinkQuality3();
+                    con.leader_cost = conTlv->GetLeaderCost();
+                    con.id_sequence = conTlv->GetIdSequence();
+                    con.active_routers = conTlv->GetActiveRouters();
+                    con.sed_buffer_size = conTlv->GetSedBufferSize();
+                    con.sed_datagram_count = conTlv->GetSedDatagramCount();
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kRoute: {
+                auto routeTlv = static_cast<const RouteTlv*>(tlv);
+                if (routeTlv->IsValid()) {
+                    auto& route = pbRep.route64;
+                    route.id_sequence = routeTlv->GetRouterIdSequence();
+                    route.routes.arg = (void*)routeTlv;
+                    route.routes.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+                        auto routeTlv = reinterpret_cast<const RouteTlv*>(*arg);
+                        auto maxRouterId = otThreadGetMaxRouterId(ot_get_instance());
+                        for (unsigned i = 0; i < maxRouterId; i++) {
+                            if (!routeTlv->IsRouterIdSet(i)) {
+                                continue;
+                            }
+                            PB(DiagnosticInfo_Route64_RouteData) routeData = {};
+                            routeData.router_rloc = i << ot::Mle::kRouterIdOffset;
+                            routeData.link_quality_out = routeTlv->GetLinkQualityOut(i);
+                            routeData.link_quality_in = routeTlv->GetLinkQualityIn(i);
+                            routeData.route_cost = routeTlv->GetRouteCost(i);
+                            if (!pb_encode_tag_for_field(strm, field)) {
+                                return false;
+                            }
+                            if (!pb_encode_submessage(strm, PB(DiagnosticInfo_Route64_RouteData_fields), &routeData)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    };
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kLeaderData: {
+                auto leaderDataTlv = static_cast<const LeaderDataTlv*>(tlv);
+                if (leaderDataTlv->IsValid()) {
+                    auto& leaderData = pbRep.leader_data;
+                    leaderData.partition_id = leaderDataTlv->GetPartitionId();
+                    leaderData.weighting = leaderDataTlv->GetWeighting();
+                    leaderData.data_version = leaderDataTlv->GetDataVersion();
+                    leaderData.stable_data_version = leaderDataTlv->GetStableDataVersion();
+                    leaderData.leader_rloc = leaderDataTlv->GetLeaderRouterId() << ot::Mle::kRouterIdOffset;
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kNetworkData: {
+                auto networkDataTlv = (NetworkDataTlv*)(tlv);
+                if (networkDataTlv->IsValid()) {
+                    findNetworkDataTlv(&stableNetData, networkDataTlv->GetNetworkData(), networkDataTlv->GetLength(), true);
+                    findNetworkDataTlv(&temporaryNetData, networkDataTlv->GetNetworkData(), networkDataTlv->GetLength(), false);
+                    encodeNetworkData(&stableNetData, &temporaryNetData, &pbRep);
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kIp6AddressList: {
+                auto ip6AddrList = static_cast<const Ip6AddressListTlv*>(tlv);
+                if (ip6AddrList->IsValid()) {
+                    auto& pbList = pbRep.ipv6_address_list;
+                    pbList.arg = (void*)ip6AddrList;
+                    pbList.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+                        auto ip6AddrList = reinterpret_cast<const Ip6AddressListTlv*>(*arg);
+                        const unsigned totalAddrs = ip6AddrList->GetLength() / sizeof(otIp6Address);
+                        for (unsigned i = 0; i < totalAddrs; i++) {
+                            const otIp6Address* addr = &ip6AddrList->GetIp6Address(i);
+                            particle_ctrl_Ipv6Address pbAddr = {};
+                            memcpy(pbAddr.address, addr->mFields.m8, sizeof(pbAddr.address));
+                            if (!pb_encode_tag_for_field(strm, field)) {
+                                return false;
+                            }
+                            if (!pb_encode_submessage(strm, particle_ctrl_Ipv6Address_fields, &pbAddr)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    };
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kMacCounters: {
+                auto macCountersTlv = static_cast<const MacCountersTlv*>(tlv);
+                if (macCountersTlv->IsValid()) {
+                    auto& pbMacCounters = pbRep.mac_counters;
+                    pbMacCounters.if_in_unknown_protos = macCountersTlv->GetIfInUnknownProtos();
+                    pbMacCounters.if_in_errors = macCountersTlv->GetIfInErrors();
+                    pbMacCounters.if_out_errors = macCountersTlv->GetIfOutErrors();
+                    pbMacCounters.if_in_ucast_pkts = macCountersTlv->GetIfInUcastPkts();
+                    pbMacCounters.if_in_broadcast_pkts = macCountersTlv->GetIfInBroadcastPkts();
+                    pbMacCounters.if_in_discards = macCountersTlv->GetIfInDiscards();
+                    pbMacCounters.if_out_ucast_pkts = macCountersTlv->GetIfOutUcastPkts();
+                    pbMacCounters.if_out_broadcast_pkts = macCountersTlv->GetIfOutBroadcastPkts();
+                    pbMacCounters.if_out_discards = macCountersTlv->GetIfOutDiscards();
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kBatteryLevel: {
+                // Not implemented in OpenThread as of now
+                break;
+            }
+            case NetworkDiagnosticTlv::kSupplyVoltage: {
+                // Not implemented in OpenThread as of now
+                break;
+            }
+            case NetworkDiagnosticTlv::kChildTable: {
+                auto childTable = (ChildTableTlv*)(tlv);
+                // This check is broken in OpenThread :|
+                // if (childTable->IsValid()) {
+                if (childTable->GetLength() >= sizeof(NetworkDiagnosticTlv)) {
+                    auto& pbChildren = pbRep.child_table.children;
+                    pbChildren.arg = (void*)childTable;
+                    pbChildren.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+                        auto childTable = reinterpret_cast<ChildTableTlv*>(*arg);
+                        for (unsigned i = 0; i < childTable->GetNumEntries(); i++) {
+                            const auto& entry = childTable->GetEntry(i);
+                            PB(DiagnosticInfo_ChildTable_ChildEntry) pbChild = {};
+                            pbChild.timeout = entry.GetTimeout();
+                            pbChild.child_id = entry.GetChildId();
+                            pbChild.mode = entry.GetMode();
+                            if (!pb_encode_tag_for_field(strm, field)) {
+                                return false;
+                            }
+                            if (!pb_encode_submessage(strm, PB(DiagnosticInfo_ChildTable_ChildEntry_fields), &pbChild)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    };
+
+                    if (diagResult->pbReq->flags & PB(GetNetworkDiagnosticsRequest_Flags_QUERY_CHILDREN)) {
+                        // Make child RLOC set
+                        for (unsigned i = 0; i < childTable->GetNumEntries(); i++) {
+                            const auto& entry = childTable->GetEntry(i);
+                            uint16_t childRloc = rloc | entry.GetChildId();
+                            if (!diagResult->children.contains(childRloc)) {
+                                diagResult->children.append(childRloc);
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kChannelPages: {
+                auto channelPagesTlv = (ChannelPagesTlv*)(tlv);
+                if (channelPagesTlv->IsValid()) {
+                    // Only 1 channel page supported in OpenThread at the moment
+                    pbRep.channel_pages.size = 1;
+                    pbRep.channel_pages.bytes[0] = *channelPagesTlv->GetChannelPages();
+                }
+                break;
+            }
+            case NetworkDiagnosticTlv::kTypeList: {
+                // Should not be returned
+                break;
+            }
+            case NetworkDiagnosticTlv::kMaxChildTimeout: {
+                auto timeoutTlv = static_cast<const MaxChildTimeoutTlv*>(tlv);
+                if (timeoutTlv->IsValid()) {
+                    pbRep.max_child_timeout = timeoutTlv->GetTimeout();
+                }
+                break;
+            }
+        }
+    }
+
+    if (pbRep.rloc == 0x0000) {
+        // Even if we did not request RLOC TLV, we can still deduce it from the source address
+        pbRep.rloc = rloc;
+    }
+
+    if (diagResult->pbReq->flags & PB(GetNetworkDiagnosticsRequest_Flags_RESOLVE_DEVICE_ID)) {
+        for (int i = 0; i < diagResult->deviceIdMapping.size(); ++i) {
+            const auto& entry = diagResult->deviceIdMapping.at(i);
+            if (entry.resolved && entry.rloc == pbRep.rloc) {
+                pbRep.device_id.size = HAL_DEVICE_ID_SIZE;
+                memcpy(pbRep.device_id.bytes, entry.deviceId, HAL_DEVICE_ID_SIZE);
+                // Remove the entry
+                diagResult->deviceIdMapping.removeAt(i);
+                break;
+            }
+        }
+    }
+
+    auto r = appendReplySubmessage(diagResult->req, diagResult->written, &PB(GetNetworkDiagnosticsReply_fields)[0],
+            PB(DiagnosticInfo_fields), &pbRep);
+    if (r > 0) {
+        diagResult->written += r;
+    } else {
+        LOG(ERROR, "appendReplySubmessage %d", r);
+        return r;
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int getNetworkDiagnostics(ctrl_request* req) {
+    // Parse request
+    PB(GetNetworkDiagnosticsRequest) pbReq = {};
+    // FIXME: repeated enums should probably not be decoded this way
+    DecodedString diagTypes(&pbReq.diagnostic_types);
+    int ret = decodeRequestMessage(req, PB(GetNetworkDiagnosticsRequest_fields), &pbReq);
+    if (ret != 0) {
+        LOG(ERROR, "Failed to decode GetNetworkDiagnosticsRequest message %d", ret);
+        return ret;
+    }
+
+    // At least one diagnostic type should have been requested
+    if (diagTypes.size < 1) {
+        LOG(ERROR, "At least one diagnostic type should have been specified");
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    bool childTableRequested = false;
+
+    // Validate requested tlvs
+    for (unsigned i = 0; i < diagTypes.size; i++) {
+        switch(diagTypes.data[i]) {
+            case PB(DiagnosticType_MAC_EXTENDED_ADDRESS):
+            case PB(DiagnosticType_MAC_ADDRESS):
+            case PB(DiagnosticType_MODE):
+            case PB(DiagnosticType_TIMEOUT):
+            case PB(DiagnosticType_CONNECTIVITY):
+            case PB(DiagnosticType_ROUTE64):
+            case PB(DiagnosticType_LEADER_DATA):
+            case PB(DiagnosticType_NETWORK_DATA):
+            case PB(DiagnosticType_IPV6_ADDRESS_LIST):
+            case PB(DiagnosticType_MAC_COUNTERS):
+            case PB(DiagnosticType_BATTERY_LEVEL):
+            case PB(DiagnosticType_SUPPLY_VOLTAGE):
+            case PB(DiagnosticType_CHANNEL_PAGES):
+            // case PB(DiagnosticType_TYPE_LIST):
+            case PB(DiagnosticType_MAX_CHILD_TIMEOUT): {
+                break;
+            }
+            case PB(DiagnosticType_CHILD_TABLE): {
+                childTableRequested = true;
+                break;
+            }
+            default: {
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+        }
+    }
+
+    if ((pbReq.flags & PB(GetNetworkDiagnosticsRequest_Flags_QUERY_CHILDREN)) && !childTableRequested) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    THREAD_LOCK(lock);
+    const auto thread = threadInstance();
+    if (!thread) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    // Enable Thread
+    if (!otDatasetIsCommissioned(thread)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!otIp6IsEnabled(thread)) {
+        CHECK_THREAD(otIp6SetEnabled(thread, true));
+    }
+    if (otThreadGetDeviceRole(thread) == OT_DEVICE_ROLE_DISABLED) {
+        CHECK_THREAD(otThreadSetEnabled(thread, true));
+    }
+    WAIT_UNTIL(lock, otThreadGetDeviceRole(thread) != OT_DEVICE_ROLE_DETACHED);
+
+    // Get list of routers
+    Vector<otRouterInfo> routers;
+    auto maxRouterId = otThreadGetMaxRouterId(thread);
+    for (auto i = 0; i <= maxRouterId; i++) {
+        otRouterInfo routerInfo;
+        if (otThreadGetRouterInfo(thread, i, &routerInfo) != OT_ERROR_NONE) {
+            continue;
+        }
+
+        CHECK_TRUE(routers.append(routerInfo), SYSTEM_ERROR_NO_MEMORY);
+    }
+
+    auto localPrefix = otThreadGetMeshLocalPrefix(thread);
+    CHECK_TRUE(localPrefix, SYSTEM_ERROR_INVALID_STATE);
+
+    DiagnosticResult diagResult = {};
+    diagResult.req = req;
+    diagResult.pbReq = &pbReq;
+    diagResult.routersCount = routers.size();
+
+    const unsigned diagReplyTimeout = pbReq.timeout > 0 ? pbReq.timeout * 1000 : DIAGNOSTIC_REPLY_TIMEOUT;
+    const unsigned resolveReplyTimeout = std::max(diagReplyTimeout / 2, DIAGNOSTIC_REPLY_TIMEOUT / 2);
+
+    otThreadSetReceiveDiagnosticGetCallback(thread,
+            [](otMessage *message, const otMessageInfo *messageInfo, void *ctx) {
+                DiagnosticResult* diagResult = static_cast<DiagnosticResult*>(ctx);
+                const auto& m16 = messageInfo->mPeerAddr.mFields.m16;
+                auto rloc = ntohs(m16[(sizeof(m16) / sizeof(m16[0])) - 1]);
+                LOG_DEBUG(TRACE, "Received diagnostics from %04x, size = %d", rloc, otMessageGetLength(message));
+
+                auto r = processNetworkDiagnosticTlvs(diagResult, message, messageInfo, rloc);
+
+                if (r != SYSTEM_ERROR_NONE) {
+                    diagResult->error = r;
+                }
+
+                if ((rloc & ot::Mle::kMaxChildId) == 0x0000) {
+                    // Router
+                    ++diagResult->routersReplied;
+                } else {
+                    // Child
+                    ++diagResult->childReplied;
+                }
+            }, &diagResult);
+
+    SCOPE_GUARD({
+        otThreadSetReceiveDiagnosticGetCallback(thread, nullptr, nullptr);
+    });
+
+    otExtParticleSetReceiveDeviceIdGetCallback(thread,
+            [](otError err, otCoapCode coapResult, const uint8_t* deviceId, size_t length,
+                    const otMessageInfo* msgInfo, void* ctx) {
+                DiagnosticResult* diagResult = static_cast<DiagnosticResult*>(ctx);
+                const auto& m16 = msgInfo->mPeerAddr.mFields.m16;
+                auto rloc = ntohs(m16[(sizeof(m16) / sizeof(m16[0])) - 1]);
+                LOG_DEBUG(TRACE, "Received Device Id response from %04x %d %d", rloc, err, coapResult);
+
+                if (err == OT_ERROR_NONE && deviceId && length) {
+                    DiagnosticResult::RlocDeviceId mapping = {true, rloc};
+                    memcpy(mapping.deviceId, deviceId, sizeof(mapping.deviceId));
+                    diagResult->deviceIdMapping.append(mapping);
+                }
+
+                if ((rloc & ot::Mle::kMaxChildId) == 0x0000) {
+                    // Router
+                    ++diagResult->routersResolved;
+                } else {
+                    // Child
+                    ++diagResult->childrenResolved;
+                }
+    }, &diagResult);
+
+    SCOPE_GUARD({
+        otExtParticleSetReceiveDeviceIdGetCallback(thread, nullptr, nullptr);
+    });
+
+    if (pbReq.flags & PB(GetNetworkDiagnosticsRequest_Flags_RESOLVE_DEVICE_ID)) {
+        for (const auto& router : routers) {
+            otIp6Address addr = {};
+            setIp6RlocAddress(&addr, localPrefix, router.mRloc16);
+            LOG_DEBUG(TRACE, "Sending GET Device Id to router %04x", router.mRloc16);
+            CHECK_THREAD(otExtParticleSendDeviceIdGet(thread, &addr));
+        }
+        // FIXME: it's probably better to use something like a semaphore here
+        WAIT_UNTIL_EX(lock, 100, resolveReplyTimeout, (diagResult.routersResolved >= diagResult.routersCount));
+    }
+
+    for (const auto& router : routers) {
+        otIp6Address addr = {};
+        setIp6RlocAddress(&addr, localPrefix, router.mRloc16);
+        LOG_DEBUG(TRACE, "Sending DIAG_GET.req to router %04x", router.mRloc16);
+        CHECK_THREAD(otThreadSendDiagnosticGet(thread, &addr, (const uint8_t*)diagTypes.data, diagTypes.size));
+    }
+
+    routers.clear();
+
+    // FIXME: it's probably better to use something like a semaphore here
+    WAIT_UNTIL_EX(lock, 100, diagReplyTimeout, (diagResult.routersReplied >= diagResult.routersCount));
+
+    if (!diagResult.error && diagResult.children.size() > 0) {
+        // Query children as well, if requested
+        diagResult.childCount = diagResult.children.size();
+
+        if (pbReq.flags & PB(GetNetworkDiagnosticsRequest_Flags_RESOLVE_DEVICE_ID)) {
+            for (const auto& child : diagResult.children) {
+                otIp6Address addr = {};
+                setIp6RlocAddress(&addr, localPrefix, child);
+                LOG_DEBUG(TRACE, "Sending GET Device Id to child %04x", child);
+                CHECK_THREAD(otExtParticleSendDeviceIdGet(thread, &addr));
+            }
+            // FIXME: it's probably better to use something like a semaphore here
+            WAIT_UNTIL_EX(lock, 100, resolveReplyTimeout, (diagResult.childrenResolved >= diagResult.childCount));
+        }
+
+        for (const auto& child : diagResult.children) {
+            otIp6Address addr = {};
+            setIp6RlocAddress(&addr, localPrefix, child);
+            LOG_DEBUG(TRACE, "Sending DIAG_GET.req to child %04x", child);
+            CHECK_THREAD(otThreadSendDiagnosticGet(thread, &addr, (const uint8_t*)diagTypes.data, diagTypes.size));
+        }
+        diagResult.children.clear();
+        // FIXME: it's probably better to use something like a semaphore here
+        WAIT_UNTIL_EX(lock, 100, diagReplyTimeout, (diagResult.childReplied >= diagResult.childCount));
+    }
+
+    if (diagResult.error) {
+        // Discard any reply data
+        system_ctrl_alloc_reply_data(req, 0, nullptr);
+        return diagResult.error;
+    }
+
+    // Trim reply size to the actual data size
+    return system_ctrl_alloc_reply_data(req, diagResult.written, nullptr);
 }
 
 int test(ctrl_request* req) {
