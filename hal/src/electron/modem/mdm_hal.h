@@ -530,6 +530,7 @@ protected:
     static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
     struct CGDCONTparam { char type[8]; char apn[32]; };
     static int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param);
+    static int _cbURAT(int type, const char *buf, int len, bool *matched_default);
     // sockets
     static int _cbCMIP(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUPSND(int type, const char* buf, int len, int* act);

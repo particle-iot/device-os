@@ -993,6 +993,20 @@ bool MDMParser::_checkEpsReg(void) {
     return true;
 }
 
+// only intended for use on SARA R410M to detect issue where CAT M1+NB1 is
+// currently an invalid configuration but also the default configuration
+#define CB_URAT_DEFAULT_CONFIG "\r\n+URAT: 7,8" // the invalid configuration string
+int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default)
+{
+    if ((type == TYPE_PLUS) && matched_default) {
+        *matched_default = false;
+        if (!strncmp(CB_URAT_DEFAULT_CONFIG, buf, strlen(CB_URAT_DEFAULT_CONFIG))) {
+            *matched_default = true;
+        }
+    }
+    return WAIT;
+}
+
 bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
 {
     LOCK();
@@ -1023,12 +1037,15 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
             }
         }
         if (!(ok = checkNetStatus())) {
-#ifdef MDM_DEBUG
-            // Show enabled RATs
-            sendFormated("AT+URAT?\r\n");
-            waitFinalResp(nullptr, nullptr, URAT_TIMEOUT);
-#endif // defined(MDM_DEBUG)
             if (_dev.dev == DEV_SARA_R410) {
+                bool set_cgdcont = false;
+                bool set_rat = false;
+                // On SARA R410M [Cat-M1(7) & Cat-NB1(8)] is an invalid default configuration.
+                // Detect and force Cat-MB1 only when detected.
+                sendFormated("AT+URAT?\r\n");
+                if (waitFinalResp(_cbURAT, &set_rat, URAT_TIMEOUT) != RESP_OK) {
+                    goto failure;
+                }
                 // Get default context settings
                 sendFormated("AT+CGDCONT?\r\n");
                 CGDCONTparam ctx = {};
@@ -1041,6 +1058,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                 // configured to use the dual stack IPv4/IPv6 capability ("IPV4V6"), which is the case for
                 // the factory default settings. Ideally, setting of a default APN should be based on IMSI
                 if (strcmp(ctx.type, "IP") != 0 || strcmp(ctx.apn, apn ? apn : "") != 0) {
+                    set_cgdcont = true;
+                }
+                if (set_cgdcont || set_rat) {
                     // Stop the network registration and update the context settings
                     if (!_atOk()) {
                         goto failure;
@@ -1049,9 +1069,20 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                     if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
                         goto failure;
                     }
-                    sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
-                    if (waitFinalResp(nullptr, nullptr, CGDCONT_TIMEOUT) != RESP_OK) {
-                        goto failure;
+                    // Force Cat-M1 mode
+                    if (set_rat) {
+                        MDM_INFO("[ Modem::register ] Invalid Cat-M1/NB1 mode on SARA R410M, forcing Cat-M1");
+                        sendFormated("AT+URAT=7\r\n");
+                        if (waitFinalResp(nullptr, nullptr, URAT_TIMEOUT) != RESP_OK) {
+                            goto failure;
+                        }
+                    }
+                    // Update the context settings
+                    if (set_cgdcont) {
+                        sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
+                        if (waitFinalResp() != RESP_OK) {
+                            goto failure;
+                        }
                     }
                 }
                 // Make sure automatic network registration is enabled
@@ -1062,6 +1093,10 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                 if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
                     goto failure;
                 }
+            } else {
+                // Show enabled RATs
+                sendFormated("AT+URAT?\r\n");
+                waitFinalResp(nullptr, nullptr, URAT_TIMEOUT);
             }
             // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM, GPRS and LTE)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
