@@ -171,25 +171,35 @@ else
     esac
 fi
 
-# Create binary output directories
-BUILD_ROOT=pwd
+# Eliminate relative paths
+mkdir -p $OUTPUT_DIRECTORY
+pushd $OUTPUT_DIRECTORY
+ABSOLUTE_OUTPUT_DIRECTORY=$(pwd)
+popd
 
-QUALIFIED_OUTPUT_DIRECTORY=$OUTPUT_DIRECTORY/$VERSION/$PLATFORM
+TARGET_DIRECTORY=../build/target
+mkdir -p $TARGET_DIRECTORY
+pushd $TARGET_DIRECTORY
+ABSOLUTE_TARGET_DIRECTORY=$(pwd)
+popd
+
+# Create binary output directories
+QUALIFIED_OUTPUT_DIRECTORY=$ABSOLUTE_OUTPUT_DIRECTORY/$VERSION/$PLATFORM
 TEMPORARY_DIR=$QUALIFIED_OUTPUT_DIRECTORY/tmp
 mkdir -p $TEMPORARY_DIR
 
 RELEASE_DIR=$QUALIFIED_OUTPUT_DIRECTORY/release
 mkdir -p $RELEASE_DIR
 
-GITHUB_RELEASE_DIRECTORY=$OUTPUT_DIRECTORY/$VERSION/github
+GITHUB_RELEASE_DIRECTORY=$ABSOLUTE_OUTPUT_DIRECTORY/$VERSION/github
 mkdir -p $GITHUB_RELEASE_DIRECTORY
 
-OUT_CORE=../build/target/main/platform-$PLATFORM_ID-lto
-OUT_MODULE=../build/target/user-part/platform-$PLATFORM_ID-m
+OUT_CORE=$ABSOLUTE_TARGET_DIRECTORY/main/platform-$PLATFORM_ID-lto
+OUT_MODULE=$ABSOLUTE_TARGET_DIRECTORY/user-part/platform-$PLATFORM_ID-m
 
 # Cleanup
 rm -rf ../build/modules/
-rm -rf ../build/target/
+rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 
 # Build Platform Bootloader
 cd ../bootloader
