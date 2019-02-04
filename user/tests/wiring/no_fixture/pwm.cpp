@@ -250,12 +250,14 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 8-bit resolution
     analogWriteResolution(pin, 8);
     assertEqual(analogWriteResolution(pin), 8);
+    // analogWrite(pin, 25); // 9.8% Duty Cycle at 500Hz = 196us HIGH, 1804us LOW.
+    // if (pin == D0) delay(5000);
     uint32_t avgPulseHigh = 0;
-    for(int i=0;i<100;i++) {
-        analogWrite(pin, 25); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
+    for(int i=0; i<10; i++) {
+        analogWrite(pin, 25); // 9.8% Duty Cycle at 500Hz = 196us HIGH, 1804us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 100;
+    avgPulseHigh /= 10;
     analogWrite(pin, 0);
 
     // then
@@ -266,28 +268,32 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 4-bit resolution
     analogWriteResolution(pin, 4);
     assertEqual(analogWriteResolution(pin), 4);
+    // analogWrite(pin, 2); // 13.3% Duty Cycle at 500Hz = 266us HIGH, 1733us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<100;i++) {
-        analogWrite(pin, 2); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
+    for(int i=0; i<10; i++) {
+        analogWrite(pin, 2); // 13.3% Duty Cycle at 500Hz = 266us HIGH, 1733us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 100;
+    avgPulseHigh /= 10;
     analogWrite(pin, 0);
 
     // then
-    // avgPulseHigh should equal 200 +/- 80
-    assertMoreOrEqual(avgPulseHigh, 120);
-    assertLessOrEqual(avgPulseHigh, 280);
+    // avgPulseHigh should equal 266 +/- 50
+    assertMoreOrEqual(avgPulseHigh, 216);
+    assertLessOrEqual(avgPulseHigh, 316);
 
     // 12-bit resolution
     analogWriteResolution(pin, 12);
     assertEqual(analogWriteResolution(pin), 12);
+    // analogWrite(pin, 409); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<100;i++) {
+    for(int i=0; i<10; i++) {
         analogWrite(pin, 409); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 100;
+    avgPulseHigh /= 10;
     analogWrite(pin, 0);
 
     // then
@@ -298,12 +304,14 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
+    // analogWrite(pin, 3277); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<100;i++) {
+    for(int i=0; i<10; i++) {
         analogWrite(pin, 3277); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 100;
+    avgPulseHigh /= 10;
     analogWrite(pin, 0);
 
     // then
@@ -323,58 +331,66 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 8-bit resolution
     analogWriteResolution(pin, 8);
     assertEqual(analogWriteResolution(pin), 8);
+    // analogWrite(pin, 25, 10); // 9.8% Duty Cycle at 10Hz = 9800us HIGH, 90200us LOW.
+    // if (pin == D0) delay(5000);
     uint32_t avgPulseHigh = 0;
-    for(int i=0;i<5;i++) {
-        analogWrite(pin, 25, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
+    for(int i=0; i<2; i++) {
+        analogWrite(pin, 25, 10); // 9.8% Duty Cycle at 10Hz = 9800us HIGH, 90200us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 5;
+    avgPulseHigh /= 2;
     // then
-    // avgPulseHigh should equal 10000 +/- 50
-    assertMoreOrEqual(avgPulseHigh, 9050);
-    assertLessOrEqual(avgPulseHigh, 10050);
+    // avgPulseHigh should equal 9800 +/- 100
+    assertMoreOrEqual(avgPulseHigh, 9700);
+    assertLessOrEqual(avgPulseHigh, 9900);
 
     // 4-bit resolution
     analogWriteResolution(pin, 4);
     assertEqual(analogWriteResolution(pin), 4);
+    // analogWrite(pin, 2, 10); // 13.3% Duty Cycle at 10Hz = 13333us HIGH, 86000us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<5;i++) {
-        analogWrite(pin, 2, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
+    for(int i=0; i<2; i++) {
+        analogWrite(pin, 2, 10); // 13.3% Duty Cycle at 10Hz = 13333us HIGH, 90000us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 5;
+    avgPulseHigh /= 2;
     // then
-    // avgPulseHigh should equal 10000 +/- 4000
-    assertMoreOrEqual(avgPulseHigh, 6000);
-    assertLessOrEqual(avgPulseHigh, 14000);
+    // avgPulseHigh should equal 13333 +/- 1000
+    assertMoreOrEqual(avgPulseHigh, (13333 - 1000) );
+    assertLessOrEqual(avgPulseHigh, (13333 + 1000) );
 
     // 12-bit resolution
     analogWriteResolution(pin, 12);
     assertEqual(analogWriteResolution(pin), 12);
+    // analogWrite(pin, 409, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<5;i++) {
+    for(int i=0; i<2; i++) {
         analogWrite(pin, 409, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 5;
+    avgPulseHigh /= 2;
     // then
-    // avgPulseHigh should equal 10000 +/- 50
-    assertMoreOrEqual(avgPulseHigh, 9050);
-    assertLessOrEqual(avgPulseHigh, 10050);
+    // avgPulseHigh should equal 10000 +/- 100
+    assertMoreOrEqual(avgPulseHigh,  9900);
+    assertLessOrEqual(avgPulseHigh, 10100);
 
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
+    // analogWrite(pin, 3277, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<5;i++) {
+    for(int i=0; i<2; i++) {
         analogWrite(pin, 3277, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 5;
+    avgPulseHigh /= 2;
     // then
-    // avgPulseHigh should equal 10000 +/- 50
-    assertMoreOrEqual(avgPulseHigh, 9050);
-    assertLessOrEqual(avgPulseHigh, 10050);
+    // avgPulseHigh should equal 10000 +/- 100
+    assertMoreOrEqual(avgPulseHigh,  9900);
+    assertLessOrEqual(avgPulseHigh, 10100);
 
     analogWrite(pin, 0, 10);
     pinMode(pin, INPUT);
@@ -390,12 +406,14 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 8-bit resolution
     analogWriteResolution(pin, 8);
     assertEqual(analogWriteResolution(pin), 8);
+    // analogWrite(pin, 25, 10000); // 9.8% Duty Cycle at 10kHz = 9.8us HIGH, 90.2us LOW.
+    // if (pin == D0) delay(5000);
     uint32_t avgPulseHigh = 0;
-    for(int i=0;i<1000;i++) {
-        analogWrite(pin, 25, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+    for(int i=0; i<10; i++) {
+        analogWrite(pin, 25, 10000); // 9.8% Duty Cycle at 10kHz = 9.8us HIGH, 90.2us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 1000;
+    avgPulseHigh /= 10;
     // then
     // avgPulseHigh should equal 10 +/- 5
     assertMoreOrEqual(avgPulseHigh, 5);
@@ -404,46 +422,52 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 4-bit resolution
     analogWriteResolution(pin, 4);
     assertEqual(analogWriteResolution(pin), 4);
+    // analogWrite(pin, 2, 10000); // 13.3% Duty Cycle at 10kHz = 13.3us HIGH, 86.6us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<1000;i++) {
-        analogWrite(pin, 2, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+    for(int i=0; i<10; i++) {
+        analogWrite(pin, 2, 10000); // 13.3% Duty Cycle at 10kHz = 13.3us HIGH, 86.6us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 1000;
+    avgPulseHigh /= 10;
     // then
-    // avgPulseHigh should equal 10 +/- 5
-    assertMoreOrEqual(avgPulseHigh, 5);
-    assertLessOrEqual(avgPulseHigh, 15);
+    // avgPulseHigh should equal 13 +/- 5
+    assertMoreOrEqual(avgPulseHigh, 8);
+    assertLessOrEqual(avgPulseHigh, 18);
 
     // 12-bit resolution
     analogWriteResolution(pin, 12);
     assertEqual(analogWriteResolution(pin), 12);
+    // analogWrite(pin, 409, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<1000;i++) {
-        analogWrite(pin, 409, 1000); // 10% Duty Cycle at 1kHz = 100us HIGH, 900us LOW.
+    for(int i=0; i<10; i++) {
+        analogWrite(pin, 409, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 1000;
+    avgPulseHigh /= 10;
     // then
-    // avgPulseHigh should equal 100 +/- 20
-    assertMoreOrEqual(avgPulseHigh, 80);
-    assertLessOrEqual(avgPulseHigh, 120);
+    // avgPulseHigh should equal 10 +/- 2
+    assertMoreOrEqual(avgPulseHigh, 8);
+    assertLessOrEqual(avgPulseHigh, 12);
 
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
+    // analogWrite(pin, 3277, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+    // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
-    for(int i=0;i<1000;i++) {
-        analogWrite(pin, 3277, 1000); // 10% Duty Cycle at 1kHz = 100us HIGH, 900us LOW.
+    for(int i=0; i<10; i++) {
+        analogWrite(pin, 3277, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
         avgPulseHigh += pulseIn(pin, HIGH);
     }
-    avgPulseHigh /= 1000;
+    avgPulseHigh /= 10;
     // then
-    // avgPulseHigh should equal 100 +/- 20
-    assertMoreOrEqual(avgPulseHigh, 80);
-    assertLessOrEqual(avgPulseHigh, 120);
+    // avgPulseHigh should equal 10 +/- 2
+    assertMoreOrEqual(avgPulseHigh, 8);
+    assertLessOrEqual(avgPulseHigh, 12);
 
-    analogWrite(pin, 0, 1000);
+    analogWrite(pin, 0, 500);
     pinMode(pin, INPUT);
 	});
 }
