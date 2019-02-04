@@ -81,6 +81,9 @@ std::recursive_mutex mdm_mutex;
 #define CREG_TIMEOUT    (  1 * 1000)
 #define CSQ_TIMEOUT     (  1 * 1000)
 #define URAT_TIMEOUT    (  1 * 1000)
+#define UPSD_TIMEOUT    (  1 * 1000)
+#define UPSDA_TIMEOUT   (180 * 1000)
+#define UPSND_TIMEOUT   (  1 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -871,8 +874,9 @@ bool MDMParser::powerOff(void)
             continue_cancel = true;
             resume(); // make sure we can use the AT parser
         }
+        // Try to power off
         for (int i=0; i<3; i++) { // try 3 times
-            if(!_atOk()) {
+            if (!_atOk()) {
                 MDM_INFO("\r\n[ Modem::powerOff ] AT Failure, trying PWR_UC...");
                 HAL_GPIO_Write(PWR_UC, 0);
                 // >1.5 seconds on SARA R410M
@@ -888,35 +892,35 @@ bool MDMParser::powerOff(void)
                 sendFormated("AT+CPWROFF\r\n");
                 int ret = waitFinalResp(nullptr, nullptr, CPWROFF_TIMEOUT);
                 if (RESP_OK == ret) {
-                    _pwr = false;
-                    // todo - add if these are automatically done on power down
-                    //_activated = false;
-                    //_attached = false;
-                    ok = true;
-                    check_ri = true;
+                    if (_dev.dev == DEV_SARA_R410) {
+                        check_ri = true;
+                    }
                     break;
-                }
-                else if (RESP_ABORTED == ret) {
+                } else if (RESP_ABORTED == ret) {
                     MDM_INFO("\r\n[ Modem::powerOff ] found ABORTED, retrying...");
-                }
-                else {
+                } else {
                     MDM_INFO("\r\n[ Modem::powerOff ] timeout, retrying...");
                 }
             }
         }
-    }
-
-    if (check_ri) {
-        system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
-        while (HAL_GPIO_Read(RI_UC) && !TIMEOUT(t0, 10000))
-        {
-            HAL_Delay_Milliseconds(1); // just wait
-        }
-        if(!HAL_GPIO_Read(RI_UC))
-        {
+        // Verify power off, or delay
+        if (check_ri) {
+            system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
+            while (HAL_GPIO_Read(RI_UC) && !TIMEOUT(t0, 10000)) {
+                HAL_Delay_Milliseconds(1); // just wait
+            }
+            // if V_INT is low, indicate power is off
+            if (!HAL_GPIO_Read(RI_UC)) {
+                _pwr = false;
+            }
+            MDM_INFO("\r\n[ Modem::powerOff ] took %lu ms", HAL_Timer_Get_Milli_Seconds() - t0);
+        } else {
             _pwr = false;
+            // todo - add if these are automatically done on power down
+            //_activated = false;
+            //_attached = false;
+            HAL_Delay_Milliseconds(1000); // give peace a chance
         }
-        MDM_INFO("\r\n[ Modem::powerOff ] took %lu ms", HAL_Timer_Get_Milli_Seconds() - t0);
     }
 
     // Close serial connection
@@ -927,6 +931,8 @@ bool MDMParser::powerOff(void)
     HAL_Pin_Mode(PWR_UC, INPUT);
     HAL_Pin_Mode(RESET_UC, INPUT);
     HAL_Pin_Mode(LVLOE_UC, INPUT);
+
+    ok = !_pwr;
 
     if (continue_cancel) cancel();
     UNLOCK();
@@ -1105,9 +1111,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
                 while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations) {
                     // Pump the URCs looking for +CREG/+CGREG/+CEREG connection events.
-                    // Busy wait 100ms, prevents super fast memory allocation/deallocation in waitFinalResponse.
-                    waitFinalResp(nullptr, nullptr, 100);
-                    if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps)) {
+                    waitFinalResp(nullptr, nullptr, 10);
+                    if ((REG_OK(_net.csd) && REG_OK(_net.psd)) || REG_OK(_net.eps)) {
                         break; // force another checkNetStatus() call
                     }
                 }
@@ -1544,14 +1549,14 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
 
             // Check the if the PSD profile is activated (a=1)
             sendFormated("AT+UPSND=" PROFILE ",8\r\n");
-            if (RESP_OK != waitFinalResp(_cbUPSND, &a))
+            if (RESP_OK != waitFinalResp(_cbUPSND, &a, UPSND_TIMEOUT))
                 goto failure;
             if (a == 1) {
                 _activated = true; // PDP activated
                 if (force) {
                     // deactivate the PSD profile if it is already activated
                     sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-                    if (RESP_OK != waitFinalResp(NULL,NULL,40*1000))
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, UPSDA_TIMEOUT))
                         goto failure;
                     a = 0;
                 }
@@ -1566,7 +1571,7 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
 
                 // Set up the dynamic IP address assignment.
                 sendFormated("AT+UPSD=" PROFILE ",7,\"0.0.0.0\"\r\n");
-                if (RESP_OK != waitFinalResp())
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, UPSD_TIMEOUT))
                     goto failure;
 
                 do {
@@ -1579,17 +1584,17 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
                     // Set up the APN
                     if (apn && *apn) {
                         sendFormated("AT+UPSD=" PROFILE ",1,\"%s\"\r\n", apn);
-                        if (RESP_OK != waitFinalResp())
+                        if (RESP_OK != waitFinalResp(nullptr, nullptr, UPSD_TIMEOUT))
                             goto failure;
                     }
                     if (username && *username) {
                         sendFormated("AT+UPSD=" PROFILE ",2,\"%s\"\r\n", username);
-                        if (RESP_OK != waitFinalResp())
+                        if (RESP_OK != waitFinalResp(nullptr, nullptr, UPSD_TIMEOUT))
                             goto failure;
                     }
                     if (password && *password) {
                         sendFormated("AT+UPSD=" PROFILE ",3,\"%s\"\r\n", password);
-                        if (RESP_OK != waitFinalResp())
+                        if (RESP_OK != waitFinalResp(nullptr, nullptr, UPSD_TIMEOUT))
                             goto failure;
                     }
                     // try different Authentication Protocols
@@ -1600,11 +1605,11 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
                         if ((auth == AUTH_DETECT) || (auth == i)) {
                             // Set up the Authentication Protocol
                             sendFormated("AT+UPSD=" PROFILE ",6,%d\r\n", i);
-                            if (RESP_OK != waitFinalResp())
+                            if (RESP_OK != waitFinalResp(nullptr, nullptr, UPSD_TIMEOUT))
                                 goto failure;
                             // Activate the PSD profile and make connection
                             sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
-                            if (RESP_OK == waitFinalResp(NULL,NULL,150*1000)) {
+                            if (RESP_OK == waitFinalResp(nullptr, nullptr, UPSDA_TIMEOUT)) {
                                 _activated = true; // PDP activated
                                 ok = true;
                             }
@@ -1618,14 +1623,14 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
             }
             //Get local IP address
             sendFormated("AT+UPSND=" PROFILE ",0\r\n");
-            if (RESP_OK != waitFinalResp(_cbUPSND, &_ip))
+            if (RESP_OK != waitFinalResp(_cbUPSND, &_ip, UPSND_TIMEOUT))
                 goto failure;
             // Get the primary DNS server (logs only), don't fail on error.
             sendFormated("AT+UPSND=" PROFILE ",1\r\n");
-            waitFinalResp();
+            waitFinalResp(nullptr, nullptr, UPSND_TIMEOUT);
             // Get the secondary DNS server (logs only), don't fail on error.
             sendFormated("AT+UPSND=" PROFILE ",2\r\n");
-            waitFinalResp();
+            waitFinalResp(nullptr, nullptr, UPSND_TIMEOUT);
         }
         UNLOCK();
         _attached = true;  // GPRS
@@ -1724,11 +1729,11 @@ bool MDMParser::reconnect(void)
             /* Activates the PDP context assoc. with this profile */
             /* If GPRS is detached, this will force a re-attach */
             sendFormated("AT+UPSDA=" PROFILE ",3\r\n");
-            if (RESP_OK == waitFinalResp(NULL, NULL, 150*1000)) {
+            if (RESP_OK == waitFinalResp(nullptr, nullptr, UPSDA_TIMEOUT)) {
 
                 //Get local IP address
                 sendFormated("AT+UPSND=" PROFILE ",0\r\n");
-                if (RESP_OK == waitFinalResp(_cbUPSND, &_ip)) {
+                if (RESP_OK == waitFinalResp(_cbUPSND, &_ip, UPSND_TIMEOUT)) {
                     ok = true;
                     _attached = true;
                 }
@@ -1767,7 +1772,7 @@ bool MDMParser::deactivate(void)
                  * ensuring that no additional data is sent or received
                  * by the device. */
                 sendFormated("AT+UPSDA=" PROFILE ",4\r\n");
-                if (RESP_OK == waitFinalResp()) {
+                if (RESP_OK == waitFinalResp(nullptr, nullptr, UPSDA_TIMEOUT)) {
                     _ip = NOIP;
                     ok = true;
                     _attached = false;
@@ -2316,7 +2321,6 @@ int MDMParser::socketReadable(int socket)
         // Allow to receive unsolicited commands.
         // Set to 10ms timeout to mimic previous response when waitFinalResp()
         // contained 10ms busy wait and we used a 0ms timeout value below.
-        // Slows fast malloc/free of RX large buffer, as we wait for incoming data.
         waitFinalResp(nullptr, nullptr, 10);
         if (_sockets[socket].connected)
            pending = _sockets[socket].pending;
