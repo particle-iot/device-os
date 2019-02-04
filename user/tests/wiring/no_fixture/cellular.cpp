@@ -517,7 +517,8 @@ static int atCallback(int type, const char* buf, int len, int* lines) {
 
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
     // TODO: Add back this test when SARA R410 supports HW Flow Control?
-    if (skip_r410) {
+    if (cellular_modem_type() == DEV_SARA_R410) {
+        skip_r410 = true;
         Serial.println("TODO: Add back this test when SARA R410 supports HW Flow Control?");
         skip();
         return;

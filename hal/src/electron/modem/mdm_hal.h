@@ -577,6 +577,8 @@ protected:
     bool _socketFree(int socket);
     bool _powerOn(void);
     void _setBandSelectString(MDM_BandSelect &data, char* bands, int index=0); // private helper to create bands strings
+    bool _atOk(void);
+    bool _checkEpsReg(void);
     static MDMParser* inst;
     bool _init;
     bool _pwr;
