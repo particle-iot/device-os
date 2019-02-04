@@ -23,6 +23,7 @@
 #include <stddef.h>
 
 #include "service_debug.h"
+#include "interrupts_hal.h"
 
 #ifdef putc
 #undef putc
@@ -48,6 +49,7 @@ public:
         _a = b ? NULL : n ? new T[n + 1] : NULL;
         _r = 0;
         _w = 0;
+        _o = 0;
         _b = b ? b : _a;
         _s = n + 1;
     }
@@ -249,6 +251,17 @@ public:
     void done(void)
     {
         _r = _o;
+    }
+
+    /** reset all indexes to empty the pipe
+    */
+    void reset()
+    {
+        auto prev = HAL_disable_irq();
+        _r = 0;
+        _w = 0;
+        _o = 0;
+        HAL_enable_irq(prev);
     }
 
 private:

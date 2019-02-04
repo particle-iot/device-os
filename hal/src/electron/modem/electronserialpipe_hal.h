@@ -106,6 +106,14 @@ public:
     */
     void rxPause();
 
+    /** returns size of TX pipe
+    */
+    int txSize();
+
+    /** returns size of RX pipe
+    */
+    int rxSize();
+
 protected:
     //! start transmission helper
     void txStart(void);

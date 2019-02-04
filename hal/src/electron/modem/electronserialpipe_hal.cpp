@@ -147,8 +147,8 @@ void ElectronSerialPipe::end()
     HAL_Pin_Mode(TXD_UC, INPUT);
 
     // clear any pending data
-    _pipeTx.done();
-    _pipeRx.done();
+    _pipeTx.reset();
+    _pipeRx.reset();
     baud_ = 0;
     hwFlowCtrl_ = false;
     pause_ = false;
@@ -157,11 +157,19 @@ void ElectronSerialPipe::end()
 // tx channel
 int ElectronSerialPipe::writeable(void)
 {
+    if (baud_ == 0) {
+        return 0;
+    }
+
     return _pipeTx.free();
 }
 
 int ElectronSerialPipe::putc(int c)
 {
+    if (baud_ == 0) {
+        return EOF;
+    }
+
     c = _pipeTx.putc(c);
     txStart();
     return c;
@@ -171,6 +179,9 @@ int ElectronSerialPipe::put(const void* buffer, int length, bool blocking)
 {
     int count = length;
     const char* ptr = (const char*)buffer;
+    if (baud_ == 0) {
+        return EOF;
+    }
     if (count)
     {
         do
@@ -219,6 +230,10 @@ void ElectronSerialPipe::txStart(void)
 // rx channel
 int ElectronSerialPipe::readable(void)
 {
+    if (baud_ == 0) {
+        return 0;
+    }
+
     return _pipeRx.readable();
 }
 
@@ -231,7 +246,21 @@ int ElectronSerialPipe::getc(void)
 
 int ElectronSerialPipe::get(void* buffer, int length, bool blocking)
 {
+    if (baud_ == 0) {
+        return EOF;
+    }
+
     return _pipeRx.get((char*)buffer,length,blocking);
+}
+
+int ElectronSerialPipe::txSize(void)
+{
+    return _pipeTx.size();
+}
+
+int ElectronSerialPipe::rxSize(void)
+{
+    return _pipeRx.size();
 }
 
 void ElectronSerialPipe::rxIrqBuf(void)

@@ -594,7 +594,7 @@ bool MDMParser::_powerOn(void)
     HAL_Pin_Mode(RI_UC, INPUT_PULLDOWN);
 
     if (!_init) {
-        MDM_INFO("[ ElectronSerialPipe::begin ] = = = = = = = =");
+        MDM_INFO("[ ElectronSerialPipe::begin ] pipeTx=%d pipeRx=%d", electronMDM.txSize(), electronMDM.rxSize());
 
         // Here we initialize the UART with hardware flow control enabled, even though some of
         // the modems don't support it (SARA-R4 at the time of writing). It is assumed that the
@@ -922,6 +922,7 @@ bool MDMParser::powerOff(void)
     // Close serial connection
     electronMDM.end();
     _init = false;
+    MDM_INFO("[ ElectronSerialPipe::end ] pipeTx=%d pipeRx=%d", electronMDM.txSize(), electronMDM.rxSize());
 
     HAL_Pin_Mode(PWR_UC, INPUT);
     HAL_Pin_Mode(RESET_UC, INPUT);
