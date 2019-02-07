@@ -35,6 +35,14 @@ static struct {
     HAL_InterruptCallback   interrupt_callback;
 } m_exti_channels[EXTI_CHANNEL_NUM] = {{0}};
 
+struct hal_interrupts_suspend_data_t {
+    uint32_t config[GPIOTE_CH_NUM];
+    uint32_t intenset;
+    uint32_t pin_cnf[NUMBER_OF_PINS];
+};
+
+static hal_interrupts_suspend_data_t s_suspend_data = {};
+
 extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
@@ -82,14 +90,14 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
 
     switch (mode)
     {
-        case CHANGE:  
-            in_config.sense = NRF_GPIOTE_POLARITY_TOGGLE; 
+        case CHANGE:
+            in_config.sense = NRF_GPIOTE_POLARITY_TOGGLE;
             break;
-        case RISING:  
-            in_config.sense = NRF_GPIOTE_POLARITY_LOTOHI; 
+        case RISING:
+            in_config.sense = NRF_GPIOTE_POLARITY_LOTOHI;
             break;
-        case FALLING: 
-            in_config.sense = NRF_GPIOTE_POLARITY_HITOLO; 
+        case FALLING:
+            in_config.sense = NRF_GPIOTE_POLARITY_HITOLO;
             break;
     }
 
@@ -193,37 +201,44 @@ void HAL_Interrupts_Disable_All(void)
 
 void HAL_Interrupts_Suspend(void)
 {
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint8_t nrf_pin;
+    // Save NRF_GPIOTE->CONFIG[], NRF_GPIOTE->INTENSET
+    for (unsigned i = 0; i < GPIOTE_CH_NUM; ++i) {
+        // NOTE: we are not modifying CONFIG here
+        s_suspend_data.config[i] = NRF_GPIOTE->CONFIG[i];
+    }
+    s_suspend_data.intenset = NRF_GPIOTE->INTENSET;
 
-    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
-    {
-        if (m_exti_channels[i].pin != PIN_INVALID)
-        {
-            nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[m_exti_channels[i].pin].gpio_port, PIN_MAP[m_exti_channels[i].pin].gpio_pin);
-            nrfx_gpiote_in_event_disable(nrf_pin);
-        }
+    // Save pin configuration (including sense)
+    for (uint32_t i = 0; i < NUMBER_OF_PINS; i++) {
+        auto nrf_pin = i;
+        auto port = nrf_gpio_pin_port_decode(&nrf_pin);
+        s_suspend_data.pin_cnf[i] = port->PIN_CNF[nrf_pin];
+        // NOTE: we are resetting sense configuration
+        nrf_gpio_cfg_sense_set(i, NRF_GPIO_PIN_NOSENSE);
     }
 }
 
 void HAL_Interrupts_Restore(void)
 {
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint8_t nrf_pin;
-
-    for (int i = 0; i < EXTI_CHANNEL_NUM; i++)
-    {
-        if (m_exti_channels[i].pin != PIN_INVALID)
-        {
-            nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[m_exti_channels[i].pin].gpio_port, PIN_MAP[m_exti_channels[i].pin].gpio_pin);
-            nrfx_gpiote_in_event_enable(nrf_pin, true);
-        }
+    // Restore pin configuration for all the pins
+    for (uint32_t i = 0; i < NUMBER_OF_PINS; i++) {
+        auto nrf_pin = i;
+        auto port = nrf_gpio_pin_port_decode(&nrf_pin);
+        port->PIN_CNF[nrf_pin] = s_suspend_data.pin_cnf[i];
     }
+
+    // Restore NRF_GPIOTE->CONFIG[], NRF_GPIOTE->INTENSET
+    for (unsigned i = 0; i < GPIOTE_CH_NUM; ++i) {
+        NRF_GPIOTE->CONFIG[i] = s_suspend_data.config[i];
+    }
+    uint32_t intenset = NRF_GPIOTE->INTENSET;
+    nrf_gpiote_int_disable(intenset ^ s_suspend_data.intenset);
+    nrf_gpiote_int_enable(s_suspend_data.intenset);
 }
 
 int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved)
 {
-    if (irqn < NonMaskableInt_IRQn || irqn > SPIM3_IRQn) 
+    if (irqn < NonMaskableInt_IRQn || irqn > SPIM3_IRQn)
     {
         return 1;
     }
@@ -231,22 +246,22 @@ int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handle
     int32_t state = HAL_disable_irq();
     volatile uint32_t* isrs = (volatile uint32_t*)&link_ram_interrupt_vectors_location;
 
-    if (handler == NULL && (flags & HAL_DIRECT_INTERRUPT_FLAG_RESTORE)) 
+    if (handler == NULL && (flags & HAL_DIRECT_INTERRUPT_FLAG_RESTORE))
     {
         // Restore
         HAL_Core_Restore_Interrupt(irqn);
-    } 
-    else 
+    }
+    else
     {
         isrs[IRQN_TO_IDX(irqn)] = (uint32_t)handler;
     }
 
-    if (flags & HAL_DIRECT_INTERRUPT_FLAG_DISABLE) 
+    if (flags & HAL_DIRECT_INTERRUPT_FLAG_DISABLE)
     {
         // Disable
         sd_nvic_DisableIRQ(irqn);
-    } 
-    else if (flags & HAL_DIRECT_INTERRUPT_FLAG_ENABLE) 
+    }
+    else if (flags & HAL_DIRECT_INTERRUPT_FLAG_ENABLE)
     {
         sd_nvic_EnableIRQ(irqn);
     }
