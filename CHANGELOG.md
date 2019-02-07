@@ -21,6 +21,7 @@
 - [Gen 3] STANDBY sleep mode support (#1667)
 - [Gen 3] USB control requests (#1655)
 - [Gen 3] Mesh network diagnostics (#1657)
+- [Boron] `Cellular.command()` support (#1651)
 
 ### INTERNAL
 - [Gen 3] Most of the `wiring/no_fixture` tests now successfully run on Xenon, Argon and Boron (#1663)
