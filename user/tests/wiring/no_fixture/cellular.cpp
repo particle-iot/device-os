@@ -49,6 +49,9 @@ void connect_to_cloud(system_tick_t timeout)
     Particle.connect();
     waitFor(Particle.connected, timeout);
 }
+
+#if !HAL_USE_SOCKET_HAL_POSIX
+
 void consume_all_sockets(uint8_t protocol)
 {
     static int port = 9000;
@@ -95,6 +98,8 @@ test(CELLULAR_03_close_consumed_sockets) {
     }
 }
 
+#endif // !HAL_USE_SOCKET_HAL_POSIX
+
 void checkIPAddress(const char* name, const IPAddress& address)
 {
     if (address.version()==0 || address[0]==0)
@@ -123,6 +128,9 @@ test(CELLULAR_06_resolve) {
     assertEqual(addr, 0);
 }
 
+// TODO: Band selection API is not implemented on Gen 3 devices
+#if !HAL_PLATFORM_NCP
+
 int how_many_band_options_are_available(void)
 {
     CellularBand band_avail;
@@ -133,6 +141,7 @@ int how_many_band_options_are_available(void)
         return 0;
     }
 }
+
 bool get_list_of_bands_available(CellularBand& band_avail)
 {
     return Cellular.getBandAvailable(band_avail);
@@ -405,6 +414,8 @@ test(BAND_SELECT_09_restore_connection) {
     connect_to_cloud(6*60*1000);
 }
 
+#endif // !HAL_PLATFORM_NCP
+
 #define LOREM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut elit nec mi bibendum mollis. Nam nec nisl mi. Donec dignissim iaculis purus, ut condimentum arcu semper quis. Phasellus efficitur ut arcu ac dignissim. In interdum sem id dictum luctus. Ut nec mattis sem. Nullam in aliquet lacus. Donec egestas nisi volutpat lobortis sodales. Aenean elementum magna ipsum, vitae pretium tellus lacinia eu. Phasellus commodo nisi at quam tincidunt, tempor gravida mauris facilisis. Duis tristique ligula ac pulvinar consectetur. Cras aliquam, leo ut eleifend molestie, arcu odio semper odio, quis sollicitudin metus libero et lorem. Donec venenatis congue commodo. Vivamus mattis elit metus, sed fringilla neque viverra eu. Phasellus leo urna, elementum vel pharetra sit amet, auctor non sapien. Phasellus at justo ac augue rutrum vulputate. In hac habitasse platea dictumst. Pellentesque nibh eros, placerat id laoreet sed, dapibus efficitur augue. Praesent pretium diam ac sem varius fermentum. Nunc suscipit dui risus sed"
 
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
@@ -458,6 +469,9 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     assertTrue(contains);
 }
 
+// TODO: Cellular.command() is not implemented on Gen 3 devices
+#if !HAL_PLATFORM_NCP
+
 static int atCallback(int type, const char* buf, int len, int* lines) {
     if (len && type == TYPE_UNKNOWN)
         (*lines)++;
@@ -477,4 +491,6 @@ test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_control
     assertMoreOrEqual(lines, 200);
 }
 
-#endif
+#endif // !HAL_PLATFORM_NCP
+
+#endif // Wiring_Cellular == 1
