@@ -600,7 +600,7 @@ void HAL_Core_Enter_Safe_Mode(void* reserved)
     HAL_Core_System_Reset_Ex(RESET_REASON_SAFE_MODE, 0, NULL);
 }
 
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
 {
     // Initial sanity check
     if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {

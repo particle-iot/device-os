@@ -145,7 +145,7 @@ void HAL_Core_Enter_Safe_Mode(void* reserved);
 bool HAL_Core_Enter_Safe_Mode_Requested(void);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);
 void HAL_Core_Execute_Stop_Mode(void);
 int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
 void HAL_Core_Execute_Standby_Mode(void);
