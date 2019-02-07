@@ -729,8 +729,6 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
 
     int reason = SYSTEM_ERROR_UNKNOWN;
 
-    // Ask SoftDevice to go into low power mode
-    sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
     // Workaround for FPU anomaly
     fpu_sleep_prepare();
 
@@ -914,9 +912,6 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
 
     // Unmasks all non-softdevice interrupts
     HAL_enable_irq(hst);
-
-    // Restore softdevice power mode
-    sd_power_mode_set(NRF_POWER_MODE_CONSTLAT);
 
     // Release LFCLK
     nrf_drv_clock_lfclk_release();

@@ -730,7 +730,7 @@ uint64_t hal_timer_micros(void* reserved) {
     // Volatile is most likely unnecessary here, leaving for now just in case
     volatile uint64_t curUs = GetCurrentTime(kUsTimer);
     volatile uint32_t lastOverflowTicks = sTickCountAtLastOverflow;
-    volatile uint32_t lastOverflowMicros = sTimerMicrosAtLastOverflow;
+    volatile uint64_t lastOverflowMicros = sTimerMicrosAtLastOverflow;
     volatile uint32_t curTicks = DWT->CYCCNT;
     nrf_rtc_int_enable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
 
