@@ -393,7 +393,7 @@ void manage_network_connection() {
         SPARK_WLAN_SLEEP = wasSleeping;
         cfod_count = 0;
     } else {
-        if (spark_cloud_flag_auto_connect() && !s_forcedDisconnect) {
+        if (spark_cloud_flag_auto_connect() && (!s_forcedDisconnect || !SPARK_WLAN_SLEEP)) {
             if (!NetworkManager::instance()->isConnectivityAvailable() && !NetworkManager::instance()->isEstablishingConnections()) {
                 network_connect(0, 0, 0, 0);
             }

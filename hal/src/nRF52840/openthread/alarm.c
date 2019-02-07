@@ -59,6 +59,9 @@
 
 #include <openthread/config.h>
 
+#include "hw_ticks.h"
+#include "timer_hal.h"
+
 // clang-format off
 #define RTC_FREQUENCY       NRF_802154_RTC_FREQUENCY
 
@@ -104,6 +107,9 @@ static volatile uint8_t  sMutex;           ///< Mutex for write access to @ref s
 static volatile uint64_t sTimeOffset = 0;  ///< Time overflowCounter to keep track of current time (in millisecond).
 static volatile bool     sEventPending;    ///< Timer fired and upper layer should be notified.
 static AlarmData         sTimerData[kNumTimers]; ///< Data of the timers.
+static volatile uint32_t sTickCountAtLastOverflow; ///< DWT->CYCCNT value at the time latest overflow occurred
+static volatile uint64_t sTimerMicrosAtLastOverflow; ///< microseconds at the time latest overflow occured
+static volatile uint64_t sTimerMicrosBaseOffset; ///< Base offset for Particle-specific microsecond counter
 
 static const AlarmChannelData sChannelData[kNumTimers] = //
     {                                                    //
@@ -433,6 +439,8 @@ void nrf5AlarmInit(void)
     sOverflowCounter = 0;
     sMutex           = 0;
     sTimeOffset      = 0;
+    sTickCountAtLastOverflow = 0;
+    sTimerMicrosAtLastOverflow = 0;
 
     // Setup low frequency clock.
     nrf_drv_clock_lfclk_request(NULL);
@@ -459,7 +467,11 @@ void nrf5AlarmInit(void)
         nrf_rtc_int_disable(RTC_INSTANCE, sChannelData[i].mCompareInt);
     }
 
+    int pri = __get_PRIMASK();
+    __disable_irq();
     nrf_rtc_task_trigger(RTC_INSTANCE, NRF_RTC_TASK_START);
+    DWT->CYCCNT = 0;
+    __set_PRIMASK(pri);
 }
 
 void nrf5AlarmDeinit(void)
@@ -664,6 +676,13 @@ void RTC_IRQ_HANDLER(void)
 
         // Handle OVERFLOW event by reading current value of overflow counter.
         (void)GetOverflowCounter();
+
+        // Store current DWT->CYCCNT and RTC counter value
+        int pri = __get_PRIMASK();
+        __disable_irq();
+        sTimerMicrosAtLastOverflow = GetCurrentTime(kUsTimer);
+        sTickCountAtLastOverflow = DWT->CYCCNT;
+        __set_PRIMASK(pri);
     }
 
     // Handle compare match.
@@ -690,15 +709,48 @@ uint16_t otPlatTimeGetXtalAccuracy(void)
 #endif // OPENTHREAD_CONFIG_ENABLE_TIME_SYNC
 
 // Particle-specific
-int hal_timer_init(void* reserved) {
+int hal_timer_init(const hal_timer_init_config_t* conf) {
+    if (conf) {
+        sTimerMicrosBaseOffset = conf->base_clock_offset;
+    }
     nrf5AlarmInit();
     return 0;
 }
 
+int hal_timer_deinit(void* reserved) {
+    nrf5AlarmDeinit();
+    return 0;
+}
+
 uint64_t hal_timer_micros(void* reserved) {
-    return GetCurrentTime(kUsTimer);
+    // Extends the resolution from 31us to about 5us using DWT->CYCCNT
+    // Make sure that sTickCountAtLastOverflow and current timer values are fetched atomically
+    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
+    __DMB();
+    // Volatile is most likely unnecessary here, leaving for now just in case
+    volatile uint64_t curUs = GetCurrentTime(kUsTimer);
+    volatile uint32_t lastOverflowTicks = sTickCountAtLastOverflow;
+    volatile uint64_t lastOverflowMicros = sTimerMicrosAtLastOverflow;
+    volatile uint32_t curTicks = DWT->CYCCNT;
+    nrf_rtc_int_enable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
+
+    int usTicks = SYSTEM_US_TICKS;
+
+    uint64_t elapsedUs = curUs - lastOverflowMicros;
+    uint64_t elapsedTicks = elapsedUs * usTicks;
+    uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
+    uint32_t tickDiff = curTicks - syncTicks;
+    int64_t tickDiffFinal;
+    if (tickDiff > (US_PER_OVERFLOW / 10) * usTicks) {
+        tickDiff = 0xffffffff - tickDiff;
+        tickDiffFinal = -((int64_t)tickDiff);
+    } else {
+        tickDiffFinal = tickDiff;
+    }
+
+    return sTimerMicrosBaseOffset + ((int64_t)curUs + ((tickDiffFinal) / usTicks));
 }
 
 uint64_t hal_timer_millis(void* reserved) {
-    return GetCurrentTime(kUsTimer) / US_PER_MS;
+    return hal_timer_micros(NULL) / US_PER_MS;
 }
