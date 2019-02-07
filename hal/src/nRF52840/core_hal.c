@@ -51,17 +51,15 @@
 #include "usb_hal.h"
 #include "usart_hal.h"
 #include "system_error.h"
-#include <nrfx_rtc.h>
+#include <nrf_rtc.h>
 #include "gpio_hal.h"
 #include "exflash_hal.h"
+#include "flash_common.h"
+#include <nrf_pwm.h>
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
 static volatile uint8_t rtos_started = 0;
-
-#define RTC_ID   1
-static const app_irq_priority_t RTC_IRQ_Priority = APP_IRQ_PRIORITY_LOWEST;
-static const nrfx_rtc_t m_rtc = NRFX_RTC_INSTANCE(RTC_ID);
 
 static struct Last_Reset_Info {
     int reason;
@@ -73,13 +71,11 @@ typedef enum Feature_Flag {
     FEATURE_FLAG_ETHERNET_DETECTION = 0x02
 } Feature_Flag;
 
-#define STOP_MODE_EXIT_CONDITION_NONE   0x00
-#define STOP_MODE_EXIT_CONDITION_PIN    0x01
-#define STOP_MODE_EXIT_CONDITION_RTC    0x02
-static volatile struct {
-    uint32_t    source;
-    uint32_t    pin_index;
-} wakeup_info;
+typedef enum {
+    STOP_MODE_EXIT_CONDITION_NONE = 0x00,
+    STOP_MODE_EXIT_CONDITION_PIN  = 0x01,
+    STOP_MODE_EXIT_CONDITION_RTC  = 0x02
+} stop_mode_exit_condition_t;
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -108,9 +104,6 @@ extern void* malloc_heap_end();
 #if defined(MODULAR_FIRMWARE)
 void* module_user_pre_init();
 #endif
-
-extern void nrf5AlarmInit(void);
-extern void nrf5AlarmDeinit(void);
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -491,70 +484,39 @@ void HAL_Core_Enter_Bootloader(bool persist) {
     HAL_Core_System_Reset_Ex(RESET_REASON_DFU_MODE, 0, NULL);
 }
 
-static void fpu_sleep_prepare(void) {
-    uint32_t fpscr;
-    CRITICAL_REGION_ENTER();
-    fpscr = __get_FPSCR();
-    /*
-        * Clear FPU exceptions.
-        * Without this step, the FPU interrupt is marked as pending,
-        * preventing system from sleeping. Exceptions cleared:
-        * - IOC - Invalid Operation cumulative exception bit.
-        * - DZC - Division by Zero cumulative exception bit.
-        * - OFC - Overflow cumulative exception bit.
-        * - UFC - Underflow cumulative exception bit.
-        * - IXC - Inexact cumulative exception bit.
-        * - IDC - Input Denormal cumulative exception bit.
-        */
-    __set_FPSCR(fpscr & ~0x9Fu);
-    __DMB();
-    NVIC_ClearPendingIRQ(FPU_IRQn);
-    CRITICAL_REGION_EXIT();
-
-    /*__
-        * Assert no critical FPU exception is signaled:
-        * - IOC - Invalid Operation cumulative exception bit.
-        * - DZC - Division by Zero cumulative exception bit.
-        * - OFC - Overflow cumulative exception bit.
-        */
-    SPARK_ASSERT((fpscr & 0x07) == 0);
-}
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds) {
     InterruptMode m = (InterruptMode)edgeTriggerMode;
     HAL_Core_Enter_Stop_Mode_Ext(&wakeUpPin, 1, &m, 1, seconds, NULL);
 }
 
-static void wakeup_rtc_handler(nrfx_rtc_int_type_t int_type) {
-    wakeup_info.source |= STOP_MODE_EXIT_CONDITION_RTC;
+static void fpu_sleep_prepare(void) {
+    uint32_t fpscr;
+    fpscr = __get_FPSCR();
+    /*
+     * Clear FPU exceptions.
+     * Without this step, the FPU interrupt is marked as pending,
+     * preventing system from sleeping. Exceptions cleared:
+     * - IOC - Invalid Operation cumulative exception bit.
+     * - DZC - Division by Zero cumulative exception bit.
+     * - OFC - Overflow cumulative exception bit.
+     * - UFC - Underflow cumulative exception bit.
+     * - IXC - Inexact cumulative exception bit.
+     * - IDC - Input Denormal cumulative exception bit.
+     */
+    __set_FPSCR(fpscr & ~0x9Fu);
+    __DMB();
+    NVIC_ClearPendingIRQ(FPU_IRQn);
+
+    /*__
+     * Assert no critical FPU exception is signaled:
+     * - IOC - Invalid Operation cumulative exception bit.
+     * - DZC - Division by Zero cumulative exception bit.
+     * - OFC - Overflow cumulative exception bit.
+     */
+    SPARK_ASSERT((fpscr & 0x07) == 0);
 }
 
-static void wakeup_gpiote_handler(void* data) {
-    wakeup_info.source |= STOP_MODE_EXIT_CONDITION_PIN;
-    wakeup_info.pin_index = (uint32_t)data;
-}
-
-static void wakeup_from_rtc(uint32_t seconds) {
-    //Initialize RTC instance
-    nrfx_rtc_config_t config = {
-        .prescaler          = 0xFFF, // 125 ms counter period, 582.542 hours overflow
-        .interrupt_priority = RTC_IRQ_Priority,
-        .tick_latency       = 0,
-        .reliable           = false
-    };
-
-    uint32_t err_code = nrfx_rtc_init(&m_rtc, &config, wakeup_rtc_handler);
-    SPARK_ASSERT(err_code == NRF_SUCCESS);
-
-    // Set compare channel to trigger interrupt after COMPARE_COUNTERTIME seconds
-    nrfx_rtc_counter_clear(&m_rtc);
-    err_code = nrfx_rtc_cc_set(&m_rtc, 0, seconds * 8, true);
-    SPARK_ASSERT(err_code == NRF_SUCCESS);
-
-    // Power on RTC instance
-    nrfx_rtc_enable(&m_rtc);
-}
-
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved) {
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved) {
     // Initial sanity check
     if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {
         return SYSTEM_ERROR_NOT_ALLOWED;
@@ -582,16 +544,8 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
         }
     }
 
-    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-
     // Detach USB
     HAL_USB_Detach();
-
-    // Disable RTC2
-    nrf5AlarmDeinit();
-
-    // Disable external flash
-    hal_exflash_uninit();
 
     // Flush all USARTs
     for (int usart = 0; usart < TOTAL_USARTS; usart++) {
@@ -600,123 +554,381 @@ int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, co
         }
     }
 
-    // Disable all interrupt, __disable_irq()
-    uint8_t dummy = 0;
-    uint32_t err_code = sd_nvic_critical_region_enter(&dummy);
-    SPARK_ASSERT(err_code == NRF_SUCCESS);
+    // Make sure we acquire exflash lock BEFORE going into a critical section
+    hal_exflash_lock();
 
-    wakeup_info.source = STOP_MODE_EXIT_CONDITION_NONE;
+    // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
+    uint8_t st = 0;
+    sd_nvic_critical_region_enter(&st);
 
+    // Disable SysTick
+    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+
+    // Disable external flash
+    hal_exflash_uninit();
+    hal_exflash_unlock();
+
+    uint32_t exit_conditions = STOP_MODE_EXIT_CONDITION_NONE;
+
+    // Reducing power consumption
+    // Suspend all PWM instance remembering their state
+    bool pwm_state[4] = {
+        NRF_PWM0->ENABLE & PWM_ENABLE_ENABLE_Msk,
+        NRF_PWM1->ENABLE & PWM_ENABLE_ENABLE_Msk,
+        NRF_PWM2->ENABLE & PWM_ENABLE_ENABLE_Msk,
+        NRF_PWM3->ENABLE & PWM_ENABLE_ENABLE_Msk,
+    };
+    nrf_pwm_disable(NRF_PWM0);
+    nrf_pwm_disable(NRF_PWM1);
+    nrf_pwm_disable(NRF_PWM2);
+    nrf_pwm_disable(NRF_PWM3);
+
+    // _Attempt_ to disable HFCLK. This may not succeed, resulting in a higher current consumption
+    // FIXME
     bool hfclk_resume = false;
     if (nrf_drv_clock_hfclk_is_running()) {
         hfclk_resume = true;
-        nrf_drv_clock_hfclk_release();
-        while (nrf_drv_clock_hfclk_is_running()) {
-            ;
+
+        // Temporarily enable SoftDevice API interrupts just in case
+        uint32_t base_pri = __get_BASEPRI();
+        // We are also allowing IRQs with priority = 5, because that's what
+        // OpenThread uses for its SWI3
+        __set_BASEPRI(_PRIO_APP_LOW << (8 - __NVIC_PRIO_BITS));
+        sd_nvic_critical_region_exit(st);
+        {
+
+            nrf_drv_clock_hfclk_request(NULL);
+            while (!nrf_drv_clock_hfclk_is_running()) {
+                ;
+            }
+            nrf_drv_clock_hfclk_release();
+            // while (nrf_drv_clock_hfclk_is_running()) {
+            //     ;
+            // }
         }
+        // And disable again
+        __set_BASEPRI(base_pri);
+        sd_nvic_critical_region_enter(&st);
     }
 
-    uint32_t exit_conditions = 0x00;
+    // Remember current microsecond counter
+    uint64_t micros_before_sleep = hal_timer_micros(NULL);
+    // Disable hal_timer (RTC2)
+    hal_timer_deinit(NULL);
+
+    // Make sure LFCLK is running
+    nrf_drv_clock_lfclk_request(NULL);
+    while (!nrf_drv_clock_lfclk_is_running()) {
+        ;
+    }
+
+    // Configure RTC2 to count at 125ms interval. This should allow us to sleep
+    // (2^24 - 1) * 125ms = 24 days
+    NVIC_SetPriority(RTC2_IRQn, 4);
+    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_STOP);
+    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_CLEAR);
+    nrf_rtc_prescaler_set(NRF_RTC2, 4095);
+    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_TICK_MASK);
+    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_OVERFLOW_MASK);
+    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
+    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE1_MASK);
+    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE2_MASK);
+    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE3_MASK);
+    // Start RTC2
+    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_START);
+    __DSB();
+    __ISB();
+
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     // Suspend all GPIOTE interrupts
     HAL_Interrupts_Suspend();
+    {
+        uint32_t intenset = 0;
+        // Configure GPIOTE for wakeup
+        for (int i = 0; i < pins_count; i++) {
+            pin_t wake_up_pin = pins[i];
+            InterruptMode edge_trigger_mode = (i < mode_count) ? mode[i] : mode[mode_count - 1];
 
-    for (int i = 0; i < pins_count; i++) {
-        pin_t wakeUpPin = pins[i];
-        InterruptMode edgeTriggerMode = (i < mode_count) ? mode[i] : mode[mode_count - 1];
+            nrf_gpio_pin_pull_t wake_up_pin_mode;
+            nrf_gpio_pin_sense_t wake_up_pin_sense;
+            nrf_gpiote_polarity_t wake_up_pin_polarity;
+            // Set required pin_mode based on edge_trigger_mode
+            switch(edge_trigger_mode) {
+                case RISING: {
+                    wake_up_pin_mode = NRF_GPIO_PIN_PULLDOWN;
+                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_HIGH;
+                    wake_up_pin_polarity = NRF_GPIOTE_POLARITY_LOTOHI;
+                    break;
+                }
+                case FALLING: {
+                    wake_up_pin_mode = NRF_GPIO_PIN_PULLUP;
+                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_LOW;
+                    wake_up_pin_polarity = NRF_GPIOTE_POLARITY_HITOLO;
+                    break;
+                }
+                case CHANGE:
+                default:
+                    wake_up_pin_mode = NRF_GPIO_PIN_NOPULL;
+                    wake_up_pin_polarity = NRF_GPIOTE_POLARITY_TOGGLE;
+                    break;
+            }
 
-        PinMode wakeUpPinMode = INPUT;
-        // Set required pinMode based on edgeTriggerMode
-        switch(edgeTriggerMode) {
-            case RISING: {
-                wakeUpPinMode = INPUT_PULLDOWN;
-                break;
+            // For any pin that is not currently configured in GPIOTE with IN event
+            // we are going to use low power PORT events
+            uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[wake_up_pin].gpio_port, PIN_MAP[wake_up_pin].gpio_pin);
+            // Set pin mode
+            nrf_gpio_cfg_input(nrf_pin, wake_up_pin_mode);
+            bool use_in = false;
+            for (unsigned i = 0; i < GPIOTE_CH_NUM; ++i) {
+                if (nrf_gpiote_event_pin_get(i) == nrf_pin &&
+                        nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
+                    // We have to use IN event for this pin in order to successfully execute interrupt handler
+                    use_in = true;
+                    nrf_gpiote_event_configure(i, nrf_pin, wake_up_pin_polarity);
+                    intenset |= NRF_GPIOTE_INT_IN0_MASK << i;
+                    break;
+                }
             }
-            case FALLING: {
-                wakeUpPinMode = INPUT_PULLUP;
-                break;
+
+            if (!use_in) {
+                // Use PORT for this pin
+                if (wake_up_pin_mode == NRF_GPIO_PIN_NOPULL) {
+                    // Read current state, choose sense accordingly
+                    // Dummy read just in case
+                    (void)nrf_gpio_pin_read(nrf_pin);
+                    uint32_t cur_state = nrf_gpio_pin_read(nrf_pin);
+                    if (cur_state) {
+                        nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_LOW);
+                    } else {
+                        nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_HIGH);
+                    }
+                } else {
+                    nrf_gpio_cfg_sense_input(nrf_pin, wake_up_pin_mode, wake_up_pin_sense);
+                }
+                intenset |= NRF_GPIOTE_INT_PORT_MASK;
             }
-            case CHANGE:
-            default:
-                wakeUpPinMode = INPUT;
-                break;
         }
 
-        HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
-        HAL_InterruptExtraConfiguration irqConf = {0};
-        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
-        irqConf.IRQChannelPreemptionPriority = 0;
-        irqConf.IRQChannelSubPriority = 0;
-        irqConf.keepHandler = 1;
-        irqConf.keepPriority = 1;
-        HAL_Interrupts_Attach(wakeUpPin, wakeup_gpiote_handler, (void*)(uint32_t)i, edgeTriggerMode, &irqConf);
+        // Disable unnecessary GPIOTE interrupts
+        uint32_t cur_intenset = NRF_GPIOTE->INTENSET;
+        nrf_gpiote_int_disable(cur_intenset ^ intenset);
+        nrf_gpiote_int_enable(intenset);
 
-        exit_conditions |= STOP_MODE_EXIT_CONDITION_PIN;
+        // Clear events and interrupts
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_0);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_1);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_2);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_3);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_4);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_5);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_6);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_7);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
+        NVIC_ClearPendingIRQ(GPIOTE_IRQn);
+
+        if (pins_count > 0) {
+            exit_conditions |= STOP_MODE_EXIT_CONDITION_PIN;
+        }
     }
 
-    // Configure RTC wake-up
-    if (seconds > 0) {
-        wakeup_from_rtc(seconds);
+    int reason = SYSTEM_ERROR_UNKNOWN;
 
-        exit_conditions |= STOP_MODE_EXIT_CONDITION_RTC;
-    }
-
-    // Enable all interrupt, __enable_irq()
-    err_code = sd_nvic_critical_region_exit(dummy);
-    APP_ERROR_CHECK(err_code);
-
+    // Enter sleep mode
+    sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
+    // Workaround for FPU anomaly
     fpu_sleep_prepare();
 
-    // Enter sleep mode, wait for event
-    do {
-        SPARK_ASSERT(sd_app_evt_wait() == NRF_SUCCESS);
-    } while (wakeup_info.source == STOP_MODE_EXIT_CONDITION_NONE);
+    // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
+    // or GPIOTE and RTC.
+    // IMPORTANT: No SoftDevice API calls are allowed until HAL_enable_irq()
+    int hst = HAL_disable_irq();
 
-    int32_t reason = SYSTEM_ERROR_NOT_SUPPORTED;
+    // Remember original priorities
+    uint32_t gpiote_priority = NVIC_GetPriority(GPIOTE_IRQn);
+    uint32_t rtc2_priority = NVIC_GetPriority(GPIOTE_IRQn);
 
+    // Enable RTC2 and GPIOTE interrupts if needed
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
-        if (wakeup_info.source & STOP_MODE_EXIT_CONDITION_PIN) {
-            reason = wakeup_info.pin_index + 1;
-        }
-        for (int i = 0; i < pins_count; i++) {
-            pin_t wakeUpPin = pins[i];
-            /* Detach the Interrupt pin */
-            HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
-        }
+        NVIC_EnableIRQ(GPIOTE_IRQn);
     }
+    if (seconds > 0) {
+        // Reconfigure RTC2 for wake-up
+        exit_conditions |= STOP_MODE_EXIT_CONDITION_RTC;
+        NVIC_ClearPendingIRQ(RTC2_IRQn);
 
-    if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
-        if (wakeup_info.source & STOP_MODE_EXIT_CONDITION_RTC) {
-            reason = 0;
-        }
-    }
-
-    // Restore wakeup RTC
-    nrfx_rtc_uninit(&m_rtc);
-
-    // Restore GPIOTE
-    HAL_Interrupts_Restore();
-
-    // Restore hfclk
-    if (hfclk_resume) {
-        nrf_drv_clock_hfclk_request(NULL);
-        while (!nrf_drv_clock_hfclk_is_running()) {
+        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
+        nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
+        // Make sure that RTC is ticking
+        while (!nrf_rtc_event_pending(NRF_RTC2, NRF_RTC_EVENT_TICK)) {
             ;
         }
+        nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
+        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
+
+        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
+        nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
+
+        // Configure CC0
+        uint32_t counter = nrf_rtc_counter_get(NRF_RTC2);
+        uint32_t cc = counter + seconds * 8;
+        NVIC_EnableIRQ(RTC2_IRQn);
+        nrf_rtc_cc_set(NRF_RTC2, 0, cc);
+        nrf_rtc_int_enable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
+        nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
     }
 
+    __DSB();
+    __ISB();
+
+    while (true) {
+        if ((exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) && NVIC_GetPendingIRQ(RTC2_IRQn)) {
+            // Woken up by RTC
+            reason = 0;
+            break;
+        } else if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
+            if (NVIC_GetPendingIRQ(GPIOTE_IRQn)) {
+                // Woken up by a pin, figure out which one
+                if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
+                    // PORT event
+                    for (int i = 0; i < pins_count; i++) {
+                        pin_t wake_up_pin = pins[i];
+                        uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[wake_up_pin].gpio_port, PIN_MAP[wake_up_pin].gpio_pin);
+                        nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(nrf_pin);
+                        if (sense != NRF_GPIO_PIN_NOSENSE) {
+                            uint32_t state = nrf_gpio_pin_read(nrf_pin);
+                            if ((state && sense == NRF_GPIO_PIN_SENSE_HIGH) ||
+                                    (!state && sense == NRF_GPIO_PIN_SENSE_LOW)) {
+                                reason = i + 1;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    // Check INT events
+                    for (unsigned i = 0; i < GPIOTE_CH_NUM && reason < 0; ++i) {
+                        if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
+                            pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
+                            if (pin != PIN_INVALID) {
+                                for (unsigned p = 0; p < pins_count; ++p) {
+                                    pin_t wake_up_pin = pins[p];
+                                    if (wake_up_pin == pin) {
+                                        reason = p + 1;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        {
+            // Mask interrupts completely
+            __disable_irq();
+            // Bump RTC2 and GPIOTE priorities if needed
+            if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
+                NVIC_SetPriority(GPIOTE_IRQn, 0);
+            }
+            if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
+                NVIC_SetPriority(RTC2_IRQn, 0);
+            }
+
+            __DSB();
+            __ISB();
+
+            // Go to sleep
+            __WFI();
+
+            // Unbump RTC2 and GPIOTE priorities
+            NVIC_SetPriority(GPIOTE_IRQn, gpiote_priority);
+            NVIC_SetPriority(RTC2_IRQn, rtc2_priority);
+
+            // Unmask interrupts, we are still under the effect of HAL_disable_irq
+            // that masked all but SoftDevice interrupts using BASEPRI
+            __enable_irq();
+        }
+    }
+
+    // Restore HFCLK
+    if (hfclk_resume) {
+        // Temporarily enable SoftDevice API interrupts
+        uint32_t base_pri = __get_BASEPRI();
+        __set_BASEPRI(_PRIO_SD_LOWEST << (8 - __NVIC_PRIO_BITS));
+        {
+            nrf_drv_clock_hfclk_request(NULL);
+            while (!nrf_drv_clock_hfclk_is_running()) {
+                ;
+            }
+        }
+        // And disable again
+        __set_BASEPRI(base_pri);
+    }
+
+    // Count the number of microseconds we've slept and reconfigure hal_timer (RTC2)
+    uint64_t slept_for = (uint64_t)nrf_rtc_counter_get(NRF_RTC2) * 125000;
+    // Stop RTC2
+    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_STOP);
+    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_CLEAR);
+    // Reconfigure it hal_timer_init() and apply the offset
+    hal_timer_init_config_t hal_timer_conf = {
+        .size = sizeof(hal_timer_init_config_t),
+        .version = 0,
+        .base_clock_offset = micros_before_sleep + slept_for
+    };
+    hal_timer_init(&hal_timer_conf);
+
+    // Restore GPIOTE cionfiguration
+    HAL_Interrupts_Restore();
+
+    // Re-initialize external flash
     hal_exflash_init();
 
-    nrf5AlarmInit();
+    // Re-enable PWM
+    // FIXME: this is not ideal but will do for now
+    {
+        NRF_PWM_Type* const pwms[] = {NRF_PWM0, NRF_PWM1, NRF_PWM2, NRF_PWM3};
+        for (unsigned i = 0; i < sizeof(pwms) / sizeof(pwms[0]); i++) {
+            NRF_PWM_Type* pwm = pwms[i];
+            if (pwm_state[i]) {
+                nrf_pwm_enable(pwm);
+                if (nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND0) ||
+                        nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND1)) {
+                    nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND0);
+                    nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND1);
+                    if (pwm->SEQ[0].PTR && pwm->SEQ[0].CNT) {
+                        nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+                    } else if (pwm->SEQ[1].PTR && pwm->SEQ[1].CNT) {
+                        nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART1);
+                    }
+                }
+            }
+        }
+    }
 
-    HAL_USB_Attach();
-
+    // Re-enable SysTick
     SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
+
+    // This will reenable all non-SoftDevice interrupts previously disabled
+    // by sd_nvic_critical_region_enter()
+    sd_nvic_critical_region_exit(st);
+
+    // Unmasks all non-softdevice interrupts
+    HAL_enable_irq(hst);
+
+    // Release LFCLK
+    nrf_drv_clock_lfclk_release();
+
+    // Re-enable USB
+    HAL_USB_Attach();
 
     return reason;
 }
 
 void HAL_Core_Execute_Stop_Mode(void) {
+    // Kept for compatibility only. Despite the fact that it's exported, it's never used directly
 }
 
 int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags) {
@@ -735,17 +947,25 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
+
+    // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
+    uint8_t st = 0;
+    sd_nvic_critical_region_enter(&st);
+
     // Uninit GPIOTE
     nrfx_gpiote_uninit();
+
+    // Disable low power comparator
+    nrf_lpcomp_disable();
+
+    // Deconfigure any possible SENSE configuration
+    HAL_Interrupts_Suspend();
 
     // Disable GPIOTE PORT interrupts
     nrf_gpiote_int_disable(GPIOTE_INTENSET_PORT_Msk);
 
     // Clear any GPIOTE events
     nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
-
-    // Disable low power comparator
-    nrf_lpcomp_disable();
 
     // Configure wakeup pin
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
