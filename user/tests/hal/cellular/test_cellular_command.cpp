@@ -84,7 +84,7 @@ test(AT_CMD_01_set_and_read_command) {
         at_resp_info_print(type, buf, len, lines);
         assertEqualBlock(type, (int)TYPE_OK);
         return WAIT;
-    }, &lines, 5000, "AT+CMEE=2\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+CMEE=2\r\n"), (int)RESP_OK);
 
     lines = 0;
     assertEqualBlock(send_cellular_command([](int type, const char* buf, int len, int* curr_line) -> int {
@@ -99,7 +99,7 @@ test(AT_CMD_01_set_and_read_command) {
         }
         (*curr_line)++;
         return WAIT;
-    }, &lines, 5000, "AT+CMEE?\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+CMEE?\r\n"), (int)RESP_OK);
 }
 
 test(AT_CMD_02_plus) {
@@ -116,7 +116,7 @@ test(AT_CMD_02_plus) {
         }
         (*lines)++;
         return WAIT;
-    }, &lines, 5000, "AT+CCID?\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+CCID?\r\n"), (int)RESP_OK);
 
     lines = 0;
     assertEqualBlock(send_cellular_command([](int type, const char* buf, int len, int* lines) -> int {
@@ -129,7 +129,7 @@ test(AT_CMD_02_plus) {
         }
         (*lines)++;
         return WAIT;
-    }, &lines, 5000, "AT+CPIN?\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+CPIN?\r\n"), (int)RESP_OK);
 }
 
 test(AT_CMD_03_unknown) {
@@ -146,7 +146,7 @@ test(AT_CMD_03_unknown) {
         }
         (*lines)++;
         return WAIT;
-    }, &lines, 5000, "AT+GSN\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+GSN\r\n"), (int)RESP_OK);
 
     lines = 0;
     assertEqualBlock(send_cellular_command([](int type, const char* buf, int len, int* lines) -> int {
@@ -159,7 +159,7 @@ test(AT_CMD_03_unknown) {
         }
         (*lines)++;
         return WAIT;
-    }, &lines, 5000, "AT+CGMR\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+CGMR\r\n"), (int)RESP_OK);
 }
 
 test(AT_CMD_04_error_test) {
@@ -176,7 +176,7 @@ test(AT_CMD_04_error_test) {
         }
         (*lines)++;
         return WAIT;
-    }, &lines, 5000, "AT+USOCL=7\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+USOCL=7\r\n"), (int)RESP_ERROR);
 
     // +CMS ERROR: invalid memory index
     lines = 0;
@@ -184,7 +184,7 @@ test(AT_CMD_04_error_test) {
         at_resp_info_print(type, buf, len, lines);
         assertEqualBlock(type, (int)TYPE_ERROR);
         return WAIT;
-    }, &lines, 5000, "AT+CMSS=1000\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "AT+CMSS=1000\r\n"), (int)RESP_ERROR);
 }
 
 test(AT_CMD_05_no_carrier) {
@@ -194,6 +194,6 @@ test(AT_CMD_05_no_carrier) {
         at_resp_info_print(type, buf, len, lines);
         assertEqualBlock(type, (int)TYPE_NOCARRIER);
         return WAIT;
-    }, &lines, 5000, "atd1234567890\r\n"), (int)SYSTEM_ERROR_NONE);
+    }, &lines, 5000, "atd1234567890\r\n"), (int)RESP_ERROR);
 }
 

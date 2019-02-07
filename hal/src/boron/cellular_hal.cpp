@@ -63,6 +63,25 @@ int parseMdmType(const char* buf, size_t size) {
     return TYPE_UNKNOWN;
 }
 
+int mdmTypeToResult(int type) {
+    switch (type) {
+    case TYPE_OK:
+        return RESP_OK;
+    case TYPE_ERROR:
+    case TYPE_BUSY:
+    case TYPE_NODIALTONE:
+    case TYPE_NOANSWER:
+    case TYPE_NOCARRIER:
+        return RESP_ERROR;
+    case TYPE_PROMPT:
+        return RESP_PROMPT;
+    case TYPE_ABORTED:
+        return RESP_ABORTED;
+    default:
+        return NOT_FOUND;
+    }
+}
+
 hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat) {
     switch (rat) {
     case CellularAccessTechnology::GSM:
@@ -328,6 +347,9 @@ int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms,
     auto resp = parser->command().vprintf(fmt.get(), args).timeout(timeout_ms).send();
     va_end(args);
     if (!resp) {
+        if (resp.error() == SYSTEM_ERROR_TIMEOUT) {
+            return WAIT;
+        }
         return resp.error();
     }
 
@@ -336,16 +358,26 @@ int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms,
     const size_t bufSize = MAX_RESP_SIZE + 64; // add some more space for framing
     std::unique_ptr<char[]> buf(new(std::nothrow) char[bufSize]);
     CHECK_TRUE(buf, SYSTEM_ERROR_NO_MEMORY);
+    // WORKAROUND: Add "\r\n" for compatibility
+    buf[0] = '\r';
+    buf[1] = '\n';
 
     int mdmType = TYPE_OK;
     while (resp.hasNextLine()) {
-        n = CHECK(resp.readLine(buf.get(), bufSize - 3));
+        int n = resp.readLine(buf.get() + 2, bufSize - 5);
+        if (n < 0) {
+            if (n == SYSTEM_ERROR_TIMEOUT) {
+                return WAIT;
+            }
+            return n;
+        }
         if (cb) {
-            mdmType = parseMdmType(buf.get(), n);
+            mdmType = parseMdmType(buf.get() + 2, n);
+            n += 2;
             // WORKAROUND: Add "\r\n" for compatibility
             buf[n++] = '\r';
             buf[n++] = '\n';
-            buf[n++] = '\0';
+            buf[n] = '\0';
             const int r = cb(mdmType, buf.get(), n, param);
             if (r != WAIT) {
                 return r;
@@ -355,7 +387,14 @@ int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms,
 
     buf.reset();
 
-    const int result = CHECK(resp.readResult());
+    const int result = resp.readResult();
+    if (result < 0) {
+        if (result == SYSTEM_ERROR_TIMEOUT) {
+            return WAIT;
+        }
+        return result;
+    }
+
     const char* mdmStr = nullptr;
     switch (result) {
     case AtResponse::OK:
@@ -400,13 +439,13 @@ int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms,
         if (result == AtResponse::CME_ERROR || result == AtResponse::CMS_ERROR) {
             char msg[32] = {};
             snprintf(msg, sizeof(msg), "%s: %d\r\n", mdmStr, resp.resultErrorCode());
-            cb(mdmType, msg, strlen(msg) + 1, param);
+            cb(mdmType, msg, strlen(msg), param);
         } else {
-            cb(mdmType, mdmStr, strlen(mdmStr) + 1, param);
+            cb(mdmType, mdmStr, strlen(mdmStr), param);
         }
     }
 
-    return 0;
+    return mdmTypeToResult(mdmType);
 }
 
 int cellular_data_usage_set(CellularDataHal* data, void* reserved) {
