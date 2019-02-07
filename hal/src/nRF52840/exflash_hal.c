@@ -30,6 +30,7 @@
 #include "hw_config.h"
 #include "logging.h"
 #include "flash_common.h"
+#include "nrf_nvic.h"
 
 enum qspi_cmds_t {
     QSPI_STD_CMD_WRSR    = 0x01,
@@ -100,7 +101,7 @@ int hal_exflash_init(void)
 {
     int ret = 0;
 
-    // PATCH: Initialize CS pin, external memory discharge 
+    // PATCH: Initialize CS pin, external memory discharge
     nrf_gpio_cfg_output(QSPI_FLASH_CSN_PIN);
     nrf_gpio_pin_set(QSPI_FLASH_CSN_PIN);
     nrf_gpio_cfg_input(QSPI_FLASH_IO1_PIN, NRF_GPIO_PIN_PULLDOWN);
@@ -154,16 +155,12 @@ int hal_exflash_uninit(void)
 {
     hal_exflash_lock();
     nrfx_qspi_uninit();
-    // PATCH: Initialize CS pin, external memory discharge 
+    // PATCH: Initialize CS pin, external memory discharge
     nrf_gpio_cfg_output(QSPI_FLASH_CSN_PIN);
     nrf_gpio_pin_set(QSPI_FLASH_CSN_PIN);
     nrf_gpio_cfg_input(QSPI_FLASH_IO1_PIN, NRF_GPIO_PIN_PULLDOWN);
     // The nrfx_qspi driver doesn't clear pending IRQ
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    SPARK_ASSERT(sd_nvic_ClearPendingIRQ(QSPI_IRQn) == NRF_SUCCESS);
-#else
-    NVIC_ClearPendingIRQ(QSPI_IRQn);
-#endif
+    sd_nvic_ClearPendingIRQ(QSPI_IRQn);
     hal_exflash_unlock();
 
     return 0;
