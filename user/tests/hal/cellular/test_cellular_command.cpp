@@ -2,8 +2,8 @@
 #include "unit-test/unit-test.h"
 
 SYSTEM_MODE(MANUAL);
-STARTUP(cellular_credentials_set("", "", "", NULL));
-STARTUP(Cellular.setActiveSim(EXTERNAL_SIM));
+//STARTUP(cellular_credentials_set("", "", "", NULL));
+//STARTUP(Cellular.setActiveSim(EXTERNAL_SIM));
 
 #define assertBlock(arg1,op,op_name,arg2) if (!Test::assertion<typeof(arg2)>(F(__FILE__),__LINE__,F(#arg1),(arg1),F(op_name),op,F(#arg2),(arg2))) while(1);
 #define assertEqualBlock(arg1,arg2)       assertBlock(arg1,isEqual,"==",arg2)

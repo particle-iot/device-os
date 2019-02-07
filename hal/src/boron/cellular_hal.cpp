@@ -24,8 +24,9 @@
 
 #include "system_network.h" // FIXME: For network_interface_index
 
-#include "scope_guard.h"
+#include "str_util.h"
 #include "endian_util.h"
+#include "scope_guard.h"
 #include "check.h"
 
 #include "at_parser.h"
@@ -35,11 +36,32 @@
 
 #include <limits>
 
-#define MAX_RESP_SIZE        1024
-
 namespace {
 
 using namespace particle;
+
+const size_t MAX_RESP_SIZE = 1024;
+
+int parseMdmType(const char* buf, size_t size) {
+    static const struct {
+        const char* prefix;
+        int type;
+    } types[] = {
+        { "RING", TYPE_RING },
+        { "CONNECT", TYPE_CONNECT },
+        { "+", TYPE_PLUS },
+        { "@", TYPE_PROMPT }, // Sockets
+        { ">", TYPE_PROMPT }, // SMS
+        { "ABORTED", TYPE_ABORTED } // Current command aborted
+    };
+    for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); ++i) {
+        const auto& t = types[i];
+        if (startsWith(buf, size, t.prefix, strlen(t.prefix))) {
+            return t.type;
+        }
+    }
+    return TYPE_UNKNOWN;
+}
 
 hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat) {
     switch (rat) {
@@ -281,56 +303,6 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
     return 0;
 }
 
-static int parse_match(char *buf, uint16_t size, const char* sta, const char* end) {
-    int o = 0;
-    if (sta) {
-        while (*sta) {
-            if (++o > size)                 return WAIT;
-            char ch = *buf++;
-            if (*sta++ != ch)               return NOT_FOUND;
-        }
-    }
-    if (!end)                               return o; // no termination
-    // at least any char
-    if (++o > size)                         return WAIT;
-    buf++;
-    // check the end
-    int x = 0;
-    while (end[x]) {
-        if (++o > size)                     return WAIT;
-        char ch = *buf++;
-        x = (end[x] == ch) ? x + 1 :
-            (end[0] == ch) ? 1 : 0;
-    }
-    return o;
-}
-
-static int get_mdm_type(char *buf, int size) {
-    static struct {
-            const char* sta;          const char* end;    int type;
-    } lut[] = {
-        { "RING",               NULL,               TYPE_RING       },
-        { "CONNECT",            NULL,               TYPE_CONNECT    },
-        { "+",                  NULL,               TYPE_PLUS       },
-        { "@",                  NULL,               TYPE_PROMPT     }, // Sockets
-        { ">",                  NULL,               TYPE_PROMPT     }, // SMS
-        { "ABORTED",            NULL,               TYPE_ABORTED    }, // Current command aborted
-    };
-
-    for (int i = 0; i < (int)(sizeof(lut)/sizeof(*lut)); i++) {
-        int ln = parse_match(buf, size, lut[i].sta, lut[i].end);
-        if (ln > 0) {
-            // LOG_DEBUG(TRACE, "get_mdm_type, src: %s, size: %d, type: 0x%x", buf, size, (uint32_t)lut[i].type);
-            return lut[i].type;
-        } else if (ln == WAIT) {
-            // LOG_DEBUG(TRACE, "get_mdm_type, WAIT");
-            return WAIT;
-        }
-    }
-    // LOG_DEBUG(TRACE, "get_mdm_type, UNKNOWN");
-    return TYPE_UNKNOWN;
-}
-
 int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms, const char* format, ...) {
     auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
@@ -339,92 +311,102 @@ int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms,
     auto parser = client->atParser();
     CHECK_TRUE(parser, SYSTEM_ERROR_UNKNOWN);
 
-    client->lock();
+    NcpClientLock lock(client);
+
+    // WORKAROUND: cut "\r\n", it has been resolved in AT Parser
+    size_t n = strlen(format);
+    while (n > 0 && (format[n - 1] == '\r' || format[n - 1] == '\n')) {
+        --n;
+    }
+    std::unique_ptr<char[]> fmt(new(std::nothrow) char[n + 1]);
+    CHECK_TRUE(fmt, SYSTEM_ERROR_NO_MEMORY);
+    memcpy(fmt.get(), format, n);
+    fmt[n] = '\0';
 
     va_list args;
     va_start(args, format);
-
-    // WORKAROUND: cut "\r\n", it has been resolved in AT Parser
-    auto * fmt = (char *)malloc(strlen(format) + 1);
-    if (!fmt) {
-        client->unlock();
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    memcpy(fmt, format, strlen(format) + 1);
-    if (fmt[strlen(format) - 1] == '\n' && fmt[strlen(format) - 2] == '\r') {
-        fmt[strlen(format) - 1] = '\0';
-        fmt[strlen(format) - 2] = '\0';
+    auto resp = parser->command().vprintf(fmt.get(), args).timeout(timeout_ms).send();
+    va_end(args);
+    if (!resp) {
+        return resp.error();
     }
 
-    auto resp = parser->command().vprintf(fmt, args).timeout(timeout_ms).send();
+    fmt.reset();
 
-    const size_t size = MAX_RESP_SIZE + 64; /* add some more space for framing */
-    auto * buf = (char *)malloc(size);
-    if (!buf) {
-        free(fmt);
-        client->unlock();
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    memset(buf, 0, size);
+    const size_t bufSize = MAX_RESP_SIZE + 64; // add some more space for framing
+    std::unique_ptr<char[]> buf(new(std::nothrow) char[bufSize]);
+    CHECK_TRUE(buf, SYSTEM_ERROR_NO_MEMORY);
 
-    int mdm_type = TYPE_OK;
+    int mdmType = TYPE_OK;
     while (resp.hasNextLine()) {
-        int n = resp.readLine(buf, size);
-        if (n > 0) {
-            if (cb) {
-                mdm_type = get_mdm_type(buf, n);
-                // WORKAROUND: Add "\r\n" for compatibility
-                // LOG_DEBUG(TRACE, "size: %d, read: %s", n, buf);
-                buf[n++] = '\r';
-                buf[n++] = '\n';
-                buf[n++] = '\0';
-                int cb_ret = cb(mdm_type, buf, n, param);
-                if (cb_ret != WAIT) {
-                    break;
-                }
+        n = CHECK(resp.readLine(buf.get(), bufSize - 3));
+        if (cb) {
+            mdmType = parseMdmType(buf.get(), n);
+            // WORKAROUND: Add "\r\n" for compatibility
+            buf[n++] = '\r';
+            buf[n++] = '\n';
+            buf[n++] = '\0';
+            const int r = cb(mdmType, buf.get(), n, param);
+            if (r != WAIT) {
+                return r;
             }
-        } else {
-            LOG_DEBUG(WARN, "readLine err: %d", n);
         }
     };
 
-    int result = resp.readResult();
-    LOG_DEBUG(TRACE, "response result: %d, code: %d", result, resp.resultErrorCode());
-    if (result < 0) {
-        free(fmt);
-        free(buf);
-        client->unlock();
-        return SYSTEM_ERROR_UNKNOWN;
-    }
+    buf.reset();
 
-    const char * mdm_str = NULL;
+    const int result = CHECK(resp.readResult());
+    const char* mdmStr = nullptr;
     switch (result) {
-        case AtResponse::OK:          mdm_type = TYPE_OK;         mdm_str = "\r\nOK\r\n";           break;
-        case AtResponse::BUSY:        mdm_type = TYPE_BUSY;       mdm_str = "\r\nBUSY\r\n";         break;
-        case AtResponse::ERROR:       mdm_type = TYPE_ERROR;      mdm_str = "\r\nERROR\r\n";        break;
-        case AtResponse::CME_ERROR:   mdm_type = TYPE_ERROR;      mdm_str = "\r\n+CME ERROR\r\n";   break;
-        case AtResponse::CMS_ERROR:   mdm_type = TYPE_ERROR;      mdm_str = "\r\n+CMS ERROR\r\n";   break;
-        case AtResponse::NO_DIALTONE: mdm_type = TYPE_NODIALTONE; mdm_str = "\r\nNO DIALTONE\r\n";  break;
-        case AtResponse::NO_ANSWER:   mdm_type = TYPE_NOANSWER;   mdm_str = "\r\nNO ANSWER\r\n";    break;
-        case AtResponse::NO_CARRIER:  mdm_type = TYPE_NOCARRIER;  mdm_str = "\r\nNO CARRIER\r\n";   break;
+    case AtResponse::OK:
+        mdmType = TYPE_OK;
+        mdmStr = "\r\nOK\r\n";
+        break;
+    case AtResponse::BUSY:
+        mdmType = TYPE_BUSY;
+        mdmStr = "\r\nBUSY\r\n";
+        break;
+    case AtResponse::ERROR:
+        mdmType = TYPE_ERROR;
+        mdmStr = "\r\nERROR\r\n";
+        break;
+    case AtResponse::CME_ERROR:
+        mdmType = TYPE_ERROR;
+        mdmStr = "\r\n+CME ERROR";
+        break;
+    case AtResponse::CMS_ERROR:
+        mdmType = TYPE_ERROR;
+        mdmStr = "\r\n+CMS ERROR";
+        break;
+    case AtResponse::NO_DIALTONE:
+        mdmType = TYPE_NODIALTONE;
+        mdmStr = "\r\nNO DIALTONE\r\n";
+        break;
+    case AtResponse::NO_ANSWER:
+        mdmType = TYPE_NOANSWER;
+        mdmStr = "\r\nNO ANSWER\r\n";
+        break;
+    case AtResponse::NO_CARRIER:
+        mdmType = TYPE_NOCARRIER;
+        mdmStr = "\r\nNO CARRIER\r\n";
+        break;
+    default:
+        mdmType = TYPE_UNKNOWN;
+        mdmStr = "";
+        break;
     }
 
     if (cb) {
-        char cme_cms_error[50] = {0};
         if (result == AtResponse::CME_ERROR || result == AtResponse::CMS_ERROR) {
-            sprintf(cme_cms_error, "%s, code: %d", mdm_str, resp.resultErrorCode());
-            cb(mdm_type, cme_cms_error, strlen(cme_cms_error)+1, param);
-        } else if (result >= 0) {
-            cb(mdm_type, mdm_str, strlen(mdm_str)+1, param);
+            char msg[32] = {};
+            snprintf(msg, sizeof(msg), "%s: %d\r\n", mdmStr, resp.resultErrorCode());
+            cb(mdmType, msg, strlen(msg) + 1, param);
+        } else {
+            cb(mdmType, mdmStr, strlen(mdmStr) + 1, param);
         }
     }
 
-    va_end(args);
-    free(fmt);
-    free(buf);
-    client->unlock();
-
-    return SYSTEM_ERROR_NONE;
+    return 0;
 }
 
 int cellular_data_usage_set(CellularDataHal* data, void* reserved) {
