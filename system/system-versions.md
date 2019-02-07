@@ -71,6 +71,7 @@
 | 214 | 324 | 0.8.0-rc.25 |         (Xenon, Argon, Boron) |
 | 215 | 325 | 0.8.0-rc.26 |         (Xenon, Argon, Boron) |
 | 215 | 326 | 0.8.0-rc.27 |         (Xenon, Argon, Boron) |
+| 300 | 400 | 0.9.0-rc.1  |         (Xenon, Argon, Boron) |
 
 
 To find out the release version of system firmware currently installed, in listening mode,
