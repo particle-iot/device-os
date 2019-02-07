@@ -596,19 +596,14 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
         __set_BASEPRI(_PRIO_APP_LOW << (8 - __NVIC_PRIO_BITS));
         sd_nvic_critical_region_exit(st);
         {
-
-            nrf_drv_clock_hfclk_request(NULL);
-            while (!nrf_drv_clock_hfclk_is_running()) {
-                ;
-            }
             nrf_drv_clock_hfclk_release();
             // while (nrf_drv_clock_hfclk_is_running()) {
             //     ;
             // }
         }
         // And disable again
-        __set_BASEPRI(base_pri);
         sd_nvic_critical_region_enter(&st);
+        __set_BASEPRI(base_pri);
     }
 
     // Remember current microsecond counter
@@ -734,7 +729,7 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
 
     int reason = SYSTEM_ERROR_UNKNOWN;
 
-    // Enter sleep mode
+    // Ask SoftDevice to go into low power mode
     sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
     // Workaround for FPU anomaly
     fpu_sleep_prepare();
@@ -746,7 +741,7 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
 
     // Remember original priorities
     uint32_t gpiote_priority = NVIC_GetPriority(GPIOTE_IRQn);
-    uint32_t rtc2_priority = NVIC_GetPriority(GPIOTE_IRQn);
+    uint32_t rtc2_priority = NVIC_GetPriority(RTC2_IRQn);
 
     // Enable RTC2 and GPIOTE interrupts if needed
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
@@ -760,6 +755,8 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
         nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
         nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
         // Make sure that RTC is ticking
+        // See 'TASK and EVENT jitter/delay'
+        // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.nrf52840.ps%2Frtc.html
         while (!nrf_rtc_event_pending(NRF_RTC2, NRF_RTC_EVENT_TICK)) {
             ;
         }
@@ -805,7 +802,7 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
                         }
                     }
                 } else {
-                    // Check INT events
+                    // Check IN events
                     for (unsigned i = 0; i < GPIOTE_CH_NUM && reason < 0; ++i) {
                         if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
                             pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
@@ -917,6 +914,9 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
 
     // Unmasks all non-softdevice interrupts
     HAL_enable_irq(hst);
+
+    // Restore softdevice power mode
+    sd_power_mode_set(NRF_POWER_MODE_CONSTLAT);
 
     // Release LFCLK
     nrf_drv_clock_lfclk_release();
