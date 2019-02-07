@@ -24,15 +24,63 @@
 
 #include "system_network.h" // FIXME: For network_interface_index
 
-#include "scope_guard.h"
+#include "str_util.h"
 #include "endian_util.h"
+#include "scope_guard.h"
 #include "check.h"
+
+#include "at_parser.h"
+#include "at_command.h"
+#include "at_response.h"
+#include "modem/enums_hal.h"
 
 #include <limits>
 
 namespace {
 
 using namespace particle;
+
+const size_t MAX_RESP_SIZE = 1024;
+
+int parseMdmType(const char* buf, size_t size) {
+    static const struct {
+        const char* prefix;
+        int type;
+    } types[] = {
+        { "RING", TYPE_RING },
+        { "CONNECT", TYPE_CONNECT },
+        { "+", TYPE_PLUS },
+        { "@", TYPE_PROMPT }, // Sockets
+        { ">", TYPE_PROMPT }, // SMS
+        { "ABORTED", TYPE_ABORTED } // Current command aborted
+    };
+    for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); ++i) {
+        const auto& t = types[i];
+        if (startsWith(buf, size, t.prefix, strlen(t.prefix))) {
+            return t.type;
+        }
+    }
+    return TYPE_UNKNOWN;
+}
+
+int mdmTypeToResult(int type) {
+    switch (type) {
+    case TYPE_OK:
+        return RESP_OK;
+    case TYPE_ERROR:
+    case TYPE_BUSY:
+    case TYPE_NODIALTONE:
+    case TYPE_NOANSWER:
+    case TYPE_NOCARRIER:
+        return RESP_ERROR;
+    case TYPE_PROMPT:
+        return RESP_PROMPT;
+    case TYPE_ABORTED:
+        return RESP_ABORTED;
+    default:
+        return NOT_FOUND;
+    }
+}
 
 hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat) {
     switch (rat) {
@@ -279,7 +327,129 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
 }
 
 int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms, const char* format, ...) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    auto parser = client->atParser();
+    CHECK_TRUE(parser, SYSTEM_ERROR_UNKNOWN);
+
+    NcpClientLock lock(client);
+
+    // WORKAROUND: cut "\r\n", it has been resolved in AT Parser
+    size_t n = strlen(format);
+    while (n > 0 && (format[n - 1] == '\r' || format[n - 1] == '\n')) {
+        --n;
+    }
+    std::unique_ptr<char[]> fmt(new(std::nothrow) char[n + 1]);
+    CHECK_TRUE(fmt, SYSTEM_ERROR_NO_MEMORY);
+    memcpy(fmt.get(), format, n);
+    fmt[n] = '\0';
+
+    va_list args;
+    va_start(args, format);
+    auto resp = parser->command().vprintf(fmt.get(), args).timeout(timeout_ms).send();
+    va_end(args);
+    if (!resp) {
+        if (resp.error() == SYSTEM_ERROR_TIMEOUT) {
+            return WAIT;
+        }
+        return resp.error();
+    }
+
+    fmt.reset();
+
+    const size_t bufSize = MAX_RESP_SIZE + 64; // add some more space for framing
+    std::unique_ptr<char[]> buf(new(std::nothrow) char[bufSize]);
+    CHECK_TRUE(buf, SYSTEM_ERROR_NO_MEMORY);
+    // WORKAROUND: Add "\r\n" for compatibility
+    buf[0] = '\r';
+    buf[1] = '\n';
+
+    int mdmType = TYPE_OK;
+    while (resp.hasNextLine()) {
+        int n = resp.readLine(buf.get() + 2, bufSize - 5);
+        if (n < 0) {
+            if (n == SYSTEM_ERROR_TIMEOUT) {
+                return WAIT;
+            }
+            return n;
+        }
+        if (cb) {
+            mdmType = parseMdmType(buf.get() + 2, n);
+            n += 2;
+            // WORKAROUND: Add "\r\n" for compatibility
+            buf[n++] = '\r';
+            buf[n++] = '\n';
+            buf[n] = '\0';
+            const int r = cb(mdmType, buf.get(), n, param);
+            if (r != WAIT) {
+                return r;
+            }
+        }
+    };
+
+    buf.reset();
+
+    const int result = resp.readResult();
+    if (result < 0) {
+        if (result == SYSTEM_ERROR_TIMEOUT) {
+            return WAIT;
+        }
+        return result;
+    }
+
+    const char* mdmStr = nullptr;
+    switch (result) {
+    case AtResponse::OK:
+        mdmType = TYPE_OK;
+        mdmStr = "\r\nOK\r\n";
+        break;
+    case AtResponse::BUSY:
+        mdmType = TYPE_BUSY;
+        mdmStr = "\r\nBUSY\r\n";
+        break;
+    case AtResponse::ERROR:
+        mdmType = TYPE_ERROR;
+        mdmStr = "\r\nERROR\r\n";
+        break;
+    case AtResponse::CME_ERROR:
+        mdmType = TYPE_ERROR;
+        mdmStr = "\r\n+CME ERROR";
+        break;
+    case AtResponse::CMS_ERROR:
+        mdmType = TYPE_ERROR;
+        mdmStr = "\r\n+CMS ERROR";
+        break;
+    case AtResponse::NO_DIALTONE:
+        mdmType = TYPE_NODIALTONE;
+        mdmStr = "\r\nNO DIALTONE\r\n";
+        break;
+    case AtResponse::NO_ANSWER:
+        mdmType = TYPE_NOANSWER;
+        mdmStr = "\r\nNO ANSWER\r\n";
+        break;
+    case AtResponse::NO_CARRIER:
+        mdmType = TYPE_NOCARRIER;
+        mdmStr = "\r\nNO CARRIER\r\n";
+        break;
+    default:
+        mdmType = TYPE_UNKNOWN;
+        mdmStr = "";
+        break;
+    }
+
+    if (cb) {
+        if (result == AtResponse::CME_ERROR || result == AtResponse::CMS_ERROR) {
+            char msg[32] = {};
+            snprintf(msg, sizeof(msg), "%s: %d\r\n", mdmStr, resp.resultErrorCode());
+            cb(mdmType, msg, strlen(msg), param);
+        } else {
+            cb(mdmType, mdmStr, strlen(mdmStr), param);
+        }
+    }
+
+    return mdmTypeToResult(mdmType);
 }
 
 int cellular_data_usage_set(CellularDataHal* data, void* reserved) {
