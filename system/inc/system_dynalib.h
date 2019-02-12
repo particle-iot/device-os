@@ -70,13 +70,13 @@ DYNALIB_FN(22, system, system_thread_get_state, spark::feature::State(void*))
 DYNALIB_FN(23, system, system_notify_time_changed, void(uint32_t, void*, void*))
 DYNALIB_FN(24, system, main_thread_current, uint8_t(void*))
 
-#ifdef USB_VENDOR_REQUEST_ENABLE
+#if defined(USB_VENDOR_REQUEST_ENABLE) && HAL_PLATFORM_KEEP_DEPRECATED_APP_USB_REQUEST_HANDLERS
 DYNALIB_FN(25, system, system_set_usb_request_app_handler, void(void*, void*)) // Deprecated
 DYNALIB_FN(26, system, system_set_usb_request_result, void(void*, int, void*)) // Deprecated
 #define BASE_IDX 27
 #else
 #define BASE_IDX 25
-#endif // USB_VENDOR_REQUEST_ENABLE
+#endif // defined(USB_VENDOR_REQUEST_ENABLE) && HAL_PLATFORM_KEEP_DEPRECATED_APP_USB_REQUEST_HANDLERS
 
 DYNALIB_FN(BASE_IDX + 0, system, led_start_signal, int(int, uint8_t, int, void*))
 DYNALIB_FN(BASE_IDX + 1, system, led_stop_signal, void(int, int, void*))

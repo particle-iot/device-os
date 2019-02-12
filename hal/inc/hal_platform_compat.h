@@ -68,6 +68,9 @@
 #define HAL_PLATFORM_USB_HID (1)
 #define HAL_PLATFORM_USB_COMPOSITE (1)
 #define HAL_PLATFORM_USB_CONTROL_INTERFACE (1)
+// system_set_usb_request_app_handler() and system_set_usb_request_result() should be present
+// in system dynalib
+#define HAL_PLATFORM_KEEP_DEPRECATED_APP_USB_REQUEST_HANDLERS (1)
 #endif // PLATFORM_ID >= PLATFORM_PHOTON_PRODUCTION
 
 #endif /* HAL_PLATFORM_COMPAT_H */
