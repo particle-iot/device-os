@@ -1,3 +1,10 @@
+## 0.9.0-rc.2
+
+### BUGFIXES
+- [Gen 3] `WKP` pin is configured as pull-down with rising edge trigger when entering STANDBY sleep mode to keep feature parity with Gen 2 devices (#1691)
+- [Boron] PPP thread stack size increased by 1K in order to resolve a very rare stack overflow (#1691)
+- [Gen 3] Fixes a crash when attempting to send constant data residing in flash through Ethernet interface (#1691)
+
 ## 0.9.0-rc.1
 
 ### BUGFIXES
