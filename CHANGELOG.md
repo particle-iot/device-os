@@ -1,3 +1,8 @@
+## 0.9.0-rc.3
+
+### BUGFIXES
+- [Gen 3] Fixes system-dynalib incompatibility introduced in 0.9.0-rc.1, causing pre-0.9.0-rc.1 user applications that call certain system-dynalib functions to crash the device [#1692]
+
 ## 0.9.0-rc.2
 
 ### BUGFIXES
