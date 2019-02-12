@@ -965,7 +965,7 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
     // Configure wakeup pin
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
-    nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
 
     // Disable PWM
     nrf_pwm_disable(NRF_PWM0);

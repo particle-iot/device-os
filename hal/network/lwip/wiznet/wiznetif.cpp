@@ -556,6 +556,29 @@ void WizNetif::output(pbuf* p) {
         goto cleanup;
     }
 
+#if HAL_PLATFORM_SPI_DMA_SOURCE_RAM_ONLY
+    // For platforms that require the DMA source address to be in RAM (as opposed to in ROM/flash)
+    // we need to copy the whole pbuf queue into a single PBUF_RAM
+    {
+        bool copyToRam = false;
+        for (pbuf* q = p; q != nullptr; q = q->next) {
+            if (pbuf_match_type(q, PBUF_ROM)) {
+                copyToRam = true;
+                break;
+            }
+        }
+        if (copyToRam) {
+            auto pRam = pbuf_clone(PBUF_RAW, PBUF_RAM, p);
+            if (!pRam) {
+                LOG_DEBUG(ERROR, "Dropping packet, cannot copy to RAM");
+                goto cleanup;
+            }
+            pbuf_free(p);
+            p = pRam;
+        }
+    }
+#endif // HAL_PLATFORM_SPI_DMA_SOURCE_RAM_ONLY
+
     ptr = getSn_TX_WR(0);
 
     for (pbuf* q = p; q != nullptr; q = q->next) {

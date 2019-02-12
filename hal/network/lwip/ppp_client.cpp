@@ -80,7 +80,7 @@ void Client::init() {
     os_queue_create(&queue_, sizeof(uint64_t), 5, nullptr);
     SPARK_ASSERT(queue_);
 
-    os_thread_create(&thread_, "ppp", OS_THREAD_PRIORITY_NETWORK, &Client::loopCb, this, OS_THREAD_STACK_SIZE_DEFAULT);
+    os_thread_create(&thread_, "ppp", OS_THREAD_PRIORITY_NETWORK, &Client::loopCb, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH);
     SPARK_ASSERT(thread_);
   }
 }

@@ -55,7 +55,7 @@ static inline void sockaddr_to_ipaddr_port(const struct sockaddr *sockaddr, ip_a
   if ((sockaddr->sa_family) == AF_INET6) {
     SOCKADDR6_TO_IP6ADDR_PORT((const struct sockaddr_in6 *)(const void *)(sockaddr), ipaddr, *port);
     ipaddr->type = IPADDR_TYPE_V6;
-  } else {
+  } else if ((sockaddr->sa_family) == AF_INET) {
     SOCKADDR4_TO_IP4ADDR_PORT((const struct sockaddr_in *)(const void *)(sockaddr), ipaddr, *port);
     ipaddr->type = IPADDR_TYPE_V4;
   }
@@ -65,7 +65,7 @@ static inline void ipaddr_port_to_sockaddr(const ip_addr_t* ipaddr, u16_t port, 
 {
   if (IP_IS_V4(ipaddr)) {
     IP4ADDR_PORT_TO_SOCKADDR((sockaddr_in*)sockaddr, ip_2_ip4(ipaddr), port);
-  } else {
+  } else if (IP_IS_V6(ipaddr)) {
     IP6ADDR_PORT_TO_SOCKADDR((sockaddr_in6*)sockaddr, ip_2_ip6(ipaddr), port);
   }
 }
