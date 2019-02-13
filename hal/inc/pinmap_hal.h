@@ -212,8 +212,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RGBG            22
 #define RGBB            23
 
-#define A7              A5   // FIXME: A7 is used in spark_wiring_wifitester.cpp
-
 #else // Mesh SoMs
 
 // button pin
@@ -230,7 +228,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 // WKP pin
-#define WKP             D8   // FIXME:
+#define WKP             D8
 
 #if PLATFORM_ID == PLATFORM_XENON // Xenon
 #define TOTAL_PINS      (31)

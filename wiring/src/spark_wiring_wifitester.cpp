@@ -398,8 +398,13 @@ void WiFiTester::checkWifiSerial(char c) {
             }
             if (ok) {
                 if (!strcmp("ALL", parts[1])) {
+#if HAL_PLATFORM_NRF52840
+                    setPinOutputRange(A0, A5, pinValue);
+                    setPinOutputRange(D0, D8, pinValue);
+#else
                     setPinOutputRange(A0, A7, pinValue);
                     setPinOutputRange(D0, D7, pinValue);
+#endif
                 }
                 else if (parts[1][0]=='D' && is_digit(parts[1][1]) && !parts[1][2]) {
                     setPinOutput(D0 + (parts[1][1]-'0'), pinValue);
