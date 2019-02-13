@@ -38,6 +38,11 @@
 
 namespace spark {
 
+typedef enum {
+    MESH_ANT_INTERNAL = 0,
+    MESH_ANT_EXTERNAL = 1
+} MeshAntennaType;
+
 class MeshSignal : public particle::Signal {
 public:
     // In order to be compatible with CellularSignal
@@ -172,6 +177,8 @@ public:
     bool ready() {
         return network_ready(*this, 0,  NULL);
     }
+
+    void selectAntenna(MeshAntennaType antenna);
 
     // There are multiple IPv6 addresses, here we are only reporting ML-EID (Mesh-Local EID)
     IPAddress localIP();

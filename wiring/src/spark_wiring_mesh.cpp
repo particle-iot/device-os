@@ -24,6 +24,7 @@
 
 #include <arpa/inet.h>
 #include "delay_hal.h"
+#include "gpio_hal.h"
 
 namespace spark {
 
@@ -304,6 +305,36 @@ int MeshPublish::poll() {
         HAL_Delay_Milliseconds(100);
     }
     return result;
+}
+
+void MeshClass::selectAntenna(MeshAntennaType antenna) {
+    HAL_Pin_Mode(ANTSW1, OUTPUT);
+#if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
+    HAL_Pin_Mode(ANTSW2, OUTPUT);
+#endif
+
+    if (antenna == MESH_ANT_EXTERNAL) {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 0);
+#else
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#endif
+    }
+    else if (antenna == MESH_ANT_INTERNAL) {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 1);
+#else
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#endif
+    }
 }
 
 IPAddress MeshClass::localIP() {
