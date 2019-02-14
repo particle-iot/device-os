@@ -32,6 +32,59 @@ const char *addrType[4] = {
     "Random Static Non-resolvable"
 };
 
+static int locateAdStructure(uint8_t adsType, const uint8_t* data, uint16_t len, uint16_t* offset, uint16_t* adsLen) {
+    // A valid AD structure is composed of Length field, Type field and Data field.
+    // Each field should be filled with at least one byte.
+    for (uint16_t i = 0; (i + 3) <= len; i = i) {
+        *adsLen = data[i];
+
+        uint8_t type = data[i + 1];
+        if (type == adsType) {
+            // The value of adsLen doesn't include the length field of an AD structure.
+            if ((i + *adsLen + 1) <= len) {
+                *offset = i;
+                *adsLen += 1;
+                return SYSTEM_ERROR_NONE;
+            }
+            else {
+                return SYSTEM_ERROR_INTERNAL;
+            }
+        }
+        else {
+            // Navigate to the next AD structure.
+            i += (*adsLen + 1);
+        }
+    }
+
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+static int decodeAdvertisementData(uint8_t ads_type, const uint8_t* adv_data, uint16_t adv_data_len, uint8_t* data, uint16_t* len) {
+    // An AD structure must consist of 1 byte length field, 1 byte type field and at least 1 byte data field
+    if (adv_data == NULL || adv_data_len < 3) {
+        *len = 0;
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+
+    uint16_t dataOffset, dataLen;
+    if (locateAdStructure(ads_type, adv_data, adv_data_len, &dataOffset, &dataLen) == SYSTEM_ERROR_NONE) {
+        if (len != NULL) {
+            dataLen = dataLen - 2;
+            if (data != NULL && *len > 0) {
+                // Only copy the data field of the found AD structure.
+                *len = MIN(*len, dataLen);
+                memcpy(data, &adv_data[dataOffset+2], *len);
+            }
+            *len = dataLen;
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    *len = 0;
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
 static void handleBleEvent(hal_ble_event_t *event)
 {
     if (event->evt_type == BLE_EVT_TYPE_SCAN_RESULT) {
@@ -65,7 +118,7 @@ static void handleBleEvent(hal_ble_event_t *event)
 
         uint8_t  mfgData[20];
         uint16_t mfgDataLen = sizeof(mfgData);
-        ble_adv_data_decode(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,
+        decodeAdvertisementData(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,
                 event->scan_result_event.data, event->scan_result_event.data_len,
                 mfgData, &mfgDataLen);
         if (mfgDataLen != 0) {
@@ -78,7 +131,7 @@ static void handleBleEvent(hal_ble_event_t *event)
 
         uint8_t  shortName[20];
         uint16_t shortNameLen = sizeof(shortName);
-        ble_adv_data_decode(BLE_SIG_AD_TYPE_SHORT_LOCAL_NAME,
+        decodeAdvertisementData(BLE_SIG_AD_TYPE_SHORT_LOCAL_NAME,
                 event->scan_result_event.data, event->scan_result_event.data_len,
                 shortName, &shortNameLen);
         if (shortNameLen != 0) {
@@ -88,7 +141,7 @@ static void handleBleEvent(hal_ble_event_t *event)
 
         uint8_t  uuid128[16];
         uint16_t uuidLen = sizeof(uuid128);
-        ble_adv_data_decode(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE,
+        decodeAdvertisementData(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE,
                 event->scan_result_event.data, event->scan_result_event.data_len,
                 uuid128, &uuidLen);
         if (uuidLen != 0) {
@@ -108,21 +161,21 @@ void setup()
 {
     uint8_t devName[] = "Xenon BLE Sample";
 
-    hal_ble_init(BLE_ROLE_PERIPHERAL, NULL);
+    ble_stack_init(NULL);
 
-    ble_set_device_name(devName, sizeof(devName));
+    ble_gap_set_device_name(devName, sizeof(devName));
 
-    hal_ble_scan_params_t scanParams;
+    hal_ble_scan_parameters_t scanParams;
     scanParams.active = true;
-    scanParams.filter_policy = BLE_GAP_SCAN_FP_ACCEPT_ALL;
+    scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     scanParams.interval = 3200; // 2 seconds
     scanParams.window   = 100;
     scanParams.timeout  = 2000; // 0 for forever unless stop initially
-    ble_set_scanning_params(&scanParams);
+    ble_gap_set_scan_parameters(&scanParams);
 
     ble_register_callback(handleBleEvent);
 
-    ble_start_scanning();
+    ble_gap_start_scan();
 }
 
 /* This function loops forever --------------------------------------------*/
