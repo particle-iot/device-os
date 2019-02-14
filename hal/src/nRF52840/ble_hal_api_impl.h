@@ -57,10 +57,28 @@
 #define BLE_DEFAULT_ADVERTISING_INTERVAL            160     /* The advertising interval: 100ms (in units of 0.625 ms). */
 #define BLE_DEFAULT_ADVERTISING_DURATION            18000   /* The advertising duration: 180s (in units of 10 milliseconds). */
 
+/* BLE advertisement filter policy */
+#define BLE_ADV_FP_ANY                              0x00   /**< Allow scan requests and connect requests from any device. */
+#define BLE_ADV_FP_FILTER_SCANREQ                   0x01   /**< Filter scan requests with whitelist. */
+#define BLE_ADV_FP_FILTER_CONNREQ                   0x02   /**< Filter connect requests with whitelist. */
+#define BLE_ADV_FP_FILTER_BOTH                      0x03   /**< Filter both scan and connect requests with whitelist. */
+
 /* Default scanning parameters */
 #define BLE_DEFAULT_SCANNING_INTERVAL               160     /* The scan interval: 100ms (in units of 0.625 ms). */
 #define BLE_DEFAULT_SCANNING_WINDOW                 80      /* The scan window: 50ms (in units of 0.625 ms). */
 #define BLE_DEFAULT_SCANNING_TIMEOUT                0       /* The timeout: forever (in units of 10 ms. 0 for scanning forever). */
+
+/* BLE scan filter policy */
+#define BLE_SCAN_FP_ACCEPT_ALL                      0x00  /**< Accept all advertising packets except directed advertising packets
+                                                                   not addressed to this device. */
+#define BLE_SCAN_FP_WHITELIST                       0x01  /**< Accept advertising packets from devices in the whitelist except directed
+                                                                   packets not addressed to this device. */
+#define BLE_SCAN_FP_ALL_NOT_RESOLVED_DIRECTED       0x02  /**< Accept all advertising packets specified in @ref BLE_GAP_SCAN_FP_ACCEPT_ALL.
+                                                                   In addition, accept directed advertising packets, where the advertiser's
+                                                                   address is a resolvable private address that cannot be resolved. */
+#define BLE_SCAN_FP_WHITELIST_NOT_RESOLVED_DIRECTED 0x03  /**< Accept all advertising packets specified in @ref BLE_GAP_SCAN_FP_WHITELIST.
+                                                                   In addition, accept directed advertising packets, where the advertiser's
+                                                                   address is a resolvable private address that cannot be resolved. */
 
 /* Maximum length of advertising and scan response data */
 #define BLE_MAX_ADV_DATA_LEN                        BLE_GAP_ADV_SET_DATA_SIZE_MAX
