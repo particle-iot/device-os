@@ -35,15 +35,68 @@ uint16_t svc3Uuid  = 0x1234;
 uint16_t char3Uuid = 0x5678;
 
 hal_ble_service_t service1, service2, service3;
-hal_ble_char_t char1, char2, char3;
+hal_ble_characteristic_t char1, char2, char3;
 bool char1Discovered, char2Discovered, char3Discovered;
+
+static int locateAdStructure(uint8_t adsType, const uint8_t* data, uint16_t len, uint16_t* offset, uint16_t* adsLen) {
+    // A valid AD structure is composed of Length field, Type field and Data field.
+    // Each field should be filled with at least one byte.
+    for (uint16_t i = 0; (i + 3) <= len; i = i) {
+        *adsLen = data[i];
+
+        uint8_t type = data[i + 1];
+        if (type == adsType) {
+            // The value of adsLen doesn't include the length field of an AD structure.
+            if ((i + *adsLen + 1) <= len) {
+                *offset = i;
+                *adsLen += 1;
+                return SYSTEM_ERROR_NONE;
+            }
+            else {
+                return SYSTEM_ERROR_INTERNAL;
+            }
+        }
+        else {
+            // Navigate to the next AD structure.
+            i += (*adsLen + 1);
+        }
+    }
+
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+static int decodeAdvertisementData(uint8_t ads_type, const uint8_t* adv_data, uint16_t adv_data_len, uint8_t* data, uint16_t* len) {
+    // An AD structure must consist of 1 byte length field, 1 byte type field and at least 1 byte data field
+    if (adv_data == NULL || adv_data_len < 3) {
+        *len = 0;
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+
+    uint16_t dataOffset, dataLen;
+    if (locateAdStructure(ads_type, adv_data, adv_data_len, &dataOffset, &dataLen) == SYSTEM_ERROR_NONE) {
+        if (len != NULL) {
+            dataLen = dataLen - 2;
+            if (data != NULL && *len > 0) {
+                // Only copy the data field of the found AD structure.
+                *len = MIN(*len, dataLen);
+                memcpy(data, &adv_data[dataOffset+2], *len);
+            }
+            *len = dataLen;
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    *len = 0;
+    return SYSTEM_ERROR_NOT_FOUND;
+}
 
 static void handleBleEvent(hal_ble_event_t *event)
 {
     if (event->evt_type == BLE_EVT_TYPE_SCAN_RESULT) {
         uint8_t  devName[20];
         uint16_t devNameLen = sizeof(devName);
-        ble_adv_data_decode(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME,
+        decodeAdvertisementData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME,
                 event->scan_result_event.data, event->scan_result_event.data_len,
                 devName, &devNameLen);
 
@@ -51,7 +104,7 @@ static void handleBleEvent(hal_ble_event_t *event)
             devName[devNameLen] = '\0';
             if (!strcmp((const char*)devName, "Xenon BLE Sample")) {
                 LOG(TRACE, "Target device found. Start connecting...");
-                ble_connect(&event->scan_result_event.peer_addr);
+                ble_gap_connect(&event->scan_result_event.peer_addr);
             }
         }
     }
@@ -60,12 +113,12 @@ static void handleBleEvent(hal_ble_event_t *event)
             LOG(TRACE, "BLE connected, handle: %d", event->conn_event.conn_handle);
 
             LOG(TRACE, "Start discovering service...");
-            ble_discover_all_services(event->conn_event.conn_handle);
+            ble_gatt_client_discover_all_services(event->conn_event.conn_handle);
         }
         else {
             LOG(TRACE, "BLE disconnected, handle: %d", event->conn_event.conn_handle);
             LOG(TRACE, "Start scanning...");
-            ble_start_scanning();
+            ble_gap_start_scan();
         }
     }
     else if (event->evt_type == BLE_EVT_TYPE_DISCOVERY) {
@@ -95,11 +148,11 @@ static void handleBleEvent(hal_ble_event_t *event)
             }
 
             if (!char1Discovered) {
-                ble_discover_characteristics(event->disc_event.conn_handle, service1.start_handle, service1.end_handle);
+                ble_gatt_client_discover_characteristics(event->disc_event.conn_handle, service1.start_handle, service1.end_handle);
             }
         }
         else if (event->disc_event.evt_id == BLE_DISC_EVT_ID_CHAR_DISCOVERED) {
-            hal_ble_char_t* characteristic = NULL;
+            hal_ble_characteristic_t* characteristic = NULL;
             for (uint8_t i = 0; i < event->disc_event.count; i++) {
                 if (event->disc_event.characteristics[i].uuid.type == BLE_UUID_TYPE_16BIT) {
                     if (event->disc_event.characteristics[i].uuid.uuid16 == char3Uuid) {
@@ -121,18 +174,18 @@ static void handleBleEvent(hal_ble_event_t *event)
                     }
                 }
                 if (characteristic != NULL) {
-                    memcpy(characteristic, &event->disc_event.characteristics[i], sizeof(hal_ble_char_t));
+                    memcpy(characteristic, &event->disc_event.characteristics[i], sizeof(hal_ble_characteristic_t));
                 }
             }
 
             if (!char2Discovered) {
-                ble_discover_characteristics(event->disc_event.conn_handle, service2.start_handle, service2.end_handle);
+                ble_gatt_client_discover_characteristics(event->disc_event.conn_handle, service2.start_handle, service2.end_handle);
             }
             else if (!char3Discovered) {
-                ble_discover_characteristics(event->disc_event.conn_handle, service3.start_handle, service3.end_handle);
+                ble_gatt_client_discover_characteristics(event->disc_event.conn_handle, service3.start_handle, service3.end_handle);
             }
             else {
-                ble_discover_descriptors(event->disc_event.conn_handle, char2.value_handle, char3.decl_handle);
+                ble_gatt_client_discover_descriptors(event->disc_event.conn_handle, char2.value_handle, char3.decl_handle);
             }
         }
         else if (event->disc_event.evt_id == BLE_DISC_EVT_ID_DESC_DISCOVERED) {
@@ -141,7 +194,7 @@ static void handleBleEvent(hal_ble_event_t *event)
                     char2.cccd_handle = event->disc_event.descriptors[i].handle;
                     LOG(TRACE, "BLE Characteristic2 CCCD found.");
 
-                    ble_configure_cccd(event->disc_event.conn_handle, &char2, true);
+                    ble_gatt_client_configure_cccd(event->disc_event.conn_handle, char2.cccd_handle, true);
                 }
             }
         }
@@ -153,21 +206,21 @@ void setup()
 {
     uint8_t devName[] = "Xenon BLE Central";
 
-    hal_ble_init(BLE_ROLE_PERIPHERAL, NULL);
+    ble_stack_init(NULL);
 
-    ble_set_device_name(devName, sizeof(devName));
+    ble_gap_set_device_name(devName, sizeof(devName));
 
-    hal_ble_scan_params_t scanParams;
+    hal_ble_scan_parameters_t scanParams;
     scanParams.active = true;
-    scanParams.filter_policy = BLE_GAP_SCAN_FP_ACCEPT_ALL;
+    scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     scanParams.interval = 3200; // 2 seconds
     scanParams.window   = 100;
     scanParams.timeout  = 2000; // 0 for forever unless stop initially
-    ble_set_scanning_params(&scanParams);
+    ble_gap_set_scan_parameters(&scanParams);
 
     ble_register_callback(handleBleEvent);
 
-    ble_start_scanning();
+    ble_gap_start_scan();
 }
 
 /* This function loops forever --------------------------------------------*/
