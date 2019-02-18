@@ -37,7 +37,7 @@ LOG_SOURCE_CATEGORY("system.listen")
 using particle::LEDStatus;
 
 #if HAL_PLATFORM_BLE
-#include "ble_hal.h"
+#include "ble_hal_legacy.h"
 #endif /* HAL_PLATFORM_BLE */
 
 namespace {

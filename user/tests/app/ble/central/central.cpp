@@ -19,7 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
-#include "ble_hal_api.h"
+#include "ble_hal.h"
 
 SYSTEM_MODE(MANUAL);
 
