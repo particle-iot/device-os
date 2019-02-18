@@ -68,8 +68,8 @@ static const nrfx_spim_t m_spim3 = NRFX_SPIM_INSTANCE(3);
 static const nrfx_spis_t m_spis2 = NRFX_SPIS_INSTANCE(2);
 
 static nrf5x_spi_info_t m_spi_map[TOTAL_SPI] = {
-    {&m_spim3, NULL, APP_IRQ_PRIORITY_HIGH, NRFX_SPIM_PIN_NOT_USED, SCK, MOSI, MISO}, // TODO: SPI3 doesn't support SPI slave mode
-    {&m_spim2, &m_spis2, APP_IRQ_PRIORITY_HIGH, NRFX_SPIM_PIN_NOT_USED, D2, D3, D4},  // TODO: Change pin number
+    {&m_spim3, NULL, APP_IRQ_PRIORITY_HIGH, PIN_INVALID, SCK, MOSI, MISO}, // TODO: SPI3 doesn't support SPI slave mode
+    {&m_spim2, &m_spis2, APP_IRQ_PRIORITY_HIGH, PIN_INVALID, D2, D3, D4},  // TODO: Change pin number
 };
 
 static void spi_master_event_handler(nrfx_spim_evt_t const * p_event, void * p_context) {
