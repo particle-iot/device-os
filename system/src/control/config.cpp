@@ -20,18 +20,115 @@
 #if SYSTEM_CONTROL_ENABLED
 
 #include "common.h"
+#include "system_cloud_internal.h"
+#include "system_update.h"
+#include "system_network.h"
+
+#include "deviceid_hal.h"
+#include "core_hal.h"
+#include "hal_platform.h"
+#include "platforms.h"
+
+#include "bytes2hexbuf.h"
+#include "check.h"
+
+#include "dct.h"
+
+#if HAL_PLATFORM_OPENTHREAD
+#include "ota_flash_hal_impl.h"
+#else
+#include "ota_flash_hal_stm32f2xx.h"
+#endif
+
+#if HAL_PLATFORM_NCP
+#include "network/ncp.h"
+#include "wifi_network_manager.h"
+#include "wifi_ncp_client.h"
+#endif
+
 #include "config.pb.h"
+
 #include <cstdio>
 
-#include "core_hal.h"
-#include "ota_flash_hal_stm32f2xx.h"
-#include "system_cloud_internal.h"
+#define PB(_name) particle_ctrl_##_name
+#define PB_FIELDS(_name) particle_ctrl_##_name##_fields
 
 namespace particle {
+
 namespace control {
+
 namespace config {
 
 using namespace particle::control::common;
+
+int getDeviceId(ctrl_request* req) {
+    uint8_t id[HAL_DEVICE_ID_SIZE] = {};
+    const auto n = HAL_device_ID(id, sizeof(id));
+    if (n != HAL_DEVICE_ID_SIZE) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    PB(GetDeviceIdReply) pbRep = {};
+    static_assert(sizeof(pbRep.id) >= sizeof(id) * 2, "");
+    bytes2hexbuf_lower_case(id, sizeof(id), pbRep.id);
+    const int ret = encodeReplyMessage(req, PB_FIELDS(GetDeviceIdReply), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int getSerialNumber(ctrl_request* req) {
+    PB(GetSerialNumberReply) pbRep = {};
+    static_assert(sizeof(pbRep.serial) >= HAL_DEVICE_SERIAL_NUMBER_SIZE, "");
+    int ret = hal_get_device_serial_number(pbRep.serial, sizeof(pbRep.serial), nullptr);
+    if (ret < 0) {
+        return ret;
+    }
+    ret = encodeReplyMessage(req, PB_FIELDS(GetSerialNumberReply), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int getSystemVersion(ctrl_request* req) {
+    const auto verStr = PP_STR(SYSTEM_VERSION_STRING);
+    PB(GetSystemVersionReply) pbRep = {};
+    EncodedString eVerStr(&pbRep.version, verStr, strlen(verStr));
+    const int ret = encodeReplyMessage(req, PB_FIELDS(GetSystemVersionReply), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int getNcpFirmwareVersion(ctrl_request* req) {
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+    const auto wifiMgr = wifiNetworkManager();
+    CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    CHECK(ncpClient->on());
+    char verStr[32] = {};
+    CHECK(ncpClient->getFirmwareVersionString(verStr, sizeof(verStr)));
+    uint16_t modVer = 0;
+    CHECK(ncpClient->getFirmwareModuleVersion(&modVer));
+    PB(GetNcpFirmwareVersionReply) pbRep = {};
+    EncodedString eVerStr(&pbRep.version, verStr, strlen(verStr));
+    pbRep.module_version = modVer;
+    CHECK(encodeReplyMessage(req, PB_FIELDS(GetNcpFirmwareVersionReply), &pbRep));
+    return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !(HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI)
+}
+
+int getSystemCapabilities(ctrl_request* req) {
+    PB(GetSystemCapabilitiesReply) pbRep = {};
+    pbRep.flags |= PB(SystemCapabilityFlag_COMPRESSED_OTA);
+    CHECK(encodeReplyMessage(req, PB(GetSystemCapabilitiesReply_fields), &pbRep));
+    return 0;
+}
 
 int handleSetClaimCodeRequest(ctrl_request* req) {
     particle_ctrl_SetClaimCodeRequest pbReq = {};
@@ -48,6 +145,101 @@ int handleIsClaimedRequest(ctrl_request* req) {
     const int ret = encodeReplyMessage(req, particle_ctrl_IsClaimedReply_fields, &pbRep);
     return ret;
 }
+
+int handleStartNyanRequest(ctrl_request* req) {
+    Spark_Signal(true, 0, nullptr);
+    return SYSTEM_ERROR_NONE;
+}
+
+int handleStopNyanRequest(ctrl_request* req) {
+    Spark_Signal(false, 0, nullptr);
+    return SYSTEM_ERROR_NONE;
+}
+
+int getDeviceMode(ctrl_request* req) {
+    const bool listening = network_listening(0, 0, nullptr);
+    PB(GetDeviceModeReply) pbRep = {};
+    pbRep.mode = listening ? PB(DeviceMode_LISTENING_MODE) : PB(DeviceMode_NORMAL_MODE);
+    const int ret = encodeReplyMessage(req, PB(GetDeviceModeReply_fields), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int setDeviceSetupDone(ctrl_request* req) {
+    PB(SetDeviceSetupDoneRequest) pbReq = {};
+    int ret = decodeRequestMessage(req, PB(SetDeviceSetupDoneRequest_fields), &pbReq);
+    if (ret != 0) {
+        return ret;
+    }
+    LOG_DEBUG(TRACE, "%s device setup flag", pbReq.done ? "Setting" : "Clearing");
+    const uint8_t val = pbReq.done ? 0x01 : 0xff;
+    ret = dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int isDeviceSetupDone(ctrl_request* req) {
+    uint8_t val = 0;
+    int ret = dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
+    if (ret != 0) {
+        return ret;
+    }
+    PB(IsDeviceSetupDoneReply) pbRep = {};
+    pbRep.done = (val == 0x01) ? true : false;
+    ret = encodeReplyMessage(req, PB(IsDeviceSetupDoneReply_fields), &pbRep);
+    if (ret != 0) {
+        return ret;
+    }
+    return 0;
+}
+
+int setStartupMode(ctrl_request* req) {
+    PB(SetStartupModeRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(SetStartupModeRequest_fields), &pbReq));
+    switch (pbReq.mode) {
+    case PB(DeviceMode_LISTENING_MODE):
+        CHECK(system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 1, nullptr));
+        break;
+    default:
+        CHECK(system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr));
+        break;
+    }
+    return 0;
+}
+
+int setFeature(ctrl_request* req) {
+    PB(SetFeatureRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(SetFeatureRequest_fields), &pbReq));
+    switch (pbReq.feature) {
+    case PB(Feature_ETHERNET_DETECTION):
+        CHECK(HAL_Feature_Set(FEATURE_ETHERNET_DETECTION, pbReq.enabled));
+        break;
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return 0;
+}
+
+int getFeature(ctrl_request* req) {
+    PB(GetFeatureRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(GetFeatureRequest_fields), &pbReq));
+    PB(GetFeatureReply) pbRep = {};
+    switch (pbReq.feature) {
+    case PB(Feature_ETHERNET_DETECTION):
+        pbRep.enabled = HAL_Feature_Get(FEATURE_ETHERNET_DETECTION);
+        break;
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    CHECK(encodeReplyMessage(req, PB(GetFeatureReply_fields), &pbRep));
+    return 0;
+}
+
+#if !HAL_PLATFORM_OPENTHREAD
 
 int handleSetSecurityKeyRequest(ctrl_request* req) {
     particle_ctrl_SetSecurityKeyRequest pbReq = {};
@@ -160,16 +352,6 @@ int handleGetServerProtocolRequest(ctrl_request* req) {
     return ret;
 }
 
-int handleStartNyanRequest(ctrl_request* req) {
-    Spark_Signal(true, 0, nullptr);
-    return SYSTEM_ERROR_NONE;
-}
-
-int handleStopNyanRequest(ctrl_request* req) {
-    Spark_Signal(false, 0, nullptr);
-    return SYSTEM_ERROR_NONE;
-}
-
 int handleSetSoftapSsidRequest(ctrl_request* req) {
     particle_ctrl_SetSoftApSsidRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetSoftApSsidRequest_fields, &pbReq);
@@ -180,6 +362,43 @@ int handleSetSoftapSsidRequest(ctrl_request* req) {
     return ret;
 }
 
-} } } /* namespace particle::control::config */
+#else // HAL_PLATFORM_OPENTHREAD
 
-#endif /* #if SYSTEM_CONTROL_ENABLED */
+// TODO
+int handleSetSecurityKeyRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleGetSecurityKeyRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetServerAddressRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleGetServerAddressRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetServerProtocolRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleGetServerProtocolRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetSoftapSsidRequest(ctrl_request*) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif
+
+} // particle::control::config
+
+} // particle::control
+
+} // particle
+
+#endif // SYSTEM_CONTROL_ENABLED

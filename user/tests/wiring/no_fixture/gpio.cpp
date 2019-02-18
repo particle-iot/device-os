@@ -32,13 +32,15 @@ test(GPIO_01_PinModeSetResultsInCorrectMode) {
             INPUT,
             INPUT_PULLUP,
             INPUT_PULLDOWN,
+            OUTPUT_OPEN_DRAIN,
+#if !HAL_PLATFORM_NRF52840
             AF_OUTPUT_PUSHPULL,
-            AF_OUTPUT_DRAIN,
             AN_INPUT
 #if (PLATFORM_ID == 6)
             ,
             AN_OUTPUT
 #endif
+#endif // !HAL_PLATFORM_NRF52840
     };
     int n = sizeof(mode) / sizeof(mode[0]);
     pin_t pin = A0;//pin under test
@@ -90,6 +92,8 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
     //To Do : Add test for remaining pins if required
 }
 
+#if !HAL_PLATFORM_NRF52840 // TODO
+
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
     pin_t pin = D1; // pin under test
     uint32_t avgPulseHigh = 0;
@@ -128,6 +132,8 @@ test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
     assertMoreOrEqual(avgPulseLow, 950);
     assertLessOrEqual(avgPulseLow, 1050);
 }
+
+#endif // !HAL_PLATFORM_NRF52840
 
 test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
     pin_t pin = D1; // pin under test

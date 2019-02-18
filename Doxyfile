@@ -1,0 +1,23 @@
+PROJECT_NAME = "Particle Firmware"
+PROJECT_NUMBER = "0.8.0-rc.11"
+
+OUTPUT_DIRECTORY = docs/doxygen
+
+FILE_PATTERNS = *.h *.hh *.hpp *.dox *.md
+USE_MDFILE_AS_MAINPAGE = docs/doxygen/mainpage.md
+RECURSIVE = YES
+
+EXCLUDE_PATTERNS = \
+  */third_party/* \
+  */hal/src/photon/wiced/* \
+  */hal/src/electron/rtos/* \
+  */platform/MCU/STM32F1xx/CMSIS/* \
+  */platform/MCU/STM32F2xx/CMSIS/*
+
+OPTIMIZE_OUTPUT_FOR_C = YES
+HIDE_UNDOC_CLASSES = YES
+HIDE_UNDOC_MEMBERS = YES
+SHOW_INCLUDE_FILES = NO
+INLINE_INFO = NO
+SOURCE_BROWSER = YES
+GENERATE_LATEX = NO

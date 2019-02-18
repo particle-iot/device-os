@@ -260,6 +260,7 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
     notify_update_done(message, response, channel, token,
                        missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK);
     ProtocolError error = channel.send(response);
+    // how can we busy wait for the server to ACK this?
     if (error)
         return error;
 

@@ -1,0 +1,7 @@
+PLATFORM_DEPS = third_party/nrf5_sdk third_party/littlefs
+PLATFORM_DEPS_INCLUDE_SCRIPTS =$(foreach module,$(PLATFORM_DEPS),$(PROJECT_ROOT)/$(module)/import.mk)
+include $(PLATFORM_DEPS_INCLUDE_SCRIPTS)
+
+PLATFORM_LIB_DEP += $(NRF5_SDK_LIB_DEP) $(LITTLEFS_LIB_DEP)
+LIBS += $(notdir $(PLATFORM_DEPS))
+LIB_DIRS += $(NRF5_SDK_LIB_DIR) $(LITTLEFS_LIB_DIR)

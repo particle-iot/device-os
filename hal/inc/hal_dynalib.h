@@ -82,6 +82,7 @@ DYNALIB_FN(BASE_IDX + 19, hal,HAL_EEPROM_Perform_Pending_Erase, void(void))
 DYNALIB_FN(BASE_IDX + 20, hal, HAL_RTC_Time_Is_Valid, uint8_t(void*))
 
 DYNALIB_FN(BASE_IDX + 21, hal, hal_timer_millis, uint64_t(void*))
+DYNALIB_FN(BASE_IDX + 22, hal, hal_timer_micros, uint64_t(void*))
 
 DYNALIB_END(hal)
 

@@ -53,7 +53,7 @@ public:
 			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len);
 
 	static size_t update_done(uint8_t* buf, message_id_t message_id, bool confirmable);
-  static size_t update_done(uint8_t* buf, message_id_t message_id, const uint8_t* result, size_t result_len, bool confirmable);
+	static size_t update_done(uint8_t* buf, message_id_t message_id, const uint8_t* result, size_t result_len, bool confirmable);
 
 	static const size_t function_return_size = 10;
 
@@ -161,7 +161,7 @@ public:
 
     static inline size_t description(unsigned char *buf, message_id_t message_id, token_t token)
     {
-    		return content(buf, message_id, token);
+        return content(buf, message_id, token);
     }
 
 };

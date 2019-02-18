@@ -34,7 +34,11 @@ static const pin_t pin = A1;//pin under test
 #endif
 
 test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
-    uint8_t pin = D5;//pin under test
+#if HAL_PLATFORM_NRF52840
+    pin_t pin = D0;
+#else
+    pin_t pin = D5;
+#endif
     uint32_t frequency = 500;
     uint32_t duration = 100;
     // when

@@ -120,6 +120,9 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 			if (msg) {
 				msg->notify_delivered_nak();
 			}
+			// a RESET indicates that the session is invalid.
+			// Currently the device never sends a RESET, but if it were to do that
+			// then we should track which direction we are sending
 			channel.command(Channel::DISCARD_SESSION, nullptr);
 		}
 		DEBUG("recieved ACK for message id=%x", id);

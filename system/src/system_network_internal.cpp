@@ -17,6 +17,10 @@
 
 #include "system_network_internal.h"
 
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
 namespace {
 
 using namespace particle;
@@ -28,3 +32,5 @@ NetworkDiagnostics g_networkDiagnostics;
 particle::NetworkDiagnostics* particle::NetworkDiagnostics::instance() {
     return &g_networkDiagnostics;
 }
+
+#endif /* !HAL_PLATFORM_IFAPI */

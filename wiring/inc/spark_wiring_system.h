@@ -38,8 +38,9 @@
 #include "system_version.h"
 #include "spark_wiring_flags.h"
 #include <limits>
+#include <mutex>
 
-#if defined(SPARK_PLATFORM) && PLATFORM_ID!=3
+#if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID != 20
 #define SYSTEM_HW_TICKS 1
 #else
 #define SYSTEM_HW_TICKS 0
@@ -91,7 +92,7 @@ struct SleepResult {
 
 private:
     WakeupReason reason_ = WAKEUP_REASON_NONE;
-    system_error_t err_ = SYSTEM_ERROR_UNKNOWN;
+    system_error_t err_ = SYSTEM_ERROR_NONE;
     pin_t pin_ = std::numeric_limits<pin_t>::max();
 };
 
@@ -107,10 +108,6 @@ public:
 
     SystemClass(System_Mode_TypeDef mode = DEFAULT) {
         set_system_mode(mode);
-        if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
-            // Woken up from standby mode
-            sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
-        }
     }
 
     static System_Mode_TypeDef mode(void) {
@@ -148,7 +145,7 @@ public:
     }
 #endif
 
-    
+
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
     inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) {
         return sleep(sleepMode, seconds, flag);
@@ -168,7 +165,7 @@ public:
      */
     inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
         // This will only work in C++14
-        // static_assert(pins.size() > 0, "Provided pin list is empty");    
+        // static_assert(pins.size() > 0, "Provided pin list is empty");
         return sleepPinImpl(pins.begin(), pins.size(), &edgeTriggerMode, 1, seconds, flag);
     }
     inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
@@ -374,28 +371,44 @@ public:
         return data;
     }
 
-    inline WakeupReason wakeUpReason() const {
-        return sleepResult_.reason();
+    inline WakeupReason wakeUpReason() {
+        return sleepResult().reason();
     }
 
-    inline bool wokenUpByPin() const {
-        return sleepResult_.wokenUpByPin();
+    inline bool wokenUpByPin() {
+        return sleepResult().wokenUpByPin();
     }
 
-    inline bool wokenUpByRtc() const {
-        return sleepResult_.wokenUpByRtc();
+    inline bool wokenUpByRtc() {
+        return sleepResult().wokenUpByRtc();
     }
 
-    inline pin_t wakeUpPin() const {
-        return sleepResult_.pin();
+    inline pin_t wakeUpPin() {
+        return sleepResult().pin();
     }
 
-    inline SleepResult sleepResult() const {
+    SleepResult sleepResult() {
+        // FIXME: __once_proxy, std::get_once_mutex, std::set_once_functor_lock_ptr
+        // static std::once_flag f;
+        // std::call_once(f, [&]() {
+        //     if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
+        //         // Woken up from standby mode
+        //         sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
+        //     }
+        // });
+        static bool f = false;
+        if (!f) {
+            f = true;
+            if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
+                // Woken up from standby mode
+                sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
+            }
+        }
         return sleepResult_;
     }
 
-    inline system_error_t sleepError() const {
-        return sleepResult_.error();
+    inline system_error_t sleepError() {
+        return sleepResult().error();
     }
 
     void buttonMirror(pin_t pin, InterruptMode mode, bool bootloader=false) const

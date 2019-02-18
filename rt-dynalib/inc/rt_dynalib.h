@@ -24,6 +24,11 @@
 
 #include "dynalib.h"
 
+#ifdef DYNALIB_EXPORT
+#include <errno.h>
+#include <assert.h>
+#endif
+
 DYNALIB_BEGIN(rt)
 
 DYNALIB_FN(0, rt, malloc, void*(size_t))
@@ -41,5 +46,7 @@ DYNALIB_FN(11, rt, abort, void(void))
 DYNALIB_FN(12, rt, _malloc_r, void*(struct _reent*, size_t))
 DYNALIB_FN(13, rt, _free_r, void(struct _reent*, void*))
 DYNALIB_FN(14, rt, _realloc_r, void*(struct _reent*, void*, size_t))
+DYNALIB_FN(15, rt, __errno, int*())
+DYNALIB_FN(16, rt, __assert_func, void(const char*, int, const char*, const char*))
 
 DYNALIB_END(rt)

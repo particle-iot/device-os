@@ -278,7 +278,7 @@ void HAL_Core_Enter_Bootloader(bool persist)
     HAL_Core_System_Reset();
 }
 
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
 {
     HAL_Core_Enter_Stop_Mode(pins != NULL && pins_count > 0 ? *pins : TOTAL_PINS, mode != NULL && mode_count > 0 ? (uint16_t)(*mode) : 0xffff, seconds);
     return -1;
@@ -386,7 +386,7 @@ void HAL_Core_Execute_Stop_Mode(void)
     HAL_enable_irq(state);
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
     // Configure RTC wake-up
     if (seconds > 0) {
@@ -399,6 +399,9 @@ void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 
 	/* Reset System */
 	NVIC_SystemReset();
+
+    // This will never get reached
+    return 0;
 }
 
 void HAL_Core_Execute_Standby_Mode(void)

@@ -38,6 +38,7 @@
 #include "spark_wiring_wifi_credentials.h"
 #include "system_ymodem.h"
 #include "mbedtls_util.h"
+#include "ota_flash_hal.h"
 
 #if SETUP_OVER_SERIAL1
 #define SETUP_LISTEN_MAGIC 1
@@ -103,6 +104,42 @@ public:
     }
 };
 
+class WrappedStreamAppender : public StreamAppender
+{
+  bool wrotePrefix_;
+  const uint8_t* prefix_;
+  size_t prefixLength_;
+  const uint8_t* suffix_;
+  size_t suffixLenght_;
+public:
+  WrappedStreamAppender(
+      Stream& stream,
+      const uint8_t* prefix,
+      size_t prefixLength,
+      const uint8_t* suffix,
+      size_t suffixLenght) :
+    StreamAppender(stream),
+    wrotePrefix_(false),
+    prefix_(prefix),
+    prefixLength_(prefixLength),
+    suffix_(suffix),
+    suffixLenght_(suffixLenght)
+  {}
+
+  ~WrappedStreamAppender() {
+    append(suffix_, suffixLenght_);
+  }
+
+  virtual bool append(const uint8_t* data, size_t length) override {
+    if (!wrotePrefix_) {
+      StreamAppender::append(prefix_, prefixLength_);
+      wrotePrefix_ = true;
+    }
+    return StreamAppender::append(data, length);
+  }
+};
+
+
 #if SETUP_OVER_SERIAL1
 inline bool setup_serial1() {
     uint8_t value = 0;
@@ -111,7 +148,7 @@ inline bool setup_serial1() {
 }
 #endif
 
-template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
+template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(const Config& config_)
     : config(config_)
 {
     WITH_LOCK(serial);
@@ -206,6 +243,12 @@ void SystemSetupConsole<Config>::cleanup()
 }
 
 template <typename Config>
+void SystemSetupConsole<Config>::exit()
+{
+    network_listen(0, NETWORK_LISTEN_EXIT, nullptr);
+}
+
+template <typename Config>
 bool SystemSetupConsole<Config>::handle_peek(char c)
 {
     if (YModem::SOH == c || YModem::STX == c)
@@ -216,25 +259,73 @@ bool SystemSetupConsole<Config>::handle_peek(char c)
     return false;
 }
 
+bool filter_key(const char* src, char* dest, size_t size) {
+	memcpy(dest, src, size);
+	if (!strcmp(src, "imei")) {
+		strcpy(dest, "IMEI");
+	}
+	else if (!strcmp(src, "iccid")) {
+		strcpy(dest, "ICCID");
+	}
+	else if (!strcmp(src, "sn")) {
+		strcpy(dest, "Serial Number");
+	}
+	else if (!strcmp(src, "ms")) {
+		strcpy(dest, "Device Secret");
+	}
+	return false;
+}
+
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)
 {
     if ('i' == c)
     {
-#if PLATFORM_ID<3
-        print("Your core id is ");
-#else
-        print("Your device id is ");
-#endif
-        String id = spark_deviceID();
-        print(id.c_str());
-        print("\r\n");
+    	// see if we have any additional properties. This is true
+    	// for Cellular and Mesh devices.
+    	hal_system_info_t info = {};
+    	info.size = sizeof(info);
+    	HAL_OTA_Add_System_Info(&info, true, nullptr);
+    	LOG(TRACE, "device info key/value count: %d", info.key_value_count);
+    	if (info.key_value_count) {
+    		print("Device ID: ");
+    		String id = spark_deviceID();
+			print(id.c_str());
+			print("\r\n");
+
+			for (int i=0; i<info.key_value_count; i++) {
+				char key[20];
+				if (!filter_key(info.key_values[i].key, key, sizeof(key))) {
+					print(key);
+					print(": ");
+					print(info.key_values[i].value);
+					print("\r\n");
+				}
+			}
+		}
+    	else {
+	#if PLATFORM_ID<3
+			print("Your core id is ");
+	#else
+			print("Your device id is ");
+	#endif
+			String id = spark_deviceID();
+			print(id.c_str());
+			print("\r\n");
+    	}
+    	HAL_OTA_Add_System_Info(&info, false, nullptr);
     }
     else if ('m' == c)
     {
         print("Your device MAC address is\r\n");
-        IPConfig config;
-        config.size = sizeof(config);
-        network.get_ipconfig(&config);
+        IPConfig config = {};
+    #if !HAL_PLATFORM_WIFI    
+        auto conf = static_cast<const IPConfig*>(network_config(0, 0, 0));
+    #else
+        auto conf = static_cast<const IPConfig*>(network_config(NETWORK_INTERFACE_WIFI_STA, 0, 0));
+    #endif
+        if (conf && conf->size) {
+            memcpy(&config, conf, std::min(sizeof(config), (size_t)conf->size));
+        }
         const uint8_t* addr = config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)
@@ -255,10 +346,10 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('s' == c)
     {
-        StreamAppender appender(serial);
-        print("{");
+        auto prefix = "{";
+        auto suffix = "}\r\n";
+        WrappedStreamAppender appender(serial, (const uint8_t*)prefix, strlen(prefix), (const uint8_t*)suffix, strlen(suffix));
         system_module_info(append_instance, &appender);
-        print("}\r\n");
     }
     else if ('v' == c)
     {
@@ -268,7 +359,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('L' == c)
     {
-        system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
+        system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 1, nullptr);
         System.enterSafeMode();
     }
     else if ('c' == c)
@@ -344,7 +435,7 @@ template<typename Config> void SystemSetupConsole<Config>::read_multiline(char *
 
 #if Wiring_WiFi
 
-WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
+WiFiSetupConsole::WiFiSetupConsole(const WiFiSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
 }
@@ -583,7 +674,7 @@ void WiFiSetupConsole::cleanup()
 
 void WiFiSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 #endif
@@ -591,7 +682,7 @@ void WiFiSetupConsole::exit()
 
 #if Wiring_Cellular
 
-CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
+CellularSetupConsole::CellularSetupConsole(const CellularSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
 }
@@ -602,29 +693,12 @@ CellularSetupConsole::~CellularSetupConsole()
 
 void CellularSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 void CellularSetupConsole::handle(char c)
 {
-    if (c=='i')
-    {
-        CellularDevice dev;
-        cellular_device_info(&dev, NULL);
-        String id = spark_deviceID();
-        print("Device ID: ");
-        print(id.c_str());
-        print("\r\n");
-        print("IMEI: ");
-        print(dev.imei);
-        print("\r\n");
-        print("ICCID: ");
-        print(dev.iccid);
-        print("\r\n");
-    }
-    else
-        super::handle(c);
+	super::handle(c);
 }
-
 
 #endif

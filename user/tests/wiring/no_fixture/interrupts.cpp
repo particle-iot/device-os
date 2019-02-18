@@ -83,6 +83,8 @@ public:
 
 } // namespace
 
+#if !HAL_PLATFORM_NRF52840 // TODO
+
 int TestHandler::count = 0;
 
 test(INTERRUPTS_02_detached_handler_is_destroyed)
@@ -112,6 +114,8 @@ test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 	assertFalse(HAL_WillPreempt(SysTick_IRQn, NonMaskableInt_IRQn));
 #endif
 }
+
+#endif // !HAL_PLATFORM_NRF52840
 
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 test(INTERRUPTS_04_attachInterruptDirect) {

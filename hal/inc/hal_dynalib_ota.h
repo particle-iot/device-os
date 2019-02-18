@@ -50,7 +50,7 @@ DYNALIB_FN(5, hal_ota, HAL_FLASH_Begin, bool(uint32_t, uint32_t, void*))
 DYNALIB_FN(6, hal_ota, HAL_FLASH_Update, int(const uint8_t*, uint32_t, uint32_t, void*))
 DYNALIB_FN(7, hal_ota, HAL_FLASH_End, hal_update_complete_t(hal_module_t*))
 DYNALIB_FN(8, hal_ota, HAL_FLASH_OTA_Validate, int(hal_module_t*, bool, module_validation_flags_t, void*))
-
+DYNALIB_FN(9, hal_ota, HAL_OTA_Add_System_Info, void(hal_system_info_t* info, bool create, void* reserved))
 DYNALIB_END(hal_ota)
 
 #endif	/* HAL_DYNALIB_OTA_H */

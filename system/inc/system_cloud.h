@@ -105,8 +105,8 @@ class String;
 
 #if defined(PLATFORM_ID)
 
-#if PLATFORM_ID!=3
-STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
+#if PLATFORM_ID!=3 && PLATFORM_ID != 20
+PARTICLE_STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 #endif
 
 #endif
@@ -116,7 +116,7 @@ const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 0x1;
 const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 0x2;
 const uint32_t PUBLISH_EVENT_FLAG_WITH_ACK = 0x8;
 
-STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
+PARTICLE_STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
 
 typedef void (*EventHandler)(const char* name, const char* data);
 
@@ -144,7 +144,7 @@ struct  cloud_function_descriptor {
      }
 };
 
-STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
 
 typedef struct spark_variable_t
 {
@@ -210,8 +210,12 @@ int spark_set_connection_property(unsigned property_id, unsigned data, particle:
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 
-extern const unsigned char backup_udp_public_server_key[91];
-extern const unsigned char backup_udp_public_server_address[22];
+extern const unsigned char backup_udp_public_server_key[];
+extern const size_t backup_udp_public_server_key_size;
+
+extern const unsigned char backup_udp_public_server_address[];
+extern const size_t backup_udp_public_server_address_size;
+
 extern const unsigned char backup_tcp_public_server_key[294];
 extern const unsigned char backup_tcp_public_server_address[18];
 
@@ -223,7 +227,7 @@ extern const unsigned char backup_tcp_public_server_address[18];
 #define SPARK_LOOP_DELAY_MILLIS       1000    //1sec
 #define SPARK_RECEIVE_DELAY_MILLIS    10      //10ms
 
-#if PLATFORM_ID==10
+#if PLATFORM_ID==10 || HAL_PLATFORM_MESH
 #define TIMING_FLASH_UPDATE_TIMEOUT   (300000) // 300sec
 #else
 #define TIMING_FLASH_UPDATE_TIMEOUT   (30000)  // 30sec

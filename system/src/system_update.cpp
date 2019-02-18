@@ -42,6 +42,7 @@
 #include "spark_macros.h"
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
+#include "system_threading.h"
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -61,7 +62,7 @@ static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_PENDING==2, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_ENABLED==3, "system flag value");
-static_assert(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE == 4, "system flag value");
+static_assert(SYSTEM_FLAG_STARTUP_LISTEN_MODE == 4, "system flag value");
 static_assert(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1 == 5, "system flag value");
 static_assert(SYSTEM_FLAG_PUBLISH_RESET_INFO == 6, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS == 7, "system flag value");
@@ -70,7 +71,7 @@ static_assert(SYSTEM_FLAG_MAX == 8, "system flag max value");
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     0, 1, // OTA updates pending/enabled
     0, 1, // Reset pending/enabled
-    0,    // SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
+    0,    // SYSTEM_FLAG_STARTUP_LISTEN_MODE,
     0,    // SYSTEM_FLAG_SETUP_OVER_SERIAL1
     1,    // SYSTEM_FLAG_PUBLISH_RESET_INFO
     1     // SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS
@@ -80,9 +81,9 @@ const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
-    if (flag == SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+    if (flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE)
     {
-        HAL_Core_Write_Backup_Register(BKP_DR_10, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
+        HAL_Core_Write_Backup_Register(BKP_DR_09, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
     }
 }
 
@@ -91,7 +92,7 @@ int system_set_flag(system_flag_t flag, uint8_t value, void*)
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
 
-    if (systemFlags[flag]!=value) {
+    if (systemFlags[flag] != value || flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE) {
         uint8_t oldValue = systemFlags[flag];
         systemFlags[flag] = value;
         system_flag_changed(flag, oldValue, value);
@@ -106,10 +107,11 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
         return -1;
     if (value)
     {
-        if (flag == SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE)
+        if (flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE)
         {
-            uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_10);
+            uint16_t reg = HAL_Core_Read_Backup_Register(BKP_DR_09);
             *value = (reg == SAFE_MODE_LISTEN);
+            systemFlags[flag] = *value;
         }
         else
         {
@@ -186,7 +188,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
     if (bitrate == start_dfu_flasher_serial_speed)
     {
-        network.connect_cancel(true);
+        network_connect_cancel(0, 1, 0, 0);
         //Reset device and briefly enter DFU bootloader mode
         System.dfu(false);
     }
@@ -333,7 +335,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
             res = (result == HAL_UPDATE_ERROR);
 
             // always restart for now
-            if (true || result==HAL_UPDATE_APPLIED_PENDING_RESTART)
+            if ((true || result==HAL_UPDATE_APPLIED_PENDING_RESTART) && !(flags & UpdateFlag::DONT_RESET))
             {
                 spark_protocol_command(sp, ProtocolCommands::DISCONNECT);
                 system_pending_shutdown();
@@ -486,6 +488,7 @@ const char* module_function_string(module_function_t func) {
         case MODULE_FUNCTION_MONO_FIRMWARE: return "m";
         case MODULE_FUNCTION_SYSTEM_PART: return "s";
         case MODULE_FUNCTION_USER_PART: return "u";
+        case MODULE_FUNCTION_NCP_FIRMWARE: return "c";
         default: return "_";
     }
 }
@@ -524,11 +527,17 @@ bool module_info_to_json(appender_fn append, void* append_data, const hal_module
     // on the photon we have just one dependency, this will need generalizing for other platforms
       && json.write_attribute("d") && json.write('[');
 
-    for (unsigned int d=0; d<2 && info; d++) {
+    bool hasDependencies = false;
+    for (unsigned int d=0; d<2; d++) {
         const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
         module_function_t function = module_function_t(dependency.module_function);
-        if (function==MODULE_FUNCTION_NONE) // skip empty dependents
-            continue;
+        if (function!=MODULE_FUNCTION_NONE) // skip empty dependents
+        	hasDependencies = true;
+    }
+
+    for (unsigned int d=0; d<2 && info && hasDependencies; d++) {
+        const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
+        module_function_t function = module_function_t(dependency.module_function);
         if (d) result &= json.write(',');
         result &= json.write('{')
           && json.write_string("f", module_function_string(function))
@@ -550,8 +559,14 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         && json.write_attribute("m")
         && json.write('[');
     for (unsigned i=0; i<system.module_count; i++) {
-        if (i) result &= json.write(',');
         const hal_module_t& module = system.modules[i];
+#ifdef HYBRID_BUILD
+        // FIXME: skip, otherwise we overflow MBEDTLS_SSL_MAX_CONTENT_LEN
+        if (module.info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+            continue;
+        }
+#endif // HYBRID_BUILD
+        if (i) result &= json.write(',');
         result &= module_info_to_json(append, append_data, &module, 0);
     }
 
@@ -582,6 +597,7 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     hal_system_info_t info;
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
+    info.flags = HAL_SYSTEM_INFO_FLAGS_CLOUD;
     HAL_System_Info(&info, true, NULL);
     bool result = system_info_to_json(append, append_data, info);
     HAL_System_Info(&info, false, NULL);

@@ -214,6 +214,12 @@ int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_de
 	return protocol->get_describe_data(data, reserved);
 }
 
+#if HAL_PLATFORM_MESH
+int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion, void* reserved) {
+	(void)reserved;
+	return protocol->mesh_command(cmd, data, extraData, completion);
+}
+#endif // HAL_PLATFORM_MESH
 
 #else // !PARTICLE_PROTOCOL
 

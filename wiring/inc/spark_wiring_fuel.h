@@ -25,12 +25,12 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_i2c.h"
-#include "spark_wiring_platform.h"
-
 #ifndef __SPARK_WIRING_FUEL_H
 #define __SPARK_WIRING_FUEL_H
+
+#include "spark_wiring_platform.h"
+#include "spark_wiring.h"
+#include "spark_wiring_i2c.h"
 
 //Default MAX17043 I2C address
 #define MAX17043_ADDRESS  0x36
@@ -84,4 +84,4 @@ private:
     bool lock_;
 };
 
-#endif
+#endif // __SPARK_WIRING_FUEL_H

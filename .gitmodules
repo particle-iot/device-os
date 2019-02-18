@@ -1,3 +1,46 @@
 [submodule "proto"]
 	path = proto
 	url = https://github.com/particle-iot/firmware-protobuf.git
+[submodule "third_party/nrf5_sdk/nrf5_sdk"]
+	path = third_party/nrf5_sdk/nrf5_sdk
+	url = https://github.com/particle-iot/nrf5_sdk.git
+[submodule "third_party/lwip/lwip"]
+	path = third_party/lwip/lwip
+	url = https://github.com/particle-iot/lwip.git
+	branch = particle
+[submodule "third_party/lwip/lwip-contrib"]
+	path = third_party/lwip/lwip-contrib
+	url = https://github.com/particle-iot/lwip-contrib.git
+	branch = master
+[submodule "third_party/freertos/freertos"]
+	path = third_party/freertos/freertos
+	url = https://github.com/particle-iot/freertos.git
+	branch = particle
+[submodule "third_party/mbedtls/mbedtls"]
+	path = third_party/mbedtls/mbedtls
+	url = https://github.com/particle-iot/mbedtls.git
+	branch = particle-mbedtls-2.4.2
+[submodule "third_party/nanopb/nanopb"]
+	path = third_party/nanopb/nanopb
+	url = https://github.com/particle-iot/nanopb.git
+	branch = particle-nanopb-0.3.9
+[submodule "third_party/openthread/openthread"]
+	path = third_party/openthread/openthread
+	url = https://github.com/particle-iot/openthread.git
+[submodule "third_party/littlefs/littlefs"]
+	path = third_party/littlefs/littlefs
+	url = https://github.com/particle-iot/littlefs.git
+[submodule "third_party/wiznet_driver/wiznet_driver"]
+	path = third_party/wiznet_driver/wiznet_driver
+	url = https://github.com/particle-iot/ioLibrary_Driver.git
+	branch = particle
+[submodule "third_party/miniz/miniz"]
+	path = third_party/miniz/miniz
+	url = https://github.com/particle-iot/miniz.git
+	branch = particle
+[submodule "gsm0710muxer/gsm0710muxer"]
+	path = gsm0710muxer/gsm0710muxer
+	url = https://github.com/particle-iot/gsm0710muxer.git
+[submodule "third_party/catch2/catch2"]
+	path = third_party/catch2/catch2
+	url = https://github.com/particle-iot/Catch2.git

@@ -43,9 +43,9 @@ enum class SystemSleepOption
 /**
  * @param param A SystemSleepNetwork enum cast as an integer.
  */
-void system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
-void system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
-int32_t system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
+int system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
+int system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
+int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
 
 #ifdef __cplusplus
 }

@@ -96,7 +96,7 @@ public:
         return _variable(varKey, &var, INT);
     }
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=20
     // compiling with gcc this function duplicates the previous one.
     static inline bool _variable(const char* varKey, const int32_t& var)
     {

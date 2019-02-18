@@ -34,19 +34,24 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud_internal.h"
+#include "system_cloud_connection.h"
 #include "system_sleep.h"
 #include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
+#include "system_commands.h"
 #include "core_hal.h"
 #include "delay_hal.h"
 #include "syshealth_hal.h"
 #include "watchdog_hal.h"
 #include "usb_hal.h"
+#include "button_hal.h"
+#include "dct_hal.h"
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"
 #include "diagnostics.h"
+#include "check.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_cellular_printable.h"
@@ -55,6 +60,30 @@
 #include "spark_wiring_system.h"
 #include "system_power.h"
 #include "spark_wiring_wifi.h"
+
+// FIXME
+#include "system_openthread.h"
+#include "system_control_internal.h"
+
+#if HAL_PLATFORM_FILESYSTEM
+#include "filesystem.h"
+#endif /* HAL_PLATFORM_FILESYSTEM */
+
+#if HAL_PLATFORM_LWIP
+#include "ifapi.h"
+#endif /* HAL_PLATFORM_LWIP */
+
+#if HAL_PLATFORM_IFAPI
+#include "system_listening_mode.h"
+#endif /* HAL_PLATFORM_IFAPI */
+
+#if HAL_PLATFORM_NCP
+#include "network/ncp.h"
+#endif
+
+#if HAL_PLATFORM_MESH
+#include <openthread/platform/settings.h>
+#endif
 
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
@@ -107,13 +136,16 @@ static volatile uint16_t pressed_time = 0;
 
 uint16_t system_button_pushed_duration(uint8_t button, void*)
 {
-    if (button || network.listening())
+    if (button || network_listening(0, 0, 0))
         return 0;
     return pressed_time ? HAL_Timer_Get_Milli_Seconds()-pressed_time : 0;
 }
 
 static volatile uint8_t button_final_clicks = 0;
 static volatile uint8_t button_current_clicks = 0;
+
+/* FIXME */
+static volatile bool button_cleared_credentials = false;
 
 #if Wiring_SetupButtonUX
 
@@ -284,25 +316,26 @@ void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
     {
         if (pressed)
         {
-            wasListeningOnButtonPress = network.listening();
+            wasListeningOnButtonPress = network_listening(0, 0, 0);
             pressed_time = HAL_Timer_Get_Milli_Seconds();
             if (!wasListeningOnButtonPress)             // start of button press
             {
                 system_notify_event(button_status, 0, nullptr, nullptr, nullptr, NOTIFY_SYNCHRONOUSLY);
             }
+            button_cleared_credentials = false;
         }
         else if (pressed_time > 0)
         {
             int release_time = HAL_Timer_Get_Milli_Seconds();
             uint16_t depressed_duration = release_time - pressed_time;
 
-            if (!network.listening()) {
+            if (!network_listening(0, 0, 0)) {
                 system_notify_event(button_status, depressed_duration, nullptr, nullptr, nullptr, NOTIFY_SYNCHRONOUSLY);
                 handle_button_click(depressed_duration);
             }
             pressed_time = 0;
-            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network.listening()) {
-                network.listen(true);
+            if (depressed_duration>3000 && depressed_duration<8000 && wasListeningOnButtonPress && network_listening(0, 0, 0)) {
+                network_listen(0, NETWORK_LISTEN_EXIT, 0);
             }
         }
     }
@@ -350,19 +383,20 @@ extern "C" void HAL_SysTick_Handler(void)
         }
 #endif
     }
-    else if(network.listening() && HAL_Core_Mode_Button_Pressed(10000))
+    else if(network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(10000) && !button_cleared_credentials)
     {
-        network.listen_command();
+        button_cleared_credentials = true;
+        network_listen_command(0, NETWORK_LISTEN_COMMAND_CLEAR_CREDENTIALS, 0);
     }
     // determine if the button press needs to change the state (and hasn't done so already))
-    else if(!network.listening() && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
+    else if(!network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(3000) && !wasListeningOnButtonPress)
     {
         cancel_connection(); // Unblock the system thread
         // fire the button event to the user, then enter listening mode (so no more button notifications are sent)
         // there's a race condition here - the HAL_notify_button_state function should
         // be thread safe, but currently isn't.
         HAL_Notify_Button_State(0, false);
-        network.listen();
+        network_listen(0, 0, 0);
         HAL_Notify_Button_State(0, true);
     }
 
@@ -396,10 +430,10 @@ void manage_safe_mode()
             // explicitly disable multithreading
             system_thread_set_state(spark::feature::DISABLED, NULL);
             uint8_t value = 0;
-            system_get_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, &value, nullptr);
+            system_get_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, &value, nullptr);
             if (value)
             {
-                system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 0, 0);
+                system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, 0);
                 // flag listening mode
                 network_listen(0, 0, 0);
             }
@@ -426,6 +460,12 @@ void app_loop(bool threaded)
                 if (semi_automatic_connecting(threaded)) {
                     break;
                 }
+
+#if HAL_PLATFORM_IFAPI
+            if (!threaded && particle::system::ListeningModeHandler::instance()->isActive()) {
+                break;
+            }
+#endif // HAL_PLATFORM_IFAPI
 
             if ((SPARK_WIRING_APPLICATION != 1))
             {
@@ -587,6 +627,45 @@ private:
     func_t f_;
 };
 
+int resetSettingsToFactoryDefaultsIfNeeded() {
+    Load_SystemFlags();
+    if (SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) != 0x0001) {
+        return 0;
+    }
+    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
+    Save_SystemFlags();
+#if HAL_PLATFORM_MESH
+    LOG(WARN, "Resetting all settings to factory defaults");
+    // Clear OpenThread settings
+    otPlatSettingsInit(nullptr);
+    otPlatSettingsWipe(nullptr);
+    // Clear pending commands
+    system::system_command_clear();
+#if HAL_PLATFORM_WIFI
+    // Clear WiFi credentials
+    WifiNetworkManager::clearNetworkConfig();
+#endif // HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_CELLULAR
+    // Clear cellular credentials
+    CellularNetworkManager::clearNetworkConfig();
+#endif // HAL_PLATFORM_CELLULAR
+    // Copy device keys
+    std::unique_ptr<char[]> devPrivKey(new(std::nothrow) char[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
+    std::unique_ptr<char[]> devPubKey(new(std::nothrow) char[DCT_ALT_DEVICE_PUBLIC_KEY_SIZE]);
+    CHECK_TRUE(devPrivKey && devPubKey, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, devPrivKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    CHECK(dct_read_app_data_copy(DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
+    // Clear DCT and restore device keys
+    CHECK(dct_clear());
+    CHECK(dct_write_app_data(devPrivKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
+    CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
+    // Restore default server key and address
+    CHECK(dct_write_app_data(backup_udp_public_server_key, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, backup_udp_public_server_key_size));
+    CHECK(dct_write_app_data(backup_udp_public_server_address, DCT_ALT_SERVER_ADDRESS_OFFSET, backup_udp_public_server_address_size));
+#endif // HAL_PLATFORM_MESH
+    return 0;
+}
+
 // Certain HAL events can be generated before app_setup_and_loop() is called. Using constructor of a
 // global variable allows to register a handler for HAL events early
 HALEventHandler g_halEventHandler;
@@ -624,9 +703,10 @@ void app_setup_and_loop(void)
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
-#if Wiring_Cellular == 1
+    // Reset all persistent settings to factory defaults if necessary
+    resetSettingsToFactoryDefaultsIfNeeded();
+
     system_power_management_init();
-#endif
 
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);
@@ -635,6 +715,10 @@ void app_setup_and_loop(void)
     String s = spark_deviceID();
     INFO("Device %s started", s.c_str());
 
+#if HAL_PLATFORM_FILESYSTEM
+    filesystem_dump_info(filesystem_get_instance(nullptr));
+#endif /* HAL_PLATFORM_FILESYSTEM */
+
     if (LOG_ENABLED(TRACE)) {
         int reason = RESET_REASON_NONE;
         uint32_t data = 0;
@@ -642,6 +726,19 @@ void app_setup_and_loop(void)
             LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
         }
     }
+
+#if HAL_PLATFORM_LWIP
+    if_init();
+#endif /* HAL_PLATFORM_LWIP */
+
+#if HAL_PLATFORM_OPENTHREAD
+    system::threadInit();
+#endif /* HAL_PLATFORM_OPENTHREAD */
+
+    // FIXME: Move BLE and Thread initialization to an appropriate place
+    ble_init(nullptr);
+
+    system::SystemControl::instance()->init();
 
     manage_safe_mode();
 

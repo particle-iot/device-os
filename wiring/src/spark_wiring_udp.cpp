@@ -26,11 +26,16 @@
   ******************************************************************************
  */
 
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_COMPAT
+
 #include "spark_wiring_udp.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "spark_macros.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_constants.h"
 
 using namespace spark;
 
@@ -268,3 +273,5 @@ int UDP::leaveMulticast(const IPAddress& ip)
     HAL_IPAddress address = ip.raw();
     return socket_leave_multicast(&address, _nif, 0);
 }
+
+#endif // HAL_USE_SOCKET_HAL_COMPAT

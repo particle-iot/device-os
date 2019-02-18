@@ -34,7 +34,11 @@ static const pin_t pin = A0, pin2 = A1;
 #endif
 
 test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
-    pin_t pin = D5;//pin under test (not a Timer channel)
+#if HAL_PLATFORM_NRF52840
+    pin_t pin = D0;
+#else
+    pin_t pin = D5;
+#endif
     Servo testServo;
     // when
     testServo.attach(pin);

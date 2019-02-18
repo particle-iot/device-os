@@ -119,9 +119,11 @@ test(SPI_Master_Slave_Slave_Transfer)
         /* Preload SLAVE_TEST_MESSAGE_1 reply */
         memcpy(SPI_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1));
 
-        /* Wait for Master to select us */
-        while(SPI_Selected_State == 0);
-        SPI_Selected_State = 0;
+        /* IMPORTANT: NOT waiting for Master to select us, as some of the platforms
+         * require TX and RX buffers to be configured before CS goes low
+         */
+        // while(SPI_Selected_State == 0);
+        // SPI_Selected_State = 0;
 
         /* Receive up to TRANSFER_LENGTH_2 bytes */
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, TRANSFER_LENGTH_2, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);

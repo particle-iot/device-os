@@ -1,4 +1,4 @@
-#pragma once
+	#pragma once
 
 #include <functional>
 #include "system_tick_hal.h"
@@ -125,7 +125,23 @@ namespace UpdateFlag {
 enum Enum {
     ERROR         = 0x00,
     SUCCESS       = 0x01,
-    VALIDATE_ONLY = 0x02
+    VALIDATE_ONLY = 0x02,
+    DONT_RESET    = 0x04
+};
+}
+
+typedef uint32_t keepalive_source_t;
+
+typedef struct
+{
+    uint16_t size;
+    keepalive_source_t keepalive_source;
+} connection_properties_t;
+
+namespace KeepAliveSource {
+enum Enum {
+    USER   = 1<<0,   // set by user in wiring
+    SYSTEM = 1<<1    // set by system
 };
 }
 

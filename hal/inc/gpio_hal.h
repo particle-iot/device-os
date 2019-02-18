@@ -42,7 +42,21 @@
 extern "C" {
 #endif
 
+typedef struct {
+    uint16_t size;
+    uint16_t version;
+
+    PinMode mode;
+
+    // Flags
+    uint32_t set_value : 1;
+
+    // Output value to set if set_value = 1
+    uint8_t value;
+} hal_gpio_config_t;
+
 void HAL_Pin_Mode(pin_t pin, PinMode mode);
+int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf);
 PinMode HAL_Get_Pin_Mode(pin_t pin);
 void HAL_GPIO_Write(pin_t pin, uint8_t value);
 int32_t HAL_GPIO_Read(pin_t pin);

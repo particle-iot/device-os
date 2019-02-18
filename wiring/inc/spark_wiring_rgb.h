@@ -26,6 +26,8 @@
 #include <functional>
 #include <cstdint>
 
+/* Important that interrupts_hal.h is included before pinmap_hal.h */
+#include "interrupts_hal.h"
 #include "pinmap_hal.h"
 #include "rgbled.h"
 

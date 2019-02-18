@@ -31,6 +31,7 @@ CPPSRC += $(TARGET_SRC_PATH)/publisher.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_defs.cpp
 CPPSRC += $(TARGET_SRC_PATH)/mbedtls_communication.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_diagnostic.cpp
+CPPSRC += $(TARGET_SRC_PATH)/mesh.cpp
 
 # ASM source files included in this build.
 ASRC +=
@@ -43,6 +44,14 @@ endif
 
 ifeq ($(PLATFORM_ID),8)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
+endif
+
+ifeq ($(PLATFORM_ID),13)
+ifneq ($(DEBUG_BUILD),y)
+ifneq ($(HYBRID_BUILD),y)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
+endif
+endif
 endif
 
 LOG_MODULE_CATEGORY = comm

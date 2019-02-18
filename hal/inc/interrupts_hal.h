@@ -6,7 +6,7 @@
  * @date    12-Sept-2014
  * @brief
  ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2013-2018 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -27,14 +27,15 @@
 #ifndef __INTERRUPTS_HAL_H
 #define __INTERRUPTS_HAL_H
 
+#include "platforms.h"
 /* Includes ------------------------------------------------------------------*/
-#include "pinmap_hal.h"
-#if !defined(SPARK_NO_PLATFORM) && !defined(INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS)
+#if defined(USE_STDPERIPH_DRIVER) || (!defined(SPARK_NO_PLATFORM) && !defined(INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS))
 #include "interrupts_irq.h"
 #else
 typedef int32_t IRQn_Type;
 typedef int32_t hal_irq_t;
 #endif // SPARK_NO_PLATFORM
+#include "pinmap_hal.h"
 #include "hal_irq_flag.h"
 
 /* Exported types ------------------------------------------------------------*/
@@ -87,6 +88,7 @@ typedef struct HAL_InterruptExtraConfiguration {
 extern "C" {
 #endif
 
+void HAL_Interrupts_Init(void);
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config);
 void HAL_Interrupts_Detach(uint16_t pin);
 void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved);
@@ -112,7 +114,11 @@ int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handle
 #include "stm32f2xx.h"
 #endif // defined(STM32F10X_MD) || defined(STM32F10X_HD)
 
-#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX)
+#ifdef nRF52840
+#include <nrf52840.h>
+#endif /* nRF52840 */
+
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX) || defined(nRF52840)
 inline bool HAL_IsISR()
 {
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
@@ -143,7 +149,7 @@ static inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2)
 inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#elif PLATFORM_ID==3
+#elif PLATFORM_ID==3 || PLATFORM_ID==20
 inline bool HAL_IsISR() { return false; }
 inline int32_t HAL_ServicedIRQn() { return 0; }
 inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }

@@ -34,6 +34,8 @@ int writeSectionDataRequest(ctrl_request* req);
 int clearSectionDataRequest(ctrl_request* req);
 int getSectionDataSizeRequest(ctrl_request* req);
 
+int getModuleInfo(ctrl_request* req);
+
 } // namespace particle::control
 
 } // namespace particle

@@ -19,20 +19,30 @@
 
 #if SYSTEM_CONTROL_ENABLED
 
+#include "system_threading.h"
+#include "system_network.h"
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "spark_wiring_system.h"
 #include "appender.h"
 #include "debug.h"
+#include "delay_hal.h"
+#include "hal_platform.h"
 
 #include "control/network.h"
 #include "control/wifi.h"
+#include "control/wifi_new.h"
+#include "control/cellular.h"
 #include "control/config.h"
 #include "control/storage.h"
+#include "control/mesh.h"
+#include "control/cloud.h"
+
+namespace particle {
+
+namespace system {
 
 namespace {
-
-using namespace particle;
 
 typedef int(*ReplyFormatterCallback)(Appender*, void* data);
 
@@ -68,62 +78,120 @@ int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* da
 
 SystemControl g_systemControl;
 
-} // namespace
+} // particle::system::
 
-particle::SystemControl::SystemControl() :
-        usbReqChannel_(this),
+SystemControl::SystemControl() :
+#ifdef USB_VENDOR_REQUEST_ENABLE
+        usbChannel_(this),
+#endif
+#if HAL_PLATFORM_BLE
+        bleChannel_(this),
+#endif
         appReqHandler_(nullptr) {
 }
 
-void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
+int SystemControl::init() {
+#if HAL_PLATFORM_BLE
+    const int ret = bleChannel_.init();
+    if (ret != 0) {
+        return ret;
+    }
+#endif
+    return 0;
+}
+
+void SystemControl::run() {
+#if HAL_PLATFORM_BLE
+    bleChannel_.run();
+#endif
+}
+
+void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
     switch (req->type) {
+    case CTRL_REQUEST_DEVICE_ID: {
+        setResult(req, control::config::getDeviceId(req));
+        break;
+    }
+    case CTRL_REQUEST_SERIAL_NUMBER: {
+        setResult(req, control::config::getSerialNumber(req));
+        break;
+    }
+    case CTRL_REQUEST_SYSTEM_VERSION: {
+        setResult(req, control::config::getSystemVersion(req));
+        break;
+    }
+    case CTRL_REQUEST_NCP_FIRMWARE_VERSION: {
+        setResult(req, control::config::getNcpFirmwareVersion(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_SYSTEM_CAPABILITIES: {
+        setResult(req, control::config::getSystemCapabilities(req));
+        break;
+    }
+    case CTRL_REQUEST_SET_FEATURE: {
+        setResult(req, control::config::setFeature(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_FEATURE: {
+        setResult(req, control::config::getFeature(req));
+        break;
+    }
     case CTRL_REQUEST_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.reset();
         });
         break;
     }
     case CTRL_REQUEST_FACTORY_RESET: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.factoryReset();
         });
         break;
     }
     case CTRL_REQUEST_DFU_MODE: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.dfu(false);
         });
         break;
     }
     case CTRL_REQUEST_SAFE_MODE: {
         setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
             System.enterSafeMode();
         });
         break;
     }
     case CTRL_REQUEST_START_LISTENING: {
-        network.listen();
+        network_listen(0, 0, 0);
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
     case CTRL_REQUEST_STOP_LISTENING: {
-        network.listen(true /* stop */);
+        network_listen(0, NETWORK_LISTEN_EXIT, 0);
         setResult(req, SYSTEM_ERROR_NONE);
         break;
     }
-    case CTRL_REQUEST_MODULE_INFO: {
-        struct Formatter {
-            static int callback(Appender* appender, void* data) {
-                if (!appender->append('{') ||
-                        !system_module_info(append_instance, appender) ||
-                        !appender->append('}')) {
-                    return SYSTEM_ERROR_UNKNOWN;
-                }
-                return 0;
-            }
-        };
-        const int ret = formatReplyData(req, Formatter::callback);
-        setResult(req, ret);
+    case CTRL_REQUEST_GET_DEVICE_MODE: {
+        setResult(req, control::config::getDeviceMode(req));
+        break;
+    }
+    case CTRL_REQUEST_SET_DEVICE_SETUP_DONE: {
+        setResult(req, control::config::setDeviceSetupDone(req));
+        break;
+    }
+    case CTRL_REQUEST_IS_DEVICE_SETUP_DONE: {
+        setResult(req, control::config::isDeviceSetupDone(req));
+        break;
+    }
+    case CTRL_REQUEST_SET_STARTUP_MODE: {
+        setResult(req, control::config::setStartupMode(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_MODULE_INFO: {
+        setResult(req, control::getModuleInfo(req));
         break;
     }
     case CTRL_REQUEST_DIAGNOSTIC_INFO: {
@@ -141,7 +209,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         }
         break;
     }
-#if Wiring_WiFi == 1
+#if Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
     /* wifi requests */
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
         setResult(req, control::wifi::handleGetAntennaRequest(req));
@@ -167,7 +235,8 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, control::wifi::handleClearCredentialsRequest(req));
         break;
     }
-#endif // Wiring_WiFi
+#endif // Wiring_WiFi && !HAL_PLATFORM_NCP
+#if !HAL_PLATFORM_MESH
     /* network requests */
     case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
         setResult(req, control::network::handleGetConfigurationRequest(req));
@@ -181,6 +250,7 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, control::network::handleSetConfigurationRequest(req));
         break;
     }
+#endif // !HAL_PLATFORM_MESH
     /* config requests */
     case CTRL_REQUEST_SET_CLAIM_CODE: {
         setResult(req, control::config::handleSetClaimCodeRequest(req));
@@ -262,6 +332,130 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
         setResult(req, control::getSectionDataSizeRequest(req));
         break;
     }
+    case CTRL_REQUEST_CLOUD_GET_CONNECTION_STATUS: {
+        setResult(req, ctrl::cloud::getConnectionStatus(req));
+        break;
+    }
+    case CTRL_REQUEST_CLOUD_CONNECT: {
+        setResult(req, ctrl::cloud::connect(req));
+        break;
+    }
+    case CTRL_REQUEST_CLOUD_DISCONNECT: {
+        setResult(req, ctrl::cloud::disconnect(req));
+        break;
+    }
+    case CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST: {
+        setResult(req, control::network::getInterfaceList(req));
+        break;
+    }
+    case CTRL_REQUEST_NETWORK_GET_INTERFACE: {
+        setResult(req, control::network::getInterface(req));
+        break;
+    }
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+    case CTRL_REQUEST_WIFI_JOIN_NEW_NETWORK: {
+        setResult(req, ctrl::wifi::joinNewNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_JOIN_KNOWN_NETWORK: {
+        setResult(req, ctrl::wifi::joinKnownNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_GET_KNOWN_NETWORKS: {
+        setResult(req, ctrl::wifi::getKnownNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_REMOVE_KNOWN_NETWORK: {
+        setResult(req, ctrl::wifi::removeKnownNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_CLEAR_KNOWN_NETWORKS: {
+        setResult(req, ctrl::wifi::clearKnownNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_GET_CURRENT_NETWORK: {
+        setResult(req, ctrl::wifi::getCurrentNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_WIFI_SCAN_NETWORKS: {
+        setResult(req, ctrl::wifi::scanNetworks(req));
+        break;
+    }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+    case CTRL_REQUEST_CELLULAR_SET_ACCESS_POINT: {
+        setResult(req, ctrl::cellular::setAccessPoint(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ACCESS_POINT: {
+        setResult(req, ctrl::cellular::getAccessPoint(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_SET_ACTIVE_SIM: {
+        setResult(req, ctrl::cellular::setActiveSim(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ACTIVE_SIM: {
+        setResult(req, ctrl::cellular::getActiveSim(req));
+        break;
+    }
+    case CTRL_REQUEST_CELLULAR_GET_ICCID: {
+        setResult(req, ctrl::cellular::getIccid(req));
+        break;
+    }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+    case CTRL_REQUEST_MESH_AUTH: {
+        setResult(req, ctrl::mesh::auth(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_CREATE_NETWORK: {
+        setResult(req, ctrl::mesh::createNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_START_COMMISSIONER: {
+        setResult(req, ctrl::mesh::startCommissioner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_STOP_COMMISSIONER: {
+        setResult(req, ctrl::mesh::stopCommissioner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_PREPARE_JOINER: {
+        setResult(req, ctrl::mesh::prepareJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_ADD_JOINER: {
+        setResult(req, ctrl::mesh::addJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_REMOVE_JOINER: {
+        setResult(req, ctrl::mesh::removeJoiner(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_JOIN_NETWORK: {
+        setResult(req, ctrl::mesh::joinNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_LEAVE_NETWORK: {
+        setResult(req, ctrl::mesh::leaveNetwork(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_GET_NETWORK_INFO: {
+        setResult(req, ctrl::mesh::getNetworkInfo(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_SCAN_NETWORKS: {
+        setResult(req, ctrl::mesh::scanNetworks(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_GET_NETWORK_DIAGNOSTICS: {
+        setResult(req, ctrl::mesh::getNetworkDiagnostics(req));
+        break;
+    }
+    case CTRL_REQUEST_MESH_TEST: { // FIXME
+        setResult(req, ctrl::mesh::test(req));
+        break;
+    }
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {
@@ -273,32 +467,36 @@ void particle::SystemControl::processRequest(ctrl_request* req, ControlRequestCh
     }
 }
 
-void particle::SystemControl::processAppRequest(ctrl_request* req) {
+void SystemControl::processAppRequest(ctrl_request* req) {
     // FIXME: Request leak may occur if underlying asynchronous event cannot be queued
     APPLICATION_THREAD_CONTEXT_ASYNC(processAppRequest(req));
     SPARK_ASSERT(appReqHandler_); // Checked in processRequest()
     appReqHandler_(req);
 }
 
-particle::SystemControl* particle::SystemControl::instance() {
+SystemControl* SystemControl::instance() {
     return &g_systemControl;
 }
 
+} // particle::system
+
+} // particle
+
 // System API
 int system_ctrl_set_app_request_handler(ctrl_request_handler_fn handler, void* reserved) {
-    return SystemControl::instance()->setAppRequestHandler(handler);
+    return particle::system::SystemControl::instance()->setAppRequestHandler(handler);
 }
 
 int system_ctrl_alloc_reply_data(ctrl_request* req, size_t size, void* reserved) {
-    return SystemControl::instance()->allocReplyData(req, size);
+    return particle::system::SystemControl::instance()->allocReplyData(req, size);
 }
 
 void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
-    SystemControl::instance()->freeRequestData(req);
+    particle::system::SystemControl::instance()->freeRequestData(req);
 }
 
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
-    SystemControl::instance()->setResult(req, result, handler, data);
+    particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
 #else // !SYSTEM_CONTROL_ENABLED

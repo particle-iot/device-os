@@ -15,7 +15,7 @@ CPPSRC += $(call target_files,src/,*.cpp)
 # ASM source files included in this build.
 ASRC +=
 
-CPPFLAGS += -std=gnu++11
+CPPFLAGS += -std=gnu++14
 
 ifeq ($(PLATFORM_ID),6)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
@@ -29,3 +29,11 @@ INCLUDE_DIRS += $(TARGET_SRC_PATH)
 INCLUDE_DIRS += $(TARGET_SRC_PATH)/control/proto
 
 LOG_MODULE_CATEGORY = system
+
+ifeq ($(PLATFORM_ID),13)
+ifneq ($(DEBUG_BUILD),y)
+ifneq ($(HYBRID_BUILD),y)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_WARN
+endif
+endif
+endif

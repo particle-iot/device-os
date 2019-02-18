@@ -30,6 +30,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <stdint.h>
+#include "platforms.h"
+#include "hal_platform.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,30 +49,164 @@ typedef enum PinMode {
   AF_OUTPUT_PUSHPULL, //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
   AF_OUTPUT_DRAIN,    //Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
   AN_INPUT,           //Used internally for ADC Input
-  AN_OUTPUT,          //Used internally for DAC Output
+  AN_OUTPUT,          //Used internally for DAC Output,
+  OUTPUT_OPEN_DRAIN = AF_OUTPUT_DRAIN,
   PIN_MODE_NONE=0xFF
 } PinMode;
 
 typedef enum {
     PF_NONE,
     PF_DIO,
-    PF_TIMER,
+    PF_TIMER, 
     PF_ADC,
-  PF_DAC
+    PF_DAC,
+    PF_UART,
+    PF_PWM,
+    PF_SPI,
+    PF_I2C
 } PinFunction;
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
+void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
 
+
+#if HAL_PLATFORM_NRF52840
+typedef struct NRF5x_Pin_Info  NRF5x_Pin_Info;
+NRF5x_Pin_Info* HAL_Pin_Map(void);
+extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
+
+// FIXME: hack for hal_dynalib_gpio.h
+typedef struct NRF5x_Pin_Info STM32_Pin_Info;
+
+#else
 typedef struct STM32_Pin_Info  STM32_Pin_Info;
-
 STM32_Pin_Info* HAL_Pin_Map(void);
+#endif
 
 /* Exported macros -----------------------------------------------------------*/
+
+#define PIN_INVALID 0xff
 
 /*
 * Pin mapping. Borrowed from Wiring
 */
-#if PLATFORM_ID!=3
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+
+#define TOTAL_ANALOG_PINS   6
+#define FIRST_ANALOG_PIN    D14
+
+// digital pins
+#define D0          0
+#define D1          1
+#define D2          2
+#define D3          3
+#define D4          4
+#define D5          5
+#define D6          6
+#define D7          7
+#define D8          8
+#define D9          9
+#define D10         10
+#define D11         11
+#define D12         12
+#define D13         13
+#define D14         14
+#define D15         15
+#define D16         16
+#define D17         17
+#define D18         18
+#define D19         19
+
+// button pin
+#define BTN         20
+
+// RGB LED pins
+#define RGBR        21
+#define RGBG        22
+#define RGBB        23
+
+#if PLATFORM_ID == PLATFORM_XENON
+#define TOTAL_PINS          (31)
+
+#define BATT        24
+#define PWR         25
+#define CHG         26
+#define NFC_PIN1    27
+#define NFC_PIN2    28
+#define ANTSW1      29
+#define ANTSW2      30
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#define TX1 24
+#define RX1 25
+#define CTS1 26
+#define RTS1 27
+#else
+#define TX1         D4
+#define RX1         D5
+#define CTS1        D6
+#define RTS1        D8
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON
+#define TOTAL_PINS          (36)
+#define ESPBOOT 28
+#define ESPEN 29
+#define HWAKE 30
+#define ANTSW1 31
+#define ANTSW2 32
+#define BATT 33
+#define PWR 34
+#define CHG 35
+#endif
+
+#if PLATFORM_ID == PLATFORM_BORON
+#define TOTAL_PINS  (36)
+#define UBPWR 28
+#define UBRST 29
+#define BUFEN 30
+#define ANTSW1 31
+#define PMIC_SCL 32
+#define PMIC_SDA 33
+#define UBVINT 34
+#define LOW_BAT_UC 35
+#endif
+
+
+// analog pins
+#define A0          D19
+#define A1          D18
+#define A2          D17
+#define A3          D16
+#define A4          D15
+#define A5          D14
+
+// SPI pins
+#define SS          D14
+#define SCK         D13
+#define MISO        D11
+#define MOSI        D12
+
+// I2C pins
+#define SDA         D0
+#define SCL         D1
+
+// uart pins
+#define TX          D9
+#define RX          D10
+#define CTS         D3
+#define RTS         D2
+
+// WKP pin on Xenon
+#define WKP         D8   // FIXME: 
+#define A7          A5   // FIXME: A7 is used in spark_wiring_wifitester.cpp
+
+// TODO: Move this to a platform-specific header
+#define DEFAULT_PWM_FREQ 500 // 500Hz
+#define TIM_PWM_FREQ DEFAULT_PWM_FREQ
+
+#elif PLATFORM_ID != 3
 #if PLATFORM_ID == 10 // Electron
 #define TOTAL_PINS 47
 #elif PLATFORM_ID == 8 // P1

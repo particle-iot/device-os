@@ -58,6 +58,22 @@
 | 201 | 310 | 0.8.0-rc.11|         (Core, Photon, P1, Electron) |
 | 201 | 311 | 0.8.0-rc.12|         (Core, Photon, P1, Electron) |
 | 201 | 312 | 0.8.0-rc.14|         (Core, Photon, P1, Electron) |
+| 209 | 314 | 0.8.0-rc.15 |         (Xenon, Argon) |
+| 209 | 315 | 0.8.0-rc.16 |         (Xenon, Argon) |
+| 210 | 316 | 0.8.0-rc.17 |         (Boron) |
+| 210 | 317 | 0.8.0-rc.18 |         (Xenon, Argon, Boron) |
+| 211 | 318 | 0.8.0-rc.19 |         (Xenon, Argon, Boron) |
+| 212 | 319 | 0.8.0-rc.20 |         (Xenon, Argon, Boron) |
+| 212 | 320 | 0.8.0-rc.21 |         (Xenon, Argon, Boron) |
+| 213 | 321 | 0.8.0-rc.22 |         (Xenon, Argon, Boron) |
+| 214 | 322 | 0.8.0-rc.23 |         (Xenon, Argon, Boron) |
+| 214 | 323 | 0.8.0-rc.24 |         (Xenon, Argon, Boron) |
+| 214 | 324 | 0.8.0-rc.25 |         (Xenon, Argon, Boron) |
+| 215 | 325 | 0.8.0-rc.26 |         (Xenon, Argon, Boron) |
+| 215 | 326 | 0.8.0-rc.27 |         (Xenon, Argon, Boron) |
+| 300 | 400 | 0.9.0-rc.1  |         (Xenon, Argon, Boron) |
+| 300 | 401 | 0.9.0-rc.2  |         (Xenon, Argon, Boron) |
+| 300 | 402 | 0.9.0-rc.3  |         (Xenon, Argon, Boron) |
 | 201 | 1000 | 1.0.0       |       (Core, Photon, P1, Electron) |
 | 201 | 1001 | 1.0.1-rc.1  |       (Core, Photon, P1, Electron) |
 

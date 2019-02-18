@@ -136,9 +136,8 @@ void wlan_set_error_count(uint32_t errorCount)
 {
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config)
+int wlan_fetch_ipconfig(WLanConfig* config)
 {
-
 /*
     memcpy(config->nw.aucIP, "\xC0\x0\x1\x68", 4);
     memcpy(config->nw.aucSubnetMask, "\xFF\xFF\xFF\x0", 4);
@@ -148,6 +147,7 @@ void wlan_fetch_ipconfig(WLanConfig* config)
     memcpy(config->nw.uaMacAddr, "\x08\x00\x27\x00\x7C\xAC", 6);
     memcpy(config->uaSSID, "WLAN", 5);
  */
+    return 0;
 }
 
 void SPARK_WLAN_SmartConfigProcess()

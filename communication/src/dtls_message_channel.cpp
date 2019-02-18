@@ -482,6 +482,7 @@ ProtocolError DTLSMessageChannel::send(Message& message)
   int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
   if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
   {
+	  LOG(WARN, "mbedtls_ssl_write returned %x", ret);
 	  reset_session();
 	  return IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE;
   }

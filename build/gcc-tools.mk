@@ -7,7 +7,7 @@ include $(COMMON_BUILD)/common-tools.mk
 # default flags for targeting ARM
 #
 
-GCC_OPTIMIZE=3
+GCC_OPTIMIZE=2
 ifeq ($(DEBUG_BUILD),y)
      GCC_OPTIMIZE=0
 endif

@@ -5,6 +5,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
+#include "rgbled_hal.h"
 #include <stdio.h>
 
 #ifdef abs

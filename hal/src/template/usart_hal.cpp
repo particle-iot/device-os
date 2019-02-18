@@ -70,3 +70,8 @@ bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
 {
 }
+
+int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
+{
+    return 0;
+}

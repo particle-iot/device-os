@@ -1,3 +1,47 @@
+## 0.9.0-rc.3
+
+### BUGFIXES
+- [Gen 3] Fixes system-dynalib incompatibility introduced in 0.9.0-rc.1, causing pre-0.9.0-rc.1 user applications that call certain system-dynalib functions to crash the device [#1692]
+
+## 0.9.0-rc.2
+
+### BUGFIXES
+- [Gen 3] `WKP` pin is configured as pull-down with rising edge trigger when entering STANDBY sleep mode to keep feature parity with Gen 2 devices (#1691)
+- [Boron] PPP thread stack size increased by 1K in order to resolve a very rare stack overflow (#1691)
+- [Gen 3] Fixes a crash when attempting to send constant data residing in flash through Ethernet interface (#1691)
+
+## 0.9.0-rc.1
+
+### BUGFIXES
+- [Gen 3] An attempt to unitialize an SPI interface no longer causes an assertion failure if the interface is not initialized (#1663)
+- [Gen 3] Default SPI settings are now recognized correctly (#1663)
+- [Gen 3] Fixed a possible race condition during the Timer's uninitialization (#1663)
+- [Gen 3] `random()` is now properly seeded on application startup (#1663)
+- [Boron] Fixes an issue with IMEI and ICCID not being reported in listening mode serial console with `v` command (#1681)
+- [Gen 3] SPI MISO is no longer configured with a pull-down and user-provided CS pin is not reset to `INPUT` state when reconfiguring SPI peripheral (#1671)
+- [Argon] Fixes a deadlock when initializing NCP client (#1661)
+- [Gen 3] DFU mode no longer requires driver installation on Windows. Fixes incorrect WCID descriptors (#1653)
+- [Gen 3] Adds missing Arduino-specific definitions (#1658)
+- [Xenon] Makes `Serial2` available in user applications (#1660)
+- [Argon] WiFi cipher types are now being correctly reported when scanning or retreiving stored credentials (#1659)
+
+### ENHANCEMENTS
+- [Gen 3] `micros()` resolution increased by mixing in `DWT->CYCCNT` (#1682)
+
+### FEATURES
+- [Gen 3] STOP sleep mode support (#1682)
+- [Gen 3] STANDBY sleep mode support (#1667)
+- [Gen 3] USB control requests (#1655)
+- [Gen 3] Mesh network diagnostics (#1657)
+- [Boron] `Cellular.command()` support (#1651)
+
+### INTERNAL
+- [Gen 3] Most of the `wiring/no_fixture` tests now successfully run on Xenon, Argon and Boron (#1663)
+- Removed strong dependency on `git` (#1664)
+- [Gen 3] OpenThread updated to 20190130 master with the fix for negative clock drift between HFCLK and LFCLK (#1684)
+- Submodules now use absolute https URLs (#1699)
+- Fixed an assertion failure (SOS 10) with Mesh.subscribe() and threading enabled (#1652)
+
 ## 1.0.1-rc.1
 
 ### BUGFIXES
@@ -106,6 +150,248 @@
 - Fixes some 0.8.0-rc.2 tests [#1476](https://github.com/particle-iot/firmware/pull/1476)
 - [Electron] fixes sticker-rig issue with POWER_ON command [#1544](https://github.com/particle-iot/firmware/pull/1544)
 - [Electron] Fixes monolithic build [#1543](https://github.com/particle-iot/firmware/pull/1543)
+
+## 0.8.0-rc.27
+
+### BUGFIXES
+- [Argon] Sucessful update of the NCP firmware no longer results in `SYSTEM_ERROR_INVALID_STATE` (#1645)
+- [Argon] `m` command in listening mode correctly reports WiFi MAC address (#1638)
+
+### ENHANCEMENTS
+- [Gen 3] Added newlib `__assert_func()` implementation that logs the assertion failure and delegates to `AssertionFailure` panic handler (#1636)
+- [Gen 3] OpenThread upgraded to 2018/12/17 master (#1643)
+- [Gen 3] Added a workaround for RTC / TIMER negative drift issue in Nordic 802.15.4 radio driver (#1643)
+- [Gen 3] Normalized (lowered) IRQ priorities to a safe 5-7 range (#1643)
+- [Gen 3] `timer_hal` and `rtc_hal` migrated to use a single stable monotonic 64-bit microsecond counter provided by OpenThread platform-specific code using the RTC peripheral (#1643)
+- [Gen 3] `HAL_disable_irq()` / `HAL_enable_irq()` implementation changed to use `__set_BASEPRI()` instead of `sd_nvic_critical_region_enter()` / `sd_nvic_critical_region_exit()` to avoid assertion failures in Nordic 802.15.4 radio driver
+- [Gen 3] Persistent border router prefix (#1647)
+- [Gen 3] Enables USB Serial by default (#1649)
+
+## 0.8.0-rc.26
+
+### BUGFIXES
+
+- [Argon] Escape special characters in SSIDs and passwords (#1604)
+- [Gen 3] Network system events are correctly generated (#1585)
+- [Gen 3] Correct C++ contructor array alignment in system-part1 (#1594)
+- [Gen 3] Fixed a conflict between DHCPv4-assigned and ND6-assigned DNS servers (#1596)
+- [Argon / Boron] Fixed a race condition when restarting the GSM07.10 multiplexer causing a memory leak/corruption (#1608)
+- [Gen 3] IPv4 `IPAddress` endianness issue fixed (#1610)
+- [Boron] Fixed a crash when using `STARTUP()` macro to manage Cellular credentials (#1613)
+- [Gen 3] Embedded user part update procedure fixed in for hybrid builds (#1617)
+- [communication] Sticky `SKIP_SESSION_RESUME_HELLO` no longer set immediately after session resume (#1623)
+- [Gen 3] OpenThread locking fixes (#1625)
+- [Gen 3] NetworkManager initiail state initialized in `network_setup()`
+- [Gen 3] IPv4 `IPAddress` endianness issue fixed (#1610)
+- [Gen 3] Fixes an assertion failure in LwIP DHCP code when receiving an offer with > 2 DNS servers (#1618)
+- [Argon / Xenon] `Wire1` enabled (#1633)
+
+### ENHANCEMENTS
+
+- [Boron] 3G Borons no longer incur 10 second power-on delay when cold booting (#1584)
+- [Gen 3] Build time significantly improved (#1587)
+- [Gen 3] Hardware-accelerated SHA-1 (#1593)
+- [Gen 3] Newlib 3.0 compatibility (#1599)
+- [Argon / Boron] AT parser immediately interrupted when GSM07.10 multiplexer exits asynchronously (e.g. terminated by the peer or due to keepalive timeout) (#1608)
+- [Gen 3] NAT64 initial base source port randomized on boot (#1609)
+- [Gen 3] LwIP optimizations (#1610)
+- [Gen 3] DHCP hostname option enabled (defaults to DeviceID) (#1595)
+- [Argon] WiFi passwords are not included in the logging output (#1619)
+- [Gen 3] Power failure comparator always configured with 2.8V threshold (#1621)
+- [Gen 3] Default mesh transmit power setting changed from 0dBm to 8dBm (#1629)
+- [Gen 3] BLE MTU and data length changed to default minimum values, while still allowing upgrade by the peer up to the maximums available on nRF52840 (#1634)
+
+### FEATURES
+- [Gen 3] SPI slave mode (#1588)
+- [Gen 3] I2C slave mode (#1591)
+- [Gen 3] Servo HAL (#1589)
+- [Gen 3] Implement a control request to retrieve the module info in the protobuf format (#1614)
+
+### INTERNAL
+
+- [Gen 3] Run unit tests as part of a CI build (#1604).
+
+## 0.8.0-rc.25
+
+### FEATURES
+
+- [Argon] Enables serial setup console `WiFiSetupConsole` in listening mode to manage WiFi credentials (#268)
+
+### BUGFIXES
+
+- [system] Fix memory usage diagnostics (#262)
+- [openthread] Work around network name issues (#267)
+- [ble] Avoid disabling interrupts when processing control requests (#264)
+- [system] Power manager should not immediately go into `NOT_CHARGING` state from `DISCONNECTED` before `DEFAULT_WATCHDOG_TIMEOUT` passes (#263)
+- [system] Battery state of charge should not be reported in `DISCONNECTED` state (#263)
+- [ifapi] DHCPv4 client shouldn't start on ppp interfaces through `if_set_xflags()` (#263)
+- [Boron] ppp (cellular) netif should not be default (#263)
+- [Mesh] Fix memory usage diagnostics in modular builds (#262)
+
+### ENHANCEMENTS
+
+- [hal] Define `retained` and `retained_system` macros (#265)
+- [system] Use ephemeral ports when connecting to the cloud over IPv4 (#269)
+- [system] Re-request permission to become Border Router from the cloud every 5 minutes if previously denied using a separate timer (#266)
+- [openthread] When syncing LwIP -> OT multicast subscriptions, immediately join the group on LwIP side as well, if not joined already (#263)
+
+## 0.8.0-rc.24
+
+### BUGFIXES
+
+- [Mesh] Retry system commands on cloud connection errors (#261)
+
+## 0.8.0-rc.23
+
+### BREAKING CHANGES
+
+- [Mesh] Added versioning to mesh pub/sub protocol. Makes the format incompatible with previous releases (#250)
+
+### FEATURES
+
+- [Boron] PMIC and FuelGauge wiring APIs enabled (#257)
+- [Boron] Enabled system power manager. (LTE) Borons should now work correctly without the battery attached (#257)
+- [Argon, Boron] Ongoing connection attempt can be cancelled from a higher priority context (#258)
+- [Mesh] Require the cloud to confirm the BR functionality
+
+### BUGFIXES
+
+- [Mesh] Ethernet wiring object can now be correctly used (#259)
+- [Mesh] Increased `MEMP_NUM_NETBUF` for all the platforms to allow to queue up more packet buffers
+- [Mesh] Hybrid module reports itself as modular instead of monolithic in system module info (#255)
+- [Mesh] Multicast subscriptions created on LwIP were getting lost when Thread interface was going down (#250)
+- [system] Claim code shouldn't be published if it's not initialized in DCT
+- [Mesh] hal: D7 and RGB LED pins should be in the same PWM group
+
+## 0.8.0-rc.22
+
+### BUGFIXES
+
+- [Argon, Boron] AT parser: Ignore response lines that don't contain an URC when waiting for a command echo
+- [Mesh] Use an unused backup register for the `STARTUP_LISTEN_MODE` flag
+- [Boron] Fixed SARA U201/R410 power on/off and reset procedures.
+- [Mesh] Fixed backup and stack sections overlap in linker files
+- [Boron] Added missing `UBVINT` pin definition
+
+### FEATURES
+
+- [Mesh] `HAL_Pin_Configure()` implemented allowing to configure the pin and set it to a certain state without a glitch
+
+## 0.8.0-rc.21
+
+## BUGFIXES
+
+- [Argon] Shorten describe message so it fits when sent to the cloud [#252]
+- [Boron] Remove NCP module from describe since it is not updatable [#252]
+
+## 0.8.0-rc.20
+
+### FEATURES
+
+- [Mesh] `pinResetFast()` / `pinSetFast()` / `pinReadFast()` implementation (#244)
+- [Mesh] Clear Mesh credentials if Network Joined / Updated request is rejected cloudside with 4xx error code
+- [communication] Added `FORCE_PING` protocol command to proactively ping the cloud
+- [Mesh] Ping the cloud whenever the network interface state / configuration change
+- [Mesh] Send the border router CoAP message to the cloud when the device becomes a border router (#248)
+
+### BUGFIXES
+
+- [Boron] Increased LTE Boron USART polling rate
+- [Boron] Increased maximum PPP LCP echo failures to 10
+- [Boron] Increased maximum GSM07.10 missed keepalives to 5 on LTE Boron
+- [Mesh] NetworkManager: fixes credentials removal and interface state syncup in connected state
+- [Mesh] Removes extra comma from JSON module info in hybrid builds (#246)
+- [Argon, Boron] Fix echo handling in the AT command parser
+- [communication] When resuming a session without sending HELLO message, an error from `ping()` needs to be propagated
+- [Mesh] Added a proposed workaround to radio driver from https://devzone.nordicsemi.com/f/nordic-q-a/38460/thread-dynamic-multiprotocol---assertion-at-radioreceive
+
+### ENHANCEMENTS
+
+- [Argon] Changes expected NCP firmware module function from monolithic (`0x03`) to NCP monolithic (`0x07`), adds NCP module info to system module info (#245)
+- [Mesh] Move system flags to backup RAM (#216)
+- [Mesh] Implement `System.dfu()` and `System.enterSafeMode()` (#209)
+- [Mesh] Implement querying of the last reset info (#209)
+- [Mesh] Ignore ALOC addresses when synchronizing IP address information between OpenThread and LwIP
+- [Mesh] Enable / disable Border Router functionality on system thread instead of LwIP thread
+- [Mesh] `otPlatAssertFail()` implemented
+- [Boron] Reset the modem if it can't register in the network for 5 minutes
+- [Mesh] Use `select()` instead of blocking `recvfrom()` in the DNS64 service
+- [system] Disable interrupts in `ISRTaskQueue::process()` only if there is at least on entry in the queue
+
+
+## 0.8.0-rc.19
+
+### BUGFIXES
+
+- [Mesh] Fixes a bug introduced in rc.18 causing Mesh devices to be stuck in fast blinking green (link-local only communication) despite having a border router within the network.
+- [Mesh] `__errno()` is now exported from system-part1 in rt dynalib
+- [Mesh] Fixes a bug in IPv4 mapped IPv6 address conversion to IPAddress in TCPClient/TCPServer/UDP
+- [Mesh] Correct Mesh backup server address
+- [Mesh] Mesh pubsub thread-safety
+- [Mesh] Use network ID instead of XPAN ID to identify networks
+
+### FEATURES
+
+- [Mesh] Mesh.localIP() introduced
+- [Wiring] UDP: blocking reads
+- [Mesh] Full factory reset
+- [Mesh] Control requests to enable/disable Ethernet shield detection
+
+## 0.8.0-rc.18
+
+### FEATURES
+
+- [Mesh] Wiring API for networking
+
+### BUGFIXES
+
+- [Mesh] Various bugfixes and stability improvements
+
+## 0.8.0-rc.17
+
+### FEATURES
+
+- [Boron] Initial support for 3G and LTE networking
+
+## 0.8.0-rc.16
+
+### FEATURES
+
+- [Argon] Initial support for WiFi networking
+
+## 0.8.0-rc.15
+
+### FEATURES
+
+- [Mesh] Modular firmware support with factory reset
+- [Mesh] I2C Master driver support
+- [Mesh] PWM Driver
+- [Mesh] Tone Driver
+- [Mesh] USB CDC Driver
+- [Mesh] USART DMA Driver
+- [Mesh] RTC Driver
+- [Mesh] FastPin implementation
+- [Mesh] Reset reason
+- [Mesh] UDP in wiring with multicast support
+- [Mesh] Mesh-local publish/subscribe
+- [Mesh] EEPROM emulation
+- [Mesh] Hybrid firmware for mono->modular upgrade w/ tinker app embedded.
+
+### ENHANCEMENTS
+
+- [Mesh] Timeouts for joiner and comissioner
+- [Mesh] Multiple attempts to join network
+- [Mesh] Control requests for managing the cloud connection
+
+### BUGFIXES
+
+- [Mesh] I2C support for sending 0-byte transfer
+- [Mesh] Stop comissioner role synchronously
+- [Mesh] Increase the minimum BLE interval to 30ms
+
+### INTERNAL CHANGES
+
+- Bootloader included in Device OS
 
 ## 0.8.0-rc.14
 

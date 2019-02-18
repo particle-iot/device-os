@@ -25,6 +25,7 @@
 #define	HAL_DYNALIB_USART_H
 
 #include "dynalib.h"
+#include "hal_platform.h"
 #include "usb_config_hal.h"
 
 #ifdef DYNALIB_EXPORT
@@ -41,7 +42,7 @@
 
 DYNALIB_BEGIN(hal_usart)
 
-#ifdef USB_CDC_ENABLE
+#if defined (USB_CDC_ENABLE) && !HAL_PLATFORM_MESH
 DYNALIB_FN(0, hal_usart, USB_USART_Init, void(uint32_t))
 DYNALIB_FN(1, hal_usart, USB_USART_Available_Data, uint8_t(void))
 DYNALIB_FN(2, hal_usart, USB_USART_Receive_Data, int32_t(uint8_t))
@@ -65,7 +66,7 @@ DYNALIB_FN(BASE_IDX + 8, hal_usart, HAL_USART_Is_Enabled, bool(HAL_USART_Serial)
 DYNALIB_FN(BASE_IDX + 9, hal_usart, HAL_USART_Half_Duplex, void(HAL_USART_Serial, bool))
 DYNALIB_FN(BASE_IDX + 10, hal_usart, HAL_USART_Available_Data_For_Write, int32_t(HAL_USART_Serial))
 
-#ifdef USB_CDC_ENABLE
+#if defined (USB_CDC_ENABLE) && !HAL_PLATFORM_MESH
 DYNALIB_FN(BASE_IDX + 11, hal_usart, USB_USART_Available_Data_For_Write, int32_t(void))
 DYNALIB_FN(BASE_IDX + 12, hal_usart, USB_USART_Flush_Data, void(void))
 #define BASE_IDX2 (BASE_IDX+13)

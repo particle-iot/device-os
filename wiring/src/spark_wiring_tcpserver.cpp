@@ -23,6 +23,10 @@
   ******************************************************************************
  */
 
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_COMPAT
+
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_tcpserver.h"
 #include "spark_wiring_network.h"
@@ -140,3 +144,5 @@ size_t TCPServer::write(const uint8_t *buffer, size_t size)
 {
     return write(buffer, size, SPARK_WIRING_TCPCLIENT_DEFAULT_SEND_TIMEOUT);
 }
+
+#endif // HAL_USE_SOCKET_HAL_COMPAT
