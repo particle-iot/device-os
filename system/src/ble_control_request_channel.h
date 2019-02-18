@@ -27,7 +27,7 @@
 #include "intrusive_queue.h"
 #include "linked_buffer.h"
 
-#include "ble_hal.h"
+#include "ble_hal_legacy.h"
 
 #include "spark_wiring_thread.h"
 

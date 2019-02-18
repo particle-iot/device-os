@@ -50,7 +50,7 @@
 #include "system_commands.h"
 
 #if HAL_PLATFORM_BLE
-#include "ble_hal.h"
+#include "ble_hal_legacy.h"
 #include "system_control_internal.h"
 
 using namespace particle;
