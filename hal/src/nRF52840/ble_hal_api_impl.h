@@ -55,7 +55,7 @@
 
 /* Default advertising parameters */
 #define BLE_DEFAULT_ADVERTISING_INTERVAL            160     /* The advertising interval: 100ms (in units of 0.625 ms). */
-#define BLE_DEFAULT_ADVERTISING_DURATION            18000   /* The advertising duration: 180s (in units of 10 milliseconds). */
+#define BLE_DEFAULT_ADVERTISING_TIMEOUT             18000   /* The advertising duration: 180s (in units of 10 milliseconds). */
 
 /* BLE advertisement filter policy */
 #define BLE_ADV_FP_ANY                              0x00   /**< Allow scan requests and connect requests from any device. */

@@ -230,13 +230,16 @@
 
 /**@defgroup BLE connection parameters limits
  * @{ */
-#define BLE_SIG_CP_MIN_CONN_INTERVAL_MIN                        0x0006 /**< Minimal value of the Minimal Connection Interval. */
-#define BLE_SIG_CP_MIN_CONN_INTERVAL_MAX                        0x0C80 /**< Maximum value of the Minimal Connection Interval. */
-#define BLE_SIG_CP_MAX_CONN_INTERVAL_MIN                        0x0006 /**< Minimal value of the Maximum Connection Interval. */
-#define BLE_SIG_CP_MAX_CONN_INTERVAL_MAX                        0x0C80 /**< Maximal value of the Maximum Connection Interval. */
+#define BLE_SIG_CP_MIN_CONN_INTERVAL_NONE                       0xFFFF /**< No limit of the Minimal Connection Interval. */
+#define BLE_SIG_CP_MIN_CONN_INTERVAL_MIN                        0x0006 /**< Minimal value of the Minimal Connection Interval, in units of 1.25 ms. */
+#define BLE_SIG_CP_MIN_CONN_INTERVAL_MAX                        0x0C80 /**< Maximum value of the Minimal Connection Interval, in units of 1.25 ms. */
+#define BLE_SIG_CP_MAX_CONN_INTERVAL_NONE                       0xFFFF /**< No limit of the Maximum Connection Interval. */
+#define BLE_SIG_CP_MAX_CONN_INTERVAL_MIN                        0x0006 /**< Minimal value of the Maximum Connection Interval, in units of 1.25 ms. */
+#define BLE_SIG_CP_MAX_CONN_INTERVAL_MAX                        0x0C80 /**< Maximal value of the Maximum Connection Interval, in units of 1.25 ms. */
 #define BLE_SIG_CP_SLAVE_LATENCY_MAX                            0x01F3 /**< Maximal value of the Slave Latency. */
-#define BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN                         0x000A /**< Minimal value of the Connection Supervision Timeout. */
-#define BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX                         0x0C80 /**< Maximal value of the Connection Supervision Timeout. */
+#define BLE_SIG_CP_CONN_SUP_TIMEOUT_NONE                        0xFFFF /**< No limit of the Connection Supervision Timeout. */
+#define BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN                         0x000A /**< Minimal value of the Connection Supervision Timeout, in units of 10 ms. */
+#define BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX                         0x0C80 /**< Maximal value of the Connection Supervision Timeout, in units of 10 ms. */
 /**@} */
 
 
