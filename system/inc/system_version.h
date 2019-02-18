@@ -93,7 +93,9 @@ extern "C" {
 #define SYSTEM_VERSION_v090RC1   0x00090001
 #define SYSTEM_VERSION_v090RC2   0x00090002
 #define SYSTEM_VERSION_v090RC3   0x00090003
-#define SYSTEM_VERSION  SYSTEM_VERSION_v090RC3
+#define SYSTEM_VERSION_v090RC3   0x00090003
+#define SYSTEM_VERSION_v090      0x00090000
+#define SYSTEM_VERSION  SYSTEM_VERSION_v090
 
 /**
  * For Library/App creators. Can be used to ensure features/api's are present.
