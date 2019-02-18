@@ -39,6 +39,7 @@
 
 #define BLE_CONN_EVT_ID_CONNECTED                   0x01
 #define BLE_CONN_EVT_ID_DISCONNECTED                0x02
+#define BLE_CONN_EVT_ID_ADV_STOPPED                 0x03
 
 #define BLE_SCAN_RESULT_EVT_DATA_TYPE_ADV           0x01
 #define BLE_SCAN_RESULT_EVT_DATA_TYPE_SCAN_RESP     0x02
@@ -72,9 +73,9 @@ typedef struct {
     uint8_t  type;
     uint8_t  filter_policy;
     uint16_t interval;                  /**< Advertising interval in 625 us units. */
-    uint16_t duration;                  /**< Advertising duration in 10 ms units.*/
+    uint16_t timeout;                   /**< Advertising timeout in 10 ms units.*/
     uint8_t  inc_tx_power;
-} hal_ble_advertisement_parameters_t;
+} hal_ble_advertising_parameters_t;
 
 /* BLE scanning parameters */
 typedef struct {
@@ -210,7 +211,7 @@ int ble_register_callback(ble_event_callback_t callback);
 int ble_deregister_callback(ble_event_callback_t callback);
 
 /**
- * Set local BLE identity address, which type must be either public or random static.
+ * Set local BLE identity address, which type must be either public or random.
  *
  * @param[in]   address Pointer to the BLE local identity address to be set.
  *
@@ -323,23 +324,26 @@ int ble_gap_set_tx_power(int8_t value);
 int ble_gap_get_tx_power(int8_t* value);
 
 /**
- * Set the BLE advertisement parameters.
+ * Set the BLE advertising parameters. Changing the advertising parameter during
+ * advertising will restart advertising using the new parameters.
  *
  * @param[in]   adv_params  Pointer to the advertising parameters to be set.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_set_advertisement_parameters(hal_ble_advertisement_parameters_t* adv_params);
+int ble_gap_set_advertising_parameters(hal_ble_advertising_parameters_t* adv_params);
 
 /**
- * Set the BLE advertisement data. It will update the advertisement data immediately if success.
+ * Set the BLE advertising data. It will update the advertising data immediately if success.
+ * Changing the advertising data during advertising will restart advertising using the
+ * previous advertising parameters and the new advertising data.
  *
- * @param[in]   data    Pointer to the advertisement data to be set.
- * @param[in]   len     Length of the advertisement data.
+ * @param[in]   data    Pointer to the advertising data to be set.
+ * @param[in]   len     Length of the advertising data.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_set_advertisement_data(uint8_t* data, uint16_t len);
+int ble_gap_set_advertising_data(uint8_t* data, uint16_t len);
 
 /**
  * Set the BLE scan response data.
