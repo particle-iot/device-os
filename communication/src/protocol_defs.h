@@ -145,19 +145,4 @@ enum Enum {
 };
 }
 
-typedef uint32_t keepalive_source_t;
-
-typedef struct
-{
-    uint16_t size;
-    keepalive_source_t keepalive_source;
-} connection_properties_t;
-
-namespace KeepAliveSource {
-enum Enum {
-    USER   = 1<<0,   // set by user in wiring
-    SYSTEM = 1<<1    // set by system
-};
-}
-
 }}

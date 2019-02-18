@@ -48,9 +48,6 @@ void system_power_management_sleep(bool sleep) {
 void system_power_management_init() {
 }
 
-void system_power_management_init() {
-}
-
 void system_power_management_sleep(bool sleep) {
 }
 
