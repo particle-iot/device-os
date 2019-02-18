@@ -93,9 +93,9 @@ typedef struct {
     uint8_t  advHandle;
     uint8_t  connParamsUpdateAttempts;
 
-    hal_ble_scan_parameters_t          scanParams;
-    hal_ble_advertisement_parameters_t advParams;
-    hal_ble_connection_parameters_t    ppcp;
+    hal_ble_scan_parameters_t        scanParams;
+    hal_ble_advertising_parameters_t advParams;
+    hal_ble_connection_parameters_t  ppcp;
 
     uint8_t               advData[BLE_MAX_ADV_DATA_LEN];
     uint16_t              advDataLen;
@@ -142,7 +142,7 @@ static HalBleInstance_t s_bleInstance = {
         .type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT,
         .filter_policy = BLE_ADV_FP_ANY,
         .interval      = BLE_DEFAULT_ADVERTISING_INTERVAL,
-        .duration      = BLE_DEFAULT_ADVERTISING_DURATION,
+        .timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT,
         .inc_tx_power  = false
     },
 
@@ -609,6 +609,13 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         case BLE_GAP_EVT_ADV_SET_TERMINATED: {
             LOG_DEBUG(TRACE, "BLE GAP event: advertising stopped.");
             s_bleInstance.advertising = false;
+
+            bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
+            bleEvt.conn_event.conn_handle = BLE_INVALID_CONN_HANDLE;
+            bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_ADV_STOPPED;
+            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
+            }
         } break;
 
         case BLE_GAP_EVT_ADV_REPORT: {
@@ -1211,7 +1218,7 @@ int ble_stack_init(void* reserved) {
         s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
 
         // Configure an advertising set to obtain an advertising handle.
-        int error = ble_gap_set_advertisement_parameters(&s_bleInstance.advParams);
+        int error = ble_gap_set_advertising_parameters(&s_bleInstance.advParams);
         if (error != SYSTEM_ERROR_NONE) {
             return error;
         }
@@ -1293,6 +1300,10 @@ int ble_gap_set_device_address(hal_ble_address_t const* address) {
     }
     if (address->addr_type != BLE_SIG_ADDR_TYPE_PUBLIC && address->addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (s_bleInstance.advertising || s_bleInstance.scanning || s_bleInstance.connecting) {
+        // The identity address cannot be changed while advertising, scanning or creating a connection.
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     ble_gap_addr_t localAddr;
@@ -1407,19 +1418,22 @@ int ble_gap_set_ppcp(hal_ble_connection_parameters_t* ppcp) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    if (ppcp->min_conn_interval < BLE_SIG_CP_MIN_CONN_INTERVAL_MIN ||
-            ppcp->min_conn_interval > BLE_SIG_CP_MIN_CONN_INTERVAL_MAX) {
+    if (    ppcp->min_conn_interval != BLE_SIG_CP_MIN_CONN_INTERVAL_NONE
+        && (ppcp->min_conn_interval < BLE_SIG_CP_MIN_CONN_INTERVAL_MIN
+        ||  ppcp->min_conn_interval > BLE_SIG_CP_MIN_CONN_INTERVAL_MAX)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (ppcp->max_conn_interval < BLE_SIG_CP_MAX_CONN_INTERVAL_MIN ||
-            ppcp->max_conn_interval > BLE_SIG_CP_MAX_CONN_INTERVAL_MAX) {
+    if (    ppcp->max_conn_interval != BLE_SIG_CP_MAX_CONN_INTERVAL_NONE
+        && (ppcp->max_conn_interval < BLE_SIG_CP_MAX_CONN_INTERVAL_MIN
+        ||  ppcp->max_conn_interval > BLE_SIG_CP_MAX_CONN_INTERVAL_MAX)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (ppcp->slave_latency > BLE_SIG_CP_SLAVE_LATENCY_MAX) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (ppcp->conn_sup_timeout < BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN ||
-            ppcp->conn_sup_timeout > BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX) {
+    if (    ppcp->conn_sup_timeout != BLE_SIG_CP_CONN_SUP_TIMEOUT_NONE
+        && (ppcp->conn_sup_timeout < BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN
+        ||  ppcp->conn_sup_timeout > BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1528,10 +1542,10 @@ int ble_gap_get_tx_power(int8_t* value) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_set_advertisement_parameters(hal_ble_advertisement_parameters_t* adv_params) {
+int ble_gap_set_advertising_parameters(hal_ble_advertising_parameters_t* adv_params) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
-    LOG_DEBUG(TRACE, "ble_gap_set_advertisement_parameters().");
+    LOG_DEBUG(TRACE, "ble_gap_set_advertising_parameters().");
 
     if (adv_params == NULL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -1553,10 +1567,10 @@ int ble_gap_set_advertisement_parameters(hal_ble_advertisement_parameters_t* adv
     memset(&bleGapAdvParams, 0x00, sizeof(ble_gap_adv_params_t));
 
     bleGapAdvParams.properties.type             = adv_params->type;
-    bleGapAdvParams.properties.include_tx_power = adv_params->inc_tx_power;
+    bleGapAdvParams.properties.include_tx_power = false; // FIXME: for extended advertising packet
     bleGapAdvParams.p_peer_addr                 = NULL;
     bleGapAdvParams.interval                    = adv_params->interval;
-    bleGapAdvParams.duration                    = adv_params->duration;
+    bleGapAdvParams.duration                    = adv_params->timeout;
     bleGapAdvParams.filter_policy               = adv_params->filter_policy;
     bleGapAdvParams.primary_phy                 = BLE_GAP_PHY_1MBPS;
 
@@ -1581,15 +1595,15 @@ int ble_gap_set_advertisement_parameters(hal_ble_advertisement_parameters_t* adv
         return ble_gap_start_advertising();
     }
 
-    memcpy(&s_bleInstance.advParams, adv_params, sizeof(hal_ble_advertisement_parameters_t));
+    memcpy(&s_bleInstance.advParams, adv_params, sizeof(hal_ble_advertising_parameters_t));
 
     return sysError(ret);
 }
 
-int ble_gap_set_advertisement_data(uint8_t* data, uint16_t len) {
+int ble_gap_set_advertising_data(uint8_t* data, uint16_t len) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
-    LOG_DEBUG(TRACE, "ble_gap_set_advertisement_data().");
+    LOG_DEBUG(TRACE, "ble_gap_set_advertising_data().");
 
     if ((data == NULL) || (len < 3)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;

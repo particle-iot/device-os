@@ -65,7 +65,7 @@ static int locateAdStructure(uint8_t adsType, const uint8_t* data, uint16_t len,
     return SYSTEM_ERROR_NOT_FOUND;
 }
 
-static int decodeAdvertisementData(uint8_t ads_type, const uint8_t* adv_data, uint16_t adv_data_len, uint8_t* data, uint16_t* len) {
+static int decodeAdvertisingData(uint8_t ads_type, const uint8_t* adv_data, uint16_t adv_data_len, uint8_t* data, uint16_t* len) {
     // An AD structure must consist of 1 byte length field, 1 byte type field and at least 1 byte data field
     if (adv_data == NULL || adv_data_len < 3) {
         *len = 0;
@@ -96,7 +96,7 @@ static void handleBleEvent(hal_ble_event_t *event)
     if (event->evt_type == BLE_EVT_TYPE_SCAN_RESULT) {
         uint8_t  devName[20];
         uint16_t devNameLen = sizeof(devName);
-        decodeAdvertisementData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME,
+        decodeAdvertisingData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME,
                 event->scan_result_event.data, event->scan_result_event.data_len,
                 devName, &devNameLen);
 

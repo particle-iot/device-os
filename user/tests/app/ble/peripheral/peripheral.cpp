@@ -121,10 +121,10 @@ static int adStructEncode(uint8_t adsType, uint8_t* data, uint16_t len, bool sr,
     }
 }
 
-static int encodeAdvertisementData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t*advDataLen) {
+static int encodeAdvertisingData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t*advDataLen) {
     int ret = adStructEncode(ads_type, data, len, false, advData, advDataLen);
     if (ret == SYSTEM_ERROR_NONE) {
-        ret = ble_gap_set_advertisement_data(advData, *advDataLen);
+        ret = ble_gap_set_advertising_data(advData, *advDataLen);
     }
 
     return ret;
@@ -189,17 +189,17 @@ void setup()
     connParams.conn_sup_timeout  = 400;
     ble_gap_set_ppcp(&connParams);
 
-    hal_ble_advertisement_parameters_t advParams;
+    hal_ble_advertising_parameters_t advParams;
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
-    advParams.duration      = 0;
+    advParams.timeout       = 0;
     advParams.inc_tx_power  = false;
-    ble_gap_set_advertisement_parameters(&advParams);
+    ble_gap_set_advertising_parameters(&advParams);
 
-    encodeAdvertisementData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, devName, sizeof(devName), advData, &advDataLen);
+    encodeAdvertisingData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, devName, sizeof(devName), advData, &advDataLen);
     uint8_t uuid[2] = {0xab, 0xcd};
-    encodeAdvertisementData(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, uuid, sizeof(uuid), advData, &advDataLen);
+    encodeAdvertisingData(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, uuid, sizeof(uuid), advData, &advDataLen);
     uint8_t mfgData[10] = {0x12, 0x34};
     encodeScanResponseData(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, mfgData, sizeof(mfgData), advData, &advDataLen);
 
