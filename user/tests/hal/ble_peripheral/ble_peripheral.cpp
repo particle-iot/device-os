@@ -19,7 +19,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
-#include "ble_hal_api.h"
+#include "ble_hal.h"
 #include "system_error.h"
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
