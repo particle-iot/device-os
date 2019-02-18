@@ -38,6 +38,11 @@ env:
     - BUILD_PLATFORM=xenon
     - BUILD_PLATFORM=argon
     - BUILD_PLATFORM=boron
+    - BUILD_PLATFORM=photon
+    - BUILD_PLATFORM=p1
+    - BUILD_PLATFORM=electron
+    - BUILD_PLATFORM=gcc
+    - BUILD_PLATFORM=newhal
     - BUILD_PLATFORM=unit-test
 
   # matrix:
