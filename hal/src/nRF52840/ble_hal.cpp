@@ -36,6 +36,7 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include "static_recursive_mutex.h"
 #include <mutex>
 
+#include "gpio_hal.h"
 #include "ble_hal.h"
 #include "system_error.h"
 
@@ -1231,6 +1232,9 @@ int ble_stack_init(void* reserved) {
         }
         s_bleInstance.txPower = 0;
 
+        // Select internal antenna by default
+        ble_select_antenna(BLE_ANT_INTERNAL);
+
         if (os_semaphore_create(&s_bleInstance.semaphore, 1, 0)) {
             LOG(ERROR, "os_semaphore_create() failed");
             return SYSTEM_ERROR_INTERNAL;
@@ -1258,6 +1262,39 @@ int ble_stack_init(void* reserved) {
     else {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+}
+
+int ble_select_antenna(hal_ble_antenna_type_t antenna) {
+    // FIXME: mesh SoMs specific configurations
+    HAL_Pin_Mode(ANTSW1, OUTPUT);
+#if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
+    HAL_Pin_Mode(ANTSW2, OUTPUT);
+#endif
+
+    if (antenna == BLE_ANT_EXTERNAL) {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 0);
+#else
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#endif
+    }
+    else {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 1);
+#else
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#endif
+    }
+
+    return SYSTEM_ERROR_NONE;
 }
 
 int ble_register_callback(ble_event_callback_t callback) {

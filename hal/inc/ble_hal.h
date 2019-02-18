@@ -53,6 +53,11 @@
 #define BLE_DATA_EVT_ID_NOTIFY                      0x03
 
 
+typedef enum {
+    BLE_ANT_INTERNAL = 0,
+    BLE_ANT_EXTERNAL = 1,
+} hal_ble_antenna_type_t;
+
 /* BLE device address */
 typedef struct {
     uint8_t addr_type;
@@ -191,6 +196,15 @@ bool ble_stack_is_initialized(void);
  * @returns     0 on success, system_error_t on error.
  */
 int ble_stack_init(void* reserved);
+
+/**
+ * Select the antenna for BLE radio.
+ *
+ * @param[in]   antenna The antenna type, either be BLE_ANT_INTERNAL or BLE_ANT_EXTERNAL.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_select_antenna(hal_ble_antenna_type_t antenna);
 
 /**
  * Register a callback function to subscribe the BLE events.
