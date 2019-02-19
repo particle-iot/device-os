@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_FILESYSTEM
+
 #include "spark_protocol_functions.h"
 #include "logging.h"
 #include "file_queue.h"
@@ -130,3 +134,5 @@ union AllCommands {
 
 } // system
 } // particle
+
+#endif // HAL_PLATFORM_FILESYSTEM

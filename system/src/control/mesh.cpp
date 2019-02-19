@@ -16,12 +16,11 @@
  */
 
 #include "logging.h"
-
 LOG_SOURCE_CATEGORY("system.ctrl.mesh");
 
 #include "mesh.h"
 
-#if SYSTEM_CONTROL_ENABLED
+#if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_MESH
 
 #include "system_openthread.h"
 #include "system_network_manager.h"
@@ -1748,4 +1747,4 @@ int test(ctrl_request* req) {
 
 } // particle
 
-#endif // SYSTEM_CONTROL_ENABLED
+#endif // SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_MESH

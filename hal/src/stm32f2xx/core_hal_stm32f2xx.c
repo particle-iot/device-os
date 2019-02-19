@@ -1697,6 +1697,12 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
     LED_Mirror_Persist(led, &bootloader_conf);
 }
 
+int HAL_Core_Enter_Panic_Mode(void* reserved)
+{
+    __disable_irq();
+    return 0;
+}
+
 #if HAL_PLATFORM_CLOUD_UDP
 
 #include "dtls_session_persist.h"

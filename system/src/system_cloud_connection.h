@@ -75,9 +75,9 @@ void Spark_Abort();
 int Internet_Test(void);
 void Multicast_Presence_Announcement(void);
 
-#if HAL_PLATFORM_CLOUD_UDP
-
 namespace particle { namespace system { namespace cloud {
+
+#if HAL_PLATFORM_CLOUD_UDP
 
 struct SessionConnection
 {
@@ -102,10 +102,12 @@ struct SessionConnection
 };
 static_assert(std::is_pod<SessionConnection>::value, "SessionConnection is not a POD struct");
 
+#endif /* HAL_PLATFORM_CLOUD_UDP */
+
 } } } /* particle::system::cloud */
 
+#if HAL_PLATFORM_CLOUD_UDP
 extern particle::system::cloud::SessionConnection g_system_cloud_session_data;
-
-#endif /* HAL_PLATFORM_CLOUD_UDP */
+#endif // HAL_PLATFORM_CLOUD_UDP
 
 #endif /* SYSTEM_CLOUD_CONNECTION_H */

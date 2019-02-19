@@ -168,6 +168,7 @@ int getDeviceMode(ctrl_request* req) {
 }
 
 int setDeviceSetupDone(ctrl_request* req) {
+#if HAL_PLATFORM_DCT_SETUP_DONE
     PB(SetDeviceSetupDoneRequest) pbReq = {};
     int ret = decodeRequestMessage(req, PB(SetDeviceSetupDoneRequest_fields), &pbReq);
     if (ret != 0) {
@@ -180,9 +181,13 @@ int setDeviceSetupDone(ctrl_request* req) {
         return ret;
     }
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // HAL_PLATFORM_DCT_SETUP_DONE
 }
 
 int isDeviceSetupDone(ctrl_request* req) {
+#if HAL_PLATFORM_DCT_SETUP_DONE
     uint8_t val = 0;
     int ret = dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
     if (ret != 0) {
@@ -195,6 +200,9 @@ int isDeviceSetupDone(ctrl_request* req) {
         return ret;
     }
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // HAL_PLATFORM_DCT_SETUP_DONE
 }
 
 int setStartupMode(ctrl_request* req) {

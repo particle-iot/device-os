@@ -38,8 +38,9 @@ HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_COREV2)/,$(addsuffix .a,$(HAL_WICED
 HAL_WICED_LIB_FILES += $(addprefix $(HAL_LIB_RTOS)/,$(addsuffix .a,$(HAL_WICED_RTOS_LIBS)))
 WICED_MCU = $(HAL_SRC_COREV2_PATH)/wiced/platform/MCU/STM32F2xx/GCC
 
-INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/host/WICED/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/crypto $(HAL_SRC_COREV2_PATH)/wiced/WWD/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/GCC/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/supplicant/ 
+INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/host/WICED/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/include $(HAL_SRC_COREV2_PATH)/wiced/security/BESL $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/crypto $(HAL_SRC_COREV2_PATH)/wiced/WWD/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/include/ $(HAL_SRC_COREV2_PATH)/wiced/platform/GCC/ $(HAL_SRC_COREV2_PATH)/wiced/security/BESL/supplicant/
 INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/libraries/crypto
+INCLUDE_DIRS += $(HAL_SRC_COREV2_PATH)/libraries/daemons/DNS_redirect
 HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/Supplicant_BESL.a
 HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/BESL.ARM_CM3.release.a
 
@@ -70,8 +71,6 @@ LDFLAGS += -u uxTopUsedPriority
 # LDFLAGS += -lstdc++ -lg -lc -lm -Wl,--start-group  -lstdc++ -lg -lc -lm -Wl,--end-group -Wl,--start-group $(LIBG_TWEAK) -lstdc++ -lg -lc -lm -Wl,--end-group -lg_nano
 
 endif
-
-
 
 # not using assembler startup script, but will use startup linked in with wiced
 

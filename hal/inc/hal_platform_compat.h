@@ -57,7 +57,7 @@
 #define HAL_PLATFORM_RNG 1
 #endif
 
-#define HAL_PLATFORM_NCP 	(1)
+#define HAL_PLATFORM_NCP 	(0)
 #define HAL_PLATFORM_NCP_AT (0)
 
 #define HAL_PLATFORM_DCT_NO_DEPRECATED (0)

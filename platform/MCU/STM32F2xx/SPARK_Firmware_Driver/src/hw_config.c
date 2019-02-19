@@ -209,6 +209,10 @@ void Set_System(void)
     FLASH_ClearFlags();
 }
 
+void Reset_System(void)
+{
+}
+
 /*******************************************************************************
  * Function Name  : NVIC_Configuration
  * Description    : Configures Vector Table base location.

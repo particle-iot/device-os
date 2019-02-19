@@ -19,6 +19,8 @@
 #ifndef BOOTLOADER_HAL_H_
 #define BOOTLOADER_HAL_H_
 
+#include "hal_platform.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

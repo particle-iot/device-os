@@ -28,12 +28,12 @@ extern "C" {
 #define BUTTONn                             1
 
 typedef enum {
-    BUTTON1 = 0, 
+    BUTTON1 = 0,
     BUTTON1_MIRROR = 1
 } Button_TypeDef;
 
 typedef enum {
-    BUTTON_MODE_GPIO = 0, 
+    BUTTON_MODE_GPIO = 0,
     BUTTON_MODE_EXTI = 1
 } ButtonMode_TypeDef;
 
@@ -48,8 +48,8 @@ void BUTTON_Init_Ext();
 uint8_t BUTTON_Is_Pressed(Button_TypeDef button);
 uint16_t BUTTON_Pressed_Time(Button_TypeDef button);
 
-void BUTTON_Irq_Handler(void);
-void BUTTON_Check_Irq(uint16_t button);
+void BUTTON_Irq_Handler(uint16_t irqn);
+void BUTTON_Check_Irq(uint16_t button, uint16_t irqn);
 void BUTTON_Check_State(uint16_t button, uint8_t pressed);
 int BUTTON_Debounce();
 

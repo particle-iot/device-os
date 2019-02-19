@@ -24,13 +24,19 @@
 #define	RGBLED_HAL_H
 
 #include <stdint.h>
+#include "platform_config.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
+#ifndef LEDn
 #define LEDn                                4
+#endif // LEDn
+
+#ifndef LED_MIRROR_SUPPORTED
 #define LED_MIRROR_SUPPORTED                0
+#endif // LED_MIRROR_SUPPORTED
 
 #include "rgbled_hal_impl.h"
 

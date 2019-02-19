@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usart_hal.h"
+#include "pinmap_hal.h"
 #include "pinmap_impl.h"
 #include "gpio_hal.h"
 #include "stm32f2xx.h"

@@ -153,17 +153,17 @@ void BUTTON_ResetDebouncedState(Button_TypeDef Button)
 }
 
 
-void BUTTON_Irq_Handler(void)
+void BUTTON_Irq_Handler(uint16_t irqn)
 {
     if (nrf_gpiote_event_is_set(HAL_Buttons[BUTTON1].event_in))
     {
         nrf_gpiote_event_clear(HAL_Buttons[BUTTON1].event_in);
 
-        BUTTON_Check_Irq(BUTTON1);
+        BUTTON_Check_Irq(BUTTON1, irqn);
     }
 }
 
-void BUTTON_Check_Irq(uint16_t button)
+void BUTTON_Check_Irq(uint16_t button, uint16_t irqn)
 {
     HAL_Buttons[button].debounce_time = 0x00;
     HAL_Buttons[button].active = true;

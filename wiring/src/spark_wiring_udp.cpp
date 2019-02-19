@@ -182,7 +182,7 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
     return size;
 }
 
-int UDP::parsePacket()
+int UDP::parsePacket(system_tick_t timeout)
 {
     if (!_buffer && _buffer_size) {
         setBuffer(_buffer_size);
@@ -198,7 +198,7 @@ int UDP::parsePacket()
     return available();
 }
 
-int UDP::receivePacket(uint8_t* buffer, size_t size)
+int UDP::receivePacket(uint8_t* buffer, size_t size, system_tick_t timeout)
 {
     int ret = -1;
     if(Network.from(_nif).ready() && isOpen(_sock) && buffer)

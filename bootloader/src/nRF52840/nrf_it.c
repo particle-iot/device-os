@@ -123,7 +123,7 @@ void SysTick_Handler(void)
 
 void GPIOTE_IRQHandler(void)
 {
-    BUTTON_Irq_Handler();
+    BUTTON_Irq_Handler(0);
 }
 
 void RTC1_IRQHandler(void)

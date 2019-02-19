@@ -15,6 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_FILESYSTEM
+
 #include "file_util.h"
 
 #include "nanopb_misc.h"
@@ -144,3 +148,5 @@ int encodeMessageToFile(lfs_file_t* file, const pb_field_t* fields, const void* 
 }
 
 } // particle
+
+#endif // HAL_PLATFORM_FILESYSTEM

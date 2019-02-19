@@ -33,8 +33,10 @@
 
 #include "system_network.h"
 
+#if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
 #include "socket_hal_posix.h"
 #include "ifapi.h"
+#endif // HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
 
 #include "endian_util.h"
 #include "str_util.h"
@@ -61,6 +63,7 @@ namespace {
 
 using namespace particle::control::common;
 
+#if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
 int sockaddrToIpAddress(const sockaddr* saddr, PB(IpAddress)* addr) {
     if (saddr->sa_family == AF_INET) {
         const auto inaddr = (const sockaddr_in*)saddr;
@@ -94,6 +97,7 @@ PB(InterfaceType) ifaceTypeFromName(const char* name) {
         return PB(InterfaceType_INVALID_INTERFACE_TYPE);
     }
 }
+#endif // HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
 
 } // particle::control::network::
 
@@ -294,6 +298,7 @@ int handleSetConfigurationRequest(ctrl_request* req) {
 
 #endif // !HAL_PLATFORM_MESH
 
+#if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
 int getInterfaceList(ctrl_request* req) {
     if_list* ifList = nullptr;
     CHECK(if_get_list(&ifList));
@@ -428,6 +433,7 @@ int getInterface(ctrl_request* req) {
     CHECK(encodeReplyMessage(req, PB(GetInterfaceReply_fields), &pbRep));
     return 0;
 }
+#endif // HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
 
 } } } /* namespace particle::control::network */
 

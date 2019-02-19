@@ -17,9 +17,10 @@
 
 #include "nanopb_misc.h"
 
-#include "filesystem.h"
-
 #include <stdlib.h>
+
+#if HAL_PLATFORM_FILESYSTEM
+#include "filesystem.h"
 
 static bool write_file_callback(pb_ostream_t* strm, const uint8_t* data, size_t size) {
     filesystem_t* const fs = filesystem_get_instance(NULL);
@@ -44,6 +45,8 @@ static bool read_file_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
     }
     return true;
 }
+
+#endif // HAL_PLATFORM_FILESYSTEM
 
 pb_ostream_t* pb_ostream_init(void* reserved) {
     return (pb_ostream_t*)calloc(sizeof(pb_ostream_t), 1);
@@ -91,6 +94,8 @@ bool pb_istream_from_buffer_ex(pb_istream_t* stream, const pb_byte_t *buf, size_
     return false;
 }
 
+#if HAL_PLATFORM_FILESYSTEM
+
 bool pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved) {
     if (!stream || !file) {
         return false;
@@ -125,3 +130,5 @@ bool pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, void* reserved
     stream->bytes_left = size - pos;
     return true;
 }
+
+#endif // HAL_PLATFORM_FILESYSTEM

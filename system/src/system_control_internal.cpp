@@ -344,6 +344,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::cloud::disconnect(req));
         break;
     }
+#if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
     case CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST: {
         setResult(req, control::network::getInterfaceList(req));
         break;
@@ -352,6 +353,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::network::getInterface(req));
         break;
     }
+#endif // HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
     case CTRL_REQUEST_WIFI_JOIN_NEW_NETWORK: {
         setResult(req, ctrl::wifi::joinNewNetwork(req));
@@ -404,6 +406,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_MESH
     case CTRL_REQUEST_MESH_AUTH: {
         setResult(req, ctrl::mesh::auth(req));
         break;
@@ -456,6 +459,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::mesh::test(req));
         break;
     }
+#endif // HAL_PLATFORM_MESH
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {

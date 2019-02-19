@@ -87,7 +87,9 @@ inline void CLR_WLAN_WD() {
 #include "system_mode.h"
 #include "system_power.h"
 
+#if HAL_PLATFORM_BLE
 #include "ble_hal.h"
+#endif // HAL_PLATFORM_BLE
 
 // FIXME
 #include "system_control_internal.h"
@@ -323,8 +325,10 @@ protected:
             LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
         }
 
+#if HAL_PLATFORM_BLE
         // Start advertising
         ble_start_advert(nullptr);
+#endif // HAL_PLATFORM_BLE
 
         on_start_listening();
         start_listening_timer_create();
@@ -387,8 +391,10 @@ protected:
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
 
+#if HAL_PLATFORM_BLE
         // Stop advertising
         ble_stop_advert(nullptr);
+#endif // HAL_PLATFORM_BLE
 
         LED_SIGNAL_STOP(LISTENING_MODE);
 

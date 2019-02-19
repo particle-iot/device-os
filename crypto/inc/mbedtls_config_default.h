@@ -30,8 +30,8 @@
  * or disable features selectively, and reduce the global
  * memory footprint.
  */
-#ifndef MBEDTLS_CONFIG_H
-#define MBEDTLS_CONFIG_H
+#ifndef MBEDTLS_CONFIG_DEFAULT_H
+#define MBEDTLS_CONFIG_DEFAULT_H
 
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE 1
@@ -2547,6 +2547,6 @@
 #include "mbedtls_weaken.h"
 #endif // !(PLATFORM_ID == 3 && defined(__clang__))
 
-#endif /* MBEDTLS_CONFIG_H */
+#endif /* MBEDTLS_CONFIG_DEFAULT_H */
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8

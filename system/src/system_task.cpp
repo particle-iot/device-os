@@ -461,7 +461,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         CLOUD_FN(manage_cloud_connection(force_events), (void)0);
 
+// FIXME: there should be a separate feature macro
+#if HAL_PLATFORM_FILESYSTEM
         particle::system::fetchAndExecuteCommand(millis());
+#endif // HAL_PLATFORM_FILESYSTEM
     }
     else
     {

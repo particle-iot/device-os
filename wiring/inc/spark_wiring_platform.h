@@ -215,5 +215,9 @@
 #define Wiring_Mouse 0
 #endif // Wiring_Mouse
 
+#ifndef Wiring_Mesh
+#define Wiring_Mesh 0
+#endif // Wiring_Mesh
+
 #endif	/* SPARK_WIRING_PLATFORM_H */
 

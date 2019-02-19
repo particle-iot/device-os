@@ -18,6 +18,10 @@
 #include "logging.h"
 LOG_SOURCE_CATEGORY("system.nm")
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_IFAPI
+
 #include "system_network_manager.h"
 #include "system_error.h"
 #include <mutex>
@@ -57,8 +61,6 @@ LOG_SOURCE_CATEGORY("system.nm")
             } \
             _ret; \
         })
-
-#if HAL_PLATFORM_IFAPI
 
 #if HAL_PLATFORM_OPENTHREAD
 #include "system_openthread.h"
