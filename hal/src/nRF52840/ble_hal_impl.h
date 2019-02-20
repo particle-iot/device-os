@@ -26,6 +26,8 @@
 #define BLE_ROLE_PERIPHERAL                         BLE_GAP_ROLE_PERIPH
 #define BLE_ROLE_CENTRAL                            BLE_GAP_ROLE_CENTRAL
 
+#define BLE_MAX_LINK_COUNT                          ((NRF_SDH_BLE_CENTRAL_LINK_COUNT) + (NRF_SDH_BLE_PERIPHERAL_LINK_COUNT))
+
 /* Maximum allowed BLE event callback that can be registered. */
 #define BLE_MAX_EVENT_CALLBACK_COUNT                10
 
