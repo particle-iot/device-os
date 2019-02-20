@@ -349,7 +349,7 @@ int setAdvData(uint8_t* data, uint16_t len, uint8_t flag) {
 
     if (advPending) {
         advPending = false;
-        return ble_gap_start_advertising();
+        return ble_gap_start_advertising(NULL);
     }
 
     return SYSTEM_ERROR_NONE;
@@ -477,7 +477,7 @@ static void fromHalCharacteristicProperties(uint8_t halProperties, ble_gatt_char
 static bool isConnParamsFeeded(hal_ble_connection_parameters_t* connParams) {
     hal_ble_connection_parameters_t ppcp;
 
-    if (ble_gap_get_ppcp(&ppcp) == SYSTEM_ERROR_NONE) {
+    if (ble_gap_get_ppcp(&ppcp, NULL) == SYSTEM_ERROR_NONE) {
         uint16_t minAcceptedSl = ppcp.slave_latency - MIN(BLE_CONN_PARAMS_SLAVE_LATENCY_ERR, ppcp.slave_latency);
         uint16_t maxAcceptedSl = ppcp.slave_latency + BLE_CONN_PARAMS_SLAVE_LATENCY_ERR;
         uint16_t minAcceptedTo = ppcp.conn_sup_timeout - MIN(BLE_CONN_PARAMS_TIMEOUT_ERR, ppcp.conn_sup_timeout);
@@ -506,7 +506,7 @@ static void connParamsUpdateTimerCb(os_timer_t timer) {
     }
 
     hal_ble_connection_parameters_t ppcp;
-    if (ble_gap_get_ppcp(&ppcp) == SYSTEM_ERROR_NONE) {
+    if (ble_gap_get_ppcp(&ppcp, NULL) == SYSTEM_ERROR_NONE) {
         ble_gap_conn_params_t connParams;
         connParams.min_conn_interval = ppcp.min_conn_interval;
         connParams.max_conn_interval = ppcp.max_conn_interval;
@@ -1358,7 +1358,7 @@ int ble_stack_init(void* reserved) {
         s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
 
         // Configure an advertising set to obtain an advertising handle.
-        int error = ble_gap_set_advertising_parameters(&s_bleInstance.advParams);
+        int error = ble_gap_set_advertising_parameters(&s_bleInstance.advParams, NULL);
         if (error != SYSTEM_ERROR_NONE) {
             return error;
         }
@@ -1647,7 +1647,7 @@ int ble_gap_get_appearance(uint16_t* appearance) {
     return sysError(ret);
 }
 
-int ble_gap_set_ppcp(hal_ble_connection_parameters_t* ppcp) {
+int ble_gap_set_ppcp(hal_ble_connection_parameters_t* ppcp, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_ppcp().");
@@ -1689,7 +1689,7 @@ int ble_gap_set_ppcp(hal_ble_connection_parameters_t* ppcp) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_get_ppcp(hal_ble_connection_parameters_t* ppcp) {
+int ble_gap_get_ppcp(hal_ble_connection_parameters_t* ppcp, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
@@ -1714,7 +1714,7 @@ int ble_gap_get_ppcp(hal_ble_connection_parameters_t* ppcp) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_add_whitelist(hal_ble_address_t* addr_list, uint8_t len) {
+int ble_gap_add_whitelist(hal_ble_address_t* addr_list, uint8_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_add_whitelist().");
@@ -1738,7 +1738,7 @@ int ble_gap_add_whitelist(hal_ble_address_t* addr_list, uint8_t len) {
     return sysError(ret);
 }
 
-int ble_gap_delete_whitelist(void) {
+int ble_gap_delete_whitelist(void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_delete_whitelist().");
@@ -1780,7 +1780,7 @@ int ble_gap_get_tx_power(int8_t* value) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_set_advertising_parameters(hal_ble_advertising_parameters_t* adv_params) {
+int ble_gap_set_advertising_parameters(hal_ble_advertising_parameters_t* adv_params, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_advertising_parameters().");
@@ -1830,7 +1830,7 @@ int ble_gap_set_advertising_parameters(hal_ble_advertising_parameters_t* adv_par
 
     if (advPending) {
         advPending = false;
-        return ble_gap_start_advertising();
+        return ble_gap_start_advertising(NULL);
     }
 
     memcpy(&s_bleInstance.advParams, adv_params, sizeof(hal_ble_advertising_parameters_t));
@@ -1838,7 +1838,7 @@ int ble_gap_set_advertising_parameters(hal_ble_advertising_parameters_t* adv_par
     return sysError(ret);
 }
 
-int ble_gap_set_advertising_data(uint8_t* data, uint16_t len) {
+int ble_gap_set_advertising_data(uint8_t* data, uint16_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_advertising_data().");
@@ -1850,7 +1850,7 @@ int ble_gap_set_advertising_data(uint8_t* data, uint16_t len) {
     return setAdvData(data, len, BLE_ADV_DATA_ADVERTISING);
 }
 
-int ble_gap_set_scan_response_data(uint8_t* data, uint16_t len) {
+int ble_gap_set_scan_response_data(uint8_t* data, uint16_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_scan_response_data().");
@@ -1862,7 +1862,7 @@ int ble_gap_set_scan_response_data(uint8_t* data, uint16_t len) {
     return setAdvData(data, len, BLE_ADV_DATA_SCAN_RESPONSE);
 }
 
-int ble_gap_start_advertising(void) {
+int ble_gap_start_advertising(void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_start_advertising().");
@@ -1906,7 +1906,7 @@ bool ble_gap_is_advertising(void) {
     return s_bleInstance.advertising;
 }
 
-int ble_gap_set_scan_parameters(hal_ble_scan_parameters_t* scan_params) {
+int ble_gap_set_scan_parameters(hal_ble_scan_parameters_t* scan_params, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_scan_parameters().");
@@ -1933,7 +1933,7 @@ int ble_gap_set_scan_parameters(hal_ble_scan_parameters_t* scan_params) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_start_scan(void) {
+int ble_gap_start_scan(void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_start_scan().");
@@ -1981,7 +1981,7 @@ int ble_gap_stop_scan(void) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_connect(hal_ble_address_t* address) {
+int ble_gap_connect(hal_ble_address_t* address, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_connect().");
@@ -2036,7 +2036,7 @@ int ble_gap_connect_cancel(void) {
     return 0;
 }
 
-int ble_gap_disconnect(uint16_t conn_handle) {
+int ble_gap_disconnect(uint16_t conn_handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_disconnect().");
@@ -2060,7 +2060,7 @@ int ble_gap_disconnect(uint16_t conn_handle) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_update_connection_params(uint16_t conn_handle, hal_ble_connection_parameters_t* conn_params) {
+int ble_gap_update_connection_params(uint16_t conn_handle, hal_ble_connection_parameters_t* conn_params, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_update_connection_params().");
@@ -2096,7 +2096,7 @@ int ble_gap_update_connection_params(uint16_t conn_handle, hal_ble_connection_pa
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_get_rssi(uint16_t conn_handle) {
+int ble_gap_get_rssi(uint16_t conn_handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_get_rssi().");
@@ -2108,7 +2108,7 @@ int ble_gap_get_rssi(uint16_t conn_handle) {
 /**********************************************
  * BLE GATT Server APIs
  */
-int ble_gatt_server_add_service_uuid128(uint8_t type, const uint8_t* uuid128, uint16_t* handle) {
+int ble_gatt_server_add_service_uuid128(uint8_t type, const uint8_t* uuid128, uint16_t* handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_add_service_uuid128().");
@@ -2131,7 +2131,7 @@ int ble_gatt_server_add_service_uuid128(uint8_t type, const uint8_t* uuid128, ui
     return ret;
 }
 
-int ble_gatt_server_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle) {
+int ble_gatt_server_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_add_service_uuid16().");
@@ -2148,7 +2148,7 @@ int ble_gatt_server_add_service_uuid16(uint8_t type, uint16_t uuid16, uint16_t* 
 }
 
 int ble_gatt_server_add_characteristic_uuid128(uint16_t service_handle, const uint8_t *uuid128, uint8_t properties,
-                                               const char* description, hal_ble_characteristic_t* characteristic) {
+                                               const char* description, hal_ble_characteristic_t* characteristic, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_add_characteristic_uuid128().");
@@ -2176,7 +2176,7 @@ int ble_gatt_server_add_characteristic_uuid128(uint16_t service_handle, const ui
 }
 
 int ble_gatt_server_add_characteristic_uuid16(uint16_t service_handle, uint16_t uuid16, uint8_t properties,
-                                              const char* description, hal_ble_characteristic_t* characteristic) {
+                                              const char* description, hal_ble_characteristic_t* characteristic, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_add_characteristic_uuid16().");
@@ -2198,7 +2198,7 @@ int ble_gatt_server_add_characteristic_uuid16(uint16_t service_handle, uint16_t 
     return error;
 }
 
-int ble_gatt_server_add_characteristic_descriptor(uint8_t* descriptor, uint16_t len, hal_ble_characteristic_t* characteristic) {
+int ble_gatt_server_add_characteristic_descriptor(uint8_t* descriptor, uint16_t len, hal_ble_characteristic_t* characteristic, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_add_characteristic_descriptor().");
@@ -2250,7 +2250,7 @@ int ble_gatt_server_add_characteristic_descriptor(uint8_t* descriptor, uint16_t 
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gatt_server_set_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t len) {
+int ble_gatt_server_set_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_set_characteristic_value().");
@@ -2273,7 +2273,7 @@ int ble_gatt_server_set_characteristic_value(uint16_t value_handle, uint8_t* dat
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t* len) {
+int ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t* len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_get_characteristic_value().");
@@ -2299,7 +2299,7 @@ int ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* dat
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gatt_server_notify_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t len) {
+int ble_gatt_server_notify_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_notify_characteristic_value().");
@@ -2329,7 +2329,7 @@ int ble_gatt_server_notify_characteristic_value(uint16_t value_handle, uint8_t* 
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t len) {
+int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_server_indicate_characteristic_value().");
@@ -2365,7 +2365,7 @@ int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, uint8_t
 /**********************************************
  * BLE GATT Client APIs
  */
-int ble_gatt_client_discover_all_services(uint16_t conn_handle) {
+int ble_gatt_client_discover_all_services(uint16_t conn_handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_discover_all_services().");
@@ -2391,7 +2391,7 @@ int ble_gatt_client_discover_all_services(uint16_t conn_handle) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gatt_client_discover_service_by_uuid128(uint16_t conn_handle, const uint8_t *uuid128) {
+int ble_gatt_client_discover_service_by_uuid128(uint16_t conn_handle, const uint8_t *uuid128, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_discover_service_by_uuid128().");
@@ -2427,7 +2427,7 @@ int ble_gatt_client_discover_service_by_uuid128(uint16_t conn_handle, const uint
     return ret;
 }
 
-int ble_gatt_client_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uuid) {
+int ble_gatt_client_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uuid, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_discover_service_by_uuid16().");
@@ -2457,7 +2457,7 @@ int ble_gatt_client_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uu
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gatt_client_discover_characteristics(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle) {
+int ble_gatt_client_discover_characteristics(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_discover_characteristics().");
@@ -2485,7 +2485,7 @@ int ble_gatt_client_discover_characteristics(uint16_t conn_handle, uint16_t star
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gatt_client_discover_descriptors(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle) {
+int ble_gatt_client_discover_descriptors(uint16_t conn_handle, uint16_t start_handle, uint16_t end_handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_discover_descriptors().");
@@ -2517,7 +2517,7 @@ bool ble_gatt_client_is_discovering(void) {
     return s_bleInstance.discovering;
 }
 
-int ble_gatt_client_configure_cccd(uint16_t conn_handle, uint16_t cccd_handle, uint8_t cccd_value) {
+int ble_gatt_client_configure_cccd(uint16_t conn_handle, uint16_t cccd_handle, uint8_t cccd_value, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_configure_cccd().");
@@ -2535,7 +2535,7 @@ int ble_gatt_client_configure_cccd(uint16_t conn_handle, uint16_t cccd_handle, u
     return writeAttribute(conn_handle, cccd_handle, buf, 2, true);
 }
 
-int ble_gatt_client_write_with_response(uint16_t conn_handle, uint16_t value_handle, uint8_t* data, uint16_t len) {
+int ble_gatt_client_write_with_response(uint16_t conn_handle, uint16_t value_handle, uint8_t* data, uint16_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_write_with_response().");
@@ -2547,7 +2547,7 @@ int ble_gatt_client_write_with_response(uint16_t conn_handle, uint16_t value_han
     return writeAttribute(conn_handle, value_handle, data, len, true);
 }
 
-int ble_gatt_client_write_without_response(uint16_t conn_handle, uint16_t value_handle, uint8_t* data, uint16_t len) {
+int ble_gatt_client_write_without_response(uint16_t conn_handle, uint16_t value_handle, uint8_t* data, uint16_t len, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_write_without_response().");
@@ -2559,7 +2559,7 @@ int ble_gatt_client_write_without_response(uint16_t conn_handle, uint16_t value_
     return writeAttribute(conn_handle, value_handle, data, len, false);
 }
 
-int ble_gatt_client_read(uint16_t conn_handle, uint16_t value_handle) {
+int ble_gatt_client_read(uint16_t conn_handle, uint16_t value_handle, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gatt_client_read().");

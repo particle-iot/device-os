@@ -181,23 +181,23 @@ test(05_BleSetPpcpShouldBeWithinValidRange) {
     setConnParams.max_conn_interval = BLE_SIG_CP_MAX_CONN_INTERVAL_NONE;
     setConnParams.slave_latency     = 1;
     setConnParams.conn_sup_timeout  = 400;
-    ret = ble_gap_set_ppcp(&setConnParams);
+    ret = ble_gap_set_ppcp(&setConnParams, NULL);
     assertNotEqual(ret, 0);
 
     setConnParams.min_conn_interval = BLE_SIG_CP_MIN_CONN_INTERVAL_NONE;
     setConnParams.max_conn_interval = BLE_SIG_CP_MAX_CONN_INTERVAL_MAX + 1;
-    ret = ble_gap_set_ppcp(&setConnParams);
+    ret = ble_gap_set_ppcp(&setConnParams, NULL);
     assertNotEqual(ret, 0);
 
     setConnParams.min_conn_interval = BLE_SIG_CP_MIN_CONN_INTERVAL_NONE;
     setConnParams.max_conn_interval = BLE_SIG_CP_MAX_CONN_INTERVAL_NONE;
     setConnParams.slave_latency     = BLE_SIG_CP_SLAVE_LATENCY_MAX + 1;
-    ret = ble_gap_set_ppcp(&setConnParams);
+    ret = ble_gap_set_ppcp(&setConnParams, NULL);
     assertNotEqual(ret, 0);
 
     setConnParams.slave_latency     = 1;
     setConnParams.conn_sup_timeout  = BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX + 1;
-    ret = ble_gap_set_ppcp(&setConnParams);
+    ret = ble_gap_set_ppcp(&setConnParams, NULL);
     assertNotEqual(ret, 0);
 
     // Set valid PPCP
@@ -205,11 +205,11 @@ test(05_BleSetPpcpShouldBeWithinValidRange) {
     setConnParams.max_conn_interval = 400;
     setConnParams.slave_latency     = 1;
     setConnParams.conn_sup_timeout  = 400;
-    ret = ble_gap_set_ppcp(&setConnParams);
+    ret = ble_gap_set_ppcp(&setConnParams, NULL);
     assertEqual(ret, 0);
 
     // Get PPCP
-    ret = ble_gap_get_ppcp(&getConnParams);
+    ret = ble_gap_get_ppcp(&getConnParams, NULL);
     assertEqual(ret, 0);
     assertEqual(getConnParams.min_conn_interval, 100);
     assertEqual(getConnParams.max_conn_interval, 400);
@@ -278,10 +278,10 @@ test(07_BleSetAdvertisingParametersShouldBeValid) {
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
     advParams.timeout       = 500; // Advertising for 5 seconds
-    ret = ble_gap_set_advertising_parameters(&advParams);
+    ret = ble_gap_set_advertising_parameters(&advParams, NULL);
     assertEqual(ret, 0);
 
-    ret = ble_gap_start_advertising();
+    ret = ble_gap_start_advertising(NULL);
     assertEqual(ret, 0);
     ret = ble_gap_is_advertising();
     assertEqual(ret, true);
@@ -300,10 +300,10 @@ test(08_BleChangeAdvertisingParametersDuringAdvertising) {
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
     advParams.timeout       = 0; // Advertising forever
-    ret = ble_gap_set_advertising_parameters(&advParams);
+    ret = ble_gap_set_advertising_parameters(&advParams, NULL);
     assertEqual(ret, 0);
 
-    ret = ble_gap_start_advertising();
+    ret = ble_gap_start_advertising(NULL);
     assertEqual(ret, 0);
     ret = ble_gap_is_advertising();
     assertEqual(ret, true);
@@ -314,7 +314,7 @@ test(08_BleChangeAdvertisingParametersDuringAdvertising) {
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
     advParams.timeout       = 500; // Advertising for 5 seconds
-    ret = ble_gap_set_advertising_parameters(&advParams);
+    ret = ble_gap_set_advertising_parameters(&advParams, NULL);
     assertEqual(ret, 0);
 
     delay(6000);
@@ -342,11 +342,11 @@ test(09_BleChangeAdvertisingDataDuringAdvertising) {
         'B','L','E',' ','N','A','M','E','2'
     };
 
-    ret = ble_gap_set_advertising_data(advDataSet1, sizeof(advDataSet1));
+    ret = ble_gap_set_advertising_data(advDataSet1, sizeof(advDataSet1), NULL);
     assertEqual(ret, 0);
 
     // Advertising for 5 seconds
-    ret = ble_gap_start_advertising();
+    ret = ble_gap_start_advertising(NULL);
     assertEqual(ret, 0);
     ret = ble_gap_is_advertising();
     assertEqual(ret, true);
@@ -354,7 +354,7 @@ test(09_BleChangeAdvertisingDataDuringAdvertising) {
     delay(2500);
 
     // Update the advertising data. It will restart advertising for 5 seconds
-    ret = ble_gap_set_advertising_data(advDataSet2, sizeof(advDataSet1));
+    ret = ble_gap_set_advertising_data(advDataSet2, sizeof(advDataSet1), NULL);
     assertEqual(ret, 0);
     ret = ble_gap_is_advertising();
     assertEqual(ret, true);
@@ -375,35 +375,35 @@ test(10_BleAddServicesAndCharacteristics_NeedToConnectAndCheckOnTheCentralSide) 
 
     uint8_t svcUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x0f};
     uint8_t charUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x0f};
-    ret = ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID1, &svcHandle);
+    ret = ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID1, &svcHandle, NULL);
     assertEqual(ret, 0);
-    ret = ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID1, BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE, NULL, &characteristic1);
+    ret = ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID1, BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE, NULL, &characteristic1, NULL);
     assertEqual(ret, 0);
 
     uint8_t svcUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
     uint8_t charUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x10};
-    ret = ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID2, &svcHandle);
+    ret = ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID2, &svcHandle, NULL);
     assertEqual(ret, 0);
-    ret = ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID2, BLE_SIG_CHAR_PROP_NOTIFY, NULL, &characteristic2);
+    ret = ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID2, BLE_SIG_CHAR_PROP_NOTIFY, NULL, &characteristic2, NULL);
     assertEqual(ret, 0);
 
-    ret = ble_gatt_server_add_service_uuid16(BLE_SERVICE_TYPE_PRIMARY, 0x1234, &svcHandle);
+    ret = ble_gatt_server_add_service_uuid16(BLE_SERVICE_TYPE_PRIMARY, 0x1234, &svcHandle, NULL);
     assertEqual(ret, 0);
-    ret = ble_gatt_server_add_characteristic_uuid16(svcHandle, 0x5678, BLE_SIG_CHAR_PROP_WRITE_WO_RESP, "hello", &characteristic3);
+    ret = ble_gatt_server_add_characteristic_uuid16(svcHandle, 0x5678, BLE_SIG_CHAR_PROP_WRITE_WO_RESP, "hello", &characteristic3, NULL);
     assertEqual(ret, 0);
 
     uint8_t data[20] = {0x11};
-    ret = ble_gatt_server_set_characteristic_value(characteristic1.value_handle, data, 5);
+    ret = ble_gatt_server_set_characteristic_value(characteristic1.value_handle, data, 5, NULL);
     assertEqual(ret, 0);
 
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
     advParams.timeout       = 0; // Advertising forever
-    ret = ble_gap_set_advertising_parameters(&advParams);
+    ret = ble_gap_set_advertising_parameters(&advParams, NULL);
     assertEqual(ret, 0);
 
-    ret = ble_gap_start_advertising();
+    ret = ble_gap_start_advertising(NULL);
     assertEqual(ret, 0);
 
     // Use a BLE central device to connect to it and check the BLE services and characteristics
@@ -442,7 +442,7 @@ test(11_BlePeripheralCanDisconnectInitially_NeedToConnectByCentralSide) {
     assertEqual(ret, true);
 
     delay(5000);
-    ret = ble_gap_disconnect(0);
+    ret = ble_gap_disconnect(0, NULL);
     assertEqual(ret, 0);
 
     delay(500);
