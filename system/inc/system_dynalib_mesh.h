@@ -17,27 +17,14 @@
 
 #pragma once
 
-#include "hal_platform.h"
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
 #include "system_mesh.h"
+#endif
 
-#if HAL_PLATFORM_OPENTHREAD
+DYNALIB_BEGIN(system_mesh)
 
-#include "ot_api.h"
+DYNALIB_FN(0, system_mesh, mesh_select_antenna, int(mesh_antenna_type))
 
-namespace particle {
-
-namespace system {
-
-int threadInit();
-
-using ThreadLock = ::particle::net::ot::ThreadLock;
-
-inline otInstance* threadInstance() {
-    return ot_get_instance();
-}
-
-} // particle::system
-
-} // particle
-
-#endif /* HAL_PLATFORM_OPENTHREAD */
+DYNALIB_END(system_mesh)

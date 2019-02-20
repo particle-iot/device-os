@@ -31,14 +31,14 @@
 #include <openthread/joiner.h>
 #include <openthread-system.h>
 #include <mutex>
+#include "gpio_hal.h"
 
 LOG_SOURCE_CATEGORY("system.ot");
 
-namespace particle {
-
-namespace system {
-
 namespace {
+
+using namespace particle;
+using namespace particle::system;
 
 const char* deviceRoleStr(otDeviceRole role) {
     switch (role) {
@@ -167,7 +167,11 @@ void threadStateChanged(uint32_t flags, void* data) {
     }
 }
 
-} // particle::system::
+} // unnamed
+
+namespace particle {
+
+namespace system {
 
 int threadInit() {
     ThreadLock lk;
@@ -178,5 +182,40 @@ int threadInit() {
 } // particle::system
 
 } // particle
+
+
+int mesh_select_antenna(mesh_antenna_type antenna) {
+    const std::lock_guard<ThreadLock> lock(ThreadLock());
+
+    HAL_Pin_Mode(ANTSW1, OUTPUT);
+#if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
+    HAL_Pin_Mode(ANTSW2, OUTPUT);
+#endif
+
+    if (antenna == MESH_ANT_EXTERNAL) {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 0);
+#else
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#endif
+    }
+    else {
+#if (PLATFORM_ID == PLATFORM_ARGON)
+        HAL_GPIO_Write(ANTSW1, 0);
+        HAL_GPIO_Write(ANTSW2, 1);
+#elif (PLATFORM_ID == PLATFORM_BORON)
+        HAL_GPIO_Write(ANTSW1, 1);
+#else
+        HAL_GPIO_Write(ANTSW1, 1);
+        HAL_GPIO_Write(ANTSW2, 0);
+#endif
+    }
+
+    return 0;
+}
 
 #endif /* HAL_PLATFORM_OPENTHREAD */

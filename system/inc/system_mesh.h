@@ -18,26 +18,41 @@
 #pragma once
 
 #include "hal_platform.h"
-#include "system_mesh.h"
 
-#if HAL_PLATFORM_OPENTHREAD
+#if HAL_PLATFORM_MESH
 
-#include "ot_api.h"
+#include <stdint.h>
 
-namespace particle {
+/**
+ * API version number.
+ */
+#define MESH_API_VERSION 1
 
-namespace system {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-int threadInit();
+/**
+ * Mesh antenna type.
+ */
+typedef enum mesh_antenna_type {
+    MESH_ANT_DEFAULT = 0,
+    MESH_ANT_INTERNAL = 1,
+    MESH_ANT_EXTERNAL = 2,
+} mesh_antenna_type;
 
-using ThreadLock = ::particle::net::ot::ThreadLock;
 
-inline otInstance* threadInstance() {
-    return ot_get_instance();
-}
+/**
+ * Select the antenna for mesh radio.
+ *
+ * @param antenna The antenna type for mesh (see `mesh_antenna_type`).
+ *
+ * @return `0` on success, or a negative result code in case of an error.
+ */
+int mesh_select_antenna(mesh_antenna_type antenna);
 
-} // particle::system
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
-} // particle
-
-#endif /* HAL_PLATFORM_OPENTHREAD */
+#endif // HAL_PLATFORM_MESH
