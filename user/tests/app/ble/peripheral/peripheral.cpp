@@ -29,6 +29,16 @@ hal_ble_characteristic_t bleChar1; // Read and Write
 hal_ble_characteristic_t bleChar2; // Notify
 hal_ble_characteristic_t bleChar3; // Write without response
 
+const char *addrType[4] = {
+    "Public",
+    "Random Static",
+    "Random Private Resolvable",
+    "Random Static Non-resolvable"
+};
+
+bool notifyEnabled = false;
+
+
 static int locateAdStructure(uint8_t adsType, const uint8_t* data, uint16_t len, uint16_t* offset, uint16_t* adsLen) {
     // A valid AD structure is composed of Length field, Type field and Data field.
     // Each field should be filled with at least one byte.
@@ -139,32 +149,67 @@ static int encodeScanResponseData(uint8_t ads_type, uint8_t* data, uint16_t len,
     return ret;
 }
 
-static void handleBleEvent(hal_ble_event_t *event)
-{
-    if (event->evt_type == BLE_EVT_TYPE_CONNECTION) {
-        if (event->conn_event.evt_id == BLE_CONN_EVT_ID_CONNECTED) {
-            LOG(TRACE, "BLE connected, handle: %d", event->conn_event.conn_handle);
-        }
-        else {
-            LOG(TRACE, "BLE disconnected, handle: %d", event->conn_event.conn_handle);
-        }
-    }
-    else if (event->evt_type == BLE_EVT_TYPE_DATA && event->data_event.evt_id == BLE_DATA_EVT_ID_WRITE) {
-        if (event->data_event.attr_handle == bleChar1.value_handle) {
-            LOG(TRACE, "BLE characteristic 1 received data.");
-        }
-        else if (event->data_event.attr_handle == bleChar3.value_handle) {
-            LOG(TRACE, "BLE characteristic 3 received data.");
-        }
-        else {
-            LOG(TRACE, "BLE received data, attribute handle: %d.", event->data_event.attr_handle);
-        }
+static void ble_on_adv_stopped(hal_ble_gap_on_advertising_stopped_evt_t *event) {
+    LOG(TRACE, "BLE advertising stopped");
+}
 
-        for (uint8_t i = 0; i < event->data_event.data_len; i++) {
-            Serial1.printf("0x%02X,", event->data_event.data[i]);
-        }
-        Serial1.print("\r\n");
+static void ble_on_connected(hal_ble_gap_on_connected_evt_t *event) {
+    LOG(TRACE, "BLE connected, connection handle: 0x%04X.", event->conn_handle);
+    LOG(TRACE, "Local device role: %d.", event->role);
+    if (event->peer_addr.addr_type <= 3) {
+        LOG(TRACE, "Peer address type: %s", addrType[event->peer_addr.addr_type]);
     }
+    else {
+        LOG(TRACE, "Peer address type: Anonymous");
+    }
+    LOG(TRACE, "Peer address: %02X:%02X:%02X:%02X:%02X:%02X.", event->peer_addr.addr[0], event->peer_addr.addr[1],
+                event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
+    LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
+}
+
+static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t *event) {
+    LOG(TRACE, "BLE disconnected, connection handle: 0x%04X.", event->conn_handle);
+    if (event->peer_addr.addr_type <= 3) {
+        LOG(TRACE, "Peer address type: %s", addrType[event->peer_addr.addr_type]);
+    }
+    else {
+        LOG(TRACE, "Peer address type: Anonymous");
+    }
+    LOG(TRACE, "Peer address: %02X:%02X:%02X:%02X:%02X:%02X.", event->peer_addr.addr[0], event->peer_addr.addr[1],
+                event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
+}
+
+static void ble_on_connection_parameters_updated(hal_ble_gap_on_connection_parameters_updated_evt_t* event) {
+    LOG(TRACE, "BLE connection parameters updated, connection handle: 0x%04X.", event->conn_handle);
+    LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
+}
+
+static void ble_on_data_received(hal_ble_gatt_server_on_data_received_evt_t* event) {
+    LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
+
+    if (event->attr_handle == bleChar1.value_handle) {
+        LOG(TRACE, "Write BLE characteristic 1 value:");
+    }
+    else if (event->attr_handle == bleChar2.cccd_handle) {
+        LOG(TRACE, "Configure BLE characteristic 2 CCCD:");
+        if (event->data[0] == 0x01) {
+            notifyEnabled = true;
+        }
+        else if (event->data[0] == 0x00) {
+            notifyEnabled = false;
+        }
+    }
+    else if (event->attr_handle == bleChar3.value_handle) {
+        LOG(TRACE, "Write BLE characteristic 3 value:");
+    }
+    else {
+        LOG(TRACE, "BLE received data, attribute handle: %d.", event->attr_handle);
+    }
+
+    for (uint8_t i = 0; i < event->data_len; i++) {
+        Serial1.printf("0x%02X,", event->data[i]);
+    }
+    Serial1.print("\r\n");
 }
 
 /* This function is called once at start up ----------------------------------*/
@@ -193,7 +238,7 @@ void setup()
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
-    advParams.timeout       = 0;
+    advParams.timeout       = 1000;
     advParams.inc_tx_power  = false;
     ble_gap_set_advertising_parameters(&advParams);
 
@@ -221,7 +266,11 @@ void setup()
     uint8_t data[20] = {0x11};
     ble_gatt_server_set_characteristic_value(bleChar1.value_handle, data, 5);
 
-    ble_register_callback(handleBleEvent);
+    ble_gap_set_callback_on_advertising_stopped(ble_on_adv_stopped);
+    ble_gap_set_callback_on_connected(ble_on_connected);
+    ble_gap_set_callback_on_disconnected(ble_on_disconnected);
+    ble_gap_set_callback_on_connection_parameters_updated(ble_on_connection_parameters_updated);
+    ble_gatt_server_set_callback_on_data_received(ble_on_data_received);
 
     ble_gap_start_advertising();
 }
@@ -231,7 +280,7 @@ void loop()
 {
     static uint16_t cnt = 0;
 
-    if (ble_gap_is_connected()) {
+    if (ble_gap_is_connected() && notifyEnabled) {
         ble_gatt_server_notify_characteristic_value(bleChar2.value_handle, (uint8_t *)&cnt, 2);
         cnt++;
     }

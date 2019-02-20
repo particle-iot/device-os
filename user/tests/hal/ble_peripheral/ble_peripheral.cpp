@@ -28,38 +28,59 @@ hal_ble_characteristic_t characteristic1; // Read and Write
 hal_ble_characteristic_t characteristic2; // Notify
 hal_ble_characteristic_t characteristic3; // Write without response
 
-static void handleBleEvent(hal_ble_event_t *event)
-{
-    if (event->evt_type == BLE_EVT_TYPE_CONNECTION) {
-        if (event->conn_event.evt_id == BLE_CONN_EVT_ID_CONNECTED) {
-            LOG(TRACE, "BLE connected, handle: %d", event->conn_event.conn_handle);
-        }
-        else if (event->conn_event.evt_id == BLE_CONN_EVT_ID_DISCONNECTED) {
-            LOG(TRACE, "BLE disconnected, handle: %d", event->conn_event.conn_handle);
-        }
-        else if (event->conn_event.evt_id == BLE_CONN_EVT_ID_ADV_STOPPED) {
-            LOG(TRACE, "BLE advertising stopped");
-        }
-    }
-    else if (event->evt_type == BLE_EVT_TYPE_DATA && event->data_event.evt_id == BLE_DATA_EVT_ID_WRITE) {
-        if (event->data_event.attr_handle == characteristic1.value_handle) {
-            LOG(TRACE, "BLE characteristic 1: received data.");
-        }
-        else if (event->data_event.attr_handle == characteristic2.cccd_handle) {
-            LOG(TRACE, "BLE characteristic 2: configure CCCD.");
-        }
-        else if (event->data_event.attr_handle == characteristic3.value_handle) {
-            LOG(TRACE, "BLE characteristic 3: received data.");
-        }
-        else {
-            LOG(TRACE, "BLE received data, attribute handle: %d.", event->data_event.attr_handle);
-        }
+const char *addrType[4] = {
+    "Public",
+    "Random Static",
+    "Random Private Resolvable",
+    "Random Static Non-resolvable"
+};
 
-        for (uint8_t i = 0; i < event->data_event.data_len; i++) {
-            Serial1.printf("0x%02X,", event->data_event.data[i]);
-        }
-        Serial1.print("\r\n");
+static void ble_on_connected(hal_ble_gap_on_connected_evt_t *event) {
+    LOG(TRACE, "BLE connected, connection handle: 0x%04X.", event->conn_handle);
+    LOG(TRACE, "Local device role: %d.", event->role);
+    if (event->peer_addr.addr_type <= 3) {
+        LOG(TRACE, "Peer address type: %s", addrType[event->peer_addr.addr_type]);
     }
+    else {
+        LOG(TRACE, "Peer address type: Anonymous");
+    }
+    LOG(TRACE, "Peer address: %02X:%02X:%02X:%02X:%02X:%02X.", event->peer_addr.addr[0], event->peer_addr.addr[1],
+                event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
+    LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
+}
+
+static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t *event) {
+    LOG(TRACE, "BLE disconnected, connection handle: 0x%04X.", event->conn_handle);
+    if (event->peer_addr.addr_type <= 3) {
+        LOG(TRACE, "Peer address type: %s", addrType[event->peer_addr.addr_type]);
+    }
+    else {
+        LOG(TRACE, "Peer address type: Anonymous");
+    }
+    LOG(TRACE, "Peer address: %02X:%02X:%02X:%02X:%02X:%02X.", event->peer_addr.addr[0], event->peer_addr.addr[1],
+                event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
+}
+
+static void ble_on_data_received(hal_ble_gatt_server_on_data_received_evt_t* event) {
+    LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
+
+    if (event->attr_handle == characteristic1.value_handle) {
+        LOG(TRACE, "Write BLE characteristic 1 value:");
+    }
+    else if (event->attr_handle == characteristic2.cccd_handle) {
+        LOG(TRACE, "Configure BLE characteristic 2 CCCD:");
+    }
+    else if (event->attr_handle == characteristic3.value_handle) {
+        LOG(TRACE, "Write BLE characteristic 3 value:");
+    }
+    else {
+        LOG(TRACE, "BLE received data, attribute handle: %d.", event->attr_handle);
+    }
+
+    for (uint8_t i = 0; i < event->data_len; i++) {
+        Serial1.printf("0x%02X,", event->data[i]);
+    }
+    Serial1.print("\r\n");
 }
 
 test(01_BleStackReinitializationShouldFail) {
@@ -71,7 +92,9 @@ test(01_BleStackReinitializationShouldFail) {
     ret = ble_stack_init(NULL);
     assertNotEqual(ret, 0);
 
-    ble_register_callback(handleBleEvent);
+    ble_gap_set_callback_on_connected(ble_on_connected);
+    ble_gap_set_callback_on_disconnected(ble_on_disconnected);
+    ble_gatt_server_set_callback_on_data_received(ble_on_data_received);
 }
 
 test(02_BleSetDeviceAddressShouldBePublicOrRandomStatic) {
