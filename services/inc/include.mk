@@ -9,6 +9,12 @@ include $(SERVICES_DEPS_INCLUDE_SCRIPTS)
 
 ifneq ($(filter services,$(LIBS)),)
 SERVICES_LIB_DEP += $(NANOPB_LIB_DEP)
+ifneq ($(SERVICES_NO_NANOPB_LIB),y)
 LIBS += $(notdir $(SERVICES_DEPS))
 LIB_DIRS += $(NANOPB_LIB_DIR)
+endif
+endif
+
+ifeq ($(SERVICES_NO_NANOPB_LIB),y)
+GLOBAL_DEFINES += SERVICES_NO_NANOPB_LIB
 endif

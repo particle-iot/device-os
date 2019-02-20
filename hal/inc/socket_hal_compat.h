@@ -42,7 +42,10 @@ extern "C" {
 
 typedef struct _sockaddr_t
 {
-    uint16_t   sa_family;
+    union {
+        uint16_t   sa_family;
+        uint16_t   ss_family;
+    };
     uint8_t    sa_data[14];
 } sockaddr_t;
 
@@ -145,6 +148,10 @@ sock_result_t socket_peer(sock_handle_t sd, sock_peer_t* peer, void* reserved);
 #if !defined(_SYS_SOCKET_H) && !defined(_SYS_SOCKET_H_) && !defined(SOCK_STREAM)
 
 //--------- Address Families --------
+
+#ifndef AF_UNSPEC
+#define AF_UNSPEC 0
+#endif // AF_UNSPEC
 
 #define  AF_INET                2
 #define  AF_INET6               23

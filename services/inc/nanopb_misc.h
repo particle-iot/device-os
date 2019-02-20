@@ -43,6 +43,15 @@ bool pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved
 bool pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, void* reserved);
 #endif // HAL_PLATFORM_FILESYSTEM
 
+#ifdef SERVICES_NO_NANOPB_LIB
+#pragma weak pb_ostream_init
+#pragma weak pb_ostream_free
+#pragma weak pb_istream_init
+#pragma weak pb_istream_free
+#pragma weak pb_ostream_from_buffer_ex
+#pragma weak pb_istream_from_buffer_ex
+#endif // SERVICES_NO_NANOPB_LIB
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
