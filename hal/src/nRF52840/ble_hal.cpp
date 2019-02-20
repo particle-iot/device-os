@@ -39,6 +39,7 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include "gpio_hal.h"
 #include "ble_hal.h"
 #include "system_error.h"
+#include "sdk_config_system.h"
 
 #include <string.h>
 
@@ -67,6 +68,42 @@ class bleLock {
     }
 };
 
+typedef enum {
+    BLE_GAP_ADV_STOPPED = 0x00,
+    BLE_GAP_SCAN_RESULT = 0x01,
+    BLE_GAP_SCAN_STOPPED = 0x02,
+    BLE_GAP_CONNECTED = 0x03,
+    BLE_GAP_DISCONNECTED = 0x04,
+    BLE_GAP_CONN_PARAMS_UPDATED = 0x05,
+
+    BLE_GATT_CLIENT_SERVICES_DISCOVERED = 0x10,
+    BLE_GATT_CLIENT_CHARACTERISTICS_DISCOVERED = 0x11,
+    BLE_GATT_CLIENT_DESCRIPTORS_DISCOVERED = 0x12,
+    BLE_GATT_CLIENT_DATA_RECEIVED = 0x13,
+
+    BLE_GATT_SERVER_DATA_RECEIVED = 0x20,
+} HalBleEvtType_t;
+
+typedef void (*evt_handler_t)(void*);
+
+typedef struct {
+    HalBleEvtType_t type;
+    evt_handler_t   handler;
+    union {
+        hal_ble_gap_on_advertising_stopped_evt_t gapOnAdvStoppedEvt;
+        hal_ble_gap_on_scan_result_evt_t gapOnScanResultEvt;
+        hal_ble_gap_on_scan_stopped_evt_t gapOnScanStoppedEvt;
+        hal_ble_gap_on_connected_evt_t gapOnConnectedEvt;
+        hal_ble_gap_on_disconnected_evt_t gapOnDisconnectedEvt;
+        hal_ble_gap_on_connection_parameters_updated_evt_t gapOnConnParamsUpdatedEvt;
+        hal_ble_gatt_server_on_data_received_evt_t gattServerOnDataRecEvt;
+        hal_ble_gatt_client_on_services_discovered_evt_t gattClientOnServicesDiscoveredEvt;
+        hal_ble_gatt_client_on_characteristics_discovered_evt_t gattClientOnCharacteristicsDiscoveredEvt;
+        hal_ble_gatt_client_on_descriptors_discovered_evt_t gattClientOnDescriptorsDiscoveredEvt;
+        hal_ble_gatt_client_on_data_received_evt_t gattClientOnDataRecEvt;
+    } arg;
+} HalBleEvtMsg_t;
+
 typedef struct {
     uint16_t                 discStartHandle;
     uint16_t                 discEndHandle;
@@ -78,6 +115,12 @@ typedef struct {
     uint8_t                  currIndex;
     uint8_t                  currDiscProcedure;
 } HalBleDiscovery_t;
+
+// TODO: used when muti-role is implemented
+typedef struct {
+    uint16_t connHandles[BLE_MAX_LINK_COUNT];
+    hal_ble_address_t peerAddrs[BLE_MAX_LINK_COUNT];
+} HalBleConnections_t;
 
 /* BLE Instance */
 typedef struct {
@@ -98,20 +141,32 @@ typedef struct {
     hal_ble_advertising_parameters_t advParams;
     hal_ble_connection_parameters_t  ppcp;
 
-    uint8_t               advData[BLE_MAX_ADV_DATA_LEN];
-    uint16_t              advDataLen;
-    uint8_t               scanRespData[BLE_MAX_ADV_DATA_LEN];
-    uint16_t              scanRespDataLen;
+    uint8_t  advData[BLE_MAX_ADV_DATA_LEN];
+    uint16_t advDataLen;
+    uint8_t  scanRespData[BLE_MAX_ADV_DATA_LEN];
+    uint16_t scanRespDataLen;
 
-    os_semaphore_t        semaphore;
-    os_queue_t            evtQueue;
-    os_thread_t           evtThread;
-    os_timer_t            connParamsUpdateTimer;
+    os_semaphore_t semaphore;
+    os_queue_t     evtQueue;
+    os_thread_t    evtThread;
+    os_timer_t     connParamsUpdateTimer;
 
+    ble_gap_on_advertising_stopped_callback_t gapOnAdvStoppedCb;
+    ble_gap_on_scan_result_callback_t gapOnScanResultCb;
+    ble_gap_on_scan_stopped_callback_t gapOnScanStoppedCb;
+    ble_gap_on_connected_callback_t gapOnConnectedCb;
+    ble_gap_on_disconnected_callback_t gapOnDisconnectedCb;
+    ble_gap_on_connection_parameters_updated_callback_t gapOnConnParamsUpdatedCb;
+    ble_gatt_server_on_data_received_callback_t gattServerOnDataRecCb;
+    ble_gatt_client_on_services_discovered_callback_t gattClientOnServicesDiscoveredCb;
+    ble_gatt_client_on_characteristics_discovered_callback_t gattClientOnCharacteristicsDiscoveredCb;
+    ble_gatt_client_on_descriptors_discovered_callback_t gattClientOnDescriptorsDiscoveredCb;
+    ble_gatt_client_on_data_received_callback_t gattClientOnDataRecCb;
+
+    hal_ble_address_t     peer_addr;
     hal_ble_connection_parameters_t effectiveConnParams;
     ble_gap_addr_t        whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
     ble_gap_addr_t const* whitelistPointer[BLE_MAX_WHITELIST_ADDR_COUNT];
-    ble_event_callback_t  evtCallbacks[BLE_MAX_EVENT_CALLBACK_COUNT];
 
     HalBleDiscovery_t     discovery;
 } HalBleInstance_t;
@@ -132,6 +187,7 @@ static HalBleInstance_t s_bleInstance = {
     .connParamsUpdateAttempts = 0,
 
     .scanParams = {
+        .version       = 0x01,
         .active        = true,
         .filter_policy = BLE_SCAN_FP_ACCEPT_ALL,
         .interval      = BLE_DEFAULT_SCANNING_INTERVAL,
@@ -140,6 +196,7 @@ static HalBleInstance_t s_bleInstance = {
     },
 
     .advParams = {
+        .version       = 0x01,
         .type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT,
         .filter_policy = BLE_ADV_FP_ANY,
         .interval      = BLE_DEFAULT_ADVERTISING_INTERVAL,
@@ -152,6 +209,7 @@ static HalBleInstance_t s_bleInstance = {
      * For BLE Peripheral, this is the Peripheral Preferred Connection Parameters.
      */
     .ppcp = {
+        .version           = 0x01,
         .min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL,
         .max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL,
         .slave_latency     = BLE_DEFAULT_SLAVE_LATENCY,
@@ -172,6 +230,18 @@ static HalBleInstance_t s_bleInstance = {
     .evtQueue  = NULL,
     .evtThread = NULL,
     .connParamsUpdateTimer = NULL,
+
+    .gapOnAdvStoppedCb = NULL,
+    .gapOnScanResultCb = NULL,
+    .gapOnScanStoppedCb = NULL,
+    .gapOnConnectedCb  = NULL,
+    .gapOnDisconnectedCb = NULL,
+    .gapOnConnParamsUpdatedCb = NULL,
+    .gattServerOnDataRecCb = NULL,
+    .gattClientOnServicesDiscoveredCb = NULL,
+    .gattClientOnCharacteristicsDiscoveredCb = NULL,
+    .gattClientOnDescriptorsDiscoveredCb = NULL,
+    .gattClientOnDataRecCb = NULL,
 };
 
 static uint8_t    s_scanReportBuff[BLE_MAX_SCAN_REPORT_BUF_LEN];
@@ -594,48 +664,47 @@ static int writeAttribute(uint16_t connHandle, uint16_t attrHandle, uint8_t* dat
     return SYSTEM_ERROR_NONE;
 }
 
-static void dispatchBleEvent(hal_ble_event_t* evt) {
-    for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-        if (s_bleInstance.evtCallbacks[i] != NULL) {
-            s_bleInstance.evtCallbacks[i](evt);
-        }
-    }
-}
-
 static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
     ret_code_t      ret;
-    hal_ble_event_t bleEvt;
+    HalBleEvtMsg_t  msg;
+    memset(&msg, 0x00, sizeof(HalBleEvtMsg_t));
 
     switch (event->header.evt_id) {
         case BLE_GAP_EVT_ADV_SET_TERMINATED: {
             LOG_DEBUG(TRACE, "BLE GAP event: advertising stopped.");
             s_bleInstance.advertising = false;
 
-            bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
-            bleEvt.conn_event.conn_handle = BLE_INVALID_CONN_HANDLE;
-            bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_ADV_STOPPED;
-            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
+            if (s_bleInstance.gapOnAdvStoppedCb != NULL) {
+                msg.type = BLE_GAP_ADV_STOPPED;
+                msg.handler = (evt_handler_t)s_bleInstance.gapOnAdvStoppedCb;
+                msg.arg.gapOnAdvStoppedEvt.version = 0x01;
+                msg.arg.gapOnAdvStoppedEvt.reserved = NULL;
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
             }
         } break;
 
         case BLE_GAP_EVT_ADV_REPORT: {
             LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
 
-            bleEvt.evt_type = BLE_EVT_TYPE_SCAN_RESULT;
-            if (event->evt.gap_evt.params.adv_report.type.scan_response) {
-                bleEvt.scan_result_event.data_type = BLE_SCAN_RESULT_EVT_DATA_TYPE_SCAN_RESP;
-            }
-            else {
-                bleEvt.scan_result_event.data_type = BLE_SCAN_RESULT_EVT_DATA_TYPE_ADV;
-            }
-            bleEvt.scan_result_event.peer_addr.addr_type = event->evt.gap_evt.params.adv_report.peer_addr.addr_type;
-            memcpy(bleEvt.scan_result_event.peer_addr.addr, event->evt.gap_evt.params.adv_report.peer_addr.addr, BLE_SIG_ADDR_LEN);
-            bleEvt.scan_result_event.rssi = event->evt.gap_evt.params.adv_report.rssi;
-            bleEvt.scan_result_event.data_len = event->evt.gap_evt.params.adv_report.data.len;
-            memcpy(bleEvt.scan_result_event.data, event->evt.gap_evt.params.adv_report.data.p_data, bleEvt.scan_result_event.data_len);
-            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
+            if (s_bleInstance.gapOnScanResultCb != NULL) {
+                msg.type = BLE_GAP_SCAN_RESULT;
+                msg.handler = (evt_handler_t)s_bleInstance.gapOnScanResultCb;
+                msg.arg.gapOnScanResultEvt.version = 0x01;
+                msg.arg.gapOnScanResultEvt.type.connectable = event->evt.gap_evt.params.adv_report.type.connectable;
+                msg.arg.gapOnScanResultEvt.type.scannable = event->evt.gap_evt.params.adv_report.type.scannable;
+                msg.arg.gapOnScanResultEvt.type.directed = event->evt.gap_evt.params.adv_report.type.directed;
+                msg.arg.gapOnScanResultEvt.type.scan_response = event->evt.gap_evt.params.adv_report.type.scan_response;
+                msg.arg.gapOnScanResultEvt.type.extended_pdu = event->evt.gap_evt.params.adv_report.type.extended_pdu;
+                msg.arg.gapOnScanResultEvt.rssi = event->evt.gap_evt.params.adv_report.rssi;
+                msg.arg.gapOnScanResultEvt.data_len = event->evt.gap_evt.params.adv_report.data.len;
+                memcpy(msg.arg.gapOnScanResultEvt.data, event->evt.gap_evt.params.adv_report.data.p_data, msg.arg.gapOnScanResultEvt.data_len);
+                msg.arg.gapOnScanResultEvt.peer_addr.addr_type = event->evt.gap_evt.params.adv_report.peer_addr.addr_type;
+                memcpy(msg.arg.gapOnScanResultEvt.peer_addr.addr, event->evt.gap_evt.params.adv_report.peer_addr.addr, BLE_SIG_ADDR_LEN);
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
             }
 
             // Continue scanning, scanning parameters pointer must be set to NULL.
@@ -651,11 +720,29 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
 
+            if (s_bleInstance.gapOnConnectedCb != NULL) {
+                msg.type = BLE_GAP_CONNECTED;
+                msg.handler = (evt_handler_t)s_bleInstance.gapOnConnectedCb;
+                msg.arg.gapOnConnectedEvt.version = 0x01;
+                msg.arg.gapOnConnectedEvt.role = event->evt.gap_evt.params.connected.role;
+                msg.arg.gapOnConnectedEvt.conn_handle = event->evt.gap_evt.conn_handle;
+                msg.arg.gapOnConnectedEvt.conn_interval = event->evt.gap_evt.params.connected.conn_params.max_conn_interval;
+                msg.arg.gapOnConnectedEvt.slave_latency = event->evt.gap_evt.params.connected.conn_params.slave_latency;
+                msg.arg.gapOnConnectedEvt.conn_sup_timeout = event->evt.gap_evt.params.connected.conn_params.conn_sup_timeout;
+                msg.arg.gapOnConnectedEvt.peer_addr.addr_type = event->evt.gap_evt.params.connected.peer_addr.addr_type;
+                memcpy(msg.arg.gapOnConnectedEvt.peer_addr.addr, event->evt.gap_evt.params.connected.peer_addr.addr, BLE_SIG_ADDR_LEN);
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
+            }
+
             s_bleInstance.role       = event->evt.gap_evt.params.connected.role;
             s_bleInstance.connHandle = event->evt.gap_evt.conn_handle;
             s_bleInstance.connecting = false;
             s_bleInstance.connected  = true;
             memcpy(&s_bleInstance.effectiveConnParams, &event->evt.gap_evt.params.connected.conn_params, sizeof(ble_gap_conn_params_t));
+            s_bleInstance.peer_addr.addr_type = event->evt.gap_evt.params.connected.peer_addr.addr_type;
+            memcpy(s_bleInstance.peer_addr.addr, event->evt.gap_evt.params.connected.peer_addr.addr, BLE_SIG_ADDR_LEN);
 
             LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", s_bleInstance.role, s_bleInstance.connHandle);
             LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
@@ -667,13 +754,6 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             // Update connection parameters if needed.
             s_bleInstance.connParamsUpdateAttempts = 0;
             updateConnParamsIfNeeded();
-
-            bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
-            bleEvt.conn_event.conn_handle = s_bleInstance.connHandle;
-            bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_CONNECTED;
-            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
-            }
         } break;
 
         case BLE_GAP_EVT_DISCONNECTED: {
@@ -686,12 +766,17 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 os_timer_change(s_bleInstance.connParamsUpdateTimer, OS_TIMER_CHANGE_STOP, true, 0, 0, NULL);
             }
 
-            bleEvt.evt_type               = BLE_EVT_TYPE_CONNECTION;
-            bleEvt.conn_event.conn_handle = s_bleInstance.connHandle;
-            bleEvt.conn_event.evt_id      = BLE_CONN_EVT_ID_DISCONNECTED;
-            bleEvt.conn_event.reason      = event->evt.gap_evt.params.disconnected.reason;
-            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
+            if (s_bleInstance.gapOnDisconnectedCb != NULL) {
+                msg.type = BLE_GAP_DISCONNECTED;
+                msg.handler = (evt_handler_t)s_bleInstance.gapOnDisconnectedCb;
+                msg.arg.gapOnDisconnectedEvt.version = 0x01;
+                msg.arg.gapOnDisconnectedEvt.reason = event->evt.gap_evt.params.disconnected.reason;
+                msg.arg.gapOnDisconnectedEvt.conn_handle = event->evt.gap_evt.conn_handle;
+                msg.arg.gapOnDisconnectedEvt.peer_addr.addr_type = s_bleInstance.peer_addr.addr_type;
+                memcpy(msg.arg.gapOnDisconnectedEvt.peer_addr.addr, s_bleInstance.peer_addr.addr, BLE_SIG_ADDR_LEN);
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
             }
 
             // Re-start advertising.
@@ -736,6 +821,19 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             // Update connection parameters if needed.
             updateConnParamsIfNeeded();
+
+            if (s_bleInstance.gapOnConnParamsUpdatedCb != NULL) {
+                msg.type = BLE_GAP_CONN_PARAMS_UPDATED;
+                msg.handler = (evt_handler_t)s_bleInstance.gapOnConnParamsUpdatedCb;
+                msg.arg.gapOnConnParamsUpdatedEvt.version = 0x01;
+                msg.arg.gapOnConnParamsUpdatedEvt.conn_handle = event->evt.gap_evt.conn_handle;
+                msg.arg.gapOnConnParamsUpdatedEvt.conn_interval = event->evt.gap_evt.params.conn_param_update.conn_params.max_conn_interval;
+                msg.arg.gapOnConnParamsUpdatedEvt.slave_latency = event->evt.gap_evt.params.conn_param_update.conn_params.slave_latency;
+                msg.arg.gapOnConnParamsUpdatedEvt.conn_sup_timeout = event->evt.gap_evt.params.conn_param_update.conn_params.conn_sup_timeout;
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
+            }
         } break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST: {
@@ -802,6 +900,16 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
                 LOG_DEBUG(TRACE, "BLE GAP event: Scanning timeout");
                 s_bleInstance.scanning = false;
+
+                if (s_bleInstance.gapOnScanStoppedCb != NULL) {
+                    msg.type = BLE_GAP_SCAN_STOPPED;
+                    msg.handler = (evt_handler_t)s_bleInstance.gapOnScanStoppedCb;
+                    msg.arg.gapOnScanStoppedEvt.version = 0x01;
+                    msg.arg.gapOnScanStoppedEvt.reserved = NULL;
+                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                    }
+                }
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Connection timeout");
@@ -854,18 +962,21 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             if (terminate) {
-                bleEvt.evt_type               = BLE_EVT_TYPE_DISCOVERY;
-                bleEvt.disc_event.evt_id      = BLE_DISC_EVT_ID_SVC_DISCOVERED;
-                bleEvt.disc_event.conn_handle = event->evt.gattc_evt.conn_handle;
-                bleEvt.disc_event.services    = s_bleInstance.discovery.services;
-                bleEvt.disc_event.count       = s_bleInstance.discovery.count;
-                if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                    // This flag should be cleared after this event being popped, in case that
-                    // further operation is needed to retrieve 128-bits UUID. If this event is not enqueued,
-                    // this flag should be clear here.
-                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
-                    s_bleInstance.discovering = false;
+                if (s_bleInstance.gattClientOnServicesDiscoveredCb != NULL) {
+                    msg.type = BLE_GATT_CLIENT_SERVICES_DISCOVERED;
+                    msg.handler = (evt_handler_t)s_bleInstance.gattClientOnServicesDiscoveredCb;
+                    msg.arg.gattClientOnServicesDiscoveredEvt.version = 0x01;
+                    msg.arg.gattClientOnServicesDiscoveredEvt.conn_handle = event->evt.gattc_evt.conn_handle;
+                    msg.arg.gattClientOnServicesDiscoveredEvt.count = s_bleInstance.discovery.count;
+                    msg.arg.gattClientOnServicesDiscoveredEvt.services = s_bleInstance.discovery.services;
+                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                        // This flag should be cleared after this event being popped, in case that
+                        // further operation is needed to retrieve 128-bits UUID. If this event is
+                        // not enqueued successfully, this flag should be clear here.
+                        s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                        s_bleInstance.discovering = false;
+                    }
                 }
             }
         } break;
@@ -910,15 +1021,21 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             if (terminate) {
-                bleEvt.evt_type                   = BLE_EVT_TYPE_DISCOVERY;
-                bleEvt.disc_event.evt_id          = BLE_DISC_EVT_ID_CHAR_DISCOVERED;
-                bleEvt.disc_event.conn_handle     = event->evt.gattc_evt.conn_handle;
-                bleEvt.disc_event.characteristics = s_bleInstance.discovery.characteristics;
-                bleEvt.disc_event.count           = s_bleInstance.discovery.count;
-                if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
-                    s_bleInstance.discovering = false;
+                if (s_bleInstance.gattClientOnCharacteristicsDiscoveredCb != NULL) {
+                    msg.type = BLE_GATT_CLIENT_CHARACTERISTICS_DISCOVERED;
+                    msg.handler = (evt_handler_t)s_bleInstance.gattClientOnCharacteristicsDiscoveredCb;
+                    msg.arg.gattClientOnCharacteristicsDiscoveredEvt.version = 0x01;
+                    msg.arg.gattClientOnCharacteristicsDiscoveredEvt.conn_handle = event->evt.gattc_evt.conn_handle;
+                    msg.arg.gattClientOnCharacteristicsDiscoveredEvt.count = s_bleInstance.discovery.count;
+                    msg.arg.gattClientOnCharacteristicsDiscoveredEvt.characteristics = s_bleInstance.discovery.characteristics;
+                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                        // This flag should be cleared after this event being popped, in case that
+                        // further operation is needed to retrieve 128-bits UUID. If this event is
+                        // not enqueued successfully, this flag should be clear here.
+                        s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                        s_bleInstance.discovering = false;
+                    }
                 }
             }
         } break;
@@ -970,15 +1087,21 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             if (terminate) {
-                bleEvt.evt_type               = BLE_EVT_TYPE_DISCOVERY;
-                bleEvt.disc_event.evt_id      = BLE_DISC_EVT_ID_DESC_DISCOVERED;
-                bleEvt.disc_event.conn_handle = event->evt.gattc_evt.conn_handle;
-                bleEvt.disc_event.descriptors = s_bleInstance.discovery.descriptors;
-                bleEvt.disc_event.count       = s_bleInstance.discovery.count;
-                if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
-                    s_bleInstance.discovering = false;
+                if (s_bleInstance.gattClientOnDescriptorsDiscoveredCb != NULL) {
+                    msg.type = BLE_GATT_CLIENT_DESCRIPTORS_DISCOVERED;
+                    msg.handler = (evt_handler_t)s_bleInstance.gattClientOnDescriptorsDiscoveredCb;
+                    msg.arg.gattClientOnDescriptorsDiscoveredEvt.version = 0x01;
+                    msg.arg.gattClientOnDescriptorsDiscoveredEvt.conn_handle = event->evt.gattc_evt.conn_handle;
+                    msg.arg.gattClientOnDescriptorsDiscoveredEvt.count = s_bleInstance.discovery.count;
+                    msg.arg.gattClientOnDescriptorsDiscoveredEvt.descriptors = s_bleInstance.discovery.descriptors;
+                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                        // This flag should be cleared after this event being popped, in case that
+                        // further operation is needed to retrieve 128-bits UUID. If this event is
+                        // not enqueued successfully, this flag should be clear here.
+                        s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                        s_bleInstance.discovering = false;
+                    }
                 }
             }
         } break;
@@ -1003,14 +1126,18 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                     }
                 }
                 else {
-                    bleEvt.evt_type               = BLE_EVT_TYPE_DATA;
-                    bleEvt.data_event.evt_id      = BLE_DATA_EVT_ID_READ;
-                    bleEvt.data_event.conn_handle = event->evt.gattc_evt.conn_handle;
-                    bleEvt.data_event.attr_handle = event->evt.gattc_evt.params.read_rsp.handle;
-                    bleEvt.data_event.data_len    = event->evt.gattc_evt.params.read_rsp.len;
-                    memcpy(bleEvt.data_event.data, event->evt.gattc_evt.params.read_rsp.data, bleEvt.data_event.data_len);
-                    if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                        LOG(ERROR, "os_queue_put() failed.");
+                    if (s_bleInstance.gattClientOnDataRecCb != NULL) {
+                        msg.type = BLE_GATT_CLIENT_DATA_RECEIVED;
+                        msg.handler = (evt_handler_t)s_bleInstance.gattClientOnDataRecCb;
+                        msg.arg.gattClientOnDataRecEvt.version = 0x01;
+                        msg.arg.gattClientOnDataRecEvt.conn_handle = event->evt.gattc_evt.conn_handle;
+                        msg.arg.gattClientOnDataRecEvt.peer_attr_handle = event->evt.gattc_evt.params.read_rsp.handle;
+                        msg.arg.gattClientOnDataRecEvt.offset = event->evt.gattc_evt.params.read_rsp.offset;
+                        msg.arg.gattClientOnDataRecEvt.data_len = event->evt.gattc_evt.params.read_rsp.len;
+                        memcpy(msg.arg.gattClientOnDataRecEvt.data, event->evt.gattc_evt.params.read_rsp.data, msg.arg.gattClientOnDataRecEvt.data_len);
+                        if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                            LOG(ERROR, "os_queue_put() failed.");
+                        }
                     }
                 }
             }
@@ -1039,14 +1166,18 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 }
             }
 
-            bleEvt.evt_type               = BLE_EVT_TYPE_DATA;
-            bleEvt.data_event.evt_id      = BLE_DATA_EVT_ID_NOTIFY;
-            bleEvt.data_event.conn_handle = event->evt.gattc_evt.conn_handle;
-            bleEvt.data_event.attr_handle = event->evt.gattc_evt.params.hvx.handle;
-            bleEvt.data_event.data_len    = event->evt.gattc_evt.params.hvx.len;
-            memcpy(bleEvt.data_event.data, event->evt.gattc_evt.params.hvx.data, bleEvt.data_event.data_len);
-            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
+            if (s_bleInstance.gattClientOnDataRecCb != NULL) {
+                msg.type = BLE_GATT_CLIENT_DATA_RECEIVED;
+                msg.handler = (evt_handler_t)s_bleInstance.gattClientOnDataRecCb;
+                msg.arg.gattClientOnDataRecEvt.version = 0x01;
+                msg.arg.gattClientOnDataRecEvt.conn_handle = event->evt.gattc_evt.conn_handle;
+                msg.arg.gattClientOnDataRecEvt.peer_attr_handle = event->evt.gattc_evt.params.hvx.handle;
+                msg.arg.gattClientOnDataRecEvt.offset = 0;
+                msg.arg.gattClientOnDataRecEvt.data_len = event->evt.gattc_evt.params.hvx.len;
+                memcpy(msg.arg.gattClientOnDataRecEvt.data, event->evt.gattc_evt.params.hvx.data, msg.arg.gattClientOnDataRecEvt.data_len);
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
             }
         } break;
 
@@ -1086,14 +1217,20 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         case BLE_GATTS_EVT_WRITE: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: write characteristic.");
 
-            bleEvt.evt_type               = BLE_EVT_TYPE_DATA;
-            bleEvt.data_event.evt_id      = BLE_DATA_EVT_ID_WRITE;
-            bleEvt.data_event.conn_handle = event->evt.gatts_evt.conn_handle;
-            bleEvt.data_event.attr_handle = event->evt.gatts_evt.params.write.handle;
-            bleEvt.data_event.data_len    = event->evt.gatts_evt.params.write.len;
-            memcpy(bleEvt.data_event.data, event->evt.gatts_evt.params.write.data, bleEvt.data_event.data_len);
-            if (os_queue_put(s_bleInstance.evtQueue, &bleEvt, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
+            // TODO: deal with different write commands.
+
+            if (s_bleInstance.gattServerOnDataRecCb != NULL) {
+                msg.type = BLE_GATT_SERVER_DATA_RECEIVED;
+                msg.handler = (evt_handler_t)s_bleInstance.gattServerOnDataRecCb;
+                msg.arg.gattServerOnDataRecEvt.version = 0x01;
+                msg.arg.gattServerOnDataRecEvt.conn_handle = event->evt.gatts_evt.conn_handle;
+                msg.arg.gattServerOnDataRecEvt.attr_handle = event->evt.gatts_evt.params.write.handle;
+                msg.arg.gattServerOnDataRecEvt.offset = event->evt.gatts_evt.params.write.offset;
+                msg.arg.gattServerOnDataRecEvt.data_len = event->evt.gatts_evt.params.write.len;
+                memcpy(msg.arg.gattServerOnDataRecEvt.data, event->evt.gatts_evt.params.write.data, msg.arg.gattServerOnDataRecEvt.data_len);
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
             }
         } break;
 
@@ -1124,14 +1261,17 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
 static os_thread_return_t handleBleEventThread(void* param) {
     while (1) {
-        hal_ble_event_t bleEvent;
-        if (!os_queue_take(s_bleInstance.evtQueue, &bleEvent, CONCURRENT_WAIT_FOREVER, NULL)) {
+        HalBleEvtMsg_t msg;
+        if (!os_queue_take(s_bleInstance.evtQueue, &msg, CONCURRENT_WAIT_FOREVER, NULL)) {
             // Try retrieving 128-bits service or characteristic UUID before dispatching this event.
-            if (bleEvent.evt_type == BLE_EVT_TYPE_DISCOVERY) {
-                if (bleEvent.disc_event.evt_id == BLE_DISC_EVT_ID_SVC_DISCOVERED) {
-                    for (uint8_t i = 0; i < bleEvent.disc_event.count; i++) {
-                        if (bleEvent.disc_event.services[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
-                            ret_code_t ret = sd_ble_gattc_read(bleEvent.disc_event.conn_handle, bleEvent.disc_event.services[i].start_handle, 0);
+            if (   msg.type == BLE_GATT_CLIENT_SERVICES_DISCOVERED
+                || msg.type == BLE_GATT_CLIENT_CHARACTERISTICS_DISCOVERED
+                || msg.type == BLE_GATT_CLIENT_DESCRIPTORS_DISCOVERED) {
+                if (msg.type == BLE_GATT_CLIENT_SERVICES_DISCOVERED) {
+                    hal_ble_gatt_client_on_services_discovered_evt_t *svcDiscEvt = (hal_ble_gatt_client_on_services_discovered_evt_t*)&msg.arg;
+                    for (uint8_t i = 0; i < svcDiscEvt->count; i++) {
+                        if (svcDiscEvt->services[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
+                            ret_code_t ret = sd_ble_gattc_read(svcDiscEvt->conn_handle, svcDiscEvt->services[i].start_handle, 0);
                             if (ret != NRF_SUCCESS) {
                                 LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
                                 break;
@@ -1144,10 +1284,11 @@ static os_thread_return_t handleBleEventThread(void* param) {
                         }
                     }
                 }
-                else if (bleEvent.disc_event.evt_id == BLE_DISC_EVT_ID_CHAR_DISCOVERED) {
-                    for (uint8_t i = 0; i < bleEvent.disc_event.count; i++) {
-                        if (bleEvent.disc_event.characteristics[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
-                            ret_code_t ret = sd_ble_gattc_read(bleEvent.disc_event.conn_handle, bleEvent.disc_event.characteristics[i].decl_handle, 0);
+                else if (msg.type == BLE_GATT_CLIENT_CHARACTERISTICS_DISCOVERED) {
+                    hal_ble_gatt_client_on_characteristics_discovered_evt_t* charDiscEvt = (hal_ble_gatt_client_on_characteristics_discovered_evt_t*)&msg.arg;
+                    for (uint8_t i = 0; i < charDiscEvt->count; i++) {
+                        if (charDiscEvt->characteristics[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
+                            ret_code_t ret = sd_ble_gattc_read(charDiscEvt->conn_handle, charDiscEvt->characteristics[i].decl_handle, 0);
                             if (ret != NRF_SUCCESS) {
                                 LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
                                 break;
@@ -1164,7 +1305,9 @@ static os_thread_return_t handleBleEventThread(void* param) {
                 s_bleInstance.discovering = false;
             }
 
-            dispatchBleEvent(&bleEvent);
+            if (msg.handler != NULL) {
+                msg.handler(&msg.arg);
+            }
         }
         else {
             LOG(ERROR, "BLE event thread exited.");
@@ -1212,10 +1355,6 @@ int ble_stack_init(void* reserved) {
         // Register a handler for BLE events.
         NRF_SDH_BLE_OBSERVER(bleObserver, BLE_OBSERVER_PRIO, isrProcessBleEvent, nullptr);
 
-        for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-            s_bleInstance.evtCallbacks[i] = NULL;
-        }
-
         s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
 
         // Configure an advertising set to obtain an advertising handle.
@@ -1240,7 +1379,7 @@ int ble_stack_init(void* reserved) {
             return SYSTEM_ERROR_INTERNAL;
         }
 
-        if (os_queue_create(&s_bleInstance.evtQueue, sizeof(hal_ble_event_t), BLE_EVENT_QUEUE_ITEM_COUNT, NULL)) {
+        if (os_queue_create(&s_bleInstance.evtQueue, sizeof(HalBleEvtMsg_t), BLE_EVENT_QUEUE_ITEM_COUNT, NULL)) {
             LOG(ERROR, "os_queue_create() failed");
             os_semaphore_destroy(s_bleInstance.semaphore);
             return SYSTEM_ERROR_NO_MEMORY;
@@ -1297,30 +1436,92 @@ int ble_select_antenna(hal_ble_antenna_type_t antenna) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_register_callback(ble_event_callback_t callback) {
+int ble_gap_set_callback_on_advertising_stopped(ble_gap_on_advertising_stopped_callback_t callback) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
-    for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-        if (s_bleInstance.evtCallbacks[i] == NULL) {
-            s_bleInstance.evtCallbacks[i] = callback;
-            return SYSTEM_ERROR_NONE;
-        }
-    }
-    return SYSTEM_ERROR_LIMIT_EXCEEDED;
+    s_bleInstance.gapOnAdvStoppedCb = callback;
+    return SYSTEM_ERROR_NONE;
 }
 
-int ble_deregister_callback(ble_event_callback_t callback) {
+int ble_gap_set_callback_on_scan_result(ble_gap_on_scan_result_callback_t callback) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
-    for (uint8_t i = 0; i < BLE_MAX_EVENT_CALLBACK_COUNT; i++) {
-        if (s_bleInstance.evtCallbacks[i] == callback) {
-            s_bleInstance.evtCallbacks[i] = NULL;
-            return SYSTEM_ERROR_NONE;
-        }
-    }
-    return SYSTEM_ERROR_NOT_FOUND;
+    s_bleInstance.gapOnScanResultCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gap_set_callback_on_scan_stopped(ble_gap_on_scan_stopped_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gapOnScanStoppedCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gap_set_callback_on_connected(ble_gap_on_connected_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gapOnConnectedCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gap_set_callback_on_disconnected(ble_gap_on_disconnected_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gapOnDisconnectedCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gap_set_callback_on_connection_parameters_updated(ble_gap_on_connection_parameters_updated_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gapOnConnParamsUpdatedCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gatt_server_set_callback_on_data_received(ble_gatt_server_on_data_received_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gattServerOnDataRecCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gatt_client_set_callback_on_services_discovered(ble_gatt_client_on_services_discovered_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gattClientOnServicesDiscoveredCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gatt_client_set_callback_on_characteristics_discovered(ble_gatt_client_on_characteristics_discovered_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gattClientOnCharacteristicsDiscoveredCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gatt_client_set_callback_on_descriptors_discovered(ble_gatt_client_on_descriptors_discovered_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gattClientOnDescriptorsDiscoveredCb = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int ble_gatt_client_set_callback_on_data_received(ble_gatt_client_on_data_received_callback_t callback) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+
+    s_bleInstance.gattClientOnDataRecCb = callback;
+    return SYSTEM_ERROR_NONE;
 }
 
 
