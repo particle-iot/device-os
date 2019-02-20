@@ -169,12 +169,12 @@ void setup()
     scanParams.interval = 1600; // 1 seconds
     scanParams.window   = 50;
     scanParams.timeout  = 1000; // 0 for forever unless stop initially
-    ble_gap_set_scan_parameters(&scanParams);
+    ble_gap_set_scan_parameters(&scanParams, NULL);
 
     ble_gap_set_callback_on_scan_result(ble_on_scan_result);
     ble_gap_set_callback_on_scan_stopped(ble_on_scan_stopped);
 
-    ble_gap_start_scan();
+    ble_gap_start_scan(NULL);
 }
 
 /* This function loops forever --------------------------------------------*/
