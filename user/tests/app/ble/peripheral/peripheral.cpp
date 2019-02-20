@@ -134,7 +134,7 @@ static int adStructEncode(uint8_t adsType, uint8_t* data, uint16_t len, bool sr,
 static int encodeAdvertisingData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t*advDataLen) {
     int ret = adStructEncode(ads_type, data, len, false, advData, advDataLen);
     if (ret == SYSTEM_ERROR_NONE) {
-        ret = ble_gap_set_advertising_data(advData, *advDataLen);
+        ret = ble_gap_set_advertising_data(advData, *advDataLen, NULL);
     }
 
     return ret;
@@ -143,7 +143,7 @@ static int encodeAdvertisingData(uint8_t ads_type, uint8_t* data, uint16_t len, 
 static int encodeScanResponseData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t*advDataLen) {
     int ret = adStructEncode(ads_type, data, len, true, advData, advDataLen);
     if (ret == SYSTEM_ERROR_NONE) {
-        ret = ble_gap_set_scan_response_data(advData, *advDataLen);
+        ret = ble_gap_set_scan_response_data(advData, *advDataLen, NULL);
     }
 
     return ret;
@@ -232,7 +232,7 @@ void setup()
     connParams.max_conn_interval = 400;
     connParams.slave_latency     = 0;
     connParams.conn_sup_timeout  = 400;
-    ble_gap_set_ppcp(&connParams);
+    ble_gap_set_ppcp(&connParams, NULL);
 
     hal_ble_advertising_parameters_t advParams;
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
@@ -240,7 +240,7 @@ void setup()
     advParams.interval      = 100;
     advParams.timeout       = 1000;
     advParams.inc_tx_power  = false;
-    ble_gap_set_advertising_parameters(&advParams);
+    ble_gap_set_advertising_parameters(&advParams, NULL);
 
     encodeAdvertisingData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, devName, sizeof(devName), advData, &advDataLen);
     uint8_t uuid[2] = {0xab, 0xcd};
@@ -252,19 +252,19 @@ void setup()
 
     uint8_t svcUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x0f};
     uint8_t charUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x0f};
-    ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID1, &svcHandle);
-    ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID1, BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE, NULL, &bleChar1);
+    ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID1, &svcHandle, NULL);
+    ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID1, BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE, NULL, &bleChar1, NULL);
 
     uint8_t svcUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
     uint8_t charUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x10};
-    ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID2, &svcHandle);
-    ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID2, BLE_SIG_CHAR_PROP_NOTIFY, NULL, &bleChar2);
+    ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID2, &svcHandle, NULL);
+    ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID2, BLE_SIG_CHAR_PROP_NOTIFY, NULL, &bleChar2, NULL);
 
-    ble_gatt_server_add_service_uuid16(BLE_SERVICE_TYPE_PRIMARY, 0x1234, &svcHandle);
-    ble_gatt_server_add_characteristic_uuid16(svcHandle, 0x5678, BLE_SIG_CHAR_PROP_WRITE_WO_RESP, "hello", &bleChar3);
+    ble_gatt_server_add_service_uuid16(BLE_SERVICE_TYPE_PRIMARY, 0x1234, &svcHandle, NULL);
+    ble_gatt_server_add_characteristic_uuid16(svcHandle, 0x5678, BLE_SIG_CHAR_PROP_WRITE_WO_RESP, "hello", &bleChar3, NULL);
 
     uint8_t data[20] = {0x11};
-    ble_gatt_server_set_characteristic_value(bleChar1.value_handle, data, 5);
+    ble_gatt_server_set_characteristic_value(bleChar1.value_handle, data, 5, NULL);
 
     ble_gap_set_callback_on_advertising_stopped(ble_on_adv_stopped);
     ble_gap_set_callback_on_connected(ble_on_connected);
@@ -272,7 +272,7 @@ void setup()
     ble_gap_set_callback_on_connection_parameters_updated(ble_on_connection_parameters_updated);
     ble_gatt_server_set_callback_on_data_received(ble_on_data_received);
 
-    ble_gap_start_advertising();
+    ble_gap_start_advertising(NULL);
 }
 
 /* This function loops forever --------------------------------------------*/
@@ -281,7 +281,7 @@ void loop()
     static uint16_t cnt = 0;
 
     if (ble_gap_is_connected() && notifyEnabled) {
-        ble_gatt_server_notify_characteristic_value(bleChar2.value_handle, (uint8_t *)&cnt, 2);
+        ble_gatt_server_notify_characteristic_value(bleChar2.value_handle, (uint8_t *)&cnt, 2, NULL);
         cnt++;
     }
     else {
