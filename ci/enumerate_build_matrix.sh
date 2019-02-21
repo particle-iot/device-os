@@ -49,12 +49,16 @@ echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM="newhal" COMPILE_LTO="n"
 HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
-[[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]]; 
+[[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]];
 testcase
 fi
 
 # GCC Build
 if platform gcc; then
+echo
+echo '-----------------------------------------------------------------------'
+source ./ci/install_boost.sh
+./ci/build_boost.sh
 echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM=gcc
