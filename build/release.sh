@@ -10,8 +10,8 @@ if [ ${PIPESTATUS[0]} -ne 4 ]; then
     exit 1
 fi
 
-OPTIONS=di:p:o:
-LONGOPTS=debug,platform-id:,platform:,output-directory:
+OPTIONS=di:o:p:t
+LONGOPTS=debug,platform-id:,output-directory:,platform:,tests
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -28,29 +28,38 @@ fi
 eval set -- "$PARSED"
 
 # Set default(s)
+DEBUG_BUILD="n"
 DEBUG=false
+GENERATE_TESTS=false
 PLATFORM=""
 PLATFORM_ID=""
 OUTPUT_DIRECTORY="../build/releases"
+USE_SWD_JTAG="n"
 
 # Parse parameter(s)
 while true; do
     case "$1" in
         -d|--debug)
+            DEBUG_BUILD="y"
             DEBUG=true
+            USE_SWD_JTAG="y"
             shift 1
             ;;
         -i|--platform-id)
             PLATFORM_ID="$2"
             shift 2
             ;;
+        -o|--output-directory)
+            OUTPUT_DIRECTORY="$2"
+            shift 2
+            ;;
         -p|--platform)
             PLATFORM="$2"
             shift 2
             ;;
-        -o|--output-directory)
-            OUTPUT_DIRECTORY="$2"
-            shift 2
+        -t|--tests)
+            GENERATE_TESTS=true
+            shift 1
             ;;
         --)
             shift
@@ -69,61 +78,88 @@ if [ $# -ne 0 ]; then
     exit 4
 fi
 
+function compose_qualified_filename
+{
+    local name=$1
+    local ext=$2
+    local compile_lto=$3
+    local debug_build=$4
+    local use_swd_jtag=$5
+
+    qualified_filename="${name}@${VERSION}+${PLATFORM}"
+
+    if [ $compile_lto = "y" ]; then
+        qualified_filename+=".lto"
+    else
+        qualified_filename+=".m"
+    fi
+
+    if [ $debug_build = "y" ]; then
+        qualified_filename+=".debug"
+    else
+        qualified_filename+=".ndebug"
+    fi
+
+    if [ $use_swd_jtag = "y" ]; then
+        qualified_filename+=".jtag"
+    else
+        qualified_filename+=".njtag"
+    fi
+
+    qualified_filename+=".${ext}"
+}
+
 function release_file()
 {
     # Parse parameter(s)
-    name=$1
-    ext=$2
-    suffix=$3
+    local from_name=$1
+    local to_name=$2
+    local ext=$3
+    local suffix=$4
+    local debug_build=$5
+    local use_swd_jtag=$6
+
+    local compile_lto="n"
+    local path=$ABSOLUTE_TARGET_DIRECTORY
+    local qualified_filename=""
+
+    # Support Core
+    if [ "$from_name" = "tinker" ]; then
+        path+="/main"
+    else
+        path+="/${from_name}"
+    fi
+    path+="/platform-${PLATFORM_ID}-${suffix}"
+
+    # Translate suffix to parameter
+    if [ "$suffix" = "lto" ]; then
+        compile_lto="y"
+    fi
+
+    # Compose file name
+    compose_qualified_filename $to_name $ext $compile_lto $debug_build $use_swd_jtag
 
     # Move file from build to release folder
-    cp ../build/target/$name/platform-$PLATFORM_ID-$suffix/$name.$ext $BINARY_DIRECTORY/$name-$VERSION+$PLATFORM.$ext
+    cp ${path}/${from_name}.${ext} ${BINARY_DIRECTORY}/${qualified_filename}
 }
 
 function release_binary()
 {
     # Parse parameter(s)
-    name=$1
-    suffix=${2:-m}
+    local from_name=$1
+    local to_name=$2
+    local suffix=${3:-m}
+    local debug_build=${4:-n}
+    local use_swd_jtag=${5:-n}
 
     # Move files into release folder
-    release_file $name bin $suffix
-    release_file $name elf $suffix
-    release_file $name hex $suffix
-    release_file $name lst $suffix
-    release_file $name map $suffix
-}
-
-function release_file_core()
-{
-    # Parse parameter(s)
-    name=$1
-    ext=$2
-
-    # Move file from build target to release folder
-    cp $OUT_CORE/$name.$ext $BINARY_DIRECTORY/$name-$VERSION+$PLATFORM.$ext
-}
-
-function release_binary_core()
-{
-    # Parse parameter(s)
-    name=$1
-
-    release_file_core $name bin
-    release_file_core $name elf
-    release_file_core $name hex
-    release_file_core $name lst
-    release_file_core $name map
-}
-
-function release_binary_module()
-{
-    # Parse parameter(s)
-    source_name=$1
-    target_name=$2
-
-    # Move file from build target to release folder
-    cp $OUT_MODULE/$source_name.bin $BINARY_DIRECTORY/$target_name-$VERSION+$PLATFORM.bin
+    release_file $from_name $to_name "bin" $suffix $debug_build $use_swd_jtag
+    if [ $DEBUG = true ]; then
+        release_file $from_name $to_name "elf" $suffix $debug_build $use_swd_jtag
+        release_file $from_name $to_name "hex" $suffix $debug_build $use_swd_jtag
+        release_file $from_name $to_name "lst" $suffix $debug_build $use_swd_jtag
+        release_file $from_name $to_name "map" $suffix $debug_build $use_swd_jtag
+    fi
 }
 
 # Align platform data (prefer name)
@@ -192,59 +228,53 @@ else
 fi
 mkdir -p $BINARY_DIRECTORY
 
-OUT_CORE=$ABSOLUTE_TARGET_DIRECTORY/main/platform-$PLATFORM_ID-lto
 OUT_MODULE=$ABSOLUTE_TARGET_DIRECTORY/user-part/platform-$PLATFORM_ID-m
 
 # Cleanup
 rm -rf ../build/modules/
 rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 
-# Build Platform Bootloader
-cd ../bootloader
-make clean all -s PLATFORM_ID=$PLATFORM_ID
-release_binary bootloader lto
-
 # Photon (6), P1 (8)
 if [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG"
     cd ../modules
-    if [ $DEBUG = true ]; then
-        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=y USE_SWD_JTAG=y
-    else
-        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n
-        release_binary_module user-part tinker
-    fi
-    release_binary system-part1
-    release_binary system-part2
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+    release_binary system-part1 system-part1 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary system-part2 system-part2 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary user-part tinker "m" $DEBUG_BUILD $USE_SWD_JTAG
 
 # Electron (10)
 elif [ $PLATFORM_ID -eq 10 ]; then
+    DEBUG_BUILD="y"
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG"
     cd ../modules
-    if [ $DEBUG = true ]; then
-        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=y USE_SWD_JTAG=y
-    else
-        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=y
-        release_binary_module user-part tinker
-    fi
-    release_binary system-part1
-    release_binary system-part2
-    release_binary system-part3
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+    release_binary system-part1 system-part1 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary system-part2 system-part2 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary system-part3 system-part3 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary user-part tinker "m" $DEBUG_BUILD $USE_SWD_JTAG
 
 # Core (0)
 elif [ $PLATFORM_ID -eq 0 ]; then
+    DEBUG_BUILD="n"
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG APP=tinker"
     cd ../main
-    if [ $DEBUG = true ]; then
-        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y USE_SWD_JTAG=y APP=tinker
-    else
-        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y APP=tinker
-    fi
-    release_binary_core tinker
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+    release_binary tinker tinker "lto" $DEBUG_BUILD $USE_SWD_JTAG
     cd ../modules
 fi
 
-# Scrub release directory
-if [ $DEBUG = false ]; then
-    rm $BINARY_DIRECTORY/*.elf
-    rm $BINARY_DIRECTORY/*.hex
-    rm $BINARY_DIRECTORY/*.lst
-    rm $BINARY_DIRECTORY/*.map
+# Generate test binaries for platform
+if [ $GENERATE_TESTS = true ]; then
+    ../build/release-tests.sh --output-directory $ABSOLUTE_OUTPUT_DIRECTORY --platform $PLATFORM --version $VERSION
 fi
+
+# Build Platform Bootloader
+cd ../bootloader
+MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG"
+echo $MAKE_COMMAND
+eval $MAKE_COMMAND
+release_binary bootloader bootloader "lto" $DEBUG_BUILD $USE_SWD_JTAG

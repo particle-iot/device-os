@@ -69,7 +69,7 @@ cd $RELEASE_DIRECTORY
 ABSOLUTE_RELEASE_DIRECTORY=$(pwd)
 
 # Make a working directory
-TEMPORARY_DIRECTORY=$ABSOLUTE_RELEASE_DIRECTORY/tmp
+TEMPORARY_DIRECTORY=${ABSOLUTE_RELEASE_DIRECTORY}/tmp
 rm -rf $TEMPORARY_DIRECTORY
 mkdir $TEMPORARY_DIRECTORY
 
@@ -87,18 +87,18 @@ for VERSION in *; do
                 for RELEASE in *; do
                     if [ -d "$RELEASE" ] && [ "$RELEASE" = "release" ]; then
                         pushd $RELEASE > /dev/null
-                        zip $TEMPORARY_DIRECTORY/particle-$VERSION+$PLATFORM.zip . --recurse-paths --quiet
+                        zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}+${PLATFORM}.release.zip . --recurse-paths --quiet
                         cp *.bin $TEMPORARY_DIRECTORY
                         popd > /dev/null
                     fi
                 done
                 popd > /dev/null
-                zip $TEMPORARY_DIRECTORY/particle-platform-$VERSION+$PLATFORM.zip $PLATFORM --recurse-paths --quiet
+                zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}+${PLATFORM}.zip $PLATFORM --recurse-paths --quiet
             fi
         done
         popd > /dev/null
-        zip $TEMPORARY_DIRECTORY/particle-release-$VERSION.zip $VERSION --recurse-paths --quiet
-        PUBLISH_DIRECTORY=$VERSION/publish
+        zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}.zip $VERSION --recurse-paths --quiet
+        PUBLISH_DIRECTORY=${VERSION}/publish
         rm -rf $PUBLISH_DIRECTORY
         mv $TEMPORARY_DIRECTORY $PUBLISH_DIRECTORY
     fi
