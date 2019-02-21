@@ -72,19 +72,19 @@ fi
 function release_file()
 {
     # Parse parameter(s)
-    name=$1
-    ext=$2
-    suffix=$3
+    local name=$1
+    local ext=$2
+    local suffix=$3
 
     # Move file from build to release folder
-    cp ../build/target/$name/platform-$PLATFORM_ID-$suffix/$name.$ext $BINARY_DIRECTORY/$name-$VERSION+$PLATFORM.$ext
+    cp ../build/target/$name/platform-$PLATFORM_ID-$suffix/$name.$ext $BINARY_DIRECTORY/$VERSION+$PLATFORM.$name.$ext
 }
 
 function release_binary()
 {
     # Parse parameter(s)
-    name=$1
-    suffix=${2:-m}
+    local name=$1
+    local suffix=${2:-m}
 
     # Move files into release folder
     release_file $name bin $suffix
@@ -97,17 +97,17 @@ function release_binary()
 function release_file_core()
 {
     # Parse parameter(s)
-    name=$1
-    ext=$2
+    local name=$1
+    local ext=$2
 
     # Move file from build target to release folder
-    cp $OUT_CORE/$name.$ext $BINARY_DIRECTORY/$name-$VERSION+$PLATFORM.$ext
+    cp $OUT_CORE/$name.$ext $BINARY_DIRECTORY/$VERSION+$PLATFORM.$name.$ext
 }
 
 function release_binary_core()
 {
     # Parse parameter(s)
-    name=$1
+    local name=$1
 
     release_file_core $name bin
     release_file_core $name elf
@@ -119,11 +119,11 @@ function release_binary_core()
 function release_binary_module()
 {
     # Parse parameter(s)
-    source_name=$1
-    target_name=$2
+    local source_name=$1
+    local target_name=$2
 
     # Move file from build target to release folder
-    cp $OUT_MODULE/$source_name.bin $BINARY_DIRECTORY/$target_name-$VERSION+$PLATFORM.bin
+    cp $OUT_MODULE/$source_name.bin $BINARY_DIRECTORY/$VERSION+$PLATFORM.$target_name.bin
 }
 
 # Align platform data (prefer name)
