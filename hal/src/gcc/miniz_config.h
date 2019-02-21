@@ -17,18 +17,15 @@
 
 #pragma once
 
-// redefine these for the underlying concurrency primitives available in the RTOS
+#define MINIZ_LITTLE_ENDIAN 1
+#define MINIZ_USE_UNALIGNED_LOADS_AND_STORES 1
+#define MINIZ_HAS_64BIT_REGISTERS 0
 
-typedef int os_result_t;
-typedef int os_thread_prio_t;
-typedef void* os_thread_t;
-typedef void*os_timer_t;
-typedef void*os_queue_t;
-typedef void*os_mutex_t;
-typedef void* condition_variable_t;
-typedef void* os_semaphore_t;
-typedef void* os_mutex_recursive_t;
-typedef uintptr_t os_unique_id_t;
+#define MINIZ_NO_STDIO
+#define MINIZ_NO_ARCHIVE_APIS
+#define MINIZ_NO_TIME
+#define MINIZ_NO_ZLIB_APIS
+#define MINIZ_NO_MALLOC
 
-#define OS_THREAD_PRIORITY_DEFAULT (0)
-#define OS_THREAD_STACK_SIZE_DEFAULT (0)
+// Note: Make sure the compressor tool uses the same dictionary size
+#define MINIZ_LZ_DICT_SIZE 1024

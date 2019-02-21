@@ -52,9 +52,9 @@ typedef struct _sockaddr_t
 typedef uint32_t sock_handle_t;
 typedef uint32_t socklen_t;
 typedef int32_t sock_result_t;
-#if !HAL_USE_SOCKET_HAL_POSIX
+#if !HAL_USE_SOCKET_HAL_POSIX && !HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR
 typedef sockaddr_t sockaddr;
-#endif /* !HAL_USE_SOCKET_HAL_POSIX */
+#endif /* !HAL_USE_SOCKET_HAL_POSIX && !HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR */
 
 static const uint8_t SOCKET_STATUS_INACTIVE = 1;
 static const uint8_t SOCKET_STATUS_ACTIVE = 0;

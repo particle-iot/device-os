@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include "system_tick_hal.h"
 
 namespace particle {
 

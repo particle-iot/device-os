@@ -444,7 +444,8 @@ int ArgonNcpAtClient::getModuleVersion(uint16_t* module) {
 }
 
 int ArgonNcpAtClient::startUpdate(size_t size) {
-    int r = sendCommand("AT+FWUPD=%u", size);
+    // We could have used %zu, but some newlib configurations don't support it
+    int r = sendCommand("AT+FWUPD=%lu", (long unsigned int)size);
     CHECK_TRUE(r > 0, r);
 
     TimeoutOverride t(10000, this);

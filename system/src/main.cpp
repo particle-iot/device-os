@@ -628,6 +628,7 @@ private:
 };
 
 int resetSettingsToFactoryDefaultsIfNeeded() {
+#ifndef SPARK_NO_PLATFORM
     Load_SystemFlags();
     if (SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) != 0x0001) {
         return 0;
@@ -663,6 +664,7 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     CHECK(dct_write_app_data(backup_udp_public_server_key, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, backup_udp_public_server_key_size));
     CHECK(dct_write_app_data(backup_udp_public_server_address, DCT_ALT_SERVER_ADDRESS_OFFSET, backup_udp_public_server_address_size));
 #endif // HAL_PLATFORM_MESH
+#endif // SPARK_NO_PLATFORM
     return 0;
 }
 
@@ -740,7 +742,9 @@ void app_setup_and_loop(void)
     ble_init(nullptr);
 #endif // HAL_PLATFORM_BLE
 
+#if SYSTEM_CONTROL_ENABLED
     system::SystemControl::instance()->init();
+#endif // SYSTEM_CONTROL_ENABLED
 
     manage_safe_mode();
 
