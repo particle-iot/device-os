@@ -355,7 +355,7 @@ int setAdvData(uint8_t* data, uint16_t len, uint8_t flag) {
     return SYSTEM_ERROR_NONE;
 }
 
-static int fromHalScanParams(hal_ble_scan_parameters_t* halScanParams, ble_gap_scan_params_t* scanParams) {
+static int fromHalScanParams(const hal_ble_scan_parameters_t* halScanParams, ble_gap_scan_params_t* scanParams) {
     if (halScanParams == NULL || scanParams == NULL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -373,7 +373,7 @@ static int fromHalScanParams(hal_ble_scan_parameters_t* halScanParams, ble_gap_s
     return SYSTEM_ERROR_NONE;
 }
 
-static int fromHalConnParams(hal_ble_connection_parameters_t* halConnParams, ble_gap_conn_params_t* connParams) {
+static int fromHalConnParams(const hal_ble_connection_parameters_t* halConnParams, ble_gap_conn_params_t* connParams) {
     if (halConnParams == NULL || connParams == NULL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -384,6 +384,21 @@ static int fromHalConnParams(hal_ble_connection_parameters_t* halConnParams, ble
     connParams->max_conn_interval = halConnParams->max_conn_interval;
     connParams->slave_latency     = halConnParams->slave_latency;
     connParams->conn_sup_timeout  = halConnParams->conn_sup_timeout;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+static int toHalConnParams(const ble_gap_conn_params_t* connParams, hal_ble_connection_parameters_t* halConnParams) {
+    if (halConnParams == NULL || connParams == NULL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    memset(halConnParams, 0x00, sizeof(hal_ble_connection_parameters_t));
+
+    halConnParams->min_conn_interval = connParams->min_conn_interval;
+    halConnParams->max_conn_interval = connParams->max_conn_interval;
+    halConnParams->slave_latency = connParams->slave_latency;
+    halConnParams->conn_sup_timeout = connParams->conn_sup_timeout;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -508,11 +523,7 @@ static void connParamsUpdateTimerCb(os_timer_t timer) {
     hal_ble_connection_parameters_t ppcp;
     if (ble_gap_get_ppcp(&ppcp, NULL) == SYSTEM_ERROR_NONE) {
         ble_gap_conn_params_t connParams;
-        connParams.min_conn_interval = ppcp.min_conn_interval;
-        connParams.max_conn_interval = ppcp.max_conn_interval;
-        connParams.slave_latency     = ppcp.slave_latency;
-        connParams.conn_sup_timeout  = ppcp.conn_sup_timeout;
-
+        fromHalConnParams(&ppcp, &connParams);
         ret_code_t ret = sd_ble_gap_conn_param_update(s_bleInstance.connHandle, &connParams);
         if (ret != NRF_SUCCESS) {
             LOG(WARN, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
@@ -740,7 +751,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             s_bleInstance.connHandle = event->evt.gap_evt.conn_handle;
             s_bleInstance.connecting = false;
             s_bleInstance.connected  = true;
-            memcpy(&s_bleInstance.effectiveConnParams, &event->evt.gap_evt.params.connected.conn_params, sizeof(ble_gap_conn_params_t));
+            toHalConnParams(&event->evt.gap_evt.params.connected.conn_params, &s_bleInstance.effectiveConnParams);
             s_bleInstance.peer_addr.addr_type = event->evt.gap_evt.params.connected.peer_addr.addr_type;
             memcpy(s_bleInstance.peer_addr.addr, event->evt.gap_evt.params.connected.peer_addr.addr, BLE_SIG_ADDR_LEN);
 
@@ -811,7 +822,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
             LOG_DEBUG(TRACE, "BLE GAP event: connection parameter updated.");
 
-            memcpy(&s_bleInstance.effectiveConnParams, &event->evt.gap_evt.params.conn_param_update.conn_params, sizeof(ble_gap_conn_params_t));
+            toHalConnParams(&event->evt.gap_evt.params.conn_param_update.conn_params, &s_bleInstance.effectiveConnParams);
 
             LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
             LOG_DEBUG(TRACE, "  %.2f          %d       %d",
@@ -1706,12 +1717,7 @@ int ble_gap_get_ppcp(hal_ble_connection_parameters_t* ppcp, void *reserved) {
         return sysError(ret);
     }
 
-    ppcp->min_conn_interval = connParams.min_conn_interval;
-    ppcp->max_conn_interval = connParams.max_conn_interval;
-    ppcp->slave_latency     = connParams.slave_latency;
-    ppcp->conn_sup_timeout  = connParams.conn_sup_timeout;
-
-    return SYSTEM_ERROR_NONE;
+    return toHalConnParams(&connParams, ppcp);
 }
 
 int ble_gap_add_whitelist(hal_ble_address_t* addr_list, uint8_t len, void *reserved) {
@@ -1915,17 +1921,12 @@ int ble_gap_set_scan_parameters(hal_ble_scan_parameters_t* scan_params, void *re
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    if (scan_params->interval < BLE_GAP_SCAN_INTERVAL_MIN) {
-        scan_params->interval = BLE_GAP_SCAN_INTERVAL_MIN;
-    }
-    if (scan_params->interval > BLE_GAP_SCAN_INTERVAL_MAX) {
-        scan_params->interval = BLE_GAP_SCAN_INTERVAL_MAX;
-    }
-    if (scan_params->window < BLE_GAP_SCAN_WINDOW_MIN) {
-        scan_params->window = BLE_GAP_SCAN_WINDOW_MIN;
-    }
-    if (scan_params->window > BLE_GAP_SCAN_WINDOW_MAX) {
-        scan_params->window = BLE_GAP_SCAN_WINDOW_MAX;
+    if (    (scan_params->interval < BLE_GAP_SCAN_INTERVAL_MIN)
+         || (scan_params->interval > BLE_GAP_SCAN_INTERVAL_MAX)
+         || (scan_params->window < BLE_GAP_SCAN_WINDOW_MIN)
+         || (scan_params->window > BLE_GAP_SCAN_WINDOW_MAX)
+         || (scan_params->window > scan_params->interval) ) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     memcpy(&s_bleInstance.scanParams, scan_params, sizeof(hal_ble_scan_parameters_t));
@@ -2081,10 +2082,7 @@ int ble_gap_update_connection_params(uint16_t conn_handle, hal_ble_connection_pa
         // For Central role, this will initiate the connection parameter update procedure.
         // For Peripheral role, this will use the passed in parameters and send the request to central.
         ble_gap_conn_params_t connParams;
-        connParams.min_conn_interval = conn_params->min_conn_interval;
-        connParams.max_conn_interval = conn_params->max_conn_interval;
-        connParams.slave_latency     = conn_params->slave_latency;
-        connParams.conn_sup_timeout  = conn_params->conn_sup_timeout;
+        fromHalConnParams(conn_params, &connParams);
         ret = sd_ble_gap_conn_param_update(conn_handle, &connParams);
     }
 
