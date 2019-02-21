@@ -238,7 +238,7 @@ void setup()
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
-    advParams.timeout       = 1000;
+    advParams.timeout       = 0;
     advParams.inc_tx_power  = false;
     ble_gap_set_advertising_parameters(&advParams, NULL);
 

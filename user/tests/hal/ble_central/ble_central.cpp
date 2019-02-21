@@ -19,9 +19,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
+#include "unit-test/unit-test.h"
 #include "ble_hal.h"
+#include "system_error.h"
 
-SYSTEM_MODE(MANUAL);
+/**
+ * Important note:
+ * This test need another BLE device that is running the user/tests/app/ble/peripheral example.
+ */
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
@@ -36,8 +41,16 @@ uint16_t char3Uuid = 0x5678;
 
 hal_ble_service_t service1, service2, service3;
 hal_ble_characteristic_t char1, char2, char3;
-bool char1Discovered, char2Discovered, char3Discovered;
+
+bool svc1Discovered = false, svc2Discovered = false, svc3Discovered= false;
+bool char1Discovered = false, char2Discovered = false, char3Discovered = false;
+bool cccdDiscovered = false;
+bool notifiedData = false, readData = false;
+
+uint8_t char1Data[20];
+
 uint16_t connHandle = BLE_INVALID_CONN_HANDLE;
+bool connectOnFound = false;
 
 const char *addrType[4] = {
     "Public",
@@ -107,8 +120,10 @@ static void ble_on_scan_result(hal_ble_gap_on_scan_result_evt_t *event) {
     if (devNameLen != 0 && devNameLen < sizeof(devName)) {
         devName[devNameLen] = '\0';
         if (!strcmp((const char*)devName, "Xenon BLE Sample")) {
-            LOG(TRACE, "Target device found. Start connecting...");
-            ble_gap_connect(&event->peer_addr, NULL);
+            if (connectOnFound) {
+                LOG(TRACE, "Target device found. Start connecting...");
+                ble_gap_connect(&event->peer_addr, NULL);
+            }
         }
     }
 }
@@ -125,8 +140,6 @@ static void ble_on_connected(hal_ble_gap_on_connected_evt_t *event) {
     LOG(TRACE, "Peer address: %02X:%02X:%02X:%02X:%02X:%02X.", event->peer_addr.addr[0], event->peer_addr.addr[1],
                 event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
     LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
-
-    ble_gatt_client_discover_all_services(event->conn_handle, NULL);
 
     connHandle = event->conn_handle;
 }
@@ -152,26 +165,25 @@ static void ble_on_services_discovered(hal_ble_gatt_client_on_services_discovere
         if (event->services[i].uuid.type == BLE_UUID_TYPE_16BIT) {
             if (event->services[i].uuid.uuid16 == svc3Uuid) {
                 service = &service3;
+                svc3Discovered = true;
                 LOG(TRACE, "BLE Service3 found.");
             }
         }
         else if (event->services[i].uuid.type == BLE_UUID_TYPE_128BIT) {
             if (!memcmp(svc1Uuid, event->services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
                 service = &service1;
+                svc1Discovered = true;
                 LOG(TRACE, "BLE Service1 found.");
             }
             else if (!memcmp(svc2Uuid, event->services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
                 service = &service2;
+                svc2Discovered = true;
                 LOG(TRACE, "BLE Service2 found.");
             }
         }
         if (service != NULL) {
             memcpy(service, &event->services[i], sizeof(hal_ble_service_t));
         }
-    }
-
-    if (!char1Discovered) {
-        ble_gatt_client_discover_characteristics(event->conn_handle, service1.start_handle, service1.end_handle, NULL);
     }
 }
 
@@ -208,9 +220,6 @@ static void ble_on_characteristics_discovered(hal_ble_gatt_client_on_characteris
     else if (!char3Discovered) {
         ble_gatt_client_discover_characteristics(event->conn_handle, service3.start_handle, service3.end_handle, NULL);
     }
-    else {
-        ble_gatt_client_discover_descriptors(event->conn_handle, char2.value_handle, char3.decl_handle, NULL);
-    }
 }
 
 static void ble_on_descriptors_discovered(hal_ble_gatt_client_on_descriptors_discovered_evt_t *event) {
@@ -218,8 +227,7 @@ static void ble_on_descriptors_discovered(hal_ble_gatt_client_on_descriptors_dis
         if (event->descriptors[i].uuid.uuid16 == BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC) {
             char2.cccd_handle = event->descriptors[i].handle;
             LOG(TRACE, "BLE Characteristic2 CCCD found.");
-
-            ble_gatt_client_configure_cccd(event->conn_handle, char2.cccd_handle, BLE_SIG_CCCD_VAL_NOTIFICATION, NULL);
+            cccdDiscovered = true;
         }
     }
 }
@@ -229,9 +237,12 @@ static void ble_on_data_received(hal_ble_gatt_client_on_data_received_evt_t *eve
 
     if (event->peer_attr_handle == char1.value_handle) {
         LOG(TRACE, "Read BLE characteristic 1 value:");
+        readData = true;
+        memcpy(char1Data, event->data, event->data_len);
     }
     else if (event->peer_attr_handle == char2.value_handle) {
         LOG(TRACE, "Notified BLE characteristic 2 value:");
+        notifiedData = true;
     }
     else {
         LOG(TRACE, "BLE received data, attribute handle: %d.", event->peer_attr_handle);
@@ -243,22 +254,32 @@ static void ble_on_data_received(hal_ble_gatt_client_on_data_received_evt_t *eve
     Serial1.print("\r\n");
 }
 
-/* This function is called once at start up ----------------------------------*/
-void setup()
-{
-    uint8_t devName[] = "Xenon BLE Central";
-
-    ble_stack_init(NULL);
-
-    ble_gap_set_device_name(devName, sizeof(devName));
-
+test(01_BleSetScanParametersShouldBeValid) {
+    int ret;
     hal_ble_scan_parameters_t scanParams;
+
+    ret = ble_stack_init(NULL);
+    assertEqual(ret, 0);
+
     scanParams.active = true;
     scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
-    scanParams.interval = 3200; // 2 seconds
-    scanParams.window   = 100;
-    scanParams.timeout  = 2000; // 0 for forever unless stop initially
-    ble_gap_set_scan_parameters(&scanParams, NULL);
+    scanParams.interval = 1;
+    scanParams.window   = 1;
+    scanParams.timeout  = 0; // 0 for forever unless stop initially
+    ret = ble_gap_set_scan_parameters(&scanParams, NULL);
+    assertNotEqual(ret, 0);
+
+    scanParams.interval = 1600; // 1 seconds
+    ret = ble_gap_set_scan_parameters(&scanParams, NULL);
+    assertNotEqual(ret, 0);
+
+    scanParams.window = 1601;
+    ret = ble_gap_set_scan_parameters(&scanParams, NULL);
+    assertNotEqual(ret, 0);
+
+    scanParams.window = 100;
+    ret = ble_gap_set_scan_parameters(&scanParams, NULL);
+    assertEqual(ret, 0);
 
     ble_gap_set_callback_on_scan_result(ble_on_scan_result);
     ble_gap_set_callback_on_connected(ble_on_connected);
@@ -267,15 +288,144 @@ void setup()
     ble_gatt_client_set_callback_on_characteristics_discovered(ble_on_characteristics_discovered);
     ble_gatt_client_set_callback_on_descriptors_discovered(ble_on_descriptors_discovered);
     ble_gatt_client_set_callback_on_data_received(ble_on_data_received);
-
-    ble_gap_start_scan(NULL);
 }
 
-/* This function loops forever --------------------------------------------*/
-void loop()
-{
-    if (ble_gap_is_connected() && char3Discovered) {
-        delay(2000);
-        ble_gatt_client_read(connHandle, char1.value_handle, NULL);
-    }
+test(02_BleScanTimeoutAsExpected) {
+    int ret;
+    hal_ble_scan_parameters_t scanParams;
+
+    scanParams.active = true;
+    scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    scanParams.interval = 1600;
+    scanParams.window   = 100;
+    scanParams.timeout  = 200; // Scan for 2 seconds
+    ret = ble_gap_set_scan_parameters(&scanParams, NULL);
+    assertEqual(ret, 0);
+
+    ret = ble_gap_start_scan(NULL);
+    assertEqual(ret, 0);
+    ret = ble_gap_is_scanning();
+    assertEqual(ret, true);
+
+    delay(6000);
+    ret = ble_gap_is_scanning();
+    assertEqual(ret, false);
 }
+
+test(03_BleConnectToPeerSuccessfully) {
+    int ret;
+    hal_ble_scan_parameters_t scanParams;
+
+    scanParams.active = true;
+    scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    scanParams.interval = 1600;
+    scanParams.window   = 100;
+    scanParams.timeout  = 1000; // Scan for 10 seconds
+    ret = ble_gap_set_scan_parameters(&scanParams, NULL);
+    assertEqual(ret, 0);
+
+    connectOnFound = true;
+
+    ret = ble_gap_start_scan(NULL);
+    assertEqual(ret, 0);
+
+    while (ble_gap_is_scanning());
+
+    delay(2000);
+    ret = ble_gap_is_connected();
+    assertEqual(ret, true);
+}
+
+test(04_BleDiscoverServicesSuccessfully) {
+    int ret;
+
+    ret = ble_gatt_client_discover_all_services(connHandle, NULL);
+    assertEqual(ret, 0);
+    ret = ble_gatt_client_is_discovering();
+    assertEqual(ret, true);
+
+    while(ble_gatt_client_is_discovering());
+
+    delay(100);
+    assertEqual(svc1Discovered, true);
+    assertEqual(svc2Discovered, true);
+    assertEqual(svc3Discovered, true);
+}
+
+test(05_BleDiscoverCharacteristicsSuccessfully) {
+    int ret;
+
+    ret = ble_gatt_client_discover_characteristics(connHandle, service1.start_handle, service1.end_handle, NULL);
+    assertEqual(ret, 0);
+    ret = ble_gatt_client_is_discovering();
+    assertEqual(ret, true);
+
+    while(ble_gatt_client_is_discovering());
+
+    delay(100);
+    assertEqual(char1Discovered, true);
+    assertEqual(char2Discovered, true);
+    assertEqual(char3Discovered, true);
+}
+
+test(06_BleDiscoverDescriptorsAndConfigCccdSuccessfully) {
+    int ret;
+
+    ret = ble_gatt_client_discover_descriptors(connHandle, char2.value_handle, char3.decl_handle, NULL);
+    assertEqual(ret, 0);
+    ret = ble_gatt_client_is_discovering();
+    assertEqual(ret, true);
+
+    while(ble_gatt_client_is_discovering());
+
+    delay(100);
+    assertEqual(cccdDiscovered, true);
+
+    ret = ble_gatt_client_configure_cccd(connHandle, char2.cccd_handle, BLE_SIG_CCCD_VAL_NOTIFICATION, NULL);
+    assertEqual(ret, 0);
+
+    delay(5000);
+    assertEqual(notifiedData, true);
+
+    ret = ble_gatt_client_configure_cccd(connHandle, char2.cccd_handle, BLE_SIG_CCCD_VAL_DISABLED, NULL);
+    assertEqual(ret, 0);
+
+    delay(1000);
+}
+
+test(07_BleReadWriteDataSuccessfully) {
+    int ret;
+
+    ret = ble_gatt_client_read(connHandle, char1.value_handle, NULL);
+    assertEqual(ret, 0);
+
+    delay(1000);
+    assertEqual(readData, true);
+
+    uint8_t writeData[] = {0xaa, 0xbb, 0x5a, 0xa5};
+    ret = ble_gatt_client_write_with_response(connHandle, char1.value_handle, writeData, sizeof(writeData), NULL);
+    assertEqual(ret, 0);
+
+    delay(1000);
+    ret = ble_gatt_client_read(connHandle, char1.value_handle, NULL);
+    assertEqual(ret, 0);
+
+    delay(1000);
+    ret = memcmp(char1Data, writeData, sizeof(writeData));
+    assertEqual(ret, 0);
+
+    ret = ble_gatt_client_write_without_response(connHandle, char3.value_handle, writeData, sizeof(writeData), NULL);
+    assertEqual(ret, 0);
+}
+
+test(08_BleDisconnectSuccessfully) {
+    int ret;
+
+    ret = ble_gap_disconnect(connHandle, NULL);
+    assertEqual(ret, 0);
+
+    delay(1000);
+    ret = ble_gap_is_connected();
+    assertEqual(ret, false);
+}
+
