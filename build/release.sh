@@ -10,8 +10,8 @@ if [ ${PIPESTATUS[0]} -ne 4 ]; then
     exit 1
 fi
 
-OPTIONS=i:p:o:
-LONGOPTS=platform-id:,platform:,output-directory:
+OPTIONS=di:p:o:
+LONGOPTS=debug,platform-id:,platform:,output-directory:
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -28,6 +28,7 @@ fi
 eval set -- "$PARSED"
 
 # Set default(s)
+DEBUG=false
 PLATFORM=""
 PLATFORM_ID=""
 OUTPUT_DIRECTORY="../build/releases"
@@ -35,6 +36,10 @@ OUTPUT_DIRECTORY="../build/releases"
 # Parse parameter(s)
 while true; do
     case "$1" in
+        -d|--debug)
+            DEBUG=true
+            shift 1
+            ;;
         -i|--platform-id)
             PLATFORM_ID="$2"
             shift 2
@@ -72,7 +77,7 @@ function release_file()
     suffix=$3
 
     # Move file from build to release folder
-    cp ../build/target/$name/platform-$PLATFORM_ID-$suffix/$name.$ext $RELEASE_DIR/$name-$VERSION+$PLATFORM.$ext
+    cp ../build/target/$name/platform-$PLATFORM_ID-$suffix/$name.$ext $BINARY_DIRECTORY/$name-$VERSION+$PLATFORM.$ext
 }
 
 function release_binary()
@@ -84,12 +89,9 @@ function release_binary()
     # Move files into release folder
     release_file $name bin $suffix
     release_file $name elf $suffix
-    release_file $name map $suffix
-    release_file $name lst $suffix
     release_file $name hex $suffix
-
-    # Move release binaries to publish folder
-    cp $RELEASE_DIR/$name-$VERSION+$PLATFORM.bin $TEMPORARY_DIR/
+    release_file $name lst $suffix
+    release_file $name map $suffix
 }
 
 function release_file_core()
@@ -99,7 +101,7 @@ function release_file_core()
     ext=$2
 
     # Move file from build target to release folder
-    cp $OUT_CORE/$name.$ext $RELEASE_DIR/$name-$VERSION+$PLATFORM.$ext
+    cp $OUT_CORE/$name.$ext $BINARY_DIRECTORY/$name-$VERSION+$PLATFORM.$ext
 }
 
 function release_binary_core()
@@ -109,12 +111,9 @@ function release_binary_core()
 
     release_file_core $name bin
     release_file_core $name elf
-    release_file_core $name map
-    release_file_core $name lst
     release_file_core $name hex
-
-    # Move release binaries to publish folder
-    cp $RELEASE_DIR/$name-$VERSION+$PLATFORM.bin $TEMPORARY_DIR/
+    release_file_core $name lst
+    release_file_core $name map
 }
 
 function release_binary_module()
@@ -124,7 +123,7 @@ function release_binary_module()
     target_name=$2
 
     # Move file from build target to release folder
-    cp $OUT_MODULE/$source_name.bin $TEMPORARY_DIR/$target_name-$VERSION+$PLATFORM.bin
+    cp $OUT_MODULE/$source_name.bin $BINARY_DIRECTORY/$target_name-$VERSION+$PLATFORM.bin
 }
 
 # Align platform data (prefer name)
@@ -173,26 +172,25 @@ fi
 
 # Eliminate relative paths
 mkdir -p $OUTPUT_DIRECTORY
-pushd $OUTPUT_DIRECTORY
+pushd $OUTPUT_DIRECTORY > /dev/null
 ABSOLUTE_OUTPUT_DIRECTORY=$(pwd)
-popd
+popd > /dev/null
 
 TARGET_DIRECTORY=../build/target
 mkdir -p $TARGET_DIRECTORY
-pushd $TARGET_DIRECTORY
+pushd $TARGET_DIRECTORY > /dev/null
 ABSOLUTE_TARGET_DIRECTORY=$(pwd)
-popd
+popd > /dev/null
 
 # Create binary output directories
 QUALIFIED_OUTPUT_DIRECTORY=$ABSOLUTE_OUTPUT_DIRECTORY/$VERSION/$PLATFORM
-TEMPORARY_DIR=$QUALIFIED_OUTPUT_DIRECTORY/tmp
-mkdir -p $TEMPORARY_DIR
 
-RELEASE_DIR=$QUALIFIED_OUTPUT_DIRECTORY/release
-mkdir -p $RELEASE_DIR
-
-GITHUB_RELEASE_DIRECTORY=$ABSOLUTE_OUTPUT_DIRECTORY/$VERSION/github
-mkdir -p $GITHUB_RELEASE_DIRECTORY
+if [ $DEBUG = true ]; then
+    BINARY_DIRECTORY=$QUALIFIED_OUTPUT_DIRECTORY/debug
+else
+    BINARY_DIRECTORY=$QUALIFIED_OUTPUT_DIRECTORY/release
+fi
+mkdir -p $BINARY_DIRECTORY
 
 OUT_CORE=$ABSOLUTE_TARGET_DIRECTORY/main/platform-$PLATFORM_ID-lto
 OUT_MODULE=$ABSOLUTE_TARGET_DIRECTORY/user-part/platform-$PLATFORM_ID-m
@@ -209,32 +207,44 @@ release_binary bootloader lto
 # Photon (6), P1 (8)
 if [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
     cd ../modules
-    make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n
+    if [ $DEBUG = true ]; then
+        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=y USE_SWD_JTAG=y
+    else
+        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n
+        release_binary_module user-part tinker
+    fi
     release_binary system-part1
     release_binary system-part2
-    release_binary_module user-part tinker
 
 # Electron (10)
 elif [ $PLATFORM_ID -eq 10 ]; then
     cd ../modules
-    make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=y
+    if [ $DEBUG = true ]; then
+        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=y USE_SWD_JTAG=y
+    else
+        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=y
+        release_binary_module user-part tinker
+    fi
     release_binary system-part1
     release_binary system-part2
     release_binary system-part3
-    release_binary_module user-part tinker
 
 # Core (0)
 elif [ $PLATFORM_ID -eq 0 ]; then
     cd ../main
-    cp ../Dockerfile.test .
-    make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y APP=tinker
+    if [ $DEBUG = true ]; then
+        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y USE_SWD_JTAG=y APP=tinker
+    else
+        make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y APP=tinker
+    fi
     release_binary_core tinker
     cd ../modules
 fi
 
-# Create tarball for publication
-pushd $TEMPORARY_DIR
-tar -czvf $GITHUB_RELEASE_DIRECTORY/particle-$VERSION+$PLATFORM.tar.gz *.bin
-mv *.bin $GITHUB_RELEASE_DIRECTORY
-popd
-rm -rf $TEMPORARY_DIR
+# Scrub release directory
+if [ $DEBUG = false ]; then
+    rm $BINARY_DIRECTORY/*.elf
+    rm $BINARY_DIRECTORY/*.hex
+    rm $BINARY_DIRECTORY/*.lst
+    rm $BINARY_DIRECTORY/*.map
+fi
