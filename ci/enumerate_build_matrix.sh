@@ -57,8 +57,9 @@ fi
 if platform gcc; then
 echo
 echo '-----------------------------------------------------------------------'
-source ./ci/install_boost.sh
-./ci/build_boost.sh
+# Note: we are already in main directory
+source ../ci/install_boost.sh
+../ci/build_boost.sh
 echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM=gcc
