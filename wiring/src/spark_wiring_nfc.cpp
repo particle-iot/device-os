@@ -104,7 +104,9 @@ LauchappRecord::LauchappRecord(const char *androidPackageName) {
 size_t NdefMessage::getEncodedSize() {
     size_t length = 0;
     for (auto record : records_) {
-        length += record->getEncodedSize();
+        if (record.get()) {
+            length += record->getEncodedSize();
+        }
     }
 
     return length;
@@ -119,13 +121,15 @@ size_t NdefMessage::getEncodedData(void *data, size_t numBytes) {
     size_t tmpRecordLength = 0;
 
     for (auto record : records_) {
-        tmpRecordLength = record->getEncodedSize();
-        if (copyLength + tmpRecordLength > numBytes) {
-            break;
-        } else {
-            uint8_t *pdata = static_cast<uint8_t *>(data);
-            record->getEncodedData(&pdata[copyLength], tmpRecordLength);
-            copyLength += tmpRecordLength;
+        if (record.get()) {
+            tmpRecordLength = record->getEncodedSize();
+            if (copyLength + tmpRecordLength > numBytes) {
+                break;
+            } else {
+                uint8_t *pdata = static_cast<uint8_t *>(data);
+                record->getEncodedData(&pdata[copyLength], tmpRecordLength);
+                copyLength += tmpRecordLength;
+            }
         }
     }
 
