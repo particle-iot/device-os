@@ -110,6 +110,7 @@
 #define Wiring_Mesh 1
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1
+#define Wiring_NFC 1
 //#ifdef DEBUG_BUILD
 //#define Wiring_Rtt 1
 //#endif
