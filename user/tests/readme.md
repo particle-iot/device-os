@@ -106,3 +106,10 @@ cd main
 make APP=../tests/app/<appname> all program-dfu
 ```
 
+## Scripts
+
+A number of self contained Bash scripts that facilitate various tests on Mac OSX systems:
+
+- p1sflashtest - P1 external 1MB sFlash test
+- upgrade-downgrade - Module dependency validation test, for upgrading and downgrading via OTA/Ymodem
+- country-updown - Test for Country Code issue on Photon/P1
