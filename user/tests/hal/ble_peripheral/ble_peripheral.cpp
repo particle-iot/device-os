@@ -363,7 +363,6 @@ test(09_BleChangeAdvertisingDataDuringAdvertising) {
 
     ret = ble_gap_stop_advertising();
     assertEqual(ret, 0);
-    delay(100);
     ret = ble_gap_is_advertising();
     assertEqual(ret, false);
 }
@@ -444,8 +443,6 @@ test(11_BlePeripheralCanDisconnectInitially_NeedToConnectByCentralSide) {
     delay(5000);
     ret = ble_gap_disconnect(0, NULL);
     assertEqual(ret, 0);
-
-    delay(500);
 
     // It should restart advertising
     ret = ble_gap_is_connected();

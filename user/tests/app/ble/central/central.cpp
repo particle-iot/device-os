@@ -278,4 +278,6 @@ void loop()
         delay(2000);
         ble_gatt_client_read(connHandle, char1.value_handle, NULL);
     }
+    delay(5000);
+    ble_gap_stop_scan();
 }
