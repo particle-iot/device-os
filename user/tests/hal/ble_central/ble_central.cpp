@@ -213,13 +213,6 @@ static void ble_on_characteristics_discovered(hal_ble_gatt_client_on_characteris
             memcpy(characteristic, &event->characteristics[i], sizeof(hal_ble_characteristic_t));
         }
     }
-
-    if (!char2Discovered) {
-        ble_gatt_client_discover_characteristics(event->conn_handle, service2.start_handle, service2.end_handle, NULL);
-    }
-    else if (!char3Discovered) {
-        ble_gatt_client_discover_characteristics(event->conn_handle, service3.start_handle, service3.end_handle, NULL);
-    }
 }
 
 static void ble_on_descriptors_discovered(hal_ble_gatt_client_on_descriptors_discovered_evt_t *event) {
@@ -341,12 +334,7 @@ test(04_BleDiscoverServicesSuccessfully) {
 
     ret = ble_gatt_client_discover_all_services(connHandle, NULL);
     assertEqual(ret, 0);
-    ret = ble_gatt_client_is_discovering();
-    assertEqual(ret, true);
 
-    while(ble_gatt_client_is_discovering());
-
-    delay(100);
     assertEqual(svc1Discovered, true);
     assertEqual(svc2Discovered, true);
     assertEqual(svc3Discovered, true);
@@ -357,14 +345,14 @@ test(05_BleDiscoverCharacteristicsSuccessfully) {
 
     ret = ble_gatt_client_discover_characteristics(connHandle, service1.start_handle, service1.end_handle, NULL);
     assertEqual(ret, 0);
-    ret = ble_gatt_client_is_discovering();
-    assertEqual(ret, true);
-
-    while(ble_gatt_client_is_discovering());
-
-    delay(100);
     assertEqual(char1Discovered, true);
+
+    ret = ble_gatt_client_discover_characteristics(connHandle, service2.start_handle, service2.end_handle, NULL);
+    assertEqual(ret, 0);
     assertEqual(char2Discovered, true);
+
+    ret = ble_gatt_client_discover_characteristics(connHandle, service3.start_handle, service3.end_handle, NULL);
+    assertEqual(ret, 0);
     assertEqual(char3Discovered, true);
 }
 
@@ -373,12 +361,6 @@ test(06_BleDiscoverDescriptorsAndConfigCccdSuccessfully) {
 
     ret = ble_gatt_client_discover_descriptors(connHandle, char2.value_handle, char3.decl_handle, NULL);
     assertEqual(ret, 0);
-    ret = ble_gatt_client_is_discovering();
-    assertEqual(ret, true);
-
-    while(ble_gatt_client_is_discovering());
-
-    delay(100);
     assertEqual(cccdDiscovered, true);
 
     ret = ble_gatt_client_configure_cccd(connHandle, char2.cccd_handle, BLE_SIG_CCCD_VAL_NOTIFICATION, NULL);
@@ -389,8 +371,6 @@ test(06_BleDiscoverDescriptorsAndConfigCccdSuccessfully) {
 
     ret = ble_gatt_client_configure_cccd(connHandle, char2.cccd_handle, BLE_SIG_CCCD_VAL_DISABLED, NULL);
     assertEqual(ret, 0);
-
-    delay(1000);
 }
 
 test(07_BleReadWriteDataSuccessfully) {
@@ -398,19 +378,14 @@ test(07_BleReadWriteDataSuccessfully) {
 
     ret = ble_gatt_client_read(connHandle, char1.value_handle, NULL);
     assertEqual(ret, 0);
-
-    delay(1000);
     assertEqual(readData, true);
 
     uint8_t writeData[] = {0xaa, 0xbb, 0x5a, 0xa5};
     ret = ble_gatt_client_write_with_response(connHandle, char1.value_handle, writeData, sizeof(writeData), NULL);
     assertEqual(ret, 0);
 
-    delay(1000);
     ret = ble_gatt_client_read(connHandle, char1.value_handle, NULL);
     assertEqual(ret, 0);
-
-    delay(1000);
     ret = memcmp(char1Data, writeData, sizeof(writeData));
     assertEqual(ret, 0);
 
@@ -423,8 +398,6 @@ test(08_BleDisconnectSuccessfully) {
 
     ret = ble_gap_disconnect(connHandle, NULL);
     assertEqual(ret, 0);
-
-    delay(1000);
     ret = ble_gap_is_connected();
     assertEqual(ret, false);
 }
