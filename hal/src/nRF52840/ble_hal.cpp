@@ -55,6 +55,9 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #define BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS     0x02
 #define BLE_DISCOVERY_PROCEDURE_DESCRIPTORS         0x03
 
+#define BLE_GENERAL_PROCEDURE_TIMEOUT            	5000 // In milliseconds
+#define BLE_DICOVERY_PROCEDURE_TIMEOUT				15000 // In milliseconds
+
 
 StaticRecursiveMutex s_bleMutex;
 
@@ -114,6 +117,7 @@ typedef struct {
     uint8_t                  count;
     uint8_t                  currIndex;
     uint8_t                  currDiscProcedure;
+    os_semaphore_t           semaphore;
 } HalBleDiscovery_t;
 
 // TODO: used when muti-role is implemented
@@ -130,7 +134,6 @@ typedef struct {
     uint8_t  connecting   : 1;
     uint8_t  discovering  : 1;
     uint8_t  connected    : 1;
-    uint8_t  indConfirmed : 1;
     int8_t   txPower;
     uint8_t  role;
     uint16_t connHandle;
@@ -146,7 +149,11 @@ typedef struct {
     uint8_t  scanRespData[BLE_MAX_ADV_DATA_LEN];
     uint16_t scanRespDataLen;
 
-    os_semaphore_t semaphore;
+    os_semaphore_t connectSemaphore;
+    os_semaphore_t disconnectSemaphore;
+    os_semaphore_t connUpdateSemaphore;
+    os_semaphore_t discoverySemaphore;
+    os_semaphore_t readWriteSemaphore;
     os_queue_t     evtQueue;
     os_thread_t    evtThread;
     os_timer_t     connParamsUpdateTimer;
@@ -179,7 +186,6 @@ static HalBleInstance_t s_bleInstance = {
     .connecting   = 0,
     .discovering  = 0,
     .connected    = 0,
-    .indConfirmed = 1,
     .txPower      = 0,
     .role         = BLE_ROLE_INVALID,
     .connHandle   = BLE_INVALID_CONN_HANDLE,
@@ -226,7 +232,11 @@ static HalBleInstance_t s_bleInstance = {
     .scanRespData = { 0 },
     .scanRespDataLen = 0,
 
-    .semaphore = NULL,
+    .connectSemaphore = NULL,
+    .disconnectSemaphore = NULL,
+    .connUpdateSemaphore = NULL,
+	.discoverySemaphore = NULL,
+    .readWriteSemaphore = NULL,
     .evtQueue  = NULL,
     .evtThread = NULL,
     .connParamsUpdateTimer = NULL,
@@ -522,38 +532,40 @@ static void connParamsUpdateTimerCb(os_timer_t timer) {
 
     hal_ble_connection_parameters_t ppcp;
     if (ble_gap_get_ppcp(&ppcp, NULL) == SYSTEM_ERROR_NONE) {
-        ble_gap_conn_params_t connParams;
-        fromHalConnParams(&ppcp, &connParams);
-        ret_code_t ret = sd_ble_gap_conn_param_update(s_bleInstance.connHandle, &connParams);
-        if (ret != NRF_SUCCESS) {
-            LOG(WARN, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
+        int ret = ble_gap_update_connection_params(s_bleInstance.connHandle, &ppcp, NULL);
+        if (ret == SYSTEM_ERROR_NONE) {
+            s_bleInstance.connParamsUpdateAttempts++;
             return;
         }
-
-        s_bleInstance.connParamsUpdateAttempts++;
     }
+
+    ret_code_t ret = sd_ble_gap_disconnect(s_bleInstance.connHandle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
+        return;
+    }
+    LOG_DEBUG(TRACE, "Disconnecting. Update BLE connection parameters failed.");
 }
 
+// Only used for BLE Peripheral
 static void updateConnParamsIfNeeded(void) {
     if (s_bleInstance.role == BLE_ROLE_PERIPHERAL && !isConnParamsFeeded(&s_bleInstance.effectiveConnParams)) {
         if (s_bleInstance.connParamsUpdateAttempts < BLE_CONN_PARAMS_UPDATE_ATTEMPS) {
             if (s_bleInstance.connParamsUpdateTimer != NULL) {
-                if (os_timer_change(s_bleInstance.connParamsUpdateTimer, OS_TIMER_CHANGE_START, true, 0, 0, NULL)) {
-                    LOG(ERROR, "os_timer_change() failed.");
+                if (!os_timer_change(s_bleInstance.connParamsUpdateTimer, OS_TIMER_CHANGE_START, true, 0, 0, NULL)) {
+                    LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms",
+                            s_bleInstance.connParamsUpdateAttempts, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
                     return;
                 }
             }
-            LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms",
-                    s_bleInstance.connParamsUpdateAttempts, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
         }
-        else {
-            ret_code_t ret = sd_ble_gap_disconnect(s_bleInstance.connHandle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
-            if (ret != NRF_SUCCESS) {
-                LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
-                return;
-            }
-            LOG_DEBUG(TRACE, "Disconnecting. Update BLE connection parameters failed.");
+
+        ret_code_t ret = sd_ble_gap_disconnect(s_bleInstance.connHandle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
+            return;
         }
+        LOG_DEBUG(TRACE, "Disconnecting. Update BLE connection parameters failed.");
     }
 }
 
@@ -654,6 +666,11 @@ static int addCharacteristic(uint16_t svcHandle, const ble_uuid_t* uuid, uint8_t
 static int writeAttribute(uint16_t connHandle, uint16_t attrHandle, uint8_t* data, uint16_t len, bool response) {
     ble_gattc_write_params_t writeParams;
 
+    if (os_semaphore_create(&s_bleInstance.readWriteSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     if (response) {
         writeParams.write_op = BLE_GATT_OP_WRITE_REQ;
     }
@@ -669,8 +686,12 @@ static int writeAttribute(uint16_t connHandle, uint16_t attrHandle, uint8_t* dat
     ret_code_t ret = sd_ble_gattc_write(connHandle, &writeParams);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gattc_write() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
         return sysError(ret);
     }
+
+    os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -765,6 +786,8 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             // Update connection parameters if needed.
             s_bleInstance.connParamsUpdateAttempts = 0;
             updateConnParamsIfNeeded();
+
+            os_semaphore_give(s_bleInstance.connectSemaphore, false);
         } break;
 
         case BLE_GAP_EVT_DISCONNECTED: {
@@ -806,7 +829,8 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             s_bleInstance.connHandle   = BLE_INVALID_CONN_HANDLE;
             s_bleInstance.role         = BLE_ROLE_INVALID;
             s_bleInstance.connected    = false;
-            s_bleInstance.indConfirmed = true;
+
+            os_semaphore_give(s_bleInstance.disconnectSemaphore, false);
         } break;
 
         case BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST: {
@@ -845,6 +869,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                     LOG(ERROR, "os_queue_put() failed.");
                 }
             }
+            os_semaphore_give(s_bleInstance.connUpdateSemaphore, false);
         } break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST: {
@@ -987,6 +1012,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                         // not enqueued successfully, this flag should be clear here.
                         s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
                         s_bleInstance.discovering = false;
+                        os_semaphore_give(s_bleInstance.discoverySemaphore, false);
                     }
                 }
             }
@@ -1046,6 +1072,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                         // not enqueued successfully, this flag should be clear here.
                         s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
                         s_bleInstance.discovering = false;
+                        os_semaphore_give(s_bleInstance.discoverySemaphore, false);
                     }
                 }
             }
@@ -1112,6 +1139,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                         // not enqueued successfully, this flag should be clear here.
                         s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
                         s_bleInstance.discovering = false;
+                        os_semaphore_give(s_bleInstance.discoverySemaphore, false);
                     }
                 }
             }
@@ -1126,14 +1154,14 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                       && (event->evt.gattc_evt.params.read_rsp.handle == s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].start_handle) ) {
                         s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
                         memcpy(s_bleInstance.discovery.services[s_bleInstance.discovery.currIndex].uuid.uuid128, event->evt.gattc_evt.params.read_rsp.data, BLE_SIG_UUID_128BIT_LEN);
-                        os_semaphore_give(s_bleInstance.semaphore, false);
+                        os_semaphore_give(s_bleInstance.discovery.semaphore, false);
                     }
                     else if ( (s_bleInstance.discovery.currDiscProcedure == BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS)
                            && (event->evt.gattc_evt.params.read_rsp.handle == s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].decl_handle) ) {
                         s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.type = BLE_UUID_TYPE_128BIT;
                         // The offset of Characteristic UUID in the Characteristic declaration attribute is 3.
                         memcpy(s_bleInstance.discovery.characteristics[s_bleInstance.discovery.currIndex].uuid.uuid128, &event->evt.gattc_evt.params.read_rsp.data[3], BLE_SIG_UUID_128BIT_LEN);
-                        os_semaphore_give(s_bleInstance.semaphore, false);
+                        os_semaphore_give(s_bleInstance.discovery.semaphore, false);
                     }
                 }
                 else {
@@ -1150,6 +1178,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                             LOG(ERROR, "os_queue_put() failed.");
                         }
                     }
+                    os_semaphore_give(s_bleInstance.readWriteSemaphore, false);
                 }
             }
             else {
@@ -1159,10 +1188,12 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
         case BLE_GATTC_EVT_WRITE_RSP: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: write with response completed.");
+            os_semaphore_give(s_bleInstance.readWriteSemaphore, false);
         } break;
 
         case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: write without response completed.");
+            os_semaphore_give(s_bleInstance.readWriteSemaphore, false);
         } break;
 
         case BLE_GATTC_EVT_HVX: {
@@ -1247,11 +1278,12 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
         case BLE_GATTS_EVT_HVN_TX_COMPLETE: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: notification sent.");
+            os_semaphore_give(s_bleInstance.readWriteSemaphore, false);
         } break;
 
         case BLE_GATTS_EVT_HVC: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: indication confirmed.");
-            s_bleInstance.indConfirmed = true;
+            os_semaphore_give(s_bleInstance.readWriteSemaphore, false);
         } break;
 
         case BLE_GATTS_EVT_TIMEOUT: {
@@ -1282,14 +1314,23 @@ static os_thread_return_t handleBleEventThread(void* param) {
                     hal_ble_gatt_client_on_services_discovered_evt_t *svcDiscEvt = (hal_ble_gatt_client_on_services_discovered_evt_t*)&msg.arg;
                     for (uint8_t i = 0; i < svcDiscEvt->count; i++) {
                         if (svcDiscEvt->services[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
-                            ret_code_t ret = sd_ble_gattc_read(svcDiscEvt->conn_handle, svcDiscEvt->services[i].start_handle, 0);
-                            if (ret != NRF_SUCCESS) {
-                                LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+                            if (!os_semaphore_create(&s_bleInstance.discovery.semaphore, 1, 0)) {
+                                ret_code_t ret = sd_ble_gattc_read(svcDiscEvt->conn_handle, svcDiscEvt->services[i].start_handle, 0);
+                                if (ret == NRF_SUCCESS) {
+                                    s_bleInstance.discovery.currIndex = i;
+                                    if (!os_semaphore_take(s_bleInstance.discovery.semaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false)) {
+                                        os_semaphore_destroy(s_bleInstance.discovery.semaphore);
+                                        continue;
+                                    }
+                                }
+                                else {
+                                    LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+                                }
+                                os_semaphore_destroy(s_bleInstance.discovery.semaphore);
                                 break;
                             }
-                            s_bleInstance.discovery.currIndex = i;
-                            if (os_semaphore_take(s_bleInstance.semaphore, 2000, false)) {
-                                LOG(ERROR, "os_semaphore_take() timeout.");
+                            else {
+                                LOG(ERROR, "os_semaphore_create() failed");
                                 break;
                             }
                         }
@@ -1299,25 +1340,40 @@ static os_thread_return_t handleBleEventThread(void* param) {
                     hal_ble_gatt_client_on_characteristics_discovered_evt_t* charDiscEvt = (hal_ble_gatt_client_on_characteristics_discovered_evt_t*)&msg.arg;
                     for (uint8_t i = 0; i < charDiscEvt->count; i++) {
                         if (charDiscEvt->characteristics[i].uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
-                            ret_code_t ret = sd_ble_gattc_read(charDiscEvt->conn_handle, charDiscEvt->characteristics[i].decl_handle, 0);
-                            if (ret != NRF_SUCCESS) {
-                                LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+                            if (!os_semaphore_create(&s_bleInstance.discovery.semaphore, 1, 0)) {
+                                ret_code_t ret = sd_ble_gattc_read(charDiscEvt->conn_handle, charDiscEvt->characteristics[i].decl_handle, 0);
+                                if (ret == NRF_SUCCESS) {
+                                    s_bleInstance.discovery.currIndex = i;
+                                    if (!os_semaphore_take(s_bleInstance.discovery.semaphore, 2000, false)) {
+                                        os_semaphore_destroy(s_bleInstance.discovery.semaphore);
+                                        continue;
+                                    }
+                                }
+                                else {
+                                    LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+                                }
+                                os_semaphore_destroy(s_bleInstance.discovery.semaphore);
                                 break;
                             }
-                            s_bleInstance.discovery.currIndex = i;
-                            if (os_semaphore_take(s_bleInstance.semaphore, 2000, false)) {
-                                LOG(ERROR, "os_semaphore_take() timeout.");
+                            else {
+                                LOG(ERROR, "os_semaphore_create() failed");
                                 break;
                             }
                         }
                     }
                 }
-                s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
-                s_bleInstance.discovering = false;
             }
 
             if (msg.handler != NULL) {
                 msg.handler(&msg.arg);
+            }
+
+            if (   msg.type == BLE_GATT_CLIENT_SERVICES_DISCOVERED
+                || msg.type == BLE_GATT_CLIENT_CHARACTERISTICS_DISCOVERED
+                || msg.type == BLE_GATT_CLIENT_DESCRIPTORS_DISCOVERED) {
+                s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                s_bleInstance.discovering = false;
+                os_semaphore_give(s_bleInstance.discoverySemaphore, false);
             }
         }
         else {
@@ -1385,21 +1441,14 @@ int ble_stack_init(void* reserved) {
         // Select internal antenna by default
         ble_select_antenna(BLE_ANT_INTERNAL);
 
-        if (os_semaphore_create(&s_bleInstance.semaphore, 1, 0)) {
-            LOG(ERROR, "os_semaphore_create() failed");
-            return SYSTEM_ERROR_INTERNAL;
-        }
-
         if (os_queue_create(&s_bleInstance.evtQueue, sizeof(HalBleEvtMsg_t), BLE_EVENT_QUEUE_ITEM_COUNT, NULL)) {
             LOG(ERROR, "os_queue_create() failed");
-            os_semaphore_destroy(s_bleInstance.semaphore);
             return SYSTEM_ERROR_NO_MEMORY;
         }
 
         if (os_thread_create(&s_bleInstance.evtThread, "BLE Event Thread", OS_THREAD_PRIORITY_NETWORK, handleBleEventThread, NULL, BLE_EVENT_THREAD_STACK_SIZE)) {
             LOG(ERROR, "os_thread_create() failed");
             os_queue_destroy(s_bleInstance.evtQueue, NULL);
-            os_semaphore_destroy(s_bleInstance.semaphore);
             return SYSTEM_ERROR_INTERNAL;
         }
 
@@ -1874,7 +1923,11 @@ int ble_gap_start_advertising(void *reserved) {
     LOG_DEBUG(TRACE, "ble_gap_start_advertising().");
 
     if (s_bleInstance.advertising) {
-        return SYSTEM_ERROR_NONE;
+        // Restart advertising
+        int error = ble_gap_stop_advertising();
+        if (error != SYSTEM_ERROR_NONE) {
+            return error;
+        }
     }
 
     ret_code_t ret = sd_ble_gap_adv_start(s_bleInstance.advHandle, BLE_CONN_CFG_TAG);
@@ -1939,8 +1992,12 @@ int ble_gap_start_scan(void *reserved) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_start_scan().");
 
-    sd_ble_gap_scan_stop();
-    s_bleInstance.scanning = false;
+    if (s_bleInstance.scanning) {
+        int error = ble_gap_stop_scan();
+        if (error != SYSTEM_ERROR_NONE) {
+            return error;
+        }
+    }
 
     ble_gap_scan_params_t bleGapScanParams;
     fromHalScanParams(&s_bleInstance.scanParams, &bleGapScanParams);
@@ -1971,14 +2028,17 @@ int ble_gap_stop_scan(void) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_stop_scan().");
 
+    if (!s_bleInstance.scanning) {
+        return SYSTEM_ERROR_NONE;
+    }
+
     ret_code_t ret = sd_ble_gap_scan_stop();
     if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_scan_start() failed: %u", (unsigned)ret);
+        LOG(ERROR, "sd_ble_gap_scan_stop() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
 
     s_bleInstance.scanning = false;
-
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1987,7 +2047,15 @@ int ble_gap_connect(hal_ble_address_t* address, void *reserved) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_connect().");
 
-    s_bleInstance.scanning = false;
+    int error = ble_gap_stop_scan();
+    if (error != SYSTEM_ERROR_NONE) {
+        return error;
+    }
+
+    if (os_semaphore_create(&s_bleInstance.connectSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
 
     ble_gap_addr_t devAddr;
     memset(&devAddr, 0x00, sizeof(ble_gap_addr_t));
@@ -2003,10 +2071,14 @@ int ble_gap_connect(hal_ble_address_t* address, void *reserved) {
     ret_code_t ret = sd_ble_gap_connect(&devAddr, &bleGapScanParams, &connParams, BLE_CONN_CFG_TAG);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_connect() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.connectSemaphore);
         return sysError(ret);
     }
 
     s_bleInstance.connecting = true;
+
+    os_semaphore_take(s_bleInstance.connectSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.connectSemaphore);
 
     return 0;
 }
@@ -2052,11 +2124,20 @@ int ble_gap_disconnect(uint16_t conn_handle, void *reserved) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    if (os_semaphore_create(&s_bleInstance.disconnectSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ret_code_t ret = sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.disconnectSemaphore);
         return sysError(ret);
     }
+
+    os_semaphore_take(s_bleInstance.disconnectSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.disconnectSemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2070,6 +2151,14 @@ int ble_gap_update_connection_params(uint16_t conn_handle, hal_ble_connection_pa
 
     if (conn_handle == BLE_INVALID_CONN_HANDLE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (!s_bleInstance.connected) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    if (os_semaphore_create(&s_bleInstance.connUpdateSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
     }
 
     if (conn_params == NULL) {
@@ -2088,8 +2177,12 @@ int ble_gap_update_connection_params(uint16_t conn_handle, hal_ble_connection_pa
 
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_conn_param_update() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.connUpdateSemaphore);
         return sysError(ret);
     }
+
+    os_semaphore_take(s_bleInstance.connUpdateSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.connUpdateSemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2309,6 +2402,11 @@ int ble_gatt_server_notify_characteristic_value(uint16_t value_handle, uint8_t* 
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    if (os_semaphore_create(&s_bleInstance.readWriteSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ble_gatts_hvx_params_t hvxParams;
 
     uint16_t hvxLen = len;
@@ -2321,8 +2419,12 @@ int ble_gatt_server_notify_characteristic_value(uint16_t value_handle, uint8_t* 
     ret_code_t ret = sd_ble_gatts_hvx(s_bleInstance.connHandle, &hvxParams);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
         return sysError(ret);
     }
+
+    os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2335,8 +2437,13 @@ int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, uint8_t
     if (value_handle == BLE_INVALID_ATTR_HANDLE || data == NULL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (s_bleInstance.connHandle == BLE_INVALID_CONN_HANDLE || !s_bleInstance.indConfirmed) {
+    if (s_bleInstance.connHandle == BLE_INVALID_CONN_HANDLE) {
         return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    if (os_semaphore_create(&s_bleInstance.readWriteSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
     }
 
     ble_gatts_hvx_params_t hvxParams;
@@ -2351,10 +2458,12 @@ int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, uint8_t
     ret_code_t ret = sd_ble_gatts_hvx(s_bleInstance.connHandle, &hvxParams);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
         return sysError(ret);
     }
 
-    s_bleInstance.indConfirmed = false;
+    os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2375,9 +2484,15 @@ int ble_gatt_client_discover_all_services(uint16_t conn_handle, void *reserved) 
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    if (os_semaphore_create(&s_bleInstance.discoverySemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ret_code_t ret = sd_ble_gattc_primary_services_discover(conn_handle, 0x01, NULL);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.discoverySemaphore);
         return sysError(ret);
     }
 
@@ -2385,6 +2500,9 @@ int ble_gatt_client_discover_all_services(uint16_t conn_handle, void *reserved) 
     s_bleInstance.discovery.discAll = true;
     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
     s_bleInstance.discovering = true;
+
+    os_semaphore_take(s_bleInstance.discoverySemaphore, BLE_DICOVERY_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.discoverySemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2401,6 +2519,11 @@ int ble_gatt_client_discover_service_by_uuid128(uint16_t conn_handle, const uint
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    if (os_semaphore_create(&s_bleInstance.discoverySemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ble_uuid_t     svcUuid;
     hal_ble_uuid_t halUuid;
     halUuid.type = BLE_UUID_TYPE_128BIT;
@@ -2411,6 +2534,7 @@ int ble_gatt_client_discover_service_by_uuid128(uint16_t conn_handle, const uint
         ret = sd_ble_gattc_primary_services_discover(conn_handle, 0x01, &svcUuid);
         if (ret != NRF_SUCCESS) {
             LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed: %u", (unsigned)ret);
+            os_semaphore_destroy(s_bleInstance.discoverySemaphore);
             return sysError(ret);
         }
 
@@ -2419,8 +2543,10 @@ int ble_gatt_client_discover_service_by_uuid128(uint16_t conn_handle, const uint
         s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
         s_bleInstance.discovering = true;
 
-        return SYSTEM_ERROR_NONE;
+        os_semaphore_take(s_bleInstance.discoverySemaphore, BLE_DICOVERY_PROCEDURE_TIMEOUT, false);
     }
+
+    os_semaphore_destroy(s_bleInstance.discoverySemaphore);
 
     return ret;
 }
@@ -2437,6 +2563,11 @@ int ble_gatt_client_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uu
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    if (os_semaphore_create(&s_bleInstance.discoverySemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ble_uuid_t svcUuid;
     svcUuid.type = BLE_UUID_TYPE_BLE;
     svcUuid.uuid = uuid;
@@ -2444,6 +2575,7 @@ int ble_gatt_client_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uu
     ret_code_t ret = sd_ble_gattc_primary_services_discover(conn_handle, 0x01, &svcUuid);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.discoverySemaphore);
         return sysError(ret);
     }
 
@@ -2451,6 +2583,9 @@ int ble_gatt_client_discover_service_by_uuid16(uint16_t conn_handle, uint16_t uu
     s_bleInstance.discovery.discAll = false;
     s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_SERVICES;
     s_bleInstance.discovering = true;
+
+    os_semaphore_take(s_bleInstance.discoverySemaphore, BLE_DICOVERY_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.discoverySemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2464,6 +2599,15 @@ int ble_gatt_client_discover_characteristics(uint16_t conn_handle, uint16_t star
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    if (s_bleInstance.discovery.currDiscProcedure != BLE_DISCOVERY_PROCEDURE_IDLE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    if (os_semaphore_create(&s_bleInstance.discoverySemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ble_gattc_handle_range_t handleRange;
     handleRange.start_handle = start_handle;
     handleRange.end_handle   = end_handle;
@@ -2471,6 +2615,7 @@ int ble_gatt_client_discover_characteristics(uint16_t conn_handle, uint16_t star
     ret_code_t ret = sd_ble_gattc_characteristics_discover(conn_handle, &handleRange);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gattc_characteristics_discover() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.discoverySemaphore);
         return sysError(ret);
     }
 
@@ -2479,6 +2624,9 @@ int ble_gatt_client_discover_characteristics(uint16_t conn_handle, uint16_t star
     s_bleInstance.discovery.discStartHandle = start_handle;
     s_bleInstance.discovery.discEndHandle = end_handle;
     s_bleInstance.discovering = true;
+
+    os_semaphore_take(s_bleInstance.discoverySemaphore, BLE_DICOVERY_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.discoverySemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2492,6 +2640,15 @@ int ble_gatt_client_discover_descriptors(uint16_t conn_handle, uint16_t start_ha
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    if (s_bleInstance.discovery.currDiscProcedure != BLE_DISCOVERY_PROCEDURE_IDLE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    if (os_semaphore_create(&s_bleInstance.discoverySemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ble_gattc_handle_range_t handleRange;
     handleRange.start_handle = start_handle;
     handleRange.end_handle   = end_handle;
@@ -2499,6 +2656,7 @@ int ble_gatt_client_discover_descriptors(uint16_t conn_handle, uint16_t start_ha
     ret_code_t ret = sd_ble_gattc_descriptors_discover(conn_handle, &handleRange);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gattc_descriptors_discover() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.discoverySemaphore);
         return sysError(ret);
     }
 
@@ -2507,6 +2665,9 @@ int ble_gatt_client_discover_descriptors(uint16_t conn_handle, uint16_t start_ha
     s_bleInstance.discovery.discStartHandle = start_handle;
     s_bleInstance.discovery.discEndHandle = end_handle;
     s_bleInstance.discovering = true;
+
+    os_semaphore_take(s_bleInstance.discoverySemaphore, BLE_DICOVERY_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.discoverySemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2566,11 +2727,20 @@ int ble_gatt_client_read(uint16_t conn_handle, uint16_t value_handle, void *rese
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    if (os_semaphore_create(&s_bleInstance.readWriteSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ret_code_t ret = sd_ble_gattc_read(conn_handle, value_handle, 0);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
+        os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
         return sysError(ret);
     }
+
+    os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
+    os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
