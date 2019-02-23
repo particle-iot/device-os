@@ -143,10 +143,10 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
     mkdir -p $TEST_DIRECTORY
 
     # Base strings
-    MAKE_COMMAND="make -s all TEST=$(json $test_object .path)/$(json $test_object .name) PLATFORM=$PLATFORM"
+    MAKE_COMMAND="make -s all PLATFORM_ID=$PLATFORM_ID"
     QUALIFIED_FILENAME="$(json $test_object .name)@${VERSION}+${PLATFORM}"
 
-    # Compose file name
+    # Compose make command and file name
     if [ $(json $test_object .compile_lto) = true ]; then
         MAKE_COMMAND+=" COMPILE_LTO=y"
         QUALIFIED_FILENAME+=".lto"
@@ -161,8 +161,11 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
         MAKE_COMMAND+=" DEBUG_BUILD=n"
         QUALIFIED_FILENAME+=".ndebug"
     fi
+    MAKE_COMMAND+=" USE_SWD_JTAG=n"
+    QUALIFIED_FILENAME+=".njtag"
     
-    # Append test metadata
+    # Append test commands and metadata
+    MAKE_COMMAND+=" TEST=$(json $test_object .path)/$(json $test_object .name)"
     if [ $(json $test_object .use_threading) = true ]; then
         MAKE_COMMAND+=" USE_THREADING=y"
         QUALIFIED_FILENAME+=".multithreaded"

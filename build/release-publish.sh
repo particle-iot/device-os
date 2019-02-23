@@ -87,17 +87,17 @@ for VERSION in *; do
                 for RELEASE in *; do
                     if [ -d "$RELEASE" ] && [ "$RELEASE" = "release" ]; then
                         pushd $RELEASE > /dev/null
-                        zip ${TEMPORARY_DIRECTORY}/particle_device_os_${VERSION}_release_${PLATFORM}.zip . --recurse-paths --quiet
+                        zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}+${PLATFORM}.release.zip . --recurse-paths --quiet
                         cp *.bin $TEMPORARY_DIRECTORY
                         popd > /dev/null
                     fi
                 done
                 popd > /dev/null
-                zip ${TEMPORARY_DIRECTORY}/particle_device_os_${VERSION}_platform_${PLATFORM}.zip $PLATFORM --recurse-paths --quiet
+                zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}+${PLATFORM}.zip $PLATFORM --recurse-paths --quiet
             fi
         done
         popd > /dev/null
-        zip ${TEMPORARY_DIRECTORY}/particle_device_os_${VERSION}.zip $VERSION --recurse-paths --quiet
+        zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}.zip $VERSION --recurse-paths --quiet
         PUBLISH_DIRECTORY=${VERSION}/publish
         rm -rf $PUBLISH_DIRECTORY
         mv $TEMPORARY_DIRECTORY $PUBLISH_DIRECTORY

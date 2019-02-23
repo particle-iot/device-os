@@ -84,7 +84,7 @@ function compose_qualified_filename
     local ext=$2
     local compile_lto=$3
     local debug_build=$4
-    local use_threading=$5
+    local use_swd_jtag=$5
 
     qualified_filename="${name}@${VERSION}+${PLATFORM}"
 
@@ -100,10 +100,10 @@ function compose_qualified_filename
         qualified_filename+=".ndebug"
     fi
 
-    if [ $use_threading = "y" ]; then
-        qualified_filename+=".multithreaded"
+    if [ $use_swd_jtag = "y" ]; then
+        qualified_filename+=".jtag"
     else
-        qualified_filename+=".singlethreaded"
+        qualified_filename+=".njtag"
     fi
 
     qualified_filename+=".${ext}"
@@ -117,7 +117,7 @@ function release_file()
     local ext=$3
     local suffix=$4
     local debug_build=$5
-    local use_threading=$6
+    local use_swd_jtag=$6
 
     local compile_lto="n"
     local path=$ABSOLUTE_TARGET_DIRECTORY
@@ -137,7 +137,7 @@ function release_file()
     fi
 
     # Compose file name
-    compose_qualified_filename $to_name $ext $compile_lto $debug_build $use_threading
+    compose_qualified_filename $to_name $ext $compile_lto $debug_build $use_swd_jtag
 
     # Move file from build to release folder
     cp ${path}/${from_name}.${ext} ${BINARY_DIRECTORY}/${qualified_filename}
@@ -150,15 +150,15 @@ function release_binary()
     local to_name=$2
     local suffix=${3:-m}
     local debug_build=${4:-n}
-    local use_threading=${5:-n}
+    local use_swd_jtag=${5:-n}
 
     # Move files into release folder
-    release_file $from_name $to_name "bin" $suffix $debug_build $use_threading
+    release_file $from_name $to_name "bin" $suffix $debug_build $use_swd_jtag
     if [ $DEBUG = true ]; then
-        release_file $from_name $to_name "elf" $suffix $debug_build $use_threading
-        release_file $from_name $to_name "hex" $suffix $debug_build $use_threading
-        release_file $from_name $to_name "lst" $suffix $debug_build $use_threading
-        release_file $from_name $to_name "map" $suffix $debug_build $use_threading
+        release_file $from_name $to_name "elf" $suffix $debug_build $use_swd_jtag
+        release_file $from_name $to_name "hex" $suffix $debug_build $use_swd_jtag
+        release_file $from_name $to_name "lst" $suffix $debug_build $use_swd_jtag
+        release_file $from_name $to_name "map" $suffix $debug_build $use_swd_jtag
     fi
 }
 
@@ -234,35 +234,36 @@ OUT_MODULE=$ABSOLUTE_TARGET_DIRECTORY/user-part/platform-$PLATFORM_ID-m
 rm -rf ../build/modules/
 rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 
-# Build Platform Bootloader
-cd ../bootloader
-make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD
-release_binary bootloader bootloader "lto" $DEBUG_BUILD "n"
-
 # Photon (6), P1 (8)
 if [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG"
     cd ../modules
-    make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG
-    release_binary system-part1 system-part1 "m" $DEBUG_BUILD "n"
-    release_binary system-part2 system-part2 "m" $DEBUG_BUILD "n"
-    release_binary user-part tinker "m" $DEBUG_BUILD "n"
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+    release_binary system-part1 system-part1 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary system-part2 system-part2 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary user-part tinker "m" $DEBUG_BUILD $USE_SWD_JTAG
 
 # Electron (10)
 elif [ $PLATFORM_ID -eq 10 ]; then
     DEBUG_BUILD="y"
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG"
     cd ../modules
-    make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG
-    release_binary system-part1 system-part1 "m" $DEBUG_BUILD "n"
-    release_binary system-part2 system-part2 "m" $DEBUG_BUILD "n"
-    release_binary system-part3 system-part3 "m" $DEBUG_BUILD "n"
-    release_binary user-part tinker "m" $DEBUG_BUILD "n"
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+    release_binary system-part1 system-part1 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary system-part2 system-part2 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary system-part3 system-part3 "m" $DEBUG_BUILD $USE_SWD_JTAG
+    release_binary user-part tinker "m" $DEBUG_BUILD $USE_SWD_JTAG
 
 # Core (0)
 elif [ $PLATFORM_ID -eq 0 ]; then
     DEBUG_BUILD="n"
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG APP=tinker"
     cd ../main
-    make clean all -s PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG APP=tinker
-    release_binary tinker tinker "lto" $DEBUG_BUILD "n"
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+    release_binary tinker tinker "lto" $DEBUG_BUILD $USE_SWD_JTAG
     cd ../modules
 fi
 
@@ -270,3 +271,10 @@ fi
 if [ $GENERATE_TESTS = true ]; then
     ../build/release-tests.sh --output-directory $ABSOLUTE_OUTPUT_DIRECTORY --platform $PLATFORM --version $VERSION
 fi
+
+# Build Platform Bootloader
+cd ../bootloader
+MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG"
+echo $MAKE_COMMAND
+eval $MAKE_COMMAND
+release_binary bootloader bootloader "lto" $DEBUG_BUILD $USE_SWD_JTAG
