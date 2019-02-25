@@ -78,7 +78,16 @@ if [ $# -ne 0 ]; then
     exit 4
 fi
 
-function compose_qualified_filename
+function append_metadata_seperator () {
+    if [ $metadata = false ]; then
+        metadata=true
+        qualified_filename+="+"
+    else
+        qualified_filename+="."
+    fi
+}
+
+function compose_qualified_filename ()
 {
     local name=$1
     local ext=$2
@@ -86,24 +95,23 @@ function compose_qualified_filename
     local debug_build=$4
     local use_swd_jtag=$5
 
-    qualified_filename="${name}@${VERSION}+${PLATFORM}"
+    local metadata=false
+
+    qualified_filename="${PLATFORM}-${name}@${VERSION}"
 
     if [ $compile_lto = "y" ]; then
-        qualified_filename+=".lto"
-    else
-        qualified_filename+=".m"
+        append_metadata_seperator
+        qualified_filename+="lto"
     fi
 
     if [ $debug_build = "y" ]; then
-        qualified_filename+=".debug"
-    else
-        qualified_filename+=".ndebug"
+        append_metadata_seperator
+        qualified_filename+="debug"
     fi
 
     if [ $use_swd_jtag = "y" ]; then
-        qualified_filename+=".jtag"
-    else
-        qualified_filename+=".njtag"
+        append_metadata_seperator
+        qualified_filename+="jtag"
     fi
 
     qualified_filename+=".${ext}"
@@ -143,7 +151,7 @@ function release_file()
     cp ${path}/${from_name}.${ext} ${BINARY_DIRECTORY}/${qualified_filename}
 }
 
-function release_binary()
+function release_binary ()
 {
     # Parse parameter(s)
     local from_name=$1

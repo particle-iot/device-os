@@ -132,11 +132,21 @@ BINARY_DIRECTORY=$QUALIFIED_OUTPUT_DIRECTORY/tests
 cd ../main
 
 for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .tests[] | select(.enabled == true) | @base64' --compact-output -r ${PARAMETER_FILE}); do
+    function append_metadata_seperator () {
+        if [ $METADATA = false ]; then
+            METADATA=true
+            QUALIFIED_FILENAME+="+"
+        else
+            QUALIFIED_FILENAME+="."
+        fi
+    }
     function json () {
         local object_string=$1
         local member=$2
         echo $object_string | base64 --decode | jq -r $member
     }
+    
+    METADATA=false
 
     # Create tests directory
     TEST_DIRECTORY=$BINARY_DIRECTORY/$(json $test_object .path)/$(json $test_object .name)
@@ -144,34 +154,35 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
 
     # Base strings
     MAKE_COMMAND="make -s all PLATFORM_ID=$PLATFORM_ID"
-    QUALIFIED_FILENAME="$(json $test_object .name)@${VERSION}+${PLATFORM}"
+    QUALIFIED_FILENAME="${PLATFORM}-$(json $test_object .name)@${VERSION}"
 
     # Compose make command and file name
     if [ $(json $test_object .compile_lto) = true ]; then
         MAKE_COMMAND+=" COMPILE_LTO=y"
-        QUALIFIED_FILENAME+=".lto"
+        append_metadata_seperator
+        QUALIFIED_FILENAME+="lto"
     else
         MAKE_COMMAND+=" COMPILE_LTO=n"
-        QUALIFIED_FILENAME+=".m"
     fi
     if [ $(json $test_object .debug_build) = true ]; then
         MAKE_COMMAND+=" DEBUG_BUILD=y"
-        QUALIFIED_FILENAME+=".debug"
+        append_metadata_seperator
+        QUALIFIED_FILENAME+="debug"
     else
         MAKE_COMMAND+=" DEBUG_BUILD=n"
-        QUALIFIED_FILENAME+=".ndebug"
     fi
     MAKE_COMMAND+=" USE_SWD_JTAG=n"
-    QUALIFIED_FILENAME+=".njtag"
     
     # Append test commands and metadata
     MAKE_COMMAND+=" TEST=$(json $test_object .path)/$(json $test_object .name)"
     if [ $(json $test_object .use_threading) = true ]; then
         MAKE_COMMAND+=" USE_THREADING=y"
-        QUALIFIED_FILENAME+=".multithreaded"
+        append_metadata_seperator
+        QUALIFIED_FILENAME+="multithreaded"
     else
         MAKE_COMMAND+=" USE_THREADING=n"
-        QUALIFIED_FILENAME+=".singlethreaded"
+        append_metadata_seperator
+        QUALIFIED_FILENAME+="singlethreaded"
     fi
 
     # Support Core
