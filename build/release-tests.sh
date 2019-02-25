@@ -1,5 +1,32 @@
 #!/bin/bash
 
+function display_help ()
+{
+    echo "\
+usage: release-tests.sh [--dryrun] [--help]
+                        [--filename=<test_parameter_file.json>]
+                        --output-directory=<binary_output_directory>
+                        --platform=<core|electron|p1|photon>
+                        --version=<semver_version_string>
+
+Generate the testing binaries belonging to a given platform.
+
+  -d, --dry-run           Print the compilation commands for a given
+                            binary (as opposed to executing).
+  -f, --filename          The file path and name of the desired
+                            parameter file. If none is supplied, then
+                            the file '<particle-iot/device-os>/user/tests..
+                            /release-tests.json' will be used as default.
+  -h, --help              Display this help and exit
+  -o, --output-directory  Specify the root output directory where the
+                            folder hierarchy for the resulting binaries
+                            will be placed.
+  -p, --platform          Specify the desired platform
+  -v, --version           Specify the semantic version of the Device OS
+                            for which you are building tests.
+"
+}
+
 # Utilized Enhanced `getopt`
 ! getopt --test > /dev/null
 if [ ${PIPESTATUS[0]} -ne 4 ]; then
@@ -7,8 +34,8 @@ if [ ${PIPESTATUS[0]} -ne 4 ]; then
     exit 1
 fi
 
-OPTIONS=df:o:p:v:
-LONGOPTS=dry-run,filename:,output-directory:,platform:,version:
+OPTIONS=df:ho:p:v:
+LONGOPTS=dry-run,filename:,help,output-directory:,platform:,version:
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -42,6 +69,11 @@ while true; do
             PARAMETER_FILE="$2"
             shift 2
             ;;
+        -h|--help)
+            shift
+            display_help
+            exit 0
+            ;;
         -o|--output-directory)
             OUTPUT_DIRECTORY="$2"
             shift 2
@@ -65,7 +97,7 @@ while true; do
     esac
 done
 
-function valid_platform()
+function valid_platform ()
 {
     # Parse parameter(s)
     platform=$1

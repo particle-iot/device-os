@@ -3,6 +3,30 @@ set -o errexit -o pipefail -o noclobber -o nounset
 
 VERSION="1.0.1"
 
+function display_help ()
+{
+    echo "\
+usage: release.sh [--debug] [--help] [--filename=<test_parameter_file.json>]
+                  [--output-directory=<binary_output_directory>] [--tests]
+                  (--platform=<core|electron|p1|photon> | --platform-id=<0|6|8|10>])
+
+Generate the binaries for a versioned release of the Device OS. This utility
+is capable of generating both debug and release binaries, as well as the
+associated tests for a specified platform.
+
+  -d, --debug             Generate debug binaries (as opposed to release)
+  -h, --help              Display this help and exit
+  -i, --platform-id       Specify the desired platform id
+  -o, --output-directory  Specify the root output directory where the
+                            folder hierarchy for the resulting binaries
+                            will be placed. If not specified, the resulting
+                            binaries will be placed in '<particle-iot/device-os>...
+                            /build/releases/' by default.
+  -p, --platform          Specify the desired platform
+  -t, --tests             Generate test binaries for the current platform
+"
+}
+
 # Utilized Enhanced `getopt`
 ! getopt --test > /dev/null
 if [ ${PIPESTATUS[0]} -ne 4 ]; then
@@ -10,8 +34,8 @@ if [ ${PIPESTATUS[0]} -ne 4 ]; then
     exit 1
 fi
 
-OPTIONS=di:o:p:t
-LONGOPTS=debug,platform-id:,output-directory:,platform:,tests
+OPTIONS=di:ho:p:t
+LONGOPTS=debug,platform-id:,help,output-directory:,platform:,tests
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -44,6 +68,11 @@ while true; do
             DEBUG=true
             USE_SWD_JTAG="y"
             shift 1
+            ;;
+        -h|--help)
+            shift
+            display_help
+            exit 0
             ;;
         -i|--platform-id)
             PLATFORM_ID="$2"

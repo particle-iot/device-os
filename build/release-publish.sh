@@ -1,6 +1,20 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
+function display_help ()
+{
+    echo "\
+usage: release-publish.sh [--help] --release-directory=<test_output_directory>
+
+Crawls through the specified releases directory, identifying the related binaries
+and copying them into a publish folder.
+
+  -h, --help               Display this help and exit
+  -r, --release-directory  Specify the root directory where the binaries from
+                             previously generated versioned releases can be found.
+"
+}
+
 # Utilized Enhanced `getopt`
 ! getopt --test > /dev/null
 if [ ${PIPESTATUS[0]} -ne 4 ]; then
@@ -8,8 +22,8 @@ if [ ${PIPESTATUS[0]} -ne 4 ]; then
     exit 1
 fi
 
-OPTIONS=o:
-LONGOPTS=release-directory:
+OPTIONS=hr:
+LONGOPTS=help,release-directory:
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -31,7 +45,12 @@ RELEASE_DIRECTORY=""
 # Parse parameter(s)
 while true; do
     case "$1" in
-        -o|--release-directory)
+        -h|--help)
+            shift
+            display_help
+            exit 0
+            ;;
+        -r|--release-directory)
             RELEASE_DIRECTORY="$2"
             shift 2
             ;;
