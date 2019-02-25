@@ -4,7 +4,8 @@ set -o errexit -o pipefail -o noclobber -o nounset
 function display_help ()
 {
     echo "\
-usage: release-publish.sh [--help] --release-directory=<test_output_directory>
+usage: release-publish.sh [--help] [--version=<semantic_version_string>]
+                          --release-directory=<test_output_directory>
 
 Crawls through the specified releases directory, identifying the related binaries
 and copying them into a publish folder.
@@ -12,6 +13,9 @@ and copying them into a publish folder.
   -h, --help               Display this help and exit
   -r, --release-directory  Specify the root directory where the binaries from
                              previously generated versioned releases can be found.
+  -v, --version            Specify the version you wish to publish. If not
+                             specified, then all versions discovered in the
+                             release directory will be published.
 "
 }
 
@@ -22,8 +26,8 @@ if [ ${PIPESTATUS[0]} -ne 4 ]; then
     exit 1
 fi
 
-OPTIONS=hr:
-LONGOPTS=help,release-directory:
+OPTIONS=hr:v:
+LONGOPTS=help,release-directory:,version:
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -41,6 +45,7 @@ eval set -- "$PARSED"
 
 # Set default(s)
 RELEASE_DIRECTORY=""
+TARGET_VERSION=""
 
 # Parse parameter(s)
 while true; do
@@ -52,6 +57,10 @@ while true; do
             ;;
         -r|--release-directory)
             RELEASE_DIRECTORY="$2"
+            shift 2
+            ;;
+        -v|--version)
+            TARGET_VERSION="$2"
             shift 2
             ;;
         --)
@@ -96,6 +105,9 @@ mkdir $TEMPORARY_DIRECTORY
 for VERSION in *; do
     # The primary directory is the version number
     if [ -d "$VERSION" ]; then
+        if [ ! -z "$TARGET_VERSION" ] && [ "$TARGET_VERSION" != "$VERSION" ]; then
+          continue;
+        fi
         pushd $VERSION > /dev/null
         # Move through the platforms
         for PLATFORM in *; do
@@ -106,7 +118,7 @@ for VERSION in *; do
                 for RELEASE in *; do
                     if [ -d "$RELEASE" ] && [ "$RELEASE" = "release" ]; then
                         pushd $RELEASE > /dev/null
-                        zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}+${PLATFORM}.release.zip . --recurse-paths --quiet
+                        zip ${TEMPORARY_DIRECTORY}/particle_device-os@${VERSION}+${PLATFORM}.binaries.zip . --recurse-paths --quiet
                         cp *.bin $TEMPORARY_DIRECTORY
                         popd > /dev/null
                     fi
