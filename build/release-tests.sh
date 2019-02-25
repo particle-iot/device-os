@@ -203,7 +203,7 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
     else
         MAKE_COMMAND+=" DEBUG_BUILD=n"
     fi
-    MAKE_COMMAND+=" USE_SWD_JTAG=n"
+    MAKE_COMMAND+=" USE_SWD_JTAG=n USE_SWD=n"
     
     # Append test commands and metadata
     MAKE_COMMAND+=" TEST=$(json $test_object .path)/$(json $test_object .name)"
