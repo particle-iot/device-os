@@ -217,6 +217,16 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
         QUALIFIED_FILENAME+="singlethreaded"
     fi
 
+    # Append user supplied arguments to commands and metadata
+    USER_ARGS=$(json $test_object .user_args)
+    if [ "$USER_ARGS" != "null" ]; then
+        for user_arg in $(echo $USER_ARGS | jq '. | to_entries[]' --compact-output -r); do
+            MAKE_COMMAND+=" $(echo $user_arg | jq -r '.key')=$(echo $user_arg | jq -r '.value')"
+            append_metadata_seperator
+            QUALIFIED_FILENAME+="$(echo $user_arg | jq -r '.value')"
+        done
+    fi
+
     # Support Core
     if [ "$PLATFORM" == "core" ]; then
         BUILD_DIRECTORY=$ABSOLUTE_TARGET_DIRECTORY/main/platform-$PLATFORM_ID-lto

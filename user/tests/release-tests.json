@@ -288,6 +288,38 @@
                     "path": "wiring/spi_master_slave"
                 },
                 {
+                    "enabled": false,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": false,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": false,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": false,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
                     "compile_lto": true,
                     "enabled": false,
                     "name": "spi_shield",
@@ -627,6 +659,54 @@
                     "path": "wiring/spi_master_slave"
                 },
                 {
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI2"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI2"
+                    }
+                },
+                {
                     "debug_build": true,
                     "enabled": false,
                     "name": "spi_shield",
@@ -919,6 +999,38 @@
                     "path": "wiring/spi_master_slave"
                 },
                 {
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
                     "enabled": false,
                     "name": "spi_shield",
                     "path": "wiring"
@@ -1201,6 +1313,38 @@
                     "enabled": false,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave"
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave_alt",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
                 },
                 {
                     "enabled": false,

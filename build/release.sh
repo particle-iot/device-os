@@ -6,9 +6,9 @@ VERSION="1.0.1"
 function display_help ()
 {
     echo "\
-usage: release.sh [--debug] [--help] [--filename=<test_parameter_file.json>]
-                  [--output-directory=<binary_output_directory>] [--tests]
+usage: release.sh [--debug] [--help] [--output-directory=<binary_output_directory>]
                   (--platform=<core|electron|p1|photon> | --platform-id=<0|6|8|10>])
+                  [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
 is capable of generating both debug and release binaries, as well as the
