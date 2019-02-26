@@ -86,7 +86,7 @@
 - [Photon/P1] Moves Wi-Fi tester into application module [#1378](https://github.com/spark/firmware/pull/1378)
 - [Photon/P1] Wi-FI firmware compression [#1421](https://github.com/spark/firmware/pull/1421)
 - Only remake $(TARGET_BASE).elf el al. if necessary [#1223](https://github.com/particle-iot/firmware/pull/1223)
-- Use 'using std::**' instead of define * std::* [#1258](https://github.com/particle-iot/firmware/pull/1258)
+- Use 'using std::\*\*' instead of define \* std::\* [#1258](https://github.com/particle-iot/firmware/pull/1258)
 - Added docs on local build setup [#1374](https://github.com/particle-iot/firmware/pull/1374)
 - Firmware update and access to internal flash via USB requests [#1456](https://github.com/particle-iot/firmware/pull/1456)
 - Generalize FuelGauge to also use alternative I2C interfaces. [#1443](https://github.com/particle-iot/firmware/pull/1443)
