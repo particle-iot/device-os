@@ -529,6 +529,12 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	message.set_length(msglen);
 	if (appender.overflowed()) {
 		LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
+		// There is no point in continuing to run, the device will be constantly reconnecting
+		// to the cloud. It's better to clearly indicate that the describe message is never going
+		// to go through to the cloud by going into a panic state, otherwise one would have to
+		// sift through logs to find 'Describe message overflowed by %d bytes' message to understand
+		// what's going on.
+		SPARK_ASSERT(!appender.overflowed());
 	}
 
 	LOG(INFO,"Sending '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
