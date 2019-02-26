@@ -503,6 +503,23 @@ const char* module_store_string(module_store_t store) {
     }
 }
 
+bool is_module_function_valid(module_function_t func) {
+    switch (func) {
+        case MODULE_FUNCTION_RESOURCE:
+        case MODULE_FUNCTION_BOOTLOADER:
+        case MODULE_FUNCTION_MONO_FIRMWARE:
+        case MODULE_FUNCTION_SYSTEM_PART:
+        case MODULE_FUNCTION_USER_PART:
+        case MODULE_FUNCTION_NCP_FIRMWARE: {
+            return true;
+        }
+        case MODULE_FUNCTION_NONE:
+        default: {
+            return false;
+        }
+    }
+}
+
 const char* module_name(uint8_t index, char* buf)
 {
     return itoa(index, buf, 10);
@@ -531,19 +548,29 @@ bool module_info_to_json(appender_fn append, void* append_data, const hal_module
     for (unsigned int d=0; d<2; d++) {
         const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
         module_function_t function = module_function_t(dependency.module_function);
-        if (function!=MODULE_FUNCTION_NONE) // skip empty dependents
-        	hasDependencies = true;
+        if (is_module_function_valid(function)) {
+            // skip empty dependents
+            hasDependencies = true;
+        }
     }
 
+    bool cont = false;
     for (unsigned int d=0; d<2 && info && hasDependencies; d++) {
         const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
         module_function_t function = module_function_t(dependency.module_function);
-        if (d) result &= json.write(',');
+        if (!is_module_function_valid(function)) {
+            // Skip empty dependencies to save on space
+            continue;
+        }
+        if (cont) {
+            result &= json.write(',');
+        }
         result &= json.write('{')
-          && json.write_string("f", module_function_string(function))
-          && json.write_string("n", module_name(dependency.module_index, buf))
-          && json.write_value("v", dependency.module_version)
-           && json.end_list() && json.write('}');
+                && json.write_string("f", module_function_string(function))
+                && json.write_string("n", module_name(dependency.module_index, buf))
+                && json.write_value("v", dependency.module_version)
+                && json.end_list() && json.write('}');
+        cont = true;
     }
     result &= json.write("]}");
 
@@ -566,7 +593,14 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
             continue;
         }
 #endif // HYBRID_BUILD
-        if (i) result &= json.write(',');
+        if (!module.info || !is_module_function_valid((module_function_t)module.info->module_function)) {
+            // Skip modules that do not contain binary at all, otherwise we easily overflow
+            // system describe message
+            continue;
+        }
+        if (i) {
+            result &= json.write(',');
+        }
         result &= module_info_to_json(append, append_data, &module, 0);
     }
 
