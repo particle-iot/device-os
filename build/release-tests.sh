@@ -17,11 +17,11 @@ Generate the testing binaries belonging to a given platform.
                             parameter file. If none is supplied, then
                             the file '<particle-iot/device-os>/user/tests..
                             /release-tests.json' will be used as default.
-  -h, --help              Display this help and exit
+  -h, --help              Display this help and exit.
   -o, --output-directory  Specify the root output directory where the
                             folder hierarchy for the resulting binaries
                             will be placed.
-  -p, --platform          Specify the desired platform
+  -p, --platform          Specify the desired platform.
   -v, --version           Specify the semantic version of the Device OS
                             for which you are building tests.
 "

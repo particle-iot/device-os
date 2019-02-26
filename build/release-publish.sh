@@ -10,7 +10,7 @@ usage: release-publish.sh [--help] [--version=<semantic_version_string>]
 Crawls through the specified releases directory, identifying the related binaries
 and copying them into a publish folder.
 
-  -h, --help               Display this help and exit
+  -h, --help               Display this help and exit.
   -r, --release-directory  Specify the root directory where the binaries from
                              previously generated versioned releases can be found.
   -v, --version            Specify the version you wish to publish. If not

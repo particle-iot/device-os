@@ -14,16 +14,16 @@ Generate the binaries for a versioned release of the Device OS. This utility
 is capable of generating both debug and release binaries, as well as the
 associated tests for a specified platform.
 
-  -d, --debug             Generate debug binaries (as opposed to release)
-  -h, --help              Display this help and exit
-  -i, --platform-id       Specify the desired platform id
+  -d, --debug             Generate debug binaries (as opposed to release).
+  -h, --help              Display this help and exit.
+  -i, --platform-id       Specify the desired platform id.
   -o, --output-directory  Specify the root output directory where the
                             folder hierarchy for the resulting binaries
                             will be placed. If not specified, the resulting
                             binaries will be placed in '<particle-iot/device-os>...
                             /build/releases/' by default.
-  -p, --platform          Specify the desired platform
-  -t, --tests             Generate test binaries for the current platform
+  -p, --platform          Specify the desired platform.
+  -t, --tests             Generate test binaries for the current platform.
 "
 }
 
