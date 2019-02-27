@@ -12,19 +12,55 @@
 - Bypass git dependency in build [#1664](https://github.com/particle-iot/device-os/pull/1664)
 - Refactor release scripts [#1687](https://github.com/particle-iot/device-os/pull/1687)
 
-## 0.9.0-rc.3
+## 0.9.0 (same as 0.9.0-rc.1, 0.9.0-rc.2, 0.9.0-rc.3)
+
+### BUGFIXES
+- [Gen 3] Fixes system-dynalib incompatibility introduced in 0.9.0-rc.1, causing pre-0.9.0-rc.1 user applications that call certain system-dynalib functions to crash the device [#1692]
+- [Gen 3] `WKP` pin is configured as pull-down with rising edge trigger when entering STANDBY sleep mode to keep feature parity with Gen 2 devices (#1691)
+- [Boron] PPP thread stack size increased by 1K in order to resolve a very rare stack overflow (#1691)
+- [Gen 3] Fixes a crash when attempting to send constant data residing in flash through Ethernet interface (#1691)
+- [Gen 3] An attempt to unitialize an SPI interface no longer causes an assertion failure if the interface is not initialized (#1663)
+- [Gen 3] Default SPI settings are now recognized correctly (#1663)
+- [Gen 3] Fixed a possible race condition during the Timer's uninitialization (#1663)
+- [Gen 3] `random()` is now properly seeded on application startup (#1663)
+- [Boron] Fixes an issue with IMEI and ICCID not being reported in listening mode serial console with `v` command (#1681)
+- [Gen 3] SPI MISO is no longer configured with a pull-down and user-provided CS pin is not reset to `INPUT` state when reconfiguring SPI peripheral (#1671)
+- [Argon] Fixes a deadlock when initializing NCP client (#1661)
+- [Gen 3] DFU mode no longer requires driver installation on Windows. Fixes incorrect WCID descriptors (#1653)
+- [Gen 3] Adds missing Arduino-specific definitions (#1658)
+- [Xenon] Makes `Serial2` available in user applications (#1660)
+- [Argon] WiFi cipher types are now being correctly reported when scanning or retreiving stored credentials (#1659)
+
+### ENHANCEMENTS
+- [Gen 3] `micros()` resolution increased by mixing in `DWT->CYCCNT` (#1682)
+
+### FEATURES
+- [Gen 3] STOP sleep mode support (#1682)
+- [Gen 3] STANDBY sleep mode support (#1667)
+- [Gen 3] USB control requests (#1655)
+- [Gen 3] Mesh network diagnostics (#1657)
+- [Boron] `Cellular.command()` support (#1651)
+
+### INTERNAL
+- [Gen 3] Most of the `wiring/no_fixture` tests now successfully run on Xenon, Argon and Boron (#1663)
+- Removed strong dependency on `git` (#1664)
+- [Gen 3] OpenThread updated to 20190130 master with the fix for negative clock drift between HFCLK and LFCLK (#1684)
+- Submodules now use absolute https URLs (#1699)
+- Fixed an assertion failure (SOS 10) with Mesh.subscribe() and threading enabled (#1652)
+
+## 0.9.0-rc.3 (internal only)
 
 ### BUGFIXES
 - [Gen 3] Fixes system-dynalib incompatibility introduced in 0.9.0-rc.1, causing pre-0.9.0-rc.1 user applications that call certain system-dynalib functions to crash the device [#1692]
 
-## 0.9.0-rc.2
+## 0.9.0-rc.2 (internal only)
 
 ### BUGFIXES
 - [Gen 3] `WKP` pin is configured as pull-down with rising edge trigger when entering STANDBY sleep mode to keep feature parity with Gen 2 devices (#1691)
 - [Boron] PPP thread stack size increased by 1K in order to resolve a very rare stack overflow (#1691)
 - [Gen 3] Fixes a crash when attempting to send constant data residing in flash through Ethernet interface (#1691)
 
-## 0.9.0-rc.1
+## 0.9.0-rc.1 (internal only)
 
 ### BUGFIXES
 - [Gen 3] An attempt to unitialize an SPI interface no longer causes an assertion failure if the interface is not initialized (#1663)

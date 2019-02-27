@@ -74,6 +74,7 @@
 | 300 | 400 | 0.9.0-rc.1  |         (Xenon, Argon, Boron) |
 | 300 | 401 | 0.9.0-rc.2  |         (Xenon, Argon, Boron) |
 | 300 | 402 | 0.9.0-rc.3  |         (Xenon, Argon, Boron) |
+| 300 | 403 | 0.9.0       |         (Xenon, Argon, Boron) |
 | 201 | 1000 | 1.0.0       |       (Core, Photon, P1, Electron) |
 | 201 | 1001 | 1.0.1-rc.1  |       (Core, Photon, P1, Electron) |
 | 201 | 1002 | 1.0.1       |       Core, Photon, P1, Electron |
