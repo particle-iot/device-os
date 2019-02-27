@@ -2302,7 +2302,7 @@ int ble_gatt_server_notify_characteristic_value(uint16_t value_handle, uint8_t* 
     os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
     os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
 
-    return SYSTEM_ERROR_NONE;
+    return ble_gatt_server_set_characteristic_value(value_handle, data, len, NULL);
 }
 
 int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t len, void *reserved) {
@@ -2341,7 +2341,7 @@ int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, uint8_t
     os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
     os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
 
-    return SYSTEM_ERROR_NONE;
+    return ble_gatt_server_set_characteristic_value(value_handle, data, len, NULL);
 }
 
 
