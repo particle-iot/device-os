@@ -61,7 +61,7 @@ static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t *event) {
                 event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
 }
 
-static void ble_on_data_received(hal_ble_gatt_server_on_data_received_evt_t* event) {
+static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t* event) {
     LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
 
     if (event->attr_handle == characteristic1.value_handle) {
@@ -83,6 +83,18 @@ static void ble_on_data_received(hal_ble_gatt_server_on_data_received_evt_t* eve
     Serial1.print("\r\n");
 }
 
+static void ble_on_events(hal_ble_events_t *event, void* context) {
+    if (event->type == BLE_EVT_CONNECTED) {
+        ble_on_connected(&event->params.connected);
+    }
+    else if (event->type == BLE_EVT_DISCONNECTED) {
+        ble_on_disconnected(&event->params.disconnected);
+    }
+    else if (event->type == BLE_EVT_DATA_RECEIVED) {
+        ble_on_data_received(&event->params.data_rec);
+    }
+}
+
 test(01_BleStackReinitializationShouldFail) {
     int ret;
 
@@ -92,9 +104,7 @@ test(01_BleStackReinitializationShouldFail) {
     ret = ble_stack_init(NULL);
     assertNotEqual(ret, 0);
 
-    ble_gap_set_callback_on_connected(ble_on_connected);
-    ble_gap_set_callback_on_disconnected(ble_on_disconnected);
-    ble_gatt_server_set_callback_on_data_received(ble_on_data_received);
+    ble_set_callback_on_events(ble_on_events, NULL);
 }
 
 test(02_BleSetDeviceAddressShouldBePublicOrRandomStatic) {

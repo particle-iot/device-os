@@ -154,6 +154,15 @@ static void ble_on_scan_stopped(hal_ble_gap_on_scan_stopped_evt_t *event) {
     LOG(TRACE, "BLE scan stopped.");
 }
 
+static void ble_on_events(hal_ble_events_t *event, void* context) {
+    if (event->type == BLE_EVT_SCAN_RESULT) {
+        ble_on_scan_result(&event->params.scan_result);
+    }
+    else if (event->type == BLE_EVT_SCAN_STOPPED) {
+        ble_on_scan_stopped(&event->params.scan_stopped);
+    }
+}
+
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
@@ -171,8 +180,7 @@ void setup()
     scanParams.timeout  = 1000; // 0 for forever unless stop initially
     ble_gap_set_scan_parameters(&scanParams, NULL);
 
-    ble_gap_set_callback_on_scan_result(ble_on_scan_result);
-    ble_gap_set_callback_on_scan_stopped(ble_on_scan_stopped);
+    ble_set_callback_on_events(ble_on_events, NULL);
 
     ble_gap_start_scan(NULL);
 }
