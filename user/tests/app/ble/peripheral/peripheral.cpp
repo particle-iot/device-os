@@ -184,7 +184,7 @@ static void ble_on_connection_parameters_updated(hal_ble_gap_on_connection_param
     LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
 }
 
-static void ble_on_data_received(hal_ble_gatt_server_on_data_received_evt_t* event) {
+static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t* event) {
     LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
 
     if (event->attr_handle == bleChar1.value_handle) {
@@ -210,6 +210,24 @@ static void ble_on_data_received(hal_ble_gatt_server_on_data_received_evt_t* eve
         Serial1.printf("0x%02X,", event->data[i]);
     }
     Serial1.print("\r\n");
+}
+
+static void ble_on_events(hal_ble_events_t *event, void* context) {
+    if (event->type == BLE_EVT_ADV_STOPPED) {
+        ble_on_adv_stopped(&event->params.adv_stopped);
+    }
+    else if (event->type == BLE_EVT_CONNECTED) {
+        ble_on_connected(&event->params.connected);
+    }
+    else if (event->type == BLE_EVT_DISCONNECTED) {
+        ble_on_disconnected(&event->params.disconnected);
+    }
+    else if (event->type == BLE_EVT_CONN_PARAMS_UPDATED) {
+        ble_on_connection_parameters_updated(&event->params.conn_params_updated);
+    }
+    else if (event->type == BLE_EVT_DATA_RECEIVED) {
+        ble_on_data_received(&event->params.data_rec);
+    }
 }
 
 /* This function is called once at start up ----------------------------------*/
@@ -266,11 +284,7 @@ void setup()
     uint8_t data[20] = {0x11};
     ble_gatt_server_set_characteristic_value(bleChar1.value_handle, data, 5, NULL);
 
-    ble_gap_set_callback_on_advertising_stopped(ble_on_adv_stopped);
-    ble_gap_set_callback_on_connected(ble_on_connected);
-    ble_gap_set_callback_on_disconnected(ble_on_disconnected);
-    ble_gap_set_callback_on_connection_parameters_updated(ble_on_connection_parameters_updated);
-    ble_gatt_server_set_callback_on_data_received(ble_on_data_received);
+    ble_set_callback_on_events(ble_on_events, NULL);
 
     ble_gap_start_advertising(NULL);
 }

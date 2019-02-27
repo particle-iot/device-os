@@ -164,15 +164,6 @@ typedef struct {
 typedef struct {
     uint8_t  version;
     uint16_t conn_handle;
-    uint16_t attr_handle;
-    uint16_t offset;
-    uint16_t data_len;
-    uint8_t  data[BLE_MAX_CHAR_VALUE_LEN];
-} hal_ble_gatt_server_on_data_received_evt_t;
-
-typedef struct {
-    uint8_t  version;
-    uint16_t conn_handle;
     uint8_t  count;
     hal_ble_service_t* services;
 } hal_ble_gatt_client_on_services_discovered_evt_t;
@@ -194,25 +185,42 @@ typedef struct {
 typedef struct {
     uint8_t  version;
     uint16_t conn_handle;
-    uint16_t peer_attr_handle;
+    uint16_t attr_handle;
     uint16_t offset;
     uint16_t data_len;
     uint8_t  data[BLE_MAX_CHAR_VALUE_LEN];
-} hal_ble_gatt_client_on_data_received_evt_t;
+} hal_ble_gatt_on_data_received_evt_t;
 
-typedef void (*ble_gap_on_advertising_stopped_callback_t)(hal_ble_gap_on_advertising_stopped_evt_t *event);
-typedef void (*ble_gap_on_scan_result_callback_t)(hal_ble_gap_on_scan_result_evt_t* event);
-typedef void (*ble_gap_on_scan_stopped_callback_t)(hal_ble_gap_on_scan_stopped_evt_t* event);
-typedef void (*ble_gap_on_connected_callback_t)(hal_ble_gap_on_connected_evt_t *event);
-typedef void (*ble_gap_on_disconnected_callback_t)(hal_ble_gap_on_disconnected_evt_t* event);
-typedef void (*ble_gap_on_connection_parameters_updated_callback_t)(hal_ble_gap_on_connection_parameters_updated_evt_t* event);
+typedef enum {
+    BLE_EVT_ADV_STOPPED,
+    BLE_EVT_SCAN_RESULT,
+    BLE_EVT_SCAN_STOPPED,
+    BLE_EVT_CONNECTED,
+    BLE_EVT_DISCONNECTED,
+    BLE_EVT_CONN_PARAMS_UPDATED,
+    BLE_EVT_SVC_DISCOVERED,
+    BLE_EVT_CHAR_DISCOVERED,
+    BLE_EVT_DESC_DISCOVERED,
+    BLE_EVT_DATA_RECEIVED,
+} hal_ble_events_type_t;
 
-typedef void (*ble_gatt_client_on_services_discovered_callback_t)(hal_ble_gatt_client_on_services_discovered_evt_t* event);
-typedef void (*ble_gatt_client_on_characteristics_discovered_callback_t)(hal_ble_gatt_client_on_characteristics_discovered_evt_t* event);
-typedef void (*ble_gatt_client_on_descriptors_discovered_callback_t)(hal_ble_gatt_client_on_descriptors_discovered_evt_t* event);
-typedef void (*ble_gatt_client_on_data_received_callback_t)(hal_ble_gatt_client_on_data_received_evt_t* event);
+typedef struct {
+    hal_ble_events_type_t type;
+    union {
+        hal_ble_gap_on_advertising_stopped_evt_t adv_stopped;
+        hal_ble_gap_on_scan_result_evt_t scan_result;
+        hal_ble_gap_on_scan_stopped_evt_t scan_stopped;
+        hal_ble_gap_on_connected_evt_t connected;
+        hal_ble_gap_on_disconnected_evt_t disconnected;
+        hal_ble_gap_on_connection_parameters_updated_evt_t conn_params_updated;
+        hal_ble_gatt_client_on_services_discovered_evt_t svc_disc;
+        hal_ble_gatt_client_on_characteristics_discovered_evt_t char_disc;
+        hal_ble_gatt_client_on_descriptors_discovered_evt_t desc_disc;
+        hal_ble_gatt_on_data_received_evt_t data_rec;
+    } params;
+} hal_ble_events_t;
 
-typedef void (*ble_gatt_server_on_data_received_callback_t)(hal_ble_gatt_server_on_data_received_evt_t* event);
+typedef void (*ble_on_events_callback_t)(hal_ble_events_t *event, void* context);
 
 
 #ifdef __cplusplus
@@ -245,104 +253,13 @@ int ble_stack_init(void* reserved);
 int ble_select_antenna(hal_ble_antenna_type_t antenna);
 
 /**
- * Set the callback on advertising stopped.
+ * Set the callback on BLE events.
  *
  * @param[in]   callback    The callback function.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_set_callback_on_advertising_stopped(ble_gap_on_advertising_stopped_callback_t callback);
-
-/**
- * Set the callback on scan result is reported.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gap_set_callback_on_scan_result(ble_gap_on_scan_result_callback_t callback);
-
-/**
- * Set the callback on scan stopped.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gap_set_callback_on_scan_stopped(ble_gap_on_scan_stopped_callback_t callback);
-
-/**
- * Set the callback on peer device connected.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gap_set_callback_on_connected(ble_gap_on_connected_callback_t callback);
-
-/**
- * Set the callback on peer device disconnected.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gap_set_callback_on_disconnected(ble_gap_on_disconnected_callback_t callback);
-
-/**
- * Set the callback on connection parameters updated.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gap_set_callback_on_connection_parameters_updated(ble_gap_on_connection_parameters_updated_callback_t callback);
-
-/**
- * Set the callback on data received on the GATT Server side.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gatt_server_set_callback_on_data_received(ble_gatt_server_on_data_received_callback_t callback);
-
-/**
- * Set the callback on BLE services discovered.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gatt_client_set_callback_on_services_discovered(ble_gatt_client_on_services_discovered_callback_t callback);
-
-/**
- * Set the callback on characteristics discovered.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gatt_client_set_callback_on_characteristics_discovered(ble_gatt_client_on_characteristics_discovered_callback_t callback);
-
-/**
- * Set the callback on descriptors discovered.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gatt_client_set_callback_on_descriptors_discovered(ble_gatt_client_on_descriptors_discovered_callback_t callback);
-
-/**
- * Set the callback on data received on GATT Client side.
- *
- * @param[in]   callback    The callback function.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gatt_client_set_callback_on_data_received(ble_gatt_client_on_data_received_callback_t callback);
-
+int ble_set_callback_on_events(ble_on_events_callback_t callback, void* context);
 
 /**
  * Set local BLE identity address, which type must be either public or random.

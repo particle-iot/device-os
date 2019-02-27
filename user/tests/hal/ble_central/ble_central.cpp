@@ -225,26 +225,50 @@ static void ble_on_descriptors_discovered(hal_ble_gatt_client_on_descriptors_dis
     }
 }
 
-static void ble_on_data_received(hal_ble_gatt_client_on_data_received_evt_t *event) {
+static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t *event) {
     LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
 
-    if (event->peer_attr_handle == char1.value_handle) {
+    if (event->attr_handle == char1.value_handle) {
         LOG(TRACE, "Read BLE characteristic 1 value:");
         readData = true;
         memcpy(char1Data, event->data, event->data_len);
     }
-    else if (event->peer_attr_handle == char2.value_handle) {
+    else if (event->attr_handle == char2.value_handle) {
         LOG(TRACE, "Notified BLE characteristic 2 value:");
         notifiedData = true;
     }
     else {
-        LOG(TRACE, "BLE received data, attribute handle: %d.", event->peer_attr_handle);
+        LOG(TRACE, "BLE received data, attribute handle: %d.", event->attr_handle);
     }
 
     for (uint8_t i = 0; i < event->data_len; i++) {
         Serial1.printf("0x%02X,", event->data[i]);
     }
     Serial1.print("\r\n");
+}
+
+static void ble_on_events(hal_ble_events_t *event, void* context) {
+    if (event->type == BLE_EVT_CONNECTED) {
+        ble_on_connected(&event->params.connected);
+    }
+    else if (event->type == BLE_EVT_DISCONNECTED) {
+        ble_on_disconnected(&event->params.disconnected);
+    }
+    else if (event->type == BLE_EVT_SCAN_RESULT) {
+        ble_on_scan_result(&event->params.scan_result);
+    }
+    else if (event->type == BLE_EVT_SVC_DISCOVERED) {
+        ble_on_services_discovered(&event->params.svc_disc);
+    }
+    else if (event->type == BLE_EVT_CHAR_DISCOVERED) {
+        ble_on_characteristics_discovered(&event->params.char_disc);
+    }
+    else if (event->type == BLE_EVT_DESC_DISCOVERED) {
+        ble_on_descriptors_discovered(&event->params.desc_disc);
+    }
+    else if (event->type == BLE_EVT_DATA_RECEIVED) {
+        ble_on_data_received(&event->params.data_rec);
+    }
 }
 
 test(01_BleSetScanParametersShouldBeValid) {
@@ -274,13 +298,7 @@ test(01_BleSetScanParametersShouldBeValid) {
     ret = ble_gap_set_scan_parameters(&scanParams, NULL);
     assertEqual(ret, 0);
 
-    ble_gap_set_callback_on_scan_result(ble_on_scan_result);
-    ble_gap_set_callback_on_connected(ble_on_connected);
-    ble_gap_set_callback_on_disconnected(ble_on_disconnected);
-    ble_gatt_client_set_callback_on_services_discovered(ble_on_services_discovered);
-    ble_gatt_client_set_callback_on_characteristics_discovered(ble_on_characteristics_discovered);
-    ble_gatt_client_set_callback_on_descriptors_discovered(ble_on_descriptors_discovered);
-    ble_gatt_client_set_callback_on_data_received(ble_on_data_received);
+    ble_set_callback_on_events(ble_on_events, NULL);
 }
 
 test(02_BleScanTimeoutAsExpected) {
