@@ -1,3 +1,17 @@
+## 1.0.1
+
+### BUGFIXES
+
+- [LTE/Electron] Fixes software Timer()'s halting after millis() overflows (every 49.7 days) [#1688](https://github.com/particle-iot/device-os/pull/1688)
+- [LTE/Electron] bug fixes and enhancements (see PR ->) [#1689](https://github.com/particle-iot/device-os/pull/1689)
+
+### INTERNAL
+
+- Fix Travis badge [#1670](https://github.com/particle-iot/device-os/pull/1670)
+- Mojave doesn't ship with `wget` [#1674](https://github.com/particle-iot/device-os/pull/1674)
+- Bypass git dependency in build [#1664](https://github.com/particle-iot/device-os/pull/1664)
+- Refactor release scripts [#1687](https://github.com/particle-iot/device-os/pull/1687)
+
 ## 0.9.0-rc.3
 
 ### BUGFIXES
