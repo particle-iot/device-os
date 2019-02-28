@@ -44,6 +44,7 @@ env:
     - BUILD_PLATFORM=gcc
     - BUILD_PLATFORM=newhal
     - BUILD_PLATFORM=unit-test
+    - BUILD_PLATFORM=core
 
   # matrix:
   #   - BUILD_PLATFORM=unit-test gcc

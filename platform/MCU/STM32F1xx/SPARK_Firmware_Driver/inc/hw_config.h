@@ -37,6 +37,7 @@
 #include "system_tick_hal.h"
 #include "usb_hal.h"
 #include "hw_ticks.h"
+#include "button_hal.h"
 
 
 #ifdef __cplusplus
@@ -51,15 +52,6 @@ enum SpiBusOwner {
 
 
 /* Exported types ------------------------------------------------------------*/
-typedef enum
-{
-	BUTTON1 = 0, BUTTON2 = 1, BUTTON1_MIRROR = 2
-} Button_TypeDef;
-
-typedef enum
-{
-	BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1
-} ButtonMode_TypeDef;
 
 typedef enum
 {

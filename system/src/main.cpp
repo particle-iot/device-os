@@ -46,7 +46,9 @@
 #include "watchdog_hal.h"
 #include "usb_hal.h"
 #include "button_hal.h"
+#if HAL_PLATFORM_DCT
 #include "dct_hal.h"
+#endif // HAL_PLATFORM_DCT
 #include "system_mode.h"
 #include "rgbled.h"
 #include "led_service.h"
@@ -628,7 +630,7 @@ private:
 };
 
 int resetSettingsToFactoryDefaultsIfNeeded() {
-#ifndef SPARK_NO_PLATFORM
+#if !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     Load_SystemFlags();
     if (SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) != 0x0001) {
         return 0;
@@ -664,7 +666,7 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     CHECK(dct_write_app_data(backup_udp_public_server_key, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, backup_udp_public_server_key_size));
     CHECK(dct_write_app_data(backup_udp_public_server_address, DCT_ALT_SERVER_ADDRESS_OFFSET, backup_udp_public_server_address_size));
 #endif // HAL_PLATFORM_MESH
-#endif // SPARK_NO_PLATFORM
+#endif // !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     return 0;
 }
 
