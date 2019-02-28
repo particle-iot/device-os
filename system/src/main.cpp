@@ -367,7 +367,9 @@ extern "C" void HAL_SysTick_Handler(void)
     static uint16_t cloudCheckTicks = CLOUD_CHECK_INTERVAL;
 
     if (--cloudCheckTicks == 0) {
+#ifndef SPARK_NO_CLOUD
         system_cloud_active();
+#endif // SPARK_NO_CLOUD
         cloudCheckTicks = CLOUD_CHECK_INTERVAL;
     }
 
