@@ -585,6 +585,8 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         && json.write_key_values(system.key_value_count, system.key_values)
         && json.write_attribute("m")
         && json.write('[');
+
+    bool cont = false;
     for (unsigned i=0; i<system.module_count; i++) {
         const hal_module_t& module = system.modules[i];
 #ifdef HYBRID_BUILD
@@ -598,10 +600,11 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
             // system describe message
             continue;
         }
-        if (i) {
+        if (cont) {
             result &= json.write(',');
         }
         result &= module_info_to_json(append, append_data, &module, 0);
+        cont = true;
     }
 
     result &= json.write(']');
