@@ -21,7 +21,7 @@
 #include "application.h"
 
 BLEAttribute heartrate(READABLE | NOTIFIABLE_WO_RSP, "heartrate");
-BLEConnectionInstance myConn;
+BLEConnection* myConn;
 
 void setup() {
     BLE.on();

@@ -24,7 +24,7 @@
 
 #define MIN(a,b) {((a) > (b)) ? (b) : (a)}
 
-Vector<BLEAttribute> BLEClass::localAttrs_;
+BLEAttributeList BLEClass::localAttrs_(5);
 
 
 BLEUUID::BLEUUID() {
@@ -234,23 +234,23 @@ BLEDevice::~BLEDevice() {
 
 }
 
-BLEAdvertiser::BLEAdvertiser() {
+BLEScanResult::BLEScanResult() {
 
 }
 
-BLEAdvertiser::~BLEAdvertiser() {
+BLEScanResult::~BLEScanResult() {
 
 }
 
-const BLEAdvertisingData& BLEAdvertiser::data(void) const {
+const BLEAdvertisingData& BLEScanResult::data(void) const {
     return data_;
 }
 
-const BLEDevice& BLEAdvertiser::device(void) const {
+const BLEDevice& BLEScanResult::device(void) const {
     return peer_;
 }
 
-BLEConnection::BLEConnection() {
+BLEConnection::BLEConnection() : peerAttrs_(10) {
 
 }
 
@@ -260,6 +260,10 @@ BLEConnection::~BLEConnection() {
 
 const bleConnHandle BLEConnection::handle(void) const {
     return handle_;
+}
+
+BLEAttributeList& BLEConnection::peerAttrs(void) {
+    return peerAttrs_;
 }
 
 BLEAttribute::BLEAttribute() {
@@ -276,7 +280,7 @@ BLEAttribute::BLEAttribute(uint8_t properties, const char* desc, onDataReceivedC
           dataCb_(cb) {
     init();
 
-    BLEClass::localAttrs_.append(*this);
+    BLEClass::localAttrs_.attributes_.append(*this);
 }
 
 BLEAttribute::~BLEAttribute() {
@@ -313,23 +317,27 @@ int BLEAttribute::value(uint8_t* buf, uint16_t* len) const {
     return SYSTEM_ERROR_NONE;
 }
 
-BLEPeerAttrList::BLEPeerAttrList() {
+BLEAttributeList::BLEAttributeList() {
 
 }
 
-BLEPeerAttrList::~BLEPeerAttrList() {
+BLEAttributeList::BLEAttributeList(int n) : attributes_(n) {
 
 }
 
-BLEAttribute* BLEPeerAttrList::find(const char* desc) const {
-    return nullptr;
+BLEAttributeList::~BLEAttributeList() {
+
 }
 
-uint8_t BLEPeerAttrList::count(void) const {
+int BLEAttributeList::fetch(const char* desc, BLEAttribute** attrs) {
+    return 0;
+}
+
+uint8_t BLEAttributeList::count(void) const {
     return attributes_.size();
 }
 
-BLEClass::BLEClass() {
+BLEClass::BLEClass() : connections_(MAX_PERIPHERAL_LINK_COUNT+MAX_CENTRAL_LINK_COUNT) {
 
 }
 
@@ -353,7 +361,7 @@ int BLEClass::advertise(uint32_t interval, uint32_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::scan(BLEAdvertiser* advList, uint8_t count, uint16_t timeout) const {
+int BLEClass::scan(BLEScanResult* results, uint8_t count, uint16_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
@@ -361,19 +369,16 @@ BLEConnection* BLEClass::connect(onConnectedCb connCb, onDisconnectedCb disconnC
     return nullptr;
 }
 
-BLEConnection* BLEClass::connect(BLEPeerAttrListPtr* peerAttrList, onConnectedCb connCb, onDisconnectedCb disconnCb) {
+
+BLEConnection* BLEClass::connect(const BLEDevice& peer, onConnectedCb connCb, onDisconnectedCb disconnCb) {
     return nullptr;
 }
 
-BLEConnection* BLEClass::connect(BLEDevice& peer, BLEPeerAttrListPtr* peerAttrList, onConnectedCb connCb, onDisconnectedCb disconnCb) {
-    return nullptr;
-}
-
-int BLEClass::disconnect(BLEConnectionInstance conn) {
+int BLEClass::disconnect(BLEConnection* conn) {
     return SYSTEM_ERROR_NONE;
 }
 
-bool BLEClass::connected(BLEConnectionInstance conn) const {
+bool BLEClass::connected(BLEConnection* conn) const {
     return conn->handle() != 0xFFFF;
 }
 

@@ -20,32 +20,31 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEAttributePtr heartrate;
-BLEAdvertiser advertisers[10];
-BLEConnectionInstance myConn;
+BLEScanResult results[10];
 
-void setup1() {
+BLEAttribute* heartrate = nullptr;
+BLEConnection* myConn;
+
+void setup() {
     BLE.on();
 }
 
-void loop1() {
+void loop() {
     if (BLE.connected(myConn)) {
         uint8_t newHr[4];
         uint16_t len = 4;
         heartrate->value(newHr, &len);
     }
     else {
-        uint8_t count = BLE.scan(advertisers, 10);
+        uint8_t count = BLE.scan(results, 10);
 
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
-                bool found = advertisers[i].data().find(BLE_SIG_AD_TYPE_FLAGS);
+                bool found = results[i].data().find(BLE_SIG_AD_TYPE_FLAGS);
                 if (found) {
-                    BLEPeerAttrListPtr attrList;
-
-                    myConn = BLE.connect(advertisers[i].device(), &attrList);
-                    if (myConn.valid()) {
-                        heartrate = attrList->find("heartrate");
+                    myConn = BLE.connect(results[i].device());
+                    if (BLE.connected(myConn)) {
+                        myConn->peerAttrs().fetch("heartrate", &heartrate);
                     }
                 }
             }

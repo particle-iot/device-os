@@ -141,10 +141,10 @@ public:
 
 
 /* BLE advertiser class */
-class BLEAdvertiser {
+class BLEScanResult {
 public:
-    BLEAdvertiser();
-    ~BLEAdvertiser();
+    BLEScanResult();
+    ~BLEScanResult();
 
     const BLEAdvertisingData& data(void) const;
 
@@ -154,29 +154,6 @@ private:
     BLEAdvertisingData data_;
     BLEDevice          peer_;
 };
-
-
-/* BLE connection class */
-class BLEConnection {
-public:
-    typedef struct {
-        uint16_t interval;
-        uint16_t latency;
-        uint16_t timeout;
-    } connParameters;
-
-    connParameters params;
-    BLEDevice      peer;
-
-    BLEConnection();
-    ~BLEConnection();
-
-    const bleConnHandle handle(void) const;
-
-private:
-    bleConnHandle handle_;
-};
-typedef BLEConnection* BLEConnectionInstance;
 
 
 /* BLE attribute class */
@@ -233,23 +210,47 @@ private:
     BLEUUID          attrUuid_;
     BLEUUID          svcUuid_;
 };
-typedef BLEAttribute* BLEAttributePtr;
 
 
-/* BLE attributes list class */
-class BLEPeerAttrList {
+class BLEAttributeList {
+    friend BLEAttribute;
 public:
-    BLEPeerAttrList();
-    ~BLEPeerAttrList();
+    BLEAttributeList();
+    explicit BLEAttributeList(int n);
+    ~BLEAttributeList();
 
-    BLEAttribute* find(const char* desc) const;
+    // There might have more than two attributes with the same description.
+    int fetch(const char* desc, BLEAttribute** attrs);
 
     uint8_t count(void) const;
 
 private:
     Vector<BLEAttribute> attributes_;
 };
-typedef BLEPeerAttrList* BLEPeerAttrListPtr;
+
+
+/* BLE connection class */
+class BLEConnection {
+public:
+    typedef struct {
+        uint16_t interval;
+        uint16_t latency;
+        uint16_t timeout;
+    } connParameters;
+
+    connParameters params;
+    BLEDevice      peer;
+
+    BLEConnection();
+    ~BLEConnection();
+
+    const bleConnHandle handle(void) const;
+    BLEAttributeList& peerAttrs(void);
+
+private:
+    bleConnHandle handle_;
+    BLEAttributeList peerAttrs_;
+};
 
 
 /* BLE class */
@@ -279,36 +280,31 @@ public:
     /**
      * Start scanning. It will stop once the advertiser count is reached or timeout expired.
      */
-    int scan(BLEAdvertiser* advList, uint8_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
+    int scan(BLEScanResult* result, uint8_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
 
     /**
      * By calling these methods, local device will be Peripheral once connected.
-     * If peerAttrList is nullptr, it will not discover peer attributes once connected.
      */
     BLEConnection* connect(onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
-    BLEConnection* connect(BLEPeerAttrListPtr* peerAttrList, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
 
     /**
      * If peer is local device, it will be BLE Peripheral once connected.
      * Otherwise, it will be BLE Central once connected.
-     *
-     * If peerAttrList is nullptr, it will not discover peer attributes automatically once connected.
      */
-    BLEConnection* connect(BLEDevice& peer, BLEPeerAttrListPtr* peerAttrList, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
+    BLEConnection* connect(const BLEDevice& peer, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
 
-    int disconnect(BLEConnectionInstance conn);
+    int disconnect(BLEConnection* conn);
 
-    bool connected(BLEConnectionInstance conn) const;
+    bool connected(BLEConnection* conn) const;
 
 private:
     /**
      * It should be static since it may be invoked when constructing an attribute in user application.
      * Attributes can only be added after BLE stack being initialized.
      */
-    static Vector<BLEAttribute>  localAttrs_;
+    static BLEAttributeList localAttrs_;
 
-    BLEConnection   connections_[MAX_PERIPHERAL_LINK_COUNT + MAX_CENTRAL_LINK_COUNT];
-    BLEPeerAttrList peerAttrsList_[MAX_CENTRAL_LINK_COUNT];
+    Vector<BLEConnection> connections_;
 
     onConnectedCb    connectedCb_;
     onDisconnectedCb disconnectCb_;
