@@ -22,7 +22,7 @@
 
 BLEAttributePtr heartrate;
 BLEAdvertiser advertisers[10];
-BLEConnection myConn;
+BLEConnectionInstance myConn;
 
 void setup1() {
     BLE.on();

@@ -22,6 +22,11 @@
 
 #if Wiring_BLE
 
+#define MIN(a,b) {((a) > (b)) ? (b) : (a)}
+
+Vector<BLEAttribute> BLEClass::localAttrs_;
+
+
 BLEUUID::BLEUUID() {
 
 }
@@ -189,7 +194,7 @@ bool BLEAdvertisingData::find(uint8_t type, uint8_t* data, uint16_t* len, bool* 
     }
 
     uint16_t offset, adsLen;
-    uint8_t *advPtr;
+    const uint8_t *advPtr;
 
     if (locate(type, &offset, &adsLen, true) == SYSTEM_ERROR_NONE) {
         if (sr != nullptr) {
@@ -237,11 +242,11 @@ BLEAdvertiser::~BLEAdvertiser() {
 
 }
 
-BLEAdvertisingData& BLEAdvertiser::data(void) const {
+const BLEAdvertisingData& BLEAdvertiser::data(void) const {
     return data_;
 }
 
-BLEDevice& BLEAdvertiser::device(void) const {
+const BLEDevice& BLEAdvertiser::device(void) const {
     return peer_;
 }
 
@@ -253,8 +258,8 @@ BLEConnection::~BLEConnection() {
 
 }
 
-bool BLEConnection::valid() const {
-    return handle_ != 0xFFFF;
+const bleConnHandle BLEConnection::handle(void) const {
+    return handle_;
 }
 
 BLEAttribute::BLEAttribute() {
@@ -340,37 +345,41 @@ int BLEClass::off(void) {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::advertise(uint32_t interval = DEFAULT_ADVERTISING_INTERVAL) const {
+int BLEClass::advertise(uint32_t interval) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::advertise(uint32_t interval, uint32_t timeout = DEFAULT_ADVERTISING_TIMEOUT) const {
+int BLEClass::advertise(uint32_t interval, uint32_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::scan(BLEAdvertiser* advList, uint8_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const {
+int BLEClass::scan(BLEAdvertiser* advList, uint8_t count, uint16_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
-BLEConnection& BLEClass::connect(onConnectedCb cb = nullptr, onDisconnectedCb cb = nullptr) const {
+BLEConnection* BLEClass::connect(onConnectedCb connCb, onDisconnectedCb disconnCb) {
     return nullptr;
 }
 
-BLEConnection& BLEClass::connect(BLEPeerAttrListPtr* peerAttrList, onConnectedCb cb = nullptr, onDisconnectedCb cb = nullptr) const {
+BLEConnection* BLEClass::connect(BLEPeerAttrListPtr* peerAttrList, onConnectedCb connCb, onDisconnectedCb disconnCb) {
     return nullptr;
 }
 
-BLEConnection& BLEClass::connect(BLEDevice& peer, BLEPeerAttrListPtr* peerAttrList, onConnectedCb cb = nullptr, onDisconnectedCb cb = nullptr) const {
+BLEConnection* BLEClass::connect(BLEDevice& peer, BLEPeerAttrListPtr* peerAttrList, onConnectedCb connCb, onDisconnectedCb disconnCb) {
     return nullptr;
 }
 
-int BLEClass::disconnect(BLEConnection& conn) const {
+int BLEClass::disconnect(BLEConnectionInstance conn) {
     return SYSTEM_ERROR_NONE;
 }
 
-bool BLEClass::connected(BLEConnection& conn) const {
-    return false;
+bool BLEClass::connected(BLEConnectionInstance conn) const {
+    return conn->handle() != 0xFFFF;
 }
+
+
+/* Built-in BLE instance. */
+BLEClass BLE;
 
 
 #endif
