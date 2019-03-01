@@ -29,216 +29,288 @@
 
 #include "system_error.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_vector.h"
+#include "spark_wiring_flags.h"
 
+using spark::Vector;
+using particle::Flags;
+
+// Temporary code. Use HAL definitions.
+#define BLE_SIG_AD_TYPE_FLAGS 0x02
+
+
+class BLEClass;
+class BLEAttribute;
+class BLEPeerAttrList;
+
+/* BLE UUID class */
 class BLEUUID {
+    BLEUUID();
+    ~BLEUUID();
+
 public:
     typedef enum {
         BLE_UUID_SHORT = 0,
         BLE_UUID_LONG = 1
-    } ble_uuid_type_t;
+    } bleUuidType;
 
     typedef enum {
         MSB = 0,
         LSB = 1
-    } ble_uuid_byte_order_t;
+    } bleUuidOrder;
 
-    static const uint8_t LONG_UUID_LENGTH = BLE_SIG_UUID_128BIT_LEN;
-
-private:
-    ble_uuid_type_t type;
-    uint16_t        shortUUID;
-    uint8_t         longUUID[LONG_UUID_LENGTH];
-    uint8_t         baseUUID[LONG_UUID_LENGTH];
-};
-
-class AdvertisingDataManagement {
-public:
-    int locateAdStructure(uint8_t adsType, const uint8_t* data, uint16_t len, uint16_t* offset, uint16_t* adsLen);
-    int encodeAdStructure(uint8_t adsType, const uint8_t* data, uint16_t len, bool sr, uint8_t* advData, uint16_t* advDataLen);
-}
-
-class BLEGAPClass : protected AdvertisingDataManagement {
-public:
-    /* Sets local device address. */
-    virtual int setDeviceAddress(const void* addr) override {return 0;}
-
-    /* Gets local device address. */
-    virtual int getDeviceAddress(void* addr) override {return 0;}
-
-    /* Sets local device name. */
-    virtual int setDeviceName(const uint8_t* name, uint16_t len) override {return 0;}
-    virtual int setDeviceName(const char* str) {
-        uint16_t len = strlen(str);
-        return setDeviceName((const uint8_t*)str, len);
-    }
-    virtual int setDeviceName(String& str) {
-        return setDeviceName(str.c_str());
-    }
-
-    /* Gets local device name. */
-    virtual int getDeviceName(uint8_t* name, uint16_t* len) override {return 0;}
-
-    /* Sets local device appearance. */
-    virtual int setAppearance(uint16_t val) override {return 0;}
-
-    /* Gets local device appearance. */
-    virtual int getAppearance(uint16_t* val) override {return 0;}
-
-    /* Sets Peripheral Preferred Connection Parameters. */
-    virtual int setPPCP(const void* ppcp) override {return 0;}
-
-    /* Gets Peripheral Preferred Connection Parameters. */
-    virtual int getPPCP(void* ppcp) override {return 0;}
-
-    /* Sets TX Power. */
-    virtual int setTxPower(int val) override {return 0;}
-
-    /* Gets current TX Power. */
-    virtual int getTxPower(int* val) override {return 0;}
-
-    /* Sets Advertising parameters. */
-    virtual int setAdvertisingParameters(const void* params, void* reserved) override {return 0;}
-
-    /* Sets advertising data. */
-    virtual int setAdvertisingData(const uint8_t* data, uint16_t len) override {return 0;}
-
-    /* Fetches the specific advertising structure from the given advertising data. */
-    int decodeAdvertisingData(uint8_t adsType, const uint8_t* advData, uint16_t advDataLen, uint8_t* data, uint16_t* len);
-
-    /* Sets scan response data. */
-    virtual int setScanResponseData(const uint8_t* data, uint16_t len) override {return 0;}
-
-    /* Starts advertising so that it can be observed by nearby BLE devices. */
-    virtual int startAdvertising(void* reserved) override {return 0;}
-
-    /* Stops advertising. */
-    virtual int stopAdvertising(void) override {return 0;}
-
-    /* Checks if it is advertising or not. */
-    virtual bool isAdvertising(void) override {return 0;}
-
-    /* Sets scan parameters. */
-    virtual int setScanParameters(const void* params, void* reserved) override {return 0;}
-
-    /* Starts scanning nearby BLE devices. */
-    virtual int startScanning(void* reserved) override {return 0;}
-
-    /* Stops scanning nearby BLE devices. */
-    virtual int stopScanning(void) override {return 0;}
-
-    /* Checks if it is scanning BLE devices. */
-    virtual bool isScanning(void) override {return 0;}
-
-    /* Connects to a peer BLE device. */
-    virtual int connect(const void* addr, void* reserved) override {return 0;}
-
-    /* Cancels connecting to peer BLE device if the connection hasn't been established. */
-    virtual int connectCancel(void) override {return 0;}
-
-    /* Checks if local device is connecting to a peer BLE device. */
-    virtual bool isConnecting(void) override {return 0;}
-
-    /* Checks if local device is connected to a peer BLE device. */
-    virtual bool isConnected(void) override {return 0;}
-
-    /* Disconnects from a peer BLE device. */
-    virtual int disconnect(void) override {return 0;}
-
-    /* Updates connection parameters. */
-    virtual int updateConnectionParameters(const void* params, void* reserved) override {return 0;}
-};
-
-class BLEGATTServerClass {
-public:
-    /* Adds a BLE service. */
-    virtual int addService(uint8_t type = BLE_SERVICE_TYPE_PRIMARY, const uint8_t* uuid, uint16_t* handle) override {return 0;}
-    virtual int addService(uint8_t type = BLE_SERVICE_TYPE_PRIMARY, uint16_t uuid, uint16_t* handle) override {return 0;}
-    virtual int addService(uint8_t type = BLE_SERVICE_TYPE_PRIMARY, BLEUUID& uuid, uint16_t* handle) override {return 0;}
-    virtual int addService(uint8_t type = BLE_SERVICE_TYPE_PRIMARY, String& uuid, uint16_t* handle) override {return 0;}
-    virtual int addService(BLEService& service) override {return 0;}
-
-    /* Adds a BLE characteristic under the specific service. */
-    virtual int addCharacteristic(BLECharacteristic& characteristic) override {return 0;}
-    virtual int addCharacteristic(const uint8_t* uuid, BLECharacteristic& characteristic) override {return 0;}
-    virtual int addCharacteristic(uint16_t uuid, BLECharacteristic& characteristic) override {return 0;}
-    virtual int addCharacteristic(uint16_t svcHandle, uint8_t properties, const uint8_t* uuid, const char* desc, BLECharacteristic& characteristic) override {return 0;}
-    virtual int addCharacteristic(uint16_t svcHandle, uint8_t properties, uint16_t uuid, const char* desc, BLECharacteristic& characteristic) override {return 0;}
-
-    /* Writes local characteristic value. */
-    virtual int write(BLECharacteristic& characteristic, const uint8_t* data, uint16_t len) override {return 0;}
-    virtual int write(uint16_t valueHandle, const uint8_t* data, uint16_t len) override {return 0;}
-
-    /* Reads local characteristic value. */
-    virtual int read(BLECharacteristic& characteristic, uint8_t* data, uint16_t* len) override {return 0;}
-    virtual int read(uint16_t valueHandle, uint8_t* data, uint16_t* len) override {return 0;}
-};
-
-class BLEGATTClientClass {
-public:
-    /* Discovers all services on peer device. */
-    virtual int discoverAllServices(uint16_t connHandle, BLEService* services, uint8_t* svcCount) override {return 0;}
-
-    /* Discovers all services and characteristics on peer device. */
-    virtual int discoverAllServices(uint16_t connHandle, BLEService* services, uint8_t* svcCount, BLECharacteristic* characteristic, uint8_t* charCount) override {return 0;}
-
-    /* Discovers specific service on peer device by UUID. */
-    virtual int discoverServiceByUUID(uint16_t connHandle, BLEUUID& uuid, BLEService* services) override {return 0;}
-    virtual int discoverServiceByUUID128(uint16_t connHandle, const uint8_t* uuid, BLEService* services) override {return 0;}
-    virtual int discoverServiceByUUID128(uint16_t connHandle, const char* uuid, BLEService* services) override {return 0;}
-    virtual int discoverServiceByUUID128(uint16_t connHandle, String& uuid, BLEService* services) override {return 0;}
-    virtual int discoverServiceByUUID16(uint16_t connHandle, uint16_t uuid, BLEService* services) override {return 0;}
-
-    /* Discovers specific service on peer device by UUID and all the characteristics under this service. */
-    virtual int discoverServiceByUUID(uint16_t connHandle, BLEUUID& uuid, BLEService* services, BLECharacteristic* characteristic, uint8_t* count) override {return 0;}
-    virtual int discoverServiceByUUID128(uint16_t connHandle, const uint8_t* uuid, BLEService* services, BLECharacteristic* characteristic, uint8_t* count) override {return 0;}
-    virtual int discoverServiceByUUID128(uint16_t connHandle, const char* uuid, BLEService* services, BLECharacteristic* characteristic, uint8_t* count) override {return 0;}
-    virtual int discoverServiceByUUID128(uint16_t connHandle, String& uuid, BLEService* services, BLECharacteristic* characteristic, uint8_t* count) override {return 0;}
-    virtual int discoverServiceByUUID16(uint16_t connHandle, uint16_t uuid, BLEService* services, BLECharacteristic* characteristic, uint8_t* count) override {return 0;}
-
-    /* Discovers all characteristics under specific service on peer device and the descriptors under the characteristics. */
-    virtual int discoverAllCharacteristics(uint16_t connHandle, BLEService& service, BLECharacteristic* characteristic, uint8_t* count) override {return 0;}
-    virtual int discoverAllCharacteristics(uint16_t connHandle, uint16_t startHandle, uint16_t endHandle, BLECharacteristic* characteristic, uint8_t* count) override {return 0;}
-
-    /* Checks if it is discovering service or characteristics. */
-    virtual int isDiscovering(void) override {return 0;}
-
-    /* Configures the Client Characteristic Configuration Descriptor. */
-    virtual int configureCCCD(uint16_t connHandle, uint16_t attrHandle, uint8_t val) override {return 0;}
-    virtual int configureCCCD(uint16_t connHandle, BLECharacteristic* characteristic, uint8_t val) override {return 0;}
-    virtual int enableNotification(uint16_t connHandle, BLECharacteristic* characteristic) override {return 0;}
-    virtual int enableNotification(uint16_t connHandle, uint16_t attrHandle) override {return 0;}
-    virtual int disableNotification(uint16_t connHandle, BLECharacteristic* characteristic) override {return 0;}
-    virtual int disableNotification(uint16_t connHandle, uint16_t attrHandle) override {return 0;}
-
-    /* Writes local characteristic value. */
-    virtual int write(uint16_t connHandle, BLECharacteristic& characteristic, const uint8_t* data, uint16_t len) override {return 0;}
-    virtual int write(uint16_t connHandle, uint16_t valueHandle, const uint8_t* data, uint16_t len) override {return 0;}
-
-    /* Reads local characteristic value. */
-    virtual int read(uint16_t connHandle, BLECharacteristic& characteristic, uint8_t* data, uint16_t* len) override {return 0;}
-    virtual int read(uint16_t connHandle, uint16_t valueHandle, uint8_t* data, uint16_t* len) override {return 0;}
-};
-
-class BLEDeviceClass :
-        public BLEGAPClass,
-        public BLEGATTServerClass,
-        public BLEGATTClientClass {
-public:
-    BLEDeviceClass() { }
-    ~BLEDeviceClass() { }
-
-    /* Turns BLE on. */
-    virtual int on(void) override {return 0;}
-
-    /* Turns BLE off. */
-    virtual int off(void) override {return 0;}
+    const uint8_t LONG_UUID_LENGTH = 16;
 
 private:
-
+    bleUuidType type_;
+    uint16_t    short_;
+    uint8_t     long_[LONG_UUID_LENGTH];
+    uint8_t     base_[LONG_UUID_LENGTH];
 };
 
 
-extern BLEDeviceClass BLE;
+/* BLE advertising data class */
+class BLEAdvertisingData {
+    BLEAdvertisingData();
+    ~BLEAdvertisingData();
+
+public:
+    /* Filter the specified type of data from advertising or scan response data. */
+    bool find(uint8_t type) const;
+    bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
+
+    /* Add or update a type of data snippet to advertising data or scan response data. */
+    int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false);
+
+    int remove(uint8_t type);
+
+private:
+    int locate(uint8_t type, uint16_t* offset, uint16_t* len, bool sr) const;
+
+    uint8_t* adv_[31];
+    uint16_t advLen_;
+    uint8_t* sr_[31];
+    uint16_t srLen_;
+};
+
+
+/* BLE device class */
+class BLEDevice {
+    BLEDevice();
+    ~BLEDevice();
+
+public:
+    typedef enum {
+        PUBLIC = 0,
+        RANDOM_STATIC = 1,
+    } bleAddrType;
+
+    typedef enum {
+        PERIPHERAL = 0,
+        CENTRAL = 1,
+    } bleDeviceRole;
+
+    const uint8_t BLE_ADDR_LEN = 6;
+
+    uint8_t       addr[BLE_ADDR_LEN];
+    bleAddrType   type;
+    bleDeviceRole role;
+};
+
+
+/* BLE advertiser class */
+class BLEAdvertiser {
+    BLEAdvertiser();
+    ~BLEAdvertiser();
+
+public:
+    BLEAdvertisingData& data(void) const;
+
+    BLEDevice& device(void) const;
+
+private:
+    BLEAdvertisingData data_;
+    BLEDevice          peer_;
+};
+
+
+/* BLE connection class */
+class BLEConnection {
+    BLEConnection();
+    ~BLEConnection();
+
+public:
+    typedef uint16_t bleConnHandle;
+
+    typedef struct {
+        uint16_t interval;
+        uint16_t latency;
+        uint16_t timeout;
+    } connParameters;
+
+    connParameters params;
+    BLEDevice      peer;
+
+    bool valid(void) const;
+
+private:
+    bleConnHandle handle_;
+};
+
+
+typedef enum {
+    READABLE = 0x01,
+    WRITABLE = 0x02,
+    WRITABLE_WO_RSP = 0x04,
+    NOTIFIABLE = 0x08,
+    NOTIFIABLE_WO_RSP = 0x10,
+} attrProperty;
+
+/* BLE attribute class */
+class BLEAttribute {
+    friend BLEClass;
+
+    typedef void (*onDataReceivedCb)(uint8_t* data, uint16_t len);
+
+    BLEAttribute();
+    BLEAttribute(uint8_t properties, const char* desc, onDataReceivedCb cb = nullptr);
+
+    ~BLEAttribute();
+
+public:
+    const uint16_t MAX_ATTR_VALUE_LEN = 20;
+
+    const char* description(void) const;
+
+    uint8_t properties(void) const;
+
+    int onDataReceived(onDataReceivedCb callback);
+
+    /* Update the attribute value and send to peer automatically if connected.*/
+    int update(const uint8_t* buf, uint16_t len);
+
+    /* Get the attribute value */
+    int value(uint8_t* buf, uint16_t* len) const;
+
+private:
+    void init(void);
+
+    /**
+     * For local attribute, it always be valid.
+     * For peer attribute, it will be valid only if the corresponding connection is valid.
+     */
+    bool             valid_;
+
+    uint8_t          properties_;
+    const char*      description_;
+
+    /**
+     * Internally used for the attribute with NOTIFY or INDICATE property.
+     * For local attribute, if configured, it automatically sending data to peer device.
+     * For peer attribute, if not configured, it will automatically configure it.
+     */
+    bool             configured_;
+
+    uint8_t          value_[MAX_ATTR_VALUE_LEN];
+    uint16_t         len_;
+
+    /**
+     * For local attribute that with WRITE or WRITE_WITHOUT_RESPONSE property.
+     * For peer attribute that with NOTIFY or INDICATE property.
+     */
+    onDataReceivedCb dataCb_;
+
+    uint16_t         attrHandle_;
+    BLEUUID          attrUuid_;
+    BLEUUID          svcUuid_;
+};
+typedef BLEAttribute* BLEAttributePtr;
+
+
+/* BLE attributes list class */
+class BLEPeerAttrList {
+    BLEPeerAttrList();
+    ~BLEPeerAttrList();
+
+public:
+    BLEAttribute* find(const char* desc) const;
+
+    uint8_t count(void) const;
+
+private:
+    Vector<BLEAttribute> attributes_;
+};
+typedef BLEPeerAttrList* BLEPeerAttrListPtr;
+
+
+/* BLE class */
+class BLEClass {
+    BLEClass();
+    ~BLEClass();
+
+public:
+    const uint8_t  MAX_PERIPHERAL_LINK_COUNT = 1; // When acting as Peripheral, the maximum number of Central it can connect to in parallel.
+    const uint8_t  MAX_CENTRAL_LINK_COUNT = 5; // When acting as Central, the maximum number of Peripheral it can connect to in parallel.
+
+    const uint32_t DEFAULT_ADVERTISING_INTERVAL = 100; // In milliseconds.
+    const uint32_t DEFAULT_ADVERTISING_TIMEOUT = 0; // In milliseconds, 0 for advertising infinitely
+    const uint32_t DEFAULT_SCANNING_TIMEOUT = 0; // In milliseconds, 0 for scanning infinitely
+
+    typedef void (*onConnectedCb)(BLEConnection* conn);
+    typedef void (*onDisconnectedCb)(BLEConnection* conn);
+
+    /* Initialize BLE stack and add pre-defined local attributes. */
+    int on(void);
+
+    /* Turn BLE off. */
+    int off(void);
+
+    /* Start advertising. */
+    int advertise(uint32_t interval = DEFAULT_ADVERTISING_INTERVAL) const;
+    int advertise(uint32_t interval, uint32_t timeout = DEFAULT_ADVERTISING_TIMEOUT) const;
+
+    /**
+     * Start scanning. It will stop once the advertiser count is reached or timeout expired.
+     */
+    int scan(BLEAdvertiser* advList, uint8_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
+
+    /**
+     * By calling these methods, local device will be Peripheral once connected.
+     * If peerAttrList is nullptr, it will not discover peer attributes once connected.
+     */
+    BLEConnection& connect(onConnectedCb cb = nullptr, onDisconnectedCb cb = nullptr) const;
+    BLEConnection& connect(BLEPeerAttrListPtr* peerAttrList, onConnectedCb cb = nullptr, onDisconnectedCb cb = nullptr) const;
+
+    /**
+     * If peer is local device, it will be BLE Peripheral once connected.
+     * Otherwise, it will be BLE Central once connected.
+     *
+     * If peerAttrList is nullptr, it will not discover peer attributes automatically once connected.
+     */
+    BLEConnection& connect(BLEDevice& peer, BLEPeerAttrListPtr* peerAttrList, onConnectedCb cb = nullptr, onDisconnectedCb cb = nullptr) const;
+
+    int disconnect(BLEConnection& conn) const;
+
+    bool connected(BLEConnection& conn) const;
+
+private:
+    /**
+     * It should be static since it may be invoked when constructing an attribute in user application.
+     * Attributes can only be added after BLE stack being initialized.
+     */
+    static Vector<BLEAttribute>  localAttrs_;
+
+    Vector<BLEConnection>   connections_[MAX_PERIPHERAL_LINK_COUNT + MAX_CENTRAL_LINK_COUNT];
+    Vector<BLEPeerAttrList> peerAttrsList_[MAX_CENTRAL_LINK_COUNT];
+
+    onConnectedCb    connectedCb_;
+    onDisconnectedCb disconnectCb_;
+
+    BLEDevice local_;
+};
+
+
+extern BLEClass BLE;
 
 
 #endif /* Wiring_BLE */
