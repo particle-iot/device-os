@@ -24,9 +24,10 @@
 
 #define MIN(a,b) {((a) > (b)) ? (b) : (a)}
 
-BLEAttributeList BLEClass::localAttrs_(5);
 
-
+/**
+ * BLEUUID class
+ */
 BLEUUID::BLEUUID() {
 
 }
@@ -35,6 +36,10 @@ BLEUUID::~BLEUUID() {
 
 }
 
+
+/**
+ * BLEAdvertisingData class
+ */
 BLEAdvertisingData::BLEAdvertisingData() {
 
 }
@@ -226,7 +231,23 @@ bool BLEAdvertisingData::find(uint8_t type, uint8_t* data, uint16_t* len, bool* 
     return SYSTEM_ERROR_NONE;
 }
 
+void BLEAdvertisingData::advData(uint8_t* buf, uint16_t* len) const {
+
+}
+
+void BLEAdvertisingData::scanRespData(uint8_t* buf, uint16_t* len) const {
+
+}
+
+
+/**
+ * BLEDevice class
+ */
 BLEDevice::BLEDevice() {
+
+}
+
+BLEDevice::BLEDevice(bleDeviceRole role) : role(role) {
 
 }
 
@@ -234,6 +255,10 @@ BLEDevice::~BLEDevice() {
 
 }
 
+
+/**
+ * BLEScanResult class
+ */
 BLEScanResult::BLEScanResult() {
 
 }
@@ -242,15 +267,18 @@ BLEScanResult::~BLEScanResult() {
 
 }
 
-const BLEAdvertisingData& BLEScanResult::data(void) const {
-    return data_;
+
+/**
+ * BLEConnection class
+ */
+BLEDevice BLEConnection::local_(PERIPHERAL);
+Vector<BLEAttribute> BLEConnection::localAttrs_(5);
+
+BLEConnection::BLEConnection() {
+
 }
 
-const BLEDevice& BLEScanResult::device(void) const {
-    return peer_;
-}
-
-BLEConnection::BLEConnection() : peerAttrs_(10) {
+BLEConnection::BLEConnection(int peerAttrCount) : BLEAttributeList(peerAttrCount) {
 
 }
 
@@ -262,10 +290,38 @@ const bleConnHandle BLEConnection::handle(void) const {
     return handle_;
 }
 
-BLEAttributeList& BLEConnection::peerAttrs(void) {
-    return peerAttrs_;
+const connParameters& BLEConnection::params(void) const {
+    return params_;
 }
 
+const BLEDevice& BLEConnection::peer(void) const {
+    return peer_;
+}
+
+const BLEDevice& BLEConnection::local(void) const {
+    return local_;
+}
+
+int BLEConnection::setHandle(bleConnHandle handle) {
+    return 0;
+}
+
+int BLEConnection::setParams(connParameters& params) {
+    return 0;
+}
+
+int BLEConnection::setPeer(BLEDevice& peer) {
+    return 0;
+}
+
+int BLEConnection::setLocal(BLEDevice& local) {
+    return 0;
+}
+
+
+/**
+ * BLEAttribute class
+ */
 BLEAttribute::BLEAttribute() {
     properties_ = 0;
     description_ = nullptr;
@@ -280,7 +336,7 @@ BLEAttribute::BLEAttribute(uint8_t properties, const char* desc, onDataReceivedC
           dataCb_(cb) {
     init();
 
-    BLEClass::localAttrs_.attributes_.append(*this);
+    BLEConnection::localAttrs_.append(*this);
 }
 
 BLEAttribute::~BLEAttribute() {
@@ -317,11 +373,15 @@ int BLEAttribute::value(uint8_t* buf, uint16_t* len) const {
     return SYSTEM_ERROR_NONE;
 }
 
+
+/**
+ * BLEAttributeList class
+ */
 BLEAttributeList::BLEAttributeList() {
 
 }
 
-BLEAttributeList::BLEAttributeList(int n) : attributes_(n) {
+BLEAttributeList::BLEAttributeList(int n) : peerAttrs_(n) {
 
 }
 
@@ -334,9 +394,13 @@ int BLEAttributeList::fetch(const char* desc, BLEAttribute** attrs) {
 }
 
 uint8_t BLEAttributeList::count(void) const {
-    return attributes_.size();
+    return peerAttrs_.size();
 }
 
+
+/**
+ * BLEClass class
+ */
 BLEClass::BLEClass() : connections_(MAX_PERIPHERAL_LINK_COUNT+MAX_CENTRAL_LINK_COUNT) {
 
 }
@@ -370,7 +434,7 @@ BLEConnection* BLEClass::connect(onConnectedCb connCb, onDisconnectedCb disconnC
 }
 
 
-BLEConnection* BLEClass::connect(const BLEDevice& peer, onConnectedCb connCb, onDisconnectedCb disconnCb) {
+BLEConnection* BLEClass::connect(const BLEAddress& addr, onConnectedCb connCb, onDisconnectedCb disconnCb) {
     return nullptr;
 }
 
@@ -380,6 +444,57 @@ int BLEClass::disconnect(BLEConnection* conn) {
 
 bool BLEClass::connected(BLEConnection* conn) const {
     return conn->handle() != 0xFFFF;
+}
+
+BLEConnection* BLEClass::connection(bleConnHandle) {
+    return nullptr;
+}
+
+void BLEClass::onAdvStopped(void* event) {
+
+}
+
+void BLEClass::onScanResult(void* event) {
+
+}
+
+void BLEClass::onScanStopped(void* event) {
+
+}
+
+void BLEClass::onConnected(void* event) {
+
+}
+
+void BLEClass::onDisconnected(void* event) {
+
+}
+
+void BLEClass::onConnParamsUpdated(void* event) {
+
+}
+
+void BLEClass::onServiceDiscovered(void* event) {
+
+}
+
+void BLEClass::onCharacteristicDiscovered(void* event) {
+
+}
+
+void BLEClass::onDescriptorDiscovered(void* event) {
+
+}
+
+void BLEClass::onDataReceived(void* event) {
+
+}
+
+void BLEClass::onBleEvents(void* event, void* context) {
+    auto self = static_cast<BLEClass*>(context);
+
+    // For instance.
+    self->onConnected(event);
 }
 
 

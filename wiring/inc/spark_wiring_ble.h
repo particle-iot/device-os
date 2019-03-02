@@ -50,16 +50,30 @@ class BLEAttribute;
 class BLEPeerAttrList;
 class BLEConnection;
 
-typedef void (*onConnectedCb)(BLEConnection* conn);
-typedef void (*onDisconnectedCb)(BLEConnection* conn);
-typedef void (*onDataReceivedCb)(uint8_t* data, uint16_t len);
+
+typedef struct {
+    uint16_t interval;
+    uint16_t latency;
+    uint16_t timeout;
+} connParameters;
 
 typedef enum {
-    READABLE = 0x01,
-    WRITABLE = 0x02,
-    WRITABLE_WO_RSP = 0x04,
-    NOTIFIABLE = 0x08,
-    NOTIFIABLE_WO_RSP = 0x10,
+    BLE_ADDR_PUBLIC = 0,
+    BLE_ADDR_RANDOM_STATIC = 1,
+} bleAddrType;
+
+typedef enum {
+    PERIPHERAL = 0,
+    CENTRAL = 1,
+    UNKNOWN = 0xFF,
+} bleDeviceRole;
+
+typedef enum {
+    READ = 0x01,
+    WRITE = 0x02,
+    WRITE_WO_RSP = 0x04,
+    NOTIFY = 0x08,
+    INDICATE = 0x10,
 } attrProperty;
 
 typedef uint16_t bleConnHandle;
@@ -97,14 +111,18 @@ public:
     BLEAdvertisingData();
     ~BLEAdvertisingData();
 
+    /* Add or update a type of data snippet to advertising data or scan response data. */
+    virtual int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false) = 0;
+
+    virtual int remove(uint8_t type) = 0;
+
     /* Filter the specified type of data from advertising or scan response data. */
     bool find(uint8_t type) const;
     bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
 
-    /* Add or update a type of data snippet to advertising data or scan response data. */
-    int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false);
+    void advData(uint8_t* buf, uint16_t* len) const;
 
-    int remove(uint8_t type);
+    void scanRespData(uint8_t* buf, uint16_t* len) const;
 
 private:
     int locate(uint8_t type, uint16_t* offset, uint16_t* len, bool sr) const;
@@ -116,43 +134,40 @@ private:
 };
 
 
-/* BLE device class */
-class BLEDevice {
+/* BLE Address */
+class BLEAddress {
 public:
-    typedef enum {
-        PUBLIC = 0,
-        RANDOM_STATIC = 1,
-    } bleAddrType;
-
-    typedef enum {
-        PERIPHERAL = 0,
-        CENTRAL = 1,
-    } bleDeviceRole;
-
     static const uint8_t BLE_ADDR_LEN = 6;
 
-    uint8_t       addr[BLE_ADDR_LEN];
-    bleAddrType   type;
+    uint8_t     addr[BLE_ADDR_LEN];
+    bleAddrType type;
+};
+
+
+/* BLE device class */
+class BLEDevice : public BLEAddress {
+public:
     bleDeviceRole role;
 
     BLEDevice();
+    explicit BLEDevice(bleDeviceRole role);
     ~BLEDevice();
 };
 
 
 /* BLE advertiser class */
-class BLEScanResult {
+class BLEScanResult : public BLEAdvertisingData {
 public:
+    BLEAddress address;
+
     BLEScanResult();
     ~BLEScanResult();
 
-    const BLEAdvertisingData& data(void) const;
-
-    const BLEDevice& device(void) const;
-
-private:
-    BLEAdvertisingData data_;
-    BLEDevice          peer_;
+    /**
+     * Cannot edit the advertising data in scan result.
+     */
+    int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false) override { return SYSTEM_ERROR_NOT_SUPPORTED; }
+    int remove(uint8_t type) override { return SYSTEM_ERROR_NOT_SUPPORTED; }
 };
 
 
@@ -160,6 +175,8 @@ private:
 class BLEAttribute {
 public:
     static const uint16_t MAX_ATTR_VALUE_LEN = 20;
+
+    typedef void (*onDataReceivedCb)(uint8_t* data, uint16_t len);
 
     BLEAttribute();
     BLEAttribute(uint8_t properties, const char* desc, onDataReceivedCb cb = nullptr);
@@ -213,7 +230,6 @@ private:
 
 
 class BLEAttributeList {
-    friend BLEAttribute;
 public:
     BLEAttributeList();
     explicit BLEAttributeList(int n);
@@ -225,37 +241,47 @@ public:
     uint8_t count(void) const;
 
 private:
-    Vector<BLEAttribute> attributes_;
+    Vector<BLEAttribute> peerAttrs_;
 };
 
 
 /* BLE connection class */
-class BLEConnection {
+class BLEConnection : public BLEAttributeList {
+    friend BLEClass;
+    friend BLEAttribute;
+
 public:
-    typedef struct {
-        uint16_t interval;
-        uint16_t latency;
-        uint16_t timeout;
-    } connParameters;
-
-    connParameters params;
-    BLEDevice      peer;
-
     BLEConnection();
+    explicit BLEConnection(int peerAttrCount);
     ~BLEConnection();
 
     const bleConnHandle handle(void) const;
-    BLEAttributeList& peerAttrs(void);
+    const connParameters& params(void) const;
+    const BLEDevice& peer(void) const;
+    const BLEDevice& local(void) const;
 
 private:
-    bleConnHandle handle_;
-    BLEAttributeList peerAttrs_;
+    int setHandle(bleConnHandle handle);
+    int setParams(connParameters& params);
+    int setPeer(BLEDevice& peer);
+    int setLocal(BLEDevice& local);
+
+    bleConnHandle  handle_;
+    connParameters params_;
+    BLEDevice      peer_;
+
+    static BLEDevice local_;
+
+    /**
+     * It should be static since it may be invoked when constructing an attribute in user application.
+     * Attributes can only be added after BLE stack being initialized.
+     */
+    static Vector<BLEAttribute> localAttrs_;
 };
 
 
 /* BLE class */
 class BLEClass {
-    friend BLEAttribute;
 public:
     static const uint8_t  MAX_PERIPHERAL_LINK_COUNT = 1; // When acting as Peripheral, the maximum number of Central it can connect to in parallel.
     static const uint8_t  MAX_CENTRAL_LINK_COUNT = 5; // When acting as Central, the maximum number of Peripheral it can connect to in parallel.
@@ -263,6 +289,9 @@ public:
     static const uint32_t DEFAULT_ADVERTISING_INTERVAL = 100; // In milliseconds.
     static const uint32_t DEFAULT_ADVERTISING_TIMEOUT = 0; // In milliseconds, 0 for advertising infinitely
     static const uint32_t DEFAULT_SCANNING_TIMEOUT = 0; // In milliseconds, 0 for scanning infinitely
+
+    typedef void (*onConnectedCb)(BLEConnection* conn);
+    typedef void (*onDisconnectedCb)(BLEConnection* conn);
 
     BLEClass();
     ~BLEClass();
@@ -291,25 +320,34 @@ public:
      * If peer is local device, it will be BLE Peripheral once connected.
      * Otherwise, it will be BLE Central once connected.
      */
-    BLEConnection* connect(const BLEDevice& peer, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
+    BLEConnection* connect(const BLEAddress& addr, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
 
     int disconnect(BLEConnection* conn);
 
     bool connected(BLEConnection* conn) const;
 
 private:
-    /**
-     * It should be static since it may be invoked when constructing an attribute in user application.
-     * Attributes can only be added after BLE stack being initialized.
-     */
-    static BLEAttributeList localAttrs_;
+    static void onBleEvents(void* event, void* context);
+
+    /* BLE event handlers. */
+    void onAdvStopped(void* event);
+    void onScanResult(void* event);
+    void onScanStopped(void* event);
+    void onConnected(void* event);
+    void onDisconnected(void* event);
+    void onConnParamsUpdated(void* event);
+    void onServiceDiscovered(void* event);
+    void onCharacteristicDiscovered(void* event);
+    void onDescriptorDiscovered(void* event);
+    void onDataReceived(void* event);
+
+    /* Retrieve the connection with given connection handle.  */
+    BLEConnection* connection(bleConnHandle);
 
     Vector<BLEConnection> connections_;
 
     onConnectedCb    connectedCb_;
     onDisconnectedCb disconnectCb_;
-
-    BLEDevice local_;
 };
 
 

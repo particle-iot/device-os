@@ -20,10 +20,21 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEAttribute heartrate(READ | NOTIFY, "heartrate");
+void onDataReceived(uint8_t* data, uint16_t len);
+
+BLEAttribute txAttr(NOTIFY, "tx");
+BLEAttribute rxAttr(WRITE_WO_RSP, "rx", onDataReceived);
 BLEConnection* myConn;
 
+void onDataReceived(uint8_t* data, uint16_t len) {
+    for (uint8_t i = 0; i < len; i++) {
+        Serial.write(data[i]);
+    }
+}
+
 void setup() {
+    Serial.begin();
+
     BLE.on();
 
     BLE.advertise();
@@ -33,8 +44,12 @@ void setup() {
 }
 
 void loop() {
-    uint32_t newHr = 1234;
     if (BLE.connected(myConn)) {
-        heartrate.update((const uint8_t*)&newHr, sizeof(uint32_t));
+        while (Serial.available()) {
+            // Read data from Serial into txBuf
+            uint8_t txBuf[20];
+
+            txAttr.update(txBuf, sizeof(txBuf));
+        }
     }
 }

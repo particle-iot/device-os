@@ -20,21 +20,48 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEAttribute heartrate(READ | NOTIFY, "heartrate");
+BLEScanResult results[10];
+
+BLEAttribute* peerTxAttr = nullptr;
+BLEAttribute* peerRxAttr = nullptr;
 BLEConnection* myConn;
 
+void onDataReceived(uint8_t* data, uint16_t len) {
+    for (uint8_t i = 0; i < len; i++) {
+        Serial.write(data[i]);
+    }
+}
+
 void setup() {
+    Serial.begin();
+
     BLE.on();
-
-    BLE.advertise();
-
-    BLEDevice local;
-    myConn = BLE.connect();
 }
 
 void loop() {
-    uint32_t newHr = 1234;
     if (BLE.connected(myConn)) {
-        heartrate.update((const uint8_t*)&newHr, sizeof(uint32_t));
+        while (Serial.available()) {
+            // Read data from Serial into txBuf
+            uint8_t txBuf[20];
+
+            peerRxAttr->update(txBuf, sizeof(txBuf));
+        }
+    }
+    else {
+        uint8_t count = BLE.scan(results, 10);
+
+        if (count > 0) {
+            for (uint8_t i = 0; i < count; i++) {
+                bool found = results[i].find(BLE_SIG_AD_TYPE_FLAGS);
+                if (found) {
+                    myConn = BLE.connect(results[i].address);
+                    if (BLE.connected(myConn)) {
+                        myConn->fetch("tx", &peerTxAttr);
+                        myConn->fetch("rx", &peerRxAttr);
+                        peerTxAttr->onDataReceived(onDataReceived);
+                    }
+                }
+            }
+        }
     }
 }
