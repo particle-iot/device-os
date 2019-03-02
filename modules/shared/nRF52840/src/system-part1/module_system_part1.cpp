@@ -40,6 +40,7 @@ DYNALIB_TABLE_EXTERN(hal_cellular);
 #if HAL_PLATFORM_WIFI
 DYNALIB_TABLE_EXTERN(hal_wlan);
 #endif // HAL_PLATFORM_WIFI
+DYNALIB_TABLE_EXTERN(custom);
 
 // strange that this is needed given that the entire block is scoped extern "C"
 // without it, the section name doesn't match *.system_part2_module as expected in the linker script
@@ -79,6 +80,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
 #if HAL_PLATFORM_WIFI
     , DYNALIB_TABLE_NAME(hal_wlan)
 #endif // HAL_PLATFORM_WIFI
+    , DYNALIB_TABLE_NAME(custom)
 };
 
 #include "system_part1_loader.c"
