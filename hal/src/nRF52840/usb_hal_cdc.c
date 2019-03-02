@@ -343,7 +343,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
 }
 
 int usb_uart_send(uint8_t data[], uint16_t size) {
-    if (!m_usb_instance.com_opened) {
+    if (!m_usb_instance.com_opened || m_usb_instance.power_state != POWER_STATE_READY) {
         return -1;
     }
 
@@ -375,7 +375,6 @@ int usb_uart_send(uint8_t data[], uint16_t size) {
 
         m_usb_instance.transmitting = true; // app_usbd_cdc_acm_write() cause interrupt before return!
         ret = app_usbd_cdc_acm_write(&m_app_cdc_acm, m_tx_buffer, pre_send_size);
-        SPARK_ASSERT(ret == NRF_SUCCESS);
         if (ret != NRF_SUCCESS) {
             m_usb_instance.transmitting = false;
             pre_send_size = 0;
