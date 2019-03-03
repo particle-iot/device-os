@@ -20,38 +20,65 @@
 #include "scope_guard.h"
 #include "check.h"
 
-int file_remove(const char *path) { return -1; }
+int file_remove(const char *path) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_remove(&fs->instance, path);
+}
 
-int file_rename(const char *oldpath, const char *newpath) { return -1; }
+int file_rename(const char *oldpath, const char *newpath) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_rename(&fs->instance, oldpath, newpath);
+}
 
-int file_stat(const char *path, struct lfs_info *info) { return -1; }
+int file_stat(const char *path, struct lfs_info *info) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_stat(&fs->instance, path, info);
+}
 
 int file_open(lfs_file_t *file, const char* path, unsigned flags) {
     const auto fs = filesystem_get_instance(nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
-    lfs_info info = {};
-    int r = lfs_stat(&fs->instance, path, &info);
-    if (r != LFS_ERR_OK) {
-        const auto p = strrchr(path, '/');
-        if (p && p != path) {
-            const auto dirPath = strndup(path, p - path);
-            CHECK_TRUE(dirPath, SYSTEM_ERROR_NO_MEMORY);
-            SCOPE_GUARD({
-                free(dirPath);
-            });
-            r = lfs_mkdir(&fs->instance, dirPath);
-            CHECK_TRUE(r == LFS_ERR_OK || r == LFS_ERR_EXIST, SYSTEM_ERROR_FILE);
-        }
-        flags |= LFS_O_CREAT;
-    } else if (info.type != LFS_TYPE_REG) {
-        return SYSTEM_ERROR_FILE;
-    }
-    r = lfs_file_open(&fs->instance, file, path, flags);
-    CHECK_TRUE(r == LFS_ERR_OK, SYSTEM_ERROR_FILE);
-    return 0;
+    return lfs_file_open(&fs->instance, file, path, flags);
 }
 
-int file_close(lfs_file_t *file) { return -1; }
+int file_close(lfs_file_t *file) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_close(&fs->instance, file);
+}
+
+int file_sync(lfs_file_t *file) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_sync(&fs->instance, file);
+}
+
+int32_t file_read(lfs_file_t *file, void *buf, uint32_t len) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_read(&fs->instance, file, buf, len);
+}
+
+int32_t file_write(lfs_file_t *file, void *buf, uint32_t len) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_write(&fs->instance, file, buf, len);
+}
+
+int32_t file_seek(lfs_file_t *file, int32_t offset, int whence) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_seek(&fs->instance, file, offset, whence);
+}
+
+int dir_mkdir(const char *path) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_mkdir(&fs->instance, path);
+}
 
 int dir_open(lfs_dir_t *dir, const char *path) {
     //LOG(INFO, "dir_open(%s)", path);
