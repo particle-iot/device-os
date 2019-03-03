@@ -40,10 +40,17 @@ int file_sync(lfs_file_t *file);
 int32_t file_read(lfs_file_t *file, void *buf, uint32_t len);
 int32_t file_write(lfs_file_t *file, void *buf, uint32_t len);
 int32_t file_seek(lfs_file_t *file, int32_t offset, int whence);
+int file_truncate(lfs_file_t *file, uint32_t);
+int32_t file_tell(lfs_file_t *file);
+int file_rewind(lfs_file_t *file);
+int32_t file_size(lfs_file_t *file);
 int dir_mkdir(const char *path);
 int dir_open(lfs_dir_t *dir, const char *path);
 int dir_close(lfs_dir_t *dir);
 int dir_read(lfs_dir_t *dir, struct lfs_info *info);
+int dir_seek(lfs_dir_t *dir, uint32_t off);
+int32_t dir_tell(lfs_dir_t *dir);
+int dir_rewind(lfs_dir_t *dir);
 
 
 #ifdef __cplusplus

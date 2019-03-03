@@ -74,6 +74,30 @@ int32_t file_seek(lfs_file_t *file, int32_t offset, int whence) {
     return lfs_file_seek(&fs->instance, file, offset, whence);
 }
 
+int file_truncate(lfs_file_t *file, uint32_t size){
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_truncate(&fs->instance, file, size);
+}
+
+int32_t file_tell(lfs_file_t *file){
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_tell(&fs->instance, file);
+}
+
+int file_rewind(lfs_file_t *file) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_rewind(&fs->instance, file);
+}
+
+int32_t file_size(lfs_file_t *file){
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_file_size(&fs->instance, file);
+}
+
 int dir_mkdir(const char *path) {
     const auto fs = filesystem_get_instance(nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
@@ -97,4 +121,22 @@ int dir_read(lfs_dir_t *dir, struct lfs_info *info) {
     const auto fs = filesystem_get_instance(nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     return lfs_dir_read(&fs->instance, dir, info);
+}
+
+int dir_seek(lfs_dir_t *dir, uint32_t off) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_dir_seek(&fs->instance, dir, off);
+}
+
+int32_t dir_tell(lfs_dir_t *dir) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_dir_tell(&fs->instance, dir);
+}
+
+int dir_rewind(lfs_dir_t *dir) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    return lfs_dir_rewind(&fs->instance, dir);
 }
