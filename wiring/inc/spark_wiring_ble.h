@@ -40,6 +40,18 @@ using particle::Flags;
 #define BLE_SIG_AD_TYPE_FLAGS 0x02
 #endif
 
+#ifndef BLE_SIG_AD_TYPE_LOCAL_NAME
+#define BLE_SIG_AD_TYPE_LOCAL_NAME 0x03
+#endif
+
+#ifndef BLE_SIG_AD_TYPE_MANU_DATA
+#define BLE_SIG_AD_TYPE_MANU_DATA 0x04
+#endif
+
+#ifndef BLE_SIG_AD_TYPE_UUID
+#define BLE_SIG_AD_TYPE_UUID 0x05
+#endif
+
 #ifndef BLE_MAX_ADV_DATA_LEN
 #define BLE_MAX_ADV_DATA_LEN (31)
 #endif
@@ -97,11 +109,10 @@ public:
     BLEUUID();
     ~BLEUUID();
 
-private:
-    bleUuidType type_;
-    uint16_t    short_;
-    uint8_t     long_[LONG_UUID_LENGTH];
-    uint8_t     base_[LONG_UUID_LENGTH];
+    bleUuidType type;
+    uint16_t    shortUuid;
+    uint8_t     fullUuid[LONG_UUID_LENGTH];
+    uint8_t     baseUuid[LONG_UUID_LENGTH];
 };
 
 
@@ -112,17 +123,20 @@ public:
     ~BLEAdvertisingData();
 
     /* Add or update a type of data snippet to advertising data or scan response data. */
-    virtual int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false) = 0;
+    int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false);
+    int appendLocalName(const char* name, bool sr = false);
+    int appendCustomData(uint8_t* buf, uint16_t len, bool sr = false);
+    int appendUuid(BLEUUID& uuid, bool sr = false);
 
-    virtual int remove(uint8_t type) = 0;
+    int remove(uint8_t type);
 
     /* Filter the specified type of data from advertising or scan response data. */
     bool find(uint8_t type) const;
     bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
 
-    void advData(uint8_t* buf, uint16_t* len) const;
+    int advData(uint8_t* buf, uint16_t len) const;
 
-    void scanRespData(uint8_t* buf, uint16_t* len) const;
+    int scanRspData(uint8_t* buf, uint16_t len) const;
 
 private:
     int locate(uint8_t type, uint16_t* offset, uint16_t* len, bool sr) const;
@@ -156,18 +170,22 @@ public:
 
 
 /* BLE advertiser class */
-class BLEScanResult : public BLEAdvertisingData {
+class BLEScanResult {
 public:
-    BLEAddress address;
-
     BLEScanResult();
     ~BLEScanResult();
 
-    /**
-     * Cannot edit the advertising data in scan result.
-     */
-    int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false) override { return SYSTEM_ERROR_NOT_SUPPORTED; }
-    int remove(uint8_t type) override { return SYSTEM_ERROR_NOT_SUPPORTED; }
+    int advData(uint8_t* buf, uint16_t len) const;
+
+    int scanRspData(uint8_t* buf, uint16_t len) const;
+
+    bool find(uint8_t type) const;
+    bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
+
+    BLEAddress address;
+
+private:
+    BLEAdvertisingData data_;
 };
 
 
@@ -190,10 +208,10 @@ public:
     int onDataReceived(onDataReceivedCb callback);
 
     /* Update the attribute value and send to peer automatically if connected.*/
-    int update(const uint8_t* buf, uint16_t len);
+    int setValue(const uint8_t* buf, uint16_t len);
 
     /* Get the attribute value */
-    int value(uint8_t* buf, uint16_t* len) const;
+    int getValue(uint8_t* buf, uint16_t* len) const;
 
 private:
     void init(void);
@@ -261,11 +279,6 @@ public:
     const BLEDevice& local(void) const;
 
 private:
-    int setHandle(bleConnHandle handle);
-    int setParams(connParameters& params);
-    int setPeer(BLEDevice& peer);
-    int setLocal(BLEDevice& local);
-
     bleConnHandle  handle_;
     connParameters params_;
     BLEDevice      peer_;
@@ -322,29 +335,19 @@ public:
      */
     BLEConnection* connect(const BLEAddress& addr, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
 
-    int disconnect(BLEConnection* conn);
+    int disconnect(BLEConnection* conn = &peripheral_);
 
     bool connected(BLEConnection* conn) const;
 
 private:
     static void onBleEvents(void* event, void* context);
 
-    /* BLE event handlers. */
-    void onAdvStopped(void* event);
-    void onScanResult(void* event);
-    void onScanStopped(void* event);
-    void onConnected(void* event);
-    void onDisconnected(void* event);
-    void onConnParamsUpdated(void* event);
-    void onServiceDiscovered(void* event);
-    void onCharacteristicDiscovered(void* event);
-    void onDescriptorDiscovered(void* event);
-    void onDataReceived(void* event);
-
     /* Retrieve the connection with given connection handle.  */
     BLEConnection* connection(bleConnHandle);
 
-    Vector<BLEConnection> connections_;
+    Vector<BLEConnection> centrals_;
+
+    static BLEConnection peripheral_;
 
     onConnectedCb    connectedCb_;
     onDisconnectedCb disconnectCb_;

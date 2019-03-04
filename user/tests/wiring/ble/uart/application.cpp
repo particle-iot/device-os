@@ -49,7 +49,7 @@ void loop() {
             // Read data from Serial into txBuf
             uint8_t txBuf[20];
 
-            txAttr.update(txBuf, sizeof(txBuf));
+            txAttr.setValue(txBuf, sizeof(txBuf));
         }
     }
 }

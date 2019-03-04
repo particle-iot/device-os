@@ -37,7 +37,7 @@ void loop() {
     if (BLE.connected(myConn)) {
         uint8_t newHr[4];
         uint16_t len = 4;
-        heartrate->value(newHr, &len);
+        heartrate->getValue(newHr, &len);
     }
     else {
         uint8_t count = BLE.scan(results, 10);

@@ -24,6 +24,50 @@
 
 #define MIN(a,b) {((a) > (b)) ? (b) : (a)}
 
+namespace {
+
+__attribute__((unused)) void onAdvStopped(void* event) {
+
+}
+
+__attribute__((unused))void onScanResult(void* event) {
+
+}
+
+__attribute__((unused))void onScanStopped(void* event) {
+
+}
+
+__attribute__((unused))void onConnected(void* event) {
+
+}
+
+__attribute__((unused))void onDisconnected(void* event) {
+
+}
+
+__attribute__((unused))void onConnParamsUpdated(void* event) {
+
+}
+
+__attribute__((unused))void onServiceDiscovered(void* event) {
+
+}
+
+__attribute__((unused))void onCharacteristicDiscovered(void* event) {
+
+}
+
+__attribute__((unused))void onDescriptorDiscovered(void* event) {
+
+}
+
+__attribute__((unused))void onDataReceived(void* event) {
+
+}
+
+} //anonymous namespace
+
 
 /**
  * BLEUUID class
@@ -156,6 +200,23 @@ int BLEAdvertisingData::append(uint8_t type, const uint8_t* data, uint16_t len, 
     }
 }
 
+int BLEAdvertisingData::appendLocalName(const char* name, bool sr) {
+    return append(BLE_SIG_AD_TYPE_LOCAL_NAME, (const uint8_t*)name, strlen(name), sr);
+}
+
+int BLEAdvertisingData::appendCustomData(uint8_t* buf, uint16_t len, bool sr) {
+    return append(BLE_SIG_AD_TYPE_MANU_DATA, buf, len, sr);
+}
+
+int BLEAdvertisingData::appendUuid(BLEUUID& uuid, bool sr) {
+    if (uuid.type == BLEUUID::BLE_UUID_SHORT) {
+        return append(BLE_SIG_AD_TYPE_UUID, reinterpret_cast<const uint8_t*>(&uuid.shortUuid), 2, sr);
+    }
+    else {
+        return append(BLE_SIG_AD_TYPE_UUID, (const uint8_t*)uuid.fullUuid, 16, sr);
+    }
+}
+
 int BLEAdvertisingData::remove(uint8_t type) {
     uint16_t  offset, len;
     bool      sr;
@@ -231,12 +292,12 @@ bool BLEAdvertisingData::find(uint8_t type, uint8_t* data, uint16_t* len, bool* 
     return SYSTEM_ERROR_NONE;
 }
 
-void BLEAdvertisingData::advData(uint8_t* buf, uint16_t* len) const {
-
+int BLEAdvertisingData::advData(uint8_t* buf, uint16_t len) const {
+    return 0;
 }
 
-void BLEAdvertisingData::scanRespData(uint8_t* buf, uint16_t* len) const {
-
+int BLEAdvertisingData::scanRspData(uint8_t* buf, uint16_t len) const {
+    return 0;
 }
 
 
@@ -265,6 +326,22 @@ BLEScanResult::BLEScanResult() {
 
 BLEScanResult::~BLEScanResult() {
 
+}
+
+int BLEScanResult::advData(uint8_t* buf, uint16_t len) const {
+    return data_.advData(buf, len);
+}
+
+int BLEScanResult::scanRspData(uint8_t* buf, uint16_t len) const {
+    return data_.scanRspData(buf, len);
+}
+
+bool BLEScanResult::find(uint8_t type) const {
+    return data_.find(type);
+}
+
+bool BLEScanResult::find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr) const {
+    return data_.find(type, data, len, sr);
 }
 
 
@@ -300,22 +377,6 @@ const BLEDevice& BLEConnection::peer(void) const {
 
 const BLEDevice& BLEConnection::local(void) const {
     return local_;
-}
-
-int BLEConnection::setHandle(bleConnHandle handle) {
-    return 0;
-}
-
-int BLEConnection::setParams(connParameters& params) {
-    return 0;
-}
-
-int BLEConnection::setPeer(BLEDevice& peer) {
-    return 0;
-}
-
-int BLEConnection::setLocal(BLEDevice& local) {
-    return 0;
 }
 
 
@@ -365,11 +426,11 @@ int BLEAttribute::onDataReceived(onDataReceivedCb callback) {
     return SYSTEM_ERROR_NONE;;
 }
 
-int BLEAttribute::update(const uint8_t* buf, uint16_t len) {
+int BLEAttribute::setValue(const uint8_t* buf, uint16_t len) {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEAttribute::value(uint8_t* buf, uint16_t* len) const {
+int BLEAttribute::getValue(uint8_t* buf, uint16_t* len) const {
     return SYSTEM_ERROR_NONE;
 }
 
@@ -401,7 +462,9 @@ uint8_t BLEAttributeList::count(void) const {
 /**
  * BLEClass class
  */
-BLEClass::BLEClass() : connections_(MAX_PERIPHERAL_LINK_COUNT+MAX_CENTRAL_LINK_COUNT) {
+BLEConnection BLEClass::peripheral_;
+
+BLEClass::BLEClass() : centrals_(MAX_CENTRAL_LINK_COUNT) {
 
 }
 
@@ -450,51 +513,11 @@ BLEConnection* BLEClass::connection(bleConnHandle) {
     return nullptr;
 }
 
-void BLEClass::onAdvStopped(void* event) {
-
-}
-
-void BLEClass::onScanResult(void* event) {
-
-}
-
-void BLEClass::onScanStopped(void* event) {
-
-}
-
-void BLEClass::onConnected(void* event) {
-
-}
-
-void BLEClass::onDisconnected(void* event) {
-
-}
-
-void BLEClass::onConnParamsUpdated(void* event) {
-
-}
-
-void BLEClass::onServiceDiscovered(void* event) {
-
-}
-
-void BLEClass::onCharacteristicDiscovered(void* event) {
-
-}
-
-void BLEClass::onDescriptorDiscovered(void* event) {
-
-}
-
-void BLEClass::onDataReceived(void* event) {
-
-}
-
 void BLEClass::onBleEvents(void* event, void* context) {
     auto self = static_cast<BLEClass*>(context);
 
     // For instance.
-    self->onConnected(event);
+    (void)self;
 }
 
 

@@ -44,7 +44,7 @@ void loop() {
             // Read data from Serial into txBuf
             uint8_t txBuf[20];
 
-            peerRxAttr->update(txBuf, sizeof(txBuf));
+            peerRxAttr->setValue(txBuf, sizeof(txBuf));
         }
     }
     else {

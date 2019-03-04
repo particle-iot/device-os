@@ -35,6 +35,6 @@ void setup() {
 void loop() {
     uint32_t newHr = 1234;
     if (BLE.connected(myConn)) {
-        heartrate.update((const uint8_t*)&newHr, sizeof(uint32_t));
+        heartrate.setValue((const uint8_t*)&newHr, sizeof(uint32_t));
     }
 }
