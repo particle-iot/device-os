@@ -53,7 +53,7 @@ public:
     typedef AllocatorT AllocatorType;
 
     Vector();
-     Vector(int n);
+    explicit Vector(int n);
     Vector(int n, const T& value);
     Vector(const T* values, int n);
     Vector(std::initializer_list<T> values);
