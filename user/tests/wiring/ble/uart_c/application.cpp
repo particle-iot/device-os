@@ -56,8 +56,8 @@ void loop() {
                 if (found) {
                     myConn = BLE.connect(results[i].address);
                     if (BLE.connected(myConn)) {
-                        myConn->fetch("tx", &peerTxAttr);
-                        myConn->fetch("rx", &peerRxAttr);
+                        myConn->peer().attribute("tx", &peerTxAttr);
+                        myConn->peer().attribute("rx", &peerRxAttr);
                         peerTxAttr->onDataReceived(onDataReceived);
                     }
                 }

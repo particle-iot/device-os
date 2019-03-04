@@ -158,17 +158,6 @@ public:
 };
 
 
-/* BLE device class */
-class BLEDevice : public BLEAddress {
-public:
-    bleDeviceRole role;
-
-    BLEDevice();
-    explicit BLEDevice(bleDeviceRole role);
-    ~BLEDevice();
-};
-
-
 /* BLE advertiser class */
 class BLEScanResult {
 public:
@@ -247,49 +236,52 @@ private:
 };
 
 
-class BLEAttributeList {
+/* BLE device class */
+class BLEDevice : public BLEAddress {
+    friend BLEAttribute;
+
 public:
-    BLEAttributeList();
-    explicit BLEAttributeList(int n);
-    ~BLEAttributeList();
+    BLEDevice();
+    explicit BLEDevice(int n);
+    ~BLEDevice();
 
     // There might have more than two attributes with the same description.
-    int fetch(const char* desc, BLEAttribute** attrs);
+    int attribute(const char* desc, BLEAttribute** attrs);
 
-    uint8_t count(void) const;
+    uint8_t attrsCount(void) const;
 
 private:
-    Vector<BLEAttribute> peerAttrs_;
+    Vector<BLEAttribute> attributes_;
 };
 
 
 /* BLE connection class */
-class BLEConnection : public BLEAttributeList {
-    friend BLEClass;
-    friend BLEAttribute;
-
+class BLEConnection {
 public:
+    bleDeviceRole role;
+
     BLEConnection();
-    explicit BLEConnection(int peerAttrCount);
+    BLEConnection(bleDeviceRole role, int n);
     ~BLEConnection();
 
     const bleConnHandle handle(void) const;
+
     const connParameters& params(void) const;
-    const BLEDevice& peer(void) const;
-    const BLEDevice& local(void) const;
+
+    BLEDevice& peer(void);
+
+    static BLEDevice& local(void);
 
 private:
     bleConnHandle  handle_;
     connParameters params_;
-    BLEDevice      peer_;
-
-    static BLEDevice local_;
 
     /**
      * It should be static since it may be invoked when constructing an attribute in user application.
      * Attributes can only be added after BLE stack being initialized.
      */
-    static Vector<BLEAttribute> localAttrs_;
+    static BLEDevice local_;
+    BLEDevice        peer_;
 };
 
 
@@ -328,26 +320,35 @@ public:
      * By calling these methods, local device will be Peripheral once connected.
      */
     BLEConnection* connect(onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
-
     /**
      * If peer is local device, it will be BLE Peripheral once connected.
      * Otherwise, it will be BLE Central once connected.
      */
     BLEConnection* connect(const BLEAddress& addr, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
 
-    int disconnect(BLEConnection* conn = &peripheral_);
+    /* Disconnect from peer Central device. */
+    int disconnect(void);
+    /* Disconnect from specific peer Central or Peripheral device. */
+    int disconnect(BLEConnection* conn);
 
     bool connected(BLEConnection* conn) const;
 
 private:
+    BLEClass* getInstance(void) {
+        if (ble_ == nullptr) {
+            ble_ = new BLEClass;
+        }
+        return ble_;
+    }
+
+    static BLEClass* ble_;
+
     static void onBleEvents(void* event, void* context);
 
     /* Retrieve the connection with given connection handle.  */
     BLEConnection* connection(bleConnHandle);
 
-    Vector<BLEConnection> centrals_;
-
-    static BLEConnection peripheral_;
+    Vector<BLEConnection> connections_;
 
     onConnectedCb    connectedCb_;
     onDisconnectedCb disconnectCb_;

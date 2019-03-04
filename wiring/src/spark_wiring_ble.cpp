@@ -302,22 +302,6 @@ int BLEAdvertisingData::scanRspData(uint8_t* buf, uint16_t len) const {
 
 
 /**
- * BLEDevice class
- */
-BLEDevice::BLEDevice() {
-
-}
-
-BLEDevice::BLEDevice(bleDeviceRole role) : role(role) {
-
-}
-
-BLEDevice::~BLEDevice() {
-
-}
-
-
-/**
  * BLEScanResult class
  */
 BLEScanResult::BLEScanResult() {
@@ -346,41 +330,6 @@ bool BLEScanResult::find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr) c
 
 
 /**
- * BLEConnection class
- */
-BLEDevice BLEConnection::local_(PERIPHERAL);
-Vector<BLEAttribute> BLEConnection::localAttrs_(5);
-
-BLEConnection::BLEConnection() {
-
-}
-
-BLEConnection::BLEConnection(int peerAttrCount) : BLEAttributeList(peerAttrCount) {
-
-}
-
-BLEConnection::~BLEConnection() {
-
-}
-
-const bleConnHandle BLEConnection::handle(void) const {
-    return handle_;
-}
-
-const connParameters& BLEConnection::params(void) const {
-    return params_;
-}
-
-const BLEDevice& BLEConnection::peer(void) const {
-    return peer_;
-}
-
-const BLEDevice& BLEConnection::local(void) const {
-    return local_;
-}
-
-
-/**
  * BLEAttribute class
  */
 BLEAttribute::BLEAttribute() {
@@ -397,7 +346,7 @@ BLEAttribute::BLEAttribute(uint8_t properties, const char* desc, onDataReceivedC
           dataCb_(cb) {
     init();
 
-    BLEConnection::localAttrs_.append(*this);
+    BLEConnection::local().attributes_.append(*this);
 }
 
 BLEAttribute::~BLEAttribute() {
@@ -436,35 +385,71 @@ int BLEAttribute::getValue(uint8_t* buf, uint16_t* len) const {
 
 
 /**
- * BLEAttributeList class
+ * BLEDevice class
  */
-BLEAttributeList::BLEAttributeList() {
+BLEDevice::BLEDevice() {
 
 }
 
-BLEAttributeList::BLEAttributeList(int n) : peerAttrs_(n) {
+BLEDevice::BLEDevice(int n) : attributes_(n) {
 
 }
 
-BLEAttributeList::~BLEAttributeList() {
+BLEDevice::~BLEDevice() {
 
 }
 
-int BLEAttributeList::fetch(const char* desc, BLEAttribute** attrs) {
+int BLEDevice::attribute(const char* desc, BLEAttribute** attrs) {
     return 0;
 }
 
-uint8_t BLEAttributeList::count(void) const {
-    return peerAttrs_.size();
+uint8_t BLEDevice::attrsCount(void) const {
+    return 0;
+}
+
+
+/**
+ * BLEConnection class
+ */
+BLEDevice BLEConnection::local_(5);
+
+BLEConnection::BLEConnection() {
+
+}
+
+BLEConnection::BLEConnection(bleDeviceRole role, int n)
+        : role(role),
+          peer_(n) {
+
+}
+
+BLEConnection::~BLEConnection() {
+
+}
+
+const bleConnHandle BLEConnection::handle(void) const {
+    return handle_;
+}
+
+const connParameters& BLEConnection::params(void) const {
+    return params_;
+}
+
+BLEDevice& BLEConnection::peer(void) {
+    return peer_;
+}
+
+BLEDevice& BLEConnection::local(void) {
+    return local_;
 }
 
 
 /**
  * BLEClass class
  */
-BLEConnection BLEClass::peripheral_;
+BLEClass* BLEClass::ble_;
 
-BLEClass::BLEClass() : centrals_(MAX_CENTRAL_LINK_COUNT) {
+BLEClass::BLEClass() : connections_(MAX_PERIPHERAL_LINK_COUNT+MAX_CENTRAL_LINK_COUNT) {
 
 }
 
@@ -499,6 +484,10 @@ BLEConnection* BLEClass::connect(onConnectedCb connCb, onDisconnectedCb disconnC
 
 BLEConnection* BLEClass::connect(const BLEAddress& addr, onConnectedCb connCb, onDisconnectedCb disconnCb) {
     return nullptr;
+}
+
+int BLEClass::disconnect(void) {
+    return SYSTEM_ERROR_NONE;
 }
 
 int BLEClass::disconnect(BLEConnection* conn) {

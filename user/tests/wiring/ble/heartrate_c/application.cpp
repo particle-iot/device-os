@@ -48,7 +48,7 @@ void loop() {
                 if (found) {
                     myConn = BLE.connect(results[i].address);
                     if (BLE.connected(myConn)) {
-                        myConn->fetch("heartrate", &heartrate);
+                        myConn->peer().attribute("heartrate", &heartrate);
                         heartrate->onDataReceived(heartrateUpdated);
                     }
                 }
