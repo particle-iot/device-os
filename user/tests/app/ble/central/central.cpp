@@ -108,7 +108,12 @@ static void ble_on_scan_result(hal_ble_gap_on_scan_result_evt_t *event) {
         devName[devNameLen] = '\0';
         if (!strcmp((const char*)devName, "Xenon BLE Sample")) {
             LOG(TRACE, "Target device found. Start connecting...");
-            ble_gap_connect(&event->peer_addr, NULL);
+            hal_ble_connection_parameters_t params;
+            params.max_conn_interval = 100;
+            params.min_conn_interval = 100;
+            params.slave_latency = 0;
+            params.conn_sup_timeout = 400;
+            ble_gap_connect(&event->peer_addr, &params, NULL);
         }
     }
 }
