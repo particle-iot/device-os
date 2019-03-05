@@ -49,8 +49,8 @@ DYNALIB_FN(3, system, system_firmwareUpdate, bool(Stream*, void*))
 DYNALIB_FN(4, system, system_fileTransfer, bool(system_file_transfer_t*, void*))
 
 DYNALIB_FN(5, system, system_delay_ms, void(unsigned long, bool))
-DYNALIB_FN(6, system, system_sleep, void(Spark_Sleep_TypeDef, long, uint32_t, void*))
-DYNALIB_FN(7, system, system_sleep_pin, void(uint16_t, uint16_t, long, uint32_t, void*))
+DYNALIB_FN(6, system, system_sleep, int(Spark_Sleep_TypeDef, long, uint32_t, void*))
+DYNALIB_FN(7, system, system_sleep_pin, int(uint16_t, uint16_t, long, uint32_t, void*))
 DYNALIB_FN(8, system, system_subscribe_event, int(system_event_t, system_event_handler_t*, void*))
 DYNALIB_FN(9, system, system_unsubscribe_event, void(system_event_t, system_event_handler_t*, void*))
 DYNALIB_FN(10, system, system_button_pushed_duration, uint16_t(uint8_t, void*))
@@ -70,13 +70,13 @@ DYNALIB_FN(22, system, system_thread_get_state, spark::feature::State(void*))
 DYNALIB_FN(23, system, system_notify_time_changed, void(uint32_t, void*, void*))
 DYNALIB_FN(24, system, main_thread_current, uint8_t(void*))
 
-#ifdef USB_VENDOR_REQUEST_ENABLE
+#if defined(USB_VENDOR_REQUEST_ENABLE) && HAL_PLATFORM_KEEP_DEPRECATED_APP_USB_REQUEST_HANDLERS
 DYNALIB_FN(25, system, system_set_usb_request_app_handler, void(void*, void*)) // Deprecated
 DYNALIB_FN(26, system, system_set_usb_request_result, void(void*, int, void*)) // Deprecated
 #define BASE_IDX 27
 #else
 #define BASE_IDX 25
-#endif // USB_VENDOR_REQUEST_ENABLE
+#endif // defined(USB_VENDOR_REQUEST_ENABLE) && HAL_PLATFORM_KEEP_DEPRECATED_APP_USB_REQUEST_HANDLERS
 
 DYNALIB_FN(BASE_IDX + 0, system, led_start_signal, int(int, uint8_t, int, void*))
 DYNALIB_FN(BASE_IDX + 1, system, led_stop_signal, void(int, int, void*))
@@ -96,7 +96,8 @@ DYNALIB_FN(BASE_IDX + 12, system, system_ctrl_set_result, void(ctrl_request*, in
 
 DYNALIB_FN(BASE_IDX + 13, system, system_pool_alloc, void*(size_t, void*))
 DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
-DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int32_t(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
+DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
+DYNALIB_FN(BASE_IDX + 16, system, system_invoke_event_handler, int(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name, const char* event_data, void* reserved))
 
 
 DYNALIB_END(system)

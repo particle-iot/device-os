@@ -35,11 +35,16 @@ struct EEPROMCustomObject{
 test(EEPROM_01_Capacity) {
 #if (PLATFORM_ID == 0) // Core
   uint16_t expectedCapacity = 128;
+#elif HAL_PLATFORM_FILESYSTEM // Xenon/Argon/Boron
+  uint16_t expectedCapacity = 4096;
 #else // Photon/P1/Electron
   uint16_t expectedCapacity = 2048;
 #endif
   assertEqual(EEPROM.length(), expectedCapacity);
 }
+
+// This test is too slow on nRF52 platforms, where EEPROM data is stored in a file
+#if !HAL_PLATFORM_FILESYSTEM
 
 test(EEPROM_02_ReadWriteSucceedsForAllAddressWithInRange) {
     int EEPROM_SIZE = EEPROM.length();
@@ -65,6 +70,8 @@ test(EEPROM_02_ReadWriteSucceedsForAllAddressWithInRange) {
     // in other programs using EEPROM on this device in the future
     EEPROM.clear();
 }
+
+#endif // !HAL_PLATFORM_FILESYSTEM
 
 test(EEPROM_03_ReadWriteFailsForAnyAddressOutOfRange) {
     int EEPROM_SIZE = EEPROM.length();
@@ -96,3 +103,27 @@ test(EEPROM_04_PutGetSucceedsForCustomDataType) {
     assertEqual(strcmp(putCustomData.sValue, getCustomData.sValue), 0);
 }
 
+test(EEPROM_05_OneByteReadsAndWrites) {
+    const size_t chunkSize = 8;
+    const size_t totalSize = EEPROM.length();
+    assertLess(chunkSize * 3, totalSize);
+    const uint8_t initVal = rand() % 256;
+    uint8_t val = initVal;
+    for (size_t i = 0; i < chunkSize; ++i) {
+        EEPROM.write(i, val);
+        EEPROM.write((totalSize - chunkSize) / 2 + i, val);
+        EEPROM.write(totalSize - chunkSize + i, val);
+        ++val;
+    }
+    val = initVal;
+    for (size_t i = 0; i < chunkSize; ++i) {
+        uint8_t v = EEPROM.read(i);
+        assertEqual(v, val);
+        v = EEPROM.read((totalSize - chunkSize) / 2 + i);
+        assertEqual(v, val);
+        v = EEPROM.read(totalSize - chunkSize + i);
+        assertEqual(v, val);
+        ++val;
+    }
+    EEPROM.clear();
+}

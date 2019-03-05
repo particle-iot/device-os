@@ -22,6 +22,9 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
+
+// FIXME: Avoid defining sockaddr twice. We should probably update gcc platform to use POSIX sockets
+#define HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR (1)
 #include "device_globals.h"
 #include "socket_hal.h"
 #include "inet_hal.h"

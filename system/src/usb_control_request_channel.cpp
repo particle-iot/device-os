@@ -30,6 +30,10 @@
 #include "bytes2hexbuf.h"
 #include "debug.h"
 
+// FIXME: we should not be polluting our code with such generic macro names
+#undef RESET
+#undef SET
+
 namespace {
 
 using namespace particle;

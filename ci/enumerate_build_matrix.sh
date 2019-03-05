@@ -19,18 +19,22 @@ MAKE=runmake
 
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
-DEBUG_BUILD=( y n )
-PLATFORM=( core photon P1 electron )
+# DEBUG_BUILD=( y n )
+PLATFORM=( core photon P1 electron xenon argon boron )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
-PLATFORM_BOOTLOADER=( core photon electron )
+PLATFORM_BOOTLOADER=( core photon electron xenon argon boron )
 SPARK_CLOUD=( y n )
-APP=( "" tinker product_id_and_version)
-TEST=( wiring/api wiring/no_fixture )
+APP=( "" tinker product_id_and_version )
+# TEST=( wiring/api wiring/no_fixture )
 
-MODULAR_PLATFORM=( photon P1 electron)
+# FIXME: not building tests and not building DEBUG_BUILD=y for now
+DEBUG_BUILD=( n )
+TEST=()
 
-filterPlatform PLATFORM 
-filterPlatform MODULAR_PLATFORM 
+MODULAR_PLATFORM=( photon P1 electron xenon argon boron )
+
+filterPlatform PLATFORM
+filterPlatform MODULAR_PLATFORM
 filterPlatform PLATFORM_BOOTLOADER
 
 echo "runing matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER"
@@ -45,12 +49,17 @@ echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM="newhal" COMPILE_LTO="n"
 HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
-[[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]]; 
+[[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]];
 testcase
 fi
 
 # GCC Build
 if platform gcc; then
+echo
+echo '-----------------------------------------------------------------------'
+# Note: we are already in main directory
+source ../ci/install_boost.sh
+../ci/build_boost.sh
 echo
 echo '-----------------------------------------------------------------------'
 $MAKE  PLATFORM=gcc

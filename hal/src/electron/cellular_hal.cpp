@@ -385,7 +385,7 @@ cellular_result_t cellular_imsi_to_network_provider(void* reserved)
     return 0;
 }
 
-const CellularNetProvData cellular_network_provider_data_get(void* reserved)
+CellularNetProvData cellular_network_provider_data_get(void* reserved)
 {
     return CELLULAR_NET_PROVIDER_DATA[cellularNetProv];
 }

@@ -138,6 +138,8 @@ public:
     friend class UDP;
 };
 
+#if !HAL_USE_SOCKET_HAL_POSIX
 extern const IPAddress INADDR_NONE;
+#endif /* !HAL_USE_SOCKET_HAL_POSIX */
 
 #endif

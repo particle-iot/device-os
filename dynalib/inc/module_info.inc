@@ -24,7 +24,7 @@
 
 #include "module_info.h"
 
-#if PLATFORM_ID==3
+#if PLATFORM_ID==3 || PLATFORM_ID == 20
 #define _ARM_SECTION(x)
 char link_module_start;
 char link_module_end;

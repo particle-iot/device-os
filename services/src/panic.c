@@ -39,7 +39,13 @@ static const flash_codes_t flash_codes[] = {
 
 void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uint32_t))
 {
+
+#if HAL_PLATFORM_CORE_ENTER_PANIC_MODE
+        HAL_Core_Enter_Panic_Mode(NULL);
+#else
         HAL_disable_irq();
+#endif // HAL_PLATFORM_CORE_ENTER_PANIC_MODE
+
         // Flush any serial message to help the poor bugger debug this;
         flash_codes_t pcd = flash_codes[code];
         LED_SetRGBColor(RGB_COLOR_RED);
@@ -89,7 +95,7 @@ void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uin
             }
             // pause
             HAL_Delay_Microseconds(MS2u(800));
-#if defined(RELEASE_BUILD) || defined(PANIC_BUT_KEEP_CALM)
+#if defined(RELEASE_BUILD) || PANIC_BUT_KEEP_CALM == 1
             if (--loops == 0) HAL_Core_System_Reset_Ex(RESET_REASON_PANIC, code, NULL);
 #endif
         }

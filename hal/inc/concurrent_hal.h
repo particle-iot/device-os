@@ -200,22 +200,32 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 # define _GLIBCXX_HAS_GTHREADS
 #endif // _GLIBCXX_HAS_GTHREADS
 
-#ifdef __cplusplus
-#if PLATFORM_ID!=3
-#include <bits/gthr.h>
-#endif
-#endif
-
 /**
  * Enables/disables pre-emptive context switching
  */
 void os_thread_scheduling(bool enabled, void* reserved);
+
+typedef enum {
+    OS_SCHEDULER_STATE_NOT_STARTED = 0,
+    OS_SCHEDULER_STATE_RUNNING     = 1,
+    OS_SCHEDULER_STATE_SUSPENDED   = 2
+} os_scheduler_state_t;
+
+/**
+ * Get task scheduler state.
+ */
+os_scheduler_state_t os_scheduler_get_state(void* reserved);
 
 /**
  * Create a new timer. Returns 0 on success.
  */
 int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* timer_id, bool one_shot, void* reserved);
 int os_timer_get_id(os_timer_t timer, void** timer_id);
+
+/**
+ * Sets a pointer to user data associated with the timer.
+ */
+int os_timer_set_id(os_timer_t timer, void* timer_id);
 
 typedef enum os_timer_change_t
 {
@@ -233,5 +243,10 @@ int os_timer_is_active(os_timer_t timer, void* reserved);
 }
 #endif
 
+#ifdef __cplusplus
+#if PLATFORM_ID!=3
+#include <bits/gthr.h>
+#endif /* PLATFORM_ID!=3 */
+#endif /* __cplusplus */
 
 #endif	/* CONCURRENCY_HAL_H */

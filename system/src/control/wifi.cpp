@@ -17,7 +17,7 @@
 
 #include "wifi.h"
 
-#if SYSTEM_CONTROL_ENABLED
+#if SYSTEM_CONTROL_ENABLED && !HAL_PLATFORM_NCP
 
 #include "common.h"
 #include "wifi.pb.h"
@@ -29,12 +29,16 @@
 #include "wlan_hal.h"
 
 namespace particle {
+
 namespace control {
+
 namespace wifi {
 
 using namespace particle::control::common;
 
 using wlan_common_function_ptr = decltype(&wlan_scan);
+
+#if PLATFORM_ID != 14
 
 int handleGetAntennaRequest(ctrl_request* req) {
     particle_ctrl_WiFiGetAntennaReply reply = {};
@@ -171,8 +175,41 @@ int handleClearCredentialsRequest(ctrl_request* req) {
     return wlan_clear_credentials() == 0 ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_UNKNOWN;
 }
 
-} } } /* namespace particle::control::wifi */
+#else // PLATFORM_ID == 14
 
-#endif /* Wiring_WiFi == 1 */
+// TODO
+int handleGetAntennaRequest(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
 
-#endif /* #if SYSTEM_CONTROL_ENABLED */
+int handleSetAntennaRequest(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleScanRequest(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleGetCredentialsRequest(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleSetCredentialsRequest(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int handleClearCredentialsRequest(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif
+
+} // particle::control::wifi
+
+} // particle::control
+
+} // particle
+
+#endif // Wiring_WiFi == 1
+
+#endif // SYSTEM_CONTROL_ENABLED && !HAL_PLATFORM_NCP

@@ -61,7 +61,7 @@ namespace EventType {
   }
 } // namespace EventType
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID != 20
 static_assert(sizeof(EventType::Enum)==1, "EventType size is 1");
 #endif
 

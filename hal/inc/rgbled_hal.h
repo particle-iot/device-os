@@ -23,13 +23,30 @@
 #ifndef RGBLED_HAL_H
 #define	RGBLED_HAL_H
 
+#include <stdint.h>
+#include "platform_config.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-#include <stdint.h>
-typedef struct led_config_t led_config_t;
+#ifndef LEDn
+#define LEDn                                4
+#endif // LEDn
 
+#ifndef LED_MIRROR_SUPPORTED
+#define LED_MIRROR_SUPPORTED                0
+#endif // LED_MIRROR_SUPPORTED
+
+#include "rgbled_hal_impl.h"
+
+// #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+// extern const led_config_t HAL_Leds_Default[];
+// #else
+// extern led_config_t HAL_Leds_Default[];
+// #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+void HAL_Led_Init(uint8_t led, led_config_t* conf, void* reserved);
 void HAL_Led_Rgb_Set_Values(uint16_t r, uint16_t g, uint16_t b, void* reserved);
 void HAL_Led_Rgb_Get_Values(uint16_t* rgb, void* reserved);
 uint32_t HAL_Led_Rgb_Get_Max_Value(void* reserved);
@@ -39,12 +56,11 @@ void HAL_Led_User_Toggle(void* reserved);
 led_config_t* HAL_Led_Set_Configuration(uint8_t led, led_config_t* conf, void* reserved);
 led_config_t* HAL_Led_Get_Configuration(uint8_t led, void* reserved);
 
-void HAL_Led_Init(uint8_t led, led_config_t* conf, void* reserved);
-
 // This is the low-level api to the LED
 // Deprecated, not exported in HAL
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b);
-void Get_RGB_LED_Values(uint16_t* rgb);
+void Get_RGB_LED_Values(uint16_t* values);
+uint16_t Get_RGB_LED_Max_Value(void);
 void Set_User_LED(uint8_t state);
 void Toggle_User_LED(void);
 uint16_t Get_RGB_LED_Max_Value(void);

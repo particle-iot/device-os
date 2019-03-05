@@ -471,6 +471,12 @@ int os_timer_get_id(os_timer_t timer, void** timer_id)
     return 0;
 }
 
+int os_timer_set_id(os_timer_t timer, void* timer_id)
+{
+    vTimerSetTimerID(timer, timer_id);
+    return 0;
+}
+
 int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, unsigned period, unsigned block, void* reserved)
 {
     portBASE_TYPE woken;

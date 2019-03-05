@@ -26,11 +26,16 @@
   ******************************************************************************
  */
 
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_COMPAT
+
 #include "spark_wiring_udp.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "spark_macros.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_constants.h"
 
 using namespace spark;
 
@@ -177,7 +182,7 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
     return size;
 }
 
-int UDP::parsePacket()
+int UDP::parsePacket(system_tick_t timeout)
 {
     if (!_buffer && _buffer_size) {
         setBuffer(_buffer_size);
@@ -193,7 +198,7 @@ int UDP::parsePacket()
     return available();
 }
 
-int UDP::receivePacket(uint8_t* buffer, size_t size)
+int UDP::receivePacket(uint8_t* buffer, size_t size, system_tick_t timeout)
 {
     int ret = -1;
     if(Network.from(_nif).ready() && isOpen(_sock) && buffer)
@@ -268,3 +273,5 @@ int UDP::leaveMulticast(const IPAddress& ip)
     HAL_IPAddress address = ip.raw();
     return socket_leave_multicast(&address, _nif, 0);
 }
+
+#endif // HAL_USE_SOCKET_HAL_COMPAT

@@ -6,11 +6,7 @@
 #       based on the root of the project
 HAL_SRC_COREV1_PATH = $(TARGET_HAL_PATH)/src/core
 
-# if we are being compiled with platform as a dependency, then also include
-# implementation headers.
-ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_COREV1_PATH)
-endif
 
 INCLUDE_DIRS += $(TARGET_HAL_PATH)/src/stm32
 

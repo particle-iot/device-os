@@ -57,7 +57,7 @@ namespace FileTransfer {
         uint8_t reserved;       // padding
     };
 
-    STATIC_ASSERT(Chunk_size, sizeof(Chunk)==12);
+    PARTICLE_STATIC_ASSERT(Chunk_size, sizeof(Chunk)==12);
 
     struct Descriptor : public Chunk
     {
@@ -75,7 +75,7 @@ namespace FileTransfer {
         }
     };
 
-    STATIC_ASSERT(Descriptor_size, sizeof(Descriptor)==20);
+    PARTICLE_STATIC_ASSERT(Descriptor_size, sizeof(Descriptor)==20);
 
 };
 

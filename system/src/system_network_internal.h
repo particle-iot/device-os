@@ -20,19 +20,18 @@
 #ifndef SYSTEM_NETWORK_INTERNAL_H
 #define	SYSTEM_NETWORK_INTERNAL_H
 
-#include "system_setup.h"
-#include "rgbled.h"
-#include "spark_wiring_led.h"
-#include "spark_wiring_ticks.h"
-#include "spark_wiring_diagnostics.h"
-#include "system_event.h"
-#include "system_cloud_internal.h"
-#include "system_network.h"
-#include "system_threading.h"
-#include "system_mode.h"
-#include "system_power.h"
+#include <stdint.h>
+#include "spark_macros.h"
+#include "hal_platform.h"
+#include "timer_hal.h"
 
-using namespace particle;
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+void manage_network_connection();
+void manage_smart_config();
+void manage_ip_config();
 
 enum eWanTimings
 {
@@ -43,9 +42,6 @@ enum eWanTimings
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_STARTED;
-
-void manage_smart_config();
-void manage_ip_config();
 
 extern uint32_t wlan_watchdog_duration;
 extern uint32_t wlan_watchdog_base;
@@ -70,6 +66,35 @@ inline void CLR_WLAN_WD() {
     wlan_watchdog_duration = 0;
     WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog_duration);
 }
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
+#include "system_setup.h"
+#include "rgbled.h"
+#include "spark_wiring_led.h"
+#include "spark_wiring_ticks.h"
+#include "spark_wiring_diagnostics.h"
+#include "system_event.h"
+#include "system_cloud_internal.h"
+#include "system_network.h"
+#include "system_threading.h"
+#include "system_mode.h"
+#include "system_power.h"
+
+#if HAL_PLATFORM_BLE
+#include "ble_hal.h"
+#endif // HAL_PLATFORM_BLE
+
+// FIXME
+#include "system_control_internal.h"
+
+using namespace particle;
 
 // #define DEBUG_NETWORK_STATE
 #ifdef DEBUG_NETWORK_STATE
@@ -300,6 +325,11 @@ protected:
             LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
         }
 
+#if HAL_PLATFORM_BLE
+        // Start advertising
+        ble_start_advert(nullptr);
+#endif // HAL_PLATFORM_BLE
+
         on_start_listening();
         start_listening_timer_create();
 
@@ -354,8 +384,17 @@ protected:
             if (is_start_listening_timeout()) {
                 start_listening_timeout();
             }
+#if HAL_PLATFORM_BLE
+            // TODO: Process BLE channel events in a separate thread
+            system::SystemControl::instance()->run();
+#endif
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
+
+#if HAL_PLATFORM_BLE
+        // Stop advertising
+        ble_stop_advert(nullptr);
+#endif // HAL_PLATFORM_BLE
 
         LED_SIGNAL_STOP(LISTENING_MODE);
 
@@ -808,4 +847,6 @@ inline void NetworkStateLogger::dump() const {
 #undef NETWORK_STATE_PRINTF
 #endif // defined(DEBUG_NETWORK_STATE)
 
-#endif  /* SYSTEM_NETWORK_INTERNAL_H */
+#endif /* !HAL_PLATFORM_IFAPI */
+
+#endif /* SYSTEM_NETWORK_INTERNAL_H */

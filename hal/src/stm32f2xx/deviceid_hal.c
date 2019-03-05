@@ -25,6 +25,7 @@
 
 
 #include "deviceid_hal.h"
+#include "system_error.h"
 #include "platform_config.h"
 #ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct_hal.h"
@@ -62,3 +63,8 @@ void HAL_save_device_id(uint32_t dct_offset)
     }
 }
 #endif // HAL_DEVICE_ID_NO_DCT
+
+int hal_get_device_serial_number(char* str, size_t size, void* reserved)
+{
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

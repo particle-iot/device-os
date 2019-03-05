@@ -38,3 +38,12 @@ cd obj || die "cannot find obj dir"
 # production.
 # cp ../../../../ci/unitth/* .
 # java -jar unitth.jar . > unitth.log
+
+set -x -e
+
+# Run CMake-based unit tests
+cd $unit_test_dir
+rm -rf .build
+mkdir .build && cd .build
+cmake ..
+make && make test

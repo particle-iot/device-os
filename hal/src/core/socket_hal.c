@@ -23,6 +23,8 @@
  ******************************************************************************
  */
 
+// Skip conflicting sockaddr declaration
+#define HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR (1)
 #include "socket_hal.h"
 #include "cc3000_spi.h"
 #include "evnt_handler.h"

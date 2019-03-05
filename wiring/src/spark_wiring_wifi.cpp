@@ -183,7 +183,7 @@ the same way.
 *****************************************************************************/
 
     WiFiClass WiFi;
-    NetworkClass& Network = WiFi;
+    // NetworkClass& Network = WiFi;
 }
 
 #endif

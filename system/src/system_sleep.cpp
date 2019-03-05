@@ -137,8 +137,8 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
             }
 
             system_power_management_sleep();
-            HAL_Core_Enter_Standby_Mode(seconds,
-                (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
+            return HAL_Core_Enter_Standby_Mode(seconds,
+                    (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
             break;
 
 #if Wiring_SetupButtonUX
@@ -147,8 +147,8 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
             network_off(0, 0, 0, NULL);
             sleep_fuel_gauge();
             system_power_management_sleep();
-            HAL_Core_Enter_Standby_Mode(seconds,
-                (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
+            return HAL_Core_Enter_Standby_Mode(seconds,
+                    (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
             break;
 #endif
     }
@@ -170,25 +170,41 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
         network_suspend();
     }
 
-#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+#if HAL_PLATFORM_CELLULAR
     if (!network_sleep_flag(param)) {
         // Pause the modem Serial
         cellular_pause(nullptr);
     }
-#endif
+#endif // HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_MESH
+    // FIXME: We are still going to turn off OpenThread with SLEEP_NETWORK_STANDBY, otherwise
+    // there are various issues with sleep
+    if (!network_sleep_flag(param)) {
+        network_off(NETWORK_INTERFACE_MESH, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_MESH
 
     led_set_update_enabled(0, nullptr); // Disable background LED updates
-    LED_Off(LED_RGB);    
+    LED_Off(LED_RGB);
 	system_power_management_sleep();
     int ret = HAL_Core_Enter_Stop_Mode_Ext(pins, pins_count, modes, modes_count, seconds, nullptr);
     led_set_update_enabled(1, nullptr); // Enable background LED updates
 
-#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
+#if HAL_PLATFORM_CELLULAR
     if (!network_sleep_flag(param)) {
         // Pause the modem Serial
         cellular_resume(nullptr);
     }
-#endif
+#endif // HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_MESH
+    // FIXME: we need to bring Mesh interface back up because we've turned it off
+    // despite SLEEP_NETWORK_STANDBY
+    if (!network_sleep_flag(param)) {
+        network_on(NETWORK_INTERFACE_MESH, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_MESH
 
     if (network_sleep)
     {
@@ -210,22 +226,22 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
 /**
  * Wraps the actual implementation, which has to return a value as part of the threaded implementation.
  */
-void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+int system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
 {
     // Cancel current connection attempt to unblock the system thread
-    network.connect_cancel(true);
+    network_connect_cancel(0, 1, 0, 0);
     InterruptMode m = (InterruptMode)edgeTriggerMode;
-    system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
+    return system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
 }
 
-void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
+int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
-    network.connect_cancel(true);
-    system_sleep_impl(sleepMode, seconds, param, reserved);
+    network_connect_cancel(0, 1, 0, 0);
+    return system_sleep_impl(sleepMode, seconds, param, reserved);
 }
 
-int32_t system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
+int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
 {
-    network.connect_cancel(true);
+    network_connect_cancel(0, 1, 0, 0);
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }

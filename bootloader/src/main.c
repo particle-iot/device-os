@@ -29,7 +29,7 @@
 #include "dfu_hal.h"
 #include "hw_config.h"
 #include "rgbled.h"
-#include "button.h"
+#include "button_hal.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 #define LOAD_DCT_FUNCTIONS
@@ -59,6 +59,7 @@ uint8_t OTA_FLASH_AVAILABLE = 0;	//0, 1
 volatile uint8_t USB_DFU_MODE = 0;		//0, 1
 volatile uint8_t FACTORY_RESET_MODE = 0;		//0, 1
 volatile uint8_t SAFE_MODE = 0;
+volatile uint8_t RESET_SETTINGS = 0;
 
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
@@ -300,19 +301,20 @@ int main(void)
         // uint8_t factory_reset = 0;
         while (BUTTON_Is_Pressed(BUTTON1) && TimingBUTTON)
         {
-            if(BUTTON_Pressed_Time(BUTTON1) > TIMING_RESET_MODE)
+            if(!RESET_SETTINGS && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESET_MODE)
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
                 LED_SetRGBColor(RGB_COLOR_WHITE);
-                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
+                RESET_SETTINGS = 1;
             }
             else if(!FACTORY_RESET_MODE && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESTORE_MODE)
             {
-                // if pressed for > 6.5 sec, enter firmware reset
-                LED_SetRGBColor(RGB_COLOR_GREEN);
-                SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
-                FACTORY_RESET_MODE = 1;
+                if (factory_reset_available) {
+                    LED_SetRGBColor(RGB_COLOR_GREEN);
+                    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
+                    FACTORY_RESET_MODE = 1;
+                }
             }
             else if(!USB_DFU_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_DFU_MODE)
             {
@@ -321,8 +323,6 @@ int main(void)
                     LED_SetRGBColor(DFUModeColor);
                     USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
                 }
-                if (!factory_reset_available)
-                    break;
             }
             else if(!SAFE_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_SAFE_MODE)
             {
@@ -344,6 +344,13 @@ int main(void)
         //     USB_DFU_MODE &= !factory_reset;
         //     SAFE_MODE &= !USB_DFU_MODE;
         // }
+    }
+
+    if (RESET_SETTINGS) {
+        SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0001;
+        Save_SystemFlags();
+        USB_DFU_MODE = 0;
+        SAFE_MODE = 0;
     }
 
     if (SAFE_MODE) {
@@ -414,8 +421,6 @@ int main(void)
             // Jump to user application
             JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
             Jump_To_Application = (pFunction) JumpAddress;
-            // Initialize user application's Stack Pointer
-            __set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
             uint8_t disable_iwdg = 0;
 #ifdef CHECK_FIRMWARE
@@ -431,15 +436,20 @@ int main(void)
                 IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
             }
 
-            SysTick_Disable();
+            Reset_System();
+
+            // Initialize user application's Stack Pointer
+            __set_MSP(*(__IO uint32_t*) ApplicationAddress);
             Jump_To_Application();
         }
+#if !HAL_PLATFORM_MESH
         else
         {
             LED_SetRGBColor(RGB_COLOR_RED);
             FACTORY_Flash_Reset();
             // if we get here, the factory reset wasn't successful
         }
+#endif
         // else drop through to DFU mode
 
     }
@@ -448,6 +458,7 @@ int main(void)
     FACTORY_RESET_MODE = 0;  // ensure the LED is slow flashing (100)
     OTA_FLASH_AVAILABLE = 0; //   |
     REFLASH_FROM_BACKUP = 0; //   |
+    RESET_SETTINGS = 0;
 
     LED_SetRGBColor(DFUModeColor);
 
@@ -483,7 +494,7 @@ void Timing_Decrement(void)
     {
         TimingLED--;
     }
-    else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE)
+    else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE || RESET_SETTINGS)
     {
         LED_Toggle(LED_RGB);
         TimingLED = 50;

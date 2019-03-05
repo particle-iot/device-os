@@ -23,10 +23,13 @@
 
 #include "control_request_handler.h"
 #include "usb_control_request_channel.h"
+#include "ble_control_request_channel.h"
 
 #include "debug.h"
 
 namespace particle {
+
+namespace system {
 
 class SystemControl: public ControlRequestHandler {
 public:
@@ -39,43 +42,54 @@ public:
     void freeRequestData(ctrl_request* req);
     void setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler = nullptr, void* data = nullptr);
 
+    // TODO: Use a separate thread for the BLE channel loop
+    int init();
+    void run();
+
     // ControlRequestHandler
     virtual void processRequest(ctrl_request* req, ControlRequestChannel* channel) override;
 
     static SystemControl* instance();
 
 private:
-    UsbControlRequestChannel usbReqChannel_;
+#ifdef USB_VENDOR_REQUEST_ENABLE
+    UsbControlRequestChannel usbChannel_;
+#endif
+#if HAL_PLATFORM_BLE
+    BleControlRequestChannel bleChannel_;
+#endif
     ctrl_request_handler_fn appReqHandler_;
 
     void processAppRequest(ctrl_request* req);
 };
 
-} // namespace particle
-
-inline int particle::SystemControl::setAppRequestHandler(ctrl_request_handler_fn handler) {
+inline int SystemControl::setAppRequestHandler(ctrl_request_handler_fn handler) {
     appReqHandler_ = handler;
     return 0;
 }
 
-inline int particle::SystemControl::allocReplyData(ctrl_request* req, size_t size) {
+inline int SystemControl::allocReplyData(ctrl_request* req, size_t size) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     return channel->allocReplyData(req, size);
 }
 
-inline void particle::SystemControl::freeReplyData(ctrl_request* req) {
+inline void SystemControl::freeReplyData(ctrl_request* req) {
     SPARK_ASSERT(allocReplyData(req, 0) == 0);
 }
 
-inline void particle::SystemControl::freeRequestData(ctrl_request* req) {
+inline void SystemControl::freeRequestData(ctrl_request* req) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     channel->freeRequestData(req);
 }
 
-inline void particle::SystemControl::setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler,
+inline void SystemControl::setResult(ctrl_request* req, int result, ctrl_completion_handler_fn handler,
         void* data) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     channel->setResult(req, result, handler, data);
 }
+
+} // particle::system
+
+} // particle
 
 #endif // SYSTEM_CONTROL_ENABLED

@@ -1,8 +1,5 @@
 /**
  ******************************************************************************
- * @file    appender.h
- * @author  Julien Vanier
- ******************************************************************************
   Copyright (c) 2016 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or

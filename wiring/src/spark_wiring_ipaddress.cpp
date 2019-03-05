@@ -29,6 +29,10 @@
 #include "spark_wiring_platform.h"
 #include "string.h"
 
+#if HAL_USE_INET_HAL_POSIX
+#include <arpa/inet.h>
+#endif // HAL_USE_INET_HAL_POSIX
+
 IPAddress::IPAddress()
 {
     clear();
@@ -58,7 +62,13 @@ IPAddress::IPAddress(const uint8_t* address)
 IPAddress::operator bool() const
 {
 #if Wiring_IPv6
-#error handle me!
+    if (version() == 4) {
+        return address.ipv4 != 0;
+    } else if (version() == 6) {
+        return address.ipv6[0] != 0 && address.ipv6[1] != 0 && address.ipv6[2] != 0 && address.ipv6[3] != 0;
+    } else {
+        return false;
+    }
 #else
     return address.ipv4!=0;
 #endif
@@ -106,6 +116,18 @@ bool IPAddress::operator==(const IPAddress& that) const
 
 size_t IPAddress::printTo(Print& p) const
 {
+#if HAL_IPv6
+#if HAL_USE_INET_HAL_POSIX
+	if (address.v==6) {
+		char buf[INET6_ADDRSTRLEN+1];
+		buf[0] = 0;
+		inet_inet_ntop(AF_INET6, address.ipv6, buf, sizeof(buf));
+		return p.write(buf);
+	}
+#else
+#pragma message "HAL_USE_INET_HAL_POSIX is required for IPv6 support in IPAddress::printTo()"
+#endif // HAL_USE_INET_HAL_POSIX
+#endif // HAL_IPv6
     size_t n = 0;
     for (int i = 0; i < 4; i++)
     {

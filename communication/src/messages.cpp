@@ -93,6 +93,7 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 			return CoAPMessageType::EMPTY_ACK;
 		}
 		break;
+	// todo - we should look at the original request (via the token) to determine the type of the response.
 	case CoAPCode::CONTENT:
 		return CoAPMessageType::TIME;
 	default:
@@ -105,6 +106,7 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 		uint16_t platform_id, uint16_t product_id,
 		uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len)
 {
+	// TODO: why no token? because the response is not sent separately. But really we should use a token for all messages that expect a response.
 	buf[0] = COAP_MSG_HEADER(confirmable ? CoAPType::CON : CoAPType::NON, 0);
 	buf[1] = 0x02; // POST
 	buf[2] = message_id >> 8;
@@ -134,6 +136,7 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 
 size_t Messages::update_done(uint8_t* buf, message_id_t message_id, const uint8_t* result, size_t result_len, bool confirmable)
 {
+	// why not with a token? this is sent in response to the server's UpdateDone message.
 	size_t sz = 6;
 	buf[0] = confirmable ? 0x40 : 0x50; // confirmable/non-confirmable, no token
 	buf[1] = 0x03; // PUT
@@ -286,7 +289,6 @@ size_t Messages::separate_response_with_payload(unsigned char *buf, uint16_t mes
 	buf[4] = token;
 
 	size_t len = 5;
-	// for now, assume the payload is less than 9
 	if (payload && payload_len)
 	{
 		buf[5] = 0xFF;

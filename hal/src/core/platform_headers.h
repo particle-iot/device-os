@@ -20,7 +20,6 @@ extern "C" {
 #include "cc3000_common.h"
 #include "hci.h"
 #include "wlan.h"
-#include "socket.h"
 #include "nvmem.h"
 #include "netapp.h"
 #include "usb_settings.h"

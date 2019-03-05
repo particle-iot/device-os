@@ -43,7 +43,7 @@ typedef enum
     BKP_DR_07 = 0x07,
     BKP_DR_08 = 0x08,
     BKP_DR_09 = 0x09,
-    BKP_DR_10 = 0x10
+    BKP_DR_10 = 0x0a
 } BKP_DR_TypeDef;
 
 typedef enum
@@ -142,13 +142,17 @@ typedef enum {
 } hal_standby_mode_flag_t;
 
 void HAL_Core_Enter_Safe_Mode(void* reserved);
+bool HAL_Core_Enter_Safe_Mode_Requested(void);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);
 void HAL_Core_Execute_Stop_Mode(void);
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
 void HAL_Core_Execute_Standby_Mode(void);
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
+int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
+
+int HAL_Core_Enter_Panic_Mode(void* reserved);
+
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
 typedef enum _BootloaderFlag_t {
@@ -236,9 +240,10 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
 typedef enum HAL_Feature {
     FEATURE_RETAINED_MEMORY=1,       // [write only] retained memory on backup power
     FEATURE_WARM_START,              // [read only] set to true if previous retained memory contents are available]
-	FEATURE_CLOUD_UDP,				// [read only] true if the UDP implementation should be used.
+    FEATURE_CLOUD_UDP,				// [read only] true if the UDP implementation should be used.
     FEATURE_RESET_INFO,              // [read/write] enables handling of last reset info (may affect backup registers)
-	FEATURE_WIFI_POWERSAVE_CLOCK,	// [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
+    FEATURE_WIFI_POWERSAVE_CLOCK,	// [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
+    FEATURE_ETHERNET_DETECTION      // [read/write] enables Ethernet FeatherWing detection on boot
 } HAL_Feature;
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);

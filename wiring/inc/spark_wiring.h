@@ -25,6 +25,8 @@
 
 #ifndef SPARK_WIRING_H
 #define SPARK_WIRING_H
+/* Important that interrupts_hal.h is included first */
+#include "interrupts_hal.h"
 #include "pinmap_hal.h"
 #include "gpio_hal.h"
 #include "adc_hal.h"
@@ -41,6 +43,8 @@
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
+#include "spark_wiring_mesh.h"
+#include "spark_wiring_ethernet.h"
 #include "spark_wiring_character.h"
 #include "spark_wiring_random.h"
 #include "spark_wiring_system.h"

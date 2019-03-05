@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "logging.h"
 LOG_SOURCE_CATEGORY("sys.power")
 
@@ -10,7 +27,7 @@ LOG_SOURCE_CATEGORY("sys.power")
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
 
-#if Wiring_Cellular == 1
+#if Wiring_Cellular == 1 || (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
 using namespace particle::power;
 
@@ -385,4 +402,4 @@ void PowerManager::logStat(uint8_t stat, uint8_t fault) {
 #endif
 }
 
-#endif /* Wiring_Cellular == 1 */
+#endif /* Wiring_Cellular == 1 || (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */

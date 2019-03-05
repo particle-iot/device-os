@@ -19,6 +19,8 @@
 #ifndef BOOTLOADER_HAL_H_
 #define BOOTLOADER_HAL_H_
 
+#include "hal_platform.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,10 +28,11 @@ extern "C" {
 #include <stdint.h>
 
 #if !defined(SYSTEM_MINIMAL)
-#if /*PLATFORM_ID==6 || PLATFORM_ID==8 ||*/ PLATFORM_ID==10
+#if /*PLATFORM_ID==6 || PLATFORM_ID==8 ||*/ PLATFORM_ID==10  || HAL_PLATFORM_MESH
 #define HAL_REPLACE_BOOTLOADER
 #endif
-#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10
+#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10 || HAL_PLATFORM_MESH
+// TODO: Move to hal_platform.h
 #define HAL_REPLACE_BOOTLOADER_OTA
 #endif
 #endif

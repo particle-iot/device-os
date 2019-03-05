@@ -5,7 +5,7 @@
 #include "spark_wiring_fixed_point.h"
 #include "debug.h"
 
-#if Wiring_Cellular == 1
+#if Wiring_Cellular == 1 || HAL_PLATFORM_POWER_MANAGEMENT
 
 #include "system_power_manager.h"
 
@@ -43,7 +43,7 @@ void system_power_management_sleep(bool sleep) {
     PowerManager::instance()->sleep(sleep);
 }
 
-#else /* Wiring_Cellular != 1 */
+#else /* !(Wiring_Cellular == 1 || HAL_PLATFORM_POWER_MANAGEMENT) */
 
 void system_power_management_init() {
 }
@@ -51,4 +51,4 @@ void system_power_management_init() {
 void system_power_management_sleep(bool sleep) {
 }
 
-#endif /* Wiring_Cellular == 1 */
+#endif /* Wiring_Cellular == 1 || HAL_PLATFORM_POWER_MANAGEMENT */

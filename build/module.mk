@@ -8,6 +8,18 @@ SOURCE_PATH ?= $(MODULE_PATH)
 # import this module's symbols
 include $(MODULE_PATH)/import.mk
 
+# FIXME: find a better place for this
+ifneq (,$(filter $(PLATFORM_ID),12 13 14))
+ifneq ("$(BOOTLOADER_MODULE)","1")
+export SOFTDEVICE_PRESENT=y
+CFLAGS += -DSOFTDEVICE_PRESENT=1
+ASFLAGS += -DSOFTDEVICE_PRESENT=1
+export SOFTDEVICE_VARIANT=s140
+CFLAGS += -D$(shell echo $(SOFTDEVICE_VARIANT) | tr a-z A-Z)
+PLATFORM_FREERTOS =
+endif
+endif
+
 # pull in the include.mk files from each dependency, and make them relative to
 # the dependency module directory
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
@@ -82,7 +94,7 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC
 CLOUD_FLASH_URL ?= https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
 
 # All Target
-all: $(MAKE_DEPENDENCIES) $(TARGET) postbuild
+all: prebuild $(MAKE_DEPENDENCIES) $(TARGET) postbuild
 
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
@@ -291,8 +303,12 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
+.PHONY: all prebuild postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
 .SECONDARY:
+
+# Disable implicit builtin rules
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
 
 include $(COMMON_BUILD)/recurse.mk
 

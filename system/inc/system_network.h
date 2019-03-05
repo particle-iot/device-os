@@ -41,6 +41,16 @@ extern "C" {
 #define SPARK_NO_CLOUD 1
 #endif
 
+typedef enum network_interface_index {
+    NETWORK_INTERFACE_ALL = 0,
+    NETWORK_INTERFACE_LOOPBACK = 1,
+    NETWORK_INTERFACE_MESH = 2,
+    NETWORK_INTERFACE_ETHERNET = 3,
+    NETWORK_INTERFACE_CELLULAR = 4,
+    NETWORK_INTERFACE_WIFI_STA = 4,
+    NETWORK_INTERFACE_WIFI_AP = 5
+} network_interface_index;
+
 typedef enum network_disconnect_reason {
     NETWORK_DISCONNECT_REASON_NONE = 0,
     NETWORK_DISCONNECT_REASON_ERROR = 1, // Disconnected due to an error
@@ -71,6 +81,7 @@ void network_disconnect(network_handle_t network, uint32_t reason, void* reserve
 bool network_ready(network_handle_t network, uint32_t param1, void* reserved);
 void network_on(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 void network_off(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
+int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 
 #define NETWORK_LISTEN_EXIT (1<<0)
 /**
@@ -84,6 +95,14 @@ void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void
 uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, void* reserved);
 bool network_listening(network_handle_t network, uint32_t param1, void* reserved);
 
+typedef enum {
+    NETWORK_LISTEN_COMMAND_NONE,
+    NETWORK_LISTEN_COMMAND_ENTER,
+    NETWORK_LISTEN_COMMAND_EXIT,
+    NETWORK_LISTEN_COMMAND_CLEAR_CREDENTIALS
+} network_listen_command_t;
+
+int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg);
 
 bool network_has_credentials(network_handle_t network, uint32_t param1, void* reserved);
 
@@ -105,11 +124,11 @@ void network_setup(network_handle_t network, uint32_t flags, void* reserved);
 
 int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved);
 int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer, size_t buffer_len, void* reserved);
+
 /**
  * Disable automatic listening mode when no credentials are configured.
  */
 const int WIFI_CONNECT_SKIP_LISTEN = 1;
-
 
 #ifdef __cplusplus
 }

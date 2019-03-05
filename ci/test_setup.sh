@@ -3,7 +3,7 @@
 # provides the script interface for communicating with a core running
 # a test suite
 
-export ci_dir=$(dirname $BASH_SOURCE)
+export ci_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
 
 . $ci_dir/functions.sh
 
@@ -15,6 +15,9 @@ export target=core-firmware.bin
 export events=$ci_dir/events.log
 export target_file=$target_dir/main/platform-0/tests/$platform/$suite/main.bin
 export testDir=$user/tests
+
+# Path to CMake-based unit tests
+export unit_test_dir=$ci_dir/../test/unit_tests
 
 # directory for the test reports
 export log_dir=${target_dir}/test-reports

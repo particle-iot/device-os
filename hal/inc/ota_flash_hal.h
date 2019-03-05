@@ -45,7 +45,7 @@ typedef struct {
     module_function_t module_function;
     uint8_t module_index;
     module_store_t store;
-
+    uint8_t mcu_identifier;		// which MCU is targeted by this module. 0 means main/primary MCU. HAL_PLATFORM_MCU_ANY
 } module_bounds_t;
 
 typedef enum {
@@ -80,8 +80,15 @@ typedef struct {
     uint16_t module_count;      // number of modules in the array
     key_value* key_values;      // key_values, allocated by HAL_System_Info
     uint16_t key_value_count;   // number of key values
+    uint16_t flags;				// only when size > offsetof(flags) otherwise assume 0
 } hal_system_info_t;
 
+/**
+ * The flag indicates the content is for the cloud describe message.
+ * Some details may be omitted if they are already known in the cloud to reduce overhead.
+ * The Mesh Serial Number and Device Secret are not added as keys when this flag is set.
+ */
+#define HAL_SYSTEM_INFO_FLAGS_CLOUD (0x01)
 
 /**
  *
@@ -185,9 +192,9 @@ typedef struct __attribute__ ((__packed__)) ServerAddress_ {
   uint8_t padding[60];
 } ServerAddress;
 
-STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
-STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
-STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
+PARTICLE_STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
+PARTICLE_STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
+PARTICLE_STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
 
 
 /* Length in bytes of DER-encoded 2048-bit RSA public key */
@@ -238,6 +245,9 @@ typedef struct {
  * @return {@code true} if the key was generated.
  */
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* generation);
+
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved);
+
 
 
 #ifdef	__cplusplus

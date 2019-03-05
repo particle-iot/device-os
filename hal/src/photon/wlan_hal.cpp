@@ -1316,7 +1316,7 @@ inline void setAddress(wiced_ip_address_t* addr, HAL_IPAddress& target)
     HAL_IPV4_SET(&target, GET_IPV4_ADDRESS(*addr));
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config)
+int wlan_fetch_ipconfig(WLanConfig* config)
 {
     wiced_ip_address_t addr;
     wiced_interface_t ifup = WICED_STA_INTERFACE;
@@ -1366,6 +1366,8 @@ void wlan_fetch_ipconfig(WLanConfig* config)
         }
     }
     // todo DNS and DHCP servers
+
+    return 0;
 }
 
 void SPARK_WLAN_SmartConfigProcess()
