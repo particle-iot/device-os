@@ -262,7 +262,7 @@ static void ble_on_events(hal_ble_events_t *event, void* context) {
     else if (event->type == BLE_EVT_DESC_DISCOVERED) {
         ble_on_descriptors_discovered(&event->params.desc_disc);
     }
-    else if (event->type == BLE_EVT_DATA_RECEIVED) {
+    else if (event->type == BLE_EVT_DATA_NOTIFIED || event->type == BLE_EVT_DATA_READ) {
         ble_on_data_received(&event->params.data_rec);
     }
 }

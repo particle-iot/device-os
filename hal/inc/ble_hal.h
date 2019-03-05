@@ -201,7 +201,9 @@ typedef enum {
     BLE_EVT_SVC_DISCOVERED,
     BLE_EVT_CHAR_DISCOVERED,
     BLE_EVT_DESC_DISCOVERED,
-    BLE_EVT_DATA_RECEIVED,
+    BLE_EVT_DATA_READ,
+    BLE_EVT_DATA_WRITTEN,
+    BLE_EVT_DATA_NOTIFIED
 } hal_ble_events_type_t;
 
 typedef struct {

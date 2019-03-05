@@ -1122,7 +1122,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 else {
                     if (s_bleInstance.onEvtCb != NULL) {
                         msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                        msg.arg.type = BLE_EVT_DATA_RECEIVED;
+                        msg.arg.type = BLE_EVT_DATA_READ;
                         msg.arg.params.data_rec.version = 0x01;
                         msg.arg.params.data_rec.conn_handle = event->evt.gattc_evt.conn_handle;
                         msg.arg.params.data_rec.attr_handle = event->evt.gattc_evt.params.read_rsp.handle;
@@ -1165,7 +1165,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             if (s_bleInstance.onEvtCb != NULL) {
                 msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_DATA_RECEIVED;
+                msg.arg.type = BLE_EVT_DATA_NOTIFIED;
                 msg.arg.params.data_rec.version = 0x01;
                 msg.arg.params.data_rec.conn_handle = event->evt.gattc_evt.conn_handle;
                 msg.arg.params.data_rec.attr_handle = event->evt.gattc_evt.params.hvx.handle;
@@ -1218,7 +1218,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             if (s_bleInstance.onEvtCb != NULL) {
                 msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_DATA_RECEIVED;
+                msg.arg.type = BLE_EVT_DATA_WRITTEN;
                 msg.arg.params.data_rec.version = 0x01;
                 msg.arg.params.data_rec.conn_handle = event->evt.gatts_evt.conn_handle;
                 msg.arg.params.data_rec.attr_handle = event->evt.gatts_evt.params.write.handle;
