@@ -463,10 +463,11 @@ int ble_gap_stop_scan(void);
  * Connect to a peer BLE device.
  *
  * @param[in]   address Pointer to the peer BLE identity address.
+ * @param[in]   params  The connection parameters for the connection to be established.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_connect(hal_ble_address_t* address, void *reserved);
+int ble_gap_connect(hal_ble_address_t* address, hal_ble_connection_parameters_t* params, void *reserved);
 
 /**
  * Check if BLE is connecting with peer device.
