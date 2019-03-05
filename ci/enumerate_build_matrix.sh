@@ -20,9 +20,9 @@ MAKE=runmake
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
 # DEBUG_BUILD=( y n )
-PLATFORM=( core photon P1 electron xenon argon boron )
+PLATFORM=( core photon P1 electron xenon argon boron xenon-som argon-som boron-som )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
-PLATFORM_BOOTLOADER=( core photon electron xenon argon boron )
+PLATFORM_BOOTLOADER=( core photon electron xenon argon boron xenon-som argon-som boron-som )
 SPARK_CLOUD=( y n )
 APP=( "" tinker product_id_and_version )
 # TEST=( wiring/api wiring/no_fixture )
@@ -31,7 +31,7 @@ APP=( "" tinker product_id_and_version )
 DEBUG_BUILD=( n )
 TEST=()
 
-MODULAR_PLATFORM=( photon P1 electron xenon argon boron )
+MODULAR_PLATFORM=( photon P1 electron xenon argon boron xenon-som argon-som boron-som )
 
 filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM

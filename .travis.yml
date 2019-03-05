@@ -38,6 +38,9 @@ env:
     - BUILD_PLATFORM=xenon
     - BUILD_PLATFORM=argon
     - BUILD_PLATFORM=boron
+    - BUILD_PLATFORM=xenon-som
+    - BUILD_PLATFORM=argon-som
+    - BUILD_PLATFORM=boron-som
     - BUILD_PLATFORM=photon
     - BUILD_PLATFORM=P1
     - BUILD_PLATFORM=electron
