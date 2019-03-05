@@ -1918,7 +1918,7 @@ int ble_gap_stop_scan(void) {
     return SYSTEM_ERROR_NONE;
 }
 
-int ble_gap_connect(hal_ble_address_t* address, void *reserved) {
+int ble_gap_connect(hal_ble_address_t* address, hal_ble_connection_parameters_t* params, void *reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_connect().");
@@ -1942,7 +1942,7 @@ int ble_gap_connect(hal_ble_address_t* address, void *reserved) {
     fromHalScanParams(&s_bleInstance.scanParams, &bleGapScanParams);
 
     ble_gap_conn_params_t connParams;
-    fromHalConnParams(&s_bleInstance.ppcp, &connParams);
+    fromHalConnParams(params, &connParams);
 
     ret_code_t ret = sd_ble_gap_connect(&devAddr, &bleGapScanParams, &connParams, BLE_CONN_CFG_TAG);
     if (ret != NRF_SUCCESS) {
